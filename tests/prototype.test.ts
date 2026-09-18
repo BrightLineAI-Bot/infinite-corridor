@@ -1901,6 +1901,10 @@ test("journal and pack expose illustrated field-card hooks",()=>{
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
   assert.match(main,/CREATURE_PORTRAITS/);assert.match(main,/creature-portrait/);assert.match(main,/dataset\.slot = slot/);assert.match(css,/bestiary-atlas-v1\.png/);assert.match(css,/\.codex-card/);
 });
+test("production build packages offline image assets",()=>{
+  const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
+  assert.match(build,/new URL\('\.\.\/assets\//);assert.match(build,/recursive:true/);
+});
 test("compatible procedural traits create deterministic mechanical creature variants",()=>{
   const a=generateRegion("traits",8,-3,1),b=generateRegion("traits",8,-3,1);
   assert.deepEqual(a.enemySpawns,b.enemySpawns);
