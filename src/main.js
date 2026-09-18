@@ -30,7 +30,13 @@ function drawRangedEffects() {
     ctx.shadowColor = ctx.fillStyle;
     ctx.shadowBlur = 8;
     ctx.beginPath();
-    ctx.arc(x, y, p.damageType === "magic" ? 5 : 3, 0, 7);
+    if (p.path === "boomerang") {
+      const a = Math.atan2(p.dy, p.dx);
+      ctx.moveTo(x + Math.cos(a) * 8, y + Math.sin(a) * 8);
+      ctx.lineTo(x + Math.cos(a + 2.35) * 7, y + Math.sin(a + 2.35) * 7);
+      ctx.lineTo(x + Math.cos(a - 2.35) * 7, y + Math.sin(a - 2.35) * 7);
+      ctx.closePath();
+    } else ctx.arc(x, y, p.damageType === "magic" ? 5 : 3, 0, 7);
     ctx.fill();
   }
   ctx.shadowBlur = 0;
