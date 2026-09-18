@@ -10,6 +10,7 @@ import {
   regionalThreat,
   perceptionOverlay,
   apertureTier,
+  apertureEncounterSpawns,
   perceived,
   wayfindingCues,
 } from "../src/world.ts";
@@ -64,6 +65,22 @@ test("regional threat is symmetric and leaves origin unchanged", () => {
   });
   assert.deepEqual(regionalThreat(3, 4), regionalThreat(-3, -4));
   assert.ok(regionalThreat(3, 4).hpMultiplier > 1);
+});
+test("player power outgrows static early-region enemies instead of treadmill scaling",()=>{
+  const low=freshSave(),high=freshSave();high.level=50;syncCharacterStats(high);
+  const a=new Game(low,0),b=new Game(high,0),earlyA=a.enemies.filter(e=>!e.apertureEncounter).map(e=>[e.kind,e.maxHp,e.damage]),earlyB=b.enemies.filter(e=>!e.apertureEncounter).map(e=>[e.kind,e.maxHp,e.damage]);
+  assert.deepEqual(earlyB,earlyA);
+  assert.ok(characterStats(high).meleeBonus>characterStats(low).meleeBonus+20);
+  assert.ok(characterStats(high).magicBonus>characterStats(low).magicBonus+15);
+});
+test("Aperture adds rare exceptional encounters without scaling the regular roster",()=>{
+  const region=generateRegion("aperture-encounters",0,0,1),counts=[0,0,0,0];
+  for(let i=0;i<200;i++)for(const[tier,value]of [[0,0],[1,6],[2,18],[3,36]])counts[tier]+=apertureEncounterSpawns("aperture-encounters",`overworld:${i}:0:g1`,value,region.tiles).length;
+  assert.equal(counts[0],0);
+  assert.ok(counts[1]>0&&counts[1]<=counts[2]&&counts[2]<=counts[3]);
+  const high=Array.from({length:200},(_,i)=>apertureEncounterSpawns("aperture-encounters",`overworld:${i}:0:g1`,36,region.tiles)[0]).find(Boolean);
+  assert.equal(high.apertureEncounter,true);assert.equal(high.apertureTier,3);assert.ok(high.threatMultiplier>2);
+  assert.deepEqual(generateRegion("aperture-encounters",0,0,1).enemySpawns,region.enemySpawns);
 });
 test("Aperture overlay is deterministic independent and threshold gated", () => {
   const base = generateDungeon("s", "dungeon:s:g1"),
