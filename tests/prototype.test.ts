@@ -398,6 +398,13 @@ test("atlas section summary reports detail flags", () => {
   );
   assert.ok(d.terrain && d.landmark);
 });
+test("Atlas details do not reveal unvisited generated terrain",()=>{
+  const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+  assert.match(source,/if \(!save\.explored\[key\]\)/);
+  assert.match(source,/uncharted\. No terrain or landmark data has been recorded/);
+  const guard=source.indexOf("if (!save.explored[key])"),summary=source.indexOf("sectionSummary(save.seed",guard);
+  assert.ok(guard>=0&&summary>guard);
+});
 test("input math normalizes diagonals, shapes dead zone, and smooths", () => {
   const n = normalizeVector(1, 1);
   assert.ok(Math.abs(Math.hypot(n.x, n.y) - 1) < 1e-9);

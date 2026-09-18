@@ -837,11 +837,20 @@ function updateMapTravelButton() {
   $("#mapHome").disabled = game.area === "dungeon";
 }
 function showMapDetail(rx, ry) {
+  const key = `${rx},${ry}`;
+  if (!save.explored[key]) {
+    mapView.selected = null;
+    $("#mapDetail").textContent =
+      `Section ${rx}, ${ry} · uncharted. No terrain or landmark data has been recorded.`;
+    updateMapTravelButton();
+    return false;
+  }
   mapView.selected = { rx, ry };
   const s = sectionSummary(save.seed, rx, ry, save.worldGeneration, save);
   $("#mapDetail").textContent =
     `Section ${rx}, ${ry} · ${s.terrain} terrain · ${s.landmark}${s.checkpoint ? " · checkpoint" : ""}${s.current ? " · current" : ""}${s.waypoint ? " · waypoint" : ""}`;
   updateMapTravelButton();
+  return true;
 }
 function openMap() {
   pauseForOverlay();
