@@ -1,9 +1,142 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#10151d"><link rel="manifest" href="./manifest.webmanifest"><link rel="stylesheet" href="./styles.css?v=28"><title>Infinite Corridor</title></head><body><main id="app"><canvas id="game"></canvas><section id="hud"><div class="hud-summary"><div id="vitals"><div class="health-row"><progress id="healthBar" max="60"></progress><span id="healthText"></span></div><progress id="staminaBar" max="50" aria-label="Stamina"></progress></div><small id="xpCompact"></small><button id="hudExpand" type="button" aria-expanded="false" aria-controls="hudDetails" aria-label="Show field information">⌄</button></div><div id="messageViewport" role="status" aria-live="polite"><p id="message">The Verge remembers.</p></div><div id="hudDetails" hidden><div id="identity"><strong id="place">Cinder Verge</strong></div><small id="objective"></small><div id="loadout"><span id="attackInfo"></span><span id="spellInfo"></span><span id="toolInfo"></span></div><span id="buff"></span><nav id="hudMenu"><button data-action="pause">Pause</button><button data-action="journal">Journal</button></nav></div></section><section id="actions"><div class="left-controls"><div class="utility-buttons"><button data-action="map">Map</button><button data-action="menu">Pack</button></div><div id="stick"><i></i></div></div><div class="quick-row buttons"><button id="fieldMenuToggle" type="button" aria-expanded="false" aria-controls="hudDetails">Menu</button><button class="quick tool" data-action="tool">Tool</button><button class="quick spell" data-action="spell">Spell</button><button class="quick potion" data-action="potion">Potion</button></div><div class="action-diamond buttons"><button class="core jump" data-action="jump">Jump</button><button class="core act" data-action="interact">Act</button><button class="core attack" data-action="attack">Attack</button><button class="core dodge" data-action="dodge">Dodge</button></div></section><dialog id="panel"><button id="close" class="close">×</button><div id="panelBody"></div></dialog><dialog id="pausePanel"><h2>Paused</h2><p>Progress saved. Time is still.</p><button id="resume">Resume</button><button id="pausedMap">Atlas</button><button id="pausedJournal">Journal</button><button id="pausedPack">Pack</button></dialog><dialog id="journal"><button id="journalClose" class="close">×</button><h2>Wayfarer’s Journal</h2><div id="journalBody"></div></dialog><dialog id="atlas"><button id="mapClose" class="close">×</button><h2>Corridor Atlas</h2><canvas id="mapCanvas"></canvas><div class="maptools"><button id="mapPlus">+</button><button id="mapMinus">−</button><button id="mapN">↑</button><button id="mapW">←</button><button id="mapCenter">Center</button><button id="mapE">→</button><button id="mapS">↓</button></div><button id="mapTravel" type="button">Return to active checkpoint</button><p id="mapDetail">Select an explored section for details.</p><p>Tap an explored section to set a waypoint. Dim cells are the known frontier.</p></dialog></main><script type="module">const boot=async()=>{if('serviceWorker'in navigator){const r=await navigator.serviceWorker.register('./sw.js?v=28',{updateViaCache:'none'});await r.update();const c=navigator.serviceWorker.controller;if(c&&!c.scriptURL.includes('v=28')){const key='corridor-upgrade-28';if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();return}}sessionStorage.removeItem('corridor-upgrade-28')}await import('./src/main.js')};boot().catch(e=>{console.error(e);setTimeout(()=>location.reload(),1200)})</script></body></html>
-
-
-
-
-
-
-
-
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"
+    />
+    <meta name="theme-color" content="#10151d" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css?v=29" />
+    <title>Infinite Corridor</title>
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="game"></canvas>
+      <section id="hud">
+        <div class="hud-summary">
+          <div id="vitals">
+            <div class="health-row">
+              <progress id="healthBar" max="60"></progress
+              ><span id="healthText"></span>
+            </div>
+            <progress id="staminaBar" max="50" aria-label="Stamina"></progress>
+          </div>
+          <small id="xpCompact"></small
+          ><button
+            id="hudExpand"
+            type="button"
+            aria-expanded="false"
+            aria-controls="hudDetails"
+            aria-label="Show field information"
+          >
+            ⌄
+          </button>
+        </div>
+        <div id="messageViewport" role="status" aria-live="polite">
+          <p id="message">The Verge remembers.</p>
+        </div>
+        <div id="hudDetails" hidden>
+          <div id="identity"><strong id="place">Cinder Verge</strong></div>
+          <small id="objective"></small>
+          <div id="loadout">
+            <span id="attackInfo"></span><span id="spellInfo"></span
+            ><span id="toolInfo"></span>
+          </div>
+          <span id="buff"></span>
+          <nav id="hudMenu">
+            <button data-action="pause">Pause</button
+            ><button data-action="journal">Journal</button>
+          </nav>
+        </div>
+      </section>
+      <section id="actions">
+        <div class="left-controls">
+          <div class="utility-buttons">
+            <button data-action="map">Map</button
+            ><button data-action="menu">Pack</button>
+          </div>
+        </div>
+        <div class="quick-row buttons">
+          <button
+            id="fieldMenuToggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="hudDetails"
+          >
+            Menu</button
+          ><button class="quick tool" data-action="tool">Tool</button
+          ><button class="quick spell" data-action="spell">Spell</button
+          ><button class="quick potion" data-action="potion">Potion</button>
+        </div>
+        <div class="action-diamond buttons">
+          <button class="core jump" data-action="jump">Jump</button
+          ><button class="core act" data-action="interact">Act</button
+          ><button class="core attack" data-action="attack">Attack</button
+          ><button class="core dodge" data-action="dodge">Dodge</button>
+        </div>
+      </section>
+      <dialog id="panel">
+        <button id="close" class="close">×</button>
+        <div id="panelBody"></div>
+      </dialog>
+      <dialog id="pausePanel">
+        <h2>Paused</h2>
+        <p>Progress saved. Time is still.</p>
+        <button id="resume">Resume</button><button id="pausedMap">Atlas</button
+        ><button id="pausedJournal">Journal</button
+        ><button id="pausedPack">Pack</button>
+      </dialog>
+      <dialog id="journal">
+        <button id="journalClose" class="close">×</button>
+        <h2>Wayfarer’s Journal</h2>
+        <div id="journalBody"></div>
+      </dialog>
+      <dialog id="atlas">
+        <button id="mapClose" class="close">×</button>
+        <h2>Corridor Atlas</h2>
+        <canvas id="mapCanvas"></canvas>
+        <div class="maptools">
+          <button id="mapPlus">+</button><button id="mapMinus">−</button
+          ><button id="mapN">↑</button><button id="mapW">←</button
+          ><button id="mapCenter">Center</button><button id="mapE">→</button
+          ><button id="mapS">↓</button>
+        </div>
+        <button id="mapTravel" type="button">
+          Return to active checkpoint
+        </button>
+        <p id="mapDetail">Select an explored section for details.</p>
+        <p>
+          Tap an explored section to set a waypoint. Dim cells are the known
+          frontier.
+        </p>
+      </dialog>
+    </main>
+    <script type="module">
+      const boot = async () => {
+        if ("serviceWorker" in navigator) {
+          const r = await navigator.serviceWorker.register("./sw.js?v=29", {
+            updateViaCache: "none",
+          });
+          await r.update();
+          const c = navigator.serviceWorker.controller;
+          if (c && !c.scriptURL.includes("v=29")) {
+            const key = "corridor-upgrade-29";
+            if (!sessionStorage.getItem(key)) {
+              sessionStorage.setItem(key, "1");
+              location.reload();
+              return;
+            }
+          }
+          sessionStorage.removeItem("corridor-upgrade-29");
+        }
+        await import("./src/main.js");
+      };
+      boot().catch((e) => {
+        console.error(e);
+        setTimeout(() => location.reload(), 1200);
+      });
+    </script>
+  </body>
+</html>
