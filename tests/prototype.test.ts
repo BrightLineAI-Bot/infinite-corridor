@@ -1815,6 +1815,9 @@ test("atlas supports direct pointer panning without sacrificing tap selection", 
   assert.match(source, /pointerup/);
   assert.match(source, /suppressMapClick/);
   assert.match(source, /mapView\.x\s*-=\s*Math\.round/);
+  assert.match(source, /atlasPointers\.size === 2/);
+  assert.match(source, /atlasPinch\.zoom \* distance \/ atlasPinch\.distance/);
+  assert.match(source, /Math\.max\(0\.6, Math\.min\(1\.8/);
   assert.match(style, /#mapCanvas\s*\{[\s\S]*?touch-action:\s*none/);
 });
 

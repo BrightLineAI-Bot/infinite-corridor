@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=32" />
+    <link rel="stylesheet" href="./styles.css?v=33" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -118,13 +118,13 @@
     <script type="module">
       const boot = async () => {
         if ("serviceWorker" in navigator) {
-          const r = await navigator.serviceWorker.register("./sw.js?v=32", {
+          const r = await navigator.serviceWorker.register("./sw.js?v=33", {
             updateViaCache: "none",
           });
           await r.update();
           const c = navigator.serviceWorker.controller;
-          if (c && !c.scriptURL.includes("v=32")) {
-            const key = "corridor-upgrade-32";
+          if (c && !c.scriptURL.includes("v=33")) {
+            const key = "corridor-upgrade-33";
             if (!sessionStorage.getItem(key)) {
               sessionStorage.setItem(key, "1");
               location.reload();

@@ -210,7 +210,9 @@ let last = performance.now(),
   clock = 0,
   mapView = { x: game.rx, y: game.ry, zoom: 1, selected: null, panX: 0, panY: 0 };
 let atlasDrag = null,
+  atlasPinch = null,
   suppressMapClick = false;
+const atlasPointers = new Map();
 function apertureStatsCard() {
   const p = save.perception,
     tier = apertureTier(p.aperture),
@@ -1189,12 +1191,29 @@ mapCanvas.onclick = (e) => {
   persist();
 };
 mapCanvas.addEventListener("pointerdown", (e) => {
-  if (!e.isPrimary) return;
-  atlasDrag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+  atlasPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   mapCanvas.setPointerCapture(e.pointerId);
   mapCanvas.classList.add("dragging");
+  if (atlasPointers.size === 1)
+    atlasDrag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+  else if (atlasPointers.size === 2) {
+    const [a, b] = [...atlasPointers.values()];
+    atlasPinch = { distance: Math.hypot(b.x - a.x, b.y - a.y), zoom: mapView.zoom };
+    atlasDrag = null;
+    mapView.panX = mapView.panY = 0;
+    suppressMapClick = true;
+  }
 });
 mapCanvas.addEventListener("pointermove", (e) => {
+  if (!atlasPointers.has(e.pointerId)) return;
+  atlasPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (atlasPinch && atlasPointers.size >= 2) {
+    const [a, b] = [...atlasPointers.values()], distance = Math.hypot(b.x - a.x, b.y - a.y);
+    if (atlasPinch.distance > 0)
+      mapView.zoom = Math.max(0.6, Math.min(1.8, atlasPinch.zoom * distance / atlasPinch.distance));
+    drawMap();
+    return;
+  }
   if (!atlasDrag || e.pointerId !== atlasDrag.id) return;
   const dx = e.clientX - atlasDrag.x, dy = e.clientY - atlasDrag.y;
   if (Math.hypot(dx, dy) > 7) atlasDrag.moved = true;
@@ -1204,16 +1223,22 @@ mapCanvas.addEventListener("pointermove", (e) => {
   drawMap();
 });
 function finishAtlasDrag(e) {
-  if (!atlasDrag || e.pointerId !== atlasDrag.id) return;
-  if (atlasDrag.moved) {
+  if (!atlasPointers.has(e.pointerId)) return;
+  const wasPinching = !!atlasPinch;
+  atlasPointers.delete(e.pointerId);
+  if (!wasPinching && atlasDrag?.id === e.pointerId && atlasDrag.moved) {
     const cell = 52 * mapView.zoom;
     mapView.x -= Math.round(mapView.panX / cell);
     mapView.y -= Math.round(mapView.panY / cell);
     suppressMapClick = true;
   }
   mapView.panX = mapView.panY = 0;
+  atlasPinch = null;
   atlasDrag = null;
-  mapCanvas.classList.remove("dragging");
+  if (atlasPointers.size === 1) {
+    const [id, q] = [...atlasPointers.entries()][0];
+    atlasDrag = { id, x: q.x, y: q.y, moved: false };
+  } else if (!atlasPointers.size) mapCanvas.classList.remove("dragging");
   drawMap();
   showMapDetail(mapView.x, mapView.y);
 }
