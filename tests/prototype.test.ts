@@ -813,6 +813,12 @@ test("tool profiles support distinct straight and boomerang flight paths", async
   assert.equal(active[0].dx,-1);
   assert.equal(enemy.hp,24);
 });
+test("Rift Bombard detonates once at its aimed endpoint with a localized blast",async()=>{
+  const {rangedWeapon}=await import("../src/items.ts"),{updateProjectiles}=await import("../src/game.ts"),w=rangedWeapon({name:"Rift Bombard"}),map={tiles:Array.from({length:49},()=>({blocked:false}))};
+  assert.equal(w.path,"grenade");let blasts=0,p=[{id:"g",x:1,y:2,dx:1,dy:0,speed:4,life:.25,damage:16,path:"grenade",blastRadius:w.radius}];
+  p=updateProjectiles(p,[],map,7,.25,()=>{},shot=>{blasts++;assert.equal(shot.blastRadius,2.15)});
+  assert.equal(p.length,0);assert.equal(blasts,1);
+});
 test("shop is deterministic, capped, affordable, and persisted", async () => {
   const { velaShop, buyFromVela } = await import("../src/game.ts"),
     s = freshSave(),

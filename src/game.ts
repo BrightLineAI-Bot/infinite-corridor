@@ -159,6 +159,7 @@ export function updateProjectiles(
   width,
   dt,
   onDefeat = () => {},
+  onDetonate = () => {},
 ) {
   for (const p of projectiles) {
     if (p.dead) continue;
@@ -179,6 +180,7 @@ export function updateProjectiles(
       const nx = p.x + p.dx * step,
         ny = p.y + p.dy * step;
       if (!tileOpen(map, width, nx, ny)) {
+        if(p.path==="grenade"){p.dead=true;onDetonate(p);break}
         if (p.path === "boomerang" && !p.returning) {
           p.returning = true;
           p.dx *= -1;
@@ -194,6 +196,7 @@ export function updateProjectiles(
       p.y = ny;
       for (const e of enemies)
         if (
+          p.path !== "grenade" &&
           !e.dead &&
           !p.hits?.[e.id] &&
           Math.hypot(e.x + 0.5 - p.x, e.y + 0.45 - p.y) < 0.48
@@ -212,7 +215,7 @@ export function updateProjectiles(
         }
     }
     p.life -= dt;
-    if (p.life <= 0) p.dead = true;
+    if (p.life <= 0){p.dead=true;if(p.path==="grenade")onDetonate(p)}
   }
   return projectiles.filter((p) => !p.dead);
 }
@@ -1727,8 +1730,9 @@ export class Game {
   fireSecondary(now = 0, direction = null) {
     const weapon = rangedWeapon(this.save.equipment.secondary);
     if (!weapon || now < (this.player.attackReadyAt || 0)) return false;
-    let d;
+    let d, aimedDistance = null;
     if (this.save.pendingAim) {
+      aimedDistance = Math.hypot(this.save.pendingAim.x-(this.player.x+.5),this.save.pendingAim.y-(this.player.y+.45));
       d = projectileDirection(
         this.save.pendingAim.x - (this.player.x + 0.5),
         this.save.pendingAim.y - (this.player.y + 0.45),
@@ -1753,7 +1757,7 @@ export class Game {
       dx: d.x,
       dy: d.y,
       speed: weapon.speed,
-      life: weapon.lifetime,
+      life: weapon.path==="grenade"&&aimedDistance!==null?Math.max(.08,Math.min(weapon.lifetime,aimedDistance/weapon.speed)):weapon.lifetime,
       damage: Math.round(
         (weapon.damage +
           this.save.stats.Focus +
@@ -1768,6 +1772,7 @@ export class Game {
       turnAfter: weapon.turnAfter || weapon.lifetime / 2,
       returning: false,
       hits: {},
+      blastRadius: weapon.radius || 0,
     });
     return true;
   }
@@ -1972,6 +1977,7 @@ export class Game {
       (e) => {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
+      (shot)=>this.effects.push({id:"blast-"+shot.id,kind:"rift-blast",x:shot.x,y:shot.y,life:.32,radius:shot.blastRadius||2,untilPulse:0,pulse:99,damage:shot.damage,hits:{}}),
     );
     this.syncNpcDamage("projectile");
     this.effects = updateEffects(

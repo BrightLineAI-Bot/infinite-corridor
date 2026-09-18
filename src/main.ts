@@ -36,7 +36,7 @@ function drawRangedEffects() {
       ctx.lineTo(x + Math.cos(a + 2.35) * 7, y + Math.sin(a + 2.35) * 7);
       ctx.lineTo(x + Math.cos(a - 2.35) * 7, y + Math.sin(a - 2.35) * 7);
       ctx.closePath();
-    } else ctx.arc(x, y, p.damageType === "magic" ? 5 : 3, 0, 7);
+    } else if(p.path==="grenade"){ctx.arc(x,y,7,0,7);ctx.moveTo(x,y-7);ctx.lineTo(x+4,y-11)}else ctx.arc(x, y, p.damageType === "magic" ? 5 : 3, 0, 7);
     ctx.fill();
   }
   ctx.shadowBlur = 0;

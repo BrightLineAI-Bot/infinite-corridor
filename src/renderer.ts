@@ -74,6 +74,8 @@ function tile(ctx, t, x, y, s, map, w) {
       ctx.fillStyle = "#14120f88";
       ctx.fillRect(px, py + s - 3, 5 + (d % 9), 3);
     }
+    if((d&15)===3){ctx.strokeStyle=t.kind==='ember'?'#c1744748':t.kind==='glass'?'#76b4ac42':'#93836a42';ctx.beginPath();ctx.arc(px+s*.62,py+s*.42,s*.13,0,Math.PI*1.5);ctx.stroke();ctx.fillStyle="#11130f88";ctx.fillRect(px+s*.58,py+s*.38,3,3)}
+    if((d&31)===11){ctx.fillStyle="#c6a66a38";for(let q=0;q<3;q++)ctx.fillRect(px+6+q*5,py+s-8-(q%2)*3,2,2)}
   }
 }
 const COLORS = {
