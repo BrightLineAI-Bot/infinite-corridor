@@ -67,7 +67,7 @@ function drawRangedEffects() {
   }
 }
 function openShop(vendorId = "vendor-vela") {
-  pause(false);
+  pauseForOverlay();
   body.replaceChildren();
   const names = {
       "vendor-vela": "Vela’s Verge Supplies",
@@ -212,6 +212,7 @@ let last = performance.now(),
   mapView = { x: game.rx, y: game.ry, zoom: 1, selected: null, panX: 0, panY: 0 };
 let atlasDrag = null,
   atlasPinch = null,
+  overlayPause = false,
   suppressMapClick = false;
 const atlasPointers = new Map();
 function apertureStatsCard() {
@@ -724,12 +725,18 @@ new ResizeObserver(resize).observe($("#app"));
 resize();
 const persist = () => saveGame(game.exportSnapshot(performance.now()));
 function pause(show = true) {
+  if (show) overlayPause = false;
   game.setPaused(true, performance.now());
   input.reset();
   persist();
   if (show && !pausePanel.open) pausePanel.showModal();
 }
+function pauseForOverlay() {
+  overlayPause = true;
+  pause(false);
+}
 function resume() {
+  overlayPause = false;
   for (const d of [pausePanel, atlas, panel, journal]) if (d.open) d.close();
   game.setPaused(false, performance.now());
   input.reset();
@@ -829,7 +836,7 @@ function showMapDetail(rx, ry) {
   updateMapTravelButton();
 }
 function openMap() {
-  pause(false);
+  pauseForOverlay();
   if (pausePanel.open) pausePanel.close();
   mapView.x = game.rx;
   mapView.y = game.ry;
@@ -838,7 +845,7 @@ function openMap() {
   drawMap();
 }
 function openPack() {
-  pause(false);
+  pauseForOverlay();
   if (pausePanel.open) pausePanel.close();
   body.replaceChildren();
   const heading = document.createElement("h2"),
@@ -996,7 +1003,7 @@ const CODEX = {
 };
 function openJournal(mode = "chronicle") {
   if(typeof mode!=="string")mode="chronicle";
-  pause(false);
+  pauseForOverlay();
   if (pausePanel.open) pausePanel.close();
   const out = $("#journalBody");
   out.replaceChildren();
@@ -1163,10 +1170,7 @@ $("#pausedMap").onclick = openMap;
 $("#pausedJournal").onclick = openJournal;
 $("#journalClose").onclick = () => journal.close();
 $("#close").onclick = () => panel.close();
-$("#mapClose").onclick = () => {
-  atlas.close();
-  pause();
-};
+$("#mapClose").onclick = () => atlas.close();
 $("#mapCenter").onclick = () => {
   mapView.x = game.rx;
   mapView.y = game.ry;
@@ -1289,15 +1293,26 @@ for (const d of [panel, atlas, journal])
       !atlas.open &&
       !panel.open &&
       !journal.open
-    )
-      pausePanel.showModal();
+    ) {
+      if (overlayPause) resume();
+      else pausePanel.showModal();
+    }
   });
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) pause(false);
+  if (document.hidden) {
+    overlayPause = false;
+    pause(false);
+  }
   else if (game.paused && !pausePanel.open) pausePanel.showModal();
 });
-addEventListener("pagehide", () => pause(false));
-addEventListener("freeze", () => pause(false));
+addEventListener("pagehide", () => {
+  overlayPause = false;
+  pause(false);
+});
+addEventListener("freeze", () => {
+  overlayPause = false;
+  pause(false);
+});
 if (game.paused) pausePanel.showModal();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");
 requestAnimationFrame(frame);
@@ -1312,7 +1327,7 @@ $("#mapTravel").onclick = () => {
 function openInteraction(id, confirmAttack = false) {
   const o = game.map.objects.find((q) => q.id === id);
   if (!o) return;
-  pause(false);
+  pauseForOverlay();
   if (pausePanel.open) pausePanel.close();
   body.replaceChildren();
   const title = document.createElement("h2"),
