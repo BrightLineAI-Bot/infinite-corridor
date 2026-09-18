@@ -249,7 +249,7 @@ body {
     inset 0 0 0 2px #151411,
     0 3px 9px #0009;
 }
-.action-diamond .jump {
+.action-diamond .tool {
   left: 54px;
   top: 0;
 }
@@ -257,11 +257,11 @@ body {
   left: 0;
   top: 54px;
 }
-.action-diamond .attack {
+.action-diamond .dodge {
   right: 0;
   top: 54px;
 }
-.action-diamond .dodge {
+.action-diamond .attack {
   left: 54px;
   bottom: 0;
 }
@@ -334,7 +334,8 @@ body {
   filter: saturate(0.35);
   color: #908779;
 }
-.buttons .tool.selected {
+.buttons .tool.selected,
+.buttons .attack.selected {
   color: #f2d79d;
   border-color: #c9a15c;
   filter: drop-shadow(0 0 5px #bb7b3f88);
@@ -468,16 +469,16 @@ dialog button {
     width: 150px;
     height: 150px;
   }
-  .action-diamond .jump {
+  .action-diamond .tool {
     left: 50px;
   }
   .action-diamond .act {
     top: 50px;
   }
-  .action-diamond .attack {
+  .action-diamond .dodge {
     top: 50px;
   }
-  .action-diamond .dodge {
+  .action-diamond .attack {
     left: 50px;
   }
   .quick-row {
@@ -554,16 +555,16 @@ dialog button {
     width: 138px;
     height: 138px;
   }
-  .action-diamond .jump {
+  .action-diamond .tool {
     left: 46px;
   }
   .action-diamond .act {
     top: 46px;
   }
-  .action-diamond .attack {
+  .action-diamond .dodge {
     top: 46px;
   }
-  .action-diamond .dodge {
+  .action-diamond .attack {
     left: 46px;
   }
   .quick-row {

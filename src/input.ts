@@ -37,10 +37,8 @@ export function createInput(root, host = globalThis) {
     keys = new Set(),
     latch = new Set(),
     canvas = root.querySelector("#game");
-  let pointer = null,
-    origin = null,
-    moved = false,
-    started = 0;
+  let movementPointer = null;
+  const pointers = new Map();
   const actions = {
     j: "attack",
     q: "tool",
@@ -57,9 +55,8 @@ export function createInput(root, host = globalThis) {
     l: "journal",
   };
   function clearPointer() {
-    pointer = null;
-    origin = null;
-    moved = false;
+    movementPointer = null;
+    pointers.clear();
     target.x = target.y = 0;
   }
   function reset() {
@@ -77,38 +74,53 @@ export function createInput(root, host = globalThis) {
       e.preventDefault();
   }
   function move(e) {
-    if (pointer !== e.pointerId || !origin) return;
-    const dx = e.clientX - origin.x,
-      dy = e.clientY - origin.y;
-    if (Math.hypot(dx, dy) > 10) moved = true;
+    const record = pointers.get(e.pointerId);
+    if (!record) return;
+    const dx = e.clientX - record.x,
+      dy = e.clientY - record.y;
+    if (Math.hypot(dx, dy) > 10) record.moved = true;
+    if (movementPointer !== e.pointerId) return;
     const v = dragVector(dx, dy);
     target.x = v.x;
     target.y = v.y;
   }
   canvas.onpointerdown = (e) => {
-    if (pointer !== null) return;
-    pointer = e.pointerId;
-    origin = { x: e.clientX, y: e.clientY };
-    started = performance.now();
-    moved = false;
-    canvas.setPointerCapture?.(pointer);
+    pointers.set(e.pointerId, {
+      x: e.clientX,
+      y: e.clientY,
+      moved: false,
+      started: performance.now(),
+    });
+    if (movementPointer === null) movementPointer = e.pointerId;
+    canvas.setPointerCapture?.(e.pointerId);
   };
   canvas.onpointermove = move;
   const release = (e) => {
-    if (pointer !== e.pointerId) return;
-    const tap = !moved && performance.now() - started < 450,
+    const record = pointers.get(e.pointerId);
+    if (!record) return;
+    const tap = !record.moved && performance.now() - record.started < 450,
       detail = {
         clientX: e.clientX,
         clientY: e.clientY,
         pointerType: e.pointerType,
       };
-    clearPointer();
+    pointers.delete(e.pointerId);
+    if (movementPointer === e.pointerId) {
+      movementPointer = null;
+      target.x = target.y = 0;
+    }
     if (tap) canvas.dispatchEvent(new CustomEvent("worldtap", { detail }));
   };
   canvas.onpointerup = release;
-  canvas.onpointercancel = clearPointer;
+  canvas.onpointercancel = (e) => {
+    pointers.delete(e.pointerId);
+    if (movementPointer === e.pointerId) {
+      movementPointer = null;
+      target.x = target.y = 0;
+    }
+  };
   canvas.onlostpointercapture = (e) => {
-    if (pointer === e.pointerId) clearPointer();
+    if (pointers.has(e.pointerId)) canvas.onpointercancel(e);
   };
   host.addEventListener?.("keydown", keydown);
   host.addEventListener?.("keyup", (e) => keys.delete(e.key.toLowerCase()));
@@ -127,7 +139,7 @@ export function createInput(root, host = globalThis) {
     state,
     reset,
     update(dt = 1 / 60) {
-      if (pointer === null) {
+      if (movementPointer === null) {
         const v = normalizeVector(
           (keys.has("d") || keys.has("arrowright") ? 1 : 0) -
             (keys.has("a") || keys.has("arrowleft") ? 1 : 0),

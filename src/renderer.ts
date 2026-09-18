@@ -436,7 +436,30 @@ export function render(ctx, g, w, h, now) {
       ctx.fillStyle = "#9b4d50";
       ctx.fillRect(e.x * s, (e.y - 0.1) * s, (s * e.hp) / e.maxHp, 3);
     }
+  const motion = now / 1000;
+  for (const o of g.map.objects)
+    if (["shrine", "checkpoint", "ruinMarker", "apertureMemory"].includes(o.kind)) {
+      const cx = (o.x + 0.5) * s,
+        cy = (o.y + 0.35) * s,
+        spin = motion * 0.55 + ((o.x * 13 + o.y * 7) % 11);
+      ctx.strokeStyle = o.kind === "apertureMemory" ? "#c49be0aa" : "#a8bda066";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, s * 0.52, spin, spin + Math.PI * 1.25);
+      ctx.stroke();
+      ctx.fillStyle = "#d9d1b877";
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(spin) * s * 0.52, cy + Math.sin(spin) * s * 0.52, 2, 0, 7);
+      ctx.fill();
+    }
   ctx.restore();
+  ctx.fillStyle = "#d8c9aa55";
+  for (let i = 0; i < 16; i++) {
+    const phase = motion * (8 + (i % 4) * 2) + i * 97 + g.rx * 31 + g.ry * 17,
+      x = ((phase * 3.1) % (w + 80)) - 40,
+      y = ((i * 73 + Math.sin(phase * 0.07) * 45) % (h + 60)) - 30;
+    ctx.fillRect(x, y, i % 3 === 0 ? 3 : 2, 1);
+  }
   ctx.fillStyle = "#5c4a3b0c";
   ctx.fillRect(0, 0, w, h);
   const v = ctx.createRadialGradient(

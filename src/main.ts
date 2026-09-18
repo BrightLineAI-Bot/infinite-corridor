@@ -140,11 +140,14 @@ setTimeout(() => {
         e.detail.clientY - r.top,
       );
     game.aimAt(q.x, q.y);
-    if (save.toolMode || save.activeWeaponSlot === "secondary")
-      game.fireSecondary(performance.now(), {
-        x: q.x - game.player.x - 0.5,
-        y: q.y - game.player.y - 0.45,
-      });
+    const direction = {
+      x: q.x - game.player.x - 0.5,
+      y: q.y - game.player.y - 0.45,
+    };
+    if (save.aimMode === "attack")
+      game.primaryAttack(performance.now(), direction);
+    else if (save.aimMode === "tool" || save.activeWeaponSlot === "secondary")
+      game.fireSecondary(performance.now(), direction);
     persist();
   });
   setInterval(() => {
@@ -157,14 +160,16 @@ setTimeout(() => {
       game.shopRequested = false;
       openShop();
     }
-    const tool = document.querySelector('[data-action="tool"]');
+    const tool = document.querySelector('[data-action="tool"]'),
+      attack = document.querySelector('[data-action="attack"]');
     $("#attackInfo").textContent =
       `ATTACK ${save.equipment[save.activeWeaponSlot]?.name || "none"}`;
     $("#spellInfo").textContent =
       `SPELL ${(SPELLS[save.equippedSpell] || SPELLS["ember-ring"]).name}`;
     $("#toolInfo").textContent =
-      `TOOL ${save.equipment.secondary?.name || "none"}${save.toolMode ? " [ACTIVE]" : ""}`;
-    tool?.classList.toggle("selected", !!save.toolMode);
+      `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}`;
+    tool?.classList.toggle("selected", save.aimMode === "tool");
+    attack?.classList.toggle("selected", save.aimMode === "attack");
   }, 100);
 }, 0);
 import { loadSave, saveGame } from "./persistence.ts";
@@ -439,7 +444,11 @@ mute.onclick = () => {
   }
 };
 setInterval(() => {
-  objective.textContent = currentObjective(save);
+  const value = save.perception?.aperture || 0,
+    tier = apertureTier(value),
+    next = APERTURE_THRESHOLDS[tier],
+    unlock = tier === 0 ? "inscriptions" : tier === 1 ? "annexes" : tier === 2 ? "deep relics" : "all current structures visible";
+  objective.textContent = `${currentObjective(save)} · Aperture ${value}${next ? "/" + next : ""}: ${unlock}`;
 }, 250);
 function drawDungeonSystems() {
   const s = Math.max(28, Math.min(44, innerWidth / 12)),
@@ -1051,7 +1060,10 @@ function updateHud(now) {
   $("#healthBar").value = health;
   $("#staminaBar").max = save.maxStamina;
   $("#staminaBar").value = stamina;
-  $("#xpCompact").textContent = `LEVEL ${save.level} · XP ${save.xp}/${next}`;
+  const aperture = save.perception?.aperture || 0,
+    tier = apertureTier(aperture),
+    apertureNext = APERTURE_THRESHOLDS[tier];
+  $("#xpCompact").textContent = `LEVEL ${save.level} · XP ${save.xp}/${next} · AP ${aperture}${apertureNext ? "/" + apertureNext : " MAX"}`;
   const states = actionReadiness(game, now);
   for (const [action, state] of Object.entries(states)) {
     const button = document.querySelector(`[data-action="${action}"]`);

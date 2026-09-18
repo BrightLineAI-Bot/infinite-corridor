@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=29" />
+    <link rel="stylesheet" href="./styles.css?v=30" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -66,15 +66,15 @@
             aria-controls="hudDetails"
           >
             Menu</button
-          ><button class="quick tool" data-action="tool">Tool</button
+          ><button class="quick jump" data-action="jump">Jump</button
           ><button class="quick spell" data-action="spell">Spell</button
           ><button class="quick potion" data-action="potion">Potion</button>
         </div>
         <div class="action-diamond buttons">
-          <button class="core jump" data-action="jump">Jump</button
+          <button class="core tool" data-action="tool">Tool</button
           ><button class="core act" data-action="interact">Act</button
-          ><button class="core attack" data-action="attack">Attack</button
-          ><button class="core dodge" data-action="dodge">Dodge</button>
+          ><button class="core dodge" data-action="dodge">Dodge</button
+          ><button class="core attack" data-action="attack">Attack</button>
         </div>
       </section>
       <dialog id="panel">
@@ -116,20 +116,20 @@
     <script type="module">
       const boot = async () => {
         if ("serviceWorker" in navigator) {
-          const r = await navigator.serviceWorker.register("./sw.js?v=29", {
+          const r = await navigator.serviceWorker.register("./sw.js?v=30", {
             updateViaCache: "none",
           });
           await r.update();
           const c = navigator.serviceWorker.controller;
-          if (c && !c.scriptURL.includes("v=29")) {
-            const key = "corridor-upgrade-29";
+          if (c && !c.scriptURL.includes("v=30")) {
+            const key = "corridor-upgrade-30";
             if (!sessionStorage.getItem(key)) {
               sessionStorage.setItem(key, "1");
               location.reload();
               return;
             }
           }
-          sessionStorage.removeItem("corridor-upgrade-29");
+          sessionStorage.removeItem("corridor-upgrade-30");
         }
         await import("./src/main.js");
       };

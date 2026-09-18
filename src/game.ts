@@ -7,6 +7,7 @@ import {
   regionalThreat,
   perceptionOverlay,
   apertureTier,
+  APERTURE_THRESHOLDS,
   perceived,
 } from "./world.ts";
 import { createCombatant, dodge, playerAttack } from "./combat.ts";
@@ -622,6 +623,9 @@ export function updateEnemyAI(e, player, map, width, dt, now) {
 export class Game {
   constructor(save, now = 0) {
     this.save = save;
+    if (!["attack", "tool"].includes(save.aimMode))
+      save.aimMode = save.toolMode ? "tool" : "attack";
+    save.toolMode = save.aimMode === "tool";
     settleProgression(save);
     const s = save.session;
     this.area = s.area;
@@ -667,17 +671,23 @@ export class Game {
     this.player.meleeAim = this.save.session.playerRuntime.meleeAim || null;
     this.traversal = this.save.session.playerRuntime.traversal || null;
     const attack = this.primaryAttack.bind(this);
-    this.primaryAttack = (now) => {
+    this.primaryAttack = (now, explicitDirection = null) => {
       if (now < (this.player.attackReadyAt || 0)) return [];
       const profile = primaryProfile(this.save.equipment.primary),
         width = this.area === "dungeon" ? 24 : 32,
-        d = selectMeleeAim(
-          this.player,
-          this.enemies,
-          this.map,
-          width,
-          profile.range,
-        );
+        d = explicitDirection
+          ? projectileDirection(
+              explicitDirection.x,
+              explicitDirection.y,
+              this.player.facing,
+            )
+          : selectMeleeAim(
+              this.player,
+              this.enemies,
+              this.map,
+              width,
+              profile.range,
+            );
       this.player.meleeAim =
         d ||
         projectileDirection(
@@ -688,7 +698,7 @@ export class Game {
       const pending = this.save.pendingAim,
         last = { ...this.save.lastAim };
       this.save.lastAim = this.player.meleeAim;
-      const hits = attack(now);
+      const hits = attack(now, explicitDirection);
       this.save.lastAim = last;
       this.save.pendingAim = pending;
       for (const e of hits)
@@ -749,24 +759,33 @@ export class Game {
     const fire = this.fireSecondary.bind(this);
     this.fireSecondary = (now = 0, direction = null) => {
       if (!direction && !this._attackFiring) {
-        this.save.toolMode = !this.save.toolMode;
+        this.save.aimMode = this.save.aimMode === "tool" ? null : "tool";
+        this.save.toolMode = this.save.aimMode === "tool";
         this.message = this.save.toolMode
-          ? "Tool mode active — tap the world to fire."
-          : "Tool mode stowed.";
+          ? "Tool aim active — tap while moving to fire."
+          : "Tool aim stowed.";
         return false;
       }
       return fire(now, direction);
     };
     const attack = this.primaryAttack.bind(this);
-    this.primaryAttack = (now = 0) => {
-      this.save.toolMode = false;
+    this.primaryAttack = (now = 0, direction = null) => {
       if (this.save.activeWeaponSlot === "secondary") {
         this._attackFiring = true;
         const fired = fire(now);
         this._attackFiring = false;
         return fired ? [] : [];
       }
-      return attack(now);
+      return attack(now, direction);
+    };
+    this.toggleAttackMode = () => {
+      this.save.aimMode = this.save.aimMode === "attack" ? null : "attack";
+      this.save.toolMode = false;
+      this.message =
+        this.save.aimMode === "attack"
+          ? "Attack aim active — tap while moving to strike."
+          : "Attack aim stowed.";
+      return this.save.aimMode;
     };
   }
   installStorySystems() {
@@ -921,13 +940,23 @@ export class Game {
     this.transitionSection = (dx, dy) => {
       transition(dx, dy);
       const key = `section:${this.rx},${this.ry}`;
-      if (this.rx || this.ry)
-        gainAperture(
+      if (this.rx || this.ry) {
+        const gained = gainAperture(
           this.save,
           1,
           key,
           "Distance opens another fraction of your Aperture.",
         );
+        if (gained) {
+          const value = this.save.perception.aperture,
+            tier = apertureTier(value),
+            next = APERTURE_THRESHOLDS[tier],
+            unlock = tier === 0 ? "hidden inscriptions" : tier === 1 ? "unseen annexes" : "deep relics";
+          this.message = next
+            ? `New section understood. Aperture ${value}/${next} — ${unlock} draw nearer.`
+            : `New section understood. Aperture ${value} — the Corridor is fully visible for now.`;
+        }
+      }
     };
     const interact = this.interact.bind(this);
     this.interact = (action, objectId = null) => {
@@ -956,6 +985,15 @@ export class Game {
         };
       }
       const r = interact(action, objectId);
+      if (r?.ok && target?.kind === "apertureRelic") {
+        const key = "relic-stat:" + this.areaId();
+        if (!this.save.perception.awarded[key]) {
+          this.save.perception.awarded[key] = true;
+          this.save.statPoints++;
+          this.message = `${r.message} The relic leaves one permanent stat point.`;
+          r.message = this.message;
+        }
+      }
       if (r?.transition === "apertureDoor") {
         const parent = this.save.session.activeDungeonId;
         this.snapshotArea();
@@ -974,23 +1012,7 @@ export class Game {
       }
       return r;
     };
-    const update = this.update.bind(this);
-    this.update = (dt, input, now) => {
-      if (!this.paused) {
-        const p = this.save.perception;
-        p.passiveSeconds += Math.max(0, dt);
-        while (p.passiveSeconds >= 60) {
-          p.passiveSeconds -= 60;
-          gainAperture(
-            this.save,
-            1,
-            `passive:${Object.keys(p.awarded).filter((k) => k.startsWith("passive:")).length}`,
-            "Time and survival widen your Aperture.",
-          );
-        }
-      }
-      return update(dt, input, now);
-    };
+    this.save.perception.passiveSeconds = 0;
   }
   installApertureRewards() {
     if (this._apertureRewardsInstalled) return;
@@ -999,13 +1021,17 @@ export class Game {
     this.defeatEnemy = (e) => {
       const first = !e.rewarded,
         r = defeat(e);
-      if (first && e.kind === "hollowMarshal")
+      if (first && e.kind !== "npc") {
+        const guardian = e.kind === "hollowMarshal";
         gainAperture(
           this.save,
-          4,
-          "guardian:" + this.areaId(),
-          "A guardian’s last perception joins yours.",
+          guardian ? 4 : 1,
+          `${guardian ? "guardian" : "enemy"}:${this.areaId()}:${e.id}`,
+          guardian
+            ? "A guardian’s last perception joins yours."
+            : "The defeated shape leaves a new pattern in your Aperture.",
         );
+      }
       return r;
     };
   }
@@ -1560,7 +1586,7 @@ export class Game {
       this.map,
       this.area === "dungeon" ? 24 : 32,
       profile,
-      geometry,
+      { x: geometry.dx, y: geometry.dy },
     );
     for (const e of hits) {
       if (e.kind === "npc") {
@@ -1807,7 +1833,7 @@ export class Game {
     }
     const width = this.area === "dungeon" ? 24 : 32;
     moveAxis(p, dx, dy, this.map, width);
-    if (input.consume("attack")) this.primaryAttack(now);
+    if (input.consume("attack")) this.toggleAttackMode();
     if (input.consume("interact")) this.interact();
     this.projectiles = updateProjectiles(
       this.projectiles,

@@ -102,20 +102,20 @@ test("completed dungeons reveal a persistent annex and return to the parent", ()
   g.interact("exit", exit.id);
   assert.equal(g.areaId(), parent);
 });
-test("Aperture gains deduplicate and passive time freezes while paused", () => {
+test("Aperture gains deduplicate and idle time never replaces exploration", () => {
   const s = freshSave(),
     g = new Game(s, 0);
   assert.equal(gainAperture(s, 2, "quest:x"), 2);
   assert.equal(gainAperture(s, 2, "quest:x"), 0);
   assert.equal(s.perception.aperture, 2);
-  g.update(59, idle(), 1);
+  g.update(600, idle(), 1);
   assert.equal(s.perception.aperture, 2);
   g.setPaused(true, 2);
-  g.update(120, idle(), 122);
+  g.update(600, idle(), 122);
   assert.equal(s.perception.aperture, 2);
   g.setPaused(false, 123);
-  g.update(1, idle(), 124);
-  assert.equal(s.perception.aperture, 3);
+  g.update(600, idle(), 724);
+  assert.equal(s.perception.aperture, 2);
 });
 test("fresh outward encounters scale once and exact snapshots win on revisit", () => {
   const s = freshSave(),
@@ -847,6 +847,7 @@ test("Tool toggles persistently and aimed taps can repeatedly fire", () => {
   const g = new Game(freshSave(), 0);
   assert.equal(g.fireSecondary(1), false);
   assert.equal(g.save.toolMode, true);
+  assert.equal(g.save.aimMode, "tool");
   g.aimAt(g.player.x + 4, g.player.y);
   assert.equal(g.fireSecondary(2, { x: 1, y: 0 }), true);
   assert.equal(g.projectiles.length, 1);
@@ -1067,18 +1068,22 @@ test("vine traversal persists pauses completes and clears safely on death return
   r.update(0.01, idle(), 12);
   assert.equal(r.traversal, null);
 });
-test("ranged Attack cancels Tool mode and uses pending aim", () => {
+test("Attack and Tool are exclusive persistent aim modes", () => {
   const s = freshSave();
   s.toolMode = true;
+  s.aimMode = "tool";
   s.activeWeaponSlot = "secondary";
   s.pendingAim = { x: 30, y: 16 };
   const g = new Game(s, 0);
+  assert.equal(g.toggleAttackMode(), "attack");
+  assert.equal(s.toolMode, false);
   g.primaryAttack(1);
   assert.equal(s.toolMode, false);
   assert.equal(g.projectiles.length, 1);
   assert.equal(s.pendingAim, null);
-  const restored = migrateSave({ ...s, version: 7, toolMode: true });
-  assert.equal(restored.toolMode, true);
+  g.fireSecondary(2);
+  assert.equal(s.aimMode, "tool");
+  assert.equal(s.toolMode, true);
 });
 test("dodge preserves a normalized live diagonal instead of cardinalizing", () => {
   const p = { stamina: 50, facing: "right", lastMoveVector: { x: 0, y: 1 } };
@@ -1623,6 +1628,42 @@ test("direct drag movement is radial and the old joystick is absent", () => {
   assert.doesNotMatch(html, /id="stick"/);
   assert.match(source, /worldtap/);
   assert.match(source, /setPointerCapture/);
+  assert.match(source, /pointers = new Map/);
+  assert.match(source, /movementPointer/);
+});
+
+test("ordinary enemies and guardians advance Aperture once per identity", () => {
+  const s = freshSave(),
+    g = new Game(s, 0),
+    enemy = g.enemies.find((e) => !e.boss);
+  g.defeatEnemy(enemy);
+  assert.equal(s.perception.aperture, 1);
+  g.defeatEnemy(enemy);
+  assert.equal(s.perception.aperture, 1);
+  const guardian = { id: "test-guardian", kind: "hollowMarshal", boss: true };
+  g.defeatEnemy(guardian);
+  assert.equal(s.perception.aperture, 5);
+  g.defeatEnemy(guardian);
+  assert.equal(s.perception.aperture, 5);
+});
+
+test("explicit melee direction overrides closer automatic targets", () => {
+  const g = new Game(freshSave(), 0);
+  g.map.tiles.fill({ blocked: false });
+  Object.assign(g.player, { x: 10, y: 10 });
+  g.save.equipment.primary = {
+    id: "primary-cinder-pike",
+    name: "Cinder Pike",
+    slot: "primary",
+    power: 1,
+  };
+  g.enemies = [
+    { id: "east", kind: "ashling", x: 11, y: 10, hp: 30, maxHp: 30 },
+    { id: "west", kind: "ashling", x: 9, y: 10, hp: 30, maxHp: 30 },
+  ];
+  g.primaryAttack(1, { x: -1, y: 0 });
+  assert.equal(g.enemies[0].hp, 30);
+  assert.ok(g.enemies[1].hp < 30);
 });
 
 test("dodge is limited by stamina rather than a separate cooldown", () => {

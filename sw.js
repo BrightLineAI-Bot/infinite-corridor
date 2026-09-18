@@ -1,8 +1,8 @@
-const CACHE = "infinite-corridor-v29",
+const CACHE = "infinite-corridor-v30",
   ASSETS = [
     "./",
     "./index.html",
-    "./styles.css?v=29",
+    "./styles.css?v=30",
     "./manifest.webmanifest",
     "./icon.svg",
     "./src/main.js",
