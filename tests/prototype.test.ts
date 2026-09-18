@@ -15,7 +15,7 @@ import {
 } from "../src/world.ts";
 import { freshSave, migrateSave } from "../src/types.ts";
 import { serializeSave, deserializeSave } from "../src/persistence.ts";
-import { dodge } from "../src/combat.ts";
+import { dodge, createCombatant, CREATURE_TRAITS } from "../src/combat.ts";
 import { generateItem, isValidItem, SPELLS } from "../src/items.ts";
 import {
   Game,
@@ -1830,11 +1830,20 @@ test("expanded creature ecology is deterministic and recorded in the field codex
   assert.equal(s.codex.places["terrain:"+g.map.dominant],true);
   const migrated=migrateSave({...freshSave(),version:8,codex:undefined});
   assert.equal(migrated.version,9);
-  assert.deepEqual(migrated.codex,{creatures:{},places:{},features:{}});
+  assert.deepEqual(migrated.codex,{creatures:{},places:{},features:{},variants:{}});
 });
 test("journal exposes encounter codex sections and an always-available symbol guide",()=>{
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
   assert.match(source,/Creatures/);assert.match(source,/Places/);assert.match(source,/Features/);assert.match(source,/Rules & symbols/);assert.match(source,/Ring: Wayglass/);
+});
+test("compatible procedural traits create deterministic mechanical creature variants",()=>{
+  const a=generateRegion("traits",8,-3,1),b=generateRegion("traits",8,-3,1);
+  assert.deepEqual(a.enemySpawns,b.enemySpawns);
+  assert.ok(a.enemySpawns.some(e=>e.traits.length));
+  for(const e of a.enemySpawns){assert.ok(!(e.traits.includes("feral")&&e.traits.includes("plated")));for(const t of e.traits)assert.ok(CREATURE_TRAITS[t]);}
+  const base=createCombatant("ashling",1,1),plated=createCombatant("ashling",1,1,false,["plated"]),swift=createCombatant("ashling",1,1,false,["swift"]);
+  assert.ok(plated.maxHp>base.maxHp);assert.ok(swift.speedMultiplier>base.speedMultiplier);
+  const s=freshSave(),g=new Game(s,0);g.transitionSection(8,-3);assert.ok(Object.keys(s.codex.variants).length);
 });
 
 test("dungeon seals checkpoint travel and Crossing Sigil exits without losing carried state", () => {

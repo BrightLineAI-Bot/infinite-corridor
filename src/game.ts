@@ -607,6 +607,7 @@ export function updateEnemyAI(e, player, map, width, dt, now) {
     ty = Math.sin(angle * 0.83);
     speed = 0.3;
   }
+  speed *= e.speedMultiplier || 1;
   const m = Math.hypot(tx, ty) || 1,
     dx = (tx / m) * speed * dt,
     dy = (ty / m) * speed * dt;
@@ -1101,7 +1102,7 @@ export class Game {
             this.save.worldGeneration,
           );
     this.enemies = this.map.enemySpawns.map((e) => {
-      const c = createCombatant(e.kind, e.x, e.y, e.boss);
+      const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
       ensureAI(c);
       return c;
     });
@@ -1142,7 +1143,11 @@ export class Game {
     codex.creatures ||= {};
     codex.places ||= {};
     codex.features ||= {};
-    for (const e of this.enemies) codex.creatures[e.kind] = true;
+    codex.variants ||= {};
+    for (const e of this.enemies) {
+      codex.creatures[e.kind] = true;
+      codex.variants[e.variantId || `${e.kind}:common`] = { kind: e.kind, traits: [...(e.traits || [])] };
+    }
     codex.places[area === "dungeon" ? `dungeon:${this.map.recipe || "hollow"}` : `terrain:${this.map.dominant}`] = true;
     if (this.map.settlement) codex.places[`settlement:${this.map.settlement.id}`] = true;
     for (const o of this.map.objects)

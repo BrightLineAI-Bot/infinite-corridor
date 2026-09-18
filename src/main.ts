@@ -1,5 +1,6 @@
 import { screenToWorld } from "./renderer.ts";
 import { vendorShop, buyFromVendor } from "./game.ts";
+import { CREATURE_TRAITS } from "./combat.ts";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -1014,6 +1015,7 @@ function openJournal(mode = "chronicle") {
     out.append(heading);
     if(!entries.length){const empty=document.createElement("p");empty.textContent="No entries recorded yet. Encounter them in the world to unlock this section.";out.append(empty);}
     for(const [,entry] of entries){const article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p");article.className="item";title.textContent=entry[0];text.textContent=entry[1];article.append(title,text);out.append(article);}
+    if(mode==="creatures")for(const [id,v] of Object.entries(save.codex?.variants||{})){if(!v.traits?.length)continue;const base=CODEX.creatures[v.kind]?.[0]||v.kind,article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p"),names=v.traits.map(t=>CREATURE_TRAITS[t]?.name||t);article.className="item";title.textContent=`${names.join(" ")} ${base}`;text.textContent=v.traits.map(t=>CREATURE_TRAITS[t]?.text).filter(Boolean).join(" ");article.append(title,text);out.append(article);}
     if(!journal.open)journal.showModal();
     return;
   }
