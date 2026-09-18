@@ -1910,7 +1910,11 @@ export class Game {
       y = rawY * scale;
     if (Math.hypot(x, y) > 0.15)
       this.save.lastAim = projectileDirection(x, y, p.facing);
-    if (input.consume("tool")) this.fireSecondary(now);
+    if (input.consume("tool")) {
+      this.save.aimMode = "tool";
+      this.save.toolMode = true;
+      this.fireSecondary(now, this.save.lastAim);
+    }
     if (input.consume("spell")) this.castSpell();
     if (input.consume("dodge")) {
       const r = dodge(p, now, x, y);
@@ -1967,7 +1971,11 @@ export class Game {
     }
     const width = this.area === "dungeon" ? 24 : 32;
     moveAxis(p, dx, dy, this.map, width);
-    if (input.consume("attack")) this.toggleAttackMode();
+    if (input.consume("attack")) {
+      this.save.aimMode = "attack";
+      this.save.toolMode = false;
+      this.primaryAttack(now, this.save.lastAim);
+    }
     if (input.consume("interact")) this.interact();
     this.projectiles = updateProjectiles(
       this.projectiles,

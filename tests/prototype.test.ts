@@ -1175,6 +1175,18 @@ test("Attack and Tool are exclusive persistent aim modes", () => {
   assert.equal(s.aimMode, "tool");
   assert.equal(s.toolMode, true);
 });
+test("Attack and Tool buttons execute immediately and keep their selected mode",()=>{
+  const g=new Game(freshSave(),0),press=(action)=>({state:{x:0,y:0},consume:key=>key===action});
+  g.enemies=[];g.map.tiles.forEach(t=>t.blocked=false);g.save.lastAim={x:1,y:0};
+  g.update(.016,press("attack"),1000);
+  assert.equal(g.save.aimMode,"attack");assert.ok(g.player.meleeStrike);
+  g.player.attackReadyAt=0;g.update(.016,press("tool"),2000);
+  assert.equal(g.save.aimMode,"tool");assert.equal(g.save.toolMode,true);assert.equal(g.projectiles.length,1);
+  g.player.attackReadyAt=0;g.update(.016,press("tool"),3000);
+  assert.equal(g.save.aimMode,"tool");assert.equal(g.projectiles.length,2);
+  g.player.attackReadyAt=0;g.update(.016,press("attack"),4000);
+  assert.equal(g.save.aimMode,"attack");assert.equal(g.save.toolMode,false);
+});
 test("dodge preserves a normalized live diagonal instead of cardinalizing", () => {
   const p = { stamina: 50, facing: "right", lastMoveVector: { x: 0, y: 1 } };
   assert.equal(dodge(p, 10, 0.8, -0.6).ok, true);
