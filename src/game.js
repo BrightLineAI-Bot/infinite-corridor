@@ -8,6 +8,7 @@ import {
   perceptionOverlay,
   apertureTier,
   APERTURE_THRESHOLDS,
+  apertureEncounterSpawns,
   perceived,
   sectionExits,
   wayfindingCues,
@@ -43,8 +44,11 @@ export function characterStats(save) {
     ),
     meleeBonus:
       Math.max(1, Number(stats.Might) || 1) * 2 +
-      (Number(save.weaponLevel) || 0) * 3,
-    magicBonus: Math.max(1, Number(stats.Focus) || 1),
+      (Number(save.weaponLevel) || 0) * 3 +
+      Math.floor((level - 1) * 0.6),
+    magicBonus:
+      Math.max(1, Number(stats.Focus) || 1) +
+      Math.floor((level - 1) * 0.45),
     armorPower,
     charmPower,
   };
@@ -1103,9 +1107,39 @@ export class Game {
           );
     this.enemies = this.map.enemySpawns.map((e) => {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
+      if (e.apertureEncounter) {
+        const multiplier = Math.max(1, Number(e.threatMultiplier) || 1);
+        c.apertureEncounter = true;
+        c.apertureTier = e.apertureTier;
+        c.maxHp = Math.round(c.maxHp * multiplier);
+        c.hp = c.maxHp;
+        c.damage = Math.max(1, Math.round(c.damage * multiplier));
+        c.xpMultiplier = multiplier;
+      }
       ensureAI(c);
       return c;
     });
+    const intrusions = apertureEncounterSpawns(
+      this.save.seed,
+      this.areaId(),
+      this.save.perception?.aperture || 0,
+      this.map.tiles,
+      area === "dungeon" ? 24 : 32,
+    );
+    for (const e of intrusions) {
+      const c = createCombatant(e.kind, e.x, e.y, false, e.traits || []),
+        multiplier = Math.max(1, Number(e.threatMultiplier) || 1);
+      Object.assign(c, {
+        apertureEncounter: true,
+        apertureTier: e.apertureTier,
+        maxHp: Math.round(c.maxHp * multiplier),
+        damage: Math.max(1, Math.round(c.damage * multiplier)),
+        xpMultiplier: multiplier,
+      });
+      c.hp = c.maxHp;
+      ensureAI(c);
+      this.enemies.push(c);
+    }
     this.projectiles = [];
     this.effects = [];
     if (
