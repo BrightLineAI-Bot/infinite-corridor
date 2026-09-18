@@ -664,6 +664,8 @@ function drawTruthfulCombatGeometry() {
     ctx.setLineDash([4, 5]);
     ctx.globalAlpha = 0.55;
     ctx.beginPath();
+    ctx.moveTo(cx + q.innerRadius * s, cy);
+    ctx.arc(cx, cy, q.innerRadius * s, 0, Math.PI * 2);
     ctx.moveTo(cx, cy);
     ctx.lineTo(cx + Math.cos(a - half) * r, cy + Math.sin(a - half) * r);
     ctx.arc(cx, cy, r, a - half, a + half);
@@ -913,6 +915,7 @@ function openPack() {
     const item = save.equipment[slot],
       card = document.createElement("div");
     card.className = "gear-card";
+    card.dataset.slot = slot;
     const effect =
       slot === "armor"
         ? `${(Number(item?.power || 0) * 2.5).toFixed(1)}% resistance`
@@ -921,7 +924,7 @@ function openPack() {
           : slot === "primary"
             ? `power ${item?.power || 0}; Might and upgrades add damage`
             : `power ${item?.power || 0}; Focus adds projectile damage`;
-    card.textContent = `${slot.toUpperCase()} · ${item?.name || "none"} · ${effect}`;
+    card.innerHTML = `<small>${slot.toUpperCase()}</small><strong>${item?.name || "Empty slot"}</strong><span>${effect}</span>`;
     gear.append(card);
   }
   body.append(gearHeading, gear);
@@ -930,7 +933,8 @@ function openPack() {
   body.append(spellTitle);
   for (const spell of Object.values(SPELLS)) {
     const row = document.createElement("div");
-    row.className = "item";
+    row.className = "item inventory-card";
+    row.dataset.slot = item.slot;
     row.textContent = `${spell.name} · ${spell.cooldown}s cooldown · power ${spell.damage}`;
     row.append(
       uiButton(save.equippedSpell === spell.id ? "Equipped" : "Equip", () => {
@@ -1007,6 +1011,7 @@ const CODEX = {
     shrine:["Singing Array","A machine-shrine that stores impressions rather than scripture."],checkpoint:["Wayglass Beacon","An activated beacon permits Atlas travel and becomes a possible refuge."],ruinMarker:["Broken Observatory","A collapsed instrument still pointing beyond the visible corridor."],dungeon:["Buried Crossing","A sealed route into a self-contained dungeon."],relayTerminal:["Crossing Terminal","A consequential relay interface."],"trap:fire":["Kiln Vent","Scorch marks warn of a directional fire trap."],"trap:spikes":["Crossing Spikes","Floor seams can reveal the trap before it rises."],vine:["Transit Vine","A living traversal line spanning an otherwise impassable gap."],bossCue:["Colossus Trace","A sign that something much larger inhabits the region."]
   }
 };
+const CREATURE_PORTRAITS={ashling:[0,0],glassMite:[1,0],sparkWarden:[2,0],coilStalker:[3,0],veilMoth:[0,1],rootBrute:[1,1],cinderWisp:[2,1],riftColossus:[3,1],ashenHound:[0,0],hollowMarshal:[2,0]};
 function openJournal(mode = "chronicle") {
   if(typeof mode!=="string")mode="chronicle";
   pauseForOverlay();
@@ -1027,7 +1032,7 @@ function openJournal(mode = "chronicle") {
     const heading=document.createElement("h3");heading.textContent=mode==="rules"?"Field rules and symbols":`${mode[0].toUpperCase()+mode.slice(1)} encountered`;
     out.append(heading);
     if(!entries.length){const empty=document.createElement("p");empty.textContent="No entries recorded yet. Encounter them in the world to unlock this section.";out.append(empty);}
-    for(const [,entry] of entries){const article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p");article.className="item";title.textContent=entry[0];text.textContent=entry[1];article.append(title,text);out.append(article);}
+    for(const [id,entry] of entries){const article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p");article.className="item codex-card";title.textContent=entry[0];text.textContent=entry[1];if(mode==="creatures"&&CREATURE_PORTRAITS[id]){const portrait=document.createElement("div"),[x,y]=CREATURE_PORTRAITS[id];portrait.className="creature-portrait";portrait.style.setProperty("--portrait-x",`${x*33.333}%`);portrait.style.setProperty("--portrait-y",`${y*100}%`);portrait.setAttribute("role","img");portrait.setAttribute("aria-label",`${entry[0]} field illustration`);article.prepend(portrait);}article.append(title,text);out.append(article);}
     if(mode==="creatures")for(const [id,v] of Object.entries(save.codex?.variants||{})){if(!v.traits?.length)continue;const base=CODEX.creatures[v.kind]?.[0]||v.kind,article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p"),names=v.traits.map(t=>CREATURE_TRAITS[t]?.name||t);article.className="item";title.textContent=`${names.join(" ")} ${base}`;text.textContent=v.traits.map(t=>CREATURE_TRAITS[t]?.text).filter(Boolean).join(" ");article.append(title,text);out.append(article);}
     if(!journal.open)journal.showModal();
     return;

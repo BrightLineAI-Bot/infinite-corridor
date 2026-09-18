@@ -228,6 +228,7 @@ export function meleeAttackGeometry(player, profile, direction) {
     dx: d.x,
     dy: d.y,
     range: profile.range,
+    innerRadius: 0.72,
     arc: profile.arc,
     shape: profile.shape,
   };
@@ -250,7 +251,7 @@ export function primaryAttackHits(
       range = Math.hypot(x, y),
       dot = (x * g.dx + y * g.dy) / (range || 1),
       angle = Math.acos(Math.max(-1, Math.min(1, dot)));
-    if (range <= g.range && angle <= half) {
+    if (range <= g.range && (range <= g.innerRadius || angle <= half)) {
       let clear = true,
         steps = Math.ceil(range * 4);
       for (let i = 1; i < steps; i++)
