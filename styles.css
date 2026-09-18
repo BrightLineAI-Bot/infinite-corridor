@@ -395,11 +395,16 @@ dialog button {
   text-align: center;
 }
 #mapCanvas {
+  touch-action: none;
+  cursor: grab;
   display: block;
   max-width: 100%;
   margin: auto;
   border: 1px solid #5a584e;
   image-rendering: pixelated;
+}
+#mapCanvas.dragging {
+  cursor: grabbing;
 }
 .maptools {
   display: grid;

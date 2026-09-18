@@ -208,7 +208,9 @@ const $ = (s) => document.querySelector(s),
   mctx = mapCanvas.getContext("2d");
 let last = performance.now(),
   clock = 0,
-  mapView = { x: game.rx, y: game.ry, zoom: 1, selected: null };
+  mapView = { x: game.rx, y: game.ry, zoom: 1, selected: null, panX: 0, panY: 0 };
+let atlasDrag = null,
+  suppressMapClick = false;
 function apertureStatsCard() {
   const p = save.perception,
     tier = apertureTier(p.aperture),
@@ -751,8 +753,8 @@ function drawMap() {
       const rx = mapView.x + i,
         ry = mapView.y + j,
         key = `${rx},${ry}`,
-        x = w / 2 + i * cell - cell / 2,
-        y = h / 2 + j * cell - cell / 2,
+        x = w / 2 + i * cell - cell / 2 + mapView.panX,
+        y = h / 2 + j * cell - cell / 2 + mapView.panY,
         seen = !!save.explored[key],
         frontier =
           !seen &&
@@ -1169,6 +1171,10 @@ for (const [id, dx, dy] of [
     drawMap();
   };
 mapCanvas.onclick = (e) => {
+  if (suppressMapClick) {
+    suppressMapClick = false;
+    return;
+  }
   const r = mapCanvas.getBoundingClientRect(),
     cell = 52 * mapView.zoom,
     rx =
@@ -1178,20 +1184,41 @@ mapCanvas.onclick = (e) => {
       mapView.y +
       Math.floor((e.clientY - r.top - r.height / 2 + cell / 2) / cell);
   if (save.explored[`${rx},${ry}`]) save.waypoint = { rx, ry };
+  if (save.explored[`${rx},${ry}`]) showMapDetail(rx, ry);
   drawMap();
   persist();
 };
-mapCanvas.addEventListener("click", (e) => {
-  const r = mapCanvas.getBoundingClientRect(),
-    cell = 52 * mapView.zoom,
-    rx =
-      mapView.x +
-      Math.floor((e.clientX - r.left - r.width / 2 + cell / 2) / cell),
-    ry =
-      mapView.y +
-      Math.floor((e.clientY - r.top - r.height / 2 + cell / 2) / cell);
-  if (save.explored[`${rx},${ry}`]) showMapDetail(rx, ry);
+mapCanvas.addEventListener("pointerdown", (e) => {
+  if (!e.isPrimary) return;
+  atlasDrag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+  mapCanvas.setPointerCapture(e.pointerId);
+  mapCanvas.classList.add("dragging");
 });
+mapCanvas.addEventListener("pointermove", (e) => {
+  if (!atlasDrag || e.pointerId !== atlasDrag.id) return;
+  const dx = e.clientX - atlasDrag.x, dy = e.clientY - atlasDrag.y;
+  if (Math.hypot(dx, dy) > 7) atlasDrag.moved = true;
+  if (!atlasDrag.moved) return;
+  mapView.panX = dx;
+  mapView.panY = dy;
+  drawMap();
+});
+function finishAtlasDrag(e) {
+  if (!atlasDrag || e.pointerId !== atlasDrag.id) return;
+  if (atlasDrag.moved) {
+    const cell = 52 * mapView.zoom;
+    mapView.x -= Math.round(mapView.panX / cell);
+    mapView.y -= Math.round(mapView.panY / cell);
+    suppressMapClick = true;
+  }
+  mapView.panX = mapView.panY = 0;
+  atlasDrag = null;
+  mapCanvas.classList.remove("dragging");
+  drawMap();
+  showMapDetail(mapView.x, mapView.y);
+}
+mapCanvas.addEventListener("pointerup", finishAtlasDrag);
+mapCanvas.addEventListener("pointercancel", finishAtlasDrag);
 for (const id of ["mapCenter", "mapN", "mapS", "mapW", "mapE"])
   $("#" + id).addEventListener("click", () =>
     showMapDetail(mapView.x, mapView.y),

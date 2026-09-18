@@ -1807,6 +1807,16 @@ test("HUD keeps compact vitals and ticker while details expand on demand", () =>
   assert.match(html, /id="mapTravel"/);
   assert.match(style, /#hudDetails\[hidden\]\s*\{\s*display:\s*none/);
 });
+test("atlas supports direct pointer panning without sacrificing tap selection", () => {
+  const source = readFileSync(new URL("../src/main.ts", import.meta.url), "utf8"),
+    style = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+  assert.match(source, /pointerdown/);
+  assert.match(source, /pointermove/);
+  assert.match(source, /pointerup/);
+  assert.match(source, /suppressMapClick/);
+  assert.match(source, /mapView\.x\s*-=\s*Math\.round/);
+  assert.match(style, /#mapCanvas\s*\{[\s\S]*?touch-action:\s*none/);
+});
 
 test("dungeon seals checkpoint travel and Crossing Sigil exits without losing carried state", () => {
   const s = freshSave(),
