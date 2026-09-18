@@ -406,6 +406,7 @@ dialog button {
 #mapCanvas.dragging {
   cursor: grabbing;
 }
+.codex-tabs{display:flex;flex-wrap:wrap;gap:.35rem;margin:.4rem 0 .8rem}.codex-tabs button{font-size:.78rem;padding:.45rem .65rem}
 .maptools {
   display: grid;
   grid-template-columns: repeat(7, 1fr);

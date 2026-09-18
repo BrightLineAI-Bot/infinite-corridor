@@ -81,6 +81,11 @@ const COLORS = {
   ashling: ["#87503f", "#342727", "#b78a62"],
   glassMite: ["#607c79", "#283b3b", "#aab7aa"],
   sparkWarden: ["#6b6472", "#35313d", "#c09b58"],
+  ashenHound: ["#765244", "#302724", "#c18a63"],
+  veilMoth: ["#786887", "#302c39", "#b8a7cd"],
+  rootBrute: ["#667052", "#303629", "#a99a67"],
+  coilStalker: ["#47716d", "#263a39", "#87c0ad"],
+  cinderWisp: ["#a95d3c", "#4b2923", "#efb15d"],
   hollowMarshal: ["#78434a", "#332429", "#b99b68"],
   riftColossus: ["#713841", "#2b2022", "#c18352"],
   npc: ["#9b815d", "#453832", "#879b8d"],
@@ -113,7 +118,7 @@ function actor(
     bob = frame % 2,
     sc = boss ? 1.28 : 1;
   if (state === "telegraph") {
-    const range = kind === "sparkWarden" ? 5 : kind === "riftColossus" ? 3 : 0,
+    const range = ({sparkWarden:5,riftColossus:3,veilMoth:4,coilStalker:2,cinderWisp:5})[kind]||0,
       r = enemyDangerRadius({ range }) * s,
       ranged = range > 0;
     ctx.save();
@@ -168,6 +173,16 @@ function actor(
     rect(p[0], -0.2, -0.78, 0.4, 0.16);
     rect(p[2], -0.3, -0.75, 0.05, 0.7);
     for (let q = 0; q < 3; q++) rect(p[2], -0.1, -0.57 + q * 0.15, 0.2, 0.04);
+  } else if (kind === "ashenHound") {
+    rect(p[1],-.32,-.34,.62,.3);rect(p[0],.12,-.48,.3,.28);rect(p[2],.34,-.42,.06,.06);rect(p[0],-.38,-.45,.2,.09);rect(p[1],-.25,-.12,.08,.18);rect(p[1],.18,-.12,.08,.18);
+  } else if (kind === "veilMoth") {
+    rect(p[1],-.07,-.55,.14,.5);rect(p[0],-.42,-.62,.34,.35);rect(p[0],.08,-.62,.34,.35);rect(p[2],-.03,-.7,.06,.08);
+  } else if (kind === "rootBrute") {
+    rect(p[1],-.34,-.62,.68,.6);rect(p[0],-.27,-.82,.54,.27);rect(p[2],-.14,-.73,.08,.05);rect(p[0],-.47,-.5,.16,.52);rect(p[0],.31,-.5,.16,.52);
+  } else if (kind === "coilStalker") {
+    rect(p[1],-.28,-.5,.56,.42);rect(p[0],-.18,-.7,.36,.24);rect(p[2],-.34,-.4,.68,.06);rect(p[2],-.04,-.62,.08,.08);
+  } else if (kind === "cinderWisp") {
+    rect(p[1],-.18,-.55,.36,.38);rect(p[0],-.12,-.72,.24,.24);rect(p[2],-.06,-.63,.12,.12);rect(p[2],-.1,-.18,.2,.12);
   } else if (kind === "hollowMarshal") {
     rect(p[1], -0.29, -0.66, 0.58, 0.62);
     rect(p[0], -0.36, -0.62, 0.72, 0.18);

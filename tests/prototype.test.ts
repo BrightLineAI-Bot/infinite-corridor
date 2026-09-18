@@ -213,7 +213,7 @@ test("schema migrations preserve location and select legacy generation zero", ()
     },
     explored: {},
   });
-  assert.equal(s.version, 8);
+  assert.equal(s.version, 9);
   assert.equal(s.worldGeneration, 0);
   assert.deepEqual(
     [s.session.rx, s.session.ry, s.session.x, s.session.y],
@@ -463,7 +463,7 @@ test("v3 migration creates valid narrative state without losing progress", () =>
     narrative: undefined,
     xp: 44,
   });
-  assert.equal(s.version, 8);
+  assert.equal(s.version, 9);
   assert.equal(s.xp, 44);
   assert.ok(Array.isArray(s.narrative.journal));
   assert.equal(s.narrative.schema, "infinite-corridor-narrative/1.0.0");
@@ -604,7 +604,7 @@ test("v4 migration adds consumables without losing progress", () => {
   old.xp = 77;
   delete old.consumables;
   const s = migrateSave(old);
-  assert.equal(s.version, 8);
+  assert.equal(s.version, 9);
   assert.equal(s.xp, 77);
   assert.deepEqual(s.consumables, {
     restorativeDraught: 3,
@@ -731,7 +731,7 @@ test("v5 to v8 retains explicit zero supplies and ranged state", () => {
   old.version = 5;
   old.consumables = { restorativeDraught: 0, ironbarkTonic: 0 };
   const s = migrateSave(old);
-  assert.equal(s.version, 8);
+  assert.equal(s.version, 9);
   assert.deepEqual(s.consumables, {
     restorativeDraught: 0,
     ironbarkTonic: 0,
@@ -946,7 +946,7 @@ test("v6 to v8 preserves location ranged aim snapshots and new defaults", () => 
   o.session.areas.keep = { enemies: [] };
   delete o.toolMode;
   const s = migrateSave(o);
-  assert.equal(s.version, 8);
+  assert.equal(s.version, 9);
   assert.deepEqual([s.session.x, s.session.y], [7, 9]);
   assert.deepEqual(s.pendingAim, { x: 3, y: 4 });
   assert.ok(s.session.areas.keep);
@@ -1455,7 +1455,7 @@ test("v7 migration preserves old Relay completion dead Vela and unrelated exact 
   old.session.areas.keep = { enemies: [{ id: "retain", hp: 3 }] };
   old.currency = 47;
   const s = migrateSave(old);
-  assert.equal(s.version, 8);
+  assert.equal(s.version, 9);
   assert.equal(s.consequences.choices.relay, "restore");
   assert.equal(s.consequences.npcs["vendor-vela"].status, "dead");
   assert.equal(s.consequences.settlements["ember-refuge"].status, "standing");
@@ -1819,6 +1819,22 @@ test("atlas supports direct pointer panning without sacrificing tap selection", 
   assert.match(source, /atlasPinch\.zoom \* distance \/ atlasPinch\.distance/);
   assert.match(source, /Math\.max\(0\.6, Math\.min\(1\.8/);
   assert.match(style, /#mapCanvas\s*\{[\s\S]*?touch-action:\s*none/);
+});
+test("expanded creature ecology is deterministic and recorded in the field codex", () => {
+  const kinds=new Set();
+  for(let y=-4;y<=4;y++)for(let x=-4;x<=4;x++)for(const e of generateRegion("ecology",x,y,1).enemySpawns)kinds.add(e.kind);
+  for(const kind of ["ashenHound","veilMoth","rootBrute","coilStalker","cinderWisp"])assert.ok(kinds.has(kind),kind);
+  const s=freshSave(),g=new Game(s,0);
+  assert.equal(s.version,9);
+  assert.ok(Object.keys(s.codex.creatures).length>=3);
+  assert.equal(s.codex.places["terrain:"+g.map.dominant],true);
+  const migrated=migrateSave({...freshSave(),version:8,codex:undefined});
+  assert.equal(migrated.version,9);
+  assert.deepEqual(migrated.codex,{creatures:{},places:{},features:{}});
+});
+test("journal exposes encounter codex sections and an always-available symbol guide",()=>{
+  const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+  assert.match(source,/Creatures/);assert.match(source,/Places/);assert.match(source,/Features/);assert.match(source,/Rules & symbols/);assert.match(source,/Ring: Wayglass/);
 });
 
 test("dungeon seals checkpoint travel and Crossing Sigil exits without losing carried state", () => {

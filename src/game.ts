@@ -1138,6 +1138,16 @@ export class Game {
       }));
     }
     this.reconcileConsequences();
+    const codex = (this.save.codex ||= { creatures: {}, places: {}, features: {} });
+    codex.creatures ||= {};
+    codex.places ||= {};
+    codex.features ||= {};
+    for (const e of this.enemies) codex.creatures[e.kind] = true;
+    codex.places[area === "dungeon" ? `dungeon:${this.map.recipe || "hollow"}` : `terrain:${this.map.dominant}`] = true;
+    if (this.map.settlement) codex.places[`settlement:${this.map.settlement.id}`] = true;
+    for (const o of this.map.objects)
+      if (["shrine", "checkpoint", "ruinMarker", "dungeon", "relayTerminal", "trap", "vine", "bossCue"].includes(o.kind))
+        codex.features[o.kind === "trap" ? `trap:${o.trapType}` : o.kind] = true;
     if (area === "overworld") {
       this.map.objects.push(
         ...wayfindingCues(
