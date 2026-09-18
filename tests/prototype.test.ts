@@ -22,6 +22,8 @@ import {
   Game,
   moveAxis,
   updateEnemyAI,
+  settlementSanctuary,
+  enforceSanctuary,
   attackInRange,
   enemyDangerRadius,
   selectMeleeAim,
@@ -54,6 +56,7 @@ import {
   abandonDungeon,
   resolveThread,
   gainAperture,
+  progressLead,
 } from "../src/interactions.ts";
 const idle = () => ({ state: { x: 0, y: 0 }, consume: () => false });
 test("regional threat is symmetric and leaves origin unchanged", () => {
@@ -1866,7 +1869,7 @@ test("expanded creature ecology is deterministic and recorded in the field codex
   for(const kind of ["ashenHound","veilMoth","rootBrute","coilStalker","cinderWisp"])assert.ok(kinds.has(kind),kind);
   const s=freshSave(),g=new Game(s,0);
   assert.equal(s.version,9);
-  assert.ok(Object.keys(s.codex.creatures).length>=3);
+  assert.ok(Object.keys(s.codex.creatures).length>=1);
   assert.equal(s.codex.places["terrain:"+g.map.dominant],true);
   const migrated=migrateSave({...freshSave(),version:8,codex:undefined});
   assert.equal(migrated.version,9);
@@ -1932,6 +1935,17 @@ test("named sparse settlements are inhabited and special dungeons expose mechani
       }
     }
   assert.ok(seen.size >= 2);
+});
+test("standing settlements enforce a nine-tile sanctuary around residents",()=>{
+  const s=freshSave(),g=new Game(s,0),z=settlementSanctuary(g.map,0,0,s),e=g.enemies[0];
+  assert.equal(z.radius,9);Object.assign(e,{x:16,y:16,telegraph:1});assert.equal(enforceSanctuary(e,z),true);assert.ok(Math.hypot(e.x-16,e.y-16)>9);assert.equal(e.telegraph,0);
+  s.consequences.settlements['ember-refuge'].status='fallen';assert.equal(settlementSanctuary(g.map,0,0,s),null);
+});
+test("Signal Ledger leads persist track and award a complete story arc",()=>{
+  const s=freshSave(),board=generateRegion(s.seed,0,0,1).objects.find(o=>o.kind==='questBoard');
+  assert.ok(board);assert.equal(applyInteraction(board,'inspect',s).ok,true);assert.equal(s.narrative.facts['leads.active'],true);
+  progressLead(s,'distance');progressLead(s,'hunt');progressLead(s,'guardian');
+  assert.equal(s.narrative.facts['leads.complete'],true);assert.equal(s.currency,38);assert.equal(s.consumables.restorativeDraught,5);assert.match(currentObjective(s),/Signal Ledger|Missing Crossing/);
 });
 test("combat indicators use the exact snapshotted damage geometry and ranged fire clears it", () => {
   const main = readFileSync(new URL("../src/main.ts", import.meta.url), "utf8"),

@@ -22,6 +22,7 @@ import {
   abandonDungeon,
   journalOnce,
   gainAperture,
+  progressLead,
 } from "./interactions.ts";
 import { ensurePerception } from "./types.ts";
 import { generateItem } from "./items.ts";
@@ -596,7 +597,8 @@ export function ensureAI(e) {
   if ((e.telegraph || 0) < 0) e.telegraph = 0;
   return e.ai;
 }
-export function updateEnemyAI(e, player, map, width, dt, now) {
+export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null) {
+  if(sanctuary){enforceSanctuary(e,sanctuary);if(Math.hypot(player.x-sanctuary.x,player.y-sanctuary.y)<sanctuary.radius){e.telegraph=0;return false}}
   const ai = ensureAI(e),
     toPlayer = Math.hypot(player.x - e.x, player.y - e.y),
     fromHome = Math.hypot(e.x - ai.homeX, e.y - ai.homeY);
@@ -642,6 +644,7 @@ export function updateEnemyAI(e, player, map, width, dt, now) {
   else ai.facing = ty < 0 ? "up" : "down";
   ai.step = (ai.step + Math.hypot(dx, dy)) % 2;
   moveAxis(e, dx, dy, map, width);
+  if(sanctuary)enforceSanctuary(e,sanctuary);
   if (
     attackInRange(e, player) &&
     e.cooldown <= 0 &&
@@ -650,6 +653,8 @@ export function updateEnemyAI(e, player, map, width, dt, now) {
     e.telegraph = 0.9;
   return false;
 }
+export function settlementSanctuary(map,rx,ry,save){if(!map||rx===0&&ry===0&&save?.consequences?.settlements?.['ember-refuge']?.status==='fallen')return null;return map.settlement||rx===0&&ry===0?{x:16,y:16,radius:9}:null}
+export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y-z.y,d=Math.hypot(dx,dy);if(d>=z.radius)return false;const m=d||1;e.x=z.x+(d?dx/m:1)*(z.radius+.5);e.y=z.y+(d?dy/m:0)*(z.radius+.5);const ai=ensureAI(e);ai.homeX=e.x;ai.homeY=e.y;e.telegraph=0;return true}
 export class Game {
   constructor(save, now = 0) {
     this.save = save;
@@ -969,6 +974,7 @@ export class Game {
     const transition = this.transitionSection.bind(this);
     this.transitionSection = (dx, dy) => {
       transition(dx, dy);
+      if(Math.abs(this.rx)+Math.abs(this.ry)>=4)progressLead(this.save,'distance');
       const key = `section:${this.rx},${this.ry}`;
       if (this.rx || this.ry) {
         const gained = gainAperture(
@@ -1657,6 +1663,7 @@ export class Game {
       this.message = `Level ${this.save.level} reached — health and stamina increased. ${this.save.statPoints} stat point${this.save.statPoints === 1 ? "" : "s"} available in Pack.`;
     }
     this.obtainDrop(e.kind);
+    if(this.save.narrative.facts['leads.active']){this.save.worldFlags['lead.hunt.count']=(this.save.worldFlags['lead.hunt.count']||0)+1;if(this.save.worldFlags['lead.hunt.count']>=5)progressLead(this.save,'hunt');if(e.kind==='hollowMarshal')progressLead(this.save,'guardian')}
     const key = `drop:v1:${this.areaId()}:${e.id}`;
     if (!this.save.worldFlags[key]) {
       this.save.worldFlags[key] = true;
@@ -1977,10 +1984,11 @@ export class Game {
     );
     this.syncNpcDamage("spell");
     p.stamina = Math.min(p.maxStamina, p.stamina + 9 * dt);
+    const sanctuary=settlementSanctuary(this.map,this.rx,this.ry,this.save);
     for (const e of this.enemies)
       if (
         !e.dead &&
-        updateEnemyAI(e, p, this.map, width, dt, now) &&
+        updateEnemyAI(e, p, this.map, width, dt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus)-/.test(e.id)?sanctuary:null) &&
         now > (p.invulnerableUntil || 0) &&
         (!(now < this.jumpUntil) || e.kind === "sparkWarden")
       ) {

@@ -8,11 +8,13 @@ export function applyNarrative(object,action,save,instanceKey=`${object.id}:${ac
 
 export function currentObjective(save){
  const f=save.narrative.facts,c=save.consequences.choices.relay;
+ const leads=f['leads.active']&&!f['leads.complete']?' · Leads: '+(f['lead.distance']?'✓ range':'reach range 4')+', '+(f['lead.hunt']?'✓ hunt':(save.worldFlags['lead.hunt.count']||0)+'/5 creatures')+', '+(f['lead.guardian']?'✓ guardian':'crossing guardian'):'';
  if(c)return'The Missing Crossing resolved — '+(c==='restore'?'Relay restored':'Relay severed')+'. Explore further crossings.';
  if(f['crossing.marshal'])return'The Missing Crossing — choose Restore or Sever at the Relay terminal';
- if(f['crossing.objective'])return'The Missing Crossing — find the Hollow Marshal';if(save.worldFlags['vendor-vela:dead'])return'The Missing Crossing — follow the solitary Array route to the Hollow Marshal';
- return'The Missing Crossing — question Vela or the Array';
+ if(f['crossing.objective'])return'The Missing Crossing — find the Hollow Marshal'+leads;if(save.worldFlags['vendor-vela:dead'])return'The Missing Crossing — follow the solitary Array route to the Hollow Marshal'+leads;
+ return'The Missing Crossing — question Vela or inspect the Signal Ledger'+leads;
 }
+export function progressLead(s,type){const f=s.narrative.facts;if(!f['leads.active']||f['lead.'+type])return false;f['lead.'+type]=true;journalOnce(s,'lead-'+type,'A Signal Ledger lead is complete: '+type+'.','Signal Ledger');if(f['lead.distance']&&f['lead.hunt']&&f['lead.guardian']&&!f['leads.complete']){f['leads.complete']=true;s.currency+=30;s.consumables.restorativeDraught+=2;journalOnce(s,'leads-complete','All three signals reconcile. The ledger releases 30 marks and two restorative draughts, then prints: THE CORRIDOR IS MAPPING YOU.','Signal Ledger — reconciled')}return true}
 export function gainAperture(s,amount,source,message='Your Aperture widens.'){ensurePerception(s);if(s.perception.awarded[source])return 0;s.perception.awarded[source]=true;const before=apertureTier(s.perception.aperture);s.perception.aperture+=Math.max(0,Math.floor(amount));const after=apertureTier(s.perception.aperture);if(after>before){s.perception.announcedTier=after;journalOnce(s,'aperture-tier:'+after,message+' Hidden structure now answers your attention.','Aperture')}return amount}
 export function journalOnce(s,id,text,title='Consequences'){if(s.narrative.journal.some(j=>j.recordId===id))return;s.narrative.journal.push({recordId:id,instanceKey:'record:'+id,title,text,provenance:'original'});}
 export function resolveThread(s,id,ending){const prior=s.consequences.threads[id];if(prior?.status==='resolved')return prior.ending===ending;s.consequences.threads[id]={status:'resolved',ending};return true;}
@@ -37,6 +39,7 @@ export function validActions(o,s){
 }
 export function applyInteraction(o,a,s,context='global'){
  if(!validActions(o,s).includes(a))return{ok:false,message:'That action is not available.'};
+ if(o.kind==='questBoard'&&a==='inspect'){if(!s.narrative.facts['leads.active']){s.narrative.facts['leads.active']=true;journalOnce(s,'signal-ledger','Three live leads remain: reach a section four steps from refuge; defeat five roaming creatures; and silence any crossing guardian. Reward: 30 marks and two draughts.','Signal Ledger');return{ok:true,message:'SIGNAL LEDGER: reach range four · defeat five creatures · silence one crossing guardian.',transition:'quest'}}return{ok:true,message:currentObjective(s),transition:'quest'}}
  if((o.kind==='shrine'||o.kind==='ruinMarker')&&a==='inspect')gainAperture(s,2,'signal:'+context+':'+o.id,'A signal site teaches you how to notice what the world hides.');
  if(o.kind==='apertureMemory'){o.state='used';gainAperture(s,3,'memory:'+context,'A buried memory resolves into language.');s.perception.discoveries.memories++;return{ok:true,message:'The inscription remembers a corridor that has not happened yet. Aperture +3.',transition:'aperture'};}
  if(o.kind==='apertureDoor')return{ok:true,message:'The unseen crossing opens into a sharper, stranger annex.',transition:'apertureDoor'};
