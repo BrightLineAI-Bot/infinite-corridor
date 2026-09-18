@@ -1824,6 +1824,13 @@ test("HUD keeps compact vitals and ticker while details expand on demand", () =>
   assert.match(html, /id="mapTravel"/);
   assert.match(style, /#hudDetails\[hidden\]\s*\{\s*display:\s*none/);
 });
+test("closing temporary overlays resumes play without reopening Pause",()=>{
+  const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+  assert.match(source,/function pauseForOverlay\(\)[\s\S]*overlayPause = true;[\s\S]*pause\(false\)/);
+  assert.match(source,/if \(overlayPause\) resume\(\);\s*else pausePanel\.showModal\(\)/);
+  assert.match(source,/\$\("#mapClose"\)\.onclick = \(\) => atlas\.close\(\)/);
+  assert.doesNotMatch(source,/\$\("#mapClose"\)[\s\S]{0,100}pause\(\)/);
+});
 test("atlas supports direct pointer panning without sacrificing tap selection", () => {
   const source = readFileSync(new URL("../src/main.ts", import.meta.url), "utf8"),
     style = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
