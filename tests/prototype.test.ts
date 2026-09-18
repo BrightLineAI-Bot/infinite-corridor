@@ -881,6 +881,18 @@ test("primary profiles respect direction arc reach and walls", async () => {
     ).map((x) => x.id),
     ["f"],
   );
+  const overlapping = { id: "overlap", x: 1.65, y: 3, hp: 9 };
+  assert.deepEqual(
+    primaryAttackHits(
+      p,
+      [overlapping],
+      map,
+      7,
+      primaryProfile({ id: "salvage-blade" }),
+      { x: 1, y: 0 },
+    ).map((x) => x.id),
+    ["overlap"],
+  );
   assert.ok(
     primaryAttackHits(
       p,

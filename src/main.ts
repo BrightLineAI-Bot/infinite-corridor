@@ -664,6 +664,8 @@ function drawTruthfulCombatGeometry() {
     ctx.setLineDash([4, 5]);
     ctx.globalAlpha = 0.55;
     ctx.beginPath();
+    ctx.moveTo(cx + q.innerRadius * s, cy);
+    ctx.arc(cx, cy, q.innerRadius * s, 0, Math.PI * 2);
     ctx.moveTo(cx, cy);
     ctx.lineTo(cx + Math.cos(a - half) * r, cy + Math.sin(a - half) * r);
     ctx.arc(cx, cy, r, a - half, a + half);
