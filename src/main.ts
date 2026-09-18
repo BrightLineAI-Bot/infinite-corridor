@@ -153,8 +153,9 @@ setTimeout(() => {
     };
     if (save.aimMode === "attack")
       game.primaryAttack(performance.now(), direction);
-    else if (save.aimMode === "tool" || save.activeWeaponSlot === "secondary")
+    else if (save.aimMode === "tool" || (!save.aimMode && save.activeWeaponSlot === "secondary"))
       game.fireSecondary(performance.now(), direction);
+    else if (save.aimMode === "act") game.interactAt(q.x, q.y);
     persist();
   });
   setInterval(() => {
@@ -168,7 +169,8 @@ setTimeout(() => {
       openShop();
     }
     const tool = document.querySelector('[data-action="tool"]'),
-      attack = document.querySelector('[data-action="attack"]');
+      attack = document.querySelector('[data-action="attack"]'),
+      act = document.querySelector('[data-action="interact"]');
     $("#attackInfo").textContent =
       `ATTACK ${save.equipment[save.activeWeaponSlot]?.name || "none"}`;
     $("#spellInfo").textContent =
@@ -177,6 +179,7 @@ setTimeout(() => {
       `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}`;
     tool?.classList.toggle("selected", save.aimMode === "tool");
     attack?.classList.toggle("selected", save.aimMode === "attack");
+    act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
 import { loadSave, saveGame } from "./persistence.ts";

@@ -1187,6 +1187,15 @@ test("Attack and Tool buttons execute immediately and keep their selected mode",
   g.player.attackReadyAt=0;g.update(.016,press("attack"),4000);
   assert.equal(g.save.aimMode,"attack");assert.equal(g.save.toolMode,false);
 });
+test("Act executes immediately stays selected and supports targeted world taps",()=>{
+  const g=new Game(freshSave(),0),press=(action)=>({state:{x:0,y:0},consume:key=>key===action});
+  g.update(.016,press("interact"),1000);
+  assert.equal(g.save.aimMode,"act");assert.equal(g.save.toolMode,false);assert.ok(g.interactionRequested);
+  const vela=g.map.objects.find(o=>o.id==="vendor-vela");
+  g.interactionRequested=null;const result=g.interactAt(vela.x,vela.y);
+  assert.equal(result.ok,true);assert.equal(g.interactionRequested,"vendor-vela");
+  g.update(.016,press("attack"),2000);assert.equal(g.save.aimMode,"attack");
+});
 test("dodge preserves a normalized live diagonal instead of cardinalizing", () => {
   const p = { stamina: 50, facing: "right", lastMoveVector: { x: 0, y: 1 } };
   assert.equal(dodge(p, 10, 0.8, -0.6).ok, true);

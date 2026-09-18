@@ -662,7 +662,7 @@ export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y
 export class Game {
   constructor(save, now = 0) {
     this.save = save;
-    if (!["attack", "tool"].includes(save.aimMode))
+    if (!["attack", "tool", "act"].includes(save.aimMode))
       save.aimMode = save.toolMode ? "tool" : "attack";
     save.toolMode = save.aimMode === "tool";
     settleProgression(save);
@@ -1525,6 +1525,21 @@ export class Game {
     return r;
   }
 
+  interactAt(x, y) {
+    const o = (this.map.objects || [])
+      .filter((q) =>
+        Math.hypot(q.x - x, q.y - y) < 0.9 &&
+        Math.hypot(q.x - this.player.x, q.y - this.player.y) < 1.5 &&
+        validActions(q, this.save).length,
+      )
+      .sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+    if (!o) {
+      this.message = "Nothing within reach responds.";
+      return { ok: false, message: this.message };
+    }
+    return this.interact(null, o.id);
+  }
+
   reconcileConsequences() {
     for (const o of this.map.objects || [])
       if (o.kind === "npc") {
@@ -1976,7 +1991,11 @@ export class Game {
       this.save.toolMode = false;
       this.primaryAttack(now, this.save.lastAim);
     }
-    if (input.consume("interact")) this.interact();
+    if (input.consume("interact")) {
+      this.save.aimMode = "act";
+      this.save.toolMode = false;
+      this.interact();
+    }
     this.projectiles = updateProjectiles(
       this.projectiles,
       [...this.enemies, ...this.npcTargets()],
