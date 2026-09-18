@@ -794,6 +794,22 @@ test("projectile direction and swept collision are deterministic", async () => {
   assert.equal(enemy.dead, true);
   assert.equal(rewards, 1);
 });
+test("tool profiles support distinct straight and boomerang flight paths", async()=>{
+  const {rangedWeapon}=await import("../src/items.ts"),{updateProjectiles}=await import("../src/game.ts"),
+    map={tiles:Array.from({length:49},()=>({blocked:false}))},
+    enemy={id:"turn-target",x:1.7,y:2,hp:30,maxHp:30,dead:false},
+    shot={x:1.2,y:2.45,dx:1,dy:0,speed:4,life:2,damage:6,path:"boomerang",turnAfter:.6,age:0,returning:false,hits:{}};
+  assert.equal(rangedWeapon({id:"spark-coil"}).path,"straight");
+  assert.equal(rangedWeapon({name:"Lumen Spindle"}).path,"boomerang");
+  let active=updateProjectiles([shot],[enemy],map,7,.25);
+  assert.equal(enemy.hp,24);
+  assert.equal(active.length,1);
+  assert.equal(active[0].returning,false);
+  active=updateProjectiles(active,[enemy],map,7,.4);
+  assert.equal(active[0].returning,true);
+  assert.equal(active[0].dx,-1);
+  assert.equal(enemy.hp,24);
+});
 test("shop is deterministic, capped, affordable, and persisted", async () => {
   const { velaShop, buyFromVela } = await import("../src/game.ts"),
     s = freshSave(),

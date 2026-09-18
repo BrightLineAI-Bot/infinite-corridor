@@ -161,6 +161,16 @@ export function updateProjectiles(
 ) {
   for (const p of projectiles) {
     if (p.dead) continue;
+    p.age = (Number(p.age) || 0) + dt;
+    if (
+      p.path === "boomerang" &&
+      !p.returning &&
+      p.age >= (Number(p.turnAfter) || p.life / 2)
+    ) {
+      p.returning = true;
+      p.dx *= -1;
+      p.dy *= -1;
+    }
     const distance = p.speed * dt,
       steps = Math.max(1, Math.ceil(distance / 0.2)),
       step = distance / steps;
@@ -168,17 +178,30 @@ export function updateProjectiles(
       const nx = p.x + p.dx * step,
         ny = p.y + p.dy * step;
       if (!tileOpen(map, width, nx, ny)) {
-        p.dead = true;
-        p.impact = { x: p.x, y: p.y };
-        break;
+        if (p.path === "boomerang" && !p.returning) {
+          p.returning = true;
+          p.dx *= -1;
+          p.dy *= -1;
+          continue;
+        } else {
+          p.dead = true;
+          p.impact = { x: p.x, y: p.y };
+          break;
+        }
       }
       p.x = nx;
       p.y = ny;
       for (const e of enemies)
-        if (!e.dead && Math.hypot(e.x + 0.5 - p.x, e.y + 0.45 - p.y) < 0.48) {
+        if (
+          !e.dead &&
+          !p.hits?.[e.id] &&
+          Math.hypot(e.x + 0.5 - p.x, e.y + 0.45 - p.y) < 0.48
+        ) {
           e.hp -= p.damage;
           e.hitFlash = 0.18;
-          p.dead = true;
+          if (p.path === "boomerang") {
+            (p.hits ||= {})[e.id] = true;
+          } else p.dead = true;
           p.impact = { x: p.x, y: p.y };
           if (e.hp <= 0 && !e.dead) {
             e.dead = true;
@@ -1733,6 +1756,11 @@ export class Game {
             : 1),
       ),
       damageType: weapon.damageType,
+      path: weapon.path || "straight",
+      age: 0,
+      turnAfter: weapon.turnAfter || weapon.lifetime / 2,
+      returning: false,
+      hits: {},
     });
     return true;
   }
