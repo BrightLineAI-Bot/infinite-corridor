@@ -11,6 +11,7 @@ import {
   perceptionOverlay,
   apertureTier,
   perceived,
+  wayfindingCues,
 } from "../src/world.ts";
 import { freshSave, migrateSave } from "../src/types.ts";
 import { serializeSave, deserializeSave } from "../src/persistence.ts";
@@ -155,6 +156,34 @@ test("movement transition supports negative coordinates without row wrap", () =>
   g.player.x = g.map.exits.north;
   g.update(0.1, { state: { x: 0, y: -1 }, consume: () => false }, 20);
   assert.deepEqual([g.rx, g.ry], [-1, -1]);
+});
+test("ordinary movement crosses and returns through every section edge", () => {
+  for (const [dx, dy, edge, axis] of [
+    [1, 0, "east", "y"],
+    [-1, 0, "west", "y"],
+    [0, 1, "south", "x"],
+    [0, -1, "north", "x"],
+  ]) {
+    const g = new Game(freshSave(), 0), input = { state: { x: dx, y: dy }, consume: () => false };
+    g.player[axis] = g.map.exits[edge];
+    if (dx) g.player.x = dx > 0 ? 30.5 : 0.5;
+    if (dy) g.player.y = dy > 0 ? 30.5 : 0.5;
+    for (let i = 0; i < 180 && g.rx === 0 && g.ry === 0; i++) g.update(1 / 60, input, i * 17);
+    assert.deepEqual([g.rx, g.ry], [dx, dy], `failed ${edge} crossing`);
+    input.state = { x: -dx, y: -dy };
+    for (let i = 0; i < 180 && (g.rx !== 0 || g.ry !== 0); i++) g.update(1 / 60, input, 4000 + i * 17);
+    assert.deepEqual([g.rx, g.ry], [0, 0], `failed ${edge} return`);
+  }
+});
+test("wayfinding cues are deterministic and point toward real destinations", () => {
+  const s = freshSave(), map = generateRegion(s.seed, 2, 0, s.worldGeneration),
+    a = wayfindingCues(s.seed, 2, 0, s.worldGeneration, s, map),
+    b = wayfindingCues(s.seed, 2, 0, s.worldGeneration, s, map),
+    home = a.find((q) => q.signalKind === "beacon");
+  assert.deepEqual(a, b);
+  assert.ok(home);
+  assert.equal(home.dirX, -1);
+  assert.equal(map.tiles[home.y * 32 + home.x].blocked, false);
 });
 test("section encounter snapshots are independent and exact", () => {
   const g = new Game(freshSave(), 0);
@@ -1751,6 +1780,16 @@ test("checkpoint travel returns without death or carried losses", () => {
     carried,
   );
   assert.match(g.message, /Nothing carried was lost/);
+});
+test("atlas travel accepts activated Wayglass destinations and keeps respawn choice", () => {
+  const s = freshSave(), g = new Game(s, 0), active = { ...s.activeCheckpoint };
+  s.checkpoints["2,-1"] = { rx: 2, ry: -1, x: 16, y: 16, name: "Far Wayglass" };
+  assert.equal(g.travelToCheckpoint("2,-1"), true);
+  assert.deepEqual([g.rx, g.ry, g.player.x, g.player.y], [2, -1, 16, 16]);
+  assert.deepEqual(s.activeCheckpoint, active);
+  assert.equal(g.travelToCheckpoint("99,99"), false);
+  assert.equal(g.returnHome(), true);
+  assert.deepEqual([g.rx, g.ry], [0, 0]);
 });
 test("HUD keeps compact vitals and ticker while details expand on demand", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8"),

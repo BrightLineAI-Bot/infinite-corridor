@@ -106,23 +106,25 @@
         <button id="mapTravel" type="button">
           Return to active checkpoint
         </button>
+        <button id="mapHome" type="button">Return to Ember Refuge</button>
         <p id="mapDetail">Select an explored section for details.</p>
         <p>
           Tap an explored section to set a waypoint. Dim cells are the known
           frontier.
         </p>
+        <p>Trail marks: ring = Wayglass · chevron = crossing · triangle = danger · spiral = unusual site.</p>
       </dialog>
     </main>
     <script type="module">
       const boot = async () => {
         if ("serviceWorker" in navigator) {
-          const r = await navigator.serviceWorker.register("./sw.js?v=30", {
+          const r = await navigator.serviceWorker.register("./sw.js?v=31", {
             updateViaCache: "none",
           });
           await r.update();
           const c = navigator.serviceWorker.controller;
-          if (c && !c.scriptURL.includes("v=30")) {
-            const key = "corridor-upgrade-30";
+          if (c && !c.scriptURL.includes("v=31")) {
+            const key = "corridor-upgrade-31";
             if (!sessionStorage.getItem(key)) {
               sessionStorage.setItem(key, "1");
               location.reload();

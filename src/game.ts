@@ -9,6 +9,8 @@ import {
   apertureTier,
   APERTURE_THRESHOLDS,
   perceived,
+  sectionExits,
+  wayfindingCues,
 } from "./world.ts";
 import { createCombatant, dodge, playerAttack } from "./combat.ts";
 import {
@@ -1137,6 +1139,16 @@ export class Game {
     }
     this.reconcileConsequences();
     if (area === "overworld") {
+      this.map.objects.push(
+        ...wayfindingCues(
+          this.save.seed,
+          this.rx,
+          this.ry,
+          this.save.worldGeneration,
+          this.save,
+          this.map,
+        ),
+      );
       for (const o of this.map.objects)
         if (o.kind === "dungeon")
           dungeonHistory(
@@ -1211,8 +1223,8 @@ export class Game {
     });
     return this.save;
   }
-  returnToCheckpoint() {
-    const c = this.save.activeCheckpoint;
+  travelToCheckpoint(key = null) {
+    const c = key ? this.save.checkpoints?.[key] : this.save.activeCheckpoint;
     if (!c) return false;
     if (this.area === "dungeon") {
       this.message =
@@ -1231,6 +1243,12 @@ export class Game {
     this.message = `Returned to ${c.name || "the active checkpoint"}. Nothing carried was lost.`;
     this.sync();
     return true;
+  }
+  returnToCheckpoint() {
+    return this.travelToCheckpoint();
+  }
+  returnHome() {
+    return this.travelToCheckpoint("0,0");
   }
   leaveDungeon(message = "You return to the dungeon entrance.") {
     const q = this.save.session.dungeonReturn || this.save.activeCheckpoint;
@@ -1318,10 +1336,23 @@ export class Game {
     this.rx += dx;
     this.ry += dy;
     this.loadArea("overworld", false);
-    if (dx < 0) this.player.x = 30.75;
-    if (dx > 0) this.player.x = 0.25;
-    if (dy < 0) this.player.y = 30.75;
-    if (dy > 0) this.player.y = 0.25;
+    const exits = sectionExits(this.save.seed, this.rx, this.ry);
+    if (dx < 0) {
+      this.player.x = 30.75;
+      this.player.y = exits.east;
+    }
+    if (dx > 0) {
+      this.player.x = 0.25;
+      this.player.y = exits.west;
+    }
+    if (dy < 0) {
+      this.player.y = 30.75;
+      this.player.x = exits.south;
+    }
+    if (dy > 0) {
+      this.player.y = 0.25;
+      this.player.x = exits.north;
+    }
     this.sync();
   }
   nearestObject() {
@@ -1821,9 +1852,22 @@ export class Game {
             : "down";
       p.walkPhase = (p.walkPhase + Math.hypot(dx, dy) * 4) % 2;
     }
+    if (this.area === "overworld") {
+      const exits = this.map.exits,
+        near = (value, opening) => Math.abs(value - opening) <= 1.45,
+        west = nx < 0 && near(p.y, exits.west),
+        east = nx + 0.76 >= SECTION_SIZE - 0.02 && near(p.y, exits.east),
+        north = ny < 0 && near(p.x, exits.north),
+        south = ny + 0.88 >= SECTION_SIZE - 0.02 && near(p.x, exits.south);
+      if (west) this.transitionSection(-1, 0);
+      else if (east) this.transitionSection(1, 0);
+      else if (north) this.transitionSection(0, -1);
+      else if (south) this.transitionSection(0, 1);
+      if (west || east || north || south) return;
+    }
     if (
       this.area === "overworld" &&
-      (nx < 0 || nx >= SECTION_SIZE || ny < 0 || ny >= SECTION_SIZE)
+      (nx < -1 || nx > SECTION_SIZE || ny < -1 || ny > SECTION_SIZE)
     ) {
       if (nx < 0) this.transitionSection(-1, 0);
       else if (nx >= SECTION_SIZE) this.transitionSection(1, 0);

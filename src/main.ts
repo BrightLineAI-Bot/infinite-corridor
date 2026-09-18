@@ -763,7 +763,7 @@ function drawMap() {
             [0, -1],
           ].some(([a, b]) => save.explored[`${rx + a},${ry + b}`]);
       if (!seen && !frontier) continue;
-      const region = generateRegion(save.seed, rx, ry);
+      const region = generateRegion(save.seed, rx, ry, save.worldGeneration);
       mctx.fillStyle = seen
         ? { ash: "#51464a", glass: "#315b62", ember: "#794735" }[
             region.dominant
@@ -805,24 +805,29 @@ function drawMap() {
     h - 10,
   );
 }
+function updateMapTravelButton() {
+  const travel = $("#mapTravel"), selected = mapView.selected,
+    checkpoint = selected && save.checkpoints?.[`${selected.rx},${selected.ry}`];
+  travel.textContent = game.area === "dungeon"
+    ? `Use Crossing Sigil ×${save.consumables.crossingSigil || 0}`
+    : checkpoint
+      ? `Travel to ${checkpoint.name || "Wayglass"}`
+      : "Return to active checkpoint";
+  travel.disabled = game.area === "dungeon" && !(save.consumables.crossingSigil > 0);
+  $("#mapHome").disabled = game.area === "dungeon";
+}
 function showMapDetail(rx, ry) {
   mapView.selected = { rx, ry };
   const s = sectionSummary(save.seed, rx, ry, save.worldGeneration, save);
   $("#mapDetail").textContent =
     `Section ${rx}, ${ry} · ${s.terrain} terrain · ${s.landmark}${s.checkpoint ? " · checkpoint" : ""}${s.current ? " · current" : ""}${s.waypoint ? " · waypoint" : ""}`;
+  updateMapTravelButton();
 }
 function openMap() {
   pause(false);
   if (pausePanel.open) pausePanel.close();
   mapView.x = game.rx;
   mapView.y = game.ry;
-  const travel = $("#mapTravel");
-  travel.textContent =
-    game.area === "dungeon"
-      ? `Use Crossing Sigil ×${save.consumables.crossingSigil || 0}`
-      : "Return to active checkpoint";
-  travel.disabled =
-    game.area === "dungeon" && !(save.consumables.crossingSigil > 0);
   if (!atlas.open) atlas.showModal();
   showMapDetail(game.rx, game.ry);
   drawMap();
@@ -1140,7 +1145,15 @@ $("#mapMinus").onclick = () => {
   drawMap();
 };
 $("#mapTravel").onclick = () => {
-  game.returnToCheckpoint();
+  const q = mapView.selected, key = q && `${q.rx},${q.ry}`;
+  game.area === "dungeon"
+    ? game.useCrossingSigil()
+    : game.travelToCheckpoint(save.checkpoints?.[key] ? key : null);
+  persist();
+  resume();
+};
+$("#mapHome").onclick = () => {
+  game.returnHome();
   persist();
   resume();
 };
@@ -1205,7 +1218,10 @@ if (game.paused) pausePanel.showModal();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");
 requestAnimationFrame(frame);
 $("#mapTravel").onclick = () => {
-  game.area === "dungeon" ? game.useCrossingSigil() : game.returnToCheckpoint();
+  const q = mapView.selected, key = q && `${q.rx},${q.ry}`;
+  game.area === "dungeon"
+    ? game.useCrossingSigil()
+    : game.travelToCheckpoint(save.checkpoints?.[key] ? key : null);
   persist();
   resume();
 };

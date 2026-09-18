@@ -219,6 +219,15 @@ function actor(
       0.05,
     );
 }
+function waymark(ctx,o,s){
+  const colors={beacon:'#72d7df',crossing:'#d5a464',danger:'#d16b62',event:'#a68ad2'},c=colors[o.signalKind]||'#b7b49d',cx=(o.x+.5)*s,cy=(o.y+.55)*s,a=Math.atan2(o.dirY,o.dirX);
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(a);ctx.strokeStyle=c;ctx.fillStyle=c+'22';ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();
+  if(o.signalKind==='beacon')ctx.arc(0,0,s*.27,0,Math.PI*1.65);
+  else if(o.signalKind==='crossing'){ctx.moveTo(-s*.25,-s*.2);ctx.lineTo(s*.22,0);ctx.lineTo(-s*.25,s*.2);}
+  else if(o.signalKind==='danger'){ctx.moveTo(-s*.25,s*.2);ctx.lineTo(0,-s*.25);ctx.lineTo(s*.25,s*.2);ctx.closePath();}
+  else{ctx.arc(0,0,s*.23,0,Math.PI*1.5);ctx.lineTo(s*.28,0);}
+  ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(s*.28,0);ctx.lineTo(s*.42,-s*.11);ctx.lineTo(s*.42,s*.11);ctx.closePath();ctx.fill();ctx.restore();
+}
 export function render(ctx, g, w, h, now) {
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = "#141816";
@@ -292,7 +301,8 @@ export function render(ctx, g, w, h, now) {
       draws.push({
         y: o.y,
         fn: () => {
-          if (o.kind === "npc") {
+          if (o.kind === "wayfindingCue") waymark(ctx,o,s);
+          else if (o.kind === "npc") {
             const n = g.save.consequences.npcs[o.id],
               cx = (o.x + 0.5) * s,
               cy = o.y * s;

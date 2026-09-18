@@ -9,6 +9,27 @@ function addDungeonLandmark(region,seed,rx,ry,generation){if(rx===0&&ry===0||gen
 function addSettlement(region,rx,ry){const key=`${rx},${ry}`,config=key==='4,-2'?{id:'glasshaven',name:'Glasshaven',people:['vendor-iona','resident-tarn']}:key==='-5,3'?{id:'coilmarket',name:'Coilmarket',people:['vendor-mora','resident-esh']}:null;if(!config)return;region.settlement=config;for(let y=12;y<=19;y++)for(let x=12;x<=20;x++)carve(region.tiles,x,y,'refuge');region.objects=region.objects.filter(o=>!o.landmark);region.objects.push({id:`beacon-${config.id}`,kind:'checkpoint',x:16,y:18,state:'quiet',actions:['activate'],landmark:true,name:config.name+' Wayglass'});for(const id of config.people){const n=WAYSTATION_NPCS.find(q=>q.id===id);region.objects.push({...n,kind:'npc',state:'calm',maxHp:36})}region.enemySpawns=region.enemySpawns.filter(e=>Math.hypot(e.x-16,e.y-16)>7)}
 export function generateRegion(seed,rx,ry,generation=1){const region=generation===0&&rx===0&&ry===0?generateLegacyOrigin(seed):structured(seed,rx,ry,generation);addSettlement(region,rx,ry);addDungeonLandmark(region,seed,rx,ry,generation);if(rx===0&&ry===0){for(const n of REFUGE_NPCS){const existing=region.objects.find(o=>o.id===n.id);if(existing)Object.assign(existing,n,{settlement:'ember-refuge',maxHp:36});else region.objects.push({...n,kind:'npc',state:'calm',settlement:'ember-refuge',maxHp:36});carve(region.tiles,n.x,n.y,'refuge');}}for(const o of region.objects)if(o.kind==='dungeon')o.actions=['enter','bypass'];if(!region.objects.some(o=>o.id===`supply-${rx}-${ry}`))region.objects.push(supply(seed,rx,ry,region.tiles));return region}
 export function sectionSummary(seed,rx,ry,generation=1,save=null){const r=generateRegion(seed,rx,ry,generation),l=r.objects.find(o=>o.landmark)||r.objects.find(o=>['dungeon','shrine','door'].includes(o.kind));return{rx,ry,terrain:r.dominant,landmark:l?.name||({dungeon:'Hollow Relay Gate',shrine:'Quiet Array',door:'Abandoned Relay'}[l?.kind]||'No recorded landmark'),checkpoint:!!save?.checkpoints?.[`${rx},${ry}`],current:save?.session?.rx===rx&&save?.session?.ry===ry,waypoint:save?.waypoint?.rx===rx&&save?.waypoint?.ry===ry}}
+export function wayfindingCues(seed,rx,ry,generation=1,save=null,region=null){
+  const targets=[],seen=new Set(),add=(kind,x,y,name)=>{const key=`${kind}:${x},${y}`;if((x!==rx||y!==ry)&&!seen.has(key)){seen.add(key);targets.push({kind,rx:x,ry:y,name})}};
+  for(const c of Object.values(save?.checkpoints||{}))if(Number.isFinite(c?.rx)&&Number.isFinite(c?.ry))add('beacon',c.rx,c.ry,c.name||'Wayglass');
+  if(!save?.worldFlags?.worldBossDead)add('danger',0,0,'a great enemy');
+  for(let radius=1;radius<=4;radius++)for(let oy=-radius;oy<=radius;oy++)for(let ox=-radius;ox<=radius;ox++){
+    if(Math.abs(ox)+Math.abs(oy)!==radius)continue;
+    const q=generateRegion(seed,rx+ox,ry+oy,generation);
+    if(q.objects.some(o=>o.kind==='dungeon'))add('crossing',rx+ox,ry+oy,'a buried crossing');
+    if(q.objects.some(o=>o.kind==='shrine'||o.kind==='ruinMarker'))add('event',rx+ox,ry+oy,'an unusual site');
+  }
+  const chosen=[];
+  for(const kind of ['beacon','crossing','danger','event']){
+    const matches=targets.filter(t=>t.kind===kind).sort((a,b)=>(Math.abs(a.rx-rx)+Math.abs(a.ry-ry))-(Math.abs(b.rx-rx)+Math.abs(b.ry-ry)));
+    if(matches[0])chosen.push(matches[0]);
+  }
+  const map=region||generateRegion(seed,rx,ry,generation),spots=[[14,13],[17,13],[19,16],[17,19],[13,18],[11,15],[20,19]];
+  return chosen.slice(0,4).map((target,i)=>{
+    const spot=spots.slice(i).concat(spots.slice(0,i)).find(([x,y])=>!map.tiles[y*32+x]?.blocked)||[16,16],dx=Math.sign(target.rx-rx),dy=Math.sign(target.ry-ry);
+    return{id:`waymark-${target.kind}`,kind:'wayfindingCue',signalKind:target.kind,x:spot[0],y:spot[1],dirX:dx,dirY:dy,targetRx:target.rx,targetRy:target.ry,name:target.name,state:'quiet',actions:[]};
+  });
+}
 export function dungeonId(seed,generation=1,rx=0,ry=0,objectId='dungeon-gate'){return rx===0&&ry===0&&objectId==='dungeon-gate'?`dungeon:${seed}:g${generation}`:`dungeon:${seed}:g${generation}:${rx}:${ry}:${objectId}`}
 export function dungeonRecipe(id){if(!id||!/:[^:]+:[^:]+:[^:]+$/.test(id))return'hollow';const n=[...id].reduce((a,c)=>(a*33+c.charCodeAt(0))>>>0,5381)%3;return['hollow','cistern','kiln'][n]}
 export const APERTURE_THRESHOLDS=[6,18,36];
