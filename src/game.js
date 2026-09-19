@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=51";
+import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=52";
 import {
   generateRegion,
   generateDungeon,
@@ -12,7 +12,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js?v=51";
+} from "./world.js?v=52";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack } from "./combat.js?v=51";
+import { createCombatant, dodge, playerAttack } from "./combat.js?v=52";
 import {
   applyInteraction,
   validActions,
@@ -33,10 +33,10 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=51";
-import { ensurePerception } from "./types.js?v=51";
-import { generateItem } from "./items.js?v=51";
-import { hashSeed } from "./random.js?v=51";
+} from "./interactions.js?v=52";
+import { ensurePerception } from "./types.js?v=52";
+import { generateItem } from "./items.js?v=52";
+import { hashSeed } from "./random.js?v=52";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
@@ -1166,6 +1166,12 @@ export class Game {
         this.map.tiles[y * 32 + x] = { ...this.map.tiles[y * 32 + x], x, y, kind: this.map.dominant, blocked: false };
         this.map.objects.push({ id: `remembered-wayglass-${this.rx}-${this.ry}`, kind: "checkpoint", name: remembered.name || "Remembered Wayglass", x, y, state: "active", actions: ["activate"], landmark: true, remembered: true });
       }
+    }
+    if (area === "overworld") {
+      const atlas = (this.save.atlas ||= {}), key = `${this.rx},${this.ry}`;
+      atlas[key] = { terrain: this.map.dominant, sites: this.map.objects
+        .filter((o) => ["checkpoint","dungeon","shrine","ruinMarker","shack","bossCue","architecturalDistrict"].includes(o.kind))
+        .map((o) => ({ kind: o.kind, name: o.name || o.kind, x: o.x, y: o.y })) };
     }
     this.enemies = this.map.enemySpawns.map((e) => {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
