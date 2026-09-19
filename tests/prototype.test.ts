@@ -1946,7 +1946,7 @@ test("expanded creature ecology is deterministic and recorded in the field codex
 });
 test("journal exposes encounter codex sections and an always-available symbol guide",()=>{
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
-  assert.match(source,/Creatures/);assert.match(source,/Places/);assert.match(source,/Features/);assert.match(source,/Rules & symbols/);assert.match(source,/Hooked ring — Wayglass/);
+  assert.match(source,/Creatures/);assert.match(source,/Places/);assert.match(source,/Features/);assert.match(source,/Rules & symbols/);assert.match(source,/Open ring — Wayglass/);
 });
 test("journal and pack expose illustrated field-card hooks",()=>{
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
@@ -2105,7 +2105,7 @@ test("weather and open-world shacks are deterministic bounded environment featur
 
 test("journal renders the same minimalist trail marks used on the floor",()=>{
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
-  assert.match(source,/function trailMark/);assert.match(source,/Hooked ring — Wayglass/);assert.match(source,/Split chevron — Crossing/);assert.match(source,/Hollow triangle — Major danger/);assert.match(source,/Broken spiral — Unusual site/);assert.match(source,/MAJOR THREAT/);assert.match(source,/SITE REACHED/);assert.match(html,/id="eventBanner"/);
+  assert.match(source,/function trailMark/);assert.match(source,/Open ring — Wayglass/);assert.match(source,/Open chevron — Crossing/);assert.match(source,/Hollow triangle — Major danger/);assert.match(source,/Open spiral — Unusual site/);assert.match(source,/MAJOR THREAT/);assert.match(source,/SITE REACHED/);assert.match(html,/id="eventBanner"/);
 });
 
 test("rare architectural districts provide deterministic city arcology and cloister exploration",()=>{
@@ -2136,5 +2136,16 @@ test("equipped gear uses deterministic family silhouettes elemental accents and 
 
 test("journal trail examples invoke the exact ground-waymark drawing function",()=>{
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");
-  assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,64\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
+  assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,82\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
+});
+
+test("release 47 loads one coherent version of styles worker and application",()=>{
+  const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
+  assert.match(html,/styles\.css\?v=47/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=47/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v47/);assert.match(sw,/styles\.css\?v=47/);assert.match(sw,/main\.js\?v=47/);
+});
+
+test("waymarks use a separate direction stem and journal explains it",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");
+  assert.match(renderer,/lineTo\(s\*\.43,0\)/);assert.match(renderer,/arc\(s\*\.43,0/);assert.match(main,/short stem and terminal dot/);assert.match(main,/ignore its corners/);assert.match(main,/canvas\.width=canvas\.height=96/);
 });
