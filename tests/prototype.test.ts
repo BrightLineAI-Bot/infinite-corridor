@@ -2032,3 +2032,33 @@ test("Fold cover portrait and unfolded landscape layouts use safe areas and resi
   assert.match(main, /screen\.orientation\?\.addEventListener\(["']change["']/);
   assert.match(main, /input\.reset\(\)/);
 });
+
+test("regional environment is deterministic, dense, and keeps a safe bridge", () => {
+  let found = null;
+  for (let y = -6; y <= 6 && !found; y++) {
+    const region = generateRegion("environment-network", 2, y, 1);
+    if (region.environment) found = region;
+  }
+  assert.ok(found, "expected a river or canyon within the sampled world bands");
+  assert.deepEqual(found, generateRegion("environment-network", found.rx, found.ry, 1));
+  assert.ok(found.objects.filter(o => o.kind === "tree").length >= 8);
+  assert.ok(found.objects.filter(o => o.kind === "rock").length >= 3);
+  const obstacle = found.tiles.filter(t => t.environment && t.kind !== "bridge");
+  const bridge = found.tiles.filter(t => t.kind === "bridge" && t.bridgeOver);
+  assert.ok(obstacle.length > 0);
+  assert.ok(bridge.length >= 3);
+  assert.ok(bridge.every(t => !t.blocked));
+});
+
+test("environment interactions persist distinct tree and boulder states", () => {
+  const save = freshSave(), tree = {id:"env-tree-test",kind:"tree",state:"standing",actions:["cut","ignite"],environmental:true};
+  assert.equal(applyInteraction(tree,"ignite",save).ok,true);
+  assert.equal(tree.state,"charred");
+  assert.equal(save.worldFlags["env-tree-test:ignite"],true);
+  const rock = {id:"env-rock-test",kind:"rock",state:"sealed",actions:["move","break"],environmental:true};
+  save.stats.Might=3;
+  assert.equal(applyInteraction(rock,"break",save).ok,true);
+  assert.equal(rock.state,"broken");
+  assert.equal(save.worldFlags["env-rock-test:break"],true);
+  assert.equal(save.worldFlags["rock-1:opened"],undefined);
+});

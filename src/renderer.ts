@@ -23,6 +23,9 @@ const PAL = {
   floor: ["#3b403d", "#555750"],
   blocked: ["#232522", "#45423d"],
   wall: ["#1d211f", "#403d37"],
+  river: ["#203f48", "#2b5962"],
+  canyon: ["#171616", "#302721"],
+  bridge: ["#67533d", "#856b4b"],
 };
 function h(x, y) {
   return (Math.imul(x + 37, 73856093) ^ Math.imul(y + 19, 19349663)) >>> 0;
@@ -34,6 +37,17 @@ function tile(ctx, t, x, y, s, map, w) {
     py = y * s;
   ctx.fillStyle = p[d & 1];
   ctx.fillRect(px, py, s + 1, s + 1);
+  if (t.kind === "river") {
+    ctx.strokeStyle = (d & 1) ? "#8fc2c477" : "#659ca166"; ctx.lineWidth = 2;
+    for (let q = 0; q < 3; q++) { ctx.beginPath(); ctx.moveTo(px + ((d + q * 11) % 13), py + 7 + q * s * .26); ctx.quadraticCurveTo(px + s * .5, py + 2 + q * s * .26, px + s - 3, py + 7 + q * s * .26); ctx.stroke(); }
+    return;
+  }
+  if (t.kind === "canyon") {
+    ctx.fillStyle = "#070707cc"; ctx.fillRect(px + 3, py, s - 6, s + 1); ctx.strokeStyle = "#75584488"; ctx.beginPath(); ctx.moveTo(px + 2, py); ctx.lineTo(px + 7 + (d % 5), py + s * .45); ctx.lineTo(px + 3, py + s); ctx.stroke(); ctx.strokeStyle = "#8c6a4b55"; ctx.beginPath(); ctx.moveTo(px + s - 3, py); ctx.lineTo(px + s - 8, py + s * .6); ctx.lineTo(px + s - 2, py + s); ctx.stroke(); return;
+  }
+  if (t.kind === "bridge") {
+    ctx.fillStyle = "#2b2119"; ctx.fillRect(px, py + 2, s + 1, s - 4); ctx.fillStyle = p[d & 1]; for (let q = 2; q < s; q += 7) ctx.fillRect(px + 2, py + q, s - 4, 5); ctx.strokeStyle = "#b594603f"; ctx.strokeRect(px + 2, py + 2, s - 4, s - 4); return;
+  }
   if (t.blocked) {
     const up = y > 0 && map[(y - 1) * w + x]?.blocked,
       down = map[(y + 1) * w + x]?.blocked;
@@ -214,8 +228,11 @@ function actor(
     rect(p[1], -0.25, -0.42, 0.5, 0.42);
     rect(p[0], -0.18, -0.66, 0.36, 0.3);
     if (kind === "tree") {
-      rect(p[1], -0.1, -0.82, 0.2, 0.8);
-      rect(p[0], -0.38, -0.86, 0.76, 0.32);
+      if(state === "fallen") { rect(p[1], -.43, -.18, .86, .16); rect(p[0], -.35, -.27, .28, .22); }
+      else if(state === "charred") { rect("#29231f", -.09, -.75, .18, .72); rect("#3b2d25", -.3, -.78, .25, .16); }
+      else { rect(p[1], -0.1, -0.82, 0.2, 0.8); rect(p[0], -0.38, -0.86, 0.76, 0.32); rect("#71845b", -.27, -1.02, .54, .22); }
+    } else if (kind === "rock" && (state === "moved" || state === "broken")) {
+      rect("#4f514d", -.32, -.2, .2, .12); rect("#73766f", -.04, -.16, .24, .1); rect("#3c3f3b", .2, -.12, .13, .08);
     } else if (kind === "checkpoint" || kind === "shrine") {
       rect(p[2], -0.05, -0.85, 0.1, 0.65);
       rect(p[0], -0.24, -0.34, 0.48, 0.18);
@@ -351,7 +368,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillStyle = "#d2c090";
             ctx.font = "10px monospace";
             ctx.fillText("RELAY", o.x * s, (o.y - 0.3) * s);
-          } else actor(ctx, o.x, o.y, s, o.kind, "down", 0, "idle");
+          } else actor(ctx, o.x, o.y, s, o.kind, "down", 0, o.state || "idle");
         },
       });
   for (const e of g.enemies)
