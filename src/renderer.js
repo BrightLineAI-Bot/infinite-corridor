@@ -149,6 +149,7 @@ const COLORS = {
   lanternDoe: ["#8b7654", "#39332a", "#e8c66d"],
   hushling: ["#76698c", "#282431", "#cab7df"],
   gateRevenant: ["#311b34", "#100d15", "#e14f72"],
+  vesperwing:["#8b4b35","#251d1d","#ed8a45"],gravitantBell:["#54726e","#252b2a","#c0a66b"],mireApostle:["#71804d","#25291f","#b6d05c"],knifeChoir:["#675174","#211b29","#c28fe0"],
   npc: ["#9b815d", "#453832", "#879b8d"],
   shrine: ["#557b74", "#263c3b", "#b7c1aa"],
   checkpoint: ["#668b91", "#304448", "#c7b887"],
@@ -231,7 +232,11 @@ function actor(
     rect("#24231f", -0.2, -0.08, 0.13, 0.12);
     rect("#24231f", 0.07, -0.08, 0.13, 0.12);
     rect(p[2], facing === "left" ? -0.38 : 0.2, -0.48, 0.18, 0.05);
-  } else if (kind === "glassMite") {
+  } else if(kind==='vesperwing'){rect(p[1],-.09,-.62,.18,.56);ctx.fillStyle=p[0];ctx.beginPath();ctx.moveTo(k-s*.08*sc,base-s*.5*sc);ctx.lineTo(k-s*.7*sc,base-s*.85*sc);ctx.lineTo(k-s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(k+s*.08*sc,base-s*.5*sc);ctx.lineTo(k+s*.7*sc,base-s*.85*sc);ctx.lineTo(k+s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();rect(p[2],-.07,-.55,.14,.18)}
+  else if(kind==='gravitantBell'){ctx.fillStyle=p[0];ctx.beginPath();ctx.ellipse(k,base-s*.48*sc,s*.38*sc,s*.43*sc,0,0,7);ctx.fill();ctx.strokeStyle=p[2];ctx.stroke();for(let q=-2;q<=2;q++)rect(p[1],q*.12,-.18,.06,.28)}
+  else if(kind==='mireApostle'){ctx.fillStyle=p[1];ctx.beginPath();ctx.ellipse(k,base-s*.25*sc,s*.48*sc,s*.32*sc,0,0,7);ctx.fill();rect(p[0],-.32,-.65,.64,.44);rect(p[2],-.08,-.53,.16,.16)}
+  else if(kind==='knifeChoir'){rect(p[1],-.2,-.72,.4,.68);for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.strokeStyle=p[0];ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(k,base-s*.4*sc);ctx.lineTo(k+Math.cos(a)*s*.55*sc,base-s*.4*sc+Math.sin(a)*s*.45*sc);ctx.stroke()}rect(p[2],-.08,-.62,.16,.14)}
+  else if (kind === "glassMite") {
     rect(p[1], -0.31, -0.29, 0.62, 0.22);
     for (const q of [-0.3, -0.1, 0.12, 0.3]) rect(p[0], q, -0.12, 0.05, 0.19);
     rect(p[0], -0.17, -0.48, 0.18, 0.25);
@@ -397,6 +402,8 @@ export function render(ctx, g, w, h, now) {
   for (let y = t; y < b; y++)
     for (let x = l; x < r; x++)
       tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId);
+  for(const h of g.eliteHazards||[]){ctx.fillStyle="#81994a55";ctx.strokeStyle="#b7ce6877";ctx.lineWidth=2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke()}
+  for(const e of g.enemies)if(!e.dead&&e.eliteWindup>0){ctx.strokeStyle=e.kind==='gravitantBell'?"#8bb8bdcc":"#c6885ccc";ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
   for (const e of g.enemies)
     if (!e.dead && e.telegraph > 0) {
       const pulse = 0.65 + (0.9 - e.telegraph) * 0.2;

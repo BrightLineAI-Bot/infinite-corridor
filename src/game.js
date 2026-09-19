@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=71";
+import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=72";
 import {
   generateRegion,
   generateDungeon,
@@ -12,7 +12,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js?v=71";
+} from "./world.js?v=72";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=71";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=72";
 import {
   applyInteraction,
   validActions,
@@ -33,10 +33,11 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=71";
-import { ensurePerception } from "./types.js?v=71";
-import { generateItem } from "./items.js?v=71";
-import { hashSeed } from "./random.js?v=71";
+} from "./interactions.js?v=72";
+import { ensurePerception } from "./types.js?v=72";
+import { generateItem } from "./items.js?v=72";
+import { hashSeed } from "./random.js?v=72";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=72';
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
@@ -764,6 +765,7 @@ export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y
 export class Game {
   constructor(save, now = 0) {
     this.save = save;
+    ensureEliteState(save);
     if (!["attack", "tool", "act"].includes(save.aimMode))
       save.aimMode = save.toolMode ? "tool" : "attack";
     save.toolMode = save.aimMode === "tool";
@@ -803,6 +805,7 @@ export class Game {
     this.spellCooldownRemaining = Math.max(0, Number(save.spellCooldown || 0));
     this.projectiles = [];
     this.effects = [];
+    this.eliteHazards=[];
     this.reticle = null;
     this.loadArea(this.area, false);
   }
@@ -1226,6 +1229,7 @@ export class Game {
       objects,
       projectiles: this.projectiles.map((p) => ({ ...p })),
       effects: this.effects.map((f) => ({ ...f, hits: { ...f.hits } })),
+      eliteHazards:this.eliteHazards.map(h=>({...h,hits:{...h.hits}})),
     };
   }
   loadArea(area, capture = true) {
@@ -1247,6 +1251,12 @@ export class Game {
           this.map.tiles[i] = { ...t, kind: "dungeonWater", blocked: true, waterDepth: "shallow" };
       }
     }
+    const eliteState=ensureEliteState(this.save),eliteDefeated=eliteState.defeated;
+    if(area==='overworld'&&this.rx===5&&this.ry===-2&&!eliteDefeated.vesperwing)this.map.enemySpawns.push({kind:'vesperwing',x:23,y:16,boss:true,elite:true});
+    if(area==='overworld'&&this.rx===-7&&this.ry===4&&!eliteDefeated.mireApostle)this.map.enemySpawns.push({kind:'mireApostle',x:22,y:22,boss:true,elite:true});
+    if(area==='overworld'&&this.rx===-5&&this.ry===3){this.map.objects.push({id:'knife-choir-portal',kind:'elitePortal',name:'Cantor Threshold',x:20,y:16,state:eliteState.contracts.knifeChoir.state==='available'?'ready':'sealed',actions:['inspect','enter'],landmark:true});}
+    if(area==='dungeon'&&String(this.areaId()).startsWith('elite-portal:')){this.map.enemySpawns=this.map.enemySpawns.filter(e=>e.kind!=='hollowMarshal');if(!eliteDefeated.knifeChoir)this.map.enemySpawns.push({kind:'knifeChoir',x:16,y:18,boss:true,elite:true});}
+    else if(area==='dungeon'&&this.map.recipe==='cistern'&&!eliteDefeated.gravitantBell&&hashSeed(`${this.save.seed}:elite-guardian:${this.areaId()}`)%5===0){this.map.enemySpawns=this.map.enemySpawns.filter(e=>e.kind!=='hollowMarshal');this.map.enemySpawns.push({kind:'gravitantBell',x:16,y:18,boss:true,elite:true});}
     if (area === "dungeon" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < 12)
       this.map.enemySpawns.push({ kind: "gateRevenant", x: 18, y: 6, gatePredator: true });
     if (area === "overworld" && (this.rx !== 0 || this.ry !== 0)) {
@@ -1266,6 +1276,7 @@ export class Game {
     }
     this.enemies = this.map.enemySpawns.map((e) => {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
+      if(c.eliteId){const v=eliteVariant(this.save.seed,c.eliteId,this.areaId());c.variantId=v.variantId;c.eliteModules=[...v.modules];c.eliteVariantModules=[...v.variantModules];c.visualSeed=v.visualSeed;}
       Object.assign(c,{passiveBehavior:e.passiveBehavior||null,ambient:!!e.ambient,pursuesOutdoors:!!(e.shelterAmbush||e.districtResident),shelterAmbush:!!e.shelterAmbush});
       if (e.gatePredator) Object.assign(c,{gatePredator:true,pursuesOutdoors:true,maxHp:260,hp:260,damage:22,range:5.5,scale:1.85,bodyRadius:.7,tentacles:8,speedMultiplier:1.12});
       if (e.apertureEncounter) {
@@ -1303,6 +1314,7 @@ export class Game {
     }
     this.projectiles = [];
     this.effects = [];
+    this.eliteHazards=[];
     if (
       area === "overworld" &&
       this.rx === 0 &&
@@ -1334,6 +1346,7 @@ export class Game {
         ...f,
         hits: { ...f.hits },
       }));
+      this.eliteHazards=(s.eliteHazards||[]).map(h=>({...h,hits:{...h.hits}}));
     }
     const areaWidth = area === "dungeon" ? 24 : 32,
       playerRelocated = relocateIfStranded(this.player, this.map, areaWidth);
@@ -1349,7 +1362,7 @@ export class Game {
     codex.variants ||= {};
     for (const e of this.enemies) {
       codex.creatures[e.kind] = true;
-      codex.variants[e.variantId || `${e.kind}:common`] = { kind: e.kind, traits: [...(e.traits || [])] };
+      codex.variants[e.variantId || `${e.kind}:common`] = { kind: e.kind, traits: [...(e.traits || []),...(e.eliteVariantModules||[])] };
     }
     codex.places[area === "dungeon" ? `dungeon:${this.map.recipe || "hollow"}` : `terrain:${this.map.dominant}`] = true;
     if (this.map.settlement) codex.places[`settlement:${this.map.settlement.id}`] = true;
@@ -1614,7 +1627,7 @@ export class Game {
         ok: false,
         message: (this.message = "Nothing nearby responds."),
       };
-    if (!action && ["npc", "dungeon", "relayTerminal","shelterMerchant","displacementDevice"].includes(o.kind)) {
+    if (!action && ["npc", "dungeon", "relayTerminal","shelterMerchant","displacementDevice","elitePortal"].includes(o.kind)) {
       this.interactionRequested = o.id;
       return {
         ok: true,
@@ -1638,7 +1651,9 @@ export class Game {
       this.player.y = o.y - 2;
     }
     if (o.kind === "tree" && chosen === "cut") applyFallenTreeCrossings(this.map);
-    if(r.transition==="displacement"){
+    if(r.transition==="elitePortal"){
+      this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=`elite-portal:${this.save.seed}:knife-choir`;const h=dungeonHistory(this.save,this.save.session.activeDungeonId);h.visits++;h.visitOpen=true;this.loadArea('dungeon');this.player.x=4;this.player.y=5;
+    } else if(r.transition==="displacement"){
       const h=hashSeed(this.save.seed+":displacement:"+this.rx+":"+this.ry+":"+o.id),distance=8+h%7,sign=h&1?1:-1,destination={rx:this.rx+(h&2?distance:Math.floor(distance/2))*sign,ry:this.ry+(h&2?Math.floor(distance/2):distance)*(h&4?1:-1)};
       this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDisplacement={id:"displacement:"+this.rx+":"+this.ry+":"+o.id,source:{...this.save.session.dungeonReturn},destination};this.save.session.activeDungeonId=this.save.session.activeDisplacement.id;const history=dungeonHistory(this.save,this.save.session.activeDungeonId);history.visits++;history.visitOpen=true;this.loadArea("dungeon");this.player.x=4;this.player.y=5;
     } else if (r.transition === "dungeon") {
@@ -1821,11 +1836,14 @@ export class Game {
 
   defeatEnemy(e) {
     if (e.rewarded) return;
+    if(e.noRewards){e.rewarded=true;return}
     if (e.ambient) {
       e.rewarded = true;
       this.message = e.kind === "hushling" ? "The hushling unthreads into violet motes." : "The quiet creature falls. Nothing in it was meant as loot.";
       return;
     }
+    if(['ashling','glassMite'].includes(e.kind))recordPortalPrey(this.save,e.kind);
+    if(e.eliteId){const reward=completeElite(this.save,e.eliteId);if(reward){this.save.codex.elites||={};this.save.codex.elites[e.eliteId]={encountered:1,defeated:1,modules:[...(e.eliteModules||[])],variantId:e.variantId,habitat:this.areaId()};journalOnce(this.save,'elite-defeated:'+e.eliteId,`${e.eliteName} fell. Its observed aspects were ${(e.eliteModules||[]).join(', ')}. Reward: ${reward.marks} marks and one ${reward.material.replace('Sphere',' sphere')}.`,'Elite bestiary');}}
     e.rewarded = true;
     const marks = e.boss ? 12 : e.apertureEncounter ? 6 : 1 + hashSeed(`${this.save.seed}:marks:${this.areaId()}:${e.id}`) % 3;
     this.save.currency += marks;
@@ -2015,6 +2033,7 @@ export class Game {
       this.player.weaponLevel++;
     }
   }
+  useUpgradeSphere(kind){const key=kind==='armor'?'armorSphere':'weaponSphere';if(!(this.save.materials[key]>0))return false;this.save.materials[key]--;if(kind==='armor')this.save.equipment.armor.power=Math.min(8,(this.save.equipment.armor.power||0)+1);else{this.save.weaponLevel=Math.min(8,(this.save.weaponLevel||0)+1);this.player.weaponLevel=this.save.weaponLevel}this.message=`${kind==='armor'?'Armor':'Weapon'} sphere fused. The upgrade is permanent.`;this.sync();return true}
   allocate(s) {
     if (!this.save.statPoints || !Object.hasOwn(this.save.stats, s))
       return false;
@@ -2072,6 +2091,7 @@ export class Game {
       this.message = "Lumen surge empowers magic bolts for 45 seconds.";
       return true;
     }
+    if(type==='clearrootAmpoule'){if(!cleansePoison(this.save)){this.message='No poison needs cleansing.';return false}this.message='Clearroot cools the venom and ends the poison.';return true}
     return false;
   }
   update(dt, input, now) {
@@ -2196,6 +2216,8 @@ export class Game {
       },
     );
     this.syncNpcDamage("spell");
+    const eliteStatus=ensureEliteState(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison)h.poison&&((eliteStatus.poison=Math.max(eliteStatus.poison,8)),eliteStatus.poisonTick=1)}
+    for(const e of this.enemies){if(e.dead||!e.eliteId)continue;e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6)}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
     p.stamina = Math.min(p.maxStamina, p.stamina + 9 * dt);
     for (const e of this.enemies)
       if (
@@ -2233,6 +2255,7 @@ export class Game {
       this.jumpUntil = 0;
       this.projectiles = [];
       this.effects = [];
+      this.eliteHazards=[];Object.assign(ensureEliteState(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});
       input.reset?.();
       this.rx = c.rx;
       this.ry = c.ry;
