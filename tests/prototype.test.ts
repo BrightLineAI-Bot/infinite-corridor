@@ -2128,12 +2128,20 @@ test("weather and open-world shacks are deterministic bounded environment featur
 });
 
 test("field shelters fully conceal interiors and use continuous architectural facades",()=>{
-  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/t\.structure === "shackWall"/);assert.match(renderer,/activeBuildingId === t\.buildingId/);assert.match(renderer,/inside=pt\?\.buildingId===o\.id&&pt\?\.structure===\"shackInterior\"/);assert.match(renderer,/if\(inside\).*strokeRect/);assert.match(renderer,/frontY=y\+h-s\*1\.62/);assert.match(renderer,/facadeStyle/);assert.match(renderer,/roofProfile/);assert.match(renderer,/condition===\"collapsed\"/);assert.match(renderer,/condition===\"overgrown\"/);assert.match(renderer,/quadraticCurveTo/);assert.match(renderer,/function shelterSigil/);assert.match(renderer,/backY=y\+s\*\.16/);assert.doesNotMatch(renderer,/inside=p\.x>=b\.x\+1/);assert.match(renderer,/const windows=Math\.max/);
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/t\.structure === "shackWall"/);assert.match(renderer,/activeBuildingId === t\.buildingId/);assert.match(renderer,/inside=insideShelter\(o,p\)/);assert.match(renderer,/if\(inside\).*strokeRect/);assert.match(renderer,/frontY=y\+h-s\*3\.12/);assert.match(renderer,/facadeStyle/);assert.match(renderer,/roofProfile/);assert.match(renderer,/condition===\"collapsed\"/);assert.match(renderer,/condition===\"overgrown\"/);assert.match(renderer,/quadraticCurveTo/);assert.match(renderer,/function shelterSigil/);assert.match(renderer,/backY=y\+s\*\.16/);assert.doesNotMatch(renderer,/inside=p\.x>=b\.x\+1/);assert.match(renderer,/const windows=Math\.max/);
 });
 
 test("shelter walls use thin physical edges and reveal only from true interior floor",()=>{
   let region,shelter;for(let y=-12;!shelter&&y<=12;y++)for(let x=-12;!shelter&&x<=12;x++){const q=generateRegion("thin-shelter",x,y,1),o=q.objects.find(v=>v.kind==="shack");if(o){region=q;shelter=o}}
   assert.ok(shelter);const b=shelter.bounds,west=region.tiles[(b.y+2)*32+b.x],interior=region.tiles[(b.y+2)*32+b.x+1];assert.equal(west.structure,"shackWall");assert.equal(west.blocked,false);assert.deepEqual(west.wallSides,["west"]);assert.equal(interior.structure,"shackInterior");assert.equal(tileOpen(region,32,b.x+.12,b.y+2.5),false);assert.equal(tileOpen(region,32,b.x+.32,b.y+2.5),true);
+});
+
+test("player remains foregrounded while approaching a shelter entrance",()=>{
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/const frontShelter=g\.map\.objects\.find/);assert.match(renderer,/p\.y>=o\.bounds\.y\+o\.bounds\.h-1/);assert.match(renderer,/if\(frontShelter\)actor\(ctx,p\.x,p\.y-lift\/s/);
+});
+
+test("shelter cutaway remains active beside every thin interior wall",()=>{
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/function insideShelter/);assert.match(renderer,/cx=p\.x\+\.5,cy=p\.y\+\.7,inset=\.22/);assert.match(renderer,/activeShelter=g\.map\.objects\.find\(o=>o\.kind===\"shack\"&&insideShelter\(o,p\)\)/);assert.doesNotMatch(renderer,/structure===\"shackInterior\"\|\|q\?\.structure/);
 });
 
 test("journal renders the same minimalist trail marks used on the floor",()=>{
@@ -2193,12 +2201,12 @@ test("journal trail examples invoke the exact ground-waymark drawing function",(
   assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,82\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
 });
 
-test("release 63 loads one coherent version across the entire module graph",()=>{
+test("release 64 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=63/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=63/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v63/);assert.match(sw,/styles\.css\?v=63/);assert.match(sw,/main\.js\?v=63/);assert.match(sw,/combat\.js\?v=63/);assert.match(sw,/renderer\.js\?v=63/);
-  assert.match(build,/release='63'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=64/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=64/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v64/);assert.match(sw,/styles\.css\?v=64/);assert.match(sw,/main\.js\?v=64/);assert.match(sw,/combat\.js\?v=64/);assert.match(sw,/renderer\.js\?v=64/);
+  assert.match(build,/release='64'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("danger waymarks fill only their forward corner while other silhouettes point naturally",()=>{
