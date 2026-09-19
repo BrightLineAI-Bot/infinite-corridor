@@ -1,7 +1,7 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=48";
-import { vendorShop, buyFromVendor } from "./game.js?v=48";
-import { CREATURE_TRAITS } from "./combat.js?v=48";
-import { hashSeed } from "./random.js?v=48";
+import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=49";
+import { vendorShop, buyFromVendor } from "./game.js?v=49";
+import { CREATURE_TRAITS } from "./combat.js?v=49";
+import { hashSeed } from "./random.js?v=49";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -202,19 +202,19 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame } from "./persistence.js?v=48";
+import { loadSave, saveGame } from "./persistence.js?v=49";
 import {
   Game,
   actionReadiness,
   enemyDangerRadius,
   characterStats,
   syncCharacterStats,
-} from "./game.js?v=48";
-import { createInput } from "./input.js?v=48";
-import { render as baseRender } from "./renderer.js?v=48";
-import { STATS } from "./types.js?v=48";
-import { SPELLS } from "./items.js?v=48";
-import { currentObjective, validActions } from "./interactions.js?v=48";
+} from "./game.js?v=49";
+import { createInput } from "./input.js?v=49";
+import { render as baseRender } from "./renderer.js?v=49";
+import { STATS } from "./types.js?v=49";
+import { SPELLS } from "./items.js?v=49";
+import { currentObjective, validActions } from "./interactions.js?v=49";
 import {
   generateRegion as generateWorldRegion,
   sectionSummary,
@@ -223,7 +223,7 @@ import {
   apertureTier,
   APERTURE_THRESHOLDS,
   perceived,
-} from "./world.js?v=48";
+} from "./world.js?v=49";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -1084,10 +1084,10 @@ function openJournal(mode = "chronicle") {
   out.append(nav);
   if(mode!=="chronicle"){
     const entries=mode==="rules"?[
-      ["ring",["Open ring — Wayglass","Cyan marks lead toward an activated recovery point and Atlas destination. Follow the short stem and terminal dot; the ring opening is decorative."]],
-      ["chevron",["Open chevron — Crossing","Amber marks lead toward a dungeon entrance or buried route. Follow the short stem and terminal dot extending from the mark."]],
-      ["triangle",["Hollow triangle — Major danger","Red marks lead toward a world boss or exceptional threat. The triangle identifies danger; ignore its corners and follow the separate short stem and terminal dot."]],
-      ["spiral",["Open spiral — Unusual site","Violet marks lead toward a shrine, ruin, or strange discovery. Follow the short stem and terminal dot; the spiral opening is decorative."]],
+      ["ring",["Open ring — Wayglass","Cyan marks lead toward an activated recovery point and Atlas destination. The open side of the ring faces the route."]],
+      ["chevron",["Open chevron — Crossing","Amber marks lead toward a dungeon entrance or buried route. The vertex where the two lines meet points toward the crossing."]],
+      ["triangle",["Hollow triangle — Major danger","Red marks lead toward a world boss or exceptional threat. The only extended corner—the one with the short line—faces the route."]],
+      ["spiral",["Open spiral — Unusual site","Violet marks lead toward a shrine, ruin, or strange discovery. The open end of the spiral faces the route."]],
       ["atlas",["Atlas","Drag with one finger to pan. Pinch with two fingers or use +/− to zoom. Tap an explored section to select it."]],
       ["travel",["Travel","Activate Wayglass beacons to travel to them from the Atlas. Dungeon travel remains sealed without a Crossing Sigil."]],
       ["combat",["Combat","Red or violet telegraphs show the exact threatened area. Dodge spends stamina; jumping avoids grounded impacts."]],
