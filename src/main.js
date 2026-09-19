@@ -1,7 +1,7 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=74";
-import { vendorShop, buyFromVendor } from "./game.js?v=74";
-import { CREATURE_TRAITS } from "./combat.js?v=74";
-import { hashSeed } from "./random.js?v=74";
+import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=75";
+import { vendorShop, buyFromVendor } from "./game.js?v=75";
+import { CREATURE_TRAITS } from "./combat.js?v=75";
+import { hashSeed } from "./random.js?v=75";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -202,19 +202,19 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame } from "./persistence.js?v=74";
+import { loadSave, saveGame } from "./persistence.js?v=75";
 import {
   Game,
   actionReadiness,
   enemyDangerRadius,
   characterStats,
   syncCharacterStats,
-} from "./game.js?v=74";
-import { createInput } from "./input.js?v=74";
-import { render as baseRender } from "./renderer.js?v=74";
-import { STATS } from "./types.js?v=74";
-import { SPELLS } from "./items.js?v=74";
-import { currentObjective, validActions } from "./interactions.js?v=74";
+} from "./game.js?v=75";
+import { createInput } from "./input.js?v=75";
+import { render as baseRender } from "./renderer.js?v=75";
+import { STATS } from "./types.js?v=75";
+import { SPELLS } from "./items.js?v=75";
+import { currentObjective, validActions } from "./interactions.js?v=75";
 import {
   generateRegion as generateWorldRegion,
   sectionSummary,
@@ -224,7 +224,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=74";
+} from "./world.js?v=75";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -889,9 +889,16 @@ function drawAtlasSite(kind, x, y, size) {
   mctx.save();mctx.translate(x,y);mctx.lineWidth=Math.max(1.4,size*.22);mctx.strokeStyle={beacon:"#72d7df",crossing:"#d5a464",danger:"#d16b62",event:"#a68ad2",shack:"#d8bd83"}[signal];mctx.fillStyle=mctx.strokeStyle;mctx.beginPath();
   if(signal==="beacon")mctx.arc(0,0,size*.7,0,Math.PI*1.65);else if(signal==="crossing"){mctx.moveTo(-size*.7,-size*.55);mctx.lineTo(size*.55,0);mctx.lineTo(-size*.7,size*.55)}else if(signal==="danger"){mctx.moveTo(-size*.65,size*.6);mctx.lineTo(0,-size*.75);mctx.lineTo(size*.65,size*.6);mctx.closePath()}else if(signal==="shack"){mctx.moveTo(-size*.75,0);mctx.lineTo(0,-size*.7);mctx.lineTo(size*.75,0);mctx.lineTo(size*.55,0);mctx.lineTo(size*.55,size*.7);mctx.lineTo(-size*.55,size*.7);mctx.lineTo(-size*.55,0);mctx.closePath()}else{mctx.arc(0,0,size*.65,0,Math.PI*1.5);mctx.lineTo(size*.75,0)}mctx.stroke();if(signal==="danger"){mctx.beginPath();mctx.moveTo(0,-size*.75);mctx.lineTo(-size*.18,-size*.42);mctx.lineTo(size*.18,-size*.42);mctx.closePath();mctx.fill()}else if(signal!=="shack"){mctx.beginPath();mctx.moveTo(size*.72,0);mctx.lineTo(size*1.05,-size*.3);mctx.lineTo(size*1.05,size*.3);mctx.closePath();mctx.fill()}mctx.restore();
 }
+function refreshWayglassDestinations(){
+  const select=$("#mapWayglassSelect"),prior=select.value,entries=Object.entries(save.checkpoints||{}).sort((a,b)=>(a[1].name||a[0]).localeCompare(b[1].name||b[0]));
+  select.replaceChildren(...entries.map(([key,c])=>{const option=document.createElement("option");option.value=key;option.textContent=`${c.name||"Wayglass"} · ${c.rx},${c.ry}`;return option}));
+  const selected=mapView.selected&&`${mapView.selected.rx},${mapView.selected.ry}`,active=save.activeCheckpoint&&`${save.activeCheckpoint.rx},${save.activeCheckpoint.ry}`;
+  select.value=save.checkpoints?.[selected]?selected:save.checkpoints?.[prior]?prior:active||entries[0]?.[0]||"";
+}
+function selectedWayglassKey(){const explicit=$("#mapWayglassSelect")?.value;if(save.checkpoints?.[explicit])return explicit;const q=mapView.selected,key=q&&`${q.rx},${q.ry}`;return save.checkpoints?.[key]?key:null}
 function updateMapTravelButton() {
   const travel = $("#mapTravel"), selected = mapView.selected,
-    checkpoint = selected && save.checkpoints?.[`${selected.rx},${selected.ry}`];
+    checkpoint = save.checkpoints?.[selectedWayglassKey()] || (selected && save.checkpoints?.[`${selected.rx},${selected.ry}`]);
   travel.textContent = game.area === "dungeon"
     ? `Use Crossing Sigil ×${save.consumables.crossingSigil || 0}`
     : checkpoint
@@ -916,6 +923,7 @@ function showMapDetail(rx, ry) {
     return false;
   }
   mapView.selected = { rx, ry };
+  if(save.checkpoints?.[key])$("#mapWayglassSelect").value=key;
   const s = sectionSummary(save.seed, rx, ry, save.worldGeneration, save);
   const sites = s.sites.length ? ` · sites: ${s.sites.map((q) => q.name).join(", ")}` : " · no discovered sites";
   $("#mapDetail").textContent =
@@ -930,6 +938,7 @@ function openMap() {
   mapView.y = game.ry;
   mapMode = game.area === "dungeon" ? "dungeon" : "atlas";
   if (!atlas.open) atlas.showModal();
+  refreshWayglassDestinations();
   updateMapModeUI();
   if(mapMode==="atlas")showMapDetail(game.rx, game.ry);
   drawMap();
@@ -1280,6 +1289,7 @@ $("#pausedJournal").onclick = openJournal;
 $("#journalClose").onclick = () => journal.close();
 $("#close").onclick = () => panel.close();
 $("#mapClose").onclick = () => atlas.close();
+$("#mapWayglassSelect").onchange=()=>{const key=$("#mapWayglassSelect").value,c=save.checkpoints?.[key];if(!c)return;mapView.x=c.rx;mapView.y=c.ry;showMapDetail(c.rx,c.ry);drawMap()};
 $("#mapModeToggle").onclick=()=>{mapMode=mapMode==="dungeon"?"atlas":"dungeon";mapView.x=game.rx;mapView.y=game.ry;updateMapModeUI();if(mapMode==="atlas")showMapDetail(game.rx,game.ry);drawMap()};
 $("#mapCenter").onclick = () => {
   if(mapMode==="dungeon")return;
@@ -1298,7 +1308,7 @@ $("#mapMinus").onclick = () => {
   drawMap();
 };
 $("#mapTravel").onclick = () => {
-  const q = mapView.selected, key = q && `${q.rx},${q.ry}`;
+  const key = selectedWayglassKey();
   game.area === "dungeon"
     ? game.useCrossingSigil()
     : game.travelToCheckpoint(save.checkpoints?.[key] ? key : null);
@@ -1435,7 +1445,7 @@ if (game.paused) pausePanel.showModal();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");
 requestAnimationFrame(frame);
 $("#mapTravel").onclick = () => {
-  const q = mapView.selected, key = q && `${q.rx},${q.ry}`;
+  const key = selectedWayglassKey();
   game.area === "dungeon"
     ? game.useCrossingSigil()
     : game.travelToCheckpoint(save.checkpoints?.[key] ? key : null);

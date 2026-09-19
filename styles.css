@@ -422,6 +422,7 @@ dialog button {
 .maptools button {
   min-width: 38px;
 }
+.wayglass-picker{display:grid;gap:.35rem;margin:.7rem 0;color:#cfdad5;font-size:.82rem}.wayglass-picker select{width:100%;padding:.62rem;border:1px solid #60756f;border-radius:5px;background:#101a20;color:#edf3ef}
 .aperture-card {
   border: 1px solid #a46dc6;
   background: linear-gradient(135deg, #21182bcc, #352146cc);

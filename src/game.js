@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=74";
+import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=75";
 import {
   generateRegion,
   generateDungeon,
@@ -12,7 +12,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js?v=74";
+} from "./world.js?v=75";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=74";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=75";
 import {
   applyInteraction,
   validActions,
@@ -33,11 +33,11 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=74";
-import { ensurePerception } from "./types.js?v=74";
-import { generateItem } from "./items.js?v=74";
-import { hashSeed } from "./random.js?v=74";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=74';
+} from "./interactions.js?v=75";
+import { ensurePerception } from "./types.js?v=75";
+import { generateItem } from "./items.js?v=75";
+import { hashSeed } from "./random.js?v=75";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=75';
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
