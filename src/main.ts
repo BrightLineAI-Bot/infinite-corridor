@@ -215,7 +215,7 @@ import {
 import { createInput } from "./input.ts";
 import { render as baseRender } from "./renderer.ts";
 import { STATS } from "./types.ts";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes } from "./items.ts";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats } from "./items.ts";
 import { currentObjective, validActions } from "./interactions.ts";
 import {
   generateRegion as generateWorldRegion,
@@ -838,6 +838,7 @@ function drawDungeonMap() {
   for(const o of game.map.objects||[]){if(!colors[o.kind])continue;const x=ox+(o.x+.5)*cell,y=oy+(o.y+.5)*cell;mctx.fillStyle=colors[o.kind];mctx.strokeStyle="#0b1014";mctx.lineWidth=2;mctx.beginPath();if(o.kind==="exit"){mctx.rect(x-cell*.32,y-cell*.42,cell*.64,cell*.84)}else if(o.kind==="trap"){mctx.moveTo(x,y-cell*.42);mctx.lineTo(x+cell*.4,y+cell*.35);mctx.lineTo(x-cell*.4,y+cell*.35);mctx.closePath()}else{mctx.arc(x,y,Math.max(3,cell*.28),0,7)}mctx.fill();mctx.stroke()}
   const px=ox+(game.player.x+.5)*cell,py=oy+(game.player.y+.5)*cell;mctx.fillStyle="#fff4a8";mctx.strokeStyle="#17140b";mctx.lineWidth=2;mctx.beginPath();mctx.arc(px,py,Math.max(4,cell*.34),0,7);mctx.fill();mctx.stroke();mctx.fillStyle="#e7ece7";mctx.font="12px monospace";mctx.fillText("YOU",px+7,py-7);
 }
+function drawAtlasLabels(labels,bounds,fontSize){const placed=[],overlap=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;mctx.font=`${fontSize}px system-ui`;mctx.fillStyle="#edf3df";for(const label of labels){let text=label.name,max=bounds.right-bounds.left-10;while(text.length>4&&mctx.measureText(text).width>max)text=text.slice(0,-2)+"…";const width=mctx.measureText(text).width,candidates=[[label.x+7,label.y-5],[label.x+7,label.y+fontSize+3],[label.x-width-7,label.y-5],[label.x-width-7,label.y+fontSize+3],[label.x-width/2,label.y-fontSize],[label.x-width/2,label.y+fontSize*2]],spots=candidates.map(([cx,cy])=>{const x=Math.max(bounds.left+5,Math.min(bounds.right-width-5,cx)),y=Math.max(bounds.top+fontSize+5,Math.min(bounds.bottom-6,cy));return{x,y,left:x-2,right:x+width+2,top:y-fontSize-2,bottom:y+3}}),spot=spots.find(q=>!placed.some(p=>overlap(p,q)));if(!spot)continue;mctx.fillText(text,spot.x,spot.y);placed.push(spot)}return placed}
 function drawMap() {
   if(mapMode==="dungeon"&&game.area==="dungeon")return drawDungeonMap();
   const d = Math.min(devicePixelRatio, 2),
@@ -882,16 +883,14 @@ function drawMap() {
       mctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4);
       if (seen) {
         const detailed=(rx===game.rx&&ry===game.ry)||(mapView.selected?.rx===rx&&mapView.selected?.ry===ry),sites=record?.sites||[],compact=[...new Map(sites.map(s=>[s.kind,s])).values()];
-        for (const [n,site] of (detailed?sites:compact).entries()) {
+        const displaySites=detailed?sites:compact,labelSites=[];
+        for (const [n,site] of displaySites.entries()) {
           const sx = detailed?x + Math.max(0.1, Math.min(0.9, (site.x + .5) / 32)) * cell:x+cell*(.32+(n%3)*.18),
             sy = detailed?y + Math.max(0.1, Math.min(0.9, (site.y + .5) / 32)) * cell:y+cell*(.42+Math.floor(n/3)*.2);
           drawAtlasSite(site.kind, sx, sy, Math.max(3, Math.min(9, cell * .095)));
-          if (detailed && mapView.zoom >= 2.2) {
-            mctx.fillStyle = "#edf3df";
-            mctx.font = `${Math.max(8, 5 * mapView.zoom)}px system-ui`;
-            mctx.fillText(site.name, sx + 6, sy - 5);
-          }
+          if (detailed && mapView.zoom >= 2.2) labelSites.push({name:site.name,x:sx,y:sy});
         }
+        if(labelSites.length)drawAtlasLabels(labelSites,{left:x+2,top:y+2,right:x+cell-2,bottom:y+cell-2},Math.max(8,5*mapView.zoom));
         mctx.fillStyle = "#d7dedb";
         mctx.font = `${Math.max(8, 10 * mapView.zoom)}px monospace`;
         mctx.fillText(`${rx},${ry}`, x + 5, y + 14);
@@ -1145,11 +1144,13 @@ function openPack() {
   for (const { item, index: i } of visibleItems) {
     if (!["primary", "secondary", "armor", "charm"].includes(item.slot))
       continue;
-    const row = document.createElement("div");
-    row.className = "item";
-    const affixes = describeAffixes(item);
-    row.textContent = `${itemTier(item).toUpperCase()} · ${item.name} · ${item.slot} · power ${item.power}${affixes.length ? " · " + affixes.join(" · ") : ""}`;
+    const row = document.createElement("div"),title=document.createElement("strong"),comparison=document.createElement("div");
+    row.className = "item inventory-card";comparison.className="item-comparison";
+    title.textContent = `${itemTier(item).toUpperCase()} · ${item.name} · ${item.slot}`;
+    for(const stat of compareItemStats(item,save.equipment[item.slot])){const value=document.createElement("span");value.className=`stat-${stat.direction}`;value.textContent=`${stat.direction==='up'?'↑ ':stat.direction==='down'?'↓ ':''}${stat.label} ${stat.formatted}`;value.title=stat.direction==='same'?`Matches equipped ${stat.label.toLowerCase()}`:`${Math.abs(stat.difference)} ${stat.direction==='up'?'more':'less'} than equipped`;comparison.append(value)}
     row.append(
+      title,
+      comparison,
       uiButton("Equip", () => {
         equipFromInventory(save, i);
         persist();

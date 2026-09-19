@@ -18,7 +18,7 @@ import {
 import { freshSave, migrateSave } from "../src/types.ts";
 import { serializeSave, deserializeSave } from "../src/persistence.ts";
 import { dodge, createCombatant, CREATURE_TRAITS, CREATURE_FORMS, enemyBodyRadius } from "../src/combat.ts";
-import { generateItem, isValidItem, SPELLS, itemTier, itemScore, affixValue } from "../src/items.ts";
+import { generateItem, isValidItem, SPELLS, itemTier, itemScore, affixValue, compareItemStats } from "../src/items.ts";
 import{ELITE_DEFINITIONS,eliteVariant,eliteThreat,freshEliteState,ensureEliteState,recordPortalPrey,applyPoison,tickEliteStatus,cleansePoison,addEliteHazard,tickEliteHazards,completeElite}from'../src/elites.ts';
 import {
   Game,
@@ -2206,6 +2206,10 @@ test("Atlas pans from compact discovery records and details only current or sele
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(game,/this\.save\.atlas \|\|=/);assert.match(game,/terrain: this\.map\.dominant/);assert.match(main,/save\.atlas\?\.\[key\]/);assert.match(main,/w \/ \(2 \* cell\)/);assert.match(main,/detailed\?sites:compact/);assert.doesNotMatch(main,/const region = generateRegion\(save\.seed, rx, ry/);assert.match(renderer,/ctx\.beginPath\(\);for\(const c of cells\)ctx\.rect/);assert.equal((renderer.match(/new Set\(cells\.map/g)||[]).length,1);
 });
 
+test("Atlas detail labels choose non-overlapping offsets and elide text that cannot fit",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(main,/function drawAtlasLabels\(labels,bounds,fontSize\)/);assert.match(main,/candidates=\[\[label\.x\+7,label\.y-5\]/);assert.match(main,/!placed\.some\(p=>overlap\(p,q\)\)/);assert.match(main,/text=text\.slice\(0,-2\)\+"…"/);assert.match(main,/if\(!spot\)continue/);
+});
+
 test("district streets and every walk-in building remain reachable from the section hub",()=>{
   let region;for(let y=-30;!region&&y<=30;y++)for(let x=-30;!region&&x<=30;x++){const q=generateRegion("district-reachability",x,y,1);if(q.district)region=q}assert.ok(region);
   const seen=new Set(["16,16"]),queue=[[16,16]];while(queue.length){const [x,y]=queue.shift();for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const a=x+dx,b=y+dy,k=`${a},${b}`;if(a>=0&&a<32&&b>=0&&b<32&&!seen.has(k)&&!region.tiles[b*32+a].blocked){seen.add(k);queue.push([a,b])}}}
@@ -2285,12 +2289,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 79 loads one coherent version across the entire module graph",()=>{
+test("release 80 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "79"/);assert.match(html,/styles\.css\?v=79/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=79/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v79/);assert.match(sw,/styles\.css\?v=79/);assert.match(sw,/main\.js\?v=79/);assert.match(sw,/combat\.js\?v=79/);assert.match(sw,/renderer\.js\?v=79/);
-  assert.match(build,/release='79'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "80"/);assert.match(html,/styles\.css\?v=80/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=80/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v80/);assert.match(sw,/styles\.css\?v=80/);assert.match(sw,/main\.js\?v=80/);assert.match(sw,/combat\.js\?v=80/);assert.match(sw,/renderer\.js\?v=80/);
+  assert.match(build,/release='80'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("Atlas opening tap cannot immediately activate travel controls",()=>{
@@ -2324,6 +2328,12 @@ test("tiered inventory affixes are visible mechanical sortable and auto-salvage 
   const stored=storeInventoryItem(s,strong);assert.equal(stored.stored,true);assert.equal(s.inventory.length,EQUIPMENT_CAPACITY);assert.ok(s.inventory.some(q=>q.id===strong.id));assert.ok(s.materials.cinderIron>iron);
   const n=s.inventory.length,manual=salvageInventoryItem(s,0);assert.ok(manual.iron>=1);assert.equal(s.inventory.length,n-1);
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(main,/inventoryView[\s\S]*slotFilter[\s\S]*tierFilter[\s\S]*sortFilter/);assert.match(main,/describeAffixes/);
+});
+
+test("inventory comparisons mark every improved and reduced equipped stat independently",()=>{
+  const equipped={slot:"charm",power:6,affixes:[{id:"movement",value:.12},{id:"reach",value:.08}]},candidate={slot:"charm",power:8,affixes:[{id:"movement",value:.05},{id:"ward",value:.09}]},stats=compareItemStats(candidate,equipped),byId=Object.fromEntries(stats.map(q=>[q.id,q]));
+  assert.equal(byId.power.direction,"up");assert.equal(byId.movement.direction,"down");assert.equal(byId.reach.direction,"down");assert.equal(byId.ward.direction,"up");assert.equal(byId.ward.formatted,"9%");
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");assert.match(main,/compareItemStats\(item,save\.equipment\[item\.slot\]\)/);assert.match(main,/↑ /);assert.match(main,/↓ /);assert.match(css,/\.stat-up[\s\S]*#91d79a/);assert.match(css,/\.stat-down[\s\S]*#e58c87/);
 });
 
 test("Atlas waypoint drives the compact constellation compass and toggles clear",()=>{

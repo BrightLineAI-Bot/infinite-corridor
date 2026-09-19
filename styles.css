@@ -472,6 +472,7 @@ dialog button {
   background: #24231f;
 }
 .gear-card{position:relative;display:grid;grid-template-columns:58px 1fr;grid-template-rows:auto auto auto;column-gap:9px;min-height:76px;background:linear-gradient(135deg,#2c2922,#1d1c19);box-shadow:inset 3px 0 #a9824d66}.gear-icon{grid-row:1/4;width:54px;height:54px;align-self:center;border-radius:50%;background:#101416;image-rendering:auto}.gear-card small{color:#a99572;letter-spacing:.12em}.gear-card strong{color:#ead9b8}.gear-card span{color:#aaa18f;font-size:.75rem}.inventory-card{border:1px solid #6b5f49;margin:.35rem 0;background:linear-gradient(90deg,#27241f,#1a1917)}
+.item-comparison{display:flex;flex-wrap:wrap;gap:.3rem .5rem;margin:.35rem 0}.item-comparison span{padding:.12rem .3rem;border:1px solid #655f52;border-radius:3px;font-size:.72rem}.item-comparison .stat-up{color:#91d79a;border-color:#4f8c58;background:#17351e88}.item-comparison .stat-down{color:#e58c87;border-color:#9a4c48;background:#3e181888}.item-comparison .stat-same{color:#aaa18f}
 .codex-tabs{position:sticky;top:-18px;z-index:2;padding:.55rem 0;background:#191917ee;backdrop-filter:blur(6px);border-bottom:1px solid #8e744744}.codex-tabs button:focus,.codex-tabs button:hover{border-color:#b58c50;color:#f0dbb5;box-shadow:0 0 10px #8f632744}
 .level-progress {
   width: 100%;
