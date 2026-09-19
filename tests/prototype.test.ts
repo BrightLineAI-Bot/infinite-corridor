@@ -2289,12 +2289,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 81 loads one coherent version across the entire module graph",()=>{
+test("release 82 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "81"/);assert.match(html,/styles\.css\?v=81/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=81/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v81/);assert.match(sw,/styles\.css\?v=81/);assert.match(sw,/main\.js\?v=81/);assert.match(sw,/combat\.js\?v=81/);assert.match(sw,/renderer\.js\?v=81/);
-  assert.match(build,/release='81'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "82"/);assert.match(html,/styles\.css\?v=82/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=82/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v82/);assert.match(sw,/styles\.css\?v=82/);assert.match(sw,/main\.js\?v=82/);assert.match(sw,/combat\.js\?v=82/);assert.match(sw,/renderer\.js\?v=82/);
+  assert.match(build,/release='82'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("Atlas opening tap cannot immediately activate travel controls",()=>{
@@ -2340,9 +2340,10 @@ test("Atlas waypoint drives the compact constellation compass and toggles clear"
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),style=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
   assert.match(html,/id="navCompass"[\s\S]*id="navArrow"/);
   assert.match(main,/function navigationTarget\(\)[\s\S]*save\.waypoint[\s\S]*kind: "quest"/);
-  assert.match(main,/save\.waypoint\?\.rx === rx && save\.waypoint\?\.ry === ry \? null : \{ rx, ry \}/);
+  assert.match(html,/id="mapWaypoint"/);assert.match(main,/\$\("#mapWaypoint"\)\.onclick/);assert.match(main,/save\.waypoint\?\.rx===selected\.rx&&save\.waypoint\?\.ry===selected\.ry\?null/);
   assert.match(main,/Math\.atan2\(dy, dx\)[\s\S]*updateNavigationCompass\(\)/);
   assert.match(style,/\.nav-compass\s*\{[\s\S]*position:\s*absolute[\s\S]*border-radius:\s*50%/);
+  assert.match(style,/linear-gradient\(to bottom, #fffdf2/);
 });
 
 test("elite definitions preserve class identity while deterministic aspects vary",()=>{assert.equal(Object.keys(ELITE_DEFINITIONS).length,4);for(const d of Object.values(ELITE_DEFINITIONS)){assert.ok(d.stableModules.length>=2);assert.ok(d.variantModules.length>=3);assert.ok(d.threatCost>=8)}const a=eliteVariant('A','vesperwing','5,-2'),again=eliteVariant('A','vesperwing','5,-2'),b=eliteVariant('B','vesperwing','5,-2');assert.deepEqual(a,again);assert.notEqual(a.variantId,b.variantId);assert.ok(a.modules.includes('dive'));assert.ok(a.variantModules.length>=1);assert.ok(eliteThreat(a,8,1)>a.threatCost)});
@@ -2432,5 +2433,25 @@ test("Atlas exposes every activated Wayglass as an explicit fast-travel destinat
 test("supply caches cannot masquerade as Wayglass travel points",()=>{
  const region=generateRegion("CINDER-VERGE-47",0,-2,1),cache=region.objects.find(o=>o.kind==="supplyCache");assert.ok(cache);assert.equal(region.objects.some(o=>o.kind==="checkpoint"),false);
  const sites=sectionSites("CINDER-VERGE-47",0,-2,1);assert.ok(sites.some(o=>o.kind==="supplyCache"&&o.name==="Supply Cache"));assert.equal(sites.some(o=>o.kind==="checkpoint"),false);
- const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8"),main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(renderer,/kind === "chest" \|\| kind === "cache" \|\| kind === "supplyCache"/);assert.match(main,/kind === "supplyCache" \? "cache"/);assert.match(main,/cache:"#d7b96f"/);
+ const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8"),main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(renderer,/kind === "chest" \|\| kind === "cache" \|\| kind === "supplyCache"/);assert.match(main,/kind==="supplyCache"\?"cache"/);assert.match(main,/cache:"#d7b96f"/);
+});
+
+test("Singing Arrays are intermediate rest points without becoming fast-travel Wayglasses",()=>{
+ const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+ assert.match(main,/o\.kind==="shrine"[\s\S]*REST POINT REACHED[\s\S]*save\.activeCheckpoint=/);
+ assert.match(main,/respawn updated; no fast travel/);
+ assert.doesNotMatch(main,/save\.checkpoints\[.*shrine/);
+});
+
+test("Atlas and Journal share the exact landmark symbol vocabulary",()=>{
+ const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ for(const label of ["Wayglass","Singing Array","Crossing / Glass Kiln","Supply Cache","Shelter","District / Ruin","Major Danger","Unusual Site"])assert.match(main,new RegExp(label.replace("/","\\/")));
+ assert.match(main,/function drawAtlasGlyph/);assert.match(main,/function atlasMark/);assert.match(main,/renderAtlasLegend/);assert.match(html,/id="mapLegend"/);
+});
+
+test("district roofs cut away only on true interior tiles and door sigils center on the door",()=>{
+ const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");
+ assert.match(renderer,/pt\?\.buildingId===o\.id&&pt\?\.structure==="districtInterior"/);
+ assert.match(renderer,/const gx=\(o\.door\.x\+\.5\)\*s/);
+ assert.match(renderer,/q\?ctx\.lineTo\(px,py\):ctx\.moveTo\(px,py\)/);
 });
