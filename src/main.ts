@@ -885,7 +885,7 @@ function drawMap() {
 function drawAtlasSite(kind, x, y, size) {
   const signal = kind === "checkpoint" ? "beacon" : kind === "dungeon" ? "crossing" : kind === "bossCue" ? "danger" : kind === "shack" ? "shack" : "event";
   mctx.save();mctx.translate(x,y);mctx.lineWidth=Math.max(1.4,size*.22);mctx.strokeStyle={beacon:"#72d7df",crossing:"#d5a464",danger:"#d16b62",event:"#a68ad2",shack:"#d8bd83"}[signal];mctx.fillStyle=mctx.strokeStyle;mctx.beginPath();
-  if(signal==="beacon")mctx.arc(0,0,size*.7,0,Math.PI*1.65);else if(signal==="crossing"){mctx.moveTo(-size*.7,-size*.55);mctx.lineTo(size*.55,0);mctx.lineTo(-size*.7,size*.55)}else if(signal==="danger"){mctx.moveTo(-size*.65,size*.6);mctx.lineTo(0,-size*.75);mctx.lineTo(size*.65,size*.6);mctx.closePath()}else if(signal==="shack"){mctx.moveTo(-size*.75,0);mctx.lineTo(0,-size*.7);mctx.lineTo(size*.75,0);mctx.lineTo(size*.55,0);mctx.lineTo(size*.55,size*.7);mctx.lineTo(-size*.55,size*.7);mctx.lineTo(-size*.55,0);mctx.closePath()}else{mctx.arc(0,0,size*.65,0,Math.PI*1.5);mctx.lineTo(size*.75,0)}mctx.stroke();if(signal!=="shack"){mctx.beginPath();mctx.moveTo(size*.72,0);mctx.lineTo(size*1.05,-size*.3);mctx.lineTo(size*1.05,size*.3);mctx.closePath();mctx.fill()}mctx.restore();
+  if(signal==="beacon")mctx.arc(0,0,size*.7,0,Math.PI*1.65);else if(signal==="crossing"){mctx.moveTo(-size*.7,-size*.55);mctx.lineTo(size*.55,0);mctx.lineTo(-size*.7,size*.55)}else if(signal==="danger"){mctx.moveTo(-size*.65,size*.6);mctx.lineTo(0,-size*.75);mctx.lineTo(size*.65,size*.6);mctx.closePath()}else if(signal==="shack"){mctx.moveTo(-size*.75,0);mctx.lineTo(0,-size*.7);mctx.lineTo(size*.75,0);mctx.lineTo(size*.55,0);mctx.lineTo(size*.55,size*.7);mctx.lineTo(-size*.55,size*.7);mctx.lineTo(-size*.55,0);mctx.closePath()}else{mctx.arc(0,0,size*.65,0,Math.PI*1.5);mctx.lineTo(size*.75,0)}mctx.stroke();if(signal==="danger"){mctx.beginPath();mctx.moveTo(0,-size*.75);mctx.lineTo(-size*.18,-size*.42);mctx.lineTo(size*.18,-size*.42);mctx.closePath();mctx.fill()}else if(signal!=="shack"){mctx.beginPath();mctx.moveTo(size*.72,0);mctx.lineTo(size*1.05,-size*.3);mctx.lineTo(size*1.05,size*.3);mctx.closePath();mctx.fill()}mctx.restore();
 }
 function updateMapTravelButton() {
   const travel = $("#mapTravel"), selected = mapView.selected,
@@ -1106,7 +1106,7 @@ function openJournal(mode = "chronicle") {
     const entries=mode==="rules"?[
       ["ring",["Open ring — Wayglass","Cyan marks lead toward an activated recovery point and Atlas destination. The open side of the ring faces the route."]],
       ["chevron",["Open chevron — Crossing","Amber marks lead toward a dungeon entrance or buried route. The vertex where the two lines meet points toward the crossing."]],
-      ["triangle",["Hollow triangle — Major danger","Red marks lead toward a world boss or exceptional threat. The only extended corner—the one with the short line—faces the route."]],
+      ["triangle",["Hollow triangle — Major danger","Red marks lead toward a world boss or exceptional threat. The corner filled with a red wedge faces the route."]],
       ["spiral",["Open spiral — Unusual site","Violet marks lead toward a shrine, ruin, or strange discovery. The open end of the spiral faces the route."]],
       ["atlas",["Atlas","Drag with one finger to pan. Pinch with two fingers or use +/− to zoom. Tap an explored section to select it."]],
       ["travel",["Travel","Activate Wayglass beacons to travel to them from the Atlas. Dungeon travel remains sealed without a Crossing Sigil."]],
