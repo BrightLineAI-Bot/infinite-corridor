@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=49" />
+    <link rel="stylesheet" href="./styles.css?v=50" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -96,7 +96,8 @@
       </dialog>
       <dialog id="atlas">
         <button id="mapClose" class="close">×</button>
-        <h2>Corridor Atlas</h2>
+        <h2 id="mapTitle">Corridor Atlas</h2>
+        <button id="mapModeToggle" type="button" hidden>Dungeon Map</button>
         <canvas id="mapCanvas"></canvas>
         <div class="maptools">
           <button id="mapPlus">+</button><button id="mapMinus">−</button
@@ -109,17 +110,17 @@
         </button>
         <button id="mapHome" type="button">Return to Ember Refuge</button>
         <p id="mapDetail">Select an explored section for details.</p>
-        <p>
+        <p id="mapInstructions">
           Tap an explored section to set a waypoint. Zoom in to reveal the
           position and names of discovered sites inside each section.
         </p>
-        <p class="atlas-legend"><b>◎</b> Wayglass · <b>›</b> crossing · <b>▲</b> major danger · <b>⟳</b> unusual site</p>
+        <p id="mapLegend" class="atlas-legend"><b>◎</b> Wayglass · <b>›</b> crossing · <b>▲</b> major danger · <b>⟳</b> unusual site</p>
       </dialog>
     </main>
     <script type="module">
       const boot = async () => {
         if ("serviceWorker" in navigator) {
-          const release = "49";
+          const release = "50";
           const r = await navigator.serviceWorker.register(`./sw.js?v=${release}`, {
             updateViaCache: "none",
           });
@@ -139,9 +140,9 @@
               return;
             }
           }
-          sessionStorage.removeItem("corridor-upgrade-48");
+          sessionStorage.removeItem("corridor-upgrade-49");
         }
-        await import("./src/main.js?v=49");
+        await import("./src/main.js?v=50");
       };
       boot().catch((e) => {
         console.error(e);
