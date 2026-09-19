@@ -50,6 +50,7 @@ import {
   grantMilestoneGear,
   storeInventoryItem,
   salvageInventoryItem,
+  enemyDefeatNotice,
 } from "../src/game.ts";
 import { rng, pick, hashSeed } from "../src/random.ts";
 import {
@@ -1982,7 +1983,29 @@ test("expanded creature ecology is deterministic and recorded in the field codex
 });
 test("journal exposes encounter codex sections and an always-available symbol guide",()=>{
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
-  assert.match(source,/Creatures/);assert.match(source,/Places/);assert.match(source,/Features/);assert.match(source,/Rules & symbols/);assert.match(source,/Open ring — Wayglass/);
+  assert.match(source,/Creatures/);assert.match(source,/Places/);assert.match(source,/Features/);assert.match(source,/Symbols & controls/);assert.match(source,/Open ring — Wayglass/);
+});
+
+test("defeat notices consistently distinguish ordinary elite guardian boss and singular threats",()=>{
+  assert.equal(enemyDefeatNotice({kind:"ashling"}).title,"ENEMY FELLED");
+  assert.equal(enemyDefeatNotice({kind:"sparkWarden",apertureEncounter:true}).title,"BREACH STILLED");
+  assert.equal(enemyDefeatNotice({kind:"vesperwing",eliteId:"vesperwing",eliteName:"The Vesperwing"}).title,"ELITE SLAIN");
+  const guardian=enemyDefeatNotice({kind:"hollowMarshal",boss:true},"dungeon");
+  assert.equal(guardian.title,"GUARDIAN CLEARED");assert.match(guardian.detail,/crossing cleared/);
+  assert.equal(enemyDefeatNotice({kind:"riftColossus",boss:true}).title,"COLOSSUS FELLED");
+  assert.equal(enemyDefeatNotice({kind:"gateRevenant",boss:true}).title,"REVENANT REPULSED");
+  assert.equal(enemyDefeatNotice({kind:"singular",boss:true,defeatTitle:"THE BUTCHER ENDED"}).title,"THE BUTCHER ENDED");
+});
+
+test("five distinct cleared crossing guardians explain and awaken the relay chain once",()=>{
+  const s=freshSave(),g=new Game(s,0);
+  for(let i=0;i<5;i++){s.session.activeDungeonId=`dungeon:${s.seed}:g1:chain-${i}`;g.area="dungeon";g.defeatEnemy({...createCombatant("hollowMarshal",10,18,true),id:`marshal-${i}`});}
+  assert.equal(s.worldFlags["relay-chain.count"],5);assert.equal(s.narrative.facts["relay.networkAnswered"],true);assert.equal(s.consumables.crossingSigil,1);const record=s.narrative.journal.find(e=>e.title==="The Far Signal");assert.match(record.text,/Restoring a relay opens/);assert.match(record.text,/Severing a relay closes/);
+  g.defeatEnemy({...createCombatant("hollowMarshal",10,18,true),id:"marshal-repeat"});assert.equal(s.worldFlags["relay-chain.count"],5);
+});
+
+test("origin dungeons never inherit the overworld refuge sanctuary that suppressed monster aggro",()=>{
+  const s=freshSave(),g=new Game(s,0);s.session.activeDungeonId=dungeonId(s.seed,s.worldGeneration);g.loadArea("dungeon");const guardian=g.enemies.find(e=>e.kind==="hollowMarshal");g.player.x=guardian.x+1;g.player.y=guardian.y;g.update(.1,idle(),100);assert.equal(guardian.aggro,true);
 });
 test("journal and pack expose illustrated field-card hooks",()=>{
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
@@ -2289,12 +2312,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 82 loads one coherent version across the entire module graph",()=>{
+test("release 83 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "82"/);assert.match(html,/styles\.css\?v=82/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=82/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v82/);assert.match(sw,/styles\.css\?v=82/);assert.match(sw,/main\.js\?v=82/);assert.match(sw,/combat\.js\?v=82/);assert.match(sw,/renderer\.js\?v=82/);
-  assert.match(build,/release='82'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "83"/);assert.match(html,/styles\.css\?v=83/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=83/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v83/);assert.match(sw,/styles\.css\?v=83/);assert.match(sw,/main\.js\?v=83/);assert.match(sw,/combat\.js\?v=83/);assert.match(sw,/renderer\.js\?v=83/);
+  assert.match(build,/release='83'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("Atlas opening tap cannot immediately activate travel controls",()=>{
@@ -2454,4 +2477,32 @@ test("district roofs cut away only on true interior tiles and door sigils center
  assert.match(renderer,/pt\?\.buildingId===o\.id&&pt\?\.structure==="districtInterior"/);
  assert.match(renderer,/const gx=\(o\.door\.x\+\.5\)\*s/);
  assert.match(renderer,/q\?ctx\.lineTo\(px,py\):ctx\.moveTo\(px,py\)/);
+});
+
+test("Reach is a build-wide melee and projectile distance stat",()=>{
+ const s=freshSave();s.equipment.primary.affixes=[{id:"reach",value:.1}];s.equipment.secondary={id:"spark-coil",name:"Spark Coil",slot:"secondary",power:3,affixes:[{id:"reach",value:.25}]};s.equipment.charm={name:"Quiet Compass",slot:"charm",power:1,affixes:[{id:"reach",value:.15}]};
+ assert.equal(characterStats(s).attackReach,.5);
+ const g=new Game(s,0);assert.equal(g.fireSecondary(100,{x:1,y:0}),true);assert.ok(Math.abs(g.projectiles[0].life-2.4)<1e-9);
+ const items=readFileSync(new URL("../src/items.ts",import.meta.url),"utf8"),main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(items,/secondary:\['attack','reach'\]/);assert.match(items,/labels=\{power:'Power',attack:'Attack',reach:'Reach'/);assert.match(main,/Reach does not enlarge explosions or spell areas/);
+});
+
+test("Journal groups encountered variants by creature and opens a large portrait viewer",()=>{
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+ assert.match(html,/id="creatureViewer"[\s\S]*id="creatureViewerCanvas"/);assert.match(main,/function creatureVariants\(kind,baseName\)/);assert.match(main,/filter\(v=>v\.kind===kind/);assert.match(main,/trait-badge trait-/);assert.match(main,/function openCreatureViewer/);assert.match(main,/imageSmoothingEnabled=false/);assert.doesNotMatch(main,/if\(mode==="creatures"\)for\(const \[id,v\]/);
+});
+
+test("Journal glossary explains Power Attack Reach and area terminology",()=>{
+ const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+ for(const term of ["Power","Attack","Reach","Blast radius","Spell radius","Resistance"])assert.ok(main.includes(`["${term}"`));
+ assert.match(main,/\["glossary","Glossary"\]/);assert.match(main,/Combat and equipment terms/);
+});
+
+test("encountered places carry bounded visual sigils and expandable Corridor lore",()=>{
+ const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+ assert.match(main,/const PLACE_LORE=/);assert.match(main,/Root-Sunk Cistern stored coolant and drinking water/);assert.match(main,/function placeMark\(id\)/);assert.match(main,/function placeDetails\(id,entry\)/);assert.match(main,/mode==="places"[\s\S]*placeMark\(id\)[\s\S]*placeDetails\(id,entry\)/);
+});
+
+test("Features and Symbols tabs have distinct scopes without duplicated presentation",()=>{
+ const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+ assert.match(main,/\["features","Encountered features"\]/);assert.match(main,/\["rules","Symbols & controls"\]/);assert.match(main,/A universal reference for reading the Atlas/);assert.match(main,/FIELD FUNCTION —/);assert.match(main,/VISUAL CUE —/);assert.match(main,/CORRIDOR RECORD —/);assert.match(main,/const FEATURE_LORE=/);assert.match(main,/const FEATURE_VISUAL=/);assert.match(main,/id==="trap:fire"/);assert.match(main,/id==="trap:spikes"/);assert.match(main,/id==="bossCue"/);assert.match(main,/function featureDetails\(id,entry\)/);
 });

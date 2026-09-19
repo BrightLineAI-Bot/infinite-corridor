@@ -264,6 +264,7 @@ function showEventBanner(title, detail = "", kind = "discovery") {
   bannerTimer = setTimeout(() => banner.classList.remove("visible"), 3200);
 }
 function updateWorldNotices() {
+  if(game.defeatNotice){const notice=game.defeatNotice;game.defeatNotice=null;showEventBanner(notice.title,notice.detail,notice.kind);}
   for (const e of game.enemies) if (!e.dead && (e.boss || e.apertureEncounter) && !announcedThreats.has(e.id)) {
     announcedThreats.add(e.id);
     showEventBanner(e.boss ? "MAJOR THREAT" : "CORRIDOR BREACH", e.kind.replace(/([A-Z])/g," $1").trim() + " has entered this section", "danger");
@@ -1013,6 +1014,7 @@ function openPack() {
     `${Math.round(derived.damageReduction * 100)}% damage resistance`,
     `+${derived.meleeBonus} melee bonus`,
     `+${derived.magicBonus} spell/projectile bonus`,
+    `+${Math.round(derived.attackReach*100)}% melee and projectile reach`,
   ]) {
     const span = document.createElement("span");
     span.textContent = text;
@@ -1068,8 +1070,8 @@ function openPack() {
         : slot === "charm"
           ? `${Number(item?.power || 0)}% resistance`
           : slot === "primary"
-            ? `power ${item?.power || 0}; Might and upgrades add damage`
-            : `power ${item?.power || 0}; Focus adds projectile damage`,
+            ? `power ${item?.power || 0}; contributes to melee damage`
+            : `power ${item?.power || 0}; contributes to projectile and spell damage`,
       affixes = describeAffixes(item),
       effect = `${item ? itemTier(item).toUpperCase() + " · " : ""}${baseEffect}${affixes.length ? " · " + affixes.join(" · ") : ""}`;
     const label=document.createElement("small"),name=document.createElement("strong"),detail=document.createElement("span");label.textContent=slot.toUpperCase();name.textContent=item?.name||"Empty slot";detail.textContent=effect;card.append(gearIcon(item,slot),label,name,detail);
@@ -1195,10 +1197,70 @@ const CODEX = {
     shrine:["Singing Array","A machine-shrine and intermediate rest point. Reaching it changes where death returns you, but does not unlock Atlas travel."],checkpoint:["Wayglass Beacon","An activated beacon permits Atlas fast travel and also becomes your active recovery point."],supplyCache:["Supply Cache","A one-use field cache containing a deterministic equipment or material drop."],ruinMarker:["Broken Observatory","A collapsed instrument still pointing beyond the visible corridor."],dungeon:["Buried Crossing","A sealed route into a self-contained dungeon. Named crossings such as Glass Kilns have their own traps, guardians, and rewards."],shack:["Wayfarer Shack","A roofed field shelter whose interior remains part of the overworld."],architecturalDistrict:["Architectural District","A rare overworld complex with enterable structures, streets, and its own unresolved history."],tree:["Ashwood Grove","Trees may be cut or ignited through Act."],rock:["Shiftstone","Boulders may be moved or broken with sufficient Might."],relayTerminal:["Crossing Terminal","A consequential relay interface."],"trap:fire":["Kiln Vent","Scorch marks warn of a directional fire trap."],"trap:spikes":["Crossing Spikes","Floor seams can reveal the trap before it rises."],vine:["Transit Vine","A living traversal line spanning an otherwise impassable gap."],bossCue:["Colossus Trace","A sign that something much larger inhabits the region."]
   }
 };
+const STAT_GLOSSARY=[
+  ["Power","An item's base strength. Primary-weapon Power contributes to melee damage; secondary-weapon Power contributes to projectile and spell damage; armor Power grants 2.5% resistance per point; charm Power grants 1% resistance per point."],
+  ["Attack","A flat damage bonus supplied by an item affix. On a primary weapon it improves melee attacks; on a secondary weapon it improves projectiles and spells."],
+  ["Reach","A percentage increase to both melee range and projectile travel distance. Reach does not enlarge explosions or spell areas."],
+  ["Blast radius","The fixed area affected by a bomb or explosive projectile. It is determined by the weapon profile and is separate from Reach."],
+  ["Spell radius","The fixed area affected by a spell pulse. Reach does not change it."],
+  ["Might","Each rank adds 2 melee damage."],
+  ["Focus","Each rank adds 1 projectile and spell damage."],
+  ["Finesse","Each rank adds 3 maximum stamina."],
+  ["Vigor","Each rank adds 8 maximum health."],
+  ["Resolve","Each rank adds 2% damage resistance."],
+  ["Resistance","Reduces incoming damage, up to the current 45% cap. Armor, charms, Resolve, and Ward affixes contribute."],
+  ["Movement","A percentage increase to ordinary movement speed; it does not reduce stamina costs."],
+];
+const PLACE_LORE={
+  "terrain:ash":"The Ash Verge is the Corridor after heat has departed: relay dust, exhausted furnaces, and paths repeatedly buried by their own residue. Its openness makes travel legible, but tracks remain visible to hunters.",
+  "terrain:glass":"Glass Reaches formed where old transmission heat vitrified the Corridor walls. Light and motion persist in their mineral seams, causing signals to echo long after their senders have vanished.",
+  "terrain:ember":"Ember Vaults surround dormant power lines that never cooled completely. Their warmth sustains unusual growth, wakes damaged machinery, and draws creatures that feed on residual current.",
+  "dungeon:hollow":"The Hollow Relay was once a controlled transfer station between distant regions. Its missing operators left the route repeating incomplete commands, and each restored circuit risks teaching the wider Corridor how to find Ember Refuge.",
+  "dungeon:cistern":"The Root-Sunk Cistern stored coolant and drinking water for a vanished settlement. Roots now brace its flooded chambers, conceal salvage vaults, and remember every vibration moving through the water.",
+  "dungeon:kiln":"A Glass Kiln fused signal crystal, weapons, and architectural glass under sentinel supervision. Its mechanical wardens still treat living intruders as contaminated material to be sorted, burned, and recast.",
+  "settlement:glasshaven":"Glasshaven survives by reading flaws in recovered signal glass. Its traders know that every polished lens can reveal a route—and that some routes look back.",
+  "settlement:coilmarket":"Coilmarket is a temporary town that became permanent around piles of relay salvage. Its residents barter in repair, rumor, and the safe disposal of devices whose original purposes are better forgotten.",
+  "district:city":"The Hollow Ward preserves the ordinary scale of lost Corridor life: apartments, markets, infirmaries, and civic halls. Its emptiness makes every intact room feel recently abandoned.",
+  "district:arcology":"The Lumen Arcology concentrated housing, transit, and signal research into vertical relay blocks. Stray current still crosses its facades, and sealed laboratories continue experiments without witnesses.",
+  "district:cloister":"The Thorn Cloister treated the Corridor as a sacred wound rather than a machine. Its courts and sanctums preserve rites meant to calm crossings, though many symbols now answer to something else."
+};
+function placeMark(id){const canvas=document.createElement("canvas"),context=canvas.getContext("2d"),kind=id.split(":")[0],h=hashSeed(id),colors={terrain:"#75928c",dungeon:"#d5a464",settlement:"#d8bd83",district:"#a98bd4"};canvas.width=canvas.height=64;canvas.className=`place-symbol place-${kind}`;canvas.setAttribute("role","img");canvas.setAttribute("aria-label",`${kind} place sigil`);context.translate(32,32);context.strokeStyle=colors[kind]||"#c8bda4";context.fillStyle=context.strokeStyle;context.lineWidth=4;context.beginPath();if(kind==="terrain"){for(let y=-12;y<=12;y+=12){context.moveTo(-20,y);context.quadraticCurveTo(-8+(h%7),y-8,2,y);context.quadraticCurveTo(12,y+8,20,y)}}else if(kind==="dungeon"){context.moveTo(-18,20);context.lineTo(-18,-4);context.quadraticCurveTo(0,-28,18,-4);context.lineTo(18,20);context.moveTo(-8,20);context.lineTo(-8,2);context.quadraticCurveTo(0,-9,8,2);context.lineTo(8,20)}else if(kind==="settlement"){context.moveTo(-23,2);context.lineTo(0,-18);context.lineTo(23,2);context.moveTo(-17,-1);context.lineTo(-17,20);context.lineTo(17,20);context.lineTo(17,-1);context.moveTo(0,-18);context.lineTo(0,20)}else{context.rect(-21,-21,17,17);context.rect(4,-21,17,17);context.rect(-21,4,17,17);context.rect(4,4,17,17)}context.stroke();return canvas}
+function placeDetails(id,entry){const details=document.createElement("details"),summary=document.createElement("summary"),intro=document.createElement("p"),lore=document.createElement("p");details.className="place-details";summary.textContent=entry[0];intro.textContent=entry[1];lore.className="place-lore";lore.textContent=PLACE_LORE[id]||"This place has entered the Wayfarer's record, but its deeper relation to the Corridor remains unresolved.";details.append(summary,intro,lore);return details}
+const FEATURE_LORE={
+  shrine:"Singing Arrays translate old relay harmonics into memory and direction. Their field is stable enough to recover a fallen Wayfarer, but too local to carry a living traveler between sections.",
+  checkpoint:"Wayglass uses paired signal glass to hold a route open across the Atlas. Activation records both the physical beacon and the Wayfarer's current recovery line.",
+  supplyCache:"These sealed caches were distributed for maintenance crews who never returned. Their contents remain deterministic because each lock recognizes a single finder and then burns out.",
+  ruinMarker:"Observatories and signal ruins do not transport travelers; they preserve intent. Inspecting one may expose a coordinate, story fact, or unresolved lead.",
+  dungeon:"A buried Crossing is a bounded route folded away from the overworld. Its internal state persists independently until the Wayfarer resolves or abandons it.",
+  shack:"Field shelters belong to the overworld rather than a separate instance. Their occupants can leave, pursue, trade, hide, or turn the structure into an ambush.",
+  architecturalDistrict:"Districts preserve several enterable buildings and streets in one section. Their scale supports local histories, residents, merchants, and enemies beyond the roadside shelter system.",
+  tree:"Ashwood stores heat and can alter traversal when cut near a bank. Some growths hide paths; others become crossings.",
+  rock:"Shiftstone is dense relay aggregate. Sufficient force can move or break it, permanently changing the section.",
+  relayTerminal:"A Crossing Terminal changes persistent story state. Its choices are consequential and cannot always be reversed.",
+  "trap:fire":"Kiln Vents announce a directional burn before ignition. Their scorch geometry is the warning and the damage boundary.",
+  "trap:spikes":"Crossing Spikes hide below visible floor seams. Timing, jumping, and careful movement matter more than raw defense.",
+  vine:"Transit Vines are living lines across otherwise impassable gaps. Traversal commits the Wayfarer until the crossing completes.",
+  bossCue:"A Colossus Trace is evidence of an exceptional creature rather than the creature itself. Its presence marks a section where preparation or retreat is warranted."
+};
+const FEATURE_VISUAL={tree:"A branching ashwood silhouette rooted directly in the floor.",rock:"A low faceted boulder with an angular mineral outline.",relayTerminal:"A narrow console with a bright central command line.","trap:fire":"A vent grate marked by warm orange slits and old scorch lines.","trap:spikes":"A row of triangular floor seams; the points rise from those exact lines.",vine:"A curved living cable spanning a visible gap.",bossCue:"A large red triangular trace and disturbed ground marking a threat far larger than an ordinary creature."};
+function featureMark(id){if(ATLAS_SYMBOLS.some(q=>q.kind===id))return atlasMark(id);const canvas=document.createElement("canvas"),context=canvas.getContext("2d");canvas.width=canvas.height=64;canvas.className="place-symbol feature-symbol";canvas.setAttribute("role","img");canvas.setAttribute("aria-label",FEATURE_VISUAL[id]||`${id} field silhouette`);context.translate(32,32);context.strokeStyle=id==="bossCue"?"#d16b62":id.startsWith("trap:")?"#df9a61":"#9fc1ae";context.fillStyle=context.strokeStyle;context.lineWidth=4;context.beginPath();
+  if(id==="tree"){context.moveTo(0,24);context.lineTo(0,-20);context.moveTo(0,-9);context.lineTo(-17,-22);context.moveTo(0,-3);context.lineTo(18,-17);context.moveTo(0,8);context.lineTo(-13,0)}
+  else if(id==="rock"){context.moveTo(-23,12);context.lineTo(-14,-13);context.lineTo(5,-22);context.lineTo(23,-3);context.lineTo(17,18);context.lineTo(-12,21);context.closePath();context.moveTo(-14,-13);context.lineTo(4,4);context.lineTo(23,-3)}
+  else if(id==="relayTerminal"){context.rect(-16,-24,32,48);context.moveTo(-9,-11);context.lineTo(9,-11);context.moveTo(-9,0);context.lineTo(9,0);context.moveTo(-9,11);context.lineTo(2,11)}
+  else if(id==="trap:fire"){context.rect(-22,8,44,13);for(let x=-15;x<=15;x+=10){context.moveTo(x,8);context.quadraticCurveTo(x-8,-5,x,-22);context.quadraticCurveTo(x+8,-6,x,8)}}
+  else if(id==="trap:spikes"){for(let x=-24;x<24;x+=12){context.moveTo(x,19);context.lineTo(x+6,-19);context.lineTo(x+12,19)}}
+  else if(id==="vine"){context.moveTo(-25,18);context.bezierCurveTo(-12,-27,8,28,25,-18);context.moveTo(-9,-9);context.lineTo(-18,-18);context.moveTo(10,8);context.lineTo(19,17)}
+  else if(id==="bossCue"){context.moveTo(-24,21);context.lineTo(0,-26);context.lineTo(24,21);context.closePath();context.moveTo(-7,8);context.lineTo(0,-8);context.lineTo(7,8)}
+  else{context.arc(0,0,21,0,7)}context.stroke();return canvas}
+function featureDetails(id,entry){const details=document.createElement("details"),summary=document.createElement("summary"),functionText=document.createElement("p"),visual=document.createElement("p"),lore=document.createElement("p");details.className="place-details feature-details";summary.textContent=entry[0];functionText.textContent="FIELD FUNCTION — "+entry[1];visual.textContent="VISUAL CUE — "+(FEATURE_VISUAL[id]||"Its Atlas symbol and field silhouette are shown at left.");lore.className="place-lore";lore.textContent="CORRIDOR RECORD — "+(FEATURE_LORE[id]||"Its deeper purpose has not yet been recovered.");details.append(summary,functionText,visual,lore);return details}
 const CREATURE_PORTRAITS={ashling:[0,0],glassMite:[1,0],sparkWarden:[2,0],coilStalker:[3,0],veilMoth:[0,1],rootBrute:[1,1],cinderWisp:[2,1],voidSentinel:[3,1],riftColossus:[3,1],ashenHound:[0,0],hollowMarshal:[2,0],mossGrazer:[1,1],lanternDoe:[0,0],hushling:[0,1],gateRevenant:[3,1]};
 Object.assign(CODEX.creatures,{vesperwing:['Vesperwing — The Ashen Meridian','A winged elite that dives and casts from range. Its additional aspects are fixed by the encounter seed.'],gravitantBell:['Gravitant Bell — The Weight Below','A hovering elite whose readable gravity field pulls loose bodies inward before a radial strike.'],mireApostle:['Mire Apostle — Saint of the Low Water','A plated ooze beast that leaves bounded venom pools and carries Clearroot in its drowned shell.'],knifeChoir:['Choir of Knives — The Divided Cantor','A segmented summoner whose orbiting shard-creatures are capped and yield no rewards.']});
 const ELITE_PORTRAITS={vesperwing:[0,0],gravitantBell:[1,0],mireApostle:[2,0],knifeChoir:[3,0]};
 function trailMark(kind){const canvas=document.createElement("canvas"),signal={ring:"beacon",chevron:"crossing",triangle:"danger",spiral:"event"}[kind];canvas.width=canvas.height=96;const ctx=canvas.getContext("2d");canvas.className=`trail-symbol ${kind}`;canvas.setAttribute("role","img");canvas.setAttribute("aria-label",`${signal} floor mark pointing right`);if(ctx){ctx.translate(48,48);drawWaymarkIcon(ctx,signal,82)}return canvas}
+const TRAIT_MARKS={plated:["◆","armor"],feral:["▲","damage"],swift:["»","speed"],vital:["●","vitality"],keen:["✦","precision"],farcasting:["⌁","range"],orbital:["◎","orbit"]};
+function traitBadge(id){const meta=CREATURE_TRAITS[id]||{name:id,text:"Unknown trait."},mark=TRAIT_MARKS[id]||["·","unknown"],badge=document.createElement("span");badge.className=`trait-badge trait-${id}`;badge.textContent=`${mark[0]} ${meta.name}`;badge.title=`${mark[1]} — ${meta.text}`;return badge}
+function openCreatureViewer(id,name,coords,elite){const dialog=$("#creatureViewer"),canvas=$("#creatureViewerCanvas"),context=canvas.getContext("2d"),image=new Image(),[column,row]=coords;$("#creatureViewerTitle").textContent=name;context.clearRect(0,0,canvas.width,canvas.height);image.onload=()=>{const columns=4,rows=elite?1:2,sw=image.naturalWidth/columns,sh=image.naturalHeight/rows,side=Math.min(sw,sh),sx=column*sw+(sw-side)/2,sy=row*sh+(sh-side)/2;context.imageSmoothingEnabled=false;context.clearRect(0,0,canvas.width,canvas.height);context.drawImage(image,sx,sy,side,side,0,0,canvas.width,canvas.height)};image.src=elite?"./assets/elite-bestiary-atlas-v1-wide.png":"./assets/bestiary-atlas-v1.png";if(!dialog.open)dialog.showModal()}
+function creatureVariants(kind,baseName){const variants=Object.values(save.codex?.variants||{}).filter(v=>v.kind===kind&&v.traits?.length),details=document.createElement("details"),summary=document.createElement("summary"),list=document.createElement("div");details.className="creature-details";summary.textContent=baseName;list.className="variant-list";for(const variant of variants){const row=document.createElement("div"),name=document.createElement("strong"),badges=document.createElement("div");row.className="variant-entry";name.textContent=variant.traits.map(t=>CREATURE_TRAITS[t]?.name||t).join(" ")+" "+baseName;badges.className="trait-badges";for(const trait of variant.traits)badges.append(traitBadge(trait));row.append(name,badges);list.append(row)}if(!variants.length){const empty=document.createElement("p");empty.textContent="No variants of this creature have been recorded yet.";list.append(empty)}details.append(summary,list);return details}
 function openJournal(mode = "chronicle") {
   if(typeof mode!=="string")mode="chronicle";
   pauseForOverlay();
@@ -1206,10 +1268,10 @@ function openJournal(mode = "chronicle") {
   const out = $("#journalBody");
   out.replaceChildren();
   const nav=document.createElement("div");nav.className="codex-tabs";
-  for(const [id,label] of [["chronicle","Chronicle"],["creatures","Creatures"],["places","Places"],["features","Features"],["rules","Rules & symbols"]])nav.append(uiButton(label,()=>openJournal(id)));
+  for(const [id,label] of [["chronicle","Chronicle"],["creatures","Creatures"],["places","Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"]])nav.append(uiButton(label,()=>openJournal(id)));
   out.append(nav);
   if(mode!=="chronicle"){
-    const entries=mode==="rules"?[
+    const entries=mode==="glossary"?STAT_GLOSSARY.map((entry,i)=>[`term-${i}`,entry]):mode==="rules"?[
       ["ring",["Open ring — Wayglass","Cyan marks lead toward an activated recovery point and Atlas destination. The open side of the ring faces the route."]],
       ["chevron",["Open chevron — Crossing","Amber marks lead toward a dungeon entrance or buried route. The vertex where the two lines meet points toward the crossing."]],
       ["triangle",["Hollow triangle — Major danger","Red marks lead toward a world boss or exceptional threat. The corner filled with a red wedge faces the route."]],
@@ -1220,11 +1282,19 @@ function openJournal(mode = "chronicle") {
       ["combat",["Combat","Red or violet telegraphs show the exact threatened area. Dodge spends stamina; jumping avoids grounded impacts."]],
       ["aperture",["Aperture","Exploration, discoveries, and significant enemies raise Aperture, revealing hidden layers of known places."]]
     ]:Object.entries(CODEX[mode]).filter(([id])=>save.codex?.[mode]?.[id]);
-    const heading=document.createElement("h3");heading.textContent=mode==="rules"?"Field rules and symbols":`${mode[0].toUpperCase()+mode.slice(1)} encountered`;
-    out.append(heading);
+    const heading=document.createElement("h3"),scope=document.createElement("p");heading.textContent=mode==="rules"?"Map symbols and controls":mode==="features"?"Encountered feature records":mode==="glossary"?"Combat and equipment terms":`${mode[0].toUpperCase()+mode.slice(1)} encountered`;scope.textContent=mode==="rules"?"A universal reference for reading the Atlas, floor marks, and controls. Encounter-specific history belongs under Features.":mode==="features"?"Objects recorded through exploration. Open a feature for its field function and its place in the Corridor.":"";out.append(heading);if(scope.textContent)out.append(scope);
     if(!entries.length){const empty=document.createElement("p");empty.textContent="No entries recorded yet. Encounter them in the world to unlock this section.";out.append(empty);}
-    for(const [id,entry] of entries){const article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p");article.className="item codex-card";title.textContent=entry[0];text.textContent=entry[1];if(mode==="rules"&&["ring","chevron","triangle","spiral"].includes(id)){const badge=document.createElement("span");badge.className="symbol-badge";badge.append(trailMark(id));article.classList.add("symbol-card");article.prepend(badge);}else if(mode==="rules"&&id.startsWith("atlas-")){const badge=document.createElement("span");badge.className="symbol-badge";badge.append(atlasMark(id.slice(6)));article.classList.add("symbol-card");article.prepend(badge)}const portraitData=mode==="creatures"&&(ELITE_PORTRAITS[id]||CREATURE_PORTRAITS[id]);if(portraitData){const portrait=document.createElement("div"),[x,y]=portraitData,elite=!!ELITE_PORTRAITS[id];portrait.className="creature-portrait"+(elite?" elite-portrait":"");portrait.style.setProperty("--portrait-x",`${x*33.333}%`);portrait.style.setProperty("--portrait-y",`${y*100}%`);portrait.setAttribute("role","img");portrait.setAttribute("aria-label",`${entry[0]} field illustration`);article.prepend(portrait);}article.append(title,text);out.append(article);}
-    if(mode==="creatures")for(const [id,v] of Object.entries(save.codex?.variants||{})){if(!v.traits?.length)continue;const base=CODEX.creatures[v.kind]?.[0]||v.kind,article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p"),names=v.traits.map(t=>CREATURE_TRAITS[t]?.name||t);article.className="item";title.textContent=`${names.join(" ")} ${base}`;text.textContent=v.traits.map(t=>CREATURE_TRAITS[t]?.text).filter(Boolean).join(" ");article.append(title,text);out.append(article);}
+    for(const [id,entry] of entries){
+      const article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p");article.className="item codex-card";title.textContent=entry[0];text.textContent=entry[1];
+      if(mode==="rules"&&["ring","chevron","triangle","spiral"].includes(id)){const badge=document.createElement("span");badge.className="symbol-badge";badge.append(trailMark(id));article.classList.add("symbol-card");article.prepend(badge)}
+      else if(mode==="rules"&&id.startsWith("atlas-")){const badge=document.createElement("span");badge.className="symbol-badge";badge.append(atlasMark(id.slice(6)));article.classList.add("symbol-card");article.prepend(badge)}
+      const portraitData=mode==="creatures"&&(ELITE_PORTRAITS[id]||CREATURE_PORTRAITS[id]);
+      if(portraitData){const portrait=document.createElement("button"),[x,y]=portraitData,elite=!!ELITE_PORTRAITS[id];portrait.type="button";portrait.className="creature-portrait creature-portrait-button"+(elite?" elite-portrait":"");portrait.style.setProperty("--portrait-x",`${x*33.333}%`);portrait.style.setProperty("--portrait-y",`${y*100}%`);portrait.setAttribute("aria-label",`Enlarge ${entry[0]} field illustration`);portrait.onclick=()=>openCreatureViewer(id,entry[0],portraitData,elite);article.prepend(portrait)}
+      if(mode==="creatures")article.append(creatureVariants(id,entry[0]),text);
+      else if(mode==="places"){article.classList.add("place-card");article.prepend(placeMark(id));article.append(placeDetails(id,entry))}
+      else if(mode==="features"){article.classList.add("place-card","feature-card");article.prepend(featureMark(id));article.append(featureDetails(id,entry))}
+      else article.append(title,text);out.append(article);
+    }
     if(!journal.open)journal.showModal();
     return;
   }
@@ -1380,6 +1450,7 @@ $("#pausedPack").onclick = openPack;
 $("#pausedMap").onclick = openMap;
 $("#pausedJournal").onclick = openJournal;
 $("#journalClose").onclick = () => journal.close();
+$("#creatureViewerClose").onclick=()=>$("#creatureViewer").close();
 $("#close").onclick = () => panel.close();
 $("#mapClose").onclick = () => atlas.close();
 $("#mapWayglassSelect").onchange=()=>{const key=$("#mapWayglassSelect").value,c=save.checkpoints?.[key];if(!c)return;mapView.x=c.rx;mapView.y=c.ry;showMapDetail(c.rx,c.ry);drawMap()};
