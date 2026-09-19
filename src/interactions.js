@@ -33,6 +33,7 @@ export function validActions(o,s){
  if(!perceived(o,s))return[];
  if(o.kind==='npc'){const n=npcState(s,o.id);if(n?.status==='dead'||s.worldFlags[o.id+':dead'])return[];return(o.actions||[]).filter(a=>a!=='standDown'||n?.disposition==='hostile');}
  if(o.kind==='relayTerminal')return s.consequences.choices.relay?[]:s.narrative.facts['crossing.marshal']?['restore','sever']:['inspect'];
+ if(o.kind==='tree'&&o.state!=='standing')return[];
  if(o.kind==='rock'&&o.state==='sealed')return s.stats.Might>=3?['move','break']:[];
  if(o.kind==='cache'&&o.state==='hidden'&&!s.worldFlags['rock-1:opened'])return[];
  return(o.actions||[]).filter(a=>!(o.state==='used'&&!['enter','exit','bypass'].includes(a)));
@@ -55,7 +56,8 @@ export function applyInteraction(o,a,s,context='global'){
  if(o.kind==='dungeon'&&a==='bypass'){const id=dungeonId(s.seed,s.worldGeneration,s.session.rx,s.session.ry,o.id);dungeonHistory(s,id).bypassed=true;journalOnce(s,'bypass:'+id,'You chose to leave this crossing unexplored. It remains open to a later return.','Crossings');return{ok:true,message:'Crossing left unexplored. You may return.',transition:'bypass'};}
  if((o.kind==='supplyCache'||o.kind==='weaponCache')&&a==='collect'){o.state='used';if(o.supplyType==='secondary'){const item={id:'secondary-lumen-spindle',name:'Lumen Spindle',slot:'secondary',power:4,property:'focus'};if(!s.inventory.some(i=>i.id===item.id))s.inventory.push(item);return{ok:true,message:'A Lumen Spindle joins your pack.',transition:'supply'}}s.consumables[o.supplyType]=(s.consumables[o.supplyType]||0)+1;return{ok:true,message:'Recovered '+o.supplyType+'.',transition:'supply'}}
  if(o.kind==='chest'&&a==='open'){o.state='used';return{ok:true,message:'The cache opens. Its contents are yours.',transition:'chest'};}
+ if(o.kind==='shack'&&a==='inspect'){o.state='searched';return{ok:true,message:'The abandoned room holds old tracks, a cold stove, and a scratched direction toward the next unusual site.',transition:'shack'};}
  const n=applyNarrative(o,a,s,context+':'+o.id+':'+a);if(n){if(o.kind!=='npc')o.state='used';return{...n,transition:o.kind}}
- const key=o.id+':'+a;if(o.kind==='tree'&&a==='cut'){o.state='fallen';s.worldFlags[key]=true;return{ok:true,message:'The ashwood falls across the fissure.'}}if(o.kind==='tree'&&a==='climb')return{ok:true,message:'You cross the high roots.'};if(o.kind==='rock'){o.state='moved';s.worldFlags['rock-1:opened']=true;return{ok:true,message:'The stone shifts. A cache glints beyond.'}}
+ const key=o.id+':'+a;if(o.kind==='tree'&&a==='cut'){o.state='fallen';s.worldFlags[key]=true;return{ok:true,message:o.environmental?'The tree falls, opening the ground around it.':'The ashwood falls across the fissure.'}}if(o.kind==='tree'&&a==='ignite'){o.state='charred';s.worldFlags[key]=true;return{ok:true,message:'Fire runs through the dry crown. A blackened landmark remains.'}}if(o.kind==='tree'&&a==='climb')return{ok:true,message:'You cross the high roots.'};if(o.kind==='rock'){o.state=a==='break'?'broken':'moved';s.worldFlags[key]=true;if(o.id==='rock-1')s.worldFlags['rock-1:opened']=true;return{ok:true,message:o.environmental?(a==='break'?'The boulder fractures into low rubble.':'The boulder rolls aside with a deep scrape.'):'The stone shifts. A cache glints beyond.'}}
  s.worldFlags[key]=true;return{ok:true,message:a[0].toUpperCase()+a.slice(1)+' complete.',transition:o.kind};
 }

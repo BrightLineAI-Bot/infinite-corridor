@@ -8,12 +8,13 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=42" />
+    <link rel="stylesheet" href="./styles.css?v=43" />
     <title>Infinite Corridor</title>
   </head>
   <body>
     <main id="app">
       <canvas id="game"></canvas>
+      <aside id="eventBanner" role="status" aria-live="assertive" aria-atomic="true"><strong></strong><span></span></aside>
       <section id="hud">
         <div class="hud-summary">
           <div id="vitals">
@@ -112,26 +113,26 @@
           Tap an explored section to set a waypoint. Dim cells are the known
           frontier.
         </p>
-        <p>Trail marks: ring = Wayglass · chevron = crossing · triangle = danger · spiral = unusual site.</p>
+        <p class="atlas-legend"><b>◎</b> Wayglass · <b>›</b> crossing · <b>▲</b> major danger · <b>⟳</b> unusual site</p>
       </dialog>
     </main>
     <script type="module">
       const boot = async () => {
         if ("serviceWorker" in navigator) {
-          const r = await navigator.serviceWorker.register("./sw.js?v=42", {
+          const r = await navigator.serviceWorker.register("./sw.js?v=43", {
             updateViaCache: "none",
           });
           await r.update();
           const c = navigator.serviceWorker.controller;
-          if (c && !c.scriptURL.includes("v=42")) {
-            const key = "corridor-upgrade-42";
+          if (c && !c.scriptURL.includes("v=43")) {
+            const key = "corridor-upgrade-43";
             if (!sessionStorage.getItem(key)) {
               sessionStorage.setItem(key, "1");
               location.reload();
               return;
             }
           }
-          sessionStorage.removeItem("corridor-upgrade-30");
+          sessionStorage.removeItem("corridor-upgrade-42");
         }
         await import("./src/main.js");
       };

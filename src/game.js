@@ -1218,7 +1218,7 @@ export class Game {
     codex.places[area === "dungeon" ? `dungeon:${this.map.recipe || "hollow"}` : `terrain:${this.map.dominant}`] = true;
     if (this.map.settlement) codex.places[`settlement:${this.map.settlement.id}`] = true;
     for (const o of this.map.objects)
-      if (["shrine", "checkpoint", "ruinMarker", "dungeon", "relayTerminal", "trap", "vine", "bossCue"].includes(o.kind))
+      if (["shrine", "checkpoint", "ruinMarker", "dungeon", "shack", "tree", "rock", "relayTerminal", "trap", "vine", "bossCue"].includes(o.kind))
         codex.features[o.kind === "trap" ? `trap:${o.trapType}` : o.kind] = true;
     if (area === "overworld") {
       this.map.objects.push(
@@ -1666,6 +1666,8 @@ export class Game {
   defeatEnemy(e) {
     if (e.rewarded) return;
     e.rewarded = true;
+    const marks = e.boss ? 12 : e.apertureEncounter ? 6 : 1 + hashSeed(`${this.save.seed}:marks:${this.areaId()}:${e.id}`) % 3;
+    this.save.currency += marks;
     const oldHp = this.save.maxHp,
       oldStamina = this.save.maxStamina,
       levels = awardExperience(this.save, e.boss ? 35 : 10);
@@ -1682,6 +1684,7 @@ export class Game {
       this.message = `Level ${this.save.level} reached — health and stamina increased. ${this.save.statPoints} stat point${this.save.statPoints === 1 ? "" : "s"} available in Pack.`;
     }
     this.obtainDrop(e.kind);
+    if (!levels) this.message = `Recovered ${marks} mark${marks === 1 ? "" : "s"} from the fallen creature.`;
     if(this.save.narrative.facts['leads.active']){this.save.worldFlags['lead.hunt.count']=(this.save.worldFlags['lead.hunt.count']||0)+1;if(this.save.worldFlags['lead.hunt.count']>=5)progressLead(this.save,'hunt');if(e.kind==='hollowMarshal')progressLead(this.save,'guardian')}
     const key = `drop:v1:${this.areaId()}:${e.id}`;
     if (!this.save.worldFlags[key]) {

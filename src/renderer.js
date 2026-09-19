@@ -23,6 +23,9 @@ const PAL = {
   floor: ["#3b403d", "#555750"],
   blocked: ["#232522", "#45423d"],
   wall: ["#1d211f", "#403d37"],
+  river: ["#203f48", "#2b5962"],
+  canyon: ["#171616", "#302721"],
+  bridge: ["#67533d", "#856b4b"],
 };
 function h(x, y) {
   return (Math.imul(x + 37, 73856093) ^ Math.imul(y + 19, 19349663)) >>> 0;
@@ -34,6 +37,17 @@ function tile(ctx, t, x, y, s, map, w) {
     py = y * s;
   ctx.fillStyle = p[d & 1];
   ctx.fillRect(px, py, s + 1, s + 1);
+  if (t.kind === "river") {
+    ctx.strokeStyle = (d & 1) ? "#8fc2c477" : "#659ca166"; ctx.lineWidth = 2;
+    for (let q = 0; q < 3; q++) { ctx.beginPath(); ctx.moveTo(px + ((d + q * 11) % 13), py + 7 + q * s * .26); ctx.quadraticCurveTo(px + s * .5, py + 2 + q * s * .26, px + s - 3, py + 7 + q * s * .26); ctx.stroke(); }
+    return;
+  }
+  if (t.kind === "canyon") {
+    ctx.fillStyle = "#070707cc"; ctx.fillRect(px + 3, py, s - 6, s + 1); ctx.strokeStyle = "#75584488"; ctx.beginPath(); ctx.moveTo(px + 2, py); ctx.lineTo(px + 7 + (d % 5), py + s * .45); ctx.lineTo(px + 3, py + s); ctx.stroke(); ctx.strokeStyle = "#8c6a4b55"; ctx.beginPath(); ctx.moveTo(px + s - 3, py); ctx.lineTo(px + s - 8, py + s * .6); ctx.lineTo(px + s - 2, py + s); ctx.stroke(); return;
+  }
+  if (t.kind === "bridge") {
+    ctx.fillStyle = "#2b2119"; ctx.fillRect(px, py + 2, s + 1, s - 4); ctx.fillStyle = p[d & 1]; for (let q = 2; q < s; q += 7) ctx.fillRect(px + 2, py + q, s - 4, 5); ctx.strokeStyle = "#b594603f"; ctx.strokeRect(px + 2, py + 2, s - 4, s - 4); return;
+  }
   if (t.blocked) {
     const up = y > 0 && map[(y - 1) * w + x]?.blocked,
       down = map[(y + 1) * w + x]?.blocked;
@@ -214,8 +228,11 @@ function actor(
     rect(p[1], -0.25, -0.42, 0.5, 0.42);
     rect(p[0], -0.18, -0.66, 0.36, 0.3);
     if (kind === "tree") {
-      rect(p[1], -0.1, -0.82, 0.2, 0.8);
-      rect(p[0], -0.38, -0.86, 0.76, 0.32);
+      if(state === "fallen") { rect(p[1], -.43, -.18, .86, .16); rect(p[0], -.35, -.27, .28, .22); }
+      else if(state === "charred") { rect("#29231f", -.09, -.75, .18, .72); rect("#3b2d25", -.3, -.78, .25, .16); }
+      else { rect(p[1], -0.1, -0.82, 0.2, 0.8); rect(p[0], -0.38, -0.86, 0.76, 0.32); rect("#71845b", -.27, -1.02, .54, .22); }
+    } else if (kind === "rock" && (state === "moved" || state === "broken")) {
+      rect("#4f514d", -.32, -.2, .2, .12); rect("#73766f", -.04, -.16, .24, .1); rect("#3c3f3b", .2, -.12, .13, .08);
     } else if (kind === "checkpoint" || kind === "shrine") {
       rect(p[2], -0.05, -0.85, 0.1, 0.65);
       rect(p[0], -0.24, -0.34, 0.48, 0.18);
@@ -244,6 +261,10 @@ function waymark(ctx,o,s){
   else if(o.signalKind==='danger'){ctx.moveTo(-s*.25,s*.2);ctx.lineTo(0,-s*.25);ctx.lineTo(s*.25,s*.2);ctx.closePath();}
   else{ctx.arc(0,0,s*.23,0,Math.PI*1.5);ctx.lineTo(s*.28,0);}
   ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(s*.28,0);ctx.lineTo(s*.42,-s*.11);ctx.lineTo(s*.42,s*.11);ctx.closePath();ctx.fill();ctx.restore();
+}
+function shack(ctx,o,s,p){
+  const b=o.bounds||{x:o.x-2,y:o.y-2,w:5,h:4},inside=p.x>=b.x+1&&p.x<b.x+b.w-1&&p.y>=b.y+1&&p.y<b.y+b.h-1,x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s;
+  ctx.save();ctx.fillStyle="#4a4031";ctx.fillRect(x+s,y+s,w-2*s,h-2*s);ctx.fillStyle="#7b6544";ctx.fillRect(x+s*1.25,y+s*1.3,s*.7,s*.45);ctx.fillStyle="#20211d";ctx.fillRect(x+s*3.1,y+s*1.25,s*.55,s*.72);ctx.globalAlpha=inside?.12:.9;ctx.fillStyle="#2a2520";ctx.beginPath();ctx.moveTo(x-s*.12,y+s*.25);ctx.lineTo(x+w*.5,y-s*.65);ctx.lineTo(x+w+s*.12,y+s*.25);ctx.lineTo(x+w-s*.2,y+h*.38);ctx.lineTo(x+s*.2,y+h*.38);ctx.closePath();ctx.fill();ctx.strokeStyle="#9a7950";ctx.lineWidth=2;ctx.stroke();ctx.globalAlpha=1;ctx.fillStyle=inside?"#d6c795":"#ad8b58";ctx.font=`${Math.max(8,s*.22)}px monospace`;ctx.textAlign="center";ctx.fillText(inside?"INTERIOR":"WAYFARER SHACK",x+w/2,y-s*.72);ctx.textAlign="start";ctx.restore();
 }
 export function render(ctx, g, w, h, now) {
   ctx.imageSmoothingEnabled = false;
@@ -346,12 +367,13 @@ export function render(ctx, g, w, h, now) {
             ctx.fillStyle = "#a9b9ab";
             ctx.fillText(o.role, cx, cy - 27);
             ctx.textAlign = "start";
-          } else if (o.kind === "relayTerminal") {
+          } else if (o.kind === "shack") shack(ctx,o,s,p);
+          else if (o.kind === "relayTerminal") {
             actor(ctx, o.x, o.y, s, "shrine");
             ctx.fillStyle = "#d2c090";
             ctx.font = "10px monospace";
             ctx.fillText("RELAY", o.x * s, (o.y - 0.3) * s);
-          } else actor(ctx, o.x, o.y, s, o.kind, "down", 0, "idle");
+          } else actor(ctx, o.x, o.y, s, o.kind, "down", 0, o.state || "idle");
         },
       });
   for (const e of g.enemies)
@@ -480,6 +502,13 @@ export function render(ctx, g, w, h, now) {
       ctx.fill();
     }
   ctx.restore();
+  if(g.area==="overworld"&&g.map.weather==="rain"){
+    ctx.strokeStyle="#9ec8d04d";ctx.lineWidth=1.4;ctx.beginPath();for(let i=0;i<34;i++){const x=((i*83+motion*210+g.rx*41)%(w+80))-40,y=((i*47+motion*330+g.ry*59)%(h+90))-45;ctx.moveTo(x,y);ctx.lineTo(x-8,y+19)}ctx.stroke();ctx.fillStyle="#1d3b4730";ctx.fillRect(0,0,w,h);
+  }else if(g.area==="overworld"&&g.map.weather==="snow"){
+    ctx.fillStyle="#dae2d78c";for(let i=0;i<28;i++){const x=((i*97+motion*(12+i%4)*3+g.rx*29)%(w+30))-15,y=((i*61+motion*(25+i%5)*4+g.ry*37)%(h+30))-15;ctx.beginPath();ctx.arc(x,y,1+(i%3)*.55,0,7);ctx.fill()}
+  }else if(g.area==="overworld"&&g.map.weather==="sunbreak"){
+    const glow=ctx.createLinearGradient(0,0,w*.8,h);glow.addColorStop(0,"#e7c87324");glow.addColorStop(.45,"#d8ad5220");glow.addColorStop(.7,"#0000");ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
+  }
   ctx.fillStyle = "#d8c9aa55";
   for (let i = 0; i < 16; i++) {
     const phase = motion * (8 + (i % 4) * 2) + i * 97 + g.rx * 31 + g.ry * 17,
