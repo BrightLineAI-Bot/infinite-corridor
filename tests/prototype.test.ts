@@ -2201,12 +2201,22 @@ test("journal trail examples invoke the exact ground-waymark drawing function",(
   assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,82\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
 });
 
-test("release 64 loads one coherent version across the entire module graph",()=>{
+test("rare shelters host deterministic merchants creatures and displacement thresholds",()=>{
+  const kinds=new Set();for(let y=-30;y<=30;y++)for(let x=-30;x<=30;x++){const a=generateRegion("shelter-surprises",x,y,1),b=generateRegion("shelter-surprises",x,y,1),q=a.objects.find(o=>["shelterMerchant","shelterCreature","displacementDevice"].includes(o.kind));assert.deepEqual(a,b);if(q){kinds.add(q.kind);assert.equal(a.tiles[Math.floor(q.y)*32+Math.floor(q.x)].structure,"shackInterior")}}
+  assert.deepEqual([...kinds].sort(),["displacementDevice","shelterCreature","shelterMerchant"]);
+});
+
+test("shelter creature gifts are once-only and displacement travel is explicitly guarded",()=>{
+  const s=freshSave(),c={id:"gift",kind:"shelterCreature",name:"Hearth Moth",gift:"aperture",state:"watching",actions:["commune"]};assert.equal(applyInteraction(c,"commune",s,"overworld:2:3:g1").ok,true);const value=s.perception.aperture;applyInteraction(c,"commune",s,"overworld:2:3:g1");assert.equal(s.perception.aperture,value);
+  const game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8");assert.match(game,/activeDisplacement/);assert.match(game,/displacementJourney/);assert.match(game,/guardian lives/);assert.match(game,/Reach a physical Wayglass/);
+});
+
+test("release 65 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=64/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=64/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v64/);assert.match(sw,/styles\.css\?v=64/);assert.match(sw,/main\.js\?v=64/);assert.match(sw,/combat\.js\?v=64/);assert.match(sw,/renderer\.js\?v=64/);
-  assert.match(build,/release='64'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=65/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=65/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v65/);assert.match(sw,/styles\.css\?v=65/);assert.match(sw,/main\.js\?v=65/);assert.match(sw,/combat\.js\?v=65/);assert.match(sw,/renderer\.js\?v=65/);
+  assert.match(build,/release='65'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("danger waymarks fill only their forward corner while other silhouettes point naturally",()=>{

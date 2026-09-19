@@ -32,6 +32,13 @@ function thinShelterWalls(region){
    region.tiles[y*32+x]={...tile,kind:region.dominant,blocked:false,structure:door?'shackDoor':wall?'shackWall':'shackInterior',wallSides,buildingId:shelter.id};
   }
  }
+ const shelter=region.objects.find(o=>o.kind==='shack');if(!shelter)return;
+ const r=rng(String(region.seed)+':shelter-surprise:v1:'+region.rx+':'+region.ry);if(r()>=.28)return;
+ const b=shelter.bounds,spots=[];for(let y=b.y+1;y<b.y+b.h-1;y++)for(let x=b.x+1;x<b.x+b.w-1;x++)if(!region.tiles[y*32+x].blocked)spots.push({x,y});
+ if(!spots.length)return;const spot=spots[Math.floor(r()*spots.length)],roll=r(),id='shelter-surprise-'+region.rx+'-'+region.ry;
+ if(roll<.42)region.objects.push({id,kind:'shelterMerchant',name:pick(r,['The Lantern Broker','Moss-Cloaked Factor','The Quiet Provisioner']),role:'Wandering specialist',...spot,state:'calm',actions:['speak','trade'],shelterId:shelter.id});
+ else if(roll<.84)region.objects.push({id,kind:'shelterCreature',name:pick(r,['Hearth Moth','Pilgrim Coil','Velvet Scavenger']),...spot,state:'watching',gift:pick(r,['marks','aperture','lumen']),actions:['commune'],shelterId:shelter.id});
+ else region.objects.push({id,kind:'displacementDevice',name:'Mislaid Threshold',...spot,state:'armed',actions:['enter'],shelterId:shelter.id,landmark:true});
 }
 const DISTRICT_STYLES={city:{name:'Hollow Ward',floor:'cityFloor',wall:'cityWall',enemy:'ashenHound'},arcology:{name:'Lumen Arcology',floor:'arcologyFloor',wall:'arcologyWall',enemy:'coilStalker'},cloister:{name:'Thorn Cloister',floor:'cloisterFloor',wall:'cloisterWall',enemy:'veilMoth'}};
 const BUILDING_USES={city:['market','infirmary','apartments','chapel','foundry'],arcology:['signal-lab','transit-archive','defense-post','reactor-house','habitat'],cloister:['cathedral','scriptorium','reliquary','hospice','chapter-house']};

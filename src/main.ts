@@ -1452,7 +1452,9 @@ function openInteraction(id, confirmAttack = false) {
       (id === "vendor-vela"
         ? "Vela supplies the refuge."
         : "Each resident helps hold the refuge together.");
-  } else if (o.kind === "relayTerminal")
+  } else if(o.kind==="shelterMerchant")description.textContent=(o.role||"Wandering specialist")+" · Their stock is deterministic, rare, and rotates as you chart the Corridor.";
+  else if(o.kind==="displacementDevice")description.textContent="A rare threshold into a finite sealed crossing. Defeat its guardian to emerge in a distant unexplored region, or use a Crossing Sigil to abort back here.";
+  else if (o.kind === "relayTerminal")
     description.textContent =
       "Restore: reopen the line and recover two draughts. Sever: silence the line and recover three lumen dust. This decision is permanent; either resolves the Missing Crossing.";
   else
