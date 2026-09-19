@@ -262,6 +262,10 @@ function waymark(ctx,o,s){
   else{ctx.arc(0,0,s*.23,0,Math.PI*1.5);ctx.lineTo(s*.28,0);}
   ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(s*.28,0);ctx.lineTo(s*.42,-s*.11);ctx.lineTo(s*.42,s*.11);ctx.closePath();ctx.fill();ctx.restore();
 }
+function shack(ctx,o,s,p){
+  const b=o.bounds||{x:o.x-2,y:o.y-2,w:5,h:4},inside=p.x>=b.x+1&&p.x<b.x+b.w-1&&p.y>=b.y+1&&p.y<b.y+b.h-1,x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s;
+  ctx.save();ctx.fillStyle="#4a4031";ctx.fillRect(x+s,y+s,w-2*s,h-2*s);ctx.fillStyle="#7b6544";ctx.fillRect(x+s*1.25,y+s*1.3,s*.7,s*.45);ctx.fillStyle="#20211d";ctx.fillRect(x+s*3.1,y+s*1.25,s*.55,s*.72);ctx.globalAlpha=inside?.12:.9;ctx.fillStyle="#2a2520";ctx.beginPath();ctx.moveTo(x-s*.12,y+s*.25);ctx.lineTo(x+w*.5,y-s*.65);ctx.lineTo(x+w+s*.12,y+s*.25);ctx.lineTo(x+w-s*.2,y+h*.38);ctx.lineTo(x+s*.2,y+h*.38);ctx.closePath();ctx.fill();ctx.strokeStyle="#9a7950";ctx.lineWidth=2;ctx.stroke();ctx.globalAlpha=1;ctx.fillStyle=inside?"#d6c795":"#ad8b58";ctx.font=`${Math.max(8,s*.22)}px monospace`;ctx.textAlign="center";ctx.fillText(inside?"INTERIOR":"WAYFARER SHACK",x+w/2,y-s*.72);ctx.textAlign="start";ctx.restore();
+}
 export function render(ctx, g, w, h, now) {
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = "#141816";
@@ -363,7 +367,8 @@ export function render(ctx, g, w, h, now) {
             ctx.fillStyle = "#a9b9ab";
             ctx.fillText(o.role, cx, cy - 27);
             ctx.textAlign = "start";
-          } else if (o.kind === "relayTerminal") {
+          } else if (o.kind === "shack") shack(ctx,o,s,p);
+          else if (o.kind === "relayTerminal") {
             actor(ctx, o.x, o.y, s, "shrine");
             ctx.fillStyle = "#d2c090";
             ctx.font = "10px monospace";
@@ -497,6 +502,13 @@ export function render(ctx, g, w, h, now) {
       ctx.fill();
     }
   ctx.restore();
+  if(g.area==="overworld"&&g.map.weather==="rain"){
+    ctx.strokeStyle="#9ec8d04d";ctx.lineWidth=1.4;ctx.beginPath();for(let i=0;i<34;i++){const x=((i*83+motion*210+g.rx*41)%(w+80))-40,y=((i*47+motion*330+g.ry*59)%(h+90))-45;ctx.moveTo(x,y);ctx.lineTo(x-8,y+19)}ctx.stroke();ctx.fillStyle="#1d3b4730";ctx.fillRect(0,0,w,h);
+  }else if(g.area==="overworld"&&g.map.weather==="snow"){
+    ctx.fillStyle="#dae2d78c";for(let i=0;i<28;i++){const x=((i*97+motion*(12+i%4)*3+g.rx*29)%(w+30))-15,y=((i*61+motion*(25+i%5)*4+g.ry*37)%(h+30))-15;ctx.beginPath();ctx.arc(x,y,1+(i%3)*.55,0,7);ctx.fill()}
+  }else if(g.area==="overworld"&&g.map.weather==="sunbreak"){
+    const glow=ctx.createLinearGradient(0,0,w*.8,h);glow.addColorStop(0,"#e7c87324");glow.addColorStop(.45,"#d8ad5220");glow.addColorStop(.7,"#0000");ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
+  }
   ctx.fillStyle = "#d8c9aa55";
   for (let i = 0; i < 16; i++) {
     const phase = motion * (8 + (i % 4) * 2) + i * 97 + g.rx * 31 + g.ry * 17,

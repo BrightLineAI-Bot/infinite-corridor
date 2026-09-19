@@ -133,7 +133,7 @@ function openShop(vendorId = "vendor-vela") {
     );
     body.append(row);
   }
-  panel.showModal();
+  if (!panel.open) panel.showModal();
 }
 setTimeout(() => {
   canvas.addEventListener("worldtap", (e) => {
@@ -222,8 +222,29 @@ let last = performance.now(),
 let atlasDrag = null,
   atlasPinch = null,
   overlayPause = false,
-  suppressMapClick = false;
+  suppressMapClick = false,
+  bannerTimer = 0,
+  nearbyNotice = "";
 const atlasPointers = new Map();
+const announcedThreats = new Set();
+function showEventBanner(title, detail = "", kind = "discovery") {
+  const banner = $("#eventBanner");
+  banner.querySelector("strong").textContent = title;
+  banner.querySelector("span").textContent = detail;
+  banner.className = kind;
+  requestAnimationFrame(() => banner.classList.add("visible"));
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => banner.classList.remove("visible"), 3200);
+}
+function updateWorldNotices() {
+  for (const e of game.enemies) if (!e.dead && (e.boss || e.apertureEncounter) && !announcedThreats.has(e.id)) {
+    announcedThreats.add(e.id);
+    showEventBanner(e.boss ? "MAJOR THREAT" : "CORRIDOR BREACH", e.kind.replace(/([A-Z])/g," $1").trim() + " has entered this section", "danger");
+  }
+  const o=(game.map.objects||[]).filter(q=>q.landmark||["shack","checkpoint","dungeon","shrine","ruinMarker"].includes(q.kind)).sort((a,b)=>Math.hypot(a.x-game.player.x,a.y-game.player.y)-Math.hypot(b.x-game.player.x,b.y-game.player.y))[0],key=o&&Math.hypot(o.x-game.player.x,o.y-game.player.y)<2.4?game.areaId()+":"+o.id:"";
+  if(key&&key!==nearbyNotice){nearbyNotice=key;showEventBanner("SITE REACHED",o.name||({shack:"Wayfarer Shack",dungeon:"Buried Crossing",checkpoint:"Wayglass Beacon",shrine:"Singing Array",ruinMarker:"Broken Observatory"}[o.kind]||"Unusual Site"));}
+  else if(!key)nearbyNotice="";
+}
 function apertureStatsCard() {
   const p = save.perception,
     tier = apertureTier(p.aperture),
@@ -946,7 +967,7 @@ function openPack() {
   for (const spell of Object.values(SPELLS)) {
     const row = document.createElement("div");
     row.className = "item inventory-card";
-    row.dataset.slot = item.slot;
+    row.dataset.slot = "spell";
     row.textContent = `${spell.name} · ${spell.cooldown}s cooldown · power ${spell.damage}`;
     row.append(
       uiButton(save.equippedSpell === spell.id ? "Equipped" : "Equip", () => {
@@ -1010,7 +1031,7 @@ function openPack() {
     );
     body.append(row);
   }
-  panel.showModal();
+  if (!panel.open) panel.showModal();
 }
 const CODEX = {
   creatures: {
@@ -1020,7 +1041,7 @@ const CODEX = {
     "terrain:ash":["Ash Verge","Dry chambers where furnace residue gathers."],"terrain:glass":["Glass Reach","Cold mineral corridors that hold light too long."],"terrain:ember":["Ember Vault","Heat-scarred rooms surrounding old power lines."],"dungeon:hollow":["Hollow Relay","Separated halls joined by a failing relay."],"dungeon:cistern":["Root-Sunk Cistern","A salvage vault overtaken by roots and standing water."],"dungeon:kiln":["Glass Kiln","A sentinel den built around heat and mechanical traps."],"settlement:glasshaven":["Glasshaven","A sparse settlement of traders and glassworkers."],"settlement:coilmarket":["Coilmarket","A waystation built around signal salvage."]
   },
   features: {
-    shrine:["Singing Array","A machine-shrine that stores impressions rather than scripture."],checkpoint:["Wayglass Beacon","An activated beacon permits Atlas travel and becomes a possible refuge."],ruinMarker:["Broken Observatory","A collapsed instrument still pointing beyond the visible corridor."],dungeon:["Buried Crossing","A sealed route into a self-contained dungeon."],relayTerminal:["Crossing Terminal","A consequential relay interface."],"trap:fire":["Kiln Vent","Scorch marks warn of a directional fire trap."],"trap:spikes":["Crossing Spikes","Floor seams can reveal the trap before it rises."],vine:["Transit Vine","A living traversal line spanning an otherwise impassable gap."],bossCue:["Colossus Trace","A sign that something much larger inhabits the region."]
+    shrine:["Singing Array","A machine-shrine that stores impressions rather than scripture."],checkpoint:["Wayglass Beacon","An activated beacon permits Atlas travel and becomes a possible refuge."],ruinMarker:["Broken Observatory","A collapsed instrument still pointing beyond the visible corridor."],dungeon:["Buried Crossing","A sealed route into a self-contained dungeon."],shack:["Wayfarer Shack","A roofed field shelter whose interior remains part of the overworld."],tree:["Ashwood Grove","Trees may be cut or ignited through Act."],rock:["Shiftstone","Boulders may be moved or broken with sufficient Might."],relayTerminal:["Crossing Terminal","A consequential relay interface."],"trap:fire":["Kiln Vent","Scorch marks warn of a directional fire trap."],"trap:spikes":["Crossing Spikes","Floor seams can reveal the trap before it rises."],vine:["Transit Vine","A living traversal line spanning an otherwise impassable gap."],bossCue:["Colossus Trace","A sign that something much larger inhabits the region."]
   }
 };
 const CREATURE_PORTRAITS={ashling:[0,0],glassMite:[1,0],sparkWarden:[2,0],coilStalker:[3,0],veilMoth:[0,1],rootBrute:[1,1],cinderWisp:[2,1],riftColossus:[3,1],ashenHound:[0,0],hollowMarshal:[2,0]};
@@ -1035,7 +1056,10 @@ function openJournal(mode = "chronicle") {
   out.append(nav);
   if(mode!=="chronicle"){
     const entries=mode==="rules"?[
-      ["marks",["World marks","Ring: Wayglass · chevron: dungeon crossing · triangle: major danger · spiral: unusual site."]],
+      ["ring",["◎ Ring — Wayglass","An activated beacon: recovery point and Atlas travel destination."]],
+      ["chevron",["› Chevron — Crossing","A dungeon entrance or buried route into a bounded interior."]],
+      ["triangle",["▲ Triangle — Major danger","A world boss, elite incursion, or other exceptional threat."]],
+      ["spiral",["⟳ Spiral — Unusual site","A shrine, event, ruin, or discovery worth investigating."]],
       ["atlas",["Atlas","Drag with one finger to pan. Pinch with two fingers or use +/− to zoom. Tap an explored section to select it."]],
       ["travel",["Travel","Activate Wayglass beacons to travel to them from the Atlas. Dungeon travel remains sealed without a Crossing Sigil."]],
       ["combat",["Combat","Red or violet telegraphs show the exact threatened area. Dodge spends stamina; jumping avoids grounded impacts."]],
@@ -1044,7 +1068,7 @@ function openJournal(mode = "chronicle") {
     const heading=document.createElement("h3");heading.textContent=mode==="rules"?"Field rules and symbols":`${mode[0].toUpperCase()+mode.slice(1)} encountered`;
     out.append(heading);
     if(!entries.length){const empty=document.createElement("p");empty.textContent="No entries recorded yet. Encounter them in the world to unlock this section.";out.append(empty);}
-    for(const [id,entry] of entries){const article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p");article.className="item codex-card";title.textContent=entry[0];text.textContent=entry[1];if(mode==="creatures"&&CREATURE_PORTRAITS[id]){const portrait=document.createElement("div"),[x,y]=CREATURE_PORTRAITS[id];portrait.className="creature-portrait";portrait.style.setProperty("--portrait-x",`${x*33.333}%`);portrait.style.setProperty("--portrait-y",`${y*100}%`);portrait.setAttribute("role","img");portrait.setAttribute("aria-label",`${entry[0]} field illustration`);article.prepend(portrait);}article.append(title,text);out.append(article);}
+    for(const [id,entry] of entries){const article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p");article.className="item codex-card";title.textContent=entry[0];text.textContent=entry[1];if(mode==="rules"&&["ring","chevron","triangle","spiral"].includes(id)){const badge=document.createElement("span");badge.className="symbol-badge";badge.textContent={ring:"◎",chevron:"›",triangle:"▲",spiral:"⟳"}[id];article.classList.add("symbol-card");article.prepend(badge);}if(mode==="creatures"&&CREATURE_PORTRAITS[id]){const portrait=document.createElement("div"),[x,y]=CREATURE_PORTRAITS[id];portrait.className="creature-portrait";portrait.style.setProperty("--portrait-x",`${x*33.333}%`);portrait.style.setProperty("--portrait-y",`${y*100}%`);portrait.setAttribute("role","img");portrait.setAttribute("aria-label",`${entry[0]} field illustration`);article.prepend(portrait);}article.append(title,text);out.append(article);}
     if(mode==="creatures")for(const [id,v] of Object.entries(save.codex?.variants||{})){if(!v.traits?.length)continue;const base=CODEX.creatures[v.kind]?.[0]||v.kind,article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p"),names=v.traits.map(t=>CREATURE_TRAITS[t]?.name||t);article.className="item";title.textContent=`${names.join(" ")} ${base}`;text.textContent=v.traits.map(t=>CREATURE_TRAITS[t]?.text).filter(Boolean).join(" ");article.append(title,text);out.append(article);}
     if(!journal.open)journal.showModal();
     return;
@@ -1163,6 +1187,7 @@ function frame(now) {
   if (input.consume("journal")) openJournal();
   if (input.consume("menu")) openPack();
   game.update(dt, input, now);
+  updateWorldNotices();
   render(ctx, game, innerWidth, innerHeight, now);
   drawRangedEffects();
   updateMessage(game.message);

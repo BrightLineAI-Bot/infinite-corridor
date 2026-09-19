@@ -1923,7 +1923,7 @@ test("expanded creature ecology is deterministic and recorded in the field codex
 });
 test("journal exposes encounter codex sections and an always-available symbol guide",()=>{
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
-  assert.match(source,/Creatures/);assert.match(source,/Places/);assert.match(source,/Features/);assert.match(source,/Rules & symbols/);assert.match(source,/Ring: Wayglass/);
+  assert.match(source,/Creatures/);assert.match(source,/Places/);assert.match(source,/Features/);assert.match(source,/Rules & symbols/);assert.match(source,/◎ Ring — Wayglass/);
 });
 test("journal and pack expose illustrated field-card hooks",()=>{
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
@@ -2061,4 +2061,26 @@ test("environment interactions persist distinct tree and boulder states", () => 
   assert.equal(rock.state,"broken");
   assert.equal(save.worldFlags["env-rock-test:break"],true);
   assert.equal(save.worldFlags["rock-1:opened"],undefined);
+});
+
+test("Pack spell cards do not reference an undefined inventory item", () => {
+  const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+  assert.doesNotMatch(source,/row\.dataset\.slot\s*=\s*item\.slot/);
+  assert.match(source,/row\.dataset\.slot\s*=\s*["']spell["']/);
+});
+
+test("combat grants repeatable marks with larger exceptional rewards", () => {
+  const ordinary=freshSave(),g=new Game(ordinary,0),before=ordinary.currency,e=g.enemies[0];g.defeatEnemy(e);assert.ok(ordinary.currency>before);
+  const bossSave=freshSave(),bossGame=new Game(bossSave,0),boss={...bossGame.enemies[0],id:"reward-boss",boss:true,rewarded:false},bossBefore=bossSave.currency;bossGame.defeatEnemy(boss);assert.equal(bossSave.currency-bossBefore,12);
+});
+
+test("weather and open-world shacks are deterministic bounded environment features", () => {
+  const weather=new Set(),shacks=[];
+  for(let y=-8;y<=8;y++)for(let x=-8;x<=8;x++){const a=generateRegion("weather-housing",x,y,1),b=generateRegion("weather-housing",x,y,1);assert.equal(a.weather,b.weather);weather.add(a.weather);shacks.push(...a.objects.filter(o=>o.kind==="shack"));}
+  assert.ok(weather.has("rain"));assert.ok(weather.has("snow"));assert.ok(weather.has("sunbreak"));assert.ok(shacks.length>0);assert.ok(shacks.every(o=>o.bounds?.w===5&&o.bounds?.h===4));
+});
+
+test("journal renders explicit symbol badges and major-threat feedback",()=>{
+  const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+  assert.match(source,/symbol-badge/);assert.match(source,/MAJOR THREAT/);assert.match(source,/SITE REACHED/);assert.match(html,/id="eventBanner"/);assert.match(html,/◎.*Wayglass.*›.*crossing.*▲.*major danger.*⟳.*unusual site/);
 });
