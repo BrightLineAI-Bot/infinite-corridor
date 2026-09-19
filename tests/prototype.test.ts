@@ -31,6 +31,7 @@ import {
   attackInRange,
   enemyDangerRadius,
   selectMeleeAim,
+  selectRangedAim,
   updateTraps,
   actionReadiness,
   settleProgression,
@@ -439,6 +440,8 @@ test("input math normalizes diagonals, shapes dead zone, and smooths", () => {
   assert.deepEqual(shapeStick(0.05, 0.05), { x: 0, y: 0 });
   assert.ok(shapeStick(0.8, 0).x > 0.4);
   assert.ok(smoothAxis(0, 1, 0.1) > 0 && smoothAxis(0, 1, 0.1) < 1);
+  assert.ok(dragVector(26, 0).x > 0.35);
+  assert.ok(smoothAxis(0, 1, 1 / 60) > 0.35);
 });
 test("sprite-footprint movement slides along walls without visual overlap or tunneling", () => {
   const map = {
@@ -1230,6 +1233,16 @@ test("Attack and Tool buttons execute immediately and keep their selected mode",
   assert.equal(g.save.aimMode,"tool");assert.equal(g.projectiles.length,2);
   g.player.attackReadyAt=0;g.update(.016,press("attack"),4000);
   assert.equal(g.save.aimMode,"attack");assert.equal(g.save.toolMode,false);
+});
+test("constellation combat presses automatically face the nearest valid enemy",()=>{
+  const g=new Game(freshSave(),0),press=(action)=>({state:{x:0,y:0},consume:key=>key===action});
+  g.map.tiles.forEach(t=>t.blocked=false);Object.assign(g.player,{x:10,y:10,attackReadyAt:0});
+  g.save.equipment.primary={id:"primary-cinder-pike",name:"Cinder Pike",slot:"primary",power:1};
+  g.enemies=[{id:"far",kind:"ashling",x:14,y:10,hp:30,maxHp:30},{id:"near",kind:"ashling",x:10,y:13,hp:30,maxHp:30}];
+  assert.deepEqual(selectRangedAim(g.player,g.enemies,g.map,32,20),{x:0,y:1});
+  g.update(.016,press("tool"),1000);assert.equal(g.projectiles.length,1);assert.deepEqual({x:g.projectiles[0].dx,y:g.projectiles[0].dy},{x:0,y:1});
+  g.enemies[1].y=11;g.player.attackReadyAt=0;g.update(.016,press("attack"),2000);assert.ok(g.enemies[1].hp<30);assert.equal(g.enemies[0].hp,30);
+  g.player.attackReadyAt=0;g.enemies[1].dead=true;g.update(.016,press("tool"),3000);const shot=g.projectiles.at(-1);assert.deepEqual({x:shot.dx,y:shot.dy},{x:1,y:0});
 });
 test("Act executes immediately stays selected and supports targeted world taps",()=>{
   const g=new Game(freshSave(),0),press=(action)=>({state:{x:0,y:0},consume:key=>key===action});
@@ -2272,12 +2285,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 78 loads one coherent version across the entire module graph",()=>{
+test("release 79 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "78"/);assert.match(html,/styles\.css\?v=78/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=78/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v78/);assert.match(sw,/styles\.css\?v=78/);assert.match(sw,/main\.js\?v=78/);assert.match(sw,/combat\.js\?v=78/);assert.match(sw,/renderer\.js\?v=78/);
-  assert.match(build,/release='78'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "79"/);assert.match(html,/styles\.css\?v=79/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=79/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v79/);assert.match(sw,/styles\.css\?v=79/);assert.match(sw,/main\.js\?v=79/);assert.match(sw,/combat\.js\?v=79/);assert.match(sw,/renderer\.js\?v=79/);
+  assert.match(build,/release='79'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("Atlas opening tap cannot immediately activate travel controls",()=>{

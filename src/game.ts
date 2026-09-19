@@ -445,6 +445,17 @@ export function selectMeleeAim(player, enemies, map, width, reach) {
   );
   return out[0]?.d || null;
 }
+export function selectRangedAim(player, enemies, map, width, range = Infinity) {
+  return enemies
+    .filter((e) => !e.dead && !e.ambient)
+    .map((e) => ({
+      e,
+      distance: Math.hypot(e.x + 0.5 - (player.x + 0.5), e.y + 0.45 - (player.y + 0.45)),
+    }))
+    .filter((q) => q.distance <= range && hasLineOfSight(q.e, player, map, width, true))
+    .sort((a, b) => a.distance - b.distance || String(a.e.id).localeCompare(String(b.e.id)))
+    .map((q) => projectileDirection(q.e.x - player.x, q.e.y - player.y, player.facing))[0] || null;
+}
 export function updateTraps(objects, player, dt, jumping = false) {
   for (const trap of objects.filter((o) => o.kind === "trap")) {
     trap.hits = trap.hits || {};
@@ -2206,7 +2217,9 @@ export class Game {
     if (input.consume("tool")) {
       this.save.aimMode = "tool";
       this.save.toolMode = true;
-      this.fireSecondary(now, this.save.lastAim);
+      const weapon=rangedWeapon(this.save.equipment.secondary),width=this.area === "dungeon" ? 24 : 32,
+        aim=weapon&&selectRangedAim(this.player,this.enemies,this.map,width,weapon.speed*weapon.lifetime);
+      this.fireSecondary(now, aim || this.save.lastAim);
     }
     if (input.consume("spell")) this.castSpell();
     if (input.consume("dodge")) {
@@ -2269,7 +2282,7 @@ export class Game {
     if (!fellIntoHazard&&input.consume("attack")) {
       this.save.aimMode = "attack";
       this.save.toolMode = false;
-      this.primaryAttack(now, this.save.lastAim);
+      this.primaryAttack(now);
     }
     if (!fellIntoHazard&&input.consume("interact")) {
       this.save.aimMode = "act";
