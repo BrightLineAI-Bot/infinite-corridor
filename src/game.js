@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=72";
+import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=73";
 import {
   generateRegion,
   generateDungeon,
@@ -12,7 +12,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js?v=72";
+} from "./world.js?v=73";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=72";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=73";
 import {
   applyInteraction,
   validActions,
@@ -33,11 +33,11 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=72";
-import { ensurePerception } from "./types.js?v=72";
-import { generateItem } from "./items.js?v=72";
-import { hashSeed } from "./random.js?v=72";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=72';
+} from "./interactions.js?v=73";
+import { ensurePerception } from "./types.js?v=73";
+import { generateItem } from "./items.js?v=73";
+import { hashSeed } from "./random.js?v=73";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=73';
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
@@ -282,6 +282,7 @@ export function updateProjectiles(
           Math.hypot(e.x + 0.5 - p.x, e.y + 0.45 - p.y) <
             0.1 + enemyBodyRadius(e)
         ) {
+          alertEnemy(e);
           e.hp -= p.damage;
           e.hitFlash = 0.18;
           if (p.path === "boomerang") {
@@ -449,6 +450,7 @@ export function updateEffects(effects, enemies, dt, onDefeat = () => {}) {
         const key = `${fx.pulseIndex}:${e.id}`;
         if (fx.hits[key]) continue;
         fx.hits[key] = true;
+        alertEnemy(e);
         e.hp -= fx.damage;
         e.hitFlash = 0.18;
         if (e.hp <= 0 && !e.dead) {
@@ -510,7 +512,7 @@ export function buyFromVela(save, id, quantity = 1) {
   )
     return { ok: false, message: "Vela’s supplies are no longer available." };
   const shop = velaShop(save),
-    defs = { restorativeDraught: 3, ironbarkTonic: 8, lumenPhial: 9 };
+    defs = { restorativeDraught: 3, ironbarkTonic: 8, lumenPhial: 9, crossingSigil: 30 };
   if (id in defs) {
     const unlimited = id === "restorativeDraught",
       available = unlimited ? 99 : shop.limited[id] || 0,
@@ -695,6 +697,12 @@ export function ensureAI(e) {
   if ((e.telegraph || 0) < 0) e.telegraph = 0;
   return e.ai;
 }
+export function alertEnemy(e) {
+  if (!e || e.dead || e.passiveBehavior) return false;
+  e.aggro = true;
+  ensureAI(e).mode = "chase";
+  return true;
+}
 export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onRanged=()=>{}) {
   if(sanctuary){enforceSanctuary(e,sanctuary);if(Math.hypot(player.x-sanctuary.x,player.y-sanctuary.y)<sanctuary.radius){e.telegraph=0;return false}}
   const ai = ensureAI(e),
@@ -724,8 +732,8 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   let tx,
     ty,
     speed = 0.42;
-  if ((toPlayer < 6 || (e.aggro && e.pursuesOutdoors && toPlayer < 14)) && fromHome < (e.pursuesOutdoors?18:9)) {
-    if(e.pursuesOutdoors)e.aggro=true;
+  if (toPlayer < 6 || e.aggro) {
+    e.aggro=true;
     ai.mode = "chase";
     tx = player.x - e.x;
     ty = player.y - e.y;
@@ -1575,6 +1583,7 @@ export class Game {
   }
   transitionSection(dx, dy) {
     const pursuers=this.enemies.filter(e=>e.gatePredator&&e.aggro&&!e.dead).map(e=>({...e,ai:{...ensureAI(e)}}));
+    for(const e of this.enemies)if(!e.gatePredator&&e.aggro&&!e.dead){e.aggro=false;ensureAI(e).mode="return"}
     for(const e of this.enemies)if(e.gatePredator&&e.aggro&&!e.dead)e.dead=true;
     this.snapshotArea();
     this.rx += dx;
@@ -1912,6 +1921,7 @@ export class Game {
         );
         continue;
       }
+      alertEnemy(e);
       e.hp -=
         profile.damage + this.save.stats.Might * 2 + this.save.weaponLevel * 3;
       e.hitFlash = 0.18;

@@ -1,7 +1,7 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=72";
-import { vendorShop, buyFromVendor } from "./game.js?v=72";
-import { CREATURE_TRAITS } from "./combat.js?v=72";
-import { hashSeed } from "./random.js?v=72";
+import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=73";
+import { vendorShop, buyFromVendor } from "./game.js?v=73";
+import { CREATURE_TRAITS } from "./combat.js?v=73";
+import { hashSeed } from "./random.js?v=73";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -103,7 +103,7 @@ function openShop(vendorId = "vendor-vela") {
     intro = document.createElement("p");
   h.textContent = names[vendorId] || "Waystation Supplies";
   const shop = vendorShop(save, vendorId);
-  intro.textContent = `${save.currency} marks. Restorative draughts remain dependable; limited stock and equipment rotate after every four newly charted sections. Stock cycle ${shop.rotation ?? 0}.`;
+  intro.textContent = `${save.currency} marks. Restorative draughts remain dependable; limited stock and equipment rotate after every four newly charted sections. Stock cycle ${shop.rotation ?? 0}.${game.message ? ` ${game.message}` : ""}`;
   body.append(h, intro);
   const
     offers = [
@@ -202,19 +202,19 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame } from "./persistence.js?v=72";
+import { loadSave, saveGame } from "./persistence.js?v=73";
 import {
   Game,
   actionReadiness,
   enemyDangerRadius,
   characterStats,
   syncCharacterStats,
-} from "./game.js?v=72";
-import { createInput } from "./input.js?v=72";
-import { render as baseRender } from "./renderer.js?v=72";
-import { STATS } from "./types.js?v=72";
-import { SPELLS } from "./items.js?v=72";
-import { currentObjective, validActions } from "./interactions.js?v=72";
+} from "./game.js?v=73";
+import { createInput } from "./input.js?v=73";
+import { render as baseRender } from "./renderer.js?v=73";
+import { STATS } from "./types.js?v=73";
+import { SPELLS } from "./items.js?v=73";
+import { currentObjective, validActions } from "./interactions.js?v=73";
 import {
   generateRegion as generateWorldRegion,
   sectionSummary,
@@ -224,7 +224,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=72";
+} from "./world.js?v=73";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
