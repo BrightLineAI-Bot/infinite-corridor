@@ -2107,3 +2107,24 @@ test("journal renders the same minimalist trail marks used on the floor",()=>{
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
   assert.match(source,/function trailMark/);assert.match(source,/Hooked ring — Wayglass/);assert.match(source,/Split chevron — Crossing/);assert.match(source,/Hollow triangle — Major danger/);assert.match(source,/Broken spiral — Unusual site/);assert.match(source,/MAJOR THREAT/);assert.match(source,/SITE REACHED/);assert.match(html,/id="eventBanner"/);
 });
+
+test("rare architectural districts provide deterministic city arcology and cloister exploration",()=>{
+  const districts=[],styles=new Set();
+  for(let y=-22;y<=22;y++)for(let x=-22;x<=22;x++){const a=generateRegion("architectural-texture",x,y,1),b=generateRegion("architectural-texture",x,y,1);if(a.district){assert.deepEqual(a,b);districts.push(a);styles.add(a.district.style);}}
+  assert.ok(districts.length>8&&districts.length<130);assert.deepEqual([...styles].sort(),["arcology","city","cloister"]);
+  for(const region of districts.slice(0,12)){const buildings=region.objects.filter(o=>o.kind==="architecturalBuilding");assert.ok(buildings.length>=2);for(const building of buildings){assert.equal(region.tiles[building.door.y*32+building.door.x].blocked,false);assert.ok(building.bounds.w>=8&&building.bounds.h>=7)}assert.ok(sectionSites(region.seed,region.rx,region.ry,1).some(o=>o.kind==="architecturalDistrict"));}
+});
+
+test("district streets and every walk-in building remain reachable from the section hub",()=>{
+  let region;for(let y=-30;!region&&y<=30;y++)for(let x=-30;!region&&x<=30;x++){const q=generateRegion("district-reachability",x,y,1);if(q.district)region=q}assert.ok(region);
+  const seen=new Set(["16,16"]),queue=[[16,16]];while(queue.length){const [x,y]=queue.shift();for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const a=x+dx,b=y+dy,k=`${a},${b}`;if(a>=0&&a<32&&b>=0&&b<32&&!seen.has(k)&&!region.tiles[b*32+a].blocked){seen.add(k);queue.push([a,b])}}}
+  for(const building of region.objects.filter(o=>o.kind==="architecturalBuilding")){assert.ok(seen.has(`${building.door.x},${building.door.y}`));assert.ok(seen.has(`${building.x},${building.y}`));}
+});
+
+test("resume safety opens a district wall only when an old save would be stranded",()=>{
+  let q;for(let y=-25;!q&&y<=25;y++)for(let x=-25;!q&&x<=25;x++){const r=generateRegion("CINDER-VERGE-47",x,y,1);if(r.district)q=r}assert.ok(q);const wall=q.tiles.find(t=>t.structure==="districtWall"),s=freshSave();Object.assign(s.session,{rx:q.rx,ry:q.ry,x:wall.x+.2,y:wall.y+.2});s.position={area:"overworld",rx:q.rx,ry:q.ry,x:wall.x+.2,y:wall.y+.2};const g=new Game(s,0);assert.equal(g.map.tiles[wall.y*32+wall.x].blocked,false);
+});
+
+test("district inspection records optional architectural lore",()=>{
+  const s=freshSave(),o={id:"district-test",kind:"architecturalDistrict",name:"Hollow Ward",districtStyle:"city",state:"unread",actions:["inspect"]},result=applyInteraction(o,"inspect",s,"overworld:8,8:g1");assert.equal(result.ok,true);assert.equal(result.transition,"district");assert.ok(s.narrative.journal.some(j=>j.title==="Hollow Ward"));
+});

@@ -26,6 +26,12 @@ const PAL = {
   river: ["#203f48", "#2b5962"],
   canyon: ["#171616", "#302721"],
   bridge: ["#67533d", "#856b4b"],
+  cityFloor: ["#45454a", "#57565b"],
+  cityWall: ["#292a2d", "#59585c"],
+  arcologyFloor: ["#293e43", "#3d5960"],
+  arcologyWall: ["#1b2d32", "#49666b"],
+  cloisterFloor: ["#493f43", "#665459"],
+  cloisterWall: ["#2d272b", "#625158"],
 };
 function h(x, y) {
   return (Math.imul(x + 37, 73856093) ^ Math.imul(y + 19, 19349663)) >>> 0;
@@ -49,6 +55,10 @@ function tile(ctx, t, x, y, s, map, w) {
     ctx.fillStyle = "#2b2119"; ctx.fillRect(px, py + 2, s + 1, s - 4); ctx.fillStyle = p[d & 1]; for (let q = 2; q < s; q += 7) ctx.fillRect(px + 2, py + q, s - 4, 5); ctx.strokeStyle = "#b594603f"; ctx.strokeRect(px + 2, py + 2, s - 4, s - 4); return;
   }
   if (t.blocked) {
+    if (t.structure === "districtWall") {
+      const colors={city:["#37383c","#77757b"],arcology:["#20373d","#66939a"],cloister:["#3b3036","#8a6d75"]}[t.districtStyle]||["#333","#777"];
+      ctx.fillStyle="#0a0b0bcc";ctx.fillRect(px+s*.12,py+s*.16,s*.76,s*.74);ctx.fillStyle=colors[0];ctx.fillRect(px+s*.2,py+s*.1,s*.6,s*.68);ctx.fillStyle=colors[1];ctx.fillRect(px+s*.24,py+s*.14,s*.52,s*.1);ctx.fillStyle="#080909aa";ctx.fillRect(px+s*.29,py+s*.38,s*.14,s*.2);ctx.fillRect(px+s*.57,py+s*.38,s*.14,s*.2);ctx.strokeStyle="#c8baa22f";ctx.strokeRect(px+s*.2,py+s*.1,s*.6,s*.68);return;
+    }
     const up = y > 0 && map[(y - 1) * w + x]?.blocked,
       down = map[(y + 1) * w + x]?.blocked;
     ctx.fillStyle = p[1];
@@ -266,6 +276,11 @@ function shack(ctx,o,s,p){
   const b=o.bounds||{x:o.x-2,y:o.y-2,w:5,h:4},inside=p.x>=b.x+1&&p.x<b.x+b.w-1&&p.y>=b.y+1&&p.y<b.y+b.h-1,x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s;
   ctx.save();ctx.fillStyle="#4a4031";ctx.fillRect(x+s,y+s,w-2*s,h-2*s);ctx.fillStyle="#7b6544";ctx.fillRect(x+s*1.25,y+s*1.3,s*.7,s*.45);ctx.fillStyle="#20211d";ctx.fillRect(x+s*3.1,y+s*1.25,s*.55,s*.72);ctx.globalAlpha=inside?.12:.9;ctx.fillStyle="#2a2520";ctx.beginPath();ctx.moveTo(x-s*.12,y+s*.25);ctx.lineTo(x+w*.5,y-s*.65);ctx.lineTo(x+w+s*.12,y+s*.25);ctx.lineTo(x+w-s*.2,y+h*.38);ctx.lineTo(x+s*.2,y+h*.38);ctx.closePath();ctx.fill();ctx.strokeStyle="#9a7950";ctx.lineWidth=2;ctx.stroke();ctx.globalAlpha=1;ctx.fillStyle=inside?"#d6c795":"#ad8b58";ctx.font=`${Math.max(8,s*.22)}px monospace`;ctx.textAlign="center";ctx.fillText(inside?"INTERIOR":"WAYFARER SHACK",x+w/2,y-s*.72);ctx.textAlign="start";ctx.restore();
 }
+function architecturalBuilding(ctx,o,s,p){
+  const b=o.bounds,inside=p.x>=b.x+1&&p.x<b.x+b.w-1&&p.y>=b.y+1&&p.y<b.y+b.h-1,x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s,colors={city:["#393a3f","#858188"],arcology:["#18333b","#58a0a6"],cloister:["#3b2d35","#9a737f"]}[o.districtStyle]||["#333","#888"];
+  ctx.save();ctx.globalAlpha=inside?.08:.78;ctx.fillStyle=colors[0];ctx.beginPath();ctx.moveTo(x-s*.08,y+s*.2);ctx.lineTo(x+w*.5,y-s*(.5+.14*(o.facadeHeight||1)));ctx.lineTo(x+w+s*.08,y+s*.2);ctx.lineTo(x+w-s*.12,y+h*.34);ctx.lineTo(x+s*.12,y+h*.34);ctx.closePath();ctx.fill();ctx.strokeStyle=colors[1];ctx.lineWidth=2;ctx.stroke();
+  for(let q=1;q<Math.min(6,b.w-1);q+=2){ctx.fillStyle=colors[1]+"77";ctx.fillRect(x+q*s,y+s*.15,s*.42,s*.18)}ctx.globalAlpha=1;if(!inside){ctx.fillStyle="#dfd4b2";ctx.font=`${Math.max(8,s*.2)}px monospace`;ctx.textAlign="center";ctx.fillText(o.name.toUpperCase(),x+w/2,y-s*(.58+.14*(o.facadeHeight||1)));ctx.textAlign="start"}ctx.restore();
+}
 export function render(ctx, g, w, h, now) {
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = "#141816";
@@ -368,6 +383,8 @@ export function render(ctx, g, w, h, now) {
             ctx.fillText(o.role, cx, cy - 27);
             ctx.textAlign = "start";
           } else if (o.kind === "shack") shack(ctx,o,s,p);
+          else if (o.kind === "architecturalBuilding") architecturalBuilding(ctx,o,s,p);
+          else if (o.kind === "architecturalDistrict") { /* district title is carried by its buildings */ }
           else if (o.kind === "relayTerminal") {
             actor(ctx, o.x, o.y, s, "shrine");
             ctx.fillStyle = "#d2c090";
