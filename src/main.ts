@@ -635,6 +635,7 @@ export function combatIndicatorGeometry(game, now = performance.now()) {
         x: e.x + 0.5,
         y: e.y + 0.5,
         radius: enemyDangerRadius(e),
+        large: (Number(e.scale) || 1) > 1.25,
       });
   for (const o of game.map.objects)
     if (o.kind === "trap")
@@ -678,13 +679,13 @@ function drawTruthfulCombatGeometry() {
     ctx.stroke();
   }
   for (const q of g.enemies) {
-    ctx.fillStyle = "#783b3430";
-    ctx.strokeStyle = "#db866ccc";
-    ctx.lineWidth = 2.5;
+    ctx.fillStyle = q.large ? "transparent" : "#783b3430";
+    ctx.strokeStyle = q.large ? "#db866c99" : "#db866ccc";
+    ctx.lineWidth = q.large ? 3 : 2.5;
     ctx.setLineDash([5, 5]);
     ctx.beginPath();
     ctx.arc(sx(q.x), sy(q.y), q.radius * s, 0, Math.PI * 2);
-    ctx.fill();
+    if (!q.large) ctx.fill();
     ctx.stroke();
     ctx.setLineDash([]);
   }

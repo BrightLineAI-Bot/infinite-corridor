@@ -1974,6 +1974,11 @@ test("creature classes vary scale independently of strength and limit segmented 
   assert.match(renderer,/segments > 1/);assert.match(renderer,/segmentSpacing/);assert.match(renderer,/e\.scale/);assert.match(renderer,/ctx\.ellipse\(cx, cy/);
 });
 
+test("large creature warnings use one truthful outer boundary without an obscuring inner barrier",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");
+  assert.match(main,/large: \(Number\(e\.scale\) \|\| 1\) > 1\.25/);assert.match(main,/if \(!q\.large\) ctx\.fill\(\)/);assert.match(main,/radius: enemyDangerRadius\(e\)/);assert.doesNotMatch(renderer,/r \* 0\.72/);assert.doesNotMatch(renderer,/enemyDangerRadius/);
+});
+
 test("dungeon seals checkpoint travel and Crossing Sigil exits without losing carried state", () => {
   const s = freshSave(),
     g = new Game(s, 0),
@@ -2165,12 +2170,12 @@ test("journal trail examples invoke the exact ground-waymark drawing function",(
   assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,82\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
 });
 
-test("release 54 loads one coherent version across the entire module graph",()=>{
+test("release 55 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=54/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=54/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v54/);assert.match(sw,/styles\.css\?v=54/);assert.match(sw,/main\.js\?v=54/);assert.match(sw,/combat\.js\?v=54/);assert.match(sw,/renderer\.js\?v=54/);
-  assert.match(build,/release='54'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=55/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=55/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v55/);assert.match(sw,/styles\.css\?v=55/);assert.match(sw,/main\.js\?v=55/);assert.match(sw,/combat\.js\?v=55/);assert.match(sw,/renderer\.js\?v=55/);
+  assert.match(build,/release='55'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("only danger waymarks add a direction stem while other silhouettes point naturally",()=>{
