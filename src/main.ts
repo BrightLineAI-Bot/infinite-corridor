@@ -45,7 +45,7 @@ function drawRangedEffects() {
     ];
   for (const p of game.projectiles) {
     const [x, y] = toScreen(p);
-    ctx.fillStyle = p.hostile ? "#d28af0" : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
+    ctx.fillStyle = p.hostile ? (p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":"#d28af0") : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
     ctx.shadowColor = ctx.fillStyle;
     ctx.shadowBlur = 8;
     ctx.beginPath();
@@ -55,13 +55,13 @@ function drawRangedEffects() {
       ctx.lineTo(x + Math.cos(a + 2.35) * 7, y + Math.sin(a + 2.35) * 7);
       ctx.lineTo(x + Math.cos(a - 2.35) * 7, y + Math.sin(a - 2.35) * 7);
       ctx.closePath();
-    } else if(p.path==="grenade"){ctx.arc(x,y,7,0,7);ctx.moveTo(x,y-7);ctx.lineTo(x+4,y-11)}else ctx.arc(x, y, p.damageType === "magic" ? 5 : 3, 0, 7);
+    } else if(p.path==="grenade"){ctx.arc(x,y,7,0,7);ctx.moveTo(x,y-7);ctx.lineTo(x+4,y-11)}else if(p.path==="arc"){const a=Math.atan2(p.dy,p.dx);ctx.ellipse(x,y,8,3,a,0,7)}else ctx.arc(x, y, p.damageType === "magic" ? 5 : 3, 0, 7);
     ctx.fill();
   }
   ctx.shadowBlur = 0;
   for (const fx of game.effects) {
     const [x, y] = toScreen(fx);
-    ctx.strokeStyle = "#b75235aa";
+    ctx.strokeStyle = fx.hostile ? "#e35248cc" : "#b75235aa";
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.arc(x, y, fx.radius * s, 0, 7);
