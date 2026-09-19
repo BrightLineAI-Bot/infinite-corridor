@@ -2118,11 +2118,11 @@ test("combat grants repeatable marks with larger exceptional rewards", () => {
 test("weather and open-world shacks are deterministic bounded environment features", () => {
   const weather=new Set(),shacks=[];
   for(let y=-8;y<=8;y++)for(let x=-8;x<=8;x++){const a=generateRegion("weather-housing",x,y,1),b=generateRegion("weather-housing",x,y,1);assert.equal(a.weather,b.weather);weather.add(a.weather);shacks.push(...a.objects.filter(o=>o.kind==="shack"));}
-  assert.ok(weather.has("rain"));assert.ok(weather.has("snow"));assert.ok(weather.has("sunbreak"));assert.ok(shacks.length>0);assert.ok(shacks.every(o=>o.bounds?.w>=5&&o.bounds?.w<=8&&o.bounds?.h>=4&&o.bounds?.h<=6));assert.ok(new Set(shacks.map(o=>`${o.bounds.w}x${o.bounds.h}`)).size>3);assert.ok(new Set(shacks.map(o=>o.facadeStyle)).size>=4);assert.ok(new Set(shacks.map(o=>o.condition)).size>=5);assert.ok(shacks.every(o=>o.door?.side==="south"&&o.roofProfile));
+  assert.ok(weather.has("rain"));assert.ok(weather.has("snow"));assert.ok(weather.has("sunbreak"));assert.ok(shacks.length>0);assert.ok(shacks.every(o=>o.bounds?.w>=6&&o.bounds?.w<=9&&o.bounds?.h>=5&&o.bounds?.h<=7));assert.ok(new Set(shacks.map(o=>`${o.bounds.w}x${o.bounds.h}`)).size>3);assert.ok(new Set(shacks.map(o=>o.facadeStyle)).size>=4);assert.ok(new Set(shacks.map(o=>o.condition)).size>=5);assert.ok(shacks.every(o=>o.door?.side==="south"&&o.roofProfile&&o.entrances?.length));assert.ok(shacks.some(o=>o.door.width===2));assert.ok(shacks.some(o=>o.entrances.length>1));
 });
 
 test("field shelters fully conceal interiors and use continuous architectural facades",()=>{
-  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/t\.structure === "shack"/);assert.match(renderer,/buildingId===t\.buildingId/);assert.match(renderer,/if\(inside\).*strokeRect/);assert.match(renderer,/ctx\.fillRect\(x,y\+s\*\.28,w,h-s\*\.28\)/);assert.match(renderer,/facadeStyle/);assert.match(renderer,/roofProfile/);assert.match(renderer,/condition===\"collapsed\"/);assert.match(renderer,/condition===\"overgrown\"/);assert.match(renderer,/quadraticCurveTo/);assert.match(renderer,/const windows=Math\.max/);
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/t\.structure === "shack"/);assert.match(renderer,/buildingId===t\.buildingId/);assert.match(renderer,/if\(inside\).*strokeRect/);assert.match(renderer,/ctx\.fillRect\(x,y\+s\*\.28,w,h-s\*\.28\)/);assert.match(renderer,/facadeStyle/);assert.match(renderer,/roofProfile/);assert.match(renderer,/condition===\"collapsed\"/);assert.match(renderer,/condition===\"overgrown\"/);assert.match(renderer,/quadraticCurveTo/);assert.match(renderer,/function shelterSigil/);assert.match(renderer,/const backY=y\+s\*\.2,frontY=y\+s\*\.84/);assert.match(renderer,/const windows=Math\.max/);
 });
 
 test("journal renders the same minimalist trail marks used on the floor",()=>{
@@ -2134,7 +2134,7 @@ test("rare architectural districts provide deterministic city arcology and clois
   const districts=[],styles=new Set(),shapes=new Set(),sizes=new Set(),uses=new Set(),profiles=new Set();
   for(let y=-22;y<=22;y++)for(let x=-22;x<=22;x++){const a=generateRegion("architectural-texture",x,y,1),b=generateRegion("architectural-texture",x,y,1);if(a.district){assert.deepEqual(a,b);districts.push(a);styles.add(a.district.style);}}
   assert.ok(districts.length>8&&districts.length<130);assert.deepEqual([...styles].sort(),["arcology","city","cloister"]);
-  for(const region of districts.slice(0,30)){const buildings=region.objects.filter(o=>o.kind==="architecturalBuilding");assert.ok(buildings.length>=2);for(const building of buildings){assert.equal(region.tiles[building.door.y*32+building.door.x].blocked,false);assert.equal(region.tiles[building.door.y*32+building.door.x].structure,"districtDoor");assert.ok(building.bounds.w>=7&&building.bounds.h>=6);assert.ok(building.footprint.length>20);shapes.add(building.shape);sizes.add(`${building.bounds.w}x${building.bounds.h}`);uses.add(building.buildingUse);profiles.add(building.roofProfile)}assert.ok(sectionSites(region.seed,region.rx,region.ry,1).some(o=>o.kind==="architecturalDistrict"));}
+  for(const region of districts.slice(0,30)){const buildings=region.objects.filter(o=>o.kind==="architecturalBuilding");assert.ok(buildings.length>=2);for(const building of buildings){assert.equal(region.tiles[building.door.y*32+building.door.x].blocked,false);assert.equal(region.tiles[building.door.y*32+building.door.x].structure,"districtDoor");assert.ok(building.entrances?.length>=1);for(const entrance of building.entrances){assert.equal(region.tiles[entrance.y*32+entrance.x].blocked,false);assert.equal(region.tiles[entrance.y*32+entrance.x].structure,"districtDoor")}assert.ok(building.bounds.w>=7&&building.bounds.h>=6);assert.ok(building.footprint.length>20);shapes.add(building.shape);sizes.add(`${building.bounds.w}x${building.bounds.h}`);uses.add(building.buildingUse);profiles.add(building.roofProfile)}assert.ok(sectionSites(region.seed,region.rx,region.ry,1).some(o=>o.kind==="architecturalDistrict"));}
   assert.deepEqual([...shapes].sort(),["notched","rect","wing"]);assert.ok(sizes.size>=8);assert.ok(uses.size>=10);assert.deepEqual([...profiles].sort(),["flat","gable","spire","stepped"]);
 });
 
@@ -2174,12 +2174,12 @@ test("journal trail examples invoke the exact ground-waymark drawing function",(
   assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,82\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
 });
 
-test("release 58 loads one coherent version across the entire module graph",()=>{
+test("release 59 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=58/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=58/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v58/);assert.match(sw,/styles\.css\?v=58/);assert.match(sw,/main\.js\?v=58/);assert.match(sw,/combat\.js\?v=58/);assert.match(sw,/renderer\.js\?v=58/);
-  assert.match(build,/release='58'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=59/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=59/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v59/);assert.match(sw,/styles\.css\?v=59/);assert.match(sw,/main\.js\?v=59/);assert.match(sw,/combat\.js\?v=59/);assert.match(sw,/renderer\.js\?v=59/);
+  assert.match(build,/release='59'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("danger waymarks fill only their forward corner while other silhouettes point naturally",()=>{
