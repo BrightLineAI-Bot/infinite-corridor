@@ -72,6 +72,14 @@ The game may take high-level genre lessons from isometric action RPGs and diffic
 
 ## Ranged weapons and supplies
 
+## Elite bestiary and contracts (save v10)
+
+Four uncommon elite classes extend the normal creature system: Vesperwing, Gravitant Bell, Mire Apostle, and Choir of Knives. Each keeps a stable silhouette, movement profile, signature modules, lore, and reward, while the world seed selects one or two compatible variable aspects. The resulting variant ID, modules, HP, hazards, summons, contract state, and defeat remain persistent.
+
+Signal Ledgers offer the marked Vesperwing hunt. Rare cisterns may contain a Gravitant Bell guardian; the Mire Apostle is a deterministic world beast; Coilmarket's Cantor Threshold opens after four ash-born kills and leads to the Choir. Elite rewards are one-time: marks, experience, weapon or armor spheres, codex knowledge, and—in the poison hunt—a Clearroot Ampoule. Spheres permanently upgrade the current weapon or armor from the Pack. This is optional progression without random rarity tiers or repeatable farming.
+
+Elite attacks retain visible windups and bounded fields. Gravity has a windup, duration, radius, force, and cooldown. Ooze pools expire and are capped. Poison ticks once per second, appears on the HUD, persists in save v10, and ends by expiry, death, or Clearroot. Summons are capped at three, have no rewards, and are cleaned up with their encounter snapshot.
+
 **Attack** (or `J`) uses the selected equipped weapon. Primary melee weapons retain their own cone, thrust, or broad arc and automatically turn toward the nearest visible enemy actually inside reach. Selecting the equipped secondary makes Attack fire it with the normal pending or last-direction aim; Attack always stows Tool mode. **Tool** (`R` or `Q`) toggles a persistent aiming mode for current ranged tools. While it is active, each world tap aims and immediately fires, and the mode remains active for repeated shots. Outside Tool mode, a world tap fires when ranged Attack is selected; melee Attack remains auto-targeted. **Spell** (`F`) casts the equipped Ember Ring at the pending target within range, leaving a persisted three-second 360-degree hazard. Spark Coil and Lumen Spindle bolts deal magic damage; Needle Caster shots deal physical damage. Lumen Phials provide a persisted 45-second magic-projectile surge.
 
 Static deterministic supply caches occur in every section and the Hollow Relay, while defeated enemies can drop restorative draughts with persisted anti-duplication and drought protection. Death tops draughts up to two, never reduces a larger count. Vela’s touch-accessible trade screen sells unlimited restorative draughts plus limited tonics, phials, and deterministic equipment; shop stock and purchases persist. The pack uses DOM-created controls for selecting and equipping weapons.

@@ -19,6 +19,7 @@ import { freshSave, migrateSave } from "../src/types.ts";
 import { serializeSave, deserializeSave } from "../src/persistence.ts";
 import { dodge, createCombatant, CREATURE_TRAITS, CREATURE_FORMS, enemyBodyRadius } from "../src/combat.ts";
 import { generateItem, isValidItem, SPELLS } from "../src/items.ts";
+import{ELITE_DEFINITIONS,eliteVariant,eliteThreat,freshEliteState,ensureEliteState,recordPortalPrey,applyPoison,tickEliteStatus,cleansePoison,addEliteHazard,tickEliteHazards,completeElite}from'../src/elites.ts';
 import {
   Game,
   moveAxis,
@@ -242,7 +243,7 @@ test("schema migrations preserve location and select legacy generation zero", ()
     },
     explored: {},
   });
-  assert.equal(s.version, 9);
+  assert.equal(s.version, 10);
   assert.equal(s.worldGeneration, 0);
   assert.deepEqual(
     [s.session.rx, s.session.ry, s.session.x, s.session.y],
@@ -511,7 +512,7 @@ test("v3 migration creates valid narrative state without losing progress", () =>
     narrative: undefined,
     xp: 44,
   });
-  assert.equal(s.version, 9);
+  assert.equal(s.version, 10);
   assert.equal(s.xp, 44);
   assert.ok(Array.isArray(s.narrative.journal));
   assert.equal(s.narrative.schema, "infinite-corridor-narrative/1.0.0");
@@ -652,13 +653,14 @@ test("v4 migration adds consumables without losing progress", () => {
   old.xp = 77;
   delete old.consumables;
   const s = migrateSave(old);
-  assert.equal(s.version, 9);
+  assert.equal(s.version, 10);
   assert.equal(s.xp, 77);
   assert.deepEqual(s.consumables, {
     restorativeDraught: 3,
     ironbarkTonic: 1,
     lumenPhial: 1,
     crossingSigil: 0,
+    clearrootAmpoule: 0,
   });
 });
 test("draught heals without waste and tonic persists remaining guard", () => {
@@ -783,12 +785,13 @@ test("v5 to v8 retains explicit zero supplies and ranged state", () => {
   old.version = 5;
   old.consumables = { restorativeDraught: 0, ironbarkTonic: 0 };
   const s = migrateSave(old);
-  assert.equal(s.version, 9);
+  assert.equal(s.version, 10);
   assert.deepEqual(s.consumables, {
     restorativeDraught: 0,
     ironbarkTonic: 0,
     lumenPhial: 1,
     crossingSigil: 0,
+    clearrootAmpoule: 0,
   });
   assert.equal(s.activeWeaponSlot, "primary");
   assert.deepEqual(s.lastAim, { x: 0, y: 1 });
@@ -1042,7 +1045,7 @@ test("v6 to v8 preserves location ranged aim snapshots and new defaults", () => 
   o.session.areas.keep = { enemies: [] };
   delete o.toolMode;
   const s = migrateSave(o);
-  assert.equal(s.version, 9);
+  assert.equal(s.version, 10);
   assert.deepEqual([s.session.x, s.session.y], [7, 9]);
   assert.deepEqual(s.pendingAim, { x: 3, y: 4 });
   assert.ok(s.session.areas.keep);
@@ -1574,7 +1577,7 @@ test("v7 migration preserves old Relay completion dead Vela and unrelated exact 
   old.session.areas.keep = { enemies: [{ id: "retain", hp: 3 }] };
   old.currency = 47;
   const s = migrateSave(old);
-  assert.equal(s.version, 9);
+  assert.equal(s.version, 10);
   assert.equal(s.consequences.choices.relay, "restore");
   assert.equal(s.consequences.npcs["vendor-vela"].status, "dead");
   assert.equal(s.consequences.settlements["ember-refuge"].status, "standing");
@@ -1951,11 +1954,11 @@ test("expanded creature ecology is deterministic and recorded in the field codex
   for(let y=-4;y<=4;y++)for(let x=-4;x<=4;x++)for(const e of generateRegion("ecology",x,y,1).enemySpawns)kinds.add(e.kind);
   for(const kind of ["ashenHound","veilMoth","rootBrute","coilStalker","cinderWisp"])assert.ok(kinds.has(kind),kind);
   const s=freshSave(),g=new Game(s,0);
-  assert.equal(s.version,9);
+  assert.equal(s.version,10);
   assert.ok(Object.keys(s.codex.creatures).length>=1);
   assert.equal(s.codex.places["terrain:"+g.map.dominant],true);
   const migrated=migrateSave({...freshSave(),version:8,codex:undefined});
-  assert.equal(migrated.version,9);
+  assert.equal(migrated.version,10);
   assert.deepEqual(migrated.codex,{creatures:{},places:{},features:{},variants:{}});
 });
 test("journal exposes encounter codex sections and an always-available symbol guide",()=>{
@@ -1982,7 +1985,7 @@ test("compatible procedural traits create deterministic mechanical creature vari
 
 test("creature classes vary scale independently of strength and limit segmented forms",()=>{
   const mite=createCombatant("glassMite",1,1),warden=createCombatant("sparkWarden",2,2),brute=createCombatant("rootBrute",3,3),marshal=createCombatant("hollowMarshal",4,4,true),coil=createCombatant("coilStalker",5,5),colossus=createCombatant("riftColossus",6,6,true),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");
-  assert.ok(mite.scale<1);assert.ok(warden.damage>mite.damage&&warden.scale<1.1);assert.ok(brute.scale>1.2);assert.ok(marshal.scale>=1.6);assert.ok(colossus.scale>2);assert.equal(coil.segments,3);assert.equal(colossus.segments,4);assert.equal(Object.values(CREATURE_FORMS).filter(f=>f.segments>1).length,2);assert.ok(enemyBodyRadius(colossus)>enemyBodyRadius(mite));
+  assert.ok(mite.scale<1);assert.ok(warden.damage>mite.damage&&warden.scale<1.1);assert.ok(brute.scale>1.2);assert.ok(marshal.scale>=1.6);assert.ok(colossus.scale>2);assert.equal(coil.segments,3);assert.equal(colossus.segments,4);assert.equal(Object.values(CREATURE_FORMS).filter(f=>f.segments>1).length,3);assert.ok(enemyBodyRadius(colossus)>enemyBodyRadius(mite));
   assert.match(renderer,/segments > 1/);assert.match(renderer,/segmentSpacing/);assert.match(renderer,/e\.scale/);assert.match(renderer,/ctx\.ellipse\(cx, cy/);
 });
 
@@ -2248,13 +2251,25 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 71 loads one coherent version across the entire module graph",()=>{
+test("release 72 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=71/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=71/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v71/);assert.match(sw,/styles\.css\?v=71/);assert.match(sw,/main\.js\?v=71/);assert.match(sw,/combat\.js\?v=71/);assert.match(sw,/renderer\.js\?v=71/);
-  assert.match(build,/release='71'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=72/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=72/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v72/);assert.match(sw,/styles\.css\?v=72/);assert.match(sw,/main\.js\?v=72/);assert.match(sw,/combat\.js\?v=72/);assert.match(sw,/renderer\.js\?v=72/);
+  assert.match(build,/release='72'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
+
+test("elite definitions preserve class identity while deterministic aspects vary",()=>{assert.equal(Object.keys(ELITE_DEFINITIONS).length,4);for(const d of Object.values(ELITE_DEFINITIONS)){assert.ok(d.stableModules.length>=2);assert.ok(d.variantModules.length>=3);assert.ok(d.threatCost>=8)}const a=eliteVariant('A','vesperwing','5,-2'),again=eliteVariant('A','vesperwing','5,-2'),b=eliteVariant('B','vesperwing','5,-2');assert.deepEqual(a,again);assert.notEqual(a.variantId,b.variantId);assert.ok(a.modules.includes('dive'));assert.ok(a.variantModules.length>=1);assert.ok(eliteThreat(a,8,1)>a.threatCost)});
+
+test("elite poison hazards and cleansing are bounded persistent and deterministic",()=>{const s=freshSave(),status=ensureEliteState(s).status;applyPoison(status,3);let damage=0;tickEliteStatus(status,1.1,n=>damage+=n);assert.equal(damage,2);assert.ok(status.poison>1.8);s.consumables.clearrootAmpoule=1;assert.equal(cleansePoison(s),true);assert.equal(s.elites.status.poison,0);const hazards=[];for(let i=0;i<12;i++)addEliteHazard(hazards,{owner:'mire',kind:'ooze',life:5+i,radius:1,damage:4},8);assert.equal(hazards.length,8);assert.equal(tickEliteHazards(hazards,20).length,0);const round=deserializeSave(serializeSave(s));assert.equal(round.elites.status.poison,0)});
+
+test("portal prerequisite and elite rewards are one-time",()=>{const s=freshSave();for(let i=0;i<4;i++)recordPortalPrey(s,'ashling');assert.equal(s.elites.contracts.knifeChoir.state,'available');const reward=completeElite(s,'knifeChoir'),marks=s.currency;assert.equal(reward.material,'weaponSphere');assert.equal(s.materials.weaponSphere,1);assert.equal(completeElite(s,'knifeChoir'),null);assert.equal(s.currency,marks)});
+
+test("elite combatants are genuinely boss-scale but remain below Gate Revenant terror",()=>{for(const id of Object.keys(ELITE_DEFINITIONS)){const e=createCombatant(id,8,8);assert.equal(e.boss,true);assert.ok(e.maxHp>=230);assert.ok(e.damage>=17);assert.ok(e.eliteModules.length>=3);assert.ok(e.damage<22)}});
+
+test("save v10 migration preserves old progress and initializes elite contracts",()=>{const old=freshSave();old.version=9;delete old.elites;old.currency=77;const s=migrateSave(old);assert.equal(s.version,10);assert.equal(s.currency,77);assert.equal(s.elites.contracts.vesperwing.state,'available');assert.equal(s.materials.weaponSphere,0)});
+
+test("elite journal art is bundled and release build includes the elite module",()=>{const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8'),css=readFileSync(new URL('../styles.css',import.meta.url),'utf8'),build=readFileSync(new URL('../scripts/build.mjs',import.meta.url),'utf8'),sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');assert.match(main,/ELITE_PORTRAITS/);assert.match(css,/elite-bestiary-atlas-v1-wide\.png/);assert.match(build,/'elites'/);assert.match(sw,/elite-bestiary-atlas-v1-wide\.png/)});
 
 test("rare gate predators alone can carry aggro through a dungeon exit",()=>{
   const s=freshSave();let id=null;

@@ -961,6 +961,7 @@ function openPack() {
     character.append(span);
   }
   body.append(heading, summary, xp, character);
+  for(const [kind,label] of [['weapon','Weapon sphere'],['armor','Armor sphere']]){const row=document.createElement('div'),key=kind+'Sphere';row.className='item';row.textContent=`${label} ×${save.materials[key]||0}`;row.append(uiButton('Fuse',()=>{game.useUpgradeSphere(kind);persist();openPack()}));body.append(row)}
   const statHelp = {
     Might: "+2 melee damage per rank.",
     Finesse: "+3 maximum stamina per rank.",
@@ -1043,6 +1044,7 @@ function openPack() {
       "Lumen Phial",
       "Empowers magic projectiles by 40% for 45 seconds.",
     ],
+    ["clearrootAmpoule","Clearroot Ampoule","Immediately ends elite poison."],
   ]) {
     const row = document.createElement("div"),
       title = document.createElement("strong"),
@@ -1094,6 +1096,8 @@ const CODEX = {
   }
 };
 const CREATURE_PORTRAITS={ashling:[0,0],glassMite:[1,0],sparkWarden:[2,0],coilStalker:[3,0],veilMoth:[0,1],rootBrute:[1,1],cinderWisp:[2,1],voidSentinel:[3,1],riftColossus:[3,1],ashenHound:[0,0],hollowMarshal:[2,0],mossGrazer:[1,1],lanternDoe:[0,0],hushling:[0,1],gateRevenant:[3,1]};
+Object.assign(CODEX.creatures,{vesperwing:['Vesperwing — The Ashen Meridian','A winged elite that dives and casts from range. Its additional aspects are fixed by the encounter seed.'],gravitantBell:['Gravitant Bell — The Weight Below','A hovering elite whose readable gravity field pulls loose bodies inward before a radial strike.'],mireApostle:['Mire Apostle — Saint of the Low Water','A plated ooze beast that leaves bounded venom pools and carries Clearroot in its drowned shell.'],knifeChoir:['Choir of Knives — The Divided Cantor','A segmented summoner whose orbiting shard-creatures are capped and yield no rewards.']});
+const ELITE_PORTRAITS={vesperwing:[0,0],gravitantBell:[1,0],mireApostle:[2,0],knifeChoir:[3,0]};
 function trailMark(kind){const canvas=document.createElement("canvas"),signal={ring:"beacon",chevron:"crossing",triangle:"danger",spiral:"event"}[kind];canvas.width=canvas.height=96;const ctx=canvas.getContext("2d");canvas.className=`trail-symbol ${kind}`;canvas.setAttribute("role","img");canvas.setAttribute("aria-label",`${signal} floor mark pointing right`);if(ctx){ctx.translate(48,48);drawWaymarkIcon(ctx,signal,82)}return canvas}
 function openJournal(mode = "chronicle") {
   if(typeof mode!=="string")mode="chronicle";
@@ -1118,7 +1122,7 @@ function openJournal(mode = "chronicle") {
     const heading=document.createElement("h3");heading.textContent=mode==="rules"?"Field rules and symbols":`${mode[0].toUpperCase()+mode.slice(1)} encountered`;
     out.append(heading);
     if(!entries.length){const empty=document.createElement("p");empty.textContent="No entries recorded yet. Encounter them in the world to unlock this section.";out.append(empty);}
-    for(const [id,entry] of entries){const article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p");article.className="item codex-card";title.textContent=entry[0];text.textContent=entry[1];if(mode==="rules"&&["ring","chevron","triangle","spiral"].includes(id)){const badge=document.createElement("span");badge.className="symbol-badge";badge.append(trailMark(id));article.classList.add("symbol-card");article.prepend(badge);}if(mode==="creatures"&&CREATURE_PORTRAITS[id]){const portrait=document.createElement("div"),[x,y]=CREATURE_PORTRAITS[id];portrait.className="creature-portrait";portrait.style.setProperty("--portrait-x",`${x*33.333}%`);portrait.style.setProperty("--portrait-y",`${y*100}%`);portrait.setAttribute("role","img");portrait.setAttribute("aria-label",`${entry[0]} field illustration`);article.prepend(portrait);}article.append(title,text);out.append(article);}
+    for(const [id,entry] of entries){const article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p");article.className="item codex-card";title.textContent=entry[0];text.textContent=entry[1];if(mode==="rules"&&["ring","chevron","triangle","spiral"].includes(id)){const badge=document.createElement("span");badge.className="symbol-badge";badge.append(trailMark(id));article.classList.add("symbol-card");article.prepend(badge);}const portraitData=mode==="creatures"&&(ELITE_PORTRAITS[id]||CREATURE_PORTRAITS[id]);if(portraitData){const portrait=document.createElement("div"),[x,y]=portraitData,elite=!!ELITE_PORTRAITS[id];portrait.className="creature-portrait"+(elite?" elite-portrait":"");portrait.style.setProperty("--portrait-x",`${x*33.333}%`);portrait.style.setProperty("--portrait-y",`${y*100}%`);portrait.setAttribute("role","img");portrait.setAttribute("aria-label",`${entry[0]} field illustration`);article.prepend(portrait);}article.append(title,text);out.append(article);}
     if(mode==="creatures")for(const [id,v] of Object.entries(save.codex?.variants||{})){if(!v.traits?.length)continue;const base=CODEX.creatures[v.kind]?.[0]||v.kind,article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p"),names=v.traits.map(t=>CREATURE_TRAITS[t]?.name||t);article.className="item";title.textContent=`${names.join(" ")} ${base}`;text.textContent=v.traits.map(t=>CREATURE_TRAITS[t]?.text).filter(Boolean).join(" ");article.append(title,text);out.append(article);}
     if(!journal.open)journal.showModal();
     return;
@@ -1256,6 +1260,7 @@ function frame(now) {
     buffs.push(`IRONBARK ${Math.ceil(game.guardRemaining)}s`);
   if (game.magicBuffRemaining > 0)
     buffs.push(`LUMEN SURGE ${Math.ceil(game.magicBuffRemaining)}s`);
+  if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);
   $("#buff").textContent = buffs.join(" · ");
   if ((clock += dt) > 3) {
     clock = 0;

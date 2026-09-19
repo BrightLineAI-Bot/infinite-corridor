@@ -76,3 +76,11 @@ Later versions can add locally stored “content packs” containing authored or
 - Stage two: a Bathysal Lens and dive rig open submerged channels, with readable breath limits and safe air pockets.
 - Stage three: dedicated underwater regions and dungeons can add currents, hidden vertical routes, aquatic creatures, and drowned settlements.
 - Water remains deterministic and local to loaded sections; this is traversal design, not a full fluid simulation.
+
+## Elite bestiary architecture
+
+Elite classes are data in `src/elites.ts`, composed from a stable identity package plus deterministic compatible variant modules. Stable modules preserve recognition; seed-selected aspects create variety without rerolling on reload. Threat cost includes mechanics rather than only HP and supports later bounded multi-elite composition.
+
+The initial modules are hovering/ranged pressure, gravity pull, radial pressure, bounded ooze or trail hazards, poison, summoning, and controlled split identity. Gravity and persistent hazards use explicit lifetimes and caps. Summoned adds yield no XP or loot. Deferred modules—burrowing, beams, armor phases, cone breath, and paired elites—remain data-compatible but await dedicated telegraphs and mobile readability testing.
+
+Contract states live in save v10 beside deterministic encounter state. Marked, dungeon-guardian, world-beast, and prerequisite-portal paths are represented in the first slice. Rewards are idempotent and intentionally restrained: a one-time sphere upgrades the equipped weapon or armor, with marks, XP, codex knowledge, and occasional utility supplies. New elites should declare a stable ID, identity fields, stable and variable modules, threat cost, context, reward, and lore; new contracts should use explicit state transitions and never depend on real-time timers.
