@@ -1,7 +1,7 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=55";
-import { vendorShop, buyFromVendor } from "./game.js?v=55";
-import { CREATURE_TRAITS } from "./combat.js?v=55";
-import { hashSeed } from "./random.js?v=55";
+import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=56";
+import { vendorShop, buyFromVendor } from "./game.js?v=56";
+import { CREATURE_TRAITS } from "./combat.js?v=56";
+import { hashSeed } from "./random.js?v=56";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -202,19 +202,19 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame } from "./persistence.js?v=55";
+import { loadSave, saveGame } from "./persistence.js?v=56";
 import {
   Game,
   actionReadiness,
   enemyDangerRadius,
   characterStats,
   syncCharacterStats,
-} from "./game.js?v=55";
-import { createInput } from "./input.js?v=55";
-import { render as baseRender } from "./renderer.js?v=55";
-import { STATS } from "./types.js?v=55";
-import { SPELLS } from "./items.js?v=55";
-import { currentObjective, validActions } from "./interactions.js?v=55";
+} from "./game.js?v=56";
+import { createInput } from "./input.js?v=56";
+import { render as baseRender } from "./renderer.js?v=56";
+import { STATS } from "./types.js?v=56";
+import { SPELLS } from "./items.js?v=56";
+import { currentObjective, validActions } from "./interactions.js?v=56";
 import {
   generateRegion as generateWorldRegion,
   sectionSummary,
@@ -223,7 +223,7 @@ import {
   apertureTier,
   APERTURE_THRESHOLDS,
   perceived,
-} from "./world.js?v=55";
+} from "./world.js?v=56";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
