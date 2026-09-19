@@ -185,7 +185,7 @@ export function tileOpen(map, width, x, y) {
     tile = map.tiles[iy * width + ix];
   if (ix < 0 || iy < 0 || ix >= width || iy >= height || !tile || tile.blocked)
     return false;
-  if (tile.structure === "shackWall" && tile.wallSides?.length) {
+  if (["shackWall", "districtWall"].includes(tile.structure) && tile.wallSides?.length) {
     const lx = x - ix,
       ly = y - iy,
       thickness = 0.22;
@@ -204,7 +204,7 @@ export function footprintOpen(map, width, x, y) {
   for(let ty=Math.floor(top);ty<=Math.floor(bottom-1e-6);ty++)for(let tx=Math.floor(left);tx<=Math.floor(right-1e-6);tx++){
     if(tx<0||ty<0||tx>=width||ty>=height)return false;
     const tile=map.tiles[ty*width+tx];if(!tile||tile.blocked)return false;
-    if(tile.structure!=="shackWall"||!tile.wallSides?.length)continue;
+    if(!["shackWall","districtWall"].includes(tile.structure)||!tile.wallSides?.length)continue;
     const thickness=.22;
     for(const side of tile.wallSides){
       const box=side==="west"?[tx,tx+thickness,ty,ty+1]:side==="east"?[tx+1-thickness,tx+1,ty,ty+1]:side==="north"?[tx,tx+1,ty,ty+thickness]:[tx,tx+1,ty+1-thickness,ty+1];
@@ -229,7 +229,7 @@ export function footprintHazard(map,width,x,y){
 export function footprintInsideStructure(map,width,x,y){
   for(const [ox,oy] of [[.24,.5],[.76,.5],[.24,.88],[.76,.88]]){
     const structure=map.tiles[Math.floor(y+oy)*width+Math.floor(x+ox)]?.structure;
-    if(structure==='shackInterior'||structure==='districtInterior')return true;
+    if(structure==='shackInterior'||String(structure||'').startsWith('district'))return true;
   }
   return false;
 }
