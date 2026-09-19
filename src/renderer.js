@@ -23,6 +23,7 @@ const PAL = {
   blocked: ["#232522", "#45423d"],
   wall: ["#1d211f", "#403d37"],
   river: ["#203f48", "#2b5962"],
+  dungeonWater: ["#183b46", "#245763"],
   canyon: ["#171616", "#302721"],
   bridge: ["#67533d", "#856b4b"],
   logBridge: ["#5b442e", "#866847"],
@@ -43,7 +44,7 @@ function tile(ctx, t, x, y, s, map, w, activeBuildingId=null) {
     py = y * s;
   ctx.fillStyle = p[d & 1];
   ctx.fillRect(px, py, s + 1, s + 1);
-  if (t.kind === "river") {
+  if (t.kind === "river" || t.kind === "dungeonWater") {
     ctx.strokeStyle = (d & 1) ? "#8fc2c477" : "#659ca166"; ctx.lineWidth = 2;
     for (let q = 0; q < 3; q++) { ctx.beginPath(); ctx.moveTo(px + ((d + q * 11) % 13), py + 7 + q * s * .26); ctx.quadraticCurveTo(px + s * .5, py + 2 + q * s * .26, px + s - 3, py + 7 + q * s * .26); ctx.stroke(); }
     return;
@@ -144,11 +145,16 @@ const COLORS = {
   voidSentinel: ["#645375", "#282333", "#b896cf"],
   hollowMarshal: ["#78434a", "#332429", "#b99b68"],
   riftColossus: ["#713841", "#2b2022", "#c18352"],
+  mossGrazer: ["#667052", "#303629", "#a3b978"],
+  lanternDoe: ["#8b7654", "#39332a", "#e8c66d"],
+  hushling: ["#76698c", "#282431", "#cab7df"],
   npc: ["#9b815d", "#453832", "#879b8d"],
   shrine: ["#557b74", "#263c3b", "#b7c1aa"],
   checkpoint: ["#668b91", "#304448", "#c7b887"],
   door: ["#76533b", "#382b25", "#9d805d"],
   tree: ["#65513b", "#353229", "#596344"],
+  treeShrub: ["#536044", "#30372c", "#77855d"],
+  treeSpindle: ["#675642", "#312c27", "#6d7653"],
   rock: ["#666a65", "#343735", "#90948b"],
   dungeon: ["#62576b", "#332d39", "#63817a"],
   chest: ["#8d6938", "#443326", "#b7a06a"],
@@ -259,6 +265,12 @@ function actor(
     rect(p[0], 0.13, -0.88, 0.38, 0.75);
     rect("#22191a", -0.18, -0.8, 0.28, 0.22);
     rect(p[2], -0.09, -0.7, 0.08, 0.07);
+  } else if (kind === "mossGrazer") {
+    rect(p[1], -.34, -.35, .62, .28); rect(p[0], .16, -.52, .27, .25); rect(p[2], .33, -.45, .06, .06); rect(p[1], -.24, -.13, .07, .18); rect(p[1], .18, -.13, .07, .18);
+  } else if (kind === "lanternDoe") {
+    rect(p[1], -.28, -.39, .55, .3); rect(p[0], .12, -.62, .25, .28); rect(p[2], .25, -.55, .07, .07); rect(p[1], -.2, -.14, .06, .22); rect(p[1], .16, -.14, .06, .22); rect(p[2], .19, -.79, .04, .21); rect(p[2], .31, -.79, .04, .21);
+  } else if (kind === "hushling") {
+    ctx.fillStyle=p[2]+"55";ctx.beginPath();ctx.arc(k,base-s*.4*sc,s*.38*sc,0,7);ctx.fill();rect(p[1],-.18,-.55,.36,.4);rect(p[0],-.13,-.7,.26,.24);rect(p[2],-.05,-.62,.1,.08);
   } else if (kind === "ashling") {
     rect(p[1], -0.2, -0.55, 0.4, 0.5);
     rect(p[0], -0.16, -0.72, 0.32, 0.24);
@@ -275,9 +287,11 @@ function actor(
   } else {
     rect(p[1], -0.25, -0.42, 0.5, 0.42);
     rect(p[0], -0.18, -0.66, 0.36, 0.3);
-    if (kind === "tree") {
+    if (kind === "tree" || kind === "treeShrub" || kind === "treeSpindle") {
       if(state === "fallen") { rect(p[1], -.43, -.18, .86, .16); rect(p[0], -.35, -.27, .28, .22); }
       else if(state === "charred") { rect("#29231f", -.09, -.75, .18, .72); rect("#3b2d25", -.3, -.78, .25, .16); }
+      else if(kind === "treeShrub") { rect(p[1],-.07,-.35,.14,.31);rect(p[0],-.38,-.48,.34,.31);rect(p[0],.03,-.52,.38,.35);rect(p[2],-.18,-.65,.38,.25); }
+      else if(kind === "treeSpindle") { rect(p[1],-.07,-.91,.14,.87);rect(p[0],-.31,-.73,.28,.1);rect(p[0],.03,-.55,.33,.09);rect(p[2],-.22,-1.03,.18,.25); }
       else { rect(p[1], -0.1, -0.82, 0.2, 0.8); rect(p[0], -0.38, -0.86, 0.76, 0.32); rect("#71845b", -.27, -1.02, .54, .22); }
     } else if (kind === "rock" && (state === "moved" || state === "broken")) {
       rect("#4f514d", -.32, -.2, .2, .12); rect("#73766f", -.04, -.16, .24, .1); rect("#3c3f3b", .2, -.12, .13, .08);
@@ -463,7 +477,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillStyle = "#d2c090";
             ctx.font = "10px monospace";
             ctx.fillText("RELAY", o.x * s, (o.y - 0.3) * s);
-          } else actor(ctx, o.x, o.y, s, o.kind, "down", 0, o.state || "idle");
+          } else {const kind=o.kind==="tree"&&o.vegetationForm==="shrub"?"treeShrub":o.kind==="tree"&&o.vegetationForm==="spindle"?"treeSpindle":o.kind;actor(ctx,o.x,o.y,s,kind,"down",0,o.state||"idle",false,o.scale||1);}
         },
       });
   for (const e of g.enemies)
@@ -573,7 +587,7 @@ export function render(ctx, g, w, h, now) {
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) d.fn();
   for (const e of g.enemies)
-    if (!e.dead) {
+    if (!e.dead && !e.ambient) {
       ctx.fillStyle = "#211617";
       ctx.fillRect(e.x * s, (e.y - 0.1) * s, s, 3);
       ctx.fillStyle = "#9b4d50";
