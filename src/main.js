@@ -1,7 +1,7 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=68";
-import { vendorShop, buyFromVendor } from "./game.js?v=68";
-import { CREATURE_TRAITS } from "./combat.js?v=68";
-import { hashSeed } from "./random.js?v=68";
+import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=69";
+import { vendorShop, buyFromVendor } from "./game.js?v=69";
+import { CREATURE_TRAITS } from "./combat.js?v=69";
+import { hashSeed } from "./random.js?v=69";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -202,19 +202,19 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame } from "./persistence.js?v=68";
+import { loadSave, saveGame } from "./persistence.js?v=69";
 import {
   Game,
   actionReadiness,
   enemyDangerRadius,
   characterStats,
   syncCharacterStats,
-} from "./game.js?v=68";
-import { createInput } from "./input.js?v=68";
-import { render as baseRender } from "./renderer.js?v=68";
-import { STATS } from "./types.js?v=68";
-import { SPELLS } from "./items.js?v=68";
-import { currentObjective, validActions } from "./interactions.js?v=68";
+} from "./game.js?v=69";
+import { createInput } from "./input.js?v=69";
+import { render as baseRender } from "./renderer.js?v=69";
+import { STATS } from "./types.js?v=69";
+import { SPELLS } from "./items.js?v=69";
+import { currentObjective, validActions } from "./interactions.js?v=69";
 import {
   generateRegion as generateWorldRegion,
   sectionSummary,
@@ -224,7 +224,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=68";
+} from "./world.js?v=69";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -1084,7 +1084,7 @@ function openPack() {
 }
 const CODEX = {
   creatures: {
-    ashling:["Ashling","A scavenger shaped by furnace dust; closes carefully for a short strike."],glassMite:["Glass Mite","A low crystal feeder whose small frame hides a quick bite."],sparkWarden:["Spark Warden","A walking conductor that launches visible bolts across distance."],ashenHound:["Ashen Hound","A fast pack hunter following heat and fresh tracks."],veilMoth:["Veil Moth","A drifting predator that casts force from beyond sword reach."],rootBrute:["Root Brute","A slow, durable growth animated by buried machinery."],coilStalker:["Coil Stalker","A patient hybrid that pressures from the middle distance."],cinderWisp:["Cinder Wisp","A fragile ember-spirit dangerous while it remains at range."],voidSentinel:["Void Sentinel","A rare floating hunter whose independently curling appendages frame a long-range bolt."],hollowMarshal:["Hollow Marshal","A dungeon guardian carrying the authority of a dead crossing."],riftColossus:["Rift Colossus","A world-scale anomaly gathered into predatory mass."],mossGrazer:["Moss Grazer","A quiet corridor browser that grazes among ashwood growths."],lanternDoe:["Lantern Doe","A curious light-bearing animal that may follow a patient Wayfarer."],hushling:["Hushling","A shy violet presence that disappears when approached directly."]
+    ashling:["Ashling","A scavenger shaped by furnace dust; closes carefully for a short strike."],glassMite:["Glass Mite","A low crystal feeder whose small frame hides a quick bite."],sparkWarden:["Spark Warden","A walking conductor that launches visible bolts across distance."],ashenHound:["Ashen Hound","A fast pack hunter following heat and fresh tracks."],veilMoth:["Veil Moth","A drifting predator that casts force from beyond sword reach."],rootBrute:["Root Brute","A slow, durable growth animated by buried machinery."],coilStalker:["Coil Stalker","A patient hybrid that pressures from the middle distance."],cinderWisp:["Cinder Wisp","A fragile ember-spirit dangerous while it remains at range."],voidSentinel:["Void Sentinel","A rare floating hunter whose independently curling appendages frame a long-range bolt."],hollowMarshal:["Hollow Marshal","A dungeon guardian carrying the authority of a dead crossing."],riftColossus:["Rift Colossus","A world-scale anomaly gathered into predatory mass."],mossGrazer:["Moss Grazer","A quiet corridor browser that grazes among ashwood growths."],lanternDoe:["Lantern Doe","A curious light-bearing animal that may follow a patient Wayfarer."],hushling:["Hushling","A shy violet presence that disappears when approached directly."],gateRevenant:["Gate Revenant","An exceptionally rare dungeon predator that remembers fear, crosses an open gate, and should be escaped long before it can be killed."]
   },
   places: {
     "terrain:ash":["Ash Verge","Dry chambers where furnace residue gathers."],"terrain:glass":["Glass Reach","Cold mineral corridors that hold light too long."],"terrain:ember":["Ember Vault","Heat-scarred rooms surrounding old power lines."],"dungeon:hollow":["Hollow Relay","Separated halls joined by a failing relay."],"dungeon:cistern":["Root-Sunk Cistern","A salvage vault overtaken by roots and standing water."],"dungeon:kiln":["Glass Kiln","A sentinel den built around heat and mechanical traps."],"settlement:glasshaven":["Glasshaven","A sparse settlement of traders and glassworkers."],"settlement:coilmarket":["Coilmarket","A waystation built around signal salvage."],"district:city":["Hollow Ward","An abandoned city block of enterable apartments and monster-haunted streets."],"district:arcology":["Lumen Arcology","Futuristic relay structures whose upper facades still carry stray current."],"district:cloister":["Thorn Cloister","An old shrine compound of courts, sanctums, and weathered ceremonial walls."]
@@ -1093,7 +1093,7 @@ const CODEX = {
     shrine:["Singing Array","A machine-shrine that stores impressions rather than scripture."],checkpoint:["Wayglass Beacon","An activated beacon permits Atlas travel and becomes a possible refuge."],ruinMarker:["Broken Observatory","A collapsed instrument still pointing beyond the visible corridor."],dungeon:["Buried Crossing","A sealed route into a self-contained dungeon."],shack:["Wayfarer Shack","A roofed field shelter whose interior remains part of the overworld."],architecturalDistrict:["Architectural District","A rare overworld complex with enterable structures, streets, and its own unresolved history."],tree:["Ashwood Grove","Trees may be cut or ignited through Act."],rock:["Shiftstone","Boulders may be moved or broken with sufficient Might."],relayTerminal:["Crossing Terminal","A consequential relay interface."],"trap:fire":["Kiln Vent","Scorch marks warn of a directional fire trap."],"trap:spikes":["Crossing Spikes","Floor seams can reveal the trap before it rises."],vine:["Transit Vine","A living traversal line spanning an otherwise impassable gap."],bossCue:["Colossus Trace","A sign that something much larger inhabits the region."]
   }
 };
-const CREATURE_PORTRAITS={ashling:[0,0],glassMite:[1,0],sparkWarden:[2,0],coilStalker:[3,0],veilMoth:[0,1],rootBrute:[1,1],cinderWisp:[2,1],voidSentinel:[3,1],riftColossus:[3,1],ashenHound:[0,0],hollowMarshal:[2,0],mossGrazer:[1,1],lanternDoe:[0,0],hushling:[0,1]};
+const CREATURE_PORTRAITS={ashling:[0,0],glassMite:[1,0],sparkWarden:[2,0],coilStalker:[3,0],veilMoth:[0,1],rootBrute:[1,1],cinderWisp:[2,1],voidSentinel:[3,1],riftColossus:[3,1],ashenHound:[0,0],hollowMarshal:[2,0],mossGrazer:[1,1],lanternDoe:[0,0],hushling:[0,1],gateRevenant:[3,1]};
 function trailMark(kind){const canvas=document.createElement("canvas"),signal={ring:"beacon",chevron:"crossing",triangle:"danger",spiral:"event"}[kind];canvas.width=canvas.height=96;const ctx=canvas.getContext("2d");canvas.className=`trail-symbol ${kind}`;canvas.setAttribute("role","img");canvas.setAttribute("aria-label",`${signal} floor mark pointing right`);if(ctx){ctx.translate(48,48);drawWaymarkIcon(ctx,signal,82)}return canvas}
 function openJournal(mode = "chronicle") {
   if(typeof mode!=="string")mode="chronicle";

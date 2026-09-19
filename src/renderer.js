@@ -148,6 +148,7 @@ const COLORS = {
   mossGrazer: ["#667052", "#303629", "#a3b978"],
   lanternDoe: ["#8b7654", "#39332a", "#e8c66d"],
   hushling: ["#76698c", "#282431", "#cab7df"],
+  gateRevenant: ["#311b34", "#100d15", "#e14f72"],
   npc: ["#9b815d", "#453832", "#879b8d"],
   shrine: ["#557b74", "#263c3b", "#b7c1aa"],
   checkpoint: ["#668b91", "#304448", "#c7b887"],
@@ -214,11 +215,11 @@ function actor(
       Math.max(2, Math.round(h * s * sc)),
     );
   };
-  if(kind==="voidSentinel"){
+  if(kind==="voidSentinel" || kind==="gateRevenant"){
     ctx.lineCap="round";
     for(let i=0;i<7;i++){
       const side=i%2?-1:1,a=-Math.PI*.15+(i/6)*Math.PI*1.3,wave=Math.sin(Number(frame)*.18+i*1.7)*.18,len=(.48+(i%3)*.12)*s*sc;
-      ctx.strokeStyle=i===0&&state==="attack"?"#d6a5e8":p[i%2];ctx.lineWidth=Math.max(2,s*.07*sc);ctx.beginPath();ctx.moveTo(k,base-s*.38*sc);ctx.quadraticCurveTo(k+Math.cos(a+wave)*len*.55+side*s*.08,base-s*.38*sc+Math.sin(a+wave)*len*.45,k+Math.cos(a+wave)*len,base-s*.38*sc+Math.sin(a+wave)*len);ctx.stroke();
+      ctx.strokeStyle=i===0&&state==="attack"?"#ff6e89":p[i%2];ctx.lineWidth=Math.max(2,s*.07*sc);ctx.beginPath();ctx.moveTo(k,base-s*.38*sc);ctx.quadraticCurveTo(k+Math.cos(a+wave)*len*.55+side*s*.08,base-s*.38*sc+Math.sin(a+wave)*len*.45,k+Math.cos(a+wave)*len,base-s*.38*sc+Math.sin(a+wave)*len);ctx.stroke();
     }
   }
   if (kind === "player") {
@@ -253,6 +254,8 @@ function actor(
     rect(p[1],-.18,-.55,.36,.38);rect(p[0],-.12,-.72,.24,.24);rect(p[2],-.06,-.63,.12,.12);rect(p[2],-.1,-.18,.2,.12);
   } else if (kind === "voidSentinel") {
     ctx.fillStyle=p[1];ctx.beginPath();ctx.ellipse(k,base-s*.42*sc,s*.3*sc,s*.36*sc,0,0,7);ctx.fill();ctx.strokeStyle=p[2];ctx.lineWidth=Math.max(2,s*.04);ctx.stroke();rect(p[0],-.2,-.66,.4,.22);rect(p[2],-.07,-.57,.14,.08);
+  } else if (kind === "gateRevenant") {
+    ctx.fillStyle=p[1];ctx.beginPath();ctx.ellipse(k,base-s*.48*sc,s*.34*sc,s*.4*sc,0,0,7);ctx.fill();ctx.strokeStyle=p[2];ctx.lineWidth=Math.max(2,s*.045);ctx.stroke();rect(p[0],-.31,-.75,.62,.24);rect("#050308",-.17,-.67,.34,.13);rect(p[2],-.12,-.63,.06,.06);rect(p[2],.06,-.63,.06,.06);ctx.fillStyle=p[0];ctx.beginPath();ctx.moveTo(k-s*.25*sc,base-s*.62*sc);ctx.lineTo(k-s*.68*sc,base-s*.94*sc);ctx.lineTo(k-s*.5*sc,base-s*.36*sc);ctx.fill();ctx.beginPath();ctx.moveTo(k+s*.25*sc,base-s*.62*sc);ctx.lineTo(k+s*.68*sc,base-s*.94*sc);ctx.lineTo(k+s*.5*sc,base-s*.36*sc);ctx.fill();
   } else if (kind === "hollowMarshal") {
     rect(p[1], -0.29, -0.66, 0.58, 0.62);
     rect(p[0], -0.36, -0.62, 0.72, 0.18);

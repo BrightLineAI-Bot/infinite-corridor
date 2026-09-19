@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=68";
+import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=69";
 import {
   generateRegion,
   generateDungeon,
@@ -12,7 +12,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js?v=68";
+} from "./world.js?v=69";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=68";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=69";
 import {
   applyInteraction,
   validActions,
@@ -33,10 +33,10 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=68";
-import { ensurePerception } from "./types.js?v=68";
-import { generateItem } from "./items.js?v=68";
-import { hashSeed } from "./random.js?v=68";
+} from "./interactions.js?v=69";
+import { ensurePerception } from "./types.js?v=69";
+import { generateItem } from "./items.js?v=69";
+import { hashSeed } from "./random.js?v=69";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
@@ -1240,6 +1240,8 @@ export class Game {
           this.map.tiles[i] = { ...t, kind: "dungeonWater", blocked: true, waterDepth: "shallow" };
       }
     }
+    if (area === "dungeon" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < 12)
+      this.map.enemySpawns.push({ kind: "gateRevenant", x: 18, y: 6, gatePredator: true });
     if (area === "overworld" && (this.rx !== 0 || this.ry !== 0)) {
       const remembered = this.save.checkpoints?.[`${this.rx},${this.ry}`];
       if (remembered && !this.map.objects.some((o) => o.kind === "checkpoint")) {
@@ -1258,6 +1260,7 @@ export class Game {
     this.enemies = this.map.enemySpawns.map((e) => {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
       Object.assign(c,{passiveBehavior:e.passiveBehavior||null,ambient:!!e.ambient,pursuesOutdoors:!!(e.shelterAmbush||e.districtResident),shelterAmbush:!!e.shelterAmbush});
+      if (e.gatePredator) Object.assign(c,{gatePredator:true,pursuesOutdoors:true,maxHp:260,hp:260,damage:22,range:5.5,scale:1.85,bodyRadius:.7,tentacles:8,speedMultiplier:1.12});
       if (e.apertureEncounter) {
         const multiplier = Math.max(1, Number(e.threatMultiplier) || 1);
         c.apertureEncounter = true;
@@ -1462,6 +1465,8 @@ export class Game {
   leaveDungeon(message = "You return to the dungeon entrance.") {
     const q = this.save.session.dungeonReturn || this.save.activeCheckpoint;
     if (!q) return false;
+    const pursuer = this.enemies.find((e) => e.gatePredator && e.aggro && !e.dead);
+    if (pursuer) pursuer.dead = true;
     abandonDungeon(this.save, this.areaId());
     this.snapshotArea();
     this.save.session.activeDisplacement = null;
@@ -1470,6 +1475,11 @@ export class Game {
     this.loadArea("overworld", false);
     this.player.x = q.x;
     this.player.y = q.y;
+    if (pursuer) {
+      const e = { ...pursuer, id: `${pursuer.id}-breach-${this.rx}-${this.ry}`, dead: false, x: q.x + 1.2, y: q.y - .4, aggro: true, ai: { ...ensureAI(pursuer), homeX: q.x, homeY: q.y } };
+      this.enemies.push(e);
+      message = "THE GATE REMAINS OPEN — something impossible follows you into the Corridor.";
+    }
     this.projectiles = [];
     this.effects = [];
     this.traversal = null;
