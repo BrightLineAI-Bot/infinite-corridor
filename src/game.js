@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=63";
+import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=64";
 import {
   generateRegion,
   generateDungeon,
@@ -12,7 +12,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js?v=63";
+} from "./world.js?v=64";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=63";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=64";
 import {
   applyInteraction,
   validActions,
@@ -33,10 +33,10 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=63";
-import { ensurePerception } from "./types.js?v=63";
-import { generateItem } from "./items.js?v=63";
-import { hashSeed } from "./random.js?v=63";
+} from "./interactions.js?v=64";
+import { ensurePerception } from "./types.js?v=64";
+import { generateItem } from "./items.js?v=64";
+import { hashSeed } from "./random.js?v=64";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),

@@ -310,11 +310,15 @@ function shelterSigil(ctx,cx,cy,r,glyph){
   else{for(let q=0;q<3;q++){const a=-Math.PI/2+q*Math.PI*2/3;ctx.moveTo(cx+Math.cos(a)*r+r*.18,cy+Math.sin(a)*r);ctx.arc(cx+Math.cos(a)*r,cy+Math.sin(a)*r,r*.18,0,7)}ctx.moveTo(cx,cy-r*.34);ctx.lineTo(cx+r*.3,cy+r*.18);ctx.lineTo(cx-r*.3,cy+r*.18);ctx.closePath()}
   ctx.stroke();
 }
+function insideShelter(o,p){
+  const b=o.bounds||{x:o.x-2,y:o.y-2,w:5,h:4},cx=p.x+.5,cy=p.y+.7,inset=.22;
+  return cx>b.x+inset&&cx<b.x+b.w-inset&&cy>b.y+inset&&cy<b.y+b.h-inset;
+}
 function shack(ctx,o,s,p,map){
-  const b=o.bounds||{x:o.x-2,y:o.y-2,w:5,h:4},mw=Math.round(Math.sqrt(map.length)),pt=map[Math.floor(p.y)*mw+Math.floor(p.x)],inside=pt?.buildingId===o.id&&pt?.structure==="shackInterior",x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s,accent={pilgrim:"#8f7658",relay:"#527d7b",chapel:"#806777",workshop:"#8c5944"}[o.facadeStyle]||"#8f7658",condition=o.condition||"weathered",grain=(o.signGlyph||0)+b.x*3+b.y*5;
+  const b=o.bounds||{x:o.x-2,y:o.y-2,w:5,h:4},inside=insideShelter(o,p),x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s,accent={pilgrim:"#8f7658",relay:"#527d7b",chapel:"#806777",workshop:"#8c5944"}[o.facadeStyle]||"#8f7658",condition=o.condition||"weathered",grain=(o.signGlyph||0)+b.x*3+b.y*5;
   ctx.save();
   if(inside){ctx.strokeStyle=accent+"66";ctx.lineWidth=2;ctx.strokeRect(x+s*.08,y+s*.08,w-s*.16,h-s*.16);ctx.restore();return}
-  const backY=y+s*.16,frontY=y+h-s*1.62,skew=s*.38,wallTop=frontY+s*.18;ctx.fillStyle=condition==="kept"?"#302d27":"#282720";ctx.fillRect(x,wallTop,w,Math.max(0,y+h-wallTop));
+  const backY=y+s*.16,frontY=y+h-s*3.12,skew=s*.38,wallTop=frontY+s*.18;ctx.fillStyle=condition==="kept"?"#302d27":"#282720";ctx.fillRect(x,wallTop,w,Math.max(0,y+h-wallTop));
   ctx.fillStyle="#3a362d";for(let q=wallTop-y+s*.08,n=0;q<h;q+=s*(.45+((grain+n)%3)*.04),n++){const inset=((grain+n*7)%5)*s*.035;ctx.fillRect(x+inset,y+q,w-inset-s*((grain+n)%4===0?.12:0),s*(.055+((grain+n)%2)*.035))}
   ctx.strokeStyle=accent+"88";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+s*.08,wallTop);ctx.lineTo(x+s*.06,y+h-s*.08);ctx.moveTo(x+w-s*.07,wallTop);ctx.lineTo(x+w-s*.12,y+h-s*.06);ctx.stroke();
   ctx.fillStyle=o.roofProfile==="gable"?"#39342b":"#35312a";ctx.strokeStyle=accent+"88";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+s*.2,backY);ctx.lineTo(x+w-s*.2,backY);ctx.lineTo(x+w+skew,frontY);ctx.lineTo(x-skew,frontY);ctx.closePath();ctx.fill();ctx.stroke();
@@ -358,11 +362,14 @@ export function render(ctx, g, w, h, now) {
         0.42
       : 0,
     dodging = now < (p.dodgeUntil || 0);
+  const activeShelter=g.map.objects.find(o=>o.kind==="shack"&&insideShelter(o,p)),
+    playerTile=g.map.tiles[Math.floor(p.y)*mw+Math.floor(p.x)],
+    activeBuildingId=activeShelter?.id||(playerTile?.structure==="districtInterior"?playerTile.buildingId:null);
   ctx.save();
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - p.y * s));
   for (let y = t; y < b; y++)
     for (let x = l; x < r; x++)
-      tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,(()=>{const q=g.map.tiles[Math.floor(p.y)*mw+Math.floor(p.x)];return q?.structure==="shackInterior"||q?.structure==="districtInterior"?q.buildingId:null})());
+      tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId);
   for (const e of g.enemies)
     if (!e.dead && e.telegraph > 0) {
       const pulse = 0.65 + (0.9 - e.telegraph) * 0.2;
@@ -563,6 +570,8 @@ export function render(ctx, g, w, h, now) {
       ctx.fillRect(e.x * s, (e.y - 0.1) * s, (s * e.hp) / e.maxHp, 3);
     }
   for(const o of g.map.objects){if(o.kind==="shack")shack(ctx,o,s,p,g.map.tiles);else if(o.kind==="architecturalBuilding")architecturalBuilding(ctx,o,s,p,g.map.tiles)}
+  const frontShelter=g.map.objects.find(o=>o.kind==="shack"&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
+  if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk");
   const motion = now / 1000;
   for (const o of g.map.objects)
     if (["shrine", "checkpoint", "ruinMarker", "apertureMemory"].includes(o.kind)) {
