@@ -141,6 +141,7 @@ const COLORS = {
   rootBrute: ["#667052", "#303629", "#a99a67"],
   coilStalker: ["#47716d", "#263a39", "#87c0ad"],
   cinderWisp: ["#a95d3c", "#4b2923", "#efb15d"],
+  voidSentinel: ["#645375", "#282333", "#b896cf"],
   hollowMarshal: ["#78434a", "#332429", "#b99b68"],
   riftColossus: ["#713841", "#2b2022", "#c18352"],
   npc: ["#9b815d", "#453832", "#879b8d"],
@@ -207,6 +208,13 @@ function actor(
       Math.max(2, Math.round(h * s * sc)),
     );
   };
+  if(kind==="voidSentinel"){
+    ctx.lineCap="round";
+    for(let i=0;i<7;i++){
+      const side=i%2?-1:1,a=-Math.PI*.15+(i/6)*Math.PI*1.3,wave=Math.sin(Number(frame)*.18+i*1.7)*.18,len=(.48+(i%3)*.12)*s*sc;
+      ctx.strokeStyle=i===0&&state==="attack"?"#d6a5e8":p[i%2];ctx.lineWidth=Math.max(2,s*.07*sc);ctx.beginPath();ctx.moveTo(k,base-s*.38*sc);ctx.quadraticCurveTo(k+Math.cos(a+wave)*len*.55+side*s*.08,base-s*.38*sc+Math.sin(a+wave)*len*.45,k+Math.cos(a+wave)*len,base-s*.38*sc+Math.sin(a+wave)*len);ctx.stroke();
+    }
+  }
   if (kind === "player") {
     rect(p[1], -0.22, -0.57, 0.44, 0.5);
     rect(p[0], -0.18, -0.76, 0.36, 0.28);
@@ -237,6 +245,8 @@ function actor(
     rect(p[1],-.28,-.5,.56,.42);rect(p[0],-.18,-.7,.36,.24);rect(p[2],-.34,-.4,.68,.06);rect(p[2],-.04,-.62,.08,.08);
   } else if (kind === "cinderWisp") {
     rect(p[1],-.18,-.55,.36,.38);rect(p[0],-.12,-.72,.24,.24);rect(p[2],-.06,-.63,.12,.12);rect(p[2],-.1,-.18,.2,.12);
+  } else if (kind === "voidSentinel") {
+    ctx.fillStyle=p[1];ctx.beginPath();ctx.ellipse(k,base-s*.42*sc,s*.3*sc,s*.36*sc,0,0,7);ctx.fill();ctx.strokeStyle=p[2];ctx.lineWidth=Math.max(2,s*.04);ctx.stroke();rect(p[0],-.2,-.66,.4,.22);rect(p[2],-.07,-.57,.14,.08);
   } else if (kind === "hollowMarshal") {
     rect(p[1], -0.29, -0.66, 0.58, 0.62);
     rect(p[0], -0.36, -0.62, 0.72, 0.18);
@@ -480,7 +490,7 @@ export function render(ctx, g, w, h, now) {
             s,
             e.kind,
             f,
-            Math.floor(e.ai?.step || 0),
+            e.kind==="voidSentinel"?now/180:Math.floor(e.ai?.step || 0),
             e.telegraph > 0 ? "telegraph" : e.strike > 0 ? "attack" : "walk",
             e.boss,
             e.scale,
