@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=75" />
+    <link rel="stylesheet" href="./styles.css?v=76" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -76,6 +76,9 @@
           ><button class="core act" data-action="interact">Act</button
           ><button class="core dodge" data-action="dodge">Dodge</button
           ><button class="core attack" data-action="attack">Attack</button>
+          <div id="navCompass" class="nav-compass" role="img" aria-label="No navigation target" hidden>
+            <span id="navArrow" aria-hidden="true">▲</span>
+          </div>
         </div>
       </section>
       <dialog id="panel">
@@ -114,7 +117,7 @@
         <button id="mapHome" type="button">Return to Ember Refuge</button>
         <p id="mapDetail">Select an explored section for details.</p>
         <p id="mapInstructions">
-          Tap an explored section to set a waypoint. Zoom in to reveal the
+          Tap an explored section to set a waypoint; tap it again to clear it. Zoom in to reveal the
           position and names of discovered sites inside each section.
         </p>
         <p id="mapLegend" class="atlas-legend"><b>◎</b> Wayglass · <b>›</b> crossing · <b>▲</b> major danger · <b>⟳</b> unusual site</p>
@@ -123,7 +126,7 @@
     <script type="module">
       const boot = async () => {
         if ("serviceWorker" in navigator) {
-          const release = "70";
+          const release = "76";
           const r = await navigator.serviceWorker.register(`./sw.js?v=${release}`, {
             updateViaCache: "none",
           });
@@ -145,7 +148,7 @@
           }
           sessionStorage.removeItem("corridor-upgrade-51");
         }
-        await import("./src/main.js?v=75");
+        await import("./src/main.js?v=76");
       };
       boot().catch((e) => {
         console.error(e);

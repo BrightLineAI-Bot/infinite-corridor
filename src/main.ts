@@ -369,7 +369,34 @@ function drawApertureVisuals() {
 const objective = $("#objective"),
   hud = $("#hud"),
   hudDetails = $("#hudDetails"),
-  hudToggles = [$("#hudExpand"), $("#fieldMenuToggle")];
+  hudToggles = [$("#hudExpand"), $("#fieldMenuToggle")],
+  navCompass = $("#navCompass"),
+  navArrow = $("#navArrow");
+function navigationTarget() {
+  if (game.area !== "overworld") return null;
+  if (save.waypoint) return { ...save.waypoint, kind: "waypoint", name: "Atlas waypoint" };
+  const objectiveOpen = !save.consequences.choices.relay ||
+    (save.narrative.facts["leads.active"] && !save.narrative.facts["leads.complete"]);
+  if (!objectiveOpen) return null;
+  const cues = wayfindingCues(save.seed, game.rx, game.ry, save.worldGeneration, save, game.map),
+    cue = cues.find((q) => q.signalKind === "crossing") ||
+      cues.find((q) => q.signalKind === "danger") ||
+      cues.find((q) => q.signalKind === "event");
+  return cue && { rx: cue.targetRx, ry: cue.targetRy, kind: "quest", name: cue.name || "Quest signal" };
+}
+function updateNavigationCompass() {
+  const target = navigationTarget();
+  navCompass.hidden = !target;
+  if (!target) return;
+  const dx = (target.rx - game.rx) * 32 + 16 - game.player.x,
+    dy = (target.ry - game.ry) * 32 + 16 - game.player.y,
+    arrived = target.rx === game.rx && target.ry === game.ry;
+  navCompass.classList.toggle("quest", target.kind === "quest");
+  navCompass.classList.toggle("arrived", arrived);
+  navArrow.style.transform = `rotate(${Math.atan2(dy, dx) * 180 / Math.PI + 90}deg)`;
+  navCompass.setAttribute("aria-label", arrived ? `${target.name} reached` : `${target.name}, ${Math.max(Math.abs(target.rx - game.rx), Math.abs(target.ry - game.ry))} sections away`);
+  navCompass.title = navCompass.getAttribute("aria-label");
+}
 const mute = document.createElement("button");
 mute.type = "button";
 mute.textContent =
@@ -909,7 +936,7 @@ function updateMapTravelButton() {
 }
 function updateMapModeUI(){
   const dungeon=game.area==="dungeon",local=dungeon&&mapMode==="dungeon";
-  $("#mapModeToggle").hidden=!dungeon;$("#mapModeToggle").textContent=local?"Corridor Atlas":"Dungeon Map";$("#mapTitle").textContent=local?`${game.map.name||"Dungeon"} Map`:"Corridor Atlas";atlas.querySelector(".maptools").hidden=local;$("#mapHome").hidden=local;$("#mapLegend").hidden=local;$("#mapInstructions").textContent=local?"A bounded floor plan. Gold marks your position; cyan is the entrance/exit; other colored marks identify known dungeon features.":"Tap an explored section to set a waypoint. Zoom in to reveal the position and names of discovered sites inside each section.";
+  $("#mapModeToggle").hidden=!dungeon;$("#mapModeToggle").textContent=local?"Corridor Atlas":"Dungeon Map";$("#mapTitle").textContent=local?`${game.map.name||"Dungeon"} Map`:"Corridor Atlas";atlas.querySelector(".maptools").hidden=local;$("#mapHome").hidden=local;$("#mapLegend").hidden=local;$("#mapInstructions").textContent=local?"A bounded floor plan. Gold marks your position; cyan is the entrance/exit; other colored marks identify known dungeon features.":"Tap an explored section to set a waypoint; tap it again to clear it. The center compass points to a manual waypoint before quest guidance.";
   if(local)$("#mapDetail").textContent=`${game.map.identity||"Dungeon"} · bounded 24 × 24 floor · position ${Math.floor(game.player.x)}, ${Math.floor(game.player.y)}`;
   updateMapTravelButton();
 }
@@ -1264,6 +1291,7 @@ function frame(now) {
           : "Ember Refuge · standing"
         : `Cinder Verge · ${game.rx}, ${game.ry}`;
   updateHud(now);
+  updateNavigationCompass();
   const buffs = [];
   if (game.guardRemaining > 0)
     buffs.push(`IRONBARK ${Math.ceil(game.guardRemaining)}s`);
@@ -1346,7 +1374,8 @@ mapCanvas.onclick = (e) => {
     ry =
       mapView.y +
       Math.floor((e.clientY - r.top - r.height / 2 + cell / 2) / cell);
-  if (save.explored[`${rx},${ry}`]) save.waypoint = { rx, ry };
+  if (save.explored[`${rx},${ry}`])
+    save.waypoint = save.waypoint?.rx === rx && save.waypoint?.ry === ry ? null : { rx, ry };
   if (save.explored[`${rx},${ry}`]) showMapDetail(rx, ry);
   drawMap();
   persist();

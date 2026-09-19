@@ -226,6 +226,35 @@ body {
   height: 162px;
   pointer-events: auto;
 }
+.nav-compass {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  border: 1px solid #80745f;
+  border-radius: 50%;
+  background: radial-gradient(circle, #262720 35%, #121713 78%);
+  box-shadow: inset 0 0 0 3px #0e1210, 0 2px 7px #000b;
+  color: #e68a70;
+  pointer-events: none;
+  z-index: 3;
+}
+.nav-compass[hidden] { display: none; }
+.nav-compass.quest { color: #c8a8e1; }
+.nav-compass.arrived { color: #f3d886; }
+.nav-compass.arrived #navArrow { transform: none !important; font-size: 0; }
+.nav-compass.arrived #navArrow::after { content: "•"; font-size: 19px; }
+#navArrow {
+  display: block;
+  font-size: 13px;
+  line-height: 1;
+  transform-origin: 50% 52%;
+  filter: drop-shadow(0 1px 1px #000);
+}
 .action-diamond button {
   position: absolute;
   width: var(--button);
