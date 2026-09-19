@@ -1084,10 +1084,10 @@ function openJournal(mode = "chronicle") {
   out.append(nav);
   if(mode!=="chronicle"){
     const entries=mode==="rules"?[
-      ["ring",["Open ring — Wayglass","Cyan marks lead toward an activated recovery point and Atlas destination. Follow the short stem and terminal dot; the ring opening is decorative."]],
-      ["chevron",["Open chevron — Crossing","Amber marks lead toward a dungeon entrance or buried route. Follow the short stem and terminal dot extending from the mark."]],
-      ["triangle",["Hollow triangle — Major danger","Red marks lead toward a world boss or exceptional threat. The triangle identifies danger; ignore its corners and follow the separate short stem and terminal dot."]],
-      ["spiral",["Open spiral — Unusual site","Violet marks lead toward a shrine, ruin, or strange discovery. Follow the short stem and terminal dot; the spiral opening is decorative."]],
+      ["ring",["Open ring — Wayglass","Cyan marks lead toward an activated recovery point and Atlas destination. The open side of the ring faces the route."]],
+      ["chevron",["Open chevron — Crossing","Amber marks lead toward a dungeon entrance or buried route. The vertex where the two lines meet points toward the crossing."]],
+      ["triangle",["Hollow triangle — Major danger","Red marks lead toward a world boss or exceptional threat. The only extended corner—the one with the short line—faces the route."]],
+      ["spiral",["Open spiral — Unusual site","Violet marks lead toward a shrine, ruin, or strange discovery. The open end of the spiral faces the route."]],
       ["atlas",["Atlas","Drag with one finger to pan. Pinch with two fingers or use +/− to zoom. Tap an explored section to select it."]],
       ["travel",["Travel","Activate Wayglass beacons to travel to them from the Atlas. Dungeon travel remains sealed without a Crossing Sigil."]],
       ["combat",["Combat","Red or violet telegraphs show the exact threatened area. Dodge spends stamina; jumping avoids grounded impacts."]],

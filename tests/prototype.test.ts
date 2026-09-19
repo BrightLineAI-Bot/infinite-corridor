@@ -2139,15 +2139,15 @@ test("journal trail examples invoke the exact ground-waymark drawing function",(
   assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,82\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
 });
 
-test("release 48 loads one coherent version across the entire module graph",()=>{
+test("release 49 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=48/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=48/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v48/);assert.match(sw,/styles\.css\?v=48/);assert.match(sw,/main\.js\?v=48/);assert.match(sw,/combat\.js\?v=48/);assert.match(sw,/renderer\.js\?v=48/);
-  assert.match(build,/release='48'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=49/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=49/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v49/);assert.match(sw,/styles\.css\?v=49/);assert.match(sw,/main\.js\?v=49/);assert.match(sw,/combat\.js\?v=49/);assert.match(sw,/renderer\.js\?v=49/);
+  assert.match(build,/release='49'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
-test("waymarks use a separate direction stem and journal explains it",()=>{
+test("only danger waymarks add a direction stem while other silhouettes point naturally",()=>{
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");
-  assert.match(renderer,/lineTo\(s\*\.43,0\)/);assert.match(renderer,/arc\(s\*\.43,0/);assert.match(main,/short stem and terminal dot/);assert.match(main,/ignore its corners/);assert.match(main,/canvas\.width=canvas\.height=96/);
+  assert.match(renderer,/if\(signalKind==='danger'\).*lineTo\(s\*\.43,0\)/);assert.doesNotMatch(renderer,/arc\(s\*\.43,0/);assert.match(main,/open side of the ring faces the route/);assert.match(main,/vertex where the two lines meet points toward the crossing/);assert.match(main,/only extended corner/);assert.match(main,/open end of the spiral faces the route/);assert.match(main,/canvas\.width=canvas\.height=96/);
 });
