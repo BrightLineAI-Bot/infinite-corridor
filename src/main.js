@@ -15,7 +15,7 @@ export function itemIconDescriptor(item, slot = item?.slot || "empty") {
   return{family,accent,rune:h%6,power:Math.max(0,Number(item?.power)||0),variant:(h>>>4)%4};
 }
 function gearIcon(item,slot){
-  const q=itemIconDescriptor(item,slot),c=document.createElement("canvas"),x=c.getContext("2d");c.width=c.height=72;c.className="gear-icon";c.dataset.family=q.family;c.dataset.accent=q.accent;c.setAttribute("role","img");c.setAttribute("aria-label",item?`${item.name} equipment icon`:`Empty ${slot} slot`);x.translate(36,36);x.lineCap="round";x.lineJoin="round";x.fillStyle="#11171b";x.strokeStyle="#665f52";x.lineWidth=2;x.beginPath();x.arc(0,0,31,0,7);x.fill();x.stroke();x.shadowColor=q.accent;x.shadowBlur=8;x.strokeStyle=q.accent;x.fillStyle=q.accent+"55";x.lineWidth=4;
+  const q=itemIconDescriptor(item,slot),c=document.createElement("canvas");c.width=c.height=72;const x=c.getContext("2d");c.className="gear-icon";c.dataset.family=q.family;c.dataset.accent=q.accent;c.setAttribute("role","img");c.setAttribute("aria-label",item?`${item.name} equipment icon`:`Empty ${slot} slot`);if(!x)return c;x.translate(36,36);x.lineCap="round";x.lineJoin="round";x.fillStyle="#11171b";x.strokeStyle="#665f52";x.lineWidth=2;x.beginPath();x.arc(0,0,31,0,7);x.fill();x.stroke();x.shadowColor=q.accent;x.shadowBlur=8;x.strokeStyle=q.accent;x.fillStyle=q.accent+"55";x.lineWidth=4;
   if(q.family==="sword"){x.beginPath();x.moveTo(-14,18);x.lineTo(15,-20);x.lineTo(20,-23);x.lineTo(18,-16);x.lineTo(-9,22);x.closePath();x.fill();x.stroke();x.beginPath();x.moveTo(-17,11);x.lineTo(-6,20);x.stroke();}
   else if(q.family==="pike"){x.beginPath();x.moveTo(-19,23);x.lineTo(13,-17);x.stroke();x.beginPath();x.moveTo(13,-17);x.lineTo(23,-25);x.lineTo(19,-11);x.closePath();x.fill();x.stroke();}
   else if(q.family==="cleaver"){x.beginPath();x.moveTo(-19,23);x.lineTo(3,-5);x.stroke();x.beginPath();x.moveTo(2,-5);x.lineTo(7,-25);x.lineTo(23,-16);x.lineTo(12,1);x.closePath();x.fill();x.stroke();}
@@ -1072,7 +1072,7 @@ const CODEX = {
   }
 };
 const CREATURE_PORTRAITS={ashling:[0,0],glassMite:[1,0],sparkWarden:[2,0],coilStalker:[3,0],veilMoth:[0,1],rootBrute:[1,1],cinderWisp:[2,1],riftColossus:[3,1],ashenHound:[0,0],hollowMarshal:[2,0]};
-function trailMark(kind){const canvas=document.createElement("canvas"),ctx=canvas.getContext("2d"),signal={ring:"beacon",chevron:"crossing",triangle:"danger",spiral:"event"}[kind];canvas.width=canvas.height=64;canvas.className=`trail-symbol ${kind}`;canvas.setAttribute("aria-hidden","true");ctx.translate(32,32);drawWaymarkIcon(ctx,signal,64);return canvas}
+function trailMark(kind){const canvas=document.createElement("canvas"),signal={ring:"beacon",chevron:"crossing",triangle:"danger",spiral:"event"}[kind];canvas.width=canvas.height=96;const ctx=canvas.getContext("2d");canvas.className=`trail-symbol ${kind}`;canvas.setAttribute("role","img");canvas.setAttribute("aria-label",`${signal} floor mark pointing right`);if(ctx){ctx.translate(48,48);drawWaymarkIcon(ctx,signal,82)}return canvas}
 function openJournal(mode = "chronicle") {
   if(typeof mode!=="string")mode="chronicle";
   pauseForOverlay();
@@ -1084,10 +1084,10 @@ function openJournal(mode = "chronicle") {
   out.append(nav);
   if(mode!=="chronicle"){
     const entries=mode==="rules"?[
-      ["ring",["Hooked ring — Wayglass","This is the same cyan floor mark used in the world. Its arrow points toward a known recovery point and Atlas destination."]],
-      ["chevron",["Split chevron — Crossing","This is the same amber floor mark used in the world. Its arrow points toward a dungeon entrance or buried route."]],
-      ["triangle",["Hollow triangle — Major danger","This is the same red floor mark used in the world. Its arrow points toward a world boss or exceptional threat."]],
-      ["spiral",["Broken spiral — Unusual site","This is the same violet floor mark used in the world. Its arrow points toward a shrine, ruin, or strange discovery."]],
+      ["ring",["Open ring — Wayglass","Cyan marks lead toward an activated recovery point and Atlas destination. Follow the short stem and terminal dot; the ring opening is decorative."]],
+      ["chevron",["Open chevron — Crossing","Amber marks lead toward a dungeon entrance or buried route. Follow the short stem and terminal dot extending from the mark."]],
+      ["triangle",["Hollow triangle — Major danger","Red marks lead toward a world boss or exceptional threat. The triangle identifies danger; ignore its corners and follow the separate short stem and terminal dot."]],
+      ["spiral",["Open spiral — Unusual site","Violet marks lead toward a shrine, ruin, or strange discovery. Follow the short stem and terminal dot; the spiral opening is decorative."]],
       ["atlas",["Atlas","Drag with one finger to pan. Pinch with two fingers or use +/− to zoom. Tap an explored section to select it."]],
       ["travel",["Travel","Activate Wayglass beacons to travel to them from the Atlas. Dungeon travel remains sealed without a Crossing Sigil."]],
       ["combat",["Combat","Red or violet telegraphs show the exact threatened area. Dodge spends stamina; jumping avoids grounded impacts."]],

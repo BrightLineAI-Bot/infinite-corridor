@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=43" />
+    <link rel="stylesheet" href="./styles.css?v=47" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -119,22 +119,29 @@
     <script type="module">
       const boot = async () => {
         if ("serviceWorker" in navigator) {
-          const r = await navigator.serviceWorker.register("./sw.js?v=46", {
+          const release = "47";
+          const r = await navigator.serviceWorker.register(`./sw.js?v=${release}`, {
             updateViaCache: "none",
           });
           await r.update();
-          const c = navigator.serviceWorker.controller;
-          if (c && !c.scriptURL.includes("v=46")) {
-            const key = "corridor-upgrade-46";
+          if (!navigator.serviceWorker.controller?.scriptURL.includes(`v=${release}`)) {
+            const key = `corridor-upgrade-${release}`;
+            await new Promise((resolve) => {
+              const timeout = setTimeout(resolve, 4000);
+              navigator.serviceWorker.addEventListener("controllerchange", () => {
+                clearTimeout(timeout);
+                resolve();
+              }, { once: true });
+            });
             if (!sessionStorage.getItem(key)) {
               sessionStorage.setItem(key, "1");
               location.reload();
               return;
             }
           }
-          sessionStorage.removeItem("corridor-upgrade-45");
+          sessionStorage.removeItem("corridor-upgrade-46");
         }
-        await import("./src/main.js");
+        await import("./src/main.js?v=47");
       };
       boot().catch((e) => {
         console.error(e);

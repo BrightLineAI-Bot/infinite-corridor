@@ -269,7 +269,7 @@ export function drawWaymarkIcon(ctx,signalKind,s){
   else if(signalKind==='crossing'){ctx.moveTo(-s*.25,-s*.2);ctx.lineTo(s*.22,0);ctx.lineTo(-s*.25,s*.2);}
   else if(signalKind==='danger'){ctx.moveTo(-s*.25,s*.2);ctx.lineTo(0,-s*.25);ctx.lineTo(s*.25,s*.2);ctx.closePath();}
   else{ctx.arc(0,0,s*.23,0,Math.PI*1.5);ctx.lineTo(s*.28,0);}
-  ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(s*.28,0);ctx.lineTo(s*.42,-s*.11);ctx.lineTo(s*.42,s*.11);ctx.closePath();ctx.fill();return c;
+  ctx.fill();ctx.stroke();ctx.fillStyle=c;ctx.lineWidth=Math.max(2,s*.055);ctx.beginPath();ctx.moveTo(s*.24,0);ctx.lineTo(s*.43,0);ctx.stroke();ctx.beginPath();ctx.arc(s*.43,0,Math.max(2,s*.045),0,Math.PI*2);ctx.fill();return c;
 }
 function waymark(ctx,o,s){
   const cx=(o.x+.5)*s,cy=(o.y+.55)*s,a=Math.atan2(o.dirY,o.dirX);ctx.save();ctx.translate(cx,cy);ctx.rotate(a);drawWaymarkIcon(ctx,o.signalKind,s);ctx.restore();
