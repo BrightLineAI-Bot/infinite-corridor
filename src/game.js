@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=64";
+import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=65";
 import {
   generateRegion,
   generateDungeon,
@@ -12,7 +12,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js?v=64";
+} from "./world.js?v=65";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=64";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=65";
 import {
   applyInteraction,
   validActions,
@@ -33,10 +33,10 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=64";
-import { ensurePerception } from "./types.js?v=64";
-import { generateItem } from "./items.js?v=64";
-import { hashSeed } from "./random.js?v=64";
+} from "./interactions.js?v=65";
+import { ensurePerception } from "./types.js?v=65";
+import { generateItem } from "./items.js?v=65";
+import { hashSeed } from "./random.js?v=65";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
@@ -528,12 +528,12 @@ export function buyFromVendor(save, vendorId, id, quantity = 1) {
         ? "glasshaven"
         : vendorId === "vendor-mora"
           ? "coilmarket"
-          : "ember-refuge";
+          : vendorId.startsWith("shelter-surprise-") ? null : "ember-refuge";
   if (
     save.worldFlags[vendorId + ":dead"] ||
     npc?.status === "dead" ||
     npc?.disposition === "hostile" ||
-    save.consequences?.settlements?.[settlement]?.status === "fallen"
+    (settlement&&save.consequences?.settlements?.[settlement]?.status === "fallen")
   )
     return { ok: false, message: "This vendor is unavailable." };
   const shop = vendorShop(save, vendorId),
@@ -1386,6 +1386,7 @@ export class Game {
   travelToCheckpoint(key = null) {
     const c = key ? this.save.checkpoints?.[key] : this.save.activeCheckpoint;
     if (!c) return false;
+    if(this.save.session.displacementJourney){this.message="Wayglass travel cannot find you after the displacement. Reach a physical Wayglass—or die—to restore the line.";return false}
     if (this.area === "dungeon") {
       this.message =
         "Wayglass travel is sealed inside a dungeon. Reach an exit, die and restart at the entrance, or use a Crossing Sigil.";
@@ -1415,6 +1416,7 @@ export class Game {
     if (!q) return false;
     abandonDungeon(this.save, this.areaId());
     this.snapshotArea();
+    this.save.session.activeDisplacement = null;
     this.rx = q.rx;
     this.ry = q.ry;
     this.loadArea("overworld", false);
@@ -1431,6 +1433,7 @@ export class Game {
     const p = this.player,
       before = this.save.consumables.restorativeDraught || 0;
     this.save.worldFlags.deaths = (this.save.worldFlags.deaths || 0) + 1;
+    this.save.session.displacementJourney = null;
     if (before < 2) this.save.consumables.restorativeDraught = 2;
     p.hp = this.save.maxHp;
     p.stamina = this.save.maxStamina;
@@ -1541,7 +1544,7 @@ export class Game {
         ok: false,
         message: (this.message = "Nothing nearby responds."),
       };
-    if (!action && ["npc", "dungeon", "relayTerminal"].includes(o.kind)) {
+    if (!action && ["npc", "dungeon", "relayTerminal","shelterMerchant","displacementDevice"].includes(o.kind)) {
       this.interactionRequested = o.id;
       return {
         ok: true,
@@ -1554,7 +1557,7 @@ export class Game {
       r = applyInteraction(o, chosen, this.save, this.areaId());
     this.message = r.message;
     if (!r.ok) return r;
-    if (o.kind === "npc" && chosen === "trade") this.shopRequested = o.id;
+    if ((o.kind === "npc"||o.kind==="shelterMerchant") && chosen === "trade") this.shopRequested = o.id;
     if (this.save.hp !== before)
       this.player.hp = Math.min(
         this.save.maxHp,
@@ -1565,7 +1568,10 @@ export class Game {
       this.player.y = o.y - 2;
     }
     if (o.kind === "tree" && chosen === "cut") applyFallenTreeCrossings(this.map);
-    if (r.transition === "dungeon") {
+    if(r.transition==="displacement"){
+      const h=hashSeed(this.save.seed+":displacement:"+this.rx+":"+this.ry+":"+o.id),distance=8+h%7,sign=h&1?1:-1,destination={rx:this.rx+(h&2?distance:Math.floor(distance/2))*sign,ry:this.ry+(h&2?Math.floor(distance/2):distance)*(h&4?1:-1)};
+      this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDisplacement={id:"displacement:"+this.rx+":"+this.ry+":"+o.id,source:{...this.save.session.dungeonReturn},destination};this.save.session.activeDungeonId=this.save.session.activeDisplacement.id;const history=dungeonHistory(this.save,this.save.session.activeDungeonId);history.visits++;history.visitOpen=true;this.loadArea("dungeon");this.player.x=4;this.player.y=5;
+    } else if (r.transition === "dungeon") {
       this.save.session.dungeonReturn = {
         rx: this.rx,
         ry: this.ry,
@@ -1586,8 +1592,9 @@ export class Game {
       this.player.x = 4;
       this.player.y = 5;
     } else if (r.transition === "exit") {
-      this.leaveDungeon("You emerge at the dungeon entrance.");
+      if(this.save.session.activeDisplacement){if(this.enemies.some(e=>!e.dead&&e.kind==="hollowMarshal")){this.message="The Mislaid Threshold remains sealed while its guardian lives.";return{ok:false,message:this.message}}const d=this.save.session.activeDisplacement;this.snapshotArea();this.rx=d.destination.rx;this.ry=d.destination.ry;this.save.session.displacementJourney={source:d.source,destination:d.destination};this.save.session.activeDisplacement=null;this.save.session.activeDungeonId=null;this.loadArea("overworld",false);this.player.x=16;this.player.y=16;this.message="The completed crossing releases you into a distant, uncharted Corridor. Find a physical Wayglass to restore travel."}else this.leaveDungeon("You emerge at the dungeon entrance.");
     } else if (r.transition === "checkpoint") {
+      this.save.session.displacementJourney=null;
       this.save.activeCheckpoint = {
         rx: this.rx,
         ry: this.ry,
@@ -2121,6 +2128,7 @@ export class Game {
       if (this.area === "dungeon") abandonDungeon(this.save, this.areaId());
       const c = this.save.activeCheckpoint;
       this.save.worldFlags.deaths = (this.save.worldFlags.deaths || 0) + 1;
+      this.save.session.displacementJourney=null;
       const before = this.save.consumables.restorativeDraught || 0;
       if (before < 2) this.save.consumables.restorativeDraught = 2;
       p.hp = this.save.maxHp;

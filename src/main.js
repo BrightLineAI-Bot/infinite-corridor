@@ -1,7 +1,7 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=64";
-import { vendorShop, buyFromVendor } from "./game.js?v=64";
-import { CREATURE_TRAITS } from "./combat.js?v=64";
-import { hashSeed } from "./random.js?v=64";
+import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=65";
+import { vendorShop, buyFromVendor } from "./game.js?v=65";
+import { CREATURE_TRAITS } from "./combat.js?v=65";
+import { hashSeed } from "./random.js?v=65";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -202,19 +202,19 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame } from "./persistence.js?v=64";
+import { loadSave, saveGame } from "./persistence.js?v=65";
 import {
   Game,
   actionReadiness,
   enemyDangerRadius,
   characterStats,
   syncCharacterStats,
-} from "./game.js?v=64";
-import { createInput } from "./input.js?v=64";
-import { render as baseRender } from "./renderer.js?v=64";
-import { STATS } from "./types.js?v=64";
-import { SPELLS } from "./items.js?v=64";
-import { currentObjective, validActions } from "./interactions.js?v=64";
+} from "./game.js?v=65";
+import { createInput } from "./input.js?v=65";
+import { render as baseRender } from "./renderer.js?v=65";
+import { STATS } from "./types.js?v=65";
+import { SPELLS } from "./items.js?v=65";
+import { currentObjective, validActions } from "./interactions.js?v=65";
 import {
   generateRegion as generateWorldRegion,
   sectionSummary,
@@ -223,7 +223,7 @@ import {
   apertureTier,
   APERTURE_THRESHOLDS,
   perceived,
-} from "./world.js?v=64";
+} from "./world.js?v=65";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -1452,7 +1452,9 @@ function openInteraction(id, confirmAttack = false) {
       (id === "vendor-vela"
         ? "Vela supplies the refuge."
         : "Each resident helps hold the refuge together.");
-  } else if (o.kind === "relayTerminal")
+  } else if(o.kind==="shelterMerchant")description.textContent=(o.role||"Wandering specialist")+" · Their stock is deterministic, rare, and rotates as you chart the Corridor.";
+  else if(o.kind==="displacementDevice")description.textContent="A rare threshold into a finite sealed crossing. Defeat its guardian to emerge in a distant unexplored region, or use a Crossing Sigil to abort back here.";
+  else if (o.kind === "relayTerminal")
     description.textContent =
       "Restore: reopen the line and recover two draughts. Sever: silence the line and recover three lumen dust. This decision is permanent; either resolves the Missing Crossing.";
   else
