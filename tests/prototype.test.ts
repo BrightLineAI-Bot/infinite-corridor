@@ -2168,12 +2168,12 @@ test("Atlas shows unresolved distant signals without revealing intervening terra
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(main,/signalBySection=new Map/);assert.match(main,/!seen && !frontier && !signal/);assert.match(main,/drawWaymarkIcon\(mctx,signal\.signalKind/);assert.match(main,/UNRESOLVED SIGNAL/);assert.match(main,/signals\.length} unresolved signals/);
 });
 
-test("rare architectural districts provide deterministic city arcology and cloister exploration",()=>{
+test("rare architectural sites provide deterministic wards arcologies cloisters and fortress ruins",()=>{
   const districts=[],styles=new Set(),shapes=new Set(),sizes=new Set(),uses=new Set(),profiles=new Set();
   for(let y=-22;y<=22;y++)for(let x=-22;x<=22;x++){const a=generateRegion("architectural-texture",x,y,1),b=generateRegion("architectural-texture",x,y,1);if(a.district){assert.deepEqual(a,b);districts.push(a);styles.add(a.district.style);}}
-  assert.ok(districts.length>8&&districts.length<130);assert.deepEqual([...styles].sort(),["arcology","city","cloister"]);
+  assert.ok(districts.length>8&&districts.length<160);assert.deepEqual([...styles].sort(),["arcology","city","cloister","fortress"]);
   for(const region of districts.slice(0,30)){const buildings=region.objects.filter(o=>o.kind==="architecturalBuilding");assert.ok(buildings.length>=2);for(const building of buildings){assert.equal(region.tiles[building.door.y*32+building.door.x].blocked,false);assert.equal(region.tiles[building.door.y*32+building.door.x].structure,"districtDoor");assert.ok(building.entrances?.length>=1);for(const entrance of building.entrances){assert.equal(region.tiles[entrance.y*32+entrance.x].blocked,false);assert.equal(region.tiles[entrance.y*32+entrance.x].structure,"districtDoor")}assert.ok(building.bounds.w>=7&&building.bounds.h>=6);assert.ok(building.footprint.length>20);shapes.add(building.shape);sizes.add(`${building.bounds.w}x${building.bounds.h}`);uses.add(building.buildingUse);profiles.add(building.roofProfile)}assert.ok(sectionSites(region.seed,region.rx,region.ry,1).some(o=>o.kind==="architecturalDistrict"));}
-  assert.deepEqual([...shapes].sort(),["notched","rect","wing"]);assert.ok(sizes.size>=8);assert.ok(uses.size>=10);assert.deepEqual([...profiles].sort(),["flat","gable","spire","stepped"]);
+  for(const shape of ["courtyard","cross","hshape","lshape","rect"])assert.ok(shapes.has(shape));assert.ok(sizes.size>=8);assert.ok(uses.size>=10);assert.deepEqual([...profiles].sort(),["flat","gable","spire","stepped"]);
 });
 
 test("building roofs conceal contents outside and cut away only in their own interior",()=>{
@@ -2248,12 +2248,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 70 loads one coherent version across the entire module graph",()=>{
+test("release 71 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=70/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=70/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v70/);assert.match(sw,/styles\.css\?v=70/);assert.match(sw,/main\.js\?v=70/);assert.match(sw,/combat\.js\?v=70/);assert.match(sw,/renderer\.js\?v=70/);
-  assert.match(build,/release='70'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=71/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=71/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v71/);assert.match(sw,/styles\.css\?v=71/);assert.match(sw,/main\.js\?v=71/);assert.match(sw,/combat\.js\?v=71/);assert.match(sw,/renderer\.js\?v=71/);
+  assert.match(build,/release='71'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("rare gate predators alone can carry aggro through a dungeon exit",()=>{
