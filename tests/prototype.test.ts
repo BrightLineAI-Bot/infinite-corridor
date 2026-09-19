@@ -39,6 +39,7 @@ import {
   relocateIfStranded,
   footprintTouchesCanyon,
   footprintHazard,
+  footprintInsideStructure,
   projectileTileOpen,
   updateProjectiles,
 } from "../src/game.ts";
@@ -2247,12 +2248,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 69 loads one coherent version across the entire module graph",()=>{
+test("release 70 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=69/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=69/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v69/);assert.match(sw,/styles\.css\?v=69/);assert.match(sw,/main\.js\?v=69/);assert.match(sw,/combat\.js\?v=69/);assert.match(sw,/renderer\.js\?v=69/);
-  assert.match(build,/release='69'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=70/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=70/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v70/);assert.match(sw,/styles\.css\?v=70/);assert.match(sw,/main\.js\?v=70/);assert.match(sw,/combat\.js\?v=70/);assert.match(sw,/renderer\.js\?v=70/);
+  assert.match(build,/release='70'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("rare gate predators alone can carry aggro through a dungeon exit",()=>{
@@ -2261,6 +2262,8 @@ test("rare gate predators alone can carry aggro through a dungeon exit",()=>{
   assert.ok(id);const g=new Game(s,0);g.save.session.activeDungeonId=id;g.save.session.dungeonReturn={rx:2,ry:3,x:9,y:10};g.loadArea("dungeon",false);
   const predator=g.enemies.find(e=>e.gatePredator);assert.ok(predator);assert.equal(predator.maxHp,260);assert.ok(predator.scale>1.8);predator.aggro=true;
   assert.equal(g.leaveDungeon(),true);assert.equal(g.area,"overworld");const escaped=g.enemies.find(e=>e.gatePredator&&!e.dead);assert.ok(escaped);assert.equal(escaped.aggro,true);assert.match(g.message,/GATE REMAINS OPEN/);
+  g.transitionSection(1,0);const crossing=g.enemies.find(e=>e.gatePredator&&!e.dead);assert.ok(crossing);assert.equal(crossing.aggro,true);
+  const shelterMap={tiles:Array.from({length:16},(_,i)=>({x:i%4,y:Math.floor(i/4),kind:"ash",blocked:false}))};shelterMap.tiles[5].structure="shackInterior";assert.equal(footprintInsideStructure(shelterMap,4,.8,.4),true);shelterMap.tiles[5].structure="shackDoor";assert.equal(footprintInsideStructure(shelterMap,4,.8,.4),false);
 });
 
 test("water is lethal to footprints but transparent to projectiles",()=>{
