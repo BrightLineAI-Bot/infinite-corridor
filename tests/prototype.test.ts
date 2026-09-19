@@ -2233,12 +2233,25 @@ test("void sentinels are rare deterministic deep-region creatures with animated 
   const c=createCombatant("voidSentinel",4,4);assert.equal(c.tentacles,7);assert.ok(c.range>=6);const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/kind==="voidSentinel"/);assert.match(renderer,/Math\.sin\(Number\(frame\)\*\.18/);
 });
 
-test("release 66 loads one coherent version across the entire module graph",()=>{
+test("Atlas imports its wayfinding dependency and frame errors cannot terminate animation",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(main,/wayfindingCues,\s*\} from "\.\/world\.ts"/);assert.match(main,/function frame\(now\) \{\s*try \{/);assert.match(main,/finally \{\s*requestAnimationFrame\(frame\)/);
+});
+
+test("full-footprint shelter collision prevents doorway wall pockets",()=>{
+  const map={tiles:Array.from({length:25},(_,i)=>({x:i%5,y:Math.floor(i/5),kind:"ash",blocked:false}))};map.tiles[2*5+2]={x:2,y:2,kind:"ash",blocked:false,structure:"shackWall",wallSides:["south"]};const p={x:1,y:2.2};moveAxis(p,1,0,map,5);assert.ok(p.x<2,"cannot slide sideways into the thin south-wall pocket");
+  map.tiles[2*5+2]={...map.tiles[2*5+2],structure:"shackDoor",wallSides:[]};const door={x:1,y:2.2};moveAxis(door,1,0,map,5);assert.ok(door.x>1.8,"the actual doorway remains passable");
+});
+
+test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
+  const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
+});
+
+test("release 67 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=66/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=66/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v66/);assert.match(sw,/styles\.css\?v=66/);assert.match(sw,/main\.js\?v=66/);assert.match(sw,/combat\.js\?v=66/);assert.match(sw,/renderer\.js\?v=66/);
-  assert.match(build,/release='66'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=67/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=67/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v67/);assert.match(sw,/styles\.css\?v=67/);assert.match(sw,/main\.js\?v=67/);assert.match(sw,/combat\.js\?v=67/);assert.match(sw,/renderer\.js\?v=67/);
+  assert.match(build,/release='67'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("danger waymarks fill only their forward corner while other silhouettes point naturally",()=>{

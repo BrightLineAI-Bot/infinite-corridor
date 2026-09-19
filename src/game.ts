@@ -139,12 +139,18 @@ export function tileOpen(map, width, x, y) {
   return true;
 }
 export function footprintOpen(map, width, x, y) {
-  return (
-    tileOpen(map, width, x + 0.24, y + 0.5) &&
-    tileOpen(map, width, x + 0.76, y + 0.5) &&
-    tileOpen(map, width, x + 0.24, y + 0.88) &&
-    tileOpen(map, width, x + 0.76, y + 0.88)
-  );
+  const left=x+.24,right=x+.76,top=y+.5,bottom=y+.88,height=map.tiles.length/width,overlaps=(a,b,c,d)=>right>a&&left<b&&bottom>c&&top<d;
+  for(let ty=Math.floor(top);ty<=Math.floor(bottom-1e-6);ty++)for(let tx=Math.floor(left);tx<=Math.floor(right-1e-6);tx++){
+    if(tx<0||ty<0||tx>=width||ty>=height)return false;
+    const tile=map.tiles[ty*width+tx];if(!tile||tile.blocked)return false;
+    if(tile.structure!=="shackWall"||!tile.wallSides?.length)continue;
+    const thickness=.22;
+    for(const side of tile.wallSides){
+      const box=side==="west"?[tx,tx+thickness,ty,ty+1]:side==="east"?[tx+1-thickness,tx+1,ty,ty+1]:side==="north"?[tx,tx+1,ty,ty+thickness]:[tx,tx+1,ty+1-thickness,ty+1];
+      if(overlaps(...box))return false;
+    }
+  }
+  return true;
 }
 export function footprintTouchesCanyon(map, width, x, y) {
   return [[.24,.5],[.76,.5],[.24,.88],[.76,.88]].some(([ox,oy]) => {
@@ -688,7 +694,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
     if (e.telegraph === 0) {
       e.cooldown = 1.9;
       e.strike = 0.24;
-      const ranged=e.range>=2.5,clear=attackInRange(e,player)&&hasLineOfSight(e,player,map,width,ranged);
+      const ranged=e.range>=2.5&&!e.instantStrike,clear=attackInRange(e,player)&&hasLineOfSight(e,player,map,width,ranged);
       if(clear&&ranged){onRanged(e,e.attackAim||projectileDirection(player.x-e.x,player.y-e.y));return false}
       return clear;
     }
@@ -727,7 +733,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   if (
     attackInRange(e, player) &&
     e.cooldown <= 0 &&
-    hasLineOfSight(e, player, map, width, e.range>=2.5)
+    hasLineOfSight(e, player, map, width, e.range>=2.5&&!e.instantStrike)
   )
     {e.telegraph = 0.9;e.attackAim=projectileDirection(player.x-e.x,player.y-e.y)}
   return false;

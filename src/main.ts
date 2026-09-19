@@ -223,6 +223,7 @@ import {
   apertureTier,
   APERTURE_THRESHOLDS,
   perceived,
+  wayfindingCues,
 } from "./world.ts";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
@@ -1228,6 +1229,7 @@ function updateHud(now) {
   }
 }
 function frame(now) {
+  try {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   input.update(dt);
@@ -1259,7 +1261,12 @@ function frame(now) {
     clock = 0;
     persist();
   }
-  requestAnimationFrame(frame);
+  } catch(error) {
+    console.error("Infinite Corridor frame recovered from an error",error);
+    game.message="The Corridor stuttered, then found its rhythm again.";
+  } finally {
+    requestAnimationFrame(frame);
+  }
 }
 $("#resume").onclick = resume;
 $("#pausedPack").onclick = openPack;
