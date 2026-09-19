@@ -2,20 +2,20 @@ export function normalizeVector(x, y) {
   const m = Math.hypot(x, y);
   return m > 1 ? { x: x / m, y: y / m } : { x, y };
 }
-export function shapeStick(x, y, dead = 0.16) {
+export function shapeStick(x, y, dead = 0.16, curve = 2) {
   const raw = Math.hypot(x, y);
   if (raw <= dead) return { x: 0, y: 0 };
-  const magnitude = Math.min(1, (raw - dead) / (1 - dead)) ** 2,
+  const magnitude = Math.min(1, (raw - dead) / (1 - dead)) ** curve,
     scale = magnitude / raw;
   return { x: x * scale, y: y * scale };
 }
-export function smoothAxis(current, target, dt, response = 18) {
+export function smoothAxis(current, target, dt, response = 30) {
   return (
     current + (target - current) * (1 - Math.exp(-response * Math.max(0, dt)))
   );
 }
-export function dragVector(dx, dy, radius = 72) {
-  return shapeStick(dx / radius, dy / radius, 0.12);
+export function dragVector(dx, dy, radius = 52) {
+  return shapeStick(dx / radius, dy / radius, 0.08, 1.2);
 }
 export function createInput(root, host = globalThis) {
   const state = {

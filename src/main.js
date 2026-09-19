@@ -1,7 +1,7 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=76";
-import { vendorShop, buyFromVendor } from "./game.js?v=76";
-import { CREATURE_TRAITS } from "./combat.js?v=76";
-import { hashSeed } from "./random.js?v=76";
+import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=79";
+import { vendorShop, buyFromVendor } from "./game.js?v=79";
+import { CREATURE_TRAITS } from "./combat.js?v=79";
+import { hashSeed } from "./random.js?v=79";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -202,19 +202,21 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame } from "./persistence.js?v=76";
+import { loadSave, saveGame } from "./persistence.js?v=79";
 import {
   Game,
   actionReadiness,
   enemyDangerRadius,
   characterStats,
   syncCharacterStats,
-} from "./game.js?v=76";
-import { createInput } from "./input.js?v=76";
-import { render as baseRender } from "./renderer.js?v=76";
-import { STATS } from "./types.js?v=76";
-import { SPELLS } from "./items.js?v=76";
-import { currentObjective, validActions } from "./interactions.js?v=76";
+  EQUIPMENT_CAPACITY,
+  salvageInventoryItem,
+} from "./game.js?v=79";
+import { createInput } from "./input.js?v=79";
+import { render as baseRender } from "./renderer.js?v=79";
+import { STATS } from "./types.js?v=79";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes } from "./items.js?v=79";
+import { currentObjective, validActions } from "./interactions.js?v=79";
 import {
   generateRegion as generateWorldRegion,
   sectionSummary,
@@ -224,7 +226,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=76";
+} from "./world.js?v=79";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -238,6 +240,7 @@ const $ = (s) => document.querySelector(s),
   journal = $("#journal"),
   mapCanvas = $("#mapCanvas"),
   mctx = mapCanvas.getContext("2d");
+const inventoryView = { slot: "all", tier: "all", sort: "score" };
 let last = performance.now(),
   clock = 0,
   mapView = { x: game.rx, y: game.ry, zoom: 1, selected: null, panX: 0, panY: 0 },
@@ -247,7 +250,8 @@ let atlasDrag = null,
   overlayPause = false,
   suppressMapClick = false,
   bannerTimer = 0,
-  nearbyNotice = "";
+  nearbyNotice = "",
+  atlasOpenedAt = -Infinity;
 const atlasPointers = new Map();
 const announcedThreats = new Set();
 function showEventBanner(title, detail = "", kind = "discovery") {
@@ -959,6 +963,7 @@ function showMapDetail(rx, ry) {
   return true;
 }
 function openMap() {
+  atlasOpenedAt = performance.now();
   pauseForOverlay();
   if (pausePanel.open) pausePanel.close();
   mapView.x = game.rx;
@@ -1024,7 +1029,12 @@ function openPack() {
     body.append(row);
   }
   const resource = document.createElement("p");
-  resource.textContent = `Cinder Iron ${save.materials.cinderIron} · section ${game.rx},${game.ry}`;
+  resource.textContent = `Cinder Iron ${save.materials.cinderIron} · weapon +${save.weaponLevel || 0} · section ${game.rx},${game.ry} `;
+  resource.append(uiButton("Reinforce weapon · 3 iron", () => {
+    game.upgrade();
+    persist();
+    openPack();
+  }));
   body.append(resource);
   const gearHeading = document.createElement("h3");
   gearHeading.textContent = "Equipped gear and effects";
@@ -1035,14 +1045,16 @@ function openPack() {
       card = document.createElement("div");
     card.className = "gear-card";
     card.dataset.slot = slot;
-    const effect =
+    const baseEffect =
       slot === "armor"
         ? `${(Number(item?.power || 0) * 2.5).toFixed(1)}% resistance`
         : slot === "charm"
           ? `${Number(item?.power || 0)}% resistance`
           : slot === "primary"
             ? `power ${item?.power || 0}; Might and upgrades add damage`
-            : `power ${item?.power || 0}; Focus adds projectile damage`;
+            : `power ${item?.power || 0}; Focus adds projectile damage`,
+      affixes = describeAffixes(item),
+      effect = `${item ? itemTier(item).toUpperCase() + " · " : ""}${baseEffect}${affixes.length ? " · " + affixes.join(" · ") : ""}`;
     const label=document.createElement("small"),name=document.createElement("strong"),detail=document.createElement("span");label.textContent=slot.toUpperCase();name.textContent=item?.name||"Empty slot";detail.textContent=effect;card.append(gearIcon(item,slot),label,name,detail);
     gear.append(card);
   }
@@ -1100,18 +1112,51 @@ function openPack() {
     body.append(row);
   }
   const inventoryHeading = document.createElement("h3");
-  inventoryHeading.textContent = `Carried equipment (${save.inventory.length})`;
+  inventoryHeading.textContent = `Carried equipment (${save.inventory.length}/${EQUIPMENT_CAPACITY})`;
   body.append(inventoryHeading);
-  for (let i = 0; i < save.inventory.length; i++) {
-    const item = save.inventory[i];
+  const inventoryTools = document.createElement("div"),
+    slotFilter = document.createElement("select"),
+    tierFilter = document.createElement("select"),
+    sortFilter = document.createElement("select"),
+    makeOptions = (select, values, selected) => {
+      select.replaceChildren(...values.map(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        option.selected = value === selected;
+        return option;
+      }));
+    };
+  inventoryTools.className = "inventory-tools";
+  makeOptions(slotFilter, [["all","All gear"],["primary","Primary"],["secondary","Secondary"],["armor","Armor"],["charm","Charms"]], inventoryView.slot);
+  makeOptions(tierFilter, [["all","All tiers"],...ITEM_TIERS.map((q) => [q, q.toUpperCase()])], inventoryView.tier);
+  makeOptions(sortFilter, [["score","Best first"],["power","Power"],["name","Name"],["slot","Type"]], inventoryView.sort);
+  slotFilter.onchange = () => { inventoryView.slot = slotFilter.value; openPack(); };
+  tierFilter.onchange = () => { inventoryView.tier = tierFilter.value; openPack(); };
+  sortFilter.onchange = () => { inventoryView.sort = sortFilter.value; openPack(); };
+  inventoryTools.append(slotFilter, tierFilter, sortFilter);
+  body.append(inventoryTools);
+  const visibleItems = save.inventory.map((item, index) => ({ item, index }))
+    .filter(({item}) => inventoryView.slot === "all" || item.slot === inventoryView.slot)
+    .filter(({item}) => inventoryView.tier === "all" || itemTier(item) === inventoryView.tier)
+    .sort((a,b) => inventoryView.sort === "name" ? a.item.name.localeCompare(b.item.name)
+      : inventoryView.sort === "slot" ? a.item.slot.localeCompare(b.item.slot) || itemScore(b.item)-itemScore(a.item)
+      : inventoryView.sort === "power" ? b.item.power-a.item.power : itemScore(b.item)-itemScore(a.item));
+  for (const { item, index: i } of visibleItems) {
     if (!["primary", "secondary", "armor", "charm"].includes(item.slot))
       continue;
     const row = document.createElement("div");
     row.className = "item";
-    row.textContent = `${item.name} · ${item.slot} · power ${item.power}`;
+    const affixes = describeAffixes(item);
+    row.textContent = `${itemTier(item).toUpperCase()} · ${item.name} · ${item.slot} · power ${item.power}${affixes.length ? " · " + affixes.join(" · ") : ""}`;
     row.append(
       uiButton("Equip", () => {
         equipFromInventory(save, i);
+        persist();
+        openPack();
+      }),
+      uiButton("Salvage", () => {
+        salvageInventoryItem(save, i);
         persist();
         openPack();
       }),
@@ -1336,6 +1381,7 @@ $("#mapMinus").onclick = () => {
   drawMap();
 };
 $("#mapTravel").onclick = () => {
+  if (performance.now() - atlasOpenedAt < 500) return;
   const key = selectedWayglassKey();
   game.area === "dungeon"
     ? game.useCrossingSigil()
@@ -1344,6 +1390,7 @@ $("#mapTravel").onclick = () => {
   resume();
 };
 $("#mapHome").onclick = () => {
+  if (performance.now() - atlasOpenedAt < 500) return;
   game.returnHome();
   persist();
   resume();
@@ -1473,14 +1520,6 @@ addEventListener("freeze", () => {
 if (game.paused) pausePanel.showModal();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");
 requestAnimationFrame(frame);
-$("#mapTravel").onclick = () => {
-  const key = selectedWayglassKey();
-  game.area === "dungeon"
-    ? game.useCrossingSigil()
-    : game.travelToCheckpoint(save.checkpoints?.[key] ? key : null);
-  persist();
-  resume();
-};
 function openInteraction(id, confirmAttack = false) {
   const o = game.map.objects.find((q) => q.id === id);
   if (!o) return;
