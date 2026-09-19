@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=52";
+import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=53";
 import {
   generateRegion,
   generateDungeon,
@@ -12,7 +12,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js?v=52";
+} from "./world.js?v=53";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack } from "./combat.js?v=52";
+import { createCombatant, dodge, playerAttack } from "./combat.js?v=53";
 import {
   applyInteraction,
   validActions,
@@ -33,10 +33,10 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=52";
-import { ensurePerception } from "./types.js?v=52";
-import { generateItem } from "./items.js?v=52";
-import { hashSeed } from "./random.js?v=52";
+} from "./interactions.js?v=53";
+import { ensurePerception } from "./types.js?v=53";
+import { generateItem } from "./items.js?v=53";
+import { hashSeed } from "./random.js?v=53";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
@@ -136,6 +136,28 @@ export function footprintOpen(map, width, x, y) {
     tileOpen(map, width, x + 0.24, y + 0.88) &&
     tileOpen(map, width, x + 0.76, y + 0.88)
   );
+}
+export function relocateIfStranded(entity, map, width) {
+  if (!entity || footprintOpen(map, width, entity.x, entity.y)) return false;
+  const height = Math.floor(map.tiles.length / width),
+    sx = Math.floor(entity.x),
+    sy = Math.floor(entity.y),
+    limit = Math.max(width, height);
+  for (let radius = 0; radius <= limit; radius++) {
+    const minX = Math.max(0, sx - radius),
+      maxX = Math.min(width - 1, sx + radius),
+      minY = Math.max(0, sy - radius),
+      maxY = Math.min(height - 1, sy + radius);
+    for (let y = minY; y <= maxY; y++)
+      for (let x = minX; x <= maxX; x++) {
+        if (Math.max(Math.abs(x - sx), Math.abs(y - sy)) !== radius) continue;
+        if (!footprintOpen(map, width, x, y)) continue;
+        entity.x = x;
+        entity.y = y;
+        return true;
+      }
+  }
+  return false;
 }
 export function moveAxis(entity, dx, dy, map, width) {
   let moved = false,
@@ -1241,14 +1263,12 @@ export class Game {
         hits: { ...f.hits },
       }));
     }
-    if (area === "overworld" && this.map.district) {
-      const clearStranded = (entity) => {
-        const cx=Math.floor(entity?.x),cy=Math.floor(entity?.y),tile=this.map.tiles[cy*32+cx];
-        if(!tile?.blocked)return;
-        for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){const x=cx+ox,y=cy+oy,t=this.map.tiles[y*32+x];if(t?.structure==="districtWall")this.map.tiles[y*32+x]={...t,kind:`${this.map.district.style}Floor`,blocked:false,structure:"districtInterior"}}
-      };
-      clearStranded(this.player);for(const e of this.enemies)clearStranded(e);
-    }
+    const areaWidth = area === "dungeon" ? 24 : 32,
+      playerRelocated = relocateIfStranded(this.player, this.map, areaWidth);
+    for (const e of this.enemies) relocateIfStranded(e, this.map, areaWidth);
+    if (playerRelocated)
+      this.message =
+        "The changed Corridor settles you onto the nearest stable ground. Your progress and carried items remain intact.";
     this.reconcileConsequences();
     const codex = (this.save.codex ||= { creatures: {}, places: {}, features: {} });
     codex.creatures ||= {};
