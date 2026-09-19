@@ -33,6 +33,7 @@ const PAL = {
   arcologyWall: ["#1b2d32", "#49666b"],
   cloisterFloor: ["#493f43", "#665459"],
   cloisterWall: ["#2d272b", "#625158"],
+  supplyCache: ["#765f3c", "#2b251d", "#d7b96f"],
 };
 function h(x, y) {
   return (Math.imul(x + 37, 73856093) ^ Math.imul(y + 19, 19349663)) >>> 0;
@@ -308,7 +309,7 @@ function actor(
     } else if (kind === "door" || kind === "dungeon" || kind === "exit") {
       rect(p[0], -0.34, -0.82, 0.68, 0.82);
       rect("#171614", -0.23, -0.66, 0.46, 0.66);
-    } else if (kind === "chest" || kind === "cache") {
+    } else if (kind === "chest" || kind === "cache" || kind === "supplyCache") {
       rect(p[0], -0.3, -0.38, 0.6, 0.35);
       rect(p[2], -0.04, -0.31, 0.08, 0.12);
     }

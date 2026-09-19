@@ -1,7 +1,7 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=79";
-import { vendorShop, buyFromVendor } from "./game.js?v=79";
-import { CREATURE_TRAITS } from "./combat.js?v=79";
-import { hashSeed } from "./random.js?v=79";
+import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=81";
+import { vendorShop, buyFromVendor } from "./game.js?v=81";
+import { CREATURE_TRAITS } from "./combat.js?v=81";
+import { hashSeed } from "./random.js?v=81";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -202,7 +202,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame } from "./persistence.js?v=79";
+import { loadSave, saveGame } from "./persistence.js?v=81";
 import {
   Game,
   actionReadiness,
@@ -211,12 +211,12 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=79";
-import { createInput } from "./input.js?v=79";
-import { render as baseRender } from "./renderer.js?v=79";
-import { STATS } from "./types.js?v=79";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes } from "./items.js?v=79";
-import { currentObjective, validActions } from "./interactions.js?v=79";
+} from "./game.js?v=81";
+import { createInput } from "./input.js?v=81";
+import { render as baseRender } from "./renderer.js?v=81";
+import { STATS } from "./types.js?v=81";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats } from "./items.js?v=81";
+import { currentObjective, validActions } from "./interactions.js?v=81";
 import {
   generateRegion as generateWorldRegion,
   sectionSummary,
@@ -226,7 +226,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=79";
+} from "./world.js?v=81";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -838,6 +838,7 @@ function drawDungeonMap() {
   for(const o of game.map.objects||[]){if(!colors[o.kind])continue;const x=ox+(o.x+.5)*cell,y=oy+(o.y+.5)*cell;mctx.fillStyle=colors[o.kind];mctx.strokeStyle="#0b1014";mctx.lineWidth=2;mctx.beginPath();if(o.kind==="exit"){mctx.rect(x-cell*.32,y-cell*.42,cell*.64,cell*.84)}else if(o.kind==="trap"){mctx.moveTo(x,y-cell*.42);mctx.lineTo(x+cell*.4,y+cell*.35);mctx.lineTo(x-cell*.4,y+cell*.35);mctx.closePath()}else{mctx.arc(x,y,Math.max(3,cell*.28),0,7)}mctx.fill();mctx.stroke()}
   const px=ox+(game.player.x+.5)*cell,py=oy+(game.player.y+.5)*cell;mctx.fillStyle="#fff4a8";mctx.strokeStyle="#17140b";mctx.lineWidth=2;mctx.beginPath();mctx.arc(px,py,Math.max(4,cell*.34),0,7);mctx.fill();mctx.stroke();mctx.fillStyle="#e7ece7";mctx.font="12px monospace";mctx.fillText("YOU",px+7,py-7);
 }
+function drawAtlasLabels(labels,bounds,fontSize){const placed=[],overlap=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;mctx.font=`${fontSize}px system-ui`;mctx.fillStyle="#edf3df";for(const label of labels){let text=label.name,max=bounds.right-bounds.left-10;while(text.length>4&&mctx.measureText(text).width>max)text=text.slice(0,-2)+"…";const width=mctx.measureText(text).width,candidates=[[label.x+7,label.y-5],[label.x+7,label.y+fontSize+3],[label.x-width-7,label.y-5],[label.x-width-7,label.y+fontSize+3],[label.x-width/2,label.y-fontSize],[label.x-width/2,label.y+fontSize*2]],spots=candidates.map(([cx,cy])=>{const x=Math.max(bounds.left+5,Math.min(bounds.right-width-5,cx)),y=Math.max(bounds.top+fontSize+5,Math.min(bounds.bottom-6,cy));return{x,y,left:x-2,right:x+width+2,top:y-fontSize-2,bottom:y+3}}),spot=spots.find(q=>!placed.some(p=>overlap(p,q)));if(!spot)continue;mctx.fillText(text,spot.x,spot.y);placed.push(spot)}return placed}
 function drawMap() {
   if(mapMode==="dungeon"&&game.area==="dungeon")return drawDungeonMap();
   const d = Math.min(devicePixelRatio, 2),
@@ -882,16 +883,14 @@ function drawMap() {
       mctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4);
       if (seen) {
         const detailed=(rx===game.rx&&ry===game.ry)||(mapView.selected?.rx===rx&&mapView.selected?.ry===ry),sites=record?.sites||[],compact=[...new Map(sites.map(s=>[s.kind,s])).values()];
-        for (const [n,site] of (detailed?sites:compact).entries()) {
+        const displaySites=detailed?sites:compact,labelSites=[];
+        for (const [n,site] of displaySites.entries()) {
           const sx = detailed?x + Math.max(0.1, Math.min(0.9, (site.x + .5) / 32)) * cell:x+cell*(.32+(n%3)*.18),
             sy = detailed?y + Math.max(0.1, Math.min(0.9, (site.y + .5) / 32)) * cell:y+cell*(.42+Math.floor(n/3)*.2);
           drawAtlasSite(site.kind, sx, sy, Math.max(3, Math.min(9, cell * .095)));
-          if (detailed && mapView.zoom >= 2.2) {
-            mctx.fillStyle = "#edf3df";
-            mctx.font = `${Math.max(8, 5 * mapView.zoom)}px system-ui`;
-            mctx.fillText(site.name, sx + 6, sy - 5);
-          }
+          if (detailed && mapView.zoom >= 2.2) labelSites.push({name:site.name,x:sx,y:sy});
         }
+        if(labelSites.length)drawAtlasLabels(labelSites,{left:x+2,top:y+2,right:x+cell-2,bottom:y+cell-2},Math.max(8,5*mapView.zoom));
         mctx.fillStyle = "#d7dedb";
         mctx.font = `${Math.max(8, 10 * mapView.zoom)}px monospace`;
         mctx.fillText(`${rx},${ry}`, x + 5, y + 14);
@@ -916,9 +915,9 @@ function drawMap() {
   );
 }
 function drawAtlasSite(kind, x, y, size) {
-  const signal = kind === "checkpoint" ? "beacon" : kind === "dungeon" ? "crossing" : kind === "bossCue" ? "danger" : kind === "shack" ? "shack" : "event";
-  mctx.save();mctx.translate(x,y);mctx.lineWidth=Math.max(1.4,size*.22);mctx.strokeStyle={beacon:"#72d7df",crossing:"#d5a464",danger:"#d16b62",event:"#a68ad2",shack:"#d8bd83"}[signal];mctx.fillStyle=mctx.strokeStyle;mctx.beginPath();
-  if(signal==="beacon")mctx.arc(0,0,size*.7,0,Math.PI*1.65);else if(signal==="crossing"){mctx.moveTo(-size*.7,-size*.55);mctx.lineTo(size*.55,0);mctx.lineTo(-size*.7,size*.55)}else if(signal==="danger"){mctx.moveTo(-size*.65,size*.6);mctx.lineTo(0,-size*.75);mctx.lineTo(size*.65,size*.6);mctx.closePath()}else if(signal==="shack"){mctx.moveTo(-size*.75,0);mctx.lineTo(0,-size*.7);mctx.lineTo(size*.75,0);mctx.lineTo(size*.55,0);mctx.lineTo(size*.55,size*.7);mctx.lineTo(-size*.55,size*.7);mctx.lineTo(-size*.55,0);mctx.closePath()}else{mctx.arc(0,0,size*.65,0,Math.PI*1.5);mctx.lineTo(size*.75,0)}mctx.stroke();if(signal==="danger"){mctx.beginPath();mctx.moveTo(0,-size*.75);mctx.lineTo(-size*.18,-size*.42);mctx.lineTo(size*.18,-size*.42);mctx.closePath();mctx.fill()}else if(signal!=="shack"){mctx.beginPath();mctx.moveTo(size*.72,0);mctx.lineTo(size*1.05,-size*.3);mctx.lineTo(size*1.05,size*.3);mctx.closePath();mctx.fill()}mctx.restore();
+  const signal = kind === "checkpoint" ? "beacon" : kind === "dungeon" ? "crossing" : kind === "bossCue" ? "danger" : kind === "shack" ? "shack" : kind === "supplyCache" ? "cache" : "event";
+  mctx.save();mctx.translate(x,y);mctx.lineWidth=Math.max(1.4,size*.22);mctx.strokeStyle={beacon:"#72d7df",crossing:"#d5a464",danger:"#d16b62",event:"#a68ad2",shack:"#d8bd83",cache:"#d7b96f"}[signal];mctx.fillStyle=mctx.strokeStyle;mctx.beginPath();
+  if(signal==="beacon")mctx.arc(0,0,size*.7,0,Math.PI*1.65);else if(signal==="cache"){mctx.rect(-size*.65,-size*.45,size*1.3,size*.9);mctx.moveTo(-size*.65,-size*.12);mctx.lineTo(size*.65,-size*.12)}else if(signal==="crossing"){mctx.moveTo(-size*.7,-size*.55);mctx.lineTo(size*.55,0);mctx.lineTo(-size*.7,size*.55)}else if(signal==="danger"){mctx.moveTo(-size*.65,size*.6);mctx.lineTo(0,-size*.75);mctx.lineTo(size*.65,size*.6);mctx.closePath()}else if(signal==="shack"){mctx.moveTo(-size*.75,0);mctx.lineTo(0,-size*.7);mctx.lineTo(size*.75,0);mctx.lineTo(size*.55,0);mctx.lineTo(size*.55,size*.7);mctx.lineTo(-size*.55,size*.7);mctx.lineTo(-size*.55,0);mctx.closePath()}else{mctx.arc(0,0,size*.65,0,Math.PI*1.5);mctx.lineTo(size*.75,0)}mctx.stroke();if(signal==="danger"){mctx.beginPath();mctx.moveTo(0,-size*.75);mctx.lineTo(-size*.18,-size*.42);mctx.lineTo(size*.18,-size*.42);mctx.closePath();mctx.fill()}else if(!["shack","cache"].includes(signal)){mctx.beginPath();mctx.moveTo(size*.72,0);mctx.lineTo(size*1.05,-size*.3);mctx.lineTo(size*1.05,size*.3);mctx.closePath();mctx.fill()}mctx.restore();
 }
 function refreshWayglassDestinations(){
   const select=$("#mapWayglassSelect"),prior=select.value,entries=Object.entries(save.checkpoints||{}).sort((a,b)=>(a[1].name||a[0]).localeCompare(b[1].name||b[0]));
@@ -1145,11 +1144,13 @@ function openPack() {
   for (const { item, index: i } of visibleItems) {
     if (!["primary", "secondary", "armor", "charm"].includes(item.slot))
       continue;
-    const row = document.createElement("div");
-    row.className = "item";
-    const affixes = describeAffixes(item);
-    row.textContent = `${itemTier(item).toUpperCase()} · ${item.name} · ${item.slot} · power ${item.power}${affixes.length ? " · " + affixes.join(" · ") : ""}`;
+    const row = document.createElement("div"),title=document.createElement("strong"),comparison=document.createElement("div");
+    row.className = "item inventory-card";comparison.className="item-comparison";
+    title.textContent = `${itemTier(item).toUpperCase()} · ${item.name} · ${item.slot}`;
+    for(const stat of compareItemStats(item,save.equipment[item.slot])){const value=document.createElement("span");value.className=`stat-${stat.direction}`;value.textContent=`${stat.direction==='up'?'↑ ':stat.direction==='down'?'↓ ':''}${stat.label} ${stat.formatted}`;value.title=stat.direction==='same'?`Matches equipped ${stat.label.toLowerCase()}`:`${Math.abs(stat.difference)} ${stat.direction==='up'?'more':'less'} than equipped`;comparison.append(value)}
     row.append(
+      title,
+      comparison,
       uiButton("Equip", () => {
         equipFromInventory(save, i);
         persist();

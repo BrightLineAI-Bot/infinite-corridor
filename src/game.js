@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS } from "./items.js?v=79";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS } from "./items.js?v=81";
 import {
   generateRegion,
   generateDungeon,
@@ -12,7 +12,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js?v=79";
+} from "./world.js?v=81";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=79";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=81";
 import {
   applyInteraction,
   validActions,
@@ -33,11 +33,11 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=79";
-import { ensurePerception } from "./types.js?v=79";
-import { generateItem } from "./items.js?v=79";
-import { hashSeed } from "./random.js?v=79";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=79';
+} from "./interactions.js?v=81";
+import { ensurePerception } from "./types.js?v=81";
+import { generateItem } from "./items.js?v=81";
+import { hashSeed } from "./random.js?v=81";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=81';
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 const MILESTONE_GEAR = [
@@ -1364,8 +1364,8 @@ export class Game {
     if (area === "overworld") {
       const atlas = (this.save.atlas ||= {}), key = `${this.rx},${this.ry}`;
       atlas[key] = { terrain: this.map.dominant, sites: this.map.objects
-        .filter((o) => ["checkpoint","dungeon","shrine","ruinMarker","shack","bossCue","architecturalDistrict"].includes(o.kind))
-        .map((o) => ({ kind: o.kind, name: o.name || o.kind, x: o.x, y: o.y })) };
+        .filter((o) => ["checkpoint","dungeon","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache"].includes(o.kind))
+        .map((o) => ({ kind: o.kind, name: o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
     this.enemies = this.map.enemySpawns.map((e) => {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
