@@ -2135,6 +2135,14 @@ test("journal renders the same minimalist trail marks used on the floor",()=>{
   assert.match(source,/function trailMark/);assert.match(source,/Open ring — Wayglass/);assert.match(source,/Open chevron — Crossing/);assert.match(source,/Hollow triangle — Major danger/);assert.match(source,/Open spiral — Unusual site/);assert.match(source,/MAJOR THREAT/);assert.match(source,/SITE REACHED/);assert.match(html,/id="eventBanner"/);
 });
 
+test("world discovery banners identify their destination and suppress activated Wayglasses",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(main,/WAYGLASS REACHED/);assert.match(main,/CROSSING REACHED/);assert.match(main,/CORRIDOR BREACH/);assert.match(main,/SITE REACHED/);assert.match(main,/q\.kind===\"checkpoint\"&&activatedHere/);assert.doesNotMatch(main,/UNUSUAL SITE REACHED/);
+});
+
+test("Atlas shows unresolved distant signals without revealing intervening terrain",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(main,/signalBySection=new Map/);assert.match(main,/!seen && !frontier && !signal/);assert.match(main,/drawWaymarkIcon\(mctx,signal\.signalKind/);assert.match(main,/UNRESOLVED SIGNAL/);assert.match(main,/signals\.length} unresolved signals/);
+});
+
 test("rare architectural districts provide deterministic city arcology and cloister exploration",()=>{
   const districts=[],styles=new Set(),shapes=new Set(),sizes=new Set(),uses=new Set(),profiles=new Set();
   for(let y=-22;y<=22;y++)for(let x=-22;x<=22;x++){const a=generateRegion("architectural-texture",x,y,1),b=generateRegion("architectural-texture",x,y,1);if(a.district){assert.deepEqual(a,b);districts.push(a);styles.add(a.district.style);}}
@@ -2179,12 +2187,12 @@ test("journal trail examples invoke the exact ground-waymark drawing function",(
   assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,82\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
 });
 
-test("release 61 loads one coherent version across the entire module graph",()=>{
+test("release 62 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=61/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=61/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v61/);assert.match(sw,/styles\.css\?v=61/);assert.match(sw,/main\.js\?v=61/);assert.match(sw,/combat\.js\?v=61/);assert.match(sw,/renderer\.js\?v=61/);
-  assert.match(build,/release='61'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=62/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=62/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v62/);assert.match(sw,/styles\.css\?v=62/);assert.match(sw,/main\.js\?v=62/);assert.match(sw,/combat\.js\?v=62/);assert.match(sw,/renderer\.js\?v=62/);
+  assert.match(build,/release='62'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("danger waymarks fill only their forward corner while other silhouettes point naturally",()=>{
