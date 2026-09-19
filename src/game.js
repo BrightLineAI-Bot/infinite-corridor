@@ -377,17 +377,33 @@ export function updateEffects(effects, enemies, dt, onDefeat = () => {}) {
   }
   return effects.filter((f) => f.life > 0);
 }
+function vendorRotation(save) {
+  return Math.floor(Math.max(0, Object.keys(save.explored || {}).length - 1) / 4);
+}
+function rotatingShop(save, vendorId, count = 2) {
+  const rotation = vendorRotation(save), r = hashSeed(`${save.seed}:${vendorId}:stock:v2:${rotation}`);
+  return {
+    version: 2,
+    rotation,
+    limited: {
+      ironbarkTonic: 1 + r % 3,
+      lumenPhial: 1 + (r >>> 3) % 3,
+      crossingSigil: (r >>> 6) % 3 ? 1 : 0,
+    },
+    purchased: {},
+    equipment: Array.from({ length: count }, (_, i) =>
+      generateItem(`${save.seed}:${vendorId}:stock:v2:${rotation}:${i}`, Math.max(2, save.level + (i % 2))),
+    ),
+  };
+}
+function refreshShop(save, vendorId, shop, count) {
+  const rotation = vendorRotation(save);
+  if (!shop) return rotatingShop(save, vendorId, count);
+  if (shop.rotation === undefined) shop.rotation = rotation;
+  return shop.rotation === rotation ? shop : rotatingShop(save, vendorId, count);
+}
 export function velaShop(save) {
-  if (!save.shop)
-    save.shop = {
-      version: 1,
-      limited: { ironbarkTonic: 2, lumenPhial: 2, crossingSigil: 1 },
-      purchased: {},
-      equipment: [
-        generateItem(`${save.seed}:vela-shop:v1:0`, 2),
-        generateItem(`${save.seed}:vela-shop:v1:1`, 3),
-      ],
-    };
+  save.shop = refreshShop(save, "vendor-vela", save.shop, 3);
   if (save.shop.limited.crossingSigil === undefined)
     save.shop.limited.crossingSigil = 1;
   return save.shop;
@@ -456,14 +472,8 @@ export function buyFromVela(save, id, quantity = 1) {
 export function vendorShop(save, vendorId = "vendor-vela") {
   if (vendorId === "vendor-vela") return velaShop(save);
   save.shops ||= {};
-  return (save.shops[vendorId] ||= {
-    version: 1,
-    limited: { ironbarkTonic: 1, lumenPhial: 1, crossingSigil: 1 },
-    purchased: {},
-    equipment: [
-      generateItem(`${save.seed}:${vendorId}:shop:0`, Math.max(2, save.level)),
-    ],
-  });
+  save.shops[vendorId] = refreshShop(save, vendorId, save.shops[vendorId], 2);
+  return save.shops[vendorId];
 }
 export function buyFromVendor(save, vendorId, id, quantity = 1) {
   if (vendorId === "vendor-vela" && id !== "crossingSigil")
@@ -1138,6 +1148,15 @@ export class Game {
             this.ry,
             this.save.worldGeneration,
           );
+    if (area === "overworld" && (this.rx !== 0 || this.ry !== 0)) {
+      const remembered = this.save.checkpoints?.[`${this.rx},${this.ry}`];
+      if (remembered && !this.map.objects.some((o) => o.kind === "checkpoint")) {
+        const x = Math.max(1, Math.min(30, Number.isFinite(remembered.x) ? remembered.x : 16)),
+          y = Math.max(1, Math.min(30, Number.isFinite(remembered.y) ? remembered.y : 16));
+        this.map.tiles[y * 32 + x] = { ...this.map.tiles[y * 32 + x], x, y, kind: this.map.dominant, blocked: false };
+        this.map.objects.push({ id: `remembered-wayglass-${this.rx}-${this.ry}`, kind: "checkpoint", name: remembered.name || "Remembered Wayglass", x, y, state: "active", actions: ["activate"], landmark: true, remembered: true });
+      }
+    }
     this.enemies = this.map.enemySpawns.map((e) => {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
       if (e.apertureEncounter) {

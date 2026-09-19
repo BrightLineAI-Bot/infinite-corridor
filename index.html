@@ -110,8 +110,8 @@
         <button id="mapHome" type="button">Return to Ember Refuge</button>
         <p id="mapDetail">Select an explored section for details.</p>
         <p>
-          Tap an explored section to set a waypoint. Dim cells are the known
-          frontier.
+          Tap an explored section to set a waypoint. Zoom in to reveal the
+          position and names of discovered sites inside each section.
         </p>
         <p class="atlas-legend"><b>◎</b> Wayglass · <b>›</b> crossing · <b>▲</b> major danger · <b>⟳</b> unusual site</p>
       </dialog>
@@ -119,20 +119,20 @@
     <script type="module">
       const boot = async () => {
         if ("serviceWorker" in navigator) {
-          const r = await navigator.serviceWorker.register("./sw.js?v=43", {
+          const r = await navigator.serviceWorker.register("./sw.js?v=44", {
             updateViaCache: "none",
           });
           await r.update();
           const c = navigator.serviceWorker.controller;
-          if (c && !c.scriptURL.includes("v=43")) {
-            const key = "corridor-upgrade-43";
+          if (c && !c.scriptURL.includes("v=44")) {
+            const key = "corridor-upgrade-44";
             if (!sessionStorage.getItem(key)) {
               sessionStorage.setItem(key, "1");
               location.reload();
               return;
             }
           }
-          sessionStorage.removeItem("corridor-upgrade-42");
+          sessionStorage.removeItem("corridor-upgrade-43");
         }
         await import("./src/main.js");
       };
