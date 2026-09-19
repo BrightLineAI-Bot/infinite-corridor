@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=62";
+import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=63";
 import {
   generateRegion,
   generateDungeon,
@@ -12,7 +12,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js?v=62";
+} from "./world.js?v=63";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=62";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=63";
 import {
   applyInteraction,
   validActions,
@@ -33,10 +33,10 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=62";
-import { ensurePerception } from "./types.js?v=62";
-import { generateItem } from "./items.js?v=62";
-import { hashSeed } from "./random.js?v=62";
+} from "./interactions.js?v=63";
+import { ensurePerception } from "./types.js?v=63";
+import { generateItem } from "./items.js?v=63";
+import { hashSeed } from "./random.js?v=63";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
@@ -120,14 +120,23 @@ export function awardExperience(save, amount) {
 export function tileOpen(map, width, x, y) {
   const ix = Math.floor(x),
     iy = Math.floor(y),
-    height = map.tiles.length / width;
-  return (
-    ix >= 0 &&
-    iy >= 0 &&
-    ix < width &&
-    iy < height &&
-    !map.tiles[iy * width + ix].blocked
-  );
+    height = map.tiles.length / width,
+    tile = map.tiles[iy * width + ix];
+  if (ix < 0 || iy < 0 || ix >= width || iy >= height || !tile || tile.blocked)
+    return false;
+  if (tile.structure === "shackWall" && tile.wallSides?.length) {
+    const lx = x - ix,
+      ly = y - iy,
+      thickness = 0.22;
+    if (
+      (tile.wallSides.includes("west") && lx < thickness) ||
+      (tile.wallSides.includes("east") && lx > 1 - thickness) ||
+      (tile.wallSides.includes("north") && ly < thickness) ||
+      (tile.wallSides.includes("south") && ly > 1 - thickness)
+    )
+      return false;
+  }
+  return true;
 }
 export function footprintOpen(map, width, x, y) {
   return (
