@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack } from "./combat.ts";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.ts";
 import {
   applyInteraction,
   validActions,
@@ -231,7 +231,8 @@ export function updateProjectiles(
           p.path !== "grenade" &&
           !e.dead &&
           !p.hits?.[e.id] &&
-          Math.hypot(e.x + 0.5 - p.x, e.y + 0.45 - p.y) < 0.48
+          Math.hypot(e.x + 0.5 - p.x, e.y + 0.45 - p.y) <
+            0.1 + enemyBodyRadius(e)
         ) {
           e.hp -= p.damage;
           e.hitFlash = 0.18;
@@ -283,7 +284,8 @@ export function primaryAttackHits(
       range = Math.hypot(x, y),
       dot = (x * g.dx + y * g.dy) / (range || 1),
       angle = Math.acos(Math.max(-1, Math.min(1, dot)));
-    if (range <= g.range && (range <= g.innerRadius || angle <= half)) {
+    const contactRange = g.range + Math.max(0, enemyBodyRadius(e) - 0.38);
+    if (range <= contactRange && (range <= g.innerRadius + Math.max(0, enemyBodyRadius(e) - 0.38) || angle <= half)) {
       let clear = true,
         steps = Math.ceil(range * 4);
       for (let i = 1; i < steps; i++)
@@ -392,7 +394,8 @@ export function updateEffects(effects, enemies, dt, onDefeat = () => {}) {
       for (const e of enemies) {
         if (
           e.dead ||
-          Math.hypot(e.x + 0.5 - fx.x, e.y + 0.45 - fx.y) > fx.radius
+          Math.hypot(e.x + 0.5 - fx.x, e.y + 0.45 - fx.y) >
+            fx.radius + Math.max(0, enemyBodyRadius(e) - 0.38)
         )
           continue;
         const key = `${fx.pulseIndex}:${e.id}`;
@@ -605,7 +608,8 @@ export function actionReadiness(game, now = 0) {
   };
 }
 export function enemyDangerRadius(enemy) {
-  return Math.max(1.7, Math.max(0, Number(enemy?.range) || 0) + 0.5);
+  return Math.max(1.7, Math.max(0, Number(enemy?.range) || 0) + 0.5) +
+    Math.max(0, enemyBodyRadius(enemy) - 0.38);
 }
 export function attackInRange(enemy, player) {
   return (

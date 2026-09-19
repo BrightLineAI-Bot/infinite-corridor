@@ -17,7 +17,7 @@ import {
 } from "../src/world.ts";
 import { freshSave, migrateSave } from "../src/types.ts";
 import { serializeSave, deserializeSave } from "../src/persistence.ts";
-import { dodge, createCombatant, CREATURE_TRAITS } from "../src/combat.ts";
+import { dodge, createCombatant, CREATURE_TRAITS, CREATURE_FORMS, enemyBodyRadius } from "../src/combat.ts";
 import { generateItem, isValidItem, SPELLS } from "../src/items.ts";
 import {
   Game,
@@ -1968,6 +1968,12 @@ test("compatible procedural traits create deterministic mechanical creature vari
   const s=freshSave(),g=new Game(s,0);g.transitionSection(8,-3);assert.ok(Object.keys(s.codex.variants).length);
 });
 
+test("creature classes vary scale independently of strength and limit segmented forms",()=>{
+  const mite=createCombatant("glassMite",1,1),warden=createCombatant("sparkWarden",2,2),brute=createCombatant("rootBrute",3,3),marshal=createCombatant("hollowMarshal",4,4,true),coil=createCombatant("coilStalker",5,5),colossus=createCombatant("riftColossus",6,6,true),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");
+  assert.ok(mite.scale<1);assert.ok(warden.damage>mite.damage&&warden.scale<1.1);assert.ok(brute.scale>1.2);assert.ok(marshal.scale>=1.6);assert.ok(colossus.scale>2);assert.equal(coil.segments,3);assert.equal(colossus.segments,4);assert.equal(Object.values(CREATURE_FORMS).filter(f=>f.segments>1).length,2);assert.ok(enemyBodyRadius(colossus)>enemyBodyRadius(mite));
+  assert.match(renderer,/segments > 1/);assert.match(renderer,/segmentSpacing/);assert.match(renderer,/e\.scale/);assert.match(renderer,/ctx\.ellipse\(cx, cy/);
+});
+
 test("dungeon seals checkpoint travel and Crossing Sigil exits without losing carried state", () => {
   const s = freshSave(),
     g = new Game(s, 0),
@@ -2159,12 +2165,12 @@ test("journal trail examples invoke the exact ground-waymark drawing function",(
   assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,82\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
 });
 
-test("release 53 loads one coherent version across the entire module graph",()=>{
+test("release 54 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=53/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=53/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v53/);assert.match(sw,/styles\.css\?v=53/);assert.match(sw,/main\.js\?v=53/);assert.match(sw,/combat\.js\?v=53/);assert.match(sw,/renderer\.js\?v=53/);
-  assert.match(build,/release='53'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=54/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=54/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v54/);assert.match(sw,/styles\.css\?v=54/);assert.match(sw,/main\.js\?v=54/);assert.match(sw,/combat\.js\?v=54/);assert.match(sw,/renderer\.js\?v=54/);
+  assert.match(build,/release='54'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("only danger waymarks add a direction stem while other silhouettes point naturally",()=>{
