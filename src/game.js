@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=69";
+import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=70";
 import {
   generateRegion,
   generateDungeon,
@@ -12,7 +12,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js?v=69";
+} from "./world.js?v=70";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=69";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=70";
 import {
   applyInteraction,
   validActions,
@@ -33,10 +33,10 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=69";
-import { ensurePerception } from "./types.js?v=69";
-import { generateItem } from "./items.js?v=69";
-import { hashSeed } from "./random.js?v=69";
+} from "./interactions.js?v=70";
+import { ensurePerception } from "./types.js?v=70";
+import { generateItem } from "./items.js?v=70";
+import { hashSeed } from "./random.js?v=70";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
@@ -164,6 +164,13 @@ export function footprintHazard(map,width,x,y){
     if(["canyon","river","dungeonWater"].includes(tile?.kind))return tile.kind;
   }
   return null;
+}
+export function footprintInsideStructure(map,width,x,y){
+  for(const [ox,oy] of [[.24,.5],[.76,.5],[.24,.88],[.76,.88]]){
+    const structure=map.tiles[Math.floor(y+oy)*width+Math.floor(x+ox)]?.structure;
+    if(structure==='shackInterior'||structure==='districtInterior')return true;
+  }
+  return false;
 }
 export function projectileTileOpen(map,width,x,y){
   const ix=Math.floor(x),iy=Math.floor(y),height=map.tiles.length/width,tile=map.tiles[iy*width+ix];
@@ -1318,6 +1325,7 @@ export class Game {
         ensureAI(merged);
         return merged;
       });
+      for(const saved of s.enemies||[])if(saved.gatePredator&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);this.enemies.push(restored)}
       for (const o of this.map.objects)
         if (s.objects?.[o.id]) Object.assign(o, s.objects[o.id]);
       applyFallenTreeCrossings(this.map);
@@ -1553,6 +1561,8 @@ export class Game {
     this.save.spellCooldown = this.spellCooldownRemaining;
   }
   transitionSection(dx, dy) {
+    const pursuers=this.enemies.filter(e=>e.gatePredator&&e.aggro&&!e.dead).map(e=>({...e,ai:{...ensureAI(e)}}));
+    for(const e of this.enemies)if(e.gatePredator&&e.aggro&&!e.dead)e.dead=true;
     this.snapshotArea();
     this.rx += dx;
     this.ry += dy;
@@ -1574,6 +1584,8 @@ export class Game {
       this.player.y = 0.25;
       this.player.x = exits.north;
     }
+    for(const pursuer of pursuers){const e={...pursuer,id:`${pursuer.id}-pursuit-${this.rx}-${this.ry}`,dead:false,aggro:true,x:this.player.x-dx*1.4,y:this.player.y-dy*1.4,ai:{...pursuer.ai,homeX:this.player.x,homeY:this.player.y}};this.enemies.push(e)}
+    if(pursuers.length)this.message="The Gate Revenant tears through the crossing behind you.";
     this.sync();
   }
   nearestObject() {
@@ -2151,6 +2163,11 @@ export class Game {
       this.interact();
     }
     const sanctuary=settlementSanctuary(this.map,this.rx,this.ry,this.save);
+    if(this.area==="overworld"&&footprintInsideStructure(this.map,width,p.x,p.y)){
+      const escaped=this.enemies.filter(e=>e.gatePredator&&!e.dead&&e.aggro);
+      for(const e of escaped)e.dead=true;
+      if(escaped.length)this.message="Walls close around you. The Gate Revenant loses the trail beyond the threshold.";
+    }
     if(!fellIntoHazard)this.projectiles = updateProjectiles(
       this.projectiles,
       [...this.enemies, ...this.npcTargets()],
