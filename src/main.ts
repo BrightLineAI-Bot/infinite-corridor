@@ -1,12 +1,31 @@
-import { screenToWorld } from "./renderer.ts";
+import { screenToWorld, drawWaymarkIcon } from "./renderer.ts";
 import { vendorShop, buyFromVendor } from "./game.ts";
 import { CREATURE_TRAITS } from "./combat.ts";
+import { hashSeed } from "./random.ts";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
   b.textContent = label;
   b.onclick = click;
   return b;
+}
+export function itemIconDescriptor(item, slot = item?.slot || "empty") {
+  const name=String(item?.name||""),property=String(item?.property||"empty"),h=hashSeed(`${item?.id||name}:${property}:${item?.power||0}`),family=slot==="primary"?(name.includes("Pike")?"pike":name.includes("Cleaver")?"cleaver":"sword"):slot==="secondary"?(name.includes("Bombard")?"bombard":name.includes("Spindle")?"spindle":"caster"):slot==="armor"?(name.includes("Mantle")?"mantle":"coat"):slot==="charm"?"charm":"empty",
+    accent=name.match(/Cinder|Ember|Kiln/i)?"#e47a48":name.match(/Glass|Needle/i)?"#72d7df":name.match(/Lumen|Rift|Quiet/i)?"#b28cda":({reach:"#7cc8b5",impact:"#d89a52",focus:"#a98bd4",quick:"#75cad8",blast:"#d56755",guard:"#d2ad68",stamina:"#7fbd8c",discovery:"#b28cda",steady:"#b8b1a2"}[property]||"#9e9b90");
+  return{family,accent,rune:h%6,power:Math.max(0,Number(item?.power)||0),variant:(h>>>4)%4};
+}
+function gearIcon(item,slot){
+  const q=itemIconDescriptor(item,slot),c=document.createElement("canvas"),x=c.getContext("2d");c.width=c.height=72;c.className="gear-icon";c.dataset.family=q.family;c.dataset.accent=q.accent;c.setAttribute("role","img");c.setAttribute("aria-label",item?`${item.name} equipment icon`:`Empty ${slot} slot`);x.translate(36,36);x.lineCap="round";x.lineJoin="round";x.fillStyle="#11171b";x.strokeStyle="#665f52";x.lineWidth=2;x.beginPath();x.arc(0,0,31,0,7);x.fill();x.stroke();x.shadowColor=q.accent;x.shadowBlur=8;x.strokeStyle=q.accent;x.fillStyle=q.accent+"55";x.lineWidth=4;
+  if(q.family==="sword"){x.beginPath();x.moveTo(-14,18);x.lineTo(15,-20);x.lineTo(20,-23);x.lineTo(18,-16);x.lineTo(-9,22);x.closePath();x.fill();x.stroke();x.beginPath();x.moveTo(-17,11);x.lineTo(-6,20);x.stroke();}
+  else if(q.family==="pike"){x.beginPath();x.moveTo(-19,23);x.lineTo(13,-17);x.stroke();x.beginPath();x.moveTo(13,-17);x.lineTo(23,-25);x.lineTo(19,-11);x.closePath();x.fill();x.stroke();}
+  else if(q.family==="cleaver"){x.beginPath();x.moveTo(-19,23);x.lineTo(3,-5);x.stroke();x.beginPath();x.moveTo(2,-5);x.lineTo(7,-25);x.lineTo(23,-16);x.lineTo(12,1);x.closePath();x.fill();x.stroke();}
+  else if(q.family==="caster"){x.beginPath();x.moveTo(-22,-5);x.lineTo(13,-5);x.lineTo(23,2);x.lineTo(8,7);x.lineTo(-20,7);x.closePath();x.fill();x.stroke();x.beginPath();x.moveTo(-2,8);x.lineTo(-7,20);x.stroke();}
+  else if(q.family==="spindle"){x.beginPath();x.arc(-5,1,18,-1.1,1.15);x.stroke();x.beginPath();x.arc(8,-2,13,2.15,4.25);x.stroke();x.beginPath();x.arc(0,0,5,0,7);x.fill();}
+  else if(q.family==="bombard"){x.beginPath();x.arc(0,4,17,0,7);x.fill();x.stroke();x.beginPath();x.moveTo(8,-13);x.quadraticCurveTo(18,-24,23,-13);x.stroke();}
+  else if(q.family==="mantle"||q.family==="coat"){x.beginPath();x.moveTo(-9,-21);x.lineTo(-22,-11);x.lineTo(-16,23);x.lineTo(0,16);x.lineTo(16,23);x.lineTo(22,-11);x.lineTo(9,-21);x.quadraticCurveTo(0,-12,-9,-21);x.closePath();x.fill();x.stroke();if(q.family==="coat"){x.beginPath();x.moveTo(0,-9);x.lineTo(0,17);x.stroke();}}
+  else if(q.family==="charm"){x.beginPath();x.arc(0,0,20,0,7);x.stroke();x.rotate(q.variant*.18);x.beginPath();x.moveTo(0,-21);x.lineTo(6,-6);x.lineTo(21,0);x.lineTo(6,6);x.lineTo(0,21);x.lineTo(-6,6);x.lineTo(-21,0);x.lineTo(-6,-6);x.closePath();x.fill();x.stroke();}
+  else{x.setLineDash([4,4]);x.beginPath();x.arc(0,0,18,0,7);x.stroke();x.beginPath();x.moveTo(-8,-8);x.lineTo(8,8);x.moveTo(8,-8);x.lineTo(-8,8);x.stroke()}
+  x.setLineDash([]);x.shadowBlur=0;x.fillStyle=q.accent;x.font="bold 12px monospace";x.textAlign="center";x.fillText(["·","Ⅰ","Ⅱ","Ⅲ","Ⅳ","Ⅴ"][q.rune],0,5);for(let i=0;i<Math.min(5,Math.ceil(q.power/3));i++){x.globalAlpha=.55+i*.08;x.fillRect(-12+i*6,27,4,2)}x.globalAlpha=1;return c;
 }
 export function equipFromInventory(save, index) {
   const item = save.inventory[index];
@@ -965,7 +984,7 @@ function openPack() {
           : slot === "primary"
             ? `power ${item?.power || 0}; Might and upgrades add damage`
             : `power ${item?.power || 0}; Focus adds projectile damage`;
-    card.innerHTML = `<small>${slot.toUpperCase()}</small><strong>${item?.name || "Empty slot"}</strong><span>${effect}</span>`;
+    const label=document.createElement("small"),name=document.createElement("strong"),detail=document.createElement("span");label.textContent=slot.toUpperCase();name.textContent=item?.name||"Empty slot";detail.textContent=effect;card.append(gearIcon(item,slot),label,name,detail);
     gear.append(card);
   }
   body.append(gearHeading, gear);
@@ -1053,7 +1072,7 @@ const CODEX = {
   }
 };
 const CREATURE_PORTRAITS={ashling:[0,0],glassMite:[1,0],sparkWarden:[2,0],coilStalker:[3,0],veilMoth:[0,1],rootBrute:[1,1],cinderWisp:[2,1],riftColossus:[3,1],ashenHound:[0,0],hollowMarshal:[2,0]};
-function trailMark(kind){const svg=document.createElementNS("http://www.w3.org/2000/svg","svg"),paths={ring:'<path d="M 13 0 A 13 13 0 1 1 -6 -11"/><path class="mark-fill" d="M 14 0 L 21 -6 L 21 6 Z"/>',chevron:'<path d="M -13 -10 L 11 0 L -13 10"/><path class="mark-fill" d="M 14 0 L 21 -6 L 21 6 Z"/>',triangle:'<path d="M -13 10 L 0 -13 L 13 10 Z"/><path class="mark-fill" d="M 14 0 L 21 -6 L 21 6 Z"/>',spiral:'<path d="M 12 0 A 12 12 0 1 1 0 -12 L 14 0"/><path class="mark-fill" d="M 14 0 L 21 -6 L 21 6 Z"/>'};svg.setAttribute("viewBox","-24 -24 48 48");svg.setAttribute("aria-hidden","true");svg.classList.add("trail-symbol",kind);svg.innerHTML=paths[kind];return svg}
+function trailMark(kind){const canvas=document.createElement("canvas"),ctx=canvas.getContext("2d"),signal={ring:"beacon",chevron:"crossing",triangle:"danger",spiral:"event"}[kind];canvas.width=canvas.height=64;canvas.className=`trail-symbol ${kind}`;canvas.setAttribute("aria-hidden","true");ctx.translate(32,32);drawWaymarkIcon(ctx,signal,64);return canvas}
 function openJournal(mode = "chronicle") {
   if(typeof mode!=="string")mode="chronicle";
   pauseForOverlay();

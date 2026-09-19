@@ -2128,3 +2128,13 @@ test("resume safety opens a district wall only when an old save would be strande
 test("district inspection records optional architectural lore",()=>{
   const s=freshSave(),o={id:"district-test",kind:"architecturalDistrict",name:"Hollow Ward",districtStyle:"city",state:"unread",actions:["inspect"]},result=applyInteraction(o,"inspect",s,"overworld:8,8:g1");assert.equal(result.ok,true);assert.equal(result.transition,"district");assert.ok(s.narrative.journal.some(j=>j.title==="Hollow Ward"));
 });
+
+test("equipped gear uses deterministic family silhouettes elemental accents and power marks",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
+  assert.match(main,/function itemIconDescriptor/);assert.match(main,/"pike"/);assert.match(main,/"cleaver"/);assert.match(main,/"sword"/);assert.match(main,/"bombard"/);assert.match(main,/"spindle"/);assert.match(main,/"caster"/);assert.match(main,/"mantle"/);assert.match(main,/"coat"/);assert.match(main,/gearIcon\(item,slot\)/);assert.match(main,/dataset\.family/);assert.match(main,/Math\.ceil\(q\.power\/3\)/);assert.match(css,/\.gear-icon/);assert.doesNotMatch(css,/\.gear-card::before/);
+});
+
+test("journal trail examples invoke the exact ground-waymark drawing function",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");
+  assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,64\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
+});

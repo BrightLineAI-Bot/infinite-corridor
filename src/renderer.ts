@@ -263,14 +263,16 @@ function actor(
       0.05,
     );
 }
-function waymark(ctx,o,s){
-  const colors={beacon:'#72d7df',crossing:'#d5a464',danger:'#d16b62',event:'#a68ad2'},c=colors[o.signalKind]||'#b7b49d',cx=(o.x+.5)*s,cy=(o.y+.55)*s,a=Math.atan2(o.dirY,o.dirX);
-  ctx.save();ctx.translate(cx,cy);ctx.rotate(a);ctx.strokeStyle=c;ctx.fillStyle=c+'22';ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();
-  if(o.signalKind==='beacon')ctx.arc(0,0,s*.27,0,Math.PI*1.65);
-  else if(o.signalKind==='crossing'){ctx.moveTo(-s*.25,-s*.2);ctx.lineTo(s*.22,0);ctx.lineTo(-s*.25,s*.2);}
-  else if(o.signalKind==='danger'){ctx.moveTo(-s*.25,s*.2);ctx.lineTo(0,-s*.25);ctx.lineTo(s*.25,s*.2);ctx.closePath();}
+export function drawWaymarkIcon(ctx,signalKind,s){
+  const colors={beacon:'#72d7df',crossing:'#d5a464',danger:'#d16b62',event:'#a68ad2'},c=colors[signalKind]||'#b7b49d';ctx.strokeStyle=c;ctx.fillStyle=c+'22';ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();
+  if(signalKind==='beacon')ctx.arc(0,0,s*.27,0,Math.PI*1.65);
+  else if(signalKind==='crossing'){ctx.moveTo(-s*.25,-s*.2);ctx.lineTo(s*.22,0);ctx.lineTo(-s*.25,s*.2);}
+  else if(signalKind==='danger'){ctx.moveTo(-s*.25,s*.2);ctx.lineTo(0,-s*.25);ctx.lineTo(s*.25,s*.2);ctx.closePath();}
   else{ctx.arc(0,0,s*.23,0,Math.PI*1.5);ctx.lineTo(s*.28,0);}
-  ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(s*.28,0);ctx.lineTo(s*.42,-s*.11);ctx.lineTo(s*.42,s*.11);ctx.closePath();ctx.fill();ctx.restore();
+  ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(s*.28,0);ctx.lineTo(s*.42,-s*.11);ctx.lineTo(s*.42,s*.11);ctx.closePath();ctx.fill();return c;
+}
+function waymark(ctx,o,s){
+  const cx=(o.x+.5)*s,cy=(o.y+.55)*s,a=Math.atan2(o.dirY,o.dirX);ctx.save();ctx.translate(cx,cy);ctx.rotate(a);drawWaymarkIcon(ctx,o.signalKind,s);ctx.restore();
 }
 function shack(ctx,o,s,p){
   const b=o.bounds||{x:o.x-2,y:o.y-2,w:5,h:4},inside=p.x>=b.x+1&&p.x<b.x+b.w-1&&p.y>=b.y+1&&p.y<b.y+b.h-1,x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s;

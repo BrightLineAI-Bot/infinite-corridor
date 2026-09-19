@@ -119,20 +119,20 @@
     <script type="module">
       const boot = async () => {
         if ("serviceWorker" in navigator) {
-          const r = await navigator.serviceWorker.register("./sw.js?v=45", {
+          const r = await navigator.serviceWorker.register("./sw.js?v=46", {
             updateViaCache: "none",
           });
           await r.update();
           const c = navigator.serviceWorker.controller;
-          if (c && !c.scriptURL.includes("v=45")) {
-            const key = "corridor-upgrade-45";
+          if (c && !c.scriptURL.includes("v=46")) {
+            const key = "corridor-upgrade-46";
             if (!sessionStorage.getItem(key)) {
               sessionStorage.setItem(key, "1");
               location.reload();
               return;
             }
           }
-          sessionStorage.removeItem("corridor-upgrade-44");
+          sessionStorage.removeItem("corridor-upgrade-45");
         }
         await import("./src/main.js");
       };
