@@ -18,7 +18,7 @@ import {
 import { freshSave, migrateSave } from "../src/types.ts";
 import { serializeSave, deserializeSave } from "../src/persistence.ts";
 import { dodge, createCombatant, CREATURE_TRAITS, CREATURE_FORMS, enemyBodyRadius } from "../src/combat.ts";
-import { generateItem, isValidItem, SPELLS } from "../src/items.ts";
+import { generateItem, isValidItem, SPELLS, itemTier, itemScore, affixValue } from "../src/items.ts";
 import{ELITE_DEFINITIONS,eliteVariant,eliteThreat,freshEliteState,ensureEliteState,recordPortalPrey,applyPoison,tickEliteStatus,cleansePoison,addEliteHazard,tickEliteHazards,completeElite}from'../src/elites.ts';
 import {
   Game,
@@ -45,6 +45,10 @@ import {
   footprintInsideStructure,
   projectileTileOpen,
   updateProjectiles,
+  EQUIPMENT_CAPACITY,
+  grantMilestoneGear,
+  storeInventoryItem,
+  salvageInventoryItem,
 } from "../src/game.ts";
 import { rng, pick, hashSeed } from "../src/random.ts";
 import {
@@ -2253,12 +2257,45 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 76 loads one coherent version across the entire module graph",()=>{
+test("release 77 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "76"/);assert.match(html,/styles\.css\?v=76/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=76/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v76/);assert.match(sw,/styles\.css\?v=76/);assert.match(sw,/main\.js\?v=76/);assert.match(sw,/combat\.js\?v=76/);assert.match(sw,/renderer\.js\?v=76/);
-  assert.match(build,/release='76'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "77"/);assert.match(html,/styles\.css\?v=77/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=77/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v77/);assert.match(sw,/styles\.css\?v=77/);assert.match(sw,/main\.js\?v=77/);assert.match(sw,/combat\.js\?v=77/);assert.match(sw,/renderer\.js\?v=77/);
+  assert.match(build,/release='77'/);assert.match(build,/\.js\?v=\$\{release\}/);
+});
+
+test("Atlas opening tap cannot immediately activate travel controls",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+  assert.equal((main.match(/\$\("#mapTravel"\)\.onclick/g)||[]).length,1);
+  assert.match(main,/atlasOpenedAt = performance\.now\(\)/);
+  assert.match(main,/performance\.now\(\) - atlasOpenedAt < 500/);
+});
+
+test("distance scaling softens beyond ring ten while exceptional breaches stay uncommon",()=>{
+  assert.deepEqual(regionalThreat(6,8),{ring:10,hpMultiplier:1.8,damageMultiplier:1.5,xpMultiplier:1.6});
+  assert.deepEqual(regionalThreat(12,16),{ring:20,hpMultiplier:2.2,damageMultiplier:1.75,xpMultiplier:2.2});
+  const tiles=Array.from({length:32*32},(_,i)=>({x:i%32,y:Math.floor(i/32),blocked:false}));
+  let count=0,max=1;for(let i=0;i<500;i++){const q=apertureEncounterSpawns("balance",`area:${i}`,36,tiles);if(q[0]){count++;max=Math.max(max,q[0].threatMultiplier)}}
+  assert.ok(count>90&&count<190);assert.equal(max,2.2);
+});
+
+test("established wayfarers receive weapon milestones and can reinforce with ordinary iron",()=>{
+  const s=freshSave();s.level=10;s.inventory=Array.from({length:6},(_,i)=>({id:"old-"+i,name:"Glassweave Coat",slot:"armor",power:3,property:"stamina"}));
+  assert.deepEqual(grantMilestoneGear(s),["Cinder Pike","Needle Caster"]);
+  assert.equal(s.inventory.length,8);assert.equal(EQUIPMENT_CAPACITY,60);
+  assert.deepEqual(grantMilestoneGear(s),[]);
+  const g=new Game(s,0);s.materials.cinderIron=3;assert.equal(g.upgrade(),true);assert.equal(s.weaponLevel,1);assert.equal(s.materials.cinderIron,0);
+});
+
+test("tiered inventory affixes are visible mechanical sortable and auto-salvage only at capacity",()=>{
+  const epic=Array.from({length:100},(_,i)=>generateItem("affix:"+i,12)).find(q=>q.affixes?.some(a=>a.id==="reach"));
+  assert.ok(epic);assert.ok(["rare","epic","relic"].includes(itemTier(epic)));assert.ok(affixValue(epic,"reach")>0);assert.ok(itemScore(epic)>epic.power*10);
+  const s=freshSave();s.inventory=Array.from({length:EQUIPMENT_CAPACITY},(_,i)=>({...generateItem("full:"+i,1),power:1,tier:"common",affixes:[]}));
+  const strong={...generateItem("strong",15),power:20,tier:"relic",affixes:[{id:"attack",value:7}]},iron=s.materials.cinderIron;
+  const stored=storeInventoryItem(s,strong);assert.equal(stored.stored,true);assert.equal(s.inventory.length,EQUIPMENT_CAPACITY);assert.ok(s.inventory.some(q=>q.id===strong.id));assert.ok(s.materials.cinderIron>iron);
+  const n=s.inventory.length,manual=salvageInventoryItem(s,0);assert.ok(manual.iron>=1);assert.equal(s.inventory.length,n-1);
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(main,/inventoryView[\s\S]*slotFilter[\s\S]*tierFilter[\s\S]*sortFilter/);assert.match(main,/describeAffixes/);
 });
 
 test("Atlas waypoint drives the compact constellation compass and toggles clear",()=>{

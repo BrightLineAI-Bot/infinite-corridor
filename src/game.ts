@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS } from "./items.ts";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS } from "./items.ts";
 import {
   generateRegion,
   generateDungeon,
@@ -39,6 +39,54 @@ import { generateItem } from "./items.ts";
 import { hashSeed } from "./random.ts";
 import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.ts';
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
+export const EQUIPMENT_CAPACITY = 60;
+const MILESTONE_GEAR = [
+  [4, { id: "milestone-cinder-pike", name: "Cinder Pike", slot: "primary", power: 5, property: "reach" }],
+  [8, { id: "milestone-needle-caster", name: "Needle Caster", slot: "secondary", power: 8, property: "quick" }],
+];
+export function grantMilestoneGear(save) {
+  save.inventory ||= [];
+  save.worldFlags ||= {};
+  const awarded = [];
+  for (const [level, item] of MILESTONE_GEAR) {
+    const key = `milestone-gear:${level}`,
+      owned = save.equipment?.[item.slot]?.name === item.name || save.inventory.some((q) => q.name === item.name);
+    if (save.level < level || save.worldFlags[key]) continue;
+    if (owned) save.worldFlags[key] = true;
+    else if (save.inventory.length < EQUIPMENT_CAPACITY) {
+      save.inventory.push({ ...item });
+      save.worldFlags[key] = true;
+      awarded.push(item.name);
+    }
+  }
+  return awarded;
+}
+export function salvageInventoryItem(save, index) {
+  const item = save.inventory?.[index];
+  if (!item) return null;
+  save.inventory.splice(index, 1);
+  const iron = Math.max(1, ITEM_TIERS.indexOf(itemTier(item)) + 1);
+  save.materials.cinderIron = (save.materials.cinderIron || 0) + iron;
+  return { item, iron };
+}
+export function storeInventoryItem(save, item) {
+  save.inventory ||= [];
+  if (save.inventory.length < EQUIPMENT_CAPACITY) {
+    save.inventory.push(item);
+    return { stored: true, salvaged: null };
+  }
+  let weakest = 0;
+  for (let i = 1; i < save.inventory.length; i++)
+    if (itemScore(save.inventory[i]) < itemScore(save.inventory[weakest])) weakest = i;
+  if (itemScore(item) <= itemScore(save.inventory[weakest])) {
+    const iron = Math.max(1, ITEM_TIERS.indexOf(itemTier(item)) + 1);
+    save.materials.cinderIron = (save.materials.cinderIron || 0) + iron;
+    return { stored: false, salvaged: item, iron };
+  }
+  const salvaged = salvageInventoryItem(save, weakest);
+  save.inventory.push(item);
+  return { stored: true, salvaged: salvaged.item, iron: salvaged.iron };
+}
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
     stats = save.stats || {},
@@ -46,21 +94,32 @@ export function characterStats(save) {
     finesse = Math.max(1, Number(stats.Finesse) || 1),
     resolve = Math.max(1, Number(stats.Resolve) || 1),
     armorPower = Math.max(0, Number(save.equipment?.armor?.power) || 0),
-    charmPower = Math.max(0, Number(save.equipment?.charm?.power) || 0);
+    charmPower = Math.max(0, Number(save.equipment?.charm?.power) || 0),
+    primary = save.equipment?.primary,
+    secondary = save.equipment?.secondary,
+    armor = save.equipment?.armor,
+    charm = save.equipment?.charm;
   return {
     maxHp: 60 + (level - 1) * 6 + (vigor - 1) * 8,
     maxStamina: 50 + (level - 1) + (finesse - 1) * 3,
     damageReduction: Math.min(
       0.45,
-      (resolve - 1) * 0.02 + armorPower * 0.025 + charmPower * 0.01,
+      (resolve - 1) * 0.02 + armorPower * 0.025 + charmPower * 0.01 +
+        affixValue(armor, "ward") + affixValue(charm, "ward"),
     ),
     meleeBonus:
       Math.max(1, Number(stats.Might) || 1) * 2 +
       (Number(save.weaponLevel) || 0) * 3 +
-      Math.floor((level - 1) * 0.6),
+      Math.floor((level - 1) * 0.6) +
+      Math.floor((Number(primary?.power) || 0) * 0.7) +
+      affixValue(primary, "attack"),
     magicBonus:
       Math.max(1, Number(stats.Focus) || 1) +
-      Math.floor((level - 1) * 0.45),
+      Math.floor((level - 1) * 0.45) +
+      Math.floor((Number(secondary?.power) || 0) * 0.55) +
+      affixValue(secondary, "attack"),
+    attackReach: affixValue(primary, "reach") + affixValue(charm, "reach"),
+    moveSpeed: affixValue(armor, "movement") + affixValue(charm, "movement"),
     armorPower,
     charmPower,
   };
@@ -108,6 +167,7 @@ export function settleProgression(save) {
     save.nextXp = Math.ceil(save.nextXp * 1.35 + 10);
     levels++;
   }
+  grantMilestoneGear(save);
   syncCharacterStats(save);
   return levels;
 }
@@ -548,7 +608,7 @@ export function buyFromVela(save, id, quantity = 1) {
   const item = shop.equipment[index],
     price = 12 + item.power * 4;
   if (save.currency < price) return { ok: false, message: "Not enough marks." };
-  if (save.inventory.length >= 6)
+  if (save.inventory.length >= EQUIPMENT_CAPACITY)
     return { ok: false, message: "Pack is full." };
   save.currency -= price;
   save.inventory.push({ ...item });
@@ -618,7 +678,7 @@ export function buyFromVendor(save, vendorId, id, quantity = 1) {
     return { ok: false, message: "Out of stock." };
   const price = 12 + item.power * 4;
   if (save.currency < price) return { ok: false, message: "Not enough marks." };
-  if (save.inventory.length >= 6)
+  if (save.inventory.length >= EQUIPMENT_CAPACITY)
     return { ok: false, message: "Pack is full." };
   save.currency -= price;
   save.inventory.push({ ...item });
@@ -838,7 +898,8 @@ export class Game {
     const attack = this.primaryAttack.bind(this);
     this.primaryAttack = (now, explicitDirection = null) => {
       if (now < (this.player.attackReadyAt || 0)) return [];
-      const profile = primaryProfile(this.save.equipment.primary),
+      const baseProfile = primaryProfile(this.save.equipment.primary),
+        profile = { ...baseProfile, range: baseProfile.range * (1 + characterStats(this.save).attackReach) },
         width = this.area === "dungeon" ? 24 : 32,
         d = explicitDirection
           ? projectileDirection(
@@ -1906,7 +1967,8 @@ export class Game {
     this.player.attackReadyAt = now + 420;
     this.player.attackUntil = now + 240;
     this.player.meleeUntil = now + 240;
-    const profile = primaryProfile(this.save.equipment.primary),
+    const baseProfile = primaryProfile(this.save.equipment.primary),
+      profile = { ...baseProfile, range: baseProfile.range * (1 + characterStats(this.save).attackReach) },
       geometry = meleeAttackGeometry(
         this.player,
         profile,
@@ -2046,15 +2108,24 @@ export class Game {
   obtainDrop(src) {
     const n = this.save.dropCounter++;
     const item = generateItem(`${this.save.seed}:${src}:${n}`, this.save.level);
-    if (this.save.inventory.length < 6) this.save.inventory.push(item);
+    storeInventoryItem(this.save, item);
     this.save.materials.cinderIron++;
   }
   upgrade() {
-    if (this.save.materials.cinderIron >= 3) {
-      this.save.materials.cinderIron -= 3;
-      this.save.weaponLevel++;
-      this.player.weaponLevel++;
+    if (this.save.materials.cinderIron < 3) {
+      this.message = "Three Cinder Iron are required to reinforce a weapon.";
+      return false;
     }
+    if (this.save.weaponLevel >= 12) {
+      this.message = "The current weapon reinforcement is complete.";
+      return false;
+    }
+    this.save.materials.cinderIron -= 3;
+    this.save.weaponLevel++;
+    this.player.weaponLevel = this.save.weaponLevel;
+    this.message = `Weapon reinforced to +${this.save.weaponLevel}.`;
+    this.sync();
+    return true;
   }
   useUpgradeSphere(kind){const key=kind==='armor'?'armorSphere':'weaponSphere';if(!(this.save.materials[key]>0))return false;this.save.materials[key]--;if(kind==='armor')this.save.equipment.armor.power=Math.min(8,(this.save.equipment.armor.power||0)+1);else{this.save.weaponLevel=Math.min(8,(this.save.weaponLevel||0)+1);this.player.weaponLevel=this.save.weaponLevel}this.message=`${kind==='armor'?'Armor':'Weapon'} sphere fused. The upgrade is permanent.`;this.sync();return true}
   allocate(s) {
@@ -2152,7 +2223,7 @@ export class Game {
       x = p.dodgeX;
       y = p.dodgeY;
     }
-    const speed = dodging ? 4.8 : 2.4,
+    const speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed),
       dx = x * speed * dt,
       dy = y * speed * dt,
       nx = p.x + dx,
