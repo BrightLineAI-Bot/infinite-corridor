@@ -146,6 +146,18 @@ export function footprintOpen(map, width, x, y) {
     tileOpen(map, width, x + 0.76, y + 0.88)
   );
 }
+export function footprintTouchesCanyon(map, width, x, y) {
+  return [[.24,.5],[.76,.5],[.24,.88],[.76,.88]].some(([ox,oy]) => {
+    const tx=Math.floor(x+ox),ty=Math.floor(y+oy);
+    return map.tiles[ty*width+tx]?.kind === "canyon";
+  });
+}
+export function projectileTileOpen(map,width,x,y){
+  const ix=Math.floor(x),iy=Math.floor(y),height=map.tiles.length/width,tile=map.tiles[iy*width+ix];
+  if(ix<0||iy<0||ix>=width||iy>=height||!tile)return false;
+  if(tile.kind==="canyon")return true;
+  return tileOpen(map,width,x,y);
+}
 export function relocateIfStranded(entity, map, width) {
   if (!entity || footprintOpen(map, width, entity.x, entity.y)) return false;
   const height = Math.floor(map.tiles.length / width),
@@ -201,6 +213,8 @@ export function updateProjectiles(
   dt,
   onDefeat = () => {},
   onDetonate = () => {},
+  player = null,
+  onPlayerHit = () => {},
 ) {
   for (const p of projectiles) {
     if (p.dead) continue;
@@ -220,7 +234,7 @@ export function updateProjectiles(
     for (let i = 0; i < steps && !p.dead; i++) {
       const nx = p.x + p.dx * step,
         ny = p.y + p.dy * step;
-      if (!tileOpen(map, width, nx, ny)) {
+      if (!projectileTileOpen(map, width, nx, ny)) {
         if(p.path==="grenade"){p.dead=true;onDetonate(p);break}
         if (p.path === "boomerang" && !p.returning) {
           p.returning = true;
@@ -235,6 +249,10 @@ export function updateProjectiles(
       }
       p.x = nx;
       p.y = ny;
+      if(p.hostile&&player&&Math.hypot(player.x+.5-p.x,player.y+.52-p.y)<.46){
+        p.dead=true;p.impact={x:p.x,y:p.y};onPlayerHit(p);break;
+      }
+      if(p.hostile)continue;
       for (const e of enemies)
         if (
           p.path !== "grenade" &&
@@ -626,13 +644,13 @@ export function attackInRange(enemy, player) {
     enemyDangerRadius(enemy)
   );
 }
-export function hasLineOfSight(enemy, player, map, width) {
+export function hasLineOfSight(enemy, player, map, width, projectile=false) {
   const dx = player.x - enemy.x,
     dy = player.y - enemy.y,
     steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) * 4));
   for (let i = 1; i < steps; i++)
     if (
-      !tileOpen(
+      !(projectile?projectileTileOpen:tileOpen)(
         map,
         width,
         enemy.x + (dx * i) / steps,
@@ -656,7 +674,7 @@ export function ensureAI(e) {
   if ((e.telegraph || 0) < 0) e.telegraph = 0;
   return e.ai;
 }
-export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null) {
+export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onRanged=()=>{}) {
   if(sanctuary){enforceSanctuary(e,sanctuary);if(Math.hypot(player.x-sanctuary.x,player.y-sanctuary.y)<sanctuary.radius){e.telegraph=0;return false}}
   const ai = ensureAI(e),
     toPlayer = Math.hypot(player.x - e.x, player.y - e.y),
@@ -670,7 +688,9 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null) {
     if (e.telegraph === 0) {
       e.cooldown = 1.9;
       e.strike = 0.24;
-      return attackInRange(e, player) && hasLineOfSight(e, player, map, width);
+      const ranged=e.range>=2.5,clear=attackInRange(e,player)&&hasLineOfSight(e,player,map,width,ranged);
+      if(clear&&ranged){onRanged(e,e.attackAim||projectileDirection(player.x-e.x,player.y-e.y));return false}
+      return clear;
     }
     return false;
   }
@@ -707,9 +727,9 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null) {
   if (
     attackInRange(e, player) &&
     e.cooldown <= 0 &&
-    hasLineOfSight(e, player, map, width)
+    hasLineOfSight(e, player, map, width, e.range>=2.5)
   )
-    e.telegraph = 0.9;
+    {e.telegraph = 0.9;e.attackAim=projectileDirection(player.x-e.x,player.y-e.y)}
   return false;
 }
 export function settlementSanctuary(map,rx,ry,save){if(!map||rx===0&&ry===0&&save?.consequences?.settlements?.['ember-refuge']?.status==='fallen')return null;return map.settlement||rx===0&&ry===0?{x:16,y:16,radius:9}:null}
@@ -2074,18 +2094,21 @@ export class Game {
       return;
     }
     const width = this.area === "dungeon" ? 24 : 32;
-    moveAxis(p, dx, dy, this.map, width);
-    if (input.consume("attack")) {
+    const fellIntoCanyon=this.area==="overworld"&&footprintTouchesCanyon(this.map,width,nx,ny);
+    if(fellIntoCanyon){p.hp=0;this.message="The ledge gives way beneath the Wayfarer."}
+    else moveAxis(p, dx, dy, this.map, width);
+    if (!fellIntoCanyon&&input.consume("attack")) {
       this.save.aimMode = "attack";
       this.save.toolMode = false;
       this.primaryAttack(now, this.save.lastAim);
     }
-    if (input.consume("interact")) {
+    if (!fellIntoCanyon&&input.consume("interact")) {
       this.save.aimMode = "act";
       this.save.toolMode = false;
       this.interact();
     }
-    this.projectiles = updateProjectiles(
+    const sanctuary=settlementSanctuary(this.map,this.rx,this.ry,this.save);
+    if(!fellIntoCanyon)this.projectiles = updateProjectiles(
       this.projectiles,
       [...this.enemies, ...this.npcTargets()],
       this.map,
@@ -2095,6 +2118,13 @@ export class Game {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
       (shot)=>this.effects.push({id:"blast-"+shot.id,kind:"rift-blast",x:shot.x,y:shot.y,life:.32,radius:shot.blastRadius||2,untilPulse:0,pulse:99,damage:shot.damage,hits:{}}),
+      p,
+      (shot)=>{
+        const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;
+        if(safe||now<=(p.invulnerableUntil||0))return;
+        p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*(1-characterStats(this.save).damageReduction)));
+        p.invulnerableUntil=now+700;
+      },
     );
     this.syncNpcDamage("projectile");
     this.effects = updateEffects(
@@ -2107,11 +2137,11 @@ export class Game {
     );
     this.syncNpcDamage("spell");
     p.stamina = Math.min(p.maxStamina, p.stamina + 9 * dt);
-    const sanctuary=settlementSanctuary(this.map,this.rx,this.ry,this.save);
     for (const e of this.enemies)
       if (
+        !fellIntoCanyon&&
         !e.dead &&
-        updateEnemyAI(e, p, this.map, width, dt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus)-/.test(e.id)?sanctuary:null) &&
+        updateEnemyAI(e, p, this.map, width, dt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,(shooter,aim)=>this.projectiles.push({id:`enemy-shot-${shooter.id}-${now}`,x:shooter.x+.5,y:shooter.y+.42,dx:aim.x,dy:aim.y,speed:4.2,life:2.4,damage:shooter.damage,hostile:true,path:"straight",hits:{}})) &&
         now > (p.invulnerableUntil || 0) &&
         (!(now < this.jumpUntil) || e.kind === "sparkWarden")
       ) {
@@ -2150,7 +2180,7 @@ export class Game {
       p.x = c.x;
       p.y = c.y;
       p.invulnerableUntil = now + 2000;
-      this.message = `Felled — recovered at ${c.name || "checkpoint"}. No items, marks, equipment, or XP were lost. You are protected briefly.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
+      this.message = `${fellIntoCanyon?"Lost to the canyon":"Felled"} — recovered at ${c.name || "checkpoint"}. No items, marks, equipment, or XP were lost. You are protected briefly.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
     }
     Object.assign(this.save.position, {
       area: this.area,

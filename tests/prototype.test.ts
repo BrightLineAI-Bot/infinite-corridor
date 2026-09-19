@@ -37,6 +37,9 @@ import {
   footprintOpen,
   tileOpen,
   relocateIfStranded,
+  footprintTouchesCanyon,
+  projectileTileOpen,
+  updateProjectiles,
 } from "../src/game.ts";
 import { rng, pick } from "../src/random.ts";
 import {
@@ -687,10 +690,11 @@ test("stationary dodge uses movement memory and moves immediately", () => {
   assert.ok(g.player.x > x);
   assert.equal(g.player.dodgeX, 1);
 });
-test("jump ignores melee impact but spark ranged impact lands", () => {
+test("jump ignores melee impact while spark ranged attacks launch visible bolts", () => {
   const make = (kind) => {
     const g = new Game(freshSave(), 0);
     g.map.tiles.fill({ blocked: false });
+    g.rx=2;
     g.enemies = [
       {
         id: kind,
@@ -716,7 +720,10 @@ test("jump ignores melee impact but spark ranged impact lands", () => {
   assert.equal(melee.player.hp, hp);
   const ranged = make("sparkWarden");
   ranged.update(0.02, idle(), 100);
-  assert.equal(ranged.player.hp, hp - 10);
+  assert.equal(ranged.player.hp, hp);
+  assert.equal(ranged.projectiles.length,1);
+  ranged.update(0.02,idle(),120);
+  assert.equal(ranged.player.hp,hp-10);
 });
 test("guard reduces damage then expires", () => {
   const s = freshSave(),
@@ -1287,7 +1294,9 @@ test("enemy telegraph duration persists until the exact impact update", () => {
   assert.ok(Math.abs(e.telegraph - 0.6) < 1e-9);
   assert.equal(updateEnemyAI(e, p, map, 10, 0.59, 2), false);
   assert.ok(e.telegraph > 0);
-  assert.equal(updateEnemyAI(e, p, map, 10, 0.02, 3), true);
+  let launched=false;
+  assert.equal(updateEnemyAI(e, p, map, 10, 0.02, 3,null,()=>launched=true), false);
+  assert.equal(launched,true);
   assert.equal(e.telegraph, 0);
   assert.equal(e.strike, 0.24);
 });
@@ -2211,12 +2220,25 @@ test("shelter creature gifts are once-only and displacement travel is explicitly
   const game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8");assert.match(game,/activeDisplacement/);assert.match(game,/displacementJourney/);assert.match(game,/guardian lives/);assert.match(game,/Reach a physical Wayglass/);
 });
 
-test("release 65 loads one coherent version across the entire module graph",()=>{
+test("canyons kill grounded wayfarers but do not block either side's projectiles",()=>{
+  const map={tiles:Array.from({length:25},(_,i)=>({x:i%5,y:Math.floor(i/5),kind:"ash",blocked:false}))};map.tiles[2*5+2]={x:2,y:2,kind:"canyon",blocked:true,environment:"canyon"};
+  assert.equal(projectileTileOpen(map,5,2.5,2.5),true);assert.equal(tileOpen(map,5,2.5,2.5),false);assert.equal(footprintTouchesCanyon(map,5,1.5,1.5),true);
+  const enemy=createCombatant("ashling",3,2),shots=[{id:"cross",x:1.2,y:2.45,dx:1,dy:0,speed:5,life:1,damage:9,path:"straight",hits:{}}];
+  updateProjectiles(shots,[enemy],map,5,.45);assert.ok(enemy.hp<enemy.maxHp);
+  const s=freshSave(),g=new Game(s,0);g.map.tiles=Array.from({length:1024},(_,i)=>({x:i%32,y:Math.floor(i/32),kind:"ash",blocked:false}));g.player.x=1;g.player.y=1;g.map.tiles[1*32+2]={x:2,y:1,kind:"canyon",blocked:true,environment:"canyon"};g.update(.3,{state:{x:1,y:0},consume:()=>false},100);assert.equal(s.worldFlags.deaths,1);assert.match(g.message,/Lost to the canyon/);
+});
+
+test("void sentinels are rare deterministic deep-region creatures with animated appendages",()=>{
+  let found=null,count=0;for(let y=-25;y<=25;y++)for(let x=-25;x<=25;x++){const a=generateRegion("sentinel-ecology",x,y,1),b=generateRegion("sentinel-ecology",x,y,1);assert.deepEqual(a,b);for(const e of a.enemySpawns)if(e.kind==="voidSentinel"){found=e;count++;assert.ok(Math.abs(x)+Math.abs(y)>7)}}assert.ok(found);assert.ok(count<300);
+  const c=createCombatant("voidSentinel",4,4);assert.equal(c.tentacles,7);assert.ok(c.range>=6);const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/kind==="voidSentinel"/);assert.match(renderer,/Math\.sin\(Number\(frame\)\*\.18/);
+});
+
+test("release 66 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=65/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=65/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v65/);assert.match(sw,/styles\.css\?v=65/);assert.match(sw,/main\.js\?v=65/);assert.match(sw,/combat\.js\?v=65/);assert.match(sw,/renderer\.js\?v=65/);
-  assert.match(build,/release='65'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=66/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=66/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v66/);assert.match(sw,/styles\.css\?v=66/);assert.match(sw,/main\.js\?v=66/);assert.match(sw,/combat\.js\?v=66/);assert.match(sw,/renderer\.js\?v=66/);
+  assert.match(build,/release='66'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("danger waymarks fill only their forward corner while other silhouettes point naturally",()=>{
