@@ -1,7 +1,7 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=59";
-import { vendorShop, buyFromVendor } from "./game.js?v=59";
-import { CREATURE_TRAITS } from "./combat.js?v=59";
-import { hashSeed } from "./random.js?v=59";
+import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=60";
+import { vendorShop, buyFromVendor } from "./game.js?v=60";
+import { CREATURE_TRAITS } from "./combat.js?v=60";
+import { hashSeed } from "./random.js?v=60";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -202,19 +202,19 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame } from "./persistence.js?v=59";
+import { loadSave, saveGame } from "./persistence.js?v=60";
 import {
   Game,
   actionReadiness,
   enemyDangerRadius,
   characterStats,
   syncCharacterStats,
-} from "./game.js?v=59";
-import { createInput } from "./input.js?v=59";
-import { render as baseRender } from "./renderer.js?v=59";
-import { STATS } from "./types.js?v=59";
-import { SPELLS } from "./items.js?v=59";
-import { currentObjective, validActions } from "./interactions.js?v=59";
+} from "./game.js?v=60";
+import { createInput } from "./input.js?v=60";
+import { render as baseRender } from "./renderer.js?v=60";
+import { STATS } from "./types.js?v=60";
+import { SPELLS } from "./items.js?v=60";
+import { currentObjective, validActions } from "./interactions.js?v=60";
 import {
   generateRegion as generateWorldRegion,
   sectionSummary,
@@ -223,7 +223,7 @@ import {
   apertureTier,
   APERTURE_THRESHOLDS,
   perceived,
-} from "./world.js?v=59";
+} from "./world.js?v=60";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -343,19 +343,19 @@ function drawApertureVisuals() {
       ctx.stroke();
     }
   for (const e of game.enemies)
-    if (!e.dead && e.visualTier) {
+    if (!e.dead && e.traits?.includes("orbital")) {
       const x = sx(e.x + 0.5),
         y = sy(e.y + 0.45),
-        r = s * (0.38 + 0.04 * e.visualTier);
+        r = s * Math.max(.68,(Number(e.scale)||1)*.62);
       ctx.strokeStyle = e.visualTier > 2 ? "#f1d6ff" : "#bb83df";
-      ctx.lineWidth = 1.5 + e.visualTier;
+      ctx.lineWidth = 2.25;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.stroke();
       ctx.globalAlpha = 0.35;
       ctx.beginPath();
-      for (let i = 0; i < 6 + e.visualTier * 2; i++) {
-        const a = t + (i * Math.PI) / (3 + e.visualTier),
+      for (let i = 0; i < 10; i++) {
+        const a = t + (i * Math.PI) / 5,
           q = r * (1.1 + (i % 2) * 0.25);
         ctx.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q);
       }
