@@ -13,6 +13,16 @@ import {
   sectionExits,
   wayfindingCues,
 } from "./world.ts";
+
+function applyFallenTreeCrossings(map) {
+  for (const o of map?.objects || []) {
+    if (o.kind !== "tree" || o.state !== "fallen" || !o.crossingTiles) continue;
+    for (const p of o.crossingTiles) {
+      const i = p.y * 32 + p.x, t = map.tiles[i];
+      if (t?.environment) map.tiles[i] = { ...t, kind: "logBridge", blocked: false, bridgeOver: t.environment };
+    }
+  }
+}
 import { createCombatant, dodge, playerAttack } from "./combat.ts";
 import {
   applyInteraction,
@@ -1218,6 +1228,7 @@ export class Game {
       });
       for (const o of this.map.objects)
         if (s.objects?.[o.id]) Object.assign(o, s.objects[o.id]);
+      applyFallenTreeCrossings(this.map);
       this.projectiles = (s.projectiles || []).map((p) => ({ ...p }));
       this.effects = (s.effects || []).map((f) => ({
         ...f,
@@ -1514,6 +1525,7 @@ export class Game {
       this.player.x = o.x + 2;
       this.player.y = o.y - 2;
     }
+    if (o.kind === "tree" && chosen === "cut") applyFallenTreeCrossings(this.map);
     if (r.transition === "dungeon") {
       this.save.session.dungeonReturn = {
         rx: this.rx,

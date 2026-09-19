@@ -2069,8 +2069,13 @@ test("regional environment is deterministic, dense, and keeps a safe bridge", ()
   const obstacle = found.tiles.filter(t => t.environment && t.kind !== "bridge");
   const bridge = found.tiles.filter(t => t.kind === "bridge" && t.bridgeOver);
   assert.ok(obstacle.length > 0);
+  assert.ok(obstacle.every(t => t.blocked));
   assert.ok(bridge.length >= 3);
   assert.ok(bridge.every(t => !t.blocked));
+});
+
+test("cutting a designated bank tree creates and preserves a real log crossing",()=>{
+  const s=freshSave();let region,tree;for(let y=-8;!tree&&y<=8;y++)for(let x=-8;!tree&&x<=8;x++){const q=generateRegion(s.seed,x,y,1),t=q.objects.find(o=>o.crossingTiles?.length);if(t){region=q;tree=t}}assert.ok(tree);Object.assign(s.session,{area:"overworld",rx:region.rx,ry:region.ry,x:tree.x,y:tree.y});s.position={area:"overworld",rx:region.rx,ry:region.ry,x:tree.x,y:tree.y};const g=new Game(s,0),live=g.map.objects.find(o=>o.id===tree.id);assert.equal(g.interact("cut",live.id).ok,true);assert.ok(live.crossingTiles.every(p=>{const t=g.map.tiles[p.y*32+p.x];return t.kind==="logBridge"&&!t.blocked}));g.exportSnapshot(0);const resumed=new Game(s,0),again=resumed.map.objects.find(o=>o.id===tree.id);assert.equal(again.state,"fallen");assert.ok(again.crossingTiles.every(p=>resumed.map.tiles[p.y*32+p.x].kind==="logBridge"));
 });
 
 test("environment interactions persist distinct tree and boulder states", () => {
@@ -2109,10 +2114,15 @@ test("journal renders the same minimalist trail marks used on the floor",()=>{
 });
 
 test("rare architectural districts provide deterministic city arcology and cloister exploration",()=>{
-  const districts=[],styles=new Set();
+  const districts=[],styles=new Set(),shapes=new Set(),sizes=new Set(),uses=new Set(),profiles=new Set();
   for(let y=-22;y<=22;y++)for(let x=-22;x<=22;x++){const a=generateRegion("architectural-texture",x,y,1),b=generateRegion("architectural-texture",x,y,1);if(a.district){assert.deepEqual(a,b);districts.push(a);styles.add(a.district.style);}}
   assert.ok(districts.length>8&&districts.length<130);assert.deepEqual([...styles].sort(),["arcology","city","cloister"]);
-  for(const region of districts.slice(0,12)){const buildings=region.objects.filter(o=>o.kind==="architecturalBuilding");assert.ok(buildings.length>=2);for(const building of buildings){assert.equal(region.tiles[building.door.y*32+building.door.x].blocked,false);assert.ok(building.bounds.w>=8&&building.bounds.h>=7)}assert.ok(sectionSites(region.seed,region.rx,region.ry,1).some(o=>o.kind==="architecturalDistrict"));}
+  for(const region of districts.slice(0,30)){const buildings=region.objects.filter(o=>o.kind==="architecturalBuilding");assert.ok(buildings.length>=2);for(const building of buildings){assert.equal(region.tiles[building.door.y*32+building.door.x].blocked,false);assert.equal(region.tiles[building.door.y*32+building.door.x].structure,"districtDoor");assert.ok(building.bounds.w>=7&&building.bounds.h>=6);assert.ok(building.footprint.length>20);shapes.add(building.shape);sizes.add(`${building.bounds.w}x${building.bounds.h}`);uses.add(building.buildingUse);profiles.add(building.roofProfile)}assert.ok(sectionSites(region.seed,region.rx,region.ry,1).some(o=>o.kind==="architecturalDistrict"));}
+  assert.deepEqual([...shapes].sort(),["notched","rect","wing"]);assert.ok(sizes.size>=8);assert.ok(uses.size>=10);assert.deepEqual([...profiles].sort(),["flat","gable","spire","stepped"]);
+});
+
+test("building roofs conceal contents outside and cut away only in their own interior",()=>{
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/pt\?\.buildingId===o\.id/);assert.match(renderer,/if\(inside\).*return/);assert.match(renderer,/for\(const o of g\.map\.objects\).*architecturalBuilding/);assert.match(renderer,/roofs render after actors so exterior views conceal contents/);assert.match(renderer,/facadeRhythm/);assert.match(renderer,/roofProfile/);assert.match(renderer,/districtDoor/);
 });
 
 test("district streets and every walk-in building remain reachable from the section hub",()=>{
@@ -2139,12 +2149,12 @@ test("journal trail examples invoke the exact ground-waymark drawing function",(
   assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,82\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
 });
 
-test("release 50 loads one coherent version across the entire module graph",()=>{
+test("release 51 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=50/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=50/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v50/);assert.match(sw,/styles\.css\?v=50/);assert.match(sw,/main\.js\?v=50/);assert.match(sw,/combat\.js\?v=50/);assert.match(sw,/renderer\.js\?v=50/);
-  assert.match(build,/release='50'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=51/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=51/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v51/);assert.match(sw,/styles\.css\?v=51/);assert.match(sw,/main\.js\?v=51/);assert.match(sw,/combat\.js\?v=51/);assert.match(sw,/renderer\.js\?v=51/);
+  assert.match(build,/release='51'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("only danger waymarks add a direction stem while other silhouettes point naturally",()=>{
