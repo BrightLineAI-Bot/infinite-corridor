@@ -1,7 +1,7 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=73";
-import { vendorShop, buyFromVendor } from "./game.js?v=73";
-import { CREATURE_TRAITS } from "./combat.js?v=73";
-import { hashSeed } from "./random.js?v=73";
+import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=74";
+import { vendorShop, buyFromVendor } from "./game.js?v=74";
+import { CREATURE_TRAITS } from "./combat.js?v=74";
+import { hashSeed } from "./random.js?v=74";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -45,7 +45,7 @@ function drawRangedEffects() {
     ];
   for (const p of game.projectiles) {
     const [x, y] = toScreen(p);
-    ctx.fillStyle = p.hostile ? "#d28af0" : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
+    ctx.fillStyle = p.hostile ? (p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":"#d28af0") : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
     ctx.shadowColor = ctx.fillStyle;
     ctx.shadowBlur = 8;
     ctx.beginPath();
@@ -55,13 +55,13 @@ function drawRangedEffects() {
       ctx.lineTo(x + Math.cos(a + 2.35) * 7, y + Math.sin(a + 2.35) * 7);
       ctx.lineTo(x + Math.cos(a - 2.35) * 7, y + Math.sin(a - 2.35) * 7);
       ctx.closePath();
-    } else if(p.path==="grenade"){ctx.arc(x,y,7,0,7);ctx.moveTo(x,y-7);ctx.lineTo(x+4,y-11)}else ctx.arc(x, y, p.damageType === "magic" ? 5 : 3, 0, 7);
+    } else if(p.path==="grenade"){ctx.arc(x,y,7,0,7);ctx.moveTo(x,y-7);ctx.lineTo(x+4,y-11)}else if(p.path==="arc"){const a=Math.atan2(p.dy,p.dx);ctx.ellipse(x,y,8,3,a,0,7)}else ctx.arc(x, y, p.damageType === "magic" ? 5 : 3, 0, 7);
     ctx.fill();
   }
   ctx.shadowBlur = 0;
   for (const fx of game.effects) {
     const [x, y] = toScreen(fx);
-    ctx.strokeStyle = "#b75235aa";
+    ctx.strokeStyle = fx.hostile ? "#e35248cc" : "#b75235aa";
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.arc(x, y, fx.radius * s, 0, 7);
@@ -202,19 +202,19 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame } from "./persistence.js?v=73";
+import { loadSave, saveGame } from "./persistence.js?v=74";
 import {
   Game,
   actionReadiness,
   enemyDangerRadius,
   characterStats,
   syncCharacterStats,
-} from "./game.js?v=73";
-import { createInput } from "./input.js?v=73";
-import { render as baseRender } from "./renderer.js?v=73";
-import { STATS } from "./types.js?v=73";
-import { SPELLS } from "./items.js?v=73";
-import { currentObjective, validActions } from "./interactions.js?v=73";
+} from "./game.js?v=74";
+import { createInput } from "./input.js?v=74";
+import { render as baseRender } from "./renderer.js?v=74";
+import { STATS } from "./types.js?v=74";
+import { SPELLS } from "./items.js?v=74";
+import { currentObjective, validActions } from "./interactions.js?v=74";
 import {
   generateRegion as generateWorldRegion,
   sectionSummary,
@@ -224,7 +224,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=73";
+} from "./world.js?v=74";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),

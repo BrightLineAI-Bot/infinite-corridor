@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=73";
+import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=74";
 import {
   generateRegion,
   generateDungeon,
@@ -12,7 +12,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js?v=73";
+} from "./world.js?v=74";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=73";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=74";
 import {
   applyInteraction,
   validActions,
@@ -33,11 +33,11 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=73";
-import { ensurePerception } from "./types.js?v=73";
-import { generateItem } from "./items.js?v=73";
-import { hashSeed } from "./random.js?v=73";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=73';
+} from "./interactions.js?v=74";
+import { ensurePerception } from "./types.js?v=74";
+import { generateItem } from "./items.js?v=74";
+import { hashSeed } from "./random.js?v=74";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=74';
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
@@ -440,6 +440,7 @@ export function updateEffects(effects, enemies, dt, onDefeat = () => {}) {
     if (fx.untilPulse <= 0) {
       fx.untilPulse += fx.pulse;
       fx.pulseIndex = (fx.pulseIndex || 0) + 1;
+      if(fx.hostile)continue;
       for (const e of enemies) {
         if (
           e.dead ||
@@ -703,6 +704,18 @@ export function alertEnemy(e) {
   ensureAI(e).mode = "chase";
   return true;
 }
+export function enemyProjectilePattern(shooter,aim,now=0){
+ const rotate=(v,a)=>({x:v.x*Math.cos(a)-v.y*Math.sin(a),y:v.x*Math.sin(a)+v.y*Math.cos(a)}),base={x:shooter.x+.5,y:shooter.y+.42,hostile:true,hits:{}},shot=(id,d,extra={})=>({...base,id:`enemy-shot-${shooter.id}-${now}-${id}`,dx:d.x,dy:d.y,speed:4.2,life:2.4,damage:shooter.damage,path:'straight',...extra});
+ const sequence=(shooter.shotSequence=(shooter.shotSequence||0)+1);
+ if(shooter.kind==='voidSentinel'){
+  if(sequence%4===0)return[shot('blast',aim,{path:'grenade',speed:3.15,life:1.25,damage:Math.ceil(shooter.damage*.8),blastRadius:1.65})];
+  return[-.13,0,.13].map((a,i)=>shot(`fan-${i}`,rotate(aim,a),{damage:Math.ceil(shooter.damage*.58),speed:4.8}));
+ }
+ if(shooter.kind==='cinderWisp')return[-.18,0,.18].map((a,i)=>shot(`cone-${i}`,rotate(aim,a),{damage:Math.ceil(shooter.damage*.62)}));
+ if(shooter.kind==='sparkWarden'&&sequence%3===0)return[shot('arc',aim,{path:'arc',jumpable:true,speed:3.35,life:2.8,damage:Math.ceil(shooter.damage*1.15)})];
+ if(shooter.kind==='coilStalker'&&sequence%3===0)return[-.11,.11].map((a,i)=>shot(`fork-${i}`,rotate(aim,a),{damage:Math.ceil(shooter.damage*.72)}));
+ return[shot('single',aim)];
+}
 export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onRanged=()=>{}) {
   if(sanctuary){enforceSanctuary(e,sanctuary);if(Math.hypot(player.x-sanctuary.x,player.y-sanctuary.y)<sanctuary.radius){e.telegraph=0;return false}}
   const ai = ensureAI(e),
@@ -721,7 +734,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   if (e.telegraph > 0) {
     e.telegraph = Math.max(0, e.telegraph - dt);
     if (e.telegraph === 0) {
-      e.cooldown = 1.9;
+      e.cooldown = e.kind==='voidSentinel'?.82:e.kind==='cinderWisp'?1.35:1.9;
       e.strike = 0.24;
       const ranged=e.range>=2.5&&!e.instantStrike,clear=attackInRange(e,player)&&hasLineOfSight(e,player,map,width,ranged);
       if(clear&&ranged){onRanged(e,e.attackAim||projectileDirection(player.x-e.x,player.y-e.y));return false}
@@ -2207,16 +2220,18 @@ export class Game {
       (e) => {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
-      (shot)=>this.effects.push({id:"blast-"+shot.id,kind:"rift-blast",x:shot.x,y:shot.y,life:.32,radius:shot.blastRadius||2,untilPulse:0,pulse:99,damage:shot.damage,hits:{}}),
+      (shot)=>this.effects.push({id:"blast-"+shot.id,kind:shot.hostile?"enemy-blast":"rift-blast",x:shot.x,y:shot.y,life:.32,radius:shot.blastRadius||2,untilPulse:0,pulse:99,damage:shot.damage,hostile:!!shot.hostile,hits:{}}),
       p,
       (shot)=>{
         const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;
+        if(shot.jumpable&&now<this.jumpUntil)return;
         if(safe||now<=(p.invulnerableUntil||0))return;
         p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*(1-characterStats(this.save).damageReduction)));
         p.invulnerableUntil=now+700;
       },
     );
     this.syncNpcDamage("projectile");
+    for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-characterStats(this.save).damageReduction)));p.invulnerableUntil=now+700}}
     this.effects = updateEffects(
       this.effects,
       [...this.enemies, ...this.npcTargets()],
@@ -2233,7 +2248,7 @@ export class Game {
       if (
         !fellIntoHazard&&
         !e.dead &&
-        updateEnemyAI(e, p, this.map, width, dt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,(shooter,aim)=>this.projectiles.push({id:`enemy-shot-${shooter.id}-${now}`,x:shooter.x+.5,y:shooter.y+.42,dx:aim.x,dy:aim.y,speed:4.2,life:2.4,damage:shooter.damage,hostile:true,path:"straight",hits:{}})) &&
+        updateEnemyAI(e, p, this.map, width, dt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,(shooter,aim)=>this.projectiles.push(...enemyProjectilePattern(shooter,aim,now))) &&
         now > (p.invulnerableUntil || 0) &&
         (!(now < this.jumpUntil) || e.kind === "sparkWarden")
       ) {
