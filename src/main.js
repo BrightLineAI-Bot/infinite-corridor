@@ -1,7 +1,7 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=54";
-import { vendorShop, buyFromVendor } from "./game.js?v=54";
-import { CREATURE_TRAITS } from "./combat.js?v=54";
-import { hashSeed } from "./random.js?v=54";
+import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=55";
+import { vendorShop, buyFromVendor } from "./game.js?v=55";
+import { CREATURE_TRAITS } from "./combat.js?v=55";
+import { hashSeed } from "./random.js?v=55";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -202,19 +202,19 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame } from "./persistence.js?v=54";
+import { loadSave, saveGame } from "./persistence.js?v=55";
 import {
   Game,
   actionReadiness,
   enemyDangerRadius,
   characterStats,
   syncCharacterStats,
-} from "./game.js?v=54";
-import { createInput } from "./input.js?v=54";
-import { render as baseRender } from "./renderer.js?v=54";
-import { STATS } from "./types.js?v=54";
-import { SPELLS } from "./items.js?v=54";
-import { currentObjective, validActions } from "./interactions.js?v=54";
+} from "./game.js?v=55";
+import { createInput } from "./input.js?v=55";
+import { render as baseRender } from "./renderer.js?v=55";
+import { STATS } from "./types.js?v=55";
+import { SPELLS } from "./items.js?v=55";
+import { currentObjective, validActions } from "./interactions.js?v=55";
 import {
   generateRegion as generateWorldRegion,
   sectionSummary,
@@ -223,7 +223,7 @@ import {
   apertureTier,
   APERTURE_THRESHOLDS,
   perceived,
-} from "./world.js?v=54";
+} from "./world.js?v=55";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -635,6 +635,7 @@ export function combatIndicatorGeometry(game, now = performance.now()) {
         x: e.x + 0.5,
         y: e.y + 0.5,
         radius: enemyDangerRadius(e),
+        large: (Number(e.scale) || 1) > 1.25,
       });
   for (const o of game.map.objects)
     if (o.kind === "trap")
@@ -678,13 +679,13 @@ function drawTruthfulCombatGeometry() {
     ctx.stroke();
   }
   for (const q of g.enemies) {
-    ctx.fillStyle = "#783b3430";
-    ctx.strokeStyle = "#db866ccc";
-    ctx.lineWidth = 2.5;
+    ctx.fillStyle = q.large ? "transparent" : "#783b3430";
+    ctx.strokeStyle = q.large ? "#db866c99" : "#db866ccc";
+    ctx.lineWidth = q.large ? 3 : 2.5;
     ctx.setLineDash([5, 5]);
     ctx.beginPath();
     ctx.arc(sx(q.x), sy(q.y), q.radius * s, 0, Math.PI * 2);
-    ctx.fill();
+    if (!q.large) ctx.fill();
     ctx.stroke();
     ctx.setLineDash([]);
   }

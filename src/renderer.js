@@ -1,4 +1,3 @@
-import { enemyDangerRadius } from "./game.js?v=54";
 export function cameraTransform(
   g,
   w,
@@ -151,27 +150,6 @@ function actor(
     base = y * s + s * 0.82,
     bob = frame % 2,
     sc = Math.max(0.6, Number(scale) || (boss ? 1.45 : 1));
-  if (state === "telegraph") {
-    const range = ({sparkWarden:5,riftColossus:3,veilMoth:4,coilStalker:2,cinderWisp:5})[kind]||0,
-      r = enemyDangerRadius({ range, bodyRadius: 0.38 + Math.max(0, sc - 1) * 0.3 }) * s,
-      ranged = range > 0;
-    ctx.save();
-    ctx.fillStyle = ranged ? "#594a6230" : "#783b3438";
-    ctx.strokeStyle = ranged ? "#a99abecc" : "#c37a5dcc";
-    ctx.lineWidth = ranged ? 2 : 2.5;
-    ctx.setLineDash(ranged ? [8, 6] : [3, 5]);
-    ctx.beginPath();
-    ctx.arc(k, (y + 0.5) * s, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.strokeStyle = ranged ? "#80758f77" : "#9a594777";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(k, (y + 0.5) * s, r * 0.72, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  }
   if (kind !== "player") {
     if (segments > 1) {
       const [fx, fy] = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[facing] || [0, 1],
