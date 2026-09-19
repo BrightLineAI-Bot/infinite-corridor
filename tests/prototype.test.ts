@@ -1979,6 +1979,11 @@ test("large creature warnings use one truthful outer boundary without an obscuri
   assert.match(main,/large: \(Number\(e\.scale\) \|\| 1\) > 1\.25/);assert.match(main,/if \(!q\.large\) ctx\.fill\(\)/);assert.match(main,/radius: enemyDangerRadius\(e\)/);assert.doesNotMatch(renderer,/r \* 0\.72/);assert.doesNotMatch(renderer,/enemyDangerRadius/);
 });
 
+test("rotating creature wards are a rare explicit trait and scale outside the body",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),common=createCombatant("riftColossus",4,4,true),warded=createCombatant("riftColossus",4,4,true,["orbital"]);
+  assert.equal(common.traits.includes("orbital"),false);assert.equal(warded.traits.includes("orbital"),true);assert.equal(CREATURE_TRAITS.orbital.name,"Orbital");assert.match(main,/e\.traits\?\.includes\("orbital"\)/);assert.match(main,/Math\.max\(\.68,\(Number\(e\.scale\)\|\|1\)\*\.62\)/);assert.doesNotMatch(main,/!e\.dead && e\.visualTier\) \{/);
+});
+
 test("dungeon seals checkpoint travel and Crossing Sigil exits without losing carried state", () => {
   const s = freshSave(),
     g = new Game(s, 0),
@@ -2174,12 +2179,12 @@ test("journal trail examples invoke the exact ground-waymark drawing function",(
   assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,82\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
 });
 
-test("release 59 loads one coherent version across the entire module graph",()=>{
+test("release 60 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=59/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=59/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v59/);assert.match(sw,/styles\.css\?v=59/);assert.match(sw,/main\.js\?v=59/);assert.match(sw,/combat\.js\?v=59/);assert.match(sw,/renderer\.js\?v=59/);
-  assert.match(build,/release='59'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=60/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=60/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v60/);assert.match(sw,/styles\.css\?v=60/);assert.match(sw,/main\.js\?v=60/);assert.match(sw,/combat\.js\?v=60/);assert.match(sw,/renderer\.js\?v=60/);
+  assert.match(build,/release='60'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("danger waymarks fill only their forward corner while other silhouettes point naturally",()=>{

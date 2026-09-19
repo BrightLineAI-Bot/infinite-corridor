@@ -343,19 +343,19 @@ function drawApertureVisuals() {
       ctx.stroke();
     }
   for (const e of game.enemies)
-    if (!e.dead && e.visualTier) {
+    if (!e.dead && e.traits?.includes("orbital")) {
       const x = sx(e.x + 0.5),
         y = sy(e.y + 0.45),
-        r = s * (0.38 + 0.04 * e.visualTier);
+        r = s * Math.max(.68,(Number(e.scale)||1)*.62);
       ctx.strokeStyle = e.visualTier > 2 ? "#f1d6ff" : "#bb83df";
-      ctx.lineWidth = 1.5 + e.visualTier;
+      ctx.lineWidth = 2.25;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.stroke();
       ctx.globalAlpha = 0.35;
       ctx.beginPath();
-      for (let i = 0; i < 6 + e.visualTier * 2; i++) {
-        const a = t + (i * Math.PI) / (3 + e.visualTier),
+      for (let i = 0; i < 10; i++) {
+        const a = t + (i * Math.PI) / 5,
           q = r * (1.1 + (i % 2) * 0.25);
         ctx.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q);
       }
