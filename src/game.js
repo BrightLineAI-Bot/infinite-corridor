@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS } from "./items.js";
+import { rangedWeapon, primaryProfile, SPELLS } from "./items.js?v=48";
 import {
   generateRegion,
   generateDungeon,
@@ -12,8 +12,8 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js";
-import { createCombatant, dodge, playerAttack } from "./combat.js";
+} from "./world.js?v=48";
+import { createCombatant, dodge, playerAttack } from "./combat.js?v=48";
 import {
   applyInteraction,
   validActions,
@@ -23,10 +23,10 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js";
-import { ensurePerception } from "./types.js";
-import { generateItem } from "./items.js";
-import { hashSeed } from "./random.js";
+} from "./interactions.js?v=48";
+import { ensurePerception } from "./types.js?v=48";
+import { generateItem } from "./items.js?v=48";
+import { hashSeed } from "./random.js?v=48";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),

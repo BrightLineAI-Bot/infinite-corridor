@@ -1,4 +1,4 @@
-import { enemyDangerRadius } from "./game.js";
+import { enemyDangerRadius } from "./game.js?v=48";
 export function cameraTransform(
   g,
   w,
