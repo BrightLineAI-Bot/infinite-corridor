@@ -1,4 +1,4 @@
-import { enemyDangerRadius } from "./game.js?v=53";
+import { enemyDangerRadius } from "./game.js?v=54";
 export function cameraTransform(
   g,
   w,
@@ -142,15 +142,18 @@ function actor(
   frame = 0,
   state = "idle",
   boss = false,
+  scale = 1,
+  segments = 1,
+  segmentSpacing = 0,
 ) {
   const p = COLORS[kind] || COLORS.ashling,
     k = x * s + s / 2,
     base = y * s + s * 0.82,
     bob = frame % 2,
-    sc = boss ? 1.28 : 1;
+    sc = Math.max(0.6, Number(scale) || (boss ? 1.45 : 1));
   if (state === "telegraph") {
     const range = ({sparkWarden:5,riftColossus:3,veilMoth:4,coilStalker:2,cinderWisp:5})[kind]||0,
-      r = enemyDangerRadius({ range }) * s,
+      r = enemyDangerRadius({ range, bodyRadius: 0.38 + Math.max(0, sc - 1) * 0.3 }) * s,
       ranged = range > 0;
     ctx.save();
     ctx.fillStyle = ranged ? "#594a6230" : "#783b3438";
@@ -170,6 +173,23 @@ function actor(
     ctx.restore();
   }
   if (kind !== "player") {
+    if (segments > 1) {
+      const [fx, fy] = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[facing] || [0, 1],
+        px = -fy,
+        py = fx;
+      for (let i = segments - 1; i >= 1; i--) {
+        const wave = Math.sin((frame + i) * 0.9) * 0.1,
+          cx = k - fx * s * segmentSpacing * i + px * s * wave,
+          cy = base - fy * s * segmentSpacing * i + py * s * wave - s * 0.25 * sc;
+        ctx.fillStyle = p[i % 2];
+        ctx.strokeStyle = p[2];
+        ctx.lineWidth = Math.max(1, s * 0.035);
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, s * 0.27 * sc, s * 0.19 * sc, Math.atan2(fy, fx), 0, 7);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
     ctx.fillStyle = "#050504aa";
     ctx.beginPath();
     ctx.ellipse(k, base, s * 0.3 * sc, s * 0.1, 0, 0, 7);
@@ -415,7 +435,8 @@ export function render(ctx, g, w, h, now) {
             ctx.save();
             ctx.globalAlpha = 0.45;
             ctx.fillStyle = "#d9b38b";
-            ctx.fillRect((e.x - 0.15) * s, (e.y - 0.1) * s, s * 0.8, s * 0.75);
+            const flashScale = Math.max(.7,Number(e.scale)||1);
+            ctx.fillRect((e.x + .5 - .4*flashScale) * s, (e.y + .45 - .42*flashScale) * s, s * .8*flashScale, s * .75*flashScale);
             ctx.restore();
           }
           actor(
@@ -428,6 +449,9 @@ export function render(ctx, g, w, h, now) {
             Math.floor(e.ai?.step || 0),
             e.telegraph > 0 ? "telegraph" : e.strike > 0 ? "attack" : "walk",
             e.boss,
+            e.scale,
+            e.segments,
+            e.segmentSpacing,
           );
           if (e.strike > 0) {
             ctx.strokeStyle = "#c28152cc";
