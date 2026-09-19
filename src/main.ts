@@ -103,7 +103,7 @@ function openShop(vendorId = "vendor-vela") {
     intro = document.createElement("p");
   h.textContent = names[vendorId] || "Waystation Supplies";
   const shop = vendorShop(save, vendorId);
-  intro.textContent = `${save.currency} marks. Restorative draughts remain dependable; limited stock and equipment rotate after every four newly charted sections. Stock cycle ${shop.rotation ?? 0}.`;
+  intro.textContent = `${save.currency} marks. Restorative draughts remain dependable; limited stock and equipment rotate after every four newly charted sections. Stock cycle ${shop.rotation ?? 0}.${game.message ? ` ${game.message}` : ""}`;
   body.append(h, intro);
   const
     offers = [

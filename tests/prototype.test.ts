@@ -24,6 +24,7 @@ import {
   Game,
   moveAxis,
   updateEnemyAI,
+  alertEnemy,
   settlementSanctuary,
   enforceSanctuary,
   attackInRange,
@@ -2251,12 +2252,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 72 loads one coherent version across the entire module graph",()=>{
+test("release 73 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=72/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=72/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v72/);assert.match(sw,/styles\.css\?v=72/);assert.match(sw,/main\.js\?v=72/);assert.match(sw,/combat\.js\?v=72/);assert.match(sw,/renderer\.js\?v=72/);
-  assert.match(build,/release='72'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=73/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=73/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v73/);assert.match(sw,/styles\.css\?v=73/);assert.match(sw,/main\.js\?v=73/);assert.match(sw,/combat\.js\?v=73/);assert.match(sw,/renderer\.js\?v=73/);
+  assert.match(build,/release='73'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("elite definitions preserve class identity while deterministic aspects vary",()=>{assert.equal(Object.keys(ELITE_DEFINITIONS).length,4);for(const d of Object.values(ELITE_DEFINITIONS)){assert.ok(d.stableModules.length>=2);assert.ok(d.variantModules.length>=3);assert.ok(d.threatCost>=8)}const a=eliteVariant('A','vesperwing','5,-2'),again=eliteVariant('A','vesperwing','5,-2'),b=eliteVariant('B','vesperwing','5,-2');assert.deepEqual(a,again);assert.notEqual(a.variantId,b.variantId);assert.ok(a.modules.includes('dive'));assert.ok(a.variantModules.length>=1);assert.ok(eliteThreat(a,8,1)>a.threatCost)});
@@ -2306,4 +2307,27 @@ test("Map defaults to a bounded dungeon floor plan and toggles simply to the Cor
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
   assert.match(html,/id="mapTitle"/);assert.match(html,/id="mapModeToggle"/);assert.match(html,/id="mapLegend"/);
   assert.match(main,/function drawDungeonMap/);assert.match(main,/size=24/);assert.match(main,/game\.map\.tiles/);assert.match(main,/game\.map\.objects/);assert.match(main,/game\.player\.x/);assert.match(main,/mapMode = game\.area === "dungeon" \? "dungeon" : "atlas"/);assert.match(main,/mapMode=mapMode==="dungeon"\?"atlas":"dungeon"/);assert.match(main,/local\?"Corridor Atlas":"Dungeon Map"/);assert.match(main,/if\(mapMode==="dungeon"\)return/);
+});
+
+test("provoked enemies pursue to the section gate regardless of their old home leash",()=>{
+  const map={tiles:Array.from({length:32*32},(_,i)=>({x:i%32,y:Math.floor(i/32),kind:'ash',blocked:false}))};
+  const enemy=createCombatant('ashling',2,16),player={x:29,y:16};
+  alertEnemy(enemy);const before=enemy.x;updateEnemyAI(enemy,player,map,32,1,1000);
+  assert.equal(enemy.aggro,true);assert.equal(enemy.ai.mode,'chase');assert.ok(enemy.x>before);
+});
+
+test("roadside shelters vary from timber shacks to masonry houses and miniature ruins",()=>{
+  const forms=new Set(),names=new Set();let sharedSection=false;
+  for(let y=-18;y<=18;y++)for(let x=-18;x<=18;x++){
+    const region=generateRegion('roadside-architecture',x,y,1),shelter=region.objects.find(o=>o.kind==='shack');
+    if(shelter){forms.add(shelter.facadeStyle);names.add(shelter.name);if(region.district)sharedSection=true;}
+  }
+  assert.ok(['stoneCottage','ruinedKeep','gatehouse','shrineHouse'].some(q=>forms.has(q)));
+  assert.ok(names.has('Dilapidated Keep'));assert.ok(names.has('Abandoned Stone House'));assert.equal(sharedSection,true);
+});
+
+test("Vela sells the Crossing Sigil and trade failures remain visible in the shop",async()=>{
+  const {buyFromVela}=await import('../src/game.ts'),s=freshSave();s.currency=100;
+  const result=buyFromVela(s,'crossingSigil');assert.equal(result.ok,true);assert.equal(s.consumables.crossingSigil,1);
+  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8');assert.match(main,/game\.message \? ` \$\{game\.message\}`/);
 });
