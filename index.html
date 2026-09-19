@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=82" />
+    <link rel="stylesheet" href="./styles.css?v=83" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -97,6 +97,11 @@
         <h2>Wayfarer’s Journal</h2>
         <div id="journalBody"></div>
       </dialog>
+      <dialog id="creatureViewer">
+        <button id="creatureViewerClose" class="close" aria-label="Close creature rendering">×</button>
+        <h2 id="creatureViewerTitle">Field rendering</h2>
+        <canvas id="creatureViewerCanvas" width="512" height="512"></canvas>
+      </dialog>
       <dialog id="atlas">
         <button id="mapClose" class="close">×</button>
         <h2 id="mapTitle">Corridor Atlas</h2>
@@ -127,7 +132,7 @@
     <script type="module">
       const boot = async () => {
         if ("serviceWorker" in navigator) {
-          const release = "82";
+          const release = "83";
           const r = await navigator.serviceWorker.register(`./sw.js?v=${release}`, {
             updateViaCache: "none",
           });
@@ -149,7 +154,7 @@
           }
           sessionStorage.removeItem("corridor-upgrade-51");
         }
-        await import("./src/main.js?v=82");
+        await import("./src/main.js?v=83");
       };
       boot().catch((e) => {
         console.error(e);

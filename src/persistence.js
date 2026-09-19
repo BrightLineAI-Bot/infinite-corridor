@@ -1,4 +1,4 @@
-import{freshSave,migrateSave}from'./types.js?v=82';
+import{freshSave,migrateSave}from'./types.js?v=83';
 const DB='infinite-corridor',STORE='saves';
 const MIRROR='infinite-corridor:active-v2';let writeQueue=Promise.resolve(),queued=null;
 export function serializeSave(save){return JSON.stringify({...save,updatedAt:Date.now()})}

@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS } from "./items.js?v=82";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS } from "./items.js?v=83";
 import {
   generateRegion,
   generateDungeon,
@@ -12,7 +12,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js?v=82";
+} from "./world.js?v=83";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=82";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=83";
 import {
   applyInteraction,
   validActions,
@@ -33,13 +33,44 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=82";
-import { ensurePerception } from "./types.js?v=82";
-import { generateItem } from "./items.js?v=82";
-import { hashSeed } from "./random.js?v=82";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=82';
+} from "./interactions.js?v=83";
+import { ensurePerception } from "./types.js?v=83";
+import { generateItem } from "./items.js?v=83";
+import { hashSeed } from "./random.js?v=83";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=83';
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
+export function enemyDefeatNotice(e, area = "overworld") {
+  const name = e.eliteName || ({
+    hollowMarshal: "Hollow Marshal",
+    riftColossus: "Rift Colossus",
+    gateRevenant: "Gate Revenant",
+  }[e.kind]) || String(e.kind || "enemy").replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
+  let title = "ENEMY FELLED";
+  if (e.defeatTitle) title = e.defeatTitle;
+  else if (e.kind === "gateRevenant") title = "REVENANT REPULSED";
+  else if (e.kind === "riftColossus") title = "COLOSSUS FELLED";
+  else if (e.kind === "hollowMarshal") title = "GUARDIAN CLEARED";
+  else if (e.eliteId) title = "ELITE SLAIN";
+  else if (e.boss) title = "RIFT BOSS BROKEN";
+  else if (e.apertureEncounter) title = "BREACH STILLED";
+  const clearsCrossing = area === "dungeon" && (e.boss || e.kind === "hollowMarshal");
+  return { title, detail: `${name}${clearsCrossing ? " · crossing cleared" : ""}`, kind: e.boss || e.eliteId ? "danger" : "discovery" };
+}
+
+function recordRelayChain(save, areaId) {
+  const key = `relay-chain:${areaId}`;
+  if (save.worldFlags[key]) return false;
+  save.worldFlags[key] = true;
+  const count = (save.worldFlags["relay-chain.count"] || 0) + 1;
+  save.worldFlags["relay-chain.count"] = count;
+  if (count < 5 || save.narrative.facts["relay.networkAnswered"]) return false;
+  save.narrative.facts["relay.networkAnswered"] = true;
+  save.materials.lumenDust = (save.materials.lumenDust || 0) + 3;
+  save.consumables.crossingSigil = (save.consumables.crossingSigil || 0) + 1;
+  journalOnce(save, "relay-network-answered", "Five cleared crossings form a readable pattern. Restoring a relay opens its line: passage and connection improve, but hostile things can learn and pursue that route. Severing a relay closes the line permanently: its salvage can be recovered, but its connection and whatever it might have reached are lost. A far relay answers with a coordinate that does not belong to any charted section, leaving three lumen dust and a Crossing Sigil fused into the receiver.", "The Far Signal");
+  return true;
+}
 const MILESTONE_GEAR = [
   [4, { id: "milestone-cinder-pike", name: "Cinder Pike", slot: "primary", power: 5, property: "reach" }],
   [8, { id: "milestone-needle-caster", name: "Needle Caster", slot: "secondary", power: 8, property: "quick" }],
@@ -118,7 +149,7 @@ export function characterStats(save) {
       Math.floor((level - 1) * 0.45) +
       Math.floor((Number(secondary?.power) || 0) * 0.55) +
       affixValue(secondary, "attack"),
-    attackReach: affixValue(primary, "reach") + affixValue(charm, "reach"),
+    attackReach: affixValue(primary, "reach") + affixValue(secondary, "reach") + affixValue(charm, "reach"),
     moveSpeed: affixValue(armor, "movement") + affixValue(charm, "movement"),
     armorPower,
     charmPower,
@@ -1936,6 +1967,9 @@ export class Game {
       this.message = e.kind === "hushling" ? "The hushling unthreads into violet motes." : "The quiet creature falls. Nothing in it was meant as loot.";
       return;
     }
+    this.defeatNotice = enemyDefeatNotice(e, this.area);
+    if (e.kind === "hollowMarshal" && recordRelayChain(this.save, this.areaId()))
+      this.defeatNotice.detail += " · the buried network answered";
     if(['ashling','glassMite'].includes(e.kind))recordPortalPrey(this.save,e.kind);
     if(e.eliteId){const reward=completeElite(this.save,e.eliteId);if(reward){this.save.codex.elites||={};this.save.codex.elites[e.eliteId]={encountered:1,defeated:1,modules:[...(e.eliteModules||[])],variantId:e.variantId,habitat:this.areaId()};journalOnce(this.save,'elite-defeated:'+e.eliteId,`${e.eliteName} fell. Its observed aspects were ${(e.eliteModules||[]).join(', ')}. Reward: ${reward.marks} marks and one ${reward.material.replace('Sphere',' sphere')}.`,'Elite bestiary');}}
     e.rewarded = true;
@@ -1999,17 +2033,14 @@ export class Game {
         recordNpcDamage(
           this.save,
           e,
-          profile.damage +
-            this.save.stats.Might * 2 +
-            this.save.weaponLevel * 3,
+          profile.damage + characterStats(this.save).meleeBonus,
           "melee",
           "collateral",
         );
         continue;
       }
       alertEnemy(e);
-      e.hp -=
-        profile.damage + this.save.stats.Might * 2 + this.save.weaponLevel * 3;
+      e.hp -= profile.damage + characterStats(this.save).meleeBonus;
       e.hitFlash = 0.18;
       e.recoil = 0.14;
       if (e.hp <= 0) {
@@ -2044,6 +2075,7 @@ export class Game {
     this.player.attackUntil = now + 180;
     this.player.meleeUntil = 0;
     this.player.meleeStrike = null;
+    const derived=characterStats(this.save),reachMultiplier=1+derived.attackReach,projectileLifetime=weapon.lifetime*reachMultiplier;
     this.projectiles.push({
       id: `shot-${this.save.dropCounter}-${now}`,
       x: this.player.x + 0.5 + d.x * 0.35,
@@ -2051,11 +2083,9 @@ export class Game {
       dx: d.x,
       dy: d.y,
       speed: weapon.speed,
-      life: weapon.path==="grenade"&&aimedDistance!==null?Math.max(.08,Math.min(weapon.lifetime,aimedDistance/weapon.speed)):weapon.lifetime,
+      life: weapon.path==="grenade"&&aimedDistance!==null?Math.max(.08,Math.min(projectileLifetime,aimedDistance/weapon.speed)):projectileLifetime,
       damage: Math.round(
-        (weapon.damage +
-          this.save.stats.Focus +
-          (this.save.equipment.secondary?.power || 0)) *
+        (weapon.damage + derived.magicBonus) *
           (weapon.damageType === "magic" && this.magicBuffRemaining > 0
             ? 1.4
             : 1),
@@ -2063,7 +2093,7 @@ export class Game {
       damageType: weapon.damageType,
       path: weapon.path || "straight",
       age: 0,
-      turnAfter: weapon.turnAfter || weapon.lifetime / 2,
+      turnAfter: (weapon.turnAfter || weapon.lifetime / 2)*reachMultiplier,
       returning: false,
       hits: {},
       blastRadius: weapon.radius || 0,
@@ -2096,7 +2126,7 @@ export class Game {
       radius: spell.radius,
       pulse: spell.pulse,
       untilPulse: 0,
-      damage: spell.damage + this.save.stats.Focus,
+      damage: spell.damage + characterStats(this.save).magicBonus,
       pulseIndex: 0,
       hits: {},
     });
@@ -2218,7 +2248,7 @@ export class Game {
       this.save.aimMode = "tool";
       this.save.toolMode = true;
       const weapon=rangedWeapon(this.save.equipment.secondary),width=this.area === "dungeon" ? 24 : 32,
-        aim=weapon&&selectRangedAim(this.player,this.enemies,this.map,width,weapon.speed*weapon.lifetime);
+        aim=weapon&&selectRangedAim(this.player,this.enemies,this.map,width,weapon.speed*weapon.lifetime*(1+characterStats(this.save).attackReach));
       this.fireSecondary(now, aim || this.save.lastAim);
     }
     if (input.consume("spell")) this.castSpell();
@@ -2289,7 +2319,7 @@ export class Game {
       this.save.toolMode = false;
       this.interact();
     }
-    const sanctuary=settlementSanctuary(this.map,this.rx,this.ry,this.save);
+    const sanctuary=this.area==="overworld"?settlementSanctuary(this.map,this.rx,this.ry,this.save):null;
     if(this.area==="overworld"&&footprintInsideStructure(this.map,width,p.x,p.y)){
       const escaped=this.enemies.filter(e=>e.gatePredator&&!e.dead&&e.aggro);
       for(const e of escaped)e.dead=true;
