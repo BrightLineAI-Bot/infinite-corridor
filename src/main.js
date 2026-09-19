@@ -1,7 +1,7 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=66";
-import { vendorShop, buyFromVendor } from "./game.js?v=66";
-import { CREATURE_TRAITS } from "./combat.js?v=66";
-import { hashSeed } from "./random.js?v=66";
+import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=67";
+import { vendorShop, buyFromVendor } from "./game.js?v=67";
+import { CREATURE_TRAITS } from "./combat.js?v=67";
+import { hashSeed } from "./random.js?v=67";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -202,19 +202,19 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame } from "./persistence.js?v=66";
+import { loadSave, saveGame } from "./persistence.js?v=67";
 import {
   Game,
   actionReadiness,
   enemyDangerRadius,
   characterStats,
   syncCharacterStats,
-} from "./game.js?v=66";
-import { createInput } from "./input.js?v=66";
-import { render as baseRender } from "./renderer.js?v=66";
-import { STATS } from "./types.js?v=66";
-import { SPELLS } from "./items.js?v=66";
-import { currentObjective, validActions } from "./interactions.js?v=66";
+} from "./game.js?v=67";
+import { createInput } from "./input.js?v=67";
+import { render as baseRender } from "./renderer.js?v=67";
+import { STATS } from "./types.js?v=67";
+import { SPELLS } from "./items.js?v=67";
+import { currentObjective, validActions } from "./interactions.js?v=67";
 import {
   generateRegion as generateWorldRegion,
   sectionSummary,
@@ -223,7 +223,8 @@ import {
   apertureTier,
   APERTURE_THRESHOLDS,
   perceived,
-} from "./world.js?v=66";
+  wayfindingCues,
+} from "./world.js?v=67";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -1228,6 +1229,7 @@ function updateHud(now) {
   }
 }
 function frame(now) {
+  try {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   input.update(dt);
@@ -1259,7 +1261,12 @@ function frame(now) {
     clock = 0;
     persist();
   }
-  requestAnimationFrame(frame);
+  } catch(error) {
+    console.error("Infinite Corridor frame recovered from an error",error);
+    game.message="The Corridor stuttered, then found its rhythm again.";
+  } finally {
+    requestAnimationFrame(frame);
+  }
 }
 $("#resume").onclick = resume;
 $("#pausedPack").onclick = openPack;
