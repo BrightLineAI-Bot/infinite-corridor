@@ -7,6 +7,7 @@ import {
   dungeonId,
   sectionExits,
   sectionSummary,
+  sectionSites,
   regionalThreat,
   perceptionOverlay,
   apertureTier,
@@ -397,6 +398,18 @@ test("atlas section summary reports detail flags", () => {
     [2, -1, true, true, true],
   );
   assert.ok(d.terrain && d.landmark);
+  assert.ok(d.sites.some((q) => q.kind === "checkpoint"));
+});
+test("Atlas section sites expose discovered structures at their local coordinates", () => {
+  const s=freshSave(),sites=sectionSites("weather-housing",1,1,1,s);
+  assert.ok(sites.every((q)=>Number.isFinite(q.x)&&Number.isFinite(q.y)));
+  const remembered=structuredClone(s);remembered.checkpoints["9,9"]={rx:9,ry:9,x:7,y:11,name:"Old Glass"};
+  assert.ok(sectionSites(remembered.seed,9,9,remembered.worldGeneration,remembered).some((q)=>q.kind==="checkpoint"&&q.x===7&&q.y===11));
+});
+test("ordinary Wayglass generation is sparse but nonzero",()=>{
+  let checkpoints=0,total=0;
+  for(let y=-18;y<=18;y++)for(let x=-18;x<=18;x++){if(x===0&&y===0||x===4&&y===-2||x===-5&&y===3)continue;total++;if(generateRegion("sparse-wayglass",x,y,1).objects.some(o=>o.kind==="checkpoint"))checkpoints++;}
+  assert.ok(checkpoints>30);assert.ok(checkpoints/total<.12);
 });
 test("Atlas details do not reveal unvisited generated terrain",()=>{
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
@@ -837,7 +850,8 @@ test("shop is deterministic, capped, affordable, and persisted", async () => {
   s.consumables.restorativeDraught = 99;
   assert.equal(buyFromVela(s, "restorativeDraught").ok, false);
   s.currency = 100;
-  assert.equal(buyFromVela(s, "ironbarkTonic", 2).quantity, 2);
+  const tonicStock=velaShop(s).limited.ironbarkTonic;
+  assert.equal(buyFromVela(s, "ironbarkTonic", 99).quantity, tonicStock);
   assert.equal(buyFromVela(s, "ironbarkTonic").ok, false);
   const item = velaShop(s).equipment[0],
     r = buyFromVela(s, item.id);
@@ -845,6 +859,15 @@ test("shop is deterministic, capped, affordable, and persisted", async () => {
   assert.equal(buyFromVela(s, item.id).ok, false);
   const round = deserializeSave(serializeSave(s));
   assert.deepEqual(round.shop, s.shop);
+});
+test("vendor essentials remain while limited stock and equipment rotate with exploration",async()=>{
+  const {velaShop}=await import("../src/game.ts"),s=freshSave(),first=structuredClone(velaShop(s));
+  for(let i=0;i<4;i++)s.explored[`${i+1},0`]=true;
+  const next=velaShop(s);
+  assert.equal(next.rotation,1);assert.notDeepEqual(next.equipment.map(i=>i.id),first.equipment.map(i=>i.id));assert.ok(next.limited.ironbarkTonic>=1);assert.ok(next.limited.lumenPhial>=1);
+});
+test("activated sparse Wayglass is physically restored after generation changes",()=>{
+  const s=freshSave();s.session.rx=11;s.session.ry=13;s.checkpoints["11,13"]={rx:11,ry:13,x:8,y:9,name:"Remembered Light"};const g=new Game(s,0);g.rx=11;g.ry=13;g.loadArea("overworld",false);const mark=g.map.objects.find(o=>o.kind==="checkpoint");assert.ok(mark);assert.equal(mark.name,"Remembered Light");assert.equal(g.map.tiles[9*32+8].blocked,false);
 });
 test("supply cache is stable, reachable, and collected once", () => {
   const s = freshSave(),
@@ -1906,7 +1929,7 @@ test("atlas supports direct pointer panning without sacrificing tap selection", 
   assert.match(source, /mapView\.x\s*-=\s*Math\.round/);
   assert.match(source, /atlasPointers\.size === 2/);
   assert.match(source, /atlasPinch\.zoom \* distance \/ atlasPinch\.distance/);
-  assert.match(source, /Math\.max\(0\.6, Math\.min\(1\.8/);
+  assert.match(source, /Math\.max\(0\.6, Math\.min\(3\.2/);
   assert.match(style, /#mapCanvas\s*\{[\s\S]*?touch-action:\s*none/);
 });
 test("expanded creature ecology is deterministic and recorded in the field codex", () => {
@@ -1923,7 +1946,7 @@ test("expanded creature ecology is deterministic and recorded in the field codex
 });
 test("journal exposes encounter codex sections and an always-available symbol guide",()=>{
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
-  assert.match(source,/Creatures/);assert.match(source,/Places/);assert.match(source,/Features/);assert.match(source,/Rules & symbols/);assert.match(source,/◎ Ring — Wayglass/);
+  assert.match(source,/Creatures/);assert.match(source,/Places/);assert.match(source,/Features/);assert.match(source,/Rules & symbols/);assert.match(source,/Hooked ring — Wayglass/);
 });
 test("journal and pack expose illustrated field-card hooks",()=>{
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
@@ -2080,7 +2103,7 @@ test("weather and open-world shacks are deterministic bounded environment featur
   assert.ok(weather.has("rain"));assert.ok(weather.has("snow"));assert.ok(weather.has("sunbreak"));assert.ok(shacks.length>0);assert.ok(shacks.every(o=>o.bounds?.w===5&&o.bounds?.h===4));
 });
 
-test("journal renders explicit symbol badges and major-threat feedback",()=>{
+test("journal renders the same minimalist trail marks used on the floor",()=>{
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
-  assert.match(source,/symbol-badge/);assert.match(source,/MAJOR THREAT/);assert.match(source,/SITE REACHED/);assert.match(html,/id="eventBanner"/);assert.match(html,/◎.*Wayglass.*›.*crossing.*▲.*major danger.*⟳.*unusual site/);
+  assert.match(source,/function trailMark/);assert.match(source,/Hooked ring — Wayglass/);assert.match(source,/Split chevron — Crossing/);assert.match(source,/Hollow triangle — Major danger/);assert.match(source,/Broken spiral — Unusual site/);assert.match(source,/MAJOR THREAT/);assert.match(source,/SITE REACHED/);assert.match(html,/id="eventBanner"/);
 });

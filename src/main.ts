@@ -83,9 +83,10 @@ function openShop(vendorId = "vendor-vela") {
     h = document.createElement("h2"),
     intro = document.createElement("p");
   h.textContent = names[vendorId] || "Waystation Supplies";
-  intro.textContent = `${save.currency} marks. Draughts, field goods, and one scarce dungeon-escape sigil.`;
+  const shop = vendorShop(save, vendorId);
+  intro.textContent = `${save.currency} marks. Restorative draughts remain dependable; limited stock and equipment rotate after every four newly charted sections. Stock cycle ${shop.rotation ?? 0}.`;
   body.append(h, intro);
-  const shop = vendorShop(save, vendorId),
+  const
     offers = [
       [
         "restorativeDraught",
@@ -198,6 +199,7 @@ import { currentObjective, validActions } from "./interactions.ts";
 import {
   generateRegion as generateWorldRegion,
   sectionSummary,
+  sectionSites,
   regionalThreat,
   apertureTier,
   APERTURE_THRESHOLDS,
@@ -817,15 +819,15 @@ function drawMap() {
       mctx.strokeStyle = frontier ? "#596675" : "#9eb9b2";
       mctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4);
       if (seen) {
-        const l = region.objects.find((o) => o.landmark);
-        if (l) {
-          mctx.fillStyle = l.kind === "checkpoint" ? "#7ee2ff" : "#e2b26e";
-          mctx.fillRect(
-            x + cell * 0.42,
-            y + cell * 0.35,
-            cell * 0.16,
-            cell * 0.22,
-          );
+        for (const site of sectionSites(save.seed, rx, ry, save.worldGeneration, save)) {
+          const sx = x + Math.max(0.1, Math.min(0.9, (site.x + .5) / 32)) * cell,
+            sy = y + Math.max(0.1, Math.min(0.9, (site.y + .5) / 32)) * cell;
+          drawAtlasSite(site.kind, sx, sy, Math.max(3, Math.min(9, cell * .095)));
+          if (mapView.zoom >= 2.2) {
+            mctx.fillStyle = "#edf3df";
+            mctx.font = `${Math.max(8, 5 * mapView.zoom)}px system-ui`;
+            mctx.fillText(site.name, sx + 6, sy - 5);
+          }
         }
         mctx.fillStyle = "#d7dedb";
         mctx.font = `${Math.max(8, 10 * mapView.zoom)}px monospace`;
@@ -849,6 +851,11 @@ function drawMap() {
     h - 10,
   );
 }
+function drawAtlasSite(kind, x, y, size) {
+  const signal = kind === "checkpoint" ? "beacon" : kind === "dungeon" ? "crossing" : kind === "bossCue" ? "danger" : kind === "shack" ? "shack" : "event";
+  mctx.save();mctx.translate(x,y);mctx.lineWidth=Math.max(1.4,size*.22);mctx.strokeStyle={beacon:"#72d7df",crossing:"#d5a464",danger:"#d16b62",event:"#a68ad2",shack:"#d8bd83"}[signal];mctx.fillStyle=mctx.strokeStyle;mctx.beginPath();
+  if(signal==="beacon")mctx.arc(0,0,size*.7,0,Math.PI*1.65);else if(signal==="crossing"){mctx.moveTo(-size*.7,-size*.55);mctx.lineTo(size*.55,0);mctx.lineTo(-size*.7,size*.55)}else if(signal==="danger"){mctx.moveTo(-size*.65,size*.6);mctx.lineTo(0,-size*.75);mctx.lineTo(size*.65,size*.6);mctx.closePath()}else if(signal==="shack"){mctx.moveTo(-size*.75,0);mctx.lineTo(0,-size*.7);mctx.lineTo(size*.75,0);mctx.lineTo(size*.55,0);mctx.lineTo(size*.55,size*.7);mctx.lineTo(-size*.55,size*.7);mctx.lineTo(-size*.55,0);mctx.closePath()}else{mctx.arc(0,0,size*.65,0,Math.PI*1.5);mctx.lineTo(size*.75,0)}mctx.stroke();if(signal!=="shack"){mctx.beginPath();mctx.moveTo(size*.72,0);mctx.lineTo(size*1.05,-size*.3);mctx.lineTo(size*1.05,size*.3);mctx.closePath();mctx.fill()}mctx.restore();
+}
 function updateMapTravelButton() {
   const travel = $("#mapTravel"), selected = mapView.selected,
     checkpoint = selected && save.checkpoints?.[`${selected.rx},${selected.ry}`];
@@ -871,8 +878,9 @@ function showMapDetail(rx, ry) {
   }
   mapView.selected = { rx, ry };
   const s = sectionSummary(save.seed, rx, ry, save.worldGeneration, save);
+  const sites = s.sites.length ? ` · sites: ${s.sites.map((q) => q.name).join(", ")}` : " · no discovered sites";
   $("#mapDetail").textContent =
-    `Section ${rx}, ${ry} · ${s.terrain} terrain · ${s.landmark}${s.checkpoint ? " · checkpoint" : ""}${s.current ? " · current" : ""}${s.waypoint ? " · waypoint" : ""}`;
+    `Section ${rx}, ${ry} · ${s.terrain} terrain${sites}${s.checkpoint ? " · checkpoint" : ""}${s.current ? " · current" : ""}${s.waypoint ? " · waypoint" : ""}`;
   updateMapTravelButton();
   return true;
 }
@@ -1045,6 +1053,7 @@ const CODEX = {
   }
 };
 const CREATURE_PORTRAITS={ashling:[0,0],glassMite:[1,0],sparkWarden:[2,0],coilStalker:[3,0],veilMoth:[0,1],rootBrute:[1,1],cinderWisp:[2,1],riftColossus:[3,1],ashenHound:[0,0],hollowMarshal:[2,0]};
+function trailMark(kind){const svg=document.createElementNS("http://www.w3.org/2000/svg","svg"),paths={ring:'<path d="M 13 0 A 13 13 0 1 1 -6 -11"/><path class="mark-fill" d="M 14 0 L 21 -6 L 21 6 Z"/>',chevron:'<path d="M -13 -10 L 11 0 L -13 10"/><path class="mark-fill" d="M 14 0 L 21 -6 L 21 6 Z"/>',triangle:'<path d="M -13 10 L 0 -13 L 13 10 Z"/><path class="mark-fill" d="M 14 0 L 21 -6 L 21 6 Z"/>',spiral:'<path d="M 12 0 A 12 12 0 1 1 0 -12 L 14 0"/><path class="mark-fill" d="M 14 0 L 21 -6 L 21 6 Z"/>'};svg.setAttribute("viewBox","-24 -24 48 48");svg.setAttribute("aria-hidden","true");svg.classList.add("trail-symbol",kind);svg.innerHTML=paths[kind];return svg}
 function openJournal(mode = "chronicle") {
   if(typeof mode!=="string")mode="chronicle";
   pauseForOverlay();
@@ -1056,10 +1065,10 @@ function openJournal(mode = "chronicle") {
   out.append(nav);
   if(mode!=="chronicle"){
     const entries=mode==="rules"?[
-      ["ring",["◎ Ring — Wayglass","An activated beacon: recovery point and Atlas travel destination."]],
-      ["chevron",["› Chevron — Crossing","A dungeon entrance or buried route into a bounded interior."]],
-      ["triangle",["▲ Triangle — Major danger","A world boss, elite incursion, or other exceptional threat."]],
-      ["spiral",["⟳ Spiral — Unusual site","A shrine, event, ruin, or discovery worth investigating."]],
+      ["ring",["Hooked ring — Wayglass","This is the same cyan floor mark used in the world. Its arrow points toward a known recovery point and Atlas destination."]],
+      ["chevron",["Split chevron — Crossing","This is the same amber floor mark used in the world. Its arrow points toward a dungeon entrance or buried route."]],
+      ["triangle",["Hollow triangle — Major danger","This is the same red floor mark used in the world. Its arrow points toward a world boss or exceptional threat."]],
+      ["spiral",["Broken spiral — Unusual site","This is the same violet floor mark used in the world. Its arrow points toward a shrine, ruin, or strange discovery."]],
       ["atlas",["Atlas","Drag with one finger to pan. Pinch with two fingers or use +/− to zoom. Tap an explored section to select it."]],
       ["travel",["Travel","Activate Wayglass beacons to travel to them from the Atlas. Dungeon travel remains sealed without a Crossing Sigil."]],
       ["combat",["Combat","Red or violet telegraphs show the exact threatened area. Dodge spends stamina; jumping avoids grounded impacts."]],
@@ -1068,7 +1077,7 @@ function openJournal(mode = "chronicle") {
     const heading=document.createElement("h3");heading.textContent=mode==="rules"?"Field rules and symbols":`${mode[0].toUpperCase()+mode.slice(1)} encountered`;
     out.append(heading);
     if(!entries.length){const empty=document.createElement("p");empty.textContent="No entries recorded yet. Encounter them in the world to unlock this section.";out.append(empty);}
-    for(const [id,entry] of entries){const article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p");article.className="item codex-card";title.textContent=entry[0];text.textContent=entry[1];if(mode==="rules"&&["ring","chevron","triangle","spiral"].includes(id)){const badge=document.createElement("span");badge.className="symbol-badge";badge.textContent={ring:"◎",chevron:"›",triangle:"▲",spiral:"⟳"}[id];article.classList.add("symbol-card");article.prepend(badge);}if(mode==="creatures"&&CREATURE_PORTRAITS[id]){const portrait=document.createElement("div"),[x,y]=CREATURE_PORTRAITS[id];portrait.className="creature-portrait";portrait.style.setProperty("--portrait-x",`${x*33.333}%`);portrait.style.setProperty("--portrait-y",`${y*100}%`);portrait.setAttribute("role","img");portrait.setAttribute("aria-label",`${entry[0]} field illustration`);article.prepend(portrait);}article.append(title,text);out.append(article);}
+    for(const [id,entry] of entries){const article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p");article.className="item codex-card";title.textContent=entry[0];text.textContent=entry[1];if(mode==="rules"&&["ring","chevron","triangle","spiral"].includes(id)){const badge=document.createElement("span");badge.className="symbol-badge";badge.append(trailMark(id));article.classList.add("symbol-card");article.prepend(badge);}if(mode==="creatures"&&CREATURE_PORTRAITS[id]){const portrait=document.createElement("div"),[x,y]=CREATURE_PORTRAITS[id];portrait.className="creature-portrait";portrait.style.setProperty("--portrait-x",`${x*33.333}%`);portrait.style.setProperty("--portrait-y",`${y*100}%`);portrait.setAttribute("role","img");portrait.setAttribute("aria-label",`${entry[0]} field illustration`);article.prepend(portrait);}article.append(title,text);out.append(article);}
     if(mode==="creatures")for(const [id,v] of Object.entries(save.codex?.variants||{})){if(!v.traits?.length)continue;const base=CODEX.creatures[v.kind]?.[0]||v.kind,article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p"),names=v.traits.map(t=>CREATURE_TRAITS[t]?.name||t);article.className="item";title.textContent=`${names.join(" ")} ${base}`;text.textContent=v.traits.map(t=>CREATURE_TRAITS[t]?.text).filter(Boolean).join(" ");article.append(title,text);out.append(article);}
     if(!journal.open)journal.showModal();
     return;
@@ -1225,7 +1234,7 @@ $("#mapCenter").onclick = () => {
   drawMap();
 };
 $("#mapPlus").onclick = () => {
-  mapView.zoom = Math.min(1.8, mapView.zoom + 0.2);
+  mapView.zoom = Math.min(3.2, mapView.zoom + 0.2);
   drawMap();
 };
 $("#mapMinus").onclick = () => {
@@ -1294,7 +1303,7 @@ mapCanvas.addEventListener("pointermove", (e) => {
   if (atlasPinch && atlasPointers.size >= 2) {
     const [a, b] = [...atlasPointers.values()], distance = Math.hypot(b.x - a.x, b.y - a.y);
     if (atlasPinch.distance > 0)
-      mapView.zoom = Math.max(0.6, Math.min(1.8, atlasPinch.zoom * distance / atlasPinch.distance));
+      mapView.zoom = Math.max(0.6, Math.min(3.2, atlasPinch.zoom * distance / atlasPinch.distance));
     drawMap();
     return;
   }
