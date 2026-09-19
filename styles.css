@@ -335,7 +335,8 @@ body {
   color: #908779;
 }
 .buttons .tool.selected,
-.buttons .attack.selected {
+.buttons .attack.selected,
+.buttons .act.selected {
   color: #f2d79d;
   border-color: #c9a15c;
   filter: drop-shadow(0 0 5px #bb7b3f88);
