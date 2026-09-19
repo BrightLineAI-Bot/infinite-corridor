@@ -42,7 +42,7 @@ import {
   projectileTileOpen,
   updateProjectiles,
 } from "../src/game.ts";
-import { rng, pick } from "../src/random.ts";
+import { rng, pick, hashSeed } from "../src/random.ts";
 import {
   normalizeVector,
   shapeStick,
@@ -416,7 +416,7 @@ test("Atlas section sites expose discovered structures at their local coordinate
 test("ordinary Wayglass generation is sparse but nonzero",()=>{
   let checkpoints=0,total=0;
   for(let y=-18;y<=18;y++)for(let x=-18;x<=18;x++){if(x===0&&y===0||x===4&&y===-2||x===-5&&y===3)continue;total++;if(generateRegion("sparse-wayglass",x,y,1).objects.some(o=>o.kind==="checkpoint"))checkpoints++;}
-  assert.ok(checkpoints>30);assert.ok(checkpoints/total<.12);
+  assert.ok(checkpoints>10);assert.ok(checkpoints/total<.045);
 });
 test("Atlas details do not reveal unvisited generated terrain",()=>{
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
@@ -2247,12 +2247,20 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 68 loads one coherent version across the entire module graph",()=>{
+test("release 69 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=68/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=68/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v68/);assert.match(sw,/styles\.css\?v=68/);assert.match(sw,/main\.js\?v=68/);assert.match(sw,/combat\.js\?v=68/);assert.match(sw,/renderer\.js\?v=68/);
-  assert.match(build,/release='68'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=69/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=69/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v69/);assert.match(sw,/styles\.css\?v=69/);assert.match(sw,/main\.js\?v=69/);assert.match(sw,/combat\.js\?v=69/);assert.match(sw,/renderer\.js\?v=69/);
+  assert.match(build,/release='69'/);assert.match(build,/\.js\?v=\$\{release\}/);
+});
+
+test("rare gate predators alone can carry aggro through a dungeon exit",()=>{
+  const s=freshSave();let id=null;
+  for(let i=0;i<5000&&!id;i++){const q=`dungeon:${s.seed}:g1:rare:${i}`;if(hashSeed(`${s.seed}:gate-predator:v1:${q}`)%1000<12)id=q;}
+  assert.ok(id);const g=new Game(s,0);g.save.session.activeDungeonId=id;g.save.session.dungeonReturn={rx:2,ry:3,x:9,y:10};g.loadArea("dungeon",false);
+  const predator=g.enemies.find(e=>e.gatePredator);assert.ok(predator);assert.equal(predator.maxHp,260);assert.ok(predator.scale>1.8);predator.aggro=true;
+  assert.equal(g.leaveDungeon(),true);assert.equal(g.area,"overworld");const escaped=g.enemies.find(e=>e.gatePredator&&!e.dead);assert.ok(escaped);assert.equal(escaped.aggro,true);assert.match(g.message,/GATE REMAINS OPEN/);
 });
 
 test("water is lethal to footprints but transparent to projectiles",()=>{
