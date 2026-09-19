@@ -4,7 +4,7 @@ An original, offline-first, single-player mobile adventure game for Android. The
 
 This repository contains the playable **Prototype 1** vertical slice.
 
-Project changes are validated through the shared Brightline change-control workflow before orchestration closure.
+Project changes may be prepared through the trusted Hermes proposal workflow, but authorization, planning, application, verification, and reconciliation remain separate exact Brightline Change-Control steps.
 
 ## Run locally
 
