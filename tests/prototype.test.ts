@@ -2253,12 +2253,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 74 loads one coherent version across the entire module graph",()=>{
+test("release 75 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=74/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=74/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v74/);assert.match(sw,/styles\.css\?v=74/);assert.match(sw,/main\.js\?v=74/);assert.match(sw,/combat\.js\?v=74/);assert.match(sw,/renderer\.js\?v=74/);
-  assert.match(build,/release='74'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=75/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=75/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v75/);assert.match(sw,/styles\.css\?v=75/);assert.match(sw,/main\.js\?v=75/);assert.match(sw,/combat\.js\?v=75/);assert.match(sw,/renderer\.js\?v=75/);
+  assert.match(build,/release='75'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("elite definitions preserve class identity while deterministic aspects vary",()=>{assert.equal(Object.keys(ELITE_DEFINITIONS).length,4);for(const d of Object.values(ELITE_DEFINITIONS)){assert.ok(d.stableModules.length>=2);assert.ok(d.variantModules.length>=3);assert.ok(d.threatCost>=8)}const a=eliteVariant('A','vesperwing','5,-2'),again=eliteVariant('A','vesperwing','5,-2'),b=eliteVariant('B','vesperwing','5,-2');assert.deepEqual(a,again);assert.notEqual(a.variantId,b.variantId);assert.ok(a.modules.includes('dive'));assert.ok(a.variantModules.length>=1);assert.ok(eliteThreat(a,8,1)>a.threatCost)});
@@ -2338,4 +2338,9 @@ test("ranged creatures use restrained deterministic projectile patterns",()=>{
  assert.equal(enemyProjectilePattern(sentinel,aim,1).length,3);assert.equal(enemyProjectilePattern(sentinel,aim,2).length,3);assert.equal(enemyProjectilePattern(sentinel,aim,3).length,3);
  const blast=enemyProjectilePattern(sentinel,aim,4);assert.equal(blast.length,1);assert.equal(blast[0].path,'grenade');assert.ok(blast[0].blastRadius>1);
  assert.equal(enemyProjectilePattern(wisp,aim,1).length,3);enemyProjectilePattern(warden,aim,1);enemyProjectilePattern(warden,aim,2);const arc=enemyProjectilePattern(warden,aim,3);assert.equal(arc[0].path,'arc');assert.equal(arc[0].jumpable,true);
+});
+
+test("Atlas exposes every activated Wayglass as an explicit fast-travel destination",()=>{
+ const html=readFileSync(new URL('../index.html',import.meta.url),'utf8'),main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8');
+ assert.match(html,/id="mapWayglassSelect"/);assert.match(main,/Object\.entries\(save\.checkpoints\|\|\{\}\)/);assert.match(main,/function selectedWayglassKey/);assert.match(main,/mapWayglassSelect"\)\.onchange/);assert.match(main,/game\.travelToCheckpoint\(save\.checkpoints\?\.\[key\] \? key : null\)/);
 });
