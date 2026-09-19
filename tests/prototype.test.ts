@@ -2125,6 +2125,10 @@ test("building roofs conceal contents outside and cut away only in their own int
   const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/pt\?\.buildingId===o\.id/);assert.match(renderer,/if\(inside\).*return/);assert.match(renderer,/for\(const o of g\.map\.objects\).*architecturalBuilding/);assert.match(renderer,/roofs render after actors so exterior views conceal contents/);assert.match(renderer,/facadeRhythm/);assert.match(renderer,/roofProfile/);assert.match(renderer,/districtDoor/);
 });
 
+test("Atlas pans from compact discovery records and details only current or selected sections",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(game,/this\.save\.atlas \|\|=/);assert.match(game,/terrain: this\.map\.dominant/);assert.match(main,/save\.atlas\?\.\[key\]/);assert.match(main,/w \/ \(2 \* cell\)/);assert.match(main,/detailed\?sites:compact/);assert.doesNotMatch(main,/const region = generateRegion\(save\.seed, rx, ry/);assert.match(renderer,/ctx\.beginPath\(\);for\(const c of cells\)ctx\.rect/);assert.equal((renderer.match(/new Set\(cells\.map/g)||[]).length,1);
+});
+
 test("district streets and every walk-in building remain reachable from the section hub",()=>{
   let region;for(let y=-30;!region&&y<=30;y++)for(let x=-30;!region&&x<=30;x++){const q=generateRegion("district-reachability",x,y,1);if(q.district)region=q}assert.ok(region);
   const seen=new Set(["16,16"]),queue=[[16,16]];while(queue.length){const [x,y]=queue.shift();for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const a=x+dx,b=y+dy,k=`${a},${b}`;if(a>=0&&a<32&&b>=0&&b<32&&!seen.has(k)&&!region.tiles[b*32+a].blocked){seen.add(k);queue.push([a,b])}}}
@@ -2149,12 +2153,12 @@ test("journal trail examples invoke the exact ground-waymark drawing function",(
   assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,82\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
 });
 
-test("release 51 loads one coherent version across the entire module graph",()=>{
+test("release 52 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=51/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=51/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v51/);assert.match(sw,/styles\.css\?v=51/);assert.match(sw,/main\.js\?v=51/);assert.match(sw,/combat\.js\?v=51/);assert.match(sw,/renderer\.js\?v=51/);
-  assert.match(build,/release='51'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=52/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=52/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v52/);assert.match(sw,/styles\.css\?v=52/);assert.match(sw,/main\.js\?v=52/);assert.match(sw,/combat\.js\?v=52/);assert.match(sw,/renderer\.js\?v=52/);
+  assert.match(build,/release='52'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("only danger waymarks add a direction stem while other silhouettes point naturally",()=>{

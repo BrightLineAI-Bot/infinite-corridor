@@ -1167,6 +1167,12 @@ export class Game {
         this.map.objects.push({ id: `remembered-wayglass-${this.rx}-${this.ry}`, kind: "checkpoint", name: remembered.name || "Remembered Wayglass", x, y, state: "active", actions: ["activate"], landmark: true, remembered: true });
       }
     }
+    if (area === "overworld") {
+      const atlas = (this.save.atlas ||= {}), key = `${this.rx},${this.ry}`;
+      atlas[key] = { terrain: this.map.dominant, sites: this.map.objects
+        .filter((o) => ["checkpoint","dungeon","shrine","ruinMarker","shack","bossCue","architecturalDistrict"].includes(o.kind))
+        .map((o) => ({ kind: o.kind, name: o.name || o.kind, x: o.x, y: o.y })) };
+    }
     this.enemies = this.map.enemySpawns.map((e) => {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
       if (e.apertureEncounter) {

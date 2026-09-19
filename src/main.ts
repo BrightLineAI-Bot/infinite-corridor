@@ -819,8 +819,8 @@ function drawMap() {
   mctx.fillStyle = "#091018";
   mctx.fillRect(0, 0, w, h);
   const cell = 52 * mapView.zoom,
-    cols = Math.ceil(w / cell) + 2,
-    rows = Math.ceil(h / cell) + 2;
+    cols = Math.ceil(w / (2 * cell)) + 1,
+    rows = Math.ceil(h / (2 * cell)) + 1;
   for (let j = -rows; j <= rows; j++)
     for (let i = -cols; i <= cols; i++) {
       const rx = mapView.x + i,
@@ -838,21 +838,22 @@ function drawMap() {
             [0, -1],
           ].some(([a, b]) => save.explored[`${rx + a},${ry + b}`]);
       if (!seen && !frontier) continue;
-      const region = generateRegion(save.seed, rx, ry, save.worldGeneration);
+      const record = save.atlas?.[key], terrain = record?.terrain || (rx===game.rx&&ry===game.ry?game.map.dominant:"ash");
       mctx.fillStyle = seen
         ? { ash: "#51464a", glass: "#315b62", ember: "#794735" }[
-            region.dominant
+            terrain
           ]
         : "#202833";
       mctx.fillRect(x + 2, y + 2, cell - 4, cell - 4);
       mctx.strokeStyle = frontier ? "#596675" : "#9eb9b2";
       mctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4);
       if (seen) {
-        for (const site of sectionSites(save.seed, rx, ry, save.worldGeneration, save)) {
-          const sx = x + Math.max(0.1, Math.min(0.9, (site.x + .5) / 32)) * cell,
-            sy = y + Math.max(0.1, Math.min(0.9, (site.y + .5) / 32)) * cell;
+        const detailed=(rx===game.rx&&ry===game.ry)||(mapView.selected?.rx===rx&&mapView.selected?.ry===ry),sites=record?.sites||[],compact=[...new Map(sites.map(s=>[s.kind,s])).values()];
+        for (const [n,site] of (detailed?sites:compact).entries()) {
+          const sx = detailed?x + Math.max(0.1, Math.min(0.9, (site.x + .5) / 32)) * cell:x+cell*(.32+(n%3)*.18),
+            sy = detailed?y + Math.max(0.1, Math.min(0.9, (site.y + .5) / 32)) * cell:y+cell*(.42+Math.floor(n/3)*.2);
           drawAtlasSite(site.kind, sx, sy, Math.max(3, Math.min(9, cell * .095)));
-          if (mapView.zoom >= 2.2) {
+          if (detailed && mapView.zoom >= 2.2) {
             mctx.fillStyle = "#edf3df";
             mctx.font = `${Math.max(8, 5 * mapView.zoom)}px system-ui`;
             mctx.fillText(site.name, sx + 6, sy - 5);
