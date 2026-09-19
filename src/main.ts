@@ -832,10 +832,10 @@ function resume() {
   persist();
 }
 function drawDungeonMap() {
-  const d=Math.min(devicePixelRatio,2),w=Math.min(innerWidth*.9,680),h=Math.min(innerHeight*.65,520),size=24,pad=18,cell=Math.max(5,Math.min((w-pad*2)/size,(h-pad*2)/size)),ox=(w-cell*size)/2,oy=(h-cell*size)/2;
+  const d=Math.min(devicePixelRatio,2),w=Math.min(innerWidth*.9,680),h=Math.min(innerHeight*.65,520),cols=game.map.width||24,rows=game.map.height||Math.floor(game.map.tiles.length/cols),pad=18,cell=Math.max(2,Math.min((w-pad*2)/cols,(h-pad*2)/rows)),ox=(w-cell*cols)/2,oy=(h-cell*rows)/2;
   mapCanvas.width=w*d;mapCanvas.height=h*d;mapCanvas.style.width=w+"px";mapCanvas.style.height=h+"px";mctx.setTransform(d,0,0,d,0,0);mctx.imageSmoothingEnabled=false;mctx.fillStyle="#091018";mctx.fillRect(0,0,w,h);
   for(const tile of game.map.tiles){const x=ox+tile.x*cell,y=oy+tile.y*cell;mctx.fillStyle=tile.kind==="dungeonWater"?"#245967":tile.blocked?"#182129":({hollow:"#51484a",cistern:"#36565a",kiln:"#68463a"}[game.map.recipe]||"#51484a");mctx.fillRect(x,y,Math.ceil(cell),Math.ceil(cell));if(!tile.blocked&&cell>9){mctx.strokeStyle="#ffffff0b";mctx.strokeRect(x,y,cell,cell)}}
-  const colors={exit:"#72d7df",chest:"#d8bd83",supplyCache:"#7fc992",relayTerminal:"#b28cda",trap:"#d16b62",vine:"#77b98b",apertureDoor:"#c493dd"};
+  const colors={exit:"#72d7df",chest:"#d8bd83",supplyCache:"#7fc992",relayTerminal:"#b28cda",trap:"#d16b62",vine:"#77b98b",apertureDoor:"#c493dd",sealedGate:"#d16b62",deepReturn:"#7bc7d3",hubAnchor:"#e4cf7a"};
   for(const o of game.map.objects||[]){if(!colors[o.kind])continue;const x=ox+(o.x+.5)*cell,y=oy+(o.y+.5)*cell;mctx.fillStyle=colors[o.kind];mctx.strokeStyle="#0b1014";mctx.lineWidth=2;mctx.beginPath();if(o.kind==="exit"){mctx.rect(x-cell*.32,y-cell*.42,cell*.64,cell*.84)}else if(o.kind==="trap"){mctx.moveTo(x,y-cell*.42);mctx.lineTo(x+cell*.4,y+cell*.35);mctx.lineTo(x-cell*.4,y+cell*.35);mctx.closePath()}else{mctx.arc(x,y,Math.max(3,cell*.28),0,7)}mctx.fill();mctx.stroke()}
   const px=ox+(game.player.x+.5)*cell,py=oy+(game.player.y+.5)*cell;mctx.fillStyle="#fff4a8";mctx.strokeStyle="#17140b";mctx.lineWidth=2;mctx.beginPath();mctx.arc(px,py,Math.max(4,cell*.34),0,7);mctx.fill();mctx.stroke();mctx.fillStyle="#e7ece7";mctx.font="12px monospace";mctx.fillText("YOU",px+7,py-7);
 }
@@ -954,7 +954,7 @@ function updateMapTravelButton() {
 function updateMapModeUI(){
   const dungeon=game.area==="dungeon",local=dungeon&&mapMode==="dungeon";
   $("#mapModeToggle").hidden=!dungeon;$("#mapModeToggle").textContent=local?"Corridor Atlas":"Dungeon Map";$("#mapTitle").textContent=local?`${game.map.name||"Dungeon"} Map`:"Corridor Atlas";atlas.querySelector(".maptools").hidden=local;$("#mapHome").hidden=local;$("#mapWaypoint").hidden=local;$("#mapLegend").hidden=local;$("#mapInstructions").textContent=local?"A bounded floor plan. Gold marks your position; cyan is the entrance/exit; other colored marks identify known dungeon features.":"Tap an explored section to select it, then press Set waypoint. The center compass points toward that manual destination before quest guidance.";
-  if(local)$("#mapDetail").textContent=`${game.map.identity||"Dungeon"} · bounded 24 × 24 floor · position ${Math.floor(game.player.x)}, ${Math.floor(game.player.y)}`;
+  if(local){const cols=game.map.width||24,rows=game.map.height||Math.floor(game.map.tiles.length/cols),deep=game.map.recipe==="deep-v1"?` · wing seals ${game.map.deepProgress?.defeatedWingIds?.length||0}/3${game.map.deepProgress?.gateOpened?" · final gate open":""}`:"";$("#mapDetail").textContent=`${game.map.identity||"Dungeon"} · bounded ${cols} × ${rows} floor${deep} · position ${Math.floor(game.player.x)}, ${Math.floor(game.player.y)}`;}
   updateMapWaypointButton();
   updateMapTravelButton();
 }

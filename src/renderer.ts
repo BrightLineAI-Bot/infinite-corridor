@@ -22,6 +22,9 @@ const PAL = {
   floor: ["#3b403d", "#555750"],
   blocked: ["#232522", "#45423d"],
   wall: ["#1d211f", "#403d37"],
+  deepFloor: ["#242b30", "#364149"],
+  deepWall: ["#12171b", "#2c343b"],
+  sealedGate: ["#482b31", "#7b454e"],
   river: ["#203f48", "#2b5962"],
   dungeonWater: ["#183b46", "#245763"],
   canyon: ["#171616", "#302721"],
@@ -382,11 +385,12 @@ export function render(ctx, g, w, h, now) {
   ctx.fillRect(0, 0, w, h);
   const s = Math.max(28, Math.min(44, w / 12)),
     p = g.player,
-    mw = g.area === "dungeon" ? 24 : 32,
+    mw = Math.max(1,Number(g.map?.width)||(g.area === "dungeon" ? 24 : 32)),
+    mh = Math.max(1,Number(g.map?.height)||Math.floor(g.map.tiles.length/mw)),
     l = Math.max(0, Math.floor(p.x - w / s / 2) - 2),
     t = Math.max(0, Math.floor(p.y - h / s / 2) - 2),
     r = Math.min(mw, l + Math.ceil(w / s) + 5),
-    b = Math.min(mw, t + Math.ceil(h / s) + 5),
+    b = Math.min(mh, t + Math.ceil(h / s) + 5),
     jumping = now < (g.jumpUntil || 0),
     lift = jumping
       ? Math.sin(

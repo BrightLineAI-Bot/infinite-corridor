@@ -1,10 +1,14 @@
 import test from "node:test";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import {
   generateRegion,
   generateDungeon,
+  generateDeepDungeon,
   dungeonId,
+  deepDungeonId,
+  dungeonDescriptor,
   sectionExits,
   sectionSummary,
   sectionSites,
@@ -51,6 +55,10 @@ import {
   storeInventoryItem,
   salvageInventoryItem,
   enemyDefeatNotice,
+  mapWidth,
+  mapHeight,
+  deepDungeonProgress,
+  applyDeepDungeonProgress,
 } from "../src/game.ts";
 import { rng, pick, hashSeed } from "../src/random.ts";
 import {
@@ -2415,7 +2423,7 @@ test("danger waymarks fill only their forward corner while other silhouettes poi
 test("Map defaults to a bounded dungeon floor plan and toggles simply to the Corridor Atlas",()=>{
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
   assert.match(html,/id="mapTitle"/);assert.match(html,/id="mapModeToggle"/);assert.match(html,/id="mapLegend"/);
-  assert.match(main,/function drawDungeonMap/);assert.match(main,/size=24/);assert.match(main,/game\.map\.tiles/);assert.match(main,/game\.map\.objects/);assert.match(main,/game\.player\.x/);assert.match(main,/mapMode = game\.area === "dungeon" \? "dungeon" : "atlas"/);assert.match(main,/mapMode=mapMode==="dungeon"\?"atlas":"dungeon"/);assert.match(main,/local\?"Corridor Atlas":"Dungeon Map"/);assert.match(main,/if\(mapMode==="dungeon"\)return/);
+  assert.match(main,/function drawDungeonMap/);assert.match(main,/cols=game\.map\.width\|\|24/);assert.match(main,/rows=game\.map\.height/);assert.match(main,/game\.map\.tiles/);assert.match(main,/game\.map\.objects/);assert.match(main,/game\.player\.x/);assert.match(main,/mapMode = game\.area === "dungeon" \? "dungeon" : "atlas"/);assert.match(main,/mapMode=mapMode==="dungeon"\?"atlas":"dungeon"/);assert.match(main,/local\?"Corridor Atlas":"Dungeon Map"/);assert.match(main,/if\(mapMode==="dungeon"\)return/);
 });
 
 test("provoked enemies pursue to the section gate regardless of their old home leash",()=>{
@@ -2505,4 +2513,57 @@ test("encountered places carry bounded visual sigils and expandable Corridor lor
 test("Features and Symbols tabs have distinct scopes without duplicated presentation",()=>{
  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
  assert.match(main,/\["features","Encountered features"\]/);assert.match(main,/\["rules","Symbols & controls"\]/);assert.match(main,/A universal reference for reading the Atlas/);assert.match(main,/FIELD FUNCTION —/);assert.match(main,/VISUAL CUE —/);assert.match(main,/CORRIDOR RECORD —/);assert.match(main,/const FEATURE_LORE=/);assert.match(main,/const FEATURE_VISUAL=/);assert.match(main,/id==="trap:fire"/);assert.match(main,/id==="trap:spikes"/);assert.match(main,/id==="bossCue"/);assert.match(main,/function featureDetails\(id,entry\)/);
+});
+
+function reachableDungeonCells(map,start){
+ const seen=new Set([`${start.x},${start.y}`]),queue=[start];
+ for(let i=0;i<queue.length;i++){const p=queue[i];for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const x=p.x+dx,y=p.y+dy,key=`${x},${y}`,tile=map.tiles[y*map.width+x];if(tile&&!tile.blocked&&!seen.has(key)){seen.add(key);queue.push({x,y})}}}
+ return seen;
+}
+
+test("deep-v1 dungeon generation is deterministic and preserves ordinary dungeon bytes",()=>{
+ const id=deepDungeonId("DEEP-SEED",3,-8,11),a=generateDeepDungeon("DEEP-SEED",id),b=generateDungeon("DEEP-SEED",id);
+ assert.deepEqual(a,b);assert.deepEqual(a,generateDeepDungeon("DEEP-SEED",id));assert.equal(id,"dungeon:DEEP-SEED:g3:-8:11:deep-v1");
+ assert.deepEqual(dungeonDescriptor(id),{recipe:"deep-v1",name:"The Threefold Deep",identity:"sealed deep dungeon",danger:"three wing wardens",depth:"deep"});
+ for(const[ordinary,expected]of[["dungeon:S:g1","7f287b6e420b87e06926ab172389778ae6b8d5063989fbf703080251a87380c1"],["dungeon:S:g1:1:2:a","d4f3e0b43e0e00ac5f535e771ecd098f73f4f7bb81dbd5af9aafdaf52b7b1094"]])assert.equal(createHash("sha256").update(JSON.stringify(generateDungeon("S",ordinary))).digest("hex"),expected);
+});
+
+test("deep-v1 authored graph exposes stable wings anchors hazards and sealed finale metadata",()=>{
+ const map=generateDeepDungeon("GRAPH",deepDungeonId("GRAPH",1,2,-4));assert.equal(map.width,64);assert.equal(map.height,64);assert.equal(map.tiles.length,4096);assert.deepEqual(map.entry,{x:31,y:59});assert.deepEqual(map.hub,{x:32,y:33});
+ assert.deepEqual(map.wings.map(q=>q.id),["west","east","south"]);assert.equal(map.objects.filter(q=>q.kind==="deepReturn").length,3);assert.ok(map.objects.filter(q=>q.kind==="deepReturn").every(q=>q.state==="dormant"&&q.toX===map.hub.x&&q.toY===map.hub.y));
+ const minibosses=map.enemySpawns.filter(q=>q.dungeonRole==="wingMiniboss");assert.deepEqual(minibosses.map(q=>q.id),["deep-v1-miniboss-west","deep-v1-miniboss-east","deep-v1-miniboss-south"]);assert.deepEqual(minibosses.map(q=>q.wingId),["west","east","south"]);assert.ok(map.enemySpawns.some(q=>q.id==="deep-v1-final-boss"&&q.dungeonRole==="finalBoss"));
+ assert.equal(map.finalGateId,"deep-v1-final-gate");assert.equal(map.finalGateTiles.length,5);assert.deepEqual(map.finalEnemyIds,[...minibosses.map(q=>q.id),"deep-v1-final-boss"]);assert.deepEqual(map.finalGate.requires,minibosses.map(q=>q.id));
+ const pits=map.tiles.filter(q=>q.pit);const bridges=map.tiles.filter(q=>q.kind==="bridge"&&q.bridgeOver==="canyon");assert.ok(pits.length>=30);assert.ok(pits.every(q=>q.environment==="canyon"&&q.blocked));assert.ok(bridges.length>=9);assert.ok(bridges.every(q=>q.permanent&&!q.blocked));
+});
+
+test("deep-v1 exit hub and minibosses are reachable while its final arena obeys the gate",()=>{
+ const id=deepDungeonId("LOCK",1,7,7),closed=generateDeepDungeon("LOCK",id),open=generateDeepDungeon("LOCK",id,{gateOpen:true}),closedReach=reachableDungeonCells(closed,closed.entry),openReach=reachableDungeonCells(open,open.entry),key=q=>`${q.x},${q.y}`;
+ assert.ok(closedReach.has(key(closed.hub)));assert.ok(closedReach.has(key(closed.objects.find(q=>q.kind==="exit"))));for(const q of closed.enemySpawns.filter(q=>q.dungeonRole==="wingMiniboss"))assert.ok(closedReach.has(key(q)),q.id);
+ const finalBoss=closed.enemySpawns.find(q=>q.dungeonRole==="finalBoss");assert.equal(closedReach.has(key(finalBoss)),false);assert.equal(openReach.has(key(finalBoss)),true);assert.equal(closed.finalGate.state,"sealed");assert.equal(open.finalGate.state,"open");
+});
+
+test("deep-v1 entrances are sparse eligible deterministic additions independent of ordinary entrance IDs",()=>{
+ let eligible=0,deep=0,ordinary=0;for(let y=-30;y<=30;y++)for(let x=-30;x<=30;x++){if(x===0&&y===0||x===4&&y===-2||x===-5&&y===3)continue;eligible++;const a=generateRegion("DEEP-FREQUENCY",x,y,1),b=generateRegion("DEEP-FREQUENCY",x,y,1);assert.deepEqual(a,b);const gates=a.objects.filter(q=>q.kind==="dungeon");if(gates.some(q=>q.dungeonType==="deep-v1")){deep++;assert.ok(gates.find(q=>q.dungeonType==="deep-v1").id.includes("deep-v1"))}if(gates.some(q=>q.dungeonType!=="deep-v1"))ordinary++}
+ const rate=deep/eligible;assert.ok(rate>.025&&rate<.055,`deep entrance rate ${rate}`);assert.ok(ordinary>700);assert.equal(generateRegion("DEEP-FREQUENCY",0,0,1).objects.some(q=>q.dungeonType==="deep-v1"),false);for(const[rx,ry]of[[4,-2],[-5,3]])assert.equal(generateRegion("DEEP-FREQUENCY",rx,ry,1).objects.some(q=>q.dungeonType==="deep-v1"),false);
+});
+
+test("deep dungeon runtime opens seals, activates shortcuts, and records internal recovery anchors",()=>{
+ const s=freshSave(),id=deepDungeonId(s.seed,s.worldGeneration,6,-4);s.session.activeDungeonId=id;s.session.dungeonReturn={rx:6,ry:-4,x:12,y:12};
+ const g=new Game(s,0);g.loadArea("dungeon",false);assert.equal(mapWidth(g.map,g.area),64);assert.equal(mapHeight(g.map,g.area),64);assert.equal(g.map.recipe,"deep-v1");
+ const bosses=g.enemies.filter(e=>e.dungeonRole==="wingMiniboss");assert.equal(bosses.length,3);assert.ok(bosses.every(e=>e.id.startsWith("deep-v1-miniboss-")));assert.equal(g.map.objects.find(o=>o.kind==="sealedGate").state,"sealed");
+ for(let i=0;i<bosses.length;i++){bosses[i].dead=true;g.defeatEnemy(bosses[i]);const progress=deepDungeonProgress(s,id);assert.equal(progress.defeatedWingIds.length,i+1);assert.equal(progress.gateOpened,i===2);assert.equal(g.map.objects.find(o=>o.kind==="deepReturn"&&o.wingId===bosses[i].wingId).state,"active")}
+ const progress=applyDeepDungeonProgress(s,id,g.map),last=progress.activeAnchor;assert.ok(last);assert.equal(g.map.objects.find(o=>o.kind==="sealedGate").state,"open");assert.ok(g.map.finalGateTiles.every(p=>!g.map.tiles[p.y*64+p.x].blocked));
+ const shortcut=g.map.objects.find(o=>o.id===last.id);Object.assign(g.player,{x:shortcut.x,y:shortcut.y});assert.equal(g.interact("return",shortcut.id).ok,true);assert.deepEqual([g.player.x,g.player.y],[g.map.hub.x,g.map.hub.y]);
+});
+
+test("deep dungeon death preserves cleared wings and resumes at the latest internal anchor",()=>{
+ const s=freshSave(),id=deepDungeonId(s.seed,2,-7,5);s.session.activeDungeonId=id;s.session.dungeonReturn={rx:-7,ry:5,x:10,y:10};const g=new Game(s,0);g.loadArea("dungeon",false);const boss=g.enemies.find(e=>e.dungeonRole==="wingMiniboss");
+ boss.dead=true;g.defeatEnemy(boss);const anchor={...deepDungeonProgress(s,id).activeAnchor};g.snapshotArea();g.recoverFromDeath(500);assert.equal(g.area,"dungeon");assert.deepEqual([g.player.x,g.player.y],[anchor.x,anchor.y]);assert.ok(deepDungeonProgress(s,id).defeatedWingIds.includes(boss.wingId));assert.equal(g.enemies.some(e=>e.id===boss.id),false);assert.match(g.message,/Cleared wings, shortcuts/);
+});
+
+test("deep final guardian alone resolves the expedition and grants its one-time paired reward",()=>{
+ const s=freshSave(),id=deepDungeonId(s.seed,1,9,9);s.session.activeDungeonId=id;s.session.dungeonReturn={rx:9,ry:9,x:8,y:8};const g=new Game(s,0);g.loadArea("dungeon",false);const progress=deepDungeonProgress(s,id);
+ for(const wing of g.map.wings)progress.defeatedWingIds.push(wing.id);applyDeepDungeonProgress(s,id,g.map);const final=g.enemies.find(e=>e.dungeonRole==="finalBoss"),weapon=s.materials.weaponSphere,armor=s.materials.armorSphere;final.dead=true;g.defeatEnemy(final);
+ assert.equal(progress.completed,true);assert.equal(dungeonHistory(s,id).resolved,true);assert.equal(s.materials.weaponSphere,weapon+1);assert.equal(s.materials.armorSphere,armor+1);assert.equal(g.defeatNotice.title,"DEEP GUARDIAN FELLED");
+ const copy={...final,id:"deep-v1-final-boss-return",rewarded:false};g.defeatEnemy(copy);assert.equal(s.materials.weaponSphere,weapon+1);assert.equal(s.materials.armorSphere,armor+1);
 });
