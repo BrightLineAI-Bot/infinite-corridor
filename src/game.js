@@ -1224,6 +1224,14 @@ export class Game {
         hits: { ...f.hits },
       }));
     }
+    if (area === "overworld" && this.map.district) {
+      const clearStranded = (entity) => {
+        const cx=Math.floor(entity?.x),cy=Math.floor(entity?.y),tile=this.map.tiles[cy*32+cx];
+        if(!tile?.blocked)return;
+        for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){const x=cx+ox,y=cy+oy,t=this.map.tiles[y*32+x];if(t?.structure==="districtWall")this.map.tiles[y*32+x]={...t,kind:`${this.map.district.style}Floor`,blocked:false,structure:"districtInterior"}}
+      };
+      clearStranded(this.player);for(const e of this.enemies)clearStranded(e);
+    }
     this.reconcileConsequences();
     const codex = (this.save.codex ||= { creatures: {}, places: {}, features: {} });
     codex.creatures ||= {};
@@ -1236,8 +1244,9 @@ export class Game {
     }
     codex.places[area === "dungeon" ? `dungeon:${this.map.recipe || "hollow"}` : `terrain:${this.map.dominant}`] = true;
     if (this.map.settlement) codex.places[`settlement:${this.map.settlement.id}`] = true;
+    if (this.map.district) codex.places[`district:${this.map.district.style}`] = true;
     for (const o of this.map.objects)
-      if (["shrine", "checkpoint", "ruinMarker", "dungeon", "shack", "tree", "rock", "relayTerminal", "trap", "vine", "bossCue"].includes(o.kind))
+      if (["shrine", "checkpoint", "ruinMarker", "dungeon", "shack", "architecturalDistrict", "tree", "rock", "relayTerminal", "trap", "vine", "bossCue"].includes(o.kind))
         codex.features[o.kind === "trap" ? `trap:${o.trapType}` : o.kind] = true;
     if (area === "overworld") {
       this.map.objects.push(
