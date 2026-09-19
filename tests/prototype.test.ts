@@ -34,6 +34,8 @@ import {
   awardExperience,
   characterStats,
   syncCharacterStats,
+  footprintOpen,
+  relocateIfStranded,
 } from "../src/game.ts";
 import { rng, pick } from "../src/random.ts";
 import {
@@ -2135,8 +2137,12 @@ test("district streets and every walk-in building remain reachable from the sect
   for(const building of region.objects.filter(o=>o.kind==="architecturalBuilding")){assert.ok(seen.has(`${building.door.x},${building.door.y}`));assert.ok(seen.has(`${building.x},${building.y}`));}
 });
 
-test("resume safety opens a district wall only when an old save would be stranded",()=>{
-  let q;for(let y=-25;!q&&y<=25;y++)for(let x=-25;!q&&x<=25;x++){const r=generateRegion("CINDER-VERGE-47",x,y,1);if(r.district)q=r}assert.ok(q);const wall=q.tiles.find(t=>t.structure==="districtWall"),s=freshSave();Object.assign(s.session,{rx:q.rx,ry:q.ry,x:wall.x+.2,y:wall.y+.2});s.position={area:"overworld",rx:q.rx,ry:q.ry,x:wall.x+.2,y:wall.y+.2};const g=new Game(s,0);assert.equal(g.map.tiles[wall.y*32+wall.x].blocked,false);
+test("resume safety relocates a stranded save without carving changed world geometry",()=>{
+  let q;for(let y=-25;!q&&y<=25;y++)for(let x=-25;!q&&x<=25;x++){const r=generateRegion("CINDER-VERGE-47",x,y,1);if(r.district)q=r}assert.ok(q);const wall=q.tiles.find(t=>t.structure==="districtWall"),s=freshSave();Object.assign(s.session,{rx:q.rx,ry:q.ry,x:wall.x+.2,y:wall.y+.2});s.position={area:"overworld",rx:q.rx,ry:q.ry,x:wall.x+.2,y:wall.y+.2};const g=new Game(s,0);assert.equal(g.map.tiles[wall.y*32+wall.x].blocked,true);assert.equal(footprintOpen(g.map,32,g.player.x,g.player.y),true);assert.match(g.message,/nearest stable ground/);
+});
+
+test("resume safety preserves valid positions exactly and handles any blocked terrain",()=>{
+  const map={tiles:Array.from({length:25},(_,i)=>({x:i%5,y:Math.floor(i/5),blocked:false}))},valid={x:2.125,y:2.25};assert.equal(relocateIfStranded(valid,map,5),false);assert.deepEqual(valid,{x:2.125,y:2.25});map.tiles[2*5+2].blocked=true;const stranded={x:2.125,y:2.25};assert.equal(relocateIfStranded(stranded,map,5),true);assert.equal(footprintOpen(map,5,stranded.x,stranded.y),true);assert.notDeepEqual(stranded,{x:2.125,y:2.25});
 });
 
 test("district inspection records optional architectural lore",()=>{
@@ -2153,12 +2159,12 @@ test("journal trail examples invoke the exact ground-waymark drawing function",(
   assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,82\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
 });
 
-test("release 52 loads one coherent version across the entire module graph",()=>{
+test("release 53 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=52/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=52/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v52/);assert.match(sw,/styles\.css\?v=52/);assert.match(sw,/main\.js\?v=52/);assert.match(sw,/combat\.js\?v=52/);assert.match(sw,/renderer\.js\?v=52/);
-  assert.match(build,/release='52'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=53/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=53/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v53/);assert.match(sw,/styles\.css\?v=53/);assert.match(sw,/main\.js\?v=53/);assert.match(sw,/combat\.js\?v=53/);assert.match(sw,/renderer\.js\?v=53/);
+  assert.match(build,/release='53'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("only danger waymarks add a direction stem while other silhouettes point naturally",()=>{
