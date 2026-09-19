@@ -1,7 +1,7 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=61";
-import { vendorShop, buyFromVendor } from "./game.js?v=61";
-import { CREATURE_TRAITS } from "./combat.js?v=61";
-import { hashSeed } from "./random.js?v=61";
+import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=62";
+import { vendorShop, buyFromVendor } from "./game.js?v=62";
+import { CREATURE_TRAITS } from "./combat.js?v=62";
+import { hashSeed } from "./random.js?v=62";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -202,19 +202,19 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame } from "./persistence.js?v=61";
+import { loadSave, saveGame } from "./persistence.js?v=62";
 import {
   Game,
   actionReadiness,
   enemyDangerRadius,
   characterStats,
   syncCharacterStats,
-} from "./game.js?v=61";
-import { createInput } from "./input.js?v=61";
-import { render as baseRender } from "./renderer.js?v=61";
-import { STATS } from "./types.js?v=61";
-import { SPELLS } from "./items.js?v=61";
-import { currentObjective, validActions } from "./interactions.js?v=61";
+} from "./game.js?v=62";
+import { createInput } from "./input.js?v=62";
+import { render as baseRender } from "./renderer.js?v=62";
+import { STATS } from "./types.js?v=62";
+import { SPELLS } from "./items.js?v=62";
+import { currentObjective, validActions } from "./interactions.js?v=62";
 import {
   generateRegion as generateWorldRegion,
   sectionSummary,
@@ -223,7 +223,7 @@ import {
   apertureTier,
   APERTURE_THRESHOLDS,
   perceived,
-} from "./world.js?v=61";
+} from "./world.js?v=62";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -263,8 +263,8 @@ function updateWorldNotices() {
     announcedThreats.add(e.id);
     showEventBanner(e.boss ? "MAJOR THREAT" : "CORRIDOR BREACH", e.kind.replace(/([A-Z])/g," $1").trim() + " has entered this section", "danger");
   }
-  const o=(game.map.objects||[]).filter(q=>q.landmark||["shack","architecturalDistrict","checkpoint","dungeon","shrine","ruinMarker"].includes(q.kind)).sort((a,b)=>Math.hypot(a.x-game.player.x,a.y-game.player.y)-Math.hypot(b.x-game.player.x,b.y-game.player.y))[0],key=o&&Math.hypot(o.x-game.player.x,o.y-game.player.y)<2.4?game.areaId()+":"+o.id:"";
-  if(key&&key!==nearbyNotice){nearbyNotice=key;showEventBanner("SITE REACHED",o.name||({shack:"Wayfarer Shack",architecturalDistrict:"Architectural Ruin",dungeon:"Buried Crossing",checkpoint:"Wayglass Beacon",shrine:"Singing Array",ruinMarker:"Broken Observatory"}[o.kind]||"Unusual Site"));}
+  const activatedHere=!!save.checkpoints?.[`${game.rx},${game.ry}`],o=(game.map.objects||[]).filter(q=>(q.landmark||["shack","architecturalDistrict","checkpoint","dungeon","shrine","ruinMarker","bossCue"].includes(q.kind))&&!(q.kind==="checkpoint"&&activatedHere)).sort((a,b)=>Math.hypot(a.x-game.player.x,a.y-game.player.y)-Math.hypot(b.x-game.player.x,b.y-game.player.y))[0],key=o&&Math.hypot(o.x-game.player.x,o.y-game.player.y)<2.4?game.areaId()+":"+o.id:"";
+  if(key&&key!==nearbyNotice){nearbyNotice=key;const title=o.kind==="checkpoint"?"WAYGLASS REACHED":o.kind==="dungeon"?"CROSSING REACHED":o.kind==="bossCue"?"CORRIDOR BREACH":"SITE REACHED";showEventBanner(title,o.name||({shack:"Wayfarer Shack",architecturalDistrict:"Architectural Ruin",dungeon:"Buried Crossing",checkpoint:"Wayglass Beacon",shrine:"Singing Array",ruinMarker:"Broken Observatory",bossCue:"Major Threat"}[o.kind]||"Unusual Site"),o.kind==="bossCue"?"danger":"discovery");}
   else if(!key)nearbyNotice="";
 }
 function apertureStatsCard() {
@@ -819,7 +819,7 @@ function drawMap() {
   mctx.imageSmoothingEnabled = false;
   mctx.fillStyle = "#091018";
   mctx.fillRect(0, 0, w, h);
-  const cell = 52 * mapView.zoom,
+  const signals=wayfindingCues(save.seed,game.rx,game.ry,save.worldGeneration,save,game.area==="overworld"?game.map:null),signalBySection=new Map(signals.map(q=>[`${q.targetRx},${q.targetRy}`,q])),cell = 52 * mapView.zoom,
     cols = Math.ceil(w / (2 * cell)) + 1,
     rows = Math.ceil(h / (2 * cell)) + 1;
   for (let j = -rows; j <= rows; j++)
@@ -829,7 +829,7 @@ function drawMap() {
         key = `${rx},${ry}`,
         x = w / 2 + i * cell - cell / 2 + mapView.panX,
         y = h / 2 + j * cell - cell / 2 + mapView.panY,
-        seen = !!save.explored[key],
+        seen = !!save.explored[key],signal=signalBySection.get(key),
         frontier =
           !seen &&
           [
@@ -838,13 +838,13 @@ function drawMap() {
             [0, 1],
             [0, -1],
           ].some(([a, b]) => save.explored[`${rx + a},${ry + b}`]);
-      if (!seen && !frontier) continue;
+      if (!seen && !frontier && !signal) continue;
       const record = save.atlas?.[key], terrain = record?.terrain || (rx===game.rx&&ry===game.ry?game.map.dominant:"ash");
       mctx.fillStyle = seen
         ? { ash: "#51464a", glass: "#315b62", ember: "#794735" }[
             terrain
           ]
-        : "#202833";
+        : signal ? "#241f31" : "#202833";
       mctx.fillRect(x + 2, y + 2, cell - 4, cell - 4);
       mctx.strokeStyle = frontier ? "#596675" : "#9eb9b2";
       mctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4);
@@ -864,6 +864,7 @@ function drawMap() {
         mctx.font = `${Math.max(8, 10 * mapView.zoom)}px monospace`;
         mctx.fillText(`${rx},${ry}`, x + 5, y + 14);
       }
+      if(signal&&!seen){mctx.save();mctx.globalAlpha=.9;mctx.translate(x+cell/2,y+cell/2);drawWaymarkIcon(mctx,signal.signalKind,Math.max(18,cell*.72));mctx.restore();if(mapView.zoom>=1.35){mctx.fillStyle="#cfc5de";mctx.font=`${Math.max(8,8*mapView.zoom)}px monospace`;mctx.fillText("UNRESOLVED SIGNAL",x+5,y+cell-7)}}
       if (rx === game.rx && ry === game.ry) {
         mctx.fillStyle = "#fff4a8";
         mctx.beginPath();
@@ -877,7 +878,7 @@ function drawMap() {
     }
   mctx.fillStyle = "#dce7e2";
   mctx.fillText(
-    `Center ${mapView.x},${mapView.y} · ${Object.keys(save.explored).length} sections explored`,
+    `Center ${mapView.x},${mapView.y} · ${Object.keys(save.explored).length} sections explored · ${signals.length} unresolved signals`,
     10,
     h - 10,
   );
