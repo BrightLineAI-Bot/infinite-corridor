@@ -120,14 +120,23 @@ export function awardExperience(save, amount) {
 export function tileOpen(map, width, x, y) {
   const ix = Math.floor(x),
     iy = Math.floor(y),
-    height = map.tiles.length / width;
-  return (
-    ix >= 0 &&
-    iy >= 0 &&
-    ix < width &&
-    iy < height &&
-    !map.tiles[iy * width + ix].blocked
-  );
+    height = map.tiles.length / width,
+    tile = map.tiles[iy * width + ix];
+  if (ix < 0 || iy < 0 || ix >= width || iy >= height || !tile || tile.blocked)
+    return false;
+  if (tile.structure === "shackWall" && tile.wallSides?.length) {
+    const lx = x - ix,
+      ly = y - iy,
+      thickness = 0.22;
+    if (
+      (tile.wallSides.includes("west") && lx < thickness) ||
+      (tile.wallSides.includes("east") && lx > 1 - thickness) ||
+      (tile.wallSides.includes("north") && ly < thickness) ||
+      (tile.wallSides.includes("south") && ly > 1 - thickness)
+    )
+      return false;
+  }
+  return true;
 }
 export function footprintOpen(map, width, x, y) {
   return (

@@ -57,6 +57,25 @@ function tile(ctx, t, x, y, s, map, w, activeBuildingId=null) {
   if (t.structure === "districtDoor") {
     ctx.fillStyle = p[d & 1]; ctx.fillRect(px, py, s + 1, s + 1); ctx.fillStyle="#0b0d0d";ctx.fillRect(px+s*.2,py+s*.08,s*.6,s*.86);ctx.strokeStyle="#b79c7166";ctx.lineWidth=2;ctx.strokeRect(px+s*.18,py+s*.06,s*.64,s*.9);ctx.fillStyle="#c6a66a";ctx.fillRect(px+s*.66,py+s*.5,3,3);return;
   }
+  if (t.structure === "shackWall") {
+    ctx.fillStyle = PAL[t.kind]?.[d & 1] || PAL.floor[d & 1];
+    ctx.fillRect(px, py, s + 1, s + 1);
+    if (activeBuildingId === t.buildingId) {
+      const thick = s * .22, sides = t.wallSides || [];
+      ctx.fillStyle = "#39342e";
+      if (sides.includes("west")) ctx.fillRect(px, py, thick, s + 1);
+      if (sides.includes("east")) ctx.fillRect(px + s - thick, py, thick + 1, s + 1);
+      if (sides.includes("north")) ctx.fillRect(px, py, s + 1, thick);
+      if (sides.includes("south")) ctx.fillRect(px, py + s - thick, s + 1, thick + 1);
+      ctx.strokeStyle = "#87776288";
+      ctx.lineWidth = 1;
+      if (sides.includes("west")) { ctx.beginPath(); ctx.moveTo(px + thick, py); ctx.lineTo(px + thick, py + s); ctx.stroke(); }
+      if (sides.includes("east")) { ctx.beginPath(); ctx.moveTo(px + s - thick, py); ctx.lineTo(px + s - thick, py + s); ctx.stroke(); }
+      if (sides.includes("north")) { ctx.beginPath(); ctx.moveTo(px, py + thick); ctx.lineTo(px + s, py + thick); ctx.stroke(); }
+      if (sides.includes("south")) { ctx.beginPath(); ctx.moveTo(px, py + s - thick); ctx.lineTo(px + s, py + s - thick); ctx.stroke(); }
+    }
+    return;
+  }
   if (t.blocked) {
     if (t.structure === "shack") {
       const same=(dx,dy)=>map[(y+dy)*w+x+dx]?.buildingId===t.buildingId;
@@ -292,16 +311,16 @@ function shelterSigil(ctx,cx,cy,r,glyph){
   ctx.stroke();
 }
 function shack(ctx,o,s,p,map){
-  const b=o.bounds||{x:o.x-2,y:o.y-2,w:5,h:4},mw=Math.round(Math.sqrt(map.length)),pt=map[Math.floor(p.y)*mw+Math.floor(p.x)],inside=pt?.buildingId===o.id,x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s,accent={pilgrim:"#8f7658",relay:"#527d7b",chapel:"#806777",workshop:"#8c5944"}[o.facadeStyle]||"#8f7658",condition=o.condition||"weathered",grain=(o.signGlyph||0)+b.x*3+b.y*5;
+  const b=o.bounds||{x:o.x-2,y:o.y-2,w:5,h:4},mw=Math.round(Math.sqrt(map.length)),pt=map[Math.floor(p.y)*mw+Math.floor(p.x)],inside=pt?.buildingId===o.id&&pt?.structure==="shackInterior",x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s,accent={pilgrim:"#8f7658",relay:"#527d7b",chapel:"#806777",workshop:"#8c5944"}[o.facadeStyle]||"#8f7658",condition=o.condition||"weathered",grain=(o.signGlyph||0)+b.x*3+b.y*5;
   ctx.save();
   if(inside){ctx.strokeStyle=accent+"66";ctx.lineWidth=2;ctx.strokeRect(x+s*.08,y+s*.08,w-s*.16,h-s*.16);ctx.restore();return}
-  const wallTop=y+s*1.5;ctx.fillStyle=condition==="kept"?"#302d27":"#282720";ctx.fillRect(x,wallTop,w,Math.max(0,h-s*1.5));
-  ctx.fillStyle="#3a362d";for(let q=s*1.58,n=0;q<h;q+=s*(.45+((grain+n)%3)*.04),n++){const inset=((grain+n*7)%5)*s*.035;ctx.fillRect(x+inset,y+q,w-inset-s*((grain+n)%4===0?.12:0),s*(.055+((grain+n)%2)*.035))}
+  const backY=y+s*.16,frontY=y+h-s*1.62,skew=s*.38,wallTop=frontY+s*.18;ctx.fillStyle=condition==="kept"?"#302d27":"#282720";ctx.fillRect(x,wallTop,w,Math.max(0,y+h-wallTop));
+  ctx.fillStyle="#3a362d";for(let q=wallTop-y+s*.08,n=0;q<h;q+=s*(.45+((grain+n)%3)*.04),n++){const inset=((grain+n*7)%5)*s*.035;ctx.fillRect(x+inset,y+q,w-inset-s*((grain+n)%4===0?.12:0),s*(.055+((grain+n)%2)*.035))}
   ctx.strokeStyle=accent+"88";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+s*.08,wallTop);ctx.lineTo(x+s*.06,y+h-s*.08);ctx.moveTo(x+w-s*.07,wallTop);ctx.lineTo(x+w-s*.12,y+h-s*.06);ctx.stroke();
-  const backY=y+s*.18,frontY=y+s*1.4,skew=s*.3;ctx.fillStyle=o.roofProfile==="gable"?"#39342b":"#35312a";ctx.strokeStyle=accent+"88";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+s*.2,backY);ctx.lineTo(x+w-s*.2,backY);ctx.lineTo(x+w+skew,frontY);ctx.lineTo(x-skew,frontY);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.fillStyle=o.roofProfile==="gable"?"#39342b":"#35312a";ctx.strokeStyle=accent+"88";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+s*.2,backY);ctx.lineTo(x+w-s*.2,backY);ctx.lineTo(x+w+skew,frontY);ctx.lineTo(x-skew,frontY);ctx.closePath();ctx.fill();ctx.stroke();
   ctx.strokeStyle="#5a514188";ctx.lineWidth=1;for(let q=.18;q<1;q+=.16){const yy=backY+(frontY-backY)*q;ctx.beginPath();ctx.moveTo(x+s*.2-skew*q,yy);ctx.lineTo(x+w-s*.2+skew*q,yy);ctx.stroke()}
   if(o.roofProfile==="gable"){ctx.strokeStyle=accent+"99";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x+w*.5,backY-s*.04);ctx.lineTo(x+w*.5,frontY+s*.04);ctx.stroke();ctx.fillStyle="#17171433";ctx.beginPath();ctx.moveTo(x+s*.2,backY);ctx.lineTo(x+w*.5,backY);ctx.lineTo(x+w*.5,frontY);ctx.lineTo(x-skew,frontY);ctx.closePath();ctx.fill()}
-  if(o.roofProfile==="stepped"){ctx.fillStyle="#24211d";ctx.strokeStyle=accent+"77";ctx.lineWidth=2;ctx.fillRect(x+w*.3,y+s*.5,w*.4,s*.5);ctx.strokeRect(x+w*.3,y+s*.5,w*.4,s*.5)}
+  if(o.roofProfile==="stepped"){ctx.fillStyle="#24211d";ctx.strokeStyle=accent+"77";ctx.lineWidth=2;ctx.fillRect(x+w*.3,y+(frontY-y)*.32,w*.4,s*.5);ctx.strokeRect(x+w*.3,y+(frontY-y)*.32,w*.4,s*.5)}
   ctx.fillStyle="#211f1b";ctx.strokeStyle=accent+"99";ctx.beginPath();ctx.moveTo(x-skew,frontY);ctx.lineTo(x+w+skew,frontY);ctx.lineTo(x+w+s*.12,frontY+s*.22);ctx.lineTo(x-s*.12,frontY+s*.22);ctx.closePath();ctx.fill();ctx.stroke();
   if(condition==="collapsed"){ctx.fillStyle="#10110f";ctx.beginPath();ctx.moveTo(x+w*.62,y+s*.56);ctx.lineTo(x+w*.74,y+s*.38);ctx.lineTo(x+w*.82,y+s*.82);ctx.lineTo(x+w*.68,y+s*1.08);ctx.closePath();ctx.fill()}
   const door=o.door||{x:b.x+Math.floor(b.w/2),y:b.y+b.h-1,width:1},doorWidth=Math.max(1,door.width||1),dx=(door.x+.15)*s,dy=(door.y+.05)*s,dw=(doorWidth-.3)*s;ctx.fillStyle="#0c0d0c";ctx.fillRect(dx,dy,dw,s*.95);ctx.strokeStyle=accent+"aa";ctx.lineWidth=2;ctx.strokeRect(dx,dy,dw,s*.95);
@@ -309,7 +328,7 @@ function shack(ctx,o,s,p,map){
   if(condition==="patched"||condition==="collapsed"){ctx.fillStyle="#4a4031aa";const px=x+w*(.2+Math.abs(grain%4)*.13);ctx.fillRect(px,y+h-s*1.42,s*.85,s*.68);ctx.strokeStyle="#74624c99";ctx.strokeRect(px,y+h-s*1.42,s*.85,s*.68)}
   if(condition!=="kept"){ctx.strokeStyle="#6c5b43aa";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x+s*.18,y+h-s*.18);ctx.lineTo(x+s*1.22,wallTop+s*.12);if(condition==="collapsed"){ctx.moveTo(x+w-s*.22,y+h-s*.14);ctx.lineTo(x+w-s*1.35,wallTop)}ctx.stroke()}
   if(condition==="overgrown"){ctx.strokeStyle="#435a3f";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+w-s*.18,y+h);ctx.quadraticCurveTo(x+w-s*.85,y+h*.62,x+w-s*.38,wallTop);ctx.quadraticCurveTo(x+w-s*.08,y+s*1.08,x+w-s*.55,y+s*.62);ctx.stroke()}
-  ctx.strokeStyle=accent+"bb";ctx.lineWidth=2;shelterSigil(ctx,x+w*.5,y+s*.96,s*.16,o.signGlyph);ctx.fillStyle="#c8bda4";ctx.font=`${Math.max(8,s*.18)}px monospace`;ctx.textAlign="center";ctx.fillText(o.name.toUpperCase(),x+w/2,y-s*.12);ctx.textAlign="start";ctx.restore();
+  ctx.strokeStyle=accent+"bb";ctx.lineWidth=2;shelterSigil(ctx,x+w*.5,frontY-s*.42,s*.16,o.signGlyph);ctx.fillStyle="#c8bda4";ctx.font=`${Math.max(8,s*.18)}px monospace`;ctx.textAlign="center";ctx.fillText(o.name.toUpperCase(),x+w/2,y-s*.12);ctx.textAlign="start";ctx.restore();
 }
 function architecturalBuilding(ctx,o,s,p,map){
   const b=o.bounds,mw=32,pt=map[Math.floor(p.y)*mw+Math.floor(p.x)],inside=pt?.buildingId===o.id,colors={city:["#393a3f","#858188"],arcology:["#18333b","#58a0a6"],cloister:["#3b2d35","#9a737f"]}[o.districtStyle]||["#333","#888"],accent={copper:"#b37954",ivory:"#d5c8a7",oxide:"#9a6457",violet:"#9278a8"}[o.accent]||colors[1],cells=o.footprint||[],set=new Set(cells.map(q=>`${q.x},${q.y}`));
@@ -343,7 +362,7 @@ export function render(ctx, g, w, h, now) {
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - p.y * s));
   for (let y = t; y < b; y++)
     for (let x = l; x < r; x++)
-      tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,g.map.tiles[Math.floor(p.y)*mw+Math.floor(p.x)]?.buildingId||null);
+      tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,(()=>{const q=g.map.tiles[Math.floor(p.y)*mw+Math.floor(p.x)];return q?.structure==="shackInterior"||q?.structure==="districtInterior"?q.buildingId:null})());
   for (const e of g.enemies)
     if (!e.dead && e.telegraph > 0) {
       const pulse = 0.65 + (0.9 - e.telegraph) * 0.2;
