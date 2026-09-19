@@ -2289,12 +2289,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 80 loads one coherent version across the entire module graph",()=>{
+test("release 81 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "80"/);assert.match(html,/styles\.css\?v=80/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=80/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v80/);assert.match(sw,/styles\.css\?v=80/);assert.match(sw,/main\.js\?v=80/);assert.match(sw,/combat\.js\?v=80/);assert.match(sw,/renderer\.js\?v=80/);
-  assert.match(build,/release='80'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "81"/);assert.match(html,/styles\.css\?v=81/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=81/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v81/);assert.match(sw,/styles\.css\?v=81/);assert.match(sw,/main\.js\?v=81/);assert.match(sw,/combat\.js\?v=81/);assert.match(sw,/renderer\.js\?v=81/);
+  assert.match(build,/release='81'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("Atlas opening tap cannot immediately activate travel controls",()=>{
@@ -2427,4 +2427,10 @@ test("ranged creatures use restrained deterministic projectile patterns",()=>{
 test("Atlas exposes every activated Wayglass as an explicit fast-travel destination",()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8'),main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8');
  assert.match(html,/id="mapWayglassSelect"/);assert.match(main,/Object\.entries\(save\.checkpoints\|\|\{\}\)/);assert.match(main,/function selectedWayglassKey/);assert.match(main,/mapWayglassSelect"\)\.onchange/);assert.match(main,/game\.travelToCheckpoint\(save\.checkpoints\?\.\[key\] \? key : null\)/);
+});
+
+test("supply caches cannot masquerade as Wayglass travel points",()=>{
+ const region=generateRegion("CINDER-VERGE-47",0,-2,1),cache=region.objects.find(o=>o.kind==="supplyCache");assert.ok(cache);assert.equal(region.objects.some(o=>o.kind==="checkpoint"),false);
+ const sites=sectionSites("CINDER-VERGE-47",0,-2,1);assert.ok(sites.some(o=>o.kind==="supplyCache"&&o.name==="Supply Cache"));assert.equal(sites.some(o=>o.kind==="checkpoint"),false);
+ const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8"),main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(renderer,/kind === "chest" \|\| kind === "cache" \|\| kind === "supplyCache"/);assert.match(main,/kind === "supplyCache" \? "cache"/);assert.match(main,/cache:"#d7b96f"/);
 });
