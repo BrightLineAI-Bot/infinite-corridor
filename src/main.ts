@@ -239,7 +239,8 @@ const $ = (s) => document.querySelector(s),
   mctx = mapCanvas.getContext("2d");
 let last = performance.now(),
   clock = 0,
-  mapView = { x: game.rx, y: game.ry, zoom: 1, selected: null, panX: 0, panY: 0 };
+  mapView = { x: game.rx, y: game.ry, zoom: 1, selected: null, panX: 0, panY: 0 },
+  mapMode = "atlas";
 let atlasDrag = null,
   atlasPinch = null,
   overlayPause = false,
@@ -796,7 +797,16 @@ function resume() {
   last = performance.now();
   persist();
 }
+function drawDungeonMap() {
+  const d=Math.min(devicePixelRatio,2),w=Math.min(innerWidth*.9,680),h=Math.min(innerHeight*.65,520),size=24,pad=18,cell=Math.max(5,Math.min((w-pad*2)/size,(h-pad*2)/size)),ox=(w-cell*size)/2,oy=(h-cell*size)/2;
+  mapCanvas.width=w*d;mapCanvas.height=h*d;mapCanvas.style.width=w+"px";mapCanvas.style.height=h+"px";mctx.setTransform(d,0,0,d,0,0);mctx.imageSmoothingEnabled=false;mctx.fillStyle="#091018";mctx.fillRect(0,0,w,h);
+  for(const tile of game.map.tiles){const x=ox+tile.x*cell,y=oy+tile.y*cell;mctx.fillStyle=tile.blocked?"#182129":({hollow:"#51484a",cistern:"#36565a",kiln:"#68463a"}[game.map.recipe]||"#51484a");mctx.fillRect(x,y,Math.ceil(cell),Math.ceil(cell));if(!tile.blocked&&cell>9){mctx.strokeStyle="#ffffff0b";mctx.strokeRect(x,y,cell,cell)}}
+  const colors={exit:"#72d7df",chest:"#d8bd83",supplyCache:"#7fc992",relayTerminal:"#b28cda",trap:"#d16b62",vine:"#77b98b",apertureDoor:"#c493dd"};
+  for(const o of game.map.objects||[]){if(!colors[o.kind])continue;const x=ox+(o.x+.5)*cell,y=oy+(o.y+.5)*cell;mctx.fillStyle=colors[o.kind];mctx.strokeStyle="#0b1014";mctx.lineWidth=2;mctx.beginPath();if(o.kind==="exit"){mctx.rect(x-cell*.32,y-cell*.42,cell*.64,cell*.84)}else if(o.kind==="trap"){mctx.moveTo(x,y-cell*.42);mctx.lineTo(x+cell*.4,y+cell*.35);mctx.lineTo(x-cell*.4,y+cell*.35);mctx.closePath()}else{mctx.arc(x,y,Math.max(3,cell*.28),0,7)}mctx.fill();mctx.stroke()}
+  const px=ox+(game.player.x+.5)*cell,py=oy+(game.player.y+.5)*cell;mctx.fillStyle="#fff4a8";mctx.strokeStyle="#17140b";mctx.lineWidth=2;mctx.beginPath();mctx.arc(px,py,Math.max(4,cell*.34),0,7);mctx.fill();mctx.stroke();mctx.fillStyle="#e7ece7";mctx.font="12px monospace";mctx.fillText("YOU",px+7,py-7);
+}
 function drawMap() {
+  if(mapMode==="dungeon"&&game.area==="dungeon")return drawDungeonMap();
   const d = Math.min(devicePixelRatio, 2),
     w = Math.min(innerWidth * 0.9, 680),
     h = Math.min(innerHeight * 0.65, 520);
@@ -886,6 +896,12 @@ function updateMapTravelButton() {
   travel.disabled = game.area === "dungeon" && !(save.consumables.crossingSigil > 0);
   $("#mapHome").disabled = game.area === "dungeon";
 }
+function updateMapModeUI(){
+  const dungeon=game.area==="dungeon",local=dungeon&&mapMode==="dungeon";
+  $("#mapModeToggle").hidden=!dungeon;$("#mapModeToggle").textContent=local?"Corridor Atlas":"Dungeon Map";$("#mapTitle").textContent=local?`${game.map.name||"Dungeon"} Map`:"Corridor Atlas";atlas.querySelector(".maptools").hidden=local;$("#mapHome").hidden=local;$("#mapLegend").hidden=local;$("#mapInstructions").textContent=local?"A bounded floor plan. Gold marks your position; cyan is the entrance/exit; other colored marks identify known dungeon features.":"Tap an explored section to set a waypoint. Zoom in to reveal the position and names of discovered sites inside each section.";
+  if(local)$("#mapDetail").textContent=`${game.map.identity||"Dungeon"} · bounded 24 × 24 floor · position ${Math.floor(game.player.x)}, ${Math.floor(game.player.y)}`;
+  updateMapTravelButton();
+}
 function showMapDetail(rx, ry) {
   const key = `${rx},${ry}`;
   if (!save.explored[key]) {
@@ -908,8 +924,10 @@ function openMap() {
   if (pausePanel.open) pausePanel.close();
   mapView.x = game.rx;
   mapView.y = game.ry;
+  mapMode = game.area === "dungeon" ? "dungeon" : "atlas";
   if (!atlas.open) atlas.showModal();
-  showMapDetail(game.rx, game.ry);
+  updateMapModeUI();
+  if(mapMode==="atlas")showMapDetail(game.rx, game.ry);
   drawMap();
 }
 function openPack() {
@@ -1247,16 +1265,20 @@ $("#pausedJournal").onclick = openJournal;
 $("#journalClose").onclick = () => journal.close();
 $("#close").onclick = () => panel.close();
 $("#mapClose").onclick = () => atlas.close();
+$("#mapModeToggle").onclick=()=>{mapMode=mapMode==="dungeon"?"atlas":"dungeon";mapView.x=game.rx;mapView.y=game.ry;updateMapModeUI();if(mapMode==="atlas")showMapDetail(game.rx,game.ry);drawMap()};
 $("#mapCenter").onclick = () => {
+  if(mapMode==="dungeon")return;
   mapView.x = game.rx;
   mapView.y = game.ry;
   drawMap();
 };
 $("#mapPlus").onclick = () => {
+  if(mapMode==="dungeon")return;
   mapView.zoom = Math.min(3.2, mapView.zoom + 0.2);
   drawMap();
 };
 $("#mapMinus").onclick = () => {
+  if(mapMode==="dungeon")return;
   mapView.zoom = Math.max(0.6, mapView.zoom - 0.2);
   drawMap();
 };
@@ -1280,11 +1302,13 @@ for (const [id, dx, dy] of [
   ["mapE", 1, 0],
 ])
   $("#" + id).onclick = () => {
+    if(mapMode==="dungeon")return;
     mapView.x += dx;
     mapView.y += dy;
     drawMap();
   };
 mapCanvas.onclick = (e) => {
+  if(mapMode==="dungeon")return;
   if (suppressMapClick) {
     suppressMapClick = false;
     return;
@@ -1303,6 +1327,7 @@ mapCanvas.onclick = (e) => {
   persist();
 };
 mapCanvas.addEventListener("pointerdown", (e) => {
+  if(mapMode==="dungeon")return;
   atlasPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   mapCanvas.setPointerCapture(e.pointerId);
   mapCanvas.classList.add("dragging");
@@ -1317,6 +1342,7 @@ mapCanvas.addEventListener("pointerdown", (e) => {
   }
 });
 mapCanvas.addEventListener("pointermove", (e) => {
+  if(mapMode==="dungeon")return;
   if (!atlasPointers.has(e.pointerId)) return;
   atlasPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (atlasPinch && atlasPointers.size >= 2) {
@@ -1335,6 +1361,7 @@ mapCanvas.addEventListener("pointermove", (e) => {
   drawMap();
 });
 function finishAtlasDrag(e) {
+  if(mapMode==="dungeon")return;
   if (!atlasPointers.has(e.pointerId)) return;
   const wasPinching = !!atlasPinch;
   atlasPointers.delete(e.pointerId);
