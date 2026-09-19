@@ -68,3 +68,11 @@ Later versions can add locally stored “content packs” containing authored or
 - Universal destructibility, fully simulated fire, physics, water, climbing, or crafting.
 - Multiplayer, monetization, ads, telemetry, social systems, and online-only content.
 - A direct implementation of any named existing game, setting, character, creature, visual asset, or story.
+
+## Traversal horizon — water
+
+- Current rule: unbridged surface water is lethal to the Wayfarer, while projectiles pass over it. Cistern dungeons may contain small hazardous pools.
+- Stage one: a quest-earned Tidemantle permits surface swimming but not submersion.
+- Stage two: a Bathysal Lens and dive rig open submerged channels, with readable breath limits and safe air pockets.
+- Stage three: dedicated underwater regions and dungeons can add currents, hidden vertical routes, aquatic creatures, and drowned settlements.
+- Water remains deterministic and local to loaded sections; this is traversal design, not a full fluid simulation.

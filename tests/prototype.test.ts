@@ -38,6 +38,7 @@ import {
   tileOpen,
   relocateIfStranded,
   footprintTouchesCanyon,
+  footprintHazard,
   projectileTileOpen,
   updateProjectiles,
 } from "../src/game.ts";
@@ -2246,12 +2247,28 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 67 loads one coherent version across the entire module graph",()=>{
+test("release 68 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/styles\.css\?v=67/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=67/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v67/);assert.match(sw,/styles\.css\?v=67/);assert.match(sw,/main\.js\?v=67/);assert.match(sw,/combat\.js\?v=67/);assert.match(sw,/renderer\.js\?v=67/);
-  assert.match(build,/release='67'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/styles\.css\?v=68/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=68/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v68/);assert.match(sw,/styles\.css\?v=68/);assert.match(sw,/main\.js\?v=68/);assert.match(sw,/combat\.js\?v=68/);assert.match(sw,/renderer\.js\?v=68/);
+  assert.match(build,/release='68'/);assert.match(build,/\.js\?v=\$\{release\}/);
+});
+
+test("water is lethal to footprints but transparent to projectiles",()=>{
+  const map={tiles:Array.from({length:16},(_,i)=>({x:i%4,y:Math.floor(i/4),kind:"ash",blocked:false}))};
+  map.tiles[5]={x:1,y:1,kind:"river",blocked:true,environment:"river"};
+  assert.equal(footprintHazard(map,4,.8,.4),"river");
+  assert.equal(projectileTileOpen(map,4,1.5,1.5),true);
+  map.tiles[5]={...map.tiles[5],kind:"bridge",blocked:false,bridgeOver:"river"};
+  assert.equal(footprintHazard(map,4,.8,.4),null);
+});
+
+test("ambient fauna stay sparse, deterministic, passive, and recognizable",()=>{
+  let found=null;
+  for(let y=-12;y<=12&&!found;y++)for(let x=-12;x<=12&&!found;x++){const a=generateRegion("quiet-ecology",x,y,1),b=generateRegion("quiet-ecology",x,y,1);assert.deepEqual(a,b);found=a.enemySpawns.find(e=>e.ambient);}
+  assert.ok(found);assert.ok(["graze","follow","vanish"].includes(found.passiveBehavior));assert.ok(["mossGrazer","lanternDoe","hushling"].includes(found.kind));
+  const e=createCombatant(found.kind,3,3);e.ambient=true;e.passiveBehavior=found.passiveBehavior;const map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3.5,y:3.5};assert.equal(updateEnemyAI(e,p,map,10,.1,1,null,()=>assert.fail("passive fauna cannot fire")),false);
 });
 
 test("danger waymarks fill only their forward corner while other silhouettes point naturally",()=>{

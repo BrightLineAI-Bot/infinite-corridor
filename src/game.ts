@@ -158,10 +158,17 @@ export function footprintTouchesCanyon(map, width, x, y) {
     return map.tiles[ty*width+tx]?.kind === "canyon";
   });
 }
+export function footprintHazard(map,width,x,y){
+  for(const [ox,oy] of [[.24,.5],[.76,.5],[.24,.88],[.76,.88]]){
+    const tile=map.tiles[Math.floor(y+oy)*width+Math.floor(x+ox)];
+    if(["canyon","river","dungeonWater"].includes(tile?.kind))return tile.kind;
+  }
+  return null;
+}
 export function projectileTileOpen(map,width,x,y){
   const ix=Math.floor(x),iy=Math.floor(y),height=map.tiles.length/width,tile=map.tiles[iy*width+ix];
   if(ix<0||iy<0||ix>=width||iy>=height||!tile)return false;
-  if(tile.kind==="canyon")return true;
+  if(["canyon","river","dungeonWater"].includes(tile.kind))return true;
   return tileOpen(map,width,x,y);
 }
 export function relocateIfStranded(entity, map, width) {
@@ -689,6 +696,12 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   e.strike = Math.max(0, (e.strike || 0) - dt);
   e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt);
   e.recoil = Math.max(0, (e.recoil || 0) - dt);
+  if(e.passiveBehavior){
+    if(e.passiveBehavior==="vanish"&&toPlayer<2.4){e.dead=true;e.vanished=true;return false}
+    let tx,ty,speed=.16;
+    if(e.passiveBehavior==="follow"&&toPlayer<6&&toPlayer>1.35){tx=player.x-e.x;ty=player.y-e.y;speed=.28}else{ai.phase=(ai.phase+dt/(e.passiveBehavior==="graze"?3.8:2.8))%(Math.PI*2);tx=Math.cos(ai.phase);ty=Math.sin(ai.phase*.73)}
+    const m=Math.hypot(tx,ty)||1;moveAxis(e,tx/m*speed*dt,ty/m*speed*dt,map,width);ai.step=(ai.step+speed*dt)%2;return false;
+  }
   if (e.telegraph > 0) {
     e.telegraph = Math.max(0, e.telegraph - dt);
     if (e.telegraph === 0) {
@@ -703,7 +716,8 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   let tx,
     ty,
     speed = 0.42;
-  if (toPlayer < 6 && fromHome < 9) {
+  if ((toPlayer < 6 || (e.aggro && e.pursuesOutdoors && toPlayer < 14)) && fromHome < (e.pursuesOutdoors?18:9)) {
+    if(e.pursuesOutdoors)e.aggro=true;
     ai.mode = "chase";
     tx = player.x - e.x;
     ty = player.y - e.y;
@@ -1142,7 +1156,7 @@ export class Game {
     this.defeatEnemy = (e) => {
       const first = !e.rewarded,
         r = defeat(e);
-      if (first && e.kind !== "npc") {
+      if (first && e.kind !== "npc" && !e.ambient) {
         const guardian = e.kind === "hollowMarshal";
         gainAperture(
           this.save,
@@ -1219,6 +1233,13 @@ export class Game {
             this.ry,
             this.save.worldGeneration,
           );
+    if (area === "dungeon" && this.map.recipe === "cistern") {
+      for (const [x, y] of [[11, 4], [12, 4], [11, 5], [12, 5]]) {
+        const i = y * 24 + x, t = this.map.tiles[i];
+        if (t && !t.blocked)
+          this.map.tiles[i] = { ...t, kind: "dungeonWater", blocked: true, waterDepth: "shallow" };
+      }
+    }
     if (area === "overworld" && (this.rx !== 0 || this.ry !== 0)) {
       const remembered = this.save.checkpoints?.[`${this.rx},${this.ry}`];
       if (remembered && !this.map.objects.some((o) => o.kind === "checkpoint")) {
@@ -1236,6 +1257,7 @@ export class Game {
     }
     this.enemies = this.map.enemySpawns.map((e) => {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
+      Object.assign(c,{passiveBehavior:e.passiveBehavior||null,ambient:!!e.ambient,pursuesOutdoors:!!(e.shelterAmbush||e.districtResident),shelterAmbush:!!e.shelterAmbush});
       if (e.apertureEncounter) {
         const multiplier = Math.max(1, Number(e.threatMultiplier) || 1);
         c.apertureEncounter = true;
@@ -1777,6 +1799,11 @@ export class Game {
 
   defeatEnemy(e) {
     if (e.rewarded) return;
+    if (e.ambient) {
+      e.rewarded = true;
+      this.message = e.kind === "hushling" ? "The hushling unthreads into violet motes." : "The quiet creature falls. Nothing in it was meant as loot.";
+      return;
+    }
     e.rewarded = true;
     const marks = e.boss ? 12 : e.apertureEncounter ? 6 : 1 + hashSeed(`${this.save.seed}:marks:${this.areaId()}:${e.id}`) % 3;
     this.save.currency += marks;
@@ -2100,21 +2127,21 @@ export class Game {
       return;
     }
     const width = this.area === "dungeon" ? 24 : 32;
-    const fellIntoCanyon=this.area==="overworld"&&footprintTouchesCanyon(this.map,width,nx,ny);
-    if(fellIntoCanyon){p.hp=0;this.message="The ledge gives way beneath the Wayfarer."}
+    const terrainHazard=footprintHazard(this.map,width,nx,ny),fellIntoHazard=!!terrainHazard;
+    if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
     else moveAxis(p, dx, dy, this.map, width);
-    if (!fellIntoCanyon&&input.consume("attack")) {
+    if (!fellIntoHazard&&input.consume("attack")) {
       this.save.aimMode = "attack";
       this.save.toolMode = false;
       this.primaryAttack(now, this.save.lastAim);
     }
-    if (!fellIntoCanyon&&input.consume("interact")) {
+    if (!fellIntoHazard&&input.consume("interact")) {
       this.save.aimMode = "act";
       this.save.toolMode = false;
       this.interact();
     }
     const sanctuary=settlementSanctuary(this.map,this.rx,this.ry,this.save);
-    if(!fellIntoCanyon)this.projectiles = updateProjectiles(
+    if(!fellIntoHazard)this.projectiles = updateProjectiles(
       this.projectiles,
       [...this.enemies, ...this.npcTargets()],
       this.map,
@@ -2145,7 +2172,7 @@ export class Game {
     p.stamina = Math.min(p.maxStamina, p.stamina + 9 * dt);
     for (const e of this.enemies)
       if (
-        !fellIntoCanyon&&
+        !fellIntoHazard&&
         !e.dead &&
         updateEnemyAI(e, p, this.map, width, dt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,(shooter,aim)=>this.projectiles.push({id:`enemy-shot-${shooter.id}-${now}`,x:shooter.x+.5,y:shooter.y+.42,dx:aim.x,dy:aim.y,speed:4.2,life:2.4,damage:shooter.damage,hostile:true,path:"straight",hits:{}})) &&
         now > (p.invulnerableUntil || 0) &&
@@ -2186,7 +2213,7 @@ export class Game {
       p.x = c.x;
       p.y = c.y;
       p.invulnerableUntil = now + 2000;
-      this.message = `${fellIntoCanyon?"Lost to the canyon":"Felled"} — recovered at ${c.name || "checkpoint"}. No items, marks, equipment, or XP were lost. You are protected briefly.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
+      this.message = `${fellIntoHazard?(terrainHazard==="canyon"?"Lost to the canyon":"Lost beneath the water"):"Felled"} — recovered at ${c.name || "checkpoint"}. No items, marks, equipment, or XP were lost. You are protected briefly.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
     }
     Object.assign(this.save.position, {
       area: this.area,
