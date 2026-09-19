@@ -1,5 +1,5 @@
-import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.js?v=60';
-import{rng,pick}from'./random.js?v=60';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
+import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.js?v=61';
+import{rng,pick}from'./random.js?v=61';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
 function passage(seed,axis,a,b){const r=rng(`${seed}:edge:${axis}:${a}:${b}`);return 5+Math.floor(r()*22)}export function sectionExits(seed,rx,ry){return{north:passage(seed,'h',rx,ry),south:passage(seed,'h',rx,ry+1),west:passage(seed,'v',rx,ry),east:passage(seed,'v',rx+1,ry)}}
 function carve(tiles,x,y,kind='ash'){if(kind==='refuge'&&x===12&&y===17)return;if(x>=0&&x<32&&y>=0&&y<32)tiles[y*32+x]={...tiles[y*32+x],x,y,kind,blocked:false}}
 function supply(seed,rx,ry,tiles,w=32){const r=rng(`${seed}:supplies:v2:${rx}:${ry}`),rare=w===32&&r()<.06,types=['restorativeDraught','ironbarkTonic','lumenPhial','secondary'],spots=w===24?[[6,6],[7,6],[6,7]]:[[15,17],[17,17],[15,18],[17,18]],[x,y]=spots[Math.floor(r()*spots.length)],supplyType=rare?'crossingSigil':types[Math.floor(r()*types.length)];return{id:`supply-${rx}-${ry}`,kind:supplyType==='secondary'?'weaponCache':'supplyCache',supplyType,x,y,state:'ready',actions:['collect']}}
