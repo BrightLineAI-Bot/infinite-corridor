@@ -1,4 +1,4 @@
-import { hashSeed, rng } from "./random.js?v=85";
+import { hashSeed, rng } from "./random.js?v=86";
 
 export const DEEP_DUNGEON_SCHEMA_VERSION = 3;
 export const DEEP_ARCHETYPE_IDS = ["threefold", "descent", "loop", "flooded", "fortress"];
