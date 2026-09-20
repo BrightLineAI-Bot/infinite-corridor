@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=83" />
+    <link rel="stylesheet" href="./styles.css?v=84" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -106,6 +106,9 @@
         <button id="mapClose" class="close">×</button>
         <h2 id="mapTitle">Corridor Atlas</h2>
         <button id="mapModeToggle" type="button" hidden>Dungeon Map</button>
+        <label id="dungeonLevelPicker" class="wayglass-picker" hidden>Discovered level
+          <select id="dungeonLevelSelect" aria-label="Discovered dungeon level"></select>
+        </label>
         <canvas id="mapCanvas"></canvas>
         <div class="maptools">
           <button id="mapPlus">+</button><button id="mapMinus">−</button
@@ -132,7 +135,7 @@
     <script type="module">
       const boot = async () => {
         if ("serviceWorker" in navigator) {
-          const release = "83";
+          const release = "84";
           const r = await navigator.serviceWorker.register(`./sw.js?v=${release}`, {
             updateViaCache: "none",
           });
@@ -154,7 +157,7 @@
           }
           sessionStorage.removeItem("corridor-upgrade-51");
         }
-        await import("./src/main.js?v=83");
+        await import("./src/main.js?v=84");
       };
       boot().catch((e) => {
         console.error(e);

@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS } from "./items.js?v=83";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS } from "./items.js?v=84";
 import {
   generateRegion,
   generateDungeon,
@@ -12,7 +12,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js?v=83";
+} from "./world.js?v=84";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=83";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=84";
 import {
   applyInteraction,
   validActions,
@@ -33,14 +33,67 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=83";
-import { ensurePerception } from "./types.js?v=83";
-import { generateItem } from "./items.js?v=83";
-import { hashSeed } from "./random.js?v=83";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=83';
+} from "./interactions.js?v=84";
+import { ensurePerception } from "./types.js?v=84";
+import { generateItem } from "./items.js?v=84";
+import { hashSeed } from "./random.js?v=84";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=84';
+import{foundryEncounter,validateFoundryCandidate}from'./foundry.js?v=84';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=84';
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
+export function mapWidth(map, area = "overworld") { return Math.max(1, Number(map?.width) || (area === "dungeon" ? 24 : 32)); }
+export function mapHeight(map, area = "overworld") { return Math.max(1, Number(map?.height) || Math.floor((map?.tiles?.length || mapWidth(map, area)) / mapWidth(map, area))); }
+export function deepDungeonProgress(save, id) {
+  const history = dungeonHistory(save, id);
+  const p = history.deep ||= { version: 1, defeatedWingIds: [], defeatedFinalIds: [], gateOpened: false, completed: false, rewardClaimed: false, activeAnchor: null };
+  p.completedObjectiveIds ||= []; p.activatedAnchorIds ||= []; p.openedShortcutIds ||= [];
+  p.discoveredLevelIds ||= []; p.completedSceneIds ||= []; p.currentLevelId ||= null;
+  p.story ||= { version: 1, storyId: null, started: false, completed: false, completedBeatIds: [], scenesWitnessed: [], rewardClaimed: false, carriedRelic: null };
+  return p;
+}
+export function applyDeepDungeonProgress(save, id, map) {
+  if (!map?.deepDungeon && map?.recipe !== "deep-v1") return null;
+  const progress = deepDungeonProgress(save, id), defeated = new Set(progress.defeatedWingIds || []);
+  progress.name = map.name; progress.archetype = map.archetype || "threefold"; progress.schemaVersion = map.schemaVersion || 1; progress.requiredObjectiveIds = (map.allObjectives || map.objectives || map.wings || []).map((q) => q.id); progress.zoneCount = Math.max(progress.zoneCount||0,map.zones?.length || 1);progress.currentLevelId=map.levelId||progress.currentLevelId;if(map.levelId&&!progress.discoveredLevelIds.includes(map.levelId))progress.discoveredLevelIds.push(map.levelId);
+  for (const wing of map.wings || []) if (defeated.has(wing.id) && !progress.completedObjectiveIds.includes(wing.id)) progress.completedObjectiveIds.push(wing.id);
+  const completed = new Set(progress.completedObjectiveIds || []), requirements = map.recipe === "deep-v1" ? (map.wings || []).map((wing) => wing.id) : map.finalGate?.requires || progress.requiredObjectiveIds || [];
+  progress.gateOpened = progress.gateOpened || requirements.every((objectiveId) => completed.has(objectiveId) || defeated.has(objectiveId));
+  map.deepProgress = progress;
+  for (const o of map.objects || []) {
+    if (o.kind === "deepReturn") Object.assign(o, defeated.has(o.wingId) ? { state: "active", actions: ["return"] } : { state: "dormant", actions: [] });
+    if (o.kind === "deepAnchor") Object.assign(o, completed.has(o.unlockObjectiveId) ? { state: "active", actions: ["recover"] } : { state: "dormant", actions: [] });
+    if (o.kind === "deepMechanism" && completed.has(o.objectiveId)) Object.assign(o, { state: "active", actions: ["inspect"] });
+    if (o.kind === "storyTone" && progress.story.completedBeatIds.includes(o.beatId)) Object.assign(o, { state: "sounded", actions: [] });
+    if (o.kind === "storyRelic" && progress.story.carriedRelic === o.id) Object.assign(o, { state: "claimed", actions: [] });
+    if (o.kind === "storyGhost" && progress.story.completed) Object.assign(o, { state: "released", actions: [] });
+    if (o.kind === "storyActor") Object.assign(o, progress.story.completed ? {state:"departed",actions:[]} : progress.story.started ? {state:"manifest",actions:["witness"]}:{state:"veiled",actions:["witness"]});
+    if (o.kind === "storyScene" && progress.story.completedBeatIds.includes(o.beatId)) Object.assign(o,{state:"witnessed",actions:[]});
+    if (o.kind === "deepShortcut") {const opened=progress.openedShortcutIds.includes(o.id),available=completed.has(o.unlockObjectiveId);Object.assign(o,opened?{state:"open",actions:["inspect"]}:available?{state:"revealed",actions:["open"]}:{state:"hidden",actions:["inspect"]});for(const p of o.cells||[])if(opened)map.tiles[p.y*map.width+p.x]={...map.tiles[p.y*map.width+p.x],kind:"deepFloor",blocked:false,routeId:o.id};}
+    if (o.kind === "deepPortal") {const active=o.unlockOnCompletion?progress.completed:!o.unlockObjectiveId||completed.has(o.unlockObjectiveId);Object.assign(o,active?{state:"active",actions:["travel"]}:{state:"dormant",actions:["inspect"]});}
+    if (o.kind === "sealedGate") Object.assign(o, progress.gateOpened ? { state: "open", blocked: false, actions: ["enter"] } : { state: "sealed", blocked: true, actions: ["inspect"] });
+  }
+  const width = mapWidth(map, "dungeon");
+  for (const p of map.finalGateTiles || []) map.tiles[p.y * width + p.x] = { ...map.tiles[p.y * width + p.x], kind: progress.gateOpened ? "deepFloor" : "sealedGate", blocked: !progress.gateOpened, gateId: map.finalGateId };
+  return progress;
+}
+export function completeDeepStory(save, id, map) {
+  const progress = deepDungeonProgress(save, id), story = progress.story, pack = map?.storyPackage;
+  if (!pack || story.completed) return false;
+  story.completed = true;
+  if (!story.scenesWitnessed.includes("resolution")) story.scenesWitnessed.push("resolution");
+  if (!story.rewardClaimed) {
+    story.rewardClaimed = true;
+    if (pack.reward?.aperture) gainAperture(save, pack.reward.aperture, `deep-story:${id}:${pack.id}`, `${pack.title} widened the Wayfarer's Aperture.`);
+    if (pack.reward?.weaponSphere) save.materials.weaponSphere = (save.materials.weaponSphere || 0) + pack.reward.weaponSphere;
+    if (pack.reward?.armorSphere) save.materials.armorSphere = (save.materials.armorSphere || 0) + pack.reward.armorSphere;
+  }
+  journalOnce(save, `deep-story-complete:${id}:${pack.id}`, `${pack.title} resolved within ${map.name}. Its final apparition passed beyond the Corridor.`, `${map.name} — ${pack.title}`);
+  return true;
+}
 export function enemyDefeatNotice(e, area = "overworld") {
+  const exceptional = !!(e.defeatTitle || e.apertureEncounter || e.eliteId || e.dungeonRole || e.boss || ["hollowMarshal", "riftColossus", "gateRevenant"].includes(e.kind));
+  if (!exceptional) return null;
   const name = e.eliteName || ({
     hollowMarshal: "Hollow Marshal",
     riftColossus: "Rift Colossus",
@@ -54,7 +107,7 @@ export function enemyDefeatNotice(e, area = "overworld") {
   else if (e.eliteId) title = "ELITE SLAIN";
   else if (e.boss) title = "RIFT BOSS BROKEN";
   else if (e.apertureEncounter) title = "BREACH STILLED";
-  const clearsCrossing = area === "dungeon" && (e.boss || e.kind === "hollowMarshal");
+  const clearsCrossing = area === "dungeon" && !e.dungeonRole && (e.boss || e.kind === "hollowMarshal");
   return { title, detail: `${name}${clearsCrossing ? " · crossing cleared" : ""}`, kind: e.boss || e.eliteId ? "danger" : "discovery" };
 }
 
@@ -251,11 +304,8 @@ export function footprintTouchesCanyon(map, width, x, y) {
   });
 }
 export function footprintHazard(map,width,x,y){
-  for(const [ox,oy] of [[.24,.5],[.76,.5],[.24,.88],[.76,.88]]){
-    const tile=map.tiles[Math.floor(y+oy)*width+Math.floor(x+ox)];
-    if(["canyon","river","dungeonWater"].includes(tile?.kind))return tile.kind;
-  }
-  return null;
+  const tile=map.tiles[Math.floor(y+.72)*width+Math.floor(x+.5)];
+  return ["canyon","river","dungeonWater"].includes(tile?.kind)?tile.kind:null;
 }
 export function footprintInsideStructure(map,width,x,y){
   for(const [ox,oy] of [[.24,.5],[.76,.5],[.24,.88],[.76,.88]]){
@@ -376,6 +426,7 @@ export function updateProjectiles(
           alertEnemy(e);
           e.hp -= p.damage;
           e.hitFlash = 0.18;
+          e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.1 : 0.18);
           if (p.path === "boomerang") {
             (p.hits ||= {})[e.id] = true;
           } else p.dead = true;
@@ -556,6 +607,7 @@ export function updateEffects(effects, enemies, dt, onDefeat = () => {}) {
         alertEnemy(e);
         e.hp -= fx.damage;
         e.hitFlash = 0.18;
+        e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.1 : 0.18);
         if (e.hp <= 0 && !e.dead) {
           e.dead = true;
           onDefeat(e);
@@ -809,6 +861,9 @@ export function alertEnemy(e) {
 export function enemyProjectilePattern(shooter,aim,now=0){
  const rotate=(v,a)=>({x:v.x*Math.cos(a)-v.y*Math.sin(a),y:v.x*Math.sin(a)+v.y*Math.cos(a)}),base={x:shooter.x+.5,y:shooter.y+.42,hostile:true,hits:{}},shot=(id,d,extra={})=>({...base,id:`enemy-shot-${shooter.id}-${now}-${id}`,dx:d.x,dy:d.y,speed:4.2,life:2.4,damage:shooter.damage,path:'straight',...extra});
  const sequence=(shooter.shotSequence=(shooter.shotSequence||0)+1);
+ if(shooter.foundryAttack==='threeShotCone')return[-.2,0,.2].map((a,i)=>shot(`foundry-cone-${i}`,rotate(aim,a),{damage:Math.ceil(shooter.damage*.62)}));
+ if(shooter.foundryAttack==='arcBurst')return[-.14,.14].map((a,i)=>shot(`foundry-arc-${i}`,rotate(aim,a),{path:'arc',jumpable:true,speed:3.4,life:2.7,damage:Math.ceil(shooter.damage*.72)}));
+ if(shooter.foundryAttack==='sweepingBeam')return[-.28,-.14,0,.14,.28].map((a,i)=>shot(`foundry-sweep-${i}`,rotate(aim,a),{speed:5.2,life:1.5,damage:Math.ceil(shooter.damage*.34)}));
  if(shooter.kind==='voidSentinel'){
   if(sequence%4===0)return[shot('blast',aim,{path:'grenade',speed:3.15,life:1.25,damage:Math.ceil(shooter.damage*.8),blastRadius:1.65})];
   return[-.13,0,.13].map((a,i)=>shot(`fan-${i}`,rotate(aim,a),{damage:Math.ceil(shooter.damage*.58),speed:4.8}));
@@ -827,6 +882,12 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   e.strike = Math.max(0, (e.strike || 0) - dt);
   e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt);
   e.recoil = Math.max(0, (e.recoil || 0) - dt);
+  e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
+  if (e.hitStun > 0) {
+    e.telegraph = 0;
+    ensureAI(e).mode = "stagger";
+    return false;
+  }
   if(e.passiveBehavior){
     if(e.passiveBehavior==="vanish"&&toPlayer<2.4){e.dead=true;e.vanished=true;return false}
     let tx,ty,speed=.16;
@@ -889,6 +950,7 @@ export class Game {
   constructor(save, now = 0) {
     this.save = save;
     ensureEliteState(save);
+    ensureCorridorSystems(save);
     if (!["attack", "tool", "act"].includes(save.aimMode))
       save.aimMode = save.toolMode ? "tool" : "attack";
     save.toolMode = save.aimMode === "tool";
@@ -942,7 +1004,7 @@ export class Game {
       if (now < (this.player.attackReadyAt || 0)) return [];
       const baseProfile = primaryProfile(this.save.equipment.primary),
         profile = { ...baseProfile, range: baseProfile.range * (1 + characterStats(this.save).attackReach) },
-        width = this.area === "dungeon" ? 24 : 32,
+        width = mapWidth(this.map, this.area),
         d = explicitDirection
           ? projectileDirection(
               explicitDirection.x,
@@ -1062,7 +1124,7 @@ export class Game {
     const defeat = this.defeatEnemy.bind(this);
     this.defeatEnemy = (e) => {
       if (e.kind === "npc") return;
-      if (e.kind === "hollowMarshal") {
+      if (e.kind === "hollowMarshal" && !e.dungeonRole) {
         const d = dungeonHistory(this.save, this.areaId());
         d.guardianDefeated = true;
         if (
@@ -1078,7 +1140,7 @@ export class Game {
         }
       }
       if (
-        e.kind === "hollowMarshal" &&
+        e.kind === "hollowMarshal" && !e.dungeonRole &&
         this.areaId() ===
           dungeonId(this.save.seed, this.save.worldGeneration) &&
         !this.save.narrative.facts["crossing.marshal"]
@@ -1135,7 +1197,7 @@ export class Game {
           this.save.seed,
           this.save.session.activeDungeonId,
           this.map.tiles,
-          24,
+          mapWidth(this.map, this.area),
         );
       this.map.objects.push(
         ...overlay.objects.filter((o) => !annex || o.kind !== "apertureDoor"),
@@ -1149,6 +1211,7 @@ export class Game {
       const scaleFresh = () => {
         const q = regionalThreat(this.rx, this.ry);
         for (const e of this.enemies) {
+          if (e.foundryValidated) continue;
           e.threatRing = q.ring;
           e.maxHp = Math.round(e.maxHp * q.hpMultiplier);
           e.hp = e.maxHp;
@@ -1179,7 +1242,7 @@ export class Game {
             this.save.seed,
             this.save.session.activeDungeonId,
             this.map.tiles,
-            24,
+            mapWidth(this.map, this.area),
           );
         this.map.objects.push(
           ...overlay.objects.filter((o) => !annex || o.kind !== "apertureDoor"),
@@ -1188,6 +1251,7 @@ export class Game {
       if (!had) {
         const q = regionalThreat(this.rx, this.ry);
         for (const e of this.enemies) {
+          if (e.foundryValidated) continue;
           e.threatRing = q.ring;
           e.maxHp = Math.round(e.maxHp * q.hpMultiplier);
           e.hp = e.maxHp;
@@ -1291,7 +1355,7 @@ export class Game {
       const first = !e.rewarded,
         r = defeat(e);
       if (first && e.kind !== "npc" && !e.ambient) {
-        const guardian = e.kind === "hollowMarshal";
+        const guardian = e.kind === "hollowMarshal" && !e.dungeonRole;
         gainAperture(
           this.save,
           guardian ? 4 : 1,
@@ -1327,7 +1391,7 @@ export class Game {
           this.save.seed,
           this.save.session.activeDungeonId,
           this.map.tiles,
-          24,
+          mapWidth(this.map, this.area),
         );
       this.map.objects.push(
         ...overlay.objects.filter((o) => !annex || o.kind !== "apertureDoor"),
@@ -1338,6 +1402,7 @@ export class Game {
       ? this.save.session.activeDungeonId || `dungeon:${this.save.seed}:g${g}`
       : `overworld:${this.rx}:${this.ry}:g${g}`;
   }
+  areaStateId(){const id=this.areaId();return this.area==="dungeon"&&this.map?.multiLevel&&this.save.session.activeDungeonLevelId?`${id}:level:${this.save.session.activeDungeonLevelId}`:id;}
   snapshotArea() {
     if (!this.map) return;
     const objects = {};
@@ -1348,7 +1413,7 @@ export class Game {
         timer: o.timer,
         hits: { ...o.hits },
       };
-    this.save.session.areas[this.areaId()] = {
+    this.save.session.areas[this.areaStateId()] = {
       enemies: this.enemies.map((e) => ({ ...e, ai: { ...ensureAI(e) } })),
       objects,
       projectiles: this.projectiles.map((p) => ({ ...p })),
@@ -1361,16 +1426,20 @@ export class Game {
     this.area = area;
     this.map =
       area === "dungeon"
-        ? generateDungeon(this.save.seed, this.areaId())
+        ? generateDungeon(this.save.seed, this.areaId(),{levelId:this.save.session.activeDungeonLevelId||undefined})
         : generateRegion(
             this.save.seed,
             this.rx,
             this.ry,
             this.save.worldGeneration,
           );
+    if(area==='overworld'){
+      const site=storySiteFor(this.save,this.rx,this.ry);if(site&&!this.map.objects.some(o=>o.id===site.id)){const open=this.map.tiles[site.y*32+site.x];if(!open?.blocked&&!open?.structure)this.map.objects.push(site)}
+      const candidate=foundryEncounter(this.save.seed,this.rx,this.ry,this.save.worldGeneration);if(candidate&&validateFoundryCandidate(candidate).ok&&!this.save.worldFlags[`foundry-retired:${candidate.foundryId}`]){const open=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>4&&t.x<28&&t.y>4&&t.y<28);if(open.length){const at=open[hashSeed(candidate.foundryId)%open.length];candidate.x=at.x;candidate.y=at.y;this.map.enemySpawns.push(candidate)}}
+    }
     if (area === "dungeon" && this.map.recipe === "cistern") {
       for (const [x, y] of [[11, 4], [12, 4], [11, 5], [12, 5]]) {
-        const i = y * 24 + x, t = this.map.tiles[i];
+        const i = y * mapWidth(this.map, area) + x, t = this.map.tiles[i];
         if (t && !t.blocked)
           this.map.tiles[i] = { ...t, kind: "dungeonWater", blocked: true, waterDepth: "shallow" };
       }
@@ -1381,7 +1450,7 @@ export class Game {
     if(area==='overworld'&&this.rx===-5&&this.ry===3){this.map.objects.push({id:'knife-choir-portal',kind:'elitePortal',name:'Cantor Threshold',x:20,y:16,state:eliteState.contracts.knifeChoir.state==='available'?'ready':'sealed',actions:['inspect','enter'],landmark:true});}
     if(area==='dungeon'&&String(this.areaId()).startsWith('elite-portal:')){this.map.enemySpawns=this.map.enemySpawns.filter(e=>e.kind!=='hollowMarshal');if(!eliteDefeated.knifeChoir)this.map.enemySpawns.push({kind:'knifeChoir',x:16,y:18,boss:true,elite:true});}
     else if(area==='dungeon'&&this.map.recipe==='cistern'&&!eliteDefeated.gravitantBell&&hashSeed(`${this.save.seed}:elite-guardian:${this.areaId()}`)%5===0){this.map.enemySpawns=this.map.enemySpawns.filter(e=>e.kind!=='hollowMarshal');this.map.enemySpawns.push({kind:'gravitantBell',x:16,y:18,boss:true,elite:true});}
-    if (area === "dungeon" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < 12)
+    if (area === "dungeon" && !this.map.deepDungeon && this.map.recipe !== "deep-v1" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < 12)
       this.map.enemySpawns.push({ kind: "gateRevenant", x: 18, y: 6, gatePredator: true });
     if (area === "overworld" && (this.rx !== 0 || this.ry !== 0)) {
       const remembered = this.save.checkpoints?.[`${this.rx},${this.ry}`];
@@ -1395,13 +1464,16 @@ export class Game {
     if (area === "overworld") {
       const atlas = (this.save.atlas ||= {}), key = `${this.rx},${this.ry}`;
       atlas[key] = { terrain: this.map.dominant, sites: this.map.objects
-        .filter((o) => ["checkpoint","dungeon","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache"].includes(o.kind))
+        .filter((o) => ["checkpoint","dungeon","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho"].includes(o.kind))
         .map((o) => ({ kind: o.kind, name: o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
     this.enemies = this.map.enemySpawns.map((e) => {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
+      if (e.id) c.id = e.id;
+      Object.assign(c, { dungeonRole: e.dungeonRole || null, objectiveId: e.objectiveId || null, wingId: e.wingId || null, arenaId: e.arenaId || null, deepDungeon: !!e.deepDungeon });
       if(c.eliteId){const v=eliteVariant(this.save.seed,c.eliteId,this.areaId());c.variantId=v.variantId;c.eliteModules=[...v.modules];c.eliteVariantModules=[...v.variantModules];c.visualSeed=v.visualSeed;}
       Object.assign(c,{passiveBehavior:e.passiveBehavior||null,ambient:!!e.ambient,pursuesOutdoors:!!(e.shelterAmbush||e.districtResident),shelterAmbush:!!e.shelterAmbush});
+      if(e.foundryId){const boss=e.foundryRole==='boss',melee=e.attack==='meleeSwipe';Object.assign(c,{id:e.foundryId,foundryId:e.foundryId,foundryName:e.foundryName,foundryRole:e.foundryRole,foundryModules:[...(e.foundryModules||[])],foundryAttack:e.attack,foundryMovement:e.movement,foundryWeakness:e.weakness,foundryBody:e.body,visualSeed:e.visualSeed,kind:e.kind,maxHp:boss?210:e.foundryRole==='passive'?22:52,hp:boss?210:e.foundryRole==='passive'?22:52,damage:boss?17:e.foundryRole==='passive'?0:10,range:e.foundryRole==='passive'?0:melee?1.25:boss?5.5:5,boss,ambient:e.foundryRole==='passive',scale:boss?1.95:e.foundryRole==='passive'?.92:1.18,bodyRadius:boss?.72:.46,segments:e.body==='segmented'?3:e.foundryRole==='passive'?2:1,tentacles:e.body==='tentacled'||e.body==='biomechanical'?(boss?6:3):0,speedMultiplier:e.movement==='hopping'?1.18:e.movement==='retreating'?.88:e.movement==='hovering'?1.08:1,foundryValidated:true})}
       if (e.gatePredator) Object.assign(c,{gatePredator:true,pursuesOutdoors:true,maxHp:260,hp:260,damage:22,range:5.5,scale:1.85,bodyRadius:.7,tentacles:8,speedMultiplier:1.12});
       if (e.apertureEncounter) {
         const multiplier = Math.max(1, Number(e.threatMultiplier) || 1);
@@ -1415,12 +1487,12 @@ export class Game {
       ensureAI(c);
       return c;
     });
-    const intrusions = apertureEncounterSpawns(
+    const intrusions = this.map.deepDungeon || this.map.recipe === "deep-v1" ? [] : apertureEncounterSpawns(
       this.save.seed,
       this.areaId(),
       this.save.perception?.aperture || 0,
       this.map.tiles,
-      area === "dungeon" ? 24 : 32,
+      mapWidth(this.map, area),
     );
     for (const e of intrusions) {
       const c = createCombatant(e.kind, e.x, e.y, false, e.traits || []),
@@ -1447,7 +1519,7 @@ export class Game {
       !this.save.worldFlags.worldBossDead
     )
       this.enemies.push(createCombatant("riftColossus", 28, 27, true));
-    const s = this.save.session.areas[this.areaId()];
+    const s = this.save.session.areas[this.areaStateId()];
     if (s) {
       const by = new Map((s.enemies || []).map((e) => [e.id, e]));
       this.enemies = this.enemies.map((e) => {
@@ -1461,7 +1533,7 @@ export class Game {
         ensureAI(merged);
         return merged;
       });
-      for(const saved of s.enemies||[])if(saved.gatePredator&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);this.enemies.push(restored)}
+      for(const saved of s.enemies||[])if((saved.gatePredator||saved.foundryId)&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);this.enemies.push(restored)}
       for (const o of this.map.objects)
         if (s.objects?.[o.id]) Object.assign(o, s.objects[o.id]);
       applyFallenTreeCrossings(this.map);
@@ -1472,7 +1544,11 @@ export class Game {
       }));
       this.eliteHazards=(s.eliteHazards||[]).map(h=>({...h,hits:{...h.hits}}));
     }
-    const areaWidth = area === "dungeon" ? 24 : 32,
+    if (area === "dungeon" && (this.map.deepDungeon || this.map.recipe === "deep-v1")) {
+      const progress = applyDeepDungeonProgress(this.save, this.areaId(), this.map), defeated = new Set([...(progress.defeatedWingIds || []).map((wing) => `deep-v1-miniboss-${wing}`), ...(progress.defeatedFinalIds || [])]);
+      this.enemies = this.enemies.filter((e) => !defeated.has(e.id) && !(e.objectiveId && progress.completedObjectiveIds.includes(e.objectiveId)));
+    }
+    const areaWidth = mapWidth(this.map, area),
       playerRelocated = relocateIfStranded(this.player, this.map, areaWidth);
     for (const e of this.enemies) relocateIfStranded(e, this.map, areaWidth);
     if (playerRelocated)
@@ -1485,6 +1561,7 @@ export class Game {
     codex.features ||= {};
     codex.variants ||= {};
     for (const e of this.enemies) {
+      if(e.foundryId)continue;
       codex.creatures[e.kind] = true;
       codex.variants[e.variantId || `${e.kind}:common`] = { kind: e.kind, traits: [...(e.traits || []),...(e.eliteVariantModules||[])] };
     }
@@ -1519,7 +1596,7 @@ export class Game {
           );
     }
     if (area === "overworld")
-      this.save.explored[`${this.rx},${this.ry}`] = true;
+      this.save.explored[`${this.rx},${this.ry}`] = true;recordSectionVisit(this.save,this.rx,this.ry,this.map);
   }
   setPaused(v, now = 0) {
     if (v && !this.paused) this.pauseStarted = now;
@@ -1654,16 +1731,20 @@ export class Game {
     input?.reset?.();
     if (this.area === "dungeon") {
       const id = this.areaId(),
-        prior = this.save.session.areas[id],
+        deep = !!this.map?.deepDungeon || this.map?.recipe === "deep-v1",
+        anchor = deep ? deepDungeonProgress(this.save, id).activeAnchor : null,
+        stateId = this.map?.multiLevel&&anchor?.levelId?`${id}:level:${anchor.levelId}`:id,
+        prior = this.save.session.areas[stateId],
         used = prior?.objects || {};
-      delete this.save.session.areas[id];
+      if (!deep) delete this.save.session.areas[id];
+      if(deep&&anchor?.levelId)this.save.session.activeDungeonLevelId=anchor.levelId;
       this.loadArea("dungeon", false);
       for (const o of this.map.objects)
         if (used[o.id]?.state === "used") o.state = "used";
-      p.x = 4;
-      p.y = 5;
+      p.x = deep ? (anchor?.x ?? this.map.hub?.x ?? this.map.entry?.x ?? 4) : 4;
+      p.y = deep ? (anchor?.y ?? this.map.hub?.y ?? this.map.entry?.y ?? 5) : 5;
       p.invulnerableUntil = now + 2000;
-      this.message = `Felled — returned to the entrance of ${this.map.name}. The run begins again; your map and everything carried remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
+      this.message = deep ? `Felled — recovered at the central anchor of ${this.map.name}. Cleared wings, shortcuts, carried items, XP, and map progress remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}` : `Felled — returned to the entrance of ${this.map.name}. The run begins again; your map and everything carried remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
     } else {
       const c = this.save.activeCheckpoint;
       this.rx = c.rx;
@@ -1738,6 +1819,13 @@ export class Game {
     }
     return f;
   }
+  startDisplacement(o,hidden=false){
+    const key=`displacement-trigger:${this.rx},${this.ry}:${o.id}`;if(this.save.worldFlags[key])return false;this.save.worldFlags[key]=true;o.state='used';o.consumed=true;
+    const h=hashSeed(this.save.seed+":displacement:"+this.rx+":"+this.ry+":"+o.id),distance=8+h%7,sign=h&1?1:-1,destination={rx:this.rx+(h&2?distance:Math.floor(distance/2))*sign,ry:this.ry+(h&2?Math.floor(distance/2):distance)*(h&4?1:-1)};
+    this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDisplacement={id:"displacement:"+this.rx+":"+this.ry+":"+o.id,source:{...this.save.session.dungeonReturn},destination,hidden};this.save.session.activeDungeonId=this.save.session.activeDisplacement.id;const history=dungeonHistory(this.save,this.save.session.activeDungeonId);history.visits++;history.visitOpen=true;
+    if(hidden){recordRevelationLead(this.save,'displacement',o.id);journalOnce(this.save,`hidden-displacement:${o.id}`,'A concealed Folded Seam displaced you only after you crossed fully inside a shelter. Triggered seams keep a faint scar; untouched shelters reveal nothing.','Shelter hazards');this.defeatNotice={title:'HIDDEN SEAM TRIGGERED',detail:'the shelter folds into an unknown crossing',kind:'discovery'}}
+    this.loadArea("dungeon");this.player.x=4;this.player.y=5;this.message=hidden?'The floor opens without warning. Space folds around you.':'The threshold folds the room into somewhere else.';this.sync();return true;
+  }
   interact(action, objectId = null) {
     this.sync();
     const o = objectId
@@ -1752,6 +1840,54 @@ export class Game {
         ok: false,
         message: (this.message = "Nothing nearby responds."),
       };
+    if (o.kind === "deepAnchor") {
+      if (o.state !== "active") return { ok: false, message: (this.message = "The anchor has no path to remember yet.") };
+      const progress = deepDungeonProgress(this.save, this.areaId());
+      progress.activeAnchor = { id: o.id, x: o.x, y: o.y, levelId:this.map.levelId||"root",name: o.name || "deep anchor" };
+      if (!progress.activatedAnchorIds.includes(o.id)) progress.activatedAnchorIds.push(o.id);
+      this.message = `${o.name || "Deep anchor"} fixed as the expedition recovery point.`; this.sync(); return { ok: true, message: this.message };
+    }
+    if(o.kind==="deepTransition"){
+      const progress=deepDungeonProgress(this.save,this.areaId());this.snapshotArea();this.save.session.activeDungeonLevelId=o.toLevelId;progress.currentLevelId=o.toLevelId;if(!progress.discoveredLevelIds.includes(o.toLevelId))progress.discoveredLevelIds.push(o.toLevelId);this.loadArea("dungeon",false);this.player.x=o.toX;this.player.y=o.toY;this.projectiles=[];this.effects=[];this.message=`${this.map.levelName||o.toLevelId} reached.`;this.sync();return{ok:true,message:this.message};
+    }
+    if(o.kind==="deepShortcut"){
+      const progress=deepDungeonProgress(this.save,this.areaId()),ready=progress.completedObjectiveIds.includes(o.unlockObjectiveId);if(!ready)return{ok:false,message:this.message=`${o.name} has no visible seam yet.`};if(!progress.openedShortcutIds.includes(o.id))progress.openedShortcutIds.push(o.id);applyDeepDungeonProgress(this.save,this.areaId(),this.map);this.defeatNotice={title:"SHORTCUT OPENED",detail:`${o.name} · a physical route returns toward the hub`,kind:"discovery"};this.message=`${o.name} opens. The concealed corridor now joins the explored floor.`;this.sync();return{ok:true,message:this.message};
+    }
+    if(o.kind==="deepPortal"){
+      const progress=deepDungeonProgress(this.save,this.areaId()),ready=o.unlockOnCompletion?progress.completed:!o.unlockObjectiveId||progress.completedObjectiveIds.includes(o.unlockObjectiveId);if(!ready)return{ok:false,message:this.message=o.unlockOnCompletion?"The return lattice is silent while the final guardian lives.":"The return lattice has not awakened."};if(o.targetLevelId&&o.targetLevelId!==(this.map.levelId||"root")){this.snapshotArea();this.save.session.activeDungeonLevelId=o.targetLevelId;progress.currentLevelId=o.targetLevelId;if(!progress.discoveredLevelIds.includes(o.targetLevelId))progress.discoveredLevelIds.push(o.targetLevelId);this.loadArea("dungeon",false);}this.player.x=o.toX;this.player.y=o.toY;this.projectiles=[];this.effects=[];this.message=o.unlockOnCompletion?"The final return lattice carries you back to the expedition hub.":"The return portal folds the cleared route back to the hub.";this.sync();return{ok:true,message:this.message};
+    }
+    if (o.kind === "deepMechanism") {
+      const progress = deepDungeonProgress(this.save, this.areaId());
+      if (!progress.completedObjectiveIds.includes(o.objectiveId)) progress.completedObjectiveIds.push(o.objectiveId);
+      applyDeepDungeonProgress(this.save, this.areaId(), this.map);
+      this.defeatNotice = { title: "MECHANISM AWAKENED", detail: `${o.name} · expedition route altered`, kind: "discovery" };
+      this.message = `${o.name} answers. Stone routes shift and the expedition can continue.`; this.sync(); return { ok: true, message: this.message };
+    }
+    if (["storyGhost", "storyRelic", "storyTone","storyActor","storyScene"].includes(o.kind)) {
+      const progress = deepDungeonProgress(this.save, this.areaId()), story = progress.story, pack = this.map.storyPackage;
+      if (!pack) return { ok: false, message: (this.message = "Only an old silence remains.") };
+      story.storyId = pack.id; story.started = true;
+      if (o.kind === "storyRelic") { story.carriedRelic = o.id; o.state = "claimed"; o.actions = []; if (!story.completedBeatIds.includes("find-relic")) story.completedBeatIds.push("find-relic"); this.message = "The lost nameplate is cold, but a waiting presence recognizes it."; }
+      else if (o.kind === "storyTone") { o.state = "sounded"; o.actions = []; if (!story.completedBeatIds.includes(o.beatId)) story.completedBeatIds.push(o.beatId); const tones = story.completedBeatIds.filter((q) => q.startsWith("tone-")).length; this.message = `The ${tones === 1 ? "first" : tones === 2 ? "second" : "final"} tone releases a fragment of the drowned procession.`; if (tones >= 3) completeDeepStory(this.save, this.areaId(), this.map); }
+      else if(o.kind==="storyScene"){o.state="witnessed";o.actions=[];if(!story.completedBeatIds.includes(o.beatId))story.completedBeatIds.push(o.beatId);if(!story.scenesWitnessed.includes(o.id))story.scenesWitnessed.push(o.id);this.message=o.scenePattern==="confrontation"?"Two scorched figures materialize, accuse one another, and vanish before either can strike.":"The chamber darkens. Ember footprints cross the wall and end at a door that no longer exists.";if(story.completedBeatIds.includes("first-echo")&&story.completedBeatIds.includes("second-echo"))completeDeepStory(this.save,this.areaId(),this.map);}
+      else if(o.kind==="storyActor"){if(!story.completedBeatIds.includes("muster")){story.completedBeatIds.push("muster");story.started=true;o.state="manifest";this.message="A patrol captain and three pale wardens materialize, salute, and march toward the sealed works.";}else if(progress.completedObjectiveIds.length){if(!story.completedBeatIds.includes("witness"))story.completedBeatIds.push("witness");o.state="departed";o.actions=[];completeDeepStory(this.save,this.areaId(),this.map);this.message="The last patrol crosses the cleared chamber, lowers its weapons, and departs into quiet light.";}else this.message="The captain points toward the guardian holding the patrol inside its final watch.";}
+      else if (pack.id === "lost-bearer-v1" && story.carriedRelic) { if (!story.completedBeatIds.includes("return-relic")) story.completedBeatIds.push("return-relic"); o.state = "released"; o.actions = []; completeDeepStory(this.save, this.areaId(), this.map); this.message = "The bearer remembers its name. Two apparitions reunite, then pass beyond the Corridor together."; }
+      else if (pack.id === "bound-spirit-v1" && progress.completedObjectiveIds.length) { if (!story.completedBeatIds.includes("avenge")) story.completedBeatIds.push("avenge"); o.state = "released"; o.actions = []; completeDeepStory(this.save, this.areaId(), this.map); this.message = "The slain guardian's hold breaks. The shade bows once and becomes a trail of quiet light."; }
+      else { if (!story.completedBeatIds.includes("meet")) story.completedBeatIds.push("meet"); this.message = pack.summary; }
+      this.sync(); return { ok: true, message: this.message };
+    }
+    if (o.kind === "deepReturn") {
+      if (o.state !== "active") return { ok: false, message: (this.message = "The return lattice is dormant. Its wing guardian still holds the seal.") };
+      this.player.x = o.toX; this.player.y = o.toY; this.projectiles = []; this.effects = []; this.traversal = null;
+      this.message = "The cleared wing folds back into the central chamber.";
+      this.sync();
+      return { ok: true, message: this.message };
+    }
+    if (o.kind === "sealedGate") {
+      const progress = applyDeepDungeonProgress(this.save, this.areaId(), this.map), requirements = this.map.finalGate?.requires || (this.map.wings || []).map((wing) => wing.id), completed = new Set([...(progress?.completedObjectiveIds || []), ...(progress?.defeatedWingIds || [])]), remaining = requirements.filter((id) => !completed.has(id)).length;
+      this.message = remaining ? `The final seal holds. ${remaining} wing guardian${remaining === 1 ? " remains" : "s remain"}.` : "The three seals are broken. The final chamber stands open.";
+      return { ok: true, message: this.message };
+    }
     if (!action && ["npc", "dungeon", "relayTerminal","shelterMerchant","displacementDevice","elitePortal"].includes(o.kind)) {
       this.interactionRequested = o.id;
       return {
@@ -1779,8 +1915,7 @@ export class Game {
     if(r.transition==="elitePortal"){
       this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=`elite-portal:${this.save.seed}:knife-choir`;const h=dungeonHistory(this.save,this.save.session.activeDungeonId);h.visits++;h.visitOpen=true;this.loadArea('dungeon');this.player.x=4;this.player.y=5;
     } else if(r.transition==="displacement"){
-      const h=hashSeed(this.save.seed+":displacement:"+this.rx+":"+this.ry+":"+o.id),distance=8+h%7,sign=h&1?1:-1,destination={rx:this.rx+(h&2?distance:Math.floor(distance/2))*sign,ry:this.ry+(h&2?Math.floor(distance/2):distance)*(h&4?1:-1)};
-      this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDisplacement={id:"displacement:"+this.rx+":"+this.ry+":"+o.id,source:{...this.save.session.dungeonReturn},destination};this.save.session.activeDungeonId=this.save.session.activeDisplacement.id;const history=dungeonHistory(this.save,this.save.session.activeDungeonId);history.visits++;history.visitOpen=true;this.loadArea("dungeon");this.player.x=4;this.player.y=5;
+      this.startDisplacement(o,false);
     } else if (r.transition === "dungeon") {
       this.save.session.dungeonReturn = {
         rx: this.rx,
@@ -1788,21 +1923,23 @@ export class Game {
         x: this.player.x,
         y: this.player.y,
       };
-      this.save.session.activeDungeonId = dungeonId(
+      this.save.session.activeDungeonId = o.dungeonId || dungeonId(
         this.save.seed,
         this.save.worldGeneration,
         this.rx,
         this.ry,
         o.id,
       );
+      this.save.session.activeDungeonLevelId=null;
+      const preview=generateDungeon(this.save.seed,this.save.session.activeDungeonId);if(preview.multiLevel)this.save.session.activeDungeonLevelId=preview.levels[0].id;
       const h = dungeonHistory(this.save, this.save.session.activeDungeonId);
       h.visits++;
       h.visitOpen = true;
       this.loadArea("dungeon");
-      this.player.x = 4;
-      this.player.y = 5;
+      this.player.x = this.map.entry?.x ?? 4;
+      this.player.y = this.map.entry?.y ?? 5;
     } else if (r.transition === "exit") {
-      if(this.save.session.activeDisplacement){if(this.enemies.some(e=>!e.dead&&e.kind==="hollowMarshal")){this.message="The Mislaid Threshold remains sealed while its guardian lives.";return{ok:false,message:this.message}}const d=this.save.session.activeDisplacement;this.snapshotArea();this.rx=d.destination.rx;this.ry=d.destination.ry;this.save.session.displacementJourney={source:d.source,destination:d.destination};this.save.session.activeDisplacement=null;this.save.session.activeDungeonId=null;this.loadArea("overworld",false);this.player.x=16;this.player.y=16;this.message="The completed crossing releases you into a distant, uncharted Corridor. Find a physical Wayglass to restore travel."}else this.leaveDungeon("You emerge at the dungeon entrance.");
+      if(this.save.session.activeDisplacement){if(this.enemies.some(e=>!e.dead&&e.kind==="hollowMarshal")){this.message="The Mislaid Threshold remains sealed while its guardian lives.";return{ok:false,message:this.message}}const d=this.save.session.activeDisplacement;this.snapshotArea();this.rx=d.destination.rx;this.ry=d.destination.ry;this.save.session.displacementJourney={source:d.source,destination:d.destination};this.save.session.activeDisplacement=null;this.save.session.activeDungeonId=null;this.loadArea("overworld",false);this.player.x=16;this.player.y=16;relocateIfStranded(this.player,this.map,mapWidth(this.map,'overworld'));this.message="The completed crossing releases you onto stable ground in a distant, uncharted Corridor. Find a physical Wayglass to restore travel."}else this.leaveDungeon("You emerge at the dungeon entrance.");
     } else if (r.transition === "checkpoint") {
       this.save.session.displacementJourney=null;
       this.save.activeCheckpoint = {
@@ -1907,18 +2044,22 @@ export class Game {
       ) {
         this.save.session.activeDungeonId = id;
         this.save.session.dungeonReturn = q;
-        const claimed = this.save.session.areas[id]?.objects || {};
-        delete this.save.session.areas[id];
+        const anchor = String(id).includes(":deep-v") ? deepDungeonProgress(this.save,id).activeAnchor:null;
+        if(anchor?.levelId)this.save.session.activeDungeonLevelId=anchor.levelId;
+        const stateId=this.save.session.activeDungeonLevelId?`${id}:level:${this.save.session.activeDungeonLevelId}`:id,claimed = this.save.session.areas[stateId]?.objects || {},
+          deep = String(id).includes(":deep-v");
+        if (!deep) delete this.save.session.areas[id];
         this.loadArea("dungeon", false);
         for (const o of this.map.objects)
           if (claimed[o.id]?.state === "used") o.state = "used";
-        this.player.x = 4;
-        this.player.y = 5;
+        const recovery = deep ? deepDungeonProgress(this.save, id).activeAnchor : null;
+        this.player.x = deep ? (recovery?.x ?? this.map.hub?.x ?? this.map.entry?.x ?? 4) : 4;
+        this.player.y = deep ? (recovery?.y ?? this.map.hub?.y ?? this.map.entry?.y ?? 5) : 5;
         this.player.invulnerableUntil = now + 2000;
         this.projectiles = [];
         this.effects = [];
         this.traversal = null;
-        this.message = `Felled — returned to the entrance of ${this.map.name}. The run begins again; your map and everything carried remain.`;
+        this.message = deep ? `Felled — recovered at the central anchor of ${this.map.name}. Cleared wings, shortcuts, carried items, XP, and map progress remain.` : `Felled — returned to the entrance of ${this.map.name}. The run begins again; your map and everything carried remain.`;
         this.sync();
       }
     };
@@ -1962,13 +2103,51 @@ export class Game {
   defeatEnemy(e) {
     if (e.rewarded) return;
     if(e.noRewards){e.rewarded=true;return}
+    if(e.foundryId){
+      recordCreatureDefeat(this.save,e);
+      this.save.codex.foundry||={};
+      this.save.codex.foundry[e.foundryId]={name:e.foundryName,kind:e.kind,role:e.foundryRole,modules:[...(e.foundryModules||[])],defeated:true};
+      if(e.foundryRole!=='passive')recordRevelationLead(this.save,'hunt',e.foundryId);
+    }
     if (e.ambient) {
       e.rewarded = true;
       this.message = e.kind === "hushling" ? "The hushling unthreads into violet motes." : "The quiet creature falls. Nothing in it was meant as loot.";
       return;
     }
     this.defeatNotice = enemyDefeatNotice(e, this.area);
-    if (e.kind === "hollowMarshal" && recordRelayChain(this.save, this.areaId()))
+    if (this.area === "dungeon" && this.map.deepDungeon && e.dungeonRole === "objectiveGuardian") {
+      const progress = deepDungeonProgress(this.save, this.areaId());
+      if (!progress.completedObjectiveIds.includes(e.objectiveId)) progress.completedObjectiveIds.push(e.objectiveId);
+      applyDeepDungeonProgress(this.save, this.areaId(), this.map);
+      const objective = this.map.objectives.find((q) => q.id === e.objectiveId), completed = progress.completedObjectiveIds.length, total = this.map.objectives.filter((q) => q.required).length;
+      this.defeatNotice = { title: "EXPEDITION GUARDIAN CLEARED", detail: `${objective?.name || e.objectiveId} · ${completed}/${total} required objectives${progress.gateOpened ? " · final route opened" : ""}`, kind: "danger" };
+      journalOnce(this.save, `deep-objective:${this.areaId()}:${e.objectiveId}`, `${objective?.name || "A deep guardian"} fell. A recovery anchor or route within ${this.map.name} has awakened.`, this.map.name);
+    }
+    if (this.area === "dungeon" && this.map.recipe === "deep-v1" && e.dungeonRole === "wingMiniboss") {
+      const progress = deepDungeonProgress(this.save, this.areaId());
+      if (!progress.defeatedWingIds.includes(e.wingId)) progress.defeatedWingIds.push(e.wingId);
+      applyDeepDungeonProgress(this.save, this.areaId(), this.map);
+      const anchor = this.map.objects.find((o) => o.kind === "deepReturn" && o.wingId === e.wingId);
+      if (anchor) progress.activeAnchor = { id: anchor.id, x: anchor.x, y: anchor.y, name: `${e.wingId} wing anchor` };
+      const count = progress.defeatedWingIds.length;
+      this.defeatNotice = { title: "WING GUARDIAN CLEARED", detail: `${e.wingId.toUpperCase()} WING · ${count}/3 seals broken${progress.gateOpened ? " · final gate opened" : ""}`, kind: "danger" };
+      journalOnce(this.save, `deep-wing:${this.areaId()}:${e.wingId}`, `The ${e.wingId} wing guardian fell. Its return lattice now folds directly into the central chamber.${progress.gateOpened ? " All three seals are broken; the final chamber is open." : ""}`, "The Threefold Deep");
+    }
+    if (this.area === "dungeon" && (this.map.deepDungeon || this.map.recipe === "deep-v1") && e.dungeonRole === "finalBoss") {
+      const progress = deepDungeonProgress(this.save, this.areaId()), history = dungeonHistory(this.save, this.areaId());
+      if (!progress.defeatedFinalIds.includes(e.id)) progress.defeatedFinalIds.push(e.id);
+      progress.completed = true; history.resolved = true; history.guardianDefeated = true; history.visitOpen = false;
+      applyDeepDungeonProgress(this.save,this.areaId(),this.map);
+      if (!progress.rewardClaimed) {
+        progress.rewardClaimed = true;
+        this.save.materials.weaponSphere = (this.save.materials.weaponSphere || 0) + 1;
+        this.save.materials.armorSphere = (this.save.materials.armorSphere || 0) + 1;
+      }
+      this.defeatNotice = { title: "DEEP GUARDIAN FELLED", detail: `${this.map.name.toUpperCase()} CLEARED · weapon sphere + armor sphere`, kind: "danger" };
+      if(this.map.objects.some(o=>o.kind==="deepPortal"&&o.unlockOnCompletion))this.message="FINAL RETURN OPENED — the awakened lattice can return you to the expedition hub.";
+      journalOnce(this.save, `deep-complete:${this.areaId()}`, `The required routes of ${this.map.name} were opened and its final guardian was defeated. The expedition yielded one weapon sphere and one armor sphere.`, `${this.map.name} — cleared`);
+    }
+    if (e.kind === "hollowMarshal" && !e.dungeonRole && recordRelayChain(this.save, this.areaId()))
       this.defeatNotice.detail += " · the buried network answered";
     if(['ashling','glassMite'].includes(e.kind))recordPortalPrey(this.save,e.kind);
     if(e.eliteId){const reward=completeElite(this.save,e.eliteId);if(reward){this.save.codex.elites||={};this.save.codex.elites[e.eliteId]={encountered:1,defeated:1,modules:[...(e.eliteModules||[])],variantId:e.variantId,habitat:this.areaId()};journalOnce(this.save,'elite-defeated:'+e.eliteId,`${e.eliteName} fell. Its observed aspects were ${(e.eliteModules||[]).join(', ')}. Reward: ${reward.marks} marks and one ${reward.material.replace('Sphere',' sphere')}.`,'Elite bestiary');}}
@@ -2024,7 +2203,7 @@ export class Game {
       this.player,
       [...this.enemies, ...this.npcTargets()],
       this.map,
-      this.area === "dungeon" ? 24 : 32,
+      mapWidth(this.map, this.area),
       profile,
       { x: geometry.dx, y: geometry.dy },
     );
@@ -2042,7 +2221,8 @@ export class Game {
       alertEnemy(e);
       e.hp -= profile.damage + characterStats(this.save).meleeBonus;
       e.hitFlash = 0.18;
-      e.recoil = 0.14;
+      e.recoil = 0.2;
+      e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.12 : 0.22);
       if (e.hp <= 0) {
         e.dead = true;
         this.defeatEnemy(e);
@@ -2247,7 +2427,7 @@ export class Game {
     if (input.consume("tool")) {
       this.save.aimMode = "tool";
       this.save.toolMode = true;
-      const weapon=rangedWeapon(this.save.equipment.secondary),width=this.area === "dungeon" ? 24 : 32,
+      const weapon=rangedWeapon(this.save.equipment.secondary),width=mapWidth(this.map,this.area),
         aim=weapon&&selectRangedAim(this.player,this.enemies,this.map,width,weapon.speed*weapon.lifetime*(1+characterStats(this.save).attackReach));
       this.fireSecondary(now, aim || this.save.lastAim);
     }
@@ -2305,10 +2485,24 @@ export class Game {
       else this.transitionSection(0, 1);
       return;
     }
-    const width = this.area === "dungeon" ? 24 : 32;
+    const width = mapWidth(this.map, this.area);
     const terrainHazard=footprintHazard(this.map,width,nx,ny),fellIntoHazard=!!terrainHazard;
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
     else moveAxis(p, dx, dy, this.map, width);
+    if(!fellIntoHazard&&this.area==='overworld'){
+      const tile=this.map.tiles[Math.floor(p.y+.7)*width+Math.floor(p.x+.5)],inside=tile?.structure==='shackInterior';
+      if(inside){const trap=this.map.objects.find(o=>o.kind==='displacementTrap'&&o.state!=='used'&&!this.save.worldFlags[`displacement-trigger:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.55);if(trap){this.startDisplacement(trap,true);return}const hazard=this.map.objects.find(o=>o.kind==='shelterHazard'&&o.state==='armed'&&!this.save.worldFlags[`shelter-hazard:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.6);if(hazard){const key=`shelter-hazard:${this.rx},${this.ry}:${hazard.id}`;this.save.worldFlags[key]=true;hazard.state='spent';p.hp=Math.max(1,p.hp-(hazard.damage||10));this.message=`${hazard.name} erupts. ${hazard.damage||10} damage — the mechanism falls quiet.`;journalOnce(this.save,`shelter-hazard:${hazard.hazardType}`,`Shelters may conceal ${hazard.name.toLowerCase()} mechanisms. Their floor marks can be inspected, avoided, and remembered.`,'Shelter hazards');this.sync()}}
+    }
+    if(!fellIntoHazard){
+      for(const e of this.enemies){
+        if(!e.foundryId||e.dead||this.save.worldFlags[`foundry-observed:${e.foundryId}`]||Math.hypot(e.x-p.x,e.y-p.y)>5)continue;
+        this.save.worldFlags[`foundry-observed:${e.foundryId}`]=true;
+        this.save.codex.foundry||={};
+        this.save.codex.foundry[e.foundryId]={name:e.foundryName,kind:e.kind,role:e.foundryRole,modules:[...(e.foundryModules||[])],defeated:false};
+        recordCreatureEncounter(this.save,e);
+        this.defeatNotice={title:'UNCLASSIFIED LIFEFORM',detail:`${e.foundryName} · ${e.foundryRole} · journal record added`,kind:e.foundryRole==='passive'?'discovery':'danger'};
+      }
+    }
     if (!fellIntoHazard&&input.consume("attack")) {
       this.save.aimMode = "attack";
       this.save.toolMode = false;
