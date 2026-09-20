@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS } from "./items.js?v=84";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS } from "./items.js?v=85";
 import {
   generateRegion,
   generateDungeon,
@@ -12,7 +12,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
-} from "./world.js?v=84";
+} from "./world.js?v=85";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -23,7 +23,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=84";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=85";
 import {
   applyInteraction,
   validActions,
@@ -33,13 +33,13 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=84";
-import { ensurePerception } from "./types.js?v=84";
-import { generateItem } from "./items.js?v=84";
-import { hashSeed } from "./random.js?v=84";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=84';
-import{foundryEncounter,validateFoundryCandidate}from'./foundry.js?v=84';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=84';
+} from "./interactions.js?v=85";
+import { ensurePerception } from "./types.js?v=85";
+import { generateItem } from "./items.js?v=85";
+import { hashSeed } from "./random.js?v=85";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=85';
+import{foundryEncounter,validateFoundryCandidate}from'./foundry.js?v=85';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=85';
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function mapWidth(map, area = "overworld") { return Math.max(1, Number(map?.width) || (area === "dungeon" ? 24 : 32)); }
