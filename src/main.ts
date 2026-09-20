@@ -217,6 +217,7 @@ import { render as baseRender } from "./renderer.ts";
 import { STATS } from "./types.ts";
 import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats } from "./items.ts";
 import { currentObjective, validActions } from "./interactions.ts";
+import { worldStewardReport } from "./story.ts";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -241,6 +242,7 @@ const $ = (s) => document.querySelector(s),
   journal = $("#journal"),
   mapCanvas = $("#mapCanvas"),
   mctx = mapCanvas.getContext("2d");
+globalThis.corridorStewardReport=()=>worldStewardReport(save);
 const inventoryView = { slot: "all", tier: "all", sort: "score" };
 let last = performance.now(),
   clock = 0,
@@ -1289,6 +1291,9 @@ function openJournal(mode = "chronicle") {
       ["travel",["Travel","Activate Wayglass beacons to travel to them from the Atlas. Dungeon travel remains sealed without a Crossing Sigil."]],
       ["combat",["Combat","Red or violet telegraphs show the exact threatened area. Dodge spends stamina; jumping avoids grounded impacts."]],
       ["aperture",["Aperture","Exploration, discoveries, and significant enemies raise Aperture, revealing hidden layers of known places."]]
+    ]:mode==="creatures"?[
+      ...Object.entries(CODEX.creatures).filter(([id])=>save.codex?.creatures?.[id]),
+      ...Object.entries(save.codex?.foundry||{}).map(([id,q])=>[id,[q.name||"Unclassified creature",`${q.role||"unknown"} · observed modules: ${(q.modules||[]).join(", ")}${q.defeated?" · defeated":" · unresolved"}`]])
     ]:Object.entries(CODEX[mode]).filter(([id])=>save.codex?.[mode]?.[id]);
     const heading=document.createElement("h3"),scope=document.createElement("p");heading.textContent=mode==="rules"?"Map symbols and controls":mode==="features"?"Encountered feature records":mode==="glossary"?"Combat and equipment terms":`${mode[0].toUpperCase()+mode.slice(1)} encountered`;scope.textContent=mode==="rules"?"A universal reference for reading the Atlas, floor marks, and controls. Encounter-specific history belongs under Features.":mode==="features"?"Objects recorded through exploration. Open a feature for its field function and its place in the Corridor.":"";out.append(heading);if(scope.textContent)out.append(scope);
     if(!entries.length){const empty=document.createElement("p");empty.textContent="No entries recorded yet. Encounter them in the world to unlock this section.";out.append(empty);}
@@ -1316,6 +1321,12 @@ function openJournal(mode = "chronicle") {
     " · Relay: " +
     (save.consequences.choices.relay || "undecided");
   out.append(summary);
+  const arc=save.story?.arcs?.cartographersEcho;
+  if(arc){
+    const p=document.createElement("p"),leadCount=Object.keys(arc.leads||{}).length;
+    p.textContent=`Unresolved pattern — Cartographer’s Echo: ${arc.status} · traces ${leadCount}/2${arc.site&&!arc.completed?` · Atlas signal ${arc.site.rx},${arc.site.ry}`:""}`;
+    out.append(p);
+  }
   for (const [id, thread] of Object.entries(save.consequences.threads)) {
     const p = document.createElement("p");
     p.textContent =
@@ -1350,7 +1361,7 @@ function openJournal(mode = "chronicle") {
         title = document.createElement("h3"),
         text = document.createElement("p");
       article.className = "item";
-      title.textContent = String(entry.title || "Discovery");
+      title.textContent = `${String(entry.title || "Discovery")}${entry.category?` · ${String(entry.category).replaceAll("-"," ")}`:""}`;
       text.textContent = String(entry.text || "");
       article.append(title, text);
       out.append(article);

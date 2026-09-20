@@ -20,6 +20,8 @@ import {
   wayfindingCues,
 } from "../src/world.ts";
 import { freshSave, migrateSave } from "../src/types.ts";
+import { foundryCandidate, foundryEncounter, validateFoundryCandidate, CREATURE_FOUNDRY_SCHEMA } from "../src/foundry.ts";
+import { recordRevelationLead, completeRevelationArc, storySiteFor, recordSectionVisit, worldStewardReport, CORRIDOR_STORY_SCHEMA, STEWARD_SCHEMA } from "../src/story.ts";
 import { serializeSave, deserializeSave } from "../src/persistence.ts";
 import { dodge, createCombatant, CREATURE_TRAITS, CREATURE_FORMS, enemyBodyRadius } from "../src/combat.ts";
 import { generateItem, isValidItem, SPELLS, itemTier, itemScore, affixValue, compareItemStats } from "../src/items.ts";
@@ -2640,4 +2642,54 @@ function gameForNewScene(storyId,archetype){for(let i=0;i<600;i++){const seed=`N
 test("new actor and environmental scene packages stage persist and reward exactly once",()=>{
  {const{s,g,id}=gameForNewScene("last-patrol-v1","threefold"),actor=g.map.objects.find(o=>o.kind==="storyActor"),before=s.perception.aperture;Object.assign(g.player,{x:actor.x,y:actor.y});g.interact("witness",actor.id);assert.equal(actor.state,"manifest");const guardian=g.enemies.find(e=>e.dungeonRole==="objectiveGuardian");guardian.dead=true;g.defeatEnemy(guardian);g.interact("witness",actor.id);assert.equal(deepDungeonProgress(s,id).story.completed,true);assert.equal(s.perception.aperture,before+3);assert.equal(actor.state,"departed");assert.equal(completeDeepStory(s,id,g.map),false)}
  {const{s,g,id}=gameForNewScene("ember-witness-v1","flooded"),before=s.materials.armorSphere,echoes=g.map.objects.filter(o=>o.kind==="storyScene");assert.equal(echoes.length,2);for(const echo of echoes){Object.assign(g.player,{x:echo.x,y:echo.y});g.interact("witness",echo.id)}const story=deepDungeonProgress(s,id).story;assert.equal(story.completed,true);assert.equal(story.scenesWitnessed.length,3);assert.equal(s.materials.armorSphere,before+1);assert.ok(echoes.every(o=>o.state==="witnessed"));assert.equal(completeDeepStory(s,id,g.map),false)}
+});
+
+test("Cartographer's Echo accepts independent lead orders and rewards exactly once",()=>{
+ for(const order of [["signal","hunt"],["hunt","displacement"],["displacement","signal"]]){
+  const s=freshSave();assert.equal(s.story.schema,CORRIDOR_STORY_SCHEMA);
+  for(const lead of order)assert.equal(recordRevelationLead(s,lead,lead+"-context"),true);
+  const arc=s.story.arcs.cartographersEcho;assert.equal(arc.status,"site-revealed");assert.ok(arc.site);
+  assert.equal(storySiteFor(s,arc.site.rx,arc.site.ry).kind,"storyEcho");
+  const before=s.materials.weaponSphere,first=completeRevelationArc(s),second=completeRevelationArc(s);
+  assert.equal(first.ok,true);assert.equal(second.ok,true);assert.equal(s.materials.weaponSphere,before+1);
+  assert.equal(s.inventory.filter(q=>q.id==="echo-compass").length,1);
+ }
+});
+
+test("Cartographer's Echo produces a delayed consequence after further exploration",()=>{
+ const s=freshSave();recordRevelationLead(s,"signal");recordRevelationLead(s,"hunt");completeRevelationArc(s);
+ for(let i=1;i<=4;i++){s.explored[`${i},0`]=true;recordSectionVisit(s,i,0,{objects:[]});}
+ assert.equal(s.story.arcs.cartographersEcho.delayed,true);
+ assert.equal(s.story.tendencies.visibility,1);
+ assert.ok(s.narrative.journal.some(q=>q.recordId==="cartographers-echo:delayed"));
+});
+
+test("Creature Foundry output is stable validated rare and role-diverse",()=>{
+ const seen=new Set(),ids=new Set();let admitted=0,total=0;
+ for(let x=-80;x<=80;x++)for(let y=-80;y<=80;y++){if(Math.abs(x)+Math.abs(y)<5)continue;total++;const a=foundryEncounter("FOUNDRY-AUDIT",x,y,1),b=foundryEncounter("FOUNDRY-AUDIT",x,y,1);assert.deepEqual(a,b);if(!a)continue;admitted++;assert.equal(a.schema,CREATURE_FOUNDRY_SCHEMA);assert.equal(validateFoundryCandidate(a).ok,true);assert.equal(ids.has(a.foundryId),false);ids.add(a.foundryId);seen.add(a.foundryRole)}
+ assert.ok(admitted/total>.004&&admitted/total<.014,`rate ${admitted}/${total}`);
+ assert.deepEqual(seen,new Set(["passive","hostile","boss"]));
+ const candidate=foundryCandidate("FOUNDRY-AUDIT",9,-11,1);assert.deepEqual(candidate,foundryCandidate("FOUNDRY-AUDIT",9,-11,1));
+});
+
+test("steward telemetry stays bounded and reports recommendations without mutating play",()=>{
+ const s=freshSave();for(let i=0;i<50;i++){s.explored[`${i},0`]=true;recordSectionVisit(s,i,0,{objects:[{kind:i%5?"shrine":"checkpoint"}],environment:i%2?{kind:"river"}:{kind:"canyon"}})}
+ const report=worldStewardReport(s);assert.equal(report.schema,STEWARD_SCHEMA);assert.ok(report.recommendations.length<=4);assert.ok(Object.keys(s.worldSteward.creatureKinds).length<=32);assert.ok(Object.keys(s.worldSteward.foundryCandidates).length<=32);
+});
+
+test("version 10 migration initializes additive story foundry and steward state without reset",()=>{
+ const raw=freshSave();raw.level=17;raw.currency=333;raw.story=undefined;raw.worldSteward=undefined;raw.codex.foundry={"retained-test":{name:"Retained Witness"}};
+ const s=migrateSave(raw);assert.equal(s.version,10);assert.equal(s.level,17);assert.equal(s.currency,333);assert.equal(s.story.schema,CORRIDOR_STORY_SCHEMA);assert.equal(s.worldSteward.schema,STEWARD_SCHEMA);assert.equal(s.codex.foundry["retained-test"].name,"Retained Witness");
+});
+
+test("foundry runtime integration observes by proximity preserves saved candidates and ships offline modules",()=>{
+ const game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8"),build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
+ assert.match(game,/foundry-observed:/);assert.match(game,/if\s*\(e\.foundryValidated\) continue/);assert.match(game,/saved\.foundryId/);assert.match(build,/'story','foundry'/);assert.match(sw,/src\/story\.js/);assert.match(sw,/src\/foundry\.js/);
+});
+
+test("foundry attack modules map to bounded distinct projectile mechanics",()=>{
+ const base={id:"foundry-test",x:2,y:2,damage:12,shotSequence:0},aim={x:1,y:0};
+ assert.equal(enemyProjectilePattern({...base,foundryAttack:"threeShotCone"},aim,1).length,3);
+ const arcs=enemyProjectilePattern({...base,foundryAttack:"arcBurst"},aim,1);assert.equal(arcs.length,2);assert.ok(arcs.every(q=>q.path==="arc"&&q.jumpable));
+ const sweep=enemyProjectilePattern({...base,foundryAttack:"sweepingBeam"},aim,1);assert.equal(sweep.length,5);assert.ok(sweep.every(q=>q.damage<=5));
 });

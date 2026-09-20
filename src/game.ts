@@ -38,6 +38,8 @@ import { ensurePerception } from "./types.ts";
 import { generateItem } from "./items.ts";
 import { hashSeed } from "./random.ts";
 import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.ts';
+import{foundryEncounter,validateFoundryCandidate}from'./foundry.ts';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.ts';
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function mapWidth(map, area = "overworld") { return Math.max(1, Number(map?.width) || (area === "dungeon" ? 24 : 32)); }
@@ -858,6 +860,9 @@ export function alertEnemy(e) {
 export function enemyProjectilePattern(shooter,aim,now=0){
  const rotate=(v,a)=>({x:v.x*Math.cos(a)-v.y*Math.sin(a),y:v.x*Math.sin(a)+v.y*Math.cos(a)}),base={x:shooter.x+.5,y:shooter.y+.42,hostile:true,hits:{}},shot=(id,d,extra={})=>({...base,id:`enemy-shot-${shooter.id}-${now}-${id}`,dx:d.x,dy:d.y,speed:4.2,life:2.4,damage:shooter.damage,path:'straight',...extra});
  const sequence=(shooter.shotSequence=(shooter.shotSequence||0)+1);
+ if(shooter.foundryAttack==='threeShotCone')return[-.2,0,.2].map((a,i)=>shot(`foundry-cone-${i}`,rotate(aim,a),{damage:Math.ceil(shooter.damage*.62)}));
+ if(shooter.foundryAttack==='arcBurst')return[-.14,.14].map((a,i)=>shot(`foundry-arc-${i}`,rotate(aim,a),{path:'arc',jumpable:true,speed:3.4,life:2.7,damage:Math.ceil(shooter.damage*.72)}));
+ if(shooter.foundryAttack==='sweepingBeam')return[-.28,-.14,0,.14,.28].map((a,i)=>shot(`foundry-sweep-${i}`,rotate(aim,a),{speed:5.2,life:1.5,damage:Math.ceil(shooter.damage*.34)}));
  if(shooter.kind==='voidSentinel'){
   if(sequence%4===0)return[shot('blast',aim,{path:'grenade',speed:3.15,life:1.25,damage:Math.ceil(shooter.damage*.8),blastRadius:1.65})];
   return[-.13,0,.13].map((a,i)=>shot(`fan-${i}`,rotate(aim,a),{damage:Math.ceil(shooter.damage*.58),speed:4.8}));
@@ -938,6 +943,7 @@ export class Game {
   constructor(save, now = 0) {
     this.save = save;
     ensureEliteState(save);
+    ensureCorridorSystems(save);
     if (!["attack", "tool", "act"].includes(save.aimMode))
       save.aimMode = save.toolMode ? "tool" : "attack";
     save.toolMode = save.aimMode === "tool";
@@ -1198,6 +1204,7 @@ export class Game {
       const scaleFresh = () => {
         const q = regionalThreat(this.rx, this.ry);
         for (const e of this.enemies) {
+          if (e.foundryValidated) continue;
           e.threatRing = q.ring;
           e.maxHp = Math.round(e.maxHp * q.hpMultiplier);
           e.hp = e.maxHp;
@@ -1237,6 +1244,7 @@ export class Game {
       if (!had) {
         const q = regionalThreat(this.rx, this.ry);
         for (const e of this.enemies) {
+          if (e.foundryValidated) continue;
           e.threatRing = q.ring;
           e.maxHp = Math.round(e.maxHp * q.hpMultiplier);
           e.hp = e.maxHp;
@@ -1418,6 +1426,10 @@ export class Game {
             this.ry,
             this.save.worldGeneration,
           );
+    if(area==='overworld'){
+      const site=storySiteFor(this.save,this.rx,this.ry);if(site&&!this.map.objects.some(o=>o.id===site.id)){const open=this.map.tiles[site.y*32+site.x];if(!open?.blocked&&!open?.structure)this.map.objects.push(site)}
+      const candidate=foundryEncounter(this.save.seed,this.rx,this.ry,this.save.worldGeneration);if(candidate&&validateFoundryCandidate(candidate).ok&&!this.save.worldFlags[`foundry-retired:${candidate.foundryId}`]){const open=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>4&&t.x<28&&t.y>4&&t.y<28);if(open.length){const at=open[hashSeed(candidate.foundryId)%open.length];candidate.x=at.x;candidate.y=at.y;this.map.enemySpawns.push(candidate)}}
+    }
     if (area === "dungeon" && this.map.recipe === "cistern") {
       for (const [x, y] of [[11, 4], [12, 4], [11, 5], [12, 5]]) {
         const i = y * mapWidth(this.map, area) + x, t = this.map.tiles[i];
@@ -1445,7 +1457,7 @@ export class Game {
     if (area === "overworld") {
       const atlas = (this.save.atlas ||= {}), key = `${this.rx},${this.ry}`;
       atlas[key] = { terrain: this.map.dominant, sites: this.map.objects
-        .filter((o) => ["checkpoint","dungeon","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache"].includes(o.kind))
+        .filter((o) => ["checkpoint","dungeon","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho"].includes(o.kind))
         .map((o) => ({ kind: o.kind, name: o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
     this.enemies = this.map.enemySpawns.map((e) => {
@@ -1454,6 +1466,7 @@ export class Game {
       Object.assign(c, { dungeonRole: e.dungeonRole || null, objectiveId: e.objectiveId || null, wingId: e.wingId || null, arenaId: e.arenaId || null, deepDungeon: !!e.deepDungeon });
       if(c.eliteId){const v=eliteVariant(this.save.seed,c.eliteId,this.areaId());c.variantId=v.variantId;c.eliteModules=[...v.modules];c.eliteVariantModules=[...v.variantModules];c.visualSeed=v.visualSeed;}
       Object.assign(c,{passiveBehavior:e.passiveBehavior||null,ambient:!!e.ambient,pursuesOutdoors:!!(e.shelterAmbush||e.districtResident),shelterAmbush:!!e.shelterAmbush});
+      if(e.foundryId){const boss=e.foundryRole==='boss',melee=e.attack==='meleeSwipe';Object.assign(c,{id:e.foundryId,foundryId:e.foundryId,foundryName:e.foundryName,foundryRole:e.foundryRole,foundryModules:[...(e.foundryModules||[])],foundryAttack:e.attack,foundryMovement:e.movement,foundryWeakness:e.weakness,foundryBody:e.body,visualSeed:e.visualSeed,kind:e.kind,maxHp:boss?210:e.foundryRole==='passive'?22:52,hp:boss?210:e.foundryRole==='passive'?22:52,damage:boss?17:e.foundryRole==='passive'?0:10,range:e.foundryRole==='passive'?0:melee?1.25:boss?5.5:5,boss,ambient:e.foundryRole==='passive',scale:boss?1.95:e.foundryRole==='passive'?.92:1.18,bodyRadius:boss?.72:.46,segments:e.body==='segmented'?3:e.foundryRole==='passive'?2:1,tentacles:e.body==='tentacled'||e.body==='biomechanical'?(boss?6:3):0,speedMultiplier:e.movement==='hopping'?1.18:e.movement==='retreating'?.88:e.movement==='hovering'?1.08:1,foundryValidated:true})}
       if (e.gatePredator) Object.assign(c,{gatePredator:true,pursuesOutdoors:true,maxHp:260,hp:260,damage:22,range:5.5,scale:1.85,bodyRadius:.7,tentacles:8,speedMultiplier:1.12});
       if (e.apertureEncounter) {
         const multiplier = Math.max(1, Number(e.threatMultiplier) || 1);
@@ -1513,7 +1526,7 @@ export class Game {
         ensureAI(merged);
         return merged;
       });
-      for(const saved of s.enemies||[])if(saved.gatePredator&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);this.enemies.push(restored)}
+      for(const saved of s.enemies||[])if((saved.gatePredator||saved.foundryId)&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);this.enemies.push(restored)}
       for (const o of this.map.objects)
         if (s.objects?.[o.id]) Object.assign(o, s.objects[o.id]);
       applyFallenTreeCrossings(this.map);
@@ -1541,6 +1554,7 @@ export class Game {
     codex.features ||= {};
     codex.variants ||= {};
     for (const e of this.enemies) {
+      if(e.foundryId)continue;
       codex.creatures[e.kind] = true;
       codex.variants[e.variantId || `${e.kind}:common`] = { kind: e.kind, traits: [...(e.traits || []),...(e.eliteVariantModules||[])] };
     }
@@ -1575,7 +1589,7 @@ export class Game {
           );
     }
     if (area === "overworld")
-      this.save.explored[`${this.rx},${this.ry}`] = true;
+      this.save.explored[`${this.rx},${this.ry}`] = true;recordSectionVisit(this.save,this.rx,this.ry,this.map);
   }
   setPaused(v, now = 0) {
     if (v && !this.paused) this.pauseStarted = now;
@@ -1802,7 +1816,7 @@ export class Game {
     const key=`displacement-trigger:${this.rx},${this.ry}:${o.id}`;if(this.save.worldFlags[key])return false;this.save.worldFlags[key]=true;o.state='used';o.consumed=true;
     const h=hashSeed(this.save.seed+":displacement:"+this.rx+":"+this.ry+":"+o.id),distance=8+h%7,sign=h&1?1:-1,destination={rx:this.rx+(h&2?distance:Math.floor(distance/2))*sign,ry:this.ry+(h&2?Math.floor(distance/2):distance)*(h&4?1:-1)};
     this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDisplacement={id:"displacement:"+this.rx+":"+this.ry+":"+o.id,source:{...this.save.session.dungeonReturn},destination,hidden};this.save.session.activeDungeonId=this.save.session.activeDisplacement.id;const history=dungeonHistory(this.save,this.save.session.activeDungeonId);history.visits++;history.visitOpen=true;
-    if(hidden){journalOnce(this.save,`hidden-displacement:${o.id}`,'A concealed Folded Seam displaced you only after you crossed fully inside a shelter. Triggered seams keep a faint scar; untouched shelters reveal nothing.','Shelter hazards');this.defeatNotice={title:'HIDDEN SEAM TRIGGERED',detail:'the shelter folds into an unknown crossing',kind:'discovery'}}
+    if(hidden){recordRevelationLead(this.save,'displacement',o.id);journalOnce(this.save,`hidden-displacement:${o.id}`,'A concealed Folded Seam displaced you only after you crossed fully inside a shelter. Triggered seams keep a faint scar; untouched shelters reveal nothing.','Shelter hazards');this.defeatNotice={title:'HIDDEN SEAM TRIGGERED',detail:'the shelter folds into an unknown crossing',kind:'discovery'}}
     this.loadArea("dungeon");this.player.x=4;this.player.y=5;this.message=hidden?'The floor opens without warning. Space folds around you.':'The threshold folds the room into somewhere else.';this.sync();return true;
   }
   interact(action, objectId = null) {
@@ -2082,6 +2096,12 @@ export class Game {
   defeatEnemy(e) {
     if (e.rewarded) return;
     if(e.noRewards){e.rewarded=true;return}
+    if(e.foundryId){
+      recordCreatureDefeat(this.save,e);
+      this.save.codex.foundry||={};
+      this.save.codex.foundry[e.foundryId]={name:e.foundryName,kind:e.kind,role:e.foundryRole,modules:[...(e.foundryModules||[])],defeated:true};
+      if(e.foundryRole!=='passive')recordRevelationLead(this.save,'hunt',e.foundryId);
+    }
     if (e.ambient) {
       e.rewarded = true;
       this.message = e.kind === "hushling" ? "The hushling unthreads into violet motes." : "The quiet creature falls. Nothing in it was meant as loot.";
@@ -2464,6 +2484,16 @@ export class Game {
     if(!fellIntoHazard&&this.area==='overworld'){
       const tile=this.map.tiles[Math.floor(p.y+.7)*width+Math.floor(p.x+.5)],inside=tile?.structure==='shackInterior';
       if(inside){const trap=this.map.objects.find(o=>o.kind==='displacementTrap'&&o.state!=='used'&&!this.save.worldFlags[`displacement-trigger:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.55);if(trap){this.startDisplacement(trap,true);return}const hazard=this.map.objects.find(o=>o.kind==='shelterHazard'&&o.state==='armed'&&!this.save.worldFlags[`shelter-hazard:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.6);if(hazard){const key=`shelter-hazard:${this.rx},${this.ry}:${hazard.id}`;this.save.worldFlags[key]=true;hazard.state='spent';p.hp=Math.max(1,p.hp-(hazard.damage||10));this.message=`${hazard.name} erupts. ${hazard.damage||10} damage — the mechanism falls quiet.`;journalOnce(this.save,`shelter-hazard:${hazard.hazardType}`,`Shelters may conceal ${hazard.name.toLowerCase()} mechanisms. Their floor marks can be inspected, avoided, and remembered.`,'Shelter hazards');this.sync()}}
+    }
+    if(!fellIntoHazard){
+      for(const e of this.enemies){
+        if(!e.foundryId||e.dead||this.save.worldFlags[`foundry-observed:${e.foundryId}`]||Math.hypot(e.x-p.x,e.y-p.y)>5)continue;
+        this.save.worldFlags[`foundry-observed:${e.foundryId}`]=true;
+        this.save.codex.foundry||={};
+        this.save.codex.foundry[e.foundryId]={name:e.foundryName,kind:e.kind,role:e.foundryRole,modules:[...(e.foundryModules||[])],defeated:false};
+        recordCreatureEncounter(this.save,e);
+        this.defeatNotice={title:'UNCLASSIFIED LIFEFORM',detail:`${e.foundryName} · ${e.foundryRole} · journal record added`,kind:e.foundryRole==='passive'?'discovery':'danger'};
+      }
     }
     if (!fellIntoHazard&&input.consume("attack")) {
       this.save.aimMode = "attack";
