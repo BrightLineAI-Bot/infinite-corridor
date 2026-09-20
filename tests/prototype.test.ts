@@ -2190,11 +2190,17 @@ test("combat grants repeatable marks with larger exceptional rewards", () => {
 test("weather and open-world shacks are deterministic bounded environment features", () => {
   const weather=new Set(),shacks=[];
   for(let y=-8;y<=8;y++)for(let x=-8;x<=8;x++){const a=generateRegion("weather-housing",x,y,1),b=generateRegion("weather-housing",x,y,1);assert.equal(a.weather,b.weather);weather.add(a.weather);shacks.push(...a.objects.filter(o=>o.kind==="shack"));}
-  assert.ok(weather.has("rain"));assert.ok(weather.has("snow"));assert.ok(weather.has("sunbreak"));assert.ok(shacks.length>0);assert.ok(shacks.every(o=>o.bounds?.w>=6&&o.bounds?.w<=9&&o.bounds?.h>=5&&o.bounds?.h<=7));assert.ok(new Set(shacks.map(o=>`${o.bounds.w}x${o.bounds.h}`)).size>3);assert.ok(new Set(shacks.map(o=>o.facadeStyle)).size>=4);assert.ok(new Set(shacks.map(o=>o.condition)).size>=5);assert.ok(shacks.every(o=>o.door?.side==="south"&&o.roofProfile&&o.entrances?.length));assert.ok(shacks.some(o=>o.door.width===2));assert.ok(shacks.some(o=>o.entrances.length>1));
+  assert.ok(weather.has("rain"));assert.ok(weather.has("snow"));assert.ok(weather.has("sunbreak"));assert.ok(shacks.length>0);assert.ok(shacks.every(o=>o.bounds?.w>=6&&o.bounds?.w<=9&&o.bounds?.h>=5&&o.bounds?.h<=7));assert.ok(new Set(shacks.map(o=>`${o.bounds.w}x${o.bounds.h}`)).size>3);assert.ok(new Set(shacks.map(o=>o.facadeStyle)).size>=6);assert.ok(new Set(shacks.map(o=>o.condition)).size>=5);assert.ok(shacks.every(o=>o.schemaVersion===2&&o.family&&o.theme&&o.shape&&o.footprint.length&&o.door?.side==="south"&&o.roofProfile&&o.entrances?.length));assert.ok(shacks.some(o=>o.door.width===2));assert.ok(shacks.some(o=>o.entrances.length>1));
+});
+
+test("shelter schema deterministically covers six families, multiple footprints, and eight regional themes",()=>{
+ const families=new Set(),shapes=new Set(),themes=new Set();let shelters=0;
+ for(let y=-30;y<=30;y++)for(let x=-30;x<=30;x++){const a=generateRegion("shelter-schema-audit",x,y,1),b=generateRegion("shelter-schema-audit",x,y,1);assert.deepEqual(a,b);for(const o of a.objects.filter(q=>q.kind==="shack")){shelters++;families.add(o.family);shapes.add(o.shape);themes.add(o.theme);const floor=o.footprint.filter(c=>a.tiles[c.y*32+c.x].structure==="shackInterior");assert.ok(floor.length>0);assert.ok(o.entrances.every(e=>a.tiles[e.y*32+e.x].structure==="shackDoor"));}}
+ assert.ok(shelters>100);assert.deepEqual([...families].sort(),["alienGeometric","biomechanical","cyberRelay","masonry","ruinedGatehouse","timber"]);assert.ok(shapes.size>=6);assert.deepEqual([...themes].sort(),["ash-road","canyon-rim","ember-steppe","glass-marsh","living-lattice","old-kingdom","river-verge","signal-waste"]);
 });
 
 test("field shelters fully conceal interiors and use continuous architectural facades",()=>{
-  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/t\.structure === "shackWall"/);assert.match(renderer,/activeBuildingId === t\.buildingId/);assert.match(renderer,/inside=insideShelter\(o,p\)/);assert.match(renderer,/if\(inside\).*strokeRect/);assert.match(renderer,/frontY=y\+h-s\*3\.12/);assert.match(renderer,/facadeStyle/);assert.match(renderer,/roofProfile/);assert.match(renderer,/condition===\"collapsed\"/);assert.match(renderer,/condition===\"overgrown\"/);assert.match(renderer,/quadraticCurveTo/);assert.match(renderer,/function shelterSigil/);assert.match(renderer,/backY=y\+s\*\.16/);assert.doesNotMatch(renderer,/inside=p\.x>=b\.x\+1/);assert.match(renderer,/const windows=Math\.max/);
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/t\.structure === "shackWall"/);assert.match(renderer,/activeBuildingId === t\.buildingId/);assert.match(renderer,/inside=insideShelter\(o,p,map\)/);assert.match(renderer,/if\(inside\).*strokeStyle/);assert.match(renderer,/frontY=y\+h-s\*3\.12/);assert.match(renderer,/facadeStyle/);assert.match(renderer,/roofProfile/);assert.match(renderer,/condition===\"collapsed\"/);assert.match(renderer,/condition===\"overgrown\"/);assert.match(renderer,/quadraticCurveTo/);assert.match(renderer,/function shelterSigil/);assert.match(renderer,/backY=y\+s\*\.16/);assert.doesNotMatch(renderer,/inside=p\.x>=b\.x\+1/);assert.match(renderer,/const windows=Math\.max/);
 });
 
 test("shelter walls use thin physical edges and reveal only from true interior floor",()=>{
@@ -2207,7 +2213,7 @@ test("player remains foregrounded while approaching a shelter entrance",()=>{
 });
 
 test("shelter cutaway remains active beside every thin interior wall",()=>{
-  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/function insideShelter/);assert.match(renderer,/cx=p\.x\+\.5,cy=p\.y\+\.7,inset=\.22/);assert.match(renderer,/activeShelter=g\.map\.objects\.find\(o=>o\.kind===\"shack\"&&insideShelter\(o,p\)\)/);assert.doesNotMatch(renderer,/structure===\"shackInterior\"\|\|q\?\.structure/);
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/function insideShelter/);assert.match(renderer,/t\?\.buildingId===o\.id&&t\?\.structure==='shackInterior'/);assert.match(renderer,/activeShelter=g\.map\.objects\.find\(o=>o\.kind===\"shack\"&&insideShelter\(o,p,g\.map\.tiles\)\)/);assert.doesNotMatch(renderer,/structure===\"shackInterior\"\|\|q\?\.structure/);
 });
 
 test("journal renders the same minimalist trail marks used on the floor",()=>{
@@ -2236,7 +2242,7 @@ test("building roofs conceal contents outside and cut away only in their own int
 });
 
 test("Atlas pans from compact discovery records and details only current or selected sections",()=>{
-  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(game,/this\.save\.atlas \|\|=/);assert.match(game,/terrain: this\.map\.dominant/);assert.match(main,/save\.atlas\?\.\[key\]/);assert.match(main,/w \/ \(2 \* cell\)/);assert.match(main,/detailed\?sites:compact/);assert.doesNotMatch(main,/const region = generateRegion\(save\.seed, rx, ry/);assert.match(renderer,/ctx\.beginPath\(\);for\(const c of cells\)ctx\.rect/);assert.equal((renderer.match(/new Set\(cells\.map/g)||[]).length,1);
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(game,/this\.save\.atlas \|\|=/);assert.match(game,/terrain: this\.map\.dominant/);assert.match(main,/save\.atlas\?\.\[key\]/);assert.match(main,/w \/ \(2 \* cell\)/);assert.match(main,/detailed\?sites:compact/);assert.doesNotMatch(main,/const region = generateRegion\(save\.seed, rx, ry/);assert.match(renderer,/ctx\.beginPath\(\);for\(const c of cells\)ctx\.rect/);assert.ok((renderer.match(/new Set\(cells\.map/g)||[]).length>=2);
 });
 
 test("Atlas detail labels choose non-overlapping offsets and elide text that cannot fit",()=>{
@@ -2289,6 +2295,13 @@ test("journal trail examples invoke the exact ground-waymark drawing function",(
 test("rare shelters host deterministic merchants creatures and displacement thresholds",()=>{
   const kinds=new Set();for(let y=-30;y<=30;y++)for(let x=-30;x<=30;x++){const a=generateRegion("shelter-surprises",x,y,1),b=generateRegion("shelter-surprises",x,y,1),q=a.objects.find(o=>["shelterMerchant","shelterCreature","displacementDevice"].includes(o.kind));assert.deepEqual(a,b);if(q){kinds.add(q.kind);assert.equal(a.tiles[Math.floor(q.y)*32+Math.floor(q.x)].structure,"shackInterior")}}
   assert.deepEqual([...kinds].sort(),["displacementDevice","shelterCreature","shelterMerchant"]);
+});
+
+test("shelter hazards and concealed displacement traps are rare deterministic interior-only events",()=>{
+ let shelters=0,hazards=0,hidden=0,signaled=0;
+ for(let y=-35;y<=35;y++)for(let x=-35;x<=35;x++){const a=generateRegion("shelter-trap-audit",x,y,1),b=generateRegion("shelter-trap-audit",x,y,1);assert.deepEqual(a,b);const shelter=a.objects.find(o=>o.kind==="shack");if(!shelter)continue;shelters++;for(const o of a.objects.filter(o=>["shelterHazard","displacementTrap","displacementDevice"].includes(o.kind))){const tile=a.tiles[o.y*32+o.x];assert.equal(tile.structure,"shackInterior");assert.ok(shelter.entrances.every(e=>Math.hypot(o.x-e.x,o.y-e.y)>=2));if(o.kind==="shelterHazard")hazards++;else if(o.kind==="displacementTrap"){hidden++;assert.equal(o.hidden,true);assert.deepEqual(o.actions,[])}else signaled++;}}
+ assert.ok(hazards/shelters>.12&&hazards/shelters<.24);assert.ok(hidden/shelters>.006&&hidden/shelters<.025);assert.ok(signaled/shelters>.035&&signaled/shelters<.075);
+ const game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(game,/startDisplacement\(trap,true\)/);assert.match(game,/tile\?\.structure==='shackInterior'/);assert.match(game,/relocateIfStranded\(this\.player,this\.map/);assert.match(renderer,/o\.kind===\"displacementTrap\"&&o\.state!==\"used\"/);
 });
 
 test("shelter creature gifts are once-only and displacement travel is explicitly guarded",()=>{

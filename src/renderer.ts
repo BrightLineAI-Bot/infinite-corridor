@@ -356,14 +356,20 @@ function shelterSigil(ctx,cx,cy,r,glyph){
   else{for(let q=0;q<3;q++){const a=-Math.PI/2+q*Math.PI*2/3;ctx.moveTo(cx+Math.cos(a)*r+r*.18,cy+Math.sin(a)*r);ctx.arc(cx+Math.cos(a)*r,cy+Math.sin(a)*r,r*.18,0,7)}ctx.moveTo(cx,cy-r*.34);ctx.lineTo(cx+r*.3,cy+r*.18);ctx.lineTo(cx-r*.3,cy+r*.18);ctx.closePath()}
   ctx.stroke();
 }
-function insideShelter(o,p){
+function insideShelter(o,p,map){
   const b=o.bounds||{x:o.x-2,y:o.y-2,w:5,h:4},cx=p.x+.5,cy=p.y+.7,inset=.22;
+  if(map){const t=map[Math.floor(cy)*32+Math.floor(cx)];return t?.buildingId===o.id&&t?.structure==='shackInterior'}
   return cx>b.x+inset&&cx<b.x+b.w-inset&&cy>b.y+inset&&cy<b.y+b.h-inset;
 }
 function shack(ctx,o,s,p,map){
-  const b=o.bounds||{x:o.x-2,y:o.y-2,w:5,h:4},inside=insideShelter(o,p),x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s,accent={pilgrim:"#8f7658",relay:"#527d7b",chapel:"#806777",workshop:"#8c5944",stoneCottage:"#8b8170",ruinedKeep:"#9a8168",gatehouse:"#89765f",shrineHouse:"#706986"}[o.facadeStyle]||"#8f7658",condition=o.condition||"weathered",grain=(o.signGlyph||0)+b.x*3+b.y*5,masonry=['stoneCottage','ruinedKeep','gatehouse','shrineHouse'].includes(o.facadeStyle);
+  const b=o.bounds||{x:o.x-2,y:o.y-2,w:5,h:4},inside=insideShelter(o,p,map),x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s,accent={pilgrim:"#8f7658",relay:"#527d7b",chapel:"#806777",workshop:"#8c5944",stoneCottage:"#8b8170",ruinedKeep:"#9a8168",gatehouse:"#89765f",shrineHouse:"#706986",neonKiosk:"#42b8b2",relayBunker:"#4d8e9c",prismVault:"#a78cce",orbitalPod:"#7ea3bd",ribNest:"#9b647f",carapace:"#735e86"}[o.facadeStyle]||"#8f7658",condition=o.condition||"weathered",grain=(o.signGlyph||0)+b.x*3+b.y*5,masonry=['stoneCottage','ruinedKeep','gatehouse','shrineHouse'].includes(o.facadeStyle);
   ctx.save();
-  if(inside){ctx.strokeStyle=accent+"66";ctx.lineWidth=2;ctx.strokeRect(x+s*.08,y+s*.08,w-s*.16,h-s*.16);ctx.restore();return}
+  const cells=o.footprint||[],set=new Set(cells.map(c=>`${c.x},${c.y}`));
+  if(inside){ctx.strokeStyle=accent+"66";ctx.lineWidth=2;if(cells.length){for(const c of cells){if(!set.has(`${c.x-1},${c.y}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo(c.x*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x+1},${c.y}`)){ctx.beginPath();ctx.moveTo((c.x+1)*s,c.y*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x},${c.y-1}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo((c.x+1)*s,c.y*s);ctx.stroke()}if(!set.has(`${c.x},${c.y+1}`)){ctx.beginPath();ctx.moveTo(c.x*s,(c.y+1)*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}}}else ctx.strokeRect(x+s*.08,y+s*.08,w-s*.16,h-s*.16);ctx.restore();return}
+  if(cells.length&&o.shape!=='rect'){
+   const palette={timber:['#2b2822','#8f7658'],masonry:['#34332e','#8b8170'],ruinedGatehouse:['#302d29','#9a8168'],cyberRelay:['#152b31','#42b8b2'],alienGeometric:['#24243b','#a78cce'],biomechanical:['#30222d','#9b647f']}[o.family]||['#292720',accent];ctx.fillStyle=palette[0];ctx.beginPath();for(const c of cells)ctx.rect(c.x*s,c.y*s,s+1,s+1);ctx.fill();ctx.strokeStyle=palette[1];ctx.lineWidth=2;for(const c of cells){for(const [dx,dy,ax,ay,bx,by]of[[-1,0,0,0,0,1],[1,0,1,0,1,1],[0,-1,0,0,1,0],[0,1,0,1,1,1]])if(!set.has(`${c.x+dx},${c.y+dy}`)){ctx.beginPath();ctx.moveTo((c.x+ax)*s,(c.y+ay)*s);ctx.lineTo((c.x+bx)*s,(c.y+by)*s);ctx.stroke()}}
+   ctx.globalAlpha=.38;for(const c of cells)if(((c.x*3+c.y+grain)&3)===0){ctx.fillStyle=o.family==='cyberRelay'?'#65fff0':o.family==='biomechanical'?'#ca6e9e':'#d7c79a';ctx.beginPath();ctx.arc((c.x+.5)*s,(c.y+.5)*s,s*(o.family==='biomechanical'?.22:.1),0,7);ctx.fill()}ctx.globalAlpha=1;const door=o.door||cells[cells.length-1];ctx.fillStyle='#090b0b';ctx.fillRect((door.x+.16)*s,(door.y+.08)*s,s*Math.max(.65,(door.width||1)-.32),s*.84);ctx.strokeStyle=accent;ctx.strokeRect((door.x+.16)*s,(door.y+.08)*s,s*Math.max(.65,(door.width||1)-.32),s*.84);ctx.fillStyle='#c8bda4';ctx.font=`${Math.max(8,s*.18)}px monospace`;ctx.textAlign='center';ctx.fillText(o.name.toUpperCase(),x+w/2,y-s*.12);ctx.textAlign='start';ctx.restore();return;
+  }
   const backY=y+s*.16,frontY=y+h-s*3.12,skew=s*.38,wallTop=frontY+s*.18;ctx.fillStyle=masonry?(condition==="kept"?"#39372f":"#302f2a"):(condition==="kept"?"#302d27":"#282720");ctx.fillRect(x,wallTop,w,Math.max(0,y+h-wallTop));
   ctx.fillStyle=masonry?"#686052":"#3a362d";for(let q=wallTop-y+s*.08,n=0;q<h;q+=s*(masonry?.3:.45+((grain+n)%3)*.04),n++){const inset=((grain+n*7)%5)*s*.035;ctx.fillRect(x+inset,y+q,w-inset-s*((grain+n)%4===0?.12:0),s*(masonry?.07:.055+((grain+n)%2)*.035))}
   if(masonry){ctx.strokeStyle="#17181588";ctx.lineWidth=1;for(let yy=wallTop+s*.32,row=0;yy<y+h;yy+=s*.32,row++){ctx.beginPath();ctx.moveTo(x,yy);ctx.lineTo(x+w,yy);ctx.stroke();for(let xx=x+s*(row%2?.5:1);xx<x+w;xx+=s){ctx.beginPath();ctx.moveTo(xx,yy-s*.32);ctx.lineTo(xx,yy);ctx.stroke()}}}
@@ -411,7 +417,7 @@ export function render(ctx, g, w, h, now) {
         0.42
       : 0,
     dodging = now < (p.dodgeUntil || 0);
-  const activeShelter=g.map.objects.find(o=>o.kind==="shack"&&insideShelter(o,p)),
+  const activeShelter=g.map.objects.find(o=>o.kind==="shack"&&insideShelter(o,p,g.map.tiles)),
     playerTile=g.map.tiles[Math.floor(p.y)*mw+Math.floor(p.x)],
     activeBuildingId=activeShelter?.id||(String(playerTile?.structure||"").startsWith("district")?playerTile.buildingId:null);
   ctx.save();
@@ -465,11 +471,13 @@ export function render(ctx, g, w, h, now) {
   }
   const draws = [];
   for (const o of g.map.objects)
-    if (!(o.kind === "cache" && o.state === "hidden"))
+    if (!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used"))
       draws.push({
         y: o.y,
         fn: () => {
           if (o.kind === "wayfindingCue") waymark(ctx,o,s);
+          else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
+          else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
           else if (o.kind === "npc") {
             const n = g.save.consequences.npcs[o.id],
               cx = (o.x + 0.5) * s,

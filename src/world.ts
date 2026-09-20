@@ -24,45 +24,56 @@ function addEnvironment(region,seed,rx,ry,generation){
  place('tree',8+Math.floor(r()*5));place('rock',3+Math.floor(r()*4));
  if(r()<.3){for(let tries=0;tries<40;tries++){const sw=6+Math.floor(r()*4),sh=5+Math.floor(r()*3),sx=3+Math.floor(r()*(27-sw)),sy=3+Math.floor(r()*(27-sh)),doorX=sx+Math.floor((sw-1)/2),cells=[];for(let y=sy;y<sy+sh;y++)for(let x=sx;x<sx+sw;x++)cells.push(region.tiles[y*32+x]);if(cells.some(t=>t.blocked||t.kind==='bridge')||sx<=18&&sx+sw-1>=14||sy<=18&&sy+sh-1>=14||protectedCells.some(p=>p.x>=sx-1&&p.x<=sx+sw&&p.y>=sy-1&&p.y<=sy+sh))continue;const facadeStyle=pick(r,['pilgrim','relay','chapel','workshop']),roofProfile=pick(r,['gable','shed','stepped']),condition=pick(r,['weathered','patched','collapsed','overgrown','kept']),entranceWidth=sw>=8&&r()<.65?2:1,entrances=[];for(let q=0;q<entranceWidth;q++)entrances.push({x:doorX+q,y:sy+sh-1,side:'south'});if(sw>=7&&sh>=6&&r()<.55){const side=pick(r,['north','east','west']);entrances.push(side==='north'?{x:sx+1+Math.floor(r()*(sw-2)),y:sy,side}:{x:side==='east'?sx+sw-1:sx,y:sy+1+Math.floor(r()*(sh-2)),side})}if(condition==='collapsed'&&r()<.6)entrances.push({x:sx,y:sy,side:'corner'});const opening=new Set(entrances.map(e=>`${e.x},${e.y}`));for(let y=sy;y<sy+sh;y++)for(let x=sx;x<sx+sw;x++){const wall=x===sx||x===sx+sw-1||y===sy||y===sy+sh-1,door=opening.has(`${x},${y}`);region.tiles[y*32+x]={...region.tiles[y*32+x],kind:wall&&!door?'blocked':region.dominant,blocked:wall&&!door,structure:door?'shackDoor':'shack',buildingId:`shack-${rx}-${ry}`,doorSide:entrances.find(e=>e.x===x&&e.y===y)?.side}}region.objects.push({id:`shack-${rx}-${ry}`,kind:'shack',name:facadeStyle==='chapel'?'Wayside Chapel':facadeStyle==='relay'?'Relay Shelter':facadeStyle==='workshop'?'Salvager Workshop':'Wayfarer Shack',x:sx+Math.floor(sw/2),y:sy+Math.floor(sh/2),state:'quiet',actions:['inspect'],environmental:true,bounds:{x:sx,y:sy,w:sw,h:sh},door:{x:doorX,y:sy+sh-1,side:'south',width:entranceWidth},entrances,facadeStyle,roofProfile,condition,signGlyph:Math.floor(r()*6)});break}}
 }
+export const SHELTER_SCHEMA_VERSION=2;
+export const SHELTER_FAMILIES=['timber','masonry','ruinedGatehouse','cyberRelay','alienGeometric','biomechanical'];
+export const SHELTER_THEMES=['ash-road','glass-marsh','ember-steppe','river-verge','canyon-rim','old-kingdom','signal-waste','living-lattice'];
+const SHELTER_FORMS={
+ timber:{styles:['pilgrim','chapel','workshop'],names:['Wayfarer Shack','Wayside Chapel','Salvager Workshop'],shapes:['rect','lshape','twinPod']},
+ masonry:{styles:['stoneCottage','shrineHouse'],names:['Abandoned Stone House','Forgotten Shrine House'],shapes:['rect','lshape','cross']},
+ ruinedGatehouse:{styles:['ruinedKeep','gatehouse'],names:['Dilapidated Keep','Broken Gatehouse'],shapes:['gatehouse','cross','lshape'],roof:'stepped'},
+ cyberRelay:{styles:['neonKiosk','relayBunker'],names:['Signal Kiosk','Neon Relay'],shapes:['rect','twinPod','cross'],roof:'flat'},
+ alienGeometric:{styles:['prismVault','orbitalPod'],names:['Prismatic Refuge','Orbital Pod'],shapes:['diamond','cross','twinPod'],roof:'faceted'},
+ biomechanical:{styles:['ribNest','carapace'],names:['Ribbed Sanctuary','Carapace Shelter'],shapes:['oval','cross','lshape'],roof:'carapace'}
+};
+function shelterCell(shape,lx,ly,w,h){
+ if(shape==='lshape')return lx<Math.max(3,Math.floor(w/2))||ly>=h-3;
+ if(shape==='cross')return Math.abs(lx-(w-1)/2)<2||Math.abs(ly-(h-1)/2)<2;
+ if(shape==='twinPod')return ly>=h-3||lx<3||lx>=w-3;
+ if(shape==='gatehouse')return ly>=h-3||lx<3||lx>=w-3;
+ if(shape==='diamond')return Math.abs(lx-(w-1)/2)/Math.max(1,w/2)+Math.abs(ly-(h-1)/2)/Math.max(1,h/2)<=1.15||ly>=h-2;
+ if(shape==='oval')return Math.pow((lx-(w-1)/2)/Math.max(1,w/2),2)+Math.pow((ly-(h-1)/2)/Math.max(1,h/2),2)<=1.12||ly>=h-2;
+ return true;
+}
+function diversifyShelters(region){
+ const r=rng(`${region.seed}:shelter-schema:v${SHELTER_SCHEMA_VERSION}:${region.rx}:${region.ry}`),depth=Math.abs(region.rx)+Math.abs(region.ry);
+ for(const shelter of region.objects.filter(o=>o.kind==='shack')){
+  const roll=r(),family=roll<.29?'timber':roll<.53?'masonry':roll<.7?'ruinedGatehouse':roll<.84?'cyberRelay':roll<.94?'alienGeometric':'biomechanical',form=SHELTER_FORMS[family],shape=pick(r,form.shapes),b=shelter.bounds,cells=[];
+  for(let y=b.y;y<b.y+b.h;y++)for(let x=b.x;x<b.x+b.w;x++){const old=region.tiles[y*32+x];region.tiles[y*32+x]={...old,kind:region.dominant,blocked:false,structure:undefined,buildingId:undefined,doorSide:undefined,wallSides:undefined};if(shelterCell(shape,x-b.x,y-b.y,b.w,b.h))cells.push({x,y})}
+  const set=new Set(cells.map(c=>`${c.x},${c.y}`)),south=cells.filter(c=>!set.has(`${c.x},${c.y+1}`)).sort((a,b)=>Math.abs(a.x-(shelter.x||16))-Math.abs(b.x-(shelter.x||16))),primary=south[0]||cells[cells.length-1],entrances=[{...primary,side:'south'}];
+  if(b.w>=8&&south[1]&&Math.abs(south[1].x-primary.x)===1)entrances.push({...south[1],side:'south'});
+  const styleIndex=Math.floor(r()*form.styles.length),themeRoll=r(),theme=region.environment?.kind==='river'?'river-verge':region.environment?.kind==='canyon'?'canyon-rim':family==='biomechanical'?'living-lattice':family==='cyberRelay'?'signal-waste':family==='ruinedGatehouse'?'old-kingdom':region.dominant==='glass'?'glass-marsh':region.dominant==='ember'?'ember-steppe':'ash-road';
+  Object.assign(shelter,{schemaVersion:SHELTER_SCHEMA_VERSION,family,theme,shape,footprint:cells,entrances,door:{...primary,width:entrances.length,side:'south'},facadeStyle:form.styles[styleIndex],name:form.names[styleIndex%form.names.length],roofProfile:form.roof||shelter.roofProfile,depthBand:Math.floor(depth/4),incomplete:shelter.condition==='collapsed'||themeRoll<.13});
+ }
+}
+function shelterInterior(region,shelter){return(shelter.footprint||[]).filter(c=>region.tiles[c.y*32+c.x]?.structure==='shackInterior')}
 function thinShelterWalls(region){
  const ordinary=region.objects.find(o=>o.kind==='checkpoint'&&String(o.id).startsWith('landmark-'));
  if(ordinary&&rng(`${region.seed}:wayglass-sparsity:v1:${region.rx}:${region.ry}`)()>=.36){ordinary.kind='shrine';ordinary.name='Singing Array';ordinary.actions=['inspect']}
  for(const shelter of region.objects.filter(o=>o.kind==='shack')){
-  const b=shelter.bounds,openings=new Set((shelter.entrances||[]).map(e=>`${e.x},${e.y}`));
-  for(let y=b.y;y<b.y+b.h;y++)for(let x=b.x;x<b.x+b.w;x++){
-   const tile=region.tiles[y*32+x],door=openings.has(`${x},${y}`),wall=x===b.x||x===b.x+b.w-1||y===b.y||y===b.y+b.h-1,wallSides=[];
-   if(wall&&!door){if(x===b.x)wallSides.push('west');if(x===b.x+b.w-1)wallSides.push('east');if(y===b.y)wallSides.push('north');if(y===b.y+b.h-1)wallSides.push('south')}
-   region.tiles[y*32+x]={...tile,kind:region.dominant,blocked:false,structure:door?'shackDoor':wall?'shackWall':'shackInterior',wallSides,buildingId:shelter.id};
-  }
+  const b=shelter.bounds,cells=shelter.footprint||Array.from({length:b.w*b.h},(_,i)=>({x:b.x+i%b.w,y:b.y+Math.floor(i/b.w)})),set=new Set(cells.map(c=>`${c.x},${c.y}`)),openings=new Map((shelter.entrances||[]).map(e=>[`${e.x},${e.y}`,e])),sides=[[1,0,'east'],[-1,0,'west'],[0,1,'south'],[0,-1,'north']];shelter.footprint=cells;
+  for(const c of cells){const tile=region.tiles[c.y*32+c.x],opening=openings.get(`${c.x},${c.y}`),wallSides=sides.filter(([dx,dy])=>!set.has(`${c.x+dx},${c.y+dy}`)).map(q=>q[2]),wall=wallSides.length&&!opening;region.tiles[c.y*32+c.x]={...tile,kind:region.dominant,blocked:false,structure:opening?'shackDoor':wall?'shackWall':'shackInterior',wallSides:wall?wallSides:[],buildingId:shelter.id,doorSide:opening?.side,shelterFamily:shelter.family,shelterTheme:shelter.theme}}
  }
- const shelter=region.objects.find(o=>o.kind==='shack');if(!shelter)return;
- const r=rng(String(region.seed)+':shelter-surprise:v1:'+region.rx+':'+region.ry);if(r()>=.28)return;
- const b=shelter.bounds,spots=[];for(let y=b.y+1;y<b.y+b.h-1;y++)for(let x=b.x+1;x<b.x+b.w-1;x++)if(!region.tiles[y*32+x].blocked)spots.push({x,y});
- if(!spots.length)return;const spot=spots[Math.floor(r()*spots.length)],roll=r(),id='shelter-surprise-'+region.rx+'-'+region.ry;
+ const shelter=region.objects.find(o=>o.kind==='shack');if(!shelter)return;const spots=shelterInterior(region,shelter).filter(c=>!shelter.entrances.some(e=>Math.hypot(c.x-e.x,c.y-e.y)<2));if(!spots.length)return;
+ const hazardR=rng(String(region.seed)+':shelter-hazard:v2:'+region.rx+':'+region.ry);if(hazardR()<.18){const spot=spots[Math.floor(hazardR()*spots.length)],hazardType=pick(hazardR,['flameJet','shockPlate','toxicVent','graspingTendril','moltenFissure']);region.objects.push({id:'shelter-hazard-'+region.rx+'-'+region.ry,kind:'shelterHazard',name:{flameJet:'Scorched Vent',shockPlate:'Charge Plate',toxicVent:'Spore Vent',graspingTendril:'Grasping Seam',moltenFissure:'Molten Crack'}[hazardType],hazardType,...spot,state:'armed',actions:['inspect'],shelterId:shelter.id,telegraphed:true,damage:10})}
+ const hidden=rng(String(region.seed)+':hidden-displacement:v2:'+region.rx+':'+region.ry);if(hidden()<.014){const spot=spots[Math.floor(hidden()*spots.length)];region.objects.push({id:'hidden-displacement-'+region.rx+'-'+region.ry,kind:'displacementTrap',name:'Folded Seam',...spot,state:'armed',actions:[],shelterId:shelter.id,hidden:true,consumed:false})}
+ const r=rng(String(region.seed)+':shelter-surprise:v1:'+region.rx+':'+region.ry);if(r()>=.28)return;const spot=spots[Math.floor(r()*spots.length)],roll=r(),id='shelter-surprise-'+region.rx+'-'+region.ry;
  if(roll<.34)region.objects.push({id,kind:'shelterMerchant',name:pick(r,['The Lantern Broker','Moss-Cloaked Factor','The Quiet Provisioner']),role:'Wandering specialist',...spot,state:'calm',actions:['speak','trade'],shelterId:shelter.id});
  else if(roll<.68)region.objects.push({id,kind:'shelterCreature',name:pick(r,['Hearth Moth','Pilgrim Coil','Velvet Scavenger']),...spot,state:'watching',gift:pick(r,['marks','aperture','lumen']),actions:['commune'],shelterId:shelter.id});
- else if(roll<.84)region.objects.push({id,kind:'displacementDevice',name:'Mislaid Threshold',...spot,state:'armed',actions:['enter'],shelterId:shelter.id,landmark:true});
+ else if(roll<.87)region.objects.push({id,kind:'displacementDevice',name:'Mislaid Threshold',...spot,state:'armed',actions:['enter'],shelterId:shelter.id,landmark:true,signaled:true});
  else region.enemySpawns.push({kind:pick(r,['ashling','glassMite','ashenHound','coilStalker']),...spot,shelterAmbush:true});
 }
 function annotateVegetation(region){for(const o of region.objects.filter(q=>q.kind==='tree')){const r=rng(`${region.seed}:vegetation:v1:${o.id}`);o.vegetationForm=o.crossingTiles?.length?'canopy':pick(r,['canopy','shrub','spindle']);o.scale=o.vegetationForm==='canopy'?1.25:o.vegetationForm==='shrub'?.72:1.05}}
 function addAmbientFauna(region,seed,rx,ry,generation){if(region.settlement||rx===0&&ry===0)return;const r=rng(`${seed}:ambient-fauna:v1:g${generation}:${rx}:${ry}`);if(r()>.42)return;const open=region.tiles.filter(t=>!t.blocked&&!t.structure&&t.x>3&&t.x<28&&t.y>3&&t.y<28),species=[['mossGrazer','graze'],['lanternDoe','follow'],['hushling','vanish']],count=r()<.24?2:1;for(let i=0;i<count&&open.length;i++){const at=open.splice(Math.floor(r()*open.length),1)[0],[kind,passiveBehavior]=pick(r,species);region.enemySpawns.push({kind,x:at.x,y:at.y,ambient:true,passiveBehavior})}}
-const ROADSIDE_FORMS=[
- {style:'pilgrim',name:'Wayfarer Shack'},
- {style:'relay',name:'Relay Shelter'},
- {style:'chapel',name:'Wayside Chapel'},
- {style:'workshop',name:'Salvager Workshop'},
- {style:'stoneCottage',name:'Abandoned Stone House'},
- {style:'ruinedKeep',name:'Dilapidated Keep',roof:'stepped'},
- {style:'gatehouse',name:'Broken Gatehouse',roof:'stepped'},
- {style:'shrineHouse',name:'Forgotten Shrine House'},
-];
-function diversifyShelters(region){
- const r=rng(`${region.seed}:roadside-form:v2:${region.rx}:${region.ry}`);
- for(const shelter of region.objects.filter(o=>o.kind==='shack')){
-  const form=pick(r,ROADSIDE_FORMS);shelter.facadeStyle=form.style;shelter.name=form.name;
-  if(form.roof)shelter.roofProfile=form.roof;
- }
-}
 const DISTRICT_STYLES={city:{name:'Hollow Ward',floor:'cityFloor',wall:'cityWall',enemy:'ashenHound'},arcology:{name:'Lumen Arcology',floor:'arcologyFloor',wall:'arcologyWall',enemy:'coilStalker'},cloister:{name:'Thorn Cloister',floor:'cloisterFloor',wall:'cloisterWall',enemy:'veilMoth'},fortress:{name:'Broken Citadel',floor:'cityFloor',wall:'cityWall',enemy:'rootBrute'}};
 const BUILDING_USES={city:['market','infirmary','tenement','apartments','civic-hall'],arcology:['signal-lab','transit-archive','defense-post','reactor-house','habitat'],cloister:['cathedral','abbey','scriptorium','reliquary','chapter-house'],fortress:['ruined-keep','gatehouse','watch-fort','fallen-palace','bastion']};
 function addArchitecturalDistrict(region,seed,rx,ry,generation){
