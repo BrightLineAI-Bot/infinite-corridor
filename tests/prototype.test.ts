@@ -23,7 +23,7 @@ import {
 import { freshSave, migrateSave } from "../src/types.ts";
 import { foundryCandidate, foundryEncounter, validateFoundryCandidate, CREATURE_FOUNDRY_SCHEMA } from "../src/foundry.ts";
 import { recordRevelationLead, completeRevelationArc, storySiteFor, recordSectionVisit, worldStewardReport, CORRIDOR_STORY_SCHEMA, STEWARD_SCHEMA } from "../src/story.ts";
-import { serializeSave, deserializeSave } from "../src/persistence.ts";
+import { serializeSave, deserializeSave, normalizeSettings, effectiveQuality, journeyMetadata, createSlotWriteCoordinator, slotKey } from "../src/persistence.ts";
 import { dodge, createCombatant, CREATURE_TRAITS, CREATURE_FORMS, enemyBodyRadius } from "../src/combat.ts";
 import { generateItem, isValidItem, SPELLS, itemTier, itemScore, affixValue, compareItemStats } from "../src/items.ts";
 import{ELITE_DEFINITIONS,eliteVariant,eliteThreat,freshEliteState,ensureEliteState,recordPortalPrey,applyPoison,tickEliteStatus,cleansePoison,addEliteHazard,tickEliteHazards,completeElite}from'../src/elites.ts';
@@ -2720,6 +2720,33 @@ test("mobile render scaling bounds high-DPI canvas cost without changing layout"
   assert.equal(renderScaleForViewport(844,390,2.75),2);
   assert.equal(renderScaleForViewport(1280,800,3),2);
   assert.equal(renderScaleForViewport(390,844,1),1);
+  assert.equal(renderScaleForViewport(390,844,3,"low"),1);
+});
+
+test("journey slots validate metadata and remain independently keyed",()=>{
+  const first=freshSave(),second=freshSave();second.name="Second Path";second.level=9;
+  assert.equal(slotKey(1),"journey:1");assert.equal(slotKey(3),"journey:3");
+  assert.equal(journeyMetadata(first,1).health,"healthy");assert.equal(journeyMetadata(second,2).level,9);
+  assert.equal(journeyMetadata(null,3).health,"empty");assert.equal(journeyMetadata("damaged",2).health,"damaged");
+});
+
+test("slot write coordinator never crosses snapshots between slots",async()=>{
+  const writes=[],coordinator=createSlotWriteCoordinator(async(slot,snapshot)=>writes.push([slot,snapshot.name]));
+  coordinator.enqueue(1,{name:"one"});coordinator.enqueue(2,{name:"two"});await coordinator.flush();
+  assert.deepEqual(writes.sort((a,b)=>a[0]-b[0]),[[1,"one"],[2,"two"]]);
+});
+
+test("global settings normalize safe mobile quality without touching saves",()=>{
+  const settings=normalizeSettings({quality:"nonsense",controlSensitivity:99,safeMode:true});
+  assert.equal(settings.quality,"auto");assert.equal(settings.controlSensitivity,1.8);
+  assert.equal(effectiveQuality(settings,{width:1400,height:900,deviceMemory:8,hardwareConcurrency:8}),"low");
+  assert.equal(effectiveQuality(normalizeSettings({quality:"auto"}),{width:390,height:844,deviceMemory:4,hardwareConcurrency:4}),"low");
+});
+
+test("deleting the active journey switches slots and reloads before another autosave",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+  assert.match(main,/await flushSaves\(\);await deleteJourney\(meta\.slot\)/);
+  assert.match(main,/if\(meta\.slot===active\)\{setActiveSlot\([\s\S]+?location\.reload\(\);return\}/);
 });
 
 test("camera culling includes visible actors and intersecting structures only",()=>{
@@ -2735,7 +2762,7 @@ test("mobile frame work uses one loop while smooth HUD values remain full-rate",
   assert.doesNotMatch(main,/requestAnimationFrame\(loop\)/);
   assert.match(main,/nextSlowUiRefresh = now \+ 100/);
   assert.match(main,/if \(game\.paused\) return/);
-  assert.match(main,/renderScaleForViewport\(w, h, devicePixelRatio \|\| 1\)/);
+  assert.match(main,/renderScaleForViewport\(w, h, devicePixelRatio \|\| 1, currentQuality\(\)\)/);
   assert.match(main,/measured\("hud", \(\) => \{\s*updateHud\(now\);\s*updateNavigationCompass\(\);\s*\}\);\s*if \(now >= nextSlowUiRefresh\)/);
   assert.match(main,/updateWorldNotices\(\);\s*measured\("hud"/);
   assert.match(main,/render\(ctx, game, innerWidth, innerHeight, now\);\s*drawDungeonSystems\(\);\s*drawRangedEffects\(\)/);

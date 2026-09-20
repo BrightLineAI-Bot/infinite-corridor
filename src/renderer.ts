@@ -14,7 +14,8 @@ export function screenToWorld(g, w, h, x, y) {
   const c = cameraTransform(g, w, h);
   return { x: (x - c.x) / c.tileSize, y: (y - c.y) / c.tileSize };
 }
-export function renderScaleForViewport(width, height, deviceScale = 1) {
+export function renderScaleForViewport(width, height, deviceScale = 1, quality = "balanced") {
+  if (quality === "low") return 1;
   return Math.min(Math.max(1, Number(deviceScale) || 1), 2);
 }
 export function visibleInCamera(o, left, top, right, bottom, padding = 2) {

@@ -433,6 +433,15 @@ dialog button {
   margin: 6px;
   padding: 10px 18px;
 }
+#optionsPanel{width:min(94vw,820px)}
+.options-intro,.options-note{color:#aaa28f;line-height:1.45}
+.options-tabs{display:flex;gap:6px;overflow-x:auto;padding:4px 0 12px;border-bottom:1px solid #74654e55}
+.options-tabs button{white-space:nowrap;padding:8px 11px}.options-tabs button[aria-selected="true"]{color:#f2d79d;border-color:#c9a15c}
+.slot-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:12px}
+.slot-card{padding:12px;border:1px solid #665f50;background:#111714aa;box-shadow:inset 3px 0 #806d4d66}.slot-card.active{border-color:#c9a15c}.slot-card.damaged{border-color:#b9574c}.slot-card h3{margin:0 0 6px}.slot-card p{margin:4px 0;color:#bdb4a2;font-size:.85rem}.slot-actions{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}.slot-actions button{padding:7px 9px}
+.settings-grid{display:grid;gap:10px;margin-top:12px}.setting-row{display:grid;grid-template-columns:minmax(140px,1fr) minmax(130px,1fr);gap:12px;align-items:center;padding:8px;border-bottom:1px solid #74654e33}.setting-row input,.setting-row select{width:100%;min-height:36px;background:#101613;color:#e0d8c7;border:1px solid #665f50}.options-danger{border-color:#a74d45!important;color:#ffc4b4!important}.health-badge{font:10px monospace;text-transform:uppercase;color:#8fc68a}.damaged .health-badge{color:#e17c70}
+body.high-contrast{filter:contrast(1.15)}
+@media(max-width:540px){.setting-row{grid-template-columns:1fr}.slot-grid{grid-template-columns:1fr}#optionsPanel{padding:13px}.options-tabs{margin-right:25px}}
 #atlas {
   text-align: center;
 }
