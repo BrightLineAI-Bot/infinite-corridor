@@ -2,6 +2,7 @@ import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, 
 import {
   generateRegion,
   generateDungeon,
+  dungeonDescriptor,
   dungeonId,
   SECTION_SIZE,
   regionalThreat,
@@ -40,6 +41,8 @@ import { hashSeed } from "./random.ts";
 import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.ts';
 import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace}from'./foundry.ts';
 import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.ts';
+import{generateVariedDungeon,generateBespokeArena}from'./arenas.ts';
+import{ensureSceneState,queueScene}from'./scenes.ts';
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function mapWidth(map, area = "overworld") { return Math.max(1, Number(map?.width) || (area === "dungeon" ? 24 : 32)); }
@@ -89,6 +92,7 @@ export function completeDeepStory(save, id, map) {
     if (pack.reward?.armorSphere) save.materials.armorSphere = (save.materials.armorSphere || 0) + pack.reward.armorSphere;
   }
   journalOnce(save, `deep-story-complete:${id}:${pack.id}`, `${pack.title} resolved within ${map.name}. Its final apparition passed beyond the Corridor.`, `${map.name} — ${pack.title}`);
+  queueScene(save,"memorial-release",`${id}:${pack.id}`);
   return true;
 }
 export function enemyDefeatNotice(e, area = "overworld") {
@@ -119,6 +123,7 @@ function recordRelayChain(save, areaId) {
   save.worldFlags["relay-chain.count"] = count;
   if (count < 5 || save.narrative.facts["relay.networkAnswered"]) return false;
   save.narrative.facts["relay.networkAnswered"] = true;
+  queueScene(save,"relay-awakening",areaId);
   save.materials.lumenDust = (save.materials.lumenDust || 0) + 3;
   save.consumables.crossingSigil = (save.consumables.crossingSigil || 0) + 1;
   journalOnce(save, "relay-network-answered", "Five cleared crossings form a readable pattern. Restoring a relay opens its line: passage and connection improve, but hostile things can learn and pursue that route. Severing a relay closes the line permanently: its salvage can be recovered, but its connection and whatever it might have reached are lost. A far relay answers with a coordinate that does not belong to any charted section, leaving three lumen dust and a Crossing Sigil fused into the receiver.", "The Far Signal");
@@ -1444,9 +1449,15 @@ export class Game {
   loadArea(area, capture = true) {
     if (capture) this.snapshotArea();
     this.area = area;
+    const loadingId=area==="dungeon"?this.areaId():null,history=loadingId?dungeonHistory(this.save,loadingId):null;
+    const canonical=`dungeon:${this.save.seed}:g${this.save.worldGeneration}`;if(history&&history.generatorVersion===undefined)history.generatorVersion=loadingId===canonical||!!this.save.session.areas[loadingId]?2:3;
     this.map =
       area === "dungeon"
-        ? generateDungeon(this.save.seed, this.areaId(),{levelId:this.save.session.activeDungeonLevelId||undefined})
+        ? String(loadingId).startsWith("arena:")||String(loadingId).startsWith("hunt-arena:")
+          ? generateBespokeArena(this.save.seed,loadingId,{kind:String(loadingId).startsWith("hunt-arena:")?"temporary":"persistent",cleared:!!history?.resolved})
+          : history?.generatorVersion===3&&!String(loadingId).includes(":deep-v")&&!String(loadingId).startsWith("hunt-instance:")
+            ? generateVariedDungeon(this.save.seed,loadingId,dungeonDescriptor(loadingId).recipe)
+            : generateDungeon(this.save.seed, loadingId,{levelId:this.save.session.activeDungeonLevelId||undefined})
         : generateRegion(
             this.save.seed,
             this.rx,
@@ -1743,6 +1754,7 @@ export class Game {
   recoverFromDeath(now = 0, input = null) {
     const p = this.player,
       before = this.save.consumables.restorativeDraught || 0;
+    this.captureLastDeath();
     this.save.worldFlags.deaths = (this.save.worldFlags.deaths || 0) + 1;
     this.save.session.displacementJourney = null;
     if (before < 2) this.save.consumables.restorativeDraught = 2;
@@ -1788,6 +1800,11 @@ export class Game {
     }
     this.sync();
     return true;
+  }
+  captureLastDeath(cause="defeat"){
+    const p=this.player,prior=this.save.lastDeath?.sequence||0,inside=this.area==="dungeon",ret=this.save.session.dungeonReturn||{},id=inside?this.areaId():null,temporary=inside&&String(id).startsWith("hunt-instance:");
+    this.save.lastDeath={schema:1,sequence:prior+1,areaKind:inside?"dungeon":"overworld",rx:inside?(Number.isInteger(ret.rx)?ret.rx:this.rx):this.rx,ry:inside?(Number.isInteger(ret.ry)?ret.ry:this.ry):this.ry,x:p.x,y:p.y,dungeonId:id,instanceId:temporary?id:null,levelId:inside?(this.map?.levelId||this.save.session.activeDungeonLevelId||null):null,label:inside?`Inside ${this.map?.name||"a dungeon"}`:`Section ${this.rx}, ${this.ry}`,cause,valid:temporary?!this.save.viewport?.instances?.[id]?.collapsed:true};
+    return this.save.lastDeath;
   }
   sync() {
     Object.assign(this.save.session, {
@@ -2613,6 +2630,7 @@ export class Game {
         p.invulnerableUntil = now + 700;
       }
     if (p.hp <= 0) {
+      this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
       if (this.area === "dungeon") {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
       const c = this.save.activeCheckpoint;
       this.save.worldFlags.deaths = (this.save.worldFlags.deaths || 0) + 1;

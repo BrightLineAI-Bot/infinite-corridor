@@ -22,7 +22,7 @@ import {
   wayfindingCacheStats,
   clearWayfindingCache,
 } from "../src/world.ts";
-import { freshSave, migrateSave } from "../src/types.ts";
+import { freshSave, migrateSave, normalizeManualWaypoint } from "../src/types.ts";
 import { foundryCandidate, foundryEncounter, validateFoundryCandidate, CREATURE_FOUNDRY_SCHEMA, VIEWPORT_SCHEMA, DOMAIN_SCHEMA, HUNT_INSTANCE_SCHEMA, ensureViewportState, acceptViewportHunt, completeViewportHunt, foundryTrialDecision, domainTopology, domainEncounterPlan, completeDomainBoss, manifestationMechanics, ensureHuntInstance, beginHuntInstance, abandonHuntInstance, completeHuntInstance, cleanupHuntInstance, recordPeoplePlace } from "../src/foundry.ts";
 import { recordRevelationLead, completeRevelationArc, storySiteFor, recordSectionVisit, worldStewardReport, CORRIDOR_STORY_SCHEMA, STEWARD_SCHEMA } from "../src/story.ts";
 import { serializeSave, deserializeSave, normalizeSettings, effectiveQuality, journeyMetadata, createSlotWriteCoordinator, slotKey } from "../src/persistence.ts";
@@ -68,6 +68,8 @@ import {
 } from "../src/game.ts";
 import { rng, pick, hashSeed } from "../src/random.ts";
 import { DEEP_ARCHETYPE_IDS, DEEP_STORY_PACKAGES, deepV2Id, deepV2Levels, generateDeepV2Dungeon } from "../src/deep-dungeons.ts";
+import { SCENE_DEFINITIONS,freshSceneState,ensureSceneState,sceneVariant,queueScene,commitScene,scenePlaybackPlan,recoverInterruptedScene } from "../src/scenes.ts";
+import { ARENA_FAMILIES,arenaEligible,generateBespokeArena,arenaDescriptor,generateVariedDungeon } from "../src/arenas.ts";
 import {
   normalizeVector,
   shapeStick,
@@ -266,7 +268,7 @@ test("schema migrations preserve location and select legacy generation zero", ()
     },
     explored: {},
   });
-  assert.equal(s.version, 11);
+  assert.equal(s.version, 12);
   assert.equal(s.worldGeneration, 0);
   assert.deepEqual(
     [s.session.rx, s.session.ry, s.session.x, s.session.y],
@@ -275,14 +277,14 @@ test("schema migrations preserve location and select legacy generation zero", ()
   assert.equal(s.session.areas["overworld:0:0:g0"].legacy, true);
   assert.equal(s.session.areas["dungeon:old:g0"].dungeon, true);
 });
-test("save roundtrip preserves stats equipment and waypoint", () => {
+test("save roundtrip preserves stats equipment and manual waypoint", () => {
   const s = freshSave();
   s.stats.Might = 4;
   s.equipment.primary.power = 9;
-  s.waypoint = { rx: -2, ry: 5 };
+  s.manualWaypoint = { kind:"section",area:"overworld",rx:-2,ry:5,label:"Quiet road" };
   const r = deserializeSave(serializeSave(s));
   assert.deepEqual(
-    [r.stats.Might, r.equipment.primary.power, r.waypoint.rx],
+    [r.stats.Might, r.equipment.primary.power, r.manualWaypoint.rx],
     [4, 9, -2],
   );
 });
@@ -423,7 +425,7 @@ test("atlas section summary reports detail flags", () => {
   s.session.ry = -1;
   s.explored["2,-1"] = true;
   s.checkpoints["2,-1"] = {};
-  s.waypoint = { rx: 2, ry: -1 };
+  s.manualWaypoint = { kind:"section",area:"overworld",rx:2,ry:-1,label:"Section 2, -1" };
   const d = sectionSummary(s.seed, 2, -1, s.worldGeneration, s);
   assert.deepEqual(
     [d.rx, d.ry, d.checkpoint, d.current, d.waypoint],
@@ -545,7 +547,7 @@ test("v3 migration creates valid narrative state without losing progress", () =>
     narrative: undefined,
     xp: 44,
   });
-  assert.equal(s.version, 11);
+  assert.equal(s.version, 12);
   assert.equal(s.xp, 44);
   assert.ok(Array.isArray(s.narrative.journal));
   assert.equal(s.narrative.schema, "infinite-corridor-narrative/1.0.0");
@@ -686,7 +688,7 @@ test("v4 migration adds consumables without losing progress", () => {
   old.xp = 77;
   delete old.consumables;
   const s = migrateSave(old);
-  assert.equal(s.version, 11);
+  assert.equal(s.version, 12);
   assert.equal(s.xp, 77);
   assert.deepEqual(s.consumables, {
     restorativeDraught: 3,
@@ -818,7 +820,7 @@ test("v5 to v8 retains explicit zero supplies and ranged state", () => {
   old.version = 5;
   old.consumables = { restorativeDraught: 0, ironbarkTonic: 0 };
   const s = migrateSave(old);
-  assert.equal(s.version, 11);
+  assert.equal(s.version, 12);
   assert.deepEqual(s.consumables, {
     restorativeDraught: 0,
     ironbarkTonic: 0,
@@ -1088,7 +1090,7 @@ test("v6 to v8 preserves location ranged aim snapshots and new defaults", () => 
   o.session.areas.keep = { enemies: [] };
   delete o.toolMode;
   const s = migrateSave(o);
-  assert.equal(s.version, 11);
+  assert.equal(s.version, 12);
   assert.deepEqual([s.session.x, s.session.y], [7, 9]);
   assert.deepEqual(s.pendingAim, { x: 3, y: 4 });
   assert.ok(s.session.areas.keep);
@@ -1630,7 +1632,7 @@ test("v7 migration preserves old Relay completion dead Vela and unrelated exact 
   old.session.areas.keep = { enemies: [{ id: "retain", hp: 3 }] };
   old.currency = 47;
   const s = migrateSave(old);
-  assert.equal(s.version, 11);
+  assert.equal(s.version, 12);
   assert.equal(s.consequences.choices.relay, "restore");
   assert.equal(s.consequences.npcs["vendor-vela"].status, "dead");
   assert.equal(s.consequences.settlements["ember-refuge"].status, "standing");
@@ -2007,11 +2009,11 @@ test("expanded creature ecology is deterministic and recorded in the field codex
   for(let y=-4;y<=4;y++)for(let x=-4;x<=4;x++)for(const e of generateRegion("ecology",x,y,1).enemySpawns)kinds.add(e.kind);
   for(const kind of ["ashenHound","veilMoth","rootBrute","coilStalker","cinderWisp"])assert.ok(kinds.has(kind),kind);
   const s=freshSave(),g=new Game(s,0);
-  assert.equal(s.version,11);
+  assert.equal(s.version,12);
   assert.ok(Object.keys(s.codex.creatures).length>=1);
   assert.equal(s.codex.places["terrain:"+g.map.dominant],true);
   const migrated=migrateSave({...freshSave(),version:8,codex:undefined});
-  assert.equal(migrated.version,11);
+  assert.equal(migrated.version,12);
   assert.deepEqual(migrated.codex,{creatures:{},places:{},features:{},variants:{},peoplePlaces:{}});
 });
 test("journal exposes encounter codex sections and an always-available symbol guide",()=>{
@@ -2408,14 +2410,20 @@ test("inventory comparisons mark every improved and reduced equipped stat indepe
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");assert.match(main,/compareItemStats\(item,save\.equipment\[item\.slot\]\)/);assert.match(main,/↑ /);assert.match(main,/↓ /);assert.match(css,/\.stat-up[\s\S]*#91d79a/);assert.match(css,/\.stat-down[\s\S]*#e58c87/);
 });
 
-test("Atlas waypoint drives the compact constellation compass and toggles clear",()=>{
+test("manual waypoint and guidance share one compact compass without replacing each other",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),style=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
-  assert.match(html,/id="navCompass"[\s\S]*id="navArrow"/);
-  assert.match(main,/function navigationTarget\(\)[\s\S]*save\.waypoint[\s\S]*kind: "quest"/);
-  assert.match(html,/id="mapWaypoint"/);assert.match(main,/\$\("#mapWaypoint"\)\.onclick/);assert.match(main,/save\.waypoint\?\.rx===selected\.rx&&save\.waypoint\?\.ry===selected\.ry\?null/);
-  assert.match(main,/Math\.atan2\(dy, dx\)[\s\S]*updateNavigationCompass\(\)/);
+  assert.match(html,/id="navCompass"[\s\S]*id="navGuidanceArrow"[\s\S]*id="navManualArrow"/);
+  assert.match(main,/function navigationTargets\(\)[\s\S]*activeHuntId[\s\S]*save\.manualWaypoint[\s\S]*guidance[\s\S]*manual/);
+  assert.match(html,/id="mapWaypoint"/);assert.match(main,/\$\("#mapWaypoint"\)\.onclick/);assert.match(main,/save\.manualWaypoint=same\?null:\{kind:"section",area:"overworld"/);
+  assert.match(main,/Math\.atan2\(dy,dx\)[\s\S]*updateNavigationCompass\(\)/);
   assert.match(style,/\.nav-compass\s*\{[\s\S]*position:\s*absolute[\s\S]*border-radius:\s*50%/);
-  assert.match(style,/linear-gradient\(to bottom, #fffdf2/);
+  assert.match(style,/\.guidance-arrow\s*\{[^}]*#c8a8e1/);assert.match(style,/\.manual-arrow\s*\{[^}]*#5fe7ee/);
+});
+
+test("legacy waypoints normalize safely while hunt waypoints do not become manual destinations",()=>{
+  const oldManual=freshSave();delete oldManual.manualWaypoint;oldManual.waypoint={rx:4,ry:-3,name:"Old marker"};const manual=migrateSave(oldManual);assert.deepEqual(manual.manualWaypoint,{kind:"section",area:"overworld",rx:4,ry:-3,label:"Old marker"});assert.equal("waypoint" in manual,false);
+  const oldHunt=freshSave();delete oldHunt.manualWaypoint;oldHunt.waypoint={rx:7,ry:8,source:"viewport",huntId:"hunt"};const hunt=migrateSave(oldHunt);assert.equal(hunt.manualWaypoint,null);
+  assert.equal(normalizeManualWaypoint({area:"dungeon",rx:1,ry:2}),null);assert.equal(normalizeManualWaypoint({rx:Infinity,ry:2}),null);
 });
 
 test("elite definitions preserve class identity while deterministic aspects vary",()=>{assert.equal(Object.keys(ELITE_DEFINITIONS).length,4);for(const d of Object.values(ELITE_DEFINITIONS)){assert.ok(d.stableModules.length>=2);assert.ok(d.variantModules.length>=3);assert.ok(d.threatCost>=8)}const a=eliteVariant('A','vesperwing','5,-2'),again=eliteVariant('A','vesperwing','5,-2'),b=eliteVariant('B','vesperwing','5,-2');assert.deepEqual(a,again);assert.notEqual(a.variantId,b.variantId);assert.ok(a.modules.includes('dive'));assert.ok(a.variantModules.length>=1);assert.ok(eliteThreat(a,8,1)>a.threatCost)});
@@ -2426,7 +2434,7 @@ test("portal prerequisite and elite rewards are one-time",()=>{const s=freshSave
 
 test("elite combatants are genuinely boss-scale but remain below Gate Revenant terror",()=>{for(const id of Object.keys(ELITE_DEFINITIONS)){const e=createCombatant(id,8,8);assert.equal(e.boss,true);assert.ok(e.maxHp>=230);assert.ok(e.damage>=17);assert.ok(e.eliteModules.length>=3);assert.ok(e.damage<22)}});
 
-test("save v11 migration preserves old progress and initializes elite contracts",()=>{const old=freshSave();old.version=9;delete old.elites;old.currency=77;const s=migrateSave(old);assert.equal(s.version,11);assert.equal(s.currency,77);assert.equal(s.elites.contracts.vesperwing.state,'available');assert.equal(s.materials.weaponSphere,0);assert.equal(s.viewport.schema,VIEWPORT_SCHEMA)});
+test("save v11 migration preserves old progress and initializes elite contracts",()=>{const old=freshSave();old.version=9;delete old.elites;old.currency=77;const s=migrateSave(old);assert.equal(s.version,12);assert.equal(s.currency,77);assert.equal(s.elites.contracts.vesperwing.state,'available');assert.equal(s.materials.weaponSphere,0);assert.equal(s.viewport.schema,VIEWPORT_SCHEMA)});
 
 test("elite journal art is bundled and release build includes the elite module",()=>{const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8'),css=readFileSync(new URL('../styles.css',import.meta.url),'utf8'),build=readFileSync(new URL('../scripts/build.mjs',import.meta.url),'utf8'),sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');assert.match(main,/ELITE_PORTRAITS/);assert.match(css,/elite-bestiary-atlas-v1-wide\.png/);assert.match(build,/'elites'/);assert.match(sw,/elite-bestiary-atlas-v1-wide\.png/)});
 
@@ -2708,8 +2716,8 @@ test("Creature Foundry output is stable validated rare and role-diverse",()=>{
 });
 
 test("Viewport contracts are deterministic bounded and preserve hunt decisions",()=>{
- const a=freshSave(),b=freshSave();assert.deepEqual(ensureViewportState(a),ensureViewportState(b));const v=ensureViewportState(a);assert.equal(v.schema,VIEWPORT_SCHEMA);assert.equal(Object.keys(v.contracts).length,5);
- const accepted=acceptViewportHunt(a,'viewport-foundry-trial');assert.equal(accepted.ok,true);assert.equal(a.viewport.activeHuntId,'viewport-foundry-trial');assert.equal(a.waypoint.huntId,'viewport-foundry-trial');const before=a.currency;assert.equal(completeViewportHunt(a,'viewport-foundry-trial'),true);assert.ok(a.currency>before);assert.equal(completeViewportHunt(a,'viewport-foundry-trial'),false);assert.equal(foundryTrialDecision(a,'viewport-foundry-trial','rare'),true);assert.equal(a.worldFlags['foundry-rare:viewport-foundry-trial'],true);
+ const a=freshSave(),b=freshSave();assert.deepEqual(ensureViewportState(a),ensureViewportState(b));const v=ensureViewportState(a);assert.equal(v.schema,VIEWPORT_SCHEMA);assert.equal(Object.keys(v.contracts).length,5);a.manualWaypoint={kind:'section',area:'overworld',rx:2,ry:3,label:'My marker'};const marker=structuredClone(a.manualWaypoint);
+ const accepted=acceptViewportHunt(a,'viewport-foundry-trial');assert.equal(accepted.ok,true);assert.equal(a.viewport.activeHuntId,'viewport-foundry-trial');assert.deepEqual(a.manualWaypoint,marker);const before=a.currency;assert.equal(completeViewportHunt(a,'viewport-foundry-trial'),true);assert.deepEqual(a.manualWaypoint,marker);assert.ok(a.currency>before);assert.equal(completeViewportHunt(a,'viewport-foundry-trial'),false);assert.equal(foundryTrialDecision(a,'viewport-foundry-trial','rare'),true);assert.equal(a.worldFlags['foundry-rare:viewport-foundry-trial'],true);
 });
 
 test("active frontier hunt creates a bounded lazy Sentinel domain at one loaded section",()=>{
@@ -2750,7 +2758,7 @@ test("steward telemetry stays bounded and reports recommendations without mutati
 
 test("version 11 migration initializes additive story foundry steward and Viewport state without reset",()=>{
  const raw=freshSave();raw.level=17;raw.currency=333;raw.story=undefined;raw.worldSteward=undefined;raw.codex.foundry={"retained-test":{name:"Retained Witness"}};
- const s=migrateSave(raw);assert.equal(s.version,11);assert.equal(s.level,17);assert.equal(s.currency,333);assert.equal(s.story.schema,CORRIDOR_STORY_SCHEMA);assert.equal(s.worldSteward.schema,STEWARD_SCHEMA);assert.equal(s.viewport.schema,VIEWPORT_SCHEMA);assert.equal(s.codex.foundry["retained-test"].name,"Retained Witness");
+ const s=migrateSave(raw);assert.equal(s.version,12);assert.equal(s.level,17);assert.equal(s.currency,333);assert.equal(s.story.schema,CORRIDOR_STORY_SCHEMA);assert.equal(s.worldSteward.schema,STEWARD_SCHEMA);assert.equal(s.viewport.schema,VIEWPORT_SCHEMA);assert.equal(s.codex.foundry["retained-test"].name,"Retained Witness");
 });
 
 test("foundry runtime integration observes by proximity preserves saved candidates and ships offline modules",()=>{
@@ -2794,8 +2802,8 @@ test("global settings normalize safe mobile quality without touching saves",()=>
 });
 
 test("overworld compass reuses active-section waymarks instead of regenerating neighboring regions per frame",()=>{
-  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),body=main.slice(main.indexOf("function navigationTarget()"),main.indexOf("function updateNavigationCompass()"));
-  assert.doesNotMatch(body,/wayfindingCues\(/);assert.match(body,/game\.map\.objects\.filter\(q=>q\.kind==="wayfindingCue"\)/);assert.match(main,/source: "active-section-waymarks"/);
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),body=main.slice(main.indexOf("function navigationTargets()"),main.indexOf("function updateNavigationArrow("));
+  assert.doesNotMatch(body,/wayfindingCues\(|generateRegion\(|drawMap\(|persist\(/);assert.match(body,/navigationCache\.map===game\.map&&navigationCache\.key===key/);assert.match(body,/game\.map\.objects\.filter\(q=>q\.kind==="wayfindingCue"\)/);assert.match(main,/source: "cached-dual-targets"/);
 });
 
 test("adjacent wayfinding scans reuse a bounded immutable signal cache without changing cues",()=>{
@@ -2905,3 +2913,10 @@ test("phone diagnostics are opt-in and report frame pacing rather than average F
   assert.match(main,/p99: percentile\(values, \.99\)/);
   assert.match(main,/over25: values\.filter/);
 });
+
+test("story scenes are deterministic bounded and commit exactly once",()=>{const a=freshSave(),b=freshSave();assert.equal(sceneVariant(a,"rift-arrival","one"),sceneVariant(b,"rift-arrival","one"));assert.equal(Object.keys(SCENE_DEFINITIONS).length,4);assert.equal(queueScene(a,"rift-arrival","one"),true);const full=scenePlaybackPlan(a,"rift-arrival",{quality:"high"}),low=scenePlaybackPlan(a,"rift-arrival",{quality:"low",reduceMotion:true});assert.ok(full.shots.length>=2);assert.equal(low.layers,1);assert.ok(low.shots.every(q=>q.camera==="still"));assert.equal(commitScene(a,"rift-arrival"),true);assert.equal(commitScene(a,"rift-arrival"),false);assert.deepEqual(scenePlaybackPlan(a,"rift-arrival"),null);assert.equal(a.narrative.facts["scene.riftArrival"],true)});
+test("interrupted scenes recover at a shot boundary and replay stays consequence-free",()=>{const s=freshSave();queueScene(s,"relay-awakening","relay");s.scenes.pending.shot=99;s.scenes.pending.elapsed=1200;const p=recoverInterruptedScene(s);assert.equal(p.shot,SCENE_DEFINITIONS["relay-awakening"].shots.length-1);assert.equal(p.elapsed,0);commitScene(s,"relay-awakening");const before=structuredClone(s.narrative.facts),replay=scenePlaybackPlan(s,"relay-awakening",{replay:true});assert.equal(replay.replay,true);assert.deepEqual(s.narrative.facts,before)});
+test("bespoke arena families are deterministic sparse bounded and traversable",()=>{for(const family of ARENA_FAMILIES){const a=generateBespokeArena("S","arena:"+family,{family}),b=generateBespokeArena("S","arena:"+family,{family});assert.deepEqual(arenaDescriptor(a),arenaDescriptor(b));assert.equal(a.diagnostic.reachable,true);assert.ok(a.tiles.length<=36*30);assert.ok(a.enemySpawns.every(e=>!a.tiles[e.y*a.width+e.x].blocked))}let eligible=0;for(let x=0;x<500;x++)eligible+=arenaEligible("S",x,-x)?1:0;assert.ok(eligible>0&&eligible<15)});
+test("temporary and persistent arenas obey lifecycle output",()=>{const active=generateBespokeArena("S","hunt-arena:test",{kind:"temporary"}),cleared=generateBespokeArena("S","arena:test",{kind:"persistent",cleared:true});assert.equal(active.arenaKind,"temporary");assert.equal(active.enemySpawns.length,1);assert.equal(cleared.arenaKind,"persistent");assert.equal(cleared.enemySpawns.length,0);assert.ok(active.objects.some(o=>o.kind==="exit"))});
+test("ordinary v3 families expose materially different deterministic topologies",()=>{for(const family of ["hollow","cistern","kiln"]){const signatures=new Set;for(let i=0;i<20;i++){const m=generateVariedDungeon("S",`dungeon:S:g1:${i}:2:${family}`,family);assert.equal(m.diagnostic.traversalValidation,"pass");assert.ok(m.enemySpawns.every(e=>!m.tiles[e.y*m.width+e.x].blocked));signatures.add(`${m.diagnostic.layoutGrammar}:${m.diagnostic.branchCount}:${m.diagnostic.loopCount}`)}assert.ok(signatures.size>=3)}});
+test("last death captures pre-respawn dungeon identity and remains independent",()=>{const s=freshSave(),g=new Game(s,0);s.manualWaypoint={kind:"section",area:"overworld",rx:3,ry:4,label:"Mine"};s.session.dungeonReturn={rx:0,ry:0,x:5,y:5};s.session.activeDungeonId=dungeonId(s.seed,s.worldGeneration);g.loadArea("dungeon");g.player.x=11.25;g.player.y=8.75;const record=g.captureLastDeath("trap");assert.equal(record.areaKind,"dungeon");assert.equal(record.x,11.25);assert.equal(record.dungeonId,s.session.activeDungeonId);assert.equal(s.manualWaypoint.rx,3);g.area="overworld";g.rx=2;g.ry=-3;g.player.x=6;g.player.y=7;const second=g.captureLastDeath("water");assert.equal(second.sequence,2);assert.equal(second.rx,2);assert.equal(s.activeCheckpoint.rx,0)});

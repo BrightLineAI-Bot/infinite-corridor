@@ -78,7 +78,8 @@
           ><button class="core dodge" data-action="dodge">Dodge</button
           ><button class="core attack" data-action="attack">Attack</button>
           <div id="navCompass" class="nav-compass" role="img" aria-label="No navigation target" hidden>
-            <span id="navArrow" aria-hidden="true">▲</span>
+            <span id="navGuidanceArrow" class="nav-arrow guidance-arrow" aria-hidden="true">▲</span>
+            <span id="navManualArrow" class="nav-arrow manual-arrow" aria-hidden="true">▲</span>
           </div>
         </div>
       </section>
@@ -106,6 +107,12 @@
         <h2>Wayfarer’s Journal</h2>
         <div id="journalBody"></div>
       </dialog>
+      <section id="storyScene" class="story-scene" hidden aria-live="polite" aria-label="Story scene">
+        <div id="sceneArt" class="scene-art" role="img"></div>
+        <div class="scene-vignette"></div>
+        <div class="scene-copy"><strong id="sceneTitle"></strong><p id="sceneCaption"></p></div>
+        <button id="sceneSkip" type="button" hidden>Skip scene</button>
+      </section>
       <dialog id="creatureViewer">
         <button id="creatureViewerClose" class="close" aria-label="Close creature rendering">×</button>
         <h2 id="creatureViewerTitle">Field rendering</h2>
