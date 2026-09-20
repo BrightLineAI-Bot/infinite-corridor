@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=86" />
+    <link rel="stylesheet" href="./styles.css?v=87" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -48,7 +48,8 @@
           <span id="buff"></span>
           <nav id="hudMenu">
             <button data-action="pause">Pause</button
-            ><button data-action="journal">Journal</button>
+            ><button data-action="journal">Journal</button
+            ><button id="optionsButton" type="button">Options</button>
           </nav>
         </div>
       </section>
@@ -90,7 +91,15 @@
         <p>Progress saved. Time is still.</p>
         <button id="resume">Resume</button><button id="pausedMap">Atlas</button
         ><button id="pausedJournal">Journal</button
-        ><button id="pausedPack">Pack</button>
+        ><button id="pausedPack">Pack</button
+        ><button id="pausedOptions">Options</button>
+      </dialog>
+      <dialog id="optionsPanel" aria-labelledby="optionsTitle">
+        <button id="optionsClose" class="close" aria-label="Close options">×</button>
+        <h2 id="optionsTitle">Corridor Options</h2>
+        <p class="options-intro">Journey files and device settings. The Corridor remains paused while this panel is open.</p>
+        <nav id="optionsTabs" class="options-tabs" aria-label="Options categories"></nav>
+        <div id="optionsBody"></div>
       </dialog>
       <dialog id="journal">
         <button id="journalClose" class="close">×</button>
@@ -135,7 +144,7 @@
     <script type="module">
       const boot = async () => {
         if ("serviceWorker" in navigator) {
-          const release = "86";
+          const release = "87";
           const r = await navigator.serviceWorker.register(`./sw.js?v=${release}`, {
             updateViaCache: "none",
           });
@@ -157,7 +166,7 @@
           }
           sessionStorage.removeItem("corridor-upgrade-51");
         }
-        await import("./src/main.js?v=86");
+        await import("./src/main.js?v=87");
       };
       boot().catch((e) => {
         console.error(e);

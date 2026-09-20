@@ -14,10 +14,10 @@ export function smoothAxis(current, target, dt, response = 30) {
     current + (target - current) * (1 - Math.exp(-response * Math.max(0, dt)))
   );
 }
-export function dragVector(dx, dy, radius = 52) {
-  return shapeStick(dx / radius, dy / radius, 0.08, 1.2);
+export function dragVector(dx, dy, radius = 52, deadzone = .08) {
+  return shapeStick(dx / radius, dy / radius, deadzone, 1.2);
 }
-export function createInput(root, host = globalThis) {
+export function createInput(root, host = globalThis, options = {}) {
   const state = {
       x: 0,
       y: 0,
@@ -80,7 +80,8 @@ export function createInput(root, host = globalThis) {
       dy = e.clientY - record.y;
     if (Math.hypot(dx, dy) > 10) record.moved = true;
     if (movementPointer !== e.pointerId) return;
-    const v = dragVector(dx, dy);
+    const sensitivity = Math.max(.7, Math.min(1.8, Number(options.controlSensitivity) || 1)),
+      v = dragVector(dx * sensitivity, dy * sensitivity, 52, Math.max(0, Math.min(.3, Number(options.controlDeadzone) || .08)));
     target.x = v.x;
     target.y = v.y;
   }
@@ -149,8 +150,9 @@ export function createInput(root, host = globalThis) {
         target.x = v.x;
         target.y = v.y;
       }
-      state.x = smoothAxis(state.x, target.x, dt);
-      state.y = smoothAxis(state.y, target.y, dt);
+      const response = Math.max(10, Math.min(60, Number(options.controlSmoothing) || 30));
+      state.x = smoothAxis(state.x, target.x, dt, response);
+      state.y = smoothAxis(state.y, target.y, dt, response);
       for (const a of latch) state[a] = true;
       latch.clear();
     },

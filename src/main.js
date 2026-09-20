@@ -1,7 +1,7 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=86";
-import { vendorShop, buyFromVendor } from "./game.js?v=86";
-import { CREATURE_TRAITS } from "./combat.js?v=86";
-import { hashSeed } from "./random.js?v=86";
+import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=87";
+import { vendorShop, buyFromVendor } from "./game.js?v=87";
+import { CREATURE_TRAITS } from "./combat.js?v=87";
+import { hashSeed } from "./random.js?v=87";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -202,7 +202,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame } from "./persistence.js?v=86";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport } from "./persistence.js?v=87";
 import {
   Game,
   actionReadiness,
@@ -211,13 +211,14 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=86";
-import { createInput } from "./input.js?v=86";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=86";
-import { STATS } from "./types.js?v=86";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats } from "./items.js?v=86";
-import { currentObjective, validActions } from "./interactions.js?v=86";
-import { worldStewardReport } from "./story.js?v=86";
+} from "./game.js?v=87";
+import { createInput } from "./input.js?v=87";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=87";
+import { STATS } from "./types.js?v=87";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats } from "./items.js?v=87";
+import { currentObjective, validActions } from "./interactions.js?v=87";
+import { worldStewardReport } from "./story.js?v=87";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision } from "./foundry.js?v=87";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -228,23 +229,29 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=86";
+} from "./world.js?v=87";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
-  input = createInput(document),
+  settings = loadSettings(),
+  input = createInput(document, globalThis, settings),
   save = await loadSave(),
   game = new Game(save, performance.now()),
   panel = $("#panel"),
   body = $("#panelBody"),
   pausePanel = $("#pausePanel"),
+  optionsPanel = $("#optionsPanel"),
+  optionsBody = $("#optionsBody"),
   atlas = $("#atlas"),
   journal = $("#journal"),
   mapCanvas = $("#mapCanvas"),
   mctx = mapCanvas.getContext("2d");
 globalThis.corridorStewardReport=()=>worldStewardReport(save);
-const perfEnabled = new URLSearchParams(location.search).has("perf"),
-  perfSamples = { frame: [], update: [], render: [], hud: [], persist: [] };
+const perfEnabled = new URLSearchParams(location.search).has("perf") || settings.diagnostics,
+  perfSamples = { frame: [], update: [], render: [], hud: [], persist: [] },
+  navigationStats = { lookups: 0, rebuilds: 0 };
+function currentQuality(){return effectiveQuality(settings,{width:innerWidth,height:innerHeight,deviceMemory:navigator.deviceMemory,hardwareConcurrency:navigator.hardwareConcurrency})}
+function applyPresentationSettings(){document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=muted?0:.06*settings.masterVolume;if(musicBus)musicBus.gain.value=.72*settings.musicVolume;resize()}
 function recordPerf(kind, value) {
   if (!perfEnabled) return;
   const values = perfSamples[kind];
@@ -276,8 +283,11 @@ globalThis.corridorPerfReport = () => {
     };
   return {
     enabled: perfEnabled,
+    area: game.area,
+    quality: currentQuality(),
     canvas: { width: canvas.width, height: canvas.height, cssWidth: canvas.clientWidth, cssHeight: canvas.clientHeight },
     active: { objects: game.map.objects.length, enemies: game.enemies.filter((e) => !e.dead).length, projectiles: game.projectiles.length, effects: game.effects.length },
+    navigation: { ...navigationStats, source: "active-section-waymarks" },
     summary,
   };
 };
@@ -418,17 +428,20 @@ const objective = $("#objective"),
   hudToggles = [$("#hudExpand"), $("#fieldMenuToggle")],
   navCompass = $("#navCompass"),
   navArrow = $("#navArrow");
+let navigationMap = null, navigationObjectiveOpen = null, navigationCueTarget = null;
 function navigationTarget() {
+  navigationStats.lookups++;
   if (game.area !== "overworld") return null;
   if (save.waypoint) return { ...save.waypoint, kind: "waypoint", name: "Atlas waypoint" };
   const objectiveOpen = !save.consequences.choices.relay ||
     (save.narrative.facts["leads.active"] && !save.narrative.facts["leads.complete"]);
   if (!objectiveOpen) return null;
-  const cues = wayfindingCues(save.seed, game.rx, game.ry, save.worldGeneration, save, game.map),
-    cue = cues.find((q) => q.signalKind === "crossing") ||
-      cues.find((q) => q.signalKind === "danger") ||
-      cues.find((q) => q.signalKind === "event");
-  return cue && { rx: cue.targetRx, ry: cue.targetRy, kind: "quest", name: cue.name || "Quest signal" };
+  if(navigationMap!==game.map||navigationObjectiveOpen!==objectiveOpen){
+    navigationMap=game.map;navigationObjectiveOpen=objectiveOpen;navigationStats.rebuilds++;
+    const cues=game.map.objects.filter(q=>q.kind==="wayfindingCue"),cue=cues.find(q=>q.signalKind==="crossing")||cues.find(q=>q.signalKind==="danger")||cues.find(q=>q.signalKind==="event");
+    navigationCueTarget = cue ? { rx: cue.targetRx, ry: cue.targetRy, kind: "quest", name: cue.name || "Quest signal" } : null;
+  }
+  return navigationCueTarget;
 }
 function updateNavigationCompass() {
   const target = navigationTarget();
@@ -492,8 +505,8 @@ function startAmbience() {
     filter = audio.createBiquadFilter(),
     delay = audio.createDelay(1),
     echo = audio.createGain();
-  audioGain.gain.value = muted ? 0 : 0.06;
-  musicBus.gain.value = 0.72;
+  audioGain.gain.value = muted ? 0 : 0.06 * settings.masterVolume;
+  musicBus.gain.value = 0.72 * settings.musicVolume;
   filter.type = "lowpass";
   filter.frequency.value = 1150;
   filter.Q.value = 0.7;
@@ -572,7 +585,7 @@ mute.onclick = () => {
     const t = audio.currentTime;
     audioGain.gain.cancelScheduledValues(t);
     audioGain.gain.setValueAtTime(Math.max(0.0001, audioGain.gain.value), t);
-    audioGain.gain.linearRampToValueAtTime(muted ? 0 : 0.06, t + 0.35);
+    audioGain.gain.linearRampToValueAtTime(muted ? 0 : 0.06 * settings.masterVolume, t + 0.35);
   }
 };
 setInterval(() => {
@@ -818,7 +831,7 @@ function resize() {
     const rect = $("#app").getBoundingClientRect(),
       w = Math.max(1, Math.round(rect.width)),
       h = Math.max(1, Math.round(rect.height)),
-      d = renderScaleForViewport(w, h, devicePixelRatio || 1);
+      d = renderScaleForViewport(w, h, devicePixelRatio || 1, currentQuality());
     if (
       canvas.width !== Math.round(w * d) ||
       canvas.height !== Math.round(h * d)
@@ -845,6 +858,7 @@ visualViewport?.addEventListener("resize", resize, { passive: true });
 screen.orientation?.addEventListener("change", resize);
 new ResizeObserver(resize).observe($("#app"));
 resize();
+applyPresentationSettings();
 const persist = () => measured("persist", () => saveGame(game.exportSnapshot(performance.now())));
 function pause(show = true) {
   if (show) overlayPause = false;
@@ -859,12 +873,43 @@ function pauseForOverlay() {
 }
 function resume() {
   overlayPause = false;
-  for (const d of [pausePanel, atlas, panel, journal]) if (d.open) d.close();
+  for (const d of [pausePanel, atlas, panel, journal, optionsPanel]) if (d.open) d.close();
   game.setPaused(false, performance.now());
   input.reset();
   last = performance.now();
   persist();
 }
+const optionCategories=["Journeys","Performance","Controls","Accessibility","Audio","System"];
+let optionCategory="Journeys";
+function optionMessage(text,isError=false){let p=$("#optionsStatus");if(!p){p=document.createElement("p");p.id="optionsStatus";optionsBody.prepend(p)}p.textContent=text;p.className=isError?"options-note options-danger":"options-note"}
+function downloadText(name,text){const a=document.createElement("a"),url=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+async function switchJourney(slot){await persist();await flushSaves();setActiveSlot(slot);location.reload()}
+async function renderJourneys(){
+  const active=getActiveSlot(),slots=await listJourneySlots(),grid=document.createElement("div");grid.className="slot-grid";
+  for(const meta of slots){const card=document.createElement("section");card.className=`slot-card ${meta.health}${meta.slot===active?" active":""}`;const h=document.createElement("h3"),health=document.createElement("span"),details=document.createElement("p"),actions=document.createElement("div");h.textContent=meta.empty?`Empty Journey ${meta.slot}`:meta.name;health.className="health-badge";health.textContent=meta.slot===active?`${meta.health} · active`:meta.health;details.textContent=meta.empty?"Ready for a new Corridor.":`Level ${meta.level} · ${meta.location} · ${meta.explored} sections · ${Math.ceil(meta.bytes/1024)} KB${meta.updatedAt?` · ${new Date(meta.updatedAt).toLocaleDateString()}`:""}`;actions.className="slot-actions";
+    if(meta.empty){actions.append(uiButton("New journey",async()=>{const name=prompt("Journey name","Wayfarer"),seed=name!==null?prompt("World seed (leave blank for a generated seed)",""):null;if(name===null||seed===null)return;try{await createJourney(meta.slot,{name,seed});await switchJourney(meta.slot)}catch(e){optionMessage(e.message,true)}}))}
+    else if(meta.health==="healthy"){
+      actions.append(uiButton(meta.slot===active?"Continue":"Continue here",()=>switchJourney(meta.slot)),uiButton("Rename",async()=>{const name=prompt("Journey name",meta.name);if(!name)return;try{await renameJourney(meta.slot,name);await renderOptions("Journeys")}catch(e){optionMessage(e.message,true)}}),uiButton("Duplicate",async()=>{const target=slots.find(q=>q.empty)?.slot;if(!target)return optionMessage("All three journey slots are occupied.",true);try{await duplicateJourney(meta.slot,target);await renderOptions("Journeys")}catch(e){optionMessage(e.message,true)}}),uiButton("Export",async()=>{try{downloadText(`infinite-corridor-${meta.slot}.json`,await exportJourney(meta.slot))}catch(e){optionMessage(e.message,true)}}));
+    }else actions.append(uiButton("Recover",async()=>{try{await recoverJourney(meta.slot);await renderOptions("Journeys")}catch(e){optionMessage(e.message,true)}}));
+    if(!meta.empty){const del=uiButton("Delete",async()=>{if(!confirm(`Delete ${meta.name}? A recovery snapshot is kept.`)||!confirm("Confirm deletion of this journey slot."))return;try{await flushSaves();await deleteJourney(meta.slot);if(meta.slot===active){setActiveSlot(slots.find(q=>q.slot!==meta.slot&&!q.empty)?.slot||slots.find(q=>q.slot!==meta.slot)?.slot||1);location.reload();return}await renderOptions("Journeys")}catch(e){optionMessage(e.message,true)}});del.className="options-danger";actions.append(del)}
+    const importer=uiButton("Import",()=>{const file=document.createElement("input");file.type="file";file.accept="application/json,.json";file.onchange=async()=>{try{const text=await file.files[0].text(),replace=!meta.empty&&confirm("Replace this slot? Its healthy save will be kept as a recovery snapshot.");if(!meta.empty&&!replace)return;await importJourney(meta.slot,text,replace);await renderOptions("Journeys")}catch(e){optionMessage(e.message,true)}};file.click()});actions.append(importer);card.append(h,health,details,actions);grid.append(card)}
+  optionsBody.append(grid);
+}
+function settingRow(label,control,description=""){const row=document.createElement("label"),text=document.createElement("span");row.className="setting-row";text.innerHTML=`<strong>${label}</strong>${description?`<br><small>${description}</small>`:""}`;row.append(text,control);return row}
+function selectSetting(key,choices){const s=document.createElement("select");for(const[value,label]of choices){const o=document.createElement("option");o.value=value;o.textContent=label;s.append(o)}s.value=String(settings[key]);s.onchange=()=>updateSetting(key,s.value);return s}
+function rangeSetting(key,min,max,step){const input=document.createElement("input");input.type="range";input.min=min;input.max=max;input.step=step;input.value=settings[key];input.oninput=()=>updateSetting(key,Number(input.value));return input}
+function toggleSetting(key){const input=document.createElement("input");input.type="checkbox";input.checked=!!settings[key];input.onchange=()=>updateSetting(key,input.checked);return input}
+function updateSetting(key,value){Object.assign(settings,saveSettings({...settings,[key]:value}));applyPresentationSettings();optionMessage(`${key.replace(/([A-Z])/g," $1")} updated. Quality changes apply without changing journey data.`)}
+async function renderSettings(category){const grid=document.createElement("div");grid.className="settings-grid";
+  if(category==="Performance"){grid.append(settingRow("Quality mode",selectSetting("quality",[["auto","Auto"],["low","Low"],["balanced","Balanced"],["full","Full"]]),`Active: ${currentQuality()}. Low uses a stable 1× render scale; other modes cap at 2×.`),settingRow("Safe mode",toggleSetting("safeMode"),"Reversible low-load presentation mode."),settingRow("Weather detail",toggleSetting("weather"),"Allows ambient weather when the renderer supports it."),settingRow("Performance diagnostics",toggleSetting("diagnostics"),"Records frame timings after the next reload."))}
+  if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
+  if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
+  if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:87,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 87\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  optionsBody.append(grid);
+}
+async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
+async function openOptions(){pauseForOverlay();if(pausePanel.open)pausePanel.close();setHudExpanded(false);await renderOptions();if(!optionsPanel.open)optionsPanel.showModal()}
 function drawDungeonMap() {
   const selectedLevel=$("#dungeonLevelSelect")?.value,currentLevel=game.map.levelId||"root",map=selectedLevel&&selectedLevel!==currentLevel?generateDungeon(save.seed,game.areaId(),{levelId:selectedLevel}):game.map,d=Math.min(devicePixelRatio,2),w=Math.min(innerWidth*.9,680),h=Math.min(innerHeight*.65,520),cols=map.width||24,rows=map.height||Math.floor(map.tiles.length/cols),pad=18,cell=Math.max(2,Math.min((w-pad*2)/cols,(h-pad*2)/rows)),ox=(w-cell*cols)/2,oy=(h-cell*rows)/2;
   mapCanvas.width=w*d;mapCanvas.height=h*d;mapCanvas.style.width=w+"px";mapCanvas.style.height=h+"px";mctx.setTransform(d,0,0,d,0,0);mctx.imageSmoothingEnabled=false;mctx.fillStyle="#091018";mctx.fillRect(0,0,w,h);
@@ -1302,7 +1347,7 @@ function openJournal(mode = "chronicle") {
   const out = $("#journalBody");
   out.replaceChildren();
   const nav=document.createElement("div");nav.className="codex-tabs";
-  for(const [id,label] of [["chronicle","Chronicle"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"]])nav.append(uiButton(label,()=>openJournal(id)));
+  for(const [id,label] of [["chronicle","Chronicle"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"]])nav.append(uiButton(label,()=>openJournal(id)));
   out.append(nav);
   if(mode!=="chronicle"){
     if(mode==="dungeons"){
@@ -1472,13 +1517,13 @@ function frame(now) {
     drawRangedEffects();
   });
   updateMessage(game.message);
-  updateWorldNotices();
   measured("hud", () => {
     updateHud(now);
     updateNavigationCompass();
   });
   if (now >= nextSlowUiRefresh) {
     nextSlowUiRefresh = now + 100;
+    updateWorldNotices();
     $("#place").textContent =
       game.area === "dungeon"
         ? game.map.name
@@ -1510,6 +1555,9 @@ $("#resume").onclick = resume;
 $("#pausedPack").onclick = openPack;
 $("#pausedMap").onclick = openMap;
 $("#pausedJournal").onclick = openJournal;
+$("#pausedOptions").onclick = openOptions;
+$("#optionsButton").onclick = openOptions;
+$("#optionsClose").onclick = () => optionsPanel.close();
 $("#journalClose").onclick = () => journal.close();
 $("#creatureViewerClose").onclick=()=>$("#creatureViewer").close();
 $("#close").onclick = () => panel.close();
@@ -1640,7 +1688,7 @@ for (const id of ["mapCenter", "mapN", "mapS", "mapW", "mapE"])
   $("#" + id).addEventListener("click", () =>
     showMapDetail(mapView.x, mapView.y),
   );
-for (const d of [panel, atlas, journal])
+for (const d of [panel, atlas, journal, optionsPanel])
   d.addEventListener("close", () => {
     if (
       game.paused &&
@@ -1648,7 +1696,8 @@ for (const d of [panel, atlas, journal])
       !pausePanel.open &&
       !atlas.open &&
       !panel.open &&
-      !journal.open
+      !journal.open &&
+      !optionsPanel.open
     ) {
       if (overlayPause) resume();
       else pausePanel.showModal();
@@ -1672,9 +1721,17 @@ addEventListener("freeze", () => {
 if (game.paused) pausePanel.showModal();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");
 requestAnimationFrame(frame);
+function viewportReward(q){const bits=[];if(q.reward?.marks)bits.push(`${q.reward.marks} marks`);if(q.reward?.weaponSphere)bits.push(`${q.reward.weaponSphere} weapon sphere`);if(q.reward?.armorSphere)bits.push(`${q.reward.armorSphere} armor sphere`);if(q.reward?.draughts)bits.push(`${q.reward.draughts} draughts`);return bits.join(' · ')||'field knowledge'}
+function openViewport(){pauseForOverlay();if(pausePanel.open)pausePanel.close();const viewport=ensureViewportState(save);viewport.read=true;body.replaceChildren();const heading=document.createElement('h2'),intro=document.createElement('p');heading.textContent='Viewport';intro.textContent='Viewport gathers what the Corridor permits Ember to see. Some reports are clear. Others become legible only through travel.';body.append(heading,intro);
+ const groups=[['active','Active hunt'],['available','Hunts & emerging threats'],['recent','Recent arrivals'],['archive','Completed records']];
+ for(const[group,label]of groups){const title=document.createElement('h3');title.textContent=label;body.append(title);let entries=[];if(group==='active')entries=Object.values(viewport.contracts).filter(q=>['accepted','tracking','target-located'].includes(q.status));else if(group==='available')entries=Object.values(viewport.contracts).filter(q=>['available','deferred'].includes(q.status));else if(group==='recent')entries=viewport.recent;else entries=Object.values(viewport.contracts).filter(q=>['completed','archived'].includes(q.status));if(!entries.length){const empty=document.createElement('p');empty.className='viewport-empty';empty.textContent=group==='recent'?'Nothing meaningful has entered the record yet.':'No records in this section.';body.append(empty);continue}
+  for(const q of entries){const card=document.createElement('article'),name=document.createElement('h3'),text=document.createElement('p'),meta=document.createElement('small'),actions=document.createElement('div');card.className='item viewport-card';name.textContent=q.title||q.id;text.textContent=q.text||q.summary||'The record remains incomplete.';meta.textContent=q.kind==='hunt'?q.kind:`${q.kind||'record'} · ${q.status||'recorded'}${q.target?` · ${q.target.rx},${q.target.ry}`:''}${q.reward?` · ${viewportReward(q)}`:''}`;actions.className='viewport-actions';if(['available','deferred'].includes(q.status)){actions.append(uiButton('Accept hunt',()=>{const r=acceptViewportHunt(save,q.id);if(q.kind==='tracking'){save.narrative.facts['leads.active']=true}game.message=r.message;persist();openViewport()}));actions.append(uiButton('Archive',()=>{archiveViewportHunt(save,q.id);persist();openViewport()}))}else if(['accepted','tracking','target-located'].includes(q.status)){actions.append(uiButton('Track on Atlas',()=>{save.waypoint={...q.target,name:q.title,source:'viewport',huntId:q.id};persist();openViewport()}),uiButton('Defer',()=>{deferViewportHunt(save,q.id);persist();openViewport()}))}else if(q.kind==='trial'&&q.status==='completed'&&!q.decision){for(const[d,l]of[['corridor','Let it enter the Corridor'],['rare','Keep as a rare hunt'],['dungeon','Reserve for dungeons'],['rework','Rework and return later'],['archive','Archive']])actions.append(uiButton(l,()=>{foundryTrialDecision(save,q.id,d);persist();openViewport()}))}card.append(name,text,meta,actions);body.append(card)}
+ }
+ body.append(uiButton('Return to world',resume));if(!panel.open)panel.showModal();}
 function openInteraction(id, confirmAttack = false) {
   const o = game.map.objects.find((q) => q.id === id);
   if (!o) return;
+  if(o.kind==='viewport')return openViewport();
   pauseForOverlay();
   if (pausePanel.open) pausePanel.close();
   body.replaceChildren();
