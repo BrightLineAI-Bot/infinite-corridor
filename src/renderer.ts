@@ -171,6 +171,11 @@ const COLORS = {
   deepMechanism: ["#806b48", "#3b3328", "#e0bd70"],
   sealedGate: ["#743f4a", "#2d2026", "#e07886"],
   storyGhost: ["#72668d", "#272332", "#d8c7ef"],
+  storyActor: ["#6e7f91", "#222a33", "#d9e7ef"],
+  storyScene: ["#8d5d4f", "#32221e", "#efb18f"],
+  deepShortcut: ["#596d62", "#202923", "#9fd0ae"],
+  deepPortal: ["#535384", "#20203a", "#bbb4ef"],
+  deepTransition: ["#675c49", "#28241d", "#dbc18a"],
   storyRelic: ["#8c7650", "#382f24", "#f0cf83"],
   storyTone: ["#557d82", "#26383b", "#9fe6dd"],
 };

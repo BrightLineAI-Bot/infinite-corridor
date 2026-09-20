@@ -62,7 +62,7 @@ import {
   completeDeepStory,
 } from "../src/game.ts";
 import { rng, pick, hashSeed } from "../src/random.ts";
-import { DEEP_ARCHETYPE_IDS, DEEP_STORY_PACKAGES, deepV2Id, generateDeepV2Dungeon } from "../src/deep-dungeons.ts";
+import { DEEP_ARCHETYPE_IDS, DEEP_STORY_PACKAGES, deepV2Id, deepV2Levels, generateDeepV2Dungeon } from "../src/deep-dungeons.ts";
 import {
   normalizeVector,
   shapeStick,
@@ -2572,7 +2572,7 @@ test("deep final guardian alone resolves the expedition and grants its one-time 
 
 test("deep-v2 schema produces five deterministic mechanically distinct playable archetypes",()=>{
  const signatures=new Set();
- for(const archetype of DEEP_ARCHETYPE_IDS){const id=`dungeon:SCHEMA:g1:3:-4:deep-v2:${archetype}`,a=generateDeepV2Dungeon("SCHEMA",id),b=generateDeepV2Dungeon("SCHEMA",id);assert.deepEqual(a,b);assert.equal(a.schemaVersion,2);assert.equal(a.deepDungeon,true);assert.equal(a.archetype,archetype);assert.ok(a.zones.length>=3);assert.ok(a.objectives.length>=2);assert.ok(a.objects.some(o=>o.kind==="sealedGate"));assert.ok(a.enemySpawns.some(e=>e.dungeonRole==="finalBoss"));signatures.add(JSON.stringify([a.width,a.height,a.zones.map(z=>z.id),a.objectives.map(o=>o.type),a.tiles.filter(t=>t.kind==="dungeonWater").length,a.objects.some(o=>o.kind==="shelterMerchant")]))}
+ for(const archetype of DEEP_ARCHETYPE_IDS){const id=`dungeon:SCHEMA:g1:3:-4:deep-v2:${archetype}`,a=generateDeepV2Dungeon("SCHEMA",id),b=generateDeepV2Dungeon("SCHEMA",id);assert.deepEqual(a,b);assert.equal(a.schemaVersion,3);assert.equal(a.deepDungeon,true);assert.equal(a.archetype,archetype);assert.ok(a.zones.length>=3);assert.ok(a.objectives.length>=2);assert.ok(a.objects.some(o=>o.kind==="sealedGate"));assert.ok(a.enemySpawns.some(e=>e.dungeonRole==="finalBoss"));signatures.add(JSON.stringify([a.width,a.height,a.zones.map(z=>z.id),a.objectives.map(o=>o.type),a.tiles.filter(t=>t.kind==="dungeonWater").length,a.objects.some(o=>o.kind==="shelterMerchant")]))}
  assert.equal(signatures.size,5);
 });
 
@@ -2597,3 +2597,34 @@ test("resonant and lost-bearer stories resolve through mechanisms and reunion wi
 });
 
 test("deep expedition journal and build expose schema records without revealing undiscovered stories",()=>{const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");assert.match(main,/Deep expeditions/);assert.match(main,/No formal story has been discovered here/);assert.match(main,/completedObjectiveIds/);assert.match(build,/deep-dungeons/);assert.match(sw,/deep-dungeons\.js/) });
+
+test("descent and fortress expose deterministic stable playable level maps",()=>{
+ for(const archetype of ["descent","fortress"]){const id=deepV2Id("LEVELS",1,7,-9,archetype),levels=deepV2Levels(id);assert.ok(levels.length>=2);assert.equal(new Set(levels.map(q=>q.stableId)).size,levels.length);for(const level of levels){const a=generateDeepV2Dungeon("LEVELS",id,{levelId:level.id}),b=generateDeepV2Dungeon("LEVELS",id,{levelId:level.id});assert.deepEqual(a,b);assert.equal(a.levelId,level.id);assert.equal(a.levelStableId,level.stableId);assert.equal(a.multiLevel,true);assert.ok(reachableDungeonCells(a,a.entry).size>100)}}
+});
+
+test("multi-level transitions preserve exact destinations and separate level snapshots",()=>{
+ const s=freshSave(),id=deepV2Id(s.seed,1,4,-8,"descent");s.session.activeDungeonId=id;s.session.activeDungeonLevelId="mouth";s.session.dungeonReturn={rx:4,ry:-8,x:8,y:8};const g=new Game(s,0);g.loadArea("dungeon",false);const down=g.map.objects.find(o=>o.kind==="deepTransition"&&o.toLevelId==="pressure");Object.assign(g.player,{x:down.x,y:down.y});assert.equal(g.interact("travel",down.id).ok,true);assert.equal(s.session.activeDungeonLevelId,"pressure");assert.deepEqual([g.player.x,g.player.y],[down.toX,down.toY]);assert.ok(s.session.areas[`${id}:level:mouth`]);assert.ok(deepDungeonProgress(s,id).discoveredLevelIds.includes("pressure"));
+});
+
+test("multi-level objectives open only the final floor gate and death returns to its level anchor",()=>{
+ const s=freshSave(),id=deepV2Id(s.seed,1,2,-5,"descent");s.session.activeDungeonId=id;s.session.activeDungeonLevelId="mouth";s.session.dungeonReturn={rx:2,ry:-5,x:8,y:8};const g=new Game(s,0);g.loadArea("dungeon",false);const guardian=g.enemies.find(e=>e.objectiveId==="survey-warden");guardian.dead=true;g.defeatEnemy(guardian);let down=g.map.objects.find(o=>o.toLevelId==="pressure");Object.assign(g.player,{x:down.x,y:down.y});g.interact("travel",down.id);const engine=g.map.objects.find(o=>o.objectiveId==="depth-engine");Object.assign(g.player,{x:engine.x,y:engine.y});g.interact("activate",engine.id);const anchor=g.map.objects.find(o=>o.kind==="deepAnchor"&&o.unlockObjectiveId==="depth-engine");Object.assign(g.player,{x:anchor.x,y:anchor.y});g.interact("recover",anchor.id);down=g.map.objects.find(o=>o.toLevelId==="lowest");Object.assign(g.player,{x:down.x,y:down.y});g.interact("travel",down.id);assert.equal(g.map.objects.find(o=>o.kind==="sealedGate").state,"open");g.recoverFromDeath(900);assert.equal(s.session.activeDungeonLevelId,"pressure");assert.deepEqual([g.player.x,g.player.y],[anchor.x,anchor.y]);
+});
+
+test("physical shortcuts reveal open collision and persist without exposing mandatory finales",()=>{
+ const s=freshSave(),id=deepV2Id(s.seed,1,3,-3,"threefold");s.session.activeDungeonId=id;s.session.dungeonReturn={rx:3,ry:-3,x:8,y:8};const g=new Game(s,0);g.loadArea("dungeon",false);const door=g.map.objects.find(o=>o.kind==="deepShortcut"),guardian=g.enemies.find(e=>e.objectiveId===door.unlockObjectiveId);assert.equal(door.state,"hidden");guardian.dead=true;g.defeatEnemy(guardian);assert.equal(door.state,"revealed");Object.assign(g.player,{x:door.x,y:door.y});assert.equal(g.interact("open",door.id).ok,true);assert.equal(g.map.tiles[door.cells[0].y*g.map.width+door.cells[0].x].blocked,false);g.snapshotArea();g.loadArea("dungeon",false);assert.equal(g.map.objects.find(o=>o.id===door.id).state,"open");assert.equal(g.map.objects.find(o=>o.kind==="sealedGate").state,"sealed");
+});
+
+test("all deep-v2 archetypes provide a dormant post-boss return that activates after completion",()=>{
+ for(const archetype of DEEP_ARCHETYPE_IDS){const id=deepV2Id("RETURN",1,5,5,archetype),map=generateDeepV2Dungeon("RETURN",id),s=freshSave(),portal=map.objects.find(o=>o.kind==="deepPortal"&&o.unlockOnCompletion);assert.ok(portal,archetype);assert.equal(portal.state,"dormant");deepDungeonProgress(s,id).completed=true;applyDeepDungeonProgress(s,id,map);assert.equal(portal.state,"active",archetype)}
+});
+
+test("story selection preserves storyless runs and includes five playable packages with scene metadata",()=>{
+ const found=new Set();for(let i=0;i<1200&&found.size<6;i++){const archetype=DEEP_ARCHETYPE_IDS[i%DEEP_ARCHETYPE_IDS.length],seed=`SCENES-${i}`,id=deepV2Id(seed,1,i,-i,archetype),map=generateDeepV2Dungeon(seed,id);found.add(map.storyPackage?.id||"none")}assert.deepEqual(found,new Set(["none",...Object.values(DEEP_STORY_PACKAGES).filter(Boolean).map(q=>q.id)]));assert.equal(DEEP_STORY_PACKAGES.lastPatrol.scenes.length,3);assert.equal(DEEP_STORY_PACKAGES.emberWitness.scenes.length,3);
+});
+
+function gameForNewScene(storyId,archetype){for(let i=0;i<600;i++){const seed=`NEW-SCENE-${i}`,id=deepV2Id(seed,1,6,-7,archetype),map=generateDeepV2Dungeon(seed,id);if(map.storyPackage?.id===storyId){const s=freshSave();s.seed=seed;s.session.activeDungeonId=id;s.session.dungeonReturn={rx:6,ry:-7,x:8,y:8};const g=new Game(s,0);g.loadArea("dungeon",false);return{s,g,id}}}assert.fail(`new scene ${storyId} not found`)}
+
+test("new actor and environmental scene packages stage persist and reward exactly once",()=>{
+ {const{s,g,id}=gameForNewScene("last-patrol-v1","threefold"),actor=g.map.objects.find(o=>o.kind==="storyActor"),before=s.perception.aperture;Object.assign(g.player,{x:actor.x,y:actor.y});g.interact("witness",actor.id);assert.equal(actor.state,"manifest");const guardian=g.enemies.find(e=>e.dungeonRole==="objectiveGuardian");guardian.dead=true;g.defeatEnemy(guardian);g.interact("witness",actor.id);assert.equal(deepDungeonProgress(s,id).story.completed,true);assert.equal(s.perception.aperture,before+3);assert.equal(actor.state,"departed");assert.equal(completeDeepStory(s,id,g.map),false)}
+ {const{s,g,id}=gameForNewScene("ember-witness-v1","flooded"),before=s.materials.armorSphere,echoes=g.map.objects.filter(o=>o.kind==="storyScene");assert.equal(echoes.length,2);for(const echo of echoes){Object.assign(g.player,{x:echo.x,y:echo.y});g.interact("witness",echo.id)}const story=deepDungeonProgress(s,id).story;assert.equal(story.completed,true);assert.equal(story.scenesWitnessed.length,3);assert.equal(s.materials.armorSphere,before+1);assert.ok(echoes.every(o=>o.state==="witnessed"));assert.equal(completeDeepStory(s,id,g.map),false)}
+});
