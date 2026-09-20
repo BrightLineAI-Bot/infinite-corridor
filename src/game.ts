@@ -92,6 +92,8 @@ export function completeDeepStory(save, id, map) {
   return true;
 }
 export function enemyDefeatNotice(e, area = "overworld") {
+  const exceptional = !!(e.defeatTitle || e.apertureEncounter || e.eliteId || e.dungeonRole || e.boss || ["hollowMarshal", "riftColossus", "gateRevenant"].includes(e.kind));
+  if (!exceptional) return null;
   const name = e.eliteName || ({
     hollowMarshal: "Hollow Marshal",
     riftColossus: "Rift Colossus",
@@ -302,11 +304,8 @@ export function footprintTouchesCanyon(map, width, x, y) {
   });
 }
 export function footprintHazard(map,width,x,y){
-  for(const [ox,oy] of [[.24,.5],[.76,.5],[.24,.88],[.76,.88]]){
-    const tile=map.tiles[Math.floor(y+oy)*width+Math.floor(x+ox)];
-    if(["canyon","river","dungeonWater"].includes(tile?.kind))return tile.kind;
-  }
-  return null;
+  const tile=map.tiles[Math.floor(y+.72)*width+Math.floor(x+.5)];
+  return ["canyon","river","dungeonWater"].includes(tile?.kind)?tile.kind:null;
 }
 export function footprintInsideStructure(map,width,x,y){
   for(const [ox,oy] of [[.24,.5],[.76,.5],[.24,.88],[.76,.88]]){
@@ -427,6 +426,7 @@ export function updateProjectiles(
           alertEnemy(e);
           e.hp -= p.damage;
           e.hitFlash = 0.18;
+          e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.1 : 0.18);
           if (p.path === "boomerang") {
             (p.hits ||= {})[e.id] = true;
           } else p.dead = true;
@@ -607,6 +607,7 @@ export function updateEffects(effects, enemies, dt, onDefeat = () => {}) {
         alertEnemy(e);
         e.hp -= fx.damage;
         e.hitFlash = 0.18;
+        e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.1 : 0.18);
         if (e.hp <= 0 && !e.dead) {
           e.dead = true;
           onDefeat(e);
@@ -881,6 +882,12 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   e.strike = Math.max(0, (e.strike || 0) - dt);
   e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt);
   e.recoil = Math.max(0, (e.recoil || 0) - dt);
+  e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
+  if (e.hitStun > 0) {
+    e.telegraph = 0;
+    ensureAI(e).mode = "stagger";
+    return false;
+  }
   if(e.passiveBehavior){
     if(e.passiveBehavior==="vanish"&&toPlayer<2.4){e.dead=true;e.vanished=true;return false}
     let tx,ty,speed=.16;
@@ -2214,7 +2221,8 @@ export class Game {
       alertEnemy(e);
       e.hp -= profile.damage + characterStats(this.save).meleeBonus;
       e.hitFlash = 0.18;
-      e.recoil = 0.14;
+      e.recoil = 0.2;
+      e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.12 : 0.22);
       if (e.hp <= 0) {
         e.dead = true;
         this.defeatEnemy(e);

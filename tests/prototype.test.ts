@@ -508,6 +508,14 @@ test("enemy impact rechecks range after telegraph", () => {
   assert.equal(updateEnemyAI(e, p, map, 10, 0.02, 100), false);
   assert.equal(attackInRange(e, p), false);
 });
+
+test("enemy hits apply brief capped stagger while bosses recover faster",()=>{
+ const map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},player={x:5,y:5};
+ const ordinary=createCombatant("ashling",4,5),boss=createCombatant("riftColossus",4,5,true);
+ ordinary.hitStun=.22;boss.hitStun=.12;const ox=ordinary.x,bx=boss.x;
+ assert.equal(updateEnemyAI(ordinary,player,map,10,.1,100),false);assert.equal(ordinary.x,ox);assert.equal(ordinary.ai.mode,"stagger");
+ assert.equal(updateEnemyAI(boss,player,map,10,.13,100),false);assert.notEqual(boss.x,bx);assert.equal(boss.hitStun,0);
+});
 test("narrative pack validates, selection is deterministic, and effects are one-time", () => {
   assert.equal(validateContentPack(CONTENT_PACK), true);
   const s = freshSave(),
@@ -1998,8 +2006,9 @@ test("journal exposes encounter codex sections and an always-available symbol gu
   assert.match(source,/Creatures/);assert.match(source,/Places/);assert.match(source,/Features/);assert.match(source,/Symbols & controls/);assert.match(source,/Open ring — Wayglass/);
 });
 
-test("defeat notices consistently distinguish ordinary elite guardian boss and singular threats",()=>{
-  assert.equal(enemyDefeatNotice({kind:"ashling"}).title,"ENEMY FELLED");
+test("defeat banners stay rare while distinguishing breaches elites guardians bosses and singular threats",()=>{
+  assert.equal(enemyDefeatNotice({kind:"ashling"}),null);
+  assert.equal(enemyDefeatNotice({kind:"glassMite"}),null);
   assert.equal(enemyDefeatNotice({kind:"sparkWarden",apertureEncounter:true}).title,"BREACH STILLED");
   assert.equal(enemyDefeatNotice({kind:"vesperwing",eliteId:"vesperwing",eliteName:"The Vesperwing"}).title,"ELITE SLAIN");
   const guardian=enemyDefeatNotice({kind:"hollowMarshal",boss:true},"dungeon");
@@ -2420,9 +2429,20 @@ test("water is lethal to footprints but transparent to projectiles",()=>{
   const map={tiles:Array.from({length:16},(_,i)=>({x:i%4,y:Math.floor(i/4),kind:"ash",blocked:false}))};
   map.tiles[5]={x:1,y:1,kind:"river",blocked:true,environment:"river"};
   assert.equal(footprintHazard(map,4,.8,.4),"river");
+  assert.equal(footprintHazard(map,4,.49,.4),null,"brushing the water edge does not kill until the grounded center enters");
   assert.equal(projectileTileOpen(map,4,1.5,1.5),true);
   map.tiles[5]={...map.tiles[5],kind:"bridge",blocked:false,bridgeOver:"river"};
   assert.equal(footprintHazard(map,4,.8,.4),null);
+});
+
+test("hazard kill boxes use the grounded center and respect narrow bridge edges",()=>{
+  const map={tiles:Array.from({length:25},(_,i)=>({x:i%5,y:Math.floor(i/5),kind:"ash",blocked:false}))};
+  map.tiles[2*5+1]={x:1,y:2,kind:"canyon",blocked:true,environment:"canyon"};
+  map.tiles[2*5+2]={x:2,y:2,kind:"bridge",blocked:false,bridgeOver:"canyon"};
+  map.tiles[2*5+3]={x:3,y:2,kind:"canyon",blocked:true,environment:"canyon"};
+  assert.equal(footprintHazard(map,5,1.51,1.3),null,"sprite may overlap the rim while its grounded center remains on the bridge");
+  assert.equal(footprintHazard(map,5,2.49,1.3),null,"the opposite bridge edge remains safe");
+  assert.equal(footprintHazard(map,5,2.51,1.3),"canyon","crossing the grounded center into the canyon is lethal");
 });
 
 test("ambient fauna stay sparse, deterministic, passive, and recognizable",()=>{
