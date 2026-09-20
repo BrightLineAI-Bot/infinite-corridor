@@ -59,8 +59,10 @@ import {
   mapHeight,
   deepDungeonProgress,
   applyDeepDungeonProgress,
+  completeDeepStory,
 } from "../src/game.ts";
 import { rng, pick, hashSeed } from "../src/random.ts";
+import { DEEP_ARCHETYPE_IDS, DEEP_STORY_PACKAGES, deepV2Id, generateDeepV2Dungeon } from "../src/deep-dungeons.ts";
 import {
   normalizeVector,
   shapeStick,
@@ -2567,3 +2569,31 @@ test("deep final guardian alone resolves the expedition and grants its one-time 
  assert.equal(progress.completed,true);assert.equal(dungeonHistory(s,id).resolved,true);assert.equal(s.materials.weaponSphere,weapon+1);assert.equal(s.materials.armorSphere,armor+1);assert.equal(g.defeatNotice.title,"DEEP GUARDIAN FELLED");
  const copy={...final,id:"deep-v1-final-boss-return",rewarded:false};g.defeatEnemy(copy);assert.equal(s.materials.weaponSphere,weapon+1);assert.equal(s.materials.armorSphere,armor+1);
 });
+
+test("deep-v2 schema produces five deterministic mechanically distinct playable archetypes",()=>{
+ const signatures=new Set();
+ for(const archetype of DEEP_ARCHETYPE_IDS){const id=`dungeon:SCHEMA:g1:3:-4:deep-v2:${archetype}`,a=generateDeepV2Dungeon("SCHEMA",id),b=generateDeepV2Dungeon("SCHEMA",id);assert.deepEqual(a,b);assert.equal(a.schemaVersion,2);assert.equal(a.deepDungeon,true);assert.equal(a.archetype,archetype);assert.ok(a.zones.length>=3);assert.ok(a.objectives.length>=2);assert.ok(a.objects.some(o=>o.kind==="sealedGate"));assert.ok(a.enemySpawns.some(e=>e.dungeonRole==="finalBoss"));signatures.add(JSON.stringify([a.width,a.height,a.zones.map(z=>z.id),a.objectives.map(o=>o.type),a.tiles.filter(t=>t.kind==="dungeonWater").length,a.objects.some(o=>o.kind==="shelterMerchant")]))}
+ assert.equal(signatures.size,5);
+});
+
+test("every deep-v2 mandatory objective is reachable while each final arena begins sealed",()=>{
+ for(const archetype of DEEP_ARCHETYPE_IDS){const map=generateDeepV2Dungeon("ROUTES",`dungeon:ROUTES:g1:8:8:deep-v2:${archetype}`),closed=reachableDungeonCells(map,map.entry),key=q=>`${q.x},${q.y}`;for(const objective of map.objectives){const target=objective.type==="guardian"?map.enemySpawns.find(e=>e.objectiveId===objective.id):map.objects.find(o=>o.objectiveId===objective.id);assert.ok(closed.has(key(target)),`${archetype}:${objective.id}`)}const final=map.enemySpawns.find(e=>e.dungeonRole==="finalBoss");assert.equal(closed.has(key(final)),false,`${archetype} final arena must be sealed`);for(const p of map.finalGateTiles)map.tiles[p.y*map.width+p.x]={...map.tiles[p.y*map.width+p.x],blocked:false,kind:"deepFloor"};assert.equal(reachableDungeonCells(map,map.entry).has(key(final)),true,`${archetype} final arena must open`) }
+});
+
+test("deep-v2 story assignment is deterministic and includes storyless and all three playable packages",()=>{
+ const found=new Set(),archetypes=["threefold","flooded","fortress"];for(let i=0;i<300&&found.size<4;i++){const seed=`STORY-${i}`,id=deepV2Id(seed,1,i,-i,archetypes[i%archetypes.length]),a=generateDeepV2Dungeon(seed,id),b=generateDeepV2Dungeon(seed,id);assert.deepEqual(a.storyPackage,b.storyPackage);found.add(a.storyPackage?.id||"none")}
+ assert.deepEqual(found,new Set(["none",DEEP_STORY_PACKAGES.boundSpirit.id,DEEP_STORY_PACKAGES.resonantDead.id,DEEP_STORY_PACKAGES.lostBearer.id]));
+});
+
+function gameForStory(storyId){const archetypes=storyId==="resonant-dead-v1"?["flooded","threefold"]:["fortress","threefold","flooded"];for(let i=0;i<500;i++){const seed=`QUEST-${i}`,archetype=archetypes[i%archetypes.length],id=deepV2Id(seed,1,5,-6,archetype),map=generateDeepV2Dungeon(seed,id);if(map.storyPackage?.id===storyId){const s=freshSave();s.seed=seed;s.session.activeDungeonId=id;s.session.dungeonReturn={rx:5,ry:-6,x:12,y:12};const g=new Game(s,0);g.loadArea("dungeon",false);return{s,g,id}}}assert.fail(`story package ${storyId} not found`) }
+
+test("bound-spirit quest starts from a ghost and rewards Aperture only after an objective guardian",()=>{
+ const{s,g,id}=gameForStory("bound-spirit-v1"),ghost=g.map.objects.find(o=>o.kind==="storyGhost");Object.assign(g.player,{x:ghost.x,y:ghost.y});assert.equal(g.interact("listen",ghost.id).ok,true);assert.equal(deepDungeonProgress(s,id).story.completed,false);const guardian=g.enemies.find(e=>e.dungeonRole==="objectiveGuardian");guardian.dead=true;g.defeatEnemy(guardian);const beforeReward=s.perception.aperture;Object.assign(g.player,{x:ghost.x,y:ghost.y});g.interact("listen",ghost.id);assert.equal(deepDungeonProgress(s,id).story.completed,true);assert.equal(s.perception.aperture,beforeReward+3);g.interact("listen",ghost.id);assert.equal(s.perception.aperture,beforeReward+3);
+});
+
+test("resonant and lost-bearer stories resolve through mechanisms and reunion with one-time rewards",()=>{
+ {const{s,g,id}=gameForStory("resonant-dead-v1"),before=s.materials.armorSphere;for(const tone of g.map.objects.filter(o=>o.kind==="storyTone")){Object.assign(g.player,{x:tone.x,y:tone.y});g.interact("sound",tone.id)}const p=deepDungeonProgress(s,id);assert.equal(p.story.completed,true);assert.equal(p.story.scenesWitnessed.includes("resolution"),true);assert.equal(s.materials.armorSphere,before+1);const restored=deserializeSave(serializeSave(s)),map=generateDeepV2Dungeon(restored.seed,id);applyDeepDungeonProgress(restored,id,map);assert.ok(map.objects.filter(o=>o.kind==="storyTone").every(o=>o.state==="sounded"));assert.equal(completeDeepStory(restored,id,map),false);assert.equal(restored.materials.armorSphere,before+1)}
+ {const{s,g,id}=gameForStory("lost-bearer-v1"),before=s.materials.weaponSphere,relic=g.map.objects.find(o=>o.kind==="storyRelic"),ghost=g.map.objects.find(o=>o.kind==="storyGhost");Object.assign(g.player,{x:relic.x,y:relic.y});g.interact("collect",relic.id);Object.assign(g.player,{x:ghost.x,y:ghost.y});g.interact("listen",ghost.id);assert.equal(deepDungeonProgress(s,id).story.completed,true);assert.equal(s.materials.weaponSphere,before+1);assert.match(g.message,/reunite/)}
+});
+
+test("deep expedition journal and build expose schema records without revealing undiscovered stories",()=>{const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");assert.match(main,/Deep expeditions/);assert.match(main,/No formal story has been discovered here/);assert.match(main,/completedObjectiveIds/);assert.match(build,/deep-dungeons/);assert.match(sw,/deep-dungeons\.js/) });

@@ -167,6 +167,12 @@ const COLORS = {
   ruinMarker: ["#806b52", "#433a31", "#b09b79"],
   bossCue: ["#873f43", "#391f24", "#bd8257"],
   cache: ["#9a8549", "#4a4229", "#c1ae72"],
+  deepAnchor: ["#4c7b78", "#243c3c", "#b7ddd1"],
+  deepMechanism: ["#806b48", "#3b3328", "#e0bd70"],
+  sealedGate: ["#743f4a", "#2d2026", "#e07886"],
+  storyGhost: ["#72668d", "#272332", "#d8c7ef"],
+  storyRelic: ["#8c7650", "#382f24", "#f0cf83"],
+  storyTone: ["#557d82", "#26383b", "#9fe6dd"],
 };
 function actor(
   ctx,

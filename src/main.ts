@@ -954,7 +954,7 @@ function updateMapTravelButton() {
 function updateMapModeUI(){
   const dungeon=game.area==="dungeon",local=dungeon&&mapMode==="dungeon";
   $("#mapModeToggle").hidden=!dungeon;$("#mapModeToggle").textContent=local?"Corridor Atlas":"Dungeon Map";$("#mapTitle").textContent=local?`${game.map.name||"Dungeon"} Map`:"Corridor Atlas";atlas.querySelector(".maptools").hidden=local;$("#mapHome").hidden=local;$("#mapWaypoint").hidden=local;$("#mapLegend").hidden=local;$("#mapInstructions").textContent=local?"A bounded floor plan. Gold marks your position; cyan is the entrance/exit; other colored marks identify known dungeon features.":"Tap an explored section to select it, then press Set waypoint. The center compass points toward that manual destination before quest guidance.";
-  if(local){const cols=game.map.width||24,rows=game.map.height||Math.floor(game.map.tiles.length/cols),deep=game.map.recipe==="deep-v1"?` · wing seals ${game.map.deepProgress?.defeatedWingIds?.length||0}/3${game.map.deepProgress?.gateOpened?" · final gate open":""}`:"";$("#mapDetail").textContent=`${game.map.identity||"Dungeon"} · bounded ${cols} × ${rows} floor${deep} · position ${Math.floor(game.player.x)}, ${Math.floor(game.player.y)}`;}
+  if(local){const cols=game.map.width||24,rows=game.map.height||Math.floor(game.map.tiles.length/cols),progress=game.map.deepProgress,required=game.map.objectives?.filter(q=>q.required).length||game.map.wings?.length||0,done=game.map.recipe==="deep-v1"?(progress?.defeatedWingIds?.length||0):(progress?.completedObjectiveIds?.length||0),deep=(game.map.deepDungeon||game.map.recipe==="deep-v1")?` · ${game.map.archetype||"threefold"} · objectives ${done}/${required}${progress?.gateOpened?" · final gate open":""}${progress?.activeAnchor?` · recovery ${progress.activeAnchor.name}`:""}`:"";$("#mapDetail").textContent=`${game.map.identity||"Dungeon"} · bounded ${cols} × ${rows} floor${deep} · position ${Math.floor(game.player.x)}, ${Math.floor(game.player.y)}`;}
   updateMapWaypointButton();
   updateMapTravelButton();
 }
@@ -1268,9 +1268,16 @@ function openJournal(mode = "chronicle") {
   const out = $("#journalBody");
   out.replaceChildren();
   const nav=document.createElement("div");nav.className="codex-tabs";
-  for(const [id,label] of [["chronicle","Chronicle"],["creatures","Creatures"],["places","Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"]])nav.append(uiButton(label,()=>openJournal(id)));
+  for(const [id,label] of [["chronicle","Chronicle"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"]])nav.append(uiButton(label,()=>openJournal(id)));
   out.append(nav);
   if(mode!=="chronicle"){
+    if(mode==="dungeons"){
+      const heading=document.createElement("h3");heading.textContent="Deep expeditions";out.append(heading);
+      const records=Object.entries(save.consequences?.dungeons||{}).filter(([,h])=>h.deep?.name);
+      if(!records.length){const empty=document.createElement("p");empty.textContent="No deep landmark has been entered yet.";out.append(empty)}
+      for(const[id,h]of records){const p=h.deep,article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p"),story=document.createElement("p");article.className="item codex-card place-card";title.textContent=`${p.name} · ${p.archetype}`;text.textContent=`Objectives ${p.completedObjectiveIds?.length||p.defeatedWingIds?.length||0}/${p.requiredObjectiveIds?.length||3} · recovery ${p.activeAnchor?.name||"entrance"} · shortcuts ${p.activatedAnchorIds?.length||p.defeatedWingIds?.length||0} · ${p.completed?"cleared":"unresolved"}.`;story.textContent=p.story?.started?`Story: ${p.story.storyId} · beats ${p.story.completedBeatIds?.length||0} · scenes ${p.story.scenesWitnessed?.length||0} · ${p.story.completed?"resolved":"in progress"}.`:"No formal story has been discovered here.";article.append(title,text,story);out.append(article)}
+      if(!journal.open)journal.showModal();return;
+    }
     const entries=mode==="glossary"?STAT_GLOSSARY.map((entry,i)=>[`term-${i}`,entry]):mode==="rules"?[
       ["ring",["Open ring — Wayglass","Cyan marks lead toward an activated recovery point and Atlas destination. The open side of the ring faces the route."]],
       ["chevron",["Open chevron — Crossing","Amber marks lead toward a dungeon entrance or buried route. The vertex where the two lines meet points toward the crossing."]],

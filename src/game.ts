@@ -44,20 +44,45 @@ export function mapWidth(map, area = "overworld") { return Math.max(1, Number(ma
 export function mapHeight(map, area = "overworld") { return Math.max(1, Number(map?.height) || Math.floor((map?.tiles?.length || mapWidth(map, area)) / mapWidth(map, area))); }
 export function deepDungeonProgress(save, id) {
   const history = dungeonHistory(save, id);
-  return history.deep ||= { version: 1, defeatedWingIds: [], defeatedFinalIds: [], gateOpened: false, completed: false, rewardClaimed: false, activeAnchor: null };
+  const p = history.deep ||= { version: 1, defeatedWingIds: [], defeatedFinalIds: [], gateOpened: false, completed: false, rewardClaimed: false, activeAnchor: null };
+  p.completedObjectiveIds ||= []; p.activatedAnchorIds ||= []; p.openedShortcutIds ||= [];
+  p.story ||= { version: 1, storyId: null, started: false, completed: false, completedBeatIds: [], scenesWitnessed: [], rewardClaimed: false, carriedRelic: null };
+  return p;
 }
 export function applyDeepDungeonProgress(save, id, map) {
-  if (map?.recipe !== "deep-v1") return null;
+  if (!map?.deepDungeon && map?.recipe !== "deep-v1") return null;
   const progress = deepDungeonProgress(save, id), defeated = new Set(progress.defeatedWingIds || []);
-  progress.gateOpened = progress.gateOpened || (map.wings || []).every((wing) => defeated.has(wing.id));
+  progress.name = map.name; progress.archetype = map.archetype || "threefold"; progress.schemaVersion = map.schemaVersion || 1; progress.requiredObjectiveIds = (map.objectives || map.wings || []).map((q) => q.id); progress.zoneCount = map.zones?.length || 1;
+  for (const wing of map.wings || []) if (defeated.has(wing.id) && !progress.completedObjectiveIds.includes(wing.id)) progress.completedObjectiveIds.push(wing.id);
+  const completed = new Set(progress.completedObjectiveIds || []), requirements = map.recipe === "deep-v1" ? (map.wings || []).map((wing) => wing.id) : map.finalGate?.requires || (map.wings || []).map((wing) => wing.id);
+  progress.gateOpened = progress.gateOpened || requirements.every((objectiveId) => completed.has(objectiveId) || defeated.has(objectiveId));
   map.deepProgress = progress;
   for (const o of map.objects || []) {
     if (o.kind === "deepReturn") Object.assign(o, defeated.has(o.wingId) ? { state: "active", actions: ["return"] } : { state: "dormant", actions: [] });
+    if (o.kind === "deepAnchor") Object.assign(o, completed.has(o.unlockObjectiveId) ? { state: "active", actions: ["recover"] } : { state: "dormant", actions: [] });
+    if (o.kind === "deepMechanism" && completed.has(o.objectiveId)) Object.assign(o, { state: "active", actions: ["inspect"] });
+    if (o.kind === "storyTone" && progress.story.completedBeatIds.includes(o.beatId)) Object.assign(o, { state: "sounded", actions: [] });
+    if (o.kind === "storyRelic" && progress.story.carriedRelic === o.id) Object.assign(o, { state: "claimed", actions: [] });
+    if (o.kind === "storyGhost" && progress.story.completed) Object.assign(o, { state: "released", actions: [] });
     if (o.kind === "sealedGate") Object.assign(o, progress.gateOpened ? { state: "open", blocked: false, actions: ["enter"] } : { state: "sealed", blocked: true, actions: ["inspect"] });
   }
   const width = mapWidth(map, "dungeon");
   for (const p of map.finalGateTiles || []) map.tiles[p.y * width + p.x] = { ...map.tiles[p.y * width + p.x], kind: progress.gateOpened ? "deepFloor" : "sealedGate", blocked: !progress.gateOpened, gateId: map.finalGateId };
   return progress;
+}
+export function completeDeepStory(save, id, map) {
+  const progress = deepDungeonProgress(save, id), story = progress.story, pack = map?.storyPackage;
+  if (!pack || story.completed) return false;
+  story.completed = true;
+  if (!story.scenesWitnessed.includes("resolution")) story.scenesWitnessed.push("resolution");
+  if (!story.rewardClaimed) {
+    story.rewardClaimed = true;
+    if (pack.reward?.aperture) gainAperture(save, pack.reward.aperture, `deep-story:${id}:${pack.id}`, `${pack.title} widened the Wayfarer's Aperture.`);
+    if (pack.reward?.weaponSphere) save.materials.weaponSphere = (save.materials.weaponSphere || 0) + pack.reward.weaponSphere;
+    if (pack.reward?.armorSphere) save.materials.armorSphere = (save.materials.armorSphere || 0) + pack.reward.armorSphere;
+  }
+  journalOnce(save, `deep-story-complete:${id}:${pack.id}`, `${pack.title} resolved within ${map.name}. Its final apparition passed beyond the Corridor.`, `${map.name} — ${pack.title}`);
+  return true;
 }
 export function enemyDefeatNotice(e, area = "overworld") {
   const name = e.eliteName || ({
@@ -1400,7 +1425,7 @@ export class Game {
     if(area==='overworld'&&this.rx===-5&&this.ry===3){this.map.objects.push({id:'knife-choir-portal',kind:'elitePortal',name:'Cantor Threshold',x:20,y:16,state:eliteState.contracts.knifeChoir.state==='available'?'ready':'sealed',actions:['inspect','enter'],landmark:true});}
     if(area==='dungeon'&&String(this.areaId()).startsWith('elite-portal:')){this.map.enemySpawns=this.map.enemySpawns.filter(e=>e.kind!=='hollowMarshal');if(!eliteDefeated.knifeChoir)this.map.enemySpawns.push({kind:'knifeChoir',x:16,y:18,boss:true,elite:true});}
     else if(area==='dungeon'&&this.map.recipe==='cistern'&&!eliteDefeated.gravitantBell&&hashSeed(`${this.save.seed}:elite-guardian:${this.areaId()}`)%5===0){this.map.enemySpawns=this.map.enemySpawns.filter(e=>e.kind!=='hollowMarshal');this.map.enemySpawns.push({kind:'gravitantBell',x:16,y:18,boss:true,elite:true});}
-    if (area === "dungeon" && this.map.recipe !== "deep-v1" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < 12)
+    if (area === "dungeon" && !this.map.deepDungeon && this.map.recipe !== "deep-v1" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < 12)
       this.map.enemySpawns.push({ kind: "gateRevenant", x: 18, y: 6, gatePredator: true });
     if (area === "overworld" && (this.rx !== 0 || this.ry !== 0)) {
       const remembered = this.save.checkpoints?.[`${this.rx},${this.ry}`];
@@ -1420,7 +1445,7 @@ export class Game {
     this.enemies = this.map.enemySpawns.map((e) => {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
       if (e.id) c.id = e.id;
-      Object.assign(c, { dungeonRole: e.dungeonRole || null, wingId: e.wingId || null, arenaId: e.arenaId || null, deepDungeon: !!e.deepDungeon });
+      Object.assign(c, { dungeonRole: e.dungeonRole || null, objectiveId: e.objectiveId || null, wingId: e.wingId || null, arenaId: e.arenaId || null, deepDungeon: !!e.deepDungeon });
       if(c.eliteId){const v=eliteVariant(this.save.seed,c.eliteId,this.areaId());c.variantId=v.variantId;c.eliteModules=[...v.modules];c.eliteVariantModules=[...v.variantModules];c.visualSeed=v.visualSeed;}
       Object.assign(c,{passiveBehavior:e.passiveBehavior||null,ambient:!!e.ambient,pursuesOutdoors:!!(e.shelterAmbush||e.districtResident),shelterAmbush:!!e.shelterAmbush});
       if (e.gatePredator) Object.assign(c,{gatePredator:true,pursuesOutdoors:true,maxHp:260,hp:260,damage:22,range:5.5,scale:1.85,bodyRadius:.7,tentacles:8,speedMultiplier:1.12});
@@ -1436,7 +1461,7 @@ export class Game {
       ensureAI(c);
       return c;
     });
-    const intrusions = this.map.recipe === "deep-v1" ? [] : apertureEncounterSpawns(
+    const intrusions = this.map.deepDungeon || this.map.recipe === "deep-v1" ? [] : apertureEncounterSpawns(
       this.save.seed,
       this.areaId(),
       this.save.perception?.aperture || 0,
@@ -1493,9 +1518,9 @@ export class Game {
       }));
       this.eliteHazards=(s.eliteHazards||[]).map(h=>({...h,hits:{...h.hits}}));
     }
-    if (area === "dungeon" && this.map.recipe === "deep-v1") {
+    if (area === "dungeon" && (this.map.deepDungeon || this.map.recipe === "deep-v1")) {
       const progress = applyDeepDungeonProgress(this.save, this.areaId(), this.map), defeated = new Set([...(progress.defeatedWingIds || []).map((wing) => `deep-v1-miniboss-${wing}`), ...(progress.defeatedFinalIds || [])]);
-      this.enemies = this.enemies.filter((e) => !defeated.has(e.id));
+      this.enemies = this.enemies.filter((e) => !defeated.has(e.id) && !(e.objectiveId && progress.completedObjectiveIds.includes(e.objectiveId)));
     }
     const areaWidth = mapWidth(this.map, area),
       playerRelocated = relocateIfStranded(this.player, this.map, areaWidth);
@@ -1681,7 +1706,7 @@ export class Game {
       const id = this.areaId(),
         prior = this.save.session.areas[id],
         used = prior?.objects || {},
-        deep = this.map?.recipe === "deep-v1";
+        deep = !!this.map?.deepDungeon || this.map?.recipe === "deep-v1";
       if (!deep) delete this.save.session.areas[id];
       this.loadArea("dungeon", false);
       for (const o of this.map.objects)
@@ -1779,6 +1804,31 @@ export class Game {
         ok: false,
         message: (this.message = "Nothing nearby responds."),
       };
+    if (o.kind === "deepAnchor") {
+      if (o.state !== "active") return { ok: false, message: (this.message = "The anchor has no path to remember yet.") };
+      const progress = deepDungeonProgress(this.save, this.areaId());
+      progress.activeAnchor = { id: o.id, x: o.x, y: o.y, name: o.name || "deep anchor" };
+      if (!progress.activatedAnchorIds.includes(o.id)) progress.activatedAnchorIds.push(o.id);
+      this.message = `${o.name || "Deep anchor"} fixed as the expedition recovery point.`; this.sync(); return { ok: true, message: this.message };
+    }
+    if (o.kind === "deepMechanism") {
+      const progress = deepDungeonProgress(this.save, this.areaId());
+      if (!progress.completedObjectiveIds.includes(o.objectiveId)) progress.completedObjectiveIds.push(o.objectiveId);
+      applyDeepDungeonProgress(this.save, this.areaId(), this.map);
+      this.defeatNotice = { title: "MECHANISM AWAKENED", detail: `${o.name} · expedition route altered`, kind: "discovery" };
+      this.message = `${o.name} answers. Stone routes shift and the expedition can continue.`; this.sync(); return { ok: true, message: this.message };
+    }
+    if (["storyGhost", "storyRelic", "storyTone"].includes(o.kind)) {
+      const progress = deepDungeonProgress(this.save, this.areaId()), story = progress.story, pack = this.map.storyPackage;
+      if (!pack) return { ok: false, message: (this.message = "Only an old silence remains.") };
+      story.storyId = pack.id; story.started = true;
+      if (o.kind === "storyRelic") { story.carriedRelic = o.id; o.state = "claimed"; o.actions = []; if (!story.completedBeatIds.includes("find-relic")) story.completedBeatIds.push("find-relic"); this.message = "The lost nameplate is cold, but a waiting presence recognizes it."; }
+      else if (o.kind === "storyTone") { o.state = "sounded"; o.actions = []; if (!story.completedBeatIds.includes(o.beatId)) story.completedBeatIds.push(o.beatId); const tones = story.completedBeatIds.filter((q) => q.startsWith("tone-")).length; this.message = `The ${tones === 1 ? "first" : tones === 2 ? "second" : "final"} tone releases a fragment of the drowned procession.`; if (tones >= 3) completeDeepStory(this.save, this.areaId(), this.map); }
+      else if (pack.id === "lost-bearer-v1" && story.carriedRelic) { if (!story.completedBeatIds.includes("return-relic")) story.completedBeatIds.push("return-relic"); o.state = "released"; o.actions = []; completeDeepStory(this.save, this.areaId(), this.map); this.message = "The bearer remembers its name. Two apparitions reunite, then pass beyond the Corridor together."; }
+      else if (pack.id === "bound-spirit-v1" && progress.completedObjectiveIds.length) { if (!story.completedBeatIds.includes("avenge")) story.completedBeatIds.push("avenge"); o.state = "released"; o.actions = []; completeDeepStory(this.save, this.areaId(), this.map); this.message = "The slain guardian's hold breaks. The shade bows once and becomes a trail of quiet light."; }
+      else { if (!story.completedBeatIds.includes("meet")) story.completedBeatIds.push("meet"); this.message = pack.summary; }
+      this.sync(); return { ok: true, message: this.message };
+    }
     if (o.kind === "deepReturn") {
       if (o.state !== "active") return { ok: false, message: (this.message = "The return lattice is dormant. Its wing guardian still holds the seal.") };
       this.player.x = o.toX; this.player.y = o.toY; this.projectiles = []; this.effects = []; this.traversal = null;
@@ -1787,7 +1837,7 @@ export class Game {
       return { ok: true, message: this.message };
     }
     if (o.kind === "sealedGate") {
-      const progress = applyDeepDungeonProgress(this.save, this.areaId(), this.map), remaining = Math.max(0, 3 - (progress?.defeatedWingIds?.length || 0));
+      const progress = applyDeepDungeonProgress(this.save, this.areaId(), this.map), requirements = this.map.finalGate?.requires || (this.map.wings || []).map((wing) => wing.id), completed = new Set([...(progress?.completedObjectiveIds || []), ...(progress?.defeatedWingIds || [])]), remaining = requirements.filter((id) => !completed.has(id)).length;
       this.message = remaining ? `The final seal holds. ${remaining} wing guardian${remaining === 1 ? " remains" : "s remain"}.` : "The three seals are broken. The final chamber stands open.";
       return { ok: true, message: this.message };
     }
@@ -1947,7 +1997,7 @@ export class Game {
         this.save.session.activeDungeonId = id;
         this.save.session.dungeonReturn = q;
         const claimed = this.save.session.areas[id]?.objects || {},
-          deep = String(id).endsWith(":deep-v1");
+          deep = String(id).includes(":deep-v");
         if (!deep) delete this.save.session.areas[id];
         this.loadArea("dungeon", false);
         for (const o of this.map.objects)
@@ -2009,6 +2059,14 @@ export class Game {
       return;
     }
     this.defeatNotice = enemyDefeatNotice(e, this.area);
+    if (this.area === "dungeon" && this.map.deepDungeon && e.dungeonRole === "objectiveGuardian") {
+      const progress = deepDungeonProgress(this.save, this.areaId());
+      if (!progress.completedObjectiveIds.includes(e.objectiveId)) progress.completedObjectiveIds.push(e.objectiveId);
+      applyDeepDungeonProgress(this.save, this.areaId(), this.map);
+      const objective = this.map.objectives.find((q) => q.id === e.objectiveId), completed = progress.completedObjectiveIds.length, total = this.map.objectives.filter((q) => q.required).length;
+      this.defeatNotice = { title: "EXPEDITION GUARDIAN CLEARED", detail: `${objective?.name || e.objectiveId} · ${completed}/${total} required objectives${progress.gateOpened ? " · final route opened" : ""}`, kind: "danger" };
+      journalOnce(this.save, `deep-objective:${this.areaId()}:${e.objectiveId}`, `${objective?.name || "A deep guardian"} fell. A recovery anchor or route within ${this.map.name} has awakened.`, this.map.name);
+    }
     if (this.area === "dungeon" && this.map.recipe === "deep-v1" && e.dungeonRole === "wingMiniboss") {
       const progress = deepDungeonProgress(this.save, this.areaId());
       if (!progress.defeatedWingIds.includes(e.wingId)) progress.defeatedWingIds.push(e.wingId);
@@ -2019,7 +2077,7 @@ export class Game {
       this.defeatNotice = { title: "WING GUARDIAN CLEARED", detail: `${e.wingId.toUpperCase()} WING · ${count}/3 seals broken${progress.gateOpened ? " · final gate opened" : ""}`, kind: "danger" };
       journalOnce(this.save, `deep-wing:${this.areaId()}:${e.wingId}`, `The ${e.wingId} wing guardian fell. Its return lattice now folds directly into the central chamber.${progress.gateOpened ? " All three seals are broken; the final chamber is open." : ""}`, "The Threefold Deep");
     }
-    if (this.area === "dungeon" && this.map.recipe === "deep-v1" && e.dungeonRole === "finalBoss") {
+    if (this.area === "dungeon" && (this.map.deepDungeon || this.map.recipe === "deep-v1") && e.dungeonRole === "finalBoss") {
       const progress = deepDungeonProgress(this.save, this.areaId()), history = dungeonHistory(this.save, this.areaId());
       if (!progress.defeatedFinalIds.includes(e.id)) progress.defeatedFinalIds.push(e.id);
       progress.completed = true; history.resolved = true; history.guardianDefeated = true; history.visitOpen = false;
@@ -2028,8 +2086,8 @@ export class Game {
         this.save.materials.weaponSphere = (this.save.materials.weaponSphere || 0) + 1;
         this.save.materials.armorSphere = (this.save.materials.armorSphere || 0) + 1;
       }
-      this.defeatNotice = { title: "DEEP GUARDIAN FELLED", detail: "THE THREEFOLD DEEP CLEARED · weapon sphere + armor sphere", kind: "danger" };
-      journalOnce(this.save, `deep-complete:${this.areaId()}`, "All three wing seals were broken and the revenant beyond the final gate was defeated. The completed descent yielded one weapon sphere and one armor sphere.", "The Threefold Deep — cleared");
+      this.defeatNotice = { title: "DEEP GUARDIAN FELLED", detail: `${this.map.name.toUpperCase()} CLEARED · weapon sphere + armor sphere`, kind: "danger" };
+      journalOnce(this.save, `deep-complete:${this.areaId()}`, `The required routes of ${this.map.name} were opened and its final guardian was defeated. The expedition yielded one weapon sphere and one armor sphere.`, `${this.map.name} — cleared`);
     }
     if (e.kind === "hollowMarshal" && !e.dungeonRole && recordRelayChain(this.save, this.areaId()))
       this.defeatNotice.detail += " · the buried network answered";
