@@ -213,7 +213,7 @@ import {
   salvageInventoryItem,
 } from "./game.ts";
 import { createInput } from "./input.ts";
-import { render as baseRender } from "./renderer.ts";
+import { render as baseRender, renderScaleForViewport } from "./renderer.ts";
 import { STATS } from "./types.ts";
 import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats } from "./items.ts";
 import { currentObjective, validActions } from "./interactions.ts";
@@ -606,13 +606,6 @@ function drawDungeonSystems() {
   }
   ctx.restore();
 }
-setTimeout(() => {
-  const loop = () => {
-    drawDungeonSystems();
-    requestAnimationFrame(loop);
-  };
-  requestAnimationFrame(loop);
-}, 0);
 function startPulse() {
   if (!audio || startPulse.running) return;
   startPulse.running = true;
@@ -787,7 +780,7 @@ function resize() {
     const rect = $("#app").getBoundingClientRect(),
       w = Math.max(1, Math.round(rect.width)),
       h = Math.max(1, Math.round(rect.height)),
-      d = Math.min(devicePixelRatio || 1, 2);
+      d = renderScaleForViewport(w, h, devicePixelRatio || 1);
     if (
       canvas.width !== Math.round(w * d) ||
       canvas.height !== Math.round(h * d)
@@ -1422,6 +1415,7 @@ function updateHud(now) {
     button.setAttribute("aria-label", `${action} ${button.dataset.cooldown}`);
   }
 }
+let nextUiRefresh = 0;
 function frame(now) {
   try {
   const dt = Math.min(0.05, (now - last) / 1000);
@@ -1432,27 +1426,32 @@ function frame(now) {
   if (input.consume("journal")) openJournal();
   if (input.consume("menu")) openPack();
   game.update(dt, input, now);
-  updateWorldNotices();
+  if (game.paused) return;
   render(ctx, game, innerWidth, innerHeight, now);
+  drawDungeonSystems();
   drawRangedEffects();
   updateMessage(game.message);
-  $("#place").textContent =
-    game.area === "dungeon"
-      ? game.map.name
-      : game.rx === 0 && game.ry === 0
-        ? save.consequences.settlements["ember-refuge"].status === "fallen"
-          ? "Ember Refuge · FALLEN"
-          : "Ember Refuge · standing"
-        : `Cinder Verge · ${game.rx}, ${game.ry}`;
-  updateHud(now);
-  updateNavigationCompass();
-  const buffs = [];
-  if (game.guardRemaining > 0)
-    buffs.push(`IRONBARK ${Math.ceil(game.guardRemaining)}s`);
-  if (game.magicBuffRemaining > 0)
-    buffs.push(`LUMEN SURGE ${Math.ceil(game.magicBuffRemaining)}s`);
-  if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);
-  $("#buff").textContent = buffs.join(" · ");
+  if (now >= nextUiRefresh) {
+    nextUiRefresh = now + 100;
+    updateWorldNotices();
+    $("#place").textContent =
+      game.area === "dungeon"
+        ? game.map.name
+        : game.rx === 0 && game.ry === 0
+          ? save.consequences.settlements["ember-refuge"].status === "fallen"
+            ? "Ember Refuge · FALLEN"
+            : "Ember Refuge · standing"
+          : `Cinder Verge · ${game.rx}, ${game.ry}`;
+    updateHud(now);
+    updateNavigationCompass();
+    const buffs = [];
+    if (game.guardRemaining > 0)
+      buffs.push(`IRONBARK ${Math.ceil(game.guardRemaining)}s`);
+    if (game.magicBuffRemaining > 0)
+      buffs.push(`LUMEN SURGE ${Math.ceil(game.magicBuffRemaining)}s`);
+    if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);
+    $("#buff").textContent = buffs.join(" · ");
+  }
   if ((clock += dt) > 3) {
     clock = 0;
     persist();

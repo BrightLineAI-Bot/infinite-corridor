@@ -14,6 +14,19 @@ export function screenToWorld(g, w, h, x, y) {
   const c = cameraTransform(g, w, h);
   return { x: (x - c.x) / c.tileSize, y: (y - c.y) / c.tileSize };
 }
+export function renderScaleForViewport(width, height, deviceScale = 1) {
+  const shortEdge = Math.min(Math.max(1, width), Math.max(1, height));
+  return Math.min(Math.max(1, Number(deviceScale) || 1), shortEdge <= 720 ? 1.5 : 2);
+}
+export function visibleInCamera(o, left, top, right, bottom, padding = 2) {
+  if (!o) return false;
+  const b = o.bounds;
+  if (b)
+    return b.x + b.w >= left - padding && b.x <= right + padding &&
+      b.y + b.h >= top - padding && b.y <= bottom + padding;
+  return Number(o.x) >= left - padding && Number(o.x) <= right + padding &&
+    Number(o.y) >= top - padding && Number(o.y) <= bottom + padding;
+}
 const PAL = {
   ash: ["#3b3834", "#5a5049"],
   glass: ["#345052", "#52716d"],
@@ -428,10 +441,10 @@ export function render(ctx, g, w, h, now) {
   for (let y = t; y < b; y++)
     for (let x = l; x < r; x++)
       tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId);
-  for(const h of g.eliteHazards||[]){ctx.fillStyle="#81994a55";ctx.strokeStyle="#b7ce6877";ctx.lineWidth=2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke()}
-  for(const e of g.enemies)if(!e.dead&&e.eliteWindup>0){ctx.strokeStyle=e.kind==='gravitantBell'?"#8bb8bdcc":"#c6885ccc";ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
+  for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){ctx.fillStyle="#81994a55";ctx.strokeStyle="#b7ce6877";ctx.lineWidth=2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke()}
+  for(const e of g.enemies)if(!e.dead&&e.eliteWindup>0&&visibleInCamera(e,l,t,r,b,e.kind==='gravitantBell'?6:3)){ctx.strokeStyle=e.kind==='gravitantBell'?"#8bb8bdcc":"#c6885ccc";ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
   for (const e of g.enemies)
-    if (!e.dead && e.telegraph > 0) {
+    if (!e.dead && e.telegraph > 0 && visibleInCamera(e,l,t,r,b,2)) {
       const pulse = 0.65 + (0.9 - e.telegraph) * 0.2;
       ctx.fillStyle = "#873f4338";
       ctx.strokeStyle = "#bd8257bb";
@@ -474,7 +487,7 @@ export function render(ctx, g, w, h, now) {
   }
   const draws = [];
   for (const o of g.map.objects)
-    if (!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used"))
+    if (visibleInCamera(o,l,t,r,b)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used"))
       draws.push({
         y: o.y,
         fn: () => {
@@ -519,7 +532,7 @@ export function render(ctx, g, w, h, now) {
         },
       });
   for (const e of g.enemies)
-    if (!e.dead)
+    if (!e.dead && visibleInCamera(e,l,t,r,b,2))
       draws.push({
         y: e.y,
         fn: () => {
@@ -625,18 +638,18 @@ export function render(ctx, g, w, h, now) {
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) d.fn();
   for (const e of g.enemies)
-    if (!e.dead && !e.ambient) {
+    if (!e.dead && !e.ambient && visibleInCamera(e,l,t,r,b,2)) {
       ctx.fillStyle = "#211617";
       ctx.fillRect(e.x * s, (e.y - 0.1) * s, s, 3);
       ctx.fillStyle = "#9b4d50";
       ctx.fillRect(e.x * s, (e.y - 0.1) * s, (s * e.hp) / e.maxHp, 3);
     }
-  for(const o of g.map.objects){if(o.kind==="shack")shack(ctx,o,s,p,g.map.tiles);else if(o.kind==="architecturalBuilding")architecturalBuilding(ctx,o,s,p,g.map.tiles)}
+  for(const o of g.map.objects)if(visibleInCamera(o,l,t,r,b)){if(o.kind==="shack")shack(ctx,o,s,p,g.map.tiles);else if(o.kind==="architecturalBuilding")architecturalBuilding(ctx,o,s,p,g.map.tiles)}
   const frontShelter=g.map.objects.find(o=>o.kind==="shack"&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
   if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk");
   const motion = now / 1000;
   for (const o of g.map.objects)
-    if (["shrine", "checkpoint", "ruinMarker", "apertureMemory"].includes(o.kind)) {
+    if (visibleInCamera(o,l,t,r,b)&&["shrine", "checkpoint", "ruinMarker", "apertureMemory"].includes(o.kind)) {
       const cx = (o.x + 0.5) * s,
         cy = (o.y + 0.35) * s,
         spin = motion * 0.55 + ((o.x * 13 + o.y * 7) % 11);
@@ -667,7 +680,10 @@ export function render(ctx, g, w, h, now) {
   }
   ctx.fillStyle = "#5c4a3b0c";
   ctx.fillRect(0, 0, w, h);
-  const v = ctx.createRadialGradient(
+  const priorVignette = render.vignette,
+    v = priorVignette?.ctx === ctx && priorVignette.w === w && priorVignette.h === h
+      ? priorVignette.gradient
+      : ctx.createRadialGradient(
     w / 2,
     h / 2,
     Math.min(w, h) * 0.26,
@@ -675,8 +691,11 @@ export function render(ctx, g, w, h, now) {
     h / 2,
     Math.max(w, h) * 0.7,
   );
-  v.addColorStop(0, "#0000");
-  v.addColorStop(1, "#080a0870");
+  if (v !== priorVignette?.gradient) {
+    v.addColorStop(0, "#0000");
+    v.addColorStop(1, "#080a0870");
+    render.vignette = { ctx, w, h, gradient: v };
+  }
   ctx.fillStyle = v;
   ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = "#151411ee";

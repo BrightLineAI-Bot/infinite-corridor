@@ -2,6 +2,7 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
+import { renderScaleForViewport, visibleInCamera } from "../src/renderer.ts";
 import {
   generateRegion,
   generateDungeon,
@@ -2712,4 +2713,36 @@ test("foundry attack modules map to bounded distinct projectile mechanics",()=>{
  assert.equal(enemyProjectilePattern({...base,foundryAttack:"threeShotCone"},aim,1).length,3);
  const arcs=enemyProjectilePattern({...base,foundryAttack:"arcBurst"},aim,1);assert.equal(arcs.length,2);assert.ok(arcs.every(q=>q.path==="arc"&&q.jumpable));
  const sweep=enemyProjectilePattern({...base,foundryAttack:"sweepingBeam"},aim,1);assert.equal(sweep.length,5);assert.ok(sweep.every(q=>q.damage<=5));
+});
+
+test("mobile render scaling bounds high-DPI canvas cost without changing layout",()=>{
+  assert.equal(renderScaleForViewport(390,844,3),1.5);
+  assert.equal(renderScaleForViewport(844,390,2.75),1.5);
+  assert.equal(renderScaleForViewport(1280,800,3),2);
+  assert.equal(renderScaleForViewport(390,844,1),1);
+});
+
+test("camera culling includes visible actors and intersecting structures only",()=>{
+  assert.equal(visibleInCamera({x:10,y:10},5,5,15,15),true);
+  assert.equal(visibleInCamera({x:30,y:30},5,5,15,15),false);
+  assert.equal(visibleInCamera({x:30,y:30,bounds:{x:14,y:9,w:8,h:5}},5,5,15,15),true);
+  assert.equal(visibleInCamera({x:30,y:30,bounds:{x:22,y:22,w:4,h:4}},5,5,15,15),false);
+});
+
+test("mobile frame work uses one animation loop and throttles noncritical HUD writes",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+  assert.equal((main.match(/requestAnimationFrame\(frame\)/g)||[]).length,2);
+  assert.doesNotMatch(main,/requestAnimationFrame\(loop\)/);
+  assert.match(main,/nextUiRefresh = now \+ 100/);
+  assert.match(main,/if \(game\.paused\) return/);
+  assert.match(main,/renderScaleForViewport\(w, h, devicePixelRatio \|\| 1\)/);
+  assert.match(main,/render\(ctx, game, innerWidth, innerHeight, now\);\s*drawDungeonSystems\(\)/);
+});
+
+test("renderer culls section actors roofs hazards and ambient markers to the camera",()=>{
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");
+  assert.match(renderer,/visibleInCamera\(o,l,t,r,b\)/);
+  assert.match(renderer,/visibleInCamera\(e,l,t,r,b,2\)/);
+  assert.match(renderer,/visibleInCamera\(h,l,t,r,b,h\.radius\|\|2\)/);
+  assert.match(renderer,/render\.vignette = \{ ctx, w, h, gradient: v \}/);
 });
