@@ -42,7 +42,7 @@ import { hashSeed } from "./random.ts";
 import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.ts';
 import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.ts';
 import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.ts';
-import{generateVariedDungeon,generateBespokeArena}from'./arenas.ts';
+import{generateVariedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.ts';
 import{ensureSceneState,queueScene}from'./scenes.ts';
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
@@ -112,7 +112,7 @@ export function enemyDefeatNotice(e, area = "overworld") {
   else if (e.eliteId) title = "ELITE SLAIN";
   else if (e.boss) title = "RIFT BOSS BROKEN";
   else if (e.apertureEncounter) title = "BREACH STILLED";
-  const clearsCrossing = area === "dungeon" && !e.dungeonRole && (e.boss || e.kind === "hollowMarshal");
+  const clearsCrossing = area === "dungeon" && (!e.dungeonRole||e.dungeonRole==="gateWarden") && (e.boss || e.kind === "hollowMarshal");
   return { title, detail: `${name}${clearsCrossing ? " · crossing cleared" : ""}`, kind: e.boss || e.eliteId ? "danger" : "discovery" };
 }
 
@@ -914,7 +914,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   if (e.telegraph > 0) {
     e.telegraph = Math.max(0, e.telegraph - dt);
     if (e.telegraph === 0) {
-      e.cooldown = e.kind==='voidSentinel'?.82:e.kind==='cinderWisp'?1.35:1.9;
+      e.cooldown = (e.kind==='voidSentinel'?.82:e.kind==='cinderWisp'?1.35:1.9)*(e.attackCooldownScale||1);
       e.strike = 0.24;
       const ranged=e.range>=2.5&&!e.instantStrike,clear=attackInRange(e,player)&&hasLineOfSight(e,player,map,width,ranged);
       if(clear&&ranged){onRanged(e,e.attackAim||projectileDirection(player.x-e.x,player.y-e.y));return false}
@@ -964,21 +964,26 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
     e.cooldown <= 0 &&
     hasLineOfSight(e, player, map, width, e.range>=2.5&&!e.instantStrike)
   )
-    {e.telegraph = 0.9;e.attackAim=projectileDirection(player.x-e.x,player.y-e.y)}
+    {const phase=(e.boss&&e.hp<=e.maxHp*.5) ? .82 : 1;e.telegraph = Math.max(.48,.9*(e.telegraphScale||1)*phase);e.attackAim=projectileDirection(player.x-e.x,player.y-e.y)}
   return false;
 }
 export function shouldSimulateEnemy(e,player,area="overworld"){
   if(!e||e.dead)return false;
+  if(area==="dungeon"){const d=Math.hypot(e.x-player.x,e.y-player.y);return d<=(e.aggro?18:e.boss||e.eliteId?14:10)||e.telegraph>0||e.strike>0||e.eliteWindup>0||e.eliteActive>0}
   if(area!=="overworld")return true;
   if(e.aggro||e.boss||e.eliteId||e.worldBoss||e.gatePredator||e.telegraph>0||e.strike>0||e.eliteWindup>0||e.eliteActive>0||e.summonedBy)return true;
   return Math.hypot(e.x-player.x,e.y-player.y)<=10;
+}
+export function activeDungeonEnemies(enemies,player,map){
+ const cap=Math.max(1,Number(map?.activeEnemyCap)||DUNGEON_ACTIVE_CAP[map?.encounterProfile]||DUNGEON_ACTIVE_CAP.normal);
+ return enemies.filter(e=>shouldSimulateEnemy(e,player,"dungeon")).sort((a,b)=>Number(!!b.aggro)-Number(!!a.aggro)||Number(!!b.boss)-Number(!!a.boss)||Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y)||String(a.id).localeCompare(String(b.id))).slice(0,cap);
 }
 export function settlementSanctuary(map,rx,ry,save){if(!map||rx===0&&ry===0&&save?.consequences?.settlements?.['ember-refuge']?.status==='fallen')return null;return map.settlement||rx===0&&ry===0?{x:16,y:16,radius:9}:null}
 export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y-z.y,d=Math.hypot(dx,dy);if(d>=z.radius)return false;const m=d||1;e.x=z.x+(d?dx/m:1)*(z.radius+.5);e.y=z.y+(d?dy/m:0)*(z.radius+.5);const ai=ensureAI(e);ai.homeX=e.x;ai.homeY=e.y;e.telegraph=0;return true}
 export class Game {
   constructor(save, now = 0) {
     this.save = save;
-    this.performanceStats={activeEnemies:0,dormantEnemies:0,ambientTicks:0};
+    this.performanceStats={totalDungeonEncounterRecords:0,activeEnemies:0,dormantEnemies:0,activeProjectiles:0,activeHazardsAndEffects:0,pathfindingWork:0,encounterActivations:0,peakActiveEnemies:0,updateBudgetViolations:0,ambientTicks:0};
     ensureEliteState(save);
     ensureCorridorSystems(save);
     if (!["attack", "tool", "act"].includes(save.aimMode))
@@ -1154,7 +1159,7 @@ export class Game {
     const defeat = this.defeatEnemy.bind(this);
     this.defeatEnemy = (e) => {
       if (e.kind === "npc") return;
-      if (e.kind === "hollowMarshal" && !e.dungeonRole) {
+      if (e.kind === "hollowMarshal" && (!e.dungeonRole||e.dungeonRole==="gateWarden")) {
         const d = dungeonHistory(this.save, this.areaId());
         d.guardianDefeated = true;
         if (
@@ -1170,7 +1175,7 @@ export class Game {
         }
       }
       if (
-        e.kind === "hollowMarshal" && !e.dungeonRole &&
+        e.kind === "hollowMarshal" && (!e.dungeonRole||e.dungeonRole==="gateWarden") &&
         this.areaId() ===
           dungeonId(this.save.seed, this.save.worldGeneration) &&
         !this.save.narrative.facts["crossing.marshal"]
@@ -1387,7 +1392,7 @@ export class Game {
       const first = !e.rewarded,
         r = defeat(e);
       if (first && e.kind !== "npc" && !e.ambient) {
-        const guardian = e.kind === "hollowMarshal" && !e.dungeonRole;
+        const guardian = e.kind === "hollowMarshal" && (!e.dungeonRole||e.dungeonRole==="gateWarden");
         gainAperture(
           this.save,
           guardian ? 4 : 1,
@@ -1446,6 +1451,7 @@ export class Game {
         hits: { ...o.hits },
       };
     this.save.session.areas[this.areaStateId()] = {
+      encounterVersion:this.map.encounterVersion||0,
       enemies: this.enemies.map((e) => ({ ...e, ai: { ...ensureAI(e) } })),
       objects,
       projectiles: this.projectiles.map((p) => ({ ...p })),
@@ -1498,6 +1504,7 @@ export class Game {
     else if(area==='dungeon'&&this.map.recipe==='cistern'&&!eliteDefeated.gravitantBell&&hashSeed(`${this.save.seed}:elite-guardian:${this.areaId()}`)%5===0){this.map.enemySpawns=this.map.enemySpawns.filter(e=>e.kind!=='hollowMarshal');this.map.enemySpawns.push({kind:'gravitantBell',x:16,y:18,boss:true,elite:true});}
     if (area === "dungeon" && !this.map.deepDungeon && this.map.recipe !== "deep-v1" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < 12)
       this.map.enemySpawns.push({ kind: "gateRevenant", x: 18, y: 6, gatePredator: true });
+    if(area==="dungeon"&&!this.map.arena&&!String(this.areaId()).startsWith("hunt-instance:")&&!String(this.areaId()).startsWith("elite-portal:")&&!String(this.areaId()).includes("aperture-annex"))populateDungeonEncounters(this.map,{deep:!!this.map.deepDungeon||this.map.recipe==="deep-v1"});
     if (area === "overworld" && (this.rx !== 0 || this.ry !== 0)) {
       const remembered = this.save.checkpoints?.[`${this.rx},${this.ry}`];
       if (remembered && !this.map.objects.some((o) => o.kind === "checkpoint")) {
@@ -1513,10 +1520,11 @@ export class Game {
         .filter((o) => ["checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho"].includes(o.kind))
         .map((o) => ({ kind: o.kind, name: o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
+    this.activatedEncounterGroups=new Set;
     this.enemies = this.map.enemySpawns.map((e) => {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
       if (e.id) c.id = e.id;
-      Object.assign(c, { dungeonRole: e.dungeonRole || null, objectiveId: e.objectiveId || null, wingId: e.wingId || null, arenaId: e.arenaId || null, deepDungeon: !!e.deepDungeon,viewportHuntId:e.viewportHuntId||null,worldBoss:!!e.worldBoss,domainReinforcement:!!e.domainReinforcement,noRewards:!!e.noRewards,domainId:e.domainId||null,domainFamily:e.domainFamily||null,domainRole:e.domainRole||null,domainBoss:!!e.domainBoss,domainLieutenant:!!e.domainLieutenant,domainManifestation:e.domainManifestation||0,rootboundRegeneration:!!e.rootboundRegeneration,rootGroundAttack:!!e.rootGroundAttack,huntInstanceId:e.huntInstanceId||null });
+      Object.assign(c, { dungeonRole: e.dungeonRole || null, encounterGroup:e.encounterGroup||null,encounterSpawn:!!e.encounterSpawn,objectiveId: e.objectiveId || null, wingId: e.wingId || null, arenaId: e.arenaId || null, deepDungeon: !!e.deepDungeon,viewportHuntId:e.viewportHuntId||null,worldBoss:!!e.worldBoss,domainReinforcement:!!e.domainReinforcement,noRewards:!!e.noRewards,domainId:e.domainId||null,domainFamily:e.domainFamily||null,domainRole:e.domainRole||null,domainBoss:!!e.domainBoss,domainLieutenant:!!e.domainLieutenant,domainManifestation:e.domainManifestation||0,rootboundRegeneration:!!e.rootboundRegeneration,rootGroundAttack:!!e.rootGroundAttack,huntInstanceId:e.huntInstanceId||null });
       if(e.domainManifestation){const mechanics=manifestationMechanics(e.domainFamily,e.domainManifestation);c.foundryAttack=mechanics.attack==='sweepingBeam'?'sweepingBeam':null;c.speedMultiplier*=mechanics.mobility;c.domainMechanics=mechanics}
       if(c.eliteId){const v=eliteVariant(this.save.seed,c.eliteId,this.areaId());c.variantId=v.variantId;c.eliteModules=[...v.modules];c.eliteVariantModules=[...v.variantModules];c.visualSeed=v.visualSeed;}
       Object.assign(c,{passiveBehavior:e.passiveBehavior||null,ambient:!!e.ambient,pursuesOutdoors:!!(e.shelterAmbush||e.districtResident),shelterAmbush:!!e.shelterAmbush});
@@ -1530,6 +1538,16 @@ export class Game {
         c.hp = c.maxHp;
         c.damage = Math.max(1, Math.round(c.damage * multiplier));
         c.xpMultiplier = multiplier;
+      }
+      if(area==="dungeon"&&!c.passiveBehavior&&!c.gatePredator){
+        let hp=1.08,damage=1.04,speed=1,attackCooldownScale=.94,telegraphScale=1;
+        if(c.dungeonRole==="hunter"){speed=1.16;attackCooldownScale=.88}
+        else if(c.dungeonRole==="ranged"){speed=1.05;attackCooldownScale=.84}
+        else if(c.dungeonRole==="blocker"){hp=1.22;speed=.94}
+        else if(c.dungeonRole==="gateWarden"||c.dungeonRole==="objectiveGuardian"){hp=1.35;damage=1.14;speed=1.1;attackCooldownScale=.78;telegraphScale=.92;c.staggerResistance=.5}
+        else if(c.dungeonRole==="finalBoss"){hp=1.48;damage=1.2;speed=1.12;attackCooldownScale=.72;telegraphScale=.88;c.staggerResistance=.65}
+        if(c.kind==="gateRevenant"){c.maxHp=360;c.hp=360;c.damage=22;c.range=5.5}
+        c.maxHp=Math.round(c.maxHp*hp);c.hp=c.maxHp;c.damage=Math.max(1,Math.round(c.damage*damage));c.speedMultiplier*=speed;c.attackCooldownScale=attackCooldownScale;c.telegraphScale=telegraphScale;
       }
       ensureAI(c);
       return c;
@@ -1590,6 +1608,7 @@ export class Game {
         hits: { ...f.hits },
       }));
       this.eliteHazards=(s.eliteHazards||[]).map(h=>({...h,hits:{...h.hits}}));
+      if(this.map.encounterVersion&&!s.encounterVersion){this.enemies=this.enemies.filter(e=>!e.encounterSpawn);this.map.encounterVersion=0}
     }
     if (area === "dungeon" && (this.map.deepDungeon || this.map.recipe === "deep-v1")) {
       const progress = applyDeepDungeonProgress(this.save, this.areaId(), this.map), defeated = new Set([...(progress.defeatedWingIds || []).map((wing) => `deep-v1-miniboss-${wing}`), ...(progress.defeatedFinalIds || [])]);
@@ -2216,7 +2235,7 @@ export class Game {
       if(this.map.objects.some(o=>o.kind==="deepPortal"&&o.unlockOnCompletion))this.message="FINAL RETURN OPENED — the awakened lattice can return you to the expedition hub.";
       journalOnce(this.save, `deep-complete:${this.areaId()}`, `The required routes of ${this.map.name} were opened and its final guardian was defeated. The expedition yielded one weapon sphere and one armor sphere.`, `${this.map.name} — cleared`);
     }
-    if (e.kind === "hollowMarshal" && !e.dungeonRole && recordRelayChain(this.save, this.areaId()))
+    if (e.kind === "hollowMarshal" && (!e.dungeonRole||e.dungeonRole==="gateWarden") && recordRelayChain(this.save, this.areaId()))
       this.defeatNotice.detail += " · the buried network answered";
     if(['ashling','glassMite'].includes(e.kind))recordPortalPrey(this.save,e.kind);
     if(e.eliteId){const reward=completeElite(this.save,e.eliteId);if(reward){this.save.codex.elites||={};this.save.codex.elites[e.eliteId]={encountered:1,defeated:1,modules:[...(e.eliteModules||[])],variantId:e.variantId,habitat:this.areaId()};journalOnce(this.save,'elite-defeated:'+e.eliteId,`${e.eliteName} fell. Its observed aspects were ${(e.eliteModules||[]).join(', ')}. Reward: ${reward.marks} marks and one ${reward.material.replace('Sphere',' sphere')}.`,'Elite bestiary');}}
@@ -2620,20 +2639,23 @@ export class Game {
     );
     if(combatNpcTargets.length)this.syncNpcDamage("spell");
     if(this.enemies.some(e=>e.dead&&e.noRewards&&e.summonedBy))this.enemies=this.enemies.filter(e=>!(e.dead&&e.noRewards&&e.summonedBy));
+    const activeEnemySet=new Set(this.area==="dungeon"?activeDungeonEnemies(this.enemies,p,this.map):this.enemies.filter(e=>shouldSimulateEnemy(e,p,this.area)));
     const eliteStatus=ensureEliteState(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});for(const h of this.eliteHazards)h.arming=Math.max(0,(h.arming||0)-dt);this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(!(h.arming>0)&&Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison)h.poison&&((eliteStatus.poison=Math.max(eliteStatus.poison,8)),eliteStatus.poisonTick=1)}
-    for(const e of this.enemies){if(e.dead||!e.eliteId)continue;e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6)}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
-    for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound')continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
+    for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e))continue;e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6)}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
+    for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e))continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
     p.stamina = Math.min(p.maxStamina, p.stamina + 9 * dt);
-    this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.ambientTicks=0;
+    this.performanceStats.totalDungeonEncounterRecords=this.area==="dungeon"?(this.map.encounterGroups||[]).length:0;this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.activeProjectiles=this.projectiles.length;this.performanceStats.activeHazardsAndEffects=this.eliteHazards.length+this.effects.length;this.performanceStats.pathfindingWork=0;this.performanceStats.ambientTicks=0;if(dt>1/30)this.performanceStats.updateBudgetViolations++;
     for (const e of this.enemies) {
-      if(!shouldSimulateEnemy(e,p,this.area)){this.performanceStats.dormantEnemies++;continue}
+      if(!activeEnemySet.has(e)){this.performanceStats.dormantEnemies++;continue}
+      if(e.encounterGroup&&!this.activatedEncounterGroups.has(e.encounterGroup)){this.activatedEncounterGroups.add(e.encounterGroup);this.performanceStats.encounterActivations++}
       let simulationDt=dt;
       if(e.ambient){e.ambientAccumulator=(e.ambientAccumulator||0)+dt;if(e.ambientAccumulator<.125){this.performanceStats.dormantEnemies++;continue}simulationDt=Math.min(.25,e.ambientAccumulator);e.ambientAccumulator=0;this.performanceStats.ambientTicks++}
       this.performanceStats.activeEnemies++;
+      const pathRetryBefore=e.ai?.pathRetryAt||0;
       if (
         !fellIntoHazard&&
         !e.dead &&
-        updateEnemyAI(e, p, this.map, width, simulationDt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,(shooter,aim)=>this.projectiles.push(...enemyProjectilePattern(shooter,aim,now))) &&
+        updateEnemyAI(e, p, this.map, width, simulationDt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,(shooter,aim)=>{const cap=this.area==="dungeon"?32:64,room=Math.max(0,cap-this.projectiles.length);if(room)this.projectiles.push(...enemyProjectilePattern(shooter,aim,now).slice(0,room))}) &&
         now > (p.invulnerableUntil || 0) &&
         (!(now < this.jumpUntil) || e.kind === "sparkWarden")
       ) {
@@ -2646,7 +2668,9 @@ export class Game {
         );
         p.invulnerableUntil = now + 700;
       }
+      if((e.ai?.pathRetryAt||0)!==pathRetryBefore)this.performanceStats.pathfindingWork++;
     }
+    this.performanceStats.peakActiveEnemies=Math.max(this.performanceStats.peakActiveEnemies,this.performanceStats.activeEnemies);
     if (p.hp <= 0) {
       this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
       if (this.area === "dungeon") {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}

@@ -36,6 +36,7 @@ import {
   moveAxis,
   updateEnemyAI,
   shouldSimulateEnemy,
+  activeDungeonEnemies,
   alertEnemy,
   enemyProjectilePattern,
   settlementSanctuary,
@@ -58,6 +59,7 @@ import {
   footprintInsideStructure,
   projectileTileOpen,
   updateProjectiles,
+  updateEffects,
   EQUIPMENT_CAPACITY,
   grantMilestoneGear,
   storeInventoryItem,
@@ -72,7 +74,7 @@ import {
 import { rng, pick, hashSeed } from "../src/random.ts";
 import { DEEP_ARCHETYPE_IDS, DEEP_STORY_PACKAGES, deepV2Id, deepV2Levels, generateDeepV2Dungeon } from "../src/deep-dungeons.ts";
 import { SCENE_DEFINITIONS,freshSceneState,ensureSceneState,sceneVariant,queueScene,commitScene,scenePlaybackPlan,recoverInterruptedScene,apertureRitualState,requestApertureRitual } from "../src/scenes.ts";
-import { ARENA_FAMILIES,arenaEligible,generateBespokeArena,arenaDescriptor,generateVariedDungeon } from "../src/arenas.ts";
+import { ARENA_FAMILIES,DUNGEON_ACTIVE_CAP,arenaEligible,generateBespokeArena,arenaDescriptor,generateVariedDungeon } from "../src/arenas.ts";
 import {
   normalizeVector,
   shapeStick,
@@ -2941,7 +2943,7 @@ test("overworld simulation keeps nearby and dangerous enemies active while dorma
   assert.equal(shouldSimulateEnemy(aggro,player,"overworld"),true);
   assert.equal(shouldSimulateEnemy(boss,player,"overworld"),true);
   assert.equal(shouldSimulateEnemy(near,player,"overworld"),true);
-  assert.equal(shouldSimulateEnemy(ordinary,player,"dungeon"),true);
+  assert.equal(shouldSimulateEnemy(ordinary,player,"dungeon"),false);
 });
 
 test("overworld performance caches structure geometry and failed chase retries",()=>{
@@ -2949,7 +2951,7 @@ test("overworld performance caches structure geometry and failed chase retries",
   assert.match(renderer,/const structureRenderCache = new WeakMap/);
   assert.match(renderer,/function mapObjectLists\(map\)/);
   assert.match(game,/ai\.pathRetryAt=now\+350/);
-  assert.match(game,/if\(!shouldSimulateEnemy\(e,p,this\.area\)\)/);
+  assert.match(game,/activeEnemySet\.has\(e\)/);
   assert.match(main,/const pending=save\.scenes\?\.pending/);
   assert.match(main,/if \(\(clock \+= dt\) > 8\)/);
 });
@@ -2965,4 +2967,8 @@ test("rare persistent arenas expose stable entrances and remain cleared on revis
 test("archiving a temporary hunt removes its runtime area and instance record",()=>{const s=migrateSave(freshSave());acceptViewportHunt(s,"viewport-foundry-trial");const instance=ensureHuntInstance(s,"viewport-foundry-trial");s.session.areas[instance.id]={enemies:[{id:"temporary"}]};assert.equal(archiveViewportHunt(s,"viewport-foundry-trial"),true);assert.equal(s.session.areas[instance.id],undefined);assert.equal(s.viewport.instances[instance.id],undefined);assert.equal(s.viewport.activeHuntId,null)});
 test("Aperture rite is retry-safe exactly-once and choreography degrades to still tableaux",()=>{const s=migrateSave(freshSave());assert.equal(apertureRitualState(s).ready,false);s.perception.aperture=12;s.narrative.facts["crossing.complete"]=true;s.viewport.contracts["viewport-direct-vesperwing"].status="completed";assert.equal(apertureRitualState(s).ready,true);assert.equal(requestApertureRitual(s).queued,true);s.scenes.pending.shot=1;const full=scenePlaybackPlan(s,"aperture-rite",{quality:"high"}),low=scenePlaybackPlan(s,"aperture-rite",{quality:"low",reduceMotion:true});assert.equal(full.startShot,1);assert.ok(full.shots.some(q=>q.choreography.some(c=>c.cue!=="hold")));assert.ok(low.shots.every(q=>q.camera==="still"&&q.choreography.every(c=>c.cue==="hold")));assert.equal(commitScene(s,"aperture-rite"),true);const before=s.narrative.journal.length;assert.equal(commitScene(s,"aperture-rite"),false);assert.equal(s.narrative.journal.length,before);assert.equal(s.narrative.facts["scene.apertureRite"],true)});
 test("ordinary v3 families expose materially different deterministic topologies",()=>{for(const family of ["hollow","cistern","kiln"]){const signatures=new Set;for(let i=0;i<20;i++){const m=generateVariedDungeon("S",`dungeon:S:g1:${i}:2:${family}`,family);assert.equal(m.diagnostic.traversalValidation,"pass");assert.ok(m.enemySpawns.every(e=>!m.tiles[e.y*m.width+e.x].blocked));signatures.add(`${m.diagnostic.layoutGrammar}:${m.diagnostic.branchCount}:${m.diagnostic.loopCount}`)}assert.ok(signatures.size>=3)}});
+test("ordinary dungeon ecologies are deterministic populated themed and spawn-safe",()=>{const themes={hollow:new Set(["ashling","veilMoth","coilStalker","rootBrute","hollowMarshal"]),cistern:new Set(["rootBrute","coilStalker","veilMoth","ashling","hollowMarshal"]),kiln:new Set(["ashling","glassMite","sparkWarden","cinderWisp","ashenHound","hollowMarshal"])};for(const family of Object.keys(themes)){const id=`dungeon:DENSITY:g1:7:-3:${family}`,a=generateVariedDungeon("DENSITY",id,family),b=generateVariedDungeon("DENSITY",id,family);assert.deepEqual(a,b);assert.ok(a.enemySpawns.length>=8&&a.enemySpawns.length<=16);assert.ok(a.enemySpawns.every(e=>themes[family].has(e.kind)));for(const e of a.enemySpawns){assert.equal(a.tiles[e.y*a.width+e.x].blocked,false);assert.ok(Math.hypot(e.x-a.entry.x,e.y-a.entry.y)>=4)}}});
+test("infested dungeons remain rare and obey population and active simulation caps",()=>{let infested=0,example=null;for(let i=0;i<1000;i++){const m=generateVariedDungeon("MOB",`dungeon:MOB:g1:${i}:0:kiln`,"kiln");if(m.encounterProfile==="infested"){infested++;example||=m}}assert.ok(infested>=55&&infested<=105,`infested count ${infested}`);assert.ok(example.enemySpawns.length<=16);const actors=example.enemySpawns.map(e=>({...createCombatant(e.kind,e.x,e.y,e.boss,e.traits),id:e.id,encounterGroup:e.encounterGroup,aggro:true})),active=activeDungeonEnemies(actors,{x:14,y:14},example);assert.ok(active.length<=DUNGEON_ACTIVE_CAP.infested)});
+test("deep dungeon levels carry bounded ambient populations and reachable pre-shortcut objectives",()=>{for(const archetype of DEEP_ARCHETYPE_IDS){const id=deepV2Id("DEEP-POP",1,4,-5,archetype),maps=["descent","fortress"].includes(archetype)?deepV2Levels(id).map(level=>generateDeepV2Dungeon("DEEP-POP",id,{levelId:level.id})):[generateDeepV2Dungeon("DEEP-POP",id)];for(const map of maps){assert.ok(map.enemySpawns.length>=12&&map.enemySpawns.length<=24,`${archetype}:${map.levelId} population ${map.enemySpawns.length}`);assert.equal(map.activeEnemyCap,map.encounterProfile==="infested"?9:7);const reach=reachableDungeonCells(map,map.entry);for(const objective of map.objectives||[]){const target=objective.type==="guardian"?map.enemySpawns.find(e=>e.objectiveId===objective.id):map.objects.find(o=>o.objectiveId===objective.id);assert.ok(reach.has(`${target.x},${target.y}`),`${archetype}:${map.levelId}:${objective.id}`)}}}});
+test("dungeon combat profiles wake on all damage paths and strengthen final revenants",()=>{const s=freshSave(),id=deepV2Id(s.seed,s.worldGeneration,3,-4,"threefold");s.session.activeDungeonId=id;s.session.dungeonReturn={rx:3,ry:-4,x:8,y:8};const g=new Game(s,0);g.loadArea("dungeon",false);const revenant=g.enemies.find(e=>e.kind==="gateRevenant"&&e.dungeonRole==="finalBoss");assert.ok(revenant.maxHp>=532);assert.ok(revenant.damage>=26);const target=g.enemies.find(e=>e.encounterSpawn);target.aggro=false;alertEnemy(target);assert.equal(target.aggro,true);const fx={id:"test",kind:"spell",x:target.x,y:target.y,life:1,radius:1,pulse:.1,untilPulse:0,damage:1,hits:{}};updateEffects([fx],[target],.2);assert.equal(target.aggro,true)});
 test("last death captures pre-respawn dungeon identity and remains independent",()=>{const s=freshSave(),g=new Game(s,0);s.manualWaypoint={kind:"section",area:"overworld",rx:3,ry:4,label:"Mine"};s.session.dungeonReturn={rx:0,ry:0,x:5,y:5};s.session.activeDungeonId=dungeonId(s.seed,s.worldGeneration);g.loadArea("dungeon");g.player.x=11.25;g.player.y=8.75;const record=g.captureLastDeath("trap");assert.equal(record.areaKind,"dungeon");assert.equal(record.x,11.25);assert.equal(record.dungeonId,s.session.activeDungeonId);assert.equal(s.manualWaypoint.rx,3);g.area="overworld";g.rx=2;g.ry=-3;g.player.x=6;g.player.y=7;const second=g.captureLastDeath("water");assert.equal(second.sequence,2);assert.equal(second.rx,2);assert.equal(s.activeCheckpoint.rx,0)});

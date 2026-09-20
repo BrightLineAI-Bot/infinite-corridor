@@ -1,4 +1,5 @@
 import { hashSeed, rng } from "./random.ts";
+import { populateDungeonEncounters } from "./arenas.ts";
 
 export const DEEP_DUNGEON_SCHEMA_VERSION = 3;
 export const DEEP_ARCHETYPE_IDS = ["threefold", "descent", "loop", "flooded", "fortress"];
@@ -178,16 +179,16 @@ function buildMultiLevel(seed,id,archetype,levelId){
   if(index>0)levelTransition(m,{id:`${m.levelStableId}:up`,name:"Return Passage",x:10,y:34,toLevelId:levels[index-1].id,toX:32,toY:34,direction:"up"});
   if(index<levels.length-1)levelTransition(m,{id:`${m.levelStableId}:down`,name:archetype==="descent"?"Survey Lift":"Cathedral Stair",x:34,y:34,toLevelId:levels[index+1].id,toX:10,toY:34,direction:"down"});
   const local=archetype==="descent"?(chosen.id==="mouth"?[{...all[0],enemyId:"deep-v2-descent-warden",enemyKind:"hollowMarshal",x:15,y:16,anchor:{name:"Mouth Survey Anchor",x:12,y:21}}]:chosen.id==="pressure"?[{...all[1],objectId:"deep-v2-depth-engine",x:22,y:15,anchor:{name:"Pressure Anchor",x:30,y:21}}]:[]):chosen.id==="ward"?[{...all[0],enemyId:"deep-v2-buried-captain",enemyKind:"rootBrute",x:13,y:16,anchor:{name:"Barracks Anchor",x:10,y:21}},{...all[1],objectId:"deep-v2-ward-engine",x:30,y:16,anchor:{name:"Foundry Anchor",x:33,y:21}},{...all[2],enemyId:"deep-v2-occupation-beast",enemyKind:"coilStalker",x:22,y:33,anchor:{name:"Market Anchor",x:22,y:29}}]:[];for(const q of local)addObjective(m,q);
-  if(index===0){const cells=[21,22,23].map(x=>({x,y:27}));m.objects.push({id:`deep-v2-${archetype}-level-shortcut`,kind:"deepShortcut",name:archetype==="descent"?"Survey Fold Door":"Ward Sally Door",x:22,y:27,state:"hidden",actions:["inspect"],unlockObjectiveId:all[0].id,cells,toX:22,toY:34,routeType:"physical"});for(const p of cells)m.tiles[p.y*m.width+p.x]={x:p.x,y:p.y,kind:"deepWall",blocked:true,detail:1};m.routes.push({id:`deep-v2-${archetype}-level-shortcut`,type:"physical",unlockObjectiveId:all[0].id});}
+  if(index===0){m.hall(12,34,12,22);m.hall(12,22,22,22);const cells=[21,22,23].map(x=>({x,y:27}));m.objects.push({id:`deep-v2-${archetype}-level-shortcut`,kind:"deepShortcut",name:archetype==="descent"?"Survey Fold Door":"Ward Sally Door",x:22,y:27,state:"hidden",actions:["inspect"],unlockObjectiveId:all[0].id,cells,toX:22,toY:34,routeType:"physical"});for(const p of cells)m.tiles[p.y*m.width+p.x]={x:p.x,y:p.y,kind:"deepWall",blocked:true,detail:1};m.routes.push({id:`deep-v2-${archetype}-level-shortcut`,type:"physical",unlockObjectiveId:all[0].id});}
   if(index===levels.length-1){const boss={id:`deep-v2-${archetype}-final`,kind:archetype==="descent"?"gravitantBell":"gateRevenant",x:22,y:13,boss:true,deepDungeon:true,dungeonRole:"finalBoss",arenaId:`${archetype}-final`},gate={id:`deep-v2-${archetype}-level-final-gate`,kind:"sealedGate",x:22,y:25,state:"sealed",actions:["inspect"],requires:all.map(q=>q.id)};m.objectives=[];m.objects.push(gate);sealTiles(m,gate,[20,21,22,23,24].map(x=>({x,y:25})));m.enemySpawns.push(boss);m.finalGate=gate;m.finalGateId=gate.id;m.finalArena={id:boss.arenaId,sealedBy:gate.id,bossId:boss.id};m.finalEnemyIds=[boss.id];m.objects.push({id:`deep-v2-${archetype}-final-return`,kind:"deepPortal",name:"Final Return Lattice",x:25,y:13,state:"dormant",actions:["inspect"],unlockOnCompletion:true,targetLevelId:levels[0].id,toX:m.hub.x,toY:m.hub.y,routeType:"postBoss"});m.routes.push({id:`deep-v2-${archetype}-final-return`,type:"postBoss",targetLevelId:levels[0].id});}
   if(index===0)addStoryObjects(m);
-  delete m.floor;delete m.rect;delete m.hall;return m;
+  delete m.floor;delete m.rect;delete m.hall;return populateDungeonEncounters(m,{deep:true});
 }
 
 export function generateDeepV2Dungeon(seed, id, options={}) {
   const archetype = deepV2ArchetypeFromId(id), fn = { threefold, descent, loop, flooded, fortress }[archetype] || threefold;
   if(options.levelId&&MULTI_LEVELS[archetype])return buildMultiLevel(seed,id,archetype,options.levelId);
-  const map=fn(seed,id);map.levels=deepV2Levels(id);map.levelId=map.levels[0].id;map.levelStableId=map.levels[0].stableId;map.multiLevel=!!MULTI_LEVELS[archetype];map.allObjectives=(map.objectives||[]).map(q=>({...q}));return map;
+  const map=fn(seed,id);map.levels=deepV2Levels(id);map.levelId=map.levels[0].id;map.levelStableId=map.levels[0].stableId;map.multiLevel=!!MULTI_LEVELS[archetype];map.allObjectives=(map.objectives||[]).map(q=>({...q}));return populateDungeonEncounters(map,{deep:true});
 }
 
 export function deepV2Descriptor(id) {
