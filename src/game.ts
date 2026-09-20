@@ -38,7 +38,7 @@ import { ensurePerception } from "./types.ts";
 import { generateItem } from "./items.ts";
 import { hashSeed } from "./random.ts";
 import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.ts';
-import{foundryEncounter,validateFoundryCandidate}from'./foundry.ts';
+import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival}from'./foundry.ts';
 import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.ts';
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
@@ -1436,6 +1436,7 @@ export class Game {
     if(area==='overworld'){
       const site=storySiteFor(this.save,this.rx,this.ry);if(site&&!this.map.objects.some(o=>o.id===site.id)){const open=this.map.tiles[site.y*32+site.x];if(!open?.blocked&&!open?.structure)this.map.objects.push(site)}
       const candidate=foundryEncounter(this.save.seed,this.rx,this.ry,this.save.worldGeneration);if(candidate&&validateFoundryCandidate(candidate).ok&&!this.save.worldFlags[`foundry-retired:${candidate.foundryId}`]){const open=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>4&&t.x<28&&t.y>4&&t.y<28);if(open.length){const at=open[hashSeed(candidate.foundryId)%open.length];candidate.x=at.x;candidate.y=at.y;this.map.enemySpawns.push(candidate)}}
+      const hunt=activeViewportHunt(this.save);if(hunt&&hunt.target?.rx===this.rx&&hunt.target?.ry===this.ry&&!['completed','archived'].includes(hunt.status)){hunt.status='target-located';const open=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>6&&t.x<27&&t.y>6&&t.y<27);if(open.length){const at=open[hashSeed(`${hunt.id}:target`)%open.length];if(hunt.kind==='trial'){const c=foundryCandidate(this.save.seed,this.rx,this.ry,this.save.worldGeneration);Object.assign(c,{id:`${hunt.id}:candidate`,foundryId:`${hunt.id}:candidate`,foundryName:c.name,foundryRole:'boss',role:'boss',baseKind:'archiveBehemoth',kind:'archiveBehemoth',boss:true,x:at.x,y:at.y,viewportHuntId:hunt.id,worldBoss:true,foundryModules:[c.body,c.movement,c.attack,c.weakness,c.ecology]});this.map.enemySpawns.push(c)}else{const bossKind=hunt.domain?'voidSentinel':hunt.id==='viewport-direct-vesperwing'?'vesperwing':'rootBrute';this.map.enemySpawns.push({id:`viewport-target:${hunt.id}`,kind:bossKind,x:at.x,y:at.y,boss:true,traits:hunt.domain?['vital','farcasting']:['vital','keen'],viewportHuntId:hunt.id,worldBoss:!!hunt.domain})}if(hunt.domain&&!this.save.worldFlags[`domain-cleared:${hunt.domain}`]){this.map.domain={id:hunt.domain,name:'Sentinel Manufactory',state:'active',lifecycle:hunt.lifecycle};for(let i=0;i<Math.min(4,open.length);i++){const p=open[hashSeed(`${hunt.id}:reinforcement:${i}`)%open.length];this.map.enemySpawns.push({id:`${hunt.id}:reinforcement:${i}`,kind:i%2?'sparkWarden':'voidSentinel',x:p.x,y:p.y,traits:i>1?['swift']:[],domainReinforcement:true,noRewards:i>1})}this.map.objects.push({id:`${hunt.id}:core`,kind:'ruinMarker',name:'Manufactory Core',x:Math.max(5,at.x-3),y:at.y,state:'active',actions:['inspect'],landmark:true})}}}
     }
     if (area === "dungeon" && this.map.recipe === "cistern") {
       for (const [x, y] of [[11, 4], [12, 4], [11, 5], [12, 5]]) {
@@ -1470,7 +1471,7 @@ export class Game {
     this.enemies = this.map.enemySpawns.map((e) => {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
       if (e.id) c.id = e.id;
-      Object.assign(c, { dungeonRole: e.dungeonRole || null, objectiveId: e.objectiveId || null, wingId: e.wingId || null, arenaId: e.arenaId || null, deepDungeon: !!e.deepDungeon });
+      Object.assign(c, { dungeonRole: e.dungeonRole || null, objectiveId: e.objectiveId || null, wingId: e.wingId || null, arenaId: e.arenaId || null, deepDungeon: !!e.deepDungeon,viewportHuntId:e.viewportHuntId||null,worldBoss:!!e.worldBoss,domainReinforcement:!!e.domainReinforcement,noRewards:!!e.noRewards });
       if(c.eliteId){const v=eliteVariant(this.save.seed,c.eliteId,this.areaId());c.variantId=v.variantId;c.eliteModules=[...v.modules];c.eliteVariantModules=[...v.variantModules];c.visualSeed=v.visualSeed;}
       Object.assign(c,{passiveBehavior:e.passiveBehavior||null,ambient:!!e.ambient,pursuesOutdoors:!!(e.shelterAmbush||e.districtResident),shelterAmbush:!!e.shelterAmbush});
       if(e.foundryId){const boss=e.foundryRole==='boss',melee=e.attack==='meleeSwipe';Object.assign(c,{id:e.foundryId,foundryId:e.foundryId,foundryName:e.foundryName,foundryRole:e.foundryRole,foundryModules:[...(e.foundryModules||[])],foundryAttack:e.attack,foundryMovement:e.movement,foundryWeakness:e.weakness,foundryBody:e.body,visualSeed:e.visualSeed,kind:e.kind,maxHp:boss?210:e.foundryRole==='passive'?22:52,hp:boss?210:e.foundryRole==='passive'?22:52,damage:boss?17:e.foundryRole==='passive'?0:10,range:e.foundryRole==='passive'?0:melee?1.25:boss?5.5:5,boss,ambient:e.foundryRole==='passive',scale:boss?1.95:e.foundryRole==='passive'?.92:1.18,bodyRadius:boss?.72:.46,segments:e.body==='segmented'?3:e.foundryRole==='passive'?2:1,tentacles:e.body==='tentacled'||e.body==='biomechanical'?(boss?6:3):0,speedMultiplier:e.movement==='hopping'?1.18:e.movement==='retreating'?.88:e.movement==='hovering'?1.08:1,foundryValidated:true})}
@@ -1888,7 +1889,7 @@ export class Game {
       this.message = remaining ? `The final seal holds. ${remaining} wing guardian${remaining === 1 ? " remains" : "s remain"}.` : "The three seals are broken. The final chamber stands open.";
       return { ok: true, message: this.message };
     }
-    if (!action && ["npc", "dungeon", "relayTerminal","shelterMerchant","displacementDevice","elitePortal"].includes(o.kind)) {
+    if (!action && ["npc", "dungeon", "relayTerminal","shelterMerchant","displacementDevice","elitePortal","viewport"].includes(o.kind)) {
       this.interactionRequested = o.id;
       return {
         ok: true,
@@ -2109,6 +2110,7 @@ export class Game {
       this.save.codex.foundry[e.foundryId]={name:e.foundryName,kind:e.kind,role:e.foundryRole,modules:[...(e.foundryModules||[])],defeated:true};
       if(e.foundryRole!=='passive')recordRevelationLead(this.save,'hunt',e.foundryId);
     }
+    if(e.viewportHuntId&&completeViewportHunt(this.save,e.viewportHuntId)){const hunt=this.save.viewport.contracts[e.viewportHuntId];journalOnce(this.save,`viewport-complete:${e.viewportHuntId}`,`${hunt.title} is complete. Viewport records the victory and releases its promised reward.`,hunt.title);recordViewportArrival(this.save,{id:`hunt:${e.viewportHuntId}`,title:hunt.title,text:'A consequential threat was defeated and entered the Refuge record.',kind:'hunt'});this.defeatNotice={title:e.worldBoss?'WORLD THREAT BROKEN':'HUNT COMPLETE',detail:`${hunt.title} · return to Viewport for the enduring record`,kind:'danger'};if(hunt.domain)this.save.worldFlags[`domain-cleared:${hunt.domain}`]=true}
     if (e.ambient) {
       e.rewarded = true;
       this.message = e.kind === "hushling" ? "The hushling unthreads into violet motes." : "The quiet creature falls. Nothing in it was meant as loot.";

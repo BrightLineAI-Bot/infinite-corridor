@@ -649,3 +649,4 @@ body.high-contrast{filter:contrast(1.15)}
     max-width: 100%;
   }
 }
+.viewport-card{display:grid;gap:.45rem;border-left:3px solid #72d7df;background:linear-gradient(90deg,#173239aa,#171a1dcc);margin:.6rem 0}.viewport-card h3,.viewport-card p{margin:0}.viewport-card small{color:#b9c9c5}.viewport-actions{display:flex;flex-wrap:wrap;gap:.4rem}.viewport-actions button{min-height:42px}.viewport-empty{color:#8f9a96;font-style:italic}

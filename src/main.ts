@@ -218,6 +218,7 @@ import { STATS } from "./types.ts";
 import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats } from "./items.ts";
 import { currentObjective, validActions } from "./interactions.ts";
 import { worldStewardReport } from "./story.ts";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision } from "./foundry.ts";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -904,7 +905,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:86,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 86\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:87,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 87\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1346,7 +1347,7 @@ function openJournal(mode = "chronicle") {
   const out = $("#journalBody");
   out.replaceChildren();
   const nav=document.createElement("div");nav.className="codex-tabs";
-  for(const [id,label] of [["chronicle","Chronicle"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"]])nav.append(uiButton(label,()=>openJournal(id)));
+  for(const [id,label] of [["chronicle","Chronicle"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"]])nav.append(uiButton(label,()=>openJournal(id)));
   out.append(nav);
   if(mode!=="chronicle"){
     if(mode==="dungeons"){
@@ -1720,9 +1721,17 @@ addEventListener("freeze", () => {
 if (game.paused) pausePanel.showModal();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");
 requestAnimationFrame(frame);
+function viewportReward(q){const bits=[];if(q.reward?.marks)bits.push(`${q.reward.marks} marks`);if(q.reward?.weaponSphere)bits.push(`${q.reward.weaponSphere} weapon sphere`);if(q.reward?.armorSphere)bits.push(`${q.reward.armorSphere} armor sphere`);if(q.reward?.draughts)bits.push(`${q.reward.draughts} draughts`);return bits.join(' · ')||'field knowledge'}
+function openViewport(){pauseForOverlay();if(pausePanel.open)pausePanel.close();const viewport=ensureViewportState(save);viewport.read=true;body.replaceChildren();const heading=document.createElement('h2'),intro=document.createElement('p');heading.textContent='Viewport';intro.textContent='Viewport gathers what the Corridor permits Ember to see. Some reports are clear. Others become legible only through travel.';body.append(heading,intro);
+ const groups=[['active','Active hunt'],['available','Hunts & emerging threats'],['recent','Recent arrivals'],['archive','Completed records']];
+ for(const[group,label]of groups){const title=document.createElement('h3');title.textContent=label;body.append(title);let entries=[];if(group==='active')entries=Object.values(viewport.contracts).filter(q=>['accepted','tracking','target-located'].includes(q.status));else if(group==='available')entries=Object.values(viewport.contracts).filter(q=>['available','deferred'].includes(q.status));else if(group==='recent')entries=viewport.recent;else entries=Object.values(viewport.contracts).filter(q=>['completed','archived'].includes(q.status));if(!entries.length){const empty=document.createElement('p');empty.className='viewport-empty';empty.textContent=group==='recent'?'Nothing meaningful has entered the record yet.':'No records in this section.';body.append(empty);continue}
+  for(const q of entries){const card=document.createElement('article'),name=document.createElement('h3'),text=document.createElement('p'),meta=document.createElement('small'),actions=document.createElement('div');card.className='item viewport-card';name.textContent=q.title||q.id;text.textContent=q.text||q.summary||'The record remains incomplete.';meta.textContent=q.kind==='hunt'?q.kind:`${q.kind||'record'} · ${q.status||'recorded'}${q.target?` · ${q.target.rx},${q.target.ry}`:''}${q.reward?` · ${viewportReward(q)}`:''}`;actions.className='viewport-actions';if(['available','deferred'].includes(q.status)){actions.append(uiButton('Accept hunt',()=>{const r=acceptViewportHunt(save,q.id);if(q.kind==='tracking'){save.narrative.facts['leads.active']=true}game.message=r.message;persist();openViewport()}));actions.append(uiButton('Archive',()=>{archiveViewportHunt(save,q.id);persist();openViewport()}))}else if(['accepted','tracking','target-located'].includes(q.status)){actions.append(uiButton('Track on Atlas',()=>{save.waypoint={...q.target,name:q.title,source:'viewport',huntId:q.id};persist();openViewport()}),uiButton('Defer',()=>{deferViewportHunt(save,q.id);persist();openViewport()}))}else if(q.kind==='trial'&&q.status==='completed'&&!q.decision){for(const[d,l]of[['corridor','Let it enter the Corridor'],['rare','Keep as a rare hunt'],['dungeon','Reserve for dungeons'],['rework','Rework and return later'],['archive','Archive']])actions.append(uiButton(l,()=>{foundryTrialDecision(save,q.id,d);persist();openViewport()}))}card.append(name,text,meta,actions);body.append(card)}
+ }
+ body.append(uiButton('Return to world',resume));if(!panel.open)panel.showModal();}
 function openInteraction(id, confirmAttack = false) {
   const o = game.map.objects.find((q) => q.id === id);
   if (!o) return;
+  if(o.kind==='viewport')return openViewport();
   pauseForOverlay();
   if (pausePanel.open) pausePanel.close();
   body.replaceChildren();

@@ -23,7 +23,7 @@ import {
   clearWayfindingCache,
 } from "../src/world.ts";
 import { freshSave, migrateSave } from "../src/types.ts";
-import { foundryCandidate, foundryEncounter, validateFoundryCandidate, CREATURE_FOUNDRY_SCHEMA } from "../src/foundry.ts";
+import { foundryCandidate, foundryEncounter, validateFoundryCandidate, CREATURE_FOUNDRY_SCHEMA, VIEWPORT_SCHEMA, ensureViewportState, acceptViewportHunt, completeViewportHunt, foundryTrialDecision } from "../src/foundry.ts";
 import { recordRevelationLead, completeRevelationArc, storySiteFor, recordSectionVisit, worldStewardReport, CORRIDOR_STORY_SCHEMA, STEWARD_SCHEMA } from "../src/story.ts";
 import { serializeSave, deserializeSave, normalizeSettings, effectiveQuality, journeyMetadata, createSlotWriteCoordinator, slotKey } from "../src/persistence.ts";
 import { dodge, createCombatant, CREATURE_TRAITS, CREATURE_FORMS, enemyBodyRadius } from "../src/combat.ts";
@@ -266,7 +266,7 @@ test("schema migrations preserve location and select legacy generation zero", ()
     },
     explored: {},
   });
-  assert.equal(s.version, 10);
+  assert.equal(s.version, 11);
   assert.equal(s.worldGeneration, 0);
   assert.deepEqual(
     [s.session.rx, s.session.ry, s.session.x, s.session.y],
@@ -545,7 +545,7 @@ test("v3 migration creates valid narrative state without losing progress", () =>
     narrative: undefined,
     xp: 44,
   });
-  assert.equal(s.version, 10);
+  assert.equal(s.version, 11);
   assert.equal(s.xp, 44);
   assert.ok(Array.isArray(s.narrative.journal));
   assert.equal(s.narrative.schema, "infinite-corridor-narrative/1.0.0");
@@ -686,7 +686,7 @@ test("v4 migration adds consumables without losing progress", () => {
   old.xp = 77;
   delete old.consumables;
   const s = migrateSave(old);
-  assert.equal(s.version, 10);
+  assert.equal(s.version, 11);
   assert.equal(s.xp, 77);
   assert.deepEqual(s.consumables, {
     restorativeDraught: 3,
@@ -818,7 +818,7 @@ test("v5 to v8 retains explicit zero supplies and ranged state", () => {
   old.version = 5;
   old.consumables = { restorativeDraught: 0, ironbarkTonic: 0 };
   const s = migrateSave(old);
-  assert.equal(s.version, 10);
+  assert.equal(s.version, 11);
   assert.deepEqual(s.consumables, {
     restorativeDraught: 0,
     ironbarkTonic: 0,
@@ -1078,7 +1078,7 @@ test("v6 to v8 preserves location ranged aim snapshots and new defaults", () => 
   o.session.areas.keep = { enemies: [] };
   delete o.toolMode;
   const s = migrateSave(o);
-  assert.equal(s.version, 10);
+  assert.equal(s.version, 11);
   assert.deepEqual([s.session.x, s.session.y], [7, 9]);
   assert.deepEqual(s.pendingAim, { x: 3, y: 4 });
   assert.ok(s.session.areas.keep);
@@ -1620,7 +1620,7 @@ test("v7 migration preserves old Relay completion dead Vela and unrelated exact 
   old.session.areas.keep = { enemies: [{ id: "retain", hp: 3 }] };
   old.currency = 47;
   const s = migrateSave(old);
-  assert.equal(s.version, 10);
+  assert.equal(s.version, 11);
   assert.equal(s.consequences.choices.relay, "restore");
   assert.equal(s.consequences.npcs["vendor-vela"].status, "dead");
   assert.equal(s.consequences.settlements["ember-refuge"].status, "standing");
@@ -1997,11 +1997,11 @@ test("expanded creature ecology is deterministic and recorded in the field codex
   for(let y=-4;y<=4;y++)for(let x=-4;x<=4;x++)for(const e of generateRegion("ecology",x,y,1).enemySpawns)kinds.add(e.kind);
   for(const kind of ["ashenHound","veilMoth","rootBrute","coilStalker","cinderWisp"])assert.ok(kinds.has(kind),kind);
   const s=freshSave(),g=new Game(s,0);
-  assert.equal(s.version,10);
+  assert.equal(s.version,11);
   assert.ok(Object.keys(s.codex.creatures).length>=1);
   assert.equal(s.codex.places["terrain:"+g.map.dominant],true);
   const migrated=migrateSave({...freshSave(),version:8,codex:undefined});
-  assert.equal(migrated.version,10);
+  assert.equal(migrated.version,11);
   assert.deepEqual(migrated.codex,{creatures:{},places:{},features:{},variants:{}});
 });
 test("journal exposes encounter codex sections and an always-available symbol guide",()=>{
@@ -2117,12 +2117,14 @@ test("standing settlements enforce a nine-tile sanctuary around residents",()=>{
   assert.equal(z.radius,9);Object.assign(e,{x:16,y:16,telegraph:1});assert.equal(enforceSanctuary(e,z),true);assert.ok(Math.hypot(e.x-16,e.y-16)>9);assert.equal(e.telegraph,0);
   s.consequences.settlements['ember-refuge'].status='fallen';assert.equal(settlementSanctuary(g.map,0,0,s),null);
 });
-test("Signal Ledger leads persist track and award a complete story arc",()=>{
-  const s=freshSave(),board=generateRegion(s.seed,0,0,1).objects.find(o=>o.kind==='questBoard');
-  assert.ok(board);assert.equal(applyInteraction(board,'inspect',s).ok,true);assert.equal(s.narrative.facts['leads.active'],true);
+test("Viewport is reachable at Ember Refuge and tracking leads persist",()=>{
+  const s=freshSave(),board=generateRegion(s.seed,0,0,1).objects.find(o=>o.kind==='viewport');
+  assert.ok(board);assert.equal(board.name,'Viewport');assert.equal(applyInteraction(board,'inspect',s).transition,'viewport');
+  const accepted=acceptViewportHunt(s,'viewport-tracking-lattice');assert.equal(accepted.ok,true);s.narrative.facts['leads.active']=true;
   progressLead(s,'distance');progressLead(s,'hunt');progressLead(s,'guardian');
-  assert.equal(s.narrative.facts['leads.complete'],true);assert.equal(s.currency,38);assert.equal(s.consumables.restorativeDraught,5);assert.match(currentObjective(s),/Signal Ledger|Missing Crossing/);
+  assert.equal(s.narrative.facts['leads.complete'],true);assert.equal(s.viewport.contracts['viewport-tracking-lattice'].status,'target-located');assert.match(currentObjective(s),/Tracks in the Lattice/);
 });
+test("Viewport has a distinct physical Refuge rendering",()=>{const renderer=readFileSync(new URL('../src/renderer.ts',import.meta.url),'utf8');assert.match(renderer,/viewport:\s*\[/);assert.match(renderer,/o\.kind === "viewport"/);assert.match(renderer,/VIEWPORT/)});
 test("combat indicators use the exact snapshotted damage geometry and ranged fire clears it", () => {
   const main = readFileSync(new URL("../src/main.ts", import.meta.url), "utf8"),
     game = readFileSync(new URL("../src/game.ts", import.meta.url), "utf8");
@@ -2349,12 +2351,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 86 loads one coherent version across the entire module graph",()=>{
+test("release 87 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "86"/);assert.match(html,/styles\.css\?v=86/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=86/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v86/);assert.match(sw,/styles\.css\?v=86/);assert.match(sw,/main\.js\?v=86/);assert.match(sw,/combat\.js\?v=86/);assert.match(sw,/renderer\.js\?v=86/);
-  assert.match(build,/release='86'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "87"/);assert.match(html,/styles\.css\?v=87/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=87/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v87/);assert.match(sw,/styles\.css\?v=87/);assert.match(sw,/main\.js\?v=87/);assert.match(sw,/combat\.js\?v=87/);assert.match(sw,/renderer\.js\?v=87/);
+  assert.match(build,/release='87'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("Atlas opening tap cannot immediately activate travel controls",()=>{
@@ -2414,7 +2416,7 @@ test("portal prerequisite and elite rewards are one-time",()=>{const s=freshSave
 
 test("elite combatants are genuinely boss-scale but remain below Gate Revenant terror",()=>{for(const id of Object.keys(ELITE_DEFINITIONS)){const e=createCombatant(id,8,8);assert.equal(e.boss,true);assert.ok(e.maxHp>=230);assert.ok(e.damage>=17);assert.ok(e.eliteModules.length>=3);assert.ok(e.damage<22)}});
 
-test("save v10 migration preserves old progress and initializes elite contracts",()=>{const old=freshSave();old.version=9;delete old.elites;old.currency=77;const s=migrateSave(old);assert.equal(s.version,10);assert.equal(s.currency,77);assert.equal(s.elites.contracts.vesperwing.state,'available');assert.equal(s.materials.weaponSphere,0)});
+test("save v11 migration preserves old progress and initializes elite contracts",()=>{const old=freshSave();old.version=9;delete old.elites;old.currency=77;const s=migrateSave(old);assert.equal(s.version,11);assert.equal(s.currency,77);assert.equal(s.elites.contracts.vesperwing.state,'available');assert.equal(s.materials.weaponSphere,0);assert.equal(s.viewport.schema,VIEWPORT_SCHEMA)});
 
 test("elite journal art is bundled and release build includes the elite module",()=>{const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8'),css=readFileSync(new URL('../styles.css',import.meta.url),'utf8'),build=readFileSync(new URL('../scripts/build.mjs',import.meta.url),'utf8'),sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');assert.match(main,/ELITE_PORTRAITS/);assert.match(css,/elite-bestiary-atlas-v1-wide\.png/);assert.match(build,/'elites'/);assert.match(sw,/elite-bestiary-atlas-v1-wide\.png/)});
 
@@ -2695,14 +2697,23 @@ test("Creature Foundry output is stable validated rare and role-diverse",()=>{
  const candidate=foundryCandidate("FOUNDRY-AUDIT",9,-11,1);assert.deepEqual(candidate,foundryCandidate("FOUNDRY-AUDIT",9,-11,1));
 });
 
+test("Viewport contracts are deterministic bounded and preserve hunt decisions",()=>{
+ const a=freshSave(),b=freshSave();assert.deepEqual(ensureViewportState(a),ensureViewportState(b));const v=ensureViewportState(a);assert.equal(v.schema,VIEWPORT_SCHEMA);assert.equal(Object.keys(v.contracts).length,4);
+ const accepted=acceptViewportHunt(a,'viewport-foundry-trial');assert.equal(accepted.ok,true);assert.equal(a.viewport.activeHuntId,'viewport-foundry-trial');assert.equal(a.waypoint.huntId,'viewport-foundry-trial');const before=a.currency;assert.equal(completeViewportHunt(a,'viewport-foundry-trial'),true);assert.ok(a.currency>before);assert.equal(completeViewportHunt(a,'viewport-foundry-trial'),false);assert.equal(foundryTrialDecision(a,'viewport-foundry-trial','rare'),true);assert.equal(a.worldFlags['foundry-rare:viewport-foundry-trial'],true);
+});
+
+test("active frontier hunt creates a bounded Sentinel domain only at its target",()=>{
+ const s=freshSave();acceptViewportHunt(s,'viewport-frontier-manufactory');const q=s.viewport.contracts['viewport-frontier-manufactory'],g=new Game(s,0);g.rx=q.target.rx;g.ry=q.target.ry;g.loadArea('overworld',false);assert.equal(g.map.domain?.id,'sentinel-manufactory');assert.ok(g.enemies.some(e=>e.viewportHuntId===q.id&&e.worldBoss));assert.ok(g.enemies.filter(e=>e.domainReinforcement&&!e.dead).length<=4);
+});
+
 test("steward telemetry stays bounded and reports recommendations without mutating play",()=>{
  const s=freshSave();for(let i=0;i<50;i++){s.explored[`${i},0`]=true;recordSectionVisit(s,i,0,{objects:[{kind:i%5?"shrine":"checkpoint"}],environment:i%2?{kind:"river"}:{kind:"canyon"}})}
  const report=worldStewardReport(s);assert.equal(report.schema,STEWARD_SCHEMA);assert.ok(report.recommendations.length<=4);assert.ok(Object.keys(s.worldSteward.creatureKinds).length<=32);assert.ok(Object.keys(s.worldSteward.foundryCandidates).length<=32);
 });
 
-test("version 10 migration initializes additive story foundry and steward state without reset",()=>{
+test("version 11 migration initializes additive story foundry steward and Viewport state without reset",()=>{
  const raw=freshSave();raw.level=17;raw.currency=333;raw.story=undefined;raw.worldSteward=undefined;raw.codex.foundry={"retained-test":{name:"Retained Witness"}};
- const s=migrateSave(raw);assert.equal(s.version,10);assert.equal(s.level,17);assert.equal(s.currency,333);assert.equal(s.story.schema,CORRIDOR_STORY_SCHEMA);assert.equal(s.worldSteward.schema,STEWARD_SCHEMA);assert.equal(s.codex.foundry["retained-test"].name,"Retained Witness");
+ const s=migrateSave(raw);assert.equal(s.version,11);assert.equal(s.level,17);assert.equal(s.currency,333);assert.equal(s.story.schema,CORRIDOR_STORY_SCHEMA);assert.equal(s.worldSteward.schema,STEWARD_SCHEMA);assert.equal(s.viewport.schema,VIEWPORT_SCHEMA);assert.equal(s.codex.foundry["retained-test"].name,"Retained Witness");
 });
 
 test("foundry runtime integration observes by proximity preserves saved candidates and ships offline modules",()=>{
