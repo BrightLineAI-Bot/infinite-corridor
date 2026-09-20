@@ -2347,12 +2347,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 85 loads one coherent version across the entire module graph",()=>{
+test("release 86 loads one coherent version across the entire module graph",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "85"/);assert.match(html,/styles\.css\?v=85/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=85/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v85/);assert.match(sw,/styles\.css\?v=85/);assert.match(sw,/main\.js\?v=85/);assert.match(sw,/combat\.js\?v=85/);assert.match(sw,/renderer\.js\?v=85/);
-  assert.match(build,/release='85'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "86"/);assert.match(html,/styles\.css\?v=86/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=86/);assert.match(html,/controllerchange/);
+  assert.match(sw,/infinite-corridor-v86/);assert.match(sw,/styles\.css\?v=86/);assert.match(sw,/main\.js\?v=86/);assert.match(sw,/combat\.js\?v=86/);assert.match(sw,/renderer\.js\?v=86/);
+  assert.match(build,/release='86'/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("Atlas opening tap cannot immediately activate travel controls",()=>{
