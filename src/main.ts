@@ -243,6 +243,44 @@ const $ = (s) => document.querySelector(s),
   mapCanvas = $("#mapCanvas"),
   mctx = mapCanvas.getContext("2d");
 globalThis.corridorStewardReport=()=>worldStewardReport(save);
+const perfEnabled = new URLSearchParams(location.search).has("perf"),
+  perfSamples = { frame: [], update: [], render: [], hud: [], persist: [] };
+function recordPerf(kind, value) {
+  if (!perfEnabled) return;
+  const values = perfSamples[kind];
+  values.push(value);
+  if (values.length > 600) values.shift();
+}
+function measured(kind, fn) {
+  if (!perfEnabled) return fn();
+  const start = performance.now(), value = fn();
+  recordPerf(kind, performance.now() - start);
+  return value;
+}
+function percentile(values, p) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * p))];
+}
+globalThis.corridorPerfReport = () => {
+  const summary = {};
+  for (const [kind, values] of Object.entries(perfSamples))
+    summary[kind] = {
+      samples: values.length,
+      median: percentile(values, .5),
+      p95: percentile(values, .95),
+      p99: percentile(values, .99),
+      over25: values.filter((q) => q > 25).length,
+      over40: values.filter((q) => q > 40).length,
+      over60: values.filter((q) => q > 60).length,
+    };
+  return {
+    enabled: perfEnabled,
+    canvas: { width: canvas.width, height: canvas.height, cssWidth: canvas.clientWidth, cssHeight: canvas.clientHeight },
+    active: { objects: game.map.objects.length, enemies: game.enemies.filter((e) => !e.dead).length, projectiles: game.projectiles.length, effects: game.effects.length },
+    summary,
+  };
+};
 const inventoryView = { slot: "all", tier: "all", sort: "score" };
 let last = performance.now(),
   clock = 0,
@@ -807,7 +845,7 @@ visualViewport?.addEventListener("resize", resize, { passive: true });
 screen.orientation?.addEventListener("change", resize);
 new ResizeObserver(resize).observe($("#app"));
 resize();
-const persist = () => saveGame(game.exportSnapshot(performance.now()));
+const persist = () => measured("persist", () => saveGame(game.exportSnapshot(performance.now())));
 function pause(show = true) {
   if (show) overlayPause = false;
   game.setPaused(true, performance.now());
@@ -1415,25 +1453,32 @@ function updateHud(now) {
     button.setAttribute("aria-label", `${action} ${button.dataset.cooldown}`);
   }
 }
-let nextUiRefresh = 0;
+let nextSlowUiRefresh = 0;
 function frame(now) {
   try {
   const dt = Math.min(0.05, (now - last) / 1000);
+  recordPerf("frame", now - last);
   last = now;
   input.update(dt);
   if (input.consume("pause")) game.paused ? resume() : pause();
   if (input.consume("map")) openMap();
   if (input.consume("journal")) openJournal();
   if (input.consume("menu")) openPack();
-  game.update(dt, input, now);
+  measured("update", () => game.update(dt, input, now));
   if (game.paused) return;
-  render(ctx, game, innerWidth, innerHeight, now);
-  drawDungeonSystems();
-  drawRangedEffects();
+  measured("render", () => {
+    render(ctx, game, innerWidth, innerHeight, now);
+    drawDungeonSystems();
+    drawRangedEffects();
+  });
   updateMessage(game.message);
-  if (now >= nextUiRefresh) {
-    nextUiRefresh = now + 100;
-    updateWorldNotices();
+  updateWorldNotices();
+  measured("hud", () => {
+    updateHud(now);
+    updateNavigationCompass();
+  });
+  if (now >= nextSlowUiRefresh) {
+    nextSlowUiRefresh = now + 100;
     $("#place").textContent =
       game.area === "dungeon"
         ? game.map.name
@@ -1442,8 +1487,6 @@ function frame(now) {
             ? "Ember Refuge · FALLEN"
             : "Ember Refuge · standing"
           : `Cinder Verge · ${game.rx}, ${game.ry}`;
-    updateHud(now);
-    updateNavigationCompass();
     const buffs = [];
     if (game.guardRemaining > 0)
       buffs.push(`IRONBARK ${Math.ceil(game.guardRemaining)}s`);

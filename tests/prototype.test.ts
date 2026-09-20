@@ -2716,8 +2716,8 @@ test("foundry attack modules map to bounded distinct projectile mechanics",()=>{
 });
 
 test("mobile render scaling bounds high-DPI canvas cost without changing layout",()=>{
-  assert.equal(renderScaleForViewport(390,844,3),1.5);
-  assert.equal(renderScaleForViewport(844,390,2.75),1.5);
+  assert.equal(renderScaleForViewport(390,844,3),2);
+  assert.equal(renderScaleForViewport(844,390,2.75),2);
   assert.equal(renderScaleForViewport(1280,800,3),2);
   assert.equal(renderScaleForViewport(390,844,1),1);
 });
@@ -2729,14 +2729,16 @@ test("camera culling includes visible actors and intersecting structures only",(
   assert.equal(visibleInCamera({x:30,y:30,bounds:{x:22,y:22,w:4,h:4}},5,5,15,15),false);
 });
 
-test("mobile frame work uses one animation loop and throttles noncritical HUD writes",()=>{
+test("mobile frame work uses one loop while smooth HUD values remain full-rate",()=>{
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
   assert.equal((main.match(/requestAnimationFrame\(frame\)/g)||[]).length,2);
   assert.doesNotMatch(main,/requestAnimationFrame\(loop\)/);
-  assert.match(main,/nextUiRefresh = now \+ 100/);
+  assert.match(main,/nextSlowUiRefresh = now \+ 100/);
   assert.match(main,/if \(game\.paused\) return/);
   assert.match(main,/renderScaleForViewport\(w, h, devicePixelRatio \|\| 1\)/);
-  assert.match(main,/render\(ctx, game, innerWidth, innerHeight, now\);\s*drawDungeonSystems\(\)/);
+  assert.match(main,/measured\("hud", \(\) => \{\s*updateHud\(now\);\s*updateNavigationCompass\(\);\s*\}\);\s*if \(now >= nextSlowUiRefresh\)/);
+  assert.match(main,/updateWorldNotices\(\);\s*measured\("hud"/);
+  assert.match(main,/render\(ctx, game, innerWidth, innerHeight, now\);\s*drawDungeonSystems\(\);\s*drawRangedEffects\(\)/);
 });
 
 test("renderer culls section actors roofs hazards and ambient markers to the camera",()=>{
@@ -2745,4 +2747,14 @@ test("renderer culls section actors roofs hazards and ambient markers to the cam
   assert.match(renderer,/visibleInCamera\(e,l,t,r,b,2\)/);
   assert.match(renderer,/visibleInCamera\(h,l,t,r,b,h\.radius\|\|2\)/);
   assert.match(renderer,/render\.vignette = \{ ctx, w, h, gradient: v \}/);
+});
+
+test("phone diagnostics are opt-in and report frame pacing rather than average FPS alone",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+  assert.match(main,/new URLSearchParams\(location\.search\)\.has\("perf"\)/);
+  assert.match(main,/globalThis\.corridorPerfReport/);
+  assert.match(main,/median: percentile\(values, \.5\)/);
+  assert.match(main,/p95: percentile\(values, \.95\)/);
+  assert.match(main,/p99: percentile\(values, \.99\)/);
+  assert.match(main,/over25: values\.filter/);
 });

@@ -15,8 +15,7 @@ export function screenToWorld(g, w, h, x, y) {
   return { x: (x - c.x) / c.tileSize, y: (y - c.y) / c.tileSize };
 }
 export function renderScaleForViewport(width, height, deviceScale = 1) {
-  const shortEdge = Math.min(Math.max(1, width), Math.max(1, height));
-  return Math.min(Math.max(1, Number(deviceScale) || 1), shortEdge <= 720 ? 1.5 : 2);
+  return Math.min(Math.max(1, Number(deviceScale) || 1), 2);
 }
 export function visibleInCamera(o, left, top, right, bottom, padding = 2) {
   if (!o) return false;
