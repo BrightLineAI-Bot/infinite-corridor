@@ -39,7 +39,7 @@ import { ensurePerception } from "./types.ts";
 import { generateItem } from "./items.ts";
 import { hashSeed } from "./random.ts";
 import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.ts';
-import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace}from'./foundry.ts';
+import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.ts';
 import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.ts';
 import{generateVariedDungeon,generateBespokeArena}from'./arenas.ts';
 import{ensureSceneState,queueScene}from'./scenes.ts';
@@ -1461,8 +1461,8 @@ export class Game {
     const canonical=`dungeon:${this.save.seed}:g${this.save.worldGeneration}`;if(history&&history.generatorVersion===undefined)history.generatorVersion=loadingId===canonical||!!this.save.session.areas[loadingId]?2:3;
     this.map =
       area === "dungeon"
-        ? String(loadingId).startsWith("arena:")||String(loadingId).startsWith("hunt-arena:")
-          ? generateBespokeArena(this.save.seed,loadingId,{kind:String(loadingId).startsWith("hunt-arena:")?"temporary":"persistent",cleared:!!history?.resolved})
+        ? String(loadingId).startsWith("arena:")||String(loadingId).startsWith("hunt-arena:")||String(loadingId).startsWith("hunt-instance:")
+          ? generateBespokeArena(this.save.seed,loadingId,{kind:String(loadingId).startsWith("arena:")?"persistent":"temporary",cleared:!!history?.resolved})
           : history?.generatorVersion===3&&!String(loadingId).includes(":deep-v")&&!String(loadingId).startsWith("hunt-instance:")
             ? generateVariedDungeon(this.save.seed,loadingId,dungeonDescriptor(loadingId).recipe)
             : generateDungeon(this.save.seed, loadingId,{levelId:this.save.session.activeDungeonLevelId||undefined})
@@ -1478,11 +1478,12 @@ export class Game {
       const hunt=activeViewportHunt(this.save),open=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>6&&t.x<27&&t.y>6&&t.y<27);
       const domain=domainEncounterPlan(this.save,this.rx,this.ry);
       if(domain&&open.length){const state=domain.state,section=domain.section;this.map.domain={id:state.id,family:domain.topology.family,name:domain.topology.name,role:section.role,state:state.transformed?'transformed':'active',manifestation:domain.manifestation,lifecycle:domain.contract.lifecycle};for(const spawn of domain.spawns){const at=open[hashSeed(spawn.id)%open.length];this.map.enemySpawns.push({...spawn,x:at.x,y:at.y})}const markerAt=open[hashSeed(section.id+':marker')%open.length];this.map.objects.push({id:section.id+':marker',kind:'ruinMarker',name:`${domain.topology.name} — ${section.role}`,x:markerAt.x,y:markerAt.y,state:state.transformed?'quiet':'active',actions:['inspect'],landmark:true,domainId:state.id});recordPeoplePlace(this.save,state.id,{type:'domain',name:domain.topology.name,sigil:domain.topology.family==='sentinel'?'gear':'root',summary:domain.topology.family==='sentinel'?'A multi-section production field whose assembly lines still answer a buried command.':'A migrating forest-machine gathered around a buried root heart.',facts:[`Discovered ${section.role} section.`,state.transformed?'Its ruling threat has fallen; remnants persist.':'Its ruling threat remains active.'],crossRefs:[domain.contract.title],outcome:state.transformed?'transformed':'unresolved',coordinates:{rx:this.rx,ry:this.ry}})}
-      if(hunt&&hunt.target?.rx===this.rx&&hunt.target?.ry===this.ry&&!['completed','archived'].includes(hunt.status)){hunt.status='target-located';if(open.length&&!hunt.domain){const at=open[hashSeed(`${hunt.id}:target`)%open.length];if(hunt.kind==='trial'){const instance=ensureHuntInstance(this.save,hunt.id);this.map.objects.push({id:`instance-gate:${hunt.id}`,kind:instance.completed?'huntScar':'huntInstance',name:instance.completed?'Manifestation Scar':'Held Aperture',x:at.x,y:at.y,state:instance.completed?'spent':'ready',actions:instance.completed?['inspect']:['enter'],huntId:hunt.id,instanceId:instance.id,landmark:true})}else{const bossKind=hunt.id==='viewport-direct-vesperwing'?'vesperwing':'rootBrute';this.map.enemySpawns.push({id:`viewport-target:${hunt.id}`,kind:bossKind,x:at.x,y:at.y,boss:true,traits:['vital','keen'],viewportHuntId:hunt.id,worldBoss:false})}}}
+      if(hunt&&hunt.target?.rx===this.rx&&hunt.target?.ry===this.ry&&!['completed','archived'].includes(hunt.status)){hunt.status='target-located';const destination=resolveHuntDestination(this.save,hunt.id,this.map);if(destination?.kind==='temporary-arena'&&open.length){const at=open[hashSeed(`${hunt.id}:target`)%open.length],instance=ensureHuntInstance(this.save,hunt.id);this.map.objects.push({id:`instance-gate:${hunt.id}`,kind:instance?.completed?'huntScar':'huntInstance',name:instance?.completed?'Manifestation Scar':'Held Aperture',x:at.x,y:at.y,state:instance?.completed?'spent':'ready',actions:instance?.completed?['inspect']:['enter'],huntId:hunt.id,instanceId:instance?.id,landmark:true})}else if(destination?.kind==='existing-dungeon'){const entrance=this.map.objects.find(o=>o.id===destination.entranceId);if(entrance){entrance.viewportHuntId=hunt.id;entrance.name=`${entrance.name} · ${hunt.title}`}}else if(destination?.kind==='ordinary-overworld'&&destination.site&&hunt.id!=='viewport-direct-vesperwing'){const at=destination.site,bossKind=hunt.targetKind==='latticeHunter'?'latticeHunter':'rootBrute';this.map.enemySpawns.push({id:`viewport-target:${hunt.id}`,kind:bossKind,x:at.x,y:at.y,boss:true,traits:['vital','keen'],viewportHuntId:hunt.id,worldBoss:false})}}
       for(const q of Object.values(this.save.viewport?.contracts||{}))if(q.kind==='trial'&&q.status==='completed'&&q.target?.rx===this.rx&&q.target?.ry===this.ry){const instance=ensureHuntInstance(this.save,q.id);if(instance?.scar&&open.length&&!this.map.objects.some(o=>o.instanceId===instance.id)){const at=open[hashSeed(`${q.id}:target`)%open.length];this.map.objects.push({id:`instance-scar:${q.id}`,kind:'huntScar',name:'Manifestation Scar',x:at.x,y:at.y,state:'spent',actions:['inspect'],huntId:q.id,instanceId:instance.id,landmark:true})}}
       if(this.map.settlement){recordPeoplePlace(this.save,this.map.settlement.id,{type:'settlement',name:this.map.settlement.name||this.map.settlement.id,sigil:'settlement',summary:'A settled refuge maintained against the Corridor.',facts:[`Reached at ${this.rx},${this.ry}.`],crossRefs:['Viewport'],outcome:this.save.consequences.settlements[this.map.settlement.id]?.status||'standing',coordinates:{rx:this.rx,ry:this.ry}});for(const o of this.map.objects.filter(q=>q.kind==='npc'))recordPeoplePlace(this.save,o.id,{type:'person',name:o.name,role:o.role,sigil:'person',summary:`${o.role} of ${this.map.settlement.name||'this refuge'}.`,facts:[this.save.consequences.npcs[o.id]?.status==='dead'?'Recorded dead.':'Encountered alive.'],crossRefs:[this.map.settlement.name||this.map.settlement.id],outcome:this.save.consequences.npcs[o.id]?.status||'alive'})}
     }
-    if(area==='dungeon'&&String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:')){const id=this.save.session.activeDungeonId,instance=this.save.viewport.instances[id],hunt=this.save.viewport.contracts[instance?.contractId];this.map.recipe='hunt-instance';this.map.name=hunt?.title||'Held Aperture';this.map.huntInstanceId=id;this.map.enemySpawns=this.map.enemySpawns.filter(e=>e.kind!=='hollowMarshal');if(instance&&!instance.completed){const c=foundryCandidate(this.save.seed,hunt.target.rx,hunt.target.ry,this.save.worldGeneration);Object.assign(c,{id:`${id}:boss`,foundryId:`${id}:boss`,foundryName:c.name,foundryRole:'boss',role:'boss',baseKind:'archiveBehemoth',kind:'archiveBehemoth',boss:true,x:16,y:16,viewportHuntId:hunt.id,worldBoss:true,huntInstanceId:id,foundryModules:[c.body,c.movement,c.attack,c.weakness,c.ecology]});this.map.enemySpawns.push(c)}}
+    if(area==='dungeon'&&String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:')){const id=this.save.session.activeDungeonId,instance=this.save.viewport.instances[id],hunt=this.save.viewport.contracts[instance?.contractId];this.map.recipe='hunt-instance';this.map.name=hunt?.title||'Held Aperture';this.map.huntInstanceId=id;this.map.enemySpawns=this.map.enemySpawns.filter(e=>e.kind!=='hollowMarshal');if(instance&&!instance.completed){const c=foundryCandidate(this.save.seed,hunt.target.rx,hunt.target.ry,this.save.worldGeneration),at=this.map.objective||{x:18,y:11};Object.assign(c,{id:`${id}:boss`,foundryId:`${id}:boss`,foundryName:c.name,foundryRole:'boss',role:'boss',baseKind:'archiveBehemoth',kind:'archiveBehemoth',boss:true,x:at.x,y:at.y,viewportHuntId:hunt.id,worldBoss:true,huntInstanceId:id,foundryModules:[c.body,c.movement,c.attack,c.weakness,c.ecology]});this.map.enemySpawns.push(c)}}
+    if(area==='dungeon'&&this.save.session.viewportDungeonHuntId&&!String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:')){const hunt=this.save.viewport.contracts[this.save.session.viewportDungeonHuntId];if(hunt&&!['completed','archived'].includes(hunt.status)){const open=this.map.tiles.filter(t=>!t.blocked&&t.x>5&&t.y>5),at=open[hashSeed(`${hunt.id}:${this.areaId()}:boss`)%open.length]||this.map.objective||this.map.entry;this.map.enemySpawns.push({id:`viewport-dungeon-target:${hunt.id}`,kind:hunt.targetKind||'latticeHunter',x:at.x,y:at.y,boss:true,traits:['vital','keen'],viewportHuntId:hunt.id,worldBoss:false})}}
     if (area === "dungeon" && this.map.recipe === "cistern") {
       for (const [x, y] of [[11, 4], [12, 4], [11, 5], [12, 5]]) {
         const i = y * mapWidth(this.map, area) + x, t = this.map.tiles[i];
@@ -1491,7 +1492,7 @@ export class Game {
       }
     }
     const eliteState=ensureEliteState(this.save),eliteDefeated=eliteState.defeated;
-    if(area==='overworld'&&this.rx===5&&this.ry===-2&&!eliteDefeated.vesperwing)this.map.enemySpawns.push({kind:'vesperwing',x:23,y:16,boss:true,elite:true});
+    if(area==='overworld'&&this.rx===5&&this.ry===-2&&!eliteDefeated.vesperwing){const direct=this.save.viewport?.contracts?.['viewport-direct-vesperwing'];this.map.enemySpawns.push({kind:'vesperwing',x:23,y:16,boss:true,elite:true,viewportHuntId:direct&&direct.destination?.kind==='ordinary-overworld'&&['accepted','target-located'].includes(direct.status)?direct.id:null});}
     if(area==='overworld'&&this.rx===-7&&this.ry===4&&!eliteDefeated.mireApostle)this.map.enemySpawns.push({kind:'mireApostle',x:22,y:22,boss:true,elite:true});
     if(area==='overworld'&&this.rx===-5&&this.ry===3){this.map.objects.push({id:'knife-choir-portal',kind:'elitePortal',name:'Cantor Threshold',x:20,y:16,state:eliteState.contracts.knifeChoir.state==='available'?'ready':'sealed',actions:['inspect','enter'],landmark:true});}
     if(area==='dungeon'&&String(this.areaId()).startsWith('elite-portal:')){this.map.enemySpawns=this.map.enemySpawns.filter(e=>e.kind!=='hollowMarshal');if(!eliteDefeated.knifeChoir)this.map.enemySpawns.push({kind:'knifeChoir',x:16,y:18,boss:true,elite:true});}
@@ -1510,7 +1511,7 @@ export class Game {
     if (area === "overworld") {
       const atlas = (this.save.atlas ||= {}), key = `${this.rx},${this.ry}`;
       atlas[key] = { terrain: this.map.dominant, sites: this.map.objects
-        .filter((o) => ["checkpoint","dungeon","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho"].includes(o.kind))
+        .filter((o) => ["checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho"].includes(o.kind))
         .map((o) => ({ kind: o.kind, name: o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
     this.enemies = this.map.enemySpawns.map((e) => {
@@ -1741,6 +1742,7 @@ export class Game {
     if(isHuntInstance){const instance=this.save.viewport.instances[leavingId];if(instance&&!instance.completed)abandonHuntInstance(this.save,leavingId)}
     this.snapshotArea();
     this.save.session.activeDisplacement = null;
+    this.save.session.viewportDungeonHuntId = null;
     this.rx = q.rx;
     this.ry = q.ry;
     this.loadArea("overworld", false);
@@ -1792,8 +1794,8 @@ export class Game {
       this.loadArea("dungeon", false);
       for (const o of this.map.objects)
         if (used[o.id]?.state === "used") o.state = "used";
-      p.x = deep ? (anchor?.x ?? this.map.hub?.x ?? this.map.entry?.x ?? 4) : 4;
-      p.y = deep ? (anchor?.y ?? this.map.hub?.y ?? this.map.entry?.y ?? 5) : 5;
+      p.x = deep ? (anchor?.x ?? this.map.hub?.x ?? this.map.entry?.x ?? 4) : (this.map.entry?.x ?? 4);
+      p.y = deep ? (anchor?.y ?? this.map.hub?.y ?? this.map.entry?.y ?? 5) : (this.map.entry?.y ?? 5);
       p.invulnerableUntil = now + 2000;
       this.message = deep ? `Felled — recovered at the central anchor of ${this.map.name}. Cleared wings, shortcuts, carried items, XP, and map progress remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}` : `Felled — returned to the entrance of ${this.map.name}. The run begins again; your map and everything carried remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
     } else {
@@ -1992,6 +1994,7 @@ export class Game {
         this.ry,
         o.id,
       );
+      this.save.session.viewportDungeonHuntId=o.viewportHuntId||null;
       this.save.session.activeDungeonLevelId=null;
       const preview=generateDungeon(this.save.seed,this.save.session.activeDungeonId);if(preview.multiLevel)this.save.session.activeDungeonLevelId=preview.levels[0].id;
       const h = dungeonHistory(this.save, this.save.session.activeDungeonId);
@@ -2165,6 +2168,7 @@ export class Game {
   defeatEnemy(e) {
     if (e.rewarded) return;
     if(e.noRewards){e.rewarded=true;return}
+    if(e.arenaId&&this.map?.arena){const history=dungeonHistory(this.save,this.areaId());history.resolved=true;history.guardianDefeated=true;history.visitOpen=false;this.defeatNotice={title:'WORLD THREAT BROKEN',detail:`${this.map.name} · the persistent arena falls quiet`,kind:'danger'}}
     if(e.foundryId){
       recordCreatureDefeat(this.save,e);
       this.save.codex.foundry||={};
