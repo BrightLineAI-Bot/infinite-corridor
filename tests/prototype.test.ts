@@ -21,6 +21,8 @@ import {
   wayfindingCues,
   wayfindingCacheStats,
   clearWayfindingCache,
+  structureOccupancy,
+  validateEnterableStructures,
 } from "../src/world.ts";
 import { freshSave, migrateSave, normalizeManualWaypoint } from "../src/types.ts";
 import { foundryCandidate, foundryEncounter, validateFoundryCandidate, CREATURE_FOUNDRY_SCHEMA, VIEWPORT_SCHEMA, DOMAIN_SCHEMA, HUNT_INSTANCE_SCHEMA, ensureViewportState, acceptViewportHunt, archiveViewportHunt, completeViewportHunt, foundryTrialDecision, domainTopology, domainEncounterPlan, completeDomainBoss, manifestationMechanics, ensureHuntInstance, beginHuntInstance, abandonHuntInstance, completeHuntInstance, cleanupHuntInstance, recordPeoplePlace, selectHuntDestination, resolveHuntDestination, ordinaryHuntSuitability, huntIntegrationDiagnostics } from "../src/foundry.ts";
@@ -2229,7 +2231,7 @@ test("shelter schema deterministically covers six families, multiple footprints,
 });
 
 test("field shelters fully conceal interiors and use continuous architectural facades",()=>{
-  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/t\.structure === "shackWall"/);assert.match(renderer,/activeBuildingId === t\.buildingId/);assert.match(renderer,/inside=insideShelter\(o,p,map\)/);assert.match(renderer,/if\(inside\).*strokeStyle/);assert.match(renderer,/frontY=y\+h-s\*3\.12/);assert.match(renderer,/facadeStyle/);assert.match(renderer,/roofProfile/);assert.match(renderer,/condition===\"collapsed\"/);assert.match(renderer,/condition===\"overgrown\"/);assert.match(renderer,/quadraticCurveTo/);assert.match(renderer,/function shelterSigil/);assert.match(renderer,/backY=y\+s\*\.16/);assert.doesNotMatch(renderer,/inside=p\.x>=b\.x\+1/);assert.match(renderer,/const windows=Math\.max/);
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/t\.structure === "shackWall"/);assert.match(renderer,/activeBuildingId === t\.buildingId/);assert.match(renderer,/inside=insideShelter\(o,p,map\)/);assert.match(renderer,/structureOccupancy\(map,32,p\.x,p\.y,o\.id\)/);assert.match(renderer,/if\(inside\).*strokeStyle/);assert.match(renderer,/frontY=y\+h-s\*3\.12/);assert.match(renderer,/facadeStyle/);assert.match(renderer,/roofProfile/);assert.match(renderer,/condition===\"collapsed\"/);assert.match(renderer,/condition===\"overgrown\"/);assert.match(renderer,/quadraticCurveTo/);assert.match(renderer,/function shelterSigil/);assert.match(renderer,/backY=y\+s\*\.16/);assert.doesNotMatch(renderer,/inside=p\.x>=b\.x\+1/);assert.match(renderer,/const windows=Math\.max/);
 });
 
 test("shelter walls use thin physical edges and reveal only from true interior floor",()=>{
@@ -2242,7 +2244,23 @@ test("player remains foregrounded while approaching a shelter entrance",()=>{
 });
 
 test("shelter cutaway remains active beside every thin interior wall",()=>{
-  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/function insideShelter/);assert.match(renderer,/t\?\.buildingId===o\.id&&t\?\.structure==='shackInterior'/);assert.match(renderer,/activeShelter=objectLists\.shelters\.find\(o=>renderableObject\(g,o\)&&insideShelter\(o,p,g\.map\.tiles\)\)/);assert.doesNotMatch(renderer,/structure===\"shackInterior\"\|\|q\?\.structure/);
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/function insideShelter/);assert.match(renderer,/structureOccupancy\(map,32,p\.x,p\.y,o\.id\)/);assert.match(renderer,/activeBuildingId=structureOccupancy\(g\.map\.tiles,mw,p\.x,p\.y\)/);assert.doesNotMatch(renderer,/t\?\.buildingId===o\.id&&t\?\.structure==='shackInterior'/);
+});
+
+test("post-generation structure validation gives every shelter a real exterior approach",()=>{
+ const families=new Set();let structures=0;
+ for(let ry=-14;ry<=14;ry++)for(let rx=-14;rx<=14;rx++){const a=generateRegion("structure-entry-audit",rx,ry,1),b=generateRegion("structure-entry-audit",rx,ry,1);assert.deepEqual(a,b);for(const o of a.objects.filter(q=>q.kind==="shack"||q.kind==="architecturalBuilding")){structures++;if(o.family)families.add(o.family);assert.equal(o.enterable,true);assert.equal(o.geometryVersion,1);assert.ok(o.entrances.length);assert.equal(o.entranceApproaches.length,o.entrances.length);for(let i=0;i<o.entrances.length;i++){const e=o.entrances[i],approach=o.entranceApproaches[i],door=a.tiles[e.y*32+e.x],outside=a.tiles[approach.y*32+approach.x];assert.equal(door.buildingId,o.id);assert.match(door.structure,/Door$/);assert.equal(door.blocked,false);assert.equal(outside.blocked,false);assert.equal(outside.buildingId,undefined)}}}
+ assert.ok(structures>100);assert.deepEqual([...families].sort(),["alienGeometric","biomechanical","cyberRelay","masonry","ruinedGatehouse","timber"]);
+});
+
+test("authoritative door spans and body occupancy keep roofs open on thresholds and thin walls",()=>{
+ let region,shelter;for(let ry=-20;!shelter&&ry<=20;ry++)for(let rx=-20;!shelter&&rx<=20;rx++){const q=generateRegion("door-span-audit",rx,ry,1),o=q.objects.find(v=>v.kind==="shack"&&v.door?.width===2);if(o){region=q;shelter=o}}
+ assert.ok(shelter);const span=shelter.entrances.filter(e=>e.side===shelter.door.side).sort((a,b)=>a.x-b.x||a.y-b.y).slice(0,shelter.door.width);assert.equal(shelter.door.x,span[0].x);assert.equal(shelter.door.y,span[0].y);for(const e of span)assert.equal(region.tiles[e.y*32+e.x].structure,"shackDoor");
+ const door=span[0];assert.equal(structureOccupancy(region.tiles,32,door.x,door.y-.2,shelter.id),shelter.id);const wall=shelter.boundary.find(c=>{for(let oy=-.15;oy<=.2;oy+=.05)for(let ox=-.15;ox<=.2;ox+=.05)if(footprintOpen(region,32,c.x+ox,c.y+oy)&&structureOccupancy(region.tiles,32,c.x+ox,c.y+oy,shelter.id)===shelter.id)return true;return false});assert.ok(wall);
+});
+
+test("structure repair stays at generation boundaries and shared occupancy drives gameplay",()=>{
+ const world=readFileSync(new URL("../src/world.ts",import.meta.url),"utf8"),game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8"),main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(world,/validateEnterableStructures\(region\);return region/);assert.match(game,/footprintInsideStructure[\s\S]*structureOccupancy/);assert.doesNotMatch(main,/validateEnterableStructures/);const r=generateRegion("legacy-geometry-repair",3,-38,1),before=JSON.stringify(r.objects.map(o=>[o.id,o.state]));validateEnterableStructures(r);assert.equal(JSON.stringify(r.objects.map(o=>[o.id,o.state])),before);
 });
 
 test("journal renders the same minimalist trail marks used on the floor",()=>{
@@ -2267,7 +2285,7 @@ test("rare architectural sites provide deterministic wards arcologies cloisters 
 });
 
 test("building roofs conceal contents outside and cut away only in their own interior",()=>{
-  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/pt\?\.buildingId===o\.id/);assert.match(renderer,/if\(inside\).*return/);assert.match(renderer,/for\(const o of objectLists\.structures\).*architecturalBuilding/);assert.match(renderer,/roofs render after actors so exterior views conceal contents/);assert.match(renderer,/facadeRhythm/);assert.match(renderer,/roofProfile/);assert.match(renderer,/districtDoor/);
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/structureOccupancy\(map,32,p\.x,p\.y,o\.id\)/);assert.match(renderer,/if\(inside\).*return/);assert.match(renderer,/for\(const o of objectLists\.structures\).*architecturalBuilding/);assert.match(renderer,/roofs render after actors so exterior views conceal contents/);assert.match(renderer,/facadeRhythm/);assert.match(renderer,/roofProfile/);assert.match(renderer,/districtDoor/);
 });
 
 test("Atlas pans from compact discovery records and details only current or selected sections",()=>{
@@ -2296,7 +2314,7 @@ test("architectural doors cross thin boundary walls into visible usable interior
     }
   }
   assert.ok(checked>=24);
-  const game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(game,/\["shackWall",\s*"districtWall"\]/);assert.match(renderer,/startsWith\("district"\)/);assert.match(renderer,/districtWall[\s\S]*s\*\.22/);
+  const game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(game,/\["shackWall",\s*"districtWall"\]/);assert.match(renderer,/structureOccupancy\(map,32,p\.x,p\.y,o\.id\)/);assert.match(renderer,/districtWall[\s\S]*s\*\.22/);
 });
 
 test("resume safety accepts newly thinned district walls without carving changed world geometry",()=>{
@@ -2330,7 +2348,7 @@ test("shelter hazards and concealed displacement traps are rare deterministic in
  let shelters=0,hazards=0,hidden=0,signaled=0;
  for(let y=-35;y<=35;y++)for(let x=-35;x<=35;x++){const a=generateRegion("shelter-trap-audit",x,y,1),b=generateRegion("shelter-trap-audit",x,y,1);assert.deepEqual(a,b);const shelter=a.objects.find(o=>o.kind==="shack");if(!shelter)continue;shelters++;for(const o of a.objects.filter(o=>["shelterHazard","displacementTrap","displacementDevice"].includes(o.kind))){const tile=a.tiles[o.y*32+o.x];assert.equal(tile.structure,"shackInterior");assert.ok(shelter.entrances.every(e=>Math.hypot(o.x-e.x,o.y-e.y)>=2));if(o.kind==="shelterHazard")hazards++;else if(o.kind==="displacementTrap"){hidden++;assert.equal(o.hidden,true);assert.deepEqual(o.actions,[])}else signaled++;}}
  assert.ok(hazards/shelters>.12&&hazards/shelters<.24);assert.ok(hidden/shelters>.006&&hidden/shelters<.025);assert.ok(signaled/shelters>.035&&signaled/shelters<.075);
- const game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(game,/startDisplacement\(trap,true\)/);assert.match(game,/tile\?\.structure==='shackInterior'/);assert.match(game,/relocateIfStranded\(this\.player,this\.map/);assert.match(renderer,/o\.kind===\"displacementTrap\"&&o\.state!==\"used\"/);
+ const game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(game,/startDisplacement\(trap,true\)/);assert.match(game,/structureOccupancy\(this\.map\.tiles,width,p\.x,p\.y\)/);assert.match(game,/o\.shelterId===insideId/);assert.match(game,/relocateIfStranded\(this\.player,this\.map/);assert.match(renderer,/o\.kind===\"displacementTrap\"&&o\.state!==\"used\"/);
 });
 
 test("shelter creature gifts are once-only and displacement travel is explicitly guarded",()=>{
@@ -2543,7 +2561,7 @@ test("Atlas and Journal share the exact landmark symbol vocabulary",()=>{
 
 test("district roofs cut away only on true interior tiles and door sigils center on the door",()=>{
  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");
- assert.match(renderer,/pt\?\.buildingId===o\.id&&pt\?\.structure==="districtInterior"/);
+ assert.match(renderer,/structureOccupancy\(map,32,p\.x,p\.y,o\.id\)/);
  assert.match(renderer,/const gx=\(o\.door\.x\+\.5\)\*s/);
  assert.match(renderer,/q\?ctx\.lineTo\(px,py\):ctx\.moveTo\(px,py\)/);
 });
@@ -2856,7 +2874,7 @@ test("district generation never leaves tiles owned by a removed shelter",()=>{
 
 test("district roof ownership uses the grounded player body center and hides undiscovered shortcuts",()=>{
   const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");
-  assert.match(renderer,/Math\.floor\(p\.y\+\.7\).*Math\.floor\(p\.x\+\.5\)/);
+  assert.match(renderer,/activeBuildingId=structureOccupancy\(g\.map\.tiles,mw,p\.x,p\.y\)/);
   assert.match(renderer,/o\.kind==="deepShortcut"&&o\.state==="hidden"/);
 });
 

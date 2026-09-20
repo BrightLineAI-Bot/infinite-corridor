@@ -1,3 +1,5 @@
+import { structureOccupancy } from "./world.ts";
+
 export function cameraTransform(
   g,
   w,
@@ -407,7 +409,7 @@ function shelterSigil(ctx,cx,cy,r,glyph){
 }
 function insideShelter(o,p,map){
   const b=o.bounds||{x:o.x-2,y:o.y-2,w:5,h:4},cx=p.x+.5,cy=p.y+.7,inset=.22;
-  if(map){const t=map[Math.floor(cy)*32+Math.floor(cx)];return t?.buildingId===o.id&&t?.structure==='shackInterior'}
+  if(map)return structureOccupancy(map,32,p.x,p.y,o.id)===o.id;
   return cx>b.x+inset&&cx<b.x+b.w-inset&&cy>b.y+inset&&cy<b.y+b.h-inset;
 }
 function shack(ctx,o,s,p,map){
@@ -438,7 +440,7 @@ function shack(ctx,o,s,p,map){
   ctx.strokeStyle=accent+"bb";ctx.lineWidth=2;shelterSigil(ctx,x+w*.5,frontY-s*.42,s*.16,o.signGlyph);ctx.fillStyle="#c8bda4";ctx.font=`${Math.max(8,s*.18)}px monospace`;ctx.textAlign="center";ctx.fillText(o.name.toUpperCase(),x+w/2,y-s*.12);ctx.textAlign="start";ctx.restore();
 }
 function architecturalBuilding(ctx,o,s,p,map){
-  const meta=structureRenderMeta(o),b=o.bounds,mw=32,pt=map[Math.floor(p.y+.7)*mw+Math.floor(p.x+.5)],inside=pt?.buildingId===o.id&&pt?.structure==="districtInterior",colors={city:["#393a3f","#858188"],arcology:["#18333b","#58a0a6"],cloister:["#3b2d35","#9a737f"],fortress:["#302b27","#9b8268"]}[o.districtStyle]||["#333","#888"],accent={copper:"#b37954",ivory:"#d5c8a7",oxide:"#9a6457",violet:"#9278a8"}[o.accent]||colors[1],cells=meta.cells,set=meta.set;
+  const meta=structureRenderMeta(o),b=o.bounds,inside=structureOccupancy(map,32,p.x,p.y,o.id)===o.id,colors={city:["#393a3f","#858188"],arcology:["#18333b","#58a0a6"],cloister:["#3b2d35","#9a737f"],fortress:["#302b27","#9b8268"]}[o.districtStyle]||["#333","#888"],accent={copper:"#b37954",ivory:"#d5c8a7",oxide:"#9a6457",violet:"#9278a8"}[o.accent]||colors[1],cells=meta.cells,set=meta.set;
   ctx.save();if(inside){ctx.strokeStyle=accent+"77";ctx.lineWidth=2;for(const c of cells){if(!set.has(`${c.x-1},${c.y}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo(c.x*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x+1},${c.y}`)){ctx.beginPath();ctx.moveTo((c.x+1)*s,c.y*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x},${c.y-1}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo((c.x+1)*s,c.y*s);ctx.stroke()}if(!set.has(`${c.x},${c.y+1}`)){ctx.beginPath();ctx.moveTo(c.x*s,(c.y+1)*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}}ctx.restore();return}
   ctx.fillStyle=colors[0];ctx.beginPath();for(const c of cells)ctx.rect(c.x*s,c.y*s,s+1,s+1);ctx.fill();ctx.globalAlpha=.28;ctx.fillStyle=colors[1];for(const c of cells)if(((c.x+c.y+o.signGlyph)&3)===0)ctx.fillRect(c.x*s+s*.12,c.y*s+s*.12,s*.76,s*.12);ctx.globalAlpha=1;
   const x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s;ctx.strokeStyle=accent;ctx.lineWidth=3;for(const c of cells){if(!set.has(`${c.x-1},${c.y}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo(c.x*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x+1},${c.y}`)){ctx.beginPath();ctx.moveTo((c.x+1)*s,c.y*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x},${c.y-1}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo((c.x+1)*s,c.y*s);ctx.stroke()}if(!set.has(`${c.x},${c.y+1}`)){ctx.beginPath();ctx.moveTo(c.x*s,(c.y+1)*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}}if((o.shape==='rect'||o.shape==='keep')&&(o.roofProfile==='gable'||o.roofProfile==='spire')){ctx.beginPath();ctx.moveTo(x+s*.18,y+h*.48);ctx.lineTo(x+w*.5,y+(o.roofProfile==='spire'?s*.12:h*.2));ctx.lineTo(x+w-s*.18,y+h*.48);ctx.stroke()}else if(o.districtStyle==='fortress'){ctx.fillStyle=accent+"bb";for(const c of cells)if(!set.has(`${c.x},${c.y-1}`)&&(c.x+c.y)%2===0)ctx.fillRect(c.x*s+s*.12,c.y*s-s*.12,s*.42,s*.3)}else{ctx.strokeStyle=accent+"66";ctx.lineWidth=1;for(const c of cells)if(!set.has(`${c.x},${c.y-1}`)){ctx.beginPath();ctx.moveTo(c.x*s+s*.12,c.y*s+s*.25);ctx.lineTo((c.x+1)*s-s*.12,c.y*s+s*.25);ctx.stroke()}}
@@ -470,9 +472,7 @@ export function render(ctx, g, w, h, now) {
   const objectLists=mapObjectLists(g.map);
   renderCacheStats.visibleTiles=(r-l)*(b-t);
   renderCacheStats.visibleObjects=0;
-  const activeShelter=objectLists.shelters.find(o=>renderableObject(g,o)&&insideShelter(o,p,g.map.tiles)),
-    playerTile=g.map.tiles[Math.floor(p.y+.7)*mw+Math.floor(p.x+.5)],
-    activeBuildingId=activeShelter?.id||(String(playerTile?.structure||"").startsWith("district")?playerTile.buildingId:null);
+  const activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y),activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
   ctx.save();
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - p.y * s));
   for (let y = t; y < b; y++)

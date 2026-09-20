@@ -13,6 +13,7 @@ import {
   perceived,
   sectionExits,
   wayfindingCues,
+  structureOccupancy,
 } from "./world.ts";
 
 function applyFallenTreeCrossings(map) {
@@ -313,11 +314,9 @@ export function footprintHazard(map,width,x,y){
   return ["canyon","river","dungeonWater"].includes(tile?.kind)?tile.kind:null;
 }
 export function footprintInsideStructure(map,width,x,y){
-  for(const [ox,oy] of [[.24,.5],[.76,.5],[.24,.88],[.76,.88]]){
-    const structure=map.tiles[Math.floor(y+oy)*width+Math.floor(x+ox)]?.structure;
-    if(structure==='shackInterior'||String(structure||'').startsWith('district'))return true;
-  }
-  return false;
+  if(structureOccupancy(map.tiles,width,x,y))return true;
+  const points=[[x+.24,y+.5],[x+.76,y+.5],[x+.24,y+.88],[x+.76,y+.88]];
+  return points.some(([px,py])=>{const t=map.tiles?.[Math.floor(py)*width+Math.floor(px)];return!t?.buildingId&&(t?.structure==='shackInterior'||t?.structure==='districtInterior')});
 }
 export function projectileTileOpen(map,width,x,y){
   const ix=Math.floor(x),iy=Math.floor(y),height=map.tiles.length/width,tile=map.tiles[iy*width+ix];
@@ -2560,8 +2559,8 @@ export class Game {
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
     else moveAxis(p, dx, dy, this.map, width, true);
     if(!fellIntoHazard&&this.area==='overworld'){
-      const tile=this.map.tiles[Math.floor(p.y+.7)*width+Math.floor(p.x+.5)],inside=tile?.structure==='shackInterior';
-      if(inside){const trap=this.map.objects.find(o=>o.kind==='displacementTrap'&&o.state!=='used'&&!this.save.worldFlags[`displacement-trigger:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.55);if(trap){this.startDisplacement(trap,true);return}const hazard=this.map.objects.find(o=>o.kind==='shelterHazard'&&o.state==='armed'&&!this.save.worldFlags[`shelter-hazard:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.6);if(hazard){const key=`shelter-hazard:${this.rx},${this.ry}:${hazard.id}`;this.save.worldFlags[key]=true;hazard.state='spent';p.hp=Math.max(1,p.hp-(hazard.damage||10));this.message=`${hazard.name} erupts. ${hazard.damage||10} damage — the mechanism falls quiet.`;journalOnce(this.save,`shelter-hazard:${hazard.hazardType}`,`Shelters may conceal ${hazard.name.toLowerCase()} mechanisms. Their floor marks can be inspected, avoided, and remembered.`,'Shelter hazards');this.sync()}}
+      const insideId=structureOccupancy(this.map.tiles,width,p.x,p.y);
+      if(insideId){const trap=this.map.objects.find(o=>o.kind==='displacementTrap'&&o.shelterId===insideId&&o.state!=='used'&&!this.save.worldFlags[`displacement-trigger:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.55);if(trap){this.startDisplacement(trap,true);return}const hazard=this.map.objects.find(o=>o.kind==='shelterHazard'&&o.shelterId===insideId&&o.state==='armed'&&!this.save.worldFlags[`shelter-hazard:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.6);if(hazard){const key=`shelter-hazard:${this.rx},${this.ry}:${hazard.id}`;this.save.worldFlags[key]=true;hazard.state='spent';p.hp=Math.max(1,p.hp-(hazard.damage||10));this.message=`${hazard.name} erupts. ${hazard.damage||10} damage — the mechanism falls quiet.`;journalOnce(this.save,`shelter-hazard:${hazard.hazardType}`,`Shelters may conceal ${hazard.name.toLowerCase()} mechanisms. Their floor marks can be inspected, avoided, and remembered.`,'Shelter hazards');this.sync()}}
     }
     if(!fellIntoHazard){
       for(const e of this.enemies){
