@@ -947,14 +947,15 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   }
   speed *= e.speedMultiplier || 1;
   if(ai.mode==="chase"&&ai.detourUntil>now&&Number.isFinite(ai.detourX)){const ddx=ai.detourX-e.x,ddy=ai.detourY-e.y;if(Math.hypot(ddx,ddy)<.14){ai.detourUntil=0}else{tx=ddx;ty=ddy}}
-  if(ai.mode==="chase"&&!(ai.detourUntil>now)&&!hasLineOfSight(e,player,map,width)){const step=boundedChaseStep(e,player,map,width);if(step){ai.detourX=step[0];ai.detourY=step[1];ai.detourUntil=now+3000;tx=step[0]-e.x;ty=step[1]-e.y}}
+  if(ai.mode==="chase"&&!(ai.detourUntil>now)&&now>=(ai.pathRetryAt||0)&&!hasLineOfSight(e,player,map,width)){ai.pathRetryAt=now+350;const step=boundedChaseStep(e,player,map,width);if(step){ai.detourX=step[0];ai.detourY=step[1];ai.detourUntil=now+3000;tx=step[0]-e.x;ty=step[1]-e.y}}
   const m = Math.hypot(tx, ty) || 1;
   let dx = (tx / m) * speed * dt,
     dy = (ty / m) * speed * dt;
   if (Math.abs(tx) > Math.abs(ty)) ai.facing = tx < 0 ? "left" : "right";
   else ai.facing = ty < 0 ? "up" : "down";
   ai.step = (ai.step + Math.hypot(dx, dy)) % 2;
-  if(!moveAxis(e, dx, dy, map, width)&&ai.mode==="chase"){
+  if(!moveAxis(e, dx, dy, map, width)&&ai.mode==="chase"&&now>=(ai.pathRetryAt||0)){
+    ai.pathRetryAt=now+350;
     const step=boundedChaseStep(e,player,map,width);
     if(step){ai.detourX=step[0];ai.detourY=step[1];ai.detourUntil=now+3000;const px=step[0]-e.x,py=step[1]-e.y,pm=Math.hypot(px,py)||1;moveAxis(e,px/pm*speed*dt,py/pm*speed*dt,map,width)}
   }
@@ -967,11 +968,18 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
     {e.telegraph = 0.9;e.attackAim=projectileDirection(player.x-e.x,player.y-e.y)}
   return false;
 }
+export function shouldSimulateEnemy(e,player,area="overworld"){
+  if(!e||e.dead)return false;
+  if(area!=="overworld")return true;
+  if(e.aggro||e.boss||e.eliteId||e.worldBoss||e.gatePredator||e.telegraph>0||e.strike>0||e.eliteWindup>0||e.eliteActive>0||e.summonedBy)return true;
+  return Math.hypot(e.x-player.x,e.y-player.y)<=10;
+}
 export function settlementSanctuary(map,rx,ry,save){if(!map||rx===0&&ry===0&&save?.consequences?.settlements?.['ember-refuge']?.status==='fallen')return null;return map.settlement||rx===0&&ry===0?{x:16,y:16,radius:9}:null}
 export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y-z.y,d=Math.hypot(dx,dy);if(d>=z.radius)return false;const m=d||1;e.x=z.x+(d?dx/m:1)*(z.radius+.5);e.y=z.y+(d?dy/m:0)*(z.radius+.5);const ai=ensureAI(e);ai.homeX=e.x;ai.homeY=e.y;e.telegraph=0;return true}
 export class Game {
   constructor(save, now = 0) {
     this.save = save;
+    this.performanceStats={activeEnemies:0,dormantEnemies:0,ambientTicks:0};
     ensureEliteState(save);
     ensureCorridorSystems(save);
     if (!["attack", "tool", "act"].includes(save.aimMode))
@@ -2577,9 +2585,10 @@ export class Game {
       for(const e of escaped)e.dead=true;
       if(escaped.length)this.message="Walls close around you. The Gate Revenant loses the trail beyond the threshold.";
     }
-    if(!fellIntoHazard)this.projectiles = updateProjectiles(
+    const combatNpcTargets=(this.projectiles.length||this.effects.length)?this.npcTargets():[];
+    if(!fellIntoHazard&&this.projectiles.length)this.projectiles = updateProjectiles(
       this.projectiles,
-      [...this.enemies, ...this.npcTargets()],
+      [...this.enemies, ...combatNpcTargets],
       this.map,
       width,
       dt,
@@ -2596,27 +2605,32 @@ export class Game {
         p.invulnerableUntil=now+700;
       },
     );
-    this.syncNpcDamage("projectile");
+    if(combatNpcTargets.length)this.syncNpcDamage("projectile");
     for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-characterStats(this.save).damageReduction)));p.invulnerableUntil=now+700}}
-    this.effects = updateEffects(
+    if(this.effects.length)this.effects = updateEffects(
       this.effects,
-      [...this.enemies, ...this.npcTargets()],
+      [...this.enemies, ...combatNpcTargets],
       dt,
       (e) => {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
     );
-    this.syncNpcDamage("spell");
-    this.enemies=this.enemies.filter(e=>!(e.dead&&e.noRewards&&e.summonedBy));
+    if(combatNpcTargets.length)this.syncNpcDamage("spell");
+    if(this.enemies.some(e=>e.dead&&e.noRewards&&e.summonedBy))this.enemies=this.enemies.filter(e=>!(e.dead&&e.noRewards&&e.summonedBy));
     const eliteStatus=ensureEliteState(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});for(const h of this.eliteHazards)h.arming=Math.max(0,(h.arming||0)-dt);this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(!(h.arming>0)&&Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison)h.poison&&((eliteStatus.poison=Math.max(eliteStatus.poison,8)),eliteStatus.poisonTick=1)}
     for(const e of this.enemies){if(e.dead||!e.eliteId)continue;e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6)}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
     for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound')continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
     p.stamina = Math.min(p.maxStamina, p.stamina + 9 * dt);
-    for (const e of this.enemies)
+    this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.ambientTicks=0;
+    for (const e of this.enemies) {
+      if(!shouldSimulateEnemy(e,p,this.area)){this.performanceStats.dormantEnemies++;continue}
+      let simulationDt=dt;
+      if(e.ambient){e.ambientAccumulator=(e.ambientAccumulator||0)+dt;if(e.ambientAccumulator<.125){this.performanceStats.dormantEnemies++;continue}simulationDt=Math.min(.25,e.ambientAccumulator);e.ambientAccumulator=0;this.performanceStats.ambientTicks++}
+      this.performanceStats.activeEnemies++;
       if (
         !fellIntoHazard&&
         !e.dead &&
-        updateEnemyAI(e, p, this.map, width, dt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,(shooter,aim)=>this.projectiles.push(...enemyProjectilePattern(shooter,aim,now))) &&
+        updateEnemyAI(e, p, this.map, width, simulationDt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,(shooter,aim)=>this.projectiles.push(...enemyProjectilePattern(shooter,aim,now))) &&
         now > (p.invulnerableUntil || 0) &&
         (!(now < this.jumpUntil) || e.kind === "sparkWarden")
       ) {
@@ -2629,6 +2643,7 @@ export class Game {
         );
         p.invulnerableUntil = now + 700;
       }
+    }
     if (p.hp <= 0) {
       this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
       if (this.area === "dungeon") {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}

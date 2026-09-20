@@ -33,6 +33,7 @@ import {
   Game,
   moveAxis,
   updateEnemyAI,
+  shouldSimulateEnemy,
   alertEnemy,
   enemyProjectilePattern,
   settlementSanctuary,
@@ -2237,11 +2238,11 @@ test("shelter walls use thin physical edges and reveal only from true interior f
 });
 
 test("player remains foregrounded while approaching a shelter entrance",()=>{
-  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/const frontShelter=g\.map\.objects\.find/);assert.match(renderer,/p\.y>=o\.bounds\.y\+o\.bounds\.h-1/);assert.match(renderer,/if\(frontShelter\)actor\(ctx,p\.x,p\.y-lift\/s/);
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/const frontShelter=objectLists\.shelters\.find/);assert.match(renderer,/p\.y>=o\.bounds\.y\+o\.bounds\.h-1/);assert.match(renderer,/if\(frontShelter\)actor\(ctx,p\.x,p\.y-lift\/s/);
 });
 
 test("shelter cutaway remains active beside every thin interior wall",()=>{
-  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/function insideShelter/);assert.match(renderer,/t\?\.buildingId===o\.id&&t\?\.structure==='shackInterior'/);assert.match(renderer,/activeShelter=g\.map\.objects\.find\(o=>o\.kind===\"shack\"&&insideShelter\(o,p,g\.map\.tiles\)\)/);assert.doesNotMatch(renderer,/structure===\"shackInterior\"\|\|q\?\.structure/);
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/function insideShelter/);assert.match(renderer,/t\?\.buildingId===o\.id&&t\?\.structure==='shackInterior'/);assert.match(renderer,/activeShelter=objectLists\.shelters\.find\(o=>renderableObject\(g,o\)&&insideShelter\(o,p,g\.map\.tiles\)\)/);assert.doesNotMatch(renderer,/structure===\"shackInterior\"\|\|q\?\.structure/);
 });
 
 test("journal renders the same minimalist trail marks used on the floor",()=>{
@@ -2266,11 +2267,11 @@ test("rare architectural sites provide deterministic wards arcologies cloisters 
 });
 
 test("building roofs conceal contents outside and cut away only in their own interior",()=>{
-  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/pt\?\.buildingId===o\.id/);assert.match(renderer,/if\(inside\).*return/);assert.match(renderer,/for\(const o of g\.map\.objects\).*architecturalBuilding/);assert.match(renderer,/roofs render after actors so exterior views conceal contents/);assert.match(renderer,/facadeRhythm/);assert.match(renderer,/roofProfile/);assert.match(renderer,/districtDoor/);
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/pt\?\.buildingId===o\.id/);assert.match(renderer,/if\(inside\).*return/);assert.match(renderer,/for\(const o of objectLists\.structures\).*architecturalBuilding/);assert.match(renderer,/roofs render after actors so exterior views conceal contents/);assert.match(renderer,/facadeRhythm/);assert.match(renderer,/roofProfile/);assert.match(renderer,/districtDoor/);
 });
 
 test("Atlas pans from compact discovery records and details only current or selected sections",()=>{
-  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(game,/this\.save\.atlas \|\|=/);assert.match(game,/terrain: this\.map\.dominant/);assert.match(main,/save\.atlas\?\.\[key\]/);assert.match(main,/w \/ \(2 \* cell\)/);assert.match(main,/detailed\?sites:compact/);assert.doesNotMatch(main,/const region = generateRegion\(save\.seed, rx, ry/);assert.match(renderer,/ctx\.beginPath\(\);for\(const c of cells\)ctx\.rect/);assert.ok((renderer.match(/new Set\(cells\.map/g)||[]).length>=2);
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(game,/this\.save\.atlas \|\|=/);assert.match(game,/terrain: this\.map\.dominant/);assert.match(main,/save\.atlas\?\.\[key\]/);assert.match(main,/w \/ \(2 \* cell\)/);assert.match(main,/detailed\?sites:compact/);assert.doesNotMatch(main,/const region = generateRegion\(save\.seed, rx, ry/);assert.match(renderer,/ctx\.beginPath\(\);for\(const c of cells\)ctx\.rect/);assert.match(renderer,/function structureRenderMeta\(o\)/);assert.equal((renderer.match(/new Set\(cells\.map/g)||[]).length,1);
 });
 
 test("Atlas detail labels choose non-overlapping offsets and elide text that cannot fit",()=>{
@@ -2317,7 +2318,7 @@ test("equipped gear uses deterministic family silhouettes elemental accents and 
 
 test("journal trail examples invoke the exact ground-waymark drawing function",()=>{
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");
-  assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,82\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
+  assert.match(renderer,/export function drawWaymarkIcon/);assert.match(renderer,/drawWaymarkIcon\(ctx,o\.signalKind,s\)/);assert.match(main,/import \{ screenToWorld, drawWaymarkIcon, rendererDiagnostics \}/);assert.match(main,/drawWaymarkIcon\(ctx,signal,82\)/);assert.doesNotMatch(main,/M 13 0 A 13 13/);
 });
 
 test("rare shelters host deterministic merchants creatures and displacement thresholds",()=>{
@@ -2842,7 +2843,7 @@ test("mobile frame work uses one loop while smooth HUD values remain full-rate",
   assert.match(main,/if \(game\.paused\) return/);
   assert.match(main,/renderScaleForViewport\(w, h, devicePixelRatio \|\| 1, currentQuality\(\)\)/);
   assert.match(main,/measured\("hud", \(\) => \{\s*updateHud\(now\);\s*updateNavigationCompass\(\);\s*\}\);\s*if \(now >= nextSlowUiRefresh\)/);
-  assert.match(main,/if \(now >= nextSlowUiRefresh\)[\s\S]+?updateWorldNotices\(\)/);
+  assert.match(main,/if \(now >= nextSlowUiRefresh\)[\s\S]+?measured\(\"notices\",updateWorldNotices\)/);
   assert.match(main,/render\(ctx, game, innerWidth, innerHeight, now\);\s*drawDungeonSystems\(\);\s*drawRangedEffects\(\)/);
 });
 
@@ -2884,7 +2885,8 @@ test("pause escape, Viewport metadata, render restoration, and failed travel hav
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
   assert.match(main,/pausePanel\.addEventListener\("cancel",\(event\)=>event\.preventDefault\(\)\)/);
   assert.doesNotMatch(main,/meta\.textContent=q\.kind==='hunt'\?q\.kind/);
-  assert.match(main,/function render\([\s\S]*?try \{[\s\S]*?baseRender[\s\S]*?\} finally \{[\s\S]*?game\.map\.objects = objects/);
+  assert.match(main,/function render\([\s\S]*?renderObjectPredicate \|\|=[\s\S]*?baseRender[\s\S]*?\} finally \{/);
+  assert.doesNotMatch(main,/game\.map\.objects = objects\.filter/);
   assert.match(main,/const travelled=game\.area === "dungeon"[\s\S]*?if\(travelled\)resume\(\)/);
 });
 
@@ -2912,6 +2914,26 @@ test("phone diagnostics are opt-in and report frame pacing rather than average F
   assert.match(main,/p95: percentile\(values, \.95\)/);
   assert.match(main,/p99: percentile\(values, \.99\)/);
   assert.match(main,/over25: values\.filter/);
+});
+
+test("overworld simulation keeps nearby and dangerous enemies active while dormant ordinary actors sleep",()=>{
+  const player={x:1,y:1},ordinary=createCombatant("ashling",20,20),aggro=createCombatant("ashling",20,20),boss=createCombatant("riftColossus",20,20,true),near=createCombatant("ashling",5,5);
+  aggro.aggro=true;
+  assert.equal(shouldSimulateEnemy(ordinary,player,"overworld"),false);
+  assert.equal(shouldSimulateEnemy(aggro,player,"overworld"),true);
+  assert.equal(shouldSimulateEnemy(boss,player,"overworld"),true);
+  assert.equal(shouldSimulateEnemy(near,player,"overworld"),true);
+  assert.equal(shouldSimulateEnemy(ordinary,player,"dungeon"),true);
+});
+
+test("overworld performance caches structure geometry and failed chase retries",()=>{
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8"),game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8"),main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+  assert.match(renderer,/const structureRenderCache = new WeakMap/);
+  assert.match(renderer,/function mapObjectLists\(map\)/);
+  assert.match(game,/ai\.pathRetryAt=now\+350/);
+  assert.match(game,/if\(!shouldSimulateEnemy\(e,p,this\.area\)\)/);
+  assert.match(main,/const pending=save\.scenes\?\.pending/);
+  assert.match(main,/if \(\(clock \+= dt\) > 8\)/);
 });
 
 test("story scenes are deterministic bounded and commit exactly once",()=>{const a=freshSave(),b=freshSave();assert.equal(sceneVariant(a,"rift-arrival","one"),sceneVariant(b,"rift-arrival","one"));assert.equal(Object.keys(SCENE_DEFINITIONS).length,4);assert.equal(queueScene(a,"rift-arrival","one"),true);const full=scenePlaybackPlan(a,"rift-arrival",{quality:"high"}),low=scenePlaybackPlan(a,"rift-arrival",{quality:"low",reduceMotion:true});assert.ok(full.shots.length>=2);assert.equal(low.layers,1);assert.ok(low.shots.every(q=>q.camera==="still"));assert.equal(commitScene(a,"rift-arrival"),true);assert.equal(commitScene(a,"rift-arrival"),false);assert.deepEqual(scenePlaybackPlan(a,"rift-arrival"),null);assert.equal(a.narrative.facts["scene.riftArrival"],true)});

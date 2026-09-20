@@ -31,6 +31,34 @@ export function visibleInCamera(o, left, top, right, bottom, padding = 2) {
   return Number(o.x) >= left - padding && Number(o.x) <= right + padding &&
     Number(o.y) >= top - padding && Number(o.y) <= bottom + padding;
 }
+
+const structureRenderCache = new WeakMap();
+const mapObjectCache = new WeakMap();
+const renderCacheStats = { structureBuilds: 0, objectListBuilds: 0, visibleTiles: 0, visibleObjects: 0 };
+function structureRenderMeta(o) {
+  const cells = o.footprint || [], prior = structureRenderCache.get(o);
+  if (prior && prior.cells === cells && prior.length === cells.length) return prior;
+  const meta = { cells, length: cells.length, set: new Set(cells.map((c) => `${c.x},${c.y}`)) };
+  structureRenderCache.set(o, meta);
+  renderCacheStats.structureBuilds++;
+  return meta;
+}
+function mapObjectLists(map) {
+  const objects = map?.objects || [], prior = mapObjectCache.get(map);
+  if (prior && prior.objects === objects && prior.length === objects.length) return prior;
+  const value = {
+    objects,
+    length: objects.length,
+    structures: objects.filter((o) => o.kind === "shack" || o.kind === "architecturalBuilding"),
+    shelters: objects.filter((o) => o.kind === "shack"),
+    animated: objects.filter((o) => ["shrine", "checkpoint", "ruinMarker", "apertureMemory"].includes(o.kind)),
+  };
+  mapObjectCache.set(map, value);
+  renderCacheStats.objectListBuilds++;
+  return value;
+}
+export function rendererDiagnostics() { return { ...renderCacheStats }; }
+function renderableObject(g,o){return !g.renderObjectPredicate||g.renderObjectPredicate(o)}
 const PAL = {
   ash: ["#3b3834", "#5a5049"],
   glass: ["#345052", "#52716d"],
@@ -385,7 +413,7 @@ function insideShelter(o,p,map){
 function shack(ctx,o,s,p,map){
   const b=o.bounds||{x:o.x-2,y:o.y-2,w:5,h:4},inside=insideShelter(o,p,map),x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s,accent={pilgrim:"#8f7658",relay:"#527d7b",chapel:"#806777",workshop:"#8c5944",stoneCottage:"#8b8170",ruinedKeep:"#9a8168",gatehouse:"#89765f",shrineHouse:"#706986",neonKiosk:"#42b8b2",relayBunker:"#4d8e9c",prismVault:"#a78cce",orbitalPod:"#7ea3bd",ribNest:"#9b647f",carapace:"#735e86"}[o.facadeStyle]||"#8f7658",condition=o.condition||"weathered",grain=(o.signGlyph||0)+b.x*3+b.y*5,masonry=['stoneCottage','ruinedKeep','gatehouse','shrineHouse'].includes(o.facadeStyle);
   ctx.save();
-  const cells=o.footprint||[],set=new Set(cells.map(c=>`${c.x},${c.y}`));
+  const meta=structureRenderMeta(o),cells=meta.cells,set=meta.set;
   if(inside){ctx.strokeStyle=accent+"66";ctx.lineWidth=2;if(cells.length){for(const c of cells){if(!set.has(`${c.x-1},${c.y}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo(c.x*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x+1},${c.y}`)){ctx.beginPath();ctx.moveTo((c.x+1)*s,c.y*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x},${c.y-1}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo((c.x+1)*s,c.y*s);ctx.stroke()}if(!set.has(`${c.x},${c.y+1}`)){ctx.beginPath();ctx.moveTo(c.x*s,(c.y+1)*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}}}else ctx.strokeRect(x+s*.08,y+s*.08,w-s*.16,h-s*.16);ctx.restore();return}
   if(cells.length&&o.shape!=='rect'){
    const palette={timber:['#2b2822','#8f7658'],masonry:['#34332e','#8b8170'],ruinedGatehouse:['#302d29','#9a8168'],cyberRelay:['#152b31','#42b8b2'],alienGeometric:['#24243b','#a78cce'],biomechanical:['#30222d','#9b647f']}[o.family]||['#292720',accent];ctx.fillStyle=palette[0];ctx.beginPath();for(const c of cells)ctx.rect(c.x*s,c.y*s,s+1,s+1);ctx.fill();ctx.strokeStyle=palette[1];ctx.lineWidth=2;for(const c of cells){for(const [dx,dy,ax,ay,bx,by]of[[-1,0,0,0,0,1],[1,0,1,0,1,1],[0,-1,0,0,1,0],[0,1,0,1,1,1]])if(!set.has(`${c.x+dx},${c.y+dy}`)){ctx.beginPath();ctx.moveTo((c.x+ax)*s,(c.y+ay)*s);ctx.lineTo((c.x+bx)*s,(c.y+by)*s);ctx.stroke()}}
@@ -410,7 +438,7 @@ function shack(ctx,o,s,p,map){
   ctx.strokeStyle=accent+"bb";ctx.lineWidth=2;shelterSigil(ctx,x+w*.5,frontY-s*.42,s*.16,o.signGlyph);ctx.fillStyle="#c8bda4";ctx.font=`${Math.max(8,s*.18)}px monospace`;ctx.textAlign="center";ctx.fillText(o.name.toUpperCase(),x+w/2,y-s*.12);ctx.textAlign="start";ctx.restore();
 }
 function architecturalBuilding(ctx,o,s,p,map){
-  const b=o.bounds,mw=32,pt=map[Math.floor(p.y+.7)*mw+Math.floor(p.x+.5)],inside=pt?.buildingId===o.id&&pt?.structure==="districtInterior",colors={city:["#393a3f","#858188"],arcology:["#18333b","#58a0a6"],cloister:["#3b2d35","#9a737f"],fortress:["#302b27","#9b8268"]}[o.districtStyle]||["#333","#888"],accent={copper:"#b37954",ivory:"#d5c8a7",oxide:"#9a6457",violet:"#9278a8"}[o.accent]||colors[1],cells=o.footprint||[],set=new Set(cells.map(q=>`${q.x},${q.y}`));
+  const meta=structureRenderMeta(o),b=o.bounds,mw=32,pt=map[Math.floor(p.y+.7)*mw+Math.floor(p.x+.5)],inside=pt?.buildingId===o.id&&pt?.structure==="districtInterior",colors={city:["#393a3f","#858188"],arcology:["#18333b","#58a0a6"],cloister:["#3b2d35","#9a737f"],fortress:["#302b27","#9b8268"]}[o.districtStyle]||["#333","#888"],accent={copper:"#b37954",ivory:"#d5c8a7",oxide:"#9a6457",violet:"#9278a8"}[o.accent]||colors[1],cells=meta.cells,set=meta.set;
   ctx.save();if(inside){ctx.strokeStyle=accent+"77";ctx.lineWidth=2;for(const c of cells){if(!set.has(`${c.x-1},${c.y}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo(c.x*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x+1},${c.y}`)){ctx.beginPath();ctx.moveTo((c.x+1)*s,c.y*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x},${c.y-1}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo((c.x+1)*s,c.y*s);ctx.stroke()}if(!set.has(`${c.x},${c.y+1}`)){ctx.beginPath();ctx.moveTo(c.x*s,(c.y+1)*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}}ctx.restore();return}
   ctx.fillStyle=colors[0];ctx.beginPath();for(const c of cells)ctx.rect(c.x*s,c.y*s,s+1,s+1);ctx.fill();ctx.globalAlpha=.28;ctx.fillStyle=colors[1];for(const c of cells)if(((c.x+c.y+o.signGlyph)&3)===0)ctx.fillRect(c.x*s+s*.12,c.y*s+s*.12,s*.76,s*.12);ctx.globalAlpha=1;
   const x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s;ctx.strokeStyle=accent;ctx.lineWidth=3;for(const c of cells){if(!set.has(`${c.x-1},${c.y}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo(c.x*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x+1},${c.y}`)){ctx.beginPath();ctx.moveTo((c.x+1)*s,c.y*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x},${c.y-1}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo((c.x+1)*s,c.y*s);ctx.stroke()}if(!set.has(`${c.x},${c.y+1}`)){ctx.beginPath();ctx.moveTo(c.x*s,(c.y+1)*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}}if((o.shape==='rect'||o.shape==='keep')&&(o.roofProfile==='gable'||o.roofProfile==='spire')){ctx.beginPath();ctx.moveTo(x+s*.18,y+h*.48);ctx.lineTo(x+w*.5,y+(o.roofProfile==='spire'?s*.12:h*.2));ctx.lineTo(x+w-s*.18,y+h*.48);ctx.stroke()}else if(o.districtStyle==='fortress'){ctx.fillStyle=accent+"bb";for(const c of cells)if(!set.has(`${c.x},${c.y-1}`)&&(c.x+c.y)%2===0)ctx.fillRect(c.x*s+s*.12,c.y*s-s*.12,s*.42,s*.3)}else{ctx.strokeStyle=accent+"66";ctx.lineWidth=1;for(const c of cells)if(!set.has(`${c.x},${c.y-1}`)){ctx.beginPath();ctx.moveTo(c.x*s+s*.12,c.y*s+s*.25);ctx.lineTo((c.x+1)*s-s*.12,c.y*s+s*.25);ctx.stroke()}}
@@ -439,7 +467,10 @@ export function render(ctx, g, w, h, now) {
         0.42
       : 0,
     dodging = now < (p.dodgeUntil || 0);
-  const activeShelter=g.map.objects.find(o=>o.kind==="shack"&&insideShelter(o,p,g.map.tiles)),
+  const objectLists=mapObjectLists(g.map);
+  renderCacheStats.visibleTiles=(r-l)*(b-t);
+  renderCacheStats.visibleObjects=0;
+  const activeShelter=objectLists.shelters.find(o=>renderableObject(g,o)&&insideShelter(o,p,g.map.tiles)),
     playerTile=g.map.tiles[Math.floor(p.y+.7)*mw+Math.floor(p.x+.5)],
     activeBuildingId=activeShelter?.id||(String(playerTile?.structure||"").startsWith("district")?playerTile.buildingId:null);
   ctx.save();
@@ -493,7 +524,7 @@ export function render(ctx, g, w, h, now) {
   }
   const draws = [];
   for (const o of g.map.objects)
-    if (visibleInCamera(o,l,t,r,b)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden"))
+    if (renderableObject(g,o)&&visibleInCamera(o,l,t,r,b)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden")&&(renderCacheStats.visibleObjects++,true))
       draws.push({
         y: o.y,
         fn: () => {
@@ -661,12 +692,12 @@ export function render(ctx, g, w, h, now) {
       ctx.fillStyle = "#9b4d50";
       ctx.fillRect(e.x * s, (e.y - 0.1) * s, (s * e.hp) / e.maxHp, 3);
     }
-  for(const o of g.map.objects)if(visibleInCamera(o,l,t,r,b)){if(o.kind==="shack")shack(ctx,o,s,p,g.map.tiles);else if(o.kind==="architecturalBuilding")architecturalBuilding(ctx,o,s,p,g.map.tiles)}
-  const frontShelter=g.map.objects.find(o=>o.kind==="shack"&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
+  for(const o of objectLists.structures)if(renderableObject(g,o)&&visibleInCamera(o,l,t,r,b)){if(o.kind==="shack")shack(ctx,o,s,p,g.map.tiles);else architecturalBuilding(ctx,o,s,p,g.map.tiles)}
+  const frontShelter=objectLists.shelters.find(o=>renderableObject(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
   if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk");
   const motion = now / 1000;
-  for (const o of g.map.objects)
-    if (visibleInCamera(o,l,t,r,b)&&["shrine", "checkpoint", "ruinMarker", "apertureMemory"].includes(o.kind)) {
+  for (const o of objectLists.animated)
+    if (renderableObject(g,o)&&visibleInCamera(o,l,t,r,b)) {
       const cx = (o.x + 0.5) * s,
         cy = (o.y + 0.35) * s,
         spin = motion * 0.55 + ((o.x * 13 + o.y * 7) % 11);

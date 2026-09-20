@@ -1,4 +1,4 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.ts";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
 import { vendorShop, buyFromVendor } from "./game.ts";
 import { CREATURE_TRAITS } from "./combat.ts";
 import { hashSeed } from "./random.ts";
@@ -249,7 +249,7 @@ const $ = (s) => document.querySelector(s),
   mctx = mapCanvas.getContext("2d");
 globalThis.corridorStewardReport=()=>worldStewardReport(save);
 const perfEnabled = new URLSearchParams(location.search).has("perf") || settings.diagnostics,
-  perfSamples = { frame: [], update: [], render: [], hud: [], persist: [] },
+  perfSamples = { frame: [], input: [], update: [], render: [], hud: [], notices: [], persist: [] },
   navigationStats = { lookups: 0, rebuilds: 0 };
 function currentQuality(){return effectiveQuality(settings,{width:innerWidth,height:innerHeight,deviceMemory:navigator.deviceMemory,hardwareConcurrency:navigator.hardwareConcurrency})}
 function applyPresentationSettings(){document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=muted?0:.06*settings.masterVolume;if(musicBus)musicBus.gain.value=.72*settings.musicVolume;resize()}
@@ -289,6 +289,8 @@ globalThis.corridorPerfReport = () => {
     canvas: { width: canvas.width, height: canvas.height, cssWidth: canvas.clientWidth, cssHeight: canvas.clientHeight },
     active: { objects: game.map.objects.length, enemies: game.enemies.filter((e) => !e.dead).length, projectiles: game.projectiles.length, effects: game.effects.length },
     navigation: { ...navigationStats, source: "cached-dual-targets" },
+    renderer: rendererDiagnostics(),
+    simulation: game.performanceStats ? { ...game.performanceStats } : null,
     summary,
   };
 };
@@ -322,7 +324,7 @@ function updateWorldNotices() {
     showEventBanner(e.boss ? "MAJOR THREAT" : "CORRIDOR BREACH", e.kind.replace(/([A-Z])/g," $1").trim() + " has entered this section", "danger");
     if(e.boss&&(e.eliteId||e.worldBoss||e.kind==="riftColossus"))queueScene(save,"rift-arrival",e.id);
   }
-  const activatedHere=!!save.checkpoints?.[`${game.rx},${game.ry}`],o=(game.map.objects||[]).filter(q=>["checkpoint","dungeon","shrine","ruinMarker","bossCue"].includes(q.kind)&&!(q.kind==="checkpoint"&&activatedHere)).sort((a,b)=>Math.hypot(a.x-game.player.x,a.y-game.player.y)-Math.hypot(b.x-game.player.x,b.y-game.player.y))[0],key=o&&Math.hypot(o.x-game.player.x,o.y-game.player.y)<2.4?game.areaId()+":"+o.id:"";
+  const activatedHere=!!save.checkpoints?.[`${game.rx},${game.ry}`];let o=null,nearest=Infinity;for(const q of game.map.objects||[]){if(!["checkpoint","dungeon","shrine","ruinMarker","bossCue"].includes(q.kind)||(q.kind==="checkpoint"&&activatedHere))continue;const distance=Math.hypot(q.x-game.player.x,q.y-game.player.y);if(distance<nearest){nearest=distance;o=q}}const key=o&&nearest<2.4?game.areaId()+":"+o.id:"";
   if(key&&key!==nearbyNotice){nearbyNotice=key;let title=o.kind==="checkpoint"?"WAYGLASS REACHED":o.kind==="dungeon"?"CROSSING REACHED":o.kind==="bossCue"?"CORRIDOR BREACH":"SITE REACHED",detail=o.name||({dungeon:"Buried Crossing",checkpoint:"Wayglass Beacon",shrine:"Singing Array",ruinMarker:"Broken Observatory",bossCue:"Major Threat"}[o.kind]||"Unusual Site");if(o.kind==="shrine"){title="REST POINT REACHED";detail=`${detail} · respawn updated; no fast travel`;save.activeCheckpoint={rx:game.rx,ry:game.ry,x:o.x,y:o.y,name:o.name||"Singing Array"};save.worldFlags[`rest:${game.rx},${game.ry}:${o.id}`]=true;game.sync()}showEventBanner(title,detail,o.kind==="bossCue"?"danger":"discovery");}
   else if(!key)nearbyNotice="";
 }
@@ -367,16 +369,14 @@ new MutationObserver(() => {
 }).observe(body, { childList: true, subtree: false });
 function render(ctx, game, w, h, now) {
   const attackUntil = game.player.attackUntil,
-    telegraphs = game.enemies.map((e) => e.telegraph),
-    objects = game.map.objects;
+    telegraphs = game.enemies.map((e) => e.telegraph);
   try {
-    game.map.objects = objects.filter((o) => perceived(o, game.save));
+    game.renderObjectPredicate ||= (o) => perceived(o, game.save);
     game.player.attackUntil = 0;
     for (const e of game.enemies) e.telegraph = 0;
     baseRender(ctx, game, w, h, now);
     drawApertureVisuals();
   } finally {
-    game.map.objects = objects;
     game.player.attackUntil = attackUntil;
     for (let i = 0; i < game.enemies.length; i++)
       game.enemies[i].telegraph = telegraphs[i];
@@ -1528,14 +1528,14 @@ function scenePanelPosition(panel){return{0:["0%","0%"],1:["100%","0%"],2:["0%",
 function startScene(id,{replay=false}={}){const plan=scenePlaybackPlan(save,id,{reduceMotion:settings.reduceMotion||settings.safeMode,quality:currentQuality(),replay});if(!plan)return false;sceneRuntime.active=id;sceneRuntime.plan=plan;sceneRuntime.shot=0;sceneRuntime.started=performance.now();sceneRuntime.revealSkip=false;sceneRuntime.wasPaused=game.paused;sceneRuntime.image=new Image();sceneRuntime.image.src="./assets/story-scenes-v1.png";game.setPaused(true,performance.now());showSceneShot();return true}
 function showSceneShot(){const root=$("#storyScene"),shot=sceneRuntime.plan.shots[sceneRuntime.shot],[x,y]=scenePanelPosition(shot.panel);root.hidden=false;$("#sceneArt").style.backgroundImage="url('./assets/story-scenes-v1.png')";root.dataset.effect=shot.effect;root.dataset.camera=shot.camera;root.style.setProperty("--scene-duration",`${shot.duration}ms`);$("#sceneArt").style.setProperty("--scene-x",x);$("#sceneArt").style.setProperty("--scene-y",y);$("#sceneArt").setAttribute("aria-label",`${sceneRuntime.plan.title}: ${shot.caption}`);$("#sceneTitle").textContent=sceneRuntime.plan.title;$("#sceneCaption").textContent=shot.caption;$("#sceneSkip").hidden=!sceneRuntime.revealSkip}
 function finishScene(){const replay=sceneRuntime.plan?.replay,id=sceneRuntime.active;if(!replay)commitScene(save,id);$("#storyScene").hidden=true;$("#sceneArt").style.backgroundImage="none";sceneRuntime.image=null;sceneRuntime.active=null;sceneRuntime.plan=null;if(!sceneRuntime.wasPaused)game.setPaused(false,performance.now());persist()}
-function tickScene(now){if(!sceneRuntime.active){const pending=ensureSceneState(save).pending;if(pending)startScene(pending.sceneId);return false}const shot=sceneRuntime.plan.shots[sceneRuntime.shot];if(now-sceneRuntime.started>=shot.duration){sceneRuntime.shot++;if(sceneRuntime.shot>=sceneRuntime.plan.shots.length)finishScene();else{sceneRuntime.started=now;if(!sceneRuntime.plan.replay){const pending=ensureSceneState(save).pending;if(pending){pending.shot=sceneRuntime.shot;pending.elapsed=0}persist()}showSceneShot()}}return true}
+function tickScene(now){if(!sceneRuntime.active){const pending=save.scenes?.pending;if(pending)startScene(pending.sceneId);return false}const shot=sceneRuntime.plan.shots[sceneRuntime.shot];if(now-sceneRuntime.started>=shot.duration){sceneRuntime.shot++;if(sceneRuntime.shot>=sceneRuntime.plan.shots.length)finishScene();else{sceneRuntime.started=now;if(!sceneRuntime.plan.replay){const pending=save.scenes?.pending;if(pending){pending.shot=sceneRuntime.shot;pending.elapsed=0}persist()}showSceneShot()}}return true}
 $("#storyScene").onclick=()=>{if(!sceneRuntime.active)return;if(!sceneRuntime.revealSkip){sceneRuntime.revealSkip=true;showSceneShot()}else finishScene()};$("#sceneSkip").onclick=e=>{e.stopPropagation();finishScene()};
 function frame(now) {
   try {
   const dt = Math.min(0.05, (now - last) / 1000);
   recordPerf("frame", now - last);
   last = now;
-  input.update(dt);
+  measured("input",()=>input.update(dt));
   if (input.consume("pause")) game.paused ? resume() : pause();
   if (input.consume("map")) openMap();
   if (input.consume("journal")) openJournal();
@@ -1555,7 +1555,7 @@ function frame(now) {
   });
   if (now >= nextSlowUiRefresh) {
     nextSlowUiRefresh = now + 100;
-    updateWorldNotices();
+    measured("notices",updateWorldNotices);
     $("#place").textContent =
       game.area === "dungeon"
         ? game.map.name
@@ -1572,7 +1572,7 @@ function frame(now) {
     if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);
     $("#buff").textContent = buffs.join(" · ");
   }
-  if ((clock += dt) > 3) {
+  if ((clock += dt) > 8) {
     clock = 0;
     persist();
   }
