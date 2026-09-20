@@ -283,11 +283,11 @@ export function tileOpen(map, width, x, y) {
   }
   return true;
 }
-export function footprintOpen(map, width, x, y) {
+export function footprintOpen(map, width, x, y, allowLethalTerrain=false) {
   const left=x+.24,right=x+.76,top=y+.5,bottom=y+.88,height=map.tiles.length/width,overlaps=(a,b,c,d)=>right>a&&left<b&&bottom>c&&top<d;
   for(let ty=Math.floor(top);ty<=Math.floor(bottom-1e-6);ty++)for(let tx=Math.floor(left);tx<=Math.floor(right-1e-6);tx++){
     if(tx<0||ty<0||tx>=width||ty>=height)return false;
-    const tile=map.tiles[ty*width+tx];if(!tile||tile.blocked)return false;
+    const tile=map.tiles[ty*width+tx],lethal=allowLethalTerrain&&["canyon","river","dungeonWater"].includes(tile?.kind);if(!tile||tile.blocked&&!lethal)return false;
     if(!["shackWall","districtWall"].includes(tile.structure)||!tile.wallSides?.length)continue;
     const thickness=.22;
     for(const side of tile.wallSides){
@@ -342,22 +342,30 @@ export function relocateIfStranded(entity, map, width) {
   }
   return false;
 }
-export function moveAxis(entity, dx, dy, map, width) {
+export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false) {
   let moved = false,
     steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 0.16)),
     sx = dx / steps,
     sy = dy / steps;
   for (let i = 0; i < steps; i++) {
-    if (sx && footprintOpen(map, width, entity.x + sx, entity.y)) {
+    if (sx && footprintOpen(map, width, entity.x + sx, entity.y, allowLethalTerrain)) {
       entity.x += sx;
       moved = true;
     }
-    if (sy && footprintOpen(map, width, entity.x, entity.y + sy)) {
+    if (sy && footprintOpen(map, width, entity.x, entity.y + sy, allowLethalTerrain)) {
       entity.y += sy;
       moved = true;
     }
   }
   return moved;
+}
+function boundedChaseStep(entity,player,map,width,radius=12){
+  const sx=Math.round(entity.x),sy=Math.round(entity.y),gx=Math.round(player.x),gy=Math.round(player.y),start=`${sx},${sy}`,queue=[[sx,sy]],seen=new Set([start]),first=new Map([[start,null]]);let best=[sx,sy],bestDistance=Math.hypot(gx-sx,gy-sy);
+  for(let index=0;index<queue.length&&index<625;index++){
+    const [x,y]=queue[index],distance=Math.hypot(gx-x,gy-y);if(distance<bestDistance){best=[x,y];bestDistance=distance}if(x===gx&&y===gy){best=[x,y];break}
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,key=`${nx},${ny}`;if(seen.has(key)||Math.abs(nx-sx)>radius||Math.abs(ny-sy)>radius||!footprintOpen(map,width,nx,ny))continue;seen.add(key);queue.push([nx,ny]);first.set(key,first.get(`${x},${y}`)||[nx,ny])}
+  }
+  return first.get(`${best[0]},${best[1]}`)||null;
 }
 export function projectileDirection(x, y, facing = "down") {
   const m = Math.hypot(x, y);
@@ -928,13 +936,18 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
     speed = 0.3;
   }
   speed *= e.speedMultiplier || 1;
-  const m = Math.hypot(tx, ty) || 1,
-    dx = (tx / m) * speed * dt,
+  if(ai.mode==="chase"&&ai.detourUntil>now&&Number.isFinite(ai.detourX)){const ddx=ai.detourX-e.x,ddy=ai.detourY-e.y;if(Math.hypot(ddx,ddy)<.14){ai.detourUntil=0}else{tx=ddx;ty=ddy}}
+  if(ai.mode==="chase"&&!(ai.detourUntil>now)&&!hasLineOfSight(e,player,map,width)){const step=boundedChaseStep(e,player,map,width);if(step){ai.detourX=step[0];ai.detourY=step[1];ai.detourUntil=now+3000;tx=step[0]-e.x;ty=step[1]-e.y}}
+  const m = Math.hypot(tx, ty) || 1;
+  let dx = (tx / m) * speed * dt,
     dy = (ty / m) * speed * dt;
   if (Math.abs(tx) > Math.abs(ty)) ai.facing = tx < 0 ? "left" : "right";
   else ai.facing = ty < 0 ? "up" : "down";
   ai.step = (ai.step + Math.hypot(dx, dy)) % 2;
-  moveAxis(e, dx, dy, map, width);
+  if(!moveAxis(e, dx, dy, map, width)&&ai.mode==="chase"){
+    const step=boundedChaseStep(e,player,map,width);
+    if(step){ai.detourX=step[0];ai.detourY=step[1];ai.detourUntil=now+3000;const px=step[0]-e.x,py=step[1]-e.y,pm=Math.hypot(px,py)||1;moveAxis(e,px/pm*speed*dt,py/pm*speed*dt,map,width)}
+  }
   if(sanctuary)enforceSanctuary(e,sanctuary);
   if (
     attackInRange(e, player) &&
@@ -1232,7 +1245,9 @@ export class Game {
           area === "dungeon"
             ? this.save.session.activeDungeonId || ""
             : `overworld:${this.rx}:${this.ry}:g${this.save.worldGeneration}`,
-        had = !!this.save.session.areas[id];
+        levelId=area==="dungeon"?(this.save.session.activeDungeonLevelId||undefined):undefined,
+        stateId=area==="dungeon"&&levelId?`${id}:level:${levelId}`:id,
+        had = !!this.save.session.areas[stateId];
       load(area, capture);
       if (area === "dungeon") {
         const annex = String(this.save.session.activeDungeonId).endsWith(
@@ -2509,7 +2524,7 @@ export class Game {
     const width = mapWidth(this.map, this.area);
     const terrainHazard=footprintHazard(this.map,width,nx,ny),fellIntoHazard=!!terrainHazard;
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
-    else moveAxis(p, dx, dy, this.map, width);
+    else moveAxis(p, dx, dy, this.map, width, true);
     if(!fellIntoHazard&&this.area==='overworld'){
       const tile=this.map.tiles[Math.floor(p.y+.7)*width+Math.floor(p.x+.5)],inside=tile?.structure==='shackInterior';
       if(inside){const trap=this.map.objects.find(o=>o.kind==='displacementTrap'&&o.state!=='used'&&!this.save.worldFlags[`displacement-trigger:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.55);if(trap){this.startDisplacement(trap,true);return}const hazard=this.map.objects.find(o=>o.kind==='shelterHazard'&&o.state==='armed'&&!this.save.worldFlags[`shelter-hazard:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.6);if(hazard){const key=`shelter-hazard:${this.rx},${this.ry}:${hazard.id}`;this.save.worldFlags[key]=true;hazard.state='spent';p.hp=Math.max(1,p.hp-(hazard.damage||10));this.message=`${hazard.name} erupts. ${hazard.damage||10} damage — the mechanism falls quiet.`;journalOnce(this.save,`shelter-hazard:${hazard.hazardType}`,`Shelters may conceal ${hazard.name.toLowerCase()} mechanisms. Their floor marks can be inspected, avoided, and remembered.`,'Shelter hazards');this.sync()}}
@@ -2570,6 +2585,7 @@ export class Game {
       },
     );
     this.syncNpcDamage("spell");
+    this.enemies=this.enemies.filter(e=>!(e.dead&&e.noRewards&&e.summonedBy));
     const eliteStatus=ensureEliteState(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});for(const h of this.eliteHazards)h.arming=Math.max(0,(h.arming||0)-dt);this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(!(h.arming>0)&&Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison)h.poison&&((eliteStatus.poison=Math.max(eliteStatus.poison,8)),eliteStatus.poisonTick=1)}
     for(const e of this.enemies){if(e.dead||!e.eliteId)continue;e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6)}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
     for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound')continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}

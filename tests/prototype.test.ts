@@ -2828,6 +2828,56 @@ test("mobile frame work uses one loop while smooth HUD values remain full-rate",
   assert.match(main,/render\(ctx, game, innerWidth, innerHeight, now\);\s*drawDungeonSystems\(\);\s*drawRangedEffects\(\)/);
 });
 
+test("district generation never leaves tiles owned by a removed shelter",()=>{
+  for(const [seed,rx,ry] of [["AUDIT",-15,-3],["CINDER-VERGE-47",-15,-3],["DISTRICT-INTEGRITY",8,-11]]){
+    const region=generateRegion(seed,rx,ry,1),ids=new Set(region.objects.filter(o=>o.kind==="shack"||o.kind==="architecturalBuilding").map(o=>o.id));
+    for(const tile of region.tiles)if(tile.buildingId)assert.ok(ids.has(tile.buildingId),`${seed} ${rx},${ry} orphaned ${tile.buildingId}`);
+  }
+});
+
+test("district roof ownership uses the grounded player body center and hides undiscovered shortcuts",()=>{
+  const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");
+  assert.match(renderer,/Math\.floor\(p\.y\+\.7\).*Math\.floor\(p\.x\+\.5\)/);
+  assert.match(renderer,/o\.kind==="deepShortcut"&&o\.state==="hidden"/);
+});
+
+test("walking into water or canyon triggers death consistently without widening the shore kill box",()=>{
+  for(const [kind,dt] of [["river",1/60],["canyon",1/20]]){
+    const s=freshSave(),g=new Game(s,0);g.map={...g.map,width:8,height:8,exits:null,objects:[],enemySpawns:[],tiles:Array.from({length:64},(_,i)=>{const x=i%8,y=Math.floor(i/8),hazard=x>=4;return{x,y,kind:hazard?kind:"ash",environment:hazard?kind:undefined,blocked:hazard}})};g.area="dungeon";g.player.x=2;g.player.y=2;
+    const input={state:{x:1,y:0},consume:()=>false};for(let i=0;i<180&&!s.worldFlags.deaths;i++)g.update(dt,input,i*dt*1000);
+    assert.equal(s.worldFlags.deaths,1,`${kind} should be enterable and lethal at ${dt}s`);
+  }
+});
+
+test("multifloor snapshots restore partial health and identical enemy scaling",()=>{
+  const s=freshSave(),id=deepV2Id(s.seed,1,4,-8,"descent");s.session.activeDungeonId=id;s.session.activeDungeonLevelId="mouth";s.session.dungeonReturn={rx:4,ry:-8,x:8,y:8};const g=new Game(s,0);g.rx=4;g.ry=-8;g.loadArea("dungeon",false);const enemy=g.enemies.find(e=>e.objectiveId==="survey-warden"),before={maxHp:enemy.maxHp,damage:enemy.damage};enemy.hp=10;g.snapshotArea();g.loadArea("dungeon",false);const restored=g.enemies.find(e=>e.id===enemy.id);assert.deepEqual({hp:restored.hp,maxHp:restored.maxHp,damage:restored.damage},{hp:10,...before});g.loadArea("dungeon",false);const twice=g.enemies.find(e=>e.id===enemy.id);assert.deepEqual({hp:twice.hp,maxHp:twice.maxHp,damage:twice.damage},{hp:10,...before});
+});
+
+test("every story assigned to a multifloor entrance installs a reachable initiator",()=>{
+  const expected={ghost:["storyGhost"],relic:["storyRelic","storyGhost"],mechanism:["storyTone"],actor:["storyActor"],scene:["storyScene"]},seen=new Set();
+  for(let i=0;i<900;i++)for(const archetype of["descent","fortress"]){const seed=`MULTISTORY-${i}`,rx=i%17-8,ry=Math.floor(i/17)%17-8,id=deepV2Id(seed,1,rx,ry,archetype),level=deepV2Levels(id)[0].id,map=generateDeepV2Dungeon(seed,id,{levelId:level}),kind=map.storyPackage?.initiator;if(!kind)continue;seen.add(kind);const reach=reachableDungeonCells(map,map.entry);for(const objectKind of expected[kind]){const objects=map.objects.filter(o=>o.kind===objectKind);assert.ok(objects.length,`${archetype} ${kind} missing ${objectKind}`);assert.ok(objects.some(o=>reach.has(`${o.x},${o.y}`)),`${archetype} ${kind} initiator unreachable`)}}assert.ok(seen.has("ghost")&&seen.has("relic")&&seen.has("actor")&&seen.has("scene"));for(const kind of seen)assert.ok(expected[kind]);
+});
+
+test("deep physical shortcuts seal and open complete traversable cuts",()=>{
+  const id=deepV2Id("SHORTCUT-CUT",1,3,-3,"threefold"),map=generateDeepV2Dungeon("SHORTCUT-CUT",id),door=map.objects.find(o=>o.kind==="deepShortcut");assert.ok(door.cells.length>3);assert.ok(door.cells.every(p=>map.tiles[p.y*map.width+p.x].blocked));const s=freshSave();deepDungeonProgress(s,id).completedObjectiveIds.push(door.unlockObjectiveId);deepDungeonProgress(s,id).openedShortcutIds.push(door.id);applyDeepDungeonProgress(s,id,map);assert.ok(door.cells.every(p=>!map.tiles[p.y*map.width+p.x].blocked));assert.ok(reachableDungeonCells(map,{x:16,y:35}).has("29,35"));
+});
+
+test("pause escape, Viewport metadata, render restoration, and failed travel have explicit safe paths",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+  assert.match(main,/pausePanel\.addEventListener\("cancel",\(event\)=>event\.preventDefault\(\)\)/);
+  assert.doesNotMatch(main,/meta\.textContent=q\.kind==='hunt'\?q\.kind/);
+  assert.match(main,/function render\([\s\S]*?try \{[\s\S]*?baseRender[\s\S]*?\} finally \{[\s\S]*?game\.map\.objects = objects/);
+  assert.match(main,/const travelled=game\.area === "dungeon"[\s\S]*?if\(travelled\)resume\(\)/);
+});
+
+test("dead temporary summons are culled while authored defeated enemies persist",()=>{
+  const s=freshSave(),g=new Game(s,0),summon=createCombatant("ashling",10,10);summon.dead=true;summon.noRewards=true;summon.summonedBy="elite";summon.id="temporary-summon";const authored=createCombatant("ashling",11,10);authored.dead=true;authored.id="authored-spawn";g.enemies=[summon,authored];g.update(.016,idle(),16);assert.equal(g.enemies.some(e=>e.id==="temporary-summon"),false);assert.equal(g.enemies.some(e=>e.id==="authored-spawn"),true);
+});
+
+test("provoked enemies detour around a straight blocking wall",()=>{
+  const map={tiles:Array.from({length:100},(_,i)=>{const x=i%10,y=Math.floor(i/10),wall=x===5&&y<8;return{x,y,kind:wall?"wall":"floor",blocked:wall}})},enemy=createCombatant("ashling",3,5),player={x:7,y:5};enemy.id="detour-test";enemy.aggro=true;for(let i=0;i<900;i++)updateEnemyAI(enemy,player,map,10,1/60,i*16);assert.ok(enemy.x>5,`enemy stalled at ${enemy.x},${enemy.y}`);
+});
+
 test("renderer culls section actors roofs hazards and ambient markers to the camera",()=>{
   const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");
   assert.match(renderer,/visibleInCamera\(o,l,t,r,b\)/);

@@ -367,15 +367,18 @@ function render(ctx, game, w, h, now) {
   const attackUntil = game.player.attackUntil,
     telegraphs = game.enemies.map((e) => e.telegraph),
     objects = game.map.objects;
-  game.map.objects = objects.filter((o) => perceived(o, game.save));
-  game.player.attackUntil = 0;
-  for (const e of game.enemies) e.telegraph = 0;
-  baseRender(ctx, game, w, h, now);
-  drawApertureVisuals();
-  game.map.objects = objects;
-  game.player.attackUntil = attackUntil;
-  for (let i = 0; i < game.enemies.length; i++)
-    game.enemies[i].telegraph = telegraphs[i];
+  try {
+    game.map.objects = objects.filter((o) => perceived(o, game.save));
+    game.player.attackUntil = 0;
+    for (const e of game.enemies) e.telegraph = 0;
+    baseRender(ctx, game, w, h, now);
+    drawApertureVisuals();
+  } finally {
+    game.map.objects = objects;
+    game.player.attackUntil = attackUntil;
+    for (let i = 0; i < game.enemies.length; i++)
+      game.enemies[i].telegraph = telegraphs[i];
+  }
 }
 function drawApertureVisuals() {
   const s = Math.max(28, Math.min(44, innerWidth / 12)),
@@ -879,6 +882,7 @@ function resume() {
   last = performance.now();
   persist();
 }
+pausePanel.addEventListener("cancel",(event)=>event.preventDefault());
 const optionCategories=["Journeys","Performance","Controls","Accessibility","Audio","System"];
 let optionCategory="Journeys";
 function optionMessage(text,isError=false){let p=$("#optionsStatus");if(!p){p=document.createElement("p");p.id="optionsStatus";optionsBody.prepend(p)}p.textContent=text;p.className=isError?"options-note options-danger":"options-note"}
@@ -1587,11 +1591,12 @@ $("#mapMinus").onclick = () => {
 $("#mapTravel").onclick = () => {
   if (performance.now() - atlasOpenedAt < 500) return;
   const key = selectedWayglassKey();
-  game.area === "dungeon"
+  const travelled=game.area === "dungeon"
     ? game.useCrossingSigil()
     : game.travelToCheckpoint(save.checkpoints?.[key] ? key : null);
   persist();
-  resume();
+  if(travelled)resume();
+  else{$("#mapDetail").textContent=game.message;drawMap()}
 };
 $("#mapHome").onclick = () => {
   if (performance.now() - atlasOpenedAt < 500) return;
@@ -1728,7 +1733,7 @@ function viewportReward(q){const bits=[];if(q.reward?.marks)bits.push(`${q.rewar
 function openViewport(){pauseForOverlay();if(pausePanel.open)pausePanel.close();const viewport=ensureViewportState(save);viewport.read=true;body.replaceChildren();const heading=document.createElement('h2'),intro=document.createElement('p');heading.textContent='Viewport';intro.textContent='Viewport gathers what the Corridor permits Ember to see. Some reports are clear. Others become legible only through travel.';body.append(heading,intro);
  const groups=[['active','Active hunt'],['available','Hunts & emerging threats'],['recent','Recent arrivals'],['archive','Completed records']];
  for(const[group,label]of groups){const title=document.createElement('h3');title.textContent=label;body.append(title);let entries=[];if(group==='active')entries=Object.values(viewport.contracts).filter(q=>['accepted','tracking','target-located'].includes(q.status));else if(group==='available')entries=Object.values(viewport.contracts).filter(q=>['available','deferred'].includes(q.status));else if(group==='recent')entries=viewport.recent;else entries=Object.values(viewport.contracts).filter(q=>['completed','archived'].includes(q.status));if(!entries.length){const empty=document.createElement('p');empty.className='viewport-empty';empty.textContent=group==='recent'?'Nothing meaningful has entered the record yet.':'No records in this section.';body.append(empty);continue}
-  for(const q of entries){const card=document.createElement('article'),name=document.createElement('h3'),text=document.createElement('p'),meta=document.createElement('small'),actions=document.createElement('div');card.className='item viewport-card';name.textContent=q.title||q.id;text.textContent=q.text||q.summary||'The record remains incomplete.';meta.textContent=q.kind==='hunt'?q.kind:`${q.kind||'record'} · ${q.status||'recorded'}${q.target?` · ${q.target.rx},${q.target.ry}`:''}${q.reward?` · ${viewportReward(q)}`:''}`;actions.className='viewport-actions';if(['available','deferred'].includes(q.status)){actions.append(uiButton('Accept hunt',()=>{const r=acceptViewportHunt(save,q.id);if(q.kind==='tracking'){save.narrative.facts['leads.active']=true}game.message=r.message;persist();openViewport()}));actions.append(uiButton('Archive',()=>{archiveViewportHunt(save,q.id);persist();openViewport()}))}else if(['accepted','tracking','target-located'].includes(q.status)){actions.append(uiButton('Track on Atlas',()=>{save.waypoint={...q.target,name:q.title,source:'viewport',huntId:q.id};persist();openViewport()}),uiButton('Defer',()=>{deferViewportHunt(save,q.id);persist();openViewport()}))}else if(q.kind==='trial'&&q.status==='completed'&&!q.decision){for(const[d,l]of[['corridor','Let it enter the Corridor'],['rare','Keep as a rare hunt'],['dungeon','Reserve for dungeons'],['rework','Rework and return later'],['archive','Archive']])actions.append(uiButton(l,()=>{foundryTrialDecision(save,q.id,d);persist();openViewport()}))}card.append(name,text,meta,actions);body.append(card)}
+  for(const q of entries){const card=document.createElement('article'),name=document.createElement('h3'),text=document.createElement('p'),meta=document.createElement('small'),actions=document.createElement('div');card.className='item viewport-card';name.textContent=q.title||q.id;text.textContent=q.text||q.summary||'The record remains incomplete.';meta.textContent=`${q.kind||'record'} · ${q.status||'recorded'}${q.target?` · ${q.target.rx},${q.target.ry}`:''}${q.reward?` · ${viewportReward(q)}`:''}`;actions.className='viewport-actions';if(['available','deferred'].includes(q.status)){actions.append(uiButton('Accept hunt',()=>{const r=acceptViewportHunt(save,q.id);if(q.kind==='tracking'){save.narrative.facts['leads.active']=true}game.message=r.message;persist();openViewport()}));actions.append(uiButton('Archive',()=>{archiveViewportHunt(save,q.id);persist();openViewport()}))}else if(['accepted','tracking','target-located'].includes(q.status)){actions.append(uiButton('Track on Atlas',()=>{save.waypoint={...q.target,name:q.title,source:'viewport',huntId:q.id};persist();openViewport()}),uiButton('Defer',()=>{deferViewportHunt(save,q.id);persist();openViewport()}))}else if(q.kind==='trial'&&q.status==='completed'&&!q.decision){for(const[d,l]of[['corridor','Let it enter the Corridor'],['rare','Keep as a rare hunt'],['dungeon','Reserve for dungeons'],['rework','Rework and return later'],['archive','Archive']])actions.append(uiButton(l,()=>{foundryTrialDecision(save,q.id,d);persist();openViewport()}))}card.append(name,text,meta,actions);body.append(card)}
  }
  body.append(uiButton('Return to world',resume));if(!panel.open)panel.showModal();}
 function openInteraction(id, confirmAttack = false) {
