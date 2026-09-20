@@ -887,6 +887,16 @@ test("Rift Bombard detonates once at its aimed endpoint with a localized blast",
   p=updateProjectiles(p,[],map,7,.25,()=>{},shot=>{blasts++;assert.equal(shot.blastRadius,2.15)});
   assert.equal(p.length,0);assert.equal(blasts,1);
 });
+test("Rift Bombard detonates on the first enemy it collides with while a dodged shot continues",()=>{
+  const map={tiles:Array.from({length:49},()=>({blocked:false}))},target={id:"impact-target",x:2,y:2,hp:40,maxHp:40,dead:false};
+  let blasts=0,impact=null,shot={id:"bombard-hit",x:1,y:2.45,dx:1,dy:0,speed:8,life:1,damage:16,path:"grenade",blastRadius:2.15};
+  let active=updateProjectiles([shot],[target],map,7,.25,()=>{},p=>{blasts++;impact={x:p.x,y:p.y}});
+  assert.equal(active.length,0);assert.equal(blasts,1);assert.equal(target.hp,40);assert.equal(target.aggro,true);assert.ok(impact.x>1&&impact.x<3);
+  const dodged={id:"dodged-target",x:2,y:4,hp:40,maxHp:40,dead:false};
+  shot={id:"bombard-miss",x:1,y:2.45,dx:1,dy:0,speed:2,life:1,damage:16,path:"grenade",blastRadius:2.15};
+  active=updateProjectiles([shot],[dodged],map,7,.25,()=>{},()=>blasts++);
+  assert.equal(active.length,1);assert.equal(blasts,1);assert.equal(dodged.hp,40);
+});
 test("shop is deterministic, capped, affordable, and persisted", async () => {
   const { velaShop, buyFromVela } = await import("../src/game.ts"),
     s = freshSave(),

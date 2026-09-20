@@ -425,13 +425,18 @@ export function updateProjectiles(
       if(p.hostile)continue;
       for (const e of enemies)
         if (
-          p.path !== "grenade" &&
           !e.dead &&
           !p.hits?.[e.id] &&
           Math.hypot(e.x + 0.5 - p.x, e.y + 0.45 - p.y) <
             0.1 + enemyBodyRadius(e)
         ) {
           alertEnemy(e);
+          if (p.path === "grenade") {
+            p.dead = true;
+            p.impact = { x: p.x, y: p.y };
+            onDetonate(p);
+            break;
+          }
           e.hp -= p.damage;
           e.hitFlash = 0.18;
           e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.1 : 0.18);
@@ -447,7 +452,7 @@ export function updateProjectiles(
         }
     }
     p.life -= dt;
-    if (p.life <= 0){p.dead=true;if(p.path==="grenade")onDetonate(p)}
+    if (!p.dead && p.life <= 0){p.dead=true;if(p.path==="grenade")onDetonate(p)}
   }
   return projectiles.filter((p) => !p.dead);
 }
