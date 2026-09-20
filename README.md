@@ -93,7 +93,7 @@ The canonical Hollow Relay has a separate terminal behind its guardian. Restore 
 
 At each dungeon entrance, Act offers Enter or Leave unexplored. The journal retains bypasses, visits, unresolved departures, and resolutions. Leaving or dying during an unresolved visit records one abandonment; returning retains encounters and supplies. Guardian defeat resolves ordinary dungeons, while the canonical Relay remains unresolved until its terminal choice. There is no deadline or automatic punishment for taking another route.
 
-Existing v1–v7 saves migrate to v8 without resetting the world, character, or runtime state. Earlier restored-Relay progress remains the Restore ending. Older Vela deaths stay individual losses. Remaining attack timers, NPC wounds, active effects, per-pulse hits, and encounter states retain their exact paused values on reload.
+Existing v1–v9 saves migrate to v10 without resetting the world, character, or runtime state. Earlier restored-Relay progress remains the Restore ending. Older Vela deaths stay individual losses. Remaining attack timers, NPC wounds, active effects, per-pulse hits, and encounter states retain their exact paused values on reload.
 
 Story endings close finite threads, never the game. Refuge collapse resolves the Ember Refuge thread as Fallen while preserving the solitary Array route. Restore and Sever are distinct endings of the Missing Crossing thread. The journal exposes these durable outcomes for future procedural threads, and the HUD invites further exploration afterward. The infinite overworld and dungeon entrances remain available after every ending.
 
