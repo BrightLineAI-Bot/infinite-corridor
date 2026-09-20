@@ -23,7 +23,7 @@ import {
   clearWayfindingCache,
 } from "../src/world.ts";
 import { freshSave, migrateSave } from "../src/types.ts";
-import { foundryCandidate, foundryEncounter, validateFoundryCandidate, CREATURE_FOUNDRY_SCHEMA, VIEWPORT_SCHEMA, ensureViewportState, acceptViewportHunt, completeViewportHunt, foundryTrialDecision } from "../src/foundry.ts";
+import { foundryCandidate, foundryEncounter, validateFoundryCandidate, CREATURE_FOUNDRY_SCHEMA, VIEWPORT_SCHEMA, DOMAIN_SCHEMA, HUNT_INSTANCE_SCHEMA, ensureViewportState, acceptViewportHunt, completeViewportHunt, foundryTrialDecision, domainTopology, domainEncounterPlan, completeDomainBoss, manifestationMechanics, ensureHuntInstance, beginHuntInstance, abandonHuntInstance, completeHuntInstance, cleanupHuntInstance, recordPeoplePlace } from "../src/foundry.ts";
 import { recordRevelationLead, completeRevelationArc, storySiteFor, recordSectionVisit, worldStewardReport, CORRIDOR_STORY_SCHEMA, STEWARD_SCHEMA } from "../src/story.ts";
 import { serializeSave, deserializeSave, normalizeSettings, effectiveQuality, journeyMetadata, createSlotWriteCoordinator, slotKey } from "../src/persistence.ts";
 import { dodge, createCombatant, CREATURE_TRAITS, CREATURE_FORMS, enemyBodyRadius } from "../src/combat.ts";
@@ -2002,7 +2002,7 @@ test("expanded creature ecology is deterministic and recorded in the field codex
   assert.equal(s.codex.places["terrain:"+g.map.dominant],true);
   const migrated=migrateSave({...freshSave(),version:8,codex:undefined});
   assert.equal(migrated.version,11);
-  assert.deepEqual(migrated.codex,{creatures:{},places:{},features:{},variants:{}});
+  assert.deepEqual(migrated.codex,{creatures:{},places:{},features:{},variants:{},peoplePlaces:{}});
 });
 test("journal exposes encounter codex sections and an always-available symbol guide",()=>{
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
@@ -2698,12 +2698,39 @@ test("Creature Foundry output is stable validated rare and role-diverse",()=>{
 });
 
 test("Viewport contracts are deterministic bounded and preserve hunt decisions",()=>{
- const a=freshSave(),b=freshSave();assert.deepEqual(ensureViewportState(a),ensureViewportState(b));const v=ensureViewportState(a);assert.equal(v.schema,VIEWPORT_SCHEMA);assert.equal(Object.keys(v.contracts).length,4);
+ const a=freshSave(),b=freshSave();assert.deepEqual(ensureViewportState(a),ensureViewportState(b));const v=ensureViewportState(a);assert.equal(v.schema,VIEWPORT_SCHEMA);assert.equal(Object.keys(v.contracts).length,5);
  const accepted=acceptViewportHunt(a,'viewport-foundry-trial');assert.equal(accepted.ok,true);assert.equal(a.viewport.activeHuntId,'viewport-foundry-trial');assert.equal(a.waypoint.huntId,'viewport-foundry-trial');const before=a.currency;assert.equal(completeViewportHunt(a,'viewport-foundry-trial'),true);assert.ok(a.currency>before);assert.equal(completeViewportHunt(a,'viewport-foundry-trial'),false);assert.equal(foundryTrialDecision(a,'viewport-foundry-trial','rare'),true);assert.equal(a.worldFlags['foundry-rare:viewport-foundry-trial'],true);
 });
 
-test("active frontier hunt creates a bounded Sentinel domain only at its target",()=>{
- const s=freshSave();acceptViewportHunt(s,'viewport-frontier-manufactory');const q=s.viewport.contracts['viewport-frontier-manufactory'],g=new Game(s,0);g.rx=q.target.rx;g.ry=q.target.ry;g.loadArea('overworld',false);assert.equal(g.map.domain?.id,'sentinel-manufactory');assert.ok(g.enemies.some(e=>e.viewportHuntId===q.id&&e.worldBoss));assert.ok(g.enemies.filter(e=>e.domainReinforcement&&!e.dead).length<=4);
+test("active frontier hunt creates a bounded lazy Sentinel domain at one loaded section",()=>{
+ const s=freshSave();acceptViewportHunt(s,'viewport-frontier-manufactory');const q=s.viewport.contracts['viewport-frontier-manufactory'],g=new Game(s,0);g.rx=q.target.rx;g.ry=q.target.ry;g.loadArea('overworld',false);assert.equal(g.map.domain?.family,'sentinel');assert.equal(g.map.domain?.role,'approach');assert.ok(g.enemies.filter(e=>e.domainReinforcement&&!e.dead).length<=5);assert.equal(Object.keys(s.session.areas).filter(id=>id.startsWith('overworld:')).length,0);
+});
+
+test("domain topology is deterministic connected and distinct for Sentinel and Rootbound",()=>{
+ const s=freshSave(),v=ensureViewportState(s),a=v.contracts['viewport-frontier-manufactory'],b=v.contracts['viewport-frontier-rootbound'],sa=domainTopology(s.seed,a.domain,a.target),sb=domainTopology(s.seed,b.domain,b.target);assert.deepEqual(sa,domainTopology(s.seed,a.domain,a.target));assert.equal(sa.schema,DOMAIN_SCHEMA);assert.notEqual(sa.id,sb.id);assert.deepEqual(sa.sections.map(q=>q.role),['approach','assembly','proving','recovery','command']);assert.deepEqual(sb.sections.map(q=>q.role),['verge','thicket','heartways','recovery','rootheart']);for(const topology of[sa,sb])for(let i=1;i<topology.sections.length;i++)assert.ok(topology.sections.slice(0,i).some(q=>Math.abs(q.rx-topology.sections[i].rx)+Math.abs(q.ry-topology.sections[i].ry)===1));
+});
+
+test("Sentinel and Rootbound domain plans remain bounded and expose real boss sections",()=>{
+ for(const id of['viewport-frontier-manufactory','viewport-frontier-rootbound']){const s=freshSave();acceptViewportHunt(s,id);const q=s.viewport.contracts[id],top=domainTopology(s.seed,q.domain,q.target),boss=top.sections.at(-1),plan=domainEncounterPlan(s,boss.rx,boss.ry);assert.ok(plan.spawns.length<=5);assert.ok(plan.spawns.some(e=>e.domainBoss&&e.viewportHuntId===id));assert.equal(plan.topology.family,id.includes('rootbound')?'rootbound':'sentinel');}
+});
+
+test("domain victory transforms persistent state and higher Aperture changes mechanics",()=>{
+ const s=migrateSave(freshSave());acceptViewportHunt(s,'viewport-frontier-rootbound');const q=s.viewport.contracts['viewport-frontier-rootbound'],top=domainTopology(s.seed,q.domain,q.target),boss=top.sections.at(-1),first=domainEncounterPlan(s,boss.rx,boss.ry).spawns.find(e=>e.domainBoss);assert.equal(completeDomainBoss(s,first).kind,'first');completeViewportHunt(s,q.id);const state=Object.values(s.viewport.domains)[0];assert.equal(state.transformed,true);s.perception.aperture=top.manifestationAperture;const rematch=domainEncounterPlan(s,boss.rx,boss.ry);assert.equal(rematch.manifestation,1);const enemy=rematch.spawns.find(e=>e.domainManifestation);assert.ok(enemy.rootGroundAttack);assert.deepEqual(manifestationMechanics('rootbound',1).attack,'groundRoots');const before=s.materials.weaponSphere;assert.equal(completeDomainBoss(s,enemy).kind,'manifestation');assert.equal(s.materials.weaponSphere,before+1);assert.equal(completeDomainBoss(s,enemy),null);
+});
+
+test("hunt instance enter abandon resume complete and cleanup lifecycle is idempotent",()=>{
+ const s=freshSave();acceptViewportHunt(s,'viewport-foundry-trial');const i=ensureHuntInstance(s,'viewport-foundry-trial');assert.equal(i.schema,HUNT_INSTANCE_SCHEMA);assert.equal(beginHuntInstance(s,'viewport-foundry-trial',{rx:2,ry:3,x:4,y:5}).id,i.id);s.session.areas[i.id]={enemies:[]};assert.equal(abandonHuntInstance(s,i.id),true);assert.equal(i.abandoned,1);assert.ok(beginHuntInstance(s,'viewport-foundry-trial',{rx:2,ry:3,x:4,y:5}));assert.equal(completeHuntInstance(s,i.id),true);assert.equal(completeHuntInstance(s,i.id),false);cleanupHuntInstance(s,i.id);assert.equal(s.session.areas[i.id],undefined);assert.equal(i.scar,true);
+});
+
+test("People and Places records are discovered-only bounded and survive migration",()=>{
+ const s=freshSave();assert.deepEqual(s.codex.peoplePlaces,{});for(let n=0;n<10;n++)recordPeoplePlace(s,'domain:test',{type:'domain',name:'Test Domain',facts:['fact '+n],crossRefs:['hunt '+n]});assert.equal(s.codex.peoplePlaces['domain:test'].facts.length,6);assert.equal(s.codex.peoplePlaces['domain:test'].crossRefs.length,6);const migrated=migrateSave(JSON.parse(JSON.stringify(s)));assert.equal(migrated.codex.peoplePlaces['domain:test'].name,'Test Domain');assert.equal(migrated.viewport.schema,VIEWPORT_SCHEMA);
+});
+
+test("playable runtime completes both domains an instance and a higher manifestation",()=>{
+ for(const id of['viewport-frontier-manufactory','viewport-frontier-rootbound']){
+  const s=migrateSave(freshSave());acceptViewportHunt(s,id);const q=s.viewport.contracts[id],top=domainTopology(s.seed,q.domain,q.target),arena=top.sections.at(-1),g=new Game(s,0);g.rx=arena.rx;g.ry=arena.ry;g.loadArea('overworld',false);const boss=g.enemies.find(e=>e.domainBoss&&!e.domainManifestation);assert.ok(boss);boss.dead=true;g.defeatEnemy(boss);assert.equal(q.status,'completed');assert.equal(Object.values(s.viewport.domains)[0].transformed,true);if(id.includes('rootbound')){s.perception.aperture=top.manifestationAperture;g.loadArea('overworld',false);const higher=g.enemies.find(e=>e.domainManifestation===1);assert.ok(higher);assert.equal(higher.domainMechanics.attack,'groundRoots');higher.dead=true;g.defeatEnemy(higher);assert.equal(Object.values(s.viewport.domains)[0].manifestations[1].defeated,true)}
+ }
+ const s=migrateSave(freshSave());acceptViewportHunt(s,'viewport-foundry-trial');const q=s.viewport.contracts['viewport-foundry-trial'],g=new Game(s,0);g.rx=q.target.rx;g.ry=q.target.ry;g.loadArea('overworld',false);const gate=g.map.objects.find(o=>o.kind==='huntInstance');assert.ok(gate);g.player.x=gate.x;g.player.y=gate.y;assert.equal(g.interact(null,gate.id).ok,true);assert.equal(g.area,'dungeon');const boss=g.enemies.find(e=>e.huntInstanceId);assert.ok(boss);boss.dead=true;g.defeatEnemy(boss);const instance=Object.values(s.viewport.instances)[0];assert.equal(instance.completed,true);g.leaveDungeon();assert.equal(g.area,'overworld');assert.equal(Object.keys(s.session.areas).some(key=>key.startsWith(instance.id)),false);assert.ok(g.map.objects.some(o=>o.kind==='huntScar'));const reloaded=migrateSave(JSON.parse(JSON.stringify(s)));assert.equal(reloaded.viewport.instances[instance.id].scar,true);assert.ok(Object.keys(reloaded.codex.peoplePlaces).length>=0);
 });
 
 test("steward telemetry stays bounded and reports recommendations without mutating play",()=>{

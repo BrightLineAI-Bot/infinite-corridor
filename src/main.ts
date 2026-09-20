@@ -1370,6 +1370,9 @@ function openJournal(mode = "chronicle") {
     ]:mode==="creatures"?[
       ...Object.entries(CODEX.creatures).filter(([id])=>save.codex?.creatures?.[id]),
       ...Object.entries(save.codex?.foundry||{}).map(([id,q])=>[id,[q.name||"Unclassified creature",`${q.role||"unknown"} · observed modules: ${(q.modules||[]).join(", ")}${q.defeated?" · defeated":" · unresolved"}`]])
+    ]:mode==="places"?[
+      ...Object.entries(CODEX.places).filter(([id])=>save.codex?.places?.[id]),
+      ...Object.entries(save.codex?.peoplePlaces||{}).map(([id,q])=>[`${q.type||"place"}:${id}`,[q.name||id,`${q.role?q.role+" · ":""}${q.summary||"A discovered Corridor record."} ${(q.facts||[]).join(" ")}${q.crossRefs?.length?` Related: ${q.crossRefs.join(", ")}.`:""}${q.outcome?` Status: ${q.outcome}.`:""}`]])
     ]:Object.entries(CODEX[mode]).filter(([id])=>save.codex?.[mode]?.[id]);
     const heading=document.createElement("h3"),scope=document.createElement("p");heading.textContent=mode==="rules"?"Map symbols and controls":mode==="features"?"Encountered feature records":mode==="glossary"?"Combat and equipment terms":`${mode[0].toUpperCase()+mode.slice(1)} encountered`;scope.textContent=mode==="rules"?"A universal reference for reading the Atlas, floor marks, and controls. Encounter-specific history belongs under Features.":mode==="features"?"Objects recorded through exploration. Open a feature for its field function and its place in the Corridor.":"";out.append(heading);if(scope.textContent)out.append(scope);
     if(!entries.length){const empty=document.createElement("p");empty.textContent="No entries recorded yet. Encounter them in the world to unlock this section.";out.append(empty);}
