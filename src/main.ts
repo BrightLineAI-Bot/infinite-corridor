@@ -247,7 +247,8 @@ const $ = (s) => document.querySelector(s),
   mctx = mapCanvas.getContext("2d");
 globalThis.corridorStewardReport=()=>worldStewardReport(save);
 const perfEnabled = new URLSearchParams(location.search).has("perf") || settings.diagnostics,
-  perfSamples = { frame: [], update: [], render: [], hud: [], persist: [] };
+  perfSamples = { frame: [], update: [], render: [], hud: [], persist: [] },
+  navigationStats = { lookups: 0, rebuilds: 0 };
 function currentQuality(){return effectiveQuality(settings,{width:innerWidth,height:innerHeight,deviceMemory:navigator.deviceMemory,hardwareConcurrency:navigator.hardwareConcurrency})}
 function applyPresentationSettings(){document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=muted?0:.06*settings.masterVolume;if(musicBus)musicBus.gain.value=.72*settings.musicVolume;resize()}
 function recordPerf(kind, value) {
@@ -281,8 +282,11 @@ globalThis.corridorPerfReport = () => {
     };
   return {
     enabled: perfEnabled,
+    area: game.area,
+    quality: currentQuality(),
     canvas: { width: canvas.width, height: canvas.height, cssWidth: canvas.clientWidth, cssHeight: canvas.clientHeight },
     active: { objects: game.map.objects.length, enemies: game.enemies.filter((e) => !e.dead).length, projectiles: game.projectiles.length, effects: game.effects.length },
+    navigation: { ...navigationStats, source: "active-section-waymarks" },
     summary,
   };
 };
@@ -423,17 +427,20 @@ const objective = $("#objective"),
   hudToggles = [$("#hudExpand"), $("#fieldMenuToggle")],
   navCompass = $("#navCompass"),
   navArrow = $("#navArrow");
+let navigationMap = null, navigationObjectiveOpen = null, navigationCueTarget = null;
 function navigationTarget() {
+  navigationStats.lookups++;
   if (game.area !== "overworld") return null;
   if (save.waypoint) return { ...save.waypoint, kind: "waypoint", name: "Atlas waypoint" };
   const objectiveOpen = !save.consequences.choices.relay ||
     (save.narrative.facts["leads.active"] && !save.narrative.facts["leads.complete"]);
   if (!objectiveOpen) return null;
-  const cues = wayfindingCues(save.seed, game.rx, game.ry, save.worldGeneration, save, game.map),
-    cue = cues.find((q) => q.signalKind === "crossing") ||
-      cues.find((q) => q.signalKind === "danger") ||
-      cues.find((q) => q.signalKind === "event");
-  return cue && { rx: cue.targetRx, ry: cue.targetRy, kind: "quest", name: cue.name || "Quest signal" };
+  if(navigationMap!==game.map||navigationObjectiveOpen!==objectiveOpen){
+    navigationMap=game.map;navigationObjectiveOpen=objectiveOpen;navigationStats.rebuilds++;
+    const cues=game.map.objects.filter(q=>q.kind==="wayfindingCue"),cue=cues.find(q=>q.signalKind==="crossing")||cues.find(q=>q.signalKind==="danger")||cues.find(q=>q.signalKind==="event");
+    navigationCueTarget = cue ? { rx: cue.targetRx, ry: cue.targetRy, kind: "quest", name: cue.name || "Quest signal" } : null;
+  }
+  return navigationCueTarget;
 }
 function updateNavigationCompass() {
   const target = navigationTarget();
@@ -1509,13 +1516,13 @@ function frame(now) {
     drawRangedEffects();
   });
   updateMessage(game.message);
-  updateWorldNotices();
   measured("hud", () => {
     updateHud(now);
     updateNavigationCompass();
   });
   if (now >= nextSlowUiRefresh) {
     nextSlowUiRefresh = now + 100;
+    updateWorldNotices();
     $("#place").textContent =
       game.area === "dungeon"
         ? game.map.name

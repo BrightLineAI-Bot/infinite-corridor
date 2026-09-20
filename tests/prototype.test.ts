@@ -2,7 +2,7 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
-import { renderScaleForViewport, visibleInCamera } from "../src/renderer.ts";
+import { renderScaleForViewport, visibleInCamera, presentationBudget } from "../src/renderer.ts";
 import {
   generateRegion,
   generateDungeon,
@@ -19,6 +19,8 @@ import {
   apertureEncounterSpawns,
   perceived,
   wayfindingCues,
+  wayfindingCacheStats,
+  clearWayfindingCache,
 } from "../src/world.ts";
 import { freshSave, migrateSave } from "../src/types.ts";
 import { foundryCandidate, foundryEncounter, validateFoundryCandidate, CREATURE_FOUNDRY_SCHEMA } from "../src/foundry.ts";
@@ -2743,6 +2745,26 @@ test("global settings normalize safe mobile quality without touching saves",()=>
   assert.equal(effectiveQuality(normalizeSettings({quality:"auto"}),{width:390,height:844,deviceMemory:4,hardwareConcurrency:4}),"low");
 });
 
+test("overworld compass reuses active-section waymarks instead of regenerating neighboring regions per frame",()=>{
+  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),body=main.slice(main.indexOf("function navigationTarget()"),main.indexOf("function updateNavigationCompass()"));
+  assert.doesNotMatch(body,/wayfindingCues\(/);assert.match(body,/game\.map\.objects\.filter\(q=>q\.kind==="wayfindingCue"\)/);assert.match(main,/source: "active-section-waymarks"/);
+});
+
+test("adjacent wayfinding scans reuse a bounded immutable signal cache without changing cues",()=>{
+  const save=freshSave();clearWayfindingCache();const first=wayfindingCues(save.seed,3,-2,save.worldGeneration,save),cold=wayfindingCacheStats();
+  const exact=wayfindingCues(save.seed,3,-2,save.worldGeneration,save),warm=wayfindingCacheStats();assert.deepEqual(exact,first);assert.ok(warm.hits>cold.hits);
+  for(let x=-8;x<=8;x++)wayfindingCues(save.seed,x,4,save.worldGeneration,save);
+  const bounded=wayfindingCacheStats();assert.ok(bounded.size<=bounded.limit);assert.equal(bounded.limit,96);
+  clearWayfindingCache();assert.deepEqual(wayfindingCues(save.seed,3,-2,save.worldGeneration,save),first);
+});
+
+test("presentation tiers reduce actual overworld weather and ambient work",()=>{
+  assert.deepEqual(presentationBudget({effectiveQuality:"low",weather:true},"overworld"),{quality:"low",weather:false,ambientMotes:0});
+  assert.deepEqual(presentationBudget({effectiveQuality:"balanced",weather:true},"overworld"),{quality:"balanced",weather:true,ambientMotes:6});
+  assert.deepEqual(presentationBudget({effectiveQuality:"full",weather:true},"overworld"),{quality:"full",weather:true,ambientMotes:16});
+  assert.equal(presentationBudget({effectiveQuality:"full",weather:true},"dungeon").weather,false);
+});
+
 test("deleting the active journey switches slots and reloads before another autosave",()=>{
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
   assert.match(main,/await flushSaves\(\);await deleteJourney\(meta\.slot\)/);
@@ -2764,7 +2786,7 @@ test("mobile frame work uses one loop while smooth HUD values remain full-rate",
   assert.match(main,/if \(game\.paused\) return/);
   assert.match(main,/renderScaleForViewport\(w, h, devicePixelRatio \|\| 1, currentQuality\(\)\)/);
   assert.match(main,/measured\("hud", \(\) => \{\s*updateHud\(now\);\s*updateNavigationCompass\(\);\s*\}\);\s*if \(now >= nextSlowUiRefresh\)/);
-  assert.match(main,/updateWorldNotices\(\);\s*measured\("hud"/);
+  assert.match(main,/if \(now >= nextSlowUiRefresh\)[\s\S]+?updateWorldNotices\(\)/);
   assert.match(main,/render\(ctx, game, innerWidth, innerHeight, now\);\s*drawDungeonSystems\(\);\s*drawRangedEffects\(\)/);
 });
 

@@ -18,6 +18,10 @@ export function renderScaleForViewport(width, height, deviceScale = 1, quality =
   if (quality === "low") return 1;
   return Math.min(Math.max(1, Number(deviceScale) || 1), 2);
 }
+export function presentationBudget(presentation = {}, area = "overworld") {
+  const quality = ["low", "balanced", "full"].includes(presentation.effectiveQuality) ? presentation.effectiveQuality : "balanced";
+  return { quality, weather: area === "overworld" && presentation.weather !== false && quality !== "low", ambientMotes: quality === "full" ? 16 : quality === "balanced" ? 6 : 0 };
+}
 export function visibleInCamera(o, left, top, right, bottom, padding = 2) {
   if (!o) return false;
   const b = o.bounds;
@@ -416,7 +420,8 @@ export function render(ctx, g, w, h, now) {
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = "#141816";
   ctx.fillRect(0, 0, w, h);
-  const s = Math.max(28, Math.min(44, w / 12)),
+  const budget = presentationBudget(g.presentation, g.area),
+    s = Math.max(28, Math.min(44, w / 12)),
     p = g.player,
     mw = Math.max(1,Number(g.map?.width)||(g.area === "dungeon" ? 24 : 32)),
     mh = Math.max(1,Number(g.map?.height)||Math.floor(g.map.tiles.length/mw)),
@@ -664,15 +669,15 @@ export function render(ctx, g, w, h, now) {
       ctx.fill();
     }
   ctx.restore();
-  if(g.area==="overworld"&&g.map.weather==="rain"){
-    ctx.strokeStyle="#9ec8d04d";ctx.lineWidth=1.4;ctx.beginPath();for(let i=0;i<34;i++){const x=((i*83+motion*210+g.rx*41)%(w+80))-40,y=((i*47+motion*330+g.ry*59)%(h+90))-45;ctx.moveTo(x,y);ctx.lineTo(x-8,y+19)}ctx.stroke();ctx.fillStyle="#1d3b4730";ctx.fillRect(0,0,w,h);
-  }else if(g.area==="overworld"&&g.map.weather==="snow"){
-    ctx.fillStyle="#dae2d78c";for(let i=0;i<28;i++){const x=((i*97+motion*(12+i%4)*3+g.rx*29)%(w+30))-15,y=((i*61+motion*(25+i%5)*4+g.ry*37)%(h+30))-15;ctx.beginPath();ctx.arc(x,y,1+(i%3)*.55,0,7);ctx.fill()}
-  }else if(g.area==="overworld"&&g.map.weather==="sunbreak"){
+  if(budget.weather&&g.map.weather==="rain"){
+    const count=budget.quality==="full"?34:18;ctx.strokeStyle="#9ec8d04d";ctx.lineWidth=1.4;ctx.beginPath();for(let i=0;i<count;i++){const x=((i*83+motion*210+g.rx*41)%(w+80))-40,y=((i*47+motion*330+g.ry*59)%(h+90))-45;ctx.moveTo(x,y);ctx.lineTo(x-8,y+19)}ctx.stroke();ctx.fillStyle="#1d3b4730";ctx.fillRect(0,0,w,h);
+  }else if(budget.weather&&g.map.weather==="snow"){
+    const count=budget.quality==="full"?28:14;ctx.fillStyle="#dae2d78c";for(let i=0;i<count;i++){const x=((i*97+motion*(12+i%4)*3+g.rx*29)%(w+30))-15,y=((i*61+motion*(25+i%5)*4+g.ry*37)%(h+30))-15;ctx.beginPath();ctx.arc(x,y,1+(i%3)*.55,0,7);ctx.fill()}
+  }else if(budget.weather&&g.map.weather==="sunbreak"){
     const glow=ctx.createLinearGradient(0,0,w*.8,h);glow.addColorStop(0,"#e7c87324");glow.addColorStop(.45,"#d8ad5220");glow.addColorStop(.7,"#0000");ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
   }
   ctx.fillStyle = "#d8c9aa55";
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < budget.ambientMotes; i++) {
     const phase = motion * (8 + (i % 4) * 2) + i * 97 + g.rx * 31 + g.ry * 17,
       x = ((phase * 3.1) % (w + 80)) - 40,
       y = ((i * 73 + Math.sin(phase * 0.07) * 45) % (h + 60)) - 30;

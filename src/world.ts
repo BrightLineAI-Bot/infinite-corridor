@@ -100,6 +100,10 @@ export function generateRegion(seed,rx,ry,generation=1){const region=generation=
 const SITE_KINDS=new Set(['checkpoint','dungeon','shrine','ruinMarker','shack','bossCue','architecturalDistrict','supplyCache','storyEcho']);
 export function sectionSites(seed,rx,ry,generation=1,save=null){const r=generateRegion(seed,rx,ry,generation),echo=save?storySiteFor(save,rx,ry):null;if(echo)r.objects.push(echo);const sites=r.objects.filter(o=>SITE_KINDS.has(o.kind)).map(o=>({kind:o.kind,name:o.name||({checkpoint:'Wayglass Beacon',dungeon:'Buried Crossing',shrine:'Singing Array',ruinMarker:'Broken Observatory',shack:'Wayfarer Shack',bossCue:'Major Threat',architecturalDistrict:'Architectural Ruin',supplyCache:'Supply Cache',storyEcho:'Story signal'}[o.kind]||o.kind),x:o.x,y:o.y})),remembered=save?.checkpoints?.[`${rx},${ry}`];if(remembered&&!sites.some(o=>o.kind==='checkpoint'))sites.push({kind:'checkpoint',name:remembered.name||'Remembered Wayglass',x:Number.isFinite(remembered.x)?remembered.x:16,y:Number.isFinite(remembered.y)?remembered.y:16,remembered:true});return sites}
 export function sectionSummary(seed,rx,ry,generation=1,save=null){const r=generateRegion(seed,rx,ry,generation),sites=sectionSites(seed,rx,ry,generation,save),l=r.objects.find(o=>o.landmark)||r.objects.find(o=>['dungeon','shrine','door'].includes(o.kind));return{rx,ry,terrain:r.dominant,landmark:l?.name||({dungeon:'Hollow Relay Gate',shrine:'Quiet Array',door:'Abandoned Relay'}[l?.kind]||'No recorded landmark'),sites,checkpoint:!!save?.checkpoints?.[`${rx},${ry}`],current:save?.session?.rx===rx&&save?.session?.ry===ry,waypoint:save?.waypoint?.rx===rx&&save?.waypoint?.ry===ry}}
+const WAYFINDING_SIGNAL_CACHE_LIMIT=96,wayfindingSignalCache=new Map();let wayfindingSignalHits=0,wayfindingSignalMisses=0;
+function cachedRegionSignals(seed,rx,ry,generation){const key=`${seed}:g${generation}:${rx},${ry}`;if(wayfindingSignalCache.has(key)){const value=wayfindingSignalCache.get(key);wayfindingSignalCache.delete(key);wayfindingSignalCache.set(key,value);wayfindingSignalHits++;return value}const region=generateRegion(seed,rx,ry,generation),value=Object.freeze({crossing:region.objects.some(o=>o.kind==='dungeon'),event:region.objects.some(o=>o.kind==='shrine'||o.kind==='ruinMarker')});wayfindingSignalCache.set(key,value);wayfindingSignalMisses++;while(wayfindingSignalCache.size>WAYFINDING_SIGNAL_CACHE_LIMIT)wayfindingSignalCache.delete(wayfindingSignalCache.keys().next().value);return value}
+export function wayfindingCacheStats(){return{size:wayfindingSignalCache.size,limit:WAYFINDING_SIGNAL_CACHE_LIMIT,hits:wayfindingSignalHits,misses:wayfindingSignalMisses}}
+export function clearWayfindingCache(){wayfindingSignalCache.clear();wayfindingSignalHits=wayfindingSignalMisses=0}
 export function wayfindingCues(seed,rx,ry,generation=1,save=null,region=null){
   const targets=[],seen=new Set(),add=(kind,x,y,name)=>{const key=`${kind}:${x},${y}`;if((x!==rx||y!==ry)&&!seen.has(key)){seen.add(key);targets.push({kind,rx:x,ry:y,name})}};
   const echo=save?.story?.arcs?.cartographersEcho?.site;if(echo&&!save.story.arcs.cartographersEcho.completed)add('story',echo.rx,echo.ry,'the Unwritten Meridian');
@@ -107,9 +111,9 @@ export function wayfindingCues(seed,rx,ry,generation=1,save=null,region=null){
   if(!save?.worldFlags?.worldBossDead)add('danger',0,0,'a great enemy');
   for(let radius=1;radius<=4;radius++)for(let oy=-radius;oy<=radius;oy++)for(let ox=-radius;ox<=radius;ox++){
     if(Math.abs(ox)+Math.abs(oy)!==radius)continue;
-    const q=generateRegion(seed,rx+ox,ry+oy,generation);
-    if(q.objects.some(o=>o.kind==='dungeon'))add('crossing',rx+ox,ry+oy,'a buried crossing');
-    if(q.objects.some(o=>o.kind==='shrine'||o.kind==='ruinMarker'))add('event',rx+ox,ry+oy,'an unusual site');
+    const signals=cachedRegionSignals(seed,rx+ox,ry+oy,generation);
+    if(signals.crossing)add('crossing',rx+ox,ry+oy,'a buried crossing');
+    if(signals.event)add('event',rx+ox,ry+oy,'an unusual site');
   }
   const chosen=[];
   for(const kind of ['story','beacon','crossing','danger','event']){
