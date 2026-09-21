@@ -12,7 +12,8 @@ project. This is the working model that future changes should be checked against
 - This document is a new file. It was created as an explicitly reviewed new-file operation under ordinary version control after a fresh checkpoint. **Its creation was not a guarded adapter effect.** The guarded adapter documented in `brightline-release-manager/docs/GLOBAL_CHANGE_CONTROL.md` manages changes to existing ordinary public files and explicitly does not create files. Do not describe this file's creation, or any future creation of files, as a guarded effect.
 - `.change-control/project.json` was not modified during this operation.
 - No gameplay code was modified during this operation.
-- Not committed and not pushed. The file sits uncommitted in the working tree pending explicit instruction.
+- Committed to `main` as `258c0df` with its own message, so the canonical guide is under version control. No push was performed.
+- Related decision records: `docs/decisions/0001-field-guide-consistency-stewardship.md` records the field-guide stewardship protocol and the Consistency Steward review role that governs changes to this project.
 
 ## 1. Evidence labels and the reading ledger
 
@@ -635,6 +636,7 @@ Nothing in this project has been revalidated on the owner's device during the fi
 - Status recorded for this operation: `ok:true`, projectId `8225aa1c-9d77-49ac-a8a9-f6b740f7d6f6`, componentOrder `["main"]`, `coordinatorInitialized:true`, no active operations, no blockers, 23 drift entries. Of those, three are `sha256+identity` drift and twenty are `input-binding` drift. Drift records are observations about recorded versus current identities, not permission to rewrite anything, and they do not indicate that this project is unusable.
 - Checkpoint recorded for this operation: `40d8bf722b82f6c07d5c823996de054263e027b685c44bb78319de058d6e2ac7`, 42 observed files, `preexistingWorkPreserved:true`.
 - Never bypass a rejected change-control operation, create a second authority, reset unrelated work, clean the repository, or overwrite user changes.
+- Stewardship: `docs/decisions/0001-field-guide-consistency-stewardship.md` defines this guide's role as architectural orientation and regression control for every modification, and the Consistency Steward review that each change must pass, including its four possible verdicts.
 
 ## 28. Maintenance rules for this document
 
