@@ -77,6 +77,10 @@ Android can freeze or terminate a background app without warning. The game there
 - `docs/prototype-1-spec.md` — product requirements, content boundaries, technical architecture, and acceptance criteria.
 - `docs/codex-prototype-1-work-card.md` — bounded Codex implementation instruction.
 - `docs/design-decisions.md` — decisions preserved from Tim’s concept discussion and explicitly deferred scope.
+- `CHANGELOG.md`: release-relevant and user-visible change history.
+- `docs/work-log.md`: implementation-level work records and verification results.
+- `docs/verification.md`: current automated and manual verification gates.
+- `docs/decisions/README.md`: decision-record policy and template.
 
 ## Intended development sequence
 

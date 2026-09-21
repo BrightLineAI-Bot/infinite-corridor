@@ -1664,8 +1664,24 @@ export class Game {
     if (area === "overworld")
       this.save.explored[`${this.rx},${this.ry}`] = true;recordSectionVisit(this.save,this.rx,this.ry,this.map);
   }
+  recoverPosition() {
+    const moved = relocateIfStranded(
+      this.player,
+      this.map,
+      mapWidth(this.map, this.area),
+    );
+    if (moved) {
+      this.message =
+        "The Corridor settles you onto nearby stable ground. Your journey remains unchanged.";
+      this.sync();
+    }
+    return moved;
+  }
   setPaused(v, now = 0) {
-    if (v && !this.paused) this.pauseStarted = now;
+    if (v && !this.paused) {
+      this.pauseStarted = now;
+      this.recoverPosition();
+    }
     if (!v && this.paused && this.pauseStarted !== null) {
       const d = Math.max(0, now - this.pauseStarted);
       for (const k of [

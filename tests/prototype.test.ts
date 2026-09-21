@@ -2327,6 +2327,14 @@ test("resume safety preserves valid positions exactly and handles any blocked te
   const map={tiles:Array.from({length:25},(_,i)=>({x:i%5,y:Math.floor(i/5),blocked:false}))},valid={x:2.125,y:2.25};assert.equal(relocateIfStranded(valid,map,5),false);assert.deepEqual(valid,{x:2.125,y:2.25});map.tiles[2*5+2].blocked=true;const stranded={x:2.125,y:2.25};assert.equal(relocateIfStranded(stranded,map,5),true);assert.equal(footprintOpen(map,5,stranded.x,stranded.y),true);assert.notDeepEqual(stranded,{x:2.125,y:2.25});
 });
 
+test("pausing repairs only an invalid player footprint without resetting the current journey",()=>{
+  const s=freshSave(),g=new Game(s,0),width=32,projectiles=[{id:"saved-shot"}],effects=[{id:"saved-effect"}],enemies=g.enemies,area=g.area,rx=g.rx,ry=g.ry,inventory=structuredClone(s.inventory),hp=g.player.hp,stamina=g.player.stamina,valid={x:g.player.x,y:g.player.y},message=g.message;
+  g.projectiles=projectiles;g.effects=effects;g.setPaused(true,100);
+  assert.deepEqual({x:g.player.x,y:g.player.y},valid);assert.equal(g.message,message);assert.equal(g.paused,true);
+  g.setPaused(false,125);const blockedIndex=Math.floor(g.player.y+.7)*width+Math.floor(g.player.x+.5);g.map.tiles[blockedIndex]={...g.map.tiles[blockedIndex],blocked:true};g.setPaused(true,200);
+  assert.equal(footprintOpen(g.map,width,g.player.x,g.player.y),true);assert.notDeepEqual({x:g.player.x,y:g.player.y},valid);assert.equal(g.area,area);assert.equal(g.rx,rx);assert.equal(g.ry,ry);assert.equal(g.enemies,enemies);assert.equal(g.projectiles,projectiles);assert.equal(g.effects,effects);assert.deepEqual(s.inventory,inventory);assert.equal(g.player.hp,hp);assert.equal(g.player.stamina,stamina);assert.match(g.message,/nearby stable ground/);assert.deepEqual(s.position,{area:g.area,rx:g.rx,ry:g.ry,x:g.player.x,y:g.player.y});
+});
+
 test("district inspection records optional architectural lore",()=>{
   const s=freshSave(),o={id:"district-test",kind:"architecturalDistrict",name:"Hollow Ward",districtStyle:"city",state:"unread",actions:["inspect"]},result=applyInteraction(o,"inspect",s,"overworld:8,8:g1");assert.equal(result.ok,true);assert.equal(result.transition,"district");assert.ok(s.narrative.journal.some(j=>j.title==="Hollow Ward"));
 });
