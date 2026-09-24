@@ -1,10 +1,18 @@
 # Verification Matrix
 
+## Progression and combat extension
+
+Save-schema coverage must preserve legacy equipment power while normalizing upgrade rank/base power, learned Aperture disciplines, selected discipline, active remaining duration, cooldowns, and last safe traversal ground. Equipment checks must cover exact sphere costs, tier caps, insufficient materials, empty slots, every vendor comparison direction, and the no-sphere-refund salvage rule.
+
+Combat coverage must prove stable pattern assignment, bounded pattern counts, exact telegraph/damage geometry, post-telegraph range rechecks, wall-safe committed movement, multi-stage recovery, and deterministic Proving Ground construction. Aperture coverage must prove threshold gating, explicit activation, band transitions, safe Aerial Step expiration, and no reset of ordinary world or dungeon progress.
+
+The isolated focused progression run passed 5/5 and the release build completed. The full isolated suite reached 302 passing application assertions; after correcting the one equipment-upgrade defect, its focused regression passed. The development-server test could not spawn a child process in the restricted validation workspace (`EPERM`) and must be rerun in the canonical repository after guarded apply.
+
 ## Wayglass network and complete Proving Ground lattice
 
 The pre-change deterministic `WAYGLASS-AUDIT` corpus contained 346 Wayglasses in 14,640 non-origin sections (2.36%), 7,645 rest points (52.22%), and an observed inner-corpus Chebyshev drought of eight sections. The corrected corpus contains 919 Wayglasses (6.28%), 7,323 rest points (50.02%), and a maximum observed drought of four sections. The fixed five-by-five macrocell lattice is seed-stable; its anchor is promoted only when the section's ordinary landmark is generated, preserving sparse presentation while bounding long travel droughts.
 
-Automated coverage must verify distinct checkpoint/shrine/observatory semantics, Wayglass-only fast travel, rest-point respawn without checkpoint registration, deterministic lattice anchors, save reconstruction and legacy migration, independent manual and quest/hunt compass state, and deterministic drought reporting. It must also instantiate at least one scenario from all thirteen registered laboratories and prove scratch-state reporting. Browser and physical-device interaction remain manual checks after guarded apply.
+Automated coverage must verify distinct checkpoint/shrine/observatory semantics, Wayglass-only fast travel, rest-point respawn without checkpoint registration, deterministic lattice anchors, save reconstruction and legacy migration, independent manual and quest/hunt compass state, and deterministic drought reporting. It must also instantiate at least one scenario from all fourteen registered laboratories and prove scratch-state reporting. Browser and physical-device interaction remain manual checks after guarded apply.
 
 ## Unified dungeon exploration
 
@@ -18,7 +26,7 @@ The Release 91 isolated proposal passed the complete Node suite (289/289), the r
 
 ## Developer Proving Ground
 
-Release 90 introduced automated coverage for the laboratory registry, production-map construction for ordinary/deep/Threefold/combat scenarios, deterministic recipes, scratch-state isolation, URL-addressable state, and offline bundle inclusion. The current development tree extends that registry to all thirteen laboratories.
+Release 90 introduced automated coverage for the laboratory registry, production-map construction for ordinary/deep/Threefold/combat scenarios, deterministic recipes, scratch-state isolation, URL-addressable state, and offline bundle inclusion. The current development tree extends that registry to fourteen laboratories, including direct Aperture discipline and progression fixtures.
 
 The supported vertical slice is `?dev=proving-ground`. Automated checks verify that its six Shelter Gallery fixtures resolve to the intended production families, remain enterable, have validated approaches/interiors, use independent scratch saves, and do not import persistence. Browser checks must cover both normal boot and the developer route. Device-level touch, roof cutaway, and sustained frame pacing remain manual verification.
 

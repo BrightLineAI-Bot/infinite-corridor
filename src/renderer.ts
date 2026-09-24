@@ -507,18 +507,16 @@ export function render(ctx, g, w, h, now) {
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
   for(const e of g.enemies)if(!e.dead&&discoveredInDungeon(g,e)&&e.eliteWindup>0&&visibleInCamera(e,l,t,r,b,e.kind==='gravitantBell'?6:3)){ctx.strokeStyle=e.kind==='gravitantBell'?"#8bb8bdcc":"#c6885ccc";ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
   for (const e of g.enemies)
-    if (!e.dead && discoveredInDungeon(g,e) && e.telegraph > 0 && visibleInCamera(e,l,t,r,b,2)) {
-      const pulse = 0.65 + (0.9 - e.telegraph) * 0.2;
+    if (!e.dead && discoveredInDungeon(g,e) && e.telegraph > 0 && visibleInCamera(e,l,t,r,b,e.threatRange||2)) {
+      const pulse = e.threatRange||(.65 + (0.9 - e.telegraph) * 0.2);
       ctx.fillStyle = "#873f4338";
       ctx.strokeStyle = "#bd8257bb";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.ellipse(
+      ctx.arc(
         (e.x + 0.5) * s,
         (e.y + 0.68) * s,
         s * pulse,
-        s * pulse * 0.56,
-        0,
         0,
         7,
       );
@@ -677,7 +675,7 @@ export function render(ctx, g, w, h, now) {
         "player",
         p.facing,
         Math.floor(p.walkPhase || 0),
-        now < (p.attackUntil || 0) ? "attack" : "walk",
+        now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
       if (now < (p.attackUntil || 0)) {
         const a = {
@@ -720,7 +718,7 @@ export function render(ctx, g, w, h, now) {
     }
   for(const o of objectLists.structures)if(renderableObject(g,o)&&visibleInCamera(o,l,t,r,b)){if(o.kind==="shack")shack(ctx,o,s,p,g.map.tiles);else architecturalBuilding(ctx,o,s,p,g.map.tiles)}
   const frontShelter=objectLists.shelters.find(o=>renderableObject(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
-  if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk");
+  if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1);
   const motion = now / 1000;
   for (const o of objectLists.animated)
     if (renderableObject(g,o)&&visibleInCamera(o,l,t,r,b)) {

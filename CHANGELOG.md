@@ -8,6 +8,10 @@ The project follows a compact Keep a Changelog-style structure. Entries describe
 
 ### Added
 
+- Added a coordinated character-progression package: equipment upgrades consume Weapon or Armor Spheres through Sela's refuge forge, Aperture thresholds unlock five ranked disciplines, and save schema 14 preserves learned skills, active durations, cooldowns, and upgrade ranks.
+
+- Added deterministic melee pattern modules for long-reach strikes, committed lunges, two-stage zigzags, hops, and slams, plus direct Proving Ground scenarios for individual patterns, mixed attackers, progression bands, skill ranks, equipment comparisons, and upgrade edge cases.
+
 - Completed the developer Proving Ground laboratory lattice. Wayglass/navigation, bespoke environment/domain, hunt/creature, inventory/equipment/vendor, performance, recovery/save/death, narrative-scene, and Atlas/Journal/records scenarios now join the five existing playable production laboratories in isolated scratch state.
 
 - Added a deterministic Wayglass coverage lattice so overworld fast-travel anchors remain uncommon but no generated five-by-five section cell can become a severe Wayglass drought.
@@ -25,6 +29,12 @@ The project follows a compact Keep a Changelog-style structure. Entries describe
 - Added the developer-only Shelter Gallery at `?dev=proving-ground`. It runs six deterministic production shelter families through the real generator, renderer, input, collision, interaction, and simulation systems in fresh memory-only state.
 
 ### Changed
+
+- Equipment vendors now compare every mechanical item stat against the fitted slot using positive, negative, neutral, and empty-slot states. Upgraded item power participates in the existing build calculations and upgraded gear cannot be salvaged for sphere refunds.
+
+- Aperture now has named bands and changes exceptional encounter composition at stable thresholds without resetting ordinary monsters, dungeons, rewards, or the overworld. Quickening extends leap time; Aerial Step temporarily permits lethal-terrain traversal and returns the Wayfarer to stored safe ground if the effect ends over a hazard.
+
+- Melee enemies can receive bounded class-compatible attack patterns. Their displayed danger geometry now matches the actual circular damage range, committed movement remains collision-aware, and bosses may combine at most two patterns.
 
 - Wayglasses, Singing Array rest points, and Broken Observatories now carry explicit independent navigation roles and distinct world sprites. Rest points remain respawn-only; only Wayglasses enter the fast-travel network.
 

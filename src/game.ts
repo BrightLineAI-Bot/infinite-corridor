@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS } from "./items.ts";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.ts";
 import {
   generateRegion,
   generateDungeon,
@@ -25,7 +25,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.ts";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS } from "./combat.ts";
 import {
   applyInteraction,
   validActions,
@@ -189,7 +189,9 @@ export function characterStats(save) {
     primary = save.equipment?.primary,
     secondary = save.equipment?.secondary,
     armor = save.equipment?.armor,
-    charm = save.equipment?.charm;
+    charm = save.equipment?.charm,
+    active=save.magicSkills?.active?.remaining>0?save.magicSkills.active:null,
+    rank=active?skillRank(save,active.id):0;
   return {
     maxHp: 60 + (level - 1) * 6 + (vigor - 1) * 8,
     maxStamina: 50 + (level - 1) + (finesse - 1) * 3,
@@ -203,14 +205,14 @@ export function characterStats(save) {
       (Number(save.weaponLevel) || 0) * 3 +
       Math.floor((level - 1) * 0.6) +
       Math.floor((Number(primary?.power) || 0) * 0.7) +
-      affixValue(primary, "attack"),
+      affixValue(primary, "attack")+(active?.id==='ember-form'?2+rank*2:0)+(active?.id==='force-channel'?rank*2:0),
     magicBonus:
       Math.max(1, Number(stats.Focus) || 1) +
       Math.floor((level - 1) * 0.45) +
       Math.floor((Number(secondary?.power) || 0) * 0.55) +
-      affixValue(secondary, "attack"),
-    attackReach: affixValue(primary, "reach") + affixValue(secondary, "reach") + affixValue(charm, "reach"),
-    moveSpeed: affixValue(armor, "movement") + affixValue(charm, "movement"),
+      affixValue(secondary, "attack")+(active?.id==='force-channel'?rank*3:0),
+    attackReach: affixValue(primary, "reach") + affixValue(secondary, "reach") + affixValue(charm, "reach")+(active?.id==='ember-form'?.12+.06*rank:0),
+    moveSpeed: affixValue(armor, "movement") + affixValue(charm, "movement")+(active?.id==='quickening'?.12+.08*rank:0),
     armorPower,
     charmPower,
   };
@@ -833,7 +835,7 @@ export function actionReadiness(game, now = 0) {
   };
 }
 export function enemyDangerRadius(enemy) {
-  return Math.max(1.7, Math.max(0, Number(enemy?.range) || 0) + 0.5) +
+  return Math.max(1.7, Math.max(0, Number(enemy?.threatRange??enemy?.range) || 0) + 0.5) +
     Math.max(0, enemyBodyRadius(enemy) - 0.38);
 }
 export function attackInRange(enemy, player) {
@@ -917,11 +919,13 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   if (e.telegraph > 0) {
     e.telegraph = Math.max(0, e.telegraph - dt);
     if (e.telegraph === 0) {
-      e.cooldown = (e.kind==='voidSentinel'?.82:e.kind==='cinderWisp'?1.35:1.9)*(e.attackCooldownScale||1);
+      const pattern=e.meleePhase&&MELEE_PATTERNS[e.meleePhase.id];
+      if(pattern?.dash){const aim=e.meleePhase.aim||projectileDirection(player.x-e.x,player.y-e.y),lateral=e.meleePhase.stage===1?{x:-aim.y,y:aim.x}:{x:0,y:0},distance=pattern.dash,dx=(aim.x+lateral.x*.65)*distance,dy=(aim.y+lateral.y*.65)*distance,steps=Math.ceil(Math.hypot(dx,dy)*5);for(let i=0;i<steps;i++)if(!moveAxis(e,dx/steps,dy/steps,map,width))break;if(pattern.stages===2&&e.meleePhase.stage===0){e.meleePhase.stage=1;e.telegraph=.42;e.threatRange=1.9;return false}}
+      e.cooldown = (pattern?.recovery|| (e.kind==='voidSentinel'?.82:e.kind==='cinderWisp'?1.35:1.9))*(e.attackCooldownScale||1);
       e.strike = 0.24;
       const ranged=e.range>=2.5&&!e.instantStrike,clear=attackInRange(e,player)&&hasLineOfSight(e,player,map,width,ranged);
-      if(clear&&ranged){onRanged(e,e.attackAim||projectileDirection(player.x-e.x,player.y-e.y));return false}
-      return clear;
+      if(clear&&ranged){onRanged(e,e.attackAim||projectileDirection(player.x-e.x,player.y-e.y));e.meleePhase=null;e.threatRange=null;return false}
+      e.meleePhase=null;e.threatRange=null;return clear;
     }
     return false;
   }
@@ -962,12 +966,13 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
     if(step){ai.detourX=step[0];ai.detourY=step[1];ai.detourUntil=now+3000;const px=step[0]-e.x,py=step[1]-e.y,pm=Math.hypot(px,py)||1;moveAxis(e,px/pm*speed*dt,py/pm*speed*dt,map,width)}
   }
   if(sanctuary)enforceSanctuary(e,sanctuary);
+  const patternStartRange=e.range<2.5&&e.meleePatterns?.length?Math.max(...e.meleePatterns.map(id=>MELEE_PATTERNS[id]?.range||0)):0;
   if (
-    attackInRange(e, player) &&
+    (attackInRange(e, player)||toPlayer<=patternStartRange+enemyBodyRadius(e)) &&
     e.cooldown <= 0 &&
     hasLineOfSight(e, player, map, width, e.range>=2.5&&!e.instantStrike)
   )
-    {const phase=(e.boss&&e.hp<=e.maxHp*.5) ? .82 : 1;e.telegraph = Math.max(.48,.9*(e.telegraphScale||1)*phase);e.attackAim=projectileDirection(player.x-e.x,player.y-e.y)}
+    {const phase=(e.boss&&e.hp<=e.maxHp*.5) ? .82 : 1,ids=e.meleePatterns||[],id=e.range<2.5&&ids.length?ids[e.meleePatternIndex++%ids.length]:null,pattern=id&&MELEE_PATTERNS[id];e.telegraph = Math.max(.48,(pattern?.telegraph||.9)*(e.telegraphScale||1)*phase);e.attackAim=projectileDirection(player.x-e.x,player.y-e.y);if(pattern){e.meleePhase={id,stage:0,aim:{...e.attackAim},target:{x:player.x,y:player.y}};e.threatRange=pattern.range}}
   return false;
 }
 export function shouldSimulateEnemy(e,player,area="overworld"){
@@ -2402,6 +2407,7 @@ export class Game {
     return true;
   }
   castSpell() {
+    if(this.save.magicSkills?.selected&&skillRank(this.save,this.save.magicSkills.selected)>0)return this.activateApertureSkill(this.save.magicSkills.selected);
     const spell = SPELLS[this.save.equippedSpell] || SPELLS["ember-ring"];
     if (this.spellCooldownRemaining > 0) {
       this.message = `${spell.name} recovers in ${Math.ceil(this.spellCooldownRemaining)}s.`;
@@ -2470,6 +2476,8 @@ export class Game {
     return true;
   }
   useUpgradeSphere(kind){const key=kind==='armor'?'armorSphere':'weaponSphere';if(!(this.save.materials[key]>0))return false;this.save.materials[key]--;if(kind==='armor')this.save.equipment.armor.power=Math.min(8,(this.save.equipment.armor.power||0)+1);else{this.save.weaponLevel=Math.min(8,(this.save.weaponLevel||0)+1);this.player.weaponLevel=this.save.weaponLevel}this.message=`${kind==='armor'?'Armor':'Weapon'} sphere fused. The upgrade is permanent.`;this.sync();return true}
+  upgradeEquipmentSlot(slot){const result=upgradeEquipment(this.save,slot);this.message=result.message;if(result.ok){syncCharacterStats(this.save);this.player.maxStamina=this.save.maxStamina;this.sync()}return result}
+  activateApertureSkill(id=this.save.magicSkills?.selected){const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:skill.duration+Math.max(0,rank-1)};state.cooldowns[id]=skill.cooldown;if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
   allocate(s) {
     if (!this.save.statPoints || !Object.hasOwn(this.save.stats, s))
       return false;
@@ -2536,6 +2544,7 @@ export class Game {
     this.guardRemaining = Math.max(0, this.guardRemaining - dt);
     this.magicBuffRemaining = Math.max(0, this.magicBuffRemaining - dt);
     this.spellCooldownRemaining = Math.max(0, this.spellCooldownRemaining - dt);
+    const skillState=this.save.magicSkills;if(skillState){for(const id of Object.keys(skillState.cooldowns||{}))skillState.cooldowns[id]=Math.max(0,skillState.cooldowns[id]-dt);if(skillState.active){skillState.active.remaining=Math.max(0,skillState.active.remaining-dt);if(skillState.active.remaining===0){const ended=skillState.active.id;skillState.active=null;if(ended==='aerial-step'&&footprintHazard(this.map,mapWidth(this.map,this.area),this.player.x,this.player.y)){const safe=skillState.lastSafe;if(safe&&safe.area===this.area&&safe.areaId===this.areaId()){this.player.x=safe.x;this.player.y=safe.y}else relocateIfStranded(this.player,this.map,mapWidth(this.map,this.area));this.message='Aerial Step closes and returns you to stable ground.'}}}}
     if (this.reticle) this.reticle.life -= dt;
     let rawX = Number(input.state.x) || 0,
       rawY = Number(input.state.y) || 0,
@@ -2559,7 +2568,7 @@ export class Game {
     }
     if (input.consume("jump")) {
       if (now < this.jumpUntil) this.message = "Already airborne.";
-      else this.jumpUntil = now + 520;
+      else this.jumpUntil = now + 520 + skillRank(this.save,"quickening") * 140;
     }
     if (input.consume("potion")) this.useConsumable("restorativeDraught", now);
     const dodging = now < (p.dodgeUntil || 0);
@@ -2607,9 +2616,10 @@ export class Game {
       return;
     }
     const width = mapWidth(this.map, this.area);
-    const terrainHazard=footprintHazard(this.map,width,nx,ny),fellIntoHazard=!!terrainHazard;
+    const terrainHazard=footprintHazard(this.map,width,nx,ny),aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0,fellIntoHazard=!!terrainHazard&&!aerial;
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
     else moveAxis(p, dx, dy, this.map, width, true);
+    if(!fellIntoHazard&&!terrainHazard&&aerial)this.save.magicSkills.lastSafe={x:p.x,y:p.y,area:this.area,areaId:this.areaId()};
     if(!fellIntoHazard&&this.area==="dungeon")this.updateDungeonDiscovery();
     if(!fellIntoHazard&&this.area==='overworld'){
       const insideId=structureOccupancy(this.map.tiles,width,p.x,p.y);
@@ -2657,12 +2667,12 @@ export class Game {
         const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;
         if(shot.jumpable&&now<this.jumpUntil)return;
         if(safe||now<=(p.invulnerableUntil||0))return;
-        p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*(1-characterStats(this.save).damageReduction)));
+        p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))));
         p.invulnerableUntil=now+700;
       },
     );
     if(combatNpcTargets.length)this.syncNpcDamage("projectile");
-    for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-characterStats(this.save).damageReduction)));p.invulnerableUntil=now+700}}
+    for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))));p.invulnerableUntil=now+700}}
     if(this.effects.length)this.effects = updateEffects(
       this.effects,
       [...this.enemies, ...combatNpcTargets],
@@ -2697,7 +2707,7 @@ export class Game {
           1,
           Math.ceil(
             (this.guardRemaining > 0 ? e.damage * 0.65 : e.damage) *
-              (1 - characterStats(this.save).damageReduction),
+              (1 - Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0))),
           ),
         );
         p.invulnerableUntil = now + 700;

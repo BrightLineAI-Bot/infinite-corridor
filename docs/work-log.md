@@ -1,5 +1,13 @@
 # Work Log
 
+## 2026-09-24: Progression, equipment reinforcement, Aperture disciplines, and dynamic melee
+
+- **Scope:** Complete vendor comparisons, make accumulated Weapon/Armor Spheres useful, connect Aperture to bounded player progression and exceptional encounters, and expand melee behavior without converting ordinary enemies into a global scaling treadmill.
+- **Changed:** Added ranked, capped equipment reinforcement at Sela; save schema 14; five Aperture disciplines across four threshold bands; safe temporary Aerial Step traversal; expanded item comparisons; deterministic long-reach, lunge, zigzag, hop, and slam melee modules; and a fourteenth Proving Ground lab plus new inventory/combat scenarios.
+- **Compatibility:** Existing saves retain character, equipment power, inventory, world, quest, dungeon, and reward state. Ordinary creature scaling and existing dungeon identities are unchanged. Learned abilities are additive and activation is explicit.
+- **Verification:** Focused progression coverage passed 5/5 and the static offline release-91 build completed. The first restricted-copy suite exposed one equipment defect and could not spawn its development-server subprocess; after the repair and guarded apply, the canonical suite passed 304/304 with no failures, skips, cancellations, or todos, including the development-server check. The canonical static offline release-91 build also completed.
+- **Honest boundaries:** Ember Form enlarges the rendering and combat reach but deliberately does not enlarge collision geometry. Hop attacks use committed wall-safe motion rather than crossing solid walls. Physical-device touch and long-session performance remain manual checks.
+
 ## 2026-09-24: Wayglass repair and complete Proving Ground laboratory lattice
 
 - **Scope:** Separate Wayglass fast-travel anchors from Singing Array rest points and Broken Observatories, correct excessive overworld scarcity without making Wayglasses routine, and activate the eight remaining diagnostic laboratories.

@@ -142,11 +142,14 @@ function openShop(vendorId = "vendor-vela") {
   for (const item of shop.equipment) {
     const row = document.createElement("div"),
       price = 12 + item.power * 4,
-      title = document.createElement("strong");
+      title = document.createElement("strong"),comparison=document.createElement("div");
     row.className = "item";
+    comparison.className="item-comparison";
     title.textContent = `${item.name} · ${item.tier||"common"} · power ${item.power} · ${price} marks${shop.purchased[item.id] ? " · sold" : ""}`;
+    for(const stat of compareItemStats(item,save.equipment[item.slot])){const value=document.createElement("span");value.className=`stat-${stat.direction}`;value.textContent=`${stat.direction==='up'?'↑ ':stat.direction==='down'?'↓ ':stat.direction==='empty'?'◇ ':''}${stat.label} ${stat.formatted}`;comparison.append(value)}
     row.append(
       title,
+      comparison,
       uiButton("Buy", () => {
         const r = buyFromVendor(save, vendorId, item.id);
         game.message = r.message;
@@ -218,7 +221,7 @@ import {
 import { createInput } from "./input.ts";
 import { render as baseRender, renderScaleForViewport } from "./renderer.ts";
 import { STATS } from "./types.ts";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats } from "./items.ts";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.ts";
 import { currentObjective, validActions, dungeonHistory } from "./interactions.ts";
 import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
 import { worldStewardReport } from "./story.ts";
@@ -1127,7 +1130,7 @@ function openPack() {
     character.append(span);
   }
   body.append(heading, summary, xp, character);
-  for(const [kind,label] of [['weapon','Weapon sphere'],['armor','Armor sphere']]){const row=document.createElement('div'),key=kind+'Sphere';row.className='item';row.textContent=`${label} ×${save.materials[key]||0}`;row.append(uiButton('Fuse',()=>{game.useUpgradeSphere(kind);persist();openPack()}));body.append(row)}
+  for(const [kind,label] of [['weapon','Weapon sphere'],['armor','Armor sphere']]){const row=document.createElement('div'),key=kind+'Sphere';row.className='item';row.textContent=`${label} ×${save.materials[key]||0} · Sela Rook at Ember Refuge strengthens fitted equipment with these.`;body.append(row)}
   const statHelp = {
     Might: "+2 melee damage per rank.",
     Finesse: "+3 maximum stamina per rank.",
@@ -1180,7 +1183,7 @@ function openPack() {
             : `power ${item?.power || 0}; contributes to projectile and spell damage`,
       affixes = describeAffixes(item),
       effect = `${item ? itemTier(item).toUpperCase() + " · " : ""}${baseEffect}${affixes.length ? " · " + affixes.join(" · ") : ""}`;
-    const label=document.createElement("small"),name=document.createElement("strong"),detail=document.createElement("span");label.textContent=slot.toUpperCase();name.textContent=item?.name||"Empty slot";detail.textContent=effect;card.append(gearIcon(item,slot),label,name,detail);
+    const label=document.createElement("small"),name=document.createElement("strong"),detail=document.createElement("span");label.textContent=slot.toUpperCase();name.textContent=item?`${item.name} +${item.upgradeRank||0}`:"Empty slot";detail.textContent=effect;card.append(gearIcon(item,slot),label,name,detail);
     gear.append(card);
   }
   body.append(gearHeading, gear);
@@ -1201,6 +1204,8 @@ function openPack() {
     );
     body.append(row);
   }
+  const apertureTitle=document.createElement('h3');apertureTitle.textContent=`Aperture disciplines · ${apertureBand(save.perception?.aperture||0).name}`;body.append(apertureTitle);
+  for(const skill of availableApertureSkills(save.perception?.aperture||0)){const rank=skillRank(save,skill.id),row=document.createElement('div');row.className='item';row.textContent=`${skill.branch} · ${skill.name} ${rank?`rank ${rank}/${skill.maxRank}`:'unlearned'} · ${skill.cooldown}s cooldown · ${skill.description}`;if(rank)row.append(uiButton(save.magicSkills.selected===skill.id?'Selected':'Select',()=>{save.magicSkills.selected=skill.id;persist();openPack()}));body.append(row)}
   for (const [type, name, description] of [
     [
       "restorativeDraught",
@@ -1309,6 +1314,11 @@ const STAT_GLOSSARY=[
   ["Reach","A percentage increase to both melee range and projectile travel distance. Reach does not enlarge explosions or spell areas."],
   ["Blast radius","The fixed area affected by a bomb or explosive projectile. It is determined by the weapon profile and is separate from Reach."],
   ["Spell radius","The fixed area affected by a spell pulse. Reach does not change it."],
+  ["Weapon Sphere","A permanent forging material. Sela spends an increasing number to raise an equipped primary or secondary weapon by one bounded upgrade rank."],
+  ["Armor Sphere","A permanent forging material. Sela spends an increasing number to raise equipped armor or a charm by one bounded upgrade rank."],
+  ["Upgrade rank","A preserved +rank on one item. It raises Power without rerolling identity, tier, affixes, set membership, or special behavior."],
+  ["Aperture band","Dormant, Stirring, Open, and Resonant thresholds unlock disciplines and add deterministic possibilities to future eligible encounters without scaling every creature."],
+  ["Aerial Step","A short traversal discipline that permits movement across lethal water or pits. It cannot cross blocked walls or gates and returns the Wayfarer to stable ground if it expires over danger."],
   ["Might","Each rank adds 2 melee damage."],
   ["Focus","Each rank adds 1 projectile and spell damage."],
   ["Finesse","Each rank adds 3 maximum stamina."],
@@ -1769,6 +1779,8 @@ function openViewport(){pauseForOverlay();if(pausePanel.open)pausePanel.close();
   for(const q of entries){const card=document.createElement('article'),name=document.createElement('h3'),text=document.createElement('p'),meta=document.createElement('small'),actions=document.createElement('div');card.className='item viewport-card';name.textContent=q.title||q.id;text.textContent=q.text||q.summary||'The record remains incomplete.';meta.textContent=`${q.kind||'record'} · ${q.status||'recorded'}${q.target?` · ${q.target.rx},${q.target.ry}`:''}${q.reward?` · ${viewportReward(q)}`:''}`;actions.className='viewport-actions';if(['available','deferred'].includes(q.status)){actions.append(uiButton('Accept hunt',()=>{const r=acceptViewportHunt(save,q.id);if(q.kind==='tracking'){save.narrative.facts['leads.active']=true}navigationCache.key=null;game.message=r.message;persist();openViewport()}));actions.append(uiButton('Archive',()=>{archiveViewportHunt(save,q.id);navigationCache.key=null;persist();openViewport()}))}else if(['accepted','tracking','target-located'].includes(q.status)){actions.append(uiButton('Guidance active',()=>{save.viewport.activeHuntId=q.id;navigationCache.key=null;game.message=`${q.title} is now shown by the violet guidance arrow.`;persist();openViewport()}),uiButton('Defer',()=>{deferViewportHunt(save,q.id);navigationCache.key=null;persist();openViewport()}))}else if(q.kind==='trial'&&q.status==='completed'&&!q.decision){for(const[d,l]of[['corridor','Let it enter the Corridor'],['rare','Keep as a rare hunt'],['dungeon','Reserve for dungeons'],['rework','Rework and return later'],['archive','Archive']])actions.append(uiButton(l,()=>{foundryTrialDecision(save,q.id,d);persist();openViewport()}))}card.append(name,text,meta,actions);body.append(card)}
  }
  body.append(uiButton('Return to world',resume));if(!panel.open)panel.showModal();}
+function openForge(){pauseForOverlay();body.replaceChildren();const h=document.createElement('h2'),intro=document.createElement('p');h.textContent='Sela’s Sphere Forge';intro.textContent=`Weapon Spheres ${save.materials.weaponSphere||0} · Armor Spheres ${save.materials.armorSphere||0}. Rank cost rises by one sphere each step; affixes and identity are preserved.`;body.append(h,intro);for(const slot of ['primary','secondary','armor','charm']){const item=save.equipment[slot];if(!item)continue;const cost=upgradeCost(item),row=document.createElement('div'),title=document.createElement('strong'),preview=document.createElement('div'),next={...item,basePower:item.basePower??item.power,upgradeRank:(item.upgradeRank||0)+1,power:(item.basePower??item.power)+(item.upgradeRank||0)+1};row.className='item';preview.className='item-comparison';title.textContent=`${slot.toUpperCase()} · ${item.name} +${item.upgradeRank||0}`;for(const stat of compareItemStats(next,item)){if(stat.direction==='same')continue;const q=document.createElement('span');q.className=`stat-${stat.direction}`;q.textContent=`↑ ${stat.label} ${stat.current} → ${stat.value}`;preview.append(q)}row.append(title,preview,uiButton(cost.eligible?`Strengthen · ${cost.amount} ${cost.kind==='weaponSphere'?'weapon':'armor'} sphere${cost.amount===1?'':'s'}`:'Upgrade limit reached',()=>{game.upgradeEquipmentSlot(slot);persist();openForge()}));body.append(row)}body.append(uiButton('Aperture disciplines',openSkills),uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
+function openSkills(){pauseForOverlay();body.replaceChildren();const h=document.createElement('h2'),intro=document.createElement('p'),value=save.perception?.aperture||0;h.textContent=`Aperture Disciplines · ${apertureBand(value).name}`;intro.textContent='Thresholds unlock disciplines without spending Aperture. Learn ranks here, then select one for the Spell button.';body.append(h,intro);for(const skill of Object.values(APERTURE_SKILLS)){const rank=skillRank(save,skill.id),available=value>=skill.threshold,row=document.createElement('div');row.className='item';row.textContent=`${skill.branch} · ${skill.name} · ${rank}/${skill.maxRank} · Aperture ${skill.threshold} · ${skill.description}`;if(available&&rank<skill.maxRank)row.append(uiButton('Learn rank '+(rank+1),()=>{game.message=learnApertureSkill(save,skill.id).message;persist();openSkills()}));if(rank)row.append(uiButton(save.magicSkills.selected===skill.id?'Selected':'Select',()=>{save.magicSkills.selected=skill.id;persist();openSkills()}));body.append(row)}body.append(uiButton('Sphere forge',openForge),uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
 function openInteraction(id, confirmAttack = false) {
   const o = game.map.objects.find((q) => q.id === id);
   if (!o) return;
@@ -1824,6 +1836,8 @@ function openInteraction(id, confirmAttack = false) {
         restore: "Restore the Relay",
         sever: "Sever the Relay",
         inspect: "Inspect terminal",
+        upgrade:"Use sphere forge",
+        attune:"Study Aperture disciplines",
       };
       body.append(
         uiButton(labels[action] || action, () =>
@@ -1851,6 +1865,8 @@ function performInteraction(id, action) {
     openShop(id);
     return;
   }
+  if(action==='upgrade'&&result?.ok){openForge();return}
+  if(action==='attune'&&result?.ok){openSkills();return}
   openInteraction(id);
   const message = document.createElement("p");
   message.textContent = result?.message || game.message;

@@ -31,8 +31,8 @@ import { freshSave, migrateSave, normalizeManualWaypoint, SAVE_VERSION } from ".
 import { foundryCandidate, foundryEncounter, validateFoundryCandidate, CREATURE_FOUNDRY_SCHEMA, VIEWPORT_SCHEMA, DOMAIN_SCHEMA, HUNT_INSTANCE_SCHEMA, ensureViewportState, acceptViewportHunt, archiveViewportHunt, completeViewportHunt, foundryTrialDecision, domainTopology, domainEncounterPlan, completeDomainBoss, manifestationMechanics, ensureHuntInstance, beginHuntInstance, abandonHuntInstance, completeHuntInstance, cleanupHuntInstance, recordPeoplePlace, selectHuntDestination, resolveHuntDestination, ordinaryHuntSuitability, huntIntegrationDiagnostics } from "../src/foundry.ts";
 import { recordRevelationLead, completeRevelationArc, storySiteFor, recordSectionVisit, worldStewardReport, CORRIDOR_STORY_SCHEMA, STEWARD_SCHEMA } from "../src/story.ts";
 import { serializeSave, deserializeSave, normalizeSettings, effectiveQuality, journeyMetadata, createSlotWriteCoordinator, slotKey } from "../src/persistence.ts";
-import { dodge, createCombatant, CREATURE_TRAITS, CREATURE_FORMS, enemyBodyRadius } from "../src/combat.ts";
-import { generateItem, isValidItem, SPELLS, itemTier, itemScore, affixValue, compareItemStats } from "../src/items.ts";
+import { dodge, createCombatant, CREATURE_TRAITS, CREATURE_FORMS, enemyBodyRadius, MELEE_PATTERNS } from "../src/combat.ts";
+import { generateItem, isValidItem, SPELLS, itemTier, itemScore, affixValue, compareItemStats, normalizeItemUpgrade, upgradeCost, upgradeEquipment, APERTURE_SKILLS, apertureBand, learnApertureSkill } from "../src/items.ts";
 import{ELITE_DEFINITIONS,eliteVariant,eliteThreat,freshEliteState,ensureEliteState,recordPortalPrey,applyPoison,tickEliteStatus,cleansePoison,addEliteHazard,tickEliteHazards,completeElite}from'../src/elites.ts';
 import {
   Game,
@@ -2022,11 +2022,11 @@ test("expanded creature ecology is deterministic and recorded in the field codex
   for(let y=-4;y<=4;y++)for(let x=-4;x<=4;x++)for(const e of generateRegion("ecology",x,y,1).enemySpawns)kinds.add(e.kind);
   for(const kind of ["ashenHound","veilMoth","rootBrute","coilStalker","cinderWisp"])assert.ok(kinds.has(kind),kind);
   const s=freshSave(),g=new Game(s,0);
-  assert.equal(s.version,13);
+  assert.equal(s.version,SAVE_VERSION);
   assert.ok(Object.keys(s.codex.creatures).length>=1);
   assert.equal(s.codex.places["terrain:"+g.map.dominant],true);
   const migrated=migrateSave({...freshSave(),version:8,codex:undefined});
-  assert.equal(migrated.version,13);
+  assert.equal(migrated.version,SAVE_VERSION);
   assert.deepEqual(migrated.codex,{creatures:{},places:{},features:{},variants:{},peoplePlaces:{}});
 });
 test("journal exposes encounter codex sections and an always-available symbol guide",()=>{
@@ -2432,11 +2432,21 @@ test("Proving Ground resets scratch state and cannot import persistence",()=>{
 });
 
 test("Proving Ground exposes every production diagnostic laboratory and direct scenario",()=>{
-  assert.equal(LABORATORIES.length,13);assert.ok(LABORATORIES.every(q=>q.status==="implemented"));
+  assert.equal(LABORATORIES.length,14);assert.ok(LABORATORIES.every(q=>q.status==="implemented"));
   for(const {id} of LABORATORIES){const scenarios=scenariosForLab(id);assert.ok(scenarios.length>0,id);const first=createLabFixture({lab:id,scenario:scenarios[0].id,seed:"all-labs",variant:1,now:0});assert.equal(labReport(first).scratch,true)}
 });
 
 test("Wayglass lab exposes independent travel, rest, manual, guidance, migration, and drought fixtures",()=>{for(const scenario of scenariosForLab("wayglass")){const a=createLabFixture({lab:"wayglass",scenario:scenario.id,seed:"nav-lab",now:0}),b=createLabFixture({lab:"wayglass",scenario:scenario.id,seed:"nav-lab",now:0});assert.equal(a.scenario,scenario.id);assert.deepEqual(labReport(a).diagnostics,labReport(b).diagnostics)}const rest=createLabFixture({lab:"wayglass",scenario:"activated-rest-point",seed:"nav-lab",now:0});assert.equal(Object.keys(rest.save.checkpoints).length,0);assert.equal(rest.save.activeCheckpoint.name,"Singing Array");const pair=createLabFixture({lab:"wayglass",scenario:"travel-pair",seed:"nav-lab",now:0});assert.equal(Object.keys(pair.save.checkpoints).length,2);const dual=createLabFixture({lab:"wayglass",scenario:"dual-compass",seed:"nav-lab",now:0});assert.ok(dual.save.manualWaypoint);assert.ok(dual.save.viewport.activeHuntId)});
+
+test("vendor comparisons expose every positive negative and empty-slot delta",()=>{const candidate={id:'candidate',name:'Cinder Pike',slot:'primary',power:8,property:'reach',affixes:[{id:'attack',value:2},{id:'reach',value:.1}]},equipped={id:'old',name:'Verge Cleaver',slot:'primary',power:9,property:'impact',affixes:[{id:'attack',value:1}]};const deltas=compareItemStats(candidate,equipped);assert.equal(deltas.find(q=>q.id==='power').direction,'down');assert.equal(deltas.find(q=>q.id==='reach').direction,'up');assert.ok(deltas.some(q=>q.id==='attackArc'));assert.ok(compareItemStats(candidate,null).every(q=>q.direction==='empty'))});
+
+test("sphere upgrades are ranked persistent bounded and cannot refund spheres through salvage",()=>{const save=freshSave();save.materials.weaponSphere=10;const before={...save.equipment.primary};let r=upgradeEquipment(save,'primary');assert.equal(r.ok,true);assert.equal(save.equipment.primary.upgradeRank,1);assert.equal(save.equipment.primary.basePower,before.power);assert.equal(save.materials.weaponSphere,9);const round=deserializeSave(serializeSave(save));assert.equal(round.equipment.primary.upgradeRank,1);const cost=upgradeCost(round.equipment.primary);assert.equal(cost.amount,2);round.materials.weaponSphere=0;assert.equal(upgradeEquipment(round,'primary').ok,false);round.inventory=[round.equipment.primary];const iron=salvageInventoryItem(round,0).iron;assert.ok(iron>=1);assert.equal(round.materials.weaponSphere,0)});
+
+test("Aperture disciplines unlock by threshold and active traversal state survives roundtrip",()=>{const save=freshSave();assert.equal(apertureBand(0).id,'dormant');assert.equal(apertureBand(18).id,'open');assert.equal(learnApertureSkill(save,'ember-form').ok,false);save.perception.aperture=36;for(const id of Object.keys(APERTURE_SKILLS))assert.equal(learnApertureSkill(save,id).ok,true);save.magicSkills.active={id:'aerial-step',rank:1,remaining:2.5};const round=deserializeSave(serializeSave(save));assert.equal(round.magicSkills.active.remaining,2.5);assert.equal(round.apertureBand,'resonant')});
+
+test("dynamic melee patterns commit readable wall-safe movement and recovery",()=>{const map={tiles:Array.from({length:100},(_,i)=>({x:i%10,y:Math.floor(i/10),kind:'floor',blocked:i%10===6})),width:10},player={x:5,y:5},enemy=createCombatant('ashenHound',2,5,false,[]);enemy.aggro=true;enemy.meleePatterns=['zigzag'];enemy.cooldown=0;for(let i=0;i<30;i++)updateEnemyAI(enemy,player,map,10,.1,i*100);assert.ok(enemy.x<6);assert.ok(enemy.cooldown>=0);assert.ok(MELEE_PATTERNS.zigzag.stages===2)});
+
+test("magic inventory and melee-pattern scenarios are directly reproducible",()=>{for(const lab of ['magic','inventory','combat']){const scenarios=scenariosForLab(lab);assert.ok(scenarios.length>=5);for(const scenario of scenarios.slice(0,8)){const fixture=createLabFixture({lab,scenario:scenario.id,seed:'progression-lab',now:0});assert.equal(fixture.lab,lab);assert.equal(labReport(fixture).scratch,true)}}});
 
 test("Proving Ground dungeon and combat recipes instantiate production maps deterministically",()=>{
   const cases=[["ordinary-dungeon","kiln"],["deep-dungeon","fortress"],["threefold","threefold"],["combat","vesperwing"]];
@@ -2548,7 +2558,7 @@ test("portal prerequisite and elite rewards are one-time",()=>{const s=freshSave
 
 test("elite combatants are genuinely boss-scale but remain below Gate Revenant terror",()=>{for(const id of Object.keys(ELITE_DEFINITIONS)){const e=createCombatant(id,8,8);assert.equal(e.boss,true);assert.ok(e.maxHp>=230);assert.ok(e.damage>=17);assert.ok(e.eliteModules.length>=3);assert.ok(e.damage<22)}});
 
-test("save v11 migration preserves old progress and initializes elite contracts",()=>{const old=freshSave();old.version=9;delete old.elites;old.currency=77;const s=migrateSave(old);assert.equal(s.version,13);assert.equal(s.currency,77);assert.equal(s.elites.contracts.vesperwing.state,'available');assert.equal(s.materials.weaponSphere,0);assert.equal(s.viewport.schema,VIEWPORT_SCHEMA)});
+test("save v11 migration preserves old progress and initializes elite contracts",()=>{const old=freshSave();old.version=9;delete old.elites;old.currency=77;const s=migrateSave(old);assert.equal(s.version,SAVE_VERSION);assert.equal(s.currency,77);assert.equal(s.elites.contracts.vesperwing.state,'available');assert.equal(s.materials.weaponSphere,0);assert.equal(s.viewport.schema,VIEWPORT_SCHEMA)});
 
 test("elite journal art is bundled and release build includes the elite module",()=>{const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8'),css=readFileSync(new URL('../styles.css',import.meta.url),'utf8'),build=readFileSync(new URL('../scripts/build.mjs',import.meta.url),'utf8'),sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');assert.match(main,/ELITE_PORTRAITS/);assert.match(css,/elite-bestiary-atlas-v1-wide\.png/);assert.match(build,/'elites'/);assert.match(sw,/elite-bestiary-atlas-v1-wide\.png/)});
 
@@ -2882,7 +2892,7 @@ test("steward telemetry stays bounded and reports recommendations without mutati
 
 test("version 11 migration initializes additive story foundry steward and Viewport state without reset",()=>{
  const raw=freshSave();raw.level=17;raw.currency=333;raw.story=undefined;raw.worldSteward=undefined;raw.codex.foundry={"retained-test":{name:"Retained Witness"}};
- const s=migrateSave(raw);assert.equal(s.version,13);assert.equal(s.level,17);assert.equal(s.currency,333);assert.equal(s.story.schema,CORRIDOR_STORY_SCHEMA);assert.equal(s.worldSteward.schema,STEWARD_SCHEMA);assert.equal(s.viewport.schema,VIEWPORT_SCHEMA);assert.equal(s.codex.foundry["retained-test"].name,"Retained Witness");
+ const s=migrateSave(raw);assert.equal(s.version,SAVE_VERSION);assert.equal(s.level,17);assert.equal(s.currency,333);assert.equal(s.story.schema,CORRIDOR_STORY_SCHEMA);assert.equal(s.worldSteward.schema,STEWARD_SCHEMA);assert.equal(s.viewport.schema,VIEWPORT_SCHEMA);assert.equal(s.codex.foundry["retained-test"].name,"Retained Witness");
 });
 
 test("foundry runtime integration observes by proximity preserves saved candidates and ships offline modules",()=>{
@@ -3077,7 +3087,7 @@ test("dungeon discovery reveals bounded chunks and hides distant objectives",()=
 });
 
 test("save schema 13 migrates dungeon discovery without losing schema-12 progress",()=>{
-  const old=freshSave();old.version=12;old.level=19;old.currency=222;old.consequences.dungeons.demo={resolved:false,discovery:{schema:1,levels:{root:["root:0,0","root:0,0","root:1,0"]}}};const migrated=migrateSave(JSON.parse(JSON.stringify(old)));assert.equal(SAVE_VERSION,13);assert.equal(migrated.version,13);assert.equal(migrated.level,19);assert.equal(migrated.currency,222);assert.deepEqual(migrated.consequences.dungeons.demo.discovery.levels.root,["root:0,0","root:1,0"])
+  const old=freshSave();old.version=12;old.level=19;old.currency=222;old.consequences.dungeons.demo={resolved:false,discovery:{schema:1,levels:{root:["root:0,0","root:0,0","root:1,0"]}}};const migrated=migrateSave(JSON.parse(JSON.stringify(old)));assert.equal(SAVE_VERSION,14);assert.equal(migrated.version,SAVE_VERSION);assert.equal(migrated.level,19);assert.equal(migrated.currency,222);assert.deepEqual(migrated.consequences.dungeons.demo.discovery.levels.root,["root:0,0","root:1,0"])
 });
 
 test("new dungeon histories use generator v4 while old v2 and v3 histories retain their generators",()=>{

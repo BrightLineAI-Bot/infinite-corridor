@@ -2,11 +2,21 @@
 
 ## Developer Proving Ground
 
-Release 91 provides thirteen implemented production laboratories: Shelter/Building, Ordinary Dungeon, Legacy/Deep Dungeon, Threefold Dungeon, Monster/Elite Combat, Wayglass/Checkpoint/Compass, Bespoke Environment/Domain, Hunts/Creatures, Inventory/Equipment/Vendors, Performance, Recovery/Save/Death, Narrative Scenes, and Atlas/Journal/Records. Scenario state is encoded through `lab`, `scenario`, `seed`, `variant`, `size`, and `reveal` URL parameters.
+Release 91 provides fourteen implemented production laboratories: Shelter/Building, Ordinary Dungeon, Legacy/Deep Dungeon, Threefold Dungeon, Monster/Elite Combat, Wayglass/Checkpoint/Compass, Bespoke Environment/Domain, Hunts/Creatures, Inventory/Equipment/Vendors, Aperture/Magic Progression, Performance, Recovery/Save/Death, Narrative Scenes, and Atlas/Journal/Records. Scenario state is encoded through `lab`, `scenario`, `seed`, `variant`, `size`, and `reveal` URL parameters.
 
 Use `?dev=proving-ground` for targeted production-system validation without contaminating a journey. The initial Shelter Gallery exposes timber, masonry, ruined gatehouse, cyber relay, alien geometric, and biomechanical fixtures selected from stable seed/section coordinates. It uses the production generator, Game simulation, input, collision, renderer, and shelter cutaway logic, but never imports persistence or normal startup. Reset always creates a fresh in-memory save. This is a developer route, not a player menu option.
 
-All thirteen laboratories above are addressable and construct isolated production-backed fixtures. Geometry/combat laboratories are directly playable. State-oriented laboratories expose real generated maps, saves, items, registries, migrations, and diagnostics in scratch state; they are diagnostic harnesses, not alternate player menus and they never import or overwrite a journey.
+All fourteen laboratories above are addressable and construct isolated production-backed fixtures. Geometry/combat laboratories are directly playable. State-oriented laboratories expose real generated maps, saves, items, registries, migrations, and diagnostics in scratch state; they are diagnostic harnesses, not alternate player menus and they never import or overwrite a journey.
+
+## Equipment, Aperture, and melee progression
+
+**CODE:** Save schema 14 adds normalized equipment `basePower`/`upgradeRank`, `magicSkills`, and the derived `apertureBand`. Migration preserves legacy item power and all existing journey state. Sela is the existing refuge Artificer: her forge spends Weapon Spheres on primary/secondary weapons and Armor Spheres on armor/charms. Costs rise by rank, caps follow item tier, and salvage never refunds spheres.
+
+**CODE:** Aperture bands are Dormant (0), Stirring (6), Open (18), and Resonant (36). Ember Form, Quickening, Veil Guard, Force Channel, and Aerial Step unlock at fixed thresholds and are learned and activated explicitly. Aerial Step is temporary lethal-terrain traversal, not general flight; it does not cross blocked walls or locked gates and safely restores the last valid ground position if it expires over water, canyon, or pit terrain.
+
+**CODE:** Melee enemies may receive deterministic, class-compatible long-reach, lunge, zigzag, hop, or slam patterns. Normal enemies carry at most one and bosses at most two. Telegraph range and actual damage range use the same circular geometry; committed displacement uses ordinary collision checks. Aperture changes only the exceptional encounter namespace/composition at band boundaries and never refreshes or resets existing ordinary regions or dungeons.
+
+**BOUNDARY:** Ember Form's increased size is visual and offensive; the player's collision footprint remains unchanged to prevent wall trapping. Hop patterns do not cross solid walls. The systems are finite authored progressions and do not introduce swimming, diving, unrestricted flight, procedural skill generation, or a global enemy-stat treadmill.
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
