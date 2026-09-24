@@ -1,4 +1,5 @@
-import { hashSeed, rng } from "./random.js?v=87";
+import { hashSeed, rng } from "./random.js?v=90";
+import { populateDungeonEncounters } from "./arenas.js?v=90";
 
 export const DEEP_DUNGEON_SCHEMA_VERSION = 3;
 export const DEEP_ARCHETYPE_IDS = ["threefold", "descent", "loop", "flooded", "fortress"];
@@ -81,18 +82,21 @@ function addObjective(map, q) {
   }
 }
 
+function addStoryObjects(map) {
+  if (!map.storyPackage) return;
+  const p = map.storyPackage, near = map.hub;
+  if (p.initiator === "ghost") map.objects.push({ id: `${p.id}-ghost`, kind: "storyGhost", name: "Waiting Shade", x: near.x + 2, y: near.y, state: "waiting", actions: ["listen"], storyId: p.id });
+  if (p.initiator === "relic") { map.objects.push({ id: `${p.id}-relic`, kind: "storyRelic", name: "Lost Nameplate", x: near.x - 3, y: near.y - 4, state: "unclaimed", actions: ["collect"], storyId: p.id }); map.objects.push({ id: `${p.id}-bearer`, kind: "storyGhost", name: "Nameless Bearer", x: near.x + 2, y: near.y, state: "waiting", actions: ["listen"], storyId: p.id }); }
+  if (p.initiator === "mechanism") for (let i = 0; i < 3; i++) map.objects.push({ id: `${p.id}-tone-${i + 1}`, kind: "storyTone", name: `Processional Tone ${i + 1}`, x: near.x + (i - 1) * 5, y: near.y + (i % 2 ? 4 : -4), state: "silent", actions: ["sound"], storyId: p.id, beatId: `tone-${["one", "two", "three"][i]}` });
+  if (p.initiator === "actor") map.objects.push({ id: `${p.id}-captain`, kind: "storyActor", name: "Patrol Captain", x: near.x + 2, y: near.y, state: "veiled", actions: ["witness"], storyId: p.id, scenePattern: "materialize" });
+  if (p.initiator === "scene") for (let i = 0; i < 2; i++) map.objects.push({ id: `${p.id}-echo-${i + 1}`, kind: "storyScene", name: `Scorched Echo ${i + 1}`, x: near.x + (i ? 6 : -6), y: near.y - 3, state: "latent", actions: ["witness"], storyId: p.id, beatId: i ? "second-echo" : "first-echo", scenePattern: i ? "environment" : "confrontation" });
+}
+
 function finalize(map, gate, finalBoss, cells) {
   gate.requires = map.objectives.filter((q) => q.required).map((q) => q.id);
   map.objects.push(gate); sealTiles(map, gate, cells);
   map.enemySpawns.push(finalBoss); map.finalGate = gate; map.finalGateId = gate.id; map.finalArena = { id: finalBoss.arenaId, sealedBy: gate.id, bossId: finalBoss.id }; map.finalEnemyIds = [finalBoss.id];
-  if (map.storyPackage) {
-    const p = map.storyPackage, near = map.hub;
-    if (p.initiator === "ghost") map.objects.push({ id: `${p.id}-ghost`, kind: "storyGhost", name: "Waiting Shade", x: near.x + 2, y: near.y, state: "waiting", actions: ["listen"], storyId: p.id });
-    if (p.initiator === "relic") { map.objects.push({ id: `${p.id}-relic`, kind: "storyRelic", name: "Lost Nameplate", x: near.x - 3, y: near.y - 4, state: "unclaimed", actions: ["collect"], storyId: p.id }); map.objects.push({ id: `${p.id}-bearer`, kind: "storyGhost", name: "Nameless Bearer", x: near.x + 2, y: near.y, state: "waiting", actions: ["listen"], storyId: p.id }); }
-    if (p.initiator === "mechanism") for (let i = 0; i < 3; i++) map.objects.push({ id: `${p.id}-tone-${i + 1}`, kind: "storyTone", name: `Processional Tone ${i + 1}`, x: near.x + (i - 1) * 5, y: near.y + (i % 2 ? 4 : -4), state: "silent", actions: ["sound"], storyId: p.id, beatId: `tone-${["one", "two", "three"][i]}` });
-    if (p.initiator === "actor") map.objects.push({ id: `${p.id}-captain`, kind: "storyActor", name: "Patrol Captain", x: near.x + 2, y: near.y, state: "veiled", actions: ["witness"], storyId: p.id, scenePattern: "materialize" });
-    if (p.initiator === "scene") for (let i = 0; i < 2; i++) map.objects.push({ id: `${p.id}-echo-${i + 1}`, kind: "storyScene", name: `Scorched Echo ${i + 1}`, x: near.x + (i ? 6 : -6), y: near.y - 3, state: "latent", actions: ["witness"], storyId: p.id, beatId: i ? "second-echo" : "first-echo", scenePattern: i ? "environment" : "confrontation" });
-  }
+  addStoryObjects(map);
   const routePrefix=`deep-v2-${map.archetype}`;
   map.objects.push({id:`${routePrefix}-final-return`,kind:"deepPortal",name:"Final Return Lattice",x:finalBoss.x+3,y:finalBoss.y,state:"dormant",actions:["inspect"],unlockOnCompletion:true,targetLevelId:map.levelId||"root",toX:map.hub.x,toY:map.hub.y,routeType:"postBoss"});
   map.routes ||= [];
@@ -108,7 +112,7 @@ function threefold(seed, id) {
   addObjective(m, { id: "east-seal", type: "guardian", name: "East Warden", enemyId: "deep-v2-threefold-east", enemyKind: "sparkWarden", x: 57, y: 32, anchor: { name: "East Return", x: 48, y: 34 } });
   addObjective(m, { id: "south-seal", type: "guardian", name: "South Warden", enemyId: "deep-v2-threefold-south", enemyKind: "coilStalker", x: 16, y: 52, anchor: { name: "South Return", x: 21, y: 46 } });
   m.zones = [{ id: "hub", name: "Oath Rotunda" }, { id: "west", name: "Root Wing" }, { id: "east", name: "Glass Wing" }, { id: "south", name: "Coil Wing" }, { id: "final", name: "Sealed Choir" }];
-  m.objects.push({id:"deep-v2-threefold-west-shortcut",kind:"deepShortcut",name:"West Oath Door",x:24,y:35,state:"hidden",actions:["inspect"],unlockObjectiveId:"west-seal",cells:[{x:24,y:35}],toX:29,toY:35,routeType:"physical"});m.tiles[35*m.width+24]={x:24,y:35,kind:"deepWall",blocked:true,detail:3};m.routes.push({id:"deep-v2-threefold-west-shortcut",type:"physical",unlockObjectiveId:"west-seal"});
+  const shortcutCells=Array.from({length:11},(_,i)=>({x:17+i,y:35}));m.objects.push({id:"deep-v2-threefold-west-shortcut",kind:"deepShortcut",name:"West Oath Door",x:24,y:35,state:"hidden",actions:["inspect"],unlockObjectiveId:"west-seal",cells:shortcutCells,toX:29,toY:35,routeType:"physical"});for(const p of shortcutCells)m.tiles[p.y*m.width+p.x]={x:p.x,y:p.y,kind:"deepWall",blocked:true,detail:3};m.routes.push({id:"deep-v2-threefold-west-shortcut",type:"physical",unlockObjectiveId:"west-seal"});
   return finalize(m, { id: "deep-v2-threefold-final-gate", kind: "sealedGate", x: 32, y: 24, state: "sealed", actions: ["inspect"] }, { id: "deep-v2-threefold-final", kind: "gateRevenant", x: 32, y: 9, boss: true, deepDungeon: true, dungeonRole: "finalBoss", arenaId: "threefold-final" }, [30, 31, 32, 33, 34].map((x) => ({ x, y: 24 })));
 }
 
@@ -129,7 +133,7 @@ function loop(seed, id) {
   for (let x = 8; x <= 59; x++) m.tiles[20 * m.width + x] = { x, y: 20, kind: "deepWall", blocked: true, detail: x % 4 };
   addObjective(m, { id: "south-index", type: "mechanism", name: "South Index", objectId: "deep-v2-loop-south-index", x: 34, y: 55, anchor: { name: "South Reading Mark", x: 34, y: 50 } });
   m.zones = [{ id: "outer-ring", name: "Returning Stacks" }, { id: "cross-index", name: "Cross Index" }, { id: "heart", name: "Forbidden Catalogue" }];
-  m.objects.push({id:"deep-v2-loop-index-shortcut",kind:"deepShortcut",name:"Folded Index Door",x:48,y:34,state:"hidden",actions:["inspect"],unlockObjectiveId:"east-index",cells:[{x:48,y:34}],toX:40,toY:34,routeType:"physical"});m.tiles[34*m.width+48]={x:48,y:34,kind:"deepWall",blocked:true,detail:2};m.routes.push({id:"deep-v2-loop-index-shortcut",type:"physical",unlockObjectiveId:"east-index"});
+  const loopShortcut=[33,34,35].map(y=>({x:48,y}));m.objects.push({id:"deep-v2-loop-index-shortcut",kind:"deepShortcut",name:"Folded Index Door",x:48,y:34,state:"hidden",actions:["inspect"],unlockObjectiveId:"east-index",cells:loopShortcut,toX:40,toY:34,routeType:"physical"});for(const p of loopShortcut)m.tiles[p.y*m.width+p.x]={x:p.x,y:p.y,kind:"deepWall",blocked:true,detail:2};m.routes.push({id:"deep-v2-loop-index-shortcut",type:"physical",unlockObjectiveId:"east-index"});
   return finalize(m, { id: "deep-v2-loop-catalogue-gate", kind: "sealedGate", x: 34, y: 20, state: "sealed", actions: ["inspect"] }, { id: "deep-v2-loop-final", kind: "knifeChoir", x: 34, y: 11, boss: true, deepDungeon: true, dungeonRole: "finalBoss", arenaId: "forbidden-catalogue" }, [32, 33, 34, 35, 36].map((x) => ({ x, y: 20 })));
 }
 
@@ -175,16 +179,16 @@ function buildMultiLevel(seed,id,archetype,levelId){
   if(index>0)levelTransition(m,{id:`${m.levelStableId}:up`,name:"Return Passage",x:10,y:34,toLevelId:levels[index-1].id,toX:32,toY:34,direction:"up"});
   if(index<levels.length-1)levelTransition(m,{id:`${m.levelStableId}:down`,name:archetype==="descent"?"Survey Lift":"Cathedral Stair",x:34,y:34,toLevelId:levels[index+1].id,toX:10,toY:34,direction:"down"});
   const local=archetype==="descent"?(chosen.id==="mouth"?[{...all[0],enemyId:"deep-v2-descent-warden",enemyKind:"hollowMarshal",x:15,y:16,anchor:{name:"Mouth Survey Anchor",x:12,y:21}}]:chosen.id==="pressure"?[{...all[1],objectId:"deep-v2-depth-engine",x:22,y:15,anchor:{name:"Pressure Anchor",x:30,y:21}}]:[]):chosen.id==="ward"?[{...all[0],enemyId:"deep-v2-buried-captain",enemyKind:"rootBrute",x:13,y:16,anchor:{name:"Barracks Anchor",x:10,y:21}},{...all[1],objectId:"deep-v2-ward-engine",x:30,y:16,anchor:{name:"Foundry Anchor",x:33,y:21}},{...all[2],enemyId:"deep-v2-occupation-beast",enemyKind:"coilStalker",x:22,y:33,anchor:{name:"Market Anchor",x:22,y:29}}]:[];for(const q of local)addObjective(m,q);
-  if(index===0){m.objects.push({id:`deep-v2-${archetype}-level-shortcut`,kind:"deepShortcut",name:archetype==="descent"?"Survey Fold Door":"Ward Sally Door",x:22,y:27,state:"hidden",actions:["inspect"],unlockObjectiveId:all[0].id,cells:[{x:22,y:27}],toX:22,toY:34,routeType:"physical"});m.tiles[27*m.width+22]={x:22,y:27,kind:"deepWall",blocked:true,detail:1};m.routes.push({id:`deep-v2-${archetype}-level-shortcut`,type:"physical",unlockObjectiveId:all[0].id});}
+  if(index===0){m.hall(12,34,12,22);m.hall(12,22,22,22);const cells=[21,22,23].map(x=>({x,y:27}));m.objects.push({id:`deep-v2-${archetype}-level-shortcut`,kind:"deepShortcut",name:archetype==="descent"?"Survey Fold Door":"Ward Sally Door",x:22,y:27,state:"hidden",actions:["inspect"],unlockObjectiveId:all[0].id,cells,toX:22,toY:34,routeType:"physical"});for(const p of cells)m.tiles[p.y*m.width+p.x]={x:p.x,y:p.y,kind:"deepWall",blocked:true,detail:1};m.routes.push({id:`deep-v2-${archetype}-level-shortcut`,type:"physical",unlockObjectiveId:all[0].id});}
   if(index===levels.length-1){const boss={id:`deep-v2-${archetype}-final`,kind:archetype==="descent"?"gravitantBell":"gateRevenant",x:22,y:13,boss:true,deepDungeon:true,dungeonRole:"finalBoss",arenaId:`${archetype}-final`},gate={id:`deep-v2-${archetype}-level-final-gate`,kind:"sealedGate",x:22,y:25,state:"sealed",actions:["inspect"],requires:all.map(q=>q.id)};m.objectives=[];m.objects.push(gate);sealTiles(m,gate,[20,21,22,23,24].map(x=>({x,y:25})));m.enemySpawns.push(boss);m.finalGate=gate;m.finalGateId=gate.id;m.finalArena={id:boss.arenaId,sealedBy:gate.id,bossId:boss.id};m.finalEnemyIds=[boss.id];m.objects.push({id:`deep-v2-${archetype}-final-return`,kind:"deepPortal",name:"Final Return Lattice",x:25,y:13,state:"dormant",actions:["inspect"],unlockOnCompletion:true,targetLevelId:levels[0].id,toX:m.hub.x,toY:m.hub.y,routeType:"postBoss"});m.routes.push({id:`deep-v2-${archetype}-final-return`,type:"postBoss",targetLevelId:levels[0].id});}
-  if(m.storyPackage&&index===0){const p=m.storyPackage;if(p.initiator==="actor")m.objects.push({id:`${p.id}-captain`,kind:"storyActor",name:"Patrol Captain",x:24,y:34,state:"veiled",actions:["witness"],storyId:p.id,scenePattern:"materialize"});if(p.initiator==="scene")for(let i=0;i<2;i++)m.objects.push({id:`${p.id}-echo-${i+1}`,kind:"storyScene",name:`Scorched Echo ${i+1}`,x:i?29:15,y:33,state:"latent",actions:["witness"],storyId:p.id,beatId:i?"second-echo":"first-echo",scenePattern:i?"environment":"confrontation"});}
-  delete m.floor;delete m.rect;delete m.hall;return m;
+  if(index===0)addStoryObjects(m);
+  delete m.floor;delete m.rect;delete m.hall;return populateDungeonEncounters(m,{deep:true});
 }
 
 export function generateDeepV2Dungeon(seed, id, options={}) {
   const archetype = deepV2ArchetypeFromId(id), fn = { threefold, descent, loop, flooded, fortress }[archetype] || threefold;
   if(options.levelId&&MULTI_LEVELS[archetype])return buildMultiLevel(seed,id,archetype,options.levelId);
-  const map=fn(seed,id);map.levels=deepV2Levels(id);map.levelId=map.levels[0].id;map.levelStableId=map.levels[0].stableId;map.multiLevel=!!MULTI_LEVELS[archetype];map.allObjectives=(map.objectives||[]).map(q=>({...q}));return map;
+  const map=fn(seed,id);map.levels=deepV2Levels(id);map.levelId=map.levels[0].id;map.levelStableId=map.levels[0].stableId;map.multiLevel=!!MULTI_LEVELS[archetype];map.allObjectives=(map.objectives||[]).map(q=>({...q}));return populateDungeonEncounters(map,{deep:true});
 }
 
 export function deepV2Descriptor(id) {

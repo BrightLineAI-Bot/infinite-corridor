@@ -1,7 +1,8 @@
-import { screenToWorld, drawWaymarkIcon } from "./renderer.js?v=87";
-import { vendorShop, buyFromVendor } from "./game.js?v=87";
-import { CREATURE_TRAITS } from "./combat.js?v=87";
-import { hashSeed } from "./random.js?v=87";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=90";
+import { vendorShop, buyFromVendor } from "./game.js?v=90";
+import { CREATURE_TRAITS } from "./combat.js?v=90";
+import { hashSeed } from "./random.js?v=90";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=90";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -202,7 +203,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport } from "./persistence.js?v=87";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport } from "./persistence.js?v=90";
 import {
   Game,
   actionReadiness,
@@ -211,14 +212,14 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=87";
-import { createInput } from "./input.js?v=87";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=87";
-import { STATS } from "./types.js?v=87";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats } from "./items.js?v=87";
-import { currentObjective, validActions } from "./interactions.js?v=87";
-import { worldStewardReport } from "./story.js?v=87";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision } from "./foundry.js?v=87";
+} from "./game.js?v=90";
+import { createInput } from "./input.js?v=90";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=90";
+import { STATS } from "./types.js?v=90";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats } from "./items.js?v=90";
+import { currentObjective, validActions } from "./interactions.js?v=90";
+import { worldStewardReport } from "./story.js?v=90";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=90";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -229,7 +230,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=87";
+} from "./world.js?v=90";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -248,7 +249,7 @@ const $ = (s) => document.querySelector(s),
   mctx = mapCanvas.getContext("2d");
 globalThis.corridorStewardReport=()=>worldStewardReport(save);
 const perfEnabled = new URLSearchParams(location.search).has("perf") || settings.diagnostics,
-  perfSamples = { frame: [], update: [], render: [], hud: [], persist: [] },
+  perfSamples = { frame: [], input: [], update: [], render: [], hud: [], notices: [], persist: [] },
   navigationStats = { lookups: 0, rebuilds: 0 };
 function currentQuality(){return effectiveQuality(settings,{width:innerWidth,height:innerHeight,deviceMemory:navigator.deviceMemory,hardwareConcurrency:navigator.hardwareConcurrency})}
 function applyPresentationSettings(){document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=muted?0:.06*settings.masterVolume;if(musicBus)musicBus.gain.value=.72*settings.musicVolume;resize()}
@@ -287,7 +288,11 @@ globalThis.corridorPerfReport = () => {
     quality: currentQuality(),
     canvas: { width: canvas.width, height: canvas.height, cssWidth: canvas.clientWidth, cssHeight: canvas.clientHeight },
     active: { objects: game.map.objects.length, enemies: game.enemies.filter((e) => !e.dead).length, projectiles: game.projectiles.length, effects: game.effects.length },
-    navigation: { ...navigationStats, source: "active-section-waymarks" },
+    navigation: { ...navigationStats, source: "cached-dual-targets" },
+    renderer: rendererDiagnostics(),
+    simulation: game.performanceStats ? { ...game.performanceStats } : null,
+    hunts: huntIntegrationDiagnostics(save),
+    scene: { active: sceneRuntime?.active || null, shot: sceneRuntime?.shot || 0, actors: sceneRuntime?.plan?.shots?.[sceneRuntime.shot]?.choreography?.length || 0 },
     summary,
   };
 };
@@ -319,8 +324,9 @@ function updateWorldNotices() {
   for (const e of game.enemies) if (!e.dead && (e.boss || e.apertureEncounter) && !announcedThreats.has(e.id)) {
     announcedThreats.add(e.id);
     showEventBanner(e.boss ? "MAJOR THREAT" : "CORRIDOR BREACH", e.kind.replace(/([A-Z])/g," $1").trim() + " has entered this section", "danger");
+    if(e.boss&&(e.eliteId||e.worldBoss||e.kind==="riftColossus"))queueScene(save,"rift-arrival",e.id);
   }
-  const activatedHere=!!save.checkpoints?.[`${game.rx},${game.ry}`],o=(game.map.objects||[]).filter(q=>["checkpoint","dungeon","shrine","ruinMarker","bossCue"].includes(q.kind)&&!(q.kind==="checkpoint"&&activatedHere)).sort((a,b)=>Math.hypot(a.x-game.player.x,a.y-game.player.y)-Math.hypot(b.x-game.player.x,b.y-game.player.y))[0],key=o&&Math.hypot(o.x-game.player.x,o.y-game.player.y)<2.4?game.areaId()+":"+o.id:"";
+  const activatedHere=!!save.checkpoints?.[`${game.rx},${game.ry}`];let o=null,nearest=Infinity;for(const q of game.map.objects||[]){if(!["checkpoint","dungeon","shrine","ruinMarker","bossCue"].includes(q.kind)||(q.kind==="checkpoint"&&activatedHere))continue;const distance=Math.hypot(q.x-game.player.x,q.y-game.player.y);if(distance<nearest){nearest=distance;o=q}}const key=o&&nearest<2.4?game.areaId()+":"+o.id:"";
   if(key&&key!==nearbyNotice){nearbyNotice=key;let title=o.kind==="checkpoint"?"WAYGLASS REACHED":o.kind==="dungeon"?"CROSSING REACHED":o.kind==="bossCue"?"CORRIDOR BREACH":"SITE REACHED",detail=o.name||({dungeon:"Buried Crossing",checkpoint:"Wayglass Beacon",shrine:"Singing Array",ruinMarker:"Broken Observatory",bossCue:"Major Threat"}[o.kind]||"Unusual Site");if(o.kind==="shrine"){title="REST POINT REACHED";detail=`${detail} · respawn updated; no fast travel`;save.activeCheckpoint={rx:game.rx,ry:game.ry,x:o.x,y:o.y,name:o.name||"Singing Array"};save.worldFlags[`rest:${game.rx},${game.ry}:${o.id}`]=true;game.sync()}showEventBanner(title,detail,o.kind==="bossCue"?"danger":"discovery");}
   else if(!key)nearbyNotice="";
 }
@@ -365,17 +371,18 @@ new MutationObserver(() => {
 }).observe(body, { childList: true, subtree: false });
 function render(ctx, game, w, h, now) {
   const attackUntil = game.player.attackUntil,
-    telegraphs = game.enemies.map((e) => e.telegraph),
-    objects = game.map.objects;
-  game.map.objects = objects.filter((o) => perceived(o, game.save));
-  game.player.attackUntil = 0;
-  for (const e of game.enemies) e.telegraph = 0;
-  baseRender(ctx, game, w, h, now);
-  drawApertureVisuals();
-  game.map.objects = objects;
-  game.player.attackUntil = attackUntil;
-  for (let i = 0; i < game.enemies.length; i++)
-    game.enemies[i].telegraph = telegraphs[i];
+    telegraphs = game.enemies.map((e) => e.telegraph);
+  try {
+    game.renderObjectPredicate ||= (o) => perceived(o, game.save);
+    game.player.attackUntil = 0;
+    for (const e of game.enemies) e.telegraph = 0;
+    baseRender(ctx, game, w, h, now);
+    drawApertureVisuals();
+  } finally {
+    game.player.attackUntil = attackUntil;
+    for (let i = 0; i < game.enemies.length; i++)
+      game.enemies[i].telegraph = telegraphs[i];
+  }
 }
 function drawApertureVisuals() {
   const s = Math.max(28, Math.min(44, innerWidth / 12)),
@@ -427,33 +434,40 @@ const objective = $("#objective"),
   hudDetails = $("#hudDetails"),
   hudToggles = [$("#hudExpand"), $("#fieldMenuToggle")],
   navCompass = $("#navCompass"),
-  navArrow = $("#navArrow");
-let navigationMap = null, navigationObjectiveOpen = null, navigationCueTarget = null;
-function navigationTarget() {
+  navGuidanceArrow = $("#navGuidanceArrow"),
+  navManualArrow = $("#navManualArrow");
+let navigationCache = { key: null, map: null, guidance: null, manual: null }, announcedManualArrival = null;
+function navigationTargets() {
   navigationStats.lookups++;
-  if (game.area !== "overworld") return null;
-  if (save.waypoint) return { ...save.waypoint, kind: "waypoint", name: "Atlas waypoint" };
+  const huntId=save.viewport?.activeHuntId||null,hunt=huntId?save.viewport?.contracts?.[huntId]:null,
+    huntActive=!!hunt&&["accepted","tracking","target-located"].includes(hunt.status),manual=save.manualWaypoint;
   const objectiveOpen = !save.consequences.choices.relay ||
     (save.narrative.facts["leads.active"] && !save.narrative.facts["leads.complete"]);
-  if (!objectiveOpen) return null;
-  if(navigationMap!==game.map||navigationObjectiveOpen!==objectiveOpen){
-    navigationMap=game.map;navigationObjectiveOpen=objectiveOpen;navigationStats.rebuilds++;
+  const key=[game.area,game.rx,game.ry,huntId,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,objectiveOpen,manual?.area,manual?.rx,manual?.ry,manual?.label].join(":");
+  if(navigationCache.map===game.map&&navigationCache.key===key)return navigationCache;
+  navigationStats.rebuilds++;
+  let guidance=huntActive&&Number.isInteger(hunt.target?.rx)&&Number.isInteger(hunt.target?.ry)?{area:"overworld",rx:hunt.target.rx,ry:hunt.target.ry,kind:"guidance",name:hunt.title||"Viewport guidance"}:null;
+  if(!guidance&&game.area==="overworld"&&objectiveOpen){
     const cues=game.map.objects.filter(q=>q.kind==="wayfindingCue"),cue=cues.find(q=>q.signalKind==="crossing")||cues.find(q=>q.signalKind==="danger")||cues.find(q=>q.signalKind==="event");
-    navigationCueTarget = cue ? { rx: cue.targetRx, ry: cue.targetRy, kind: "quest", name: cue.name || "Quest signal" } : null;
+    guidance=cue?{area:"overworld",rx:cue.targetRx,ry:cue.targetRy,kind:"guidance",name:cue.name||"Quest signal"}:null;
   }
-  return navigationCueTarget;
+  navigationCache={key,map:game.map,guidance,manual:manual?{...manual,kind:"manual",name:manual.label||"Manual waypoint"}:null};
+  return navigationCache;
+}
+function updateNavigationArrow(arrow,target){
+  arrow.hidden=!target;if(!target)return null;
+  const dormant=game.area!==target.area,arrived=!dormant&&target.rx===game.rx&&target.ry===game.ry;
+  arrow.classList.toggle("dormant",dormant);arrow.classList.toggle("arrived",arrived);
+  if(!dormant&&!arrived){const dx=(target.rx-game.rx)*32+16-game.player.x,dy=(target.ry-game.ry)*32+16-game.player.y;arrow.style.transform=`rotate(${Math.atan2(dy,dx)*180/Math.PI+90}deg)`}else arrow.style.transform="";
+  return dormant?`${target.name} resumes beyond this ${game.area}`:arrived?`${target.name} reached`:`${target.name}, ${Math.max(Math.abs(target.rx-game.rx),Math.abs(target.ry-game.ry))} sections away`;
 }
 function updateNavigationCompass() {
-  const target = navigationTarget();
-  navCompass.hidden = !target;
-  if (!target) return;
-  const dx = (target.rx - game.rx) * 32 + 16 - game.player.x,
-    dy = (target.ry - game.ry) * 32 + 16 - game.player.y,
-    arrived = target.rx === game.rx && target.ry === game.ry;
-  navCompass.classList.toggle("quest", target.kind === "quest");
-  navCompass.classList.toggle("arrived", arrived);
-  navArrow.style.transform = `rotate(${Math.atan2(dy, dx) * 180 / Math.PI + 90}deg)`;
-  navCompass.setAttribute("aria-label", arrived ? `${target.name} reached` : `${target.name}, ${Math.max(Math.abs(target.rx - game.rx), Math.abs(target.ry - game.ry))} sections away`);
+  const targets=navigationTargets(),guidanceLabel=updateNavigationArrow(navGuidanceArrow,targets.guidance),manualLabel=updateNavigationArrow(navManualArrow,targets.manual),labels=[];
+  if(guidanceLabel)labels.push(`Guidance: ${guidanceLabel}`);if(manualLabel)labels.push(`Manual waypoint: ${manualLabel}`);
+  navCompass.hidden=!labels.length;if(!labels.length)return;
+  const manualArrived=targets.manual&&game.area===targets.manual.area&&targets.manual.rx===game.rx&&targets.manual.ry===game.ry,arrivalKey=manualArrived?`${targets.manual.rx},${targets.manual.ry}`:null;
+  if(arrivalKey&&announcedManualArrival!==arrivalKey)showEventBanner("WAYPOINT REACHED",targets.manual.name,"discovery");announcedManualArrival=arrivalKey;
+  navCompass.setAttribute("aria-label",labels.join(". "));
   navCompass.title = navCompass.getAttribute("aria-label");
 }
 const mute = document.createElement("button");
@@ -879,6 +893,7 @@ function resume() {
   last = performance.now();
   persist();
 }
+pausePanel.addEventListener("cancel",(event)=>event.preventDefault());
 const optionCategories=["Journeys","Performance","Controls","Accessibility","Audio","System"];
 let optionCategory="Journeys";
 function optionMessage(text,isError=false){let p=$("#optionsStatus");if(!p){p=document.createElement("p");p.id="optionsStatus";optionsBody.prepend(p)}p.textContent=text;p.className=isError?"options-note options-danger":"options-note"}
@@ -905,7 +920,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:87,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 87\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:90,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 90\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -920,7 +935,7 @@ function drawDungeonMap() {
 }
 function drawAtlasLabels(labels,bounds,fontSize){const placed=[],overlap=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;mctx.font=`${fontSize}px system-ui`;mctx.fillStyle="#edf3df";for(const label of labels){let text=label.name,max=bounds.right-bounds.left-10;while(text.length>4&&mctx.measureText(text).width>max)text=text.slice(0,-2)+"…";const width=mctx.measureText(text).width,candidates=[[label.x+7,label.y-5],[label.x+7,label.y+fontSize+3],[label.x-width-7,label.y-5],[label.x-width-7,label.y+fontSize+3],[label.x-width/2,label.y-fontSize],[label.x-width/2,label.y+fontSize*2]],spots=candidates.map(([cx,cy])=>{const x=Math.max(bounds.left+5,Math.min(bounds.right-width-5,cx)),y=Math.max(bounds.top+fontSize+5,Math.min(bounds.bottom-6,cy));return{x,y,left:x-2,right:x+width+2,top:y-fontSize-2,bottom:y+3}}),spot=spots.find(q=>!placed.some(p=>overlap(p,q)));if(!spot)continue;mctx.fillText(text,spot.x,spot.y);placed.push(spot)}return placed}
 function drawMap() {
-  if(mapMode==="dungeon"&&game.area==="dungeon")return drawDungeonMap();
+  if(mapMode==="dungeon"&&game.area==="dungeon"){drawDungeonMap();drawDungeonDeathMarker();return}
   const d = Math.min(devicePixelRatio, 2),
     w = Math.min(innerWidth * 0.9, 680),
     h = Math.min(innerHeight * 0.65, 520);
@@ -982,10 +997,11 @@ function drawMap() {
         mctx.arc(x + cell / 2, y + cell / 2, 5, 0, 7);
         mctx.fill();
       }
-      if (save.waypoint?.rx === rx && save.waypoint?.ry === ry) {
-        mctx.strokeStyle = "#ef7b66";
+      if (save.manualWaypoint?.rx === rx && save.manualWaypoint?.ry === ry) {
+        mctx.strokeStyle = "#5fe7ee";
         mctx.strokeRect(x + 8, y + 8, cell - 16, cell - 16);
       }
+      if(seen&&save.lastDeath?.rx===rx&&save.lastDeath?.ry===ry)drawDeathGlyph(mctx,x+cell-13,y+13,Math.max(5,cell*.1),save.lastDeath.valid===false);
     }
   mctx.fillStyle = "#dce7e2";
   mctx.fillText(
@@ -994,6 +1010,8 @@ function drawMap() {
     h - 10,
   );
 }
+function drawDeathGlyph(context,x,y,size,faded=false){context.save();context.translate(x,y);context.globalAlpha=faded?.45:1;context.strokeStyle="#ff718f";context.lineWidth=Math.max(1.5,size*.2);context.beginPath();context.arc(0,0,size*.65,0,7);context.moveTo(-size*.42,-size*.42);context.lineTo(size*.42,size*.42);context.moveTo(size*.42,-size*.42);context.lineTo(-size*.42,size*.42);context.stroke();context.restore()}
+function drawDungeonDeathMarker(){const death=save.lastDeath;if(!death||death.areaKind!=="dungeon"||death.dungeonId!==game.areaId())return;const selected=$("#dungeonLevelSelect")?.value||game.map.levelId||"root";if(death.levelId&&death.levelId!==selected)return;const map=game.map,d=Math.min(devicePixelRatio,2),w=Math.min(innerWidth*.9,680),h=Math.min(innerHeight*.65,520),cols=map.width||24,rows=map.height||Math.floor(map.tiles.length/cols),pad=18,cell=Math.max(2,Math.min((w-pad*2)/cols,(h-pad*2)/rows)),ox=(w-cell*cols)/2,oy=(h-cell*rows)/2;mctx.setTransform(d,0,0,d,0,0);drawDeathGlyph(mctx,ox+(death.x+.5)*cell,oy+(death.y+.5)*cell,Math.max(5,cell*.36),death.valid===false)}
 const ATLAS_SYMBOLS=[
   {kind:"checkpoint",label:"Wayglass",description:"Activate it to add a fast-travel destination and make it your recovery point."},
   {kind:"shrine",label:"Singing Array",description:"A common rest point. Reaching it updates where death returns you, but it does not permit fast travel."},
@@ -1003,6 +1021,7 @@ const ATLAS_SYMBOLS=[
   {kind:"architecturalDistrict",label:"District / Ruin",description:"A larger enterable group of buildings, streets, residents, enemies, and architectural lore."},
   {kind:"bossCue",label:"Major Danger",description:"A boss-scale or exceptional threat is associated with this section."},
   {kind:"ruinMarker",label:"Unusual Site",description:"An inspectable ruin or signal site that may reveal lore, objectives, or a distant lead."},
+  {kind:"lastDeath",label:"Last death",description:"The latest place the Wayfarer fell. Dungeon deaths mark their entrance section here and their exact discovered floor locally; the mark is never a waypoint or travel target."},
 ];
 function atlasSignal(kind){return kind==="checkpoint"?"beacon":kind==="shrine"?"array":kind==="dungeon"?"crossing":kind==="bossCue"?"danger":kind==="shack"?"shack":kind==="architecturalDistrict"?"district":kind==="supplyCache"?"cache":"event"}
 function drawAtlasGlyph(context,kind,x,y,size){
@@ -1011,7 +1030,7 @@ function drawAtlasGlyph(context,kind,x,y,size){
 }
 function drawAtlasSite(kind,x,y,size){drawAtlasGlyph(mctx,kind,x,y,size)}
 function atlasMark(kind){const canvas=document.createElement("canvas");canvas.width=canvas.height=44;canvas.className="atlas-symbol";canvas.setAttribute("role","img");canvas.setAttribute("aria-label",ATLAS_SYMBOLS.find(q=>q.kind===kind)?.label||kind);const context=canvas.getContext("2d");if(context)drawAtlasGlyph(context,kind,22,22,13);return canvas}
-function renderAtlasLegend(){const legend=$("#mapLegend");legend.replaceChildren();for(const symbol of ATLAS_SYMBOLS){const item=document.createElement("span");item.className="atlas-legend-item";item.append(atlasMark(symbol.kind),document.createTextNode(symbol.label));legend.append(item)}}
+function deathMark(){const canvas=document.createElement("canvas");canvas.width=canvas.height=44;canvas.className="atlas-symbol";canvas.setAttribute("role","img");canvas.setAttribute("aria-label","Last death");drawDeathGlyph(canvas.getContext("2d"),22,22,13);return canvas}function renderAtlasLegend(){const legend=$("#mapLegend");legend.replaceChildren();for(const symbol of ATLAS_SYMBOLS){const item=document.createElement("span");item.className="atlas-legend-item";item.append(symbol.kind==="lastDeath"?deathMark():atlasMark(symbol.kind),document.createTextNode(symbol.label));legend.append(item)}}
 function refreshWayglassDestinations(){
   const select=$("#mapWayglassSelect"),prior=select.value,entries=Object.entries(save.checkpoints||{}).sort((a,b)=>(a[1].name||a[0]).localeCompare(b[1].name||b[0]));
   select.replaceChildren(...entries.map(([key,c])=>{const option=document.createElement("option");option.value=key;option.textContent=`${c.name||"Wayglass"} · ${c.rx},${c.ry}`;return option}));
@@ -1032,12 +1051,12 @@ function updateMapTravelButton() {
 }
 function updateMapModeUI(){
   const dungeon=game.area==="dungeon",local=dungeon&&mapMode==="dungeon";
-  $("#mapModeToggle").hidden=!dungeon;$("#mapModeToggle").textContent=local?"Corridor Atlas":"Dungeon Map";$("#mapTitle").textContent=local?`${game.map.name||"Dungeon"} Map`:"Corridor Atlas";atlas.querySelector(".maptools").hidden=local;$("#mapHome").hidden=local;$("#mapWaypoint").hidden=local;$("#mapLegend").hidden=local;const picker=$("#dungeonLevelPicker"),select=$("#dungeonLevelSelect"),progress=game.map.deepProgress;picker.hidden=!local||!game.map.multiLevel;if(!picker.hidden){const discovered=new Set(progress?.discoveredLevelIds||[game.map.levelId]);select.replaceChildren(...(game.map.levels||[]).filter(q=>discovered.has(q.id)).map(q=>{const option=document.createElement("option");option.value=q.id;option.textContent=`${q.index+1}. ${q.name}${q.id===game.map.levelId?" · current":""}`;return option}));if(![...select.options].some(q=>q.value===select.value))select.value=game.map.levelId;}$("#mapInstructions").textContent=local?"A bounded floor plan. Gold marks your current position. Use Discovered level to inspect known floors; hidden routes and levels remain absent until found.":"Tap an explored section to select it, then press Set waypoint. The center compass points toward that manual destination before quest guidance.";
+  $("#mapModeToggle").hidden=!dungeon;$("#mapModeToggle").textContent=local?"Corridor Atlas":"Dungeon Map";$("#mapTitle").textContent=local?`${game.map.name||"Dungeon"} Map`:"Corridor Atlas";atlas.querySelector(".maptools").hidden=local;$("#mapHome").hidden=local;$("#mapWaypoint").hidden=local;$("#mapLegend").hidden=local;const picker=$("#dungeonLevelPicker"),select=$("#dungeonLevelSelect"),progress=game.map.deepProgress;picker.hidden=!local||!game.map.multiLevel;if(!picker.hidden){const discovered=new Set(progress?.discoveredLevelIds||[game.map.levelId]);select.replaceChildren(...(game.map.levels||[]).filter(q=>discovered.has(q.id)).map(q=>{const option=document.createElement("option");option.value=q.id;option.textContent=`${q.index+1}. ${q.name}${q.id===game.map.levelId?" · current":""}`;return option}));if(![...select.options].some(q=>q.value===select.value))select.value=game.map.levelId;}$("#mapInstructions").textContent=local?"A bounded floor plan. Gold marks your current position. Use Discovered level to inspect known floors; hidden routes and levels remain absent until found.":"Tap an explored section to set the persistent cyan manual arrow. Violet guidance continues independently for quests and hunts.";
   if(local){const cols=game.map.width||24,rows=game.map.height||Math.floor(game.map.tiles.length/cols),progress=game.map.deepProgress,required=progress?.requiredObjectiveIds?.length||game.map.objectives?.filter(q=>q.required).length||game.map.wings?.length||0,done=game.map.recipe==="deep-v1"?(progress?.defeatedWingIds?.length||0):(progress?.completedObjectiveIds?.length||0),deep=(game.map.deepDungeon||game.map.recipe==="deep-v1")?` · ${game.map.archetype||"threefold"}${game.map.multiLevel?` · level ${game.map.levelName}`:""} · objectives ${done}/${required}${progress?.gateOpened?" · final gate open":""}${progress?.activeAnchor?` · recovery ${progress.activeAnchor.name}`:""}`:"";$("#mapDetail").textContent=`${game.map.identity||"Dungeon"} · bounded ${cols} × ${rows} floor${deep} · position ${Math.floor(game.player.x)}, ${Math.floor(game.player.y)}`;}
   updateMapWaypointButton();
   updateMapTravelButton();
 }
-function updateMapWaypointButton(){const button=$("#mapWaypoint"),selected=mapView.selected,same=selected&&save.waypoint?.rx===selected.rx&&save.waypoint?.ry===selected.ry;button.disabled=!selected||!save.explored[`${selected.rx},${selected.ry}`];button.textContent=same?"Clear selected waypoint":"Set waypoint to selected section"}
+function updateMapWaypointButton(){const button=$("#mapWaypoint"),selected=mapView.selected,same=selected&&save.manualWaypoint?.rx===selected.rx&&save.manualWaypoint?.ry===selected.ry;button.disabled=!selected||!save.explored[`${selected.rx},${selected.ry}`];button.textContent=same?"Clear manual waypoint":"Set manual waypoint"}
 function showMapDetail(rx, ry) {
   const key = `${rx},${ry}`;
   if (!save.explored[key]) {
@@ -1052,8 +1071,9 @@ function showMapDetail(rx, ry) {
   if(save.checkpoints?.[key])$("#mapWayglassSelect").value=key;
   const s = sectionSummary(save.seed, rx, ry, save.worldGeneration, save);
   const sites = s.sites.length ? ` · sites: ${s.sites.map((q) => q.name).join(", ")}` : " · no discovered sites";
+  const death=save.lastDeath?.rx===rx&&save.lastDeath?.ry===ry?` · Last death${save.lastDeath.areaKind==="dungeon"?` inside ${save.lastDeath.label.replace(/^Inside /,"")}`:""}${save.lastDeath.valid===false?" (inaccessible)":""}`:"";
   $("#mapDetail").textContent =
-    `Section ${rx}, ${ry} · ${s.terrain} terrain${sites}${s.checkpoint ? " · checkpoint" : ""}${s.current ? " · current" : ""}${s.waypoint ? " · waypoint" : ""}`;
+    `Section ${rx}, ${ry} · ${s.terrain} terrain${sites}${s.checkpoint ? " · checkpoint" : ""}${s.current ? " · current" : ""}${s.waypoint ? " · waypoint" : ""}${death}`;
   updateMapWaypointButton();
   updateMapTravelButton();
   return true;
@@ -1362,6 +1382,8 @@ function openJournal(mode = "chronicle") {
       ["chevron",["Open chevron — Crossing","Amber marks lead toward a dungeon entrance or buried route. The vertex where the two lines meet points toward the crossing."]],
       ["triangle",["Hollow triangle — Major danger","Red marks lead toward a world boss or exceptional threat. The corner filled with a red wedge faces the route."]],
       ["spiral",["Open spiral — Unusual site","Violet marks lead toward a shrine, ruin, or strange discovery. The open end of the spiral faces the route."]],
+      ["guidance-arrow",["Violet compass arrow — Guidance","Tracks the active quest, Viewport hunt, or Corridor objective. It changes as that objective advances and never replaces a manual waypoint."]],
+      ["manual-arrow",["Cyan compass arrow — Manual waypoint","Tracks the explored Atlas section you selected. It remains until you clear or replace it, even while guidance is active."]],
       ...ATLAS_SYMBOLS.map(symbol=>[`atlas-${symbol.kind}`,[symbol.label,symbol.description]]),
       ["atlas",["Atlas controls","Drag with one finger to pan. Pinch with two fingers or use +/− to zoom. Tap an explored section to select it, then use Set waypoint to guide the constellation compass."]],
       ["travel",["Travel","Activate Wayglass beacons to travel to them from the Atlas. Dungeon travel remains sealed without a Crossing Sigil."]],
@@ -1370,6 +1392,9 @@ function openJournal(mode = "chronicle") {
     ]:mode==="creatures"?[
       ...Object.entries(CODEX.creatures).filter(([id])=>save.codex?.creatures?.[id]),
       ...Object.entries(save.codex?.foundry||{}).map(([id,q])=>[id,[q.name||"Unclassified creature",`${q.role||"unknown"} · observed modules: ${(q.modules||[]).join(", ")}${q.defeated?" · defeated":" · unresolved"}`]])
+    ]:mode==="places"?[
+      ...Object.entries(CODEX.places).filter(([id])=>save.codex?.places?.[id]),
+      ...Object.entries(save.codex?.peoplePlaces||{}).map(([id,q])=>[`${q.type||"place"}:${id}`,[q.name||id,`${q.role?q.role+" · ":""}${q.summary||"A discovered Corridor record."} ${(q.facts||[]).join(" ")}${q.crossRefs?.length?` Related: ${q.crossRefs.join(", ")}.`:""}${q.outcome?` Status: ${q.outcome}.`:""}`]])
     ]:Object.entries(CODEX[mode]).filter(([id])=>save.codex?.[mode]?.[id]);
     const heading=document.createElement("h3"),scope=document.createElement("p");heading.textContent=mode==="rules"?"Map symbols and controls":mode==="features"?"Encountered feature records":mode==="glossary"?"Combat and equipment terms":`${mode[0].toUpperCase()+mode.slice(1)} encountered`;scope.textContent=mode==="rules"?"A universal reference for reading the Atlas, floor marks, and controls. Encounter-specific history belongs under Features.":mode==="features"?"Objects recorded through exploration. Open a feature for its field function and its place in the Corridor.":"";out.append(heading);if(scope.textContent)out.append(scope);
     if(!entries.length){const empty=document.createElement("p");empty.textContent="No entries recorded yet. Encounter them in the world to unlock this section.";out.append(empty);}
@@ -1442,6 +1467,7 @@ function openJournal(mode = "chronicle") {
       article.append(title, text);
       out.append(article);
     }
+  const witnessed=replayableScenes(save);if(witnessed.length){const heading=document.createElement("h3");heading.textContent="Witnessed scenes";out.append(heading);for(const scene of witnessed){const button=uiButton(`Replay · ${scene.title}`,()=>{journal.close();startScene(scene.id,{replay:true})});button.className="journal-replay";out.append(button)}}
   if (!journal.open) journal.showModal();
 }
 let displayedMessage = "";
@@ -1499,16 +1525,24 @@ function updateHud(now) {
   }
 }
 let nextSlowUiRefresh = 0;
+const sceneRuntime={active:null,plan:null,shot:0,started:0,revealSkip:false,image:null,wasPaused:false};
+function scenePanelPosition(panel){return{0:["0%","0%"],1:["100%","0%"],2:["0%","100%"],3:["100%","100%"]}[panel]||["0%","0%"]}
+function startScene(id,{replay=false}={}){const plan=scenePlaybackPlan(save,id,{reduceMotion:settings.reduceMotion||settings.safeMode,quality:currentQuality(),replay});if(!plan)return false;sceneRuntime.active=id;sceneRuntime.plan=plan;sceneRuntime.shot=plan.startShot||0;sceneRuntime.started=performance.now();sceneRuntime.revealSkip=false;sceneRuntime.wasPaused=game.paused;sceneRuntime.image=new Image();sceneRuntime.image.src="./assets/story-scenes-v1.png";game.setPaused(true,performance.now());showSceneShot();return true}
+function showSceneShot(){const root=$("#storyScene"),shot=sceneRuntime.plan.shots[sceneRuntime.shot],[x,y]=scenePanelPosition(shot.panel),actors=$("#sceneActors");root.hidden=false;$("#sceneArt").style.backgroundImage="url('./assets/story-scenes-v1.png')";root.dataset.effect=shot.effect;root.dataset.camera=shot.camera;root.style.setProperty("--scene-duration",`${shot.duration}ms`);$("#sceneArt").style.setProperty("--scene-x",x);$("#sceneArt").style.setProperty("--scene-y",y);$("#sceneArt").setAttribute("aria-label",`${sceneRuntime.plan.title}: ${shot.caption}`);actors.replaceChildren();for(const cue of shot.choreography||[]){const actor=document.createElement("div");actor.className="scene-actor";actor.dataset.actor=cue.actor;actor.dataset.cue=cue.cue;actor.style.setProperty("--actor-x",`${cue.to?.[0]??50}%`);actor.style.setProperty("--actor-y",`${cue.to?.[1]??55}%`);actor.textContent=cue.actor==="wayfarer"?"◆":"◇";actors.append(actor)}$("#sceneTitle").textContent=sceneRuntime.plan.title;$("#sceneCaption").textContent=shot.caption;$("#sceneSkip").hidden=!sceneRuntime.revealSkip}
+function finishScene(){const replay=sceneRuntime.plan?.replay,id=sceneRuntime.active;if(!replay)commitScene(save,id);$("#storyScene").hidden=true;$("#sceneArt").style.backgroundImage="none";$("#sceneActors").replaceChildren();sceneRuntime.image=null;sceneRuntime.active=null;sceneRuntime.plan=null;if(!sceneRuntime.wasPaused)game.setPaused(false,performance.now());persist()}
+function tickScene(now){if(!sceneRuntime.active){const pending=save.scenes?.pending;if(pending)startScene(pending.sceneId);return false}const shot=sceneRuntime.plan.shots[sceneRuntime.shot];if(now-sceneRuntime.started>=shot.duration){sceneRuntime.shot++;if(sceneRuntime.shot>=sceneRuntime.plan.shots.length)finishScene();else{sceneRuntime.started=now;if(!sceneRuntime.plan.replay){const pending=save.scenes?.pending;if(pending){pending.shot=sceneRuntime.shot;pending.elapsed=0}persist()}showSceneShot()}}return true}
+$("#storyScene").onclick=()=>{if(!sceneRuntime.active)return;if(!sceneRuntime.revealSkip){sceneRuntime.revealSkip=true;showSceneShot()}else finishScene()};$("#sceneSkip").onclick=e=>{e.stopPropagation();finishScene()};
 function frame(now) {
   try {
   const dt = Math.min(0.05, (now - last) / 1000);
   recordPerf("frame", now - last);
   last = now;
-  input.update(dt);
+  measured("input",()=>input.update(dt));
   if (input.consume("pause")) game.paused ? resume() : pause();
   if (input.consume("map")) openMap();
   if (input.consume("journal")) openJournal();
   if (input.consume("menu")) openPack();
+  if(tickScene(now))return;
   measured("update", () => game.update(dt, input, now));
   if (game.paused) return;
   measured("render", () => {
@@ -1523,7 +1557,7 @@ function frame(now) {
   });
   if (now >= nextSlowUiRefresh) {
     nextSlowUiRefresh = now + 100;
-    updateWorldNotices();
+    measured("notices",updateWorldNotices);
     $("#place").textContent =
       game.area === "dungeon"
         ? game.map.name
@@ -1540,7 +1574,7 @@ function frame(now) {
     if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);
     $("#buff").textContent = buffs.join(" · ");
   }
-  if ((clock += dt) > 3) {
+  if ((clock += dt) > 8) {
     clock = 0;
     persist();
   }
@@ -1584,11 +1618,12 @@ $("#mapMinus").onclick = () => {
 $("#mapTravel").onclick = () => {
   if (performance.now() - atlasOpenedAt < 500) return;
   const key = selectedWayglassKey();
-  game.area === "dungeon"
+  const travelled=game.area === "dungeon"
     ? game.useCrossingSigil()
     : game.travelToCheckpoint(save.checkpoints?.[key] ? key : null);
   persist();
-  resume();
+  if(travelled)resume();
+  else{$("#mapDetail").textContent=game.message;drawMap()}
 };
 $("#mapHome").onclick = () => {
   if (performance.now() - atlasOpenedAt < 500) return;
@@ -1596,7 +1631,7 @@ $("#mapHome").onclick = () => {
   persist();
   resume();
 };
-$("#mapWaypoint").onclick=()=>{const selected=mapView.selected;if(!selected||!save.explored[`${selected.rx},${selected.ry}`])return;save.waypoint=save.waypoint?.rx===selected.rx&&save.waypoint?.ry===selected.ry?null:{rx:selected.rx,ry:selected.ry};updateMapWaypointButton();showMapDetail(selected.rx,selected.ry);drawMap();persist()};
+$("#mapWaypoint").onclick=()=>{const selected=mapView.selected;if(!selected||!save.explored[`${selected.rx},${selected.ry}`])return;const same=save.manualWaypoint?.rx===selected.rx&&save.manualWaypoint?.ry===selected.ry;save.manualWaypoint=same?null:{kind:"section",area:"overworld",rx:selected.rx,ry:selected.ry,label:`Section ${selected.rx}, ${selected.ry}`};navigationCache.key=null;updateMapWaypointButton();showMapDetail(selected.rx,selected.ry);drawMap();persist()};
 for (const [id, dx, dy] of [
   ["mapN", 0, -1],
   ["mapS", 0, 1],
@@ -1719,13 +1754,12 @@ addEventListener("freeze", () => {
   pause(false);
 });
 if (game.paused) pausePanel.showModal();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");
 requestAnimationFrame(frame);
 function viewportReward(q){const bits=[];if(q.reward?.marks)bits.push(`${q.reward.marks} marks`);if(q.reward?.weaponSphere)bits.push(`${q.reward.weaponSphere} weapon sphere`);if(q.reward?.armorSphere)bits.push(`${q.reward.armorSphere} armor sphere`);if(q.reward?.draughts)bits.push(`${q.reward.draughts} draughts`);return bits.join(' · ')||'field knowledge'}
 function openViewport(){pauseForOverlay();if(pausePanel.open)pausePanel.close();const viewport=ensureViewportState(save);viewport.read=true;body.replaceChildren();const heading=document.createElement('h2'),intro=document.createElement('p');heading.textContent='Viewport';intro.textContent='Viewport gathers what the Corridor permits Ember to see. Some reports are clear. Others become legible only through travel.';body.append(heading,intro);
  const groups=[['active','Active hunt'],['available','Hunts & emerging threats'],['recent','Recent arrivals'],['archive','Completed records']];
  for(const[group,label]of groups){const title=document.createElement('h3');title.textContent=label;body.append(title);let entries=[];if(group==='active')entries=Object.values(viewport.contracts).filter(q=>['accepted','tracking','target-located'].includes(q.status));else if(group==='available')entries=Object.values(viewport.contracts).filter(q=>['available','deferred'].includes(q.status));else if(group==='recent')entries=viewport.recent;else entries=Object.values(viewport.contracts).filter(q=>['completed','archived'].includes(q.status));if(!entries.length){const empty=document.createElement('p');empty.className='viewport-empty';empty.textContent=group==='recent'?'Nothing meaningful has entered the record yet.':'No records in this section.';body.append(empty);continue}
-  for(const q of entries){const card=document.createElement('article'),name=document.createElement('h3'),text=document.createElement('p'),meta=document.createElement('small'),actions=document.createElement('div');card.className='item viewport-card';name.textContent=q.title||q.id;text.textContent=q.text||q.summary||'The record remains incomplete.';meta.textContent=q.kind==='hunt'?q.kind:`${q.kind||'record'} · ${q.status||'recorded'}${q.target?` · ${q.target.rx},${q.target.ry}`:''}${q.reward?` · ${viewportReward(q)}`:''}`;actions.className='viewport-actions';if(['available','deferred'].includes(q.status)){actions.append(uiButton('Accept hunt',()=>{const r=acceptViewportHunt(save,q.id);if(q.kind==='tracking'){save.narrative.facts['leads.active']=true}game.message=r.message;persist();openViewport()}));actions.append(uiButton('Archive',()=>{archiveViewportHunt(save,q.id);persist();openViewport()}))}else if(['accepted','tracking','target-located'].includes(q.status)){actions.append(uiButton('Track on Atlas',()=>{save.waypoint={...q.target,name:q.title,source:'viewport',huntId:q.id};persist();openViewport()}),uiButton('Defer',()=>{deferViewportHunt(save,q.id);persist();openViewport()}))}else if(q.kind==='trial'&&q.status==='completed'&&!q.decision){for(const[d,l]of[['corridor','Let it enter the Corridor'],['rare','Keep as a rare hunt'],['dungeon','Reserve for dungeons'],['rework','Rework and return later'],['archive','Archive']])actions.append(uiButton(l,()=>{foundryTrialDecision(save,q.id,d);persist();openViewport()}))}card.append(name,text,meta,actions);body.append(card)}
+  for(const q of entries){const card=document.createElement('article'),name=document.createElement('h3'),text=document.createElement('p'),meta=document.createElement('small'),actions=document.createElement('div');card.className='item viewport-card';name.textContent=q.title||q.id;text.textContent=q.text||q.summary||'The record remains incomplete.';meta.textContent=`${q.kind||'record'} · ${q.status||'recorded'}${q.target?` · ${q.target.rx},${q.target.ry}`:''}${q.reward?` · ${viewportReward(q)}`:''}`;actions.className='viewport-actions';if(['available','deferred'].includes(q.status)){actions.append(uiButton('Accept hunt',()=>{const r=acceptViewportHunt(save,q.id);if(q.kind==='tracking'){save.narrative.facts['leads.active']=true}navigationCache.key=null;game.message=r.message;persist();openViewport()}));actions.append(uiButton('Archive',()=>{archiveViewportHunt(save,q.id);navigationCache.key=null;persist();openViewport()}))}else if(['accepted','tracking','target-located'].includes(q.status)){actions.append(uiButton('Guidance active',()=>{save.viewport.activeHuntId=q.id;navigationCache.key=null;game.message=`${q.title} is now shown by the violet guidance arrow.`;persist();openViewport()}),uiButton('Defer',()=>{deferViewportHunt(save,q.id);navigationCache.key=null;persist();openViewport()}))}else if(q.kind==='trial'&&q.status==='completed'&&!q.decision){for(const[d,l]of[['corridor','Let it enter the Corridor'],['rare','Keep as a rare hunt'],['dungeon','Reserve for dungeons'],['rework','Rework and return later'],['archive','Archive']])actions.append(uiButton(l,()=>{foundryTrialDecision(save,q.id,d);persist();openViewport()}))}card.append(name,text,meta,actions);body.append(card)}
  }
  body.append(uiButton('Return to world',resume));if(!panel.open)panel.showModal();}
 function openInteraction(id, confirmAttack = false) {
