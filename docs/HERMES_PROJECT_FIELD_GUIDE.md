@@ -2,6 +2,8 @@
 
 ## Developer Proving Ground
 
+Release 90 provides five implemented production laboratories: Shelter/Building, Ordinary Dungeon, Legacy/Deep Dungeon, Threefold Dungeon, and Monster/Elite Combat. Scenario state is encoded through `lab`, `scenario`, `seed`, and `variant` URL parameters. Seven additional laboratories remain explicitly planned and unavailable.
+
 Use `?dev=proving-ground` for targeted production-system validation without contaminating a journey. The initial Shelter Gallery exposes timber, masonry, ruined gatehouse, cyber relay, alien geometric, and biomechanical fixtures selected from stable seed/section coordinates. It uses the production generator, Game simulation, input, collision, renderer, and shelter cutaway logic, but never imports persistence or normal startup. Reset always creates a fresh in-memory save. This is a developer route, not a player menu option.
 
 Current scope is intentionally narrow: Shelter Gallery is implemented. Dedicated dungeon, combat, waypoint, encounter, performance, and save laboratories are still proposed future slices and must not be reported as implemented.

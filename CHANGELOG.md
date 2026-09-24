@@ -8,6 +8,8 @@ The project follows a compact Keep a Changelog-style structure. Entries describe
 
 ### Added
 
+- Expanded the developer-only Proving Ground into a URL-addressable laboratory launcher with playable production Shelter/Building, Ordinary Dungeon, Deep Dungeon, Threefold Dungeon, and Monster/Elite Combat labs. Seven future labs are labeled unavailable rather than represented as working.
+
 - Added the developer-only Shelter Gallery at `?dev=proving-ground`. It runs six deterministic production shelter families through the real generator, renderer, input, collision, interaction, and simulation systems in fresh memory-only state.
 
 ### Changed

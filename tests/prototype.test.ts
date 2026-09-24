@@ -73,6 +73,7 @@ import {
   completeDeepStory,
 } from "../src/game.ts";
 import { SHELTER_FIXTURES, createShelterFixture, shelterFixtureReport } from "../src/proving-ground-fixtures.ts";
+import { LABORATORIES, scenariosForLab, createLabFixture, labReport, teleportTargets } from "../src/proving-ground-labs.ts";
 import { rng, pick, hashSeed } from "../src/random.ts";
 import { DEEP_ARCHETYPE_IDS, DEEP_STORY_PACKAGES, deepV2Id, deepV2Levels, generateDeepV2Dungeon } from "../src/deep-dungeons.ts";
 import { SCENE_DEFINITIONS,freshSceneState,ensureSceneState,sceneVariant,queueScene,commitScene,scenePlaybackPlan,recoverInterruptedScene,apertureRitualState,requestApertureRitual } from "../src/scenes.ts";
@@ -2394,12 +2395,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 89 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 90 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "89"/);assert.match(html,/styles\.css\?v=89/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v89`/);assert.match(sw,/styles\.css\?v=89/);assert.match(sw,/proving-ground\.js\?v=89/);assert.match(sw,/renderer\.js\?v=89/);
-  assert.match(build,/release='89'/);assert.match(build,/proving-ground-fixtures/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "90"/);assert.match(html,/styles\.css\?v=90/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v90`/);assert.match(sw,/styles\.css\?v=90/);assert.match(sw,/proving-ground-labs\.js\?v=90/);assert.match(sw,/renderer\.js\?v=90/);
+  assert.match(build,/release='90'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("Shelter Gallery uses six deterministic production shelter families",()=>{
@@ -2423,6 +2424,30 @@ test("Proving Ground resets scratch state and cannot import persistence",()=>{
   assert.doesNotMatch(source,/persistence|saveGame|loadSave|main\.ts/);
   assert.match(source,/visibilitychange/);
   assert.match(source,/progress is never saved/);
+});
+
+test("Proving Ground v2 exposes five real laboratories and labels the remainder planned",()=>{
+  assert.equal(LABORATORIES.length,12);
+  assert.deepEqual(LABORATORIES.filter(q=>q.status==="implemented").map(q=>q.id),["shelters","ordinary-dungeon","deep-dungeon","threefold","combat"]);
+  for(const id of ["shelters","ordinary-dungeon","deep-dungeon","threefold","combat"])assert.ok(scenariosForLab(id).length>0);
+});
+
+test("Proving Ground dungeon and combat recipes instantiate production maps deterministically",()=>{
+  const cases=[["ordinary-dungeon","kiln"],["deep-dungeon","fortress"],["threefold","threefold"],["combat","vesperwing"]];
+  for(const [lab,scenario] of cases){
+    const a=createLabFixture({lab,scenario,seed:"lab-proof",variant:2,now:0}),b=createLabFixture({lab,scenario,seed:"lab-proof",variant:2,now:0});
+    const ar=labReport(a),br=labReport(b);
+    assert.equal(ar.lab,lab);assert.equal(ar.production,true);assert.equal(ar.identity,br.identity);assert.equal(ar.recipe,br.recipe);
+    assert.deepEqual(a.game.map.tiles,b.game.map.tiles);assert.ok(a.game.map.tiles.some(q=>!q.blocked));assert.ok(a.game.enemies.length>0);
+    if(lab!=="combat")assert.ok(teleportTargets(a).length>1);
+  }
+});
+
+test("Proving Ground v2 keeps scratch saves independent and URL-addressable",()=>{
+  const a=createLabFixture({lab:"ordinary-dungeon",scenario:"cistern",seed:"isolation",variant:4,now:0}),b=createLabFixture({lab:"ordinary-dungeon",scenario:"cistern",seed:"isolation",variant:4,now:0});
+  a.save.currency=777;assert.notEqual(b.save.currency,777);assert.notEqual(a.save,b.save);
+  const source=readFileSync(new URL("../src/proving-ground.ts",import.meta.url),"utf8");
+  assert.doesNotMatch(source,/persistence|saveGame|loadSave|main\.ts/);assert.match(source,/history\.replaceState/);assert.match(source,/progress is never saved/);
 });
 
 test("boot imports the game independently of best-effort service-worker updates",()=>{
@@ -2450,7 +2475,7 @@ test("development server serves versioned assets and rejects traversal",async(t)
     child.once("error",reject);
     child.stdout.on("data",chunk=>{const match=chunk.toString().match(/http:\/\/127\.0\.0\.1:(\d+)/);if(match){clearTimeout(timer);resolve(`http://127.0.0.1:${match[1]}`)}});
   });
-  for(const path of ["/?v=89","/?dev=proving-ground","/styles.css?v=89","/sw.js?v=89","/src/main.js?v=89","/src/proving-ground.ts"]){const response=await fetch(`${address}${path}`);assert.equal(response.status,200,path)}
+  for(const path of ["/?v=90","/?dev=proving-ground","/styles.css?v=90","/sw.js?v=90","/src/main.js?v=90","/src/proving-ground.ts","/src/proving-ground-labs.ts"]){const response=await fetch(`${address}${path}`);assert.equal(response.status,200,path)}
   for(const path of ["/%2e%2e%2fpackage.json","/%2e%2e%5cpackage.json"]){const response=await fetch(`${address}${path}`);assert.equal(response.status,404,path)}
 });
 

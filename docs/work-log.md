@@ -1,5 +1,12 @@
 # Work Log
 
+## 2026-09-24: Proving Ground v2 production laboratories
+
+- Added a scratch-state laboratory registry and URL-addressable scenario recipes.
+- Implemented playable Shelter/Building, Ordinary Dungeon, Deep Dungeon, Threefold Dungeon, and Monster/Elite Combat labs using production generators and Game simulation.
+- Added deterministic seed/variant controls, reset, pause, diagnostics, report copying, and developer teleport targets.
+- Kept Wayglass, environment, hunt, inventory, performance, recovery, and scene labs visibly planned and unavailable.
+
 ## 2026-09-24: Feature audit and Shelter Gallery vertical slice
 
 - **Scope:** Audited the field-guide packages against runtime call sites and tests, then added a separately booted developer Proving Ground with six deterministic shelter fixtures.

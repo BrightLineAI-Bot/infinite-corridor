@@ -2,6 +2,8 @@
 
 ## Developer Proving Ground
 
+Release 90 expands automated coverage to the laboratory registry, production-map construction for ordinary/deep/Threefold/combat scenarios, deterministic recipes, scratch-state isolation, URL-addressable state, and offline bundle inclusion.
+
 The supported vertical slice is `?dev=proving-ground`. Automated checks verify that its six Shelter Gallery fixtures resolve to the intended production families, remain enterable, have validated approaches/interiors, use independent scratch saves, and do not import persistence. Browser checks must cover both normal boot and the developer route. Device-level touch, roof cutaway, and sustained frame pacing remain manual verification.
 
 Verification is part of a work item, not a postscript. A passing deterministic test suite is evidence about the assertions it covers. It is not proof of all runtime behavior, device behavior, or product quality.
