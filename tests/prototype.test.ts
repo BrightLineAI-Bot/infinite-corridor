@@ -1,6 +1,7 @@
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { spawn } from "node:child_process";
 import assert from "node:assert/strict";
 import { renderScaleForViewport, visibleInCamera, presentationBudget } from "../src/renderer.ts";
 import {
@@ -71,6 +72,7 @@ import {
   applyDeepDungeonProgress,
   completeDeepStory,
 } from "../src/game.ts";
+import { SHELTER_FIXTURES, createShelterFixture, shelterFixtureReport } from "../src/proving-ground-fixtures.ts";
 import { rng, pick, hashSeed } from "../src/random.ts";
 import { DEEP_ARCHETYPE_IDS, DEEP_STORY_PACKAGES, deepV2Id, deepV2Levels, generateDeepV2Dungeon } from "../src/deep-dungeons.ts";
 import { SCENE_DEFINITIONS,freshSceneState,ensureSceneState,sceneVariant,queueScene,commitScene,scenePlaybackPlan,recoverInterruptedScene,apertureRitualState,requestApertureRitual } from "../src/scenes.ts";
@@ -2392,12 +2394,64 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 87 loads one coherent version across the entire module graph",()=>{
+test("release 89 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "87"/);assert.match(html,/styles\.css\?v=87/);assert.match(html,/sw\.js\?v=\$\{release\}/);assert.match(html,/main\.js\?v=87/);assert.match(html,/controllerchange/);
-  assert.match(sw,/infinite-corridor-v87/);assert.match(sw,/styles\.css\?v=87/);assert.match(sw,/main\.js\?v=87/);assert.match(sw,/combat\.js\?v=87/);assert.match(sw,/renderer\.js\?v=87/);
-  assert.match(build,/release='87'/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "89"/);assert.match(html,/styles\.css\?v=89/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v89`/);assert.match(sw,/styles\.css\?v=89/);assert.match(sw,/proving-ground\.js\?v=89/);assert.match(sw,/renderer\.js\?v=89/);
+  assert.match(build,/release='89'/);assert.match(build,/proving-ground-fixtures/);assert.match(build,/\.js\?v=\$\{release\}/);
+});
+
+test("Shelter Gallery uses six deterministic production shelter families",()=>{
+  assert.equal(SHELTER_FIXTURES.length,6);
+  for(const spec of SHELTER_FIXTURES){
+    const fixture=createShelterFixture(spec.id,0),report=shelterFixtureReport(fixture);
+    assert.equal(report.family,spec.family);
+    assert.equal(report.enterable,true);
+    assert.ok(report.entrances>0);
+    assert.ok(report.interiorTiles>0);
+    assert.deepEqual(report.section,[spec.rx,spec.ry]);
+  }
+});
+
+test("Proving Ground resets scratch state and cannot import persistence",()=>{
+  const first=createShelterFixture("timber",0),second=createShelterFixture("timber",0);
+  first.save.currency=999;
+  assert.notEqual(first.save,second.save);
+  assert.notEqual(second.save.currency,999);
+  const source=readFileSync(new URL("../src/proving-ground.ts",import.meta.url),"utf8");
+  assert.doesNotMatch(source,/persistence|saveGame|loadSave|main\.ts/);
+  assert.match(source,/visibilitychange/);
+  assert.match(source,/progress is never saved/);
+});
+
+test("boot imports the game independently of best-effort service-worker updates",()=>{
+  const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+  const importAt=html.indexOf('import(`${entry}?v=${release}`)');
+  const updateAt=html.indexOf("void updateServiceWorker()");
+  assert.ok(importAt>0&&updateAt>importAt,"the game import starts before the optional cache update");
+  assert.match(html,/registration\.update\(\)\.catch/);
+  assert.match(html,/continuing without offline caching/);
+  assert.doesNotMatch(html,/location\.reload\(\)/);
+  assert.doesNotMatch(html,/await registration\.update\(\)/);
+});
+
+test("service-worker activation deletes only obsolete Infinite Corridor caches",()=>{
+  const sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
+  assert.match(sw,/k\.startsWith\(CACHE_PREFIX\) && k !== CACHE/);
+  assert.doesNotMatch(sw,/ks\.filter\(\(k\) => k !== CACHE\)/);
+});
+
+test("development server serves versioned assets and rejects traversal",async(t)=>{
+  const child=spawn(process.execPath,["scripts/dev.mjs"],{cwd:new URL("..",import.meta.url),env:{...process.env,HOST:"127.0.0.1",PORT:"0"},stdio:["ignore","pipe","pipe"]});
+  t.after(()=>child.kill());
+  const address=await new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>reject(new Error("development server did not start")),5000);
+    child.once("error",reject);
+    child.stdout.on("data",chunk=>{const match=chunk.toString().match(/http:\/\/127\.0\.0\.1:(\d+)/);if(match){clearTimeout(timer);resolve(`http://127.0.0.1:${match[1]}`)}});
+  });
+  for(const path of ["/?v=89","/?dev=proving-ground","/styles.css?v=89","/sw.js?v=89","/src/main.js?v=89","/src/proving-ground.ts"]){const response=await fetch(`${address}${path}`);assert.equal(response.status,200,path)}
+  for(const path of ["/%2e%2e%2fpackage.json","/%2e%2e%5cpackage.json"]){const response=await fetch(`${address}${path}`);assert.equal(response.status,404,path)}
 });
 
 test("Atlas opening tap cannot immediately activate travel controls",()=>{

@@ -1,5 +1,11 @@
 # Infinite Corridor Field Guide
 
+## Developer Proving Ground
+
+Use `?dev=proving-ground` for targeted production-system validation without contaminating a journey. The initial Shelter Gallery exposes timber, masonry, ruined gatehouse, cyber relay, alien geometric, and biomechanical fixtures selected from stable seed/section coordinates. It uses the production generator, Game simulation, input, collision, renderer, and shelter cutaway logic, but never imports persistence or normal startup. Reset always creates a fresh in-memory save. This is a developer route, not a player menu option.
+
+Current scope is intentionally narrow: Shelter Gallery is implemented. Dedicated dungeon, combat, waypoint, encounter, performance, and save laboratories are still proposed future slices and must not be reported as implemented.
+
 Developer reference for inspecting, modifying, testing, and extending the Infinite Corridor
 project. This is the working model that future changes should be checked against.
 
@@ -91,7 +97,7 @@ Infinite Corridor is a deterministic, seed-driven, save-persistent solo explorat
 
 ### 3.2 Runtime order
 
-1. `index.html:154-179` registers the service worker at `./sw.js?v=87`, waits up to 4,000 ms for `controllerchange`, forces at most one reload per release via `sessionStorage["corridor-upgrade-87"]`, removes the legacy `corridor-upgrade-51` key, then dynamically imports `./src/main.js?v=87`. A boot error logs and reloads after 1,200 ms.
+1. Release 88 starts the versioned `main.js` import immediately and runs service-worker registration and its update check as best-effort background work. Registration or update failure warns but cannot block gameplay. A main-module failure displays a visible error and does not enter a reload loop.
 2. `main.ts` loads or creates a journey through `persistence.loadSave()`, installs systems, and starts the frame loop (`main.ts:1535`).
 3. Each frame: `input.update(dt)` then `game.update(dt, input, now)` (`game.ts:2516`), then render, then HUD and compass updates.
 4. `game.update` returns immediately when `this.paused` is true (`game.ts:2517`). This is the mechanism behind the invariant that pause and backgrounding do not advance combat.
@@ -537,7 +543,7 @@ Unknown or untraced and deliberately not invented here: the internal schema vers
 | Command | Status |
 | --- | --- |
 | `npm.cmd test` | Last recorded run: 274 tests, 274 passed, 0 failed, 0 skipped, 118.7 s |
-| `npm.cmd run build` | Last recorded: `Built static offline PWA release 87 in dist/` |
+| `npm.cmd run build` | Release 88 build command; record the exact result of each release run in the work log. |
 | Lint, format, typecheck | None configured. A typecheck with unused-import detection would have flagged the dead `playerAttack` import |
 
 Named checks relevant to this guide: `tests/prototype.test.ts:2464` (elite scale ceiling) and `:2981` (dungeon combat profiles wake on all damage paths and strengthen final revenants, asserting the revenant reaches at least 532 HP and 26 damage).
@@ -546,11 +552,19 @@ Test baseline recorded on 2026-09-20. Re-run both commands afresh before relying
 
 ## 22. Build and release
 
-- Build script `scripts/build.mjs` stamps release 87.
+- Build script `scripts/build.mjs` stamps release 88.
 - `index.html` loads `styles.css?v=87`, registers `sw.js?v=87`, and imports `src/main.js?v=87`. These must stay in step with the build release.
 - `dist/` is untracked and ignored.
 - Offline model: service worker with cache-first assets, a manifest, an installed-PWA path, and the boot sequence in section 3.2. Offline behaviour after install is unverified on device.
 - A separate deployment worktree exists at `C:\AI-PROJECTS\infinite-corridor-pages-release40` on branch `deploy/release-40`. Deployment is outside this guide's scope and requires explicit authorization.
+
+### 22.1 Local dev server (`scripts/dev.mjs`)
+
+- Serves the repository root on port 5173, bound to `0.0.0.0`, so it is reachable from the local network for as long as it runs. There is no bundler and no watch step: it reads files from disk on each request, and rewrites `.js` specifiers to `.ts` for the browser's benefit (a request for `src/main.js` resolves to and is served from `src/main.ts`). It serves any in-repo file by path, so it is a convenience server, not a hardened host, and it should not be exposed beyond a trusted network. Narrowing the bind to `127.0.0.1` would remove LAN access, which is how the game is played on a phone, so the bind is left as-is and disclosed rather than silently changed.
+- **It must strip the URL query string before resolving a path.** `index.html` requests release-88 versioned assets (`styles.css?v=88`, `sw.js?v=88`, `src/main.js?v=88`), and the document URL itself may also carry a query. A resolver that treats the query as part of the filename resolves to a nonexistent file and answers 404 for every versioned request. Startup now imports the game independently of the best-effort service-worker path, so an update failure cannot recreate the former black-screen reload loop.
+- **Containment must be decided on path components, not on a string prefix.** The root check uses `relative(root, full)`, which must not begin with `..` and must not be absolute. A `full.startsWith(root)` test also admits any sibling directory whose name merely begins with the repository directory name, such as the `infinite-corridor-pages-release40` deployment worktree named in section 22.
+- **This is dev-tooling only.** The production path serves `dist/` through `scripts/serve-private-pwa.ps1`, which uses Python's `http.server` and ignores query strings, so the installed PWA was never affected by this failure mode.
+- The dev server is not covered by the automated suite. Any change to asset-request shape (adding a query string, a new asset root, or a redirect) must be checked against it by fetching the exact URL the page requests.
 
 ## 23. Ten highest-risk regression areas
 

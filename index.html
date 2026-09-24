@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=87" />
+    <link rel="stylesheet" href="./styles.css?v=89" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -150,36 +150,34 @@
       </dialog>
     </main>
     <script type="module">
-      const boot = async () => {
+      const release = "89";
+      const params = new URLSearchParams(location.search);
+      const entry = params.get("dev") === "proving-ground"
+        ? "./src/proving-ground.js"
+        : "./src/main.js";
+      const updateServiceWorker = async () => {
         if ("serviceWorker" in navigator) {
-          const release = "87";
-          const r = await navigator.serviceWorker.register(`./sw.js?v=${release}`, {
-            updateViaCache: "none",
-          });
-          await r.update();
-          if (!navigator.serviceWorker.controller?.scriptURL.includes(`v=${release}`)) {
-            const key = `corridor-upgrade-${release}`;
-            await new Promise((resolve) => {
-              const timeout = setTimeout(resolve, 4000);
-              navigator.serviceWorker.addEventListener("controllerchange", () => {
-                clearTimeout(timeout);
-                resolve();
-              }, { once: true });
+          try {
+            const registration = await navigator.serviceWorker.register(`./sw.js?v=${release}`, {
+              updateViaCache: "none",
             });
-            if (!sessionStorage.getItem(key)) {
-              sessionStorage.setItem(key, "1");
-              location.reload();
-              return;
-            }
+            registration.update().catch((error) =>
+              console.warn("Service worker update check failed; continuing with the available build.", error),
+            );
+          } catch (error) {
+            console.warn("Service worker registration failed; continuing without offline caching.", error);
           }
-          sessionStorage.removeItem("corridor-upgrade-51");
         }
-        await import("./src/main.js?v=87");
       };
-      boot().catch((e) => {
-        console.error(e);
-        setTimeout(() => location.reload(), 1200);
+      import(`${entry}?v=${release}`).catch((error) => {
+        console.error("Infinite Corridor failed to start.", error);
+        const notice = document.createElement("p");
+        notice.className = "boot-error";
+        notice.setAttribute("role", "alert");
+        notice.textContent = "Infinite Corridor could not start. Reload when your connection is stable.";
+        document.body.append(notice);
       });
+      void updateServiceWorker();
     </script>
   </body>
 </html>

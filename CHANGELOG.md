@@ -6,9 +6,20 @@ The project follows a compact Keep a Changelog-style structure. Entries describe
 
 ## [Unreleased]
 
+### Added
+
+- Added the developer-only Shelter Gallery at `?dev=proving-ground`. It runs six deterministic production shelter families through the real generator, renderer, input, collision, interaction, and simulation systems in fresh memory-only state.
+
 ### Changed
 
 - Pausing now validates the Wayfarer's full collision footprint and, only when it is invalid, relocates the Wayfarer to deterministic nearby stable ground in the current area without resetting journey progress.
+
+### Fixed
+
+- Release 88 starts the game independently of service-worker registration and update checks, so an offline or unreliable connection cannot trap startup in a reload loop. Failed game imports now leave a visible error instead of repeatedly refreshing a dark screen.
+- Service-worker activation now removes only obsolete Infinite Corridor caches and preserves caches belonging to other applications on the same origin.
+- Release identity is consistently advanced to 88 across the page, module graph, service worker, build output, and in-game diagnostics, preventing older release-87 cache entries from presenting themselves as the current build.
+- The local dev server (`scripts/dev.mjs`) returned 404 for every versioned asset request (`styles.css?v=87`, `sw.js?v=87`, `src/main.js?v=87`) because it treated the query string as part of the filename. The boot sequence could not complete, so the game did not become playable when served this way. The server now strips the query string before resolving a path. Development tooling only; the production `dist/` path was not affected.
 
 ## [2026-09-20] Documentation and verification baseline
 
