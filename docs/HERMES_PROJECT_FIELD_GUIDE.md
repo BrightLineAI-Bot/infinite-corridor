@@ -268,7 +268,7 @@ Saves are written to IndexedDB and mirrored to `localStorage` on every write. Lo
 
 ### 6.3 Journey operations
 
-`createJourney` refuses an occupied slot unless `replace` is set, and snapshots the previous save before replacing (`persistence.ts:35`). `renameJourney` refuses damaged saves and truncates names to 40 characters (`persistence.ts:36`). Duplicate, export, import, recover, and delete are driven from `main.ts:902-910`, with delete requiring two confirmations and leaving a recovery snapshot. Import into an occupied slot keeps the healthy previous save as a recovery snapshot (`main.ts:910`).
+`createJourney` refuses an occupied IndexedDB or mirror slot unless `replace` is set, and snapshots the previous save before replacing. Creation and switching are guarded by a single-flight operation gate. `commitNewJourneyTransition` flushes an existing prior journey, durably creates the target, and changes the active-slot key only after creation succeeds; it deliberately skips persisting the placeholder runtime when the already-active target is genuinely empty. `renameJourney` refuses damaged saves and truncates names to 40 characters. New Journey and Rename use in-panel forms rather than native browser prompts. Occupied replacement requires a dedicated confirmation checkbox. Duplicate, export, import, recover, and delete remain slot-card actions; delete requires two confirmations and leaves a recovery snapshot. Import into an occupied slot keeps the healthy previous save as a recovery snapshot.
 
 ### 6.4 Schema versioning rule
 

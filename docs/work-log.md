@@ -1,5 +1,12 @@
 # Work Log
 
+## 2026-09-24: Normal boot and journey-management repair
+
+- **Root causes:** The normal entry module declared `dungeonPointDiscovered` through two imports and therefore stopped at parse time; the Proving Ground did not reveal this because it uses a separate entry module. New Journey also depended on native `prompt()` dialogs and reused the normal switch path, whose pre-switch autosave could overwrite the new save when the selected empty slot was already active.
+- **Changed:** Removed the duplicate import; added in-panel create, replace-confirmation, cancel, and rename forms; added a single-flight operation gate; made slot activation follow successful durable creation; skipped stale-current persistence for an active empty slot; and made pending IndexedDB failures visible to switching code rather than silently treating them as success.
+- **Compatibility:** Save schema remains 14. Existing healthy, damaged, recovery, imported, and mirrored saves retain their formats and slot keys. Proving Ground persistence isolation is unchanged.
+- **Verified:** The guarded apply matched its authorized plan; all 308 automated tests passed, including the executable development-server check; `npm run build` produced the Release 91 offline PWA; and `git diff --check` found no whitespace errors. A clean-origin browser audit also passed normal boot, create/cancel/reload and active-slot identity, all Options categories and Journal tabs, Pack filters, Atlas waypoint controls, core actions, pause/resume, a 390 x 844 mobile viewport, and isolated Proving Ground boot without console errors.
+
 ## 2026-09-24: Progression, equipment reinforcement, Aperture disciplines, and dynamic melee
 
 - **Scope:** Complete vendor comparisons, make accumulated Weapon/Armor Spheres useful, connect Aperture to bounded player progression and exceptional encounters, and expand melee behavior without converting ordinary enemies into a global scaling treadmill.

@@ -1,5 +1,13 @@
 # Verification Matrix
 
+## Journey management and menu controls
+
+New-journey coverage must prove that a free slot receives an independent schema-14 save; the prior active save is flushed only when it exists in another or occupied target slot; active-slot mutation follows successful creation; failed creation never changes the active slot; rapid taps are single-flight; cancel is mutation-free; occupied replacement is explicitly confirmed; and Proving Ground never imports journey persistence.
+
+Browser validation must use a clean local origin to avoid an older installed service worker masking current source bytes. Required smoke coverage includes normal-module startup, New Journey form/cancel/create/reload, active-slot identity, every Options category, every Journal tab, Pack filters, Atlas/manual waypoint actions, pause/resume, core constellation controls, a mobile viewport, and the isolated Proving Ground. Source-handler presence alone is insufficient evidence.
+
+Verified 2026-09-24: 308/308 automated tests passed, the Release 91 offline build succeeded, `git diff --check` reported no whitespace errors, and the required clean-origin desktop/mobile browser audit passed without console errors.
+
 ## Progression and combat extension
 
 Save-schema coverage must preserve legacy equipment power while normalizing upgrade rank/base power, learned Aperture disciplines, selected discipline, active remaining duration, cooldowns, and last safe traversal ground. Equipment checks must cover exact sphere costs, tier caps, insufficient materials, empty slots, every vendor comparison direction, and the no-sphere-refund salvage rule.

@@ -44,6 +44,12 @@ The project follows a compact Keep a Changelog-style structure. Entries describe
 
 ### Fixed
 
+- Repaired normal-game startup after a duplicate dungeon-framework import caused the main entry module to fail during parsing while the separate Proving Ground entry continued to work.
+
+- Replaced the unreliable native-prompt New Journey and Rename flows with responsive in-panel forms. New journeys now become active only after their schema-14 save is durably created; an active empty slot is no longer overwritten by the old runtime snapshot during handoff, occupied-slot replacement requires explicit confirmation, and failed writes leave the prior slot active with visible feedback.
+
+- Serialized journey creation and switching, delayed local mirrors until IndexedDB writes succeed, and surfaced pending save failures before any slot transition.
+
 - Increased Hollow Relay wall/floor luminance separation and deepened wall-panel recesses so traversable floor is immediately legible on small screens.
 
 - Unrevealed dungeon cards no longer leak enemy telegraphs, projectiles, effects, or trap geometry into the visible scene. Enemies may still roam across the concealed boundary, preserving surprise encounters.
