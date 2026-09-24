@@ -2,6 +2,7 @@ import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.
 import { vendorShop, buyFromVendor } from "./game.ts";
 import { CREATURE_TRAITS } from "./combat.ts";
 import { hashSeed } from "./random.ts";
+import { dungeonPointDiscovered } from "./dungeon-framework.ts";
 import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.ts";
 function uiButton(label, click) {
   const b = document.createElement("button");
@@ -45,6 +46,7 @@ function drawRangedEffects() {
       innerHeight / 2 + (q.y - game.player.y) * s,
     ];
   for (const p of game.projectiles) {
+    if(!dungeonPointDiscovered(game.map,p))continue;
     const [x, y] = toScreen(p);
     ctx.fillStyle = p.hostile ? (p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":"#d28af0") : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
     ctx.shadowColor = ctx.fillStyle;
@@ -104,7 +106,7 @@ function openShop(vendorId = "vendor-vela") {
     intro = document.createElement("p");
   h.textContent = names[vendorId] || "Waystation Supplies";
   const shop = vendorShop(save, vendorId);
-  intro.textContent = `${save.currency} marks. Restorative draughts remain dependable; limited stock and equipment rotate after every four newly charted sections. Stock cycle ${shop.rotation ?? 0}.${game.message ? ` ${game.message}` : ""}`;
+  intro.textContent = shop.profile==="dungeon-relics"?`${save.currency} marks. This delver carries equipment recovered below: fewer necessities, but a markedly better chance of rare, epic, or relic-quality finds. Stock cycle ${shop.rotation ?? 0}.${game.message ? ` ${game.message}` : ""}`:`${save.currency} marks. Restorative draughts remain dependable; limited stock and equipment rotate after every four newly charted sections. Stock cycle ${shop.rotation ?? 0}.${game.message ? ` ${game.message}` : ""}`;
   body.append(h, intro);
   const
     offers = [
@@ -118,7 +120,7 @@ function openShop(vendorId = "vendor-vela") {
       ["lumenPhial", "Lumen Phial", 9, shop.limited.lumenPhial],
       ["crossingSigil", "Crossing Sigil", 30, shop.limited.crossingSigil],
     ];
-  for (const [id, name, price, stock] of offers) {
+  for (const [id, name, price, stock] of shop.profile==="dungeon-relics"?[]:offers) {
     const row = document.createElement("div"),
       title = document.createElement("strong");
     row.className = "item";
@@ -142,7 +144,7 @@ function openShop(vendorId = "vendor-vela") {
       price = 12 + item.power * 4,
       title = document.createElement("strong");
     row.className = "item";
-    title.textContent = `${item.name} · power ${item.power} · ${price} marks${shop.purchased[item.id] ? " · sold" : ""}`;
+    title.textContent = `${item.name} · ${item.tier||"common"} · power ${item.power} · ${price} marks${shop.purchased[item.id] ? " · sold" : ""}`;
     row.append(
       title,
       uiButton("Buy", () => {
@@ -217,7 +219,8 @@ import { createInput } from "./input.ts";
 import { render as baseRender, renderScaleForViewport } from "./renderer.ts";
 import { STATS } from "./types.ts";
 import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats } from "./items.ts";
-import { currentObjective, validActions } from "./interactions.ts";
+import { currentObjective, validActions, dungeonHistory } from "./interactions.ts";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
 import { worldStewardReport } from "./story.ts";
 import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.ts";
 import {
@@ -723,7 +726,7 @@ export function combatIndicatorGeometry(game, now = performance.now()) {
   if (now < (game.player.meleeUntil || 0) && game.player.meleeStrike)
     out.melee = { ...game.player.meleeStrike };
   for (const e of game.enemies)
-    if (!e.dead && e.telegraph > 0)
+    if (!e.dead && e.telegraph > 0 && dungeonPointDiscovered(game.map,e))
       out.enemies.push({
         kind: "circle",
         x: e.x + 0.5,
@@ -732,14 +735,16 @@ export function combatIndicatorGeometry(game, now = performance.now()) {
         large: (Number(e.scale) || 1) > 1.25,
       });
   for (const o of game.map.objects)
-    if (o.kind === "trap")
+    if (o.kind === "trap" && dungeonPointDiscovered(game.map,o))
       out.traps.push(
         o.trapType === "fire"
           ? {
               kind: "rect",
-              x: o.x - 1,
-              y: o.y - 0.55,
-              width: 4,
+              x: o.x,
+              y: o.y,
+              dirX: Number(o.dirX)||1,
+              dirY: Number(o.dirY)||0,
+              width: (Number(o.range)||3)+1,
               height: 1.1,
               active: o.phase === "active",
             }
@@ -752,7 +757,7 @@ export function combatIndicatorGeometry(game, now = performance.now()) {
             },
       );
   for (const fx of game.effects)
-    out.effects.push({ kind: "circle", x: fx.x, y: fx.y, radius: fx.radius });
+    if(dungeonPointDiscovered(game.map,fx))out.effects.push({ kind: "circle", x: fx.x, y: fx.y, radius: fx.radius });
   return out;
 }
 function drawTruthfulCombatGeometry() {
@@ -766,8 +771,9 @@ function drawTruthfulCombatGeometry() {
     ctx.strokeStyle = q.active ? "#ef8158" : "#8c806d";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    if (q.kind === "rect")
-      ctx.rect(sx(q.x), sy(q.y), q.width * s, q.height * s);
+    if (q.kind === "rect"){
+      const angle=Math.atan2(q.dirY,q.dirX);ctx.save();ctx.translate(sx(q.x),sy(q.y));ctx.rotate(angle);ctx.rect(-s,-q.height*s/2,q.width*s,q.height*s);ctx.fill();ctx.stroke();ctx.restore();continue;
+    }
     else ctx.arc(sx(q.x), sy(q.y), q.radius * s, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
@@ -920,17 +926,18 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:90,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 90\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:91,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 91\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
 async function openOptions(){pauseForOverlay();if(pausePanel.open)pausePanel.close();setHudExpanded(false);await renderOptions();if(!optionsPanel.open)optionsPanel.showModal()}
 function drawDungeonMap() {
   const selectedLevel=$("#dungeonLevelSelect")?.value,currentLevel=game.map.levelId||"root",map=selectedLevel&&selectedLevel!==currentLevel?generateDungeon(save.seed,game.areaId(),{levelId:selectedLevel}):game.map,d=Math.min(devicePixelRatio,2),w=Math.min(innerWidth*.9,680),h=Math.min(innerHeight*.65,520),cols=map.width||24,rows=map.height||Math.floor(map.tiles.length/cols),pad=18,cell=Math.max(2,Math.min((w-pad*2)/cols,(h-pad*2)/rows)),ox=(w-cell*cols)/2,oy=(h-cell*rows)/2;
+  if(map!==game.map&&map.dungeonContract?.discoveryEnabled){const history=dungeonHistory(save,game.areaId()),level=map.levelStableId||map.levelId||"root";applyDungeonDiscovery(map,history.discovery?.levels?.[level]||[])}
   mapCanvas.width=w*d;mapCanvas.height=h*d;mapCanvas.style.width=w+"px";mapCanvas.style.height=h+"px";mctx.setTransform(d,0,0,d,0,0);mctx.imageSmoothingEnabled=false;mctx.fillStyle="#091018";mctx.fillRect(0,0,w,h);
-  for(const tile of map.tiles){const x=ox+tile.x*cell,y=oy+tile.y*cell;mctx.fillStyle=tile.kind==="dungeonWater"?"#245967":tile.blocked?"#182129":({hollow:"#51484a",cistern:"#36565a",kiln:"#68463a"}[map.recipe]||"#51484a");mctx.fillRect(x,y,Math.ceil(cell),Math.ceil(cell));if(!tile.blocked&&cell>9){mctx.strokeStyle="#ffffff0b";mctx.strokeRect(x,y,cell,cell)}}
+  for(const tile of map.tiles){const x=ox+tile.x*cell,y=oy+tile.y*cell,visibility=dungeonTileVisibility(map,tile.x,tile.y);mctx.fillStyle=visibility==="unseen"?"#05080b":tile.kind==="dungeonWater"?"#245967":tile.blocked?"#182129":({hollow:"#51484a",cistern:"#36565a",kiln:"#68463a"}[map.recipe]||"#51484a");mctx.fillRect(x,y,Math.ceil(cell),Math.ceil(cell));if(visibility!=="unseen"&&!tile.blocked&&cell>9){mctx.strokeStyle="#ffffff0b";mctx.strokeRect(x,y,cell,cell)}}
   const colors={exit:"#72d7df",chest:"#d8bd83",supplyCache:"#7fc992",relayTerminal:"#b28cda",trap:"#d16b62",vine:"#77b98b",apertureDoor:"#c493dd",sealedGate:"#d16b62",deepReturn:"#7bc7d3",hubAnchor:"#e4cf7a",deepTransition:"#dbc18a",deepShortcut:"#9fd0ae",deepPortal:"#bbb4ef",storyActor:"#d9e7ef",storyScene:"#efb18f"};
-  for(const o of map.objects||[]){if(!colors[o.kind]||o.state==="hidden")continue;const x=ox+(o.x+.5)*cell,y=oy+(o.y+.5)*cell;mctx.fillStyle=colors[o.kind];mctx.strokeStyle="#0b1014";mctx.lineWidth=2;mctx.beginPath();if(o.kind==="exit"||o.kind==="deepShortcut"){mctx.rect(x-cell*.32,y-cell*.42,cell*.64,cell*.84)}else if(o.kind==="trap"){mctx.moveTo(x,y-cell*.42);mctx.lineTo(x+cell*.4,y+cell*.35);mctx.lineTo(x-cell*.4,y+cell*.35);mctx.closePath()}else{mctx.arc(x,y,Math.max(3,cell*.28),0,7)}mctx.fill();mctx.stroke()}
+  for(const o of map.objects||[]){if(!colors[o.kind]||o.state==="hidden"||!dungeonPointDiscovered(map,o))continue;const x=ox+(o.x+.5)*cell,y=oy+(o.y+.5)*cell;mctx.fillStyle=colors[o.kind];mctx.strokeStyle="#0b1014";mctx.lineWidth=2;mctx.beginPath();if(o.kind==="exit"||o.kind==="deepShortcut"){mctx.rect(x-cell*.32,y-cell*.42,cell*.64,cell*.84)}else if(o.kind==="trap"){mctx.moveTo(x,y-cell*.42);mctx.lineTo(x+cell*.4,y+cell*.35);mctx.lineTo(x-cell*.4,y+cell*.35);mctx.closePath()}else{mctx.arc(x,y,Math.max(3,cell*.28),0,7)}mctx.fill();mctx.stroke()}
   if(map===game.map){const px=ox+(game.player.x+.5)*cell,py=oy+(game.player.y+.5)*cell;mctx.fillStyle="#fff4a8";mctx.strokeStyle="#17140b";mctx.lineWidth=2;mctx.beginPath();mctx.arc(px,py,Math.max(4,cell*.34),0,7);mctx.fill();mctx.stroke();mctx.fillStyle="#e7ece7";mctx.font="12px monospace";mctx.fillText("YOU",px+7,py-7);}else{mctx.fillStyle="#dbc18a";mctx.font="12px monospace";mctx.fillText(`INSPECTING ${map.levelName||map.levelId}`,12,18)}
 }
 function drawAtlasLabels(labels,bounds,fontSize){const placed=[],overlap=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;mctx.font=`${fontSize}px system-ui`;mctx.fillStyle="#edf3df";for(const label of labels){let text=label.name,max=bounds.right-bounds.left-10;while(text.length>4&&mctx.measureText(text).width>max)text=text.slice(0,-2)+"…";const width=mctx.measureText(text).width,candidates=[[label.x+7,label.y-5],[label.x+7,label.y+fontSize+3],[label.x-width-7,label.y-5],[label.x-width-7,label.y+fontSize+3],[label.x-width/2,label.y-fontSize],[label.x-width/2,label.y+fontSize*2]],spots=candidates.map(([cx,cy])=>{const x=Math.max(bounds.left+5,Math.min(bounds.right-width-5,cx)),y=Math.max(bounds.top+fontSize+5,Math.min(bounds.bottom-6,cy));return{x,y,left:x-2,right:x+width+2,top:y-fontSize-2,bottom:y+3}}),spot=spots.find(q=>!placed.some(p=>overlap(p,q)));if(!spot)continue;mctx.fillText(text,spot.x,spot.y);placed.push(spot)}return placed}

@@ -8,15 +8,31 @@ The project follows a compact Keep a Changelog-style structure. Entries describe
 
 ### Added
 
+- Added sparse deterministic dungeon pits and water basins. They are visibly rendered as terrain, use the established lethal water/canyon behavior, and are rejected during generation whenever they would sever a critical route.
+
+- Added distinct material identities for ordinary dungeon families: fractured relay slate in Hollow Relays, wet root-threaded aqueduct masonry in Root-Sunk Cisterns, and refractory brick and riveted furnace plates in Glass Kilns.
+
+- Added deterministic variable dungeon hazard packages with bounded trap density, cardinal fire lanes, varied warning/damage cadence, protected entrances and objectives, and explicit Proving Ground hazard diagnostics.
+
+- Added a unified deterministic dungeon contract, enlarged ordinary-dungeon profiles, persistent per-level exploration discovery, fogged Dungeon Atlas presentation, and expanded Proving Ground dungeon controls and diagnostics.
+
 - Expanded the developer-only Proving Ground into a URL-addressable laboratory launcher with playable production Shelter/Building, Ordinary Dungeon, Deep Dungeon, Threefold Dungeon, and Monster/Elite Combat labs. Seven future labs are labeled unavailable rather than represented as working.
 
 - Added the developer-only Shelter Gallery at `?dev=proving-ground`. It runs six deterministic production shelter families through the real generator, renderer, input, collision, interaction, and simulation systems in fresh memory-only state.
 
 ### Changed
 
+- New ordinary dungeon histories use generator version 4 while existing version-2 and version-3 histories retain their original layouts. Save schema 13 adds normalized dungeon-discovery state without resetting character, reward, or dungeon progress.
+
 - Pausing now validates the Wayfarer's full collision footprint and, only when it is invalid, relocates the Wayfarer to deterministic nearby stable ground in the current area without resetting journey progress.
 
 ### Fixed
+
+- Increased Hollow Relay wall/floor luminance separation and deepened wall-panel recesses so traversable floor is immediately legible on small screens.
+
+- Unrevealed dungeon cards no longer leak enemy telegraphs, projectiles, effects, or trap geometry into the visible scene. Enemies may still roam across the concealed boundary, preserving surprise encounters.
+
+- Dungeon discovery now opens one entered card at a time instead of exposing neighboring cards, ordinary-dungeon death returns to the generated entrance on validated traversable ground, and Proving Ground canvas taps use the production targeted Attack, Tool, and Act behavior.
 
 - Release 88 starts the game independently of service-worker registration and update checks, so an offline or unreliable connection cannot trap startup in a reload loop. Failed game imports now leave a visible error instead of repeatedly refreshing a dark screen.
 - Service-worker activation now removes only obsolete Infinite Corridor caches and preserves caches belonging to other applications on the same origin.

@@ -1,5 +1,21 @@
 # Work Log
 
+## 2026-09-24: Dungeon card reveal, safe recovery, and production Proving Ground input
+
+- **Scope:** Tighten dungeon exploration to reveal only the card currently occupied, repair ordinary-v4 recovery placement, and give the Proving Ground the normal canvas-targeting action path.
+- **Compatibility:** Previously discovered cards remain discovered. No save-schema, generator-version, reward, encounter, or world-geometry change is introduced.
+- **Verification:** The focused card/recovery/input suite passed 3/3. The complete isolated suite passed 290/290 with no failures, skips, cancellations, or todos in 84.55 seconds. `npm.cmd run build` produced static offline PWA release 91. Applied-repository and browser checks follow the guarded apply.
+- **Open follow-ups:** Hands-on mobile traversal and touch targeting remain device checks.
+
+## 2026-09-24: Unified deterministic dungeon exploration
+
+- **Scope:** Added a common deterministic topology/discovery contract across ordinary, deep, multi-level, and bounded-arena maps; introduced enlarged ordinary-v4 profiles; and expanded dungeon Proving Ground controls and diagnostics.
+- **Baseline:** `main` at `f161f0c`, matching `origin/main`; `origin/gh-pages` at `49cb883`; only the historical `HANDOFF-TO-CODEX.md` was untracked and remains excluded. Pre-change checkpoint `e028b6054146c10acbf30ab5d1d9d2447e8e4cbfd9b478f8aaf941807a196172` observed 48 files.
+- **Compatibility:** Existing generator-2 and generator-3 histories retain their generators. New ordinary histories use generator 4. Save schema advances from 12 to 13 solely for per-level discovered-chunk state.
+- **Boundary:** Temporary and persistent arenas receive contract diagnostics but remain bounded combat spaces without fog-driven exploration. No swimming or diving was added.
+- **Verification:** In the isolated proposal tree, the focused compatibility repair run passed 9/9, the final dungeon/Proving Ground diagnostic run passed 4/4, and the final complete suite passed 289/289 with no failures, skips, cancellations, or todos in 91.85 seconds. `npm.cmd run build` produced static offline PWA release 91. Local in-app-browser smoke checks showed an initialized normal-game HUD and the production ordinary-dungeon laboratory with generator 4, standard size, variant 0, 44 topology chunks, four initially revealed chunks, a reachable critical route, and entrance/guardian developer teleports. Change-Control apply/verify remains pending; no commit, push, or deployment was performed.
+- **Open follow-ups:** Physical-phone pacing, installed-PWA offline behavior, and complete hands-on traversal of every seed/variant/archetype remain manual checks.
+
 ## 2026-09-24: Proving Ground v2 production laboratories
 
 - Added a scratch-state laboratory registry and URL-addressable scenario recipes.
@@ -79,3 +95,22 @@ This log records implementation-level work that is too detailed for `CHANGELOG.m
 - **Changed:** `Game.setPaused` now invokes `Game.recoverPosition` only when entering pause. The method reuses `relocateIfStranded` and `footprintOpen` through the current map width, moves only an invalid player position, synchronizes the corrected coordinates, and reports recovery only when it occurred. Added regression coverage that verifies valid positions remain unchanged and that recovery preserves area, coordinates, enemies, projectiles, effects, inventory, health, stamina, and saved position.
 - **Verification:** `npm.cmd test` passed 274 tests with 0 failures, 0 skips, and a reported duration of 138.55 seconds. `npm.cmd run build` completed successfully and reported `Built static offline PWA release 87 in dist/.` `git diff --check` and `git diff --cached --check` completed with no whitespace errors; Git emitted existing line-ending conversion warnings for `README.md`, `src/game.ts`, and `tests/prototype.test.ts`.
 - **Open follow-ups:** Manual device validation should include pausing while deliberately placed in invalid dungeon and structure geometry. This automated coverage does not establish that every generated dungeon placement path is valid.
+# 2026-09-24: Variable dungeon hazards and sealed-card presentation
+
+- Expanded ordinary and deep dungeons with deterministic, bounded trap packages instead of a single repeated hazard.
+- Added seed-variable fire/spike selection, cardinal fire lanes, timing, range, radius, and damage while protecting entrances, objectives, bosses, functional objects, water, bridges, and sealed gates.
+- Removed visual leakage from unrevealed cards in the combat-overlay layer. Enemy simulation deliberately remains independent of discovery, so a creature can emerge from darkness without its prior silhouette being shown.
+- Added Proving Ground hazard diagnostics and regression coverage for determinism, safe placement, variability, concealment, and directional damage.
+
+# 2026-09-24: Ordinary dungeon material identities
+
+- Gave Hollow Relay, Root-Sunk Cistern, and Glass Kiln generation-3 and generation-4 maps stable recipe-specific wall and floor kinds.
+- Added dedicated renderer treatments: fractured relay panels, damp root-threaded aqueduct blocks and reflective flagstone, and staggered refractory brick with riveted furnace plates.
+- Kept collision and topology semantics unchanged and added regression coverage that rejects missing or aliased material identities.
+- Follow-up: widened Hollow Relay wall/floor luminance separation after device review showed the lighter wall panels blending into floor tiles. Floors are now consistently blue-gray; walls are near-black with an additional recessed interior shade and stronger panel border.
+
+# 2026-09-24: Sparse dungeon terrain hazards
+
+- Added deterministic, optional pit and water patches to ordinary dungeons while retaining authored Cistern water and bridge geometry.
+- Terrain patches protect entrances, objects, and enemies and are reverted if they disconnect any protected point from the entrance.
+- Reused the established canyon/dungeon-water rendering and grounded-center death/recovery behavior. No swimming, diving, or pit-exploration mechanic was claimed or introduced.

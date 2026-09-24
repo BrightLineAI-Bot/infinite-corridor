@@ -1,4 +1,5 @@
 import { structureOccupancy } from "./world.ts";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
 
 export function cameraTransform(
   g,
@@ -33,6 +34,7 @@ export function visibleInCamera(o, left, top, right, bottom, padding = 2) {
   return Number(o.x) >= left - padding && Number(o.x) <= right + padding &&
     Number(o.y) >= top - padding && Number(o.y) <= bottom + padding;
 }
+const discoveredInDungeon=(g,point)=>g.area!=="dungeon"||dungeonPointDiscovered(g.map,point);
 
 const structureRenderCache = new WeakMap();
 const mapObjectCache = new WeakMap();
@@ -67,10 +69,21 @@ const PAL = {
   ember: ["#553b34", "#85584a"],
   refuge: ["#485848", "#6f8067"],
   floor: ["#3b403d", "#555750"],
+  hollowFloor: ["#46575a", "#53666a"],
+  hollowWall: ["#101619", "#20292d"],
+  cisternFloor: ["#344b47", "#405b54"],
+  cisternWall: ["#25352f", "#3f5549"],
+  kilnFloor: ["#594039", "#6b4b40"],
+  kilnWall: ["#36231f", "#5d352a"],
   blocked: ["#232522", "#45423d"],
   wall: ["#1d211f", "#403d37"],
   deepFloor: ["#242b30", "#364149"],
   deepWall: ["#12171b", "#2c343b"],
+  threefoldDeepFloor: ["#4b4540", "#62584e"], threefoldDeepWall: ["#171515", "#302827"],
+  descentDeepFloor: ["#27343d", "#344852"], descentDeepWall: ["#0e171d", "#1b2a32"],
+  loopDeepFloor: ["#3d3648", "#51465e"], loopDeepWall: ["#17131e", "#30283b"],
+  floodedDeepFloor: ["#294746", "#39605c"], floodedDeepWall: ["#102423", "#24413e"],
+  fortressDeepFloor: ["#4a4035", "#615242"], fortressDeepWall: ["#1b1815", "#382e27"],
   sealedGate: ["#482b31", "#7b454e"],
   river: ["#203f48", "#2b5962"],
   dungeonWater: ["#183b46", "#245763"],
@@ -106,6 +119,10 @@ function tile(ctx, t, x, y, s, map, w, activeBuildingId=null) {
   if (t.kind === "bridge" || t.kind === "logBridge") {
     ctx.fillStyle = "#2b2119"; ctx.fillRect(px, py + 2, s + 1, s - 4); ctx.fillStyle = p[d & 1]; for (let q = 2; q < s; q += 7) ctx.fillRect(px + 2, py + q, s - 4, 5); ctx.strokeStyle = "#b594603f"; ctx.strokeRect(px + 2, py + 2, s - 4, s - 4); return;
   }
+  if(t.kind==="hollowWall"){ctx.fillStyle=p[d&1];ctx.fillRect(px,py,s+1,s+1);ctx.fillStyle="#05090b55";ctx.fillRect(px+3,py+3,s-6,s-6);ctx.strokeStyle="#82979b55";ctx.lineWidth=1.5;ctx.strokeRect(px+2,py+2,s-4,s-4);ctx.beginPath();ctx.moveTo(px+s*.18,py+s*.08);ctx.lineTo(px+s*.42,py+s*.42);ctx.lineTo(px+s*.31,py+s*.9);ctx.moveTo(px+s*.72,py+s*.12);ctx.lineTo(px+s*.62,py+s*.58);ctx.lineTo(px+s*.86,py+s*.86);ctx.stroke();if((d&3)===1){ctx.fillStyle="#9fb2b238";ctx.fillRect(px+s*.12,py+s*.48,s*.76,2)}return}
+  if(t.kind==="cisternWall"){ctx.fillStyle=p[d&1];ctx.fillRect(px,py,s+1,s+1);ctx.strokeStyle="#18231f99";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px,py+s*.34);ctx.lineTo(px+s,py+s*.34);ctx.moveTo(px,py+s*.68);ctx.lineTo(px+s,py+s*.68);ctx.stroke();ctx.strokeStyle="#6f988052";ctx.lineWidth=1;for(let q=.16;q<.9;q+=.34){ctx.beginPath();ctx.moveTo(px+s*q,py);ctx.quadraticCurveTo(px+s*(q-.12),py+s*.48,px+s*(q+.05),py+s);ctx.stroke()}if((d&3)===2){ctx.strokeStyle="#79aaa466";ctx.beginPath();ctx.arc(px+s*.62,py+s*.76,s*.16,.1,2.7);ctx.stroke()}return}
+  if(t.kind==="kilnWall"){ctx.fillStyle=p[d&1];ctx.fillRect(px,py,s+1,s+1);ctx.strokeStyle="#1a0d0bba";ctx.lineWidth=2;for(let row=0;row<3;row++){const yy=py+(row+1)*s/3;ctx.beginPath();ctx.moveTo(px,yy);ctx.lineTo(px+s,yy);ctx.stroke();const offset=(row+(d&1))%2?s*.28:s*.68;ctx.beginPath();ctx.moveTo(px+offset,yy-s/3);ctx.lineTo(px+offset,yy);ctx.stroke()}ctx.strokeStyle="#d8713b42";ctx.lineWidth=1;ctx.strokeRect(px+2,py+2,s-4,s-4);if((d&3)===0){ctx.fillStyle="#e47a4833";ctx.fillRect(px+3,py+s-4,s-6,2)}return}
+  if(/DeepWall$/.test(t.kind)){const family=t.kind.replace("DeepWall","");ctx.fillStyle=p[d&1];ctx.fillRect(px,py,s+1,s+1);ctx.strokeStyle={threefold:"#c9956b55",descent:"#79a9bc55",loop:"#b294c955",flooded:"#83bbb055",fortress:"#c1a06f55"}[family]||"#87949a55";ctx.lineWidth=1.5;if(family==="threefold"){ctx.strokeRect(px+3,py+3,s-6,s-6);ctx.beginPath();ctx.moveTo(px+s*.5,py+3);ctx.lineTo(px+s*.5,py+s-3);ctx.stroke()}else if(family==="descent"){for(let q=5;q<s;q+=9){ctx.beginPath();ctx.moveTo(px+3,py+q);ctx.lineTo(px+s-3,py+q+3);ctx.stroke()}}else if(family==="loop"){ctx.beginPath();ctx.arc(px+s*.5,py+s*.5,s*.3,0,5.3);ctx.stroke()}else if(family==="flooded"){ctx.beginPath();ctx.moveTo(px+2,py+s*.3);ctx.quadraticCurveTo(px+s*.5,py+s*.12,px+s-2,py+s*.3);ctx.moveTo(px+2,py+s*.7);ctx.quadraticCurveTo(px+s*.5,py+s*.52,px+s-2,py+s*.7);ctx.stroke()}else{for(let q=s*.33;q<s;q+=s*.33){ctx.beginPath();ctx.moveTo(px,py+q);ctx.lineTo(px+s,py+q);ctx.stroke()}}return}
   if (t.structure === "districtDoor") {
     ctx.fillStyle = p[d & 1]; ctx.fillRect(px, py, s + 1, s + 1); ctx.fillStyle="#0b0d0d";ctx.fillRect(px+s*.2,py+s*.08,s*.6,s*.86);ctx.strokeStyle="#b79c7166";ctx.lineWidth=2;ctx.strokeRect(px+s*.18,py+s*.06,s*.64,s*.9);ctx.fillStyle="#c6a66a";ctx.fillRect(px+s*.66,py+s*.5,3,3);return;
   }
@@ -157,6 +174,10 @@ function tile(ctx, t, x, y, s, map, w, activeBuildingId=null) {
       ctx.fillRect(px + 2, py + s - 7, s - 4, 7);
     }
   } else {
+    if(t.kind==="hollowFloor"){ctx.strokeStyle="#94a9aa28";ctx.beginPath();ctx.moveTo(px+s*.12,py+s*.74);ctx.lineTo(px+s*.48,py+s*.38);ctx.lineTo(px+s*.8,py+s*.5);ctx.stroke();if((d&3)===0){ctx.fillStyle="#0c111244";ctx.fillRect(px+s*.62,py+s*.18,s*.18,s*.18)}return}
+    if(t.kind==="cisternFloor"){ctx.strokeStyle="#8ab8aa42";ctx.strokeRect(px+2,py+2,s-4,s-4);ctx.fillStyle="#18363255";ctx.beginPath();ctx.ellipse(px+s*(.35+(d&1)*.25),py+s*.62,s*.22,s*.09,0,0,7);ctx.fill();ctx.strokeStyle="#a1c8bd44";ctx.beginPath();ctx.arc(px+s*.55,py+s*.55,s*.18,.2,2.8);ctx.stroke();return}
+    if(t.kind==="kilnFloor"){ctx.strokeStyle="#241411aa";ctx.lineWidth=2;ctx.strokeRect(px+2,py+2,s-4,s-4);ctx.fillStyle="#c26a3c55";for(const [qx,qy]of[[.18,.18],[.82,.18],[.18,.82],[.82,.82]]){ctx.beginPath();ctx.arc(px+s*qx,py+s*qy,2,0,7);ctx.fill()}ctx.strokeStyle="#dc7a4544";ctx.beginPath();ctx.moveTo(px+s*.1,py+s*.66);ctx.quadraticCurveTo(px+s*.5,py+s*.5,px+s*.9,py+s*.7);ctx.stroke();return}
+    if(/DeepFloor$/.test(t.kind)){const family=t.kind.replace("DeepFloor","");ctx.strokeStyle={threefold:"#d4b08344",descent:"#8dc4d344",loop:"#c6a5dc44",flooded:"#9ad3c844",fortress:"#d0ae7544"}[family]||"#aab3b744";ctx.lineWidth=1;ctx.strokeRect(px+2,py+2,s-4,s-4);if(family==="threefold"){ctx.beginPath();ctx.moveTo(px+s*.5,py+5);ctx.lineTo(px+s*.78,py+s*.72);ctx.lineTo(px+s*.22,py+s*.72);ctx.closePath();ctx.stroke()}else if(family==="loop"){ctx.beginPath();ctx.arc(px+s*.5,py+s*.5,s*.22,0,6);ctx.stroke()}else if(family==="flooded"){ctx.beginPath();ctx.moveTo(px+4,py+s*.62);ctx.quadraticCurveTo(px+s*.5,py+s*.45,px+s-4,py+s*.62);ctx.stroke()}else if(family==="descent"){ctx.beginPath();ctx.moveTo(px+s*.2,py+s*.25);ctx.lineTo(px+s*.5,py+s*.75);ctx.lineTo(px+s*.8,py+s*.25);ctx.stroke()}else{ctx.fillStyle="#d6b77933";for(const[qx,qy]of[[.2,.2],[.8,.2],[.2,.8],[.8,.8]])ctx.fillRect(px+s*qx-1,py+s*qy-1,3,3)}return}
     ctx.fillStyle = "#d2c6aa12";
     ctx.fillRect(px + 3, py + 3, s - 7, 1);
     ctx.fillStyle = "#09090835";
@@ -476,12 +497,14 @@ export function render(ctx, g, w, h, now) {
   ctx.save();
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - p.y * s));
   for (let y = t; y < b; y++)
-    for (let x = l; x < r; x++)
+    for (let x = l; x < r; x++) {
+      if(g.area==="dungeon"&&dungeonTileVisibility(g.map,x,y)==="unseen"){ctx.fillStyle="#070a0d";ctx.fillRect(x*s,y*s,s+.5,s+.5);continue}
       tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId);
+    }
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
-  for(const e of g.enemies)if(!e.dead&&e.eliteWindup>0&&visibleInCamera(e,l,t,r,b,e.kind==='gravitantBell'?6:3)){ctx.strokeStyle=e.kind==='gravitantBell'?"#8bb8bdcc":"#c6885ccc";ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
+  for(const e of g.enemies)if(!e.dead&&discoveredInDungeon(g,e)&&e.eliteWindup>0&&visibleInCamera(e,l,t,r,b,e.kind==='gravitantBell'?6:3)){ctx.strokeStyle=e.kind==='gravitantBell'?"#8bb8bdcc":"#c6885ccc";ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
   for (const e of g.enemies)
-    if (!e.dead && e.telegraph > 0 && visibleInCamera(e,l,t,r,b,2)) {
+    if (!e.dead && discoveredInDungeon(g,e) && e.telegraph > 0 && visibleInCamera(e,l,t,r,b,2)) {
       const pulse = 0.65 + (0.9 - e.telegraph) * 0.2;
       ctx.fillStyle = "#873f4338";
       ctx.strokeStyle = "#bd8257bb";
@@ -524,7 +547,7 @@ export function render(ctx, g, w, h, now) {
   }
   const draws = [];
   for (const o of g.map.objects)
-    if (renderableObject(g,o)&&visibleInCamera(o,l,t,r,b)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden")&&(renderCacheStats.visibleObjects++,true))
+    if (renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden")&&(renderCacheStats.visibleObjects++,true))
       draws.push({
         y: o.y,
         fn: () => {
@@ -580,7 +603,7 @@ export function render(ctx, g, w, h, now) {
         },
       });
   for (const e of g.enemies)
-    if (!e.dead && visibleInCamera(e,l,t,r,b,2))
+    if (!e.dead && discoveredInDungeon(g,e) && visibleInCamera(e,l,t,r,b,2))
       draws.push({
         y: e.y,
         fn: () => {
@@ -686,7 +709,7 @@ export function render(ctx, g, w, h, now) {
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) d.fn();
   for (const e of g.enemies)
-    if (!e.dead && !e.ambient && visibleInCamera(e,l,t,r,b,2)) {
+    if (!e.dead && discoveredInDungeon(g,e) && !e.ambient && visibleInCamera(e,l,t,r,b,2)) {
       ctx.fillStyle = "#211617";
       ctx.fillRect(e.x * s, (e.y - 0.1) * s, s, 3);
       ctx.fillStyle = "#9b4d50";

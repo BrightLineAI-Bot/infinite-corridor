@@ -2,11 +2,19 @@
 
 ## Developer Proving Ground
 
-Release 90 provides five implemented production laboratories: Shelter/Building, Ordinary Dungeon, Legacy/Deep Dungeon, Threefold Dungeon, and Monster/Elite Combat. Scenario state is encoded through `lab`, `scenario`, `seed`, and `variant` URL parameters. Seven additional laboratories remain explicitly planned and unavailable.
+Release 91 provides five implemented production laboratories: Shelter/Building, Ordinary Dungeon, Legacy/Deep Dungeon, Threefold Dungeon, and Monster/Elite Combat. Scenario state is encoded through `lab`, `scenario`, `seed`, `variant`, `size`, and `reveal` URL parameters. Seven additional laboratories remain explicitly planned and unavailable.
 
 Use `?dev=proving-ground` for targeted production-system validation without contaminating a journey. The initial Shelter Gallery exposes timber, masonry, ruined gatehouse, cyber relay, alien geometric, and biomechanical fixtures selected from stable seed/section coordinates. It uses the production generator, Game simulation, input, collision, renderer, and shelter cutaway logic, but never imports persistence or normal startup. Reset always creates a fresh in-memory save. This is a developer route, not a player menu option.
 
-Current scope is intentionally narrow: Shelter Gallery is implemented. Dedicated dungeon, combat, waypoint, encounter, performance, and save laboratories are still proposed future slices and must not be reported as implemented.
+Current implemented scope is the five laboratories above. Wayglass, environment/domain, hunt, inventory, performance, recovery, and scene laboratories remain proposed future slices and must not be reported as implemented.
+
+## Unified dungeon exploration contract
+
+**CODE:** `src/dungeon-framework.ts` defines `infinite-corridor-dungeon/1.0.0`, six-tile discovery chunks, deterministic chunk adjacency, a stable topology hash, bounded discovery normalization, and size profiles. Production ordinary v4 dungeons use the namespace `ordinary-v4:{id}:{recipe}:{size}:v{variant}`. Complete topology is generated before play; discovery controls presentation and Atlas disclosure, so traversal order and frame timing never alter geometry.
+
+**CODE:** New ordinary histories use generator version 4. Existing version-2 and version-3 histories continue through their original generators. Deep-v1 and deep-v2 maps retain their existing geometry namespaces and gain derived contract metadata. Temporary hunt and persistent world-threat arenas are classified as `bounded-arena` and deliberately do not use incremental discovery.
+
+**CODE:** Dungeon discovery is durable schema-13 state under each dungeon history, separated by stable level id. `Game.updateDungeonDiscovery` runs only when the player changes cards and reveals exactly the occupied card; neighboring N/S/E/W cards remain concealed until the Wayfarer crosses into them. The renderer and Dungeon Atlas suppress undiscovered tiles, objects, and enemies. Proving Ground reveal and teleport controls affect scratch state only, while its canvas uses production targeted Attack, Tool, and Act behavior.
 
 Developer reference for inspecting, modifying, testing, and extending the Infinite Corridor
 project. This is the working model that future changes should be checked against.
@@ -137,8 +145,9 @@ These are separate spaces. No code converts a dungeon tile into an overworld sec
 | Space | Extent | Source |
 | --- | --- | --- |
 | Overworld section | 32 by 32 | `world.ts:5` (`SECTION_SIZE = 32`) |
-| Ordinary dungeon | 24 by 24 | `world.ts:185` |
-| Varied dungeon | 28 by 28 | `arenas.ts:44` |
+| Legacy ordinary v2 | 24 by 24 | `world.ts` |
+| Varied ordinary v3 | 28 by 28 | `arenas.ts` |
+| Unified ordinary v4 | 34, 40, or 46 square | `arenas.ts`, compact/standard/extended profiles |
 | Bespoke arena | 36 by 30 | `arenas.ts:11` |
 | Deep v1 (Threefold Deep) | 64 by 64 | `world.ts:173` |
 | Perception overlay | default 24 | `world.ts:169` |
@@ -251,7 +260,7 @@ Saves are written to IndexedDB and mirrored to `localStorage` on every write. Lo
 
 ### 6.4 Schema versioning rule
 
-Schema versions should be incremented when **durable state changes**. A version bump is only acceptable when it ships with all of the following, and any bump missing one of them is a defect rather than a release step:
+Schema versions should be incremented when **durable state changes**. Release 91 advances the save to 13 because dungeon discovery is persisted. A version bump is only acceptable when it ships with all of the following, and any bump missing one of them is a defect rather than a release step:
 
 1. An explicit migration path from every previously supported version.
 2. Tests covering each supported source version.
@@ -260,13 +269,9 @@ Schema versions should be incremented when **durable state changes**. A version 
 
 Do not bump a version for refactors, renames, or internal shape changes that are invisible in persisted bytes. Conversely, do not ship a durable-state change without a bump, since the current constant is the only gate that decides which migration path a stored save takes.
 
-### 6.5 Known contract drift
+### 6.5 Save contract
 
-`.change-control/project.json` declares component `main` with interface `local-save-schema` at version `10.0.0`. The code constant is `SAVE_VERSION = 12` (`types.ts:5`). That is a declared-versus-actual drift of two major versions.
-
-**Recommended reconciliation: record `local-save-schema` as `12.0.0`.** The historical correspondence is the supporting argument: interface version `10.0.0` matched `SAVE_VERSION 10`, so the interface tracks the save version directly rather than using an independent numbering scheme, and each subsequent save version should have carried a matching interface version. Treating the interface as an independent major/minor convention would require evidence of a separate scheme, and none was found.
-
-`.change-control/project.json` is **not** edited as part of this field-guide operation. This is recorded here as a recommendation and must be executed as its own reviewed architecture and contract change with its own checkpoint.
+`.change-control/project.json` and `SAVE_VERSION` both declare version 13 for the durable dungeon-discovery addition. Migration normalizes existing histories to `{schema:1, levels:{}}` without changing stored area snapshots, generator versions, rewards, or character progression.
 
 ## 7. Input flow
 
@@ -366,6 +371,14 @@ Elite state defaults (`elites.ts:12`): the Vesperwing contract starts `available
 ## 10. Dungeon population
 
 `populateDungeonEncounters` (`arenas.ts:28-43`).
+
+Dungeon hazard population is a separate deterministic layer. `populateDungeonHazards` preserves authored hazards, then adds a seed-stable bounded mix of Crossing Spikes and directional Kiln Vents. Generated hazards keep six tiles clear around the entrance and three tiles clear around objectives, bosses, and functional objects. Standard ordinary dungeons carry roughly three to five hazards; deep layouts carry a denser package. Warning, active, recovery, damage, range, and cardinal direction can vary by seed. Jumping remains the shared evasion rule. The Proving Ground report exposes each hazard and its parameters.
+
+Ordinary dungeon recipes also own a stable visual-material identity in both generation 3 and generation 4 layouts. Hollow Relays use fractured blue-charcoal relay slate and inset wall panels; Root-Sunk Cisterns use damp green flagstones, water marks, root-threaded aqueduct masonry, and shallow reflective details; Glass Kilns use rust-red furnace plates, rivets, scorch seams, and staggered refractory brick. These tile kinds are presentation metadata only: collision, reachability, discovery cards, and topology remain governed by the common dungeon contract.
+
+Ordinary dungeons may also receive a sparse deterministic terrain-hazard patch. Hollow Relays and Glass Kilns sometimes contain a small chasm or, rarely for a Hollow Relay, a flooded break; Root-Sunk Cisterns retain their authored water basins and bridges. Hazard tiles are never blank or visually disguised: pits use the canyon renderer and water uses the animated dungeon-water renderer. They are blocked for ordinary pathfinding but intentionally enterable through the lethal-terrain movement check, producing the same death and recovery behavior as overworld canyon and water. Placement protects all objects and enemy spawns and is rolled back unless every protected point remains reachable. Swimming, diving, and pit exploration remain future equipment/progression systems and are not implied by this layer.
+
+Discovery fog is visual rather than a simulation wall. Unrevealed cards must not leak actors, telegraphs, projectiles, effects, or trap geometry, but enemies are intentionally allowed to move from an unrevealed card into a revealed one. This preserves unexpected incursions without showing the source card in advance.
 
 - Refuses to run on arenas.
 - Idempotent per map object: it returns early when `encounterVersion` is already set.
@@ -554,8 +567,8 @@ Test baseline recorded on 2026-09-20. Re-run both commands afresh before relying
 
 ## 22. Build and release
 
-- Build script `scripts/build.mjs` stamps release 88.
-- `index.html` loads `styles.css?v=87`, registers `sw.js?v=87`, and imports `src/main.js?v=87`. These must stay in step with the build release.
+- Build script `scripts/build.mjs` stamps release 91.
+- `index.html`, `sw.js`, generated modules, and System diagnostics use release 91. These must stay in step with the build release.
 - `dist/` is untracked and ignored.
 - Offline model: service worker with cache-first assets, a manifest, an installed-PWA path, and the boot sequence in section 3.2. Offline behaviour after install is unverified on device.
 - A separate deployment worktree exists at `C:\AI-PROJECTS\infinite-corridor-pages-release40` on branch `deploy/release-40`. Deployment is outside this guide's scope and requires explicit authorization.

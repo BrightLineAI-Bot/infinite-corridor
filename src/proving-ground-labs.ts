@@ -1,8 +1,9 @@
 import { Game } from "./game.ts";
 import { freshSave } from "./types.ts";
-import { generateRegion } from "./world.ts";
-import { generateVariedDungeon } from "./arenas.ts";
+import { generateRegion, generateDungeon, deepDungeonId } from "./world.ts";
+import { generateVariedDungeon, generateUnifiedDungeon } from "./arenas.ts";
 import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.ts";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.ts";
 import { createCombatant, CREATURE_FORMS } from "./combat.ts";
 import { ELITE_DEFINITIONS } from "./elites.ts";
 
@@ -10,7 +11,7 @@ export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
 export const LABORATORIES = [
   { id: "shelters", label: "Shelter & Building Gallery", status: "implemented", description: "Production shelters, displacement devices, and architectural districts." },
-  { id: "ordinary-dungeon", label: "Ordinary Dungeon Lab", status: "implemented", description: "Production v3 dungeon topology, ecology, traps, guardians, and traversal." },
+  { id: "ordinary-dungeon", label: "Ordinary Dungeon Lab", status: "implemented", description: "Production v4 deterministic exploration topology, discovery, ecology, traps, guardians, and traversal." },
   { id: "deep-dungeon", label: "Legacy & Deep Dungeon Lab", status: "implemented", description: "Production deep-v2 archetypes, objectives, levels, shortcuts, and finales." },
   { id: "threefold", label: "Threefold Dungeon Lab", status: "implemented", description: "The production three-wing sealed expedition and its wardens." },
   { id: "combat", label: "Monster & Elite Combat Arena", status: "implemented", description: "Production combatants in a production dungeon arena." },
@@ -39,7 +40,7 @@ const SHELTERS = [
 ].map(([id,label,seed,rx,ry])=>({id,label,seed,rx,ry}));
 
 const ORDINARY = ["hollow", "cistern", "kiln"].map((id) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)} topology` }));
-const DEEP = DEEP_ARCHETYPE_IDS.map((id) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)} deep expedition` }));
+const DEEP = [{id:"legacy-v1",label:"Legacy v1 Threefold expedition"},...DEEP_ARCHETYPE_IDS.map((id) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)} deep expedition` }))];
 const CREATURES = [...Object.keys(CREATURE_FORMS), ...Object.keys(ELITE_DEFINITIONS).filter((id)=>!Object.hasOwn(CREATURE_FORMS,id))].map((id)=>({id,label:id.replace(/([A-Z])/g," $1").replace(/^./,c=>c.toUpperCase())}));
 
 export function scenariosForLab(lab) {
@@ -93,6 +94,7 @@ function gameForMap(seed, id, map, now) {
   Object.assign(save.position, { area: "dungeon", rx: 0, ry: 0, x: map.entry?.x ?? 4, y: map.entry?.y ?? 5 });
   save.consequences.dungeons[id] = { discovered: true, visits: 1, visitOpen: true, generatorVersion: 3, resolved: false };
   const game = new Game(save, now); game.installSystems(); installMap(game,map,now);
+  game.updateDungeonDiscovery(true);
   return { save, game };
 }
 
@@ -108,14 +110,15 @@ function shelterFixture(scenario, seed, now) {
   return { lab:"shelters",scenario:spec.id,label:spec.label,seed:actualSeed,variant:0,save,game,primary,structures,production:true };
 }
 
-function ordinaryFixture(scenario, seed, variant, now) {
+function ordinaryFixture(scenario, seed, variant, now, sizeProfile="standard") {
   const recipe = ORDINARY.some(q=>q.id===scenario)?scenario:"hollow", id=`proving:ordinary:${recipe}:${variant}`;
-  const map=generateVariedDungeon(seed,id,recipe);
+  const map=generateUnifiedDungeon(seed,id,recipe,{variant,sizeProfile});
   const base=gameForMap(seed,id,map,now);
-  return {lab:"ordinary-dungeon",scenario:recipe,label:map.name,seed,variant,production:true,...base};
+  return {lab:"ordinary-dungeon",scenario:recipe,label:map.name,seed,variant,sizeProfile,production:true,...base};
 }
 
 function deepFixture(scenario, seed, variant, now, forceThreefold=false) {
+  if(!forceThreefold&&scenario==="legacy-v1"){const id=deepDungeonId(seed,1,variant,-variant),map=generateDungeon(seed,id),base=gameForMap(seed,id,map,now);return{lab:"deep-dungeon",scenario,label:map.name,seed,variant,sizeProfile:"threefold",production:true,...base}}
   const archetype=forceThreefold?"threefold":DEEP_ARCHETYPE_IDS.includes(scenario)?scenario:"threefold";
   const id=deepV2Id(seed,1,variant,-variant,archetype),map=generateDeepV2Dungeon(seed,id);
   const base=gameForMap(seed,id,map,now);
@@ -131,19 +134,21 @@ function combatFixture(scenario, seed, variant, now) {
   return {lab:"combat",scenario:kind,label:map.name,seed,variant,production:true,...base};
 }
 
-export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVING_SEED,variant=0,now=0}={}) {
+export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVING_SEED,variant=0,sizeProfile="standard",revealMode="normal",now=0}={}) {
   const cleanSeed=String(seed||DEFAULT_PROVING_SEED).slice(0,80),cleanVariant=Math.max(0,Math.min(999,Number(variant)||0));
   if(lab==="shelters")return shelterFixture(scenario,cleanSeed,now);
-  if(lab==="ordinary-dungeon")return ordinaryFixture(scenario,cleanSeed,cleanVariant,now);
-  if(lab==="deep-dungeon")return deepFixture(scenario,cleanSeed,cleanVariant,now);
-  if(lab==="threefold")return deepFixture("threefold",cleanSeed,cleanVariant,now,true);
-  if(lab==="combat")return combatFixture(scenario,cleanSeed,cleanVariant,now);
+  let fixture;
+  if(lab==="ordinary-dungeon")fixture=ordinaryFixture(scenario,cleanSeed,cleanVariant,now,["compact","standard","extended"].includes(sizeProfile)?sizeProfile:"standard");
+  else if(lab==="deep-dungeon")fixture=deepFixture(scenario,cleanSeed,cleanVariant,now);
+  else if(lab==="threefold")fixture=deepFixture("threefold",cleanSeed,cleanVariant,now,true);
+  else if(lab==="combat")fixture=combatFixture(scenario,cleanSeed,cleanVariant,now);
+  if(fixture){fixture.revealMode=["normal","explored","full"].includes(revealMode)?revealMode:"normal";const map=fixture.game.map,history=fixture.save.consequences.dungeons[fixture.game.areaId()],level=map.levelStableId||map.levelId||"root",prior=history?.discovery?.levels?.[level]||revealDungeonAt(map,[],map.entry?.x||4,map.entry?.y||5,0);applyDungeonDiscovery(map,prior,fixture.revealMode==="full"?"full":"normal");return fixture}
   throw new Error(`Laboratory ${lab} is not implemented.`);
 }
 
 export function labReport(fixture) {
   const {game}=fixture,map=game.map,primary=fixture.primary;
-  return {mode:"developer-proving-ground",lab:fixture.lab,scenario:fixture.scenario,label:fixture.label,seed:fixture.seed,variant:fixture.variant,production:fixture.production,area:game.area,identity:map.id||`${game.rx},${game.ry}`,recipe:map.recipe||map.district?.style||primary?.family||"overworld",topology:map.diagnostic||null,level:map.levelId||null,objectives:(map.objectives||[]).map(q=>({id:q.id,type:q.type,name:q.name})),structures:fixture.structures?.map(o=>({id:o.id,kind:o.kind,family:o.family,shape:o.shape,theme:o.theme,entrances:o.entrances?.length||0,interior:o.interior?.length||0,boundary:o.boundary?.length||0}))||[],interactables:map.objects.filter(o=>o.actions?.length).map(o=>({id:o.id,kind:o.kind,state:o.state,actions:o.actions})),enemies:{total:game.enemies.length,alive:game.enemies.filter(e=>!e.dead).length,kinds:[...new Set(game.enemies.map(e=>e.kind))]},player:{x:Number(game.player.x.toFixed(2)),y:Number(game.player.y.toFixed(2)),hp:game.player.hp},performance:{...game.performanceStats}};
+  return {mode:"developer-proving-ground",lab:fixture.lab,scenario:fixture.scenario,label:fixture.label,seed:fixture.seed,variant:fixture.variant,sizeProfile:fixture.sizeProfile||map.sizeProfile||null,revealMode:fixture.revealMode||"normal",production:fixture.production,area:game.area,identity:map.id||`${game.rx},${game.ry}`,recipe:map.recipe||map.district?.style||primary?.family||"overworld",topology:map.diagnostic||null,topologyHash:map.dungeonContract?.topologyHash||null,discovery:map.dungeonContract?dungeonDiscoveryReport(map):null,level:map.levelId||null,objectives:(map.objectives||[]).map(q=>({id:q.id,type:q.type,name:q.name})),structures:fixture.structures?.map(o=>({id:o.id,kind:o.kind,family:o.family,shape:o.shape,theme:o.theme,entrances:o.entrances?.length||0,interior:o.interior?.length||0,boundary:o.boundary?.length||0}))||[],hazards:map.objects.filter(o=>o.kind==="trap").map(o=>({id:o.id,type:o.trapType,x:o.x,y:o.y,direction:[o.dirX||0,o.dirY||0],warning:o.warningDuration||.7,damage:o.damage||14})),interactables:map.objects.filter(o=>o.actions?.length).map(o=>({id:o.id,kind:o.kind,state:o.state,actions:o.actions})),enemies:{total:game.enemies.length,alive:game.enemies.filter(e=>!e.dead).length,kinds:[...new Set(game.enemies.map(e=>e.kind))]},player:{x:Number(game.player.x.toFixed(2)),y:Number(game.player.y.toFixed(2)),hp:game.player.hp},performance:{...game.performanceStats}};
 }
 
 export function teleportTargets(fixture) {

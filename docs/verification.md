@@ -1,5 +1,15 @@
 # Verification Matrix
 
+## Unified dungeon exploration
+
+Normal discovery reveals exactly the occupied dungeon card; cardinally adjacent cards remain concealed until crossed. Recovery coverage must prove the generated entrance accepts the full player footprint, and Proving Ground coverage must retain the production world-tap targeting path.
+
+Release 91 adds deterministic contract coverage for legacy ordinary v2, varied ordinary v3, unified ordinary v4, deep-v1, every deep-v2 archetype, multi-level deep maps, and bounded arenas. Required evidence includes topology determinism, distinct supported variants, critical-route reachability, safe placements, generator-version compatibility, schema-12-to-13 migration, bounded chunk discovery, Atlas/render concealment, scratch-only Proving Ground controls, full tests, build, and runtime browser state that cannot come from static HTML.
+
+Physical-phone frame pacing, installed-PWA offline refresh, and long-form completion of every generated variant remain manual checks.
+
+The Release 91 isolated proposal passed the complete Node suite (289/289), the release build, and local browser startup for both normal play and the ordinary-dungeon Proving Ground. This establishes the covered deterministic, migration, concealment, and startup invariants; it does not replace the manual checks above.
+
 ## Developer Proving Ground
 
 Release 90 expands automated coverage to the laboratory registry, production-map construction for ordinary/deep/Threefold/combat scenarios, deterministic recipes, scratch-state isolation, URL-addressable state, and offline bundle inclusion.
@@ -47,3 +57,22 @@ The intended future destination groups are:
 - `tests/integration-regression.test.ts` for cross-subsystem and release-regression scenarios.
 
 Each extraction must preserve the full suite's assertions, avoid unrelated formatting changes, and leave the suite passing before and after the move.
+# Dungeon hazard and concealment verification (2026-09-24)
+
+- Deterministic corpus checks compare repeated ordinary-dungeon hazard layouts, require both trap families across recipes, enforce traversable placement, and verify protected entry/objective/boss clearances for generated hazards.
+- Cardinal-direction tests exercise all four Kiln Vent directions plus variable warning, active, recovery, and damage values.
+- Source-level concealment checks cover enemy telegraphs, trap overlays, and projectiles while explicitly preserving the design rule that unrevealed enemies may roam into visible cards.
+- Proving Ground diagnostics now list hazard identity, type, position, direction, warning duration, and damage.
+
+# Ordinary dungeon visual-identity verification (2026-09-24)
+
+- Generation-3 and generation-4 corpus checks require each ordinary recipe to emit its own wall and floor tile kinds and diagnostic identity.
+- Renderer-source checks require dedicated drawing branches for all six material kinds rather than accepting palette aliases.
+- These checks do not alter or weaken the existing traversal, discovery, encounter, or hazard assertions.
+- Hollow Relay contrast coverage pins the brighter blue-gray floor palette, near-black wall palette, and recessed wall-panel treatment so future palette edits cannot silently collapse their visual separation.
+
+# Dungeon terrain-hazard verification (2026-09-24)
+
+- A deterministic 200-map Hollow/Kiln corpus requires both hazard-bearing and clear layouts, visible blocked terrain metadata, accurate diagnostics, and continued reachability of every object and enemy spawn.
+- Cistern coverage requires authored dungeon water with river environment metadata.
+- The existing grounded-center death test now exercises overworld river, dungeon water, and canyon at multiple frame rates; edge overlap remains safe until the grounded center actually enters the hazard.

@@ -25,7 +25,7 @@ import {
   structureOccupancy,
   validateEnterableStructures,
 } from "../src/world.ts";
-import { freshSave, migrateSave, normalizeManualWaypoint } from "../src/types.ts";
+import { freshSave, migrateSave, normalizeManualWaypoint, SAVE_VERSION } from "../src/types.ts";
 import { foundryCandidate, foundryEncounter, validateFoundryCandidate, CREATURE_FOUNDRY_SCHEMA, VIEWPORT_SCHEMA, DOMAIN_SCHEMA, HUNT_INSTANCE_SCHEMA, ensureViewportState, acceptViewportHunt, archiveViewportHunt, completeViewportHunt, foundryTrialDecision, domainTopology, domainEncounterPlan, completeDomainBoss, manifestationMechanics, ensureHuntInstance, beginHuntInstance, abandonHuntInstance, completeHuntInstance, cleanupHuntInstance, recordPeoplePlace, selectHuntDestination, resolveHuntDestination, ordinaryHuntSuitability, huntIntegrationDiagnostics } from "../src/foundry.ts";
 import { recordRevelationLead, completeRevelationArc, storySiteFor, recordSectionVisit, worldStewardReport, CORRIDOR_STORY_SCHEMA, STEWARD_SCHEMA } from "../src/story.ts";
 import { serializeSave, deserializeSave, normalizeSettings, effectiveQuality, journeyMetadata, createSlotWriteCoordinator, slotKey } from "../src/persistence.ts";
@@ -71,13 +71,15 @@ import {
   deepDungeonProgress,
   applyDeepDungeonProgress,
   completeDeepStory,
+  vendorShop,
 } from "../src/game.ts";
 import { SHELTER_FIXTURES, createShelterFixture, shelterFixtureReport } from "../src/proving-ground-fixtures.ts";
 import { LABORATORIES, scenariosForLab, createLabFixture, labReport, teleportTargets } from "../src/proving-ground-labs.ts";
 import { rng, pick, hashSeed } from "../src/random.ts";
 import { DEEP_ARCHETYPE_IDS, DEEP_STORY_PACKAGES, deepV2Id, deepV2Levels, generateDeepV2Dungeon } from "../src/deep-dungeons.ts";
 import { SCENE_DEFINITIONS,freshSceneState,ensureSceneState,sceneVariant,queueScene,commitScene,scenePlaybackPlan,recoverInterruptedScene,apertureRitualState,requestApertureRitual } from "../src/scenes.ts";
-import { ARENA_FAMILIES,DUNGEON_ACTIVE_CAP,arenaEligible,generateBespokeArena,arenaDescriptor,generateVariedDungeon } from "../src/arenas.ts";
+import { ARENA_FAMILIES,DUNGEON_ACTIVE_CAP,arenaEligible,generateBespokeArena,arenaDescriptor,generateVariedDungeon,generateUnifiedDungeon,populateDungeonHazards } from "../src/arenas.ts";
+import { DUNGEON_CONTRACT_SCHEMA,ORDINARY_GENERATOR_VERSION,annotateDungeon,applyDungeonDiscovery,dungeonDiscoveryReport,dungeonPointDiscovered,dungeonTileVisibility,dungeonTopologyHash,normalizeDungeonDiscovery,revealDungeonAt } from "../src/dungeon-framework.ts";
 import {
   normalizeVector,
   shapeStick,
@@ -276,7 +278,7 @@ test("schema migrations preserve location and select legacy generation zero", ()
     },
     explored: {},
   });
-  assert.equal(s.version, 12);
+  assert.equal(s.version, SAVE_VERSION);
   assert.equal(s.worldGeneration, 0);
   assert.deepEqual(
     [s.session.rx, s.session.ry, s.session.x, s.session.y],
@@ -555,7 +557,7 @@ test("v3 migration creates valid narrative state without losing progress", () =>
     narrative: undefined,
     xp: 44,
   });
-  assert.equal(s.version, 12);
+  assert.equal(s.version, SAVE_VERSION);
   assert.equal(s.xp, 44);
   assert.ok(Array.isArray(s.narrative.journal));
   assert.equal(s.narrative.schema, "infinite-corridor-narrative/1.0.0");
@@ -696,7 +698,7 @@ test("v4 migration adds consumables without losing progress", () => {
   old.xp = 77;
   delete old.consumables;
   const s = migrateSave(old);
-  assert.equal(s.version, 12);
+  assert.equal(s.version, SAVE_VERSION);
   assert.equal(s.xp, 77);
   assert.deepEqual(s.consumables, {
     restorativeDraught: 3,
@@ -828,7 +830,7 @@ test("v5 to v8 retains explicit zero supplies and ranged state", () => {
   old.version = 5;
   old.consumables = { restorativeDraught: 0, ironbarkTonic: 0 };
   const s = migrateSave(old);
-  assert.equal(s.version, 12);
+  assert.equal(s.version, SAVE_VERSION);
   assert.deepEqual(s.consumables, {
     restorativeDraught: 0,
     ironbarkTonic: 0,
@@ -1098,7 +1100,7 @@ test("v6 to v8 preserves location ranged aim snapshots and new defaults", () => 
   o.session.areas.keep = { enemies: [] };
   delete o.toolMode;
   const s = migrateSave(o);
-  assert.equal(s.version, 12);
+  assert.equal(s.version, SAVE_VERSION);
   assert.deepEqual([s.session.x, s.session.y], [7, 9]);
   assert.deepEqual(s.pendingAim, { x: 3, y: 4 });
   assert.ok(s.session.areas.keep);
@@ -1640,7 +1642,7 @@ test("v7 migration preserves old Relay completion dead Vela and unrelated exact 
   old.session.areas.keep = { enemies: [{ id: "retain", hp: 3 }] };
   old.currency = 47;
   const s = migrateSave(old);
-  assert.equal(s.version, 12);
+  assert.equal(s.version, SAVE_VERSION);
   assert.equal(s.consequences.choices.relay, "restore");
   assert.equal(s.consequences.npcs["vendor-vela"].status, "dead");
   assert.equal(s.consequences.settlements["ember-refuge"].status, "standing");
@@ -1668,6 +1670,7 @@ test("v8 paused save roundtrip retains wounds choices active visit and effect de
   g.player.attackReadyAt = 220;
   const snapshot = structuredClone(g.exportSnapshot(999));
   const restored = deserializeSave(serializeSave(snapshot));
+  snapshot.consequences.dungeons["dungeon:CINDER-VERGE-47:g1"].discovery = { schema: 1, levels: {} };
   assert.deepEqual(restored.consequences, snapshot.consequences);
   const r = new Game(restored, 500);
   assert.equal(r.player.attackReadyAt, 700);
@@ -2017,11 +2020,11 @@ test("expanded creature ecology is deterministic and recorded in the field codex
   for(let y=-4;y<=4;y++)for(let x=-4;x<=4;x++)for(const e of generateRegion("ecology",x,y,1).enemySpawns)kinds.add(e.kind);
   for(const kind of ["ashenHound","veilMoth","rootBrute","coilStalker","cinderWisp"])assert.ok(kinds.has(kind),kind);
   const s=freshSave(),g=new Game(s,0);
-  assert.equal(s.version,12);
+  assert.equal(s.version,13);
   assert.ok(Object.keys(s.codex.creatures).length>=1);
   assert.equal(s.codex.places["terrain:"+g.map.dominant],true);
   const migrated=migrateSave({...freshSave(),version:8,codex:undefined});
-  assert.equal(migrated.version,12);
+  assert.equal(migrated.version,13);
   assert.deepEqual(migrated.codex,{creatures:{},places:{},features:{},variants:{},peoplePlaces:{}});
 });
 test("journal exposes encounter codex sections and an always-available symbol guide",()=>{
@@ -2395,12 +2398,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 90 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 91 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "90"/);assert.match(html,/styles\.css\?v=90/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v90`/);assert.match(sw,/styles\.css\?v=90/);assert.match(sw,/proving-ground-labs\.js\?v=90/);assert.match(sw,/renderer\.js\?v=90/);
-  assert.match(build,/release='90'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "91"/);assert.match(html,/styles\.css\?v=91/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v91`/);assert.match(sw,/styles\.css\?v=91/);assert.match(sw,/proving-ground-labs\.js\?v=91/);assert.match(sw,/dungeon-framework\.js\?v=91/);assert.match(sw,/renderer\.js\?v=91/);
+  assert.match(build,/release='91'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("Shelter Gallery uses six deterministic production shelter families",()=>{
@@ -2542,7 +2545,7 @@ test("portal prerequisite and elite rewards are one-time",()=>{const s=freshSave
 
 test("elite combatants are genuinely boss-scale but remain below Gate Revenant terror",()=>{for(const id of Object.keys(ELITE_DEFINITIONS)){const e=createCombatant(id,8,8);assert.equal(e.boss,true);assert.ok(e.maxHp>=230);assert.ok(e.damage>=17);assert.ok(e.eliteModules.length>=3);assert.ok(e.damage<22)}});
 
-test("save v11 migration preserves old progress and initializes elite contracts",()=>{const old=freshSave();old.version=9;delete old.elites;old.currency=77;const s=migrateSave(old);assert.equal(s.version,12);assert.equal(s.currency,77);assert.equal(s.elites.contracts.vesperwing.state,'available');assert.equal(s.materials.weaponSphere,0);assert.equal(s.viewport.schema,VIEWPORT_SCHEMA)});
+test("save v11 migration preserves old progress and initializes elite contracts",()=>{const old=freshSave();old.version=9;delete old.elites;old.currency=77;const s=migrateSave(old);assert.equal(s.version,13);assert.equal(s.currency,77);assert.equal(s.elites.contracts.vesperwing.state,'available');assert.equal(s.materials.weaponSphere,0);assert.equal(s.viewport.schema,VIEWPORT_SCHEMA)});
 
 test("elite journal art is bundled and release build includes the elite module",()=>{const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8'),css=readFileSync(new URL('../styles.css',import.meta.url),'utf8'),build=readFileSync(new URL('../scripts/build.mjs',import.meta.url),'utf8'),sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');assert.match(main,/ELITE_PORTRAITS/);assert.match(css,/elite-bestiary-atlas-v1-wide\.png/);assert.match(build,/'elites'/);assert.match(sw,/elite-bestiary-atlas-v1-wide\.png/)});
 
@@ -2742,8 +2745,18 @@ test("deep-v2 schema produces five deterministic mechanically distinct playable 
  assert.equal(signatures.size,5);
 });
 
+test("every deep-v2 class has its own material identity, card discovery, and deterministic optional terrain packages",()=>{
+ const identities=new Set(),terrain=new Map(DEEP_ARCHETYPE_IDS.map(q=>[q,{hazard:false,bridge:false}]));
+ for(const archetype of DEEP_ARCHETYPE_IDS)for(let i=0;i<40;i++){const seed=`MATERIAL-${i}`,map=generateDeepV2Dungeon(seed,deepV2Id(seed,1,i,-i,archetype));identities.add(`${map.floorKind}/${map.wallKind}`);assert.equal(map.dungeonContract.discoveryEnabled,true);assert.ok(map.tiles.some(t=>t.kind===map.floorKind));assert.ok(map.tiles.some(t=>t.kind===map.wallKind));const state=terrain.get(archetype);state.hazard||=map.tiles.some(t=>["canyon","dungeonWater"].includes(t.kind));state.bridge||=map.tiles.some(t=>t.kind==="bridge")}
+ assert.equal(identities.size,DEEP_ARCHETYPE_IDS.length);for(const [archetype,state] of terrain){assert.equal(state.hazard,true,`${archetype} hazard package`);assert.equal(state.bridge,true,`${archetype} bridge package`)}
+});
+
+test("dungeon relic brokers are optional, deterministic, and sell elevated equipment instead of routine supplies",()=>{
+ let found=null,absent=false;for(let i=0;i<200&&(!found||!absent);i++){const seed=`BROKER-${i}`,map=generateDeepV2Dungeon(seed,deepV2Id(seed,1,i,i,"loop")),merchant=map.objects.find(o=>o.kind==="shelterMerchant");if(merchant)found={seed,map,merchant};else absent=true}assert.ok(found);assert.equal(absent,true);const repeat=generateDeepV2Dungeon(found.seed,found.map.id).objects.find(o=>o.kind==="shelterMerchant");assert.deepEqual(repeat,found.merchant);const save=freshSave();save.seed=found.seed;const shop=vendorShop(save,found.merchant.id);assert.equal(shop.profile,"dungeon-relics");assert.deepEqual(shop.limited,{});assert.equal(shop.equipment.length,4);assert.ok(shop.equipment.every(q=>q.power>=8));assert.ok(shop.equipment.every(q=>["rare","epic","relic"].includes(q.tier)));
+});
+
 test("every deep-v2 mandatory objective is reachable while each final arena begins sealed",()=>{
- for(const archetype of DEEP_ARCHETYPE_IDS){const map=generateDeepV2Dungeon("ROUTES",`dungeon:ROUTES:g1:8:8:deep-v2:${archetype}`),closed=reachableDungeonCells(map,map.entry),key=q=>`${q.x},${q.y}`;for(const objective of map.objectives){const target=objective.type==="guardian"?map.enemySpawns.find(e=>e.objectiveId===objective.id):map.objects.find(o=>o.objectiveId===objective.id);assert.ok(closed.has(key(target)),`${archetype}:${objective.id}`)}const final=map.enemySpawns.find(e=>e.dungeonRole==="finalBoss");assert.equal(closed.has(key(final)),false,`${archetype} final arena must be sealed`);for(const p of map.finalGateTiles)map.tiles[p.y*map.width+p.x]={...map.tiles[p.y*map.width+p.x],blocked:false,kind:"deepFloor"};assert.equal(reachableDungeonCells(map,map.entry).has(key(final)),true,`${archetype} final arena must open`) }
+ for(const archetype of DEEP_ARCHETYPE_IDS){const map=generateDeepV2Dungeon("ROUTES",`dungeon:ROUTES:g1:8:8:deep-v2:${archetype}`),closed=reachableDungeonCells(map,map.entry),key=q=>`${q.x},${q.y}`;for(const objective of map.objectives){const target=objective.type==="guardian"?map.enemySpawns.find(e=>e.objectiveId===objective.id):map.objects.find(o=>o.objectiveId===objective.id);assert.ok(closed.has(key(target)),`${archetype}:${objective.id}`)}const final=map.enemySpawns.find(e=>e.dungeonRole==="finalBoss");assert.equal(closed.has(key(final)),false,`${archetype} final arena must be sealed`);for(const p of map.finalGateTiles)map.tiles[p.y*map.width+p.x]={...map.tiles[p.y*map.width+p.x],blocked:false,kind:map.floorKind};assert.equal(reachableDungeonCells(map,map.entry).has(key(final)),true,`${archetype} final arena must open`) }
 });
 
 test("deep-v2 story assignment is deterministic and includes storyless and all three playable packages",()=>{
@@ -2866,7 +2879,7 @@ test("steward telemetry stays bounded and reports recommendations without mutati
 
 test("version 11 migration initializes additive story foundry steward and Viewport state without reset",()=>{
  const raw=freshSave();raw.level=17;raw.currency=333;raw.story=undefined;raw.worldSteward=undefined;raw.codex.foundry={"retained-test":{name:"Retained Witness"}};
- const s=migrateSave(raw);assert.equal(s.version,12);assert.equal(s.level,17);assert.equal(s.currency,333);assert.equal(s.story.schema,CORRIDOR_STORY_SCHEMA);assert.equal(s.worldSteward.schema,STEWARD_SCHEMA);assert.equal(s.viewport.schema,VIEWPORT_SCHEMA);assert.equal(s.codex.foundry["retained-test"].name,"Retained Witness");
+ const s=migrateSave(raw);assert.equal(s.version,13);assert.equal(s.level,17);assert.equal(s.currency,333);assert.equal(s.story.schema,CORRIDOR_STORY_SCHEMA);assert.equal(s.worldSteward.schema,STEWARD_SCHEMA);assert.equal(s.viewport.schema,VIEWPORT_SCHEMA);assert.equal(s.codex.foundry["retained-test"].name,"Retained Witness");
 });
 
 test("foundry runtime integration observes by proximity preserves saved candidates and ships offline modules",()=>{
@@ -2968,7 +2981,7 @@ test("district roof ownership uses the grounded player body center and hides und
 });
 
 test("walking into water or canyon triggers death consistently without widening the shore kill box",()=>{
-  for(const [kind,dt] of [["river",1/60],["canyon",1/20]]){
+  for(const [kind,dt] of [["river",1/60],["dungeonWater",1/60],["canyon",1/20]]){
     const s=freshSave(),g=new Game(s,0);g.map={...g.map,width:8,height:8,exits:null,objects:[],enemySpawns:[],tiles:Array.from({length:64},(_,i)=>{const x=i%8,y=Math.floor(i/8),hazard=x>=4;return{x,y,kind:hazard?kind:"ash",environment:hazard?kind:undefined,blocked:hazard}})};g.area="dungeon";g.player.x=2;g.player.y=2;
     const input={state:{x:1,y:0},consume:()=>false};for(let i=0;i<180&&!s.worldFlags.deaths;i++)g.update(dt,input,i*dt*1000);
     assert.equal(s.worldFlags.deaths,1,`${kind} should be enterable and lethal at ${dt}s`);
@@ -3044,6 +3057,43 @@ test("overworld performance caches structure geometry and failed chase retries",
 });
 
 test("story scenes are deterministic bounded and commit exactly once",()=>{const a=freshSave(),b=freshSave();assert.equal(sceneVariant(a,"rift-arrival","one"),sceneVariant(b,"rift-arrival","one"));assert.equal(Object.keys(SCENE_DEFINITIONS).length,4);assert.equal(queueScene(a,"rift-arrival","one"),true);const full=scenePlaybackPlan(a,"rift-arrival",{quality:"high"}),low=scenePlaybackPlan(a,"rift-arrival",{quality:"low",reduceMotion:true});assert.ok(full.shots.length>=2);assert.equal(low.layers,1);assert.ok(low.shots.every(q=>q.camera==="still"));assert.equal(commitScene(a,"rift-arrival"),true);assert.equal(commitScene(a,"rift-arrival"),false);assert.deepEqual(scenePlaybackPlan(a,"rift-arrival"),null);assert.equal(a.narrative.facts["scene.riftArrival"],true)});
+
+test("unified ordinary dungeons are deterministic larger and meaningfully variant",()=>{
+  for(const recipe of["hollow","cistern","kiln"]){const legacy=generateVariedDungeon("UNIFIED",`legacy:${recipe}`,recipe),a=generateUnifiedDungeon("UNIFIED",`new:${recipe}`,recipe,{sizeProfile:"standard",variant:4}),b=generateUnifiedDungeon("UNIFIED",`new:${recipe}`,recipe,{sizeProfile:"standard",variant:4}),other=generateUnifiedDungeon("UNIFIED",`new:${recipe}`,recipe,{sizeProfile:"standard",variant:5});assert.deepEqual(a,b);assert.equal(a.generatorVersion,ORDINARY_GENERATOR_VERSION);assert.equal(a.dungeonContract.schema,DUNGEON_CONTRACT_SCHEMA);assert.equal(a.diagnostic.traversalValidation,"pass");assert.ok(a.dungeonContract.traversableTiles>=legacy.dungeonContract.traversableTiles*1.6);assert.equal(dungeonTopologyHash(a),dungeonTopologyHash(b));assert.notEqual(dungeonTopologyHash(a),dungeonTopologyHash(other));assert.ok(a.enemySpawns.every(e=>!a.tiles[e.y*a.width+e.x].blocked))}
+});
+
+test("all reachable dungeon generator families expose the common contract",()=>{
+  const maps=[generateDungeon("CONTRACT","dungeon:CONTRACT:g1"),generateVariedDungeon("CONTRACT","dungeon:CONTRACT:g1:1:1:hollow","hollow"),generateUnifiedDungeon("CONTRACT","dungeon:CONTRACT:g1:2:2:kiln","kiln"),generateDeepDungeon("CONTRACT",deepDungeonId("CONTRACT",1,3,3)),generateBespokeArena("CONTRACT","hunt-instance:CONTRACT:test",{kind:"temporary"})];
+  for(const archetype of DEEP_ARCHETYPE_IDS)maps.push(generateDeepV2Dungeon("CONTRACT",deepV2Id("CONTRACT",1,4,4,archetype)));
+  for(const map of maps){assert.equal(map.dungeonContract.schema,DUNGEON_CONTRACT_SCHEMA);assert.ok(map.dungeonContract.graph.chunks.length>0);assert.ok(map.dungeonContract.topologyHash);assert.equal(map.diagnostic.traversalValidation,"pass")}
+  assert.equal(maps.find(q=>q.arena)?.dungeonContract.classification,"bounded-arena");assert.equal(maps.find(q=>q.arena)?.dungeonContract.discoveryEnabled,false);
+});
+
+test("dungeon discovery reveals bounded chunks and hides distant objectives",()=>{
+  const map=generateUnifiedDungeon("FOG","fog:kiln","kiln",{sizeProfile:"extended",variant:2}),start=revealDungeonAt(map,[],map.entry.x,map.entry.y);applyDungeonDiscovery(map,start);const boss=map.enemySpawns.find(q=>q.boss);assert.equal(start.length,1,"only the entered card is revealed");assert.ok(start.length<map.dungeonContract.graph.chunks.length);assert.equal(dungeonTileVisibility(map,map.entry.x,map.entry.y),"visible");assert.equal(dungeonPointDiscovered(map,boss),false);const adjacent=map.dungeonContract.graph.chunks.find(q=>q.neighbours.includes(start[0]));assert.ok(adjacent);assert.equal(dungeonTileVisibility(map,adjacent.x,adjacent.y),"unseen","the next cardinal card stays concealed until entry");const stepped=revealDungeonAt(map,start,adjacent.x,adjacent.y);assert.equal(stepped.length,2);applyDungeonDiscovery(map,start,"full");assert.equal(dungeonPointDiscovered(map,boss),true);assert.deepEqual(normalizeDungeonDiscovery({levels:{root:["a","a",4]}}),{schema:1,levels:{root:["a","4"]}});assert.equal(dungeonDiscoveryReport(map).unexploredChunks,0)
+});
+
+test("save schema 13 migrates dungeon discovery without losing schema-12 progress",()=>{
+  const old=freshSave();old.version=12;old.level=19;old.currency=222;old.consequences.dungeons.demo={resolved:false,discovery:{schema:1,levels:{root:["root:0,0","root:0,0","root:1,0"]}}};const migrated=migrateSave(JSON.parse(JSON.stringify(old)));assert.equal(SAVE_VERSION,13);assert.equal(migrated.version,13);assert.equal(migrated.level,19);assert.equal(migrated.currency,222);assert.deepEqual(migrated.consequences.dungeons.demo.discovery.levels.root,["root:0,0","root:1,0"])
+});
+
+test("new dungeon histories use generator v4 while old v2 and v3 histories retain their generators",()=>{
+  const s=freshSave(),id="dungeon:CINDER-VERGE-47:g1:8:9:hollow";s.session.activeDungeonId=id;s.session.dungeonReturn={rx:8,ry:9,x:10,y:10};const g=new Game(s,0);g.loadArea("dungeon",false);assert.equal(s.consequences.dungeons[id].generatorVersion,4);assert.equal(g.map.generatorVersion,4);const v3="dungeon:CINDER-VERGE-47:g1:9:9:hollow";s.consequences.dungeons[v3]={generatorVersion:3};s.session.activeDungeonId=v3;g.loadArea("dungeon",false);assert.equal(g.map.generatorVersion,3);const canonical=dungeonId(s.seed,s.worldGeneration);s.consequences.dungeons[canonical]={generatorVersion:2};s.session.activeDungeonId=canonical;g.loadArea("dungeon",false);assert.equal(g.map.generatorVersion,2)
+});
+
+test("runtime discovery persists per level and Proving Ground exposes safe dungeon diagnostics",()=>{
+  const fixture=createLabFixture({lab:"ordinary-dungeon",scenario:"hollow",seed:"LAB-FOG",variant:3,sizeProfile:"extended",revealMode:"normal",now:0}),before=labReport(fixture);assert.equal(before.sizeProfile,"extended");assert.ok(before.topologyHash);assert.equal(before.discovery.revealedChunks,1);const far=teleportTargets(fixture).find(q=>q.label==="gateWarden");fixture.game.player.x=far.x;fixture.game.player.y=far.y;fixture.game.updateDungeonDiscovery(true);const after=labReport(fixture);assert.ok(after.discovery.revealedChunks>before.discovery.revealedChunks);const copy=migrateSave(JSON.parse(JSON.stringify(fixture.save))),history=copy.consequences.dungeons[fixture.game.areaId()];assert.ok(Object.values(history.discovery.levels)[0].length>=after.discovery.revealedChunks);const source=readFileSync(new URL("../src/proving-ground.ts",import.meta.url),"utf8"),labs=readFileSync(new URL("../src/proving-ground-labs.ts",import.meta.url),"utf8");assert.match(source,/Compare same seed/);assert.match(source,/Full diagnostic topology/);assert.match(source,/worldtap/);assert.match(source,/screenToWorld/);assert.doesNotMatch(labs,/from "\.\/persistence\.ts"/)
+});
+
+test("ordinary dungeon death returns to its real entrance on traversable ground",()=>{const s=freshSave(),id="dungeon:CINDER-VERGE-47:g1:8:9:hollow";s.session.activeDungeonId=id;s.session.dungeonReturn={rx:8,ry:9,x:10,y:10};const g=new Game(s,0);g.loadArea("dungeon",false);assert.equal(g.map.generatorVersion,4);g.player.hp=0;g.update(.016,idle(),1000);assert.equal(g.area,"dungeon");assert.deepEqual([g.player.x,g.player.y],[g.map.entry.x,g.map.entry.y]);assert.equal(footprintOpen(g.map,g.map.width,g.player.x,g.player.y),true);assert.equal(dungeonTileVisibility(g.map,g.player.x,g.player.y),"visible")});
+
+test("dungeon renderer and Atlas suppress undiscovered tiles objects and enemies",()=>{const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8"),main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(renderer,/dungeonTileVisibility/);assert.match(renderer,/discoveredInDungeon\(g,e\)/);assert.match(renderer,/discoveredInDungeon\(g,o\)/);assert.match(main,/dungeonTileVisibility\(map,tile\.x,tile\.y\)/);assert.match(main,/dungeonPointDiscovered\(map,o\)/)});
+test("dungeon overlay geometry does not leak silhouettes from unrevealed cards",()=>{const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(main,/dungeonPointDiscovered\(game\.map,e\)/);assert.match(main,/dungeonPointDiscovered\(game\.map,o\)/);assert.match(main,/dungeonPointDiscovered\(game\.map,p\)/);assert.doesNotMatch(activeDungeonEnemies.toString(),/dungeonPointDiscovered/,"undiscovered enemies may still roam into a revealed card")});
+test("deterministic dungeon hazards vary while preserving safe critical spaces",()=>{const types=new Set();for(const recipe of ["hollow","cistern","kiln"])for(let variant=0;variant<12;variant++){const a=generateUnifiedDungeon("TRAP-PACK",`trap:${recipe}:${variant}`,recipe,{sizeProfile:"standard",variant}),b=generateUnifiedDungeon("TRAP-PACK",`trap:${recipe}:${variant}`,recipe,{sizeProfile:"standard",variant}),hazards=a.objects.filter(o=>o.kind==="trap");assert.deepEqual(hazards,b.objects.filter(o=>o.kind==="trap"));assert.ok(hazards.length>=3&&hazards.length<=5,`${recipe}:${variant} hazards ${hazards.length}`);for(const trap of hazards){types.add(trap.trapType);assert.ok(!a.tiles[trap.y*a.width+trap.x].blocked);assert.ok(Math.hypot(trap.x-a.entry.x,trap.y-a.entry.y)>=6||!trap.id.includes(":hazard:"));for(const point of [...(a.objectives||[]),...a.enemySpawns.filter(e=>e.boss)])assert.ok(Math.hypot(trap.x-point.x,trap.y-point.y)>=3||!trap.id.includes(":hazard:"))}}assert.deepEqual([...types].sort(),["fire","spikes"])});
+test("ordinary dungeon recipes have distinct masonry and floor identities",()=>{const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8"),pairs=[];for(const recipe of ["hollow","cistern","kiln"]){for(const generator of [(r)=>generateVariedDungeon("IDENTITY",`identity:v3:${r}`,r),(r)=>generateUnifiedDungeon("IDENTITY",`identity:v4:${r}`,r,{sizeProfile:"standard",variant:2})]){const map=generator(recipe),kinds=new Set(map.tiles.map(t=>t.kind));assert.ok(kinds.has(`${recipe}Wall`),`${recipe} wall`);assert.ok(kinds.has(`${recipe}Floor`),`${recipe} floor`);assert.equal(map.diagnostic.visualIdentity,`${recipe}-masonry`);pairs.push(`${recipe}Wall:${recipe}Floor`)}}assert.equal(new Set(pairs).size,3);for(const kind of ["hollowWall","hollowFloor","cisternWall","cisternFloor","kilnWall","kilnFloor"])assert.match(renderer,new RegExp(`t\\.kind===\\"${kind}\\"`))});
+test("Hollow Relay walls retain a strong luminance separation from floors",()=>{const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");assert.match(renderer,/hollowFloor: \["#46575a", "#53666a"\]/);assert.match(renderer,/hollowWall: \["#101619", "#20292d"\]/);assert.match(renderer,/t\.kind==="hollowWall"[^\n]+#05090b55/)});
+test("ordinary dungeons sparsely add visible lethal terrain without cutting critical routes",()=>{let withTerrain=0,withoutTerrain=0;for(const recipe of ["hollow","kiln"])for(let variant=0;variant<100;variant++){const map=generateUnifiedDungeon("TERRAIN",`terrain:${recipe}:${variant}`,recipe,{sizeProfile:"standard",variant}),hazards=map.tiles.filter(t=>["canyon","dungeonWater"].includes(t.kind));if(hazards.length)withTerrain++;else withoutTerrain++;assert.equal(map.diagnostic.terrainHazardTiles,hazards.length);assert.ok(hazards.every(t=>t.blocked&&t.environment&&t.kind!=="wall"));const reach=reachableDungeonCells(map,map.entry);for(const point of [...map.objects,...map.enemySpawns])assert.ok(reach.has(`${point.x},${point.y}`),`${recipe}:${variant}:${point.id||point.kind} route`)}assert.ok(withTerrain>70,`terrain variants ${withTerrain}`);assert.ok(withoutTerrain>20,`clear variants ${withoutTerrain}`);const cistern=generateUnifiedDungeon("TERRAIN","terrain:cistern","cistern",{sizeProfile:"standard",variant:0});assert.ok(cistern.tiles.some(t=>t.kind==="dungeonWater"&&t.blocked&&t.environment==="river"))});
+test("variable fire traps respect cardinal direction timing and damage",()=>{for(const [dirX,dirY]of [[1,0],[0,1],[-1,0],[0,-1]]){const trap={kind:"trap",trapType:"fire",x:5,y:5,dirX,dirY,range:4,warningDuration:.2,activeDuration:.6,recoveryDuration:.9,damage:19,phase:"armed",timer:0,hits:{},loadGrace:0},player={x:5,y:5,hp:50};updateTraps([trap],player,.01,false);assert.equal(trap.phase,"warning");player.x=5+dirX*2;player.y=5+dirY*2;updateTraps([trap],player,.21,false);assert.equal(trap.phase,"active");updateTraps([trap],player,.01,false);assert.equal(player.hp,31);updateTraps([trap],player,.61,false);assert.equal(trap.phase,"recovery");assert.equal(trap.timer,.9)}});
 test("interrupted scenes recover at a shot boundary and replay stays consequence-free",()=>{const s=freshSave();queueScene(s,"relay-awakening","relay");s.scenes.pending.shot=99;s.scenes.pending.elapsed=1200;const p=recoverInterruptedScene(s);assert.equal(p.shot,SCENE_DEFINITIONS["relay-awakening"].shots.length-1);assert.equal(p.elapsed,0);commitScene(s,"relay-awakening");const before=structuredClone(s.narrative.facts),replay=scenePlaybackPlan(s,"relay-awakening",{replay:true});assert.equal(replay.replay,true);assert.deepEqual(s.narrative.facts,before)});
 test("bespoke arena families are deterministic sparse bounded and traversable",()=>{for(const family of ARENA_FAMILIES){const a=generateBespokeArena("S","arena:"+family,{family}),b=generateBespokeArena("S","arena:"+family,{family});assert.deepEqual(arenaDescriptor(a),arenaDescriptor(b));assert.equal(a.diagnostic.reachable,true);assert.ok(a.tiles.length<=36*30);assert.ok(a.enemySpawns.every(e=>!a.tiles[e.y*a.width+e.x].blocked))}let eligible=0;for(let x=0;x<500;x++)eligible+=arenaEligible("S",x,-x)?1:0;assert.ok(eligible>0&&eligible<15)});
 test("temporary and persistent arenas obey lifecycle output",()=>{const active=generateBespokeArena("S","hunt-arena:test",{kind:"temporary"}),cleared=generateBespokeArena("S","arena:test",{kind:"persistent",cleared:true});assert.equal(active.arenaKind,"temporary");assert.equal(active.enemySpawns.length,1);assert.equal(cleared.arenaKind,"persistent");assert.equal(cleared.enemySpawns.length,0);assert.ok(active.objects.some(o=>o.kind==="exit"))});

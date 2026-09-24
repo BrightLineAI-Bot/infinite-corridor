@@ -42,7 +42,8 @@ import { hashSeed } from "./random.ts";
 import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.ts';
 import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.ts';
 import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.ts';
-import{generateVariedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.ts';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.ts';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.ts';
 import{ensureSceneState,queueScene}from'./scenes.ts';
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
@@ -73,12 +74,12 @@ export function applyDeepDungeonProgress(save, id, map) {
     if (o.kind === "storyGhost" && progress.story.completed) Object.assign(o, { state: "released", actions: [] });
     if (o.kind === "storyActor") Object.assign(o, progress.story.completed ? {state:"departed",actions:[]} : progress.story.started ? {state:"manifest",actions:["witness"]}:{state:"veiled",actions:["witness"]});
     if (o.kind === "storyScene" && progress.story.completedBeatIds.includes(o.beatId)) Object.assign(o,{state:"witnessed",actions:[]});
-    if (o.kind === "deepShortcut") {const opened=progress.openedShortcutIds.includes(o.id),available=completed.has(o.unlockObjectiveId);Object.assign(o,opened?{state:"open",actions:["inspect"]}:available?{state:"revealed",actions:["open"]}:{state:"hidden",actions:["inspect"]});for(const p of o.cells||[])if(opened)map.tiles[p.y*map.width+p.x]={...map.tiles[p.y*map.width+p.x],kind:"deepFloor",blocked:false,routeId:o.id};}
+    if (o.kind === "deepShortcut") {const opened=progress.openedShortcutIds.includes(o.id),available=completed.has(o.unlockObjectiveId);Object.assign(o,opened?{state:"open",actions:["inspect"]}:available?{state:"revealed",actions:["open"]}:{state:"hidden",actions:["inspect"]});for(const p of o.cells||[])if(opened)map.tiles[p.y*map.width+p.x]={...map.tiles[p.y*map.width+p.x],kind:map.floorKind||"deepFloor",blocked:false,routeId:o.id};}
     if (o.kind === "deepPortal") {const active=o.unlockOnCompletion?progress.completed:!o.unlockObjectiveId||completed.has(o.unlockObjectiveId);Object.assign(o,active?{state:"active",actions:["travel"]}:{state:"dormant",actions:["inspect"]});}
     if (o.kind === "sealedGate") Object.assign(o, progress.gateOpened ? { state: "open", blocked: false, actions: ["enter"] } : { state: "sealed", blocked: true, actions: ["inspect"] });
   }
   const width = mapWidth(map, "dungeon");
-  for (const p of map.finalGateTiles || []) map.tiles[p.y * width + p.x] = { ...map.tiles[p.y * width + p.x], kind: progress.gateOpened ? "deepFloor" : "sealedGate", blocked: !progress.gateOpened, gateId: map.finalGateId };
+  for (const p of map.finalGateTiles || []) map.tiles[p.y * width + p.x] = { ...map.tiles[p.y * width + p.x], kind: progress.gateOpened ? map.floorKind||"deepFloor" : "sealedGate", blocked: !progress.gateOpened, gateId: map.finalGateId };
   return progress;
 }
 export function completeDeepStory(save, id, map) {
@@ -561,24 +562,24 @@ export function updateTraps(objects, player, dt, jumping = false) {
     trap.timer = Math.max(0, Number(trap.timer) || 0);
     trap.loadGrace =
       trap.loadGrace === undefined ? 0.8 : Math.max(0, trap.loadGrace - dt);
-    const near = Math.hypot(player.x - trap.x, player.y - trap.y) < 0.72;
+    const near = Math.hypot(player.x - trap.x, player.y - trap.y) < (Number(trap.radius)||0.72);
     if (trap.phase === "armed" && near) {
       trap.phase = "warning";
-      trap.timer = 0.7;
+      trap.timer = Number(trap.warningDuration)||0.7;
       trap.hits = {};
     } else if (trap.phase === "warning") {
       trap.timer -= dt;
       if (trap.timer <= 0) {
         trap.phase = "active";
-        trap.timer = 0.35;
+        trap.timer = Number(trap.activeDuration)||0.35;
       }
     } else if (trap.phase === "active") {
       trap.timer -= dt;
-      const inFire =
-        trap.trapType === "fire" &&
-        Math.abs(player.y - trap.y) < 0.55 &&
-        player.x >= trap.x - 1 &&
-        player.x <= trap.x + 3;
+      const rawDirX=Number(trap.dirX),rawDirY=Number(trap.dirY),hasDirection=Number.isFinite(rawDirX)&&Number.isFinite(rawDirY)&&(rawDirX!==0||rawDirY!==0),directionLength=hasDirection?Math.hypot(rawDirX,rawDirY):1,
+        dirX=(hasDirection?rawDirX:1)/directionLength,dirY=(hasDirection?rawDirY:0)/directionLength,
+        offsetX=player.x-trap.x,offsetY=player.y-trap.y,
+        forward=offsetX*dirX+offsetY*dirY,side=Math.abs(offsetX*-dirY+offsetY*dirX),
+        inFire=trap.trapType === "fire"&&side<0.55&&forward>=-1&&forward<=(Number(trap.range)||3);
       const inSpikes = trap.trapType === "spikes" && near;
       if (
         !jumping &&
@@ -587,11 +588,11 @@ export function updateTraps(objects, player, dt, jumping = false) {
         (inFire || inSpikes)
       ) {
         trap.hits.player = true;
-        player.hp -= 14;
+        player.hp -= Number(trap.damage)||14;
       }
       if (trap.timer <= 0) {
         trap.phase = "recovery";
-        trap.timer = 1.6;
+        trap.timer = Number(trap.recoveryDuration)||1.6;
       }
     } else if (trap.phase === "recovery") {
       trap.timer -= dt;
@@ -659,6 +660,7 @@ function refreshShop(save, vendorId, shop, count) {
   if (shop.rotation === undefined) shop.rotation = rotation;
   return shop.rotation === rotation ? shop : rotatingShop(save, vendorId, count);
 }
+function dungeonShop(save,vendorId){const rotation=vendorRotation(save),prior=save.shops?.[vendorId];if(prior?.rotation===rotation&&prior.profile==="dungeon-relics")return prior;return{version:1,profile:"dungeon-relics",rotation,limited:{},purchased:{},equipment:Array.from({length:4},(_,i)=>generateItem(`${save.seed}:${vendorId}:relic-stock:v1:${rotation}:${i}`,Math.max(8,save.level+6+i%2)))}}
 export function velaShop(save) {
   save.shop = refreshShop(save, "vendor-vela", save.shop, 3);
   if (save.shop.limited.crossingSigil === undefined)
@@ -729,6 +731,7 @@ export function buyFromVela(save, id, quantity = 1) {
 export function vendorShop(save, vendorId = "vendor-vela") {
   if (vendorId === "vendor-vela") return velaShop(save);
   save.shops ||= {};
+  if(vendorId.startsWith("dungeon-merchant:")||vendorId==="deep-v2-fortress-merchant")return save.shops[vendorId]=dungeonShop(save,vendorId);
   save.shops[vendorId] = refreshShop(save, vendorId, save.shops[vendorId], 2);
   return save.shops[vendorId];
 }
@@ -741,7 +744,7 @@ export function buyFromVendor(save, vendorId, id, quantity = 1) {
         ? "glasshaven"
         : vendorId === "vendor-mora"
           ? "coilmarket"
-          : vendorId.startsWith("shelter-surprise-") ? null : "ember-refuge";
+          : vendorId.startsWith("shelter-surprise-")||vendorId.startsWith("dungeon-merchant:")||vendorId==="deep-v2-fortress-merchant" ? null : "ember-refuge";
   if (
     save.worldFlags[vendorId + ":dead"] ||
     npc?.status === "dead" ||
@@ -1459,15 +1462,24 @@ export class Game {
       eliteHazards:this.eliteHazards.map(h=>({...h,hits:{...h.hits}})),
     };
   }
+  updateDungeonDiscovery(force=false){
+    if(this.area!=="dungeon"||!this.map?.dungeonContract?.discoveryEnabled)return false;
+    const chunk=dungeonChunkId(this.map,this.player.x,this.player.y);if(!force&&chunk===this._dungeonChunkId)return false;
+    this._dungeonChunkId=chunk;const history=dungeonHistory(this.save,this.areaId()),prior=discoveryForLevel(history,this.map),next=revealDungeonAt(this.map,prior,this.player.x,this.player.y,0),changed=next.length!==prior.length||next.some((q,i)=>q!==prior[i]);
+    if(changed)history.discovery.levels[this.map.levelStableId||this.map.levelId||"root"]=next;
+    applyDungeonDiscovery(this.map,next,this.map._dungeonRevealMode||"normal");return changed;
+  }
   loadArea(area, capture = true) {
     if (capture) this.snapshotArea();
     this.area = area;
     const loadingId=area==="dungeon"?this.areaId():null,history=loadingId?dungeonHistory(this.save,loadingId):null;
-    const canonical=`dungeon:${this.save.seed}:g${this.save.worldGeneration}`;if(history&&history.generatorVersion===undefined)history.generatorVersion=loadingId===canonical||!!this.save.session.areas[loadingId]?2:3;
+    const canonical=`dungeon:${this.save.seed}:g${this.save.worldGeneration}`;if(history&&history.generatorVersion===undefined)history.generatorVersion=loadingId===canonical||!!this.save.session.areas[loadingId]?2:4;
     this.map =
       area === "dungeon"
         ? String(loadingId).startsWith("arena:")||String(loadingId).startsWith("hunt-arena:")||String(loadingId).startsWith("hunt-instance:")
           ? generateBespokeArena(this.save.seed,loadingId,{kind:String(loadingId).startsWith("arena:")?"persistent":"temporary",cleared:!!history?.resolved})
+          : history?.generatorVersion===4&&!String(loadingId).includes(":deep-v")&&!String(loadingId).startsWith("hunt-instance:")
+            ? generateUnifiedDungeon(this.save.seed,loadingId,dungeonDescriptor(loadingId).recipe)
           : history?.generatorVersion===3&&!String(loadingId).includes(":deep-v")&&!String(loadingId).startsWith("hunt-instance:")
             ? generateVariedDungeon(this.save.seed,loadingId,dungeonDescriptor(loadingId).recipe)
             : generateDungeon(this.save.seed, loadingId,{levelId:this.save.session.activeDungeonLevelId||undefined})
@@ -1477,6 +1489,7 @@ export class Game {
             this.ry,
             this.save.worldGeneration,
           );
+    if(area==="dungeon"&&this.map.dungeonContract?.discoveryEnabled){const discovered=discoveryForLevel(history,this.map);applyDungeonDiscovery(this.map,discovered);this._dungeonChunkId=null;}
     if(area==='overworld'){
       const site=storySiteFor(this.save,this.rx,this.ry);if(site&&!this.map.objects.some(o=>o.id===site.id)){const open=this.map.tiles[site.y*32+site.x];if(!open?.blocked&&!open?.structure)this.map.objects.push(site)}
       const candidate=foundryEncounter(this.save.seed,this.rx,this.ry,this.save.worldGeneration);if(candidate&&validateFoundryCandidate(candidate).ok&&!this.save.worldFlags[`foundry-retired:${candidate.foundryId}`]){const open=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>4&&t.x<28&&t.y>4&&t.y<28);if(open.length){const at=open[hashSeed(candidate.foundryId)%open.length];candidate.x=at.x;candidate.y=at.y;this.map.enemySpawns.push(candidate)}}
@@ -1830,6 +1843,8 @@ export class Game {
         if (used[o.id]?.state === "used") o.state = "used";
       p.x = deep ? (anchor?.x ?? this.map.hub?.x ?? this.map.entry?.x ?? 4) : (this.map.entry?.x ?? 4);
       p.y = deep ? (anchor?.y ?? this.map.hub?.y ?? this.map.entry?.y ?? 5) : (this.map.entry?.y ?? 5);
+      relocateIfStranded(p,this.map,mapWidth(this.map,"dungeon"));
+      this.updateDungeonDiscovery(true);
       p.invulnerableUntil = now + 2000;
       this.message = deep ? `Felled — recovered at the central anchor of ${this.map.name}. Cleared wings, shortcuts, carried items, XP, and map progress remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}` : `Felled — returned to the entrance of ${this.map.name}. The run begins again; your map and everything carried remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
     } else {
@@ -2152,8 +2167,10 @@ export class Game {
         for (const o of this.map.objects)
           if (claimed[o.id]?.state === "used") o.state = "used";
         const recovery = deep ? deepDungeonProgress(this.save, id).activeAnchor : null;
-        this.player.x = deep ? (recovery?.x ?? this.map.hub?.x ?? this.map.entry?.x ?? 4) : 4;
-        this.player.y = deep ? (recovery?.y ?? this.map.hub?.y ?? this.map.entry?.y ?? 5) : 5;
+        this.player.x = deep ? (recovery?.x ?? this.map.hub?.x ?? this.map.entry?.x ?? 4) : (this.map.entry?.x ?? 4);
+        this.player.y = deep ? (recovery?.y ?? this.map.hub?.y ?? this.map.entry?.y ?? 5) : (this.map.entry?.y ?? 5);
+        relocateIfStranded(this.player,this.map,mapWidth(this.map,"dungeon"));
+        this.updateDungeonDiscovery(true);
         this.player.invulnerableUntil = now + 2000;
         this.projectiles = [];
         this.effects = [];
@@ -2593,6 +2610,7 @@ export class Game {
     const terrainHazard=footprintHazard(this.map,width,nx,ny),fellIntoHazard=!!terrainHazard;
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
     else moveAxis(p, dx, dy, this.map, width, true);
+    if(!fellIntoHazard&&this.area==="dungeon")this.updateDungeonDiscovery();
     if(!fellIntoHazard&&this.area==='overworld'){
       const insideId=structureOccupancy(this.map.tiles,width,p.x,p.y);
       if(insideId){const trap=this.map.objects.find(o=>o.kind==='displacementTrap'&&o.shelterId===insideId&&o.state!=='used'&&!this.save.worldFlags[`displacement-trigger:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.55);if(trap){this.startDisplacement(trap,true);return}const hazard=this.map.objects.find(o=>o.kind==='shelterHazard'&&o.shelterId===insideId&&o.state==='armed'&&!this.save.worldFlags[`shelter-hazard:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.6);if(hazard){const key=`shelter-hazard:${this.rx},${this.ry}:${hazard.id}`;this.save.worldFlags[key]=true;hazard.state='spent';p.hp=Math.max(1,p.hp-(hazard.damage||10));this.message=`${hazard.name} erupts. ${hazard.damage||10} damage — the mechanism falls quiet.`;journalOnce(this.save,`shelter-hazard:${hazard.hazardType}`,`Shelters may conceal ${hazard.name.toLowerCase()} mechanisms. Their floor marks can be inspected, avoided, and remembered.`,'Shelter hazards');this.sync()}}
