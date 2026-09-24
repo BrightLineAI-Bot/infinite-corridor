@@ -389,9 +389,12 @@ function actor(
       else { rect(p[1], -0.1, -0.82, 0.2, 0.8); rect(p[0], -0.38, -0.86, 0.76, 0.32); rect("#71845b", -.27, -1.02, .54, .22); }
     } else if (kind === "rock" && (state === "moved" || state === "broken")) {
       rect("#4f514d", -.32, -.2, .2, .12); rect("#73766f", -.04, -.16, .24, .1); rect("#3c3f3b", .2, -.12, .13, .08);
-    } else if (kind === "checkpoint" || kind === "shrine") {
-      rect(p[2], -0.05, -0.85, 0.1, 0.65);
-      rect(p[0], -0.24, -0.34, 0.48, 0.18);
+    } else if (kind === "checkpoint") {
+      rect("#b8f5f2", -0.08, -1.02, 0.16, 0.7);rect("#315c65", -0.32, -0.34, 0.64, 0.2);rect("#72d7df", -0.2, -0.92, 0.4, 0.12);
+      ctx.strokeStyle="#d8ffff";ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.arc(k,base-s*.68,s*.25,Math.PI*.18,Math.PI*1.82);ctx.stroke();
+    } else if (kind === "shrine") {
+      rect("#806f91", -0.06, -0.62, 0.12, 0.5);rect("#4d665f", -0.3, -0.2, 0.6, 0.17);
+      ctx.strokeStyle="#8ed1c1";ctx.lineWidth=Math.max(2,s*.055);ctx.beginPath();ctx.arc(k,base-s*.55,s*.25,0,Math.PI*1.45);ctx.stroke();ctx.beginPath();ctx.arc(k,base-s*.55,s*.13,Math.PI*.3,Math.PI*1.8);ctx.stroke();
     } else if (kind === "door" || kind === "dungeon" || kind === "exit") {
       rect(p[0], -0.34, -0.82, 0.68, 0.82);
       rect("#171614", -0.23, -0.66, 0.46, 0.66);

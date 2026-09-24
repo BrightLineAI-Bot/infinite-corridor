@@ -24,6 +24,8 @@ import {
   clearWayfindingCache,
   structureOccupancy,
   validateEnterableStructures,
+  WAYGLASS_LATTICE_SIZE,
+  wayglassLatticeAnchor,
 } from "../src/world.ts";
 import { freshSave, migrateSave, normalizeManualWaypoint, SAVE_VERSION } from "../src/types.ts";
 import { foundryCandidate, foundryEncounter, validateFoundryCandidate, CREATURE_FOUNDRY_SCHEMA, VIEWPORT_SCHEMA, DOMAIN_SCHEMA, HUNT_INSTANCE_SCHEMA, ensureViewportState, acceptViewportHunt, archiveViewportHunt, completeViewportHunt, foundryTrialDecision, domainTopology, domainEncounterPlan, completeDomainBoss, manifestationMechanics, ensureHuntInstance, beginHuntInstance, abandonHuntInstance, completeHuntInstance, cleanupHuntInstance, recordPeoplePlace, selectHuntDestination, resolveHuntDestination, ordinaryHuntSuitability, huntIntegrationDiagnostics } from "../src/foundry.ts";
@@ -450,10 +452,10 @@ test("Atlas section sites expose discovered structures at their local coordinate
   const remembered=structuredClone(s);remembered.checkpoints["9,9"]={rx:9,ry:9,x:7,y:11,name:"Old Glass"};
   assert.ok(sectionSites(remembered.seed,9,9,remembered.worldGeneration,remembered).some((q)=>q.kind==="checkpoint"&&q.x===7&&q.y===11));
 });
-test("ordinary Wayglass generation is sparse but nonzero",()=>{
-  let checkpoints=0,total=0;
-  for(let y=-18;y<=18;y++)for(let x=-18;x<=18;x++){if(x===0&&y===0||x===4&&y===-2||x===-5&&y===3)continue;total++;if(generateRegion("sparse-wayglass",x,y,1).objects.some(o=>o.kind==="checkpoint"))checkpoints++;}
-  assert.ok(checkpoints>10);assert.ok(checkpoints/total<.045);
+test("ordinary Wayglass generation is sparse, semantically distinct, and bounded by its deterministic lattice",()=>{
+  let checkpoints=0,rests=0,total=0;const points=[];
+  for(let y=-20;y<=20;y++)for(let x=-20;x<=20;x++){if(x===0&&y===0)continue;total++;const objects=generateRegion("sparse-wayglass",x,y,1).objects,wayglass=objects.find(o=>o.kind==="checkpoint"),rest=objects.find(o=>o.kind==="shrine");if(wayglass){checkpoints++;points.push({x,y});assert.deepEqual([wayglass.semanticRole,wayglass.spriteIdentity,wayglass.atlasIcon,wayglass.fastTravelEligible,wayglass.respawnEligible],["wayglass","wayglass-beacon","beacon",true,true])}if(rest){rests++;assert.deepEqual([rest.semanticRole,rest.spriteIdentity,rest.atlasIcon,rest.fastTravelEligible,rest.respawnEligible],["rest-point","singing-array","array",false,true])}}
+  assert.ok(checkpoints/total>.045&&checkpoints/total<.09);assert.ok(rests>checkpoints*4);for(let my=-4;my<4;my++)for(let mx=-4;mx<4;mx++){const anchor=wayglassLatticeAnchor("sparse-wayglass",mx*WAYGLASS_LATTICE_SIZE,my*WAYGLASS_LATTICE_SIZE,1);assert.ok(generateRegion("sparse-wayglass",anchor.x,anchor.y,1).objects.some(o=>o.kind==="checkpoint"))}for(let y=-15;y<=15;y++)for(let x=-15;x<=15;x++)assert.ok(Math.min(...points.map(p=>Math.max(Math.abs(p.x-x),Math.abs(p.y-y))))<=WAYGLASS_LATTICE_SIZE-1);
 });
 test("Atlas details do not reveal unvisited generated terrain",()=>{
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
@@ -2429,11 +2431,12 @@ test("Proving Ground resets scratch state and cannot import persistence",()=>{
   assert.match(source,/progress is never saved/);
 });
 
-test("Proving Ground v2 exposes five real laboratories and labels the remainder planned",()=>{
-  assert.equal(LABORATORIES.length,12);
-  assert.deepEqual(LABORATORIES.filter(q=>q.status==="implemented").map(q=>q.id),["shelters","ordinary-dungeon","deep-dungeon","threefold","combat"]);
-  for(const id of ["shelters","ordinary-dungeon","deep-dungeon","threefold","combat"])assert.ok(scenariosForLab(id).length>0);
+test("Proving Ground exposes every production diagnostic laboratory and direct scenario",()=>{
+  assert.equal(LABORATORIES.length,13);assert.ok(LABORATORIES.every(q=>q.status==="implemented"));
+  for(const {id} of LABORATORIES){const scenarios=scenariosForLab(id);assert.ok(scenarios.length>0,id);const first=createLabFixture({lab:id,scenario:scenarios[0].id,seed:"all-labs",variant:1,now:0});assert.equal(labReport(first).scratch,true)}
 });
+
+test("Wayglass lab exposes independent travel, rest, manual, guidance, migration, and drought fixtures",()=>{for(const scenario of scenariosForLab("wayglass")){const a=createLabFixture({lab:"wayglass",scenario:scenario.id,seed:"nav-lab",now:0}),b=createLabFixture({lab:"wayglass",scenario:scenario.id,seed:"nav-lab",now:0});assert.equal(a.scenario,scenario.id);assert.deepEqual(labReport(a).diagnostics,labReport(b).diagnostics)}const rest=createLabFixture({lab:"wayglass",scenario:"activated-rest-point",seed:"nav-lab",now:0});assert.equal(Object.keys(rest.save.checkpoints).length,0);assert.equal(rest.save.activeCheckpoint.name,"Singing Array");const pair=createLabFixture({lab:"wayglass",scenario:"travel-pair",seed:"nav-lab",now:0});assert.equal(Object.keys(pair.save.checkpoints).length,2);const dual=createLabFixture({lab:"wayglass",scenario:"dual-compass",seed:"nav-lab",now:0});assert.ok(dual.save.manualWaypoint);assert.ok(dual.save.viewport.activeHuntId)});
 
 test("Proving Ground dungeon and combat recipes instantiate production maps deterministically",()=>{
   const cases=[["ordinary-dungeon","kiln"],["deep-dungeon","fortress"],["threefold","threefold"],["combat","vesperwing"]];

@@ -1,5 +1,13 @@
 # Work Log
 
+## 2026-09-24: Wayglass repair and complete Proving Ground laboratory lattice
+
+- **Scope:** Separate Wayglass fast-travel anchors from Singing Array rest points and Broken Observatories, correct excessive overworld scarcity without making Wayglasses routine, and activate the eight remaining diagnostic laboratories.
+- **Baseline:** The pre-change `WAYGLASS-AUDIT` corpus measured 346 Wayglasses (2.36%), 7,645 rest points (52.22%), and an observed maximum Chebyshev drought of eight sections across the inner sample. Wayglasses and rest points also shared one renderer branch.
+- **Changed:** Added explicit navigation metadata and distinct sprites; added one deterministic candidate anchor per five-by-five macrocell; completed direct Wayglass/navigation, environment/domain, hunts/creatures, inventory/equipment/vendor, performance, recovery/save/death, scenes, and records laboratory recipes using production generators or isolated scratch-save state.
+- **Verification:** Focused Wayglass and laboratory coverage passed 3/3. The complete isolated suite passed 299/299 with no failures, skips, cancellations, or todos. The validation build produced static offline PWA release 91. The corrected 14,640-section corpus measured 919 Wayglasses (6.28%), 7,323 rest points (50.02%), and a maximum observed drought of four sections. Browser checks are recorded after guarded apply.
+- **Open follow-ups:** Physical-device touch, long-session performance, and installed-PWA behavior remain manual validation. Diagnostic state laboratories expose production data and transitions but intentionally do not modify real saves.
+
 ## 2026-09-24: Dungeon card reveal, safe recovery, and production Proving Ground input
 
 - **Scope:** Tighten dungeon exploration to reveal only the card currently occupied, repair ordinary-v4 recovery placement, and give the Proving Ground the normal canvas-targeting action path.

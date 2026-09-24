@@ -8,6 +8,10 @@ The project follows a compact Keep a Changelog-style structure. Entries describe
 
 ### Added
 
+- Completed the developer Proving Ground laboratory lattice. Wayglass/navigation, bespoke environment/domain, hunt/creature, inventory/equipment/vendor, performance, recovery/save/death, narrative-scene, and Atlas/Journal/records scenarios now join the five existing playable production laboratories in isolated scratch state.
+
+- Added a deterministic Wayglass coverage lattice so overworld fast-travel anchors remain uncommon but no generated five-by-five section cell can become a severe Wayglass drought.
+
 - Added sparse deterministic dungeon pits and water basins. They are visibly rendered as terrain, use the established lethal water/canyon behavior, and are rejected during generation whenever they would sever a critical route.
 
 - Added distinct material identities for ordinary dungeon families: fractured relay slate in Hollow Relays, wet root-threaded aqueduct masonry in Root-Sunk Cisterns, and refractory brick and riveted furnace plates in Glass Kilns.
@@ -21,6 +25,8 @@ The project follows a compact Keep a Changelog-style structure. Entries describe
 - Added the developer-only Shelter Gallery at `?dev=proving-ground`. It runs six deterministic production shelter families through the real generator, renderer, input, collision, interaction, and simulation systems in fresh memory-only state.
 
 ### Changed
+
+- Wayglasses, Singing Array rest points, and Broken Observatories now carry explicit independent navigation roles and distinct world sprites. Rest points remain respawn-only; only Wayglasses enter the fast-travel network.
 
 - New ordinary dungeon histories use generator version 4 while existing version-2 and version-3 histories retain their original layouts. Save schema 13 adds normalized dungeon-discovery state without resetting character, reward, or dungeon progress.
 

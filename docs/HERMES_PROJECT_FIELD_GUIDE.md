@@ -2,11 +2,13 @@
 
 ## Developer Proving Ground
 
-Release 91 provides five implemented production laboratories: Shelter/Building, Ordinary Dungeon, Legacy/Deep Dungeon, Threefold Dungeon, and Monster/Elite Combat. Scenario state is encoded through `lab`, `scenario`, `seed`, `variant`, `size`, and `reveal` URL parameters. Seven additional laboratories remain explicitly planned and unavailable.
+Release 91 provides thirteen implemented production laboratories: Shelter/Building, Ordinary Dungeon, Legacy/Deep Dungeon, Threefold Dungeon, Monster/Elite Combat, Wayglass/Checkpoint/Compass, Bespoke Environment/Domain, Hunts/Creatures, Inventory/Equipment/Vendors, Performance, Recovery/Save/Death, Narrative Scenes, and Atlas/Journal/Records. Scenario state is encoded through `lab`, `scenario`, `seed`, `variant`, `size`, and `reveal` URL parameters.
 
 Use `?dev=proving-ground` for targeted production-system validation without contaminating a journey. The initial Shelter Gallery exposes timber, masonry, ruined gatehouse, cyber relay, alien geometric, and biomechanical fixtures selected from stable seed/section coordinates. It uses the production generator, Game simulation, input, collision, renderer, and shelter cutaway logic, but never imports persistence or normal startup. Reset always creates a fresh in-memory save. This is a developer route, not a player menu option.
 
-Current implemented scope is the five laboratories above. Wayglass, environment/domain, hunt, inventory, performance, recovery, and scene laboratories remain proposed future slices and must not be reported as implemented.
+All thirteen laboratories above are addressable and construct isolated production-backed fixtures. Geometry/combat laboratories are directly playable. State-oriented laboratories expose real generated maps, saves, items, registries, migrations, and diagnostics in scratch state; they are diagnostic harnesses, not alternate player menus and they never import or overwrite a journey.
+
+The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
 ## Unified dungeon exploration contract
 
