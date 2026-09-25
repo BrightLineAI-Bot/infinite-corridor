@@ -26,7 +26,7 @@ The Wayglass network uses three deliberately separate concepts. A Wayglass is a 
 
 **CODE:** New ordinary histories use generator version 4. Existing version-2 and version-3 histories continue through their original generators. Deep-v1 and deep-v2 maps retain their existing geometry namespaces and gain derived contract metadata. Temporary hunt and persistent world-threat arenas are classified as `bounded-arena` and deliberately do not use incremental discovery.
 
-**CODE:** Dungeon discovery is durable schema-13 state under each dungeon history, separated by stable level id. `Game.updateDungeonDiscovery` runs only when the player changes cards and reveals exactly the occupied card; neighboring N/S/E/W cards remain concealed until the Wayfarer crosses into them. The renderer and Dungeon Atlas suppress undiscovered tiles, objects, and enemies. Proving Ground reveal and teleport controls affect scratch state only, while its canvas uses production targeted Attack, Tool, and Act behavior.
+**CODE:** Dungeon discovery is durable state under each dungeon history, separated by stable level id. `Game.updateDungeonDiscovery` runs only when the player changes cards and reveals exactly the occupied card; neighboring N/S/E/W cards remain concealed until the Wayfarer crosses into them. The renderer and Dungeon Atlas suppress undiscovered tiles, objects, and enemies. Proving Ground reveal and teleport controls affect scratch state only, while its canvas uses production targeted Attack, Tool, and Act behavior.
 
 Developer reference for inspecting, modifying, testing, and extending the Infinite Corridor
 project. This is the working model that future changes should be checked against.
@@ -272,7 +272,7 @@ Saves are written to IndexedDB and mirrored to `localStorage` on every write. Lo
 
 ### 6.4 Schema versioning rule
 
-Schema versions should be incremented when **durable state changes**. Release 91 advances the save to 13 because dungeon discovery is persisted. A version bump is only acceptable when it ships with all of the following, and any bump missing one of them is a defect rather than a release step:
+Schema versions should be incremented when **durable state changes**. The current runtime authority is `src/types.ts` `SAVE_VERSION = 14`; the current test suite covers schema-14 normalization and migration from version 12. Dungeon discovery is one persisted feature within this durable contract. A version bump is only acceptable when it ships with all of the following, and any bump missing one of them is a defect rather than a release step:
 
 1. An explicit migration path from every previously supported version.
 2. Tests covering each supported source version.
@@ -283,7 +283,9 @@ Do not bump a version for refactors, renames, or internal shape changes that are
 
 ### 6.5 Save contract
 
-`.change-control/project.json` and `SAVE_VERSION` both declare version 13 for the durable dungeon-discovery addition. Migration normalizes existing histories to `{schema:1, levels:{}}` without changing stored area snapshots, generator versions, rewards, or character progression.
+**VERIFIED IN CURRENT CODE / VERIFIED BY TEST:** `SAVE_VERSION` declares version 14. Migration normalizes existing histories to `{schema:1, levels:{}}` without changing stored area snapshots, generator versions, rewards, or character progression; current tests also cover migration from version 12.
+
+**UNRESOLVED CONTRACT DRIFT:** `.change-control/project.json` still declares the `local-save-schema` interface as `13.0.0`. It is not current runtime authority and must not be cited as evidence that the save schema is 13. This documentation-only operation does not modify that configuration because the guarded draft adapter rejected it as ineligible. Reconcile the configuration in a separately reviewed contract operation after identifying every consumer of `local-save-schema` and validating the same migration/build gates.
 
 ## 7. Input flow
 
@@ -569,8 +571,8 @@ Unknown or untraced and deliberately not invented here: the internal schema vers
 
 | Command | Status |
 | --- | --- |
-| `npm.cmd test` | Last recorded run: 274 tests, 274 passed, 0 failed, 0 skipped, 118.7 s |
-| `npm.cmd run build` | Release 88 build command; record the exact result of each release run in the work log. |
+| `npm.cmd test` | Verified 2026-09-24: 308 tests passed; 0 failed, cancelled, skipped, or todo; duration 167.1 s. |
+| `npm.cmd run build` | Verified 2026-09-24: completed successfully and built static offline PWA Release 91 in `dist/`. |
 | Lint, format, typecheck | None configured. A typecheck with unused-import detection would have flagged the dead `playerAttack` import |
 
 Named checks relevant to this guide: `tests/prototype.test.ts:2464` (elite scale ceiling) and `:2981` (dungeon combat profiles wake on all damage paths and strengthen final revenants, asserting the revenant reaches at least 532 HP and 26 damage).
@@ -655,7 +657,7 @@ Each recipe is the short version: find the table, extend the table, check the wi
 6. `game.ts` spans 41 to 1494, 1581 to 1666, and 1721 to 2515 are unread. The interaction methods, the attack methods, and the systems installation functions are known only by signature and line number.
 7. `main.ts` outside 440 to 478 is unread. Overlay internals, the settings category list, and the Atlas drawing internals are grounded only by command-verified lines.
 8. `deep-dungeons.ts` lines 1 to 120, `foundry.ts` lines 1 to 45, `interactions.ts` lines 1 to 55, `world.ts` lines 41 to 129, and `renderer.ts` lines 432 to 760 are unread.
-9. The declared interface version for `local-save-schema` is wrong; the recommended fix is recorded in section 6.5 but not applied.
+9. The declared interface version for `local-save-schema` is stale at `13.0.0` while runtime `SAVE_VERSION` and current migration tests use 14. The needed configuration reconciliation is documented in section 6.5 but is not applied by this documentation-only draft.
 
 **Not defects, resolved:**
 
@@ -667,15 +669,17 @@ Each recipe is the short version: find the table, extend the table, check the wi
 
 ## 26. Manual validation status
 
-Nothing in this project has been revalidated on the owner's device during the field-guide passes. Unverified on device: Rift Bombard contact since the latest corrective commit, shelter traversal since the latest corrective commit, the compass and mark behaviour described in section 16, Android installation, installed-PWA offline launch, airplane-mode resume, touch usability, frame pacing under real load, ambient audio behaviour, the current design intent behind the red and green lifts, the glass symbols, the ring opening, and the amber chevron vertex, sparse-region freshness, overworld compaction, multi-breach and swarm content, and Wayglass Beacon placement rate as experienced rather than as computed.
+**MANUAL VALIDATION REPORTED (2026-09-24):** the owner reported successful phone validation that the current site runs and works. This is valuable device evidence, but the device/browser/build identifier, route coverage, offline/resume coverage, and reproducible steps were not recorded; it does not establish all cases below.
+
+Still unverified on device: Rift Bombard contact since the latest corrective commit, shelter traversal since the latest corrective commit, the compass and mark behaviour described in section 16, Android installation, installed-PWA offline launch, airplane-mode resume, touch usability, frame pacing under real load, ambient audio behaviour, the current design intent behind the red and green lifts, the glass symbols, the ring opening, and the amber chevron vertex, sparse-region freshness, overworld compaction, multi-breach and swarm content, and Wayglass Beacon placement rate as experienced rather than as computed.
 
 ## 27. Change control and governance
 
 - Mandatory before any project write: read `C:\AI-PROJECTS\brightline-release-manager\docs\GLOBAL_CHANGE_CONTROL.md`, run `status` and `checkpoint` with `-ProjectPath`, then follow the guarded workflow for existing-file changes.
 - The guarded adapter changes existing ordinary public files on the qualified local Windows filesystem. It does not manage secrets, databases, services, cloud deployments, ACL changes, file creation, or file deletion (protocol section "Supported scope").
 - Additional new files and contract changes require explicit review, ordinary version control, and a fresh checkpoint, and **must not be described as guarded effects**.
-- Status recorded for this operation: `ok:true`, projectId `8225aa1c-9d77-49ac-a8a9-f6b740f7d6f6`, componentOrder `["main"]`, `coordinatorInitialized:true`, no active operations, no blockers, 23 drift entries. Of those, three are `sha256+identity` drift and twenty are `input-binding` drift. Drift records are observations about recorded versus current identities, not permission to rewrite anything, and they do not indicate that this project is unusable.
-- Checkpoint recorded for this operation: `40d8bf722b82f6c07d5c823996de054263e027b685c44bb78319de058d6e2ac7`, 42 observed files, `preexistingWorkPreserved:true`.
+- Status recorded for the 2026-09-24 documentation draft: `ok:true`, projectId `8225aa1c-9d77-49ac-a8a9-f6b740f7d6f6`, componentOrder `["main"]`, `coordinatorInitialized:true`, no active operations, no blockers, 30 recorded drift entries. One is `sha256+identity`; the remaining entries are `input-binding`. Drift records are observations about recorded versus current identities, not permission to rewrite anything, and they do not indicate that this project is unusable.
+- Checkpoint recorded before the 2026-09-24 documentation draft: `b7aecab07b82519aa1bed10537f05af13e67ab7d2e7d90e4393b5247bd3772e6`, 49 observed files, `preexistingWorkPreserved:true`.
 - Never bypass a rejected change-control operation, create a second authority, reset unrelated work, clean the repository, or overwrite user changes.
 - Stewardship: `docs/decisions/0001-field-guide-consistency-stewardship.md` defines this guide's role as architectural orientation and regression control for every modification, and the Consistency Steward review that each change must pass, including its four possible verdicts.
 
