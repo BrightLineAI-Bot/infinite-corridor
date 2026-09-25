@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS } from "./items.js?v=90";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=91";
 import {
   generateRegion,
   generateDungeon,
@@ -14,7 +14,7 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
-} from "./world.js?v=90";
+} from "./world.js?v=91";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -25,7 +25,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius } from "./combat.js?v=90";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS } from "./combat.js?v=91";
 import {
   applyInteraction,
   validActions,
@@ -35,15 +35,16 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=90";
-import { ensurePerception } from "./types.js?v=90";
-import { generateItem } from "./items.js?v=90";
-import { hashSeed } from "./random.js?v=90";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=90';
-import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=90';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=90';
-import{generateVariedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=90';
-import{ensureSceneState,queueScene}from'./scenes.js?v=90';
+} from "./interactions.js?v=91";
+import { ensurePerception } from "./types.js?v=91";
+import { generateItem } from "./items.js?v=91";
+import { hashSeed } from "./random.js?v=91";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=91';
+import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=91';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=91';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=91';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=91';
+import{ensureSceneState,queueScene}from'./scenes.js?v=91';
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function mapWidth(map, area = "overworld") { return Math.max(1, Number(map?.width) || (area === "dungeon" ? 24 : 32)); }
@@ -73,12 +74,12 @@ export function applyDeepDungeonProgress(save, id, map) {
     if (o.kind === "storyGhost" && progress.story.completed) Object.assign(o, { state: "released", actions: [] });
     if (o.kind === "storyActor") Object.assign(o, progress.story.completed ? {state:"departed",actions:[]} : progress.story.started ? {state:"manifest",actions:["witness"]}:{state:"veiled",actions:["witness"]});
     if (o.kind === "storyScene" && progress.story.completedBeatIds.includes(o.beatId)) Object.assign(o,{state:"witnessed",actions:[]});
-    if (o.kind === "deepShortcut") {const opened=progress.openedShortcutIds.includes(o.id),available=completed.has(o.unlockObjectiveId);Object.assign(o,opened?{state:"open",actions:["inspect"]}:available?{state:"revealed",actions:["open"]}:{state:"hidden",actions:["inspect"]});for(const p of o.cells||[])if(opened)map.tiles[p.y*map.width+p.x]={...map.tiles[p.y*map.width+p.x],kind:"deepFloor",blocked:false,routeId:o.id};}
+    if (o.kind === "deepShortcut") {const opened=progress.openedShortcutIds.includes(o.id),available=completed.has(o.unlockObjectiveId);Object.assign(o,opened?{state:"open",actions:["inspect"]}:available?{state:"revealed",actions:["open"]}:{state:"hidden",actions:["inspect"]});for(const p of o.cells||[])if(opened)map.tiles[p.y*map.width+p.x]={...map.tiles[p.y*map.width+p.x],kind:map.floorKind||"deepFloor",blocked:false,routeId:o.id};}
     if (o.kind === "deepPortal") {const active=o.unlockOnCompletion?progress.completed:!o.unlockObjectiveId||completed.has(o.unlockObjectiveId);Object.assign(o,active?{state:"active",actions:["travel"]}:{state:"dormant",actions:["inspect"]});}
     if (o.kind === "sealedGate") Object.assign(o, progress.gateOpened ? { state: "open", blocked: false, actions: ["enter"] } : { state: "sealed", blocked: true, actions: ["inspect"] });
   }
   const width = mapWidth(map, "dungeon");
-  for (const p of map.finalGateTiles || []) map.tiles[p.y * width + p.x] = { ...map.tiles[p.y * width + p.x], kind: progress.gateOpened ? "deepFloor" : "sealedGate", blocked: !progress.gateOpened, gateId: map.finalGateId };
+  for (const p of map.finalGateTiles || []) map.tiles[p.y * width + p.x] = { ...map.tiles[p.y * width + p.x], kind: progress.gateOpened ? map.floorKind||"deepFloor" : "sealedGate", blocked: !progress.gateOpened, gateId: map.finalGateId };
   return progress;
 }
 export function completeDeepStory(save, id, map) {
@@ -188,7 +189,9 @@ export function characterStats(save) {
     primary = save.equipment?.primary,
     secondary = save.equipment?.secondary,
     armor = save.equipment?.armor,
-    charm = save.equipment?.charm;
+    charm = save.equipment?.charm,
+    active=save.magicSkills?.active?.remaining>0?save.magicSkills.active:null,
+    rank=active?skillRank(save,active.id):0;
   return {
     maxHp: 60 + (level - 1) * 6 + (vigor - 1) * 8,
     maxStamina: 50 + (level - 1) + (finesse - 1) * 3,
@@ -202,14 +205,14 @@ export function characterStats(save) {
       (Number(save.weaponLevel) || 0) * 3 +
       Math.floor((level - 1) * 0.6) +
       Math.floor((Number(primary?.power) || 0) * 0.7) +
-      affixValue(primary, "attack"),
+      affixValue(primary, "attack")+(active?.id==='ember-form'?2+rank*2:0)+(active?.id==='force-channel'?rank*2:0),
     magicBonus:
       Math.max(1, Number(stats.Focus) || 1) +
       Math.floor((level - 1) * 0.45) +
       Math.floor((Number(secondary?.power) || 0) * 0.55) +
-      affixValue(secondary, "attack"),
-    attackReach: affixValue(primary, "reach") + affixValue(secondary, "reach") + affixValue(charm, "reach"),
-    moveSpeed: affixValue(armor, "movement") + affixValue(charm, "movement"),
+      affixValue(secondary, "attack")+(active?.id==='force-channel'?rank*3:0),
+    attackReach: affixValue(primary, "reach") + affixValue(secondary, "reach") + affixValue(charm, "reach")+(active?.id==='ember-form'?.12+.06*rank:0),
+    moveSpeed: affixValue(armor, "movement") + affixValue(charm, "movement")+(active?.id==='quickening'?.12+.08*rank:0),
     armorPower,
     charmPower,
   };
@@ -561,24 +564,24 @@ export function updateTraps(objects, player, dt, jumping = false) {
     trap.timer = Math.max(0, Number(trap.timer) || 0);
     trap.loadGrace =
       trap.loadGrace === undefined ? 0.8 : Math.max(0, trap.loadGrace - dt);
-    const near = Math.hypot(player.x - trap.x, player.y - trap.y) < 0.72;
+    const near = Math.hypot(player.x - trap.x, player.y - trap.y) < (Number(trap.radius)||0.72);
     if (trap.phase === "armed" && near) {
       trap.phase = "warning";
-      trap.timer = 0.7;
+      trap.timer = Number(trap.warningDuration)||0.7;
       trap.hits = {};
     } else if (trap.phase === "warning") {
       trap.timer -= dt;
       if (trap.timer <= 0) {
         trap.phase = "active";
-        trap.timer = 0.35;
+        trap.timer = Number(trap.activeDuration)||0.35;
       }
     } else if (trap.phase === "active") {
       trap.timer -= dt;
-      const inFire =
-        trap.trapType === "fire" &&
-        Math.abs(player.y - trap.y) < 0.55 &&
-        player.x >= trap.x - 1 &&
-        player.x <= trap.x + 3;
+      const rawDirX=Number(trap.dirX),rawDirY=Number(trap.dirY),hasDirection=Number.isFinite(rawDirX)&&Number.isFinite(rawDirY)&&(rawDirX!==0||rawDirY!==0),directionLength=hasDirection?Math.hypot(rawDirX,rawDirY):1,
+        dirX=(hasDirection?rawDirX:1)/directionLength,dirY=(hasDirection?rawDirY:0)/directionLength,
+        offsetX=player.x-trap.x,offsetY=player.y-trap.y,
+        forward=offsetX*dirX+offsetY*dirY,side=Math.abs(offsetX*-dirY+offsetY*dirX),
+        inFire=trap.trapType === "fire"&&side<0.55&&forward>=-1&&forward<=(Number(trap.range)||3);
       const inSpikes = trap.trapType === "spikes" && near;
       if (
         !jumping &&
@@ -587,11 +590,11 @@ export function updateTraps(objects, player, dt, jumping = false) {
         (inFire || inSpikes)
       ) {
         trap.hits.player = true;
-        player.hp -= 14;
+        player.hp -= Number(trap.damage)||14;
       }
       if (trap.timer <= 0) {
         trap.phase = "recovery";
-        trap.timer = 1.6;
+        trap.timer = Number(trap.recoveryDuration)||1.6;
       }
     } else if (trap.phase === "recovery") {
       trap.timer -= dt;
@@ -659,6 +662,7 @@ function refreshShop(save, vendorId, shop, count) {
   if (shop.rotation === undefined) shop.rotation = rotation;
   return shop.rotation === rotation ? shop : rotatingShop(save, vendorId, count);
 }
+function dungeonShop(save,vendorId){const rotation=vendorRotation(save),prior=save.shops?.[vendorId];if(prior?.rotation===rotation&&prior.profile==="dungeon-relics")return prior;return{version:1,profile:"dungeon-relics",rotation,limited:{},purchased:{},equipment:Array.from({length:4},(_,i)=>generateItem(`${save.seed}:${vendorId}:relic-stock:v1:${rotation}:${i}`,Math.max(8,save.level+6+i%2)))}}
 export function velaShop(save) {
   save.shop = refreshShop(save, "vendor-vela", save.shop, 3);
   if (save.shop.limited.crossingSigil === undefined)
@@ -729,6 +733,7 @@ export function buyFromVela(save, id, quantity = 1) {
 export function vendorShop(save, vendorId = "vendor-vela") {
   if (vendorId === "vendor-vela") return velaShop(save);
   save.shops ||= {};
+  if(vendorId.startsWith("dungeon-merchant:")||vendorId==="deep-v2-fortress-merchant")return save.shops[vendorId]=dungeonShop(save,vendorId);
   save.shops[vendorId] = refreshShop(save, vendorId, save.shops[vendorId], 2);
   return save.shops[vendorId];
 }
@@ -741,7 +746,7 @@ export function buyFromVendor(save, vendorId, id, quantity = 1) {
         ? "glasshaven"
         : vendorId === "vendor-mora"
           ? "coilmarket"
-          : vendorId.startsWith("shelter-surprise-") ? null : "ember-refuge";
+          : vendorId.startsWith("shelter-surprise-")||vendorId.startsWith("dungeon-merchant:")||vendorId==="deep-v2-fortress-merchant" ? null : "ember-refuge";
   if (
     save.worldFlags[vendorId + ":dead"] ||
     npc?.status === "dead" ||
@@ -830,7 +835,7 @@ export function actionReadiness(game, now = 0) {
   };
 }
 export function enemyDangerRadius(enemy) {
-  return Math.max(1.7, Math.max(0, Number(enemy?.range) || 0) + 0.5) +
+  return Math.max(1.7, Math.max(0, Number(enemy?.threatRange??enemy?.range) || 0) + 0.5) +
     Math.max(0, enemyBodyRadius(enemy) - 0.38);
 }
 export function attackInRange(enemy, player) {
@@ -914,11 +919,13 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   if (e.telegraph > 0) {
     e.telegraph = Math.max(0, e.telegraph - dt);
     if (e.telegraph === 0) {
-      e.cooldown = (e.kind==='voidSentinel'?.82:e.kind==='cinderWisp'?1.35:1.9)*(e.attackCooldownScale||1);
+      const pattern=e.meleePhase&&MELEE_PATTERNS[e.meleePhase.id];
+      if(pattern?.dash){const aim=e.meleePhase.aim||projectileDirection(player.x-e.x,player.y-e.y),lateral=e.meleePhase.stage===1?{x:-aim.y,y:aim.x}:{x:0,y:0},distance=pattern.dash,dx=(aim.x+lateral.x*.65)*distance,dy=(aim.y+lateral.y*.65)*distance,steps=Math.ceil(Math.hypot(dx,dy)*5);for(let i=0;i<steps;i++)if(!moveAxis(e,dx/steps,dy/steps,map,width))break;if(pattern.stages===2&&e.meleePhase.stage===0){e.meleePhase.stage=1;e.telegraph=.42;e.threatRange=1.9;return false}}
+      e.cooldown = (pattern?.recovery|| (e.kind==='voidSentinel'?.82:e.kind==='cinderWisp'?1.35:1.9))*(e.attackCooldownScale||1);
       e.strike = 0.24;
       const ranged=e.range>=2.5&&!e.instantStrike,clear=attackInRange(e,player)&&hasLineOfSight(e,player,map,width,ranged);
-      if(clear&&ranged){onRanged(e,e.attackAim||projectileDirection(player.x-e.x,player.y-e.y));return false}
-      return clear;
+      if(clear&&ranged){onRanged(e,e.attackAim||projectileDirection(player.x-e.x,player.y-e.y));e.meleePhase=null;e.threatRange=null;return false}
+      e.meleePhase=null;e.threatRange=null;return clear;
     }
     return false;
   }
@@ -959,12 +966,13 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
     if(step){ai.detourX=step[0];ai.detourY=step[1];ai.detourUntil=now+3000;const px=step[0]-e.x,py=step[1]-e.y,pm=Math.hypot(px,py)||1;moveAxis(e,px/pm*speed*dt,py/pm*speed*dt,map,width)}
   }
   if(sanctuary)enforceSanctuary(e,sanctuary);
+  const patternStartRange=e.range<2.5&&e.meleePatterns?.length?Math.max(...e.meleePatterns.map(id=>MELEE_PATTERNS[id]?.range||0)):0;
   if (
-    attackInRange(e, player) &&
+    (attackInRange(e, player)||toPlayer<=patternStartRange+enemyBodyRadius(e)) &&
     e.cooldown <= 0 &&
     hasLineOfSight(e, player, map, width, e.range>=2.5&&!e.instantStrike)
   )
-    {const phase=(e.boss&&e.hp<=e.maxHp*.5) ? .82 : 1;e.telegraph = Math.max(.48,.9*(e.telegraphScale||1)*phase);e.attackAim=projectileDirection(player.x-e.x,player.y-e.y)}
+    {const phase=(e.boss&&e.hp<=e.maxHp*.5) ? .82 : 1,ids=e.meleePatterns||[],id=e.range<2.5&&ids.length?ids[e.meleePatternIndex++%ids.length]:null,pattern=id&&MELEE_PATTERNS[id];e.telegraph = Math.max(.48,(pattern?.telegraph||.9)*(e.telegraphScale||1)*phase);e.attackAim=projectileDirection(player.x-e.x,player.y-e.y);if(pattern){e.meleePhase={id,stage:0,aim:{...e.attackAim},target:{x:player.x,y:player.y}};e.threatRange=pattern.range}}
   return false;
 }
 export function shouldSimulateEnemy(e,player,area="overworld"){
@@ -1459,15 +1467,24 @@ export class Game {
       eliteHazards:this.eliteHazards.map(h=>({...h,hits:{...h.hits}})),
     };
   }
+  updateDungeonDiscovery(force=false){
+    if(this.area!=="dungeon"||!this.map?.dungeonContract?.discoveryEnabled)return false;
+    const chunk=dungeonChunkId(this.map,this.player.x,this.player.y);if(!force&&chunk===this._dungeonChunkId)return false;
+    this._dungeonChunkId=chunk;const history=dungeonHistory(this.save,this.areaId()),prior=discoveryForLevel(history,this.map),next=revealDungeonAt(this.map,prior,this.player.x,this.player.y,0),changed=next.length!==prior.length||next.some((q,i)=>q!==prior[i]);
+    if(changed)history.discovery.levels[this.map.levelStableId||this.map.levelId||"root"]=next;
+    applyDungeonDiscovery(this.map,next,this.map._dungeonRevealMode||"normal");return changed;
+  }
   loadArea(area, capture = true) {
     if (capture) this.snapshotArea();
     this.area = area;
     const loadingId=area==="dungeon"?this.areaId():null,history=loadingId?dungeonHistory(this.save,loadingId):null;
-    const canonical=`dungeon:${this.save.seed}:g${this.save.worldGeneration}`;if(history&&history.generatorVersion===undefined)history.generatorVersion=loadingId===canonical||!!this.save.session.areas[loadingId]?2:3;
+    const canonical=`dungeon:${this.save.seed}:g${this.save.worldGeneration}`;if(history&&history.generatorVersion===undefined)history.generatorVersion=loadingId===canonical||!!this.save.session.areas[loadingId]?2:4;
     this.map =
       area === "dungeon"
         ? String(loadingId).startsWith("arena:")||String(loadingId).startsWith("hunt-arena:")||String(loadingId).startsWith("hunt-instance:")
           ? generateBespokeArena(this.save.seed,loadingId,{kind:String(loadingId).startsWith("arena:")?"persistent":"temporary",cleared:!!history?.resolved})
+          : history?.generatorVersion===4&&!String(loadingId).includes(":deep-v")&&!String(loadingId).startsWith("hunt-instance:")
+            ? generateUnifiedDungeon(this.save.seed,loadingId,dungeonDescriptor(loadingId).recipe)
           : history?.generatorVersion===3&&!String(loadingId).includes(":deep-v")&&!String(loadingId).startsWith("hunt-instance:")
             ? generateVariedDungeon(this.save.seed,loadingId,dungeonDescriptor(loadingId).recipe)
             : generateDungeon(this.save.seed, loadingId,{levelId:this.save.session.activeDungeonLevelId||undefined})
@@ -1477,6 +1494,7 @@ export class Game {
             this.ry,
             this.save.worldGeneration,
           );
+    if(area==="dungeon"&&this.map.dungeonContract?.discoveryEnabled){const discovered=discoveryForLevel(history,this.map);applyDungeonDiscovery(this.map,discovered);this._dungeonChunkId=null;}
     if(area==='overworld'){
       const site=storySiteFor(this.save,this.rx,this.ry);if(site&&!this.map.objects.some(o=>o.id===site.id)){const open=this.map.tiles[site.y*32+site.x];if(!open?.blocked&&!open?.structure)this.map.objects.push(site)}
       const candidate=foundryEncounter(this.save.seed,this.rx,this.ry,this.save.worldGeneration);if(candidate&&validateFoundryCandidate(candidate).ok&&!this.save.worldFlags[`foundry-retired:${candidate.foundryId}`]){const open=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>4&&t.x<28&&t.y>4&&t.y<28);if(open.length){const at=open[hashSeed(candidate.foundryId)%open.length];candidate.x=at.x;candidate.y=at.y;this.map.enemySpawns.push(candidate)}}
@@ -1830,6 +1848,8 @@ export class Game {
         if (used[o.id]?.state === "used") o.state = "used";
       p.x = deep ? (anchor?.x ?? this.map.hub?.x ?? this.map.entry?.x ?? 4) : (this.map.entry?.x ?? 4);
       p.y = deep ? (anchor?.y ?? this.map.hub?.y ?? this.map.entry?.y ?? 5) : (this.map.entry?.y ?? 5);
+      relocateIfStranded(p,this.map,mapWidth(this.map,"dungeon"));
+      this.updateDungeonDiscovery(true);
       p.invulnerableUntil = now + 2000;
       this.message = deep ? `Felled — recovered at the central anchor of ${this.map.name}. Cleared wings, shortcuts, carried items, XP, and map progress remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}` : `Felled — returned to the entrance of ${this.map.name}. The run begins again; your map and everything carried remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
     } else {
@@ -2152,8 +2172,10 @@ export class Game {
         for (const o of this.map.objects)
           if (claimed[o.id]?.state === "used") o.state = "used";
         const recovery = deep ? deepDungeonProgress(this.save, id).activeAnchor : null;
-        this.player.x = deep ? (recovery?.x ?? this.map.hub?.x ?? this.map.entry?.x ?? 4) : 4;
-        this.player.y = deep ? (recovery?.y ?? this.map.hub?.y ?? this.map.entry?.y ?? 5) : 5;
+        this.player.x = deep ? (recovery?.x ?? this.map.hub?.x ?? this.map.entry?.x ?? 4) : (this.map.entry?.x ?? 4);
+        this.player.y = deep ? (recovery?.y ?? this.map.hub?.y ?? this.map.entry?.y ?? 5) : (this.map.entry?.y ?? 5);
+        relocateIfStranded(this.player,this.map,mapWidth(this.map,"dungeon"));
+        this.updateDungeonDiscovery(true);
         this.player.invulnerableUntil = now + 2000;
         this.projectiles = [];
         this.effects = [];
@@ -2385,6 +2407,7 @@ export class Game {
     return true;
   }
   castSpell() {
+    if(this.save.magicSkills?.selected&&skillRank(this.save,this.save.magicSkills.selected)>0)return this.activateApertureSkill(this.save.magicSkills.selected);
     const spell = SPELLS[this.save.equippedSpell] || SPELLS["ember-ring"];
     if (this.spellCooldownRemaining > 0) {
       this.message = `${spell.name} recovers in ${Math.ceil(this.spellCooldownRemaining)}s.`;
@@ -2453,6 +2476,8 @@ export class Game {
     return true;
   }
   useUpgradeSphere(kind){const key=kind==='armor'?'armorSphere':'weaponSphere';if(!(this.save.materials[key]>0))return false;this.save.materials[key]--;if(kind==='armor')this.save.equipment.armor.power=Math.min(8,(this.save.equipment.armor.power||0)+1);else{this.save.weaponLevel=Math.min(8,(this.save.weaponLevel||0)+1);this.player.weaponLevel=this.save.weaponLevel}this.message=`${kind==='armor'?'Armor':'Weapon'} sphere fused. The upgrade is permanent.`;this.sync();return true}
+  upgradeEquipmentSlot(slot){const result=upgradeEquipment(this.save,slot);this.message=result.message;if(result.ok){syncCharacterStats(this.save);this.player.maxStamina=this.save.maxStamina;this.sync()}return result}
+  activateApertureSkill(id=this.save.magicSkills?.selected){const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:skill.duration+Math.max(0,rank-1)};state.cooldowns[id]=skill.cooldown;if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
   allocate(s) {
     if (!this.save.statPoints || !Object.hasOwn(this.save.stats, s))
       return false;
@@ -2519,6 +2544,7 @@ export class Game {
     this.guardRemaining = Math.max(0, this.guardRemaining - dt);
     this.magicBuffRemaining = Math.max(0, this.magicBuffRemaining - dt);
     this.spellCooldownRemaining = Math.max(0, this.spellCooldownRemaining - dt);
+    const skillState=this.save.magicSkills;if(skillState){for(const id of Object.keys(skillState.cooldowns||{}))skillState.cooldowns[id]=Math.max(0,skillState.cooldowns[id]-dt);if(skillState.active){skillState.active.remaining=Math.max(0,skillState.active.remaining-dt);if(skillState.active.remaining===0){const ended=skillState.active.id;skillState.active=null;if(ended==='aerial-step'&&footprintHazard(this.map,mapWidth(this.map,this.area),this.player.x,this.player.y)){const safe=skillState.lastSafe;if(safe&&safe.area===this.area&&safe.areaId===this.areaId()){this.player.x=safe.x;this.player.y=safe.y}else relocateIfStranded(this.player,this.map,mapWidth(this.map,this.area));this.message='Aerial Step closes and returns you to stable ground.'}}}}
     if (this.reticle) this.reticle.life -= dt;
     let rawX = Number(input.state.x) || 0,
       rawY = Number(input.state.y) || 0,
@@ -2542,7 +2568,7 @@ export class Game {
     }
     if (input.consume("jump")) {
       if (now < this.jumpUntil) this.message = "Already airborne.";
-      else this.jumpUntil = now + 520;
+      else this.jumpUntil = now + 520 + skillRank(this.save,"quickening") * 140;
     }
     if (input.consume("potion")) this.useConsumable("restorativeDraught", now);
     const dodging = now < (p.dodgeUntil || 0);
@@ -2590,9 +2616,11 @@ export class Game {
       return;
     }
     const width = mapWidth(this.map, this.area);
-    const terrainHazard=footprintHazard(this.map,width,nx,ny),fellIntoHazard=!!terrainHazard;
+    const terrainHazard=footprintHazard(this.map,width,nx,ny),aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0,fellIntoHazard=!!terrainHazard&&!aerial;
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
     else moveAxis(p, dx, dy, this.map, width, true);
+    if(!fellIntoHazard&&!terrainHazard&&aerial)this.save.magicSkills.lastSafe={x:p.x,y:p.y,area:this.area,areaId:this.areaId()};
+    if(!fellIntoHazard&&this.area==="dungeon")this.updateDungeonDiscovery();
     if(!fellIntoHazard&&this.area==='overworld'){
       const insideId=structureOccupancy(this.map.tiles,width,p.x,p.y);
       if(insideId){const trap=this.map.objects.find(o=>o.kind==='displacementTrap'&&o.shelterId===insideId&&o.state!=='used'&&!this.save.worldFlags[`displacement-trigger:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.55);if(trap){this.startDisplacement(trap,true);return}const hazard=this.map.objects.find(o=>o.kind==='shelterHazard'&&o.shelterId===insideId&&o.state==='armed'&&!this.save.worldFlags[`shelter-hazard:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.6);if(hazard){const key=`shelter-hazard:${this.rx},${this.ry}:${hazard.id}`;this.save.worldFlags[key]=true;hazard.state='spent';p.hp=Math.max(1,p.hp-(hazard.damage||10));this.message=`${hazard.name} erupts. ${hazard.damage||10} damage — the mechanism falls quiet.`;journalOnce(this.save,`shelter-hazard:${hazard.hazardType}`,`Shelters may conceal ${hazard.name.toLowerCase()} mechanisms. Their floor marks can be inspected, avoided, and remembered.`,'Shelter hazards');this.sync()}}
@@ -2639,12 +2667,12 @@ export class Game {
         const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;
         if(shot.jumpable&&now<this.jumpUntil)return;
         if(safe||now<=(p.invulnerableUntil||0))return;
-        p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*(1-characterStats(this.save).damageReduction)));
+        p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))));
         p.invulnerableUntil=now+700;
       },
     );
     if(combatNpcTargets.length)this.syncNpcDamage("projectile");
-    for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-characterStats(this.save).damageReduction)));p.invulnerableUntil=now+700}}
+    for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))));p.invulnerableUntil=now+700}}
     if(this.effects.length)this.effects = updateEffects(
       this.effects,
       [...this.enemies, ...combatNpcTargets],
@@ -2679,7 +2707,7 @@ export class Game {
           1,
           Math.ceil(
             (this.guardRemaining > 0 ? e.damage * 0.65 : e.damage) *
-              (1 - characterStats(this.save).damageReduction),
+              (1 - Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0))),
           ),
         );
         p.invulnerableUntil = now + 700;
