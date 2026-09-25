@@ -26,7 +26,7 @@ Automated coverage must verify distinct checkpoint/shrine/observatory semantics,
 
 Normal discovery reveals exactly the occupied dungeon card; cardinally adjacent cards remain concealed until crossed. Recovery coverage must prove the generated entrance accepts the full player footprint, and Proving Ground coverage must retain the production world-tap targeting path.
 
-Release 91 adds deterministic contract coverage for legacy ordinary v2, varied ordinary v3, unified ordinary v4, deep-v1, every deep-v2 archetype, multi-level deep maps, and bounded arenas. Required evidence includes topology determinism, distinct supported variants, critical-route reachability, safe placements, generator-version compatibility, schema-12-to-13 migration, bounded chunk discovery, Atlas/render concealment, scratch-only Proving Ground controls, full tests, build, and runtime browser state that cannot come from static HTML.
+Release 91 adds deterministic contract coverage for legacy ordinary v2, varied ordinary v3, unified ordinary v4, deep-v1, every deep-v2 archetype, multi-level deep maps, and bounded arenas. Required evidence includes topology determinism, distinct supported variants, critical-route reachability, safe placements, generator-version compatibility, schema-12-to-14 migration, bounded chunk discovery, Atlas/render concealment, scratch-only Proving Ground controls, full tests, build, and runtime browser state that cannot come from static HTML.
 
 Physical-phone frame pacing, installed-PWA offline refresh, and long-form completion of every generated variant remain manual checks.
 

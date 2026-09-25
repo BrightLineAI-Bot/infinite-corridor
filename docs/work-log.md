@@ -1,5 +1,12 @@
 # Work Log
 
+## 2026-09-24: Save-schema interface contract reconciliation
+
+- **Scope:** Reconcile the declared `local-save-schema` provider version with the current durable save contract without changing runtime save behavior, migration logic, release output, or project identity.
+- **Evidence:** `src/types.ts` declares `SAVE_VERSION = 14`; `migrateSave` accepts versions 10 through 14 and normalizes them to version 14; regression coverage verifies schema-12 progress and persisted dungeon discovery remain intact at `SAVE_VERSION = 14`. Project-control history shows a direct-major convention: provider versions 8.0.0, 10.0.0, 12.0.0, and 13.0.0 corresponded to save versions 8, 10, 12, and 13.
+- **Changed:** `.change-control/project.json` now declares `local-save-schema` `14.0.0`. The Field Guide, verification matrix, and regression-test title now name schema 14 consistently. The project has no component requiring this provider interface, so no in-repository consumer migration is required.
+- **Verification:** Fresh status returned `ok:true` with no active operations or blockers; checkpoint `838a4485a8374a7f8704ee8c657b16d474fd08fa9de082dda0a5c4d6ff0a5e7a` preserved existing work. Full test/build and final configuration/diff checks are required before commit.
+
 ## 2026-09-24: Normal boot and journey-management repair
 
 - **Root causes:** The normal entry module declared `dungeonPointDiscovered` through two imports and therefore stopped at parse time; the Proving Ground did not reveal this because it uses a separate entry module. New Journey also depended on native `prompt()` dialogs and reused the normal switch path, whose pre-switch autosave could overwrite the new save when the selected empty slot was already active.

@@ -285,7 +285,7 @@ Do not bump a version for refactors, renames, or internal shape changes that are
 
 **VERIFIED IN CURRENT CODE / VERIFIED BY TEST:** `SAVE_VERSION` declares version 14. Migration normalizes existing histories to `{schema:1, levels:{}}` without changing stored area snapshots, generator versions, rewards, or character progression; current tests also cover migration from version 12.
 
-**UNRESOLVED CONTRACT DRIFT:** `.change-control/project.json` still declares the `local-save-schema` interface as `13.0.0`. It is not current runtime authority and must not be cited as evidence that the save schema is 13. This documentation-only operation does not modify that configuration because the guarded draft adapter rejected it as ineligible. Reconcile the configuration in a separately reviewed contract operation after identifying every consumer of `local-save-schema` and validating the same migration/build gates.
+**VERIFIED CONTRACT ALIGNMENT:** `.change-control/project.json` declares the `local-save-schema` provider interface as `14.0.0`, matching runtime `SAVE_VERSION = 14`. Git history establishes this interface's direct-major convention (`8.0.0` for save version 8, `10.0.0` for 10, `12.0.0` for 12, and `13.0.0` for 13); it is a change-control integration declaration, not the runtime migration gate. The project has no component requiring this interface, so the declaration change introduces no in-repository consumer migration.
 
 ## 7. Input flow
 
@@ -657,7 +657,7 @@ Each recipe is the short version: find the table, extend the table, check the wi
 6. `game.ts` spans 41 to 1494, 1581 to 1666, and 1721 to 2515 are unread. The interaction methods, the attack methods, and the systems installation functions are known only by signature and line number.
 7. `main.ts` outside 440 to 478 is unread. Overlay internals, the settings category list, and the Atlas drawing internals are grounded only by command-verified lines.
 8. `deep-dungeons.ts` lines 1 to 120, `foundry.ts` lines 1 to 45, `interactions.ts` lines 1 to 55, `world.ts` lines 41 to 129, and `renderer.ts` lines 432 to 760 are unread.
-9. The declared interface version for `local-save-schema` is stale at `13.0.0` while runtime `SAVE_VERSION` and current migration tests use 14. The needed configuration reconciliation is documented in section 6.5 but is not applied by this documentation-only draft.
+9. `local-save-schema` is declared as `14.0.0`, matching runtime `SAVE_VERSION = 14`; any future durable-schema bump must update the migration, migration coverage, and this provider declaration together.
 
 **Not defects, resolved:**
 
