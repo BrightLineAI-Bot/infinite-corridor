@@ -51,7 +51,11 @@ export class CommandRunner {
   constructor(root = POLICY.repository) { this.root = resolve(root); }
   run(command, args, timeout = 300_000) {
     const startedAt = new Date().toISOString();
-    const result = spawnSync(command, args, {
+    const executable = process.platform === "win32" && command.toLowerCase().endsWith(".cmd")
+      ? (process.env.ComSpec || "C:\\Windows\\System32\\cmd.exe")
+      : command;
+    const executableArgs = executable === command ? args : ["/d", "/s", "/c", command, ...args];
+    const result = spawnSync(executable, executableArgs, {
       cwd: this.root, encoding: "utf8", timeout, windowsHide: true,
       maxBuffer: 8 * 1024 * 1024, shell: false,
     });
