@@ -20,7 +20,8 @@ const server = http.createServer(async (req, res) => {
       // `/src/main.js?v=88`). Strip the query string before resolving a file,
       // or every versioned request resolves to a nonexistent name and 404s.
       const pathname = decodeURIComponent((req.url ?? '/').split('?')[0]) || '/';
-      const p = (pathname === '/' ? 'index.html' : pathname.slice(1)).replace(/^src\/(.+)\.js$/, 'src/$1.ts');
+      const route = pathname === '/' ? 'index.html' : pathname.endsWith('/') ? `${pathname.slice(1)}index.html` : pathname.slice(1);
+      const p = route.replace(/^src\/(.+)\.js$/, 'src/$1.ts');
       const full = resolve(root, p);
       // Containment is decided on path components, not on a string prefix: a
       // prefix test would also accept a sibling directory whose name merely

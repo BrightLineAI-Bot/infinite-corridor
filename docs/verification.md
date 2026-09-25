@@ -1,5 +1,9 @@
 # Verification Matrix
 
+## Standalone mobile Proving Ground
+
+Verify `/proving-ground/` serves a distinct document, manifest identity, start URL, worker scope, and cache namespace. Its reset may clear only `ic-proving-ground-scratch-v1`; it must not import persistence or reference production save keys. Build output must contain both applications, production must still boot, and physical-phone checks must cover install, refresh, offline launch, update, storage isolation, and uninstall/reinstall.
+
 ## Journey management and menu controls
 
 New-journey coverage must prove that a free slot receives an independent schema-14 save; the prior active save is flushed only when it exists in another or occupied target slot; active-slot mutation follows successful creation; failed creation never changes the active slot; rapid taps are single-flight; cancel is mutation-free; occupied replacement is explicitly confirmed; and Proving Ground never imports journey persistence.

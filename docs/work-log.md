@@ -1,5 +1,11 @@
 # Work Log
 
+## 2026-09-25: Standalone mobile Proving Ground candidate
+
+- Added a separately installable `/proving-ground/` PWA using production laboratory code with isolated manifest, worker scope, cache namespace, scratch reset, visible experimental identity, and non-sensitive diagnostics.
+- Extended the static build and development server to emit and serve both application roots without changing production save schema or production manifest identity.
+- Discord routing target is channel `1552902598372237312`; the approved workflow admits requests there but promotes only an immutable tested proposal through `push <proposal-id>`.
+
 ## 2026-09-24: Save-schema interface contract reconciliation
 
 - **Scope:** Reconcile the declared `local-save-schema` provider version with the current durable save contract without changing runtime save behavior, migration logic, release output, or project identity.

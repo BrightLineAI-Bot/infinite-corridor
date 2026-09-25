@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added an installable, storage-isolated mobile Proving Ground PWA at `/proving-ground/` with scoped offline caching and diagnostics.
+
 This file records user-visible and release-relevant changes. It is not a substitute for the implementation-level [work log](docs/work-log.md) or decision records.
 
 The project follows a compact Keep a Changelog-style structure. Entries describe verified scope and do not imply manual device validation unless that validation is recorded explicitly.
