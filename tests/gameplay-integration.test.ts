@@ -14,6 +14,15 @@ test('AI resolves committed melee against its advertised footprint and walls',()
   assert.equal(updateEnemyAI(make(),{x:5,y:7},map,16,.02,100),false);
   map.tiles[5*16+6].blocked=true;assert.equal(updateEnemyAI(make(),target,map,16,.02,100),false);
 });
+
+test('tentacled ranged creatures switch to a committed close stab and keep shots at distance',()=>{
+  const map=floor(),enemy=createCombatant('voidSentinel',5,5),target={x:7,y:5};let shots=0;
+  updateEnemyAI(enemy,target,map,16,0,0,null,()=>shots++);
+  assert.equal(enemy.meleePhase.id,'longReach');assert.ok(enemyMeleeGeometry(enemy).range>2.15);
+  assert.equal(updateEnemyAI(enemy,target,map,16,2,2000,null,()=>shots++),true);assert.equal(shots,0);
+  const ranged=createCombatant('voidSentinel',5,5);updateEnemyAI(ranged,{x:10,y:5},map,16,0,0);
+  assert.equal(ranged.meleePhase,null);updateEnemyAI(ranged,{x:10,y:5},map,16,2,2000,null,()=>shots++);assert.equal(shots,1);
+});
 test('projectile motion collides with walls instead of hitting through cover',()=>{
   const map=floor();map.tiles[5*16+7].blocked=true;
   const enemy=Object.assign(createCombatant('sparkWarden',5,5),{shotSequence:0}),shots=enemyProjectilePattern(enemy,{x:1,y:0},0),player={x:9,y:5};let hits=0;
