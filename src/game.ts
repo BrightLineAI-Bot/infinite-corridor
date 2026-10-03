@@ -917,6 +917,8 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
   if (e.hitStun > 0) {
     e.telegraph = 0;
+    e.meleePhase = null;
+    e.threatRange = null;
     ensureAI(e).mode = "stagger";
     return false;
   }
