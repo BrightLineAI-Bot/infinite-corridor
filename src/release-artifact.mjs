@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join, resolve, relative, sep } from "node:path";
+import { join, resolve, relative, sep, isAbsolute } from "node:path";
 
 export const sha256 = bytes => createHash("sha256").update(bytes).digest("hex");
 export function inside(root, path) {
   const result = resolve(path), rel = relative(resolve(root), result);
-  if (rel === ".." || rel.startsWith(`..${sep}`) || resolve(root) === result) throw new Error("artifact path escapes its root");
+  if (isAbsolute(rel) || rel === ".." || rel.startsWith(`..${sep}`) || resolve(root) === result) throw new Error("artifact path escapes its root");
   return result;
 }
 export function inventory(root, { ignoreGit = false } = {}) {

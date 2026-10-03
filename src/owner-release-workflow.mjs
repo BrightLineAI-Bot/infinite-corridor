@@ -43,14 +43,15 @@ export class ProposalWorkflow {
   this.assertChannel(channelId);const dir=this.proposalDir(id),lock=join(dir,'publication.lock'),text=readFileSync(lock,'utf8'),identity=digest(text),record=JSON.parse(text);
   if(!Number.isInteger(record.pid)||record.pid<1)throw new Error('unknown lock process ownership');
   try{process.kill(record.pid,0);throw new Error('lock process is still alive')}catch(error){if(error.code!=='ESRCH')throw error}
-  let p=this.load(id),r=this.reconcile(p);if(!r.ok)return {ok:false,reconciliation:r};if(p.artifactDigest)this.checkArtifact(p);
+  let p=this.load(id),r=this.reconcile(p);if(!r.ok&&!(p.state==='CONSUMED'&&r.problems.every(q=>q==='proposal is CONSUMED')))return {ok:false,reconciliation:r};if(p.artifactDigest)this.checkArtifact(p);
   let resolution='release-abandoned-operation';
   if(p.publication){const refs=this.remoteRefs(),target=p.publication;
-   if(refs.ghPages===target.pagesCommit&&(target.kind==='preview'?refs.main===p.baseCommit:refs.main===p.candidateCommit))resolution='reconcile-successful-publication';
-   else if(refs.main===target.expectedRefs.main&&refs.ghPages===target.expectedRefs.ghPages)resolution='confirm-publication-not-applied';
+   if(refs.ghPages===target.pagesCommit&&(target.kind==='preview'?refs.main===p.baseCommit:refs.main===p.candidateCommit))resolution=p.state==='CONSUMED'?'cleanup-completed-publication-lock':'reconcile-successful-publication';
+   else if(refs.main===target.expectedRefs.main&&refs.ghPages===target.expectedRefs.ghPages)resolution='pending-publication-retain-lock';
    else throw new Error('remote refs ambiguous; retain stale lock and inspect');
   }
   if(!execute)return {ok:true,mode:'PLAN_ONLY',lockDigest:identity,record,resolution,externalMutations:false};
+  if(resolution==='pending-publication-retain-lock')throw new Error('publication child may still be running; retain lock and recorded target for operator inspection');
   if(lockDigest!==identity)throw new Error('stale lock digest mismatch');
   const recovery=join(dir,'recovery.lock');writeFileSync(recovery,JSON.stringify({pid:process.pid}),{flag:'wx'});
   try{

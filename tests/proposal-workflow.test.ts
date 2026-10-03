@@ -110,6 +110,15 @@ test('stale lock recovery requires dead process, exact digest and unambiguous re
  const {workflow,p}=ready(),lock=join(workflow.proposalDir(p.proposalId),'publication.lock');
  writeFileSync(lock,JSON.stringify({pid:process.pid,operation:'preview'}));assert.throws(()=>workflow.recoverLock(p.proposalId,{channelId:POLICY.channelId}),/still alive/);
  writeFileSync(lock,JSON.stringify({pid:2147483647,operation:'preview'}));workflow.change(p,{publication:{kind:'preview',pagesCommit:'e'.repeat(40),expectedRefs:{main:p.baseCommit,ghPages:p.pagesBefore},artifactDigest:p.artifactDigest}},'fixture-interrupted');
- const plan=workflow.recoverLock(p.proposalId,{channelId:POLICY.channelId});assert.equal(plan.resolution,'confirm-publication-not-applied');assert.throws(()=>workflow.recoverLock(p.proposalId,{channelId:POLICY.channelId,execute:true,lockDigest:'wrong'}),/digest mismatch/);
+ const plan=workflow.recoverLock(p.proposalId,{channelId:POLICY.channelId});assert.equal(plan.resolution,'pending-publication-retain-lock');assert.throws(()=>workflow.recoverLock(p.proposalId,{channelId:POLICY.channelId,execute:true,lockDigest:plan.lockDigest}),/child may still be running/);
+ workflow.fixture.originPages='e'.repeat(40);assert.throws(()=>workflow.recoverLock(p.proposalId,{channelId:POLICY.channelId,execute:true,lockDigest:'wrong'}),/digest mismatch/);
  const recovered=workflow.recoverLock(p.proposalId,{channelId:POLICY.channelId,execute:true,lockDigest:plan.lockDigest});assert.equal(recovered.proposal.publication,null);assert.equal(recovered.externalMutations,false);
+});
+test('completed promotion stale lock cleanup never reopens a consumed approval',()=>{
+ const {workflow,p}=ready(),target={kind:'production',pagesCommit:'e'.repeat(40),expectedRefs:{main:p.baseCommit,ghPages:p.pagesBefore},artifactDigest:p.artifactDigest};
+ workflow.change(p,{state:'CONSUMED',publication:target,deployedRefs:{main:p.candidateCommit,ghPages:target.pagesCommit}},'fixture-completed');
+ workflow.fixture.originMain=p.candidateCommit;workflow.fixture.originPages=target.pagesCommit;
+ const lock=join(workflow.proposalDir(p.proposalId),'publication.lock');writeFileSync(lock,JSON.stringify({pid:2147483647,operation:'production'}));
+ const plan=workflow.recoverLock(p.proposalId,{channelId:POLICY.channelId});assert.equal(plan.resolution,'cleanup-completed-publication-lock');
+ const r=workflow.recoverLock(p.proposalId,{channelId:POLICY.channelId,lockDigest:plan.lockDigest,execute:true});assert.equal(r.proposal.state,'CONSUMED');assert.equal(workflow.push(p.proposalId,{channelId:POLICY.channelId}).ok,false);
 });
