@@ -1,5 +1,5 @@
-import { rng, pick, hashSeed } from "./random.js?v=91";
-import { annotateDungeon, DUNGEON_SIZE_PROFILES, ORDINARY_GENERATOR_VERSION } from "./dungeon-framework.js?v=91";
+import { rng, pick, hashSeed } from "./random.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { annotateDungeon, DUNGEON_SIZE_PROFILES, ORDINARY_GENERATOR_VERSION } from "./dungeon-framework.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
 
 export const ARENA_FAMILIES=["sentinel-manufactory","rootbound-crown","shattered-observatory","drowned-relay-rim","biomechanical-aperture","ruined-fortress-court","ash-amphitheater","alien-vault"];
 const FAMILY_RULES={

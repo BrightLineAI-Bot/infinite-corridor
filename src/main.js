@@ -1,8 +1,9 @@
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=91";
-import { vendorShop, buyFromVendor } from "./game.js?v=91";
-import { CREATURE_TRAITS } from "./combat.js?v=91";
-import { hashSeed } from "./random.js?v=91";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=91";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { vendorShop, buyFromVendor } from "./game.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { CREATURE_TRAITS } from "./combat.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { hashSeed } from "./random.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -38,61 +39,7 @@ export function equipFromInventory(save, index) {
   if (prior) save.inventory.push(prior);
   return true;
 }
-function drawRangedEffects() {
-  const s = Math.max(28, Math.min(44, innerWidth / 12)),
-    toScreen = (q) => [
-      innerWidth / 2 + (q.x - game.player.x) * s,
-      innerHeight / 2 + (q.y - game.player.y) * s,
-    ];
-  for (const p of game.projectiles) {
-    if(!dungeonPointDiscovered(game.map,p))continue;
-    const [x, y] = toScreen(p);
-    ctx.fillStyle = p.hostile ? (p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":"#d28af0") : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
-    ctx.shadowColor = ctx.fillStyle;
-    ctx.shadowBlur = 8;
-    ctx.beginPath();
-    if (p.path === "boomerang") {
-      const a = Math.atan2(p.dy, p.dx);
-      ctx.moveTo(x + Math.cos(a) * 8, y + Math.sin(a) * 8);
-      ctx.lineTo(x + Math.cos(a + 2.35) * 7, y + Math.sin(a + 2.35) * 7);
-      ctx.lineTo(x + Math.cos(a - 2.35) * 7, y + Math.sin(a - 2.35) * 7);
-      ctx.closePath();
-    } else if(p.path==="grenade"){ctx.arc(x,y,7,0,7);ctx.moveTo(x,y-7);ctx.lineTo(x+4,y-11)}else if(p.path==="arc"){const a=Math.atan2(p.dy,p.dx);ctx.ellipse(x,y,8,3,a,0,7)}else ctx.arc(x, y, p.damageType === "magic" ? 5 : 3, 0, 7);
-    ctx.fill();
-  }
-  ctx.shadowBlur = 0;
-  for (const fx of game.effects) {
-    const [x, y] = toScreen(fx);
-    ctx.strokeStyle = fx.hostile ? "#e35248cc" : "#b75235aa";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(x, y, fx.radius * s, 0, 7);
-    ctx.stroke();
-    ctx.strokeStyle = "#d99a5255";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(x, y, fx.radius * s * (0.72 + 0.08 * Math.sin(fx.life * 12)), 0, 7);
-    ctx.stroke();
-  }
-  if (game.reticle?.life > 0) {
-    const [x, y] = toScreen(game.reticle);
-    ctx.globalAlpha = Math.min(1, game.reticle.life * 2);
-    ctx.strokeStyle = "#d7c58b";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(x, y, 12, 0, 7);
-    ctx.moveTo(x - 18, y);
-    ctx.lineTo(x - 7, y);
-    ctx.moveTo(x + 7, y);
-    ctx.lineTo(x + 18, y);
-    ctx.moveTo(x, y - 18);
-    ctx.lineTo(x, y - 7);
-    ctx.moveTo(x, y + 7);
-    ctx.lineTo(x, y + 18);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-  }
-}
+function drawRangedEffects() { drawCombatEffects(ctx,game,innerWidth,innerHeight); }
 function openShop(vendorId = "vendor-vela") {
   pauseForOverlay();
   body.replaceChildren();
@@ -207,7 +154,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=91";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
 import {
   Game,
   actionReadiness,
@@ -216,15 +163,15 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=91";
-import { createInput } from "./input.js?v=91";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=91";
-import { STATS } from "./types.js?v=91";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=91";
-import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=91";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=91";
-import { worldStewardReport } from "./story.js?v=91";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=91";
+} from "./game.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { createInput } from "./input.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { STATS } from "./types.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { worldStewardReport } from "./story.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -235,7 +182,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=91";
+} from "./world.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -932,7 +879,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:91,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 91\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}

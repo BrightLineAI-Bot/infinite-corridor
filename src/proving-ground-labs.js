@@ -1,12 +1,13 @@
-import { Game } from "./game.js?v=91";
-import { freshSave, migrateSave } from "./types.js?v=91";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=91";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=91";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=91";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=91";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=91";
-import { ELITE_DEFINITIONS } from "./elites.js?v=91";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=91";
+import { Game } from "./game.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { freshSave, migrateSave } from "./types.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { ELITE_DEFINITIONS } from "./elites.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -90,11 +91,7 @@ function gameForOverworld(seed, rx, ry, now) {
 function installMap(game, map, now) {
   game.area = "dungeon";
   game.map = map;
-  game.enemies = map.enemySpawns.map((spawn) => {
-    const enemy = createCombatant(spawn.kind, spawn.x, spawn.y, spawn.boss, spawn.traits || []);
-    Object.assign(enemy, spawn);
-    return enemy;
-  });
+  game.enemies = map.enemySpawns.map(spawn => game.createEnemyFromSpawn(spawn,"dungeon"));
   game.projectiles = [];
   game.effects = [];
   game.eliteHazards = [];
@@ -106,11 +103,15 @@ function installMap(game, map, now) {
 }
 
 function gameForMap(seed, id, map, now) {
+  if (!map.arena && !id.startsWith('proving:combat:')) varyDungeonLayout(map,seed,id);
   const save = scratchSave(seed);
   Object.assign(save.session, { area: "dungeon", activeDungeonId: id, dungeonReturn: { rx: 0, ry: 0, x: 16, y: 16 }, x: map.entry?.x ?? 4, y: map.entry?.y ?? 5 });
   Object.assign(save.position, { area: "dungeon", rx: 0, ry: 0, x: map.entry?.x ?? 4, y: map.entry?.y ?? 5 });
-  save.consequences.dungeons[id] = { discovered: true, visits: 1, visitOpen: true, generatorVersion: 3, resolved: false };
+  if(map.levelId)save.session.activeDungeonLevelId=map.levelId;
+  save.consequences.dungeons[id] = { discovered: true, visits: 1, visitOpen: true, generatorVersion: map.generatorVersion || 3, layoutVersion: map.layoutVersion || 0, dungeonRecipe: map.recipe, generationOptions:{variant:map.variant,sizeProfile:map.sizeProfile}, resolved: false };
   const game = new Game(save, now); game.installSystems(); installMap(game,map,now);
+  delete save.consequences.dungeons[id].combatClear;
+  game.prepareDungeonCompletion();
   game.updateDungeonDiscovery(true);
   return { save, game };
 }

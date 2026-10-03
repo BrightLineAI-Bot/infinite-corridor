@@ -1,8 +1,8 @@
-import{freshEliteState,ensureEliteState}from'./elites.js?v=91';
-import{freshCorridorStory,freshWorldSteward,ensureCorridorSystems}from'./story.js?v=91';
-import{freshViewportState,ensureViewportState}from'./foundry.js?v=91';
-import{freshSceneState,ensureSceneState}from'./scenes.js?v=91';
-import{normalizeItemUpgrade,apertureBand}from'./items.js?v=91';
+import{freshEliteState,ensureEliteState}from'./elites.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8';
+import{freshCorridorStory,freshWorldSteward,ensureCorridorSystems}from'./story.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8';
+import{freshViewportState,ensureViewportState}from'./foundry.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8';
+import{freshSceneState,ensureSceneState}from'./scenes.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8';
+import{normalizeItemUpgrade,apertureBand}from'./items.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8';
 export const SAVE_VERSION=14,WORLD_GENERATION=1,LEGACY_WORLD_GENERATION=0,STATS=['Might','Finesse','Focus','Vigor','Resolve'];
 const perception=()=>({schema:1,aperture:0,passiveSeconds:0,awarded:{},announcedTier:0,discoveries:{memories:0,doors:0,relics:0}});const runtime=()=>({hp:60,stamina:50,attackCooldown:0,attackMotion:0,meleeMotion:0,meleeAim:null,meleeStrike:null,dodgeCooldown:0,invulnerability:0,dodgeMotion:0,jump:0,guard:0,traversal:null});const session=()=>({area:'overworld',rx:0,ry:0,x:16,y:16,message:'The refuge beacon speaks your name before you arrive: “Wayfarer. Crossing incomplete.”',paused:false,savedAt:Date.now(),playerRuntime:runtime(),areas:{},dungeonReturn:null,veilReturn:null,activeDungeonId:null});const narrative=()=>({schema:'infinite-corridor-narrative/1.0.0',journal:[{recordId:'crossing-beacon',instanceKey:'record:crossing-beacon',title:'The Missing Crossing',text:'The beacon knew me before I arrived. It called the crossing incomplete.',provenance:'original'}],facts:{'crossing.beacon':true},appliedInstanceKeys:{'record:crossing-beacon':true},selectedVariants:{}});
 const codex=()=>({creatures:{},places:{},features:{},variants:{},peoplePlaces:{}});
@@ -37,6 +37,8 @@ export function migrateSave(raw){
  if(s.consequences.settlements['ember-refuge'].status==='fallen')s.consequences.threads['ember-refuge']={status:'resolved',ending:'fallen'};
  if(s.consequences.choices.relay)s.consequences.threads['missing-crossing']={status:'resolved',ending:s.consequences.choices.relay};
  const legacyWaypoint=s.waypoint;s.manualWaypoint=normalizeManualWaypoint(raw?.manualWaypoint===undefined?legacyWaypoint:s.manualWaypoint);delete s.waypoint;
+ // Historical journeys pin their exact existing layout; future entries receive layoutVersion 1 in Game.
+ for(const history of Object.values(s.consequences.dungeons))if(history.layoutVersion===undefined)history.layoutVersion=0;
  for(const history of Object.values(s.consequences.dungeons)){const source=history.discovery&&typeof history.discovery==='object'?history.discovery:{},levels={};for(const[id,list]of Object.entries(source.levels||{}))levels[String(id)]=[...new Set((Array.isArray(list)?list:[]).map(String))].slice(0,512);history.discovery={schema:1,levels};}
  s.lastDeath=normalizeLastDeath(raw?.lastDeath??s.lastDeath);s.version=14;s.equipment=Object.fromEntries(Object.entries(s.equipment||{}).map(([slot,item])=>[slot,item?normalizeItemUpgrade(item):null]));s.inventory=(s.inventory||[]).map(normalizeItemUpgrade);s.magicSkills={schema:1,learned:{...s.magicSkills?.learned},selected:s.magicSkills?.selected||null,active:s.magicSkills?.active?{...s.magicSkills.active,remaining:Math.max(0,Number(s.magicSkills.active.remaining)||0)}:null,cooldowns:{...s.magicSkills?.cooldowns},lastSafe:s.magicSkills?.lastSafe||null};s.apertureBand=apertureBand(s.perception?.aperture||0).id;ensureSceneState(s);ensureEliteState(s);s.capabilities={swim:false,dive:false,excavate:false,controlledDisplacement:false,...s.capabilities};ensureCorridorSystems(s);ensureViewportState(s);return ensurePerception(s);
 }

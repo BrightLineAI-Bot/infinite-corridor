@@ -1,6 +1,7 @@
-import { createInput } from "./input.js?v=91";
-import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=91";
-import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets } from "./proving-ground-labs.js?v=91";
+import { drawRangedEffects } from "./combat-visuals.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { createInput } from "./input.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets } from "./proving-ground-labs.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
 const canvas=document.querySelector("#game"),app=document.querySelector("#app"),ctx=canvas.getContext("2d");
 document.body.classList.add("proving-ground");document.querySelectorAll("#hud, dialog, #eventBanner, .story-scene").forEach(element=>element.hidden=true);
 const query=new URLSearchParams(location.search),implemented=LABORATORIES.filter(q=>q.status==="implemented");let selectedLab=implemented.some(q=>q.id===query.get("lab"))?query.get("lab"):"shelters";
@@ -28,7 +29,7 @@ function report(){const data=labReport(fixture);data.paused=paused;data.url=loca
 function updateDiagnostics(force=false){if(!fixture)return;const now=performance.now();if(!force&&now-lastDiagnostic<220)return;lastDiagnostic=now;$("#fixtureDiagnostics").textContent=JSON.stringify(report(),null,2);$("#scenarioPause").textContent=paused?"Resume":"Pause"}
 function adjacent(delta){const options=[...scenarioSelect.options],index=scenarioSelect.selectedIndex;scenarioSelect.value=options[(index+delta+options.length)%options.length].value;variantInput.value=String(Math.max(0,(Number(variantInput.value)||0)+delta));generate()}
 function resize(){const rect=app.getBoundingClientRect(),d=renderScaleForViewport(rect.width,rect.height,devicePixelRatio||1,"balanced");canvas.width=Math.max(1,Math.round(rect.width*d));canvas.height=Math.max(1,Math.round(rect.height*d));canvas.style.width=`${rect.width}px`;canvas.style.height=`${rect.height}px`;ctx.setTransform(d,0,0,d,0,0);ctx.imageSmoothingEnabled=false}
-function frame(now){const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;input.update(dt);if(game&&!paused)game.update(dt,input,now);if(game)render(ctx,game,canvas.clientWidth,canvas.clientHeight,now);updateDiagnostics();requestAnimationFrame(frame)}
+function frame(now){const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;input.update(dt);if(game&&!paused)game.update(dt,input,now);if(game){render(ctx,game,canvas.clientWidth,canvas.clientHeight,now);drawRangedEffects(ctx,game,canvas.clientWidth,canvas.clientHeight);}updateDiagnostics();requestAnimationFrame(frame)}
 $("#labHome").onclick=renderLauncher;$("#scenarioPrevious").onclick=()=>adjacent(-1);$("#scenarioNext").onclick=()=>adjacent(1);$("#scenarioGenerate").onclick=generate;$("#scenarioReset").onclick=generate;scenarioSelect.onchange=generate;
 sizeProfileSelect.onchange=generate;revealModeSelect.onchange=generate;
 $("#scenarioCompare").onclick=()=>{try{const other=createLabFixture({lab:selectedLab,scenario:scenarioSelect.value,seed:seedInput.value,variant:Number(variantInput.value)||0,sizeProfile:sizeProfileSelect.value,revealMode:revealModeSelect.value,now:performance.now()}),a=labReport(fixture).topologyHash,b=labReport(other).topologyHash;comparison={first:a,second:b,match:a===b,checkedAt:new Date().toISOString()};updateDiagnostics(true)}catch(error){comparison={match:false,error:String(error?.message||error)};updateDiagnostics(true)}};
