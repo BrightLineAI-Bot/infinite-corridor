@@ -1,5 +1,9 @@
 # Infinite Corridor Field Guide
 
+## Current release policy
+
+New candidates use the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Change-Control and the old Verdict Gate release requirement are inactive for new schema-2 candidates. Historical protocol descriptions below remain historical evidence, not current deployment authority. Approval for preparation does not approve preview publication or production promotion. The external profile adapter is unchanged by this patch.
+
 ## Developer Proving Ground
 
 Release 91 provides fourteen implemented production laboratories: Shelter/Building, Ordinary Dungeon, Legacy/Deep Dungeon, Threefold Dungeon, Monster/Elite Combat, Wayglass/Checkpoint/Compass, Bespoke Environment/Domain, Hunts/Creatures, Inventory/Equipment/Vendors, Aperture/Magic Progression, Performance, Recovery/Save/Death, Narrative Scenes, and Atlas/Journal/Records. Scenario state is encoded through `lab`, `scenario`, `seed`, `variant`, `size`, and `reveal` URL parameters.

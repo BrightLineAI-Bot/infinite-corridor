@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added self-contained, versioned candidate previews and explicit owner approval bound to the complete tested artifact. New release candidates use ordinary Git and preserve historical proposal records; production publication remains a separate explicit action.
+- Scoped Proving Ground reset to its own scratch keys in both local and session storage.
+
 - Added an installable, storage-isolated mobile Proving Ground PWA at `/proving-ground/` with scoped offline caching and diagnostics.
 
 This file records user-visible and release-relevant changes. It is not a substitute for the implementation-level [work log](docs/work-log.md) or decision records.
