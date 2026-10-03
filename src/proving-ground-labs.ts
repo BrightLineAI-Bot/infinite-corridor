@@ -5,6 +5,7 @@ import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, AR
 import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.ts";
 import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.ts";
 import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.ts";
+import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { ELITE_DEFINITIONS } from "./elites.ts";
 import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.ts";
 
@@ -90,11 +91,7 @@ function gameForOverworld(seed, rx, ry, now) {
 function installMap(game, map, now) {
   game.area = "dungeon";
   game.map = map;
-  game.enemies = map.enemySpawns.map((spawn) => {
-    const enemy = createCombatant(spawn.kind, spawn.x, spawn.y, spawn.boss, spawn.traits || []);
-    Object.assign(enemy, spawn);
-    return enemy;
-  });
+  game.enemies = map.enemySpawns.map(spawn => game.createEnemyFromSpawn(spawn,"dungeon"));
   game.projectiles = [];
   game.effects = [];
   game.eliteHazards = [];
@@ -106,11 +103,15 @@ function installMap(game, map, now) {
 }
 
 function gameForMap(seed, id, map, now) {
+  if (!map.arena && !id.startsWith('proving:combat:')) varyDungeonLayout(map,seed,id);
   const save = scratchSave(seed);
   Object.assign(save.session, { area: "dungeon", activeDungeonId: id, dungeonReturn: { rx: 0, ry: 0, x: 16, y: 16 }, x: map.entry?.x ?? 4, y: map.entry?.y ?? 5 });
   Object.assign(save.position, { area: "dungeon", rx: 0, ry: 0, x: map.entry?.x ?? 4, y: map.entry?.y ?? 5 });
-  save.consequences.dungeons[id] = { discovered: true, visits: 1, visitOpen: true, generatorVersion: 3, resolved: false };
+  if(map.levelId)save.session.activeDungeonLevelId=map.levelId;
+  save.consequences.dungeons[id] = { discovered: true, visits: 1, visitOpen: true, generatorVersion: map.generatorVersion || 3, layoutVersion: map.layoutVersion || 0, dungeonRecipe: map.recipe, generationOptions:{variant:map.variant,sizeProfile:map.sizeProfile}, resolved: false };
   const game = new Game(save, now); game.installSystems(); installMap(game,map,now);
+  delete save.consequences.dungeons[id].combatClear;
+  game.prepareDungeonCompletion();
   game.updateDungeonDiscovery(true);
   return { save, game };
 }

@@ -1,3 +1,4 @@
+import { enemyMeleeGeometry } from "./combat.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
 
@@ -513,16 +514,26 @@ export function render(ctx, g, w, h, now) {
       ctx.strokeStyle = "#bd8257bb";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(
-        (e.x + 0.5) * s,
-        (e.y + 0.68) * s,
-        s * pulse,
-        0,
-        7,
-      );
+      if (e.meleePhase) {
+        const q=enemyMeleeGeometry(e),x=q.x*s,y=q.y*s,padding=.38,range=(q.range+padding)*s;
+        if(q.kind==='stab') {
+          const width=(q.width+padding)*s, px=-q.dy*width,py=q.dx*width;
+          ctx.moveTo(x+px,y+py);ctx.lineTo(x+q.dx*range+px,y+q.dy*range+py);ctx.lineTo(x+q.dx*range-px,y+q.dy*range-py);ctx.lineTo(x-px,y-py);ctx.closePath();
+        } else if(q.kind==='slam') ctx.arc(x,y,range,0,Math.PI*2);
+        else {const a=Math.atan2(q.dy,q.dx),half=q.arc*Math.PI/360;ctx.moveTo(x,y);ctx.arc(x,y,range,a-half,a+half);ctx.closePath();}
+      } else ctx.arc((e.x+.5)*s,(e.y+.45)*s,s*pulse,0,Math.PI*2);
       ctx.fill();
       ctx.stroke();
     }
+  for (const e of g.enemies) if(!e.dead && e.strike>0 && e.strikeGeometry && discoveredInDungeon(g,e)) {
+    const q=e.strikeGeometry;
+    if(!visibleInCamera({x:q.x,y:q.y},l,t,r,b,q.range))continue;
+    ctx.strokeStyle=e.tentacles?'#927d9dcc':'#c2a77dcc';ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();
+    if(q.kind==='stab'){ctx.moveTo(q.x*s,q.y*s);ctx.lineTo((q.x+q.dx*q.range)*s,(q.y+q.dy*q.range)*s)}
+    else if(q.kind==='slam')ctx.arc(q.x*s,q.y*s,q.radius*s,0,Math.PI*2);
+    else{const a=Math.atan2(q.dy,q.dx),half=q.arc*Math.PI/360;ctx.arc(q.x*s,q.y*s,q.range*s,a-half,a+half)}
+    ctx.stroke();
+  }
   if (dodging) {
     ctx.globalAlpha = 0.28;
     actor(

@@ -1,0 +1,18 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {MELEE_PATTERNS,enemyMeleeGeometry,pointInEnemyMelee} from '../src/combat.ts';
+import {buildEnemyProjectilePattern,advanceEnemyProjectileBehaviors,tuneDungeonThreat} from '../src/enemy-patterns.ts';
+
+const shooter=(kind,damage=20)=>({id:kind,kind,x:4,y:4,damage,boss:true,shotSequence:0});
+
+test('ring patterns are evenly distributed, conservatively scaled, and capped',()=>{const enemy=shooter('gravitantBell');enemy.shotSequence=2;const shots=buildEnemyProjectilePattern(enemy,{x:1,y:0},10,{activeCount:60,cap:64});assert.equal(shots.length,4);assert.ok(shots.every(s=>s.damage===7&&s.life<=2.25));const angles=shots.map(s=>Math.atan2(s.dy,s.dx));assert.ok(Math.abs((angles[1]-angles[0])-Math.PI/4)<1e-9)});
+
+test('split projectiles split once and respect the global cap',()=>{const enemy=shooter('knifeChoir',17);enemy.shotSequence=1;const [parent]=buildEnemyProjectilePattern(enemy,{x:1,y:0},20);parent.age=.8;const split=advanceEnemyProjectileBehaviors([parent],{x:9,y:4},.1,{cap:2});assert.equal(split.length,2);assert.ok(split.every(s=>s.splitDone&&s.damage===6));assert.equal(advanceEnemyProjectileBehaviors(split,{x:9,y:4},1).length,2)});
+
+test('splits preserve player shots under a shared cap and never trigger after expiry',()=>{const enemy=shooter('knifeChoir',12);enemy.shotSequence=1;const [parent]=buildEnemyProjectilePattern(enemy,{x:1,y:0},20);parent.age=1;const playerShot={id:'player',hostile:false,life:2,dx:1,dy:0};const capped=advanceEnemyProjectileBehaviors([playerShot,parent],{x:9,y:4},.1,{cap:2});assert.equal(capped.length,2);assert.equal(capped[0],playerShot);const [expired]=buildEnemyProjectilePattern(enemy,{x:1,y:0},21);expired.splitAfter=0;expired.age=1;expired.life=0;assert.deepEqual(advanceEnemyProjectileBehaviors([expired],null,.1),[expired])});
+
+test('homing turns by no more than its configured rate and expires',()=>{const [shot]=buildEnemyProjectilePattern(shooter('vesperwing'),{x:1,y:0},30);const limit=shot.homingTurnRate*.25;advanceEnemyProjectileBehaviors([shot],{x:4,y:0},.25);assert.ok(Math.abs(Math.atan2(shot.dy,shot.dx))<=limit+1e-9);const direction={x:shot.dx,y:shot.dy};shot.age=shot.homingUntil+.01;advanceEnemyProjectileBehaviors([shot],{x:0,y:8},.5);assert.deepEqual({x:shot.dx,y:shot.dy},direction)});
+
+test('directional melee geometry distinguishes stabs, sweeps, slams, and tentacle reach',()=>{const enemy={x:2,y:2,bodyRadius:.5,tentacles:6,ai:{facing:'right'},meleePhase:{id:'longReach',aim:{x:1,y:0}}};const stab=enemyMeleeGeometry(enemy);assert.equal(stab.kind,'stab');assert.ok(stab.range>MELEE_PATTERNS.longReach.range);assert.equal(pointInEnemyMelee(stab,{x:4.5,y:2},.3),true);assert.equal(pointInEnemyMelee(stab,{x:2,y:4},.3),false);enemy.meleePhase={id:'slam',aim:{x:1,y:0}};const slam=enemyMeleeGeometry(enemy);assert.equal(pointInEnemyMelee(slam,{x:2,y:3.5},.2),true);enemy.meleePhase={id:'zigzag',aim:{x:1,y:0}};const sweep=enemyMeleeGeometry(enemy);assert.equal(pointInEnemyMelee(sweep,{x:3.5,y:2.6},.2),true)});
+
+test('dungeon threat tuning raises actual damage once without escalating hp',()=>{const enemy={damage:10,hp:48,maxHp:48,attackCooldownScale:1};const same=tuneDungeonThreat(enemy);assert.equal(same,enemy);assert.equal(enemy.damage,13);assert.equal(enemy.hp,48);assert.equal(enemy.maxHp,48);assert.equal(enemy.attackCooldownScale,.85);assert.equal(enemy.minimumAttackWindup,.62);tuneDungeonThreat(enemy);assert.equal(enemy.damage,13);assert.equal(enemy.attackCooldownScale,.85);assert.deepEqual(enemy.dungeonThreatBaseline,{damage:10,maxHp:48})});
