@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "start:proving-ground:fixture": "node scripts/dev.mjs --proving-ground-fixture",
     "build": "node scripts/build.mjs",
     "test": "node --test tests/*.test.ts"
   }

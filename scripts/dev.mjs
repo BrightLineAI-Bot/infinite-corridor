@@ -1,10 +1,14 @@
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = resolve(process.cwd());
-const host = process.env.HOST || '0.0.0.0';
-const port = Number(process.env.PORT || 5173);
+const fixture = process.argv.includes('--proving-ground-fixture');
+// Reuse the offline production build, not a parallel laboratory implementation.
+if (fixture) await import('./build.mjs');
+const root = fixture ? fileURLToPath(new URL('../dist/', import.meta.url)) : resolve(process.cwd());
+const host = fixture ? '127.0.0.1' : process.env.HOST || '0.0.0.0';
+const port = fixture ? 5174 : Number(process.env.PORT || 5173);
 const types = {
   '.html': 'text/html',
   '.css': 'text/css',
@@ -21,7 +25,7 @@ const server = http.createServer(async (req, res) => {
       // or every versioned request resolves to a nonexistent name and 404s.
       const pathname = decodeURIComponent((req.url ?? '/').split('?')[0]) || '/';
       const route = pathname === '/' ? 'index.html' : pathname.endsWith('/') ? `${pathname.slice(1)}index.html` : pathname.slice(1);
-      const p = route.replace(/^src\/(.+)\.js$/, 'src/$1.ts');
+      const p = fixture ? route : route.replace(/^src\/(.+)\.js$/, 'src/$1.ts');
       const full = resolve(root, p);
       // Containment is decided on path components, not on a string prefix: a
       // prefix test would also accept a sibling directory whose name merely
@@ -41,5 +45,5 @@ const server = http.createServer(async (req, res) => {
 server.listen(port, host, () => {
   const address = server.address();
   const activePort = typeof address === 'object' && address ? address.port : port;
-  console.log(`Infinite Corridor at http://${host}:${activePort}`);
+  console.log(`Infinite Corridor at http://${host}:${activePort}${fixture ? '/proving-ground/' : ''}`);
 });
