@@ -1,10 +1,12 @@
 # 0001: Field-guide stewardship and the Consistency Steward review role
 
 - **Date:** 2026-09-21
-- **Status:** accepted
+- **Status:** historical workflow, superseded by operator decision 2026-10-11
 - **Owners:** Tim (project owner), Bright Line IP
 
 ## Context
+
+Historical record: the workflow, Change-Control instructions, Steward dispatch requirements, and verification evidence below describe the 2026-09-21 decision, not instructions for new work. Current policy: Test Bot implements all changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), each publication behind a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` is historical. Architectural orientation, compatibility and evidence principles remain useful; see the field guide's current release policy.
 
 Infinite Corridor has grown to a size where a single change can cross several systems without the author noticing. The codebase is 17 source modules, including a 2,732-line `src/game.ts` and a 1,852-line `src/main.ts`. Durable state is versioned, generation is deterministic from seed namespaces, and several player-facing behaviours depend on geometry, budgets, and one-time reward idempotence holding simultaneously.
 

@@ -2,7 +2,7 @@
 
 ## Current release policy
 
-New candidates use the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Change-Control and the old Verdict Gate release requirement are inactive for new schema-2 candidates. Historical protocol descriptions below remain historical evidence, not current deployment authority. Approval for preparation does not approve preview publication or production promotion. The external profile adapter is unchanged by this patch.
+Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
 ## Developer Proving Ground
 
@@ -36,6 +36,8 @@ Developer reference for inspecting, modifying, testing, and extending the Infini
 project. This is the working model that future changes should be checked against.
 
 ## 0. Provenance and status of this document
+
+Historical record: the Change-Control evidence and adapter descriptions in this section and the reading ledger describe the original documentation operation, not requirements for new work.
 
 - Created: 2026-09-20, in the personal Hermes session on Windows.
 - Repository: `C:\AI-PROJECTS\infinite-corridor`, branch `main`, HEAD `5c721982a37335ab5b02c91f0e851b41454d8884`.
@@ -281,7 +283,7 @@ Schema versions should be incremented when **durable state changes**. The curren
 1. An explicit migration path from every previously supported version.
 2. Tests covering each supported source version.
 3. Exact-resume tests: load a save, resume, and assert the world and progress are identical rather than merely loadable.
-4. Contract-document updates, including `.change-control/project.json` interface versions.
+4. Current contract-document updates. Historical policy also required `.change-control/project.json` interface versions; that disabled declaration is no longer a required update for new work.
 
 Do not bump a version for refactors, renames, or internal shape changes that are invisible in persisted bytes. Conversely, do not ship a durable-state change without a bump, since the current constant is the only gate that decides which migration path a stored save takes.
 
@@ -289,7 +291,7 @@ Do not bump a version for refactors, renames, or internal shape changes that are
 
 **VERIFIED IN CURRENT CODE / VERIFIED BY TEST:** `SAVE_VERSION` declares version 14. Migration normalizes existing histories to `{schema:1, levels:{}}` without changing stored area snapshots, generator versions, rewards, or character progression; current tests also cover migration from version 12.
 
-**VERIFIED CONTRACT ALIGNMENT:** `.change-control/project.json` declares the `local-save-schema` provider interface as `14.0.0`, matching runtime `SAVE_VERSION = 14`. Git history establishes this interface's direct-major convention (`8.0.0` for save version 8, `10.0.0` for 10, `12.0.0` for 12, and `13.0.0` for 13); it is a change-control integration declaration, not the runtime migration gate. The project has no component requiring this interface, so the declaration change introduces no in-repository consumer migration.
+**HISTORICAL CONTRACT ALIGNMENT:** `.change-control/project.json` declares the `local-save-schema` provider interface as `14.0.0`, matching runtime `SAVE_VERSION = 14`. Git history establishes this interface's direct-major convention (`8.0.0` for save version 8, `10.0.0` for 10, `12.0.0` for 12, and `13.0.0` for 13); it is a historical change-control integration declaration, not the runtime migration gate or a required update for new work. The project has no component requiring this interface, so the declaration change introduced no in-repository consumer migration.
 
 ## 7. Input flow
 
@@ -661,7 +663,7 @@ Each recipe is the short version: find the table, extend the table, check the wi
 6. `game.ts` spans 41 to 1494, 1581 to 1666, and 1721 to 2515 are unread. The interaction methods, the attack methods, and the systems installation functions are known only by signature and line number.
 7. `main.ts` outside 440 to 478 is unread. Overlay internals, the settings category list, and the Atlas drawing internals are grounded only by command-verified lines.
 8. `deep-dungeons.ts` lines 1 to 120, `foundry.ts` lines 1 to 45, `interactions.ts` lines 1 to 55, `world.ts` lines 41 to 129, and `renderer.ts` lines 432 to 760 are unread.
-9. `local-save-schema` is declared as `14.0.0`, matching runtime `SAVE_VERSION = 14`; any future durable-schema bump must update the migration, migration coverage, and this provider declaration together.
+9. Historical `local-save-schema` was declared as `14.0.0`, matching runtime `SAVE_VERSION = 14`. Future durable-schema bumps must update migrations, migration coverage, exact-resume tests, and current contract documentation, not the disabled provider declaration.
 
 **Not defects, resolved:**
 
@@ -678,6 +680,12 @@ Each recipe is the short version: find the table, extend the table, check the wi
 Still unverified on device: Rift Bombard contact since the latest corrective commit, shelter traversal since the latest corrective commit, the compass and mark behaviour described in section 16, Android installation, installed-PWA offline launch, airplane-mode resume, touch usability, frame pacing under real load, ambient audio behaviour, the current design intent behind the red and green lifts, the glass symbols, the ring opening, and the amber chevron vertex, sparse-region freshness, overworld compaction, multi-breach and swarm content, and Wayglass Beacon placement rate as experienced rather than as computed.
 
 ## 27. Change control and governance
+
+Current workflow: Test Bot owns implementation, approved cards, npm test checks, staging, and the operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main via create, validate, publish-preview, promote in `scripts/proposal-workflow.mjs`. Each publication is behind a separate Discord approval card. Preserve unrelated work and never infer approval. Change-Control is disabled workspace-wide; `.change-control/` is historical.
+
+### Historical governance (superseded 2026-10-11; not instructions for new work)
+
+The following original protocol is retained as historical evidence only. The linked stewardship decision's Change-Control and dispatch requirements are historical too; the current workflow above governs new work.
 
 - Mandatory before any project write: read `C:\AI-PROJECTS\brightline-release-manager\docs\GLOBAL_CHANGE_CONTROL.md`, run `status` and `checkpoint` with `-ProjectPath`, then follow the guarded workflow for existing-file changes.
 - The guarded adapter changes existing ordinary public files on the qualified local Windows filesystem. It does not manage secrets, databases, services, cloud deployments, ACL changes, file creation, or file deletion (protocol section "Supported scope").

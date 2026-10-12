@@ -4,7 +4,7 @@ An original, offline-first, single-player mobile adventure game for Android. The
 
 This repository contains the playable **Prototype 1** vertical slice.
 
-Project changes use isolated, tested candidates and explicit owner approval of the exact artifact. Change-Control is disabled. See [candidate review and promotion](docs/proposal-publication-workflow.md); previews carry their own code and assets, and production promotion never rebuilds an approved payload.
+Under the operator decision of 2026-10-11, Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote); each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not instructions for new work. See [candidate review and promotion](docs/proposal-publication-workflow.md); previews carry their own code and assets, and production promotion never rebuilds an approved payload.
 
 ## Run locally
 
@@ -33,6 +33,8 @@ npm run build
 ```
 
 The static production PWA is written to `dist/`. Serve that directory from an HTTPS origin for phone installation; `localhost` is also treated as secure for local desktop testing. Do not open `dist/index.html` directly from the filesystem because service workers require an HTTP(S) origin.
+
+For Test Bot candidate inspection, run `npm run start:proving-ground:fixture` and open `http://127.0.0.1:5174/proving-ground/`. This builds and serves the production-backed scratch laboratory on a fixed loopback port without network access or dependencies. It does not publish a preview or promote production. Stop with Ctrl+C.
 
 ### Private tailnet deployment
 
