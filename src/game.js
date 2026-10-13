@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
 import {
   generateRegion,
   generateDungeon,
@@ -14,7 +14,7 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
-} from "./world.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+} from "./world.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -25,7 +25,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
 import {
   applyInteraction,
   validActions,
@@ -35,20 +35,20 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
-import { ensurePerception } from "./types.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
-import { generateItem } from "./items.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
-import { hashSeed } from "./random.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb';
-import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb';
-import{ensureSceneState,queueScene}from'./scenes.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
-import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields } from "./monster-pack.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+} from "./interactions.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
+import { ensurePerception } from "./types.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
+import { generateItem } from "./items.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
+import { hashSeed } from "./random.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa';
+import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa';
+import{ensureSceneState,queueScene}from'./scenes.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
+import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function pinDungeonLayout(save, id) {
@@ -1566,6 +1566,7 @@ export class Game {
         .filter((o) => ["checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho"].includes(o.kind))
         .map((o) => ({ kind: o.kind, name: o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
+    if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save)});
     this.activatedEncounterGroups=new Set;
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
     const intrusions = this.map.deepDungeon || this.map.recipe === "deep-v1" ? [] : apertureEncounterSpawns(
@@ -2239,10 +2240,10 @@ export class Game {
     p.invulnerableUntil = now + (options.beam ? 320 : 700);
     return true;
   }
-  packWorld(dt, now) {
+  packWorld(dt, now, sanctuary = null) {
     const map = this.map, width = mapWidth(map, this.area), height = mapHeight(map, this.area), p = this.player, last = this._packLastPlayer || p, game = this;
     return {
-      player: p, map, width, height, dt, now, enemies: this.enemies,
+      player: p, map, width, height, dt, now, enemies: this.enemies, sanctuary,
       playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - last.y) / dt } : { x: 0, y: 0 },
       open: (x, y) => footprintOpen(map, width, x, y),
       tileOpen: (x, y) => tileOpen(map, width, x, y),
@@ -2252,7 +2253,7 @@ export class Game {
         return moveAxis(e, dx, dy, map, width, !!e.flying);
       },
       detour(e, speed) { const step = boundedChaseStep(e, p, map, width); if (step) { const px = step[0] - e.x, py = step[1] - e.y, m = Math.hypot(px, py) || 1; moveAxis(e, px / m * speed, py / m * speed, map, width, !!e.flying); } },
-      hurt: (source, amount, options) => game.packHurt(source, amount, options, now),
+      hurt: (source, amount, options) => !(sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) && game.packHurt(source, amount, options, now),
       slow(factor, seconds) { p.slowFactor = Math.min(now < (p.slowUntil || 0) ? (p.slowFactor || 1) : 1, factor); p.slowUntil = Math.max(p.slowUntil || 0, now + seconds * 1000); },
       addEffect: (effect) => addPackEffect(game.packEffects ||= [], effect, now),
       spawnIllusion(owner, x, y, index) {
@@ -2796,10 +2797,10 @@ export class Game {
     for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e))continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
     p.stamina = Math.min(p.maxStamina, p.stamina + 9 * dt);
     this.performanceStats.totalDungeonEncounterRecords=this.area==="dungeon"?(this.map.encounterGroups||[]).length:0;this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.activeProjectiles=this.projectiles.length;this.performanceStats.activeHazardsAndEffects=this.eliteHazards.length+this.effects.length;this.performanceStats.pathfindingWork=0;this.performanceStats.ambientTicks=0;if(dt>1/30)this.performanceStats.updateBudgetViolations++;
-    const packWorld=this.packWorld(dt,now);
+    const packWorld=this.packWorld(dt,now,this.area==="overworld"?settlementSanctuary(this.map,this.rx,this.ry,this.save):null);
     for (const e of this.enemies) {
       if(!activeEnemySet.has(e)){this.performanceStats.dormantEnemies++;continue}
-      if(e.packKind){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);continue}
+      if(e.packKind){this.performanceStats.activeEnemies++;const zone=packWorld.sanctuary;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(zone)enforceSanctuary(e,zone);continue}
       if(e.encounterGroup&&!this.activatedEncounterGroups.has(e.encounterGroup)){this.activatedEncounterGroups.add(e.encounterGroup);this.performanceStats.encounterActivations++}
       let simulationDt=dt;
       if(e.ambient){e.ambientAccumulator=(e.ambientAccumulator||0)+dt;if(e.ambientAccumulator<.125){this.performanceStats.dormantEnemies++;continue}simulationDt=Math.min(.25,e.ambientAccumulator);e.ambientAccumulator=0;this.performanceStats.ambientTicks++}
