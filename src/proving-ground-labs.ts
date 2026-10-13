@@ -8,6 +8,7 @@ import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.ts";
 import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { ELITE_DEFINITIONS } from "./elites.ts";
 import { PACK_KINDS, isPackKind } from "./monster-pack.ts";
+import { BIOMES, biomeFor } from "./landscape.ts";
 import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.ts";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
@@ -19,6 +20,7 @@ export const LABORATORIES = [
   { id: "ordinary-dungeon", label: "Ordinary Dungeon Lab", status: "implemented", description: "Production v4 deterministic exploration topology, discovery, ecology, traps, guardians, and traversal." },
   { id: "deep-dungeon", label: "Legacy & Deep Dungeon Lab", status: "implemented", description: "Production deep-v2 archetypes, objectives, levels, shortcuts, and finales." },
   { id: "threefold", label: "Threefold Dungeon Lab", status: "implemented", description: "The production three-wing sealed expedition and its wardens." },
+  { id: "landscape", label: "Landscape Pack", status: "implemented", description: "Nearest production overland section of each landscape biome: mountains with stair trails, dune seas, coasts, alien wilds and castles." },
   { id: "combat", label: "Monster & Elite Combat Arena", status: "implemented", description: "Production combatants in a production dungeon arena." },
   { id: "wayglass", label: "Wayglass, Checkpoint & Compass Lab", status: "implemented", description: "Production navigation, recovery, migration, Atlas, and dual-arrow fixtures." },
   { id: "environment", label: "Bespoke Environment & District Lab", status: "implemented", description: "Production districts, overworld landmarks, domains, and arena families." },
@@ -61,6 +63,7 @@ export function scenariosForLab(lab) {
   if (lab === "ordinary-dungeon") return ORDINARY;
   if (lab === "deep-dungeon") return DEEP;
   if (lab === "threefold") return [{ id: "threefold", label: "Threefold sealed expedition" }];
+  if (lab === "landscape") return LANDSCAPE_SCENARIOS;
   if (lab === "combat") return CREATURES;
   if(lab==="wayglass")return WAYGLASS_SCENARIOS;
   if(lab==="environment")return ENVIRONMENTS;
@@ -144,6 +147,26 @@ function deepFixture(scenario, seed, variant, now, forceThreefold=false) {
   return {lab:forceThreefold?"threefold":"deep-dungeon",scenario:archetype,label:map.name,seed,variant,production:true,...base};
 }
 
+const LANDSCAPE_SCENARIOS = [...Object.values(BIOMES).map((b) => ({ id: b.id, label: b.name })), { id: "volcano", label: "Erupting volcano" }, { id: "skybridge", label: "Sky bridge" }];
+function landscapeFixture(scenario, seed, now) {
+  const feature = scenario === "volcano" || scenario === "skybridge" ? scenario : null, biome = feature ? "mountains" : BIOMES[scenario] ? scenario : "mountains";
+  for (let radius = 2; radius <= 40; radius++) for (let y = -radius; y <= radius; y++) for (let x = -radius; x <= radius; x++) {
+    if (Math.max(Math.abs(x), Math.abs(y)) !== radius || biomeFor(seed, x, y) !== biome) continue;
+    const base = gameForOverworld(seed, x, y, now), map = base.game.map;
+    if (biome === "castle" && !map.castle) continue;
+    if (feature === "volcano" && !map.volcano) continue;
+    if (feature === "skybridge" && !map.skyBridges?.length) continue;
+    if (!feature && biome !== "castle" && map.tiles.filter((t) => t.landscape === biome).length < (biome === "alien" ? 220 : 400)) continue; // the heart of the biome, not its fringe
+    const summit = map.objects.find((o) => o.landscapeSummit), counts = {};
+    for (const t of map.tiles) if (t.landscape) counts[t.kind] = (counts[t.kind] || 0) + 1;
+    if (feature === "volcano") Object.assign(base.game.player, { x: map.volcano.x + 4, y: map.volcano.y + 4 });
+    if (feature === "skybridge") { const b = map.skyBridges[0]; Object.assign(base.game.player, { x: b.from[0], y: b.from[1] }); }
+    return { lab: "landscape", scenario: feature || biome, label: `${feature === "volcano" ? "Erupting volcano" : feature === "skybridge" ? "Sky bridge" : BIOMES[biome].name} at section ${x}, ${y}`, seed, variant: 0, production: true, ...base,
+      diagnostics: { section: { rx: x, ry: y }, biome: map.landscape?.biome, summit: summit ? { name: summit.name, x: summit.x, y: summit.y } : null, castle: map.castle || null,
+        slopes: map.tiles.filter((t) => t.slope).length, tiles: counts } };
+  }
+  throw new Error(`No ${biome} section within 40 sections of the origin for this seed`);
+}
 function combatFixture(scenario, seed, variant, now) {
   const packBoss=scenario.startsWith('pack-boss-')&&isPackKind(scenario.slice(10)),patternScenario=scenario.startsWith('pattern-'),kind=packBoss?scenario.slice(10):patternScenario?(scenario.includes('elite')?'hollowMarshal':'ashling'):CREATURES.some(q=>q.id===scenario)?scenario:"ashling",id=`proving:combat:${kind}:${variant}`,map=generateVariedDungeon(seed,id,"hollow");
   const open=map.tiles.filter(t=>!t.blocked&&t.x>7&&t.x<23&&t.y>6&&t.y<19);
@@ -180,6 +203,7 @@ export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVIN
   if(lab==="ordinary-dungeon")fixture=ordinaryFixture(scenario,cleanSeed,cleanVariant,now,["compact","standard","extended"].includes(sizeProfile)?sizeProfile:"standard");
   else if(lab==="deep-dungeon")fixture=deepFixture(scenario,cleanSeed,cleanVariant,now);
   else if(lab==="threefold")fixture=deepFixture("threefold",cleanSeed,cleanVariant,now,true);
+  else if(lab==="landscape")fixture=landscapeFixture(scenario,cleanSeed,now);
   else if(lab==="combat")fixture=combatFixture(scenario,cleanSeed,cleanVariant,now);
   else if(lab==="wayglass")return navigationFixture(WAYGLASS_SCENARIOS.some(q=>q.id===scenario)?scenario:"unactivated-wayglass",cleanSeed,now);
   else if(lab==="environment")return environmentFixture(scenario,cleanSeed,cleanVariant,now);

@@ -1,4 +1,6 @@
 import { enemyMeleeGeometry } from "./combat.ts";
+import { drawLandscapeTile, setLandscapeClock } from "./landscape-render.ts";
+import { liftAt } from "./landscape.ts";
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
@@ -104,6 +106,7 @@ function h(x, y) {
   return (Math.imul(x + 37, 73856093) ^ Math.imul(y + 19, 19349663)) >>> 0;
 }
 function tile(ctx, t, x, y, s, map, w, activeBuildingId=null) {
+  if (t?.landscape && drawLandscapeTile(ctx, t, x, y, s, map, w)) return;
   const p = PAL[t.kind] || PAL.ash,
     d = Number.isFinite(t.detail) ? t.detail : h(x, y),
     px = x * s,
@@ -499,8 +502,10 @@ export function render(ctx, g, w, h, now) {
   renderCacheStats.visibleTiles=(r-l)*(b-t);
   renderCacheStats.visibleObjects=0;
   const activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y),activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
+  setLandscapeClock(now);
+  const groundLift = (x, y) => (g.area === "overworld" ? liftAt(g.map, mw, x, y) : 0);
   ctx.save();
-  ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - p.y * s));
+  ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - groundLift(p.x, p.y)) * s));
   for (let y = t; y < b; y++)
     for (let x = l; x < r; x++) {
       if(g.area==="dungeon"&&dungeonTileVisibility(g.map,x,y)==="unseen"){ctx.fillStyle="#070a0d";ctx.fillRect(x*s,y*s,s+.5,s+.5);continue}
@@ -564,7 +569,7 @@ export function render(ctx, g, w, h, now) {
   for (const o of g.map.objects)
     if (renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden")&&(renderCacheStats.visibleObjects++,true))
       draws.push({
-        y: o.y,
+        y: o.y, x: o.x,
         fn: () => {
           if (o.kind === "wayfindingCue") waymark(ctx,o,s);
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
@@ -620,7 +625,7 @@ export function render(ctx, g, w, h, now) {
   for (const e of g.enemies)
     if (!e.dead && discoveredInDungeon(g,e) && visibleInCamera(e,l,t,r,b,2))
       draws.push({
-        y: e.y,
+        y: e.y, x: e.x,
         fn: () => {
           const f = e.ai?.facing || "down",
             q = e.recoil > 0 ? 0.12 : 0,
@@ -666,7 +671,7 @@ export function render(ctx, g, w, h, now) {
         },
       });
   draws.push({
-    y: p.y,
+    y: p.y, x: p.x,
     fn: () => {
       if (jumping) {
         ctx.fillStyle = "#05050477";
@@ -723,7 +728,10 @@ export function render(ctx, g, w, h, now) {
     },
   });
   draws.sort((a, b) => a.y - b.y);
-  for (const d of draws) d.fn();
+  for (const d of draws) {
+    const raise = Number.isFinite(d.x) ? groundLift(d.x, d.y) : 0;
+    if (raise) { ctx.save(); ctx.translate(0, -raise * s); d.fn(); ctx.restore(); } else d.fn();
+  }
   for (const e of g.enemies)
     if (!e.dead && discoveredInDungeon(g,e) && !e.ambient && !e.hidden && !e.aloft && visibleInCamera(e,l,t,r,b,2)) {
       const barY = e.packKind ? e.y - 0.1 - Math.max(0, (Number(e.scale) || 1) - 1) * 0.75 - (e.flying ? 0.35 : 0) : e.y - 0.1;

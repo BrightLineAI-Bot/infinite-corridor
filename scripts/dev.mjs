@@ -35,6 +35,7 @@ const server = http.createServer(async (req, res) => {
       let data = await readFile(full);
       if (extname(full) === '.ts') data = Buffer.from(data.toString().replaceAll(".ts'", ".js'"));
       res.setHeader('content-type', types[extname(full)] || 'application/octet-stream');
+      res.setHeader('cache-control', 'no-store'); // local development: never serve a stale module
       res.end(data);
     } catch {
       res.statusCode = 404;
