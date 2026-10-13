@@ -2435,7 +2435,7 @@ test("Proving Ground resets scratch state and cannot import persistence",()=>{
 });
 
 test("Proving Ground exposes every production diagnostic laboratory and direct scenario",()=>{
-  assert.equal(LABORATORIES.length,14);assert.ok(LABORATORIES.every(q=>q.status==="implemented"));
+  assert.equal(LABORATORIES.length,15);assert.ok(LABORATORIES.every(q=>q.status==="implemented"));
   for(const {id} of LABORATORIES){const scenarios=scenariosForLab(id);assert.ok(scenarios.length>0,id);const first=createLabFixture({lab:id,scenario:scenarios[0].id,seed:"all-labs",variant:1,now:0});assert.equal(labReport(first).scratch,true)}
 });
 
