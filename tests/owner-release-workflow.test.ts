@@ -17,8 +17,9 @@ test('owner-release publisher requests clone-local long paths before any checkou
  workflow.runGit=(cwd:string,...args:string[])=>{calls.push({cwd,args});throw stop};
  assert.throws(()=>workflow.publishLocked(id,'preview',{channelId:POLICY.channelId,execute:true}),error=>error===stop);
  assert.equal(calls.length,1);
- assert.deepEqual(calls[0].args.slice(0,-1),['clone','--no-checkout','--config','core.longpaths=true',POLICY.remote]);
- assert.match(calls[0].args.at(-1)!,/^\/private\/candidate\/publication-preview-/);
+ // -c covers the clone process itself (creating a deep target folder); --config persists it for later commands.
+ assert.deepEqual(calls[0].args.slice(0,-1),['-c','core.longpaths=true','clone','--no-checkout','--config','core.longpaths=true',POLICY.remote]);
+ assert.match(calls[0].args.at(-1)!,/[\\/]private[\\/]candidate[\\/]publication-preview-/);
  assert.equal(calls[0].args.includes('--global'),false);
  assert.equal(p.state,'OWNER_REVIEW');assert.equal(p.publication,null);
 });

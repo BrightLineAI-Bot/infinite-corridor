@@ -59,7 +59,7 @@ function publicationFixture(workflow:any){
  let remote={main:workflow.fixture.originMain,ghPages:workflow.fixture.originPages},work='',pushes:any[]=[];
  workflow.remoteRefs=()=>({...remote});workflow.publicationHead=()=> '9'.repeat(40);workflow.verifyPublication=()=>{};
  workflow.runGit=(cwd:string,...args:string[])=>{
-  if(args[0]==='clone'){work=args.at(-1)!;mkdirSync(join(work,'.git'),{recursive:true});mkdirSync(join(work,'previews','other'),{recursive:true});writeFileSync(join(work,'index.html'),'existing production');writeFileSync(join(work,'previews','other','index.html'),'other preview');}
+  if(args.includes('clone')){work=args.at(-1)!;mkdirSync(join(work,'.git'),{recursive:true});mkdirSync(join(work,'previews','other'),{recursive:true});writeFileSync(join(work,'index.html'),'existing production');writeFileSync(join(work,'previews','other','index.html'),'other preview');}
   if(args[0]==='push'){pushes.push(args);assert.ok(args.includes('--atomic'));assert.ok(args.some(a=>a.startsWith('--force-with-lease=refs/heads/gh-pages:')));remote.ghPages='9'.repeat(40);const main=args.find(a=>a.endsWith(':refs/heads/main'));if(main)remote.main=main.split(':')[0];}
   return {exitCode:0};
  };
@@ -77,13 +77,13 @@ test('publication enables clone-local long paths before Windows checkout and sta
  let enabled=false;const commands:string[][]=[];
  workflow.runGit=(cwd:string,...args:string[])=>{
   commands.push(args);
-  if(args[0]==='clone')enabled=args.includes('--config')&&args.includes('core.longpaths=true');
+  if(args.includes('clone'))enabled=args.includes('--config')&&args.includes('core.longpaths=true');
   if(['checkout','add'].includes(args[0])&&!enabled)throw new Error('Filename too long');
   return original(cwd,...args);
  };
  const result=workflow.publishPreview(p.proposalId,{channelId:POLICY.channelId,execute:true});
  assert.equal(result.ok,true);assert.equal(enabled,true);
- assert.equal(commands[0][0],'clone');assert.equal(commands.some(a=>a.includes('--global')),false);
+ assert.ok(commands[0].includes('clone'));assert.equal(commands.some(a=>a.includes('--global')),false);
  assert.equal(result.proposal.previewUrl,p.previewUrl);assert.equal(result.proposal.artifactDigest,p.artifactDigest);
  assert.equal(result.proposal.state,'OWNER_REVIEW');assert.equal(result.proposal.decision,null);
  assert.equal(inventoryDigest(inventory(join(fixture.work,'previews',p.proposalId))),inventoryDigest(p.files.preview));
@@ -96,10 +96,11 @@ test('real publication clone stages deep immutable preview assets and preserves 
  try{
   git(origin,'init');writeFileSync(join(origin,'index.html'),'production unchanged');mkdirSync(join(origin,'previews','other'),{recursive:true});writeFileSync(join(origin,'previews','other','index.html'),'other unchanged');
   git(origin,'add','--all');git(origin,'-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-m','baseline');const before=git(origin,'rev-parse','HEAD');
-  const work=join(parent,'nested-publication-'.repeat(8),'publication-preview-00000000-0000-0000-0000-000000000000');mkdirSync(join(work,'..'),{recursive:true});
+  // Like production: the clone folder stays under the Windows process-cwd limit while preview assets inside it exceed 260 characters.
+  const work=join(parent,'nested-publication-'.repeat(4),'publication-preview-00000000-0000-0000-0000-000000000000');mkdirSync(join(work,'..'),{recursive:true});
   // Execute the exact clone arguments produced by the publication workflow, using only a local origin.
   const fixture=publicationFixture(workflow),original=workflow.runGit;let cloneArgs:string[]=[];
-  workflow.runGit=(cwd:string,...args:string[])=>{if(args[0]==='clone')cloneArgs=[...args];return original(cwd,...args)};
+  workflow.runGit=(cwd:string,...args:string[])=>{if(args.includes('clone'))cloneArgs=[...args];return original(cwd,...args)};
   assert.equal(workflow.publishPreview(p.proposalId,{channelId:POLICY.channelId,execute:true}).ok,true);
   git(parent,...cloneArgs.slice(0,-2),origin,work);assert.equal(git(work,'config','--local','--get','core.longpaths'),'true');
   git(work,'config','core.autocrlf','false');mkdirSync(join(work,'.git','info'),{recursive:true});writeFileSync(join(work,'.git','info','attributes'),'* -text -filter -ident\n');git(work,'checkout','--detach',before);
