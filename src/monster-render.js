@@ -1,7 +1,7 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind } from "./monster-pack.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
+import { MONSTER_PACK, isPackKind } from "./monster-pack.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
 
 const TAU = Math.PI * 2;
 
@@ -269,7 +269,7 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true) {
       const total = f.armTotal ??= f.arming, progress = 1 - f.arming / total;
       if (f.kind === "web") { drawWeb(ctx, x, y, r, .5 * progress); }
       else if (f.kind === "sigil" || f.kind === "condemn") { drawSigil(ctx, x, y, r, f.kind === "condemn" ? "#9dff8a" : "#7fe7ff", now, progress); }
-      else if (f.kind === "mortar") { drawWarningCircle(ctx, x, y, r, "#ff9d4a", pulse, progress); if (f.from) { const fx = (f.from.x + .5) * s, fy = (f.from.y + .3) * s, k = progress, sx = fx + (x - fx) * k, sy = fy + (y - fy) * k - Math.sin(k * Math.PI) * s * 2.2; ctx.fillStyle = "#2a1c12"; ctx.beginPath(); ctx.arc(sx, sy, s * .14, 0, TAU); ctx.fill(); glow(ctx, sx, sy, s * .3, "#ff9d4a", .6); } }
+      else if (f.kind === "mortar" || f.kind === "lavaBomb") { drawWarningCircle(ctx, x, y, r, f.kind === "lavaBomb" ? "#ff5a2a" : "#ff9d4a", pulse, progress); if (f.from) { const fx = (f.from.x + .5) * s, fy = (f.from.y + .3) * s, k = progress, sx = fx + (x - fx) * k, sy = fy + (y - fy) * k - Math.sin(k * Math.PI) * s * 2.2; ctx.fillStyle = "#2a1c12"; ctx.beginPath(); ctx.arc(sx, sy, s * .14, 0, TAU); ctx.fill(); glow(ctx, sx, sy, s * .3, "#ff9d4a", .6); } }
       else drawWarningCircle(ctx, x, y, r, f.kind === "ember" ? "#ffc35a" : f.kind === "rupture" ? "#e0b071" : "#ff7a6b", pulse, progress);
     } else {
       const life = Math.max(0, f.life ?? 0);
@@ -277,7 +277,7 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true) {
       else if (f.kind === "shock") { const rr = (f.ring ?? 0) * s; ctx.strokeStyle = "#ffe08acc"; ctx.lineWidth = Math.max(2, s * .18); ctx.beginPath(); ctx.ellipse(x, y - s * .1, rr, rr * .6, 0, 0, TAU); ctx.stroke(); ctx.strokeStyle = "#ffffff88"; ctx.lineWidth = Math.max(1, s * .05); ctx.stroke(); }
       else if (f.kind === "blinkTrail") { glow(ctx, x, y - s * .3, r, "#c58cff", Math.min(.7, life * 2)); }
       else if (f.kind === "dust" || f.kind === "crash") { ctx.globalAlpha = Math.min(1, life * 2); for (let i = 0; i < 10; i++) { const a = i * TAU / 10, d = r * (1 - life * .8); ctx.fillStyle = f.kind === "crash" ? "#ffb04acc" : "#b9a184aa"; ctx.beginPath(); ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d * .6, s * .09, 0, TAU); ctx.fill(); } }
-      else { ctx.globalAlpha = Math.min(1, life * 2.5); const c = f.kind === "ember" ? "#ffc35a" : f.kind === "mortar" ? "#ff9d4a" : f.kind === "condemn" ? "#9dff8a" : f.kind === "sigil" ? "#7fe7ff" : "#e0b071"; glow(ctx, x, y, r * 1.2, c, .8); ctx.strokeStyle = "#fff3d0"; ctx.lineWidth = Math.max(1, s * .05); for (let i = 0; i < 7; i++) { const a = i * TAU / 7 + now / 300; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r * .6 - s * .3); ctx.stroke(); } }
+      else { ctx.globalAlpha = Math.min(1, life * 2.5); const c = f.kind === "ember" ? "#ffc35a" : f.kind === "lavaBomb" ? "#ff5a2a" : f.kind === "mortar" ? "#ff9d4a" : f.kind === "condemn" ? "#9dff8a" : f.kind === "sigil" ? "#7fe7ff" : "#e0b071"; glow(ctx, x, y, r * 1.2, c, .8); ctx.strokeStyle = "#fff3d0"; ctx.lineWidth = Math.max(1, s * .05); for (let i = 0; i < 7; i++) { const a = i * TAU / 7 + now / 300; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r * .6 - s * .3); ctx.stroke(); } }
     }
     ctx.restore();
   }

@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
 import {
   generateRegion,
   generateDungeon,
@@ -14,7 +14,7 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
-} from "./world.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
+} from "./world.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -25,7 +25,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
 import {
   applyInteraction,
   validActions,
@@ -35,20 +35,21 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
-import { ensurePerception } from "./types.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
-import { generateItem } from "./items.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
-import { hashSeed } from "./random.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa';
-import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa';
-import{ensureSceneState,queueScene}from'./scenes.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
-import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_121b868c6e3a40e98fa03ac5_70e836724ac0f1aa";
+} from "./interactions.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
+import { ensurePerception } from "./types.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
+import { generateItem } from "./items.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
+import { hashSeed } from "./random.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d';
+import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d';
+import{ensureSceneState,queueScene}from'./scenes.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
+import { applyLandscape, canStep, LANDSCAPE_VERSION, elevationAt, fallDamage } from "./landscape.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
+import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function pinDungeonLayout(save, id) {
@@ -337,7 +338,7 @@ export function footprintTouchesCanyon(map, width, x, y) {
 }
 export function footprintHazard(map,width,x,y){
   const tile=map.tiles[Math.floor(y+.72)*width+Math.floor(x+.5)];
-  return ["canyon","river","dungeonWater"].includes(tile?.kind)?tile.kind:null;
+  return ["canyon","river","dungeonWater","lava"].includes(tile?.kind)?tile.kind:null;
 }
 export function footprintInsideStructure(map,width,x,y){
   if(structureOccupancy(map.tiles,width,x,y))return true;
@@ -378,11 +379,11 @@ export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false) {
     sx = dx / steps,
     sy = dy / steps;
   for (let i = 0; i < steps; i++) {
-    if (sx && footprintOpen(map, width, entity.x + sx, entity.y, allowLethalTerrain)) {
+    if (sx && footprintOpen(map, width, entity.x + sx, entity.y, allowLethalTerrain) && canStep(entity, map, width, entity.x, entity.y, entity.x + sx, entity.y)) {
       entity.x += sx;
       moved = true;
     }
-    if (sy && footprintOpen(map, width, entity.x, entity.y + sy, allowLethalTerrain)) {
+    if (sy && footprintOpen(map, width, entity.x, entity.y + sy, allowLethalTerrain) && canStep(entity, map, width, entity.x, entity.y, entity.x, entity.y + sy)) {
       entity.y += sy;
       moved = true;
     }
@@ -1505,6 +1506,7 @@ export class Game {
             this.ry,
             this.save.worldGeneration,
           );
+    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&seen.landscapeVersion!==LANDSCAPE_VERSION})}
     if(area==="dungeon"&&this.map.dungeonContract?.discoveryEnabled){const discovered=discoveryForLevel(history,this.map);applyDungeonDiscovery(this.map,discovered);this._dungeonChunkId=null;}
     if(area==='overworld'){
       const site=storySiteFor(this.save,this.rx,this.ry);if(site&&!this.map.objects.some(o=>o.id===site.id)){const open=this.map.tiles[site.y*32+site.x];if(!open?.blocked&&!open?.structure)this.map.objects.push(site)}
@@ -1561,8 +1563,10 @@ export class Game {
       }
     }
     if (area === "overworld") {
-      const atlas = (this.save.atlas ||= {}), key = `${this.rx},${this.ry}`;
-      atlas[key] = { terrain: this.map.dominant, sites: this.map.objects
+      const atlas = (this.save.atlas ||= {}), key = `${this.rx},${this.ry}`, prior = atlas[key];
+      // A section first seen now is pinned to the current landscape version; one explored earlier keeps none.
+      atlas[key] = { terrain: this.map.dominant, ...(prior ? (prior.landscapeVersion ? { landscapeVersion: prior.landscapeVersion } : {}) : { landscapeVersion: LANDSCAPE_VERSION }),
+        ...(this.map.landscape?.biome ? { landscape: this.map.landscape.biome } : {}), sites: this.map.objects
         .filter((o) => ["checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho"].includes(o.kind))
         .map((o) => ({ kind: o.kind, name: o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
@@ -2724,8 +2728,15 @@ export class Game {
     }
     const width = mapWidth(this.map, this.area);
     const terrainHazard=footprintHazard(this.map,width,nx,ny),aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0,fellIntoHazard=!!terrainHazard&&!aerial;
-    if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
-    else moveAxis(p, dx, dy, this.map, width, true);
+    if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
+    else {
+      p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0);
+      const before = this.area === "overworld" ? elevationAt(this.map, width, p.x, p.y) : 0;
+      moveAxis(p, dx, dy, this.map, width, true);
+      const drop = before - (this.area === "overworld" ? elevationAt(this.map, width, p.x, p.y) : 0), hurt = fallDamage(drop, this.save.maxHp);
+      if (hurt === Infinity) { p.hp = 0; this.message = `The Wayfarer falls ${drop} levels.`; }
+      else if (hurt > 0) { p.hp = Math.max(1, p.hp - hurt); p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + 400); this.message = `A hard landing: ${drop} levels down.`; }
+    }
     if(!fellIntoHazard&&!terrainHazard&&aerial)this.save.magicSkills.lastSafe={x:p.x,y:p.y,area:this.area,areaId:this.areaId()};
     if(!fellIntoHazard&&this.area==="dungeon")this.updateDungeonDiscovery();
     if(!fellIntoHazard&&this.area==='overworld'){
@@ -2825,6 +2836,8 @@ export class Game {
       if((e.ai?.pathRetryAt||0)!==pathRetryBefore)this.performanceStats.pathfindingWork++;
     }
     this.performanceStats.peakActiveEnemies=Math.max(this.performanceStats.peakActiveEnemies,this.performanceStats.activeEnemies);
+    const volcano=this.area==="overworld"&&this.map.volcano;
+    if(volcano&&Math.hypot(p.x-volcano.x,p.y-volcano.y)<12){this.volcanoClock=(this.volcanoClock||0)+dt;if(this.volcanoClock>=volcano.period){this.volcanoClock=0;this.volcanoSeq=(this.volcanoSeq||0)+1;const n=hashSeed(`${this.save.seed}:eruption:${this.rx}:${this.ry}:${this.volcanoSeq}`);for(let i=0;i<4;i++){const a=((n>>(i*5))%360)*Math.PI/180,r=i===0?0:1.2+((n>>(i*3))%30)/10;addPackEffect(this.packEffects||=[],{kind:"lavaBomb",owner:"volcano",x:p.x+Math.cos(a)*r,y:p.y+Math.sin(a)*r,radius:1.05,arming:1.3+i*.2,damage:Math.ceil(this.save.maxHp*.18),jumpable:false,from:{x:volcano.x,y:volcano.y-1}},now)}this.message="The caldera erupts. Watch the burning circles."}}
     this.packEffects=tickPackEffects(this.packEffects||[],packWorld);this.performanceStats.activeHazardsAndEffects+=this.packEffects.length;this._packLastPlayer={x:p.x,y:p.y};
     if (p.hp <= 0) {
       this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
