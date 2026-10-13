@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
 import {
   generateRegion,
   generateDungeon,
@@ -14,7 +14,7 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
-} from "./world.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
+} from "./world.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -25,7 +25,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
 import {
   applyInteraction,
   validActions,
@@ -35,21 +35,21 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
-import { ensurePerception } from "./types.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
-import { generateItem } from "./items.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
-import { hashSeed } from "./random.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d';
-import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d';
-import{ensureSceneState,queueScene}from'./scenes.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
-import { applyLandscape, canStep, LANDSCAPE_VERSION, elevationAt, fallDamage } from "./landscape.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
-import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_e4443929095d426aaa92e9bd_3f52b698e764055d";
+} from "./interactions.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+import { ensurePerception } from "./types.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+import { generateItem } from "./items.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+import { hashSeed } from "./random.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c';
+import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c';
+import{ensureSceneState,queueScene}from'./scenes.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+import { applyLandscape, canStep, LANDSCAPE_VERSION, elevationAt, fallDamage } from "./landscape.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function pinDungeonLayout(save, id) {
