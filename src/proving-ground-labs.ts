@@ -7,6 +7,7 @@ import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "
 import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.ts";
 import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { ELITE_DEFINITIONS } from "./elites.ts";
+import { PACK_KINDS, isPackKind } from "./monster-pack.ts";
 import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.ts";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
@@ -47,7 +48,7 @@ const SHELTERS = [
 
 const ORDINARY = ["hollow", "cistern", "kiln"].map((id) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)} topology` }));
 const DEEP = [{id:"legacy-v1",label:"Legacy v1 Threefold expedition"},...DEEP_ARCHETYPE_IDS.map((id) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)} deep expedition` }))];
-const CREATURES = [...Object.keys(CREATURE_FORMS), ...Object.keys(ELITE_DEFINITIONS).filter((id)=>!Object.hasOwn(CREATURE_FORMS,id)),...Object.keys(MELEE_PATTERNS).map(id=>`pattern-${id}`),"pattern-elite-combination","pattern-wall-interruption","pattern-multiple-attackers"].map((id)=>({id,label:id.replace(/([A-Z])/g," $1").replaceAll('-',' ').replace(/^./,c=>c.toUpperCase())}));
+const CREATURES = [...Object.keys(CREATURE_FORMS), ...Object.keys(ELITE_DEFINITIONS).filter((id)=>!Object.hasOwn(CREATURE_FORMS,id)),...Object.keys(MELEE_PATTERNS).map(id=>`pattern-${id}`),"pattern-elite-combination","pattern-wall-interruption","pattern-multiple-attackers",...PACK_KINDS.map(id=>`pack-boss-${id}`)].map((id)=>({id,label:id.replace(/([A-Z])/g," $1").replaceAll('-',' ').replace(/^./,c=>c.toUpperCase())}));
 const WAYGLASS_SCENARIOS=["unactivated-wayglass","activated-wayglass","travel-pair","rest-point","activated-rest-point","broken-observatory","manual-waypoint","quest-guidance","hunt-guidance","dual-compass","death-marker","save-reconstruction","legacy-migration","drought-corpus"].map(id=>({id,label:id.replaceAll("-"," ").replace(/^./,c=>c.toUpperCase())}));
 const ENVIRONMENTS=[...SHELTERS.filter(q=>q.id.endsWith("district")),...ARENA_FAMILIES.map(id=>({id:`arena-${id}`,label:`${id.replaceAll("-"," ")} arena`})),{id:"temporary-hunt-arena",label:"Temporary hunt arena"},{id:"persistent-arena",label:"Persistent arena entrance"},{id:"sentinel-domain",label:"Sentinel manufactory domain"},{id:"rootbound-domain",label:"Rootbound crown domain"}];
 const HUNTS=["empty-viewport","tracking-hunt","located-hunt","completed-hunt","failed-hunt","elite-attributes","projectile-patterns","aggro-pursuit","guardian-boss","foundry-review","temporary-arena","persistent-arena"].map(id=>({id,label:id.replaceAll("-"," ").replace(/^./,c=>c.toUpperCase())}));
@@ -144,10 +145,10 @@ function deepFixture(scenario, seed, variant, now, forceThreefold=false) {
 }
 
 function combatFixture(scenario, seed, variant, now) {
-  const patternScenario=scenario.startsWith('pattern-'),kind=patternScenario?(scenario.includes('elite')?'hollowMarshal':'ashling'):CREATURES.some(q=>q.id===scenario)?scenario:"ashling",id=`proving:combat:${kind}:${variant}`,map=generateVariedDungeon(seed,id,"hollow");
+  const packBoss=scenario.startsWith('pack-boss-')&&isPackKind(scenario.slice(10)),patternScenario=scenario.startsWith('pattern-'),kind=packBoss?scenario.slice(10):patternScenario?(scenario.includes('elite')?'hollowMarshal':'ashling'):CREATURES.some(q=>q.id===scenario)?scenario:"ashling",id=`proving:combat:${kind}:${variant}`,map=generateVariedDungeon(seed,id,"hollow");
   const open=map.tiles.filter(t=>!t.blocked&&t.x>7&&t.x<23&&t.y>6&&t.y<19);
-  const count=scenario==='pattern-multiple-attackers'?6:1+Math.min(5,Math.max(0,variant%6));
-  map.enemySpawns=Array.from({length:count},(_,index)=>({id:`${id}:${index}`,kind,x:open[(index*13+variant)%open.length].x,y:open[(index*13+variant)%open.length].y,boss:!!ELITE_DEFINITIONS[kind]}));
+  const count=packBoss?1:scenario==='pattern-multiple-attackers'?6:1+Math.min(5,Math.max(0,variant%6));
+  map.enemySpawns=Array.from({length:count},(_,index)=>({id:`${id}:${index}`,kind,x:open[(index*13+variant)%open.length].x,y:open[(index*13+variant)%open.length].y,boss:packBoss||!!ELITE_DEFINITIONS[kind]}));
   map.name=`${kind} combat arena`;map.diagnostic={...map.diagnostic,combatKind:kind,quantity:map.enemySpawns.length};
   const base=gameForMap(seed,id,map,now);if(patternScenario){const ids=scenario==='pattern-elite-combination'?['slam','lunge']:scenario==='pattern-multiple-attackers'||scenario==='pattern-wall-interruption'?['lunge']:scenario.replace('pattern-','').split('+');for(const e of base.game.enemies){e.meleePatterns=ids;e.range=0;e.cooldown=0}base.diagnostics={meleePatterns:ids,wallInterruption:scenario==='pattern-wall-interruption',attackPhase:base.game.enemies[0]?.meleePhase||null,activeEncounterCap:32}}
   return {lab:"combat",scenario,label:map.name,seed,variant,production:true,...base,diagnostics:base.diagnostics||null};
@@ -195,6 +196,8 @@ export function labReport(fixture) {
 export function teleportTargets(fixture) {
   const map=fixture.game.map,targets=[];
   if(map.entry)targets.push({id:"entry",label:"Entrance",x:map.entry.x,y:map.entry.y});
+  const foe=fixture.lab==="combat"&&fixture.game.enemies?.find(e=>!e.dead&&!e.ambient),near=foe&&map.tiles.find(t=>!t.blocked&&!t.environment&&!["canyon","river","dungeonWater","bridge"].includes(t.kind)&&Math.hypot(t.x-foe.x,t.y-foe.y)>=3&&Math.hypot(t.x-foe.x,t.y-foe.y)<=4.5);
+  if(near)targets.push({id:"near-combatant",label:"Near the combatants",x:near.x,y:near.y});
   if(map.hub)targets.push({id:"hub",label:"Hub",x:map.hub.x,y:map.hub.y});
   for(const q of map.objectives||[])targets.push({id:q.id,label:q.name||q.id,x:q.x,y:q.y});
   for(const e of map.enemySpawns||[])if(e.boss||["gateWarden","objectiveGuardian","finalBoss"].includes(e.dungeonRole))targets.push({id:e.id||e.kind,label:e.dungeonRole||e.kind,x:e.x,y:e.y});

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 92 — Dungeon Monster Pack: ten new composable creatures (Lumen Wraith, Sunderjaw, Grave Lantern, Rift Lynx, Siege Beetle, Veil Spinner, Strata Eel, Thunderhorn, Mirror Shade, Cinder Seraph) built from shared movement, AI-brain and attack-module tables, with high-detail animated canvas art. New mechanics: wall-phasing, flight, burrowing (untargetable while underground), blinking, persistent sweeping beams, stillness-punishing floor curses, lobbed mortars that lead a moving target, slowing webs, leap slams, wall-stunning ram charges, jumpable shockwaves, harmless mirror clones and dive bombs. About a fifth of individuals graft one borrowed attack. Every pack creature has a boss form whose extra attacks unlock at 66% and 33% health; ordinary dungeons now draw their guardian from an 11-creature pool instead of always the Hollow Marshal. Never-entered dungeons are slightly denser (+2 ordinary, +3 deep, active cap 8/10) and mix pack residents into each ecology; previously entered dungeons and the Missing Crossing story dungeon keep their original population and guardian. The Proving Ground combat lab lists every pack creature plus `pack-boss-<id>` scenarios and a "Near the combatants" teleport; the journal bestiary shows each creature with generated field art.
+- Crossing-guardian checks (clearing, relay chain, Aperture gain, guardian lead, displacement seal) now recognise any guardian creature, not only the Hollow Marshal.
+
 - Added self-contained, versioned candidate previews and explicit owner approval bound to the complete tested artifact. New release candidates use ordinary Git and preserve historical proposal records; production publication remains a separate explicit action.
 - Scoped Proving Ground reset to its own scratch keys in both local and session storage.
 

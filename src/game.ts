@@ -47,15 +47,16 @@ import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}fr
 import{ensureSceneState,queueScene}from'./scenes.ts';
 import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.ts";
 import { varyDungeonLayout } from "./dungeon-variation.ts";
+import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields } from "./monster-pack.ts";
 import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.ts";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function pinDungeonLayout(save, id) {
   const history = dungeonHistory(save, id);
-  if (history.layoutVersion === undefined) {
-    const visited = history.visits > 0 || Object.keys(save.session.areas || {}).some(key => key === id || key.startsWith(id + ':level:'));
-    history.layoutVersion = visited ? 0 : 1;
-  }
+  const visited = () => history.visits > 0 || Object.keys(save.session.areas || {}).some(key => key === id || key.startsWith(id + ':level:'));
+  if (history.layoutVersion === undefined) history.layoutVersion = visited() ? 0 : 1;
+  // Dungeon Monster Pack: only histories that have never been entered adopt the new population and guardians.
+  if (history.monsterPack === undefined) history.monsterPack = visited() ? 0 : MONSTER_PACK_VERSION;
   return history;
 }
 export function generatePinnedDungeon(save, id, options = {}) {
@@ -131,7 +132,7 @@ export function enemyDefeatNotice(e, area = "overworld") {
   if (e.defeatTitle) title = e.defeatTitle;
   else if (e.kind === "gateRevenant") title = "REVENANT REPULSED";
   else if (e.kind === "riftColossus") title = "COLOSSUS FELLED";
-  else if (e.kind === "hollowMarshal") title = "GUARDIAN CLEARED";
+  else if (e.kind === "hollowMarshal" || e.packGuardian) title = "GUARDIAN CLEARED";
   else if (e.eliteId) title = "ELITE SLAIN";
   else if (e.boss) title = "RIFT BOSS BROKEN";
   else if (e.apertureEncounter) title = "BREACH STILLED";
@@ -455,6 +456,7 @@ export function updateProjectiles(
       for (const e of enemies)
         if (
           !e.dead &&
+          !e.untargetable &&
           !p.hits?.[e.id] &&
           Math.hypot(e.x + 0.5 - p.x, e.y + 0.45 - p.y) <
             0.1 + enemyBodyRadius(e)
@@ -638,7 +640,7 @@ export function updateEffects(effects, enemies, dt, onDefeat = () => {}) {
       if(fx.hostile)continue;
       for (const e of enemies) {
         if (
-          e.dead ||
+          e.dead || e.untargetable ||
           Math.hypot(e.x + 0.5 - fx.x, e.y + 0.45 - fx.y) >
             fx.radius + Math.max(0, enemyBodyRadius(e) - 0.38)
         )
@@ -882,6 +884,8 @@ export function hasLineOfSight(enemy, player, map, width, projectile=false) {
       return false;
   return true;
 }
+// The crossing guardian of an ordinary dungeon: the Hollow Marshal, or the pack creature that replaced it.
+export function isCrossingGuardian(e) { return !!e && (!e.dungeonRole || e.dungeonRole === "gateWarden") && (e.kind === "hollowMarshal" || !!e.packGuardian); }
 export function ensureAI(e) {
   if (!e.ai)
     e.ai = {
@@ -1047,6 +1051,7 @@ export class Game {
     this.projectiles = [];
     this.effects = [];
     this.eliteHazards=[];
+    this.packEffects=[];
     this.reticle = null;
     this.loadArea(this.area, false);
   }
@@ -1180,7 +1185,7 @@ export class Game {
     const defeat = this.defeatEnemy.bind(this);
     this.defeatEnemy = (e) => {
       if (e.kind === "npc") return;
-      if (e.kind === "hollowMarshal" && (!e.dungeonRole||e.dungeonRole==="gateWarden")) {
+      if (isCrossingGuardian(e)) {
         const d = dungeonHistory(this.save, this.areaId());
         d.guardianDefeated = true;
         if (
@@ -1414,7 +1419,7 @@ export class Game {
       const first = !e.rewarded,
         r = defeat(e);
       if (first && e.kind !== "npc" && !e.ambient) {
-        const guardian = e.kind === "hollowMarshal" && (!e.dungeonRole||e.dungeonRole==="gateWarden");
+        const guardian = isCrossingGuardian(e);
         gainAperture(
           this.save,
           guardian ? 4 : 1,
@@ -1537,9 +1542,15 @@ export class Game {
         if(guardian)Object.assign(guardian,{kind:'gravitantBell',elite:true,...history.cisternGuardianSpawn});
       }
     }
+    const packAreaId=String(this.areaId()),packAdopted=area==="dungeon"&&!!history?.monsterPack&&!this.map.arena&&!/^(hunt-instance:|elite-portal:|proving:combat:|displacement:)/.test(packAreaId)&&!packAreaId.includes("aperture-annex")&&packAreaId!==dungeonId(this.save.seed,this.save.worldGeneration);
+    if(packAdopted&&!this.map.deepDungeon&&this.map.recipe!=="deep-v1"&&history.cisternGuardianChoice!=="gravitantBell"){
+      const guardian=this.map.enemySpawns.find(e=>e.boss&&e.dungeonRole==="gateWarden"&&e.kind==="hollowMarshal");
+      if(guardian){history.guardianKind??=guardianKindFor(this.save.seed,packAreaId);guardian.kind=history.guardianKind;guardian.packGuardian=history.guardianKind!=="hollowMarshal"}
+    }
+    if(packAdopted&&this.map.encounterVersion&&this.map.monsterPack!==MONSTER_PACK_VERSION){this.map.enemySpawns=this.map.enemySpawns.filter(e=>!e.encounterSpawn);this.map.encounterVersion=0;this.map.encounterGroups=[]}
     if (area === "dungeon" && !this.map.deepDungeon && this.map.recipe !== "deep-v1" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < 12)
       this.map.enemySpawns.push({ kind: "gateRevenant", x: 18, y: 6, gatePredator: true });
-    if(area==="dungeon"&&!this.map.arena&&!String(this.areaId()).startsWith("hunt-instance:")&&!String(this.areaId()).startsWith("elite-portal:")&&!String(this.areaId()).includes("aperture-annex"))populateDungeonEncounters(this.map,{deep:!!this.map.deepDungeon||this.map.recipe==="deep-v1"});
+    if(area==="dungeon"&&!this.map.arena&&!String(this.areaId()).startsWith("hunt-instance:")&&!String(this.areaId()).startsWith("elite-portal:")&&!String(this.areaId()).includes("aperture-annex"))populateDungeonEncounters(this.map,{deep:!!this.map.deepDungeon||this.map.recipe==="deep-v1",monsterPack:packAdopted});
     if (area === "overworld" && (this.rx !== 0 || this.ry !== 0)) {
       const remembered = this.save.checkpoints?.[`${this.rx},${this.ry}`];
       if (remembered && !this.map.objects.some((o) => o.kind === "checkpoint")) {
@@ -1581,6 +1592,7 @@ export class Game {
     this.projectiles = [];
     this.effects = [];
     this.eliteHazards=[];
+    this.packEffects=[];
     if (
       area === "overworld" &&
       this.rx === 0 &&
@@ -1603,6 +1615,7 @@ export class Game {
         if (restored.dungeonThreatTuningVersion === undefined) delete merged.dungeonThreatTuningVersion;
         if(area === "dungeon" && !merged.passiveBehavior && !merged.ambient) tuneDungeonThreat(merged);
         ensureAI(merged);
+        resetPackRuntime(merged);
         return merged;
       });
       for(const saved of s.enemies||[])if((saved.gatePredator||saved.foundryId)&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);this.enemies.push(restored)}
@@ -2054,7 +2067,7 @@ export class Game {
       this.player.x = this.map.entry?.x ?? 4;
       this.player.y = this.map.entry?.y ?? 5;
     } else if (r.transition === "exit") {
-      if(this.save.session.activeDisplacement){if(this.enemies.some(e=>!e.dead&&e.kind==="hollowMarshal")){this.message="The Mislaid Threshold remains sealed while its guardian lives.";return{ok:false,message:this.message}}const d=this.save.session.activeDisplacement;this.snapshotArea();this.rx=d.destination.rx;this.ry=d.destination.ry;this.save.session.displacementJourney={source:d.source,destination:d.destination};this.save.session.activeDisplacement=null;this.save.session.activeDungeonId=null;this.loadArea("overworld",false);this.player.x=16;this.player.y=16;relocateIfStranded(this.player,this.map,mapWidth(this.map,'overworld'));this.message="The completed crossing releases you onto stable ground in a distant, uncharted Corridor. Find a physical Wayglass to restore travel."}else this.leaveDungeon("You emerge at the dungeon entrance.");
+      if(this.save.session.activeDisplacement){if(this.enemies.some(e=>!e.dead&&isCrossingGuardian(e))){this.message="The Mislaid Threshold remains sealed while its guardian lives.";return{ok:false,message:this.message}}const d=this.save.session.activeDisplacement;this.snapshotArea();this.rx=d.destination.rx;this.ry=d.destination.ry;this.save.session.displacementJourney={source:d.source,destination:d.destination};this.save.session.activeDisplacement=null;this.save.session.activeDungeonId=null;this.loadArea("overworld",false);this.player.x=16;this.player.y=16;relocateIfStranded(this.player,this.map,mapWidth(this.map,'overworld'));this.message="The completed crossing releases you onto stable ground in a distant, uncharted Corridor. Find a physical Wayglass to restore travel."}else this.leaveDungeon("You emerge at the dungeon entrance.");
     } else if (r.transition === "checkpoint") {
       this.save.session.displacementJourney=null;
       this.save.activeCheckpoint = {
@@ -2217,9 +2230,43 @@ export class Game {
     );
   }
 
+  packHurt(source, amount, options = {}, now = performance.now()) {
+    const p = this.player;
+    if (source?.illusion || !(amount > 0) || now <= (p.invulnerableUntil || 0)) return false;
+    if (options.jumpable && now < (this.jumpUntil || 0)) return false;
+    const veil = this.save.magicSkills?.active?.id === 'veil-guard' ? .12 + .08 * skillRank(this.save, 'veil-guard') : 0;
+    p.hp -= Math.max(1, Math.ceil((this.guardRemaining > 0 ? amount * .65 : amount) * (1 - Math.min(.75, characterStats(this.save).damageReduction + veil))));
+    p.invulnerableUntil = now + (options.beam ? 320 : 700);
+    return true;
+  }
+  packWorld(dt, now) {
+    const map = this.map, width = mapWidth(map, this.area), height = mapHeight(map, this.area), p = this.player, last = this._packLastPlayer || p, game = this;
+    return {
+      player: p, map, width, height, dt, now, enemies: this.enemies,
+      playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - last.y) / dt } : { x: 0, y: 0 },
+      open: (x, y) => footprintOpen(map, width, x, y),
+      tileOpen: (x, y) => tileOpen(map, width, x, y),
+      los: (a, b, projectile = false) => hasLineOfSight(a, b, map, width, projectile),
+      move(e, dx, dy, opts = {}) {
+        if (opts.phase) { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)), moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
+        return moveAxis(e, dx, dy, map, width, !!e.flying);
+      },
+      detour(e, speed) { const step = boundedChaseStep(e, p, map, width); if (step) { const px = step[0] - e.x, py = step[1] - e.y, m = Math.hypot(px, py) || 1; moveAxis(e, px / m * speed, py / m * speed, map, width, !!e.flying); } },
+      hurt: (source, amount, options) => game.packHurt(source, amount, options, now),
+      slow(factor, seconds) { p.slowFactor = Math.min(now < (p.slowUntil || 0) ? (p.slowFactor || 1) : 1, factor); p.slowUntil = Math.max(p.slowUntil || 0, now + seconds * 1000); },
+      addEffect: (effect) => addPackEffect(game.packEffects ||= [], effect, now),
+      spawnIllusion(owner, x, y, index) {
+        const c = createCombatant(owner.kind, x, y, false, []);
+        Object.assign(c, { id: `${owner.id}:illusion:${Math.round(now)}:${index}`, illusion: true, noRewards: true, summonedBy: owner.id, bornAt: now, hp: 1, maxHp: 1, aggro: true, scale: owner.scale, bodyRadius: owner.bodyRadius, packAttacks: (owner.packAttacks || []).filter((a) => !['mirrorClones', 'mirrorSwap'].includes(a)), packBossAttacks: [] });
+        ensureAI(c); game.enemies.push(c); return c;
+      },
+    };
+  }
   createEnemyFromSpawn(e, area = this.area) {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
       if (e.id) c.id = e.id;
+      if (e.packGuardian) c.packGuardian = true;
+      if(c.packKind){const boss=c.packBossAttacks?.length>0;Object.assign(c,packCombatantFields(c.kind,c.id,boss));if(!boss)c.packBossAttacks=[]}
       Object.assign(c, { dungeonRole: e.dungeonRole || null, encounterGroup:e.encounterGroup||null,encounterSpawn:!!e.encounterSpawn,objectiveId: e.objectiveId || null, wingId: e.wingId || null, arenaId: e.arenaId || null, deepDungeon: !!e.deepDungeon,viewportHuntId:e.viewportHuntId||null,worldBoss:!!e.worldBoss,domainReinforcement:!!e.domainReinforcement,noRewards:!!e.noRewards,domainId:e.domainId||null,domainFamily:e.domainFamily||null,domainRole:e.domainRole||null,domainBoss:!!e.domainBoss,domainLieutenant:!!e.domainLieutenant,domainManifestation:e.domainManifestation||0,rootboundRegeneration:!!e.rootboundRegeneration,rootGroundAttack:!!e.rootGroundAttack,huntInstanceId:e.huntInstanceId||null });
       if(e.domainManifestation){const mechanics=manifestationMechanics(e.domainFamily,e.domainManifestation);c.foundryAttack=mechanics.attack==='sweepingBeam'?'sweepingBeam':null;c.speedMultiplier*=mechanics.mobility;c.domainMechanics=mechanics}
       if(c.eliteId){const v=eliteVariant(this.save.seed,c.eliteId,this.areaId());c.variantId=v.variantId;c.eliteModules=[...v.modules];c.eliteVariantModules=[...v.variantModules];c.visualSeed=v.visualSeed;}
@@ -2313,7 +2360,7 @@ export class Game {
       applyDeepDungeonProgress(this.save,this.areaId(),this.map);
       this.defeatNotice = {title:"DEEP GUARDIAN FELLED",detail:allDefeated?`${this.map.name.toUpperCase()} CLEARED`:'Final guardian defeated — remaining guardians still seal completion.',kind:"danger"};
     }
-    if (e.kind === "hollowMarshal" && (!e.dungeonRole||e.dungeonRole==="gateWarden") && recordRelayChain(this.save, this.areaId()))
+    if (isCrossingGuardian(e) && recordRelayChain(this.save, this.areaId()))
       this.defeatNotice.detail += " · the buried network answered";
     if(['ashling','glassMite'].includes(e.kind))recordPortalPrey(this.save,e.kind);
     if(e.eliteId){const reward=completeElite(this.save,e.eliteId);if(reward){this.save.codex.elites||={};this.save.codex.elites[e.eliteId]={encountered:1,defeated:1,modules:[...(e.eliteModules||[])],variantId:e.variantId,habitat:this.areaId()};journalOnce(this.save,'elite-defeated:'+e.eliteId,`${e.eliteName} fell. Its observed aspects were ${(e.eliteModules||[]).join(', ')}. Reward: ${reward.marks} marks and one ${reward.material.replace('Sphere',' sphere')}.`,'Elite bestiary');}}
@@ -2354,7 +2401,7 @@ export class Game {
     }
     this.obtainDrop(e.kind);
     if (!levels) this.message = `Recovered ${marks} mark${marks === 1 ? "" : "s"} from the fallen creature.`;
-    if(this.save.narrative.facts['leads.active']){this.save.worldFlags['lead.hunt.count']=(this.save.worldFlags['lead.hunt.count']||0)+1;if(this.save.worldFlags['lead.hunt.count']>=5)progressLead(this.save,'hunt');if(e.kind==='hollowMarshal')progressLead(this.save,'guardian')}
+    if(this.save.narrative.facts['leads.active']){this.save.worldFlags['lead.hunt.count']=(this.save.worldFlags['lead.hunt.count']||0)+1;if(this.save.worldFlags['lead.hunt.count']>=5)progressLead(this.save,'hunt');if(isCrossingGuardian(e))progressLead(this.save,'guardian')}
     const key = `drop:v1:${this.areaId()}:${e.id}`;
     if (!this.save.worldFlags[key]) {
       this.save.worldFlags[key] = true;
@@ -2384,7 +2431,7 @@ export class Game {
     this.player.meleeStrike = { ...geometry };
     const hits = primaryAttackHits(
       this.player,
-      [...this.enemies, ...this.npcTargets()],
+      [...this.enemies.filter(e=>!e.untargetable), ...this.npcTargets()],
       this.map,
       mapWidth(this.map, this.area),
       profile,
@@ -2635,7 +2682,7 @@ export class Game {
       x = p.dodgeX;
       y = p.dodgeY;
     }
-    const speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed),
+    const speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed) * (!dodging && now < (p.slowUntil || 0) ? (p.slowFactor || .5) : 1),
       dx = x * speed * dt,
       dy = y * speed * dt,
       nx = p.x + dx,
@@ -2749,8 +2796,10 @@ export class Game {
     for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e))continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
     p.stamina = Math.min(p.maxStamina, p.stamina + 9 * dt);
     this.performanceStats.totalDungeonEncounterRecords=this.area==="dungeon"?(this.map.encounterGroups||[]).length:0;this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.activeProjectiles=this.projectiles.length;this.performanceStats.activeHazardsAndEffects=this.eliteHazards.length+this.effects.length;this.performanceStats.pathfindingWork=0;this.performanceStats.ambientTicks=0;if(dt>1/30)this.performanceStats.updateBudgetViolations++;
+    const packWorld=this.packWorld(dt,now);
     for (const e of this.enemies) {
       if(!activeEnemySet.has(e)){this.performanceStats.dormantEnemies++;continue}
+      if(e.packKind){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);continue}
       if(e.encounterGroup&&!this.activatedEncounterGroups.has(e.encounterGroup)){this.activatedEncounterGroups.add(e.encounterGroup);this.performanceStats.encounterActivations++}
       let simulationDt=dt;
       if(e.ambient){e.ambientAccumulator=(e.ambientAccumulator||0)+dt;if(e.ambientAccumulator<.125){this.performanceStats.dormantEnemies++;continue}simulationDt=Math.min(.25,e.ambientAccumulator);e.ambientAccumulator=0;this.performanceStats.ambientTicks++}
@@ -2775,6 +2824,7 @@ export class Game {
       if((e.ai?.pathRetryAt||0)!==pathRetryBefore)this.performanceStats.pathfindingWork++;
     }
     this.performanceStats.peakActiveEnemies=Math.max(this.performanceStats.peakActiveEnemies,this.performanceStats.activeEnemies);
+    this.packEffects=tickPackEffects(this.packEffects||[],packWorld);this.performanceStats.activeHazardsAndEffects+=this.packEffects.length;this._packLastPlayer={x:p.x,y:p.y};
     if (p.hp <= 0) {
       this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
       if (this.area === "dungeon") {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
@@ -2795,7 +2845,7 @@ export class Game {
       this.jumpUntil = 0;
       this.projectiles = [];
       this.effects = [];
-      this.eliteHazards=[];Object.assign(ensureEliteState(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});
+      this.eliteHazards=[];this.packEffects=[];Object.assign(ensureEliteState(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});
       input.reset?.();
       this.rx = c.rx;
       this.ry = c.ry;

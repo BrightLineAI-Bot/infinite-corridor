@@ -32,6 +32,7 @@ import { foundryCandidate, foundryEncounter, validateFoundryCandidate, CREATURE_
 import { recordRevelationLead, completeRevelationArc, storySiteFor, recordSectionVisit, worldStewardReport, CORRIDOR_STORY_SCHEMA, STEWARD_SCHEMA } from "../src/story.ts";
 import { serializeSave, deserializeSave, normalizeSettings, effectiveQuality, journeyMetadata, createSlotWriteCoordinator, slotKey, createExclusiveOperation, commitNewJourneyTransition } from "../src/persistence.ts";
 import { dodge, createCombatant, CREATURE_TRAITS, CREATURE_FORMS, enemyBodyRadius, MELEE_PATTERNS } from "../src/combat.ts";
+import { isPackKind } from "../src/monster-pack.ts";
 import { generateItem, isValidItem, SPELLS, itemTier, itemScore, affixValue, compareItemStats, normalizeItemUpgrade, upgradeCost, upgradeEquipment, APERTURE_SKILLS, apertureBand, learnApertureSkill } from "../src/items.ts";
 import{ELITE_DEFINITIONS,eliteVariant,eliteThreat,freshEliteState,ensureEliteState,recordPortalPrey,applyPoison,tickEliteStatus,cleansePoison,addEliteHazard,tickEliteHazards,completeElite}from'../src/elites.ts';
 import {
@@ -1595,7 +1596,8 @@ test("procedural Marshal and chest cannot progress the main Relay story", () => 
     id = dungeonId(s.seed, s.worldGeneration, 2, 2, "other");
   s.session.activeDungeonId = id;
   g.loadArea("dungeon");
-  const boss = g.enemies.find((e) => e.kind === "hollowMarshal");
+  // The procedural crossing guardian may be any creature from the guardian pool.
+  const boss = g.enemies.find((e) => e.boss && (!e.dungeonRole || e.dungeonRole === "gateWarden"));
   boss.dead = true;
   g.defeatEnemy(boss);
   assert.equal(s.narrative.facts["crossing.marshal"], undefined);
@@ -2077,7 +2079,7 @@ test("compatible procedural traits create deterministic mechanical creature vari
 
 test("creature classes vary scale independently of strength and limit segmented forms",()=>{
   const mite=createCombatant("glassMite",1,1),warden=createCombatant("sparkWarden",2,2),brute=createCombatant("rootBrute",3,3),marshal=createCombatant("hollowMarshal",4,4,true),coil=createCombatant("coilStalker",5,5),colossus=createCombatant("riftColossus",6,6,true),renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8");
-  assert.ok(mite.scale<1);assert.ok(warden.damage>mite.damage&&warden.scale<1.1);assert.ok(brute.scale>1.2);assert.ok(marshal.scale>=1.6);assert.ok(colossus.scale>2);assert.equal(coil.segments,3);assert.equal(colossus.segments,4);assert.equal(Object.values(CREATURE_FORMS).filter(f=>f.segments>1).length,3);assert.ok(enemyBodyRadius(colossus)>enemyBodyRadius(mite));
+  assert.ok(mite.scale<1);assert.ok(warden.damage>mite.damage&&warden.scale<1.1);assert.ok(brute.scale>1.2);assert.ok(marshal.scale>=1.6);assert.ok(colossus.scale>2);assert.equal(coil.segments,3);assert.equal(colossus.segments,4);assert.equal(Object.entries(CREATURE_FORMS).filter(([id,f])=>!isPackKind(id)&&f.segments>1).length,3);assert.ok(Object.entries(CREATURE_FORMS).filter(([id,f])=>isPackKind(id)&&f.segments>1).length<=3);assert.ok(enemyBodyRadius(colossus)>enemyBodyRadius(mite));
   assert.match(renderer,/segments > 1/);assert.match(renderer,/segmentSpacing/);assert.match(renderer,/e\.scale/);assert.match(renderer,/ctx\.ellipse\(cx, cy/);
 });
 
@@ -2401,12 +2403,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 91 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 92 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "91"/);assert.match(html,/styles\.css\?v=91/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v91`/);assert.match(sw,/styles\.css\?v=91/);assert.match(sw,/proving-ground-labs\.js\?v=91/);assert.match(sw,/dungeon-framework\.js\?v=91/);assert.match(sw,/renderer\.js\?v=91/);
-  assert.match(build,/release='91'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "92"/);assert.match(html,/styles\.css\?v=92/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v92`/);assert.match(sw,/styles\.css\?v=92/);assert.match(sw,/proving-ground-labs\.js\?v=92/);assert.match(sw,/dungeon-framework\.js\?v=92/);assert.match(sw,/renderer\.js\?v=92/);
+  assert.match(build,/release='92'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("Shelter Gallery uses six deterministic production shelter families",()=>{
