@@ -97,7 +97,8 @@ test('real publication clone stages deep immutable preview assets and preserves 
   git(origin,'init');writeFileSync(join(origin,'index.html'),'production unchanged');mkdirSync(join(origin,'previews','other'),{recursive:true});writeFileSync(join(origin,'previews','other','index.html'),'other unchanged');
   git(origin,'add','--all');git(origin,'-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-m','baseline');const before=git(origin,'rev-parse','HEAD');
   // Like production: the clone folder stays under the Windows process-cwd limit while preview assets inside it exceed 260 characters.
-  const work=join(parent,'nested-publication-'.repeat(4),'publication-preview-00000000-0000-0000-0000-000000000000');mkdirSync(join(work,'..'),{recursive:true});
+  const depth=Math.max(1,Math.ceil((200-parent.length-58)/19)),work=join(parent,'nested-publication-'.repeat(depth),'publication-preview-00000000-0000-0000-0000-000000000000');
+  assert.ok(work.length<240,`clone folder ${work.length} chars`);mkdirSync(join(work,'..'),{recursive:true});
   // Execute the exact clone arguments produced by the publication workflow, using only a local origin.
   const fixture=publicationFixture(workflow),original=workflow.runGit;let cloneArgs:string[]=[];
   workflow.runGit=(cwd:string,...args:string[])=>{if(args.includes('clone'))cloneArgs=[...args];return original(cwd,...args)};
