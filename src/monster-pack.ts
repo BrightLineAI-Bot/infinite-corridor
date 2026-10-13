@@ -570,3 +570,47 @@ export function addPackEffect(effects, effect, now = 0) {
   effects.push({ id: `pack-fx-${effect.owner}-${now}-${effects.length}`, life: undefined, ...effect });
   return effects;
 }
+
+// ---------------------------------------------------------------- overworld (operator ask 2026-10-13)
+
+// Terrain-biased pack residents for overland sections; every section regenerates with these (no history pin:
+// the operator chose to respawn the overworld with the pack).
+export const OVERWORLD_PACK_POOLS = {
+  ash: ["cinderSeraph", "siegeBeetle", "thunderhorn", "graveLantern", "riftLynx"],
+  glass: ["lumenWraith", "riftLynx", "mirrorShade", "strataEel", "veilSpinner"],
+  ember: ["sunderjaw", "veilSpinner", "siegeBeetle", "thunderhorn", "cinderSeraph"],
+};
+export const OVERWORLD_PACK_DENSITY = { replaceShare: 45, extraNear: 1, extraFar: 3, farDepth: 4, maxPack: 6 };
+const LETHAL = new Set(["canyon", "river", "dungeonWater", "water", "bridge"]);
+
+// Mix pack creatures into a generated overworld section: convert a share of ordinary hostile spawns and add a few
+// extra pack residents (more far from the origin). The starting section, settlements' safe circle, ambient wildlife,
+// shelter/district residents and story creatures are left alone. Deterministic per seed and section.
+export function populateOverworldPack(map, seed, rx, ry, { safe = null } = {}) {
+  if (!map || map.monsterPack || (rx === 0 && ry === 0)) return map;
+  const depth = Math.abs(rx) + Math.abs(ry), width = Number(map.width) || 32, height = Math.floor((map.tiles?.length || 1024) / width);
+  const pool = OVERWORLD_PACK_POOLS[map.dominant] || PACK_KINDS, key = `${seed}:overworld-pack:v${MONSTER_PACK_VERSION}:${rx}:${ry}`, D = OVERWORLD_PACK_DENSITY;
+  const inSafe = (q) => safe && Math.hypot(q.x - safe.x, q.y - safe.y) < safe.radius + 2;
+  const spawns = map.enemySpawns || (map.enemySpawns = []);
+  let packCount = 0;
+  spawns.forEach((e, i) => {
+    if (e.ambient || e.passiveBehavior || e.shelterAmbush || e.districtResident || e.boss || e.elite || e.gatePredator || e.foundryId || MONSTER_PACK[e.kind] || inSafe(e)) return;
+    const n = hashSeed(`${key}:convert:${i}`);
+    if (n % 100 < D.replaceShare && packCount < D.maxPack) { e.kind = pool[Math.floor(n / 100) % pool.length]; e.packOverworld = true; packCount++; }
+  });
+  const occupied = [...spawns, ...(map.objects || [])].filter((q) => Number.isFinite(q?.x) && Number.isFinite(q?.y));
+  const open = (map.tiles || []).filter((t) => !t.blocked && !LETHAL.has(t.kind) && !t.environment && t.x > 2 && t.y > 2 && t.x < width - 3 && t.y < height - 3
+    && !inSafe(t) && occupied.every((q) => Math.hypot(q.x - t.x, q.y - t.y) >= 3))
+    .sort((a, b) => hashSeed(`${key}:spot:${a.x}:${a.y}`) - hashSeed(`${key}:spot:${b.x}:${b.y}`));
+  const extra = depth >= D.farDepth ? D.extraFar : D.extraNear, placed = [];
+  for (const t of open) {
+    if (placed.length >= extra || packCount >= D.maxPack) break;
+    if (placed.some((q) => Math.hypot(q.x - t.x, q.y - t.y) < 5)) continue;
+    const kind = pool[hashSeed(`${key}:extra:${placed.length}`) % pool.length];
+    const spawn = { id: `pack-overworld:${rx}:${ry}:${placed.length}`, kind, x: t.x, y: t.y, packOverworld: true };
+    spawns.push(spawn); placed.push(spawn); packCount++;
+  }
+  map.monsterPack = MONSTER_PACK_VERSION;
+  map.diagnostic = { ...(map.diagnostic || {}), overworldPack: { converted: packCount - placed.length, added: placed.length } };
+  return map;
+}

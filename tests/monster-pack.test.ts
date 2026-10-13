@@ -208,3 +208,35 @@ test('pack guardians clear their crossing, while the story dungeon and visited d
   assert.ok(og.enemies.some((e) => e.kind === 'hollowMarshal'), 'a previously entered dungeon keeps its original guardian');
   assert.ok(!og.enemies.some((e) => e.packKind), 'and its original population');
 });
+
+test('overworld sections respawn with terrain-matched pack creatures, deterministically and more densely', async () => {
+  const { generateRegion } = await import('../src/world.ts'), { populateOverworldPack, OVERWORLD_PACK_POOLS } = await import('../src/monster-pack.ts');
+  let before = 0, after = 0, pack = 0;
+  for (const [rx, ry] of [[1, 0], [2, 3], [-4, 1], [5, -5], [0, -6], [-6, 6]]) {
+    const a = generateRegion('OWP', rx, ry), b = generateRegion('OWP', rx, ry);
+    const ambient = a.enemySpawns.filter((e) => e.ambient).map((e) => `${e.kind}@${e.x},${e.y}`);
+    before += a.enemySpawns.filter((e) => !e.ambient).length;
+    populateOverworldPack(a, 'OWP', rx, ry); populateOverworldPack(b, 'OWP', rx, ry);
+    assert.deepEqual(a.enemySpawns.map((e) => `${e.kind}@${e.x},${e.y}`), b.enemySpawns.map((e) => `${e.kind}@${e.x},${e.y}`), 'deterministic');
+    assert.deepEqual(a.enemySpawns.filter((e) => e.ambient).map((e) => `${e.kind}@${e.x},${e.y}`), ambient, 'wildlife untouched');
+    after += a.enemySpawns.filter((e) => !e.ambient).length;
+    for (const e of a.enemySpawns.filter((q) => MONSTER_PACK[q.kind])) { pack++; assert.ok((OVERWORLD_PACK_POOLS[a.dominant] || PACK_KINDS).includes(e.kind)); assert.ok(!a.tiles[e.y * 32 + e.x]?.blocked); }
+  }
+  assert.ok(after > before, `denser (${before} -> ${after})`); assert.ok(pack >= 8, `pack creatures present (${pack})`);
+  const home = generateRegion('OWP', 0, 0); populateOverworldPack(home, 'OWP', 0, 0);
+  assert.ok(!home.enemySpawns.some((e) => MONSTER_PACK[e.kind]), 'the starting section stays gentle');
+});
+
+test('pack creatures stay out of settlement sanctuaries and cannot hurt the player inside one', async () => {
+  const { Game, settlementSanctuary } = await import('../src/game.ts');
+  const save = freshSave('OVER'), g = new Game(save, 0); g.rx = 4; g.ry = -2; g.loadArea('overworld');
+  const zone = settlementSanctuary(g.map, 4, -2, save);
+  assert.ok(zone, 'fixture section has a settlement');
+  assert.ok(g.enemies.some((e) => e.packKind), 'pack creatures outside it');
+  assert.ok(!g.enemies.some((e) => e.packKind && Math.hypot(e.x - zone.x, e.y - zone.y) < zone.radius), 'none spawn inside');
+  const e = g.enemies.find((q) => q.packKind); Object.assign(g.player, { x: zone.x, y: zone.y }); e.x = zone.x + 1; e.y = zone.y; e.aggro = true;
+  const hp = g.player.hp, input = { state: { x: 0, y: 0 }, consume: () => false, reset: () => {} };
+  for (let i = 0; i < 300; i++) g.update(1 / 60, input, 1000 + i * 16.7);
+  assert.ok(Math.hypot(e.x - zone.x, e.y - zone.y) >= zone.radius, 'pushed out of the sanctuary');
+  assert.equal(g.player.hp, hp, 'no damage inside the sanctuary');
+});

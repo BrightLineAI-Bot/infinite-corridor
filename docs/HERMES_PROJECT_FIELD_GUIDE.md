@@ -32,6 +32,8 @@ The Wayglass network uses three deliberately separate concepts. A Wayglass is a 
 
 **CODE:** Adoption is pinned per dungeon history (`history.monsterPack`, set beside `layoutVersion` in `pinDungeonLayout`): only never-entered histories adopt it. Adopted ordinary dungeons draw their guardian from `GUARDIAN_POOL` (`history.guardianKind`, flagged `packGuardian`) and re-run `populateDungeonEncounters(map,{monsterPack:true})` with the `pack-v1` kind namespace, `PACK_ECOLOGY_ADDITIONS` and `PACK_DENSITY`. Excluded: the canonical Missing Crossing dungeon, displacement, hunt-instance, elite-portal, aperture-annex and Proving Ground combat maps. `isCrossingGuardian(e)` is the single guardian test.
 
+**CODE:** Overworld (release 93): `populateOverworldPack(map, seed, rx, ry, {safe})` runs in `Game.loadArea` for every overworld section except (0,0), with no history pin (operator decision: the overworld respawns). It converts a deterministic share of ordinary hostile spawns to `OVERWORLD_PACK_POOLS[dominant]` creatures and adds extra residents with stable ids `pack-overworld:<rx>:<ry>:<n>`, outside `settlementSanctuary` + 2. In the update loop pack creatures get `enforceSanctuary`, skip simulation while the player is inside the sanctuary, and `packWorld.hurt` refuses damage there.
+
 **BOUNDARY:** Changing a creature or attack module changes encounters in histories that already adopted the pack; add new creatures or bump `MONSTER_PACK_VERSION` (and the `pack-v` namespaces) rather than repurposing existing ids. Balance was checked in simulation only; on-device feel is untested.
 
 ## Unified dungeon exploration contract
