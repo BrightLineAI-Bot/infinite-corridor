@@ -72,6 +72,47 @@ test('preview publication changes only candidate route and retains production by
  assert.equal(inventoryDigest(inventory(join(fixture.work,'previews',p.proposalId))),inventoryDigest(p.files.preview));
  assert.equal(fixture.pushes[0].filter((a:string)=>a.endsWith(':refs/heads/main')).length,0);assert.equal(result.proposal.decision,null);
 });
+test('publication enables clone-local long paths before Windows checkout and staging',()=>{
+ const {workflow,p}=ready(),fixture=publicationFixture(workflow),original=workflow.runGit;
+ let enabled=false;const commands:string[][]=[];
+ workflow.runGit=(cwd:string,...args:string[])=>{
+  commands.push(args);
+  if(args[0]==='clone')enabled=args.includes('--config')&&args.includes('core.longpaths=true');
+  if(['checkout','add'].includes(args[0])&&!enabled)throw new Error('Filename too long');
+  return original(cwd,...args);
+ };
+ const result=workflow.publishPreview(p.proposalId,{channelId:POLICY.channelId,execute:true});
+ assert.equal(result.ok,true);assert.equal(enabled,true);
+ assert.equal(commands[0][0],'clone');assert.equal(commands.some(a=>a.includes('--global')),false);
+ assert.equal(result.proposal.previewUrl,p.previewUrl);assert.equal(result.proposal.artifactDigest,p.artifactDigest);
+ assert.equal(result.proposal.state,'OWNER_REVIEW');assert.equal(result.proposal.decision,null);
+ assert.equal(inventoryDigest(inventory(join(fixture.work,'previews',p.proposalId))),inventoryDigest(p.files.preview));
+ assert.equal(readFileSync(join(fixture.work,'index.html'),'utf8'),'existing production');
+ assert.equal(fixture.pushes[0].some((a:string)=>a.endsWith(':refs/heads/main')),false);
+});
+test('real publication clone stages deep immutable preview assets and preserves other routes',()=>{
+ const {workflow,p}=ready(),parent=mkdtempSync(join(tmpdir(),'ic-long-path-')),origin=join(parent,'origin');mkdirSync(origin);
+ const git=(cwd:string,...args:string[])=>{const r=spawnSync('git',args,{cwd,encoding:'utf8',windowsHide:true});assert.equal(r.status,0,r.stderr);return r.stdout.trim()};
+ try{
+  git(origin,'init');writeFileSync(join(origin,'index.html'),'production unchanged');mkdirSync(join(origin,'previews','other'),{recursive:true});writeFileSync(join(origin,'previews','other','index.html'),'other unchanged');
+  git(origin,'add','--all');git(origin,'-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-m','baseline');const before=git(origin,'rev-parse','HEAD');
+  const work=join(parent,'nested-publication-'.repeat(8),'publication-preview-00000000-0000-0000-0000-000000000000');mkdirSync(join(work,'..'),{recursive:true});
+  // Execute the exact clone arguments produced by the publication workflow, using only a local origin.
+  const fixture=publicationFixture(workflow),original=workflow.runGit;let cloneArgs:string[]=[];
+  workflow.runGit=(cwd:string,...args:string[])=>{if(args[0]==='clone')cloneArgs=[...args];return original(cwd,...args)};
+  assert.equal(workflow.publishPreview(p.proposalId,{channelId:POLICY.channelId,execute:true}).ok,true);
+  git(parent,...cloneArgs.slice(0,-2),origin,work);assert.equal(git(work,'config','--local','--get','core.longpaths'),'true');
+  git(work,'config','core.autocrlf','false');mkdirSync(join(work,'.git','info'),{recursive:true});writeFileSync(join(work,'.git','info','attributes'),'* -text -filter -ident\n');git(work,'checkout','--detach',before);
+  const dest=join(work,'previews',p.proposalId);cpSync(join(workflow.artifactDir(p),'preview-site'),dest,{recursive:true});
+  const asset=join(dest,'assets','elite-bestiary-atlas-v1-wide.png');assert.ok(asset.length>260);writeFileSync(asset,Buffer.from([0,1,2,255]));
+  const expected={...p,pagesBefore:before,files:{...p.files,preview:inventory(dest)}};
+  git(work,'add','--all');git(work,'-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-m','deep preview');
+  workflow.verifyPublication=ProposalWorkflow.prototype.verifyPublication;
+  assert.doesNotThrow(()=>workflow.verifyPublication(work,git(work,'rev-parse','HEAD'),expected,'preview'));
+  assert.equal(readFileSync(join(work,'index.html'),'utf8'),'production unchanged');assert.equal(readFileSync(join(work,'previews','other','index.html'),'utf8'),'other unchanged');
+  rmSync(fixture.work,{recursive:true,force:true});
+ }finally{rmSync(parent,{recursive:true,force:true})}
+});
 test('promotion copies sealed release not dist and atomically pushes exact source and pages',()=>{
  const {workflow,p,root}=ready(),pub=published(workflow,p);approve(workflow,pub);workflow.fixture.originPages='e'.repeat(40);const fixture=publicationFixture(workflow);
  writeFileSync(join(root,'dist/src/main.js'),'untested mutable dist');const result=workflow.promote(p.proposalId,{channelId:POLICY.channelId,execute:true});

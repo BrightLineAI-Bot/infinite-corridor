@@ -120,7 +120,7 @@ export class ProposalWorkflow {
    if(p.publication?.kind===kind&&remote.ghPages===p.publication.pagesCommit&&(kind==='preview'||remote.main===p.candidateCommit))return this.finishPublication(p,kind);
    if(remote.main!==expected.main||remote.ghPages!==expected.ghPages)throw new Error('remote refs changed; new review required');
    if(p.publication)throw new Error('interrupted publication must be reconciled against its recorded targets');
-   const work=inside(dir,join(dir,`publication-${kind}-${randomUUID()}`));this.runGit(dir,'clone','--no-checkout',POLICY.remote,work);
+   const work=inside(dir,join(dir,`publication-${kind}-${randomUUID()}`));this.runGit(dir,'clone','--no-checkout','--config','core.longpaths=true',POLICY.remote,work);
    this.runGit(work,'config','core.autocrlf','false');mkdirSync(join(work,'.git','info'),{recursive:true});writeFileSync(join(work,'.git','info','attributes'),'* -text -filter -ident\n');
    this.runGit(work,'checkout','--detach',expected.ghPages);
    inventory(work,{ignoreGit:true});
