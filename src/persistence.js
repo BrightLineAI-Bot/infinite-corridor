@@ -1,4 +1,4 @@
-import { freshSave, migrateSave } from "./types.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { freshSave, migrateSave } from "./types.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
 
 const DB = "infinite-corridor", STORE = "saves", SLOT_COUNT = 3;
 const LEGACY_MIRROR = "infinite-corridor:active-v2", ACTIVE_SLOT = "infinite-corridor:active-slot-v1", SETTINGS = "infinite-corridor:settings-v1";

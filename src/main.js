@@ -1,9 +1,11 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
-import { vendorShop, buyFromVendor } from "./game.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
-import { CREATURE_TRAITS } from "./combat.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
-import { hashSeed } from "./random.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { vendorShop, buyFromVendor } from "./game.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { CREATURE_TRAITS } from "./combat.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { drawPackPortrait } from "./monster-render.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { hashSeed } from "./random.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -154,7 +156,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
 import {
   Game,
   actionReadiness,
@@ -163,15 +165,15 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
-import { createInput } from "./input.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
-import { STATS } from "./types.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
-import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
-import { worldStewardReport } from "./story.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+} from "./game.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { createInput } from "./input.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { STATS } from "./types.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { worldStewardReport } from "./story.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -182,7 +184,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8";
+} from "./world.js?v=icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -879,7 +881,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release icp_c9137bd9656e472181abc7ab_d5f10a66f65863d8\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release icp_0b5e99718bf84b26a83a5c3c_32fab184d7f06abb\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1258,6 +1260,8 @@ const CODEX = {
     shrine:["Singing Array","A machine-shrine and intermediate rest point. Reaching it changes where death returns you, but does not unlock Atlas travel."],checkpoint:["Wayglass Beacon","An activated beacon permits Atlas fast travel and also becomes your active recovery point."],supplyCache:["Supply Cache","A one-use field cache containing a deterministic equipment or material drop."],ruinMarker:["Broken Observatory","A collapsed instrument still pointing beyond the visible corridor."],dungeon:["Buried Crossing","A sealed route into a self-contained dungeon. Named crossings such as Glass Kilns have their own traps, guardians, and rewards."],shack:["Wayfarer Shack","A roofed field shelter whose interior remains part of the overworld."],architecturalDistrict:["Architectural District","A rare overworld complex with enterable structures, streets, and its own unresolved history."],tree:["Ashwood Grove","Trees may be cut or ignited through Act."],rock:["Shiftstone","Boulders may be moved or broken with sufficient Might."],relayTerminal:["Crossing Terminal","A consequential relay interface."],"trap:fire":["Kiln Vent","Scorch marks warn of a directional fire trap."],"trap:spikes":["Crossing Spikes","Floor seams can reveal the trap before it rises."],vine:["Transit Vine","A living traversal line spanning an otherwise impassable gap."],bossCue:["Colossus Trace","A sign that something much larger inhabits the region."]
   }
 };
+// Dungeon Monster Pack bestiary records, generated from the shared attribute tables.
+for(const id of PACK_KINDS){const d=MONSTER_PACK[id],attacks=[...d.attacks,...d.bossAttacks].map(a=>ATTACK_MODULES[a]?.name).filter(Boolean);CODEX.creatures[id]=[`${d.name} — ${d.epithet}`,`${d.lore} ${MOVEMENT_MODES[d.movement].name}; ${BRAINS[d.brain].name.toLowerCase()}. Abilities: ${attacks.join(', ')}. ${d.attacks.map(a=>ATTACK_MODULES[a]?.text).filter(Boolean).join(' ')}`]}
 const STAT_GLOSSARY=[
   ["Power","An item's base strength. Primary-weapon Power contributes to melee damage; secondary-weapon Power contributes to projectile and spell damage; armor Power grants 2.5% resistance per point; charm Power grants 1% resistance per point."],
   ["Attack","A flat damage bonus supplied by an item affix. On a primary weapon it improves melee attacks; on a secondary weapon it improves projectiles and spells."],
@@ -1369,6 +1373,7 @@ function openJournal(mode = "chronicle") {
       const article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p");article.className="item codex-card";title.textContent=entry[0];text.textContent=entry[1];
       if(mode==="rules"&&["ring","chevron","triangle","spiral"].includes(id)){const badge=document.createElement("span");badge.className="symbol-badge";badge.append(trailMark(id));article.classList.add("symbol-card");article.prepend(badge)}
       else if(mode==="rules"&&id.startsWith("atlas-")){const badge=document.createElement("span");badge.className="symbol-badge";badge.append(atlasMark(id.slice(6)));article.classList.add("symbol-card");article.prepend(badge)}
+      if(mode==="creatures"&&isPackKind(id)){const portrait=document.createElement("canvas");portrait.width=portrait.height=128;portrait.className="creature-portrait pack-portrait";portrait.setAttribute("role","img");portrait.setAttribute("aria-label",`${entry[0]} field illustration`);const pc=portrait.getContext("2d");if(pc)drawPackPortrait(pc,id,128,1200);article.prepend(portrait)}
       const portraitData=mode==="creatures"&&(ELITE_PORTRAITS[id]||CREATURE_PORTRAITS[id]);
       if(portraitData){const portrait=document.createElement("button"),[x,y]=portraitData,elite=!!ELITE_PORTRAITS[id];portrait.type="button";portrait.className="creature-portrait creature-portrait-button"+(elite?" elite-portrait":"");portrait.style.setProperty("--portrait-x",`${x*33.333}%`);portrait.style.setProperty("--portrait-y",`${y*100}%`);portrait.setAttribute("aria-label",`Enlarge ${entry[0]} field illustration`);portrait.onclick=()=>openCreatureViewer(id,entry[0],portraitData,elite);article.prepend(portrait)}
       if(mode==="creatures")article.append(creatureVariants(id,entry[0]),text);
