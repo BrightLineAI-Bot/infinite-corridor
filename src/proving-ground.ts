@@ -6,7 +6,7 @@ const canvas=document.querySelector("#game"),app=document.querySelector("#app"),
 document.body.classList.add("proving-ground");document.querySelectorAll("#hud, dialog, #eventBanner, .story-scene").forEach(element=>element.hidden=true);
 const query=new URLSearchParams(location.search),implemented=LABORATORIES.filter(q=>q.status==="implemented");let selectedLab=implemented.some(q=>q.id===query.get("lab"))?query.get("lab"):"shelters";
 const panel=document.createElement("aside");panel.id="provingGroundPanel";panel.innerHTML=`
- <header><strong>Developer Proving Ground</strong><span>Developer Proving Ground — progress is never saved · production systems in scratch state</span></header>
+ <header><strong>Developer Proving Ground</strong><button id="pgCollapse" type="button" aria-expanded="true" aria-controls="provingGroundPanel" title="Hide the developer menu (&#96; key)">Hide</button><span>Developer Proving Ground — progress is never saved · production systems in scratch state</span></header>
  <button id="labHome">Laboratories</button><section id="labLauncher"></section>
  <section id="labControls" hidden><h2 id="labTitle"></h2><p id="labDescription"></p>
   <label>Scenario <select id="scenarioSelect"></select></label>
@@ -17,6 +17,12 @@ const panel=document.createElement("aside");panel.id="provingGroundPanel";panel.
   <div class="proving-buttons"><button id="fixtureCopy">Copy recipe/report</button><button id="fixtureExit">Exit to normal game</button></div>
  </section>`;document.body.append(panel);
 const $=selector=>panel.querySelector(selector),launcher=$("#labLauncher"),controls=$("#labControls"),scenarioSelect=$("#scenarioSelect"),seedInput=$("#seedInput"),variantInput=$("#variantInput"),sizeProfileSelect=$("#sizeProfileSelect"),revealModeSelect=$("#revealModeSelect"),teleportSelect=$("#teleportSelect");
+// Collapse the developer menu to a small chip so the game is playable on a phone; remembered per device.
+const COLLAPSE_KEY="ic-proving-ground-panel-collapsed",collapseButton=$("#pgCollapse");
+function setPanelCollapsed(value){panel.classList.toggle("collapsed",value);collapseButton.textContent=value?"Dev menu":"Hide";collapseButton.setAttribute("aria-expanded",String(!value));collapseButton.title=value?"Show the developer menu (`)":"Hide the developer menu (`)";try{localStorage.setItem(COLLAPSE_KEY,value?"1":"0")}catch{}}
+collapseButton.onclick=()=>setPanelCollapsed(!panel.classList.contains("collapsed"));
+document.addEventListener("keydown",event=>{if(event.key==="`"&&!event.target?.closest?.("input,select,textarea")){event.preventDefault();setPanelCollapsed(!panel.classList.contains("collapsed"))}});
+try{setPanelCollapsed(localStorage.getItem(COLLAPSE_KEY)==="1")}catch{setPanelCollapsed(false)}
 let fixture=null,game=null,paused=false,last=performance.now(),lastDiagnostic=0,comparison=null,input=createInput(document,globalThis,{controlSmoothing:38});
 canvas.addEventListener("worldtap",event=>{if(!game||paused||game.paused)return;const rect=canvas.getBoundingClientRect(),point=screenToWorld(game,rect.width,rect.height,event.detail.clientX-rect.left,event.detail.clientY-rect.top),direction={x:point.x-game.player.x-.5,y:point.y-game.player.y-.45};game.aimAt(point.x,point.y);if(game.save.aimMode==="attack")game.primaryAttack(performance.now(),direction);else if(game.save.aimMode==="tool"||(!game.save.aimMode&&game.save.activeWeaponSlot==="secondary"))game.fireSecondary(performance.now(),direction);else if(game.save.aimMode==="act")game.interactAt(point.x,point.y);updateDiagnostics(true)});
 function renderLauncher(){controls.hidden=true;launcher.hidden=false;launcher.replaceChildren();const intro=document.createElement("p");intro.textContent="Choose a production package to instantiate directly. Every laboratory is isolated from normal saves.";launcher.append(intro);for(const lab of LABORATORIES){const button=document.createElement("button");button.className="lab-card";button.disabled=lab.status!=="implemented";button.innerHTML=`<strong>${lab.label}</strong><span>${lab.description}</span><small>${lab.status==="implemented"?"Available":"Planned — unavailable"}</small>`;if(!button.disabled)button.onclick=()=>openLab(lab.id);launcher.append(button)}}
