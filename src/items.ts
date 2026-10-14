@@ -12,6 +12,7 @@ export const APERTURE_SKILLS={
  'veil-guard':{id:'veil-guard',name:'Veil Guard',branch:'Veil',threshold:18,maxRank:3,cooldown:20,duration:6,description:'Harden a veil that reduces incoming damage.'},
  'force-channel':{id:'force-channel',name:'Force Channel',branch:'Force',threshold:18,maxRank:3,cooldown:16,duration:6,description:'Empower weapons, projectiles, and spell pulses.'},
  'aerial-step':{id:'aerial-step',name:'Aerial Step',branch:'Motion',threshold:36,maxRank:1,cooldown:22,duration:3.5,description:'Briefly cross water, canyons, and pits without granting true flight.'},
+ 'rift-step':{id:'rift-step',name:'Rift Step',branch:'Rift',threshold:18,maxRank:3,cooldown:9,duration:0,description:'Blink 3 tiles (+1 per rank) the way you are moving, never up a ledge or into a hazard.'},
 };
 export const APERTURE_BANDS=[{id:'dormant',name:'Dormant',threshold:0},{id:'stirring',name:'Stirring',threshold:6},{id:'open',name:'Open',threshold:18},{id:'resonant',name:'Resonant',threshold:36}];
 export function primaryProfile(item){if(!item)return PRIMARY_PROFILES['salvage-blade'];if(PRIMARY_PROFILES[item.id])return PRIMARY_PROFILES[item.id];if(item.name==='Cinder Pike')return PRIMARY_PROFILES['primary-cinder-pike'];if(item.name==='Verge Cleaver')return PRIMARY_PROFILES['primary-verge-cleaver'];return PRIMARY_PROFILES['salvage-blade']}

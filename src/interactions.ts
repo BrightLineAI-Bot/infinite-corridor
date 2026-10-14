@@ -43,12 +43,14 @@ export function validActions(o,s){
  if(o.kind==='arenaEntrance')return['enter'];
  if(o.kind==='elitePortal'){const c=ensureEliteState(s).contracts.knifeChoir;return c.state==='available'||c.state==='accepted'?['inspect','enter']:['inspect'];}
  if(o.kind==='tree'&&o.state!=='standing')return[];
+ if(o.kind==='shrine')return[...(o.actions||[]).filter(a=>a!=='attune'&&!(o.state==='used'&&!['enter','exit','bypass'].includes(a))),'attune']; // Attune: constellation + respec (release 100)
  if(o.kind==='rock'&&o.state==='sealed')return s.stats.Might>=3?['move','break']:[];
  if(o.kind==='cache'&&o.state==='hidden'&&!s.worldFlags['rock-1:opened'])return[];
  return(o.actions||[]).filter(a=>!(o.state==='used'&&!['enter','exit','bypass'].includes(a)));
 }
 export function applyInteraction(o,a,s,context='global'){
  if(o.kind==='apertureRitual'){if(a==='perform')return{...requestApertureRitual(s),transition:'scene'};const state=apertureRitualState(s);return{ok:true,message:state.completed?'The completed rite persists as a faint double shadow around the plinth.':state.ready?'The plinth is ready. Perform the rite when you are prepared.':requestApertureRitual(s).message,transition:'ritual'};}
+ if(o.kind==='shrine'&&a==='attune')return{ok:true,message:'The shrine hums with your constellation. Here it can be rewritten.',transition:'skills',shrine:true};
  if(o.kind==='arenaEntrance'&&a==='enter')return{ok:true,message:'The sparse threshold opens onto a world-threat arena.',transition:'dungeon'};
  if(o.kind==='storyEcho'&&a==='inspect')return completeRevelationArc(s);
  if(o.kind==='elitePortal'){const c=ensureEliteState(s).contracts.knifeChoir;if(a==='inspect')return{ok:true,message:c.progress<c.goal?`The threshold needs four shard-echoes: ${c.progress}/${c.goal} ash-born creatures defeated.`:'Four shard-echoes answer. The Cantor Threshold can be entered.',transition:'eliteClue'};if(a==='enter'&&acceptContract(s,'knifeChoir'))return{ok:true,message:'The threshold opens onto a divided choir.',transition:'elitePortal'};return{ok:false,message:'The threshold remains sealed.'}}

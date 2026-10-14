@@ -173,6 +173,7 @@ import { STATS } from "./types.ts";
 import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.ts";
 import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.ts";
 import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.ts";
+import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.ts";
 import { currentObjective, validActions, dungeonHistory } from "./interactions.ts";
 import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
 import { worldStewardReport } from "./story.ts";
@@ -884,7 +885,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:99,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 99\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:100,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 100\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1116,6 +1117,7 @@ function openPack() {
   resource.textContent = `Cinder Iron ${save.materials.cinderIron} · weapon +${save.weaponLevel || 0} · section ${game.rx},${game.ry} `;
   resource.append(uiButton(`Glyphs · ${Object.values(save.glyphs||{}).reduce((a,b)=>a+b,0)} in pouch`, openGlyphs));
   resource.append(uiButton(`Echoes · ${notchesUsed(save.echoes?.equipped||[])}/${NOTCHES} notches`, openEchoes));
+  resource.append(uiButton(`Constellation · ${pointsFree(save)} free`, () => openSkills()));
   resource.append(uiButton("Reinforce weapon · 3 iron", () => {
     game.upgrade();
     persist();
@@ -1785,8 +1787,32 @@ function openGlyphs(){pauseForOverlay();body.replaceChildren();
  const reso=document.createElement('h3'),found=Object.keys(RESONANCES).filter(id=>save.glyphCodex.resonances[id]);reso.textContent=`Resonances · ${found.length} of ${Object.keys(RESONANCES).length} discovered`;body.append(reso);
  for(const[id,r]of Object.entries(RESONANCES)){const q=document.createElement('p');q.textContent=save.glyphCodex.resonances[id]?`✦ ${r.name} (${GLYPHS[r.pair[0]].name} + ${GLYPHS[r.pair[1]].name}): ${r.text}`:'✧ An undiscovered resonance. Pair glyphs in one host and use it to find out.';body.append(q)}
  body.append(uiButton('Back to Pack',openPack),uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
-function openForge(){pauseForOverlay();body.replaceChildren();const h=document.createElement('h2'),intro=document.createElement('p');h.textContent='Sela’s Sphere Forge';intro.textContent=`Weapon Spheres ${save.materials.weaponSphere||0} · Armor Spheres ${save.materials.armorSphere||0}. Rank cost rises by one sphere each step; affixes and identity are preserved.`;body.append(h,intro);for(const slot of ['primary','secondary','armor','charm']){const item=save.equipment[slot];if(!item)continue;const cost=upgradeCost(item),row=document.createElement('div'),title=document.createElement('strong'),preview=document.createElement('div'),next={...item,basePower:item.basePower??item.power,upgradeRank:(item.upgradeRank||0)+1,power:(item.basePower??item.power)+(item.upgradeRank||0)+1};row.className='item';preview.className='item-comparison';title.textContent=`${slot.toUpperCase()} · ${item.name} +${item.upgradeRank||0}`;for(const stat of compareItemStats(next,item)){if(stat.direction==='same')continue;const q=document.createElement('span');q.className=`stat-${stat.direction}`;q.textContent=`↑ ${stat.label} ${stat.current} → ${stat.value}`;preview.append(q)}row.append(title,preview,uiButton(cost.eligible?`Strengthen · ${cost.amount} ${cost.kind==='weaponSphere'?'weapon':'armor'} sphere${cost.amount===1?'':'s'}`:'Upgrade limit reached',()=>{game.upgradeEquipmentSlot(slot);persist();openForge()}));body.append(row)}body.append(uiButton('Glyphs & Resonances',openGlyphs),uiButton('Aperture disciplines',openSkills),uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
-function openSkills(){pauseForOverlay();body.replaceChildren();const h=document.createElement('h2'),intro=document.createElement('p'),value=save.perception?.aperture||0;h.textContent=`Aperture Disciplines · ${apertureBand(value).name}`;intro.textContent='Thresholds unlock disciplines without spending Aperture. Learn ranks here, then select one for the Spell button.';body.append(h,intro);for(const skill of Object.values(APERTURE_SKILLS)){const rank=skillRank(save,skill.id),available=value>=skill.threshold,row=document.createElement('div');row.className='item';row.textContent=`${skill.branch} · ${skill.name} · ${rank}/${skill.maxRank} · Aperture ${skill.threshold} · ${skill.description}`;if(available&&rank<skill.maxRank)row.append(uiButton('Learn rank '+(rank+1),()=>{game.message=learnApertureSkill(save,skill.id).message;persist();openSkills()}));if(rank)row.append(uiButton(save.magicSkills.selected===skill.id?'Selected':'Select',()=>{save.magicSkills.selected=skill.id;persist();openSkills()}));body.append(row)}body.append(uiButton('Sphere forge',openForge),uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
+function openForge(){pauseForOverlay();body.replaceChildren();const h=document.createElement('h2'),intro=document.createElement('p');h.textContent='Sela’s Sphere Forge';intro.textContent=`Weapon Spheres ${save.materials.weaponSphere||0} · Armor Spheres ${save.materials.armorSphere||0}. Rank cost rises by one sphere each step; affixes and identity are preserved.`;body.append(h,intro);for(const slot of ['primary','secondary','armor','charm']){const item=save.equipment[slot];if(!item)continue;const cost=upgradeCost(item),row=document.createElement('div'),title=document.createElement('strong'),preview=document.createElement('div'),next={...item,basePower:item.basePower??item.power,upgradeRank:(item.upgradeRank||0)+1,power:(item.basePower??item.power)+(item.upgradeRank||0)+1};row.className='item';preview.className='item-comparison';title.textContent=`${slot.toUpperCase()} · ${item.name} +${item.upgradeRank||0}`;for(const stat of compareItemStats(next,item)){if(stat.direction==='same')continue;const q=document.createElement('span');q.className=`stat-${stat.direction}`;q.textContent=`↑ ${stat.label} ${stat.current} → ${stat.value}`;preview.append(q)}row.append(title,preview,uiButton(cost.eligible?`Strengthen · ${cost.amount} ${cost.kind==='weaponSphere'?'weapon':'armor'} sphere${cost.amount===1?'':'s'}`:'Upgrade limit reached',()=>{game.upgradeEquipmentSlot(slot);persist();openForge()}));body.append(row)}for(const slot of ['primary','secondary']){const item=save.equipment[slot];if(!item)continue;const row=document.createElement('div'),t=document.createElement('strong'),c=awakenCheck(save,slot);row.className='item';t.textContent=item.awakened?`${slot.toUpperCase()} · ${item.name} · ${awakenedText(item)}`:`Awaken ${item.name}: ${c.message}`;row.append(t);if(c.ok)row.append(uiButton(`Awaken · ${AWAKEN_COST} lumen dust`,()=>{const r=awaken(save,slot);game.message=r.message;persist();openForge()}));body.append(row)}
+ body.append(uiButton('Glyphs & Resonances',openGlyphs),uiButton('Aperture constellation',()=>openSkills()),uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
+// Aperture Constellation (release 100): five branches; each has an active (ranks), a modifier and one of two capstones.
+// Points: one per POINT_EVERY Aperture. Respec only at shrines (atShrine), for lumen dust.
+function openSkills(atShrine=false){pauseForOverlay();body.replaceChildren();
+ const value=save.perception?.aperture||0,h=document.createElement('h2'),intro=document.createElement('p');
+ h.textContent=`Aperture Constellation · ${pointsFree(save)} point${pointsFree(save)===1?'':'s'} free`;
+ intro.textContent=`Aperture ${value} (${apertureBand(value).name}) gives ${pointsEarned(save)} points, one per ${POINT_EVERY}${save.constellation.bonus?`, plus ${save.constellation.bonus} kept from before`:''}. Ranks and modifiers cost 1, a capstone 2 and only one capstone per branch. Select an active for the Spell button.${atShrine?' This shrine can rewrite the whole constellation.':' Respec at any shrine.'}`;
+ body.append(h,intro);
+ for(const bid of BRANCH_IDS){const b=BRANCHES[bid],skill=APERTURE_SKILLS[b.active],rank=skillRank(save,skill.id),row=document.createElement('div'),title=document.createElement('strong'),lines=document.createElement('div');row.className='item constellation-branch';lines.className='glyph-info';
+  title.textContent=`${b.name} · ${skill.name} ${rank}/${skill.maxRank}${value<skill.threshold?` · opens at Aperture ${skill.threshold}`:''}`;row.append(title);
+  const say=(t,cls)=>{const q=document.createElement('div');q.textContent=t;if(cls)q.className=cls;lines.append(q)};
+  say(skill.description);
+  const modOn=!!save.constellation.mods[b.mod.id],cap=save.constellation.caps[bid];
+  say(`${modOn?'◆':'◇'} ${b.mod.name}: ${b.mod.text}`,modOn?'glyph-resonance':'');
+  for(const c of b.caps)say(`${cap===c.id?'✦':cap?'·':'✧'} ${c.name}: ${c.text}`,cap===c.id?'glyph-resonance':'');
+  row.append(lines);
+  const act=(fn)=>()=>{const r=fn();game.message=r.message;persist();openSkills(atShrine)};
+  if(value>=skill.threshold&&rank<skill.maxRank)row.append(uiButton(`Learn rank ${rank+1} · 1 pt`,act(()=>learnRank(save,bid))));
+  if(rank&&!modOn)row.append(uiButton(`${b.mod.name} · 1 pt`,act(()=>learnMod(save,bid))));
+  if(modOn&&!cap&&rank>=skill.maxRank)for(const c of b.caps)row.append(uiButton(`${c.name} · 2 pts`,act(()=>chooseCap(save,bid,c.id))));
+  if(rank)row.append(uiButton(save.magicSkills.selected===skill.id?'Selected':'Select',()=>{save.magicSkills.selected=skill.id;persist();openSkills(atShrine)}));
+  if(cap==='aerial-step')row.append(uiButton(save.magicSkills.selected==='aerial-step'?'Aerial Step selected':'Select Aerial Step',()=>{save.magicSkills.selected='aerial-step';persist();openSkills(atShrine)}));
+  body.append(row)}
+ if(atShrine)body.append(uiButton(`Respec everything · ${respecCost(save)} lumen dust (you have ${save.materials.lumenDust||0})`,()=>{const r=respec(save);game.message=r.message;persist();openSkills(true)}));
+ body.append(uiButton('Sphere forge',openForge),uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
 function openInteraction(id, confirmAttack = false) {
   const o = game.map.objects.find((q) => q.id === id);
   if (!o) return;
@@ -1846,7 +1872,7 @@ function openInteraction(id, confirmAttack = false) {
         sever: "Sever the Relay",
         inspect: "Inspect terminal",
         upgrade:"Use sphere forge",
-        attune:"Study Aperture disciplines",
+        attune:"Attune (constellation)",
       };
       body.append(
         uiButton(labels[action] || action, () =>
@@ -1875,7 +1901,7 @@ function performInteraction(id, action) {
     return;
   }
   if(action==='upgrade'&&result?.ok){openForge();return}
-  if(action==='attune'&&result?.ok){openSkills();return}
+  if(action==='attune'&&result?.ok){openSkills(!!result.shrine);return}
   openInteraction(id);
   const message = document.createElement("p");
   message.textContent = result?.message || game.message;
