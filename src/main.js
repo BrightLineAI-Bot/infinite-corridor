@@ -1,12 +1,12 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { vendorShop, buyFromVendor } from "./game.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { CREATURE_TRAITS } from "./combat.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { drawPackPortrait } from "./monster-render.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { landscapeAtlasColor } from "./landscape-render.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { hashSeed } from "./random.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { vendorShop, buyFromVendor } from "./game.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { CREATURE_TRAITS } from "./combat.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { drawPackPortrait } from "./monster-render.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { landscapeAtlasColor } from "./landscape-render.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { hashSeed } from "./random.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -157,7 +157,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
 import {
   Game,
   actionReadiness,
@@ -166,15 +166,15 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { createInput } from "./input.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { STATS } from "./types.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { worldStewardReport } from "./story.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+} from "./game.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { createInput } from "./input.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { STATS } from "./types.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { worldStewardReport } from "./story.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -185,7 +185,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+} from "./world.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -882,7 +882,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_43831da1c3364044bd6556e3_30c250040b3673c3",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release icp_43831da1c3364044bd6556e3_30c250040b3673c3\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -892,7 +892,7 @@ function drawDungeonMap() {
   if(map!==game.map&&map.dungeonContract?.discoveryEnabled){const history=dungeonHistory(save,game.areaId()),level=map.levelStableId||map.levelId||"root";applyDungeonDiscovery(map,history.discovery?.levels?.[level]||[])}
   mapCanvas.width=w*d;mapCanvas.height=h*d;mapCanvas.style.width=w+"px";mapCanvas.style.height=h+"px";mctx.setTransform(d,0,0,d,0,0);mctx.imageSmoothingEnabled=false;mctx.fillStyle="#091018";mctx.fillRect(0,0,w,h);
   for(const tile of map.tiles){const x=ox+tile.x*cell,y=oy+tile.y*cell,visibility=dungeonTileVisibility(map,tile.x,tile.y);mctx.fillStyle=visibility==="unseen"?"#05080b":tile.kind==="dungeonWater"?"#245967":tile.blocked?"#182129":({hollow:"#51484a",cistern:"#36565a",kiln:"#68463a"}[map.recipe]||"#51484a");mctx.fillRect(x,y,Math.ceil(cell),Math.ceil(cell));if(visibility!=="unseen"&&!tile.blocked&&cell>9){mctx.strokeStyle="#ffffff0b";mctx.strokeRect(x,y,cell,cell)}}
-  const colors={exit:"#72d7df",chest:"#d8bd83",supplyCache:"#7fc992",relayTerminal:"#b28cda",trap:"#d16b62",vine:"#77b98b",apertureDoor:"#c493dd",sealedGate:"#d16b62",deepReturn:"#7bc7d3",hubAnchor:"#e4cf7a",deepTransition:"#dbc18a",deepShortcut:"#9fd0ae",deepPortal:"#bbb4ef",storyActor:"#d9e7ef",storyScene:"#efb18f"};
+  const colors={exit:"#72d7df",chest:"#d8bd83",supplyCache:"#7fc992",relayTerminal:"#b28cda",relayNode:"#ff7a7a",trap:"#d16b62",vine:"#77b98b",apertureDoor:"#c493dd",sealedGate:"#d16b62",deepReturn:"#7bc7d3",hubAnchor:"#e4cf7a",deepTransition:"#dbc18a",deepShortcut:"#9fd0ae",deepPortal:"#bbb4ef",storyActor:"#d9e7ef",storyScene:"#efb18f"};
   for(const o of map.objects||[]){if(!colors[o.kind]||o.state==="hidden"||!dungeonPointDiscovered(map,o))continue;const x=ox+(o.x+.5)*cell,y=oy+(o.y+.5)*cell;mctx.fillStyle=colors[o.kind];mctx.strokeStyle="#0b1014";mctx.lineWidth=2;mctx.beginPath();if(o.kind==="exit"||o.kind==="deepShortcut"){mctx.rect(x-cell*.32,y-cell*.42,cell*.64,cell*.84)}else if(o.kind==="trap"){mctx.moveTo(x,y-cell*.42);mctx.lineTo(x+cell*.4,y+cell*.35);mctx.lineTo(x-cell*.4,y+cell*.35);mctx.closePath()}else{mctx.arc(x,y,Math.max(3,cell*.28),0,7)}mctx.fill();mctx.stroke()}
   if(map===game.map){const px=ox+(game.player.x+.5)*cell,py=oy+(game.player.y+.5)*cell;mctx.fillStyle="#fff4a8";mctx.strokeStyle="#17140b";mctx.lineWidth=2;mctx.beginPath();mctx.arc(px,py,Math.max(4,cell*.34),0,7);mctx.fill();mctx.stroke();mctx.fillStyle="#e7ece7";mctx.font="12px monospace";mctx.fillText("YOU",px+7,py-7);}else{mctx.fillStyle="#dbc18a";mctx.font="12px monospace";mctx.fillText(`INSPECTING ${map.levelName||map.levelId}`,12,18)}
 }
@@ -1309,6 +1309,7 @@ const FEATURE_LORE={
   tree:"Ashwood stores heat and can alter traversal when cut near a bank. Some growths hide paths; others become crossings.",
   rock:"Shiftstone is dense relay aggregate. Sufficient force can move or break it, permanently changing the section.",
   relayTerminal:"A Crossing Terminal changes persistent story state. Its choices are consequential and cannot always be reversed.",
+  relayNode:"A Dormant Relay sits in some crossings, held by the crossing's guardian. Restore or sever it to hear the next fragment of the far transmission. Five answered relays wake the buried network.",
   "trap:fire":"Kiln Vents announce a directional burn before ignition. Their scorch geometry is the warning and the damage boundary.",
   "trap:spikes":"Crossing Spikes hide below visible floor seams. Timing, jumping, and careful movement matter more than raw defense.",
   vine:"Transit Vines are living lines across otherwise impassable gaps. Traversal commits the Wayfarer until the crossing completes.",
@@ -1763,6 +1764,9 @@ function openInteraction(id, confirmAttack = false) {
         : "Each resident helps hold the refuge together.");
   } else if(o.kind==="shelterMerchant")description.textContent=(o.role||"Wandering specialist")+" · Their stock is deterministic, rare, and rotates as you chart the Corridor.";
   else if(o.kind==="displacementDevice")description.textContent="A rare threshold into a finite sealed crossing. Defeat its guardian to emerge in a distant unexplored region, or use a Crossing Sigil to abort back here.";
+  else if (o.kind === "relayNode")
+    description.textContent =
+      "Restore: open the line toward the far Array (a restorative draught). Sever: close it forever (two lumen dust). Either answer counts toward the Relay Network and reveals the next transmission fragment.";
   else if (o.kind === "relayTerminal")
     description.textContent =
       "Restore: reopen the line and recover two draughts. Sever: silence the line and recover three lumen dust. This decision is permanent; either resolves the Missing Crossing.";

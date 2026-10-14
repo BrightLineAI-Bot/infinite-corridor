@@ -10,7 +10,7 @@
 //
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
-import { hashSeed } from "./random.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+import { hashSeed } from "./random.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
 
 export const LANDSCAPE_VERSION = 1;
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles

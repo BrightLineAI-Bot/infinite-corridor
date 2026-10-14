@@ -7,7 +7,7 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { hashSeed } from "./random.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+import { hashSeed } from "./random.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -24,6 +24,7 @@ export const MOVEMENT_MODES = {
   phase: { id: "phase", name: "Wall-phaser", speed: .95, flying: true, phases: true },
   burrow: { id: "burrow", name: "Burrower", speed: .85, burrows: true },
   blink: { id: "blink", name: "Blinker", speed: 1.1 },
+  lurch: { id: "lurch", name: "Lurcher", speed: .6 },
 };
 
 // How a creature positions itself around the Wayfarer between attacks.
@@ -35,6 +36,7 @@ export const BRAINS = {
   duelist: { id: "duelist", name: "Presses close", preferred: [1.2, 2.2] },
   juggernaut: { id: "juggernaut", name: "Squares up to charge", preferred: [3, 6.5] },
   ambush: { id: "ambush", name: "Waits unseen", preferred: [1.5, 3], hiddenUntilAggro: true },
+  weeping: { id: "weeping", name: "Moves only when unwatched", preferred: [0.9, 1.6] },
 };
 
 // Telegraphed abilities. Times are seconds; `damage` multiplies the creature's damage;
@@ -58,6 +60,9 @@ export const ATTACK_MODULES = {
   mirrorClones: { id: "mirrorClones", name: "Mirror Clones", range: [0, 9], cooldown: 9, windup: .6, recover: .5, damage: 0, tags: ["summon", "illusion"], text: "Splits off two harmless reflections that break in one hit." },
   mirrorSwap: { id: "mirrorSwap", name: "Mirror Swap", range: [0, 9], cooldown: 3.5, windup: .45, recover: .35, damage: 0, tags: ["teleport", "illusion"], text: "Trades places with one of its reflections." },
   diveBomb: { id: "diveBomb", name: "Dive Bomb", range: [2, 9], cooldown: 6, windup: .6, active: 1.45, recover: .9, damage: 1.4, tags: ["ground", "air"], requires: "flying", text: "Rises out of reach; its shadow hunts you, locks, then it crashes down." },
+  devourPull: { id: "devourPull", name: "Devouring Pull", range: [1.5, 6], cooldown: 6, windup: .8, active: 1.3, recover: .8, damage: 1.3, tags: ["control"], text: "Inhales: you are dragged toward the maw. Dodge or run against it." },
+  broodBirth: { id: "broodBirth", name: "Brood Birth", range: [0, 9], cooldown: 8, windup: .9, recover: .6, damage: 0, tags: ["summon"], text: "Splits off pallid crawlers (at most four alive)." },
+  fleshBloom: { id: "fleshBloom", name: "Flesh Bloom", range: [0, 7], cooldown: 5, windup: .6, recover: .6, damage: .35, tags: ["ground", "control"], text: "Living flesh carpets the floor; it slows you and gnaws while you stand in it." },
   firefall: { id: "firefall", name: "Firefall", range: [1.5, 9], cooldown: 6.5, windup: .7, recover: .8, damage: .85, jumpable: true, tags: ["ground"], text: "Embers rain across the floor around you." },
 };
 
@@ -133,6 +138,42 @@ export const MONSTER_PACK = {
     palette: ["#a8452c", "#2d120c", "#ffc35a", "#fff3c9"], render: "cinderSeraph", tags: ["spirit", "fire"],
     lore: "Six wings of ember and a halo of knives. It rises out of reach before it falls on you.",
   },
+  // ---- dungeon-only grotesques (operator ask 2026-10-14: actively creepy things that never walk the overworld)
+  weepingSaint: {
+    id: "weepingSaint", name: "Weeping Saint", epithet: "It Moves When You Look Away", dungeonOnly: true,
+    stats: [58, 13, 0], form: { scale: 1.25 }, sizeClass: "large", movement: "walk", brain: "weeping",
+    attacks: ["longStab", "clawSweep"], bossAttacks: ["sigilScatter", "blinkStrike"],
+    palette: ["#b9b1a4", "#2a2622", "#d9d2c6", "#7a1f1f"], render: "weepingSaint", tags: ["spirit", "stalker"],
+    lore: "A veiled figure with its hands over its face. Every time you turn around it is closer.",
+  },
+  amalgam: {
+    id: "amalgam", name: "The Amalgam", epithet: "Many Who Became One", dungeonOnly: true,
+    stats: [96, 11, 0], form: { scale: 1.5 }, sizeClass: "huge", movement: "lurch", brain: "duelist",
+    attacks: ["fleshBloom", "broodBirth", "bite"], bossAttacks: ["shockwave"],
+    palette: ["#c99a8f", "#3a1a1c", "#f2d0c4", "#6b0f1a"], render: "amalgam", tags: ["flesh", "brood"],
+    lore: "Fused bodies dragging themselves forward as one. The floor behind it is still breathing.",
+  },
+  pallidCrawler: {
+    id: "pallidCrawler", name: "Pallid Crawler", epithet: "The Brood", dungeonOnly: true,
+    stats: [12, 6, 0], form: { scale: .62 }, sizeClass: "small", movement: "skitter", brain: "flank",
+    attacks: ["bite", "leapSlam"], bossAttacks: [],
+    palette: ["#e3d6cf", "#3b2a2a", "#ffffff", "#9b1c25"], render: "pallidCrawler", tags: ["flesh", "brood"],
+    lore: "Too many joints, no eyes, and a mouth where a face should be. It is never alone.",
+  },
+  hangedChoir: {
+    id: "hangedChoir", name: "Hanged Choir", epithet: "The Ones Who Sing From the Ceiling", dungeonOnly: true,
+    stats: [64, 11, 6], form: { scale: 1.3 }, sizeClass: "large", movement: "hover", brain: "orbit",
+    attacks: ["diveBomb", "sigilScatter"], bossAttacks: ["sweepBeam"],
+    palette: ["#5b5550", "#151312", "#cbbfa8", "#d1e86a"], render: "hangedChoir", tags: ["spirit", "chorus"],
+    lore: "Shrouded bodies on chains, swaying in a wind you cannot feel. Their hum stops just before they drop.",
+  },
+  gnawingMaw: {
+    id: "gnawingMaw", name: "Gnawing Maw", epithet: "The Hunger in the Walls", dungeonOnly: true,
+    stats: [70, 14, 0], form: { scale: 1.35 }, sizeClass: "large", movement: "phase", brain: "ambush",
+    attacks: ["devourPull", "bite"], bossAttacks: ["groundRupture"],
+    palette: ["#6e2a2e", "#1a0a0b", "#e8d9c2", "#ff4a4a"], render: "gnawingMaw", tags: ["flesh", "wall"],
+    lore: "A mouth that lives inside the masonry. It breathes in, and the room leans toward it.",
+  },
 };
 
 export const PACK_KINDS = Object.keys(MONSTER_PACK);
@@ -146,19 +187,19 @@ export const PACK_BOSS_TEMPLATE = { hp: 3.4, damage: 1.3, scale: 1.35, cooldown:
 
 // Ordinary-dungeon guardians: the Hollow Marshal stays in the rotation; every pack creature
 // can now guard a dungeon in its boss form.
-export const GUARDIAN_POOL = ["hollowMarshal", "sunderjaw", "thunderhorn", "cinderSeraph", "siegeBeetle", "lumenWraith", "mirrorShade", "strataEel", "veilSpinner", "riftLynx", "graveLantern"];
+export const GUARDIAN_POOL = ["hollowMarshal", "weepingSaint", "amalgam", "hangedChoir", "gnawingMaw", "sunderjaw", "thunderhorn", "cinderSeraph", "siegeBeetle", "lumenWraith", "mirrorShade", "strataEel", "veilSpinner", "riftLynx", "graveLantern"];
 export function guardianKindFor(seed, identity) { return GUARDIAN_POOL[hashSeed(`${seed}:guardian:pack-v${MONSTER_PACK_VERSION}:${identity}`) % GUARDIAN_POOL.length]; }
 
 // Dungeon ecologies gain pack residents; each entry is [kind, encounter role].
 export const PACK_ECOLOGY_ADDITIONS = {
-  hollow: [["graveLantern", "keeper"], ["riftLynx", "hunter"], ["mirrorShade", "ambusher"]],
-  cistern: [["strataEel", "hunter"], ["veilSpinner", "ambusher"], ["sunderjaw", "blocker"]],
-  kiln: [["siegeBeetle", "ranged"], ["cinderSeraph", "ranged"], ["thunderhorn", "blocker"]],
-  threefold: [["lumenWraith", "ranged"], ["thunderhorn", "blocker"], ["riftLynx", "hunter"]],
-  descent: [["sunderjaw", "hunter"], ["graveLantern", "keeper"], ["siegeBeetle", "ranged"]],
-  loop: [["mirrorShade", "ambusher"], ["lumenWraith", "ranged"], ["veilSpinner", "keeper"]],
-  flooded: [["strataEel", "hunter"], ["lumenWraith", "ranged"], ["veilSpinner", "ambusher"]],
-  fortress: [["thunderhorn", "blocker"], ["mirrorShade", "keeper"], ["siegeBeetle", "ranged"]],
+  hollow: [["graveLantern", "keeper"], ["riftLynx", "hunter"], ["mirrorShade", "ambusher"], ["weepingSaint", "ambusher"], ["gnawingMaw", "keeper"]],
+  cistern: [["strataEel", "hunter"], ["veilSpinner", "ambusher"], ["sunderjaw", "blocker"], ["amalgam", "blocker"], ["pallidCrawler", "hunter"]],
+  kiln: [["siegeBeetle", "ranged"], ["cinderSeraph", "ranged"], ["thunderhorn", "blocker"], ["amalgam", "blocker"]],
+  threefold: [["lumenWraith", "ranged"], ["thunderhorn", "blocker"], ["riftLynx", "hunter"], ["hangedChoir", "ranged"]],
+  descent: [["sunderjaw", "hunter"], ["graveLantern", "keeper"], ["siegeBeetle", "ranged"], ["hangedChoir", "ranged"], ["weepingSaint", "ambusher"]],
+  loop: [["mirrorShade", "ambusher"], ["lumenWraith", "ranged"], ["veilSpinner", "keeper"], ["hangedChoir", "ranged"], ["gnawingMaw", "keeper"]],
+  flooded: [["strataEel", "hunter"], ["lumenWraith", "ranged"], ["veilSpinner", "ambusher"], ["gnawingMaw", "keeper"], ["pallidCrawler", "hunter"]],
+  fortress: [["thunderhorn", "blocker"], ["mirrorShade", "keeper"], ["siegeBeetle", "ranged"], ["weepingSaint", "keeper"], ["amalgam", "blocker"]],
 };
 
 // Slightly denser dungeons for histories that adopt the pack (see populateDungeonEncounters).
@@ -210,8 +251,8 @@ export function packVariant(kind, identity) {
   const n = hashSeed(`pack-variant:v${MONSTER_PACK_VERSION}:${kind}:${identity}`);
   if (n % 100 >= 22) return { hybridAttack: null, donor: null };
   const move = MOVEMENT_MODES[def.movement], own = new Set([...def.attacks, ...(def.bossAttacks || [])]);
-  const options = PACK_KINDS.filter((id) => id !== kind).flatMap((donor) => MONSTER_PACK[donor].attacks.map((attack) => ({ donor, attack })))
-    .filter(({ attack }) => !own.has(attack) && !ATTACK_MODULES[attack].passive && !ATTACK_MODULES[attack].tags.includes("illusion") && (!ATTACK_MODULES[attack].requires || move[ATTACK_MODULES[attack].requires]));
+  const options = PACK_KINDS.filter((id) => id !== kind && !MONSTER_PACK[id].dungeonOnly).flatMap((donor) => MONSTER_PACK[donor].attacks.map((attack) => ({ donor, attack })))
+    .filter(({ attack }) => !own.has(attack) && !ATTACK_MODULES[attack].passive && !ATTACK_MODULES[attack].tags.includes("illusion") && !ATTACK_MODULES[attack].tags.includes("summon") && (!ATTACK_MODULES[attack].requires || move[ATTACK_MODULES[attack].requires]));
   if (!options.length) return { hybridAttack: null, donor: null };
   const pick = options[Math.floor(n / 100) % options.length];
   return { hybridAttack: pick.attack, donor: pick.donor };
@@ -337,6 +378,9 @@ const START = {
   diveBomb(e, s) { e.aloft = true; e.untargetable = true; s.tele = { type: "rise" }; },
   firefall(e, s) { s.tele = { type: "brace" }; },
   burrowAmbush(e, s) { s.tele = { type: "submerge" }; },
+  devourPull(e, s) { s.tele = { type: "ring", radius: 6, inhale: true }; },
+  broodBirth(e, s) { s.tele = { type: "shimmer" }; },
+  fleshBloom(e, s) { s.tele = { type: "spit", target: { ...s.data.target } }; },
 };
 
 function resolveMelee(e, s, w, attackId, test) {
@@ -345,6 +389,29 @@ function resolveMelee(e, s, w, attackId, test) {
 }
 
 const RUN = {
+  devourPull(e, s, w) {
+    const attack = ATTACK_MODULES.devourPull;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", attack.active); return; }
+    if (s.phase === "active") {
+      w.pull?.(e, 2.6 * w.dt, 6.5);
+      if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + .9) { s.hitOnce = true; w.hurt(e, damageOf(e, "devourPull"), { jumpable: false, source: "devourPull" }); }
+      if (s.t <= 0) { s.tele = null; toPhase(s, "recover", attack.recover); }
+    }
+  },
+  broodBirth(e, s, w) {
+    if (s.phase === "windup" && s.t <= 0) {
+      const alive = w.enemies.filter((q) => !q.dead && q.broodOf === e.id).length;
+      for (let i = alive; i < Math.min(4, alive + 2); i++) { const a = (i / 2) * Math.PI + (hashSeed(`${e.id}:${s.seq}`) % 100) / 30, spot = nearestOpen(w, e.x + Math.cos(a) * 1.3, e.y + Math.sin(a) * 1.3, 2); if (spot) w.spawnMinion?.(e, "pallidCrawler", spot.x, spot.y, i); }
+      s.tele = null; toPhase(s, "recover", ATTACK_MODULES.broodBirth.recover);
+    }
+  },
+  fleshBloom(e, s, w) {
+    if (s.phase === "windup" && s.t <= 0) {
+      w.addEffect({ kind: "flesh", owner: e.id, x: s.data.target.x, y: s.data.target.y, radius: 1.35, arming: .35, life: 6, damage: damageOf(e, "fleshBloom"), slow: .55 });
+      w.addEffect({ kind: "flesh", owner: e.id, x: e.x, y: e.y, radius: 1.1, arming: .2, life: 5, damage: damageOf(e, "fleshBloom"), slow: .55 });
+      s.tele = null; toPhase(s, "recover", ATTACK_MODULES.fleshBloom.recover);
+    }
+  },
   bite(e, s, w) { if (s.phase === "windup" && s.t <= 0) { resolveMelee(e, s, w, "bite", (p) => inArc(e, p, s.data.aim, bodyRadius(e) + 1.25 + .3, 100)); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.bite.recover); } },
   clawSweep(e, s, w) { if (s.phase === "windup" && s.t <= 0) { resolveMelee(e, s, w, "clawSweep", (p) => inArc(e, p, s.data.aim, bodyRadius(e) + 1.45 + .3, 140)); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.clawSweep.recover); } },
   longStab(e, s, w) {
@@ -482,6 +549,7 @@ function brainVector(e, s, w, def) {
     const v = playerVelocity(w), facing = Math.hypot(v.x, v.y) > .1 ? unit(v.x, v.y) : unit(e.x - p.x, e.y - p.y), behind = { x: p.x - facing.x * 1.7 + side.x * .6, y: p.y - facing.y * 1.7 + side.y * .6 };
     return { ...unit(behind.x - e.x, behind.y - e.y), speed: d > 3 ? 1.05 : .8 };
   }
+  if (brain.id === "weeping") return { x: to.x, y: to.y, speed: d > near ? 1.9 : .3 };
   if (brain.id === "juggernaut") { if (d < near) return { x: -to.x * .6 + side.x, y: -to.y * .6 + side.y, speed: .55 }; return { x: to.x, y: to.y, speed: d > far ? .85 : .4 }; }
   if (d <= near) return { x: side.x, y: side.y, speed: .5 };
   return { x: to.x, y: to.y, speed: .9 };
@@ -537,6 +605,12 @@ export function updatePackMonster(e, w) {
     if (s.attack && s.phase === "recover" && s.t <= 0) endAttack(e, s);
     return;
   }
+  // The Weeping Saint never moves or starts an attack while the Wayfarer faces it.
+  if ((e.brain || def.brain) === "weeping") {
+    const f = w.playerFacing || { x: 0, y: 1 }, to = unit(e.x - p.x, e.y - p.y);
+    e.watched = d < 11 && (f.x * to.x + f.y * to.y) > .3;
+    if (e.watched) return;
+  }
   // Move according to the brain, then start the best ready attack.
   const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, v = brainVector(e, s, w, def), m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * dt;
   const moved = w.move(e, v.x / m * speed, v.y / m * speed, { phase: !!move.phases });
@@ -557,6 +631,7 @@ export function tickPackEffects(effects, w) {
     f.age = (f.age || 0) + w.dt;
     if (f.arming > 0) { f.arming -= w.dt; if (f.arming > 0) continue; f.armed = true; }
     if (f.kind === "web") { if (distance(p, f) <= f.radius) w.slow(f.slow || .5, .25); }
+    else if (f.kind === "flesh") { if (distance(p, f) <= f.radius) { w.slow(f.slow || .55, .25); if (!(f.nextBite > f.age)) { f.nextBite = f.age + .8; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "fleshBloom", beam: true }); } } }
     else if (f.kind === "shock") { const total = f.total ??= f.life ?? .8, r = f.radius * (1 - Math.max(0, f.life ?? total) / total); f.ring = r; if (!f.hit && f.damage > 0 && Math.abs(distance(p, f) - r) < .5) { f.hit = true; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "shockwave" }); } }
     else if (!f.detonated) { f.detonated = true; f.life ??= .4; if (f.damage > 0 && distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: !!f.jumpable, source: f.kind }); }
     f.life = (f.life ?? .4) - w.dt;
@@ -578,7 +653,7 @@ export function addPackEffect(effects, effect, now = 0) {
 export const OVERWORLD_PACK_POOLS = {
   ash: ["cinderSeraph", "siegeBeetle", "thunderhorn", "graveLantern", "riftLynx"],
   glass: ["lumenWraith", "riftLynx", "mirrorShade", "strataEel", "veilSpinner"],
-  ember: ["sunderjaw", "veilSpinner", "siegeBeetle", "thunderhorn", "cinderSeraph"],
+  ember: ["veilSpinner", "siegeBeetle", "thunderhorn", "cinderSeraph", "riftLynx"],
 };
 export const OVERWORLD_PACK_DENSITY = { replaceShare: 45, extraNear: 1, extraFar: 3, farDepth: 4, maxPack: 6 };
 const LETHAL = new Set(["canyon", "river", "dungeonWater", "water", "bridge"]);

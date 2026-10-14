@@ -1,7 +1,7 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { LIFT_PER_LEVEL } from "./landscape.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+import { LIFT_PER_LEVEL } from "./landscape.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
 
 const TAU = Math.PI * 2;
 const cache = new Map();
@@ -35,6 +35,22 @@ const PAINT = {
   volcanicRim(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3b302c"], [1, "#1f1816"]]); c.fillRect(0, 0, s, s); granite(c, s, r, "#ff6a2a55"); for (let i = 0; i < 3; i++) { c.fillStyle = "#ff8a3a88"; c.fillRect(r() * s, r() * s, 2, 2); } },
   ashSlope(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#5a514c"], [1, "#3d3632"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 14; i++) { c.fillStyle = r() < .5 ? "#7a706a" : "#2a2522"; c.fillRect(r() * s, r() * s, 1.5, 1.5); } granite(c, s, r, "#1c171555"); },
   skyBridge(c, s, r) { c.clearRect(0, 0, s, s); c.fillStyle = "#4b3a29"; for (let k = 0; k < s; k += s / 5) { c.fillStyle = grad(c, k, 0, k + s / 5, 0, [[0, "#9a7a52"], [1, "#6a5236"]]); c.fillRect(k + 1, s * .18, s / 5 - 2, s * .64); } c.strokeStyle = "#d8c49a"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(0, s * .16); c.quadraticCurveTo(s / 2, s * .26, s, s * .16); c.moveTo(0, s * .84); c.quadraticCurveTo(s / 2, s * .94, s, s * .84); c.stroke(); },
+  // ---- Underlands (dungeon environments)
+  chasmLedge(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3f3a40"], [1, "#2a262c"]]); c.fillRect(0, 0, s, s); granite(c, s, r, "#0e0c1088"); },
+  chasmWall(c, s, r) { c.fillStyle = grad(c, 0, 0, 0, s, [[0, "#26222a"], [1, "#121014"]]); c.fillRect(0, 0, s, s); granite(c, s, r, "#00000088"); },
+  chasmStair(c, s, r) { c.fillStyle = "#2c282e"; c.fillRect(0, 0, s, s); for (let y = 0; y < s; y += s / 4) { c.fillStyle = grad(c, 0, y, 0, y + s / 4, [[0, "#6a6370"], [1, "#3a3540"]]); c.fillRect(2, y + 1, s - 4, s / 4 - 2); } },
+  abyss(c, s, r) { c.fillStyle = grad(c, 0, 0, 0, s, [[0, "#09080b"], [1, "#000000"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 3; i++) { c.fillStyle = "#1b1830"; c.fillRect(r() * s, r() * s, 1, 1); } },
+  riverStone(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3c4648"], [1, "#2b3335"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 6; i++) { c.fillStyle = r() < .5 ? "#56676a" : "#1f2729"; c.beginPath(); c.ellipse(r() * s, r() * s, 2 + r() * 3, 1.5 + r() * 2, r() * 3, 0, TAU); c.fill(); } },
+  riverWall(c, s, r) { c.fillStyle = "#1c2426"; c.fillRect(0, 0, s, s); bricks(c, s, r); c.fillStyle = "#3e6a5f44"; c.fillRect(0, s * .7, s, s * .3); },
+  frostFloor(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#cfdde8"], [1, "#9fb4c6"]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#ffffff99"; c.lineWidth = 1; for (let i = 0; i < 3; i++) { const x = r() * s, y = r() * s; c.beginPath(); c.moveTo(x, y); c.lineTo(x + (r() - .5) * s * .6, y + (r() - .5) * s * .6); c.stroke(); } },
+  iceWall(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#8fb6cf"], [1, "#3e6680"]]); c.fillRect(0, 0, s, s); c.fillStyle = "#e9f6ff66"; c.beginPath(); c.moveTo(0, 0); c.lineTo(s * .4, 0); c.lineTo(0, s * .5); c.fill(); },
+  iceSpire(c, s, r) { PAINT.frostFloor(c, s, r); for (let i = 0; i < 2; i++) { const x = s * (.35 + i * .3), hh = s * (.7 + r() * .25); c.fillStyle = grad(c, x - 4, 0, x + 4, 0, [[0, "#ffffff"], [1, "#6fa5c8"]]); c.beginPath(); c.moveTo(x - s * .12, s); c.lineTo(x, s - hh); c.lineTo(x + s * .12, s); c.fill(); } },
+  ossuary(c, s, r) { c.fillStyle = "#4a4239"; c.fillRect(0, 0, s, s); for (let i = 0; i < 9; i++) { c.fillStyle = r() < .6 ? "#cfc3ad" : "#8c8170"; const x = r() * s, y = r() * s; if (r() < .3) { c.beginPath(); c.arc(x, y, 2.2, 0, TAU); c.fill(); c.fillStyle = "#2a241e"; c.fillRect(x - 1, y - .5, 1, 1); c.fillRect(x + .5, y - .5, 1, 1); } else c.fillRect(x, y, 4 + r() * 3, 1.5); } },
+  cryptWall(c, s, r) { c.fillStyle = "#2c2622"; c.fillRect(0, 0, s, s); bricks(c, s, r); for (let i = 0; i < 2; i++) { c.fillStyle = "#cfc3ad"; c.beginPath(); c.arc(s * (.3 + i * .4), s * .5, s * .08, 0, TAU); c.fill(); c.fillStyle = "#16120f"; c.fillRect(s * (.27 + i * .4), s * .47, 2, 2); c.fillRect(s * (.32 + i * .4), s * .47, 2, 2); } },
+  sarcophagus(c, s, r) { PAINT.ossuary(c, s, r); c.fillStyle = grad(c, 0, 0, s, 0, [[0, "#7c7468"], [1, "#4c463e"]]); c.fillRect(s * .18, s * .08, s * .64, s * .84); c.strokeStyle = "#1e1a16"; c.lineWidth = 1.5; c.strokeRect(s * .18, s * .08, s * .64, s * .84); c.strokeStyle = "#a99f8f"; c.beginPath(); c.moveTo(s * .5, s * .2); c.lineTo(s * .5, s * .8); c.moveTo(s * .35, s * .35); c.lineTo(s * .65, s * .35); c.stroke(); if (r() < .35) { c.fillStyle = "#000000aa"; c.fillRect(s * .2, s * .1, s * .6, s * .05); } },
+  fungusFloor(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#2a3326"], [1, "#1b2219"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 6; i++) { c.fillStyle = r() < .5 ? "#7bd8b877" : "#c49be877"; c.beginPath(); c.arc(r() * s, r() * s, 1 + r() * 1.5, 0, TAU); c.fill(); } },
+  fungusWall(c, s, r) { c.fillStyle = "#151a14"; c.fillRect(0, 0, s, s); granite(c, s, r, "#00000088"); for (let i = 0; i < 3; i++) { c.fillStyle = "#6fd8b866"; c.beginPath(); c.arc(r() * s, r() * s, 2, 0, TAU); c.fill(); } },
+  glowcap(c, s, r) { PAINT.fungusFloor(c, s, r); c.fillStyle = "#d7cfb8"; c.fillRect(s * .44, s * .45, s * .12, s * .5); const cap = grad(c, 0, s * .15, 0, s * .5, [[0, "#9ff2d6"], [1, "#3e9c84"]]); c.fillStyle = cap; c.beginPath(); c.ellipse(s * .5, s * .45, s * .42, s * .25, 0, Math.PI, 0); c.fill(); c.fillStyle = "#ffffff66"; for (let i = 0; i < 4; i++) c.fillRect(s * (.25 + i * .15), s * .32, 2, 2); },
   castleCourt(c, s, r) { flagstones(c, s, r, "#77706a", "#5b5550"); },
   castleStair(c, s, r) { c.fillStyle = "#4d4844"; c.fillRect(0, 0, s, s); for (let y = 0; y < s; y += s / 3) { c.fillStyle = grad(c, 0, y, 0, y + s / 3, [[0, "#a59c92"], [1, "#6f6861"]]); c.fillRect(2, y + 1, s - 4, s / 3 - 3); } },
   battlement(c, s, r) { flagstones(c, s, r, "#8c847b", "#6c655f"); c.fillStyle = "#3d3936"; for (let x = 0; x < s; x += s / 2) c.fillRect(x + 1, 0, s / 4, s * .14); },
@@ -48,7 +64,7 @@ function hexagon(c, x, y, rad) { c.beginPath(); for (let i = 0; i < 6; i++) { co
 function flagstones(c, s, r, a, b) { c.fillStyle = b; c.fillRect(0, 0, s, s); for (let y = 0; y < s; y += s / 2) for (let x = 0; x < s; x += s / 2) { c.fillStyle = r() < .5 ? a : "#827a71"; c.fillRect(x + 1, y + 1, s / 2 - 2, s / 2 - 2); } }
 function bricks(c, s, r) { c.strokeStyle = "#2c2926"; c.lineWidth = 1; for (let row = 0, y = 0; y < s; y += s / 4, row++) { c.beginPath(); c.moveTo(0, y); c.lineTo(s, y); c.stroke(); for (let x = (row % 2) * s / 4; x < s; x += s / 2) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + s / 4); c.stroke(); } } }
 
-const FACE = { volcanic: ["#3a2b25", "#140d0b"], mountains: ["#4f4a45", "#26231f"], desert: ["#a8743d", "#6b4422"], alien: ["#4a3878", "#1d1533"], castle: ["#57504a", "#2a2623"], coast: ["#a68b56", "#6d5933"] };
+const FACE = { underlands: ["#2e2a33", "#0d0b10"], volcanic: ["#3a2b25", "#140d0b"], mountains: ["#4f4a45", "#26231f"], desert: ["#a8743d", "#6b4422"], alien: ["#4a3878", "#1d1533"], castle: ["#57504a", "#2a2623"], coast: ["#a68b56", "#6d5933"] };
 
 function makeCanvas(size) {
   if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(size, size);
@@ -105,9 +121,45 @@ function animate(ctx, t, px, py, s) {
   if (t.kind === "lava") { const p = .5 + .5 * Math.sin(clock * 3 + d); ctx.fillStyle = `rgba(255,236,150,${.25 + p * .35})`; ctx.beginPath(); ctx.arc(px + s * ((d % 7) / 7 + .07), py + s * (((d >> 2) % 7) / 7 + .07), s * (.06 + p * .08), 0, TAU); ctx.fill(); const rise = (clock * .8 + d * .13) % 1; ctx.fillStyle = `rgba(255,140,60,${1 - rise})`; ctx.fillRect(px + s * ((d % 5) / 5 + .1), py - rise * s * 1.4, 2, 2); }
   else if (t.kind === "ocean") { ctx.strokeStyle = "#a8dcf088"; ctx.lineWidth = 1.5; for (let i = 0; i < 2; i++) { const y = py + s * (.3 + i * .4) + Math.sin(clock * 1.6 + d + i) * 2; ctx.beginPath(); ctx.moveTo(px + 2, y); ctx.quadraticCurveTo(px + s / 2, y - 3, px + s - 2, y); ctx.stroke(); } if ((d + Math.floor(clock * 2)) % 9 === 0) { ctx.fillStyle = "#ffffffcc"; ctx.fillRect(px + (d % s), py + s * .5, 2, 2); } }
   else if (t.kind === "shallows") { ctx.strokeStyle = "#ffffff66"; ctx.lineWidth = 1; const y = py + s * .5 + Math.sin(clock * 2 + d) * s * .2; ctx.beginPath(); ctx.moveTo(px, y); ctx.lineTo(px + s, y + 1); ctx.stroke(); }
+  else if (t.kind === "glowcap" || t.kind === "fungusFloor") { const p = .3 + .25 * Math.sin(clock * 1.6 + d); ctx.fillStyle = `rgba(150,255,214,${p * .3})`; ctx.beginPath(); ctx.arc(px + s * .5, py + s * .45, s * .35, 0, TAU); ctx.fill(); }
+  else if (t.kind === "abyss") { if ((d + Math.floor(clock)) % 13 === 0) { ctx.fillStyle = "#3a3060"; ctx.fillRect(px + (d % s), py + s * .5, 1, 1); } }
   else if (t.kind === "alienMoss" || t.kind === "alienPool" || t.kind === "crystalSpire") { const p = .35 + .3 * Math.sin(clock * 2.2 + d * .7); ctx.fillStyle = `rgba(120,255,214,${p * .35})`; ctx.beginPath(); ctx.arc(px + s * ((d % 5) / 5 + .1), py + s * (((d >> 3) % 5) / 5 + .1), s * .12, 0, TAU); ctx.fill(); }
   else if (t.kind === "alienPlatform") { ctx.strokeStyle = `rgba(233,225,255,${.4 + .3 * Math.sin(clock * 3 + d)})`; ctx.lineWidth = 1; hexagon(ctx, px + s / 2, py + s / 2, s * .48); ctx.stroke(); }
 }
 
 // Atlas colour for a section's landscape (null when plain).
 export function landscapeAtlasColor(biome) { return ({ mountains: "#d9e3ea", desert: "#d6b26e", coast: "#3f7fa3", alien: "#9a6fe0", castle: "#8a7f73" })[biome] || null; }
+
+// Traversal cues near the player: stripes on dangerous drops, chevrons on walkable slopes, and the ledge prompt.
+export function drawTraversalCues(ctx, map, w, player, s, now, hint) {
+  if (!map?.landscape || !player) return;
+  const px = Math.floor(player.x + .5), py = Math.floor(player.y + .75), at = (x, y) => map.tiles[y * w + x], h = Math.floor(map.tiles.length / w), pulse = .55 + .35 * Math.sin(now / 160);
+  for (let y = Math.max(0, py - 5); y <= Math.min(h - 1, py + 5); y++) for (let x = Math.max(0, px - 6); x <= Math.min(w - 1, px + 6); x++) {
+    const t = at(x, y);
+    if (!t || t.blocked) continue;
+    const lift = Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * s, tx = x * s, ty = y * s - lift;
+    for (const [dx, dy, side] of [[0, 1, "s"], [0, -1, "n"], [1, 0, "e"], [-1, 0, "w"]]) {
+      const n = at(x + dx, y + dy), drop = (t.elev || 0) - (n && !n.blocked ? (n.elev || 0) : (t.elev || 0));
+      if (drop < 2 || Math.hypot(x - px, y - py) > 4.5) continue;
+      ctx.fillStyle = drop >= 4 ? `rgba(230,40,40,${pulse})` : `rgba(255,150,40,${pulse * .85})`;
+      const band = Math.max(2, s * .1);
+      for (let k = 0; k < 4; k++) { // hazard stripes along the edge
+        if (side === "s") ctx.fillRect(tx + k * s / 4, ty + s - band, s / 8, band); else if (side === "n") ctx.fillRect(tx + k * s / 4, ty, s / 8, band);
+        else if (side === "e") ctx.fillRect(tx + s - band, ty + k * s / 4, band, s / 8); else ctx.fillRect(tx, ty + k * s / 4, band, s / 8);
+      }
+    }
+    if (t.slope && Math.hypot(x - px, y - py) <= 6) { // chevrons point uphill
+      const up = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([dx, dy]) => { const n = at(x + dx, y + dy); return n && !n.blocked && (n.elev || 0) > (t.elev || 0) - (t.slope ? 0 : 1) && (n.elev || 0) >= (t.elev || 0); }) || [0, -1];
+      ctx.strokeStyle = "rgba(255,244,214,.65)"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath();
+      const cx = tx + s / 2, cy = ty + s / 2, ux = up[0] * s * .18, uy = up[1] * s * .18, vx = -up[1] * s * .16, vy = up[0] * s * .16;
+      ctx.moveTo(cx - ux + vx, cy - uy + vy); ctx.lineTo(cx + ux, cy + uy); ctx.lineTo(cx - ux - vx, cy - uy - vy); ctx.stroke();
+    }
+  }
+  if (hint && now < hint.until) {
+    const t = at(hint.x, hint.y), lift = t ? Math.max(0, (t.elev || 0)) * LIFT_PER_LEVEL * s : 0, cx = hint.x * s + s / 2, cy = hint.y * s - lift + s / 2;
+    ctx.fillStyle = hint.kind === "climb" ? `rgba(120,230,255,${pulse})` : `rgba(255,120,80,${pulse})`;
+    ctx.beginPath(); ctx.moveTo(cx, cy - s * .38); ctx.lineTo(cx + s * .22, cy - s * .08); ctx.lineTo(cx + s * .08, cy - s * .08); ctx.lineTo(cx + s * .08, cy + s * .2); ctx.lineTo(cx - s * .08, cy + s * .2); ctx.lineTo(cx - s * .08, cy - s * .08); ctx.lineTo(cx - s * .22, cy - s * .08); ctx.closePath(); ctx.fill();
+    ctx.font = `bold ${Math.max(9, Math.round(s * .26))}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#000000aa"; ctx.lineWidth = 3;
+    const label = hint.kind === "climb" ? "JUMP" : "TOO HIGH"; ctx.strokeText(label, cx, cy - s * .48); ctx.fillText(label, cx, cy - s * .48);
+  }
+}

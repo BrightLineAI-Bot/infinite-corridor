@@ -1,15 +1,17 @@
-import { Game } from "./game.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { freshSave, migrateSave } from "./types.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { ELITE_DEFINITIONS } from "./elites.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { PACK_KINDS, isPackKind } from "./monster-pack.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { BIOMES, biomeFor } from "./landscape.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+import { Game } from "./game.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { freshSave, migrateSave } from "./types.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { ELITE_DEFINITIONS } from "./elites.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { PACK_KINDS, isPackKind } from "./monster-pack.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { BIOMES, biomeFor } from "./landscape.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -18,6 +20,7 @@ function roundTripScratch(save) { return migrateSave(JSON.parse(JSON.stringify(s
 export const LABORATORIES = [
   { id: "shelters", label: "Shelter & Building Gallery", status: "implemented", description: "Production shelters, displacement devices, and architectural districts." },
   { id: "ordinary-dungeon", label: "Ordinary Dungeon Lab", status: "implemented", description: "Production v4 deterministic exploration topology, discovery, ecology, traps, guardians, and traversal." },
+  { id: "underlands", label: "Underlands & Relay Lab", status: "implemented", description: "Generator v5 crossings: six layout grammars, six bespoke underground environments with their weather, and a relay node ready to answer." },
   { id: "deep-dungeon", label: "Legacy & Deep Dungeon Lab", status: "implemented", description: "Production deep-v2 archetypes, objectives, levels, shortcuts, and finales." },
   { id: "threefold", label: "Threefold Dungeon Lab", status: "implemented", description: "The production three-wing sealed expedition and its wardens." },
   { id: "landscape", label: "Landscape Pack", status: "implemented", description: "Nearest production overland section of each landscape biome: mountains with stair trails, dune seas, coasts, alien wilds and castles." },
@@ -49,6 +52,7 @@ const SHELTERS = [
 ].map(([id,label,seed,rx,ry])=>({id,label,seed,rx,ry}));
 
 const ORDINARY = ["hollow", "cistern", "kiln"].map((id) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)} topology` }));
+const UNDERLANDS = [...LAYOUTS.map((id) => ({ id: `layout-${id}`, label: `${id[0].toUpperCase()}${id.slice(1)} layout` })), ...Object.entries(UNDER_THEMES).map(([id, t]) => ({ id: `theme-${id}`, label: `${t.name || id} environment` })), { id: "relay-node", label: "Relay node, guardian defeated" }];
 const DEEP = [{id:"legacy-v1",label:"Legacy v1 Threefold expedition"},...DEEP_ARCHETYPE_IDS.map((id) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)} deep expedition` }))];
 const CREATURES = [...Object.keys(CREATURE_FORMS), ...Object.keys(ELITE_DEFINITIONS).filter((id)=>!Object.hasOwn(CREATURE_FORMS,id)),...Object.keys(MELEE_PATTERNS).map(id=>`pattern-${id}`),"pattern-elite-combination","pattern-wall-interruption","pattern-multiple-attackers",...PACK_KINDS.map(id=>`pack-boss-${id}`)].map((id)=>({id,label:id.replace(/([A-Z])/g," $1").replaceAll('-',' ').replace(/^./,c=>c.toUpperCase())}));
 const WAYGLASS_SCENARIOS=["unactivated-wayglass","activated-wayglass","travel-pair","rest-point","activated-rest-point","broken-observatory","manual-waypoint","quest-guidance","hunt-guidance","dual-compass","death-marker","save-reconstruction","legacy-migration","drought-corpus"].map(id=>({id,label:id.replaceAll("-"," ").replace(/^./,c=>c.toUpperCase())}));
@@ -61,6 +65,7 @@ const SIMPLE={performance:["overworld-baseline","overworld-stress","dungeon-base
 export function scenariosForLab(lab) {
   if (lab === "shelters") return SHELTERS;
   if (lab === "ordinary-dungeon") return ORDINARY;
+  if (lab === "underlands") return UNDERLANDS;
   if (lab === "deep-dungeon") return DEEP;
   if (lab === "threefold") return [{ id: "threefold", label: "Threefold sealed expedition" }];
   if (lab === "landscape") return LANDSCAPE_SCENARIOS;
@@ -139,6 +144,14 @@ function ordinaryFixture(scenario, seed, variant, now, sizeProfile="standard") {
   return {lab:"ordinary-dungeon",scenario:recipe,label:map.name,seed,variant,sizeProfile,production:true,...base};
 }
 
+function underlandsFixture(scenario, seed, variant, now) {
+  const spec = UNDERLANDS.find((q) => q.id === scenario) || UNDERLANDS[0], recipe = ["hollow", "cistern", "kiln"][variant % 3], id = `proving:underlands:${spec.id}:${variant}`;
+  const options = spec.id.startsWith("layout-") ? { layout: spec.id.slice(7), theme: "none", variant } : spec.id.startsWith("theme-") ? { theme: spec.id.slice(6), variant } : { variant };
+  const map = generateExpeditionDungeon(seed, id, recipe, options), base = gameForMap(seed, id, map, now);
+  if (spec.id === "relay-node") { base.save.consequences.dungeons[id].guardianDefeated = true; if (placeRelayNode(map, id, base.save)) ensureRelayNetwork(base.save).seen = true; }
+  return { lab: "underlands", scenario: spec.id, label: map.name, seed, variant, production: true, ...base, diagnostics: { layout: map.diagnostic.layoutGrammar, theme: map.theme || "none", weather: map.weather || "none", size: map.sizeProfile } };
+}
+
 function deepFixture(scenario, seed, variant, now, forceThreefold=false) {
   if(!forceThreefold&&scenario==="legacy-v1"){const id=deepDungeonId(seed,1,variant,-variant),map=generateDungeon(seed,id),base=gameForMap(seed,id,map,now);return{lab:"deep-dungeon",scenario,label:map.name,seed,variant,sizeProfile:"threefold",production:true,...base}}
   const archetype=forceThreefold?"threefold":DEEP_ARCHETYPE_IDS.includes(scenario)?scenario:"threefold";
@@ -201,6 +214,7 @@ export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVIN
   if(lab==="shelters")return shelterFixture(scenario,cleanSeed,now);
   let fixture;
   if(lab==="ordinary-dungeon")fixture=ordinaryFixture(scenario,cleanSeed,cleanVariant,now,["compact","standard","extended"].includes(sizeProfile)?sizeProfile:"standard");
+  else if(lab==="underlands")fixture=underlandsFixture(scenario,cleanSeed,cleanVariant,now);
   else if(lab==="deep-dungeon")fixture=deepFixture(scenario,cleanSeed,cleanVariant,now);
   else if(lab==="threefold")fixture=deepFixture("threefold",cleanSeed,cleanVariant,now,true);
   else if(lab==="landscape")fixture=landscapeFixture(scenario,cleanSeed,now);

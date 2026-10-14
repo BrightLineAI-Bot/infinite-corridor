@@ -1,9 +1,10 @@
-import { enemyMeleeGeometry } from "./combat.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { drawLandscapeTile, setLandscapeClock } from "./landscape-render.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { liftAt } from "./landscape.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { structureOccupancy } from "./world.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_92a01abb26964cd093341bed_0066b5ff71ff3d9c";
+import { enemyMeleeGeometry } from "./combat.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues } from "./landscape-render.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { liftAt } from "./landscape.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { drawRelayNode } from "./relay-network.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { structureOccupancy } from "./world.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
 
 export function cameraTransform(
   g,
@@ -503,7 +504,7 @@ export function render(ctx, g, w, h, now) {
   renderCacheStats.visibleObjects=0;
   const activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y),activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
   setLandscapeClock(now);
-  const groundLift = (x, y) => (g.area === "overworld" ? liftAt(g.map, mw, x, y) : 0);
+  const groundLift = (x, y) => (g.map?.landscape ? liftAt(g.map, mw, x, y) : 0);
   ctx.save();
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - groundLift(p.x, p.y)) * s));
   for (let y = t; y < b; y++)
@@ -512,6 +513,7 @@ export function render(ctx, g, w, h, now) {
       tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId);
     }
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
+  drawTraversalCues(ctx,g.map,mw,p,s,now,g.ledgeHint);
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,3));
   drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10));
   for(const e of g.enemies)if(!e.dead&&discoveredInDungeon(g,e)&&e.eliteWindup>0&&visibleInCamera(e,l,t,r,b,e.kind==='gravitantBell'?6:3)){ctx.strokeStyle=e.kind==='gravitantBell'?"#8bb8bdcc":"#c6885ccc";ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
@@ -614,6 +616,8 @@ export function render(ctx, g, w, h, now) {
             ctx.textAlign = "center";
             ctx.fillText("VIEWPORT", (o.x + .5) * s, (o.y - .95) * s);
             ctx.textAlign = "start";
+          } else if (o.kind === "relayNode") {
+            drawRelayNode(ctx, o, s, performance.now());
           } else if (o.kind === "relayTerminal") {
             actor(ctx, o.x, o.y, s, "shrine");
             ctx.fillStyle = "#d2c090";
@@ -760,10 +764,18 @@ export function render(ctx, g, w, h, now) {
       ctx.fill();
     }
   ctx.restore();
+  // Dungeons with their own weather (Underlands themes) show it too: snow in a cave, sparks rising from a lava bog.
+  if(!budget.weather&&g.area==="dungeon"&&g.map.weather&&budget.quality!=="low"&&g.presentation?.weather!==false)budget.weather=true;
   if(budget.weather&&g.map.weather==="rain"){
     const count=budget.quality==="full"?34:18;ctx.strokeStyle="#9ec8d04d";ctx.lineWidth=1.4;ctx.beginPath();for(let i=0;i<count;i++){const x=((i*83+motion*210+g.rx*41)%(w+80))-40,y=((i*47+motion*330+g.ry*59)%(h+90))-45;ctx.moveTo(x,y);ctx.lineTo(x-8,y+19)}ctx.stroke();ctx.fillStyle="#1d3b4730";ctx.fillRect(0,0,w,h);
   }else if(budget.weather&&g.map.weather==="snow"){
     const count=budget.quality==="full"?28:14;ctx.fillStyle="#dae2d78c";for(let i=0;i<count;i++){const x=((i*97+motion*(12+i%4)*3+g.rx*29)%(w+30))-15,y=((i*61+motion*(25+i%5)*4+g.ry*37)%(h+30))-15;ctx.beginPath();ctx.arc(x,y,1+(i%3)*.55,0,7);ctx.fill()}
+  }else if(budget.weather&&g.map.weather==="embers"){
+    const count=budget.quality==="full"?26:14;for(let i=0;i<count;i++){const x=((i*79+Math.sin(motion+i)*20)%(w+20)+w)%(w+20)-10,y=h-((i*53+motion*(30+i%5*9))%(h+20));ctx.fillStyle=i%3?"#ff8a3acc":"#ffd06acc";ctx.fillRect(x,y,2,2)}ctx.fillStyle="#3a120614";ctx.fillRect(0,0,w,h);
+  }else if(budget.weather&&g.map.weather==="drip"){
+    const count=budget.quality==="full"?16:8;ctx.strokeStyle="#9ec8d066";ctx.lineWidth=1.2;ctx.beginPath();for(let i=0;i<count;i++){const x=(i*131)%w,y=((i*67+motion*260)%(h+40))-20;ctx.moveTo(x,y);ctx.lineTo(x,y+7)}ctx.stroke();
+  }else if(budget.weather&&g.map.weather==="spores"){
+    const count=budget.quality==="full"?30:16;for(let i=0;i<count;i++){const x=((i*97+Math.sin(motion*.6+i)*30)%w+w)%w,y=((i*61+Math.cos(motion*.4+i)*30+motion*6)%h+h)%h;ctx.fillStyle=i%2?"#a6ffdc88":"#d9b8ff88";ctx.beginPath();ctx.arc(x,y,1.2+(i%3)*.5,0,7);ctx.fill()}
   }else if(budget.weather&&g.map.weather==="sunbreak"){
     const glow=ctx.createLinearGradient(0,0,w*.8,h);glow.addColorStop(0,"#e7c87324");glow.addColorStop(.45,"#d8ad5220");glow.addColorStop(.7,"#0000");ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
   }
