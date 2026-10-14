@@ -1,5 +1,5 @@
 import{REFUGE_NPCS,ensurePerception}from'./types.ts';import{dungeonId,apertureTier,perceived}from'./world.ts';
-import{hashSeed}from'./random.ts';import{ensureEliteState,acceptContract}from'./elites.ts';export const NARRATIVE_SCHEMA='infinite-corridor-narrative/1.0.0';
+import{hashSeed}from'./random.ts';import{relayNodeActions,inspectRelayNode,commitRelayNode,relayObjectiveSuffix}from'./relay-network.ts';import{ensureEliteState,acceptContract}from'./elites.ts';export const NARRATIVE_SCHEMA='infinite-corridor-narrative/1.0.0';
 import{recordRevelationLead,completeRevelationArc}from'./story.ts';
 import{ensureViewportState,activeViewportHunt}from'./foundry.ts';
 import{apertureRitualState,requestApertureRitual}from'./scenes.ts';
@@ -9,7 +9,8 @@ export function selectRecordVariant(record,instanceKey,save){const chosen=save.n
 export function preconditionsMet(record,save){const w=record.when||{};return(!w.fact||save.narrative.facts[w.fact]===w.equals)&&(!w.factAbsent||!(w.factAbsent in save.narrative.facts))&&(!w.flag||save.worldFlags[w.flag]===w.equals)}
 export function applyNarrative(object,action,save,instanceKey=`${object.id}:${action}`){if(object.kind==='npc'&&object.id!=='vendor-vela')return null;if(object.kind==='chest'||object.kind==='exit')return null;const record=CONTENT_PACK.records.find(r=>r.targets.includes(object.kind)&&r.actions.includes(action)&&preconditionsMet(r,save));if(!record)return null;const dedupe=record.globalUnique?`record:${record.id}`:instanceKey,already=!!save.narrative.appliedInstanceKeys[dedupe],text=selectRecordVariant(record,dedupe,save);if(record.once&&already)return{ok:true,message:text,record,duplicate:true};for(const e of record.effects){if(e.type==='fact')save.narrative.facts[e.key]=e.value;if(e.type==='flag')save.worldFlags[e.key]=e.value;if(e.type==='heal')save.hp=Math.min(save.maxHp,save.hp+e.amount);if(e.type==='currency')save.currency+=e.amount;if(e.type==='material')save.materials[e.key]=(save.materials[e.key]||0)+e.amount}save.narrative.appliedInstanceKeys[dedupe]=true;if(record.journal&&!save.narrative.journal.some(j=>j.recordId===record.id))save.narrative.journal.push({recordId:record.id,instanceKey:dedupe,title:'The Missing Crossing',text:record.journal,provenance:CONTENT_PACK.provenance.source});return{ok:true,message:text,record}}
 
-export function currentObjective(save){
+export function currentObjective(save){return baseObjective(save)+relayObjectiveSuffix(save);}
+function baseObjective(save){
  const f=save.narrative.facts,c=save.consequences.choices.relay;
  const hunt=activeViewportHunt(save);if(hunt)return`${hunt.title} — ${hunt.kind==='tracking'&&!f['leads.complete']?'follow the unresolved traces':`travel toward ${hunt.target.rx},${hunt.target.ry}`}`;
  const leads=f['leads.active']&&!f['leads.complete']?' · Leads: '+(f['lead.distance']?'✓ range':'reach range 4')+', '+(f['lead.hunt']?'✓ hunt':(save.worldFlags['lead.hunt.count']||0)+'/5 creatures')+', '+(f['lead.guardian']?'✓ guardian':'crossing guardian'):'';
@@ -36,6 +37,7 @@ export function commitRelay(s,choice,context){const id=dungeonId(s.seed,s.worldG
 export function validActions(o,s){
  if(!perceived(o,s))return[];
  if(o.kind==='npc'){const n=npcState(s,o.id);if(n?.status==='dead'||s.worldFlags[o.id+':dead'])return[];return(o.actions||[]).filter(a=>a!=='standDown'||n?.disposition==='hostile');}
+ if(o.kind==='relayNode')return relayNodeActions(o,s,s.consequences.dungeons[o.areaId]);
  if(o.kind==='relayTerminal')return s.consequences.choices.relay?[]:s.narrative.facts['crossing.marshal']?['restore','sever']:['inspect'];
  if(o.kind==='apertureRitual')return apertureRitualState(s).ready?['perform','inspect']:['inspect'];
  if(o.kind==='arenaEntrance')return['enter'];
@@ -70,6 +72,7 @@ export function applyInteraction(o,a,s,context='global'){
  if(a==='speak'&&o.id==='keeper-sela')return{ok:true,message:'Sela: “Spheres remember pressure. Aperture remembers possibility. I can teach either to hold a shape.”'};
  if(a==='speak'&&o.id!=='vendor-vela')return{ok:true,message:o.id==='warden-oren'?'Oren: “One loss leaves a scar. Lose all three of us and nothing keeps the creatures out.”':o.id==='keeper-sela'?'Sela: “The ruined beacon will endure, even if we do not. At the Relay, restoring or severing the line is your choice.”':(o.name||'The resident')+': “Roads keep changing, but the wayglass remembers every traveler.”'};
  }
+ if(o.kind==='relayNode'){const h=s.consequences.dungeons[o.areaId];if(a==='inspect')return{ok:true,message:inspectRelayNode(o,s,h)};const r=commitRelayNode(s,o,a,h);return r.ok?{...r,transition:'relayNode'}:r;}
  if(o.kind==='relayTerminal'){if(a==='inspect')return{ok:true,message:'The Hollow Marshal guards this terminal. Defeat it, then choose whether to restore or sever the line.'};return commitRelay(s,a,context);}
  if(o.kind==='dungeon'&&a==='bypass'){const id=dungeonId(s.seed,s.worldGeneration,s.session.rx,s.session.ry,o.id);dungeonHistory(s,id).bypassed=true;journalOnce(s,'bypass:'+id,'You chose to leave this crossing unexplored. It remains open to a later return.','Crossings');return{ok:true,message:'Crossing left unexplored. You may return.',transition:'bypass'};}
  if((o.kind==='supplyCache'||o.kind==='weaponCache')&&a==='collect'){o.state='used';if(o.supplyType==='secondary'){const item={id:'secondary-lumen-spindle',name:'Lumen Spindle',slot:'secondary',power:4,property:'focus'};if(!s.inventory.some(i=>i.id===item.id))s.inventory.push(item);return{ok:true,message:'A Lumen Spindle joins your pack.',transition:'supply'}}s.consumables[o.supplyType]=(s.consumables[o.supplyType]||0)+1;return{ok:true,message:'Recovered '+o.supplyType+'.',transition:'supply'}}

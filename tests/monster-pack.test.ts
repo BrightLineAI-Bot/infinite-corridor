@@ -27,9 +27,9 @@ function step(w, e, seconds) { for (let t = 0; t < seconds; t += w.dt) { w.now +
 function forceAttack(e, w, id) { e.aggro = true; e.packAttacks = [id]; e.pack = freshPackState(); e.pack.gap = 0; }
 
 test('the pack defines ten valid, distinct creatures from shared tables', () => {
-  assert.equal(PACK_KINDS.length, 10);
+  assert.ok(PACK_KINDS.length >= 15);
   for (const id of PACK_KINDS) assert.deepEqual(validateMonster(MONSTER_PACK[id]), [], id);
-  assert.equal(new Set(PACK_KINDS.map((id) => MONSTER_PACK[id].render)).size, 10);
+  assert.equal(new Set(PACK_KINDS.map((id) => MONSTER_PACK[id].render)).size, PACK_KINDS.length);
   assert.ok(new Set(PACK_KINDS.map((id) => MONSTER_PACK[id].movement)).size >= 6, 'varied movement');
   assert.ok(new Set(PACK_KINDS.map((id) => MONSTER_PACK[id].brain)).size >= 6, 'varied brains');
   assert.ok(new Set(PACK_KINDS.map((id) => MONSTER_PACK[id].sizeClass)).size >= 4, 'varied sizes');
@@ -187,6 +187,7 @@ test('the Proving Ground offers every pack creature and its boss form in the rea
     for (const t of g.map.tiles) if (['canyon', 'river', 'dungeonWater'].includes(t.kind)) { t.kind = 'hollowFloor'; t.blocked = false; }
     const spot = g.map.tiles.find((t) => !t.blocked && Math.hypot(t.x - e.x, t.y - e.y) > 2.5 && Math.hypot(t.x - e.x, t.y - e.y) < 4);
     g.player.x = spot.x; g.player.y = spot.y;
+    const away = { x: g.player.x - e.x, y: g.player.y - e.y }; g.player.facing = Math.abs(away.x) > Math.abs(away.y) ? (away.x > 0 ? 'right' : 'left') : (away.y > 0 ? 'down' : 'up'); // back turned (the Weeping Saint freezes under the gaze)
     let attacked = false; for (let i = 0; i < 600; i++) { g.update(1 / 60, input, 1000 + i * 1000 / 60); if (g.enemies.some((q) => q.pack?.attack)) attacked = true; if (g.player.hp < 30) g.player.hp = g.save.maxHp; }
     assert.ok(attacked, `${scenario} attacks within ten seconds`);
   }
@@ -239,4 +240,32 @@ test('pack creatures stay out of settlement sanctuaries and cannot hurt the play
   for (let i = 0; i < 300; i++) g.update(1 / 60, input, 1000 + i * 16.7);
   assert.ok(Math.hypot(e.x - zone.x, e.y - zone.y) >= zone.radius, 'pushed out of the sanctuary');
   assert.equal(g.player.hp, hp, 'no damage inside the sanctuary');
+});
+
+test('dungeon-only grotesques never roam the overworld; the burrowing Sunderjaw is dungeon-only too', async () => {
+  const { OVERWORLD_PACK_POOLS } = await import('../src/monster-pack.ts');
+  const overworld = new Set(Object.values(OVERWORLD_PACK_POOLS).flat());
+  for (const id of ['weepingSaint', 'amalgam', 'pallidCrawler', 'hangedChoir', 'gnawingMaw', 'sunderjaw']) assert.ok(!overworld.has(id), id);
+  for (const id of ['weepingSaint', 'amalgam', 'pallidCrawler', 'hangedChoir', 'gnawingMaw']) assert.equal(MONSTER_PACK[id].dungeonOnly, true);
+  for (let i = 0; i < 300; i++) { const v = packVariant(PACK_KINDS[i % PACK_KINDS.length], `g${i}`); if (v.donor) assert.ok(!MONSTER_PACK[v.donor].dungeonOnly, 'overworld creatures never borrow grotesque attacks'); }
+});
+
+test('the Weeping Saint freezes while watched and closes in when the Wayfarer looks away', () => {
+  const w = world({ player: { x: 10, y: 10 } }), saint = createCombatant('weepingSaint', 10, 4); saint.aggro = true; saint.pack.gap = 99;
+  w.playerFacing = { x: 0, y: -1 }; step(w, saint, 1.5);
+  assert.equal(saint.y, 4, 'frozen under the gaze'); assert.equal(saint.watched, true);
+  w.playerFacing = { x: 0, y: 1 }; step(w, saint, 1.5);
+  assert.ok(saint.y > 5.5, `closed in while unwatched (${saint.y.toFixed(2)})`);
+});
+
+test('the Gnawing Maw drags the player in; the Amalgam carpets the floor and births at most four crawlers', () => {
+  const w = world({ player: { x: 14, y: 10 } }), maw = createCombatant('gnawingMaw', 10, 10); forceAttack(maw, w, 'devourPull');
+  let pulled = 0; w.pull = (src, stepLen) => { pulled += stepLen; w.player.x -= stepLen; return true; };
+  step(w, maw, 2.2); assert.ok(pulled > .5 && w.player.x < 14, 'pulled toward the maw');
+  const a = world({ player: { x: 12, y: 10 } }), blob = createCombatant('amalgam', 8, 10); a.enemies.push(blob);
+  a.spawnMinion = (owner, kind, x, y, i) => { const c = createCombatant(kind, x, y); Object.assign(c, { id: `${owner.id}:b${a.now}:${i}`, broodOf: owner.id, summonedBy: owner.id, noRewards: true }); a.enemies.push(c); return c; };
+  for (let round = 0; round < 4; round++) { forceAttack(blob, a, 'broodBirth'); step(a, blob, 1.6); }
+  assert.equal(a.enemies.filter((q) => q.broodOf === blob.id && !q.dead).length, 4);
+  forceAttack(blob, a, 'fleshBloom'); step(a, blob, 1.5);
+  assert.ok(a.effects.some((f) => f.kind === 'flesh')); assert.equal(a.slowed, .55); assert.ok(a.hurts.some((h) => h.source === 'fleshBloom'));
 });
