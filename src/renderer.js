@@ -1,11 +1,11 @@
-import { enemyMeleeGeometry } from "./combat.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { liftAt } from "./landscape.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { drawRelayNode } from "./relay-network.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { structureOccupancy } from "./world.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { enemyMeleeGeometry } from "./combat.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { liftAt } from "./landscape.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { drawRelayNode } from "./relay-network.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { structureOccupancy } from "./world.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
 
 export function cameraTransform(
   g,

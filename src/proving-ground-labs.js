@@ -1,19 +1,20 @@
-import { Game } from "./game.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { freshSave, migrateSave } from "./types.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { ELITE_DEFINITIONS } from "./elites.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { PACK_KINDS, isPackKind } from "./monster-pack.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { BIOMES, biomeFor } from "./landscape.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { Game } from "./game.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { freshSave, migrateSave } from "./types.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { ELITE_DEFINITIONS } from "./elites.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { PACK_KINDS, isPackKind } from "./monster-pack.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { BIOMES, biomeFor } from "./landscape.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { ensureConstellation } from "./constellation.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -55,7 +56,7 @@ const SHELTERS = [
 ].map(([id,label,seed,rx,ry])=>({id,label,seed,rx,ry}));
 
 const ORDINARY = ["hollow", "cistern", "kiln"].map((id) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)} topology` }));
-const FORGE = [{ id: "sandbox", label: "Sandbox: every glyph, empty sockets" }, { id: "echoes", label: "Echoes: every Creature Echo owned, none set" }, ...Object.entries(RESONANCES).map(([id, r]) => ({ id: `resonance-${id}`, label: `${r.name} (${GLYPHS[r.pair[0]].name} + ${GLYPHS[r.pair[1]].name})` }))];
+const FORGE = [{ id: "sandbox", label: "Sandbox: every glyph, empty sockets" }, { id: "echoes", label: "Echoes: every Creature Echo owned, none set" }, { id: "awakening", label: "Constellation + Awakening: Aperture 90, lumen dust, max-rank relics holding Wildfire" }, ...Object.entries(RESONANCES).map(([id, r]) => ({ id: `resonance-${id}`, label: `${r.name} (${GLYPHS[r.pair[0]].name} + ${GLYPHS[r.pair[1]].name})` }))];
 const UNDERLANDS = [...LAYOUTS.map((id) => ({ id: `layout-${id}`, label: `${id[0].toUpperCase()}${id.slice(1)} layout` })), ...Object.entries(UNDER_THEMES).map(([id, t]) => ({ id: `theme-${id}`, label: `${t.name || id} environment` })), { id: "relay-node", label: "Relay node, guardian defeated" }];
 const DEEP = [{id:"legacy-v1",label:"Legacy v1 Threefold expedition"},...DEEP_ARCHETYPE_IDS.map((id) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)} deep expedition` }))];
 const CREATURES = [...Object.keys(CREATURE_FORMS), ...Object.keys(ELITE_DEFINITIONS).filter((id)=>!Object.hasOwn(CREATURE_FORMS,id)),...Object.keys(MELEE_PATTERNS).map(id=>`pattern-${id}`),"pattern-elite-combination","pattern-wall-interruption","pattern-multiple-attackers",...PACK_KINDS.map(id=>`pack-boss-${id}`)].map((id)=>({id,label:id.replace(/([A-Z])/g," $1").replaceAll('-',' ').replace(/^./,c=>c.toUpperCase())}));
@@ -162,6 +163,7 @@ function forgeFixture(scenario, seed, variant, now) {
   save.equipment.secondary = normalizeSockets({ id: "secondary-needle-caster", name: "Needle Caster", slot: "secondary", power: 6, property: "quick", tier: "relic", affixes: [] });
   save.glyphDust = 30;
   ensureEchoState(save); if (spec.id === "echoes") for (const e of ECHO_IDS) save.echoes.owned[e] = true;
+  if (spec.id === "awakening") { save.perception.aperture = 90; save.materials.lumenDust = 40; for (const slot of ["primary", "secondary"]) { const it = save.equipment[slot]; it.basePower = it.power; it.upgradeRank = 6; it.power += 6; it.glyphs = ["ignite", "chain", null]; } ensureConstellation(save); }
   const r = RESONANCES[spec.id.replace("resonance-", "")];
   if (r) { for (const slots of [save.equipment.primary.glyphs, save.equipment.secondary.glyphs]) { slots[0] = r.pair[0]; slots[1] = r.pair[1]; } save.spellGlyphs[save.equippedSpell || "ember-ring"] = [...r.pair]; for (const g of r.pair) save.glyphs[g] = Math.max(0, save.glyphs[g] - 3); }
   return { lab: "forge", scenario: spec.id, label: map.name, seed, variant, production: true, ...base, diagnostics: { resonance: r ? spec.id.slice(10) : null, sockets: { primary: save.equipment.primary.glyphs, tool: save.equipment.secondary.glyphs } } };

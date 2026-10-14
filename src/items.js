@@ -1,5 +1,5 @@
-import{normalizeSockets}from'./glyphs.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d';
-import{rng,pick}from'./random.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d';
+import{normalizeSockets}from'./glyphs.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583';
+import{rng,pick}from'./random.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583';
 export const ITEM_TABLE={primary:[['Cinder Pike','reach'],['Verge Cleaver','impact']],secondary:[['Lumen Spindle','focus'],['Needle Caster','quick'],['Rift Bombard','blast']],armor:[['Kiln Mantle','guard'],['Glassweave Coat','stamina']],charm:[['Quiet Compass','discovery']]};
 export const ITEM_TIERS=['common','rare','epic','relic'];
 export const RANGED_WEAPONS={'spark-coil':{name:'Spark Coil',damage:8,speed:12,lifetime:1.6,damageType:'magic',path:'straight'},'secondary-lumen-spindle':{name:'Lumen Spindle',damage:11,speed:10,lifetime:1.8,turnAfter:.8,damageType:'magic',path:'boomerang'},'secondary-needle-caster':{name:'Needle Caster',damage:10,speed:15,lifetime:1.25,damageType:'physical',path:'straight'},'secondary-rift-bombard':{name:'Rift Bombard',damage:16,speed:8,lifetime:1.4,radius:2.15,damageType:'magic',path:'grenade'}};
@@ -12,6 +12,7 @@ export const APERTURE_SKILLS={
  'veil-guard':{id:'veil-guard',name:'Veil Guard',branch:'Veil',threshold:18,maxRank:3,cooldown:20,duration:6,description:'Harden a veil that reduces incoming damage.'},
  'force-channel':{id:'force-channel',name:'Force Channel',branch:'Force',threshold:18,maxRank:3,cooldown:16,duration:6,description:'Empower weapons, projectiles, and spell pulses.'},
  'aerial-step':{id:'aerial-step',name:'Aerial Step',branch:'Motion',threshold:36,maxRank:1,cooldown:22,duration:3.5,description:'Briefly cross water, canyons, and pits without granting true flight.'},
+ 'rift-step':{id:'rift-step',name:'Rift Step',branch:'Rift',threshold:18,maxRank:3,cooldown:9,duration:0,description:'Blink 3 tiles (+1 per rank) the way you are moving, never up a ledge or into a hazard.'},
 };
 export const APERTURE_BANDS=[{id:'dormant',name:'Dormant',threshold:0},{id:'stirring',name:'Stirring',threshold:6},{id:'open',name:'Open',threshold:18},{id:'resonant',name:'Resonant',threshold:36}];
 export function primaryProfile(item){if(!item)return PRIMARY_PROFILES['salvage-blade'];if(PRIMARY_PROFILES[item.id])return PRIMARY_PROFILES[item.id];if(item.name==='Cinder Pike')return PRIMARY_PROFILES['primary-cinder-pike'];if(item.name==='Verge Cleaver')return PRIMARY_PROFILES['primary-verge-cleaver'];return PRIMARY_PROFILES['salvage-blade']}

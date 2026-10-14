@@ -7,7 +7,7 @@
 //
 // Everything balance-related is data in GLYPHS and RESONANCES. The Game calls hostLoadout() when it attacks and
 // glyphHit() after each hit lands; world-side effects go through a small adapter so this file stays testable.
-import { hashSeed } from "./random.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { hashSeed } from "./random.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
 
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];

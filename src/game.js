@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
 import {
   generateRegion,
   generateDungeon,
@@ -14,7 +14,7 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
-} from "./world.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+} from "./world.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -25,7 +25,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
 import {
   applyInteraction,
   validActions,
@@ -35,25 +35,26 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { ensurePerception } from "./types.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { generateItem } from "./items.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { hashSeed } from "./random.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d';
-import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d';
-import{ensureSceneState,queueScene}from'./scenes.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { applyLandscape, canStep, LANDSCAPE_VERSION, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+} from "./interactions.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { ensurePerception } from "./types.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { generateItem } from "./items.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { hashSeed } from "./random.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583';
+import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583';
+import{ensureSceneState,queueScene}from'./scenes.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { applyLandscape, canStep, LANDSCAPE_VERSION, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function pinDungeonLayout(save, id) {
@@ -233,7 +234,7 @@ export function characterStats(save) {
     damageReduction: Math.min(
       0.45,
       (resolve - 1) * 0.02 + armorPower * 0.025 + charmPower * 0.01 +
-        affixValue(armor, "ward") + affixValue(charm, "ward"),
+        affixValue(armor, "ward") + affixValue(charm, "ward") + extraReduction(save),
     ),
     meleeBonus:
       Math.max(1, Number(stats.Might) || 1) * 2 +
@@ -1816,11 +1817,12 @@ export class Game {
     if (fresh.length) this.glyphNotice = `Resonance discovered: ${RESONANCES[fresh[0]].name}. ${RESONANCES[fresh[0]].text}`;
     return l;
   }
+  elevationHere(x, y) { return elevationAt(this.map, mapWidth(this.map, this.area), x, y); }
   glyphWorld(now) {
     const game = this, p = this.player;
     return {
       now, enemies: this.enemies,
-      damage(e, amount) { if (e.dead) return; alertEnemy(e); e.hp -= amount; e.hitFlash = .18; if (e.hp <= 0) { e.dead = true; game.defeatEnemy(e); } },
+      damage(e, amount) { if (e.dead) return; alertEnemy(e); e.hp -= Math.round(amount * strikeAmplifier(game.save)); e.hitFlash = .18; if (e.hp <= 0) { e.dead = true; game.defeatEnemy(e); } },
       heal(amount) { game.glyphHealPool = (game.glyphHealPool || 0) + amount; const whole = Math.floor(game.glyphHealPool); if (whole > 0) { game.glyphHealPool -= whole; p.hp = Math.min(game.save.maxHp, p.hp + whole); } },
       stamina(amount) { p.stamina = Math.min(game.save.maxStamina, (p.stamina || 0) + amount); },
       blast(x, y, radius, amount) {
@@ -2106,7 +2108,7 @@ export class Game {
       this.message = remaining ? `The final seal holds. ${remaining} wing guardian${remaining === 1 ? " remains" : "s remain"}.` : "The three seals are broken. The final chamber stands open.";
       return { ok: true, message: this.message };
     }
-    if (!action && ["npc", "dungeon", "relayTerminal","relayNode","shelterMerchant","displacementDevice","elitePortal","viewport"].includes(o.kind)) {
+    if (!action && ["npc", "dungeon", "shrine", "relayTerminal","relayNode","shelterMerchant","displacementDevice","elitePortal","viewport"].includes(o.kind)) {
       this.interactionRequested = o.id;
       return {
         ok: true,
@@ -2501,6 +2503,7 @@ export class Game {
     this.obtainDrop(e.kind);
     if (!e.summonedBy && !e.noRewards) { const g = glyphDrop(this.save, `${this.areaId()}:${e.id}`, this.save.dropCounter, e.boss || isCrossingGuardian(e)); if (g) this.glyphNotice = `${GLYPHS[g].name} glyph recovered.`; }
     echoEvent(this, "kill", this.lastUpdateNow || 0, { enemy: e });
+    onConstellationKill(this);
     { const echo = echoDrop(this.save, e, e.boss || isCrossingGuardian(e), this.save.dropCounter); if (echo) this.glyphNotice = `An Echo lingers: ${ECHOES[echo].name}. Set it in the Echoes screen (Pack).`; }
     if (!levels) this.message = `Recovered ${marks} mark${marks === 1 ? "" : "s"} from the fallen creature.`;
     if(this.save.narrative.facts['leads.active']){this.save.worldFlags['lead.hunt.count']=(this.save.worldFlags['lead.hunt.count']||0)+1;if(this.save.worldFlags['lead.hunt.count']>=5)progressLead(this.save,'hunt');if(isCrossingGuardian(e))progressLead(this.save,'guardian')}
@@ -2563,7 +2566,11 @@ export class Game {
         this.defeatEnemy(e);
       }
       glyphHit(this.glyphWorld(now), glyphs, e, dealt, { echo: !!echo });
+      onConstellationMelee(this, e, now);
     }
+    // Awakened primary: every third swing releases a piercing crescent that carries the weapon's glyphs.
+    if (!echo && this.save.equipment.primary?.awakened && (this.awakenSwings = (this.awakenSwings || 0) + 1) % 3 === 0)
+      this.projectiles.push({ id: `crescent-${now}`, x: this.player.x + .5 + geometry.dx * .4, y: this.player.y + .45 + geometry.dy * .4, dx: geometry.dx, dy: geometry.dy, speed: 9, life: .55, damage: Math.max(1, Math.round((profile.damage + characterStats(this.save).meleeBonus) * .7)), damageType: "physical", path: "straight", age: 0, hits: {}, pierce: 6, glyphHost: "melee", crescent: true });
     const plan = !echo && echoPlan(glyphs);
     if (plan) (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "strike", share: plan.share });
     this.reconcileConsequences();
@@ -2623,6 +2630,7 @@ export class Game {
     shot.damage = Math.max(1, Math.round(shot.damage * glyphs.mods.damage));
     const plan = echoPlan(glyphs);
     echoEvent(this, "shot", now, { shot });
+    if (this.save.equipment.secondary?.awakened) for (const a of [-.21, .21]) { const c = Math.cos(a), sn = Math.sin(a); this.projectiles.push({ ...shot, id: `${shot.id}-fan${a}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {}, damage: Math.max(1, Math.round(shot.damage * .5)) }); } // awakened tool: a three-shot fan
     if (plan) (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "shot", shot: { ...shot, id: shot.id + "-echo", hits: {}, damage: Math.max(1, Math.round(shot.damage * plan.share)), echo: true } });
     return true;
   }
@@ -2702,7 +2710,7 @@ export class Game {
   }
   useUpgradeSphere(kind){const key=kind==='armor'?'armorSphere':'weaponSphere';if(!(this.save.materials[key]>0))return false;this.save.materials[key]--;if(kind==='armor')this.save.equipment.armor.power=Math.min(8,(this.save.equipment.armor.power||0)+1);else{this.save.weaponLevel=Math.min(8,(this.save.weaponLevel||0)+1);this.player.weaponLevel=this.save.weaponLevel}this.message=`${kind==='armor'?'Armor':'Weapon'} sphere fused. The upgrade is permanent.`;this.sync();return true}
   upgradeEquipmentSlot(slot){const result=upgradeEquipment(this.save,slot);this.message=result.message;if(result.ok){syncCharacterStats(this.save);this.player.maxStamina=this.save.maxStamina;this.sync()}return result}
-  activateApertureSkill(id=this.save.magicSkills?.selected){const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:skill.duration+Math.max(0,rank-1)};state.cooldowns[id]=skill.cooldown;if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
+  activateApertureSkill(id=this.save.magicSkills?.selected){if(id==='rift-step')return riftStep(this,this.lastUpdateNow||0);const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)};state.cooldowns[id]=skill.cooldown;if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
   allocate(s) {
     if (!this.save.statPoints || !Object.hasOwn(this.save.stats, s))
       return false;
@@ -2770,7 +2778,7 @@ export class Game {
     this.guardRemaining = Math.max(0, this.guardRemaining - dt);
     this.magicBuffRemaining = Math.max(0, this.magicBuffRemaining - dt);
     this.spellCooldownRemaining = Math.max(0, this.spellCooldownRemaining - dt);
-    const skillState=this.save.magicSkills;if(skillState){for(const id of Object.keys(skillState.cooldowns||{}))skillState.cooldowns[id]=Math.max(0,skillState.cooldowns[id]-dt);if(skillState.active){skillState.active.remaining=Math.max(0,skillState.active.remaining-dt);if(skillState.active.remaining===0){const ended=skillState.active.id;skillState.active=null;if(ended==='aerial-step'&&footprintHazard(this.map,mapWidth(this.map,this.area),this.player.x,this.player.y)){const safe=skillState.lastSafe;if(safe&&safe.area===this.area&&safe.areaId===this.areaId()){this.player.x=safe.x;this.player.y=safe.y}else relocateIfStranded(this.player,this.map,mapWidth(this.map,this.area));this.message='Aerial Step closes and returns you to stable ground.'}}}}
+    const skillState=this.save.magicSkills;if(skillState){for(const id of Object.keys(skillState.cooldowns||{}))skillState.cooldowns[id]=Math.max(0,skillState.cooldowns[id]-dt);tickRiftCharges(this.save);if(skillState.active){skillState.active.remaining=Math.max(0,skillState.active.remaining-dt);if(skillState.active.remaining===0){const ended=skillState.active.id;skillState.active=null;onSkillEnded(this,ended,now);if(ended==='aerial-step'&&footprintHazard(this.map,mapWidth(this.map,this.area),this.player.x,this.player.y)){const safe=skillState.lastSafe;if(safe&&safe.area===this.area&&safe.areaId===this.areaId()){this.player.x=safe.x;this.player.y=safe.y}else relocateIfStranded(this.player,this.map,mapWidth(this.map,this.area));this.message='Aerial Step closes and returns you to stable ground.'}}}}
     if (this.reticle) this.reticle.life -= dt;
     let rawX = Number(input.state.x) || 0,
       rawY = Number(input.state.y) || 0,
@@ -2791,7 +2799,7 @@ export class Game {
     if (input.consume("dodge")) {
       const r = dodge(p, now, x, y);
       if (!r.ok) this.message = "Not enough stamina to dodge.";
-      else echoEvent(this, "dodge", now);
+      else { echoEvent(this, "dodge", now); onConstellationDodge(this); }
     }
     if (input.consume("jump")) {
       if (now < this.jumpUntil) this.message = "Already airborne.";
@@ -2935,6 +2943,7 @@ export class Game {
     );
     this.tickGlyphs(dt, now);
     tickEchoes(this, dt, now, { x, y });
+    tickConstellation(this, dt, now);
     if(combatNpcTargets.length)this.syncNpcDamage("spell");
     if(this.enemies.some(e=>e.dead&&e.noRewards&&e.summonedBy))this.enemies=this.enemies.filter(e=>!(e.dead&&e.noRewards&&e.summonedBy));
     const activeEnemySet=new Set(this.area==="dungeon"?activeDungeonEnemies(this.enemies,p,this.map):this.enemies.filter(e=>shouldSimulateEnemy(e,p,this.area)));
