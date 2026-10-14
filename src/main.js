@@ -1,12 +1,12 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { vendorShop, buyFromVendor } from "./game.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { CREATURE_TRAITS } from "./combat.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { drawPackPortrait } from "./monster-render.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { landscapeAtlasColor } from "./landscape-render.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { hashSeed } from "./random.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { vendorShop, buyFromVendor } from "./game.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { CREATURE_TRAITS } from "./combat.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { drawPackPortrait } from "./monster-render.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { landscapeAtlasColor } from "./landscape-render.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { hashSeed } from "./random.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -157,7 +157,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
 import {
   Game,
   actionReadiness,
@@ -166,15 +166,16 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { createInput } from "./input.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { STATS } from "./types.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { worldStewardReport } from "./story.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+} from "./game.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { createInput } from "./input.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { STATS } from "./types.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { worldStewardReport } from "./story.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -185,7 +186,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+} from "./world.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -882,7 +883,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1112,6 +1113,7 @@ function openPack() {
   }
   const resource = document.createElement("p");
   resource.textContent = `Cinder Iron ${save.materials.cinderIron} · weapon +${save.weaponLevel || 0} · section ${game.rx},${game.ry} `;
+  resource.append(uiButton(`Glyphs · ${Object.values(save.glyphs||{}).reduce((a,b)=>a+b,0)} in pouch`, openGlyphs));
   resource.append(uiButton("Reinforce weapon · 3 iron", () => {
     game.upgrade();
     persist();
@@ -1744,7 +1746,33 @@ function openViewport(){pauseForOverlay();if(pausePanel.open)pausePanel.close();
   for(const q of entries){const card=document.createElement('article'),name=document.createElement('h3'),text=document.createElement('p'),meta=document.createElement('small'),actions=document.createElement('div');card.className='item viewport-card';name.textContent=q.title||q.id;text.textContent=q.text||q.summary||'The record remains incomplete.';meta.textContent=`${q.kind||'record'} · ${q.status||'recorded'}${q.target?` · ${q.target.rx},${q.target.ry}`:''}${q.reward?` · ${viewportReward(q)}`:''}`;actions.className='viewport-actions';if(['available','deferred'].includes(q.status)){actions.append(uiButton('Accept hunt',()=>{const r=acceptViewportHunt(save,q.id);if(q.kind==='tracking'){save.narrative.facts['leads.active']=true}navigationCache.key=null;game.message=r.message;persist();openViewport()}));actions.append(uiButton('Archive',()=>{archiveViewportHunt(save,q.id);navigationCache.key=null;persist();openViewport()}))}else if(['accepted','tracking','target-located'].includes(q.status)){actions.append(uiButton('Guidance active',()=>{save.viewport.activeHuntId=q.id;navigationCache.key=null;game.message=`${q.title} is now shown by the violet guidance arrow.`;persist();openViewport()}),uiButton('Defer',()=>{deferViewportHunt(save,q.id);navigationCache.key=null;persist();openViewport()}))}else if(q.kind==='trial'&&q.status==='completed'&&!q.decision){for(const[d,l]of[['corridor','Let it enter the Corridor'],['rare','Keep as a rare hunt'],['dungeon','Reserve for dungeons'],['rework','Rework and return later'],['archive','Archive']])actions.append(uiButton(l,()=>{foundryTrialDecision(save,q.id,d);persist();openViewport()}))}card.append(name,text,meta,actions);body.append(card)}
  }
  body.append(uiButton('Return to world',resume));if(!panel.open)panel.showModal();}
-function openForge(){pauseForOverlay();body.replaceChildren();const h=document.createElement('h2'),intro=document.createElement('p');h.textContent='Sela’s Sphere Forge';intro.textContent=`Weapon Spheres ${save.materials.weaponSphere||0} · Armor Spheres ${save.materials.armorSphere||0}. Rank cost rises by one sphere each step; affixes and identity are preserved.`;body.append(h,intro);for(const slot of ['primary','secondary','armor','charm']){const item=save.equipment[slot];if(!item)continue;const cost=upgradeCost(item),row=document.createElement('div'),title=document.createElement('strong'),preview=document.createElement('div'),next={...item,basePower:item.basePower??item.power,upgradeRank:(item.upgradeRank||0)+1,power:(item.basePower??item.power)+(item.upgradeRank||0)+1};row.className='item';preview.className='item-comparison';title.textContent=`${slot.toUpperCase()} · ${item.name} +${item.upgradeRank||0}`;for(const stat of compareItemStats(next,item)){if(stat.direction==='same')continue;const q=document.createElement('span');q.className=`stat-${stat.direction}`;q.textContent=`↑ ${stat.label} ${stat.current} → ${stat.value}`;preview.append(q)}row.append(title,preview,uiButton(cost.eligible?`Strengthen · ${cost.amount} ${cost.kind==='weaponSphere'?'weapon':'armor'} sphere${cost.amount===1?'':'s'}`:'Upgrade limit reached',()=>{game.upgradeEquipmentSlot(slot);persist();openForge()}));body.append(row)}body.append(uiButton('Aperture disciplines',openSkills),uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
+// Glyphs (release 98): set rule-glyphs into weapon and spell sockets; pairs light up named Resonances.
+function openGlyphs(){pauseForOverlay();body.replaceChildren();
+ const h=document.createElement('h2'),intro=document.createElement('p');h.textContent='Glyphs & Resonances';
+ intro.textContent=`Glyph dust ${save.glyphDust||0}. A glyph is a small rule; the same glyph acts differently in a weapon, a tool or a spell. Two glyphs in one host can light a Resonance. Glyphs always come back out intact.`;
+ body.append(h,intro);
+ const spellId=save.equippedSpell||'ember-ring';save.spellGlyphs[spellId]||=Array(SPELL_SOCKETS).fill(null);
+ const hosts=[['melee','Primary',save.equipment.primary,save.equipment.primary?.glyphs],['tool','Tool',save.equipment.secondary,save.equipment.secondary?.glyphs],['spell','Spell',SPELLS[spellId],save.spellGlyphs[spellId]]];
+ for(const[host,label,item,sockets]of hosts){
+  const row=document.createElement('div'),title=document.createElement('strong'),line=document.createElement('div'),info=document.createElement('div');row.className='item glyph-host';line.className='glyph-sockets';info.className='glyph-info';
+  title.textContent=`${label} · ${item?.name||'none equipped'}${sockets?` · ${sockets.length} socket${sockets.length===1?'':'s'}`:''}`;row.append(title);
+  if(!sockets?.length){const q=document.createElement('p');q.textContent=item?'This item has no sockets.':'Equip one to set glyphs.';row.append(q);body.append(row);continue}
+  sockets.forEach((current,i)=>{const sel=document.createElement('select');sel.setAttribute('aria-label',`${label} socket ${i+1}`);
+   const empty=document.createElement('option');empty.value='';empty.textContent='— empty socket —';sel.append(empty);
+   for(const id of GLYPH_IDS){const owned=save.glyphs[id]||0;if(!owned&&current!==id)continue;const o=document.createElement('option');o.value=id;o.textContent=`${GLYPHS[id].sigil} ${GLYPHS[id].name}${current===id?'':` (${owned})`}`;sel.append(o)}
+   sel.value=current||'';sel.onchange=()=>{const r=socketGlyph(save,host==='spell'?spellId:host,i,sel.value||null);game.message=r.message;persist();openGlyphs()};line.append(sel)});
+  const d=describeHost(save,host);
+  for(const g of d.glyphs){const q=document.createElement('div');q.textContent=`${GLYPHS[g.id].sigil} ${g.name}: ${g.text}`;info.append(q)}
+  for(const r of d.resonances){const q=document.createElement('div');q.className='glyph-resonance';q.textContent=save.glyphCodex.resonances[r.id]?`✦ ${r.name}: ${r.text}`:'✦ These glyphs hum together. Use them to learn what they make.';info.append(q)}
+  row.append(line,info);body.append(row)}
+ const pouch=document.createElement('h3');pouch.textContent='Glyph pouch';body.append(pouch);
+ for(const id of GLYPH_IDS){const known=save.glyphCodex.glyphs[id],row=document.createElement('div');row.className='item glyph-pouch';
+  const t=document.createElement('span');t.textContent=known?`${GLYPHS[id].sigil} ${GLYPHS[id].name} ×${save.glyphs[id]||0} — weapon: ${GLYPHS[id].text.melee} tool: ${GLYPHS[id].text.tool} spell: ${GLYPHS[id].text.spell}`:'Unknown glyph — find one to learn its pattern.';row.append(t);
+  if(known)row.append(uiButton(`Inscribe · ${DUST_PER_GLYPH} dust`,()=>{const r=craftGlyph(save,id);game.message=r.message;persist();openGlyphs()}));body.append(row)}
+ const reso=document.createElement('h3'),found=Object.keys(RESONANCES).filter(id=>save.glyphCodex.resonances[id]);reso.textContent=`Resonances · ${found.length} of ${Object.keys(RESONANCES).length} discovered`;body.append(reso);
+ for(const[id,r]of Object.entries(RESONANCES)){const q=document.createElement('p');q.textContent=save.glyphCodex.resonances[id]?`✦ ${r.name} (${GLYPHS[r.pair[0]].name} + ${GLYPHS[r.pair[1]].name}): ${r.text}`:'✧ An undiscovered resonance. Pair glyphs in one host and use it to find out.';body.append(q)}
+ body.append(uiButton('Back to Pack',openPack),uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
+function openForge(){pauseForOverlay();body.replaceChildren();const h=document.createElement('h2'),intro=document.createElement('p');h.textContent='Sela’s Sphere Forge';intro.textContent=`Weapon Spheres ${save.materials.weaponSphere||0} · Armor Spheres ${save.materials.armorSphere||0}. Rank cost rises by one sphere each step; affixes and identity are preserved.`;body.append(h,intro);for(const slot of ['primary','secondary','armor','charm']){const item=save.equipment[slot];if(!item)continue;const cost=upgradeCost(item),row=document.createElement('div'),title=document.createElement('strong'),preview=document.createElement('div'),next={...item,basePower:item.basePower??item.power,upgradeRank:(item.upgradeRank||0)+1,power:(item.basePower??item.power)+(item.upgradeRank||0)+1};row.className='item';preview.className='item-comparison';title.textContent=`${slot.toUpperCase()} · ${item.name} +${item.upgradeRank||0}`;for(const stat of compareItemStats(next,item)){if(stat.direction==='same')continue;const q=document.createElement('span');q.className=`stat-${stat.direction}`;q.textContent=`↑ ${stat.label} ${stat.current} → ${stat.value}`;preview.append(q)}row.append(title,preview,uiButton(cost.eligible?`Strengthen · ${cost.amount} ${cost.kind==='weaponSphere'?'weapon':'armor'} sphere${cost.amount===1?'':'s'}`:'Upgrade limit reached',()=>{game.upgradeEquipmentSlot(slot);persist();openForge()}));body.append(row)}body.append(uiButton('Glyphs & Resonances',openGlyphs),uiButton('Aperture disciplines',openSkills),uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
 function openSkills(){pauseForOverlay();body.replaceChildren();const h=document.createElement('h2'),intro=document.createElement('p'),value=save.perception?.aperture||0;h.textContent=`Aperture Disciplines · ${apertureBand(value).name}`;intro.textContent='Thresholds unlock disciplines without spending Aperture. Learn ranks here, then select one for the Spell button.';body.append(h,intro);for(const skill of Object.values(APERTURE_SKILLS)){const rank=skillRank(save,skill.id),available=value>=skill.threshold,row=document.createElement('div');row.className='item';row.textContent=`${skill.branch} · ${skill.name} · ${rank}/${skill.maxRank} · Aperture ${skill.threshold} · ${skill.description}`;if(available&&rank<skill.maxRank)row.append(uiButton('Learn rank '+(rank+1),()=>{game.message=learnApertureSkill(save,skill.id).message;persist();openSkills()}));if(rank)row.append(uiButton(save.magicSkills.selected===skill.id?'Selected':'Select',()=>{save.magicSkills.selected=skill.id;persist();openSkills()}));body.append(row)}body.append(uiButton('Sphere forge',openForge),uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
 function openInteraction(id, confirmAttack = false) {
   const o = game.map.objects.find((q) => q.id === id);
