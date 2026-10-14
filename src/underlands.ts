@@ -6,7 +6,7 @@
 import { rng, hashSeed } from "./random.ts";
 import { annotateDungeon, DUNGEON_SIZE_PROFILES } from "./dungeon-framework.ts";
 import { DUNGEON_LAYOUT_VERSION } from "./dungeon-variation.ts";
-import { LANDSCAPE_VERSION } from "./landscape.ts";
+import { LANDSCAPE_VERSION, ensureReturnable, trappedTiles } from "./landscape.ts";
 
 export const DUNGEON_GENERATOR_V5 = 5;
 export const LAYOUTS = ["spine", "hub", "ring", "cavern", "crypt", "descent"];
@@ -185,6 +185,7 @@ function applyUnderTheme(map, theme, rand) {
     for (const i of path) { const t = T[i]; if (!t || t.blocked) continue; const higher = N4.some(([dx, dy]) => { const nb = T[(t.y + dy) * w + t.x + dx]; return nb && !nb.blocked && (nb.elev || 0) > (t.elev || 0); }); if (higher || t.elev) T[i] = { ...t, slope: true, kind: theme === "chasm" ? "chasmStair" : t.kind }; }
   }
   unstrand(map);
+  ensureReturnable(map, w, map.height, map.entry);
   map.theme = theme;
   map.landscape = { version: LANDSCAPE_VERSION, biome: `underlands:${theme}`, name: UNDER_THEMES[theme].name };
   if (UNDER_THEMES[theme].weather) map.weather = UNDER_THEMES[theme].weather;

@@ -139,6 +139,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false } = {}) {
   markSlopes(map, seed, rx, ry);
   connectStranded(map);
   if (biome === "mountains" || biome === "desert" || biome === "alien") placeSummit(map, seed, rx, ry, biome);
+  for (const t of ensureReturnable(map, 32, 32, { x: 16, y: 16 })) if (t.landscape === "mountains" && !t.volcanic && !t.slope && t.kind !== "skyBridge") t.kind = mountainKind(t.elev || 0);
   if (biome === "mountains") map.weather = "snow";
   map.landscape = { version: LANDSCAPE_VERSION, biome: biome || dominantLandscape(map), name: BIOMES[biome || dominantLandscape(map)]?.name || null };
   return map;
@@ -168,6 +169,60 @@ export function reachableFromPlaza(map, start = { x: 16, y: 16 }) {
     }
   }
   return seen;
+}
+
+// ---------------------------------------------------------------- two-way reachability (no trap pockets)
+// Movement rule: climb at most one level (jump), drop any height. A tile the player can reach but never leave
+// (a pit ringed by walls two or more levels high) is a trap. Operator report 2026-10-14: stuck in a hole, had to
+// burn a Crossing Sigil. These helpers work on any map (overworld 32x32 or dungeon of any size).
+export const LETHAL_KINDS = new Set(["abyss", "lava", "canyon", "river", "dungeonWater"]);
+const walkable = (t) => t && !t.blocked && !LETHAL_KINDS.has(t.kind);
+const step = (a, b) => (b.elev || 0) - (a.elev || 0) <= 1;
+function sweep(map, width, height, start, reverse) {
+  const T = map.tiles, seen = new Uint8Array(width * height), s0 = start.y * width + start.x;
+  if (!walkable(T[s0])) return seen;
+  const q = [s0]; seen[s0] = 1;
+  for (let h = 0; h < q.length; h++) {
+    const i = q[h], x = i % width, y = (i - x) / width;
+    for (const [dx, dy] of N4) {
+      const nx = x + dx, ny = y + dy, j = ny * width + nx;
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height || seen[j] || !walkable(T[j])) continue;
+      if (reverse ? !step(T[j], T[i]) : !step(T[i], T[j])) continue;
+      seen[j] = 1; q.push(j);
+    }
+  }
+  return seen;
+}
+export const reachableFrom = (map, width, height, start) => sweep(map, width, height, start, false);
+export const canReturnTo = (map, width, height, start) => sweep(map, width, height, start, true);
+export function trappedTiles(map, width, height, start) {
+  const go = reachableFrom(map, width, height, start), back = canReturnTo(map, width, height, start), out = [];
+  for (let i = 0; i < go.length; i++) if (go[i] && !back[i]) out.push(map.tiles[i]);
+  return out;
+}
+// Raise each trap floor to one level below the lowest way out, until every reachable tile leads back to start.
+export function ensureReturnable(map, width, height, start) {
+  const raised = [];
+  for (let pass = 0; pass < 80; pass++) {
+    const go = reachableFrom(map, width, height, start), back = canReturnTo(map, width, height, start);
+    let changed = false;
+    for (let i = 0; i < go.length; i++) {
+      if (!go[i] || back[i]) continue;
+      const t = map.tiles[i], x = i % width, y = (i - x) / width;
+      let target = Infinity;
+      for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy, j = ny * width + nx; if (nx >= 0 && ny >= 0 && nx < width && ny < height && back[j] && walkable(map.tiles[j])) target = Math.min(target, (map.tiles[j].elev || 0) - 1); }
+      if (target !== Infinity && target > (t.elev || 0)) { t.elev = target; raised.push(t); changed = true; }
+    }
+    if (!changed) break;
+  }
+  return raised;
+}
+// Nearest tile (to `from`) that can still walk back to `start`; used by the Stuck? recovery.
+export function nearestReturnable(map, width, height, start, from) {
+  const back = canReturnTo(map, width, height, start);
+  let best = null;
+  for (let i = 0; i < back.length; i++) if (back[i]) { const x = i % width, y = (i - x) / width, d = Math.hypot(x - from.x, y - from.y); if (!best || d < best.d) best = { x, y, d }; }
+  return best;
 }
 
 // Protected tiles sit at ground level; any walkable tile that cannot be climbed to is lowered until it can.
