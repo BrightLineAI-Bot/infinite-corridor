@@ -118,6 +118,6 @@ test('the Glyph Forge lab loads every scenario with sockets set', () => {
     const f = createLabFixture({ lab: 'forge', scenario: sc.id, now: 0 });
     assert.equal(labReport(f).scratch, true);
     assert.equal(f.save.equipment.primary.glyphs.length, 3);
-    if (sc.id !== 'sandbox') assert.ok(hostLoadout(f.save, 'melee').resonances.includes(sc.id.slice(10)), sc.id);
+    if (sc.id.startsWith('resonance-')) assert.ok(hostLoadout(f.save, 'melee').resonances.includes(sc.id.slice(10)), sc.id);
   }
 });
