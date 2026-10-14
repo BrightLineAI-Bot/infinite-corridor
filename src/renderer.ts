@@ -747,6 +747,7 @@ export function render(ctx, g, w, h, now) {
       ctx.fillStyle = "#9b4d50";
       ctx.fillRect(e.x * s, barY * s, (s * e.hp) / e.maxHp, 3);
     }
+  drawGlyphStatus(ctx,g,s,now,(e)=>discoveredInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2));
   for(const o of objectLists.structures)if(renderableObject(g,o)&&visibleInCamera(o,l,t,r,b)){if(o.kind==="shack")shack(ctx,o,s,p,g.map.tiles);else architecturalBuilding(ctx,o,s,p,g.map.tiles)}
   const frontShelter=objectLists.shelters.find(o=>renderableObject(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
   if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1);
@@ -826,4 +827,17 @@ function fogTile(ctx, x, y, s) {
   ctx.strokeStyle = "#161c22"; ctx.lineWidth = 1; ctx.beginPath();
   for (let k = -1; k < 3; k++) { const o = k * s / 2 + ((x + y) % 2) * s / 4; ctx.moveTo(x * s + o, y * s + s); ctx.lineTo(x * s + o + s / 2, y * s); }
   ctx.stroke();
+}
+
+// Glyph statuses and strikes (release 98): flames on burning foes, a teal ring on slowed ones, frost on frozen ones,
+// plus chain arcs and burst rings from glyphVisuals.
+function drawGlyphStatus(ctx,g,s,now,visible){
+  const t=now/1000;
+  for(const e of g.enemies){if(e.dead||!visible(e))continue;const cx=(e.x+.5)*s,cy=(e.y+.45)*s;
+    if((e.glyphBurn?.until||0)>now){for(let k=0;k<3;k++){const f=(t*2.2+k/3)%1;ctx.fillStyle=`rgba(255,${140+k*30},60,${.75*(1-f)})`;ctx.beginPath();ctx.arc(cx+(k-1)*s*.18,cy-s*.1-f*s*.45,s*(.09-.05*f),0,7);ctx.fill()}}
+    if((e.glyphSlow?.until||0)>now){ctx.strokeStyle="#6fd0c4cc";ctx.lineWidth=Math.max(1.5,s*.05);ctx.setLineDash([s*.12,s*.08]);ctx.beginPath();ctx.ellipse(cx,cy+s*.35,s*.42,s*.14,0,0,7);ctx.stroke();ctx.setLineDash([])}
+    if((e.hitStun||0)>.35){ctx.fillStyle="#dbe8ff55";ctx.beginPath();ctx.arc(cx,cy,s*.42,0,7);ctx.fill();ctx.strokeStyle="#eef5ffaa";ctx.lineWidth=1;for(let k=0;k<3;k++){const a=k*2.1+.4;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*s*.38,cy+Math.sin(a)*s*.38);ctx.stroke()}}}
+  for(const v of g.glyphVisuals||[]){const a=Math.max(0,v.life/v.max);
+    if(v.kind==="arc"){ctx.strokeStyle=v.color;ctx.globalAlpha=a;ctx.lineWidth=Math.max(1.5,s*.06);ctx.beginPath();ctx.moveTo(v.x*s,v.y*s);const mx=(v.x+v.tx)/2*s+Math.sin(t*40)*s*.15,my=(v.y+v.ty)/2*s+Math.cos(t*37)*s*.15;ctx.lineTo(mx,my);ctx.lineTo(v.tx*s,v.ty*s);ctx.stroke();ctx.globalAlpha=1}
+    else if(v.kind==="burst"){ctx.strokeStyle=`rgba(255,210,92,${a})`;ctx.lineWidth=Math.max(2,s*.08);ctx.beginPath();ctx.arc(v.x*s,v.y*s,v.radius*s*(1.1-a*.6),0,7);ctx.stroke();ctx.fillStyle=`rgba(255,180,70,${a*.25})`;ctx.fill()}}
 }

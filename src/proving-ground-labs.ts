@@ -9,6 +9,7 @@ import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { ELITE_DEFINITIONS } from "./elites.ts";
 import { PACK_KINDS, isPackKind } from "./monster-pack.ts";
 import { BIOMES, biomeFor } from "./landscape.ts";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.ts";
 import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.ts";
 import { placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
 import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.ts";
@@ -20,6 +21,7 @@ function roundTripScratch(save) { return migrateSave(JSON.parse(JSON.stringify(s
 export const LABORATORIES = [
   { id: "shelters", label: "Shelter & Building Gallery", status: "implemented", description: "Production shelters, displacement devices, and architectural districts." },
   { id: "ordinary-dungeon", label: "Ordinary Dungeon Lab", status: "implemented", description: "Production v4 deterministic exploration topology, discovery, ecology, traps, guardians, and traversal." },
+  { id: "forge", label: "Glyph Forge Lab", status: "implemented", description: "Every glyph in the pouch, three-socket relic weapons and a line of practice foes; one scenario per Resonance comes pre-socketed." },
   { id: "underlands", label: "Underlands & Relay Lab", status: "implemented", description: "Generator v5 crossings: six layout grammars, six bespoke underground environments with their weather, and a relay node ready to answer." },
   { id: "deep-dungeon", label: "Legacy & Deep Dungeon Lab", status: "implemented", description: "Production deep-v2 archetypes, objectives, levels, shortcuts, and finales." },
   { id: "threefold", label: "Threefold Dungeon Lab", status: "implemented", description: "The production three-wing sealed expedition and its wardens." },
@@ -52,6 +54,7 @@ const SHELTERS = [
 ].map(([id,label,seed,rx,ry])=>({id,label,seed,rx,ry}));
 
 const ORDINARY = ["hollow", "cistern", "kiln"].map((id) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)} topology` }));
+const FORGE = [{ id: "sandbox", label: "Sandbox: every glyph, empty sockets" }, ...Object.entries(RESONANCES).map(([id, r]) => ({ id: `resonance-${id}`, label: `${r.name} (${GLYPHS[r.pair[0]].name} + ${GLYPHS[r.pair[1]].name})` }))];
 const UNDERLANDS = [...LAYOUTS.map((id) => ({ id: `layout-${id}`, label: `${id[0].toUpperCase()}${id.slice(1)} layout` })), ...Object.entries(UNDER_THEMES).map(([id, t]) => ({ id: `theme-${id}`, label: `${t.name || id} environment` })), { id: "relay-node", label: "Relay node, guardian defeated" }];
 const DEEP = [{id:"legacy-v1",label:"Legacy v1 Threefold expedition"},...DEEP_ARCHETYPE_IDS.map((id) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)} deep expedition` }))];
 const CREATURES = [...Object.keys(CREATURE_FORMS), ...Object.keys(ELITE_DEFINITIONS).filter((id)=>!Object.hasOwn(CREATURE_FORMS,id)),...Object.keys(MELEE_PATTERNS).map(id=>`pattern-${id}`),"pattern-elite-combination","pattern-wall-interruption","pattern-multiple-attackers",...PACK_KINDS.map(id=>`pack-boss-${id}`)].map((id)=>({id,label:id.replace(/([A-Z])/g," $1").replaceAll('-',' ').replace(/^./,c=>c.toUpperCase())}));
@@ -65,6 +68,7 @@ const SIMPLE={performance:["overworld-baseline","overworld-stress","dungeon-base
 export function scenariosForLab(lab) {
   if (lab === "shelters") return SHELTERS;
   if (lab === "ordinary-dungeon") return ORDINARY;
+  if (lab === "forge") return FORGE;
   if (lab === "underlands") return UNDERLANDS;
   if (lab === "deep-dungeon") return DEEP;
   if (lab === "threefold") return [{ id: "threefold", label: "Threefold sealed expedition" }];
@@ -144,6 +148,23 @@ function ordinaryFixture(scenario, seed, variant, now, sizeProfile="standard") {
   return {lab:"ordinary-dungeon",scenario:recipe,label:map.name,seed,variant,sizeProfile,production:true,...base};
 }
 
+function forgeFixture(scenario, seed, variant, now) {
+  const spec = FORGE.find((q) => q.id === scenario) || FORGE[0], id = `proving:forge:${spec.id}:${variant}`, map = generateVariedDungeon(seed, id, "hollow");
+  const entry = map.entry || { x: 4, y: 5 }, open = map.tiles.filter((t) => !t.blocked && !t.environment && Math.hypot(t.x - entry.x, t.y - entry.y) >= 2.5 && Math.hypot(t.x - entry.x, t.y - entry.y) <= 6).sort((a, b) => Math.hypot(a.x - entry.x, a.y - entry.y) - Math.hypot(b.x - entry.x, b.y - entry.y));
+  map.enemySpawns = Array.from({ length: 5 }, (_, i) => { const at = open[Math.min(open.length - 1, i * 3)]; return { id: `${id}:dummy:${i}`, kind: i % 2 ? "rootBrute" : "ashling", x: at.x, y: at.y }; });
+  map.name = `Glyph Forge · ${spec.label}`;
+  const base = gameForMap(seed, id, map, now), save = base.save;
+  for (const e of base.game.enemies) { e.maxHp *= 6; e.hp = e.maxHp; } // practice foes last long enough to read the effects
+  ensureGlyphState(save);
+  for (const g of GLYPH_IDS) { save.glyphs[g] = 3; save.glyphCodex.glyphs[g] = true; }
+  save.equipment.primary = normalizeSockets({ id: "primary-verge-cleaver", name: "Verge Cleaver", slot: "primary", power: 6, property: "impact", tier: "relic", affixes: [] });
+  save.equipment.secondary = normalizeSockets({ id: "secondary-needle-caster", name: "Needle Caster", slot: "secondary", power: 6, property: "quick", tier: "relic", affixes: [] });
+  save.glyphDust = 30;
+  const r = RESONANCES[spec.id.replace("resonance-", "")];
+  if (r) { for (const slots of [save.equipment.primary.glyphs, save.equipment.secondary.glyphs]) { slots[0] = r.pair[0]; slots[1] = r.pair[1]; } save.spellGlyphs[save.equippedSpell || "ember-ring"] = [...r.pair]; for (const g of r.pair) save.glyphs[g] = Math.max(0, save.glyphs[g] - 3); }
+  return { lab: "forge", scenario: spec.id, label: map.name, seed, variant, production: true, ...base, diagnostics: { resonance: r ? spec.id.slice(10) : null, sockets: { primary: save.equipment.primary.glyphs, tool: save.equipment.secondary.glyphs } } };
+}
+
 function underlandsFixture(scenario, seed, variant, now) {
   const spec = UNDERLANDS.find((q) => q.id === scenario) || UNDERLANDS[0], recipe = ["hollow", "cistern", "kiln"][variant % 3], id = `proving:underlands:${spec.id}:${variant}`;
   const options = spec.id.startsWith("layout-") ? { layout: spec.id.slice(7), theme: "none", variant } : spec.id.startsWith("theme-") ? { theme: spec.id.slice(6), variant } : { variant };
@@ -214,6 +235,7 @@ export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVIN
   if(lab==="shelters")return shelterFixture(scenario,cleanSeed,now);
   let fixture;
   if(lab==="ordinary-dungeon")fixture=ordinaryFixture(scenario,cleanSeed,cleanVariant,now,["compact","standard","extended"].includes(sizeProfile)?sizeProfile:"standard");
+  else if(lab==="forge")fixture=forgeFixture(scenario,cleanSeed,cleanVariant,now);
   else if(lab==="underlands")fixture=underlandsFixture(scenario,cleanSeed,cleanVariant,now);
   else if(lab==="deep-dungeon")fixture=deepFixture(scenario,cleanSeed,cleanVariant,now);
   else if(lab==="threefold")fixture=deepFixture("threefold",cleanSeed,cleanVariant,now,true);

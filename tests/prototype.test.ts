@@ -2403,12 +2403,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 97 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 98 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "97"/);assert.match(html,/styles\.css\?v=97/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v97`/);assert.match(sw,/styles\.css\?v=97/);assert.match(sw,/proving-ground-labs\.js\?v=97/);assert.match(sw,/dungeon-framework\.js\?v=97/);assert.match(sw,/renderer\.js\?v=97/);
-  assert.match(build,/release='97'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "98"/);assert.match(html,/styles\.css\?v=98/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v98`/);assert.match(sw,/styles\.css\?v=98/);assert.match(sw,/proving-ground-labs\.js\?v=98/);assert.match(sw,/dungeon-framework\.js\?v=98/);assert.match(sw,/renderer\.js\?v=98/);
+  assert.match(build,/release='98'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("Shelter Gallery uses six deterministic production shelter families",()=>{
@@ -2435,7 +2435,7 @@ test("Proving Ground resets scratch state and cannot import persistence",()=>{
 });
 
 test("Proving Ground exposes every production diagnostic laboratory and direct scenario",()=>{
-  assert.equal(LABORATORIES.length,16);assert.ok(LABORATORIES.every(q=>q.status==="implemented"));
+  assert.equal(LABORATORIES.length,17);assert.ok(LABORATORIES.every(q=>q.status==="implemented"));
   for(const {id} of LABORATORIES){const scenarios=scenariosForLab(id);assert.ok(scenarios.length>0,id);const first=createLabFixture({lab:id,scenario:scenarios[0].id,seed:"all-labs",variant:1,now:0});assert.equal(labReport(first).scratch,true)}
 });
 

@@ -38,6 +38,7 @@ import {
 } from "./interactions.ts";
 import { ensurePerception } from "./types.ts";
 import { generateItem } from "./items.ts";
+import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.ts";
 import { hashSeed } from "./random.ts";
 import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.ts';
 import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.ts';
@@ -188,6 +189,8 @@ export function salvageInventoryItem(save, index) {
   save.inventory.splice(index, 1);
   const iron = Math.max(1, ITEM_TIERS.indexOf(itemTier(item)) + 1);
   save.materials.cinderIron = (save.materials.cinderIron || 0) + iron;
+  save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
+  for (const g of item.glyphs || []) if (g) save.glyphs[g] = (save.glyphs[g] || 0) + 1; // socketed glyphs come back
   return { item, iron };
 }
 export function storeInventoryItem(save, item) {
@@ -202,6 +205,7 @@ export function storeInventoryItem(save, item) {
   if (itemScore(item) <= itemScore(save.inventory[weakest])) {
     const iron = Math.max(1, ITEM_TIERS.indexOf(itemTier(item)) + 1);
     save.materials.cinderIron = (save.materials.cinderIron || 0) + iron;
+    save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
     return { stored: false, salvaged: item, iron };
   }
   const salvaged = salvageInventoryItem(save, weakest);
@@ -422,6 +426,8 @@ export function updateProjectiles(
   onDetonate = () => {},
   player = null,
   onPlayerHit = () => {},
+  damageFor = (p) => p.damage,
+  onHit = () => {},
 ) {
   for (const p of projectiles) {
     if (p.dead) continue;
@@ -475,17 +481,20 @@ export function updateProjectiles(
             onDetonate(p);
             break;
           }
-          e.hp -= p.damage;
+          const dealt = damageFor(p, e);
+          e.hp -= dealt;
           e.hitFlash = 0.18;
           e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.1 : 0.18);
-          if (p.path === "boomerang") {
+          if (p.path === "boomerang" || p.pierce > 0) {
             (p.hits ||= {})[e.id] = true;
+            if (p.path !== "boomerang") p.pierce -= 1;
           } else p.dead = true;
           p.impact = { x: p.x, y: p.y };
           if (e.hp <= 0 && !e.dead) {
             e.dead = true;
             onDefeat(e);
           }
+          onHit(p, e, dealt);
           break;
         }
     }
@@ -637,8 +646,9 @@ export function updateTraps(objects, player, dt, jumping = false) {
   }
   return objects;
 }
-export function updateEffects(effects, enemies, dt, onDefeat = () => {}) {
+export function updateEffects(effects, enemies, dt, onDefeat = () => {}, damageFor = (fx) => fx.damage, onHit = () => {}) {
   for (const fx of effects) {
+    if (fx.delay > 0) { fx.delay -= dt; continue; }
     fx.life -= dt;
     fx.untilPulse -= dt;
     if (fx.untilPulse <= 0) {
@@ -656,13 +666,15 @@ export function updateEffects(effects, enemies, dt, onDefeat = () => {}) {
         if (fx.hits[key]) continue;
         fx.hits[key] = true;
         alertEnemy(e);
-        e.hp -= fx.damage;
+        const dealt = damageFor(fx, e);
+        e.hp -= dealt;
         e.hitFlash = 0.18;
         e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.1 : 0.18);
         if (e.hp <= 0 && !e.dead) {
           e.dead = true;
           onDefeat(e);
         }
+        onHit(fx, e, dealt);
       }
     }
   }
@@ -1068,10 +1080,11 @@ export class Game {
     this.player.meleeAim = this.save.session.playerRuntime.meleeAim || null;
     this.traversal = this.save.session.playerRuntime.traversal || null;
     const attack = this.primaryAttack.bind(this);
+    this.primaryStrike = attack; // the swing itself, without aim selection (Echo repeats call it)
     this.primaryAttack = (now, explicitDirection = null) => {
       if (now < (this.player.attackReadyAt || 0)) return [];
       const baseProfile = primaryProfile(this.save.equipment.primary),
-        profile = { ...baseProfile, range: baseProfile.range * (1 + characterStats(this.save).attackReach) },
+        profile = { ...baseProfile, range: baseProfile.range * (1 + characterStats(this.save).attackReach) * this.glyphLoadout("melee").mods.range },
         width = mapWidth(this.map, this.area),
         d = explicitDirection
           ? projectileDirection(
@@ -1796,6 +1809,38 @@ export class Game {
   returnToCheckpoint() {
     return this.travelToCheckpoint();
   }
+  // ---------------------------------------------------------------- glyphs (release 98)
+  glyphLoadout(host) {
+    const l = hostLoadout(this.save, host), fresh = discoverResonances(this.save, l);
+    if (fresh.length) this.glyphNotice = `Resonance discovered: ${RESONANCES[fresh[0]].name}. ${RESONANCES[fresh[0]].text}`;
+    return l;
+  }
+  glyphWorld(now) {
+    const game = this, p = this.player;
+    return {
+      now, enemies: this.enemies,
+      damage(e, amount) { if (e.dead) return; alertEnemy(e); e.hp -= amount; e.hitFlash = .18; if (e.hp <= 0) { e.dead = true; game.defeatEnemy(e); } },
+      heal(amount) { game.glyphHealPool = (game.glyphHealPool || 0) + amount; const whole = Math.floor(game.glyphHealPool); if (whole > 0) { game.glyphHealPool -= whole; p.hp = Math.min(game.save.maxHp, p.hp + whole); } },
+      stamina(amount) { p.stamina = Math.min(game.save.maxStamina, (p.stamina || 0) + amount); },
+      blast(x, y, radius, amount) {
+        (game.glyphVisuals ||= []).push({ kind: "burst", x, y, radius, life: .35, max: .35 });
+        for (const e of game.enemies) if (!e.dead && !e.untargetable && Math.hypot(e.x + .5 - x, e.y + .45 - y) <= radius + .2) this.damage(e, amount);
+      },
+      arc(from, to, color) { (game.glyphVisuals ||= []).push({ kind: "arc", x: from.x + .5, y: from.y + .45, tx: to.x + .5, ty: to.y + .45, color, life: .22, max: .22 }); },
+      nudge(e, dx, dy) { const w = mapWidth(game.map, game.area); if (footprintOpen(game.map, w, e.x + dx, e.y + dy)) { e.x += dx; e.y += dy; } },
+    };
+  }
+  tickGlyphs(dt, now) {
+    tickGlyphStatus(this.enemies, dt, now, (e) => this.defeatEnemy(e));
+    const due = (this.glyphTimers ||= []).filter((t) => t.at <= now);
+    this.glyphTimers = this.glyphTimers.filter((t) => t.at > now);
+    for (const t of due) {
+      if (t.kind === "strike" && this.primaryStrike) this.primaryStrike(now, null, { share: t.share });
+      else if (t.kind === "shot") { const p = this.player; this.projectiles.push({ ...t.shot, x: p.x + .5 + t.shot.dx * .35, y: p.y + .45 + t.shot.dy * .35 }); }
+    }
+    this.glyphVisuals = (this.glyphVisuals || []).filter((v) => (v.life -= dt) > 0);
+    if (this.glyphNotice) { this.message = this.glyphNotice; this.glyphNotice = null; }
+  }
   // Edge feedback shared by the brink guard and the fatal-drop guard.
   brinkStop(kind, x, y, now, drop = 0) {
     const width = mapWidth(this.map, this.area);
@@ -2452,6 +2497,7 @@ export class Game {
       this.message = `Level ${this.save.level} reached — health and stamina increased. ${this.save.statPoints} stat point${this.save.statPoints === 1 ? "" : "s"} available in Pack.`;
     }
     this.obtainDrop(e.kind);
+    if (!e.summonedBy && !e.noRewards) { const g = glyphDrop(this.save, `${this.areaId()}:${e.id}`, this.save.dropCounter, e.boss || isCrossingGuardian(e)); if (g) this.glyphNotice = `${GLYPHS[g].name} glyph recovered.`; }
     if (!levels) this.message = `Recovered ${marks} mark${marks === 1 ? "" : "s"} from the fallen creature.`;
     if(this.save.narrative.facts['leads.active']){this.save.worldFlags['lead.hunt.count']=(this.save.worldFlags['lead.hunt.count']||0)+1;if(this.save.worldFlags['lead.hunt.count']>=5)progressLead(this.save,'hunt');if(isCrossingGuardian(e))progressLead(this.save,'guardian')}
     const key = `drop:v1:${this.areaId()}:${e.id}`;
@@ -2468,13 +2514,14 @@ export class Game {
           (this.save.worldFlags.flaskPity || 0) + 1;
     }
   }
-  primaryAttack(now = 0) {
-    if (now < (this.player.attackReadyAt || 0)) return [];
-    this.player.attackReadyAt = now + 420;
+  primaryAttack(now = 0, _direction = null, echo = null) {
+    const glyphs = this.glyphLoadout("melee");
+    if (!echo && now < (this.player.attackReadyAt || 0)) return [];
+    if (!echo) this.player.attackReadyAt = now + 420 * glyphs.mods.cooldown;
     this.player.attackUntil = now + 240;
     this.player.meleeUntil = now + 240;
     const baseProfile = primaryProfile(this.save.equipment.primary),
-      profile = { ...baseProfile, range: baseProfile.range * (1 + characterStats(this.save).attackReach) },
+      profile = { ...baseProfile, range: baseProfile.range * (1 + characterStats(this.save).attackReach) * glyphs.mods.range, damage: baseProfile.damage * glyphs.mods.damage },
       geometry = meleeAttackGeometry(
         this.player,
         profile,
@@ -2501,7 +2548,8 @@ export class Game {
         continue;
       }
       alertEnemy(e);
-      e.hp -= profile.damage + characterStats(this.save).meleeBonus;
+      const base = (profile.damage + characterStats(this.save).meleeBonus) * (echo ? echo.share : 1), dealt = glyphDamage(glyphs, e, base, { echo: !!echo }, now);
+      e.hp -= dealt;
       e.hitFlash = 0.18;
       e.recoil = 0.2;
       e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.12 : 0.22);
@@ -2509,14 +2557,17 @@ export class Game {
         e.dead = true;
         this.defeatEnemy(e);
       }
+      glyphHit(this.glyphWorld(now), glyphs, e, dealt, { echo: !!echo });
     }
+    const plan = !echo && echoPlan(glyphs);
+    if (plan) (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "strike", share: plan.share });
     this.reconcileConsequences();
     this.attackProfile = profile;
     return hits;
   }
   fireSecondary(now = 0, direction = null) {
     if (this.projectiles.filter(p=>!p.dead).length >= (this.area==='dungeon'?32:64)) return false;
-    const weapon = rangedWeapon(this.save.equipment.secondary);
+    const weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool");
     if (!weapon || now < (this.player.attackReadyAt || 0)) return false;
     let d, aimedDistance = null;
     if (this.save.pendingAim) {
@@ -2534,7 +2585,7 @@ export class Game {
         this.player.facing,
       );
     this.save.lastAim = d;
-    this.player.attackReadyAt = now + 360;
+    this.player.attackReadyAt = now + 360 * glyphs.mods.cooldown;
     this.player.attackUntil = now + 180;
     this.player.meleeUntil = 0;
     this.player.meleeStrike = null;
@@ -2560,7 +2611,13 @@ export class Game {
       returning: false,
       hits: {},
       blastRadius: weapon.radius || 0,
+      glyphHost: "tool",
+      pierce: glyphs.mods.pierce,
     });
+    const shot = this.projectiles[this.projectiles.length - 1];
+    shot.damage = Math.max(1, Math.round(shot.damage * glyphs.mods.damage));
+    const plan = echoPlan(glyphs);
+    if (plan) (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "shot", shot: { ...shot, id: shot.id + "-echo", hits: {}, damage: Math.max(1, Math.round(shot.damage * plan.share)), echo: true } });
     return true;
   }
   castSpell() {
@@ -2581,20 +2638,24 @@ export class Game {
       y += dy * scale;
       this.save.pendingAim = null;
     }
-    this.effects.push({
+    const glyphs = this.glyphLoadout("spell"), cast = {
       id: `spell-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`,
       kind: spell.id,
       x,
       y,
       life: spell.lifetime,
-      radius: spell.radius,
+      radius: spell.radius * glyphs.mods.radius,
       pulse: spell.pulse,
       untilPulse: 0,
-      damage: spell.damage + characterStats(this.save).magicBonus,
+      damage: Math.max(1, Math.round((spell.damage + characterStats(this.save).magicBonus) * glyphs.mods.damage)),
       pulseIndex: 0,
       hits: {},
-    });
-    this.spellCooldownRemaining = spell.cooldown;
+      glyphHost: "spell",
+    };
+    this.effects.push(cast);
+    const plan = echoPlan(glyphs);
+    if (plan) this.effects.push({ ...cast, id: cast.id + "-echo", hits: {}, delay: spell.lifetime, damage: Math.max(1, Math.round(cast.damage * plan.share)), echo: true });
+    this.spellCooldownRemaining = spell.cooldown * glyphs.mods.cooldown;
     this.message = `${spell.name} answers.`;
     return true;
   }
@@ -2849,6 +2910,8 @@ export class Game {
         p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))));
         p.invulnerableUntil=now+700;
       },
+      (shot, e) => shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
+      (shot, e, dealt) => { if (shot.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); },
     );
     if(combatNpcTargets.length)this.syncNpcDamage("projectile");
     for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))));p.invulnerableUntil=now+700}}
@@ -2859,7 +2922,10 @@ export class Game {
       (e) => {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
+      (fx, e) => fx.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(fx.glyphHost), e, fx.damage, { echo: !!fx.echo }, now) : fx.damage,
+      (fx, e, dealt) => { if (fx.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); },
     );
+    this.tickGlyphs(dt, now);
     if(combatNpcTargets.length)this.syncNpcDamage("spell");
     if(this.enemies.some(e=>e.dead&&e.noRewards&&e.summonedBy))this.enemies=this.enemies.filter(e=>!(e.dead&&e.noRewards&&e.summonedBy));
     const activeEnemySet=new Set(this.area==="dungeon"?activeDungeonEnemies(this.enemies,p,this.map):this.enemies.filter(e=>shouldSimulateEnemy(e,p,this.area)));
