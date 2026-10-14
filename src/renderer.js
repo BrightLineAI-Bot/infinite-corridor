@@ -1,11 +1,11 @@
-import { enemyMeleeGeometry } from "./combat.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { liftAt } from "./landscape.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { drawRelayNode } from "./relay-network.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { structureOccupancy } from "./world.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { enemyMeleeGeometry } from "./combat.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { liftAt } from "./landscape.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { drawRelayNode } from "./relay-network.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { structureOccupancy } from "./world.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
 
 export function cameraTransform(
   g,
@@ -747,6 +747,7 @@ export function render(ctx, g, w, h, now) {
       ctx.fillStyle = "#9b4d50";
       ctx.fillRect(e.x * s, barY * s, (s * e.hp) / e.maxHp, 3);
     }
+  drawEchoPatches(ctx,g,s,now);
   drawGlyphStatus(ctx,g,s,now,(e)=>discoveredInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2));
   for(const o of objectLists.structures)if(renderableObject(g,o)&&visibleInCamera(o,l,t,r,b)){if(o.kind==="shack")shack(ctx,o,s,p,g.map.tiles);else architecturalBuilding(ctx,o,s,p,g.map.tiles)}
   const frontShelter=objectLists.shelters.find(o=>renderableObject(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
@@ -840,4 +841,12 @@ function drawGlyphStatus(ctx,g,s,now,visible){
   for(const v of g.glyphVisuals||[]){const a=Math.max(0,v.life/v.max);
     if(v.kind==="arc"){ctx.strokeStyle=v.color;ctx.globalAlpha=a;ctx.lineWidth=Math.max(1.5,s*.06);ctx.beginPath();ctx.moveTo(v.x*s,v.y*s);const mx=(v.x+v.tx)/2*s+Math.sin(t*40)*s*.15,my=(v.y+v.ty)/2*s+Math.cos(t*37)*s*.15;ctx.lineTo(mx,my);ctx.lineTo(v.tx*s,v.ty*s);ctx.stroke();ctx.globalAlpha=1}
     else if(v.kind==="burst"){ctx.strokeStyle=`rgba(255,210,92,${a})`;ctx.lineWidth=Math.max(2,s*.08);ctx.beginPath();ctx.arc(v.x*s,v.y*s,v.radius*s*(1.1-a*.6),0,7);ctx.stroke();ctx.fillStyle=`rgba(255,180,70,${a*.25})`;ctx.fill()}}
+}
+
+// Echo ground patches (release 99): webs, living flesh and incoming mortar marks.
+function drawEchoPatches(ctx,g,s,now){
+  for(const q of g.echoPatches||[]){const left=Math.max(0,(q.until-now)/1000),x=q.x*s,y=q.y*s,r=q.radius*s;
+    if(q.kind==="web"){ctx.strokeStyle=`rgba(230,235,240,${Math.min(.7,left)})`;ctx.lineWidth=1;ctx.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.6)}ctx.stroke();for(const f of[.4,.75,1]){ctx.beginPath();ctx.ellipse(x,y,r*f,r*f*.6,0,0,7);ctx.stroke()}}
+    else if(q.kind==="flesh"){ctx.fillStyle=`rgba(150,40,60,${Math.min(.45,left*.2)})`;ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.fill();ctx.fillStyle=`rgba(220,120,130,${Math.min(.5,left*.2)})`;for(let k=0;k<5;k++){ctx.beginPath();ctx.arc(x+Math.cos(k*1.3+now/700)*r*.6,y+Math.sin(k*1.7)*r*.35,s*.06,0,7);ctx.fill()}}
+    else if(q.kind==="mortar"){const t=1-Math.min(1,left/.65);ctx.strokeStyle=`rgba(255,200,90,${.4+t*.5})`;ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.stroke();ctx.fillStyle=`rgba(255,170,60,${t*.3})`;ctx.fill()}}
 }

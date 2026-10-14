@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
 import {
   generateRegion,
   generateDungeon,
@@ -14,7 +14,7 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
-} from "./world.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+} from "./world.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -25,7 +25,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
 import {
   applyInteraction,
   validActions,
@@ -35,24 +35,25 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { ensurePerception } from "./types.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { generateItem } from "./items.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { hashSeed } from "./random.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7';
-import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7';
-import{ensureSceneState,queueScene}from'./scenes.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { applyLandscape, canStep, LANDSCAPE_VERSION, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_fac664c3bdbf4424bde7b3d7_2bce75c8e305f7a7";
+} from "./interactions.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { ensurePerception } from "./types.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { generateItem } from "./items.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { hashSeed } from "./random.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d';
+import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d';
+import{ensureSceneState,queueScene}from'./scenes.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { applyLandscape, canStep, LANDSCAPE_VERSION, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_a18f802afc054be48f46d2a2_21c5a25d47de672d";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function pinDungeonLayout(save, id) {
@@ -1827,6 +1828,7 @@ export class Game {
         for (const e of game.enemies) if (!e.dead && !e.untargetable && Math.hypot(e.x + .5 - x, e.y + .45 - y) <= radius + .2) this.damage(e, amount);
       },
       arc(from, to, color) { (game.glyphVisuals ||= []).push({ kind: "arc", x: from.x + .5, y: from.y + .45, tx: to.x + .5, ty: to.y + .45, color, life: .22, max: .22 }); },
+      canStand(x, y) { const w = mapWidth(game.map, game.area); return footprintOpen(game.map, w, x, y) && !footprintHazard(game.map, w, x, y); },
       nudge(e, dx, dy) { const w = mapWidth(game.map, game.area); if (footprintOpen(game.map, w, e.x + dx, e.y + dy)) { e.x += dx; e.y += dy; } },
     };
   }
@@ -2498,6 +2500,8 @@ export class Game {
     }
     this.obtainDrop(e.kind);
     if (!e.summonedBy && !e.noRewards) { const g = glyphDrop(this.save, `${this.areaId()}:${e.id}`, this.save.dropCounter, e.boss || isCrossingGuardian(e)); if (g) this.glyphNotice = `${GLYPHS[g].name} glyph recovered.`; }
+    echoEvent(this, "kill", this.lastUpdateNow || 0, { enemy: e });
+    { const echo = echoDrop(this.save, e, e.boss || isCrossingGuardian(e), this.save.dropCounter); if (echo) this.glyphNotice = `An Echo lingers: ${ECHOES[echo].name}. Set it in the Echoes screen (Pack).`; }
     if (!levels) this.message = `Recovered ${marks} mark${marks === 1 ? "" : "s"} from the fallen creature.`;
     if(this.save.narrative.facts['leads.active']){this.save.worldFlags['lead.hunt.count']=(this.save.worldFlags['lead.hunt.count']||0)+1;if(this.save.worldFlags['lead.hunt.count']>=5)progressLead(this.save,'hunt');if(isCrossingGuardian(e))progressLead(this.save,'guardian')}
     const key = `drop:v1:${this.areaId()}:${e.id}`;
@@ -2536,6 +2540,7 @@ export class Game {
       profile,
       { x: geometry.dx, y: geometry.dy },
     );
+    const pounce = echo || !hits.some((q) => q.kind !== "npc") ? 1 : pounceBonus(this, now);
     for (const e of hits) {
       if (e.kind === "npc") {
         recordNpcDamage(
@@ -2548,7 +2553,7 @@ export class Game {
         continue;
       }
       alertEnemy(e);
-      const base = (profile.damage + characterStats(this.save).meleeBonus) * (echo ? echo.share : 1), dealt = glyphDamage(glyphs, e, base, { echo: !!echo }, now);
+      const base = (profile.damage + characterStats(this.save).meleeBonus) * (echo ? echo.share : 1) * pounce, dealt = glyphDamage(glyphs, e, base, { echo: !!echo }, now);
       e.hp -= dealt;
       e.hitFlash = 0.18;
       e.recoil = 0.2;
@@ -2617,6 +2622,7 @@ export class Game {
     const shot = this.projectiles[this.projectiles.length - 1];
     shot.damage = Math.max(1, Math.round(shot.damage * glyphs.mods.damage));
     const plan = echoPlan(glyphs);
+    echoEvent(this, "shot", now, { shot });
     if (plan) (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "shot", shot: { ...shot, id: shot.id + "-echo", hits: {}, damage: Math.max(1, Math.round(shot.damage * plan.share)), echo: true } });
     return true;
   }
@@ -2656,6 +2662,7 @@ export class Game {
     const plan = echoPlan(glyphs);
     if (plan) this.effects.push({ ...cast, id: cast.id + "-echo", hits: {}, delay: spell.lifetime, damage: Math.max(1, Math.round(cast.damage * plan.share)), echo: true });
     this.spellCooldownRemaining = spell.cooldown * glyphs.mods.cooldown;
+    echoEvent(this, "spell", this.lastUpdateNow || 0);
     this.message = `${spell.name} answers.`;
     return true;
   }
@@ -2784,6 +2791,7 @@ export class Game {
     if (input.consume("dodge")) {
       const r = dodge(p, now, x, y);
       if (!r.ok) this.message = "Not enough stamina to dodge.";
+      else echoEvent(this, "dodge", now);
     }
     if (input.consume("jump")) {
       if (now < this.jumpUntil) this.message = "Already airborne.";
@@ -2926,6 +2934,7 @@ export class Game {
       (fx, e, dealt) => { if (fx.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); },
     );
     this.tickGlyphs(dt, now);
+    tickEchoes(this, dt, now, { x, y });
     if(combatNpcTargets.length)this.syncNpcDamage("spell");
     if(this.enemies.some(e=>e.dead&&e.noRewards&&e.summonedBy))this.enemies=this.enemies.filter(e=>!(e.dead&&e.noRewards&&e.summonedBy));
     const activeEnemySet=new Set(this.area==="dungeon"?activeDungeonEnemies(this.enemies,p,this.map):this.enemies.filter(e=>shouldSimulateEnemy(e,p,this.area)));
