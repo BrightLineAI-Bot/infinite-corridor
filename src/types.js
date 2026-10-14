@@ -1,8 +1,8 @@
-import{freshEliteState,ensureEliteState}from'./elites.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3';
-import{freshCorridorStory,freshWorldSteward,ensureCorridorSystems}from'./story.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3';
-import{freshViewportState,ensureViewportState}from'./foundry.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3';
-import{freshSceneState,ensureSceneState}from'./scenes.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3';
-import{normalizeItemUpgrade,apertureBand}from'./items.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3';
+import{freshEliteState,ensureEliteState}from'./elites.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6';
+import{freshCorridorStory,freshWorldSteward,ensureCorridorSystems}from'./story.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6';
+import{freshViewportState,ensureViewportState}from'./foundry.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6';
+import{freshSceneState,ensureSceneState}from'./scenes.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6';
+import{normalizeItemUpgrade,apertureBand}from'./items.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6';
 export const SAVE_VERSION=14,WORLD_GENERATION=1,LEGACY_WORLD_GENERATION=0,STATS=['Might','Finesse','Focus','Vigor','Resolve'];
 const perception=()=>({schema:1,aperture:0,passiveSeconds:0,awarded:{},announcedTier:0,discoveries:{memories:0,doors:0,relics:0}});const runtime=()=>({hp:60,stamina:50,attackCooldown:0,attackMotion:0,meleeMotion:0,meleeAim:null,meleeStrike:null,dodgeCooldown:0,invulnerability:0,dodgeMotion:0,jump:0,guard:0,traversal:null});const session=()=>({area:'overworld',rx:0,ry:0,x:16,y:16,message:'The refuge beacon speaks your name before you arrive: “Wayfarer. Crossing incomplete.”',paused:false,savedAt:Date.now(),playerRuntime:runtime(),areas:{},dungeonReturn:null,veilReturn:null,activeDungeonId:null});const narrative=()=>({schema:'infinite-corridor-narrative/1.0.0',journal:[{recordId:'crossing-beacon',instanceKey:'record:crossing-beacon',title:'The Missing Crossing',text:'The beacon knew me before I arrived. It called the crossing incomplete.',provenance:'original'}],facts:{'crossing.beacon':true},appliedInstanceKeys:{'record:crossing-beacon':true},selectedVariants:{}});
 const codex=()=>({creatures:{},places:{},features:{},variants:{},peoplePlaces:{}});

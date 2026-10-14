@@ -3,10 +3,10 @@
 // technology: chasm canyons, lava bogs, underground rivers, frozen grottoes with falling snow, bone crypts and fungal
 // hollows. It returns the same map contract as generator 4 (entry/exit, chest, trap, guardian spawn), so encounters,
 // discovery, completion and the monster pack work unchanged. Histories pinned to generators 2-4 never see it.
-import { rng, hashSeed } from "./random.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { annotateDungeon, DUNGEON_SIZE_PROFILES } from "./dungeon-framework.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { DUNGEON_LAYOUT_VERSION } from "./dungeon-variation.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { LANDSCAPE_VERSION } from "./landscape.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { rng, hashSeed } from "./random.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { annotateDungeon, DUNGEON_SIZE_PROFILES } from "./dungeon-framework.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { DUNGEON_LAYOUT_VERSION } from "./dungeon-variation.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { LANDSCAPE_VERSION, ensureReturnable, trappedTiles } from "./landscape.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
 
 export const DUNGEON_GENERATOR_V5 = 5;
 export const LAYOUTS = ["spine", "hub", "ring", "cavern", "crypt", "descent"];
@@ -185,6 +185,7 @@ function applyUnderTheme(map, theme, rand) {
     for (const i of path) { const t = T[i]; if (!t || t.blocked) continue; const higher = N4.some(([dx, dy]) => { const nb = T[(t.y + dy) * w + t.x + dx]; return nb && !nb.blocked && (nb.elev || 0) > (t.elev || 0); }); if (higher || t.elev) T[i] = { ...t, slope: true, kind: theme === "chasm" ? "chasmStair" : t.kind }; }
   }
   unstrand(map);
+  ensureReturnable(map, w, map.height, map.entry);
   map.theme = theme;
   map.landscape = { version: LANDSCAPE_VERSION, biome: `underlands:${theme}`, name: UNDER_THEMES[theme].name };
   if (UNDER_THEMES[theme].weather) map.weather = UNDER_THEMES[theme].weather;

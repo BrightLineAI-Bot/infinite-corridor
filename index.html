@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3" />
+    <link rel="stylesheet" href="./styles.css?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -139,6 +139,7 @@
         <button id="mapTravel" type="button">
           Return to active checkpoint
         </button>
+        <button id="mapUnstick" type="button" title="Trapped by terrain? Dungeons: back to this level's entrance. Overworld: the nearest ground that leads out. Free, 30 s cooldown.">Stuck? Get me out</button>
         <button id="mapHome" type="button">Return to Ember Refuge</button>
         <button id="mapWaypoint" type="button">Set waypoint to selected section</button>
         <p id="mapDetail">Select an explored section for details.</p>
@@ -150,7 +151,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+      const release = "icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
       const params = new URLSearchParams(location.search);
       const entry = params.get("dev") === "proving-ground"
         ? "./src/proving-ground.js"

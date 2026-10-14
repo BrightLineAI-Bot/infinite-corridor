@@ -1,10 +1,11 @@
-import { enemyMeleeGeometry } from "./combat.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues } from "./landscape-render.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { liftAt } from "./landscape.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { drawRelayNode } from "./relay-network.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { structureOccupancy } from "./world.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { enemyMeleeGeometry } from "./combat.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { liftAt } from "./landscape.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { drawRelayNode } from "./relay-network.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { structureOccupancy } from "./world.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
 
 export function cameraTransform(
   g,
@@ -509,11 +510,13 @@ export function render(ctx, g, w, h, now) {
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - groundLift(p.x, p.y)) * s));
   for (let y = t; y < b; y++)
     for (let x = l; x < r; x++) {
-      if(g.area==="dungeon"&&dungeonTileVisibility(g.map,x,y)==="unseen"){ctx.fillStyle="#070a0d";ctx.fillRect(x*s,y*s,s+.5,s+.5);continue}
+      if(g.area==="dungeon"&&dungeonTileVisibility(g.map,x,y)==="unseen"&&!(LETHAL_KINDS.has(g.map.tiles[y*mw+x]?.kind)&&Math.hypot(x-p.x,y-p.y)<2.6)){fogTile(ctx,x,y,s);continue}
       tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId);
     }
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
-  drawTraversalCues(ctx,g.map,mw,p,s,now,g.ledgeHint);
+  const seenTile=(x,y)=>g.area!=="dungeon"||dungeonTileVisibility(g.map,x,y)!=="unseen";
+  drawHazardBrinks(ctx,g.map,mw,l,t,r,b,s,seenTile);
+  drawTraversalCues(ctx,g.map,mw,p,s,now,g.ledgeHint,seenTile);
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,3));
   drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10));
   for(const e of g.enemies)if(!e.dead&&discoveredInDungeon(g,e)&&e.eliteWindup>0&&visibleInCamera(e,l,t,r,b,e.kind==='gravitantBell'?6:3)){ctx.strokeStyle=e.kind==='gravitantBell'?"#8bb8bdcc":"#c6885ccc";ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
@@ -806,15 +809,21 @@ export function render(ctx, g, w, h, now) {
   }
   ctx.fillStyle = v;
   ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = "#151411ee";
-  ctx.fillRect(8, h - 34, 190, 24);
-  ctx.fillStyle = "#cec7b6";
+  // Area label, plus the player's height wherever the map has levels (operator ask 2026-10-14).
   ctx.font = "12px monospace";
-  ctx.fillText(
-    g.area === "overworld"
-      ? `SECTION ${g.rx},${g.ry}`
-      : g.map.name.toUpperCase(),
-    16,
-    h - 18,
-  );
+  const place = g.area === "overworld" ? `SECTION ${g.rx},${g.ry}` : g.map.name.toUpperCase(),
+    hasLevels = g.map?.landscape && (g.map._hasLevels ??= g.map.tiles.some((q) => (q.elev || 0) > 0)),
+    label = hasLevels ? `${place} · ${levelName(elevationAt(g.map, mw, g.player.x, g.player.y))}` : place;
+  ctx.fillStyle = "#151411ee";
+  ctx.fillRect(8, h - 34, Math.max(190, ctx.measureText(label).width + 20), 24);
+  ctx.fillStyle = "#cec7b6";
+  ctx.fillText(label, 16, h - 18);
+}
+
+// Unexplored dungeon space: dark slate with a faint diagonal hatch, distinct from the indigo depth of a chasm.
+function fogTile(ctx, x, y, s) {
+  ctx.fillStyle = "#0b0e11"; ctx.fillRect(x * s, y * s, s + .5, s + .5);
+  ctx.strokeStyle = "#161c22"; ctx.lineWidth = 1; ctx.beginPath();
+  for (let k = -1; k < 3; k++) { const o = k * s / 2 + ((x + y) % 2) * s / 4; ctx.moveTo(x * s + o, y * s + s); ctx.lineTo(x * s + o + s / 2, y * s); }
+  ctx.stroke();
 }

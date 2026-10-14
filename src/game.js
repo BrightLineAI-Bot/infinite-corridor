@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
 import {
   generateRegion,
   generateDungeon,
@@ -14,7 +14,7 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
-} from "./world.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+} from "./world.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -25,7 +25,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
 import {
   applyInteraction,
   validActions,
@@ -35,23 +35,23 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { ensurePerception } from "./types.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { generateItem } from "./items.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { hashSeed } from "./random.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3';
-import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3';
-import{ensureSceneState,queueScene}from'./scenes.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { applyLandscape, canStep, LANDSCAPE_VERSION, elevationAt, fallDamage, tileUnder } from "./landscape.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_43831da1c3364044bd6556e3_30c250040b3673c3";
+} from "./interactions.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { ensurePerception } from "./types.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { generateItem } from "./items.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { hashSeed } from "./random.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6';
+import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6';
+import{ensureSceneState,queueScene}from'./scenes.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { applyLandscape, canStep, LANDSCAPE_VERSION, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_bf98c6f4eeb347c791646c50_2d95559158cfe8a6";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function pinDungeonLayout(save, id) {
@@ -1796,6 +1796,38 @@ export class Game {
   returnToCheckpoint() {
     return this.travelToCheckpoint();
   }
+  // Edge feedback shared by the brink guard and the fatal-drop guard.
+  brinkStop(kind, x, y, now, drop = 0) {
+    const width = mapWidth(this.map, this.area);
+    this.ledgeHint = { x: Math.floor(x + .5), y: Math.floor(y + .72), kind: "brink", until: now + 1500 };
+    if (now > (this.brinkMessageAt || 0)) {
+      this.brinkMessageAt = now + 4000;
+      const what = kind === "lava" ? "lava" : kind === "abyss" ? "a bottomless chasm" : kind === "canyon" ? "a sheer drop" : kind === "drop" ? `a fatal ${drop}-level fall` : "deep water";
+      this.message = `The edge stops you: ${what}. Dodge-roll to go over on purpose.`;
+    }
+    return width;
+  }
+  // Stuck? (Atlas button): dungeons return you to this level's entrance; the overworld moves you to the nearest
+  // ground that can walk back to the section's plaza. Free, with a short cooldown; nothing is lost.
+  unstick(now = performance.now()) {
+    if (now < (this.unstickReadyAt || 0)) { this.message = `Catch your breath: Stuck? is ready in ${Math.ceil((this.unstickReadyAt - now) / 1000)} s.`; return false; }
+    const p = this.player, width = mapWidth(this.map, this.area), height = mapHeight(this.map, this.area);
+    let to = null;
+    if (this.area === "dungeon") { const e = this.map.entry || this.map.objects?.find((o) => o.kind === "exit"); if (e) to = { x: e.x, y: e.y }; this.message = "You retrace your steps to this level's entrance."; }
+    else {
+      const plaza = { x: 16, y: 16 }, here = { x: Math.floor(p.x + .5), y: Math.floor(p.y + .72) };
+      const free = this.map.landscape ? canReturnTo(this.map, width, height, plaza)[here.y * width + here.x] : 1;
+      const near = this.map.landscape ? nearestReturnable(this.map, width, height, plaza, here) : null;
+      to = free && near && near.d < 1 ? plaza : near || plaza;
+      this.message = to === plaza ? "You find your way back to the heart of the section." : "You scramble out onto ground that leads somewhere.";
+    }
+    if (!to) { this.message = "There is nowhere safer to go."; return false; }
+    p.x = to.x; p.y = to.y; this.traversal = null; this.jumpUntil = 0; this.ledgeHint = null;
+    this.unstickReadyAt = now + 30000;
+    if (this.area === "dungeon") this.updateDungeonDiscovery(true);
+    this.sync();
+    return true;
+  }
   returnHome() {
     return this.travelToCheckpoint("0,0");
   }
@@ -2702,7 +2734,7 @@ export class Game {
       x = p.dodgeX;
       y = p.dodgeY;
     }
-    const speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed) * (!dodging && now < (p.slowUntil || 0) ? (p.slowFactor || .5) : 1),
+    let speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed) * (!dodging && now < (p.slowUntil || 0) ? (p.slowFactor || .5) : 1),
       dx = x * speed * dt,
       dy = y * speed * dt,
       nx = p.x + dx,
@@ -2742,13 +2774,18 @@ export class Game {
       return;
     }
     const width = mapWidth(this.map, this.area);
-    const terrainHazard=footprintHazard(this.map,width,nx,ny),aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0,fellIntoHazard=!!terrainHazard&&!aerial;
+    let terrainHazard=footprintHazard(this.map,width,nx,ny);const aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0;
+    // Brink guard (operator ask 2026-10-14: pits were surprising): walking or jumping stops at the edge of a pit, lava
+    // or deep water. A dodge roll still carries you over the edge, so a deliberate dash (or a misjudged one) is lethal.
+    if(terrainHazard&&!aerial&&!dodging&&!footprintHazard(this.map,width,p.x,p.y)){this.brinkStop(terrainHazard,nx,ny,now);terrainHazard=null;dx=0;dy=0}
+    const fellIntoHazard=!!terrainHazard&&!aerial;
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
     else {
       p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0);
       const before = elevationAt(this.map, width, p.x, p.y), fromX = p.x, fromY = p.y;
       moveAxis(p, dx, dy, this.map, width, true);
-      const drop = before - elevationAt(this.map, width, p.x, p.y), hurt = fallDamage(drop, this.save.maxHp);
+      let drop = before - elevationAt(this.map, width, p.x, p.y), hurt = fallDamage(drop, this.save.maxHp);
+      if (hurt === Infinity && !dodging) { p.x = fromX; p.y = fromY; this.brinkStop("drop", fromX + dx, fromY + dy, now, drop); drop = 0; hurt = 0; } // a fatal drop needs a deliberate dodge
       // Traversal cue: pushing against a ledge explains what it takes (operator ask 2026-10-14: climbing was confusing).
       if (this.map.landscape && Math.hypot(x, y) > .4 && Math.hypot(p.x - fromX, p.y - fromY) < Math.hypot(dx, dy) * .3) {
         const here = tileUnder(this.map, width, p.x, p.y), ahead = tileUnder(this.map, width, p.x + x * .6, p.y + y * .6), up = (ahead?.elev || 0) - (here?.elev || 0);
