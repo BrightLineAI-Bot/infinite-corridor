@@ -6,7 +6,7 @@ const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.ur
 
 test('root agent instructions retain workflow and field-guide invariants', () => {
   const text = read('AGENTS.md');
-  for (const pattern of [/Node 22\+/, /npm test/, /npm run build/, /Test Bot makes all code changes/, /operator-approved merge into local main/, /Hermes profile only investigates and publishes merged main/, /create, validate, publish-preview, promote/, /Each publication requires its own Discord approval card/, /disabled workspace-wide/, /\.change-control\/.*historical/, /Deterministic generation/, /Version generation namespaces/, /Save compatibility\/migrations/, /exact-resume/, /unknown fields/, /Production vs Proving Ground isolation/, /distinct storage\/cache namespaces/, /Mobile performance/, /bounded active actors/]) assert.match(text, pattern);
+  for (const pattern of [/Node 22\+/, /npm test/, /npm run build/, /at least 443 passing/, /Test Bot is paused/, /claude\/<topic>/, /Never push to `main` or `gh-pages`/, /Never run `scripts\/proposal-workflow\.mjs`/, /publishing is done locally by Tim/, /disabled workspace-wide/, /\.change-control\/.*historical/, /Deterministic generation/, /Version generation namespaces/, /Save compatibility\/migrations/, /exact-resume/, /unknown fields/, /Production vs Proving Ground isolation/, /distinct storage\/cache namespaces/, /Mobile performance/, /bounded active actors/]) assert.match(text, pattern);
 });
 
 test('current workflow documentation separates implementation and publication approval', () => {

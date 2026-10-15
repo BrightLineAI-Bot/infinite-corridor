@@ -2,15 +2,46 @@
 
 Offline-first, single-player mobile adventure PWA with deterministic worlds, persistent journeys, and a production-backed Proving Ground.
 
+Start with `docs/AGENT_CONTEXT.md` (current state and the owner's standing decisions), then the relevant sections of `docs/HERMES_PROJECT_FIELD_GUIDE.md`.
+
 ## Commands
 
-Node 22+; no third-party runtime dependencies. Run `npm test` (registered floor: 363 passing tests) and `npm run build` (static PWA in `dist/`). For local candidate inspection run `npm run start:proving-ground:fixture` and open `http://127.0.0.1:5174/proving-ground/`; it builds and serves locally without network access.
+Node 22+; no dependencies (nothing to install). `npm test` must show at least 443 passing tests; never lower this floor or delete tests to meet it. `npm run build` produces the static PWA in `dist/`.
 
-## Workflow — operator decision 2026-10-11
+## Workflow — operator decision 2026-10-14
 
-Test Bot makes all code changes in isolated worktrees through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs`: create, validate, publish-preview, promote. Each publication requires its own Discord approval card; preparation, preview publication, and production promotion are separate approvals. Never invent owner approval or publish from an unmerged Test Bot branch.
+Test Bot is paused for this project. Claude builds directly:
 
-Change-Control is disabled workspace-wide. `.change-control/` is historical, not an authority for new work (the publication tool still reads its project identity). Preserve historical records; do not run its old guarded workflow or Verdict Gate.
+1. Work on a branch named `claude/<topic>`.
+2. Run `npm test` (and `npm run build` when the build or module list changed).
+3. Commit, push the branch, and open a PR against `main`.
+
+Never push to `main` or `gh-pages`. Never run `scripts/proposal-workflow.mjs` or any publish, preview or promote step: publishing is done locally by Tim after he merges the PR. When Tim says "push", make sure the PR is ready (tests pass, release bumped, branch pushed) and tell him to merge it and run the local publish command (`publish-ic.ps1` in Test Bot).
+
+Change-Control is disabled workspace-wide. `.change-control/` is historical (the local publication tool still reads its project identity); do not run its old guarded workflow or Verdict Gate.
+
+## Release checklist
+
+One release bump per PR that changes the game. Bump the release number N in all of:
+
+- `index.html`, `sw.js`, `proving-ground/index.html`, `proving-ground/sw.js`
+- `scripts/build.mjs`, `src/main.ts`, `src/proving-ground-mobile.ts`
+- `src/release-artifact.mjs` — including its regex literal (`/\brelease\s*:\s*N\b/g`), which a text replace misses; edit it by hand
+- the release assertions in `tests/proposal-workflow.test.ts`, `tests/proving-ground-fixture.test.ts` and `tests/prototype.test.ts`
+
+Any new `src` module goes into `scripts/build.mjs` and both `sw.js` precache lists. Add a line under "Unreleased" in `CHANGELOG.md` and a section in `docs/HERMES_PROJECT_FIELD_GUIDE.md` with **CODE:** and **BOUNDARY:** paragraphs, like the existing release sections.
+
+## Rules
+
+- Save changes stay additive at schema 14 and are normalised in `freshSave` and `migrateSave` (`src/types.ts`), the way `ensureGlyphState`, `ensureEchoState` and `ensureConstellation` are.
+- Generators are version-pinned per history; never regenerate existing journeys. Add a new version and gate new behaviour on it.
+- Balance numbers live as data tables, not literals scattered through logic.
+
+## Gotchas
+
+- `freshSave()` ignores its seed argument; set `save.seed` yourself.
+- The service worker caches modules during a browser preview: unregister it and clear caches, or you test stale code.
+- The Proving Ground hides the pause menu.
 
 ## Invariants
 
