@@ -4,7 +4,7 @@ For a fresh agent picking up Infinite Corridor. Workflow, commands and the relea
 
 ## Where things stand
 
-Release 101 is live (lethal falls, drowning, ramps, Jump in the action diamond, visible Leech). Save schema is 14; every later system is additive state normalised in `freshSave`/`migrateSave`. Test floor: 443 passing.
+Release 101 is live (lethal falls, drowning, ramps, Jump in the action diamond, visible Leech). Release 102 (Tidemantle surface swimming, `src/water-traversal.ts`) is in review. Save schema is 14; every later system is additive state normalised in `freshSave`/`migrateSave`. Test floor: 443 passing.
 
 ## Systems
 

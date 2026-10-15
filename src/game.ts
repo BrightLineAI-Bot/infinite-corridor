@@ -25,6 +25,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
+import { swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE } from "./water-traversal.ts";
 import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.ts";
 import {
   applyInteraction,
@@ -2434,6 +2435,11 @@ export class Game {
     }
     if(this.area==='dungeon') recordDungeonBossDefeat(dungeonHistory(this.save,this.areaId()),e);
     this.defeatNotice = enemyDefeatNotice(e, this.area);
+    if (tidemantleTrial(this.area, this.map, e) && grantTidemantle(this.save, `${this.areaId()}:${e.id}`)) {
+      this.defeatNotice = { ...this.defeatNotice, detail: `${this.defeatNotice?.detail || ""} · the Tidemantle is yours` };
+      journalOnce(this.save, "tidemantle", "Beneath the fallen guardian lay a Tidemantle, a mantle of woven tide-glass. It keeps the Wayfarer afloat on rivers, flooded halls and open sea, though swimming tires fast and nothing below the surface opens to it.", "The Tidemantle");
+      this.message = "Tidemantle earned: you can now swim on surface water.";
+    }
     if (this.area === "dungeon" && this.map.deepDungeon && e.dungeonRole === "objectiveGuardian") {
       const progress = deepDungeonProgress(this.save, this.areaId());
       if (!progress.completedObjectiveIds.includes(e.objectiveId)) progress.completedObjectiveIds.push(e.objectiveId);
@@ -2778,7 +2784,7 @@ export class Game {
     this.guardRemaining = Math.max(0, this.guardRemaining - dt);
     this.magicBuffRemaining = Math.max(0, this.magicBuffRemaining - dt);
     this.spellCooldownRemaining = Math.max(0, this.spellCooldownRemaining - dt);
-    const skillState=this.save.magicSkills;if(skillState){for(const id of Object.keys(skillState.cooldowns||{}))skillState.cooldowns[id]=Math.max(0,skillState.cooldowns[id]-dt);tickRiftCharges(this.save);if(skillState.active){skillState.active.remaining=Math.max(0,skillState.active.remaining-dt);if(skillState.active.remaining===0){const ended=skillState.active.id;skillState.active=null;onSkillEnded(this,ended,now);if(ended==='aerial-step'&&footprintHazard(this.map,mapWidth(this.map,this.area),this.player.x,this.player.y)){const safe=skillState.lastSafe;if(safe&&safe.area===this.area&&safe.areaId===this.areaId()){this.player.x=safe.x;this.player.y=safe.y}else relocateIfStranded(this.player,this.map,mapWidth(this.map,this.area));this.message='Aerial Step closes and returns you to stable ground.'}}}}
+    const skillState=this.save.magicSkills;if(skillState){for(const id of Object.keys(skillState.cooldowns||{}))skillState.cooldowns[id]=Math.max(0,skillState.cooldowns[id]-dt);tickRiftCharges(this.save);if(skillState.active){skillState.active.remaining=Math.max(0,skillState.active.remaining-dt);if(skillState.active.remaining===0){const ended=skillState.active.id;skillState.active=null;onSkillEnded(this,ended,now);if(ended==='aerial-step'&&footprintHazard(this.map,mapWidth(this.map,this.area),this.player.x,this.player.y)&&!swimsThrough(this.save,footprintHazard(this.map,mapWidth(this.map,this.area),this.player.x,this.player.y))){const safe=skillState.lastSafe;if(safe&&safe.area===this.area&&safe.areaId===this.areaId()){this.player.x=safe.x;this.player.y=safe.y}else relocateIfStranded(this.player,this.map,mapWidth(this.map,this.area));this.message='Aerial Step closes and returns you to stable ground.'}}}}
     if (this.reticle) this.reticle.life -= dt;
     let rawX = Number(input.state.x) || 0,
       rawY = Number(input.state.y) || 0,
@@ -2811,7 +2817,8 @@ export class Game {
       x = p.dodgeX;
       y = p.dodgeY;
     }
-    let speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed) * (!dodging && now < (p.slowUntil || 0) ? (p.slowFactor || .5) : 1),
+    const swimming = swimsThrough(this.save, footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y));
+    let speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed) * (!dodging && now < (p.slowUntil || 0) ? (p.slowFactor || .5) : 1) * (swimming ? TIDEMANTLE.speed : 1),
       dx = x * speed * dt,
       dy = y * speed * dt,
       nx = p.x + dx,
@@ -2854,6 +2861,8 @@ export class Game {
     let terrainHazard=footprintHazard(this.map,width,nx,ny);const aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0;
     // Pits, lava and deep water are lethal to walk into (operator, release 101: the r97 brink guard is removed; rims,
     // fog hatching and level marks keep them readable instead).
+    // Release 102: the Tidemantle lets the Wayfarer swim on surface water (stage one of the water traversal plan).
+    if(swimsThrough(this.save,terrainHazard)){if(!this.swimming){this.swimming=true;if(now>(this.swimMessageAt||0)){this.swimMessageAt=now+8000;this.message="The Tidemantle holds you up. Swimming drains stamina.";}}terrainHazard=null}else this.swimming=false;
     const fellIntoHazard=!!terrainHazard&&!aerial;
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":terrainHazard==="ocean"?"The deep water drags the Wayfarer under.":terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
     else {
@@ -2948,7 +2957,8 @@ export class Game {
     const eliteStatus=ensureEliteState(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});for(const h of this.eliteHazards)h.arming=Math.max(0,(h.arming||0)-dt);this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(!(h.arming>0)&&Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison)h.poison&&((eliteStatus.poison=Math.max(eliteStatus.poison,8)),eliteStatus.poisonTick=1)}
     for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e))continue;e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6)}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
     for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e))continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
-    p.stamina = Math.min(p.maxStamina, p.stamina + 9 * dt);
+    if (this.swimming) { const hurt = swimUpkeep(p, dt); if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "Exhausted in the water — reach the shore."; } } }
+    else p.stamina = Math.min(p.maxStamina, p.stamina + 9 * dt);
     this.performanceStats.totalDungeonEncounterRecords=this.area==="dungeon"?(this.map.encounterGroups||[]).length:0;this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.activeProjectiles=this.projectiles.length;this.performanceStats.activeHazardsAndEffects=this.eliteHazards.length+this.effects.length;this.performanceStats.pathfindingWork=0;this.performanceStats.ambientTicks=0;if(dt>1/30)this.performanceStats.updateBudgetViolations++;
     const packWorld=this.packWorld(dt,now,this.area==="overworld"?settlementSanctuary(this.map,this.rx,this.ry,this.save):null);
     for (const e of this.enemies) {
