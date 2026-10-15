@@ -1,6 +1,6 @@
 # Water World — design for the remaining water-traversal components
 
-Status: design proposal (2026-10-15), follows release 102 (Tidemantle surface swimming). Nothing here is built.
+Status: design approved (2026-10-15), follows release 102 (Tidemantle surface swimming). Nothing here is built.
 Scope source: Tim's brief of 2026-10-15 — boats, sea creatures, large oceans with islands, lakes, blue/swampy/poison waters, underwater grottoes.
 
 ## What exists today (release 102)
@@ -84,9 +84,9 @@ As already written in `design-decisions.md`: the Lens + dive rig set `capabiliti
 - Save additive at schema 14.
 - Mobile: bounded creature counts, tentacles and segments; reduced-motion drops wave/bob animation.
 
-## Open questions for Tim
+## Decisions (Tim, 2026-10-15)
 
-1. Build order: W1 (oceans/islands/swamps) then W2 (Skiff) — or the boat first on today's smaller coasts?
-2. Boat acquisition: buy from a Shipwright (proposed) or earn through a quest like the Tidemantle?
-3. Should swimming deep ocean be possible at all (proposed: yes but twice the drain), or boat-only?
-4. Poison swamps: damage over time (proposed) or a stronger "rot" that also lowers max HP until you rest?
+1. Build order: W1 (waterbodies v2) first, then W2 (Skiff).
+2. The boat is bought from a Shipwright.
+3. Deep ocean is swimmable but drains more stamina (x2).
+4. Poison swamps lower maximum health (rot) until the player rests.
