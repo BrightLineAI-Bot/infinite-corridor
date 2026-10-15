@@ -72,7 +72,7 @@ Later versions can add locally stored “content packs” containing authored or
 ## Traversal horizon — water
 
 - Current rule: unbridged surface water is lethal to the Wayfarer, while projectiles pass over it. Cistern dungeons may contain small hazardous pools.
-- Stage one: a quest-earned Tidemantle permits surface swimming but not submersion.
+- Stage one (release 102, built): a quest-earned Tidemantle permits surface swimming but not submersion. Earned by felling a flooded dungeon's guardian or a Mire Apostle; swimming is slower and drains stamina.
 - Stage two: a Bathysal Lens and dive rig open submerged channels, with readable breath limits and safe air pockets.
 - Stage three: dedicated underwater regions and dungeons can add currents, hidden vertical routes, aquatic creatures, and drowned settlements.
 - Water remains deterministic and local to loaded sections; this is traversal design, not a full fluid simulation.
