@@ -8,11 +8,11 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="../styles.css?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583" />
+    <link rel="stylesheet" href="../styles.css?v=icp_8140e9d8175a4d99b73a6c5a_2f558fed10229e4c" />
     <title>Infinite Corridor — Proving Ground</title>
   </head>
   <body>
-    <aside id="pgIdentity" class="pg-identity" role="status"><strong>PROVING GROUND</strong><span>Experimental · isolated scratch state · build PG-1 / Release icp_8ae1da129bee497d8b428f33_ffde5723a9be8583</span><button id="pgDiagnosticsToggle" type="button">Diagnostics</button></aside>
+    <aside id="pgIdentity" class="pg-identity" role="status"><strong>PROVING GROUND</strong><span>Experimental · isolated scratch state · build PG-1 / Release icp_8140e9d8175a4d99b73a6c5a_2f558fed10229e4c</span><button id="pgDiagnosticsToggle" type="button">Diagnostics</button></aside>
     <dialog id="pgDiagnostics"><button id="pgDiagnosticsClose" class="close" aria-label="Close diagnostics">×</button><h2>Mobile diagnostics</h2><dl id="pgDiagnosticsBody"></dl><button id="pgReset" type="button">Reset Proving Ground data</button><p id="pgResetStatus" role="status"></p></dialog>
     <main id="app">
       <canvas id="game"></canvas>
@@ -70,7 +70,10 @@
             aria-controls="hudDetails"
           >
             Menu</button
-          ><button class="quick jump" data-action="jump">Jump</button
+          ><div id="navCompassSlot" class="compass-slot"><div id="navCompass" class="nav-compass" role="img" aria-label="No navigation target" hidden>
+            <span id="navGuidanceArrow" class="nav-arrow guidance-arrow" aria-hidden="true">▲</span>
+            <span id="navManualArrow" class="nav-arrow manual-arrow" aria-hidden="true">▲</span>
+          </div></div
           ><button class="quick spell" data-action="spell">Spell</button
           ><button class="quick potion" data-action="potion">Potion</button>
         </div>
@@ -78,11 +81,8 @@
           <button class="core tool" data-action="tool">Tool</button
           ><button class="core act" data-action="interact">Act</button
           ><button class="core dodge" data-action="dodge">Dodge</button
-          ><button class="core attack" data-action="attack">Attack</button>
-          <div id="navCompass" class="nav-compass" role="img" aria-label="No navigation target" hidden>
-            <span id="navGuidanceArrow" class="nav-arrow guidance-arrow" aria-hidden="true">▲</span>
-            <span id="navManualArrow" class="nav-arrow manual-arrow" aria-hidden="true">▲</span>
-          </div>
+          ><button class="core attack" data-action="attack">Attack</button
+          ><button class="core jump" data-action="jump">Jump</button>
         </div>
       </section>
       <dialog id="panel">
@@ -153,7 +153,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+      const release = "icp_8140e9d8175a4d99b73a6c5a_2f558fed10229e4c";
       const params = new URLSearchParams(location.search);
       const entry = "../src/proving-ground-mobile.js";
       const updateServiceWorker = async () => {

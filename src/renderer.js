@@ -1,11 +1,11 @@
-import { enemyMeleeGeometry } from "./combat.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
-import { liftAt } from "./landscape.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
-import { drawRelayNode } from "./relay-network.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
-import { structureOccupancy } from "./world.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { enemyMeleeGeometry } from "./combat.js?v=icp_8140e9d8175a4d99b73a6c5a_2f558fed10229e4c";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_8140e9d8175a4d99b73a6c5a_2f558fed10229e4c";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_8140e9d8175a4d99b73a6c5a_2f558fed10229e4c";
+import { liftAt } from "./landscape.js?v=icp_8140e9d8175a4d99b73a6c5a_2f558fed10229e4c";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_8140e9d8175a4d99b73a6c5a_2f558fed10229e4c";
+import { drawRelayNode } from "./relay-network.js?v=icp_8140e9d8175a4d99b73a6c5a_2f558fed10229e4c";
+import { structureOccupancy } from "./world.js?v=icp_8140e9d8175a4d99b73a6c5a_2f558fed10229e4c";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_8140e9d8175a4d99b73a6c5a_2f558fed10229e4c";
 
 export function cameraTransform(
   g,
@@ -840,6 +840,7 @@ function drawGlyphStatus(ctx,g,s,now,visible){
     if((e.hitStun||0)>.35){ctx.fillStyle="#dbe8ff55";ctx.beginPath();ctx.arc(cx,cy,s*.42,0,7);ctx.fill();ctx.strokeStyle="#eef5ffaa";ctx.lineWidth=1;for(let k=0;k<3;k++){const a=k*2.1+.4;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*s*.38,cy+Math.sin(a)*s*.38);ctx.stroke()}}}
   for(const v of g.glyphVisuals||[]){const a=Math.max(0,v.life/v.max);
     if(v.kind==="arc"){ctx.strokeStyle=v.color;ctx.globalAlpha=a;ctx.lineWidth=Math.max(1.5,s*.06);ctx.beginPath();ctx.moveTo(v.x*s,v.y*s);const mx=(v.x+v.tx)/2*s+Math.sin(t*40)*s*.15,my=(v.y+v.ty)/2*s+Math.cos(t*37)*s*.15;ctx.lineTo(mx,my);ctx.lineTo(v.tx*s,v.ty*s);ctx.stroke();ctx.globalAlpha=1}
+    else if(v.kind==="heal"){const rise=(1-a)*s*.6;ctx.font=`bold ${Math.max(10,Math.round(s*.32))}px system-ui,sans-serif`;ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle=`rgba(0,0,0,${a*.8})`;ctx.fillStyle=`rgba(120,240,140,${a})`;ctx.strokeText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.fillText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.textAlign="start"}
     else if(v.kind==="burst"){ctx.strokeStyle=`rgba(255,210,92,${a})`;ctx.lineWidth=Math.max(2,s*.08);ctx.beginPath();ctx.arc(v.x*s,v.y*s,v.radius*s*(1.1-a*.6),0,7);ctx.stroke();ctx.fillStyle=`rgba(255,180,70,${a*.25})`;ctx.fill()}}
 }
 

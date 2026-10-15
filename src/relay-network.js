@@ -7,7 +7,7 @@
 //
 // DRAFT NARRATIVE: the fragment texts below are placeholders written to fit the existing lore. The operator owns the
 // relay story; rewrite FRAGMENTS freely. The mechanics never depend on their wording.
-import { hashSeed } from "./random.js?v=icp_8ae1da129bee497d8b428f33_ffde5723a9be8583";
+import { hashSeed } from "./random.js?v=icp_8140e9d8175a4d99b73a6c5a_2f558fed10229e4c";
 
 export const RELAY_VERSION = 1;
 export const RELAY_TARGET = 5;
