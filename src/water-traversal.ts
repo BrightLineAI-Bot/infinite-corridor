@@ -4,9 +4,11 @@
 
 // Balance table. Swimming is slower, stops stamina regeneration and drains it; an exhausted swimmer takes damage.
 export const TIDEMANTLE = {
-  swimKinds: ["river", "dungeonWater", "ocean"],
+  swimKinds: ["river", "dungeonWater", "ocean", "deepOcean", "lakeWater", "swampWater", "toxicWater"],
   speed: 0.55,
   staminaDrainPerSecond: 3,
+  // Waterbodies (landscape version 2): the Tidemantle is a surface tool; open deep water tires twice as fast.
+  drainMultiplier: { deepOcean: 2 },
   exhaustedDamagePerSecond: 6,
   // Quest: fell the guardian of a drowned place. A dungeon counts when at least this many of its tiles are water.
   minWaterTiles: 6,
@@ -45,9 +47,32 @@ export function grantTidemantle(save, source) {
 }
 
 // Per-frame swim upkeep. Returns damage to apply (0 while stamina lasts).
-export function swimUpkeep(player, dt) {
-  const drain = TIDEMANTLE.staminaDrainPerSecond * dt;
+export function swimUpkeep(player, dt, kind = null) {
+  const drain = TIDEMANTLE.staminaDrainPerSecond * (TIDEMANTLE.drainMultiplier[kind] || 1) * dt;
   if ((player.stamina || 0) >= drain) { player.stamina -= drain; return 0; }
   player.stamina = 0;
   return TIDEMANTLE.exhaustedDamagePerSecond * dt;
 }
+
+// Swamps (landscape version 2). Mire is walkable but slow; the blight mire's murk rots the body: each second in it
+// lowers maximum health (save.rot) until the Wayfarer rests at a Wayglass or rest point (or is recovered after a fall).
+export const MIRE = {
+  slow: { mireWater: .6, toxicMire: .6 },
+  rotKinds: ["toxicMire", "toxicWater"],
+  rotPerSecond: 1.5,
+  maxRotFraction: .5,
+};
+export function mireSpeed(kind) { return MIRE.slow[kind] || 1; }
+export function ensureRot(save) { save.rot = Math.max(0, Number(save.rot) || 0); return save.rot; }
+export function rotCap(save) { return Math.floor((Number(save?.maxHp) || 0) * MIRE.maxRotFraction); }
+// Effective health ceiling while rotted.
+export function healthCeiling(save) { return Math.max(1, (Number(save?.maxHp) || 0) - Math.floor(Number(save?.rot) || 0)); }
+// Adds rot for `dt` seconds on `kind`; returns true when rot grew.
+export function rotTick(save, kind, dt) {
+  if (!MIRE.rotKinds.includes(kind)) return false;
+  const before = ensureRot(save);
+  save.rot = Math.min(rotCap(save), before + MIRE.rotPerSecond * dt);
+  return save.rot > before;
+}
+// Resting clears the rot; returns how much was cleared.
+export function clearRot(save) { const had = Math.floor(ensureRot(save)); save.rot = 0; return had; }

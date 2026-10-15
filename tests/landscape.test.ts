@@ -22,10 +22,11 @@ function reachable(m) { const seen = reachableFromPlaza(m), out = new Set(); for
 
 test('landscapes are regular but not everywhere, and biomes form ranges across sections', () => {
   const counts = {}; let n = 0, featured = 0;
-  for (const seed of ['A', 'B', 'C']) for (let rx = -12; rx <= 12; rx++) for (let ry = -12; ry <= 12; ry++) { n++; const b = biomeFor(seed, rx, ry); if (b) { featured++; counts[b] = (counts[b] || 0) + 1; } }
+  // landscape version 1 (version 2's waterbodies are covered in tests/waterbodies.test.ts)
+  for (const seed of ['A', 'B', 'C']) for (let rx = -12; rx <= 12; rx++) for (let ry = -12; ry <= 12; ry++) { n++; const b = biomeFor(seed, rx, ry, 1); if (b) { featured++; counts[b] = (counts[b] || 0) + 1; } }
   const share = featured / n;
   assert.ok(share > .28 && share < .5, `share ${share.toFixed(2)}`);
-  for (const id of Object.keys(BIOMES)) assert.ok(counts[id] > 0, `${id} occurs`);
+  for (const id of ['mountains', 'desert', 'coast', 'alien', 'castle']) assert.ok(counts[id] > 0, `${id} occurs`);
   // ranges: most mountain sections have a mountain neighbour
   let mountains = 0, joined = 0;
   for (let rx = -12; rx <= 12; rx++) for (let ry = -12; ry <= 12; ry++) if (biomeFor('A', rx, ry) === 'mountains') { mountains++; if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => biomeFor('A', rx + dx, ry + dy) === 'mountains')) joined++; }

@@ -27,6 +27,15 @@ const PAINT = {
   beach(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#eedcab"], [1, "#dcc48e"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 4; i++) { c.fillStyle = ["#f6efe2", "#d39a83", "#b9c8c9"][i % 3]; c.beginPath(); c.ellipse(r() * s, r() * s, 1.6, 1, r() * 3, 0, TAU); c.fill(); } },
   shallows(c, s, r) { c.fillStyle = "#d9c591"; c.fillRect(0, 0, s, s); c.fillStyle = "#3fb3b8aa"; c.fillRect(0, 0, s, s); ripples(c, s, r, "#e8fbfa55"); },
   ocean(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#1d5a86"], [1, "#123f66"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 3; i++) { c.fillStyle = "#2c78a855"; c.beginPath(); c.ellipse(r() * s, r() * s, s * .3, s * .08, 0, 0, TAU); c.fill(); } },
+  // ---- Waterbodies (landscape version 2): blue, swampy, poison and deep water palettes
+  deepOcean(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#0f3558"], [1, "#071d36"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 2; i++) { c.fillStyle = "#1c4a7655"; c.beginPath(); c.ellipse(r() * s, r() * s, s * .34, s * .07, 0, 0, TAU); c.fill(); } },
+  lakeWater(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3b8cc4"], [1, "#2a6f a6".replace(" ", "")]]); c.fillRect(0, 0, s, s); ripples(c, s, r, "#bfe6ff44"); },
+  bogGround(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#4b4a2c"], [1, "#3a3a22"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 10; i++) { c.strokeStyle = r() < .5 ? "#7d8a4a99" : "#2a2a1699"; c.lineWidth = 1; const x = r() * s, y = r() * s; c.beginPath(); c.moveTo(x, y); c.lineTo(x + (r() - .5) * 3, y - 3 - r() * 4); c.stroke(); } },
+  mireWater(c, s, r) { PAINT.bogGround(c, s, r); c.fillStyle = "#4f5d3399"; c.fillRect(0, 0, s, s); ripples(c, s, r, "#a3b07a44"); },
+  swampWater(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3c4a2e"], [1, "#25301d"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 3; i++) { c.fillStyle = "#6f8a3a66"; c.beginPath(); c.ellipse(r() * s, r() * s, s * .12, s * .07, r() * 3, 0, TAU); c.fill(); } },
+  toxicBog(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3d3a3f"], [1, "#2a2630"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 6; i++) { c.fillStyle = r() < .5 ? "#7cbf3a77" : "#8a4fb066"; c.beginPath(); c.arc(r() * s, r() * s, 1 + r() * 2, 0, TAU); c.fill(); } },
+  toxicMire(c, s, r) { PAINT.toxicBog(c, s, r); c.fillStyle = "#6fa52a77"; c.fillRect(0, 0, s, s); ripples(c, s, r, "#d4ff8a44"); },
+  toxicWater(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#5f9a1f"], [1, "#3a5f14"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 4; i++) { c.fillStyle = "#c6ff6a88"; c.beginPath(); c.arc(r() * s, r() * s, 1 + r() * 2.2, 0, TAU); c.fill(); } },
   alienMoss(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#2b1d40"], [1, "#1c1430"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 9; i++) { c.fillStyle = r() < .5 ? "#5a3d8a" : "#3a2a5e"; c.beginPath(); c.arc(r() * s, r() * s, 1 + r() * 2.5, 0, TAU); c.fill(); } for (let i = 0; i < 3; i++) { const x = r() * s, y = r() * s; c.strokeStyle = "#8ef6d0aa"; c.lineWidth = 1; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + 3, y - 4, x + 1, y - 7); c.stroke(); } },
   alienPlatform(c, s, r) { c.fillStyle = "#34264f"; c.fillRect(0, 0, s, s); c.fillStyle = grad(c, 0, 0, s, s, [[0, "#b6a2ff"], [1, "#5a4bb3"]]); hexagon(c, s * .5, s * .5, s * .46); c.fill(); c.strokeStyle = "#e9e1ff"; c.lineWidth = 1.5; c.stroke(); c.strokeStyle = "#ffffff55"; hexagon(c, s * .5, s * .5, s * .3); c.stroke(); },
   crystalSpire(c, s, r) { PAINT.alienMoss(c, s, r); for (let i = 0; i < 3; i++) { const x = s * (.25 + i * .25), h = s * (.6 + r() * .35), w = s * .1; c.fillStyle = grad(c, x - w, 0, x + w, 0, [[0, "#fdf2ff"], [.5, "#c08bff"], [1, "#6b3cc0"]]); c.beginPath(); c.moveTo(x - w, s); c.lineTo(x - w * .6, s - h); c.lineTo(x, s - h - w); c.lineTo(x + w * .6, s - h); c.lineTo(x + w, s); c.fill(); } },
@@ -141,6 +150,8 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
 function animate(ctx, t, px, py, s) {
   const d = t.detail || 0;
   if (t.kind === "lava") { const p = .5 + .5 * Math.sin(clock * 3 + d); ctx.fillStyle = `rgba(255,236,150,${.25 + p * .35})`; ctx.beginPath(); ctx.arc(px + s * ((d % 7) / 7 + .07), py + s * (((d >> 2) % 7) / 7 + .07), s * (.06 + p * .08), 0, TAU); ctx.fill(); const rise = (clock * .8 + d * .13) % 1; ctx.fillStyle = `rgba(255,140,60,${1 - rise})`; ctx.fillRect(px + s * ((d % 5) / 5 + .1), py - rise * s * 1.4, 2, 2); }
+  else if (t.kind === "deepOcean" || t.kind === "lakeWater") { ctx.strokeStyle = t.kind === "deepOcean" ? "#6fa2d055" : "#d8f0ff77"; ctx.lineWidth = 1.2; const y = py + s * .5 + Math.sin(clock * 1.2 + d) * 2; ctx.beginPath(); ctx.moveTo(px + 3, y); ctx.quadraticCurveTo(px + s / 2, y - 3, px + s - 3, y); ctx.stroke(); }
+  else if (t.kind === "toxicWater" || t.kind === "toxicMire" || t.kind === "swampWater") { const f = (clock * .6 + d * .13) % 1; ctx.fillStyle = t.kind === "swampWater" ? `rgba(170,190,120,${.5 * (1 - f)})` : `rgba(210,255,120,${.7 * (1 - f)})`; ctx.beginPath(); ctx.arc(px + s * ((d % 5) / 5 + .1), py + s * (.8 - f * .5), s * (.04 + f * .06), 0, TAU); ctx.fill(); } // rising bubbles
   else if (t.kind === "ocean") { ctx.strokeStyle = "#a8dcf088"; ctx.lineWidth = 1.5; for (let i = 0; i < 2; i++) { const y = py + s * (.3 + i * .4) + Math.sin(clock * 1.6 + d + i) * 2; ctx.beginPath(); ctx.moveTo(px + 2, y); ctx.quadraticCurveTo(px + s / 2, y - 3, px + s - 2, y); ctx.stroke(); } if ((d + Math.floor(clock * 2)) % 9 === 0) { ctx.fillStyle = "#ffffffcc"; ctx.fillRect(px + (d % s), py + s * .5, 2, 2); } }
   else if (t.kind === "shallows") { ctx.strokeStyle = "#ffffff66"; ctx.lineWidth = 1; const y = py + s * .5 + Math.sin(clock * 2 + d) * s * .2; ctx.beginPath(); ctx.moveTo(px, y); ctx.lineTo(px + s, y + 1); ctx.stroke(); }
   else if (t.kind === "glowcap" || t.kind === "fungusFloor") { const p = .3 + .25 * Math.sin(clock * 1.6 + d); ctx.fillStyle = `rgba(150,255,214,${p * .3})`; ctx.beginPath(); ctx.arc(px + s * .5, py + s * .45, s * .35, 0, TAU); ctx.fill(); }
@@ -150,11 +161,11 @@ function animate(ctx, t, px, py, s) {
 }
 
 // Atlas colour for a section's landscape (null when plain).
-export function landscapeAtlasColor(biome) { return ({ mountains: "#d9e3ea", desert: "#d6b26e", coast: "#3f7fa3", alien: "#9a6fe0", castle: "#8a7f73" })[biome] || null; }
+export function landscapeAtlasColor(biome) { return ({ mountains: "#d9e3ea", desert: "#d6b26e", coast: "#3f7fa3", alien: "#9a6fe0", castle: "#8a7f73", sea: "#1d4f7a", isles: "#4f9fb0", lake: "#4a90c8", swamp: "#5d6b3c", blight: "#7cbf3a" })[biome] || null; }
 
 // Pit edges: every walkable tile beside lava, a chasm, a canyon or deep water gets a crumbling, lit lip on that side
 // and a shadow falling into the hazard, so a drop is never a surprise. Runs for every map, landscape or not.
-const BRINK = { abyss: "#e9dfc6", canyon: "#e9dfc6", lava: "#ffb35c", river: "#d6f1ff", dungeonWater: "#d6f1ff", ocean: "#f2fbff" };
+const BRINK = { abyss: "#e9dfc6", canyon: "#e9dfc6", lava: "#ffb35c", river: "#d6f1ff", dungeonWater: "#d6f1ff", ocean: "#f2fbff", deepOcean: "#f2fbff", lakeWater: "#e6f6ff", swampWater: "#c9d39a", toxicWater: "#d9ff9a" };
 export function drawHazardBrinks(ctx, map, w, l, t, r, b, s, visible = () => true) {
   const T = map?.tiles; if (!T) return;
   const lift = (q) => (map.landscape ? Math.max(0, (q.elev || 0) - (q.slope ? .5 : 0)) * LIFT_PER_LEVEL * s : 0);
