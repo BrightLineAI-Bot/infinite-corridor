@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=100" />
+    <link rel="stylesheet" href="./styles.css?v=101" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -68,7 +68,10 @@
             aria-controls="hudDetails"
           >
             Menu</button
-          ><button class="quick jump" data-action="jump">Jump</button
+          ><div id="navCompassSlot" class="compass-slot"><div id="navCompass" class="nav-compass" role="img" aria-label="No navigation target" hidden>
+            <span id="navGuidanceArrow" class="nav-arrow guidance-arrow" aria-hidden="true">▲</span>
+            <span id="navManualArrow" class="nav-arrow manual-arrow" aria-hidden="true">▲</span>
+          </div></div
           ><button class="quick spell" data-action="spell">Spell</button
           ><button class="quick potion" data-action="potion">Potion</button>
         </div>
@@ -76,11 +79,8 @@
           <button class="core tool" data-action="tool">Tool</button
           ><button class="core act" data-action="interact">Act</button
           ><button class="core dodge" data-action="dodge">Dodge</button
-          ><button class="core attack" data-action="attack">Attack</button>
-          <div id="navCompass" class="nav-compass" role="img" aria-label="No navigation target" hidden>
-            <span id="navGuidanceArrow" class="nav-arrow guidance-arrow" aria-hidden="true">▲</span>
-            <span id="navManualArrow" class="nav-arrow manual-arrow" aria-hidden="true">▲</span>
-          </div>
+          ><button class="core attack" data-action="attack">Attack</button
+          ><button class="core jump" data-action="jump">Jump</button>
         </div>
       </section>
       <dialog id="panel">
@@ -151,7 +151,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "100";
+      const release = "101";
       const params = new URLSearchParams(location.search);
       const entry = params.get("dev") === "proving-ground"
         ? "./src/proving-ground.js"

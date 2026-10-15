@@ -2377,12 +2377,12 @@ test("shelter creature gifts are once-only and displacement travel is explicitly
   const game=readFileSync(new URL("../src/game.ts",import.meta.url),"utf8");assert.match(game,/activeDisplacement/);assert.match(game,/displacementJourney/);assert.match(game,/guardian lives/);assert.match(game,/Reach a physical Wayglass/);
 });
 
-test("canyons kill wayfarers who roll in, stop walkers at the brink, and do not block either side's projectiles",()=>{
+test("canyons kill grounded wayfarers but do not block either side's projectiles",()=>{
   const map={tiles:Array.from({length:25},(_,i)=>({x:i%5,y:Math.floor(i/5),kind:"ash",blocked:false}))};map.tiles[2*5+2]={x:2,y:2,kind:"canyon",blocked:true,environment:"canyon"};
   assert.equal(projectileTileOpen(map,5,2.5,2.5),true);assert.equal(tileOpen(map,5,2.5,2.5),false);assert.equal(footprintTouchesCanyon(map,5,1.5,1.5),true);
   const enemy=createCombatant("ashling",3,2),shots=[{id:"cross",x:1.2,y:2.45,dx:1,dy:0,speed:5,life:1,damage:9,path:"straight",hits:{}}];
   updateProjectiles(shots,[enemy],map,5,.45);assert.ok(enemy.hp<enemy.maxHp);
-  const s=freshSave(),g=new Game(s,0);g.map.tiles=Array.from({length:1024},(_,i)=>({x:i%32,y:Math.floor(i/32),kind:"ash",blocked:false}));g.player.x=1;g.player.y=1;g.map.tiles[1*32+2]={x:2,y:1,kind:"canyon",blocked:true,environment:"canyon"};g.update(.3,{state:{x:1,y:0},consume:()=>false},100);assert.equal(s.worldFlags.deaths||0,0,"walking stops at the brink");assert.match(g.message,/edge stops you/);let rolled=false;for(let i=0;i<30&&!s.worldFlags.deaths;i++)g.update(.05,{state:{x:1,y:0},consume:(k)=>k==="dodge"&&!rolled&&(rolled=true)},2000+i*50);assert.equal(s.worldFlags.deaths,1,"a dodge roll still goes over");assert.match(g.message,/Lost to the canyon/);
+  const s=freshSave(),g=new Game(s,0);g.map.tiles=Array.from({length:1024},(_,i)=>({x:i%32,y:Math.floor(i/32),kind:"ash",blocked:false}));g.player.x=1;g.player.y=1;g.map.tiles[1*32+2]={x:2,y:1,kind:"canyon",blocked:true,environment:"canyon"};g.update(.3,{state:{x:1,y:0},consume:()=>false},100);assert.equal(s.worldFlags.deaths,1);assert.match(g.message,/Lost to the canyon/);
 });
 
 test("void sentinels are rare deterministic deep-region creatures with animated appendages",()=>{
@@ -2403,12 +2403,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 100 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 101 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "100"/);assert.match(html,/styles\.css\?v=100/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v100`/);assert.match(sw,/styles\.css\?v=100/);assert.match(sw,/proving-ground-labs\.js\?v=100/);assert.match(sw,/dungeon-framework\.js\?v=100/);assert.match(sw,/renderer\.js\?v=100/);
-  assert.match(build,/release='100'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "101"/);assert.match(html,/styles\.css\?v=101/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v101`/);assert.match(sw,/styles\.css\?v=101/);assert.match(sw,/proving-ground-labs\.js\?v=101/);assert.match(sw,/dungeon-framework\.js\?v=101/);assert.match(sw,/renderer\.js\?v=101/);
+  assert.match(build,/release='101'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("Shelter Gallery uses six deterministic production shelter families",()=>{
@@ -3000,13 +3000,11 @@ test("district roof ownership uses the grounded player body center and hides und
   assert.match(renderer,/o\.kind==="deepShortcut"&&o\.state==="hidden"/);
 });
 
-test("walking stops at water and canyon brinks, while a dodge roll into them is lethal, without widening the shore kill box",()=>{
-  for(const [kind,dt] of [["river",1/60],["dungeonWater",1/60],["canyon",1/20]]){
+test("walking into water, deep ocean or canyon triggers death consistently without widening the shore kill box",()=>{
+  for(const [kind,dt] of [["river",1/60],["dungeonWater",1/60],["ocean",1/60],["canyon",1/20]]){
     const s=freshSave(),g=new Game(s,0);g.map={...g.map,width:8,height:8,exits:null,objects:[],enemySpawns:[],tiles:Array.from({length:64},(_,i)=>{const x=i%8,y=Math.floor(i/8),hazard=x>=4;return{x,y,kind:hazard?kind:"ash",environment:hazard?kind:undefined,blocked:hazard}})};g.area="dungeon";g.player.x=2;g.player.y=2;
     const input={state:{x:1,y:0},consume:()=>false};for(let i=0;i<180&&!s.worldFlags.deaths;i++)g.update(dt,input,i*dt*1000);
-    assert.equal(s.worldFlags.deaths||0,0,`walking stops at the ${kind} brink at ${dt}s`);assert.ok(g.player.x<4,"still on the shore");
-    let rolled=false;const roll={state:{x:1,y:0},consume:(k)=>k==="dodge"&&!rolled&&(rolled=true)};for(let i=0;i<180&&!s.worldFlags.deaths;i++)g.update(dt,roll,4000+i*dt*1000);
-    assert.equal(s.worldFlags.deaths,1,`${kind} is still enterable (and lethal) with a dodge roll at ${dt}s`);
+    assert.equal(s.worldFlags.deaths,1,`${kind} should be enterable and lethal at ${dt}s`);
   }
 });
 

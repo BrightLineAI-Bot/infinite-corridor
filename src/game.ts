@@ -332,7 +332,7 @@ export function footprintOpen(map, width, x, y, allowLethalTerrain=false) {
   const left=x+.24,right=x+.76,top=y+.5,bottom=y+.88,height=map.tiles.length/width,overlaps=(a,b,c,d)=>right>a&&left<b&&bottom>c&&top<d;
   for(let ty=Math.floor(top);ty<=Math.floor(bottom-1e-6);ty++)for(let tx=Math.floor(left);tx<=Math.floor(right-1e-6);tx++){
     if(tx<0||ty<0||tx>=width||ty>=height)return false;
-    const tile=map.tiles[ty*width+tx],lethal=allowLethalTerrain&&["canyon","river","dungeonWater"].includes(tile?.kind);if(!tile||tile.blocked&&!lethal)return false;
+    const tile=map.tiles[ty*width+tx],lethal=allowLethalTerrain&&["canyon","river","dungeonWater","ocean"].includes(tile?.kind);if(!tile||tile.blocked&&!lethal)return false;
     if(!["shackWall","districtWall"].includes(tile.structure)||!tile.wallSides?.length)continue;
     const thickness=.22;
     for(const side of tile.wallSides){
@@ -350,7 +350,7 @@ export function footprintTouchesCanyon(map, width, x, y) {
 }
 export function footprintHazard(map,width,x,y){
   const tile=map.tiles[Math.floor(y+.72)*width+Math.floor(x+.5)];
-  return ["canyon","river","dungeonWater","lava","abyss"].includes(tile?.kind)?tile.kind:null;
+  return ["canyon","river","dungeonWater","lava","abyss","ocean"].includes(tile?.kind)?tile.kind:null;
 }
 export function footprintInsideStructure(map,width,x,y){
   if(structureOccupancy(map.tiles,width,x,y))return true;
@@ -360,7 +360,7 @@ export function footprintInsideStructure(map,width,x,y){
 export function projectileTileOpen(map,width,x,y){
   const ix=Math.floor(x),iy=Math.floor(y),height=map.tiles.length/width,tile=map.tiles[iy*width+ix];
   if(ix<0||iy<0||ix>=width||iy>=height||!tile)return false;
-  if(["canyon","river","dungeonWater"].includes(tile.kind))return true;
+  if(["canyon","river","dungeonWater","ocean"].includes(tile.kind))return true;
   return tileOpen(map,width,x,y);
 }
 export function relocateIfStranded(entity, map, width) {
@@ -1823,7 +1823,7 @@ export class Game {
     return {
       now, enemies: this.enemies,
       damage(e, amount) { if (e.dead) return; alertEnemy(e); e.hp -= Math.round(amount * strikeAmplifier(game.save)); e.hitFlash = .18; if (e.hp <= 0) { e.dead = true; game.defeatEnemy(e); } },
-      heal(amount) { game.glyphHealPool = (game.glyphHealPool || 0) + amount; const whole = Math.floor(game.glyphHealPool); if (whole > 0) { game.glyphHealPool -= whole; p.hp = Math.min(game.save.maxHp, p.hp + whole); } },
+      heal(amount) { game.glyphHealPool = (game.glyphHealPool || 0) + amount; const whole = Math.floor(game.glyphHealPool); if (whole > 0) { game.glyphHealPool -= whole; const before = p.hp; p.hp = Math.min(game.save.maxHp, p.hp + whole); if (p.hp > before) (game.glyphVisuals ||= []).push({ kind: "heal", x: p.x + .5, y: p.y - .1, amount: p.hp - before, life: .9, max: .9 }); } },
       stamina(amount) { p.stamina = Math.min(game.save.maxStamina, (p.stamina || 0) + amount); },
       blast(x, y, radius, amount) {
         (game.glyphVisuals ||= []).push({ kind: "burst", x, y, radius, life: .35, max: .35 });
@@ -2852,17 +2852,15 @@ export class Game {
     }
     const width = mapWidth(this.map, this.area);
     let terrainHazard=footprintHazard(this.map,width,nx,ny);const aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0;
-    // Brink guard (operator ask 2026-10-14: pits were surprising): walking or jumping stops at the edge of a pit, lava
-    // or deep water. A dodge roll still carries you over the edge, so a deliberate dash (or a misjudged one) is lethal.
-    if(terrainHazard&&!aerial&&!dodging&&!footprintHazard(this.map,width,p.x,p.y)){this.brinkStop(terrainHazard,nx,ny,now);terrainHazard=null;dx=0;dy=0}
+    // Pits, lava and deep water are lethal to walk into (operator, release 101: the r97 brink guard is removed; rims,
+    // fog hatching and level marks keep them readable instead).
     const fellIntoHazard=!!terrainHazard&&!aerial;
-    if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
+    if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":terrainHazard==="ocean"?"The deep water drags the Wayfarer under.":terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
     else {
       p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0);
       const before = elevationAt(this.map, width, p.x, p.y), fromX = p.x, fromY = p.y;
       moveAxis(p, dx, dy, this.map, width, true);
       let drop = before - elevationAt(this.map, width, p.x, p.y), hurt = fallDamage(drop, this.save.maxHp);
-      if (hurt === Infinity && !dodging) { p.x = fromX; p.y = fromY; this.brinkStop("drop", fromX + dx, fromY + dy, now, drop); drop = 0; hurt = 0; } // a fatal drop needs a deliberate dodge
       // Traversal cue: pushing against a ledge explains what it takes (operator ask 2026-10-14: climbing was confusing).
       if (this.map.landscape && Math.hypot(x, y) > .4 && Math.hypot(p.x - fromX, p.y - fromY) < Math.hypot(dx, dy) * .3) {
         const here = tileUnder(this.map, width, p.x, p.y), ahead = tileUnder(this.map, width, p.x + x * .6, p.y + y * .6), up = (ahead?.elev || 0) - (here?.elev || 0);

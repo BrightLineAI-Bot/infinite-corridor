@@ -41,25 +41,32 @@ function levelGame(tiles, w, h, at) {
   return { s, g };
 }
 
-test('the brink guard stops walkers at a chasm and at a fatal drop; a dodge roll still goes over', () => {
-  // chasm to the east
+test('falls and pits are real: walking into a chasm or off a four-level cliff kills; two levels only hurt', () => {
   let { s, g } = levelGame(flat(10, 6, (x) => (x >= 6 ? { kind: 'abyss' } : {})), 10, 6, { x: 3, y: 2 });
-  for (let i = 0; i < 120; i++) g.update(1 / 30, { state: { x: 1, y: 0 }, consume: () => false }, i * 33);
-  assert.equal(s.worldFlags.deaths || 0, 0, 'walking never falls in'); assert.ok(g.player.x < 6);
-  assert.equal(g.ledgeHint?.kind, 'brink'); assert.match(g.message, /bottomless chasm/);
-  let rolled = false;
-  for (let i = 0; i < 60 && !s.worldFlags.deaths; i++) g.update(1 / 30, { state: { x: 1, y: 0 }, consume: (k) => k === 'dodge' && !rolled && (rolled = true) }, 5000 + i * 33);
-  assert.equal(s.worldFlags.deaths, 1, 'a deliberate roll is lethal');
-  // a four-level cliff to the east
+  for (let i = 0; i < 120 && !s.worldFlags.deaths; i++) g.update(1 / 30, { state: { x: 1, y: 0 }, consume: () => false }, i * 33);
+  assert.equal(s.worldFlags.deaths, 1, 'walked into the chasm');
   ({ s, g } = levelGame(flat(10, 6, (x) => ({ elev: x >= 6 ? 0 : 4 })), 10, 6, { x: 3, y: 2 }));
-  for (let i = 0; i < 120; i++) g.update(1 / 30, { state: { x: 1, y: 0 }, consume: () => false }, i * 33);
-  assert.equal(s.worldFlags.deaths || 0, 0, 'walking never steps off a fatal drop'); assert.ok(g.player.x < 6);
-  assert.match(g.message, /fatal 4-level fall/);
-  // a two-level drop still hurts but is allowed
+  for (let i = 0; i < 120 && !s.worldFlags.deaths; i++) g.update(1 / 30, { state: { x: 1, y: 0 }, consume: () => false }, i * 33);
+  assert.equal(s.worldFlags.deaths, 1, 'a four-level fall is fatal');
   ({ s, g } = levelGame(flat(10, 6, (x) => ({ elev: x >= 6 ? 0 : 2 })), 10, 6, { x: 3, y: 2 }));
   const hp = g.player.hp;
   for (let i = 0; i < 120; i++) g.update(1 / 30, { state: { x: 1, y: 0 }, consume: () => false }, i * 33);
-  assert.ok(g.player.x >= 6 && g.player.hp < hp, 'damaging drops are still allowed');
+  assert.ok(g.player.x >= 6 && g.player.hp < hp && !(s.worldFlags.deaths), 'a two-level drop hurts');
+});
+
+test('ramps: every landscape section and themed dungeon gets walkable stairs between adjacent levels', () => {
+  let sections = 0, withRamps = 0;
+  for (let rx = -9; rx <= 9; rx++) for (let ry = -9; ry <= 9; ry++) {
+    const m = generateRegion('RAMP', rx, ry, 0); applyLandscape(m, 'RAMP', rx, ry, {});
+    if (!m.landscape) continue;
+    const steps = m.tiles.some((t) => !t.blocked && [[1,0],[-1,0],[0,1],[0,-1]].some(([dx, dy]) => { const n = m.tiles[(t.y + dy) * 32 + t.x + dx]; return n && !n.blocked && (n.elev || 0) === (t.elev || 0) + 1; }));
+    if (!steps) continue; sections++;
+    if (m.tiles.some((t) => t.slope)) withRamps++;
+    assert.equal(trappedTiles(m, 32, 32, { x: 16, y: 16 }).length, 0);
+  }
+  assert.ok(withRamps === sections && sections > 10, `${withRamps}/${sections} sections with level steps have ramps`);
+  const d = generateExpeditionDungeon('RAMP', 'dungeon:RAMP:1', 'hollow', { theme: 'chasm', layout: 'cavern' });
+  assert.ok(d.tiles.filter((t) => t.slope).length >= 3, 'chasm dungeon has stairs');
 });
 
 test('Stuck? returns a dungeon wayfarer to the entrance, frees an overworld one, and has a cooldown', () => {
@@ -87,4 +94,15 @@ test('every level has its own wash and notch count; pit edges and the level read
   const pit = flat(3, 1, (x) => (x === 2 ? { kind: 'abyss' } : {})), r = recorder();
   drawHazardBrinks(r.ctx, { tiles: pit, landscape: {} }, 3, 0, 0, 3, 1, 32);
   assert.ok(r.calls.filter(([k]) => k === 'fillRect').length >= 6, 'shadow + crumbling teeth on the pit edge');
+});
+
+test('controls: Jump sits in the centre of the action diamond and the compass takes its old place', async () => {
+  const { readFileSync } = await import('node:fs');
+  for (const page of ['../index.html', '../proving-ground/index.html']) {
+    const html = readFileSync(new URL(page, import.meta.url), 'utf8'), diamond = html.slice(html.indexOf('class="action-diamond'), html.indexOf('</div>', html.indexOf('class="action-diamond'))), quick = html.slice(html.indexOf('class="quick-row'), html.indexOf('class="action-diamond'));
+    assert.match(diamond, /class="core jump" data-action="jump"/, page); assert.doesNotMatch(quick, /data-action="jump"/);
+    assert.match(quick, /id="navCompassSlot"[\s\S]*id="navCompass"/, page);
+  }
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  assert.match(css, /\.action-diamond \.jump \{[\s\S]*translate\(-50%, -50%\)/);
 });

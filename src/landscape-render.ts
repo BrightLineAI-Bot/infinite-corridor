@@ -154,7 +154,7 @@ export function landscapeAtlasColor(biome) { return ({ mountains: "#d9e3ea", des
 
 // Pit edges: every walkable tile beside lava, a chasm, a canyon or deep water gets a crumbling, lit lip on that side
 // and a shadow falling into the hazard, so a drop is never a surprise. Runs for every map, landscape or not.
-const BRINK = { abyss: "#e9dfc6", canyon: "#e9dfc6", lava: "#ffb35c", river: "#d6f1ff", dungeonWater: "#d6f1ff" };
+const BRINK = { abyss: "#e9dfc6", canyon: "#e9dfc6", lava: "#ffb35c", river: "#d6f1ff", dungeonWater: "#d6f1ff", ocean: "#f2fbff" };
 export function drawHazardBrinks(ctx, map, w, l, t, r, b, s, visible = () => true) {
   const T = map?.tiles; if (!T) return;
   const lift = (q) => (map.landscape ? Math.max(0, (q.elev || 0) - (q.slope ? .5 : 0)) * LIFT_PER_LEVEL * s : 0);

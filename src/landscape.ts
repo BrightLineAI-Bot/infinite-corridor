@@ -140,6 +140,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false } = {}) {
   connectStranded(map);
   if (biome === "mountains" || biome === "desert" || biome === "alien") placeSummit(map, seed, rx, ry, biome);
   for (const t of ensureReturnable(map, 32, 32, { x: 16, y: 16 })) if (t.landscape === "mountains" && !t.volcanic && !t.slope && t.kind !== "skyBridge") t.kind = mountainKind(t.elev || 0);
+  addRamps(map, 32, 32, `${seed}:${rx}:${ry}`);
   if (biome === "mountains") map.weather = "snow";
   map.landscape = { version: LANDSCAPE_VERSION, biome: biome || dominantLandscape(map), name: BIOMES[biome || dominantLandscape(map)]?.name || null };
   return map;
@@ -175,7 +176,7 @@ export function reachableFromPlaza(map, start = { x: 16, y: 16 }) {
 // Movement rule: climb at most one level (jump), drop any height. A tile the player can reach but never leave
 // (a pit ringed by walls two or more levels high) is a trap. Operator report 2026-10-14: stuck in a hole, had to
 // burn a Crossing Sigil. These helpers work on any map (overworld 32x32 or dungeon of any size).
-export const LETHAL_KINDS = new Set(["abyss", "lava", "canyon", "river", "dungeonWater"]);
+export const LETHAL_KINDS = new Set(["abyss", "lava", "canyon", "river", "dungeonWater", "ocean"]);
 const walkable = (t) => t && !t.blocked && !LETHAL_KINDS.has(t.kind);
 const step = (a, b) => (b.elev || 0) - (a.elev || 0) <= 1;
 function sweep(map, width, height, start, reverse) {
@@ -216,6 +217,24 @@ export function ensureReturnable(map, width, height, start) {
     if (!changed) break;
   }
   return raised;
+}
+// Ramps (release 101): walkable stairs on one-level steps, so every level change has nearby routes that need no jump.
+// A ramp is the lower tile beside a +1 neighbour, marked `slope` (canStep lets anyone cross it); one per short run.
+export function addRamps(map, width, height, key, spacing = 3) {
+  const T = map.tiles, made = [], candidates = [];
+  const blockedNear = (x, y, r) => { for (let yy = Math.max(0, y - r); yy <= Math.min(height - 1, y + r); yy++) for (let xx = Math.max(0, x - r); xx <= Math.min(width - 1, x + r); xx++) if ((xx !== x || yy !== y) && T[yy * width + xx]?.slope) return true; return false; };
+  const make = (t) => { t.slope = true; if (t.landscape === "mountains" && !t.volcanic) t.kind = "mountainTrail"; else if (t.kind === "chasmLedge") t.kind = "chasmStair"; made.push(t); };
+  for (let y = 1; y < height - 1; y++) for (let x = 1; x < width - 1; x++) {
+    const t = T[y * width + x];
+    if (!walkable(t) || t.slope || ["skyBridge", "bridge"].includes(t.kind)) continue;
+    const up = N4.some(([dx, dy]) => { const n = T[(y + dy) * width + x + dx]; return walkable(n) && !n.slope && (n.elev || 0) === (t.elev || 0) + 1; });
+    if (!up) continue;
+    candidates.push(t);
+    if (hashSeed(`${key}:ramp:${x}:${y}`) % 3 === 0 && !blockedNear(x, y, spacing)) make(t);
+  }
+  // A section or dungeon with any one-level step always gets at least one ramp.
+  if (!made.length && candidates.length) make(candidates[hashSeed(`${key}:ramp-fallback`) % candidates.length]);
+  return made;
 }
 // Nearest tile (to `from`) that can still walk back to `start`; used by the Stuck? recovery.
 export function nearestReturnable(map, width, height, start, from) {

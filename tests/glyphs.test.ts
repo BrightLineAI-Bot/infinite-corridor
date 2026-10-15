@@ -71,6 +71,7 @@ test('melee glyphs in play: ignite burns over time, chain arcs, echo repeats, le
   assert.ok(a.glyphBurn && b.glyphBurn, 'Ignite + Chain is Wildfire: the arc carries the fire');
   assert.equal(s.glyphCodex.resonances.wildfire, true);
   assert.ok(g.player.hp > 20, 'leech heals');
+  assert.ok(g.glyphVisuals.some((v) => v.kind === 'heal' && v.amount > 0), 'a +N heal shows over the Wayfarer');
   step(g, 1500, 1100); assert.ok(a.hp < afterHit, 'burn ticks');
   ({ s, g } = arena({ melee: ['echo', 'still', 'tether'] }));
   const foe = g.enemies[0];
