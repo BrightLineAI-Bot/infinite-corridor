@@ -8,15 +8,18 @@ Start with `docs/AGENT_CONTEXT.md` (current state and the owner's standing decis
 
 Node 22+; no dependencies (nothing to install). `npm test` must show at least 443 passing tests; never lower this floor or delete tests to meet it. `npm run build` produces the static PWA in `dist/`.
 
-## Workflow — operator decision 2026-10-14
+## Workflow — operator decisions 2026-10-14 and 2026-10-15
 
 Test Bot is paused for this project. Claude builds directly:
 
 1. Work on a branch named `claude/<topic>`.
 2. Run `npm test` (and `npm run build` when the build or module list changed).
 3. Commit, push the branch, and open a PR against `main`.
+4. When the task Tim gave is complete and `npm test` passes, merge the PR yourself (a merge commit, through the PR).
 
-Never push to `main` or `gh-pages`. Never run `scripts/proposal-workflow.mjs` or any publish, preview or promote step: publishing is done locally by Tim after he merges the PR. When Tim says "push", make sure the PR is ready (tests pass, release bumped, branch pushed) and tell him to merge it and run the local publish command (`publish-ic.ps1` in Test Bot).
+Never push to `main` or `gh-pages` directly; `main` changes only through merged PRs. Never run `scripts/proposal-workflow.mjs` or any publish, preview or promote step: publishing is done locally by Tim. His PC previews every merge to `main` automatically and comments the preview URL and candidate id on the merged PR within a few minutes.
+
+When Tim says "push": make sure the PR is merged, find the watcher's "Preview ready" comment on it, and give Tim the preview link and candidate id. Tell him to publish it by approving the Test Bot card in Discord (ask Test Bot to promote infinite-corridor candidate `<id>`). You cannot publish, and a PR comment is never a publish approval. If the comment says "Preview failed", report its log tail and fix the cause in a new PR.
 
 Change-Control is disabled workspace-wide. `.change-control/` is historical (the local publication tool still reads its project identity); do not run its old guarded workflow or Verdict Gate.
 
@@ -52,4 +55,4 @@ Read relevant sections of `docs/HERMES_PROJECT_FIELD_GUIDE.md` and current sourc
 - Production vs Proving Ground isolation: laboratories use scratch state, distinct storage/cache namespaces, manifests and scoped workers; never import, overwrite, or clear production journeys.
 - Mobile performance: retain bounded active actors, projectiles, summons, hazards and pathfinding work; preserve quality tiers, reduced-motion behavior, offline play, and pause/background exact resume. Automated tests do not establish on-device performance.
 
-Never read or copy secrets; configuration references environment variable names only. Preserve operator work and `USER FILES/`. No gameplay changes without a separate approved scope.
+Never read or copy secrets; configuration references environment variable names only. Preserve operator work and `USER FILES/`. Gameplay changes need an approved scope: a task Tim gives a session (in chat or as the cloud task prompt) is that approval. Build it under this workflow, stay within the task, and ask before widening it.

@@ -4,7 +4,7 @@ For a fresh agent picking up Infinite Corridor. Workflow, commands and the relea
 
 ## Where things stand
 
-Release 101 is live (lethal falls, drowning, ramps, Jump in the action diamond, visible Leech). Release 102 (Tidemantle surface swimming, `src/water-traversal.ts`) is in review. Save schema is 14; every later system is additive state normalised in `freshSave`/`migrateSave`. Test floor: 443 passing.
+Release 101 is live; release 102 (Tidemantle surface swimming) is merged and in preview. Release 101: (lethal falls, drowning, ramps, Jump in the action diamond, visible Leech). Release 102 (Tidemantle surface swimming, `src/water-traversal.ts`) is in review. Save schema is 14; every later system is additive state normalised in `freshSave`/`migrateSave`. Test floor: 443 passing.
 
 ## Systems
 
@@ -25,7 +25,7 @@ Release 101 is live (lethal falls, drowning, ramps, Jump in the action diamond, 
 - Falls of 4+ levels, pits and deep water are lethal on purpose. Release 101 removed the edge guard; do not add it back.
 - Respec happens only at shrines, for lumen dust.
 - Echoes add moves; they never replace dodge or jump. The 5 stat points stay.
-- Tim says "push" to publish. A cloud session answers "push" by making sure the PR is ready (tests pass, release bumped, branch pushed) and telling Tim to merge it and run the local publish command. Cloud sessions never publish.
+- Tim says "push" to publish. Cloud sessions merge their own PRs; his PC previews each merge and comments the link on the PR. A cloud session answers "push" with that preview link and candidate id and tells Tim to approve the Test Bot card in Discord. Cloud sessions never publish.
 
 ## Open ideas and known gaps
 
