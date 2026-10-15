@@ -671,7 +671,7 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 #provingGroundPanel header{grid-template-columns:1fr auto;align-items:center}#provingGroundPanel header span{grid-column:1/-1}#pgCollapse{min-height:36px;min-width:64px;padding:0 10px;font-weight:700}
 #provingGroundPanel.collapsed{width:auto;max-height:none;overflow:visible;padding:6px}#provingGroundPanel.collapsed>:not(header),#provingGroundPanel.collapsed header strong,#provingGroundPanel.collapsed header span{display:none!important}#provingGroundPanel.collapsed header{margin:0;display:block}
 
-/* Release icp_8140e9d8175a4d99b73a6c5a_2f558fed10229e4c: Jump sits in the centre of the action diamond; the compass moves to Jump's old place in the quick row. */
+/* Release 101: Jump sits in the centre of the action diamond; the compass moves to Jump's old place in the quick row. */
 .action-diamond .jump {
   left: 50%;
   top: 50%;
