@@ -23,7 +23,7 @@ Tidemantle (102, built)
 
 Each W is one PR and one release bump. W1 and W2 are the critical path; W3-W6 can reorder.
 
-## W1 — Waterbodies v2 (generation)
+## W1 — Waterbodies v2 (generation) — built in release 103
 
 Gated on a new `LANDSCAPE_VERSION = 2`; sections already in the atlas keep v1 (existing pinning in `Game.loadArea`). Old v1 field code stays.
 
