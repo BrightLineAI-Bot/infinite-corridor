@@ -25,6 +25,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
+import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS } from "./sea-creatures.ts";
 import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, sailStep, steer, ensureBoatState } from "./boats.ts";
 import { swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot } from "./water-traversal.ts";
 import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.ts";
@@ -1603,6 +1604,8 @@ export class Game {
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save)});
     this.activatedEncounterGroups=new Set;
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
+    // Surface sea creatures (water world W3): deterministic per section, only in landscape version 2+ water.
+    if(area==="overworld")for(const q of seaSpawns(this.map,this.save.seed,this.rx,this.ry)){const c=createCombatant("ashling",q.x,q.y,false,[]);Object.assign(c,{id:q.id,kind:q.kind,variantId:`${q.kind}:common`,meleePatterns:[],tentacles:0},seaCombatantFields(q.kind));this.enemies.push(c)}
     const intrusions = this.map.deepDungeon || this.map.recipe === "deep-v1" ? [] : apertureEncounterSpawns(
       this.save.seed,
       this.areaId(),
@@ -1670,8 +1673,8 @@ export class Game {
       this.enemies = this.enemies.filter((e) => !defeated.has(e.id) && !(e.objectiveId && progress.completedObjectiveIds.includes(e.objectiveId)));
     }
     const areaWidth = mapWidth(this.map, area),
-      playerRelocated = relocateIfStranded(this.player, this.map, areaWidth);
-    for (const e of this.enemies) relocateIfStranded(e, this.map, areaWidth);
+      playerRelocated = !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
+    for (const e of this.enemies) if (!e.seaKind) relocateIfStranded(e, this.map, areaWidth);
     if (playerRelocated)
       this.message =
         "The changed Corridor settles you onto the nearest stable ground. Your progress and carried items remain intact.";
@@ -2524,7 +2527,7 @@ export class Game {
     this.save.currency += marks;
     const oldHp = this.save.maxHp,
       oldStamina = this.save.maxStamina,
-      levels = awardExperience(this.save, e.boss ? 35 : 10);
+      levels = awardExperience(this.save, e.seaKind ? SEA_CREATURES[e.seaKind].xp : e.boss ? 35 : 10);
     if (levels) {
       this.player.hp = Math.min(
         this.save.maxHp,
@@ -3024,9 +3027,15 @@ export class Game {
     else p.stamina = Math.min(p.maxStamina, p.stamina + 9 * dt);
     this.performanceStats.totalDungeonEncounterRecords=this.area==="dungeon"?(this.map.encounterGroups||[]).length:0;this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.activeProjectiles=this.projectiles.length;this.performanceStats.activeHazardsAndEffects=this.eliteHazards.length+this.effects.length;this.performanceStats.pathfindingWork=0;this.performanceStats.ambientTicks=0;if(dt>1/30)this.performanceStats.updateBudgetViolations++;
     const packWorld=this.packWorld(dt,now,this.area==="overworld"?settlementSanctuary(this.map,this.rx,this.ry,this.save):null);
+    // World adapter for sea creatures: habitat water under a footprint, a telegraphed hit, and the Bog Lurker's drag.
+    const seaWorld={player:p,
+      water:(hab,x,y)=>SEA_HABITATS[hab].includes(tileUnder(this.map,width,x,y)?.kind),
+      hurt:(n,e)=>{if(now<=(p.invulnerableUntil||0))return;p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?n*.65:n)*(1-Math.min(.75,characterStats(this.save).damageReduction))));p.invulnerableUntil=now+700;e.recoil=.2},
+      pull:(e,k)=>{const m=Math.hypot(e.x-p.x,e.y-p.y)||1,nx=p.x+(e.x-p.x)/m*Math.min(k,m),ny=p.y+(e.y-p.y)/m*Math.min(k,m);if(footprintOpen(this.map,width,nx,ny,true)){p.x=nx;p.y=ny}}};
     for (const e of this.enemies) {
       if(!activeEnemySet.has(e)){this.performanceStats.dormantEnemies++;continue}
       if(e.packKind){this.performanceStats.activeEnemies++;const zone=packWorld.sanctuary;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(zone)enforceSanctuary(e,zone);continue}
+      if(e.seaKind){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateSeaCreature(e,seaWorld,dt);continue}
       if(e.encounterGroup&&!this.activatedEncounterGroups.has(e.encounterGroup)){this.activatedEncounterGroups.add(e.encounterGroup);this.performanceStats.encounterActivations++}
       let simulationDt=dt;
       if(e.ambient){e.ambientAccumulator=(e.ambientAccumulator||0)+dt;if(e.ambientAccumulator<.125){this.performanceStats.dormantEnemies++;continue}simulationDt=Math.min(.25,e.ambientAccumulator);e.ambientAccumulator=0;this.performanceStats.ambientTicks++}
