@@ -592,6 +592,7 @@ export function render(ctx, g, w, h, now) {
       tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId);
     }
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
+  if(g.area==="overworld"&&g.seaHazards)drawSeaHazards(ctx,g.seaHazards,s,now,l,t,r,b,g.map);
   const seenTile=(x,y)=>g.area!=="dungeon"||dungeonTileVisibility(g.map,x,y)!=="unseen";
   drawHazardBrinks(ctx,g.map,mw,l,t,r,b,s,seenTile);
   drawTraversalCues(ctx,g.map,mw,p,s,now,g.ledgeHint,seenTile);
@@ -968,4 +969,43 @@ function drawEchoPatches(ctx,g,s,now){
     if(q.kind==="web"){ctx.strokeStyle=`rgba(230,235,240,${Math.min(.7,left)})`;ctx.lineWidth=1;ctx.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.6)}ctx.stroke();for(const f of[.4,.75,1]){ctx.beginPath();ctx.ellipse(x,y,r*f,r*f*.6,0,0,7);ctx.stroke()}}
     else if(q.kind==="flesh"){ctx.fillStyle=`rgba(150,40,60,${Math.min(.45,left*.2)})`;ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.fill();ctx.fillStyle=`rgba(220,120,130,${Math.min(.5,left*.2)})`;for(let k=0;k<5;k++){ctx.beginPath();ctx.arc(x+Math.cos(k*1.3+now/700)*r*.6,y+Math.sin(k*1.7)*r*.35,s*.06,0,7);ctx.fill()}}
     else if(q.kind==="mortar"){const t=1-Math.min(1,left/.65);ctx.strokeStyle=`rgba(255,200,90,${.4+t*.5})`;ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.stroke();ctx.fillStyle=`rgba(255,170,60,${t*.3})`;ctx.fill()}}
+}
+
+const SEA_SURFACE = new Set(["ocean", "deepOcean", "shallows"]);
+// Open-sea hazards (release 152): spiralling maelstroms, the rogue wave's foam crest, and drifting ice.
+function drawSeaHazards(ctx, sea, s, now, l, t, r, b, map) {
+  const time = now / 1000, wet = (x, y) => SEA_SURFACE.has(map?.tiles?.[Math.floor(y) * 32 + Math.floor(x)]?.kind);
+  for (const v of sea.whirlpools) {
+    if (v.x + v.radius < l || v.x - v.radius > r || v.y + v.radius < t || v.y - v.radius > b) continue;
+    const cx = v.x * s, cy = v.y * s, g = ctx.createRadialGradient(cx, cy, 0, cx, cy, v.radius * s);
+    g.addColorStop(0, "#02101cee"); g.addColorStop(.35, "#0a2a44aa"); g.addColorStop(1, "#1d4f7a00");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, v.radius * s, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#cfeaffaa"; ctx.lineWidth = Math.max(1, s * .06);
+    for (let arm = 0; arm < 4; arm++) {
+      ctx.beginPath();
+      for (let k = 0; k <= 30; k++) { const f = k / 30, rad = v.radius * s * (1 - f * .92), a = arm * Math.PI / 2 + v.dir * (f * 5.5 + time * 2.2); const px = cx + Math.cos(a) * rad, py = cy + Math.sin(a) * rad; k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+      ctx.stroke();
+    }
+  }
+  const w = sea.wave;
+  if (w) {
+    const travel = 46 / 5, tt = (sea.clock + w.phase) % w.period;
+    if (tt < travel) {
+      const pos = -23 + tt * 5, nx = -w.dy, ny = w.dx;
+      for (const [off, col, lw] of [[-1.4, "#1d4f7a66", 1.4], [-.6, "#9fd3f0aa", .5], [0, "#f4fbffee", .18]]) {
+        const ox = 16 + w.dx * (pos + off), oy = 16 + w.dy * (pos + off);
+        ctx.strokeStyle = col; ctx.lineWidth = lw * s; ctx.beginPath();
+        let pen = false;
+        for (let k = -24; k <= 24; k += .5) { const wob = Math.sin(k * .7 + time * 3) * .25, wx = ox + nx * k + w.dx * wob, wy = oy + ny * k + w.dy * wob; if (!wet(wx, wy)) { pen = false; continue; } pen ? ctx.lineTo(wx * s, wy * s) : ctx.moveTo(wx * s, wy * s); pen = true; }
+        ctx.stroke();
+      }
+    }
+  }
+  for (const berg of sea.bergs) {
+    if (berg.x + berg.radius < l || berg.x - berg.radius > r || berg.y + berg.radius < t || berg.y - berg.radius > b) continue;
+    const pts = []; for (let i = 0; i < 9; i++) { const a = berg.spin + i * Math.PI * 2 / 9, j = .78 + ((berg.shape >> (i * 2)) & 3) * .08; pts.push([(berg.x + Math.cos(a) * berg.radius * j) * s, (berg.y + Math.sin(a) * berg.radius * j) * s]); }
+    ctx.fillStyle = "#0a223855"; ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x + s * .15, y + s * .25) : ctx.moveTo(x + s * .15, y + s * .25)); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#e6f4fb"; ctx.strokeStyle = "#8fb8cf"; ctx.lineWidth = Math.max(1, s * .05); ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#b9dcef"; ctx.beginPath(); ctx.moveTo(berg.x * s, berg.y * s); for (let i = 0; i < 3; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); ctx.fill();
+  }
 }

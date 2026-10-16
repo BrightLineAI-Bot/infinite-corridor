@@ -95,6 +95,16 @@ export function hullAbsorb(save, damage) {
   return { kept: damage - take, sunk: true };
 }
 
+// A blow to the hull alone (open-sea hazards, release 152). Returns true when it sinks the skiff.
+export function hullStrike(save, n) {
+  const b = ensureBoatState(save);
+  if (!b.aboard || !(n > 0)) return false;
+  b.hull = Math.max(0, b.hull - n);
+  if (b.hull > 0) return false;
+  b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home;
+  return true;
+}
+
 // One sailing step along one axis. `open(x, y)` says whether a footprint fits on sailable water; `land(x, y)` returns
 // the safe ground position to step onto ahead of the bow, or null. Returns "sail", "ashore" or "blocked".
 export function sailStep(open, land, x, y) { return open(x, y) ? "sail" : land(x, y) ? "ashore" : "blocked"; }
