@@ -27,7 +27,7 @@ test('five branches, each an active with a modifier and two exclusive capstones;
   assert.equal(APERTURE_SKILLS['rift-step'].branch, 'Rift');
 });
 
-test('points come from Aperture; ranks and modifiers cost 1, capstones 2 and only one per branch', () => {
+test('points come from Aperture; ranks and modifiers cost 1, capstones 2; a mastered branch can take both capstones (release 109)', () => {
   const s = rich(30); // 5 points
   assert.equal(pointsEarned(s), Math.floor(30 / POINT_EVERY));
   for (let i = 0; i < 3; i++) learnRank(s, 'form');
@@ -35,8 +35,13 @@ test('points come from Aperture; ranks and modifiers cost 1, capstones 2 and onl
   assert.equal(chooseCap(s, 'form', 'colossus').ok, false, 'needs 2 points');
   s.perception.aperture = 42;
   assert.equal(chooseCap(s, 'form', 'colossus').ok, true);
-  assert.equal(chooseCap(s, 'form', 'cinder-heart').ok, false, 'exclusive');
-  assert.equal(hasNode(s, 'colossus'), true);
+  assert.equal(chooseCap(s, 'form', 'colossus').ok, false, 'already taken');
+  assert.equal(chooseCap(s, 'form', 'cinder-heart').ok, false, 'the second capstone also needs 2 points');
+  s.perception.aperture = 54;
+  assert.equal(chooseCap(s, 'form', 'cinder-heart').ok, true, 'both capstones once mastered');
+  assert.equal(hasNode(s, 'colossus'), true); assert.equal(hasNode(s, 'cinder-heart'), true);
+  assert.equal(pointsSpent(s), 3 + 1 + 2 + 2); assert.equal(chooseCap(s, 'form', 'cinder-heart').ok, false);
+  const m = migrateSave(JSON.parse(JSON.stringify(s))); assert.deepEqual([m.constellation.caps.form, m.constellation.caps2.form], ['colossus', 'cinder-heart'], 'survives reload');
   assert.equal(learnRank(rich(0), 'form').ok, false, 'Ember Form opens at Aperture 6');
   const t = rich(90); assert.equal(learnMod(t, 'veil').ok, false, 'modifier needs the active first');
 });

@@ -1,4 +1,4 @@
-// Hamlets (release 109): small procedural towns scattered through the wilds, pinned per atlas entry like the landscape.
+// Hamlets (release 111): small procedural towns scattered through the wilds, pinned per atlas entry like the landscape.
 // The world is split into HAMLET.cell × HAMLET.cell blocks of sections; each block nominates one section, and most
 // nominated sections that have a flat, dry patch of ground grow a hamlet there. A section explored before release 109
 // keeps no hamlet (its atlas entry carries no hamletVersion), so existing journeys only find hamlets in new ground.

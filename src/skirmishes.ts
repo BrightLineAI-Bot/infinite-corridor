@@ -1,4 +1,4 @@
-// Skirmishes (release 109): now and then a wild section holds two factions at war with each other — glass mites against
+// Skirmishes (release 111): now and then a wild section holds two factions at war with each other — glass mites against
 // ashlings, a brute against a hound pack, hamlet wardens against the watchers. They fight each other, not the Wayfarer,
 // until the Wayfarer strikes one: that unit (and, for creatures, its nearby kin) turns on the player with its normal AI.
 // When a side is wiped out the battle is settled for good (a world flag); creature victors then roam as ordinary foes.
