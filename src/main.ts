@@ -1208,7 +1208,7 @@ function openMap() {
   if(mapMode==="atlas")showMapDetail(game.rx, game.ry);
   drawMap();
 }
-// Release 151: each part of the Pack is built separately, so a fault in one (seen on a player's save, cause still
+// Release 152: each part of the Pack is built separately, so a fault in one (seen on a player's save, cause still
 // unknown) shows a note naming the part and its error instead of stopping the whole Pack from opening.
 function packSectionFailed(name,error){noteError(error);console.error(`Pack section ${name} failed`,error);const note=document.createElement("p");note.className="options-note options-danger";note.textContent=`${name} could not be shown (${error?.message||error}). Options → System → Copy diagnostics, then paste it to Claude.`;body.append(note)}
 function openPack() {
