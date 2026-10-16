@@ -25,7 +25,7 @@ Release 101 is live; release 102 (Tidemantle surface swimming) is merged and in 
 - Falls of 4+ levels, pits and deep water are lethal on purpose. Release 101 removed the edge guard; do not add it back.
 - Respec happens only at shrines, for lumen dust.
 - Death (2026-10-16): only raw materials gathered in the world for building or survival are lost on death — wood today (`loseWood`), and stone or anything similar added later must follow the same rule. Spheres, cinder iron, lumen dust, glyphs, equipment, marks and XP are never lost.
-- Release numbers (2026-10-16): two cloud sessions build in parallel. The water/boats session takes odd release numbers, the towns/creature-battles session even ones; if main has passed your number, jump to your next number of your own parity.
+- Release numbers (updated 2026-10-16, after release 149): two cloud sessions build in parallel. The towns/reciters/dungeons session takes even release numbers. The diagnostics/remediation session takes odd ones (the water/boats session, which held odd numbers, finished at release 124). If main has passed your number, jump to your next number of your own parity; never take the other parity. Before each merge, fetch main, merge it in, re-bump if needed, and message the other session the number you are taking.
 - Echoes add moves; they never replace dodge or jump. The 5 stat points stay.
 - Publishing: cloud sessions merge their own PRs; Tim's PC previews each merge and posts one Approve/Deny release card in Discord, and his tap publishes it. A cloud session answers "push" by confirming the PR is merged and pointing Tim to that card. Cloud sessions never publish.
 
