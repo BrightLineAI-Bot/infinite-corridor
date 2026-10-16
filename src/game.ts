@@ -60,6 +60,7 @@ import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-n
 import { applyLandscape, canStep, LANDSCAPE_VERSION, DEEP_WATER, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.ts";
 import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet } from "./settlements.ts";
+import { TRAVEL_VERSION, applyTrails, addTravelers, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
 import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.ts";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
@@ -793,11 +794,13 @@ export function buyFromVela(save, id, quantity = 1) {
 export function vendorShop(save, vendorId = "vendor-vela") {
   if (vendorId === "vendor-vela") return velaShop(save);
   save.shops ||= {};
+  if (vendorId.startsWith("travelers:")) vendorId = "traveler-peddler"; // every wandering peddler shares one rotating stock
   if(vendorId.startsWith("dungeon-merchant:")||vendorId==="deep-v2-fortress-merchant")return save.shops[vendorId]=dungeonShop(save,vendorId);
   save.shops[vendorId] = refreshShop(save, vendorId, save.shops[vendorId], 2);
   return save.shops[vendorId];
 }
 export function buyFromVendor(save, vendorId, id, quantity = 1) {
+  if (String(vendorId).startsWith("travelers:")) vendorId = "traveler-peddler";
   if (vendorId === "vendor-vela" && id !== "crossingSigil")
     return buyFromVela(save, id, quantity);
   const npc = save.consequences?.npcs?.[vendorId],
@@ -1542,7 +1545,7 @@ export class Game {
             this.ry,
             this.save.worldGeneration,
           );
-    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION});if(!seen||seen.hamletVersion)applyHamlet(this.map,this.save.seed,this.rx,this.ry,seen?.hamletVersion||HAMLET_VERSION);const b=ensureBoatState(this.save),m=b.moored;if(b.owned&&!b.aboard&&m&&m.rx===this.rx&&m.ry===this.ry)this.map.objects.push({id:"skiff-moored",kind:"skiff",name:"Your skiff",lore:"Your skiff rides at its mooring.",x:m.x,y:m.y,state:"moored",actions:["board"]});const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive)}
+    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION});if(!seen||seen.hamletVersion)applyHamlet(this.map,this.save.seed,this.rx,this.ry,seen?.hamletVersion||HAMLET_VERSION);if(!seen||seen.travelVersion)applyTrails(this.map,this.save.seed,this.rx,this.ry);const b=ensureBoatState(this.save),m=b.moored;if(b.owned&&!b.aboard&&m&&m.rx===this.rx&&m.ry===this.ry)this.map.objects.push({id:"skiff-moored",kind:"skiff",name:"Your skiff",lore:"Your skiff rides at its mooring.",x:m.x,y:m.y,state:"moored",actions:["board"]});const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive)}
     if(area==="dungeon"&&history?.relayNode){if(placeRelayNode(this.map,loadingId,this.save))ensureRelayNetwork(this.save).seen=true;}
     if(area==="dungeon"&&this.map.dungeonContract?.discoveryEnabled){const discovered=discoveryForLevel(history,this.map);applyDungeonDiscovery(this.map,discovered);this._dungeonChunkId=null;}
     if(area==='overworld'){
@@ -1605,12 +1608,15 @@ export class Game {
       atlas[key] = { terrain: this.map.dominant, ...(prior ? (prior.landscapeVersion ? { landscapeVersion: prior.landscapeVersion } : {}) : { landscapeVersion: LANDSCAPE_VERSION }),
         // Hamlets (release 111; version 2 at 112) follow the same rule: only sections first seen from now on can hold one.
         ...(prior ? (prior.hamletVersion ? { hamletVersion: prior.hamletVersion } : {}) : { hamletVersion: HAMLET_VERSION }),
+        // Trails (release 113) likewise only appear in sections first seen from then on.
+        ...(prior ? (prior.travelVersion ? { travelVersion: prior.travelVersion } : {}) : { travelVersion: TRAVEL_VERSION }),
         ...(this.map.landscape?.biome ? { landscape: this.map.landscape.biome } : {}), sites: this.map.objects
         .filter((o) => ["diveSite","shipwright","checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho"].includes(o.kind))
         .map((o) => ({ kind: o.kind, name: o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save)});
     if(area==="overworld"){const war=addSkirmish(this.map,this.save.seed,this.rx,this.ry,this.save);if(war)this.message=war.text;else if(this.map.settlement?.procedural)this.message=`${this.map.settlement.name} — a ${this.map.settlement.label.toLowerCase()} holds this ground.`}
+    if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
     this.activatedEncounterGroups=new Set;
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
     // Surface sea creatures (water world W3): deterministic per section, only in landscape version 2+ water.
@@ -2141,7 +2147,7 @@ export class Game {
       this.message = `${o.name}: you find a Bathysal Lens. ${canDive(this.save) ? "With your rig, you can now dive at dive buoys." : "A Shipwright's dive rig would let you dive."}`;
       this.sync(); return { ok: true, message: this.message };
     }
-    if (!action && ["npc", "dungeon", "shrine", "relayTerminal","relayNode","shelterMerchant","displacementDevice","elitePortal","viewport"].includes(o.kind)) {
+    if (!action && ["npc", "dungeon", "shrine", "relayTerminal","relayNode","shelterMerchant","traveler","displacementDevice","elitePortal","viewport"].includes(o.kind)) {
       this.interactionRequested = o.id;
       return {
         ok: true,
@@ -2154,7 +2160,7 @@ export class Game {
       r = applyInteraction(o, chosen, this.save, this.areaId());
     this.message = r.message;
     if (!r.ok) return r;
-    if ((o.kind === "npc"||o.kind==="shelterMerchant") && chosen === "trade") this.shopRequested = o.id;
+    if ((o.kind === "npc"||o.kind==="shelterMerchant"||o.kind==="traveler") && chosen === "trade") this.shopRequested = o.id;
     if (this.save.hp !== before)
       this.player.hp = Math.min(
         this.save.maxHp,
@@ -2503,6 +2509,7 @@ export class Game {
     if(domainResult?.kind==='manifestation'){journalOnce(this.save,`domain-manifestation:${e.domainId}:${domainResult.tier}`,`${domainResult.state.name} manifested again through a higher Aperture. Its altered form was defeated and both upgrade spheres were recovered.`,domainResult.state.name);this.defeatNotice={title:'HIGHER FORM DISPERSED',detail:`${domainResult.state.name} · manifestation ${domainResult.tier}`,kind:'danger'}}
     if(e.huntInstanceId)completeHuntInstance(this.save,e.huntInstanceId);
     if(e.viewportHuntId&&completeViewportHunt(this.save,e.viewportHuntId)){const hunt=this.save.viewport.contracts[e.viewportHuntId];journalOnce(this.save,`viewport-complete:${e.viewportHuntId}`,`${hunt.title} is complete. Viewport records the victory and releases its promised reward.`,hunt.title);recordViewportArrival(this.save,{id:`hunt:${e.viewportHuntId}`,title:hunt.title,text:'A consequential threat was defeated and entered the Refuge record.',kind:'hunt'});this.defeatNotice={title:e.worldBoss?'WORLD THREAT BROKEN':'HUNT COMPLETE',detail:`${hunt.title} · return to Viewport for the enduring record`,kind:'danger'};if(hunt.domain)this.save.worldFlags[`domain-cleared:${hunt.domain}`]=true}
+    if (!e.ambient && !e.noRewards) { const done = wandererKill(this.save); if (done) { this.message = done; journalOnce(this.save, `wanderer-done:${this.save.wanderer.stage}`, done, "Old Quillon"); } }
     if (e.ambient) {
       e.rewarded = true;
       this.message = e.kind === "hushling" ? "The hushling unthreads into violet motes." : "The quiet creature falls. Nothing in it was meant as loot.";
@@ -3090,6 +3097,7 @@ export class Game {
       summon:(kind,x,y,o)=>{const c=createCombatant("ashling",x,y,false,[]);Object.assign(c,{id:`${o.id}:${kind}:${Math.round(now)}:${seaSummons.length}`,kind,variantId:`${kind}:common`,meleePatterns:[],tentacles:0,noRewards:true,summonedBy:o.id},seaCombatantFields(kind));seaSummons.push(c)},
       ownerDead:(e)=>!this.enemies.some(q=>q.id===e.summonedBy&&!q.dead),
       ink:(seconds)=>{this.inkUntil=now+seconds*1000;if(now>(this.inkMessageAt||0)){this.inkMessageAt=now+8000;this.message="Ink clouds the water — the Stormkraken hides in the dark."}}};
+    if(this.area==="overworld")tickTravelers(this.map,p,dt);
     const seaSummons=[];
     const skirmishHooks={settled:(side,survivors)=>{const war=this.map.skirmish;if(!war)return;this.save.worldFlags[war.id]=side;const winner=war[side],loser=war[side==="a"?"b":"a"];this.message=`The fighting ends: the ${winner.label} hold the field against the ${loser.label}.`;journalOnce(this.save,war.id,`At ${this.rx},${this.ry}, ${war.a.label} and ${war.b.label} fought; the ${winner.label} held the field.`,"Skirmishes")}};
     for (const e of this.enemies) {
