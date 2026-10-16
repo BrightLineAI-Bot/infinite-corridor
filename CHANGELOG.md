@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 126 — tapping Pack no longer also presses the button that opens under your finger (it jumped to the Arcanum, or could spend a stat point). If a screen ever fails to open, the pause menu now appears instead of the game freezing.
 - Release 125 — pressing back on the pause menu no longer freezes the game. Android's back gesture could close the pause menu without resuming (most often right after returning to the app), leaving the game paused with nothing on screen; back on the pause menu now continues play.
 - Release 124 — the Reciter's Tome. The Library has moved from Options into the Journal as its own tab, the Reciter's Tome: every book walking the Corridor, the reciters of each you have met, and each one's Linear/Random order and Reset.
 - Release 122 — the Library. Options → Stories is now Options → Library: every book walking the Corridor is listed (with its author, translation and length), and under each book appear only the reciters of it you have actually met. Each reciter has their own order, Linear or Random, and a Reset to send them back to the first line. Adding your own stories in game is gone; new books are added with game updates. The dreamer with the tarnished key now recites the complete Randolph Carter stories in order: The Statement of Randolph Carter, The Unnamable, The Silver Key, Through the Gates of the Silver Key and The Dream-Quest of Unknown Kadath (1,915 lines).
