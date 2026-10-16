@@ -173,6 +173,7 @@ import { STATS } from "./types.ts";
 import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.ts";
 import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.ts";
 import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.ts";
+import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.ts";
 import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.ts";
 import { currentObjective, validActions, dungeonHistory } from "./interactions.ts";
 import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
@@ -390,7 +391,7 @@ function drawApertureVisuals() {
 const objective = $("#objective"),
   hud = $("#hud"),
   hudDetails = $("#hudDetails"),
-  hudToggles = [$("#hudExpand"), $("#fieldMenuToggle")],
+  hudToggles = [$("#hudExpand")].filter(Boolean), // release 111: the bottom-row Menu toggle became spell slot B
   navCompass = $("#navCompass"),
   navGuidanceArrow = $("#navGuidanceArrow"),
   navManualArrow = $("#navManualArrow");
@@ -885,7 +886,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:110,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:111,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1150,7 +1151,8 @@ function openPack() {
   body.append(gearHeading, gear);
   // Spells, disciplines and capstones live in one place: the Arcanum (release 109).
   const arcane=document.createElement('div');arcane.className='item';const bound=save.magicSkills.selected?APERTURE_SKILLS[save.magicSkills.selected]?.name:null;
-  arcane.textContent=`Spell: ${SPELLS[save.equippedSpell||'ember-ring']?.name}${bound?` · Spell button: ${bound}`:''} · ${pointsFree(save)} constellation point${pointsFree(save)===1?'':'s'} free`;
+  const sa=slotted(save,'a'),sb=slotted(save,'b'),pr=activePairing(save);void bound;
+  arcane.textContent=`Slot A: ${sa?`${sa.symbol} ${sa.name}`:'empty'} · Slot B: ${sb?`${sb.symbol} ${sb.name}`:'empty'}${pr?` · Pairing: ${pr.name}`:''} · ${pointsFree(save)} constellation point${pointsFree(save)===1?'':'s'} free`;
   arcane.append(uiButton('Open the Arcanum',()=>openSkills()));body.append(arcane);
   for (const [type, name, description] of [
     [
@@ -1497,6 +1499,14 @@ function updateHud(now) {
           : "READY";
     button.setAttribute("aria-label", `${action} ${button.dataset.cooldown}`);
   }
+  // Spell slots A and B (release 111): each shows its castable's symbol in its attribute colour.
+  for (const [action, slot] of [["spell", "a"], ["spell2", "b"]]) {
+    const button = document.querySelector(`[data-action="${action}"]`), c = slotted(save, slot);
+    if (!button) continue;
+    const key = c ? c.key : "empty";
+    if (button.dataset.slotKey !== key) { button.dataset.slotKey = key; button.replaceChildren(Object.assign(document.createElement("span"), { className: "slot-sym", textContent: c ? c.symbol : "+" }), Object.assign(document.createElement("span"), { className: "slot-letter", textContent: slot.toUpperCase() })); button.style.setProperty("--slot", c ? c.color : "#76684e"); }
+    button.setAttribute("aria-label", `Slot ${slot.toUpperCase()}: ${c ? c.name : "empty"} ${button.dataset.cooldown || ""}`);
+  }
 }
 let nextSlowUiRefresh = 0;
 const sceneRuntime={active:null,plan:null,shot:0,started:0,revealSkip:false,image:null,wasPaused:false};
@@ -1759,18 +1769,24 @@ function arcanumFooter(){const f=el('footer','arc-foot');f.append(uiButton('Sphe
 // Constellation: each branch is a path of glowing nodes — the active (with rank pips), its modifier, then two capstones.
 function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.perception?.aperture||0,free=pointsFree(save);
  arcanumShell('constellation',`Spells & Constellation`,`${free} point${free===1?'':'s'} free · Aperture ${value} (${apertureBand(value).name}), one point per ${POINT_EVERY}${save.constellation.bonus?`, ${save.constellation.bonus} kept from before`:''}. Ranks and modifiers cost 1, capstones 2; a mastered branch can take both. Tap an entry to read it.${atShrine?' This shrine can reset everything.':' Respec at a shrine.'}`);
- const sky=el('div','arc-sky'),boundId=save.magicSkills.selected;
+ const sky=el('div','arc-sky');ensureSlots(save);
+ const inSlot=(key)=>['a','b'].find(q=>save.magicSkills.slots[q]===key),slotButtons=(key,after)=>['a','b'].map(q=>{const here=save.magicSkills.slots[q]===key,b=uiButton(here?`In slot ${q.toUpperCase()}`:`Set in ${q.toUpperCase()}`,()=>{const r=setSlot(save,q,key);game.message=r.message;persist();after();openSkills(atShrine)});if(here)b.disabled=true;return b});
+ // Slots A and B, and the Pairing their two attributes make.
+ {const box=el('section','arc-branch arc-slots');box.append(el('h3','','Spell slots'));
+  for(const q of ['a','b']){const c=slotted(save,q),row=el('div','arc-slot');const sym=el('span','slot-sym',c?c.symbol:'+');sym.style.color=c?c.color:'';row.append(el('strong','',q.toUpperCase()),sym,el('span','',c?`${c.name} · ${ATTRIBUTES[c.attr].name}`:'Empty — choose below'));if(c){const clear=uiButton('Clear',()=>{const r=setSlot(save,q,null);game.message=r.message;persist();openSkills(atShrine)});row.append(clear)}box.append(row)}
+  const pr=activePairing(save);box.append(el('p','',pr?`Pairing: ${pr.name} — ${pr.text}`:'Fill both slots: their two attributes form a Pairing, a small bonus while both stay set.'));
+  sky.append(box)}
  // The spell branch: the cast-button spell, with its glyph sockets.
- {const card=el('section','arc-branch spells');card.dataset.branch='spells';const head=el('header','arc-branch-head');head.append(el('h3','','Spells'),el('span','arc-branch-state','Cast button'));
+ {const card=el('section','arc-branch spells');card.dataset.branch='spells';const head=el('header','arc-branch-head');head.append(el('h3','','Spells'),el('span','arc-branch-state','Fire · Dusk'));
   const path=el('div','arc-path spell-path'),detail=el('div','arc-detail'),focus=arcanumFocus?.branch==='spells'?SPELLS[arcanumFocus.node]:null,show=focus||SPELLS[save.equippedSpell||'ember-ring'];
-  for(const sp of Object.values(SPELLS)){const on=save.equippedSpell===sp.id,row=el('button',`arc-node core ${on?'owned':'ready'}${focus===sp?' focus':''}`),n=row;row.type='button';row.dataset.slot='spell';n.append(el('span','arc-node-orb',{'cinder-dart':'➶','ember-ring':'◎','grave-sun':'☀'}[sp.id]||'✶'),el('span','arc-node-name',sp.name),el('span','arc-sockets-mini',(save.spellGlyphs?.[sp.id]||[null,null]).map(g=>g?GLYPHS[g].sigil:'○').join(' ')));n.onclick=()=>{arcanumFocus={branch:'spells',node:sp.id};openSkills(atShrine)};path.append(n)}
+  for(const sp of Object.values(SPELLS)){const on=!!inSlot(`spell:${sp.id}`),row=el('button',`arc-node core ${on?'owned':'ready'}${focus===sp?' focus':''}`),n=row;row.type='button';row.dataset.slot='spell';n.append(el('span','arc-node-orb',{'cinder-dart':'➶','ember-ring':'◎','grave-sun':'☀'}[sp.id]||'✶'),el('span','arc-node-name',sp.name),el('span','arc-sockets-mini',(save.spellGlyphs?.[sp.id]||[null,null]).map(g=>g?GLYPHS[g].sigil:'○').join(' ')));n.onclick=()=>{arcanumFocus={branch:'spells',node:sp.id};openSkills(atShrine)};path.append(n)}
   const sockets=(save.spellGlyphs?.[show.id]||[]).filter(Boolean).map(g=>`${GLYPHS[g].sigil} ${GLYPHS[g].name}`);
   detail.append(el('strong','',show.name),el('p','',`${show.cooldown}s cooldown · power ${show.damage} · reach ${show.maxRange} · radius ${show.radius}. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`));
-  if(save.equippedSpell===show.id)detail.append(el('small','arc-why','Equipped on the cast button.'));else{const go=uiButton('Equip on the cast button',()=>{save.equippedSpell=show.id;persist();arcanumFocus={branch:'spells',node:show.id};openSkills(atShrine)});go.className='arc-go';detail.append(go)}
+  detail.append(...slotButtons(`spell:${show.id}`,()=>{arcanumFocus={branch:'spells',node:show.id}}));
   card.append(head,path,detail);sky.append(card)}
  for(const bid of BRANCH_IDS){const b=BRANCHES[bid],skill=APERTURE_SKILLS[b.active],rank=skillRank(save,skill.id),modOn=!!save.constellation.mods[b.mod.id],caps=branchCaps(save,bid),mastered=rank>=skill.maxRank,open=value>=skill.threshold;
   const card=el('section','arc-branch'+(open?'':' sealed'));card.dataset.branch=bid;
-  const head=el('header','arc-branch-head'),bound=boundId===skill.id||(bid==='motion'&&boundId==='aerial-step');head.append(el('h3','',b.name),el('span','arc-branch-state',`${bound?'◉ Spell button · ':''}${!open?`Opens at Aperture ${skill.threshold}`:caps.length===2?'Fully crowned':mastered?'Mastered':`${rank}/${skill.maxRank}`}`));if(bound)card.classList.add('bound');
+  const head=el('header','arc-branch-head'),slotOf=inSlot(`skill:${skill.id}`)||(bid==='motion'?inSlot('skill:aerial-step'):null),bound=!!slotOf;head.append(el('h3','',b.name),el('span','arc-branch-state',`${bound?`◉ Slot ${slotOf.toUpperCase()} · `:''}${!open?`Opens at Aperture ${skill.threshold}`:caps.length===2?'Fully crowned':mastered?'Mastered':`${rank}/${skill.maxRank}`}`));if(bound)card.classList.add('bound');
   const path=el('div','arc-path'),detail=el('div','arc-detail');
   const nodes=[{id:'active',name:skill.name,text:skill.description,state:rank>=skill.maxRank?'owned':rank>0?'partial':open?'ready':'locked',pips:[rank,skill.maxRank],cost:1,can:open&&rank<skill.maxRank,act:()=>learnRank(save,bid),verb:`Learn rank ${rank+1}`},
    {id:'mod',name:b.mod.name,text:b.mod.text,state:modOn?'owned':rank>0?'ready':'locked',cost:1,can:rank>0&&!modOn,act:()=>learnMod(save,bid),verb:'Learn'},
@@ -1784,20 +1800,25 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
   const show=focus||nodes.find(n=>n.can)||nodes[0];
   detail.append(el('strong','',show.name),el('p','',show.text));
   if(show.can){const go=uiButton(`${show.verb} · ${show.cost} pt${show.cost>1?'s':''}`,()=>{const r=show.act();game.message=r.message;persist();arcanumFocus={branch:bid,node:show.id};openSkills(atShrine)});go.className='arc-go';detail.append(go)}
-  // Bind: a learned discipline (or Aerial Step, a castable capstone) goes on the Spell button.
+  // A learned discipline (or Aerial Step, a castable capstone) can go in slot A or B.
   const castId=show.id==='active'&&rank>0?skill.id:show.id==='aerial-step'&&caps.includes('aerial-step')?'aerial-step':null;
-  if(castId){if(boundId===castId)detail.append(el('small','arc-why','◉ On the Spell button.'));else detail.append(uiButton('Bind to the Spell button',()=>{save.magicSkills.selected=castId;persist();arcanumFocus={branch:bid,node:show.id};openSkills(atShrine)}))}
+  if(castId)detail.append(...slotButtons(`skill:${castId}`,()=>{arcanumFocus={branch:bid,node:show.id}}));
   if(!show.can&&show.state==='locked')detail.append(el('small','arc-why',show.cap?(modOn?`Master ${skill.name} (${skill.maxRank} ranks) first.`:`Take ${b.mod.name} and master ${skill.name} first.`):show.id==='mod'?`Learn ${skill.name} first.`:`Opens at Aperture ${skill.threshold}.`));
   card.append(head,path,detail);sky.append(card)}
  body.append(sky);
+ const seen=Object.keys(PAIRINGS).filter(k=>save.magicSkills.pairingsSeen?.[k]);body.append(el('h3','',`Pairings · ${seen.length} of ${Object.keys(PAIRINGS).length} found`));
+ for(const k of Object.keys(PAIRINGS)){if(!seen.includes(k))continue;const p=PAIRINGS[k],[x,y]=k.split('+');body.append(el('p','arc-pairing',`${p.name} (${ATTRIBUTES[x].name} + ${ATTRIBUTES[y].name}) — ${p.text}`))}
+ if(seen.length<Object.keys(PAIRINGS).length)body.append(el('p','arc-why','Set two castables of different (or matching) attributes in A and B to find more.'));
  if(atShrine){const r=uiButton(`Respec everything · ${respecCost(save)} lumen dust (you have ${save.materials.lumenDust||0})`,()=>{const q=respec(save);game.message=q.message;persist();openSkills(true)});r.className='arc-respec';body.append(r)}
  arcanumFooter()}
 // Glyphs: tap a socket, then tap a glyph tile to set it; resonating pairs glow.
 function openGlyphs(){arcanumShell('glyphs','Glyphs & Resonances',`Glyph dust ${save.glyphDust||0}. Tap a socket, then a glyph to set it. The same glyph acts differently in a weapon, a tool or a spell; two in one host can wake a Resonance. Glyphs always come back out intact.`);
- const spellId=save.equippedSpell||'ember-ring';save.spellGlyphs[spellId]||=Array(SPELL_SOCKETS).fill(null);
- const hosts=[['melee','Primary',save.equipment.primary,save.equipment.primary?.glyphs],['tool','Tool',save.equipment.secondary,save.equipment.secondary?.glyphs],['spell','Spell',SPELLS[spellId],save.spellGlyphs[spellId]]];
+ // one spell host per slotted spell (release 111); describeHost reads the readied spell, so it is set per host below
+ const slotSpells=[...new Set(['a','b'].map(q=>slotted(save,q)).filter(c=>c?.kind==='spell').map(c=>c.id))],spellIds=slotSpells.length?slotSpells:[save.equippedSpell||'ember-ring'],readied=save.equippedSpell;
+ for(const id of spellIds)save.spellGlyphs[id]||=Array(SPELL_SOCKETS).fill(null);
+ const hosts=[['melee','Primary',save.equipment.primary,save.equipment.primary?.glyphs],['tool','Tool',save.equipment.secondary,save.equipment.secondary?.glyphs],...spellIds.map(id=>[`spell:${id}`,'Spell',SPELLS[id],save.spellGlyphs[id]])];
  const altar=el('div','arc-altar');
- for(const[host,label,item,sockets]of hosts){const d=sockets?.length?describeHost(save,host):{glyphs:[],resonances:[]},lit=d.resonances.length>0,card=el('section','arc-host'+(lit?' resonant':''));
+ for(const[host,label,item,sockets]of hosts){const isSpell=host.startsWith('spell:');if(isSpell)save.equippedSpell=host.slice(6);const d=sockets?.length?describeHost(save,isSpell?'spell':host):{glyphs:[],resonances:[]};save.equippedSpell=readied;constlit=d.resonances.length>0,card=el('section','arc-host'+(lit?' resonant':''));
   card.append(el('small','arc-host-label',label),el('strong','',item?.name||'Nothing equipped'));
   const ring=el('div','arc-socket-row');
   if(!sockets?.length)ring.append(el('span','arc-empty',item?'No sockets.':'Equip one to set glyphs.'));
@@ -1807,8 +1828,8 @@ function openGlyphs(){arcanumShell('glyphs','Glyphs & Resonances',`Glyph dust ${
   for(const r of d.resonances)card.append(el('p','arc-reso-line',save.glyphCodex.resonances[r.id]?`✦ ${r.name}: ${r.text}`:'✦ These glyphs hum together. Use them to learn what they make.'));
   altar.append(card)}
  body.append(altar);
- const target=arcanumSocket,hostKey=target?(target.host==='spell'?spellId:target.host):null,current=target?hosts.find(h=>h[0]===target.host)?.[3]?.[target.index]:null;
- const hint=el('p','arc-hint',target?`Choose a glyph for the ${target.host==='melee'?'primary':target.host} socket ${target.index+1}${current?`, or clear ${GLYPHS[current].name}`:''}.`:'Tap a socket above to start setting glyphs.');body.append(hint);
+ const target=arcanumSocket,hostKey=target?(target.host.startsWith('spell:')?target.host.slice(6):target.host):null,current=target?hosts.find(h=>h[0]===target.host)?.[3]?.[target.index]:null;
+ const hint=el('p','arc-hint',target?`Choose a glyph for the ${target.host==='melee'?'primary':target.host.startsWith('spell:')?SPELLS[target.host.slice(6)].name:target.host} socket ${target.index+1}${current?`, or clear ${GLYPHS[current].name}`:''}.`:'Tap a socket above to start setting glyphs.');body.append(hint);
  if(target&&current){const clear=uiButton(`Clear ${GLYPHS[current].name}`,()=>{const r=socketGlyph(save,hostKey,target.index,null);game.message=r.message;persist();openGlyphs()});clear.className='arc-go';body.append(clear)}
  const pouch=el('div','arc-tiles');
  for(const id of GLYPH_IDS){const known=save.glyphCodex.glyphs[id],n=save.glyphs[id]||0,t=el('div','arc-tile'+(known?'':' unknown')+(target&&known&&n>0?' pickable':''));t.style.setProperty('--glyph',GLYPHS[id].color);
