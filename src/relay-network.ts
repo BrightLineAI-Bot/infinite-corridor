@@ -25,9 +25,17 @@ export const FRAGMENTS = [
 
 const ELIGIBLE = (areaId) => !/^(hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:)/.test(areaId) && !areaId.includes(":deep-v") && !areaId.includes("aperture-annex");
 
+export function relayCoordinate(save) { const c = hashSeed(`${save.seed}:relay-coordinate`); return { rx: (c % 2 ? 1 : -1) * (40 + c % 23), ry: ((c >>> 3) % 2 ? 1 : -1) * (40 + (c >>> 5) % 23) }; }
 export function ensureRelayNetwork(save) {
   const net = (save.relayNetwork ||= { version: RELAY_VERSION, nodes: {}, fragments: 0 });
   net.nodes ||= {}; net.fragments ||= 0;
+  // Release 136: the hidden five-guardian chain and the relay nodes share one "network answered" fact. Whichever came
+  // first, the coordinate is now always recorded and journaled (before, the guardian chain left it unrecorded).
+  if (save.narrative?.facts?.["relay.networkAnswered"] && !net.coordinate) {
+    net.coordinate = relayCoordinate(save);
+    const journal = save.narrative.journal;
+    if (journal && !journal.some((j) => j.recordId === "relay-coordinate")) journal.push({ recordId: "relay-coordinate", instanceKey: "record:relay-coordinate", title: "The Far Coordinate", text: `The buried network's answer resolves into a place no map has charted: ${net.coordinate.rx}, ${net.coordinate.ry}.`, provenance: "original" });
+  }
   return net;
 }
 
@@ -87,7 +95,7 @@ export function commitRelayNode(save, o, choice, history, now = Date.now()) {
   let networkAnswered = false;
   if (answered >= RELAY_TARGET && !save.narrative.facts["relay.networkAnswered"]) {
     save.narrative.facts["relay.networkAnswered"] = true; networkAnswered = true;
-    const c = hashSeed(`${save.seed}:relay-coordinate`), coordinate = { rx: (c % 2 ? 1 : -1) * (40 + c % 23), ry: ((c >>> 3) % 2 ? 1 : -1) * (40 + (c >>> 5) % 23) };
+    const coordinate = relayCoordinate(save);
     net.coordinate = coordinate;
     add("relay-network-answered", "The Network Answers", `${RELAY_TARGET} relays have answered. The buried network answers back with a coordinate that belongs to no charted section: ${coordinate.rx}, ${coordinate.ry}.`);
   }
@@ -96,7 +104,7 @@ export function commitRelayNode(save, o, choice, history, now = Date.now()) {
 }
 
 export function relayObjectiveSuffix(save) {
-  const net = save.relayNetwork;
+  const net = save.narrative?.facts?.["relay.networkAnswered"] ? ensureRelayNetwork(save) : save.relayNetwork;
   if (!net || save.narrative?.facts?.["relay.networkAnswered"]) return net?.coordinate ? ` · The network answered: ${net.coordinate.rx}, ${net.coordinate.ry}` : "";
   const n = Object.keys(net.nodes || {}).length;
   return n || net.seen ? ` · Relays ${n}/${RELAY_TARGET}` : "";

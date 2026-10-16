@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.ts";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.ts";
 import {
   generateRegion,
   generateDungeon,
@@ -227,6 +227,9 @@ export function storeInventoryItem(save, item) {
   save.inventory.push(item);
   return { stored: true, salvaged: salvaged.item, iron: salvaged.iron };
 }
+// Aperture Resonance: the number of Aperture bands reached beyond Resonant (tier 3), and what each one grants.
+export const APERTURE_RESONANCE = { hp: 6, melee: 2, magic: 2 };
+export function apertureResonance(save) { return Math.max(0, apertureTier(save?.perception?.aperture || 0) - 3); }
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
     stats = save.stats || {},
@@ -240,9 +243,11 @@ export function characterStats(save) {
     armor = save.equipment?.armor,
     charm = save.equipment?.charm,
     active=save.magicSkills?.active?.remaining>0?save.magicSkills.active:null,
-    rank=active?skillRank(save,active.id):0;
+    rank=active?skillRank(save,active.id):0,
+    // Aperture Resonance (release 136): every Aperture band past Resonant strengthens the Wayfarer.
+    resonance=apertureResonance(save);
   return {
-    maxHp: 60 + (level - 1) * 6 + (vigor - 1) * 8,
+    maxHp: 60 + (level - 1) * 6 + (vigor - 1) * 8 + resonance * APERTURE_RESONANCE.hp,
     maxStamina: 50 + (level - 1) + (finesse - 1) * 3,
     damageReduction: Math.min(
       0.45,
@@ -254,12 +259,12 @@ export function characterStats(save) {
       (Number(save.weaponLevel) || 0) * 3 +
       Math.floor((level - 1) * 0.6) +
       Math.floor((Number(primary?.power) || 0) * 0.7) +
-      affixValue(primary, "attack")+(active?.id==='ember-form'?2+rank*2:0)+(active?.id==='force-channel'?rank*2:0),
+      affixValue(primary, "attack")+(active?.id==='ember-form'?2+rank*2:0)+(active?.id==='force-channel'?rank*2:0) + resonance * APERTURE_RESONANCE.melee,
     magicBonus:
       Math.max(1, Number(stats.Focus) || 1) +
       Math.floor((level - 1) * 0.45) +
       Math.floor((Number(secondary?.power) || 0) * 0.55) +
-      affixValue(secondary, "attack")+(active?.id==='force-channel'?rank*3:0),
+      affixValue(secondary, "attack")+(active?.id==='force-channel'?rank*3:0) + resonance * APERTURE_RESONANCE.magic,
     attackReach: affixValue(primary, "reach") + affixValue(secondary, "reach") + affixValue(charm, "reach")+(active?.id==='ember-form'?.12+.06*rank:0),
     moveSpeed: affixValue(armor, "movement") + affixValue(charm, "movement")+(active?.id==='quickening'?.12+.08*rank:0)+pairingMods(save).speed,
     armorPower,
@@ -1304,7 +1309,7 @@ export class Game {
       this.map.objects.push(
         ...overlay.objects.filter((o) => !annex || o.kind !== "apertureDoor"),
       );
-      const tier = apertureTier(this.save.perception.aperture);
+      const tier = Math.min(3, apertureTier(this.save.perception.aperture)); // the visual tint only knows three tiers
       for (const e of this.enemies)
         e.visualTier = Math.max(
           Number(e.visualTier) || 0,
@@ -1363,7 +1368,7 @@ export class Game {
           e.xpMultiplier = q.xpMultiplier;
         }
       }
-      const tier = apertureTier(this.save.perception.aperture);
+      const tier = Math.min(3, apertureTier(this.save.perception.aperture)); // the visual tint only knows three tiers
       for (const e of this.enemies)
         e.visualTier = Math.max(
           Number(e.visualTier) || 0,
@@ -1388,7 +1393,7 @@ export class Game {
           const value = this.save.perception.aperture,
             tier = apertureTier(value),
             next = APERTURE_THRESHOLDS[tier],
-            unlock = tier === 0 ? "hidden inscriptions" : tier === 1 ? "unseen annexes" : "deep relics";
+            unlock = tier === 0 ? "hidden inscriptions" : tier === 1 ? "unseen annexes" : tier === 2 ? "deep relics" : `the ${APERTURE_BANDS[tier + 1]?.name || "next"} band and more Resonance`;
           this.message = next
             ? `New section understood. Aperture ${value}/${next} — ${unlock} draw nearer.`
             : `New section understood. Aperture ${value} — the Corridor is fully visible for now.`;
