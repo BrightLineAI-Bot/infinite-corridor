@@ -1,4 +1,5 @@
 import { enemyMeleeGeometry } from "./combat.ts";
+import { SEA_CREATURES } from "./sea-creatures.ts";
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.ts";
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { liftAt } from "./landscape.ts";
@@ -259,6 +260,30 @@ const COLORS = {
   storyRelic: ["#8c7650", "#382f24", "#f0cf83"],
   storyTone: ["#557d82", "#26383b", "#9fe6dd"],
 };
+// Surface sea creatures (water world W3). Submerged: a ripple ring only. Telegraphs: a wake line (Lanceeel), a
+// landing shadow (Breachfin), a tight coil ring (Ringcoil), jaws (Sinewake) and bubbles (Bog Lurker).
+function drawSeaCreature(ctx, e, s, now, colors) {
+  const cx = (e.x + .5) * s, cy = (e.y + .72) * s, t = e.seaTele;
+  ctx.save();
+  if (t?.type === "line") { ctx.strokeStyle = "#ff8a6acc"; ctx.lineWidth = Math.max(2, s * .12); ctx.setLineDash([s * .3, s * .18]); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + t.dx * t.len * s, cy + t.dy * t.len * s); ctx.stroke(); ctx.setLineDash([]); }
+  if (t?.type === "shadow") { ctx.fillStyle = "#0b1a2a88"; ctx.strokeStyle = "#ff8a6acc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse((t.x + .5) * s, (t.y + .72) * s, s * .6, s * .3, 0, 0, 7); ctx.fill(); ctx.stroke(); }
+  if (t?.type === "coil" || t?.type === "jaw") { ctx.strokeStyle = "#ff8a6a99"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, s * .7, 0, 7); ctx.stroke(); }
+  if (t?.type === "bubbles") for (let i = 0; i < 5; i++) { const f = (now / 500 + i * .2) % 1; ctx.fillStyle = `rgba(200,230,140,${1 - f})`; ctx.beginPath(); ctx.arc(cx + Math.sin(i * 2.1) * s * .35, cy - f * s * .6, s * (.05 + f * .05), 0, 7); ctx.fill(); }
+  if (e.hidden) { // only a ripple betrays it
+    const f = (now / 900 + (e.x + e.y) * .1) % 1; ctx.strokeStyle = `rgba(220,240,255,${.45 * (1 - f)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(cx, cy, s * (.2 + f * .4), s * (.08 + f * .15), 0, 0, 7); ctx.stroke(); ctx.restore(); return;
+  }
+  const lift = (e.leapHeight || 0) * s, f = e.ai?.facing || "down", [fx, fy] = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[f], n = e.segments || 1;
+  if (lift) { ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(cx, cy, s * .4, s * .14, 0, 0, 7); ctx.fill(); }
+  for (let i = n - 1; i >= 0; i--) { // trailing body, head last
+    const wave = Math.sin(now / 160 + i * .9) * s * .12, bx = cx - fx * s * .32 * i - fy * wave, by = cy - lift - fy * s * .32 * i + fx * wave, r = s * (i ? .2 - i * .012 : .27);
+    ctx.fillStyle = e.hitFlash > 0 ? "#f3d2b0" : colors[i % 2 ? 1 : 0]; ctx.strokeStyle = colors[2]; ctx.lineWidth = Math.max(1, s * .03);
+    ctx.beginPath(); ctx.ellipse(bx, by, Math.max(2, r), Math.max(2, r * .72), Math.atan2(fy, fx), 0, 7); ctx.fill(); ctx.stroke();
+  }
+  ctx.fillStyle = colors[2]; ctx.beginPath(); ctx.arc(cx + fx * s * .14 - fy * s * .08, cy - lift + fy * s * .14 + fx * s * .08 - s * .04, Math.max(1.5, s * .05), 0, 7); ctx.fill(); // eye
+  if (e.kind === "breachfin") { ctx.fillStyle = colors[1]; ctx.beginPath(); ctx.moveTo(cx - s * .1, cy - lift - s * .15); ctx.lineTo(cx, cy - lift - s * .5); ctx.lineTo(cx + s * .12, cy - lift - s * .15); ctx.fill(); }
+  ctx.restore();
+}
+
 // The skiff (water world W2): a plank hull with a bow pointing along `facing`, bobbing on the water.
 function drawSkiff(ctx, x, y, s, facing, now) {
   const cx = (x + .5) * s, cy = (y + .72) * s + Math.sin(now / 420 + x) * s * .03, along = facing === "left" || facing === "right";
@@ -651,6 +676,7 @@ export function render(ctx, g, w, h, now) {
       draws.push({
         y: e.y, x: e.x,
         fn: () => {
+          if (e.seaKind) { drawSeaCreature(ctx, e, s, now, SEA_CREATURES[e.seaKind].colors); return; }
           const f = e.ai?.facing || "down",
             q = e.recoil > 0 ? 0.12 : 0,
             ox = f === "left" ? q : f === "right" ? -q : 0,

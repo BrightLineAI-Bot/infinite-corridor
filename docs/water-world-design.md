@@ -45,7 +45,7 @@ Gated on a new `LANDSCAPE_VERSION = 2`; sections already in the atlas keep v1 (e
 - **Persistence/exact resume:** boat position saved with `position.boat = true`; section transitions carry the boat across the border like the player.
 - **Upgrades (later, data table):** reinforced hull, harpoon mount, lantern (reveals sea creatures under the surface), sail (speed).
 
-## W3 — surface sea creatures
+## W3 — surface sea creatures — built in release 105
 
 New `aquatic` movement layer: these enemies spawn and path only on water tiles (inverse of current land pathing), bounded by the existing active-actor caps. Movement patterns are data in `src/enemy-patterns.ts` style:
 

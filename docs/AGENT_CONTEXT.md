@@ -4,7 +4,7 @@ For a fresh agent picking up Infinite Corridor. Workflow, commands and the relea
 
 ## Where things stand
 
-Release 101 is live; release 102 (Tidemantle surface swimming) is merged and in preview; release 103 (Waterbodies: seas, isles, lakes, swamps and blight mires, landscape version 2; W1 of `docs/water-world-design.md`) follows it; release 104 (the Skiff: docks, Shipwright, sailing, hull; `src/boats.ts`, landscape version 3; W2) follows that. Next on the water plan: W3, surface sea creatures. Release 101: (lethal falls, drowning, ramps, Jump in the action diamond, visible Leech). Release 102 (Tidemantle surface swimming, `src/water-traversal.ts`) is in review. Save schema is 14; every later system is additive state normalised in `freshSave`/`migrateSave`. Test floor: 443 passing.
+Release 101 is live; release 102 (Tidemantle surface swimming) is merged and in preview; release 103 (Waterbodies: seas, isles, lakes, swamps and blight mires, landscape version 2; W1 of `docs/water-world-design.md`) follows it; release 104 (the Skiff: docks, Shipwright, sailing, hull; `src/boats.ts`, landscape version 3; W2) follows that; release 105 (surface sea creatures, `src/sea-creatures.ts`; W3) follows. Next on the water plan: W4, leviathans (whales, mosasaurs, krakens). Release 101: (lethal falls, drowning, ramps, Jump in the action diamond, visible Leech). Release 102 (Tidemantle surface swimming, `src/water-traversal.ts`) is in review. Save schema is 14; every later system is additive state normalised in `freshSave`/`migrateSave`. Test floor: 443 passing.
 
 ## Systems
 
