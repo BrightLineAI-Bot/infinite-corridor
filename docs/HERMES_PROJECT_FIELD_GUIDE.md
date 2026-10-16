@@ -24,6 +24,12 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Copy diagnostics carries the save (release 147)
+
+**CODE:** Options → System's "Copy diagnostics" in `main.ts` now copies, as compact JSON: release, `navigator.userAgent`, whether the game runs as an installed app, the screen size, settings, storage, `recentErrors` and the active journey's `save`. `recentErrors` holds the last 8 errors (message, first stack lines, repeat count) recorded by `noteError()`, which `recoverOverlay()` calls for every error from the frame loop, window `error` and `unhandledrejection`. Performance samples are included only when performance recording is on. If the clipboard is refused, the JSON downloads as a file instead. The System text shows the browser and recent errors, and the old "Diagnostics: off" line now reads "Performance recording", because it never gated the copy.
+
+**BOUNDARY:** Read-only; nothing in the save changes. The copied text contains the player's save, so it goes only where the player pastes it.
+
 ## Overlay errors name themselves on the pause menu (release 145)
 
 **CODE:** Overlays call `pauseForOverlay()` and close the pause menu before building their contents, so an exception while building left the game paused with nothing on screen. Release 126 covered only the frame loop; the pause menu's own buttons (Pack, Atlas, Journal) run outside it. `recoverOverlay(error)` in `main.ts` now handles all of these: `frame()`'s catch plus window `error` and `unhandledrejection` listeners. When the game is paused, visible and no dialog is open, it shows the pause menu with a `#pauseError` note naming the error. `resume()` removes the note, and the pause menu's `close` listener now ignores a close when the menu has already been reopened. Options → System shows the real release number instead of a stale "Release 102", so a player can confirm which build is running.
