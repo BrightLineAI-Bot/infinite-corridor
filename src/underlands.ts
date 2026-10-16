@@ -6,6 +6,7 @@
 import { rng, hashSeed } from "./random.ts";
 import { annotateDungeon, DUNGEON_SIZE_PROFILES } from "./dungeon-framework.ts";
 import { DUNGEON_LAYOUT_VERSION } from "./dungeon-variation.ts";
+import { carvePattern, stitchPattern, PATTERN_CATALOG } from "./pattern-dungeons.ts";
 import { LANDSCAPE_VERSION, ensureReturnable, trappedTiles, addRamps } from "./landscape.ts";
 
 export const DUNGEON_GENERATOR_V5 = 5;
@@ -13,6 +14,8 @@ export const LAYOUTS = ["spine", "hub", "ring", "cavern", "crypt", "descent"];
 // Layout pool 2 (release 146): new dungeons may also be carved by a Wolfram elementary automaton. Histories created
 // before it keep pool 1 (the six grammars above), so no existing dungeon changes.
 export const LAYOUTS_V2 = [...LAYOUTS, "automaton", "automaton"];
+// Layout pool 3 (release 147): the full pattern catalogue (pattern-dungeons.ts) in four of every ten new dungeons.
+export const LAYOUTS_V3 = [...LAYOUTS, "pattern", "pattern", "pattern", "pattern"];
 // Curated rules, each with a look: fractal halls grown from one seed cell, or chaotic and gliding warrens from a
 // scattered first row. Rules with bit 0 set are left out (they only flicker on sparse ground).
 export const AUTOMATON_RULES = [
@@ -65,7 +68,7 @@ function bfs(g, w, h, from) {
 const SHAPES = ["rect", "circle", "cross", "octagon", "irregular", "hall"];
 
 // ---------------------------------------------------------------- layout grammars
-function layout(kind, g, w, h, rand, start, goal) {
+function layout(kind, g, w, h, rand, start, goal, patternId = null) {
   const rooms = [start, goal], shape = () => SHAPES[Math.floor(rand() * SHAPES.length)], size = () => 2 + Math.floor(rand() * 3);
   if (kind === "spine" || kind === "descent") {
     const n = kind === "descent" ? 7 + Math.floor(rand() * 4) : 6 + Math.floor(rand() * 4), pts = [start];
@@ -113,6 +116,11 @@ function layout(kind, g, w, h, rand, start, goal) {
     }
     for (let i = 0; i < 3 + Math.floor(rand() * 3); i++) { const p = { x: 5 + Math.floor(rand() * (w - 10)), y: 5 + Math.floor(rand() * (h - 10)) }; room(g, w, h, p.x, p.y, 1 + Math.floor(rand() * 2), shape(), rand); rooms.push(p); }
     g.automaton = pick;
+  } else if (kind === "pattern") {
+    g.automaton = carvePattern(g, w, h, rand, start, goal, (x, y) => carve(g, w, h, x, y), PATTERN_CATALOG.find((p) => p.id === patternId));
+    g.pattern = true;
+    const floor = [...g.keys()].filter((i) => g[i]);
+    for (let i = 0; i < 6 && floor.length; i++) { const c = floor[Math.floor(rand() * floor.length)]; rooms.push({ x: c % w, y: Math.floor(c / w) }); }
   } else if (kind === "crypt") {
     const step = 6, ox = 3 + Math.floor(rand() * 3), oy = 3 + Math.floor(rand() * 3);
     for (let y = oy; y < h - 3; y += step) corridor(g, w, h, { x: 3, y }, { x: w - 4, y }, 1, 0);
@@ -121,6 +129,7 @@ function layout(kind, g, w, h, rand, start, goal) {
     corridor(g, w, h, start, goal, 3, 1); // the processional
   }
   room(g, w, h, start.x, start.y, 2, "rect", rand); room(g, w, h, goal.x, goal.y, 3, kind === "crypt" ? "hall" : "circle", rand);
+  if (g.pattern) stitchPattern(g, w, h, start);
   // guarantee the entry reaches the guardian
   let dist = bfs(g, w, h, start);
   if (dist[goal.y * w + goal.x] < 0) { corridor(g, w, h, start, goal, 2, 0); dist = bfs(g, w, h, start); }
@@ -134,10 +143,10 @@ export function generateExpeditionDungeon(seed, id, recipe = "hollow", options =
   const requested = String(options.sizeProfile || ""), sizeProfile = DUNGEON_SIZE_PROFILES[requested] ? requested : ["compact", "standard", "extended"][hashSeed(`${seed}:${id}:size`) % 3];
   const profile = DUNGEON_SIZE_PROFILES[sizeProfile], variant = Math.max(0, Math.floor(Number.isFinite(Number(options.variant)) && options.variant !== undefined ? Number(options.variant) : hashSeed(`${seed}:${id}:variant`) % 997));
   const rand = rng(`${seed}:expedition-v5:${id}:${recipe}:${sizeProfile}:v${variant}`), w = profile.width + Math.floor(rand() * 7) - 3, h = profile.height + Math.floor(rand() * 7) - 3;
-  const pool = options.layoutPool >= 2 ? LAYOUTS_V2 : LAYOUTS, grammar = options.layout && pool.includes(options.layout) ? options.layout : pool[hashSeed(`${seed}:${id}:layout-v5`) % pool.length];
+  const pool = options.layoutPool >= 3 ? LAYOUTS_V3 : options.layoutPool >= 2 ? LAYOUTS_V2 : LAYOUTS, grammar = options.layout && pool.includes(options.layout) ? options.layout : pool[hashSeed(`${seed}:${id}:layout-v5`) % pool.length];
   const corner = hashSeed(`${seed}:${id}:orientation`) % 4, corners = [[4, h - 5], [w - 5, h - 5], [w - 5, 4], [4, 4]];
   const start = { x: corners[corner][0], y: corners[corner][1] }, goal = { x: corners[(corner + 2) % 4][0], y: corners[(corner + 2) % 4][1] };
-  const g = makeGrid(w, h), { rooms, dist } = layout(grammar, g, w, h, rand, start, goal);
+  const g = makeGrid(w, h), { rooms, dist } = layout(grammar, g, w, h, rand, start, goal, options.pattern);
   const wallKind = `${recipe}Wall`, floorKind = `${recipe}Floor`, tiles = [];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) tiles.push(g[y * w + x] ? { x, y, kind: floorKind, blocked: false, detail: (x * 7 + y * 3 + variant) % 4 } : { x, y, kind: wallKind, blocked: true, detail: (x + y + variant) % 4 });
   const guardianRoom = goal, chestCell = [...g.keys()].filter((i) => g[i] && dist[i] >= 0 && Math.hypot(i % w - goal.x, Math.floor(i / w) - goal.y) >= 2 && Math.hypot(i % w - goal.x, Math.floor(i / w) - goal.y) <= 4).sort((a, b) => Math.abs(Math.hypot(a % w - goal.x, Math.floor(a / w) - goal.y) - 2.2) - Math.abs(Math.hypot(b % w - goal.x, Math.floor(b / w) - goal.y) - 2.2))[0], chest = chestCell !== undefined ? { x: chestCell % w, y: Math.floor(chestCell / w) } : { x: goal.x, y: goal.y + 1 }, far = rooms.filter((r) => r !== start && r !== goal).sort((a, b) => dist[b.y * w + b.x] - dist[a.y * w + a.x]);
@@ -154,7 +163,7 @@ export function generateExpeditionDungeon(seed, id, recipe = "hollow", options =
     generatorVersion: DUNGEON_GENERATOR_V5, sizeProfile, variant, layoutVersion: DUNGEON_LAYOUT_VERSION,
     diagnostic: { family: recipe, layoutGrammar: grammar, orientation: corner, maskVariant: variant, sizeCategory: sizeProfile, rooms: rooms.length, visualIdentity: `${recipe}-masonry`, guardianPackage: "marshal" },
   };
-  if (g.automaton) { map.automaton = { rule: g.automaton.rule, name: g.automaton.name }; map.name = `${g.automaton.name} · ${map.name}`; map.diagnostic.automatonRule = g.automaton.rule; }
+  if (g.automaton) { map.automaton = { rule: g.automaton.rule, name: g.automaton.name, pattern: g.automaton.id || null }; map.name = `${g.automaton.name} · ${map.name}`; map.diagnostic.automatonRule = g.automaton.rule; }
   const themeRoll = hashSeed(`${seed}:${id}:under-theme`);
   const theme = options.theme && UNDER_THEMES[options.theme] ? options.theme : options.theme === "none" ? null : themeRoll % 100 < 45 ? THEME_IDS[Math.floor(themeRoll / 100) % THEME_IDS.length] : null;
   if (theme) applyUnderTheme(map, theme, rand);
