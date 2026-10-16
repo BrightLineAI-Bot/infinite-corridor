@@ -64,6 +64,7 @@ export function applyInteraction(o,a,s,context='global'){
  if(o.kind==='traveler'&&a==='speak'){if(o.wanderer){const r=wandererTalk(s,s.session?.rx??0,s.session?.ry??0);if(r.journal)journalOnce(s,'wanderer:'+s.wanderer.stage+':'+s.wanderer.completed,r.journal,'Old Quillon');return{ok:true,message:r.message}}return{ok:true,message:o.reciter?reciterTalk(o,s):travelerTalk(o)}}
  if(o.kind==='traveler'&&a==='trade')return{ok:true,message:(o.name||'The peddler')+' unrolls a pack of road goods.',transition:'trade'};
  if(o.kind==='wandererCache'&&a==='collect'){const r=collectWandererCache(s);if(r.ok){o.state='used';o.actions=[];journalOnce(s,'wanderer-cache:'+s.wanderer.stage,'You dug up one of Old Quillon\'s satchels.','Old Quillon')}return{ok:true,message:r.message}}
+ if(o.kind==='arrayPylon'&&a==='inspect')return{ok:true,message:`The pylon hums: “${o.line||'…'}”`};
  if(o.kind==='huntTrace'&&a==='inspect'){const r=followHuntTrace(s,o.huntId);if(r.ok){o.state='used';o.actions=[]}return{ok:true,message:r.message}}
  if(o.kind==='villager'&&a==='speak')return{ok:true,message:(o.name||'A resident')+(o.role?' ('+o.role+')':'')+': “'+(o.line||'Safe roads, traveller.')+'”'};
  if(o.kind==='shelterMerchant'){if(a==='speak')return{ok:true,message:(o.name||'The merchant')+': “I only set my table where the Corridor forgets to look.”'};if(a==='trade')return{ok:true,message:'A small, improbable stock is unfolded.',transition:'trade'}}
