@@ -933,9 +933,11 @@ export function render(ctx, g, w, h, now) {
     hasLevels = g.map?.landscape && (g.map._hasLevels ??= g.map.tiles.some((q) => (q.elev || 0) > 0)),
     label = hasLevels ? `${place} · ${levelName(elevationAt(g.map, mw, g.player.x, g.player.y))}` : place;
   ctx.fillStyle = "#151411ee";
-  ctx.fillRect(8, h - 34, Math.max(190, ctx.measureText(label).width + 20), 24);
+  // Sits above the compass and Map/Pack cluster (bottom-left), which used to cover it on phones and both Fold screens.
+  const labelY = h - (g.labelInset ?? 122);
+  ctx.fillRect(8, labelY, Math.max(150, ctx.measureText(label).width + 20), 24);
   ctx.fillStyle = "#cec7b6";
-  ctx.fillText(label, 16, h - 18);
+  ctx.fillText(label, 16, labelY + 16);
 }
 
 // Unexplored dungeon space: dark slate with a faint diagonal hatch, distinct from the indigo depth of a chasm.
