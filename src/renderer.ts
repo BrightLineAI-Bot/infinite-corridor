@@ -671,6 +671,17 @@ export function render(ctx, g, w, h, now) {
             ctx.textAlign = "center";
             ctx.fillText("VIEWPORT", (o.x + .5) * s, (o.y - .95) * s);
             ctx.textAlign = "start";
+          } else if (o.kind === "diveSite") { // a bobbing red-and-white buoy with a dive flag
+            const bx = (o.x + .5) * s, by = (o.y + .7) * s + Math.sin(now / 500 + o.x) * s * .04;
+            ctx.strokeStyle = "#e8f4ff88"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(bx, by + s * .1, s * (.35 + .1 * Math.sin(now / 400)), s * .12, 0, 0, 7); ctx.stroke();
+            ctx.fillStyle = "#d8463a"; ctx.beginPath(); ctx.arc(bx, by, s * .22, Math.PI, 0); ctx.fill(); ctx.fillStyle = "#f4f1ea"; ctx.fillRect(bx - s * .22, by - s * .02, s * .44, s * .08);
+            ctx.fillStyle = "#3a2c22"; ctx.fillRect(bx - 1, by - s * .7, 2, s * .5); ctx.fillStyle = "#d8463a"; ctx.fillRect(bx + 1, by - s * .7, s * .3, s * .2); ctx.strokeStyle = "#f4f1ea"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx + 1, by - s * .7); ctx.lineTo(bx + 1 + s * .3, by - s * .5); ctx.stroke();
+          } else if (o.kind === "airPocket") { // a rising column of bubbles
+            for (let i = 0; i < 7; i++) { const f = (now / 1100 + i / 7) % 1, bx = (o.x + .5) * s + Math.sin(now / 300 + i * 2) * s * .15; ctx.fillStyle = `rgba(220,245,255,${.85 * (1 - f)})`; ctx.beginPath(); ctx.arc(bx, (o.y + .7) * s - f * s * 1.6, s * (.05 + (i % 3) * .025), 0, 7); ctx.fill(); }
+            ctx.strokeStyle = "#bfe9ff99"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc((o.x + .5) * s, (o.y + .7) * s, s * .45, 0, 7); ctx.stroke();
+          } else if (o.kind === "diveExit") { // the surface line: a rope rising out of view
+            ctx.strokeStyle = "#d9c39a"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.moveTo((o.x + .5) * s, (o.y + .8) * s); ctx.quadraticCurveTo((o.x + .7) * s, (o.y - 1) * s, (o.x + .45) * s, (o.y - 3) * s); ctx.stroke();
+            ctx.fillStyle = "#e2d5ba"; ctx.font = "10px monospace"; ctx.textAlign = "center"; ctx.fillText("SURFACE", (o.x + .5) * s, (o.y + 1.2) * s); ctx.textAlign = "start";
           } else if (o.kind === "skiff") {
             drawSkiff(ctx, o.x, o.y, s, "right", performance.now());
           } else if (o.kind === "shipwright") {
@@ -798,6 +809,11 @@ export function render(ctx, g, w, h, now) {
   for (const d of draws) {
     const raise = Number.isFinite(d.x) ? groundLift(d.x, d.y) : 0;
     if (raise) { ctx.save(); ctx.translate(0, -raise * s); d.fn(); ctx.restore(); } else d.fn();
+  }
+  // Under water (W5): a blue-green wash with slow light shafts.
+  if (g.map?.underwater) {
+    ctx.fillStyle = "rgba(20,70,110,.28)"; ctx.fillRect(l * s, t * s, (r - l) * s, (b - t) * s);
+    for (let i = 0; i < 4; i++) { const x0 = (l + ((i * 7 + now / 900) % (r - l + 6)) - 3) * s; ctx.fillStyle = "rgba(200,240,255,.06)"; ctx.beginPath(); ctx.moveTo(x0, t * s); ctx.lineTo(x0 + s * 1.5, t * s); ctx.lineTo(x0 + s * 4, b * s); ctx.lineTo(x0 + s * 2, b * s); ctx.fill(); }
   }
   // Stormkraken ink (W4): the sea goes dark beyond a small circle around the Wayfarer.
   if (g.area === "overworld" && now < (g.inkUntil || 0)) {

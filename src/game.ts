@@ -25,6 +25,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
+import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
 import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, sailStep, steer, ensureBoatState } from "./boats.ts";
 import { swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot } from "./water-traversal.ts";
@@ -75,7 +76,8 @@ export function generatePinnedDungeon(save, id, options = {}) {
   // Generator 5 (Underlands) only for histories never generated before; pinned histories keep their generator.
   if (history.generatorVersion === undefined) history.generatorVersion = id === canonical || save.session.areas[id] ? 2 : DUNGEON_GENERATOR_V5;
   let map;
-  if (/^(arena:|hunt-arena:|hunt-instance:)/.test(id)) map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved});
+  if (id.startsWith('dive:')) map = generateDiveSite(save.seed, id);
+  else if (/^(arena:|hunt-arena:|hunt-instance:)/.test(id)) map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved});
   else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options});
   else if (!id.includes(':deep-v') && history.generatorVersion === 4) map = generateUnifiedDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options});
   else if (!id.includes(':deep-v') && history.generatorVersion === 3) map = generateVariedDungeon(save.seed,id,dungeonDescriptor(id).recipe);
@@ -1536,7 +1538,7 @@ export class Game {
             this.ry,
             this.save.worldGeneration,
           );
-    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION});const b=ensureBoatState(this.save),m=b.moored;if(b.owned&&!b.aboard&&m&&m.rx===this.rx&&m.ry===this.ry)this.map.objects.push({id:"skiff-moored",kind:"skiff",name:"Your skiff",lore:"Your skiff rides at its mooring.",x:m.x,y:m.y,state:"moored",actions:["board"]})}
+    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION});const b=ensureBoatState(this.save),m=b.moored;if(b.owned&&!b.aboard&&m&&m.rx===this.rx&&m.ry===this.ry)this.map.objects.push({id:"skiff-moored",kind:"skiff",name:"Your skiff",lore:"Your skiff rides at its mooring.",x:m.x,y:m.y,state:"moored",actions:["board"]});const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive)}
     if(area==="dungeon"&&history?.relayNode){if(placeRelayNode(this.map,loadingId,this.save))ensureRelayNetwork(this.save).seen=true;}
     if(area==="dungeon"&&this.map.dungeonContract?.discoveryEnabled){const discovered=discoveryForLevel(history,this.map);applyDungeonDiscovery(this.map,discovered);this._dungeonChunkId=null;}
     if(area==='overworld'){
@@ -1598,7 +1600,7 @@ export class Game {
       // A section first seen now is pinned to the current landscape version; one explored earlier keeps none.
       atlas[key] = { terrain: this.map.dominant, ...(prior ? (prior.landscapeVersion ? { landscapeVersion: prior.landscapeVersion } : {}) : { landscapeVersion: LANDSCAPE_VERSION }),
         ...(this.map.landscape?.biome ? { landscape: this.map.landscape.biome } : {}), sites: this.map.objects
-        .filter((o) => ["shipwright","checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho"].includes(o.kind))
+        .filter((o) => ["diveSite","shipwright","checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho"].includes(o.kind))
         .map((o) => ({ kind: o.kind, name: o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save)});
@@ -1942,6 +1944,10 @@ export class Game {
     this.effects = [];
     this.traversal = null;
     input?.reset?.();
+    // A diver who runs out of air is hauled up the line to the buoy with fresh breath (W5).
+    if (this.area === "dungeon" && this.map?.underwater && this.leaveDungeon("Out of air — the line hauls you, half-drowned, back to the surface. Nothing carried was lost.")) {
+      this.save.session.breath = DIVE.breath; p.hp = this.save.maxHp; p.invulnerableUntil = now + 2000; return;
+    }
     if (this.area === "dungeon") {
       const id = this.areaId(),
         deep = !!this.map?.deepDungeon || this.map?.recipe === "deep-v1",
@@ -2121,6 +2127,13 @@ export class Game {
       return { ok: true, message: this.message };
     }
     if (o.kind === "shipwright" || o.kind === "skiff") return this.boatAction(o, action || (o.kind === "skiff" ? "board" : null));
+    if (o.kind === "diveSite" || o.kind === "diveExit") return this.diveAction(o);
+    // Diving (W5): the first island landmark inspected yields the Bathysal Lens.
+    if (o.islandLandmark && grantLens(this.save, o.id)) {
+      journalOnce(this.save, "bathysal-lens", "In the shrine's basin lay a Bathysal Lens: a disc of sea-glass that lets the eye see through deep water. With a dive rig from a Shipwright, the dive buoys can be followed down.", "The Bathysal Lens");
+      this.message = `${o.name}: you find a Bathysal Lens. ${canDive(this.save) ? "With your rig, you can now dive at dive buoys." : "A Shipwright's dive rig would let you dive."}`;
+      this.sync(); return { ok: true, message: this.message };
+    }
     if (!action && ["npc", "dungeon", "shrine", "relayTerminal","relayNode","shelterMerchant","displacementDevice","elitePortal","viewport"].includes(o.kind)) {
       this.interactionRequested = o.id;
       return {
@@ -2201,6 +2214,7 @@ export class Game {
     if (action === "speak") r = { ok: true, message: b.owned ? `Shipwright: “Your skiff's hull stands at ${Math.round(b.hull)}/${BOAT.maxHull}.${repairCost(s) ? ` Patching it costs ${repairCost(s)} marks.` : ""}”` : `Shipwright: “A skiff for ${BOAT.price.currency} marks and ${BOAT.price.cinderIron} cinder iron. Sail the seas, lakes and fens — not the blight.”` };
     else if (action === "buySkiff") r = buySkiff(s, { rx: this.rx, ry: this.ry, x: o.berth.x, y: o.berth.y });
     else if (action === "repair") r = repairSkiff(s);
+    else if (action === "buyRig") r = buyRig(s);
     else if (action === "board") {
       const at = o.kind === "skiff" ? { x: o.x, y: o.y } : o.berth;
       if (!board(s, at)) r = { ok: false, message: b.owned ? "The skiff needs repair before it can sail." : "You own no skiff." };
@@ -2212,6 +2226,20 @@ export class Game {
       }
     } else r = { ok: false, message: "Nothing happens." };
     this.message = r.message; this.sync(); return r;
+  }
+
+  // Diving (water world W5): a dive buoy loads the underwater scene; the surface line brings the diver back up to it.
+  diveAction(o) {
+    const s = this.save;
+    if (o.kind === "diveExit") { const ok = this.leaveDungeon("You follow the line back to the surface."); if (ok) { s.session.breath = DIVE.breath; this.sync(); } return { ok: !!ok, message: this.message }; }
+    if (!canDive(s)) { this.message = diveSiteHint(s); return { ok: false, message: this.message }; }
+    s.session.dungeonReturn = { rx: this.rx, ry: this.ry, x: o.x, y: o.y - .2 };
+    s.session.activeDungeonId = diveId(s.seed, this.rx, this.ry); s.session.activeDungeonLevelId = null;
+    const h = dungeonHistory(s, s.session.activeDungeonId); h.visits++; h.visitOpen = true;
+    this.swimming = false; this.loadArea("dungeon");
+    this.player.x = this.map.entry.x; this.player.y = this.map.entry.y - .2; s.session.breath = DIVE.breath;
+    this.message = "You dive. Watch your air: air pockets refill it, the line leads back up."; this.sync();
+    return { ok: true, message: this.message };
   }
 
   interactAt(x, y) {
@@ -2293,7 +2321,12 @@ export class Game {
             : null,
         deaths = this.save.worldFlags.deaths || 0;
       update(dt, input, now);
-      if (
+      // A drowned diver is hauled up the line to the buoy instead of restarting below (W5).
+      if (wasDungeon && (this.save.worldFlags.deaths || 0) > deaths && this.area !== "dungeon" && String(id).startsWith("dive:") && q) {
+        this.rx = q.rx; this.ry = q.ry; this.loadArea("overworld", false); this.player.x = q.x; this.player.y = q.y;
+        this.save.session.breath = DIVE.breath; this.save.session.activeDungeonId = null; this.save.session.dungeonReturn = null;
+        this.message = "Out of air — the line hauls you, half-drowned, back to the surface. Nothing carried was lost.";
+      } else if (
         wasDungeon &&
         (this.save.worldFlags.deaths || 0) > deaths &&
         this.area !== "dungeon"
@@ -2881,7 +2914,7 @@ export class Game {
     }
     const swimming = swimsThrough(this.save, footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y)), underfoot = this.map.landscape ? tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind : null;
     const sailing = this.area === "overworld" && aboard(this.save);
-    let speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed) * (!dodging && now < (p.slowUntil || 0) ? (p.slowFactor || .5) : 1) * (sailing ? BOAT.speed : swimming ? TIDEMANTLE.speed : dodging ? 1 : mireSpeed(underfoot)),
+    let speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed) * (!dodging && now < (p.slowUntil || 0) ? (p.slowFactor || .5) : 1) * (this.map.underwater ? DIVE.speed : 1) * (sailing ? BOAT.speed : swimming ? TIDEMANTLE.speed : dodging ? 1 : mireSpeed(underfoot)),
       dx = x * speed * dt,
       dy = y * speed * dt;
     // Sailing has momentum: velocity eases toward the stick; a dodge is an oar burst.
@@ -3027,6 +3060,11 @@ export class Game {
     // Blight mire (landscape version 2): its murk lowers maximum health until the Wayfarer rests.
     if (this.area === "overworld" && this.map.landscape && rotTick(this.save, tileUnder(this.map, 32, p.x, p.y)?.kind, dt) && now > (this.rotMessageAt || 0)) { this.rotMessageAt = now + 9000; this.message = "The blight mire rots you: maximum health falls until you rest."; }
     if (p.hp > healthCeiling(this.save)) p.hp = healthCeiling(this.save);
+    // Under water (W5): breath drains away from air pockets; at zero the diver drowns slowly.
+    if (this.area === "dungeon" && this.map.underwater) {
+      const pocket = this.map.objects.some((o) => o.kind === "airPocket" && Math.hypot(o.x - p.x, o.y - p.y) < DIVE.pocketRadius), hurt = breathe(this.save.session, dt, pocket);
+      if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.breathMessageAt || 0)) { this.breathMessageAt = now + 4000; this.message = "Out of air — reach an air pocket or the surface line!"; } }
+    }
     if (this.swimming) { const hurt = swimUpkeep(p, dt, this.swimKind); if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "Exhausted in the water — reach the shore."; } } }
     else p.stamina = Math.min(p.maxStamina, p.stamina + 9 * dt);
     this.performanceStats.totalDungeonEncounterRecords=this.area==="dungeon"?(this.map.encounterGroups||[]).length:0;this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.activeProjectiles=this.projectiles.length;this.performanceStats.activeHazardsAndEffects=this.eliteHazards.length+this.effects.length;this.performanceStats.pathfindingWork=0;this.performanceStats.ambientTicks=0;if(dt>1/30)this.performanceStats.updateBudgetViolations++;
