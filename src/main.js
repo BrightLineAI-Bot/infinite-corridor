@@ -1,12 +1,13 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { vendorShop, buyFromVendor } from "./game.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { CREATURE_TRAITS } from "./combat.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { drawPackPortrait } from "./monster-render.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { landscapeAtlasColor } from "./landscape-render.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { hashSeed } from "./random.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { vendorShop, buyFromVendor } from "./game.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { CREATURE_TRAITS } from "./combat.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { drawPackPortrait } from "./monster-render.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { landscapeAtlasColor } from "./landscape-render.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { hashSeed } from "./random.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -157,7 +158,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
 import {
   Game,
   actionReadiness,
@@ -166,19 +167,19 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { createInput } from "./input.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { STATS } from "./types.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { worldStewardReport } from "./story.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+} from "./game.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { createInput } from "./input.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { STATS } from "./types.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { worldStewardReport } from "./story.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -189,7 +190,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+} from "./world.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -819,6 +820,9 @@ function resize() {
     canvas.style.height = h + "px";
     ctx.setTransform(d, 0, 0, d, 0, 0);
     ctx.imageSmoothingEnabled = false;
+    // The canvas area label sits just above the bottom-left controls, wherever the layout puts them (phone, Fold outer/inner).
+    const controls = document.querySelector(".left-controls")?.getBoundingClientRect();
+    game.labelInset = controls?.height ? Math.max(40, Math.round(innerHeight - controls.top + 30)) : 122;
     input.reset();
   });
 }
@@ -881,18 +885,38 @@ function selectSetting(key,choices){const s=document.createElement("select");for
 function rangeSetting(key,min,max,step){const input=document.createElement("input");input.type="range";input.min=min;input.max=max;input.step=step;input.value=settings[key];input.oninput=()=>updateSetting(key,Number(input.value));return input}
 function toggleSetting(key){const input=document.createElement("input");input.type="checkbox";input.checked=!!settings[key];input.onchange=()=>updateSetting(key,input.checked);return input}
 function updateSetting(key,value){Object.assign(settings,saveSettings({...settings,[key]:value}));applyPresentationSettings();optionMessage(`${key.replace(/([A-Z])/g," $1")} updated. Quality changes apply without changing journey data.`)}
+// The Reciter's Tome (Journal tab; releases 122, 124): every book walking the Corridor and, under each, the reciters of
+// it you have met, each with their own order (linear or random) and a reset. Books are added by the developer, not in game.
+function renderTome(out){
+  ensureReciters(save);const rerender=()=>openJournal("tome");
+  const h=document.createElement("h3"),intro=document.createElement("p"),status=document.createElement("p");h.textContent="The Reciter's Tome";
+  intro.className="options-note";intro.textContent="Every book walking the Corridor. Reciters you have met appear under their book; choose how each one recites, or send them back to the first line.";status.className="options-note";out.append(h,intro,status);
+  for(const b of libraryBooks(save)){
+    const sec=document.createElement("section"),bh=document.createElement("h3"),meta=document.createElement("p");sec.className="library-book";
+    bh.textContent=b.book;meta.className="options-note";meta.textContent=`${b.sources.join(" · ")} · ${b.lines} lines`;sec.append(bh,meta);
+    if(!b.readers.length){const none=document.createElement("p");none.className="options-note library-empty";none.textContent="You have not met anyone who recites this yet.";sec.append(none)}
+    for(const q of b.readers){
+      const mode=document.createElement("select");for(const[value,label]of[["linear","Linear"],["random","Random"]]){const o=document.createElement("option");o.value=value;o.textContent=label;mode.append(o)}
+      mode.value=q.mode;mode.onchange=()=>{setReciterMode(save,q.id,mode.value);persist();status.textContent=`${q.voice}: ${mode.value}.`};
+      const row=settingRow(`${q.voice}`,mode,`${q.name} · ${q.mode==="random"?"random lines":`next: line ${q.at+1} of ${q.count}`}`);
+      const reset=uiButton("Reset",()=>{resetReciter(save,q.id);persist();rerender()});reset.className+=" small";row.append(reset);
+      sec.append(row);
+    }
+    out.append(sec);
+  }
+}
 async function renderSettings(category){const grid=document.createElement("div");grid.className="settings-grid";
   if(category==="Performance"){grid.append(settingRow("Quality mode",selectSetting("quality",[["auto","Auto"],["low","Low"],["balanced","Balanced"],["full","Full"]]),`Active: ${currentQuality()}. Low uses a stable 1× render scale; other modes cap at 2×.`),settingRow("Safe mode",toggleSetting("safeMode"),"Reversible low-load presentation mode."),settingRow("Weather detail",toggleSetting("weather"),"Allows ambient weather when the renderer supports it."),settingRow("Performance diagnostics",toggleSetting("diagnostics"),"Records frame timings after the next reload."))}
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
 async function openOptions(){pauseForOverlay();if(pausePanel.open)pausePanel.close();setHudExpanded(false);await renderOptions();if(!optionsPanel.open)optionsPanel.showModal()}
 function drawDungeonMap() {
-  const selectedLevel=$("#dungeonLevelSelect")?.value,currentLevel=game.map.levelId||"root",map=selectedLevel&&selectedLevel!==currentLevel?generateDungeon(save.seed,game.areaId(),{levelId:selectedLevel}):game.map,d=Math.min(devicePixelRatio,2),w=Math.min(innerWidth*.9,680),h=Math.min(innerHeight*.65,520),cols=map.width||24,rows=map.height||Math.floor(map.tiles.length/cols),pad=18,cell=Math.max(2,Math.min((w-pad*2)/cols,(h-pad*2)/rows)),ox=(w-cell*cols)/2,oy=(h-cell*rows)/2;
+  const selectedLevel=$("#dungeonLevelSelect")?.value,currentLevel=game.map.levelId||"root",map=selectedLevel&&selectedLevel!==currentLevel?generateDungeon(save.seed,game.areaId(),{levelId:selectedLevel}):game.map,d=Math.min(devicePixelRatio,2),w=Math.min(innerWidth*.9,680),h=atlasMapHeight(),cols=map.width||24,rows=map.height||Math.floor(map.tiles.length/cols),pad=18,cell=Math.max(2,Math.min((w-pad*2)/cols,(h-pad*2)/rows)),ox=(w-cell*cols)/2,oy=(h-cell*rows)/2;
   if(map!==game.map&&map.dungeonContract?.discoveryEnabled){const history=dungeonHistory(save,game.areaId()),level=map.levelStableId||map.levelId||"root";applyDungeonDiscovery(map,history.discovery?.levels?.[level]||[])}
   mapCanvas.width=w*d;mapCanvas.height=h*d;mapCanvas.style.width=w+"px";mapCanvas.style.height=h+"px";mctx.setTransform(d,0,0,d,0,0);mctx.imageSmoothingEnabled=false;mctx.fillStyle="#091018";mctx.fillRect(0,0,w,h);
   for(const tile of map.tiles){const x=ox+tile.x*cell,y=oy+tile.y*cell,visibility=dungeonTileVisibility(map,tile.x,tile.y);mctx.fillStyle=visibility==="unseen"?"#05080b":tile.kind==="dungeonWater"?"#245967":tile.blocked?"#182129":({hollow:"#51484a",cistern:"#36565a",kiln:"#68463a"}[map.recipe]||"#51484a");mctx.fillRect(x,y,Math.ceil(cell),Math.ceil(cell));if(visibility!=="unseen"&&!tile.blocked&&cell>9){mctx.strokeStyle="#ffffff0b";mctx.strokeRect(x,y,cell,cell)}}
@@ -901,11 +925,14 @@ function drawDungeonMap() {
   if(map===game.map){const px=ox+(game.player.x+.5)*cell,py=oy+(game.player.y+.5)*cell;mctx.fillStyle="#fff4a8";mctx.strokeStyle="#17140b";mctx.lineWidth=2;mctx.beginPath();mctx.arc(px,py,Math.max(4,cell*.34),0,7);mctx.fill();mctx.stroke();mctx.fillStyle="#e7ece7";mctx.font="12px monospace";mctx.fillText("YOU",px+7,py-7);}else{mctx.fillStyle="#dbc18a";mctx.font="12px monospace";mctx.fillText(`INSPECTING ${map.levelName||map.levelId}`,12,18)}
 }
 function drawAtlasLabels(labels,bounds,fontSize){const placed=[],overlap=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;mctx.font=`${fontSize}px system-ui`;mctx.fillStyle="#edf3df";for(const label of labels){let text=label.name,max=bounds.right-bounds.left-10;while(text.length>4&&mctx.measureText(text).width>max)text=text.slice(0,-2)+"…";const width=mctx.measureText(text).width,candidates=[[label.x+7,label.y-5],[label.x+7,label.y+fontSize+3],[label.x-width-7,label.y-5],[label.x-width-7,label.y+fontSize+3],[label.x-width/2,label.y-fontSize],[label.x-width/2,label.y+fontSize*2]],spots=candidates.map(([cx,cy])=>{const x=Math.max(bounds.left+5,Math.min(bounds.right-width-5,cx)),y=Math.max(bounds.top+fontSize+5,Math.min(bounds.bottom-6,cy));return{x,y,left:x-2,right:x+width+2,top:y-fontSize-2,bottom:y+3}}),spot=spots.find(q=>!placed.some(p=>overlap(p,q)));if(!spot)continue;mctx.fillText(text,spot.x,spot.y);placed.push(spot)}return placed}
+// Atlas map height: leaves room for the title, level picker and map tools, so on short screens (the Fold's outer
+// screen held sideways) the tools stay in view instead of falling below the dialog.
+function atlasMapHeight(){return Math.max(140,Math.min(innerHeight*.65,innerHeight-(innerHeight<560?205:260),520))}
 function drawMap() {
   if(mapMode==="dungeon"&&game.area==="dungeon"){drawDungeonMap();drawDungeonDeathMarker();return}
   const d = Math.min(devicePixelRatio, 2),
     w = Math.min(innerWidth * 0.9, 680),
-    h = Math.min(innerHeight * 0.65, 520);
+    h = atlasMapHeight();
   mapCanvas.width = w * d;
   mapCanvas.height = h * d;
   mapCanvas.style.width = w + "px";
@@ -979,7 +1006,7 @@ function drawMap() {
   );
 }
 function drawDeathGlyph(context,x,y,size,faded=false){context.save();context.translate(x,y);context.globalAlpha=faded?.45:1;context.strokeStyle="#ff718f";context.lineWidth=Math.max(1.5,size*.2);context.beginPath();context.arc(0,0,size*.65,0,7);context.moveTo(-size*.42,-size*.42);context.lineTo(size*.42,size*.42);context.moveTo(size*.42,-size*.42);context.lineTo(-size*.42,size*.42);context.stroke();context.restore()}
-function drawDungeonDeathMarker(){const death=save.lastDeath;if(!death||death.areaKind!=="dungeon"||death.dungeonId!==game.areaId())return;const selected=$("#dungeonLevelSelect")?.value||game.map.levelId||"root";if(death.levelId&&death.levelId!==selected)return;const map=game.map,d=Math.min(devicePixelRatio,2),w=Math.min(innerWidth*.9,680),h=Math.min(innerHeight*.65,520),cols=map.width||24,rows=map.height||Math.floor(map.tiles.length/cols),pad=18,cell=Math.max(2,Math.min((w-pad*2)/cols,(h-pad*2)/rows)),ox=(w-cell*cols)/2,oy=(h-cell*rows)/2;mctx.setTransform(d,0,0,d,0,0);drawDeathGlyph(mctx,ox+(death.x+.5)*cell,oy+(death.y+.5)*cell,Math.max(5,cell*.36),death.valid===false)}
+function drawDungeonDeathMarker(){const death=save.lastDeath;if(!death||death.areaKind!=="dungeon"||death.dungeonId!==game.areaId())return;const selected=$("#dungeonLevelSelect")?.value||game.map.levelId||"root";if(death.levelId&&death.levelId!==selected)return;const map=game.map,d=Math.min(devicePixelRatio,2),w=Math.min(innerWidth*.9,680),h=atlasMapHeight(),cols=map.width||24,rows=map.height||Math.floor(map.tiles.length/cols),pad=18,cell=Math.max(2,Math.min((w-pad*2)/cols,(h-pad*2)/rows)),ox=(w-cell*cols)/2,oy=(h-cell*rows)/2;mctx.setTransform(d,0,0,d,0,0);drawDeathGlyph(mctx,ox+(death.x+.5)*cell,oy+(death.y+.5)*cell,Math.max(5,cell*.36),death.valid===false)}
 const ATLAS_SYMBOLS=[
   {kind:"checkpoint",label:"Wayglass",description:"Activate it to add a fast-travel destination and make it your recovery point."},
   {kind:"shrine",label:"Singing Array",description:"A common rest point. Reaching it updates where death returns you, but it does not permit fast travel."},
@@ -1117,6 +1144,7 @@ function openPack() {
   const resource = document.createElement("p");
   resource.textContent = `Cinder Iron ${save.materials.cinderIron} · weapon +${save.weaponLevel || 0} · section ${game.rx},${game.ry} `;
   resource.append(uiButton(`✦ Arcanum · spells, constellation, glyphs`, () => openSkills()));
+  resource.append(Object.assign(document.createElement('span'), { className: 'wood-count', textContent: `Wood ${save.materials?.wood || 0} · a skiff takes 3 (Act at deep water)` })); // release 119
   resource.append(uiButton(`Glyphs · ${Object.values(save.glyphs||{}).reduce((a,b)=>a+b,0)} in pouch`, openGlyphs));
   resource.append(uiButton(`Echoes · ${notchesUsed(save.echoes?.equipped||[])}/${NOTCHES} notches`, openEchoes));
   resource.append(uiButton(`Constellation · ${pointsFree(save)} free`, () => openSkills()));
@@ -1341,9 +1369,10 @@ function openJournal(mode = "chronicle") {
   const out = $("#journalBody");
   out.replaceChildren();
   const nav=document.createElement("div");nav.className="codex-tabs";
-  for(const [id,label] of [["chronicle","Chronicle"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"]])nav.append(uiButton(label,()=>openJournal(id)));
+  for(const [id,label] of [["chronicle","Chronicle"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["tome","Reciter's Tome"]])nav.append(uiButton(label,()=>openJournal(id)));
   out.append(nav);
   if(mode!=="chronicle"){
+    if(mode==="tome"){renderTome(out);if(!journal.open)journal.showModal();return;}
     if(mode==="dungeons"){
       const heading=document.createElement("h3");heading.textContent="Deep expeditions";out.append(heading);
       const records=Object.entries(save.consequences?.dungeons||{}).filter(([,h])=>h.deep?.name);

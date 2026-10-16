@@ -712,3 +712,13 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 /* Release 114 (Tim, 2026-10-16): the compass sits above the Map button; spell slot B stands a little apart to the right. */
 .left-controls .compass-slot{order:1;justify-self:start;margin-left:3px}
 .quick-row button[data-action="spell2"]{margin-left:12px}
+
+/* Short landscape screens (e.g. Galaxy Z Fold outer screen held sideways): compact atlas chrome, larger map tools. */
+@media (orientation: landscape) and (max-height: 540px) {
+  #atlas h2 { margin: .1em 0 .2em; font-size: 1.1rem; }
+  #atlas .wayglass-picker { margin: 0 0 4px; }
+  .maptools { margin-top: 4px; }
+}
+.maptools button { min-height: 34px; }
+
+.library-book{border-top:1px solid #5a584e66;padding:6px 0 4px}.library-book h3{margin:.4em 0 .1em}.library-empty{opacity:.7;font-style:italic}
