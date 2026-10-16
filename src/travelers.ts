@@ -290,38 +290,84 @@ export function collectWandererCache(save) {
   q.done = true; return { ok: true, message: "You dig up Quillon's satchel: maps, a pressed flower, and letters you don't read. Find Quillon to return it." };
 }
 
-// ------------------------------------------------------------------ reciters (release 117)
-// A lone walker who recites one book (src/recitations.ts), one line each time you speak, from where they left off;
-// progress per reciter is kept in save.reciters.progress and wraps back to the first line at the end of the book.
+// ------------------------------------------------------------------ reciters (releases 117, 118)
+// A lone walker who recites one story, one line each time you speak. The story library is the built-in books
+// (src/recitations.ts) plus up to STORY_LIMITS.stories stories the player pastes in (Options → Stories). Per journey,
+// save.reciters keeps each story's place (`progress`), the order (`mode`: linear, or random lines), and which stories
+// travellers carry (`disabled`). Reciters walk the wilds, towns (more often) and dungeons.
+export const STORY_LIMITS = { stories: 8, lines: 600, lineLength: 400, titleLength: 60 };
+export const RECITER_CHANCE = { wild: 0.12, town: 0.45, dungeon: 0.18 };
 export function ensureReciters(s) {
-  const r = s.reciters && typeof s.reciters === "object" ? s.reciters : {}, progress = {};
-  for (const [id, n] of Object.entries(r.progress || {})) if (RECITATIONS[id] && Number.isInteger(n) && n >= 0) progress[id] = n;
-  s.reciters = { v: 1, progress };
+  const r = s.reciters && typeof s.reciters === "object" ? s.reciters : {};
+  const custom = (Array.isArray(r.custom) ? r.custom : []).filter((c) => c && typeof c.id === "string" && Array.isArray(c.lines)).slice(0, STORY_LIMITS.stories)
+    .map((c) => ({ id: c.id, title: String(c.title || "A story").slice(0, STORY_LIMITS.titleLength), lines: c.lines.map(String).filter(Boolean).slice(0, STORY_LIMITS.lines).map((l) => l.slice(0, STORY_LIMITS.lineLength)) }))
+    .filter((c) => c.lines.length);
+  const known = new Set([...Object.keys(RECITATIONS), ...custom.map((c) => c.id)]), progress = {};
+  for (const [id, n] of Object.entries(r.progress || {})) if (known.has(id) && Number.isInteger(n) && n >= 0) progress[id] = n;
+  s.reciters = { v: 2, progress, mode: r.mode === "random" ? "random" : "linear", disabled: [...new Set((Array.isArray(r.disabled) ? r.disabled : []).filter((id) => known.has(id)))], custom };
   return s;
 }
-export function reciterPlan(seed, rx, ry) {
-  if (Math.abs(rx) + Math.abs(ry) < TRAVEL.minDepth) return null;
-  const h = hashSeed(`${seed}:reciter:v1:${rx}:${ry}`);
-  if ((h % 1000) / 1000 >= TRAVEL.reciterChance) return null;
-  return RECITERS[Math.floor(h / 1000) % RECITERS.length];
+// Every story a reciter can carry: built-in books, then the player's own.
+export function storyCatalog(save) {
+  const own = (save?.reciters?.custom || []).map((c) => ({ id: c.id, name: "A traveller with a handwritten book", book: c.title, voice: "your own story", look: "traveler", source: "Added by you", custom: true, count: c.lines.length }));
+  return [...RECITERS.map((r) => ({ ...r, count: RECITATIONS[r.id].length })), ...own];
 }
-export function addReciter(map, seed, rx, ry) {
-  if (!map || map.reciterWalk || map.skirmish || map.tiles?.length !== 1024) return null;
-  const who = reciterPlan(seed, rx, ry); if (!who) return null;
-  const r = rng(`${seed}:reciter-walk:${rx}:${ry}`), trail = (map.trails || [])[0];
-  const open = map.tiles.filter((t) => t.x > 4 && t.y > 4 && t.x < 27 && t.y < 27 && walkable(t));
-  let path = trail && trail.length > 4 ? trail.filter((p) => walkable(map.tiles[p.y * 32 + p.x])) : [0, 1, 2, 3].map(() => open[Math.floor(r() * open.length)]).filter(Boolean).map((t) => ({ x: t.x, y: t.y }));
+export function storyLines(save, id) { return RECITATIONS[id] || save?.reciters?.custom?.find((c) => c.id === id)?.lines || []; }
+// Splits pasted text into recitation lines: verse (mostly short lines) line by line, prose sentence by sentence.
+export function splitStory(text) {
+  const raw = String(text || "").replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean);
+  if (!raw.length) return [];
+  const short = raw.filter((l) => l.length < 80).length / raw.length > .6;
+  const pieces = short ? raw : raw.join(" ").split(/(?<=[.!?…"”])\s+(?=[A-Z0-9"“'‘])/);
+  const out = [];
+  for (const p of pieces) { const t = p.trim(); if (!t) continue; if (out.length && out[out.length - 1].length + t.length < 90 && !short) out[out.length - 1] += " " + t; else out.push(t.slice(0, STORY_LIMITS.lineLength)); }
+  return out.slice(0, STORY_LIMITS.lines);
+}
+export function addCustomStory(save, title, text) {
+  ensureReciters(save); const r = save.reciters;
+  if (r.custom.length >= STORY_LIMITS.stories) return { ok: false, message: `You can keep ${STORY_LIMITS.stories} stories of your own. Remove one first.` };
+  const lines = splitStory(text); if (lines.length < 2) return { ok: false, message: "Paste at least two lines or sentences." };
+  const id = `custom-${Date.now().toString(36)}`;
+  r.custom.push({ id, title: String(title || "").trim().slice(0, STORY_LIMITS.titleLength) || "Untitled story", lines });
+  return { ok: true, id, message: `Added ${lines.length} lines. A traveller will start carrying it on the road.` };
+}
+export function removeCustomStory(save, id) { ensureReciters(save); const r = save.reciters; r.custom = r.custom.filter((c) => c.id !== id); delete r.progress[id]; r.disabled = r.disabled.filter((q) => q !== id); }
+export function reciterPlan(seed, key, save, chance = RECITER_CHANCE.wild) {
+  const h = hashSeed(`${seed}:reciter:v1:${key}`);
+  if ((h % 1000) / 1000 >= chance) return null;
+  const off = new Set(save?.reciters?.disabled || []), pool = storyCatalog(save).filter((q) => !off.has(q.id));
+  return pool.length ? pool[Math.floor(h / 1000) % pool.length] : null;
+}
+function placeReciter(map, who, id, open, r, width) {
+  const trail = (map.trails || [])[0];
+  let path = trail && trail.length > 4 ? trail.filter((p) => walkable(map.tiles[p.y * width + p.x])) : [0, 1, 2, 3].map(() => open[Math.floor(r() * open.length)]).filter(Boolean).map((t) => ({ x: t.x, y: t.y }));
   if (path.length < 2) return null;
   const at = path[Math.floor(r() * path.length)];
-  const o = { id: `reciter:${rx},${ry}`, kind: "traveler", reciter: who.id, name: who.name, role: `reciting ${who.book}`, look: who.look, mount: null, x: at.x, y: at.y, state: "walking", actions: ["speak"], facing: "down" };
+  const o = { id, kind: "traveler", reciter: who.id, name: who.name, role: `reciting ${who.book}`, look: who.look, mount: null, x: at.x, y: at.y, state: "walking", actions: ["speak"], facing: "down" };
   map.objects.push(o);
-  map.reciterWalk = { path, index: path.indexOf(at) >= 0 ? (path.indexOf(at) + 1) % path.length : 0, dir: 1 };
+  map.reciterWalk = { path, index: (path.indexOf(at) + 1) % path.length, dir: 1 };
   return o;
+}
+export function addReciter(map, seed, rx, ry, save = null) {
+  if (!map || map.reciterWalk || map.skirmish || map.tiles?.length !== 1024 || Math.abs(rx) + Math.abs(ry) < TRAVEL.minDepth) return null;
+  const who = reciterPlan(seed, `${rx}:${ry}`, save, map.settlement ? RECITER_CHANCE.town : RECITER_CHANCE.wild); if (!who) return null;
+  const r = rng(`${seed}:reciter-walk:${rx}:${ry}`), open = map.tiles.filter((t) => t.x > 4 && t.y > 4 && t.x < 27 && t.y < 27 && walkable(t));
+  return placeReciter(map, who, `reciter:${rx},${ry}`, open, r, 32);
+}
+// In a dungeon level: a reciter strolls near the entrance.
+export function addDungeonReciter(map, areaId, save, width) {
+  if (!map || map.reciterWalk || !map.tiles?.length || !width) return null;
+  const who = reciterPlan(save?.seed, `dungeon:${areaId}:${map.levelStableId || ""}`, save, RECITER_CHANCE.dungeon); if (!who) return null;
+  const entry = map.entry || map.tiles.find(walkable), r = rng(`${areaId}:reciter-walk`);
+  const open = map.tiles.filter((t) => walkable(t) && !t.environment && Math.hypot(t.x - entry.x, t.y - entry.y) > 1.5 && Math.hypot(t.x - entry.x, t.y - entry.y) < 7);
+  if (open.length < 4) return null;
+  return placeReciter(map, who, `reciter:${areaId}`, open, r, width);
 }
 export function reciterTalk(o, save) {
   ensureReciters(save);
-  const who = RECITERS.find((q) => q.id === o.reciter), lines = RECITATIONS[o.reciter] || [];
+  const who = storyCatalog(save).find((q) => q.id === o.reciter), lines = storyLines(save, o.reciter);
   if (!who || !lines.length) return "They hum something you almost recognise.";
+  if (save.reciters.mode === "random") { const n = Math.floor(Math.random() * lines.length); return `${who.name}, from ${who.book} (line ${n + 1} of ${lines.length}): “${lines[n]}”`; }
   const n = save.reciters.progress[who.id] || 0, line = lines[n % lines.length], next = n + 1;
   save.reciters.progress[who.id] = next >= lines.length ? 0 : next;
   const opening = n === 0 ? ` (${who.voice}, ${who.book})` : "", ending = next >= lines.length ? " …and the book is done. They close it, and open it again at the first page." : "";
