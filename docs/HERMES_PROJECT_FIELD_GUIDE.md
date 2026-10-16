@@ -24,6 +24,12 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Active quests in the Journal; Atlas layer toggles (release 155)
+
+**CODE:** The Journal's new `quests` tab (`renderQuests` in `main.ts`, second after Chronicle) lists everything in progress from `activeQuests()`: accepted, tracking and located Viewport hunts, Old Quillon's errand, the Questing Beast, the Far Array (gate pieces), the Unwritten Meridian, relay leads and the great enemy. Each shows its section, distance and heading. Unfinished challenges from `objectiveList()` are listed below them. "Point compass here" sets `compassPin`, which `navigationTargets()` uses ahead of every other guidance until the compass is tapped (which resumes cycling) or "Let the compass choose again" is pressed. The compass itself shows no text. Under the Atlas, `#mapLayers` holds `ATLAS_LAYERS` toggles for Places (site glyphs), Signals (unresolved signal icons), Objectives (gold and violet frames) and Waypoints (manual waypoint and last death), plus All on/off. `atlasLayers` is kept per device in `localStorage` (`corridor-atlas-layers`, wrapped in try/catch).
+
+**BOUNDARY:** Presentation only; nothing is written to the save. `compassPin` lasts until reload.
+
 ## The compass always points somewhere; the Atlas frames objectives (release 153)
 
 **CODE:** The compass used to aim only at an active Viewport hunt or at a wayfinding cue in the current section (and only while the relay lead was open), so most of the time it was blank. `world.ts` now exports `wayfindingTargets()`, the full target list that `wayfindingCues()` used to build internally. `wayfindingCues()` calls it and picks one per kind exactly as before, so cue output is unchanged. In `main.ts`, `objectiveList()` ranks objectives nearest first (ties by `OBJECTIVE_KINDS` rank) and keeps the nearest `COMPASS_OBJECTIVE_LIMIT` (12). The candidates are:
