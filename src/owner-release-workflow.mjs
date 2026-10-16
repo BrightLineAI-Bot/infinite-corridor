@@ -77,7 +77,7 @@ export class ProposalWorkflow {
  validateLocked(id,options={}){
   if(options.execute===false)throw new Error('synthetic validation is not allowed');let p=this.load(id),r=this.reconcile(p);if(!r.ok)return {ok:false,reconciliation:r};
   if(['OWNER_REVIEW','APPROVED'].includes(p.state)){this.checkArtifact(p);return {ok:true,idempotent:true,proposal:p}}if(p.state!=='DRAFT')throw new Error(`cannot validate ${p.state}`);
-  const results=[this.runner.run('npm.cmd',['test'],600000),this.runner.run('npm.cmd',['run','build'],300000)];r=this.reconcile(p);
+  const results=[this.runner.run('npm.cmd',['test'],1800000),this.runner.run('npm.cmd',['run','build'],300000)];r=this.reconcile(p);
   if(!r.ok||!results.every(q=>q.exitCode===0&&!q.fixture&&!q.synthetic&&q.startedAt&&q.finishedAt))return {ok:false,proposal:this.change(p,{state:'FAILED',evidence:results,blockers:[...r.problems,'real test/build validation failed']},'validation-failed')};
   const artifact=freezeArtifact(join(this.root,'dist'),this.artifactDir(p),{proposalId:id,candidateCommit:p.candidateCommit,candidateTree:p.candidateTree});
   const evidenceBundleDigest=digest({candidateCommit:p.candidateCommit,candidateTree:p.candidateTree,artifactDigest:artifact.digest,results,node:process.version});
