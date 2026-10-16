@@ -36,7 +36,7 @@ Gated on a new `LANDSCAPE_VERSION = 2`; sections already in the atlas keep v1 (e
 - **Water palettes:** `blue` (ocean, lake), `swampy` (murky green-brown), `poison` (sickly green with bubbles), `deep` (navy, darker per depth). Data table, not literals.
 - Constraints carried over: plaza ring, exits and settlements protected; `ensureReturnable` and causeways still guarantee every exit is reachable *on foot or by a dock* (see W2), never only by swimming.
 
-## W2 — the Skiff (boats)
+## W2 — the Skiff (boats) — built in release 104
 
 - **Getting it:** a **Shipwright** appears in coastal settlements and at island landmarks; a repaired skiff costs marks plus cinder iron. Requires the Tidemantle (story reason: you must be able to survive capsizing). Save: `save.boat = { version, owned, hull, dockedAt: {rx,ry,x,y} | null, upgrades: [] }`, additive at schema 14 via `ensureBoatState` in `freshSave`/`migrateSave`.
 - **Docks:** generator places `dock` tiles on shallows next to ocean/lake in settlements and island landmarks (W1 v2 sections only). Boarding: interact on a dock or in shallows beside the moored boat. Disembark onto any walkable shore tile.

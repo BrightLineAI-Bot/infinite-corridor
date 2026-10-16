@@ -27,6 +27,7 @@ const PAINT = {
   beach(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#eedcab"], [1, "#dcc48e"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 4; i++) { c.fillStyle = ["#f6efe2", "#d39a83", "#b9c8c9"][i % 3]; c.beginPath(); c.ellipse(r() * s, r() * s, 1.6, 1, r() * 3, 0, TAU); c.fill(); } },
   shallows(c, s, r) { c.fillStyle = "#d9c591"; c.fillRect(0, 0, s, s); c.fillStyle = "#3fb3b8aa"; c.fillRect(0, 0, s, s); ripples(c, s, r, "#e8fbfa55"); },
   ocean(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#1d5a86"], [1, "#123f66"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 3; i++) { c.fillStyle = "#2c78a855"; c.beginPath(); c.ellipse(r() * s, r() * s, s * .3, s * .08, 0, 0, TAU); c.fill(); } },
+  dock(c, s, r) { c.fillStyle = "#1d5a86"; c.fillRect(0, 0, s, s); for (let k = 0; k < s; k += s / 4) { c.fillStyle = grad(c, 0, k, 0, k + s / 4, [[0, "#a07c52"], [1, "#6e5234"]]); c.fillRect(s * .08, k + 1, s * .84, s / 4 - 2); } c.fillStyle = "#3b2a1c"; for (const q of [.08, .84]) c.fillRect(s * q, 0, s * .08, s); },
   // ---- Waterbodies (landscape version 2): blue, swampy, poison and deep water palettes
   deepOcean(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#0f3558"], [1, "#071d36"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 2; i++) { c.fillStyle = "#1c4a7655"; c.beginPath(); c.ellipse(r() * s, r() * s, s * .34, s * .07, 0, 0, TAU); c.fill(); } },
   lakeWater(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3b8cc4"], [1, "#2a6f a6".replace(" ", "")]]); c.fillRect(0, 0, s, s); ripples(c, s, r, "#bfe6ff44"); },

@@ -25,6 +25,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
+import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, sailStep, steer, ensureBoatState } from "./boats.ts";
 import { swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot } from "./water-traversal.ts";
 import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.ts";
 import {
@@ -341,6 +342,12 @@ export function footprintOpen(map, width, x, y, allowLethalTerrain=false) {
       if(overlaps(...box))return false;
     }
   }
+  return true;
+}
+// The skiff's footprint fits when every tile under it is sailable water (boats.ts).
+export function footprintSailable(map,width,x,y){
+  const left=x+.24,right=x+.76,top=y+.5,bottom=y+.88,height=map.tiles.length/width;
+  for(let ty=Math.floor(top);ty<=Math.floor(bottom-1e-6);ty++)for(let tx=Math.floor(left);tx<=Math.floor(right-1e-6);tx++){if(tx<0||ty<0||tx>=width||ty>=height||!sailable(map.tiles[ty*width+tx]?.kind))return false}
   return true;
 }
 export function footprintTouchesCanyon(map, width, x, y) {
@@ -1528,7 +1535,7 @@ export class Game {
             this.ry,
             this.save.worldGeneration,
           );
-    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION})}
+    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION});const b=ensureBoatState(this.save),m=b.moored;if(b.owned&&!b.aboard&&m&&m.rx===this.rx&&m.ry===this.ry)this.map.objects.push({id:"skiff-moored",kind:"skiff",name:"Your skiff",lore:"Your skiff rides at its mooring.",x:m.x,y:m.y,state:"moored",actions:["board"]})}
     if(area==="dungeon"&&history?.relayNode){if(placeRelayNode(this.map,loadingId,this.save))ensureRelayNetwork(this.save).seen=true;}
     if(area==="dungeon"&&this.map.dungeonContract?.discoveryEnabled){const discovered=discoveryForLevel(history,this.map);applyDungeonDiscovery(this.map,discovered);this._dungeonChunkId=null;}
     if(area==='overworld'){
@@ -1590,7 +1597,7 @@ export class Game {
       // A section first seen now is pinned to the current landscape version; one explored earlier keeps none.
       atlas[key] = { terrain: this.map.dominant, ...(prior ? (prior.landscapeVersion ? { landscapeVersion: prior.landscapeVersion } : {}) : { landscapeVersion: LANDSCAPE_VERSION }),
         ...(this.map.landscape?.biome ? { landscape: this.map.landscape.biome } : {}), sites: this.map.objects
-        .filter((o) => ["checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho"].includes(o.kind))
+        .filter((o) => ["shipwright","checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho"].includes(o.kind))
         .map((o) => ({ kind: o.kind, name: o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save)});
@@ -2110,6 +2117,7 @@ export class Game {
       this.message = remaining ? `The final seal holds. ${remaining} wing guardian${remaining === 1 ? " remains" : "s remain"}.` : "The three seals are broken. The final chamber stands open.";
       return { ok: true, message: this.message };
     }
+    if (o.kind === "shipwright" || o.kind === "skiff") return this.boatAction(o, action || (o.kind === "skiff" ? "board" : null));
     if (!action && ["npc", "dungeon", "shrine", "relayTerminal","relayNode","shelterMerchant","displacementDevice","elitePortal","viewport"].includes(o.kind)) {
       this.interactionRequested = o.id;
       return {
@@ -2180,6 +2188,27 @@ export class Game {
     this.reconcileConsequences();
     this.sync();
     return r;
+  }
+
+  // The Skiff (water world W2): the Shipwright sells, repairs and launches it; a moored skiff can be boarded directly.
+  boatAction(o, action) {
+    const s = this.save, b = ensureBoatState(s);
+    if (!action) { this.interactionRequested = o.id; return { ok: true, message: (this.message = `${o.name} — choose an action.`) }; }
+    let r;
+    if (action === "speak") r = { ok: true, message: b.owned ? `Shipwright: “Your skiff's hull stands at ${Math.round(b.hull)}/${BOAT.maxHull}.${repairCost(s) ? ` Patching it costs ${repairCost(s)} marks.` : ""}”` : `Shipwright: “A skiff for ${BOAT.price.currency} marks and ${BOAT.price.cinderIron} cinder iron. Sail the seas, lakes and fens — not the blight.”` };
+    else if (action === "buySkiff") r = buySkiff(s, { rx: this.rx, ry: this.ry, x: o.berth.x, y: o.berth.y });
+    else if (action === "repair") r = repairSkiff(s);
+    else if (action === "board") {
+      const at = o.kind === "skiff" ? { x: o.x, y: o.y } : o.berth;
+      if (!board(s, at)) r = { ok: false, message: b.owned ? "The skiff needs repair before it can sail." : "You own no skiff." };
+      else {
+        this.map.objects = this.map.objects.filter((q) => q.kind !== "skiff");
+        Object.assign(this.player, { x: at.x, y: at.y, sailVx: 0, sailVy: 0 }); this.swimming = false;
+        if (o.kind === "shipwright") b.home = { rx: this.rx, ry: this.ry, x: at.x, y: at.y };
+        r = { ok: true, message: "Aboard the skiff. Sail onto land to step ashore." };
+      }
+    } else r = { ok: false, message: "Nothing happens." };
+    this.message = r.message; this.sync(); return r;
   }
 
   interactAt(x, y) {
@@ -2779,10 +2808,34 @@ export class Game {
     if(type==='clearrootAmpoule'){if(!cleansePoison(this.save)){this.message='No poison needs cleansing.';return false}this.message='Clearroot cools the venom and ends the poison.';return true}
     return false;
   }
+  // One frame of sailing: the skiff moves over sailable water; pushing onto safe ground steps ashore and moors it.
+  sail(p, dx, dy, width, now) {
+    const open = (x, y) => footprintSailable(this.map, width, x, y);
+    // Ground ahead of the bow (half a tile on): a walkable, non-sailable tile the Wayfarer can stand on.
+    const ashoreAt = (ax, ay) => { const t = tileUnder(this.map, width, p.x + Math.sign(ax) * .6, p.y + Math.sign(ay) * .6); if (!t || t.blocked || sailable(t.kind)) return null; const q = { x: t.x, y: t.y - .2 }; return footprintOpen(this.map, width, q.x, q.y) && !footprintHazard(this.map, width, q.x, q.y) ? q : null; };
+    if (!open(p.x, p.y)) { // carried onto ground (a section edge or a resumed save): the crew returns the skiff to its dock
+      disembark(this.save, ensureBoatState(this.save).home); p.sailVx = p.sailVy = 0;
+      this.message = "You haul the skiff ashore; the Shipwright's crew rows it back to its dock."; return;
+    }
+    for (const [ax, ay] of [[dx, 0], [0, dy]]) {
+      if (!ax && !ay) continue;
+      const step = sailStep(open, () => ashoreAt(ax, ay), p.x + ax, p.y + ay);
+      if (step === "sail") { p.x += ax; p.y += ay; }
+      else if (step === "ashore") {
+        const here = tileUnder(this.map, width, p.x, p.y), shore = ashoreAt(ax, ay);
+        disembark(this.save, { rx: this.rx, ry: this.ry, x: here.x, y: here.y });
+        this.map.objects.push({ id: "skiff-moored", kind: "skiff", name: "Your skiff", lore: "Your skiff rides at its mooring.", x: here.x, y: here.y, state: "moored", actions: ["board"] });
+        Object.assign(p, shore); p.sailVx = p.sailVy = 0;
+        if (now > (this.sailMessageAt || 0)) { this.sailMessageAt = now + 6000; this.message = "Ashore. The skiff waits at its mooring."; }
+        return;
+      } else { if (ax) p.sailVx = 0; if (ay) p.sailVy = 0; }
+    }
+  }
+
   update(dt, input, now) {
     this.lastUpdateNow = now;
     if (this.paused) return;
-    const p = this.player;
+    const p = this.player, hpStart = p.hp;
     this.guardRemaining = Math.max(0, this.guardRemaining - dt);
     this.magicBuffRemaining = Math.max(0, this.magicBuffRemaining - dt);
     this.spellCooldownRemaining = Math.max(0, this.spellCooldownRemaining - dt);
@@ -2820,9 +2873,13 @@ export class Game {
       y = p.dodgeY;
     }
     const swimming = swimsThrough(this.save, footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y)), underfoot = this.map.landscape ? tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind : null;
-    let speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed) * (!dodging && now < (p.slowUntil || 0) ? (p.slowFactor || .5) : 1) * (swimming ? TIDEMANTLE.speed : dodging ? 1 : mireSpeed(underfoot)),
+    const sailing = this.area === "overworld" && aboard(this.save);
+    let speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed) * (!dodging && now < (p.slowUntil || 0) ? (p.slowFactor || .5) : 1) * (sailing ? BOAT.speed : swimming ? TIDEMANTLE.speed : dodging ? 1 : mireSpeed(underfoot)),
       dx = x * speed * dt,
-      dy = y * speed * dt,
+      dy = y * speed * dt;
+    // Sailing has momentum: velocity eases toward the stick; a dodge is an oar burst.
+    if (sailing) { p.sailVx = dodging ? x * speed : steer(p.sailVx || 0, x * speed, dt); p.sailVy = dodging ? y * speed : steer(p.sailVy || 0, y * speed, dt); dx = p.sailVx * dt; dy = p.sailVy * dt; }
+    let
       nx = p.x + dx,
       ny = p.y + dy;
     if (Math.abs(x) > 0.15 || Math.abs(y) > 0.15) {
@@ -2864,9 +2921,10 @@ export class Game {
     // Pits, lava and deep water are lethal to walk into (operator, release 101: the r97 brink guard is removed; rims,
     // fog hatching and level marks keep them readable instead).
     // Release 102: the Tidemantle lets the Wayfarer swim on surface water (stage one of the water traversal plan).
-    if(swimsThrough(this.save,terrainHazard)){this.swimKind=terrainHazard;if(!this.swimming){this.swimming=true;if(now>(this.swimMessageAt||0)){this.swimMessageAt=now+8000;this.message="The Tidemantle holds you up. Swimming drains stamina.";}}terrainHazard=null}else this.swimming=false;
+    if(sailing){terrainHazard=null;this.swimming=false}else if(swimsThrough(this.save,terrainHazard)){this.swimKind=terrainHazard;if(!this.swimming){this.swimming=true;if(now>(this.swimMessageAt||0)){this.swimMessageAt=now+8000;this.message="The Tidemantle holds you up. Swimming drains stamina.";}}terrainHazard=null}else this.swimming=false;
     const fellIntoHazard=!!terrainHazard&&!aerial;
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":DEEP_WATER.includes(terrainHazard)?"The deep water drags the Wayfarer under.":terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
+    else if (sailing) this.sail(p, dx, dy, width, now);
     else {
       p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0);
       const before = elevationAt(this.map, width, p.x, p.y), fromX = p.x, fromY = p.y;
@@ -2996,6 +3054,12 @@ export class Game {
     const volcano=this.area==="overworld"&&this.map.volcano;
     if(volcano&&Math.hypot(p.x-volcano.x,p.y-volcano.y)<12){this.volcanoClock=(this.volcanoClock||0)+dt;if(this.volcanoClock>=volcano.period){this.volcanoClock=0;this.volcanoSeq=(this.volcanoSeq||0)+1;const n=hashSeed(`${this.save.seed}:eruption:${this.rx}:${this.ry}:${this.volcanoSeq}`);for(let i=0;i<4;i++){const a=((n>>(i*5))%360)*Math.PI/180,r=i===0?0:1.2+((n>>(i*3))%30)/10;addPackEffect(this.packEffects||=[],{kind:"lavaBomb",owner:"volcano",x:p.x+Math.cos(a)*r,y:p.y+Math.sin(a)*r,radius:1.05,arming:1.3+i*.2,damage:Math.ceil(this.save.maxHp*.18),jumpable:false,from:{x:volcano.x,y:volcano.y-1}},now)}this.message="The caldera erupts. Watch the burning circles."}}
     this.packEffects=tickPackEffects(this.packEffects||[],packWorld);this.performanceStats.activeHazardsAndEffects+=this.packEffects.length;this._packLastPlayer={x:p.x,y:p.y};
+    // Aboard, the hull takes its share of every hit; a hull at zero sinks the skiff (it returns to its home dock).
+    if (this.area === "overworld" && aboard(this.save) && p.hp < hpStart) {
+      const { kept, sunk } = hullAbsorb(this.save, hpStart - p.hp);
+      p.hp = hpStart - kept;
+      if (sunk) { p.sailVx = p.sailVy = 0; this.message = "The skiff founders and sinks! Swim for shore; the Shipwright will raise it at the dock."; }
+    }
     if (p.hp <= 0) {
       this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
       if (this.area === "dungeon") {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
