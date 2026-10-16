@@ -1,5 +1,5 @@
 import{REFUGE_NPCS,ensurePerception}from'./types.ts';import{dungeonId,apertureTier,perceived}from'./world.ts';
-import{shipwrightActions,ensureBoatState}from'./boats.ts';
+import{shipwrightActions,ensureBoatState}from'./boats.ts';import{diveSiteActions}from'./diving.ts';
 import{hashSeed}from'./random.ts';import{relayNodeActions,inspectRelayNode,commitRelayNode,relayObjectiveSuffix}from'./relay-network.ts';import{ensureEliteState,acceptContract}from'./elites.ts';export const NARRATIVE_SCHEMA='infinite-corridor-narrative/1.0.0';
 import{recordRevelationLead,completeRevelationArc}from'./story.ts';
 import{ensureViewportState,activeViewportHunt}from'./foundry.ts';
@@ -43,6 +43,9 @@ export function validActions(o,s){
  if(o.kind==='apertureRitual')return apertureRitualState(s).ready?['perform','inspect']:['inspect'];
  if(o.kind==='arenaEntrance')return['enter'];
  if(o.kind==='shipwright')return shipwrightActions(s);
+ if(o.kind==='diveSite')return diveSiteActions(s);
+ if(o.kind==='diveExit')return['surface'];
+ if(o.kind==='airPocket')return[];
  if(o.kind==='skiff')return ensureBoatState(s).owned?['board']:[];
  if(o.kind==='elitePortal'){const c=ensureEliteState(s).contracts.knifeChoir;return c.state==='available'||c.state==='accepted'?['inspect','enter']:['inspect'];}
  if(o.kind==='tree'&&o.state!=='standing')return[];

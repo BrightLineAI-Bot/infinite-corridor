@@ -34,7 +34,8 @@ export const sailable = (kind) => BOAT.waterKinds.includes(kind);
 export function shipwrightActions(save) {
   const b = ensureBoatState(save);
   if (!b.owned) return ["speak", "buySkiff"];
-  return b.hull < BOAT.maxHull ? ["board", "repair"] : ["board"];
+  const rig = save.worldFlags?.diveRig === true ? [] : ["buyRig"]; // Diving (W5): the Shipwright also sells a dive rig
+  return [...(b.hull < BOAT.maxHull ? ["board", "repair"] : ["board"]), ...rig];
 }
 export function repairCost(save) { return Math.ceil((BOAT.maxHull - ensureBoatState(save).hull) * BOAT.repairCostPerPoint); }
 export function buySkiff(save, dock) {

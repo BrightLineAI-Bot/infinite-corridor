@@ -66,7 +66,7 @@ test('the Shipwright sells a skiff only to a Tidemantle holder who can pay', () 
   assert.ok(r.ok); assert.equal(s.currency, 500 - BOAT.price.currency); assert.equal(s.materials.cinderIron, 10 - BOAT.price.cinderIron);
   assert.deepEqual(s.boat.home, dock); assert.equal(s.boat.hull, BOAT.maxHull);
   assert.equal(buySkiff(s, dock).ok, false, 'one skiff');
-  assert.deepEqual(validActions({ kind: 'shipwright', actions: ['speak'] }, s), ['board']);
+  assert.deepEqual(validActions({ kind: 'shipwright', actions: ['speak'] }, s), ['board', 'buyRig'], 'release 107: the Shipwright also sells a dive rig');
   assert.deepEqual(validActions({ kind: 'shipwright', actions: ['speak'] }, freshSave()), ['speak', 'buySkiff']);
 });
 

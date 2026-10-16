@@ -68,7 +68,7 @@ Deep-ocean only, rare, one at a time per section, using the existing elite/world
 - **Tyrant Mosasaur** — fast pursuit predator; long lunge from below with a dark-shadow telegraph; boss-tier.
 - **Krakens** (variants by data): *Reef Kraken* (tentacles rise from tiles around the boat, each a separate target), *Abyssal Kraken* (grabs and drags the boat toward its maw), *Stormkraken* (ink cloud = vision fog). Tentacles are bounded hazards with lifetimes, like existing ooze/trail modules.
 
-## W5 — Bathysal Lens and diving (design stage two)
+## W5 — Bathysal Lens and diving (design stage two) — built in release 107
 
 As already written in `design-decisions.md`: the Lens + dive rig set `capabilities.dive`; dive from boat or shore into marked **dive sites**; readable breath meter; air pockets. Underwater is a separate scene type (like a dungeon), not a layer over the overworld.
 
