@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
 import {
   generateRegion,
   generateDungeon,
@@ -14,7 +14,7 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
-} from "./world.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+} from "./world.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -25,11 +25,12 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, sailStep, steer, ensureBoatState } from "./boats.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot } from "./water-traversal.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, sailStep, steer, ensureBoatState } from "./boats.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot } from "./water-traversal.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
 import {
   applyInteraction,
   validActions,
@@ -39,26 +40,26 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { ensurePerception } from "./types.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { generateItem } from "./items.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { hashSeed } from "./random.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12';
-import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12';
-import{ensureSceneState,queueScene}from'./scenes.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { applyLandscape, canStep, LANDSCAPE_VERSION, DEEP_WATER, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+} from "./interactions.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { ensurePerception } from "./types.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { generateItem } from "./items.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { hashSeed } from "./random.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202';
+import{foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202';
+import{ensureSceneState,queueScene}from'./scenes.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { applyLandscape, canStep, LANDSCAPE_VERSION, DEEP_WATER, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function pinDungeonLayout(save, id) {
@@ -76,7 +77,8 @@ export function generatePinnedDungeon(save, id, options = {}) {
   // Generator 5 (Underlands) only for histories never generated before; pinned histories keep their generator.
   if (history.generatorVersion === undefined) history.generatorVersion = id === canonical || save.session.areas[id] ? 2 : DUNGEON_GENERATOR_V5;
   let map;
-  if (id.startsWith('dive:')) map = generateDiveSite(save.seed, id);
+  // Dive generator pinned per history: 1 = the release-107 Sunken Reach, 2 = themed grottoes (release 108).
+  if (id.startsWith('dive:')) map = (history.diveGenerator ?? 1) >= 2 ? generateGrotto(save.seed, id) : generateDiveSite(save.seed, id);
   else if (/^(arena:|hunt-arena:|hunt-instance:)/.test(id)) map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved});
   else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options});
   else if (!id.includes(':deep-v') && history.generatorVersion === 4) map = generateUnifiedDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options});
@@ -1607,7 +1609,7 @@ export class Game {
     this.activatedEncounterGroups=new Set;
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
     // Surface sea creatures (water world W3): deterministic per section, only in landscape version 2+ water.
-    if(area==="overworld")for(const q of seaSpawns(this.map,this.save.seed,this.rx,this.ry)){const c=createCombatant("ashling",q.x,q.y,false,[]);Object.assign(c,{id:q.id,kind:q.kind,variantId:`${q.kind}:common`,meleePatterns:[],tentacles:0},seaCombatantFields(q.kind));this.enemies.push(c)}
+    if(area==="overworld"||this.map.underwater)for(const q of area==="overworld"?seaSpawns(this.map,this.save.seed,this.rx,this.ry):(this.map.seaSpawns||[])){const c=createCombatant("ashling",q.x,q.y,false,[]);Object.assign(c,{id:q.id,kind:q.kind,variantId:`${q.kind}:common`,meleePatterns:[],tentacles:0},seaCombatantFields(q.kind));this.enemies.push(c)}
     const intrusions = this.map.deepDungeon || this.map.recipe === "deep-v1" ? [] : apertureEncounterSpawns(
       this.save.seed,
       this.areaId(),
@@ -2235,7 +2237,7 @@ export class Game {
     if (!canDive(s)) { this.message = diveSiteHint(s); return { ok: false, message: this.message }; }
     s.session.dungeonReturn = { rx: this.rx, ry: this.ry, x: o.x, y: o.y - .2 };
     s.session.activeDungeonId = diveId(s.seed, this.rx, this.ry); s.session.activeDungeonLevelId = null;
-    const h = dungeonHistory(s, s.session.activeDungeonId); h.visits++; h.visitOpen = true;
+    const h = dungeonHistory(s, s.session.activeDungeonId); h.diveGenerator ??= h.visits > 0 ? 1 : DIVE_GENERATOR; h.visits++; h.visitOpen = true;
     this.swimming = false; this.loadArea("dungeon");
     this.player.x = this.map.entry.x; this.player.y = this.map.entry.y - .2; s.session.breath = DIVE.breath;
     this.message = "You dive. Watch your air: air pockets refill it, the line leads back up."; this.sync();
@@ -3063,6 +3065,9 @@ export class Game {
     // Under water (W5): breath drains away from air pockets; at zero the diver drowns slowly.
     if (this.area === "dungeon" && this.map.underwater) {
       const pocket = this.map.objects.some((o) => o.kind === "airPocket" && Math.hypot(o.x - p.x, o.y - p.y) < DIVE.pocketRadius), hurt = breathe(this.save.session, dt, pocket);
+      // Grotto currents (W6) push the diver back down the climb; swimming against them is slower but always possible.
+      const flow = tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.current;
+      if (flow && now >= (p.dodgeUntil || 0)) { const nx = p.x + flow.dx * GROTTO.currentSpeed * dt, ny = p.y + flow.dy * GROTTO.currentSpeed * dt; if (footprintOpen(this.map, mapWidth(this.map, this.area), nx, ny)) { p.x = nx; p.y = ny; } }
       if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.breathMessageAt || 0)) { this.breathMessageAt = now + 4000; this.message = "Out of air — reach an air pocket or the surface line!"; } }
     }
     if (this.swimming) { const hurt = swimUpkeep(p, dt, this.swimKind); if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "Exhausted in the water — reach the shore."; } } }

@@ -1,12 +1,12 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { vendorShop, buyFromVendor } from "./game.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { CREATURE_TRAITS } from "./combat.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { drawPackPortrait } from "./monster-render.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { landscapeAtlasColor } from "./landscape-render.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { hashSeed } from "./random.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { vendorShop, buyFromVendor } from "./game.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { CREATURE_TRAITS } from "./combat.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { drawPackPortrait } from "./monster-render.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { landscapeAtlasColor } from "./landscape-render.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { hashSeed } from "./random.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -157,7 +157,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
 import {
   Game,
   actionReadiness,
@@ -166,18 +166,18 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { createInput } from "./input.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { STATS } from "./types.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { worldStewardReport } from "./story.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+} from "./game.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { createInput } from "./input.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { STATS } from "./types.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { worldStewardReport } from "./story.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -188,7 +188,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+} from "./world.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -885,7 +885,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_9665052a29b745e2b0286653_647b4703d70cfc12",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1335,6 +1335,8 @@ function featureDetails(id,entry){const details=document.createElement("details"
 const CREATURE_PORTRAITS={ashling:[0,0],glassMite:[1,0],sparkWarden:[2,0],coilStalker:[3,0],veilMoth:[0,1],rootBrute:[1,1],cinderWisp:[2,1],voidSentinel:[3,1],riftColossus:[3,1],ashenHound:[0,0],hollowMarshal:[2,0],mossGrazer:[1,1],lanternDoe:[0,0],hushling:[0,1],gateRevenant:[3,1]};
 // Surface sea creatures (water world W3).
 Object.assign(CODEX.creatures,{lanceeel:['Lanceeel — the wake that lunges','Hides below the surface, shows a pale wake line, then charges straight along it and dives. Step off the line.'],ringcoil:['Ringcoil Serpent — the closing circle','Circles a swimmer or skiff, tightening until it bites. Strike it and the coil is thrown wide.'],sinewake:['Sinewake Serpent — the weaving body','Weaves toward its prey in an S, a long segmented body trailing; bites, then backs off.'],breachfin:['Breachfin — the falling fin','Marks a dark landing shadow, leaps from the water in an arc and crashes down. It can only be struck in the air.'],mireLeech:['Mire Leech — the bog nip','Hops through fen water and nips at anything that wades.'],bogLurker:['Bog Lurker — the drowned ambush','Waits unseen in the mire. Bubbles rise, then it bites and drags its prey a step closer.']});
+// Grotto beasts (water world W6).
+Object.assign(CODEX.creatures,{grottoEel:['Grotto Eel — the cave lance','Hides in the grotto, shows a pale wake, then charges straight along it.'],angler:['Lantern Angler — the false light','Its glowing lure hangs in the dark even while it hides. Come close and it bites and drags you in.'],abyssalBeast:['Abyssal Beast — the weaving bulk','A heavy grotto predator that weaves toward divers and bites hard.'],elderWyrm:['Elder Wyrm — the coil in the deep','Guards the sunken cache in every grotto. Its long body weaves toward you; then it marks a line and lunges along it.']});
 // Leviathans (water world W4).
 Object.assign(CODEX.creatures,{greywhale:['Greywhale — the calm giant','Drifts through deep water and harms no one — until struck. Then it sounds beneath you, its vast shadow spreads, and it breaches.'],tyrantMosasaur:['Tyrant Mosasaur — the shadow that hunts','Stalks below with only its shadow showing, locks on, and lunges across the surface. After a lunge it lies exposed.'],reefKraken:['Reef Kraken — the rising limbs','Marks rings in the water around its prey, and tentacles burst up through them. Each limb can be cut down.'],abyssalKraken:['Abyssal Kraken — the drowning grip','Marks its prey, then seizes and drags it toward its maw. Heavy blows break the grip.'],stormkraken:['Stormkraken — the ink in the dark','Raises a tentacle at a time and clouds the sea with ink, hiding everything beyond arm\'s reach.']});
 Object.assign(CODEX.creatures,{vesperwing:['Vesperwing — The Ashen Meridian','A winged elite that dives and casts from range. Its additional aspects are fixed by the encounter seed.'],gravitantBell:['Gravitant Bell — The Weight Below','A hovering elite whose readable gravity field pulls loose bodies inward before a radial strike.'],mireApostle:['Mire Apostle — Saint of the Low Water','A plated ooze beast that leaves bounded venom pools and carries Clearroot in its drowned shell.'],knifeChoir:['Choir of Knives — The Divided Cantor','A segmented summoner whose orbiting shard-creatures are capped and yield no rewards.']});

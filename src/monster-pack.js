@@ -7,7 +7,7 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { hashSeed } from "./random.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+import { hashSeed } from "./random.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;

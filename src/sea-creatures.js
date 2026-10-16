@@ -14,12 +14,14 @@
 //   storm    Stormkraken: a tentacle at a time, and an ink cloud that darkens the sea around the Wayfarer.
 // Every strike is telegraphed first; submerged creatures are hidden and untargetable. Data and pure rules: game.ts
 // supplies the world (water test, hurt, pull) and calls `updateSeaCreature` from its enemy loop.
-import { hashSeed } from "./random.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+import { hashSeed } from "./random.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
 
 export const SEA_HABITATS = {
   open: ["ocean", "deepOcean", "lakeWater"],
   swamp: ["swampWater", "mireWater", "toxicMire", "toxicWater"],
   deep: ["ocean", "deepOcean"],
+  // Grottoes (W6): beasts swim over the floor of the underwater scene.
+  grotto: ["seabed", "kelp", "airVent", "seaCurrent", "chapelFloor", "pearlSand", "ruinFloor"],
 };
 export const SEA_CREATURES = {
   lanceeel: { name: "Lanceeel", habitat: "open", pattern: "line", hp: 26, damage: 9, xp: 14, aggro: 7, telegraph: .9, speed: 7, reach: 8, rest: 2.2, segments: 3, colors: ["#5f8fa8", "#1c3442", "#d6f3ff"] },
@@ -32,6 +34,11 @@ export const SEA_CREATURES = {
   reefKraken: { name: "Reef Kraken", habitat: "deep", pattern: "reef", leviathan: true, boss: true, hp: 260, damage: 10, xp: 80, aggro: 10, every: 4, telegraph: .9, tentacles: 2, maxTentacles: 3, drift: .5, size: 2.4, segments: 1, colors: ["#a2486a", "#3a1424", "#ffc2d8"] },
   abyssalKraken: { name: "Abyssal Kraken", habitat: "deep", pattern: "grab", leviathan: true, boss: true, hp: 300, damage: 14, xp: 95, aggro: 9, telegraph: 1, hold: 2.5, drag: 2.2, biteAt: 1.8, breakAt: 25, rest: 3, size: 2.6, segments: 1, colors: ["#2d2350", "#0d0a1c", "#9c8cff"] },
   stormkraken: { name: "Stormkraken", habitat: "deep", pattern: "storm", leviathan: true, boss: true, hp: 240, damage: 10, xp: 85, aggro: 10, every: 4.5, telegraph: .9, tentacles: 1, maxTentacles: 2, inkEvery: 9, ink: 4, drift: .5, size: 2.3, segments: 1, colors: ["#3c4f63", "#121a24", "#bfe3ff"] },
+  // Grotto beasts (W6) and the Elder Wyrm, the grotto's final guardian.
+  grottoEel: { name: "Grotto Eel", habitat: "grotto", pattern: "line", hp: 30, damage: 10, xp: 16, aggro: 6.5, telegraph: .8, speed: 6.5, reach: 7, rest: 2, segments: 4, colors: ["#4d8a7c", "#163029", "#c8fff0"] },
+  angler: { name: "Lantern Angler", habitat: "grotto", pattern: "ambush", hp: 44, damage: 13, xp: 22, aggro: 2.2, telegraph: .7, pull: 1.2, rest: 2.2, segments: 1, lure: true, colors: ["#2f3448", "#0e0f18", "#fff2a0"] },
+  abyssalBeast: { name: "Abyssal Beast", habitat: "grotto", pattern: "sine", hp: 70, damage: 14, xp: 30, aggro: 8, speed: 1.8, weave: 2.2, sway: 1.4, biteAt: 1, rest: 1.8, segments: 3, size: 1.3, colors: ["#3b2d3f", "#120c14", "#ff9a7a"] },
+  elderWyrm: { name: "Elder Wyrm", habitat: "grotto", pattern: "wyrm", leviathan: true, boss: true, hp: 380, damage: 16, xp: 110, aggro: 9, speed: 2, weave: 2.4, sway: 1.6, biteAt: 1, weaveFor: 4, telegraph: 1, lunge: 8, reach: 8, rest: 1.4, size: 1.5, segments: 12, colors: ["#2f5a6e", "#0f1f28", "#ffd27a"] },
   // Raised by krakens only: rises where its ring was marked, slams, sways, slams again, sinks.
   tentacle: { name: "Kraken Tentacle", habitat: "deep", pattern: "tentacle", summonOnly: true, hp: 24, damage: 10, xp: 0, life: 3.6, every: 1.6, telegraph: .5, reach: .95, size: 1, segments: 1, colors: ["#8a3a5a", "#2a0f1c", "#ffb0cc"] },
   bogLurker: { name: "Bog Lurker", habitat: "swamp", pattern: "ambush", hp: 48, damage: 10, xp: 20, aggro: 1.8, telegraph: .6, pull: 1, rest: 2.5, segments: 1, colors: ["#3e4a2c", "#151a0e", "#b7d36a"] },
@@ -170,6 +177,28 @@ function updateLeviathan(e, w, dt, d, s, p, hab, gap, struck, lost) {
     if (s.phase === "lurk") { s.phase = "sway"; s.t = 0; }
     if (s.t <= d.telegraph) e.seaTele = { type: "slam" };
     if (s.t <= 0) { if (gap < d.reach) w.hurt(d.damage, e); s.t = d.every; }
+    return;
+  }
+  if (d.pattern === "wyrm") { // weaves its long body toward the diver, then marks and makes a straight lunge
+    if (gap > d.aggro + 6) return;
+    if (s.phase === "lurk") { s.phase = "weave"; s.t = d.weaveFor; }
+    if (s.phase === "weave") {
+      s.n += dt; const m = gap || 1, ux = (p.x - e.x) / m, uy = (p.y - e.y) / m, sway = Math.sin(s.n * d.weave) * d.sway;
+      if (!swimToward(e, w, hab, e.x + ux - uy * sway, e.y + uy + ux * sway, d.speed * dt)) swimToward(e, w, hab, p.x, p.y, d.speed * dt);
+      if (gap < d.biteAt && s.cd <= 0) { w.hurt(d.damage, e); s.cd = 1.5; }
+      if (s.t <= 0 && gap <= 2.5) { swimToward(e, w, hab, e.x - ux, e.y - uy, d.speed * 1.5 * dt); return; } // draw back to make room for the lunge
+      if (s.t <= 0) { s.line = { type: "line", dx: (p.x - e.x) / m, dy: (p.y - e.y) / m, len: Math.min(d.reach, gap + 2) }; s.phase = "telegraph"; s.t = d.telegraph; e.seaTele = s.line; }
+      else if (gap < 2) e.seaTele = { type: "jaw" };
+      return;
+    }
+    if (s.phase === "telegraph") { e.seaTele = s.line; face(e, s.line.dx, s.line.dy); if (s.t <= 0) { s.phase = "strike"; s.hit = false; s.done = 0; } return; }
+    if (s.phase === "strike") {
+      const step = d.lunge * dt, nx = e.x + s.line.dx * step, ny = e.y + s.line.dy * step;
+      if (!w.water(hab, nx, ny) || s.done >= s.line.len) { s.phase = "rest"; s.t = d.rest; return; }
+      e.x = nx; e.y = ny; s.done += step; if (!s.hit && dist(e, p) < 1.1) { s.hit = true; w.hurt(d.damage, e); }
+      return;
+    }
+    if (s.t <= 0) { s.phase = "weave"; s.t = d.weaveFor; }
     return;
   }
   if (d.pattern === "whale") {
