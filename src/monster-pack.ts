@@ -168,6 +168,14 @@ export const MONSTER_PACK = {
     palette: ["#5b5550", "#151312", "#cbbfa8", "#d1e86a"], render: "hangedChoir", tags: ["spirit", "chorus"],
     lore: "Shrouded bodies on chains, swaying in a wind you cannot feel. Their hum stops just before they drop.",
   },
+  // The Listener (release 138): the Far Array's final foe; its moves are set per form in game.ts (far-array.ts LISTENER_FORMS).
+  listener: {
+    id: "listener", name: "The Listener", epithet: "The One Who Learned Every Way Home", unique: true, dungeonOnly: true,
+    stats: [260, 15, 0], form: { scale: 1.25 }, sizeClass: "large", movement: "blink", brain: "duelist",
+    attacks: ["blinkStrike", "clawSweep", "longStab", "mirrorClones"], bossAttacks: ["mirrorSwap", "shockwave"],
+    palette: ["#3b3550", "#0d0b14", "#c9a6ff", "#f3eaff"], render: "listener", tags: ["spirit", "relay", "mirror"],
+    lore: "It learned the line by listening, and learned you by the roads you opened and the walls you raised. It wears what you taught it.",
+  },
   // The Questing Beast (release 116): a unique, purely physical hunter. Never in spawn pools; see src/questing-beast.ts.
   questingBeast: {
     id: "questingBeast", name: "The Questing Beast", epithet: "The Hunger That Hunts You Back", unique: true,

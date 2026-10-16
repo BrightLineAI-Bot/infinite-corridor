@@ -21,7 +21,7 @@ Release 101 is live; release 102 (Tidemantle surface swimming) is merged and in 
 ## Tim's standing decisions
 
 - Dungeon and corridor lore stays ambiguous: the dungeons are real places beneath the corridor, and also possibly elsewhere — an infinity of infinities. Do not resolve it.
-- The relay story fragments (`FRAGMENTS`) are drafts Tim will rewrite. The relay coordinate's destination is undecided: do not build it.
+- The relay story fragments (`FRAGMENTS`) are drafts Tim will rewrite. The relay coordinate leads to the Far Array (release 138, Tim's 2026-10-16 decision): the Array Mouth, runs whose guardians lock pieces of the Far Gate, the Listener behind each whole Gate, ascending tiers with boons. Keep its lore open; the Listener's lines and fragments are drafts Tim may rewrite.
 - Falls of 4+ levels, pits and deep water are lethal on purpose. Release 101 removed the edge guard; do not add it back.
 - Respec happens only at shrines, for lumen dust.
 - Death (2026-10-16): only raw materials gathered in the world for building or survival are lost on death — wood today (`loseWood`), and stone or anything similar added later must follow the same rule. Spheres, cinder iron, lumen dust, glyphs, equipment, marks and XP are never lost.
@@ -34,4 +34,4 @@ Release 101 is live; release 102 (Tidemantle surface swimming) is merged and in 
 - Some landmarks are look-only and unreachable; they should become reachable or read clearly as scenery.
 - Balance (monster pack, glyphs, echoes, constellation, Leech, lethal terrain) is checked in tests and simulation only, untested on device.
 - Elevation does not yet affect attacks, projectiles or line of sight.
-- The relay coordinate's destination (blocked on Tim's decision above).
+- The Far Array approach (relay pylons and quiet "listening" ground in the last sections before the coordinate) is proposed but not built; runs are one dungeon level each, with extra relays adding difficulty rather than extra levels.

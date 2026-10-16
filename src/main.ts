@@ -7,6 +7,7 @@ import { drawPackPortrait } from "./monster-render.ts";
 import { landscapeAtlasColor } from "./landscape-render.ts";
 import { hashSeed } from "./random.ts";
 import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.ts";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.ts";
 import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.ts";
 function uiButton(label, click) {
   const b = document.createElement("button");
@@ -176,7 +177,7 @@ import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, D
 import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.ts";
 import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.ts";
 import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.ts";
-import { currentObjective, validActions, dungeonHistory } from "./interactions.ts";
+import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.ts";
 import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
 import { worldStewardReport } from "./story.ts";
 import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.ts";
@@ -895,6 +896,25 @@ function selectSetting(key,choices){const s=document.createElement("select");for
 function rangeSetting(key,min,max,step){const input=document.createElement("input");input.type="range";input.min=min;input.max=max;input.step=step;input.value=settings[key];input.oninput=()=>updateSetting(key,Number(input.value));return input}
 function toggleSetting(key){const input=document.createElement("input");input.type="checkbox";input.checked=!!settings[key];input.onchange=()=>updateSetting(key,input.checked);return input}
 function updateSetting(key,value){Object.assign(settings,saveSettings({...settings,[key]:value}));applyPresentationSettings();optionMessage(`${key.replace(/([A-Z])/g," $1")} updated. Quality changes apply without changing journey data.`)}
+// The Far Gate (Journal tab, release 138): the Gate drawn as a ring of pieces that light as relay guardians fall, with
+// its tier, the Listener's form, chosen boons, any pending boon or ending choice, and the run history.
+function drawGate(canvas,f){const ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2+6,R=Math.min(w,h)*.36,need=piecesNeeded(f.gate),open=f.pieces>=need,t=performance.now()/1000;
+  ctx.clearRect(0,0,w,h);const bg=ctx.createRadialGradient(cx,cy,R*.2,cx,cy,R*1.5);bg.addColorStop(0,open?"#3a2a5a":"#1a1722");bg.addColorStop(1,"#0b0a10");ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+  for(let i=0;i<need;i++){const a0=-Math.PI/2+i*2*Math.PI/need+.04,a1=a0+2*Math.PI/need-.08,lit=i<f.pieces;ctx.beginPath();ctx.arc(cx,cy,R,a0,a1);ctx.arc(cx,cy,R*.72,a1,a0,true);ctx.closePath();ctx.fillStyle=lit?(open?"#d9b8ff":"#9f7ad9"):"#2a2633";ctx.fill();ctx.strokeStyle=lit?"#f3eaff":"#4a4458";ctx.lineWidth=2;ctx.stroke();
+    if(lit){const am=(a0+a1)/2;ctx.fillStyle="#fff8";ctx.beginPath();ctx.arc(cx+Math.cos(am)*R*.86,cy+Math.sin(am)*R*.86,3,0,7);ctx.fill()}}
+  ctx.beginPath();ctx.arc(cx,cy,R*.62,0,7);ctx.fillStyle=open?`rgba(201,166,255,${.35+.15*Math.sin(t*3)})`:"#120f18";ctx.fill();ctx.strokeStyle="#6b5a8a";ctx.stroke();
+  ctx.fillStyle=open?"#f3eaff":"#8f86a6";ctx.font="bold 15px monospace";ctx.textAlign="center";ctx.fillText(`GATE ${f.gate}`,cx,cy-4);ctx.font="12px monospace";ctx.fillText(open?"OPEN":`${f.pieces} / ${need}`,cx,cy+14)}
+function renderFarGate(out){
+  const f=ensureFarArray(save),h=document.createElement("h3"),p=document.createElement("p");h.textContent="The Far Gate";p.className="options-note";out.append(h,p);
+  if(!save.relayNetwork?.coordinate){p.textContent="The relay line has not answered yet. Answer five relays (restore or sever them) and the network will give you a coordinate.";return}
+  const c=save.relayNetwork.coordinate,lean=relayLean(save),form=listenerForm(save);
+  p.textContent=`The Array Mouth stands at ${c.rx}, ${c.ry}. Each guardian you fell in the Array locks a piece of the Gate; when it is whole, the Listener waits below. Relays answered: ${lean.answered} (${lean.restored} restored, ${lean.severed} severed), so the Listener ${form==="open"?"wears your face":form==="walled"?"starves behind walls":"is both, by turns"}.`;
+  const canvas=document.createElement("canvas");canvas.width=300;canvas.height=220;canvas.style.width="100%";canvas.style.maxWidth="300px";canvas.style.display="block";canvas.style.margin="8px auto";out.append(canvas);drawGate(canvas,f);
+  const stats=document.createElement("p");stats.className="options-note";stats.textContent=`Runs ${f.runs} · Listeners felled ${f.listeners}${f.ending?` · You chose to ${f.ending==="close"?"close the last line":"leave the line open"}`:""}`;out.append(stats);
+  if(f.offer.length){const t=document.createElement("h3");t.textContent="Choose a boon";out.append(t);for(const id of f.offer){const b=BOONS[id];out.append(settingRow(b.name,uiButton("Take",()=>{chooseBoon(save,id);syncCharacterStats(save);persist();openJournal("gate")}),b.text))}}
+  if(f.endingPending){const t=document.createElement("h3"),q=document.createElement("p");t.textContent="The last line";q.className="options-note";q.textContent="The terminal waits for one answer. Either way, the Gate will climb again.";out.append(t,q,uiButton("Close the last line",()=>{chooseEnding(save,"close");journalOnce(save,"far-array-ending","You closed the last line. Relays across the Corridor fall quiet, but the Gate remembers, and climbs.","The Far Gate");persist();openJournal("gate")}),uiButton("Leave it open",()=>{chooseEnding(save,"open");journalOnce(save,"far-array-ending","You left the line open. Somewhere further out, another coordinate begins to hum.","The Far Gate");persist();openJournal("gate")}))}
+  if(f.boons.length){const t=document.createElement("h3");t.textContent="Boons";out.append(t);for(const id of f.boons){const d=document.createElement("p");d.className="options-note";d.textContent=`${BOONS[id].name}: ${BOONS[id].text}`;out.append(d)}}
+}
 // The Reciter's Tome (Journal tab; releases 122, 124): every book walking the Corridor and, under each, the reciters of
 // it you have met, each with their own order (linear or random) and a reset. Books are added by the developer, not in game.
 function renderTome(out){
@@ -920,7 +940,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:136,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:138,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1379,10 +1399,11 @@ function openJournal(mode = "chronicle") {
   const out = $("#journalBody");
   out.replaceChildren();
   const nav=document.createElement("div");nav.className="codex-tabs";
-  for(const [id,label] of [["chronicle","Chronicle"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["tome","Reciter's Tome"]])nav.append(uiButton(label,()=>openJournal(id)));
+  for(const [id,label] of [["chronicle","Chronicle"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["tome","Reciter's Tome"],["gate","The Far Gate"]])nav.append(uiButton(label,()=>openJournal(id)));
   out.append(nav);
   if(mode!=="chronicle"){
     if(mode==="tome"){renderTome(out);if(!journal.open)journal.showModal();return;}
+    if(mode==="gate"){renderFarGate(out);if(!journal.open)journal.showModal();return;}
     if(mode==="dungeons"){
       const heading=document.createElement("h3");heading.textContent="Deep expeditions";out.append(heading);
       const records=Object.entries(save.consequences?.dungeons||{}).filter(([,h])=>h.deep?.name);

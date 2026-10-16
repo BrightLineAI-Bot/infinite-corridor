@@ -144,6 +144,19 @@ const BODY = {
     ctx.strokeStyle = "#08201f"; ctx.lineWidth = Math.max(1, u * .025); ctx.beginPath(); ctx.moveTo(h.x + flip * u * .42, h.y); ctx.lineTo(h.x + flip * u * .12, h.y + u * .04); ctx.stroke(); // jawline
     eye(ctx, h.x + flip * u * .2, h.y - u * .07, u * .035, p[2]);
   },
+  // The Listener (release 138): a cloaked figure shaped like the Wayfarer, its face a violet void; hidden it fades.
+  listener(ctx, q) {
+    const { k, b, u, t, p, flip, state, e } = q, sway = Math.sin(t * 3) * u * .03, walled = e.listenerPhase === "walled";
+    if (e.untargetable) ctx.globalAlpha *= .25;
+    glow(ctx, k, b - u * .55, u * .9, p[2], .22 + .08 * Math.sin(t * 5));
+    shadowAt(ctx, k, b, u * .38, u * .1);
+    ctx.beginPath(); ctx.moveTo(k - u * (walled ? .42 : .3), b - u * .02); ctx.lineTo(k - u * .2, b - u * .85 + sway); ctx.lineTo(k + u * .2, b - u * .85 + sway); ctx.lineTo(k + u * (walled ? .42 : .3), b - u * .02); ctx.closePath();
+    ctx.fillStyle = shade(ctx, k, b - u * .45, u * .45, p[0], p[1]); ctx.fill(); outline(ctx, Math.max(1.5, u * .035));
+    ctx.beginPath(); ctx.arc(k, b - u * .95 + sway, u * .19, 0, TAU); ctx.fillStyle = p[1]; ctx.fill(); outline(ctx, Math.max(1, u * .03), p[2] + "aa");
+    ctx.fillStyle = p[2]; ctx.beginPath(); ctx.ellipse(k + flip * u * .03, b - u * .94 + sway, u * .1, u * .06, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = p[3]; ctx.lineWidth = Math.max(2, u * .05); ctx.beginPath(); ctx.moveTo(k + flip * u * .22, b - u * .55); ctx.lineTo(k + flip * u * (state === "windup" ? .2 : .55), b - u * (state === "windup" ? 1.15 : .7)); ctx.stroke();
+    if (walled) { ctx.strokeStyle = "#0d0b14"; ctx.lineWidth = Math.max(1, u * .03); for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(k - u * .3, b - u * (.15 + i * .18)); ctx.lineTo(k + u * .3, b - u * (.15 + i * .18)); ctx.stroke(); } }
+  },
   // The Questing Beast (release 116): a hunched, horned, winged brute. Spines are pale when fresh, black when it is
   // enraged (below half health); a spent volley leaves its back bare for a moment.
   questingBeast(ctx, q) {
