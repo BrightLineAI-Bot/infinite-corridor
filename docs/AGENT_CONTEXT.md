@@ -25,7 +25,7 @@ Release 101 is live; release 102 (Tidemantle surface swimming) is merged and in 
 - Falls of 4+ levels, pits and deep water are lethal on purpose. Release 101 removed the edge guard; do not add it back.
 - Respec happens only at shrines, for lumen dust.
 - Echoes add moves; they never replace dodge or jump. The 5 stat points stay.
-- Tim says "push" to publish. Cloud sessions merge their own PRs; his PC previews each merge and comments the link on the PR. A cloud session answers "push" with that preview link and candidate id and tells Tim to approve the Test Bot card in Discord. Cloud sessions never publish.
+- Publishing: cloud sessions merge their own PRs; Tim's PC previews each merge and posts one Approve/Deny release card in Discord, and his tap publishes it. A cloud session answers "push" by confirming the PR is merged and pointing Tim to that card. Cloud sessions never publish.
 
 ## Open ideas and known gaps
 
