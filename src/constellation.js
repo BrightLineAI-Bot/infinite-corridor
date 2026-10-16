@@ -8,8 +8,8 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade } from "./items.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { resonancesOf, RESONANCES } from "./glyphs.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade } from "./items.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { resonancesOf, RESONANCES } from "./glyphs.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
 
 export const CONSTELLATION_VERSION = 1;
 export const POINT_EVERY = 6;
@@ -32,6 +32,16 @@ export const BRANCHES = {
     { id: "anchor", name: "Anchor", text: "Using Rift Step again within 3 s returns you to where you began." }] },
 };
 export const BRANCH_IDS = Object.keys(BRANCHES);
+// How each modifier and capstone works (release 157, for the Arcanum's labels): "cast" is a new ability for slot A or B;
+// "while" works only while the branch's discipline is active; "changes" alters how the discipline behaves; "always" is
+// a permanent passive. `spells` names a node that also changes your spells (or the glyphs set in them).
+export const NODE_EFFECTS = {
+  "ember-skin": { kind: "while" }, colossus: { kind: "while" }, "cinder-heart": { kind: "changes" },
+  "light-feet": { kind: "always" }, "aerial-step": { kind: "cast" }, slipstream: { kind: "while" },
+  "thorned-veil": { kind: "while" }, sanctuary: { kind: "while" }, "mirror-veil": { kind: "while" },
+  overflow: { kind: "while", spells: "Spells recover 25% faster." }, amplifier: { kind: "while", spells: "Glyph strikes from your spells deal 50% more." }, "resonant-force": { kind: "changes" },
+  "rift-wake": { kind: "changes" }, fold: { kind: "changes" }, anchor: { kind: "changes" },
+};
 
 // ---------------------------------------------------------------- state and points
 export function ensureConstellation(save) {

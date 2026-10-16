@@ -1,12 +1,12 @@
-import { enemyMeleeGeometry } from "./combat.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { SEA_CREATURES } from "./sea-creatures.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { liftAt } from "./landscape.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { drawRelayNode } from "./relay-network.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { structureOccupancy } from "./world.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { enemyMeleeGeometry } from "./combat.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { SEA_CREATURES } from "./sea-creatures.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { liftAt } from "./landscape.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { drawRelayNode } from "./relay-network.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { structureOccupancy } from "./world.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
 
 export function cameraTransform(
   g,
@@ -592,6 +592,7 @@ export function render(ctx, g, w, h, now) {
       tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId);
     }
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
+  if(g.area==="overworld"&&g.seaHazards)drawSeaHazards(ctx,g.seaHazards,s,now,l,t,r,b,g.map);
   const seenTile=(x,y)=>g.area!=="dungeon"||dungeonTileVisibility(g.map,x,y)!=="unseen";
   drawHazardBrinks(ctx,g.map,mw,l,t,r,b,s,seenTile);
   drawTraversalCues(ctx,g.map,mw,p,s,now,g.ledgeHint,seenTile);
@@ -716,6 +717,14 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "diveExit") { // the surface line: a rope rising out of view
             ctx.strokeStyle = "#d9c39a"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.moveTo((o.x + .5) * s, (o.y + .8) * s); ctx.quadraticCurveTo((o.x + .7) * s, (o.y - 1) * s, (o.x + .45) * s, (o.y - 3) * s); ctx.stroke();
             ctx.fillStyle = "#e2d5ba"; ctx.font = "10px monospace"; ctx.textAlign = "center"; ctx.fillText("SURFACE", (o.x + .5) * s, (o.y + 1.2) * s); ctx.textAlign = "start";
+          } else if (o.kind === "shipwreck") { // a broken hull heeled over on the sand, ribs showing
+            const bx = (o.x + .5) * s, by = (o.y + .6) * s, spent = o.state === "used";
+            ctx.save(); ctx.translate(bx, by); ctx.rotate(-.35);
+            ctx.fillStyle = spent ? "#4a3a2c" : "#5d4330"; ctx.beginPath(); ctx.moveTo(-s * 1.6, -s * .1); ctx.quadraticCurveTo(0, s * .9, s * 1.5, -s * .2); ctx.lineTo(s * 1.1, -s * .45); ctx.quadraticCurveTo(0, s * .25, -s * 1.2, -s * .4); ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = "#d8c7a6"; ctx.lineWidth = Math.max(1.5, s * .06); for (let i = -3; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(i * s * .35, -s * .35); ctx.quadraticCurveTo(i * s * .38, -s * .9, i * s * .3, -s * 1.1); ctx.stroke(); }
+            ctx.strokeStyle = "#3a2c22"; ctx.lineWidth = Math.max(2, s * .09); ctx.beginPath(); ctx.moveTo(s * .2, -s * .3); ctx.lineTo(s * .55, -s * 1.7); ctx.stroke();
+            ctx.restore();
+            if (!spent) { ctx.fillStyle = "#e2d5ba"; ctx.font = "10px monospace"; ctx.textAlign = "center"; ctx.fillText("WRECK", bx, by - s * 1.4); ctx.textAlign = "start"; }
           } else if (o.kind === "skiff") {
             drawSkiff(ctx, o.x, o.y, s, "right", performance.now());
           } else if (o.kind === "shipwright") {
@@ -850,6 +859,16 @@ export function render(ctx, g, w, h, now) {
     for (let i = 0; i < 4; i++) { const x0 = (l + ((i * 7 + now / 900) % (r - l + 6)) - 3) * s; ctx.fillStyle = "rgba(200,240,255,.06)"; ctx.beginPath(); ctx.moveTo(x0, t * s); ctx.lineTo(x0 + s * 1.5, t * s); ctx.lineTo(x0 + s * 4, b * s); ctx.lineTo(x0 + s * 2, b * s); ctx.fill(); }
   }
   // Stormkraken ink (W4): the sea goes dark beyond a small circle around the Wayfarer.
+  if (g.area === "overworld" && g.seaHazards?.fog?.length) {
+    // Fog banks (release 156): pale drifting banks; inside one, the world closes in to a few tiles.
+    const fogged = g.seaHazards.fog.some((f) => Math.hypot(p.x + .5 - f.x, p.y + .7 - f.y) < f.radius);
+    if (!fogged) for (const f of g.seaHazards.fog) { const gr = ctx.createRadialGradient(f.x * s, f.y * s, 0, f.x * s, f.y * s, f.radius * s); gr.addColorStop(0, "#d8e2e8aa"); gr.addColorStop(.7, "#d8e2e855"); gr.addColorStop(1, "#d8e2e800"); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(f.x * s, f.y * s, f.radius * s, 0, 7); ctx.fill(); }
+    if (fogged) {
+      const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * 1.6, px, py, s * 3.6);
+      gr.addColorStop(0, "#cfd9df00"); gr.addColorStop(1, "#cfd9dff2"); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
+    }
+  }
+  if (g.area === "overworld" && g.storm) { ctx.fillStyle = `rgba(16,24,38,${.28 * g.storm.strength})`; ctx.fillRect((p.x + .5) * s - w, (p.y + .6) * s - h, w * 2, h * 2); }
   if (g.area === "overworld" && now < (g.inkUntil || 0)) {
     const fade = Math.min(1, (g.inkUntil - now) / 600), px = (p.x + .5) * s, py = (p.y + .6) * s, grad = ctx.createRadialGradient(px, py, s * 1.4, px, py, s * 4.5);
     grad.addColorStop(0, "rgba(6,10,18,0)"); grad.addColorStop(1, `rgba(6,10,18,${.92 * fade})`);
@@ -968,4 +987,58 @@ function drawEchoPatches(ctx,g,s,now){
     if(q.kind==="web"){ctx.strokeStyle=`rgba(230,235,240,${Math.min(.7,left)})`;ctx.lineWidth=1;ctx.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.6)}ctx.stroke();for(const f of[.4,.75,1]){ctx.beginPath();ctx.ellipse(x,y,r*f,r*f*.6,0,0,7);ctx.stroke()}}
     else if(q.kind==="flesh"){ctx.fillStyle=`rgba(150,40,60,${Math.min(.45,left*.2)})`;ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.fill();ctx.fillStyle=`rgba(220,120,130,${Math.min(.5,left*.2)})`;for(let k=0;k<5;k++){ctx.beginPath();ctx.arc(x+Math.cos(k*1.3+now/700)*r*.6,y+Math.sin(k*1.7)*r*.35,s*.06,0,7);ctx.fill()}}
     else if(q.kind==="mortar"){const t=1-Math.min(1,left/.65);ctx.strokeStyle=`rgba(255,200,90,${.4+t*.5})`;ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.stroke();ctx.fillStyle=`rgba(255,170,60,${t*.3})`;ctx.fill()}}
+}
+
+const SEA_SURFACE = new Set(["ocean", "deepOcean", "shallows"]);
+// Open-sea hazards (release 152): spiralling maelstroms, the rogue wave's foam crest, and drifting ice.
+function drawSeaHazards(ctx, sea, s, now, l, t, r, b, map) {
+  const time = now / 1000, wet = (x, y) => SEA_SURFACE.has(map?.tiles?.[Math.floor(y) * 32 + Math.floor(x)]?.kind);
+  for (const v of sea.whirlpools) {
+    if (v.x + v.radius < l || v.x - v.radius > r || v.y + v.radius < t || v.y - v.radius > b) continue;
+    const cx = v.x * s, cy = v.y * s, g = ctx.createRadialGradient(cx, cy, 0, cx, cy, v.radius * s);
+    g.addColorStop(0, "#02101cee"); g.addColorStop(.35, "#0a2a44aa"); g.addColorStop(1, "#1d4f7a00");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, v.radius * s, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#cfeaffaa"; ctx.lineWidth = Math.max(1, s * .06);
+    for (let arm = 0; arm < 4; arm++) {
+      ctx.beginPath();
+      for (let k = 0; k <= 30; k++) { const f = k / 30, rad = v.radius * s * (1 - f * .92), a = arm * Math.PI / 2 + v.dir * (f * 5.5 + time * 2.2); const px = cx + Math.cos(a) * rad, py = cy + Math.sin(a) * rad; k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+      ctx.stroke();
+    }
+  }
+  if (sea.current) {
+    const c = sea.current, nx = -c.dy, ny = c.dx;
+    ctx.strokeStyle = "#bfe6ff55"; ctx.lineWidth = Math.max(1, s * .05);
+    for (let lane = -1; lane <= 1; lane++) for (let k = -26; k < 26; k += 3) {
+      const f = ((time * 1.7 + k + lane * 1.3) % 52 + 52) % 52 - 26, ox = 16 + nx * (c.offset + lane * c.width / 3) + c.dx * f, oy = 16 + ny * (c.offset + lane * c.width / 3) + c.dy * f;
+      if (!wet(ox, oy) || !wet(ox + c.dx * .9, oy + c.dy * .9) || ox < l - 1 || ox > r + 1 || oy < t - 1 || oy > b + 1) continue;
+      ctx.beginPath(); ctx.moveTo(ox * s, oy * s); ctx.lineTo((ox + c.dx * .9) * s, (oy + c.dy * .9) * s); ctx.stroke();
+    }
+  }
+  for (const q of sea.reefs || []) {
+    if (q.x + q.radius < l || q.x - q.radius > r || q.y + q.radius < t || q.y - q.radius > b) continue;
+    for (let i = 0; i < 26; i++) { const a = i * 2.39996 + (q.shape % 7), d = q.radius * Math.sqrt((i + .5) / 26), rad = s * (.08 + ((q.shape >> (i % 20)) & 3) * .04);
+      ctx.fillStyle = ["#d9776a88", "#e0a35a88", "#c46a9a88", "#f0d2a077"][(q.shape >> (i % 20)) & 3]; ctx.beginPath(); ctx.arc((q.x + Math.cos(a) * d) * s, (q.y + Math.sin(a) * d) * s, rad, 0, 7); ctx.fill(); }
+    ctx.strokeStyle = "#f6e7d266"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(q.x * s, q.y * s, q.radius * s, 0, 7); ctx.stroke();
+  }
+  const w = sea.wave;
+  if (w) {
+    const travel = 46 / 5, tt = (sea.clock + w.phase) % w.period;
+    if (tt < travel) {
+      const pos = -23 + tt * 5, nx = -w.dy, ny = w.dx;
+      for (const [off, col, lw] of [[-1.4, "#1d4f7a66", 1.4], [-.6, "#9fd3f0aa", .5], [0, "#f4fbffee", .18]]) {
+        const ox = 16 + w.dx * (pos + off), oy = 16 + w.dy * (pos + off);
+        ctx.strokeStyle = col; ctx.lineWidth = lw * s; ctx.beginPath();
+        let pen = false;
+        for (let k = -24; k <= 24; k += .5) { const wob = Math.sin(k * .7 + time * 3) * .25, wx = ox + nx * k + w.dx * wob, wy = oy + ny * k + w.dy * wob; if (!wet(wx, wy)) { pen = false; continue; } pen ? ctx.lineTo(wx * s, wy * s) : ctx.moveTo(wx * s, wy * s); pen = true; }
+        ctx.stroke();
+      }
+    }
+  }
+  for (const berg of sea.bergs) {
+    if (berg.x + berg.radius < l || berg.x - berg.radius > r || berg.y + berg.radius < t || berg.y - berg.radius > b) continue;
+    const pts = []; for (let i = 0; i < 9; i++) { const a = berg.spin + i * Math.PI * 2 / 9, j = .78 + ((berg.shape >> (i * 2)) & 3) * .08; pts.push([(berg.x + Math.cos(a) * berg.radius * j) * s, (berg.y + Math.sin(a) * berg.radius * j) * s]); }
+    ctx.fillStyle = "#0a223855"; ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x + s * .15, y + s * .25) : ctx.moveTo(x + s * .15, y + s * .25)); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#e6f4fb"; ctx.strokeStyle = "#8fb8cf"; ctx.lineWidth = Math.max(1, s * .05); ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#b9dcef"; ctx.beginPath(); ctx.moveTo(berg.x * s, berg.y * s); for (let i = 0; i < 3; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); ctx.fill();
+  }
 }

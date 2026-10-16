@@ -1,9 +1,9 @@
-import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040';
-import{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040';export{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040';
-export{generateVariedDungeon,generateBespokeArena}from'./arenas.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040';
-import{arenaEligible}from'./arenas.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040';
-import{annotateDungeon}from'./dungeon-framework.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040';
-import{APERTURE_BANDS}from'./items.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040';import{hashSeed,rng,pick}from'./random.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040';import{storySiteFor}from'./story.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
+import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5';
+import{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5';export{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5';
+export{generateVariedDungeon,generateBespokeArena}from'./arenas.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5';
+import{arenaEligible}from'./arenas.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5';
+import{annotateDungeon}from'./dungeon-framework.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5';
+import{APERTURE_BANDS}from'./items.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5';import{hashSeed,rng,pick}from'./random.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5';import{storySiteFor}from'./story.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
 function passage(seed,axis,a,b){const r=rng(`${seed}:edge:${axis}:${a}:${b}`);return 5+Math.floor(r()*22)}export function sectionExits(seed,rx,ry){return{north:passage(seed,'h',rx,ry),south:passage(seed,'h',rx,ry+1),west:passage(seed,'v',rx,ry),east:passage(seed,'v',rx+1,ry)}}
 function carve(tiles,x,y,kind='ash'){if(kind==='refuge'&&x===12&&y===17)return;if(x>=0&&x<32&&y>=0&&y<32)tiles[y*32+x]={...tiles[y*32+x],x,y,kind,blocked:false}}
 function supply(seed,rx,ry,tiles,w=32){const r=rng(`${seed}:supplies:v2:${rx}:${ry}`),rare=w===32&&r()<.06,types=['restorativeDraught','ironbarkTonic','lumenPhial','secondary'],spots=w===24?[[6,6],[7,6],[6,7]]:[[15,17],[17,17],[15,18],[17,18]],[x,y]=spots[Math.floor(r()*spots.length)],supplyType=rare?'crossingSigil':types[Math.floor(r()*types.length)];return{id:`supply-${rx}-${ry}`,kind:supplyType==='secondary'?'weaponCache':'supplyCache',supplyType,x,y,state:'ready',actions:['collect']}}
@@ -140,7 +140,8 @@ const WAYFINDING_SIGNAL_CACHE_LIMIT=96,wayfindingSignalCache=new Map();let wayfi
 function cachedRegionSignals(seed,rx,ry,generation){const key=`${seed}:g${generation}:${rx},${ry}`;if(wayfindingSignalCache.has(key)){const value=wayfindingSignalCache.get(key);wayfindingSignalCache.delete(key);wayfindingSignalCache.set(key,value);wayfindingSignalHits++;return value}const region=generateRegion(seed,rx,ry,generation),value=Object.freeze({crossing:region.objects.some(o=>o.kind==='dungeon'),event:region.objects.some(o=>o.kind==='shrine'||o.kind==='ruinMarker')});wayfindingSignalCache.set(key,value);wayfindingSignalMisses++;while(wayfindingSignalCache.size>WAYFINDING_SIGNAL_CACHE_LIMIT)wayfindingSignalCache.delete(wayfindingSignalCache.keys().next().value);return value}
 export function wayfindingCacheStats(){return{size:wayfindingSignalCache.size,limit:WAYFINDING_SIGNAL_CACHE_LIMIT,hits:wayfindingSignalHits,misses:wayfindingSignalMisses}}
 export function clearWayfindingCache(){wayfindingSignalCache.clear();wayfindingSignalHits=wayfindingSignalMisses=0}
-export function wayfindingCues(seed,rx,ry,generation=1,save=null,region=null){
+// Every wayfinding target around (rx,ry), before wayfindingCues picks one per kind (release 153: the compass ranks them all).
+export function wayfindingTargets(seed,rx,ry,generation=1,save=null){
   const targets=[],seen=new Set(),add=(kind,x,y,name)=>{const key=`${kind}:${x},${y}`;if((x!==rx||y!==ry)&&!seen.has(key)){seen.add(key);targets.push({kind,rx:x,ry:y,name})}};
   const hunt=save?.viewport?.contracts?.[save?.viewport?.activeHuntId],huntTarget=hunt?.target;if(huntTarget&&['accepted','tracking','target-located'].includes(hunt.status))add(hunt.kind==='trial'||hunt.domain?'danger':'story',huntTarget.rx,huntTarget.ry,hunt.title);
   const far=save?.relayNetwork?.coordinate;if(far)add('story',far.rx,far.ry,'the Far Array');
@@ -155,7 +156,10 @@ export function wayfindingCues(seed,rx,ry,generation=1,save=null,region=null){
     if(signals.crossing)add('crossing',rx+ox,ry+oy,'a buried crossing');
     if(signals.event)add('event',rx+ox,ry+oy,'an unusual site');
   }
-  const chosen=[];
+  return targets;
+}
+export function wayfindingCues(seed,rx,ry,generation=1,save=null,region=null){
+  const targets=wayfindingTargets(seed,rx,ry,generation,save),chosen=[];
   for(const kind of ['story','beacon','crossing','danger','event']){
     const matches=targets.filter(t=>t.kind===kind).sort((a,b)=>(Math.abs(a.rx-rx)+Math.abs(a.ry-ry))-(Math.abs(b.rx-rx)+Math.abs(b.ry-ry)));
     if(matches[0])chosen.push(matches[0]);

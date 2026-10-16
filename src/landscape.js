@@ -10,8 +10,8 @@
 //
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
-import { hashSeed } from "./random.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { placeDock } from "./boats.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { hashSeed } from "./random.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { placeDock } from "./boats.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
 
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
@@ -124,32 +124,91 @@ export function castleSection(seed, rx, ry) {
 // ---------------------------------------------------------------- application
 const idx = (x, y) => y * 32 + x;
 const DECOR = new Set(["tree", "rock"]); // ordinary vegetation a castle may clear
-function protectedMask(map, { spawns = true, ruins = true, decor = true } = {}) {
+function protectedMask(map, { spawns = true, ruins = true, decor = true, plaza = true, exits = true, border = true, reach = 1 } = {}) {
   const mask = new Uint8Array(1024), mark = (x, y, r = 0) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const px = x + dx, py = y + dy; if (px >= 0 && py >= 0 && px < 32 && py < 32) mask[idx(px, py)] = 1; } };
   const e = map.exits || {};
-  for (let d = -1; d <= 1; d++) {
+  if (exits) for (let d = -1; d <= 1; d++) {
     for (let y = 0; y <= 16; y++) mark(e.north + d, y);
     for (let y = 16; y < 32; y++) mark(e.south + d, y);
     for (let x = 0; x <= 16; x++) mark(x, e.west + d);
     for (let x = 16; x < 32; x++) mark(x, e.east + d);
   }
-  for (let y = 13; y <= 19; y++) for (let x = 13; x <= 19; x++) mark(x, y);
-  for (const o of [...(map.objects || []).filter((q) => decor || !DECOR.has(q.kind)), ...(spawns ? map.enemySpawns || [] : [])]) if (Number.isFinite(o?.x) && Number.isFinite(o?.y)) mark(Math.round(o.x), Math.round(o.y), 1);
-  for (const t of map.tiles) if (t.structure || t.environment || t.kind === "bridge" || t.buildingId || (ruins && Number.isInteger(t.ruin)) || t.x === 0 || t.y === 0 || t.x === 31 || t.y === 31) mask[idx(t.x, t.y)] = 1;
+  if (plaza) for (let y = 13; y <= 19; y++) for (let x = 13; x <= 19; x++) mark(x, y);
+  for (const o of [...(map.objects || []).filter((q) => decor || !DECOR.has(q.kind)), ...(spawns ? map.enemySpawns || [] : [])]) if (Number.isFinite(o?.x) && Number.isFinite(o?.y)) mark(Math.round(o.x), Math.round(o.y), reach);
+  for (const t of map.tiles) if (t.structure || t.environment || t.kind === "bridge" || t.buildingId || (ruins && Number.isInteger(t.ruin)) || (border && (t.x === 0 || t.y === 0 || t.x === 31 || t.y === 31))) mask[idx(t.x, t.y)] = 1;
   return mask;
 }
 function setTile(map, x, y, props) { const i = idx(x, y); map.tiles[i] = { ...map.tiles[i], ...props, landscape: props.landscape || map.tiles[i].landscape }; }
 
 // Mutates a generated overworld section. Returns the map. `explored` sections and excluded sections are untouched.
-export function applyLandscape(map, seed, rx, ry, { explored = false, version = LANDSCAPE_VERSION } = {}) {
+// `openSea` (release 152, pinned per section by the atlas's seaVersion): deep water may reach the section's border so
+// seas run on across sections, and a section that is mostly sea (OPEN_SEA.minWater) drops its dry plaza, exit
+// causeways and walled border entirely: open water from edge to edge, with islets kept only around its landmarks.
+// Near the Refuge (within `minDepth` sections, by |rx| + |ry|) seas keep their causeways, so the first journeys stay
+// walkable; open ocean lies farther out.
+export const OPEN_SEA = { minDepth: 8, minWater: .55, landmarkReach: 2, hamletIsle: { halfW: 9, halfH: 7 } };
+// Sea features (open-sea version 2, release 156). Each is placed on clear deep water and stays put:
+//   buoy   Lighthouse Buoy: a small moored platform with a Wayglass checkpoint, a rest point far from land.
+//   wreck  Shipwreck: a hull run aground on a sandbar, with salvage aboard.
+//   floe   Ice floes (cold seas only): islands of packed ice you can land on.
+export const SEA_FEATURES = { buoyEvery: 3, wreckEvery: 4, floes: [1, 3], floeRadius: [1.6, 3.2], coldScale: 7, cold: .66 };
+export function coldSea(seed, rx, ry) { return valueNoise(`${seed}:sea:cold`, rx / SEA_FEATURES.coldScale, ry / SEA_FEATURES.coldScale) > SEA_FEATURES.cold; }
+function addSeaFeatures(map, seed, rx, ry, buoy = true) {
+  const F = SEA_FEATURES, h = (k) => hashSeed(`${seed}:sea-feature:${k}:${rx}:${ry}`), deep = (x, y) => x > 2 && y > 2 && x < 29 && y < 29 && DEEP_WATER.includes(map.tiles[idx(x, y)].kind);
+  const clear = (cx, cy, r) => { for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) if (!deep(x, y)) return false; return true; };
+  const spot = (k, r) => { const n = h(k); for (let i = 0; i < 60; i++) { const x = 4 + (n + i * 7919) % 24, y = 4 + Math.floor((n / 24 + i * 104729) % 24); if (clear(x, y, r)) return { x, y }; } return null; };
+  const paint = (x, y, kind) => setTile(map, x, y, { kind, blocked: false, elev: 0, landscape: "coast", detail: map.tiles[idx(x, y)].detail });
+  if (buoy && h("buoy") % F.buoyEvery === 0 && !map.objects.some((o) => o.kind === "checkpoint")) {
+    const at = spot("buoy-at", 2);
+    if (at) { for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) paint(at.x + dx, at.y + dy, "dock"); map.objects.push({ id: `sea-buoy-${rx}-${ry}`, kind: "checkpoint", name: "Lighthouse Buoy", lore: "A lamp on a moored raft, turning for whoever is still out here.", x: at.x, y: at.y, state: "quiet", actions: ["activate"], landmark: true, seaBuoy: true }); }
+  }
+  if (h("wreck") % F.wreckEvery === 0) {
+    const at = spot("wreck-at", 3);
+    if (at) {
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -3; dx <= 3; dx++) { const d = Math.abs(dx) / 3.2 + Math.abs(dy) / 2.2; if (d <= .8) paint(at.x + dx, at.y + dy, "beach"); else if (d <= 1.25) paint(at.x + dx, at.y + dy, "shallows"); }
+      const n = h("wreck-loot");
+      map.objects.push({ id: `wreck-${rx}-${ry}`, kind: "shipwreck", name: "Shipwreck", lore: "A hull from beyond the Corridor, ribs bared on a sandbar.", x: at.x, y: at.y, state: "ready", actions: ["salvage"], landmark: true, salvage: { marks: 30 + n % 60, wood: 2 + Math.floor(n / 8) % 3, supply: ["restorativeDraught", "ironbarkTonic", "lumenPhial"][Math.floor(n / 64) % 3] } });
+    }
+  }
+  if (coldSea(seed, rx, ry)) {
+    const n = F.floes[0] + h("floes") % (F.floes[1] - F.floes[0] + 1);
+    for (let k = 0; k < n; k++) {
+      const r = F.floeRadius[0] + (h(`floe-r-${k}`) % 100) / 100 * (F.floeRadius[1] - F.floeRadius[0]), at = spot(`floe-${k}`, Math.ceil(r) + 1);
+      if (!at) continue;
+      for (let dy = -Math.ceil(r); dy <= Math.ceil(r); dy++) for (let dx = -Math.ceil(r); dx <= Math.ceil(r); dx++) {
+        const a = Math.atan2(dy, dx), edge = r * (.75 + .25 * valueNoise(`${seed}:floe:${rx}:${ry}:${k}`, Math.cos(a) * 2 + 3, Math.sin(a) * 2 + 3));
+        if (Math.hypot(dx, dy) <= edge) setTile(map, at.x + dx, at.y + dy, { kind: "snowRock", blocked: false, elev: 0, landscape: "mountains", seaIce: true, detail: map.tiles[idx(at.x + dx, at.y + dy)].detail });
+      }
+    }
+  }
+}
+export function openSeaShare(seed, rx, ry, version = LANDSCAPE_VERSION) {
+  let n = 0; for (let y = 0; y < 32; y += 2) for (let x = 0; x < 32; x += 2) if (seaLevel(seed, rx * 32 + x, ry * 32 + y, version).o > T.ocean) n++;
+  return n / 256;
+}
+export function applyLandscape(map, seed, rx, ry, { explored = false, version = LANDSCAPE_VERSION, openSea = false, hamlet = false, buoy = true } = {}) {
   if (!map || map.landscape || explored || map.settlement || Math.abs(rx) + Math.abs(ry) <= 1 || map.tiles?.length !== 1024) return map;
-  const mask = protectedMask(map), biome = biomeFor(seed, rx, ry, version), v2 = version >= 2, W = WATERBODIES;
+  const full = openSea && version >= 2 && Math.abs(rx) + Math.abs(ry) >= OPEN_SEA.minDepth && openSeaShare(seed, rx, ry, version) >= OPEN_SEA.minWater;
+  const mask = full ? protectedMask(map, { spawns: false, decor: false, ruins: false, plaza: false, exits: false, border: false, reach: OPEN_SEA.landmarkReach }) : protectedMask(map, { border: !openSea }), biome = biomeFor(seed, rx, ry, version), v2 = version >= 2, W = WATERBODIES;
+  // A hamlet in open sea keeps an island to stand on.
+  // Shelters and districts in open sea stand on their own islands, with a strand around them.
+  if (full) {
+    const keep = new Uint8Array(1024);
+    for (const t of map.tiles) if (t.structure || t.buildingId) keep[idx(t.x, t.y)] = 1;
+    for (const o of map.objects || []) if (o.bounds) for (let y = o.bounds.y; y < o.bounds.y + o.bounds.h; y++) for (let x = o.bounds.x; x < o.bounds.x + o.bounds.w; x++) if (x >= 0 && y >= 0 && x < 32 && y < 32) keep[idx(x, y)] = 1;
+    for (let i = 0; i < 1024; i++) if (keep[i]) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = i % 32 + dx, y = Math.floor(i / 32) + dy; if (x >= 0 && y >= 0 && x < 32 && y < 32) mask[idx(x, y)] = 1; }
+  }
+  const isle = new Uint8Array(1024);
+  if (full && hamlet) { const h = OPEN_SEA.hamletIsle; for (let y = 16 - h.halfH; y <= 16 + h.halfH; y++) for (let x = 16 - h.halfW; x <= 16 + h.halfW; x++) { mask[idx(x, y)] = 1; if (Math.abs(x - 16) < h.halfW && Math.abs(y - 16) < h.halfH) isle[idx(x, y)] = 1; } }
   let touched = 0;
-  for (let y = 1; y < 31; y++) for (let x = 1; x < 31; x++) {
+  const lo = openSea ? 0 : 1, hi = openSea ? 32 : 31;
+  for (let y = lo; y < hi; y++) for (let x = lo; x < hi; x++) {
     const i = idx(x, y), t = map.tiles[i], gx = rx * 32 + x, gy = ry * 32 + y, d = hashSeed(`${seed}:land:detail:${gx}:${gy}`) % 997;
     const prot = mask[i] === 1, o = seaLevel(seed, gx, gy, version).o, m = field.mountain(seed, gx, gy), a = field.alien(seed, gx, gy), s = field.desert(seed, gx, gy);
+    if ((x === 0 || y === 0 || x === 31 || y === 31) && (prot || o <= T.ocean)) continue; // borders only ever open to deep water
     if (o > T.beach) {
       const deep = o > T.ocean, abyssal = v2 && o > T.ocean + W.deep;
+      if (isle[i]) { setTile(map, x, y, { kind: "beach", blocked: false, elev: 0, landscape: "coast", detail: d }); touched++; continue; }
       setTile(map, x, y, deep && !prot ? { kind: abyssal ? "deepOcean" : "ocean", blocked: true, elev: 0, landscape: abyssal ? "sea" : "coast", detail: d } : { kind: deep || o > T.ocean - .012 ? "shallows" : "beach", blocked: false, elev: 0, landscape: "coast", detail: d });
       touched++; continue;
     }
@@ -194,14 +253,21 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   ensureClimbable(map, mask);
   if (biome === "mountains") buildSkyBridges(map, seed, rx, ry, mask);
   markSlopes(map, seed, rx, ry);
-  connectStranded(map);
+  if (full) {
+    // Open sea: trees and rocks that ended up in the water go, and so do land creatures (the sea has its own).
+    const wet = (q) => DEEP_WATER.includes(map.tiles[idx(Math.round(q.x), Math.round(q.y))]?.kind);
+    map.objects = (map.objects || []).filter((q) => !(DECOR.has(q.kind) && wet(q)));
+    map.enemySpawns = (map.enemySpawns || []).filter((q) => !wet(q));
+    map.openSea = true;
+    if (openSea >= 2) addSeaFeatures(map, seed, rx, ry, buoy);
+  } else connectStranded(map);
   if (biome === "mountains" || biome === "desert" || biome === "alien") placeSummit(map, seed, rx, ry, biome);
   for (const t of ensureReturnable(map, 32, 32, { x: 16, y: 16 })) if (t.landscape === "mountains" && !t.volcanic && !t.slope && t.kind !== "skyBridge") t.kind = mountainKind(t.elev || 0);
   addRamps(map, 32, 32, `${seed}:${rx}:${ry}`);
   if (v2) placeIslandLandmark(map, seed, rx, ry);
   if (version >= 3) placeDock(map, seed, rx, ry, reachableFromPlaza(map));
   if (biome === "mountains") map.weather = "snow";
-  map.landscape = { version, biome: biome || dominantLandscape(map), name: BIOMES[biome || dominantLandscape(map)]?.name || null };
+  map.landscape = { version, biome: biome || dominantLandscape(map), name: BIOMES[biome || dominantLandscape(map)]?.name || null, ...(openSea ? { openSea: full ? "open" : "coast" } : {}) };
   return map;
 }
 

@@ -3,7 +3,7 @@
 // and shallows), never the blight's toxic water or rivers. It has its own hull: hits taken aboard are shared with it,
 // and a hull at zero sinks the skiff, which the Shipwright's crew returns to its home dock.
 // Data and pure rules; game.ts calls in from movement, interaction, damage and section loading.
-import { hashSeed } from "./random.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { hashSeed } from "./random.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
 
 export const BOAT = {
   price: { currency: 120, cinderIron: 2 },
@@ -93,6 +93,16 @@ export function hullAbsorb(save, damage) {
   if (b.hull > 0) return { kept: damage - take, sunk: false };
   b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home;
   return { kept: damage - take, sunk: true };
+}
+
+// A blow to the hull alone (open-sea hazards, release 152). Returns true when it sinks the skiff.
+export function hullStrike(save, n) {
+  const b = ensureBoatState(save);
+  if (!b.aboard || !(n > 0)) return false;
+  b.hull = Math.max(0, b.hull - n);
+  if (b.hull > 0) return false;
+  b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home;
+  return true;
 }
 
 // One sailing step along one axis. `open(x, y)` says whether a footprint fits on sailable water; `land(x, y)` returns

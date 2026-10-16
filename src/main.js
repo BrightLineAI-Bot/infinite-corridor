@@ -1,15 +1,16 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { vendorShop, buyFromVendor } from "./game.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { CREATURE_TRAITS } from "./combat.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { drawPackPortrait } from "./monster-render.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { landscapeAtlasColor } from "./landscape-render.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { hashSeed } from "./random.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { vendorShop, buyFromVendor } from "./game.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { CREATURE_TRAITS } from "./combat.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { drawPackPortrait } from "./monster-render.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { landscapeAtlasColor } from "./landscape-render.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { hashSeed } from "./random.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { questingBeastTriesLeft } from "./questing-beast.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -160,7 +161,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
 import {
   Game,
   actionReadiness,
@@ -169,19 +170,19 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { createInput } from "./input.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { STATS } from "./types.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { worldStewardReport } from "./story.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+} from "./game.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { createInput } from "./input.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { STATS } from "./types.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { worldStewardReport } from "./story.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -191,8 +192,9 @@ import {
   apertureTier,
   APERTURE_THRESHOLDS,
   perceived,
+  wayfindingTargets,
   wayfindingCues,
-} from "./world.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+} from "./world.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -404,29 +406,59 @@ const objective = $("#objective"),
   navGuidanceArrow = $("#navGuidanceArrow"),
   navManualArrow = $("#navManualArrow");
 let navigationCache = { key: null, map: null, guidance: null, manual: null }, announcedManualArrival = null;
+// Release 153: the compass always has somewhere to point. Objectives are ranked nearest first (ties by kind, in this
+// order); tapping the compass steps to the next one. Explored sections still holding an unfinished challenge (an
+// Atlas site whose dungeon or arena is not resolved) count as objectives, as do story targets and nearby signals.
+const OBJECTIVE_KINDS={hunt:{rank:0,label:"Hunt"},story:{rank:1,label:"Story"},challenge:{rank:2,label:"Challenge"},danger:{rank:3,label:"Danger"},crossing:{rank:4,label:"Signal"},event:{rank:5,label:"Signal"}};
+const CHALLENGE_SITES={dungeon:"Crossing",arenaEntrance:"Arena",bossCue:"Major danger"},COMPASS_OBJECTIVE_LIMIT=12;
+let objectiveCache={key:null,list:[]},compassPick=null,compassPin=null; // compassPin: a quest chosen in the Journal (release 155)
+// The section an area id belongs to: dungeon:seed:gN[:rx:ry:...] and arena:vN:seed:rx,ry.
+function sectionOfAreaId(id){const d=/^dungeon:[^:]+:g\d+(?::(-?\d+):(-?\d+))?/.exec(id);if(d)return d[1]===undefined?"0,0":`${d[1]},${d[2]}`;const a=/^arena:v\d+:[^:]+:(-?\d+),(-?\d+)/.exec(id);return a?`${a[1]},${a[2]}`:null}
+function openChallengeSections(){
+  const resolved=new Set();for(const[id,h]of Object.entries(save.consequences?.dungeons||{}))if(h?.resolved){const at=sectionOfAreaId(id);if(at)resolved.add(at)}
+  const open=new Map();for(const[key,record]of Object.entries(save.atlas||{})){if(resolved.has(key))continue;const site=(record?.sites||[]).find((q)=>CHALLENGE_SITES[q.kind]);if(site)open.set(key,site)}
+  return open;
+}
+function objectiveList(){
+  const resolvedCount=Object.values(save.consequences?.dungeons||{}).filter((h)=>h?.resolved).length,
+    key=[game.rx,game.ry,Object.keys(save.atlas||{}).length,resolvedCount,save.viewport?.activeHuntId,save.relayNetwork?.coordinate?.rx,save.questingBeast?.active?.rx,save.wanderer?.quest?.done,Math.floor(performance.now()/5000)].join(":");
+  if(objectiveCache.key===key)return objectiveCache.list;
+  const byKey=new Map(),add=(o)=>{const k=`${o.rx},${o.ry}`,prior=byKey.get(k);if(!prior||OBJECTIVE_KINDS[o.kind].rank<OBJECTIVE_KINDS[prior.kind].rank)byKey.set(k,o)},open=openChallengeSections();
+  for(const t of wayfindingTargets(save.seed,game.rx,game.ry,save.worldGeneration,save))if(t.kind!=="beacon"&&!(t.kind==="crossing"&&save.explored[`${t.rx},${t.ry}`]&&!open.has(`${t.rx},${t.ry}`)))add({kind:t.kind==="story"&&t.name===save.viewport?.contracts?.[save.viewport?.activeHuntId]?.title?"hunt":t.kind,rx:t.rx,ry:t.ry,name:t.name});
+  for(const[k,site]of open){const[rx,ry]=k.split(",").map(Number);add({kind:"challenge",rx,ry,name:site.name&&site.name!==site.kind?`${CHALLENGE_SITES[site.kind]}: ${site.name}`:CHALLENGE_SITES[site.kind],x:site.x,y:site.y})}
+  const here=(o)=>Math.max(Math.abs(o.rx-game.rx),Math.abs(o.ry-game.ry));
+  objectiveCache={key,list:[...byKey.values()].filter((o)=>here(o)>0||o.kind==="challenge").sort((a,b)=>here(a)-here(b)||OBJECTIVE_KINDS[a.kind].rank-OBJECTIVE_KINDS[b.kind].rank).slice(0,COMPASS_OBJECTIVE_LIMIT)};
+  return objectiveCache.list;
+}
+function compassObjective(){const list=objectiveList();return list.find((o)=>`${o.rx},${o.ry}`===compassPick)||list[0]||null}
+function compassHeading(dx,dy){if(!dx&&!dy)return"here";return`${dy<0?"north":dy>0?"south":""}${dy&&dx?"-":""}${dx<0?"west":dx>0?"east":""}`}
 function navigationTargets() {
   navigationStats.lookups++;
   const huntId=save.viewport?.activeHuntId||null,hunt=huntId?save.viewport?.contracts?.[huntId]:null,
     huntActive=!!hunt&&["accepted","tracking","target-located"].includes(hunt.status),manual=save.manualWaypoint;
   const objectiveOpen = !save.consequences.choices.relay ||
     (save.narrative.facts["leads.active"] && !save.narrative.facts["leads.complete"]);
-  const key=[game.area,game.rx,game.ry,huntId,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,objectiveOpen,manual?.area,manual?.rx,manual?.ry,manual?.label].join(":");
+  const pick=game.area==="overworld"&&!huntActive&&!compassPin?compassObjective():null;
+  const key=[game.area,game.rx,game.ry,huntId,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,objectiveOpen,manual?.area,manual?.rx,manual?.ry,manual?.label,pick?.rx,pick?.ry,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name].join(":");
   if(navigationCache.map===game.map&&navigationCache.key===key)return navigationCache;
   navigationStats.rebuilds++;
-  let guidance=huntActive&&Number.isInteger(hunt.target?.rx)&&Number.isInteger(hunt.target?.ry)?{area:"overworld",rx:hunt.target.rx,ry:hunt.target.ry,kind:"guidance",name:hunt.title||"Viewport guidance"}:null;
-  if(!guidance&&game.area==="overworld"&&objectiveOpen){
+  let guidance=compassPin?{area:"overworld",rx:compassPin.rx,ry:compassPin.ry,kind:"guidance",name:compassPin.name}:huntActive&&Number.isInteger(hunt.target?.rx)&&Number.isInteger(hunt.target?.ry)?{area:"overworld",rx:hunt.target.rx,ry:hunt.target.ry,kind:"guidance",name:hunt.title||"Viewport guidance"}:null;
+  if(!guidance&&game.area==="overworld"&&objectiveOpen&&!compassPick){
     const cues=game.map.objects.filter(q=>q.kind==="wayfindingCue"),cue=cues.find(q=>q.signalKind==="crossing")||cues.find(q=>q.signalKind==="danger")||cues.find(q=>q.signalKind==="event");
     guidance=cue?{area:"overworld",rx:cue.targetRx,ry:cue.targetRy,kind:"guidance",name:cue.name||"Quest signal"}:null;
   }
+  if(!guidance&&pick)guidance={area:"overworld",rx:pick.rx,ry:pick.ry,x:pick.x,y:pick.y,kind:"guidance",name:pick.name};
   navigationCache={key,map:game.map,guidance,manual:manual?{...manual,kind:"manual",name:manual.label||"Manual waypoint"}:null};
   return navigationCache;
 }
 function updateNavigationArrow(arrow,target){
   arrow.hidden=!target;if(!target)return null;
-  const dormant=game.area!==target.area,arrived=!dormant&&target.rx===game.rx&&target.ry===game.ry;
+  const dormant=game.area!==target.area,arrived=!dormant&&target.rx===game.rx&&target.ry===game.ry&&!Number.isFinite(target.x);
   arrow.classList.toggle("dormant",dormant);arrow.classList.toggle("arrived",arrived);
-  if(!dormant&&!arrived){const dx=(target.rx-game.rx)*32+16-game.player.x,dy=(target.ry-game.ry)*32+16-game.player.y;arrow.style.transform=`rotate(${Math.atan2(dy,dx)*180/Math.PI+90}deg)`}else arrow.style.transform="";
-  return dormant?`${target.name} resumes beyond this ${game.area}`:arrived?`${target.name} reached`:`${target.name}, ${Math.max(Math.abs(target.rx-game.rx),Math.abs(target.ry-game.ry))} sections away`;
+  // A target with a known site position points at the site itself; otherwise at the middle of its section.
+  if(!dormant&&!arrived){const dx=(target.rx-game.rx)*32+(Number.isFinite(target.x)?target.x+.5:16)-game.player.x,dy=(target.ry-game.ry)*32+(Number.isFinite(target.y)?target.y+.5:16)-game.player.y;arrow.style.transform=`rotate(${Math.atan2(dy,dx)*180/Math.PI+90}deg)`}else arrow.style.transform="";
+  const away=Math.max(Math.abs(target.rx-game.rx),Math.abs(target.ry-game.ry));
+  return dormant?`${target.name} resumes beyond this ${game.area}`:arrived?`${target.name} reached`:away?`${target.name}, ${away} section${away===1?"":"s"} ${compassHeading(target.rx-game.rx,target.ry-game.ry)}`:`${target.name}, in this section`;
 }
 function updateNavigationCompass() {
   const targets=navigationTargets(),guidanceLabel=updateNavigationArrow(navGuidanceArrow,targets.guidance),manualLabel=updateNavigationArrow(navManualArrow,targets.manual),labels=[];
@@ -437,6 +469,39 @@ function updateNavigationCompass() {
   navCompass.setAttribute("aria-label",labels.join(". "));
   navCompass.title = navCompass.getAttribute("aria-label");
 }
+// Active quests (Journal tab, release 155): every hunt, errand and story lead in progress, with where it is and a
+// button that points the compass at it. Nothing here is drawn on the compass itself.
+function activeQuests(){
+  const out=[],add=(title,detail,at)=>out.push({title,detail,at:at&&Number.isInteger(at.rx)&&Number.isInteger(at.ry)?{rx:at.rx,ry:at.ry}:null});
+  for(const c of Object.values(save.viewport?.contracts||{}))if(["accepted","tracking","target-located"].includes(c?.status))add(`Hunt: ${c.title||"Viewport hunt"}`,`${c.id===save.viewport.activeHuntId?"Tracked hunt · ":""}${String(c.status).replace("-"," ")}${c.summary?` · ${c.summary}`:""}`,c.target);
+  const w=save.wanderer?.quest;if(w)add("Old Quillon's errand",w.done?"Done. Find Quillon on the road to collect your pay.":w.type==="hunt"?`Defeat creatures: ${w.progress}/${w.goal}.`:w.type==="cache"?"Find his buried satchel.":"Stand in any town square.",w.type==="cache"&&!w.done?w.target:null);
+  const beast=save.questingBeast?.active;if(beast)add("The Questing Beast",`It roams this section. ${questingBeastTriesLeft(save)} tries remain.`,beast);
+  const far=save.relayNetwork?.coordinate;if(far){const f=ensureFarArray(save);add("The Far Array",`Gate ${f.gate}: ${f.pieces}/${piecesNeeded(f.gate)} pieces. Enter at the Array Mouth.`,far)}
+  const echo=save.story?.arcs?.cartographersEcho;if(echo?.site&&!echo.completed)add("The Unwritten Meridian","The cartographer's echo waits here.",echo.site);
+  if(save.narrative?.facts?.["leads.active"]&&!save.narrative.facts["leads.complete"])add("Relay leads","Follow the wayfinding marks toward the buried crossings.",null);
+  if(!save.worldFlags?.worldBossDead)add("A great enemy","Something vast waits at the heart of the Corridor.",{rx:0,ry:0});
+  return out;
+}
+function renderQuests(out){
+  const h=document.createElement("h3");h.textContent="Active quests";out.append(h);
+  const row=(title,detail,at,name)=>{const card=document.createElement("div"),t=document.createElement("strong"),d=document.createElement("p");card.className="item";t.textContent=title;const away=at?Math.max(Math.abs(at.rx-game.rx),Math.abs(at.ry-game.ry)):0;d.textContent=detail+(at?` · section ${at.rx},${at.ry} · ${away?`${away} section${away===1?"":"s"} ${compassHeading(at.rx-game.rx,at.ry-game.ry)}`:"in this section"}`:"");card.append(t,d);
+    if(at){const pinned=compassPin?.rx===at.rx&&compassPin?.ry===at.ry;card.append(uiButton(pinned?"Compass points here":"Point compass here",()=>{compassPin={rx:at.rx,ry:at.ry,name};navigationCache.key=null;openJournal("quests")}))}out.append(card)};
+  const quests=activeQuests();if(!quests.length){const p=document.createElement("p");p.className="options-note";p.textContent="No hunts or errands in progress. Viewport posts hunts; Old Quillon gives errands on the road.";out.append(p)}
+  for(const q of quests)row(q.title,q.detail,q.at,q.title);
+  const near=objectiveList().filter((o)=>o.kind==="challenge");if(near.length){const h2=document.createElement("h3");h2.textContent="Unfinished challenges you have found";out.append(h2);for(const o of near)row(o.name,"Not yet cleared",{rx:o.rx,ry:o.ry},o.name)}
+  if(compassPin)out.append(uiButton("Let the compass choose again",()=>{compassPin=null;navigationCache.key=null;openJournal("quests")}));
+}
+// Tapping the compass names its target and steps to the next objective (release 153).
+navCompass.setAttribute("role","button");navCompass.tabIndex=0;
+navCompass.addEventListener("click",()=>{
+  if(game.area!=="overworld"){game.message="The compass settles while you are inside. It points again once you are back in the open.";return}
+  const list=objectiveList();if(!list.length){game.message="The compass finds nothing unfinished nearby. Explore further to give it something to find.";return}
+  // The first tap names the nearest objective; each later tap moves on to the next one.
+  const current=compassObjective(),next=compassPick===null?current:list[(list.indexOf(current)+1)%list.length];
+  compassPick=`${next.rx},${next.ry}`;compassPin=null;navigationCache.key=null;
+  const away=Math.max(Math.abs(next.rx-game.rx),Math.abs(next.ry-game.ry));
+  game.message=`Compass (${list.indexOf(next)+1}/${list.length}): ${next.name} · ${away?`${away} section${away===1?"":"s"} ${compassHeading(next.rx-game.rx,next.ry-game.ry)}`:"in this section"} · section ${next.rx},${next.ry}. Tap again for the next.`;
+});
 const mute = document.createElement("button");
 mute.type = "button";
 mute.textContent =
@@ -965,7 +1030,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_f0af06cc0fa4482985e49d18_0f75285c496f6040",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release icp_f0af06cc0fa4482985e49d18_0f75285c496f6040\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -986,6 +1051,16 @@ function atlasMapHeight(){return Math.max(140,Math.min(innerHeight*.65,innerHeig
 // Relay overlay (release 142, Atlas button): the Rule 110 relay pattern as a faint lattice over explored sections and
 // their neighbours, and the relays you have answered as bright nodes joined to answered neighbours within two sections.
 let relayOverlay=false;
+// Atlas layers (release 155): the buttons under the Atlas switch each kind of marking on or off. The choice is a
+// per-device convenience kept in localStorage.
+const ATLAS_LAYERS=[["sites","Places"],["signals","Signals"],["objectives","Objectives"],["waypoints","Waypoints"]],ATLAS_LAYER_KEY="corridor-atlas-layers";
+const atlasLayers=(()=>{const all=Object.fromEntries(ATLAS_LAYERS.map(([k])=>[k,true]));try{return{...all,...JSON.parse(localStorage.getItem(ATLAS_LAYER_KEY)||"{}")}}catch{return all}})();
+function renderAtlasLayerButtons(){
+  const row=$("#mapLayers");if(!row)return;row.replaceChildren();
+  const save_=()=>{try{localStorage.setItem(ATLAS_LAYER_KEY,JSON.stringify(atlasLayers))}catch{}renderAtlasLayerButtons();drawMap()};
+  for(const[k,label]of ATLAS_LAYERS){const b=uiButton(label,()=>{atlasLayers[k]=!atlasLayers[k];save_()});b.setAttribute("aria-pressed",String(atlasLayers[k]));row.append(b)}
+  const allOn=ATLAS_LAYERS.every(([k])=>atlasLayers[k]),all=uiButton(allOn?"All off":"All on",()=>{for(const[k]of ATLAS_LAYERS)atlasLayers[k]=!allOn;save_()});row.append(all);
+}
 function drawRelayOverlay(w,h,cell,cols,rows){
   const at=(rx,ry)=>({x:w/2+(rx-mapView.x)*cell+mapView.panX,y:h/2+(ry-mapView.y)*cell+mapView.panY}),answered=[];
   for(const[id,n]of Object.entries(save.relayNetwork?.nodes||{})){const c=crossingSection(id);if(c)answered.push({...c,choice:n.choice})}
@@ -1015,6 +1090,8 @@ function drawMap() {
   const signals=wayfindingCues(save.seed,game.rx,game.ry,save.worldGeneration,save,game.area==="overworld"?game.map:null),signalBySection=new Map(signals.map(q=>[`${q.targetRx},${q.targetRy}`,q])),cell = 52 * mapView.zoom,
     cols = Math.ceil(w / (2 * cell)) + 1,
     rows = Math.ceil(h / (2 * cell)) + 1;
+  // Release 153: the compass target gets a gold frame and unfinished challenges a dashed violet one.
+  const openSections=atlasLayers.objectives?openChallengeSections():new Map(),compassTarget=atlasLayers.objectives?navigationTargets().guidance:null,targetKey=compassTarget?.area==="overworld"?`${compassTarget.rx},${compassTarget.ry}`:null;
   for (let j = -rows; j <= rows; j++)
     for (let i = -cols; i <= cols; i++) {
       const rx = mapView.x + i,
@@ -1022,7 +1099,7 @@ function drawMap() {
         key = `${rx},${ry}`,
         x = w / 2 + i * cell - cell / 2 + mapView.panX,
         y = h / 2 + j * cell - cell / 2 + mapView.panY,
-        seen = !!save.explored[key],signal=signalBySection.get(key),
+        seen = !!save.explored[key],signal=atlasLayers.signals?signalBySection.get(key):null,
         frontier =
           !seen &&
           [
@@ -1031,7 +1108,7 @@ function drawMap() {
             [0, 1],
             [0, -1],
           ].some(([a, b]) => save.explored[`${rx + a},${ry + b}`]);
-      if (!seen && !frontier && !signal) continue;
+      if (!seen && !frontier && !signal && key !== targetKey) continue;
       const record = save.atlas?.[key], terrain = record?.terrain || (rx===game.rx&&ry===game.ry?game.map.dominant:"ash");
       const landscape = record?.landscape || (rx===game.rx&&ry===game.ry?game.map.landscape?.biome:null);
       mctx.fillStyle = seen
@@ -1044,7 +1121,7 @@ function drawMap() {
       mctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4);
       if (seen) {
         const detailed=(rx===game.rx&&ry===game.ry)||(mapView.selected?.rx===rx&&mapView.selected?.ry===ry),sites=record?.sites||[],compact=[...new Map(sites.map(s=>[s.kind,s])).values()];
-        const displaySites=detailed?sites:compact,labelSites=[];
+        const displaySites=!atlasLayers.sites?[]:detailed?sites:compact,labelSites=[];
         for (const [n,site] of displaySites.entries()) {
           const sx = detailed?x + Math.max(0.1, Math.min(0.9, (site.x + .5) / 32)) * cell:x+cell*(.32+(n%3)*.18),
             sy = detailed?y + Math.max(0.1, Math.min(0.9, (site.y + .5) / 32)) * cell:y+cell*(.42+Math.floor(n/3)*.2);
@@ -1063,11 +1140,13 @@ function drawMap() {
         mctx.arc(x + cell / 2, y + cell / 2, 5, 0, 7);
         mctx.fill();
       }
-      if (save.manualWaypoint?.rx === rx && save.manualWaypoint?.ry === ry) {
+      if (atlasLayers.waypoints && save.manualWaypoint?.rx === rx && save.manualWaypoint?.ry === ry) {
         mctx.strokeStyle = "#5fe7ee";
         mctx.strokeRect(x + 8, y + 8, cell - 16, cell - 16);
       }
-      if(seen&&save.lastDeath?.rx===rx&&save.lastDeath?.ry===ry)drawDeathGlyph(mctx,x+cell-13,y+13,Math.max(5,cell*.1),save.lastDeath.valid===false);
+      if(atlasLayers.waypoints&&seen&&save.lastDeath?.rx===rx&&save.lastDeath?.ry===ry)drawDeathGlyph(mctx,x+cell-13,y+13,Math.max(5,cell*.1),save.lastDeath.valid===false);
+      if(openSections.has(key)){mctx.save();mctx.strokeStyle=ATLAS_FRAMES.openChallenge;mctx.lineWidth=2;mctx.setLineDash([5,3]);mctx.strokeRect(x+5,y+5,cell-10,cell-10);mctx.restore()}
+      if(key===targetKey){mctx.save();mctx.strokeStyle=ATLAS_FRAMES.compassTarget;mctx.lineWidth=3;mctx.strokeRect(x+1.5,y+1.5,cell-3,cell-3);mctx.restore()}
     }
   if(relayOverlay)drawRelayOverlay(w,h,cell,cols,rows);
   mctx.fillStyle = "#dce7e2";
@@ -1079,6 +1158,7 @@ function drawMap() {
 }
 function drawDeathGlyph(context,x,y,size,faded=false){context.save();context.translate(x,y);context.globalAlpha=faded?.45:1;context.strokeStyle="#ff718f";context.lineWidth=Math.max(1.5,size*.2);context.beginPath();context.arc(0,0,size*.65,0,7);context.moveTo(-size*.42,-size*.42);context.lineTo(size*.42,size*.42);context.moveTo(size*.42,-size*.42);context.lineTo(-size*.42,size*.42);context.stroke();context.restore()}
 function drawDungeonDeathMarker(){const death=save.lastDeath;if(!death||death.areaKind!=="dungeon"||death.dungeonId!==game.areaId())return;const selected=$("#dungeonLevelSelect")?.value||game.map.levelId||"root";if(death.levelId&&death.levelId!==selected)return;const map=game.map,d=Math.min(devicePixelRatio,2),w=Math.min(innerWidth*.9,680),h=atlasMapHeight(),cols=map.width||24,rows=map.height||Math.floor(map.tiles.length/cols),pad=18,cell=Math.max(2,Math.min((w-pad*2)/cols,(h-pad*2)/rows)),ox=(w-cell*cols)/2,oy=(h-cell*rows)/2;mctx.setTransform(d,0,0,d,0,0);drawDeathGlyph(mctx,ox+(death.x+.5)*cell,oy+(death.y+.5)*cell,Math.max(5,cell*.36),death.valid===false)}
+const ATLAS_FRAMES={compassTarget:"#ffd34d",openChallenge:"#b48cff"};
 const ATLAS_SYMBOLS=[
   {kind:"checkpoint",label:"Wayglass",description:"Activate it to add a fast-travel destination and make it your recovery point."},
   {kind:"shrine",label:"Singing Array",description:"A common rest point. Reaching it updates where death returns you, but it does not permit fast travel."},
@@ -1097,7 +1177,9 @@ function drawAtlasGlyph(context,kind,x,y,size){
 }
 function drawAtlasSite(kind,x,y,size){drawAtlasGlyph(mctx,kind,x,y,size)}
 function atlasMark(kind){const canvas=document.createElement("canvas");canvas.width=canvas.height=44;canvas.className="atlas-symbol";canvas.setAttribute("role","img");canvas.setAttribute("aria-label",ATLAS_SYMBOLS.find(q=>q.kind===kind)?.label||kind);const context=canvas.getContext("2d");if(context)drawAtlasGlyph(context,kind,22,22,13);return canvas}
-function deathMark(){const canvas=document.createElement("canvas");canvas.width=canvas.height=44;canvas.className="atlas-symbol";canvas.setAttribute("role","img");canvas.setAttribute("aria-label","Last death");drawDeathGlyph(canvas.getContext("2d"),22,22,13);return canvas}function renderAtlasLegend(){const legend=$("#mapLegend");legend.replaceChildren();for(const symbol of ATLAS_SYMBOLS){const item=document.createElement("span");item.className="atlas-legend-item";item.append(symbol.kind==="lastDeath"?deathMark():atlasMark(symbol.kind),document.createTextNode(symbol.label));legend.append(item)}}
+function deathMark(){const canvas=document.createElement("canvas");canvas.width=canvas.height=44;canvas.className="atlas-symbol";canvas.setAttribute("role","img");canvas.setAttribute("aria-label","Last death");drawDeathGlyph(canvas.getContext("2d"),22,22,13);return canvas}function frameMark(color,dashed){const canvas=document.createElement("canvas");canvas.width=canvas.height=44;canvas.className="atlas-symbol";const c=canvas.getContext("2d");if(c){c.strokeStyle=color;c.lineWidth=dashed?3:5;if(dashed)c.setLineDash([7,4]);c.strokeRect(8,8,28,28)}return canvas}
+function renderAtlasLegend(){const legend=$("#mapLegend");legend.replaceChildren();for(const symbol of ATLAS_SYMBOLS){const item=document.createElement("span");item.className="atlas-legend-item";item.append(symbol.kind==="lastDeath"?deathMark():atlasMark(symbol.kind),document.createTextNode(symbol.label));legend.append(item)}
+  for(const[color,dashed,label]of[[ATLAS_FRAMES.compassTarget,false,"Compass target (tap the compass for the next)"],[ATLAS_FRAMES.openChallenge,true,"Unfinished challenge"]]){const item=document.createElement("span");item.className="atlas-legend-item";item.append(frameMark(color,dashed),document.createTextNode(label));legend.append(item)}}
 function refreshWayglassDestinations(){
   const select=$("#mapWayglassSelect"),prior=select.value,entries=Object.entries(save.checkpoints||{}).sort((a,b)=>(a[1].name||a[0]).localeCompare(b[1].name||b[0]));
   select.replaceChildren(...entries.map(([key,c])=>{const option=document.createElement("option");option.value=key;option.textContent=`${c.name||"Wayglass"} · ${c.rx},${c.ry}`;return option}));
@@ -1155,11 +1237,12 @@ function openMap() {
   if (!atlas.open) atlas.showModal();
   refreshWayglassDestinations();
   renderAtlasLegend();
+  renderAtlasLayerButtons();
   updateMapModeUI();
   if(mapMode==="atlas")showMapDetail(game.rx, game.ry);
   drawMap();
 }
-// Release icp_f0af06cc0fa4482985e49d18_0f75285c496f6040: each part of the Pack is built separately, so a fault in one (seen on a player's save, cause still
+// Release 151: each part of the Pack is built separately, so a fault in one (seen on a player's save, cause still
 // unknown) shows a note naming the part and its error instead of stopping the whole Pack from opening.
 function packSectionFailed(name,error){noteError(error);console.error(`Pack section ${name} failed`,error);const note=document.createElement("p");note.className="options-note options-danger";note.textContent=`${name} could not be shown (${error?.message||error}). Options → System → Copy diagnostics, then paste it to Claude.`;body.append(note)}
 function openPack() {
@@ -1461,9 +1544,10 @@ function openJournal(mode = "chronicle") {
   const out = $("#journalBody");
   out.replaceChildren();
   const nav=document.createElement("div");nav.className="codex-tabs";
-  for(const [id,label] of [["chronicle","Chronicle"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["tome","Reciter's Tome"],["gate","The Far Gate"]])nav.append(uiButton(label,()=>openJournal(id)));
+  for(const [id,label] of [["chronicle","Chronicle"],["quests","Active quests"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["tome","Reciter's Tome"],["gate","The Far Gate"]])nav.append(uiButton(label,()=>openJournal(id)));
   out.append(nav);
   if(mode!=="chronicle"){
+    if(mode==="quests"){renderQuests(out);if(!journal.open)journal.showModal();return;}
     if(mode==="tome"){renderTome(out);if(!journal.open)journal.showModal();return;}
     if(mode==="gate"){renderFarGate(out);if(!journal.open)journal.showModal();return;}
     if(mode==="dungeons"){
@@ -1892,39 +1976,49 @@ function arcanumShell(tab,title,subtitle){pauseForOverlay();body.replaceChildren
  for(const[id,label]of ARCANUM_TABS){const b=uiButton(label,()=>({constellation:()=>openSkills(arcanumAtShrine),glyphs:openGlyphs,echoes:openEchoes})[id]());if(id===tab)b.setAttribute('aria-current','page');tabs.append(b)}
  body.append(h,sub,tabs);if(!panel.open)panel.showModal()}
 function arcanumFooter(){const f=el('footer','arc-foot');f.append(uiButton('Sphere forge',openForge),uiButton('Pack',openPack),uiButton('Return to world',resume));body.append(f)}
+// Release icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5: element badges and Active/Passive tags so it is clear what each entry is and what it touches.
+function elemBadge(attr){const a=ATTRIBUTES[attr],b=el('span','arc-elem',`${a.icon} ${a.name}`);b.style.setProperty('--elem',a.color);return b}
+function kindTag(text,active){return el('span',`arc-kind ${active?'active':'passive'}`,text)}
+function nodeKind(n,skill){if(n.id==='active')return['Active · cast it from slot A or B',true];const k=NODE_EFFECTS[n.ref||n.id]?.kind;return k==='cast'?['Active · a new ability for slot A or B',true]:k==='always'?['Passive · always on',false]:k==='changes'?[`Passive · changes how ${skill.name} works`,false]:[`Passive · works while ${skill.name} is active`,false]}
 // Constellation: each branch is a path of glowing nodes — the active (with rank pips), its modifier, then two capstones.
 function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.perception?.aperture||0,free=pointsFree(save);
  arcanumShell('constellation',`Spells & Constellation`,`${free} point${free===1?'':'s'} free · Aperture ${value} (${apertureBand(value).name}), one point per ${POINT_EVERY}${save.constellation.bonus?`, ${save.constellation.bonus} kept from before`:''}. Ranks and modifiers cost 1, capstones 2; a mastered branch can take both. Tap an entry to read it.${atShrine?' This shrine can reset everything.':' Respec at a shrine.'}`);
  const sky=el('div','arc-sky');ensureSlots(save);
+ {const key=el('section','arc-key');key.append(el('p','','Elements:'));for(const a of Object.keys(ATTRIBUTES))key.append(elemBadge(a));key.append(el('p','',''),kindTag('⚡ Active',true),el('span','',' you cast it from slot A or B, then it recovers. '),kindTag('Passive',false),el('span','',' works by itself once learned: always, or while its discipline is active.'));sky.append(key)}
  const inSlot=(key)=>['a','b'].find(q=>save.magicSkills.slots[q]===key),slotButtons=(key,after)=>['a','b'].map(q=>{const here=save.magicSkills.slots[q]===key,b=uiButton(here?`In slot ${q.toUpperCase()}`:`Set in ${q.toUpperCase()}`,()=>{const r=setSlot(save,q,key);game.message=r.message;persist();after();openSkills(atShrine)});if(here)b.disabled=true;return b});
  // Slots A and B, and the Pairing their two attributes make.
  {const box=el('section','arc-branch arc-slots');box.append(el('h3','','Spell slots'));
-  for(const q of ['a','b']){const c=slotted(save,q),row=el('div','arc-slot');const sym=el('span','slot-sym',c?c.symbol:'+');sym.style.color=c?c.color:'';row.append(el('strong','',q.toUpperCase()),sym,el('span','',c?`${c.name} · ${ATTRIBUTES[c.attr].name}`:'Empty — choose below'));if(c){const clear=uiButton('Clear',()=>{const r=setSlot(save,q,null);game.message=r.message;persist();openSkills(atShrine)});row.append(clear)}box.append(row)}
+  for(const q of ['a','b']){const c=slotted(save,q),row=el('div','arc-slot');const sym=el('span','slot-sym',c?c.symbol:'+');sym.style.color=c?c.color:'';row.append(el('strong','',q.toUpperCase()),sym,el('span','',c?c.name:'Empty — choose below'));if(c)row.append(elemBadge(c.attr));if(c){const clear=uiButton('Clear',()=>{const r=setSlot(save,q,null);game.message=r.message;persist();openSkills(atShrine)});row.append(clear)}box.append(row)}
   const pr=activePairing(save);box.append(el('p','',pr?`Pairing: ${pr.name} — ${pr.text}`:'Fill both slots: their two attributes form a Pairing, a small bonus while both stay set.'));
   sky.append(box)}
  // The spell branch: the cast-button spell, with its glyph sockets.
- {const card=el('section','arc-branch spells');card.dataset.branch='spells';const head=el('header','arc-branch-head');head.append(el('h3','','Spells'),el('span','arc-branch-state','Fire · Dusk'));
+ {const card=el('section','arc-branch spells');card.dataset.branch='spells';const head=el('header','arc-branch-head');head.append(el('h3','','Spells'),kindTag('Active',true));
   const path=el('div','arc-path spell-path'),detail=el('div','arc-detail'),focus=arcanumFocus?.branch==='spells'?SPELLS[arcanumFocus.node]:null,show=focus||SPELLS[save.equippedSpell||'ember-ring'];
-  for(const sp of Object.values(SPELLS)){const on=!!inSlot(`spell:${sp.id}`),row=el('button',`arc-node core ${on?'owned':'ready'}${focus===sp?' focus':''}`),n=row;row.type='button';row.dataset.slot='spell';n.append(el('span','arc-node-orb',{'cinder-dart':'➶','ember-ring':'◎','grave-sun':'☀'}[sp.id]||'✶'),el('span','arc-node-name',sp.name),el('span','arc-sockets-mini',(save.spellGlyphs?.[sp.id]||[null,null]).map(g=>g?GLYPHS[g].sigil:'○').join(' ')));n.onclick=()=>{arcanumFocus={branch:'spells',node:sp.id};openSkills(atShrine)};path.append(n)}
+  for(const sp of Object.values(SPELLS)){const on=!!inSlot(`spell:${sp.id}`),row=el('button',`arc-node core ${on?'owned':'ready'}${focus===sp?' focus':''}`),n=row;row.type='button';row.dataset.slot='spell';const attr=CASTABLES[`spell:${sp.id}`]?.attr||'fire',orb=el('span','arc-node-orb',{'cinder-dart':'➶','ember-ring':'◎','grave-sun':'☀'}[sp.id]||'✶');orb.style.color=ATTRIBUTES[attr].color;n.append(orb,el('span','arc-node-name',`${sp.name} ${ATTRIBUTES[attr].icon}`),el('span','arc-sockets-mini',(save.spellGlyphs?.[sp.id]||[null,null]).map(g=>g?GLYPHS[g].sigil:'○').join(' ')));n.onclick=()=>{arcanumFocus={branch:'spells',node:sp.id};openSkills(atShrine)};path.append(n)}
   const sockets=(save.spellGlyphs?.[show.id]||[]).filter(Boolean).map(g=>`${GLYPHS[g].sigil} ${GLYPHS[g].name}`);
-  detail.append(el('strong','',show.name),el('p','',`${show.cooldown}s cooldown · power ${show.damage} · reach ${show.maxRange} · radius ${show.radius}. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`));
+  {const tags=el('div','arc-tags');tags.append(elemBadge(CASTABLES[`spell:${show.id}`]?.attr||'fire'),kindTag('Active spell',true));detail.append(el('strong','',show.name),tags)}
+  detail.append(el('p','',`${show.cooldown}s cooldown · power ${show.damage} · reach ${show.maxRange} · radius ${show.radius}. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`));
+  // What changes your spells: Focus, the Pairing, and the few constellation nodes that reach them (NODE_EFFECTS.spells).
+  {const boosts=[`Focus ${save.stats?.Focus||1}: +${characterStats(save).magicBonus} spell damage`],pr=activePairing(save);if(pr&&(pr.mods.spellDamage||pr.mods.cooldown))boosts.push(`Pairing ${pr.name}: ${pr.text}`);
+   for(const bid of BRANCH_IDS){const b=BRANCHES[bid];for(const node of[b.mod,...b.caps]){const fx=NODE_EFFECTS[node.id];if(fx?.spells)boosts.push(`${node.name} (${b.name}, ${hasNode(save,node.id)?'learned':'not learned'}): ${fx.spells} Only while ${APERTURE_SKILLS[b.active].name} is active.`)}}
+   const list=el('ul','arc-boosts');for(const t of boosts)list.append(el('li','',t));detail.append(el('small','arc-hint','What affects your spells:'),list,el('small','arc-hint','Other constellation entries change their own discipline, not your spells.'))}
   detail.append(...slotButtons(`spell:${show.id}`,()=>{arcanumFocus={branch:'spells',node:show.id}}));
   card.append(head,path,detail);sky.append(card)}
  for(const bid of BRANCH_IDS){const b=BRANCHES[bid],skill=APERTURE_SKILLS[b.active],rank=skillRank(save,skill.id),modOn=!!save.constellation.mods[b.mod.id],caps=branchCaps(save,bid),mastered=rank>=skill.maxRank,open=value>=skill.threshold;
   const card=el('section','arc-branch'+(open?'':' sealed'));card.dataset.branch=bid;
-  const head=el('header','arc-branch-head'),slotOf=inSlot(`skill:${skill.id}`)||(bid==='motion'?inSlot('skill:aerial-step'):null),bound=!!slotOf;head.append(el('h3','',b.name),el('span','arc-branch-state',`${bound?`◉ Slot ${slotOf.toUpperCase()} · `:''}${!open?`Opens at Aperture ${skill.threshold}`:caps.length===2?'Fully crowned':mastered?'Mastered':`${rank}/${skill.maxRank}`}`));if(bound)card.classList.add('bound');
+  const attr=CASTABLES[`skill:${skill.id}`]?.attr,head=el('header','arc-branch-head'),slotOf=inSlot(`skill:${skill.id}`)||(bid==='motion'?inSlot('skill:aerial-step'):null),bound=!!slotOf;if(attr){card.dataset.elem=attr;card.style.setProperty('--elem',ATTRIBUTES[attr].color)}head.append(el('h3','',b.name),...(attr?[elemBadge(attr)]:[]),el('span','arc-branch-state',`${bound?`◉ Slot ${slotOf.toUpperCase()} · `:''}${!open?`Opens at Aperture ${skill.threshold}`:caps.length===2?'Fully crowned':mastered?'Mastered':`${rank}/${skill.maxRank}`}`));if(bound)card.classList.add('bound');
   const path=el('div','arc-path'),detail=el('div','arc-detail');
   const nodes=[{id:'active',name:skill.name,text:skill.description,state:rank>=skill.maxRank?'owned':rank>0?'partial':open?'ready':'locked',pips:[rank,skill.maxRank],cost:1,can:open&&rank<skill.maxRank,act:()=>learnRank(save,bid),verb:`Learn rank ${rank+1}`},
-   {id:'mod',name:b.mod.name,text:b.mod.text,state:modOn?'owned':rank>0?'ready':'locked',cost:1,can:rank>0&&!modOn,act:()=>learnMod(save,bid),verb:'Learn'},
-   ...b.caps.map(c=>({id:c.id,cap:true,name:c.name,text:c.text,state:caps.includes(c.id)?'owned':modOn&&mastered?'ready':'locked',cost:2,can:modOn&&mastered&&!caps.includes(c.id),act:()=>chooseCap(save,bid,c.id),verb:'Crown with'}))];
+   {id:'mod',ref:b.mod.id,name:b.mod.name,text:b.mod.text,state:modOn?'owned':rank>0?'ready':'locked',cost:1,can:rank>0&&!modOn,act:()=>learnMod(save,bid),verb:'Learn'},
+   ...b.caps.map(c=>({id:c.id,ref:c.id,cap:true,name:c.name,text:c.text,state:caps.includes(c.id)?'owned':modOn&&mastered?'ready':'locked',cost:2,can:modOn&&mastered&&!caps.includes(c.id),act:()=>chooseCap(save,bid,c.id),verb:'Crown with'}))];
   const focus=arcanumFocus?.branch===bid?nodes.find(n=>n.id===arcanumFocus.node):null;
   nodes.forEach((n,i)=>{if(i===1||i===2)path.append(el('i','arc-link'+(n.state!=='locked'?' lit':'')));if(i===2)path.append(el('div','arc-caps'));
    const node=el('button',`arc-node ${n.cap?'cap':i===0?'core':'mod'} ${n.state}${focus===n?' focus':''}`);node.type='button';node.setAttribute('aria-label',`${n.name}: ${n.state}`);
-   node.append(el('span','arc-node-orb',n.cap?'✦':i===0?'✶':'◆'),el('span','arc-node-name',n.name));
+   const orb=el('span','arc-node-orb',n.cap?'✦':i===0?'✶':'◆');if(attr&&n.state!=='locked')orb.style.color=ATTRIBUTES[attr].color;node.append(orb,el('span','arc-node-name',`${n.name}${nodeKind(n,skill)[1]?' ⚡':''}`));
    if(n.pips){const pips=el('span','arc-pips');for(let k=0;k<n.pips[1];k++)pips.append(el('i',k<n.pips[0]?'on':''));node.append(pips)}
    node.onclick=()=>{arcanumFocus={branch:bid,node:n.id};openSkills(atShrine)};(i>=2?path.lastElementChild:path).append(node)});
   const show=focus||nodes.find(n=>n.can)||nodes[0];
-  detail.append(el('strong','',show.name),el('p','',show.text));
+  {const[label,active]=nodeKind(show,skill),tags=el('div','arc-tags');if(attr)tags.append(elemBadge(attr));tags.append(kindTag(label,active));detail.append(el('strong','',show.name),tags,el('p','',show.text));if(NODE_EFFECTS[show.ref]?.spells)detail.append(el('small','arc-hint',`Also affects your spells: ${NODE_EFFECTS[show.ref].spells}`))}
   if(show.can){const go=uiButton(`${show.verb} · ${show.cost} pt${show.cost>1?'s':''}`,()=>{const r=show.act();game.message=r.message;persist();arcanumFocus={branch:bid,node:show.id};openSkills(atShrine)});go.className='arc-go';detail.append(go)}
   // A learned discipline (or Aerial Step, a castable capstone) can go in slot A or B.
   const castId=show.id==='active'&&rank>0?skill.id:show.id==='aerial-step'&&caps.includes('aerial-step')?'aerial-step':null;

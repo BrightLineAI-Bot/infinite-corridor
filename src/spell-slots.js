@@ -4,15 +4,16 @@
 // always-on bonus while both are in place, discovered the first time the pair is slotted. Spells now keep their own
 // cooldowns (`magicSkills.cooldowns["spell:<id>"]`), so two spells can share the buttons.
 // Data and pure rules; game.ts casts, main.ts draws the buttons and the Arcanum.
-import { SPELLS, APERTURE_SKILLS, skillRank } from "./items.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { SPELLS, APERTURE_SKILLS, skillRank } from "./items.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
 
 export const ATTRIBUTES = {
-  fire: { name: "Fire", color: "#e0784a" },
-  dusk: { name: "Dusk", color: "#a98ad0" },
-  wind: { name: "Wind", color: "#6fbfb8" },
-  ward: { name: "Ward", color: "#7c9fcf" },
-  force: { name: "Force", color: "#cfae5c" },
-  rift: { name: "Rift", color: "#c06fae" },
+  // icon (release 157): the element's mark beside every spell and discipline in the Arcanum.
+  fire: { name: "Fire", color: "#e0784a", icon: "🔥" },
+  dusk: { name: "Dusk", color: "#a98ad0", icon: "☾" },
+  wind: { name: "Wind", color: "#6fbfb8", icon: "≋" },
+  ward: { name: "Ward", color: "#7c9fcf", icon: "◈" },
+  force: { name: "Force", color: "#cfae5c", icon: "✦" },
+  rift: { name: "Rift", color: "#c06fae", icon: "⟡" },
 };
 export const CASTABLES = {
   "spell:cinder-dart": { kind: "spell", id: "cinder-dart", symbol: "➶", attr: "fire" },
