@@ -19,6 +19,25 @@ export const BOAT = {
   dockEvery: 3,
 };
 export const SAILABLE_DEEP = ["ocean", "deepOcean", "lakeWater", "swampWater"];
+// Wood (release 119; Tim, 2026-10-16): felling a tree yields wood by its size, and enough wood builds a skiff at any
+// water's edge, so the Shipwright is no longer the only way to a boat.
+export const WOOD = { byForm: { shrub: 1, spindle: 2, canopy: 3 }, skiffCost: 3, reach: 1.6 };
+export const woodFor = (tree) => WOOD.byForm[tree?.vegetationForm] ?? WOOD.byForm.spindle;
+// Normalised in freshSave/migrateSave (additive at schema 14).
+export function ensureWood(save) { save.materials ||= {}; save.materials.wood = Math.max(0, Math.floor(Number(save.materials.wood) || 0)); return save; }
+// Death drops the wood you carry (Tim, 2026-10-16). Returns how much was lost.
+export function loseWood(save) { const n = Math.max(0, Number(save.materials?.wood) || 0); if (n && save.materials) save.materials.wood = 0; return n; }
+export function addWood(save, n) { save.materials ||= {}; save.materials.wood = Math.max(0, Number(save.materials.wood) || 0) + n; return save.materials.wood; }
+// Build a skiff on `water` (a sailable deep-water tile next to the Wayfarer) for WOOD.skiffCost wood, and board it.
+// Owning a skiff already just means the new one replaces it (one boat at a time).
+export function buildSkiff(save, at) {
+  const b = ensureBoatState(save), wood = Number(save.materials?.wood) || 0;
+  if (save.capabilities?.swim !== true) return { ok: false, message: "You could lash a skiff together, but without the Tidemantle a capsize would drown you." };
+  if (wood < WOOD.skiffCost) return { ok: false, message: `A skiff needs ${WOOD.skiffCost} wood (you have ${wood}). Fell trees: shrubs give 1, spindles 2, big trees 3.` };
+  save.materials.wood = wood - WOOD.skiffCost;
+  Object.assign(b, { owned: true, hull: BOAT.maxHull, aboard: true, moored: null, home: at });
+  return { ok: true, message: `You lash ${WOOD.skiffCost} wood into a skiff and push off.${save.materials.wood ? ` ${save.materials.wood} wood left.` : ""}` };
+}
 
 export function ensureBoatState(save) {
   const b = save.boat && typeof save.boat === "object" ? save.boat : {};
