@@ -24,6 +24,12 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Reciter's Tome (release 124)
+
+**CODE:** The release-122 Library moved from Options into the Journal as the `tome` tab ("Reciter's Tome"), rendered by `renderTome(out)` in `main.ts`; Options no longer has a Library tab. The data functions (`libraryBooks`, `setReciterMode`, `resetReciter`) are unchanged.
+
+**BOUNDARY:** Name and placement only; nothing changes in the save.
+
 ## The Library (release 122)
 
 **CODE:** `save.reciters` is now v3 `{ progress, met, modes, disabled }`. `reciterTalk` records `met`, and `modes[id] === "random"` gives random lines per reciter. `ensureReciters` migrates v2: kept progress counts as met, and the old journey-wide random setting becomes per-reciter random for those already met. Custom stories are kept in the save if present but are no longer used or editable. `libraryBooks(save)` groups `RECITERS` by book (sources, total lines, met readers with place and mode); `setReciterMode` and `resetReciter` back the Options → Library tab (`renderLibrary` in `main.ts`). In `src/recitations.ts`, `silverkey` is now "The Randolph Carter Stories": all five Carter pieces in full, in publication order, sentences merged to about 230 characters (1,915 lines, about 380 KB). The texts come from the vilmibm/lovecraftcorpus GitHub repository.
