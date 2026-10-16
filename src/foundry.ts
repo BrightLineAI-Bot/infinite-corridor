@@ -23,7 +23,7 @@ export function viewportContract(save,id){return ensureViewportState(save).contr
 export function activeViewportHunt(save){const v=ensureViewportState(save);return v.activeHuntId?v.contracts[v.activeHuntId]||null:null}
 export function selectHuntDestination(save,id){const q=viewportContract(save,id);if(!q)return null;if(q.destination)return q.destination;const kind=q.domain?'persistent-domain':q.kind==='trial'?'temporary-arena':q.kind==='tracking'?'existing-dungeon':'ordinary-overworld';return q.destination={version:1,kind,target:{...q.target},selectionSeed:hashSeed(`${save.seed}:hunt-destination:v1:${q.id}`),arenaId:kind==='temporary-arena'?huntInstanceId(save,q.id):null,status:'selected',fallbackReason:null}}
 export function ordinaryHuntSuitability(map,contract){if(!map||!contract)return{ok:false,reason:'missing-region'};if(map.settlement)return{ok:false,reason:'protected-settlement'};const width=map.width||32,height=map.height||Math.floor(map.tiles.length/width),objects=map.objects||[],critical=objects.filter(o=>['checkpoint','shrine','viewport','npc','dungeon'].includes(o.kind));for(let n=0;n<width*height;n++){const i=(hashSeed(`${contract.id}:ordinary-site`)+n*17)%(width*height),x=i%width,y=Math.floor(i/width);if(x<4||y<4||x>=width-4||y>=height-4)continue;let clear=true;for(let dy=-2;dy<=2&&clear;dy++)for(let dx=-2;dx<=2;dx++){const t=map.tiles[(y+dy)*width+x+dx];if(!t||t.blocked||['water','dungeonWater','canyon','void'].includes(t.kind)){clear=false;break}}if(clear&&!critical.some(o=>Math.hypot(o.x-x,o.y-y)<4))return{ok:true,x,y,clearance:2}}return{ok:false,reason:'no-safe-combat-clearing'}}
-export function resolveHuntDestination(save,id,map){const q=viewportContract(save,id),d=selectHuntDestination(save,id);if(!q||!d)return null;if(d.status==='resolved')return d;if(d.kind==='ordinary-overworld'){const site=ordinaryHuntSuitability(map,q);if(site.ok)Object.assign(d,{status:'resolved',site});else Object.assign(d,{kind:'temporary-arena',arenaId:huntInstanceId(save,q.id),status:'resolved',fallbackReason:site.reason})}else if(d.kind==='existing-dungeon'){const entrance=(map?.objects||[]).filter(o=>o.kind==='dungeon').sort((a,b)=>String(a.id).localeCompare(String(b.id)))[0];if(entrance)Object.assign(d,{status:'resolved',entranceId:entrance.id});else Object.assign(d,{kind:'temporary-arena',arenaId:huntInstanceId(save,q.id),status:'resolved',fallbackReason:'no-existing-dungeon'})}else d.status='resolved';return d}
+export function resolveHuntDestination(save,id,map){const q=viewportContract(save,id),d=selectHuntDestination(save,id);if(!q||!d)return null;if(d.status==='resolved')return d;if(d.kind==='ordinary-overworld'&&q.targetKind==='vesperwing'&&map?.settlement){Object.assign(d,{status:'resolved',site:{x:23,y:16}});return d}/* release 132: the Vesperwing is a fixed elite at 5,-2; a town standing there no longer trades it for an arena */if(d.kind==='ordinary-overworld'){const site=ordinaryHuntSuitability(map,q);if(site.ok)Object.assign(d,{status:'resolved',site});else Object.assign(d,{kind:'temporary-arena',arenaId:huntInstanceId(save,q.id),status:'resolved',fallbackReason:site.reason})}else if(d.kind==='existing-dungeon'){const entrance=(map?.objects||[]).filter(o=>o.kind==='dungeon').sort((a,b)=>String(a.id).localeCompare(String(b.id)))[0];if(entrance)Object.assign(d,{status:'resolved',entranceId:entrance.id});else Object.assign(d,{kind:'temporary-arena',arenaId:huntInstanceId(save,q.id),status:'resolved',fallbackReason:'no-existing-dungeon'})}else d.status='resolved';return d}
 export function huntIntegrationDiagnostics(save){const v=ensureViewportState(save),destinations=Object.values(v.contracts).filter(q=>q.destination).map(q=>({id:q.id,kind:q.destination.kind,status:q.destination.status,fallbackReason:q.destination.fallbackReason||null}));return{destinations,temporaryInstances:Object.values(v.instances).filter(i=>!i.completed).length,completedInstances:Object.values(v.instances).filter(i=>i.completed).length,persistentDomains:Object.keys(v.domains).length}}
 export function acceptViewportHunt(save,id){const v=ensureViewportState(save),q=v.contracts[id];if(!q||!['available','deferred','accepted','tracking','target-located'].includes(q.status))return{ok:false,message:'That Viewport record cannot be accepted.'};if(v.activeHuntId&&v.activeHuntId!==id){const prior=v.contracts[v.activeHuntId];if(prior&&['accepted','tracking','target-located'].includes(prior.status))prior.status='deferred'}v.activeHuntId=id;q.status=q.kind==='tracking'?'tracking':'accepted';q.acceptedAt=Object.keys(save.explored||{}).length;selectHuntDestination(save,id);return{ok:true,message:`${q.title} accepted. Viewport guidance marks the ${q.kind==='tracking'?'first search region':'known approach'} without disturbing your manual waypoint.`,contract:q}}
 export function deferViewportHunt(save,id){const v=ensureViewportState(save),q=v.contracts[id];if(!q)return false;q.status='deferred';if(v.activeHuntId===id)v.activeHuntId=null;return true}
@@ -55,3 +55,55 @@ export function completeHuntInstance(save,id){const i=ensureViewportState(save).
 export function cleanupHuntInstance(save,id){for(const key of Object.keys(save.session?.areas||{}))if(key.startsWith(id))delete save.session.areas[key];if(save.session?.activeDungeonId===id)save.session.activeDungeonId=null;return true}
 
 export function recordPeoplePlace(save,id,record){save.codex.peoplePlaces||={};const old=save.codex.peoplePlaces[id]||{};save.codex.peoplePlaces[id]={...old,...record,id,facts:[...new Set([...(old.facts||[]),...(record.facts||[])])].slice(-6),crossRefs:[...new Set([...(old.crossRefs||[]),...(record.crossRefs||[])])].slice(-6)};return save.codex.peoplePlaces[id]}
+
+// ---------------------------------------------------------------- the rolling hunt board (release 132)
+// Viewport keeps watch: as the Wayfarer explores, new threats enter the Corridor and are posted as hunts. Each posting
+// is either a new Foundry lifeform (a creature composed from the Foundry's bodies, movements, attacks and weaknesses,
+// stored whole in the contract) or a bounty on a pack creature's boss form. Up to BOARD.open generated hunts are
+// offered at once; one is posted every BOARD.everySections newly explored sections; an untaken posting lapses after
+// BOARD.lapseSections. State: save.viewport.board (additive).
+export const HUNT_FOUNDRY = { hp: 120, hpPerLevel: 18, damage: 8, damagePerLevel: .8 };
+export const BOARD = { open: 3, everySections: 6, lapseSections: 45, distance: [4, 9], foundryShare: .55, firstAfter: 3 };
+const BOUNTY_TITLES = ['Bounty: {name}', 'A {name} Gone Wrong', 'The {name} Problem', 'Marked: {name}'];
+const FOUNDRY_TITLES = ['Arrival: {name}', 'Something New: {name}', 'Uncharted: {name}', 'The {name} Sighting'];
+export function ensureViewportBoard(save) { const v = ensureViewportState(save), b = v.board || {}; v.board = { v: 1, seq: Math.max(0, Number(b.seq) || 0), lastPostAt: Number.isFinite(b.lastPostAt) ? b.lastPostAt : null }; return v.board; }
+const exploredCount = (save) => Object.keys(save.explored || {}).length;
+const openStatuses = ['available', 'deferred', 'accepted', 'tracking', 'target-located'];
+// `opts`: { packKinds: [{id,name}], level, avoid(rx,ry) -> true for sections that must not host a hunt (towns, origin) }.
+export function refreshViewportBoard(save, rx, ry, opts = {}) {
+  const b = ensureViewportBoard(save), v = save.viewport, now = exploredCount(save), posted = []; // ensureViewportState rebuilds save.viewport, so take it after
+  // Lapse untaken postings.
+  for (const q of Object.values(v.contracts)) if (q.generated && ['available', 'deferred'].includes(q.status) && now - (q.postedAt || 0) >= BOARD.lapseSections) { q.status = 'archived'; q.lapsed = true; if (!v.archive.includes(q.id)) v.archive.push(q.id); }
+  const open = Object.values(v.contracts).filter((q) => q.generated && openStatuses.includes(q.status)).length;
+  if (b.lastPostAt === null) b.lastPostAt = now - BOARD.everySections + BOARD.firstAfter;
+  if (open >= BOARD.open || now - b.lastPostAt < BOARD.everySections) return posted;
+  const taken = new Set(Object.values(v.contracts).filter((q) => openStatuses.includes(q.status) && q.target).map((q) => `${q.target.rx},${q.target.ry}`));
+  const seq = b.seq, h = hashSeed(`${save.seed}:viewport-board:v1:${seq}`);
+  let target = null;
+  for (let k = 0; k < 24 && !target; k++) {
+    const hk = hashSeed(`${save.seed}:viewport-board:v1:${seq}:${k}`), dist = BOARD.distance[0] + hk % (BOARD.distance[1] - BOARD.distance[0] + 1), a = ((hk >>> 8) % 360) * Math.PI / 180;
+    const t = { rx: rx + Math.round(Math.cos(a) * dist), ry: ry + Math.round(Math.sin(a) * dist) };
+    if (Math.abs(t.rx) + Math.abs(t.ry) >= 3 && !taken.has(`${t.rx},${t.ry}`) && !(opts.avoid && opts.avoid(t.rx, t.ry))) target = t;
+  }
+  if (!target) return posted;
+  const level = Math.max(1, Number(opts.level) || Number(save.level) || 1), id = `viewport-gen-${seq}`, foundry = (h % 100) / 100 < BOARD.foundryShare || !opts.packKinds?.length;
+  let q;
+  if (foundry) {
+    const c = foundryCandidate(save.seed, target.rx, target.ry, `board${seq}`);
+    if (c.role === 'passive') Object.assign(c, { role: 'hostile', baseKind: 'latticeHunter', attack: attacks[(h >>> 7) % attacks.length] });
+    q = { id, kind: 'direct', generated: true, foundry: c, title: pick(FOUNDRY_TITLES, h).replace('{name}', c.name), summary: `A ${c.name} has entered the Corridor near ${target.rx},${target.ry}: ${c.body}, ${c.movement}, ${c.attack === 'none' ? 'unarmed' : c.attack.replace(/([A-Z])/g, ' $1').toLowerCase()}. Weak to ${c.weakness.replace(/([A-Z])/g, ' $1').toLowerCase()}.`, targetKind: c.baseKind };
+    v.recent.push({ id: `arrival:${id}`, title: `${c.name} entered the Corridor`, text: `Viewport records a new ${c.role === 'boss' ? 'apex' : ''} lifeform near ${target.rx},${target.ry}.`, kind: 'arrival' });
+  } else {
+    const pk = opts.packKinds[(h >>> 5) % opts.packKinds.length];
+    q = { id, kind: 'direct', generated: true, title: pick(BOUNTY_TITLES, h).replace('{name}', pk.name), summary: `A swollen ${pk.name} has claimed ground near ${target.rx},${target.ry}. Hunt its boss form.`, targetKind: pk.id, packBounty: true };
+  }
+  Object.assign(q, { status: 'available', target, postedAt: now, lifecycle: 'persistent', progress: {}, reward: { marks: 25 + 5 * level + (q.foundry?.role === 'boss' ? 30 : 0), ...(h & 1 ? { weaponSphere: 1 } : { armorSphere: 1 }), ...((h >>> 3) % 3 === 0 ? { draughts: 1 } : {}) } });
+  v.contracts[id] = q; v.read = false; b.seq = seq + 1; b.lastPostAt = now; v.recent = v.recent.slice(-24); posted.push(q);
+  return posted;
+}
+function pick(list, h) { return list[(h >>> 11) % list.length]; }
+// The spawn for a generated hunt's target (overworld site or arena), tagged so its defeat completes the hunt.
+export function generatedHuntSpawn(q, at, idPrefix = 'viewport-target') {
+  if (q.foundry) { const c = q.foundry; return { ...c, id: `${idPrefix}:${q.id}`, x: at.x, y: at.y, kind: c.baseKind, boss: c.role === 'boss', foundryId: `${c.id}:${q.id}`, foundryName: c.name, foundryRole: c.role, foundryModules: [c.body, c.movement, c.attack, c.weakness, c.ecology], viewportHuntId: q.id, worldBoss: false }; }
+  return { id: `${idPrefix}:${q.id}`, kind: q.targetKind, x: at.x, y: at.y, boss: true, traits: ['vital'], viewportHuntId: q.id, worldBoss: false };
+}
