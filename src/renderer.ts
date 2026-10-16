@@ -233,6 +233,8 @@ const COLORS = {
   archiveBehemoth: ["#6b3d78", "#1d1527", "#f0a052"],
   vesperwing:["#8b4b35","#251d1d","#ed8a45"],gravitantBell:["#54726e","#252b2a","#c0a66b"],mireApostle:["#71804d","#25291f","#b6d05c"],knifeChoir:["#675174","#211b29","#c28fe0"],
   npc: ["#9b815d", "#453832", "#879b8d"],
+  villager: ["#a88d62", "#4d5a48", "#d9c9a0"],
+  militia: ["#8a7a5c", "#3f4a5a", "#c9b27a"],
   shipwright: ["#4f7f9a", "#3a2c22", "#d8c39a"],
   shrine: ["#557b74", "#263c3b", "#b7c1aa"],
   checkpoint: ["#668b91", "#304448", "#c7b887"],
@@ -432,12 +434,13 @@ function actor(
     rect(p[0], 0.17, -0.83, 0.08, 0.2);
     rect(p[2], -0.08, -0.65, 0.04, 0.04);
     rect(p[1], -0.28, -0.28, 0.12, 0.25);
-  } else if (kind === "npc" || kind === "shipwright") {
+  } else if (kind === "npc" || kind === "shipwright" || kind === "villager" || kind === "militia") {
     rect(p[1], -0.22, -0.58, 0.44, 0.56);
     rect(p[0], -0.18, -0.75, 0.36, 0.23);
     rect(p[2], -0.1, -0.68, 0.04, 0.04);
     rect(p[2], 0.06, -0.68, 0.04, 0.04);
     rect(p[0], -0.29, -0.48, 0.1, 0.38);
+    if (kind === "militia") { rect(p[2], 0.3, -0.95, 0.06, 0.92); rect("#d8d2c4", 0.27, -1.02, 0.12, 0.1); rect(p[2], -0.22, -0.4, 0.44, 0.08); }
   } else {
     rect(p[1], -0.25, -0.42, 0.5, 0.42);
     rect(p[0], -0.18, -0.66, 0.36, 0.3);
@@ -632,6 +635,7 @@ export function render(ctx, g, w, h, now) {
           if (o.kind === "wayfindingCue") waymark(ctx,o,s);
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
+          else if (o.kind === "villager") { actor(ctx, o.x, o.y, s, o.guard ? "militia" : "villager", "down", 0, "idle"); ctx.fillStyle = "#9cc8b5"; ctx.beginPath(); ctx.arc((o.x + 0.5) * s, o.y * s - 6, 3, 0, 7); ctx.fill(); }
           else if (o.kind === "npc") {
             const n = g.save.consequences.npcs[o.id],
               cx = (o.x + 0.5) * s,
