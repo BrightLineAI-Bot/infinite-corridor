@@ -63,9 +63,22 @@ export function beginArrayRun(save, returnPoint) {
   for (const key of Object.keys(save.session?.areas || {})) if (key.startsWith("far-array:")) delete save.session.areas[key];
   for (const key of Object.keys(save.consequences?.dungeons || {})) if (key.startsWith("far-array:")) delete save.consequences.dungeons[key];
   f.runs++;
-  const id = `far-array:${save.seed}:run${f.runs}`, listener = gateOpen(f);
-  f.activeRun = { id, gate: f.gate, listener, returnPoint: { ...returnPoint } };
+  // Each run is a different dungeon (release 140): an Underlands expedition or one of the five deep archetypes.
+  const listener = gateOpen(f), kind = RUN_KINDS[hashSeed(`${save.seed}:far-array:kind:${f.runs}`) % RUN_KINDS.length];
+  const id = `far-array:${save.seed}:run${f.runs}${kind === "expedition" ? "" : `:deep-v2:${kind}`}`;
+  f.activeRun = { id, gate: f.gate, listener, kind, returnPoint: { ...returnPoint } };
   return f.activeRun;
+}
+export const RUN_KINDS = ["expedition", "threefold", "descent", "loop", "flooded", "fortress"];
+// What the run is called, by dungeon kind, so every run reads as part of the Array.
+export const RUN_NOUNS = { expedition: "Chamber", threefold: "Threefold Lair", descent: "Descent", loop: "Circuit", flooded: "Grotto", fortress: "Keep" };
+export function runName(run, gate) { const noun = RUN_NOUNS[run?.kind] || "Chamber"; return run?.listener ? `The Listener's ${noun}` : `The Far Array · ${noun} · Gate ${gate}`; }
+// Relay pylons that mark a run as the Array; inspecting one replays a line of the far transmission.
+export const PYLON_LINES = ["…carrier found. The line runs under every section you have walked…", "…it learns a road for every line opened, a wall for every line closed…", "…signal steady. Something on the line is listening back…", "…the Gate remembers each piece you give it…", "…come alone, Wayfarer. It already knows your step…"];
+export function arrayPylons(map, runId, width) {
+  const open = (map.tiles || []).filter((t) => !t.blocked && !t.environment && !["abyss", "lava", "dungeonWater", "bridge"].includes(t.kind)), taken = new Set((map.objects || []).map((o) => `${o.x},${o.y}`)), out = [];
+  for (let i = 0; i < 3 && open.length; i++) { const t = open[hashSeed(`${runId}:pylon:${i}`) % open.length]; if (taken.has(`${t.x},${t.y}`)) continue; taken.add(`${t.x},${t.y}`); out.push({ id: `array-pylon-${i}`, kind: "arrayPylon", name: "Array Pylon", x: t.x, y: t.y, state: "restore", actions: ["inspect"], line: PYLON_LINES[hashSeed(`${runId}:line:${i}`) % PYLON_LINES.length] }); }
+  return out;
 }
 export const isArrayRun = (id) => String(id || "").startsWith("far-array:");
 

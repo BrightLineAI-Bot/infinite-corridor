@@ -722,7 +722,7 @@ export function render(ctx, g, w, h, now) {
             actor(ctx, o.x, o.y, s, "shipwright", "down", 0, "idle");
             ctx.fillStyle = "#e2d5ba"; ctx.font = "10px monospace"; ctx.textAlign = "center";
             ctx.fillText("SHIPWRIGHT", (o.x + .5) * s, (o.y - .3) * s); ctx.textAlign = "start";
-          } else if (o.kind === "relayNode") {
+          } else if (o.kind === "relayNode" || o.kind === "arrayPylon") {
             drawRelayNode(ctx, o, s, performance.now());
           } else if (o.kind === "relayTerminal") {
             actor(ctx, o.x, o.y, s, "shrine");
