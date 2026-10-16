@@ -2116,7 +2116,7 @@ export class Game {
     if(o.kind==='arrayMouth'){
       const run=beginArrayRun(this.save,{rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y});
       this.save.session.dungeonReturn={...run.returnPoint};this.save.session.activeDungeonId=run.id;this.save.session.activeDungeonLevelId=null;pinDungeonLayout(this.save,run.id);const preview=generatePinnedDungeon(this.save,run.id);if(preview.multiLevel)this.save.session.activeDungeonLevelId=preview.levels[0].id;const history=dungeonHistory(this.save,run.id);history.visits++;history.visitOpen=true;history.relayNode=false;
-      this.loadArea('dungeon');this.player.x=this.map.entry?.x??4;this.player.y=this.map.entry?.y??5;this.message=run.listener?'The Gate stands whole. Somewhere below, the Listener waits.':`The line pulls you under. Gate ${run.gate}: ${this.save.farArray.pieces}/${piecesNeeded(run.gate)} pieces.`;this.sync();return{ok:true,message:this.message};
+      this.loadArea('dungeon');this.player.x=this.map.entry?.x??4;this.player.y=this.map.entry?.y??5;relocateIfStranded(this.player,this.map,mapWidth(this.map,'dungeon'));this.message=run.listener?'The Gate stands whole. Somewhere below, the Listener waits.':`The line pulls you under. Gate ${run.gate}: ${this.save.farArray.pieces}/${piecesNeeded(run.gate)} pieces.`;this.sync();return{ok:true,message:this.message};
     }
     if(o.kind==='huntInstance'){
       const instance=beginHuntInstance(this.save,o.huntId,{rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y});
@@ -2130,14 +2130,16 @@ export class Game {
       if (!progress.activatedAnchorIds.includes(o.id)) progress.activatedAnchorIds.push(o.id);
       this.message = `${o.name || "Deep anchor"} fixed as the expedition recovery point.`; this.sync(); return { ok: true, message: this.message };
     }
+    // Release 151: a level's fixed landing point (toX/toY) can sit in a wall on some generated floors; every move to a
+    // landing point now steps onto the nearest open ground, as loading an area and recovering after a fall already do.
     if(o.kind==="deepTransition"){
-      const progress=deepDungeonProgress(this.save,this.areaId());this.snapshotArea();this.save.session.activeDungeonLevelId=o.toLevelId;progress.currentLevelId=o.toLevelId;if(!progress.discoveredLevelIds.includes(o.toLevelId))progress.discoveredLevelIds.push(o.toLevelId);this.loadArea("dungeon",false);this.player.x=o.toX;this.player.y=o.toY;this.projectiles=[];this.effects=[];this.message=`${this.map.levelName||o.toLevelId} reached.`;this.sync();return{ok:true,message:this.message};
+      const progress=deepDungeonProgress(this.save,this.areaId());this.snapshotArea();this.save.session.activeDungeonLevelId=o.toLevelId;progress.currentLevelId=o.toLevelId;if(!progress.discoveredLevelIds.includes(o.toLevelId))progress.discoveredLevelIds.push(o.toLevelId);this.loadArea("dungeon",false);this.player.x=o.toX;this.player.y=o.toY;relocateIfStranded(this.player,this.map,mapWidth(this.map,"dungeon"));this.projectiles=[];this.effects=[];this.message=`${this.map.levelName||o.toLevelId} reached.`;this.sync();return{ok:true,message:this.message};
     }
     if(o.kind==="deepShortcut"){
       const progress=deepDungeonProgress(this.save,this.areaId()),ready=progress.completedObjectiveIds.includes(o.unlockObjectiveId);if(!ready)return{ok:false,message:this.message=`${o.name} has no visible seam yet.`};if(!progress.openedShortcutIds.includes(o.id))progress.openedShortcutIds.push(o.id);applyDeepDungeonProgress(this.save,this.areaId(),this.map);this.defeatNotice={title:"SHORTCUT OPENED",detail:`${o.name} · a physical route returns toward the hub`,kind:"discovery"};this.message=`${o.name} opens. The concealed corridor now joins the explored floor.`;this.sync();return{ok:true,message:this.message};
     }
     if(o.kind==="deepPortal"){
-      const progress=deepDungeonProgress(this.save,this.areaId()),ready=o.unlockOnCompletion?progress.completed:!o.unlockObjectiveId||progress.completedObjectiveIds.includes(o.unlockObjectiveId);if(!ready)return{ok:false,message:this.message=o.unlockOnCompletion?"The return lattice is silent while the final guardian lives.":"The return lattice has not awakened."};if(o.targetLevelId&&o.targetLevelId!==(this.map.levelId||"root")){this.snapshotArea();this.save.session.activeDungeonLevelId=o.targetLevelId;progress.currentLevelId=o.targetLevelId;if(!progress.discoveredLevelIds.includes(o.targetLevelId))progress.discoveredLevelIds.push(o.targetLevelId);this.loadArea("dungeon",false);}this.player.x=o.toX;this.player.y=o.toY;this.projectiles=[];this.effects=[];this.message=o.unlockOnCompletion?"The final return lattice carries you back to the expedition hub.":"The return portal folds the cleared route back to the hub.";this.sync();return{ok:true,message:this.message};
+      const progress=deepDungeonProgress(this.save,this.areaId()),ready=o.unlockOnCompletion?progress.completed:!o.unlockObjectiveId||progress.completedObjectiveIds.includes(o.unlockObjectiveId);if(!ready)return{ok:false,message:this.message=o.unlockOnCompletion?"The return lattice is silent while the final guardian lives.":"The return lattice has not awakened."};if(o.targetLevelId&&o.targetLevelId!==(this.map.levelId||"root")){this.snapshotArea();this.save.session.activeDungeonLevelId=o.targetLevelId;progress.currentLevelId=o.targetLevelId;if(!progress.discoveredLevelIds.includes(o.targetLevelId))progress.discoveredLevelIds.push(o.targetLevelId);this.loadArea("dungeon",false);}this.player.x=o.toX;this.player.y=o.toY;relocateIfStranded(this.player,this.map,mapWidth(this.map,"dungeon"));this.projectiles=[];this.effects=[];this.message=o.unlockOnCompletion?"The final return lattice carries you back to the expedition hub.":"The return portal folds the cleared route back to the hub.";this.sync();return{ok:true,message:this.message};
     }
     if (o.kind === "deepMechanism") {
       const progress = deepDungeonProgress(this.save, this.areaId());
@@ -2161,7 +2163,7 @@ export class Game {
     }
     if (o.kind === "deepReturn") {
       if (o.state !== "active") return { ok: false, message: (this.message = "The return lattice is dormant. Its wing guardian still holds the seal.") };
-      this.player.x = o.toX; this.player.y = o.toY; this.projectiles = []; this.effects = []; this.traversal = null;
+      this.player.x = o.toX; this.player.y = o.toY; relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.projectiles = []; this.effects = []; this.traversal = null;
       this.message = "The cleared wing folds back into the central chamber.";
       this.sync();
       return { ok: true, message: this.message };
@@ -2204,7 +2206,7 @@ export class Game {
     }
     if (o.kind === "tree" && chosen === "cut") { applyFallenTreeCrossings(this.map); const n = woodFor(o), total = addWood(this.save, n); this.message = `${this.message} +${n} wood (${total}).`; r.message = this.message; }
     if(r.transition==="elitePortal"){
-      this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=`elite-portal:${this.save.seed}:knife-choir`;const h=dungeonHistory(this.save,this.save.session.activeDungeonId);h.visits++;h.visitOpen=true;this.loadArea('dungeon');this.player.x=4;this.player.y=5;
+      this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=`elite-portal:${this.save.seed}:knife-choir`;const h=dungeonHistory(this.save,this.save.session.activeDungeonId);h.visits++;h.visitOpen=true;this.loadArea('dungeon');this.player.x=4;this.player.y=5;relocateIfStranded(this.player,this.map,mapWidth(this.map,'dungeon'));
     } else if(r.transition==="displacement"){
       this.startDisplacement(o,false);
     } else if (r.transition === "dungeon") {
@@ -2230,6 +2232,7 @@ export class Game {
       this.loadArea("dungeon");
       this.player.x = this.map.entry?.x ?? 4;
       this.player.y = this.map.entry?.y ?? 5;
+      relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon"));
     } else if (r.transition === "exit") {
       if(this.save.session.activeDisplacement){if(this.enemies.some(e=>!e.dead&&isCrossingGuardian(e))){this.message="The Mislaid Threshold remains sealed while its guardian lives.";return{ok:false,message:this.message}}const d=this.save.session.activeDisplacement;this.snapshotArea();this.rx=d.destination.rx;this.ry=d.destination.ry;this.save.session.displacementJourney={source:d.source,destination:d.destination};this.save.session.activeDisplacement=null;this.save.session.activeDungeonId=null;this.loadArea("overworld",false);this.player.x=16;this.player.y=16;relocateIfStranded(this.player,this.map,mapWidth(this.map,'overworld'));this.message="The completed crossing releases you onto stable ground in a distant, uncharted Corridor. Find a physical Wayglass to restore travel."}else this.leaveDungeon("You emerge at the dungeon entrance.");
     } else if (r.transition === "checkpoint") {
