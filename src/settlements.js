@@ -2,8 +2,8 @@
 // The world is split into HAMLET.cell × HAMLET.cell blocks of sections; each block nominates one section, and most
 // nominated sections that have a flat, dry patch of ground grow a hamlet there. A section explored before release 109
 // keeps no hamlet (its atlas entry carries no hamletVersion), so existing journeys only find hamlets in new ground.
-import { hashSeed, rng, pick } from "./random.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { LETHAL_KINDS } from "./landscape.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+import { hashSeed, rng, pick } from "./random.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { LETHAL_KINDS } from "./landscape.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
 
 // Version 1 (release 111) built plain huts; version 2 (release 112) builds from the world's own shelter families and
 // ruin-district styles. A section keeps the version its atlas entry was pinned to; placement and names are shared.

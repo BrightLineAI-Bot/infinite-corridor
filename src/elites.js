@@ -1,4 +1,4 @@
-import{hashSeed}from'./random.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94';
+import{hashSeed}from'./random.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2';
 export const ELITE_DEFINITIONS={
  vesperwing:{id:'vesperwing',name:'Vesperwing',epithet:'The Ashen Meridian',baseForm:'veilMoth',movement:'hover',stableModules:['dive','ranged'],variantModules:['swift','farcasting','orbital'],threatCost:8,context:'marked',reward:{marks:35,xp:55,material:'weaponSphere'},lore:'Its ruined wings measure the Corridor by the shadows they erase.'},
  gravitantBell:{id:'gravitantBell',name:'Gravitant Bell',epithet:'The Weight Below',baseForm:'rootBrute',movement:'hover',stableModules:['gravity','radialPulse'],variantModules:['plated','orbital','stun'],threatCost:10,context:'guardian',reward:{marks:42,xp:60,material:'armorSphere'},lore:'A fallen transit bell still calls every loose thing toward its mouth.'},

@@ -1,12 +1,12 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { vendorShop, buyFromVendor } from "./game.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { CREATURE_TRAITS } from "./combat.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { drawPackPortrait } from "./monster-render.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { landscapeAtlasColor } from "./landscape-render.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { hashSeed } from "./random.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { vendorShop, buyFromVendor } from "./game.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { CREATURE_TRAITS } from "./combat.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { drawPackPortrait } from "./monster-render.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { landscapeAtlasColor } from "./landscape-render.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { hashSeed } from "./random.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -157,7 +157,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
 import {
   Game,
   actionReadiness,
@@ -166,19 +166,19 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { createInput } from "./input.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { STATS } from "./types.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { worldStewardReport } from "./story.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+} from "./game.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { createInput } from "./input.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { STATS } from "./types.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { worldStewardReport } from "./story.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -189,7 +189,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+} from "./world.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -886,7 +886,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}

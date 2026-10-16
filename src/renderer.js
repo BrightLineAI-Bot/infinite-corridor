@@ -1,12 +1,12 @@
-import { enemyMeleeGeometry } from "./combat.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { SEA_CREATURES } from "./sea-creatures.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { liftAt } from "./landscape.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { drawRelayNode } from "./relay-network.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { structureOccupancy } from "./world.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+import { enemyMeleeGeometry } from "./combat.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { SEA_CREATURES } from "./sea-creatures.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { liftAt } from "./landscape.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { drawRelayNode } from "./relay-network.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { structureOccupancy } from "./world.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_8132fb7c9d844d6f9cd1dbc0_42f10dec639619a2";
 
 export function cameraTransform(
   g,
