@@ -717,6 +717,14 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "diveExit") { // the surface line: a rope rising out of view
             ctx.strokeStyle = "#d9c39a"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.moveTo((o.x + .5) * s, (o.y + .8) * s); ctx.quadraticCurveTo((o.x + .7) * s, (o.y - 1) * s, (o.x + .45) * s, (o.y - 3) * s); ctx.stroke();
             ctx.fillStyle = "#e2d5ba"; ctx.font = "10px monospace"; ctx.textAlign = "center"; ctx.fillText("SURFACE", (o.x + .5) * s, (o.y + 1.2) * s); ctx.textAlign = "start";
+          } else if (o.kind === "shipwreck") { // a broken hull heeled over on the sand, ribs showing
+            const bx = (o.x + .5) * s, by = (o.y + .6) * s, spent = o.state === "used";
+            ctx.save(); ctx.translate(bx, by); ctx.rotate(-.35);
+            ctx.fillStyle = spent ? "#4a3a2c" : "#5d4330"; ctx.beginPath(); ctx.moveTo(-s * 1.6, -s * .1); ctx.quadraticCurveTo(0, s * .9, s * 1.5, -s * .2); ctx.lineTo(s * 1.1, -s * .45); ctx.quadraticCurveTo(0, s * .25, -s * 1.2, -s * .4); ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = "#d8c7a6"; ctx.lineWidth = Math.max(1.5, s * .06); for (let i = -3; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(i * s * .35, -s * .35); ctx.quadraticCurveTo(i * s * .38, -s * .9, i * s * .3, -s * 1.1); ctx.stroke(); }
+            ctx.strokeStyle = "#3a2c22"; ctx.lineWidth = Math.max(2, s * .09); ctx.beginPath(); ctx.moveTo(s * .2, -s * .3); ctx.lineTo(s * .55, -s * 1.7); ctx.stroke();
+            ctx.restore();
+            if (!spent) { ctx.fillStyle = "#e2d5ba"; ctx.font = "10px monospace"; ctx.textAlign = "center"; ctx.fillText("WRECK", bx, by - s * 1.4); ctx.textAlign = "start"; }
           } else if (o.kind === "skiff") {
             drawSkiff(ctx, o.x, o.y, s, "right", performance.now());
           } else if (o.kind === "shipwright") {
@@ -851,6 +859,16 @@ export function render(ctx, g, w, h, now) {
     for (let i = 0; i < 4; i++) { const x0 = (l + ((i * 7 + now / 900) % (r - l + 6)) - 3) * s; ctx.fillStyle = "rgba(200,240,255,.06)"; ctx.beginPath(); ctx.moveTo(x0, t * s); ctx.lineTo(x0 + s * 1.5, t * s); ctx.lineTo(x0 + s * 4, b * s); ctx.lineTo(x0 + s * 2, b * s); ctx.fill(); }
   }
   // Stormkraken ink (W4): the sea goes dark beyond a small circle around the Wayfarer.
+  if (g.area === "overworld" && g.seaHazards?.fog?.length) {
+    // Fog banks (release 156): pale drifting banks; inside one, the world closes in to a few tiles.
+    const fogged = g.seaHazards.fog.some((f) => Math.hypot(p.x + .5 - f.x, p.y + .7 - f.y) < f.radius);
+    if (!fogged) for (const f of g.seaHazards.fog) { const gr = ctx.createRadialGradient(f.x * s, f.y * s, 0, f.x * s, f.y * s, f.radius * s); gr.addColorStop(0, "#d8e2e8aa"); gr.addColorStop(.7, "#d8e2e855"); gr.addColorStop(1, "#d8e2e800"); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(f.x * s, f.y * s, f.radius * s, 0, 7); ctx.fill(); }
+    if (fogged) {
+      const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * 1.6, px, py, s * 3.6);
+      gr.addColorStop(0, "#cfd9df00"); gr.addColorStop(1, "#cfd9dff2"); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
+    }
+  }
+  if (g.area === "overworld" && g.storm) { ctx.fillStyle = `rgba(16,24,38,${.28 * g.storm.strength})`; ctx.fillRect((p.x + .5) * s - w, (p.y + .6) * s - h, w * 2, h * 2); }
   if (g.area === "overworld" && now < (g.inkUntil || 0)) {
     const fade = Math.min(1, (g.inkUntil - now) / 600), px = (p.x + .5) * s, py = (p.y + .6) * s, grad = ctx.createRadialGradient(px, py, s * 1.4, px, py, s * 4.5);
     grad.addColorStop(0, "rgba(6,10,18,0)"); grad.addColorStop(1, `rgba(6,10,18,${.92 * fade})`);
@@ -986,6 +1004,21 @@ function drawSeaHazards(ctx, sea, s, now, l, t, r, b, map) {
       for (let k = 0; k <= 30; k++) { const f = k / 30, rad = v.radius * s * (1 - f * .92), a = arm * Math.PI / 2 + v.dir * (f * 5.5 + time * 2.2); const px = cx + Math.cos(a) * rad, py = cy + Math.sin(a) * rad; k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
       ctx.stroke();
     }
+  }
+  if (sea.current) {
+    const c = sea.current, nx = -c.dy, ny = c.dx;
+    ctx.strokeStyle = "#bfe6ff55"; ctx.lineWidth = Math.max(1, s * .05);
+    for (let lane = -1; lane <= 1; lane++) for (let k = -26; k < 26; k += 3) {
+      const f = ((time * 1.7 + k + lane * 1.3) % 52 + 52) % 52 - 26, ox = 16 + nx * (c.offset + lane * c.width / 3) + c.dx * f, oy = 16 + ny * (c.offset + lane * c.width / 3) + c.dy * f;
+      if (!wet(ox, oy) || !wet(ox + c.dx * .9, oy + c.dy * .9) || ox < l - 1 || ox > r + 1 || oy < t - 1 || oy > b + 1) continue;
+      ctx.beginPath(); ctx.moveTo(ox * s, oy * s); ctx.lineTo((ox + c.dx * .9) * s, (oy + c.dy * .9) * s); ctx.stroke();
+    }
+  }
+  for (const q of sea.reefs || []) {
+    if (q.x + q.radius < l || q.x - q.radius > r || q.y + q.radius < t || q.y - q.radius > b) continue;
+    for (let i = 0; i < 26; i++) { const a = i * 2.39996 + (q.shape % 7), d = q.radius * Math.sqrt((i + .5) / 26), rad = s * (.08 + ((q.shape >> (i % 20)) & 3) * .04);
+      ctx.fillStyle = ["#d9776a88", "#e0a35a88", "#c46a9a88", "#f0d2a077"][(q.shape >> (i % 20)) & 3]; ctx.beginPath(); ctx.arc((q.x + Math.cos(a) * d) * s, (q.y + Math.sin(a) * d) * s, rad, 0, 7); ctx.fill(); }
+    ctx.strokeStyle = "#f6e7d266"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(q.x * s, q.y * s, q.radius * s, 0, 7); ctx.stroke();
   }
   const w = sea.wave;
   if (w) {

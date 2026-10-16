@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Release 156 — more of the sea.
+  - Lighthouse Buoys: moored rafts with a Wayglass, rest points far from land. Your skiff is always tied alongside when you land or wake there.
+  - Shipwrecks: on sandbars, each salvaged once for marks, wood and a supply.
+  - Ice floes: islands of packed ice in cold seas that you can land on.
+  - Ocean currents: streaming lanes that carry the skiff along.
+  - Reefs: coral patches that scrape the hull while you sail over them.
+  - Fog banks: they drift across the sea and close your sight to a few tiles.
+  - Storm fronts: they travel across many sections in real time. Inside one, rain falls, the sky darkens, wind drives the skiff, and rogue waves come every few seconds.
+
+  Buoys, wrecks and floes appear only in sea first found from now on. Currents, reefs, fog and storms appear on any open sea.
 - Release 155 — Journal → Active quests lists your hunts, Quillon's errand, the Questing Beast, the Far Array and other leads with where they are, plus the unfinished challenges you've found; any of them can be set as the compass target. Buttons under the Atlas turn Places, Signals, Objectives and Waypoints on or off.
 - Release 153 — the compass always points to something: the nearest unfinished dungeon, arena or danger you've found, a story destination, or a nearby signal. Tap it to hear what it points at and to step to the next objective. The Atlas frames the compass target in gold and every explored section with an unfinished challenge in dashed violet.
 - Release 152 — open seas. Beyond a buffer of 8 sections around the Refuge, sections that are mostly sea are now open water from edge to edge, with no dry plaza, causeways or walled border. A skiff can sail across any section border where the water runs on, and seas span many sections. Some open-sea sections have nowhere to stand at all. Islands remain: landmarks, dungeons and supply caches sit on islets, shelters keep their own islands, and hamlets in open sea are built on island towns. Sailing into a border of rock runs the skiff aground (you wade ashore and it waits in the last section) or turns it back. Walking into open sea is refused without a boat. New open-sea hazards: maelstroms that drag the skiff into a spiral and batter it at the eye; rogue waves whose foam crest sweeps the section on a cycle and swamps the skiff unless you burst through with a dodge; and, in cold seas, drifting icebergs that crack the hull. A broken skiff leaves you in the water: swim for shore with the Tidemantle, or drown and wake at your last rest point. Near the Refuge the seas stay shoals with causeways, and sections already explored keep their layout.
