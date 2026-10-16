@@ -6,6 +6,12 @@
 //   leap   Breachfin: marks a landing shadow, leaps out in an arc (only hittable while airborne) and crashes down.
 //   hop    Mire Leech (swamps): short hops through bog water, nips on contact.
 //   ambush Bog Lurker (swamps): hidden in the mire, bubbles, then bites and drags the Wayfarer a tile closer.
+// Leviathans (W4, deep ocean only, at most one per section, bosses except the whale):
+//   whale    Greywhale: drifts, harmless until struck; then it dives under the Wayfarer, shows a vast shadow and breaches.
+//   lunge    Tyrant Mosasaur: stalks below (its shadow visible), locks on, lunges across the surface, then lies exposed.
+//   reef     Reef Kraken: raises tentacles (separate, short-lived targets) in marked rings around the Wayfarer.
+//   grab     Abyssal Kraken: marks the Wayfarer, then seizes and drags them toward its maw; heavy hits break the grip.
+//   storm    Stormkraken: a tentacle at a time, and an ink cloud that darkens the sea around the Wayfarer.
 // Every strike is telegraphed first; submerged creatures are hidden and untargetable. Data and pure rules: game.ts
 // supplies the world (water test, hurt, pull) and calls `updateSeaCreature` from its enemy loop.
 import { hashSeed } from "./random.ts";
@@ -13,6 +19,7 @@ import { hashSeed } from "./random.ts";
 export const SEA_HABITATS = {
   open: ["ocean", "deepOcean", "lakeWater"],
   swamp: ["swampWater", "mireWater", "toxicMire", "toxicWater"],
+  deep: ["ocean", "deepOcean"],
 };
 export const SEA_CREATURES = {
   lanceeel: { name: "Lanceeel", habitat: "open", pattern: "line", hp: 26, damage: 9, xp: 14, aggro: 7, telegraph: .9, speed: 7, reach: 8, rest: 2.2, segments: 3, colors: ["#5f8fa8", "#1c3442", "#d6f3ff"] },
@@ -20,6 +27,13 @@ export const SEA_CREATURES = {
   sinewake: { name: "Sinewake Serpent", habitat: "open", pattern: "sine", hp: 55, damage: 11, xp: 24, aggro: 9, speed: 2.2, weave: 3, sway: 2.2, biteAt: .9, rest: 1.6, segments: 7, colors: ["#6b4f8a", "#221832", "#e0c8ff"] },
   breachfin: { name: "Breachfin", habitat: "open", pattern: "leap", hp: 30, damage: 12, xp: 16, aggro: 7, telegraph: .8, air: .9, splash: 1, rest: 1.8, segments: 1, colors: ["#9aa7b5", "#2b3440", "#f4f8ff"] },
   mireLeech: { name: "Mire Leech", habitat: "swamp", pattern: "hop", hp: 14, damage: 4, xp: 6, aggro: 6, hop: .9, every: .7, biteAt: .7, rest: 1, segments: 2, colors: ["#4d4a2a", "#1d1c10", "#c4c27a"] },
+  greywhale: { name: "Greywhale", habitat: "deep", pattern: "whale", leviathan: true, hp: 420, damage: 14, xp: 60, aggro: 12, drift: .6, telegraph: 1.2, push: 1.5, rest: 4, size: 3, segments: 4, colors: ["#7b8a98", "#2c343c", "#e8eef4"] },
+  tyrantMosasaur: { name: "Tyrant Mosasaur", habitat: "deep", pattern: "lunge", leviathan: true, boss: true, hp: 320, damage: 22, xp: 90, aggro: 12, stalk: 2.6, lockAt: 4.5, telegraph: .9, speed: 10, exposed: 1.6, size: 2.2, segments: 5, colors: ["#4b5d4a", "#1a2219", "#e9d38a"] },
+  reefKraken: { name: "Reef Kraken", habitat: "deep", pattern: "reef", leviathan: true, boss: true, hp: 260, damage: 10, xp: 80, aggro: 10, every: 4, telegraph: .9, tentacles: 2, maxTentacles: 3, drift: .5, size: 2.4, segments: 1, colors: ["#a2486a", "#3a1424", "#ffc2d8"] },
+  abyssalKraken: { name: "Abyssal Kraken", habitat: "deep", pattern: "grab", leviathan: true, boss: true, hp: 300, damage: 14, xp: 95, aggro: 9, telegraph: 1, hold: 2.5, drag: 2.2, biteAt: 1.8, breakAt: 25, rest: 3, size: 2.6, segments: 1, colors: ["#2d2350", "#0d0a1c", "#9c8cff"] },
+  stormkraken: { name: "Stormkraken", habitat: "deep", pattern: "storm", leviathan: true, boss: true, hp: 240, damage: 10, xp: 85, aggro: 10, every: 4.5, telegraph: .9, tentacles: 1, maxTentacles: 2, inkEvery: 9, ink: 4, drift: .5, size: 2.3, segments: 1, colors: ["#3c4f63", "#121a24", "#bfe3ff"] },
+  // Raised by krakens only: rises where its ring was marked, slams, sways, slams again, sinks.
+  tentacle: { name: "Kraken Tentacle", habitat: "deep", pattern: "tentacle", summonOnly: true, hp: 24, damage: 10, xp: 0, life: 3.6, every: 1.6, telegraph: .5, reach: .95, size: 1, segments: 1, colors: ["#8a3a5a", "#2a0f1c", "#ffb0cc"] },
   bogLurker: { name: "Bog Lurker", habitat: "swamp", pattern: "ambush", hp: 48, damage: 10, xp: 20, aggro: 1.8, telegraph: .6, pull: 1, rest: 2.5, segments: 1, colors: ["#3e4a2c", "#151a0e", "#b7d36a"] },
 };
 // Spawn table: which creatures a section's water holds, and how many (bounded for mobile).
@@ -30,6 +44,11 @@ export const SEA_SPAWNS = {
   open: ["lanceeel", "ringcoil", "sinewake", "breachfin"],
   lake: ["lanceeel", "breachfin"],
   swamp: ["mireLeech", "mireLeech", "bogLurker"],
+  // Leviathans: sections with this many deep-ocean tiles, about one in `every`, one leviathan, weighted table.
+  leviathanTiles: 120,
+  leviathanEvery: 4,
+  leviathans: ["greywhale", "greywhale", "greywhale", "tyrantMosasaur", "tyrantMosasaur", "reefKraken", "reefKraken", "abyssalKraken", "stormkraken"],
+  leviathanFromPlaza: 8,
 };
 export const isSeaKind = (kind) => !!SEA_CREATURES[kind];
 
@@ -47,14 +66,20 @@ export function seaSpawns(map, seed, rx, ry) {
       out.push({ id: `sea-${kind}-${rx}-${ry}-${i}`, kind, x: t.x, y: t.y });
     }
   }
+  const deep = map.tiles.filter((t) => t.kind === "deepOcean" && Math.hypot(t.x - 16, t.y - 16) >= SEA_SPAWNS.leviathanFromPlaza && t.x > 2 && t.y > 2 && t.x < 29 && t.y < 29);
+  if (deep.length >= SEA_SPAWNS.leviathanTiles && hashSeed(`${seed}:sea:leviathan:${rx}:${ry}`) % SEA_SPAWNS.leviathanEvery === 0) {
+    const h = hashSeed(`${seed}:sea:leviathan-kind:${rx}:${ry}`), kind = SEA_SPAWNS.leviathans[h % SEA_SPAWNS.leviathans.length], t = deep[Math.floor(h / 13) % deep.length];
+    out.push({ id: `lev-${kind}-${rx}-${ry}`, kind, x: t.x, y: t.y });
+  }
   return out;
 }
 
 // Fields a sea creature carries on top of an ordinary combatant.
 export function seaCombatantFields(kind) {
   const d = SEA_CREATURES[kind];
-  return { seaKind: kind, name: d.name, hp: d.hp, maxHp: d.hp, damage: d.damage, range: 0, xpValue: d.xp, segments: d.segments, segmentSpacing: .32, scale: 1, bodyRadius: .4,
-    hidden: ["line", "leap", "ambush"].includes(d.pattern), untargetable: ["line", "leap", "ambush"].includes(d.pattern), sea: { phase: "lurk", t: 0, cd: 0, n: 0, ang: 0, r: d.radius || 0, dir: 1, lastHp: d.hp } };
+  const under = ["line", "leap", "ambush", "lunge"].includes(d.pattern);
+  return { seaKind: kind, name: d.name, hp: d.hp, maxHp: d.hp, damage: d.damage, range: 0, xpValue: d.xp, segments: d.segments, segmentSpacing: .32 * (d.size || 1), scale: d.size || 1, bodyRadius: .4 * (d.size || 1), boss: !!d.boss, leviathan: !!d.leviathan,
+    hidden: under, untargetable: under, sea: { phase: "lurk", t: 0, cd: 0, n: 0, ang: 0, r: d.radius || 0, dir: 1, lastHp: d.hp } };
 }
 
 const surface = (e, on) => { e.hidden = !on; e.untargetable = !on; };
@@ -81,8 +106,9 @@ function resurface(e, w, hab, radius) {
 export function updateSeaCreature(e, w, dt) {
   const d = SEA_CREATURES[e.seaKind], s = e.sea, p = w.player, hab = d.habitat, gap = dist(e, p);
   s.t -= dt; s.cd = Math.max(0, s.cd - dt);
-  const struck = e.hp < s.lastHp; s.lastHp = e.hp;
+  const struck = e.hp < s.lastHp, lost = s.lastHp - e.hp; s.lastHp = e.hp;
   e.seaTele = null;
+  if (d.leviathan || d.summonOnly) return updateLeviathan(e, w, dt, d, s, p, hab, gap, struck, lost);
   if (d.pattern === "line") {
     if (s.phase === "lurk") { surface(e, false); if (gap < d.aggro) { const m = gap || 1; s.line = { dx: (p.x - e.x) / m, dy: (p.y - e.y) / m, len: Math.min(d.reach, gap + 2), done: 0 }; s.phase = "telegraph"; s.t = d.telegraph; surface(e, true); e.seaTele = { type: "line", ...s.line }; } }
     else if (s.phase === "telegraph") { e.seaTele = { type: "line", ...s.line }; face(e, s.line.dx, s.line.dy); if (s.t <= 0) { s.phase = "strike"; s.hit = false; } }
@@ -124,4 +150,83 @@ export function updateSeaCreature(e, w, dt) {
     else if (s.phase === "telegraph") { e.seaTele = { type: "bubbles" }; if (s.t <= 0) { if (gap < d.aggro + .4) { w.hurt(d.damage, e); w.pull(e, d.pull); } s.phase = "dive"; s.t = d.rest; surface(e, false); } }
     else if (s.t <= 0) s.phase = "lurk";
   }
+}
+
+// ---------------------------------------------------------------- leviathans (W4)
+// Two to three ring positions around the Wayfarer on deep water (deterministic by the creature's counter).
+function rings(e, w, hab, count) {
+  const p = w.player, out = [];
+  for (let k = 0; k < 8 && out.length < count; k++) {
+    const a = ((e.sea.n * 3 + k * 3) % 8) * Math.PI / 4, r = out.length ? 1.6 : .2, x = p.x + Math.cos(a) * r, y = p.y + Math.sin(a) * r;
+    if (w.water(hab, x, y)) out.push({ x, y });
+  }
+  e.sea.n++;
+  return out;
+}
+function updateLeviathan(e, w, dt, d, s, p, hab, gap, struck, lost) {
+  if (d.pattern === "tentacle") { // a summoned limb: slams when it rises, then on a short cadence, until it sinks
+    s.life = (s.life ?? d.life) - dt;
+    if (s.life <= 0 || w.ownerDead?.(e)) { e.dead = true; return; }
+    if (s.phase === "lurk") { s.phase = "sway"; s.t = 0; }
+    if (s.t <= d.telegraph) e.seaTele = { type: "slam" };
+    if (s.t <= 0) { if (gap < d.reach) w.hurt(d.damage, e); s.t = d.every; }
+    return;
+  }
+  if (d.pattern === "whale") {
+    if (struck) s.angry = true;
+    if (!s.angry) { // calm: a slow drift that turns at the shore
+      surface(e, true); s.dir ||= 1;
+      if (!swimToward(e, w, hab, e.x + s.dir, e.y + Math.sin(e.x * .3) * .3, d.drift * dt)) s.dir *= -1;
+      return;
+    }
+    if (gap > d.aggro + 6) return;
+    if (s.phase === "lurk" || s.phase === "rest") { if (s.t > 0) return; surface(e, false); s.to = { x: p.x, y: p.y }; s.phase = "telegraph"; s.t = d.telegraph; e.seaTele = { type: "shadow", x: s.to.x, y: s.to.y, big: true }; return; }
+    if (s.phase === "telegraph") { e.seaTele = { type: "shadow", x: s.to.x, y: s.to.y, big: true }; if (s.t <= 0) { if (w.water(hab, s.to.x, s.to.y)) { e.x = s.to.x; e.y = s.to.y; } surface(e, true); if (dist(s.to, p) < 1.6) { w.hurt(d.damage, e); w.pull(e, -d.push); } s.phase = "rest"; s.t = d.rest; } }
+    return;
+  }
+  if (d.pattern === "lunge") {
+    if (gap > d.aggro + 6) return;
+    if (s.phase === "lurk") { surface(e, false); e.seaTele = { type: "shadow", x: e.x, y: e.y }; swimToward(e, w, hab, p.x, p.y, d.stalk * dt); if (gap < d.lockAt) { s.to = { x: p.x, y: p.y }; s.phase = "telegraph"; s.t = d.telegraph; e.seaTele = { type: "line", dx: (p.x - e.x) / (gap || 1), dy: (p.y - e.y) / (gap || 1), len: gap + 1.5 }; s.line = e.seaTele; } return; }
+    if (s.phase === "telegraph") { e.seaTele = s.line; if (s.t <= 0) { surface(e, true); s.phase = "strike"; s.hit = false; s.done = 0; } return; }
+    if (s.phase === "strike") {
+      const step = d.speed * dt, nx = e.x + s.line.dx * step, ny = e.y + s.line.dy * step;
+      if (!w.water(hab, nx, ny) || s.done >= s.line.len) { s.phase = "exposed"; s.t = d.exposed; return; }
+      e.x = nx; e.y = ny; s.done += step; face(e, s.line.dx, s.line.dy);
+      if (!s.hit && dist(e, p) < 1.1) { s.hit = true; w.hurt(d.damage, e); }
+      return;
+    }
+    if (s.t <= 0) { s.phase = "lurk"; surface(e, false); } // exposed: the window to strike back
+    return;
+  }
+  // krakens: a surfaced body that drifts toward the Wayfarer
+  surface(e, true);
+  if (gap > d.aggro + 6) return;
+  if (gap > 3) swimToward(e, w, hab, p.x, p.y, (d.drift || .5) * dt);
+  if (d.pattern === "grab") {
+    if (s.phase === "lurk") { if (s.t <= 0 && gap < d.aggro) { s.phase = "telegraph"; s.t = d.telegraph; e.seaTele = { type: "mark" }; } return; }
+    if (s.phase === "telegraph") { e.seaTele = { type: "mark" }; if (s.t <= 0) { s.phase = "hold"; s.t = d.hold; s.broken = 0; } return; }
+    if (s.phase === "hold") {
+      e.seaTele = { type: "grip" }; s.broken += Math.max(0, lost);
+      if (s.broken >= d.breakAt || s.t <= 0) { s.phase = "lurk"; s.t = d.rest; return; }
+      w.pull(e, d.drag * dt);
+      if (gap < d.biteAt && s.cd <= 0) { w.hurt(d.damage, e); s.cd = 1; }
+    }
+    return;
+  }
+  // reef / storm: tentacles in marked rings, and for the storm an ink cloud
+  if (d.pattern === "storm") { s.ink = (s.ink ?? d.inkEvery) - dt; if (s.ink <= 0 && gap < d.aggro) { s.ink = d.inkEvery; w.ink?.(d.ink); } }
+  if (s.phase === "lurk") { const room = d.maxTentacles - (w.tentacles?.(e) || 0); if (s.t <= 0 && gap < d.aggro && room > 0) { s.marks = rings(e, w, hab, Math.min(d.tentacles, room)); if (s.marks.length) { s.phase = "telegraph"; s.t = d.telegraph; e.seaTele = { type: "rings", marks: s.marks }; } } return; }
+  if (s.phase === "telegraph") { e.seaTele = { type: "rings", marks: s.marks }; if (s.t <= 0) { for (const m of s.marks) w.summon?.("tentacle", m.x, m.y, e); s.phase = "lurk"; s.t = d.every; } }
+}
+// First fell of each leviathan kind: a one-time trophy (idempotent; recorded in worldFlags).
+export const LEVIATHAN_TROPHY = { currency: 40, material: "weaponSphere" };
+export function leviathanTrophy(save, kind) {
+  if (!SEA_CREATURES[kind]?.leviathan) return false;
+  save.worldFlags ||= {};
+  const key = `leviathan:${kind}`;
+  if (save.worldFlags[key]) return false;
+  save.worldFlags[key] = true;
+  save.currency = (save.currency || 0) + LEVIATHAN_TROPHY.currency;
+  save.materials ||= {}; save.materials[LEVIATHAN_TROPHY.material] = (save.materials[LEVIATHAN_TROPHY.material] || 0) + 1;
+  return true;
 }
