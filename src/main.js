@@ -1,15 +1,15 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { vendorShop, buyFromVendor } from "./game.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { CREATURE_TRAITS } from "./combat.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { drawPackPortrait } from "./monster-render.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { landscapeAtlasColor } from "./landscape-render.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { hashSeed } from "./random.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { vendorShop, buyFromVendor } from "./game.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { CREATURE_TRAITS } from "./combat.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { drawPackPortrait } from "./monster-render.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { landscapeAtlasColor } from "./landscape-render.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { hashSeed } from "./random.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -160,7 +160,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
 import {
   Game,
   actionReadiness,
@@ -169,19 +169,19 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { createInput } from "./input.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { STATS } from "./types.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { worldStewardReport } from "./story.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+} from "./game.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { createInput } from "./input.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { STATS } from "./types.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { worldStewardReport } from "./story.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -192,7 +192,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+} from "./world.js?v=icp_f0af06cc0fa4482985e49d18_0f75285c496f6040";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -876,7 +876,7 @@ pausePanel.addEventListener("close",()=>{if(!pausePanel.open&&game.paused&&!over
 // Release 145: an overlay that throws while opening has already paused the game (and may have closed the pause menu),
 // leaving nothing on screen. Wherever the error surfaces (the frame loop, a button handler, a promise), show the pause
 // menu with the error, so play can continue and the cause can be reported.
-// Release icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b: the last few errors, newest last, for Copy diagnostics (repeats of the same message are counted, not stored).
+// Release 149: the last few errors, newest last, for Copy diagnostics (repeats of the same message are counted, not stored).
 const recentErrors=[];
 function noteError(error){
   const message=String(error?.message||error||"unknown error"),last=recentErrors[recentErrors.length-1];
@@ -963,9 +963,9 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  // Release icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
+  // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_f0af06cc0fa4482985e49d18_0f75285c496f6040",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release icp_f0af06cc0fa4482985e49d18_0f75285c496f6040\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1159,10 +1159,14 @@ function openMap() {
   if(mapMode==="atlas")showMapDetail(game.rx, game.ry);
   drawMap();
 }
+// Release icp_f0af06cc0fa4482985e49d18_0f75285c496f6040: each part of the Pack is built separately, so a fault in one (seen on a player's save, cause still
+// unknown) shows a note naming the part and its error instead of stopping the whole Pack from opening.
+function packSectionFailed(name,error){noteError(error);console.error(`Pack section ${name} failed`,error);const note=document.createElement("p");note.className="options-note options-danger";note.textContent=`${name} could not be shown (${error?.message||error}). Options → System → Copy diagnostics, then paste it to Claude.`;body.append(note)}
 function openPack() {
   pauseForOverlay();
   if (pausePanel.open) pausePanel.close();
   body.replaceChildren();
+  try{
   const heading = document.createElement("h2"),
     summary = document.createElement("p"),
     xp = document.createElement("progress"),
@@ -1187,7 +1191,11 @@ function openPack() {
     character.append(span);
   }
   body.append(heading, summary, xp, character);
+  }catch(error){packSectionFailed("Character",error)}
+  try{
   for(const [kind,label] of [['weapon','Weapon sphere'],['armor','Armor sphere']]){const row=document.createElement('div'),key=kind+'Sphere';row.className='item';row.textContent=`${label} ×${save.materials[key]||0} · Sela Rook at Ember Refuge strengthens fitted equipment with these.`;body.append(row)}
+  }catch(error){packSectionFailed("Spheres",error)}
+  try{
   const statHelp = {
     Might: "+2 melee damage per rank.",
     Finesse: "+3 maximum stamina per rank.",
@@ -1213,6 +1221,8 @@ function openPack() {
       );
     body.append(row);
   }
+  }catch(error){packSectionFailed("Stats",error)}
+  try{
   const resource = document.createElement("p");
   resource.textContent = `Cinder Iron ${save.materials.cinderIron} · weapon +${save.weaponLevel || 0} · section ${game.rx},${game.ry} `;
   resource.append(uiButton(`✦ Arcanum · spells, constellation, glyphs`, () => openSkills()));
@@ -1226,6 +1236,8 @@ function openPack() {
     openPack();
   }));
   body.append(resource);
+  }catch(error){packSectionFailed("Resources",error)}
+  try{
   const gearHeading = document.createElement("h3");
   gearHeading.textContent = "Equipped gear and effects";
   const gear = document.createElement("div");
@@ -1249,11 +1261,15 @@ function openPack() {
     gear.append(card);
   }
   body.append(gearHeading, gear);
+  }catch(error){packSectionFailed("Equipped gear",error)}
+  try{
   // Spells, disciplines and capstones live in one place: the Arcanum (release 109).
   const arcane=document.createElement('div');arcane.className='item';const bound=save.magicSkills.selected?APERTURE_SKILLS[save.magicSkills.selected]?.name:null;
   const sa=slotted(save,'a'),sb=slotted(save,'b'),pr=activePairing(save);void bound;
   arcane.textContent=`Slot A: ${sa?`${sa.symbol} ${sa.name}`:'empty'} · Slot B: ${sb?`${sb.symbol} ${sb.name}`:'empty'}${pr?` · Pairing: ${pr.name}`:''} · ${pointsFree(save)} constellation point${pointsFree(save)===1?'':'s'} free`;
   arcane.append(uiButton('Open the Arcanum',()=>openSkills()));body.append(arcane);
+  }catch(error){packSectionFailed("Arcanum",error)}
+  try{
   for (const [type, name, description] of [
     [
       "restorativeDraught",
@@ -1289,6 +1305,8 @@ function openPack() {
     );
     body.append(row);
   }
+  }catch(error){packSectionFailed("Consumables",error)}
+  try{
   const inventoryHeading = document.createElement("h3");
   inventoryHeading.textContent = `Carried equipment (${save.inventory.length}/${EQUIPMENT_CAPACITY})`;
   body.append(inventoryHeading);
@@ -1315,6 +1333,7 @@ function openPack() {
   inventoryTools.append(slotFilter, tierFilter, sortFilter);
   body.append(inventoryTools);
   const visibleItems = save.inventory.map((item, index) => ({ item, index }))
+    .filter(({item}) => item && typeof item === "object") // release 151: a damaged entry must not hide the rest
     .filter(({item}) => inventoryView.slot === "all" || item.slot === inventoryView.slot)
     .filter(({item}) => inventoryView.tier === "all" || itemTier(item) === inventoryView.tier)
     .sort((a,b) => inventoryView.sort === "name" ? a.item.name.localeCompare(b.item.name)
@@ -1343,6 +1362,7 @@ function openPack() {
     );
     body.append(row);
   }
+  }catch(error){packSectionFailed("Carried equipment",error)}
   if (!panel.open) panel.showModal();
 }
 const CODEX = {
