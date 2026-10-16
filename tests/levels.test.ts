@@ -101,7 +101,9 @@ test('controls: Jump sits in the centre of the action diamond and the compass ta
   for (const page of ['../index.html', '../proving-ground/index.html']) {
     const html = readFileSync(new URL(page, import.meta.url), 'utf8'), diamond = html.slice(html.indexOf('class="action-diamond'), html.indexOf('</div>', html.indexOf('class="action-diamond'))), quick = html.slice(html.indexOf('class="quick-row'), html.indexOf('class="action-diamond'));
     assert.match(diamond, /class="core jump" data-action="jump"/, page); assert.doesNotMatch(quick, /data-action="jump"/);
-    assert.match(quick, /id="navCompassSlot"[\s\S]*id="navCompass"/, page);
+    // release 114 (Tim, 2026-10-16): the compass moved from the quick row to just above the Map button
+    const left = html.slice(html.indexOf('class="left-controls'), html.indexOf('class="quick-row'));
+    assert.match(left, /id="navCompassSlot"[\s\S]*id="navCompass"[\s\S]*data-action="map"/, page); assert.doesNotMatch(quick, /navCompassSlot/, page);
   }
   const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
   assert.match(css, /\.action-diamond \.jump \{[\s\S]*translate\(-50%, -50%\)/);

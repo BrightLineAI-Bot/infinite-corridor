@@ -709,3 +709,6 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 .quick-row button.spell .slot-sym{font-size:17px;line-height:1;text-transform:none}
 .quick-row button.spell .slot-letter{position:absolute;top:2px;left:9px;font-size:8px;color:#a39a88}
 .arc-slots h3{margin:0 0 4px}.arc-slot{display:flex;align-items:center;gap:8px;padding:3px 0}.arc-slot .slot-sym{font-size:17px;width:20px;text-align:center}.arc-slot span:not(.slot-sym){flex:1}
+/* Release 114 (Tim, 2026-10-16): the compass sits above the Map button; spell slot B stands a little apart to the right. */
+.left-controls .compass-slot{order:1;justify-self:start;margin-left:3px}
+.quick-row button[data-action="spell2"]{margin-left:12px}
