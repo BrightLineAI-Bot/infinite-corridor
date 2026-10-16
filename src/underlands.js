@@ -3,13 +3,28 @@
 // technology: chasm canyons, lava bogs, underground rivers, frozen grottoes with falling snow, bone crypts and fungal
 // hollows. It returns the same map contract as generator 4 (entry/exit, chest, trap, guardian spawn), so encounters,
 // discovery, completion and the monster pack work unchanged. Histories pinned to generators 2-4 never see it.
-import { rng, hashSeed } from "./random.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { annotateDungeon, DUNGEON_SIZE_PROFILES } from "./dungeon-framework.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { DUNGEON_LAYOUT_VERSION } from "./dungeon-variation.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { LANDSCAPE_VERSION, ensureReturnable, trappedTiles, addRamps } from "./landscape.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { rng, hashSeed } from "./random.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { annotateDungeon, DUNGEON_SIZE_PROFILES } from "./dungeon-framework.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { DUNGEON_LAYOUT_VERSION } from "./dungeon-variation.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { carvePattern, stitchPattern, PATTERN_CATALOG, ORGANIC_CATALOG } from "./pattern-dungeons.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { LANDSCAPE_VERSION, ensureReturnable, trappedTiles, addRamps } from "./landscape.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
 
 export const DUNGEON_GENERATOR_V5 = 5;
 export const LAYOUTS = ["spine", "hub", "ring", "cavern", "crypt", "descent"];
+// Layout pool 2 (release 146): new dungeons may also be carved by a Wolfram elementary automaton. Histories created
+// before it keep pool 1 (the six grammars above), so no existing dungeon changes.
+export const LAYOUTS_V2 = [...LAYOUTS, "automaton", "automaton"];
+// Layout pool 3 (release 147): the full pattern catalogue (pattern-dungeons.ts) in four of every ten new dungeons.
+export const LAYOUTS_V3 = [...LAYOUTS, "pattern", "pattern", "pattern", "pattern"];
+// Layout pool 4 (release 148): the same mix, but patterns come from the organic catalogue.
+// Curated rules, each with a look: fractal halls grown from one seed cell, or chaotic and gliding warrens from a
+// scattered first row. Rules with bit 0 set are left out (they only flicker on sparse ground).
+export const AUTOMATON_RULES = [
+  { rule: 90, seed: "single", name: "Sierpinski Halls" }, { rule: 18, seed: "single", name: "Sierpinski Halls" }, { rule: 126, seed: "single", name: "Lattice Halls" },
+  { rule: 150, seed: "single", name: "Woven Halls" }, { rule: 22, seed: "single", name: "Branching Halls" }, { rule: 30, seed: "single", name: "Chaos Warrens" },
+  { rule: 30, seed: "scatter", name: "Chaos Warrens" }, { rule: 110, seed: "scatter", name: "Glider Galleries" }, { rule: 54, seed: "scatter", name: "Glider Galleries" },
+  { rule: 106, seed: "scatter", name: "Drift Galleries" }, { rule: 60, seed: "single", name: "Sierpinski Slant" }, { rule: 102, seed: "single", name: "Sierpinski Slant" },
+];
 export const UNDER_THEMES = {
   chasm: { id: "chasm", name: "Sunless Chasm", weather: null, lore: "The floor gives way to a canyon with no bottom. Stairs cling to its walls." },
   lavaBog: { id: "lavaBog", name: "Lava Bog", weather: "embers", lore: "Molten pools breathe under a crust of ash. Sparks rise where no wind blows." },
@@ -54,7 +69,7 @@ function bfs(g, w, h, from) {
 const SHAPES = ["rect", "circle", "cross", "octagon", "irregular", "hall"];
 
 // ---------------------------------------------------------------- layout grammars
-function layout(kind, g, w, h, rand, start, goal) {
+function layout(kind, g, w, h, rand, start, goal, patternId = null, catalog = PATTERN_CATALOG) {
   const rooms = [start, goal], shape = () => SHAPES[Math.floor(rand() * SHAPES.length)], size = () => 2 + Math.floor(rand() * 3);
   if (kind === "spine" || kind === "descent") {
     const n = kind === "descent" ? 7 + Math.floor(rand() * 4) : 6 + Math.floor(rand() * 4), pts = [start];
@@ -81,6 +96,32 @@ function layout(kind, g, w, h, rand, start, goal) {
     for (let it = 0; it < 5; it++) { const next = g.slice(); for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { let n = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (g[(y + dy) * w + x + dx]) n++; next[y * w + x] = n >= 5 ? 1 : 0; } g.set(next); }
     for (let x = 0; x < w; x++) { g[x] = 0; g[(h - 1) * w + x] = 0; } for (let y = 0; y < h; y++) { g[y * w] = 0; g[y * w + w - 1] = 0; }
     room(g, w, h, start.x, start.y, 2, "circle", rand); room(g, w, h, goal.x, goal.y, 3, "circle", rand);
+  } else if (kind === "automaton") {
+    // Each automaton cell becomes a 3×2 block of floor, so diagonal neighbours touch and the pattern is walkable.
+    // Time runs from the entry's side toward the guardian's side.
+    const pick = AUTOMATON_RULES[Math.floor(rand() * AUTOMATON_RULES.length)], cw = Math.max(8, Math.floor((w - 4) / 2)), ch = Math.max(6, Math.floor((h - 4) / 2));
+    let row = new Uint8Array(cw);
+    if (pick.seed === "single") row[Math.floor(cw / 2) + Math.floor((rand() - .5) * cw * .3)] = 1; else for (let x = 0; x < cw; x++) row[x] = rand() < .22 ? 1 : 0;
+    const flip = start.y > goal.y, cells = [];
+    for (let y = 0; y < ch; y++) {
+      cells.push(row);
+      const next = new Uint8Array(cw);
+      for (let x = 0; x < cw; x++) { const l = row[(x - 1 + cw) % cw], c = row[x], r = row[(x + 1) % cw]; next[x] = (pick.rule >> (l << 2 | c << 1 | r)) & 1; }
+      row = next;
+    }
+    // Dense patterns (Rule 30, 110 from a scattered row) read better with the dead cells as halls.
+    const live = cells.reduce((a, r) => a + r.reduce((b, v) => b + v, 0), 0) / (cw * ch), open = live > .45 ? 0 : 1;
+    for (let cy = 0; cy < ch; cy++) for (let cx = 0; cx < cw; cx++) if (cells[cy][cx] === open) {
+      const ty = flip ? h - 3 - cy * 2 : 2 + cy * 2, tx = 2 + cx * 2;
+      for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 3; dx++) carve(g, w, h, tx + dx, flip ? ty - dy : ty + dy);
+    }
+    for (let i = 0; i < 3 + Math.floor(rand() * 3); i++) { const p = { x: 5 + Math.floor(rand() * (w - 10)), y: 5 + Math.floor(rand() * (h - 10)) }; room(g, w, h, p.x, p.y, 1 + Math.floor(rand() * 2), shape(), rand); rooms.push(p); }
+    g.automaton = pick;
+  } else if (kind === "pattern") {
+    g.automaton = carvePattern(g, w, h, rand, start, goal, (x, y) => carve(g, w, h, x, y), catalog.find((p) => p.id === patternId), catalog);
+    g.pattern = true;
+    const floor = [...g.keys()].filter((i) => g[i]);
+    for (let i = 0; i < 6 && floor.length; i++) { const c = floor[Math.floor(rand() * floor.length)]; rooms.push({ x: c % w, y: Math.floor(c / w) }); }
   } else if (kind === "crypt") {
     const step = 6, ox = 3 + Math.floor(rand() * 3), oy = 3 + Math.floor(rand() * 3);
     for (let y = oy; y < h - 3; y += step) corridor(g, w, h, { x: 3, y }, { x: w - 4, y }, 1, 0);
@@ -89,6 +130,7 @@ function layout(kind, g, w, h, rand, start, goal) {
     corridor(g, w, h, start, goal, 3, 1); // the processional
   }
   room(g, w, h, start.x, start.y, 2, "rect", rand); room(g, w, h, goal.x, goal.y, 3, kind === "crypt" ? "hall" : "circle", rand);
+  if (g.pattern) stitchPattern(g, w, h, start);
   // guarantee the entry reaches the guardian
   let dist = bfs(g, w, h, start);
   if (dist[goal.y * w + goal.x] < 0) { corridor(g, w, h, start, goal, 2, 0); dist = bfs(g, w, h, start); }
@@ -102,10 +144,10 @@ export function generateExpeditionDungeon(seed, id, recipe = "hollow", options =
   const requested = String(options.sizeProfile || ""), sizeProfile = DUNGEON_SIZE_PROFILES[requested] ? requested : ["compact", "standard", "extended"][hashSeed(`${seed}:${id}:size`) % 3];
   const profile = DUNGEON_SIZE_PROFILES[sizeProfile], variant = Math.max(0, Math.floor(Number.isFinite(Number(options.variant)) && options.variant !== undefined ? Number(options.variant) : hashSeed(`${seed}:${id}:variant`) % 997));
   const rand = rng(`${seed}:expedition-v5:${id}:${recipe}:${sizeProfile}:v${variant}`), w = profile.width + Math.floor(rand() * 7) - 3, h = profile.height + Math.floor(rand() * 7) - 3;
-  const grammar = options.layout && LAYOUTS.includes(options.layout) ? options.layout : LAYOUTS[hashSeed(`${seed}:${id}:layout-v5`) % LAYOUTS.length];
+  const pool = options.layoutPool >= 3 ? LAYOUTS_V3 : options.layoutPool >= 2 ? LAYOUTS_V2 : LAYOUTS, grammar = options.layout && pool.includes(options.layout) ? options.layout : pool[hashSeed(`${seed}:${id}:layout-v5`) % pool.length];
   const corner = hashSeed(`${seed}:${id}:orientation`) % 4, corners = [[4, h - 5], [w - 5, h - 5], [w - 5, 4], [4, 4]];
   const start = { x: corners[corner][0], y: corners[corner][1] }, goal = { x: corners[(corner + 2) % 4][0], y: corners[(corner + 2) % 4][1] };
-  const g = makeGrid(w, h), { rooms, dist } = layout(grammar, g, w, h, rand, start, goal);
+  const g = makeGrid(w, h), { rooms, dist } = layout(grammar, g, w, h, rand, start, goal, options.pattern, options.layoutPool >= 4 ? ORGANIC_CATALOG : PATTERN_CATALOG);
   const wallKind = `${recipe}Wall`, floorKind = `${recipe}Floor`, tiles = [];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) tiles.push(g[y * w + x] ? { x, y, kind: floorKind, blocked: false, detail: (x * 7 + y * 3 + variant) % 4 } : { x, y, kind: wallKind, blocked: true, detail: (x + y + variant) % 4 });
   const guardianRoom = goal, chestCell = [...g.keys()].filter((i) => g[i] && dist[i] >= 0 && Math.hypot(i % w - goal.x, Math.floor(i / w) - goal.y) >= 2 && Math.hypot(i % w - goal.x, Math.floor(i / w) - goal.y) <= 4).sort((a, b) => Math.abs(Math.hypot(a % w - goal.x, Math.floor(a / w) - goal.y) - 2.2) - Math.abs(Math.hypot(b % w - goal.x, Math.floor(b / w) - goal.y) - 2.2))[0], chest = chestCell !== undefined ? { x: chestCell % w, y: Math.floor(chestCell / w) } : { x: goal.x, y: goal.y + 1 }, far = rooms.filter((r) => r !== start && r !== goal).sort((a, b) => dist[b.y * w + b.x] - dist[a.y * w + a.x]);
@@ -122,6 +164,7 @@ export function generateExpeditionDungeon(seed, id, recipe = "hollow", options =
     generatorVersion: DUNGEON_GENERATOR_V5, sizeProfile, variant, layoutVersion: DUNGEON_LAYOUT_VERSION,
     diagnostic: { family: recipe, layoutGrammar: grammar, orientation: corner, maskVariant: variant, sizeCategory: sizeProfile, rooms: rooms.length, visualIdentity: `${recipe}-masonry`, guardianPackage: "marshal" },
   };
+  if (g.automaton) { map.automaton = { rule: g.automaton.rule, name: g.automaton.name, pattern: g.automaton.id || null }; map.name = `${g.automaton.name} · ${map.name}`; map.diagnostic.automatonRule = g.automaton.rule; }
   const themeRoll = hashSeed(`${seed}:${id}:under-theme`);
   const theme = options.theme && UNDER_THEMES[options.theme] ? options.theme : options.theme === "none" ? null : themeRoll % 100 < 45 ? THEME_IDS[Math.floor(themeRoll / 100) % THEME_IDS.length] : null;
   if (theme) applyUnderTheme(map, theme, rand);

@@ -1,12 +1,12 @@
-import { enemyMeleeGeometry } from "./combat.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { SEA_CREATURES } from "./sea-creatures.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { liftAt } from "./landscape.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { drawRelayNode } from "./relay-network.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { structureOccupancy } from "./world.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { enemyMeleeGeometry } from "./combat.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { SEA_CREATURES } from "./sea-creatures.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { liftAt } from "./landscape.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { drawRelayNode } from "./relay-network.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { structureOccupancy } from "./world.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
 
 export function cameraTransform(
   g,
@@ -722,7 +722,7 @@ export function render(ctx, g, w, h, now) {
             actor(ctx, o.x, o.y, s, "shipwright", "down", 0, "idle");
             ctx.fillStyle = "#e2d5ba"; ctx.font = "10px monospace"; ctx.textAlign = "center";
             ctx.fillText("SHIPWRIGHT", (o.x + .5) * s, (o.y - .3) * s); ctx.textAlign = "start";
-          } else if (o.kind === "relayNode") {
+          } else if (o.kind === "relayNode" || o.kind === "arrayPylon") {
             drawRelayNode(ctx, o, s, performance.now());
           } else if (o.kind === "relayTerminal") {
             actor(ctx, o.x, o.y, s, "shrine");

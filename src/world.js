@@ -1,9 +1,9 @@
-import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';
-import{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';export{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';
-export{generateVariedDungeon,generateBespokeArena}from'./arenas.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';
-import{arenaEligible}from'./arenas.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';
-import{annotateDungeon}from'./dungeon-framework.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';
-import{APERTURE_BANDS}from'./items.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';import{hashSeed,rng,pick}from'./random.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';import{storySiteFor}from'./story.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
+import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b';
+import{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b';export{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b';
+export{generateVariedDungeon,generateBespokeArena}from'./arenas.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b';
+import{arenaEligible}from'./arenas.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b';
+import{annotateDungeon}from'./dungeon-framework.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b';
+import{APERTURE_BANDS}from'./items.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b';import{hashSeed,rng,pick}from'./random.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b';import{storySiteFor}from'./story.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
 function passage(seed,axis,a,b){const r=rng(`${seed}:edge:${axis}:${a}:${b}`);return 5+Math.floor(r()*22)}export function sectionExits(seed,rx,ry){return{north:passage(seed,'h',rx,ry),south:passage(seed,'h',rx,ry+1),west:passage(seed,'v',rx,ry),east:passage(seed,'v',rx+1,ry)}}
 function carve(tiles,x,y,kind='ash'){if(kind==='refuge'&&x===12&&y===17)return;if(x>=0&&x<32&&y>=0&&y<32)tiles[y*32+x]={...tiles[y*32+x],x,y,kind,blocked:false}}
 function supply(seed,rx,ry,tiles,w=32){const r=rng(`${seed}:supplies:v2:${rx}:${ry}`),rare=w===32&&r()<.06,types=['restorativeDraught','ironbarkTonic','lumenPhial','secondary'],spots=w===24?[[6,6],[7,6],[6,7]]:[[15,17],[17,17],[15,18],[17,18]],[x,y]=spots[Math.floor(r()*spots.length)],supplyType=rare?'crossingSigil':types[Math.floor(r()*types.length)];return{id:`supply-${rx}-${ry}`,kind:supplyType==='secondary'?'weaponCache':'supplyCache',supplyType,x,y,state:'ready',actions:['collect']}}
@@ -143,6 +143,7 @@ export function clearWayfindingCache(){wayfindingSignalCache.clear();wayfindingS
 export function wayfindingCues(seed,rx,ry,generation=1,save=null,region=null){
   const targets=[],seen=new Set(),add=(kind,x,y,name)=>{const key=`${kind}:${x},${y}`;if((x!==rx||y!==ry)&&!seen.has(key)){seen.add(key);targets.push({kind,rx:x,ry:y,name})}};
   const hunt=save?.viewport?.contracts?.[save?.viewport?.activeHuntId],huntTarget=hunt?.target;if(huntTarget&&['accepted','tracking','target-located'].includes(hunt.status))add(hunt.kind==='trial'||hunt.domain?'danger':'story',huntTarget.rx,huntTarget.ry,hunt.title);
+  const far=save?.relayNetwork?.coordinate;if(far)add('story',far.rx,far.ry,'the Far Array');
   const beast=save?.questingBeast?.active;if(beast)add('danger',beast.rx,beast.ry,'the Questing Beast');
   const quill=save?.wanderer?.quest;if(quill?.type==='cache'&&!quill.done&&quill.target)add('story',quill.target.rx,quill.target.ry,"Quillon's satchel");
   const echo=save?.story?.arcs?.cartographersEcho?.site;if(echo&&!save.story.arcs.cartographersEcho.completed)add('story',echo.rx,echo.ry,'the Unwritten Meridian');

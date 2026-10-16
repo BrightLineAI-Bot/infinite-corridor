@@ -1,13 +1,15 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { vendorShop, buyFromVendor } from "./game.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { CREATURE_TRAITS } from "./combat.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { drawPackPortrait } from "./monster-render.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { landscapeAtlasColor } from "./landscape-render.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { hashSeed } from "./random.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { vendorShop, buyFromVendor } from "./game.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { CREATURE_TRAITS } from "./combat.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { drawPackPortrait } from "./monster-render.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { landscapeAtlasColor } from "./landscape-render.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { hashSeed } from "./random.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -158,7 +160,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
 import {
   Game,
   actionReadiness,
@@ -167,19 +169,19 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { createInput } from "./input.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { STATS } from "./types.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { worldStewardReport } from "./story.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+} from "./game.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { createInput } from "./input.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { STATS } from "./types.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { worldStewardReport } from "./story.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -190,7 +192,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+} from "./world.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -858,6 +860,7 @@ function pauseForOverlay() {
 }
 function resume() {
   overlayPause = false;
+  $("#pauseError")?.remove();
   for (const d of [pausePanel, atlas, panel, journal, optionsPanel]) if (d.open) d.close();
   game.setPaused(false, performance.now());
   input.reset();
@@ -869,7 +872,28 @@ pausePanel.addEventListener("cancel",(event)=>event.preventDefault());
 // cancel event when there was no tap since the menu opened, e.g. after returning from the background). The game then
 // stayed paused with no menu: a freeze. Back on the pause menu now means Continue. Overlay transitions close the menu
 // after pauseForOverlay(), so they are not mistaken for a dismissal.
-pausePanel.addEventListener("close",()=>{if(game.paused&&!overlayPause&&!document.hidden&&![atlas,panel,journal,optionsPanel].some((d)=>d.open))resume()});
+pausePanel.addEventListener("close",()=>{if(!pausePanel.open&&game.paused&&!overlayPause&&!document.hidden&&![atlas,panel,journal,optionsPanel].some((d)=>d.open))resume()});
+// Release 145: an overlay that throws while opening has already paused the game (and may have closed the pause menu),
+// leaving nothing on screen. Wherever the error surfaces (the frame loop, a button handler, a promise), show the pause
+// menu with the error, so play can continue and the cause can be reported.
+// Release icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b: the last few errors, newest last, for Copy diagnostics (repeats of the same message are counted, not stored).
+const recentErrors=[];
+function noteError(error){
+  const message=String(error?.message||error||"unknown error"),last=recentErrors[recentErrors.length-1];
+  if(last?.message===message){last.count++;return}
+  recentErrors.push({at:new Date().toISOString(),message,stack:String(error?.stack||"").split("\n").slice(0,8).join("\n"),count:1});
+  if(recentErrors.length>8)recentErrors.shift();
+}
+function recoverOverlay(error){
+  noteError(error);
+  if(!game.paused||document.hidden||[pausePanel,atlas,panel,journal,optionsPanel].some((d)=>d.open))return;
+  overlayPause=false;let note=$("#pauseError");
+  if(!note){note=document.createElement("p");note.id="pauseError";note.className="options-note options-danger";pausePanel.append(note)}
+  note.textContent=`That screen could not open (${error?.message||error||"unknown error"}). Resume to keep playing.`;
+  try{pausePanel.showModal()}catch{resume()}
+}
+addEventListener("error",(event)=>recoverOverlay(event.error||event.message));
+addEventListener("unhandledrejection",(event)=>recoverOverlay(event.reason));
 const optionCategories=["Journeys","Performance","Controls","Accessibility","Audio","System"];
 let optionCategory="Journeys";
 function optionMessage(text,isError=false){let p=$("#optionsStatus");if(!p){p=document.createElement("p");p.id="optionsStatus";optionsBody.prepend(p)}p.textContent=text;p.className=isError?"options-note options-danger":"options-note"}
@@ -895,6 +919,25 @@ function selectSetting(key,choices){const s=document.createElement("select");for
 function rangeSetting(key,min,max,step){const input=document.createElement("input");input.type="range";input.min=min;input.max=max;input.step=step;input.value=settings[key];input.oninput=()=>updateSetting(key,Number(input.value));return input}
 function toggleSetting(key){const input=document.createElement("input");input.type="checkbox";input.checked=!!settings[key];input.onchange=()=>updateSetting(key,input.checked);return input}
 function updateSetting(key,value){Object.assign(settings,saveSettings({...settings,[key]:value}));applyPresentationSettings();optionMessage(`${key.replace(/([A-Z])/g," $1")} updated. Quality changes apply without changing journey data.`)}
+// The Far Gate (Journal tab, release 139): the Gate drawn as a ring of pieces that light as relay guardians fall, with
+// its tier, the Listener's form, chosen boons, any pending boon or ending choice, and the run history.
+function drawGate(canvas,f){const ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2+6,R=Math.min(w,h)*.36,need=piecesNeeded(f.gate),open=f.pieces>=need,t=performance.now()/1000;
+  ctx.clearRect(0,0,w,h);const bg=ctx.createRadialGradient(cx,cy,R*.2,cx,cy,R*1.5);bg.addColorStop(0,open?"#3a2a5a":"#1a1722");bg.addColorStop(1,"#0b0a10");ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+  for(let i=0;i<need;i++){const a0=-Math.PI/2+i*2*Math.PI/need+.04,a1=a0+2*Math.PI/need-.08,lit=i<f.pieces;ctx.beginPath();ctx.arc(cx,cy,R,a0,a1);ctx.arc(cx,cy,R*.72,a1,a0,true);ctx.closePath();ctx.fillStyle=lit?(open?"#d9b8ff":"#9f7ad9"):"#2a2633";ctx.fill();ctx.strokeStyle=lit?"#f3eaff":"#4a4458";ctx.lineWidth=2;ctx.stroke();
+    if(lit){const am=(a0+a1)/2;ctx.fillStyle="#fff8";ctx.beginPath();ctx.arc(cx+Math.cos(am)*R*.86,cy+Math.sin(am)*R*.86,3,0,7);ctx.fill()}}
+  ctx.beginPath();ctx.arc(cx,cy,R*.62,0,7);ctx.fillStyle=open?`rgba(201,166,255,${.35+.15*Math.sin(t*3)})`:"#120f18";ctx.fill();ctx.strokeStyle="#6b5a8a";ctx.stroke();
+  ctx.fillStyle=open?"#f3eaff":"#8f86a6";ctx.font="bold 15px monospace";ctx.textAlign="center";ctx.fillText(`GATE ${f.gate}`,cx,cy-4);ctx.font="12px monospace";ctx.fillText(open?"OPEN":`${f.pieces} / ${need}`,cx,cy+14)}
+function renderFarGate(out){
+  const f=ensureFarArray(save),h=document.createElement("h3"),p=document.createElement("p");h.textContent="The Far Gate";p.className="options-note";out.append(h,p);
+  if(!save.relayNetwork?.coordinate){p.textContent="The relay line has not answered yet. Answer five relays (restore or sever them) and the network will give you a coordinate.";return}
+  const c=save.relayNetwork.coordinate,lean=relayLean(save),form=listenerForm(save);
+  p.textContent=`The Array Mouth stands at ${c.rx}, ${c.ry}. Each guardian you fell in the Array locks a piece of the Gate; when it is whole, the Listener waits below. Relays answered: ${lean.answered} (${lean.restored} restored, ${lean.severed} severed), so the Listener ${form==="open"?"wears your face":form==="walled"?"starves behind walls":"is both, by turns"}.`;
+  const canvas=document.createElement("canvas");canvas.width=300;canvas.height=220;canvas.style.width="100%";canvas.style.maxWidth="300px";canvas.style.display="block";canvas.style.margin="8px auto";out.append(canvas);drawGate(canvas,f);
+  const stats=document.createElement("p");stats.className="options-note";stats.textContent=`Runs ${f.runs} · Listeners felled ${f.listeners}${f.ending?` · You chose to ${f.ending==="close"?"close the last line":"leave the line open"}`:""}`;out.append(stats);
+  if(f.offer.length){const t=document.createElement("h3");t.textContent="Choose a boon";out.append(t);for(const id of f.offer){const b=BOONS[id];out.append(settingRow(b.name,uiButton("Take",()=>{chooseBoon(save,id);syncCharacterStats(save);persist();openJournal("gate")}),b.text))}}
+  if(f.endingPending){const t=document.createElement("h3"),q=document.createElement("p");t.textContent="The last line";q.className="options-note";q.textContent="The terminal waits for one answer. Either way, the Gate will climb again.";out.append(t,q,uiButton("Close the last line",()=>{chooseEnding(save,"close");journalOnce(save,"far-array-ending","You closed the last line. Relays across the Corridor fall quiet, but the Gate remembers, and climbs.","The Far Gate");persist();openJournal("gate")}),uiButton("Leave it open",()=>{chooseEnding(save,"open");journalOnce(save,"far-array-ending","You left the line open. Somewhere further out, another coordinate begins to hum.","The Far Gate");persist();openJournal("gate")}))}
+  if(f.boons.length){const t=document.createElement("h3");t.textContent="Boons";out.append(t);for(const id of f.boons){const d=document.createElement("p");d.className="options-note";d.textContent=`${BOONS[id].name}: ${BOONS[id].text}`;out.append(d)}}
+}
 // The Reciter's Tome (Journal tab; releases 122, 124): every book walking the Corridor and, under each, the reciters of
 // it you have met, each with their own order (linear or random) and a reset. Books are added by the developer, not in game.
 function renderTome(out){
@@ -920,7 +963,9 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  // Release icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
+  // bug report needs: release, browser, screen, recent errors and the active journey's save.
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -938,6 +983,22 @@ function drawAtlasLabels(labels,bounds,fontSize){const placed=[],overlap=(a,b)=>
 // Atlas map height: leaves room for the title, level picker and map tools, so on short screens (the Fold's outer
 // screen held sideways) the tools stay in view instead of falling below the dialog.
 function atlasMapHeight(){return Math.max(140,Math.min(innerHeight*.65,innerHeight-(innerHeight<560?205:260),520))}
+// Relay overlay (release 142, Atlas button): the Rule 110 relay pattern as a faint lattice over explored sections and
+// their neighbours, and the relays you have answered as bright nodes joined to answered neighbours within two sections.
+let relayOverlay=false;
+function drawRelayOverlay(w,h,cell,cols,rows){
+  const at=(rx,ry)=>({x:w/2+(rx-mapView.x)*cell+mapView.panX,y:h/2+(ry-mapView.y)*cell+mapView.panY}),answered=[];
+  for(const[id,n]of Object.entries(save.relayNetwork?.nodes||{})){const c=crossingSection(id);if(c)answered.push({...c,choice:n.choice})}
+  mctx.save();
+  for(let j=-rows;j<=rows;j++)for(let i=-cols;i<=cols;i++){const rx=mapView.x+i,ry=mapView.y+j,near=[[0,0],[1,0],[-1,0],[0,1],[0,-1]].some(([a,b])=>save.explored[`${rx+a},${ry+b}`]);if(!near||!relayEdge(save.seed,rx,ry))continue;const p=at(rx,ry),r=Math.max(1.5,cell*.06);mctx.fillStyle="#b48cff44";mctx.beginPath();mctx.moveTo(p.x,p.y-r*1.6);mctx.lineTo(p.x+r*1.3,p.y+r*.9);mctx.lineTo(p.x-r*1.3,p.y+r*.9);mctx.closePath();mctx.fill()}
+  mctx.lineWidth=Math.max(1.5,cell*.04);
+  // Each answered relay links to its (at most) two nearest answered neighbours within two sections: chains, not webs.
+  const links=new Set();for(const p of answered){const near2=answered.filter(q=>q!==p&&Math.max(Math.abs(p.rx-q.rx),Math.abs(p.ry-q.ry))<=2).sort((a,b)=>Math.hypot(a.rx-p.rx,a.ry-p.ry)-Math.hypot(b.rx-p.rx,b.ry-p.ry)).slice(0,2);for(const q of near2)links.add([p,q].sort((a,b)=>a.rx-b.rx||a.ry-b.ry).map(n=>`${n.rx},${n.ry},${n.choice}`).join("|"))}
+  for(const l of links){const[p,q]=l.split("|").map(t=>{const[rx,ry,choice]=t.split(",");return{rx:+rx,ry:+ry,choice}}),A=at(p.rx,p.ry),B=at(q.rx,q.ry);mctx.strokeStyle=p.choice==="sever"&&q.choice==="sever"?"#6a5a7a99":"#7fe7ffaa";mctx.beginPath();mctx.moveTo(A.x,A.y);mctx.lineTo(B.x,B.y);mctx.stroke()}
+  for(const n of answered){const p=at(n.rx,n.ry),r=Math.max(3,cell*.1);mctx.fillStyle=n.choice==="restore"?"#7fe7ff":"#2a2236";mctx.strokeStyle=n.choice==="restore"?"#e8fbff":"#9b86c4";mctx.beginPath();mctx.arc(p.x,p.y,r,0,7);mctx.fill();mctx.stroke();if(n.choice==="restore"){mctx.fillStyle="#7fe7ff33";mctx.beginPath();mctx.arc(p.x,p.y,r*2.4,0,7);mctx.fill()}}
+  mctx.fillStyle="#cdb8ff";mctx.font="11px monospace";mctx.fillText(`Relay overlay · ${relayRuleAt(save.seed,mapView.x,mapView.y)} · ${answered.length} answered`,10,16);
+  mctx.restore();
+}
 function drawMap() {
   if(mapMode==="dungeon"&&game.area==="dungeon"){drawDungeonMap();drawDungeonDeathMarker();return}
   const d = Math.min(devicePixelRatio, 2),
@@ -1008,6 +1069,7 @@ function drawMap() {
       }
       if(seen&&save.lastDeath?.rx===rx&&save.lastDeath?.ry===ry)drawDeathGlyph(mctx,x+cell-13,y+13,Math.max(5,cell*.1),save.lastDeath.valid===false);
     }
+  if(relayOverlay)drawRelayOverlay(w,h,cell,cols,rows);
   mctx.fillStyle = "#dce7e2";
   mctx.fillText(
     `Center ${mapView.x},${mapView.y} · ${Object.keys(save.explored).length} sections explored · ${signals.length} unresolved signals`,
@@ -1379,10 +1441,11 @@ function openJournal(mode = "chronicle") {
   const out = $("#journalBody");
   out.replaceChildren();
   const nav=document.createElement("div");nav.className="codex-tabs";
-  for(const [id,label] of [["chronicle","Chronicle"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["tome","Reciter's Tome"]])nav.append(uiButton(label,()=>openJournal(id)));
+  for(const [id,label] of [["chronicle","Chronicle"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["tome","Reciter's Tome"],["gate","The Far Gate"]])nav.append(uiButton(label,()=>openJournal(id)));
   out.append(nav);
   if(mode!=="chronicle"){
     if(mode==="tome"){renderTome(out);if(!journal.open)journal.showModal();return;}
+    if(mode==="gate"){renderFarGate(out);if(!journal.open)journal.showModal();return;}
     if(mode==="dungeons"){
       const heading=document.createElement("h3");heading.textContent="Deep expeditions";out.append(heading);
       const records=Object.entries(save.consequences?.dungeons||{}).filter(([,h])=>h.deep?.name);
@@ -1604,9 +1667,9 @@ function frame(now) {
   } catch(error) {
     console.error("Infinite Corridor frame recovered from an error",error);
     game.message="The Corridor stuttered, then found its rhythm again.";
-    // Release 126: an overlay that throws while opening (Pack, Map, Journal) has already paused the game, so with no
-    // dialog shown the screen froze. Fall back to the pause menu, whose Continue always works.
-    if(game.paused&&!document.hidden&&![pausePanel,atlas,panel,journal,optionsPanel].some((d)=>d.open)){overlayPause=false;try{pausePanel.showModal()}catch{resume()}}
+    // Release 126: an overlay that throws while opening (Pack, Map, Journal) falls back to the pause menu (release 145:
+    // which now names the error).
+    recoverOverlay(error);
   } finally {
     requestAnimationFrame(frame);
   }
@@ -1664,6 +1727,7 @@ $("#mapHome").onclick = () => {
   persist();
   resume();
 };
+$("#mapRelays").onclick=()=>{relayOverlay=!relayOverlay;$("#mapRelays").setAttribute("aria-pressed",String(relayOverlay));drawMap()};
 $("#mapWaypoint").onclick=()=>{const selected=mapView.selected;if(!selected||!save.explored[`${selected.rx},${selected.ry}`])return;const same=save.manualWaypoint?.rx===selected.rx&&save.manualWaypoint?.ry===selected.ry;save.manualWaypoint=same?null:{kind:"section",area:"overworld",rx:selected.rx,ry:selected.ry,label:`Section ${selected.rx}, ${selected.ry}`};navigationCache.key=null;updateMapWaypointButton();showMapDetail(selected.rx,selected.ry);drawMap();persist()};
 for (const [id, dx, dy] of [
   ["mapN", 0, -1],

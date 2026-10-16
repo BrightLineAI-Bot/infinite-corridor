@@ -6,7 +6,7 @@
 // Guardians always leave their creature's Echo the first time; ordinary pack kills about one in twenty-five.
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
-import { hashSeed } from "./random.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { hashSeed } from "./random.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;
@@ -27,6 +27,7 @@ export const ECHOES = {
   lumenWraith: { name: "Wraith Lantern", cost: 2, trigger: "spell", module: "sweepBeam", text: "Casting also fires a lantern beam in your facing direction." },
   siegeBeetle: { name: "Beetle Mortar", cost: 2, trigger: "shot", module: "mortarVolley", text: "Every third tool shot also lobs a mortar where it is headed." },
   weepingSaint: { name: "Saint's Regard", cost: 3, trigger: "face", module: "stillnessCurse", text: "Foes you face within 5 tiles move 40% slower." },
+  listener: { name: "Listener's Answer", cost: 3, trigger: "hurt", module: "mirrorSwap", text: "Being hurt answers back: the nearest foe within 3 tiles takes the blow too." },
   questingBeast: { name: "Beast's Spines", cost: 3, trigger: "kill", module: "spikeVolley", text: "Kills fling spines into up to two nearby foes." },
   graveLantern: { name: "Lantern Stillness", cost: 1, trigger: "still", module: "stillnessCurse", text: "Standing still for a second mends 2 health each second." },
 };
@@ -85,6 +86,7 @@ export function echoEvent(game, event, now, data = {}) {
     if (eq.includes("cinderSeraph")) for (const e of nearest(game, at.x, at.y, 4).slice(0, 3)) { e.glyphBurn = { until: now + 2500, dps: Math.max(2, Math.round(dmg * .3)), tick: 0 }; world.arc(data.enemy, e, "#ff9a4a"); }
   } else if (event === "hurt") {
     if (eq.includes("hangedChoir")) world.blast(me.x, me.y, 2.2, Math.round(dmg * .8));
+    if (eq.includes("listener")) { const foe = nearest(game, me.x, me.y, 3)[0]; if (foe) { world.arc(p, foe, "#c9a6ff"); world.damage(foe, Math.round(dmg * .9)); } }
     if (eq.includes("mirrorShade") && now >= (p.echoMirrorReadyAt || 0)) {
       const foe = nearest(game, me.x, me.y, 5).find((e) => !e.flying && world.canStand(e.x, e.y)); // never swap onto a pit, water or a wall
       if (foe) { const fx = foe.x, fy = foe.y; world.arc(p, foe, "#c9d6ff"); foe.x = p.x; foe.y = p.y; p.x = fx; p.y = fy; foe.hitStun = Math.max(foe.hitStun || 0, .5); p.echoMirrorReadyAt = now + 4000; }

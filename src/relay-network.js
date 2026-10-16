@@ -7,9 +7,69 @@
 //
 // DRAFT NARRATIVE: the fragment texts below are placeholders written to fit the existing lore. The operator owns the
 // relay story; rewrite FRAGMENTS freely. The mechanics never depend on their wording.
-import { hashSeed } from "./random.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { hashSeed } from "./random.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
 
 export const RELAY_VERSION = 1;
+// Relay placement v2 (release 142): Wolfram's Rule 110, a class IV ("complex") cellular automaton. Each row of sections
+// (ry) is one generation; each column (rx) one cell. A crossing whose section cell is alive holds a relay, so the relays
+// you find and answer trace the automaton's interlocking triangles and gliders (see relayEdge). Crossings decided earlier keep theirs.
+export const RELAY_PATTERN = { rule: 110, width: 257, rows: 257, origin: 128 };
+const patternCache = new Map();
+function relayPattern(seed) {
+  if (patternCache.has(seed)) return patternCache.get(seed);
+  const { rule, width, rows } = RELAY_PATTERN, grid = new Uint8Array(width * rows);
+  // A sparse, seeded first generation; Rule 110 grows its structures southward from it.
+  for (let x = 0; x < width; x++) grid[x] = hashSeed(`${seed}:relay-pattern:${x}`) % 7 === 0 ? 1 : 0;
+  for (let y = 1; y < rows; y++) for (let x = 0; x < width; x++) {
+    const l = grid[(y - 1) * width + (x - 1 + width) % width], c = grid[(y - 1) * width + x], r = grid[(y - 1) * width + (x + 1) % width];
+    grid[y * width + x] = (rule >> (l << 2 | c << 1 | r)) & 1;
+  }
+  patternCache.set(seed, grid); if (patternCache.size > 4) patternCache.delete(patternCache.keys().next().value);
+  return grid;
+}
+// Patterns that encompass the core (release 144). Inside the 257-section core square, Rule 110 as before. Beyond it the
+// world is tiled into REGION×REGION-section regions, each running its own elementary rule chosen by distance: first
+// Rule 110's mirror relatives, then the fractal rules (90 = Sierpinski, 150, 54), then the chaotic and strange ones.
+// A region's first row is the row just north of it (the core, or the region above), so each pattern grows out of the
+// one before it. Regions are computed on first use and cached (bounded), so far travel stays cheap on a phone.
+export const RELAY_REGIONS = { size: 64, top: -1024, cache: 48, tiers: [[0, [124, 110]], [400, [90, 150, 126, 22, 18]], [800, [30, 86, 106, 54]]] };
+// (Rules that turn an empty neighbourhood on, e.g. 73 or 105, are left out: on sparse ground they only flicker in stripes.)
+export const RULE_NAMES = { 110: "Rule 110", 124: "Rule 124 · mirrored 110", 90: "Rule 90 · Sierpinski", 150: "Rule 150", 126: "Rule 126", 22: "Rule 22", 18: "Rule 18", 30: "Rule 30 · chaos", 86: "Rule 86 · mirrored 30", 106: "Rule 106", 54: "Rule 54" };
+const regionCache = new Map();
+const inCore = (rx, ry) => Math.abs(rx) <= RELAY_PATTERN.origin && Math.abs(ry) <= RELAY_PATTERN.origin;
+function coreCell(seed, rx, ry) { const { width, origin } = RELAY_PATTERN; return relayPattern(seed)[(ry + origin) * width + (rx + origin)] === 1; }
+export function regionAt(rx, ry) { const S = RELAY_REGIONS.size; return { mx: Math.floor(rx / S), my: Math.floor((ry - RELAY_REGIONS.top) / S) }; }
+export function regionRule(seed, mx, my) {
+  const S = RELAY_REGIONS.size, cx = mx * S + S / 2, cy = RELAY_REGIONS.top + my * S + S / 2, d = Math.max(Math.abs(cx), Math.abs(cy));
+  let pool = RELAY_REGIONS.tiers[0][1]; for (const [from, rules] of RELAY_REGIONS.tiers) if (d >= from) pool = rules;
+  return pool[hashSeed(`${seed}:relay-region:${mx}:${my}`) % pool.length];
+}
+function regionGrid(seed, mx, my) {
+  const key = `${seed}:${mx}:${my}`;
+  if (regionCache.has(key)) { const g = regionCache.get(key); regionCache.delete(key); regionCache.set(key, g); return g; }
+  const S = RELAY_REGIONS.size, x0 = mx * S, y0 = RELAY_REGIONS.top + my * S, rule = regionRule(seed, mx, my), grid = new Uint8Array(S * S);
+  for (let x = 0; x < S; x++) { const ax = x0 + x, above = y0 - 1; grid[x] = my <= 0 ? (hashSeed(`${seed}:relay-region-seed:${ax}`) % 7 === 0 ? 1 : 0) : relayCell(seed, ax, above) ? 1 : 0; }
+  // A starved or flooded inherited row is sprinkled afresh so the new pattern always has something to grow from.
+  let live = 0; for (let x = 0; x < S; x++) live += grid[x];
+  if (live < S * .04 || live > S * .96) for (let x = 0; x < S; x++) grid[x] = hashSeed(`${seed}:relay-region-seed:${x0 + x}:${my}`) % 7 === 0 ? 1 : 0;
+  for (let y = 1; y < S; y++) for (let x = 0; x < S; x++) { const l = grid[(y - 1) * S + (x - 1 + S) % S], c = grid[(y - 1) * S + x], r = grid[(y - 1) * S + (x + 1) % S]; grid[y * S + x] = (rule >> (l << 2 | c << 1 | r)) & 1; }
+  regionCache.set(key, grid); while (regionCache.size > RELAY_REGIONS.cache) regionCache.delete(regionCache.keys().next().value);
+  return grid;
+}
+// Is the section (rx, ry) alive in the relay pattern?
+export function relayCell(seed, rx, ry) {
+  if (inCore(rx, ry)) return coreCell(seed, rx, ry);
+  if (ry < RELAY_REGIONS.top) return false;
+  const { mx, my } = regionAt(rx, ry), S = RELAY_REGIONS.size;
+  return regionGrid(seed, mx, my)[(ry - RELAY_REGIONS.top - my * S) * S + (rx - mx * S)] === 1;
+}
+// The name of the pattern governing a section (for the Atlas overlay).
+export function relayRuleAt(seed, rx, ry) { if (inCore(rx, ry)) return RULE_NAMES[110]; const { mx, my } = regionAt(rx, ry); return RULE_NAMES[regionRule(seed, mx, my)] || `Rule ${regionRule(seed, mx, my)}`; }
+// Relays sit on the pattern's edges: alive cells whose northern neighbour is dead (about a fifth of sections), which
+// trace the leading edges of Rule 110's triangles and gliders as long diagonal streaks.
+export function relayEdge(seed, rx, ry) { return relayCell(seed, rx, ry) && !relayCell(seed, rx, ry - 1); }
+// Section coordinates of an ordinary crossing id (dungeon:<seed>:g<n>:<rx>:<ry>:<object>), or null.
+export function crossingSection(areaId) { const m = /^dungeon:[^:]+:g\d+:(-?\d+):(-?\d+):/.exec(String(areaId)); return m ? { rx: Number(m[1]), ry: Number(m[2]) } : null; }
 export const RELAY_TARGET = 5;
 export const RELAY_SHARE = 35; // percent of eligible crossings that hold a relay
 
@@ -23,13 +83,13 @@ export const FRAGMENTS = [
   "…signal steady. Coordinate holding. Come alone, Wayfarer. Come before it learns your name…",
 ];
 
-const ELIGIBLE = (areaId) => !/^(hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:)/.test(areaId) && !areaId.includes(":deep-v") && !areaId.includes("aperture-annex");
+const ELIGIBLE = (areaId) => !/^(far-array:|hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:)/.test(areaId) && !areaId.includes(":deep-v") && !areaId.includes("aperture-annex");
 
 export function relayCoordinate(save) { const c = hashSeed(`${save.seed}:relay-coordinate`); return { rx: (c % 2 ? 1 : -1) * (40 + c % 23), ry: ((c >>> 3) % 2 ? 1 : -1) * (40 + (c >>> 5) % 23) }; }
 export function ensureRelayNetwork(save) {
   const net = (save.relayNetwork ||= { version: RELAY_VERSION, nodes: {}, fragments: 0 });
   net.nodes ||= {}; net.fragments ||= 0;
-  // Release icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9: the hidden five-guardian chain and the relay nodes share one "network answered" fact. Whichever came
+  // Release 136: the hidden five-guardian chain and the relay nodes share one "network answered" fact. Whichever came
   // first, the coordinate is now always recorded and journaled (before, the guardian chain left it unrecorded).
   if (save.narrative?.facts?.["relay.networkAnswered"] && !net.coordinate) {
     net.coordinate = relayCoordinate(save);
@@ -43,7 +103,9 @@ export function ensureRelayNetwork(save) {
 export function relayNodeDecision(save, areaId, history, storyId) {
   if (history.relayNode !== undefined) return history.relayNode;
   const visited = history.visits > 0 || Object.keys(save.session?.areas || {}).some((k) => k === areaId || k.startsWith(areaId + ":level:"));
-  history.relayNode = !visited && areaId !== storyId && ELIGIBLE(areaId) && hashSeed(`${save.seed}:relay-node:v${RELAY_VERSION}:${areaId}`) % 100 < RELAY_SHARE;
+  const at = crossingSection(areaId);
+  history.relayNode = !visited && areaId !== storyId && ELIGIBLE(areaId) && (at ? relayEdge(save.seed, at.rx, at.ry) : hashSeed(`${save.seed}:relay-node:v${RELAY_VERSION}:${areaId}`) % 100 < RELAY_SHARE);
+  if (at) history.relayPattern = 2;
   return history.relayNode;
 }
 

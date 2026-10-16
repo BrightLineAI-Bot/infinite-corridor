@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9" />
+    <link rel="stylesheet" href="./styles.css?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -126,7 +126,8 @@
           <button id="mapPlus">+</button><button id="mapMinus">−</button
           ><button id="mapN">↑</button><button id="mapW">←</button
           ><button id="mapCenter">Center</button><button id="mapE">→</button
-          ><button id="mapS">↓</button>
+          ><button id="mapS">↓</button
+          ><button id="mapRelays" aria-pressed="false">Relays</button>
         </div>
         <label class="wayglass-picker">Activated Wayglass
           <select id="mapWayglassSelect" aria-label="Fast travel destination"></select>
@@ -146,7 +147,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+      const release = "icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
       const params = new URLSearchParams(location.search);
       const entry = params.get("dev") === "proving-ground"
         ? "./src/proving-ground.js"

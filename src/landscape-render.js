@@ -1,7 +1,7 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { LIFT_PER_LEVEL } from "./landscape.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { LIFT_PER_LEVEL } from "./landscape.js?v=icp_0a9645d3fa934d1ca5fdcddd_635907827d14749b";
 
 const TAU = Math.PI * 2;
 const cache = new Map();

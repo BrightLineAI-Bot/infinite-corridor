@@ -723,7 +723,7 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 
 .library-book{border-top:1px solid #5a584e66;padding:6px 0 4px}.library-book h3{margin:.4em 0 .1em}.library-empty{opacity:.7;font-style:italic}
 
-/* Release icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9: level/XP and Aperture stack in two short lines inside the HUD box, so neither spills past it and the
+/* Release 136: level/XP and Aperture stack in two short lines inside the HUD box, so neither spills past it and the
    expand button sits snug at the box's right edge. */
 #progressCompact { display: flex; flex-direction: column; gap: 1px; min-width: 0; overflow: hidden; }
 #xpCompact, #apCompact { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -732,3 +732,7 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 .hud-summary { grid-template-columns: minmax(96px, 1fr) minmax(0, auto) !important; }
 /* The expand button sits just outside the HUD box, touching its top-right corner (Tim, 2026-10-16). */
 #hudExpand { position: absolute; left: 100%; top: -1px; width: 30px; height: 34px; min-width: 30px; margin-left: 0; border-left: none; }
+
+/* Release 142: the Atlas Relays toggle. */
+.maptools { grid-template-columns: repeat(8, 1fr); }
+#mapRelays[aria-pressed="true"] { border-color: #b48cff; color: #e6d8ff; box-shadow: 0 0 8px #b48cff66 inset; }
