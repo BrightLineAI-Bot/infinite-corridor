@@ -63,6 +63,7 @@ export const ATTACK_MODULES = {
   devourPull: { id: "devourPull", name: "Devouring Pull", range: [1.5, 6], cooldown: 6, windup: .8, active: 1.3, recover: .8, damage: 1.3, tags: ["control"], text: "Inhales: you are dragged toward the maw. Dodge or run against it." },
   broodBirth: { id: "broodBirth", name: "Brood Birth", range: [0, 9], cooldown: 8, windup: .9, recover: .6, damage: 0, tags: ["summon"], text: "Splits off pallid crawlers (at most four alive)." },
   fleshBloom: { id: "fleshBloom", name: "Flesh Bloom", range: [0, 7], cooldown: 5, windup: .6, recover: .6, damage: .35, tags: ["ground", "control"], text: "Living flesh carpets the floor; it slows you and gnaws while you stand in it." },
+  spikeVolley: { id: "spikeVolley", name: "Spike Volley", range: [2, 8.5], cooldown: 5.2, windup: .75, recover: .85, damage: .8, jumpable: true, tags: ["ground", "spikes"], text: "Rears up and flings its spikes: five land around and ahead of you." },
   firefall: { id: "firefall", name: "Firefall", range: [1.5, 9], cooldown: 6.5, windup: .7, recover: .8, damage: .85, jumpable: true, tags: ["ground"], text: "Embers rain across the floor around you." },
 };
 
@@ -167,6 +168,14 @@ export const MONSTER_PACK = {
     palette: ["#5b5550", "#151312", "#cbbfa8", "#d1e86a"], render: "hangedChoir", tags: ["spirit", "chorus"],
     lore: "Shrouded bodies on chains, swaying in a wind you cannot feel. Their hum stops just before they drop.",
   },
+  // The Questing Beast (release 116): a unique, purely physical hunter. Never in spawn pools; see src/questing-beast.ts.
+  questingBeast: {
+    id: "questingBeast", name: "The Questing Beast", epithet: "The Hunger That Hunts You Back", unique: true,
+    stats: [220, 16, 0], form: { scale: 1.75 }, sizeClass: "large", movement: "walk", brain: "duelist",
+    attacks: ["leapSlam", "clawSweep", "spikeVolley", "ramCharge"], bossAttacks: ["shockwave", "bite"],
+    palette: ["#4a4650", "#141218", "#ff4a3a", "#f2ece0"], render: "questingBeast", tags: ["beast", "elder", "spikes"],
+    lore: "A horned, winged hunter bristling with spikes that grow back pale and harden black. It leaps, it slams, it hurls its own spines, and when wounded it only grows angrier.",
+  },
   gnawingMaw: {
     id: "gnawingMaw", name: "Gnawing Maw", epithet: "The Hunger in the Walls", dungeonOnly: true,
     stats: [70, 14, 0], form: { scale: 1.35 }, sizeClass: "large", movement: "phase", brain: "ambush",
@@ -251,7 +260,7 @@ export function packVariant(kind, identity) {
   const n = hashSeed(`pack-variant:v${MONSTER_PACK_VERSION}:${kind}:${identity}`);
   if (n % 100 >= 22) return { hybridAttack: null, donor: null };
   const move = MOVEMENT_MODES[def.movement], own = new Set([...def.attacks, ...(def.bossAttacks || [])]);
-  const options = PACK_KINDS.filter((id) => id !== kind && !MONSTER_PACK[id].dungeonOnly).flatMap((donor) => MONSTER_PACK[donor].attacks.map((attack) => ({ donor, attack })))
+  const options = PACK_KINDS.filter((id) => id !== kind && !MONSTER_PACK[id].dungeonOnly && !MONSTER_PACK[id].unique).flatMap((donor) => MONSTER_PACK[donor].attacks.map((attack) => ({ donor, attack })))
     .filter(({ attack }) => !own.has(attack) && !ATTACK_MODULES[attack].passive && !ATTACK_MODULES[attack].tags.includes("illusion") && !ATTACK_MODULES[attack].tags.includes("summon") && (!ATTACK_MODULES[attack].requires || move[ATTACK_MODULES[attack].requires]));
   if (!options.length) return { hybridAttack: null, donor: null };
   const pick = options[Math.floor(n / 100) % options.length];
@@ -364,6 +373,11 @@ const START = {
   },
   webSpit(e, s) { s.tele = { type: "spit", target: { ...s.data.target } }; },
   leapSlam(e, s) { s.tele = { type: "circle", x: s.data.target.x, y: s.data.target.y, radius: 1.3 }; },
+  spikeVolley(e, s, w) {
+    const p = s.data.target, v = playerVelocity(w), turn = (hashSeed(`${e.id}:${s.seq}:spikes`) % 628) / 100;
+    s.data.spikes = [{ x: p.x, y: p.y }, { x: p.x + v.x * 1.2, y: p.y + v.y * 1.2 }, ...[0, 1, 2].map((i) => ({ x: p.x + Math.cos(turn + i * TAU / 3) * 1.9, y: p.y + Math.sin(turn + i * TAU / 3) * 1.9 }))];
+    s.tele = { type: "brace" };
+  },
   blinkStrike(e, s, w) {
     const p = s.data.target, away = unit(p.x - e.x, p.y - e.y), v = playerVelocity(w), facing = Math.hypot(v.x, v.y) > .1 ? unit(v.x, v.y) : away, options = [];
     for (let i = 0; i < 8; i++) { const a = Math.atan2(-facing.y, -facing.x) + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * Math.PI / 5; options.push({ x: p.x + Math.cos(a) * 1.55, y: p.y + Math.sin(a) * 1.55 }); }
@@ -439,6 +453,12 @@ const RUN = {
     if (s.phase === "windup" && s.t <= 0) {
       s.data.shells.forEach((q, i) => w.addEffect({ kind: "mortar", owner: e.id, x: q.x, y: q.y, radius: 1, arming: 1.15 + i * .18, damage: damageOf(e, "mortarVolley"), jumpable: true, from: { x: e.x, y: e.y } }));
       s.tele = null; toPhase(s, "recover", ATTACK_MODULES.mortarVolley.recover);
+    }
+  },
+  spikeVolley(e, s, w) {
+    if (s.phase === "windup" && s.t <= 0) {
+      s.data.spikes.forEach((q, i) => w.addEffect({ kind: "mortar", spike: true, owner: e.id, x: q.x, y: q.y, radius: .85, arming: .8 + i * .12, damage: damageOf(e, "spikeVolley"), jumpable: true, from: { x: e.x, y: e.y } }));
+      e.spikesSpent = true; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.spikeVolley.recover);
     }
   },
   webSpit(e, s, w) { if (s.phase === "windup" && s.t <= 0) { w.addEffect({ kind: "web", owner: e.id, x: s.data.target.x, y: s.data.target.y, radius: 1.25, arming: .3, life: 4.5, damage: 0, slow: .5 }); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.webSpit.recover); } },
@@ -664,7 +684,7 @@ const LETHAL = new Set(["canyon", "river", "dungeonWater", "water", "bridge"]);
 export function populateOverworldPack(map, seed, rx, ry, { safe = null } = {}) {
   if (!map || map.monsterPack || (rx === 0 && ry === 0)) return map;
   const depth = Math.abs(rx) + Math.abs(ry), width = Number(map.width) || 32, height = Math.floor((map.tiles?.length || 1024) / width);
-  const pool = OVERWORLD_PACK_POOLS[map.dominant] || PACK_KINDS, key = `${seed}:overworld-pack:v${MONSTER_PACK_VERSION}:${rx}:${ry}`, D = OVERWORLD_PACK_DENSITY;
+  const pool = OVERWORLD_PACK_POOLS[map.dominant] || PACK_KINDS.filter((id) => !MONSTER_PACK[id].unique), key = `${seed}:overworld-pack:v${MONSTER_PACK_VERSION}:${rx}:${ry}`, D = OVERWORLD_PACK_DENSITY;
   const inSafe = (q) => safe && Math.hypot(q.x - safe.x, q.y - safe.y) < safe.radius + 2;
   const spawns = map.enemySpawns || (map.enemySpawns = []);
   let packCount = 0;
