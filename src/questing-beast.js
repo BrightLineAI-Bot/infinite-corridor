@@ -2,8 +2,8 @@
 // Wayfarer's level and power. Now and then it claims a wild section. It stays there until it is killed or it has
 // killed the Wayfarer QUESTING_BEAST.tries times; then it is gone, and after a cooldown (counted in sections entered)
 // a new hunt can begin somewhere else.
-import { hashSeed } from "./random.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
-import { LETHAL_KINDS } from "./landscape.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { hashSeed } from "./random.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
+import { LETHAL_KINDS } from "./landscape.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
 
 export const QUESTING_BEAST = { chance: 0.035, minDepth: 4, tries: 3, cooldownSlain: 24, cooldownEscaped: 30, hitsToKill: 30, hpPerLevel: 15, damageShare: 0.11, rewardMarks: 150, rewardPerLevel: 15 };
 
