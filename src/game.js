@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, normalizeItemUpgrade } from "./items.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
 import {
   generateRegion,
   generateDungeon,
@@ -14,7 +14,7 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
-} from "./world.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
+} from "./world.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -25,14 +25,14 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness } from "./spell-slots.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, sailStep, steer, ensureBoatState } from "./boats.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot } from "./water-traversal.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
+import { ensureSlots, slotted, pairingMods, slotReadiness } from "./spell-slots.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, sailStep, steer, ensureBoatState } from "./boats.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot } from "./water-traversal.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
 import {
   applyInteraction,
   validActions,
@@ -42,30 +42,30 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { ensurePerception } from "./types.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { generateItem } from "./items.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { hashSeed } from "./random.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f';
-import{HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f';
-import{ensureSceneState,queueScene}from'./scenes.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { applyLandscape, canStep, LANDSCAPE_VERSION, DEEP_WATER, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
+} from "./interactions.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { ensurePerception } from "./types.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { generateItem } from "./items.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { hashSeed } from "./random.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';
+import{HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';
+import{ensureSceneState,queueScene}from'./scenes.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { applyLandscape, canStep, LANDSCAPE_VERSION, DEEP_WATER, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function pinDungeonLayout(save, id) {
@@ -227,6 +227,9 @@ export function storeInventoryItem(save, item) {
   save.inventory.push(item);
   return { stored: true, salvaged: salvaged.item, iron: salvaged.iron };
 }
+// Aperture Resonance: the number of Aperture bands reached beyond Resonant (tier 3), and what each one grants.
+export const APERTURE_RESONANCE = { hp: 6, melee: 2, magic: 2 };
+export function apertureResonance(save) { return Math.max(0, apertureTier(save?.perception?.aperture || 0) - 3); }
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
     stats = save.stats || {},
@@ -240,9 +243,11 @@ export function characterStats(save) {
     armor = save.equipment?.armor,
     charm = save.equipment?.charm,
     active=save.magicSkills?.active?.remaining>0?save.magicSkills.active:null,
-    rank=active?skillRank(save,active.id):0;
+    rank=active?skillRank(save,active.id):0,
+    // Aperture Resonance (release 136): every Aperture band past Resonant strengthens the Wayfarer.
+    resonance=apertureResonance(save);
   return {
-    maxHp: 60 + (level - 1) * 6 + (vigor - 1) * 8,
+    maxHp: 60 + (level - 1) * 6 + (vigor - 1) * 8 + resonance * APERTURE_RESONANCE.hp,
     maxStamina: 50 + (level - 1) + (finesse - 1) * 3,
     damageReduction: Math.min(
       0.45,
@@ -254,12 +259,12 @@ export function characterStats(save) {
       (Number(save.weaponLevel) || 0) * 3 +
       Math.floor((level - 1) * 0.6) +
       Math.floor((Number(primary?.power) || 0) * 0.7) +
-      affixValue(primary, "attack")+(active?.id==='ember-form'?2+rank*2:0)+(active?.id==='force-channel'?rank*2:0),
+      affixValue(primary, "attack")+(active?.id==='ember-form'?2+rank*2:0)+(active?.id==='force-channel'?rank*2:0) + resonance * APERTURE_RESONANCE.melee,
     magicBonus:
       Math.max(1, Number(stats.Focus) || 1) +
       Math.floor((level - 1) * 0.45) +
       Math.floor((Number(secondary?.power) || 0) * 0.55) +
-      affixValue(secondary, "attack")+(active?.id==='force-channel'?rank*3:0),
+      affixValue(secondary, "attack")+(active?.id==='force-channel'?rank*3:0) + resonance * APERTURE_RESONANCE.magic,
     attackReach: affixValue(primary, "reach") + affixValue(secondary, "reach") + affixValue(charm, "reach")+(active?.id==='ember-form'?.12+.06*rank:0),
     moveSpeed: affixValue(armor, "movement") + affixValue(charm, "movement")+(active?.id==='quickening'?.12+.08*rank:0)+pairingMods(save).speed,
     armorPower,
@@ -1304,7 +1309,7 @@ export class Game {
       this.map.objects.push(
         ...overlay.objects.filter((o) => !annex || o.kind !== "apertureDoor"),
       );
-      const tier = apertureTier(this.save.perception.aperture);
+      const tier = Math.min(3, apertureTier(this.save.perception.aperture)); // the visual tint only knows three tiers
       for (const e of this.enemies)
         e.visualTier = Math.max(
           Number(e.visualTier) || 0,
@@ -1363,7 +1368,7 @@ export class Game {
           e.xpMultiplier = q.xpMultiplier;
         }
       }
-      const tier = apertureTier(this.save.perception.aperture);
+      const tier = Math.min(3, apertureTier(this.save.perception.aperture)); // the visual tint only knows three tiers
       for (const e of this.enemies)
         e.visualTier = Math.max(
           Number(e.visualTier) || 0,
@@ -1388,7 +1393,7 @@ export class Game {
           const value = this.save.perception.aperture,
             tier = apertureTier(value),
             next = APERTURE_THRESHOLDS[tier],
-            unlock = tier === 0 ? "hidden inscriptions" : tier === 1 ? "unseen annexes" : "deep relics";
+            unlock = tier === 0 ? "hidden inscriptions" : tier === 1 ? "unseen annexes" : tier === 2 ? "deep relics" : `the ${APERTURE_BANDS[tier + 1]?.name || "next"} band and more Resonance`;
           this.message = next
             ? `New section understood. Aperture ${value}/${next} — ${unlock} draw nearer.`
             : `New section understood. Aperture ${value} — the Corridor is fully visible for now.`;

@@ -1,13 +1,13 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { vendorShop, buyFromVendor } from "./game.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { CREATURE_TRAITS } from "./combat.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { drawPackPortrait } from "./monster-render.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { landscapeAtlasColor } from "./landscape-render.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { hashSeed } from "./random.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { vendorShop, buyFromVendor } from "./game.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { CREATURE_TRAITS } from "./combat.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { drawPackPortrait } from "./monster-render.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { landscapeAtlasColor } from "./landscape-render.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { hashSeed } from "./random.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -158,7 +158,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
 import {
   Game,
   actionReadiness,
@@ -167,19 +167,19 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { createInput } from "./input.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { STATS } from "./types.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { worldStewardReport } from "./story.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
+} from "./game.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { createInput } from "./input.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { STATS } from "./types.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { worldStewardReport } from "./story.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -190,7 +190,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f";
+} from "./world.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -300,11 +300,16 @@ function apertureStatsCard() {
   card.dataset.aperture = "stats";
   const h = document.createElement("strong"),
     text = document.createElement("p");
-  h.textContent = `APERTURE ${p.aperture} · TIER ${tier}`;
+  h.textContent = `APERTURE ${p.aperture} · ${apertureBand(p.aperture).name.toUpperCase()} (TIER ${tier})`;
   text.textContent = next
-    ? `${next - p.aperture} until the next perception break.`
-    : "All current perception breaks reached.";
+    ? `${next - p.aperture} until the ${apertureBand(next).name} band.`
+    : "Every band reached.";
   card.append(h, text);
+  if (tier > 3) {
+    const r = tier - 3, detail = document.createElement("p");
+    detail.textContent = `Resonance ${r}: +${r * 6} maximum health, +${r * 2} melee and +${r * 2} spell damage. Aperture encounters grow stronger and more frequent with each band.`;
+    card.append(detail);
+  }
   if (tier >= 1) {
     const detail = document.createElement("p");
     detail.textContent = `Threat ring ${q.ring} · enemy vitality ×${q.hpMultiplier.toFixed(2)} · memories ${p.discoveries.memories}`;
@@ -566,7 +571,7 @@ setInterval(() => {
   const value = save.perception?.aperture || 0,
     tier = apertureTier(value),
     next = APERTURE_THRESHOLDS[tier],
-    unlock = tier === 0 ? "inscriptions" : tier === 1 ? "annexes" : tier === 2 ? "deep relics" : "all current structures visible";
+    unlock = tier === 0 ? "inscriptions" : tier === 1 ? "annexes" : tier === 2 ? "deep relics" : `${apertureBand(value).name} · Resonance ${tier - 3}`;
   objective.textContent = `${currentObjective(save)} · Aperture ${value}${next ? "/" + next : ""}: ${unlock}`;
 }, 250);
 function drawDungeonSystems() {
@@ -915,7 +920,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1514,7 +1519,7 @@ function updateHud(now) {
   const aperture = save.perception?.aperture || 0,
     tier = apertureTier(aperture),
     apertureNext = APERTURE_THRESHOLDS[tier];
-  $("#xpCompact").textContent = `LEVEL ${save.level} · XP ${save.xp}/${next} · AP ${aperture}${apertureNext ? "/" + apertureNext : " MAX"}`;
+  const short=(n)=>n>=10000?`${(n/1000).toFixed(n>=100000?0:1)}k`:String(n);$("#xpCompact").textContent = `LV ${save.level} · XP ${short(save.xp)}/${short(next)}`;$("#apCompact").textContent = `AP ${short(aperture)}${apertureNext ? "/" + short(apertureNext) : ""} · T${tier}`;$("#apCompact").title = `${apertureBand(aperture).name} band`;
   const states = actionReadiness(game, now);
   for (const [action, state] of Object.entries(states)) {
     const button = document.querySelector(`[data-action="${action}"]`);

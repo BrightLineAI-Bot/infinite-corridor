@@ -1,5 +1,5 @@
-import{normalizeSockets}from'./glyphs.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f';
-import{rng,pick}from'./random.js?v=icp_7735097479a04c2f8b0f6e26_c7cc908aedff552f';
+import{normalizeSockets}from'./glyphs.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';
+import{rng,pick}from'./random.js?v=icp_4f5a763ef11d445ab8f79a2a_2d66b7853d855fb9';
 export const ITEM_TABLE={primary:[['Cinder Pike','reach'],['Verge Cleaver','impact']],secondary:[['Lumen Spindle','focus'],['Needle Caster','quick'],['Rift Bombard','blast']],armor:[['Kiln Mantle','guard'],['Glassweave Coat','stamina']],charm:[['Quiet Compass','discovery']]};
 export const ITEM_TIERS=['common','rare','epic','relic'];
 export const RANGED_WEAPONS={'spark-coil':{name:'Spark Coil',damage:8,speed:12,lifetime:1.6,damageType:'magic',path:'straight'},'secondary-lumen-spindle':{name:'Lumen Spindle',damage:11,speed:10,lifetime:1.8,turnAfter:.8,damageType:'magic',path:'boomerang'},'secondary-needle-caster':{name:'Needle Caster',damage:10,speed:15,lifetime:1.25,damageType:'physical',path:'straight'},'secondary-rift-bombard':{name:'Rift Bombard',damage:16,speed:8,lifetime:1.4,radius:2.15,damageType:'magic',path:'grenade'}};
@@ -14,7 +14,13 @@ export const APERTURE_SKILLS={
  'aerial-step':{id:'aerial-step',name:'Aerial Step',branch:'Motion',threshold:36,maxRank:1,cooldown:22,duration:3.5,description:'Briefly cross water, canyons, and pits without granting true flight.'},
  'rift-step':{id:'rift-step',name:'Rift Step',branch:'Rift',threshold:18,maxRank:3,cooldown:9,duration:0,description:'Blink 3 tiles (+1 per rank) the way you are moving, never up a ledge or into a hazard.'},
 };
-export const APERTURE_BANDS=[{id:'dormant',name:'Dormant',threshold:0},{id:'stirring',name:'Stirring',threshold:6},{id:'open',name:'Open',threshold:18},{id:'resonant',name:'Resonant',threshold:36}];
+// Aperture bands. The first four are the original manifestations; from release 136 Aperture keeps going: each further
+// band needs about half as much again plus 20, so the gaps widen (72, 124, 200, 310, 470, 702, 1038, 1525, 2231, ...).
+// Bands past Resonant grant Resonance (see game.ts characterStats) and harden Aperture encounters (world.ts).
+const DEEP_BAND_NAMES=['Lucid','Unveiled','Abyssal','Starward','Boundless','Unbound','Sovereign','Infinite'];
+export const APERTURE_BANDS=(()=>{const bands=[{id:'dormant',name:'Dormant',threshold:0},{id:'stirring',name:'Stirring',threshold:6},{id:'open',name:'Open',threshold:18},{id:'resonant',name:'Resonant',threshold:36}];
+ while(bands.length<40){const prev=bands[bands.length-1].threshold,i=bands.length-4,name=i<DEEP_BAND_NAMES.length?DEEP_BAND_NAMES[i]:`Infinite ${['II','III','IV','V','VI','VII','VIII','IX','X'][i-DEEP_BAND_NAMES.length]||i-DEEP_BAND_NAMES.length+2}`;bands.push({id:name.toLowerCase().replace(/ /g,'-'),name,threshold:Math.round(prev*1.45+20)})}
+ return bands})();
 export function primaryProfile(item){if(!item)return PRIMARY_PROFILES['salvage-blade'];if(PRIMARY_PROFILES[item.id])return PRIMARY_PROFILES[item.id];if(item.name==='Cinder Pike')return PRIMARY_PROFILES['primary-cinder-pike'];if(item.name==='Verge Cleaver')return PRIMARY_PROFILES['primary-verge-cleaver'];return PRIMARY_PROFILES['salvage-blade']}
 export function rangedWeapon(item){if(!item)return null;if(RANGED_WEAPONS[item.id])return RANGED_WEAPONS[item.id];if(item.name==='Lumen Spindle')return RANGED_WEAPONS['secondary-lumen-spindle'];if(item.name==='Needle Caster')return RANGED_WEAPONS['secondary-needle-caster'];if(item.name==='Rift Bombard')return RANGED_WEAPONS['secondary-rift-bombard'];return null}
 export function itemTier(item){if(ITEM_TIERS.includes(item?.tier))return item.tier;const p=Math.max(1,Number(item?.power)||1);return ITEM_TIERS[Math.min(3,Math.floor((p-1)/5))]}
