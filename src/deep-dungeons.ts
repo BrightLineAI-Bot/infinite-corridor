@@ -188,8 +188,60 @@ function buildMultiLevel(seed,id,archetype,levelId){
   delete m.floor;delete m.rect;delete m.hall;return populateDungeonEncounters(m,{deep:true});
 }
 
+// Threefold layout 2 (release 146): an 80×76 undercroft generated per dungeon. A winding processional climbs from the
+// entry to the Oath Rotunda; each of the three wings is a journey of three or four chambers of varied shapes (residents
+// are added by populateDungeonEncounters) ending in a cave-carved warden chamber; each warden's fall opens a sealed
+// door straight back to the rotunda. The sealed gate and final revenant sit north. Layout 1 (above) is kept for
+// threefold dungeons first entered before this release.
+function threefold2(seed, id) {
+  const W = 80, H = 76, r = rng(`${seed}:threefold-v2:${id}`), entry = { x: 40, y: 72 }, hub = { x: 40, y: 40 };
+  const m = baseMap(seed, id, "threefold", W, H, entry, hub);
+  const clamp = (p) => ({ x: Math.max(3, Math.min(W - 4, p.x)), y: Math.max(3, Math.min(H - 4, p.y)) });
+  const chamber = (p, size) => { const shape = Math.floor(r() * 4), rad = size;
+    for (let y = -rad - 1; y <= rad + 1; y++) for (let x = -rad - 1; x <= rad + 1; x++) {
+      const keep = shape === 0 ? Math.abs(x) <= rad + 1 && Math.abs(y) <= rad : shape === 1 ? x * x + y * y <= rad * rad + rad : shape === 2 ? Math.abs(x) + Math.abs(y) <= rad + 1 : (Math.abs(x) <= 1 || Math.abs(y) <= 1) && Math.abs(x) <= rad + 1 && Math.abs(y) <= rad + 1;
+      if (keep) m.floor(p.x + x, p.y + y); } };
+  // A winding route through generated waypoints, each widened into a chamber.
+  const route = (from, to, stops, wobble) => { let prev = from; const pts = [];
+    for (let i = 1; i <= stops; i++) { const t = i / (stops + 1), side = (r() - .5) * 2 * wobble, nx = -(to.y - from.y), ny = to.x - from.x, len = Math.hypot(nx, ny) || 1;
+      const p = clamp({ x: Math.round(from.x + (to.x - from.x) * t + nx / len * side), y: Math.round(from.y + (to.y - from.y) * t + ny / len * side) });
+      m.hall(prev.x, prev.y, p.x, p.y, r() < .3 ? 0 : 1); chamber(p, 2 + Math.floor(r() * 2)); pts.push(p); prev = p; }
+    m.hall(prev.x, prev.y, to.x, to.y, 1); return pts; };
+  // A warden's chamber carved as a natural cave (random fill, smoothed), always open around its centre.
+  const cave = (c, rx, ry) => { const g = new Map(), key = (x, y) => `${x},${y}`;
+    for (let y = -ry; y <= ry; y++) for (let x = -rx; x <= rx; x++) g.set(key(x, y), (x * x) / (rx * rx) + (y * y) / (ry * ry) <= 1 && r() < .58 ? 1 : 0);
+    for (let it = 0; it < 4; it++) { const n = new Map(); for (let y = -ry; y <= ry; y++) for (let x = -rx; x <= rx; x++) { let c2 = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) c2 += g.get(key(x + dx, y + dy)) || 0; n.set(key(x, y), c2 >= 5 || (Math.abs(x) <= 2 && Math.abs(y) <= 2) ? 1 : 0); } for (const [k, v] of n) g.set(k, v); }
+    for (const [k, v] of g) if (v) { const [x, y] = k.split(",").map(Number); m.floor(c.x + x, c.y + y); } };
+  // Entry, processional, rotunda.
+  m.rect(36, 69, 44, 74); chamber(hub, 5); route(entry, hub, 2, 7);
+  // Wings: west, east, and the lower-west warren.
+  const wings = [
+    { id: "west-seal", name: "West Warden", enemyId: "deep-v2-threefold-west", kind: "rootBrute", c: { x: 9, y: 26 + Math.floor(r() * 8) }, anchorName: "West Return" },
+    { id: "east-seal", name: "East Warden", enemyId: "deep-v2-threefold-east", kind: "sparkWarden", c: { x: 70, y: 26 + Math.floor(r() * 8) }, anchorName: "East Return" },
+    { id: "south-seal", name: "South Warden", enemyId: "deep-v2-threefold-south", kind: "coilStalker", c: { x: 12 + Math.floor(r() * 8), y: 62 }, anchorName: "South Return" },
+  ];
+  for (const w of wings) {
+    const stops = route(hub, w.c, 3 + Math.floor(r() * 2), 9); cave(w.c, 6, 5);
+    // a side room off the middle chamber
+    const mid = stops[Math.floor(stops.length / 2)], side = clamp({ x: mid.x + (r() < .5 ? -6 : 6), y: mid.y + (r() < .5 ? -5 : 5) }); m.hall(mid.x, mid.y, side.x, side.y, 0); chamber(side, 2);
+    const anchor = stops[stops.length - 1];
+    addObjective(m, { id: w.id, type: "guardian", name: w.name, enemyId: w.enemyId, enemyKind: w.kind, x: w.c.x, y: w.c.y, anchor: { name: w.anchorName, x: anchor.x, y: anchor.y } });
+  }
+  // Each warden opens a sealed door: a straight wall line from its cave toward the rotunda, hidden until it falls.
+  for (const w of wings) {
+    const cells = [], dx = Math.sign(hub.x - w.c.x), dy = Math.sign(hub.y - w.c.y); let x = w.c.x, y = w.c.y, guard = 0;
+    while ((x !== hub.x || y !== hub.y) && guard++ < 120) { if (Math.abs(hub.x - x) > Math.abs(hub.y - y)) x += dx; else y += dy; const t = m.tiles[y * W + x]; if (t.blocked) cells.push({ x, y }); }
+    if (cells.length && cells.length < 40) { const at = cells[Math.floor(cells.length / 2)]; m.objects.push({ id: `deep-v2-threefold-${w.id}-shortcut`, kind: "deepShortcut", name: `${w.name.split(" ")[0]} Oath Door`, x: at.x, y: at.y, state: "hidden", actions: ["inspect"], unlockObjectiveId: w.id, cells, toX: hub.x, toY: hub.y, routeType: "physical" }); }
+  }
+  m.zones = [{ id: "hub", name: "Oath Rotunda" }, { id: "west", name: "Root Wing" }, { id: "east", name: "Glass Wing" }, { id: "south", name: "Coil Warren" }, { id: "final", name: "Sealed Choir" }];
+  // North: the sealed gate and the Sealed Choir.
+  m.hall(hub.x, hub.y, hub.x, 24, 2); m.rect(28, 4, 52, 20); chamber({ x: 40, y: 12 }, 6);
+  m.layoutVersion = 2;
+  return finalize(m, { id: "deep-v2-threefold-final-gate", kind: "sealedGate", x: 40, y: 23, state: "sealed", actions: ["inspect"] }, { id: "deep-v2-threefold-final", kind: "gateRevenant", x: 40, y: 9, boss: true, deepDungeon: true, dungeonRole: "finalBoss", arenaId: "threefold-final" }, [38, 39, 40, 41, 42].map((x) => ({ x, y: 23 })));
+}
+
 export function generateDeepV2Dungeon(seed, id, options={}) {
-  const archetype = deepV2ArchetypeFromId(id), fn = { threefold, descent, loop, flooded, fortress }[archetype] || threefold;
+  const archetype = deepV2ArchetypeFromId(id), fn = archetype === "threefold" && options.threefoldLayout >= 2 ? threefold2 : { threefold, descent, loop, flooded, fortress }[archetype] || threefold;
   if(options.levelId&&MULTI_LEVELS[archetype])return annotateDungeon(buildMultiLevel(seed,id,archetype,options.levelId),{generatorVersion:2,sizeProfile:archetype==="threefold"?"threefold":"deep"});
   const map=fn(seed,id);map.levels=deepV2Levels(id);map.levelId=map.levels[0].id;map.levelStableId=map.levels[0].stableId;map.multiLevel=!!MULTI_LEVELS[archetype];map.allObjectives=(map.objectives||[]).map(q=>({...q}));return annotateDungeon(populateDungeonEncounters(map,{deep:true}),{generatorVersion:2,sizeProfile:archetype==="threefold"?"threefold":"deep"});
 }
