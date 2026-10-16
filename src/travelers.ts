@@ -1,4 +1,4 @@
-// Travellers, trails and the wandering cartographer (release 113).
+// Travellers, trails and the wandering cartographer (release 114).
 // Trails: every edge between two sections is either a trail or not (a hash of the edge), so trails continue across
 // sections; a town's four edges are always trails, so paths radiate from towns and wander off across the wilds.
 // Travellers: groups of people (some mounted) walk the trails or wander a section, stop when the Wayfarer comes near,

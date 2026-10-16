@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=113" />
+    <link rel="stylesheet" href="./styles.css?v=114" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -61,18 +61,12 @@
           </div>
         </div>
         <div class="quick-row buttons">
-          <button
-            id="fieldMenuToggle"
-            type="button"
-            aria-expanded="false"
-            aria-controls="hudDetails"
-          >
-            Menu</button
-          ><div id="navCompassSlot" class="compass-slot"><div id="navCompass" class="nav-compass" role="img" aria-label="No navigation target" hidden>
+          <div id="navCompassSlot" class="compass-slot"><div id="navCompass" class="nav-compass" role="img" aria-label="No navigation target" hidden>
             <span id="navGuidanceArrow" class="nav-arrow guidance-arrow" aria-hidden="true">▲</span>
             <span id="navManualArrow" class="nav-arrow manual-arrow" aria-hidden="true">▲</span>
           </div></div
-          ><button class="quick spell" data-action="spell">Spell</button
+          ><button class="quick spell" data-action="spell" data-slot="A">Spell A</button
+          ><button class="quick spell" data-action="spell2" data-slot="B">Spell B</button
           ><button class="quick potion" data-action="potion">Potion</button>
         </div>
         <div class="action-diamond buttons">
@@ -151,7 +145,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "113";
+      const release = "114";
       const params = new URLSearchParams(location.search);
       const entry = params.get("dev") === "proving-ground"
         ? "./src/proving-ground.js"

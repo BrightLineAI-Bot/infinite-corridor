@@ -109,7 +109,7 @@ function h(x, y) {
   return (Math.imul(x + 37, 73856093) ^ Math.imul(y + 19, 19349663)) >>> 0;
 }
 const TRAVELER_LOOKS = new Set(["pilgrim", "peddler", "mercenary", "minstrel", "scholar", "traveler", "cartographer"]);
-// Trails (release 113): a worn dirt track drawn over whatever ground the tile already shows.
+// Trails (release 114): a worn dirt track drawn over whatever ground the tile already shows.
 function tile(ctx, t, x, y, s, map, w, activeBuildingId=null) {
   tileBase(ctx, t, x, y, s, map, w, activeBuildingId);
   if (t?.trail) {

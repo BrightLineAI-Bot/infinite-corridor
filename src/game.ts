@@ -25,6 +25,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
+import { ensureSlots, slotted, pairingMods, slotReadiness } from "./spell-slots.ts";
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
@@ -244,7 +245,7 @@ export function characterStats(save) {
     damageReduction: Math.min(
       0.45,
       (resolve - 1) * 0.02 + armorPower * 0.025 + charmPower * 0.01 +
-        affixValue(armor, "ward") + affixValue(charm, "ward") + extraReduction(save),
+        affixValue(armor, "ward") + affixValue(charm, "ward") + extraReduction(save) + pairingMods(save).guard,
     ),
     meleeBonus:
       Math.max(1, Number(stats.Might) || 1) * 2 +
@@ -258,7 +259,7 @@ export function characterStats(save) {
       Math.floor((Number(secondary?.power) || 0) * 0.55) +
       affixValue(secondary, "attack")+(active?.id==='force-channel'?rank*3:0),
     attackReach: affixValue(primary, "reach") + affixValue(secondary, "reach") + affixValue(charm, "reach")+(active?.id==='ember-form'?.12+.06*rank:0),
-    moveSpeed: affixValue(armor, "movement") + affixValue(charm, "movement")+(active?.id==='quickening'?.12+.08*rank:0),
+    moveSpeed: affixValue(armor, "movement") + affixValue(charm, "movement")+(active?.id==='quickening'?.12+.08*rank:0)+pairingMods(save).speed,
     armorPower,
     charmPower,
   };
@@ -882,11 +883,8 @@ export function actionReadiness(game, now = 0) {
       cost: 15,
     },
     jump: { remaining: jump / 1000, duration: 0.52 },
-    spell: {
-      remaining: spell,
-      duration: (SPELLS[game.save.equippedSpell] || SPELLS["ember-ring"])
-        .cooldown,
-    },
+    spell: slotReadiness(game.save, "a", spell),
+    spell2: slotReadiness(game.save, "b", spell),
     potion: {
       remaining: 0,
       duration: 0,
@@ -1608,7 +1606,7 @@ export class Game {
       atlas[key] = { terrain: this.map.dominant, ...(prior ? (prior.landscapeVersion ? { landscapeVersion: prior.landscapeVersion } : {}) : { landscapeVersion: LANDSCAPE_VERSION }),
         // Hamlets (release 111; version 2 at 112) follow the same rule: only sections first seen from now on can hold one.
         ...(prior ? (prior.hamletVersion ? { hamletVersion: prior.hamletVersion } : {}) : { hamletVersion: HAMLET_VERSION }),
-        // Trails (release 113) likewise only appear in sections first seen from then on.
+        // Trails (release 114) likewise only appear in sections first seen from then on.
         ...(prior ? (prior.travelVersion ? { travelVersion: prior.travelVersion } : {}) : { travelVersion: TRAVEL_VERSION }),
         ...(this.map.landscape?.biome ? { landscape: this.map.landscape.biome } : {}), sites: this.map.objects
         .filter((o) => ["diveSite","shipwright","checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho"].includes(o.kind))
@@ -2726,11 +2724,18 @@ export class Game {
     if (plan) (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "shot", shot: { ...shot, id: shot.id + "-echo", hits: {}, damage: Math.max(1, Math.round(shot.damage * plan.share)), echo: true } });
     return true;
   }
-  castSpell() {
-    if(this.save.magicSkills?.selected&&skillRank(this.save,this.save.magicSkills.selected)>0)return this.activateApertureSkill(this.save.magicSkills.selected);
-    const spell = SPELLS[this.save.equippedSpell] || SPELLS["ember-ring"];
-    if (this.spellCooldownRemaining > 0) {
-      this.message = `${spell.name} recovers in ${Math.ceil(this.spellCooldownRemaining)}s.`;
+  // Spell slots A and B (release 114): each button casts whatever its slot holds.
+  castSlot(slot) {
+    const c = slotted(this.save, slot);
+    if (!c) { this.message = `Slot ${slot.toUpperCase()} is empty — fill it in the Arcanum.`; return false; }
+    return c.kind === "skill" ? this.activateApertureSkill(c.id) : this.castSpell(c.id);
+  }
+  castSpell(spellId = null) {
+    if(!spellId&&this.save.magicSkills?.selected&&skillRank(this.save,this.save.magicSkills.selected)>0)return this.activateApertureSkill(this.save.magicSkills.selected);
+    if (spellId && SPELLS[spellId]) this.save.equippedSpell = spellId; // the readied spell is the glyph host
+    const spell = SPELLS[this.save.equippedSpell] || SPELLS["ember-ring"], cds = (this.save.magicSkills ||= {}).cooldowns ||= {}, key = `spell:${spell.id}`, remaining = spellId ? cds[key] || 0 : this.spellCooldownRemaining; // slots use per-spell cooldowns; the legacy call keeps its single one
+    if (remaining > 0) {
+      this.message = `${spell.name} recovers in ${Math.ceil(remaining)}s.`;
       return false;
     }
     let x = this.player.x + 0.5,
@@ -2753,7 +2758,7 @@ export class Game {
       radius: spell.radius * glyphs.mods.radius,
       pulse: spell.pulse,
       untilPulse: 0,
-      damage: Math.max(1, Math.round((spell.damage + characterStats(this.save).magicBonus) * glyphs.mods.damage)),
+      damage: Math.max(1, Math.round((spell.damage + characterStats(this.save).magicBonus) * glyphs.mods.damage * (1 + pairingMods(this.save).spellDamage))),
       pulseIndex: 0,
       hits: {},
       glyphHost: "spell",
@@ -2761,7 +2766,8 @@ export class Game {
     this.effects.push(cast);
     const plan = echoPlan(glyphs);
     if (plan) this.effects.push({ ...cast, id: cast.id + "-echo", hits: {}, delay: spell.lifetime, damage: Math.max(1, Math.round(cast.damage * plan.share)), echo: true });
-    this.spellCooldownRemaining = spell.cooldown * glyphs.mods.cooldown;
+    const cooldown = spell.cooldown * glyphs.mods.cooldown * (1 - pairingMods(this.save).cooldown);
+    cds[key] = cooldown; if (!spellId) this.spellCooldownRemaining = cooldown;
     echoEvent(this, "spell", this.lastUpdateNow || 0);
     this.message = `${spell.name} answers.`;
     return true;
@@ -2802,7 +2808,7 @@ export class Game {
   }
   useUpgradeSphere(kind){const key=kind==='armor'?'armorSphere':'weaponSphere';if(!(this.save.materials[key]>0))return false;this.save.materials[key]--;if(kind==='armor')this.save.equipment.armor.power=Math.min(8,(this.save.equipment.armor.power||0)+1);else{this.save.weaponLevel=Math.min(8,(this.save.weaponLevel||0)+1);this.player.weaponLevel=this.save.weaponLevel}this.message=`${kind==='armor'?'Armor':'Weapon'} sphere fused. The upgrade is permanent.`;this.sync();return true}
   upgradeEquipmentSlot(slot){const result=upgradeEquipment(this.save,slot);this.message=result.message;if(result.ok){syncCharacterStats(this.save);this.player.maxStamina=this.save.maxStamina;this.sync()}return result}
-  activateApertureSkill(id=this.save.magicSkills?.selected){if(id==='rift-step')return riftStep(this,this.lastUpdateNow||0);const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)};state.cooldowns[id]=skill.cooldown;if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
+  activateApertureSkill(id=this.save.magicSkills?.selected){if(id==='rift-step')return riftStep(this,this.lastUpdateNow||0);const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)};state.cooldowns[id]=skill.cooldown*(1-pairingMods(this.save).cooldown);if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
   allocate(s) {
     if (!this.save.statPoints || !Object.hasOwn(this.save.stats, s))
       return false;
@@ -2911,7 +2917,8 @@ export class Game {
         aim=weapon&&selectRangedAim(this.player,this.enemies,this.map,width,weapon.speed*weapon.lifetime*(1+characterStats(this.save).attackReach));
       this.fireSecondary(now, aim || this.save.lastAim);
     }
-    if (input.consume("spell")) this.castSpell();
+    if (input.consume("spell")) this.castSlot("a");
+    if (input.consume("spell2")) this.castSlot("b");
     if (input.consume("dodge")) {
       const r = dodge(p, now, x, y);
       if (!r.ok) this.message = "Not enough stamina to dodge.";
@@ -3084,7 +3091,7 @@ export class Game {
       if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.breathMessageAt || 0)) { this.breathMessageAt = now + 4000; this.message = "Out of air — reach an air pocket or the surface line!"; } }
     }
     if (this.swimming) { const hurt = swimUpkeep(p, dt, this.swimKind); if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "Exhausted in the water — reach the shore."; } } }
-    else p.stamina = Math.min(p.maxStamina, p.stamina + 9 * dt);
+    else p.stamina = Math.min(p.maxStamina, p.stamina + (9 + pairingMods(this.save).stamina) * dt);
     this.performanceStats.totalDungeonEncounterRecords=this.area==="dungeon"?(this.map.encounterGroups||[]).length:0;this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.activeProjectiles=this.projectiles.length;this.performanceStats.activeHazardsAndEffects=this.eliteHazards.length+this.effects.length;this.performanceStats.pathfindingWork=0;this.performanceStats.ambientTicks=0;if(dt>1/30)this.performanceStats.updateBudgetViolations++;
     const packWorld=this.packWorld(dt,now,this.area==="overworld"?settlementSanctuary(this.map,this.rx,this.ry,this.save):null);
     // World adapter for sea creatures: habitat water under a footprint, a telegraphed hit, and the Bog Lurker's drag.

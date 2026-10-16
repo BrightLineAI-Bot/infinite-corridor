@@ -133,7 +133,7 @@ export function tickConstellation(game, dt, now) {
     }
     if (hasNode(s, "sanctuary")) { const skill = APERTURE_SKILLS["veil-guard"], span = skill.duration + Math.max(0, skillRank(s, "veil-guard") - 1); game._cMend = (game._cMend || 0) + s.maxHp * .2 / span * dt; const whole = Math.floor(game._cMend); if (whole) { game._cMend -= whole; p.hp = Math.min(s.maxHp, p.hp + whole); } }
   }
-  if (activeIs(s, "force-channel") && hasNode(s, "overflow")) game.spellCooldownRemaining = Math.max(0, game.spellCooldownRemaining - dt * .25);
+  if (activeIs(s, "force-channel") && hasNode(s, "overflow")) { game.spellCooldownRemaining = Math.max(0, game.spellCooldownRemaining - dt * .25); for (const k of Object.keys(s.magicSkills?.cooldowns || {})) if (k.startsWith("spell:")) s.magicSkills.cooldowns[k] = Math.max(0, s.magicSkills.cooldowns[k] - dt * .25); }
   game._cLastHp = p.hp;
 }
 // Rift Step: an instant blink along the move (or aim) direction, stopping before walls, hazards and climbs.
