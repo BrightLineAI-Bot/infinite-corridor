@@ -720,3 +720,5 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
   .maptools { margin-top: 4px; }
 }
 .maptools button { min-height: 34px; }
+
+.library-book{border-top:1px solid #5a584e66;padding:6px 0 4px}.library-book h3{margin:.4em 0 .1em}.library-empty{opacity:.7;font-style:italic}
