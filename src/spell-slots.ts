@@ -7,12 +7,13 @@
 import { SPELLS, APERTURE_SKILLS, skillRank } from "./items.ts";
 
 export const ATTRIBUTES = {
-  fire: { name: "Fire", color: "#e0784a" },
-  dusk: { name: "Dusk", color: "#a98ad0" },
-  wind: { name: "Wind", color: "#6fbfb8" },
-  ward: { name: "Ward", color: "#7c9fcf" },
-  force: { name: "Force", color: "#cfae5c" },
-  rift: { name: "Rift", color: "#c06fae" },
+  // icon (release 157): the element's mark beside every spell and discipline in the Arcanum.
+  fire: { name: "Fire", color: "#e0784a", icon: "🔥" },
+  dusk: { name: "Dusk", color: "#a98ad0", icon: "☾" },
+  wind: { name: "Wind", color: "#6fbfb8", icon: "≋" },
+  ward: { name: "Ward", color: "#7c9fcf", icon: "◈" },
+  force: { name: "Force", color: "#cfae5c", icon: "✦" },
+  rift: { name: "Rift", color: "#c06fae", icon: "⟡" },
 };
 export const CASTABLES = {
   "spell:cinder-dart": { kind: "spell", id: "cinder-dart", symbol: "➶", attr: "fire" },

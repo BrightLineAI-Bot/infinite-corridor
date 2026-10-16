@@ -24,6 +24,25 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Arcanum: element badges, Active/Passive tags, what affects spells (release 157)
+
+**CODE:** `ATTRIBUTES` in `spell-slots.ts` gains an `icon` per element (🔥 Fire, ☾ Dusk, ≋ Wind, ◈ Ward, ✦ Force, ⟡ Rift). `constellation.ts` exports a `NODE_EFFECTS` data table that classifies every modifier and capstone:
+- `cast`: a new ability for slot A or B
+- `while`: works only while the branch's discipline is active
+- `changes`: alters how the discipline works
+- `always`: permanent passive
+
+Nodes that also reach spells name it in `spells`: Overflow (spell recovery) and Amplifier (glyph strikes).
+
+`openSkills()` in `main.ts` shows:
+- an element key and an Active/Passive explanation at the top
+- element badges on the slot rows and on every branch (with a coloured left border), plus element-coloured node orbs
+- a ⚡ after every Active node's name
+- in each detail, an element badge and a kind tag (`nodeKind()`, which reads `NODE_EFFECTS` via each node's `ref`)
+- for a spell, "What affects your spells": Focus bonus, the current Pairing when it touches spells, and each `NODE_EFFECTS.spells` node with its learned state
+
+**BOUNDARY:** Labels only; no rule, balance or save change.
+
 ## Active quests in the Journal; Atlas layer toggles (release 155)
 
 **CODE:** The Journal's new `quests` tab (`renderQuests` in `main.ts`, second after Chronicle) lists everything in progress from `activeQuests()`: accepted, tracking and located Viewport hunts, Old Quillon's errand, the Questing Beast, the Far Array (gate pieces), the Unwritten Meridian, relay leads and the great enemy. Each shows its section, distance and heading. Unfinished challenges from `objectiveList()` are listed below them. "Point compass here" sets `compassPin`, which `navigationTargets()` uses ahead of every other guidance until the compass is tapped (which resumes cycling) or "Let the compass choose again" is pressed. The compass itself shows no text. Under the Atlas, `#mapLayers` holds `ATLAS_LAYERS` toggles for Places (site glyphs), Signals (unresolved signal icons), Objectives (gold and violet frames) and Waypoints (manual waypoint and last death), plus All on/off. `atlasLayers` is kept per device in `localStorage` (`corridor-atlas-layers`, wrapped in try/catch).

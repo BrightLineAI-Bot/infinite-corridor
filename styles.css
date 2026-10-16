@@ -743,3 +743,14 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 .maplayers button { min-height: 32px; padding: 4px 2px; font-size: .78rem; }
 .maplayers button[aria-pressed="false"] { opacity: .55; text-decoration: line-through; }
 .maplayers button[aria-pressed="true"] { border-color: #d5a464; }
+/* Release 157: Arcanum element badges and Active/Passive tags. */
+.arc-elem { display: inline-block; margin: 0 4px 2px 0; padding: 1px 7px; border: 1px solid var(--elem); border-radius: 10px; color: var(--elem); font-size: .78rem; white-space: nowrap; }
+.arc-kind { display: inline-block; margin: 0 4px 2px 0; padding: 1px 7px; border-radius: 10px; font-size: .78rem; white-space: normal; }
+.arc-kind.active { background: #d5a46433; border: 1px solid #d5a464; color: #f1d39a; }
+.arc-kind.passive { background: #7c9fcf22; border: 1px dashed #7c9fcf; color: #b9cbe6; }
+.arc-tags { margin: 2px 0; }
+.arc-key { padding: 4px 0 8px; border-bottom: 1px solid #8b806422; }
+.arc-key p { margin: 2px 0; }
+.arc-branch[data-elem] { border-left: 3px solid var(--elem); padding-left: 8px; }
+.arc-boosts { margin: 2px 0 4px 1rem; padding: 0; font-size: .85rem; }
+.arc-slot .arc-elem { flex: 0 0 auto; justify-self: start; width: max-content; }
