@@ -843,7 +843,6 @@ function pause(show = true) {
   if (show && !pausePanel.open) pausePanel.showModal();
 }
 function pauseForOverlay() {
-  delete panel.dataset.theme; // the Arcanum sets its own theme after this
   overlayPause = true;
   pause(false);
 }
@@ -886,7 +885,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:109,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:110,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1748,13 +1747,14 @@ function openViewport(){pauseForOverlay();if(pausePanel.open)pausePanel.close();
 // One place for spells, the Aperture Constellation, Glyphs and Echoes (Tim, 2026-10-16), styled understated at his
 // request. Tabs share one shell; nodes, sockets and tiles are tapped instead of picked from lists.
 // Game rules are unchanged and live in constellation.ts, glyphs.ts and echoes.ts.
-const ARCANUM_TABS=[['constellation','Spells & Constellation','✧'],['glyphs','Glyphs','🜂'],['echoes','Echoes','◈']];
+const ARCANUM_TABS=[['constellation','Spells & Constellation'],['glyphs','Glyphs'],['echoes','Echoes']];
 let arcanumFocus=null,arcanumSocket=null,arcanumAtShrine=false;
-function el(tag,cls,text){const q=document.createElement(tag);if(cls)q.className=cls;if(text!==undefined)q.textContent=text;return q}
-function arcanumShell(tab,title,subtitle){pauseForOverlay();body.replaceChildren();panel.dataset.theme='arcane';
- const head=el('header','arc-head'),h=el('h2','arc-title',title),sub=el('p','arc-sub',subtitle),tabs=el('nav','arc-tabs');tabs.setAttribute('aria-label','Arcanum');
- for(const[id,label,sigil]of ARCANUM_TABS){const b=el('button','arc-tab'+(id===tab?' on':''));b.type='button';b.append(el('span','arc-tab-sigil',sigil),el('span','',label));if(id===tab)b.setAttribute('aria-current','page');b.onclick=()=>({constellation:()=>openSkills(arcanumAtShrine),glyphs:openGlyphs,echoes:openEchoes})[id]();tabs.append(b)}
- head.append(h,sub,tabs);body.append(head);if(!panel.open)panel.showModal()}
+function el(tag,cls,text){ // small DOM helper for the Arcanum
+ const q=document.createElement(tag);if(cls)q.className=cls;if(text!==undefined)q.textContent=text;return q}
+function arcanumShell(tab,title,subtitle){pauseForOverlay();body.replaceChildren();
+ const h=el('h2','',title),sub=el('p','',subtitle),tabs=el('div','codex-tabs');
+ for(const[id,label]of ARCANUM_TABS){const b=uiButton(label,()=>({constellation:()=>openSkills(arcanumAtShrine),glyphs:openGlyphs,echoes:openEchoes})[id]());if(id===tab)b.setAttribute('aria-current','page');tabs.append(b)}
+ body.append(h,sub,tabs);if(!panel.open)panel.showModal()}
 function arcanumFooter(){const f=el('footer','arc-foot');f.append(uiButton('Sphere forge',openForge),uiButton('Pack',openPack),uiButton('Return to world',resume));body.append(f)}
 // Constellation: each branch is a path of glowing nodes — the active (with rank pips), its modifier, then two capstones.
 function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.perception?.aperture||0,free=pointsFree(save);
@@ -1816,14 +1816,14 @@ function openGlyphs(){arcanumShell('glyphs','Glyphs & Resonances',`Glyph dust ${
   if(known){const more=el('details','arc-tile-more'),sum=el('summary','','Effects');more.append(sum,el('p','',`Weapon: ${GLYPHS[id].text.melee}`),el('p','',`Tool: ${GLYPHS[id].text.tool}`),el('p','',`Spell: ${GLYPHS[id].text.spell}`));const ins=uiButton(`Inscribe · ${DUST_PER_GLYPH} dust`,()=>{const r=craftGlyph(save,id);game.message=r.message;persist();openGlyphs()});more.append(ins);t.append(more)}
   if(target&&known&&n>0){const set=uiButton('Set here',()=>{const r=socketGlyph(save,hostKey,target.index,id);game.message=r.message;persist();arcanumSocket=null;openGlyphs()});set.className='arc-go';t.append(set)}
   pouch.append(t)}
- body.append(el('h3','arc-section','Glyph pouch'),pouch);
- const found=Object.keys(RESONANCES).filter(id=>save.glyphCodex.resonances[id]);body.append(el('h3','arc-section',`Resonances · ${found.length} of ${Object.keys(RESONANCES).length}`));
+ body.append(el('h3','','Glyph pouch'),pouch);
+ const found=Object.keys(RESONANCES).filter(id=>save.glyphCodex.resonances[id]);body.append(el('h3','',`Resonances · ${found.length} of ${Object.keys(RESONANCES).length}`));
  const rs=el('div','arc-resos');for(const[id,r]of Object.entries(RESONANCES)){const k=save.glyphCodex.resonances[id],q=el('div','arc-reso'+(k?' known':''));q.append(el('strong','',k?`✦ ${r.name}`:'✧ Undiscovered'),el('small','',k?`${GLYPHS[r.pair[0]].sigil} ${GLYPHS[r.pair[0]].name} + ${GLYPHS[r.pair[1]].sigil} ${GLYPHS[r.pair[1]].name} — ${r.text}`:'Pair glyphs in one host and use it to find out.'));rs.append(q)}
  body.append(rs);arcanumFooter()}
 // Creature Echoes (release 99): defeated creatures' signature moves set into three notches.
 function openEchoes(){const used=notchesUsed(save.echoes.equipped);
  arcanumShell('echoes',`Creature Echoes`,`${used} of ${NOTCHES} notches set. An Echo is a defeated creature’s signature move, carried in you; it triggers on your own dodges, jumps, kills, wounds, casts and shots. Guardians always leave theirs.`);
- const notch=el('div','arc-notches');for(let i=0;i<NOTCHES;i++)notch.append(el('i',i<used?'on':''));body.append(notch);
+ body.append(el('p','arc-notches',`Notches ${'◆'.repeat(used)}${'◇'.repeat(Math.max(0,NOTCHES-used))}`));
  const grid=el('div','arc-grid');
  for(const id of ECHO_IDS){const e=ECHOES[id],owned=save.echoes.owned[id],on=save.echoes.equipped.includes(id),creature=MONSTER_PACK[id]?.name||id,c=el(owned?'button':'div','arc-card echo-card'+(on?' on':'')+(owned?'':' unknown'));if(owned)c.type='button';
   c.append(el('span','arc-card-sigil','◆'.repeat(e.cost)),el('strong','',owned?e.name:'Unknown Echo'),el('small','',owned?`${creature} — ${e.text}`:`Defeat a ${creature} to take it.`));
