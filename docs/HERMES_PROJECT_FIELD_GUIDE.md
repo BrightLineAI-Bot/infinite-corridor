@@ -24,7 +24,7 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
-## Copy diagnostics carries the save (release 147)
+## Copy diagnostics carries the save (release 149)
 
 **CODE:** Options → System's "Copy diagnostics" in `main.ts` now copies, as compact JSON: release, `navigator.userAgent`, whether the game runs as an installed app, the screen size, settings, storage, `recentErrors` and the active journey's `save`. `recentErrors` holds the last 8 errors (message, first stack lines, repeat count) recorded by `noteError()`, which `recoverOverlay()` calls for every error from the frame loop, window `error` and `unhandledrejection`. Performance samples are included only when performance recording is on. If the clipboard is refused, the JSON downloads as a file instead. The System text shows the browser and recent errors, and the old "Diagnostics: off" line now reads "Performance recording", because it never gated the copy.
 
@@ -47,6 +47,12 @@ The Wayglass network uses three deliberately separate concepts. A Wayglass is a 
 **CODE:** `pausePanel` prevents its `cancel` event, but Chrome on Android closes a modal dialog without firing `cancel` when the back gesture arrives with no user activation since the dialog opened (for example the pause menu that `visibilitychange` shows on returning from the background, or a second back press). Only the overlay dialogs had `close` listeners, so the game stayed paused with nothing on screen. `main.ts` now listens for the pause menu's `close`: if the game is paused, `overlayPause` is false (overlay transitions set it through `pauseForOverlay()` before closing the menu), the page is visible and no other dialog is open, it calls `resume()`. Back on the pause menu therefore means Continue.
 
 **BOUNDARY:** Input/UI only; no save, generation or Proving Ground change. The Reciter's Tome itself was verified not to hang on back.
+
+## Pattern catalogue dungeons (release 147)
+
+**CODE:** New module `pattern-dungeons.ts` (in `scripts/build.mjs` and both precache lists). `PATTERN_CATALOG` holds about 50 entries in nine families: elementary (window cut from a run three maps wide; odd rules drawn with alternate rows inverted), ternary (three-colour totalistic codes), pascal (additive mod p), life (outer totalistic from a soup, on tiles), growth (five-neighbour outer totalistic codes from one cell, 2×2 tiles per cell), ant (turmites; odd colours are floor), hilbert, dragon (largest paper fold at ≥2 tiles per step) and carpet (Sierpinski or Cantor, tiled). `carvePattern` draws a pattern into the grid, oriented so time runs from the entry. `stitchPattern` drops specks under 4 cells, then repeatedly joins the nearest separate piece to the entry's piece by the shortest tunnel through rock. `underlands.ts` adds `LAYOUTS_V3` (six grammars + four "pattern") for `layoutPool >= 3`; `options.pattern` forces an entry (previews and tests). `map.automaton` gains `pattern` (the catalogue id). `game.ts` marks fresh histories `layoutPool: 3`.
+
+**BOUNDARY:** Histories with `layoutPool` 1 or 2 keep their grammars and automaton picks unchanged; release-146 automaton dungeons stay pool 2. Balance numbers are data in the catalogue (fills, steps, codes). Checked: all 52 entries × 3 sizes × 6 seeds reach the guardian, 42 ms at worst on desktop; on-device timing not measured.
 
 ## Automaton dungeons and Threefold layout 2 (release 146)
 
