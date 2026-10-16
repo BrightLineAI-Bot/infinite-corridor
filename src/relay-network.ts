@@ -10,6 +10,33 @@
 import { hashSeed } from "./random.ts";
 
 export const RELAY_VERSION = 1;
+// Relay placement v2 (release 142): Wolfram's Rule 110, a class IV ("complex") cellular automaton. Each row of sections
+// (ry) is one generation; each column (rx) one cell. A crossing whose section cell is alive holds a relay, so the relays
+// you find and answer trace the automaton's interlocking triangles and gliders (see relayEdge). Crossings decided earlier keep theirs.
+export const RELAY_PATTERN = { rule: 110, width: 257, rows: 257, origin: 128 };
+const patternCache = new Map();
+function relayPattern(seed) {
+  if (patternCache.has(seed)) return patternCache.get(seed);
+  const { rule, width, rows } = RELAY_PATTERN, grid = new Uint8Array(width * rows);
+  // A sparse, seeded first generation; Rule 110 grows its structures southward from it.
+  for (let x = 0; x < width; x++) grid[x] = hashSeed(`${seed}:relay-pattern:${x}`) % 7 === 0 ? 1 : 0;
+  for (let y = 1; y < rows; y++) for (let x = 0; x < width; x++) {
+    const l = grid[(y - 1) * width + (x - 1 + width) % width], c = grid[(y - 1) * width + x], r = grid[(y - 1) * width + (x + 1) % width];
+    grid[y * width + x] = (rule >> (l << 2 | c << 1 | r)) & 1;
+  }
+  patternCache.set(seed, grid); if (patternCache.size > 4) patternCache.delete(patternCache.keys().next().value);
+  return grid;
+}
+// Is the section (rx, ry) alive in the relay pattern? (The pattern repeats beyond its 257-section square.)
+export function relayCell(seed, rx, ry) {
+  const { width, rows, origin } = RELAY_PATTERN, x = ((rx + origin) % width + width) % width, y = ((ry + origin) % rows + rows) % rows;
+  return relayPattern(seed)[y * width + x] === 1;
+}
+// Relays sit on the pattern's edges: alive cells whose northern neighbour is dead (about a fifth of sections), which
+// trace the leading edges of Rule 110's triangles and gliders as long diagonal streaks.
+export function relayEdge(seed, rx, ry) { return relayCell(seed, rx, ry) && !relayCell(seed, rx, ry - 1); }
+// Section coordinates of an ordinary crossing id (dungeon:<seed>:g<n>:<rx>:<ry>:<object>), or null.
+export function crossingSection(areaId) { const m = /^dungeon:[^:]+:g\d+:(-?\d+):(-?\d+):/.exec(String(areaId)); return m ? { rx: Number(m[1]), ry: Number(m[2]) } : null; }
 export const RELAY_TARGET = 5;
 export const RELAY_SHARE = 35; // percent of eligible crossings that hold a relay
 
@@ -43,7 +70,9 @@ export function ensureRelayNetwork(save) {
 export function relayNodeDecision(save, areaId, history, storyId) {
   if (history.relayNode !== undefined) return history.relayNode;
   const visited = history.visits > 0 || Object.keys(save.session?.areas || {}).some((k) => k === areaId || k.startsWith(areaId + ":level:"));
-  history.relayNode = !visited && areaId !== storyId && ELIGIBLE(areaId) && hashSeed(`${save.seed}:relay-node:v${RELAY_VERSION}:${areaId}`) % 100 < RELAY_SHARE;
+  const at = crossingSection(areaId);
+  history.relayNode = !visited && areaId !== storyId && ELIGIBLE(areaId) && (at ? relayEdge(save.seed, at.rx, at.ry) : hashSeed(`${save.seed}:relay-node:v${RELAY_VERSION}:${areaId}`) % 100 < RELAY_SHARE);
+  if (at) history.relayPattern = 2;
   return history.relayNode;
 }
 
