@@ -704,7 +704,7 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 .arc-glyph-line,.arc-reso-line{margin:.15rem 0}.arc-reso{padding:5px 0;border-bottom:1px solid #8b806422;opacity:.6}.arc-reso.known{opacity:1}.arc-reso strong,.arc-reso small{display:block}
 .arc-sockets-mini{color:#a39a88}.arc-foot{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 
-/* Spell slots A and B (release 111): symbol in the castable's attribute colour, slot letter in the corner. */
+/* Spell slots A and B (release 112): symbol in the castable's attribute colour, slot letter in the corner. */
 .quick-row button.spell{--slot:#76684e;border-color:var(--slot);color:var(--slot)}
 .quick-row button.spell .slot-sym{font-size:17px;line-height:1;text-transform:none}
 .quick-row button.spell .slot-letter{position:absolute;top:2px;left:9px;font-size:8px;color:#a39a88}

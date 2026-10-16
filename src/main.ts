@@ -391,7 +391,7 @@ function drawApertureVisuals() {
 const objective = $("#objective"),
   hud = $("#hud"),
   hudDetails = $("#hudDetails"),
-  hudToggles = [$("#hudExpand")].filter(Boolean), // release 111: the bottom-row Menu toggle became spell slot B
+  hudToggles = [$("#hudExpand")].filter(Boolean), // release 112: the bottom-row Menu toggle became spell slot B
   navCompass = $("#navCompass"),
   navGuidanceArrow = $("#navGuidanceArrow"),
   navManualArrow = $("#navManualArrow");
@@ -886,7 +886,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:111,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:112,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1499,7 +1499,7 @@ function updateHud(now) {
           : "READY";
     button.setAttribute("aria-label", `${action} ${button.dataset.cooldown}`);
   }
-  // Spell slots A and B (release 111): each shows its castable's symbol in its attribute colour.
+  // Spell slots A and B (release 112): each shows its castable's symbol in its attribute colour.
   for (const [action, slot] of [["spell", "a"], ["spell2", "b"]]) {
     const button = document.querySelector(`[data-action="${action}"]`), c = slotted(save, slot);
     if (!button) continue;
@@ -1813,7 +1813,7 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
  arcanumFooter()}
 // Glyphs: tap a socket, then tap a glyph tile to set it; resonating pairs glow.
 function openGlyphs(){arcanumShell('glyphs','Glyphs & Resonances',`Glyph dust ${save.glyphDust||0}. Tap a socket, then a glyph to set it. The same glyph acts differently in a weapon, a tool or a spell; two in one host can wake a Resonance. Glyphs always come back out intact.`);
- // one spell host per slotted spell (release 111); describeHost reads the readied spell, so it is set per host below
+ // one spell host per slotted spell (release 112); describeHost reads the readied spell, so it is set per host below
  const slotSpells=[...new Set(['a','b'].map(q=>slotted(save,q)).filter(c=>c?.kind==='spell').map(c=>c.id))],spellIds=slotSpells.length?slotSpells:[save.equippedSpell||'ember-ring'],readied=save.equippedSpell;
  for(const id of spellIds)save.spellGlyphs[id]||=Array(SPELL_SOCKETS).fill(null);
  const hosts=[['melee','Primary',save.equipment.primary,save.equipment.primary?.glyphs],['tool','Tool',save.equipment.secondary,save.equipment.secondary?.glyphs],...spellIds.map(id=>[`spell:${id}`,'Spell',SPELLS[id],save.spellGlyphs[id]])];
