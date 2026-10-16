@@ -28,14 +28,14 @@ function run(e, w, seconds, dt = 1 / 30, each = () => {}) { for (let t = 0; t < 
 test('sea creatures spawn deterministically, bounded, on their habitat water, only in landscape version 2+', () => {
   const sea = findSection('sea', (m) => seaSpawns(m, SEED, 0, 0).length > 0);
   const a = seaSpawns(sea.m, SEED, sea.rx, sea.ry), b = seaSpawns(section(sea.rx, sea.ry), SEED, sea.rx, sea.ry);
-  assert.deepEqual(a, b); assert.ok(a.length >= 1 && a.length <= SEA_SPAWNS.maxPerSection * 2);
+  assert.deepEqual(a, b); assert.ok(a.length >= 1 && a.length <= SEA_SPAWNS.maxPerSection * 2 + 1);
   for (const q of a) { const t = sea.m.tiles[q.y * 32 + q.x]; assert.ok(SEA_HABITATS[SEA_CREATURES[q.kind].habitat].includes(t.kind), `${q.kind} on ${t.kind}`); }
   assert.deepEqual(seaSpawns(section(sea.rx, sea.ry, 1), SEED, sea.rx, sea.ry), [], 'version 1 coasts stay as they were');
   const fen = findSection('swamp', (m) => seaSpawns(m, SEED, 0, 0).length > 0);
   assert.ok(seaSpawns(fen.m, SEED, fen.rx, fen.ry).every((q) => ['mireLeech', 'bogLurker'].includes(q.kind)), 'swamps hold swamp creatures');
   const kinds = new Set();
   for (let ry = -25; ry <= 25; ry++) for (let rx = -25; rx <= 25; rx++) if (['sea', 'coast', 'swamp', 'blight', 'lake', 'isles'].includes(biomeFor(SEED, rx, ry))) for (const q of seaSpawns(section(rx, ry), SEED, rx, ry)) kinds.add(q.kind);
-  for (const k of Object.keys(SEA_CREATURES)) assert.ok(kinds.has(k), `${k} appears in the world`);
+  for (const k of Object.keys(SEA_CREATURES).filter((q) => !SEA_CREATURES[q].leviathan && !SEA_CREATURES[q].summonOnly)) assert.ok(kinds.has(k), `${k} appears in the world`); // leviathans: tests/leviathans.test.ts
 });
 
 test('Lanceeel: hidden, then a visible wake line, then a straight charge that hits along it, then it dives', () => {

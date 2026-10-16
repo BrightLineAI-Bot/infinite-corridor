@@ -262,20 +262,36 @@ const COLORS = {
 };
 // Surface sea creatures (water world W3). Submerged: a ripple ring only. Telegraphs: a wake line (Lanceeel), a
 // landing shadow (Breachfin), a tight coil ring (Ringcoil), jaws (Sinewake) and bubbles (Bog Lurker).
-function drawSeaCreature(ctx, e, s, now, colors) {
+function drawSeaCreature(ctx, e, s, now, colors, g) {
   const cx = (e.x + .5) * s, cy = (e.y + .72) * s, t = e.seaTele;
   ctx.save();
   if (t?.type === "line") { ctx.strokeStyle = "#ff8a6acc"; ctx.lineWidth = Math.max(2, s * .12); ctx.setLineDash([s * .3, s * .18]); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + t.dx * t.len * s, cy + t.dy * t.len * s); ctx.stroke(); ctx.setLineDash([]); }
-  if (t?.type === "shadow") { ctx.fillStyle = "#0b1a2a88"; ctx.strokeStyle = "#ff8a6acc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse((t.x + .5) * s, (t.y + .72) * s, s * .6, s * .3, 0, 0, 7); ctx.fill(); ctx.stroke(); }
+  if (t?.type === "shadow") { const k = t.big ? 2.4 : e.leviathan ? 1.8 : 1; ctx.fillStyle = "#0b1a2a88"; ctx.strokeStyle = "#ff8a6acc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse((t.x + .5) * s, (t.y + .72) * s, s * .6 * k, s * .3 * k, 0, 0, 7); ctx.fill(); ctx.stroke(); }
+  if (t?.type === "rings") for (const m of t.marks) { ctx.strokeStyle = "#ff8a6acc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc((m.x + .5) * s, (m.y + .72) * s, s * (.5 + .1 * Math.sin(now / 90)), 0, 7); ctx.stroke(); }
+  if (t?.type === "mark" || t?.type === "grip") { const p = g.player; ctx.strokeStyle = t.type === "grip" ? "#b48cffee" : "#ff8a6acc"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); if (t.type === "grip") { ctx.moveTo(cx, cy); ctx.quadraticCurveTo((cx + (p.x + .5) * s) / 2, cy - s, (p.x + .5) * s, (p.y + .72) * s); } else ctx.arc((p.x + .5) * s, (p.y + .72) * s, s * .7, 0, 7); ctx.stroke(); }
   if (t?.type === "coil" || t?.type === "jaw") { ctx.strokeStyle = "#ff8a6a99"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, s * .7, 0, 7); ctx.stroke(); }
   if (t?.type === "bubbles") for (let i = 0; i < 5; i++) { const f = (now / 500 + i * .2) % 1; ctx.fillStyle = `rgba(200,230,140,${1 - f})`; ctx.beginPath(); ctx.arc(cx + Math.sin(i * 2.1) * s * .35, cy - f * s * .6, s * (.05 + f * .05), 0, 7); ctx.fill(); }
   if (e.hidden) { // only a ripple betrays it
     const f = (now / 900 + (e.x + e.y) * .1) % 1; ctx.strokeStyle = `rgba(220,240,255,${.45 * (1 - f)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(cx, cy, s * (.2 + f * .4), s * (.08 + f * .15), 0, 0, 7); ctx.stroke(); ctx.restore(); return;
   }
+  if (e.kind === "tentacle") { // a rising limb: a curling column with suckers; a pale ring before it slams
+    if (t?.type === "slam") { ctx.strokeStyle = "#ff8a6acc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, s * .95, 0, 7); ctx.stroke(); }
+    const sway = Math.sin(now / 240 + e.x) * s * .2; ctx.strokeStyle = e.hitFlash > 0 ? "#f3d2b0" : colors[0]; ctx.lineCap = "round"; ctx.lineWidth = s * .32;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.quadraticCurveTo(cx + sway, cy - s * .8, cx - sway * .6, cy - s * 1.5); ctx.stroke();
+    ctx.fillStyle = colors[2]; for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.arc(cx + sway * i / 4, cy - s * .38 * i, s * .05, 0, 7); ctx.fill(); }
+    ctx.restore(); return;
+  }
+  if (e.leviathan && /Kraken|kraken/.test(e.kind)) { // a kraken body: mantle and resting arms around it
+    const k = e.scale || 2;
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + Math.sin(now / 700 + i) * .2; ctx.strokeStyle = colors[1]; ctx.lineWidth = s * .16; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.quadraticCurveTo(cx + Math.cos(a) * s * k * .5, cy + Math.sin(a) * s * k * .3, cx + Math.cos(a + .4) * s * k * .75, cy + Math.sin(a + .4) * s * k * .45); ctx.stroke(); }
+    ctx.fillStyle = e.hitFlash > 0 ? "#f3d2b0" : colors[0]; ctx.strokeStyle = colors[2]; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, cy - s * .35 * k, s * .42 * k, s * .5 * k, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = colors[2]; for (const q of [-1, 1]) { ctx.beginPath(); ctx.arc(cx + q * s * .16 * k, cy - s * .25 * k, s * .07 * k, 0, 7); ctx.fill(); }
+    ctx.restore(); return;
+  }
   const lift = (e.leapHeight || 0) * s, f = e.ai?.facing || "down", [fx, fy] = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[f], n = e.segments || 1;
   if (lift) { ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(cx, cy, s * .4, s * .14, 0, 0, 7); ctx.fill(); }
   for (let i = n - 1; i >= 0; i--) { // trailing body, head last
-    const wave = Math.sin(now / 160 + i * .9) * s * .12, bx = cx - fx * s * .32 * i - fy * wave, by = cy - lift - fy * s * .32 * i + fx * wave, r = s * (i ? .2 - i * .012 : .27);
+    const sz = e.scale || 1, wave = Math.sin(now / 160 + i * .9) * s * .12 * sz, bx = cx - fx * s * .32 * sz * i - fy * wave, by = cy - lift - fy * s * .32 * sz * i + fx * wave, r = s * sz * (i ? Math.max(.08, .2 - i * .012) : .27);
     ctx.fillStyle = e.hitFlash > 0 ? "#f3d2b0" : colors[i % 2 ? 1 : 0]; ctx.strokeStyle = colors[2]; ctx.lineWidth = Math.max(1, s * .03);
     ctx.beginPath(); ctx.ellipse(bx, by, Math.max(2, r), Math.max(2, r * .72), Math.atan2(fy, fx), 0, 7); ctx.fill(); ctx.stroke();
   }
@@ -676,7 +692,7 @@ export function render(ctx, g, w, h, now) {
       draws.push({
         y: e.y, x: e.x,
         fn: () => {
-          if (e.seaKind) { drawSeaCreature(ctx, e, s, now, SEA_CREATURES[e.seaKind].colors); return; }
+          if (e.seaKind) { drawSeaCreature(ctx, e, s, now, SEA_CREATURES[e.seaKind].colors, g); return; }
           const f = e.ai?.facing || "down",
             q = e.recoil > 0 ? 0.12 : 0,
             ox = f === "left" ? q : f === "right" ? -q : 0,
@@ -782,6 +798,12 @@ export function render(ctx, g, w, h, now) {
   for (const d of draws) {
     const raise = Number.isFinite(d.x) ? groundLift(d.x, d.y) : 0;
     if (raise) { ctx.save(); ctx.translate(0, -raise * s); d.fn(); ctx.restore(); } else d.fn();
+  }
+  // Stormkraken ink (W4): the sea goes dark beyond a small circle around the Wayfarer.
+  if (g.area === "overworld" && now < (g.inkUntil || 0)) {
+    const fade = Math.min(1, (g.inkUntil - now) / 600), px = (p.x + .5) * s, py = (p.y + .6) * s, grad = ctx.createRadialGradient(px, py, s * 1.4, px, py, s * 4.5);
+    grad.addColorStop(0, "rgba(6,10,18,0)"); grad.addColorStop(1, `rgba(6,10,18,${.92 * fade})`);
+    ctx.fillStyle = grad; ctx.fillRect(l * s, t * s, (r - l) * s, (b - t) * s);
   }
   for (const e of g.enemies)
     if (!e.dead && discoveredInDungeon(g,e) && !e.ambient && !e.hidden && !e.aloft && visibleInCamera(e,l,t,r,b,2)) {

@@ -60,7 +60,7 @@ New `aquatic` movement layer: these enemies spawn and path only on water tiles (
 
 Submerged creatures show only a ripple/shadow until they surface (readability: always telegraph before damage, mobile-first).
 
-## W4 — leviathans (open/deep ocean world beasts)
+## W4 — leviathans (open/deep ocean world beasts) — built in release 106
 
 Deep-ocean only, rare, one at a time per section, using the existing elite/world-beast contract architecture (`src/elites.ts`): stable ID, modules, threat cost, idempotent reward.
 
