@@ -66,7 +66,39 @@ export const PATTERN_CATALOG = [
   { id: "nCantor", family: "carpet", invert: true, name: "Cantor Rooms" },
 ];
 
+// The organic catalogue (release 148): fewer recognisable figures, more grown and worn shapes. Chaotic rules are drawn
+// through a smooth warp so their lines bend; new families add Young's activator–inhibitor model (the spots and stripes
+// of animal coats, NKS chapter 8), aggregation (branching growth from sticking particles, chapter 7) and burrowing
+// walkers. Histories on layout pool 4 draw from this list; pool 3 keeps PATTERN_CATALOG.
+export const ORGANIC_CATALOG = [
+  ...["lMaze", "lMazectric", "lAnneal", "lDayNight", "lDiamoeba", "lWalled", "lAssim", "aRL", "aRLR", "aLLRR"].map((id) => PATTERN_CATALOG.find((p) => p.id === id)),
+  { id: "lVote", family: "life", born: [5, 6, 7, 8], survive: [4, 5, 6, 7, 8], fill: .52, steps: 20, floor: 1, name: "Vote Caves" },
+  { id: "yLeopard", family: "turing", r1: 2, r2: 5, weight: .32, steps: 5, floor: 1, name: "Leopard Rooms" },
+  { id: "yZebra", family: "turing", r1: 2.3, r2: 4.5, weight: .55, steps: 5, floor: 0, name: "Zebra Halls" },
+  { id: "yBrain", family: "turing", r1: 1.5, r2: 3.5, weight: .45, steps: 6, floor: 1, name: "Brain Coral" },
+  { id: "dCoral", family: "dla", seeds: 1, mass: .3, name: "Coral Branches" },
+  { id: "dFern", family: "dla", seeds: 4, mass: .32, name: "Frost Ferns" },
+  { id: "bWorm", family: "burrow", worms: 5, length: 90, turn: .7, chambers: .04, name: "Worm Burrows" },
+  { id: "bRoots", family: "burrow", worms: 10, length: 55, turn: 1.1, chambers: .02, name: "Root Tunnels" },
+  { id: "w30", family: "elementary", rule: 30, seed: "scatter", warp: 4, name: "Melted Chaos" },
+  { id: "w110", family: "elementary", rule: 110, seed: "scatter", warp: 4, name: "Drifting Gliders" },
+  { id: "w54", family: "elementary", rule: 54, seed: "scatter", warp: 5, name: "Kelp Galleries" },
+  { id: "w106", family: "elementary", rule: 106, seed: "scatter", warp: 4, name: "Rippled Drift" },
+  { id: "w45", family: "elementary", rule: 45, seed: "scatter", warp: 5, name: "Weathered Static" },
+  { id: "w73", family: "elementary", rule: 73, seed: "scatter", warp: 5, name: "Bent Columns" },
+  { id: "w126", family: "elementary", rule: 126, seed: "scatter", warp: 4, name: "Sea Foam" },
+  { id: "w90", family: "elementary", rule: 90, seed: "single", warp: 5, name: "Crumbled Sierpinski" },
+  { id: "w1599", family: "ternary", code: 1599, seed: "scatter", warp: 4, name: "Tangled Roots" },
+  { id: "w2040", family: "ternary", code: 2040, seed: "scatter", warp: 4, name: "Washed Vaults" },
+];
+
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+// Smooth value noise in [-1, 1] on a lattice of `cell` tiles.
+function noiseField(w, h, rand, cell) {
+  const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2, v = Array.from({ length: gw * gh }, () => rand() * 2 - 1);
+  return (x, y) => { const fx = x / cell, fy = y / cell, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy, sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty), at = (a, b) => v[(iy + b) * gw + ix + a];
+    return (at(0, 0) * (1 - sx) + at(1, 0) * sx) * (1 - sy) + (at(0, 1) * (1 - sx) + at(1, 1) * sx) * sy; };
+}
 
 // Runs one-dimensional automata. `step(l,c,r)` gives the next colour; returns `rows` rows of width `width`.
 function run1d(width, rows, first, step) {
@@ -81,8 +113,16 @@ function run1d(width, rows, first, step) {
 }
 
 // Carves the chosen pattern into grid `g` (1 = floor). Returns the pattern's catalogue entry.
-export function carvePattern(g, w, h, rand, start, goal, carve, choice = null) {
-  const pick = choice || PATTERN_CATALOG[Math.floor(rand() * PATTERN_CATALOG.length)];
+export function carvePattern(g, w, h, rand, start, goal, carve, choice = null, catalog = PATTERN_CATALOG) {
+  const pick = choice || catalog[Math.floor(rand() * catalog.length)];
+  if (pick.warp) {
+    // Draw the pattern unbent, then read it back through a smooth displacement so straight lines meander.
+    const t = new Uint8Array(w * h);
+    carvePattern(t, w, h, rand, start, goal, (x, y) => { if (x > 0 && y > 0 && x < w - 1 && y < h - 1) t[y * w + x] = 1; }, { ...pick, warp: 0 });
+    const nx = noiseField(w, h, rand, 9), ny = noiseField(w, h, rand, 9);
+    for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) { const sx = Math.round(x + pick.warp * nx(x, y)), sy = Math.round(y + pick.warp * ny(x, y)); if (sx > 0 && sy > 0 && sx < w - 1 && sy < h - 1 && t[sy * w + sx]) carve(x, y); }
+    return pick;
+  }
   const flip = start.y > goal.y, mirror = start.x > goal.x;
   // Places a pattern cell (cx, cy) as a bw×bh block on a pitch of 2, oriented so time runs from the entry.
   const block = (cx, cy, bw = 3, bh = 2) => {
@@ -106,7 +146,8 @@ export function carvePattern(g, w, h, rand, start, goal, carve, choice = null) {
     if (odd) rows.forEach((r, y) => { if (y % 2) for (let x = 0; x < r.length; x++) r[x] ^= 1; });
     blit1d(cut(rows, pick.seed === "single" ? Math.floor(wide / 2 - cw / 2 + (rand() - .5) * cw * .4) : offset()));
   } else if (pick.family === "ternary") {
-    const first = new Uint8Array(wide); first[Math.floor(wide / 2)] = 1;
+    const first = new Uint8Array(wide);
+    if (pick.seed === "scatter") for (let x = 0; x < wide; x++) first[x] = rand() < .4 ? 1 + Math.floor(rand() * 2) : 0; else first[Math.floor(wide / 2)] = 1;
     const digit = (s) => Math.floor(pick.code / 3 ** s) % 3;
     blit1d(cut(run1d(wide, ch, first, (l, c, r) => digit(l + c + r)), Math.floor(wide / 2 - cw / 2)));
   } else if (pick.family === "pascal") {
@@ -163,6 +204,51 @@ export function carvePattern(g, w, h, rand, start, goal, carve, choice = null) {
     step = Math.max(1, step);
     const ox = 3 + Math.floor((w - 6 - step * (maxX - minX)) / 2), oy = 3 + Math.floor((h - 6 - step * (maxY - minY)) / 2);
     for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i]; for (let k = 0; k <= step; k++) carve(ox + (a.x - minX) * step + (b.x - a.x) * k, oy + (a.y - minY) * step + (b.y - a.y) * k); }
+  } else if (pick.family === "turing") {
+    // Young's model: each cell is pushed on by active cells within r1 and off by those in the ring out to r2.
+    let c = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) c[i] = rand() < .5 ? 1 : 0;
+    const near = [], far = [], R = Math.ceil(pick.r2);
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { const d = Math.hypot(dx, dy); if (d <= pick.r1) near.push(dy * w + dx); else if (d <= pick.r2) far.push(dy * w + dx); }
+    for (let s = 0; s < pick.steps; s++) {
+      const next = c.slice();
+      for (let y = R; y < h - R; y++) for (let x = R; x < w - R; x++) { const i = y * w + x; let a = 0, b = 0; for (const o of near) a += c[i + o]; for (const o of far) b += c[i + o]; const v = a - pick.weight * b; next[i] = v > 0 ? 1 : v < 0 ? 0 : c[i]; }
+      c = next;
+    }
+    for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) if (c[y * w + x] === pick.floor) carve(x, y);
+  } else if (pick.family === "dla") {
+    // Aggregation on a grid of 2×2 tiles: wandering particles stick when they touch the growth.
+    const gw = Math.floor((w - 4) / 2), gh = Math.floor((h - 4) / 2), cl = new Uint8Array(gw * gh);
+    const toCell = (p) => ({ x: Math.max(0, Math.min(gw - 1, Math.floor((p.x - 2) / 2))), y: Math.max(0, Math.min(gh - 1, Math.floor((p.y - 2) / 2))) });
+    const s0 = toCell(start); cl[s0.y * gw + s0.x] = 1;
+    for (let k = 1; k < pick.seeds; k++) cl[Math.floor(rand() * gh) * gw + Math.floor(rand() * gw)] = 1;
+    const target = Math.floor(gw * gh * pick.mass); let mass = pick.seeds, budget = 400000;
+    const touches = (x, y) => (x > 0 && cl[y * gw + x - 1]) || (x < gw - 1 && cl[y * gw + x + 1]) || (y > 0 && cl[(y - 1) * gw + x]) || (y < gh - 1 && cl[(y + 1) * gw + x]);
+    while (mass < target && budget > 0) {
+      let x = Math.floor(rand() * gw), y = Math.floor(rand() * gh);
+      if (cl[y * gw + x]) continue;
+      for (let s = 0; s < 600 && budget > 0; s++, budget--) {
+        if (touches(x, y)) { cl[y * gw + x] = 1; mass++; break; }
+        const d = Math.floor(rand() * 4); x = Math.max(0, Math.min(gw - 1, x + [1, -1, 0, 0][d])); y = Math.max(0, Math.min(gh - 1, y + [0, 0, 1, -1][d]));
+      }
+    }
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) if (cl[y * gw + x]) for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) carve(2 + x * 2 + dx, 2 + y * 2 + dy);
+  } else if (pick.family === "burrow") {
+    // Burrowers: each sets out from the entry or from a point already dug, turning a little at every step,
+    // leaning toward the guardian, now and then hollowing a chamber.
+    const dug = [{ x: start.x, y: start.y }], disc = (cx, cy, r) => { for (let dy = -Math.ceil(r); dy <= Math.ceil(r); dy++) for (let dx = -Math.ceil(r); dx <= Math.ceil(r); dx++) if (dx * dx + dy * dy <= r * r + .5) carve(Math.round(cx + dx), Math.round(cy + dy)); };
+    for (let k = 0; k < pick.worms; k++) {
+      const from = k === 0 ? dug[0] : dug[Math.floor(rand() * dug.length)];
+      let x = from.x, y = from.y, a = k === 0 ? Math.atan2(goal.y - y, goal.x - x) : rand() * Math.PI * 2, wid = .6 + rand() * .9;
+      for (let s = 0; s < pick.length; s++) {
+        a += (rand() - .5) * pick.turn; const toward = Math.atan2(goal.y - y, goal.x - x); if (k === 0) a += Math.sin(toward - a) * .15;
+        x += Math.cos(a); y += Math.sin(a);
+        if (x < 3 || x > w - 4) { a = Math.PI - a; x = Math.max(3, Math.min(w - 4, x)); }
+        if (y < 3 || y > h - 4) { a = -a; y = Math.max(3, Math.min(h - 4, y)); }
+        wid = Math.max(.5, Math.min(1.8, wid + (rand() - .5) * .3));
+        disc(x, y, wid); if (s % 4 === 0) dug.push({ x: Math.round(x), y: Math.round(y) });
+        if (rand() < pick.chambers) disc(x, y, 2 + rand() * 2);
+      }
+    }
   } else if (pick.family === "carpet") {
     const scale = 1 + Math.floor(rand() * 2), sx = Math.floor(rand() * 27), sy = Math.floor(rand() * 27);
     const hole = (x, y) => { for (let a = x, b = y; a > 0 || b > 0; a = Math.floor(a / 3), b = Math.floor(b / 3)) if (a % 3 === 1 && b % 3 === 1) return true; return false; };

@@ -42,6 +42,12 @@ The Wayglass network uses three deliberately separate concepts. A Wayglass is a 
 
 **BOUNDARY:** Input/UI only; no save, generation or Proving Ground change. The Reciter's Tome itself was verified not to hang on back.
 
+## Organic pattern catalogue (release 148)
+
+**CODE:** `pattern-dungeons.ts` adds `ORGANIC_CATALOG`: 28 entries. It keeps ten Life-like and turmite entries from `PATTERN_CATALOG` and adds Vote Caves. Three new families: `turing` (Young's activator–inhibitor: radius `r1` activates, the ring to `r2` inhibits by `weight`), `dla` (aggregation on 2×2 cells from the entry plus `seeds`-1 random seeds, until `mass` of the grid) and `burrow` (walkers from the entry or dug points, with `turn`, `length` and `chambers`). Entries with `warp` are drawn unbent into a scratch grid, then resampled through smooth value noise (`noiseField`, lattice 9) by up to `warp` tiles. Ternary entries accept `seed: "scatter"`. `carvePattern` takes a `catalog` argument. `underlands.ts` passes `ORGANIC_CATALOG` when `layoutPool >= 4`. `game.ts` marks fresh histories `layoutPool: 4`.
+
+**BOUNDARY:** Pool 3 (release 147) dungeons draw from `PATTERN_CATALOG` exactly as before. The new branches only run for new families or `warp` entries, and the ternary branch is unchanged without `seed`. Checked: 28 entries × 3 sizes × 6 seeds reach the guardian, ≤61 ms on desktop.
+
 ## Pattern catalogue dungeons (release 147)
 
 **CODE:** New module `pattern-dungeons.ts` (in `scripts/build.mjs` and both precache lists). `PATTERN_CATALOG` holds about 50 entries in nine families: elementary (window cut from a run three maps wide; odd rules drawn with alternate rows inverted), ternary (three-colour totalistic codes), pascal (additive mod p), life (outer totalistic from a soup, on tiles), growth (five-neighbour outer totalistic codes from one cell, 2×2 tiles per cell), ant (turmites; odd colours are floor), hilbert, dragon (largest paper fold at ≥2 tiles per step) and carpet (Sierpinski or Cantor, tiled). `carvePattern` draws a pattern into the grid, oriented so time runs from the entry. `stitchPattern` drops specks under 4 cells, then repeatedly joins the nearest separate piece to the entry's piece by the shortest tunnel through rock. `underlands.ts` adds `LAYOUTS_V3` (six grammars + four "pattern") for `layoutPool >= 3`; `options.pattern` forces an entry (previews and tests). `map.automaton` gains `pattern` (the catalogue id). `game.ts` marks fresh histories `layoutPool: 3`.
