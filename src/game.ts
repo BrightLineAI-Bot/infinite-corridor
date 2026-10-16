@@ -85,7 +85,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   const fresh = history.generatorVersion === undefined && id !== canonical && !save.session.areas[id];
   if (history.generatorVersion === undefined) history.generatorVersion = id === canonical || save.session.areas[id] ? 2 : DUNGEON_GENERATOR_V5;
   // Release 146: dungeons first generated from now on may use the automaton layout (pool 2) and threefold layout 2.
-  if (fresh && history.layoutPool === undefined) history.layoutPool = 3; // release 147: the pattern catalogue
+  if (fresh && history.layoutPool === undefined) history.layoutPool = 4; // release 148: the organic pattern catalogue (pool 3: release 147's)
   if (fresh && history.threefoldLayout === undefined && id.endsWith(':deep-v2:threefold')) history.threefoldLayout = 2;
   let map;
   // Dive generator pinned per history: 1 = the release-107 Sunken Reach, 2 = themed grottoes (release 108).
