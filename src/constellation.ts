@@ -32,6 +32,16 @@ export const BRANCHES = {
     { id: "anchor", name: "Anchor", text: "Using Rift Step again within 3 s returns you to where you began." }] },
 };
 export const BRANCH_IDS = Object.keys(BRANCHES);
+// How each modifier and capstone works (release 157, for the Arcanum's labels): "cast" is a new ability for slot A or B;
+// "while" works only while the branch's discipline is active; "changes" alters how the discipline behaves; "always" is
+// a permanent passive. `spells` names a node that also changes your spells (or the glyphs set in them).
+export const NODE_EFFECTS = {
+  "ember-skin": { kind: "while" }, colossus: { kind: "while" }, "cinder-heart": { kind: "changes" },
+  "light-feet": { kind: "always" }, "aerial-step": { kind: "cast" }, slipstream: { kind: "while" },
+  "thorned-veil": { kind: "while" }, sanctuary: { kind: "while" }, "mirror-veil": { kind: "while" },
+  overflow: { kind: "while", spells: "Spells recover 25% faster." }, amplifier: { kind: "while", spells: "Glyph strikes from your spells deal 50% more." }, "resonant-force": { kind: "changes" },
+  "rift-wake": { kind: "changes" }, fold: { kind: "changes" }, anchor: { kind: "changes" },
+};
 
 // ---------------------------------------------------------------- state and points
 export function ensureConstellation(save) {

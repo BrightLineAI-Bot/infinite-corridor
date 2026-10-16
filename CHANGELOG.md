@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 157 — the Arcanum says what everything is. Every spell and constellation entry shows its element (colour and symbol), and whether it is Active (cast from slot A or B) or Passive (always on, or while its discipline is active). Each spell lists what affects it: Focus, the Pairing, and the two constellation entries that reach spells (Overflow, Amplifier).
 - Release 156 — more of the sea.
   - Lighthouse Buoys: moored rafts with a Wayglass, rest points far from land. Your skiff is always tied alongside when you land or wake there.
   - Shipwrecks: on sandbars, each salvaged once for marks, wood and a supply.
