@@ -232,6 +232,7 @@ const COLORS = {
   archiveBehemoth: ["#6b3d78", "#1d1527", "#f0a052"],
   vesperwing:["#8b4b35","#251d1d","#ed8a45"],gravitantBell:["#54726e","#252b2a","#c0a66b"],mireApostle:["#71804d","#25291f","#b6d05c"],knifeChoir:["#675174","#211b29","#c28fe0"],
   npc: ["#9b815d", "#453832", "#879b8d"],
+  shipwright: ["#4f7f9a", "#3a2c22", "#d8c39a"],
   shrine: ["#557b74", "#263c3b", "#b7c1aa"],
   checkpoint: ["#668b91", "#304448", "#c7b887"],
   door: ["#76533b", "#382b25", "#9d805d"],
@@ -258,6 +259,16 @@ const COLORS = {
   storyRelic: ["#8c7650", "#382f24", "#f0cf83"],
   storyTone: ["#557d82", "#26383b", "#9fe6dd"],
 };
+// The skiff (water world W2): a plank hull with a bow pointing along `facing`, bobbing on the water.
+function drawSkiff(ctx, x, y, s, facing, now) {
+  const cx = (x + .5) * s, cy = (y + .72) * s + Math.sin(now / 420 + x) * s * .03, along = facing === "left" || facing === "right";
+  ctx.save(); ctx.translate(cx, cy); if (!along) ctx.rotate(Math.PI / 2); if (facing === "left" || facing === "up") ctx.scale(-1, 1);
+  ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(0, s * .08, s * .62, s * .2, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#6b4a2e"; ctx.beginPath(); ctx.moveTo(-s * .55, -s * .16); ctx.lineTo(s * .38, -s * .16); ctx.quadraticCurveTo(s * .66, 0, s * .38, s * .16); ctx.lineTo(-s * .55, s * .16); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#c9a571"; ctx.lineWidth = Math.max(1, s * .04); ctx.stroke();
+  ctx.fillStyle = "#8d6a43"; for (const k of [-.3, .05]) ctx.fillRect(k * s, -s * .13, s * .07, s * .26);
+  ctx.restore();
+}
 function actor(
   ctx,
   x,
@@ -379,7 +390,7 @@ function actor(
     rect(p[0], 0.17, -0.83, 0.08, 0.2);
     rect(p[2], -0.08, -0.65, 0.04, 0.04);
     rect(p[1], -0.28, -0.28, 0.12, 0.25);
-  } else if (kind === "npc") {
+  } else if (kind === "npc" || kind === "shipwright") {
     rect(p[1], -0.22, -0.58, 0.44, 0.56);
     rect(p[0], -0.18, -0.75, 0.36, 0.23);
     rect(p[2], -0.1, -0.68, 0.04, 0.04);
@@ -619,6 +630,12 @@ export function render(ctx, g, w, h, now) {
             ctx.textAlign = "center";
             ctx.fillText("VIEWPORT", (o.x + .5) * s, (o.y - .95) * s);
             ctx.textAlign = "start";
+          } else if (o.kind === "skiff") {
+            drawSkiff(ctx, o.x, o.y, s, "right", performance.now());
+          } else if (o.kind === "shipwright") {
+            actor(ctx, o.x, o.y, s, "shipwright", "down", 0, "idle");
+            ctx.fillStyle = "#e2d5ba"; ctx.font = "10px monospace"; ctx.textAlign = "center";
+            ctx.fillText("SHIPWRIGHT", (o.x + .5) * s, (o.y - .3) * s); ctx.textAlign = "start";
           } else if (o.kind === "relayNode") {
             drawRelayNode(ctx, o, s, performance.now());
           } else if (o.kind === "relayTerminal") {
@@ -694,6 +711,7 @@ export function render(ctx, g, w, h, now) {
         );
         ctx.fill();
       }
+      if (g.area === "overworld" && g.save.boat?.aboard) drawSkiff(ctx, p.x, p.y, s, p.facing, now);
       actor(
         ctx,
         p.x,

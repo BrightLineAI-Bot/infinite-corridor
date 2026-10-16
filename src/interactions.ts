@@ -1,4 +1,5 @@
 import{REFUGE_NPCS,ensurePerception}from'./types.ts';import{dungeonId,apertureTier,perceived}from'./world.ts';
+import{shipwrightActions,ensureBoatState}from'./boats.ts';
 import{hashSeed}from'./random.ts';import{relayNodeActions,inspectRelayNode,commitRelayNode,relayObjectiveSuffix}from'./relay-network.ts';import{ensureEliteState,acceptContract}from'./elites.ts';export const NARRATIVE_SCHEMA='infinite-corridor-narrative/1.0.0';
 import{recordRevelationLead,completeRevelationArc}from'./story.ts';
 import{ensureViewportState,activeViewportHunt}from'./foundry.ts';
@@ -41,6 +42,8 @@ export function validActions(o,s){
  if(o.kind==='relayTerminal')return s.consequences.choices.relay?[]:s.narrative.facts['crossing.marshal']?['restore','sever']:['inspect'];
  if(o.kind==='apertureRitual')return apertureRitualState(s).ready?['perform','inspect']:['inspect'];
  if(o.kind==='arenaEntrance')return['enter'];
+ if(o.kind==='shipwright')return shipwrightActions(s);
+ if(o.kind==='skiff')return ensureBoatState(s).owned?['board']:[];
  if(o.kind==='elitePortal'){const c=ensureEliteState(s).contracts.knifeChoir;return c.state==='available'||c.state==='accepted'?['inspect','enter']:['inspect'];}
  if(o.kind==='tree'&&o.state!=='standing')return[];
  if(o.kind==='shrine')return[...(o.actions||[]).filter(a=>a!=='attune'&&!(o.state==='used'&&!['enter','exit','bypass'].includes(a))),'attune']; // Attune: constellation + respec (release 100)

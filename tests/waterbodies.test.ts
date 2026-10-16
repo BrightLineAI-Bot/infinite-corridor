@@ -20,7 +20,7 @@ function find(biome, seed = SEED, ok = () => true) {
 }
 
 test('landscape version 1 output is byte-identical (explored journeys never regenerate)', () => {
-  assert.equal(LANDSCAPE_VERSION, 2);
+  assert.ok(LANDSCAPE_VERSION >= 2);
   const h = createHash('sha256');
   for (const seed of ['LANDTEST', 'CINDER-VERGE-47']) for (let ry = -6; ry <= 6; ry++) for (let rx = -6; rx <= 6; rx++) {
     const m = generateRegion(seed, rx, ry); applyLandscape(m, seed, rx, ry, { version: 1 });
@@ -49,7 +49,7 @@ test('version 2 adds seas, isles, lakes, swamps and blight mires; seas span many
 
 test('open sea is mostly deep water, while exits and the plaza stay reachable on foot', () => {
   const { m } = find('sea', SEED, (q) => q.tiles.filter((t) => t.kind === 'deepOcean').length > 300);
-  assert.equal(m.landscape.version, 2); assert.equal(m.landscape.biome, 'sea');
+  assert.equal(m.landscape.version, LANDSCAPE_VERSION); assert.equal(m.landscape.biome, 'sea');
   const reach = reachableFromPlaza(m), e = m.exits;
   for (const [x, y] of [[e.north, 1], [e.south, 30], [1, e.west], [30, e.east], [16, 16]]) assert.ok(reach[y * 32 + x] || m.tiles[y * 32 + x].blocked && !DEEP_WATER.includes(m.tiles[y * 32 + x].kind), `exit ${x},${y}`);
   assert.ok(m.tiles.every((t) => !DEEP_WATER.includes(t.kind) || t.blocked), 'deep water is never walkable');
@@ -90,7 +90,7 @@ test('in the real game a section first seen at version 1 keeps version 1 terrain
   assert.deepEqual(g.map.tiles.map((t) => t.kind), section(rx, ry, 1).tiles.map((t) => t.kind));
   assert.equal(s.atlas[`${rx},${ry}`].landscapeVersion, 1, 'pin kept');
   const n = Object.assign(freshSave(), { seed: SEED }), ng = new Game(n, 0); ng.rx = rx; ng.ry = ry; ng.loadArea('overworld');
-  assert.equal(ng.map.landscape.version, 2); assert.equal(n.atlas[`${rx},${ry}`].landscapeVersion, 2);
+  assert.equal(ng.map.landscape.version, LANDSCAPE_VERSION); assert.equal(n.atlas[`${rx},${ry}`].landscapeVersion, LANDSCAPE_VERSION);
 });
 
 test('deep ocean tires the swimmer twice as fast', () => {

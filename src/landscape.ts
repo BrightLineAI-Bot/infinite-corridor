@@ -11,10 +11,12 @@
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
 import { hashSeed } from "./random.ts";
+import { placeDock } from "./boats.ts";
 
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
-// and a deep-ocean band, inland lakes, swamps and poison swamps. Each section keeps the version it was first seen with.
-export const LANDSCAPE_VERSION = 2;
+// and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
+// Each section keeps the version it was first seen with.
+export const LANDSCAPE_VERSION = 3;
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles
 export const MAX_LEVEL = 5;
 // Fraction of max health lost when dropping this many levels; null = fatal.
@@ -47,7 +49,7 @@ export const DEEP_WATER = ["ocean", "deepOcean", "lakeWater", "swampWater", "tox
 // Thresholds tuned so roughly a third of sections carry a landscape feature (see tests/landscape.test.ts).
 const T = { ocean: 0.70, beach: 0.675, mountain: 0.68, alien: 0.75, desert: 0.67 };
 const WALKABLE_LANDSCAPE = new Set(["snowRock", "snowPeak", "mountainRock", "alpineGrass", "mountainTrail", "sand", "duneCrest", "duneFace",
-  "beach", "shallows", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope"]);
+  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope"]);
 
 // ---------------------------------------------------------------- noise
 function lattice(key, ix, iy) { return (hashSeed(`${key}:${ix}:${iy}`) % 10007) / 10007; }
@@ -197,6 +199,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   for (const t of ensureReturnable(map, 32, 32, { x: 16, y: 16 })) if (t.landscape === "mountains" && !t.volcanic && !t.slope && t.kind !== "skyBridge") t.kind = mountainKind(t.elev || 0);
   addRamps(map, 32, 32, `${seed}:${rx}:${ry}`);
   if (v2) placeIslandLandmark(map, seed, rx, ry);
+  if (version >= 3) placeDock(map, seed, rx, ry, reachableFromPlaza(map));
   if (biome === "mountains") map.weather = "snow";
   map.landscape = { version, biome: biome || dominantLandscape(map), name: BIOMES[biome || dominantLandscape(map)]?.name || null };
   return map;
