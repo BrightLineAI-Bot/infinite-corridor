@@ -28,6 +28,43 @@ export function sectionTrails(seed, rx, ry) {
   };
 }
 const walkable = (t) => !!t && !t.blocked && !t.structure && !LETHAL_KINDS.has(t.kind) && t.kind !== "shallows";
+// ------------------------------------------------------------------ walking the real ground (release 130)
+// Walkers move tile to tile over connected, walkable ground: never across chasms, water, lava or walls, and only
+// between tiles of the same height unless a ramp joins them. Paths are routed with a bounded breadth-first search.
+const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+export const widthOf = (map) => map.width || Math.round(Math.sqrt(map.tiles.length));
+function stepOK(map, w, ax, ay, bx, by) {
+  const h = map.tiles.length / w; if (bx < 0 || by < 0 || bx >= w || by >= h) return false;
+  const a = map.tiles[ay * w + ax], b = map.tiles[by * w + bx];
+  if (!walkable(b)) return false;
+  const ea = a?.elev || 0, eb = b.elev || 0;
+  return ea === eb || (!!(a?.slope || b.slope) && Math.abs(ea - eb) <= 1);
+}
+// Every tile reachable on foot from `start` (up to `limit` tiles).
+export function groundRegion(map, w, start, limit = 1200) {
+  const seen = new Set([start.y * w + start.x]), out = [{ x: start.x, y: start.y }];
+  for (let i = 0; i < out.length && out.length < limit; i++) for (const [dx, dy] of N4) {
+    const x = out[i].x + dx, y = out[i].y + dy, k = y * w + x;
+    if (!seen.has(k) && stepOK(map, w, out[i].x, out[i].y, x, y)) { seen.add(k); out.push({ x, y }); }
+  }
+  return out;
+}
+// The shortest walk from `from` to `to` (inclusive), or null.
+export function groundPath(map, w, from, to, limit = 1600) {
+  const key = (x, y) => y * w + x, prev = new Map([[key(from.x, from.y), -1]]), queue = [from];
+  for (let i = 0; i < queue.length && queue.length < limit; i++) {
+    const c = queue[i];
+    if (c.x === to.x && c.y === to.y) { const path = []; let k = key(c.x, c.y); while (k !== -1) { path.push({ x: k % w, y: Math.floor(k / w) }); k = prev.get(k); } return path.reverse(); }
+    for (const [dx, dy] of N4) { const x = c.x + dx, y = c.y + dy, k = key(x, y); if (!prev.has(k) && stepOK(map, w, c.x, c.y, x, y)) { prev.set(k, key(c.x, c.y)); queue.push({ x, y }); } }
+  }
+  return null;
+}
+// Joins waypoints into one continuous walk; waypoints that cannot be reached are skipped.
+function stitch(map, w, points) {
+  const out = [points[0]];
+  for (const p of points.slice(1)) { const seg = groundPath(map, w, out[out.length - 1], p); if (seg) out.push(...seg.slice(1)); }
+  return out.length > 1 ? out : null;
+}
 // Lays trail tiles from each trail exit toward the section's hub (a town square or the middle) with a gentle wobble.
 // Returns the list of trail routes (each a list of tiles from the exit inward) or [].
 export function applyTrails(map, seed, rx, ry) {
@@ -161,14 +198,17 @@ export function addTravelers(map, seed, rx, ry) {
     path = open.length ? [0, 1, 2, 3].map(() => open[Math.floor(r() * open.length)]).map((t) => ({ x: t.x, y: t.y })) : [];
   }
   path = path.filter((p) => walkable(map.tiles[p.y * 32 + p.x]));
-  if (path.length < 2) return null;
+  path = path.length >= 2 ? stitch(map, 32, path) : null; // connect the trail tiles on foot, around any gap
+  if (!path || path.length < 2) return null;
   const startAt = hashSeed(plan.id) % path.length, objects = [];
   plan.members.forEach((m, i) => {
     const p = path[Math.max(0, startAt - i)] || path[0];
     objects.push({ id: `${plan.id}:${i}`, kind: "traveler", name: m.name, role: plan.title, look: m.look, mount: m.mount, lines: m.lines, talk: 0, x: p.x, y: p.y, state: "walking", actions: m.trader ? ["speak", "trade"] : ["speak"], shopId: m.trader ? "traveler-peddler" : null, groupId: plan.id, leader: i === 0, facing: "down" });
   });
   map.objects.push(...objects);
-  map.travelers = { ...plan, path, index: (startAt + 1) % path.length, dir: 1 };
+  // Walk on from the start tile, turning back if it is the end of the path (never wrap: that would cut across country).
+  const forward = startAt + 1 < path.length;
+  map.travelers = { ...plan, path, index: forward ? startAt + 1 : startAt - 1, dir: forward ? 1 : -1 };
   return map.travelers;
 }
 
@@ -179,11 +219,24 @@ export function tickTravelers(map, player, dt) {
   if (wanderer && Math.hypot(wanderer.x - player.x, wanderer.y - player.y) < TRAVEL.pauseRadius * 2) face(wanderer, player.x, player.y);
   const reciter = map?.objects?.find((o) => o.kind === "traveler" && o.reciter), walk = map?.reciterWalk;
   if (reciter && walk) {
+    reciter.age = (reciter.age || 0) + dt;
     if (Math.hypot(reciter.x - player.x, reciter.y - player.y) < TRAVEL.pauseRadius) { reciter.state = "listening"; face(reciter, player.x, player.y); }
     else {
+      if (!walk.leaving && reciter.leaveAfter != null && reciter.age >= reciter.leaveAfter) {
+        // Time to go: walk to the nearest reachable section edge (or the dungeon entrance) and vanish there.
+        const w = walk.width, h = map.tiles.length / w, here = { x: Math.round(reciter.x), y: Math.round(reciter.y) }, entry = map.entry;
+        const exits = walk.region.filter((q) => w === 32 ? q.x <= 1 || q.y <= 1 || q.x >= w - 2 || q.y >= h - 2 : entry && q.x === entry.x && q.y === entry.y);
+        exits.sort((a, b) => Math.abs(a.x - here.x) + Math.abs(a.y - here.y) - Math.abs(b.x - here.x) - Math.abs(b.y - here.y));
+        const out = exits.length ? groundPath(map, w, here, exits[0], 2400) : null;
+        if (out && out.length > 1) Object.assign(walk, { path: out, index: 1, dir: 1, leaving: true }); else reciter.leaveAfter = null;
+      }
       const goal = walk.path[walk.index], d = Math.hypot(goal.x - reciter.x, goal.y - reciter.y), step = TRAVEL.speed * .8 * dt;
       reciter.state = "walking"; face(reciter, goal.x, goal.y);
-      if (d <= step) { reciter.x = goal.x; reciter.y = goal.y; if (walk.index + walk.dir >= walk.path.length || walk.index + walk.dir < 0) walk.dir = -walk.dir; walk.index += walk.dir; }
+      if (d <= step) {
+        reciter.x = goal.x; reciter.y = goal.y;
+        if (walk.leaving && walk.index >= walk.path.length - 1) { map.objects = map.objects.filter((q) => q !== reciter); map.reciterWalk = null; }
+        else { if (walk.index + walk.dir >= walk.path.length || walk.index + walk.dir < 0) walk.dir = -walk.dir; walk.index += walk.dir; }
+      }
       else { reciter.x += (goal.x - reciter.x) / d * step; reciter.y += (goal.y - reciter.y) / d * step; }
     }
   }
@@ -196,13 +249,19 @@ export function tickTravelers(map, player, dt) {
   lead.state = "walking"; face(lead, goal.x, goal.y);
   if (d <= step) { lead.x = goal.x; lead.y = goal.y; if (t.index + t.dir >= t.path.length || t.index + t.dir < 0) t.dir = -t.dir; t.index += t.dir; }
   else { lead.x += (goal.x - lead.x) / d * step; lead.y += (goal.y - lead.y) / d * step; }
-  let ahead = lead;
+  // Followers walk the same path a few tiles behind, so they too stay on the ground.
+  let n = 0;
   for (const o of group) {
     if (o === lead) continue;
-    const gap = Math.hypot(ahead.x - o.x, ahead.y - o.y);
-    o.state = "walking"; face(o, ahead.x, ahead.y);
-    if (gap > TRAVEL.spacing) { const k = Math.min(gap - TRAVEL.spacing, step * 1.3) / gap; o.x += (ahead.x - o.x) * k; o.y += (ahead.y - o.y) * k; }
-    ahead = o;
+    n++;
+    // Each follower keeps its own place on the path and steps one tile at a time toward its slot behind the leader.
+    const slot = Math.max(0, Math.min(t.path.length - 1, t.index - t.dir * (n + 1)));
+    if (!Number.isInteger(o.pathIndex)) o.pathIndex = t.path.findIndex((q) => q.x === Math.round(o.x) && q.y === Math.round(o.y));
+    if (o.pathIndex < 0) o.pathIndex = slot;
+    const next = o.pathIndex === slot ? slot : o.pathIndex + Math.sign(slot - o.pathIndex), target = t.path[next], gap = Math.hypot(target.x - o.x, target.y - o.y);
+    o.state = "walking"; face(o, target.x, target.y);
+    if (gap <= step * 1.15) { o.x = target.x; o.y = target.y; o.pathIndex = next; }
+    else { const k = step * 1.15 / gap; o.x += (target.x - o.x) * k; o.y += (target.y - o.y) * k; }
   }
 }
 
@@ -296,7 +355,7 @@ export function collectWandererCache(save) {
 // default, or random). Options → Library lists every book and, under it, the reciters you have met. Books are added
 // to the game by the developer; there is no in-game way to add stories. Reciters walk the wilds, towns and dungeons.
 export const RECITER_LINES_PER_MEETING = 3;
-export const RECITER_CHANCE = { wild: 0.12, town: 0.45, dungeon: 0.18 };
+export const RECITER_CHANCE = { wild: 0.05, town: 0.2, dungeon: 0.08 }; // rarer since release 130
 export function ensureReciters(s) {
   const r = s.reciters && typeof s.reciters === "object" ? s.reciters : {}, known = new Set(Object.keys(RECITATIONS)), progress = {}, met = {}, modes = {};
   for (const [id, n] of Object.entries(r.progress || {})) if (known.has(id) && Number.isInteger(n) && n >= 0) progress[id] = n;
@@ -328,16 +387,21 @@ export function reciterPlan(seed, key, save, chance = RECITER_CHANCE.wild) {
   const off = new Set(save?.reciters?.disabled || []), pool = storyCatalog().filter((q) => !off.has(q.id));
   return pool.length ? pool[Math.floor(h / 1000) % pool.length] : null;
 }
+// A reciter mills about its patch of ground; most (RECITER_LEAVE.share) leave after a while: they walk to the edge of
+// the section (or back to a dungeon's entrance) and are gone.
+export const RECITER_LEAVE = { share: 0.6, after: [25, 70] };
 function placeReciter(map, who, id, open, r, width) {
-  const trail = (map.trails || [])[0];
-  let path = trail && trail.length > 4 ? trail.filter((p) => walkable(map.tiles[p.y * width + p.x])) : [0, 1, 2, 3].map(() => open[Math.floor(r() * open.length)]).filter(Boolean).map((t) => ({ x: t.x, y: t.y }));
-  if (path.length < 2) return null;
-  const at = path[Math.floor(r() * path.length)];
-  const o = { id, kind: "traveler", reciter: who.id, name: who.name, role: "Wandering reciter", look: who.look, mount: null, x: at.x, y: at.y, state: "walking", actions: ["speak"], facing: "down",
+  if (!open.length) return null;
+  const start = open[Math.floor(r() * open.length)], region = groundRegion(map, width, start, 900);
+  if (region.length < 6) return null;
+  const path = stitch(map, width, [start, ...[0, 1, 2, 3].map(() => region[Math.floor(r() * region.length)])]);
+  if (!path) return null;
+  const leaves = Math.random() < RECITER_LEAVE.share, [lo, hi] = RECITER_LEAVE.after;
+  const o = { id, kind: "traveler", reciter: who.id, name: who.name, role: "Wandering reciter", look: who.look, mount: null, x: start.x, y: start.y, state: "walking", actions: ["speak"], facing: "down",
     // How much they will say this meeting: one to three lines, then nothing more until you meet them again.
-    linesLeft: 1 + Math.floor(Math.random() * RECITER_LINES_PER_MEETING) };
+    linesLeft: 1 + Math.floor(Math.random() * RECITER_LINES_PER_MEETING), age: 0, leaveAfter: leaves ? lo + Math.random() * (hi - lo) : null };
   map.objects.push(o);
-  map.reciterWalk = { path, index: (path.indexOf(at) + 1) % path.length, dir: 1 };
+  map.reciterWalk = { path, index: 1, dir: 1, region, width };
   return o;
 }
 export function addReciter(map, seed, rx, ry, save = null) {
