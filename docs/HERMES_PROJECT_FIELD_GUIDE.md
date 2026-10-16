@@ -36,6 +36,12 @@ The Wayglass network uses three deliberately separate concepts. A Wayglass is a 
 
 **BOUNDARY:** Input/UI only; no save, generation or Proving Ground change. The Reciter's Tome itself was verified not to hang on back.
 
+## Reciters keep their secrets (release 128)
+
+**CODE:** `reciterTalk` returns `Name: “line”` only. Each placed reciter gets `linesLeft` of 1–`RECITER_LINES_PER_MEETING` (3, rolled with `Math.random` when the section or level loads); after that it answers "has nothing more to say". The role text and arrival messages no longer name the book. `save.reciters` v4 makes random the default (`modes[id]` stores only an explicit "linear"); earlier modes are dropped in migration, so everyone starts random. The Reciter's Tome lists Random first and shows "in order, line N of M" only for Linear reciters.
+
+**BOUNDARY:** Coordinated with the freeze-fix session (release 125, pause-menu back gesture): this change touches only the reciter section of `travelers.ts`, `renderTome` in `main.ts` and two arrival messages in `game.ts`.
+
 ## The Reciter's Tome (release 124)
 
 **CODE:** The release-122 Library moved from Options into the Journal as the `tome` tab ("Reciter's Tome"), rendered by `renderTome(out)` in `main.ts`; Options no longer has a Library tab. The data functions (`libraryBooks`, `setReciterMode`, `resetReciter`) are unchanged.

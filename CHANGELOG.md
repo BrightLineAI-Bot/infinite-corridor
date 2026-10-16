@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 128 — reciters keep their secrets. Speaking to a reciter now gives just their name and a line: no line numbers, and no book or character named, even the first time. Each meeting they have one to three lines in them (random lines by default, so one can repeat), then they have nothing more to say until you meet them again. Which book and character they are is recorded only in the Journal's Reciter's Tome, where each reciter is now Random by default and can be switched to Linear (in book order) or Reset.
 - Release 126 — tapping Pack no longer also presses the button that opens under your finger (it jumped to the Arcanum, or could spend a stat point). If a screen ever fails to open, the pause menu now appears instead of the game freezing.
 - Release 125 — pressing back on the pause menu no longer freezes the game. Android's back gesture could close the pause menu without resuming (most often right after returning to the app), leaving the game paused with nothing on screen; back on the pause menu now continues play.
 - Release 124 — the Reciter's Tome. The Library has moved from Options into the Journal as its own tab, the Reciter's Tome: every book walking the Corridor, the reciters of each you have met, and each one's Linear/Random order and Reset.

@@ -295,15 +295,16 @@ export function collectWandererCache(save) {
 // keeps each reciter's place (`progress`), whom you have met (`met`), and each met reciter's order (`modes`: linear by
 // default, or random). Options → Library lists every book and, under it, the reciters you have met. Books are added
 // to the game by the developer; there is no in-game way to add stories. Reciters walk the wilds, towns and dungeons.
+export const RECITER_LINES_PER_MEETING = 3;
 export const RECITER_CHANCE = { wild: 0.12, town: 0.45, dungeon: 0.18 };
 export function ensureReciters(s) {
   const r = s.reciters && typeof s.reciters === "object" ? s.reciters : {}, known = new Set(Object.keys(RECITATIONS)), progress = {}, met = {}, modes = {};
   for (const [id, n] of Object.entries(r.progress || {})) if (known.has(id) && Number.isInteger(n) && n >= 0) progress[id] = n;
   for (const id of Object.keys(r.met || {})) if (known.has(id) && r.met[id]) met[id] = true;
   for (const id of Object.keys(progress)) met[id] = true; // anyone whose place was kept before release 122 was met
-  for (const [id, m] of Object.entries(r.modes || {})) if (known.has(id) && m === "random") modes[id] = "random";
-  if (r.mode === "random") for (const id of Object.keys(met)) modes[id] ||= "random"; // release 118's journey-wide setting
-  s.reciters = { v: 3, progress, met, modes, disabled: [...new Set((Array.isArray(r.disabled) ? r.disabled : []).filter((id) => known.has(id)))], ...(Array.isArray(r.custom) && r.custom.length ? { custom: r.custom } : {}) };
+  // Release 128: random is the default (missing = random); only an explicit "linear" choice is stored.
+  for (const [id, m] of Object.entries(r.modes || {})) if (known.has(id) && m === "linear" && r.v >= 4) modes[id] = "linear";
+  s.reciters = { v: 4, progress, met, modes, disabled: [...new Set((Array.isArray(r.disabled) ? r.disabled : []).filter((id) => known.has(id)))], ...(Array.isArray(r.custom) && r.custom.length ? { custom: r.custom } : {}) };
   return s;
 }
 export function storyCatalog() { return RECITERS.map((r) => ({ ...r, count: RECITATIONS[r.id].length })); }
@@ -314,12 +315,12 @@ export function libraryBooks(save) {
   for (const q of storyCatalog()) {
     const b = books.get(q.book) || { book: q.book, sources: new Set(), lines: 0, readers: [] };
     b.sources.add(q.source); b.lines += q.count;
-    if (r.met?.[q.id]) b.readers.push({ ...q, at: r.progress?.[q.id] || 0, mode: r.modes?.[q.id] || "linear" });
+    if (r.met?.[q.id]) b.readers.push({ ...q, at: r.progress?.[q.id] || 0, mode: r.modes?.[q.id] === "linear" ? "linear" : "random" });
     books.set(q.book, b);
   }
   return [...books.values()].map((b) => ({ ...b, sources: [...b.sources] }));
 }
-export function setReciterMode(save, id, mode) { ensureReciters(save); if (mode === "random") save.reciters.modes[id] = "random"; else delete save.reciters.modes[id]; }
+export function setReciterMode(save, id, mode) { ensureReciters(save); if (mode === "linear") save.reciters.modes[id] = "linear"; else delete save.reciters.modes[id]; }
 export function resetReciter(save, id) { ensureReciters(save); save.reciters.progress[id] = 0; }
 export function reciterPlan(seed, key, save, chance = RECITER_CHANCE.wild) {
   const h = hashSeed(`${seed}:reciter:v1:${key}`);
@@ -332,7 +333,9 @@ function placeReciter(map, who, id, open, r, width) {
   let path = trail && trail.length > 4 ? trail.filter((p) => walkable(map.tiles[p.y * width + p.x])) : [0, 1, 2, 3].map(() => open[Math.floor(r() * open.length)]).filter(Boolean).map((t) => ({ x: t.x, y: t.y }));
   if (path.length < 2) return null;
   const at = path[Math.floor(r() * path.length)];
-  const o = { id, kind: "traveler", reciter: who.id, name: who.name, role: `reciting ${who.book}`, look: who.look, mount: null, x: at.x, y: at.y, state: "walking", actions: ["speak"], facing: "down" };
+  const o = { id, kind: "traveler", reciter: who.id, name: who.name, role: "Wandering reciter", look: who.look, mount: null, x: at.x, y: at.y, state: "walking", actions: ["speak"], facing: "down",
+    // How much they will say this meeting: one to three lines, then nothing more until you meet them again.
+    linesLeft: 1 + Math.floor(Math.random() * RECITER_LINES_PER_MEETING) };
   map.objects.push(o);
   map.reciterWalk = { path, index: (path.indexOf(at) + 1) % path.length, dir: 1 };
   return o;
@@ -352,15 +355,18 @@ export function addDungeonReciter(map, areaId, save, width) {
   if (open.length < 4) return null;
   return placeReciter(map, who, `reciter:${areaId}`, open, r, width);
 }
+// Release 128: just a name and a line. Each meeting gives 1–RECITER_LINES_PER_MEETING lines (random lines by default, so
+// a line can repeat; linear continues the book), then they fall quiet. The book and character are named only in the
+// Reciter's Tome, which this call fills in by marking the reciter met.
 export function reciterTalk(o, save) {
   ensureReciters(save);
   const who = storyCatalog().find((q) => q.id === o.reciter), lines = storyLines(save, o.reciter);
   if (!who || !lines.length) return "They hum something you almost recognise.";
-  const first = !save.reciters.met[who.id]; save.reciters.met[who.id] = true;
-  const opening = first ? ` (${who.voice}, ${who.book})` : "";
-  if (save.reciters.modes[who.id] === "random") { const n = Math.floor(Math.random() * lines.length); return `${who.name}${opening}, from line ${n + 1} of ${lines.length}: “${lines[n]}”`; }
-  const n = save.reciters.progress[who.id] || 0, line = lines[n % lines.length], next = n + 1;
-  save.reciters.progress[who.id] = next >= lines.length ? 0 : next;
-  const ending = next >= lines.length ? " …and the book is done. They close it, and open it again at the first page." : "";
-  return `${who.name}${opening}, line ${n + 1} of ${lines.length}: “${line}”${ending}`;
+  save.reciters.met[who.id] = true;
+  if (!(o.linesLeft > 0)) return `${who.name} has nothing more to say.`;
+  o.linesLeft--;
+  let line;
+  if (save.reciters.modes[who.id] === "linear") { const n = save.reciters.progress[who.id] || 0; line = lines[n % lines.length]; save.reciters.progress[who.id] = n + 1 >= lines.length ? 0 : n + 1; }
+  else line = lines[Math.floor(Math.random() * lines.length)];
+  return `${who.name}: “${line}”`;
 }
