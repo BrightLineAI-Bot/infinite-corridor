@@ -36,6 +36,12 @@ The Wayglass network uses three deliberately separate concepts. A Wayglass is a 
 
 **BOUNDARY:** Input/UI only; no save, generation or Proving Ground change. The Reciter's Tome itself was verified not to hang on back.
 
+## Travellers keep to the ground (release 130)
+
+**CODE:** `src/travelers.ts` adds `groundRegion` (flood fill) and `groundPath` (bounded breadth-first route) over 4-connected walkable tiles: not blocked, not a structure, not lethal or shallows, and the same elevation unless a ramp (`slope`) joins a one-level step. `stitch` joins waypoints into a continuous walk. Traveller group paths (the trail tiles) are stitched on foot. The leader never wraps from the path's end to its start; it turns back. Followers keep their own `pathIndex` and step tile by tile toward their slot behind the leader. Reciters pick their stroll waypoints from their own ground region. A share (`RECITER_LEAVE.share` 0.6) get `leaveAfter` of 25–70 s; when it passes, they route to the nearest reachable section-edge tile (or the dungeon entry) and are removed on arrival. `RECITER_CHANCE` drops to wild 0.05, town 0.2, dungeon 0.08. Simulated across 289 sections for 90 s each: about 50,000 position checks, none off walkable ground.
+
+**BOUNDARY:** Leaving is per visit, not persistent; a reciter that left may be met again on a later visit. Quillon still stands still.
+
 ## Reciters keep their secrets (release 128)
 
 **CODE:** `reciterTalk` returns `Name: “line”` only. Each placed reciter gets `linesLeft` of 1–`RECITER_LINES_PER_MEETING` (3, rolled with `Math.random` when the section or level loads); after that it answers "has nothing more to say". The role text and arrival messages no longer name the book. `save.reciters` v4 makes random the default (`modes[id]` stores only an explicit "linear"); earlier modes are dropped in migration, so everyone starts random. The Reciter's Tome lists Random first and shows "in order, line N of M" only for Linear reciters.
