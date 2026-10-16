@@ -302,7 +302,7 @@ export function ensureReciters(s) {
   for (const [id, n] of Object.entries(r.progress || {})) if (known.has(id) && Number.isInteger(n) && n >= 0) progress[id] = n;
   for (const id of Object.keys(r.met || {})) if (known.has(id) && r.met[id]) met[id] = true;
   for (const id of Object.keys(progress)) met[id] = true; // anyone whose place was kept before release 122 was met
-  // Release 126: random is the default (missing = random); only an explicit "linear" choice is stored.
+  // Release 128: random is the default (missing = random); only an explicit "linear" choice is stored.
   for (const [id, m] of Object.entries(r.modes || {})) if (known.has(id) && m === "linear" && r.v >= 4) modes[id] = "linear";
   s.reciters = { v: 4, progress, met, modes, disabled: [...new Set((Array.isArray(r.disabled) ? r.disabled : []).filter((id) => known.has(id)))], ...(Array.isArray(r.custom) && r.custom.length ? { custom: r.custom } : {}) };
   return s;
@@ -355,7 +355,7 @@ export function addDungeonReciter(map, areaId, save, width) {
   if (open.length < 4) return null;
   return placeReciter(map, who, `reciter:${areaId}`, open, r, width);
 }
-// Release 126: just a name and a line. Each meeting gives 1–RECITER_LINES_PER_MEETING lines (random lines by default, so
+// Release 128: just a name and a line. Each meeting gives 1–RECITER_LINES_PER_MEETING lines (random lines by default, so
 // a line can repeat; linear continues the book), then they fall quiet. The book and character are named only in the
 // Reciter's Tome, which this call fills in by marking the reciter met.
 export function reciterTalk(o, save) {
