@@ -7,9 +7,10 @@
 import { hashSeed, rng, pick } from "./random.ts";
 import { LETHAL_KINDS } from "./landscape.ts";
 import { hamletSection } from "./settlements.ts";
+import { RECITERS, RECITATIONS } from "./recitations.ts";
 
 export const TRAVEL_VERSION = 1;
-export const TRAVEL = { trailChance: 0.08, trailNearTown: 0.6, groupChance: 0.2, groupChanceOnTrail: 0.42, minDepth: 1, speed: 1.15, pauseRadius: 2.4, spacing: 0.9, wandererChance: 0.07, wandererChanceReady: 0.22 };
+export const TRAVEL = { reciterChance: 0.12, trailChance: 0.08, trailNearTown: 0.6, groupChance: 0.2, groupChanceOnTrail: 0.42, minDepth: 1, speed: 1.15, pauseRadius: 2.4, spacing: 0.9, wandererChance: 0.07, wandererChanceReady: 0.22 };
 
 // ------------------------------------------------------------------ trails
 // The passage positions on each edge, matching world.ts sectionExits (5..26 along the edge).
@@ -176,6 +177,16 @@ export function tickTravelers(map, player, dt) {
   const face = (o, x, y) => { o.facing = Math.abs(x - o.x) > Math.abs(y - o.y) ? (x > o.x ? "right" : "left") : (y > o.y ? "down" : "up"); };
   const wanderer = map?.objects?.find((o) => o.kind === "traveler" && o.wanderer);
   if (wanderer && Math.hypot(wanderer.x - player.x, wanderer.y - player.y) < TRAVEL.pauseRadius * 2) face(wanderer, player.x, player.y);
+  const reciter = map?.objects?.find((o) => o.kind === "traveler" && o.reciter), walk = map?.reciterWalk;
+  if (reciter && walk) {
+    if (Math.hypot(reciter.x - player.x, reciter.y - player.y) < TRAVEL.pauseRadius) { reciter.state = "listening"; face(reciter, player.x, player.y); }
+    else {
+      const goal = walk.path[walk.index], d = Math.hypot(goal.x - reciter.x, goal.y - reciter.y), step = TRAVEL.speed * .8 * dt;
+      reciter.state = "walking"; face(reciter, goal.x, goal.y);
+      if (d <= step) { reciter.x = goal.x; reciter.y = goal.y; if (walk.index + walk.dir >= walk.path.length || walk.index + walk.dir < 0) walk.dir = -walk.dir; walk.index += walk.dir; }
+      else { reciter.x += (goal.x - reciter.x) / d * step; reciter.y += (goal.y - reciter.y) / d * step; }
+    }
+  }
   const t = map?.travelers; if (!t) return;
   const group = map.objects.filter((o) => o.kind === "traveler" && o.groupId === t.id);
   const near = group.some((o) => Math.hypot(o.x - player.x, o.y - player.y) < TRAVEL.pauseRadius);
@@ -277,4 +288,42 @@ export function wandererArrive(save, map, rx, ry) {
 export function collectWandererCache(save) {
   const q = save.wanderer?.quest; if (!q || q.done || q.type !== "cache") return { ok: false, message: "An empty hole. Someone got here first, or no one buried anything." };
   q.done = true; return { ok: true, message: "You dig up Quillon's satchel: maps, a pressed flower, and letters you don't read. Find Quillon to return it." };
+}
+
+// ------------------------------------------------------------------ reciters (release 117)
+// A lone walker who recites one book (src/recitations.ts), one line each time you speak, from where they left off;
+// progress per reciter is kept in save.reciters.progress and wraps back to the first line at the end of the book.
+export function ensureReciters(s) {
+  const r = s.reciters && typeof s.reciters === "object" ? s.reciters : {}, progress = {};
+  for (const [id, n] of Object.entries(r.progress || {})) if (RECITATIONS[id] && Number.isInteger(n) && n >= 0) progress[id] = n;
+  s.reciters = { v: 1, progress };
+  return s;
+}
+export function reciterPlan(seed, rx, ry) {
+  if (Math.abs(rx) + Math.abs(ry) < TRAVEL.minDepth) return null;
+  const h = hashSeed(`${seed}:reciter:v1:${rx}:${ry}`);
+  if ((h % 1000) / 1000 >= TRAVEL.reciterChance) return null;
+  return RECITERS[Math.floor(h / 1000) % RECITERS.length];
+}
+export function addReciter(map, seed, rx, ry) {
+  if (!map || map.reciterWalk || map.skirmish || map.tiles?.length !== 1024) return null;
+  const who = reciterPlan(seed, rx, ry); if (!who) return null;
+  const r = rng(`${seed}:reciter-walk:${rx}:${ry}`), trail = (map.trails || [])[0];
+  const open = map.tiles.filter((t) => t.x > 4 && t.y > 4 && t.x < 27 && t.y < 27 && walkable(t));
+  let path = trail && trail.length > 4 ? trail.filter((p) => walkable(map.tiles[p.y * 32 + p.x])) : [0, 1, 2, 3].map(() => open[Math.floor(r() * open.length)]).filter(Boolean).map((t) => ({ x: t.x, y: t.y }));
+  if (path.length < 2) return null;
+  const at = path[Math.floor(r() * path.length)];
+  const o = { id: `reciter:${rx},${ry}`, kind: "traveler", reciter: who.id, name: who.name, role: `reciting ${who.book}`, look: who.look, mount: null, x: at.x, y: at.y, state: "walking", actions: ["speak"], facing: "down" };
+  map.objects.push(o);
+  map.reciterWalk = { path, index: path.indexOf(at) >= 0 ? (path.indexOf(at) + 1) % path.length : 0, dir: 1 };
+  return o;
+}
+export function reciterTalk(o, save) {
+  ensureReciters(save);
+  const who = RECITERS.find((q) => q.id === o.reciter), lines = RECITATIONS[o.reciter] || [];
+  if (!who || !lines.length) return "They hum something you almost recognise.";
+  const n = save.reciters.progress[who.id] || 0, line = lines[n % lines.length], next = n + 1;
+  save.reciters.progress[who.id] = next >= lines.length ? 0 : next;
+  const opening = n === 0 ? ` (${who.voice}, ${who.book})` : "", ending = next >= lines.length ? " …and the book is done. They close it, and open it again at the first page." : "";
+  return `${who.name}${opening}, line ${n + 1} of ${lines.length}: “${line}”${ending}`;
 }
