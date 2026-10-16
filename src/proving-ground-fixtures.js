@@ -1,5 +1,5 @@
-import { Game } from "./game.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { freshSave } from "./types.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { Game } from "./game.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { freshSave } from "./types.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
 
 export const PROVING_GROUND_SEED = "CINDER-VERGE-47";
 

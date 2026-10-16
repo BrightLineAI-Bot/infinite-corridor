@@ -130,13 +130,26 @@ export function createInput(root, host = globalThis, options = {}) {
   root.addEventListener?.("visibilitychange", () => {
     if (root.hidden) reset();
   });
+  // Release 126: action buttons fire on pointerdown, so an overlay (Pack, Map, Journal) can open under the finger
+  // before the tap ends. The browser then delivers that same tap's click to whatever button now lies beneath it
+  // (the Arcanum, Increase, Equip, Salvage...). Swallow the click that belongs to the action button's own gesture.
+  let actionTap = null;
   root.querySelectorAll("[data-action]").forEach(
     (b) =>
       (b.onpointerdown = (e) => {
         e.preventDefault();
+        actionTap = { button: b, pointerId: e.pointerId, until: performance.now() + 1500 };
         latch.add(b.dataset.action);
       }),
   );
+  root.addEventListener?.("click", (e) => {
+    const tap = actionTap;
+    actionTap = null;
+    if (!tap || performance.now() > tap.until || tap.button.contains(e.target)) return;
+    if (e.pointerId != null && e.pointerId >= 0 && e.pointerId !== tap.pointerId) return;
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
   return {
     state,
     reset,

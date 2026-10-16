@@ -1,13 +1,13 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { vendorShop, buyFromVendor } from "./game.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { CREATURE_TRAITS } from "./combat.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { drawPackPortrait } from "./monster-render.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { landscapeAtlasColor } from "./landscape-render.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { hashSeed } from "./random.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { vendorShop, buyFromVendor } from "./game.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { CREATURE_TRAITS } from "./combat.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { drawPackPortrait } from "./monster-render.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { landscapeAtlasColor } from "./landscape-render.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { hashSeed } from "./random.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -158,7 +158,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
 import {
   Game,
   actionReadiness,
@@ -167,19 +167,19 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { createInput } from "./input.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { STATS } from "./types.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { worldStewardReport } from "./story.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+} from "./game.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { createInput } from "./input.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { STATS } from "./types.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { BRANCHES, BRANCH_IDS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { currentObjective, validActions, dungeonHistory } from "./interactions.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { worldStewardReport } from "./story.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,huntIntegrationDiagnostics } from "./foundry.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -190,7 +190,7 @@ import {
   APERTURE_THRESHOLDS,
   perceived,
   wayfindingCues,
-} from "./world.js?v=icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab";
+} from "./world.js?v=icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d"),
@@ -860,6 +860,11 @@ function resume() {
   persist();
 }
 pausePanel.addEventListener("cancel",(event)=>event.preventDefault());
+// Release 125: Android's back gesture can close the pause menu even though its cancel is prevented (Chrome skips the
+// cancel event when there was no tap since the menu opened, e.g. after returning from the background). The game then
+// stayed paused with no menu: a freeze. Back on the pause menu now means Continue. Overlay transitions close the menu
+// after pauseForOverlay(), so they are not mistaken for a dismissal.
+pausePanel.addEventListener("close",()=>{if(game.paused&&!overlayPause&&!document.hidden&&![atlas,panel,journal,optionsPanel].some((d)=>d.open))resume()});
 const optionCategories=["Journeys","Performance","Controls","Accessibility","Audio","System"];
 let optionCategory="Journeys";
 function optionMessage(text,isError=false){let p=$("#optionsStatus");if(!p){p=document.createElement("p");p.id="optionsStatus";optionsBody.prepend(p)}p.textContent=text;p.className=isError?"options-note options-danger":"options-note"}
@@ -896,9 +901,9 @@ function renderTome(out){
     bh.textContent=b.book;meta.className="options-note";meta.textContent=`${b.sources.join(" · ")} · ${b.lines} lines`;sec.append(bh,meta);
     if(!b.readers.length){const none=document.createElement("p");none.className="options-note library-empty";none.textContent="You have not met anyone who recites this yet.";sec.append(none)}
     for(const q of b.readers){
-      const mode=document.createElement("select");for(const[value,label]of[["linear","Linear"],["random","Random"]]){const o=document.createElement("option");o.value=value;o.textContent=label;mode.append(o)}
+      const mode=document.createElement("select");for(const[value,label]of[["random","Random"],["linear","Linear"]]){const o=document.createElement("option");o.value=value;o.textContent=label;mode.append(o)}
       mode.value=q.mode;mode.onchange=()=>{setReciterMode(save,q.id,mode.value);persist();status.textContent=`${q.voice}: ${mode.value}.`};
-      const row=settingRow(`${q.voice}`,mode,`${q.name} · ${q.mode==="random"?"random lines":`next: line ${q.at+1} of ${q.count}`}`);
+      const row=settingRow(`${q.voice}`,mode,`${q.name} · ${q.mode==="random"?"random lines":`in order, line ${q.at+1} of ${q.count}`}`);
       const reset=uiButton("Reset",()=>{resetReciter(save,q.id);persist();rerender()});reset.className+=" small";row.append(reset);
       sec.append(row);
     }
@@ -910,7 +915,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_d7a4fad848df411993c4cada_8dbb68b4d8051bab",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_0921363f3c5446a2918f2473_e0c6a52dfaf3f55f",quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1594,6 +1599,9 @@ function frame(now) {
   } catch(error) {
     console.error("Infinite Corridor frame recovered from an error",error);
     game.message="The Corridor stuttered, then found its rhythm again.";
+    // Release 126: an overlay that throws while opening (Pack, Map, Journal) has already paused the game, so with no
+    // dialog shown the screen froze. Fall back to the pause menu, whose Continue always works.
+    if(game.paused&&!document.hidden&&![pausePanel,atlas,panel,journal,optionsPanel].some((d)=>d.open)){overlayPause=false;try{pausePanel.showModal()}catch{resume()}}
   } finally {
     requestAnimationFrame(frame);
   }
