@@ -965,7 +965,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:149,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 149\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:151,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 151\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1159,10 +1159,14 @@ function openMap() {
   if(mapMode==="atlas")showMapDetail(game.rx, game.ry);
   drawMap();
 }
+// Release 151: each part of the Pack is built separately, so a fault in one (seen on a player's save, cause still
+// unknown) shows a note naming the part and its error instead of stopping the whole Pack from opening.
+function packSectionFailed(name,error){noteError(error);console.error(`Pack section ${name} failed`,error);const note=document.createElement("p");note.className="options-note options-danger";note.textContent=`${name} could not be shown (${error?.message||error}). Options → System → Copy diagnostics, then paste it to Claude.`;body.append(note)}
 function openPack() {
   pauseForOverlay();
   if (pausePanel.open) pausePanel.close();
   body.replaceChildren();
+  try{
   const heading = document.createElement("h2"),
     summary = document.createElement("p"),
     xp = document.createElement("progress"),
@@ -1187,7 +1191,11 @@ function openPack() {
     character.append(span);
   }
   body.append(heading, summary, xp, character);
+  }catch(error){packSectionFailed("Character",error)}
+  try{
   for(const [kind,label] of [['weapon','Weapon sphere'],['armor','Armor sphere']]){const row=document.createElement('div'),key=kind+'Sphere';row.className='item';row.textContent=`${label} ×${save.materials[key]||0} · Sela Rook at Ember Refuge strengthens fitted equipment with these.`;body.append(row)}
+  }catch(error){packSectionFailed("Spheres",error)}
+  try{
   const statHelp = {
     Might: "+2 melee damage per rank.",
     Finesse: "+3 maximum stamina per rank.",
@@ -1213,6 +1221,8 @@ function openPack() {
       );
     body.append(row);
   }
+  }catch(error){packSectionFailed("Stats",error)}
+  try{
   const resource = document.createElement("p");
   resource.textContent = `Cinder Iron ${save.materials.cinderIron} · weapon +${save.weaponLevel || 0} · section ${game.rx},${game.ry} `;
   resource.append(uiButton(`✦ Arcanum · spells, constellation, glyphs`, () => openSkills()));
@@ -1226,6 +1236,8 @@ function openPack() {
     openPack();
   }));
   body.append(resource);
+  }catch(error){packSectionFailed("Resources",error)}
+  try{
   const gearHeading = document.createElement("h3");
   gearHeading.textContent = "Equipped gear and effects";
   const gear = document.createElement("div");
@@ -1249,11 +1261,15 @@ function openPack() {
     gear.append(card);
   }
   body.append(gearHeading, gear);
+  }catch(error){packSectionFailed("Equipped gear",error)}
+  try{
   // Spells, disciplines and capstones live in one place: the Arcanum (release 109).
   const arcane=document.createElement('div');arcane.className='item';const bound=save.magicSkills.selected?APERTURE_SKILLS[save.magicSkills.selected]?.name:null;
   const sa=slotted(save,'a'),sb=slotted(save,'b'),pr=activePairing(save);void bound;
   arcane.textContent=`Slot A: ${sa?`${sa.symbol} ${sa.name}`:'empty'} · Slot B: ${sb?`${sb.symbol} ${sb.name}`:'empty'}${pr?` · Pairing: ${pr.name}`:''} · ${pointsFree(save)} constellation point${pointsFree(save)===1?'':'s'} free`;
   arcane.append(uiButton('Open the Arcanum',()=>openSkills()));body.append(arcane);
+  }catch(error){packSectionFailed("Arcanum",error)}
+  try{
   for (const [type, name, description] of [
     [
       "restorativeDraught",
@@ -1289,6 +1305,8 @@ function openPack() {
     );
     body.append(row);
   }
+  }catch(error){packSectionFailed("Consumables",error)}
+  try{
   const inventoryHeading = document.createElement("h3");
   inventoryHeading.textContent = `Carried equipment (${save.inventory.length}/${EQUIPMENT_CAPACITY})`;
   body.append(inventoryHeading);
@@ -1315,6 +1333,7 @@ function openPack() {
   inventoryTools.append(slotFilter, tierFilter, sortFilter);
   body.append(inventoryTools);
   const visibleItems = save.inventory.map((item, index) => ({ item, index }))
+    .filter(({item}) => item && typeof item === "object") // release 151: a damaged entry must not hide the rest
     .filter(({item}) => inventoryView.slot === "all" || item.slot === inventoryView.slot)
     .filter(({item}) => inventoryView.tier === "all" || itemTier(item) === inventoryView.tier)
     .sort((a,b) => inventoryView.sort === "name" ? a.item.name.localeCompare(b.item.name)
@@ -1343,6 +1362,7 @@ function openPack() {
     );
     body.append(row);
   }
+  }catch(error){packSectionFailed("Carried equipment",error)}
   if (!panel.open) panel.showModal();
 }
 const CODEX = {
