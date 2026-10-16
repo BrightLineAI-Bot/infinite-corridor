@@ -140,7 +140,8 @@ const WAYFINDING_SIGNAL_CACHE_LIMIT=96,wayfindingSignalCache=new Map();let wayfi
 function cachedRegionSignals(seed,rx,ry,generation){const key=`${seed}:g${generation}:${rx},${ry}`;if(wayfindingSignalCache.has(key)){const value=wayfindingSignalCache.get(key);wayfindingSignalCache.delete(key);wayfindingSignalCache.set(key,value);wayfindingSignalHits++;return value}const region=generateRegion(seed,rx,ry,generation),value=Object.freeze({crossing:region.objects.some(o=>o.kind==='dungeon'),event:region.objects.some(o=>o.kind==='shrine'||o.kind==='ruinMarker')});wayfindingSignalCache.set(key,value);wayfindingSignalMisses++;while(wayfindingSignalCache.size>WAYFINDING_SIGNAL_CACHE_LIMIT)wayfindingSignalCache.delete(wayfindingSignalCache.keys().next().value);return value}
 export function wayfindingCacheStats(){return{size:wayfindingSignalCache.size,limit:WAYFINDING_SIGNAL_CACHE_LIMIT,hits:wayfindingSignalHits,misses:wayfindingSignalMisses}}
 export function clearWayfindingCache(){wayfindingSignalCache.clear();wayfindingSignalHits=wayfindingSignalMisses=0}
-export function wayfindingCues(seed,rx,ry,generation=1,save=null,region=null){
+// Every wayfinding target around (rx,ry), before wayfindingCues picks one per kind (release 153: the compass ranks them all).
+export function wayfindingTargets(seed,rx,ry,generation=1,save=null){
   const targets=[],seen=new Set(),add=(kind,x,y,name)=>{const key=`${kind}:${x},${y}`;if((x!==rx||y!==ry)&&!seen.has(key)){seen.add(key);targets.push({kind,rx:x,ry:y,name})}};
   const hunt=save?.viewport?.contracts?.[save?.viewport?.activeHuntId],huntTarget=hunt?.target;if(huntTarget&&['accepted','tracking','target-located'].includes(hunt.status))add(hunt.kind==='trial'||hunt.domain?'danger':'story',huntTarget.rx,huntTarget.ry,hunt.title);
   const far=save?.relayNetwork?.coordinate;if(far)add('story',far.rx,far.ry,'the Far Array');
@@ -155,7 +156,10 @@ export function wayfindingCues(seed,rx,ry,generation=1,save=null,region=null){
     if(signals.crossing)add('crossing',rx+ox,ry+oy,'a buried crossing');
     if(signals.event)add('event',rx+ox,ry+oy,'an unusual site');
   }
-  const chosen=[];
+  return targets;
+}
+export function wayfindingCues(seed,rx,ry,generation=1,save=null,region=null){
+  const targets=wayfindingTargets(seed,rx,ry,generation,save),chosen=[];
   for(const kind of ['story','beacon','crossing','danger','event']){
     const matches=targets.filter(t=>t.kind===kind).sort((a,b)=>(Math.abs(a.rx-rx)+Math.abs(a.ry-ry))-(Math.abs(b.rx-rx)+Math.abs(b.ry-ry)));
     if(matches[0])chosen.push(matches[0]);

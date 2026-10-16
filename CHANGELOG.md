@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 153 — the compass always points to something: the nearest unfinished dungeon, arena or danger you've found, a story destination, or a nearby signal. Tap it to hear what it points at and to step to the next objective. The Atlas frames the compass target in gold and every explored section with an unfinished challenge in dashed violet.
 - Release 151 — the Pack opens even if one part of it fails, with a note naming that part. Taking the stairs to another dungeon floor (or a portal or dungeon entrance) no longer drops you inside a wall.
 - Release 149 — Options → System → Copy diagnostics now copies your browser, screen, game version, recent errors and your save, ready to paste into a bug report. It works without turning on performance recording.
 - Release 148 — organic dungeons. New pattern dungeons now come from an organic catalogue instead of recognisable figures. Snowflakes, Hilbert and dragon curves, carpets and clean Sierpinski triangles are gone from the draw. In their place: Leopard Rooms, Zebra Halls and Brain Coral (Young's activator–inhibitor model, the one behind animal coat patterns). Coral Branches and Frost Ferns (growth from wandering, sticking particles). Worm Burrows and Root Tunnels (winding dug passages with chambers). Chaotic automata drawn through a smooth warp so their lines meander: Melted Chaos, Drifting Gliders, Kelp Galleries, Sea Foam, Tangled Roots and more. Vote Caves and the Life-like mazes and caves stay. Dungeons already found keep their layouts.

@@ -24,6 +24,18 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The compass always points somewhere; the Atlas frames objectives (release 153)
+
+**CODE:** The compass used to aim only at an active Viewport hunt or at a wayfinding cue in the current section (and only while the relay lead was open), so most of the time it was blank. `world.ts` now exports `wayfindingTargets()`, the full target list that `wayfindingCues()` used to build internally. `wayfindingCues()` calls it and picks one per kind exactly as before, so cue output is unchanged. In `main.ts`, `objectiveList()` ranks objectives nearest first (ties by `OBJECTIVE_KINDS` rank) and keeps the nearest `COMPASS_OBJECTIVE_LIMIT` (12). The candidates are:
+- the hunt;
+- story targets (Far Array, Questing Beast, Quillon's satchel, the Meridian, the great enemy);
+- nearby crossing and event signals, minus explored sections without open challenges;
+- `openChallengeSections()`: explored Atlas sections with a `CHALLENGE_SITES` site (Crossing, Arena, Major danger) and no resolved dungeon or arena history. `sectionOfAreaId()` reads the section from `dungeon:` and `arena:` ids.
+
+Guidance keeps its old order (hunt, then the local cue) and falls back to the chosen objective. A challenge in the current section points at its site, not the section centre. Tapping the compass names its target in the message line (name, distance, heading, section) and steps to the next objective. On the Atlas, the compass target's section gets a gold frame (`ATLAS_FRAMES.compassTarget`, drawn even if unexplored) and unfinished challenges a dashed violet one. Both frames appear in the legend.
+
+**BOUNDARY:** Presentation only. No save field and no generation change; the compass pick is in memory and resets on reload.
+
 ## Pack sections fail alone; landings step out of walls (release 151)
 
 **CODE:** `openPack()` in `main.ts` builds each part (Character, Spheres, Stats, Resources, Equipped gear, Arcanum, Consumables, Carried equipment) inside its own `try`. A part that throws is replaced by a `packSectionFailed()` note naming the part and the error (also recorded by `noteError` for Copy diagnostics), and the Pack still opens. On a player's save the Pack had been falling back to the pause menu (release 145); the underlying cause is still unknown. Carried equipment skips null or non-object inventory entries. In `game.ts`, every move to a fixed landing point now calls `relocateIfStranded` against the loaded map: `deepTransition` (stairs between floors), `deepPortal`, `deepReturn`, dungeon entry, Far Array entry and the elite portal. Generated landing points were all open in a scan (3,600 floor landings, 564 entries), so the wall comes from state applied while loading (progress gates, shortcuts). Loading an area already relocated the player's old position, but the landing point was assigned afterwards without a check.
