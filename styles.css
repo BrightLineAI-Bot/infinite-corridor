@@ -736,3 +736,5 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 /* Release 142: the Atlas Relays toggle. */
 .maptools { grid-template-columns: repeat(8, 1fr); }
 #mapRelays[aria-pressed="true"] { border-color: #b48cff; color: #e6d8ff; box-shadow: 0 0 8px #b48cff66 inset; }
+/* Release 153: the compass beside the Map button is tappable (names its target, then steps to the next). */
+.compass-slot .nav-compass { pointer-events: auto; cursor: pointer; }
