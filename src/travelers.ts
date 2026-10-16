@@ -290,52 +290,41 @@ export function collectWandererCache(save) {
   q.done = true; return { ok: true, message: "You dig up Quillon's satchel: maps, a pressed flower, and letters you don't read. Find Quillon to return it." };
 }
 
-// ------------------------------------------------------------------ reciters (releases 117, 118)
-// A lone walker who recites one story, one line each time you speak. The story library is the built-in books
-// (src/recitations.ts) plus up to STORY_LIMITS.stories stories the player pastes in (Options → Stories). Per journey,
-// save.reciters keeps each story's place (`progress`), the order (`mode`: linear, or random lines), and which stories
-// travellers carry (`disabled`). Reciters walk the wilds, towns (more often) and dungeons.
-export const STORY_LIMITS = { stories: 8, lines: 600, lineLength: 400, titleLength: 60 };
+// ------------------------------------------------------------------ reciters (releases 117–122)
+// A lone walker who recites one book (src/recitations.ts), one line each time you speak. Per journey, save.reciters
+// keeps each reciter's place (`progress`), whom you have met (`met`), and each met reciter's order (`modes`: linear by
+// default, or random). Options → Library lists every book and, under it, the reciters you have met. Books are added
+// to the game by the developer; there is no in-game way to add stories. Reciters walk the wilds, towns and dungeons.
 export const RECITER_CHANCE = { wild: 0.12, town: 0.45, dungeon: 0.18 };
 export function ensureReciters(s) {
-  const r = s.reciters && typeof s.reciters === "object" ? s.reciters : {};
-  const custom = (Array.isArray(r.custom) ? r.custom : []).filter((c) => c && typeof c.id === "string" && Array.isArray(c.lines)).slice(0, STORY_LIMITS.stories)
-    .map((c) => ({ id: c.id, title: String(c.title || "A story").slice(0, STORY_LIMITS.titleLength), lines: c.lines.map(String).filter(Boolean).slice(0, STORY_LIMITS.lines).map((l) => l.slice(0, STORY_LIMITS.lineLength)) }))
-    .filter((c) => c.lines.length);
-  const known = new Set([...Object.keys(RECITATIONS), ...custom.map((c) => c.id)]), progress = {};
+  const r = s.reciters && typeof s.reciters === "object" ? s.reciters : {}, known = new Set(Object.keys(RECITATIONS)), progress = {}, met = {}, modes = {};
   for (const [id, n] of Object.entries(r.progress || {})) if (known.has(id) && Number.isInteger(n) && n >= 0) progress[id] = n;
-  s.reciters = { v: 2, progress, mode: r.mode === "random" ? "random" : "linear", disabled: [...new Set((Array.isArray(r.disabled) ? r.disabled : []).filter((id) => known.has(id)))], custom };
+  for (const id of Object.keys(r.met || {})) if (known.has(id) && r.met[id]) met[id] = true;
+  for (const id of Object.keys(progress)) met[id] = true; // anyone whose place was kept before release 122 was met
+  for (const [id, m] of Object.entries(r.modes || {})) if (known.has(id) && m === "random") modes[id] = "random";
+  if (r.mode === "random") for (const id of Object.keys(met)) modes[id] ||= "random"; // release 118's journey-wide setting
+  s.reciters = { v: 3, progress, met, modes, disabled: [...new Set((Array.isArray(r.disabled) ? r.disabled : []).filter((id) => known.has(id)))], ...(Array.isArray(r.custom) && r.custom.length ? { custom: r.custom } : {}) };
   return s;
 }
-// Every story a reciter can carry: built-in books, then the player's own.
-export function storyCatalog(save) {
-  const own = (save?.reciters?.custom || []).map((c) => ({ id: c.id, name: "A traveller with a handwritten book", book: c.title, voice: "your own story", look: "traveler", source: "Added by you", custom: true, count: c.lines.length }));
-  return [...RECITERS.map((r) => ({ ...r, count: RECITATIONS[r.id].length })), ...own];
+export function storyCatalog() { return RECITERS.map((r) => ({ ...r, count: RECITATIONS[r.id].length })); }
+export function storyLines(save, id) { return RECITATIONS[id] || []; }
+// The Library: every book, with the reciters of it the player has met.
+export function libraryBooks(save) {
+  const r = save?.reciters || {}, books = new Map();
+  for (const q of storyCatalog()) {
+    const b = books.get(q.book) || { book: q.book, sources: new Set(), lines: 0, readers: [] };
+    b.sources.add(q.source); b.lines += q.count;
+    if (r.met?.[q.id]) b.readers.push({ ...q, at: r.progress?.[q.id] || 0, mode: r.modes?.[q.id] || "linear" });
+    books.set(q.book, b);
+  }
+  return [...books.values()].map((b) => ({ ...b, sources: [...b.sources] }));
 }
-export function storyLines(save, id) { return RECITATIONS[id] || save?.reciters?.custom?.find((c) => c.id === id)?.lines || []; }
-// Splits pasted text into recitation lines: verse (mostly short lines) line by line, prose sentence by sentence.
-export function splitStory(text) {
-  const raw = String(text || "").replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean);
-  if (!raw.length) return [];
-  const short = raw.filter((l) => l.length < 80).length / raw.length > .6;
-  const pieces = short ? raw : raw.join(" ").split(/(?<=[.!?…"”])\s+(?=[A-Z0-9"“'‘])/);
-  const out = [];
-  for (const p of pieces) { const t = p.trim(); if (!t) continue; if (out.length && out[out.length - 1].length + t.length < 90 && !short) out[out.length - 1] += " " + t; else out.push(t.slice(0, STORY_LIMITS.lineLength)); }
-  return out.slice(0, STORY_LIMITS.lines);
-}
-export function addCustomStory(save, title, text) {
-  ensureReciters(save); const r = save.reciters;
-  if (r.custom.length >= STORY_LIMITS.stories) return { ok: false, message: `You can keep ${STORY_LIMITS.stories} stories of your own. Remove one first.` };
-  const lines = splitStory(text); if (lines.length < 2) return { ok: false, message: "Paste at least two lines or sentences." };
-  const id = `custom-${Date.now().toString(36)}`;
-  r.custom.push({ id, title: String(title || "").trim().slice(0, STORY_LIMITS.titleLength) || "Untitled story", lines });
-  return { ok: true, id, message: `Added ${lines.length} lines. A traveller will start carrying it on the road.` };
-}
-export function removeCustomStory(save, id) { ensureReciters(save); const r = save.reciters; r.custom = r.custom.filter((c) => c.id !== id); delete r.progress[id]; r.disabled = r.disabled.filter((q) => q !== id); }
+export function setReciterMode(save, id, mode) { ensureReciters(save); if (mode === "random") save.reciters.modes[id] = "random"; else delete save.reciters.modes[id]; }
+export function resetReciter(save, id) { ensureReciters(save); save.reciters.progress[id] = 0; }
 export function reciterPlan(seed, key, save, chance = RECITER_CHANCE.wild) {
   const h = hashSeed(`${seed}:reciter:v1:${key}`);
   if ((h % 1000) / 1000 >= chance) return null;
-  const off = new Set(save?.reciters?.disabled || []), pool = storyCatalog(save).filter((q) => !off.has(q.id));
+  const off = new Set(save?.reciters?.disabled || []), pool = storyCatalog().filter((q) => !off.has(q.id));
   return pool.length ? pool[Math.floor(h / 1000) % pool.length] : null;
 }
 function placeReciter(map, who, id, open, r, width) {
@@ -365,11 +354,13 @@ export function addDungeonReciter(map, areaId, save, width) {
 }
 export function reciterTalk(o, save) {
   ensureReciters(save);
-  const who = storyCatalog(save).find((q) => q.id === o.reciter), lines = storyLines(save, o.reciter);
+  const who = storyCatalog().find((q) => q.id === o.reciter), lines = storyLines(save, o.reciter);
   if (!who || !lines.length) return "They hum something you almost recognise.";
-  if (save.reciters.mode === "random") { const n = Math.floor(Math.random() * lines.length); return `${who.name}, from ${who.book} (line ${n + 1} of ${lines.length}): “${lines[n]}”`; }
+  const first = !save.reciters.met[who.id]; save.reciters.met[who.id] = true;
+  const opening = first ? ` (${who.voice}, ${who.book})` : "";
+  if (save.reciters.modes[who.id] === "random") { const n = Math.floor(Math.random() * lines.length); return `${who.name}${opening}, from line ${n + 1} of ${lines.length}: “${lines[n]}”`; }
   const n = save.reciters.progress[who.id] || 0, line = lines[n % lines.length], next = n + 1;
   save.reciters.progress[who.id] = next >= lines.length ? 0 : next;
-  const opening = n === 0 ? ` (${who.voice}, ${who.book})` : "", ending = next >= lines.length ? " …and the book is done. They close it, and open it again at the first page." : "";
+  const ending = next >= lines.length ? " …and the book is done. They close it, and open it again at the first page." : "";
   return `${who.name}${opening}, line ${n + 1} of ${lines.length}: “${line}”${ending}`;
 }
