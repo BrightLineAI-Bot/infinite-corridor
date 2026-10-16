@@ -61,7 +61,7 @@ import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-n
 import { applyLandscape, canStep, LANDSCAPE_VERSION, DEEP_WATER, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.ts";
 import { MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet } from "./settlements.ts";
-import { TRAVEL_VERSION, applyTrails, addTravelers, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
+import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
 import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.ts";
@@ -1615,7 +1615,7 @@ export class Game {
     }
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save)});
     if(area==="overworld"){const war=addSkirmish(this.map,this.save.seed,this.rx,this.ry,this.save);if(war)this.message=war.text;else if(this.map.settlement?.procedural)this.message=`${this.map.settlement.name} — a ${this.map.settlement.label.toLowerCase()} holds this ground.`}
-    if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);const beast=questingBeastFor(this.save,this.map,this.rx,this.ry);if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastTriesLeft(this.save)} of ${QUESTING_BEAST.tries} tries remain.`}if(beast){}else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
+    if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);const beast=questingBeastFor(this.save,this.map,this.rx,this.ry);if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastTriesLeft(this.save)} of ${QUESTING_BEAST.tries} tries remain.`}if(beast){}else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, ${reader.role}.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
     this.activatedEncounterGroups=new Set;
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
     // Surface sea creatures (water world W3): deterministic per section, only in landscape version 2+ water.
