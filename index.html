@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=114" />
+    <link rel="stylesheet" href="./styles.css?v=115" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -55,17 +55,18 @@
       </section>
       <section id="actions">
         <div class="left-controls">
+          <!-- release 114: the compass sits above the Map button -->
+          <div id="navCompassSlot" class="compass-slot"><div id="navCompass" class="nav-compass" role="img" aria-label="No navigation target" hidden>
+            <span id="navGuidanceArrow" class="nav-arrow guidance-arrow" aria-hidden="true">▲</span>
+            <span id="navManualArrow" class="nav-arrow manual-arrow" aria-hidden="true">▲</span>
+          </div></div>
           <div class="utility-buttons">
             <button data-action="map">Map</button
             ><button data-action="menu">Pack</button>
           </div>
         </div>
         <div class="quick-row buttons">
-          <div id="navCompassSlot" class="compass-slot"><div id="navCompass" class="nav-compass" role="img" aria-label="No navigation target" hidden>
-            <span id="navGuidanceArrow" class="nav-arrow guidance-arrow" aria-hidden="true">▲</span>
-            <span id="navManualArrow" class="nav-arrow manual-arrow" aria-hidden="true">▲</span>
-          </div></div
-          ><button class="quick spell" data-action="spell" data-slot="A">Spell A</button
+          <button class="quick spell" data-action="spell" data-slot="A">Spell A</button
           ><button class="quick spell" data-action="spell2" data-slot="B">Spell B</button
           ><button class="quick potion" data-action="potion">Potion</button>
         </div>
@@ -145,7 +146,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "114";
+      const release = "115";
       const params = new URLSearchParams(location.search);
       const entry = params.get("dev") === "proving-ground"
         ? "./src/proving-ground.js"
