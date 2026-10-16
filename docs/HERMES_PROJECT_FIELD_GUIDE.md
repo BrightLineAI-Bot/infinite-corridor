@@ -36,17 +36,23 @@ The Wayglass network uses three deliberately separate concepts. A Wayglass is a 
 
 **BOUNDARY:** Input/UI only; no save, generation or Proving Ground change. The Reciter's Tome itself was verified not to hang on back.
 
+## Overlay errors name themselves on the pause menu (release 143)
+
+**CODE:** Overlays call `pauseForOverlay()` and close the pause menu before building their contents, so an exception while building left the game paused with nothing on screen. Release 126 covered only the frame loop; the pause menu's own buttons (Pack, Atlas, Journal) run outside it. `recoverOverlay(error)` in `main.ts` now handles all of these: `frame()`'s catch plus window `error` and `unhandledrejection` listeners. When the game is paused, visible and no dialog is open, it shows the pause menu with a `#pauseError` note naming the error. `resume()` removes the note, and the pause menu's `close` listener now ignores a close when the menu has already been reopened. Options → System shows the real release number instead of a stale "Release 102", so a player can confirm which build is running.
+
+**BOUNDARY:** UI only; no save, generation or Proving Ground change. This reports the cause rather than fixing it. A save that makes the Pack throw on a device still needs its error message to locate the fault.
+
+## Relays follow Rule 110 (release 142)
+
+**CODE:** `relay-network.ts`: `RELAY_PATTERN` (rule 110, 257×257, origin 128). `relayPattern(seed)` runs Rule 110 from a sparse seeded first row (1 in 7 alive); each section row `ry` is a generation and each column `rx` a cell, wrapping beyond the square, and results are cached per seed. `relayCell` reports alive; `relayEdge` (alive with a dead northern neighbour, about 20%) is where relays go. `relayNodeDecision` uses `relayEdge` for ordinary crossings (`crossingSection` parses `dungeon:<seed>:g<n>:<rx>:<ry>:<object>`) and keeps the old hash share for other ids. Histories already decided are unchanged (`relayPattern: 2` marks pattern-decided ones). Atlas: the `#mapRelays` toggle (`relayOverlay`) calls `drawRelayOverlay`, which draws faint edge marks over explored sections and their neighbours, answered relays as nodes, and links from each node to at most two nearest answered neighbours within two sections.
+
+**BOUNDARY:** The overlay is display-only and off by default. The relay share drops from 35% to about 20% of crossings for crossings decided from now on. Previewed as a static render of the pattern; the in-game overlay was checked headless with a fresh save.
+
 ## Varied Array runs; monsters hit harder (release 140)
 
 **CODE:** `far-array.ts` `beginArrayRun` picks the run's dungeon from `RUN_KINDS` (expedition, threefold, descent, loop, flooded, fortress) by a hash of the run number. Deep kinds append `:deep-v2:<archetype>` to the run id, so `generatePinnedDungeon` routes them to `generateDeepV2Dungeon`. Multi-level runs start on their first level (as ordinary dungeon entry does). The boss swap uses only `finalBoss` or `gateWarden` spawns on multi-level maps, so the guardian or Listener appears once, on the last level. `arrayPylons` places three `arrayPylon` objects per level (drawn as restored relay nodes; inspect replays a `PYLON_LINES` line), and `runName` names the run (`RUN_NOUNS`). `game.ts` `ENEMY_DAMAGE_SCALE` (1.3) multiplies every created monster's damage at the end of `createEnemyFromSpawn`, except passives (damage 0), the Questing Beast and Far Array bosses.
 
 **BOUNDARY:** Deep-archetype runs keep their own objectives and gates before the final boss, so they are longer than expedition runs. The damage scale also reaches summoned foes made through `createEnemyFromSpawn`, but not pack broods or illusions made directly by `createCombatant`. Player power is unchanged at Tim's request.
-
-## Overlay errors name themselves on the pause menu (release 141)
-
-**CODE:** Overlays call `pauseForOverlay()` and close the pause menu before building their contents, so an exception while building left the game paused with nothing on screen. Release 126 covered only the frame loop; the pause menu's own buttons (Pack, Atlas, Journal) run outside it. `recoverOverlay(error)` in `main.ts` now handles all of these: `frame()`'s catch plus window `error` and `unhandledrejection` listeners. When the game is paused, visible and no dialog is open, it shows the pause menu with a `#pauseError` note naming the error. `resume()` removes the note, and the pause menu's `close` listener now ignores a close when the menu has already been reopened. Options → System shows the real release number instead of a stale "Release 102", so a player can confirm which build is running.
-
-**BOUNDARY:** UI only; no save, generation or Proving Ground change. This reports the cause rather than fixing it. A save that makes the Pack throw on a device still needs its error message to locate the fault.
 
 ## The Far Array (release 138)
 

@@ -8,11 +8,11 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="../styles.css?v=141" />
+    <link rel="stylesheet" href="../styles.css?v=143" />
     <title>Infinite Corridor — Proving Ground</title>
   </head>
   <body>
-    <aside id="pgIdentity" class="pg-identity" role="status"><strong>PROVING GROUND</strong><span>Experimental · isolated scratch state · build PG-1 / Release 141</span><button id="pgDiagnosticsToggle" type="button">Diagnostics</button></aside>
+    <aside id="pgIdentity" class="pg-identity" role="status"><strong>PROVING GROUND</strong><span>Experimental · isolated scratch state · build PG-1 / Release 143</span><button id="pgDiagnosticsToggle" type="button">Diagnostics</button></aside>
     <dialog id="pgDiagnostics"><button id="pgDiagnosticsClose" class="close" aria-label="Close diagnostics">×</button><h2>Mobile diagnostics</h2><dl id="pgDiagnosticsBody"></dl><button id="pgReset" type="button">Reset Proving Ground data</button><p id="pgResetStatus" role="status"></p></dialog>
     <main id="app">
       <canvas id="game"></canvas>
@@ -128,7 +128,8 @@
           <button id="mapPlus">+</button><button id="mapMinus">−</button
           ><button id="mapN">↑</button><button id="mapW">←</button
           ><button id="mapCenter">Center</button><button id="mapE">→</button
-          ><button id="mapS">↓</button>
+          ><button id="mapS">↓</button
+          ><button id="mapRelays" aria-pressed="false">Relays</button>
         </div>
         <label class="wayglass-picker">Activated Wayglass
           <select id="mapWayglassSelect" aria-label="Fast travel destination"></select>
@@ -148,7 +149,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "141";
+      const release = "143";
       const params = new URLSearchParams(location.search);
       const entry = "../src/proving-ground-mobile.js";
       const updateServiceWorker = async () => {
