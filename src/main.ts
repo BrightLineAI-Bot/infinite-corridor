@@ -8,6 +8,7 @@ import { landscapeAtlasColor } from "./landscape-render.ts";
 import { hashSeed } from "./random.ts";
 import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.ts";
 import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.ts";
+import { questingBeastTriesLeft } from "./questing-beast.ts";
 import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.ts";
 import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.ts";
 function uiButton(label, click) {
@@ -410,7 +411,7 @@ let navigationCache = { key: null, map: null, guidance: null, manual: null }, an
 // Atlas site whose dungeon or arena is not resolved) count as objectives, as do story targets and nearby signals.
 const OBJECTIVE_KINDS={hunt:{rank:0,label:"Hunt"},story:{rank:1,label:"Story"},challenge:{rank:2,label:"Challenge"},danger:{rank:3,label:"Danger"},crossing:{rank:4,label:"Signal"},event:{rank:5,label:"Signal"}};
 const CHALLENGE_SITES={dungeon:"Crossing",arenaEntrance:"Arena",bossCue:"Major danger"},COMPASS_OBJECTIVE_LIMIT=12;
-let objectiveCache={key:null,list:[]},compassPick=null;
+let objectiveCache={key:null,list:[]},compassPick=null,compassPin=null; // compassPin: a quest chosen in the Journal (release 155)
 // The section an area id belongs to: dungeon:seed:gN[:rx:ry:...] and arena:vN:seed:rx,ry.
 function sectionOfAreaId(id){const d=/^dungeon:[^:]+:g\d+(?::(-?\d+):(-?\d+))?/.exec(id);if(d)return d[1]===undefined?"0,0":`${d[1]},${d[2]}`;const a=/^arena:v\d+:[^:]+:(-?\d+),(-?\d+)/.exec(id);return a?`${a[1]},${a[2]}`:null}
 function openChallengeSections(){
@@ -437,11 +438,11 @@ function navigationTargets() {
     huntActive=!!hunt&&["accepted","tracking","target-located"].includes(hunt.status),manual=save.manualWaypoint;
   const objectiveOpen = !save.consequences.choices.relay ||
     (save.narrative.facts["leads.active"] && !save.narrative.facts["leads.complete"]);
-  const pick=game.area==="overworld"&&!huntActive?compassObjective():null;
-  const key=[game.area,game.rx,game.ry,huntId,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,objectiveOpen,manual?.area,manual?.rx,manual?.ry,manual?.label,pick?.rx,pick?.ry,pick?.name].join(":");
+  const pick=game.area==="overworld"&&!huntActive&&!compassPin?compassObjective():null;
+  const key=[game.area,game.rx,game.ry,huntId,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,objectiveOpen,manual?.area,manual?.rx,manual?.ry,manual?.label,pick?.rx,pick?.ry,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name].join(":");
   if(navigationCache.map===game.map&&navigationCache.key===key)return navigationCache;
   navigationStats.rebuilds++;
-  let guidance=huntActive&&Number.isInteger(hunt.target?.rx)&&Number.isInteger(hunt.target?.ry)?{area:"overworld",rx:hunt.target.rx,ry:hunt.target.ry,kind:"guidance",name:hunt.title||"Viewport guidance"}:null;
+  let guidance=compassPin?{area:"overworld",rx:compassPin.rx,ry:compassPin.ry,kind:"guidance",name:compassPin.name}:huntActive&&Number.isInteger(hunt.target?.rx)&&Number.isInteger(hunt.target?.ry)?{area:"overworld",rx:hunt.target.rx,ry:hunt.target.ry,kind:"guidance",name:hunt.title||"Viewport guidance"}:null;
   if(!guidance&&game.area==="overworld"&&objectiveOpen&&!compassPick){
     const cues=game.map.objects.filter(q=>q.kind==="wayfindingCue"),cue=cues.find(q=>q.signalKind==="crossing")||cues.find(q=>q.signalKind==="danger")||cues.find(q=>q.signalKind==="event");
     guidance=cue?{area:"overworld",rx:cue.targetRx,ry:cue.targetRy,kind:"guidance",name:cue.name||"Quest signal"}:null;
@@ -468,6 +469,28 @@ function updateNavigationCompass() {
   navCompass.setAttribute("aria-label",labels.join(". "));
   navCompass.title = navCompass.getAttribute("aria-label");
 }
+// Active quests (Journal tab, release 155): every hunt, errand and story lead in progress, with where it is and a
+// button that points the compass at it. Nothing here is drawn on the compass itself.
+function activeQuests(){
+  const out=[],add=(title,detail,at)=>out.push({title,detail,at:at&&Number.isInteger(at.rx)&&Number.isInteger(at.ry)?{rx:at.rx,ry:at.ry}:null});
+  for(const c of Object.values(save.viewport?.contracts||{}))if(["accepted","tracking","target-located"].includes(c?.status))add(`Hunt: ${c.title||"Viewport hunt"}`,`${c.id===save.viewport.activeHuntId?"Tracked hunt · ":""}${String(c.status).replace("-"," ")}${c.summary?` · ${c.summary}`:""}`,c.target);
+  const w=save.wanderer?.quest;if(w)add("Old Quillon's errand",w.done?"Done. Find Quillon on the road to collect your pay.":w.type==="hunt"?`Defeat creatures: ${w.progress}/${w.goal}.`:w.type==="cache"?"Find his buried satchel.":"Stand in any town square.",w.type==="cache"&&!w.done?w.target:null);
+  const beast=save.questingBeast?.active;if(beast)add("The Questing Beast",`It roams this section. ${questingBeastTriesLeft(save)} tries remain.`,beast);
+  const far=save.relayNetwork?.coordinate;if(far){const f=ensureFarArray(save);add("The Far Array",`Gate ${f.gate}: ${f.pieces}/${piecesNeeded(f.gate)} pieces. Enter at the Array Mouth.`,far)}
+  const echo=save.story?.arcs?.cartographersEcho;if(echo?.site&&!echo.completed)add("The Unwritten Meridian","The cartographer's echo waits here.",echo.site);
+  if(save.narrative?.facts?.["leads.active"]&&!save.narrative.facts["leads.complete"])add("Relay leads","Follow the wayfinding marks toward the buried crossings.",null);
+  if(!save.worldFlags?.worldBossDead)add("A great enemy","Something vast waits at the heart of the Corridor.",{rx:0,ry:0});
+  return out;
+}
+function renderQuests(out){
+  const h=document.createElement("h3");h.textContent="Active quests";out.append(h);
+  const row=(title,detail,at,name)=>{const card=document.createElement("div"),t=document.createElement("strong"),d=document.createElement("p");card.className="item";t.textContent=title;const away=at?Math.max(Math.abs(at.rx-game.rx),Math.abs(at.ry-game.ry)):0;d.textContent=detail+(at?` · section ${at.rx},${at.ry} · ${away?`${away} section${away===1?"":"s"} ${compassHeading(at.rx-game.rx,at.ry-game.ry)}`:"in this section"}`:"");card.append(t,d);
+    if(at){const pinned=compassPin?.rx===at.rx&&compassPin?.ry===at.ry;card.append(uiButton(pinned?"Compass points here":"Point compass here",()=>{compassPin={rx:at.rx,ry:at.ry,name};navigationCache.key=null;openJournal("quests")}))}out.append(card)};
+  const quests=activeQuests();if(!quests.length){const p=document.createElement("p");p.className="options-note";p.textContent="No hunts or errands in progress. Viewport posts hunts; Old Quillon gives errands on the road.";out.append(p)}
+  for(const q of quests)row(q.title,q.detail,q.at,q.title);
+  const near=objectiveList().filter((o)=>o.kind==="challenge");if(near.length){const h2=document.createElement("h3");h2.textContent="Unfinished challenges you have found";out.append(h2);for(const o of near)row(o.name,"Not yet cleared",{rx:o.rx,ry:o.ry},o.name)}
+  if(compassPin)out.append(uiButton("Let the compass choose again",()=>{compassPin=null;navigationCache.key=null;openJournal("quests")}));
+}
 // Tapping the compass names its target and steps to the next objective (release 153).
 navCompass.setAttribute("role","button");navCompass.tabIndex=0;
 navCompass.addEventListener("click",()=>{
@@ -475,7 +498,7 @@ navCompass.addEventListener("click",()=>{
   const list=objectiveList();if(!list.length){game.message="The compass finds nothing unfinished nearby. Explore further to give it something to find.";return}
   // The first tap names the nearest objective; each later tap moves on to the next one.
   const current=compassObjective(),next=compassPick===null?current:list[(list.indexOf(current)+1)%list.length];
-  compassPick=`${next.rx},${next.ry}`;navigationCache.key=null;
+  compassPick=`${next.rx},${next.ry}`;compassPin=null;navigationCache.key=null;
   const away=Math.max(Math.abs(next.rx-game.rx),Math.abs(next.ry-game.ry));
   game.message=`Compass (${list.indexOf(next)+1}/${list.length}): ${next.name} · ${away?`${away} section${away===1?"":"s"} ${compassHeading(next.rx-game.rx,next.ry-game.ry)}`:"in this section"} · section ${next.rx},${next.ry}. Tap again for the next.`;
 });
@@ -1007,7 +1030,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:153,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 153\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:155,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 155\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1028,6 +1051,16 @@ function atlasMapHeight(){return Math.max(140,Math.min(innerHeight*.65,innerHeig
 // Relay overlay (release 142, Atlas button): the Rule 110 relay pattern as a faint lattice over explored sections and
 // their neighbours, and the relays you have answered as bright nodes joined to answered neighbours within two sections.
 let relayOverlay=false;
+// Atlas layers (release 155): the buttons under the Atlas switch each kind of marking on or off. The choice is a
+// per-device convenience kept in localStorage.
+const ATLAS_LAYERS=[["sites","Places"],["signals","Signals"],["objectives","Objectives"],["waypoints","Waypoints"]],ATLAS_LAYER_KEY="corridor-atlas-layers";
+const atlasLayers=(()=>{const all=Object.fromEntries(ATLAS_LAYERS.map(([k])=>[k,true]));try{return{...all,...JSON.parse(localStorage.getItem(ATLAS_LAYER_KEY)||"{}")}}catch{return all}})();
+function renderAtlasLayerButtons(){
+  const row=$("#mapLayers");if(!row)return;row.replaceChildren();
+  const save_=()=>{try{localStorage.setItem(ATLAS_LAYER_KEY,JSON.stringify(atlasLayers))}catch{}renderAtlasLayerButtons();drawMap()};
+  for(const[k,label]of ATLAS_LAYERS){const b=uiButton(label,()=>{atlasLayers[k]=!atlasLayers[k];save_()});b.setAttribute("aria-pressed",String(atlasLayers[k]));row.append(b)}
+  const allOn=ATLAS_LAYERS.every(([k])=>atlasLayers[k]),all=uiButton(allOn?"All off":"All on",()=>{for(const[k]of ATLAS_LAYERS)atlasLayers[k]=!allOn;save_()});row.append(all);
+}
 function drawRelayOverlay(w,h,cell,cols,rows){
   const at=(rx,ry)=>({x:w/2+(rx-mapView.x)*cell+mapView.panX,y:h/2+(ry-mapView.y)*cell+mapView.panY}),answered=[];
   for(const[id,n]of Object.entries(save.relayNetwork?.nodes||{})){const c=crossingSection(id);if(c)answered.push({...c,choice:n.choice})}
@@ -1058,7 +1091,7 @@ function drawMap() {
     cols = Math.ceil(w / (2 * cell)) + 1,
     rows = Math.ceil(h / (2 * cell)) + 1;
   // Release 153: the compass target gets a gold frame and unfinished challenges a dashed violet one.
-  const openSections=openChallengeSections(),compassTarget=navigationTargets().guidance,targetKey=compassTarget?.area==="overworld"?`${compassTarget.rx},${compassTarget.ry}`:null;
+  const openSections=atlasLayers.objectives?openChallengeSections():new Map(),compassTarget=atlasLayers.objectives?navigationTargets().guidance:null,targetKey=compassTarget?.area==="overworld"?`${compassTarget.rx},${compassTarget.ry}`:null;
   for (let j = -rows; j <= rows; j++)
     for (let i = -cols; i <= cols; i++) {
       const rx = mapView.x + i,
@@ -1066,7 +1099,7 @@ function drawMap() {
         key = `${rx},${ry}`,
         x = w / 2 + i * cell - cell / 2 + mapView.panX,
         y = h / 2 + j * cell - cell / 2 + mapView.panY,
-        seen = !!save.explored[key],signal=signalBySection.get(key),
+        seen = !!save.explored[key],signal=atlasLayers.signals?signalBySection.get(key):null,
         frontier =
           !seen &&
           [
@@ -1088,7 +1121,7 @@ function drawMap() {
       mctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4);
       if (seen) {
         const detailed=(rx===game.rx&&ry===game.ry)||(mapView.selected?.rx===rx&&mapView.selected?.ry===ry),sites=record?.sites||[],compact=[...new Map(sites.map(s=>[s.kind,s])).values()];
-        const displaySites=detailed?sites:compact,labelSites=[];
+        const displaySites=!atlasLayers.sites?[]:detailed?sites:compact,labelSites=[];
         for (const [n,site] of displaySites.entries()) {
           const sx = detailed?x + Math.max(0.1, Math.min(0.9, (site.x + .5) / 32)) * cell:x+cell*(.32+(n%3)*.18),
             sy = detailed?y + Math.max(0.1, Math.min(0.9, (site.y + .5) / 32)) * cell:y+cell*(.42+Math.floor(n/3)*.2);
@@ -1107,11 +1140,11 @@ function drawMap() {
         mctx.arc(x + cell / 2, y + cell / 2, 5, 0, 7);
         mctx.fill();
       }
-      if (save.manualWaypoint?.rx === rx && save.manualWaypoint?.ry === ry) {
+      if (atlasLayers.waypoints && save.manualWaypoint?.rx === rx && save.manualWaypoint?.ry === ry) {
         mctx.strokeStyle = "#5fe7ee";
         mctx.strokeRect(x + 8, y + 8, cell - 16, cell - 16);
       }
-      if(seen&&save.lastDeath?.rx===rx&&save.lastDeath?.ry===ry)drawDeathGlyph(mctx,x+cell-13,y+13,Math.max(5,cell*.1),save.lastDeath.valid===false);
+      if(atlasLayers.waypoints&&seen&&save.lastDeath?.rx===rx&&save.lastDeath?.ry===ry)drawDeathGlyph(mctx,x+cell-13,y+13,Math.max(5,cell*.1),save.lastDeath.valid===false);
       if(openSections.has(key)){mctx.save();mctx.strokeStyle=ATLAS_FRAMES.openChallenge;mctx.lineWidth=2;mctx.setLineDash([5,3]);mctx.strokeRect(x+5,y+5,cell-10,cell-10);mctx.restore()}
       if(key===targetKey){mctx.save();mctx.strokeStyle=ATLAS_FRAMES.compassTarget;mctx.lineWidth=3;mctx.strokeRect(x+1.5,y+1.5,cell-3,cell-3);mctx.restore()}
     }
@@ -1204,6 +1237,7 @@ function openMap() {
   if (!atlas.open) atlas.showModal();
   refreshWayglassDestinations();
   renderAtlasLegend();
+  renderAtlasLayerButtons();
   updateMapModeUI();
   if(mapMode==="atlas")showMapDetail(game.rx, game.ry);
   drawMap();
@@ -1510,9 +1544,10 @@ function openJournal(mode = "chronicle") {
   const out = $("#journalBody");
   out.replaceChildren();
   const nav=document.createElement("div");nav.className="codex-tabs";
-  for(const [id,label] of [["chronicle","Chronicle"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["tome","Reciter's Tome"],["gate","The Far Gate"]])nav.append(uiButton(label,()=>openJournal(id)));
+  for(const [id,label] of [["chronicle","Chronicle"],["quests","Active quests"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["tome","Reciter's Tome"],["gate","The Far Gate"]])nav.append(uiButton(label,()=>openJournal(id)));
   out.append(nav);
   if(mode!=="chronicle"){
+    if(mode==="quests"){renderQuests(out);if(!journal.open)journal.showModal();return;}
     if(mode==="tome"){renderTome(out);if(!journal.open)journal.showModal();return;}
     if(mode==="gate"){renderFarGate(out);if(!journal.open)journal.showModal();return;}
     if(mode==="dungeons"){

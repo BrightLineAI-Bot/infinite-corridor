@@ -738,3 +738,8 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 #mapRelays[aria-pressed="true"] { border-color: #b48cff; color: #e6d8ff; box-shadow: 0 0 8px #b48cff66 inset; }
 /* Release 153: the compass beside the Map button is tappable (names its target, then steps to the next). */
 .compass-slot .nav-compass { pointer-events: auto; cursor: pointer; }
+/* Release 155: Atlas layer toggles under the map tools. */
+.maplayers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 4px; }
+.maplayers button { min-height: 32px; padding: 4px 2px; font-size: .78rem; }
+.maplayers button[aria-pressed="false"] { opacity: .55; text-decoration: line-through; }
+.maplayers button[aria-pressed="true"] { border-color: #d5a464; }
