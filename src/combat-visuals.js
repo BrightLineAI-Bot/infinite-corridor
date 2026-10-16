@@ -1,4 +1,4 @@
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=icp_47119428934e4c208050cff7_c61e8e8644cadbaf";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
 export function drawRangedEffects(ctx,game,width,height) {
   const s = Math.max(28, Math.min(44, width / 12)),
     toScreen = (q) => [

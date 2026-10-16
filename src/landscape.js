@@ -10,9 +10,13 @@
 //
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
-import { hashSeed } from "./random.js?v=icp_47119428934e4c208050cff7_c61e8e8644cadbaf";
+import { hashSeed } from "./random.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+import { placeDock } from "./boats.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
 
-export const LANDSCAPE_VERSION = 1;
+// Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
+// and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
+// Each section keeps the version it was first seen with.
+export const LANDSCAPE_VERSION = 3;
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles
 export const MAX_LEVEL = 5;
 // Fraction of max health lost when dropping this many levels; null = fatal.
@@ -24,11 +28,28 @@ export const BIOMES = {
   coast: { id: "coast", name: "Shattered Coast", atlas: "#3f7fa3" },
   alien: { id: "alien", name: "Lumen Wilds", atlas: "#9a6fe0" },
   castle: { id: "castle", name: "Overland Castle", atlas: "#8a7f73" },
+  sea: { id: "sea", name: "Open Sea", atlas: "#1d4f7a" },
+  isles: { id: "isles", name: "Scattered Isles", atlas: "#4f9fb0" },
+  lake: { id: "lake", name: "Stillwater Lake", atlas: "#4a90c8" },
+  swamp: { id: "swamp", name: "Sunken Fen", atlas: "#5d6b3c" },
+  blight: { id: "blight", name: "Blight Mire", atlas: "#7cbf3a" },
 };
+// Waterbodies (version 2) balance table. `continent` bends the ocean field so whole seas form; `island` lifts land back
+// out of open water; `deep` is how far above the ocean threshold deep water starts.
+export const WATERBODIES = {
+  continent: { scale: 1100, weight: 1.2 },
+  island: { scale: 38, threshold: .66, lift: 4 },
+  deep: .07,
+  lake: { scale: 40, water: .785, rim: .765 },
+  swamp: { scale: 110, threshold: .65, blight: .725, pool: .74, mire: .58, poolScale: 3.3 },
+  landmarkMacrocell: 5,
+};
+// Water every map treats as lethal without the Tidemantle (rivers and dungeon water are generator-made, not landscape).
+export const DEEP_WATER = ["ocean", "deepOcean", "lakeWater", "swampWater", "toxicWater"];
 // Thresholds tuned so roughly a third of sections carry a landscape feature (see tests/landscape.test.ts).
 const T = { ocean: 0.70, beach: 0.675, mountain: 0.68, alien: 0.75, desert: 0.67 };
 const WALKABLE_LANDSCAPE = new Set(["snowRock", "snowPeak", "mountainRock", "alpineGrass", "mountainTrail", "sand", "duneCrest", "duneFace",
-  "beach", "shallows", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope"]);
+  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope"]);
 
 // ---------------------------------------------------------------- noise
 function lattice(key, ix, iy) { return (hashSeed(`${key}:${ix}:${iy}`) % 10007) / 10007; }
@@ -50,20 +71,43 @@ const field = {
   mountain: (seed, gx, gy) => fbm(`${seed}:land:mountain`, gx / 96, gy / 96),
   desert: (seed, gx, gy) => fbm(`${seed}:land:desert`, gx / 120, gy / 120),
   alien: (seed, gx, gy) => fbm(`${seed}:land:alien`, gx / 100, gy / 100),
+  // version 2
+  continent: (seed, gx, gy) => fbm(`${seed}:land:continent`, gx / WATERBODIES.continent.scale, gy / WATERBODIES.continent.scale, 2),
+  island: (seed, gx, gy) => fbm(`${seed}:land:island`, gx / WATERBODIES.island.scale, gy / WATERBODIES.island.scale),
+  lake: (seed, gx, gy) => fbm(`${seed}:land:lake`, gx / WATERBODIES.lake.scale, gy / WATERBODIES.lake.scale, 2),
+  wet: (seed, gx, gy) => fbm(`${seed}:land:wet`, gx / WATERBODIES.swamp.scale, gy / WATERBODIES.swamp.scale),
 };
+// Version 2 sea level: the version 1 field bent by the continent field (seas), minus island lift. `open` is before islands.
+function seaLevel(seed, gx, gy, version) {
+  const base = field.ocean(seed, gx, gy);
+  if (version < 2) return { o: base, open: base };
+  const open = base + (field.continent(seed, gx, gy) - .5) * WATERBODIES.continent.weight, isl = field.island(seed, gx, gy);
+  return { o: open > T.beach && isl > WATERBODIES.island.threshold ? open - (isl - WATERBODIES.island.threshold) * WATERBODIES.island.lift : open, open };
+}
 
 // The section's dominant biome (sampled at its centre), used for the atlas and for section-wide features.
-export function biomeFor(seed, rx, ry) {
+export function biomeFor(seed, rx, ry, version = LANDSCAPE_VERSION) {
   if (Math.abs(rx) + Math.abs(ry) <= 1) return null;
   const gx = rx * 32 + 16, gy = ry * 32 + 16;
-  if (field.ocean(seed, gx, gy) > T.ocean) return "coast";
+  if (version >= 2) {
+    const { o, open } = seaLevel(seed, gx, gy, version);
+    if (o > T.ocean + WATERBODIES.deep) return "sea";
+    if (open > T.ocean && o <= T.beach) return "isles";
+    if (o > T.ocean) return "coast";
+  } else if (field.ocean(seed, gx, gy) > T.ocean) return "coast";
   if (field.mountain(seed, gx, gy) > T.mountain) return "mountains";
   if (castleSection(seed, rx, ry)) return "castle";
   if (field.alien(seed, gx, gy) > T.alien) return "alien";
   if (field.desert(seed, gx, gy) > T.desert) return "desert";
+  if (version >= 2) {
+    if (field.lake(seed, gx, gy) > WATERBODIES.lake.rim) return "lake";
+    const wet = field.wet(seed, gx, gy);
+    if (wet > WATERBODIES.swamp.blight) return "blight";
+    if (wet > WATERBODIES.swamp.threshold) return "swamp";
+  }
   // A section can still touch a neighbouring biome's edge (coastline, foothills); report that for the atlas.
   for (const [dx, dy] of [[-12, 0], [12, 0], [0, -12], [0, 12]]) {
-    if (field.ocean(seed, gx + dx, gy + dy) > T.beach) return "coast";
+    if (seaLevel(seed, gx + dx, gy + dy, version).o > T.beach) return "coast";
     if (field.mountain(seed, gx + dx, gy + dy) > T.mountain) return "mountains";
   }
   return null;
@@ -97,16 +141,16 @@ function protectedMask(map, { spawns = true, ruins = true, decor = true } = {}) 
 function setTile(map, x, y, props) { const i = idx(x, y); map.tiles[i] = { ...map.tiles[i], ...props, landscape: props.landscape || map.tiles[i].landscape }; }
 
 // Mutates a generated overworld section. Returns the map. `explored` sections and excluded sections are untouched.
-export function applyLandscape(map, seed, rx, ry, { explored = false } = {}) {
+export function applyLandscape(map, seed, rx, ry, { explored = false, version = LANDSCAPE_VERSION } = {}) {
   if (!map || map.landscape || explored || map.settlement || Math.abs(rx) + Math.abs(ry) <= 1 || map.tiles?.length !== 1024) return map;
-  const mask = protectedMask(map), biome = biomeFor(seed, rx, ry);
+  const mask = protectedMask(map), biome = biomeFor(seed, rx, ry, version), v2 = version >= 2, W = WATERBODIES;
   let touched = 0;
   for (let y = 1; y < 31; y++) for (let x = 1; x < 31; x++) {
     const i = idx(x, y), t = map.tiles[i], gx = rx * 32 + x, gy = ry * 32 + y, d = hashSeed(`${seed}:land:detail:${gx}:${gy}`) % 997;
-    const prot = mask[i] === 1, o = field.ocean(seed, gx, gy), m = field.mountain(seed, gx, gy), a = field.alien(seed, gx, gy), s = field.desert(seed, gx, gy);
+    const prot = mask[i] === 1, o = seaLevel(seed, gx, gy, version).o, m = field.mountain(seed, gx, gy), a = field.alien(seed, gx, gy), s = field.desert(seed, gx, gy);
     if (o > T.beach) {
-      const deep = o > T.ocean;
-      setTile(map, x, y, deep && !prot ? { kind: "ocean", blocked: true, elev: 0, landscape: "coast", detail: d } : { kind: deep || o > T.ocean - .012 ? "shallows" : "beach", blocked: false, elev: 0, landscape: "coast", detail: d });
+      const deep = o > T.ocean, abyssal = v2 && o > T.ocean + W.deep;
+      setTile(map, x, y, deep && !prot ? { kind: abyssal ? "deepOcean" : "ocean", blocked: true, elev: 0, landscape: abyssal ? "sea" : "coast", detail: d } : { kind: deep || o > T.ocean - .012 ? "shallows" : "beach", blocked: false, elev: 0, landscape: "coast", detail: d });
       touched++; continue;
     }
     if (t.blocked && !t.landscape) continue; // ruins and section walls stay
@@ -128,6 +172,19 @@ export function applyLandscape(map, seed, rx, ry, { explored = false } = {}) {
       const dune = Math.sin(gx * .42 + Math.sin(gy * .19) * 2.4 + valueNoise(`${seed}:land:dune`, gx / 7, gy / 7) * 3), mesa = !prot && valueNoise(`${seed}:land:mesa`, gx / 5, gy / 5) > .84;
       const elev = prot ? 0 : mesa ? 2 : dune > .35 ? 1 : 0;
       setTile(map, x, y, { kind: mesa ? "mesaTop" : elev === 1 ? (dune > .82 ? "duneCrest" : "sand") : "sand", blocked: false, elev, landscape: "desert", detail: d });
+      touched++; continue;
+    }
+    if (!v2) continue;
+    const lk = field.lake(seed, gx, gy);
+    if (lk > W.lake.rim) {
+      setTile(map, x, y, lk > W.lake.water && !prot ? { kind: "lakeWater", blocked: true, elev: 0, landscape: "lake", detail: d } : { kind: "shallows", blocked: false, elev: 0, landscape: "lake", detail: d });
+      touched++; continue;
+    }
+    const wet = field.wet(seed, gx, gy);
+    if (wet > W.swamp.threshold) {
+      const blight = wet > W.swamp.blight, pool = valueNoise(`${seed}:land:mire`, gx / W.swamp.poolScale, gy / W.swamp.poolScale);
+      const kind = pool > W.swamp.pool && !prot ? (blight ? "toxicWater" : "swampWater") : pool > W.swamp.mire ? (blight ? "toxicMire" : "mireWater") : (blight ? "toxicBog" : "bogGround");
+      setTile(map, x, y, { kind, blocked: kind === "toxicWater" || kind === "swampWater", elev: 0, landscape: blight ? "blight" : "swamp", detail: d });
       touched++;
     }
   }
@@ -141,9 +198,32 @@ export function applyLandscape(map, seed, rx, ry, { explored = false } = {}) {
   if (biome === "mountains" || biome === "desert" || biome === "alien") placeSummit(map, seed, rx, ry, biome);
   for (const t of ensureReturnable(map, 32, 32, { x: 16, y: 16 })) if (t.landscape === "mountains" && !t.volcanic && !t.slope && t.kind !== "skyBridge") t.kind = mountainKind(t.elev || 0);
   addRamps(map, 32, 32, `${seed}:${rx}:${ry}`);
+  if (v2) placeIslandLandmark(map, seed, rx, ry);
+  if (version >= 3) placeDock(map, seed, rx, ry, reachableFromPlaza(map));
   if (biome === "mountains") map.weather = "snow";
-  map.landscape = { version: LANDSCAPE_VERSION, biome: biome || dominantLandscape(map), name: BIOMES[biome || dominantLandscape(map)]?.name || null };
+  map.landscape = { version, biome: biome || dominantLandscape(map), name: BIOMES[biome || dominantLandscape(map)]?.name || null };
   return map;
+}
+
+// One island landmark per macrocell of sea, placed after causeways so it stays an island (reached by swimming, and
+// later by boat). Picks the candidate section's island tile farthest from the plaza.
+const LANDMARKS = [["Tide Shrine", "Shell-crusted stones ring a basin that fills and empties with no tide."], ["Wrecked Hull", "A ship's ribs, bleached and barnacled. Whoever sailed her came from beyond the Corridor."], ["Drowned Beacon", "A lighthouse lamp, cold, still turning toward the open sea."]];
+export function placeIslandLandmark(map, seed, rx, ry) {
+  const M = WATERBODIES.landmarkMacrocell, mx = Math.floor(rx / M), my = Math.floor(ry / M), n = hashSeed(`${seed}:land:isle-mark:${mx}:${my}`);
+  if (mx * M + (n % M) !== rx || my * M + (Math.floor(n / M) % M) !== ry) return null;
+  const reach = reachableFromPlaza(map), water = (t) => t && DEEP_WATER.includes(t.kind);
+  let best = null;
+  for (const t of map.tiles) {
+    if (t.blocked || t.x < 2 || t.y < 2 || t.x > 29 || t.y > 29 || reach[idx(t.x, t.y)] || !map.tiles.some((q) => water(q))) continue;
+    if (!N4.some(([dx, dy]) => water(map.tiles[idx(t.x + dx, t.y + dy)]) || !map.tiles[idx(t.x + dx, t.y + dy)]?.blocked)) continue;
+    if (map.objects.some((o) => Math.abs(o.x - t.x) + Math.abs(o.y - t.y) < 2)) continue;
+    const dd = Math.hypot(t.x - 16, t.y - 16);
+    if (!best || dd > best.dd) best = { t, dd };
+  }
+  if (!best) return null;
+  const [name, lore] = LANDMARKS[n % LANDMARKS.length], o = { id: `landscape-isle-${rx}-${ry}`, kind: "ruinMarker", name, lore, x: best.t.x, y: best.t.y, state: "quiet", actions: ["inspect"], landmark: true, islandLandmark: true };
+  map.objects.push(o);
+  return o;
 }
 
 function dominantLandscape(map) {
@@ -176,7 +256,7 @@ export function reachableFromPlaza(map, start = { x: 16, y: 16 }) {
 // Movement rule: climb at most one level (jump), drop any height. A tile the player can reach but never leave
 // (a pit ringed by walls two or more levels high) is a trap. Operator report 2026-10-14: stuck in a hole, had to
 // burn a Crossing Sigil. These helpers work on any map (overworld 32x32 or dungeon of any size).
-export const LETHAL_KINDS = new Set(["abyss", "lava", "canyon", "river", "dungeonWater", "ocean"]);
+export const LETHAL_KINDS = new Set(["abyss", "lava", "canyon", "river", "dungeonWater", ...DEEP_WATER]);
 const walkable = (t) => t && !t.blocked && !LETHAL_KINDS.has(t.kind);
 const step = (a, b) => (b.elev || 0) - (a.elev || 0) <= 1;
 function sweep(map, width, height, start, reverse) {
@@ -307,7 +387,7 @@ function buildSkyBridges(map, seed, rx, ry, mask) {
 
 // Objects and creature spawns on islands (shallows ringed by ocean, spires, pools) get a walkable causeway.
 function connectStranded(map) {
-  const convertible = (tt) => tt.landscape && tt.blocked && ["ocean", "alienPool", "crystalSpire", "crag"].includes(tt.kind);
+  const convertible = (tt) => tt.landscape && tt.blocked && [...DEEP_WATER, "alienPool", "crystalSpire", "crag"].includes(tt.kind);
   for (const o of [...map.objects.filter((q) => q.actions?.length), ...(map.enemySpawns || [])]) {
     const seen = reachableFromPlaza(map), ox = Math.round(o.x), oy = Math.round(o.y);
     if (seen[idx(ox, oy)] || N4.some(([dx, dy]) => seen[idx(ox + dx, oy + dy)])) continue;
@@ -319,7 +399,7 @@ function connectStranded(map) {
       const cells = [];
       for (const [x0, y0, x1, y1] of path) { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); for (let k = 0; k <= n; k++) cells.push([x0 + Math.sign(x1 - x0) * k, y0 + Math.sign(y1 - y0) * k]); }
       if (cells.some(([x, y]) => { const tt = map.tiles[idx(x, y)]; return tt.blocked && !convertible(tt); })) continue;
-      for (const [x, y] of cells) { const tt = map.tiles[idx(x, y)]; if (tt.blocked) setTile(map, x, y, { kind: tt.kind === "ocean" ? "shallows" : tt.landscape === "alien" ? "alienMoss" : "mountainRock", blocked: false, elev: 0 }); }
+      for (const [x, y] of cells) { const tt = map.tiles[idx(x, y)]; if (tt.blocked) setTile(map, x, y, { kind: tt.kind === "swampWater" ? "mireWater" : tt.kind === "toxicWater" ? "toxicMire" : DEEP_WATER.includes(tt.kind) ? "shallows" : tt.landscape === "alien" ? "alienMoss" : "mountainRock", blocked: false, elev: 0 }); }
       break;
     }
   }
@@ -421,5 +501,5 @@ export function canStep(entity, map, width, fromX, fromY, toX, toY) {
   if (diff === 1) return !!entity.jumping;
   return diff < 0; // dropping off a ledge: the game applies fall damage by height
 }
-export function isLandscapeKind(kind) { return WALKABLE_LANDSCAPE.has(kind) || ["ocean", "crag", "crystalSpire", "alienPool", "castleWall", "castleTower", "castleKeep", "lava"].includes(kind); }
+export function isLandscapeKind(kind) { return WALKABLE_LANDSCAPE.has(kind) || [...DEEP_WATER, "crag", "crystalSpire", "alienPool", "castleWall", "castleTower", "castleKeep", "lava"].includes(kind); }
 export function elevationAt(map, width, x, y) { return map?.landscape ? (tileUnder(map, width, x, y)?.elev || 0) : 0; }

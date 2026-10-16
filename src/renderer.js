@@ -1,11 +1,12 @@
-import { enemyMeleeGeometry } from "./combat.js?v=icp_47119428934e4c208050cff7_c61e8e8644cadbaf";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_47119428934e4c208050cff7_c61e8e8644cadbaf";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_47119428934e4c208050cff7_c61e8e8644cadbaf";
-import { liftAt } from "./landscape.js?v=icp_47119428934e4c208050cff7_c61e8e8644cadbaf";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_47119428934e4c208050cff7_c61e8e8644cadbaf";
-import { drawRelayNode } from "./relay-network.js?v=icp_47119428934e4c208050cff7_c61e8e8644cadbaf";
-import { structureOccupancy } from "./world.js?v=icp_47119428934e4c208050cff7_c61e8e8644cadbaf";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_47119428934e4c208050cff7_c61e8e8644cadbaf";
+import { enemyMeleeGeometry } from "./combat.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+import { SEA_CREATURES } from "./sea-creatures.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+import { liftAt } from "./landscape.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+import { drawRelayNode } from "./relay-network.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+import { structureOccupancy } from "./world.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_9665052a29b745e2b0286653_647b4703d70cfc12";
 
 export function cameraTransform(
   g,
@@ -232,6 +233,7 @@ const COLORS = {
   archiveBehemoth: ["#6b3d78", "#1d1527", "#f0a052"],
   vesperwing:["#8b4b35","#251d1d","#ed8a45"],gravitantBell:["#54726e","#252b2a","#c0a66b"],mireApostle:["#71804d","#25291f","#b6d05c"],knifeChoir:["#675174","#211b29","#c28fe0"],
   npc: ["#9b815d", "#453832", "#879b8d"],
+  shipwright: ["#4f7f9a", "#3a2c22", "#d8c39a"],
   shrine: ["#557b74", "#263c3b", "#b7c1aa"],
   checkpoint: ["#668b91", "#304448", "#c7b887"],
   door: ["#76533b", "#382b25", "#9d805d"],
@@ -258,6 +260,56 @@ const COLORS = {
   storyRelic: ["#8c7650", "#382f24", "#f0cf83"],
   storyTone: ["#557d82", "#26383b", "#9fe6dd"],
 };
+// Surface sea creatures (water world W3). Submerged: a ripple ring only. Telegraphs: a wake line (Lanceeel), a
+// landing shadow (Breachfin), a tight coil ring (Ringcoil), jaws (Sinewake) and bubbles (Bog Lurker).
+function drawSeaCreature(ctx, e, s, now, colors, g) {
+  const cx = (e.x + .5) * s, cy = (e.y + .72) * s, t = e.seaTele;
+  ctx.save();
+  if (t?.type === "line") { ctx.strokeStyle = "#ff8a6acc"; ctx.lineWidth = Math.max(2, s * .12); ctx.setLineDash([s * .3, s * .18]); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + t.dx * t.len * s, cy + t.dy * t.len * s); ctx.stroke(); ctx.setLineDash([]); }
+  if (t?.type === "shadow") { const k = t.big ? 2.4 : e.leviathan ? 1.8 : 1; ctx.fillStyle = "#0b1a2a88"; ctx.strokeStyle = "#ff8a6acc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse((t.x + .5) * s, (t.y + .72) * s, s * .6 * k, s * .3 * k, 0, 0, 7); ctx.fill(); ctx.stroke(); }
+  if (t?.type === "rings") for (const m of t.marks) { ctx.strokeStyle = "#ff8a6acc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc((m.x + .5) * s, (m.y + .72) * s, s * (.5 + .1 * Math.sin(now / 90)), 0, 7); ctx.stroke(); }
+  if (t?.type === "mark" || t?.type === "grip") { const p = g.player; ctx.strokeStyle = t.type === "grip" ? "#b48cffee" : "#ff8a6acc"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); if (t.type === "grip") { ctx.moveTo(cx, cy); ctx.quadraticCurveTo((cx + (p.x + .5) * s) / 2, cy - s, (p.x + .5) * s, (p.y + .72) * s); } else ctx.arc((p.x + .5) * s, (p.y + .72) * s, s * .7, 0, 7); ctx.stroke(); }
+  if (t?.type === "coil" || t?.type === "jaw") { ctx.strokeStyle = "#ff8a6a99"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, s * .7, 0, 7); ctx.stroke(); }
+  if (t?.type === "bubbles") for (let i = 0; i < 5; i++) { const f = (now / 500 + i * .2) % 1; ctx.fillStyle = `rgba(200,230,140,${1 - f})`; ctx.beginPath(); ctx.arc(cx + Math.sin(i * 2.1) * s * .35, cy - f * s * .6, s * (.05 + f * .05), 0, 7); ctx.fill(); }
+  if (e.hidden) { // only a ripple betrays it
+    const f = (now / 900 + (e.x + e.y) * .1) % 1; ctx.strokeStyle = `rgba(220,240,255,${.45 * (1 - f)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(cx, cy, s * (.2 + f * .4), s * (.08 + f * .15), 0, 0, 7); ctx.stroke(); ctx.restore(); return;
+  }
+  if (e.kind === "tentacle") { // a rising limb: a curling column with suckers; a pale ring before it slams
+    if (t?.type === "slam") { ctx.strokeStyle = "#ff8a6acc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, s * .95, 0, 7); ctx.stroke(); }
+    const sway = Math.sin(now / 240 + e.x) * s * .2; ctx.strokeStyle = e.hitFlash > 0 ? "#f3d2b0" : colors[0]; ctx.lineCap = "round"; ctx.lineWidth = s * .32;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.quadraticCurveTo(cx + sway, cy - s * .8, cx - sway * .6, cy - s * 1.5); ctx.stroke();
+    ctx.fillStyle = colors[2]; for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.arc(cx + sway * i / 4, cy - s * .38 * i, s * .05, 0, 7); ctx.fill(); }
+    ctx.restore(); return;
+  }
+  if (e.leviathan && /Kraken|kraken/.test(e.kind)) { // a kraken body: mantle and resting arms around it
+    const k = e.scale || 2;
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + Math.sin(now / 700 + i) * .2; ctx.strokeStyle = colors[1]; ctx.lineWidth = s * .16; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.quadraticCurveTo(cx + Math.cos(a) * s * k * .5, cy + Math.sin(a) * s * k * .3, cx + Math.cos(a + .4) * s * k * .75, cy + Math.sin(a + .4) * s * k * .45); ctx.stroke(); }
+    ctx.fillStyle = e.hitFlash > 0 ? "#f3d2b0" : colors[0]; ctx.strokeStyle = colors[2]; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, cy - s * .35 * k, s * .42 * k, s * .5 * k, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = colors[2]; for (const q of [-1, 1]) { ctx.beginPath(); ctx.arc(cx + q * s * .16 * k, cy - s * .25 * k, s * .07 * k, 0, 7); ctx.fill(); }
+    ctx.restore(); return;
+  }
+  const lift = (e.leapHeight || 0) * s, f = e.ai?.facing || "down", [fx, fy] = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[f], n = e.segments || 1;
+  if (lift) { ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(cx, cy, s * .4, s * .14, 0, 0, 7); ctx.fill(); }
+  for (let i = n - 1; i >= 0; i--) { // trailing body, head last
+    const sz = e.scale || 1, wave = Math.sin(now / 160 + i * .9) * s * .12 * sz, bx = cx - fx * s * .32 * sz * i - fy * wave, by = cy - lift - fy * s * .32 * sz * i + fx * wave, r = s * sz * (i ? Math.max(.08, .2 - i * .012) : .27);
+    ctx.fillStyle = e.hitFlash > 0 ? "#f3d2b0" : colors[i % 2 ? 1 : 0]; ctx.strokeStyle = colors[2]; ctx.lineWidth = Math.max(1, s * .03);
+    ctx.beginPath(); ctx.ellipse(bx, by, Math.max(2, r), Math.max(2, r * .72), Math.atan2(fy, fx), 0, 7); ctx.fill(); ctx.stroke();
+  }
+  ctx.fillStyle = colors[2]; ctx.beginPath(); ctx.arc(cx + fx * s * .14 - fy * s * .08, cy - lift + fy * s * .14 + fx * s * .08 - s * .04, Math.max(1.5, s * .05), 0, 7); ctx.fill(); // eye
+  if (e.kind === "breachfin") { ctx.fillStyle = colors[1]; ctx.beginPath(); ctx.moveTo(cx - s * .1, cy - lift - s * .15); ctx.lineTo(cx, cy - lift - s * .5); ctx.lineTo(cx + s * .12, cy - lift - s * .15); ctx.fill(); }
+  ctx.restore();
+}
+
+// The skiff (water world W2): a plank hull with a bow pointing along `facing`, bobbing on the water.
+function drawSkiff(ctx, x, y, s, facing, now) {
+  const cx = (x + .5) * s, cy = (y + .72) * s + Math.sin(now / 420 + x) * s * .03, along = facing === "left" || facing === "right";
+  ctx.save(); ctx.translate(cx, cy); if (!along) ctx.rotate(Math.PI / 2); if (facing === "left" || facing === "up") ctx.scale(-1, 1);
+  ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(0, s * .08, s * .62, s * .2, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#6b4a2e"; ctx.beginPath(); ctx.moveTo(-s * .55, -s * .16); ctx.lineTo(s * .38, -s * .16); ctx.quadraticCurveTo(s * .66, 0, s * .38, s * .16); ctx.lineTo(-s * .55, s * .16); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#c9a571"; ctx.lineWidth = Math.max(1, s * .04); ctx.stroke();
+  ctx.fillStyle = "#8d6a43"; for (const k of [-.3, .05]) ctx.fillRect(k * s, -s * .13, s * .07, s * .26);
+  ctx.restore();
+}
 function actor(
   ctx,
   x,
@@ -379,7 +431,7 @@ function actor(
     rect(p[0], 0.17, -0.83, 0.08, 0.2);
     rect(p[2], -0.08, -0.65, 0.04, 0.04);
     rect(p[1], -0.28, -0.28, 0.12, 0.25);
-  } else if (kind === "npc") {
+  } else if (kind === "npc" || kind === "shipwright") {
     rect(p[1], -0.22, -0.58, 0.44, 0.56);
     rect(p[0], -0.18, -0.75, 0.36, 0.23);
     rect(p[2], -0.1, -0.68, 0.04, 0.04);
@@ -619,6 +671,23 @@ export function render(ctx, g, w, h, now) {
             ctx.textAlign = "center";
             ctx.fillText("VIEWPORT", (o.x + .5) * s, (o.y - .95) * s);
             ctx.textAlign = "start";
+          } else if (o.kind === "diveSite") { // a bobbing red-and-white buoy with a dive flag
+            const bx = (o.x + .5) * s, by = (o.y + .7) * s + Math.sin(now / 500 + o.x) * s * .04;
+            ctx.strokeStyle = "#e8f4ff88"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(bx, by + s * .1, s * (.35 + .1 * Math.sin(now / 400)), s * .12, 0, 0, 7); ctx.stroke();
+            ctx.fillStyle = "#d8463a"; ctx.beginPath(); ctx.arc(bx, by, s * .22, Math.PI, 0); ctx.fill(); ctx.fillStyle = "#f4f1ea"; ctx.fillRect(bx - s * .22, by - s * .02, s * .44, s * .08);
+            ctx.fillStyle = "#3a2c22"; ctx.fillRect(bx - 1, by - s * .7, 2, s * .5); ctx.fillStyle = "#d8463a"; ctx.fillRect(bx + 1, by - s * .7, s * .3, s * .2); ctx.strokeStyle = "#f4f1ea"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx + 1, by - s * .7); ctx.lineTo(bx + 1 + s * .3, by - s * .5); ctx.stroke();
+          } else if (o.kind === "airPocket") { // a rising column of bubbles
+            for (let i = 0; i < 7; i++) { const f = (now / 1100 + i / 7) % 1, bx = (o.x + .5) * s + Math.sin(now / 300 + i * 2) * s * .15; ctx.fillStyle = `rgba(220,245,255,${.85 * (1 - f)})`; ctx.beginPath(); ctx.arc(bx, (o.y + .7) * s - f * s * 1.6, s * (.05 + (i % 3) * .025), 0, 7); ctx.fill(); }
+            ctx.strokeStyle = "#bfe9ff99"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc((o.x + .5) * s, (o.y + .7) * s, s * .45, 0, 7); ctx.stroke();
+          } else if (o.kind === "diveExit") { // the surface line: a rope rising out of view
+            ctx.strokeStyle = "#d9c39a"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.moveTo((o.x + .5) * s, (o.y + .8) * s); ctx.quadraticCurveTo((o.x + .7) * s, (o.y - 1) * s, (o.x + .45) * s, (o.y - 3) * s); ctx.stroke();
+            ctx.fillStyle = "#e2d5ba"; ctx.font = "10px monospace"; ctx.textAlign = "center"; ctx.fillText("SURFACE", (o.x + .5) * s, (o.y + 1.2) * s); ctx.textAlign = "start";
+          } else if (o.kind === "skiff") {
+            drawSkiff(ctx, o.x, o.y, s, "right", performance.now());
+          } else if (o.kind === "shipwright") {
+            actor(ctx, o.x, o.y, s, "shipwright", "down", 0, "idle");
+            ctx.fillStyle = "#e2d5ba"; ctx.font = "10px monospace"; ctx.textAlign = "center";
+            ctx.fillText("SHIPWRIGHT", (o.x + .5) * s, (o.y - .3) * s); ctx.textAlign = "start";
           } else if (o.kind === "relayNode") {
             drawRelayNode(ctx, o, s, performance.now());
           } else if (o.kind === "relayTerminal") {
@@ -634,6 +703,7 @@ export function render(ctx, g, w, h, now) {
       draws.push({
         y: e.y, x: e.x,
         fn: () => {
+          if (e.seaKind) { drawSeaCreature(ctx, e, s, now, SEA_CREATURES[e.seaKind].colors, g); return; }
           const f = e.ai?.facing || "down",
             q = e.recoil > 0 ? 0.12 : 0,
             ox = f === "left" ? q : f === "right" ? -q : 0,
@@ -694,6 +764,7 @@ export function render(ctx, g, w, h, now) {
         );
         ctx.fill();
       }
+      if (g.area === "overworld" && g.save.boat?.aboard) drawSkiff(ctx, p.x, p.y, s, p.facing, now);
       actor(
         ctx,
         p.x,
@@ -738,6 +809,17 @@ export function render(ctx, g, w, h, now) {
   for (const d of draws) {
     const raise = Number.isFinite(d.x) ? groundLift(d.x, d.y) : 0;
     if (raise) { ctx.save(); ctx.translate(0, -raise * s); d.fn(); ctx.restore(); } else d.fn();
+  }
+  // Under water (W5): a blue-green wash with slow light shafts.
+  if (g.map?.underwater) {
+    ctx.fillStyle = "rgba(20,70,110,.28)"; ctx.fillRect(l * s, t * s, (r - l) * s, (b - t) * s);
+    for (let i = 0; i < 4; i++) { const x0 = (l + ((i * 7 + now / 900) % (r - l + 6)) - 3) * s; ctx.fillStyle = "rgba(200,240,255,.06)"; ctx.beginPath(); ctx.moveTo(x0, t * s); ctx.lineTo(x0 + s * 1.5, t * s); ctx.lineTo(x0 + s * 4, b * s); ctx.lineTo(x0 + s * 2, b * s); ctx.fill(); }
+  }
+  // Stormkraken ink (W4): the sea goes dark beyond a small circle around the Wayfarer.
+  if (g.area === "overworld" && now < (g.inkUntil || 0)) {
+    const fade = Math.min(1, (g.inkUntil - now) / 600), px = (p.x + .5) * s, py = (p.y + .6) * s, grad = ctx.createRadialGradient(px, py, s * 1.4, px, py, s * 4.5);
+    grad.addColorStop(0, "rgba(6,10,18,0)"); grad.addColorStop(1, `rgba(6,10,18,${.92 * fade})`);
+    ctx.fillStyle = grad; ctx.fillRect(l * s, t * s, (r - l) * s, (b - t) * s);
   }
   for (const e of g.enemies)
     if (!e.dead && discoveredInDungeon(g,e) && !e.ambient && !e.hidden && !e.aloft && visibleInCamera(e,l,t,r,b,2)) {
