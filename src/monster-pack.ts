@@ -689,7 +689,7 @@ export function populateOverworldPack(map, seed, rx, ry, { safe = null } = {}) {
   const spawns = map.enemySpawns || (map.enemySpawns = []);
   let packCount = 0;
   spawns.forEach((e, i) => {
-    if (e.ambient || e.passiveBehavior || e.shelterAmbush || e.districtResident || e.boss || e.elite || e.gatePredator || e.foundryId || MONSTER_PACK[e.kind] || inSafe(e)) return;
+    if (e.ambient || e.passiveBehavior || e.shelterAmbush || e.districtResident || e.boss || e.elite || e.gatePredator || e.foundryId || e.viewportHuntId || e.domainId || MONSTER_PACK[e.kind] || inSafe(e)) return; // hunt and domain foes keep their kind (release 132)
     const n = hashSeed(`${key}:convert:${i}`);
     if (n % 100 < D.replaceShare && packCount < D.maxPack) { e.kind = pool[Math.floor(n / 100) % pool.length]; e.packOverworld = true; packCount++; }
   });
