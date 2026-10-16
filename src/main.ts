@@ -860,7 +860,7 @@ function resume() {
   persist();
 }
 pausePanel.addEventListener("cancel",(event)=>event.preventDefault());
-const optionCategories=["Journeys","Library","Performance","Controls","Accessibility","Audio","System"];
+const optionCategories=["Journeys","Performance","Controls","Accessibility","Audio","System"];
 let optionCategory="Journeys";
 function optionMessage(text,isError=false){let p=$("#optionsStatus");if(!p){p=document.createElement("p");p.id="optionsStatus";optionsBody.prepend(p)}p.textContent=text;p.className=isError?"options-note options-danger":"options-note"}
 function downloadText(name,text){const a=document.createElement("a"),url=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
@@ -885,35 +885,35 @@ function selectSetting(key,choices){const s=document.createElement("select");for
 function rangeSetting(key,min,max,step){const input=document.createElement("input");input.type="range";input.min=min;input.max=max;input.step=step;input.value=settings[key];input.oninput=()=>updateSetting(key,Number(input.value));return input}
 function toggleSetting(key){const input=document.createElement("input");input.type="checkbox";input.checked=!!settings[key];input.onchange=()=>updateSetting(key,input.checked);return input}
 function updateSetting(key,value){Object.assign(settings,saveSettings({...settings,[key]:value}));applyPresentationSettings();optionMessage(`${key.replace(/([A-Z])/g," $1")} updated. Quality changes apply without changing journey data.`)}
-// Library (release 122): every book the reciters carry, and under each, the reciters of it you have met, each with
-// their own order (linear or random) and a reset. Books are added by the developer, not in game.
-function renderLibrary(){
-  ensureReciters(save);const list=document.createElement("div");list.className="library";
-  const intro=document.createElement("p");intro.className="options-note";intro.textContent="Every book walking the Corridor. Reciters you have met appear under their book; choose how each one recites, or send them back to the first line.";list.append(intro);
+// The Reciter's Tome (Journal tab; releases 122, 124): every book walking the Corridor and, under each, the reciters of
+// it you have met, each with their own order (linear or random) and a reset. Books are added by the developer, not in game.
+function renderTome(out){
+  ensureReciters(save);const rerender=()=>openJournal("tome");
+  const h=document.createElement("h3"),intro=document.createElement("p"),status=document.createElement("p");h.textContent="The Reciter's Tome";
+  intro.className="options-note";intro.textContent="Every book walking the Corridor. Reciters you have met appear under their book; choose how each one recites, or send them back to the first line.";status.className="options-note";out.append(h,intro,status);
   for(const b of libraryBooks(save)){
-    const sec=document.createElement("section"),h=document.createElement("h3"),meta=document.createElement("p");sec.className="library-book";
-    h.textContent=b.book;meta.className="options-note";meta.textContent=`${b.sources.join(" · ")} · ${b.lines} lines`;sec.append(h,meta);
+    const sec=document.createElement("section"),bh=document.createElement("h3"),meta=document.createElement("p");sec.className="library-book";
+    bh.textContent=b.book;meta.className="options-note";meta.textContent=`${b.sources.join(" · ")} · ${b.lines} lines`;sec.append(bh,meta);
     if(!b.readers.length){const none=document.createElement("p");none.className="options-note library-empty";none.textContent="You have not met anyone who recites this yet.";sec.append(none)}
     for(const q of b.readers){
       const mode=document.createElement("select");for(const[value,label]of[["linear","Linear"],["random","Random"]]){const o=document.createElement("option");o.value=value;o.textContent=label;mode.append(o)}
-      mode.value=q.mode;mode.onchange=()=>{setReciterMode(save,q.id,mode.value);persist();optionMessage(`${q.voice}: ${mode.value}.`)};
+      mode.value=q.mode;mode.onchange=()=>{setReciterMode(save,q.id,mode.value);persist();status.textContent=`${q.voice}: ${mode.value}.`};
       const row=settingRow(`${q.voice}`,mode,`${q.name} · ${q.mode==="random"?"random lines":`next: line ${q.at+1} of ${q.count}`}`);
-      const reset=uiButton("Reset",()=>{resetReciter(save,q.id);persist();renderOptions("Library");optionMessage(`${q.voice} will start again from the first line.`)});reset.className+=" small";row.append(reset);
+      const reset=uiButton("Reset",()=>{resetReciter(save,q.id);persist();rerender()});reset.className+=" small";row.append(reset);
       sec.append(row);
     }
-    list.append(sec);
+    out.append(sec);
   }
-  optionsBody.append(list);
 }
 async function renderSettings(category){const grid=document.createElement("div");grid.className="settings-grid";
   if(category==="Performance"){grid.append(settingRow("Quality mode",selectSetting("quality",[["auto","Auto"],["low","Low"],["balanced","Balanced"],["full","Full"]]),`Active: ${currentQuality()}. Low uses a stable 1× render scale; other modes cap at 2×.`),settingRow("Safe mode",toggleSetting("safeMode"),"Reversible low-load presentation mode."),settingRow("Weather detail",toggleSetting("weather"),"Allows ambient weather when the renderer supports it."),settingRow("Performance diagnostics",toggleSetting("diagnostics"),"Records frame timings after the next reload."))}
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:122,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:124,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
-async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else if(category==="Library")renderLibrary();else await renderSettings(category)}
+async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
 async function openOptions(){pauseForOverlay();if(pausePanel.open)pausePanel.close();setHudExpanded(false);await renderOptions();if(!optionsPanel.open)optionsPanel.showModal()}
 function drawDungeonMap() {
   const selectedLevel=$("#dungeonLevelSelect")?.value,currentLevel=game.map.levelId||"root",map=selectedLevel&&selectedLevel!==currentLevel?generateDungeon(save.seed,game.areaId(),{levelId:selectedLevel}):game.map,d=Math.min(devicePixelRatio,2),w=Math.min(innerWidth*.9,680),h=atlasMapHeight(),cols=map.width||24,rows=map.height||Math.floor(map.tiles.length/cols),pad=18,cell=Math.max(2,Math.min((w-pad*2)/cols,(h-pad*2)/rows)),ox=(w-cell*cols)/2,oy=(h-cell*rows)/2;
@@ -1369,9 +1369,10 @@ function openJournal(mode = "chronicle") {
   const out = $("#journalBody");
   out.replaceChildren();
   const nav=document.createElement("div");nav.className="codex-tabs";
-  for(const [id,label] of [["chronicle","Chronicle"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"]])nav.append(uiButton(label,()=>openJournal(id)));
+  for(const [id,label] of [["chronicle","Chronicle"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["tome","Reciter's Tome"]])nav.append(uiButton(label,()=>openJournal(id)));
   out.append(nav);
   if(mode!=="chronicle"){
+    if(mode==="tome"){renderTome(out);if(!journal.open)journal.showModal();return;}
     if(mode==="dungeons"){
       const heading=document.createElement("h3");heading.textContent="Deep expeditions";out.append(heading);
       const records=Object.entries(save.consequences?.dungeons||{}).filter(([,h])=>h.deep?.name);
