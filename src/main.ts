@@ -860,6 +860,7 @@ function pauseForOverlay() {
 }
 function resume() {
   overlayPause = false;
+  $("#pauseError")?.remove();
   for (const d of [pausePanel, atlas, panel, journal, optionsPanel]) if (d.open) d.close();
   game.setPaused(false, performance.now());
   input.reset();
@@ -871,7 +872,19 @@ pausePanel.addEventListener("cancel",(event)=>event.preventDefault());
 // cancel event when there was no tap since the menu opened, e.g. after returning from the background). The game then
 // stayed paused with no menu: a freeze. Back on the pause menu now means Continue. Overlay transitions close the menu
 // after pauseForOverlay(), so they are not mistaken for a dismissal.
-pausePanel.addEventListener("close",()=>{if(game.paused&&!overlayPause&&!document.hidden&&![atlas,panel,journal,optionsPanel].some((d)=>d.open))resume()});
+pausePanel.addEventListener("close",()=>{if(!pausePanel.open&&game.paused&&!overlayPause&&!document.hidden&&![atlas,panel,journal,optionsPanel].some((d)=>d.open))resume()});
+// Release 145: an overlay that throws while opening has already paused the game (and may have closed the pause menu),
+// leaving nothing on screen. Wherever the error surfaces (the frame loop, a button handler, a promise), show the pause
+// menu with the error, so play can continue and the cause can be reported.
+function recoverOverlay(error){
+  if(!game.paused||document.hidden||[pausePanel,atlas,panel,journal,optionsPanel].some((d)=>d.open))return;
+  overlayPause=false;let note=$("#pauseError");
+  if(!note){note=document.createElement("p");note.id="pauseError";note.className="options-note options-danger";pausePanel.append(note)}
+  note.textContent=`That screen could not open (${error?.message||error||"unknown error"}). Resume to keep playing.`;
+  try{pausePanel.showModal()}catch{resume()}
+}
+addEventListener("error",(event)=>recoverOverlay(event.error||event.message));
+addEventListener("unhandledrejection",(event)=>recoverOverlay(event.reason));
 const optionCategories=["Journeys","Performance","Controls","Accessibility","Audio","System"];
 let optionCategory="Journeys";
 function optionMessage(text,isError=false){let p=$("#optionsStatus");if(!p){p=document.createElement("p");p.id="optionsStatus";optionsBody.prepend(p)}p.textContent=text;p.className=isError?"options-note options-danger":"options-note"}
@@ -897,7 +910,7 @@ function selectSetting(key,choices){const s=document.createElement("select");for
 function rangeSetting(key,min,max,step){const input=document.createElement("input");input.type="range";input.min=min;input.max=max;input.step=step;input.value=settings[key];input.oninput=()=>updateSetting(key,Number(input.value));return input}
 function toggleSetting(key){const input=document.createElement("input");input.type="checkbox";input.checked=!!settings[key];input.onchange=()=>updateSetting(key,input.checked);return input}
 function updateSetting(key,value){Object.assign(settings,saveSettings({...settings,[key]:value}));applyPresentationSettings();optionMessage(`${key.replace(/([A-Z])/g," $1")} updated. Quality changes apply without changing journey data.`)}
-// The Far Gate (Journal tab, release 138): the Gate drawn as a ring of pieces that light as relay guardians fall, with
+// The Far Gate (Journal tab, release 139): the Gate drawn as a ring of pieces that light as relay guardians fall, with
 // its tier, the Listener's form, chosen boons, any pending boon or ending choice, and the run history.
 function drawGate(canvas,f){const ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2+6,R=Math.min(w,h)*.36,need=piecesNeeded(f.gate),open=f.pieces>=need,t=performance.now()/1000;
   ctx.clearRect(0,0,w,h);const bg=ctx.createRadialGradient(cx,cy,R*.2,cx,cy,R*1.5);bg.addColorStop(0,open?"#3a2a5a":"#1a1722");bg.addColorStop(1,"#0b0a10");ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
@@ -941,7 +954,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:144,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 102\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),copy=uiButton("Copy diagnostics",async()=>{const data={release:145,quality:currentQuality(),settings,storage:report,performance:globalThis.corridorPerfReport()};await navigator.clipboard?.writeText(JSON.stringify(data,null,2));optionMessage("Diagnostics copied.")});pre.textContent=`Release 145\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nDiagnostics: ${perfEnabled?"recording":"off (enable, then reload)"}`;grid.append(pre,copy)}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1643,9 +1656,9 @@ function frame(now) {
   } catch(error) {
     console.error("Infinite Corridor frame recovered from an error",error);
     game.message="The Corridor stuttered, then found its rhythm again.";
-    // Release 126: an overlay that throws while opening (Pack, Map, Journal) has already paused the game, so with no
-    // dialog shown the screen froze. Fall back to the pause menu, whose Continue always works.
-    if(game.paused&&!document.hidden&&![pausePanel,atlas,panel,journal,optionsPanel].some((d)=>d.open)){overlayPause=false;try{pausePanel.showModal()}catch{resume()}}
+    // Release 126: an overlay that throws while opening (Pack, Map, Journal) falls back to the pause menu (release 145:
+    // which now names the error).
+    recoverOverlay(error);
   } finally {
     requestAnimationFrame(frame);
   }
