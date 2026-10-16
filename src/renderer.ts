@@ -271,6 +271,7 @@ function drawSeaCreature(ctx, e, s, now, colors, g) {
   if (t?.type === "mark" || t?.type === "grip") { const p = g.player; ctx.strokeStyle = t.type === "grip" ? "#b48cffee" : "#ff8a6acc"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); if (t.type === "grip") { ctx.moveTo(cx, cy); ctx.quadraticCurveTo((cx + (p.x + .5) * s) / 2, cy - s, (p.x + .5) * s, (p.y + .72) * s); } else ctx.arc((p.x + .5) * s, (p.y + .72) * s, s * .7, 0, 7); ctx.stroke(); }
   if (t?.type === "coil" || t?.type === "jaw") { ctx.strokeStyle = "#ff8a6a99"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, s * .7, 0, 7); ctx.stroke(); }
   if (t?.type === "bubbles") for (let i = 0; i < 5; i++) { const f = (now / 500 + i * .2) % 1; ctx.fillStyle = `rgba(200,230,140,${1 - f})`; ctx.beginPath(); ctx.arc(cx + Math.sin(i * 2.1) * s * .35, cy - f * s * .6, s * (.05 + f * .05), 0, 7); ctx.fill(); }
+  if (e.kind === "angler") { const lx = cx + Math.sin(now / 600) * s * .1, ly = cy - s * .55, glow = .6 + .4 * Math.sin(now / 250); ctx.fillStyle = `rgba(255,242,160,${.25 * glow})`; ctx.beginPath(); ctx.arc(lx, ly, s * .35, 0, 7); ctx.fill(); ctx.fillStyle = "#fff2a0"; ctx.beginPath(); ctx.arc(lx, ly, s * .07, 0, 7); ctx.fill(); } // the lure shows even when it hides
   if (e.hidden) { // only a ripple betrays it
     const f = (now / 900 + (e.x + e.y) * .1) % 1; ctx.strokeStyle = `rgba(220,240,255,${.45 * (1 - f)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(cx, cy, s * (.2 + f * .4), s * (.08 + f * .15), 0, 0, 7); ctx.stroke(); ctx.restore(); return;
   }

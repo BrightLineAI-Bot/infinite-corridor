@@ -35,7 +35,7 @@ test('sea creatures spawn deterministically, bounded, on their habitat water, on
   assert.ok(seaSpawns(fen.m, SEED, fen.rx, fen.ry).every((q) => ['mireLeech', 'bogLurker'].includes(q.kind)), 'swamps hold swamp creatures');
   const kinds = new Set();
   for (let ry = -25; ry <= 25; ry++) for (let rx = -25; rx <= 25; rx++) if (['sea', 'coast', 'swamp', 'blight', 'lake', 'isles'].includes(biomeFor(SEED, rx, ry))) for (const q of seaSpawns(section(rx, ry), SEED, rx, ry)) kinds.add(q.kind);
-  for (const k of Object.keys(SEA_CREATURES).filter((q) => !SEA_CREATURES[q].leviathan && !SEA_CREATURES[q].summonOnly)) assert.ok(kinds.has(k), `${k} appears in the world`); // leviathans: tests/leviathans.test.ts
+  for (const k of Object.keys(SEA_CREATURES).filter((q) => ['open', 'swamp'].includes(SEA_CREATURES[q].habitat) && !SEA_CREATURES[q].leviathan && !SEA_CREATURES[q].summonOnly)) assert.ok(kinds.has(k), `${k} appears in the world`); // leviathans: tests/leviathans.test.ts; grotto beasts: tests/grottoes.test.ts
 });
 
 test('Lanceeel: hidden, then a visible wake line, then a straight charge that hits along it, then it dives', () => {

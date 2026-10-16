@@ -9,7 +9,7 @@ import { SEA_CREATURES, SEA_SPAWNS, seaSpawns, seaCombatantFields, updateSeaCrea
 
 const SEED = 'LANDTEST';
 const section = (rx, ry, version) => { const m = generateRegion(SEED, rx, ry); applyLandscape(m, SEED, rx, ry, version ? { version } : {}); return m; };
-const LEVIATHANS = Object.keys(SEA_CREATURES).filter((k) => SEA_CREATURES[k].leviathan);
+const LEVIATHANS = Object.keys(SEA_CREATURES).filter((k) => SEA_CREATURES[k].leviathan && SEA_CREATURES[k].habitat === 'deep'); // the Elder Wyrm lives in grottoes
 function world(player, wet = () => true) {
   const w = { player, hits: [], pulls: [], summons: [], inks: 0, time: 0, live: 0,
     water: (hab, x, y) => wet(x, y), hurt: (n, e) => w.hits.push({ n, t: w.time, kind: e.kind }), pull: (e, k) => w.pulls.push(k),

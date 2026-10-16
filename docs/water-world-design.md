@@ -72,7 +72,7 @@ Deep-ocean only, rare, one at a time per section, using the existing elite/world
 
 As already written in `design-decisions.md`: the Lens + dive rig set `capabilities.dive`; dive from boat or shore into marked **dive sites**; readable breath meter; air pockets. Underwater is a separate scene type (like a dungeon), not a layer over the overworld.
 
-## W6 — underwater grottoes and Elder Wyrms (design stage three)
+## W6 — underwater grottoes and Elder Wyrms (design stage three) — built in release 108
 
 - Grotto dungeons built on the Underlands generator (new themes: *Drowned Chapel*, *Kelp Cathedral*, *Pearl Trench*, *Sunken Settlement*), with currents (tiles that push) and air pockets.
 - Underwater beasts: **Elder Wyrm** (grotto final boss, long serpent body through the cave), **Abyssal Beast** variants, angler-style lure creatures. Beasts in deep ocean above a grotto can attack the boat from below (shadow telegraph, then strike).
