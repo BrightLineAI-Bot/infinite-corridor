@@ -5,7 +5,9 @@
 import { hashSeed, rng, pick } from "./random.ts";
 import { LETHAL_KINDS } from "./landscape.ts";
 
-export const HAMLET_VERSION = 1;
+// Version 1 (release 111) built plain huts; version 2 (release 112) builds from the world's own shelter families and
+// ruin-district styles. A section keeps the version its atlas entry was pinned to; placement and names are shared.
+export const HAMLET_VERSION = 2;
 export const HAMLET = { cell: 2, chance: 0.65, minDepth: 2, halfW: 7, halfH: 5, clearRadius: 10 };
 // Kinds of settlement: how many huts, who lives there, and which buildings stand.
 export const HAMLET_KINDS = {
@@ -38,13 +40,13 @@ const floorDiv = (a, b) => Math.floor(a / b);
 // Which section of its block (if any) hosts a hamlet. Pure in (seed, rx, ry).
 export function hamletSection(seed, rx, ry) {
   if (Math.abs(rx) + Math.abs(ry) < HAMLET.minDepth) return false;
-  const bx = floorDiv(rx, HAMLET.cell), by = floorDiv(ry, HAMLET.cell), r = rng(`${seed}:hamlet:v${HAMLET_VERSION}:block:${bx}:${by}`);
+  const bx = floorDiv(rx, HAMLET.cell), by = floorDiv(ry, HAMLET.cell), r = rng(`${seed}:hamlet:v1:block:${bx}:${by}`);
   if (r() >= HAMLET.chance) return false;
   const n = Math.floor(r() * HAMLET.cell * HAMLET.cell), hx = bx * HAMLET.cell + (n % HAMLET.cell), hy = by * HAMLET.cell + Math.floor(n / HAMLET.cell);
   return hx === rx && hy === ry;
 }
 export function hamletIdentity(seed, rx, ry) {
-  const r = rng(`${seed}:hamlet:v${HAMLET_VERSION}:identity:${rx}:${ry}`), kind = weighted(r, KIND_WEIGHTS);
+  const r = rng(`${seed}:hamlet:v1:identity:${rx}:${ry}`), kind = weighted(r, KIND_WEIGHTS);
   return { id: `hamlet-${rx}-${ry}`, kind, name: pick(r, NAME_HEAD) + pick(r, NAME_TAIL) };
 }
 
@@ -80,16 +82,67 @@ function buildHut(map, id, x0, y0, w, h, floor, wall, extra) {
   map.objects.push({ id, kind: "architecturalBuilding", x: anchor.x, y: anchor.y, state: "quiet", actions: [], bounds: { x: x0, y: y0, w, h }, door: { x: doorX, y: doorY, side: "south", width: 1 }, entrances: [{ x: doorX, y: doorY, side: "south" }], shape: "rect", footprint: cells, facadeHeight: 1, roofProfile: "gable", facadeRhythm: "paired", accent: "copper", signGlyph: 0, settlementBuilding: true, ...extra });
 }
 
+// Version 2 architecture: each building borrows one of the world's shelter families (drawn as a shack) or one of its
+// ruin-district styles (drawn as a district building), with that family's shapes. Lots are 5x5, door on the south.
+export const HAMLET_ARCHITECTURE = {
+  shelters: {
+    timber: { styles: ["pilgrim", "chapel", "workshop"], shapes: ["rect", "lshape", "cross"], roof: "gable" },
+    masonry: { styles: ["stoneCottage", "shrineHouse"], shapes: ["rect", "lshape", "cross"], roof: "gable" },
+    ruinedGatehouse: { styles: ["ruinedKeep", "gatehouse"], shapes: ["cross", "lshape"], roof: "stepped" },
+    cyberRelay: { styles: ["neonKiosk", "relayBunker"], shapes: ["rect", "cross"], roof: "flat" },
+    alienGeometric: { styles: ["prismVault", "orbitalPod"], shapes: ["diamond", "cross"], roof: "faceted" },
+    biomechanical: { styles: ["ribNest", "carapace"], shapes: ["oval", "lshape"], roof: "carapace" },
+  },
+  districts: {
+    city: { floor: "cityFloor", wall: "cityWall", shapes: ["rect", "lshape", "cross"], roofs: ["gable", "flat", "stepped", "spire"] },
+    arcology: { floor: "arcologyFloor", wall: "arcologyWall", shapes: ["rect", "cross"], roofs: ["flat", "spire"] },
+    cloister: { floor: "cloisterFloor", wall: "cloisterWall", shapes: ["cross", "lshape"], roofs: ["gable", "spire"] },
+    fortress: { floor: "cityFloor", wall: "cityWall", shapes: ["rect", "lshape"], roofs: ["flat", "stepped"] },
+  },
+  // Which families each kind of town favours; a town mixes its picks building by building.
+  byKind: {
+    hamlet: ["timber", "timber", "masonry", "biomechanical", "city"],
+    village: ["masonry", "timber", "cloister", "city", "alienGeometric"],
+    outpost: ["fortress", "ruinedGatehouse", "masonry", "cyberRelay"],
+    market: ["city", "arcology", "cyberRelay", "masonry", "cloister", "alienGeometric"],
+  },
+};
+function inShape(shape, lx, ly, w, h) {
+  if (shape === "lshape") return lx < 3 || ly >= h - 3;
+  if (shape === "cross") return Math.abs(lx - (w - 1) / 2) < 2 || Math.abs(ly - (h - 1) / 2) < 2;
+  if (shape === "diamond") return Math.abs(lx - (w - 1) / 2) / (w / 2) + Math.abs(ly - (h - 1) / 2) / (h / 2) <= 1.15 || ly >= h - 2;
+  if (shape === "oval") return ((lx - (w - 1) / 2) / (w / 2)) ** 2 + ((ly - (h - 1) / 2) / (h / 2)) ** 2 <= 1.12 || ly >= h - 2;
+  return true;
+}
+function buildMixed(map, r, id, x0, y0, kind, name) {
+  const A = HAMLET_ARCHITECTURE, family = pick(r, A.byKind[kind] || A.byKind.hamlet);
+  const shelter = A.shelters[family], district = A.districts[family], w = 5, h = 5, shape = pick(r, (shelter || district).shapes), mirror = r() < .5;
+  const cells = [];
+  for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (inShape(shape, mirror ? w - 1 - (x - x0) : x - x0, y - y0, w, h)) cells.push({ x, y });
+  const set = new Set(cells.map((c) => `${c.x},${c.y}`)), door = { x: x0 + 2, y: y0 + h - 1, side: "south" }, interior = [];
+  for (const c of cells) {
+    const sides = [[1, 0, "east"], [-1, 0, "west"], [0, 1, "south"], [0, -1, "north"]].filter(([dx, dy]) => !set.has(`${c.x + dx},${c.y + dy}`)).map((q) => q[2]);
+    const isDoor = c.x === door.x && c.y === door.y, isWall = sides.length > 0 && !isDoor, i = c.y * 32 + c.x, t = map.tiles[i];
+    if (shelter) map.tiles[i] = { ...t, kind: "refuge", blocked: false, structure: isDoor ? "shackDoor" : isWall ? "shackWall" : "shackInterior", wallSides: isWall ? sides : [], buildingId: id, doorSide: isDoor ? "south" : undefined, shelterFamily: family, shelterTheme: "hamlet" };
+    else map.tiles[i] = { ...t, kind: isWall ? district.wall : district.floor, blocked: false, structure: isDoor ? "districtDoor" : isWall ? "districtWall" : "districtInterior", districtStyle: family, buildingId: id, doorSide: isDoor ? "south" : undefined, wallSides: isWall ? sides : [] };
+    if (!isWall) interior.push(c);
+  }
+  const anchor = interior[Math.floor(interior.length / 2)] || cells[0], common = { id, name, x: anchor.x, y: anchor.y, bounds: { x: x0, y: y0, w, h }, door: { ...door, width: 1 }, entrances: [door], shape, footprint: cells, settlementBuilding: true, architecture: family };
+  if (shelter) map.objects.push({ ...common, kind: "shack", state: "quiet", actions: ["inspect"], environmental: true, schemaVersion: 2, family, theme: "hamlet", facadeStyle: pick(r, shelter.styles), roofProfile: shelter.roof, condition: "kept", signGlyph: Math.floor(r() * 6), incomplete: false });
+  else map.objects.push({ ...common, kind: "architecturalBuilding", state: "quiet", actions: [], districtStyle: family, facadeHeight: 1 + Math.floor(r() * 2), roofProfile: pick(r, district.roofs), facadeRhythm: pick(r, ["paired", "narrow", "broad"]), accent: pick(r, ["copper", "ivory", "oxide", "violet"]), signGlyph: Math.floor(r() * 8), buildingUse: name });
+}
+
 // Mutates an overworld section map (after the landscape pass). Returns the settlement record or null.
-export function applyHamlet(map, seed, rx, ry) {
+export function applyHamlet(map, seed, rx, ry, version = HAMLET_VERSION) {
   if (!map || map.settlement || map.hamlet || map.tiles?.length !== 1024 || !hamletSection(seed, rx, ry)) return null;
   const site = hamletSite(map);
   if (!site) return null;
-  const ident = hamletIdentity(seed, rx, ry), def = HAMLET_KINDS[ident.kind], r = rng(`${seed}:hamlet:v${HAMLET_VERSION}:layout:${rx}:${ry}`);
+  const ident = hamletIdentity(seed, rx, ry), def = HAMLET_KINDS[ident.kind], r = rng(`${seed}:hamlet:v${version}:layout:${rx}:${ry}`);
   const { x: cx, y: cy } = site, [floor, wall] = HUT_STYLES[def.style];
   for (let y = cy - HAMLET.halfH; y <= cy + HAMLET.halfH; y++) for (let x = cx - HAMLET.halfW; x <= cx + HAMLET.halfW; x++) { const i = y * 32 + x; map.tiles[i] = { ...map.tiles[i], kind: "refuge", blocked: false }; }
   const hutSlots = [[cx - 7, cy - 5], [cx + 3, cy - 5], [cx - 2, cy - 5]];
-  for (let i = 0; i < def.huts; i++) { const [x, y] = hutSlots[i]; buildHut(map, `${ident.id}-hut-${i}`, x, y, 5, 4, floor, wall, { name: `${ident.name} ${def.uses[i % def.uses.length]}`, districtStyle: def.style === "masonry" ? "cloister" : def.style === "city" ? "arcology" : def.style === "fortress" ? "fortress" : "city" }); }
+  if (version >= 2) for (let i = 0; i < def.huts; i++) { const [x, y] = hutSlots[i]; buildMixed(map, r, `${ident.id}-hut-${i}`, x, y, ident.kind, `${ident.name} ${def.uses[i % def.uses.length]}`); }
+  else for (let i = 0; i < def.huts; i++) { const [x, y] = hutSlots[i]; buildHut(map, `${ident.id}-hut-${i}`, x, y, 5, 4, floor, wall, { name: `${ident.name} ${def.uses[i % def.uses.length]}`, districtStyle: def.style === "masonry" ? "cloister" : def.style === "city" ? "arcology" : def.style === "fortress" ? "fortress" : "city" }); }
   map.objects.push({ id: `beacon-${ident.id}`, kind: "checkpoint", name: `${ident.name} Wayglass`, x: cx, y: cy + 2, state: "quiet", actions: ["activate"], landmark: true, settlement: ident.id });
   const spots = [[cx - 4, cy + 1], [cx + 4, cy + 1], [cx - 2, cy + 4], [cx + 2, cy + 4], [cx - 5, cy + 3], [cx + 5, cy + 3]], used = new Set();
   const take = () => { for (const s of spots) { const k = s.join(","); if (!used.has(k)) { used.add(k); return s; } } return [cx, cy + 4]; };
@@ -99,10 +152,10 @@ export function applyHamlet(map, seed, rx, ry) {
   for (let i = 0; i < def.guards; i++) { const x = i % 2 ? cx + HAMLET.halfW : cx - HAMLET.halfW, y = cy + 1 + Math.floor(i / 2) * 3; map.objects.push({ id: `${ident.id}-warden-${i}`, kind: "villager", guard: true, name: `Warden ${folk.pop()}`, role: "Warden", line: pick(r, GUARD_LINES), x, y, state: "calm", actions: ["speak"], settlement: ident.id }); }
   // Shift any small site the huts or residents now stand on to a free spot along the square's south edge.
   const taken = new Set(map.objects.filter((o) => o.settlement === ident.id).map((o) => `${o.x},${o.y}`)), free = [];
-  for (let x = cx - HAMLET.halfW + 1; x < cx + HAMLET.halfW; x++) for (const y of [cy + HAMLET.halfH, cy - 1]) if (!taken.has(`${x},${y}`) && !map.tiles[y * 32 + x].buildingId) free.push([x, y]);
+  for (let x = cx - HAMLET.halfW + 1; x < cx + HAMLET.halfW; x++) for (const y of [cy + HAMLET.halfH, version >= 2 ? cy : cy - 1]) if (!taken.has(`${x},${y}`) && !map.tiles[y * 32 + x].buildingId) free.push([x, y]);
   for (const o of map.objects) if (MOVABLE.has(o.kind) && (map.tiles[o.y * 32 + o.x]?.buildingId || taken.has(`${o.x},${o.y}`))) { const at = free.find(([x, y]) => !map.objects.some((q) => q.x === x && q.y === y)); if (at) [o.x, o.y] = at; }
   map.enemySpawns = (map.enemySpawns || []).filter((e) => Math.hypot(e.x - cx, e.y - cy) > HAMLET.clearRadius);
   map.settlement = { id: ident.id, name: ident.name, kind: ident.kind, label: def.label, x: cx, y: cy, radius: HAMLET.clearRadius - 1, procedural: true };
-  map.hamlet = HAMLET_VERSION;
+  map.hamlet = version;
   return map.settlement;
 }
