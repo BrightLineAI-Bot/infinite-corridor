@@ -290,7 +290,7 @@ export function collectWandererCache(save) {
   q.done = true; return { ok: true, message: "You dig up Quillon's satchel: maps, a pressed flower, and letters you don't read. Find Quillon to return it." };
 }
 
-// ------------------------------------------------------------------ reciters (releases 117–120)
+// ------------------------------------------------------------------ reciters (releases 117–122)
 // A lone walker who recites one book (src/recitations.ts), one line each time you speak. Per journey, save.reciters
 // keeps each reciter's place (`progress`), whom you have met (`met`), and each met reciter's order (`modes`: linear by
 // default, or random). Options → Library lists every book and, under it, the reciters you have met. Books are added
@@ -300,7 +300,7 @@ export function ensureReciters(s) {
   const r = s.reciters && typeof s.reciters === "object" ? s.reciters : {}, known = new Set(Object.keys(RECITATIONS)), progress = {}, met = {}, modes = {};
   for (const [id, n] of Object.entries(r.progress || {})) if (known.has(id) && Number.isInteger(n) && n >= 0) progress[id] = n;
   for (const id of Object.keys(r.met || {})) if (known.has(id) && r.met[id]) met[id] = true;
-  for (const id of Object.keys(progress)) met[id] = true; // anyone whose place was kept before release 120 was met
+  for (const id of Object.keys(progress)) met[id] = true; // anyone whose place was kept before release 122 was met
   for (const [id, m] of Object.entries(r.modes || {})) if (known.has(id) && m === "random") modes[id] = "random";
   if (r.mode === "random") for (const id of Object.keys(met)) modes[id] ||= "random"; // release 118's journey-wide setting
   s.reciters = { v: 3, progress, met, modes, disabled: [...new Set((Array.isArray(r.disabled) ? r.disabled : []).filter((id) => known.has(id)))], ...(Array.isArray(r.custom) && r.custom.length ? { custom: r.custom } : {}) };

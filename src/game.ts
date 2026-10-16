@@ -29,6 +29,7 @@ import { ensureSlots, slotted, pairingMods, slotReadiness } from "./spell-slots.
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
+import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.ts";
 import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, sailStep, steer, ensureBoatState } from "./boats.ts";
 import { swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot } from "./water-traversal.ts";
 import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.ts";
@@ -1943,6 +1944,7 @@ export class Game {
     this.save.session.displacementJourney = null;
     if (before < 2) this.save.consumables.restorativeDraught = 2;
     clearRot(this.save);
+    loseWood(this.save);
     p.hp = this.save.maxHp;
     p.stamina = this.save.maxStamina;
     p.attackReadyAt =
@@ -2074,6 +2076,8 @@ export class Game {
             Math.hypot(q.x - this.player.x, q.y - this.player.y) < 1.5,
         )
       : this.nearestObject();
+    // Wood (release 119): with nothing else to act on, Act at deep water's edge builds a skiff from wood.
+    if (!o && !objectId && this.shoreWater()) return this.buildSkiffHere();
     if (!o)
       return {
         ok: false,
@@ -2170,7 +2174,7 @@ export class Game {
       this.player.x = o.x + 2;
       this.player.y = o.y - 2;
     }
-    if (o.kind === "tree" && chosen === "cut") applyFallenTreeCrossings(this.map);
+    if (o.kind === "tree" && chosen === "cut") { applyFallenTreeCrossings(this.map); const n = woodFor(o), total = addWood(this.save, n); this.message = `${this.message} +${n} wood (${total}).`; r.message = this.message; }
     if(r.transition==="elitePortal"){
       this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=`elite-portal:${this.save.seed}:knife-choir`;const h=dungeonHistory(this.save,this.save.session.activeDungeonId);h.visits++;h.visitOpen=true;this.loadArea('dungeon');this.player.x=4;this.player.y=5;
     } else if(r.transition==="displacement"){
@@ -2253,6 +2257,24 @@ export class Game {
     this.player.x = this.map.entry.x; this.player.y = this.map.entry.y - .2; s.session.breath = DIVE.breath;
     this.message = "You dive. Watch your air: air pockets refill it, the line leads back up."; this.sync();
     return { ok: true, message: this.message };
+  }
+
+  // The nearest deep-water tile within reach where a skiff fits, while ashore in the overworld; null otherwise.
+  shoreWater() {
+    if (this.area !== "overworld" || aboard(this.save) || !this.map?.landscape) return null;
+    const p = this.player, w = mapWidth(this.map, this.area), cx = p.x + .5, cy = p.y + .75; let best = null;
+    for (let y = Math.floor(cy - 2); y <= Math.ceil(cy + 2); y++) for (let x = Math.floor(cx - 2); x <= Math.ceil(cx + 2); x++) {
+      const t = this.map.tiles[y * w + x]; if (!t || !SAILABLE_DEEP.includes(t.kind) || !footprintSailable(this.map, w, x, y - .2)) continue;
+      const d = Math.hypot(x + .5 - cx, y + .5 - cy); if (d <= WOOD.reach + .5 && (!best || d < best.d)) best = { x, y, d };
+    }
+    return best;
+  }
+  buildSkiffHere() {
+    const at = this.shoreWater();
+    if (!at) { this.message = "Find deep water's edge to build a skiff."; return { ok: false, message: this.message }; }
+    const r = buildSkiff(this.save, { rx: this.rx, ry: this.ry, x: at.x, y: at.y - .2 });
+    if (r.ok) { this.map.objects = this.map.objects.filter((q) => q.kind !== "skiff"); Object.assign(this.player, { x: at.x, y: at.y - .2, sailVx: 0, sailVy: 0 }); this.swimming = false; }
+    this.message = r.message; this.sync(); return r;
   }
 
   interactAt(x, y) {
@@ -3094,6 +3116,8 @@ export class Game {
       if (flow && now >= (p.dodgeUntil || 0)) { const nx = p.x + flow.dx * GROTTO.currentSpeed * dt, ny = p.y + flow.dy * GROTTO.currentSpeed * dt; if (footprintOpen(this.map, mapWidth(this.map, this.area), nx, ny)) { p.x = nx; p.y = ny; } }
       if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.breathMessageAt || 0)) { this.breathMessageAt = now + 4000; this.message = "Out of air — reach an air pocket or the surface line!"; } }
     }
+    // A hint when standing at deep water's edge with enough wood for a skiff (checked twice a second).
+    if (this.area === "overworld" && (this._shoreCheck = (this._shoreCheck || 0) - dt) <= 0) { this._shoreCheck = .5; if ((this.save.materials?.wood || 0) >= WOOD.skiffCost && this.save.capabilities?.swim && !this.nearestObject() && this.shoreWater() && now > (this.woodHintAt || 0)) { this.woodHintAt = now + 15000; this.message = `Act: build a skiff here (${WOOD.skiffCost} wood).`; } }
     if (this.swimming) { const hurt = swimUpkeep(p, dt, this.swimKind); if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "Exhausted in the water — reach the shore."; } } }
     else p.stamina = Math.min(p.maxStamina, p.stamina + (9 + pairingMods(this.save).stamina) * dt);
     this.performanceStats.totalDungeonEncounterRecords=this.area==="dungeon"?(this.map.encounterGroups||[]).length:0;this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.activeProjectiles=this.projectiles.length;this.performanceStats.activeHazardsAndEffects=this.eliteHazards.length+this.effects.length;this.performanceStats.pathfindingWork=0;this.performanceStats.ambientTicks=0;if(dt>1/30)this.performanceStats.updateBudgetViolations++;
@@ -3161,6 +3185,7 @@ export class Game {
       const before = this.save.consumables.restorativeDraught || 0;
       if (before < 2) this.save.consumables.restorativeDraught = 2;
       clearRot(this.save);
+      const woodLost = loseWood(this.save);
       p.hp = this.save.maxHp;
       p.stamina = this.save.maxStamina;
       p.attackReadyAt =
@@ -3181,7 +3206,7 @@ export class Game {
       p.x = c.x;
       p.y = c.y;
       p.invulnerableUntil = now + 2000;
-      this.message = `${fellIntoHazard?(terrainHazard==="canyon"?"Lost to the canyon":"Lost beneath the water"):"Felled"} — recovered at ${c.name || "checkpoint"}. No items, marks, equipment, or XP were lost. You are protected briefly.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
+      this.message = `${fellIntoHazard?(terrainHazard==="canyon"?"Lost to the canyon":"Lost beneath the water"):"Felled"} — recovered at ${c.name || "checkpoint"}. No items, marks, equipment, or XP were lost${woodLost ? `, but the ${woodLost} wood you carried is gone` : ""}. You are protected briefly.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
       if (beastNote) this.message = `${beastNote} ${this.message}`;
     }
     Object.assign(this.save.position, {
