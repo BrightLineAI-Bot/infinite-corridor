@@ -143,6 +143,7 @@ export function clearWayfindingCache(){wayfindingSignalCache.clear();wayfindingS
 export function wayfindingCues(seed,rx,ry,generation=1,save=null,region=null){
   const targets=[],seen=new Set(),add=(kind,x,y,name)=>{const key=`${kind}:${x},${y}`;if((x!==rx||y!==ry)&&!seen.has(key)){seen.add(key);targets.push({kind,rx:x,ry:y,name})}};
   const hunt=save?.viewport?.contracts?.[save?.viewport?.activeHuntId],huntTarget=hunt?.target;if(huntTarget&&['accepted','tracking','target-located'].includes(hunt.status))add(hunt.kind==='trial'||hunt.domain?'danger':'story',huntTarget.rx,huntTarget.ry,hunt.title);
+  const far=save?.relayNetwork?.coordinate;if(far)add('story',far.rx,far.ry,'the Far Array');
   const beast=save?.questingBeast?.active;if(beast)add('danger',beast.rx,beast.ry,'the Questing Beast');
   const quill=save?.wanderer?.quest;if(quill?.type==='cache'&&!quill.done&&quill.target)add('story',quill.target.rx,quill.target.ry,"Quillon's satchel");
   const echo=save?.story?.arcs?.cartographersEcho?.site;if(echo&&!save.story.arcs.cartographersEcho.completed)add('story',echo.rx,echo.ry,'the Unwritten Meridian');

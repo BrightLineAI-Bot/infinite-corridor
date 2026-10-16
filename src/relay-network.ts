@@ -23,7 +23,7 @@ export const FRAGMENTS = [
   "…signal steady. Coordinate holding. Come alone, Wayfarer. Come before it learns your name…",
 ];
 
-const ELIGIBLE = (areaId) => !/^(hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:)/.test(areaId) && !areaId.includes(":deep-v") && !areaId.includes("aperture-annex");
+const ELIGIBLE = (areaId) => !/^(far-array:|hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:)/.test(areaId) && !areaId.includes(":deep-v") && !areaId.includes("aperture-annex");
 
 export function relayCoordinate(save) { const c = hashSeed(`${save.seed}:relay-coordinate`); return { rx: (c % 2 ? 1 : -1) * (40 + c % 23), ry: ((c >>> 3) % 2 ? 1 : -1) * (40 + (c >>> 5) % 23) }; }
 export function ensureRelayNetwork(save) {
