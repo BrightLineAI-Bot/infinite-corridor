@@ -1,12 +1,12 @@
-import { enemyMeleeGeometry } from "./combat.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
-import { SEA_CREATURES } from "./sea-creatures.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
-import { liftAt } from "./landscape.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
-import { drawRelayNode } from "./relay-network.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
-import { structureOccupancy } from "./world.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { enemyMeleeGeometry } from "./combat.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+import { SEA_CREATURES } from "./sea-creatures.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+import { liftAt } from "./landscape.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+import { drawRelayNode } from "./relay-network.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+import { structureOccupancy } from "./world.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
 
 export function cameraTransform(
   g,
@@ -108,7 +108,17 @@ const PAL = {
 function h(x, y) {
   return (Math.imul(x + 37, 73856093) ^ Math.imul(y + 19, 19349663)) >>> 0;
 }
+const TRAVELER_LOOKS = new Set(["pilgrim", "peddler", "mercenary", "minstrel", "scholar", "traveler", "cartographer"]);
+// Trails (release 115): a worn dirt track drawn over whatever ground the tile already shows.
 function tile(ctx, t, x, y, s, map, w, activeBuildingId=null) {
+  tileBase(ctx, t, x, y, s, map, w, activeBuildingId);
+  if (t?.trail) {
+    const d = Number.isFinite(t.detail) ? t.detail : h(x, y), px = x * s, py = y * s;
+    ctx.fillStyle = "#8a744f55"; ctx.fillRect(px + s * .12, py + s * .12, s * .76, s * .76);
+    ctx.fillStyle = "#c2a87a33"; ctx.fillRect(px + s * (.2 + (d % 3) * .12), py + s * (.3 + (d % 2) * .25), s * .14, s * .1);
+  }
+}
+function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null) {
   if (t?.landscape && drawLandscapeTile(ctx, t, x, y, s, map, w)) return;
   const p = PAL[t.kind] || PAL.ash,
     d = Number.isFinite(t.detail) ? t.detail : h(x, y),
@@ -233,6 +243,16 @@ const COLORS = {
   archiveBehemoth: ["#6b3d78", "#1d1527", "#f0a052"],
   vesperwing:["#8b4b35","#251d1d","#ed8a45"],gravitantBell:["#54726e","#252b2a","#c0a66b"],mireApostle:["#71804d","#25291f","#b6d05c"],knifeChoir:["#675174","#211b29","#c28fe0"],
   npc: ["#9b815d", "#453832", "#879b8d"],
+  villager: ["#a88d62", "#4d5a48", "#d9c9a0"],
+  pilgrim: ["#b9ad92", "#6b5f4c", "#e7dcc0"],
+  peddler: ["#9a6f45", "#5a3f2a", "#e0b35e"],
+  mercenary: ["#6f6a62", "#3a3f46", "#b8a27a"],
+  minstrel: ["#a35f6c", "#4a2f4f", "#e6c069"],
+  scholar: ["#5f6f92", "#2f3550", "#c9cfe6"],
+  traveler: ["#8c7d64", "#45403a", "#c7b48c"],
+  cartographer: ["#7d8f6a", "#3b4a3a", "#f0d58a"],
+  wandererCache: ["#7a5a3a", "#3a2a1c", "#e0c070"],
+  militia: ["#8a7a5c", "#3f4a5a", "#c9b27a"],
   shipwright: ["#4f7f9a", "#3a2c22", "#d8c39a"],
   shrine: ["#557b74", "#263c3b", "#b7c1aa"],
   checkpoint: ["#668b91", "#304448", "#c7b887"],
@@ -432,12 +452,17 @@ function actor(
     rect(p[0], 0.17, -0.83, 0.08, 0.2);
     rect(p[2], -0.08, -0.65, 0.04, 0.04);
     rect(p[1], -0.28, -0.28, 0.12, 0.25);
-  } else if (kind === "npc" || kind === "shipwright") {
+  } else if (kind === "npc" || kind === "shipwright" || kind === "villager" || kind === "militia" || TRAVELER_LOOKS.has(kind)) {
     rect(p[1], -0.22, -0.58, 0.44, 0.56);
     rect(p[0], -0.18, -0.75, 0.36, 0.23);
     rect(p[2], -0.1, -0.68, 0.04, 0.04);
     rect(p[2], 0.06, -0.68, 0.04, 0.04);
     rect(p[0], -0.29, -0.48, 0.1, 0.38);
+    if (kind === "peddler") { rect(p[1], -0.42, -0.62, 0.2, 0.34); rect(p[2], -0.4, -0.58, 0.16, 0.05); }
+    if (kind === "minstrel") { rect(p[2], 0.2, -0.5, 0.18, 0.22); rect(p[1], 0.26, -0.72, 0.04, 0.24); }
+    if (kind === "scholar" || kind === "cartographer") { rect(p[2], 0.22, -0.46, 0.16, 0.2); rect(p[0], -0.24, -0.86, 0.48, 0.1); }
+    if (kind === "pilgrim") { rect(p[2], 0.3, -0.95, 0.05, 0.94); rect(p[2], 0.24, -1, 0.17, 0.06); }
+    if (kind === "militia" || kind === "mercenary") { rect(p[2], 0.3, -0.95, 0.06, 0.92); rect("#d8d2c4", 0.27, -1.02, 0.12, 0.1); rect(p[2], -0.22, -0.4, 0.44, 0.08); }
   } else {
     rect(p[1], -0.25, -0.42, 0.5, 0.42);
     rect(p[0], -0.18, -0.66, 0.36, 0.3);
@@ -632,6 +657,14 @@ export function render(ctx, g, w, h, now) {
           if (o.kind === "wayfindingCue") waymark(ctx,o,s);
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
+          else if (o.kind === "traveler") {
+            const f = o.facing || "down", step = o.state === "walking" ? Math.floor(now / 180) : 0, lift = o.mount ? .42 : 0;
+            if (o.mount) actor(ctx, o.x, o.y + .05, s, o.mount, f, step, o.state === "walking" ? "walk" : "idle");
+            actor(ctx, o.x, o.y - lift, s, o.look || "traveler", f, step, "idle");
+            if (o.wanderer) { const q = g.save.wanderer?.quest; ctx.fillStyle = !q || q.done ? "#f0d58a" : "#9cc8b5"; ctx.font = `bold ${Math.max(10, s * .32)}px monospace`; ctx.textAlign = "center"; ctx.fillText(!q || q.done ? "!" : "…", (o.x + .5) * s, (o.y - lift - .25) * s); }
+          }
+          else if (o.kind === "wandererCache") { if (o.state !== "used") { actor(ctx, o.x, o.y, s, "wandererCache", "down", 0, "idle"); } }
+          else if (o.kind === "villager") { actor(ctx, o.x, o.y, s, o.guard ? "militia" : "villager", "down", 0, "idle"); ctx.fillStyle = "#9cc8b5"; ctx.beginPath(); ctx.arc((o.x + 0.5) * s, o.y * s - 6, 3, 0, 7); ctx.fill(); }
           else if (o.kind === "npc") {
             const n = g.save.consequences.npcs[o.id],
               cx = (o.x + 0.5) * s,

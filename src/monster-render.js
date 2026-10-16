@@ -1,7 +1,7 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind } from "./monster-pack.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { MONSTER_PACK, isPackKind } from "./monster-pack.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
 
 const TAU = Math.PI * 2;
 
@@ -143,6 +143,39 @@ const BODY = {
     ctx.fillStyle = shade(ctx, h.x + flip * u * .1, h.y, u * .3, p[3], p[0]); ctx.fill(); outline(ctx, Math.max(1.5, u * .03));
     ctx.strokeStyle = "#08201f"; ctx.lineWidth = Math.max(1, u * .025); ctx.beginPath(); ctx.moveTo(h.x + flip * u * .42, h.y); ctx.lineTo(h.x + flip * u * .12, h.y + u * .04); ctx.stroke(); // jawline
     eye(ctx, h.x + flip * u * .2, h.y - u * .07, u * .035, p[2]);
+  },
+  // The Questing Beast (release 116): a hunched, horned, winged brute. Spines are pale when fresh, black when it is
+  // enraged (below half health); a spent volley leaves its back bare for a moment.
+  questingBeast(ctx, q) {
+    const { k, b, u, t, p, flip, state, e } = q, enraged = e.hp <= e.maxHp * .5, step = t * (enraged ? 7 : 5), rear = state === "windup";
+    const spine = enraged ? "#16121a" : p[3], tip = enraged ? p[2] : "#c9c0b0", lift = rear ? u * .1 : 0;
+    if (enraged) glow(ctx, k, b - u * .55, u * 1.1, p[2], .16 + .06 * Math.sin(t * 9));
+    shadowAt(ctx, k, b, u * .75, u * .18);
+    // hind legs
+    for (const lx of [-.42, -.22]) { const ph = Math.sin(step + lx * 9) * u * .05; ctx.fillStyle = shade(ctx, k - flip * lx * u, b - u * .25, u * .2, p[0], p[1]); ctx.fillRect(k + flip * lx * u - u * .08, b - u * .36, u * .16, u * .34 + ph); }
+    // body
+    const bx = k - flip * u * .12, by = b - u * .62 - lift;
+    ctx.beginPath(); ctx.ellipse(bx, by, u * .6, u * .34, -flip * .18, 0, TAU); ctx.fillStyle = shade(ctx, bx, by, u * .6, p[0], p[1]); ctx.fill(); outline(ctx, Math.max(1.5, u * .04));
+    // back spines
+    if (!e.spikesSpent || state !== "attack") for (let i = 0; i < 7; i++) {
+      const x = bx - flip * u * .45 + flip * i * u * .14, y = by - u * .28 + Math.abs(i - 3) * u * .025, h = u * (.2 + (i % 2) * .08);
+      ctx.beginPath(); ctx.moveTo(x - u * .05, y); ctx.lineTo(x - flip * u * .06, y - h); ctx.lineTo(x + u * .05, y); ctx.closePath(); ctx.fillStyle = spine; ctx.fill(); outline(ctx, Math.max(1, u * .02)); ctx.fillStyle = tip; ctx.fillRect(x - flip * u * .06 - u * .015, y - h, u * .03, u * .05);
+    }
+    // folded wing-arms with spine rows
+    for (const side of [-1, 1]) {
+      const wx = bx + side * u * .18, wy = by - u * .12 - lift * .5, sweep = rear ? -.5 : Math.sin(step * .5) * .08;
+      ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(wx - flip * u * .55, wy - u * (.45 - sweep)); ctx.lineTo(wx - flip * u * .75, wy - u * .05); ctx.closePath();
+      ctx.fillStyle = side < 0 ? p[1] : shade(ctx, wx, wy, u * .5, p[0], p[1]); ctx.fill(); outline(ctx, Math.max(1, u * .03));
+      for (let j = 1; j <= 4; j++) { const sx = wx - flip * u * .14 * j, sy = wy - u * (.11 - sweep * .25) * j; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx - flip * u * .08, sy - u * .13); ctx.lineTo(sx + flip * u * .03, sy - u * .02); ctx.closePath(); ctx.fillStyle = spine; ctx.fill(); }
+    }
+    // heavy forelimbs (raised when rearing to slam)
+    for (const lx of [.25, .45]) { const ph = Math.sin(step + lx * 7) * u * .06, up = rear ? u * .22 : 0; ctx.fillStyle = shade(ctx, k + flip * lx * u, b - u * .3, u * .24, p[0], p[1]); ctx.beginPath(); ctx.ellipse(k + flip * lx * u, b - u * .3 - up + ph * .5, u * .1, u * .22, 0, 0, TAU); ctx.fill(); outline(ctx, Math.max(1, u * .025)); ctx.fillStyle = "#0d0b0f"; for (let c = -1; c <= 1; c++) ctx.fillRect(k + flip * lx * u + c * u * .05 - u * .015, b - u * .1 - up + ph * .5, u * .03, u * .08); }
+    // head and horns
+    const hx = bx + flip * u * .62, hy = by + u * .02 - lift * .6;
+    ctx.beginPath(); ctx.ellipse(hx, hy, u * .24, u * .19, flip * .2, 0, TAU); ctx.fillStyle = shade(ctx, hx, hy, u * .24, p[0], p[1]); ctx.fill(); outline(ctx, Math.max(1, u * .035));
+    for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(hx - flip * u * .05, hy - u * .12 + side * u * .02); ctx.quadraticCurveTo(hx - flip * u * .2, hy - u * .55, hx + flip * u * .22, hy - u * (.42 + side * .06)); ctx.lineWidth = Math.max(2, u * .07); ctx.strokeStyle = side < 0 ? "#2a2530" : p[3]; ctx.stroke(); }
+    ctx.fillStyle = "#0d0b0f"; ctx.fillRect(hx + flip * u * .08, hy + u * .06, flip * u * .16, u * .05); // jaw
+    eye(ctx, hx + flip * u * .1, hy - u * .04, Math.max(1.5, u * .035), p[2]);
   },
   thunderhorn(ctx, q) {
     const { k, b, u, t, p, flip, state, e } = q, stunned = e.pack?.phase === "stunned", step = t * 6, charging = e.pack?.attack === "ramCharge" && e.pack.phase === "active";

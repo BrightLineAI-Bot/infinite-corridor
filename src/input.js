@@ -44,6 +44,7 @@ export function createInput(root, host = globalThis, options = {}) {
     q: "tool",
     r: "tool",
     f: "spell",
+    g: "spell2",
     " ": "dodge",
     k: "jump",
     e: "interact",

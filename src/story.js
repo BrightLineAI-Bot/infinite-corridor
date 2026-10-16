@@ -1,4 +1,4 @@
-import{hashSeed}from'./random.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202';
+import{hashSeed}from'./random.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94';
 export const CORRIDOR_STORY_SCHEMA='corridor-revelations/1.0.0',STEWARD_SCHEMA='world-steward/1.0.0';
 const bounded=(o,n=32)=>Object.fromEntries(Object.entries(o||{}).slice(-n));
 const journal=(s,id,title,text,category='observation')=>{if(!s.narrative.journal.some(q=>q.recordId===id))s.narrative.journal.push({recordId:id,instanceKey:'record:'+id,title,text,category,provenance:'original'})};

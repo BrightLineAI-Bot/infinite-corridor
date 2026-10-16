@@ -1,7 +1,7 @@
-import { drawRangedEffects } from "./combat-visuals.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
-import { createInput } from "./input.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
-import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
-import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets } from "./proving-ground-labs.js?v=icp_233dd08d0fc24fc9a9b6f72f_25e937c54469c202";
+import { drawRangedEffects } from "./combat-visuals.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+import { createInput } from "./input.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
+import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets } from "./proving-ground-labs.js?v=icp_d775f6a4f88f46a9b47357fa_4dc2be196603cf94";
 const canvas=document.querySelector("#game"),app=document.querySelector("#app"),ctx=canvas.getContext("2d");
 document.body.classList.add("proving-ground");document.querySelectorAll("#hud, dialog, #eventBanner, .story-scene").forEach(element=>element.hidden=true);
 const query=new URLSearchParams(location.search),implemented=LABORATORIES.filter(q=>q.status==="implemented");let selectedLab=implemented.some(q=>q.id===query.get("lab"))?query.get("lab"):"shelters";

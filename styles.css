@@ -682,3 +682,33 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 }
 .compass-slot { position: relative; display: inline-block; width: 40px; height: 38px; flex: none; }
 .compass-slot .nav-compass { width: 34px; height: 34px; }
+/* ---------------------------------------------------------------- the Arcanum (release 109): spells, constellation, glyphs, echoes
+   Plain on purpose (Tim, 2026-10-16): the standard panel, buttons, font and codex tabs; these rules only lay things out. */
+.codex-tabs button[aria-current]{border-color:#b58c50;color:#f0dbb5}
+.arc-grid,.arc-altar,.arc-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.arc-tiles{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
+.arc-card,.arc-host,.arc-tile{display:flex;flex-direction:column;gap:3px;padding:8px;text-align:left;border:1px solid #8b806444;background:#1d1c19;font-weight:400}
+.arc-card.on,.arc-host.resonant{border-color:#b58c50}.arc-card.unknown,.arc-tile.unknown{opacity:.5}
+.arc-card small,.arc-host small,.arc-tile small,.arc-state,.arc-branch-state,.arc-why,.arc-hint,.arc-empty{color:#a39a88}
+.arc-state{font-style:normal}.arc-card-sigil,.arc-tile-sigil{color:#a39a88}
+.arc-branch{padding:8px 0;border-bottom:1px solid #8b806422}.arc-branch.sealed{opacity:.55}
+.arc-branch-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.arc-branch-head h3{margin:0}
+.arc-path{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}.arc-caps{display:flex;gap:4px;flex-basis:100%}.arc-link{display:none}
+.arc-node{flex:1;min-width:0;display:flex;align-items:center;gap:6px;text-align:left;color:#a39a88}
+.arc-node.ready,.arc-node.partial{color:#ddd5c4}.arc-node.owned{color:#f0dbb5;border-color:#b58c50}.arc-node.focus{background:#2e2c27}
+.arc-node-name{flex:1;overflow-wrap:anywhere}.arc-pips{display:flex;gap:3px}.arc-pips i{width:5px;height:5px;border:1px solid #a39a88}.arc-pips i.on{background:#b58c50;border-color:#b58c50}
+.arc-detail{padding:2px 0 0 8px;border-left:1px solid #8b806444}.arc-detail p{margin:.2rem 0 .3rem}.arc-detail button{margin:4px 6px 0 0}
+.arc-socket-row{display:flex;gap:6px;margin:6px 0}
+.arc-socket{--glyph:#a39a88;width:36px;height:36px;padding:0;border-radius:50%;color:var(--glyph)}.arc-socket.focus{border-color:#b58c50}
+.arc-tile{align-items:center;text-align:center}.arc-tile-sigil{color:var(--glyph,#a39a88)}.arc-tile-more{width:100%;text-align:left}.arc-tile-more button,.arc-tile button{width:100%;margin-top:4px}
+.arc-glyph-line,.arc-reso-line{margin:.15rem 0}.arc-reso{padding:5px 0;border-bottom:1px solid #8b806422;opacity:.6}.arc-reso.known{opacity:1}.arc-reso strong,.arc-reso small{display:block}
+.arc-sockets-mini{color:#a39a88}.arc-foot{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+
+/* Spell slots A and B (release 113): symbol in the castable's attribute colour, slot letter in the corner. */
+.quick-row button.spell{--slot:#76684e;border-color:var(--slot);color:var(--slot)}
+.quick-row button.spell .slot-sym{font-size:17px;line-height:1;text-transform:none}
+.quick-row button.spell .slot-letter{position:absolute;top:2px;left:9px;font-size:8px;color:#a39a88}
+.arc-slots h3{margin:0 0 4px}.arc-slot{display:flex;align-items:center;gap:8px;padding:3px 0}.arc-slot .slot-sym{font-size:17px;width:20px;text-align:center}.arc-slot span:not(.slot-sym){flex:1}
+/* Release 114 (Tim, 2026-10-16): the compass sits above the Map button; spell slot B stands a little apart to the right. */
+.left-controls .compass-slot{order:1;justify-self:start;margin-left:3px}
+.quick-row button[data-action="spell2"]{margin-left:12px}
