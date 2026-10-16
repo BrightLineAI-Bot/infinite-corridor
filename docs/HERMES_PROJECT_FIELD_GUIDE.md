@@ -36,6 +36,12 @@ The Wayglass network uses three deliberately separate concepts. A Wayglass is a 
 
 **BOUNDARY:** Input/UI only; no save, generation or Proving Ground change. The Reciter's Tome itself was verified not to hang on back.
 
+## Patterns beyond the pattern (release 144)
+
+**CODE:** `relay-network.ts`: inside the core (|rx|, |ry| ≤ 128) `relayCell` reads the release-142 Rule 110 grid. Outside it, `RELAY_REGIONS` (size 64, top -1024, cache 48, tiers by Chebyshev distance of the region centre: 0 → [124, 110], 400 → [90, 150, 126, 22, 18], 800 → [30, 86, 106, 54]) and `regionRule` pick each region's rule by a seeded hash. `regionGrid` computes a 64×64 region on demand, wrapping horizontally. Its first row is the cells just north of it (core or region above, recursively), or a sparse seeded row at the top band, or a fresh sprinkle when the inherited row is under 4% or over 96% alive. Grids are cached in a bounded LRU. Rules with bit 0 set (an empty neighbourhood turns on: 73, 105, 45…) are excluded because they only flicker in stripes. `relayRuleAt` and `RULE_NAMES` label the Atlas overlay. Measured at about 3 µs per cell, including region creation.
+
+**BOUNDARY:** North of `top` (ry < -1024) no relays are placed. Regions abut side by side without blending; only the north-to-south seams inherit. Decisions already pinned are unchanged.
+
 ## Relays follow Rule 110 (release 142)
 
 **CODE:** `relay-network.ts`: `RELAY_PATTERN` (rule 110, 257×257, origin 128). `relayPattern(seed)` runs Rule 110 from a sparse seeded first row (1 in 7 alive); each section row `ry` is a generation and each column `rx` a cell, wrapping beyond the square, and results are cached per seed. `relayCell` reports alive; `relayEdge` (alive with a dead northern neighbour, about 20%) is where relays go. `relayNodeDecision` uses `relayEdge` for ordinary crossings (`crossingSection` parses `dungeon:<seed>:g<n>:<rx>:<ry>:<object>`) and keeps the old hash share for other ids. Histories already decided are unchanged (`relayPattern: 2` marks pattern-decided ones). Atlas: the `#mapRelays` toggle (`relayOverlay`) calls `drawRelayOverlay`, which draws faint edge marks over explored sections and their neighbours, answered relays as nodes, and links from each node to at most two nearest answered neighbours within two sections.
