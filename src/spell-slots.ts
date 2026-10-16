@@ -1,4 +1,4 @@
-// Spell slots A and B with Pairings (release 112; Tim, 2026-10-16). Two cast buttons, A and B, each hold one castable:
+// Spell slots A and B with Pairings (release 113; Tim, 2026-10-16). Two cast buttons, A and B, each hold one castable:
 // a spell or a learned discipline (Aerial Step included). Every castable has its own symbol, and its attribute gives it
 // a colour, so a glance at the buttons says what is ready. The two attributes slotted together form a Pairing: a small,
 // always-on bonus while both are in place, discovered the first time the pair is slotted. Spells now keep their own
