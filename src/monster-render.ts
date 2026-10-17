@@ -325,17 +325,63 @@ function drawLynxBody(ctx, k, b, u, t, p, flip, run) {
   eye(ctx, hx + flip * u * .07, hy - u * .02, u * .025, p[2]);
 }
 
+// Pack creature sprites (release 167). Each creature is several dozen gradient and path draws; a screen of them cost
+// more than everything else in the overworld and pushed Firefox's canvas onto its slow software path. A creature is now
+// painted into its own small image, repainted at most PACK_SPRITE.fps times a second (and at once when its pose or
+// state changes), and that image is copied to the screen each frame. Movement stays smooth at the display's rate;
+// only limb and glow animation steps at the sprite rate. The box (in creature units from the feet) holds every pose,
+// boss glow and flight lift (measured for each kind, release 167); a hit flash, which lightens what lies beneath, is
+// drawn directly over the copy.
+export const PACK_SPRITE = { fps: 24, left: 1.5, right: 1.5, up: 3.1, down: .75, keep: 48, staleMs: 4000 };
+const sprites = new Map();
+function makeSpriteCanvas() { if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(1, 1); if (typeof document !== "undefined") return document.createElement("canvas"); return null; }
+function spriteState(e) { const s0 = e.pack; return s0?.attack ? (s0.phase === "windup" ? "windup" : "attack") : "idle"; }
+function drawPackSprite(ctx, e, s, now, facing, def) {
+  const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
+  if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
+  const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (e.hopLift || 0) * s * .2;
+  const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
+  const flip = e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, step = Math.floor(now * PACK_SPRITE.fps / 1000);
+  const key = `${e.kind}|${step}|${flip}|${spriteState(e)}|${scale}|${s}|${m.a}|${m.d}|${!!e.boss}|${!!e.aloft}`;
+  let sp = sprites.get(e.id);
+  if (!sp) { const canvas = makeSpriteCanvas(); if (!canvas) return false; sp = { canvas, key: null, used: now }; sprites.set(e.id, sp); }
+  if (sp.key !== key) {
+    const c = sp.canvas, w = Math.ceil((L + R) * m.a) + 2, h = Math.ceil((U + D) * m.d) + 2;
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    const g = c.getContext("2d"); if (!g) { sprites.delete(e.id); return false; }
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h);
+    // The creature's feet land at (L, U) in the sprite; paint it as if it stood at the origin of that frame.
+    g.setTransform(m.a, 0, 0, m.d, (L - k) * m.a + 1, (U - b) * m.d + 1);
+    g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
+    paintPackMonster(g, { ...e, hitFlash: 0, phasing: false, phases: false, illusion: false }, s, step * 1000 / PACK_SPRITE.fps, facing, def, true);
+    sp.key = key;
+  }
+  sp.used = now;
+  const alpha = (e.phasing || (e.phases && e.untargetable)) ? .45 : e.aloft && e.kind === "cinderSeraph" ? .35 : 1, prior = ctx.globalAlpha;
+  ctx.globalAlpha = prior * alpha * (e.illusion ? .92 : 1);
+  ctx.drawImage(sp.canvas, k - L - 1 / m.a, b - U - 1 / m.d, sp.canvas.width / m.a, sp.canvas.height / m.d);
+  ctx.globalAlpha = prior;
+  if (e.hitFlash > 0) { ctx.save(); ctx.globalCompositeOperation = "lighter"; glow(ctx, k, b - u * .4, u * .55, "#ffffff", .5); ctx.restore(); }
+  if (sprites.size > PACK_SPRITE.keep) for (const [id, q] of sprites) if (now - q.used > PACK_SPRITE.staleMs || now < q.used) sprites.delete(id);
+  return true;
+}
+export function packSpriteCount() { return sprites.size; }
+
 // Draw one pack creature at its world position (s = tile size in pixels).
 export function drawPackMonster(ctx, e, s, now, facing = "down") {
   const def = MONSTER_PACK[e.kind];
   if (!def) return false;
+  if (drawPackSprite(ctx, e, s, now, facing, def)) return true;
+  return paintPackMonster(ctx, e, s, now, facing, def, false);
+}
+function paintPackMonster(ctx, e, s, now, facing, def, sprite) {
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (e.hopLift || 0) * s * .2, t = now / 1000 + ((e.id?.length || 3) * 1.7);
   const flip = e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, s0 = e.pack;
   const state = s0?.attack ? (s0.phase === "windup" ? "windup" : "attack") : "idle";
   const q = { k, b, u, t, p: def.palette, flip, e, state };
   ctx.save();
   if (e.phasing || (e.phases && e.untargetable)) ctx.globalAlpha = .45;
-  if (e.aloft && e.kind === "cinderSeraph") { ctx.globalAlpha = .35; q.b -= u * .9; }
+  if (e.aloft && e.kind === "cinderSeraph") { if (!sprite) ctx.globalAlpha = .35; q.b -= u * .9; }
   if (e.illusion) ctx.globalAlpha *= .92;
   if (e.boss) { glow(ctx, k, b - u * .4, u * 1.05, def.palette[2], .18); }
   BODY[def.render]?.(ctx, q);
@@ -421,6 +467,6 @@ export function drawPackPortrait(ctx, kind, size, now = 0) {
   const def = MONSTER_PACK[kind], tile = size / (1.6 + (def.form.scale || 1) * .9);
   ctx.save(); ctx.clearRect(0, 0, size, size);
   const bg = ctx.createRadialGradient(size / 2, size * .55, size * .05, size / 2, size * .55, size * .7); bg.addColorStop(0, def.palette[2] + "33"); bg.addColorStop(1, "#0b0a0d00"); ctx.fillStyle = bg; ctx.fillRect(0, 0, size, size);
-  drawPackMonster(ctx, { id: `portrait-${kind}`, kind, x: size / tile / 2 - .5, y: size / tile * .62 - .82, scale: def.form.scale || 1, facingX: 1, pack: null }, tile, now);
+  paintPackMonster(ctx, { id: `portrait-${kind}`, kind, x: size / tile / 2 - .5, y: size / tile * .62 - .82, scale: def.form.scale || 1, facingX: 1, pack: null }, tile, now, "down", def, false);
   ctx.restore(); return true;
 }
