@@ -754,3 +754,24 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 .arc-branch[data-elem] { border-left: 3px solid var(--elem); padding-left: 8px; }
 .arc-boosts { margin: 2px 0 4px 1rem; padding: 0; font-size: .85rem; }
 .arc-slot .arc-elem { flex: 0 0 auto; justify-self: start; width: max-content; }
+
+/* Release 169 (Tim, 2026-10-17): the expand button moves just under the HUD box at its left edge, and the box takes the
+   width the button used. HP text such as "115/134 (rot −134)" keeps the room it needs; level, XP and Aperture take what
+   is left and shorten with an ellipsis instead of overlapping it. The bars keep their width. */
+#hudExpand { left: -1px; top: 100%; width: 34px; height: 26px; border-left: 1px solid #675f50; border-top: none; }
+#hud { width: min(340px, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 14px)); }
+.hud-summary { grid-template-columns: minmax(0, max-content) minmax(0, 1fr) !important; }
+.health-row { grid-template-columns: 96px minmax(0, auto); }
+#healthText { overflow: hidden; text-overflow: ellipsis; }
+#progressCompact { padding-left: 2px; }
+@media (orientation: portrait) {
+  #hud { width: min(316px, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 14px)); }
+  .health-row { grid-template-columns: 84px minmax(0, auto); }
+}
+@media (orientation: portrait) and (max-width: 390px) {
+  #hud { width: min(294px, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 12px)); }
+  .health-row { grid-template-columns: 74px minmax(0, auto); }
+}
+@media (orientation: landscape) and (max-height: 540px) {
+  #hud { width: min(322px, calc(42vw + 30px)); }
+}
