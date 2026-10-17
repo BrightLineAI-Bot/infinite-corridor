@@ -41,7 +41,7 @@ The Wayglass network uses three deliberately separate concepts. A Wayglass is a 
 - `dungeon-framework.ts` `dungeonTileVisibility()` reads a per-chunk `Uint8Array`, rebuilt per revealed set, instead of building a string per call. It matched the old answers in 424,192 checks.
 - `combat-visuals.ts` draws a translucent halo instead of `shadowBlur` on projectiles.
 
-Swimming (Tim): `TIDEMANTLE.staminaDrainPerSecond` 3 → 8 and `exhaustedDamagePerSecond` 6 → 10. With release 158's `openSeaDrain` and the deep-ocean ×2, open-sea deep water drains 32/s.
+Swimming: release 159 also raised `TIDEMANTLE.staminaDrainPerSecond` to 8 and `exhaustedDamagePerSecond` to 10. **Release 161 reverted both to 3 and 6** (Tim: the request was meant for another session), so swimming is as release 158 left it.
 
 **BOUNDARY:** No save or generation change. The 8 s autosave and the CSS filter on `#game` are unchanged; both are candidates if a device still struggles.
 
@@ -112,7 +112,7 @@ Guidance keeps its old order (hunt, then the local cue) and falls back to the ch
 
 **BOUNDARY:** Input/UI only; no save, generation or Proving Ground change. The Reciter's Tome itself was verified not to hang on back.
 
-## Hunts and the open sea (release 160)
+## Hunts and the open sea (release 162)
 
 **CODE:** `landscape.ts` exports `openSeaSection(seed, rx, ry)`, the same test applyLandscape uses. `game.ts` `seaBound(rx, ry)` is true when any section in rx..rx+3 × ry-1..ry+2 (the span of domain role offsets) would be open sea, counting unseen sections and those pinned with a `seaVersion`. It is passed to `refreshViewportBoard`'s `avoid`. In loadArea, an open-sea section with a non-archived, uncompleted contract targeting it (or a `domainSectionAt` section) gets `map.huntersRaft`: tiles 14–18 × 14–18 become dock, with a "Hunter's Raft" marker. The hunt and domain `open` spot list is then restricted to the raft.
 
