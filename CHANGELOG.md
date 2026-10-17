@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 173 — two-finger dodge on a portrait phone (the folded outer screen). Your second finger was landing on Jump, which sat in the middle of the action buttons. In portrait, Jump now sits in the top-right corner of the buttons and Dodge is wider, reaching into the middle. The landscape layout is unchanged.
 - Release 171 — Mire Apostle ooze pools and shelter toxic vents now give a strong poison straight away. Max HP stays the same, but you pulse green and lose about a third of your max HP over 10 seconds unless a Clearroot Ampoule ends it. The poison swamp is unchanged.
 - Release 169 — the HUD's expand button moves just under the HUD box on the left, and the box uses the freed width, so poisoned HP text ("115/134 (rot −134)") no longer overlaps level and XP. Projectiles are drawn in a few batches instead of two draws each, for heavy Lumen Spindle fire.
 - Release 167 — smoother overworld, from the diagnostic probe report. The screen's tint and vignette are drawn once and reused, pack creatures are drawn into reusable images (their animation updates 24 times a second) instead of being redrawn stroke by stroke every frame, crossing into a new section no longer reallocates the ground image or generates nearby sections for the compass in the same frame, and the autosave no longer copies every area you have ever visited. The probe now pairs each frame time with the right frame and splits render time into ground, world and overlay.

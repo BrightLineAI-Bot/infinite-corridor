@@ -775,3 +775,12 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 @media (orientation: landscape) and (max-height: 540px) {
   #hud { width: min(322px, calc(42vw + 30px)); }
 }
+
+/* Release 173 (Tim, 2026-10-17): on a portrait phone (the Fold's outer screen) the diamond was too tight for Jump in its
+   centre. The probe showed every second-finger press meant for Dodge landing on Jump, about 360 px across, just left
+   of Dodge. In portrait, Jump moves to the diamond's empty top-right corner, and Dodge widens leftward into the freed
+   centre, so a thumb that lands in the middle-right of the diamond dodges. Landscape (the inner screen) is unchanged. */
+@media (orientation: portrait) {
+  .action-diamond .jump { left: auto; right: 0; top: 0; transform: none; width: calc(var(--button) * 0.84); height: calc(var(--button) * 0.84); }
+  .action-diamond .dodge { width: calc(var(--button) * 1.62); border-radius: calc(var(--button) * 0.5); }
+}

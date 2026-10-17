@@ -24,6 +24,17 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Two-finger dodge on a portrait phone (release 173)
+
+Tim's 30-second probe on the Fold's folded outer screen (437x608 CSS px, portrait) tested the two-finger dodge: one finger steering, the other pressing Dodge. All 30 second-finger presses reached the page with no cancels, but every one landed on `action:jump`, at about x 352-369. Dodge spans 380-430, and the centred Jump button (`--button` x 0.86 = 43 px) filled the middle of a 150 px diamond. The input path was never at fault.
+
+**CODE:** `styles.css` (rules appended at the end, `@media (orientation: portrait)`):
+- `.action-diamond .jump` moves to the diamond's empty top-right corner (`right: 0; top: 0`, `--button` x 0.84).
+- `.action-diamond .dodge` widens leftward to `--button` x 1.62 as a pill.
+- At 437x608, Dodge now spans x 349-430. Every touch point in Tim's report resolves to `action:dodge` via `elementFromPoint`; Jump sits at 388-430 x 405-447.
+
+**BOUNDARY:** Portrait only. Landscape (the inner screen), where Tim's release 165 probe showed Dodge presses registering, keeps Jump in the centre as in release 101. No input or gameplay code changes.
+
 ## Strong poison from ooze pools and toxic vents (release 171)
 
 Tim's decision (2026-10-17): Mire Apostle ooze pools and shelter toxic vents have their own character, distinct from the swamp's rot. They poison at once and hard, and leave max HP alone.
