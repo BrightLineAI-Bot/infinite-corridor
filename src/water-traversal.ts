@@ -12,6 +12,8 @@ export const TIDEMANTLE = {
   // Waterbodies (landscape version 2): the Tidemantle is a surface tool; open deep water tires twice as fast.
   drainMultiplier: { deepOcean: 2 },
   exhaustedDamagePerSecond: 10,
+  // Open sea (release 158; Tim): the Tidemantle is for short excursions; out in open water it tires twice as fast again.
+  openSeaDrain: 2,
   // Quest: fell the guardian of a drowned place. A dungeon counts when at least this many of its tiles are water.
   minWaterTiles: 6,
   questGuardianKinds: ["mireApostle"],
@@ -49,8 +51,8 @@ export function grantTidemantle(save, source) {
 }
 
 // Per-frame swim upkeep. Returns damage to apply (0 while stamina lasts).
-export function swimUpkeep(player, dt, kind = null) {
-  const drain = TIDEMANTLE.staminaDrainPerSecond * (TIDEMANTLE.drainMultiplier[kind] || 1) * dt;
+export function swimUpkeep(player, dt, kind = null, openSea = false) {
+  const drain = TIDEMANTLE.staminaDrainPerSecond * (TIDEMANTLE.drainMultiplier[kind] || 1) * (openSea ? TIDEMANTLE.openSeaDrain : 1) * dt;
   if ((player.stamina || 0) >= drain) { player.stamina -= drain; return 0; }
   player.stamina = 0;
   return TIDEMANTLE.exhaustedDamagePerSecond * dt;

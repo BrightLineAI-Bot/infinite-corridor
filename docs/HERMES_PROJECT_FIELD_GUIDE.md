@@ -24,6 +24,27 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Frame-rate pass; heavier swimming (release 159)
+
+**CODE:** Measured on a phone-sized viewport at 4× CPU throttle. The overworld ran at about 25 fps, using about 10× the dungeon's paint work, and dungeons at about 30. Now it is about 42 and 44 respectively. A read-only review (Fable) agreed with the profile.
+- `renderer.ts` `drawGroundCache()` draws the static ground once per map into an offscreen canvas at the context's pixel scale, capped at `GROUND_MAX_PIXELS`. That covers tiles, trails, cliffs and, in dungeons, fog. Each frame blits the image.
+  - It is rebuilt when the map, tile size, scale, occupied building or (in dungeons) revealed set changes, or when any tile is replaced or changes kind, blocking or elevation.
+  - Animated landscape overlays are drawn per frame through `animateLandscapeTile()`: `landscape-render.ts` skips them while `setLandscapeStaticPass(true)` builds the image.
+  - Hazard brinks stay per frame so they sit over animated water, as before.
+  - In a dungeon, an unseen lethal tile beside the Wayfarer is still drawn through the fog per frame.
+  - A dungeon that would cache below screen scale falls back to the per-tile path.
+  - Screenshots with the cache on and off are pixel-identical in five overworld sections; dungeons differ in 0.05% of pixels, all faint anti-aliasing.
+- The tile size `s` is rounded to whole pixels everywhere it is computed (renderer, combat visuals, main), so blits are 1:1.
+- `main.ts` `hudSet()` writes HUD and compass DOM properties only when their value changes, and element lookups are cached. Layouts per frame dropped from 1 to 0.
+- `objectiveList()` checks a cheap section and one-second key before counting anything.
+- The main canvas context is `{ alpha: false }`.
+- `dungeon-framework.ts` `dungeonTileVisibility()` reads a per-chunk `Uint8Array`, rebuilt per revealed set, instead of building a string per call. It matched the old answers in 424,192 checks.
+- `combat-visuals.ts` draws a translucent halo instead of `shadowBlur` on projectiles.
+
+Swimming (Tim): `TIDEMANTLE.staminaDrainPerSecond` 3 → 8 and `exhaustedDamagePerSecond` 6 → 10. With release 158's `openSeaDrain` and the deep-ocean ×2, open-sea deep water drains 32/s.
+
+**BOUNDARY:** No save or generation change. The 8 s autosave and the CSS filter on `#game` are unchanged; both are candidates if a device still struggles.
+
 ## Arcanum: element badges, Active/Passive tags, what affects spells (release 157)
 
 **CODE:** `ATTRIBUTES` in `spell-slots.ts` gains an `icon` per element (🔥 Fire, ☾ Dusk, ≋ Wind, ◈ Ward, ✦ Force, ⟡ Rift). `constellation.ts` exports a `NODE_EFFECTS` data table that classifies every modifier and capstone:
@@ -90,6 +111,20 @@ Guidance keeps its old order (hunt, then the local cue) and falls back to the ch
 **CODE:** `pausePanel` prevents its `cancel` event, but Chrome on Android closes a modal dialog without firing `cancel` when the back gesture arrives with no user activation since the dialog opened (for example the pause menu that `visibilitychange` shows on returning from the background, or a second back press). Only the overlay dialogs had `close` listeners, so the game stayed paused with nothing on screen. `main.ts` now listens for the pause menu's `close`: if the game is paused, `overlayPause` is false (overlay transitions set it through `pauseForOverlay()` before closing the menu), the page is visible and no other dialog is open, it calls `resume()`. Back on the pause menu therefore means Continue.
 
 **BOUNDARY:** Input/UI only; no save, generation or Proving Ground change. The Reciter's Tome itself was verified not to hang on back.
+
+## Sea fog fix and seamanship (release 158)
+
+**CODE:** In `open-sea.ts` `tickSeaHazards`, the fog drift wrap was `(x + v·dt + 48) % 48 - 8`, which moved a bank 8 tiles every frame. It is now `wrap(v) = ((v + 8) % 48 + 48) % 48 - 8`. Each bank gains `swirl`, and the state gains `fogLevel`: the depth inside the nearest bank, eased at 1.5/s. In `renderer.ts`, each bank is drawn as 7 soft puffs turning with `swirl`, and the vision gradient's radii and opacity scale with `fogLevel` instead of switching on and off.
+
+Also in this release:
+- `input.ts` adds `held(action)`, true while a key or on-screen button is down.
+- In `game.ts`, holding interact aboard for `BOAT.leaveHold` (3 s) calls `leaveSkiff`. It steps ashore, or goes over the side with the Tidemantle, mooring the skiff in place. Without the Tidemantle it refuses until the button is released.
+- A jump while aboard counts as `dodging` for the rogue wave.
+- `swimUpkeep(..., openSea)` applies `TIDEMANTLE.openSeaDrain` (2).
+- `OPEN_SEA_VERSION` 3 uses `SEA_FEATURES.buoyEveryV3` (8).
+- The renderer lifts the skiff with the jump and draws a hull gauge from `BOAT.maxHull`.
+
+**BOUNDARY:** The fog fix is visual only: fog placement and seeds are unchanged, nothing is saved, and no rules change. Sections pinned to sea version 2 keep their buoys (one in three); only new sea uses one in eight. The hull, wave and swim rules change gameplay only, with no save changes.
 
 ## Sea features (release 156)
 

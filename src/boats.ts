@@ -9,6 +9,7 @@ export const BOAT = {
   price: { currency: 120, cinderIron: 2 },
   maxHull: 60,
   speed: 1.4,            // x walking speed
+  leaveHold: 3,          // seconds holding Act aboard to leave the skiff (release 158)
   turn: 3.2,             // momentum: how fast velocity follows the stick (per second)
   hullShare: .5,         // share of damage taken aboard that the hull absorbs
   repairCostPerPoint: .5, // marks per hull point, rounded up
