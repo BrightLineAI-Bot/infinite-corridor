@@ -112,6 +112,12 @@ Guidance keeps its old order (hunt, then the local cue) and falls back to the ch
 
 **BOUNDARY:** Input/UI only; no save, generation or Proving Ground change. The Reciter's Tome itself was verified not to hang on back.
 
+## Open-sea swimming (release 164)
+
+**CODE:** In `water-traversal.ts`, `swimUpkeep(..., openSea)` drains a flat `TIDEMANTLE.openSeaPerSecond` (17) in open-sea sections, about 3 s from a 50-stamina bar. Otherwise the drain is `staminaDrainPerSecond` × `drainMultiplier`. This replaces release 158's `openSeaDrain` ×2.
+
+**BOUNDARY:** Rules only, with no save changes. Swimming elsewhere and exhausted damage (6/s) are unchanged.
+
 ## Hunts and the open sea (release 162)
 
 **CODE:** `landscape.ts` exports `openSeaSection(seed, rx, ry)`, the same test applyLandscape uses. `game.ts` `seaBound(rx, ry)` is true when any section in rx..rx+3 × ry-1..ry+2 (the span of domain role offsets) would be open sea, counting unseen sections and those pinned with a `seaVersion`. It is passed to `refreshViewportBoard`'s `avoid`. In loadArea, an open-sea section with a non-archived, uncompleted contract targeting it (or a `domainSectionAt` section) gets `map.huntersRaft`: tiles 14–18 × 14–18 become dock, with a "Hunter's Raft" marker. The hunt and domain `open` spot list is then restricted to the raft.
