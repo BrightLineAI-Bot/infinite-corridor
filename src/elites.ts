@@ -13,6 +13,12 @@ export function freshEliteState(){return{contracts:{vesperwing:{state:'available
 export function ensureEliteState(save){const base=freshEliteState(),old=save.elites||{};save.elites={...base,...old,contracts:{...base.contracts,...old.contracts},defeated:{...old.defeated},encounters:{...old.encounters},status:{...base.status,...old.status}};return save.elites}
 export function acceptContract(save,id){const s=ensureEliteState(save),c=s.contracts[id];if(!c||!['available','locked'].includes(c.state))return false;if(id==='knifeChoir'&&c.progress<c.goal)return false;c.state='accepted';return true}
 export function recordPortalPrey(save,kind){const s=ensureEliteState(save),c=s.contracts.knifeChoir;if(c.state==='resolved'||!['ashling','glassMite'].includes(kind))return c.progress;c.progress=Math.min(c.goal,c.progress+1);if(c.progress>=c.goal&&c.state==='locked')c.state='available';return c.progress}
+// Strong poison (release 171; Tim, 2026-10-17): Mire Apostle ooze pools and shelter toxic vents poison at once and hard.
+// Max HP is untouched (unlike the swamp's rot); the Wayfarer pulses green and loses maxHpFraction of max HP each second
+// (at least minDps) for duration seconds, about a third of max HP in all, unless a Clearroot Ampoule ends it.
+export const STRONG_POISON={duration:10,maxHpFraction:.03,minDps:2};
+export function strongPoisonDps(maxHp){return Math.max(STRONG_POISON.minDps,Math.round((Number(maxHp)||0)*STRONG_POISON.maxHpFraction))}
+export function applyStrongPoison(status,maxHp){return applyPoison(status,STRONG_POISON.duration,strongPoisonDps(maxHp))}
 export function applyPoison(status,duration=8,dps=2){status.poisonDps=Math.max(Number(dps)||2,status.poison>0?Number(status.poisonDps)||2:0);status.poison=Math.max(Number(status.poison)||0,duration);status.poisonTick=Math.min(Number(status.poisonTick)||1,1);return status}
 export function tickEliteStatus(status,dt,onDamage=()=>{}){status.poison=Math.max(0,(Number(status.poison)||0)-dt);status.stun=Math.max(0,(Number(status.stun)||0)-dt);status.stunGuard=Math.max(0,(Number(status.stunGuard)||0)-dt);if(status.poison>0){status.poisonTick-=dt;while(status.poisonTick<=0){onDamage(Number(status.poisonDps)||2);status.poisonTick+=1}}else{status.poisonTick=0;status.poisonDps=0}return status}
 export function cleansePoison(save){const s=ensureEliteState(save);if(!(save.consumables.clearrootAmpoule>0)||!(s.status.poison>0))return false;save.consumables.clearrootAmpoule--;s.status.poison=s.status.poisonTick=0;return true}

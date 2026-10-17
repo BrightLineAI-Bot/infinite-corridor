@@ -24,6 +24,21 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Strong poison from ooze pools and toxic vents (release 171)
+
+Tim's decision (2026-10-17): Mire Apostle ooze pools and shelter toxic vents have their own character, distinct from the swamp's rot. They poison at once and hard, and leave max HP alone.
+
+**CODE:**
+- `elites.ts` adds `STRONG_POISON` (`duration` 10 s, `maxHpFraction` .03 per second, `minDps` 2), `strongPoisonDps(maxHp)` and `applyStrongPoison(status, maxHp)`.
+  - It uses the existing `applyPoison`, so a stronger poison replaces a weaker one's damage rate, and `cleansePoison` (Clearroot Ampoule) still ends it.
+- `game.ts`:
+  - **Ooze pools.** Touching an ooze pool (`eliteHazards` with `poison`) applies strong poison and says so the first time. Before, it set a plain 8 s poison at 2 per second.
+  - **Toxic vents.** A shelter hazard of type `toxicVent` applies strong poison along with its one-time damage. Before, it only did the damage.
+- The green pulse and the HUD's `POISON Ns` show for any poison.
+- Totals: about a third of max HP over 10 s, e.g. 20 of 60 HP or 80 of 268 HP.
+
+**BOUNDARY:** The swamp (`MIRE` rot, then poison after `poisonDelay`) is unchanged. No save-schema change: `status.poisonDps` already existed in release 165.
+
 ## HUD room for poison text; batched projectiles (release 169)
 
 **CODE:**
