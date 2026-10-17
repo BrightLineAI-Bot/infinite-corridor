@@ -1,18 +1,21 @@
-import { enemyMeleeGeometry } from "./combat.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
-import { SEA_CREATURES } from "./sea-creatures.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
-import { liftAt } from "./landscape.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
-import { drawRelayNode } from "./relay-network.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
-import { structureOccupancy } from "./world.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { enemyMeleeGeometry } from "./combat.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
+import { SEA_CREATURES } from "./sea-creatures.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
+import { BOAT } from "./boats.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTile, landscapeTileLift } from "./landscape-render.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
+import { liftAt } from "./landscape.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
+import { drawRelayNode } from "./relay-network.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
+import { structureOccupancy } from "./world.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
 
+// Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
+// so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
 export function cameraTransform(
   g,
   w,
   h,
-  tileSize = Math.max(28, Math.min(44, w / 12)),
+  tileSize = Math.round(Math.max(28, Math.min(44, w / 12))),
 ) {
   return {
     tileSize,
@@ -556,12 +559,46 @@ function architecturalBuilding(ctx,o,s,p,map){
   const doorX=(o.door.x+.12)*s,doorY=(o.door.y+.05)*s;ctx.fillStyle="#090b0b";ctx.fillRect(doorX,doorY,s*.76,s*.9);ctx.strokeStyle=accent;ctx.lineWidth=2;ctx.strokeRect(doorX,doorY,s*.76,s*.9);const frontTileY=o.door.side==='north'?b.y:b.y+b.h-1,frontY=o.door.side==='north'?y+s*.32:y+h-s*.58,step=o.facadeRhythm==='narrow'?1:o.facadeRhythm==='broad'?3:2;ctx.fillStyle=accent+"bb";for(let q=1;q<b.w-1;q+=step)if(set.has(`${b.x+q},${frontTileY}`)&&Math.abs(b.x+q-o.door.x)>1)ctx.fillRect(x+q*s+s*.18,frontY,s*.5,s*.2);
   ctx.fillStyle=accent;ctx.beginPath();const gx=(o.door.x+.5)*s,gy=o.door.side==='north'?doorY+s*1.18:doorY-s*.28,r=s*.18;for(let q=0;q<4;q++){const a=(o.signGlyph+q)*Math.PI/2,px=gx+Math.cos(a)*r,py=gy+Math.sin(a)*r;q?ctx.lineTo(px,py):ctx.moveTo(px,py)}ctx.closePath();ctx.stroke();ctx.fillStyle="#dfd4b2";ctx.font=`${Math.max(8,s*.2)}px monospace`;ctx.textAlign="center";ctx.fillText(o.name.toUpperCase(),x+w/2,y-s*.2);ctx.textAlign="start";ctx.restore();
 }
+// Release 159: the overworld's ground (tiles, trails and cliffs) was repainted tile by tile every frame,
+// about ten times the dungeon's paint cost. It is now drawn once per section into an offscreen image at the screen's
+// pixel scale and blitted each frame; only animated landscape overlays (water, lava, glow) are redrawn per frame.
+// The image is rebuilt when the map, tile size, scale or occupied building changes, or when any tile is replaced or
+// changes kind, blocking or elevation. Without an offscreen canvas (tests, old browsers) the per-tile path is used.
+const GROUND_MAX_PIXELS = 8.4e6; // ~32 MB; larger sections are cached at a reduced scale
+const ground = { canvas: null, map: null, s: 0, scale: 0, building: null, top: 0, reveal: null, revealSize: 0, refs: [], kinds: [], blocked: [], elev: [] };
+function makeGroundCanvas() { if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(1, 1); if (typeof document !== "undefined") return document.createElement("canvas"); return null; }
+function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId) {
+  const T = g.map?.tiles, m = typeof ctx.getTransform === "function" ? ctx.getTransform() : null;
+  if (!T || T.length !== mw * mh || !m || typeof ctx.drawImage !== "function") return false;
+  // Dungeons (release 159) also cache their fog: the image changes whenever discovery installs a new revealed set.
+  const dungeon = g.area === "dungeon", reveal = dungeon ? (g.map._dungeonRevealMode === "full" ? "full" : g.map._dungeonRevealed || null) : null, revealSize = reveal && reveal !== "full" ? reveal.size : 0;
+  let dirty = !ground.canvas || ground.map !== g.map || ground.s !== s || ground.building !== activeBuildingId || ground.refs.length !== T.length || ground.reveal !== reveal || ground.revealSize !== revealSize;
+  if (!dirty) for (let i = 0; i < T.length; i++) { const q = T[i]; if (q !== ground.refs[i] || q.kind !== ground.kinds[i] || q.blocked !== ground.blocked[i] || q.elev !== ground.elev[i]) { dirty = true; break; } }
+  let top = 0; if (dirty) for (const q of T) top = Math.max(top, landscapeTileLift(q, s));
+  const want = Math.hypot(m.a, m.b) || 1, fit = Math.sqrt(GROUND_MAX_PIXELS / (mw * s * (mh * s + (dirty ? top : ground.top)))), scale = Math.min(want, fit);
+  if (dungeon && fit < want) return false; // a large dungeon at high pixel density would cache blurred: draw it per tile
+  if (!dirty && Math.abs(scale - ground.scale) > 1e-6) dirty = true;
+  if (dirty) {
+    const c = ground.canvas || (ground.canvas = makeGroundCanvas()); if (!c) return false;
+    c.width = Math.ceil(mw * s * scale); c.height = Math.ceil((mh * s + top) * scale);
+    const gc = c.getContext("2d"); if (!gc) { ground.canvas = null; return false; }
+    gc.setTransform(scale, 0, 0, scale, 0, top * scale); gc.imageSmoothingEnabled = false;
+    setLandscapeStaticPass(true);
+    const seen = (x, y) => !dungeon || dungeonTileVisibility(g.map, x, y) !== "unseen";
+    try { for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) { if (!seen(x, y)) fogTile(gc, x, y, s); else tile(gc, T[y * mw + x], x, y, s, T, mw, activeBuildingId); } }
+    finally { setLandscapeStaticPass(false); }
+    Object.assign(ground, { map: g.map, s, scale, building: activeBuildingId, top, reveal, revealSize, refs: T.slice(), kinds: T.map((q) => q.kind), blocked: T.map((q) => q.blocked), elev: T.map((q) => q.elev) });
+    renderCacheStats.groundBuilds = (renderCacheStats.groundBuilds || 0) + 1;
+  }
+  ctx.drawImage(ground.canvas, 0, -ground.top, ground.canvas.width / ground.scale, ground.canvas.height / ground.scale);
+  return true;
+}
 export function render(ctx, g, w, h, now) {
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = "#141816";
   ctx.fillRect(0, 0, w, h);
   const budget = presentationBudget(g.presentation, g.area),
-    s = Math.max(28, Math.min(44, w / 12)),
+    s = Math.round(Math.max(28, Math.min(44, w / 12))),
     p = g.player,
     mw = Math.max(1,Number(g.map?.width)||(g.area === "dungeon" ? 24 : 32)),
     mh = Math.max(1,Number(g.map?.height)||Math.floor(g.map.tiles.length/mw)),
@@ -586,7 +623,14 @@ export function render(ctx, g, w, h, now) {
   const groundLift = (x, y) => (g.map?.landscape ? liftAt(g.map, mw, x, y) : 0);
   ctx.save();
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - groundLift(p.x, p.y)) * s));
-  for (let y = t; y < b; y++)
+  const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId);
+  if (groundCached) for (let y = t; y < b; y++) for (let x = l; x < r; x++) {
+    const q = g.map.tiles[y * mw + x];
+    // In a dungeon, a lethal tile right beside the Wayfarer shows through the fog (as the per-tile path always did).
+    if (g.area === "dungeon" && LETHAL_KINDS.has(q?.kind) && Math.hypot(x - p.x, y - p.y) < 2.6 && dungeonTileVisibility(g.map, x, y) === "unseen") tile(ctx, q, x, y, s, g.map.tiles, mw, activeBuildingId);
+    else if (landscapeTileAnimated(q) && (g.area !== "dungeon" || dungeonTileVisibility(g.map, x, y) !== "unseen")) animateLandscapeTile(ctx, q, x, y, s);
+  }
+  else for (let y = t; y < b; y++)
     for (let x = l; x < r; x++) {
       if(g.area==="dungeon"&&dungeonTileVisibility(g.map,x,y)==="unseen"&&!(LETHAL_KINDS.has(g.map.tiles[y*mw+x]?.kind)&&Math.hypot(x-p.x,y-p.y)<2.6)){fogTile(ctx,x,y,s);continue}
       tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId);
@@ -594,7 +638,7 @@ export function render(ctx, g, w, h, now) {
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
   if(g.area==="overworld"&&g.seaHazards)drawSeaHazards(ctx,g.seaHazards,s,now,l,t,r,b,g.map);
   const seenTile=(x,y)=>g.area!=="dungeon"||dungeonTileVisibility(g.map,x,y)!=="unseen";
-  drawHazardBrinks(ctx,g.map,mw,l,t,r,b,s,seenTile);
+  drawHazardBrinks(ctx,g.map,mw,l,t,r,b,s,seenTile); // per frame: brinks sit over animated water, as before
   drawTraversalCues(ctx,g.map,mw,p,s,now,g.ledgeHint,seenTile);
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,3));
   drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10));
@@ -807,7 +851,15 @@ export function render(ctx, g, w, h, now) {
         );
         ctx.fill();
       }
-      if (g.area === "overworld" && g.save.boat?.aboard) drawSkiff(ctx, p.x, p.y, s, p.facing, now);
+      if (g.area === "overworld" && g.save.boat?.aboard) {
+        // A jump lifts the skiff with the Wayfarer (release 158: leap a rogue wave's crest).
+        drawSkiff(ctx, p.x, p.y - lift / s, s, p.facing, now);
+        // Hull gauge under the skiff: green to amber to red as the hull takes damage.
+        const hull = Math.max(0, Math.min(1, (g.save.boat.hull || 0) / BOAT.maxHull)), bx = (p.x + .08) * s, by = (p.y + 1.12) * s, bw = s * .84, bh = Math.max(3, s * .09);
+        ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+        ctx.fillStyle = hull > .6 ? "#6fcf7a" : hull > .3 ? "#e3b04b" : "#e2574a"; ctx.fillRect(bx, by, bw * hull, bh);
+        if (hull <= .3 && Math.floor(now / 350) % 2) { ctx.strokeStyle = "#ffb3a8"; ctx.lineWidth = 1; ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2); }
+      }
       actor(
         ctx,
         p.x,
@@ -860,12 +912,20 @@ export function render(ctx, g, w, h, now) {
   }
   // Stormkraken ink (W4): the sea goes dark beyond a small circle around the Wayfarer.
   if (g.area === "overworld" && g.seaHazards?.fog?.length) {
-    // Fog banks (release 156): pale drifting banks; inside one, the world closes in to a few tiles.
-    const fogged = g.seaHazards.fog.some((f) => Math.hypot(p.x + .5 - f.x, p.y + .7 - f.y) < f.radius);
-    if (!fogged) for (const f of g.seaHazards.fog) { const gr = ctx.createRadialGradient(f.x * s, f.y * s, 0, f.x * s, f.y * s, f.radius * s); gr.addColorStop(0, "#d8e2e8aa"); gr.addColorStop(.7, "#d8e2e855"); gr.addColorStop(1, "#d8e2e800"); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(f.x * s, f.y * s, f.radius * s, 0, 7); ctx.fill(); }
-    if (fogged) {
-      const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * 1.6, px, py, s * 3.6);
-      gr.addColorStop(0, "#cfd9df00"); gr.addColorStop(1, "#cfd9dff2"); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
+    // Fog banks (release 156; release 158 smooths them): each bank is a cluster of soft puffs turning slowly about its
+    // centre. Inside a bank the mist closes in around the Wayfarer gradually (fogLevel is eased in open-sea.ts).
+    const level = g.seaHazards.fogLevel || 0, time = now / 1000;
+    for (const f of g.seaHazards.fog) {
+      for (let i = 0; i < 7; i++) {
+        const a = (f.swirl || 0) + i * 2.399 + Math.sin(time * .2 + i) * .15, d = f.radius * (.15 + .55 * ((i * 37) % 10) / 10), pr = f.radius * (.45 + .1 * Math.sin(time * .3 + i * 1.7));
+        const x = (f.x + Math.cos(a) * d) * s, y = (f.y + Math.sin(a) * d) * s, gr = ctx.createRadialGradient(x, y, 0, x, y, pr * s);
+        gr.addColorStop(0, `rgba(222,231,236,${.22 * (1 - level * .5)})`); gr.addColorStop(1, "rgba(222,231,236,0)");
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, pr * s, 0, 7); ctx.fill();
+      }
+    }
+    if (level > .01) {
+      const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - level) * 3), px, py, s * (3.6 + (1 - level) * 7));
+      gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.92 * level})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
     }
   }
   if (g.area === "overworld" && g.storm) { ctx.fillStyle = `rgba(16,24,38,${.28 * g.storm.strength})`; ctx.fillRect((p.x + .5) * s - w, (p.y + .6) * s - h, w * 2, h * 2); }

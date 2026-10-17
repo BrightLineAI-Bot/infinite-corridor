@@ -6,12 +6,13 @@
 //              unless the Wayfarer drives through it with an oar burst (dodge).
 //   iceberg    Drifting ice (cold seas): slow floes that bounce off land and each other; ramming one cracks the hull.
 // Data and pure rules; game.ts supplies the world (water test, hurt, hull) and draws through renderer.ts.
-import { hashSeed, rng } from "./random.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
-import { coldSea } from "./landscape.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { hashSeed, rng } from "./random.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
+import { coldSea } from "./landscape.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
 export { coldSea };
 
 // Version 2 (release 156): sea features (landscape.ts addSeaFeatures) in sections first seen from then on.
-export const OPEN_SEA_VERSION = 2;
+// Version 3 (release 158): rarer buoys.
+export const OPEN_SEA_VERSION = 3;
 export const SEA_HAZARDS = {
   whirlpool: { chance: .4, max: 2, radius: [3, 4.6], pull: 1.9, spin: 2.4, eye: .9, eyeDamage: 9, eyeEvery: .8, fling: 2.6 },
   wave: { chance: .45, period: [10, 15], speed: 5, width: 1.4, push: 3.2, damage: 7, warn: 2.5 },
@@ -133,7 +134,13 @@ export function tickSeaHazards(state, dt, w) {
     q.clock -= dt;
     if (q.clock <= 0) { q.clock = H.reef.every; w.aboard ? w.hull(H.reef.damage, "reef") : w.hurt(H.reef.damage, "reef"); }
   }
-  for (const f of state.fog || []) { f.x = (f.x + f.vx * dt + 48) % 48 - 8; f.y = (f.y + f.vy * dt + 48) % 48 - 8; }
+  // Fog banks drift and wrap around a 48-tile loop (8 tiles beyond each edge), so a bank leaving one side returns on the other.
+  const wrap = (v) => ((v + 8) % 48 + 48) % 48 - 8;
+  for (const f of state.fog || []) { f.x = wrap(f.x + f.vx * dt); f.y = wrap(f.y + f.vy * dt); f.swirl = (f.swirl || 0) + dt * .12; }
+  // How deep the Wayfarer is in fog (0 clear .. 1 thick), eased so it thickens and thins gradually.
+  let depth = 0;
+  for (const f of state.fog || []) { const d = Math.hypot(px - f.x, py - f.y) / f.radius; if (d < 1) depth = Math.max(depth, Math.min(1, (1 - d) * 1.8)); }
+  state.fogLevel = (state.fogLevel || 0) + (depth - (state.fogLevel || 0)) * Math.min(1, dt * 1.5);
   if (w.storm && afloat) w.move(w.storm.windX * H.storm.wind * w.storm.strength * dt, w.storm.windY * H.storm.wind * w.storm.strength * dt);
   if (w.storm && !state.wave) state.wave = { dx: w.storm.windX, dy: w.storm.windY, period: H.storm.wavePeriod, phase: 0, cycle: -1, hit: -1, storm: true };
   if (state.wave?.storm && !w.storm) state.wave = null;

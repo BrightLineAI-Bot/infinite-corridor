@@ -1,6 +1,6 @@
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
 export function drawRangedEffects(ctx,game,width,height) {
-  const s = Math.max(28, Math.min(44, width / 12)),
+  const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [
       width / 2 + (q.x - game.player.x) * s,
       height / 2 + (q.y - game.player.y) * s,
@@ -9,8 +9,8 @@ export function drawRangedEffects(ctx,game,width,height) {
     if(!dungeonPointDiscovered(game.map,p))continue;
     const [x, y] = toScreen(p);
     ctx.fillStyle = p.hostile ? (p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
-    ctx.shadowColor = ctx.fillStyle;
-    ctx.shadowBlur = 8;
+    // Release 159: a translucent halo instead of shadowBlur, which Firefox renders as a separate blur per projectile.
+    { const r = p.damageType === "magic" ? 10 : 8; ctx.globalAlpha = .28; ctx.beginPath(); ctx.ellipse(x, y, r, r, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
     ctx.beginPath();
     if (p.path === "boomerang") {
       const a = Math.atan2(p.dy, p.dx);

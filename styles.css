@@ -743,7 +743,7 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 .maplayers button { min-height: 32px; padding: 4px 2px; font-size: .78rem; }
 .maplayers button[aria-pressed="false"] { opacity: .55; text-decoration: line-through; }
 .maplayers button[aria-pressed="true"] { border-color: #d5a464; }
-/* Release icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5: Arcanum element badges and Active/Passive tags. */
+/* Release 157: Arcanum element badges and Active/Passive tags. */
 .arc-elem { display: inline-block; margin: 0 4px 2px 0; padding: 1px 7px; border: 1px solid var(--elem); border-radius: 10px; color: var(--elem); font-size: .78rem; white-space: nowrap; }
 .arc-kind { display: inline-block; margin: 0 4px 2px 0; padding: 1px 7px; border-radius: 10px; font-size: .78rem; white-space: normal; }
 .arc-kind.active { background: #d5a46433; border: 1px solid #d5a464; color: #f1d39a; }

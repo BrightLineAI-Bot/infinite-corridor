@@ -10,8 +10,8 @@
 //
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
-import { hashSeed } from "./random.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
-import { placeDock } from "./boats.js?v=icp_c62d8d025d534cfc9db83a33_8e553f843f4ef9a5";
+import { hashSeed } from "./random.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
+import { placeDock } from "./boats.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
 
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
@@ -151,14 +151,15 @@ export const OPEN_SEA = { minDepth: 8, minWater: .55, landmarkReach: 2, hamletIs
 //   buoy   Lighthouse Buoy: a small moored platform with a Wayglass checkpoint, a rest point far from land.
 //   wreck  Shipwreck: a hull run aground on a sandbar, with salvage aboard.
 //   floe   Ice floes (cold seas only): islands of packed ice you can land on.
-export const SEA_FEATURES = { buoyEvery: 3, wreckEvery: 4, floes: [1, 3], floeRadius: [1.6, 3.2], coldScale: 7, cold: .66 };
+// Version 3 (release 158; Tim: not every stretch of sea needs a rest point) makes buoys rarer: one in `buoyEveryV3`.
+export const SEA_FEATURES = { buoyEvery: 3, buoyEveryV3: 8, wreckEvery: 4, floes: [1, 3], floeRadius: [1.6, 3.2], coldScale: 7, cold: .66 };
 export function coldSea(seed, rx, ry) { return valueNoise(`${seed}:sea:cold`, rx / SEA_FEATURES.coldScale, ry / SEA_FEATURES.coldScale) > SEA_FEATURES.cold; }
-function addSeaFeatures(map, seed, rx, ry, buoy = true) {
+function addSeaFeatures(map, seed, rx, ry, buoy = true, version = 2) {
   const F = SEA_FEATURES, h = (k) => hashSeed(`${seed}:sea-feature:${k}:${rx}:${ry}`), deep = (x, y) => x > 2 && y > 2 && x < 29 && y < 29 && DEEP_WATER.includes(map.tiles[idx(x, y)].kind);
   const clear = (cx, cy, r) => { for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) if (!deep(x, y)) return false; return true; };
   const spot = (k, r) => { const n = h(k); for (let i = 0; i < 60; i++) { const x = 4 + (n + i * 7919) % 24, y = 4 + Math.floor((n / 24 + i * 104729) % 24); if (clear(x, y, r)) return { x, y }; } return null; };
   const paint = (x, y, kind) => setTile(map, x, y, { kind, blocked: false, elev: 0, landscape: "coast", detail: map.tiles[idx(x, y)].detail });
-  if (buoy && h("buoy") % F.buoyEvery === 0 && !map.objects.some((o) => o.kind === "checkpoint")) {
+  if (buoy && h("buoy") % (version >= 3 ? F.buoyEveryV3 : F.buoyEvery) === 0 && !map.objects.some((o) => o.kind === "checkpoint")) {
     const at = spot("buoy-at", 2);
     if (at) { for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) paint(at.x + dx, at.y + dy, "dock"); map.objects.push({ id: `sea-buoy-${rx}-${ry}`, kind: "checkpoint", name: "Lighthouse Buoy", lore: "A lamp on a moored raft, turning for whoever is still out here.", x: at.x, y: at.y, state: "quiet", actions: ["activate"], landmark: true, seaBuoy: true }); }
   }
@@ -182,6 +183,8 @@ function addSeaFeatures(map, seed, rx, ry, buoy = true) {
     }
   }
 }
+// True when a section would be generated as full open sea (the same test applyLandscape uses).
+export function openSeaSection(seed, rx, ry, version = LANDSCAPE_VERSION) { return version >= 2 && Math.abs(rx) + Math.abs(ry) >= OPEN_SEA.minDepth && openSeaShare(seed, rx, ry, version) >= OPEN_SEA.minWater; }
 export function openSeaShare(seed, rx, ry, version = LANDSCAPE_VERSION) {
   let n = 0; for (let y = 0; y < 32; y += 2) for (let x = 0; x < 32; x += 2) if (seaLevel(seed, rx * 32 + x, ry * 32 + y, version).o > T.ocean) n++;
   return n / 256;
@@ -259,7 +262,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
     map.objects = (map.objects || []).filter((q) => !(DECOR.has(q.kind) && wet(q)));
     map.enemySpawns = (map.enemySpawns || []).filter((q) => !wet(q));
     map.openSea = true;
-    if (openSea >= 2) addSeaFeatures(map, seed, rx, ry, buoy);
+    if (openSea >= 2) addSeaFeatures(map, seed, rx, ry, buoy, openSea);
   } else connectStranded(map);
   if (biome === "mountains" || biome === "desert" || biome === "alien") placeSummit(map, seed, rx, ry, biome);
   for (const t of ensureReturnable(map, 32, 32, { x: 16, y: 16 })) if (t.landscape === "mountains" && !t.volcanic && !t.slope && t.kind !== "skyBridge") t.kind = mountainKind(t.elev || 0);
