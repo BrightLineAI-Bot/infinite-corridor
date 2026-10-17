@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 164 — swimming in open sea lasts about 3 seconds: the Tidemantle drains 17 stamina per second out there (ocean or deep), then the water deals 6 damage per second. Swimming elsewhere is unchanged.
 - Release 162 — hunts and the open sea. Hunts and territories (Rootbound, Sentinel, pack lairs) are no longer posted where their target or any section they spread into is open sea. A hunt already pointing into open sea (or a trace, a held aperture or a territory section out there) raises a Hunter's Raft: a 5×5 platform in the middle of the section, where the quarry, its marks and its aperture now stand together instead of on scattered islets.
 - Release 161 — swimming is back to how release 158 left it (3 stamina per second, 6 damage when exhausted, open sea twice as tiring). The heavier swimming in release 159 came from a request meant for another session; the smoother-play changes in 159 stay.
 - Release 159 — smoother play. The overworld and dungeons no longer repaint every ground tile each frame (the ground is drawn once and reused), the HUD no longer rewrites itself every frame, and dungeon fog checks are faster. On a phone-speed test, the overworld went from about 25 to about 42 fps and dungeons from about 30 to about 44. Swimming without a boat is now costly: stamina drains 8 per second (more in deep and open water), and once it runs out the water deals 10 damage per second.
