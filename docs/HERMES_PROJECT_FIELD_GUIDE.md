@@ -41,7 +41,7 @@ The Wayglass network uses three deliberately separate concepts. A Wayglass is a 
 - `dungeon-framework.ts` `dungeonTileVisibility()` reads a per-chunk `Uint8Array`, rebuilt per revealed set, instead of building a string per call. It matched the old answers in 424,192 checks.
 - `combat-visuals.ts` draws a translucent halo instead of `shadowBlur` on projectiles.
 
-Swimming (Tim): `TIDEMANTLE.staminaDrainPerSecond` 3 → 8 and `exhaustedDamagePerSecond` 6 → 10. With release 158's `openSeaDrain` and the deep-ocean ×2, open-sea deep water drains 32/s.
+Swimming: release 159 also raised `TIDEMANTLE.staminaDrainPerSecond` to 8 and `exhaustedDamagePerSecond` to 10. **Release 161 reverted both to 3 and 6** (Tim: the request was meant for another session), so swimming is as release 158 left it.
 
 **BOUNDARY:** No save or generation change. The 8 s autosave and the CSS filter on `#game` are unchanged; both are candidates if a device still struggles.
 
