@@ -1,20 +1,20 @@
-import { Game } from "./game.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { freshSave, migrateSave } from "./types.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { ELITE_DEFINITIONS } from "./elites.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { PACK_KINDS, isPackKind } from "./monster-pack.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { BIOMES, biomeFor } from "./landscape.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { ensureConstellation } from "./constellation.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+import { Game } from "./game.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { freshSave, migrateSave } from "./types.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { ELITE_DEFINITIONS } from "./elites.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { PACK_KINDS, isPackKind } from "./monster-pack.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { BIOMES, biomeFor } from "./landscape.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { ensureConstellation } from "./constellation.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 

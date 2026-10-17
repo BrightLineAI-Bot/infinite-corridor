@@ -60,7 +60,7 @@ export function swimUpkeep(player, dt, kind = null, openSea = false) {
 // lowers maximum health (save.rot) until the Wayfarer rests at a Wayglass or rest point (or is recovered after a fall).
 export const MIRE = {
   slow: { mireWater: .6, toxicMire: .6 },
-  // The poisoned murk and water rot; blight bog ground (the dry land between them) stays safe. Release icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e: in any area.
+  // The poisoned murk and water rot; blight bog ground (the dry land between them) stays safe. Release 165: in any area.
   rotKinds: ["toxicMire", "toxicWater"],
   rotPerSecond: 1.5,
   maxRotFraction: .5,

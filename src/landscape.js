@@ -10,8 +10,8 @@
 //
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
-import { hashSeed } from "./random.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { placeDock } from "./boats.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+import { hashSeed } from "./random.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { placeDock } from "./boats.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
 
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.

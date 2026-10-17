@@ -1,13 +1,13 @@
-import { enemyMeleeGeometry } from "./combat.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { SEA_CREATURES } from "./sea-creatures.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { BOAT } from "./boats.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTile, landscapeTileLift } from "./landscape-render.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { liftAt } from "./landscape.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { drawRelayNode } from "./relay-network.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { structureOccupancy } from "./world.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+import { enemyMeleeGeometry } from "./combat.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { SEA_CREATURES } from "./sea-creatures.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { BOAT } from "./boats.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTile, landscapeTileLift } from "./landscape-render.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { liftAt } from "./landscape.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { drawRelayNode } from "./relay-network.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { structureOccupancy } from "./world.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -72,6 +72,8 @@ function mapObjectLists(map) {
   return value;
 }
 export function rendererDiagnostics() { return { ...renderCacheStats }; }
+// Where render time goes (release 167): the diagnostic probe switches this on and reads the three parts each frame.
+export const renderTimings = { on: false, ground: 0, world: 0, overlay: 0 };
 function renderableObject(g,o){return !g.renderObjectPredicate||g.renderObjectPredicate(o)}
 const PAL = {
   ash: ["#3b3834", "#5a5049"],
@@ -578,7 +580,7 @@ function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, view) {
   const want = Math.hypot(m.a, m.b) || 1, fit = Math.sqrt(GROUND_MAX_PIXELS / (mw * s * (mh * s + (dirty ? top : ground.top)))), scale = Math.min(want, fit);
   if (dungeon && fit < want) return false; // a large dungeon at high pixel density would cache blurred: draw it per tile
   if (!dirty && Math.abs(scale - ground.scale) > 1e-6) dirty = true;
-  // Release icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e: exploring a dungeon reveals chunks one at a time. Redrawing the whole image for each (up to 4096
+  // Release 165: exploring a dungeon reveals chunks one at a time. Redrawing the whole image for each (up to 4096
   // tiles, about once a second while exploring) was a visible hitch, so newly revealed chunks are repainted in place.
   let added = null;
   if (!dirty && (ground.reveal !== reveal || ground.revealSize !== revealSize)) {
@@ -608,8 +610,12 @@ function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, view) {
   } else if (!dirty && added) Object.assign(ground, { reveal, revealSize, revealIds: new Set(reveal) });
   if (dirty) {
     const c = ground.canvas || (ground.canvas = makeGroundCanvas()); if (!c) return false;
-    c.width = Math.ceil(mw * s * scale); c.height = Math.ceil((mh * s + top) * scale);
+    // Release 167: a section of the same size reuses the image rather than reallocating it (tens of milliseconds on a
+    // phone, on every section crossing).
+    const cw = Math.ceil(mw * s * scale), ch = Math.ceil((mh * s + top) * scale);
+    if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; }
     const gc = c.getContext("2d"); if (!gc) { ground.canvas = null; return false; }
+    gc.setTransform(1, 0, 0, 1, 0, 0); gc.clearRect(0, 0, cw, ch);
     gc.setTransform(scale, 0, 0, scale, 0, top * scale); gc.imageSmoothingEnabled = false;
     setLandscapeStaticPass(true);
     try { for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) { if (!seen(x, y)) fogTile(gc, x, y, s); else tile(gc, T[y * mw + x], x, y, s, T, mw, activeBuildingId); } }
@@ -622,7 +628,28 @@ function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, view) {
   if (ex > sx && ey > sy) ctx.drawImage(ground.canvas, sx * k, sy * k, (ex - sx) * k, (ey - sy) * k, sx, sy - ground.top, ex - sx, ey - sy);
   return true;
 }
+// The warm tint and vignette over the whole screen (release 167: painted once into a screen-sized image and copied each
+// frame; filling the radial gradient anew every frame was the costliest single draw when Firefox renders on the CPU).
+function drawScreenOverlay(ctx, w, h) {
+  const m = typeof ctx.getTransform === "function" ? ctx.getTransform() : null, cw = ctx.canvas?.width, ch = ctx.canvas?.height;
+  if (!m || !Number.isFinite(cw) || !Number.isFinite(ch) || !cw || !ch || typeof ctx.drawImage !== "function") return false;
+  let o = render.overlay;
+  if (!o || o.cw !== cw || o.ch !== ch || o.w !== w || o.h !== h || o.a !== m.a || o.d !== m.d) {
+    const c = makeGroundCanvas(); if (!c) return false;
+    c.width = cw; c.height = ch;
+    const x = c.getContext("2d"); if (!x) return false;
+    x.setTransform(m.a, 0, 0, m.d, 0, 0);
+    x.fillStyle = "#5c4a3b0c"; x.fillRect(0, 0, w, h);
+    const v = x.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.26, w / 2, h / 2, Math.max(w, h) * 0.7);
+    v.addColorStop(0, "#0000"); v.addColorStop(1, "#080a0870");
+    x.fillStyle = v; x.fillRect(0, 0, w, h);
+    o = render.overlay = { canvas: c, cw, ch, w, h, a: m.a, d: m.d };
+  }
+  ctx.drawImage(o.canvas, 0, 0, w, h);
+  return true;
+}
 export function render(ctx, g, w, h, now) {
+  const timed = renderTimings.on, t0 = timed ? performance.now() : 0;
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = "#141816";
   ctx.fillRect(0, 0, w, h);
@@ -664,6 +691,7 @@ export function render(ctx, g, w, h, now) {
       if(g.area==="dungeon"&&dungeonTileVisibility(g.map,x,y)==="unseen"&&!(LETHAL_KINDS.has(g.map.tiles[y*mw+x]?.kind)&&Math.hypot(x-p.x,y-p.y)<2.6)){fogTile(ctx,x,y,s);continue}
       tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId);
     }
+  const t1 = timed ? performance.now() : 0;
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
   if(g.area==="overworld"&&g.seaHazards)drawSeaHazards(ctx,g.seaHazards,s,now,l,t,r,b,g.map);
   const seenTile=(x,y)=>g.area!=="dungeon"||dungeonTileVisibility(g.map,x,y)!=="unseen";
@@ -995,6 +1023,7 @@ export function render(ctx, g, w, h, now) {
       ctx.fill();
     }
   ctx.restore();
+  const t2 = timed ? performance.now() : 0;
   // Dungeons with their own weather (Underlands themes) show it too: snow in a cave, sparks rising from a lava bog.
   if(!budget.weather&&g.area==="dungeon"&&g.map.weather&&budget.quality!=="low"&&g.presentation?.weather!==false)budget.weather=true;
   if(budget.weather&&g.map.weather==="rain"){
@@ -1017,26 +1046,28 @@ export function render(ctx, g, w, h, now) {
       y = ((i * 73 + Math.sin(phase * 0.07) * 45) % (h + 60)) - 30;
     ctx.fillRect(x, y, i % 3 === 0 ? 3 : 2, 1);
   }
-  ctx.fillStyle = "#5c4a3b0c";
-  ctx.fillRect(0, 0, w, h);
-  const priorVignette = render.vignette,
-    v = priorVignette?.ctx === ctx && priorVignette.w === w && priorVignette.h === h
-      ? priorVignette.gradient
-      : ctx.createRadialGradient(
-    w / 2,
-    h / 2,
-    Math.min(w, h) * 0.26,
-    w / 2,
-    h / 2,
-    Math.max(w, h) * 0.7,
-  );
-  if (v !== priorVignette?.gradient) {
-    v.addColorStop(0, "#0000");
-    v.addColorStop(1, "#080a0870");
-    render.vignette = { ctx, w, h, gradient: v };
+  if (!drawScreenOverlay(ctx, w, h)) {
+    ctx.fillStyle = "#5c4a3b0c";
+    ctx.fillRect(0, 0, w, h);
+    const priorVignette = render.vignette,
+      v = priorVignette?.ctx === ctx && priorVignette.w === w && priorVignette.h === h
+        ? priorVignette.gradient
+        : ctx.createRadialGradient(
+      w / 2,
+      h / 2,
+      Math.min(w, h) * 0.26,
+      w / 2,
+      h / 2,
+      Math.max(w, h) * 0.7,
+    );
+    if (v !== priorVignette?.gradient) {
+      v.addColorStop(0, "#0000");
+      v.addColorStop(1, "#080a0870");
+      render.vignette = { ctx, w, h, gradient: v };
+    }
+    ctx.fillStyle = v;
+    ctx.fillRect(0, 0, w, h);
   }
-  ctx.fillStyle = v;
-  ctx.fillRect(0, 0, w, h);
   // Area label, plus the player's height wherever the map has levels (operator ask 2026-10-14).
   ctx.font = "12px monospace";
   const place = g.area === "overworld" ? `SECTION ${g.rx},${g.ry}` : g.map.name.toUpperCase(),
@@ -1048,6 +1079,7 @@ export function render(ctx, g, w, h, now) {
   ctx.fillRect(8, labelY, Math.max(150, ctx.measureText(label).width + 20), 24);
   ctx.fillStyle = "#cec7b6";
   ctx.fillText(label, 16, labelY + 16);
+  if (timed) { const t3 = performance.now(); renderTimings.ground = t1 - t0; renderTimings.world = t2 - t1; renderTimings.overlay = t3 - t2; }
 }
 
 // Unexplored dungeon space: dark slate with a faint diagonal hatch, distinct from the indigo depth of a chasm.

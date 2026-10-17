@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
 import {
   generateRegion,
   generateDungeon,
@@ -14,7 +14,7 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
-} from "./world.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+} from "./world.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -25,15 +25,15 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness } from "./spell-slots.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState } from "./boats.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt } from "./open-sea.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+import { ensureSlots, slotted, pairingMods, slotReadiness } from "./spell-slots.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState } from "./boats.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt } from "./open-sea.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
 import {
   applyInteraction,
   validActions,
@@ -43,31 +43,31 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { ensurePerception } from "./types.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { generateItem } from "./items.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { hashSeed } from "./random.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison}from'./elites.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e';
-import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e';
-import{ensureSceneState,queueScene}from'./scenes.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { applyLandscape, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss } from "./far-array.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+} from "./interactions.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { ensurePerception } from "./types.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { generateItem } from "./items.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { hashSeed } from "./random.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa';
+import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa';
+import{ensureSceneState,queueScene}from'./scenes.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { applyLandscape, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss } from "./far-array.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function pinDungeonLayout(save, id) {
@@ -369,7 +369,7 @@ export function footprintOpen(map, width, x, y, allowLethalTerrain=false) {
   }
   return true;
 }
-// The skiff's footprint fits when every tile under it is sailable water (boats.ts). Release icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e: a tile that belongs to
+// The skiff's footprint fits when every tile under it is sailable water (boats.ts). Release 165: a tile that belongs to
 // a shack or building (its walls, floor or yard carry `structure` or `buildingId`) blocks the skiff even when the ground
 // under it is water, so boats no longer sail through walls.
 export function footprintSailable(map,width,x,y){
@@ -3139,7 +3139,7 @@ export class Game {
     if(!fellIntoHazard&&this.area==="dungeon")this.updateDungeonDiscovery();
     if(!fellIntoHazard&&this.area==='overworld'){
       const insideId=structureOccupancy(this.map.tiles,width,p.x,p.y);
-      if(insideId){const trap=this.map.objects.find(o=>o.kind==='displacementTrap'&&o.shelterId===insideId&&o.state!=='used'&&!this.save.worldFlags[`displacement-trigger:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.55);if(trap){this.startDisplacement(trap,true);return}const hazard=this.map.objects.find(o=>o.kind==='shelterHazard'&&o.shelterId===insideId&&o.state==='armed'&&!this.save.worldFlags[`shelter-hazard:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.6);if(hazard){const key=`shelter-hazard:${this.rx},${this.ry}:${hazard.id}`;this.save.worldFlags[key]=true;hazard.state='spent';p.hp=Math.max(1,p.hp-(hazard.damage||10));this.message=`${hazard.name} erupts. ${hazard.damage||10} damage — the mechanism falls quiet.`;journalOnce(this.save,`shelter-hazard:${hazard.hazardType}`,`Shelters may conceal ${hazard.name.toLowerCase()} mechanisms. Their floor marks can be inspected, avoided, and remembered.`,'Shelter hazards');this.sync()}}
+      if(insideId){const trap=this.map.objects.find(o=>o.kind==='displacementTrap'&&o.shelterId===insideId&&o.state!=='used'&&!this.save.worldFlags[`displacement-trigger:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.55);if(trap){this.startDisplacement(trap,true);return}const hazard=this.map.objects.find(o=>o.kind==='shelterHazard'&&o.shelterId===insideId&&o.state==='armed'&&!this.save.worldFlags[`shelter-hazard:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.6);if(hazard){const key=`shelter-hazard:${this.rx},${this.ry}:${hazard.id}`;this.save.worldFlags[key]=true;hazard.state='spent';p.hp=Math.max(1,p.hp-(hazard.damage||10));this.message=`${hazard.name} erupts. ${hazard.damage||10} damage — the mechanism falls quiet.`;if(hazard.hazardType==='toxicVent'){applyStrongPoison(ensureEliteState(this.save).status,this.save.maxHp);this.message=`${hazard.name} erupts. ${hazard.damage||10} damage and strong poison — a Clearroot Ampoule ends it.`}journalOnce(this.save,`shelter-hazard:${hazard.hazardType}`,`Shelters may conceal ${hazard.name.toLowerCase()} mechanisms. Their floor marks can be inspected, avoided, and remembered.`,'Shelter hazards');this.sync()}}
     }
     if(!fellIntoHazard){
       for(const e of this.enemies){
@@ -3217,10 +3217,10 @@ export class Game {
     if(combatNpcTargets.length)this.syncNpcDamage("spell");
     if(this.enemies.some(e=>e.dead&&e.noRewards&&e.summonedBy))this.enemies=this.enemies.filter(e=>!(e.dead&&e.noRewards&&e.summonedBy));
     const activeEnemySet=new Set(this.area==="dungeon"?activeDungeonEnemies(this.enemies,p,this.map):this.enemies.filter(e=>shouldSimulateEnemy(e,p,this.area)));
-    const eliteStatus=ensureEliteState(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});for(const h of this.eliteHazards)h.arming=Math.max(0,(h.arming||0)-dt);this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(!(h.arming>0)&&Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison)h.poison&&((eliteStatus.poison=Math.max(eliteStatus.poison,8)),eliteStatus.poisonTick=1)}
+    const eliteStatus=ensureEliteState(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});for(const h of this.eliteHazards)h.arming=Math.max(0,(h.arming||0)-dt);this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(!(h.arming>0)&&Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison){const fresh=!(eliteStatus.poison>0);applyStrongPoison(eliteStatus,this.save.maxHp);if(fresh)this.message='The ooze burns. Strong poison — a Clearroot Ampoule ends it.'}}
     for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e))continue;e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6)}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
     for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e))continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
-    // Blight mire (landscape version 2): its murk lowers maximum health until the Wayfarer rests. Release icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e: every
+    // Blight mire (landscape version 2): its murk lowers maximum health until the Wayfarer rests. Release 165: every
     // poisoned ground (MIRE.rotKinds) in any area; at the rot cap, lingering MIRE.poisonDelay seconds poisons.
     const underKind = tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind;
     if (rotTick(this.save, underKind, dt) && now > (this.rotMessageAt || 0)) { this.rotMessageAt = now + 9000; this.message = "The blight rots you: maximum health falls until you rest."; }

@@ -1,5 +1,5 @@
-import { rng } from "./random.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
-import { annotateDungeon } from "./dungeon-framework.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+import { rng } from "./random.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { annotateDungeon } from "./dungeon-framework.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
 
 export const DUNGEON_LAYOUT_VERSION = 1;
 const DIRECTIONS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
