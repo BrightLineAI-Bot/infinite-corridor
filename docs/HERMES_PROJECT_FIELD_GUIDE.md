@@ -24,6 +24,28 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Smoother overworld from the probe report (release 167)
+
+Tim's release 165 probe (Firefox, inner Fold screen, 1790x1060 canvas) showed dungeons at 117 fps with 1.5 ms of render, but the overworld at 41 fps with 17 ms of render. It also showed autosave stalls of 30-72 ms and section-crossing stalls of 100-260 ms. Firefox's accelerated canvas falls back to drawing on the CPU when frames are full of complex paths and gradients. On that path, full-screen gradient fills and hundreds of path draws are expensive.
+
+**CODE:**
+- **Screen overlay.** `renderer.ts` `drawScreenOverlay()` paints the warm tint and the vignette once into a screen-sized image and copies it each frame. The old per-frame fills remain as the fallback for contexts without `getTransform`/`canvas` (tests).
+  - In Chromium software rendering this cut those two fills from about 6.4 ms to 1.6 ms per frame.
+- **Pack creature sprites.** `monster-render.ts` paints each pack creature into its own image keyed by kind, animation step, facing, state, scale and pixel density. `PACK_SPRITE`: up to 24 repaints a second, a box measured to hold every kind's poses, boss glow and flight lift, and up to 48 kept.
+  - The image is copied to the screen each frame at the creature's position, so movement stays smooth while limb animation steps at the sprite rate.
+  - A hit flash ("lighter" compositing) is drawn directly over the copy. Phasing, aloft and illusion transparency apply to the copy.
+  - Contexts without `getTransform`, and creatures without an id, are painted directly. Bestiary portraits use the direct painter (`paintPackMonster`).
+  - On-screen canvas calls for pack creatures fell from about 490 to 9 per frame in a busy section. Total software-rendered frame time fell from 13-15 ms to 8-9 ms.
+- **Ground image reuse.** `drawGroundCache()` keeps the ground image's allocation when a new section has the same size. It clears and repaints the image instead of reallocating about 32 MB on every crossing.
+- **Compass warm-up.** `world.ts` `warmWayfindingSignals()` fills the wayfinding signal cache for every section within radius 5, one per call. `main.ts` calls it from `requestIdleCallback` (1.5 s timeout; `setTimeout` without it). The next crossing's compass cues then no longer generate 5-10 sections inside one frame.
+- **Autosave.** `persistence.ts` `snapshotSave()` reuses the previous save's copy of each `session.areas` entry that has not been replaced since. Areas are replaced, never edited in place, by `snapshotArea()`. The snapshot is identical to a full `structuredClone`, but the autosave no longer grows with every area ever visited.
+- **Probe.**
+  - Each frame interval is now paired with the frame it measures, the one before it. Release 165 paired it with the following frame and misplaced hitches under "unaccounted".
+  - Render is split into `renderParts` (ground, world, overlay) through `renderer.ts` `renderTimings`, which `main.ts` switches on while the probe runs.
+  - The report's `info.release` is a literal (it read null).
+
+**BOUNDARY:** No gameplay, generation or save-schema change. Saved data is byte-for-byte what a full copy would hold. Pack creature art is unchanged apart from its animation stepping at 24 Hz and sub-pixel placement (a 0.03-0.05% pixel difference in frozen-time screenshots). The 8 s autosave interval, quality tiers and reduced-motion behaviour are unchanged. The fixes target the measured causes but are verified only in Chromium software rendering; Tim's next probe report confirms them on the phone.
+
 ## Diagnostic probe; dungeon reveal patching; boats and poison (release 165)
 
 **CODE:**
