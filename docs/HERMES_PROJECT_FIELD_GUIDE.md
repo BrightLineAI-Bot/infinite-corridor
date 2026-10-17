@@ -91,6 +91,12 @@ Guidance keeps its old order (hunt, then the local cue) and falls back to the ch
 
 **BOUNDARY:** Input/UI only; no save, generation or Proving Ground change. The Reciter's Tome itself was verified not to hang on back.
 
+## Hunts and the open sea (release 160)
+
+**CODE:** `landscape.ts` exports `openSeaSection(seed, rx, ry)`, the same test applyLandscape uses. `game.ts` `seaBound(rx, ry)` is true when any section in rx..rx+3 × ry-1..ry+2 (the span of domain role offsets) would be open sea, counting unseen sections and those pinned with a `seaVersion`. It is passed to `refreshViewportBoard`'s `avoid`. In loadArea, an open-sea section with a non-archived, uncompleted contract targeting it (or a `domainSectionAt` section) gets `map.huntersRaft`: tiles 14–18 × 14–18 become dock, with a "Hunter's Raft" marker. The hunt and domain `open` spot list is then restricted to the raft.
+
+**BOUNDARY:** Board selection only changes for new postings. Existing contracts keep their targets and are made playable by the raft. The raft is a load-time map edit and is not saved. Land sections are unchanged.
+
 ## Sea fog fix and seamanship (release 158)
 
 **CODE:** In `open-sea.ts` `tickSeaHazards`, the fog drift wrap was `(x + v·dt + 48) % 48 - 8`, which moved a bank 8 tiles every frame. It is now `wrap(v) = ((v + 8) % 48 + 48) % 48 - 8`. Each bank gains `swirl`, and the state gains `fogLevel`: the depth inside the nearest bank, eased at 1.5/s. In `renderer.ts`, each bank is drawn as 7 soft puffs turning with `swirl`, and the vision gradient's radii and opacity scale with `fogLevel` instead of switching on and off.

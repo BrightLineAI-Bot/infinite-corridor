@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 160 — hunts and the open sea. Hunts and territories (Rootbound, Sentinel, pack lairs) are no longer posted where their target or any section they spread into is open sea. A hunt already pointing into open sea (or a trace, a held aperture or a territory section out there) raises a Hunter's Raft: a 5×5 platform in the middle of the section, where the quarry, its marks and its aperture now stand together instead of on scattered islets.
 - Release 158 — sea fixes and seamanship.
   - Fog banks no longer flash: a drift bug jumped them 8 tiles every frame. They are now soft mist that swirls slowly and thickens gradually around you.
   - A hull gauge under the skiff (green, amber, red; it flashes when nearly broken) shows boat damage.
