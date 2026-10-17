@@ -91,6 +91,20 @@ Guidance keeps its old order (hunt, then the local cue) and falls back to the ch
 
 **BOUNDARY:** Input/UI only; no save, generation or Proving Ground change. The Reciter's Tome itself was verified not to hang on back.
 
+## Sea fog fix and seamanship (release 158)
+
+**CODE:** In `open-sea.ts` `tickSeaHazards`, the fog drift wrap was `(x + v·dt + 48) % 48 - 8`, which moved a bank 8 tiles every frame. It is now `wrap(v) = ((v + 8) % 48 + 48) % 48 - 8`. Each bank gains `swirl`, and the state gains `fogLevel`: the depth inside the nearest bank, eased at 1.5/s. In `renderer.ts`, each bank is drawn as 7 soft puffs turning with `swirl`, and the vision gradient's radii and opacity scale with `fogLevel` instead of switching on and off.
+
+Also in this release:
+- `input.ts` adds `held(action)`, true while a key or on-screen button is down.
+- In `game.ts`, holding interact aboard for `BOAT.leaveHold` (3 s) calls `leaveSkiff`. It steps ashore, or goes over the side with the Tidemantle, mooring the skiff in place. Without the Tidemantle it refuses until the button is released.
+- A jump while aboard counts as `dodging` for the rogue wave.
+- `swimUpkeep(..., openSea)` applies `TIDEMANTLE.openSeaDrain` (2).
+- `OPEN_SEA_VERSION` 3 uses `SEA_FEATURES.buoyEveryV3` (8).
+- The renderer lifts the skiff with the jump and draws a hull gauge from `BOAT.maxHull`.
+
+**BOUNDARY:** The fog fix is visual only: fog placement and seeds are unchanged, nothing is saved, and no rules change. Sections pinned to sea version 2 keep their buoys (one in three); only new sea uses one in eight. The hull, wave and swim rules change gameplay only, with no save changes.
+
 ## Sea features (release 156)
 
 **CODE:** `open-sea.ts` `OPEN_SEA_VERSION` is 2. `game.ts` passes `openSea` as the section's pinned `seaVersion` (current for unseen sections) and `buoy:false` when the save remembers a different checkpoint there. With `openSea >= 2`, `landscape.ts` `addSeaFeatures` adds:

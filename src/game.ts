@@ -2090,6 +2090,18 @@ export class Game {
     this.returnFrom(from, "Rock and wall bar the way across. The skiff turns back.");
     return false;
   }
+  leaveSkiff() {
+    const p = this.player, width = 32, here = tileUnder(this.map, width, p.x, p.y);
+    const moor = { rx: this.rx, ry: this.ry, x: here?.x ?? Math.round(p.x), y: here?.y ?? Math.round(p.y) };
+    let shore = null;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) { const q = { x: p.x + dx, y: p.y + dy }; if (footprintOpen(this.map, width, q.x, q.y) && !footprintHazard(this.map, width, q.x, q.y)) { shore = q; break; } }
+    if (!shore && !canSwim(this.save)) { this.message = "Nowhere to stand, and you cannot swim. Find a shore first."; return false; }
+    disembark(this.save, moor); p.sailVx = p.sailVy = 0;
+    this.map.objects = this.map.objects.filter((o) => o.id !== "skiff-moored");
+    this.map.objects.push({ id: "skiff-moored", kind: "skiff", name: "Your skiff", lore: "Your skiff rides at its mooring.", x: moor.x, y: moor.y, state: "moored", actions: ["board"] });
+    if (shore) { Object.assign(p, shore); this.message = "You step off the skiff. It waits at its mooring."; }
+    else this.message = "You slip over the side. The skiff bobs beside you. The open sea tires a swimmer fast.";
+  }
   returnFrom(from, message) {
     this.rx = from.rx; this.ry = from.ry; this.loadArea("overworld", false);
     Object.assign(this.player, { x: from.x, y: from.y, sailVx: 0, sailVy: 0 }); this.message = message; this.sync();
@@ -3132,6 +3144,15 @@ export class Game {
       this.save.toolMode = false;
       this.primaryAttack(now);
     }
+    // Hold Act for BOAT.leaveHold seconds while aboard to leave the skiff (release 158): step ashore if ground is beside
+    // the hull, otherwise go over the side into the water, and the skiff stays moored where it floats.
+    if (this.area === "overworld" && aboard(this.save) && input.held?.("interact")) {
+      this.leaveHold = (this.leaveHold || 0) + dt;
+      const left = Math.ceil(BOAT.leaveHold - this.leaveHold);
+      if (this.leaveHold < 0) { /* refused: wait for the button to be released */ }
+      else if (this.leaveHold < BOAT.leaveHold) { if (left !== this.leaveHoldShown) { this.leaveHoldShown = left; this.message = `Keep holding Act to leave the skiff… ${left}`; } }
+      else { this.leaveHoldShown = null; this.leaveHold = this.leaveSkiff() === false ? -1e9 : 0; }
+    } else { this.leaveHold = 0; this.leaveHoldShown = null; }
     if (!fellIntoHazard&&input.consume("interact")) {
       this.save.aimMode = "act";
       this.save.toolMode = false;
@@ -3200,7 +3221,7 @@ export class Game {
     }
     // A hint when standing at deep water's edge with enough wood for a skiff (checked twice a second).
     if (this.area === "overworld" && (this._shoreCheck = (this._shoreCheck || 0) - dt) <= 0) { this._shoreCheck = .5; if ((this.save.materials?.wood || 0) >= WOOD.skiffCost && this.save.capabilities?.swim && !this.nearestObject() && this.shoreWater() && now > (this.woodHintAt || 0)) { this.woodHintAt = now + 15000; this.message = `Act: build a skiff here (${WOOD.skiffCost} wood).`; } }
-    if (this.swimming) { const hurt = swimUpkeep(p, dt, this.swimKind); if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "Exhausted in the water — reach the shore."; } } }
+    if (this.swimming) { const hurt = swimUpkeep(p, dt, this.swimKind, this.area === "overworld" && !!this.map.openSea); if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "Exhausted in the water — reach the shore."; } } }
     else p.stamina = Math.min(p.maxStamina, p.stamina + (9 + pairingMods(this.save).stamina) * dt);
     this.performanceStats.totalDungeonEncounterRecords=this.area==="dungeon"?(this.map.encounterGroups||[]).length:0;this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.activeProjectiles=this.projectiles.length;this.performanceStats.activeHazardsAndEffects=this.eliteHazards.length+this.effects.length;this.performanceStats.pathfindingWork=0;this.performanceStats.ambientTicks=0;if(dt>1/30)this.performanceStats.updateBudgetViolations++;
     const packWorld=this.packWorld(dt,now,this.area==="overworld"?settlementSanctuary(this.map,this.rx,this.ry,this.save):null);
@@ -3271,7 +3292,7 @@ export class Game {
         if (!this.storm && was) this.map.weather = this._calmWeather || undefined;
         if (this.storm && !was) this.message = "A storm front rolls over the sea. Wind drives the skiff and the waves come faster.";
       }
-      tickSeaHazards(this.seaHazards, dt, { player: p, storm: this.storm, aboard: onBoard, swimming: !!this.swimming, dodging: now < (p.dodgeUntil || 0), tiles: this.map.tiles,
+      tickSeaHazards(this.seaHazards, dt, { player: p, storm: this.storm, aboard: onBoard, swimming: !!this.swimming, dodging: now < (p.dodgeUntil || 0) || (onBoard && now < (this.jumpUntil || 0)), tiles: this.map.tiles,
         move: (mx, my) => { const nx = p.x + mx, ny = p.y + my, ok = aboard(this.save) ? footprintSailable(this.map, width, nx, ny) : footprintOpen(this.map, width, nx, ny, true); if (ok) { p.x = nx; p.y = ny; } return ok; },
         hurt: (n) => { p.hp = Math.max(0, p.hp - n); },
         hull: (n, why) => { if (hullStrike(this.save, n)) { p.sailVx = p.sailVy = 0; this.message = "The skiff breaks apart! Swim for it; the Shipwright will raise it at the dock."; } else this.message = { whirlpool: "The maelstrom's eye batters the hull.", wave: "The rogue wave swamps the skiff.", iceberg: "Ice grinds along the hull.", reef: "Coral scrapes the hull. Find deeper water." }[why]; },

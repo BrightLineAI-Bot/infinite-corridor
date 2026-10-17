@@ -1,5 +1,6 @@
 import { enemyMeleeGeometry } from "./combat.ts";
 import { SEA_CREATURES } from "./sea-creatures.ts";
+import { BOAT } from "./boats.ts";
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName } from "./landscape-render.ts";
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { liftAt } from "./landscape.ts";
@@ -807,7 +808,15 @@ export function render(ctx, g, w, h, now) {
         );
         ctx.fill();
       }
-      if (g.area === "overworld" && g.save.boat?.aboard) drawSkiff(ctx, p.x, p.y, s, p.facing, now);
+      if (g.area === "overworld" && g.save.boat?.aboard) {
+        // A jump lifts the skiff with the Wayfarer (release 158: leap a rogue wave's crest).
+        drawSkiff(ctx, p.x, p.y - lift / s, s, p.facing, now);
+        // Hull gauge under the skiff: green to amber to red as the hull takes damage.
+        const hull = Math.max(0, Math.min(1, (g.save.boat.hull || 0) / BOAT.maxHull)), bx = (p.x + .08) * s, by = (p.y + 1.12) * s, bw = s * .84, bh = Math.max(3, s * .09);
+        ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+        ctx.fillStyle = hull > .6 ? "#6fcf7a" : hull > .3 ? "#e3b04b" : "#e2574a"; ctx.fillRect(bx, by, bw * hull, bh);
+        if (hull <= .3 && Math.floor(now / 350) % 2) { ctx.strokeStyle = "#ffb3a8"; ctx.lineWidth = 1; ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2); }
+      }
       actor(
         ctx,
         p.x,
@@ -860,12 +869,20 @@ export function render(ctx, g, w, h, now) {
   }
   // Stormkraken ink (W4): the sea goes dark beyond a small circle around the Wayfarer.
   if (g.area === "overworld" && g.seaHazards?.fog?.length) {
-    // Fog banks (release 156): pale drifting banks; inside one, the world closes in to a few tiles.
-    const fogged = g.seaHazards.fog.some((f) => Math.hypot(p.x + .5 - f.x, p.y + .7 - f.y) < f.radius);
-    if (!fogged) for (const f of g.seaHazards.fog) { const gr = ctx.createRadialGradient(f.x * s, f.y * s, 0, f.x * s, f.y * s, f.radius * s); gr.addColorStop(0, "#d8e2e8aa"); gr.addColorStop(.7, "#d8e2e855"); gr.addColorStop(1, "#d8e2e800"); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(f.x * s, f.y * s, f.radius * s, 0, 7); ctx.fill(); }
-    if (fogged) {
-      const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * 1.6, px, py, s * 3.6);
-      gr.addColorStop(0, "#cfd9df00"); gr.addColorStop(1, "#cfd9dff2"); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
+    // Fog banks (release 156; release 158 smooths them): each bank is a cluster of soft puffs turning slowly about its
+    // centre. Inside a bank the mist closes in around the Wayfarer gradually (fogLevel is eased in open-sea.ts).
+    const level = g.seaHazards.fogLevel || 0, time = now / 1000;
+    for (const f of g.seaHazards.fog) {
+      for (let i = 0; i < 7; i++) {
+        const a = (f.swirl || 0) + i * 2.399 + Math.sin(time * .2 + i) * .15, d = f.radius * (.15 + .55 * ((i * 37) % 10) / 10), pr = f.radius * (.45 + .1 * Math.sin(time * .3 + i * 1.7));
+        const x = (f.x + Math.cos(a) * d) * s, y = (f.y + Math.sin(a) * d) * s, gr = ctx.createRadialGradient(x, y, 0, x, y, pr * s);
+        gr.addColorStop(0, `rgba(222,231,236,${.22 * (1 - level * .5)})`); gr.addColorStop(1, "rgba(222,231,236,0)");
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, pr * s, 0, 7); ctx.fill();
+      }
+    }
+    if (level > .01) {
+      const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - level) * 3), px, py, s * (3.6 + (1 - level) * 7));
+      gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.92 * level})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
     }
   }
   if (g.area === "overworld" && g.storm) { ctx.fillStyle = `rgba(16,24,38,${.28 * g.storm.strength})`; ctx.fillRect((p.x + .5) * s - w, (p.y + .6) * s - h, w * 2, h * 2); }
