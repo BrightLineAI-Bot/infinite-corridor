@@ -1,13 +1,13 @@
-import { enemyMeleeGeometry } from "./combat.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
-import { SEA_CREATURES } from "./sea-creatures.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
-import { BOAT } from "./boats.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTile, landscapeTileLift } from "./landscape-render.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
-import { liftAt } from "./landscape.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
-import { drawRelayNode } from "./relay-network.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
-import { structureOccupancy } from "./world.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f";
+import { enemyMeleeGeometry } from "./combat.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+import { SEA_CREATURES } from "./sea-creatures.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+import { BOAT } from "./boats.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTile, landscapeTileLift } from "./landscape-render.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+import { liftAt } from "./landscape.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+import { drawRelayNode } from "./relay-network.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+import { structureOccupancy } from "./world.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -565,32 +565,61 @@ function architecturalBuilding(ctx,o,s,p,map){
 // The image is rebuilt when the map, tile size, scale or occupied building changes, or when any tile is replaced or
 // changes kind, blocking or elevation. Without an offscreen canvas (tests, old browsers) the per-tile path is used.
 const GROUND_MAX_PIXELS = 8.4e6; // ~32 MB; larger sections are cached at a reduced scale
-const ground = { canvas: null, map: null, s: 0, scale: 0, building: null, top: 0, reveal: null, revealSize: 0, refs: [], kinds: [], blocked: [], elev: [] };
+const ground = { canvas: null, map: null, s: 0, scale: 0, building: null, top: 0, reveal: null, revealSize: 0, revealIds: null, refs: [], kinds: [], blocked: [], elev: [] };
 function makeGroundCanvas() { if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(1, 1); if (typeof document !== "undefined") return document.createElement("canvas"); return null; }
-function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId) {
+function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, view) {
   const T = g.map?.tiles, m = typeof ctx.getTransform === "function" ? ctx.getTransform() : null;
   if (!T || T.length !== mw * mh || !m || typeof ctx.drawImage !== "function") return false;
   // Dungeons (release 159) also cache their fog: the image changes whenever discovery installs a new revealed set.
   const dungeon = g.area === "dungeon", reveal = dungeon ? (g.map._dungeonRevealMode === "full" ? "full" : g.map._dungeonRevealed || null) : null, revealSize = reveal && reveal !== "full" ? reveal.size : 0;
-  let dirty = !ground.canvas || ground.map !== g.map || ground.s !== s || ground.building !== activeBuildingId || ground.refs.length !== T.length || ground.reveal !== reveal || ground.revealSize !== revealSize;
+  let dirty = !ground.canvas || ground.map !== g.map || ground.s !== s || ground.building !== activeBuildingId || ground.refs.length !== T.length;
   if (!dirty) for (let i = 0; i < T.length; i++) { const q = T[i]; if (q !== ground.refs[i] || q.kind !== ground.kinds[i] || q.blocked !== ground.blocked[i] || q.elev !== ground.elev[i]) { dirty = true; break; } }
   let top = 0; if (dirty) for (const q of T) top = Math.max(top, landscapeTileLift(q, s));
   const want = Math.hypot(m.a, m.b) || 1, fit = Math.sqrt(GROUND_MAX_PIXELS / (mw * s * (mh * s + (dirty ? top : ground.top)))), scale = Math.min(want, fit);
   if (dungeon && fit < want) return false; // a large dungeon at high pixel density would cache blurred: draw it per tile
   if (!dirty && Math.abs(scale - ground.scale) > 1e-6) dirty = true;
+  // Release icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e: exploring a dungeon reveals chunks one at a time. Redrawing the whole image for each (up to 4096
+  // tiles, about once a second while exploring) was a visible hitch, so newly revealed chunks are repainted in place.
+  let added = null;
+  if (!dirty && (ground.reveal !== reveal || ground.revealSize !== revealSize)) {
+    const was = ground.revealIds, now = reveal && reveal !== "full" ? reveal : null;
+    if (was && now && [...was].every((id) => now.has(id))) added = [...now].filter((id) => !was.has(id)); else dirty = true;
+  }
+  const seen = (x, y) => !dungeon || dungeonTileVisibility(g.map, x, y) !== "unseen";
+  if (!dirty && added?.length) {
+    const gc = ground.canvas.getContext("2d"), reach = Math.ceil(ground.top / s) + 2; // fog hatching and tile edges paint up to a tile past their own square
+    setLandscapeStaticPass(true);
+    try {
+      for (const id of added) {
+        const c = /:(\d+),(\d+)$/.exec(id); if (!c) continue;
+        const x0 = Number(c[1]) * DUNGEON_CHUNK_SIZE, y0 = Number(c[2]) * DUNGEON_CHUNK_SIZE, x1 = Math.min(mw, x0 + DUNGEON_CHUNK_SIZE), y1 = Math.min(mh, y0 + DUNGEON_CHUNK_SIZE);
+        if (x0 >= mw || y0 >= mh) continue;
+        // Clip to the chunk grown by one tile on every side (a neighbour's fog hatching reaches into it) plus the band its
+        // raised tiles reach, then repaint, in order, every tile that can paint there: the region then matches a full
+        // rebuild exactly.
+        const cx0 = Math.max(0, x0 - 1) * s, cx1 = Math.min(mw, x1 + 1) * s, cy0 = Math.max(0, y0 - 1) * s - ground.top, cy1 = Math.min(mh, y1 + 1) * s;
+        gc.save(); gc.beginPath(); gc.rect(cx0, cy0, cx1 - cx0, cy1 - cy0); gc.clip(); gc.clearRect(cx0, cy0, cx1 - cx0, cy1 - cy0);
+        for (let y = Math.max(0, y0 - 1 - reach); y < Math.min(mh, y1 + 1 + reach); y++) for (let x = Math.max(0, x0 - 3); x < Math.min(mw, x1 + 3); x++) { if (!seen(x, y)) fogTile(gc, x, y, s); else tile(gc, T[y * mw + x], x, y, s, T, mw, activeBuildingId); }
+        gc.restore();
+      }
+    } finally { setLandscapeStaticPass(false); }
+    Object.assign(ground, { reveal, revealSize, revealIds: new Set(reveal) });
+    renderCacheStats.groundPatches = (renderCacheStats.groundPatches || 0) + added.length;
+  } else if (!dirty && added) Object.assign(ground, { reveal, revealSize, revealIds: new Set(reveal) });
   if (dirty) {
     const c = ground.canvas || (ground.canvas = makeGroundCanvas()); if (!c) return false;
     c.width = Math.ceil(mw * s * scale); c.height = Math.ceil((mh * s + top) * scale);
     const gc = c.getContext("2d"); if (!gc) { ground.canvas = null; return false; }
     gc.setTransform(scale, 0, 0, scale, 0, top * scale); gc.imageSmoothingEnabled = false;
     setLandscapeStaticPass(true);
-    const seen = (x, y) => !dungeon || dungeonTileVisibility(g.map, x, y) !== "unseen";
     try { for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) { if (!seen(x, y)) fogTile(gc, x, y, s); else tile(gc, T[y * mw + x], x, y, s, T, mw, activeBuildingId); } }
     finally { setLandscapeStaticPass(false); }
-    Object.assign(ground, { map: g.map, s, scale, building: activeBuildingId, top, reveal, revealSize, refs: T.slice(), kinds: T.map((q) => q.kind), blocked: T.map((q) => q.blocked), elev: T.map((q) => q.elev) });
+    Object.assign(ground, { map: g.map, s, scale, building: activeBuildingId, top, reveal, revealSize, revealIds: reveal && reveal !== "full" ? new Set(reveal) : null, refs: T.slice(), kinds: T.map((q) => q.kind), blocked: T.map((q) => q.blocked), elev: T.map((q) => q.elev) });
     renderCacheStats.groundBuilds = (renderCacheStats.groundBuilds || 0) + 1;
   }
-  ctx.drawImage(ground.canvas, 0, -ground.top, ground.canvas.width / ground.scale, ground.canvas.height / ground.scale);
+  // Copy only the part on screen (view: visible tile bounds), rather than handing the browser the whole image to clip.
+  const k = ground.scale, sx = Math.max(0, view.l * s), sy = Math.max(0, view.t * s), ex = Math.min(mw * s, view.r * s), ey = Math.min(mh * s + ground.top, view.b * s + ground.top);
+  if (ex > sx && ey > sy) ctx.drawImage(ground.canvas, sx * k, sy * k, (ex - sx) * k, (ey - sy) * k, sx, sy - ground.top, ex - sx, ey - sy);
   return true;
 }
 export function render(ctx, g, w, h, now) {
@@ -623,7 +652,7 @@ export function render(ctx, g, w, h, now) {
   const groundLift = (x, y) => (g.map?.landscape ? liftAt(g.map, mw, x, y) : 0);
   ctx.save();
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - groundLift(p.x, p.y)) * s));
-  const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId);
+  const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b });
   if (groundCached) for (let y = t; y < b; y++) for (let x = l; x < r; x++) {
     const q = g.map.tiles[y * mw + x];
     // In a dungeon, a lethal tile right beside the Wayfarer shows through the fog (as the per-tile path always did).
@@ -870,6 +899,8 @@ export function render(ctx, g, w, h, now) {
         Math.floor(p.walkPhase || 0),
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
+      // Poisoned (release 165): the Wayfarer pulses green while poison lasts.
+      if (g.save.elites?.status?.poison > 0) { const pulse = .5 + .5 * Math.sin(now / 160); ctx.fillStyle = `rgba(120,230,90,${.12 + pulse * .22})`; ctx.strokeStyle = `rgba(150,255,110,${.35 + pulse * .45})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y - lift / s + .35) * s, s * (.42 + pulse * .08), s * (.55 + pulse * .08), 0, 0, 7); ctx.fill(); ctx.stroke(); }
       if (now < (p.attackUntil || 0)) {
         const a = {
             right: 0,

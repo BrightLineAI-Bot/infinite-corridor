@@ -10,7 +10,7 @@ export const TIDEMANTLE = {
   // Waterbodies (landscape version 2): the Tidemantle is a surface tool; open deep water tires twice as fast.
   drainMultiplier: { deepOcean: 2 },
   exhaustedDamagePerSecond: 6,
-  // Release icp_ae1a3055761b48ee97d5f51a_fe7f96e66f5b006f (Tim, 2026-10-17: "3 seconds is fine"): in open sea a full 50-stamina bar lasts about 3 s, ocean or deep.
+  // Release 164 (Tim, 2026-10-17: "3 seconds is fine"): in open sea a full 50-stamina bar lasts about 3 s, ocean or deep.
   openSeaPerSecond: 17,
   // Quest: fell the guardian of a drowned place. A dungeon counts when at least this many of its tiles are water.
   minWaterTiles: 6,
@@ -60,9 +60,16 @@ export function swimUpkeep(player, dt, kind = null, openSea = false) {
 // lowers maximum health (save.rot) until the Wayfarer rests at a Wayglass or rest point (or is recovered after a fall).
 export const MIRE = {
   slow: { mireWater: .6, toxicMire: .6 },
+  // The poisoned murk and water rot; blight bog ground (the dry land between them) stays safe. Release icp_8df748cdb8aa48bbbd16b142_d1d456e64ebada9e: in any area.
   rotKinds: ["toxicMire", "toxicWater"],
   rotPerSecond: 1.5,
   maxRotFraction: .5,
+  // Once rot reaches its cap (maximum health at half), staying in the poison for poisonDelay seconds poisons the
+  // Wayfarer: poisonDuration seconds (refreshed while still in it) losing a share of maximum health per second.
+  poisonDelay: 5,
+  poisonDuration: 10,
+  poisonMaxHpFraction: .01,
+  poisonMinDps: 2,
 };
 export function mireSpeed(kind) { return MIRE.slow[kind] || 1; }
 export function ensureRot(save) { save.rot = Math.max(0, Number(save.rot) || 0); return save.rot; }
