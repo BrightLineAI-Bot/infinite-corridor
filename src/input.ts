@@ -36,6 +36,7 @@ export function createInput(root, host = globalThis, options = {}) {
     target = { x: 0, y: 0 },
     keys = new Set(),
     latch = new Set(),
+    heldButtons = new Set(),
     canvas = root.querySelector("#game");
   let movementPointer = null;
   const pointers = new Map();
@@ -63,6 +64,7 @@ export function createInput(root, host = globalThis, options = {}) {
   function reset() {
     keys.clear();
     latch.clear();
+    heldButtons.clear();
     clearPointer();
     state.x = state.y = 0;
     for (const k in state) if (k !== "x" && k !== "y") state[k] = false;
@@ -140,6 +142,9 @@ export function createInput(root, host = globalThis, options = {}) {
         e.preventDefault();
         actionTap = { button: b, pointerId: e.pointerId, until: performance.now() + 1500 };
         latch.add(b.dataset.action);
+        heldButtons.add(b.dataset.action);
+        const up = () => { heldButtons.delete(b.dataset.action); b.removeEventListener("pointerup", up); b.removeEventListener("pointercancel", up); b.removeEventListener("pointerleave", up); };
+        b.addEventListener("pointerup", up); b.addEventListener("pointercancel", up); b.addEventListener("pointerleave", up);
       }),
   );
   root.addEventListener?.("click", (e) => {
@@ -169,6 +174,12 @@ export function createInput(root, host = globalThis, options = {}) {
       state.y = smoothAxis(state.y, target.y, dt, response);
       for (const a of latch) state[a] = true;
       latch.clear();
+    },
+    // True while an action's key or on-screen button is held down (release 158: hold Act to leave the skiff).
+    held(a) {
+      if (heldButtons.has(a)) return true;
+      for (const k in actions) if (actions[k] === a && keys.has(k)) return true;
+      return false;
     },
     consume(k) {
       const v = state[k];

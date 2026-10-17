@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 158 — sea fixes and seamanship.
+  - Fog banks no longer flash: a drift bug jumped them 8 tiles every frame. They are now soft mist that swirls slowly and thickens gradually around you.
+  - A hull gauge under the skiff (green, amber, red; it flashes when nearly broken) shows boat damage.
+  - Jump while aboard and the skiff leaps: a jump clears a rogue wave's crest without damage. Swimmers still take the wave's hit.
+  - Hold Act for 3 seconds aboard to leave the skiff. You step ashore if there is ground beside you; otherwise you go over the side (only with the Tidemantle), and the skiff stays moored where it floats.
+  - The Tidemantle is for short excursions: in open sea, swimming tires you twice as fast.
+  - Lighthouse Buoys are rarer in sea found from now on (one section in eight), so travel has consequences.
 - Release 157 — the Arcanum says what everything is. Every spell and constellation entry shows its element (colour and symbol), and whether it is Active (cast from slot A or B) or Passive (always on, or while its discipline is active). Each spell lists what affects it: Focus, the Pairing, and the two constellation entries that reach spells (Overflow, Amplifier).
 - Release 156 — more of the sea.
   - Lighthouse Buoys: moored rafts with a Wayglass, rest points far from land. Your skiff is always tied alongside when you land or wake there.
