@@ -24,6 +24,19 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## HUD room for poison text; batched projectiles (release 169)
+
+**CODE:**
+- **HUD.** While rotted, `#healthText` reads like "115/134 (rot −134)". It ran into the level/XP/Aperture column, garbling both.
+  - The expand button (`#hudExpand`) now sits just under the HUD box at its left edge, instead of outside its top-right corner. The box takes the width the button used: 340 px, 316 portrait, 294 narrow portrait, and 42vw + 30 px on short landscape screens.
+  - `.hud-summary` gives the vitals column its content width (`minmax(0, max-content)`), with fixed-width bars. Level, XP and Aperture take the rest and shorten with an ellipsis.
+  - Rules are appended at the end of `styles.css`.
+- **Projectiles.** `combat-visuals.ts` `drawRangedEffects()` groups projectiles by colour. Each group draws one halo path at alpha .28 and one body path, instead of two fills and two alpha changes per projectile.
+  - Tim saw slowdowns while firing an awakened Lumen Spindle with Echo, which keeps 30 or more projectiles in the air.
+  - Overlapping halos now merge rather than stack.
+
+**BOUNDARY:** Presentation only: no gameplay, save or generation change. The projectile slowdown was not reproduced in Chromium (update stays under 0.1 ms with 15 projectiles; render adds about 90 canvas calls). The batching removes per-projectile draws, but the Firefox cause is unconfirmed until a probe report taken while firing.
+
 ## Smoother overworld from the probe report (release 167)
 
 Tim's release 165 probe (Firefox, inner Fold screen, 1790x1060 canvas) showed dungeons at 117 fps with 1.5 ms of render, but the overworld at 41 fps with 17 ms of render. It also showed autosave stalls of 30-72 ms and section-crossing stalls of 100-260 ms. Firefox's accelerated canvas falls back to drawing on the CPU when frames are full of complex paths and gradients. On that path, full-screen gradient fills and hundreds of path draws are expensive.
