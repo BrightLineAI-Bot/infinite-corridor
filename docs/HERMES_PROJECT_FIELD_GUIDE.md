@@ -24,6 +24,18 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Release 173's button layout reverted; the Atlas fits any screen (release 175)
+
+Tim (2026-10-17): the action buttons worked fine in their long-standing layout. Stop tuning for particular Fold screens and let the game size itself to whatever screen it is on, so it runs on other phones and computers too.
+
+**CODE:**
+- `styles.css`: release 173's portrait rules (Jump in the corner, a wide Dodge) are removed. Jump is back in the centre of the diamond on every screen, as in release 101.
+- `styles.css`: `.maptools` uses `repeat(auto-fit, minmax(52px, 1fr))`. The Atlas tool row wraps on narrow screens instead of squeezing "Center" and "Relays" past their buttons.
+- `main.ts` `atlasMapHeight()`: when the Atlas is open, the map is also capped to the dialog height minus everything above it and the tool and layer rows below it. The rows are measured from the layout (`getBoundingClientRect`), so the map, its tools and the layer toggles are all visible at once on any screen. The details below still scroll.
+- Checked at 437x608, 360x780, 895x530 and 1280x800.
+
+**BOUNDARY:** Layout only. The two-finger dodge report is still open. Tim's outer-screen probe showed every second-finger press reaching the page and registering as Jump, and the input and dodge code are unchanged since release 158. The next step is a probe in which he presses only Dodge.
+
 ## Two-finger dodge on a portrait phone (release 173)
 
 Tim's 30-second probe on the Fold's folded outer screen (437x608 CSS px, portrait) tested the two-finger dodge: one finger steering, the other pressing Dodge. All 30 second-finger presses reached the page with no cancels, but every one landed on `action:jump`, at about x 352-369. Dodge spans 380-430, and the centred Jump button (`--button` x 0.86 = 43 px) filled the middle of a 150 px diamond. The input path was never at fault.
