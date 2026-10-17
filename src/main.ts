@@ -1,5 +1,6 @@
 import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
+import { createProbe, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor } from "./game.ts";
 import { CREATURE_TRAITS } from "./combat.ts";
 import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.ts";
@@ -217,6 +218,17 @@ const perfEnabled = new URLSearchParams(location.search).has("perf") || settings
   navigationStats = { lookups: 0, rebuilds: 0 };
 function currentQuality(){return effectiveQuality(settings,{width:innerWidth,height:innerHeight,deviceMemory:navigator.deviceMemory,hardwareConcurrency:navigator.hardwareConcurrency})}
 function applyPresentationSettings(){document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=muted?0:.06*settings.masterVolume;if(musicBus)musicBus.gain.value=.72*settings.musicVolume;resize()}
+// Diagnostic probe (release 165): a timed recording started from Options → System; see diagnostic-probe.ts.
+const probe = createProbe(), PROBE_REPORT_KEY = "corridor-probe-report";
+let probePhases = {}, probeGround = { builds: 0, patches: 0 }, probeInterval = 0;
+for (const type of ["pointerdown", "pointerup", "pointercancel", "lostpointercapture", "touchstart", "touchend", "touchcancel"]) document.addEventListener(type, (e) => probe.pointer(e), { capture: true, passive: true });
+function storedProbeReport(){if(probe.report)return probe.report;try{return JSON.parse(localStorage.getItem(PROBE_REPORT_KEY)||"null")}catch{return null}}
+function probeSample(interval){
+  const r=rendererDiagnostics(),builds=r.groundBuilds||0,patches=r.groundPatches||0,ground={builds:builds-probeGround.builds,patches:patches-probeGround.patches};probeGround={builds,patches};
+  probe.frame({interval,phases:probePhases,ground,context:{area:game.area,aboard:!!save.boat?.aboard,openSea:!!game.map?.openSea,section:game.area==="overworld"?`${game.rx},${game.ry}`:String(game.areaId?.()||"").split(":").slice(-2).join(":"),enemies:game.enemies.length,projectiles:game.projectiles.length,effects:game.effects.length,visibleTiles:r.visibleTiles,visibleObjects:r.visibleObjects}});
+  probePhases={};
+  if(!probe.running){const report=probe.report;try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(report))}catch{}game.message=`Diagnostic probe finished (${report.seconds}s, ${report.frames} frames). Options → System → Copy probe report, then paste it to Claude.`}
+}
 function recordPerf(kind, value) {
   if (!perfEnabled) return;
   const values = perfSamples[kind];
@@ -224,9 +236,10 @@ function recordPerf(kind, value) {
   if (values.length > 600) values.shift();
 }
 function measured(kind, fn) {
-  if (!perfEnabled) return fn();
-  const start = performance.now(), value = fn();
-  recordPerf(kind, performance.now() - start);
+  if (!perfEnabled && !probe.running) return fn();
+  const start = performance.now(), value = fn(), took = performance.now() - start;
+  recordPerf(kind, took);
+  if (probe.running) probePhases[kind] = (probePhases[kind] || 0) + took;
   return value;
 }
 function percentile(values, p) {
@@ -1031,7 +1044,15 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:164,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 164\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;grid.append(pre,copy)}
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:165,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 165\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;grid.append(pre,copy);
+   // Diagnostic probe (release 165): record five minutes of play, then copy the report.
+   const probeNote=document.createElement("p");probeNote.className="options-note";const saved=storedProbeReport();
+   probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
+   grid.append(probeNote);
+   if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probe.start({release:document.querySelector('link[rel=stylesheet]')?.href.match(/v=(\d+)/)?.[1]||null,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
+}
   optionsBody.append(grid);
 }
 async function renderOptions(category=optionCategory){optionCategory=category;optionsBody.replaceChildren();const tabs=$("#optionsTabs");tabs.replaceChildren();for(const name of optionCategories){const b=uiButton(name,()=>renderOptions(name));b.setAttribute("aria-selected",String(name===category));tabs.append(b)}if(category==="Journeys")await renderJourneys();else await renderSettings(category)}
@@ -1733,6 +1754,7 @@ function tickScene(now){if(!sceneRuntime.active){const pending=save.scenes?.pend
 $("#storyScene").onclick=()=>{if(!sceneRuntime.active)return;if(!sceneRuntime.revealSkip){sceneRuntime.revealSkip=true;showSceneShot()}else finishScene()};$("#sceneSkip").onclick=e=>{e.stopPropagation();finishScene()};
 function frame(now) {
   try {
+  probeInterval = now - last;
   const dt = Math.min(0.05, (now - last) / 1000);
   recordPerf("frame", now - last);
   last = now;
@@ -1771,6 +1793,7 @@ function frame(now) {
     if (game.magicBuffRemaining > 0)
       buffs.push(`LUMEN SURGE ${Math.ceil(game.magicBuffRemaining)}s`);
     if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);
+    if(probe.running){const left=Math.ceil(probe.remaining);buffs.push(`PROBE ${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`)}
     $("#buff").textContent = buffs.join(" · ");
   }
   if ((clock += dt) > 8) {
@@ -1785,6 +1808,8 @@ function frame(now) {
     recoverOverlay(error);
   } finally {
     requestAnimationFrame(frame);
+    // Only real play counts: frames while paused, in a menu or hidden are left out of the probe.
+    if (probe.running) { try { if (!game.paused && !document.hidden && ![pausePanel,atlas,panel,journal,optionsPanel].some((d)=>d.open)) probeSample(probeInterval); else probePhases = {}; } catch (error) { console.warn("Probe sample failed", error); } }
   }
 }
 $("#resume").onclick = resume;

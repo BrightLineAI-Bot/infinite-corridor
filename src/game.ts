@@ -32,7 +32,7 @@ import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HA
 import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.ts";
 import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState } from "./boats.ts";
 import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt } from "./open-sea.ts";
-import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot } from "./water-traversal.ts";
+import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.ts";
 import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.ts";
 import {
   applyInteraction,
@@ -50,7 +50,7 @@ import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.t
 import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.ts";
 import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.ts";
 import { hashSeed } from "./random.ts";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison}from'./elites.ts';
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison}from'./elites.ts';
 import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.ts';
 import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.ts';
 import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.ts';
@@ -369,10 +369,12 @@ export function footprintOpen(map, width, x, y, allowLethalTerrain=false) {
   }
   return true;
 }
-// The skiff's footprint fits when every tile under it is sailable water (boats.ts).
+// The skiff's footprint fits when every tile under it is sailable water (boats.ts). Release 165: a tile that belongs to
+// a shack or building (its walls, floor or yard carry `structure` or `buildingId`) blocks the skiff even when the ground
+// under it is water, so boats no longer sail through walls.
 export function footprintSailable(map,width,x,y){
   const left=x+.24,right=x+.76,top=y+.5,bottom=y+.88,height=map.tiles.length/width;
-  for(let ty=Math.floor(top);ty<=Math.floor(bottom-1e-6);ty++)for(let tx=Math.floor(left);tx<=Math.floor(right-1e-6);tx++){if(tx<0||ty<0||tx>=width||ty>=height||!sailable(map.tiles[ty*width+tx]?.kind))return false}
+  for(let ty=Math.floor(top);ty<=Math.floor(bottom-1e-6);ty++)for(let tx=Math.floor(left);tx<=Math.floor(right-1e-6);tx++){const t=map.tiles[ty*width+tx];if(tx<0||ty<0||tx>=width||ty>=height||!sailable(t?.kind)||t.structure||t.buildingId)return false}
   return true;
 }
 export function footprintTouchesCanyon(map, width, x, y) {
@@ -3218,8 +3220,14 @@ export class Game {
     const eliteStatus=ensureEliteState(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});for(const h of this.eliteHazards)h.arming=Math.max(0,(h.arming||0)-dt);this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(!(h.arming>0)&&Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison)h.poison&&((eliteStatus.poison=Math.max(eliteStatus.poison,8)),eliteStatus.poisonTick=1)}
     for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e))continue;e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6)}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
     for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e))continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
-    // Blight mire (landscape version 2): its murk lowers maximum health until the Wayfarer rests.
-    if (this.area === "overworld" && this.map.landscape && rotTick(this.save, tileUnder(this.map, 32, p.x, p.y)?.kind, dt) && now > (this.rotMessageAt || 0)) { this.rotMessageAt = now + 9000; this.message = "The blight mire rots you: maximum health falls until you rest."; }
+    // Blight mire (landscape version 2): its murk lowers maximum health until the Wayfarer rests. Release 165: every
+    // poisoned ground (MIRE.rotKinds) in any area; at the rot cap, lingering MIRE.poisonDelay seconds poisons.
+    const underKind = tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind;
+    if (rotTick(this.save, underKind, dt) && now > (this.rotMessageAt || 0)) { this.rotMessageAt = now + 9000; this.message = "The blight rots you: maximum health falls until you rest."; }
+    if (MIRE.rotKinds.includes(underKind) && ensureRot(this.save) >= rotCap(this.save)) {
+      this.poisonSoak = (this.poisonSoak || 0) + dt;
+      if (this.poisonSoak >= MIRE.poisonDelay) { const fresh = !(eliteStatus.poison > 0); applyPoison(eliteStatus, MIRE.poisonDuration, Math.max(MIRE.poisonMinDps, Math.round((Number(this.save.maxHp) || 0) * MIRE.poisonMaxHpFraction))); if (fresh) this.message = "The blight is in your blood: poisoned. Leave the bog, or drink a Clearroot Ampoule."; }
+    } else this.poisonSoak = 0;
     if (p.hp > healthCeiling(this.save)) p.hp = healthCeiling(this.save);
     // Under water (W5): breath drains away from air pockets; at zero the diver drowns slowly.
     if (this.area === "dungeon" && this.map.underwater) {

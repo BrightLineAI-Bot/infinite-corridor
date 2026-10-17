@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 165 — Options → System → Start diagnostic probe records five minutes of play (frame times, what each part of the game costs, where you were, touches) and copies a report to send. Dungeons no longer hitch while you explore (newly revealed areas are painted in place instead of redrawing the whole dungeon). Boats can no longer sail through shacks and buildings standing in shallow water. Poisoned murk and water now lower maximum health in dungeons too; once maximum health is halved, staying in the poison poisons you (10 s, refreshed while you stay, losing about 1% of maximum health a second) and the Wayfarer pulses green.
 - Release 164 — swimming in open sea lasts about 3 seconds: the Tidemantle drains 17 stamina per second out there (ocean or deep), then the water deals 6 damage per second. Swimming elsewhere is unchanged.
 - Release 162 — hunts and the open sea. Hunts and territories (Rootbound, Sentinel, pack lairs) are no longer posted where their target or any section they spread into is open sea. A hunt already pointing into open sea (or a trace, a held aperture or a territory section out there) raises a Hunter's Raft: a 5×5 platform in the middle of the section, where the quarry, its marks and its aperture now stand together instead of on scattered islets.
 - Release 161 — swimming is back to how release 158 left it (3 stamina per second, 6 damage when exhausted, open sea twice as tiring). The heavier swimming in release 159 came from a request meant for another session; the smoother-play changes in 159 stay.

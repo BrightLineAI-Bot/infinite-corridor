@@ -24,6 +24,26 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Diagnostic probe; dungeon reveal patching; boats and poison (release 165)
+
+**CODE:**
+- **Diagnostic probe.** `src/diagnostic-probe.ts` (new module; in `scripts/build.mjs` and both `sw.js` lists) is started from Options → System and records `PROBE.durationSeconds` (300) of unpaused play.
+  - Per frame it keeps the interval, each `measured()` phase, the unaccounted remainder (browser paint, compositing and GC), ground-cache builds and patches, and the on-screen context. Frames are bucketed by area, boat and open sea.
+  - It also keeps the 40 longest frames with their breakdown and recent events, plus a pointer/touch event log for multi-touch diagnosis.
+  - `measured()` now times phases while the probe runs, even with diagnostics off. The HUD buff line shows `PROBE m:ss`.
+  - The report is kept in memory and `localStorage` (`corridor-probe-report`); "Copy probe report" copies it, or downloads it if the clipboard is refused.
+- **Dungeon reveal patching.** `renderer.ts` `drawGroundCache()` no longer rebuilds a dungeon's whole ground image when discovery reveals chunks, which happened about once a second while exploring and caused a visible hitch.
+  - Newly revealed chunks are repainted in place: clipped to the chunk plus one tile and the raised-tile band, repainting every tile that can paint there in order.
+  - After exploring 13 chunks, a patched image matched a full rebuild except for 12 pixels.
+  - Each frame now copies only the on-screen part of the image.
+- **Boats.** `footprintSailable()` rejects tiles with `structure` or `buildingId`. 29 of 198 scanned sections had shacks or districts standing on `shallows`, which the skiff sailed through.
+- **Poison.** Blight rot (`MIRE.rotKinds`: toxic mire and toxic water; toxic bog stays safe) now applies in every area, not just landscape overworld sections.
+  - At the rot cap (maximum health halved), staying `MIRE.poisonDelay` (5 s) poisons for `MIRE.poisonDuration` (10 s), refreshed while still in it, through `applyPoison(status, duration, dps)`.
+  - Damage is `max(MIRE.poisonMinDps, maxHp × MIRE.poisonMaxHpFraction)` per second. Elite poison keeps 2/s.
+  - `status.poisonDps` resets when poison ends. The Wayfarer pulses green while poisoned.
+
+**BOUNDARY:** No generation change. Save: `elites.status.poisonDps` is an additive transient field, kept by `ensureEliteState`'s spread. The probe never touches the save.
+
 ## Frame-rate pass; heavier swimming (release 159)
 
 **CODE:** Measured on a phone-sized viewport at 4× CPU throttle. The overworld ran at about 25 fps, using about 10× the dungeon's paint work, and dungeons at about 30. Now it is about 42 and 44 respectively. A read-only review (Fable) agreed with the profile.
