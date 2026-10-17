@@ -24,6 +24,27 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Frame-rate pass; heavier swimming (release 159)
+
+**CODE:** Measured on a phone-sized viewport at 4× CPU throttle. The overworld ran at about 25 fps, using about 10× the dungeon's paint work, and dungeons at about 30. Now it is about 42 and 44 respectively. A read-only review (Fable) agreed with the profile.
+- `renderer.ts` `drawGroundCache()` draws the static ground once per map into an offscreen canvas at the context's pixel scale, capped at `GROUND_MAX_PIXELS`. That covers tiles, trails, cliffs and, in dungeons, fog. Each frame blits the image.
+  - It is rebuilt when the map, tile size, scale, occupied building or (in dungeons) revealed set changes, or when any tile is replaced or changes kind, blocking or elevation.
+  - Animated landscape overlays are drawn per frame through `animateLandscapeTile()`: `landscape-render.ts` skips them while `setLandscapeStaticPass(true)` builds the image.
+  - Hazard brinks stay per frame so they sit over animated water, as before.
+  - In a dungeon, an unseen lethal tile beside the Wayfarer is still drawn through the fog per frame.
+  - A dungeon that would cache below screen scale falls back to the per-tile path.
+  - Screenshots with the cache on and off are pixel-identical in five overworld sections; dungeons differ in 0.05% of pixels, all faint anti-aliasing.
+- The tile size `s` is rounded to whole pixels everywhere it is computed (renderer, combat visuals, main), so blits are 1:1.
+- `main.ts` `hudSet()` writes HUD and compass DOM properties only when their value changes, and element lookups are cached. Layouts per frame dropped from 1 to 0.
+- `objectiveList()` checks a cheap section and one-second key before counting anything.
+- The main canvas context is `{ alpha: false }`.
+- `dungeon-framework.ts` `dungeonTileVisibility()` reads a per-chunk `Uint8Array`, rebuilt per revealed set, instead of building a string per call. It matched the old answers in 424,192 checks.
+- `combat-visuals.ts` draws a translucent halo instead of `shadowBlur` on projectiles.
+
+Swimming (Tim): `TIDEMANTLE.staminaDrainPerSecond` 3 → 8 and `exhaustedDamagePerSecond` 6 → 10. With release 158's `openSeaDrain` and the deep-ocean ×2, open-sea deep water drains 32/s.
+
+**BOUNDARY:** No save or generation change. The 8 s autosave and the CSS filter on `#game` are unchanged; both are candidates if a device still struggles.
+
 ## Arcanum: element badges, Active/Passive tags, what affects spells (release 157)
 
 **CODE:** `ATTRIBUTES` in `spell-slots.ts` gains an `icon` per element (🔥 Fire, ☾ Dusk, ≋ Wind, ◈ Ward, ✦ Force, ⟡ Rift). `constellation.ts` exports a `NODE_EFFECTS` data table that classifies every modifier and capstone:

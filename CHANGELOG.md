@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 159 — smoother play. The overworld and dungeons no longer repaint every ground tile each frame (the ground is drawn once and reused), the HUD no longer rewrites itself every frame, and dungeon fog checks are faster. On a phone-speed test, the overworld went from about 25 to about 42 fps and dungeons from about 30 to about 44. Swimming without a boat is now costly: stamina drains 8 per second (more in deep and open water), and once it runs out the water deals 10 damage per second.
 - Release 158 — sea fixes and seamanship.
   - Fog banks no longer flash: a drift bug jumped them 8 tiles every frame. They are now soft mist that swirls slowly and thickens gradually around you.
   - A hull gauge under the skiff (green, amber, red; it flashes when nearly broken) shows boat damage.
