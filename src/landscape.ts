@@ -183,6 +183,8 @@ function addSeaFeatures(map, seed, rx, ry, buoy = true, version = 2) {
     }
   }
 }
+// True when a section would be generated as full open sea (the same test applyLandscape uses).
+export function openSeaSection(seed, rx, ry, version = LANDSCAPE_VERSION) { return version >= 2 && Math.abs(rx) + Math.abs(ry) >= OPEN_SEA.minDepth && openSeaShare(seed, rx, ry, version) >= OPEN_SEA.minWater; }
 export function openSeaShare(seed, rx, ry, version = LANDSCAPE_VERSION) {
   let n = 0; for (let y = 0; y < 32; y += 2) for (let x = 0; x < 32; x += 2) if (seaLevel(seed, rx * 32 + x, ry * 32 + y, version).o > T.ocean) n++;
   return n / 256;
