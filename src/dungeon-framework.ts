@@ -140,10 +140,23 @@ export function applyDungeonDiscovery(map, ids = [], mode = "normal") {
   return map;
 }
 
+// Release 159: the renderer asks this for every tile, object and enemy each frame; building a chunk-id string per call
+// made garbage the collector had to clear mid-play (dungeon stutter). A per-chunk table is built once per revealed set
+// (applyDungeonDiscovery always installs a new Set) and each call is then an array read.
+const revealGrid = new WeakMap();
+function revealedChunks(map) {
+  const set = map._dungeonRevealed || null, prior = revealGrid.get(map);
+  if (prior && prior.set === set && prior.size === (set?.size || 0) && prior.level === levelKey(map)) return prior;
+  const cols = Math.ceil((map.width || 1) / DUNGEON_CHUNK_SIZE) + 1, rows = Math.ceil((map.height || Math.ceil(map.tiles.length / (map.width || 1))) / DUNGEON_CHUNK_SIZE) + 1, grid = new Uint8Array(cols * rows);
+  for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx++) if (set?.has(`${levelKey(map)}:${cx},${cy}`)) grid[cy * cols + cx] = 1;
+  const entry = { set, size: set?.size || 0, level: levelKey(map), cols, rows, grid };
+  revealGrid.set(map, entry); return entry;
+}
 export function dungeonTileVisibility(map, x, y) {
   if (!map?.dungeonContract?.discoveryEnabled || map._dungeonRevealMode === "full") return "visible";
-  const set = map._dungeonRevealed || new Set();
-  return set.has(dungeonChunkId(map, x, y)) ? "visible" : "unseen";
+  const r = revealedChunks(map), cx = Math.max(0, Math.floor(Number(x) / DUNGEON_CHUNK_SIZE)), cy = Math.max(0, Math.floor(Number(y) / DUNGEON_CHUNK_SIZE));
+  if (!(cx < r.cols && cy < r.rows)) return (map._dungeonRevealed || new Set()).has(dungeonChunkId(map, x, y)) ? "visible" : "unseen";
+  return r.grid[cy * r.cols + cx] ? "visible" : "unseen";
 }
 
 export function dungeonPointDiscovered(map, point) {

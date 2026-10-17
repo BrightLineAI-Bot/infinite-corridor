@@ -6,10 +6,12 @@
 export const TIDEMANTLE = {
   swimKinds: ["river", "dungeonWater", "ocean", "deepOcean", "lakeWater", "swampWater", "toxicWater"],
   speed: 0.55,
-  staminaDrainPerSecond: 3,
+  // Release 159 (Tim, 2026-10-17): swimming without a boat is consequential: ~6 s of stamina in any water (3 s in
+  // deep ocean), then the body gives out. Was 3/s drain and 6/s exhausted damage.
+  staminaDrainPerSecond: 8,
   // Waterbodies (landscape version 2): the Tidemantle is a surface tool; open deep water tires twice as fast.
   drainMultiplier: { deepOcean: 2 },
-  exhaustedDamagePerSecond: 6,
+  exhaustedDamagePerSecond: 10,
   // Quest: fell the guardian of a drowned place. A dungeon counts when at least this many of its tiles are water.
   minWaterTiles: 6,
   questGuardianKinds: ["mireApostle"],

@@ -7,6 +7,14 @@ const TAU = Math.PI * 2;
 const cache = new Map();
 let clock = 0;
 export function setLandscapeClock(now) { clock = now / 1000; }
+// Release 159: the renderer caches the overworld's static ground in one image per section. While it builds that image
+// the animated overlays are left out (staticPass); each frame it then draws only those overlays on top.
+let staticPass = false;
+export function setLandscapeStaticPass(on) { staticPass = !!on; }
+const ANIMATED_KINDS = new Set(["lava", "seaCurrent", "deepOcean", "lakeWater", "toxicWater", "toxicMire", "swampWater", "ocean", "shallows", "glowcap", "fungusFloor", "abyss", "alienMoss", "alienPool", "crystalSpire", "alienPlatform"]);
+export function landscapeTileAnimated(t) { return !!t?.landscape && !!PAINT[t.kind] && ANIMATED_KINDS.has(t.kind); }
+export function landscapeTileLift(t, s) { return t?.landscape ? Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * s : 0; }
+export function animateLandscapeTile(ctx, t, x, y, s) { if (landscapeTileAnimated(t) && t.kind !== "skyBridge") animate(ctx, t, x * s, y * s - landscapeTileLift(t, s), s); }
 export function landscapeCacheSize() { return cache.size; }
 
 function rand(seed) { let s = seed >>> 0 || 1; return () => ((s = Math.imul(s ^ (s >>> 15), 2246822519) ^ Math.imul(s ^ (s >>> 13), 3266489917)) >>> 0) / 4294967296; }
@@ -149,7 +157,7 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
   const tex = topTexture(t.kind, variant, s);
   if (tex) ctx.drawImage(tex, px, py, s + .5, s + .5);
   else { ctx.save(); ctx.translate(px, py); PAINT[t.kind](ctx, s, rand(variant + 1)); ctx.restore(); } // no offscreen canvas (tests, old browsers)
-  animate(ctx, t, px, py, s);
+  if (!staticPass) animate(ctx, t, px, py, s);
   drawLevelMarks(ctx, t, x, y, px, py, s, tiles, w);
   if (lift > 0) { // rim light on edges that drop away, shade on lower sides
     const at = (dx, dy) => tiles?.[(y + dy) * w + x + dx], lower = (n) => !n || (n.elev || 0) < (t.elev || 0);
