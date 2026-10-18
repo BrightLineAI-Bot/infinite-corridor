@@ -26,6 +26,53 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Questing Beast fights with energy (release 187)
+
+Tim met the Questing Beast for the first time (2026-10-18). He found it too weak, too slow and too plain. He reversed his earlier "purely physical" decision and asked for energy attacks, a constant barrage, much more health and blows strong enough that four unhealed hits kill.
+
+**CODE:** `questing-beast.ts`:
+- `QUESTING_BEAST.hitsToKill` goes 30 → 55 and `hpPerLevel` 15 → 25: a level-17 Wayfarer with a power-30 weapon faces 2,625 health.
+- `damageShare` goes .11 → .27; it is still divided by `(1 − damage reduction)`, so a blow takes about 27% of maximum health after armour.
+- New: `speed` 1.55 (`speedMultiplier`), `attackGap` .12 and `staggerResistance` .85.
+
+**CODE:** `monster-pack.ts`:
+- The beast's kit is four new modules, used only by it (unique creatures never donate attacks):
+  - `qbRend`: a 150° claw rake (windup .22 s, cooldown .9 s);
+  - `qbSpiral`: two arms of orbs every .1 s for 1.5 s, the angle turning .42 rad per step (cooldown 6.5 s);
+  - `qbWave`: an energy ring of radius 7 rolling out over 1.3 s, which can be jumped (cooldown 5 s);
+  - `qbBarrage`: a charge at 9.5 tiles/s that spits five-orb arcs behind it every .2 s (cooldown 4.8 s).
+- `leapSlam` unlocks in its wounded phase.
+- New effect kind `orb` (table `QB_ORB`): it moves at 5.2 tiles/s for 1.9 s, stops at the first blocking tile and hurts once. Orbs deal .55 of a blow (about 19% of maximum health).
+- `endAttack` uses `e.attackGap` when set.
+
+**CODE:** Tim's second pass (same release): combos, pounces, dodging and panther movement.
+- Two more attacks:
+  - `qbFlurry`: four lunging claw strikes .2 s apart, then a hop back out of reach;
+  - `qbPounce`: a crouch, a .25 s rise while tracking the Wayfarer (untargetable, `hopLift` up to 4), a dive at 15 tiles/s, and a slash on landing.
+- `QB_MOVES` holds these numbers.
+- Evasion (`evade`, for creatures with `evasive`, which `tuneQuestingBeast` sets):
+  - Triggers: one of the Wayfarer's shots (`w.playerShots`, the game's projectiles) closing within 3.2 tiles on a line through it, or a swing (`w.playerSwinging`) within 2.6 tiles.
+  - It springs aside at 11 tiles/s for .22 s, untargetable.
+  - Cooldown 1.1 s (.8 s when enraged). It may spring out of an attack's recovery, never out of the attack itself.
+- `fluid` eases its heading and pace toward the brain's wish (rate 10/s), so it moves like a panther rather than snapping between directions.
+
+**CODE:** `monster-render.ts`: Tim found the first model fat and goofy. `questingBeast` is now its own detailed recipe, drawn in body units, instead of the pack's ellipses:
+- a lean, muscular body: a deep chest and heavy shoulders, a tucked waist, haunches, a light edge along the top of the back, ribs, and shoulder and haunch masses;
+- jointed legs drawn as round-capped strokes, with soft muscle masses on the thighs and upper arms, digitigrade hind feet, claws, and a stride while it moves;
+- a long neck and an angular wedge skull with a brow ridge, a slit eye, teeth and a jaw that glows when open;
+- two thick, ridged horns swept back over the skull;
+- translucent folded bat wings with arm and finger bones and a scalloped edge, which fan out during windups;
+- a ridge of 15 back spines and a long tapering tail ending in a bone blade;
+- burning veins along the legs and flanks when enraged.
+- A furnace core in the chest flares during windups, spirals and barrages.
+- Orbs draw as glowing red spheres with trails; the energy wave as a red-white ring.
+
+**BOUNDARY:** No save or generation change; spawning, tries, cooldowns and rewards are as before.
+- Live effects stay within the pack cap of 48: a 30-second simulation peaked at 28.
+- In that simulation (with the second pass) the beast started 20 attacks in 30 s, using all six. Firing a shot at it every .6 s, it dodged 9 times and took 28 of 48 shots.
+- The game's 0.7 s of invulnerability after a hit limits orb damage to about one hit per 0.7 s; an orb that arrives inside that window is spent.
+- Not tested on a device; the numbers are a first pass for Tim to judge.
+
 ## Faster water; update prompt; bogs rot; Pack and Atlas fixes (release 185)
 
 Tim's probe on release 181 (Firefox, Android, 2026-10-18): the overworld ran at 31 fps and the open sea at 24, against 87 in a dungeon. The game code was almost all `render` → `ground`: about 16 ms per frame on land and 20 ms at sea, versus 0.8 ms in a dungeon. He also reloaded after the release-183 publish and was still on 181.
@@ -64,6 +111,7 @@ Tim's probe on release 181 (Firefox, Android, 2026-10-18): the overworld ran at 
 **CODE:** Atlas. Tim's Atlas framed a section gold although it held nothing to do, before and after he left it.
 - `openChallengeSections` counted Major Danger sites (Colossus Traces, `bossCue`), which nothing ever resolves.
 - `CHALLENGE_SITES` now holds only crossings and arenas. A trace still shows as a danger sign; the compass no longer points at it.
+- Correction (release 187): Colossus Traces exist only in the origin section (the legacy `world-boss` cue, whose "challenge" action has no handler). Tim's gold sections (4,7 to 6,7) therefore hold a crossing or arena the Atlas recorded from the live map; the cause is not yet known and needs his diagnostics.
 
 **BOUNDARY:** Water drawing and the boot script change no game state. The bog rules change hazard data only; the affix repair is additive at schema 14; the Atlas change affects marking only. No generation changes. The water's look is unchanged except at those overlaps. The prompt never reloads on its own. Not measured on a device yet.
 

@@ -1,11 +1,13 @@
-// The Questing Beast (release 116): a unique, purely physical hunter (MONSTER_PACK.questingBeast) tuned to the
+// The Questing Beast (release 116; energy attacks and harder tuning in release 187): a unique hunter (MONSTER_PACK.questingBeast) tuned to the
 // Wayfarer's level and power. Now and then it claims a wild section. It stays there until it is killed or it has
 // killed the Wayfarer QUESTING_BEAST.tries times; then it is gone, and after a cooldown (counted in sections entered)
 // a new hunt can begin somewhere else.
 import { hashSeed } from "./random.ts";
 import { LETHAL_KINDS } from "./landscape.ts";
 
-export const QUESTING_BEAST = { chance: 0.035, minDepth: 4, tries: 3, cooldownSlain: 24, cooldownEscaped: 30, hitsToKill: 30, hpPerLevel: 15, damageShare: 0.11, rewardMarks: 150, rewardPerLevel: 15 };
+// Release 187 (Tim, 2026-10-18): far tougher and far more dangerous. About twice the health; each blow takes about
+// 27% of maximum health (four unhealed hits kill); it runs fast and barely pauses between attacks.
+export const QUESTING_BEAST = { chance: 0.035, minDepth: 4, tries: 3, cooldownSlain: 24, cooldownEscaped: 30, hitsToKill: 55, hpPerLevel: 25, damageShare: 0.27, speed: 1.55, attackGap: .12, staggerResistance: .85, rewardMarks: 150, rewardPerLevel: 15 };
 
 export function ensureQuestingBeast(s) {
   const q = s.questingBeast && typeof s.questingBeast === "object" ? s.questingBeast : {};
@@ -36,7 +38,7 @@ export function questingBeastTriesLeft(save) { return QUESTING_BEAST.tries - (sa
 export function tuneQuestingBeast(c, save, stats = {}) {
   const level = Math.max(1, Number(save.level) || 1), weapon = save.equipment?.[save.activeWeaponSlot], perHit = Math.max(6, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0));
   const guard = Math.max(0, Math.min(.75, Number(stats.damageReduction) || 0)), hp = Math.round(perHit * QUESTING_BEAST.hitsToKill + QUESTING_BEAST.hpPerLevel * level);
-  Object.assign(c, { questingBeast: true, boss: true, hp, maxHp: hp, damage: Math.max(4, Math.round((Number(save.maxHp) || 60) * QUESTING_BEAST.damageShare / (1 - guard))), staggerResistance: .7 });
+  Object.assign(c, { questingBeast: true, boss: true, hp, maxHp: hp, damage: Math.max(4, Math.round((Number(save.maxHp) || 60) * QUESTING_BEAST.damageShare / (1 - guard))), staggerResistance: QUESTING_BEAST.staggerResistance, speedMultiplier: QUESTING_BEAST.speed, attackGap: QUESTING_BEAST.attackGap, evasive: true });
   return c;
 }
 
