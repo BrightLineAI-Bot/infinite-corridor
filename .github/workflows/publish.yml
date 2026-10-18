@@ -1,0 +1,152 @@
+name: Publish
+
+# Sends one previewed candidate live. Never rebuilds: it downloads the artifact preview.yml
+# froze for that main commit, refuses unless gh-pages already serves its preview, copies the
+# release to the gh-pages root (keeping previews/), and waits until Pages serves it.
+# Run only after Tim says "publish" in the session (see AGENTS.md).
+on:
+  workflow_dispatch:
+    inputs:
+      candidate:
+        description: Preview id (r181-0123456789ab) or main commit SHA; empty means the latest preview
+        type: string
+        default: ""
+      dry_run:
+        description: Verify and stage only; push nothing
+        type: boolean
+        default: true
+
+run-name: ${{ format('Publish {0}{1}', inputs.candidate || 'latest preview', format('{0}', inputs.dry_run) == 'false' && '' || ' (dry run)') }}
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      id: ${{ steps.resolve.outputs.id }}
+      commit: ${{ steps.resolve.outputs.commit }}
+      run_id: ${{ steps.resolve.outputs.run_id }}
+      artifact: ${{ steps.resolve.outputs.artifact }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Resolve candidate
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE: ${{ inputs.candidate }}
+        run: node scripts/pages-release.mjs resolve --repo "$GITHUB_REPOSITORY"
+      - name: Require the commit on main
+        env:
+          COMMIT: ${{ steps.resolve.outputs.commit }}
+        run: git merge-base --is-ancestor "$COMMIT" HEAD
+      - name: Download the stored candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.resolve.outputs.run_id }}
+          ARTIFACT: ${{ steps.resolve.outputs.artifact }}
+        run: gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$ARTIFACT" --dir "$RUNNER_TEMP/candidate"
+      - name: Verify candidate bytes
+        env:
+          COMMIT: ${{ steps.resolve.outputs.commit }}
+        run: |
+          node scripts/pages-release.mjs verify --candidate "$RUNNER_TEMP/candidate" > "$RUNNER_TEMP/verify.json"
+          cat "$RUNNER_TEMP/verify.json"
+          test "$(node -p 'require(process.argv[1]).commit' "$RUNNER_TEMP/verify.json")" = "$COMMIT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: gh-pages
+          path: site
+          persist-credentials: false
+      - name: Stage release (not pushed)
+        run: node scripts/pages-release.mjs release --site site --candidate "$RUNNER_TEMP/candidate" | tee "$RUNNER_TEMP/stage.json"
+      - name: Summary
+        env:
+          ID: ${{ steps.resolve.outputs.id }}
+          COMMIT: ${{ steps.resolve.outputs.commit }}
+        run: |
+          live=$(node -p 'const s=require(process.argv[1]);s.previous?`${s.previous.proposalId} (commit ${s.previous.candidateCommit})`:"none"' "$RUNNER_TEMP/stage.json")
+          {
+            echo "### Candidate \`$ID\` verified"
+            echo "Commit \`$COMMIT\` is on main, its preview is on gh-pages, and the stored artifact matches it byte for byte."
+            echo
+            echo "Live now: $live"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: verify
+    if: format('{0}', inputs.dry_run) == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: read
+      pages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: tool
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Download the stored candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ needs.verify.outputs.run_id }}
+          ARTIFACT: ${{ needs.verify.outputs.artifact }}
+        run: gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$ARTIFACT" --dir "$RUNNER_TEMP/candidate"
+      - name: Verify candidate bytes
+        env:
+          COMMIT: ${{ needs.verify.outputs.commit }}
+        run: |
+          node tool/scripts/pages-release.mjs verify --candidate "$RUNNER_TEMP/candidate" > "$RUNNER_TEMP/verify.json"
+          test "$(node -p 'require(process.argv[1]).commit' "$RUNNER_TEMP/verify.json")" = "$COMMIT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: gh-pages
+          path: site
+      - name: Stage release
+        run: node tool/scripts/pages-release.mjs release --site site --candidate "$RUNNER_TEMP/candidate"
+      - name: Push gh-pages
+        working-directory: site
+        env:
+          ID: ${{ needs.verify.outputs.id }}
+        run: |
+          git add --all
+          if git diff --cached --quiet; then echo "$ID is already live"; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "Promote $ID"
+          git push origin HEAD:refs/heads/gh-pages
+      - name: Wait for the live site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node tool/scripts/pages-release.mjs wait --url "https://brightlineai-bot.github.io/infinite-corridor/release-identity.json" --expect "$RUNNER_TEMP/candidate/release/release-identity.json"
+          node tool/scripts/pages-release.mjs wait --url "https://brightlineai-bot.github.io/infinite-corridor/index.html" --expect "$RUNNER_TEMP/candidate/release/index.html" --timeout-minutes 5
+      - name: Summary
+        env:
+          ID: ${{ needs.verify.outputs.id }}
+          COMMIT: ${{ needs.verify.outputs.commit }}
+        run: |
+          {
+            echo "### Live: \`$ID\`"
+            echo "https://brightlineai-bot.github.io/infinite-corridor/ serves release-identity.json and index.html for commit \`$COMMIT\`."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,8 +1,10 @@
 # Agent context — current state
 
-For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-10-14.
+For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-10-18.
 
 ## Where things stand
+
+Publishing moved to GitHub Actions on 2026-10-18 (see Tim's standing decisions). The live site was last published by the retired PC tool: release 171, candidate `icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa` (commit `ef56426`); read `gh-pages:release-identity.json` for the current one.
 
 Release 101 is live; release 102 (Tidemantle surface swimming) is merged and in preview; release 103 (Waterbodies: seas, isles, lakes, swamps and blight mires, landscape version 2; W1 of `docs/water-world-design.md`) follows it; release 104 (the Skiff: docks, Shipwright, sailing, hull; `src/boats.ts`, landscape version 3; W2) follows that; release 105 (surface sea creatures, `src/sea-creatures.ts`; W3) follows; release 106 (leviathans: Greywhale, Tyrant Mosasaur, three krakens; W4) follows; release 107 (diving: Bathysal Lens, dive rig, dive buoys, the Sunken Reach with breath and air pockets; `src/diving.ts`; W5) follows; release 108 (underwater grottoes: four themes, currents, grotto beasts, the Elder Wyrm; dive generator 2 in `src/grottoes.ts`; W6) completes the water plan. Release 101: (lethal falls, drowning, ramps, Jump in the action diamond, visible Leech). Release 102 (Tidemantle surface swimming, `src/water-traversal.ts`) is in review. Save schema is 14; every later system is additive state normalised in `freshSave`/`migrateSave`. Test floor: 443 passing.
 
@@ -27,7 +29,7 @@ Release 101 is live; release 102 (Tidemantle surface swimming) is merged and in 
 - Death (2026-10-16): only raw materials gathered in the world for building or survival are lost on death — wood today (`loseWood`), and stone or anything similar added later must follow the same rule. Spheres, cinder iron, lumen dust, glyphs, equipment, marks and XP are never lost.
 - Release numbers (updated 2026-10-16, after release 149): two cloud sessions build in parallel. The towns/reciters/dungeons session takes even release numbers. The diagnostics/remediation session takes odd ones (the water/boats session, which held odd numbers, finished at release 124). If main has passed your number, jump to your next number of your own parity; never take the other parity. Before each merge, fetch main, merge it in, re-bump if needed, and message the other session the number you are taking.
 - Echoes add moves; they never replace dodge or jump. The 5 stat points stay.
-- Publishing: cloud sessions merge their own PRs; Tim's PC previews each merge and posts one Approve/Deny release card in Discord, and his tap publishes it. A cloud session answers "push" by confirming the PR is merged and pointing Tim to that card. Cloud sessions never publish.
+- Publishing (2026-10-18; replaces the PC watcher and Discord card): CI, previews and production publishing run on GitHub Actions. Every merge to main is previewed automatically at `previews/r<N>-<commit12>/`. Production publishes only after a Fable review of everything since the live release and Tim saying "publish" in the session; the session then runs the Publish workflow. No external approval gate. The procedure is in `AGENTS.md` (Publishing) and `docs/github-actions-release.md`.
 
 ## Open ideas and known gaps
 

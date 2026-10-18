@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - run: npm test
+      - run: npm run build
+
+  # Freezes the candidate exactly as preview.yml does and stages it as a preview and as a
+  # release against the current gh-pages, without pushing anything.
+  preview-rehearsal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - run: npm run build
+      - name: Freeze candidate
+        run: node scripts/pages-release.mjs freeze --out "$RUNNER_TEMP/candidate" --commit "$(git rev-parse HEAD)" --tree "$(git rev-parse 'HEAD^{tree}')"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: gh-pages
+          path: site
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Stage preview and release (not pushed)
+        run: |
+          node scripts/pages-release.mjs preview --site site --candidate "$RUNNER_TEMP/candidate"
+          node scripts/pages-release.mjs release --site site --candidate "$RUNNER_TEMP/candidate"

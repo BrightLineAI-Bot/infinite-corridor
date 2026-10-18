@@ -1,0 +1,155 @@
+name: Preview
+
+# Every push to main is tested, frozen once into a candidate artifact, and published to
+# gh-pages/previews/<id>/. publish.yml later sends exactly that stored artifact live.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and stage only; push nothing to gh-pages
+        type: boolean
+        default: true
+
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('Preview (dry run {0})', inputs.dry_run) || github.event.head_commit.message }}
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      id: ${{ steps.freeze.outputs.id }}
+      artifact: ${{ steps.name.outputs.artifact }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - run: npm test
+      - run: npm run build
+      - name: Freeze candidate
+        id: freeze
+        run: node scripts/pages-release.mjs freeze --out "$RUNNER_TEMP/candidate" --commit "$(git rev-parse HEAD)" --tree "$(git rev-parse 'HEAD^{tree}')"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: gh-pages
+          path: site
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Rehearse preview and release staging
+        run: |
+          node scripts/pages-release.mjs preview --site site --candidate "$RUNNER_TEMP/candidate"
+          node scripts/pages-release.mjs release --site site --candidate "$RUNNER_TEMP/candidate"
+      - name: Name artifact
+        id: name
+        env:
+          ID: ${{ steps.freeze.outputs.id }}
+          DRY: ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.dry_run) != 'false' }}
+        run: |
+          if [ "$DRY" = true ]; then echo "artifact=dryrun-$ID-$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"; else echo "artifact=candidate-$ID" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.name.outputs.artifact }}
+          path: ${{ runner.temp }}/candidate
+          if-no-files-found: error
+          retention-days: ${{ startsWith(steps.name.outputs.artifact, 'dryrun-') && 3 || 90 }}
+      - name: Summary
+        env:
+          ID: ${{ steps.freeze.outputs.id }}
+          ARTIFACT: ${{ steps.name.outputs.artifact }}
+        run: |
+          {
+            echo "### Candidate \`$ID\`"
+            echo "Commit \`$GITHUB_SHA\`, artifact \`$ARTIFACT\`. Preview and release staging rehearsed against gh-pages."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' || format('{0}', inputs.dry_run) == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pages: write
+    outputs:
+      url: ${{ steps.stage.outputs.url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: tool
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ needs.build.outputs.artifact }}
+          path: ${{ runner.temp }}/candidate
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: gh-pages
+          path: site
+          fetch-depth: 0
+      - name: Stage preview
+        id: stage
+        run: node tool/scripts/pages-release.mjs preview --site site --candidate "$RUNNER_TEMP/candidate"
+      - name: Push gh-pages
+        working-directory: site
+        env:
+          ID: ${{ steps.stage.outputs.id }}
+        run: |
+          git add --all
+          if git diff --cached --quiet; then echo "previews/$ID is already published"; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "Preview $ID"
+          git push origin HEAD:refs/heads/gh-pages
+      - name: Wait for Pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          URL: ${{ steps.stage.outputs.url }}
+        run: node tool/scripts/pages-release.mjs wait --url "${URL}release-identity.json" --expect "$RUNNER_TEMP/candidate/preview-site/release-identity.json"
+      - name: Summary
+        env:
+          ID: ${{ steps.stage.outputs.id }}
+          URL: ${{ steps.stage.outputs.url }}
+        run: |
+          {
+            echo "### Preview ready"
+            echo "$URL"
+            echo
+            echo "Candidate \`$ID\` from commit \`$GITHUB_SHA\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  comment:
+    needs: [build, deploy]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Comment on the merged PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ID: ${{ needs.build.outputs.id }}
+          URL: ${{ needs.deploy.outputs.url }}
+        run: |
+          prs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[] | select(.merged_at != null and .base.ref == "main") | .number')
+          if [ -z "$prs" ]; then echo "No merged PR for $GITHUB_SHA"; exit 0; fi
+          body=$(printf 'Preview ready: %s\n\nCandidate `%s` (commit %s). It opens the Proving Ground build of this commit.\n\nTo send it live, Tim says "publish" in a cloud session: a Fable review of everything since the live release runs first, then the Publish workflow ships exactly this artifact.' "$URL" "$ID" "$GITHUB_SHA")
+          for pr in $prs; do gh pr comment "$pr" --repo "$GITHUB_REPOSITORY" --body "$body"; done

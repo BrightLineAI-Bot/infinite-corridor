@@ -4,6 +4,8 @@ An original, offline-first, single-player mobile adventure game for Android. The
 
 This repository contains the playable **Prototype 1** vertical slice.
 
+**Superseded 2026-10-18:** previews and publishing now run on GitHub Actions (`.github/workflows/preview.yml` and `publish.yml`); Tim's PC, Hermes and the Discord cards are retired. The current rule is in `AGENTS.md` (Publishing) and `docs/github-actions-release.md`. The text below is historical.
+
 Under the operator decision of 2026-10-11, Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote); each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not instructions for new work. See [candidate review and promotion](docs/proposal-publication-workflow.md); previews carry their own code and assets, and production promotion never rebuilds an approved payload.
 
 ## Run locally

@@ -1,5 +1,7 @@
 # Infinite Corridor candidate review and owner promotion
 
+**Superseded 2026-10-18:** previews and publishing now run on GitHub Actions (`.github/workflows/preview.yml` and `publish.yml`); Tim's PC, Hermes and the Discord cards are retired. The current rule is in `AGENTS.md` (Publishing) and `docs/github-actions-release.md`. The text below is historical.
+
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate requirement are historical, not authority for new work. The publication tool still reads the historical project UUID for identity, not guarded-change authorization. Existing schema-1 records remain readable and ineligible; create and validate a fresh schema-2 candidate.
 
 ## Phone workflow
