@@ -56,8 +56,14 @@ Tim met the Questing Beast for the first time (2026-10-18). He found it too weak
   - Cooldown 1.1 s (.8 s when enraged). It may spring out of an attack's recovery, never out of the attack itself.
 - `fluid` eases its heading and pace toward the brain's wish (rate 10/s), so it moves like a panther rather than snapping between directions.
 
-**CODE:** `monster-render.ts`:
-- A more detailed model: banded hide, two rows of back spines, membrane wings with spars, a spiked tail club, clawed feet, a mane, a toothed jaw that glows when open, two-tone horns and burning eyes.
+**CODE:** `monster-render.ts`: Tim found the first model fat and goofy. `questingBeast` is now its own detailed recipe, drawn in body units, instead of the pack's ellipses:
+- a lean, muscular body: a deep chest and heavy shoulders, a tucked waist, haunches, a light edge along the top of the back, ribs, and shoulder and haunch masses;
+- jointed legs drawn as round-capped strokes, with soft muscle masses on the thighs and upper arms, digitigrade hind feet, claws, and a stride while it moves;
+- a long neck and an angular wedge skull with a brow ridge, a slit eye, teeth and a jaw that glows when open;
+- two thick, ridged horns swept back over the skull;
+- translucent folded bat wings with arm and finger bones and a scalloped edge, which fan out during windups;
+- a ridge of 15 back spines and a long tapering tail ending in a bone blade;
+- burning veins along the legs and flanks when enraged.
 - A furnace core in the chest flares during windups, spirals and barrages.
 - Orbs draw as glowing red spheres with trails; the energy wave as a red-white ring.
 
