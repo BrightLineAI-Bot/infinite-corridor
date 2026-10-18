@@ -911,9 +911,15 @@ function resize() {
     canvas.style.height = h + "px";
     ctx.setTransform(d, 0, 0, d, 0, 0);
     ctx.imageSmoothingEnabled = false;
-    // The canvas area label sits just above the bottom-left controls, wherever the layout puts them (phone, Fold outer/inner).
+    // The canvas area label sits just beneath Map and Pack (release 183, Tim), aligned with them, and stops short of the
+    // first control to its right (the action cluster, or Potion where the bottom row holds it).
     const controls = document.querySelector(".left-controls")?.getBoundingClientRect();
-    game.labelInset = controls?.height ? Math.max(40, Math.round(innerHeight - controls.top + 30)) : 122;
+    if (controls?.height) {
+      const labelTop = controls.bottom + 5, right = [...document.querySelectorAll(".action-diamond, .quick-row button")].map((el) => el.getBoundingClientRect()).filter((r) => r.width && r.left > controls.left && r.bottom > labelTop && r.top < labelTop + 24).reduce((m, r) => Math.min(m, r.left), innerWidth);
+      game.labelInset = Math.round(innerHeight - labelTop);
+      game.labelX = Math.round(controls.left);
+      game.labelMaxWidth = Math.max(90, Math.round(right - controls.left - 8));
+    } else game.labelInset = 122;
     input.reset();
   });
 }
@@ -2167,10 +2173,13 @@ function openInteraction(id, confirmAttack = false) {
   else if (o.kind === "relayTerminal")
     description.textContent =
       "Restore: reopen the line and recover two draughts. Sever: silence the line and recover three lumen dust. This decision is permanent; either resolves the Missing Crossing.";
-  else
+  // Only crossings get the enter/leave text; travellers, villagers and other later kinds show their role (Tim, release 183).
+  else if (o.kind === "dungeon" || validActions(o, save).some((a) => a === "enter" || a === "bypass"))
     description.textContent =
       "Enter now, or record that you are leaving this crossing unexplored. You may return later; defeated enemies and collected supplies stay changed.";
-  body.append(title, description);
+  else description.textContent = o.role || "";
+  body.append(title);
+  if (description.textContent) body.append(description);
   if (confirmAttack) {
     const warning = document.createElement("p");
     warning.textContent =

@@ -26,7 +26,7 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
-## The action cross: equal buttons, spells beneath Act and Dodge (release 183)
+## The action cross; location label under Map; crossing text only at crossings (release 183)
 
 Tim, 2026-10-18, after playing release 181:
 - Jump was too small, and Spell A at the cluster's top-right covered too much of the playfield.
@@ -44,6 +44,16 @@ Tim, 2026-10-18, after playing release 181:
   - Spell A's right edge equals Act's; Spell B's left edge equals Dodge's.
 - `index.html` and `proving-ground/index.html` move Spell A back into the cluster markup; the bottom row holds Potion alone.
 - Portrait phones (344–412 px wide) have no room for Potion between Pack and the cluster. In portrait, Potion sits one row up, right of the compass, and the cluster sits 6 px from the right edge.
+
+**CODE:** Location label. Tim asked for the "SECTION x,y" label beneath Map and Pack.
+- `.left-controls` (compass, Map, Pack) rises 30 px. In portrait, Potion rises with it.
+- `main.ts` measures `.left-controls` on resize and sets three values:
+  - `game.labelInset` places the label 5 px below Pack.
+  - `game.labelX` aligns the label with the controls.
+  - `game.labelMaxWidth` stops the label 8 px before the first cluster or bottom-row button in its band.
+- `renderer.ts` draws the box at those values and passes the width to `fillText` as its maximum, so a long place name compresses instead of running under Spell A on a narrow portrait phone.
+
+**CODE:** Interaction dialog text. Tim reported that talking to Pim, a traveller, showed "Enter now, or record that you are leaving this crossing unexplored…". That text was `openInteraction`'s fallback for every kind without its own branch. It now appears only for `dungeon` objects and objects whose valid actions include `enter` or `bypass`. Any other kind shows its `role` (e.g. "Wandering reciter"), or no description at all.
 
 **BOUNDARY:** Layout only. Dodge is no longer larger than the others: Tim asked for equal buttons. The gap handler still sends a press in a gap to the nearest button within 18 px, with Dodge winning ties, which covers release 179's off-centre thumb. The rendered buttons were measured with Playwright, as stadium shapes, at 1280×800, 915×412, 780×360, 412×915, 360×780 and 344×780: no two are closer than 5 px and none is off-screen. Not tested on a device.
 

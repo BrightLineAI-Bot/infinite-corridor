@@ -834,10 +834,12 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 @media (orientation: landscape) and (max-height: 540px) {
   .quick-row { right: calc(var(--button) * 3.56 + 18px); }
 }
+/* Map and Pack (with the compass above them) rise to make room for the location label beneath them (Tim). */
+.left-controls { bottom: 30px; }
 /* Portrait phones have no room for Potion between Pack and the cluster, so it sits one row up, right of the compass;
    the cluster hugs the right edge. */
 @media (orientation: portrait) {
   .action-diamond { right: 6px; }
-  .quick-row { left: 68px; right: auto; bottom: 44px; justify-content: flex-start; }
+  .quick-row { left: 68px; right: auto; bottom: 74px; justify-content: flex-start; }
   .quick-row button { min-width: 46px; padding-inline: 2px; }
 }
