@@ -2518,6 +2518,7 @@ export class Game {
     return {
       player: p, map, width, height, dt, now, enemies: this.enemies, sanctuary,
       playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - last.y) / dt } : { x: 0, y: 0 },
+      playerShots: this.projectiles, playerSwinging: now < (p.meleeUntil || 0), // release 187: the Questing Beast reads these to dodge
       playerFacing: ({ left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, up: { x: 0, y: -1 }, down: { x: 0, y: 1 } })[p.facing] || { x: 0, y: 1 },
       pull(source, step, radius) { const ddx = source.x - p.x, ddy = source.y - p.y, dd = Math.hypot(ddx, ddy); if (!dd || dd > radius || now < (p.dodgeUntil || 0)) return false; moveAxis(p, ddx / dd * Math.min(step, Math.max(0, dd - 1)), ddy / dd * Math.min(step, Math.max(0, dd - 1)), map, width, true); return true; },
       open: (x, y) => footprintOpen(map, width, x, y),

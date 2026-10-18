@@ -38,7 +38,7 @@ export function questingBeastTriesLeft(save) { return QUESTING_BEAST.tries - (sa
 export function tuneQuestingBeast(c, save, stats = {}) {
   const level = Math.max(1, Number(save.level) || 1), weapon = save.equipment?.[save.activeWeaponSlot], perHit = Math.max(6, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0));
   const guard = Math.max(0, Math.min(.75, Number(stats.damageReduction) || 0)), hp = Math.round(perHit * QUESTING_BEAST.hitsToKill + QUESTING_BEAST.hpPerLevel * level);
-  Object.assign(c, { questingBeast: true, boss: true, hp, maxHp: hp, damage: Math.max(4, Math.round((Number(save.maxHp) || 60) * QUESTING_BEAST.damageShare / (1 - guard))), staggerResistance: QUESTING_BEAST.staggerResistance, speedMultiplier: QUESTING_BEAST.speed, attackGap: QUESTING_BEAST.attackGap });
+  Object.assign(c, { questingBeast: true, boss: true, hp, maxHp: hp, damage: Math.max(4, Math.round((Number(save.maxHp) || 60) * QUESTING_BEAST.damageShare / (1 - guard))), staggerResistance: QUESTING_BEAST.staggerResistance, speedMultiplier: QUESTING_BEAST.speed, attackGap: QUESTING_BEAST.attackGap, evasive: true });
   return c;
 }
 

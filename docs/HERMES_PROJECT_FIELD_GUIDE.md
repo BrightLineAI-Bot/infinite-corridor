@@ -45,6 +45,17 @@ Tim met the Questing Beast for the first time (2026-10-18). He found it too weak
 - New effect kind `orb` (table `QB_ORB`): it moves at 5.2 tiles/s for 1.9 s, stops at the first blocking tile and hurts once. Orbs deal .55 of a blow (about 19% of maximum health).
 - `endAttack` uses `e.attackGap` when set.
 
+**CODE:** Tim's second pass (same release): combos, pounces, dodging and panther movement.
+- Two more attacks:
+  - `qbFlurry`: four lunging claw strikes .2 s apart, then a hop back out of reach;
+  - `qbPounce`: a crouch, a .25 s rise while tracking the Wayfarer (untargetable, `hopLift` up to 4), a dive at 15 tiles/s, and a slash on landing.
+- `QB_MOVES` holds these numbers.
+- Evasion (`evade`, for creatures with `evasive`, which `tuneQuestingBeast` sets):
+  - Triggers: one of the Wayfarer's shots (`w.playerShots`, the game's projectiles) closing within 3.2 tiles on a line through it, or a swing (`w.playerSwinging`) within 2.6 tiles.
+  - It springs aside at 11 tiles/s for .22 s, untargetable.
+  - Cooldown 1.1 s (.8 s when enraged). It may spring out of an attack's recovery, never out of the attack itself.
+- `fluid` eases its heading and pace toward the brain's wish (rate 10/s), so it moves like a panther rather than snapping between directions.
+
 **CODE:** `monster-render.ts`:
 - A more detailed model: banded hide, two rows of back spines, membrane wings with spars, a spiked tail club, clawed feet, a mane, a toothed jaw that glows when open, two-tone horns and burning eyes.
 - A furnace core in the chest flares during windups, spirals and barrages.
@@ -52,7 +63,7 @@ Tim met the Questing Beast for the first time (2026-10-18). He found it too weak
 
 **BOUNDARY:** No save or generation change; spawning, tries, cooldowns and rewards are as before.
 - Live effects stay within the pack cap of 48: a 30-second simulation peaked at 28.
-- In that simulation the beast started an attack every ~1.7 s, using all four.
+- In that simulation (with the second pass) the beast started 20 attacks in 30 s, using all six. Firing a shot at it every .6 s, it dodged 9 times and took 28 of 48 shots.
 - The game's 0.7 s of invulnerability after a hit limits orb damage to about one hit per 0.7 s; an orb that arrives inside that window is spent.
 - Not tested on a device; the numbers are a first pass for Tim to judge.
 
@@ -94,6 +105,7 @@ Tim's probe on release 181 (Firefox, Android, 2026-10-18): the overworld ran at 
 **CODE:** Atlas. Tim's Atlas framed a section gold although it held nothing to do, before and after he left it.
 - `openChallengeSections` counted Major Danger sites (Colossus Traces, `bossCue`), which nothing ever resolves.
 - `CHALLENGE_SITES` now holds only crossings and arenas. A trace still shows as a danger sign; the compass no longer points at it.
+- Correction (release 187): Colossus Traces exist only in the origin section (the legacy `world-boss` cue, whose "challenge" action has no handler). Tim's gold sections (4,7 to 6,7) therefore hold a crossing or arena the Atlas recorded from the live map; the cause is not yet known and needs his diagnostics.
 
 **BOUNDARY:** Water drawing and the boot script change no game state. The bog rules change hazard data only; the affix repair is additive at schema 14; the Atlas change affects marking only. No generation changes. The water's look is unchanged except at those overlaps. The prompt never reloads on its own. Not measured on a device yet.
 
