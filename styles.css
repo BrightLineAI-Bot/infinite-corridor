@@ -787,7 +787,6 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 .action-diamond button.spell { --slot: #8b7857; border-color: var(--slot); color: var(--slot); padding-bottom: 11px; }
 .action-diamond button.spell .slot-sym { display: block; font-size: 17px; line-height: 1; text-transform: none; }
 .action-diamond button.spell .slot-letter { position: absolute; top: 7px; left: 50%; transform: translateX(-50%); font-size: 8px; color: #a39a88; }
-.action-diamond .spell-a { right: 0; top: 0; }
 .action-diamond .spell-b { right: 0; bottom: 0; }
 .action-diamond { right: 18px; bottom: calc(env(safe-area-inset-bottom) + 2px); }
 .quick-row { right: 192px; }
@@ -810,6 +809,30 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 .action-diamond .dodge { right: calc(var(--button) * 0.12); top: calc(var(--button) * 1.0); width: calc(var(--button) * 1.1); height: calc(var(--button) * 1.1); }
 .action-diamond .jump { width: calc(var(--button) * 0.7); height: calc(var(--button) * 0.7); font-size: 8px; padding-bottom: 0; }
 .action-diamond button.spell { width: calc(var(--button) * 1.16); height: calc(var(--button) * 0.72); border-radius: 999px; padding: 0 4px 9px; }
-.action-diamond .spell-a { right: calc(var(--button) * -0.16); top: calc(var(--button) * 0.1); }
 .action-diamond .spell-b { right: calc(var(--button) * -0.16); bottom: calc(var(--button) * 0.1); top: auto; }
 .action-diamond button.spell .slot-letter { top: 2px; left: 12px; transform: none; }
+
+/* Release 183 (Tim, 2026-10-18): Jump was too small after 179, and Spell A at the cluster's top-right covered too much
+   of the playfield. The whole cluster grows a little (every button follows --button, the cluster is three buttons
+   across), Jump is back to its release-101 size, and Spell A returns to the bottom row, just right of Potion. Where Jump
+   and Dodge meet, Dodge is on top, so 179's reach for Dodge still lands on Dodge. Spell B stays in the cluster. */
+:root { --button: 58px; }
+@media (orientation: portrait) { :root { --button: 54px; } }
+@media (orientation: landscape) and (max-height: 540px) { :root { --button: 50px; } }
+.action-diamond { width: calc(var(--button) * 3); height: calc(var(--button) * 3); }
+.action-diamond .tool, .action-diamond .attack { left: var(--button); }
+.action-diamond .act { top: var(--button); }
+.action-diamond .jump { left: calc(50% - var(--button) * 0.07); width: calc(var(--button) * 0.86); height: calc(var(--button) * 0.86); font-size: 9px; }
+.action-diamond .dodge { z-index: 3; }
+.quick-row { right: calc(var(--button) * 3 + 30px); }
+.quick-row button.spell-a { margin-left: 1px; }
+@media (orientation: landscape) and (max-height: 540px) {
+  .quick-row { right: calc(var(--button) * 3 + 20px); }
+}
+/* Portrait phones are too narrow for Potion and Spell A between Pack and the cluster, so the pair sits one row up,
+   right of the compass, still side by side. */
+@media (orientation: portrait) {
+  .quick-row { left: 68px; right: auto; bottom: 44px; justify-content: flex-start; gap: 3px; }
+  .quick-row button { min-width: 46px; padding-inline: 2px; }
+  .quick-row button.spell-a { margin-left: 0; }
+}

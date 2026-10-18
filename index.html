@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=181" />
+    <link rel="stylesheet" href="./styles.css?v=183" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -66,7 +66,8 @@
           </div>
         </div>
         <div class="quick-row buttons">
-          <button class="quick potion" data-action="potion">Potion</button>
+          <button class="quick potion" data-action="potion">Potion</button
+          ><button class="quick spell spell-a" data-action="spell" data-slot="A">Spell A</button>
         </div>
         <div class="action-diamond buttons">
           <button class="core tool" data-action="tool">Tool</button
@@ -74,7 +75,6 @@
           ><button class="core dodge" data-action="dodge">Dodge</button
           ><button class="core attack" data-action="attack">Attack</button
           ><button class="core jump" data-action="jump">Jump</button
-          ><button class="core spell spell-a" data-action="spell" data-slot="A">Spell A</button
           ><button class="core spell spell-b" data-action="spell2" data-slot="B">Spell B</button>
         </div>
       </section>
@@ -148,7 +148,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "181";
+      const release = "183";
       const params = new URLSearchParams(location.search);
       const entry = params.get("dev") === "proving-ground"
         ? "./src/proving-ground.js"

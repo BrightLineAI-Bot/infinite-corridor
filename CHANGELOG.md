@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 183 — the action buttons are a little bigger, and Jump is back to its earlier size (it was too small in 179). Spell A returns to the bottom row, just right of Potion, so it no longer covers the playfield. In portrait, Potion and Spell A sit one row up beside the compass, because the bottom row is too narrow there. Dodge and Spell B are where they were.
 - Release 181 — a press that lands in a gap between action buttons now lets go when you lift your finger. In 179 it could stay "held", which could, for example, wrongly start holding Act to leave the skiff.
 - Release 179 — Dodge catches your thumb. Your probe showed Dodge presses landing just off the button's lower-left edge, where they pressed nothing. Dodge is now a little bigger and sits a little lower and further left, a tap in a gap between action buttons goes to the nearest one (Dodge first), and Jump is a bit smaller. The spell buttons are ovals again.
 - Release 177 — Spell A now sits beside Tool, above Dodge, and Spell B below Dodge in the bottom-right corner; the action buttons sit lower and slightly further left, and Potion takes the spells' old place. The Options → System page wraps its text to the screen instead of scrolling sideways.

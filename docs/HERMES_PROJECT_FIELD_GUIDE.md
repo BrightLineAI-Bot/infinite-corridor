@@ -26,6 +26,19 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Bigger cluster and Jump; Spell A back beside Potion (release 183)
+
+Tim, 2026-10-18, after playing release 181: Jump was too small, and Spell A at the cluster's top-right covered too much of the playfield. Dodge works well and everything else stays.
+
+**CODE:** `styles.css` (release 183 block at the end):
+- `--button` grows: 54→58 px, 50→54 px in portrait, 46→50 px on short landscape screens. The cluster is now `3 × --button` square, with Tool, Act and Attack placed in `--button` units, so every button grows together.
+- Jump returns to `0.86 × --button`, release 101's size: 43 px on a short landscape screen instead of 32, and 46 px in portrait instead of 35. It sits `0.07 × --button` left of centre.
+- Dodge has `z-index: 3`, so the few pixels where Dodge and Jump meet go to Dodge. Release 179's thumb reach still lands on Dodge.
+- `index.html` and `proving-ground/index.html` move Spell A (`data-action="spell"`, class `spell-a`) from the cluster to the bottom row, right after Potion. The release-113 `.quick-row button.spell` styling applies again. Spell B stays in the cluster's bottom-right.
+- Portrait phones (344–412 px wide) have no room for both buttons between Pack and the cluster. In portrait, Potion and Spell A sit one row up, right of the compass, side by side. At 344 px wide, Spell A ends 7 px before Act.
+
+**BOUNDARY:** Layout only. Input routing is unchanged: the gap handler measures the cluster's buttons, and the slot refresh finds Spell A by `data-action`. Checked with Playwright screenshots at 915×412, 780×360, 412×915, 360×780 and 344×780; not tested on a device.
+
 ## Gap presses release their hold (release 181)
 
 The towns session flagged this after release 179 (2026-10-18). Holding Act to leave the skiff reads `input.held("interact")`, which `heldButtons` tracks.
