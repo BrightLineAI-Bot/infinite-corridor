@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       candidate:
-        description: Preview id (r181-0123456789ab) or main commit SHA; empty means the latest preview
+        description: Preview id (r181-0123456789ab) or main commit SHA; required when dry_run is false (a dry run defaults to the latest preview)
         type: string
         default: ""
       dry_run:
@@ -45,6 +45,12 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
+      - name: Require a named candidate for a real publish
+        env:
+          CANDIDATE: ${{ inputs.candidate }}
+          DRY: ${{ format('{0}', inputs.dry_run) }}
+        run: |
+          if [ "$DRY" = false ] && [ -z "$CANDIDATE" ]; then echo "::error::A real publish must name the reviewed candidate (preview id or commit)."; exit 1; fi
       - name: Resolve candidate
         id: resolve
         env:
@@ -68,6 +74,7 @@ jobs:
           node scripts/pages-release.mjs verify --candidate "$RUNNER_TEMP/candidate" > "$RUNNER_TEMP/verify.json"
           cat "$RUNNER_TEMP/verify.json"
           test "$(node -p 'require(process.argv[1]).commit' "$RUNNER_TEMP/verify.json")" = "$COMMIT"
+          test "$(node -p 'require(process.argv[1]).tree' "$RUNNER_TEMP/candidate/candidate.json")" = "$(git rev-parse "$COMMIT^{tree}")"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: gh-pages

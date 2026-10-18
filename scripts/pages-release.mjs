@@ -22,6 +22,9 @@ export const KEEP_PREVIEWS = 10;
 export const ID_RE = /^r\d+-[0-9a-f]{12}$/;
 const SHA_RE = /^[0-9a-f]{40}$/;
 const PREVIEW_DIR_RE = /^[\w-]+$/;
+// Hand-added Pages settings files survive a publish; they are not part of the release.
+const KEEP_ROOT = [".git", "previews", "CNAME", ".nojekyll"];
+const siteFiles = files => Object.fromEntries(Object.entries(files).filter(([path]) => !KEEP_ROOT.some(keep => path === keep || path.startsWith(`${keep}/`))));
 
 export const candidateId = (release, commit) => {
   if (!/^\d+$/.test(String(release)) || !SHA_RE.test(commit)) throw new Error("candidate id needs a release number and a full commit SHA");
@@ -120,13 +123,14 @@ export function stageRelease({ site, candidate: dir }) {
   if (!Object.keys(previewed).length) throw new Error(`candidate ${candidate.id} has no preview on gh-pages; preview it before publishing`);
   if (inventoryDigest(previewed) !== inventoryDigest(candidate.files.preview)) throw new Error(`gh-pages previews/${candidate.id}/ differs from the candidate artifact`);
   const previous = liveIdentity(site);
-  for (const entry of readdirSync(site)) if (entry !== ".git" && entry !== "previews") rmSync(inside(site, join(site, entry)), { recursive: true });
+  for (const entry of readdirSync(site)) if (!KEEP_ROOT.includes(entry)) rmSync(inside(site, join(site, entry)), { recursive: true });
   for (const entry of readdirSync(join(dir, "release"))) {
-    if (entry === "previews" || entry === ".git") throw new Error(`reserved release path: ${entry}`);
+    if (KEEP_ROOT.includes(entry)) throw new Error(`reserved release path: ${entry}`);
     cpSync(join(dir, "release", entry), inside(site, join(site, entry)), { recursive: true });
   }
   const after = inventory(site, { ignoreGit: true });
-  if (inventoryDigest(without(after, "previews/")) !== inventoryDigest(candidate.files.release)) throw new Error("staged release differs from the candidate artifact");
+  if (inventoryDigest(siteFiles(after)) !== inventoryDigest(candidate.files.release)) throw new Error("staged release differs from the candidate artifact");
+  for (const keep of ["CNAME", ".nojekyll"]) if (JSON.stringify(before[keep]) !== JSON.stringify(after[keep])) throw new Error(`release staging changed ${keep}`);
   if (inventoryDigest(within(after, "previews/")) !== inventoryDigest(within(before, "previews/"))) throw new Error("release staging changed previews/");
   return { id: candidate.id, commit: candidate.commit, release: candidate.release, previous, identity: candidate.binding, url: SITE_URL };
 }

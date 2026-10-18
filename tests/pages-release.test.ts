@@ -122,11 +122,13 @@ test('release staging requires the matching preview and keeps previews/', () => 
   writeFileSync(join(dir, 'previews', ID, 'index.html'), 'something else');
   assert.throws(() => stageRelease({ site: dir, candidate: out }), /differs from the candidate/);
   git(dir, 'checkout', '-q', '--', '.');
+  writeFileSync(join(dir, 'CNAME'), 'example.org');
   const result = stageRelease({ site: dir, candidate: out });
   assert.equal(result.previous.proposalId, 'icp_live');
   assert.deepEqual(JSON.parse(readFileSync(join(dir, 'release-identity.json'), 'utf8')), { proposalId: ID, candidateCommit: COMMIT, candidateTree: TREE });
   assert.equal(readFileSync(join(dir, 'index.html'), 'utf8'), readFileSync(join(out, 'release/index.html'), 'utf8'));
   assert.deepEqual(readdirSync(join(dir, 'previews')).sort(), ['icp_00', 'icp_01', 'icp_live', ID].sort());
+  assert.equal(readFileSync(join(dir, 'CNAME'), 'utf8'), 'example.org', 'hand-added Pages files survive a publish');
 });
 
 test('publish resolves only candidate artifacts from preview.yml runs on main', async () => {
