@@ -1,0 +1,6 @@
+# Workflows and release tooling control testing, previews and production publishing.
+/.github/ @BrightLineAI-Bot
+/scripts/ @BrightLineAI-Bot
+/src/release-artifact.mjs @BrightLineAI-Bot
+/src/owner-release-workflow.mjs @BrightLineAI-Bot
+/src/proposal-workflow.mjs @BrightLineAI-Bot
