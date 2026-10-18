@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 177 — Spell A now sits beside Tool, above Dodge, and Spell B below Dodge in the bottom-right corner; the action buttons sit lower and slightly further left, and Potion takes the spells' old place. The Options → System page wraps its text to the screen instead of scrolling sideways.
 - Release 175 — the action buttons are back in their usual layout (release 173 is undone). The Atlas now sizes itself to the screen: the map shrinks so its tools and layer buttons always fit, and the tool row wraps on narrow phones.
 - Release 173 — two-finger dodge on a portrait phone (the folded outer screen). Your second finger was landing on Jump, which sat in the middle of the action buttons. In portrait, Jump now sits in the top-right corner of the buttons and Dodge is wider, reaching into the middle. The landscape layout is unchanged.
 - Release 171 — Mire Apostle ooze pools and shelter toxic vents now give a strong poison straight away. Max HP stays the same, but you pulse green and lose about a third of your max HP over 10 seconds unless a Clearroot Ampoule ends it. The poison swamp is unchanged.
