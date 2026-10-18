@@ -787,7 +787,6 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 .action-diamond button.spell { --slot: #8b7857; border-color: var(--slot); color: var(--slot); padding-bottom: 11px; }
 .action-diamond button.spell .slot-sym { display: block; font-size: 17px; line-height: 1; text-transform: none; }
 .action-diamond button.spell .slot-letter { position: absolute; top: 7px; left: 50%; transform: translateX(-50%); font-size: 8px; color: #a39a88; }
-.action-diamond .spell-a { right: 0; top: 0; }
 .action-diamond .spell-b { right: 0; bottom: 0; }
 .action-diamond { right: 18px; bottom: calc(env(safe-area-inset-bottom) + 2px); }
 .quick-row { right: 192px; }
@@ -810,6 +809,37 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 .action-diamond .dodge { right: calc(var(--button) * 0.12); top: calc(var(--button) * 1.0); width: calc(var(--button) * 1.1); height: calc(var(--button) * 1.1); }
 .action-diamond .jump { width: calc(var(--button) * 0.7); height: calc(var(--button) * 0.7); font-size: 8px; padding-bottom: 0; }
 .action-diamond button.spell { width: calc(var(--button) * 1.16); height: calc(var(--button) * 0.72); border-radius: 999px; padding: 0 4px 9px; }
-.action-diamond .spell-a { right: calc(var(--button) * -0.16); top: calc(var(--button) * 0.1); }
 .action-diamond .spell-b { right: calc(var(--button) * -0.16); bottom: calc(var(--button) * 0.1); top: auto; }
 .action-diamond button.spell .slot-letter { top: 2px; left: 12px; transform: none; }
+
+/* Release r183-41a3bdd9b25e (Tim, 2026-10-18): Jump was too small after 179 and Spell A at the cluster's top-right covered too much of
+   the playfield. Tim's layout: the five action buttons form a cross of equal buttons (Tool, Act, Jump in the middle,
+   Dodge, Attack), with a tenth of a button and more between neighbours. Spell A sits low under Act (their right edges
+   line up), Spell B low under Dodge (their left edges line up), so the cross sits centred between them and Attack sits
+   between the two spells. Positions are in --button units: the cluster is 3.56 x 3.24 buttons. */
+:root { --button: 58px; }
+@media (orientation: portrait) { :root { --button: 50px; } }
+@media (orientation: landscape) and (max-height: 540px) { :root { --button: 50px; } }
+.action-diamond { width: calc(var(--button) * 3.56); height: calc(var(--button) * 3.24); }
+.action-diamond button.core { right: auto; bottom: auto; transform: none; width: var(--button); height: var(--button); }
+.action-diamond .tool { left: calc(var(--button) * 1.28); top: 0; }
+.action-diamond .act { left: calc(var(--button) * 0.16); top: calc(var(--button) * 1.12); }
+.action-diamond .jump { left: calc(var(--button) * 1.28); top: calc(var(--button) * 1.12); font-size: 9px; padding-bottom: 13px; }
+.action-diamond .dodge { left: calc(var(--button) * 2.4); top: calc(var(--button) * 1.12); }
+.action-diamond .attack { left: calc(var(--button) * 1.28); top: calc(var(--button) * 2.24); }
+.action-diamond button.spell { width: calc(var(--button) * 1.16); height: calc(var(--button) * 0.72); }
+.action-diamond .spell-a { left: 0; top: calc(var(--button) * 2.52); }
+.action-diamond .spell-b { left: calc(var(--button) * 2.4); top: calc(var(--button) * 2.52); }
+.quick-row { right: calc(var(--button) * 3.56 + 26px); }
+@media (orientation: landscape) and (max-height: 540px) {
+  .quick-row { right: calc(var(--button) * 3.56 + 18px); }
+}
+/* Map and Pack (with the compass above them) rise to make room for the location label beneath them (Tim). */
+.left-controls { bottom: 30px; }
+/* Portrait phones have no room for Potion between Pack and the cluster, so it sits one row up, right of the compass;
+   the cluster hugs the right edge. */
+@media (orientation: portrait) {
+  .action-diamond { right: 6px; }
+  .quick-row { left: 68px; right: auto; bottom: 74px; justify-content: flex-start; }
+  .quick-row button { min-width: 46px; padding-inline: 2px; }
+}
