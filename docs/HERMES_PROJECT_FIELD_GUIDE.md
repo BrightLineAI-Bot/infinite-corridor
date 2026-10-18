@@ -24,6 +24,21 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Spell buttons beside Dodge; System page wraps (release 177)
+
+Tim's layout (2026-10-18): the action cluster sits low, near the bottom of the screen. The spell buttons move from the quick row into the cluster's empty right-hand corners: Spell A beside Tool, above Dodge, and Spell B below Dodge in the bottom-right corner (from Tim's marked-up screenshot). The cluster shifts a little left, and Potion takes the spells' old place beside it.
+
+**CODE:**
+- `index.html` and `proving-ground/index.html`: the two spell buttons move from `.quick-row` into `.action-diamond`, after Jump. They keep the `spell` class, `data-action` and `data-slot`, and add the classes `core spell spell-b` and `core spell spell-a`. Jump stays in the centre (the release 101 test).
+- `styles.css` (appended):
+  - `.spell-a` at `right: 0; top: 0`; `.spell-b` at `right: 0; bottom: 0`. These are the empty corners of the 3x3 grid, so the cluster keeps its size on every screen.
+  - The spell symbol and slot letter are restyled for round buttons.
+  - The cluster's `right`/`bottom` are lowered and moved left (default, portrait, short landscape), and `.quick-row`'s `right` is widened so Potion sits beside the cluster.
+- At 437x608, 412x915, 895x530 and 1280x800 no action buttons overlap and none fall off screen.
+- **System page:** `#optionsPanel pre` now uses `pre-wrap` and `overflow-wrap: anywhere`, and the panel is capped at the viewport width. The browser and release lines wrap instead of widening the page past the screen.
+
+**BOUNDARY:** Layout only. In Chromium, simulated two-finger dodges (one touch steering, a second tapping Dodge four times) all dodge, and the input path is unchanged since release 158. Tim's report of Dodge failing on his phone is still open, pending his probe report.
+
 ## Release 173's button layout reverted; the Atlas fits any screen (release 175)
 
 Tim (2026-10-17): the action buttons worked fine in their long-standing layout. Stop tuning for particular Fold screens and let the game size itself to whatever screen it is on, so it runs on other phones and computers too.
