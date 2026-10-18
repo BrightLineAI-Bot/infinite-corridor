@@ -159,36 +159,59 @@ const BODY = {
   },
   // The Questing Beast (release 116): a hunched, horned, winged brute. Spines are pale when fresh, black when it is
   // enraged (below half health); a spent volley leaves its back bare for a moment.
+  // Release 187 (Tim): more detailed, and its energy shows. A furnace core in the chest flares while it winds up and
+  // spins its orbs; banded hide, a spiked tail, clawed limbs, a toothed jaw and burning eyes.
   questingBeast(ctx, q) {
-    const { k, b, u, t, p, flip, state, e } = q, enraged = e.hp <= e.maxHp * .5, step = t * (enraged ? 7 : 5), rear = state === "windup";
-    const spine = enraged ? "#16121a" : p[3], tip = enraged ? p[2] : "#c9c0b0", lift = rear ? u * .1 : 0;
-    if (enraged) glow(ctx, k, b - u * .55, u * 1.1, p[2], .16 + .06 * Math.sin(t * 9));
-    shadowAt(ctx, k, b, u * .75, u * .18);
-    // hind legs
-    for (const lx of [-.42, -.22]) { const ph = Math.sin(step + lx * 9) * u * .05; ctx.fillStyle = shade(ctx, k - flip * lx * u, b - u * .25, u * .2, p[0], p[1]); ctx.fillRect(k + flip * lx * u - u * .08, b - u * .36, u * .16, u * .34 + ph); }
-    // body
+    const { k, b, u, t, p, flip, state, e } = q, enraged = e.hp <= e.maxHp * .5, step = t * (enraged ? 8 : 6), rear = state === "windup";
+    const casting = e.pack?.attack === "qbSpiral" || e.pack?.attack === "qbBarrage", spine = enraged ? "#16121a" : p[3], tip = enraged ? p[2] : "#c9c0b0", lift = rear ? u * .1 : 0;
+    glow(ctx, k, b - u * .55, u * (enraged ? 1.25 : 1), p[2], (enraged ? .2 : .1) + .06 * Math.sin(t * 9));
+    shadowAt(ctx, k, b, u * .85, u * .2);
     const bx = k - flip * u * .12, by = b - u * .62 - lift;
-    ctx.beginPath(); ctx.ellipse(bx, by, u * .6, u * .34, -flip * .18, 0, TAU); ctx.fillStyle = shade(ctx, bx, by, u * .6, p[0], p[1]); ctx.fill(); outline(ctx, Math.max(1.5, u * .04));
-    // back spines
-    if (!e.spikesSpent || state !== "attack") for (let i = 0; i < 7; i++) {
-      const x = bx - flip * u * .45 + flip * i * u * .14, y = by - u * .28 + Math.abs(i - 3) * u * .025, h = u * (.2 + (i % 2) * .08);
-      ctx.beginPath(); ctx.moveTo(x - u * .05, y); ctx.lineTo(x - flip * u * .06, y - h); ctx.lineTo(x + u * .05, y); ctx.closePath(); ctx.fillStyle = spine; ctx.fill(); outline(ctx, Math.max(1, u * .02)); ctx.fillStyle = tip; ctx.fillRect(x - flip * u * .06 - u * .015, y - h, u * .03, u * .05);
+    // tail: three tapering segments ending in a spiked club
+    let tx = bx - flip * u * .5, ty = by + u * .02;
+    for (let i = 0; i < 3; i++) { const sw = Math.sin(step * .6 + i) * u * .06, nx = tx - flip * u * .2, ny = ty + u * .07 + sw; ctx.beginPath(); ctx.moveTo(tx, ty - u * (.09 - i * .025)); ctx.lineTo(nx, ny - u * (.07 - i * .02)); ctx.lineTo(nx, ny + u * (.07 - i * .02)); ctx.lineTo(tx, ty + u * (.09 - i * .025)); ctx.closePath(); ctx.fillStyle = i % 2 ? p[1] : shade(ctx, tx, ty, u * .2, p[0], p[1]); ctx.fill(); outline(ctx, Math.max(1, u * .02)); tx = nx; ty = ny; }
+    for (let i = 0; i < 4; i++) { const a = i * TAU / 4 + t; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx + Math.cos(a) * u * .13, ty + Math.sin(a) * u * .13); ctx.lineWidth = Math.max(1.5, u * .03); ctx.strokeStyle = spine; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(tx, ty, u * .07, 0, TAU); ctx.fillStyle = p[1]; ctx.fill(); outline(ctx, Math.max(1, u * .02));
+    // hind legs with claws
+    for (const lx of [-.42, -.22]) { const ph = Math.sin(step + lx * 9) * u * .05, x = k + flip * lx * u; ctx.fillStyle = shade(ctx, x, b - u * .25, u * .2, p[0], p[1]); ctx.beginPath(); ctx.ellipse(x, b - u * .27 + ph * .4, u * .1, u * .19, 0, 0, TAU); ctx.fill(); outline(ctx, Math.max(1, u * .02)); ctx.fillStyle = "#0d0b0f"; for (let c = -1; c <= 1; c++) { ctx.beginPath(); ctx.moveTo(x + c * u * .05, b - u * .06 + ph); ctx.lineTo(x + c * u * .05 + flip * u * .05, b + ph * .2); ctx.lineTo(x + c * u * .05 - u * .02, b - u * .05 + ph); ctx.fill(); } }
+    // body: shaded mass, belly highlight, hide bands
+    ctx.beginPath(); ctx.ellipse(bx, by, u * .62, u * .36, -flip * .18, 0, TAU); ctx.fillStyle = shade(ctx, bx, by, u * .62, p[0], p[1]); ctx.fill(); outline(ctx, Math.max(1.5, u * .045));
+    ctx.save(); ctx.beginPath(); ctx.ellipse(bx, by, u * .62, u * .36, -flip * .18, 0, TAU); ctx.clip();
+    ctx.fillStyle = "#ffffff12"; ctx.beginPath(); ctx.ellipse(bx + flip * u * .08, by + u * .2, u * .42, u * .12, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = "#0b0a0d66"; ctx.lineWidth = Math.max(1, u * .025); for (let i = -2; i <= 2; i++) { const x = bx + i * u * .2; ctx.beginPath(); ctx.moveTo(x, by - u * .36); ctx.quadraticCurveTo(x + flip * u * .06, by, x, by + u * .36); ctx.stroke(); }
+    ctx.restore();
+    // furnace core in the chest: flares while winding up or spitting orbs
+    const coreX = bx + flip * u * .3, coreY = by + u * .04, hot = rear || casting, beat = .5 + .5 * Math.sin(t * (hot ? 22 : 6));
+    glow(ctx, coreX, coreY, u * (hot ? .55 : .3), p[2], hot ? .75 : .4);
+    ctx.fillStyle = hot ? "#fff3d6" : "#ffb59a"; ctx.beginPath(); ctx.arc(coreX, coreY, u * (.05 + beat * (hot ? .05 : .02)), 0, TAU); ctx.fill();
+    ctx.strokeStyle = p[2] + "cc"; ctx.lineWidth = Math.max(1, u * .02); for (let i = 0; i < 5; i++) { const a = i * TAU / 5 + t * 2; ctx.beginPath(); ctx.moveTo(coreX, coreY); ctx.lineTo(coreX + Math.cos(a) * u * .16, coreY + Math.sin(a) * u * .1); ctx.stroke(); }
+    // back spines in two rows, pale tips
+    if (!e.spikesSpent || state !== "attack") for (let row = 0; row < 2; row++) for (let i = 0; i < 8; i++) {
+      const x = bx - flip * u * .5 + flip * i * u * .13 + row * flip * u * .06, y = by - u * (.3 - row * .06) + Math.abs(i - 3.5) * u * .022, h = u * (.17 + ((i + row) % 3) * .07) * (row ? .7 : 1);
+      ctx.beginPath(); ctx.moveTo(x - u * .045, y); ctx.lineTo(x - flip * u * .07, y - h); ctx.lineTo(x + u * .045, y); ctx.closePath(); ctx.fillStyle = row ? p[1] : spine; ctx.fill(); outline(ctx, Math.max(1, u * .018)); if (!row) { ctx.fillStyle = tip; ctx.fillRect(x - flip * u * .07 - u * .015, y - h, u * .03, u * .05); }
     }
-    // folded wing-arms with spine rows
+    // wings: membrane between three spars, spine rows along the leading edge
     for (const side of [-1, 1]) {
-      const wx = bx + side * u * .18, wy = by - u * .12 - lift * .5, sweep = rear ? -.5 : Math.sin(step * .5) * .08;
-      ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(wx - flip * u * .55, wy - u * (.45 - sweep)); ctx.lineTo(wx - flip * u * .75, wy - u * .05); ctx.closePath();
-      ctx.fillStyle = side < 0 ? p[1] : shade(ctx, wx, wy, u * .5, p[0], p[1]); ctx.fill(); outline(ctx, Math.max(1, u * .03));
-      for (let j = 1; j <= 4; j++) { const sx = wx - flip * u * .14 * j, sy = wy - u * (.11 - sweep * .25) * j; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx - flip * u * .08, sy - u * .13); ctx.lineTo(sx + flip * u * .03, sy - u * .02); ctx.closePath(); ctx.fillStyle = spine; ctx.fill(); }
+      const wx = bx + side * u * .16, wy = by - u * .14 - lift * .5, sweep = rear ? -.55 : Math.sin(step * .5) * .1, tipX = wx - flip * u * .62, tipY = wy - u * (.55 - sweep);
+      ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(tipX, tipY); ctx.quadraticCurveTo(wx - flip * u * .7, wy - u * .2, wx - flip * u * .78, wy - u * .02); ctx.quadraticCurveTo(wx - flip * u * .4, wy - u * .08, wx, wy); ctx.closePath();
+      ctx.fillStyle = side < 0 ? p[1] + "ee" : shade(ctx, wx, wy, u * .55, p[0], p[1]); ctx.fill(); outline(ctx, Math.max(1, u * .028));
+      ctx.strokeStyle = "#0b0a0d88"; ctx.lineWidth = Math.max(1, u * .02); for (const f of [.35, .65]) { ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(wx - flip * u * (.62 + f * .12), wy - u * (.55 - sweep) * (1 - f)); ctx.stroke(); }
+      for (let j = 1; j <= 4; j++) { const sx = wx - flip * u * .15 * j, sy = wy - u * (.13 - sweep * .25) * j; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx - flip * u * .08, sy - u * .14); ctx.lineTo(sx + flip * u * .03, sy - u * .02); ctx.closePath(); ctx.fillStyle = spine; ctx.fill(); }
     }
-    // heavy forelimbs (raised when rearing to slam)
-    for (const lx of [.25, .45]) { const ph = Math.sin(step + lx * 7) * u * .06, up = rear ? u * .22 : 0; ctx.fillStyle = shade(ctx, k + flip * lx * u, b - u * .3, u * .24, p[0], p[1]); ctx.beginPath(); ctx.ellipse(k + flip * lx * u, b - u * .3 - up + ph * .5, u * .1, u * .22, 0, 0, TAU); ctx.fill(); outline(ctx, Math.max(1, u * .025)); ctx.fillStyle = "#0d0b0f"; for (let c = -1; c <= 1; c++) ctx.fillRect(k + flip * lx * u + c * u * .05 - u * .015, b - u * .1 - up + ph * .5, u * .03, u * .08); }
-    // head and horns
-    const hx = bx + flip * u * .62, hy = by + u * .02 - lift * .6;
-    ctx.beginPath(); ctx.ellipse(hx, hy, u * .24, u * .19, flip * .2, 0, TAU); ctx.fillStyle = shade(ctx, hx, hy, u * .24, p[0], p[1]); ctx.fill(); outline(ctx, Math.max(1, u * .035));
-    for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(hx - flip * u * .05, hy - u * .12 + side * u * .02); ctx.quadraticCurveTo(hx - flip * u * .2, hy - u * .55, hx + flip * u * .22, hy - u * (.42 + side * .06)); ctx.lineWidth = Math.max(2, u * .07); ctx.strokeStyle = side < 0 ? "#2a2530" : p[3]; ctx.stroke(); }
-    ctx.fillStyle = "#0d0b0f"; ctx.fillRect(hx + flip * u * .08, hy + u * .06, flip * u * .16, u * .05); // jaw
-    eye(ctx, hx + flip * u * .1, hy - u * .04, Math.max(1.5, u * .035), p[2]);
+    // heavy forelimbs with claws (raised when rearing)
+    for (const lx of [.25, .45]) { const ph = Math.sin(step + lx * 7) * u * .06, up = rear ? u * .22 : 0, x = k + flip * lx * u, y = b - u * .3 - up + ph * .5; ctx.fillStyle = shade(ctx, x, b - u * .3, u * .24, p[0], p[1]); ctx.beginPath(); ctx.ellipse(x, y, u * .11, u * .23, 0, 0, TAU); ctx.fill(); outline(ctx, Math.max(1, u * .025)); ctx.fillStyle = "#0d0b0f"; for (let c = -1; c <= 1; c++) { ctx.beginPath(); ctx.moveTo(x + c * u * .055, y + u * .18); ctx.lineTo(x + c * u * .055 + flip * u * .07, y + u * .27); ctx.lineTo(x + c * u * .055 - u * .02, y + u * .2); ctx.fill(); } }
+    // mane of short spines behind the head
+    const hx = bx + flip * u * .64, hy = by + u * .02 - lift * .6;
+    for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + (i - 2.5) * .32, mx = hx - flip * u * .14; ctx.beginPath(); ctx.moveTo(mx + Math.cos(a) * u * .1, hy + Math.sin(a) * u * .1); ctx.lineTo(mx + Math.cos(a) * u * .3 - flip * u * .06, hy + Math.sin(a) * u * .28); ctx.lineTo(mx + Math.cos(a + .2) * u * .1, hy + Math.sin(a + .2) * u * .1); ctx.closePath(); ctx.fillStyle = i % 2 ? spine : p[1]; ctx.fill(); }
+    // head: skull, snout, jaw with teeth, horns, burning eyes
+    ctx.beginPath(); ctx.ellipse(hx, hy, u * .25, u * .19, flip * .2, 0, TAU); ctx.fillStyle = shade(ctx, hx, hy, u * .25, p[0], p[1]); ctx.fill(); outline(ctx, Math.max(1, u * .035));
+    ctx.beginPath(); ctx.ellipse(hx + flip * u * .2, hy + u * .05, u * .13, u * .09, flip * .15, 0, TAU); ctx.fillStyle = shade(ctx, hx + flip * u * .2, hy + u * .05, u * .13, p[0], p[1]); ctx.fill(); outline(ctx, Math.max(1, u * .025));
+    const jaw = rear || state === "attack" ? u * .07 : u * .02; ctx.fillStyle = "#0d0b0f"; ctx.beginPath(); ctx.moveTo(hx + flip * u * .06, hy + u * .1); ctx.lineTo(hx + flip * u * .32, hy + u * .1 + jaw); ctx.lineTo(hx + flip * u * .06, hy + u * .16 + jaw); ctx.closePath(); ctx.fill();
+    if (jaw > u * .03) { glow(ctx, hx + flip * u * .2, hy + u * .12 + jaw * .5, u * .14, p[2], .7); }
+    ctx.fillStyle = "#f2ece0"; for (let i = 0; i < 4; i++) { const x = hx + flip * u * (.1 + i * .05); ctx.beginPath(); ctx.moveTo(x, hy + u * .1); ctx.lineTo(x + flip * u * .015, hy + u * .14); ctx.lineTo(x + flip * u * .03, hy + u * .1); ctx.fill(); }
+    for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(hx - flip * u * .05, hy - u * .12 + side * u * .02); ctx.quadraticCurveTo(hx - flip * u * .22, hy - u * .6, hx + flip * u * .24, hy - u * (.46 + side * .06)); ctx.lineWidth = Math.max(2.5, u * .08); ctx.strokeStyle = side < 0 ? "#2a2530" : p[3]; ctx.stroke(); ctx.lineWidth = Math.max(1, u * .025); ctx.strokeStyle = side < 0 ? "#4a4452" : "#fffaf0"; ctx.stroke(); }
+    eye(ctx, hx + flip * u * .1, hy - u * .05, Math.max(1.5, u * .04), p[2]);
+    if (enraged) eye(ctx, hx + flip * u * .02, hy - u * .07, Math.max(1, u * .028), p[2]);
   },
   thunderhorn(ctx, q) {
     const { k, b, u, t, p, flip, state, e } = q, stunned = e.pack?.phase === "stunned", step = t * 6, charging = e.pack?.attack === "ramCharge" && e.pack.phase === "active";
@@ -437,6 +460,8 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true) {
       const life = Math.max(0, f.life ?? 0);
       if (f.kind === "web") drawWeb(ctx, x, y, r, Math.min(.85, life));
       else if (f.kind === "flesh") { ctx.globalAlpha = Math.min(.9, life); ctx.fillStyle = "#7a1f2a99"; ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU); ctx.fill(); for (let i = 0; i < 7; i++) { const a = i * TAU / 7 + now / 900, rr = r * (.4 + ((i * 37) % 10) / 20); ctx.fillStyle = i % 2 ? "#c98a86" : "#3a0d12"; ctx.beginPath(); ctx.ellipse(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .6, s * .09, s * .05 * (1 + Math.sin(now / 200 + i) * .3), a, 0, TAU); ctx.fill(); } }
+      else if (f.kind === "orb") { const vx = f.vx || 0, vy = f.vy || 0, m = Math.hypot(vx, vy) || 1, oy = y - s * .3; ctx.strokeStyle = "#ff4a3a66"; ctx.lineWidth = r * 1.1; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(x - vx / m * r * 2.2, oy - vy / m * r * 2.2); ctx.lineTo(x, oy); ctx.stroke(); glow(ctx, x, oy, r * 2.2, "#ff4a3a", .7); ctx.fillStyle = "#ffd9b8"; ctx.beginPath(); ctx.arc(x, oy, r * .55, 0, TAU); ctx.fill(); ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(x - r * .12, oy - r * .12, r * .22, 0, TAU); ctx.fill(); }
+      else if (f.kind === "shock" && f.energy) { const rr = (f.ring ?? 0) * s; ctx.strokeStyle = "#ff4a3a55"; ctx.lineWidth = Math.max(6, s * .5); ctx.beginPath(); ctx.ellipse(x, y - s * .1, rr, rr * .6, 0, 0, TAU); ctx.stroke(); ctx.strokeStyle = "#ffb08aee"; ctx.lineWidth = Math.max(2, s * .16); ctx.stroke(); ctx.strokeStyle = "#fff4e8"; ctx.lineWidth = Math.max(1, s * .05); ctx.stroke(); }
       else if (f.kind === "shock") { const rr = (f.ring ?? 0) * s; ctx.strokeStyle = "#ffe08acc"; ctx.lineWidth = Math.max(2, s * .18); ctx.beginPath(); ctx.ellipse(x, y - s * .1, rr, rr * .6, 0, 0, TAU); ctx.stroke(); ctx.strokeStyle = "#ffffff88"; ctx.lineWidth = Math.max(1, s * .05); ctx.stroke(); }
       else if (f.kind === "blinkTrail") { glow(ctx, x, y - s * .3, r, "#c58cff", Math.min(.7, life * 2)); }
       else if (f.kind === "dust" || f.kind === "crash") { ctx.globalAlpha = Math.min(1, life * 2); for (let i = 0; i < 10; i++) { const a = i * TAU / 10, d = r * (1 - life * .8); ctx.fillStyle = f.kind === "crash" ? "#ffb04acc" : "#b9a184aa"; ctx.beginPath(); ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d * .6, s * .09, 0, TAU); ctx.fill(); } }

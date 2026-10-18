@@ -64,6 +64,12 @@ export const ATTACK_MODULES = {
   broodBirth: { id: "broodBirth", name: "Brood Birth", range: [0, 9], cooldown: 8, windup: .9, recover: .6, damage: 0, tags: ["summon"], text: "Splits off pallid crawlers (at most four alive)." },
   fleshBloom: { id: "fleshBloom", name: "Flesh Bloom", range: [0, 7], cooldown: 5, windup: .6, recover: .6, damage: .35, tags: ["ground", "control"], text: "Living flesh carpets the floor; it slows you and gnaws while you stand in it." },
   spikeVolley: { id: "spikeVolley", name: "Spike Volley", range: [2, 8.5], cooldown: 5.2, windup: .75, recover: .85, damage: .8, jumpable: true, tags: ["ground", "spikes"], text: "Rears up and flings its spikes: five land around and ahead of you." },
+  // The Questing Beast's own kit (release 187, Tim 2026-10-18: "attack attack attack", energy as well as claws).
+  // Short windups and recoveries; it chases between them. Orbs are dodged (the dodge's i-frames) or outrun; the wave is jumped.
+  qbRend: { id: "qbRend", name: "Rend", range: [0, 2.3], cooldown: .9, windup: .22, recover: .2, damage: 1, los: true, tags: ["melee"], text: "A fast, wide rake of claws." },
+  qbSpiral: { id: "qbSpiral", name: "Spiral Burst", range: [0, 9], cooldown: 6.5, windup: .3, active: 1.5, recover: .25, damage: .55, tags: ["ranged", "orbs"], text: "Spins, flinging two arms of energy orbs in a widening spiral." },
+  qbWave: { id: "qbWave", name: "Ground Wave", range: [0, 7], cooldown: 5, windup: .3, recover: .25, damage: 1, jumpable: true, tags: ["ground"], text: "Slams the ground: a wave of energy rolls outward. Jump it." },
+  qbBarrage: { id: "qbBarrage", name: "Barrage Charge", range: [2.5, 10], cooldown: 4.8, windup: .3, active: 1, recover: .3, damage: 1.2, los: true, tags: ["charge", "orbs"], text: "Charges at you, spitting arcs of energy orbs behind it." },
   firefall: { id: "firefall", name: "Firefall", range: [1.5, 9], cooldown: 6.5, windup: .7, recover: .8, damage: .85, jumpable: true, tags: ["ground"], text: "Embers rain across the floor around you." },
 };
 
@@ -176,13 +182,13 @@ export const MONSTER_PACK = {
     palette: ["#3b3550", "#0d0b14", "#c9a6ff", "#f3eaff"], render: "listener", tags: ["spirit", "relay", "mirror"],
     lore: "It learned the line by listening, and learned you by the roads you opened and the walls you raised. It wears what you taught it.",
   },
-  // The Questing Beast (release 116): a unique, purely physical hunter. Never in spawn pools; see src/questing-beast.ts.
+  // The Questing Beast (release 116; energy attacks in release 187): a unique hunter. Never in spawn pools; see src/questing-beast.ts.
   questingBeast: {
     id: "questingBeast", name: "The Questing Beast", epithet: "The Hunger That Hunts You Back", unique: true,
     stats: [220, 16, 0], form: { scale: 1.75 }, sizeClass: "large", movement: "walk", brain: "duelist",
-    attacks: ["leapSlam", "clawSweep", "spikeVolley", "ramCharge"], bossAttacks: ["shockwave", "bite"],
-    palette: ["#4a4650", "#141218", "#ff4a3a", "#f2ece0"], render: "questingBeast", tags: ["beast", "elder", "spikes"],
-    lore: "A horned, winged hunter bristling with spikes that grow back pale and harden black. It leaps, it slams, it hurls its own spines, and when wounded it only grows angrier.",
+    attacks: ["qbRend", "qbSpiral", "qbWave", "qbBarrage"], bossAttacks: ["leapSlam"],
+    palette: ["#4a4650", "#141218", "#ff4a3a", "#f2ece0"], render: "questingBeast", tags: ["beast", "elder", "spikes", "energy"],
+    lore: "A horned, winged hunter bristling with spikes, a furnace burning in its chest. It never stops: it rakes, it spins its fire out in spirals, it rolls the ground toward you in waves, and it charges with its fire streaming behind it.",
   },
   gnawingMaw: {
     id: "gnawingMaw", name: "Gnawing Maw", epithet: "The Hunger in the Walls", dungeonOnly: true,
@@ -349,6 +355,10 @@ function nearestOpen(w, x, y, radius = 3) {
 }
 function playerVelocity(w) { return w.playerVelocity || { x: 0, y: 0 }; }
 
+// Energy orbs (release 187): fired by the Questing Beast; they travel straight, stop at walls and hit once.
+export const QB_ORB = { speed: 5.2, life: 1.9, radius: .32, spiralEvery: .1, spiralTurn: .42, barrageEvery: .2, barrageArc: 5, barrageSpread: .3 };
+function addOrb(e, w, angle, damage) { w.addEffect({ kind: "orb", owner: e.id, x: e.x, y: e.y, vx: Math.cos(angle) * QB_ORB.speed, vy: Math.sin(angle) * QB_ORB.speed, radius: QB_ORB.radius, arming: 0, life: QB_ORB.life, damage }); }
+
 function beginAttack(e, s, id, w) {
   const attack = ATTACK_MODULES[id];
   s.attack = id; s.phase = "windup"; s.t = attack.windup || .5; s.seq++; s.data = {}; s.hitOnce = false;
@@ -361,7 +371,7 @@ function beginAttack(e, s, id, w) {
 function endAttack(e, s) {
   const attack = ATTACK_MODULES[s.attack];
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
-  s.gap = (attack?.recover || .6) * .6 + .45;
+  s.gap = e.attackGap ?? (attack?.recover || .6) * .6 + .45; // the Questing Beast barely pauses (release 187)
   e.untargetable = false; e.hidden = false; e.aloft = false;
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
@@ -403,6 +413,10 @@ const START = {
   devourPull(e, s) { s.tele = { type: "ring", radius: 6, inhale: true }; },
   broodBirth(e, s) { s.tele = { type: "shimmer" }; },
   fleshBloom(e, s) { s.tele = { type: "spit", target: { ...s.data.target } }; },
+  qbRend(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + 1.6, arc: 150 }; },
+  qbSpiral(e, s) { s.tele = { type: "brace" }; s.data.angle = (hashSeed(`${e.id}:${s.seq}:spiral`) % 628) / 100; s.data.next = 0; },
+  qbWave(e, s) { s.tele = { type: "ring", radius: 7 }; },
+  qbBarrage(e, s, w) { const len = rayLength(w, e, s.data.aim, 9); s.tele = { type: "lane", aim: s.data.aim, length: len, width: .8 }; s.data.next = 0; },
 };
 
 function resolveMelee(e, s, w, attackId, test) {
@@ -511,6 +525,28 @@ const RUN = {
       return;
     }
     if (s.phase === "stunned" && s.t <= 0) toPhase(s, "recover", .3);
+  },
+  qbRend(e, s, w) { if (s.phase === "windup" && s.t <= 0) { resolveMelee(e, s, w, "qbRend", (p) => inArc(e, p, s.data.aim, bodyRadius(e) + 1.6 + .3, 150)); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.qbRend.recover); } },
+  qbSpiral(e, s, w) {
+    const attack = ATTACK_MODULES.qbSpiral;
+    if (s.phase === "windup") { if (s.t <= 0) { s.tele = null; toPhase(s, "active", attack.active); } return; }
+    if (s.phase === "active") {
+      s.data.next -= w.dt;
+      if (s.data.next <= 0) { s.data.next = QB_ORB.spiralEvery; s.data.angle += QB_ORB.spiralTurn; for (const arm of [0, Math.PI]) addOrb(e, w, s.data.angle + arm, damageOf(e, "qbSpiral")); }
+      if (s.t <= 0) toPhase(s, "recover", attack.recover);
+    }
+  },
+  qbWave(e, s, w) { if (s.phase === "windup" && s.t <= 0) { w.addEffect({ kind: "shock", owner: e.id, x: e.x, y: e.y, radius: 7, arming: 0, life: 1.3, damage: damageOf(e, "qbWave"), jumpable: true, energy: true }); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.qbWave.recover); } },
+  qbBarrage(e, s, w) {
+    const attack = ATTACK_MODULES.qbBarrage;
+    if (s.phase === "windup") { if (s.t <= 0) { s.tele = null; toPhase(s, "active", attack.active); } return; }
+    if (s.phase === "active") {
+      const step = 9.5 * w.dt, moved = w.move(e, s.data.aim.x * step, s.data.aim.y * step);
+      if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + .6) { s.hitOnce = true; w.hurt(e, damageOf(e, "qbBarrage"), { jumpable: false, source: "qbBarrage" }); }
+      s.data.next -= w.dt;
+      if (s.data.next <= 0) { s.data.next = QB_ORB.barrageEvery; const back = Math.atan2(-s.data.aim.y, -s.data.aim.x); for (let i = 0; i < QB_ORB.barrageArc; i++) addOrb(e, w, back + (i - (QB_ORB.barrageArc - 1) / 2) * QB_ORB.barrageSpread, damageOf(e, "qbSpiral")); }
+      if (!moved || s.t <= 0) toPhase(s, "recover", attack.recover);
+    }
   },
   shockwave(e, s, w) { if (s.phase === "windup" && s.t <= 0) { w.addEffect({ kind: "shock", owner: e.id, x: e.x, y: e.y, radius: 3.6, arming: 0, life: .8, damage: damageOf(e, "shockwave"), jumpable: true }); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.shockwave.recover); } },
   mirrorClones(e, s, w) {
@@ -660,6 +696,7 @@ export function tickPackEffects(effects, w) {
     if (f.arming > 0) { f.arming -= w.dt; if (f.arming > 0) continue; f.armed = true; }
     if (f.kind === "web") { if (distance(p, f) <= f.radius) w.slow(f.slow || .5, .25); }
     else if (f.kind === "flesh") { if (distance(p, f) <= f.radius) { w.slow(f.slow || .55, .25); if (!(f.nextBite > f.age)) { f.nextBite = f.age + .8; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "fleshBloom", beam: true }); } } }
+    else if (f.kind === "orb") { f.x += f.vx * w.dt; f.y += f.vy * w.dt; if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0; else if (!f.hit && distance(p, f) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "orb" }); } }
     else if (f.kind === "shock") { const total = f.total ??= f.life ?? .8, r = f.radius * (1 - Math.max(0, f.life ?? total) / total); f.ring = r; if (!f.hit && f.damage > 0 && Math.abs(distance(p, f) - r) < .5) { f.hit = true; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "shockwave" }); } }
     else if (!f.detonated) { f.detonated = true; f.life ??= .4; if (f.damage > 0 && distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: !!f.jumpable, source: f.kind }); }
     f.life = (f.life ?? .4) - w.dt;

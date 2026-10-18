@@ -26,6 +26,36 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Questing Beast fights with energy (release 187)
+
+Tim met the Questing Beast for the first time (2026-10-18). He found it too weak, too slow and too plain. He reversed his earlier "purely physical" decision and asked for energy attacks, a constant barrage, much more health and blows strong enough that four unhealed hits kill.
+
+**CODE:** `questing-beast.ts`:
+- `QUESTING_BEAST.hitsToKill` goes 30 → 55 and `hpPerLevel` 15 → 25: a level-17 Wayfarer with a power-30 weapon faces 2,625 health.
+- `damageShare` goes .11 → .27; it is still divided by `(1 − damage reduction)`, so a blow takes about 27% of maximum health after armour.
+- New: `speed` 1.55 (`speedMultiplier`), `attackGap` .12 and `staggerResistance` .85.
+
+**CODE:** `monster-pack.ts`:
+- The beast's kit is four new modules, used only by it (unique creatures never donate attacks):
+  - `qbRend`: a 150° claw rake (windup .22 s, cooldown .9 s);
+  - `qbSpiral`: two arms of orbs every .1 s for 1.5 s, the angle turning .42 rad per step (cooldown 6.5 s);
+  - `qbWave`: an energy ring of radius 7 rolling out over 1.3 s, which can be jumped (cooldown 5 s);
+  - `qbBarrage`: a charge at 9.5 tiles/s that spits five-orb arcs behind it every .2 s (cooldown 4.8 s).
+- `leapSlam` unlocks in its wounded phase.
+- New effect kind `orb` (table `QB_ORB`): it moves at 5.2 tiles/s for 1.9 s, stops at the first blocking tile and hurts once. Orbs deal .55 of a blow (about 19% of maximum health).
+- `endAttack` uses `e.attackGap` when set.
+
+**CODE:** `monster-render.ts`:
+- A more detailed model: banded hide, two rows of back spines, membrane wings with spars, a spiked tail club, clawed feet, a mane, a toothed jaw that glows when open, two-tone horns and burning eyes.
+- A furnace core in the chest flares during windups, spirals and barrages.
+- Orbs draw as glowing red spheres with trails; the energy wave as a red-white ring.
+
+**BOUNDARY:** No save or generation change; spawning, tries, cooldowns and rewards are as before.
+- Live effects stay within the pack cap of 48: a 30-second simulation peaked at 28.
+- In that simulation the beast started an attack every ~1.7 s, using all four.
+- The game's 0.7 s of invulnerability after a hit limits orb damage to about one hit per 0.7 s; an orb that arrives inside that window is spent.
+- Not tested on a device; the numbers are a first pass for Tim to judge.
+
 ## Faster water; update prompt; bogs rot; Pack and Atlas fixes (release 185)
 
 Tim's probe on release 181 (Firefox, Android, 2026-10-18): the overworld ran at 31 fps and the open sea at 24, against 87 in a dungeon. The game code was almost all `render` → `ground`: about 16 ms per frame on land and 20 ms at sea, versus 0.8 ms in a dungeon. He also reloaded after the release-183 publish and was still on 181.
