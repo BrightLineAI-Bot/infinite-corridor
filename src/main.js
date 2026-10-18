@@ -1,18 +1,18 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { renderTimings } from "./renderer.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { createProbe, PROBE } from "./diagnostic-probe.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { vendorShop, buyFromVendor } from "./game.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { CREATURE_TRAITS } from "./combat.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { drawPackPortrait } from "./monster-render.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { landscapeAtlasColor } from "./landscape-render.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { hashSeed } from "./random.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { questingBeastTriesLeft } from "./questing-beast.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r181-7ce813c6684e";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r181-7ce813c6684e";
+import { renderTimings } from "./renderer.js?v=r181-7ce813c6684e";
+import { createProbe, PROBE } from "./diagnostic-probe.js?v=r181-7ce813c6684e";
+import { vendorShop, buyFromVendor } from "./game.js?v=r181-7ce813c6684e";
+import { CREATURE_TRAITS } from "./combat.js?v=r181-7ce813c6684e";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=r181-7ce813c6684e";
+import { drawPackPortrait } from "./monster-render.js?v=r181-7ce813c6684e";
+import { landscapeAtlasColor } from "./landscape-render.js?v=r181-7ce813c6684e";
+import { hashSeed } from "./random.js?v=r181-7ce813c6684e";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r181-7ce813c6684e";
+import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=r181-7ce813c6684e";
+import { questingBeastTriesLeft } from "./questing-beast.js?v=r181-7ce813c6684e";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=r181-7ce813c6684e";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r181-7ce813c6684e";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -163,7 +163,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r181-7ce813c6684e";
 import {
   Game,
   actionReadiness,
@@ -172,19 +172,19 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { createInput } from "./input.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { STATS } from "./types.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { worldStewardReport } from "./story.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+} from "./game.js?v=r181-7ce813c6684e";
+import { createInput } from "./input.js?v=r181-7ce813c6684e";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r181-7ce813c6684e";
+import { STATS } from "./types.js?v=r181-7ce813c6684e";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=r181-7ce813c6684e";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=r181-7ce813c6684e";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=r181-7ce813c6684e";
+import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=r181-7ce813c6684e";
+import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=r181-7ce813c6684e";
+import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=r181-7ce813c6684e";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r181-7ce813c6684e";
+import { worldStewardReport } from "./story.js?v=r181-7ce813c6684e";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r181-7ce813c6684e";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -196,8 +196,8 @@ import {
   perceived,
   wayfindingTargets,
   wayfindingCues,
-} from "./world.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { warmWayfindingSignals } from "./world.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+} from "./world.js?v=r181-7ce813c6684e";
+import { warmWayfindingSignals } from "./world.js?v=r181-7ce813c6684e";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
@@ -1049,13 +1049,13 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;grid.append(pre,copy);
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r181-7ce813c6684e",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r181-7ce813c6684e\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;grid.append(pre,copy);
    // Diagnostic probe (release 165): record five minutes of play, then copy the report.
    const probeNote=document.createElement("p");probeNote.className="options-note";const saved=storedProbeReport();
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r181-7ce813c6684e",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1074,7 +1074,9 @@ function drawDungeonMap() {
 function drawAtlasLabels(labels,bounds,fontSize){const placed=[],overlap=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;mctx.font=`${fontSize}px system-ui`;mctx.fillStyle="#edf3df";for(const label of labels){let text=label.name,max=bounds.right-bounds.left-10;while(text.length>4&&mctx.measureText(text).width>max)text=text.slice(0,-2)+"…";const width=mctx.measureText(text).width,candidates=[[label.x+7,label.y-5],[label.x+7,label.y+fontSize+3],[label.x-width-7,label.y-5],[label.x-width-7,label.y+fontSize+3],[label.x-width/2,label.y-fontSize],[label.x-width/2,label.y+fontSize*2]],spots=candidates.map(([cx,cy])=>{const x=Math.max(bounds.left+5,Math.min(bounds.right-width-5,cx)),y=Math.max(bounds.top+fontSize+5,Math.min(bounds.bottom-6,cy));return{x,y,left:x-2,right:x+width+2,top:y-fontSize-2,bottom:y+3}}),spot=spots.find(q=>!placed.some(p=>overlap(p,q)));if(!spot)continue;mctx.fillText(text,spot.x,spot.y);placed.push(spot)}return placed}
 // Atlas map height: leaves room for the title, level picker and map tools, so on short screens (the Fold's outer
 // screen held sideways) the tools stay in view instead of falling below the dialog.
-function atlasMapHeight(){return Math.max(140,Math.min(innerHeight*.65,innerHeight-(innerHeight<560?205:260),520))}
+// Release 175 (Tim, 2026-10-17): the map also shrinks to leave its tools and layer buttons on screen, measured from the
+// open Atlas, so any screen shows the whole working area without scrolling (the details below still scroll).
+function atlasMapHeight(){const base=Math.max(140,Math.min(innerHeight*.65,innerHeight-(innerHeight<560?205:260),520));if(!atlas.open)return base;const A=atlas.getBoundingClientRect(),C=mapCanvas.getBoundingClientRect(),L=$("#mapLayers")?.getBoundingClientRect();if(!A.height||!C.height)return base;const above=C.top-A.top+atlas.scrollTop,below=Math.max(0,(L&&L.height?L.bottom:C.bottom)-C.bottom);return Math.max(140,Math.min(base,Math.floor(atlas.clientHeight-above-below-6)))}
 // Relay overlay (release 142, Atlas button): the Rule 110 relay pattern as a faint lattice over explored sections and
 // their neighbours, and the relays you have answered as bright nodes joined to answered neighbours within two sections.
 let relayOverlay=false;

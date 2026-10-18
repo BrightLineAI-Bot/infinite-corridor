@@ -1,13 +1,13 @@
-import { enemyMeleeGeometry } from "./combat.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { SEA_CREATURES } from "./sea-creatures.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { BOAT } from "./boats.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTile, landscapeTileLift } from "./landscape-render.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { liftAt } from "./landscape.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { drawRelayNode } from "./relay-network.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { structureOccupancy } from "./world.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa";
+import { enemyMeleeGeometry } from "./combat.js?v=r181-7ce813c6684e";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r181-7ce813c6684e";
+import { BOAT } from "./boats.js?v=r181-7ce813c6684e";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTile, landscapeTileLift } from "./landscape-render.js?v=r181-7ce813c6684e";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r181-7ce813c6684e";
+import { liftAt } from "./landscape.js?v=r181-7ce813c6684e";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=r181-7ce813c6684e";
+import { drawRelayNode } from "./relay-network.js?v=r181-7ce813c6684e";
+import { structureOccupancy } from "./world.js?v=r181-7ce813c6684e";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r181-7ce813c6684e";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.

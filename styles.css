@@ -775,3 +775,41 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 @media (orientation: landscape) and (max-height: 540px) {
   #hud { width: min(322px, calc(42vw + 30px)); }
 }
+
+/* Release 175 (Tim, 2026-10-17): Atlas tools size themselves to the screen. Eight fixed columns squeezed "Center" and
+   "Relays" past their buttons on a narrow phone; the row now wraps instead of shrinking below a finger-sized button. */
+.maptools { grid-template-columns: repeat(auto-fit, minmax(52px, 1fr)); }
+
+/* Release 177 (Tim, 2026-10-18): the spell buttons join the action cluster's empty right-hand corners (Tim's marked-up
+   screenshot): Spell A beside Tool, above Dodge, and Spell B below Dodge in the bottom-right corner, so Dodge sits
+   between them. The cluster moves down to the
+   bottom of the screen and a little to the left, and the Potion button takes the spells' old place beside it. */
+.action-diamond button.spell { --slot: #8b7857; border-color: var(--slot); color: var(--slot); padding-bottom: 11px; }
+.action-diamond button.spell .slot-sym { display: block; font-size: 17px; line-height: 1; text-transform: none; }
+.action-diamond button.spell .slot-letter { position: absolute; top: 7px; left: 50%; transform: translateX(-50%); font-size: 8px; color: #a39a88; }
+.action-diamond .spell-a { right: 0; top: 0; }
+.action-diamond .spell-b { right: 0; bottom: 0; }
+.action-diamond { right: 18px; bottom: calc(env(safe-area-inset-bottom) + 2px); }
+.quick-row { right: 192px; }
+@media (orientation: portrait) {
+  .action-diamond { right: 12px; bottom: calc(env(safe-area-inset-bottom) + 4px); }
+  .quick-row { left: 110px; right: 170px; }
+}
+@media (orientation: landscape) and (max-height: 540px) {
+  .action-diamond { right: 12px; bottom: calc(env(safe-area-inset-bottom) + 2px); }
+  .quick-row { right: 158px; }
+}
+/* Options → System lines (browser, release, storage) wrap to the panel instead of widening it past the screen. */
+#optionsPanel pre { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
+#optionsPanel { max-width: calc(100vw - 16px); overflow-x: hidden; }
+
+/* Release 179 (Tim's probe, 2026-10-18): his thumb, reaching for Dodge with a second finger, landed 15-20 px left of
+   Dodge's centre, on the edge of Jump or in the gap between them. Dodge grows a little and reaches left, Jump stays
+   in the centre but smaller, and the spell buttons are ovals again (Tim: "they fit better that way"), reaching just
+   past the cluster's right edge so they stay clear of Tool, Dodge and Attack. Sizes follow --button on every screen. */
+.action-diamond .dodge { right: calc(var(--button) * 0.12); top: calc(var(--button) * 1.0); width: calc(var(--button) * 1.1); height: calc(var(--button) * 1.1); }
+.action-diamond .jump { width: calc(var(--button) * 0.7); height: calc(var(--button) * 0.7); font-size: 8px; padding-bottom: 0; }
+.action-diamond button.spell { width: calc(var(--button) * 1.16); height: calc(var(--button) * 0.72); border-radius: 999px; padding: 0 4px 9px; }
+.action-diamond .spell-a { right: calc(var(--button) * -0.16); top: calc(var(--button) * 0.1); }
+.action-diamond .spell-b { right: calc(var(--button) * -0.16); bottom: calc(var(--button) * 0.1); top: auto; }
+.action-diamond button.spell .slot-letter { top: 2px; left: 12px; transform: none; }

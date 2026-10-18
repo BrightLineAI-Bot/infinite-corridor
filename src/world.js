@@ -1,9 +1,9 @@
-import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa';
-import{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa';export{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa';
-export{generateVariedDungeon,generateBespokeArena}from'./arenas.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa';
-import{arenaEligible}from'./arenas.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa';
-import{annotateDungeon}from'./dungeon-framework.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa';
-import{APERTURE_BANDS}from'./items.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa';import{hashSeed,rng,pick}from'./random.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa';import{storySiteFor}from'./story.js?v=icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
+import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.js?v=r181-7ce813c6684e';
+import{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=r181-7ce813c6684e';export{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=r181-7ce813c6684e';
+export{generateVariedDungeon,generateBespokeArena}from'./arenas.js?v=r181-7ce813c6684e';
+import{arenaEligible}from'./arenas.js?v=r181-7ce813c6684e';
+import{annotateDungeon}from'./dungeon-framework.js?v=r181-7ce813c6684e';
+import{APERTURE_BANDS}from'./items.js?v=r181-7ce813c6684e';import{hashSeed,rng,pick}from'./random.js?v=r181-7ce813c6684e';import{storySiteFor}from'./story.js?v=r181-7ce813c6684e';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
 function passage(seed,axis,a,b){const r=rng(`${seed}:edge:${axis}:${a}:${b}`);return 5+Math.floor(r()*22)}export function sectionExits(seed,rx,ry){return{north:passage(seed,'h',rx,ry),south:passage(seed,'h',rx,ry+1),west:passage(seed,'v',rx,ry),east:passage(seed,'v',rx+1,ry)}}
 function carve(tiles,x,y,kind='ash'){if(kind==='refuge'&&x===12&&y===17)return;if(x>=0&&x<32&&y>=0&&y<32)tiles[y*32+x]={...tiles[y*32+x],x,y,kind,blocked:false}}
 function supply(seed,rx,ry,tiles,w=32){const r=rng(`${seed}:supplies:v2:${rx}:${ry}`),rare=w===32&&r()<.06,types=['restorativeDraught','ironbarkTonic','lumenPhial','secondary'],spots=w===24?[[6,6],[7,6],[6,7]]:[[15,17],[17,17],[15,18],[17,18]],[x,y]=spots[Math.floor(r()*spots.length)],supplyType=rare?'crossingSigil':types[Math.floor(r()*types.length)];return{id:`supply-${rx}-${ry}`,kind:supplyType==='secondary'?'weaponCache':'supplyCache',supplyType,x,y,state:'ready',actions:['collect']}}
