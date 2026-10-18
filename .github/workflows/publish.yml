@@ -16,7 +16,7 @@ on:
         type: boolean
         default: true
 
-run-name: ${{ format('Publish {0}{1}', inputs.candidate || 'latest preview', format('{0}', inputs.dry_run) == 'false' && '' || ' (dry run)') }}
+run-name: ${{ format('Publish {0}{1}', inputs.candidate || 'latest preview', format('{0}', inputs.dry_run) == 'false' && ' (live)' || ' (dry run)') }}
 
 permissions: {}
 
