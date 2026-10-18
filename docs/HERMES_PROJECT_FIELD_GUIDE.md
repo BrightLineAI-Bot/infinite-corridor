@@ -45,6 +45,10 @@ Tim's probe on release 181 (Firefox, Android, 2026-10-18): the overworld ran at 
 - `sw.js` serves cache-first, including `index.html`. So after a publish, the first load runs the old build while the new worker installs, and only the next load runs the new one.
 - `index.html` now listens for `controllerchange` (only when a worker already controlled the page). It then shows a "New release ready · tap to update" button (`.update-ready`) that reloads. Reloading triggers `pagehide`, which pauses and saves, so play resumes exactly.
 
+**CODE:** Get latest release. Tim plays from the home-screen app, which has no reload button.
+- Options → System has a "Get latest release" button. It calls `registration.update()` and waits (at most 15 s) for an installing worker to activate or fail. It then saves (`persist`, `flushSaves`) and reloads. With nothing new, it simply reloads.
+- Tested in Chromium with a changed `sw.js`: the page reloaded under the new worker.
+
 **CODE:** Bogs. Tim found bogs that tired him instead of lowering maximum health, and murk where nothing happened.
 - In `water-traversal.ts`, ordinary swamps now match blight swamps:
   - `MIRE.rotKinds` adds `mireWater` (walkable murk) and `swampWater` (deep pool);
