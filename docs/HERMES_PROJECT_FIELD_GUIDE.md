@@ -26,6 +26,47 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Faster water; update prompt; bogs rot; Pack and Atlas fixes (release 185)
+
+Tim's probe on release 181 (Firefox, Android, 2026-10-18): the overworld ran at 31 fps and the open sea at 24, against 87 in a dungeon. The game code was almost all `render` → `ground`: about 16 ms per frame on land and 20 ms at sea, versus 0.8 ms in a dungeon. He also reloaded after the release-183 publish and was still on 181.
+
+**CODE:** Water overlays.
+- The overworld's ground is one cached image per section (release 159). Copying it costs about a third more than the full-screen tint copy, which Tim's phone does in ~4 ms (calibrated in Chromium's CPU canvas, which uses the same Skia engine).
+- The rest was the animated overlays: every visible water tile made its own stroke call, two per ocean tile. Each also set `strokeStyle` from a string, which Firefox parses on every set. A watery screen meant several thousand canvas calls a frame.
+- `landscape-render.ts` adds `animateLandscapeTiles(ctx, tiles, s)`, which takes a flat `[tile, x, y, …]` list:
+  - ocean, deep ocean, lake water, shallows and current streaks each go into one path with one stroke;
+  - ocean sparkles are filled after the strokes;
+  - lava, bubbles, glow and motes still draw per tile.
+- `renderer.ts` collects the visible animated tiles into a reused array and makes one call.
+- In Chromium's CPU canvas, a screen of ocean takes 0.30 ms instead of 0.75 ms. Firefox's per-call cost is much higher, so the saving should be larger on Tim's phone; his next probe will tell.
+- Pixel comparison against the per-tile drawing: 3% of overlay pixels differ, by at most 48 levels, where two semi-transparent strokes used to overlap and double-blend.
+
+**CODE:** Update prompt.
+- `sw.js` serves cache-first, including `index.html`. So after a publish, the first load runs the old build while the new worker installs, and only the next load runs the new one.
+- `index.html` now listens for `controllerchange` (only when a worker already controlled the page). It then shows a "New release ready · tap to update" button (`.update-ready`) that reloads. Reloading triggers `pagehide`, which pauses and saves, so play resumes exactly.
+
+**CODE:** Get latest release. Tim plays from the home-screen app, which has no reload button.
+- Options → System has a "Get latest release" button. It calls `registration.update()` and waits (at most 15 s) for an installing worker to activate or fail. It then saves (`persist`, `flushSaves`) and reloads. With nothing new, it simply reloads.
+- Tested in Chromium with a changed `sw.js`: the page reloaded under the new worker.
+
+**CODE:** Bogs. Tim found bogs that tired him instead of lowering maximum health, and murk where nothing happened.
+- In `water-traversal.ts`, ordinary swamps now match blight swamps:
+  - `MIRE.rotKinds` adds `mireWater` (walkable murk) and `swampWater` (deep pool);
+  - `TIDEMANTLE.drainMultiplier` sets `swampWater` and `toxicWater` to 0, so swimming a bog pool rots instead of tiring.
+- Bog ground (the dry land between pools) stays safe. At the rot cap, lingering poisons, as in the blight.
+- The rot message names bog water in an ordinary swamp.
+
+**CODE:** Pack. Tim's Pack showed "Carried equipment could not be shown ((intermediate value).reduce is not a function)" with 62 items carried.
+- `completeRevelationArc` (`story.ts`) granted the Echo Compass with `affixes` as an object, `{attackReach, moveSpeed}`; every other item uses a list of `{id, value}`.
+- The grant now uses a list: reach 0.08, movement 0.03.
+- `items.ts` adds `affixList` (readers accept only a list) and `normalizeAffixes`. `normalizeItemUpgrade`, which `migrateSave` runs on every carried and equipped item, converts an existing object to the list, so saved compasses keep their values.
+
+**CODE:** Atlas. Tim's Atlas framed a section gold although it held nothing to do, before and after he left it.
+- `openChallengeSections` counted Major Danger sites (Colossus Traces, `bossCue`), which nothing ever resolves.
+- `CHALLENGE_SITES` now holds only crossings and arenas. A trace still shows as a danger sign; the compass no longer points at it.
+
+**BOUNDARY:** Water drawing and the boot script change no game state. The bog rules change hazard data only; the affix repair is additive at schema 14; the Atlas change affects marking only. No generation changes. The water's look is unchanged except at those overlaps. The prompt never reloads on its own. Not measured on a device yet.
+
 ## The action cross; location label under Map; crossing text only at crossings (release 183)
 
 Tim, 2026-10-18, after playing release 181:

@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=183" />
+    <link rel="stylesheet" href="./styles.css?v=185" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -148,7 +148,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "183";
+      const release = "185";
       const params = new URLSearchParams(location.search);
       const entry = params.get("dev") === "proving-ground"
         ? "./src/proving-ground.js"
@@ -175,6 +175,20 @@
         notice.textContent = "Infinite Corridor could not start. Reload when your connection is stable.";
         document.body.append(notice);
       });
+      // Release 185 (Tim): the worker serves the cached build first, so a new release installs in the background and
+      // only runs on the next load. When it takes over this page, offer the reload rather than leave the old build
+      // running unannounced. Reloading pauses and saves first (pagehide), so play resumes exactly.
+      if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (document.getElementById("updateReady")) return;
+          const button = document.createElement("button");
+          button.id = "updateReady";
+          button.className = "update-ready";
+          button.textContent = "New release ready · tap to update";
+          button.onclick = () => location.reload();
+          document.body.append(button);
+        });
+      }
       void updateServiceWorker();
     </script>
   </body>

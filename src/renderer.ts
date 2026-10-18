@@ -1,7 +1,7 @@
 import { enemyMeleeGeometry } from "./combat.ts";
 import { SEA_CREATURES } from "./sea-creatures.ts";
 import { BOAT } from "./boats.ts";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTile, landscapeTileLift } from "./landscape-render.ts";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.ts";
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { liftAt } from "./landscape.ts";
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.ts";
@@ -680,11 +680,15 @@ export function render(ctx, g, w, h, now) {
   ctx.save();
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - groundLift(p.x, p.y)) * s));
   const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b });
-  if (groundCached) for (let y = t; y < b; y++) for (let x = l; x < r; x++) {
-    const q = g.map.tiles[y * mw + x];
-    // In a dungeon, a lethal tile right beside the Wayfarer shows through the fog (as the per-tile path always did).
-    if (g.area === "dungeon" && LETHAL_KINDS.has(q?.kind) && Math.hypot(x - p.x, y - p.y) < 2.6 && dungeonTileVisibility(g.map, x, y) === "unseen") tile(ctx, q, x, y, s, g.map.tiles, mw, activeBuildingId);
-    else if (landscapeTileAnimated(q) && (g.area !== "dungeon" || dungeonTileVisibility(g.map, x, y) !== "unseen")) animateLandscapeTile(ctx, q, x, y, s);
+  if (groundCached) {
+    const animated = render.animatedTiles || (render.animatedTiles = []); animated.length = 0;
+    for (let y = t; y < b; y++) for (let x = l; x < r; x++) {
+      const q = g.map.tiles[y * mw + x];
+      // In a dungeon, a lethal tile right beside the Wayfarer shows through the fog (as the per-tile path always did).
+      if (g.area === "dungeon" && LETHAL_KINDS.has(q?.kind) && Math.hypot(x - p.x, y - p.y) < 2.6 && dungeonTileVisibility(g.map, x, y) === "unseen") tile(ctx, q, x, y, s, g.map.tiles, mw, activeBuildingId);
+      else if (landscapeTileAnimated(q) && (g.area !== "dungeon" || dungeonTileVisibility(g.map, x, y) !== "unseen")) animated.push(q, x, y);
+    }
+    animateLandscapeTiles(ctx, animated, s); // release 185: one stroke per water kind, not one per tile
   }
   else for (let y = t; y < b; y++)
     for (let x = l; x < r; x++) {
