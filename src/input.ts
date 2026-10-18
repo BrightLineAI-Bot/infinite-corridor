@@ -141,8 +141,10 @@ export function createInput(root, host = globalThis, options = {}) {
     actionTap = { button: b, pointerId: e.pointerId, until: performance.now() + 1500 };
     latch.add(b.dataset.action);
     heldButtons.add(b.dataset.action);
-    const up = () => { heldButtons.delete(b.dataset.action); b.removeEventListener("pointerup", up); b.removeEventListener("pointercancel", up); b.removeEventListener("pointerleave", up); };
-    b.addEventListener("pointerup", up); b.addEventListener("pointercancel", up); b.addEventListener("pointerleave", up);
+    // The release arrives where the press landed: the button itself, or the cluster for a press in a gap (release 181).
+    const source = e.currentTarget || b, id = e.pointerId;
+    const up = (q) => { if (q?.pointerId != null && id != null && q.pointerId !== id) return; heldButtons.delete(b.dataset.action); for (const t of ["pointerup", "pointercancel", "pointerleave"]) source.removeEventListener(t, up); };
+    for (const t of ["pointerup", "pointercancel", "pointerleave"]) source.addEventListener(t, up);
   };
   root.querySelectorAll("[data-action]").forEach((b) => (b.onpointerdown = (e) => press(b, e)));
   // Release 179 (Tim's probe, 2026-10-18): a thumb that lands in the gap between action buttons pressed nothing; his

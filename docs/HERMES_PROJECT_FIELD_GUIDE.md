@@ -24,6 +24,16 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Gap presses release their hold (release 181)
+
+The towns session flagged this after release 179 (2026-10-18). Holding Act to leave the skiff reads `input.held("interact")`, which `heldButtons` tracks.
+
+**CODE:** `input.ts` `press(b, e)` now listens for the release (`pointerup`, `pointercancel`, `pointerleave`) on the element that received the press, `e.currentTarget`. That is the button for a direct press, and the action cluster for a press in a gap.
+- Release 179 listened on the button only, but a touch's events stay with the element it started on. A gap press therefore left its button held after the finger lifted. Confirmed with synthetic pointer events: release 179 kept "attack" held, release 181 clears it.
+- The listener only ends the hold for the same `pointerId`, so another finger lifting elsewhere no longer ends a held press.
+
+**BOUNDARY:** Input bookkeeping only. Presses latch exactly as before.
+
 ## Dodge reaches the thumb; oval spell buttons (release 179)
 
 Tim's 110-second probe on the folded outer screen (release 175 layout) shows where his second finger lands. Presses he meant as Jump, Tool and Act all registered. His roughly ten Dodge attempts landed just off Dodge's lower-left curve, on average about 24 px left of and 17 px below its centre. A round button's square corners are not part of it, so those presses fell on the cluster itself and did nothing; only one reached Dodge. The input path was never at fault.
