@@ -63,7 +63,7 @@ export function swimUpkeep(player, dt, kind = null, openSea = false) {
 export const MIRE = {
   slow: { mireWater: .6, toxicMire: .6 },
   // The poisoned murk and water rot; blight bog ground (the dry land between them) stays safe. Release 165: in any area.
-  rotKinds: ["toxicMire", "toxicWater", "swampWater"], // release 185: ordinary swamp pools rot too (Tim)
+  rotKinds: ["toxicMire", "toxicWater", "mireWater", "swampWater"], // release 185 (Tim): ordinary swamp murk and pools rot too; bog ground stays safe
   rotPerSecond: 1.5,
   maxRotFraction: .5,
   // Once rot reaches its cap (maximum health at half), staying in the poison for poisonDelay seconds poisons the

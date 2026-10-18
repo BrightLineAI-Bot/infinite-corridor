@@ -26,7 +26,7 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
-## Faster water on the overworld; "new release ready" prompt (release 185)
+## Faster water; update prompt; bogs rot; Pack and Atlas fixes (release 185)
 
 Tim's probe on release 181 (Firefox, Android, 2026-10-18): the overworld ran at 31 fps and the open sea at 24, against 87 in a dungeon. The game code was almost all `render` → `ground`: about 16 ms per frame on land and 20 ms at sea, versus 0.8 ms in a dungeon. He also reloaded after the release-183 publish and was still on 181.
 
@@ -45,7 +45,23 @@ Tim's probe on release 181 (Firefox, Android, 2026-10-18): the overworld ran at 
 - `sw.js` serves cache-first, including `index.html`. So after a publish, the first load runs the old build while the new worker installs, and only the next load runs the new one.
 - `index.html` now listens for `controllerchange` (only when a worker already controlled the page). It then shows a "New release ready · tap to update" button (`.update-ready`) that reloads. Reloading triggers `pagehide`, which pauses and saves, so play resumes exactly.
 
-**BOUNDARY:** Drawing and the boot script only. No game state, saves or generation change. The water's look is unchanged except at those overlaps. The prompt never reloads on its own. Not measured on a device yet.
+**CODE:** Bogs. Tim found bogs that tired him instead of lowering maximum health, and murk where nothing happened.
+- In `water-traversal.ts`, ordinary swamps now match blight swamps:
+  - `MIRE.rotKinds` adds `mireWater` (walkable murk) and `swampWater` (deep pool);
+  - `TIDEMANTLE.drainMultiplier` sets `swampWater` and `toxicWater` to 0, so swimming a bog pool rots instead of tiring.
+- Bog ground (the dry land between pools) stays safe. At the rot cap, lingering poisons, as in the blight.
+- The rot message names bog water in an ordinary swamp.
+
+**CODE:** Pack. Tim's Pack showed "Carried equipment could not be shown ((intermediate value).reduce is not a function)" with 62 items carried.
+- `completeRevelationArc` (`story.ts`) granted the Echo Compass with `affixes` as an object, `{attackReach, moveSpeed}`; every other item uses a list of `{id, value}`.
+- The grant now uses a list: reach 0.08, movement 0.03.
+- `items.ts` adds `affixList` (readers accept only a list) and `normalizeAffixes`. `normalizeItemUpgrade`, which `migrateSave` runs on every carried and equipped item, converts an existing object to the list, so saved compasses keep their values.
+
+**CODE:** Atlas. Tim's Atlas framed a section gold although it held nothing to do, before and after he left it.
+- `openChallengeSections` counted Major Danger sites (Colossus Traces, `bossCue`), which nothing ever resolves.
+- `CHALLENGE_SITES` now holds only crossings and arenas. A trace still shows as a danger sign; the compass no longer points at it.
+
+**BOUNDARY:** Water drawing and the boot script change no game state. The bog rules change hazard data only; the affix repair is additive at schema 14; the Atlas change affects marking only. No generation changes. The water's look is unchanged except at those overlaps. The prompt never reloads on its own. Not measured on a device yet.
 
 ## The action cross; location label under Map; crossing text only at crossings (release 183)
 

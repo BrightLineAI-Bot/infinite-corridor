@@ -428,7 +428,9 @@ let navigationCache = { key: null, map: null, guidance: null, manual: null }, an
 // order); tapping the compass steps to the next one. Explored sections still holding an unfinished challenge (an
 // Atlas site whose dungeon or arena is not resolved) count as objectives, as do story targets and nearby signals.
 const OBJECTIVE_KINDS={hunt:{rank:0,label:"Hunt"},story:{rank:1,label:"Story"},challenge:{rank:2,label:"Challenge"},danger:{rank:3,label:"Danger"},crossing:{rank:4,label:"Signal"},event:{rank:5,label:"Signal"}};
-const CHALLENGE_SITES={dungeon:"Crossing",arenaEntrance:"Arena",bossCue:"Major danger"},COMPASS_OBJECTIVE_LIMIT=12;
+// Release 185 (Tim): a Major Danger (Colossus Trace) is evidence, not a task; nothing ever resolves it, so counting it
+// kept its section framed gold on the Atlas forever. It still shows as a danger sign; only crossings and arenas are open.
+const CHALLENGE_SITES={dungeon:"Crossing",arenaEntrance:"Arena"},COMPASS_OBJECTIVE_LIMIT=12;
 let objectiveCache={key:null,list:[]},compassPick=null,compassPin=null; // compassPin: a quest chosen in the Journal (release 155)
 // The section an area id belongs to: dungeon:seed:gN[:rx:ry:...] and arena:vN:seed:rx,ry.
 function sectionOfAreaId(id){const d=/^dungeon:[^:]+:g\d+(?::(-?\d+):(-?\d+))?/.exec(id);if(d)return d[1]===undefined?"0,0":`${d[1]},${d[2]}`;const a=/^arena:v\d+:[^:]+:(-?\d+),(-?\d+)/.exec(id);return a?`${a[1]},${a[2]}`:null}

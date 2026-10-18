@@ -3223,7 +3223,7 @@ export class Game {
     // Blight mire (landscape version 2): its murk lowers maximum health until the Wayfarer rests. Release 165: every
     // poisoned ground (MIRE.rotKinds) in any area; at the rot cap, lingering MIRE.poisonDelay seconds poisons.
     const underKind = tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind;
-    if (rotTick(this.save, underKind, dt) && now > (this.rotMessageAt || 0)) { this.rotMessageAt = now + 9000; this.message = underKind === "swampWater" ? "The bog water rots you: maximum health falls until you rest." : "The blight rots you: maximum health falls until you rest."; }
+    if (rotTick(this.save, underKind, dt) && now > (this.rotMessageAt || 0)) { this.rotMessageAt = now + 9000; this.message = underKind === "swampWater" || underKind === "mireWater" ? "The bog water rots you: maximum health falls until you rest." : "The blight rots you: maximum health falls until you rest."; }
     if (MIRE.rotKinds.includes(underKind) && ensureRot(this.save) >= rotCap(this.save)) {
       this.poisonSoak = (this.poisonSoak || 0) + dt;
       if (this.poisonSoak >= MIRE.poisonDelay) { const fresh = !(eliteStatus.poison > 0); applyPoison(eliteStatus, MIRE.poisonDuration, Math.max(MIRE.poisonMinDps, Math.round((Number(this.save.maxHp) || 0) * MIRE.poisonMaxHpFraction))); if (fresh) this.message = "The blight is in your blood: poisoned. Leave the bog, or drink a Clearroot Ampoule."; }
