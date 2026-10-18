@@ -812,32 +812,32 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 .action-diamond .spell-b { right: calc(var(--button) * -0.16); bottom: calc(var(--button) * 0.1); top: auto; }
 .action-diamond button.spell .slot-letter { top: 2px; left: 12px; transform: none; }
 
-/* Release 183 (Tim, 2026-10-18): Jump was too small after 179, and Spell A at the cluster's top-right covered too much
-   of the playfield. The cluster grows a little, Jump is back to its release-101 size, and Spell A returns to the bottom
-   row, just right of Potion; Spell B stays in the cluster. Tim then asked that no buttons overlap or touch, so every
-   button is placed on one grid in --button units with at least a tenth of a button between neighbours:
-   Tool top, Act left, Attack bottom, Jump centre, Dodge right of Jump (still the largest), Spell B low on the right. */
+/* Release 183 (Tim, 2026-10-18): Jump was too small after 179 and Spell A at the cluster's top-right covered too much of
+   the playfield. Tim's layout: the five action buttons form a cross of equal buttons (Tool, Act, Jump in the middle,
+   Dodge, Attack), with a tenth of a button and more between neighbours. Spell A sits low under Act (their right edges
+   line up), Spell B low under Dodge (their left edges line up), so the cross sits centred between them and Attack sits
+   between the two spells. Positions are in --button units: the cluster is 3.56 x 3.24 buttons. */
 :root { --button: 58px; }
 @media (orientation: portrait) { :root { --button: 50px; } }
 @media (orientation: landscape) and (max-height: 540px) { :root { --button: 50px; } }
-.action-diamond { width: calc(var(--button) * 3.33); height: calc(var(--button) * 3.1); }
-.action-diamond button { right: auto; bottom: auto; transform: none; }
-.action-diamond .tool { left: calc(var(--button) * 1.05); top: 0; }
-.action-diamond .act { left: 0; top: calc(var(--button) * 1.05); }
-.action-diamond .attack { left: calc(var(--button) * 1.05); top: calc(var(--button) * 2.1); }
-.action-diamond .jump { left: calc(var(--button) * 1.12); top: calc(var(--button) * 1.12); width: calc(var(--button) * 0.86); height: calc(var(--button) * 0.86); transform: none; font-size: 9px; }
-.action-diamond .dodge { left: calc(var(--button) * 2.08); top: calc(var(--button) * 1.0); right: auto; }
-.action-diamond .spell-b { left: calc(var(--button) * 2.17); top: calc(var(--button) * 2.34); right: auto; bottom: auto; }
-.quick-row { right: calc(var(--button) * 3.33 + 30px); }
-.quick-row button.spell-a { margin-left: 1px; }
+.action-diamond { width: calc(var(--button) * 3.56); height: calc(var(--button) * 3.24); }
+.action-diamond button.core { right: auto; bottom: auto; transform: none; width: var(--button); height: var(--button); }
+.action-diamond .tool { left: calc(var(--button) * 1.28); top: 0; }
+.action-diamond .act { left: calc(var(--button) * 0.16); top: calc(var(--button) * 1.12); }
+.action-diamond .jump { left: calc(var(--button) * 1.28); top: calc(var(--button) * 1.12); font-size: 9px; padding-bottom: 13px; }
+.action-diamond .dodge { left: calc(var(--button) * 2.4); top: calc(var(--button) * 1.12); }
+.action-diamond .attack { left: calc(var(--button) * 1.28); top: calc(var(--button) * 2.24); }
+.action-diamond button.spell { width: calc(var(--button) * 1.16); height: calc(var(--button) * 0.72); }
+.action-diamond .spell-a { left: 0; top: calc(var(--button) * 2.52); }
+.action-diamond .spell-b { left: calc(var(--button) * 2.4); top: calc(var(--button) * 2.52); }
+.quick-row { right: calc(var(--button) * 3.56 + 26px); }
 @media (orientation: landscape) and (max-height: 540px) {
-  .quick-row { right: calc(var(--button) * 3.33 + 20px); }
+  .quick-row { right: calc(var(--button) * 3.56 + 18px); }
 }
-/* Portrait phones are too narrow for Potion and Spell A between Pack and the cluster, so the pair sits one row up,
-   right of the compass, still side by side; the cluster hugs the right edge to leave them room. */
+/* Portrait phones have no room for Potion between Pack and the cluster, so it sits one row up, right of the compass;
+   the cluster hugs the right edge. */
 @media (orientation: portrait) {
   .action-diamond { right: 6px; }
-  .quick-row { left: 68px; right: auto; bottom: 44px; justify-content: flex-start; gap: 6px; }
+  .quick-row { left: 68px; right: auto; bottom: 44px; justify-content: flex-start; }
   .quick-row button { min-width: 46px; padding-inline: 2px; }
-  .quick-row button.spell-a { margin-left: 0; }
 }
