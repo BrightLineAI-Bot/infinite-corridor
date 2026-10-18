@@ -802,3 +802,14 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 /* Options → System lines (browser, release, storage) wrap to the panel instead of widening it past the screen. */
 #optionsPanel pre { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
 #optionsPanel { max-width: calc(100vw - 16px); overflow-x: hidden; }
+
+/* Release 179 (Tim's probe, 2026-10-18): his thumb, reaching for Dodge with a second finger, landed 15-20 px left of
+   Dodge's centre, on the edge of Jump or in the gap between them. Dodge grows a little and reaches left, Jump stays
+   in the centre but smaller, and the spell buttons are ovals again (Tim: "they fit better that way"), reaching just
+   past the cluster's right edge so they stay clear of Tool, Dodge and Attack. Sizes follow --button on every screen. */
+.action-diamond .dodge { right: calc(var(--button) * 0.12); top: calc(var(--button) * 1.0); width: calc(var(--button) * 1.1); height: calc(var(--button) * 1.1); }
+.action-diamond .jump { width: calc(var(--button) * 0.7); height: calc(var(--button) * 0.7); font-size: 8px; padding-bottom: 0; }
+.action-diamond button.spell { width: calc(var(--button) * 1.16); height: calc(var(--button) * 0.72); border-radius: 999px; padding: 0 4px 9px; }
+.action-diamond .spell-a { right: calc(var(--button) * -0.16); top: calc(var(--button) * 0.1); }
+.action-diamond .spell-b { right: calc(var(--button) * -0.16); bottom: calc(var(--button) * 0.1); top: auto; }
+.action-diamond button.spell .slot-letter { top: 2px; left: 12px; transform: none; }
