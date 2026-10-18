@@ -136,17 +136,30 @@ export function createInput(root, host = globalThis, options = {}) {
   // before the tap ends. The browser then delivers that same tap's click to whatever button now lies beneath it
   // (the Arcanum, Increase, Equip, Salvage...). Swallow the click that belongs to the action button's own gesture.
   let actionTap = null;
-  root.querySelectorAll("[data-action]").forEach(
-    (b) =>
-      (b.onpointerdown = (e) => {
-        e.preventDefault();
-        actionTap = { button: b, pointerId: e.pointerId, until: performance.now() + 1500 };
-        latch.add(b.dataset.action);
-        heldButtons.add(b.dataset.action);
-        const up = () => { heldButtons.delete(b.dataset.action); b.removeEventListener("pointerup", up); b.removeEventListener("pointercancel", up); b.removeEventListener("pointerleave", up); };
-        b.addEventListener("pointerup", up); b.addEventListener("pointercancel", up); b.addEventListener("pointerleave", up);
-      }),
-  );
+  const press = (b, e) => {
+    e.preventDefault();
+    actionTap = { button: b, pointerId: e.pointerId, until: performance.now() + 1500 };
+    latch.add(b.dataset.action);
+    heldButtons.add(b.dataset.action);
+    const up = () => { heldButtons.delete(b.dataset.action); b.removeEventListener("pointerup", up); b.removeEventListener("pointercancel", up); b.removeEventListener("pointerleave", up); };
+    b.addEventListener("pointerup", up); b.addEventListener("pointercancel", up); b.addEventListener("pointerleave", up);
+  };
+  root.querySelectorAll("[data-action]").forEach((b) => (b.onpointerdown = (e) => press(b, e)));
+  // Release 179 (Tim's probe, 2026-10-18): a thumb that lands in the gap between action buttons pressed nothing; his
+  // Dodge presses landed just off Dodge's lower-left curve. A press on the cluster itself goes to the button whose edge
+  // is nearest, within GAP_REACH pixels, and Dodge (the action that has to land at once) wins ties by GAP_PRIORITY.
+  const GAP_REACH = 18, GAP_PRIORITY = { dodge: 8 };
+  root.querySelectorAll?.(".action-diamond").forEach((d) => (d.onpointerdown = (e) => {
+    if (e.target !== d) return;
+    let best = null, bestGap = GAP_REACH;
+    for (const b of d.querySelectorAll("[data-action]")) {
+      const r = b.getBoundingClientRect?.();
+      if (!r || !r.width || b.hidden) continue;
+      const gap = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)) - Math.min(r.width, r.height) / 2 - (GAP_PRIORITY[b.dataset.action] || 0);
+      if (gap < bestGap) { bestGap = gap; best = b; }
+    }
+    if (best) press(best, e);
+  }));
   root.addEventListener?.("click", (e) => {
     const tap = actionTap;
     actionTap = null;

@@ -24,6 +24,25 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Dodge reaches the thumb; oval spell buttons (release 179)
+
+Tim's 110-second probe on the folded outer screen (release 175 layout) shows where his second finger lands. Presses he meant as Jump, Tool and Act all registered. His roughly ten Dodge attempts landed just off Dodge's lower-left curve, on average about 24 px left of and 17 px below its centre. A round button's square corners are not part of it, so those presses fell on the cluster itself and did nothing; only one reached Dodge. The input path was never at fault.
+
+**CODE:**
+- `input.ts`: a `pointerdown` on `.action-diamond` itself (a gap, not a button) presses the button whose edge is nearest, within `GAP_REACH` (18 px).
+  - Dodge wins near-ties by `GAP_PRIORITY.dodge` (8 px), because it is the action that has to land at once.
+  - The press logic is shared (`press(b, e)`), so a gap press latches, holds and swallows its click exactly like a direct press.
+- `styles.css` (appended; sizes follow `--button` on every screen):
+  - Dodge is 1.1 buttons wide and reaches slightly left and down (`right` 0.12, `top` 1.0).
+  - Jump stays in the centre at 0.7 of a button.
+  - The spell buttons are ovals again (1.16 x 0.72 buttons, Tim: "they fit better that way"). They reach 0.16 of a button past the cluster's right edge to stay clear of Tool, Dodge and Attack.
+
+**Replay of Tim's probe:** his touch points were replayed against the new layout at 437x608, each placed at the same offset from the button's centre. Dodge attempts went from 4 of 10 to 9 of 10, and Jump presses from 14 of 14 to 13 of 14.
+
+In Chromium, two-finger dodges with the second touch at Tim's average offset dodge every time.
+
+**BOUNDARY:** Controls only; no gameplay change. The gap rule applies to the action cluster only, so taps on the world, the HUD and the quick row are unchanged.
+
 ## Spell buttons beside Dodge; System page wraps (release 177)
 
 Tim's layout (2026-10-18): the action cluster sits low, near the bottom of the screen. The spell buttons move from the quick row into the cluster's empty right-hand corners: Spell A beside Tool, above Dodge, and Spell B below Dodge in the bottom-right corner (from Tim's marked-up screenshot). The cluster shifts a little left, and Potion takes the spells' old place beside it.
