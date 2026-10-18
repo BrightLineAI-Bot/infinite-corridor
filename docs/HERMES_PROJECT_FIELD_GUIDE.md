@@ -26,6 +26,27 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Faster water on the overworld; "new release ready" prompt (release 185)
+
+Tim's probe on release 181 (Firefox, Android, 2026-10-18): the overworld ran at 31 fps and the open sea at 24, against 87 in a dungeon. The game code was almost all `render` → `ground`: about 16 ms per frame on land and 20 ms at sea, versus 0.8 ms in a dungeon. He also reloaded after the release-183 publish and was still on 181.
+
+**CODE:** Water overlays.
+- The overworld's ground is one cached image per section (release 159). Copying it costs about a third more than the full-screen tint copy, which Tim's phone does in ~4 ms (calibrated in Chromium's CPU canvas, which uses the same Skia engine).
+- The rest was the animated overlays: every visible water tile made its own stroke call, two per ocean tile. Each also set `strokeStyle` from a string, which Firefox parses on every set. A watery screen meant several thousand canvas calls a frame.
+- `landscape-render.ts` adds `animateLandscapeTiles(ctx, tiles, s)`, which takes a flat `[tile, x, y, …]` list:
+  - ocean, deep ocean, lake water, shallows and current streaks each go into one path with one stroke;
+  - ocean sparkles are filled after the strokes;
+  - lava, bubbles, glow and motes still draw per tile.
+- `renderer.ts` collects the visible animated tiles into a reused array and makes one call.
+- In Chromium's CPU canvas, a screen of ocean takes 0.30 ms instead of 0.75 ms. Firefox's per-call cost is much higher, so the saving should be larger on Tim's phone; his next probe will tell.
+- Pixel comparison against the per-tile drawing: 3% of overlay pixels differ, by at most 48 levels, where two semi-transparent strokes used to overlap and double-blend.
+
+**CODE:** Update prompt.
+- `sw.js` serves cache-first, including `index.html`. So after a publish, the first load runs the old build while the new worker installs, and only the next load runs the new one.
+- `index.html` now listens for `controllerchange` (only when a worker already controlled the page). It then shows a "New release ready · tap to update" button (`.update-ready`) that reloads. Reloading triggers `pagehide`, which pauses and saves, so play resumes exactly.
+
+**BOUNDARY:** Drawing and the boot script only. No game state, saves or generation change. The water's look is unchanged except at those overlaps. The prompt never reloads on its own. Not measured on a device yet.
+
 ## The action cross; location label under Map; crossing text only at crossings (release 183)
 
 Tim, 2026-10-18, after playing release 181:

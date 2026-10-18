@@ -843,3 +843,6 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
   .quick-row { left: 68px; right: auto; bottom: 74px; justify-content: flex-start; }
   .quick-row button { min-width: 46px; padding-inline: 2px; }
 }
+
+/* Release 185: the "new release ready" prompt, shown when an updated service worker takes over the page. */
+.update-ready { position: fixed; z-index: 95; top: calc(env(safe-area-inset-top) + 6px); left: 50%; transform: translateX(-50%); min-height: 40px; padding: 0 16px; border: 1px solid #b58c50; border-radius: 999px; background: #1d1c19f0; color: #f0dbb5; font: 700 12px ui-monospace, monospace; box-shadow: 0 4px 14px #000a; }

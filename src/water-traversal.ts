@@ -8,7 +8,9 @@ export const TIDEMANTLE = {
   speed: 0.55,
   staminaDrainPerSecond: 3,
   // Waterbodies (landscape version 2): the Tidemantle is a surface tool; open deep water tires twice as fast.
-  drainMultiplier: { deepOcean: 2 },
+  drainMultiplier: { deepOcean: 2, swampWater: 0, toxicWater: 0 },
+  // Release 185 (Tim, 2026-10-18): bog pools cost maximum health, not stamina. Swimming a swamp or blight pool no
+  // longer tires the Wayfarer; it rots instead (MIRE.rotKinds), and at the rot cap lingering poisons as before.
   exhaustedDamagePerSecond: 6,
   // Release 164 (Tim, 2026-10-17: "3 seconds is fine"): in open sea a full 50-stamina bar lasts about 3 s, ocean or deep.
   openSeaPerSecond: 17,
@@ -61,7 +63,7 @@ export function swimUpkeep(player, dt, kind = null, openSea = false) {
 export const MIRE = {
   slow: { mireWater: .6, toxicMire: .6 },
   // The poisoned murk and water rot; blight bog ground (the dry land between them) stays safe. Release 165: in any area.
-  rotKinds: ["toxicMire", "toxicWater"],
+  rotKinds: ["toxicMire", "toxicWater", "swampWater"], // release 185: ordinary swamp pools rot too (Tim)
   rotPerSecond: 1.5,
   maxRotFraction: .5,
   // Once rot reaches its cap (maximum health at half), staying in the poison for poisonDelay seconds poisons the
