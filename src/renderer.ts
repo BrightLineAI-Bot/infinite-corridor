@@ -1074,11 +1074,12 @@ export function render(ctx, g, w, h, now) {
     hasLevels = g.map?.landscape && (g.map._hasLevels ??= g.map.tiles.some((q) => (q.elev || 0) > 0)),
     label = hasLevels ? `${place} · ${levelName(elevationAt(g.map, mw, g.player.x, g.player.y))}` : place;
   ctx.fillStyle = "#151411ee";
-  // Sits above the compass and Map/Pack cluster (bottom-left), which used to cover it on phones and both Fold screens.
-  const labelY = h - (g.labelInset ?? 122);
-  ctx.fillRect(8, labelY, Math.max(150, ctx.measureText(label).width + 20), 24);
+  // Sits just beneath Map and Pack (release 183), aligned with them, never wider than the space before the next control.
+  const labelY = h - (g.labelInset ?? 122), labelX = g.labelX ?? 8,
+    boxW = Math.min(Math.max(150, ctx.measureText(label).width + 20), g.labelMaxWidth ?? Infinity);
+  ctx.fillRect(labelX, labelY, boxW, 24);
   ctx.fillStyle = "#cec7b6";
-  ctx.fillText(label, 16, labelY + 16);
+  ctx.fillText(label, labelX + 8, labelY + 16, boxW - 16);
   if (timed) { const t3 = performance.now(); renderTimings.ground = t1 - t0; renderTimings.world = t2 - t1; renderTimings.overlay = t3 - t2; }
 }
 
