@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { generateRegion } from '../src/world.ts';
 import { applyLandscape, biomeFor } from '../src/landscape.ts';
 import { Game } from '../src/game.ts';
@@ -91,4 +92,14 @@ test('in the real game: tentacles join the fight as rewardless summons, ink dark
   const before = s.currency; k.hp = 0; k.dead = true; g.defeatEnemy(k);
   assert.ok(s.currency >= before + LEVIATHAN_TROPHY.currency); assert.equal(s.worldFlags['leviathan:stormkraken'], true);
   assert.equal(leviathanTrophy(s, 'stormkraken'), false, 'once only'); assert.equal(leviathanTrophy(s, 'lanceeel'), false, 'leviathans only');
+});
+
+test('the Tyrant Mosasaur is its own bigger, tougher creature; its old body is the Undertow Leviathan', () => {
+  // Release 229 (Tim): the mosasaur looks like a mosasaur, is bigger and has more health; the segmented creature stays.
+  const t = SEA_CREATURES.tyrantMosasaur, u = SEA_CREATURES.undertowLeviathan;
+  assert.equal(t.body, 'mosasaur'); assert.ok(t.hp > u.hp && t.size > u.size && t.hitReach > 1.1);
+  assert.equal(u.pattern, 'lunge'); assert.equal(u.segments, 5); assert.equal(u.hp, 320);
+  assert.equal(SEA_SPAWNS.leviathans.length, 9, 'the table keeps its length, so sections keep their rolls');
+  assert.ok(SEA_SPAWNS.leviathans.includes('tyrantMosasaur') && SEA_SPAWNS.leviathans.includes('undertowLeviathan'));
+  const src = readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8'); assert.match(src, /function drawMosasaur\(/); assert.match(src, /function mosasaurSpine\(/); assert.match(src, /MOSASAUR_KICK = /);
 });
