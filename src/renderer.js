@@ -1,13 +1,14 @@
-import { enemyMeleeGeometry } from "./combat.js?v=r191-182df041f2c0";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r191-182df041f2c0";
-import { BOAT } from "./boats.js?v=r191-182df041f2c0";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r191-182df041f2c0";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r191-182df041f2c0";
-import { liftAt } from "./landscape.js?v=r191-182df041f2c0";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=r191-182df041f2c0";
-import { drawRelayNode } from "./relay-network.js?v=r191-182df041f2c0";
-import { structureOccupancy } from "./world.js?v=r191-182df041f2c0";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r191-182df041f2c0";
+import { enemyMeleeGeometry } from "./combat.js?v=r199-cfbe397a7e7e";
+import { ruleRows } from "./elders.js?v=r199-cfbe397a7e7e";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r199-cfbe397a7e7e";
+import { BOAT } from "./boats.js?v=r199-cfbe397a7e7e";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r199-cfbe397a7e7e";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r199-cfbe397a7e7e";
+import { liftAt } from "./landscape.js?v=r199-cfbe397a7e7e";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=r199-cfbe397a7e7e";
+import { drawRelayNode } from "./relay-network.js?v=r199-cfbe397a7e7e";
+import { structureOccupancy } from "./world.js?v=r199-cfbe397a7e7e";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r199-cfbe397a7e7e";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -334,6 +335,37 @@ function drawSkiff(ctx, x, y, s, facing, now) {
   ctx.fillStyle = "#6b4a2e"; ctx.beginPath(); ctx.moveTo(-s * .55, -s * .16); ctx.lineTo(s * .38, -s * .16); ctx.quadraticCurveTo(s * .66, 0, s * .38, s * .16); ctx.lineTo(-s * .55, s * .16); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = "#c9a571"; ctx.lineWidth = Math.max(1, s * .04); ctx.stroke();
   ctx.fillStyle = "#8d6a43"; for (const k of [-.3, .05]) ctx.fillRect(k * s, -s * .13, s * .07, s * .26);
+  ctx.restore();
+}
+// Release 197: an Elder Wanderer. Tall and faceless on four stilt legs; its body is its own rule, unfolding upward
+// row by row, in the rule's colour. A pale disc floats where a head would be.
+export function drawElder(ctx, o, s, now) {
+  const hue = (o.rule * 137.508) % 360, walking = o.state === "walking", T = now / 1000 + (o.phase || 0) * 10;
+  const cx = (o.x + .5) * s, foot = (o.y + .95) * s, H = s * 2.2, bodyW = s * .5, bodyTop = foot - H, bodyBot = foot - H * .42, bob = walking ? Math.sin(T * 3) * s * .03 : Math.sin(T) * s * .015;
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(cx, foot, s * .45, s * .12, 0, 0, 7); ctx.fill();
+  // Four long jointed legs, stepping in turn.
+  ctx.strokeStyle = `hsl(${hue},25%,22%)`; ctx.lineWidth = Math.max(1.5, s * .045); ctx.lineCap = "round";
+  for (let k = 0; k < 4; k++) {
+    const side = k < 2 ? -1 : 1, front = k % 2 ? 1 : -1, ph = walking ? Math.sin(T * 3 + k * 1.6) : 0;
+    const hip = [cx + side * bodyW * .3, bodyBot + bob], toe = [cx + side * s * (.28 + front * .1) + ph * s * .12, foot - Math.max(0, ph) * s * .08], knee = [cx + side * s * .48, (hip[1] + toe[1]) / 2 - s * .2];
+    ctx.beginPath(); ctx.moveTo(...hip); ctx.lineTo(...knee); ctx.lineTo(...toe); ctx.stroke();
+  }
+  // The body: a cloak of its rule, rows rising; a fresh random row every 26 rows, so even rules that die out show
+  // their character.
+  const cols = 9, rowsShown = 15, rows = o.rows ||= Array.from({ length: 16 }, (_, k) => ruleRows(o.rule, 33, 26, Math.floor((o.phase || .5) * 1e6) + 7 + k * 7919).map((r) => r.slice(12, 12 + cols))).flat(), cw = bodyW / cols, ch = (bodyBot - bodyTop) / rowsShown, scroll = (T * 2.2) % (rows.length - rowsShown);
+  const top = Math.floor(scroll);
+  ctx.save(); ctx.beginPath(); ctx.moveTo(cx - bodyW / 2, bodyBot + bob); ctx.lineTo(cx - bodyW / 2, bodyTop + bodyW * .4 + bob); ctx.quadraticCurveTo(cx, bodyTop - bodyW * .2 + bob, cx + bodyW / 2, bodyTop + bodyW * .4 + bob); ctx.lineTo(cx + bodyW / 2, bodyBot + bob); ctx.closePath();
+  ctx.fillStyle = `hsl(${hue},40%,8%)`; ctx.fill(); ctx.clip();
+  ctx.fillStyle = `hsl(${hue},85%,64%)`;
+  for (let y = 0; y <= rowsShown; y++) { const row = rows[(top + y) % rows.length]; for (let x = 0; x < cols; x++) if (row[x]) ctx.fillRect(cx - bodyW / 2 + x * cw + cw * .1, bodyBot + bob - (y + 1 - (scroll - top)) * ch + ch * .1, cw * .8, ch * .8); }
+  ctx.restore();
+  ctx.strokeStyle = `hsla(${hue},70%,70%,.6)`; ctx.lineWidth = 1; ctx.strokeRect(cx - bodyW / 2, bodyTop + bodyW * .4 + bob, bodyW, bodyBot - bodyTop - bodyW * .4);
+  // The head: a pale floating disc with a faint halo, no face.
+  const hy = bodyTop - s * .32 + bob + Math.sin(T * 1.3) * s * .04;
+  const halo = ctx.createRadialGradient(cx, hy, 0, cx, hy, s * .45); halo.addColorStop(0, `hsla(${hue},90%,80%,.45)`); halo.addColorStop(1, `hsla(${hue},90%,80%,0)`);
+  ctx.fillStyle = halo; ctx.fillRect(cx - s * .45, hy - s * .45, s * .9, s * .9);
+  ctx.fillStyle = `hsl(${hue},30%,88%)`; ctx.beginPath(); ctx.ellipse(cx, hy, s * .13, s * .16, 0, 0, 7); ctx.fill();
   ctx.restore();
 }
 function actor(
@@ -763,6 +795,7 @@ export function render(ctx, g, w, h, now) {
           if (o.kind === "wayfindingCue") waymark(ctx,o,s);
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
+          else if (o.kind === "traveler" && o.elder) drawElder(ctx, o, s, now);
           else if (o.kind === "traveler") {
             const f = o.facing || "down", step = o.state === "walking" ? Math.floor(now / 180) : 0, lift = o.mount ? .42 : 0;
             if (o.mount) actor(ctx, o.x, o.y + .05, s, o.mount, f, step, o.state === "walking" ? "walk" : "idle");

@@ -4,11 +4,12 @@
 // Travellers: groups of people (some mounted) walk the trails or wander a section, stop when the Wayfarer comes near,
 // and talk. Peddlers trade. Old Quillon, a wandering cartographer, gives one errand at a time; finish it and the next
 // time you meet him he pays and hands you the next.
-import { hashSeed, rng, pick } from "./random.js?v=r191-182df041f2c0";
-import { LETHAL_KINDS } from "./landscape.js?v=r191-182df041f2c0";
-import { hamletSection } from "./settlements.js?v=r191-182df041f2c0";
-import { RECITERS, RECITATIONS } from "./recitations.js?v=r191-182df041f2c0";
-import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading } from "./lore.js?v=r191-182df041f2c0";
+import { hashSeed, rng, pick } from "./random.js?v=r199-cfbe397a7e7e";
+import { LETHAL_KINDS } from "./landscape.js?v=r199-cfbe397a7e7e";
+import { hamletSection } from "./settlements.js?v=r199-cfbe397a7e7e";
+import { RECITERS, RECITATIONS } from "./recitations.js?v=r199-cfbe397a7e7e";
+import { ELDERS, ELDER_NAME, elderPlan } from "./elders.js?v=r199-cfbe397a7e7e";
+import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading, readingKnown } from "./lore.js?v=r199-cfbe397a7e7e";
 
 export const TRAVEL_VERSION = 1;
 export const TRAVEL = { reciterChance: 0.12, trailChance: 0.08, trailNearTown: 0.6, groupChance: 0.2, groupChanceOnTrail: 0.42, minDepth: 1, speed: 1.15, pauseRadius: 2.4, spacing: 0.9, wandererChance: 0.07, wandererChanceReady: 0.22 };
@@ -216,6 +217,7 @@ export function addTravelers(map, seed, rx, ry) {
 // Per-frame: the leader walks the path (back and forth), the rest follow in a line; everyone stops near the Wayfarer.
 export function tickTravelers(map, player, dt) {
   const face = (o, x, y) => { o.facing = Math.abs(x - o.x) > Math.abs(y - o.y) ? (x > o.x ? "right" : "left") : (y > o.y ? "down" : "up"); };
+  tickElder(map, player, dt, face);
   const wanderer = map?.objects?.find((o) => o.kind === "traveler" && o.wanderer);
   if (wanderer && Math.hypot(wanderer.x - player.x, wanderer.y - player.y) < TRAVEL.pauseRadius * 2) face(wanderer, player.x, player.y);
   const reciter = map?.objects?.find((o) => o.kind === "traveler" && o.reciter), walk = map?.reciterWalk;
@@ -273,7 +275,7 @@ export function tickTravelers(map, player, dt) {
 export function travelerTalk(o, save = null) {
   const who = `${o.name}${o.role ? ` (${o.role})` : ""}${o.mount ? `, riding a ${o.mount.replace(/([A-Z])/g, " $1").toLowerCase()}` : ""}`;
   const here = save ? readingAt(save.session?.rx ?? 0, save.session?.ry ?? 0) : null, said = here ? readingSpeech(save, here, { reciter: false }) : null;
-  if (said) return `${who}: “${said.text}”${placeNote(discoverReading(save, here))}${pieceNote(said.found)}`;
+  if (said) return `${who}: “${said.text}”${placeNote(discoverReading(save, here))}${pieceNote(said.found, save)}`;
   const lines = o.lines?.length ? o.lines : ["Safe roads."], line = lines[(o.talk || 0) % lines.length];
   o.talk = (o.talk || 0) + 1;
   return `${who}: “${line}”`;
@@ -286,7 +288,8 @@ function readingSpeech(save, readingId, { reciter, voices = null }) {
 }
 // The first voice heard in a Reading names it; nothing names a Reading you have not heard.
 function placeNote(found) { return found ? ` · You are in ${found.name.replace(/^The /, "the ")}.` : ""; }
-function pieceNote(found) { return !found ? "" : found.completed ? ` · Recitation complete: ${READINGS[found.readingId].name}.` : ` · A fragment of ${READINGS[found.readingId].name} is remembered (Reciter's Tome)`; }
+// A fragment of a Reading not yet heard is noted without naming it (release 193).
+function pieceNote(found, save = null) { return !found ? "" : found.completed ? ` · Recitation complete: ${READINGS[found.readingId].name}.` : save && !readingKnown(save, found.readingId) ? " · A fragment is remembered (Reciter's Tome)." : ` · A fragment of ${READINGS[found.readingId].name} is remembered (Reciter's Tome)`; }
 
 // ------------------------------------------------------------------ the wandering cartographer
 // One errand at a time. Kinds: hunt (defeat creatures), cache (find a satchel at a section), town (reach a town).
@@ -430,6 +433,45 @@ export function addReciter(map, seed, rx, ry, save = null) {
   const r = rng(`${seed}:reciter-walk:${rx}:${ry}`), open = map.tiles.filter((t) => t.x > 4 && t.y > 4 && t.x < 27 && t.y < 27 && walkable(t));
   return placeReciter(map, who, `reciter:${rx},${ry}`, open, r, 32);
 }
+// ------------------------------------------------------------------ the Elder Wanderers (release 197)
+// An Elder walks the section's road when it has one (they are road creatures), otherwise a stitched stroll; in a
+// crossing it wanders near the entrance. It carries its rule (elders.ts) and speaks it as a pattern, never in words.
+function placeElder(map, plan, id, path, region, width) {
+  if (!path || path.length < 2) return null;
+  const at = path[0], o = { id, kind: "traveler", elder: true, rule: plan.rule, name: ELDER_NAME, role: "", look: "elder", mount: null, x: at.x, y: at.y, state: "walking", actions: ["speak"], facing: "down", phase: (plan.seed % 1000) / 1000 };
+  map.objects.push(o); map.elderWalk = { path, index: 1, dir: 1, region, width };
+  return o;
+}
+export function addElder(map, save, rx, ry) {
+  if (!map || map.elderWalk || map.skirmish || map.tiles?.length !== 1024 || Math.abs(rx) + Math.abs(ry) < ELDERS.minDepth) return null;
+  const roads = (map.trails || []).filter((p) => p.length > 6), plan = elderPlan(save, `${rx}:${ry}`, roads.length ? ELDERS.chance.trail : ELDERS.chance.wild);
+  if (!plan) return null;
+  if (roads.length) { const road = roads[plan.seed % roads.length].filter((p) => walkable(map.tiles[p.y * 32 + p.x])); return placeElder(map, plan, `elder:${rx},${ry}`, road, road, 32); }
+  const r = rng(`${plan.seed}:elder-walk`), open = map.tiles.filter((t) => t.x > 4 && t.y > 4 && t.x < 27 && t.y < 27 && walkable(t));
+  if (!open.length) return null;
+  const start = open[Math.floor(r() * open.length)], region = groundRegion(map, 32, start, 900);
+  if (region.length < 6) return null;
+  return placeElder(map, plan, `elder:${rx},${ry}`, stitch(map, 32, [start, ...[0, 1, 2, 3].map(() => region[Math.floor(r() * region.length)])]), region, 32);
+}
+export function addDungeonElder(map, areaId, save, width) {
+  if (!map || map.elderWalk || !map.tiles?.length || !width) return null;
+  const plan = elderPlan(save, `dungeon:${areaId}:${map.levelStableId || ""}`, ELDERS.chance.dungeon); if (!plan) return null;
+  const entry = map.entry || map.tiles.find(walkable), r = rng(`${plan.seed}:elder-walk`);
+  const open = map.tiles.filter((t) => walkable(t) && !t.environment && Math.hypot(t.x - entry.x, t.y - entry.y) > 2 && Math.hypot(t.x - entry.x, t.y - entry.y) < 9);
+  if (open.length < 4) return null;
+  const start = open[Math.floor(r() * open.length)], region = groundRegion(map, width, start, 900);
+  if (region.length < 6) return null;
+  return placeElder(map, plan, `elder:${areaId}`, stitch(map, width, [start, ...[0, 1, 2, 3].map(() => region[Math.floor(r() * region.length)])]), region, width);
+}
+function tickElder(map, player, dt, face) {
+  const elder = map?.objects?.find((o) => o.kind === "traveler" && o.elder), walk = map?.elderWalk;
+  if (!elder || !walk) return;
+  if (Math.hypot(elder.x - player.x, elder.y - player.y) < TRAVEL.pauseRadius) { elder.state = "listening"; face(elder, player.x, player.y); return; }
+  const goal = walk.path[walk.index], d = Math.hypot(goal.x - elder.x, goal.y - elder.y), step = TRAVEL.speed * ELDERS.speed * dt;
+  elder.state = "walking"; face(elder, goal.x, goal.y);
+  if (d <= step) { elder.x = goal.x; elder.y = goal.y; if (walk.index + walk.dir >= walk.path.length || walk.index + walk.dir < 0) walk.dir = -walk.dir; walk.index += walk.dir; }
+  else { elder.x += (goal.x - elder.x) / d * step; elder.y += (goal.y - elder.y) / d * step; }
+}
 // In a dungeon level: a reciter strolls near the entrance.
 export function addDungeonReciter(map, areaId, save, width) {
   if (!map || map.reciterWalk || !map.tiles?.length || !width) return null;
@@ -441,7 +483,7 @@ export function addDungeonReciter(map, areaId, save, width) {
 }
 // Release 128: just a name and a line. Each meeting gives 1–RECITER_LINES_PER_MEETING lines, then they fall quiet. The
 // book and character are named only in the Reciter's Tome, which this call fills in by marking the reciter met.
-// Release r191-182df041f2c0: random mode never repeats a line until the reciter's whole book has been heard, and leans toward the
+// Release 191: random mode never repeats a line until the reciter's whole book has been heard, and leans toward the
 // passages that are pieces of a Reading's book; linear continues the book. Every line spoken is recorded as heard.
 export function reciterTalk(o, save) {
   ensureReciters(save); ensureLore(save);
@@ -456,7 +498,7 @@ export function reciterTalk(o, save) {
   const found = hearLine(save, who.id, at, { reciter: true });
   // A reciter names the Reading only when it is one of that Reading's own voices.
   const here = readingAt(save.session?.rx ?? 0, save.session?.ry ?? 0), local = READINGS[here].voices.some(([id]) => id === who.id);
-  return `${who.name}: “${lines[at]}”${local ? placeNote(discoverReading(save, here)) : ""}${pieceNote(found)}`;
+  return `${who.name}: “${lines[at]}”${local ? placeNote(discoverReading(save, here)) : ""}${pieceNote(found, save)}`;
 }
 export const RECITER_PIECE_CHANCE = 0.4;
 function unheardLine(save, id, n) {
