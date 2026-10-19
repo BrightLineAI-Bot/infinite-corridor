@@ -22,7 +22,7 @@ test('framing fits any set of sections into the view', () => {
   assert.ok(frame({ minX: 3, maxX: 3, minY: 3, maxY: 3 }, 600, 400).zoom <= ATLAS_ZOOM.max);
 });
 
-test('places are grouped by region; unheard regions are never named', () => {
+test('places are grouped by region; unheard regions are never named', () => { // release 213: towns, districts and Wayglasses
   const s = freshSave(); s.seed = 'places'; s.explored = {}; s.atlas = {};
   for (const [x, y, sites] of [[0, 0, []], [1, 0, [{ kind: 'checkpoint', name: 'Wayglass', x: 3, y: 3 }]], [0, -12, [{ kind: 'shack', name: 'Shelter', x: 1, y: 1 }]], [12, 0, [{ kind: 'architecturalDistrict', name: 'Old Quarter', x: 1, y: 1 }, { kind: 'supplyCache', name: 'Supply Cache', x: 2, y: 2 }]]]) { s.explored[`${x},${y}`] = true; s.atlas[`${x},${y}`] = { terrain: 'ash', sites }; }
   assert.equal(exploredSections(s).length, 4);
@@ -30,7 +30,7 @@ test('places are grouped by region; unheard regions are never named', () => {
   const g = atlasPlaces(s), names = g.map((q) => q.name);
   assert.deepEqual(names, ['The Smoke Meadows', 'The Ferry Reaches', 'Elsewhere']);
   assert.deepEqual(g[0].places.map((p) => p.name), ['Ember Refuge', 'Wayglass']);
-  assert.deepEqual(g[1].places.map((p) => p.kind), ['shack']);
+  assert.deepEqual(g[1].places, [], 'shelters are no longer places (release 213)');
   assert.deepEqual(g[2].places.map((p) => p.name), ['Old Quarter'], 'supply caches are not destinations');
   assert.deepEqual(g[2].bounds, { minX: 12, minY: 0, maxX: 12, maxY: 0 });
 });

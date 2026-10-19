@@ -2403,12 +2403,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 211 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 213 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "211"/);assert.match(html,/styles\.css\?v=211/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v211`/);assert.match(sw,/styles\.css\?v=211/);assert.match(sw,/proving-ground-labs\.js\?v=211/);assert.match(sw,/dungeon-framework\.js\?v=211/);assert.match(sw,/renderer\.js\?v=211/);
-  assert.match(build,/release='211'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "213"/);assert.match(html,/styles\.css\?v=213/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v213`/);assert.match(sw,/styles\.css\?v=213/);assert.match(sw,/proving-ground-labs\.js\?v=213/);assert.match(sw,/dungeon-framework\.js\?v=213/);assert.match(sw,/renderer\.js\?v=213/);
+  assert.match(build,/release='213'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("Shelter Gallery uses six deterministic production shelter families",()=>{
@@ -2664,7 +2664,7 @@ test("Singing Arrays are intermediate rest points without becoming fast-travel W
 
 test("Atlas and Journal share the exact landmark symbol vocabulary",()=>{
  const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
- for(const label of ["Wayglass","Singing Array","Crossing / Glass Kiln","Supply Cache","Shelter","District / Ruin","Major Danger","Unusual Site"])assert.match(main,new RegExp(label.replace("/","\\/")));
+ for(const label of ["Wayglass","Singing Array","Crossing / Glass Kiln","Town","District / Ruin","Major Danger","Unusual Site"])assert.match(main,new RegExp(label.replace("/","\\/"))); // release 213: supply caches and shelters are no longer Atlas symbols (Tim); towns are
  assert.match(main,/function drawAtlasGlyph/);assert.match(main,/function atlasMark/);assert.match(main,/renderAtlasLegend/);assert.match(html,/id="mapLegend"/);
 });
 
