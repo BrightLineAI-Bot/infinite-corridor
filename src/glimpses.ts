@@ -24,6 +24,8 @@ export const GLIMPSES = {
   theDrowning: { name: "The Drowning", human: .7, seconds: 13, eyes: "two", reduced: [.2, .5, .75] },
   theWheat: { name: "The Wheat", human: .75, seconds: 13, eyes: "two", reduced: [.3, .6, .8] },
   burningPlain: { name: "The Burning Plain", human: .3, seconds: 15, eyes: "two", reduced: [.2, .5, .8] },
+  // Release 219: the legends. Gilgamesh (Tim: "the legend of Gilgamesh, this is what I meant"): the plant of life lost to a snake.
+  thePlant: { name: "The Plant at the Bottom", human: .85, seconds: 16, eyes: "two", reduced: [.08, .38, .76] },
 };
 export const GLIMPSE_ORDER = Object.keys(GLIMPSES);
 // How often each kind of moment surfaces a Glimpse, and how many times one Glimpse may ever be seen in a journey.

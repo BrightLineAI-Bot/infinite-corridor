@@ -71,3 +71,10 @@ test('an unknown Glimpse ends at once instead of playing', () => {
   startGlimpse({}, 'nothing', { onEnd: () => ended++ });
   assert.equal(ended, 1);
 });
+
+test('the legends begin with Gilgamesh: the plant of life and the snake', () => {
+  // Release 219 (Tim: "the legend of gilgamesh, this is what I meant").
+  const g = GLIMPSES.thePlant;
+  assert.ok(g && hasGlimpseRenderer('thePlant'));
+  assert.equal(g.eyes, 'two'); assert.ok(g.human >= .8, 'a human Glimpse, leaning toward the Refuge');
+});
