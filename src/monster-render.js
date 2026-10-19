@@ -1,7 +1,7 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind } from "./monster-pack.js?v=r199-cfbe397a7e7e";
+import { MONSTER_PACK, isPackKind } from "./monster-pack.js?v=r205-e14f762ffe4d";
 
 const TAU = Math.PI * 2;
 
