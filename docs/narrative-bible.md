@@ -68,7 +68,9 @@ The overworld is divided into regions, called Readings in the code. Each is domi
 | 19 to 35 | **The Long Table** (*The Brothers Karamazov*) | **The Autumn Galleries** (Rilke) | **The Low Rooms** (*Notes from Underground*, *The Idiot*) | **The Ash Orchards** (*War and Peace*, years later) |
 | 36 and beyond | **The Far Sleep** (Lovecraft's Randolph Carter stories), deepening toward the Far Array (40 to 62 sections out). Its landscapes and dungeons should become Dreamlands: see section 7. | | | |
 
-**Proposed:** the Yoga Vasistha (Vihari-Lala Mitra's 1891 translation is public domain), if that is the "legend of Yoga" Tim means. Its story of Lila (worlds inside a room inside a world, lifetimes lived in an hour) fits the Corridor exactly. It could become a region of its own, or a wandering voice heard anywhere.
+**Gilgamesh** (Tim, 2026-10-19: this is the legend he meant). Its subject is the oldest surviving story of grief, a journey to the edge of the world, and the plant of life lost to a snake. It is a natural voice for the Corridor's human residue, from public-domain translations (R. Campbell Thompson, 1928, or Jastrow and Clay, 1920).
+
+**The Elder Wanderers** (release 197) are rare road creatures that speak no language, only cellular automaton rules. Hearing all 88 essentially different rules completes their recitation. They are the first voice from far outside human residue, and they walk everywhere.
 
 ---
 

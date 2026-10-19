@@ -396,7 +396,7 @@ function drawRule(ctx, t, w, h, state) {
   const T = t * 13, rate = 9, rowsVisible = 170;
   state.ruleSwitch ||= Math.round(.45 * 13 * rate) + 12;
   const scroll = T * rate - 10; // rows already behind you
-  const rows = ruleRows(state, Math.ceil(scroll + rowsVisible + 2));
+  const rows = ruleRows(state, Math.ceil(13 * rate + rowsVisible + 2)); // every row the Glimpse will show, built once
   // Texture: each cell a 4×4 tile with a dark rim, so cells read as tiles up close. Rule 30 cyan, Rule 110 violet.
   if (!state.tex || state.texRows < rows.length) {
     const C = 4, tex = makeCanvas(RULE_WIDTH * C, rows.length * C), tg = tex.getContext("2d"), img = tg.createImageData(RULE_WIDTH * C, rows.length * C), W4 = RULE_WIDTH * C;
@@ -473,4 +473,26 @@ export function startGlimpse(canvas, id, { reduceMotion = false, quality = "bala
   };
   frame(tick);
   return { stop() { stopped = true; } };
+}
+
+// ------------------------------------------------------------------ an Elder's speech (release 197)
+// An Elder speaks one rule as a pattern: rows unfolding downward from a random row, in the rule's own colour, with a
+// soft glow. `canvas` is sized by CSS; rows appear over `seconds` unless reduced motion asks for it all at once.
+export function paintRule(canvas, rule, start, { cols = 72, rows = 46, seconds = 1.6, reduceMotion = false, rowsOf } = {}) {
+  const scale = Math.min(2, globalThis.devicePixelRatio || 1), w = Math.round((canvas.clientWidth || 300) * scale), h = Math.round(w * rows / cols);
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d"), cell = w / cols, grid = rowsOf(rule, cols, rows, start), hue = (rule * 137.508) % 360;
+  const lit = `hsl(${hue},80%,66%)`, core = `hsl(${hue},90%,86%)`, began = performance.now();
+  const draw = (shown) => {
+    ctx.fillStyle = "#04060c"; ctx.fillRect(0, 0, w, h);
+    for (let y = 0; y < shown; y++) for (let x = 0; x < cols; x++) if (grid[y][x]) {
+      ctx.fillStyle = lit; ctx.fillRect(x * cell + cell * .08, y * cell + cell * .08, cell * .84, cell * .84);
+      ctx.fillStyle = core; ctx.fillRect(x * cell + cell * .3, y * cell + cell * .3, cell * .4, cell * .4);
+    }
+    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = .35; ctx.filter = `blur(${cell}px)`; ctx.drawImage(canvas, 0, 0); ctx.restore();
+    const g = ctx.createLinearGradient(0, h * .75, 0, h); g.addColorStop(0, "rgba(4,6,12,0)"); g.addColorStop(1, "rgba(4,6,12,.85)"); ctx.fillStyle = g; ctx.fillRect(0, h * .75, w, h * .25);
+  };
+  if (reduceMotion) { draw(rows); return; }
+  const tick = () => { const shown = Math.min(rows, Math.ceil((performance.now() - began) / 1000 / seconds * rows)); draw(shown); if (shown < rows && canvas.isConnected) requestAnimationFrame(tick); };
+  draw(1); requestAnimationFrame(tick);
 }
