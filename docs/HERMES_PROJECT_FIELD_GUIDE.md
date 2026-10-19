@@ -26,6 +26,30 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Glimpses of horror and violence (release 203)
+
+Tim, 2026-10-19: "Some of the scenes need to be scenes of horror … some of them should be violent."
+
+**CODE:**
+
+- **`src/glimpse-horror.ts`** (new; it is in `scripts/build.mjs` and both precache lists) exports `HORROR`, which `glimpse-render.ts` merges into its draw table. It has three helpers:
+  - `jolt` for impact shake;
+  - `redVeil` for red from the edges;
+  - `spatter` for seeded dark-red flecks with wet highlights.
+- **The scenes:**
+  - `fourthFloor`: the stairwell climb, a crossfade into the room, the figure turning away, the lifted axe, and the strike at t=.66 (white flash, jolt, the figure falling, a spreading pool, a swinging lamp, keys still swaying).
+  - `theHunt`: heat-palette forest and a running deer. You leap at t=.62 and strike at t=.7: furred heat-orange forelegs with dark hooked claws, spatter, red veil, slowing breath.
+  - `theTrench`: flares, distant flashes, the man ahead turning, and a shell at t=.64 (an earth column and clods). He is gone, the view tips 0.9 rad, and the screen whites out briefly, then shows grey ringing.
+  - `theDrowning`: the surface disc shrinking as you sink, bubbles, and 14 pale arms rising in turn whose fingers curl to grip.
+  - `theWheat`: a 360° wheat field (900 stalks rotated by yaw), something parting the wheat to your left that stops when you stop, the turn at t=.55–.72, and a gaunt red-eyed figure rising behind you that lunges at t=.86, then red and black.
+  - `burningPlain`: a red sky, pulsing cracks, figures wrapped in flame, ash hands flaking from the fingertips, and embers.
+- **`glimpses.ts`** gives each scene its `human` value (trench and fourth floor are high; the burning plain and the hunt are lower).
+
+**BOUNDARY:**
+
+- **Tone.** The violence stays at the level of silhouette, flash and red, with no anatomy.
+- **Untouched.** No rule or save changes: the scenes join the same pools, and replays and previews are unchanged.
+
 ## The Glimpse suite, first batch (release 201)
 
 Tim, 2026-10-19, after seeing the first three: "let's do the full suite of glimpses". This release adds six from `docs/narrative-bible.md` section 5.

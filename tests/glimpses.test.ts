@@ -9,7 +9,9 @@ function seeded(n = 1) { let x = n; return () => ((x = (x * 1103515245 + 12345) 
 
 test('the first Glimpses span the drift from human to unhuman', () => {
   assert.deepEqual(GLIMPSE_ORDER.slice(0, 3), ['wagonAtDusk', 'lanternFaceted', 'theRule']);
-  assert.ok(GLIMPSE_ORDER.length >= 9);
+  assert.ok(GLIMPSE_ORDER.length >= 15);
+  // Tim asked for horror and violence among them.
+  for (const id of ['fourthFloor', 'theHunt', 'theTrench', 'theDrowning', 'theWheat', 'burningPlain']) assert.ok(GLIMPSES[id], id);
   for (const id of GLIMPSE_ORDER) assert.ok(hasGlimpseRenderer(id), `${id} has a renderer`);
   // The suite spans the drift: some near-human, some wholly unhuman.
   assert.ok(GLIMPSE_ORDER.filter((id) => GLIMPSES[id].human >= .9).length >= 3 && GLIMPSE_ORDER.filter((id) => GLIMPSES[id].human <= .1).length >= 3);

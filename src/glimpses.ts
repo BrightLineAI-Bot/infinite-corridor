@@ -17,6 +17,13 @@ export const GLIMPSES = {
   theSpheres: { name: "The Spheres", human: .1, seconds: 14, eyes: "none", reduced: [.2, .5, .9] },
   edgeLight: { name: "Edge-Light", human: .05, seconds: 13, eyes: "none", reduced: [.2, .55, .9] },
   glyphRain: { name: "Glyph Rain", human: .2, seconds: 13, eyes: "other", reduced: [.1, .5, .62] },
+  // Release 203: horror and violence (Tim: "some of the scenes need to be scenes of horror … some of them should be violent").
+  fourthFloor: { name: "The Fourth Floor", human: .95, seconds: 14, eyes: "two", reduced: [.2, .5, .8] },
+  theHunt: { name: "The Hunt", human: .4, seconds: 12, eyes: "heat", reduced: [.3, .66, .8] },
+  theTrench: { name: "The Trench", human: .9, seconds: 14, eyes: "two", reduced: [.3, .55, .7] },
+  theDrowning: { name: "The Drowning", human: .7, seconds: 13, eyes: "two", reduced: [.2, .5, .75] },
+  theWheat: { name: "The Wheat", human: .75, seconds: 13, eyes: "two", reduced: [.3, .6, .8] },
+  burningPlain: { name: "The Burning Plain", human: .3, seconds: 15, eyes: "two", reduced: [.2, .5, .8] },
 };
 export const GLIMPSE_ORDER = Object.keys(GLIMPSES);
 // How often each kind of moment surfaces a Glimpse, and how many times one Glimpse may ever be seen in a journey.
