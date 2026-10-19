@@ -26,6 +26,21 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Glimpses in the Proving Ground (release 195)
+
+Previews are Proving Ground builds, which do not run `main.ts`, so release 193's Glimpses could not be seen in a preview.
+
+**CODE:**
+
+- `proving-ground/index.html` adds a "Glimpses" button beside Diagnostics, a `#pgGlimpses` dialog and the `#glimpse` overlay.
+- `src/proving-ground-mobile.ts` imports `glimpses.ts` and `glimpse-render.ts`, lists `GLIMPSE_ORDER` and plays the chosen Glimpse with `startGlimpse`. A tap after 0.9 s lets go. The OS reduced-motion setting is honoured.
+- `styles.css` exempts `#pgGlimpses[open]` from the Proving Ground's rule hiding dialogs.
+
+**BOUNDARY:**
+
+- **Scratch only.** The viewer records nothing, and there is no save in the Proving Ground.
+- **Preview graph.** The preview's module graph gains `glimpses`, `glimpse-render`, `lore` and `recitations` (static imports, so `freezeArtifact` copies them). It still has no production entry or persistence module.
+
 ## Glimpses: first-person scenes (release 193)
 
 This is step 2 of `docs/narrative-bible.md`: the Glimpse engine and three first Glimpses, built for Tim to judge before more are made.
