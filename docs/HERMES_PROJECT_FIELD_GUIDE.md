@@ -26,6 +26,26 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Tyrant Mosasaur hunts (release 231)
+
+Tim, 2026-10-19: in any ocean tile the Tyrant Mosasaur can always come and get you, even if you have killed it, like the Questing Beast: a chance twice per tile, more likely the longer you stay, and never a certainty.
+
+**CODE:**
+
+- **`src/tyrant-hunt.ts`** (new; it is in `scripts/build.mjs` and both precache lists).
+  - `TYRANT_HUNT` is the data table: ocean and deep-ocean water, every 40 s, chance .3, perVisit 2, and a rise range of 6–9 tiles.
+  - `tyrantVisit` holds a section visit's water clock and count.
+  - `tickTyrantHunt` runs the clock only on ocean water. It rolls once per interval and never fires while a Tyrant is in the section or after `perVisit`.
+  - `tyrantRisePoint` picks an ocean tile in range inside the section, or returns null.
+- **`game.ts`.** The overworld update keeps `this.tyrantVisit` per section and calls `tickTyrantHunt(…, Math.random)`. `riseTyrant` spawns an ordinary `tyrantMosasaur` sea combatant marked `hunting`, starting hidden in its lurk phase, with a message.
+- **Tests.** `tests/tyrant-hunt.test.ts` is new.
+
+**BOUNDARY:**
+
+- **Save.** No save change: the hunter is never saved. A section's restore merges saved enemies onto what it spawns, so leaving or reloading ends the hunt. A visit's count lives only in memory, and reloading starts a fresh visit.
+- **Rewards.** Kills use the ordinary sea-creature path: experience every time, and the leviathan trophy once (`worldFlags["leviathan:tyrantMosasaur"]`).
+- **Static spawns.** Leviathan spawns are unchanged; a section's own Tyrant counts as present, so two never hunt at once.
+
 ## The Tyrant Mosasaur and the Undertow Leviathan (release 229)
 
 Tim, 2026-10-19: keep the big segmented leviathan that was the Tyrant Mosasaur as its own creature, with its own name. The Tyrant Mosasaur should look like a mosasaur (pointed snout, big jaws, a fat body, flippers), be bigger and have more health.

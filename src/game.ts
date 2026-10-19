@@ -66,6 +66,7 @@ import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
 import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, digSpot } from "./digging.ts";
 import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
+import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint } from "./tyrant-hunt.ts";
 import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.ts";
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss } from "./far-array.ts";
@@ -2365,6 +2366,17 @@ export class Game {
     if (r.ok) { this.map.wallGlints = (this.map.wallGlints || []).filter((g) => g.x !== plan.x || g.y !== plan.y); }
     this.message = (c.crafted ? c.message + " " : "") + r.message; this.sync(); return r;
   }
+  // Release 231: the Tyrant Mosasaur rises from the deep a few tiles away and hunts the Wayfarer. It is not saved: the
+  // section's restore only merges saved state onto what the section spawns, so leaving the section ends the hunt.
+  riseTyrant() {
+    const at = tyrantRisePoint(this.map, Math.floor(this.player.x + .5), Math.floor(this.player.y + .75), Math.random);
+    if (!at) return null;
+    const c = createCombatant("ashling", at.x, at.y, false, []);
+    Object.assign(c, { id: `tyrant-hunt-${this.rx}-${this.ry}-${this.tyrantVisit?.count || 0}-${Math.round(this.lastUpdateNow || 0)}`, kind: TYRANT_HUNT.kind, variantId: `${TYRANT_HUNT.kind}:common`, meleePatterns: [], tentacles: 0, hunting: true }, seaCombatantFields(TYRANT_HUNT.kind));
+    this.enemies.push(c);
+    this.message = "Something vast turns in the deep beneath you. The Tyrant Mosasaur has your scent.";
+    return c;
+  }
   shoreWater() {
     if (this.area !== "overworld" || aboard(this.save) || !this.map?.landscape) return null;
     const p = this.player, w = mapWidth(this.map, this.area), cx = p.x + .5, cy = p.y + .75; let best = null;
@@ -3266,6 +3278,11 @@ export class Game {
       if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.breathMessageAt || 0)) { this.breathMessageAt = now + 4000; this.message = "Out of air — reach an air pocket or the surface line!"; } }
     }
     // A hint when standing at deep water's edge with enough wood for a skiff (checked twice a second).
+    if (this.area === "overworld") { // release 231: on ocean water, the Tyrant Mosasaur may come hunting
+      const key = `${this.rx},${this.ry}`; if (this.tyrantVisit?.key !== key) this.tyrantVisit = tyrantVisit(this.rx, this.ry);
+      const onOcean = TYRANT_HUNT.water.includes(tileUnder(this.map, 32, this.player.x, this.player.y)?.kind), present = this.enemies.some((e) => !e.dead && e.seaKind === TYRANT_HUNT.kind);
+      if (tickTyrantHunt(this.tyrantVisit, dt, onOcean, present, Math.random)) this.riseTyrant();
+    }
     if (this.area === "overworld" && (this._shoreCheck = (this._shoreCheck || 0) - dt) <= 0) { this._shoreCheck = .5; if ((this.save.materials?.wood || 0) >= WOOD.skiffCost && this.save.capabilities?.swim && !this.nearestObject() && this.shoreWater() && now > (this.woodHintAt || 0)) { this.woodHintAt = now + 15000; this.message = `Act: build a skiff here (${WOOD.skiffCost} wood).`; } }
     if (this.swimming) { const hurt = swimUpkeep(p, dt, this.swimKind, this.area === "overworld" && !!this.map.openSea); if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "Exhausted in the water — reach the shore."; } } }
     else p.stamina = Math.min(p.maxStamina, p.stamina + (9 + pairingMods(this.save).stamina) * dt);
