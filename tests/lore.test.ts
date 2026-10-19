@@ -42,7 +42,7 @@ test('every Reading has its own number of distinct fragments pointing at real li
 
 test('saves gain an additive lore block that survives migration and drops junk', () => {
   const s = freshSave();
-  assert.deepEqual(s.lore, { v: 1, heard: {}, pieces: {}, entered: {}, glimpses: {} });
+  assert.deepEqual(s.lore, { v: 1, heard: {}, pieces: {}, entered: {}, glimpses: {}, elders: '' });
   hearLine(s, 'siddhartha', 5);
   s.lore.pieces.riverThatRemembers = ['voice:0', 'nonsense', 'voice:0'];
   s.lore.pieces.unknownReading = ['voice:1'];

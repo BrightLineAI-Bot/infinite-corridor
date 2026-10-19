@@ -26,6 +26,40 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Elder Wanderers (release 197)
+
+Tim, 2026-10-19: rare road creatures that speak no language, only Wolfram's patterns. They travel the world and wander dungeons, and mastering them should be very hard. They are called the Elder Wanderers.
+
+**CODE:**
+
+- **`src/elders.ts`** (new; it is in `scripts/build.mjs` and both precache lists).
+  - `ELDER_RULES` holds the 88 classes of the 256 elementary rules under mirroring and inversion. `elderClass` gives a rule's smallest equivalent number.
+  - `ELDERS` is the balance table: `chance` (trail .08, wild .05, dungeon .035), `minDepth` 2, `unheardShare` .6 and `speed`.
+  - `elderPlan(save, key, chance)` hashes the seed, the place and the number of rules heard, so a place re-rolls as you progress. It picks an unheard rule `unheardShare` of the time, otherwise any rule.
+  - `hearElder` sets the rule's bit in `save.lore.elders` (a 256-bit hex string). When all 88 are heard it raises `noteCompletionOf("elders")`, which shows "Recitation complete · The Elder Wanderers · Mastered".
+  - `ruleRows(rule, width, rows, start)` computes rows, wrapping at the edges, from a single cell or a seeded random row.
+- **`travelers.ts`**
+  - `addElder` walks the section's longest trail when it has one; otherwise it takes a stitched stroll. `addDungeonElder` wanders near a crossing's entrance.
+  - `tickElder` (inside `tickTravelers`) walks back and forth at `ELDERS.speed` and stops to face you when you are near.
+- **`game.ts`** spawns Elders on section and level load. The HUD line reads "Something tall and silent walks the road".
+- **`interactions.ts`**: speaking (labelled "Listen") returns `pattern: {rule, seed}` and no words.
+- **`main.ts` and `glimpse-render.ts`**
+  - `performInteraction` draws the pattern with `paintRule`: rows unfold over 1.6 s in the rule's hue, with a glow.
+  - The Tome shows "The Elder Wanderers · n of 88 patterns" with a thumbnail of each rule heard.
+- **`renderer.ts`**: `drawElder` draws a faceless figure on four jointed stilt legs. Its body is its rule scrolling upward, from a fresh random row every 26 rows. A pale disc with a halo is its head.
+
+**BOUNDARY:**
+
+- **Save.** The change is additive at schema 14: `save.lore.elders` is normalised by `ensureLore`, and malformed values become "".
+- **Generation.** No world generator changes. Elders are runtime objects like reciters, not saved.
+- **Preview.** Elders appear only in the production game, not in Proving Ground previews.
+
+**Fixes from the 195 pre-publish review (also in release 197):**
+
+- **Replayed Glimpses kept the game running.** A replay from the Tome or from Options → System closed the dialog, and its asynchronous close handler then unpaused the game underneath the Glimpse. That handler and the pause key now stand aside while `glimpseRun` is set.
+- **Previews now return to Options.**
+- **The Rule's texture** is built once instead of growing about nine times a second.
+
 ## Glimpses in the Proving Ground (release 195)
 
 Previews are Proving Ground builds, which do not run `main.ts`, so release 193's Glimpses could not be seen in a preview.

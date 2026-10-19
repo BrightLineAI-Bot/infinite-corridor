@@ -8,6 +8,7 @@ import { hashSeed, rng, pick } from "./random.ts";
 import { LETHAL_KINDS } from "./landscape.ts";
 import { hamletSection } from "./settlements.ts";
 import { RECITERS, RECITATIONS } from "./recitations.ts";
+import { ELDERS, ELDER_NAME, elderPlan } from "./elders.ts";
 import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading, readingKnown } from "./lore.ts";
 
 export const TRAVEL_VERSION = 1;
@@ -216,6 +217,7 @@ export function addTravelers(map, seed, rx, ry) {
 // Per-frame: the leader walks the path (back and forth), the rest follow in a line; everyone stops near the Wayfarer.
 export function tickTravelers(map, player, dt) {
   const face = (o, x, y) => { o.facing = Math.abs(x - o.x) > Math.abs(y - o.y) ? (x > o.x ? "right" : "left") : (y > o.y ? "down" : "up"); };
+  tickElder(map, player, dt, face);
   const wanderer = map?.objects?.find((o) => o.kind === "traveler" && o.wanderer);
   if (wanderer && Math.hypot(wanderer.x - player.x, wanderer.y - player.y) < TRAVEL.pauseRadius * 2) face(wanderer, player.x, player.y);
   const reciter = map?.objects?.find((o) => o.kind === "traveler" && o.reciter), walk = map?.reciterWalk;
@@ -430,6 +432,45 @@ export function addReciter(map, seed, rx, ry, save = null) {
   const who = reciterPlan(seed, `${rx}:${ry}`, save, map.settlement ? RECITER_CHANCE.town : RECITER_CHANCE.wild, readingAt(rx, ry)); if (!who) return null;
   const r = rng(`${seed}:reciter-walk:${rx}:${ry}`), open = map.tiles.filter((t) => t.x > 4 && t.y > 4 && t.x < 27 && t.y < 27 && walkable(t));
   return placeReciter(map, who, `reciter:${rx},${ry}`, open, r, 32);
+}
+// ------------------------------------------------------------------ the Elder Wanderers (release 197)
+// An Elder walks the section's road when it has one (they are road creatures), otherwise a stitched stroll; in a
+// crossing it wanders near the entrance. It carries its rule (elders.ts) and speaks it as a pattern, never in words.
+function placeElder(map, plan, id, path, region, width) {
+  if (!path || path.length < 2) return null;
+  const at = path[0], o = { id, kind: "traveler", elder: true, rule: plan.rule, name: ELDER_NAME, role: "", look: "elder", mount: null, x: at.x, y: at.y, state: "walking", actions: ["speak"], facing: "down", phase: (plan.seed % 1000) / 1000 };
+  map.objects.push(o); map.elderWalk = { path, index: 1, dir: 1, region, width };
+  return o;
+}
+export function addElder(map, save, rx, ry) {
+  if (!map || map.elderWalk || map.skirmish || map.tiles?.length !== 1024 || Math.abs(rx) + Math.abs(ry) < ELDERS.minDepth) return null;
+  const roads = (map.trails || []).filter((p) => p.length > 6), plan = elderPlan(save, `${rx}:${ry}`, roads.length ? ELDERS.chance.trail : ELDERS.chance.wild);
+  if (!plan) return null;
+  if (roads.length) { const road = roads[plan.seed % roads.length].filter((p) => walkable(map.tiles[p.y * 32 + p.x])); return placeElder(map, plan, `elder:${rx},${ry}`, road, road, 32); }
+  const r = rng(`${plan.seed}:elder-walk`), open = map.tiles.filter((t) => t.x > 4 && t.y > 4 && t.x < 27 && t.y < 27 && walkable(t));
+  if (!open.length) return null;
+  const start = open[Math.floor(r() * open.length)], region = groundRegion(map, 32, start, 900);
+  if (region.length < 6) return null;
+  return placeElder(map, plan, `elder:${rx},${ry}`, stitch(map, 32, [start, ...[0, 1, 2, 3].map(() => region[Math.floor(r() * region.length)])]), region, 32);
+}
+export function addDungeonElder(map, areaId, save, width) {
+  if (!map || map.elderWalk || !map.tiles?.length || !width) return null;
+  const plan = elderPlan(save, `dungeon:${areaId}:${map.levelStableId || ""}`, ELDERS.chance.dungeon); if (!plan) return null;
+  const entry = map.entry || map.tiles.find(walkable), r = rng(`${plan.seed}:elder-walk`);
+  const open = map.tiles.filter((t) => walkable(t) && !t.environment && Math.hypot(t.x - entry.x, t.y - entry.y) > 2 && Math.hypot(t.x - entry.x, t.y - entry.y) < 9);
+  if (open.length < 4) return null;
+  const start = open[Math.floor(r() * open.length)], region = groundRegion(map, width, start, 900);
+  if (region.length < 6) return null;
+  return placeElder(map, plan, `elder:${areaId}`, stitch(map, width, [start, ...[0, 1, 2, 3].map(() => region[Math.floor(r() * region.length)])]), region, width);
+}
+function tickElder(map, player, dt, face) {
+  const elder = map?.objects?.find((o) => o.kind === "traveler" && o.elder), walk = map?.elderWalk;
+  if (!elder || !walk) return;
+  if (Math.hypot(elder.x - player.x, elder.y - player.y) < TRAVEL.pauseRadius) { elder.state = "listening"; face(elder, player.x, player.y); return; }
+  const goal = walk.path[walk.index], d = Math.hypot(goal.x - elder.x, goal.y - elder.y), step = TRAVEL.speed * ELDERS.speed * dt;
+  elder.state = "walking"; face(elder, goal.x, goal.y);
+  if (d <= step) { elder.x = goal.x; elder.y = goal.y; if (walk.index + walk.dir >= walk.path.length || walk.index + walk.dir < 0) walk.dir = -walk.dir; walk.index += walk.dir; }
+  else { elder.x += (goal.x - elder.x) / d * step; elder.y += (goal.y - elder.y) / d * step; }
 }
 // In a dungeon level: a reciter strolls near the entrance.
 export function addDungeonReciter(map, areaId, save, width) {
