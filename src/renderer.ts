@@ -89,6 +89,7 @@ const PAL = {
   kilnFloor: ["#594039", "#6b4b40"],
   kilnWall: ["#36231f", "#5d352a"],
   blocked: ["#232522", "#45423d"],
+  tunnel: ["#2a2620", "#46403a"], // release 225: rough rubble floor where a shovel dug
   wall: ["#1d211f", "#403d37"],
   deepFloor: ["#242b30", "#364149"],
   deepWall: ["#12171b", "#2c343b"],
@@ -370,6 +371,30 @@ export function drawElder(ctx, o, s, now) {
 }
 // Release 215: a strange tree, shrub or stone (strange.ts). Its own shape, but wrong: a pale ghost of it drifts half a
 // step out of place and back, it flickers now and then, and slow motes rise from it. No label: you notice it or not.
+// Release 225: something in the rock. A faint glint on the face of a wall block that hides treasure: a few points of
+// light that brighten and fade in turn, so it reads as catching the light, not as a marker.
+export function drawWallGlint(ctx, q, s, now) {
+  const cx = (q.x + .5) * s, cy = (q.y + .55) * s;
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  for (let i = 0; i < 3; i++) {
+    const ph = now / 900 + i * 2.1 + q.x * .7 + q.y * 1.3, a = Math.max(0, Math.sin(ph)) ** 6, px = cx + Math.sin(i * 2.4 + q.y) * s * .28, py = cy + Math.cos(i * 1.7 + q.x) * s * .22;
+    if (a < .02) continue;
+    ctx.fillStyle = `rgba(255,236,170,${.85 * a})`; ctx.beginPath(); ctx.arc(px, py, Math.max(1, s * .035), 0, 7); ctx.fill();
+    ctx.strokeStyle = `rgba(255,236,170,${.5 * a})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px - s * .1 * a, py); ctx.lineTo(px + s * .1 * a, py); ctx.moveTo(px, py - s * .1 * a); ctx.lineTo(px, py + s * .1 * a); ctx.stroke();
+  }
+  ctx.restore();
+}
+// Release 225: a patch of disturbed earth (or, once dug, turned earth): a low mound of darker soil ringed by a few stones.
+export function drawDigSpot(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .72) * s, dug = o.state === "dug";
+  ctx.save();
+  ctx.fillStyle = dug ? "#2a2018" : "#4a3a28"; ctx.beginPath(); ctx.ellipse(cx, cy, s * .42, s * .2, 0, 0, 7); ctx.fill();
+  if (!dug) { ctx.fillStyle = "#5e4a32"; ctx.beginPath(); ctx.ellipse(cx - s * .05, cy - s * .05, s * .28, s * .12, -.1, 0, 7); ctx.fill(); }
+  else { ctx.fillStyle = "#120c08"; ctx.beginPath(); ctx.ellipse(cx, cy, s * .22, s * .09, 0, 0, 7); ctx.fill(); }
+  ctx.fillStyle = "#8a8478";
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + .4; ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * s * .5, cy + Math.sin(a) * s * .25, s * .07, s * .05, a, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
 export function drawStrange(ctx, o, s, kind, now) {
   const T = now / 1000 + (o.x * 7 + o.y * 13) % 10, drift = Math.sin(T * .7) * .09, flick = Math.sin(T * 9) * Math.sin(T * 2.3) > .9 ? .35 : 1;
   ctx.save(); ctx.globalAlpha = flick; actor(ctx, o.x, o.y, s, kind, "down", 0, o.state || "idle", false, o.scale || 1); ctx.restore();
@@ -798,6 +823,7 @@ export function render(ctx, g, w, h, now) {
     ctx.lineTo((p.x + 0.5) * s, (p.y + 0.75) * s);
     ctx.stroke();
   }
+  if (g.area === "dungeon" && g.map.wallGlints?.length) for (const q of g.map.wallGlints) if (visibleInCamera(q, l, t, r, b) && discoveredInDungeon(g, q)) drawWallGlint(ctx, q, s, now); // release 225
   const draws = [];
   for (const o of g.map.objects)
     if (renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden")&&(renderCacheStats.visibleObjects++,true))
@@ -875,6 +901,7 @@ export function render(ctx, g, w, h, now) {
             ctx.strokeStyle = "#3a2c22"; ctx.lineWidth = Math.max(2, s * .09); ctx.beginPath(); ctx.moveTo(s * .2, -s * .3); ctx.lineTo(s * .55, -s * 1.7); ctx.stroke();
             ctx.restore();
             if (!spent) { ctx.fillStyle = "#e2d5ba"; ctx.font = "10px monospace"; ctx.textAlign = "center"; ctx.fillText("WRECK", bx, by - s * 1.4); ctx.textAlign = "start"; }
+          } else if (o.kind === "digSpot") { drawDigSpot(ctx, o, s, now);
           } else if (o.kind === "skiff") {
             drawSkiff(ctx, o.x, o.y, s, "right", performance.now());
           } else if (o.kind === "shipwright") {

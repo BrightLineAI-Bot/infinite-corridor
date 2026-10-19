@@ -26,6 +26,45 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The shovel (release 225)
+
+Tim, 2026-10-19:
+- a shovel to dig certain places in the overworld, and to dig 2 or 3 blocks into the walls of dungeons;
+- it should break after 6 blocks;
+- walls should hold treasure, not always marked;
+- it should be crafted on the go from wood and stone;
+- it should add depth "without breaking anything".
+
+**CODE:**
+
+- **`src/digging.ts`** (new; it is in `scripts/build.mjs` and both precache lists). It holds the rules and nothing else.
+  - **Data.** `DIG` holds reach 3, shovelUses 6, the recipe (2 wood, 2 stone), stone yields, a treasure chance of .1, a glint share of .4, the dig-spot chance and a per-area cap. `DIG_FINDS` is the weighted find table.
+  - **The shovel.** `ensureShovel` crafts one from the recipe when you have none.
+  - **Planning a dig.** `planDig` is the rule that keeps digging safe:
+    - only blocked rock inside the map's edge, never a door, sealed gate, structure, lethal tile or a tile with an object on it;
+    - at most `DIG.reach` blocks from untouched floor (`tunnelDepth`);
+    - breaking through only into floor already `reachable` on foot (sealed gates and blocking objects stop the flood fill), so no sealed or guarded part opens early;
+    - never in temporary areas (`canDigArea`: hunts, portals, displacement, arenas, the Far Array, dives).
+  - **Digging.** `dig` opens a tile as `kind:"tunnel"` floor, records it, wears the shovel, yields stone and credits any treasure. `applyTunnels` re-applies an area's tunnels after generation, so generation itself never changes.
+  - **Treasure.** `wallTreasure` is seeded by area and tile, so a dug block can never yield twice. `wallGlints` lists the treasure blocks that show a glint on an exposed face.
+  - **Disturbed earth.** `spotHere`, `addDigSpot` and `digSpot` handle the overworld's rare patches, each dug once.
+- **`game.ts`.**
+  - `loadArea` applies tunnels and computes `map.wallGlints` for dungeons, keyed by `areaStateId()`, so each level of a deep dungeon keeps its own.
+  - The overworld load line adds the dig spot.
+  - `digAhead` runs on Act with no object while you face a wall, before the skiff check. It returns null when you are not facing diggable rock.
+  - `interact` handles `dig` on a dig spot.
+- **`interactions.ts`.** Rocks offer `chip` (one stone, once, at any Might), and breaking a rock gives 2 stone.
+- **`types.ts`.** `ensureDigging` runs in `freshSave` and `migrateSave`.
+- **`renderer.ts`.** A `tunnel` floor colour; `drawWallGlint` (only where the dungeon is discovered); `drawDigSpot`.
+- **`main.ts`.** "Chip stone" and "Dig" labels, and the resource line shows Stone and the shovel's digs left.
+- **Tests.** `tests/digging.test.ts` is new.
+
+**BOUNDARY:**
+
+- **Save.** Additive at schema 14: `save.digging` (`shovel`, `dug` per area key capped at 60 entries, `spots`) and `save.materials.stone`. Malformed entries are dropped.
+- **Generation.** Untouched; tunnels are an overlay. Dungeon generators and existing journeys are unchanged.
+- **Behaviour.** Enemies may walk through tunnels too. A tunnel can end in a dead end if the shovel snaps.
+
 ## The hands, reworked; square creature portraits (release 223)
 
 Tim, 2026-10-19, after release 221: the hands still looked like a mannequin or a robot. He wanted high-quality, lifelike hands that fit the painterly style and move with the fluid, travelling motion the snake has. He also reported that a creature's portrait in the Journal stretched when its variants were opened.
