@@ -5,6 +5,7 @@
 import { GLIMPSES } from "./glimpses.ts";
 import { TAU, clamp, lerp, smooth, seeded, hex, mix, rgba, makeCanvas, glow, vignette, fadeEdges, grain } from "./glimpse-paint.ts";
 import { SCENES } from "./glimpse-scenes.ts";
+import { HORROR } from "./glimpse-horror.ts";
 
 // ------------------------------------------------------------------ The Wagon at Dusk
 // You sit on a wagon bench; your worn hands hold the reins. The road unrolls through birches toward a setting sun, a
@@ -404,7 +405,7 @@ function drawRule(ctx, t, w, h, state) {
   ctx.fillStyle = `rgba(255,190,90,${on * last})`; ctx.fillRect(x0 + cw * .1, y0, cw * .8, y1 - y0);
   vignette(ctx, w, h, .8);
 }
-const DRAW = { wagonAtDusk: drawWagon, lanternFaceted: drawLantern, theRule: drawRule, ...SCENES };
+const DRAW = { wagonAtDusk: drawWagon, lanternFaceted: drawLantern, theRule: drawRule, ...SCENES, ...HORROR };
 export function hasGlimpseRenderer(id) { return typeof DRAW[id] === "function"; }
 export function drawGlimpse(ctx, id, t, w, h, state) {
   state.rand ||= seeded(5);

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Release 203 — six Glimpses of horror and violence.
+  - "The Fourth Floor": you climb a yellow stairwell to a door left ajar; a small figure turns away toward the lamp, and your hands lift an axe. A ring of keys keeps swaying long after.
+  - "The Hunt": you are the predator, seeing in heat; the deer runs, you leap, and your claws come down.
+  - "The Trench": flares at night, the man ahead turning to speak, a shell, and the world tipping over into ringing white.
+  - "The Drowning": you sink while pale hands rise out of the dark and take hold.
+  - "The Wheat": something keeps pace with you in the wheat; you stop, and it stops; you turn, and it stands up.
+  - "The Burning Plain": barefoot on embers, your hands turning to ash, calm figures standing in the fire.
+
+  The violence is shown in silhouette, light and red. These Glimpses join the same pools as the others.
 - Release 201 — six more Glimpses, the first of the full suite. "The Sky": lying in a field, clouds drifting into the grid of the Atlas, a far cannon, your eyes closing. "Rain at the Window": a dark room, rain on the glass, someone's head on your shoulder, one flash of lightning. "Under the Ice": a fish looking up at boots crossing the ice until a hand presses flat above you. "The Spheres": one of many glowing spheres in an amber void, chiming when they touch. "Edge-Light": darkness, and a hairline of light along something vast. "Glyph Rain": falling ones and zeros, then wedges and letters of no alphabet, which briefly become a face. They join the first three in the same pools: human near Ember Refuge, unhuman farther out. All of them can be watched from Options → System or the Proving Ground's Glimpses button.
 - Release 199 — a Glimpse now freezes the game completely while it plays. Before, switching away from the app during a Glimpse and coming back brought up the pause menu over it, and continuing from that menu let the game run underneath the Glimpse.
 - Release 197 — the Elder Wanderers. Rare, tall, faceless creatures on four stilt legs walk the Corridor's roads (and, more rarely, wander inside crossings). They speak no language. Their bodies are made of a living pattern, and when you listen to one it answers with a pattern too: one of Stephen Wolfram's elementary cellular automaton rules, unfolding in the conversation box in its own colour. There are 88 essentially different rules, and each Elder speaks one. The Reciter's Tome gains "The Elder Wanderers · n of 88 patterns" with a small picture of every rule you have heard. A new Elder usually speaks a rule you have not heard yet, but the last few are hard to find. Elders keep moving: a road with none today may have one later. Hearing all 88 completes the recitation. Also fixed: watching a Glimpse again from the Tome or from Options no longer lets the game run underneath it, and previews return you to Options.
