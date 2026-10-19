@@ -1,25 +1,25 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r221-62b2f668c170";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r221-62b2f668c170";
-import { renderTimings } from "./renderer.js?v=r221-62b2f668c170";
-import { createProbe, PROBE } from "./diagnostic-probe.js?v=r221-62b2f668c170";
-import { vendorShop, buyFromVendor } from "./game.js?v=r221-62b2f668c170";
-import { CREATURE_TRAITS } from "./combat.js?v=r221-62b2f668c170";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=r221-62b2f668c170";
-import { drawPackPortrait } from "./monster-render.js?v=r221-62b2f668c170";
-import { landscapeAtlasColor } from "./landscape-render.js?v=r221-62b2f668c170";
-import { hashSeed } from "./random.js?v=r221-62b2f668c170";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r221-62b2f668c170";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r221-62b2f668c170";
-import { hamletSection, hamletIdentity } from "./settlements.js?v=r221-62b2f668c170";
-import { linksKnown } from "./linked-dungeons.js?v=r221-62b2f668c170";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces } from "./atlas-view.js?v=r221-62b2f668c170";
-import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses } from "./glimpses.js?v=r221-62b2f668c170";
-import { startGlimpse, paintRule } from "./glimpse-render.js?v=r221-62b2f668c170";
-import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r221-62b2f668c170";
-import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=r221-62b2f668c170";
-import { questingBeastTriesLeft } from "./questing-beast.js?v=r221-62b2f668c170";
-import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=r221-62b2f668c170";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r221-62b2f668c170";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r223-2d08f49a31be";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r223-2d08f49a31be";
+import { renderTimings } from "./renderer.js?v=r223-2d08f49a31be";
+import { createProbe, PROBE } from "./diagnostic-probe.js?v=r223-2d08f49a31be";
+import { vendorShop, buyFromVendor } from "./game.js?v=r223-2d08f49a31be";
+import { CREATURE_TRAITS } from "./combat.js?v=r223-2d08f49a31be";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=r223-2d08f49a31be";
+import { drawPackPortrait } from "./monster-render.js?v=r223-2d08f49a31be";
+import { landscapeAtlasColor } from "./landscape-render.js?v=r223-2d08f49a31be";
+import { hashSeed } from "./random.js?v=r223-2d08f49a31be";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r223-2d08f49a31be";
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r223-2d08f49a31be";
+import { hamletSection, hamletIdentity } from "./settlements.js?v=r223-2d08f49a31be";
+import { linksKnown } from "./linked-dungeons.js?v=r223-2d08f49a31be";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces } from "./atlas-view.js?v=r223-2d08f49a31be";
+import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses } from "./glimpses.js?v=r223-2d08f49a31be";
+import { startGlimpse, paintRule } from "./glimpse-render.js?v=r223-2d08f49a31be";
+import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r223-2d08f49a31be";
+import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=r223-2d08f49a31be";
+import { questingBeastTriesLeft } from "./questing-beast.js?v=r223-2d08f49a31be";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=r223-2d08f49a31be";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r223-2d08f49a31be";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -170,7 +170,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r221-62b2f668c170";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r223-2d08f49a31be";
 import {
   Game,
   actionReadiness,
@@ -179,19 +179,19 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=r221-62b2f668c170";
-import { createInput } from "./input.js?v=r221-62b2f668c170";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r221-62b2f668c170";
-import { STATS } from "./types.js?v=r221-62b2f668c170";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=r221-62b2f668c170";
-import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=r221-62b2f668c170";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=r221-62b2f668c170";
-import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=r221-62b2f668c170";
-import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=r221-62b2f668c170";
-import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=r221-62b2f668c170";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r221-62b2f668c170";
-import { worldStewardReport } from "./story.js?v=r221-62b2f668c170";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r221-62b2f668c170";
+} from "./game.js?v=r223-2d08f49a31be";
+import { createInput } from "./input.js?v=r223-2d08f49a31be";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r223-2d08f49a31be";
+import { STATS } from "./types.js?v=r223-2d08f49a31be";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=r223-2d08f49a31be";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=r223-2d08f49a31be";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=r223-2d08f49a31be";
+import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=r223-2d08f49a31be";
+import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=r223-2d08f49a31be";
+import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=r223-2d08f49a31be";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r223-2d08f49a31be";
+import { worldStewardReport } from "./story.js?v=r223-2d08f49a31be";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r223-2d08f49a31be";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -203,8 +203,8 @@ import {
   perceived,
   wayfindingTargets,
   wayfindingCues,
-} from "./world.js?v=r221-62b2f668c170";
-import { warmWayfindingSignals } from "./world.js?v=r221-62b2f668c170";
+} from "./world.js?v=r223-2d08f49a31be";
+import { warmWayfindingSignals } from "./world.js?v=r223-2d08f49a31be";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
@@ -1095,7 +1095,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r221-62b2f668c170",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r221-62b2f668c170\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r223-2d08f49a31be",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r223-2d08f49a31be\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1107,7 +1107,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r221-62b2f668c170",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r223-2d08f49a31be",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1242,7 +1242,8 @@ function drawMap() {
   if(relayOverlay)drawRelayOverlay(w,h,cell,cols,rows);
   drawLinkedDungeons(w,h,cell);
   {const id=readingAt(mapView.x,mapView.y);if(atlasLayers.regions&&readingKnown(save,id)){mctx.font="bold 13px system-ui, sans-serif";mctx.textAlign="left";mctx.lineWidth=3;mctx.strokeStyle="#091018";mctx.strokeText(READINGS[id].name,10,22);mctx.fillStyle="#f0d58a";mctx.fillText(READINGS[id].name,10,22);mctx.font="11px monospace"}} // release 205: where you are looking
-  mctx.fillStyle = "#dce7e2";
+  drawAtlasPins(w,h,cell);
+  mctx.fillStyle = "#dce7e2"; mctx.font = "11px monospace";
   mctx.fillText(
     `Center ${mapView.x},${mapView.y} · ${Object.keys(save.explored).length} sections explored · ${signals.length} unresolved signals`,
     10,
@@ -1288,6 +1289,33 @@ function drawLinkedDungeons(w,h,cell){
     mctx.setLineDash([]);mctx.globalAlpha=1;for(const[x,y]of[[ax,ay],[bx,by]]){mctx.beginPath();mctx.arc(x,y,r,0,7);mctx.stroke();mctx.beginPath();mctx.arc(x,y,r*.45,0,7);mctx.stroke()}}
   mctx.restore();
 }
+// Release r223-2d08f49a31be (Tim): the waypoint and the quest marker stay on the Atlas at every zoom, at a fixed size, on top of
+// everything. Off the map's edge, an arrow at the edge points to each with its distance in sections, so zooming out to
+// find the quest marker always finds it.
+const ATLAS_PIN={size:9,edge:18};
+function drawAtlasPins(w,h,cell){
+  const at=(rx,ry)=>[w/2+(rx-mapView.x)*cell+mapView.panX,h/2+(ry-mapView.y)*cell+mapView.panY],pins=[];
+  const t=navigationTargets();
+  if(save.manualWaypoint&&Number.isInteger(save.manualWaypoint.rx))pins.push({rx:save.manualWaypoint.rx,ry:save.manualWaypoint.ry,color:"#5fe7ee",label:save.manualWaypoint.label||"Waypoint"});
+  if(t.guidance?.area==="overworld"&&!(save.manualWaypoint&&t.guidance.rx===save.manualWaypoint.rx&&t.guidance.ry===save.manualWaypoint.ry))pins.push({rx:t.guidance.rx,ry:t.guidance.ry,color:ATLAS_FRAMES.compassTarget,label:t.guidance.name||"Quest"});
+  const S=ATLAS_PIN.size,E=ATLAS_PIN.edge;
+  for(const p of pins){
+    const[x,y]=at(p.rx,p.ry);mctx.save();mctx.lineJoin="round";
+    if(x>=E&&y>=E&&x<=w-E&&y<=h-E){ // on the map: a pin standing on its section
+      mctx.fillStyle="rgba(0,0,0,.35)";mctx.beginPath();mctx.ellipse(x,y,S*.55,S*.22,0,0,7);mctx.fill();
+      mctx.beginPath();mctx.moveTo(x,y);mctx.bezierCurveTo(x-S*.2,y-S*.8,x-S,y-S*1.3,x-S,y-S*2);mctx.arc(x,y-S*2,S,Math.PI,0);mctx.bezierCurveTo(x+S,y-S*1.3,x+S*.2,y-S*.8,x,y);mctx.closePath();
+      mctx.fillStyle=p.color;mctx.strokeStyle="#091018";mctx.lineWidth=2;mctx.fill();mctx.stroke();
+      mctx.fillStyle="#091018";mctx.beginPath();mctx.arc(x,y-S*2,S*.38,0,7);mctx.fill();
+    }else{ // off the map: an arrow at the edge, pointing to it, with how far it is
+      const cx=w/2,cy=h/2,dx=x-cx,dy=y-cy,k=Math.min((w/2-E)/Math.abs(dx||1e-6),(h/2-E)/Math.abs(dy||1e-6)),ex=cx+dx*k,ey=cy+dy*k,a=Math.atan2(dy,dx);
+      mctx.translate(ex,ey);mctx.rotate(a);mctx.beginPath();mctx.moveTo(S*1.3,0);mctx.lineTo(-S*.8,-S*.95);mctx.lineTo(-S*.35,0);mctx.lineTo(-S*.8,S*.95);mctx.closePath();
+      mctx.fillStyle=p.color;mctx.strokeStyle="#091018";mctx.lineWidth=2;mctx.fill();mctx.stroke();mctx.rotate(-a);
+      const far=Math.max(Math.abs(p.rx-Math.round(mapView.x)),Math.abs(p.ry-Math.round(mapView.y))),txt=`${far}`;
+      mctx.font="bold 11px monospace";mctx.textAlign="center";mctx.lineWidth=3;mctx.strokeStyle="#091018";const ty=ey>h/2?-S*1.6:S*2.2;mctx.strokeText(txt,0,ty);mctx.fillStyle=p.color;mctx.fillText(txt,0,ty);mctx.textAlign="left";
+    }
+    mctx.restore();
+  }
+}
 function drawAtlasWorld(w,h,cell,signals){
   const at=(rx,ry)=>[w/2+(rx-mapView.x)*cell+mapView.panX,h/2+(ry-mapView.y)*cell+mapView.panY],world=atlasWorldImage();
   // With Relays on, the land dims so the relay pattern reads as one shape.
@@ -1304,8 +1332,6 @@ function drawAtlasWorld(w,h,cell,signals){
   if(world&&atlasLayers.sites)for(const[rx,ry]of world.crossings){const[x,y]=at(rx,ry);if(x<-8||y<-8||x>w+8||y>h+8)continue;const r=Math.max(4.5,Math.min(7,cell*.45));mctx.fillStyle="#e0a050";mctx.strokeStyle="#091018";mctx.lineWidth=1.5;mctx.beginPath();mctx.moveTo(x,y-r);mctx.lineTo(x+r,y+r*.8);mctx.lineTo(x-r,y+r*.8);mctx.closePath();mctx.fill();mctx.stroke()} // crossings, glass kilns and arenas
   drawLinkedDungeons(w,h,cell);
   if(atlasLayers.signals)for(const s of signals)dot(s.targetRx,s.targetRy,2.5,"#b8a0e0");
-  if(atlasLayers.waypoints&&save.manualWaypoint)dot(save.manualWaypoint.rx,save.manualWaypoint.ry,6,null,"#5fe7ee");
-  const target=atlasLayers.objectives?navigationTargets().guidance:null;if(target?.area==="overworld")dot(target.rx,target.ry,7,null,ATLAS_FRAMES.compassTarget);
   if(atlasLayers.waypoints&&save.lastDeath){const[x,y]=at(save.lastDeath.rx,save.lastDeath.ry);drawDeathGlyph(mctx,x,y,5,save.lastDeath.valid===false)}
   if(mapView.selected)dot(mapView.selected.rx,mapView.selected.ry,5,null,"#ffffff");
   dot(game.rx,game.ry,4,"#fff4a8","#091018");dot(game.rx,game.ry,8,null,"rgba(255,244,168,.55)");
@@ -1314,6 +1340,7 @@ function drawAtlasWorld(w,h,cell,signals){
     const placed=[];for(const l of [...world.labels].sort((a,b)=>b.n-a.n)){const[x,y]=at(l.rx,l.ry),tw=mctx.measureText(l.name).width,box={l:x-tw/2-4,r:x+tw/2+4,t:y-14,b:y+4};if(x<0||x>w||y<0||y>h)continue;
       const clash=(q)=>q.l<box.r&&q.r>box.l&&q.t<box.b&&q.b>box.t;for(let k=0;k<6&&placed.some(clash);k++){box.t+=16;box.b+=16}if(placed.some(clash))continue;placed.push(box); // larger regions first; others step down or are left out
       const ly=box.b-4;mctx.strokeStyle="rgba(9,16,24,.85)";mctx.strokeText(l.name,x,ly);mctx.fillStyle="#f0d58a";mctx.fillText(l.name,x,ly)}mctx.textAlign="left"}
+  drawAtlasPins(w,h,cell);
   mctx.font="11px monospace";mctx.fillStyle="#dce7e2";
   mctx.fillText(`World view · ${Object.keys(save.explored).length} sections explored · pinch or + to look closer`,10,h-10);
 }

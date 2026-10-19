@@ -6,7 +6,7 @@
 // Guardians always leave their creature's Echo the first time; ordinary pack kills about one in twenty-five.
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
-import { hashSeed } from "./random.js?v=r221-62b2f668c170";
+import { hashSeed } from "./random.js?v=r223-2d08f49a31be";
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;

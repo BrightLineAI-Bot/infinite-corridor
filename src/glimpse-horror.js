@@ -2,8 +2,8 @@
 // some of them should be violent"). Same contract as glimpse-scenes.ts: draw(ctx, t, w, h, state) paints frame
 // t ∈ [0, 1] in first person. Violence is shown the way the rest of the game shows it: silhouette, light and red,
 // never anatomy. Canvas 2D only, no assets.
-import { TAU, clamp, lerp, smooth, seeded, mix, rgba, glow, vignette } from "./glimpse-paint.js?v=r221-62b2f668c170";
-import { paintHand } from "./glimpse-hand.js?v=r221-62b2f668c170";
+import { TAU, clamp, lerp, smooth, seeded, mix, rgba, glow, vignette } from "./glimpse-paint.js?v=r223-2d08f49a31be";
+import { paintHand } from "./glimpse-hand.js?v=r223-2d08f49a31be";
 
 // A hard jolt of the view, for impacts: amplitude in pixels at time t around `at`.
 const jolt = (t, at, len, amp) => (t > at && t < at + len ? amp * (1 - (t - at) / len) : 0);
@@ -51,7 +51,7 @@ function drawFourthFloor(ctx, t, w, h, state) {
       ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.fillRect(w / 2 - half, y, half * 2, Math.max(1, h * .006 * (1 - s)));
     }
     ctx.strokeStyle = "#1a1206"; ctx.lineWidth = u * .02; ctx.beginPath(); ctx.moveTo(w * .98, h * .75); ctx.quadraticCurveTo(w * .8, h * .55, w * .58, vy + h * .05); ctx.stroke(); // the rail
-    paintHand(ctx, { x: w * .84, y: h * .66 + bob, angle: -2.2, s: u * .09, curl: .78, splay: .2, thumb: "side", skin: { base: "#2a1c12", shade: "#0e0806", light: "#5a4026" }, rim: { color: "#ffd27a", a: .35 }, light: -2.6, sleeve: { color: "#1a140c", len: u * .5 }, seed: 31 }); // your hand on it
+    paintHand(ctx, { x: w * .84, y: h * .66 + bob, angle: -2.2, s: u * .09, curl: .78, splay: .2, thumb: "side", skin: { base: "#2a1c12", shade: "#0e0806", light: "#5a4026" }, rim: { color: "#ffd27a", a: .45 }, light: -2.6, lift: .15, sleeve: { color: "#1a140c", len: u * .5 }, time: T, seed: 31 }); // your hand on it
     ctx.globalAlpha = 1;
   }
   if (inside > 0) {
@@ -64,9 +64,16 @@ function drawFourthFloor(ctx, t, w, h, state) {
     ctx.fillStyle = "#2a1c10"; ctx.fillRect(0, h * .72, w, h * .28); // floor
     ctx.strokeStyle = "rgba(0,0,0,.4)"; ctx.lineWidth = 1; for (let k = 0; k < 9; k++) { ctx.beginPath(); ctx.moveTo(w * k / 8 - w * .2, h); ctx.lineTo(w / 2 + (k - 4) * w * .05, h * .72); ctx.stroke(); }
     const fx = w * .5, fy = h * .72, turn = smooth(.46, .56, t), fallen = smooth(strike + .02, strike + .12, t);
-    ctx.save(); ctx.translate(fx, fy); ctx.rotate(fallen * 1.35); ctx.fillStyle = "#0a0604";
-    ctx.beginPath(); ctx.moveTo(-u * .09, 0); ctx.quadraticCurveTo(-u * .1, -u * .25, -u * .03, -u * .33); ctx.quadraticCurveTo(u * .05, -u * .35, u * .07, -u * .25); ctx.quadraticCurveTo(u * .1, -u * .12, u * .09, 0); ctx.fill(); // bent shoulders, shawl
-    ctx.beginPath(); ctx.arc(-u * .01 + turn * u * .02, -u * .37, u * .055, 0, TAU); ctx.fill(); // head, turning away
+    // An old woman on a low stool, seen from behind: a shawl over hunched shoulders, a small head with its hair in a
+    // bun, all in silhouette against the lamp and lit along her right edge (release 223: real proportions, not a pawn).
+    ctx.save(); ctx.translate(fx, fy); ctx.rotate(fallen * 1.35); ctx.filter = "blur(.6px)"; ctx.fillStyle = "#0a0604";
+    const body = new Path2D(); body.moveTo(-u * .12, 0); body.bezierCurveTo(-u * .135, -u * .1, -u * .14, -u * .21, -u * .09, -u * .3); body.bezierCurveTo(-u * .07, -u * .33, -u * .035, -u * .34, -u * .018, -u * .345);
+    body.lineTo(u * .016, -u * .345); body.bezierCurveTo(u * .04, -u * .34, u * .07, -u * .325, u * .085, -u * .29); body.bezierCurveTo(u * .11, -u * .2, u * .12, -u * .1, u * .115, 0); body.closePath(); ctx.fill(body);
+    const hx0 = turn * u * .014, head = new Path2D(); head.ellipse(hx0, -u * .383, u * .036, u * .045, turn * .25, 0, TAU); head.ellipse(hx0 - u * .012, -u * .418, u * .02, u * .017, 0, 0, TAU); ctx.fill(head); // head and the bun of her hair
+    ctx.strokeStyle = "rgba(255,190,110,.45)"; ctx.lineWidth = u * .006; ctx.lineCap = "round"; // the lamp along her right side
+    ctx.beginPath(); ctx.moveTo(u * .02, -u * .344); ctx.bezierCurveTo(u * .045, -u * .338, u * .072, -u * .322, u * .086, -u * .288); ctx.bezierCurveTo(u * .108, -u * .2, u * .116, -u * .12, u * .113, -u * .04); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(hx0, -u * .383, u * .036, u * .045, turn * .25, -1.2, .9); ctx.stroke();
+    ctx.strokeStyle = "rgba(40,24,12,.6)"; ctx.lineWidth = u * .003; for (let k = 0; k < 6; k++) { const fxk = -u * .1 + k * u * .04; ctx.beginPath(); ctx.moveTo(fxk, -u * .08 - Math.abs(k - 2.5) * u * .008); ctx.lineTo(fxk + u * .004, -u * .02); ctx.stroke(); } // folds in the shawl
     ctx.restore();
     // The keys on their hook, still swaying when everything else is still.
     const kx = w * .22, ky = h * .38, sway = Math.sin(T * 3.1) * (t > strike ? .5 : .08);
@@ -79,7 +86,7 @@ function drawFourthFloor(ctx, t, w, h, state) {
       ctx.fillStyle = "#3a2a1a"; ctx.fillRect(-u * .015, -u * .5, u * .03, u * .62); // the haft
       ctx.fillStyle = "#6a6a70"; ctx.beginPath(); ctx.moveTo(-u * .015, -u * .5); ctx.lineTo(-u * .11, -u * .56); ctx.quadraticCurveTo(-u * .13, -u * .47, -u * .11, -u * .4); ctx.lineTo(-u * .015, -u * .44); ctx.fill(); // the head
       ctx.strokeStyle = rgba("#ffe0b0", .6); ctx.lineWidth = u * .003; ctx.beginPath(); ctx.moveTo(-u * .11, -u * .56); ctx.quadraticCurveTo(-u * .13, -u * .47, -u * .11, -u * .4); ctx.stroke();
-      for (const [fy, k] of [[u * .0, 0], [u * .09, 1]]) paintHand(ctx, { x: -u * .015, y: fy, angle: Math.PI / 2, mirror: k ? 1 : -1, s: u * .055, curl: 1, splay: 0, thumb: "side", skin: { base: "#2a1c12", shade: "#0c0604", light: "#6a4a2c" }, rim: { color: "#ffe0b0", a: .3 }, light: -2, soft: false, seed: 40 + k }); // fists on the haft
+      for (const [fy, k] of [[u * .0, 0], [u * .09, 1]]) paintHand(ctx, { x: -u * .015, y: fy, angle: Math.PI / 2, mirror: k ? 1 : -1, s: u * .055, curl: 1, splay: 0, thumb: "side", skin: { base: "#1e140c", shade: "#080402", light: "#4a3220" }, rim: { color: "#ffc070", a: .12, width: .03 }, light: -2, lift: 0, shadow: .85, seed: 40 + k }); // fists on the haft
       ctx.restore();
     }
     // After: the light swinging, the floor darkening and wet, the room red at the edges.
@@ -215,7 +222,7 @@ function drawDrowning(ctx, t, w, h, state) {
     const arm = ctx.createLinearGradient(bx, by, tx, ty); arm.addColorStop(0, "rgba(40,60,60,0)"); arm.addColorStop(1, `rgba(${lerp(150, 90, depth) | 0},${lerp(175, 110, depth) | 0},${lerp(170, 110, depth) | 0},.95)`);
     ctx.strokeStyle = arm; ctx.lineWidth = u * .035 * q.s; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx + Math.sin(a + .5) * reach * .5, by - reach * .5, tx, ty); ctx.stroke();
     // The hand, palm toward you, long fingers closing as it grips (painted: glimpse-hand.ts).
-    paintHand(ctx, { x: tx + Math.sin(a) * u * .02 * q.s, y: ty - Math.cos(a) * u * .02 * q.s, angle: a, s: u * .075 * q.s, curl: grip * .85, splay: .9 - grip * .3, palm: true, claw: true, hook: 1, long: 1.25, thin: .8, mirror: q.x < .5 ? -1 : 1, skin: { base: mix("#a8c4c0", "#5a706c", depth), shade: mix("#4a605c", "#1a2624", depth), light: mix("#e0f0ec", "#8aa09c", depth) }, light: -1.57, seed: 200 + Math.round(q.x * 1000) });
+    paintHand(ctx, { x: tx + Math.sin(a) * u * .02 * q.s, y: ty - Math.cos(a) * u * .02 * q.s, angle: a, s: u * .075 * q.s, curl: grip * .85, splay: .9 - grip * .3, palm: true, claw: true, hook: 1, long: 1.25, thin: .8, mirror: q.x < .5 ? -1 : 1, skin: { base: mix("#a8c4c0", "#5a706c", depth), shade: mix("#4a605c", "#1a2624", depth), light: mix("#e0f0ec", "#8aa09c", depth) }, light: -1.57, time: T + q.x * 9, seed: 200 + Math.round(q.x * 1000) });
   }
   ctx.fillStyle = `rgba(0,0,0,${smooth(.75, 1, t)})`; ctx.fillRect(0, 0, w, h);
   vignette(ctx, w, h, .9, "#000608");
@@ -298,17 +305,25 @@ function drawPlain(ctx, t, w, h, state) {
   for (const q of figs) {
     const sx = w / 2 + q.x * f / q.zz, sy = horizon + 1.4 * f / q.zz, fh = 1.7 * q.s * f / q.zz, fw = fh * .22;
     ctx.globalCompositeOperation = "lighter"; glow(ctx, sx, sy - fh * .3, fh * .6, "#ff6010", .35); ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = "#0a0202"; ctx.beginPath(); ctx.moveTo(sx - fw / 2, sy); ctx.lineTo(sx - fw * .45, sy - fh * .8); ctx.quadraticCurveTo(sx, sy - fh * .9, sx + fw * .45, sy - fh * .8); ctx.lineTo(sx + fw / 2, sy); ctx.fill(); ctx.beginPath(); ctx.arc(sx, sy - fh * .9, fw * .32, 0, TAU); ctx.fill();
+    // A person, standing: small head, neck, sloping shoulders, arms hanging a little apart, a waist, legs lost in the flame.
+    ctx.fillStyle = "#0a0202"; const P = (x, y) => [sx + x * fw, sy - y * fh], body = new Path2D(), m = (x, y) => body.moveTo(...P(x, y)), b = (x1, y1, x2, y2, x, y) => body.bezierCurveTo(...P(x1, y1), ...P(x2, y2), ...P(x, y));
+    m(-.34, 0); b(-.36, .25, -.3, .45, -.27, .55); b(-.36, .6, -.4, .7, -.38, .8); b(-.36, .84, -.24, .86, -.1, .865); b(-.06, .87, -.05, .88, -.05, .9);
+    body.lineTo(...P(.05, .9)); b(.05, .88, .06, .87, .1, .865); b(.24, .86, .36, .84, .38, .8); b(.4, .7, .36, .6, .27, .55); b(.3, .45, .36, .25, .34, 0); body.closePath(); ctx.fill(body);
+    for (const e of [-1, 1]) { ctx.strokeStyle = "#0a0202"; ctx.lineCap = "round"; ctx.lineWidth = fw * .16; ctx.beginPath(); ctx.moveTo(...P(e * .36, .79)); ctx.quadraticCurveTo(...P(e * .47, .62), ...P(e * .44, .44)); ctx.stroke(); } // arms at the sides
+    ctx.beginPath(); ctx.ellipse(sx, sy - fh * .94, fw * .14, fw * .18, 0, 0, TAU); ctx.fill(); // head
+    ctx.strokeStyle = "rgba(255,150,60,.45)"; ctx.lineWidth = Math.max(1, fw * .03); ctx.beginPath(); ctx.moveTo(...P(.05, .9)); ctx.bezierCurveTo(...P(.24, .86), ...P(.36, .84), ...P(.38, .8)); ctx.stroke(); // firelight on a shoulder
     for (let k = 0; k < 7; k++) { const fx = sx + (k / 6 - .5) * fw * 1.3, fl = fh * (.3 + .25 * Math.sin(T * 6 + k * 2 + q.ph)), g = ctx.createLinearGradient(fx, sy, fx, sy - fl); g.addColorStop(0, "rgba(255,220,120,.9)"); g.addColorStop(.5, "rgba(255,110,20,.6)"); g.addColorStop(1, "rgba(160,20,0,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(fx - fw * .15, sy); ctx.quadraticCurveTo(fx + Math.sin(T * 5 + k) * fw * .2, sy - fl * .6, fx, sy - fl); ctx.quadraticCurveTo(fx + fw * .1, sy - fl * .5, fx + fw * .15, sy); ctx.fill(); }
   }
-  // Your hands, held out: grey ash, flaking away from the fingertips on the wind.
+  // Your hands, held out: grey ash, flaking away from the fingertips on the wind (painted: glimpse-hand.ts), lit from
+  // below and ahead by the fire, with embers glowing in the cracks.
   const flake = smooth(.3, .95, t);
   for (const e of [-1, 1]) {
-    const hx = w / 2 + e * w * .22, hy = h * .92 + Math.sin(T * 2.4 + e) * u * .01;
-    ctx.fillStyle = "#4a4440"; ctx.beginPath(); ctx.ellipse(hx, hy, u * .09, u * .07, e * .3, 0, TAU); ctx.fill();
-    ctx.strokeStyle = "#4a4440"; ctx.lineCap = "round"; ctx.lineWidth = u * .028;
-    for (let k = 0; k < 4; k++) { const gone = clamp(flake * 1.4 - k * .15), fx = hx + e * (k - 1.5) * -u * .035, len = u * .1 * (1 - gone * .8); ctx.beginPath(); ctx.moveTo(fx, hy - u * .04); ctx.lineTo(fx - e * u * .01, hy - u * .04 - len); ctx.stroke(); }
-    ctx.strokeStyle = "rgba(255,120,40,.5)"; ctx.lineWidth = u * .004; ctx.beginPath(); ctx.ellipse(hx, hy, u * .09, u * .07, e * .3, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); // ember-lit rim
+    const hx = w / 2 + e * w * .2, hy = h * .9 + Math.sin(T * 2.4 + e) * u * .01, hs = u * .14;
+    const lengths = [0, 1, 2, 3].map((k) => 1 - clamp(flake * 1.4 - (e > 0 ? k : 3 - k) * .15) * .75);
+    paintHand(ctx, { x: hx, y: hy - hs * .3, angle: e * .18, s: hs, mirror: e, foreshorten: .7, curl: .15, splay: .35, lengths, skin: { base: "#4a4440", shade: "#141010", light: "#8a807a", warm: "#5a2010" }, rim: { color: "#ff7a30", a: .7, width: .035 }, light: -1.4, shadow: .75, lift: .2, arm: hs * 2, time: T, seed: e > 0 ? 61 : 62 });
+    ctx.save(); ctx.globalCompositeOperation = "lighter"; const r = seeded(e > 0 ? 63 : 64); // embers in the cracks
+    for (let k = 0; k < 9; k++) { const cx = hx + (r() - .5) * hs * .7, cy = hy - hs * .2 + r() * hs * .7, a = r() * TAU, l = hs * (.05 + r() * .08); ctx.strokeStyle = `rgba(255,${110 + r() * 60 | 0},30,${(.25 + .35 * Math.sin(T * 3 + k)) * (.4 + flake * .6)})`; ctx.lineWidth = 1 + r(); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * l, cy + Math.sin(a) * l); ctx.stroke(); }
+    ctx.restore();
   }
   // Embers and ash rising and blowing past; flakes of your hands among them.
   for (const [x, y, k] of S.embers) { const px = ((x + T * .03 * (1 + k)) % 1) * w, py = ((y - T * .04 * (1 + k)) % 1 + 1) % 1 * h; if (k < .6) { ctx.fillStyle = `rgba(255,${120 + k * 120 | 0},40,${.5 + k * .4})`; ctx.fillRect(px, py, 2, 2); } else if (flake > 0) { ctx.fillStyle = `rgba(110,100,95,${.7 * flake})`; ctx.fillRect(px, py, 3, 2); } }
