@@ -26,6 +26,29 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Relays at world scale, and layers of their own for Wayglasses and crossings (release 209)
+
+Tim, 2026-10-19:
+- With Relays on, the relays' fractal should stay visible as he zooms out, and grow as more relays connect.
+- He wants to switch everything off except Wayglasses and the crossings (dungeons, glass kilns), without removing anything from the map.
+
+**CODE:**
+
+- **Layers (`main.ts`).** `ATLAS_LAYERS` gains `wayglasses` and `crossings` beside `sites` (now labelled "Other places"). They default to on, including in stored layer settings.
+  - `siteLayerOn(kind)` routes `checkpoint` to Wayglasses, `CROSSING_KINDS` (`dungeon`, `arenaEntrance`) to Crossings, and every other kind to Other places. It applies to both the close view and the world view.
+- **World view markers.**
+  - The world-image cache also lists crossing sections, drawn as outlined orange triangles.
+  - Wayglass dots are larger and outlined.
+  - Hamlets and the Refuge follow Other places.
+- **Relays in the world view.** `atlasRelayImage` (cached with the world image; its key includes `relayOverlay`) marks every live `relayCell` within one section of explored land as one violet pixel: the whole pattern, which Tim preferred to its edges alone. It uses the same reveal rule as the close overlay.
+  - When Relays is on, the land is drawn at 28% opacity under it.
+  - Answered relays and their links (the two nearest within two sections) are drawn at a fixed size.
+
+**BOUNDARY:**
+
+- **Untouched.** Presentation only: no relay rule, save or generation change.
+- **What shows.** The pattern still shows only next to explored land.
+
 ## Atlas and Glimpse polish (release 207)
 
 These follow the non-blocking observations of the 199→205 pre-publish review.
