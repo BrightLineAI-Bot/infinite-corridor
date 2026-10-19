@@ -26,6 +26,14 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Glimpses freeze the game (release 199)
+
+The pre-publish review of 191→197 found a second route to the game running under a Glimpse. Backgrounding the app mid-Glimpse set `overlayPause` false. On return, `visibilitychange` showed the pause menu above the Glimpse, and its Continue button (or a back gesture closing it) called `resume()`.
+
+**CODE:** `frame()` in `main.ts` returns right after `input.update` while `glimpseRun` is set, re-pausing the game with `game.setPaused(true, now)`. So no key, menu or resume path can run `game.update` under a Glimpse. `visibilitychange` no longer opens the pause menu while a Glimpse plays. When the Glimpse ends, its `finish` resumes the game (or runs its `after` callback) as before.
+
+**BOUNDARY:** Pausing only. No gameplay or save changes.
+
 ## The Elder Wanderers (release 197)
 
 Tim, 2026-10-19: rare road creatures that speak no language, only Wolfram's patterns. They travel the world and wander dungeons, and mastering them should be very hard. They are called the Elder Wanderers.
