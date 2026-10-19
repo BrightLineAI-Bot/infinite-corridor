@@ -48,7 +48,7 @@ function canopySprite(seed) {
 // One gloved hand gripping a rein, from behind and above, backlit by the sunset: the fist's knuckles toward the horse,
 // rim-lit warm along the top, the lantern warming its outer side. `e` is -1 left, 1 right. Painted: glimpse-hand.ts.
 function drawHand(ctx, px, py, s, e, dusk, warm, state, h) {
-  paintHand(ctx, { x: px, y: py - s * .32, s: s * 1.02, curl: 1, splay: .1, thumb: "side", mirror: e, skin: { base: mix("#2e1e14", "#120c08", dusk * .7), shade: mix("#120a06", "#050302", dusk * .7), light: mix(mix("#5a3a24", "#22160c", dusk * .7), "#a0583a", warm * .4) }, rim: { color: "#ffc890", a: .5 * (1 - dusk * .55) }, light: -1.75, sleeve: { color: mix("#1c1812", "#0a0806", dusk), len: h, lightColor: "#ffb878" }, seed: e > 0 ? 7 : 8 });
+  paintHand(ctx, { x: px, y: py - s * .22, angle: e * .2, s: s * 1.05, foreshorten: .62, curl: 1, splay: 0, thumb: "side", mirror: e, skin: { base: mix("#24170f", "#0e0906", dusk * .7), shade: mix("#0a0604", "#030201", dusk * .7), light: mix(mix("#5a3a24", "#22160c", dusk * .7), "#a0583a", warm * .4) }, rim: { color: "#ff9a50", a: .75 * (1 - dusk * .55), width: .03 }, light: -1.75, shadow: .8, lift: .06, sleeve: { color: mix("#1c1812", "#0a0806", dusk), len: h, lightColor: "#ffb878" }, time: state.handT, seed: e > 0 ? 7 : 8 });
 }
 // The horse ahead, from behind and above: rump, back, collar, neck, ears; walking, nodding, tail swaying.
 function drawHorse(ctx, hx, hy, H, T, dusk, lamp, unit) {
@@ -211,7 +211,7 @@ function drawWagon(ctx, t, w, h, state) {
   for (let k = 0; k < 26; k++) { const u = k / 25, x = lerp(-w * .05, w * .235, u), y = lerp(h * .48, h * .7, u * u) + breath, sw = Math.sin(T * 1.3 + k) * unit * .006; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + unit * .012, y - unit * .01, x + unit * .02 + sw, y - unit * .025); ctx.stroke(); }
   ctx.strokeStyle = rgba("#ffb878", .5 * (1 - dusk * .6)); ctx.lineWidth = unit * .004; ctx.beginPath(); ctx.moveTo(-w * .1, h * .5 + breath); ctx.bezierCurveTo(w * .08, h * .44 + breath, w * .2, h * .56 + breath, w * .24, h * .74 + breath); ctx.stroke();
   // Your hands on the reins.
-  hands.forEach(([px, py0], i) => drawHand(ctx, px, py0 + Math.sin(T * 3.3 + i) * unit * .004, unit * .3, i ? 1 : -1, dusk, clamp(.15 + dusk * .5 + i * .3), state, h * 1.2 - py0));
+  state.handT = T; hands.forEach(([px, py0], i) => drawHand(ctx, px, py0 + Math.sin(T * 3.3 + i) * unit * .004, unit * .3, i ? 1 : -1, dusk, clamp(.15 + dusk * .5 + i * .3), state, h * 1.2 - py0));
   // Motes and, later, fireflies in the warm air.
   ctx.globalCompositeOperation = "lighter";
   for (const [x, y, s, ph] of state.motes) {

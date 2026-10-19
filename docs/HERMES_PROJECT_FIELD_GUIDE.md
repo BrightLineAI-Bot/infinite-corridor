@@ -26,6 +26,38 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The hands, reworked; square creature portraits (release 223)
+
+Tim, 2026-10-19, after release 221: the hands still looked like a mannequin or a robot. He wanted high-quality, lifelike hands that fit the painterly style and move with the fluid, travelling motion the snake has. He also reported that a creature's portrait in the Journal stretched when its variants were opened.
+
+**CODE:**
+
+- **`src/glimpse-hand.ts` rewritten. The `paintHand` interface is unchanged, with new options.**
+  - Each part is one closed outline built from its bones (`outline` and `blob`). Fingers swell slightly at the joints and end in a rounded pad. The palm is a soft trapezoid whose knuckle line arches and drops toward the little finger. The thumb comes from a mound by the wrist, with a web to the index.
+  - Parts are filled flat. The hand's light and shadow are laid over the whole silhouette at once (`band`: the silhouette minus itself shifted, softened at reduced scale), so parts never meet at a seam.
+  - Each finger keeps a soft lit flank and brushwork that follows its bones. Parts in front cast a soft shadow, and a folded finger shows a lit knuckle dome.
+  - One rim of light runs around the whole silhouette, and the forearm fades out instead of ending in a cut.
+  - Motion: a curl travels from the index to the little finger (`HAND.fingers[].delay`), and `time` adds a slight living sway (`HAND.sway`).
+  - New options: `shadow`, `lift`, `foreshorten` (the hand seen from above), `rim.width` and `time`.
+  - Hands always draw with normal blending.
+- **Call sites.** All pass `time`. The wagon's fists are foreshortened, dark, with a thin warm rim. The Plant hand is tinted by the water and lit from the plant's side.
+- **`styles.css`.** `.creature-portrait` is a fixed 78×78 square (`top`/`left`/`height`) instead of being stretched between the card's top and bottom.
+- **People in the Glimpses.** Tim: human arms and legs should be convincing or not shown, and "RuneScape-level fidelity" is not enough for these scenes.
+  - The Burning Plain's ash hands and Under the Ice's hand on the ice are painted with `paintHand`. Ash fingers wear away one by one through the new `lengths` option, with embers in the cracks.
+  - The Fourth Floor's figure is an old woman with real proportions: a shawl over hunched shoulders and her hair in a bun, rim-lit by the lamp.
+  - The figures standing in the fire have a small head, sloping shoulders and arms at their sides.
+  - The Plant no longer draws your feet: ropes run from below the frame to the stones. The tipping view now clears first, so the last frame never shows below it.
+  - Hands under `HAND.tiny` (40 px) skip the whole-silhouette lighting, which they are too small to show.
+- **Atlas pins** (`main.ts` `drawAtlasPins`, `ATLAS_PIN`).
+  - The manual waypoint (cyan) and the compass target (gold) are drawn last, at a fixed size, in both the close and world views, whatever the zoom or layer toggles.
+  - Off the visible map, each becomes an arrow at the edge, pointing to it, with its distance in sections from the view's centre.
+  - The world view's old waypoint and target dots are replaced by these pins; the close view keeps its section frames.
+
+**BOUNDARY:**
+
+- **Scope.** No save, rule or timing change.
+- **Cost.** In headless software Chromium at 844×390: the Wagon at Dusk costs about 40 ms a frame (26 in release 219), the Drowning about 12 ms (6) and the Plant about 20 ms (19).
+
 ## Painted hands (release 221)
 
 Tim, 2026-10-19: "everything else is beautiful … the hands are no good … the way you made the snake … make the fingers something like that … either more drawn or less drawn."

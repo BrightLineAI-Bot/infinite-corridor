@@ -94,8 +94,8 @@ function drawPlant(ctx, x, y, s, pulse, seed) {
 }
 // Your right hand, open and reaching, seen from behind: bare skin, warmed on the side toward the plant's light.
 // `close` curls the fingers; `hurt` brings blood up where the thorns went in. The hand is painted (glimpse-hand.ts).
-function drawReach(ctx, x, y, s, close, hurt, light) {
-  paintHand(ctx, { x, y: y - s * .25, angle: -.45, s: s * .82, curl: close * .85, splay: .55 - close * .4, skin: { base: mix("#4a3430", "#8e6250", light * .5), shade: "#160c0a", light: mix("#b4806a", "#f2c8a8", light * .6) }, rim: { color: PLANT, a: .3 * light }, light: -2.7, arm: s * 2.4, seed: 17 }); // a bare hand and forearm, warmed by the plant's light
+function drawReach(ctx, x, y, s, close, hurt, light, time) {
+  paintHand(ctx, { x, y: y - s * .25, angle: -.45, s: s * .82, curl: close * .85, splay: .55 - close * .4, skin: { base: mix("#2e3232", "#6a5048", light * .5), shade: "#0a0e10", light: mix("#8a7464", "#f0c898", light * .6) }, rim: { color: PLANT, a: .5 * light }, light: -2.7, lift: .4, arm: s * 2.4, time, seed: 17 }); // a bare hand and forearm, warmed by the plant's light
   if (hurt > 0) { // blood threading up from the palm into the water
     ctx.save(); ctx.translate(x, y); ctx.rotate(-.45);
     for (let k = 0; k < 4; k++) dabs(ctx, -s * .2 + k * s * .14, -s * .1 - hurt * s * .1, s * .04, s * .1 * hurt, 6, ["#8a1010", "#a01818", "#5a0808"], s * .04, 120 + k, -1.57, .7 * hurt);
@@ -125,17 +125,13 @@ function drawPlantScene(ctx, t, w, h, state) {
   if (t < .15) {
     // The rock and the sea at night; you look down past your own feet, the stones roped to them. Then you tip forward.
     const tip = smooth(.1, .15, t);
+    ctx.fillStyle = "#04060c"; ctx.fillRect(0, 0, w, h); // as the view tips, nothing of the last frame shows below
     ctx.save(); ctx.translate(0, -tip * h * .6); ctx.drawImage(B.night, 0, 0);
     dabs(ctx, w / 2, h * 1.04, u * .7, u * .16, 260, ["#1a1a20", "#2a2a32", "#3a3a46"], u * .03, 50, 0); // the rock's lip
-    for (const e of [-1, 1]) { // your feet from above, toes to the sea, and the stones roped to your ankles
-      const fx = w / 2 + e * u * .15, fy = h * .86, fl = u * .3, fw = u * .1;
-      const foot = new Path2D(); foot.moveTo(fx - fw * .45, fy + fl * .5); foot.bezierCurveTo(fx - fw * .7, fy, fx - fw * .55, fy - fl * .45, fx - fw * .1, fy - fl * .5); foot.bezierCurveTo(fx + fw * .45, fy - fl * .52, fx + fw * .62, fy - fl * .2, fx + fw * .5, fy + fl * .5); foot.closePath();
-      ctx.fillStyle = "#1c1618"; ctx.fill(foot);
-      ctx.save(); ctx.clip(foot); dabs(ctx, fx, fy, fw * .6, fl * .5, 70, ["#2a2024", "#3a2c2e", "#120e10"], u * .016, e > 0 ? 51 : 52, 1.5); ctx.restore();
-      ctx.strokeStyle = rgba("#a8b4d8", .45); ctx.lineWidth = u * .006; ctx.beginPath(); ctx.moveTo(fx + e * fw * .5, fy + fl * .3); ctx.bezierCurveTo(fx + e * fw * .6, fy - fl * .2, fx + e * fw * .4, fy - fl * .48, fx, fy - fl * .5); ctx.stroke(); // moonlight along the outer edge
-      for (let k = 0; k < 5; k++) { const tx = fx + (k - 2) * fw * .2 * -e, ty = fy - fl * .5 - (k === 2 ? fw * .02 : 0) + Math.abs(k - (e > 0 ? 0 : 4)) * fw * .04; ctx.fillStyle = "#241c1e"; ctx.beginPath(); ctx.ellipse(tx, ty, fw * (k === (e > 0 ? 0 : 4) ? .14 : .1), fw * .12, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = rgba("#a8b4d8", .3); ctx.lineWidth = u * .003; ctx.stroke(); } // toes
+    for (const e of [-1, 1]) { // the stones roped to your ankles: the ropes run up out of sight, to feet you never see
+      const fx = w / 2 + e * u * .15, fy = h * .86, fw = u * .1, fl = u * .3;
       const sx = fx + e * u * .3, sy = fy + u * .08;
-      ctx.strokeStyle = "#b8a880"; ctx.lineWidth = u * .008; ctx.beginPath(); ctx.moveTo(fx + e * fw * .3, fy + fl * .3); ctx.quadraticCurveTo(fx + e * u * .14, fy + u * .1, sx - e * u * .06, sy); ctx.stroke();
+      ctx.strokeStyle = "#b8a880"; ctx.lineWidth = u * .009; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(fx + e * fw * .2, h * 1.02); ctx.quadraticCurveTo(fx + e * u * .1, fy + u * .14, sx - e * u * .06, sy); ctx.stroke(); // the rope, taut from below the frame
       ctx.fillStyle = "#3a3a42"; ctx.beginPath(); ctx.ellipse(sx, sy, u * .08, u * .06, e * .3, 0, TAU); ctx.fill();
       dabs(ctx, sx, sy, u * .075, u * .055, 90, ["#4a4a54", "#5e5e68", "#2e2e36"], u * .018, e > 0 ? 53 : 54, .3);
       dabs(ctx, sx - e * u * .01, sy - u * .035, u * .045, u * .015, 20, ["#9aa2bc", "#c0c6da"], u * .012, e > 0 ? 57 : 58, 0, .6);
@@ -156,7 +152,7 @@ function drawPlantScene(ctx, t, w, h, state) {
       const reach = smooth(.3, .39, t), close = smooth(.38, .41, t), hurt = smooth(.385, .44, t);
       if (reach > 0) {
         const hx = lerp(w * .8, plantX + u * .05, reach) + held * 0, hy = lerp(h * 1.2, plantY - u * .02, reach) - held * h * .1;
-        drawReach(ctx, hx, hy, u * .2, close, hurt, .4 + .6 * reach);
+        drawReach(ctx, hx, hy, u * .2, close, hurt, .4 + .6 * reach, T);
         if (held > 0) { ctx.globalCompositeOperation = "lighter"; glow(ctx, hx - u * .02, hy - u * .03, u * .2, PLANT, .45 * held); ctx.globalCompositeOperation = "source-over"; }
         if (hurt > 0) for (let k = 0; k < 5; k++) { const p = (T * .2 + k * .2) % 1; ctx.strokeStyle = rgba("#8a1010", .5 * hurt * (1 - p)); ctx.lineWidth = u * .004; ctx.beginPath(); ctx.moveTo(hx - u * .03 + k * u * .015, hy); ctx.bezierCurveTo(hx + Math.sin(k + T) * u * .03, hy - p * u * .1, hx - u * .02, hy - p * u * .2, hx + Math.sin(k * 2 + T) * u * .04, hy - p * u * .3); ctx.stroke(); }
       }

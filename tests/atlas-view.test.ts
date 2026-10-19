@@ -34,3 +34,12 @@ test('places are grouped by region; unheard regions are never named', () => { //
   assert.deepEqual(g[2].places.map((p) => p.name), ['Old Quarter'], 'supply caches are not destinations');
   assert.deepEqual(g[2].bounds, { minX: 12, minY: 0, maxX: 12, maxY: 0 });
 });
+
+test('the waypoint and quest marker stay on the Atlas at every zoom', async () => {
+  // Release 223 (Tim): "no matter how far we zoom out … our waypoint or our quest marker should just stay persistent".
+  const { readFileSync } = await import('node:fs');
+  const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
+  assert.match(main, /function drawAtlasPins\(w,h,cell\)/);
+  assert.equal(main.match(/drawAtlasPins\(w,h,cell\);/g).length, 2, 'drawn in both the close view and the world view');
+  assert.match(main, /off the map: an arrow at the edge/);
+});
