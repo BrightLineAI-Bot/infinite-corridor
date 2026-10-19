@@ -38,7 +38,8 @@ test('moments open Glimpses only by chance', () => {
   assert.equal(glimpseFor(s, 'touch', 3, 3, never), null);
   assert.ok(GLIMPSE_ORDER.includes(glimpseFor(s, 'touch', 3, 3, always)));
   assert.equal(glimpseFor(s, 'unknown', 3, 3, always), null);
-  assert.ok(GLIMPSE_CHANCE.tree < GLIMPSE_CHANCE.crossing && GLIMPSE_CHANCE.crossing < GLIMPSE_CHANCE.touch);
+  // Release 215 (Tim): strange things always open one; felling trees never does; ruins and crossings rarely.
+  assert.equal(GLIMPSE_CHANCE.strange, 1); assert.equal(GLIMPSE_CHANCE.tree, undefined); assert.ok(GLIMPSE_CHANCE.touch <= .2 && GLIMPSE_CHANCE.crossing <= .2);
 });
 
 test('a first sighting gives the region one Glimpse fragment; later sightings give nothing', () => {

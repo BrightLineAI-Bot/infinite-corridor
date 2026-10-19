@@ -26,6 +26,27 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Strange things carry the story beats (release 215)
+
+Tim, 2026-10-19, after finding his first remembrance fragment: he does not want to chop every tree or move every rock. Story beats should be rare, noticeably weird versions of ordinary interactable things, unmarked.
+
+**CODE:**
+
+- **`src/strange.ts`** (new; it is in `scripts/build.mjs` and both precache lists).
+  - `STRANGE` is a data table (`chance` .035 of sections, `minDepth` 1).
+  - `strangeHere` uses a seeded hash per section.
+  - `addStrange` (called on overworld section load in `game.ts`) turns one of the section's own standing trees or unmoved rocks into a strange one: it keeps its kind, shape and solidity, and gets the action `touch`.
+  - `touchStrange` records `worldFlags["strange:rx,ry"]`, makes the object ordinary again and returns a line.
+- **`game.ts`.** `interact` handles `touch` on a strange object and sets `glimpseCue = "strange"`. The tree-felling cue is gone.
+- **`glimpses.ts`.** `GLIMPSE_CHANCE` is `{ strange: 1, touch: .15, crossing: .2 }`.
+- **`renderer.ts`.** `drawStrange` draws the object with an occasional flicker, a pale additive double drifting half a step, a pulsing violet-blue halo and nine rising motes. `main.ts` labels the action "Touch".
+- **Tests.** `tests/strange.test.ts` is new. `tests/glimpses.test.ts` replaces the old chance ordering (tree < crossing < touch) with the new table, since Tim asked for exactly this change.
+
+**BOUNDARY:**
+
+- **Save.** Only one `worldFlags` key per touched section (additive). Generation is untouched: an existing tree or rock is chosen at load.
+- **Atlas.** Strange things are not shown.
+
 ## A cleaner Atlas: towns as places, Wayglass travel by tap (release 213)
 
 Tim, 2026-10-19:
