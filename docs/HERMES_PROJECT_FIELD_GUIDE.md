@@ -26,6 +26,14 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Bog pools stop tiring (release 189)
+
+The pre-publish review of release 187 found that release 185's "bog pools no longer drain stamina" was not delivered.
+
+**CODE:** `swimUpkeep` (`water-traversal.ts`) read `TIDEMANTLE.drainMultiplier[kind] || 1`, which turned the `0` set for `swampWater` and `toxicWater` back into 1. So those pools still drained 3 stamina a second as well as rotting. It now reads `?? 1`: swimming a bog pool keeps stamina, while lake, deep ocean (2×) and open sea (17/s) are unchanged.
+
+**BOUNDARY:** Swimming rules only. Rot and the poison at the rot cap are unchanged.
+
 ## The Questing Beast fights with energy (release 187)
 
 Tim met the Questing Beast for the first time (2026-10-18). He found it too weak, too slow and too plain. He reversed his earlier "purely physical" decision and asked for energy attacks, a constant barrage, much more health and blows strong enough that four unhealed hits kill.
