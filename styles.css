@@ -721,7 +721,7 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 }
 .maptools button { min-height: 34px; }
 
-.library-book{border-top:1px solid #5a584e66;padding:6px 0 4px}.library-book h3{margin:.4em 0 .1em}.library-empty{opacity:.7;font-style:italic}
+.library-book{border-top:1px solid #5a584e66;padding:6px 0 4px}.library-book h3{margin:.4em 0 .1em}.library-empty{opacity:.7;font-style:italic}.lore-book{margin:.25em 0}.lore-book.mastered{color:#e8c66a;border-bottom:1px solid #e8c66a88;display:inline-block}
 
 /* Release 136: level/XP and Aperture stack in two short lines inside the HUD box, so neither spills past it and the
    expand button sits snug at the box's right edge. */

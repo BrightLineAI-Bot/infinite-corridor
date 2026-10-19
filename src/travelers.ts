@@ -8,6 +8,7 @@ import { hashSeed, rng, pick } from "./random.ts";
 import { LETHAL_KINDS } from "./landscape.ts";
 import { hamletSection } from "./settlements.ts";
 import { RECITERS, RECITATIONS } from "./recitations.ts";
+import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore } from "./lore.ts";
 
 export const TRAVEL_VERSION = 1;
 export const TRAVEL = { reciterChance: 0.12, trailChance: 0.08, trailNearTown: 0.6, groupChance: 0.2, groupChanceOnTrail: 0.42, minDepth: 1, speed: 1.15, pauseRadius: 2.4, spacing: 0.9, wandererChance: 0.07, wandererChanceReady: 0.22 };
@@ -265,12 +266,25 @@ export function tickTravelers(map, player, dt) {
   }
 }
 
-// Talking to a traveller: their lines in turn.
-export function travelerTalk(o) {
+// Talking to a traveller. Since release 191 travellers speak in the voice of the Reading they walk in (src/lore.ts):
+// a passage not yet heard, sometimes one that is a piece of the Reading's book. The joke pools above are retired from
+// speech (travelerPlan still draws them so the seeded groups, mounts and names stay exactly as they were); without a
+// save (tests, old callers) a traveller still says their own lines in turn.
+export function travelerTalk(o, save = null) {
+  const who = `${o.name}${o.role ? ` (${o.role})` : ""}${o.mount ? `, riding a ${o.mount.replace(/([A-Z])/g, " $1").toLowerCase()}` : ""}`;
+  const said = save ? readingSpeech(save, readingAt(save.session?.rx ?? 0, save.session?.ry ?? 0), { reciter: false }) : null;
+  if (said) return `${who}: “${said.text}”${pieceNote(said.found)}`;
   const lines = o.lines?.length ? o.lines : ["Safe roads."], line = lines[(o.talk || 0) % lines.length];
   o.talk = (o.talk || 0) + 1;
-  return `${o.name}${o.role ? ` (${o.role})` : ""}${o.mount ? `, riding a ${o.mount.replace(/([A-Z])/g, " $1").toLowerCase()}` : ""}: “${line}”`;
+  return `${who}: “${line}”`;
 }
+// The next line in a Reading, recorded as heard. Travellers never speak a reciter's recitation pieces.
+function readingSpeech(save, readingId, { reciter, voices = null }) {
+  const said = nextReadingLine(save, readingId, Math.random, { voices, recitations: reciter });
+  if (!said) return null;
+  return { ...said, found: hearLine(save, said.voice, said.line, { reciter }) };
+}
+function pieceNote(found) { return found ? ` · A page of ${READINGS[found.readingId].name} (Reciter's Tome)` : ""; }
 
 // ------------------------------------------------------------------ the wandering cartographer
 // One errand at a time. Kinds: hunt (defeat creatures), cache (find a satchel at a section), town (reach a town).
@@ -381,10 +395,14 @@ export function libraryBooks(save) {
 }
 export function setReciterMode(save, id, mode) { ensureReciters(save); if (mode === "linear") save.reciters.modes[id] = "linear"; else delete save.reciters.modes[id]; }
 export function resetReciter(save, id) { ensureReciters(save); save.reciters.progress[id] = 0; }
-export function reciterPlan(seed, key, save, chance = RECITER_CHANCE.wild) {
+// Since release 191 a reciter is more often (READING_VOICE_SHARE) one of the voices of the Reading the section lies in.
+export const READING_VOICE_SHARE = 0.7;
+export function reciterPlan(seed, key, save, chance = RECITER_CHANCE.wild, readingId = null) {
   const h = hashSeed(`${seed}:reciter:v1:${key}`);
   if ((h % 1000) / 1000 >= chance) return null;
   const off = new Set(save?.reciters?.disabled || []), pool = storyCatalog().filter((q) => !off.has(q.id));
+  const own = new Set((READINGS[readingId]?.voices || []).map(([id]) => id)), local = pool.filter((q) => own.has(q.id));
+  if (local.length && (hashSeed(`${seed}:reciter-reading:v1:${key}`) % 1000) / 1000 < READING_VOICE_SHARE) return local[Math.floor(h / 1000) % local.length];
   return pool.length ? pool[Math.floor(h / 1000) % pool.length] : null;
 }
 // A reciter mills about its patch of ground; most (RECITER_LEAVE.share) leave after a while: they walk to the edge of
@@ -406,31 +424,41 @@ function placeReciter(map, who, id, open, r, width) {
 }
 export function addReciter(map, seed, rx, ry, save = null) {
   if (!map || map.reciterWalk || map.skirmish || map.tiles?.length !== 1024 || Math.abs(rx) + Math.abs(ry) < TRAVEL.minDepth) return null;
-  const who = reciterPlan(seed, `${rx}:${ry}`, save, map.settlement ? RECITER_CHANCE.town : RECITER_CHANCE.wild); if (!who) return null;
+  const who = reciterPlan(seed, `${rx}:${ry}`, save, map.settlement ? RECITER_CHANCE.town : RECITER_CHANCE.wild, readingAt(rx, ry)); if (!who) return null;
   const r = rng(`${seed}:reciter-walk:${rx}:${ry}`), open = map.tiles.filter((t) => t.x > 4 && t.y > 4 && t.x < 27 && t.y < 27 && walkable(t));
   return placeReciter(map, who, `reciter:${rx},${ry}`, open, r, 32);
 }
 // In a dungeon level: a reciter strolls near the entrance.
 export function addDungeonReciter(map, areaId, save, width) {
   if (!map || map.reciterWalk || !map.tiles?.length || !width) return null;
-  const who = reciterPlan(save?.seed, `dungeon:${areaId}:${map.levelStableId || ""}`, save, RECITER_CHANCE.dungeon); if (!who) return null;
+  const who = reciterPlan(save?.seed, `dungeon:${areaId}:${map.levelStableId || ""}`, save, RECITER_CHANCE.dungeon, readingAt(save?.session?.rx ?? 0, save?.session?.ry ?? 0)); if (!who) return null;
   const entry = map.entry || map.tiles.find(walkable), r = rng(`${areaId}:reciter-walk`);
   const open = map.tiles.filter((t) => walkable(t) && !t.environment && Math.hypot(t.x - entry.x, t.y - entry.y) > 1.5 && Math.hypot(t.x - entry.x, t.y - entry.y) < 7);
   if (open.length < 4) return null;
   return placeReciter(map, who, `reciter:${areaId}`, open, r, width);
 }
-// Release 128: just a name and a line. Each meeting gives 1–RECITER_LINES_PER_MEETING lines (random lines by default, so
-// a line can repeat; linear continues the book), then they fall quiet. The book and character are named only in the
-// Reciter's Tome, which this call fills in by marking the reciter met.
+// Release 128: just a name and a line. Each meeting gives 1–RECITER_LINES_PER_MEETING lines, then they fall quiet. The
+// book and character are named only in the Reciter's Tome, which this call fills in by marking the reciter met.
+// Release 191: random mode never repeats a line until the reciter's whole book has been heard, and leans toward the
+// passages that are pieces of a Reading's book; linear continues the book. Every line spoken is recorded as heard.
 export function reciterTalk(o, save) {
-  ensureReciters(save);
+  ensureReciters(save); ensureLore(save);
   const who = storyCatalog().find((q) => q.id === o.reciter), lines = storyLines(save, o.reciter);
   if (!who || !lines.length) return "They hum something you almost recognise.";
   save.reciters.met[who.id] = true;
   if (!(o.linesLeft > 0)) return `${who.name} has nothing more to say.`;
   o.linesLeft--;
-  let line;
-  if (save.reciters.modes[who.id] === "linear") { const n = save.reciters.progress[who.id] || 0; line = lines[n % lines.length]; save.reciters.progress[who.id] = n + 1 >= lines.length ? 0 : n + 1; }
-  else line = lines[Math.floor(Math.random() * lines.length)];
-  return `${who.name}: “${line}”`;
+  let at;
+  if (save.reciters.modes[who.id] === "linear") { const n = save.reciters.progress[who.id] || 0; at = n % lines.length; save.reciters.progress[who.id] = n + 1 >= lines.length ? 0 : n + 1; }
+  else at = unheardLine(save, who.id, lines.length);
+  const found = hearLine(save, who.id, at, { reciter: true });
+  return `${who.name}: “${lines[at]}”${pieceNote(found)}`;
+}
+export const RECITER_PIECE_CHANCE = 0.4;
+function unheardLine(save, id, n) {
+  const pieces = new Set();
+  for (const r of Object.keys(READINGS)) for (const p of bookPieces(r)) if (p.voice === id && !heardLine(save, id, p.line)) pieces.add(p.line);
+  if (pieces.size && Math.random() < RECITER_PIECE_CHANCE) { const list = [...pieces]; return list[Math.floor(Math.random() * list.length)]; }
+  const fresh = []; for (let i = 0; i < n; i++) if (!heardLine(save, id, i)) fresh.push(i);
+  return fresh.length ? fresh[Math.floor(Math.random() * fresh.length)] : Math.floor(Math.random() * n);
 }
