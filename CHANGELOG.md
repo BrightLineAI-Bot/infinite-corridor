@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 205 — the Atlas zooms out to the whole world.
+  - **Zooming:** pinch, scroll the mouse wheel, use +/− (each press now scales the view rather than nudging it), or double-tap a section to zoom in on it. You can zoom out until hundreds of sections fit across.
+  - **World view:** zoomed far out, every explored section is a small coloured square. The regions you have heard are tinted and named, and Wayglasses, towns, signals, your waypoint, the compass target, your last death and you are marked.
+  - **World and Go to…:** World frames everything you have explored. Go to… jumps to the whole world, to where you are, to any region you have heard (framing all of it), or to a town, shelter or Wayglass inside it.
+  - **Arrows:** they move a third of the view at any zoom.
+  - **Sideways phones:** the Atlas fills the screen, with the map on the left and the tools in a column on the right. An empty "Discovered level" box no longer shows on the overworld.
 - Release 203 — six Glimpses of horror and violence.
   - "The Fourth Floor": you climb a yellow stairwell to a door left ajar; a small figure turns away toward the lamp, and your hands lift an axe. A ring of keys keeps swaying long after.
   - "The Hunt": you are the predator, seeing in heat; the deer runs, you leap, and your claws come down.

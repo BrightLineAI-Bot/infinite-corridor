@@ -26,6 +26,30 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Atlas at world scale (release 205)
+
+Tim, 2026-10-19: the map must zoom out "way, way farther", into a region view or world view. He wants to zoom to a region, or to a place inside one such as a town or shelter, and to navigate with his fingers.
+
+**CODE:**
+
+- **`src/atlas-view.ts`** (new; it is in `scripts/build.mjs` and both precache lists).
+  - `ATLAS_ZOOM` is a data table: `base` 52 px per section at zoom 1, `min` .02, `max` 3.2, `detail` .45 (the world-view threshold), `step` 1.35 and `placeZoom` 1.6.
+  - Helpers: `clampZoom`, `sectionPixels`, `worldView`, `exploredSections`, `boundsOf`, `frame(bounds, w, h)` (centre and zoom that fit), and `panStep` (a third of the view).
+  - `atlasPlaces(save)` groups explored sections by Reading. Readings not yet heard become "Elsewhere" and are never named. Each group lists Ember Refuge, hamlets (`hamletSection`/`hamletIdentity` on sections with `hamletVersion`), Wayglasses, districts and shelters from the atlas records.
+- **`main.ts`**
+  - **World view.** Below `detail`, `drawMap` calls `drawAtlasWorld`. A cached image holds one pixel per explored section in its terrain or landscape colour, tinted 38% by `READING_TINT` for heard Readings when the Regions layer is on. It is rebuilt only when the explored count or the heard Readings change, and drawn scaled with smoothing off.
+  - **Markers** keep a fixed size: Wayglasses and towns once sections are at least 3 px, signals, the waypoint, the compass target, the last death, the selection and you.
+  - **Region names** are drawn at the centroid of their explored sections, larger regions first; a name that would collide steps down or is left out. In the detailed view the Reading of the centre section is named at the top left.
+  - **Controls.** Zoom is multiplicative (buttons, pinch, wheel); a double-tap within 350 ms zooms in on that section. "World" fits everything explored; `#mapPlaces` ("Go to…") jumps as described. There is a new **Regions** layer toggle.
+  - **Sideways layout.** On short landscape screens `drawMap` sizes the map to the dialog, and `styles.css` lays `#atlas` out in two columns: the map on the left, the tools scrolling on the right.
+  - **Fix.** `.wayglass-picker[hidden]` is now hidden; `display:grid` had shown an empty level picker on the overworld.
+
+**BOUNDARY:**
+
+- **Untouched.** No save or generation change; `mapView.zoom` is per session.
+- **Performance.** The detailed view is unchanged. The world view costs one `drawImage` plus a handful of markers, whatever the size of the explored world.
+- **Dungeon maps** are unchanged.
+
 ## Glimpses of horror and violence (release 203)
 
 Tim, 2026-10-19: "Some of the scenes need to be scenes of horror … some of them should be violent."

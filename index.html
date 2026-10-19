@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=203" />
+    <link rel="stylesheet" href="./styles.css?v=205" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -125,6 +125,7 @@
         <canvas id="mapCanvas"></canvas>
         <div class="maptools">
           <button id="mapPlus">+</button><button id="mapMinus">−</button
+          ><button id="mapWorld" type="button">World</button><select id="mapPlaces" aria-label="Go to a place"></select
           ><button id="mapN">↑</button><button id="mapW">←</button
           ><button id="mapCenter">Center</button><button id="mapE">→</button
           ><button id="mapS">↓</button
@@ -142,14 +143,14 @@
         <button id="mapWaypoint" type="button">Set waypoint to selected section</button>
         <p id="mapDetail">Select an explored section for details.</p>
         <p id="mapInstructions">
-          Tap an explored section to select it, then use the waypoint button. Zoom in to reveal the
-          position and names of discovered sites inside each section.
+          Pinch, scroll or use +/− to zoom; double-tap a section to zoom in. Zoom far out for the whole world,
+          or use World and Go to…. Tap an explored section to select it, then use the waypoint button.
         </p>
         <div id="mapLegend" class="atlas-legend" aria-label="Atlas symbol guide"></div>
       </dialog>
     </main>
     <script type="module">
-      const release = "203";
+      const release = "205";
       const params = new URLSearchParams(location.search);
       const entry = params.get("dev") === "proving-ground"
         ? "./src/proving-ground.js"

@@ -716,6 +716,22 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 .left-controls .compass-slot{order:1;justify-self:start;margin-left:3px}
 .quick-row button[data-action="spell2"]{margin-left:12px}
 
+/* Release 205: a hidden picker stays hidden (display:grid had overridden [hidden]). On short landscape screens the
+   Atlas takes the whole screen: the map fills the left, the tools scroll in a column on the right. */
+.wayglass-picker[hidden]{display:none}
+@media (orientation: landscape) and (max-height: 540px) {
+  #atlas[open]{width:98vw;max-width:98vw;height:96vh;max-height:96vh;display:grid;grid-template-columns:minmax(0,1fr) 270px;grid-auto-rows:min-content;column-gap:10px;align-items:start;overflow:hidden;padding:8px}
+  #atlas > *{grid-column:2}
+  #atlas > #mapCanvas{grid-column:1;grid-row:1 / span 30;align-self:start;margin:0}
+  #atlas > #mapClose{position:absolute;right:6px;top:6px}
+  #atlas .maptools{grid-template-columns:repeat(4,1fr)}
+  #atlas #mapPlaces{grid-column:span 2}
+  #atlas .maplayers{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+  #atlas .maplayers button{padding:6px 2px;font-size:.78rem;min-width:0}
+  #atlas > :not(#mapCanvas):not(#mapClose){max-height:none}
+  #atlas{overflow-y:auto}
+}
+#mapPlaces{min-width:0;background:#101a20;color:#edf3ef;border:1px solid #60756f}
 /* Short landscape screens (e.g. Galaxy Z Fold outer screen held sideways): compact atlas chrome, larger map tools. */
 @media (orientation: landscape) and (max-height: 540px) {
   #atlas h2 { margin: .1em 0 .2em; font-size: 1.1rem; }
