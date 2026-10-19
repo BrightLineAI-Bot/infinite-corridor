@@ -26,6 +26,18 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Atlas and Glimpse polish (release 207)
+
+These follow the non-blocking observations of the 199→205 pre-publish review.
+
+**CODE:**
+
+- **Scrolling tools.** In the short-landscape Atlas, `#atlas[open]` uses `overflow-y:auto` instead of `overflow:hidden`, which had clipped the tool column. `#mapCanvas` is `position:sticky; top:0`, so the map stays while the tools scroll.
+- **World-image cache.** It now stores `atlasPlaces(save)` and keys on `save.seed`. The markers no longer recompute the places on every pinch frame, and another journey never reuses the image.
+- **Under the Ice.** `glimpse-scenes.ts` replaces `ctx.roundRect` with an arc-drawn `pill`, so the scene runs on browsers without `roundRect`.
+
+**BOUNDARY:** Presentation only; no save or rule changes.
+
 ## The Atlas at world scale (release 205)
 
 Tim, 2026-10-19: the map must zoom out "way, way farther", into a region view or world view. He wants to zoom to a region, or to a place inside one such as a town or shelter, and to navigate with his fingers.

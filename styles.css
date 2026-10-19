@@ -720,9 +720,9 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
    Atlas takes the whole screen: the map fills the left, the tools scroll in a column on the right. */
 .wayglass-picker[hidden]{display:none}
 @media (orientation: landscape) and (max-height: 540px) {
-  #atlas[open]{width:98vw;max-width:98vw;height:96vh;max-height:96vh;display:grid;grid-template-columns:minmax(0,1fr) 270px;grid-auto-rows:min-content;column-gap:10px;align-items:start;overflow:hidden;padding:8px}
+  #atlas[open]{width:98vw;max-width:98vw;height:96vh;max-height:96vh;display:grid;grid-template-columns:minmax(0,1fr) 270px;grid-auto-rows:min-content;column-gap:10px;align-items:start;overflow-y:auto;padding:8px}
   #atlas > *{grid-column:2}
-  #atlas > #mapCanvas{grid-column:1;grid-row:1 / span 30;align-self:start;margin:0}
+  #atlas > #mapCanvas{grid-column:1;grid-row:1 / span 30;align-self:start;margin:0;position:sticky;top:0} /* the tools scroll; the map stays */
   #atlas > #mapClose{position:absolute;right:6px;top:6px}
   #atlas .maptools{grid-template-columns:repeat(4,1fr)}
   #atlas #mapPlaces{grid-column:span 2}

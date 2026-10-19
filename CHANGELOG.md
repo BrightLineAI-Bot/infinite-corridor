@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 207 — on a phone held sideways the Atlas's tool column scrolls again, so Stuck?, Return to Ember Refuge, Set waypoint and the legend can be reached, while the map stays in place. The world view also redraws faster while you pinch or drag a large journey. The "Under the Ice" Glimpse no longer stops on older browsers.
 - Release 205 — the Atlas zooms out to the whole world.
   - **Zooming:** pinch, scroll the mouse wheel, use +/− (each press now scales the view rather than nudging it), or double-tap a section to zoom in on it. You can zoom out until hundreds of sections fit across.
   - **World view:** zoomed far out, every explored section is a small coloured square. The regions you have heard are tinted and named, and Wayglasses, towns, signals, your waypoint, the compass target, your last death and you are marked.
