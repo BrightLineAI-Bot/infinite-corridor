@@ -37,11 +37,15 @@ Tim, 2026-10-19: keep the big segmented leviathan that was the Tyrant Mosasaur a
   - `undertowLeviathan` is new, with the old mosasaur's stats, five segments and colours.
   - The lunge hit test uses `d.hitReach || 1.1`.
   - `SEA_SPAWNS.leviathans` gives one of the Mosasaur's two places to the Leviathan; the table keeps its nine entries, so every section rolls the same place as before.
-- **`src/renderer.ts`.** `drawMosasaur`, a top-down mosasaur rotated to its facing:
-  - a swaying shark-like tail with a downturned fluke;
-  - a banded barrel body with pale flanks;
-  - four rowing paddle flippers;
-  - a skull, toothed jaws that gape with the lunge's telegraph and strike, and yellow eyes.
+- **`src/renderer.ts`.** `drawMosasaur`, a semi-segmented top-down mosasaur. Tim asked for a tail that moves up and down like a whale's.
+  - `mosasaurSpine` lays 15 joints along the path the head has swum. The path is kept per creature in a `WeakMap`, never saved, and the body runs straight back past its end, so the body bends through turns.
+  - A kick (`MOSASAUR_KICK`, .14 of the body length at the tail tip) raises and lowers each joint more toward the tail; raised parts draw higher and a little wider, and the fluke grows as it rises and fades as it dips.
+  - Over the spine:
+    - one outline from behind the head to the tail, with a dark back and pale flanks, and bands across the back;
+    - a downturned shark-like fluke;
+    - four rowing paddle flippers;
+    - a skull, toothed jaws that gape with the lunge's telegraph and strike, and yellow eyes.
+  - `drawSeaCreature` is now exported, for the creature preview tests.
 
   `drawSeaCreature` hands the Mosasaur to it; the Undertow Leviathan keeps the segmented body.
 - **`src/main.ts`.** Codex entries for both.

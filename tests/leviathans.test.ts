@@ -101,5 +101,5 @@ test('the Tyrant Mosasaur is its own bigger, tougher creature; its old body is t
   assert.equal(u.pattern, 'lunge'); assert.equal(u.segments, 5); assert.equal(u.hp, 320);
   assert.equal(SEA_SPAWNS.leviathans.length, 9, 'the table keeps its length, so sections keep their rolls');
   assert.ok(SEA_SPAWNS.leviathans.includes('tyrantMosasaur') && SEA_SPAWNS.leviathans.includes('undertowLeviathan'));
-  const src = readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8'); assert.match(src, /function drawMosasaur\(/);
+  const src = readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8'); assert.match(src, /function drawMosasaur\(/); assert.match(src, /function mosasaurSpine\(/); assert.match(src, /MOSASAUR_KICK = /);
 });
