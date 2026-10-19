@@ -26,6 +26,27 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Glimpse suite, first batch (release 201)
+
+Tim, 2026-10-19, after seeing the first three: "let's do the full suite of glimpses". This release adds six from `docs/narrative-bible.md` section 5.
+
+**CODE:**
+
+- **`src/glimpse-paint.ts`** (new) holds the shared painting helpers, moved out of `glimpse-render.ts` so scenes can live in several files.
+- **`src/glimpse-scenes.ts`** (new) exports `SCENES`, which `glimpse-render.ts` merges into its draw table. `hasGlimpseRenderer(id)` lets the tests check every catalogued Glimpse can be drawn. The scenes:
+  - `theSky`: soft cloud sprites (140 shaded puffs each), tapered grass blades, the Atlas grid surfacing, a shake at t≈.53 and closing eyelids.
+  - `rainAtWindow`: bokeh lights, still beads and running drops, a mullioned frame, soft hair with lit strands, and a lightning flash at t≈.58.
+  - `underTheIce`: a crossing caustic net, cracks, boot soles stepping above, a hand pressing down, and fins.
+  - `theSpheres`: about 34 spheres in perspective. Each frame tests for touching pairs and spawns chime rings; at the end one sphere fills the view.
+  - `edgeLight`: the rim of a vast circle, lit through a conic-gradient taper (a plain stroke where unsupported), a second far rim and dust.
+  - `glyphRain`: procedurally drawn glyphs, so no fonts are needed (0 and 1, wedge marks, stroke letters). A face map shows through both as glyph brightness and as a scaled-up glow.
+- **`glimpses.ts`** gives each scene its `human` value, duration and reduced-motion frames. The new modules are in `scripts/build.mjs` and both precache lists.
+
+**BOUNDARY:**
+
+- **Untouched.** No rule, trigger or save changes: the new Glimpses enter the same weighted pool. With nine Glimpses, `GLIMPSE_MAX_SEEN` still caps each at 3 sightings.
+- **Previews.** The Proving Ground viewer lists them automatically.
+
 ## Glimpses freeze the game (release 199)
 
 The pre-publish review of 191→197 found a second route to the game running under a Glimpse. Backgrounding the app mid-Glimpse set `overlayPause` false. On return, `visibilitychange` showed the pause menu above the Glimpse, and its Continue button (or a back gesture closing it) called `resume()`.
