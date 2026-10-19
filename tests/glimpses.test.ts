@@ -3,12 +3,16 @@ import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { bookPieces, bookProgress, readingAt } from '../src/lore.ts';
 import { GLIMPSES, GLIMPSE_ORDER, GLIMPSE_MAX_SEEN, GLIMPSE_CHANCE, pickGlimpse, glimpseFor, glimpseSeen, glimpseWeight, humanDrift, witnessGlimpse, witnessedGlimpses } from '../src/glimpses.ts';
-import { startGlimpse } from '../src/glimpse-render.ts';
+import { startGlimpse, hasGlimpseRenderer } from '../src/glimpse-render.ts';
 
 function seeded(n = 1) { let x = n; return () => ((x = (x * 1103515245 + 12345) % 2147483648) / 2147483648); }
 
 test('the first Glimpses span the drift from human to unhuman', () => {
-  assert.deepEqual(GLIMPSE_ORDER, ['wagonAtDusk', 'lanternFaceted', 'theRule']);
+  assert.deepEqual(GLIMPSE_ORDER.slice(0, 3), ['wagonAtDusk', 'lanternFaceted', 'theRule']);
+  assert.ok(GLIMPSE_ORDER.length >= 9);
+  for (const id of GLIMPSE_ORDER) assert.ok(hasGlimpseRenderer(id), `${id} has a renderer`);
+  // The suite spans the drift: some near-human, some wholly unhuman.
+  assert.ok(GLIMPSE_ORDER.filter((id) => GLIMPSES[id].human >= .9).length >= 3 && GLIMPSE_ORDER.filter((id) => GLIMPSES[id].human <= .1).length >= 3);
   for (const id of GLIMPSE_ORDER) { const g = GLIMPSES[id]; assert.ok(g.name && g.seconds >= 8 && g.seconds <= 20 && g.human >= 0 && g.human <= 1 && g.reduced.length >= 2, id); }
   assert.equal(humanDrift(0, 0), 1);
   assert.equal(humanDrift(30, 30), 0);

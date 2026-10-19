@@ -10,6 +10,13 @@ export const GLIMPSES = {
   wagonAtDusk: { name: "The Wagon at Dusk", human: 1, seconds: 14, eyes: "two", reduced: [.18, .55, .9] },
   lanternFaceted: { name: "The Lantern, Faceted", human: .55, seconds: 12, eyes: "compound", reduced: [.2, .6, .92] },
   theRule: { name: "The Rule", human: 0, seconds: 13, eyes: "none", reduced: [.25, .6, .95] },
+  // Release 199: the first batch of the full suite.
+  theSky: { name: "The Sky", human: .95, seconds: 15, eyes: "two", reduced: [.2, .45, .75] },
+  rainAtWindow: { name: "Rain at the Window", human: 1, seconds: 14, eyes: "two", reduced: [.2, .59, .85] },
+  underTheIce: { name: "Under the Ice", human: .45, seconds: 13, eyes: "two", reduced: [.2, .6, .75] },
+  theSpheres: { name: "The Spheres", human: .1, seconds: 14, eyes: "none", reduced: [.2, .5, .9] },
+  edgeLight: { name: "Edge-Light", human: .05, seconds: 13, eyes: "none", reduced: [.2, .55, .9] },
+  glyphRain: { name: "Glyph Rain", human: .2, seconds: 13, eyes: "other", reduced: [.1, .5, .62] },
 };
 export const GLIMPSE_ORDER = Object.keys(GLIMPSES);
 // How often each kind of moment surfaces a Glimpse, and how many times one Glimpse may ever be seen in a journey.
