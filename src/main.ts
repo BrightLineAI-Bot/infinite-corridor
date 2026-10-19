@@ -1093,7 +1093,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:207,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 207\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:209,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 209\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1105,7 +1105,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:207,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:209,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1132,8 +1132,11 @@ function atlasMapHeight(){const base=Math.max(140,Math.min(innerHeight*.65,inner
 let relayOverlay=false;
 // Atlas layers (release 155): the buttons under the Atlas switch each kind of marking on or off. The choice is a
 // per-device convenience kept in localStorage.
-const ATLAS_LAYERS=[["sites","Places"],["signals","Signals"],["objectives","Objectives"],["waypoints","Waypoints"],["regions","Regions"]],ATLAS_LAYER_KEY="corridor-atlas-layers";
+// Release 209 (Tim): Wayglasses and crossings have layers of their own, so everything else can be hidden.
+const ATLAS_LAYERS=[["wayglasses","Wayglasses"],["crossings","Crossings"],["sites","Other places"],["signals","Signals"],["objectives","Objectives"],["waypoints","Waypoints"],["regions","Regions"]],ATLAS_LAYER_KEY="corridor-atlas-layers";
 const atlasLayers=(()=>{const all=Object.fromEntries(ATLAS_LAYERS.map(([k])=>[k,true]));try{return{...all,...JSON.parse(localStorage.getItem(ATLAS_LAYER_KEY)||"{}")}}catch{return all}})();
+const CROSSING_KINDS=new Set(["dungeon","arenaEntrance"]);
+function siteLayerOn(kind){return kind==="checkpoint"?atlasLayers.wayglasses:CROSSING_KINDS.has(kind)?atlasLayers.crossings:atlasLayers.sites}
 function renderAtlasLayerButtons(){
   const row=$("#mapLayers");if(!row)return;row.replaceChildren();
   const save_=()=>{try{localStorage.setItem(ATLAS_LAYER_KEY,JSON.stringify(atlasLayers))}catch{}renderAtlasLayerButtons();drawMap()};
@@ -1203,7 +1206,7 @@ function drawMap() {
       mctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4);
       if (seen) {
         const detailed=(rx===game.rx&&ry===game.ry)||(mapView.selected?.rx===rx&&mapView.selected?.ry===ry),sites=record?.sites||[],compact=[...new Map(sites.map(s=>[s.kind,s])).values()];
-        const displaySites=!atlasLayers.sites?[]:detailed?sites:compact,labelSites=[];
+        const displaySites=(detailed?sites:compact).filter(s=>siteLayerOn(s.kind)),labelSites=[];
         for (const [n,site] of displaySites.entries()) {
           const sx = detailed?x + Math.max(0.1, Math.min(0.9, (site.x + .5) / 32)) * cell:x+cell*(.32+(n%3)*.18),
             sy = detailed?y + Math.max(0.1, Math.min(0.9, (site.y + .5) / 32)) * cell:y+cell*(.42+Math.floor(n/3)*.2);
@@ -1245,24 +1248,42 @@ const READING_TINT={longCampaign:"#c8743a",riverThatRemembers:"#3aa0c8",transpar
 let atlasWorldCache=null;
 function atlasRgb(c){const h=String(c||"#51464a").replace("#",""),f=h.length===3?h.split("").map(x=>x+x).join(""):h,n=parseInt(f,16);return[(n>>16)&255,(n>>8)&255,n&255]}
 function atlasWorldImage(){
-  const list=exploredSections(save),key=`${save.seed}:${list.length}:${Object.keys(save.lore?.entered||{}).join()}:${atlasLayers.regions}`; // seed: another journey never reuses this image
+  const list=exploredSections(save),key=`${save.seed}:${list.length}:${Object.keys(save.lore?.entered||{}).join()}:${atlasLayers.regions}:${relayOverlay}`; // seed: another journey never reuses this image
   if(atlasWorldCache?.key===key)return atlasWorldCache;
   const b=boundsOf(list);if(!b)return null;
   const W=b.maxX-b.minX+1,H=b.maxY-b.minY+1,c=document.createElement("canvas");c.width=W;c.height=H;
-  const g=c.getContext("2d"),img=g.createImageData(W,H),groups=new Map();
+  const g=c.getContext("2d"),img=g.createImageData(W,H),groups=new Map(),crossings=[];
   for(const[rx,ry]of list){const rec=save.atlas?.[`${rx},${ry}`],base=atlasRgb(landscapeAtlasColor(rec?.landscape)||{ash:"#51464a",glass:"#315b62",ember:"#794735"}[rec?.terrain||"ash"]),id=readingAt(rx,ry),known=atlasLayers.regions&&readingKnown(save,id),tint=known?atlasRgb(READING_TINT[id]):null,i=((ry-b.minY)*W+(rx-b.minX))*4;
     for(let k=0;k<3;k++)img.data[i+k]=tint?Math.round(base[k]*.62+tint[k]*.38):base[k];img.data[i+3]=255;
-    if(known){const q=groups.get(id)||{x:0,y:0,n:0};q.x+=rx;q.y+=ry;q.n++;groups.set(id,q)}}
+    if(known){const q=groups.get(id)||{x:0,y:0,n:0};q.x+=rx;q.y+=ry;q.n++;groups.set(id,q)}
+    for(const s of rec?.sites||[])if(CROSSING_KINDS.has(s.kind)){crossings.push([rx,ry]);break}}
   g.putImageData(img,0,0);
-  atlasWorldCache={key,canvas:c,bounds:b,places:atlasPlaces(save),labels:[...groups.entries()].map(([id,q])=>({name:READINGS[id].name,rx:q.x/q.n,ry:q.y/q.n,n:q.n}))};
+  atlasWorldCache={key,canvas:c,bounds:b,places:atlasPlaces(save),crossings,relays:relayOverlay?atlasRelayImage(list,b):null,labels:[...groups.entries()].map(([id,q])=>({name:READINGS[id].name,rx:q.x/q.n,ry:q.y/q.n,n:q.n}))};
   return atlasWorldCache;
+}
+// Release 209 (Tim): the relay pattern stays visible zoomed out. Every relay site (the pattern's leading edges, as
+// the close view marks them) next to explored land is one violet pixel, so the fractal streaks the relays trace
+// read as a whole at world scale. Like the close view, nothing is shown far from where you have been.
+function atlasRelayImage(list,b){
+  const M=1,W=b.maxX-b.minX+1+2*M,H=b.maxY-b.minY+1+2*M,c=document.createElement("canvas");c.width=W;c.height=H;
+  const g=c.getContext("2d"),img=g.createImageData(W,H),done=new Set();
+  for(const[x0,y0]of list)for(const[a,bb]of[[0,0],[1,0],[-1,0],[0,1],[0,-1]]){const rx=x0+a,ry=y0+bb,k=`${rx},${ry}`;if(done.has(k))continue;done.add(k);if(!relayEdge(save.seed,rx,ry))continue;const i=((ry-b.minY+M)*W+(rx-b.minX+M))*4;img.data[i]=190;img.data[i+1]=150;img.data[i+2]=255;img.data[i+3]=235}
+  g.putImageData(img,0,0);return{canvas:c,minX:b.minX-M,minY:b.minY-M};
 }
 function drawAtlasWorld(w,h,cell,signals){
   const at=(rx,ry)=>[w/2+(rx-mapView.x)*cell+mapView.panX,h/2+(ry-mapView.y)*cell+mapView.panY],world=atlasWorldImage();
-  if(world){const[x,y]=at(world.bounds.minX-.5,world.bounds.minY-.5);mctx.imageSmoothingEnabled=false;mctx.drawImage(world.canvas,x,y,world.canvas.width*cell,world.canvas.height*cell)}
+  // With Relays on, the land dims so the relay pattern reads as one shape.
+  if(world){const[x,y]=at(world.bounds.minX-.5,world.bounds.minY-.5);mctx.imageSmoothingEnabled=false;mctx.save();mctx.globalAlpha=relayOverlay?.28:1;mctx.drawImage(world.canvas,x,y,world.canvas.width*cell,world.canvas.height*cell);mctx.restore()}
+  if(world&&relayOverlay&&world.relays){const R=world.relays,[x,y]=at(R.minX-.5,R.minY-.5);mctx.save();mctx.globalAlpha=1;mctx.drawImage(R.canvas,x,y,R.canvas.width*cell,R.canvas.height*cell);mctx.restore();
+    // Answered relays and their links on top, at a fixed size.
+    const answered=[];for(const[id,n]of Object.entries(save.relayNetwork?.nodes||{})){const s=crossingSection(id);if(s)answered.push({...s,choice:n.choice})}
+    mctx.lineWidth=2;for(const p of answered)for(const q of answered.filter(q=>q!==p&&Math.max(Math.abs(p.rx-q.rx),Math.abs(p.ry-q.ry))<=2).sort((a,b)=>Math.hypot(a.rx-p.rx,a.ry-p.ry)-Math.hypot(b.rx-p.rx,b.ry-p.ry)).slice(0,2)){const[ax,ay]=at(p.rx,p.ry),[bx,by]=at(q.rx,q.ry);mctx.strokeStyle=p.choice==="sever"&&q.choice==="sever"?"#6a5a7a99":"#7fe7ffcc";mctx.beginPath();mctx.moveTo(ax,ay);mctx.lineTo(bx,by);mctx.stroke()}
+    for(const n of answered){const[px,py]=at(n.rx,n.ry);mctx.fillStyle=n.choice==="restore"?"#7fe7ff":"#2a2236";mctx.strokeStyle=n.choice==="restore"?"#e8fbff":"#9b86c4";mctx.beginPath();mctx.arc(px,py,3.5,0,7);mctx.fill();mctx.stroke()}
+    mctx.fillStyle="#cdb8ff";mctx.font="11px monospace";mctx.fillText(`Relays · ${relayRuleAt(save.seed,mapView.x,mapView.y)} · ${answered.length} answered`,10,16)}
   // Fixed-size markers: Wayglasses and towns once there is room, signals, the waypoint, the compass target, the last death, you.
-  const dot=(rx,ry,r,fill,stroke)=>{const[x,y]=at(rx,ry);if(x<-20||y<-20||x>w+20||y>h+20)return;mctx.beginPath();mctx.arc(x,y,r,0,7);if(fill){mctx.fillStyle=fill;mctx.fill()}if(stroke){mctx.strokeStyle=stroke;mctx.lineWidth=2;mctx.stroke()}};
-  if(atlasLayers.sites&&cell>=3&&world)for(const g of world.places)for(const p of g.places){if(p.kind==="checkpoint")dot(p.rx,p.ry,2.5,"#5fe7ee");else if(p.kind==="hamlet"||p.kind==="refuge")dot(p.rx,p.ry,3,"#f0c070");}
+  const dot=(rx,ry,r,fill,stroke)=>{const[x,y]=at(rx,ry);if(x<-20||y<-20||x>w+20||y>h+20)return;mctx.beginPath();mctx.arc(x,y,r,0,7);if(fill){mctx.fillStyle=fill;mctx.fill();mctx.strokeStyle="#091018";mctx.lineWidth=1.5;mctx.stroke()}if(stroke){mctx.strokeStyle=stroke;mctx.lineWidth=2;mctx.stroke()}};
+  if(world&&cell>=3)for(const g of world.places)for(const p of g.places){if(p.kind==="checkpoint"){if(atlasLayers.wayglasses)dot(p.rx,p.ry,4,"#5fe7ee")}else if((p.kind==="hamlet"||p.kind==="refuge")&&atlasLayers.sites)dot(p.rx,p.ry,3,"#f0c070")}
+  if(world&&atlasLayers.crossings)for(const[rx,ry]of world.crossings){const[x,y]=at(rx,ry);if(x<-8||y<-8||x>w+8||y>h+8)continue;const r=Math.max(4.5,Math.min(7,cell*.45));mctx.fillStyle="#e0a050";mctx.strokeStyle="#091018";mctx.lineWidth=1.5;mctx.beginPath();mctx.moveTo(x,y-r);mctx.lineTo(x+r,y+r*.8);mctx.lineTo(x-r,y+r*.8);mctx.closePath();mctx.fill();mctx.stroke()} // crossings, glass kilns and arenas
   if(atlasLayers.signals)for(const s of signals)dot(s.targetRx,s.targetRy,2.5,"#b8a0e0");
   if(atlasLayers.waypoints&&save.manualWaypoint)dot(save.manualWaypoint.rx,save.manualWaypoint.ry,6,null,"#5fe7ee");
   const target=atlasLayers.objectives?navigationTargets().guidance:null;if(target?.area==="overworld")dot(target.rx,target.ry,7,null,ATLAS_FRAMES.compassTarget);
