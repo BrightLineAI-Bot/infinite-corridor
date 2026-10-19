@@ -1,7 +1,7 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { LIFT_PER_LEVEL } from "./landscape.js?v=r183-41a3bdd9b25e";
+import { LIFT_PER_LEVEL } from "./landscape.js?v=r187-ed31db743b84";
 
 const TAU = Math.PI * 2;
 const cache = new Map();
@@ -16,6 +16,40 @@ export function landscapeTileAnimated(t) { return !!t?.landscape && !!PAINT[t.ki
 export function landscapeTileLift(t, s) { return t?.landscape ? Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * s : 0; }
 export function animateLandscapeTile(ctx, t, x, y, s) { if (landscapeTileAnimated(t) && t.kind !== "skyBridge") animate(ctx, t, x * s, y * s - landscapeTileLift(t, s), s); }
 export function landscapeCacheSize() { return cache.size; }
+// Release 185 (Tim's probe, 2026-10-18): the overworld drew ~16 ms of ground per frame and the open sea ~20 ms,
+// against under 1 ms in a dungeon. The cached ground image is cheap; the cost was the water overlays, one stroke call
+// per tile (two per ocean tile), hundreds a frame, each expensive where Firefox draws the canvas on the CPU. Water and
+// current lines now go into one path per kind and one stroke; the rest (lava, bubbles, glow, motes) stays per tile.
+// `tiles` is a flat list: tile, x, y, tile, x, y, ...
+const BATCHED = { ocean: ["#a8dcf088", 1.5], deepOcean: ["#6fa2d055", 1.2], lakeWater: ["#d8f0ff77", 1.2], shallows: ["#ffffff66", 1], seaCurrent: ["#cfefffaa", 1.5] };
+export function animateLandscapeTiles(ctx, tiles, s) {
+  const groups = {};
+  for (let i = 0; i < tiles.length; i += 3) {
+    const t = tiles[i];
+    if (!landscapeTileAnimated(t) || t.kind === "skyBridge") continue;
+    if (BATCHED[t.kind] && (t.kind !== "seaCurrent" || t.current)) (groups[t.kind] ||= []).push(i);
+    else animate(ctx, t, tiles[i + 1] * s, tiles[i + 2] * s - landscapeTileLift(t, s), s);
+  }
+  let sparkles = null;
+  for (const kind in groups) {
+    const [style, width] = BATCHED[kind];
+    ctx.strokeStyle = style; ctx.lineWidth = width; ctx.beginPath();
+    for (const i of groups[kind]) {
+      const t = tiles[i], px = tiles[i + 1] * s, py = tiles[i + 2] * s - landscapeTileLift(t, s), d = t.detail || 0;
+      if (kind === "ocean") {
+        for (let k = 0; k < 2; k++) { const y = py + s * (.3 + k * .4) + Math.sin(clock * 1.6 + d + k) * 2; ctx.moveTo(px + 2, y); ctx.quadraticCurveTo(px + s / 2, y - 3, px + s - 2, y); }
+        if ((d + Math.floor(clock * 2)) % 9 === 0) (sparkles ||= []).push(px + (d % s), py + s * .5);
+      } else if (kind === "deepOcean" || kind === "lakeWater") { const y = py + s * .5 + Math.sin(clock * 1.2 + d) * 2; ctx.moveTo(px + 3, y); ctx.quadraticCurveTo(px + s / 2, y - 3, px + s - 3, y); }
+      else if (kind === "shallows") { const y = py + s * .5 + Math.sin(clock * 2 + d) * s * .2; ctx.moveTo(px, y); ctx.lineTo(px + s, y + 1); }
+      else { // seaCurrent: streaks flowing with the current
+        const f = (clock * 1.1 + d * .07) % 1, { dx, dy } = t.current;
+        for (let k = 0; k < 2; k++) { const g = (f + k * .5) % 1, cx = px + s / 2 + dx * (g - .5) * s + (dy ? (k - .5) * s * .4 : 0), cy = py + s / 2 + dy * (g - .5) * s + (dx ? (k - .5) * s * .4 : 0); ctx.moveTo(cx - dx * s * .18, cy - dy * s * .18); ctx.lineTo(cx + dx * s * .18, cy + dy * s * .18); ctx.lineTo(cx + dx * s * .08 - dy * s * .08, cy + dy * s * .08 - dx * s * .08); }
+      }
+    }
+    ctx.stroke();
+  }
+  if (sparkles) { ctx.fillStyle = "#ffffffcc"; for (let i = 0; i < sparkles.length; i += 2) ctx.fillRect(sparkles[i], sparkles[i + 1], 2, 2); }
+}
 
 function rand(seed) { let s = seed >>> 0 || 1; return () => ((s = Math.imul(s ^ (s >>> 15), 2246822519) ^ Math.imul(s ^ (s >>> 13), 3266489917)) >>> 0) / 4294967296; }
 function grad(ctx, x0, y0, x1, y1, stops) { const g = ctx.createLinearGradient(x0, y0, x1, y1); stops.forEach(([o, c]) => g.addColorStop(o, c)); return g; }

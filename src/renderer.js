@@ -1,13 +1,13 @@
-import { enemyMeleeGeometry } from "./combat.js?v=r183-41a3bdd9b25e";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r183-41a3bdd9b25e";
-import { BOAT } from "./boats.js?v=r183-41a3bdd9b25e";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTile, landscapeTileLift } from "./landscape-render.js?v=r183-41a3bdd9b25e";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r183-41a3bdd9b25e";
-import { liftAt } from "./landscape.js?v=r183-41a3bdd9b25e";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=r183-41a3bdd9b25e";
-import { drawRelayNode } from "./relay-network.js?v=r183-41a3bdd9b25e";
-import { structureOccupancy } from "./world.js?v=r183-41a3bdd9b25e";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r183-41a3bdd9b25e";
+import { enemyMeleeGeometry } from "./combat.js?v=r187-ed31db743b84";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r187-ed31db743b84";
+import { BOAT } from "./boats.js?v=r187-ed31db743b84";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r187-ed31db743b84";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r187-ed31db743b84";
+import { liftAt } from "./landscape.js?v=r187-ed31db743b84";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=r187-ed31db743b84";
+import { drawRelayNode } from "./relay-network.js?v=r187-ed31db743b84";
+import { structureOccupancy } from "./world.js?v=r187-ed31db743b84";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r187-ed31db743b84";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -680,11 +680,15 @@ export function render(ctx, g, w, h, now) {
   ctx.save();
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - groundLift(p.x, p.y)) * s));
   const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b });
-  if (groundCached) for (let y = t; y < b; y++) for (let x = l; x < r; x++) {
-    const q = g.map.tiles[y * mw + x];
-    // In a dungeon, a lethal tile right beside the Wayfarer shows through the fog (as the per-tile path always did).
-    if (g.area === "dungeon" && LETHAL_KINDS.has(q?.kind) && Math.hypot(x - p.x, y - p.y) < 2.6 && dungeonTileVisibility(g.map, x, y) === "unseen") tile(ctx, q, x, y, s, g.map.tiles, mw, activeBuildingId);
-    else if (landscapeTileAnimated(q) && (g.area !== "dungeon" || dungeonTileVisibility(g.map, x, y) !== "unseen")) animateLandscapeTile(ctx, q, x, y, s);
+  if (groundCached) {
+    const animated = render.animatedTiles || (render.animatedTiles = []); animated.length = 0;
+    for (let y = t; y < b; y++) for (let x = l; x < r; x++) {
+      const q = g.map.tiles[y * mw + x];
+      // In a dungeon, a lethal tile right beside the Wayfarer shows through the fog (as the per-tile path always did).
+      if (g.area === "dungeon" && LETHAL_KINDS.has(q?.kind) && Math.hypot(x - p.x, y - p.y) < 2.6 && dungeonTileVisibility(g.map, x, y) === "unseen") tile(ctx, q, x, y, s, g.map.tiles, mw, activeBuildingId);
+      else if (landscapeTileAnimated(q) && (g.area !== "dungeon" || dungeonTileVisibility(g.map, x, y) !== "unseen")) animated.push(q, x, y);
+    }
+    animateLandscapeTiles(ctx, animated, s); // release 185: one stroke per water kind, not one per tile
   }
   else for (let y = t; y < b; y++)
     for (let x = l; x < r; x++) {

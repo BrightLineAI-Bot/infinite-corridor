@@ -8,7 +8,7 @@
 // calls guardians in; from gate 3 it hides behind them until they fall. Felling it raises the Gate a tier (harder
 // guardians that borrow moves) and offers a choice of three boons; the first time, it also asks how the story ends,
 // though the climb goes on either way. State: save.farArray (additive). The lore stays open on purpose.
-import { hashSeed, rng } from "./random.js?v=r183-41a3bdd9b25e";
+import { hashSeed, rng } from "./random.js?v=r187-ed31db743b84";
 
 export const FAR = {
   piecesBase: 2, // gate 1 needs 3 pieces, gate 2 needs 4, ...

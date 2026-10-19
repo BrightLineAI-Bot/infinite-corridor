@@ -812,7 +812,7 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 .action-diamond .spell-b { right: calc(var(--button) * -0.16); bottom: calc(var(--button) * 0.1); top: auto; }
 .action-diamond button.spell .slot-letter { top: 2px; left: 12px; transform: none; }
 
-/* Release r183-41a3bdd9b25e (Tim, 2026-10-18): Jump was too small after 179 and Spell A at the cluster's top-right covered too much of
+/* Release 183 (Tim, 2026-10-18): Jump was too small after 179 and Spell A at the cluster's top-right covered too much of
    the playfield. Tim's layout: the five action buttons form a cross of equal buttons (Tool, Act, Jump in the middle,
    Dodge, Attack), with a tenth of a button and more between neighbours. Spell A sits low under Act (their right edges
    line up), Spell B low under Dodge (their left edges line up), so the cross sits centred between them and Attack sits
@@ -843,3 +843,6 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
   .quick-row { left: 68px; right: auto; bottom: 74px; justify-content: flex-start; }
   .quick-row button { min-width: 46px; padding-inline: 2px; }
 }
+
+/* Release 185: the "new release ready" prompt, shown when an updated service worker takes over the page. */
+.update-ready { position: fixed; z-index: 95; top: calc(env(safe-area-inset-top) + 6px); left: 50%; transform: translateX(-50%); min-height: 40px; padding: 0 16px; border: 1px solid #b58c50; border-radius: 999px; background: #1d1c19f0; color: #f0dbb5; font: 700 12px ui-monospace, monospace; box-shadow: 0 4px 14px #000a; }
