@@ -52,7 +52,7 @@ export function grantTidemantle(save, source) {
 
 // Per-frame swim upkeep. Returns damage to apply (0 while stamina lasts).
 export function swimUpkeep(player, dt, kind = null, openSea = false) {
-  const drain = (openSea ? TIDEMANTLE.openSeaPerSecond : TIDEMANTLE.staminaDrainPerSecond * (TIDEMANTLE.drainMultiplier[kind] || 1)) * dt;
+  const drain = (openSea ? TIDEMANTLE.openSeaPerSecond : TIDEMANTLE.staminaDrainPerSecond * (TIDEMANTLE.drainMultiplier[kind] ?? 1)) * dt;
   if ((player.stamina || 0) >= drain) { player.stamina -= drain; return 0; }
   player.stamina = 0;
   return TIDEMANTLE.exhaustedDamagePerSecond * dt;

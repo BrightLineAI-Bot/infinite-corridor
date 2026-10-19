@@ -7,7 +7,7 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { hashSeed } from "./random.js?v=r187-ed31db743b84";
+import { hashSeed } from "./random.js?v=r191-182df041f2c0";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -678,7 +678,7 @@ function passiveStillness(e, s, w) {
   }
 }
 
-// Release r187-ed31db743b84 (Tim): the Questing Beast moves like a panther (its heading and pace ease toward the brain's wish
+// Release 187 (Tim): the Questing Beast moves like a panther (its heading and pace ease toward the brain's wish
 // instead of snapping) and dodges: a shot of the Wayfarer's closing on it, or a swing in reach, makes it spring aside,
 // untargetable for the spring, at most once per QB_MOVES.evadeCooldown. It can spring out of an attack's recovery, never
 // out of the attack itself, so committing to an attack is when it can be hit.

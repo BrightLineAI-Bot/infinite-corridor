@@ -2,10 +2,10 @@
 // Wayfarer's level and power. Now and then it claims a wild section. It stays there until it is killed or it has
 // killed the Wayfarer QUESTING_BEAST.tries times; then it is gone, and after a cooldown (counted in sections entered)
 // a new hunt can begin somewhere else.
-import { hashSeed } from "./random.js?v=r187-ed31db743b84";
-import { LETHAL_KINDS } from "./landscape.js?v=r187-ed31db743b84";
+import { hashSeed } from "./random.js?v=r191-182df041f2c0";
+import { LETHAL_KINDS } from "./landscape.js?v=r191-182df041f2c0";
 
-// Release r187-ed31db743b84 (Tim, 2026-10-18): far tougher and far more dangerous. About twice the health; each blow takes about
+// Release 187 (Tim, 2026-10-18): far tougher and far more dangerous. About twice the health; each blow takes about
 // 27% of maximum health (four unhealed hits kill); it runs fast and barely pauses between attacks.
 export const QUESTING_BEAST = { chance: 0.035, minDepth: 4, tries: 3, cooldownSlain: 24, cooldownEscaped: 30, hitsToKill: 55, hpPerLevel: 25, damageShare: 0.27, speed: 1.55, attackGap: .12, staggerResistance: .85, rewardMarks: 150, rewardPerLevel: 15 };
 

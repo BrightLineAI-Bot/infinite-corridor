@@ -1,7 +1,7 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind } from "./monster-pack.js?v=r187-ed31db743b84";
+import { MONSTER_PACK, isPackKind } from "./monster-pack.js?v=r191-182df041f2c0";
 
 const TAU = Math.PI * 2;
 
@@ -159,7 +159,7 @@ const BODY = {
   },
   // The Questing Beast (release 116): a hunched, horned, winged brute. Spines are pale when fresh, black when it is
   // enraged (below half health); a spent volley leaves its back bare for a moment.
-  // Release r187-ed31db743b84 (Tim): a lean, muscular hunter drawn with its own detailed recipe rather than the pack's ellipses. Side
+  // Release 187 (Tim): a lean, muscular hunter drawn with its own detailed recipe rather than the pack's ellipses. Side
   // view in body units (x forward, y up from the ground): deep chest, tucked waist, heavy haunches, long jointed legs
   // with a stride, an angular horned skull, folded membrane wings, a spined back and tail, and a furnace core that
   // flares while it winds up or fires. Enraged, its veins burn.
