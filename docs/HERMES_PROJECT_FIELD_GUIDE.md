@@ -26,6 +26,14 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Strange stones fixed (release 227)
+
+Found by the release-225 review: since release 215 a strange stone never offered Touch. `validActions` (`src/interactions.ts`) returned the sealed-rock actions (move, break, and from 225 chip) before an object's own actions were consulted, so only strange trees opened Glimpses.
+
+**CODE:** `validActions` now returns `['touch']` first for any untouched strange rock or tree. After touching, the rock falls through to the ordinary rock rules. `touchStrange` says "It is only a stone now." for a spent stone. One test is added to `tests/strange.test.ts`.
+
+**BOUNDARY:** No save or generation change. The same rare objects are strange as before; strange stones simply work now.
+
 ## The shovel (release 225)
 
 Tim, 2026-10-19:
