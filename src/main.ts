@@ -1261,13 +1261,13 @@ function atlasWorldImage(){
   atlasWorldCache={key,canvas:c,bounds:b,places:atlasPlaces(save),crossings,relays:relayOverlay?atlasRelayImage(list,b):null,labels:[...groups.entries()].map(([id,q])=>({name:READINGS[id].name,rx:q.x/q.n,ry:q.y/q.n,n:q.n}))};
   return atlasWorldCache;
 }
-// Release 209 (Tim): the relay pattern stays visible zoomed out. Every relay site (the pattern's leading edges, as
-// the close view marks them) next to explored land is one violet pixel, so the fractal streaks the relays trace
-// read as a whole at world scale. Like the close view, nothing is shown far from where you have been.
+// Release 209 (Tim): the relay pattern stays visible zoomed out. Every live cell of the relay pattern next to explored
+// land is one violet pixel: the whole "chunky" pattern, which Tim preferred to its edges alone, so the fractal the
+// relays make reads as one shape at world scale. Like the close view, nothing is shown far from where you have been.
 function atlasRelayImage(list,b){
   const M=1,W=b.maxX-b.minX+1+2*M,H=b.maxY-b.minY+1+2*M,c=document.createElement("canvas");c.width=W;c.height=H;
   const g=c.getContext("2d"),img=g.createImageData(W,H),done=new Set();
-  for(const[x0,y0]of list)for(const[a,bb]of[[0,0],[1,0],[-1,0],[0,1],[0,-1]]){const rx=x0+a,ry=y0+bb,k=`${rx},${ry}`;if(done.has(k))continue;done.add(k);if(!relayEdge(save.seed,rx,ry))continue;const i=((ry-b.minY+M)*W+(rx-b.minX+M))*4;img.data[i]=190;img.data[i+1]=150;img.data[i+2]=255;img.data[i+3]=235}
+  for(const[x0,y0]of list)for(const[a,bb]of[[0,0],[1,0],[-1,0],[0,1],[0,-1]]){const rx=x0+a,ry=y0+bb,k=`${rx},${ry}`;if(done.has(k))continue;done.add(k);if(!relayCell(save.seed,rx,ry))continue;const i=((ry-b.minY+M)*W+(rx-b.minX+M))*4;img.data[i]=190;img.data[i+1]=150;img.data[i+2]=255;img.data[i+3]=235}
   g.putImageData(img,0,0);return{canvas:c,minX:b.minX-M,minY:b.minY-M};
 }
 function drawAtlasWorld(w,h,cell,signals){

@@ -40,7 +40,7 @@ Tim, 2026-10-19:
   - The world-image cache also lists crossing sections, drawn as outlined orange triangles.
   - Wayglass dots are larger and outlined.
   - Hamlets and the Refuge follow Other places.
-- **Relays in the world view.** `atlasRelayImage` (cached with the world image; its key includes `relayOverlay`) marks every `relayEdge` site within one section of explored land as one violet pixel, the same reveal rule as the close overlay.
+- **Relays in the world view.** `atlasRelayImage` (cached with the world image; its key includes `relayOverlay`) marks every live `relayCell` within one section of explored land as one violet pixel: the whole pattern, which Tim preferred to its edges alone. It uses the same reveal rule as the close overlay.
   - When Relays is on, the land is drawn at 28% opacity under it.
   - Answered relays and their links (the two nearest within two sections) are drawn at a fixed size.
 

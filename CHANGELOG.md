@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Release 209 — the Atlas layers can be picked apart. Wayglasses and Crossings (crossings, glass kilns and arenas) now have toggles of their own beside Other places, so you can switch everything else off and see only them, in the close view and in the world view. With Relays on, the relay pattern now stays visible as you zoom out: the land dims and every relay site next to where you have been shows as a violet cell, so the streaks and triangles the relays trace across the world read as one shape. Answered relays and their links stay marked at every zoom.
+- Release 209 — the Atlas layers can be picked apart. Wayglasses and Crossings (crossings, glass kilns and arenas) now have toggles of their own beside Other places, so you can switch everything else off and see only them, in the close view and in the world view. With Relays on, the relay pattern now stays visible as you zoom out: the land dims and the whole relay pattern next to where you have been shows in solid violet, so the fractal the relays make across the world reads as one shape. Answered relays and their links stay marked at every zoom.
 - Release 207 — on a phone held sideways the Atlas's tool column scrolls again, so Stuck?, Return to Ember Refuge, Set waypoint and the legend can be reached, while the map stays in place. The world view also redraws faster while you pinch or drag a large journey. The "Under the Ice" Glimpse no longer stops on older browsers.
 - Release 205 — the Atlas zooms out to the whole world.
   - **Zooming:** pinch, scroll the mouse wheel, use +/− (each press now scales the view rather than nudging it), or double-tap a section to zoom in on it. You can zoom out until hundreds of sections fit across.
