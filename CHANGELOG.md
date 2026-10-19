@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 217 — linked dungeons. About a third of the multi-level dungeons are linked: once you beat the guardian past the second level, its door lets you out somewhere far away and unexplored, at another mouth of the same dungeon. Either mouth enters it, and the guardian's door then leads to the other one. On the Atlas a dashed green line with green rings joins the two mouths (under Places).
 - Release 215 — story beats live in strange things. About one section in thirty holds a tree, shrub or stone that is subtly wrong: a pale glow, a drifting double of itself, motes rising off it. Nothing marks them on the Atlas; you notice them or you don't. Touch one and a Glimpse opens. Afterwards it is ordinary. Felling trees no longer opens Glimpses at all, and ruins, shrines and crossings open them only rarely now, so you never have to chop or poke at everything to find the story.
 - Release 213 — a cleaner Atlas.
   - **Places:** this layer now marks towns (Ember Refuge and the hamlets, with a gold house), crossings and other sites worth finding. Supply caches and shelters are no longer marked, and the separate Crossings toggle is folded back into Places.

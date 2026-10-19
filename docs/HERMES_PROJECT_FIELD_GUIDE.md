@@ -26,6 +26,34 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Linked dungeons: the guardian's door opens elsewhere (release 217)
+
+Tim, 2026-10-19: in some dungeons, going through the guardian's door after the second level should bring you out at a different, unexplored place on the map, at another entrance to the same dungeon. The Atlas should mark the connected entrances with an indicator that is not purple.
+
+**CODE:**
+
+- **`src/linked-dungeons.ts`** (new; it is in `scripts/build.mjs` and both precache lists).
+  - `LINKED` is a data table: `share` .3 of linkable dungeons, `distance` 7–14 sections.
+  - `isLinkable`: only ordinary world dungeons (`dungeon:` ids). `isLinked` is a seeded hash per dungeon id.
+  - `linkedExit(save, id, entered)`: creates `save.linkedDungeons[id] = { a, b }` on first use. `a` is where you went in; `b` (`farMouth`) is a seeded direction and distance away, stepping outward past explored sections and never onto the Refuge. Returns the other mouth.
+  - `mouthsIn` and `placeMouth`: the second mouth is an ordinary `kind:"dungeon"` object carrying `dungeonId` and `linked:true`, named "The Other Mouth", on open ground nearest the section centre. Placing is idempotent.
+  - `linksKnown` lists links whose two mouths are both explored. `ensureLinks` normalises the save.
+- **`game.ts`.**
+  - The `completionExit` branch ("Cleared Expedition Return", the guardian's door) asks `linkedExit` only when `this.map.multiLevel`. A link replaces `session.dungeonReturn`. The player lands beside the second mouth, or back at the first mouth when leaving from the second.
+  - Overworld load places the second mouths with `placeMouth`. Entering one uses its `dungeonId`, so it is the same pinned dungeon.
+- **`types.ts`.** `ensureLinks` runs in `freshSave` and `migrateSave`.
+- **`main.ts`.**
+  - `drawLinkedDungeons` joins the two mouths with a dashed green (`#7dff9e`) line and double rings, in both the close and world views, under the Places layer.
+  - The legend has "Linked crossing".
+- **Tests.** `tests/linked-dungeons.test.ts` is new.
+
+**BOUNDARY:**
+
+- **Save.** `save.linkedDungeons` is additive at schema 14. Malformed entries are dropped on load.
+- **Generation.** Dungeon generation is untouched, and so are existing journeys' sections. A second mouth is only added on load, to a section that was unexplored when the link was made.
+- **Scope.** Single-level dungeons, hunts, portals, dives and displacement crossings never link. The ordinary exit by the entrance still leads back to the mouth you came in by.
+- **Terrain.** If the far section has no open ground, no mouth is placed and you land by the usual stranding rules. The link stays.
+
 ## Strange things carry the story beats (release 215)
 
 Tim, 2026-10-19, after finding his first remembrance fragment: he does not want to chop every tree or move every rock. Story beats should be rare, noticeably weird versions of ordinary interactable things, unmarked.
