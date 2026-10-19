@@ -2251,6 +2251,10 @@ export class Game {
       this.player.x = o.x + 2;
       this.player.y = o.y - 2;
     }
+    // Release 193: moments that may open a Glimpse (main.ts reads the cue on the next frame).
+    if ((o.kind === "ruinMarker" || o.kind === "shrine") && chosen === "inspect") this.glimpseCue = "touch";
+    if (o.kind === "tree" && chosen === "cut") this.glimpseCue = "tree";
+    if (r.transition === "dungeon") this.glimpseCue = "crossing";
     if (o.kind === "tree" && chosen === "cut") { applyFallenTreeCrossings(this.map); const n = woodFor(o), total = addWood(this.save, n); this.message = `${this.message} +${n} wood (${total}).`; r.message = this.message; }
     if(r.transition==="elitePortal"){
       this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=`elite-portal:${this.save.seed}:knife-choir`;const h=dungeonHistory(this.save,this.save.session.activeDungeonId);h.visits++;h.visitOpen=true;this.loadArea('dungeon');this.player.x=4;this.player.y=5;relocateIfStranded(this.player,this.map,mapWidth(this.map,'dungeon'));

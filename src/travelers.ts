@@ -8,7 +8,7 @@ import { hashSeed, rng, pick } from "./random.ts";
 import { LETHAL_KINDS } from "./landscape.ts";
 import { hamletSection } from "./settlements.ts";
 import { RECITERS, RECITATIONS } from "./recitations.ts";
-import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading } from "./lore.ts";
+import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading, readingKnown } from "./lore.ts";
 
 export const TRAVEL_VERSION = 1;
 export const TRAVEL = { reciterChance: 0.12, trailChance: 0.08, trailNearTown: 0.6, groupChance: 0.2, groupChanceOnTrail: 0.42, minDepth: 1, speed: 1.15, pauseRadius: 2.4, spacing: 0.9, wandererChance: 0.07, wandererChanceReady: 0.22 };
@@ -273,7 +273,7 @@ export function tickTravelers(map, player, dt) {
 export function travelerTalk(o, save = null) {
   const who = `${o.name}${o.role ? ` (${o.role})` : ""}${o.mount ? `, riding a ${o.mount.replace(/([A-Z])/g, " $1").toLowerCase()}` : ""}`;
   const here = save ? readingAt(save.session?.rx ?? 0, save.session?.ry ?? 0) : null, said = here ? readingSpeech(save, here, { reciter: false }) : null;
-  if (said) return `${who}: “${said.text}”${placeNote(discoverReading(save, here))}${pieceNote(said.found)}`;
+  if (said) return `${who}: “${said.text}”${placeNote(discoverReading(save, here))}${pieceNote(said.found, save)}`;
   const lines = o.lines?.length ? o.lines : ["Safe roads."], line = lines[(o.talk || 0) % lines.length];
   o.talk = (o.talk || 0) + 1;
   return `${who}: “${line}”`;
@@ -286,7 +286,8 @@ function readingSpeech(save, readingId, { reciter, voices = null }) {
 }
 // The first voice heard in a Reading names it; nothing names a Reading you have not heard.
 function placeNote(found) { return found ? ` · You are in ${found.name.replace(/^The /, "the ")}.` : ""; }
-function pieceNote(found) { return !found ? "" : found.completed ? ` · Recitation complete: ${READINGS[found.readingId].name}.` : ` · A fragment of ${READINGS[found.readingId].name} is remembered (Reciter's Tome)`; }
+// A fragment of a Reading not yet heard is noted without naming it (release 193).
+function pieceNote(found, save = null) { return !found ? "" : found.completed ? ` · Recitation complete: ${READINGS[found.readingId].name}.` : save && !readingKnown(save, found.readingId) ? " · A fragment is remembered (Reciter's Tome)." : ` · A fragment of ${READINGS[found.readingId].name} is remembered (Reciter's Tome)`; }
 
 // ------------------------------------------------------------------ the wandering cartographer
 // One errand at a time. Kinds: hunt (defeat creatures), cache (find a satchel at a section), town (reach a town).
@@ -456,7 +457,7 @@ export function reciterTalk(o, save) {
   const found = hearLine(save, who.id, at, { reciter: true });
   // A reciter names the Reading only when it is one of that Reading's own voices.
   const here = readingAt(save.session?.rx ?? 0, save.session?.ry ?? 0), local = READINGS[here].voices.some(([id]) => id === who.id);
-  return `${who.name}: “${lines[at]}”${local ? placeNote(discoverReading(save, here)) : ""}${pieceNote(found)}`;
+  return `${who.name}: “${lines[at]}”${local ? placeNote(discoverReading(save, here)) : ""}${pieceNote(found, save)}`;
 }
 export const RECITER_PIECE_CHANCE = 0.4;
 function unheardLine(save, id, n) {
