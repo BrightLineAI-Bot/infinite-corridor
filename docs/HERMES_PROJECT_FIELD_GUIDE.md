@@ -26,6 +26,24 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Water opens section borders (release 211)
+
+Tim, 2026-10-19 (with a screenshot of section -2,5): grey "hard pieces of earth" stood where shallow water met a section's edge, and his skiff could not pass; "those need to be removed".
+
+**CODE:** In `applyLandscape` (`landscape.ts`), the edge rule `(x|y ∈ {0,31}) && (prot || o <= T.ocean) → keep the wall` meant only deep sea opened a border, and only in sea sections (border tiles of other sections were never visited). For landscape version 3:
+- border tiles are visited in every section;
+- a border opens where sea water is shallows or deeper (`o > SHALLOWS_FROM`, the existing shallows threshold), or where the lake field passes its rim (lake shallows, or `lakeWater` past `W.lake.water`);
+- protection comes from `protectedMask(map, { border: false })` outside sea sections, so exits, the plaza and landmarks stay protected;
+- deep sea at the edge of a non-sea section stays walled, as before.
+
+Crossing works through the existing paths: `sailAcross` searches the neighbour's matching edge for sailable water, and walkers arrive at the neighbour's exit.
+
+**BOUNDARY:**
+
+- **Pinned versions.** Landscape versions 1 and 2 are unchanged (their byte-identical tests still pass).
+- **Explored sections.** Version 3 is current and not hash-pinned, so sections explored since about release 104 regenerate with these walls gone. Tim asked for exactly that; it is an explicit exception to "never regenerate existing journeys", and it only replaces wall with water at borders where water runs on.
+- **Tests.** `tests/sea-borders.test.ts` checks that version 3 leaves far fewer walled shallow edges than version 2.
+
 ## Relays at world scale, and layers of their own for Wayglasses and crossings (release 209)
 
 Tim, 2026-10-19:

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 211 — where a shallow channel or a lake runs up to the edge of a section, the hard grey wall there is gone, so your skiff (or you, wading) can cross into the next section. Before, only deep sea opened a section's edge. This applies to sections you have already explored, unless they were first explored before release 104, whose terrain is kept exactly as it was.
 - Release 209 — the Atlas layers can be picked apart. Wayglasses and Crossings (crossings, glass kilns and arenas) now have toggles of their own beside Other places, so you can switch everything else off and see only them, in the close view and in the world view. With Relays on, the relay pattern now stays visible as you zoom out: the land dims and the whole relay pattern next to where you have been shows in solid violet, so the fractal the relays make across the world reads as one shape. Answered relays and their links stay marked at every zoom.
 - Release 207 — on a phone held sideways the Atlas's tool column scrolls again, so Stuck?, Return to Ember Refuge, Set waypoint and the legend can be reached, while the map stays in place. The world view also redraws faster while you pinch or drag a large journey. The "Under the Ice" Glimpse no longer stops on older browsers.
 - Release 205 — the Atlas zooms out to the whole world.

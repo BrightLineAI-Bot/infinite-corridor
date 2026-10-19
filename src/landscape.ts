@@ -48,6 +48,7 @@ export const WATERBODIES = {
 export const DEEP_WATER = ["ocean", "deepOcean", "lakeWater", "swampWater", "toxicWater"];
 // Thresholds tuned so roughly a third of sections carry a landscape feature (see tests/landscape.test.ts).
 const T = { ocean: 0.70, beach: 0.675, mountain: 0.68, alien: 0.75, desert: 0.67 };
+const SHALLOWS_FROM = T.ocean - .012; // sea level above which water is shallows (below it, beach)
 const WALKABLE_LANDSCAPE = new Set(["snowRock", "snowPeak", "mountainRock", "alpineGrass", "mountainTrail", "sand", "duneCrest", "duneFace",
   "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope"]);
 
@@ -204,15 +205,31 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   const isle = new Uint8Array(1024);
   if (full && hamlet) { const h = OPEN_SEA.hamletIsle; for (let y = 16 - h.halfH; y <= 16 + h.halfH; y++) for (let x = 16 - h.halfW; x <= 16 + h.halfW; x++) { mask[idx(x, y)] = 1; if (Math.abs(x - 16) < h.halfW && Math.abs(y - 16) < h.halfH) isle[idx(x, y)] = 1; } }
   let touched = 0;
-  const lo = openSea ? 0 : 1, hi = openSea ? 32 : 31;
+  // Release 211: in version 3, borders are visited in every section, but only water opens them (see below). Versions 1
+  // and 2 keep their exact output (tests pin them byte for byte): borders only in sea sections, only to deep water.
+  const openEdges = version >= 3, lo = openSea || openEdges ? 0 : 1, hi = openSea || openEdges ? 32 : 31;
+  const edgeMask = !openEdges || openSea || full ? mask : protectedMask(map, { border: false });
   for (let y = lo; y < hi; y++) for (let x = lo; x < hi; x++) {
     const i = idx(x, y), t = map.tiles[i], gx = rx * 32 + x, gy = ry * 32 + y, d = hashSeed(`${seed}:land:detail:${gx}:${gy}`) % 997;
     const prot = mask[i] === 1, o = seaLevel(seed, gx, gy, version).o, m = field.mountain(seed, gx, gy), a = field.alien(seed, gx, gy), s = field.desert(seed, gx, gy);
-    if ((x === 0 || y === 0 || x === 31 || y === 31) && (prot || o <= T.ocean)) continue; // borders only ever open to deep water
+    // Borders open only to water (release 211, Tim 2026-10-19). Before, only deep sea reached a border, and only in sea
+    // sections; a shallow channel or a lake reaching the edge kept the section wall there and stopped skiffs. In version
+    // 3 (the current landscape, explored sections included, at Tim's request: it only removes walls where water runs on
+    // across the border) sea shallows and lake water open the border in every section.
+    if ((x === 0 || y === 0 || x === 31 || y === 31) && !openEdges && (prot || o <= T.ocean)) continue; // versions 1–2: deep water only
+    if ((x === 0 || y === 0 || x === 31 || y === 31) && openEdges) {
+      if (edgeMask[i] === 1) continue;
+      if (o <= SHALLOWS_FROM) {
+        const lk = v2 ? field.lake(seed, gx, gy) : 0;
+        if (lk > W.lake.rim) { setTile(map, x, y, lk > W.lake.water ? { kind: "lakeWater", blocked: true, elev: 0, landscape: "lake", detail: d } : { kind: "shallows", blocked: false, elev: 0, landscape: "lake", detail: d }); touched++; }
+        continue;
+      }
+      if (!openSea && o > T.ocean) continue; // deep sea at the edge of a non-sea section stays walled, as before
+    }
     if (o > T.beach) {
       const deep = o > T.ocean, abyssal = v2 && o > T.ocean + W.deep;
       if (isle[i]) { setTile(map, x, y, { kind: "beach", blocked: false, elev: 0, landscape: "coast", detail: d }); touched++; continue; }
-      setTile(map, x, y, deep && !prot ? { kind: abyssal ? "deepOcean" : "ocean", blocked: true, elev: 0, landscape: abyssal ? "sea" : "coast", detail: d } : { kind: deep || o > T.ocean - .012 ? "shallows" : "beach", blocked: false, elev: 0, landscape: "coast", detail: d });
+      setTile(map, x, y, deep && !prot ? { kind: abyssal ? "deepOcean" : "ocean", blocked: true, elev: 0, landscape: abyssal ? "sea" : "coast", detail: d } : { kind: deep || o > SHALLOWS_FROM ? "shallows" : "beach", blocked: false, elev: 0, landscape: "coast", detail: d });
       touched++; continue;
     }
     if (t.blocked && !t.landscape) continue; // ruins and section walls stay
