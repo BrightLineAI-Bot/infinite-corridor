@@ -2,7 +2,7 @@
 // for a few seconds through someone's, or something's, eyes. This module holds the catalogue and the rules (where a
 // Glimpse may surface, how rarely it repeats, which fragment it gives); the drawing lives in glimpse-render.ts.
 // Pure data and rules: no DOM.
-import { readingAt, bookPieces, ensureLore, creditPiece } from "./lore.js?v=r205-e14f762ffe4d";
+import { readingAt, bookPieces, ensureLore, creditPiece } from "./lore.js?v=r221-62b2f668c170";
 
 // `human` places a Glimpse on the drift from human residue (1) to the wholly unhuman (0). Near Ember Refuge the
 // Corridor offers mostly human Glimpses, far out mostly unhuman ones, but every region keeps some of the other end.
@@ -24,10 +24,13 @@ export const GLIMPSES = {
   theDrowning: { name: "The Drowning", human: .7, seconds: 13, eyes: "two", reduced: [.2, .5, .75] },
   theWheat: { name: "The Wheat", human: .75, seconds: 13, eyes: "two", reduced: [.3, .6, .8] },
   burningPlain: { name: "The Burning Plain", human: .3, seconds: 15, eyes: "two", reduced: [.2, .5, .8] },
+  // Release 219: the legends. Gilgamesh (Tim: "the legend of Gilgamesh, this is what I meant"): the plant of life lost to a snake.
+  thePlant: { name: "The Plant at the Bottom", human: .85, seconds: 16, eyes: "two", reduced: [.08, .38, .76] },
 };
 export const GLIMPSE_ORDER = Object.keys(GLIMPSES);
 // How often each kind of moment surfaces a Glimpse, and how many times one Glimpse may ever be seen in a journey.
-export const GLIMPSE_CHANCE = { touch: .5, tree: .04, crossing: .25 };
+// Release 215 (Tim): story beats come from strange things (always), not from felling trees; ruins and crossings rarely.
+export const GLIMPSE_CHANCE = { strange: 1, touch: .15, crossing: .2 };
 export const GLIMPSE_MAX_SEEN = 3;
 // Depth (sections from the Refuge) at which the Corridor has wholly forgotten it was human.
 export const GLIMPSE_DRIFT_DEPTH = 40;

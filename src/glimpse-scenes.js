@@ -1,7 +1,7 @@
 // More Glimpses (release 199 onward; docs/narrative-bible.md section 5). Each scene is a draw function
 // (ctx, t, w, h, state) painting frame t ∈ [0, 1] of a first-person view; `state` holds what a scene builds once.
 // Canvas 2D only, no assets. The catalogue entries are in glimpses.ts.
-import { TAU, clamp, lerp, smooth, seeded, mix, rgba, makeCanvas, glow, vignette } from "./glimpse-paint.js?v=r205-e14f762ffe4d";
+import { TAU, clamp, lerp, smooth, seeded, mix, rgba, makeCanvas, glow, vignette } from "./glimpse-paint.js?v=r221-62b2f668c170";
 
 // Soft cloud built from many shaded puffs: lit from above, shadowed beneath.
 function cloudSprite(seed, light, shade) {
@@ -18,6 +18,9 @@ function cloudSprite(seed, light, shade) {
   for (let k = 0; k < 30; k++) { const x = S * (r() < .5 ? .02 + r() * .2 : .78 + r() * .2), y = H * (.5 + r() * .2), rad = S * (.02 + r() * .04); const gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, rgba(light, .12)); gr.addColorStop(1, rgba(light, 0)); g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, rad * 2.5, rad * .6, 0, 0, TAU); g.fill(); }
   return c;
 }
+
+// A rounded bar (a finger), drawn with arcs so it works where ctx.roundRect is missing (older Safari and Chrome).
+function pill(ctx, x, y, w, h) { const r = Math.min(w, h) / 2; ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arc(x + w - r, y + r, r, -Math.PI / 2, 0); ctx.lineTo(x + w, y + h - r); ctx.arc(x + w - r, y + h - r, r, 0, Math.PI / 2); ctx.lineTo(x + r, y + h); ctx.arc(x + r, y + h - r, r, Math.PI / 2, Math.PI); ctx.lineTo(x, y + r); ctx.arc(x + r, y + r, r, Math.PI, Math.PI * 1.5); ctx.closePath(); }
 
 // ------------------------------------------------------------------ The Sky
 // You lie on your back in a field. An immense, slow sky; grass at the edges of sight. The clouds drift into the grid of
@@ -154,8 +157,8 @@ function drawIce(ctx, t, w, h, state) {
     // A right hand, palm down on the ice: the palm, four long fingers side by side, the thumb out to the side.
     ctx.save(); ctx.globalAlpha = .2 + press * .6; ctx.fillStyle = "#06141a"; ctx.translate(hx, hy); ctx.rotate(-.12);
     ctx.beginPath(); ctx.moveTo(-hs * .32, hs * .45); ctx.bezierCurveTo(-hs * .4, hs * .1, -hs * .36, -hs * .2, -hs * .3, -hs * .3); ctx.lineTo(hs * .3, -hs * .32); ctx.bezierCurveTo(hs * .36, -hs * .1, hs * .34, hs * .3, hs * .22, hs * .48); ctx.quadraticCurveTo(0, hs * .58, -hs * .32, hs * .45); ctx.fill();
-    for (const [fx, len] of [[-.23, .52], [-.08, .62], [.07, .6], [.21, .46]]) { ctx.beginPath(); ctx.roundRect(fx * hs - hs * .065, -hs * .3 - len * hs, hs * .13, len * hs + hs * .05, hs * .065); ctx.fill(); }
-    ctx.save(); ctx.translate(-hs * .32, hs * .05); ctx.rotate(-.9); ctx.beginPath(); ctx.roundRect(-hs * .07, -hs * .45, hs * .14, hs * .45, hs * .07); ctx.fill(); ctx.restore();
+    for (const [fx, len] of [[-.23, .52], [-.08, .62], [.07, .6], [.21, .46]]) { pill(ctx, fx * hs - hs * .065, -hs * .3 - len * hs, hs * .13, len * hs + hs * .05); ctx.fill(); }
+    ctx.save(); ctx.translate(-hs * .32, hs * .05); ctx.rotate(-.9); pill(ctx, -hs * .07, -hs * .45, hs * .14, hs * .45); ctx.fill(); ctx.restore();
     ctx.restore();
     ctx.globalCompositeOperation = "lighter"; glow(ctx, hx, hy, hs * .9, "#ffffff", .06 * press); ctx.globalCompositeOperation = "source-over";
   }

@@ -1,14 +1,14 @@
-import { enemyMeleeGeometry } from "./combat.js?v=r205-e14f762ffe4d";
-import { ruleRows } from "./elders.js?v=r205-e14f762ffe4d";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r205-e14f762ffe4d";
-import { BOAT } from "./boats.js?v=r205-e14f762ffe4d";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r205-e14f762ffe4d";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r205-e14f762ffe4d";
-import { liftAt } from "./landscape.js?v=r205-e14f762ffe4d";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=r205-e14f762ffe4d";
-import { drawRelayNode } from "./relay-network.js?v=r205-e14f762ffe4d";
-import { structureOccupancy } from "./world.js?v=r205-e14f762ffe4d";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r205-e14f762ffe4d";
+import { enemyMeleeGeometry } from "./combat.js?v=r221-62b2f668c170";
+import { ruleRows } from "./elders.js?v=r221-62b2f668c170";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r221-62b2f668c170";
+import { BOAT } from "./boats.js?v=r221-62b2f668c170";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r221-62b2f668c170";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r221-62b2f668c170";
+import { liftAt } from "./landscape.js?v=r221-62b2f668c170";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=r221-62b2f668c170";
+import { drawRelayNode } from "./relay-network.js?v=r221-62b2f668c170";
+import { structureOccupancy } from "./world.js?v=r221-62b2f668c170";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r221-62b2f668c170";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -367,6 +367,18 @@ export function drawElder(ctx, o, s, now) {
   ctx.fillStyle = halo; ctx.fillRect(cx - s * .45, hy - s * .45, s * .9, s * .9);
   ctx.fillStyle = `hsl(${hue},30%,88%)`; ctx.beginPath(); ctx.ellipse(cx, hy, s * .13, s * .16, 0, 0, 7); ctx.fill();
   ctx.restore();
+}
+// Release 215: a strange tree, shrub or stone (strange.ts). Its own shape, but wrong: a pale ghost of it drifts half a
+// step out of place and back, it flickers now and then, and slow motes rise from it. No label: you notice it or not.
+export function drawStrange(ctx, o, s, kind, now) {
+  const T = now / 1000 + (o.x * 7 + o.y * 13) % 10, drift = Math.sin(T * .7) * .09, flick = Math.sin(T * 9) * Math.sin(T * 2.3) > .9 ? .35 : 1;
+  ctx.save(); ctx.globalAlpha = flick; actor(ctx, o.x, o.y, s, kind, "down", 0, o.state || "idle", false, o.scale || 1); ctx.restore();
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = .45 + .15 * Math.sin(T * 1.3);
+  actor(ctx, o.x + drift, o.y - .04 - Math.abs(drift) * .5, s, kind, "down", 0, o.state || "idle", false, (o.scale || 1) * 1.04); ctx.restore();
+  const cx = (o.x + .5) * s, cy = (o.y + .2) * s;
+  const pulse = .3 + .12 * Math.sin(T * 1.9), g = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * 1.3); g.addColorStop(0, `rgba(190,170,255,${pulse})`); g.addColorStop(.5, `rgba(150,200,255,${pulse * .4})`); g.addColorStop(1, "rgba(200,190,255,0)");
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = g; ctx.fillRect(cx - s * 1.3, cy - s * 1.3, s * 2.6, s * 2.6); ctx.restore();
+  for (let k = 0; k < 9; k++) { const p = ((T * .18 + k / 9) % 1), x = cx + Math.sin(T * .9 + k * 2.1) * s * .45, y = cy + s * .35 - p * s * 1.7, m = Math.max(2, s * .07); ctx.fillStyle = k % 3 ? `rgba(230,240,255,${(1 - p) * .95})` : `rgba(200,160,255,${(1 - p) * .95})`; ctx.fillRect(x, y, m, m); }
 }
 function actor(
   ctx,
@@ -876,7 +888,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillStyle = "#d2c090";
             ctx.font = "10px monospace";
             ctx.fillText("RELAY", o.x * s, (o.y - 0.3) * s);
-          } else {const kind=o.kind==="tree"&&o.vegetationForm==="shrub"?"treeShrub":o.kind==="tree"&&o.vegetationForm==="spindle"?"treeSpindle":o.kind;actor(ctx,o.x,o.y,s,kind,"down",0,o.state||"idle",false,o.scale||1);}
+          } else {const kind=o.kind==="tree"&&o.vegetationForm==="shrub"?"treeShrub":o.kind==="tree"&&o.vegetationForm==="spindle"?"treeSpindle":o.kind;if(o.strange&&!o.strangeUsed)drawStrange(ctx,o,s,kind,now);else actor(ctx,o.x,o.y,s,kind,"down",0,o.state||"idle",false,o.scale||1);}
         },
       });
   for (const e of g.enemies)

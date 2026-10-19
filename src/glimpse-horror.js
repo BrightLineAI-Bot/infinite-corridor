@@ -2,7 +2,8 @@
 // some of them should be violent"). Same contract as glimpse-scenes.ts: draw(ctx, t, w, h, state) paints frame
 // t ∈ [0, 1] in first person. Violence is shown the way the rest of the game shows it: silhouette, light and red,
 // never anatomy. Canvas 2D only, no assets.
-import { TAU, clamp, lerp, smooth, seeded, mix, rgba, glow, vignette } from "./glimpse-paint.js?v=r205-e14f762ffe4d";
+import { TAU, clamp, lerp, smooth, seeded, mix, rgba, glow, vignette } from "./glimpse-paint.js?v=r221-62b2f668c170";
+import { paintHand } from "./glimpse-hand.js?v=r221-62b2f668c170";
 
 // A hard jolt of the view, for impacts: amplitude in pixels at time t around `at`.
 const jolt = (t, at, len, amp) => (t > at && t < at + len ? amp * (1 - (t - at) / len) : 0);
@@ -50,7 +51,7 @@ function drawFourthFloor(ctx, t, w, h, state) {
       ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.fillRect(w / 2 - half, y, half * 2, Math.max(1, h * .006 * (1 - s)));
     }
     ctx.strokeStyle = "#1a1206"; ctx.lineWidth = u * .02; ctx.beginPath(); ctx.moveTo(w * .98, h * .75); ctx.quadraticCurveTo(w * .8, h * .55, w * .58, vy + h * .05); ctx.stroke(); // the rail
-    ctx.fillStyle = "#24170e"; ctx.beginPath(); ctx.ellipse(w * .86, h * .68 + bob, u * .08, u * .045, -.6, 0, TAU); ctx.fill(); // your hand on it
+    paintHand(ctx, { x: w * .84, y: h * .66 + bob, angle: -2.2, s: u * .09, curl: .78, splay: .2, thumb: "side", skin: { base: "#2a1c12", shade: "#0e0806", light: "#5a4026" }, rim: { color: "#ffd27a", a: .35 }, light: -2.6, sleeve: { color: "#1a140c", len: u * .5 }, seed: 31 }); // your hand on it
     ctx.globalAlpha = 1;
   }
   if (inside > 0) {
@@ -78,7 +79,7 @@ function drawFourthFloor(ctx, t, w, h, state) {
       ctx.fillStyle = "#3a2a1a"; ctx.fillRect(-u * .015, -u * .5, u * .03, u * .62); // the haft
       ctx.fillStyle = "#6a6a70"; ctx.beginPath(); ctx.moveTo(-u * .015, -u * .5); ctx.lineTo(-u * .11, -u * .56); ctx.quadraticCurveTo(-u * .13, -u * .47, -u * .11, -u * .4); ctx.lineTo(-u * .015, -u * .44); ctx.fill(); // the head
       ctx.strokeStyle = rgba("#ffe0b0", .6); ctx.lineWidth = u * .003; ctx.beginPath(); ctx.moveTo(-u * .11, -u * .56); ctx.quadraticCurveTo(-u * .13, -u * .47, -u * .11, -u * .4); ctx.stroke();
-      ctx.fillStyle = "#1a120c"; ctx.beginPath(); ctx.ellipse(0, u * .02, u * .05, u * .035, 0, 0, TAU); ctx.ellipse(0, u * .1, u * .05, u * .035, 0, 0, TAU); ctx.fill(); // fists on the haft
+      for (const [fy, k] of [[u * .0, 0], [u * .09, 1]]) paintHand(ctx, { x: -u * .015, y: fy, angle: Math.PI / 2, mirror: k ? 1 : -1, s: u * .055, curl: 1, splay: 0, thumb: "side", skin: { base: "#2a1c12", shade: "#0c0604", light: "#6a4a2c" }, rim: { color: "#ffe0b0", a: .3 }, light: -2, soft: false, seed: 40 + k }); // fists on the haft
       ctx.restore();
     }
     // After: the light swinging, the floor darkening and wet, the room red at the edges.
@@ -213,9 +214,8 @@ function drawDrowning(ctx, t, w, h, state) {
     const tx = bx + Math.sin(a) * reach, ty = by - Math.cos(a) * reach, grip = smooth(q.at + .1, q.at + .16, t);
     const arm = ctx.createLinearGradient(bx, by, tx, ty); arm.addColorStop(0, "rgba(40,60,60,0)"); arm.addColorStop(1, `rgba(${lerp(150, 90, depth) | 0},${lerp(175, 110, depth) | 0},${lerp(170, 110, depth) | 0},.95)`);
     ctx.strokeStyle = arm; ctx.lineWidth = u * .035 * q.s; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx + Math.sin(a + .5) * reach * .5, by - reach * .5, tx, ty); ctx.stroke();
-    ctx.fillStyle = mix("#a8c4c0", "#5a706c", depth); ctx.beginPath(); ctx.ellipse(tx, ty, u * .05 * q.s, u * .06 * q.s, a, 0, TAU); ctx.fill(); // palm
-    ctx.strokeStyle = mix("#a8c4c0", "#5a706c", depth); ctx.lineWidth = u * .016 * q.s;
-    for (let f = 0; f < 4; f++) { const fa = a - .5 + f * .33, curl = grip * 1.4, l = u * .11 * q.s; ctx.beginPath(); ctx.moveTo(tx + Math.sin(fa) * u * .045 * q.s, ty - Math.cos(fa) * u * .045 * q.s); ctx.quadraticCurveTo(tx + Math.sin(fa) * l, ty - Math.cos(fa) * l, tx + Math.sin(fa + curl) * l * 1.1, ty - Math.cos(fa + curl) * l * 1.1); ctx.stroke(); }
+    // The hand, palm toward you, long fingers closing as it grips (painted: glimpse-hand.ts).
+    paintHand(ctx, { x: tx + Math.sin(a) * u * .02 * q.s, y: ty - Math.cos(a) * u * .02 * q.s, angle: a, s: u * .075 * q.s, curl: grip * .85, splay: .9 - grip * .3, palm: true, claw: true, hook: 1, long: 1.25, thin: .8, mirror: q.x < .5 ? -1 : 1, skin: { base: mix("#a8c4c0", "#5a706c", depth), shade: mix("#4a605c", "#1a2624", depth), light: mix("#e0f0ec", "#8aa09c", depth) }, light: -1.57, seed: 200 + Math.round(q.x * 1000) });
   }
   ctx.fillStyle = `rgba(0,0,0,${smooth(.75, 1, t)})`; ctx.fillRect(0, 0, w, h);
   vignette(ctx, w, h, .9, "#000608");

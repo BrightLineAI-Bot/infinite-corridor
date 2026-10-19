@@ -2,10 +2,12 @@
 // light, depth, particles and a slowly moving first-person viewpoint. No image files, nothing fetched. The catalogue and
 // rules are in glimpses.ts. `drawGlimpse(ctx, id, t, w, h, state)` paints one frame at time t (0..1); `startGlimpse`
 // runs one on a canvas until it ends or is stopped.
-import { GLIMPSES } from "./glimpses.js?v=r205-e14f762ffe4d";
-import { TAU, clamp, lerp, smooth, seeded, hex, mix, rgba, makeCanvas, glow, vignette, fadeEdges, grain } from "./glimpse-paint.js?v=r205-e14f762ffe4d";
-import { SCENES } from "./glimpse-scenes.js?v=r205-e14f762ffe4d";
-import { HORROR } from "./glimpse-horror.js?v=r205-e14f762ffe4d";
+import { GLIMPSES } from "./glimpses.js?v=r221-62b2f668c170";
+import { TAU, clamp, lerp, smooth, seeded, hex, mix, rgba, makeCanvas, glow, vignette, fadeEdges, grain } from "./glimpse-paint.js?v=r221-62b2f668c170";
+import { SCENES } from "./glimpse-scenes.js?v=r221-62b2f668c170";
+import { HORROR } from "./glimpse-horror.js?v=r221-62b2f668c170";
+import { LEGEND } from "./glimpse-legend.js?v=r221-62b2f668c170";
+import { paintHand } from "./glimpse-hand.js?v=r221-62b2f668c170";
 
 // ------------------------------------------------------------------ The Wagon at Dusk
 // You sit on a wagon bench; your worn hands hold the reins. The road unrolls through birches toward a setting sun, a
@@ -43,36 +45,10 @@ function canopySprite(seed) {
   const tinted = (color) => { const v = makeCanvas(S, S), vg = v.getContext("2d"); vg.drawImage(c, 0, 0); vg.globalCompositeOperation = "source-in"; vg.fillStyle = color; vg.fillRect(0, 0, S, S); return v; };
   return { leaf: c, haze: tinted("#b4a0b0"), dark: tinted("#241c2a") };
 }
-// One gloved hand gripping a rein, from behind and above, backlit by the sunset: a dark fist foreshortened toward the
-// horse, knuckles and thumb outlined in warm light, the lantern warming its outer side. `e` is -1 left, 1 right.
+// One gloved hand gripping a rein, from behind and above, backlit by the sunset: the fist's knuckles toward the horse,
+// rim-lit warm along the top, the lantern warming its outer side. `e` is -1 left, 1 right. Painted: glimpse-hand.ts.
 function drawHand(ctx, px, py, s, e, dusk, warm, state, h) {
-  const rimA = .75 * (1 - dusk * .55), dark = mix("#2a1c14", "#0c0806", dusk * .7), mid = mix("#4a3020", "#1a110b", dusk * .7);
-  ctx.save(); ctx.translate(px, py); ctx.scale(e, 1); ctx.lineCap = "round"; ctx.lineJoin = "round";
-  // Sleeve rising from below into the cuff.
-  ctx.fillStyle = mix("#1c1812", "#0a0806", dusk); ctx.beginPath(); ctx.moveTo(-s * .5, s * .12); ctx.bezierCurveTo(-s * .62, s * .6, -s * .8, s * 1.2, -s * .95, h); ctx.lineTo(s * .7, h); ctx.bezierCurveTo(s * .62, s * 1.1, s * .55, s * .5, s * .46, s * .1); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = rgba("#ffb878", rimA * .5); ctx.lineWidth = s * .02; ctx.beginPath(); ctx.moveTo(s * .46, s * .1); ctx.bezierCurveTo(s * .55, s * .5, s * .62, s * 1.1, s * .7, h); ctx.stroke();
-  // The fist: wider than tall, knuckles along the top, the thumb laid over the rein on the inner side.
-  const fist = new Path2D();
-  fist.moveTo(-s * .48, s * .14); fist.bezierCurveTo(-s * .56, -s * .02, -s * .5, -s * .16, -s * .42, -s * .2);
-  const kn = [[-s * .3, -s * .3], [-s * .08, -s * .34], [s * .14, -s * .32], [s * .34, -s * .26]];
-  let prev = [-s * .42, -s * .2];
-  for (const [x, y] of kn) { fist.quadraticCurveTo((prev[0] + x) / 2, y - s * .05, x, y); prev = [x, y]; }
-  fist.bezierCurveTo(s * .46, -s * .2, s * .52, -s * .02, s * .46, s * .14); fist.closePath();
-  const g = ctx.createLinearGradient(-s * .5, 0, s * .5, 0); g.addColorStop(0, dark); g.addColorStop(.7, mid); g.addColorStop(1, mix(dark, "#6a3a1e", warm * .8));
-  ctx.fillStyle = g; ctx.fill(fist);
-  ctx.strokeStyle = rgba("#000000", .35); ctx.lineWidth = s * .012; // finger seams and a crease over the knuckles
-  for (const [x, y] of kn.slice(0, 3)) { ctx.beginPath(); ctx.moveTo(x + s * .11, y + s * .02); ctx.lineTo(x + s * .1, y + s * .14); ctx.stroke(); }
-  ctx.beginPath(); ctx.moveTo(-s * .38, -s * .1); ctx.quadraticCurveTo(0, -s * .2, s * .38, -s * .12); ctx.stroke();
-  // Thumb on top of the fist, along the rein.
-  const thumb = new Path2D(); thumb.moveTo(-s * .44, -s * .05); thumb.bezierCurveTo(-s * .5, -s * .3, -s * .4, -s * .46, -s * .26, -s * .5); thumb.quadraticCurveTo(-s * .16, -s * .5, -s * .18, -s * .42); thumb.bezierCurveTo(-s * .26, -s * .34, -s * .28, -s * .2, -s * .22, -s * .08); thumb.closePath();
-  ctx.fillStyle = mid; ctx.fill(thumb);
-  // Warm rim: the sunset on the knuckle line and thumb; the lantern on the outer edge.
-  ctx.strokeStyle = rgba("#ffc890", rimA); ctx.lineWidth = s * .03; ctx.beginPath(); prev = [-s * .42, -s * .2]; ctx.moveTo(...prev);
-  for (const [x, y] of kn) { ctx.quadraticCurveTo((prev[0] + x) / 2, y - s * .05, x, y); prev = [x, y]; } ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(-s * .44, -s * .2); ctx.bezierCurveTo(-s * .44, -s * .38, -s * .36, -s * .48, -s * .26, -s * .5); ctx.quadraticCurveTo(-s * .17, -s * .51, -s * .18, -s * .42); ctx.stroke();
-  ctx.strokeStyle = rgba("#ff9a4a", .25 + warm * .5); ctx.lineWidth = s * .025; ctx.beginPath(); ctx.moveTo(s * .4, -s * .24); ctx.bezierCurveTo(s * .48, -s * .14, s * .5, 0, s * .46, s * .12); ctx.stroke();
-  ctx.fillStyle = rgba("#ffd8b0", .12 + warm * .12); ctx.beginPath(); ctx.ellipse(s * .12, -s * .12, s * .18, s * .06, -.1, 0, TAU); ctx.fill(); // sheen on worn leather
-  ctx.restore();
+  paintHand(ctx, { x: px, y: py - s * .32, s: s * 1.02, curl: 1, splay: .1, thumb: "side", mirror: e, skin: { base: mix("#2e1e14", "#120c08", dusk * .7), shade: mix("#120a06", "#050302", dusk * .7), light: mix(mix("#5a3a24", "#22160c", dusk * .7), "#a0583a", warm * .4) }, rim: { color: "#ffc890", a: .5 * (1 - dusk * .55) }, light: -1.75, sleeve: { color: mix("#1c1812", "#0a0806", dusk), len: h, lightColor: "#ffb878" }, seed: e > 0 ? 7 : 8 });
 }
 // The horse ahead, from behind and above: rump, back, collar, neck, ears; walking, nodding, tail swaying.
 function drawHorse(ctx, hx, hy, H, T, dusk, lamp, unit) {
@@ -405,7 +381,7 @@ function drawRule(ctx, t, w, h, state) {
   ctx.fillStyle = `rgba(255,190,90,${on * last})`; ctx.fillRect(x0 + cw * .1, y0, cw * .8, y1 - y0);
   vignette(ctx, w, h, .8);
 }
-const DRAW = { wagonAtDusk: drawWagon, lanternFaceted: drawLantern, theRule: drawRule, ...SCENES, ...HORROR };
+const DRAW = { wagonAtDusk: drawWagon, lanternFaceted: drawLantern, theRule: drawRule, ...SCENES, ...HORROR, ...LEGEND };
 export function hasGlimpseRenderer(id) { return typeof DRAW[id] === "function"; }
 export function drawGlimpse(ctx, id, t, w, h, state) {
   state.rand ||= seeded(5);

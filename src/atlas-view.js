@@ -1,9 +1,9 @@
 // The Atlas at every scale (release 205; Tim, 2026-10-19: "I need to be able to zoom out way farther … a region view or
 // a worldview … zoom to region … see more of the map at large"). Pure helpers for main.ts: the zoom range, framing a
 // set of sections, and the places a player can jump to (the explored world, each region they have heard, and the
-// towns, shelters and Wayglasses inside it). No DOM.
-import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r205-e14f762ffe4d";
-import { hamletSection, hamletIdentity } from "./settlements.js?v=r205-e14f762ffe4d";
+// towns, districts and Wayglasses inside it). No DOM.
+import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r221-62b2f668c170";
+import { hamletSection, hamletIdentity } from "./settlements.js?v=r221-62b2f668c170";
 
 // A section is `base × zoom` pixels across. Below `detail` the Atlas switches to its world view: one coloured cell per
 // section from a cached image, with markers at a fixed size. `step` is the factor of one zoom press.
@@ -30,7 +30,7 @@ export function frame(bounds, w, h) {
 // How far an arrow press moves the view: a third of what is on screen, at least one section.
 export function panStep(zoom, w) { return Math.max(1, Math.round(w / sectionPixels(zoom) / 3)); }
 
-const PLACE_KINDS = { checkpoint: "Wayglass", architecturalDistrict: "District", shack: "Shelter" };
+const PLACE_KINDS = { checkpoint: "Wayglass", architecturalDistrict: "District" }; // shelters are no longer listed (release 213)
 // Everywhere worth jumping to, grouped by region. Regions not yet heard are grouped as "Elsewhere" and never named.
 export function atlasPlaces(save) {
   const groups = new Map(), all = exploredSections(save);
