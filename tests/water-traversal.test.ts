@@ -20,7 +20,9 @@ test('the Tidemantle lets the Wayfarer swim on river, flooded hall and ocean wat
   for (const kind of TIDEMANTLE.swimKinds) {
     const { s, g } = pool(kind); grantTidemantle(s, 'test'); run(g, s, 120);
     assert.ok(!s.worldFlags.deaths, `${kind} swimmable`); assert.ok(g.player.x > 4.2, `${kind} entered`); assert.ok(g.swimming);
-    assert.ok(g.player.stamina < g.player.maxStamina, 'swimming drains stamina');
+    // Release 189 (Tim): bog pools cost maximum health (rot), not stamina; every other water tires the swimmer.
+    if (TIDEMANTLE.drainMultiplier[kind] === 0) { assert.equal(g.player.stamina, g.player.maxStamina, `${kind} does not tire`); assert.ok(s.rot > 0, `${kind} rots`); }
+    else assert.ok(g.player.stamina < g.player.maxStamina, 'swimming drains stamina');
   }
 });
 
