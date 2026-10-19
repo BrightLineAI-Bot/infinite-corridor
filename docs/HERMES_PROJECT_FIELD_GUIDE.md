@@ -26,6 +26,24 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Plant at the Bottom: the first legend Glimpse (release 219)
+
+Tim, 2026-10-19: "the legend of Gilgamesh, this is what I meant", and Glimpse figures should be painterly (impressionist, pointillist, hatched) rather than hard-edged. The daily narrative session built step 5 of the narrative bible's build order as a Glimpse first. The Gilgamesh *voice* (recited lines) waits for a public-domain source text. Project Gutenberg is blocked by this environment's network policy, and lines are never quoted from memory.
+
+**CODE:**
+
+- **`src/glimpse-legend.ts`** (new; it is in `scripts/build.mjs` and both precache lists).
+  - `brushwork` paints a backdrop once from thousands of short tilted dabs over a flat wash. `dabs` paints moving things in the same hand.
+  - The night sea, the deep and the dawn pool are cached per canvas size in the Glimpse state.
+  - `LEGEND.thePlant` runs in five beats: the rock (bare feet, roped stones, the moon's road), the dive, the plant and the hand closing on its thorns, the pool at dawn, and the snake taking the plant and leaving its skin. It ends in grief, as colour drains and the view blurs (the blur is skipped on low quality).
+- **`glimpses.ts`.** `thePlant` (human .85, 16 s, reduced stills at .08, .38 and .76). `glimpse-render.ts` adds `...LEGEND` to its draw table.
+- **Tests.** One test is added to `tests/glimpses.test.ts`.
+
+**BOUNDARY:**
+
+- **Save and rules.** No save change: Glimpse counts already live in `save.lore.glimpses`. It surfaces like any other Glimpse (strange things, rare touches and crossings) and gives a Glimpse fragment on first sight.
+- **Performance and text.** About 11 ms a frame at 844×390 in headless Chromium; the backdrops are painted once. Nothing in it quotes a translation.
+
 ## Linked dungeons: the guardian's door opens elsewhere (release 217)
 
 Tim, 2026-10-19: in some dungeons, going through the guardian's door after the second level should bring you out at a different, unexplored place on the map, at another entrance to the same dungeon. The Atlas should mark the connected entrances with an indicator that is not purple.
