@@ -89,9 +89,18 @@ export function heardLine(save, voice, i) { return !!bitGet(save.lore?.heard?.[v
 // Recitation pieces count only when a reciter speaks them (`reciter: true`).
 export function hearLine(save, voice, i, { reciter = false } = {}) {
   ensureLore(save); save.lore.heard[voice] = bitSet(save.lore.heard[voice] || "", i);
-  for (const readingId of READING_ORDER) for (const p of bookPieces(readingId)) if (p.voice === voice && p.line === i && (p.kind === "voice" || (reciter && p.kind === "recite"))) { const list = save.lore.pieces[readingId] ||= []; if (!list.includes(p.id)) { list.push(p.id); return { readingId, piece: p }; } }
+  for (const readingId of READING_ORDER) for (const p of bookPieces(readingId)) if (p.voice === voice && p.line === i && (p.kind === "voice" || (reciter && p.kind === "recite"))) { const list = save.lore.pieces[readingId] ||= []; if (!list.includes(p.id)) { list.push(p.id); return noteCompletion(save, readingId, p); } }
   return null;
 }
+// Completing a Reading (every fragment found) flashes "Recitation complete" (Tim, 2026-10-19). The flash is transient
+// UI state, not saved: the game takes it with takeCompletedReading() on its next frame.
+let completedReading = null;
+function noteCompletion(save, readingId, piece) {
+  const completed = (save.lore.pieces[readingId]?.length || 0) >= bookSize(readingId);
+  if (completed) completedReading = readingId;
+  return { readingId, piece, completed };
+}
+export function takeCompletedReading() { const id = completedReading; completedReading = null; return id; }
 export function bookProgress(save, readingId) { const found = save.lore?.pieces?.[readingId]?.length || 0, total = bookSize(readingId); return { found, total, mastered: found >= total }; }
 // A Reading is unknown until someone in it speaks its book (Tim, 2026-10-19): walking in reveals nothing. Records the
 // discovery and returns its name the first time, then null. (`entered` is the saved name for discovered.)

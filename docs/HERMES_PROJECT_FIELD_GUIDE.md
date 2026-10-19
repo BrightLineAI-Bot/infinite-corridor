@@ -62,6 +62,7 @@ Tim also decided on 2026-10-19:
   - It sets a bit in `save.lore.heard[voice]` (a hex bitset) and credits a fragment.
   - Recite fragments count only when a reciter speaks them, and travellers never speak those lines.
   - A found fragment is noted after the line: "· A fragment of <Reading> is remembered (Reciter's Tome)".
+  - The last fragment of a Reading instead adds "· Recitation complete: <Reading>." It also flashes the event banner "RECITATION COMPLETE · <Reading> · Mastered" (Tim, 2026-10-19). `hearLine` returns `completed`, and the transient `takeCompletedReading()` is polled each frame in `main.ts`; it is not saved.
 - **Region names in play.**
   - `discoverReading` is called when a traveller, or one of the Reading's own reciters, speaks. On the first line heard in a Reading it adds "· You are in the <Reading>." Walking in reveals nothing, and a visiting reciter from another Reading reveals nothing.
   - The Tome opens with "What the Corridor Remembers": "<Reading> · n of N fragments", plus "Mastered" in gold. It lists only the Readings heard and gives no count of the rest.

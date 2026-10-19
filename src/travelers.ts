@@ -286,7 +286,7 @@ function readingSpeech(save, readingId, { reciter, voices = null }) {
 }
 // The first voice heard in a Reading names it; nothing names a Reading you have not heard.
 function placeNote(found) { return found ? ` · You are in ${found.name.replace(/^The /, "the ")}.` : ""; }
-function pieceNote(found) { return found ? ` · A fragment of ${READINGS[found.readingId].name} is remembered (Reciter's Tome)` : ""; }
+function pieceNote(found) { return !found ? "" : found.completed ? ` · Recitation complete: ${READINGS[found.readingId].name}.` : ` · A fragment of ${READINGS[found.readingId].name} is remembered (Reciter's Tome)`; }
 
 // ------------------------------------------------------------------ the wandering cartographer
 // One errand at a time. Kinds: hunt (defeat creatures), cache (find a satchel at a section), town (reach a town).

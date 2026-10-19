@@ -9,7 +9,7 @@ import { drawPackPortrait } from "./monster-render.ts";
 import { landscapeAtlasColor } from "./landscape-render.ts";
 import { hashSeed } from "./random.ts";
 import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.ts";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown } from "./lore.ts";
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.ts";
 import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.ts";
 import { questingBeastTriesLeft } from "./questing-beast.ts";
 import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.ts";
@@ -304,6 +304,7 @@ function showEventBanner(title, detail = "", kind = "discovery") {
 }
 function updateWorldNotices() {
   if(game.defeatNotice){const notice=game.defeatNotice;game.defeatNotice=null;showEventBanner(notice.title,notice.detail,notice.kind);}
+  {const done=takeCompletedReading();if(done)showEventBanner("RECITATION COMPLETE",`${READINGS[done].name} · Mastered`,"discovery");} // release 191 (Tim)
   for (const e of game.enemies) if (!e.dead && (e.boss || e.apertureEncounter) && !announcedThreats.has(e.id)) {
     announcedThreats.add(e.id);
     showEventBanner(e.boss ? "MAJOR THREAT" : "CORRIDOR BREACH", e.kind.replace(/([A-Z])/g," $1").trim() + " has entered this section", "danger");

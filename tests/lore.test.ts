@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { RECITATIONS } from '../src/recitations.ts';
-import { READINGS, READING_ORDER, bookSize, readingAt, readingLines, bookPieces, ensureLore, hearLine, heardLine, bookProgress, discoverReading, readingKnown, nextReadingLine } from '../src/lore.ts';
+import { READINGS, READING_ORDER, bookSize, readingAt, readingLines, bookPieces, ensureLore, hearLine, heardLine, bookProgress, discoverReading, readingKnown, nextReadingLine, takeCompletedReading } from '../src/lore.ts';
 import { travelerTalk, reciterTalk, reciterPlan, READING_VOICE_SHARE, RECITER_CHANCE } from '../src/travelers.ts';
 import { applyInteraction } from '../src/interactions.ts';
 
@@ -116,4 +116,16 @@ test('reciters lean toward the voices of the Reading they walk in', () => {
   // Without a Reading the plan is unchanged from before.
   assert.equal(reciterPlan('seed-x', 'k1', s, 1).id, reciterPlan('seed-x', 'k1', s, 1, null).id);
   assert.ok(RECITER_CHANCE.wild < 1);
+});
+
+test('finding the last fragment of a Reading completes the recitation once', () => {
+  const s = freshSave(), pieces = bookPieces('pathAlone'), spoken = pieces.filter((p) => p.voice), last = spoken.at(-1);
+  takeCompletedReading();
+  s.lore.pieces.pathAlone = pieces.filter((p) => p !== last).map((p) => p.id);
+  const found = hearLine(s, last.voice, last.line, { reciter: true });
+  assert.equal(found.completed, true);
+  assert.equal(bookProgress(s, 'pathAlone').mastered, true);
+  assert.equal(takeCompletedReading(), 'pathAlone');
+  assert.equal(takeCompletedReading(), null);
+  assert.equal(hearLine(s, last.voice, last.line, { reciter: true }), null);
 });
