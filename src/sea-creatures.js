@@ -8,13 +8,14 @@
 //   ambush Bog Lurker (swamps): hidden in the mire, bubbles, then bites and drags the Wayfarer a tile closer.
 // Leviathans (W4, deep ocean only, at most one per section, bosses except the whale):
 //   whale    Greywhale: drifts, harmless until struck; then it dives under the Wayfarer, shows a vast shadow and breaches.
-//   lunge    Tyrant Mosasaur: stalks below (its shadow visible), locks on, lunges across the surface, then lies exposed.
+//   lunge    Tyrant Mosasaur and Undertow Leviathan: stalk below (shadow visible), lock on, lunge across the surface,
+//            then lie exposed.
 //   reef     Reef Kraken: raises tentacles (separate, short-lived targets) in marked rings around the Wayfarer.
 //   grab     Abyssal Kraken: marks the Wayfarer, then seizes and drags them toward its maw; heavy hits break the grip.
 //   storm    Stormkraken: a tentacle at a time, and an ink cloud that darkens the sea around the Wayfarer.
 // Every strike is telegraphed first; submerged creatures are hidden and untargetable. Data and pure rules: game.ts
 // supplies the world (water test, hurt, pull) and calls `updateSeaCreature` from its enemy loop.
-import { hashSeed } from "./random.js?v=r225-515a9ef2e054";
+import { hashSeed } from "./random.js?v=r229-67bd013e8d1e";
 
 export const SEA_HABITATS = {
   open: ["ocean", "deepOcean", "lakeWater"],
@@ -30,7 +31,10 @@ export const SEA_CREATURES = {
   breachfin: { name: "Breachfin", habitat: "open", pattern: "leap", hp: 30, damage: 12, xp: 16, aggro: 7, telegraph: .8, air: .9, splash: 1, rest: 1.8, segments: 1, colors: ["#9aa7b5", "#2b3440", "#f4f8ff"] },
   mireLeech: { name: "Mire Leech", habitat: "swamp", pattern: "hop", hp: 14, damage: 4, xp: 6, aggro: 6, hop: .9, every: .7, biteAt: .7, rest: 1, segments: 2, colors: ["#4d4a2a", "#1d1c10", "#c4c27a"] },
   greywhale: { name: "Greywhale", habitat: "deep", pattern: "whale", leviathan: true, hp: 420, damage: 14, xp: 60, aggro: 12, drift: .6, telegraph: 1.2, push: 1.5, rest: 4, size: 3, segments: 4, colors: ["#7b8a98", "#2c343c", "#e8eef4"] },
-  tyrantMosasaur: { name: "Tyrant Mosasaur", habitat: "deep", pattern: "lunge", leviathan: true, boss: true, hp: 320, damage: 22, xp: 90, aggro: 12, stalk: 2.6, lockAt: 4.5, telegraph: .9, speed: 10, exposed: 1.6, size: 2.2, segments: 5, colors: ["#4b5d4a", "#1a2219", "#e9d38a"] },
+  // Release r229-67bd013e8d1e (Tim): the Tyrant Mosasaur has its own body (a pointed snout, great jaws, a heavy barrel body, four
+  // flippers, a shark-like tail), and is bigger and tougher. The segmented creature it used to be is the Undertow Leviathan.
+  tyrantMosasaur: { name: "Tyrant Mosasaur", habitat: "deep", pattern: "lunge", leviathan: true, boss: true, body: "mosasaur", hp: 480, damage: 24, xp: 120, aggro: 12, stalk: 2.6, lockAt: 4.8, telegraph: .9, speed: 10, exposed: 1.8, hitReach: 1.6, size: 3, segments: 1, colors: ["#56634e", "#1c2319", "#e8dcb0"] },
+  undertowLeviathan: { name: "Undertow Leviathan", habitat: "deep", pattern: "lunge", leviathan: true, boss: true, hp: 320, damage: 22, xp: 90, aggro: 12, stalk: 2.6, lockAt: 4.5, telegraph: .9, speed: 10, exposed: 1.6, size: 2.2, segments: 5, colors: ["#4b5d4a", "#1a2219", "#e9d38a"] },
   reefKraken: { name: "Reef Kraken", habitat: "deep", pattern: "reef", leviathan: true, boss: true, hp: 260, damage: 10, xp: 80, aggro: 10, every: 4, telegraph: .9, tentacles: 2, maxTentacles: 3, drift: .5, size: 2.4, segments: 1, colors: ["#a2486a", "#3a1424", "#ffc2d8"] },
   abyssalKraken: { name: "Abyssal Kraken", habitat: "deep", pattern: "grab", leviathan: true, boss: true, hp: 300, damage: 14, xp: 95, aggro: 9, telegraph: 1, hold: 2.5, drag: 2.2, biteAt: 1.8, breakAt: 25, rest: 3, size: 2.6, segments: 1, colors: ["#2d2350", "#0d0a1c", "#9c8cff"] },
   stormkraken: { name: "Stormkraken", habitat: "deep", pattern: "storm", leviathan: true, boss: true, hp: 240, damage: 10, xp: 85, aggro: 10, every: 4.5, telegraph: .9, tentacles: 1, maxTentacles: 2, inkEvery: 9, ink: 4, drift: .5, size: 2.3, segments: 1, colors: ["#3c4f63", "#121a24", "#bfe3ff"] },
@@ -54,7 +58,9 @@ export const SEA_SPAWNS = {
   // Leviathans: sections with this many deep-ocean tiles, about one in `every`, one leviathan, weighted table.
   leviathanTiles: 120,
   leviathanEvery: 4,
-  leviathans: ["greywhale", "greywhale", "greywhale", "tyrantMosasaur", "tyrantMosasaur", "reefKraken", "reefKraken", "abyssalKraken", "stormkraken"],
+  // Release r229-67bd013e8d1e: one of the Tyrant Mosasaur's two places goes to the Undertow Leviathan; the table keeps its length, so
+  // every section still rolls the same place it always did.
+  leviathans: ["greywhale", "greywhale", "greywhale", "tyrantMosasaur", "undertowLeviathan", "reefKraken", "reefKraken", "abyssalKraken", "stormkraken"],
   leviathanFromPlaza: 8,
 };
 export const isSeaKind = (kind) => !!SEA_CREATURES[kind];
@@ -221,7 +227,7 @@ function updateLeviathan(e, w, dt, d, s, p, hab, gap, struck, lost) {
       const step = d.speed * dt, nx = e.x + s.line.dx * step, ny = e.y + s.line.dy * step;
       if (!w.water(hab, nx, ny) || s.done >= s.line.len) { s.phase = "exposed"; s.t = d.exposed; return; }
       e.x = nx; e.y = ny; s.done += step; face(e, s.line.dx, s.line.dy);
-      if (!s.hit && dist(e, p) < 1.1) { s.hit = true; w.hurt(d.damage, e); }
+      if (!s.hit && dist(e, p) < (d.hitReach || 1.1)) { s.hit = true; w.hurt(d.damage, e); }
       return;
     }
     if (s.t <= 0) { s.phase = "lurk"; surface(e, false); } // exposed: the window to strike back

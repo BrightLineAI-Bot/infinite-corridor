@@ -2,7 +2,7 @@
 // shrubs and rocks, not in chopping every tree: "you don't have to tell me where they are … they should be pretty rare".
 // A strange thing keeps its ordinary shape (and solidity) but shimmers, doubles and sheds pale motes (renderer.ts).
 // Touching it always opens a Glimpse; afterwards it is ordinary. Nothing marks them on the Atlas. Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r225-515a9ef2e054";
+import { hashSeed } from "./random.js?v=r229-67bd013e8d1e";
 
 // Balance: the share of overworld sections holding one strange thing, and how near the Refuge they can be.
 export const STRANGE = { version: 1, chance: .035, minDepth: 1 };
@@ -23,7 +23,7 @@ export function addStrange(map, save, rx, ry) {
 }
 // Touching it: recorded once per section; the caller opens the Glimpse.
 export function touchStrange(save, o, rx, ry) {
-  if (!o?.strange || o.strangeUsed) return { ok: false, message: "It is only a tree now." };
+  if (!o?.strange || o.strangeUsed) return { ok: false, message: o?.kind === "rock" ? "It is only a stone now." : "It is only a tree now." };
   save.worldFlags ||= {}; save.worldFlags[strangeKey(rx, ry)] = true;
   o.strangeUsed = true; o.actions = o.kind === "tree" ? ["cut", "ignite"] : [];
   return { ok: true, message: o.kind === "rock" ? "The stone is warm, and then it is not." : "The bark gives under your hand like skin, and then it is bark." };
