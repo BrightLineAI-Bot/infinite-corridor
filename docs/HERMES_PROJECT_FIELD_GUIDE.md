@@ -26,25 +26,55 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
-## The Readings: regional voices and the Books of the Corridor (release 191)
+## The Readings: regional voices and what the Corridor remembers (release 191)
 
-This is step 1 of the narrative design Tim approved on 2026-10-19 (`docs/narrative-bible.md`). Each region speaks one public-domain book that is already in the game. Lines are never repeated. Each region has a 20-piece book in the Reciter's Tome, which lets him see when a region is mastered.
+This is step 1 of the narrative design Tim approved on 2026-10-19 (`docs/narrative-bible.md`).
 
-**CODE:** `src/lore.ts` (new; it is in `scripts/build.mjs` and both precache lists).
+- Each region speaks one public-domain book that is already in the game: the residue of human lives the Corridor still remembers.
+- No line is repeated.
+- The Reciter's Tome counts each region's fragments, so Tim can see when a region is mastered.
 
-- `readingAt(rx, ry)` maps a section to one of ten Readings. Distance `|rx|+|ry|` ≤ 6 is the Long Campaign (the first half of War and Peace). Distances 7–18 and 19–35 are split into compass quarters (north is `ry < 0`). Beyond 35 lie the Dreamlands (the Randolph Carter stories).
-- `READINGS` lists each Reading's voices, as reciter ids with a share of their lines.
-- `bookPieces` fixes 20 piece ids per book: 8 `voice`, 3 `recite`, 4 `glimpse`, 4 `margin` and 1 `last`. Only voice and recite pieces can be found yet. Their lines are spread through the Reading's lines, and no two pieces share a line.
-- Travellers now speak through `travelerTalk(o, save)` → `nextReadingLine`, getting an unheard line of the Reading they stand in. `TRAVELER_LINES` stays in `travelerPlan`, so its seeded draws (group, names, mounts) are unchanged, but it is no longer spoken.
-- In random mode, `reciterTalk` picks an unheard line of the reciter's own book, leaning toward piece lines (`RECITER_PIECE_CHANCE`). Linear mode is unchanged.
-- `reciterPlan` takes the section's Reading and picks one of its voices `READING_VOICE_SHARE` (70%) of the time. Without a Reading the old pick stands.
-- Every line spoken goes through `hearLine`, which sets a bit in `save.lore.heard[voice]` (a hex bitset) and credits a piece. Recitation pieces count only when a reciter speaks them, and travellers never speak those lines. A found piece is noted after the line: "· A page of <Reading> (Reciter's Tome)".
-- `enterReading` names a Reading the first time you walk into it, away from Ember Refuge.
-- The Tome opens with "Books of the Corridor": "<Reading> · n of 20", plus "Mastered" in gold when all 20 are found. Unentered Readings stay unnamed.
-- The Atlas section line names the section's Reading.
-- Objects with `lore` text (summit stones, castle lookouts, grotto ruins, wrecks, the Array Mouth) now show it when touched.
+Tim also decided on 2026-10-19:
 
-**BOUNDARY:** Save change is additive at schema 14. `save.lore = {v, heard, pieces, entered}` is normalised by `ensureLore` in `freshSave` and `migrateSave`. Unknown voices, Readings and piece ids are dropped, and unknown top-level lore fields are kept. No world generation changed: traveller groups, reciter appearance chances and every generator are untouched, and the only change to who appears is which reciter `reciterPlan` picks. Glimpse, margin and last pieces cannot be found until the Glimpse engine (step 2) and the threads arrive, so no book can be mastered yet. Villagers, wardens and Old Quillon keep their own lines.
+- Region names never name their book.
+- Regions hold different numbers of fragments (about 20 on average).
+- Nothing reveals a region, or a book, before you have heard it: you learn you are in a new region when someone there speaks a different book.
+
+**CODE:** `src/lore.ts` is new; it is in `scripts/build.mjs` and both precache lists.
+
+- **Region map.** `readingAt(rx, ry)` maps a section to one of ten Readings:
+  - Distance `|rx|+|ry|` ≤ 6: the Smoke Meadows (the first half of War and Peace).
+  - Distances 7–18 split into compass quarters (north is `ry < 0`): the Ferry Reaches (N, Siddhartha), the Clear Country (E, Emerson), the Fevered Stairs (S, Crime and Punishment) and the Whetstone Hills (W, Musashi).
+  - Distances 19–35 split the same way: the Long Table (N, Karamazov), the Autumn Galleries (E, Rilke), the Low Rooms (S, Underground and Idiot) and the Ash Orchards (W, the second half of War and Peace).
+  - Beyond 35: the Far Sleep (the Randolph Carter stories).
+- **Region data.** Each entry in `READINGS` gives:
+  - its voices, as reciter ids with a share of their lines;
+  - its fragment counts per kind (`voice`, `recite`, `glimpse`, `margin`, `last`). `bookSize` is 13–33.
+- **Fragments.** `bookPieces` fixes the fragment ids.
+  - Only voice and recite fragments can be found yet.
+  - Their lines are spread through the Reading's lines, and no two fragments share a line.
+  - Recite fragments run from the first reciter's opening line to its last.
+- **Travellers.** `travelerTalk(o, save)` → `nextReadingLine` gives an unheard line of the Reading the traveller stands in. `TRAVELER_LINES` stays in `travelerPlan`, so its seeded draws (group, names, mounts) are unchanged, but it is no longer spoken.
+- **Reciters.**
+  - In random mode, `reciterTalk` picks an unheard line of its own book, leaning toward fragment lines (`RECITER_PIECE_CHANCE`). Linear mode is unchanged.
+  - `reciterPlan` takes the section's Reading and picks one of its voices `READING_VOICE_SHARE` (70%) of the time. Without a Reading, the old pick stands.
+- **Hearing lines.** Every spoken line goes through `hearLine`:
+  - It sets a bit in `save.lore.heard[voice]` (a hex bitset) and credits a fragment.
+  - Recite fragments count only when a reciter speaks them, and travellers never speak those lines.
+  - A found fragment is noted after the line: "· A fragment of <Reading> is remembered (Reciter's Tome)".
+- **Region names in play.**
+  - `discoverReading` is called when a traveller, or one of the Reading's own reciters, speaks. On the first line heard in a Reading it adds "· You are in the <Reading>." Walking in reveals nothing, and a visiting reciter from another Reading reveals nothing.
+  - The Tome opens with "What the Corridor Remembers": "<Reading> · n of N fragments", plus "Mastered" in gold. It lists only the Readings heard and gives no count of the rest.
+  - The Tome's library lists only books heard or whose reciter you have met (`libraryBooks` now carries each book's `voices`).
+  - The Atlas section line names the section's Reading only once that Reading is known (`readingKnown`).
+- **Written lore.** Objects with `lore` text (summit stones, castle lookouts, grotto ruins, wrecks, the Array Mouth) now show it when touched.
+
+**BOUNDARY:**
+
+- **Save.** The change is additive at schema 14. `save.lore = {v, heard, pieces, entered}` is normalised by `ensureLore` in `freshSave` and `migrateSave`. Unknown voices, Readings and fragment ids are dropped; unknown top-level lore fields are kept.
+- **Generation.** No world generation changed: traveller groups, reciter appearance chances and every generator are untouched. The only change to who appears is which reciter `reciterPlan` picks.
+- **Not findable yet.** Glimpse, margin and last fragments arrive with the Glimpse engine (step 2) and the threads, so no region can be mastered yet.
+- **Unchanged speakers.** Villagers, wardens and Old Quillon keep their own lines.
 
 ## Bog pools stop tiring (release 189)
 

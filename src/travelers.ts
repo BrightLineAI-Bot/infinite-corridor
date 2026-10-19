@@ -8,7 +8,7 @@ import { hashSeed, rng, pick } from "./random.ts";
 import { LETHAL_KINDS } from "./landscape.ts";
 import { hamletSection } from "./settlements.ts";
 import { RECITERS, RECITATIONS } from "./recitations.ts";
-import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore } from "./lore.ts";
+import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading } from "./lore.ts";
 
 export const TRAVEL_VERSION = 1;
 export const TRAVEL = { reciterChance: 0.12, trailChance: 0.08, trailNearTown: 0.6, groupChance: 0.2, groupChanceOnTrail: 0.42, minDepth: 1, speed: 1.15, pauseRadius: 2.4, spacing: 0.9, wandererChance: 0.07, wandererChanceReady: 0.22 };
@@ -272,8 +272,8 @@ export function tickTravelers(map, player, dt) {
 // save (tests, old callers) a traveller still says their own lines in turn.
 export function travelerTalk(o, save = null) {
   const who = `${o.name}${o.role ? ` (${o.role})` : ""}${o.mount ? `, riding a ${o.mount.replace(/([A-Z])/g, " $1").toLowerCase()}` : ""}`;
-  const said = save ? readingSpeech(save, readingAt(save.session?.rx ?? 0, save.session?.ry ?? 0), { reciter: false }) : null;
-  if (said) return `${who}: “${said.text}”${pieceNote(said.found)}`;
+  const here = save ? readingAt(save.session?.rx ?? 0, save.session?.ry ?? 0) : null, said = here ? readingSpeech(save, here, { reciter: false }) : null;
+  if (said) return `${who}: “${said.text}”${placeNote(discoverReading(save, here))}${pieceNote(said.found)}`;
   const lines = o.lines?.length ? o.lines : ["Safe roads."], line = lines[(o.talk || 0) % lines.length];
   o.talk = (o.talk || 0) + 1;
   return `${who}: “${line}”`;
@@ -284,7 +284,9 @@ function readingSpeech(save, readingId, { reciter, voices = null }) {
   if (!said) return null;
   return { ...said, found: hearLine(save, said.voice, said.line, { reciter }) };
 }
-function pieceNote(found) { return found ? ` · A page of ${READINGS[found.readingId].name} (Reciter's Tome)` : ""; }
+// The first voice heard in a Reading names it; nothing names a Reading you have not heard.
+function placeNote(found) { return found ? ` · You are in ${found.name.replace(/^The /, "the ")}.` : ""; }
+function pieceNote(found) { return found ? ` · A fragment of ${READINGS[found.readingId].name} is remembered (Reciter's Tome)` : ""; }
 
 // ------------------------------------------------------------------ the wandering cartographer
 // One errand at a time. Kinds: hunt (defeat creatures), cache (find a satchel at a section), town (reach a town).
@@ -386,8 +388,8 @@ export function storyLines(save, id) { return RECITATIONS[id] || []; }
 export function libraryBooks(save) {
   const r = save?.reciters || {}, books = new Map();
   for (const q of storyCatalog()) {
-    const b = books.get(q.book) || { book: q.book, sources: new Set(), lines: 0, readers: [] };
-    b.sources.add(q.source); b.lines += q.count;
+    const b = books.get(q.book) || { book: q.book, sources: new Set(), lines: 0, readers: [], voices: [] };
+    b.sources.add(q.source); b.lines += q.count; b.voices.push(q.id);
     if (r.met?.[q.id]) b.readers.push({ ...q, at: r.progress?.[q.id] || 0, mode: r.modes?.[q.id] === "linear" ? "linear" : "random" });
     books.set(q.book, b);
   }
@@ -452,7 +454,9 @@ export function reciterTalk(o, save) {
   if (save.reciters.modes[who.id] === "linear") { const n = save.reciters.progress[who.id] || 0; at = n % lines.length; save.reciters.progress[who.id] = n + 1 >= lines.length ? 0 : n + 1; }
   else at = unheardLine(save, who.id, lines.length);
   const found = hearLine(save, who.id, at, { reciter: true });
-  return `${who.name}: “${lines[at]}”${pieceNote(found)}`;
+  // A reciter names the Reading only when it is one of that Reading's own voices.
+  const here = readingAt(save.session?.rx ?? 0, save.session?.ry ?? 0), local = READINGS[here].voices.some(([id]) => id === who.id);
+  return `${who.name}: “${lines[at]}”${local ? placeNote(discoverReading(save, here)) : ""}${pieceNote(found)}`;
 }
 export const RECITER_PIECE_CHANCE = 0.4;
 function unheardLine(save, id, n) {

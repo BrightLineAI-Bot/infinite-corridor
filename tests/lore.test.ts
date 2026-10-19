@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { RECITATIONS } from '../src/recitations.ts';
-import { READINGS, READING_ORDER, BOOK_SIZE, readingAt, readingLines, bookPieces, ensureLore, hearLine, heardLine, bookProgress, enterReading, nextReadingLine } from '../src/lore.ts';
+import { READINGS, READING_ORDER, bookSize, readingAt, readingLines, bookPieces, ensureLore, hearLine, heardLine, bookProgress, discoverReading, readingKnown, nextReadingLine } from '../src/lore.ts';
 import { travelerTalk, reciterTalk, reciterPlan, READING_VOICE_SHARE, RECITER_CHANCE } from '../src/travelers.ts';
 import { applyInteraction } from '../src/interactions.ts';
 
@@ -23,11 +23,14 @@ test('Readings divide the Atlas into bands and quarters, north up', () => {
   assert.deepEqual([...new Set(READING_ORDER)].sort(), Object.keys(READINGS).sort());
 });
 
-test('every book has 20 distinct pieces pointing at real lines of its own voices', () => {
+test('every Reading has its own number of distinct fragments pointing at real lines of its own voices', () => {
+  const sizes = READING_ORDER.map(bookSize), mean = sizes.reduce((a, b) => a + b) / sizes.length;
+  assert.ok(new Set(sizes).size > 3 && mean > 17 && mean < 24, String(sizes));
   for (const id of READING_ORDER) {
     const pieces = bookPieces(id), lines = new Set(readingLines(id).map(([v, i]) => `${v}:${i}`));
-    assert.equal(pieces.length, BOOK_SIZE, id);
-    assert.equal(new Set(pieces.map((p) => p.id)).size, BOOK_SIZE, id);
+    assert.equal(pieces.length, bookSize(id), id);
+    assert.equal(new Set(pieces.map((p) => p.id)).size, pieces.length, id);
+    assert.ok(!/campaign|siddhartha|brothers|images|book|dream/i.test(READINGS[id].name), `${READINGS[id].name} names its book`);
     const spoken = pieces.filter((p) => p.voice);
     assert.equal(new Set(spoken.map((p) => `${p.voice}:${p.line}`)).size, spoken.length, `${id} pieces share a line`);
     for (const p of spoken) { assert.ok(lines.has(`${p.voice}:${p.line}`), `${id} ${p.id}`); assert.ok(RECITATIONS[p.voice][p.line]); }
@@ -62,7 +65,7 @@ test('hearing a piece line credits its book once; recitations count only from re
   assert.equal(hearLine(s, voice.voice, voice.line), null);
   assert.equal(hearLine(s, recite.voice, recite.line), null);
   assert.equal(hearLine(s, recite.voice, recite.line, { reciter: true }).piece.id, recite.id);
-  assert.deepEqual(bookProgress(s, 'yellowCity'), { found: 2, total: 20, mastered: false });
+  assert.deepEqual(bookProgress(s, 'yellowCity'), { found: 2, total: bookSize('yellowCity'), mastered: false });
   s.lore.pieces.yellowCity = bookPieces('yellowCity').map((p) => p.id);
   assert.equal(bookProgress(s, 'yellowCity').mastered, true);
 });
@@ -73,26 +76,35 @@ test('a Reading never repeats a line until every line has been heard', () => {
   assert.equal(seen.size, total);
   assert.ok(nextReadingLine(s, 'pathAlone', rand), 'falls back to heard lines once exhausted');
   // Every voice piece was found along the way; recitation pieces wait for the reciter.
-  assert.equal(bookProgress(s, 'pathAlone').found, 8);
+  assert.equal(bookProgress(s, 'pathAlone').found, READINGS.pathAlone.pieces.voice);
 });
 
-test('first entry into a Reading is announced once', () => {
-  const s = freshSave();
-  assert.deepEqual(enterReading(s, 0, -12), { id: 'riverThatRemembers', name: 'The River That Remembers' });
-  assert.equal(enterReading(s, 2, -12), null);
+test('a Reading stays unknown until someone in it speaks its book', () => {
+  const s = freshSave(); s.session = { ...s.session, rx: 0, ry: -12 };
+  assert.equal(readingKnown(s, 'riverThatRemembers'), false);
+  assert.deepEqual(discoverReading(s, 'riverThatRemembers'), { id: 'riverThatRemembers', name: 'The Ferry Reaches' });
+  assert.equal(discoverReading(s, 'riverThatRemembers'), null);
+  const t = freshSave(); t.session = { ...t.session, rx: 0, ry: -12 };
+  assert.match(travelerTalk({ name: 'Hob' }, t), / · You are in the Ferry Reaches\./);
+  assert.ok(!/You are in/.test(travelerTalk({ name: 'Hob' }, t)), 'named once');
+  // A reciter from elsewhere does not name the Reading it happens to walk in.
+  const u = freshSave(); u.session = { ...u.session, rx: 0, ry: -12 };
+  assert.ok(!/You are in/.test(reciterTalk({ reciter: 'rilke', linesLeft: 3 }, u)));
+  assert.equal(readingKnown(u, 'riverThatRemembers'), false);
+  assert.match(reciterTalk({ reciter: 'siddhartha', linesLeft: 3 }, u), /You are in the Ferry Reaches/);
 });
 
 test('travellers speak their Reading and reciters do not repeat themselves', () => {
   const s = freshSave(); s.session = { ...s.session, rx: 0, ry: -12 };
   const o = { name: 'Brisk', role: 'Pilgrim', lines: ['Spoons. That is all I will say.'] }, said = new Set();
-  for (let i = 0; i < 30; i++) { const msg = travelerTalk(o, s); assert.match(msg, /^Brisk \(Pilgrim\): “/); assert.ok(!/Spoons/.test(msg)); said.add(msg.replace(/ · A page.*$/, '')); }
+  for (let i = 0; i < 30; i++) { const msg = travelerTalk(o, s); assert.match(msg, /^Brisk \(Pilgrim\): “/); assert.ok(!/Spoons/.test(msg)); said.add(msg.replace(/ · (You are in|A fragment).*$/, '')); }
   assert.equal(said.size, 30);
   assert.ok(Object.keys(s.lore.heard).every((v) => v === 'siddhartha'));
   assert.match(travelerTalk(o), /Spoons/, 'without a save the old lines remain');
   const r = { reciter: 'musashi', linesLeft: 99 }, lines = new Set();
-  for (let i = 0; i < RECITATIONS.musashi.length; i++) lines.add(reciterTalk(r, s).replace(/ · A page.*$/, ''));
+  for (let i = 0; i < RECITATIONS.musashi.length; i++) lines.add(reciterTalk(r, s).replace(/ · (You are in|A fragment).*$/, ''));
   assert.equal(lines.size, RECITATIONS.musashi.length);
-  assert.equal(bookProgress(s, 'pathAlone').found, 11, 'all voice and recitation pieces of the Path Walked Alone');
+  assert.equal(bookProgress(s, 'pathAlone').found, READINGS.pathAlone.pieces.voice + READINGS.pathAlone.pieces.recite, 'every spoken fragment of the Whetstone Hills');
   const res = applyInteraction({ kind: 'traveler', actions: ['speak'], name: 'Hob' }, 'speak', s);
   assert.ok(res.ok && /^Hob: “/.test(res.message));
 });

@@ -9,7 +9,7 @@ import { drawPackPortrait } from "./monster-render.ts";
 import { landscapeAtlasColor } from "./landscape-render.ts";
 import { hashSeed } from "./random.ts";
 import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.ts";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt } from "./lore.ts";
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown } from "./lore.ts";
 import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.ts";
 import { questingBeastTriesLeft } from "./questing-beast.ts";
 import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.ts";
@@ -1036,13 +1036,15 @@ function renderFarGate(out){
 function renderTome(out){
   ensureReciters(save);const rerender=()=>openJournal("tome");
   const h=document.createElement("h3"),intro=document.createElement("p"),status=document.createElement("p");h.textContent="The Reciter's Tome";
-  intro.className="options-note";intro.textContent="Every book walking the Corridor. Reciters you have met appear under their book; choose how each one recites, or send them back to the first line.";status.className="options-note";out.append(h,intro,status);
-  // Release 191: the Books of the Corridor, one per Reading, each of 20 pieces. Unvisited Readings stay unnamed.
-  ensureLore(save);const books=document.createElement("section"),bth=document.createElement("h3"),bnote=document.createElement("p");books.className="library-book lore-books";bth.textContent="Books of the Corridor";bnote.className="options-note";bnote.textContent="Each region speaks one book. Its pages are passages heard from travellers and reciters, scenes witnessed, and words found in crossings.";books.append(bth,bnote);
-  let shown=0;for(const id of READING_ORDER){const p=bookProgress(save,id),known=save.lore.entered[id]||p.found>0;if(!known)continue;shown++;const row=document.createElement("p");row.className="lore-book"+(p.mastered?" mastered":"");row.textContent=`${READINGS[id].name} · ${p.found} of ${p.total}${p.mastered?" · Mastered":""}`;books.append(row)}
-  const unknown=READING_ORDER.length-shown;if(unknown){const rest=document.createElement("p");rest.className="options-note library-empty";rest.textContent=`${unknown} ${unknown===1?"book":"books"} not yet found.`;books.append(rest)}
+  intro.className="options-note";intro.textContent="The books you have heard in the Corridor. Reciters you have met appear under their book; choose how each one recites, or send them back to the first line.";status.className="options-note";out.append(h,intro,status);
+  // Release 191: what the Corridor remembers, one entry per Reading with its fragments found. Only Readings already
+  // heard are listed, and nothing hints at how many others there are (Tim, 2026-10-19).
+  ensureLore(save);const books=document.createElement("section"),bth=document.createElement("h3"),bnote=document.createElement("p");books.className="library-book lore-books";bth.textContent="What the Corridor Remembers";bnote.className="options-note";bnote.textContent="Every region holds the residue of lives that are gone. Its fragments are passages heard from travellers and reciters, things glimpsed, and words found in crossings.";books.append(bth,bnote);
+  let shown=0;for(const id of READING_ORDER){const p=bookProgress(save,id);if(!readingKnown(save,id)&&!p.found)continue;shown++;const row=document.createElement("p");row.className="lore-book"+(p.mastered?" mastered":"");row.textContent=`${READINGS[id].name} · ${p.found} of ${p.total} fragments${p.mastered?" · Mastered":""}`;books.append(row)}
+  if(!shown){const none=document.createElement("p");none.className="options-note library-empty";none.textContent="Nothing yet. Listen to the people on the roads.";books.append(none)}
   out.append(books);
-  for(const b of libraryBooks(save)){
+  // Release 191: a book appears only once you have heard it or met its reciter; the rest of the library stays unknown.
+  for(const b of libraryBooks(save).filter((b)=>b.readers.length||b.voices.some((v)=>/[1-9a-f]/.test(save.lore.heard[v]||"")))){
     const sec=document.createElement("section"),bh=document.createElement("h3"),meta=document.createElement("p");sec.className="library-book";
     bh.textContent=b.book;meta.className="options-note";meta.textContent=`${b.sources.join(" · ")} · ${b.lines} lines`;sec.append(bh,meta);
     if(!b.readers.length){const none=document.createElement("p");none.className="options-note library-empty";none.textContent="You have not met anyone who recites this yet.";sec.append(none)}
@@ -1267,7 +1269,7 @@ function showMapDetail(rx, ry) {
   const s = sectionSummary(save.seed, rx, ry, save.worldGeneration, save);
   const sites = s.sites.length ? ` · sites: ${s.sites.map((q) => q.name).join(", ")}` : " · no discovered sites";
   const death=save.lastDeath?.rx===rx&&save.lastDeath?.ry===ry?` · Last death${save.lastDeath.areaKind==="dungeon"?` inside ${save.lastDeath.label.replace(/^Inside /,"")}`:""}${save.lastDeath.valid===false?" (inaccessible)":""}`:"";
-  const readingId=readingAt(rx,ry),reading=` · ${READINGS[readingId].name}${bookProgress(save,readingId).mastered?" (mastered)":""}`; // release 191
+  const readingId=readingAt(rx,ry),reading=readingKnown(save,readingId)?` · ${READINGS[readingId].name}${bookProgress(save,readingId).mastered?" (mastered)":""}`:""; // release 191: only Readings already heard
   $("#mapDetail").textContent =
     `Section ${rx}, ${ry}${reading} · ${s.terrain} terrain${sites}${s.checkpoint ? " · checkpoint" : ""}${s.current ? " · current" : ""}${s.waypoint ? " · waypoint" : ""}${death}`;
   updateMapWaypointButton();
