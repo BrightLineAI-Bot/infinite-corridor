@@ -25,12 +25,14 @@ export function tickTyrantHunt(visit, dt, onOcean, present, rand) {
   if (visit.clock < TYRANT_HUNT.every) return false;
   visit.clock = 0;
   if (!(rand() < TYRANT_HUNT.chance)) return false;
-  visit.count += 1;
   return true;
 }
+// Counts a rise against the visit (only once the Tyrant has actually surfaced).
+export function countTyrantRise(visit) { if (visit) visit.count += 1; return visit; }
 // Where it rises: an ocean tile in range of (px, py), inside the section, or null when the water is too small.
+// (Ocean tiles are `blocked` to walking in generated sections; only the kind matters here, as for sea spawns.)
 export function tyrantRisePoint(map, px, py, rand, width = 32) {
-  const [lo, hi] = TYRANT_HUNT.range, tiles = (map?.tiles || []).filter((t) => TYRANT_HUNT.water.includes(t.kind) && !t.blocked && t.x > 1 && t.y > 1 && t.x < width - 2 && t.y < width - 2);
+  const [lo, hi] = TYRANT_HUNT.range, tiles = (map?.tiles || []).filter((t) => TYRANT_HUNT.water.includes(t.kind) && t.x > 1 && t.y > 1 && t.x < width - 2 && t.y < width - 2);
   const ring = tiles.filter((t) => { const d = Math.hypot(t.x - px, t.y - py); return d >= lo && d <= hi; });
   if (!ring.length) return null;
   const t = ring[Math.floor(rand() * ring.length) % ring.length];

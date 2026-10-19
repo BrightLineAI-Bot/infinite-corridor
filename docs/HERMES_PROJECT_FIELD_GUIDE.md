@@ -26,6 +26,19 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Tyrant's hunt fixed (release 233)
+
+Found by the release-231 review (a blocker, so 231 was never published): `tyrantRisePoint` filtered out `blocked` tiles, but every generated ocean tile is `blocked` to walking (`landscape.ts`), so the Tyrant never rose in play. The tests had hand-built unblocked ocean.
+
+**CODE:**
+
+- `tyrantRisePoint` checks the tile's kind only, as `seaSpawns` does.
+- `tickTyrantHunt` no longer counts; `riseTyrant` calls the new `countTyrantRise` only after a rise point is found, so a failed rise spends no chance.
+- `loadArea("overworld")` clears `this.tyrantVisit`, so returning from a dungeon or a death starts a fresh visit.
+- **Tests.** Blocked ocean tiles throughout, plus a test over real generated sea sections. It fails on the 231 code.
+
+**BOUNDARY:** As in 231.
+
 ## The Tyrant Mosasaur hunts (release 231)
 
 Tim, 2026-10-19: in any ocean tile the Tyrant Mosasaur can always come and get you, even if you have killed it, like the Questing Beast: a chance twice per tile, more likely the longer you stay, and never a certainty.
