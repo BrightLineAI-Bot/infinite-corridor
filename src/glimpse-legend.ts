@@ -3,6 +3,7 @@
 // hatched) rather than hard-edged, so these scenes are laid down as brushstrokes: each backdrop is painted once from
 // thousands of short tilted dabs, and the moving things are drawn as clusters of dabs over it. Canvas 2D only.
 import { TAU, clamp, lerp, smooth, seeded, mix, hex, rgba, glow, vignette, makeCanvas } from "./glimpse-paint.ts";
+import { paintHand } from "./glimpse-hand.ts";
 
 // A canvas covered in brushwork: `color(x, y, r)` gives the [r, g, b] under a dab (x, y in [0, 1]), `angle(x, y)` its
 // tilt. A flat wash under the strokes keeps the gaps from showing black. Painted once per size and cached by the caller.
@@ -91,21 +92,15 @@ function drawPlant(ctx, x, y, s, pulse, seed) {
     dabs(ctx, px, py, s * .1, s * .1, 6, [PLANT, "#fff8e0", "#e0b860"], s * .09, seed + k, 0, .6 + pulse * .4);
   }
 }
-// Your right hand, open and reaching, seen from behind: dark against the plant's light, rim-lit along the fingers.
-// `close` curls the fingers; `hurt` brings blood up along the palm's edge.
+// Your right hand, open and reaching, seen from behind: bare skin, warmed on the side toward the plant's light.
+// `close` curls the fingers; `hurt` brings blood up where the thorns went in. The hand is painted (glimpse-hand.ts).
 function drawReach(ctx, x, y, s, close, hurt, light) {
-  ctx.save(); ctx.translate(x, y); ctx.rotate(-.45); ctx.lineCap = "round"; ctx.lineJoin = "round";
-  const skin = "#1a2226", rim = rgba(PLANT, .28 * light);
-  ctx.strokeStyle = skin; ctx.lineWidth = s * .55; ctx.beginPath(); ctx.moveTo(0, s * 2.6); ctx.lineTo(0, s * .5); ctx.stroke(); // forearm
-  ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(0, s * .2, s * .42, s * .5, 0, 0, TAU); ctx.fill(); // palm
-  for (let f = 0; f < 5; f++) {
-    const thumb = f === 0, a = thumb ? -2.3 + close * .9 : -1.95 + f * .2, len = s * (thumb ? .55 : [0, .78, .86, .8, .62][f]), bx = thumb ? -s * .32 : (f - 2.5) * s * .19, by = thumb ? s * .25 : -s * .2;
-    const mx = bx + Math.cos(a) * len * .55, my = by + Math.sin(a) * len * .55, ca = a + close * (thumb ? .6 : 1.6), tx = mx + Math.cos(ca) * len * .5, ty = my + Math.sin(ca) * len * .5;
-    ctx.strokeStyle = skin; ctx.lineWidth = s * (thumb ? .17 : .15); ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(mx, my); ctx.lineTo(tx, ty); ctx.stroke();
-    ctx.strokeStyle = rim; ctx.lineWidth = s * .025; ctx.beginPath(); ctx.moveTo(bx + s * .06, by); ctx.lineTo(mx + s * .06, my); ctx.lineTo(tx + s * .05, ty); ctx.stroke();
+  paintHand(ctx, { x, y: y - s * .25, angle: -.45, s: s * .82, curl: close * .85, splay: .55 - close * .4, skin: { base: mix("#4a3430", "#8e6250", light * .5), shade: "#160c0a", light: mix("#b4806a", "#f2c8a8", light * .6) }, rim: { color: PLANT, a: .3 * light }, light: -2.7, arm: s * 2.4, seed: 17 }); // a bare hand and forearm, warmed by the plant's light
+  if (hurt > 0) { // blood threading up from the palm into the water
+    ctx.save(); ctx.translate(x, y); ctx.rotate(-.45);
+    for (let k = 0; k < 4; k++) dabs(ctx, -s * .2 + k * s * .14, -s * .1 - hurt * s * .1, s * .04, s * .1 * hurt, 6, ["#8a1010", "#a01818", "#5a0808"], s * .04, 120 + k, -1.57, .7 * hurt);
+    ctx.restore();
   }
-  if (hurt > 0) { ctx.strokeStyle = rgba("#a01818", .8 * hurt); ctx.lineWidth = s * .05; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(-s * .3 + k * s * .25, -s * .05); ctx.lineTo(-s * .25 + k * s * .25, s * .45 * hurt); ctx.stroke(); } }
-  ctx.restore();
 }
 // The snake: a long body of olive and bronze dabs along a sinuous path from `tail` to `head` progress on `path`.
 function snakeAt(path, k) { const i = clamp(k) * (path.length - 1), a = Math.floor(i), b = Math.min(path.length - 1, a + 1), m = i - a; return [lerp(path[a][0], path[b][0], m), lerp(path[a][1], path[b][1], m)]; }

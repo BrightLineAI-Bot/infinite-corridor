@@ -26,6 +26,30 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Painted hands (release 221)
+
+Tim, 2026-10-19: "everything else is beautiful … the hands are no good … the way you made the snake … make the fingers something like that … either more drawn or less drawn."
+
+**CODE:**
+
+- **`src/glimpse-hand.ts`** (new; it is in `scripts/build.mjs` and both precache lists).
+  - `HAND` is the proportion table: the four fingers, the phalanges, joint bends for a curl and for a `claw`, the wrist, the thumb, and `sheetScale`.
+  - `paintHand(ctx, options)` builds a hand the way the snake is built:
+    - Each bone is a tapering body (`paintBody`): a soft dark margin, an opaque base, an inner form shadow, a lit flank, an optional rim, then hatching along the form.
+    - Fingers curl in depth. Parts folded behind the hand are painted before it, so a fist reads as knuckles and a palm-on grip as fingers closing.
+    - `hook` instead curls three-quarter fingers across the picture, which is how a grasp reads.
+  - The forearm or sleeve is painted straight onto the scene. The hand itself is painted on a reused offscreen sheet at 0.6 scale and drawn back up smoothly; that is its softening, with no blur filter.
+- **Call sites.**
+  - `glimpse-render.ts` `drawHand`: the wagon's gloved fists.
+  - `glimpse-horror.ts`: the rail hand and the axe fists in The Fourth Floor, and the drowned hands (palm-on, `claw`, `hook`, long and thin).
+  - `glimpse-legend.ts` `drawReach`: the hand reaching for the plant, with blood as dabs.
+- **Tests.** One test is added to `tests/glimpses.test.ts`.
+
+**BOUNDARY:**
+
+- **Scope.** No save, rule or timing change; only how hands are drawn. The Wheat creature's claws are a monster silhouette and are unchanged.
+- **Cost.** In headless software Chromium at 844×390, the Wagon at Dusk costs about 34 ms a frame (26 before) and the Drowning about 11 ms (6). The Fourth Floor and the Plant are unchanged.
+
 ## The Plant at the Bottom: the first legend Glimpse (release 219)
 
 Tim, 2026-10-19: "the legend of Gilgamesh, this is what I meant", and Glimpse figures should be painterly (impressionist, pointillist, hatched) rather than hard-edged. The daily narrative session built step 5 of the narrative bible's build order as a Glimpse first. The Gilgamesh *voice* (recited lines) waits for a public-domain source text. Project Gutenberg is blocked by this environment's network policy, and lines are never quoted from memory.

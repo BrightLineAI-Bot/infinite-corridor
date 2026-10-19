@@ -78,3 +78,12 @@ test('the legends begin with Gilgamesh: the plant of life and the snake', () => 
   assert.ok(g && hasGlimpseRenderer('thePlant'));
   assert.equal(g.eyes, 'two'); assert.ok(g.human >= .8, 'a human Glimpse, leaning toward the Refuge');
 });
+
+test('hands are painted from one shared hand, in every Glimpse that shows them', async () => {
+  // Release 221 (Tim: "the hands are no good … the way you made the snake … make the fingers something like that").
+  const { readFileSync } = await import('node:fs');
+  const { HAND, paintHand } = await import('../src/glimpse-hand.ts');
+  assert.equal(typeof paintHand, 'function');
+  assert.equal(HAND.fingers.length, 4); assert.ok(HAND.fingers[1].len >= HAND.fingers[3].len, 'the middle finger is longer than the little one');
+  for (const file of ['glimpse-render.ts', 'glimpse-horror.ts', 'glimpse-legend.ts']) assert.match(readFileSync(new URL(`../src/${file}`, import.meta.url), 'utf8'), /paintHand\(ctx, \{/, file);
+});
