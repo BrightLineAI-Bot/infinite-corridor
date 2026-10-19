@@ -10,6 +10,7 @@ import { landscapeAtlasColor } from "./landscape-render.ts";
 import { hashSeed } from "./random.ts";
 import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.ts";
 import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.ts";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces } from "./atlas-view.ts";
 import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses } from "./glimpses.ts";
 import { startGlimpse, paintRule } from "./glimpse-render.ts";
 import { eldersHeard, elderProgress, ruleRows } from "./elders.ts";
@@ -1092,7 +1093,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:203,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 203\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:205,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 205\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1104,7 +1105,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:203,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:205,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1131,7 +1132,7 @@ function atlasMapHeight(){const base=Math.max(140,Math.min(innerHeight*.65,inner
 let relayOverlay=false;
 // Atlas layers (release 155): the buttons under the Atlas switch each kind of marking on or off. The choice is a
 // per-device convenience kept in localStorage.
-const ATLAS_LAYERS=[["sites","Places"],["signals","Signals"],["objectives","Objectives"],["waypoints","Waypoints"]],ATLAS_LAYER_KEY="corridor-atlas-layers";
+const ATLAS_LAYERS=[["sites","Places"],["signals","Signals"],["objectives","Objectives"],["waypoints","Waypoints"],["regions","Regions"]],ATLAS_LAYER_KEY="corridor-atlas-layers";
 const atlasLayers=(()=>{const all=Object.fromEntries(ATLAS_LAYERS.map(([k])=>[k,true]));try{return{...all,...JSON.parse(localStorage.getItem(ATLAS_LAYER_KEY)||"{}")}}catch{return all}})();
 function renderAtlasLayerButtons(){
   const row=$("#mapLayers");if(!row)return;row.replaceChildren();
@@ -1154,9 +1155,11 @@ function drawRelayOverlay(w,h,cell,cols,rows){
 }
 function drawMap() {
   if(mapMode==="dungeon"&&game.area==="dungeon"){drawDungeonMap();drawDungeonDeathMarker();return}
-  const d = Math.min(devicePixelRatio, 2),
-    w = Math.min(innerWidth * 0.9, 680),
-    h = atlasMapHeight();
+  // Release 205: held sideways on a short screen, the map takes the left of the whole screen.
+  const wide = matchMedia?.("(orientation: landscape) and (max-height: 540px)")?.matches && atlas.open,
+    d = Math.min(devicePixelRatio, 2),
+    w = wide ? Math.max(220, atlas.clientWidth - 300) : Math.min(innerWidth * 0.9, 680),
+    h = wide ? Math.max(160, atlas.clientHeight - 20) : atlasMapHeight();
   mapCanvas.width = w * d;
   mapCanvas.height = h * d;
   mapCanvas.style.width = w + "px";
@@ -1165,9 +1168,10 @@ function drawMap() {
   mctx.imageSmoothingEnabled = false;
   mctx.fillStyle = "#091018";
   mctx.fillRect(0, 0, w, h);
-  const signals=wayfindingCues(save.seed,game.rx,game.ry,save.worldGeneration,save,game.area==="overworld"?game.map:null),signalBySection=new Map(signals.map(q=>[`${q.targetRx},${q.targetRy}`,q])),cell = 52 * mapView.zoom,
+  const signals=wayfindingCues(save.seed,game.rx,game.ry,save.worldGeneration,save,game.area==="overworld"?game.map:null),signalBySection=new Map(signals.map(q=>[`${q.targetRx},${q.targetRy}`,q])),cell = sectionPixels(mapView.zoom),
     cols = Math.ceil(w / (2 * cell)) + 1,
     rows = Math.ceil(h / (2 * cell)) + 1;
+  if(worldView(mapView.zoom)){drawAtlasWorld(w,h,cell,signals);return} // release 205
   // Release 153: the compass target gets a gold frame and unfinished challenges a dashed violet one.
   const openSections=atlasLayers.objectives?openChallengeSections():new Map(),compassTarget=atlasLayers.objectives?navigationTargets().guidance:null,targetKey=compassTarget?.area==="overworld"?`${compassTarget.rx},${compassTarget.ry}`:null;
   for (let j = -rows; j <= rows; j++)
@@ -1227,12 +1231,51 @@ function drawMap() {
       if(key===targetKey){mctx.save();mctx.strokeStyle=ATLAS_FRAMES.compassTarget;mctx.lineWidth=3;mctx.strokeRect(x+1.5,y+1.5,cell-3,cell-3);mctx.restore()}
     }
   if(relayOverlay)drawRelayOverlay(w,h,cell,cols,rows);
+  {const id=readingAt(mapView.x,mapView.y);if(atlasLayers.regions&&readingKnown(save,id)){mctx.font="bold 13px system-ui, sans-serif";mctx.textAlign="left";mctx.lineWidth=3;mctx.strokeStyle="#091018";mctx.strokeText(READINGS[id].name,10,22);mctx.fillStyle="#f0d58a";mctx.fillText(READINGS[id].name,10,22);mctx.font="11px monospace"}} // release 205: where you are looking
   mctx.fillStyle = "#dce7e2";
   mctx.fillText(
     `Center ${mapView.x},${mapView.y} · ${Object.keys(save.explored).length} sections explored · ${signals.length} unresolved signals`,
     10,
     h - 10,
   );
+}
+// Release 205: the world view. Every explored section is one pixel of a cached image (rebuilt when more of the world is
+// explored or a region is heard), drawn scaled; regions you have heard are tinted and named; markers keep a fixed size.
+const READING_TINT={longCampaign:"#c8743a",riverThatRemembers:"#3aa0c8",transparentEye:"#8ad06a",yellowCity:"#e0c040",pathAlone:"#a0a0b8",threeBrothers:"#c05a8a",bookOfImages:"#d8a060",underTheFloor:"#6a5ac0",secondCampaign:"#b05a3a",dreamlands:"#9a6fe0"};
+let atlasWorldCache=null;
+function atlasRgb(c){const h=String(c||"#51464a").replace("#",""),f=h.length===3?h.split("").map(x=>x+x).join(""):h,n=parseInt(f,16);return[(n>>16)&255,(n>>8)&255,n&255]}
+function atlasWorldImage(){
+  const list=exploredSections(save),key=`${list.length}:${Object.keys(save.lore?.entered||{}).join()}:${atlasLayers.regions}`;
+  if(atlasWorldCache?.key===key)return atlasWorldCache;
+  const b=boundsOf(list);if(!b)return null;
+  const W=b.maxX-b.minX+1,H=b.maxY-b.minY+1,c=document.createElement("canvas");c.width=W;c.height=H;
+  const g=c.getContext("2d"),img=g.createImageData(W,H),groups=new Map();
+  for(const[rx,ry]of list){const rec=save.atlas?.[`${rx},${ry}`],base=atlasRgb(landscapeAtlasColor(rec?.landscape)||{ash:"#51464a",glass:"#315b62",ember:"#794735"}[rec?.terrain||"ash"]),id=readingAt(rx,ry),known=atlasLayers.regions&&readingKnown(save,id),tint=known?atlasRgb(READING_TINT[id]):null,i=((ry-b.minY)*W+(rx-b.minX))*4;
+    for(let k=0;k<3;k++)img.data[i+k]=tint?Math.round(base[k]*.62+tint[k]*.38):base[k];img.data[i+3]=255;
+    if(known){const q=groups.get(id)||{x:0,y:0,n:0};q.x+=rx;q.y+=ry;q.n++;groups.set(id,q)}}
+  g.putImageData(img,0,0);
+  atlasWorldCache={key,canvas:c,bounds:b,labels:[...groups.entries()].map(([id,q])=>({name:READINGS[id].name,rx:q.x/q.n,ry:q.y/q.n,n:q.n}))};
+  return atlasWorldCache;
+}
+function drawAtlasWorld(w,h,cell,signals){
+  const at=(rx,ry)=>[w/2+(rx-mapView.x)*cell+mapView.panX,h/2+(ry-mapView.y)*cell+mapView.panY],world=atlasWorldImage();
+  if(world){const[x,y]=at(world.bounds.minX-.5,world.bounds.minY-.5);mctx.imageSmoothingEnabled=false;mctx.drawImage(world.canvas,x,y,world.canvas.width*cell,world.canvas.height*cell)}
+  // Fixed-size markers: Wayglasses and towns once there is room, signals, the waypoint, the compass target, the last death, you.
+  const dot=(rx,ry,r,fill,stroke)=>{const[x,y]=at(rx,ry);if(x<-20||y<-20||x>w+20||y>h+20)return;mctx.beginPath();mctx.arc(x,y,r,0,7);if(fill){mctx.fillStyle=fill;mctx.fill()}if(stroke){mctx.strokeStyle=stroke;mctx.lineWidth=2;mctx.stroke()}};
+  if(atlasLayers.sites&&cell>=3)for(const g of atlasPlaces(save))for(const p of g.places){if(p.kind==="checkpoint")dot(p.rx,p.ry,2.5,"#5fe7ee");else if(p.kind==="hamlet"||p.kind==="refuge")dot(p.rx,p.ry,3,"#f0c070");}
+  if(atlasLayers.signals)for(const s of signals)dot(s.targetRx,s.targetRy,2.5,"#b8a0e0");
+  if(atlasLayers.waypoints&&save.manualWaypoint)dot(save.manualWaypoint.rx,save.manualWaypoint.ry,6,null,"#5fe7ee");
+  const target=atlasLayers.objectives?navigationTargets().guidance:null;if(target?.area==="overworld")dot(target.rx,target.ry,7,null,ATLAS_FRAMES.compassTarget);
+  if(atlasLayers.waypoints&&save.lastDeath){const[x,y]=at(save.lastDeath.rx,save.lastDeath.ry);drawDeathGlyph(mctx,x,y,5,save.lastDeath.valid===false)}
+  if(mapView.selected)dot(mapView.selected.rx,mapView.selected.ry,5,null,"#ffffff");
+  dot(game.rx,game.ry,4,"#fff4a8","#091018");dot(game.rx,game.ry,8,null,"rgba(255,244,168,.55)");
+  // Region names over their explored land.
+  if(world&&atlasLayers.regions){mctx.textAlign="center";mctx.font=`bold ${Math.max(11,Math.min(18,cell*4))}px system-ui, sans-serif`;mctx.lineWidth=4;
+    const placed=[];for(const l of [...world.labels].sort((a,b)=>b.n-a.n)){const[x,y]=at(l.rx,l.ry),tw=mctx.measureText(l.name).width,box={l:x-tw/2-4,r:x+tw/2+4,t:y-14,b:y+4};if(x<0||x>w||y<0||y>h)continue;
+      const clash=(q)=>q.l<box.r&&q.r>box.l&&q.t<box.b&&q.b>box.t;for(let k=0;k<6&&placed.some(clash);k++){box.t+=16;box.b+=16}if(placed.some(clash))continue;placed.push(box); // larger regions first; others step down or are left out
+      const ly=box.b-4;mctx.strokeStyle="rgba(9,16,24,.85)";mctx.strokeText(l.name,x,ly);mctx.fillStyle="#f0d58a";mctx.fillText(l.name,x,ly)}mctx.textAlign="left"}
+  mctx.font="11px monospace";mctx.fillStyle="#dce7e2";
+  mctx.fillText(`World view · ${Object.keys(save.explored).length} sections explored · pinch or + to look closer`,10,h-10);
 }
 function drawDeathGlyph(context,x,y,size,faded=false){context.save();context.translate(x,y);context.globalAlpha=faded?.45:1;context.strokeStyle="#ff718f";context.lineWidth=Math.max(1.5,size*.2);context.beginPath();context.arc(0,0,size*.65,0,7);context.moveTo(-size*.42,-size*.42);context.lineTo(size*.42,size*.42);context.moveTo(size*.42,-size*.42);context.lineTo(-size*.42,size*.42);context.stroke();context.restore()}
 function drawDungeonDeathMarker(){const death=save.lastDeath;if(!death||death.areaKind!=="dungeon"||death.dungeonId!==game.areaId())return;const selected=$("#dungeonLevelSelect")?.value||game.map.levelId||"root";if(death.levelId&&death.levelId!==selected)return;const map=game.map,d=Math.min(devicePixelRatio,2),w=Math.min(innerWidth*.9,680),h=atlasMapHeight(),cols=map.width||24,rows=map.height||Math.floor(map.tiles.length/cols),pad=18,cell=Math.max(2,Math.min((w-pad*2)/cols,(h-pad*2)/rows)),ox=(w-cell*cols)/2,oy=(h-cell*rows)/2;mctx.setTransform(d,0,0,d,0,0);drawDeathGlyph(mctx,ox+(death.x+.5)*cell,oy+(death.y+.5)*cell,Math.max(5,cell*.36),death.valid===false)}
@@ -1315,6 +1358,7 @@ function openMap() {
   mapMode = game.area === "dungeon" ? "dungeon" : "atlas";
   if (!atlas.open) atlas.showModal();
   refreshWayglassDestinations();
+  refreshAtlasPlaces();
   renderAtlasLegend();
   renderAtlasLayerButtons();
   updateMapModeUI();
@@ -1644,7 +1688,7 @@ function openJournal(mode = "chronicle") {
       ["guidance-arrow",["Violet compass arrow — Guidance","Tracks the active quest, Viewport hunt, or Corridor objective. It changes as that objective advances and never replaces a manual waypoint."]],
       ["manual-arrow",["Cyan compass arrow — Manual waypoint","Tracks the explored Atlas section you selected. It remains until you clear or replace it, even while guidance is active."]],
       ...ATLAS_SYMBOLS.map(symbol=>[`atlas-${symbol.kind}`,[symbol.label,symbol.description]]),
-      ["atlas",["Atlas controls","Drag with one finger to pan. Pinch with two fingers or use +/− to zoom. Tap an explored section to select it, then use Set waypoint to guide the constellation compass."]],
+      ["atlas",["Atlas controls","Drag with one finger to pan. Pinch with two fingers, use the mouse wheel or +/− to zoom; double-tap a section to zoom in on it. Zoomed far out, the Atlas becomes a world view of everything you have explored, with the regions you have heard tinted and named. World shows all of it; Go to… jumps to a region, or to a town, shelter or Wayglass inside it. Tap an explored section to select it, then use Set waypoint to guide the constellation compass."]],
       ["travel",["Travel","Activate Wayglass beacons to travel to them from the Atlas. Dungeon travel remains sealed without a Crossing Sigil."]],
       ["combat",["Combat","Red or violet telegraphs show the exact threatened area. Dodge spends stamina; jumping avoids grounded impacts."]],
       ["aperture",["Aperture","Exploration, discoveries, and significant enemies raise Aperture, revealing hidden layers of known places."]]
@@ -1915,12 +1959,12 @@ $("#mapCenter").onclick = () => {
 };
 $("#mapPlus").onclick = () => {
   if(mapMode==="dungeon")return;
-  mapView.zoom = Math.min(3.2, mapView.zoom + 0.2);
+  mapView.zoom = clampZoom(mapView.zoom * ATLAS_ZOOM.step);
   drawMap();
 };
 $("#mapMinus").onclick = () => {
   if(mapMode==="dungeon")return;
-  mapView.zoom = Math.max(0.6, mapView.zoom - 0.2);
+  mapView.zoom = clampZoom(mapView.zoom / ATLAS_ZOOM.step);
   drawMap();
 };
 $("#mapUnstick").onclick = () => {
@@ -1956,8 +2000,9 @@ for (const [id, dx, dy] of [
 ])
   $("#" + id).onclick = () => {
     if(mapMode==="dungeon")return;
-    mapView.x += dx;
-    mapView.y += dy;
+    const step = panStep(mapView.zoom, mapCanvas.clientWidth || 600); // release 205: a third of the view at any zoom
+    mapView.x += dx * step;
+    mapView.y += dy * step;
     drawMap();
   };
 mapCanvas.onclick = (e) => {
@@ -1967,17 +2012,40 @@ mapCanvas.onclick = (e) => {
     return;
   }
   const r = mapCanvas.getBoundingClientRect(),
-    cell = 52 * mapView.zoom,
+    cell = sectionPixels(mapView.zoom),
     rx =
       mapView.x +
       Math.floor((e.clientX - r.left - r.width / 2 + cell / 2) / cell),
     ry =
       mapView.y +
       Math.floor((e.clientY - r.top - r.height / 2 + cell / 2) / cell);
+  // Release 205: a second tap on the same section within a moment zooms in on it.
+  const now = performance.now(), again = lastMapTap && now - lastMapTap.at < 350 && lastMapTap.rx === rx && lastMapTap.ry === ry;
+  lastMapTap = again ? null : { at: now, rx, ry };
+  if (again) { mapView.x = rx; mapView.y = ry; mapView.zoom = clampZoom(Math.max(mapView.zoom * 2.2, ATLAS_ZOOM.detail)); }
   if (save.explored[`${rx},${ry}`]) showMapDetail(rx, ry);
   drawMap();
   persist();
 };
+let lastMapTap = null;
+mapCanvas.addEventListener("wheel", (e) => { if (mapMode === "dungeon") return; e.preventDefault(); mapView.zoom = clampZoom(mapView.zoom * Math.exp(-e.deltaY * .0015)); drawMap(); }, { passive: false });
+// The World button and the Places list (release 205): the whole explored world, each region heard, and the towns,
+// shelters and Wayglasses inside it.
+function fitAtlas(bounds) { const f = frameSections(bounds, mapCanvas.clientWidth || 600, mapCanvas.clientHeight || 400); if (!f) return; mapView.x = f.x; mapView.y = f.y; mapView.zoom = f.zoom; mapView.panX = mapView.panY = 0; drawMap(); }
+function refreshAtlasPlaces() {
+  const sel = $("#mapPlaces"); if (!sel) return;
+  const groups = atlasPlaces(save), options = [new Option("Go to…", "")];
+  options.push(new Option("The whole explored world", "world"), new Option("Where I am", "here"));
+  sel.replaceChildren(...options);
+  groups.forEach((g, i) => { const og = document.createElement("optgroup"); og.label = g.name; og.append(new Option(`All of ${g.name}`, `region:${i}`)); g.places.forEach((p, j) => og.append(new Option(`${p.name} (${p.rx},${p.ry})`, `place:${i}:${j}`))); sel.append(og); });
+  sel.onchange = () => {
+    const v = sel.value; sel.value = ""; if (!v) return;
+    if (v === "world") fitAtlas(boundsOf(exploredSections(save)));
+    else if (v === "here") { mapView.x = game.rx; mapView.y = game.ry; mapView.zoom = Math.max(mapView.zoom, ATLAS_ZOOM.placeZoom); drawMap(); }
+    else { const [kind, i, j] = v.split(":").map((x, k) => k ? Number(x) : x), g = groups[i]; if (kind === "region") fitAtlas(g.bounds); else { const p = g.places[j]; mapView.x = p.rx; mapView.y = p.ry; mapView.zoom = ATLAS_ZOOM.placeZoom; showMapDetail(p.rx, p.ry); drawMap(); } }
+  };
+}
+$("#mapWorld").onclick = () => { if (mapMode === "dungeon") return; fitAtlas(boundsOf(exploredSections(save))); };
 mapCanvas.addEventListener("pointerdown", (e) => {
   if(mapMode==="dungeon")return;
   atlasPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -2000,7 +2068,7 @@ mapCanvas.addEventListener("pointermove", (e) => {
   if (atlasPinch && atlasPointers.size >= 2) {
     const [a, b] = [...atlasPointers.values()], distance = Math.hypot(b.x - a.x, b.y - a.y);
     if (atlasPinch.distance > 0)
-      mapView.zoom = Math.max(0.6, Math.min(3.2, atlasPinch.zoom * distance / atlasPinch.distance));
+      mapView.zoom = clampZoom(atlasPinch.zoom * distance / atlasPinch.distance);
     drawMap();
     return;
   }
@@ -2018,7 +2086,7 @@ function finishAtlasDrag(e) {
   const wasPinching = !!atlasPinch;
   atlasPointers.delete(e.pointerId);
   if (!wasPinching && atlasDrag?.id === e.pointerId && atlasDrag.moved) {
-    const cell = 52 * mapView.zoom;
+    const cell = sectionPixels(mapView.zoom);
     mapView.x -= Math.round(mapView.panX / cell);
     mapView.y -= Math.round(mapView.panY / cell);
     suppressMapClick = true;

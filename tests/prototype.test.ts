@@ -2017,7 +2017,7 @@ test("atlas supports direct pointer panning without sacrificing tap selection", 
   assert.match(source, /mapView\.x\s*-=\s*Math\.round/);
   assert.match(source, /atlasPointers\.size === 2/);
   assert.match(source, /atlasPinch\.zoom \* distance \/ atlasPinch\.distance/);
-  assert.match(source, /Math\.max\(0\.6, Math\.min\(3\.2/);
+  assert.match(source, /clampZoom\(atlasPinch\.zoom \* distance \/ atlasPinch\.distance\)/); // release 205: pinch zoom is clamped by ATLAS_ZOOM (atlas-view.ts), far wider than 0.6–3.2
   assert.match(style, /#mapCanvas\s*\{[\s\S]*?touch-action:\s*none/);
 });
 test("expanded creature ecology is deterministic and recorded in the field codex", () => {
@@ -2403,12 +2403,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 203 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 205 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "203"/);assert.match(html,/styles\.css\?v=203/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v203`/);assert.match(sw,/styles\.css\?v=203/);assert.match(sw,/proving-ground-labs\.js\?v=203/);assert.match(sw,/dungeon-framework\.js\?v=203/);assert.match(sw,/renderer\.js\?v=203/);
-  assert.match(build,/release='203'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "205"/);assert.match(html,/styles\.css\?v=205/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v205`/);assert.match(sw,/styles\.css\?v=205/);assert.match(sw,/proving-ground-labs\.js\?v=205/);assert.match(sw,/dungeon-framework\.js\?v=205/);assert.match(sw,/renderer\.js\?v=205/);
+  assert.match(build,/release='205'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
 });
 
 test("Shelter Gallery uses six deterministic production shelter families",()=>{
