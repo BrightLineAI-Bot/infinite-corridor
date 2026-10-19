@@ -1,25 +1,26 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r223-2d08f49a31be";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r223-2d08f49a31be";
-import { renderTimings } from "./renderer.js?v=r223-2d08f49a31be";
-import { createProbe, PROBE } from "./diagnostic-probe.js?v=r223-2d08f49a31be";
-import { vendorShop, buyFromVendor } from "./game.js?v=r223-2d08f49a31be";
-import { CREATURE_TRAITS } from "./combat.js?v=r223-2d08f49a31be";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=r223-2d08f49a31be";
-import { drawPackPortrait } from "./monster-render.js?v=r223-2d08f49a31be";
-import { landscapeAtlasColor } from "./landscape-render.js?v=r223-2d08f49a31be";
-import { hashSeed } from "./random.js?v=r223-2d08f49a31be";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r223-2d08f49a31be";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r223-2d08f49a31be";
-import { hamletSection, hamletIdentity } from "./settlements.js?v=r223-2d08f49a31be";
-import { linksKnown } from "./linked-dungeons.js?v=r223-2d08f49a31be";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces } from "./atlas-view.js?v=r223-2d08f49a31be";
-import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses } from "./glimpses.js?v=r223-2d08f49a31be";
-import { startGlimpse, paintRule } from "./glimpse-render.js?v=r223-2d08f49a31be";
-import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r223-2d08f49a31be";
-import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=r223-2d08f49a31be";
-import { questingBeastTriesLeft } from "./questing-beast.js?v=r223-2d08f49a31be";
-import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=r223-2d08f49a31be";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r223-2d08f49a31be";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r225-515a9ef2e054";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r225-515a9ef2e054";
+import { renderTimings } from "./renderer.js?v=r225-515a9ef2e054";
+import { createProbe, PROBE } from "./diagnostic-probe.js?v=r225-515a9ef2e054";
+import { vendorShop, buyFromVendor } from "./game.js?v=r225-515a9ef2e054";
+import { CREATURE_TRAITS } from "./combat.js?v=r225-515a9ef2e054";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=r225-515a9ef2e054";
+import { drawPackPortrait } from "./monster-render.js?v=r225-515a9ef2e054";
+import { landscapeAtlasColor } from "./landscape-render.js?v=r225-515a9ef2e054";
+import { hashSeed } from "./random.js?v=r225-515a9ef2e054";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r225-515a9ef2e054";
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r225-515a9ef2e054";
+import { hamletSection, hamletIdentity } from "./settlements.js?v=r225-515a9ef2e054";
+import { linksKnown } from "./linked-dungeons.js?v=r225-515a9ef2e054";
+import { DIG } from "./digging.js?v=r225-515a9ef2e054";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces } from "./atlas-view.js?v=r225-515a9ef2e054";
+import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses } from "./glimpses.js?v=r225-515a9ef2e054";
+import { startGlimpse, paintRule } from "./glimpse-render.js?v=r225-515a9ef2e054";
+import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r225-515a9ef2e054";
+import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=r225-515a9ef2e054";
+import { questingBeastTriesLeft } from "./questing-beast.js?v=r225-515a9ef2e054";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=r225-515a9ef2e054";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r225-515a9ef2e054";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -170,7 +171,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r223-2d08f49a31be";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r225-515a9ef2e054";
 import {
   Game,
   actionReadiness,
@@ -179,19 +180,19 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=r223-2d08f49a31be";
-import { createInput } from "./input.js?v=r223-2d08f49a31be";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r223-2d08f49a31be";
-import { STATS } from "./types.js?v=r223-2d08f49a31be";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=r223-2d08f49a31be";
-import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=r223-2d08f49a31be";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=r223-2d08f49a31be";
-import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=r223-2d08f49a31be";
-import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=r223-2d08f49a31be";
-import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=r223-2d08f49a31be";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r223-2d08f49a31be";
-import { worldStewardReport } from "./story.js?v=r223-2d08f49a31be";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r223-2d08f49a31be";
+} from "./game.js?v=r225-515a9ef2e054";
+import { createInput } from "./input.js?v=r225-515a9ef2e054";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r225-515a9ef2e054";
+import { STATS } from "./types.js?v=r225-515a9ef2e054";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=r225-515a9ef2e054";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=r225-515a9ef2e054";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=r225-515a9ef2e054";
+import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=r225-515a9ef2e054";
+import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=r225-515a9ef2e054";
+import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=r225-515a9ef2e054";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r225-515a9ef2e054";
+import { worldStewardReport } from "./story.js?v=r225-515a9ef2e054";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r225-515a9ef2e054";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -203,8 +204,8 @@ import {
   perceived,
   wayfindingTargets,
   wayfindingCues,
-} from "./world.js?v=r223-2d08f49a31be";
-import { warmWayfindingSignals } from "./world.js?v=r223-2d08f49a31be";
+} from "./world.js?v=r225-515a9ef2e054";
+import { warmWayfindingSignals } from "./world.js?v=r225-515a9ef2e054";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
@@ -1095,7 +1096,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r223-2d08f49a31be",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r223-2d08f49a31be\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r225-515a9ef2e054",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r225-515a9ef2e054\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1107,7 +1108,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r223-2d08f49a31be",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r225-515a9ef2e054",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1289,7 +1290,7 @@ function drawLinkedDungeons(w,h,cell){
     mctx.setLineDash([]);mctx.globalAlpha=1;for(const[x,y]of[[ax,ay],[bx,by]]){mctx.beginPath();mctx.arc(x,y,r,0,7);mctx.stroke();mctx.beginPath();mctx.arc(x,y,r*.45,0,7);mctx.stroke()}}
   mctx.restore();
 }
-// Release r223-2d08f49a31be (Tim): the waypoint and the quest marker stay on the Atlas at every zoom, at a fixed size, on top of
+// Release 223 (Tim): the waypoint and the quest marker stay on the Atlas at every zoom, at a fixed size, on top of
 // everything. Off the map's edge, an arrow at the edge points to each with its distance in sections, so zooming out to
 // find the quest marker always finds it.
 const ATLAS_PIN={size:9,edge:18};
@@ -1500,7 +1501,7 @@ function openPack() {
   const resource = document.createElement("p");
   resource.textContent = `Cinder Iron ${save.materials.cinderIron} · weapon +${save.weaponLevel || 0} · section ${game.rx},${game.ry} `;
   resource.append(uiButton(`✦ Arcanum · spells, constellation, glyphs`, () => openSkills()));
-  resource.append(Object.assign(document.createElement('span'), { className: 'wood-count', textContent: `Wood ${save.materials?.wood || 0} · a skiff takes 3 (Act at deep water)` })); // release 119
+  resource.append(Object.assign(document.createElement('span'), { className: 'wood-count', textContent: `Wood ${save.materials?.wood || 0} · Stone ${save.materials?.stone || 0} · ${save.digging?.shovel ? `Shovel ${save.digging.shovel}/${DIG.shovelUses} digs left` : `a shovel takes ${DIG.recipe.wood} wood and ${DIG.recipe.stone} stone (Act facing a dungeon wall)`} · a skiff takes 3 wood (Act at deep water)` })); // release 119; stone and the shovel, release 225
   resource.append(uiButton(`Glyphs · ${Object.values(save.glyphs||{}).reduce((a,b)=>a+b,0)} in pouch`, openGlyphs));
   resource.append(uiButton(`Echoes · ${notchesUsed(save.echoes?.equipped||[])}/${NOTCHES} notches`, openEchoes));
   resource.append(uiButton(`Constellation · ${pointsFree(save)} free`, () => openSkills()));
@@ -2383,6 +2384,8 @@ function openInteraction(id, confirmAttack = false) {
       const labels = {
         speak: o.elder ? "Listen" : "Speak",
         touch: "Touch",
+        chip: "Chip stone",
+        dig: "Dig",
         trade: "Trade",
         attack: "Attack " + o.name + "…",
         standDown: "Stand down / Spare",

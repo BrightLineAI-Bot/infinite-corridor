@@ -1,5 +1,5 @@
-import { rng } from "./random.js?v=r223-2d08f49a31be";
-import { annotateDungeon } from "./dungeon-framework.js?v=r223-2d08f49a31be";
+import { rng } from "./random.js?v=r225-515a9ef2e054";
+import { annotateDungeon } from "./dungeon-framework.js?v=r225-515a9ef2e054";
 
 export const DUNGEON_LAYOUT_VERSION = 1;
 const DIRECTIONS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
