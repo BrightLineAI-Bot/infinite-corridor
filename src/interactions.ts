@@ -49,6 +49,7 @@ export function validActions(o,s){
  if(o.kind==='shipwreck')return s.worldFlags[o.id]?[]:['salvage'];
  if(o.kind==='skiff')return ensureBoatState(s).owned?['board']:[];
  if(o.kind==='elitePortal'){const c=ensureEliteState(s).contracts.knifeChoir;return c.state==='available'||c.state==='accepted'?['inspect','enter']:['inspect'];}
+ if(o.strange&&!o.strangeUsed&&(o.kind==='rock'||o.kind==='tree'))return['touch']; // release 227: a strange stone is touched first (the rock rules below had hidden it since 215)
  if(o.kind==='tree'&&o.state!=='standing')return[];
  if(o.kind==='shrine')return[...(o.actions||[]).filter(a=>a!=='attune'&&!(o.state==='used'&&!['enter','exit','bypass'].includes(a))),'attune']; // Attune: constellation + respec (release 100)
  if(o.kind==='rock'&&o.state==='sealed')return[...(s.stats.Might>=3?['move','break']:[]),...(s.worldFlags[o.id+':chip']?[]:['chip'])]; // release 225: anyone can chip one stone from a rock

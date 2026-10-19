@@ -23,7 +23,7 @@ export function addStrange(map, save, rx, ry) {
 }
 // Touching it: recorded once per section; the caller opens the Glimpse.
 export function touchStrange(save, o, rx, ry) {
-  if (!o?.strange || o.strangeUsed) return { ok: false, message: "It is only a tree now." };
+  if (!o?.strange || o.strangeUsed) return { ok: false, message: o?.kind === "rock" ? "It is only a stone now." : "It is only a tree now." };
   save.worldFlags ||= {}; save.worldFlags[strangeKey(rx, ry)] = true;
   o.strangeUsed = true; o.actions = o.kind === "tree" ? ["cut", "ignite"] : [];
   return { ok: true, message: o.kind === "rock" ? "The stone is warm, and then it is not." : "The bark gives under your hand like skin, and then it is bark." };
