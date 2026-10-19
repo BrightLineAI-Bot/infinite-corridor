@@ -73,13 +73,15 @@ export function bookPieces(readingId) {
   return pieces;
 }
 
-// Save: { v, heard: { voiceId: hex bitset }, pieces: { readingId: [pieceId] }, entered: { readingId: true } }.
+// Save: { v, heard: { voiceId: hex bitset }, pieces: { readingId: [pieceId] }, entered: { readingId: true },
+// glimpses: { glimpseId: times seen } } (glimpses since release 193; ids are kept even if unknown to this build).
 export function ensureLore(s) {
-  const l = s.lore && typeof s.lore === "object" ? s.lore : {}, heard = {}, pieces = {}, entered = {};
+  const l = s.lore && typeof s.lore === "object" ? s.lore : {}, heard = {}, pieces = {}, entered = {}, glimpses = {};
   for (const [id, hex] of Object.entries(l.heard || {})) if (RECITATIONS[id] && typeof hex === "string" && /^[0-9a-f]*$/.test(hex)) heard[id] = hex;
   for (const [id, list] of Object.entries(l.pieces || {})) if (READINGS[id] && Array.isArray(list)) { const known = new Set(bookPieces(id).map((p) => p.id)); pieces[id] = [...new Set(list.filter((p) => known.has(p)))]; }
   for (const id of Object.keys(l.entered || {})) if (READINGS[id] && l.entered[id]) entered[id] = true;
-  s.lore = { ...l, v: LORE_VERSION, heard, pieces, entered };
+  for (const [id, n] of Object.entries(l.glimpses || {})) if (Number(n) > 0) glimpses[id] = Math.floor(Number(n));
+  s.lore = { ...l, v: LORE_VERSION, heard, pieces, entered, glimpses };
   return s;
 }
 function bitGet(hex, i) { const c = parseInt(hex[i >> 2] || "0", 16); return (c >> (i & 3)) & 1; }
@@ -99,6 +101,12 @@ function noteCompletion(save, readingId, piece) {
   const completed = (save.lore.pieces[readingId]?.length || 0) >= bookSize(readingId);
   if (completed) completedReading = readingId;
   return { readingId, piece, completed };
+}
+// Credits a fragment found some other way (a Glimpse, a margin). Returns { readingId, piece, completed } or null.
+export function creditPiece(save, readingId, piece) {
+  ensureLore(save); const list = save.lore.pieces[readingId] ||= [];
+  if (!piece || list.includes(piece.id)) return null;
+  list.push(piece.id); return noteCompletion(save, readingId, piece);
 }
 export function takeCompletedReading() { const id = completedReading; completedReading = null; return id; }
 export function bookProgress(save, readingId) { const found = save.lore?.pieces?.[readingId]?.length || 0, total = bookSize(readingId); return { found, total, mastered: found >= total }; }

@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=191" />
+    <link rel="stylesheet" href="./styles.css?v=193" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -109,6 +109,7 @@
         <div class="scene-copy"><strong id="sceneTitle"></strong><p id="sceneCaption"></p></div>
         <button id="sceneSkip" type="button" hidden>Skip scene</button>
       </section>
+      <section id="glimpse" class="glimpse" hidden aria-label="Glimpse"><canvas id="glimpseCanvas"></canvas><p id="glimpseHint" class="glimpse-hint">Tap to let go</p></section>
       <dialog id="creatureViewer">
         <button id="creatureViewerClose" class="close" aria-label="Close creature rendering">×</button>
         <h2 id="creatureViewerTitle">Field rendering</h2>
@@ -148,7 +149,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "191";
+      const release = "193";
       const params = new URLSearchParams(location.search);
       const entry = params.get("dev") === "proving-ground"
         ? "./src/proving-ground.js"

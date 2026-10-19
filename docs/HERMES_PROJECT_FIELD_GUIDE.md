@@ -26,6 +26,34 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Glimpses: first-person scenes (release 193)
+
+This is step 2 of `docs/narrative-bible.md`: the Glimpse engine and three first Glimpses, built for Tim to judge before more are made.
+
+**CODE:**
+
+- **`src/glimpses.ts`** (rules, no DOM).
+  - `GLIMPSES` holds `wagonAtDusk`, `lanternFaceted` and `theRule`. Each entry has `human` (1 human … 0 unhuman), `seconds`, `eyes`, and `reduced` (still-frame times for reduced motion).
+  - `humanDrift(rx, ry)` falls from 1 at the Refuge to 0 at `GLIMPSE_DRIFT_DEPTH` (40). `glimpseWeight` uses it, with a floor of `GLIMPSE_FLOOR`.
+  - `pickGlimpse` prefers unseen Glimpses, then allows ones seen fewer than `GLIMPSE_MAX_SEEN` (3) times.
+  - `glimpseFor(save, kind, rx, ry, rand)` rolls `GLIMPSE_CHANCE` (`touch` .5, `crossing` .25, `tree` .04).
+  - `witnessGlimpse` counts a sighting in `save.lore.glimpses`. The first sighting credits the region's next free Glimpse fragment through `creditPiece` (new in `lore.ts`, which also raises "Recitation complete").
+- **`src/glimpse-render.ts`** (drawing). `drawGlimpse(ctx, id, t, w, h, state)` paints frame `t` ∈ [0, 1]. `startGlimpse(canvas, id, {reduceMotion, quality, onEnd})` runs one at up to 2× device pixels (1× on low quality), with three crossfading stills under reduced motion. Everything is Canvas 2D, with no assets.
+  - **Wagon:** perspective road and birches with cached canopy sprites (leaf, haze and dusk tints), long shadows, sun rays, a backlit horse and gloved hands, a swinging lantern, a blanket that breathes, and fireflies.
+  - **Lantern:** each frame of a moth's flight is painted at 240×150 into a three-frame history. A hex lattice of facets, each clipped to a lagged, shifted copy of the frame, sits under a cached lens-shading overlay.
+  - **Rule:** Rule 30, then Rule 110 after `ruleSwitch` rows. It is drawn into a 4×4-pixel-per-cell texture, laid row by row onto a ground plane with square cells, with a downscaled bloom pass. The out-of-step amber cell is "you".
+- **Triggers.** `Game.interact` sets `glimpseCue` (`touch` for inspecting a ruin marker or shrine, `tree` for cutting a tree, `crossing` for a dungeon transition). `main.ts` reads it each frame and calls `playGlimpse`.
+- **Playing.** `playGlimpse` closes open dialogs, pauses, shows `#glimpse`, lets go on a tap after 0.9 s, records the first sighting and notes a found fragment.
+- **Replays.** The Tome's "Glimpses" section replays seen ones. Options → System → "Glimpse previews" plays any of them. Replays record nothing.
+- **Fixes from the 191 review.** The Tome lists only heard Readings, and a fragment of an unheard Reading is noted as "A fragment is remembered" without its name.
+
+**BOUNDARY:**
+
+- **Save.** `save.lore.glimpses` (`{id: count}`) is additive at schema 14. `ensureLore` keeps positive counts, including ids unknown to this build.
+- **Untouched.** No generator, world or combat code changes.
+- **Cost.** Glimpses draw only while their overlay is open. The game is paused underneath, and nothing persists in the render loop afterwards.
+- **Still to come.** Only three Glimpses exist, so a region's Glimpse fragments cannot all be found yet. Glimpses run as Canvas 2D; WebGL is left for the sphere, crystal and gas scenes.
+
 ## The Readings: regional voices and what the Corridor remembers (release 191)
 
 This is step 1 of the narrative design Tim approved on 2026-10-19 (`docs/narrative-bible.md`).
