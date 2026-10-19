@@ -26,6 +26,32 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Tyrant Mosasaur and the Undertow Leviathan (release 229)
+
+Tim, 2026-10-19: keep the big segmented leviathan that was the Tyrant Mosasaur as its own creature, with its own name. The Tyrant Mosasaur should look like a mosasaur (pointed snout, big jaws, a fat body, flippers), be bigger and have more health.
+
+**CODE:**
+
+- **`src/sea-creatures.ts`.**
+  - `tyrantMosasaur` gains `body: "mosasaur"`, hp 480 (was 320), damage 24, xp 120, size 3 (was 2.2), lockAt 4.8, exposed 1.8, and `hitReach` 1.6 so its bite matches its size.
+  - `undertowLeviathan` is new, with the old mosasaur's stats, five segments and colours.
+  - The lunge hit test uses `d.hitReach || 1.1`.
+  - `SEA_SPAWNS.leviathans` gives one of the Mosasaur's two places to the Leviathan; the table keeps its nine entries, so every section rolls the same place as before.
+- **`src/renderer.ts`.** `drawMosasaur`, a top-down mosasaur rotated to its facing:
+  - a swaying shark-like tail with a downturned fluke;
+  - a banded barrel body with pale flanks;
+  - four rowing paddle flippers;
+  - a skull, toothed jaws that gape with the lunge's telegraph and strike, and yellow eyes.
+
+  `drawSeaCreature` hands the Mosasaur to it; the Undertow Leviathan keeps the segmented body.
+- **`src/main.ts`.** Codex entries for both.
+- **Tests.** One test is added to `tests/leviathans.test.ts`.
+
+**BOUNDARY:**
+
+- **Save.** No save change. A Mosasaur already met keeps its saved hit points until its section's state is refreshed.
+- **Spawning.** Spawning stays deterministic; no generator version changes.
+
 ## Strange stones fixed (release 227)
 
 Found by the release-225 review: since release 215 a strange stone never offered Touch. `validActions` (`src/interactions.ts`) returned the sealed-rock actions (move, break, and from 225 chip) before an object's own actions were consulted, so only strange trees opened Glimpses.

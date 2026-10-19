@@ -316,6 +316,7 @@ function drawSeaCreature(ctx, e, s, now, colors, g) {
     ctx.fillStyle = colors[2]; for (const q of [-1, 1]) { ctx.beginPath(); ctx.arc(cx + q * s * .16 * k, cy - s * .25 * k, s * .07 * k, 0, 7); ctx.fill(); }
     ctx.restore(); return;
   }
+  if ((e.seaKind || e.kind) === "tyrantMosasaur") { drawMosasaur(ctx, e, cx, cy, s, now, colors); ctx.restore(); return; } // release 229
   const lift = (e.leapHeight || 0) * s, f = e.ai?.facing || "down", [fx, fy] = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[f], n = e.segments || 1;
   if (lift) { ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(cx, cy, s * .4, s * .14, 0, 0, 7); ctx.fill(); }
   for (let i = n - 1; i >= 0; i--) { // trailing body, head last
@@ -327,6 +328,46 @@ function drawSeaCreature(ctx, e, s, now, colors, g) {
   if (e.kind === "breachfin") { ctx.fillStyle = colors[1]; ctx.beginPath(); ctx.moveTo(cx - s * .1, cy - lift - s * .15); ctx.lineTo(cx, cy - lift - s * .5); ctx.lineTo(cx + s * .12, cy - lift - s * .15); ctx.fill(); }
   ctx.restore();
 }
+
+// Release 229 (Tim): the Tyrant Mosasaur, seen from above as it swims: a long pointed snout and great jaws that gape
+// as it locks on and lunges, teeth along both rows; a heavy barrel body, dark-banded above with a pale belly showing
+// at its flanks; four paddle flippers rowing in turn; and a long tail ending in a downturned, shark-like fluke. The
+// body sways in a wave that grows toward the tail.
+function drawMosasaur(ctx, e, cx, cy, s, now, colors) {
+  const f = e.ai?.facing || "down", ang = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 }[f] ?? 0, L = s * (e.scale || 3) * 1.15, T = now / 1000;
+  const phase = e.sea?.phase, gape = phase === "strike" ? .55 : phase === "telegraph" ? .32 + .08 * Math.sin(now / 70) : .05 + .03 * Math.sin(T * 1.3);
+  const flash = e.hitFlash > 0, back = flash ? "#f3d2b0" : colors[1], hide = flash ? "#f8e0c0" : colors[0], belly = colors[2];
+  const sway = (x) => Math.sin(T * (phase === "strike" ? 9 : 3) - x / L * 5) * L * .045 * Math.max(0, .35 - x / L) / .85; // grows toward the tail
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang); ctx.lineJoin = "round"; ctx.lineCap = "round";
+  ctx.fillStyle = "#00000040"; ctx.beginPath(); ctx.ellipse(-L * .02, L * .06, L * .5, L * .12, 0, 0, 7); ctx.fill(); // its shadow in the water
+  const flipper = (x, side, len, wid, rate, off) => { const row = Math.sin(T * rate + off) * .35, y0 = side * L * .085 + sway(x); ctx.save(); ctx.translate(x, y0); ctx.rotate(side * (2.35 - row)); ctx.fillStyle = back; ctx.beginPath(); ctx.ellipse(len * .5, 0, len * .55, wid, 0, 0, 7); ctx.fill(); ctx.strokeStyle = belly + "66"; ctx.lineWidth = Math.max(1, L * .006); ctx.beginPath(); ctx.moveTo(len * .1, wid * .3); ctx.quadraticCurveTo(len * .6, wid * .7, len * 1.02, 0); ctx.stroke(); ctx.restore(); };
+  // Rear flippers, then the tail and its fluke.
+  for (const side of [-1, 1]) flipper(-L * .12, side, L * .15, L * .04, 3.2, side > 0 ? 1.6 : 0);
+  const spine = []; for (let i = 0; i <= 14; i++) { const x = -L * .1 - i / 14 * L * .4; spine.push([x, sway(x)]); }
+  ctx.fillStyle = hide; ctx.beginPath(); spine.forEach(([x, y], i) => { const wd = L * (.075 - i / 14 * .062); i ? ctx.lineTo(x, y - wd) : ctx.moveTo(x, y - wd); }); for (let i = spine.length - 1; i >= 0; i--) { const [x, y] = spine[i], wd = L * (.075 - i / 14 * .062); ctx.lineTo(x, y + wd); } ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = back; ctx.lineWidth = L * .03; ctx.beginPath(); spine.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); // the dark ridge of the back
+  const [tx, ty] = spine[spine.length - 1], [px, py] = spine[spine.length - 3], ta = Math.atan2(ty - py, tx - px);
+  ctx.save(); ctx.translate(tx, ty); ctx.rotate(ta); ctx.fillStyle = back; ctx.beginPath(); ctx.moveTo(-L * .02, 0); ctx.quadraticCurveTo(L * .03, -L * .05, L * .02, -L * .1); ctx.quadraticCurveTo(L * .07, -L * .03, L * .05, 0); ctx.quadraticCurveTo(L * .09, L * .05, L * .06, L * .15); ctx.quadraticCurveTo(L * .03, L * .05, -L * .02, 0); ctx.fill(); ctx.restore(); // the fluke, its lower lobe the larger
+  // The barrel body: pale flanks, a dark back with bands across it.
+  const bx = L * .03, by = sway(bx);
+  ctx.fillStyle = belly; ctx.beginPath(); ctx.ellipse(bx, by, L * .26, L * .115, 0, 0, 7); ctx.fill();
+  const g = ctx.createLinearGradient(0, by - L * .11, 0, by + L * .11); g.addColorStop(0, hide); g.addColorStop(.5, back); g.addColorStop(1, hide);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(bx, by, L * .25, L * .095, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#0000004a"; ctx.lineWidth = L * .02; for (let k = 0; k < 5; k++) { const x = bx - L * .18 + k * L * .085; ctx.beginPath(); ctx.moveTo(x - L * .015, by - L * .085); ctx.quadraticCurveTo(x + L * .01, by, x - L * .015, by + L * .085); ctx.stroke(); }
+  ctx.strokeStyle = belly + "88"; ctx.lineWidth = Math.max(1, L * .005); ctx.beginPath(); ctx.ellipse(bx, by, L * .255, L * .1, 0, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); // light along the top edge
+  for (const side of [-1, 1]) flipper(L * .14, side, L * .19, L * .05, 3.2, side > 0 ? 0 : 1.6); // front flippers, larger
+  // The head: a long wedge to a pointed snout; the jaws part from a hinge behind the eyes.
+  const hx = L * .25, hy = sway(hx) * .4, jaw = (sign) => { ctx.save(); ctx.translate(hx, hy); ctx.rotate(sign * gape * .5);
+    ctx.fillStyle = sign < 0 ? hide : mixHex(hide, belly, .35); ctx.beginPath(); ctx.moveTo(0, sign * L * .075); ctx.quadraticCurveTo(L * .13, sign * L * .07, L * .27, sign * L * .008); ctx.lineTo(L * .27, 0); ctx.lineTo(0, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#f4ecd2"; for (let k = 1; k < 9; k++) { const x = k / 9 * L * .25; ctx.beginPath(); ctx.moveTo(x - L * .007, 0); ctx.lineTo(x, -sign * L * .02); ctx.lineTo(x + L * .007, 0); ctx.fill(); } // teeth along the jaw
+    ctx.restore(); };
+  if (gape > .08) { ctx.fillStyle = "#5a1414"; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + Math.cos(-gape * .5) * L * .26, hy + Math.sin(-gape * .5) * L * .26); ctx.lineTo(hx + Math.cos(gape * .5) * L * .26, hy + Math.sin(gape * .5) * L * .26); ctx.closePath(); ctx.fill(); } // the mouth's dark inside
+  jaw(1); jaw(-1);
+  ctx.fillStyle = back; ctx.beginPath(); ctx.ellipse(hx - L * .01, hy, L * .07, L * .075, 0, 0, 7); ctx.fill(); // the heavy skull behind the jaws
+  for (const side of [-1, 1]) { ctx.fillStyle = "#f2c84a"; ctx.beginPath(); ctx.ellipse(hx + L * .03, hy + side * L * .05, L * .016, L * .011, 0, 0, 7); ctx.fill(); ctx.fillStyle = "#120c06"; ctx.beginPath(); ctx.ellipse(hx + L * .033, hy + side * L * .05, L * .004, L * .009, 0, 0, 7); ctx.fill(); } // eyes
+  ctx.restore();
+}
+const mixHex = (a, b, k) => { const p = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)), x = p(a), y = p(b); return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * k)).join(",")})`; };
 
 // The skiff (water world W2): a plank hull with a bow pointing along `facing`, bobbing on the water.
 function drawSkiff(ctx, x, y, s, facing, now) {
