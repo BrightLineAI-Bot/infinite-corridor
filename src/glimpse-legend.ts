@@ -94,8 +94,8 @@ function drawPlant(ctx, x, y, s, pulse, seed) {
 }
 // Your right hand, open and reaching, seen from behind: bare skin, warmed on the side toward the plant's light.
 // `close` curls the fingers; `hurt` brings blood up where the thorns went in. The hand is painted (glimpse-hand.ts).
-function drawReach(ctx, x, y, s, close, hurt, light) {
-  paintHand(ctx, { x, y: y - s * .25, angle: -.45, s: s * .82, curl: close * .85, splay: .55 - close * .4, skin: { base: mix("#4a3430", "#8e6250", light * .5), shade: "#160c0a", light: mix("#b4806a", "#f2c8a8", light * .6) }, rim: { color: PLANT, a: .3 * light }, light: -2.7, arm: s * 2.4, seed: 17 }); // a bare hand and forearm, warmed by the plant's light
+function drawReach(ctx, x, y, s, close, hurt, light, time) {
+  paintHand(ctx, { x, y: y - s * .25, angle: -.45, s: s * .82, curl: close * .85, splay: .55 - close * .4, skin: { base: mix("#2e3232", "#6a5048", light * .5), shade: "#0a0e10", light: mix("#8a7464", "#f0c898", light * .6) }, rim: { color: PLANT, a: .5 * light }, light: -2.7, lift: .4, arm: s * 2.4, time, seed: 17 }); // a bare hand and forearm, warmed by the plant's light
   if (hurt > 0) { // blood threading up from the palm into the water
     ctx.save(); ctx.translate(x, y); ctx.rotate(-.45);
     for (let k = 0; k < 4; k++) dabs(ctx, -s * .2 + k * s * .14, -s * .1 - hurt * s * .1, s * .04, s * .1 * hurt, 6, ["#8a1010", "#a01818", "#5a0808"], s * .04, 120 + k, -1.57, .7 * hurt);
@@ -156,7 +156,7 @@ function drawPlantScene(ctx, t, w, h, state) {
       const reach = smooth(.3, .39, t), close = smooth(.38, .41, t), hurt = smooth(.385, .44, t);
       if (reach > 0) {
         const hx = lerp(w * .8, plantX + u * .05, reach) + held * 0, hy = lerp(h * 1.2, plantY - u * .02, reach) - held * h * .1;
-        drawReach(ctx, hx, hy, u * .2, close, hurt, .4 + .6 * reach);
+        drawReach(ctx, hx, hy, u * .2, close, hurt, .4 + .6 * reach, T);
         if (held > 0) { ctx.globalCompositeOperation = "lighter"; glow(ctx, hx - u * .02, hy - u * .03, u * .2, PLANT, .45 * held); ctx.globalCompositeOperation = "source-over"; }
         if (hurt > 0) for (let k = 0; k < 5; k++) { const p = (T * .2 + k * .2) % 1; ctx.strokeStyle = rgba("#8a1010", .5 * hurt * (1 - p)); ctx.lineWidth = u * .004; ctx.beginPath(); ctx.moveTo(hx - u * .03 + k * u * .015, hy); ctx.bezierCurveTo(hx + Math.sin(k + T) * u * .03, hy - p * u * .1, hx - u * .02, hy - p * u * .2, hx + Math.sin(k * 2 + T) * u * .04, hy - p * u * .3); ctx.stroke(); }
       }

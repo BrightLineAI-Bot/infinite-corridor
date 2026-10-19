@@ -51,7 +51,7 @@ function drawFourthFloor(ctx, t, w, h, state) {
       ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.fillRect(w / 2 - half, y, half * 2, Math.max(1, h * .006 * (1 - s)));
     }
     ctx.strokeStyle = "#1a1206"; ctx.lineWidth = u * .02; ctx.beginPath(); ctx.moveTo(w * .98, h * .75); ctx.quadraticCurveTo(w * .8, h * .55, w * .58, vy + h * .05); ctx.stroke(); // the rail
-    paintHand(ctx, { x: w * .84, y: h * .66 + bob, angle: -2.2, s: u * .09, curl: .78, splay: .2, thumb: "side", skin: { base: "#2a1c12", shade: "#0e0806", light: "#5a4026" }, rim: { color: "#ffd27a", a: .35 }, light: -2.6, sleeve: { color: "#1a140c", len: u * .5 }, seed: 31 }); // your hand on it
+    paintHand(ctx, { x: w * .84, y: h * .66 + bob, angle: -2.2, s: u * .09, curl: .78, splay: .2, thumb: "side", skin: { base: "#2a1c12", shade: "#0e0806", light: "#5a4026" }, rim: { color: "#ffd27a", a: .45 }, light: -2.6, lift: .15, sleeve: { color: "#1a140c", len: u * .5 }, time: T, seed: 31 }); // your hand on it
     ctx.globalAlpha = 1;
   }
   if (inside > 0) {
@@ -215,7 +215,7 @@ function drawDrowning(ctx, t, w, h, state) {
     const arm = ctx.createLinearGradient(bx, by, tx, ty); arm.addColorStop(0, "rgba(40,60,60,0)"); arm.addColorStop(1, `rgba(${lerp(150, 90, depth) | 0},${lerp(175, 110, depth) | 0},${lerp(170, 110, depth) | 0},.95)`);
     ctx.strokeStyle = arm; ctx.lineWidth = u * .035 * q.s; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx + Math.sin(a + .5) * reach * .5, by - reach * .5, tx, ty); ctx.stroke();
     // The hand, palm toward you, long fingers closing as it grips (painted: glimpse-hand.ts).
-    paintHand(ctx, { x: tx + Math.sin(a) * u * .02 * q.s, y: ty - Math.cos(a) * u * .02 * q.s, angle: a, s: u * .075 * q.s, curl: grip * .85, splay: .9 - grip * .3, palm: true, claw: true, hook: 1, long: 1.25, thin: .8, mirror: q.x < .5 ? -1 : 1, skin: { base: mix("#a8c4c0", "#5a706c", depth), shade: mix("#4a605c", "#1a2624", depth), light: mix("#e0f0ec", "#8aa09c", depth) }, light: -1.57, seed: 200 + Math.round(q.x * 1000) });
+    paintHand(ctx, { x: tx + Math.sin(a) * u * .02 * q.s, y: ty - Math.cos(a) * u * .02 * q.s, angle: a, s: u * .075 * q.s, curl: grip * .85, splay: .9 - grip * .3, palm: true, claw: true, hook: 1, long: 1.25, thin: .8, mirror: q.x < .5 ? -1 : 1, skin: { base: mix("#a8c4c0", "#5a706c", depth), shade: mix("#4a605c", "#1a2624", depth), light: mix("#e0f0ec", "#8aa09c", depth) }, light: -1.57, time: T + q.x * 9, seed: 200 + Math.round(q.x * 1000) });
   }
   ctx.fillStyle = `rgba(0,0,0,${smooth(.75, 1, t)})`; ctx.fillRect(0, 0, w, h);
   vignette(ctx, w, h, .9, "#000608");

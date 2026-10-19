@@ -26,6 +26,28 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The hands, reworked; square creature portraits (release 223)
+
+Tim, 2026-10-19, after release 221: the hands still looked like a mannequin or a robot. He wanted high-quality, lifelike hands that fit the painterly style and move with the fluid, travelling motion the snake has. He also reported that a creature's portrait in the Journal stretched when its variants were opened.
+
+**CODE:**
+
+- **`src/glimpse-hand.ts` rewritten. The `paintHand` interface is unchanged, with new options.**
+  - Each part is one closed outline built from its bones (`outline` and `blob`). Fingers swell slightly at the joints and end in a rounded pad. The palm is a soft trapezoid whose knuckle line arches and drops toward the little finger. The thumb comes from a mound by the wrist, with a web to the index.
+  - Parts are filled flat. The hand's light and shadow are laid over the whole silhouette at once (`band`: the silhouette minus itself shifted, softened at reduced scale), so parts never meet at a seam.
+  - Each finger keeps a soft lit flank and brushwork that follows its bones. Parts in front cast a soft shadow, and a folded finger shows a lit knuckle dome.
+  - One rim of light runs around the whole silhouette, and the forearm fades out instead of ending in a cut.
+  - Motion: a curl travels from the index to the little finger (`HAND.fingers[].delay`), and `time` adds a slight living sway (`HAND.sway`).
+  - New options: `shadow`, `lift`, `foreshorten` (the hand seen from above), `rim.width` and `time`.
+  - Hands always draw with normal blending.
+- **Call sites.** All pass `time`. The wagon's fists are foreshortened, dark, with a thin warm rim. The Plant hand is tinted by the water and lit from the plant's side.
+- **`styles.css`.** `.creature-portrait` is a fixed 78×78 square (`top`/`left`/`height`) instead of being stretched between the card's top and bottom.
+
+**BOUNDARY:**
+
+- **Scope.** No save, rule or timing change.
+- **Cost.** In headless software Chromium at 844×390: the Wagon at Dusk costs about 40 ms a frame (26 in release 219), the Drowning about 12 ms (6) and the Plant about 20 ms (19).
+
 ## Painted hands (release 221)
 
 Tim, 2026-10-19: "everything else is beautiful … the hands are no good … the way you made the snake … make the fingers something like that … either more drawn or less drawn."
