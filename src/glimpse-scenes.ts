@@ -2,6 +2,7 @@
 // (ctx, t, w, h, state) painting frame t ∈ [0, 1] of a first-person view; `state` holds what a scene builds once.
 // Canvas 2D only, no assets. The catalogue entries are in glimpses.ts.
 import { TAU, clamp, lerp, smooth, seeded, mix, rgba, makeCanvas, glow, vignette } from "./glimpse-paint.ts";
+import { paintHand } from "./glimpse-hand.ts";
 
 // Soft cloud built from many shaded puffs: lit from above, shadowed beneath.
 function cloudSprite(seed, light, shade) {
@@ -154,12 +155,9 @@ function drawIce(ctx, t, w, h, state) {
   // One kneels; a hand comes down flat on the ice above you, darkening and sharpening as it presses.
   const press = smooth(.45, .7, t), hx = w * .52, hy = h * .45, hs = u * .2 * (1 + press * .4);
   if (press > 0) {
-    // A right hand, palm down on the ice: the palm, four long fingers side by side, the thumb out to the side.
-    ctx.save(); ctx.globalAlpha = .2 + press * .6; ctx.fillStyle = "#06141a"; ctx.translate(hx, hy); ctx.rotate(-.12);
-    ctx.beginPath(); ctx.moveTo(-hs * .32, hs * .45); ctx.bezierCurveTo(-hs * .4, hs * .1, -hs * .36, -hs * .2, -hs * .3, -hs * .3); ctx.lineTo(hs * .3, -hs * .32); ctx.bezierCurveTo(hs * .36, -hs * .1, hs * .34, hs * .3, hs * .22, hs * .48); ctx.quadraticCurveTo(0, hs * .58, -hs * .32, hs * .45); ctx.fill();
-    for (const [fx, len] of [[-.23, .52], [-.08, .62], [.07, .6], [.21, .46]]) { pill(ctx, fx * hs - hs * .065, -hs * .3 - len * hs, hs * .13, len * hs + hs * .05); ctx.fill(); }
-    ctx.save(); ctx.translate(-hs * .32, hs * .05); ctx.rotate(-.9); pill(ctx, -hs * .07, -hs * .45, hs * .14, hs * .45); ctx.fill(); ctx.restore();
-    ctx.restore();
+    // A right hand, palm down on the ice above you, fingers spread (painted: glimpse-hand.ts); dark through the ice,
+    // sharpening as it presses.
+    paintHand(ctx, { x: hx, y: hy - hs * .32, angle: -.12, s: hs * .72, palm: true, splay: .65, curl: .05, skin: { base: "#0c2028", shade: "#03090c", light: "#2a4a54" }, light: -1.8, shadow: .6, lift: .25, arm: hs * .5, alpha: .2 + press * .6, time: T, seed: 81 });
     ctx.globalCompositeOperation = "lighter"; glow(ctx, hx, hy, hs * .9, "#ffffff", .06 * press); ctx.globalCompositeOperation = "source-over";
   }
   // Bubbles rising from you; your fins fanning at the edges of sight.

@@ -125,17 +125,13 @@ function drawPlantScene(ctx, t, w, h, state) {
   if (t < .15) {
     // The rock and the sea at night; you look down past your own feet, the stones roped to them. Then you tip forward.
     const tip = smooth(.1, .15, t);
+    ctx.fillStyle = "#04060c"; ctx.fillRect(0, 0, w, h); // as the view tips, nothing of the last frame shows below
     ctx.save(); ctx.translate(0, -tip * h * .6); ctx.drawImage(B.night, 0, 0);
     dabs(ctx, w / 2, h * 1.04, u * .7, u * .16, 260, ["#1a1a20", "#2a2a32", "#3a3a46"], u * .03, 50, 0); // the rock's lip
-    for (const e of [-1, 1]) { // your feet from above, toes to the sea, and the stones roped to your ankles
-      const fx = w / 2 + e * u * .15, fy = h * .86, fl = u * .3, fw = u * .1;
-      const foot = new Path2D(); foot.moveTo(fx - fw * .45, fy + fl * .5); foot.bezierCurveTo(fx - fw * .7, fy, fx - fw * .55, fy - fl * .45, fx - fw * .1, fy - fl * .5); foot.bezierCurveTo(fx + fw * .45, fy - fl * .52, fx + fw * .62, fy - fl * .2, fx + fw * .5, fy + fl * .5); foot.closePath();
-      ctx.fillStyle = "#1c1618"; ctx.fill(foot);
-      ctx.save(); ctx.clip(foot); dabs(ctx, fx, fy, fw * .6, fl * .5, 70, ["#2a2024", "#3a2c2e", "#120e10"], u * .016, e > 0 ? 51 : 52, 1.5); ctx.restore();
-      ctx.strokeStyle = rgba("#a8b4d8", .45); ctx.lineWidth = u * .006; ctx.beginPath(); ctx.moveTo(fx + e * fw * .5, fy + fl * .3); ctx.bezierCurveTo(fx + e * fw * .6, fy - fl * .2, fx + e * fw * .4, fy - fl * .48, fx, fy - fl * .5); ctx.stroke(); // moonlight along the outer edge
-      for (let k = 0; k < 5; k++) { const tx = fx + (k - 2) * fw * .2 * -e, ty = fy - fl * .5 - (k === 2 ? fw * .02 : 0) + Math.abs(k - (e > 0 ? 0 : 4)) * fw * .04; ctx.fillStyle = "#241c1e"; ctx.beginPath(); ctx.ellipse(tx, ty, fw * (k === (e > 0 ? 0 : 4) ? .14 : .1), fw * .12, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = rgba("#a8b4d8", .3); ctx.lineWidth = u * .003; ctx.stroke(); } // toes
+    for (const e of [-1, 1]) { // the stones roped to your ankles: the ropes run up out of sight, to feet you never see
+      const fx = w / 2 + e * u * .15, fy = h * .86, fw = u * .1, fl = u * .3;
       const sx = fx + e * u * .3, sy = fy + u * .08;
-      ctx.strokeStyle = "#b8a880"; ctx.lineWidth = u * .008; ctx.beginPath(); ctx.moveTo(fx + e * fw * .3, fy + fl * .3); ctx.quadraticCurveTo(fx + e * u * .14, fy + u * .1, sx - e * u * .06, sy); ctx.stroke();
+      ctx.strokeStyle = "#b8a880"; ctx.lineWidth = u * .009; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(fx + e * fw * .2, h * 1.02); ctx.quadraticCurveTo(fx + e * u * .1, fy + u * .14, sx - e * u * .06, sy); ctx.stroke(); // the rope, taut from below the frame
       ctx.fillStyle = "#3a3a42"; ctx.beginPath(); ctx.ellipse(sx, sy, u * .08, u * .06, e * .3, 0, TAU); ctx.fill();
       dabs(ctx, sx, sy, u * .075, u * .055, 90, ["#4a4a54", "#5e5e68", "#2e2e36"], u * .018, e > 0 ? 53 : 54, .3);
       dabs(ctx, sx - e * u * .01, sy - u * .035, u * .045, u * .015, 20, ["#9aa2bc", "#c0c6da"], u * .012, e > 0 ? 57 : 58, 0, .6);

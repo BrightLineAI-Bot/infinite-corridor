@@ -42,6 +42,16 @@ Tim, 2026-10-19, after release 221: the hands still looked like a mannequin or a
   - Hands always draw with normal blending.
 - **Call sites.** All pass `time`. The wagon's fists are foreshortened, dark, with a thin warm rim. The Plant hand is tinted by the water and lit from the plant's side.
 - **`styles.css`.** `.creature-portrait` is a fixed 78×78 square (`top`/`left`/`height`) instead of being stretched between the card's top and bottom.
+- **People in the Glimpses.** Tim: human arms and legs should be convincing or not shown, and "RuneScape-level fidelity" is not enough for these scenes.
+  - The Burning Plain's ash hands and Under the Ice's hand on the ice are painted with `paintHand`. Ash fingers wear away one by one through the new `lengths` option, with embers in the cracks.
+  - The Fourth Floor's figure is an old woman with real proportions: a shawl over hunched shoulders and her hair in a bun, rim-lit by the lamp.
+  - The figures standing in the fire have a small head, sloping shoulders and arms at their sides.
+  - The Plant no longer draws your feet: ropes run from below the frame to the stones. The tipping view now clears first, so the last frame never shows below it.
+  - Hands under `HAND.tiny` (40 px) skip the whole-silhouette lighting, which they are too small to show.
+- **Atlas pins** (`main.ts` `drawAtlasPins`, `ATLAS_PIN`).
+  - The manual waypoint (cyan) and the compass target (gold) are drawn last, at a fixed size, in both the close and world views, whatever the zoom or layer toggles.
+  - Off the visible map, each becomes an arrow at the edge, pointing to it, with its distance in sections from the view's centre.
+  - The world view's old waypoint and target dots are replaced by these pins; the close view keeps its section frames.
 
 **BOUNDARY:**
 

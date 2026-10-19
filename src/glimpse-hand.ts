@@ -26,6 +26,7 @@ export const HAND = {
   thumb: { base: [-.27, .66], len: [.4, .33, .27], wid: [.3, .23, .2] },
   sway: { curl: .05, splay: .04, speed: 1.6 }, // the living sway with `time`
   sheetScale: .62,
+  tiny: 40, // below this size (px) a hand skips the whole-silhouette light and shadow, which it is too small to show
 };
 
 // --- geometry ----------------------------------------------------------------------------------------------------
@@ -113,6 +114,7 @@ function sheet(role, w, h) {
 // Paints a hand. Options:
 //   x, y      where the knuckles sit; angle turns the hand (0: fingers up the screen); mirror -1 for a left hand
 //   s         size; curl 0 open … 1 fist; splay 0 … 1; palm true when the palm faces you (curled fingers come forward)
+//   lengths   per-finger length factors (index → little), e.g. fingers worn away
 //   claw      bend at the middle and end joints instead of the knuckles; long / thin scale the fingers
 //   hook      1 or -1: the hand is seen three-quarter, so its fingers curl sideways across the picture, not into it
 //   skin      { base, shade, light } colours; rim { color, a, width } light along the lit edge; light angle (radians, screen)
@@ -127,7 +129,7 @@ export function paintHand(ctx, o) {
   const c = o.skin || { base: "#3a2a22", shade: "#140c0a", light: "#7a5a46" };
   const la = (o.light ?? -2.2) - (o.angle || 0), light = [Math.cos(la) * mirror, Math.sin(la)];
   const arm = o.sleeve ? o.sleeve.len : (o.arm || s * .7), W = Math.ceil(s * 3.4), top = Math.ceil(s * 1.45), H = Math.ceil(top + HAND.wristY * s + arm + s * .2);
-  const k = o.soft === false ? 1 : HAND.sheetScale, sw = Math.ceil(W * k), shh = Math.ceil(H * k);
+  const tiny = s < HAND.tiny, k = o.soft === false || tiny ? 1 : HAND.sheetScale, sw = Math.ceil(W * k), shh = Math.ceil(H * k);
   const sh = sheet("hand", sw, shh), g = sh.getContext("2d");
   g.scale(k, k); g.translate(W / 2, top); g.scale(mirror, o.foreshorten || 1); // foreshorten < 1: the hand seen from above, its length shortened
   const curl0 = clamp(o.curl ?? 0), splay0 = o.splay ?? .4, last = HAND.fingers[3].delay;
@@ -136,7 +138,7 @@ export function paintHand(ctx, o) {
     const wave = o.wave === false ? curl0 : clamp(curl0 * (1 + last * 1.5) - f.delay * 1.5);
     const live = T == null ? 0 : HAND.sway.curl * Math.sin(T * HAND.sway.speed + i * .9) * (1 - curl0 * .6);
     const sp = splay0 + (T == null ? 0 : HAND.sway.splay * Math.sin(T * HAND.sway.speed * .7 + i * 1.3));
-    return along(fingerJoints(f, s, clamp(wave + live, 0, 1.1), sp, o));
+    return along(fingerJoints({ ...f, len: f.len * (o.lengths?.[i] ?? 1) }, s, clamp(wave + live, 0, 1.1), sp, o));
   });
   // Each finger splits where it folds behind the hand's plane: that part is painted before the hand, the rest after.
   const behind = (p) => (o.palm ? p[3] < -s * .02 : p[3] > s * .14);
@@ -206,9 +208,11 @@ export function paintHand(ctx, o) {
     const q = sheet("soft", Math.ceil(sw * soft), Math.ceil(shh * soft)), qg = q.getContext("2d"); qg.imageSmoothingEnabled = true; qg.drawImage(t, 0, 0, q.width, q.height);
     g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = alpha; g.globalCompositeOperation = "source-atop"; g.imageSmoothingEnabled = true; g.drawImage(q, 0, 0, sw, shh); g.restore();
   };
+  if (!tiny) {
   band(.16, mix(c.shade, c.warm || "#a03020", .25), o.shadow ?? .7, .35);   // the shadow side, broad and soft
   band(.07, c.shade, (o.shadow ?? .7) * .8, .5);                            // the darkest edge of it
   band(-.14, c.light, o.lift ?? .32, .35);                                  // the lit side, broad and soft
+  }
   // 6. Brushwork over the whole hand, as in the painted backdrops: small strokes of its own colours, inside it only.
   { const r = seeded(seed + 77), n = Math.round(40 + s * .9); g.save(); g.globalCompositeOperation = "source-atop"; g.lineCap = "round";
     for (let i = 0; i < n; i++) { const x = (r() - .5) * s * 1.6, y = -s * 1.1 + r() * (wY + arm * .4 + s * 1.1), a = -Math.PI / 2 + (r() - .5) * 1.6, l = s * (.012 + r() * .02);

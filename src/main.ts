@@ -1242,7 +1242,8 @@ function drawMap() {
   if(relayOverlay)drawRelayOverlay(w,h,cell,cols,rows);
   drawLinkedDungeons(w,h,cell);
   {const id=readingAt(mapView.x,mapView.y);if(atlasLayers.regions&&readingKnown(save,id)){mctx.font="bold 13px system-ui, sans-serif";mctx.textAlign="left";mctx.lineWidth=3;mctx.strokeStyle="#091018";mctx.strokeText(READINGS[id].name,10,22);mctx.fillStyle="#f0d58a";mctx.fillText(READINGS[id].name,10,22);mctx.font="11px monospace"}} // release 205: where you are looking
-  mctx.fillStyle = "#dce7e2";
+  drawAtlasPins(w,h,cell);
+  mctx.fillStyle = "#dce7e2"; mctx.font = "11px monospace";
   mctx.fillText(
     `Center ${mapView.x},${mapView.y} · ${Object.keys(save.explored).length} sections explored · ${signals.length} unresolved signals`,
     10,
@@ -1288,6 +1289,33 @@ function drawLinkedDungeons(w,h,cell){
     mctx.setLineDash([]);mctx.globalAlpha=1;for(const[x,y]of[[ax,ay],[bx,by]]){mctx.beginPath();mctx.arc(x,y,r,0,7);mctx.stroke();mctx.beginPath();mctx.arc(x,y,r*.45,0,7);mctx.stroke()}}
   mctx.restore();
 }
+// Release 223 (Tim): the waypoint and the quest marker stay on the Atlas at every zoom, at a fixed size, on top of
+// everything. Off the map's edge, an arrow at the edge points to each with its distance in sections, so zooming out to
+// find the quest marker always finds it.
+const ATLAS_PIN={size:9,edge:18};
+function drawAtlasPins(w,h,cell){
+  const at=(rx,ry)=>[w/2+(rx-mapView.x)*cell+mapView.panX,h/2+(ry-mapView.y)*cell+mapView.panY],pins=[];
+  const t=navigationTargets();
+  if(save.manualWaypoint&&Number.isInteger(save.manualWaypoint.rx))pins.push({rx:save.manualWaypoint.rx,ry:save.manualWaypoint.ry,color:"#5fe7ee",label:save.manualWaypoint.label||"Waypoint"});
+  if(t.guidance?.area==="overworld"&&!(save.manualWaypoint&&t.guidance.rx===save.manualWaypoint.rx&&t.guidance.ry===save.manualWaypoint.ry))pins.push({rx:t.guidance.rx,ry:t.guidance.ry,color:ATLAS_FRAMES.compassTarget,label:t.guidance.name||"Quest"});
+  const S=ATLAS_PIN.size,E=ATLAS_PIN.edge;
+  for(const p of pins){
+    const[x,y]=at(p.rx,p.ry);mctx.save();mctx.lineJoin="round";
+    if(x>=E&&y>=E&&x<=w-E&&y<=h-E){ // on the map: a pin standing on its section
+      mctx.fillStyle="rgba(0,0,0,.35)";mctx.beginPath();mctx.ellipse(x,y,S*.55,S*.22,0,0,7);mctx.fill();
+      mctx.beginPath();mctx.moveTo(x,y);mctx.bezierCurveTo(x-S*.2,y-S*.8,x-S,y-S*1.3,x-S,y-S*2);mctx.arc(x,y-S*2,S,Math.PI,0);mctx.bezierCurveTo(x+S,y-S*1.3,x+S*.2,y-S*.8,x,y);mctx.closePath();
+      mctx.fillStyle=p.color;mctx.strokeStyle="#091018";mctx.lineWidth=2;mctx.fill();mctx.stroke();
+      mctx.fillStyle="#091018";mctx.beginPath();mctx.arc(x,y-S*2,S*.38,0,7);mctx.fill();
+    }else{ // off the map: an arrow at the edge, pointing to it, with how far it is
+      const cx=w/2,cy=h/2,dx=x-cx,dy=y-cy,k=Math.min((w/2-E)/Math.abs(dx||1e-6),(h/2-E)/Math.abs(dy||1e-6)),ex=cx+dx*k,ey=cy+dy*k,a=Math.atan2(dy,dx);
+      mctx.translate(ex,ey);mctx.rotate(a);mctx.beginPath();mctx.moveTo(S*1.3,0);mctx.lineTo(-S*.8,-S*.95);mctx.lineTo(-S*.35,0);mctx.lineTo(-S*.8,S*.95);mctx.closePath();
+      mctx.fillStyle=p.color;mctx.strokeStyle="#091018";mctx.lineWidth=2;mctx.fill();mctx.stroke();mctx.rotate(-a);
+      const far=Math.max(Math.abs(p.rx-Math.round(mapView.x)),Math.abs(p.ry-Math.round(mapView.y))),txt=`${far}`;
+      mctx.font="bold 11px monospace";mctx.textAlign="center";mctx.lineWidth=3;mctx.strokeStyle="#091018";const ty=ey>h/2?-S*1.6:S*2.2;mctx.strokeText(txt,0,ty);mctx.fillStyle=p.color;mctx.fillText(txt,0,ty);mctx.textAlign="left";
+    }
+    mctx.restore();
+  }
+}
 function drawAtlasWorld(w,h,cell,signals){
   const at=(rx,ry)=>[w/2+(rx-mapView.x)*cell+mapView.panX,h/2+(ry-mapView.y)*cell+mapView.panY],world=atlasWorldImage();
   // With Relays on, the land dims so the relay pattern reads as one shape.
@@ -1304,8 +1332,6 @@ function drawAtlasWorld(w,h,cell,signals){
   if(world&&atlasLayers.sites)for(const[rx,ry]of world.crossings){const[x,y]=at(rx,ry);if(x<-8||y<-8||x>w+8||y>h+8)continue;const r=Math.max(4.5,Math.min(7,cell*.45));mctx.fillStyle="#e0a050";mctx.strokeStyle="#091018";mctx.lineWidth=1.5;mctx.beginPath();mctx.moveTo(x,y-r);mctx.lineTo(x+r,y+r*.8);mctx.lineTo(x-r,y+r*.8);mctx.closePath();mctx.fill();mctx.stroke()} // crossings, glass kilns and arenas
   drawLinkedDungeons(w,h,cell);
   if(atlasLayers.signals)for(const s of signals)dot(s.targetRx,s.targetRy,2.5,"#b8a0e0");
-  if(atlasLayers.waypoints&&save.manualWaypoint)dot(save.manualWaypoint.rx,save.manualWaypoint.ry,6,null,"#5fe7ee");
-  const target=atlasLayers.objectives?navigationTargets().guidance:null;if(target?.area==="overworld")dot(target.rx,target.ry,7,null,ATLAS_FRAMES.compassTarget);
   if(atlasLayers.waypoints&&save.lastDeath){const[x,y]=at(save.lastDeath.rx,save.lastDeath.ry);drawDeathGlyph(mctx,x,y,5,save.lastDeath.valid===false)}
   if(mapView.selected)dot(mapView.selected.rx,mapView.selected.ry,5,null,"#ffffff");
   dot(game.rx,game.ry,4,"#fff4a8","#091018");dot(game.rx,game.ry,8,null,"rgba(255,244,168,.55)");
@@ -1314,6 +1340,7 @@ function drawAtlasWorld(w,h,cell,signals){
     const placed=[];for(const l of [...world.labels].sort((a,b)=>b.n-a.n)){const[x,y]=at(l.rx,l.ry),tw=mctx.measureText(l.name).width,box={l:x-tw/2-4,r:x+tw/2+4,t:y-14,b:y+4};if(x<0||x>w||y<0||y>h)continue;
       const clash=(q)=>q.l<box.r&&q.r>box.l&&q.t<box.b&&q.b>box.t;for(let k=0;k<6&&placed.some(clash);k++){box.t+=16;box.b+=16}if(placed.some(clash))continue;placed.push(box); // larger regions first; others step down or are left out
       const ly=box.b-4;mctx.strokeStyle="rgba(9,16,24,.85)";mctx.strokeText(l.name,x,ly);mctx.fillStyle="#f0d58a";mctx.fillText(l.name,x,ly)}mctx.textAlign="left"}
+  drawAtlasPins(w,h,cell);
   mctx.font="11px monospace";mctx.fillStyle="#dce7e2";
   mctx.fillText(`World view · ${Object.keys(save.explored).length} sections explored · pinch or + to look closer`,10,h-10);
 }
