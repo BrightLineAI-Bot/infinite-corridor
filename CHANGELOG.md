@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 213 — a cleaner Atlas.
+  - **Places:** this layer now marks towns (Ember Refuge and the hamlets, with a gold house), crossings and other sites worth finding. Supply caches and shelters are no longer marked, and the separate Crossings toggle is folded back into Places.
+  - **Wayglasses:** they keep their own toggle, so with All off and only Wayglasses on you see just the places you can travel to.
+  - **Waypoint & death:** the old Waypoints toggle is renamed to say what it shows, your manual waypoint and where you last died.
+  - **Travel:** tapping a section with a Wayglass chooses it for travel and brings the glowing Travel button into view, so you no longer have to scroll for it.
 - Release 211 — where a shallow channel or a lake runs up to the edge of a section, the hard grey wall there is gone, so your skiff (or you, wading) can cross into the next section. Before, only deep sea opened a section's edge. This applies to sections you have already explored, unless they were first explored before release 104, whose terrain is kept exactly as it was.
 - Release 209 — the Atlas layers can be picked apart. Wayglasses and Crossings (crossings, glass kilns and arenas) now have toggles of their own beside Other places, so you can switch everything else off and see only them, in the close view and in the world view. With Relays on, the relay pattern now stays visible as you zoom out: the land dims and the whole relay pattern next to where you have been shows in solid violet, so the fractal the relays make across the world reads as one shape. Answered relays and their links stay marked at every zoom.
 - Release 207 — on a phone held sideways the Atlas's tool column scrolls again, so Stuck?, Return to Ember Refuge, Set waypoint and the legend can be reached, while the map stays in place. The world view also redraws faster while you pinch or drag a large journey. The "Under the Ice" Glimpse no longer stops on older browsers.

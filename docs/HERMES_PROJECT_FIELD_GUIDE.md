@@ -26,6 +26,31 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## A cleaner Atlas: towns as places, Wayglass travel by tap (release 213)
+
+Tim, 2026-10-19:
+- The Waypoints toggle seemed to show nothing but his last death.
+- Supply caches and shelters should come off the Atlas; dungeons should be marked instead.
+- Places should mean towns, dungeons and interesting sites.
+- Wayglasses keep a toggle of their own.
+- Tapping a Wayglass on the map should ready it for travel without scrolling.
+
+**CODE (`main.ts`):**
+
+- **Layers.** `ATLAS_LAYERS` is now Wayglasses, Places, Signals, Objectives, "Waypoint & death" and Regions; the 209 Crossings layer is folded into Places.
+  - `siteLayerOn` routes `checkpoint` to Wayglasses and drops `UNMARKED_SITES` (`supplyCache`, `shack`) entirely.
+  - Every other kind, crossings included, goes to Places.
+- **Towns.** Ember Refuge and hamlets (`hamletSection`/`hamletIdentity` on sections with `hamletVersion`) are drawn in the close view as a gold house glyph (`town`, reusing the shelter house).
+  - In the world view: towns are gold dots, districts tan dots, crossings orange triangles.
+  - The legend swaps Supply Cache and Shelter for Town.
+- **Go to….** `atlasPlaces` lists towns, districts and Wayglasses; shelters are gone.
+- **Travel by tap.** Tapping a section that holds a Wayglass (already chosen in `#mapWayglassSelect` by `showMapDetail`) now scrolls `#mapTravel` into view and pulses it (`.ready`).
+
+**BOUNDARY:**
+
+- **Presentation only.** Shelters and caches still exist in the world and in a section's detail text; they are simply not marked.
+- **Saved layer settings** keep working: unknown keys are ignored and new ones default to on.
+
 ## Water opens section borders (release 211)
 
 Tim, 2026-10-19 (with a screenshot of section -2,5): grey "hard pieces of earth" stood where shallow water met a section's edge, and his skiff could not pass; "those need to be removed".

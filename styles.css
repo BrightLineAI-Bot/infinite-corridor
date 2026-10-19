@@ -731,6 +731,7 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
   #atlas > :not(#mapCanvas):not(#mapClose){max-height:none}
   #atlas{overflow-y:auto}
 }
+@keyframes travelReady{0%{box-shadow:0 0 0 0 #5fe7eecc}100%{box-shadow:0 0 0 10px #5fe7ee00}}#mapTravel.ready{border-color:#5fe7ee;color:#dffcff;animation:travelReady 1s ease-out 2}
 #mapPlaces{min-width:0;background:#101a20;color:#edf3ef;border:1px solid #60756f}
 /* Short landscape screens (e.g. Galaxy Z Fold outer screen held sideways): compact atlas chrome, larger map tools. */
 @media (orientation: landscape) and (max-height: 540px) {
