@@ -139,3 +139,28 @@ test('the Tremor Worm\'s attacks: maw tentacles, suction, rising tentacles that 
   let hid = false; step(v, 3.5, () => { hid ||= n.hidden; });
   assert.ok(hid, 'it dives'); assert.ok(v.hurts.some((h) => h.source === 'wormRise'), 'and bursts up under a Wayfarer who stands still');
 });
+
+test('ooze and bloblets keep clear of high ground, including the low ground a raised plateau is drawn over', () => {
+  // Tim (2026-10-20): "Ooze can still land on high ground. And bloblets." A level-4 plateau is drawn about 1.4 tiles up,
+  // so its top covers the low tiles just north of it; nothing of the Blob's may land there either.
+  const w = world(), b = blob(w, 11, 10); b.packAttacks = []; w.elevation = (x, y) => (Math.floor(y + .75) >= 14 ? 4 : 0);
+  w.player.x = 2; w.player.y = 2;
+  for (let i = 0; i < 12; i++) { b.hp -= 40; step(w, .5); }
+  const oozes = w.fx.filter((f) => f.kind === 'ooze'); assert.ok(oozes.length >= 4, 'it still spatters');
+  assert.ok(oozes.every((f) => f.y + 1.5 < 13.25), `none on or under the plateau: ${oozes.map((f) => f.y.toFixed(2))}`);
+  b.packAttacks = ['blobBloblets']; for (let i = 0; i < 3; i++) { b.pack = freshPackState(); b.pack.gap = 0; b.pack.seq = i; step(w, 1.2); }
+  const kids = w.enemies.filter((q) => q.blobletOf === b.id); assert.ok(kids.length >= 1);
+  for (const k of kids) assert.ok(w.elevation(k.x, k.y) < 4, 'no bloblet stands on high ground');
+});
+
+test('the Tremor Worm spews lava that spills outward, lies hot for a couple of seconds and burns', () => {
+  const w = world(), m = worm(w, 6, 12); w.player.x = 9; w.player.y = 12; m.packAttacks = ['wormLavaSpew']; m.pack = freshPackState(); m.pack.worm = { mode: 'surfaced', t: 99, trips: 0 }; m.pack.gap = 0;
+  step(w, .65 + .5); const early = w.fx.filter((f) => f.kind === 'lava').map((f) => ({ id: f.id, x: f.x, r: f.radius }));
+  assert.ok(early.length >= 4, 'it pours');
+  step(w, .6); const later = w.fx.filter((f) => f.kind === 'lava');
+  const moved = early.filter((q) => { const f = later.find((z) => z.id === q.id); return f && (f.x > q.x + .05 || f.radius > q.r + .05); });
+  assert.ok(moved.length >= 1, 'it runs outward and spreads like spilled water');
+  assert.ok(later.every((f) => f.x >= m.x - .5), 'along the way the worm faces');
+  assert.ok(w.hurts.some((h) => h.source === 'wormLava'), 'it burns whoever stands in it');
+  m.packAttacks = []; m.dead = true; step(w, WORM.lavaLife + .5); assert.ok(!w.fx.some((f) => f.kind === 'lava'), 'and cools away after a couple of seconds');
+});

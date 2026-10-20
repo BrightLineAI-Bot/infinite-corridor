@@ -445,6 +445,13 @@ const BODY = {
         ctx.strokeStyle = pass ? "#c98a6a" : "#3a1a12"; ctx.lineWidth = (pass ? .06 : .09) * u * (d.stub ? .9 : 1.2); ctx.stroke(); }
       ctx.fillStyle = "#ffe0c0aa"; for (let j = 2; j < 9; j += 2) { const f = j / 10; ctx.beginPath(); ctx.arc(sx + d.x * len * f, sy + d.y * len * f * (d.stub ? 1 : .75), u * .014, 0, TAU); ctx.fill(); } // suckers
     }
+    const spew = s0?.attack === "wormLavaSpew" && s0.data?.aim;
+    if (spew && s0.phase === "windup") { glow(ctx, hx, hy, mr * 1.4, "#ff7a2a", .5 + .3 * Math.sin(t * 20)); for (let i = 0; i < 3; i++) { const f = (t * 2 + i / 3) % 1; ctx.fillStyle = "#ffb02a"; ctx.beginPath(); ctx.arc(hx + Math.sin(i * 2.1) * mr * .4, hy + mry * .5 + f * u * .35, u * .03 * (1 - f * .5), 0, TAU); ctx.fill(); } } // lava welling up and dripping from the lips
+    if (spew && s0.phase === "active") { // the stream: a thick arcing gush from the maw to where the lava is landing
+      const tx = k + s0.data.aim.x * (s0.data.front || 0) * tile, ty = b + s0.data.aim.y * (s0.data.front || 0) * tile - tile * .2, mx = (hx + tx) / 2, my = Math.min(hy, ty) - u * .35;
+      for (const [w2, c] of [[.2, "#a8200888"], [.13, "#ff6a1a"], [.06, "#ffe08a"]]) { ctx.strokeStyle = c; ctx.lineWidth = u * w2 * (1 + .1 * Math.sin(t * 30)); ctx.beginPath(); ctx.moveTo(hx, hy); ctx.quadraticCurveTo(mx, my, tx, ty); ctx.stroke(); }
+      glow(ctx, hx, hy, mr * 1.3, "#ff7a2a", .8); glow(ctx, tx, ty, u * .3, "#ff9a2a", .7);
+    }
     if (suck) for (let i = 0; i < 10; i++) { const a = i * TAU / 10 + t * 3, f = 1 - ((t * 2 + i / 10) % 1), r = u * (.6 + f * 2.2); ctx.fillStyle = `rgba(220,190,140,${.7 * (1 - f)})`; ctx.fillRect(hx + Math.cos(a) * r, hy + Math.sin(a) * r * .6, Math.max(2, u * .03), Math.max(2, u * .03)); } // dust drawn in
     if (W?.mode === "emerge") { ctx.globalAlpha = 1 - up; for (let i = 0; i < 10; i++) { const a = i * TAU / 10; ctx.fillStyle = "#b9a184"; ctx.beginPath(); ctx.arc(k + Math.cos(a) * hr * (1 + up), b - u * .05 + Math.sin(a) * hr * .3 * (1 + up) - up * u * .3, u * .05, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1; } // earth thrown off as it comes up
   },
@@ -612,7 +619,7 @@ export function drawPackTelegraphs(ctx, enemies, s, now, visible = () => true) {
     else if (tele.type === "shadow") { const sx = (tele.x + .5) * s, sy = (tele.y + .6) * s; ctx.fillStyle = tele.locked ? "#3a0d06aa" : "#1a0a0688"; ctx.beginPath(); ctx.ellipse(sx, sy, s * 1.6, s * 1.6 * .6, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = tele.locked ? "#ffc35aee" : "#ffc35a77"; ctx.lineWidth = tele.locked ? 3 : 2; ctx.stroke(); }
     else if (tele.type === "spit") { ctx.strokeStyle = "#e7d6f2aa"; ctx.lineWidth = 1.5; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo((tele.target.x + .5) * s, (tele.target.y + .6) * s); ctx.stroke(); ctx.setLineDash([]); }
     else if (tele.type === "tendrils") { for (const a of tele.dirs) { const w = tele.width * s, px = -a.y * w, py = a.x * w, l = tele.length * s; ctx.fillStyle = tele.flesh ? "#c0604026" : "#7ac04a26"; ctx.strokeStyle = tele.flesh ? "#ffb08acc" : "#c8ff6acc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + px, cy + py); ctx.lineTo(cx + a.x * l + px, cy + a.y * l + py); ctx.lineTo(cx + a.x * l - px, cy + a.y * l - py); ctx.lineTo(cx - px, cy - py); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
-    else if (tele.type === "cone") { const a = Math.atan2(tele.aim.y, tele.aim.x), half = tele.arc * Math.PI / 360, l = tele.length * s; ctx.fillStyle = tele.gas ? "#b8e04a2a" : "#c0404030"; ctx.strokeStyle = tele.gas ? "#d8ff6acc" : "#ff9a7acc"; ctx.lineWidth = 2; ctx.setLineDash([s * .18, s * .1]); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, l, a - half, a + half); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); }
+    else if (tele.type === "cone") { const a = Math.atan2(tele.aim.y, tele.aim.x), half = tele.arc * Math.PI / 360, l = tele.length * s; ctx.fillStyle = tele.gas ? "#b8e04a2a" : tele.lava ? "#ff6a1a2a" : "#c0404030"; ctx.strokeStyle = tele.gas ? "#d8ff6acc" : tele.lava ? "#ffb04acc" : "#ff9a7acc"; ctx.lineWidth = 2; ctx.setLineDash([s * .18, s * .1]); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, l, a - half, a + half); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); }
     else if (tele.type === "brace" || tele.type === "shimmer" || tele.type === "rise" || tele.type === "submerge") { glow(ctx, cx, cy, s * .9, c, .35 * pulse); }
     ctx.restore();
   }
@@ -625,22 +632,43 @@ function drawWarningCircle(ctx, x, y, r, color, pulse, progress = 0) {
 }
 
 // Ground effects (mortars, sigils, ruptures, webs, embers, shockwaves, dust).
-export function drawPackEffects(ctx, effects, s, now, visible = () => true) {
+// Puddles and clouds lie on the ground they cover, so they are drawn raised with it (`lift`, in tiles; release 237).
+const ON_GROUND = new Set(["ooze", "lava", "gas", "web", "flesh"]);
+function lavaCool(f, life) { return 1 - Math.max(0, Math.min(1, life / (f.total || 1.8))); }
+function lavaShape(ctx, f, x, y, r, k) {
+  const seed = f.x * 7.3 + f.y * 3.1, vx = f.vx || 0, vy = f.vy || 0, m = Math.hypot(vx, vy) || 1, ax = vx / m, ay = vy / m;
+  ctx.beginPath(); for (let i = 0; i <= 18; i++) { const a = i / 18 * TAU, along = Math.cos(a) * ax + Math.sin(a) * ay, rr = r * k * (1 + .14 * Math.sin(a * 3 + seed) + .08 * Math.sin(a * 5 - seed) + .3 * Math.max(0, along)); i ? ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .6) : ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .6); } ctx.closePath();
+}
+export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift = () => 0) {
+  // Release 237: the glow and dark rims of every settled lava pool first, so pools that touch read as one spill.
+  for (const f of effects || []) {
+    if (f.kind !== "lava" || f.arming > 0 || !visible(f)) continue;
+    const x = (f.x + .5) * s, y = (f.y + .62 - (Number(lift(f)) || 0)) * s, r = (f.radius || 1) * s, life = Math.max(0, f.life ?? 0), cool = lavaCool(f, life);
+    ctx.save(); ctx.globalAlpha = Math.min(1, life * 2.5); glow(ctx, x, y, r * 1.7, "#ff5a1a", .35 * (1 - cool)); lavaShape(ctx, f, x, y, r, 1.08); ctx.fillStyle = cool > .6 ? "#2a1a14" : "#5a1408"; ctx.fill(); ctx.restore();
+  }
   for (const f of effects || []) {
     if (!visible(f)) continue;
-    const x = (f.x + .5) * s, y = (f.y + .62) * s, r = (f.radius || 1) * s, pulse = .6 + Math.sin(now / 80) * .25;
+    const x = (f.x + .5) * s, y = (f.y + .62 - (ON_GROUND.has(f.kind) ? Number(lift(f)) || 0 : 0)) * s, r = (f.radius || 1) * s, pulse = .6 + Math.sin(now / 80) * .25;
     ctx.save();
     if (f.arming > 0) {
       const total = f.armTotal ??= f.arming, progress = 1 - f.arming / total;
       if (f.kind === "web") { drawWeb(ctx, x, y, r, .5 * progress); }
       else if (f.kind === "sigil" || f.kind === "condemn") { drawSigil(ctx, x, y, r, f.kind === "condemn" ? "#9dff8a" : "#7fe7ff", now, progress); }
       else if (f.kind === "ooze") { const fx = ((f.from?.x ?? f.x) + .5) * s, fy = ((f.from?.y ?? f.y) + .3) * s, bx = fx + (x - fx) * progress, by = fy + (y - fy) * progress - Math.sin(progress * Math.PI) * s * 1.1; ctx.fillStyle = "#5fbf6e"; ctx.beginPath(); ctx.ellipse(bx, by, s * .16, s * .13, 0, 0, TAU); ctx.fill(); ctx.fillStyle = "#f4ffe8aa"; ctx.beginPath(); ctx.arc(bx - s * .05, by - s * .04, s * .04, 0, TAU); ctx.fill(); ctx.strokeStyle = "#c8ff6a55"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU); ctx.stroke(); }
+      else if (f.kind === "lava") { const fx = ((f.from?.x ?? f.x) + .5) * s, fy = ((f.from?.y ?? f.y) + .1) * s, bx = fx + (x - fx) * progress, by = fy + (y - fy) * progress - Math.sin(progress * Math.PI) * s * .5; glow(ctx, bx, by, s * .35, "#ff7a2a", .7); ctx.fillStyle = "#ffd25a"; ctx.beginPath(); ctx.ellipse(bx, by, s * .14, s * .11, 0, 0, TAU); ctx.fill(); }
       else if (f.kind === "mortar" || f.kind === "lavaBomb") { drawWarningCircle(ctx, x, y, r, f.kind === "lavaBomb" ? "#ff5a2a" : "#ff9d4a", pulse, progress); if (f.from) { const fx = (f.from.x + .5) * s, fy = (f.from.y + .3) * s, k = progress, sx = fx + (x - fx) * k, sy = fy + (y - fy) * k - Math.sin(k * Math.PI) * s * 2.2; if (f.rock) { ctx.fillStyle = "#6a5238"; ctx.beginPath(); for (let i = 0; i < 7; i++) { const a = i / 7 * TAU + k * 6, rr = s * (.22 + .05 * Math.sin(i * 2.3)); i ? ctx.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr) : ctx.moveTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#2a1c12"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.fillStyle = "#b9a184"; ctx.beginPath(); ctx.arc(sx - s * .06, sy - s * .07, s * .05, 0, TAU); ctx.fill(); } else { ctx.fillStyle = "#2a1c12"; ctx.beginPath(); ctx.arc(sx, sy, s * .14, 0, TAU); ctx.fill(); glow(ctx, sx, sy, s * .3, "#ff9d4a", .6); } } }
       else drawWarningCircle(ctx, x, y, r, f.kind === "ember" ? "#ffc35a" : f.kind === "rupture" ? "#e0b071" : "#ff7a6b", pulse, progress);
     } else {
       const life = Math.max(0, f.life ?? 0);
       if (f.kind === "web") drawWeb(ctx, x, y, r, Math.min(.85, life));
       else if (f.kind === "ooze") { ctx.globalAlpha = Math.min(1, life); const g = ctx.createRadialGradient(x - r * .3, y - r * .2, r * .1, x, y, r); g.addColorStop(0, "#c8ff8acc"); g.addColorStop(.5, "#4fa85ecc"); g.addColorStop(1, "#143a1d99"); ctx.fillStyle = g; ctx.beginPath(); for (let i = 0; i <= 16; i++) { const a = i / 16 * TAU, rr = r * (1 + .1 * Math.sin(a * 3 + (f.x + f.y) * 7)); i ? ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .55) : ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .55); } ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#f4ffe866"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x - r * .25, y - r * .15, r * .3, r * .1, -.2, Math.PI, TAU); ctx.stroke(); const bub = (now / 700 + f.x) % 1; ctx.strokeStyle = `rgba(230,255,200,${.6 * (1 - bub)})`; ctx.beginPath(); ctx.arc(x + Math.sin(f.y * 9) * r * .4, y - bub * r * .3, r * .1 * (.5 + bub), 0, TAU); ctx.stroke(); }
+      else if (f.kind === "lava") { // release 237: the molten top of a spilled tongue of lava (its rim is drawn for all lava first, so touching pools run together)
+        const cool = lavaCool(f, life); ctx.globalAlpha = Math.min(1, life * 2.5);
+        lavaShape(ctx, f, x, y, r, .86); const g = ctx.createRadialGradient(x, y - r * .1, r * .05, x, y, r); g.addColorStop(0, cool > .7 ? "#7a3a1a" : "#fff0a0"); g.addColorStop(.4, cool > .7 ? "#5a2a14" : "#ffb02a"); g.addColorStop(1, cool > .7 ? "#3a2018" : "#e8480e"); ctx.fillStyle = g; ctx.fill();
+        const seed = f.x * 7.3 + f.y * 3.1;
+        if (cool > .35) { ctx.globalAlpha *= Math.min(1, (cool - .35) * 2); ctx.strokeStyle = "#1a100c"; ctx.lineWidth = Math.max(1, s * .04); for (let i = 0; i < 4; i++) { const a = seed + i * 1.6; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r * .15, y + Math.sin(a) * r * .1); ctx.lineTo(x + Math.cos(a + .4) * r * .6, y + Math.sin(a + .4) * r * .35); ctx.stroke(); } } // the crust cracking as it cools
+        else { const b = (now / 500 + seed) % 1; ctx.fillStyle = `rgba(255,250,200,${.8 * (1 - b)})`; ctx.beginPath(); ctx.arc(x + Math.sin(seed) * r * .3, y - b * r * .2, r * .08 * (1 + b), 0, TAU); ctx.fill(); } // a bubble bursting
+      }
       else if (f.kind === "gas") { ctx.globalAlpha = Math.min(.85, life * .6); for (let i = 0; i < 4; i++) { const a = i * 1.7 + now / 900, gx = x + Math.cos(a) * r * .35, gy = y - s * .2 + Math.sin(a) * r * .2, g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * .9); g.addColorStop(0, "#d8ef6a66"); g.addColorStop(.6, "#9ac04a33"); g.addColorStop(1, "#6a903a00"); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(gx, gy, r * .9, r * .65, 0, 0, TAU); ctx.fill(); } }
       else if (f.kind === "flesh") { ctx.globalAlpha = Math.min(.9, life); ctx.fillStyle = "#7a1f2a99"; ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU); ctx.fill(); for (let i = 0; i < 7; i++) { const a = i * TAU / 7 + now / 900, rr = r * (.4 + ((i * 37) % 10) / 20); ctx.fillStyle = i % 2 ? "#c98a86" : "#3a0d12"; ctx.beginPath(); ctx.ellipse(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .6, s * .09, s * .05 * (1 + Math.sin(now / 200 + i) * .3), a, 0, TAU); ctx.fill(); } }
       else if (f.kind === "orb" && f.fire) { const vx = f.vx || 0, vy = f.vy || 0, m = Math.hypot(vx, vy) || 1, oy = y - s * .3; for (let i = 3; i >= 1; i--) { ctx.fillStyle = `rgba(255,${90 + i * 30},40,${.5 / i})`; ctx.beginPath(); ctx.arc(x - vx / m * r * i * .9, oy - vy / m * r * i * .9, r * (1 - i * .15), 0, TAU); ctx.fill(); } glow(ctx, x, oy, r * 2, "#ff7a2a", .75); ctx.fillStyle = "#ffe6a0"; ctx.beginPath(); ctx.arc(x, oy, r * .5, 0, TAU); ctx.fill(); } // release 237: a worm tentacle's fireball

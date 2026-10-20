@@ -39,15 +39,22 @@ The second of Tim's world beasts (2026-10-19: "burrows … its head pops out …
   - `wormCycle` runs between attacks. The worm stays up for `WORM.surfaceTime`, then is hidden and untargetable while it swims to a spot near the Wayfarer (clamped to the map). Where there is no open ground (a lake), it swims back toward the Wayfarer instead. It emerges (untargetable, a bite on whoever stands there), then fights again.
   - `tentacleTurret` drives the raised tentacles. A tentacle never moves. It rises (telegraphed), then either fires bursts of `orb` effects marked `fire`, or holds a beam that turns at `WORM.laserTurn` toward the Wayfarer and bites each `laserTick`. Its damage is credited to the worm. It dies with the worm.
   - Rocks are `mortar` effects with `rock: true`.
+  - `wormLavaSpew` (Tim, 2026-10-20: lava "spilled out … as if water were getting spilled"). During its active phase it pours `lava` effects along a widening cone. Each one runs outward, slowing over `WORM.lavaRunTime`, and swells to its own size. It lies for `WORM.lavaLife` seconds and bites each `lavaTick`.
+  - High ground and the Blob (the same day: "Ooze can still land on high ground. And bloblets."). The rule was right, but a level-4 plateau is drawn about 1.4 tiles up, over the low tiles north of it. Ooze landing there looked as if it lay on the plateau.
+    - `nearHigh` now keeps ooze spots and bloblet births (`lowOpen`) clear of every tile a plateau covers.
+    - Wandering bloblets turn back at its foot. Homing bloblets will not step onto it.
 - **`src/monster-render.ts`.**
   - `BODY.tremorWorm` is painted directly, not from the sprite cache. It draws a heaving mound when hidden, and the emergence. Surfaced, it draws a ringed column out of a rubble-rimmed hole, a round maw with three rings of teeth and a fire-lit throat, and lip tentacles that lash along the attack lanes.
   - `BODY.wormTentacle` has a burning mouth for fire and a lens for lasers.
   - Telegraphs: flesh-coloured tendril lanes, a red `laser` beam, and a `circle` that reads `total`/`left`.
   - Effects: fireballs and tumbling rocks.
+- **`src/monster-render.ts` / `src/renderer.ts`.** `drawPackEffects` takes a `lift`. The renderer passes the ground lift, so puddles and clouds (ooze, lava, gas, web, flesh) are drawn at the height of the ground they lie on. Lava rims are all drawn before any molten tops, so touching pools read as one spill. The worm's maw wells up and drips while it winds up, and pours an arcing stream while it spews.
 - **`src/echoes.ts`.** `tremorWorm` "Worm's Upheaval": dodging bursts the ground under the nearest foe. `wormTentacle` "Tentacle Ember": kills set the nearest foe burning.
 - **`tests/world-beasts.test.ts`.** The hunt test now accepts whichever beast claims first. New tests cover the surfacing cycle and every attack: the laser stays on until cut down, tentacles never move and sink with the worm, and the rise from beneath.
 
-**BOUNDARY:** No save change: `ensureWorldBeasts` already adds a row for every `WORLD_BEASTS` id, so a 235 save gains `tremorWorm` on load. No generator changes. Its suction uses the shared pack pull, which, like the Gnawing Maw's, can drag you over lethal ground; dodging breaks it. Active tentacles are capped (`WORM.tentaclesMax` 6, `lasersMax` 3), as are effects (the pack cap of 48).
+Tim, same day: of the beasts still to come, the Void Walker and the Psychic Crystal are small enough to appear in dungeons as well; the rest stay overworld bosses.
+
+**BOUNDARY:** No save change: `ensureWorldBeasts` already adds a row for every `WORLD_BEASTS` id, so a 235 save gains `tremorWorm` on load. No generator changes. Its suction uses the shared pack pull, which, like the Gnawing Maw's, can drag you over lethal ground; dodging breaks it. Tim, asked, kept that: "the worm can pull you into water that kills you, one hundred percent". Active tentacles are capped (`WORM.tentaclesMax` 6, `lasersMax` 3), as are effects (the pack cap of 48).
 
 ## World beasts and the Morphing Blob; a smaller Questing Beast (release 235)
 
