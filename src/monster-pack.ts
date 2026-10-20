@@ -72,6 +72,14 @@ export const ATTACK_MODULES = {
   qbSpiral: { id: "qbSpiral", name: "Spiral Burst", range: [0, 9], cooldown: 6.5, windup: .3, active: 1.5, recover: .25, damage: .55, tags: ["ranged", "orbs"], text: "Spins, flinging two arms of energy orbs in a widening spiral." },
   qbWave: { id: "qbWave", name: "Ground Wave", range: [0, 7], cooldown: 5, windup: .3, recover: .25, damage: 1, jumpable: true, tags: ["ground"], text: "Slams the ground: a wave of energy rolls outward. Jump it." },
   qbBarrage: { id: "qbBarrage", name: "Barrage Charge", range: [2.5, 10], cooldown: 4.8, windup: .3, active: 1, recover: .3, damage: 1.2, los: true, tags: ["charge", "orbs"], text: "Charges at you, spitting arcs of energy orbs behind it." },
+  // The Morphing Blob's kit (release 235, Tim 2026-10-19): tendrils, a jet of poison gas that blows you back, gas that
+  // rolls out in every direction, bloblets that crawl off and come back to merge, and a surging engulf. Passively it grows,
+  // burns what touches it and spatters persistent ooze when struck (see blobPassive).
+  blobTendrils: { id: "blobTendrils", name: "Tendril Lash", range: [0, 4.4], cooldown: 2.4, windup: .45, recover: .3, damage: .9, tags: ["melee"], text: "Three tendrils whip out from the mass at once." },
+  blobGasJet: { id: "blobGasJet", name: "Poison Jet", range: [0, 5.5], cooldown: 5.2, windup: .55, active: 1.1, recover: .35, damage: .45, tags: ["control", "gas"], text: "A jet of poison gas that blows you back and poisons you. Get out of the cone." },
+  blobGasCloud: { id: "blobGasCloud", name: "Gas Bloom", range: [0, 10], cooldown: 8, windup: .6, recover: .35, damage: .3, tags: ["gas", "ground"], text: "Breathes out clouds of poison that roll away in every direction." },
+  blobBloblets: { id: "blobBloblets", name: "Bloblets", range: [0, 10], cooldown: 6.5, windup: .6, recover: .3, damage: 0, tags: ["summon"], text: "Throws off bloblets. They wander, then crawl home to merge back in and heal it. Kill them first." },
+  blobEngulf: { id: "blobEngulf", name: "Engulfing Surge", range: [1.5, 6.5], cooldown: 4.2, windup: .5, active: .45, recover: .45, damage: 1.3, tags: ["charge"], text: "The whole mass surges forward to swallow you." },
   firefall: { id: "firefall", name: "Firefall", range: [1.5, 9], cooldown: 6.5, windup: .7, recover: .8, damage: .85, jumpable: true, tags: ["ground"], text: "Embers rain across the floor around you." },
 };
 
@@ -187,10 +195,25 @@ export const MONSTER_PACK = {
   // The Questing Beast (release 116; energy attacks in release 187): a unique hunter. Never in spawn pools; see src/questing-beast.ts.
   questingBeast: {
     id: "questingBeast", name: "The Questing Beast", epithet: "The Hunger That Hunts You Back", unique: true,
-    stats: [220, 16, 0], form: { scale: 1.75 }, sizeClass: "large", movement: "walk", brain: "duelist",
+    stats: [220, 16, 0], form: { scale: 1.5 }, sizeClass: "large", movement: "walk", brain: "duelist", // release 235: a little smaller (was 1.75)
     attacks: ["qbRend", "qbFlurry", "qbPounce", "qbSpiral", "qbWave", "qbBarrage"], bossAttacks: ["leapSlam"],
     palette: ["#4a4650", "#141218", "#ff4a3a", "#f2ece0"], render: "questingBeast", tags: ["beast", "elder", "spikes", "energy"],
     lore: "A horned, winged hunter bristling with spikes, a furnace burning in its chest. It never stops: it rakes, it spins its fire out in spirals, it rolls the ground toward you in waves, and it charges with its fire streaming behind it.",
+  },
+  // World beasts (release 235; see src/world-beasts.ts). Never in spawn pools.
+  morphingBlob: {
+    id: "morphingBlob", name: "The Morphing Blob", epithet: "The Hunger That Spreads", unique: true,
+    stats: [300, 16, 0], form: { scale: 1.45 }, sizeClass: "large", movement: "walk", brain: "duelist",
+    attacks: ["blobTendrils", "blobGasJet", "blobGasCloud", "blobBloblets", "blobEngulf"], bossAttacks: ["leapSlam"],
+    palette: ["#5fbf6e", "#143a1d", "#d4ff5a", "#f4ffe8"], render: "morphingBlob", tags: ["ooze", "elder", "gas"],
+    lore: "A mound of living ooze that keeps growing while it lives, until it fills the ground it has claimed. Touching it burns; striking it spatters ooze that lingers until it dies; it whips tendrils, breathes poison and throws off bloblets that crawl back to it.",
+  },
+  bloblet: {
+    id: "bloblet", name: "Bloblet", epithet: "A Piece of the Blob", unique: true, minion: true,
+    stats: [16, 6, 0], form: { scale: .55 }, sizeClass: "small", movement: "skitter", brain: "duelist",
+    attacks: ["bite"], bossAttacks: [],
+    palette: ["#6fd17e", "#163f20", "#e2ff7a", "#f4ffe8"], render: "bloblet", tags: ["ooze", "brood"],
+    lore: "It wanders off, then hurries home to the Blob. If it gets there, it is part of it again.",
   },
   gnawingMaw: {
     id: "gnawingMaw", name: "Gnawing Maw", epithet: "The Hunger in the Walls", dungeonOnly: true,
@@ -361,6 +384,21 @@ function playerVelocity(w) { return w.playerVelocity || { x: 0, y: 0 }; }
 export const QB_ORB = { speed: 5.2, life: 1.9, radius: .32, spiralEvery: .1, spiralTurn: .42, barrageEvery: .2, barrageArc: 5, barrageSpread: .3 };
 export const QB_MOVES = { flurryStrikes: 4, flurryEvery: .2, flurryLunge: .35, backstepTime: .3, backstepSpeed: 9, pounceRise: .25, pounceSpeed: 15, pounceDiveMax: .4,
   evadeCooldown: 1.1, evadeCooldownEnraged: .8, evadeTime: .22, evadeSpeed: 11, threatRange: 3.2, swingRange: 2.6, turnRate: 10 };
+// The Morphing Blob (release 235). Balance as data.
+export const BLOB = {
+  growTime: 120, maxGrow: 2.4, growStep: .08,            // it swells to maxGrow× its size over growTime seconds alive
+  contact: .8, contactEvery: .8,                         // touching it: this share of its damage, at most once per contactEvery
+  oozePerHit: 2, oozeEvery: .35, oozeMax: 16, oozeRadius: .55, oozeFlight: .55, oozeBite: .3, oozeSlow: .7,
+  tendrils: 3, tendrilSpread: .55, tendrilLength: 4.2, tendrilWidth: .45,
+  jetLength: 5.5, jetArc: 55, jetPush: 4.2, poison: [5, 3],  // poison: seconds, damage per second
+  clouds: 8, cloudSpeed: 1.5, cloudLife: 6, cloudGrow: [.6, 1.6],
+  bloblets: 3, blobletsMax: 6, blobletWander: 2.4, blobletHeal: .03, // a merging bloblet restores this share of its max health
+  surgeLength: 4.5,
+  safeElev: 4,                                           // Tim: ground this high stays above the Blob: no ooze lands there, and its ooze and touch cannot reach you
+  mergeGrow: .25, mergeMax: 1.5,                         // each bloblet that makes it home swells it by this much more (up to mergeMax in all)
+};
+const aboveBlob = (w, x, y) => (Number(w.elevation?.(x, y)) || 0) >= BLOB.safeElev;
+function blobOwner(w, f) { return w.enemies.find((q) => q.id === f.owner && !q.dead) || null; }
 function addOrb(e, w, angle, damage) { w.addEffect({ kind: "orb", owner: e.id, x: e.x, y: e.y, vx: Math.cos(angle) * QB_ORB.speed, vy: Math.sin(angle) * QB_ORB.speed, radius: QB_ORB.radius, arming: 0, life: QB_ORB.life, damage }); }
 
 function beginAttack(e, s, id, w) {
@@ -417,6 +455,11 @@ const START = {
   devourPull(e, s) { s.tele = { type: "ring", radius: 6, inhale: true }; },
   broodBirth(e, s) { s.tele = { type: "shimmer" }; },
   fleshBloom(e, s) { s.tele = { type: "spit", target: { ...s.data.target } }; },
+  blobTendrils(e, s) { const a = Math.atan2(s.data.aim.y, s.data.aim.x); s.data.dirs = Array.from({ length: BLOB.tendrils }, (_, i) => { const b = a + (i - (BLOB.tendrils - 1) / 2) * BLOB.tendrilSpread; return { x: Math.cos(b), y: Math.sin(b) }; }); s.tele = { type: "tendrils", dirs: s.data.dirs, length: BLOB.tendrilLength + bodyRadius(e) * .6, width: BLOB.tendrilWidth }; },
+  blobGasJet(e, s) { s.tele = { type: "cone", aim: s.data.aim, length: BLOB.jetLength + bodyRadius(e) * .5, arc: BLOB.jetArc, gas: true }; },
+  blobGasCloud(e, s) { s.tele = { type: "brace" }; },
+  blobBloblets(e, s) { s.tele = { type: "shimmer" }; },
+  blobEngulf(e, s, w) { const len = rayLength(w, e, s.data.aim, BLOB.surgeLength); s.tele = { type: "lane", aim: s.data.aim, length: len, width: bodyRadius(e) * 1.6 }; },
   qbRend(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + 1.6, arc: 150 }; },
   qbFlurry(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + 1.4, arc: 140 }; s.data.strikes = 0; },
   qbPounce(e, s) { s.tele = { type: "circle", x: s.data.target.x, y: s.data.target.y, radius: 1.1 }; },
@@ -431,6 +474,54 @@ function resolveMelee(e, s, w, attackId, test) {
 }
 
 const RUN = {
+  blobTendrils(e, s, w) {
+    if (s.phase === "windup" && s.t <= 0) {
+      const L = BLOB.tendrilLength + bodyRadius(e) * .6, W = BLOB.tendrilWidth + .3;
+      resolveMelee(e, s, w, "blobTendrils", (p) => s.data.dirs.some((a) => { const dx = p.x - e.x, dy = p.y - e.y, f = dx * a.x + dy * a.y; return f >= 0 && f <= L && Math.abs(dx * a.y - dy * a.x) <= W; }));
+      s.data.lashed = w.now; toPhase(s, "recover", ATTACK_MODULES.blobTendrils.recover);
+    }
+    if (s.phase === "recover" && s.t <= 0) s.tele = null;
+  },
+  blobGasJet(e, s, w) {
+    const attack = ATTACK_MODULES.blobGasJet;
+    if (s.phase === "windup") { if (s.t <= 0) { toPhase(s, "active", attack.active); s.data.tick = 0; } return; }
+    if (s.phase === "active") {
+      const p = center(w.player), L = BLOB.jetLength + bodyRadius(e) * .5;
+      s.data.tick -= w.dt;
+      if (inArc(e, p, s.data.aim, L, BLOB.jetArc)) {
+        w.push?.(e, BLOB.jetPush * w.dt, L + 1);
+        if (s.data.tick <= 0) { s.data.tick = .4; w.hurt(e, damageOf(e, "blobGasJet"), { jumpable: false, source: "blobGasJet", beam: true }); w.poison?.(BLOB.poison[0], BLOB.poison[1]); }
+      }
+      if (s.t <= 0) { s.tele = null; toPhase(s, "recover", attack.recover); }
+    }
+  },
+  blobGasCloud(e, s, w) {
+    if (s.phase === "windup" && s.t <= 0) {
+      const turn = (hashSeed(`${e.id}:${s.seq}:gas`) % 628) / 100;
+      for (let i = 0; i < BLOB.clouds; i++) { const a = turn + i * TAU / BLOB.clouds; w.addEffect({ kind: "gas", owner: e.id, x: e.x + Math.cos(a) * bodyRadius(e), y: e.y + Math.sin(a) * bodyRadius(e), vx: Math.cos(a) * BLOB.cloudSpeed, vy: Math.sin(a) * BLOB.cloudSpeed, radius: BLOB.cloudGrow[0], arming: 0, life: BLOB.cloudLife, damage: damageOf(e, "blobGasCloud") }); }
+      s.tele = null; toPhase(s, "recover", ATTACK_MODULES.blobGasCloud.recover);
+    }
+  },
+  blobBloblets(e, s, w) {
+    if (s.phase === "windup" && s.t <= 0) {
+      const alive = w.enemies.filter((q) => !q.dead && q.blobletOf === e.id).length, turn = (hashSeed(`${e.id}:${s.seq}:bloblets`) % 628) / 100;
+      for (let i = 0; i < Math.min(BLOB.bloblets, BLOB.blobletsMax - alive); i++) {
+        const a = turn + i * TAU / BLOB.bloblets, spot = nearestOpen(w, e.x + Math.cos(a) * (bodyRadius(e) + 1.2), e.y + Math.sin(a) * (bodyRadius(e) + 1.2), 2);
+        const c = spot && w.spawnMinion?.(e, "bloblet", spot.x, spot.y, i);
+        if (c) Object.assign(c, { blobletOf: e.id, bornAt: w.now, wanderAngle: a });
+      }
+      s.tele = null; toPhase(s, "recover", ATTACK_MODULES.blobBloblets.recover);
+    }
+  },
+  blobEngulf(e, s, w) {
+    const attack = ATTACK_MODULES.blobEngulf;
+    if (s.phase === "windup") { if (s.t <= 0) { s.data.len = s.tele?.length || 2; s.data.done = 0; toPhase(s, "active", attack.active); } return; }
+    if (s.phase === "active") {
+      const step = s.data.len / attack.active * w.dt; if (s.data.done < s.data.len && w.move(e, s.data.aim.x * step, s.data.aim.y * step)) s.data.done += step;
+      if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + .5 && !aboveBlob(w, w.player.x, w.player.y)) { s.hitOnce = true; w.hurt(e, damageOf(e, "blobEngulf"), { jumpable: false, source: "blobEngulf" }); }
+      if (s.t <= 0) { s.tele = null; toPhase(s, "recover", attack.recover); }
+    }
+  },
   devourPull(e, s, w) {
     const attack = ATTACK_MODULES.devourPull;
     if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", attack.active); return; }
@@ -710,6 +801,39 @@ function evade(e, s, w, p, d) {
   return true;
 }
 
+// The Morphing Blob's passives (release 235): it grows while it lives (in steps, so its sprite is not redrawn every
+// frame), burns what touches it, and every time it is struck it spatters ooze that lies on the ground until it dies.
+function blobPassive(e, s, w, p, d) {
+  e.blobBase ||= { scale: Number(e.scale) || 1, radius: bodyRadius(e) };
+  e.blobAge = (Number(e.blobAge) || 0) + w.dt;
+  const grow = 1 + Math.min(1, e.blobAge / BLOB.growTime) * (BLOB.maxGrow - 1) + Math.min(BLOB.mergeMax, Number(e.blobMerged) || 0), stepped = Math.round(grow / BLOB.growStep) * BLOB.growStep;
+  e.scale = Math.round(e.blobBase.scale * stepped * 100) / 100; e.bodyRadius = e.blobBase.radius * stepped;
+  s.contactCd = Math.max(0, (s.contactCd || 0) - w.dt); s.oozeCd = Math.max(0, (s.oozeCd || 0) - w.dt);
+  if (s.contactCd <= 0 && d <= bodyRadius(e) + .2 && !aboveBlob(w, p.x, p.y)) { s.contactCd = BLOB.contactEvery; w.hurt(e, Math.max(1, Math.ceil((Number(e.damage) || 1) * BLOB.contact)), { jumpable: false, source: "blobTouch" }); }
+  const hp = Number(e.hp) || 0;
+  if (s.lastHp !== undefined && hp < s.lastHp && s.oozeCd <= 0) {
+    s.oozeCd = BLOB.oozeEvery; s.oozes = (s.oozes || 0) + 1;
+    const lying = (w.effects?.() || []).filter((f) => f.kind === "ooze" && f.owner === e.id).length;
+    for (let i = 0; i < BLOB.oozePerHit && lying + i < BLOB.oozeMax; i++) {
+      const a = (hashSeed(`${e.id}:ooze:${s.oozes}:${i}`) % 628) / 100, r = bodyRadius(e) + 1 + (hashSeed(`${e.id}:ooze-r:${s.oozes}:${i}`) % 100) / 45, spot = nearestOpen(w, e.x + Math.cos(a) * r, e.y + Math.sin(a) * r, 1.5);
+      if (spot && !aboveBlob(w, spot.x, spot.y)) w.addEffect({ kind: "ooze", owner: e.id, x: spot.x, y: spot.y, from: { x: e.x, y: e.y }, radius: BLOB.oozeRadius, arming: BLOB.oozeFlight, life: 1e6, damage: Math.max(1, Math.ceil((Number(e.damage) || 1) * BLOB.oozeBite)), slow: BLOB.oozeSlow });
+    }
+  }
+  s.lastHp = hp;
+}
+// A bloblet wanders off for a while, then crawls home; reaching the Blob, it merges back in and heals it.
+// Returns true while it is heading home (its own attacks wait).
+function blobletHome(e, s, w) {
+  const owner = w.enemies.find((q) => q.id === e.blobletOf && !q.dead);
+  if (!owner) { e.blobletOf = null; return false; }
+  const age = (w.now - (e.bornAt || 0)) / 1000;
+  if (age < BLOB.blobletWander) { const a = e.wanderAngle || 0, sp = .9 * (MOVEMENT_MODES.skitter.speed) * w.dt; w.move(e, Math.cos(a) * sp, Math.sin(a) * sp); return true; }
+  const dx = owner.x - e.x, dy = owner.y - e.y, dd = Math.hypot(dx, dy) || 1;
+  if (dd <= bodyRadius(owner) + .3) { e.dead = true; e.noRewards = true; e.merged = true; owner.hp = Math.min(owner.maxHp, (Number(owner.hp) || 0) + Math.round(owner.maxHp * BLOB.blobletHeal)); owner.blobMerged = Math.min(BLOB.mergeMax, (Number(owner.blobMerged) || 0) + BLOB.mergeGrow); /* and it swells */ const os = owner.pack; if (os) os.lastHp = owner.hp; return true; }
+  const sp = 1.1 * MOVEMENT_MODES.skitter.speed * w.dt; if (!w.move(e, dx / dd * sp, dy / dd * sp)) w.detour?.(e, sp);
+  return true;
+}
+
 // One simulation step for a pack creature. `w` is the world adapter built by the game (or a test).
 export function updatePackMonster(e, w) {
   const def = packDefinition(e);
@@ -731,6 +855,8 @@ export function updatePackMonster(e, w) {
   if (e.hitStun > 0 && s.state === "move") return;
   if (e.hitStun > 0 && s.attack && !e.boss && s.phase === "windup" && !e.untargetable) { endAttack(e, s); return; }
   if (!e.illusion) passiveStillness(e, s, w);
+  if (e.kind === "morphingBlob") blobPassive(e, s, w, p, d);
+  if (e.blobletOf && blobletHome(e, s, w)) return;
   if (e.evasive && evade(e, s, w, p, d)) return;
   if (s.attack) {
     s.t -= dt;
@@ -764,6 +890,14 @@ export function tickPackEffects(effects, w) {
     f.age = (f.age || 0) + w.dt;
     if (f.arming > 0) { f.arming -= w.dt; if (f.arming > 0) continue; f.armed = true; }
     if (f.kind === "web") { if (distance(p, f) <= f.radius) w.slow(f.slow || .5, .25); }
+    else if (f.kind === "ooze") { // release 235: lies where it fell until the Blob is dead
+      const owner = blobOwner(w, f); if (!owner && f.life > 1) f.life = 1;
+      if (distance(p, f) <= f.radius && !aboveBlob(w, p.x, p.y)) { w.slow(f.slow || .7, .25); if (!(f.nextBite > f.age)) { f.nextBite = f.age + .9; w.hurt(owner, f.damage, { jumpable: false, source: "ooze", beam: true }); } }
+    } else if (f.kind === "gas") { // release 235: drifts outward and swells; poisons whoever stands in it
+      f.x += (f.vx || 0) * w.dt; f.y += (f.vy || 0) * w.dt; const k = Math.min(1, f.age / BLOB.cloudLife); f.radius = BLOB.cloudGrow[0] + (BLOB.cloudGrow[1] - BLOB.cloudGrow[0]) * k;
+      if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) { f.vx = 0; f.vy = 0; }
+      if (distance(p, f) <= f.radius && !(f.nextBite > f.age)) { f.nextBite = f.age + .6; w.hurt(blobOwner(w, f), f.damage, { jumpable: false, source: "blobGas", beam: true }); w.poison?.(BLOB.poison[0], BLOB.poison[1]); }
+    }
     else if (f.kind === "flesh") { if (distance(p, f) <= f.radius) { w.slow(f.slow || .55, .25); if (!(f.nextBite > f.age)) { f.nextBite = f.age + .8; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "fleshBloom", beam: true }); } } }
     else if (f.kind === "orb") { f.x += f.vx * w.dt; f.y += f.vy * w.dt; if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0; else if (!f.hit && distance(p, f) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "orb" }); } }
     else if (f.kind === "shock") { const total = f.total ??= f.life ?? .8, r = f.radius * (1 - Math.max(0, f.life ?? total) / total); f.ring = r; if (!f.hit && f.damage > 0 && Math.abs(distance(p, f) - r) < .5) { f.hit = true; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "shockwave" }); } }

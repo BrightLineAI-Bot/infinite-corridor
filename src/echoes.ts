@@ -29,6 +29,8 @@ export const ECHOES = {
   weepingSaint: { name: "Saint's Regard", cost: 3, trigger: "face", module: "stillnessCurse", text: "Foes you face within 5 tiles move 40% slower." },
   listener: { name: "Listener's Answer", cost: 3, trigger: "hurt", module: "mirrorSwap", text: "Being hurt answers back: the nearest foe within 3 tiles takes the blow too." },
   questingBeast: { name: "Beast's Spines", cost: 3, trigger: "kill", module: "spikeVolley", text: "Kills fling spines into up to two nearby foes." },
+  morphingBlob: { name: "Blob's Spatter", cost: 2, trigger: "hurt", module: "blobGasCloud", text: "Being hurt spatters ooze around you that slows foes by 40% for 3 s." },
+  bloblet: { name: "Bloblet Mend", cost: 1, trigger: "kill", module: "blobBloblets", text: "Kills mend 3 health." },
   graveLantern: { name: "Lantern Stillness", cost: 1, trigger: "still", module: "stillnessCurse", text: "Standing still for a second mends 2 health each second." },
 };
 export const ECHO_IDS = Object.keys(ECHOES);
@@ -82,10 +84,12 @@ export function echoEvent(game, event, now, data = {}) {
     const at = centre(data.enemy);
     if (eq.includes("gnawingMaw")) for (const e of nearest(game, at.x, at.y, 4, data.enemy)) { const c = centre(e), m = Math.hypot(at.x - c.x, at.y - c.y) || 1; world.nudge(e, (at.x - c.x) / m * Math.min(1, m - .4), (at.y - c.y) / m * Math.min(1, m - .4)); e.hitStun = Math.max(e.hitStun || 0, .3); }
     if (eq.includes("questingBeast")) for (const e of nearest(game, at.x, at.y, 4.5, data.enemy).slice(0, 2)) { world.arc(data.enemy, e, "#f2ece0"); world.damage(e, Math.round(dmg * 1.2)); }
+    if (eq.includes("bloblet")) p.hp = Math.min(p.maxHp || save.maxHp || p.hp, p.hp + 3); // release 235
     if (eq.includes("amalgam")) (game.echoPatches ||= []).push({ kind: "flesh", x: at.x, y: at.y, radius: 1.3, until: now + 4000, slow: .55 });
     if (eq.includes("cinderSeraph")) for (const e of nearest(game, at.x, at.y, 4).slice(0, 3)) { e.glyphBurn = { until: now + 2500, dps: Math.max(2, Math.round(dmg * .3)), tick: 0 }; world.arc(data.enemy, e, "#ff9a4a"); }
   } else if (event === "hurt") {
     if (eq.includes("hangedChoir")) world.blast(me.x, me.y, 2.2, Math.round(dmg * .8));
+    if (eq.includes("morphingBlob")) (game.echoPatches ||= []).push({ kind: "web", x: me.x, y: me.y, radius: 2, until: now + 3000, slow: .6 }); // release 235
     if (eq.includes("listener")) { const foe = nearest(game, me.x, me.y, 3)[0]; if (foe) { world.arc(p, foe, "#c9a6ff"); world.damage(foe, Math.round(dmg * .9)); } }
     if (eq.includes("mirrorShade") && now >= (p.echoMirrorReadyAt || 0)) {
       const foe = nearest(game, me.x, me.y, 5).find((e) => !e.flying && world.canStand(e.x, e.y)); // never swap onto a pit, water or a wall

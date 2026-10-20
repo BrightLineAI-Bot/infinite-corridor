@@ -26,6 +26,45 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## World beasts and the Morphing Blob; a smaller Questing Beast (release 235)
+
+Tim, 2026-10-19: the Questing Beast is a little too large. He wants five or six more roaming world bosses at its level of detail, built on its template: strong, hyper-aggressive, huge health, varied attacks, dodging AI, three tries. They are being built one per release. This release is the shared hunt and the first beast, the Morphing Blob.
+
+**CODE:**
+
+- **`src/world-beasts.ts`** (new; it is in `scripts/build.mjs` and both precache lists). The Questing Beast's hunt, generalised.
+  - `WORLD_BEASTS` holds one data row per beast: chance, minDepth, tries, cooldowns, hitsToKill, damageShare, speed, rewards and lines.
+  - `ensureWorldBeasts` normalises `save.worldBeasts`. `worldBeastFor` places at most one beast per section and never in the Questing Beast's section, with cooldowns counted in sections entered.
+  - Also: `tuneWorldBeast` (the same formula as `tuneQuestingBeast`, plus `evasive`), `worldBeastSlain`, `worldBeastPlayerFell` and `worldBeastsHeld`.
+  - `src/questing-beast.ts` is unchanged.
+- **`src/monster-pack.ts`.**
+  - `morphingBlob` and `bloblet` are new `unique` entries, so they are never in pools.
+  - The Blob's attacks are `blobTendrils`, `blobGasJet`, `blobGasCloud`, `blobBloblets` and `blobEngulf`, with START and RUN runners.
+  - `BLOB` is the balance table.
+  - `blobPassive` handles stepped growth, the burning touch, and ooze spatter on taking damage.
+  - `blobletHome` makes a bloblet wander, return and merge, healing the Blob and swelling it (`BLOB.mergeGrow`, up to `mergeMax`).
+  - High ground stays above the Blob (Tim): on elevation of `BLOB.safeElev` (4) or more, no ooze lands, and its ooze, touch and surge do no harm (`aboveBlob`, via the world's optional `elevation`). Tendrils and gas still reach.
+  - The new effects are `ooze`, which persists until its owner dies, and `gas`, which drifts and poisons. The world adapter gains optional `push`, `poison` and `effects`.
+  - `questingBeast.form.scale` drops from 1.75 to 1.5.
+- **`src/monster-render.ts`.**
+  - `morphingBlob` and `bloblet` bodies: the Blob has a wobbling translucent mass, nuclei, embedded slit-pupil eyes, bubbles, drips, and tendrils along their lanes.
+  - `tendrils` and `cone` telegraphs, and `ooze` (an arcing ball, then a glossy puddle) and `gas` effects.
+  - The Blob is painted directly, outside the sprite cache, because its tendrils reach past the sprite box.
+- **`game.ts`.**
+  - Overworld load calls `worldBeastFor` and announces the beast. Spawning tunes it, and it is exempt from the global damage scale.
+  - Its death pays the bounty, and the Wayfarer's death counts a try.
+  - `packWorld` gains `push`, `poison`, `effects` and `elevation`.
+- **`src/echoes.ts`.** Every pack creature has one Echo. Blob's Spatter: being hurt leaves a slowing patch. Bloblet Mend: kills heal 3.
+- **`world.ts`.** Held sections are Atlas danger marks.
+- **`types.ts`.** `ensureWorldBeasts` runs in `freshSave` and `migrateSave`.
+- **Tests.** `tests/world-beasts.test.ts` is new.
+
+**BOUNDARY:**
+
+- **Save.** `save.worldBeasts` is additive at schema 14; unknown beasts are kept. Bloblets and ooze are not saved; restored sections respawn the beast.
+- **Generation.** No generation change; claims are seeded per cycle and section, like the Questing Beast's.
+- **Proving Ground.** The Blob can be fought there as `pack-boss-morphingBlob`.
+
 ## The Tyrant's hunt fixed (release 233)
 
 Found by the release-231 review (a blocker, so 231 was never published): `tyrantRisePoint` filtered out `blocked` tiles, but every generated ocean tile is `blocked` to walking (`landscape.ts`), so the Tyrant never rose in play. The tests had hand-built unblocked ocean.
