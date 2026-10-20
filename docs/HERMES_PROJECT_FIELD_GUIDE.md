@@ -44,8 +44,11 @@ The third of Tim's world beasts (2026-10-19: "a walking mausoleum … about twic
   - Its dodge: in `evade`, the Turtle does not spring aside. It tucks (`e.tucked`, untargetable, no movement, `tuckTime`).
   - `endAttack` clears `iceShield` and `spinning`.
 - **`src/monster-render.ts`.**
-  - `BODY.mountainTurtle` is painted directly. Its shell is a stone dome with courses of blocks, raised tortoise plates, moss, an arched door lit from inside with steps, a rim of plates, snow and icicles, and a crypt with columns on the crown.
-  - Its four elephantine legs (wrinkled, scaled, flared feet with nails) step slowly under the shell's overhang. Its head is a long, plated tortoise skull on a folded neck, with a hooked beak and a lidded ice-blue eye; its mouth lights while a comet winds up.
+  - `BODY.mountainTurtle` is painted directly (Tim, 2026-10-20: "more angular … ziggurat shaped … weathered … impassive, eyelids half closed … I don't want a lot of shading costing frames").
+    - It uses flat fills only, with no gradients. The one glow is the comet's mouth light.
+    - The shell is a ziggurat of four set-back terraces, each face cut into lit, mid and shadowed facets with a lit ledge. It has block joints, chipped corners, a crack per course, lichen, a tomb door with sill and lintel, and a snow-capped crag for a summit. Ice crystals on the ledges are drawn last, over the terraces above.
+    - Four faceted pillar legs stand under the shell's plinth, with folds and nails.
+    - The neck is a long, arched run of plates whose thickness follows the curve. The head is a wedge skull with a hooked beak and a narrow, half-lidded eye.
   - Spinning and tucked, it draws legs and head in. Spinning adds the ice tornado; the shield is a faceted dome.
   - Effects: `flameTrail`, `frostTrail` (crystals; it flickers white before bursting), `twister`, `comet` (with its shadow) and `iceBurst`, plus the stone stomp ring. Trails are drawn at ground height.
 - **`src/world-beasts.ts`.**
