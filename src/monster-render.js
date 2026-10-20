@@ -1,7 +1,7 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind, BLOB, WORM } from "./monster-pack.js?v=r239-0a2af28b4090";
+import { MONSTER_PACK, isPackKind, BLOB, WORM } from "./monster-pack.js?v=r241-45286473b10a";
 
 const TAU = Math.PI * 2;
 
@@ -475,6 +475,94 @@ const BODY = {
     if (laser) { ctx.fillStyle = p[1]; ctx.beginPath(); ctx.ellipse(tip.x, tip.y, tr * 1.3, tr * 1.1, 0, 0, TAU); ctx.fill(); glow(ctx, tip.x, tip.y, tr * 3, "#ff3a2a", .7); ctx.fillStyle = "#ffe8d0"; ctx.beginPath(); ctx.ellipse(tip.x, tip.y, tr * .8, tr * .7, 0, 0, TAU); ctx.fill(); ctx.fillStyle = "#c01a10"; ctx.beginPath(); ctx.arc(tip.x + flip * tr * .2, tip.y, tr * .4, 0, TAU); ctx.fill(); ctx.fillStyle = "#1a0604"; ctx.beginPath(); ctx.arc(tip.x + flip * tr * .25, tip.y, tr * .15, 0, TAU); ctx.fill(); } // a lens
     else { const pulse = .6 + .4 * Math.sin(t * 9); glow(ctx, tip.x, tip.y, tr * 3 * pulse, p[2], .8); ctx.fillStyle = "#2a0a04"; ctx.beginPath(); ctx.ellipse(tip.x, tip.y, tr, tr * .7, 0, 0, TAU); ctx.fill(); ctx.fillStyle = "#ffcf6a"; ctx.beginPath(); ctx.ellipse(tip.x, tip.y, tr * .5 * pulse, tr * .35 * pulse, 0, 0, TAU); ctx.fill(); } // a burning mouth
   },
+  // Release r241-45286473b10a: the Mountain Turtle, an ancient tortoise carrying a weathered ziggurat. Flat-shaded and angular (no
+  // gradients, so it is cheap to draw every frame): a stepped shell of chiselled terraces, each face split into lit, mid
+  // and shadowed facets, cracked and chipped, a crag of a summit with snow, ice crystals growing from the ledges, a tomb
+  // door; four faceted pillar legs; a long, folded neck and a wedge of a skull with a heavy, half-closed, impassive eye.
+  // Spinning or tucked it draws legs and head in; its ice shield is a faceted dome.
+  mountainTurtle(ctx, q) {
+    const { k, b, u, t, p, flip, e, state } = q, s0 = e.pack, tucked = !!(e.tucked || e.spinning), W = u * .5, H = u * .5, legH = tucked ? u * .05 : u * .2, base = b - legH;
+    const step = t * 2.2, comet = s0?.attack === "turtleComet" && state === "windup";
+    const C = { lit: "#9c978a", mid: "#7b776c", dark: "#55524a", deep: "#3a3833", ledge: "#b3ae9f", line: "#2a2824", ice: "#a8dcef", iceLit: "#e4f5fb", iceDark: "#6aa6c4", skin: "#6d6a5f", skinLit: "#8a8679", skinDark: "#48463f" };
+    const poly = (pts, fill, stroke) => { ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = Math.max(1, u * .006); ctx.stroke(); } };
+    const crystal = (x, y, h, lean) => { const w = h * .32; poly([x - w, y, x + lean * h * .3, y - h, x + w, y], C.ice, C.iceDark); poly([x + lean * h * .3, y - h, x + w, y, x + w * .1, y], C.iceLit); }; // a shard: lit face and shade face
+    ctx.fillStyle = "rgba(4,4,6,.5)"; ctx.beginPath(); ctx.ellipse(k + flip * W * .2, b, W * 1.3, W * .22, 0, 0, TAU); ctx.fill(); // shadow
+    const leg = (x, near, ph) => { // a faceted pillar of a leg, ringed with old folds, on a broad foot
+      const lift = tucked ? 0 : Math.max(0, Math.sin(step + ph)) * u * .04, lw = u * (near ? .11 : .095), y0 = base - u * .08, y1 = b - lift;
+      poly([x - lw, y0, x - lw * 1.08, y1, x - lw * .1, y1, x - lw * .05, y0], near ? C.skinLit : C.skin, C.line);
+      poly([x - lw * .05, y0, x - lw * .1, y1, x + lw * 1.08, y1, x + lw, y0], near ? C.skin : C.skinDark, C.line);
+      ctx.strokeStyle = C.line; ctx.lineWidth = Math.max(1, u * .005); for (let i = 1; i < 4; i++) { const yy = y0 + (y1 - y0) * i / 4; ctx.beginPath(); ctx.moveTo(x - lw * 1.04, yy); ctx.lineTo(x - lw * .1, yy + u * .008); ctx.lineTo(x + lw * 1.04, yy - u * .004); ctx.stroke(); }
+      poly([x - lw * 1.3, y1, x - lw * 1.1, y1 - u * .035, x + lw * 1.1, y1 - u * .035, x + lw * 1.3, y1], C.skinDark, C.line); // the foot
+      ctx.fillStyle = "#b8b29e"; for (let i = -1; i <= 1; i++) ctx.fillRect(x + i * lw * .75 - lw * .14, y1 - u * .012, lw * .28, u * .012); // nails
+    };
+    if (!tucked) { leg(k - flip * W * .5, false, Math.PI); leg(k + flip * W * .72, false, 0); leg(k - flip * W * .74, true, 0); leg(k + flip * W * .48, true, Math.PI); }
+    ctx.save(); ctx.translate(k, base);
+    // The ziggurat: four terraces, each face cut into three facets, a lit ledge on top of each, set back as it rises.
+    const tiers = 4, th = H * .2, setback = H * .05;
+    let y0 = H * .06; const ice = [];
+    for (let i = 0; i < tiers; i++) {
+      const w0 = W * (1.06 - i * .22), w1 = w0 * .93, y1 = y0 - th, a = w0 * .36, a1 = w1 * .36;
+      poly([-w0, y0, -a, y0, -a1, y1, -w1, y1], C.mid, C.line);           // left facet
+      poly([-a, y0, a, y0, a1, y1, -a1, y1], C.lit, C.line);              // the face toward the light
+      poly([a, y0, w0, y0, w1, y1, a1, y1], C.dark, C.line);              // the shadowed facet
+      const nw = W * (1.06 - (i + 1) * .22);
+      poly([-w1, y1, w1, y1, nw * 1.0, y1 - setback, -nw * 1.0, y1 - setback], C.ledge, C.line); // the ledge
+      ctx.strokeStyle = C.line; ctx.lineWidth = Math.max(1, u * .005); // block joints
+      for (let j = -2; j <= 2; j++) { const x = (j + (i % 2) * .5) * w0 * .36; if (Math.abs(x) < w0 * .95) { ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x * .95, y1); ctx.stroke(); } }
+      ctx.beginPath(); ctx.moveTo(-w0 * .98, y0 - th * .5); ctx.lineTo(w0 * .98, y0 - th * .5); ctx.stroke();
+      ctx.fillStyle = "#6f7a5a"; for (let j = 0; j < 3; j++) { const lx = (((i * 5 + j * 11) % 9) / 4.5 - 1) * w0 * .8, ly = y0 - th * (.2 + (j % 2) * .45); ctx.fillRect(lx, ly, w0 * .12, th * .12); } // lichen
+      const nick = (x, y, sz) => poly([x, y, x + sz, y + sz * .4, x + sz * .3, y + sz, x - sz * .4, y + sz * .5], C.deep); // a chip broken out of a corner
+      nick(-w1 * .98, y1 + th * .05, th * .35); nick(w0 * .8, y0 - th * .45, th * .3);
+      ctx.strokeStyle = C.deep; ctx.lineWidth = Math.max(1, u * .007); ctx.beginPath(); const cx0 = ((i * 37) % 7 - 3) / 3 * w0 * .6; ctx.moveTo(cx0, y1); ctx.lineTo(cx0 + th * .2, y1 + th * .4); ctx.lineTo(cx0 - th * .1, y1 + th * .7); ctx.lineTo(cx0 + th * .15, y0); ctx.stroke(); // a crack down the course
+      if (i < 3) for (let c = 0; c < 2; c++) ice.push([(c ? .55 : -.6) * w1 + ((i * 13) % 5) * u * .006, y1 - setback * .3, th * (.85 + ((i + c) % 3) * .3), c ? .5 : -.4]); // ice grown on the ledges
+      y0 = y1 - setback;
+    }
+    if (!e.spinning) { // the tomb door in the second terrace: a dark doorway, lit faintly from deep inside
+      const dw = W * .1, dy = H * .06 - th - setback, dh = th * .85;
+      poly([-dw * 1.4, dy, dw * 1.4, dy, dw * 1.4, dy - dh * .12, -dw * 1.4, dy - dh * .12], C.ledge, C.line); // the sill
+      poly([-dw, dy - dh * .12, dw, dy - dh * .12, dw * .85, dy - dh, -dw * .85, dy - dh], "#1b1d1f", C.line);
+      poly([-dw * .5, dy - dh * .12, dw * .5, dy - dh * .12, dw * .45, dy - dh * .75, -dw * .45, dy - dh * .75], "#5f8fa266");
+      poly([-dw * 1.15, dy - dh, dw * 1.15, dy - dh, dw * .9, dy - dh * 1.15, -dw * .9, dy - dh * 1.15], C.lit, C.line); // the lintel
+    }
+    // The summit: a broken crag with snow, crystals at its foot.
+    const sw = W * .3, sy = y0;
+    poly([-sw, sy, -sw * .55, sy - H * .22, -sw * .2, sy - H * .16, sw * .05, sy - H * .36, sw * .35, sy - H * .2, sw * .7, sy - H * .26, sw, sy], C.mid, C.line);
+    poly([sw * .05, sy - H * .36, sw * .35, sy - H * .2, sw * .7, sy - H * .26, sw, sy, sw * .2, sy], C.dark);
+    poly([-sw * .55, sy - H * .22, -sw * .38, sy - H * .17, -sw * .2, sy - H * .16, sw * .05, sy - H * .36, sw * .2, sy - H * .27, sw * .02, sy - H * .24, -sw * .25, sy - H * .12, -sw * .42, sy - H * .16], "#e9eef0"); // snow
+    for (const q2 of ice) crystal(...q2); // ice on the ledges, drawn over the terraces above them
+    crystal(-sw * .9, sy, H * .14, -.3); crystal(sw * .85, sy, H * .11, .4);
+    poly([-W * 1.08, H * .06, W * 1.08, H * .06, W * 1.0, H * .13, -W * 1.0, H * .13], C.deep, C.line); // the worn plinth it all stands on
+    ctx.restore();
+    if (tucked) { for (const x of [-.72, -.25, .25, .72]) poly([k + x * W - u * .06, b, k + x * W - u * .045, b - u * .05, k + x * W + u * .045, b - u * .05, k + x * W + u * .06, b], C.skinDark, C.line); } // drawn in
+    else { // the long neck, folded skin in angular plates, reaching forward and up; the head a heavy wedge
+      const nx0 = k + flip * W * .78, ny0 = base - u * .03, hx = k + flip * (W * 1.75), hy = base - u * .2 + Math.sin(step * .4) * u * .012, hl = u * .23, hh = u * .105, segs = 5;
+      const cx1 = nx0 + flip * W * .45, cy1 = hy - u * .12, at = (f) => [(1 - f) * (1 - f) * nx0 + 2 * f * (1 - f) * cx1 + f * f * (hx - flip * hl * .3), (1 - f) * (1 - f) * ny0 + 2 * f * (1 - f) * cy1 + f * f * hy]; // the neck rises, then reaches forward
+      for (let i = 0; i < segs; i++) { const f0 = i / segs, f1 = (i + 1) / segs, [x0, yA] = at(f0), [x1, yB] = at(f1), r0 = u * (.125 - f0 * .05), r1 = u * (.125 - f1 * .05);
+        const tx = x1 - x0, ty = yB - yA, tm = Math.hypot(tx, ty) || 1, nx = ty / tm * flip, ny = -Math.abs(tx) / tm; // the side of the neck facing up
+        poly([x0 + nx * r0, yA + ny * r0, x1 + nx * r1, yB + ny * r1, x1, yB, x0, yA], i % 2 ? C.skinLit : C.skin, C.line); poly([x0, yA, x1, yB, x1 - nx * r1 * .8, yB - ny * r1 * .8, x0 - nx * r0 * .8, yA - ny * r0 * .8], C.skinDark, C.line); } // upper and under plates of each fold
+      const fx = (f) => hx + flip * f * hl;
+      poly([fx(-.35), hy - hh * .9, fx(.2), hy - hh * 1.05, fx(.5), hy - hh * .5, fx(.62), hy + hh * .05, fx(.5), hy + hh * .5, fx(-.1), hy + hh * .6, fx(-.4), hy + hh * .35], C.skinLit, C.line); // the skull
+      poly([fx(-.4), hy + hh * .35, fx(-.1), hy + hh * .6, fx(.5), hy + hh * .5, fx(.4), hy + hh * .2, fx(-.2), hy + hh * .15], C.skinDark); // the jaw in shadow
+      poly([fx(.42), hy - hh * .45, fx(.7), hy + hh * .1, fx(.52), hy + hh * .45, fx(.4), hy + hh * .1], "#2e2c27", C.line); // the beak
+      ctx.strokeStyle = C.line; ctx.lineWidth = Math.max(1, u * .006); ctx.beginPath(); ctx.moveTo(fx(.5), hy + hh * .35); ctx.lineTo(fx(.1), hy + hh * .3); ctx.lineTo(fx(-.25), hy + hh * .18); ctx.stroke(); // the line of the mouth
+      ctx.beginPath(); ctx.moveTo(fx(-.3), hy - hh * .75); ctx.lineTo(fx(0), hy - hh * .62); ctx.moveTo(fx(.05), hy - hh * .9); ctx.lineTo(fx(.25), hy - hh * .7); ctx.stroke(); // plates on the skull
+      if (comet) { const o = .45 + .2 * Math.sin(t * 18); poly([fx(.5), hy + hh * .35, fx(.1), hy + hh * (.32 + o * .5), fx(-.15), hy + hh * .25], "#bfe8ff"); glow(ctx, fx(.35), hy + hh * .4, hl * .6, p[2], .7); } // cold light in the mouth
+      const ex = fx(.12), ey = hy - hh * .3; // the eye: a narrow, half-shut, impassive slit under a heavy lid
+      poly([ex - hh * .2, ey, ex, ey - hh * .08, ex + hh * .2, ey, ex, ey + hh * .07], "#1a1c1e");
+      poly([ex - hh * .14, ey + hh * .005, ex + hh * .14, ey + hh * .005, ex, ey + hh * .05], "#9fc8d8"); // a pale glint of the iris below the lid
+      poly([ex - hh * .26, ey - hh * .02, ex, ey - hh * .2, ex + hh * .26, ey - hh * .02, ex, ey - hh * .06], C.skin, C.line); // the lid, half down
+    }
+    if (e.spinning) { // the tornado of ice around it
+      const spin = t * 9; for (let i = 0; i < 4; i++) { const rr = W * (1.15 + i * .12), yy = b - H * (.2 + i * .25); ctx.strokeStyle = `rgba(200,236,255,${.55 - i * .1})`; ctx.lineWidth = Math.max(2, u * (.03 - i * .005)); ctx.beginPath(); ctx.ellipse(k, yy, rr, rr * .25, 0, spin + i, spin + i + Math.PI * 1.3); ctx.stroke(); }
+      ctx.fillStyle = "#e8f6ff"; for (let i = 0; i < 14; i++) { const a = spin * 1.3 + i * TAU / 14, rr = W * (1.05 + (i % 3) * .15); ctx.fillRect(k + Math.cos(a) * rr, b - H * (.2 + (i % 5) * .2) + Math.sin(a) * rr * .25, Math.max(2, u * .015), Math.max(2, u * .015)); }
+    }
+    if (e.iceShield) { // a faceted dome of ice over everything
+      const R = W * 1.35, cyy = base - H * .3, pts = [];
+      for (let i = 0; i <= 8; i++) { const a = Math.PI + i / 8 * Math.PI, rr = R * (1 + .05 * ((i * 7) % 3)); pts.push(k + Math.cos(a) * rr, cyy + Math.sin(a) * rr); }
+      pts.push(k + R, b, k - R, b); poly(pts, "rgba(160,220,255,.22)", "#d8f2ffcc");
+      ctx.strokeStyle = "#ffffff55"; ctx.lineWidth = 1; for (let i = 1; i < 8; i += 2) { ctx.beginPath(); ctx.moveTo(pts[i * 2], pts[i * 2 + 1]); ctx.lineTo(k + (pts[i * 2] - k) * .45, cyy + (pts[i * 2 + 1] - cyy) * .45); ctx.stroke(); }
+    }
+  },
   bloblet(ctx, q) {
     const { k, b, u, t, p, flip } = q, R = u * .5, cy = b - R * .55, hop = Math.abs(Math.sin(t * 8)) * u * .06;
     shadowAt(ctx, k, b, R * .9, R * .22, .45);
@@ -548,7 +636,7 @@ function spriteState(e) { const s0 = e.pack; return s0?.attack ? (s0.phase === "
 function drawPackSprite(ctx, e, s, now, facing, def) {
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
-  if (e.kind === "morphingBlob" || e.kind === "tremorWorm") return false; // release 235: its tendrils reach far past the sprite box; one creature, painted directly
+  if (e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle") return false; // release 235: its tendrils reach far past the sprite box; one creature, painted directly
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
   const flip = e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, step = Math.floor(now * PACK_SPRITE.fps / 1000);
@@ -636,7 +724,7 @@ function drawWarningCircle(ctx, x, y, r, color, pulse, progress = 0) {
 
 // Ground effects (mortars, sigils, ruptures, webs, embers, shockwaves, dust).
 // Puddles and clouds lie on the ground they cover, so they are drawn raised with it (`lift`, in tiles; release 237).
-const ON_GROUND = new Set(["ooze", "lava", "gas", "web", "flesh"]);
+const ON_GROUND = new Set(["ooze", "lava", "gas", "web", "flesh", "flameTrail", "frostTrail", "furrow"]);
 function lavaCool(f, life) { return 1 - Math.max(0, Math.min(1, life / (f.total || 1.8))); }
 function lavaShape(ctx, f, x, y, r, k) {
   const seed = f.x * 7.3 + f.y * 3.1, vx = f.vx || 0, vy = f.vy || 0, m = Math.hypot(vx, vy) || 1, ax = vx / m, ay = vy / m;
@@ -672,6 +760,11 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift
         if (cool > .35) { ctx.globalAlpha *= Math.min(1, (cool - .35) * 2); ctx.strokeStyle = "#1a100c"; ctx.lineWidth = Math.max(1, s * .04); for (let i = 0; i < 4; i++) { const a = seed + i * 1.6; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r * .15, y + Math.sin(a) * r * .1); ctx.lineTo(x + Math.cos(a + .4) * r * .6, y + Math.sin(a + .4) * r * .35); ctx.stroke(); } } // the crust cracking as it cools
         else { const b = (now / 500 + seed) % 1; ctx.fillStyle = `rgba(255,250,200,${.8 * (1 - b)})`; ctx.beginPath(); ctx.arc(x + Math.sin(seed) * r * .3, y - b * r * .2, r * .08 * (1 + b), 0, TAU); ctx.fill(); } // a bubble bursting
       }
+      else if (f.kind === "flameTrail") { ctx.globalAlpha = Math.min(1, life * 1.5); ctx.fillStyle = "#2a1408aa"; ctx.beginPath(); ctx.ellipse(x, y, r, r * .45, 0, 0, TAU); ctx.fill(); glow(ctx, x, y - s * .2, r * 1.7, "#ff6a1a", .65); for (let i = 0; i < 5; i++) { const ph = (now / 260 + i * .37 + f.x) % 1, fx = x + Math.sin(i * 2.4 + f.y) * r * .6, fh = s * (.6 + .35 * Math.sin(i + now / 180)) * (1 - ph * .4); ctx.fillStyle = i % 2 ? "#ffb02aee" : "#ff5a1add"; ctx.beginPath(); ctx.moveTo(fx - s * .1, y); ctx.quadraticCurveTo(fx - s * .05, y - fh * .6, fx + Math.sin(now / 120 + i) * s * .05, y - fh); ctx.quadraticCurveTo(fx + s * .05, y - fh * .6, fx + s * .1, y); ctx.fill(); } } // release 241: the Turtle's fire
+      else if (f.kind === "frostTrail") { const k2 = Math.min(1, life * 2), warn = f.burst && life < .8 ? .5 + .5 * Math.sin(now / 50) : 0; ctx.globalAlpha = k2; const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, "#e8f8ffee"); g.addColorStop(.7, "#8fd8ffaa"); g.addColorStop(1, "#4a90c044"); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, r, r * .55, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = warn ? `rgba(255,255,255,${warn})` : "#ffffff88"; ctx.lineWidth = warn ? 2 : 1; ctx.stroke(); ctx.fillStyle = "#ffffffcc"; for (let i = 0; i < 5; i++) { const a = i * 1.3 + f.x * 3, rr = r * (.2 + (i % 3) * .25); ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .55 - s * .14); ctx.lineTo(x + Math.cos(a) * rr - s * .04, y + Math.sin(a) * rr * .55); ctx.lineTo(x + Math.cos(a) * rr + s * .04, y + Math.sin(a) * rr * .55); ctx.fill(); } } // ice: crystals standing up; it flickers white before it bursts
+      else if (f.kind === "twister") { ctx.globalAlpha = Math.min(1, life); const h = s * 1.7, spin2 = now / 90 + f.x; for (let i = 0; i < 6; i++) { const yy = y - h * i / 6, rr = r * (.35 + i * .13); ctx.strokeStyle = `rgba(220,244,255,${.75 - i * .07})`; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.ellipse(x + Math.sin(spin2 * .3 + i * .6) * s * .08, yy, rr, rr * .3, 0, spin2 + i, spin2 + i + Math.PI * 1.4); ctx.stroke(); } ctx.fillStyle = "#c8ecff88"; ctx.beginPath(); ctx.ellipse(x, y, r * .5, r * .2, 0, 0, TAU); ctx.fill(); } // a small ice twister
+      else if (f.kind === "comet") { const m = Math.hypot(f.vx, f.vy) || 1, cy2 = y - s * .55; for (let i = 5; i >= 1; i--) { ctx.fillStyle = `rgba(190,232,255,${.5 / i})`; ctx.beginPath(); ctx.arc(x - f.vx / m * r * i * .9, cy2 - f.vy / m * r * i * .9, r * (1 - i * .12), 0, TAU); ctx.fill(); } glow(ctx, x, cy2, r * 2.4, "#8fd8ff", .8); const g = ctx.createRadialGradient(x - r * .3, cy2 - r * .3, r * .1, x, cy2, r); g.addColorStop(0, "#ffffff"); g.addColorStop(.6, "#bfe8ff"); g.addColorStop(1, "#5aa8d8"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, cy2, r, 0, TAU); ctx.fill(); ctx.fillStyle = "#00000022"; ctx.beginPath(); ctx.ellipse(x, y, r * .9, r * .35, 0, 0, TAU); ctx.fill(); } // the ice comet and its shadow
+      else if (f.kind === "iceBurst") { const k2 = 1 - Math.max(0, life) / (f.total || .5); ctx.globalAlpha = 1 - k2; ctx.strokeStyle = "#e8f8ff"; ctx.lineWidth = Math.max(1.5, s * .05); for (let i = 0; i < 10; i++) { const a = i * TAU / 10 + f.x, r0 = r * k2 * .3, r1 = r * (.4 + k2 * .7); ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0 * .6); ctx.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1 * .6 - s * .1); ctx.stroke(); } glow(ctx, x, y, r * (1 - k2 * .5), "#bfe8ff", .6 * (1 - k2)); } // shards flung out
       else if (f.kind === "furrow") { // release 239: churned earth in the fleeing worm's wake, settling as it fades
         const k2 = Math.max(0, Math.min(1, life / (f.total || 1.6))), d = f.dir || { x: 1, y: 0 }, a = Math.atan2(d.y * .6, d.x), seed = f.x * 5.1 + f.y * 2.3;
         ctx.globalAlpha = k2; ctx.translate(x, y); ctx.rotate(a);
@@ -684,6 +777,7 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift
       else if (f.kind === "orb" && f.fire) { const vx = f.vx || 0, vy = f.vy || 0, m = Math.hypot(vx, vy) || 1, oy = y - s * .3; for (let i = 3; i >= 1; i--) { ctx.fillStyle = `rgba(255,${90 + i * 30},40,${.5 / i})`; ctx.beginPath(); ctx.arc(x - vx / m * r * i * .9, oy - vy / m * r * i * .9, r * (1 - i * .15), 0, TAU); ctx.fill(); } glow(ctx, x, oy, r * 2, "#ff7a2a", .75); ctx.fillStyle = "#ffe6a0"; ctx.beginPath(); ctx.arc(x, oy, r * .5, 0, TAU); ctx.fill(); } // release 237: a worm tentacle's fireball
       else if (f.kind === "orb") { const vx = f.vx || 0, vy = f.vy || 0, m = Math.hypot(vx, vy) || 1, oy = y - s * .3; ctx.strokeStyle = "#ff4a3a66"; ctx.lineWidth = r * 1.1; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(x - vx / m * r * 2.2, oy - vy / m * r * 2.2); ctx.lineTo(x, oy); ctx.stroke(); glow(ctx, x, oy, r * 2.2, "#ff4a3a", .7); ctx.fillStyle = "#ffd9b8"; ctx.beginPath(); ctx.arc(x, oy, r * .55, 0, TAU); ctx.fill(); ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(x - r * .12, oy - r * .12, r * .22, 0, TAU); ctx.fill(); }
       else if (f.kind === "shock" && f.energy) { const rr = (f.ring ?? 0) * s; ctx.strokeStyle = "#ff4a3a55"; ctx.lineWidth = Math.max(6, s * .5); ctx.beginPath(); ctx.ellipse(x, y - s * .1, rr, rr * .6, 0, 0, TAU); ctx.stroke(); ctx.strokeStyle = "#ffb08aee"; ctx.lineWidth = Math.max(2, s * .16); ctx.stroke(); ctx.strokeStyle = "#fff4e8"; ctx.lineWidth = Math.max(1, s * .05); ctx.stroke(); }
+      else if (f.kind === "shock" && f.stone) { const rr = (f.ring ?? 0) * s; ctx.strokeStyle = "#8a7a6488"; ctx.lineWidth = Math.max(6, s * .45); ctx.beginPath(); ctx.ellipse(x, y - s * .1, rr, rr * .6, 0, 0, TAU); ctx.stroke(); ctx.strokeStyle = "#d8c8a8ee"; ctx.lineWidth = Math.max(2, s * .12); ctx.stroke(); for (let i = 0; i < 12; i++) { const a = i * TAU / 12; ctx.fillStyle = "#6a5a44"; ctx.fillRect(x + Math.cos(a) * rr, y - s * .1 + Math.sin(a) * rr * .6 - s * .15, Math.max(2, s * .08), Math.max(2, s * .08)); } } // release 241: the stomp's ring of heaved ground
       else if (f.kind === "shock") { const rr = (f.ring ?? 0) * s; ctx.strokeStyle = "#ffe08acc"; ctx.lineWidth = Math.max(2, s * .18); ctx.beginPath(); ctx.ellipse(x, y - s * .1, rr, rr * .6, 0, 0, TAU); ctx.stroke(); ctx.strokeStyle = "#ffffff88"; ctx.lineWidth = Math.max(1, s * .05); ctx.stroke(); }
       else if (f.kind === "blinkTrail") { glow(ctx, x, y - s * .3, r, "#c58cff", Math.min(.7, life * 2)); }
       else if (f.kind === "dust" || f.kind === "crash") { ctx.globalAlpha = Math.min(1, life * 2); for (let i = 0; i < 10; i++) { const a = i * TAU / 10, d = r * (1 - life * .8); ctx.fillStyle = f.kind === "crash" ? "#ffb04acc" : "#b9a184aa"; ctx.beginPath(); ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d * .6, s * .09, 0, TAU); ctx.fill(); } }

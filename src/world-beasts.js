@@ -4,9 +4,9 @@
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.js?v=r239-0a2af28b4090";
-import { LETHAL_KINDS } from "./landscape.js?v=r239-0a2af28b4090";
-import { sectionExits } from "./world.js?v=r239-0a2af28b4090";
+import { hashSeed } from "./random.js?v=r241-45286473b10a";
+import { LETHAL_KINDS } from "./landscape.js?v=r241-45286473b10a";
+import { sectionExits } from "./world.js?v=r241-45286473b10a";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -30,10 +30,20 @@ export const WORLD_BEASTS = {
     slain: "The Tremor Worm thrashes, sinks, and the ground stops shaking.",
     gone: "The Tremor Worm has had its fill of you, and sinks away. In time it will surface somewhere else.",
   },
+  mountainTurtle: {
+    kind: "mountainTurtle", name: "The Mountain Turtle", chance: .025, minDepth: 6, tries: 3, cooldownSlain: 22, cooldownEscaped: 28,
+    hitsToKill: 78, hpPerLevel: 34, damageShare: .24, speed: 1, attackGap: .35, staggerResistance: 1, rewardMarks: 190, rewardPerLevel: 19,
+    patience: 180, home: "canyon", retreatMoves: "through",
+    flee: "The Mountain Turtle turns its great head away and walks off toward the canyons, through whatever stands in its way.",
+    homeLine: "The Mountain Turtle steps over the canyon's edge and climbs down out of sight.",
+    arrive: "The ground shakes with slow, enormous footsteps. The Mountain Turtle walks here.",
+    slain: "The Mountain Turtle sinks to its knees, and its shell settles like a tomb.",
+    gone: "The Mountain Turtle has trampled you enough, and walks on. In time it will settle somewhere else.",
+  },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
 
-// Release r239-0a2af28b4090 (Tim, 2026-10-20): a beast that has neither killed the Wayfarer nor died within its `patience` (seconds of
+// Release 239 (Tim, 2026-10-20): a beast that has neither killed the Wayfarer nor died within its `patience` (seconds of
 // fighting in its section) gives up and retreats home: invulnerable, finding its way across the land (see RETREAT_GROUND),
 // section after section, until it reaches its home ground and goes into it. The Wayfarer can follow and watch;
 // stop following and it is gone. Homes: a section that has one (`section`), and in it the ground it goes into (`tile`,
@@ -164,11 +174,17 @@ function cleanRetreat(r) {
   if (!r || typeof r !== "object" || !r.home || !Number.isInteger(r.home.rx) || !Number.isInteger(r.home.ry)) return null;
   return { home: { rx: r.home.rx, ry: r.home.ry, found: !!r.home.found }, side: Object.hasOwn(OPPOSITE, r.side) ? r.side : null, legs: Math.max(0, Math.floor(Number(r.legs) || 0)) };
 }
+// A retreating beast's spawn: it comes in by the gate on its entry side (or stands mid-section, where it fled from).
+function fleeSpawn(save, here, rx, ry) {
+  const q = save.worldBeasts[here], r = q.active.retreat, side = r.side, ex = sectionExits(save.seed, rx, ry), at = side === "east" ? { x: 31 - RETREAT.inset, y: ex.east } : side === "west" ? { x: RETREAT.inset, y: ex.west } : side === "south" ? { x: ex.south, y: 31 - RETREAT.inset } : side === "north" ? { x: ex.north, y: RETREAT.inset } : { x: 15.5, y: 15.5 };
+  return { id: `world-beast:${here}:${q.cycle}:flee:${r.legs}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, retreating: true, traits: [] };
+}
 // Called once per overworld section load. Returns the spawn of the beast holding this section, or null. One beast holds
 // a section at a time, and never one the Questing Beast holds.
 export function worldBeastFor(save, map, rx, ry) {
   ensureWorldBeasts(save);
-  if (!map || map.settlement || map.tiles?.length !== 1024) return null;
+  if (!map) return null;
+  if (map.settlement || map.tiles?.length !== 1024) { const id = WORLD_BEAST_IDS.find((k) => { const a = save.worldBeasts[k].active; return a?.retreat && a.rx === rx && a.ry === ry; }); return id ? fleeSpawn(save, id, rx, ry) : null; } // release 241: fleeing, it passes through a settlement too
   const qb = save.questingBeast?.active, held = qb && qb.rx === rx && qb.ry === ry;
   let here = WORLD_BEAST_IDS.find((id) => { const a = save.worldBeasts[id].active; return a && a.rx === rx && a.ry === ry; });
   for (const id of WORLD_BEAST_IDS) { // cooldowns run down as sections are entered, and a free beast may claim this one
@@ -181,13 +197,10 @@ export function worldBeastFor(save, map, rx, ry) {
   }
   if (!here) return null;
   const q = save.worldBeasts[here];
-  if (q.active.retreat) { // fleeing through: it comes in by the gate on its entry side (or stands where it was, in the section it fled from)
-    const r = q.active.retreat, side = r.side, ex = sectionExits(save.seed, rx, ry), at = side === "east" ? { x: 31 - RETREAT.inset, y: ex.east } : side === "west" ? { x: RETREAT.inset, y: ex.west } : side === "south" ? { x: ex.south, y: 31 - RETREAT.inset } : side === "north" ? { x: ex.north, y: RETREAT.inset } : { x: 15.5, y: 15.5 };
-    return { id: `world-beast:${here}:${q.cycle}:flee:${r.legs}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, retreating: true, traits: [] };
-  }
+  if (q.active.retreat) return fleeSpawn(save, here, rx, ry);
   const open = map.tiles.filter((t) => !t.blocked && !t.structure && !t.environment && !LETHAL_KINDS.has(t.kind) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24);
   const at = open.sort((a, b) => hashSeed(`wb:${here}:${q.cycle}:${a.x},${a.y}`) - hashSeed(`wb:${here}:${q.cycle}:${b.x},${b.y}`))[0];
-  if (!at) return null;
+  if (!at) { if (!q.active.tries) q.active = null; return null; } // nowhere to stand here (all water): it does not hold the section
   return { id: `world-beast:${here}:${q.cycle}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, traits: [] };
 }
 export function worldBeastTriesLeft(save, id) { return WORLD_BEASTS[id].tries - (save.worldBeasts?.[id]?.active?.tries || 0); }

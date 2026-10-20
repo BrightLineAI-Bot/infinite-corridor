@@ -7,7 +7,7 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { hashSeed } from "./random.js?v=r239-0a2af28b4090";
+import { hashSeed } from "./random.js?v=r241-45286473b10a";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -89,6 +89,14 @@ export const ATTACK_MODULES = {
   wormRise: { id: "wormRise", name: "Rise Beneath", range: [2.5, 12], cooldown: 6.5, windup: .45, recover: .7, damage: 1.45, tags: ["ground", "burrow"], text: "It dives, tunnels under you and bursts up where the ground cracks. Get off the cracks." },
   wormLavaSpew: { id: "wormLavaSpew", name: "Lava Spew", range: [0, 7], cooldown: 5.5, windup: .6, active: 1.1, recover: .45, damage: .5, tags: ["ground", "fire"], text: "Throws its head forward and spews lava that spills across the ground like poured water. It cools in a couple of seconds; until then, stay off it." },
   wormRocks: { id: "wormRocks", name: "Rock Lob", range: [2.5, 10], cooldown: 5, windup: .55, recover: .45, damage: .9, jumpable: true, tags: ["ground", "ranged"], text: "Hurls rocks that burst where they land: one at you, one ahead of you, the rest around." },
+  // The Mountain Turtle's kit (release 241, Tim 2026-10-19: "a walking mausoleum … about twice the size of the Questing
+  // Beast … slow … stomps … a burst dash that leaves a trail of fire or ice … spins with an ice tornado that throws off
+  // small tornadoes … a comet of ice from its mouth … now and then an ice shield it cannot be hurt through").
+  turtleStomp: { id: "turtleStomp", name: "Stomp", range: [0, 4.6], cooldown: 3.2, windup: .75, recover: .55, damage: 1.2, jumpable: true, tags: ["ground", "melee"], text: "Rears and stamps: the ground under it heaves and a ring rolls out. Jump the ring." },
+  turtleDash: { id: "turtleDash", name: "Burst Dash", range: [3, 11], cooldown: 6, windup: .85, active: .9, recover: .7, damage: 1.4, tags: ["charge"], text: "Bursts forward in a straight rush, leaving fire or ice behind it. Ice it leaves bursts a couple of seconds later." },
+  turtleSpin: { id: "turtleSpin", name: "Ice Tornado", range: [0, 9], cooldown: 9, windup: .6, active: 2.4, recover: .6, damage: .5, tags: ["control", "ice"], text: "Spins in its shell inside a tornado of ice, flinging off small twisters that wander, sting and slow you until they blow out." },
+  turtleComet: { id: "turtleComet", name: "Ice Comet", range: [3, 11], cooldown: 5.5, windup: .95, recover: .6, damage: 1.5, tags: ["ranged", "ice"], text: "A ball of ice the size of a cart leaves its mouth and bursts where it lands, leaving the ground frozen." },
+  turtleShield: { id: "turtleShield", name: "Ice Shield", range: [0, 14], cooldown: 13, windup: .5, active: 3.6, recover: .3, damage: 0, tags: ["defense", "ice"], text: "Ice grows over its shell. While the shield stands nothing hurts it; wait it out." },
   firefall: { id: "firefall", name: "Firefall", range: [1.5, 9], cooldown: 6.5, windup: .7, recover: .8, damage: .85, jumpable: true, tags: ["ground"], text: "Embers rain across the floor around you." },
 };
 
@@ -237,6 +245,13 @@ export const MONSTER_PACK = {
     attacks: ["bite"], bossAttacks: [],
     palette: ["#c27a5a", "#3a1a12", "#ff7a2a", "#ffe0b0"], render: "wormTentacle", tags: ["beast", "brood"],
     lore: "It does not move once it is up. It spits fire, or it holds a burning line on you, until you cut it down.",
+  },
+  mountainTurtle: {
+    id: "mountainTurtle", name: "The Mountain Turtle", epithet: "The Walking Mausoleum", unique: true,
+    stats: [360, 18, 0], form: { scale: 2.9 }, sizeClass: "large", movement: "lurch", brain: "juggernaut",
+    attacks: ["turtleStomp", "turtleDash", "turtleSpin", "turtleComet", "turtleShield"], bossAttacks: ["shockwave"],
+    palette: ["#6f7a72", "#1e2420", "#8fd8ff", "#e8f6ff"], render: "mountainTurtle", tags: ["beast", "elder", "ice", "stone"],
+    lore: "A tortoise the size of a barrow, its shell a tomb of fitted stone: doors, steps and a cold light inside. It walks slowly and stamps the ground flat; it rushes in bursts that leave fire or ice behind; it spins inside a tornado of ice and breathes comets of it; and when it chooses, it grows a shield of ice that nothing gets through.",
   },
   gnawingMaw: {
     id: "gnawingMaw", name: "Gnawing Maw", epithet: "The Hunger in the Walls", dungeonOnly: true,
@@ -437,6 +452,14 @@ export const WORM = {
   // runs outward, slowing as it spreads, then lies hot for lavaLife seconds and crusts over.
   lavaLength: 6.2, lavaArc: 44, lavaEvery: .09, lavaPerPour: 2, lavaFlight: .12, lavaRun: 1.8, lavaRunTime: .55, lavaGrow: [.35, 1.05], lavaGrowTime: .45, lavaLife: 1.8, lavaTick: .5,
 };
+// The Mountain Turtle (release 241). Balance as data.
+export const TURTLE = {
+  stompRadius: 1.9, stompRing: 4.2,
+  dashSpeed: 7.5, dashEvery: .14, trailLife: 3.2, trailRadius: .75, trailBite: .45, fireTick: .5, iceTick: .6, iceSlow: .55, iceBurst: [2, 2.6], iceBurstRadius: 1.3, iceBurstBite: .9, // fire burns while it lasts; ice stings and slows, then bursts
+  spinRadius: 1.4, spinTick: .4, spinPull: .9, twisterEvery: .5, twisterMax: 6, twisterSpeed: 1.4, twisterLife: 10, twisterRadius: .7, twisterTick: .7, twisterSlow: .5, twisterBite: .35,
+  cometSpeed: 5.5, cometRadius: .6, cometBlast: 1.9, cometFrost: 1.6, cometFrostLife: 3.5,
+  tuckTime: .8, // its dodge: it pulls into its shell (no blow lands) instead of springing aside
+};
 const aboveBlob = (w, x, y) => (Number(w.elevation?.(x, y)) || 0) >= BLOB.safeElev;
 // Release 237 (Tim: "ooze can still land on high ground, and bloblets"): high ground is drawn raised, a level-4 plateau
 // about 1.4 tiles up, so its top covers the low tiles just north of it. Ooze and bloblets keep clear of every tile a
@@ -463,7 +486,7 @@ function endAttack(e, s) {
   const attack = ATTACK_MODULES[s.attack];
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
   s.gap = e.attackGap ?? (attack?.recover || .6) * .6 + .45; // the Questing Beast barely pauses (release 187)
-  e.untargetable = false; e.hidden = false; e.aloft = false;
+  e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false;
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
 
@@ -505,6 +528,11 @@ const START = {
   broodBirth(e, s) { s.tele = { type: "shimmer" }; },
   fleshBloom(e, s) { s.tele = { type: "spit", target: { ...s.data.target } }; },
   blobTendrils(e, s) { const a = Math.atan2(s.data.aim.y, s.data.aim.x); s.data.dirs = Array.from({ length: BLOB.tendrils }, (_, i) => { const b = a + (i - (BLOB.tendrils - 1) / 2) * BLOB.tendrilSpread; return { x: Math.cos(b), y: Math.sin(b) }; }); s.tele = { type: "tendrils", dirs: s.data.dirs, length: BLOB.tendrilLength + bodyRadius(e) * .6, width: BLOB.tendrilWidth }; },
+  turtleStomp(e, s) { s.tele = { type: "ring", radius: bodyRadius(e) + TURTLE.stompRadius }; },
+  turtleDash(e, s, w) { const len = Math.min(11, TURTLE.dashSpeed * ATTACK_MODULES.turtleDash.active); s.data.ice = hashSeed(`${e.id}:${s.seq}:dash`) % 2 === 1; s.tele = { type: "lane", aim: s.data.aim, length: len, width: bodyRadius(e) * 1.2 }; s.data.next = 0; },
+  turtleSpin(e, s) { s.tele = { type: "brace" }; s.data.next = 0; s.data.flung = 0; },
+  turtleComet(e, s) { s.tele = { type: "circle", x: s.data.target.x, y: s.data.target.y, radius: TURTLE.cometBlast, total: ATTACK_MODULES.turtleComet.windup + 1.2 }; },
+  turtleShield(e, s) { s.tele = { type: "shimmer" }; },
   wormMaw(e, s) { const a = Math.atan2(s.data.aim.y, s.data.aim.x); s.data.dirs = Array.from({ length: WORM.mawTentacles }, (_, i) => { const b = a + (i - (WORM.mawTentacles - 1) / 2) * WORM.mawSpread; return { x: Math.cos(b), y: Math.sin(b) }; }); s.tele = { type: "tendrils", dirs: s.data.dirs, length: WORM.mawLength, width: WORM.mawWidth, flesh: true }; },
   wormSuction(e, s) { s.tele = { type: "ring", radius: WORM.suctionRadius, inhale: true }; },
   wormTentacles(e, s) { s.tele = { type: "shimmer" }; },
@@ -580,6 +608,56 @@ const RUN = {
       if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + .5 && !aboveBlob(w, w.player.x, w.player.y)) { s.hitOnce = true; w.hurt(e, damageOf(e, "blobEngulf"), { jumpable: false, source: "blobEngulf" }); }
       if (s.t <= 0) { s.tele = null; toPhase(s, "recover", attack.recover); }
     }
+  },
+  turtleStomp(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    if (distance(center(w.player), e) <= bodyRadius(e) + TURTLE.stompRadius) w.hurt(e, damageOf(e, "turtleStomp"), { jumpable: true, source: "turtleStomp" });
+    w.addEffect({ kind: "shock", owner: e.id, x: e.x, y: e.y, radius: bodyRadius(e) + TURTLE.stompRing, arming: 0, life: .9, damage: damageOf(e, "turtleStomp"), jumpable: true, stone: true });
+    w.addEffect({ kind: "dust", owner: e.id, x: e.x, y: e.y, radius: bodyRadius(e) + 1, arming: 0, life: .7, damage: 0 });
+    s.tele = null; toPhase(s, "recover", ATTACK_MODULES.turtleStomp.recover);
+  },
+  turtleDash(e, s, w) {
+    const attack = ATTACK_MODULES.turtleDash;
+    if (s.phase === "windup") { if (s.t <= 0) { s.tele = null; toPhase(s, "active", attack.active); } return; }
+    if (s.phase !== "active") return;
+    const step = TURTLE.dashSpeed * w.dt;
+    if (!w.move(e, s.data.aim.x * step, s.data.aim.y * step)) s.t = 0; // it stops against what it cannot shoulder through
+    if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + .5) { s.hitOnce = true; w.hurt(e, damageOf(e, "turtleDash"), { jumpable: false, source: "turtleDash" }); }
+    s.data.next -= w.dt;
+    if (s.data.next <= 0) {
+      s.data.next = TURTLE.dashEvery; const n = s.data.dropped = (s.data.dropped || 0) + 1, burst = TURTLE.iceBurst[0] + (TURTLE.iceBurst[1] - TURTLE.iceBurst[0]) * ((hashSeed(`${e.id}:${s.seq}:burst:${n}`) % 100) / 100);
+      w.addEffect(s.data.ice
+        ? { kind: "frostTrail", owner: e.id, x: e.x, y: e.y, radius: TURTLE.trailRadius, arming: 0, life: burst, total: burst, damage: Math.max(1, Math.ceil(e.damage * TURTLE.trailBite)), burst: Math.max(1, Math.ceil(e.damage * TURTLE.iceBurstBite)) }
+        : { kind: "flameTrail", owner: e.id, x: e.x, y: e.y, radius: TURTLE.trailRadius, arming: 0, life: TURTLE.trailLife, total: TURTLE.trailLife, damage: Math.max(1, Math.ceil(e.damage * TURTLE.trailBite)) });
+    }
+    if (s.t <= 0) toPhase(s, "recover", attack.recover);
+  },
+  turtleSpin(e, s, w) {
+    const attack = ATTACK_MODULES.turtleSpin;
+    if (s.phase === "windup") { if (s.t <= 0) { s.tele = null; toPhase(s, "active", attack.active); } return; }
+    if (s.phase !== "active") return;
+    e.spinning = true; const p = center(w.player), d = distance(p, e);
+    if (d <= bodyRadius(e) + TURTLE.spinRadius + 2) w.pull?.(e, TURTLE.spinPull * w.dt, bodyRadius(e) + TURTLE.spinRadius + 2);
+    s.data.tick = (s.data.tick || 0) - w.dt;
+    if (s.data.tick <= 0 && d <= bodyRadius(e) + TURTLE.spinRadius) { s.data.tick = TURTLE.spinTick; w.hurt(e, damageOf(e, "turtleSpin"), { jumpable: false, source: "turtleSpin", beam: true }); w.slow(TURTLE.twisterSlow, .5); }
+    s.data.next -= w.dt;
+    if (s.data.next <= 0) {
+      s.data.next = TURTLE.twisterEvery;
+      const alive = (w.effects?.() || []).filter((f) => f.kind === "twister" && f.owner === e.id).length;
+      if (alive < TURTLE.twisterMax) { const a = (hashSeed(`${e.id}:${s.seq}:twister:${s.data.flung++}`) % 628) / 100, r = bodyRadius(e) + .6; w.addEffect({ kind: "twister", owner: e.id, x: e.x + Math.cos(a) * r, y: e.y + Math.sin(a) * r, vx: Math.cos(a) * TURTLE.twisterSpeed, vy: Math.sin(a) * TURTLE.twisterSpeed, radius: TURTLE.twisterRadius, arming: 0, life: TURTLE.twisterLife, total: TURTLE.twisterLife, damage: Math.max(1, Math.ceil(e.damage * TURTLE.twisterBite)), wander: a }); }
+    }
+    if (s.t <= 0) { e.spinning = false; toPhase(s, "recover", attack.recover); }
+  },
+  turtleComet(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const p = s.data.target, d = Math.max(.5, distance(p, e)), dir = unit(p.x - e.x, p.y - e.y), mouth = { x: e.x + dir.x * bodyRadius(e) * .9, y: e.y + dir.y * bodyRadius(e) * .6 };
+    w.addEffect({ kind: "comet", owner: e.id, x: mouth.x, y: mouth.y, vx: dir.x * TURTLE.cometSpeed, vy: dir.y * TURTLE.cometSpeed, radius: TURTLE.cometRadius, arming: 0, life: Math.max(.3, (d - bodyRadius(e) * .9) / TURTLE.cometSpeed), to: { ...p }, damage: damageOf(e, "turtleComet"), frost: Math.max(1, Math.ceil(e.damage * TURTLE.trailBite)) });
+    toPhase(s, "recover", ATTACK_MODULES.turtleComet.recover);
+  },
+  turtleShield(e, s, w) {
+    const attack = ATTACK_MODULES.turtleShield;
+    if (s.phase === "windup") { if (s.t <= 0) { s.tele = null; e.iceShield = true; toPhase(s, "active", attack.active); } return; }
+    if (s.phase === "active") { e.untargetable = true; if (s.t <= 0) { e.iceShield = false; e.untargetable = false; toPhase(s, "recover", attack.recover); } }
   },
   wormMaw(e, s, w) {
     if (s.phase === "windup" && s.t <= 0) {
@@ -910,9 +988,9 @@ function fluid(s, v, dt) {
 }
 function evade(e, s, w, p, d) {
   if (s.evade) {
-    const step = QB_MOVES.evadeSpeed * w.dt; if (!w.move(e, s.evade.x * step, s.evade.y * step)) s.evade.t = 0;
-    s.evade.t -= w.dt; e.hopLift = Math.sin(Math.max(0, s.evade.t) / QB_MOVES.evadeTime * Math.PI) * .5;
-    if (s.evade.t <= 0) { s.evade = null; e.untargetable = false; e.hopLift = 0; }
+    const step = QB_MOVES.evadeSpeed * w.dt; if ((s.evade.x || s.evade.y) && !w.move(e, s.evade.x * step, s.evade.y * step)) s.evade.t = 0;
+    s.evade.t -= w.dt; e.hopLift = e.tucked ? 0 : Math.sin(Math.max(0, s.evade.t) / QB_MOVES.evadeTime * Math.PI) * .5;
+    if (s.evade.t <= 0) { s.evade = null; e.untargetable = false; e.hopLift = 0; e.tucked = false; }
     return true;
   }
   if ((s.attack && s.phase !== "recover") || (s.cd.qbEvade || 0) > 0) return false; // it may spring out of an attack's recovery
@@ -924,6 +1002,7 @@ function evade(e, s, w, p, d) {
   }
   if (!dir && w.playerSwinging && d <= QB_MOVES.swingRange) { const away = unit(e.x - p.x, e.y - p.y), side = s.orbitDir || 1; dir = unit(away.x + -away.y * side * .8, away.y + away.x * side * .8); }
   if (!dir) return false;
+  if (e.kind === "mountainTurtle") { s.cd.qbEvade = QB_MOVES.evadeCooldown * 1.6; if (s.attack) endAttack(e, s); s.evade = { x: 0, y: 0, t: TURTLE.tuckTime }; e.untargetable = true; e.tucked = true; return true; } // release 241: too big to spring aside; it pulls into its shell
   const enraged = e.hp <= e.maxHp * PACK_BOSS_TEMPLATE.enrage;
   s.cd.qbEvade = enraged ? QB_MOVES.evadeCooldownEnraged : QB_MOVES.evadeCooldown;
   if (s.attack) endAttack(e, s);
@@ -1129,6 +1208,28 @@ export function tickPackEffects(effects, w) {
       f.radius = WORM.lavaGrow[0] + (f.grow - WORM.lavaGrow[0]) * Math.min(1, f.age / WORM.lavaGrowTime);
       if (distance(p, f) <= f.radius + .15 && !(f.nextBite > f.age)) { f.nextBite = f.age + WORM.lavaTick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "wormLava", beam: true }); }
     }
+    else if (f.kind === "flameTrail") { // release 241: fire left by the Turtle's dash; it burns while it lasts
+      if (distance(p, f) <= f.radius + .1 && !(f.nextBite > f.age)) { f.nextBite = f.age + TURTLE.fireTick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "flameTrail", beam: true }); }
+    } else if (f.kind === "frostTrail") { // ice left behind: it stings and slows, then bursts (a comet's frost does not burst)
+      if (distance(p, f) <= f.radius + .1) { w.slow(TURTLE.iceSlow, .3); if (!(f.nextBite > f.age)) { f.nextBite = f.age + TURTLE.iceTick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "frostTrail", beam: true }); } }
+      if (f.burst && !f.burstDone && f.life - w.dt <= 0) { f.burstDone = true; if (distance(p, f) <= TURTLE.iceBurstRadius + .2) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.burst, { jumpable: false, source: "iceBurst" }); w.addEffect({ kind: "iceBurst", owner: f.owner, x: f.x, y: f.y, radius: TURTLE.iceBurstRadius, arming: 0, life: .45, total: .45, damage: 0 }); }
+    } else if (f.kind === "twister") { // a small tornado flung off the spin: it wanders, stings and slows until it blows out
+      f.wander = (f.wander || 0) + Math.sin(f.age * 1.7 + f.x) * w.dt * 1.2;
+      const sp = Math.hypot(f.vx || 0, f.vy || 0) || TURTLE.twisterSpeed, nx = f.x + Math.cos(f.wander) * sp * w.dt, ny = f.y + Math.sin(f.wander) * sp * w.dt;
+      if (!w.tileOpen || w.tileOpen(nx + .5, ny + .5)) { f.x = nx; f.y = ny; } else f.wander += Math.PI * .75;
+      if (distance(p, f) <= f.radius + .2) { w.slow(TURTLE.twisterSlow, .4); if (!(f.nextBite > f.age)) { f.nextBite = f.age + TURTLE.twisterTick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "twister", beam: true }); } }
+      if (!w.enemies.some((q) => q.id === f.owner && !q.dead) && f.life > .5) f.life = .5; // they blow out when the Turtle is gone
+    } else if (f.kind === "comet") { // the ice comet: it flies to where it was aimed and bursts there (or on whoever it meets)
+      const nx = f.x + f.vx * w.dt, ny = f.y + f.vy * w.dt, hit = distance(p, f) <= f.radius + .3, wall = w.tileOpen && !w.tileOpen(nx + .5, ny + .5);
+      if (!hit && !wall && f.life - w.dt > 0) { f.x = nx; f.y = ny; }
+      else {
+        const owner = w.enemies.find((q) => q.id === f.owner) || null;
+        if (distance(p, f) <= TURTLE.cometBlast + .2) w.hurt(owner, f.damage, { jumpable: false, source: "turtleComet" });
+        w.addEffect({ kind: "iceBurst", owner: f.owner, x: f.x, y: f.y, radius: TURTLE.cometBlast, arming: 0, life: .55, total: .55, damage: 0 });
+        w.addEffect({ kind: "frostTrail", owner: f.owner, x: f.x, y: f.y, radius: TURTLE.cometFrost, arming: 0, life: TURTLE.cometFrostLife, total: TURTLE.cometFrostLife, damage: f.frost, burst: 0 });
+        f.life = 0; continue;
+      }
+    } else if (f.kind === "iceBurst") { /* the shatter, drawn only */ }
     else if (f.kind === "furrow") { /* release 239: the fleeing worm's wake; harmless, it only fades */ }
     else if (f.kind === "flesh") { if (distance(p, f) <= f.radius) { w.slow(f.slow || .55, .25); if (!(f.nextBite > f.age)) { f.nextBite = f.age + .8; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "fleshBloom", beam: true }); } } }
     else if (f.kind === "orb") { f.x += f.vx * w.dt; f.y += f.vy * w.dt; if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0; else if (!f.hit && distance(p, f) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "orb" }); } }
