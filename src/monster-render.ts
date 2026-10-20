@@ -577,12 +577,19 @@ const BODY = {
     const jit = scat > 0 ? (n) => (Math.sin(t * 60 + n * 7) * u * .05 * scat / .45) : () => 0;
     ctx.save(); if (scat > 0) ctx.globalAlpha *= .55 + .45 * (1 - scat / .45);
     ctx.translate(k, 0); if (lean) { ctx.translate(0, b); ctx.transform(1, 0, -flip * lean * .6, 1, 0, 0); ctx.translate(0, -b); }
-    // the cape: long and tattered, billowing behind it in slow waves (harder when it slides), fraying into motes
-    const cw = u * .3, gust = e.sliding ? 1.8 : 1, billow = u * (.22 + .06 * Math.sin(t * 1.3)) * gust, hem = (f) => [-flip * (cw * .85 + billow) * (1 - f) + flip * cw * .4 * f + Math.sin(t * 2.6 - f * 5) * u * .05 * gust * (1 - f * .5), b - u * .04 - (Math.round(f * 8) % 2 ? u * .08 : 0) - Math.sin(t * 1.9 - f * 4 + 1) * u * .06 * gust * (1 - f)];
-    const cape = [-flip * cw * .5, sh - u * .01]; for (let i = 0; i <= 8; i++) cape.push(...hem(i / 8)); cape.push(flip * cw * .25, sh + u * .02);
-    poly(cape, "#1a1a22", "#000000"); // the cape streaming back from the shoulders, its hem ragged and rolling
-    ctx.strokeStyle = "#0a0a0e"; ctx.lineWidth = Math.max(1, u * .008); for (const f of [.15, .4, .65]) { const [x2, y2] = hem(f); ctx.beginPath(); ctx.moveTo(-flip * cw * .3 + flip * f * cw * .4, sh + u * .03); ctx.quadraticCurveTo((x2 - flip * cw * .2) * .7, (sh + y2) / 2, x2, y2 - u * .02); ctx.stroke(); } // folds
-    const [lx2, ly2] = hem(.08), [lx3, ly3] = hem(.3); poly([-flip * cw * .45, sh + u * .02, lx2, ly2 - u * .02, lx3, ly3 - u * .03, -flip * cw * .2, sh + u * .1], "#4a0c12"); // the red lining where it turns
+    // the cape: not cloth but the swarm itself, a stream of motes pouring off its shoulders and trailing out behind it,
+    // billowing (harder when it slides) and thinning to nothing at the tail; a few faint wisps of smoke (Tim chose this
+    // trailing version, 2026-10-20)
+    const gust = e.sliding ? 1.8 : 1, trail = u * (.5 + .08 * Math.sin(t * 1.3)) * gust, at = (f, g) => [
+      -flip * (u * .12 + f * trail) + (g - .5) * u * .26 * (1 - f * .3) + Math.sin(t * 2.6 - f * 6 + g * 3) * u * .05 * gust * f,
+      sh + u * .02 + f * (b - sh - u * .06) * (1 - f * .25 * gust) - Math.sin(t * 1.9 - f * 4 + g * 2) * u * .05 * gust * f];
+    ctx.lineCap = "round";
+    for (let i = 0; i < 4; i++) { const g = (i + .5) / 4; ctx.strokeStyle = `rgba(14,12,18,${.35 - i * .04})`; ctx.lineWidth = Math.max(2, u * (.05 - i * .006)); ctx.beginPath(); for (let j = 0; j <= 6; j++) { const [x2, y2] = at(j / 6 * .9, g); j ? ctx.lineTo(x2, y2) : ctx.moveTo(x2, y2); } ctx.stroke(); } // wisps of smoke
+    for (let i = 0; i < 90; i++) { // the motes: each flows from the shoulders to the tail and starts again
+      const g = ((i * 37) % 90) / 90, f = (t * (.35 + (i % 7) * .03) + i * .618) % 1, [x2, y2] = at(f, g), sz = Math.max(1.5, u * (.04 - f * .028));
+      ctx.fillStyle = i % 9 === 0 ? `rgba(255,50,40,${.8 * (1 - f)})` : `rgba(${12 + (i % 3) * 8},${10 + (i % 3) * 6},${16 + (i % 3) * 8},${.95 * (1 - f * f)})`;
+      ctx.fillRect(x2 - sz / 2, y2 - sz / 2, sz, sz);
+    }
     // legs: angular greaves, a wide stance
     for (const [side, ph] of [[-1, 0], [1, Math.PI]]) { const lx = side * u * .1 + jit(side), lift = Math.max(0, Math.sin(t * 5 + ph)) * u * .02 * (att ? 0 : 1);
       poly([lx - u * .06, hip, lx + u * .06, hip, lx + u * .05, b - u * .2 - lift, lx - u * .055, b - u * .2 - lift], side * flip > 0 ? "#2a2a32" : "#1a1a20", "#000"); // thigh

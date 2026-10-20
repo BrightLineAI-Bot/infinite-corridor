@@ -26,6 +26,21 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Nanobot Knight's swarm cape (release 247)
+
+Tim, 2026-10-20: the cape was too clean. It should be "a series of small particles that trail behind him like a cape … like smoke", not a solid cape.
+
+**CODE:**
+
+- **`src/monster-render.ts`, `BODY.nanobotKnight`.** The solid cape polygon and its lining are gone. In their place:
+  - 90 motes (`fillRect`, dark, every ninth one red) flow along a trailing field `at(f, g)`, where `f` runs from the shoulders to the tail and `g` runs across the stream.
+  - The stream pours off the shoulders and trails out behind and down like a plume. It billows in slow waves, harder while the Knight slides. Each mote loops from the shoulders to the tail, shrinking and fading.
+  - Four translucent smoke wisps run along the same field.
+  - Tim picked this trailing version over a hanging, sail-shaped one.
+  - The cost is about a hundred small rect fills per Knight per frame, with no gradients.
+
+**BOUNDARY:** Drawing only. No rule, save or generator change.
+
 ## The Nanobot Knight (release 245)
 
 The fourth of Tim's world beasts (2026-10-19). He asked for:
