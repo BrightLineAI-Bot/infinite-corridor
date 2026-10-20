@@ -95,6 +95,7 @@ export const ATTACK_MODULES = {
   turtleStomp: { id: "turtleStomp", name: "Stomp", range: [0, 4.6], cooldown: 3.2, windup: .75, recover: .55, damage: 1.2, jumpable: true, tags: ["ground", "melee"], text: "Rears and stamps: the ground under it heaves and a ring rolls out. Jump the ring." },
   turtleDash: { id: "turtleDash", name: "Burst Dash", range: [3, 11], cooldown: 6, windup: .85, active: .9, recover: .7, damage: 1.4, tags: ["charge"], text: "Bursts forward in a straight rush, leaving fire or ice behind it. Ice it leaves bursts a couple of seconds later." },
   turtleSpin: { id: "turtleSpin", name: "Ice Tornado", range: [0, 9], cooldown: 9, windup: .6, active: 2.4, recover: .6, damage: .5, tags: ["control", "ice"], text: "Spins in its shell inside a tornado of ice, flinging off small twisters that wander, sting and slow you until they blow out." },
+  turtleCyclone: { id: "turtleCyclone", name: "Icicle Cyclone", range: [0, 10], cooldown: 9.5, windup: .6, active: 3.2, recover: .7, damage: .9, tags: ["charge", "ice"], text: "Spins in its shell inside the tornado and careens around, rebounding off walls and flinging icicles in every direction. Keep your distance and dodge the shards." },
   turtleComet: { id: "turtleComet", name: "Ice Comet", range: [3, 11], cooldown: 5.5, windup: .95, recover: .6, damage: 1.5, tags: ["ranged", "ice"], text: "A ball of ice the size of a cart leaves its mouth and bursts where it lands, leaving the ground frozen." },
   turtleShield: { id: "turtleShield", name: "Ice Shield", range: [0, 14], cooldown: 13, windup: .5, active: 3.6, recover: .3, damage: 0, tags: ["defense", "ice"], text: "Ice grows over its shell. While the shield stands nothing hurts it; wait it out." },
   firefall: { id: "firefall", name: "Firefall", range: [1.5, 9], cooldown: 6.5, windup: .7, recover: .8, damage: .85, jumpable: true, tags: ["ground"], text: "Embers rain across the floor around you." },
@@ -249,7 +250,7 @@ export const MONSTER_PACK = {
   mountainTurtle: {
     id: "mountainTurtle", name: "The Mountain Turtle", epithet: "The Walking Mausoleum", unique: true,
     stats: [360, 18, 0], form: { scale: 2.9 }, sizeClass: "large", movement: "lurch", brain: "juggernaut",
-    attacks: ["turtleStomp", "turtleDash", "turtleSpin", "turtleComet", "turtleShield"], bossAttacks: ["shockwave"],
+    attacks: ["turtleStomp", "turtleDash", "turtleSpin", "turtleCyclone", "turtleComet", "turtleShield"], bossAttacks: ["shockwave"],
     palette: ["#6f7a72", "#1e2420", "#8fd8ff", "#e8f6ff"], render: "mountainTurtle", tags: ["beast", "elder", "ice", "stone"],
     lore: "A tortoise the size of a barrow, its shell a tomb of fitted stone: doors, steps and a cold light inside. It walks slowly and stamps the ground flat; it rushes in bursts that leave fire or ice behind; it spins inside a tornado of ice and breathes comets of it; and when it chooses, it grows a shield of ice that nothing gets through.",
   },
@@ -457,6 +458,7 @@ export const TURTLE = {
   stompRadius: 1.9, stompRing: 4.2,
   dashSpeed: 7.5, dashEvery: .14, trailLife: 3.2, trailRadius: .75, trailBite: .45, fireTick: .5, iceTick: .6, iceSlow: .55, iceBurst: [2, 2.6], iceBurstRadius: 1.3, iceBurstBite: .9, // fire burns while it lasts; ice stings and slows, then bursts
   spinRadius: 1.4, spinTick: .4, spinPull: .9, twisterEvery: .5, twisterMax: 6, twisterSpeed: 1.4, twisterLife: 10, twisterRadius: .7, twisterTick: .7, twisterSlow: .5, twisterBite: .35,
+  cycloneSpeed: 5.2, cycloneHitEvery: .7, icicleEvery: .2, iciclesPerVolley: 3, icicleTurn: .37, icicleSpeed: 7, icicleLife: 1.3, icicleRadius: .22, icicleBite: .4, // the second spin: careening, rebounding, flinging icicles
   cometSpeed: 5.5, cometRadius: .6, cometBlast: 1.9, cometFrost: 1.6, cometFrostLife: 3.5,
   tuckTime: .8, // its dodge: it pulls into its shell (no blow lands) instead of springing aside
 };
@@ -531,6 +533,7 @@ const START = {
   turtleStomp(e, s) { s.tele = { type: "ring", radius: bodyRadius(e) + TURTLE.stompRadius }; },
   turtleDash(e, s, w) { const len = Math.min(11, TURTLE.dashSpeed * ATTACK_MODULES.turtleDash.active); s.data.ice = hashSeed(`${e.id}:${s.seq}:dash`) % 2 === 1; s.tele = { type: "lane", aim: s.data.aim, length: len, width: bodyRadius(e) * 1.2 }; s.data.next = 0; },
   turtleSpin(e, s) { s.tele = { type: "brace" }; s.data.next = 0; s.data.flung = 0; },
+  turtleCyclone(e, s) { s.tele = { type: "brace" }; s.data.next = 0; s.data.volley = 0; s.data.dir = { ...s.data.aim }; s.data.hitCd = 0; },
   turtleComet(e, s) { s.tele = { type: "circle", x: s.data.target.x, y: s.data.target.y, radius: TURTLE.cometBlast, total: ATTACK_MODULES.turtleComet.windup + 1.2 }; },
   turtleShield(e, s) { s.tele = { type: "shimmer" }; },
   wormMaw(e, s) { const a = Math.atan2(s.data.aim.y, s.data.aim.x); s.data.dirs = Array.from({ length: WORM.mawTentacles }, (_, i) => { const b = a + (i - (WORM.mawTentacles - 1) / 2) * WORM.mawSpread; return { x: Math.cos(b), y: Math.sin(b) }; }); s.tele = { type: "tendrils", dirs: s.data.dirs, length: WORM.mawLength, width: WORM.mawWidth, flesh: true }; },
@@ -645,6 +648,24 @@ const RUN = {
       s.data.next = TURTLE.twisterEvery;
       const alive = (w.effects?.() || []).filter((f) => f.kind === "twister" && f.owner === e.id).length;
       if (alive < TURTLE.twisterMax) { const a = (hashSeed(`${e.id}:${s.seq}:twister:${s.data.flung++}`) % 628) / 100, r = bodyRadius(e) + .6; w.addEffect({ kind: "twister", owner: e.id, x: e.x + Math.cos(a) * r, y: e.y + Math.sin(a) * r, vx: Math.cos(a) * TURTLE.twisterSpeed, vy: Math.sin(a) * TURTLE.twisterSpeed, radius: TURTLE.twisterRadius, arming: 0, life: TURTLE.twisterLife, total: TURTLE.twisterLife, damage: Math.max(1, Math.ceil(e.damage * TURTLE.twisterBite)), wander: a }); }
+    }
+    if (s.t <= 0) { e.spinning = false; toPhase(s, "recover", attack.recover); }
+  },
+  turtleCyclone(e, s, w) {
+    const attack = ATTACK_MODULES.turtleCyclone;
+    if (s.phase === "windup") { if (s.t <= 0) { s.tele = null; toPhase(s, "active", attack.active); } return; }
+    if (s.phase !== "active") return;
+    e.spinning = true; const d = s.data.dir, step = TURTLE.cycloneSpeed * w.dt;
+    if (!w.move(e, d.x * step, d.y * step)) { // rebound: off a wall side, off the other, or straight back
+      if (w.move(e, -d.x * step, d.y * step)) d.x = -d.x; else if (w.move(e, d.x * step, -d.y * step)) d.y = -d.y; else { d.x = -d.x; d.y = -d.y; }
+      w.addEffect({ kind: "dust", owner: e.id, x: e.x + d.x * bodyRadius(e), y: e.y + d.y * bodyRadius(e), radius: 1, arming: 0, life: .4, damage: 0 });
+    }
+    s.data.hitCd -= w.dt;
+    if (s.data.hitCd <= 0 && distance(center(w.player), e) <= bodyRadius(e) + .5) { s.data.hitCd = TURTLE.cycloneHitEvery; w.hurt(e, damageOf(e, "turtleCyclone"), { jumpable: false, source: "turtleCyclone" }); }
+    s.data.next -= w.dt;
+    if (s.data.next <= 0) { // a volley of icicles flung outward, turning as it spins
+      s.data.next = TURTLE.icicleEvery; const base = s.data.volley++ * TURTLE.icicleTurn, dmg = Math.max(1, Math.ceil(e.damage * TURTLE.icicleBite));
+      for (let i = 0; i < TURTLE.iciclesPerVolley; i++) { const a = base + i * TAU / TURTLE.iciclesPerVolley; w.addEffect({ kind: "orb", icicle: true, owner: e.id, x: e.x + Math.cos(a) * bodyRadius(e), y: e.y + Math.sin(a) * bodyRadius(e) * .7, vx: Math.cos(a) * TURTLE.icicleSpeed, vy: Math.sin(a) * TURTLE.icicleSpeed, radius: TURTLE.icicleRadius, arming: 0, life: TURTLE.icicleLife, damage: dmg }); }
     }
     if (s.t <= 0) { e.spinning = false; toPhase(s, "recover", attack.recover); }
   },

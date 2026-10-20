@@ -26,6 +26,22 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Mountain Turtle's Icicle Cyclone (release 243)
+
+Tim, 2026-10-20: the spin should come in two variants. The first makes tornadoes that wander for a while. In the second, the Turtle spins and bounces around the stage inside its tornado, launching icicles in all directions.
+
+**CODE:**
+
+- **`src/monster-pack.ts`.**
+  - The `turtleCyclone` attack module is now in the Turtle's kit, alongside `turtleSpin`.
+  - During its active phase it sets `e.spinning` and moves at `TURTLE.cycloneSpeed`. When `w.move` refuses a step, it rebounds: it flips x, else y, else both, and leaves a dust puff.
+  - It strikes on contact at most every `cycloneHitEvery`.
+  - Every `icicleEvery` seconds it fires `iciclesPerVolley` `orb` effects marked `icicle`, evenly spaced and turning by `icicleTurn` per volley. They travel straight, stop at walls and hit once (the existing orb rules).
+- **`src/monster-render.ts`.** An icicle is drawn as a lit shard pointing along its flight, with a frost streak behind it. The tornado and tucked shell are the existing spinning drawing.
+- **`tests/world-beasts.test.ts`.** The test covers rebounds, at least 8 icicle headings, a bound on live icicles and contact hits.
+
+**BOUNDARY:** No save or generator change. Live icicles stay at about 20 (3 every 0.2 s, 1.3 s life), under the pack effect cap.
+
 ## The Mountain Turtle; retreat fixes (release 241)
 
 The third of Tim's world beasts (2026-10-19: "a walking mausoleum … about twice the size of the Questing Beast … slow … stomps … a burst dash leaving a trail of fire or ice; the ice damages, then bursts after a couple of seconds … a spinning attack with an ice tornado that spawns small tornadoes which persist, damage and slow … a comet ice-ball from its mouth … a periodic invulnerable ice shield").

@@ -298,3 +298,14 @@ test('retreat fixes: a fleeing beast passes through settlements and the Questing
   const sea = { tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: 'ocean', blocked: true })) };
   assert.equal(worldBeastFor(t, sea, 7, 7), null); assert.equal(t.worldBeasts.mountainTurtle.active, null, 'all water: it does not hold the section');
 });
+
+test('the Turtle\'s second spin: it careens around rebounding off walls, flinging icicles every way', () => {
+  // Tim (2026-10-20): "a second variant … it spins around and bounces around the stage … launches icicles that fly out in all directions".
+  const w = world({ size: 20, player: { x: 4, y: 10 } }), t = turtle(w, 10, 10); t.packAttacks = ['turtleCyclone']; t.pack.gap = 0;
+  const xs = []; let maxIcicles = 0; const angles = new Set();
+  step(w, 4, () => { xs.push(t.x); const ice = w.fx.filter((f) => f.kind === 'orb' && f.icicle); maxIcicles = Math.max(maxIcicles, ice.length); for (const f of ice) angles.add(Math.round(Math.atan2(f.vy, f.vx) * 2)); });
+  const turns = xs.slice(2).filter((x, i) => Math.sign(x - xs[i + 1]) !== Math.sign(xs[i + 1] - xs[i]) && Math.abs(x - xs[i + 1]) > 1e-6).length;
+  assert.ok(turns >= 1, 'it rebounds'); assert.ok(angles.size >= 8, `icicles every way (${angles.size} headings)`); assert.ok(maxIcicles <= 30, `bounded (${maxIcicles})`);
+  assert.ok(w.hurts.some((h) => h.source === 'turtleCyclone' || h.source === 'orb'), 'it hurts whoever it meets');
+  assert.ok(MONSTER_PACK.mountainTurtle.attacks.includes('turtleSpin') && MONSTER_PACK.mountainTurtle.attacks.includes('turtleCyclone'), 'both spins');
+});
