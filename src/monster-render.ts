@@ -1,7 +1,7 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind, BLOB } from "./monster-pack.ts";
+import { MONSTER_PACK, isPackKind, BLOB, WORM } from "./monster-pack.ts";
 
 const TAU = Math.PI * 2;
 
@@ -392,6 +392,88 @@ const BODY = {
     ctx.fillStyle = p[3] + "cc"; ctx.beginPath(); ctx.ellipse(k - R * .42, cy - R * .38, R * .05, R * .03, -.4, 0, TAU); ctx.fill();
     if (state === "windup" && (s0?.attack === "blobGasJet" || s0?.attack === "blobGasCloud")) for (let i = 0; i < 5; i++) glow(ctx, k + Math.sin(t * 3 + i * 1.3) * R * .5, cy - R * (.6 + ((t * 1.5 + i * .2) % 1) * .6), R * .3, "#c8e85a", .3); // gas gathering
   },
+  // Release 237: the Tremor Worm. Under the ground, a mound of heaving earth; up, a ringed column of sand-coloured armour
+  // standing out of a hole of broken ground, its head a round maw ringed with teeth and lit from deep in the throat, small
+  // tentacles writhing at its lips (lashing out along their lanes when it strikes). It drinks the air with its maw wide.
+  tremorWorm(ctx, q) {
+    const { k, b, u, t, p, flip, e, state } = q, s0 = e.pack, W = s0?.worm, rising = s0?.attack === "wormRise";
+    if (e.hidden || (rising && e.untargetable)) { // travelling under the ground, or about to burst up: heaving earth
+      const R = u * .55, heave = rising && s0.phase === "erupt" ? 1.3 : 1;
+      ctx.fillStyle = p[1] + "aa"; ctx.beginPath(); ctx.ellipse(k, b - u * .04, R * heave, R * .32 * heave, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = p[0] + "cc"; ctx.beginPath(); ctx.ellipse(k, b - u * .1 * heave, R * .8 * heave, R * .24 * heave, 0, Math.PI, TAU); ctx.fill();
+      ctx.strokeStyle = "#140c06cc"; ctx.lineWidth = Math.max(1, u * .015); for (let i = 0; i < 6; i++) { const a = i * 1.05 + .3; ctx.beginPath(); ctx.moveTo(k, b - u * .08); ctx.lineTo(k + Math.cos(a) * R * .55 * heave, b - u * .08 + Math.sin(a) * R * .18 * heave); ctx.lineTo(k + Math.cos(a + .2) * R * .9 * heave, b - u * .06 + Math.sin(a + .2) * R * .28 * heave); ctx.stroke(); } // cracks
+      for (let i = 0; i < 8; i++) { const a = t * 4 + i * .8, h = Math.abs(Math.sin(a * 1.3)) * u * .2 * heave; ctx.fillStyle = i % 2 ? p[0] : "#6a5238"; ctx.fillRect(k + Math.cos(a) * R * .7, b - u * .12 - h, Math.max(2, u * .05), Math.max(2, u * .04)); } // thrown earth
+      return;
+    }
+    const up = W?.mode === "emerge" ? Math.max(.05, 1 - Math.max(0, W.t) / WORM.emergeTime) : 1, scale = Math.max(.6, Number(e.scale) || 1), tile = u / scale;
+    const suck = s0?.attack === "wormSuction" && s0.phase !== "recover", lash = s0?.attack === "wormMaw" && s0.data?.dirs;
+    const open = suck ? .95 + Math.sin(t * 16) * .05 : state === "windup" ? .85 : .7 + Math.sin(t * 1.7) * .06;
+    // The hole it stands in: broken ground, a dark pit, rubble on the rim.
+    const hr = u * .5; shadowAt(ctx, k, b, hr * 1.25, hr * .38, .55);
+    ctx.fillStyle = "#120a06"; ctx.beginPath(); ctx.ellipse(k, b - u * .03, hr, hr * .3, 0, 0, TAU); ctx.fill();
+    for (let i = 0; i < 11; i++) { const a = i / 11 * TAU + .2, r = hr * (1 + (i % 3) * .06); ctx.fillStyle = i % 2 ? "#7a6044" : "#56422e"; ctx.beginPath(); ctx.ellipse(k + Math.cos(a) * r, b - u * .03 + Math.sin(a) * r * .3, u * (.06 + (i % 3) * .02), u * .04, a, 0, TAU); ctx.fill(); }
+    // The body: a ringed column rising out of the hole and curving toward the Wayfarer, drawn bottom to top.
+    const H = u * 1.4 * up, lean = flip * u * .28 * up, sway = Math.sin(t * 1.3) * u * .07, n = 10, pts = [];
+    for (let i = 0; i <= n; i++) { const f = i / n, x = k + lean * f * f + sway * Math.sin(f * Math.PI), y = b - u * .06 - H * f + (suck ? Math.sin(t * 18 + f * 6) * u * .01 : 0); pts.push({ x, y, f }); }
+    for (let i = 0; i < n; i++) {
+      const a = pts[i], c = pts[i + 1], mx = (a.x + c.x) / 2, my = (a.y + c.y) / 2, rw = u * (.36 + .04 * Math.sin(i * 1.7) + .05 * (i / n)), rh = rw * .55;
+      ctx.beginPath(); ctx.ellipse(mx, my, rw, rh, 0, 0, TAU); ctx.fillStyle = shade(ctx, mx - flip * rw * .3, my - rh * .4, rw * 1.2, i % 2 ? p[3] : "#e6c896", i % 2 ? p[0] : "#9a7448"); ctx.fill(); outline(ctx, Math.max(1, u * .02), "#1a100acc");
+      ctx.strokeStyle = p[1] + "aa"; ctx.lineWidth = Math.max(1, u * .025); ctx.beginPath(); ctx.ellipse(mx, my + rh * .15, rw * .96, rh * .8, 0, .15, Math.PI - .15); ctx.stroke(); // the lower lip of the ring plate
+      ctx.strokeStyle = "#fff4dc55"; ctx.lineWidth = Math.max(1, u * .018); ctx.beginPath(); ctx.ellipse(mx - flip * rw * .1, my - rh * .2, rw * .7, rh * .5, 0, Math.PI * 1.15, Math.PI * 1.75); ctx.stroke(); // light on the ridge
+      if (i % 2 === 0) { ctx.fillStyle = "#3a2a1a88"; for (const sx of [-.55, .55]) { ctx.beginPath(); ctx.arc(mx + sx * rw, my, rw * .07, 0, TAU); ctx.fill(); } } // breathing pores
+    }
+    // The head: a round maw tilted toward the Wayfarer.
+    const hx = pts[n].x + flip * u * .06, hy = pts[n].y - u * .02, R = u * .46, ry = R * .82;
+    ctx.beginPath(); ctx.ellipse(hx, hy, R, ry, flip * .15, 0, TAU); ctx.fillStyle = shade(ctx, hx - flip * R * .3, hy - ry * .4, R * 1.2, p[3], p[0]); ctx.fill(); outline(ctx, Math.max(1.5, u * .03), "#1a100a");
+    for (let r = 0; r < 3; r++) { ctx.strokeStyle = r % 2 ? "#8a6a4a99" : "#5a442e99"; ctx.lineWidth = Math.max(1, u * .02); ctx.beginPath(); ctx.ellipse(hx, hy, R * (.92 - r * .05), ry * (.92 - r * .05), flip * .15, Math.PI * .1, Math.PI * .9); ctx.stroke(); } // lip folds
+    const mr = R * .84 * open, mry = ry * .84 * open;
+    ctx.fillStyle = "#1a0604"; ctx.beginPath(); ctx.ellipse(hx, hy, mr, mry, flip * .15, 0, TAU); ctx.fill(); // throat
+    glow(ctx, hx, hy, mr * .9, p[2], suck ? .85 : .55); ctx.fillStyle = "#ffcf8a"; ctx.beginPath(); ctx.ellipse(hx, hy, mr * .12, mry * .12, 0, 0, TAU); ctx.fill(); // fire deep in it
+    for (let ring = 0; ring < 3; ring++) { // rings of hooked teeth, the inner rings turning
+      const rr = 1 - ring * .27, cnt = 16 - ring * 3, turn = ring * .2 + (suck ? t * (ring % 2 ? -2 : 2) : Math.sin(t + ring) * .05);
+      ctx.fillStyle = ring ? "#d8ccb0" : "#f3ead2";
+      for (let i = 0; i < cnt; i++) { const a = i / cnt * TAU + turn, x0 = hx + Math.cos(a) * mr * rr, y0 = hy + Math.sin(a) * mry * rr, x1 = hx + Math.cos(a) * mr * (rr - .22), y1 = hy + Math.sin(a) * mry * (rr - .22), wv = .1; ctx.beginPath(); ctx.moveTo(hx + Math.cos(a - wv) * mr * rr, hy + Math.sin(a - wv) * mry * rr); ctx.lineTo(x1, y1); ctx.lineTo(hx + Math.cos(a + wv) * mr * rr, hy + Math.sin(a + wv) * mry * rr); ctx.closePath(); ctx.fill(); }
+    }
+    // Tentacles at the lips: writhing stubs, or lashing out along the lanes.
+    ctx.lineCap = "round";
+    const stubs = lash ? s0.data.dirs : Array.from({ length: 5 }, (_, i) => { const a = -Math.PI / 2 + (i - 2) * .7 + Math.sin(t * 2 + i) * .2; return { x: Math.cos(a), y: Math.sin(a), stub: true }; });
+    const out = lash ? (s0.phase === "windup" ? .15 : Math.max(0, Math.min(1, (s0.t || 0) / .35)) * .95 + .05) : 1;
+    for (const [i, d] of stubs.entries()) {
+      const sx = hx + d.x * mr * .85, sy = hy + d.y * mry * .85, len = d.stub ? u * (.3 + .06 * Math.sin(t * 3 + i)) : WORM.mawLength * tile * out, segs = 10;
+      for (const pass of [0, 1]) { ctx.beginPath(); ctx.moveTo(sx, sy);
+        for (let j = 1; j <= segs; j++) { const f = j / segs, wave = Math.sin(f * 6 + t * (d.stub ? 5 : 14) + i) * u * (d.stub ? .07 : .07) * (1 - f * .5), x = sx + d.x * len * f - d.y * wave, y = sy + d.y * len * f * (d.stub ? 1 : .75) + d.x * wave + (d.stub ? -Math.sin(f * Math.PI) * u * .05 : 0); ctx.lineTo(x, y); }
+        ctx.strokeStyle = pass ? "#c98a6a" : "#3a1a12"; ctx.lineWidth = (pass ? .06 : .09) * u * (d.stub ? .9 : 1.2); ctx.stroke(); }
+      ctx.fillStyle = "#ffe0c0aa"; for (let j = 2; j < 9; j += 2) { const f = j / 10; ctx.beginPath(); ctx.arc(sx + d.x * len * f, sy + d.y * len * f * (d.stub ? 1 : .75), u * .014, 0, TAU); ctx.fill(); } // suckers
+    }
+    const spew = s0?.attack === "wormLavaSpew" && s0.data?.aim;
+    if (spew && s0.phase === "windup") { glow(ctx, hx, hy, mr * 1.4, "#ff7a2a", .5 + .3 * Math.sin(t * 20)); for (let i = 0; i < 3; i++) { const f = (t * 2 + i / 3) % 1; ctx.fillStyle = "#ffb02a"; ctx.beginPath(); ctx.arc(hx + Math.sin(i * 2.1) * mr * .4, hy + mry * .5 + f * u * .35, u * .03 * (1 - f * .5), 0, TAU); ctx.fill(); } } // lava welling up and dripping from the lips
+    if (spew && s0.phase === "active") { // the stream: a thick arcing gush from the maw to where the lava is landing
+      const tx = k + s0.data.aim.x * (s0.data.front || 0) * tile, ty = b + s0.data.aim.y * (s0.data.front || 0) * tile - tile * .2, mx = (hx + tx) / 2, my = Math.min(hy, ty) - u * .35;
+      for (const [w2, c] of [[.2, "#a8200888"], [.13, "#ff6a1a"], [.06, "#ffe08a"]]) { ctx.strokeStyle = c; ctx.lineWidth = u * w2 * (1 + .1 * Math.sin(t * 30)); ctx.beginPath(); ctx.moveTo(hx, hy); ctx.quadraticCurveTo(mx, my, tx, ty); ctx.stroke(); }
+      glow(ctx, hx, hy, mr * 1.3, "#ff7a2a", .8); glow(ctx, tx, ty, u * .3, "#ff9a2a", .7);
+    }
+    if (suck) for (let i = 0; i < 10; i++) { const a = i * TAU / 10 + t * 3, f = 1 - ((t * 2 + i / 10) % 1), r = u * (.6 + f * 2.2); ctx.fillStyle = `rgba(220,190,140,${.7 * (1 - f)})`; ctx.fillRect(hx + Math.cos(a) * r, hy + Math.sin(a) * r * .6, Math.max(2, u * .03), Math.max(2, u * .03)); } // dust drawn in
+    if (W?.mode === "emerge") { ctx.globalAlpha = 1 - up; for (let i = 0; i < 10; i++) { const a = i * TAU / 10; ctx.fillStyle = "#b9a184"; ctx.beginPath(); ctx.arc(k + Math.cos(a) * hr * (1 + up), b - u * .05 + Math.sin(a) * hr * .3 * (1 + up) - up * u * .3, u * .05, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1; } // earth thrown off as it comes up
+  },
+  // A tentacle the Tremor Worm raised: a tapering limb out of broken ground, suckers along its inside curve; the fire ones
+  // carry a glowing orifice at the tip, the laser ones a single lidded lens.
+  wormTentacle(ctx, q) {
+    const { k, b, u, t, p, flip, e } = q, up = 1 - Math.max(0, Math.min(1, Number(e.rising) || 0)), laser = e.tentacleMode === "laser";
+    if (e.hidden) return; // under the ground, on its way to you
+    shadowAt(ctx, k, b, u * .32, u * .1, .5);
+    ctx.fillStyle = "#120a06"; ctx.beginPath(); ctx.ellipse(k, b - u * .02, u * .24, u * .08, 0, 0, TAU); ctx.fill();
+    for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; ctx.fillStyle = i % 2 ? "#7a6044" : "#56422e"; ctx.beginPath(); ctx.ellipse(k + Math.cos(a) * u * .25, b - u * .02 + Math.sin(a) * u * .08, u * .05, u * .03, a, 0, TAU); ctx.fill(); }
+    if (up <= .02) return;
+    const H = u * 1.2 * up, n = 12, pts = [];
+    for (let i = 0; i <= n; i++) { const f = i / n, curl = Math.sin(t * 2.2 + f * 2.5 + e.x) * u * .16 * f, x = k + curl + flip * u * .15 * f * f, y = b - u * .04 - H * f; pts.push({ x, y, w: u * (.2 - .14 * f) }); }
+    ctx.beginPath(); ctx.moveTo(pts[0].x - pts[0].w, pts[0].y); for (const q2 of pts) ctx.lineTo(q2.x - q2.w, q2.y); for (let i = n; i >= 0; i--) ctx.lineTo(pts[i].x + pts[i].w, pts[i].y); ctx.closePath();
+    ctx.fillStyle = shade(ctx, k - u * .1, b - H * .6, H * .7, "#e0a080", p[1]); ctx.fill(); outline(ctx, Math.max(1, u * .025), "#1a0a06cc");
+    ctx.fillStyle = "#ffd8c0aa"; for (let i = 1; i < n - 1; i += 2) { const q2 = pts[i]; ctx.beginPath(); ctx.ellipse(q2.x + flip * q2.w * .55, q2.y, q2.w * .3, q2.w * .22, 0, 0, TAU); ctx.fill(); } // suckers
+    ctx.strokeStyle = "#3a1a1255"; ctx.lineWidth = 1; for (let i = 1; i < n; i++) { const q2 = pts[i]; ctx.beginPath(); ctx.moveTo(q2.x - q2.w * .9, q2.y); ctx.quadraticCurveTo(q2.x, q2.y + q2.w * .25, q2.x + q2.w * .9, q2.y); ctx.stroke(); } // ring creases
+    const tip = pts[n], tr = u * .1;
+    if (laser) { ctx.fillStyle = p[1]; ctx.beginPath(); ctx.ellipse(tip.x, tip.y, tr * 1.3, tr * 1.1, 0, 0, TAU); ctx.fill(); glow(ctx, tip.x, tip.y, tr * 3, "#ff3a2a", .7); ctx.fillStyle = "#ffe8d0"; ctx.beginPath(); ctx.ellipse(tip.x, tip.y, tr * .8, tr * .7, 0, 0, TAU); ctx.fill(); ctx.fillStyle = "#c01a10"; ctx.beginPath(); ctx.arc(tip.x + flip * tr * .2, tip.y, tr * .4, 0, TAU); ctx.fill(); ctx.fillStyle = "#1a0604"; ctx.beginPath(); ctx.arc(tip.x + flip * tr * .25, tip.y, tr * .15, 0, TAU); ctx.fill(); } // a lens
+    else { const pulse = .6 + .4 * Math.sin(t * 9); glow(ctx, tip.x, tip.y, tr * 3 * pulse, p[2], .8); ctx.fillStyle = "#2a0a04"; ctx.beginPath(); ctx.ellipse(tip.x, tip.y, tr, tr * .7, 0, 0, TAU); ctx.fill(); ctx.fillStyle = "#ffcf6a"; ctx.beginPath(); ctx.ellipse(tip.x, tip.y, tr * .5 * pulse, tr * .35 * pulse, 0, 0, TAU); ctx.fill(); } // a burning mouth
+  },
   bloblet(ctx, q) {
     const { k, b, u, t, p, flip } = q, R = u * .5, cy = b - R * .55, hop = Math.abs(Math.sin(t * 8)) * u * .06;
     shadowAt(ctx, k, b, R * .9, R * .22, .45);
@@ -465,7 +547,7 @@ function spriteState(e) { const s0 = e.pack; return s0?.attack ? (s0.phase === "
 function drawPackSprite(ctx, e, s, now, facing, def) {
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
-  if (e.kind === "morphingBlob") return false; // release 235: its tendrils reach far past the sprite box; one creature, painted directly
+  if (e.kind === "morphingBlob" || e.kind === "tremorWorm") return false; // release 235: its tendrils reach far past the sprite box; one creature, painted directly
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
   const flip = e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, step = Math.floor(now * PACK_SPRITE.fps / 1000);
@@ -529,16 +611,16 @@ export function drawPackTelegraphs(ctx, enemies, s, now, visible = () => true) {
     else if (tele.type === "beam") {
       const ex = cx + Math.cos(tele.angle) * tele.length * s, ey = cy + Math.sin(tele.angle) * tele.length * s;
       if (tele.charging) { ctx.strokeStyle = c + "99"; ctx.lineWidth = Math.max(1, s * .04 * pulse); ctx.setLineDash([s * .2, s * .12]); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke(); ctx.setLineDash([]); }
-      else { for (const [w, a] of [[.55, "33"], [.3, "88"], [.12, "ff"]]) { ctx.strokeStyle = (w < .2 ? "#ffffff" : c) + a; ctx.lineWidth = s * w * (.9 + pulse * .2); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke(); } glow(ctx, ex, ey, s * .45, c, .7); }
-    } else if (tele.type === "circle") { drawWarningCircle(ctx, (tele.x + .5) * s, (tele.y + .6) * s, tele.radius * s, tele.erupt ? "#e0b071" : c, pulse, 1 - Math.max(0, e.pack.t) / .75); }
+      else { const bc = tele.laser ? "#ff3a2a" : c; for (const [w, a] of [[.55, "33"], [.3, "88"], [.12, "ff"]]) { ctx.strokeStyle = (w < .2 ? "#ffffff" : bc) + a; ctx.lineWidth = s * w * (.9 + pulse * .2); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke(); } glow(ctx, ex, ey, s * .45, bc, .7); }
+    } else if (tele.type === "circle") { drawWarningCircle(ctx, (tele.x + .5) * s, (tele.y + .6) * s, tele.radius * s, tele.erupt ? "#e0b071" : c, pulse, 1 - Math.max(0, tele.left ?? e.pack.t) / (tele.total || .75)); }
     else if (tele.type === "blink") { const bx = (tele.x + .5) * s, by = (tele.y + .6) * s; glow(ctx, bx, by - s * .2, s * .6, c, .6 * pulse); ctx.strokeStyle = c + "cc"; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(bx, by, s * (.25 + i * .15) * pulse, s * (.12 + i * .07) * pulse, 0, 0, TAU); ctx.stroke(); } }
     else if (tele.type === "lane") { const a = tele.aim, w = tele.width * s, px = -a.y * w, py = a.x * w, l = tele.length * s; ctx.fillStyle = tele.phase ? c + "22" : "#c0404030"; ctx.strokeStyle = tele.phase ? c + "cc" : "#ff9a7acc"; ctx.lineWidth = 2; if (tele.phase) ctx.setLineDash([s * .18, s * .1]); ctx.beginPath(); ctx.moveTo(cx + px, cy + py); ctx.lineTo(cx + a.x * l + px, cy + a.y * l + py); ctx.lineTo(cx + a.x * l - px, cy + a.y * l - py); ctx.lineTo(cx - px, cy - py); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); for (let i = 1; i < 5; i++) { const f = ((now / 400 + i / 5) % 1) * l; ctx.fillStyle = "#ffd2a0aa"; ctx.beginPath(); ctx.moveTo(cx + a.x * (f + s * .2), cy + a.y * (f + s * .2)); ctx.lineTo(cx + a.x * f + px * .6, cy + a.y * f + py * .6); ctx.lineTo(cx + a.x * f - px * .6, cy + a.y * f - py * .6); ctx.fill(); } }
     else if (tele.type === "ring" && tele.inhale) { ctx.strokeStyle = "#ff4a4a88"; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { const rr = tele.radius * s * (1 - ((now / 900 + i / 3) % 1)); ctx.beginPath(); ctx.ellipse(cx, cy + s * .15, rr, rr * .6, 0, 0, TAU); ctx.stroke(); } }
     else if (tele.type === "ring") { ctx.strokeStyle = "#ffd25a99"; ctx.lineWidth = 2; ctx.setLineDash([s * .15, s * .1]); ctx.beginPath(); ctx.ellipse(cx, cy + s * .15, tele.radius * s, tele.radius * s * .7, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]); }
     else if (tele.type === "shadow") { const sx = (tele.x + .5) * s, sy = (tele.y + .6) * s; ctx.fillStyle = tele.locked ? "#3a0d06aa" : "#1a0a0688"; ctx.beginPath(); ctx.ellipse(sx, sy, s * 1.6, s * 1.6 * .6, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = tele.locked ? "#ffc35aee" : "#ffc35a77"; ctx.lineWidth = tele.locked ? 3 : 2; ctx.stroke(); }
     else if (tele.type === "spit") { ctx.strokeStyle = "#e7d6f2aa"; ctx.lineWidth = 1.5; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo((tele.target.x + .5) * s, (tele.target.y + .6) * s); ctx.stroke(); ctx.setLineDash([]); }
-    else if (tele.type === "tendrils") { for (const a of tele.dirs) { const w = tele.width * s, px = -a.y * w, py = a.x * w, l = tele.length * s; ctx.fillStyle = "#7ac04a26"; ctx.strokeStyle = "#c8ff6acc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + px, cy + py); ctx.lineTo(cx + a.x * l + px, cy + a.y * l + py); ctx.lineTo(cx + a.x * l - px, cy + a.y * l - py); ctx.lineTo(cx - px, cy - py); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
-    else if (tele.type === "cone") { const a = Math.atan2(tele.aim.y, tele.aim.x), half = tele.arc * Math.PI / 360, l = tele.length * s; ctx.fillStyle = tele.gas ? "#b8e04a2a" : "#c0404030"; ctx.strokeStyle = tele.gas ? "#d8ff6acc" : "#ff9a7acc"; ctx.lineWidth = 2; ctx.setLineDash([s * .18, s * .1]); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, l, a - half, a + half); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); }
+    else if (tele.type === "tendrils") { for (const a of tele.dirs) { const w = tele.width * s, px = -a.y * w, py = a.x * w, l = tele.length * s; ctx.fillStyle = tele.flesh ? "#c0604026" : "#7ac04a26"; ctx.strokeStyle = tele.flesh ? "#ffb08acc" : "#c8ff6acc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + px, cy + py); ctx.lineTo(cx + a.x * l + px, cy + a.y * l + py); ctx.lineTo(cx + a.x * l - px, cy + a.y * l - py); ctx.lineTo(cx - px, cy - py); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
+    else if (tele.type === "cone") { const a = Math.atan2(tele.aim.y, tele.aim.x), half = tele.arc * Math.PI / 360, l = tele.length * s; ctx.fillStyle = tele.gas ? "#b8e04a2a" : tele.lava ? "#ff6a1a2a" : "#c0404030"; ctx.strokeStyle = tele.gas ? "#d8ff6acc" : tele.lava ? "#ffb04acc" : "#ff9a7acc"; ctx.lineWidth = 2; ctx.setLineDash([s * .18, s * .1]); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, l, a - half, a + half); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); }
     else if (tele.type === "brace" || tele.type === "shimmer" || tele.type === "rise" || tele.type === "submerge") { glow(ctx, cx, cy, s * .9, c, .35 * pulse); }
     ctx.restore();
   }
@@ -551,24 +633,46 @@ function drawWarningCircle(ctx, x, y, r, color, pulse, progress = 0) {
 }
 
 // Ground effects (mortars, sigils, ruptures, webs, embers, shockwaves, dust).
-export function drawPackEffects(ctx, effects, s, now, visible = () => true) {
+// Puddles and clouds lie on the ground they cover, so they are drawn raised with it (`lift`, in tiles; release 237).
+const ON_GROUND = new Set(["ooze", "lava", "gas", "web", "flesh"]);
+function lavaCool(f, life) { return 1 - Math.max(0, Math.min(1, life / (f.total || 1.8))); }
+function lavaShape(ctx, f, x, y, r, k) {
+  const seed = f.x * 7.3 + f.y * 3.1, vx = f.vx || 0, vy = f.vy || 0, m = Math.hypot(vx, vy) || 1, ax = vx / m, ay = vy / m;
+  ctx.beginPath(); for (let i = 0; i <= 18; i++) { const a = i / 18 * TAU, along = Math.cos(a) * ax + Math.sin(a) * ay, rr = r * k * (1 + .14 * Math.sin(a * 3 + seed) + .08 * Math.sin(a * 5 - seed) + .3 * Math.max(0, along)); i ? ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .6) : ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .6); } ctx.closePath();
+}
+export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift = () => 0) {
+  // Release 237: the glow and dark rims of every settled lava pool first, so pools that touch read as one spill.
+  for (const f of effects || []) {
+    if (f.kind !== "lava" || f.arming > 0 || !visible(f)) continue;
+    const x = (f.x + .5) * s, y = (f.y + .62 - (Number(lift(f)) || 0)) * s, r = (f.radius || 1) * s, life = Math.max(0, f.life ?? 0), cool = lavaCool(f, life);
+    ctx.save(); ctx.globalAlpha = Math.min(1, life * 2.5); glow(ctx, x, y, r * 1.7, "#ff5a1a", .35 * (1 - cool)); lavaShape(ctx, f, x, y, r, 1.08); ctx.fillStyle = cool > .6 ? "#2a1a14" : "#5a1408"; ctx.fill(); ctx.restore();
+  }
   for (const f of effects || []) {
     if (!visible(f)) continue;
-    const x = (f.x + .5) * s, y = (f.y + .62) * s, r = (f.radius || 1) * s, pulse = .6 + Math.sin(now / 80) * .25;
+    const x = (f.x + .5) * s, y = (f.y + .62 - (ON_GROUND.has(f.kind) ? Number(lift(f)) || 0 : 0)) * s, r = (f.radius || 1) * s, pulse = .6 + Math.sin(now / 80) * .25;
     ctx.save();
     if (f.arming > 0) {
       const total = f.armTotal ??= f.arming, progress = 1 - f.arming / total;
       if (f.kind === "web") { drawWeb(ctx, x, y, r, .5 * progress); }
       else if (f.kind === "sigil" || f.kind === "condemn") { drawSigil(ctx, x, y, r, f.kind === "condemn" ? "#9dff8a" : "#7fe7ff", now, progress); }
       else if (f.kind === "ooze") { const fx = ((f.from?.x ?? f.x) + .5) * s, fy = ((f.from?.y ?? f.y) + .3) * s, bx = fx + (x - fx) * progress, by = fy + (y - fy) * progress - Math.sin(progress * Math.PI) * s * 1.1; ctx.fillStyle = "#5fbf6e"; ctx.beginPath(); ctx.ellipse(bx, by, s * .16, s * .13, 0, 0, TAU); ctx.fill(); ctx.fillStyle = "#f4ffe8aa"; ctx.beginPath(); ctx.arc(bx - s * .05, by - s * .04, s * .04, 0, TAU); ctx.fill(); ctx.strokeStyle = "#c8ff6a55"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU); ctx.stroke(); }
-      else if (f.kind === "mortar" || f.kind === "lavaBomb") { drawWarningCircle(ctx, x, y, r, f.kind === "lavaBomb" ? "#ff5a2a" : "#ff9d4a", pulse, progress); if (f.from) { const fx = (f.from.x + .5) * s, fy = (f.from.y + .3) * s, k = progress, sx = fx + (x - fx) * k, sy = fy + (y - fy) * k - Math.sin(k * Math.PI) * s * 2.2; ctx.fillStyle = "#2a1c12"; ctx.beginPath(); ctx.arc(sx, sy, s * .14, 0, TAU); ctx.fill(); glow(ctx, sx, sy, s * .3, "#ff9d4a", .6); } }
+      else if (f.kind === "lava") { const fx = ((f.from?.x ?? f.x) + .5) * s, fy = ((f.from?.y ?? f.y) + .1) * s, bx = fx + (x - fx) * progress, by = fy + (y - fy) * progress - Math.sin(progress * Math.PI) * s * .5; glow(ctx, bx, by, s * .35, "#ff7a2a", .7); ctx.fillStyle = "#ffd25a"; ctx.beginPath(); ctx.ellipse(bx, by, s * .14, s * .11, 0, 0, TAU); ctx.fill(); }
+      else if (f.kind === "mortar" || f.kind === "lavaBomb") { drawWarningCircle(ctx, x, y, r, f.kind === "lavaBomb" ? "#ff5a2a" : "#ff9d4a", pulse, progress); if (f.from) { const fx = (f.from.x + .5) * s, fy = (f.from.y + .3) * s, k = progress, sx = fx + (x - fx) * k, sy = fy + (y - fy) * k - Math.sin(k * Math.PI) * s * 2.2; if (f.rock) { ctx.fillStyle = "#6a5238"; ctx.beginPath(); for (let i = 0; i < 7; i++) { const a = i / 7 * TAU + k * 6, rr = s * (.22 + .05 * Math.sin(i * 2.3)); i ? ctx.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr) : ctx.moveTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#2a1c12"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.fillStyle = "#b9a184"; ctx.beginPath(); ctx.arc(sx - s * .06, sy - s * .07, s * .05, 0, TAU); ctx.fill(); } else { ctx.fillStyle = "#2a1c12"; ctx.beginPath(); ctx.arc(sx, sy, s * .14, 0, TAU); ctx.fill(); glow(ctx, sx, sy, s * .3, "#ff9d4a", .6); } } }
       else drawWarningCircle(ctx, x, y, r, f.kind === "ember" ? "#ffc35a" : f.kind === "rupture" ? "#e0b071" : "#ff7a6b", pulse, progress);
     } else {
       const life = Math.max(0, f.life ?? 0);
       if (f.kind === "web") drawWeb(ctx, x, y, r, Math.min(.85, life));
       else if (f.kind === "ooze") { ctx.globalAlpha = Math.min(1, life); const g = ctx.createRadialGradient(x - r * .3, y - r * .2, r * .1, x, y, r); g.addColorStop(0, "#c8ff8acc"); g.addColorStop(.5, "#4fa85ecc"); g.addColorStop(1, "#143a1d99"); ctx.fillStyle = g; ctx.beginPath(); for (let i = 0; i <= 16; i++) { const a = i / 16 * TAU, rr = r * (1 + .1 * Math.sin(a * 3 + (f.x + f.y) * 7)); i ? ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .55) : ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .55); } ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#f4ffe866"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x - r * .25, y - r * .15, r * .3, r * .1, -.2, Math.PI, TAU); ctx.stroke(); const bub = (now / 700 + f.x) % 1; ctx.strokeStyle = `rgba(230,255,200,${.6 * (1 - bub)})`; ctx.beginPath(); ctx.arc(x + Math.sin(f.y * 9) * r * .4, y - bub * r * .3, r * .1 * (.5 + bub), 0, TAU); ctx.stroke(); }
+      else if (f.kind === "lava") { // release 237: the molten top of a spilled tongue of lava (its rim is drawn for all lava first, so touching pools run together)
+        const cool = lavaCool(f, life); ctx.globalAlpha = Math.min(1, life * 2.5);
+        lavaShape(ctx, f, x, y, r, .86); const g = ctx.createRadialGradient(x, y - r * .1, r * .05, x, y, r); g.addColorStop(0, cool > .7 ? "#7a3a1a" : "#fff0a0"); g.addColorStop(.4, cool > .7 ? "#5a2a14" : "#ffb02a"); g.addColorStop(1, cool > .7 ? "#3a2018" : "#e8480e"); ctx.fillStyle = g; ctx.fill();
+        const seed = f.x * 7.3 + f.y * 3.1;
+        if (cool > .35) { ctx.globalAlpha *= Math.min(1, (cool - .35) * 2); ctx.strokeStyle = "#1a100c"; ctx.lineWidth = Math.max(1, s * .04); for (let i = 0; i < 4; i++) { const a = seed + i * 1.6; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r * .15, y + Math.sin(a) * r * .1); ctx.lineTo(x + Math.cos(a + .4) * r * .6, y + Math.sin(a + .4) * r * .35); ctx.stroke(); } } // the crust cracking as it cools
+        else { const b = (now / 500 + seed) % 1; ctx.fillStyle = `rgba(255,250,200,${.8 * (1 - b)})`; ctx.beginPath(); ctx.arc(x + Math.sin(seed) * r * .3, y - b * r * .2, r * .08 * (1 + b), 0, TAU); ctx.fill(); } // a bubble bursting
+      }
       else if (f.kind === "gas") { ctx.globalAlpha = Math.min(.85, life * .6); for (let i = 0; i < 4; i++) { const a = i * 1.7 + now / 900, gx = x + Math.cos(a) * r * .35, gy = y - s * .2 + Math.sin(a) * r * .2, g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * .9); g.addColorStop(0, "#d8ef6a66"); g.addColorStop(.6, "#9ac04a33"); g.addColorStop(1, "#6a903a00"); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(gx, gy, r * .9, r * .65, 0, 0, TAU); ctx.fill(); } }
       else if (f.kind === "flesh") { ctx.globalAlpha = Math.min(.9, life); ctx.fillStyle = "#7a1f2a99"; ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU); ctx.fill(); for (let i = 0; i < 7; i++) { const a = i * TAU / 7 + now / 900, rr = r * (.4 + ((i * 37) % 10) / 20); ctx.fillStyle = i % 2 ? "#c98a86" : "#3a0d12"; ctx.beginPath(); ctx.ellipse(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .6, s * .09, s * .05 * (1 + Math.sin(now / 200 + i) * .3), a, 0, TAU); ctx.fill(); } }
+      else if (f.kind === "orb" && f.fire) { const vx = f.vx || 0, vy = f.vy || 0, m = Math.hypot(vx, vy) || 1, oy = y - s * .3; for (let i = 3; i >= 1; i--) { ctx.fillStyle = `rgba(255,${90 + i * 30},40,${.5 / i})`; ctx.beginPath(); ctx.arc(x - vx / m * r * i * .9, oy - vy / m * r * i * .9, r * (1 - i * .15), 0, TAU); ctx.fill(); } glow(ctx, x, oy, r * 2, "#ff7a2a", .75); ctx.fillStyle = "#ffe6a0"; ctx.beginPath(); ctx.arc(x, oy, r * .5, 0, TAU); ctx.fill(); } // release 237: a worm tentacle's fireball
       else if (f.kind === "orb") { const vx = f.vx || 0, vy = f.vy || 0, m = Math.hypot(vx, vy) || 1, oy = y - s * .3; ctx.strokeStyle = "#ff4a3a66"; ctx.lineWidth = r * 1.1; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(x - vx / m * r * 2.2, oy - vy / m * r * 2.2); ctx.lineTo(x, oy); ctx.stroke(); glow(ctx, x, oy, r * 2.2, "#ff4a3a", .7); ctx.fillStyle = "#ffd9b8"; ctx.beginPath(); ctx.arc(x, oy, r * .55, 0, TAU); ctx.fill(); ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(x - r * .12, oy - r * .12, r * .22, 0, TAU); ctx.fill(); }
       else if (f.kind === "shock" && f.energy) { const rr = (f.ring ?? 0) * s; ctx.strokeStyle = "#ff4a3a55"; ctx.lineWidth = Math.max(6, s * .5); ctx.beginPath(); ctx.ellipse(x, y - s * .1, rr, rr * .6, 0, 0, TAU); ctx.stroke(); ctx.strokeStyle = "#ffb08aee"; ctx.lineWidth = Math.max(2, s * .16); ctx.stroke(); ctx.strokeStyle = "#fff4e8"; ctx.lineWidth = Math.max(1, s * .05); ctx.stroke(); }
       else if (f.kind === "shock") { const rr = (f.ring ?? 0) * s; ctx.strokeStyle = "#ffe08acc"; ctx.lineWidth = Math.max(2, s * .18); ctx.beginPath(); ctx.ellipse(x, y - s * .1, rr, rr * .6, 0, 0, TAU); ctx.stroke(); ctx.strokeStyle = "#ffffff88"; ctx.lineWidth = Math.max(1, s * .05); ctx.stroke(); }
