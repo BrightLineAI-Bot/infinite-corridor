@@ -100,18 +100,27 @@ export const ATTACK_MODULES = {
   turtleShield: { id: "turtleShield", name: "Ice Shield", range: [0, 14], cooldown: 13, windup: .5, active: 3.6, recover: .3, damage: 0, tags: ["defense", "ice"], text: "Ice grows over its shell. While the shield stands nothing hurts it; wait it out." },
   // The Nanobot Knight's kit (release 245, Tim 2026-10-19: black with red accents; teleports or dissolves into mist;
   // physical hits scatter it unless elemental, a spell or an Echo-glyphed weapon; Abyss Watcher sword slides; an arm
-  // laser cannon; swords falling from the sky; an orbital tracking laser that scorches the ground; homing orbs that
+  // laser cannon; swords falling from the sky; homing orbs that
   // circle it and are sent one by one or all at once; a homing missile barrage that explodes on timeout).
   knightSlide: { id: "knightSlide", name: "Sliding Cuts", range: [0, 6.5], cooldown: 3, windup: .35, active: 1.6, recover: .45, damage: .9, tags: ["melee", "combo"], text: "Three sliding sword cuts: it skids in low along the ground, cuts, and comes again." },
   knightCannon: { id: "knightCannon", name: "Arm Cannon", range: [0, 11], cooldown: 6, windup: .9, active: 1, recover: .5, damage: .5, tags: ["ranged", "beam"], text: "Its arm opens into a cannon; a red beam charges, tracking you, then fires straight. Step off the line before it fires." },
   knightSwordfall: { id: "knightSwordfall", name: "Swordfall", range: [0, 11], cooldown: 7, windup: .5, recover: .5, damage: 1, tags: ["ground"], text: "Swords fall out of the sky around and onto you. Each marks the ground first." },
-  knightOrbital: { id: "knightOrbital", name: "Orbital Lance", range: [0, 14], cooldown: 11, windup: .5, recover: .3, damage: .45, tags: ["ground", "beam"], text: "A lance of red light from the sky follows you, scorching the ground where it has been. Outpace it." },
   knightOrbs: { id: "knightOrbs", name: "Seeker Orbs", range: [0, 11], cooldown: 8, windup: .6, active: 2.6, recover: .3, damage: .6, tags: ["ranged", "orbs"], text: "Orbs gather and circle it, then go for you: one by one or all at once. They home for a moment, then fly straight." },
   knightMissiles: { id: "knightMissiles", name: "Missile Barrage", range: [0, 13], cooldown: 9, windup: .7, recover: .5, damage: .7, tags: ["ranged"], text: "A barrage of homing missiles. They burst on whatever they meet, or on their own when their fuel runs out." },
   knightThrust: { id: "knightThrust", name: "Lunging Thrust", range: [0, 8], cooldown: 3.6, windup: .45, active: .35, recover: .45, damage: 1.2, tags: ["charge", "melee"], text: "It dashes with its sword outstretched, at you or off to the side, along any of the eight ways; sometimes a beam of energy leaves the tip at the end." },
   knightCombo: { id: "knightCombo", name: "Six-Cut Onslaught", range: [0, 6], cooldown: 4.2, windup: .4, active: 6, recover: .5, damage: .85, tags: ["melee", "combo"], text: "Two cuts, a dash after you, two more, another dash, two more: six cuts in all, each pair forward then back. Some throw an arc of energy off the tip, reaching as far as your own blade." },
   knightBackslash: { id: "knightBackslash", name: "Retreating Slash", range: [0, 3.5], cooldown: 4.5, windup: .15, active: .4, recover: .35, damage: 1, tags: ["melee", "evade"], text: "It leaps back away from you, slashing as it goes; the arc of energy off its sword covers its retreat." },
   knightMist: { id: "knightMist", name: "Mist Step", range: [1, 12], cooldown: 5, windup: .3, recover: .35, damage: 1.1, tags: ["teleport", "melee"], text: "It dissolves into a swarm, drifts, and comes together beside you mid-cut." },
+  // The Psychic Crystal's kit (release 249, Tim 2026-10-19: a floating crystal whose aura changes colour (hazy white;
+  // red and larger when it attacks; blue or purple before a grab); force push; force pull; a command grab that holds you
+  // a few seconds while it winds up a powerful attack; debris it levitates and throws; a psychic wall that reflects
+  // ranged attacks while blades pass through).
+  psyPush: { id: "psyPush", name: "Force Push", range: [0, 4.5], cooldown: 4, windup: .55, active: .35, recover: .45, damage: .7, tags: ["control"], text: "A ring of force throws you back. Hit a wall and it hurts more." },
+  psyPull: { id: "psyPull", name: "Force Pull", range: [2.5, 9], cooldown: 6, windup: .6, active: 1.2, recover: .45, damage: .9, tags: ["control"], text: "It drags you toward it, then lashes out as you arrive. Dodge or run against it." },
+  psyGrab: { id: "psyGrab", name: "Command Grab", range: [0, 7.5], cooldown: 10, windup: .75, active: 2.4, recover: .6, damage: 2.2, tags: ["control", "grab"], text: "Its aura turns violet: then it seizes you where you stand and crushes you. Dodge as it reaches, or struggle (dodge, again and again) to break free." },
+  psyDebris: { id: "psyDebris", name: "Hurled Debris", range: [2, 11], cooldown: 5.5, windup: .9, active: 1.6, recover: .4, damage: 1, tags: ["ranged"], text: "Stones rise around it and are flung at you one by one." },
+  psyWall: { id: "psyWall", name: "Mirror Wall", range: [2, 12], cooldown: 9, windup: .4, recover: .3, damage: 0, tags: ["defense"], text: "A wall of light stands between you. Arrows and bolts that touch it fly back at you; a blade passes straight through." },
+  psyOrbital: { id: "psyOrbital", name: "Orbital Lances", range: [0, 14], cooldown: 11, windup: .5, recover: .3, damage: .45, tags: ["ground", "beam"], text: "One to four sky beams trace shifting patterns after you. Outrun the light; the fading marks it leaves are harmless." },
   firefall: { id: "firefall", name: "Firefall", range: [1.5, 9], cooldown: 6.5, windup: .7, recover: .8, damage: .85, jumpable: true, tags: ["ground"], text: "Embers rain across the floor around you." },
 };
 
@@ -271,9 +280,16 @@ export const MONSTER_PACK = {
   nanobotKnight: {
     id: "nanobotKnight", name: "The Nanobot Knight", epithet: "The Swarm in Armour", unique: true,
     stats: [300, 17, 0], form: { scale: 1.45 }, sizeClass: "large", movement: "walk", brain: "duelist",
-    attacks: ["knightSlide", "knightThrust", "knightCombo", "knightBackslash", "knightCannon", "knightSwordfall", "knightOrbital", "knightOrbs", "knightMissiles", "knightMist"], bossAttacks: ["blinkStrike"],
+    attacks: ["knightSlide", "knightThrust", "knightCombo", "knightBackslash", "knightCannon", "knightSwordfall", "knightOrbs", "knightMissiles", "knightMist"], bossAttacks: ["blinkStrike"],
     palette: ["#16161a", "#060608", "#ff2a2a", "#ffd0c8"], render: "nanobotKnight", tags: ["construct", "elder", "swarm"],
-    lore: "Black armour with a red seam of light, and nothing inside but a swarm. Plain steel scatters it like smoke; fire, sparks, spells and a blade that strikes twice find it. It slides in low with its sword, opens its arm into a cannon, calls down swords and a lance of light from the sky, and sends seeker orbs and missiles after you.",
+    lore: "Black armour with a red seam of light, and nothing inside but a swarm. Plain steel scatters it like smoke; fire, sparks, spells and a blade that strikes twice find it. It slides in low with its sword, opens its arm into a cannon, calls down swords, and sends seeker orbs and missiles after you.",
+  },
+  psychicCrystal: {
+    id: "psychicCrystal", name: "The Psychic Crystal", epithet: "The Mind That Floats", unique: true,
+    stats: [260, 15, 0], form: { scale: 1.1 }, sizeClass: "medium", movement: "hover", brain: "orbit",
+    attacks: ["psyPush", "psyPull", "psyGrab", "psyDebris", "psyWall", "psyOrbital"], bossAttacks: ["sweepBeam"],
+    palette: ["#c8d4f0", "#3a3a6a", "#e8eeff", "#ffffff"], render: "psychicCrystal", tags: ["construct", "elder", "mind"],
+    lore: "A shard of something larger, floating at the height of a head, turning slowly. Its haze goes red when it means harm and violet just before it takes hold of you. It throws you back, draws you in, lifts the stones from the ground, and raises walls of light that send your arrows home.",
   },
   gnawingMaw: {
     id: "gnawingMaw", name: "Gnawing Maw", epithet: "The Hunger in the Walls", dungeonOnly: true,
@@ -398,6 +414,9 @@ export function resetPackRuntime(enemy) {
   if (!enemy?.packKind) return enemy;
   const cd = enemy.pack?.cd || {};
   enemy.pack = { ...freshPackState(), cd: { ...cd } };
+  // Snapshots retain attack lists. Move the sky attack for existing journeys too, without retuning their beasts.
+  if (enemy.kind === "nanobotKnight") enemy.packAttacks = (enemy.packAttacks || MONSTER_PACK.nanobotKnight.attacks).filter((id) => id !== "knightOrbital");
+  if (enemy.kind === "psychicCrystal" && !(enemy.packAttacks || []).includes("psyOrbital")) enemy.packAttacks = [...(enemy.packAttacks || MONSTER_PACK.psychicCrystal.attacks), "psyOrbital"].filter((id, i, ids) => ids.indexOf(id) === i);
   enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; // release 245: no pose survives a reload
   return enemy;
 }
@@ -488,8 +507,7 @@ export const KNIGHT = {
   slides: 3, slideTime: .28, slideSpeed: 11, slideReach: 2.3, slideArc: 120, slidePause: .2,
   cannonTrack: 1.8, cannonLength: 11, cannonTick: .3, cannonWidth: .5,
   swords: 6, swordRing: [1.2, 2.6], swordRadius: .75, swordFall: [.9, 1.6],
-  orbitalLife: 3.4, orbitalWarn: .6, orbitalSpeed: 2.1, orbitalRadius: .85, orbitalTick: .35, scorchEvery: .25, scorchLife: 3, scorchRadius: .6, scorchTick: .5, scorchBite: .25,
-  orbs: 5, orbOrbit: 1.6, orbSpin: 3, orbSpeed: 5.5, orbHome: [1, 2], orbTurn: 3.2, orbLife: 3.4, orbRadius: .3, orbEvery: .4,
+  orbs: 3, orbsEnraged: 6, orbEnrage: .5, orbOrbit: 1.6, orbSpin: 3, orbFloat: .6, orbSpeed: 5.5, orbHome: 2, orbTurn: 3.2, orbLife: 5, orbRadius: .3, orbEvery: .4,
   missiles: 8, missileSpeed: 5, missileTurn: 2.4, missileFuel: 2.4, missileBlast: 1.1, missileRadius: .25,
   mistTime: .55, mistLand: 1.6,
   // Tim: its swings sometimes throw energy off the sword, reaching about as far as the Wayfarer's own blades
@@ -500,6 +518,9 @@ export const KNIGHT = {
   mistChance: 40, mistEvery: .9, // Tim: any attack coming at it (blade, shot or spell) has this % chance to find only mist, even mid-attack
 };
 // Plain physical blows scatter the Knight (Tim: "unless the attack is elemental, a spell, or the weapon has the Echo glyph").
+// Release 249: a weapon carrying an elemental glyph (fire, lightning, a blast) counts as elemental too.
+export const SWARM_PIERCING_GLYPHS = ["echo", "ignite", "chain", "volatile"];
+export const glyphsReachSwarm = (loadout) => SWARM_PIERCING_GLYPHS.some((id) => loadout?.has?.(id));
 const EIGHT = Array.from({ length: 8 }, (_, i) => ({ x: Math.round(Math.cos(i * Math.PI / 4) * 1000) / 1000, y: Math.round(Math.sin(i * Math.PI / 4) * 1000) / 1000 }));
 // A cut with, now and then, an arc of energy off the tip: the hit reaches arcReach farther, and the arc is drawn.
 function knightCut(e, s, w, id, aim, energized, arc = KNIGHT.slideArc) {
@@ -510,8 +531,66 @@ function knightCut(e, s, w, id, aim, energized, arc = KNIGHT.slideArc) {
 }
 const energized = (e, s, n, chance = KNIGHT.arcChance) => hashSeed(`${e.id}:${s.seq}:energy:${n}`) % 100 < chance;
 export function nanoScatters(e, { physical = false, echoGlyph = false } = {}) { return e?.kind === "nanobotKnight" && physical && !echoGlyph; }
+// The Psychic Crystal (release 249). Balance as data.
+export const CRYSTAL = {
+  pushRadius: 4.5, pushForce: 9, pushBite: .7,
+  pullRadius: 9.5, pullForce: 3.6, pullReach: 1.2,
+  grabRange: 7.5, grabHold: 2.4, struggle: .35, // each dodge pressed while held shortens the hold by this many seconds
+  debris: 4, debrisOrbit: 1.3, debrisRise: .7, debrisEvery: .32, debrisSpeed: 7.5, debrisLife: 2.2, debrisRadius: .3,
+  wallLength: 3.4, wallGap: 1.8, wallLife: 5, wallThickness: .35, reflectShare: .8,
+  orbitalBeams: [1, 4], orbitalPatterns: ["spiral", "square", "circle", "zigzag", "slash"],
+  orbitalLife: 4, orbitalWarn: .7, orbitalSpeed: 2.1, orbitalRadius: .65, orbitalTick: .35,
+  orbitalSpread: 1.6, orbitalPeriod: 2.4, scorchEvery: .3, scorchLife: 1.5, scorchRadius: .5, scorchMax: 24,
+  roamSpeed: 1.1, roamNodes: 625, roamDistance: 6, roamRecent: 6, roamPause: .25, roamRetry: 1, roamSight: 7, terrainLookahead: 1,
+};
+// A continuous path around a slowly tracking centre. Beam phases spread a volley around the same pattern;
+// all choices and motion are deterministic, and none of these transient effects changes dungeon geometry.
+export function crystalOrbitalOffset(pattern, phase, elapsed) {
+  const t = elapsed / CRYSTAL.orbitalPeriod + phase, loop = ((t % 1) + 1) % 1, a = t * TAU, r = CRYSTAL.orbitalSpread;
+  if (pattern === "square") {
+    const edge = Math.floor(loop * 4), k = loop * 4 - edge;
+    return [{ x: -r + 2 * r * k, y: -r }, { x: r, y: -r + 2 * r * k }, { x: r - 2 * r * k, y: r }, { x: -r, y: r - 2 * r * k }][edge];
+  }
+  if (pattern === "zigzag") return { x: r * (2 / Math.PI) * Math.asin(Math.sin(a)), y: r * (2 / Math.PI) * Math.asin(Math.sin(a * 3)) };
+  if (pattern === "slash") { const d = r * Math.sin(a); return { x: d, y: d }; }
+  const radius = pattern === "spiral" ? r * (.5 + .5 * Math.sin(a / 2)) : r;
+  return { x: Math.cos(a) * radius, y: Math.sin(a) * radius };
+}
+function launchKnightOrb(f, player) {
+  const a = Math.atan2(player.y - f.y, player.x - f.x);
+  Object.assign(f, { state: "home", homeFor: KNIGHT.orbHome, life: KNIGHT.orbLife, vx: Math.cos(a) * KNIGHT.orbSpeed, vy: Math.sin(a) * KNIGHT.orbSpeed });
+}
+// The mirror wall reflects at the first swept contact, not just when a frame happens to land inside it.
+// Coordinates use the projectile frame; the returned point includes travel left after reflection in this substep.
+export function reflectShotStep(q, effects, step = 0) {
+  const dx = (q.dx || 0) * step, dy = (q.dy || 0) * step, end = { x: q.x + dx, y: q.y + dy };
+  if (q.hostile || q.dead) return end;
+  let first = null;
+  for (const f of effects || []) {
+    if (f.kind !== "psyWall" || f.arming > 0 || q.reflectedBy === f.id) continue;
+    const rx = q.x - f.x - .5, ry = q.y - f.y - .45;
+    const axes = [[rx * f.nx + ry * f.ny, dx * f.nx + dy * f.ny, CRYSTAL.wallThickness], [rx * -f.ny + ry * f.nx, dx * -f.ny + dy * f.nx, CRYSTAL.wallLength / 2]];
+    let enter = 0, leave = 1;
+    for (const [at, delta, half] of axes) {
+      if (Math.abs(delta) < 1e-12) { if (Math.abs(at) > half) { enter = 2; break; } }
+      else { const a = (-half - at) / delta, b = (half - at) / delta; enter = Math.max(enter, Math.min(a, b)); leave = Math.min(leave, Math.max(a, b)); }
+    }
+    if (enter > leave || !Number.isFinite(enter) || (first && enter >= first.t)) continue;
+    first = { wall: f, t: enter };
+  }
+  if (!first) return end;
+  const { wall: f, t } = first, dot = (q.dx || 0) * f.nx + (q.dy || 0) * f.ny;
+  q.dx = (q.dx || 0) - 2 * dot * f.nx; q.dy = (q.dy || 0) - 2 * dot * f.ny;
+  Object.assign(q, { hostile: true, reflectedBy: f.id, damage: Math.max(1, Math.round((Number(q.damage) || 1) * CRYSTAL.reflectShare)), pierce: 0, path: q.path === "grenade" ? "straight" : q.path });
+  return { x: q.x + dx * t + q.dx * step * (1 - t), y: q.y + dy * t + q.dy * step * (1 - t) };
+}
+// Compatibility point check for callers with stationary shots. Moving shots use reflectShotStep in updateProjectiles.
+export function reflectShots(shots, effects) {
+  let n = 0;
+  for (const q of shots || []) { const hostile = q.hostile; reflectShotStep(q, effects); if (!hostile && q.hostile) n++; }
+  return n;
+}
 const aboveBlob = (w, x, y) => (Number(w.elevation?.(x, y)) || 0) >= BLOB.safeElev;
-(w, x, y) => (Number(w.elevation?.(x, y)) || 0) >= BLOB.safeElev;
 // Release 237 (Tim: "ooze can still land on high ground, and bloblets"): high ground is drawn raised, a level-4 plateau
 // about 1.4 tiles up, so its top covers the low tiles just north of it. Ooze and bloblets keep clear of every tile a
 // plateau covers, not only of the plateau's own tiles.
@@ -582,7 +661,7 @@ const START = {
   knightSlide(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach, arc: KNIGHT.slideArc }; s.data.cut = 0; s.data.sub = 0; s.data.mode = "slide"; },
   knightCannon(e, s, w) { s.data.angle = Math.atan2(s.data.aim.y, s.data.aim.x); s.tele = { type: "beam", angle: s.data.angle, length: rayLength(w, e, s.data.aim, KNIGHT.cannonLength), charging: true, laser: true }; },
   knightSwordfall(e, s) { s.tele = { type: "brace" }; },
-  knightOrbital(e, s) { s.tele = { type: "brace" }; },
+  psyOrbital(e, s) { s.tele = { type: "brace" }; },
   knightOrbs(e, s) { s.tele = { type: "shimmer" }; s.data.allAtOnce = hashSeed(`${e.id}:${s.seq}:orbs`) % 2 === 0; s.data.next = 0; },
   knightMissiles(e, s) { s.tele = { type: "brace" }; },
   knightMist(e, s) { s.tele = { type: "shimmer" }; },
@@ -599,6 +678,11 @@ const START = {
     s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach, arc: KNIGHT.comboArc }; s.data.step = 0; s.data.cuts = 0; s.data.sub = 0;
   },
   knightBackslash(e, s) { s.tele = null; s.data.cut = false; },
+  psyPush(e, s) { s.tele = { type: "ring", radius: CRYSTAL.pushRadius }; },
+  psyPull(e, s) { s.tele = { type: "ring", radius: CRYSTAL.pullRadius, inhale: true }; },
+  psyGrab(e, s, w) { s.tele = { type: "tether", x: w.player.x, y: w.player.y }; },
+  psyDebris(e, s) { s.tele = { type: "brace" }; s.data.next = 0; },
+  psyWall(e, s) { s.tele = { type: "shimmer" }; },
   turtleStomp(e, s) { s.tele = { type: "ring", radius: bodyRadius(e) + TURTLE.stompRadius }; },
   turtleDash(e, s, w) { const len = Math.min(11, TURTLE.dashSpeed * ATTACK_MODULES.turtleDash.active); s.data.ice = hashSeed(`${e.id}:${s.seq}:dash`) % 2 === 1; s.tele = { type: "lane", aim: s.data.aim, length: len, width: bodyRadius(e) * 1.2 }; s.data.next = 0; },
   turtleSpin(e, s) { s.tele = { type: "brace" }; s.data.next = 0; s.data.flung = 0; },
@@ -715,25 +799,30 @@ const RUN = {
     for (let i = 0; i < KNIGHT.swords; i++) { const on = i === 0, a = turn + i * TAU / (KNIGHT.swords - 1), r = on ? 0 : lo + (hi - lo) * ((hashSeed(`${e.id}:${s.seq}:sr:${i}`) % 100) / 100); w.addEffect({ kind: "swordfall", owner: e.id, x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r, radius: KNIGHT.swordRadius, arming: f0 + (f1 - f0) * (on ? .4 : i / KNIGHT.swords), damage: damageOf(e, "knightSwordfall"), jumpable: false, life: 1.4 }); }
     s.tele = null; toPhase(s, "recover", ATTACK_MODULES.knightSwordfall.recover);
   },
-  knightOrbital(e, s, w) {
+  psyOrbital(e, s, w) {
     if (s.phase !== "windup" || s.t > 0) return;
-    const p = center(w.player); w.addEffect({ kind: "orbital", owner: e.id, x: p.x, y: p.y, radius: KNIGHT.orbitalRadius, arming: KNIGHT.orbitalWarn, life: KNIGHT.orbitalLife, total: KNIGHT.orbitalLife, damage: damageOf(e, "knightOrbital"), scorch: Math.max(1, Math.ceil(e.damage * KNIGHT.scorchBite)) });
-    s.tele = null; toPhase(s, "recover", ATTACK_MODULES.knightOrbital.recover);
+    const p = center(w.player), [lo, hi] = CRYSTAL.orbitalBeams, count = lo + hashSeed(`${e.id}:${s.seq}:sky-count`) % (hi - lo + 1);
+    const pattern = CRYSTAL.orbitalPatterns[hashSeed(`${e.id}:${s.seq}:sky-pattern`) % CRYSTAL.orbitalPatterns.length];
+    for (let i = 0; i < count; i++) {
+      const phase = i / count, offset = crystalOrbitalOffset(pattern, phase, 0);
+      w.addEffect({ kind: "orbital", owner: e.id, x: p.x + offset.x, y: p.y + offset.y, anchor: { ...p }, pattern, phase, elapsed: 0, radius: CRYSTAL.orbitalRadius, arming: CRYSTAL.orbitalWarn, life: CRYSTAL.orbitalLife, total: CRYSTAL.orbitalLife, damage: damageOf(e, "psyOrbital") });
+    }
+    s.tele = null; toPhase(s, "recover", ATTACK_MODULES.psyOrbital.recover);
   },
   knightOrbs(e, s, w) {
     const attack = ATTACK_MODULES.knightOrbs;
     if (s.phase === "windup") {
-      if (s.t <= 0) { for (let i = 0; i < KNIGHT.orbs; i++) w.addEffect({ kind: "nanoOrb", owner: e.id, x: e.x, y: e.y, radius: KNIGHT.orbRadius, arming: 0, life: 99, orbit: i * TAU / KNIGHT.orbs, state: "circle", damage: damageOf(e, "knightOrbs") }); toPhase(s, "active", attack.active); s.data.next = .5; }
+      if (s.t <= 0) { const count = e.hp <= e.maxHp * KNIGHT.orbEnrage ? KNIGHT.orbsEnraged : KNIGHT.orbs; for (let i = 0; i < count; i++) w.addEffect({ kind: "nanoOrb", owner: e.id, x: e.x, y: e.y, radius: KNIGHT.orbRadius, arming: 0, life: 99, orbit: i * TAU / count, state: "circle", damage: damageOf(e, "knightOrbs") }); toPhase(s, "active", attack.active); s.data.next = KNIGHT.orbFloat; }
       return;
     }
     if (s.phase !== "active") return;
     s.data.next -= w.dt;
     const waiting = (w.effects?.() || []).filter((f) => f.kind === "nanoOrb" && f.owner === e.id && f.state === "circle");
     if (s.data.next <= 0 && waiting.length) { // send them: all at once, or one at a time
-      for (const f of s.data.allAtOnce ? waiting : waiting.slice(0, 1)) { f.state = "home"; f.homeFor = KNIGHT.orbHome[0] + (KNIGHT.orbHome[1] - KNIGHT.orbHome[0]) * ((hashSeed(`${f.id}`) % 100) / 100); f.life = KNIGHT.orbLife; const a = Math.atan2(w.player.y - f.y, w.player.x - f.x); f.vx = Math.cos(a) * KNIGHT.orbSpeed; f.vy = Math.sin(a) * KNIGHT.orbSpeed; }
+      for (const f of s.data.allAtOnce ? waiting : waiting.slice(0, 1)) launchKnightOrb(f, w.player);
       s.data.next = s.data.allAtOnce ? 99 : KNIGHT.orbEvery;
     }
-    if (s.t <= 0) { for (const f of waiting) { f.state = "home"; f.homeFor = KNIGHT.orbHome[0]; f.life = KNIGHT.orbLife; const a = Math.atan2(w.player.y - f.y, w.player.x - f.x); f.vx = Math.cos(a) * KNIGHT.orbSpeed; f.vy = Math.sin(a) * KNIGHT.orbSpeed; } s.tele = null; toPhase(s, "recover", attack.recover); }
+    if (s.t <= 0) { for (const f of waiting) if (f.state === "circle") launchKnightOrb(f, w.player); s.tele = null; toPhase(s, "recover", attack.recover); }
   },
   knightMissiles(e, s, w) {
     if (s.phase !== "windup" || s.t > 0) return;
@@ -789,6 +878,49 @@ const RUN = {
       return;
     }
     if (s.phase === "strike" && s.t <= 0) { resolveMelee(e, s, w, "knightMist", (q) => inArc(e, q, s.data.aim, bodyRadius(e) + KNIGHT.slideReach, KNIGHT.slideArc)); s.data.cutAt = w.now; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.knightMist.recover); }
+  },
+  psyPush(e, s, w) {
+    const attack = ATTACK_MODULES.psyPush, p = center(w.player);
+    if (s.phase === "windup") { if (s.t <= 0) { if (distance(p, e) <= CRYSTAL.pushRadius) w.hurt(e, damageOf(e, "psyPush"), { jumpable: false, source: "psyPush" }); w.addEffect({ kind: "psyRing", owner: e.id, x: e.x, y: e.y, radius: CRYSTAL.pushRadius, arming: 0, life: .4, total: .4, damage: 0 }); toPhase(s, "active", attack.active); s.tele = null; } return; }
+    if (s.phase === "active") { w.push?.(e, CRYSTAL.pushForce * w.dt, CRYSTAL.pushRadius + 1); if (s.t <= 0) toPhase(s, "recover", attack.recover); }
+  },
+  psyPull(e, s, w) {
+    const attack = ATTACK_MODULES.psyPull, p = center(w.player);
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", attack.active); return; }
+    if (s.phase !== "active") return;
+    w.pull?.(e, CRYSTAL.pullForce * w.dt, CRYSTAL.pullRadius);
+    if (!s.hitOnce && distance(p, e) <= bodyRadius(e) + CRYSTAL.pullReach) { s.hitOnce = true; w.hurt(e, damageOf(e, "psyPull"), { jumpable: false, source: "psyPull" }); w.addEffect({ kind: "psyRing", owner: e.id, x: e.x, y: e.y, radius: 1.6, arming: 0, life: .3, total: .3, damage: 0 }); }
+    if (s.t <= 0) { s.tele = null; toPhase(s, "recover", attack.recover); }
+  },
+  psyGrab(e, s, w) { // violet, then it seizes you; it crushes you unless you dodged its reach or struggle free
+    const attack = ATTACK_MODULES.psyGrab, p = center(w.player);
+    if (s.phase === "windup") {
+      s.tele = { type: "tether", x: p.x, y: p.y, reaching: true };
+      if (s.t <= 0) { if (distance(p, e) <= CRYSTAL.grabRange && w.los(e, w.player) && w.grab?.(e, CRYSTAL.grabHold)) { s.data.held = true; toPhase(s, "active", CRYSTAL.grabHold); } else { s.tele = null; toPhase(s, "recover", attack.recover); } }
+      return;
+    }
+    if (s.phase !== "active") return;
+    s.tele = { type: "tether", x: p.x, y: p.y, holding: true };
+    if (s.t > 0 && !w.held?.(e)) { s.tele = null; toPhase(s, "recover", attack.recover); return; } // struggled free before the crush
+    if (s.t <= 0) { w.release?.(e); w.hurt(e, damageOf(e, "psyGrab"), { jumpable: false, source: "psyGrab" }); w.addEffect({ kind: "psyRing", owner: e.id, x: p.x, y: p.y, radius: 1.4, arming: 0, life: .45, total: .45, damage: 0 }); s.tele = null; toPhase(s, "recover", attack.recover); }
+  },
+  psyDebris(e, s, w) {
+    const attack = ATTACK_MODULES.psyDebris;
+    if (s.phase === "windup") {
+      if (s.t <= 0) { for (let i = 0; i < CRYSTAL.debris; i++) w.addEffect({ kind: "debris", owner: e.id, x: e.x, y: e.y, radius: CRYSTAL.debrisRadius, arming: 0, life: 99, orbit: i * TAU / CRYSTAL.debris, state: "lift", shape: hashSeed(`${e.id}:${s.seq}:rock:${i}`) % 5, damage: damageOf(e, "psyDebris") }); s.data.next = .25; toPhase(s, "active", attack.active); }
+      return;
+    }
+    if (s.phase !== "active") return;
+    s.data.next -= w.dt;
+    const held = (w.effects?.() || []).filter((f) => f.kind === "debris" && f.owner === e.id && f.state === "lift");
+    if ((s.data.next <= 0 || s.t <= 0) && held.length) { s.data.next = CRYSTAL.debrisEvery; const f = held[0], p = center(w.player), a = Math.atan2(p.y - f.y, p.x - f.x); Object.assign(f, { state: "thrown", vx: Math.cos(a) * CRYSTAL.debrisSpeed, vy: Math.sin(a) * CRYSTAL.debrisSpeed, life: CRYSTAL.debrisLife }); }
+    if (s.t <= 0 && held.length <= 1) toPhase(s, "recover", attack.recover);
+  },
+  psyWall(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const p = center(w.player), n = unit(p.x - e.x, p.y - e.y), mid = { x: e.x + n.x * CRYSTAL.wallGap, y: e.y + n.y * CRYSTAL.wallGap };
+    w.addEffect({ kind: "psyWall", owner: e.id, x: mid.x, y: mid.y, nx: n.x, ny: n.y, arming: .15, life: CRYSTAL.wallLife, total: CRYSTAL.wallLife, damage: 0 });
+    s.tele = null; toPhase(s, "recover", ATTACK_MODULES.psyWall.recover);
   },
   turtleStomp(e, s, w) {
     if (s.phase !== "windup" || s.t > 0) return;
@@ -1354,21 +1486,63 @@ function fleeStep(e, s, w) {
   if (e.fleeTo.home) e.fleeFade = 1; else e.fleeDone = true;
 }
 
+// Only the implemented dungeon hunter opts in. The future Void Walker needs its own approved design first.
+export function isDungeonRoamer(e, area) { return area === "dungeon" && e?.worldBeast === "psychicCrystal"; }
+
+// Sample the whole dungeon domain, not its connected floor graph. Open destinations keep encounters discoverable,
+// but travel between them phases through walls and hazards. Sampling and recent-memory are strictly bounded.
+export function dungeonPatrolRoute(e, w, seq = 0, recent = []) {
+  const size = w.width * w.height, count = Math.min(size, CRYSTAL.roamNodes), cells = [];
+  if (!(count > 0)) return [];
+  const offset = hashSeed(`${e.id}:dungeon-sample:${seq}`) % size;
+  for (let i = 0; i < count; i++) {
+    const k = (Math.floor(i * size / count) + offset) % size, x = k % w.width, y = Math.floor(k / w.width);
+    if (x < 1 || y < 1 || x >= w.width - 1 || y >= w.height - 1 || !w.open(x, y)) continue;
+    cells.push({ x, y });
+  }
+  w.roamWork?.(count);
+  // Even an old save inside solid terrain can leave it without snapping or requiring a connected floor tile.
+  if (!cells.length) for (const x of [Math.min(1, w.width - 1), Math.max(0, w.width - 2)]) for (const y of [Math.min(1, w.height - 1), Math.max(0, w.height - 2)]) cells.push({ x, y });
+  const farthest = cells.reduce((n, c) => Math.max(n, distance(e, c)), 0);
+  if (farthest < .001) return [];
+  const far = cells.filter(c => distance(e, c) >= Math.min(CRYSTAL.roamDistance, farthest));
+  const fresh = far.filter(c => recent.every(p => distance(c, p) >= CRYSTAL.roamDistance)), pool = fresh.length ? fresh : far;
+  return [{ ...pool[hashSeed(`${e.id}:dungeon-patrol:${seq}`) % pool.length] }];
+}
+function patrolDungeon(e, s, w) {
+  if (!(w.dt > 0) || !w.roamMove) return;
+  const r = s.roam ||= { route: [], recent: [], seq: 0, wait: 0 };
+  r.wait = Math.max(0, r.wait - w.dt); if (r.wait > 0) return;
+  if (!r.route.length) {
+    r.route = dungeonPatrolRoute(e, w, r.seq++, r.recent);
+    if (!r.route.length) { r.wait = CRYSTAL.roamRetry; return; }
+    r.recent.push({ ...r.route[r.route.length - 1] }); r.recent = r.recent.slice(-CRYSTAL.roamRecent);
+  }
+  const at = r.route[0], dx = at.x - e.x, dy = at.y - e.y, d = Math.hypot(dx, dy);
+  if (d < .001) { r.route.shift(); if (!r.route.length) r.wait = CRYSTAL.roamPause; return; }
+  const step = Math.min(d, CRYSTAL.roamSpeed * (e.speedMultiplier || 1) * w.dt), x = e.x, y = e.y;
+  w.roamMove(e, dx / d * step, dy / d * step);
+  if (Math.hypot(e.x - x, e.y - y) < step * .5) { r.route = []; r.wait = CRYSTAL.roamRetry; }
+  if (Math.abs(dx) > .001) e.facingX = dx > 0 ? 1 : -1;
+}
+
 // One simulation step for a pack creature. `w` is the world adapter built by the game (or a test).
 export function updatePackMonster(e, w) {
   const def = packDefinition(e);
   if (!def || e.dead) return;
   const s = e.pack && e.pack.v === MONSTER_PACK_VERSION ? e.pack : (e.pack = freshPackState()), dt = w.dt;
   if (!s.orbitDir) s.orbitDir = hashSeed(`${e.id}:orbit`) % 2 ? 1 : -1;
-  e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt); e.recoil = Math.max(0, (e.recoil || 0) - dt); e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
+  e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt); e.scattered = Math.max(0, (Number(e.scattered) || 0) - dt); // release 249: a scatter is brief
+  e.recoil = Math.max(0, (e.recoil || 0) - dt); e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
   for (const id of Object.keys(s.cd)) s.cd[id] = Math.max(0, s.cd[id] - dt);
   s.gap = Math.max(0, (s.gap || 0) - dt);
   if (e.fleeTo) { fleeStep(e, s, w); return; }
   if (e.illusion && (w.now - (e.bornAt || 0)) > 14000) { e.dead = true; return; }
-  const p = center(w.player), d = distance(p, e), brain = BRAINS[e.brain || def.brain];
-  if (!e.aggro && d < (brain?.hiddenUntilAggro ? 4.2 : 7)) e.aggro = true;
+  const p = center(w.player), d = distance(p, e), brain = BRAINS[e.brain || def.brain], roaming = isDungeonRoamer(e, w.area);
+  if (!e.aggro && d < (roaming ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!roaming || w.los(e, w.player))) e.aggro = true;
   e.hidden = !!(brain?.hiddenUntilAggro && !e.aggro) || (s.attack === "burrowAmbush" && ["travel", "erupt"].includes(s.phase));
   if (!e.aggro) {
+    if (roaming) { patrolDungeon(e, s, w); return; }
     s.wander = ((s.wander ?? (hashSeed(e.id) % 628) / 100) + dt / 2.4) % TAU;
     if (!brain?.hiddenUntilAggro) w.move(e, Math.cos(s.wander) * .28 * dt, Math.sin(s.wander * .8) * .28 * dt, { phase: false });
     return;
@@ -1394,11 +1568,12 @@ export function updatePackMonster(e, w) {
     if (e.watched) return;
   }
   // Move according to the brain, then start the best ready attack.
-  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = brainVector(e, s, w, def), v = e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * dt;
+  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && !w.los(e, w.player) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : brainVector(e, s, w, def), v = e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * dt;
   const moved = w.move(e, v.x / m * speed, v.y / m * speed, { phase: !!move.phases });
   if (!moved && !move.phases) w.detour?.(e, speed);
   e.facingX = (p.x - e.x) >= 0 ? 1 : -1;
   if (s.gap > 0) return;
+  if (roaming && !w.los(e, w.player)) return; // phase toward the player first; never begin a grab/sky attack from an unseen room
   const ready = availableAttacks(e).filter((id) => attackReady(e, s, w, id, d));
   if (!ready.length) return;
   const preferred = ready.filter((id) => id !== s.last), pool = preferred.length ? preferred : ready, id = pool[hashSeed(`${e.id}:pick:${s.seq}`) % pool.length];
@@ -1447,19 +1622,33 @@ export function tickPackEffects(effects, w) {
         w.addEffect({ kind: "frostTrail", owner: f.owner, x: f.x, y: f.y, radius: TURTLE.cometFrost, arming: 0, life: TURTLE.cometFrostLife, total: TURTLE.cometFrostLife, damage: f.frost, burst: 0 });
         f.life = 0; continue;
       }
-    } else if (f.kind === "orbital") { // release 245: the lance from the sky follows the Wayfarer, burning, scorching the ground behind it
-      const owner = w.enemies.find((q) => q.id === f.owner && !q.dead) || null, d = distance(p, f), sp = KNIGHT.orbitalSpeed * w.dt;
-      if (d > .05) { f.x += (p.x - f.x) / d * Math.min(d, sp); f.y += (p.y - f.y) / d * Math.min(d, sp); }
-      if (d <= f.radius + .1 && !(f.nextBite > f.age)) { f.nextBite = f.age + KNIGHT.orbitalTick; w.hurt(owner, f.damage, { jumpable: false, source: "knightOrbital", beam: true }); }
-      if (!(f.nextScorch > f.age)) { f.nextScorch = f.age + KNIGHT.scorchEvery; w.addEffect({ kind: "scorch", owner: f.owner, x: f.x, y: f.y, radius: KNIGHT.scorchRadius, arming: 0, life: KNIGHT.scorchLife, total: KNIGHT.scorchLife, damage: f.scorch }); }
-      if (!owner && f.life > .3) f.life = .3;
-    } else if (f.kind === "scorch") {
-      if (distance(p, f) <= f.radius && !(f.nextBite > f.age)) { f.nextBite = f.age + KNIGHT.scorchTick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "scorch", beam: true }); }
+    } else if (f.kind === "orbital") { // the Crystal's sky beams trace patterns around a centre that pursues the Wayfarer
+      const owner = w.enemies.find((q) => q.id === f.owner && !q.dead && !q.retreating) || null;
+      if (!owner) { f.life = Math.min(f.life, .3) - w.dt; continue; }
+      const previous = { x: f.x, y: f.y }, anchor = f.anchor ||= { ...previous }, d = distance(p, anchor), sp = CRYSTAL.orbitalSpeed * w.dt;
+      if (d > .05) { anchor.x += (p.x - anchor.x) / d * Math.min(d, sp); anchor.y += (p.y - anchor.y) / d * Math.min(d, sp); }
+      f.elapsed = (f.elapsed || 0) + w.dt;
+      const offset = crystalOrbitalOffset(f.pattern, f.phase || 0, f.elapsed);
+      f.x = anchor.x + offset.x; f.y = anchor.y + offset.y;
+      if (segmentDistance(p, previous, f) <= f.radius + .1 && !(f.nextBite > f.age)) { f.nextBite = f.age + CRYSTAL.orbitalTick; w.hurt(owner, f.damage, { jumpable: false, source: "psyOrbital", beam: true }); }
+      if (!(f.nextScorch > f.age)) {
+        f.nextScorch = f.age + CRYSTAL.scorchEvery;
+        const marks = effects.filter((q) => q.kind === "scorch" && q.owner === f.owner && q.life > 0);
+        // Decoration must never evict a live projectile or an armed warning from the shared effect budget.
+        if (marks.length < CRYSTAL.scorchMax && effects.length < PACK_EFFECT_CAP) w.addEffect({ kind: "scorch", owner: f.owner, x: f.x, y: f.y, radius: CRYSTAL.scorchRadius, arming: 0, life: CRYSTAL.scorchLife, total: CRYSTAL.scorchLife, damage: 0 });
+      }
+    } else if (f.kind === "scorch") { /* harmless marks only; they fade within 1.5 seconds */
     } else if (f.kind === "nanoOrb") { // circling the Knight until sent; then homing for a moment, then straight
       const owner = w.enemies.find((q) => q.id === f.owner && !q.dead);
-      if (f.state === "circle") { if (!owner) { f.life = 0; continue; } f.orbit += KNIGHT.orbSpin * w.dt; f.x = owner.x + Math.cos(f.orbit) * KNIGHT.orbOrbit; f.y = owner.y + Math.sin(f.orbit) * KNIGHT.orbOrbit * .7; f.life = 99; }
+      if (f.state === "circle") {
+        if (!owner || owner.retreating) { f.life = 0; continue; }
+        f.orbit += KNIGHT.orbSpin * w.dt; f.x = owner.x + Math.cos(f.orbit) * KNIGHT.orbOrbit; f.y = owner.y + Math.sin(f.orbit) * KNIGHT.orbOrbit * .7; f.life = 99;
+        // A mist dodge may interrupt the gather. Finish the promised float, then launch rather than orbit forever.
+        if (owner.pack?.attack !== "knightOrbs" && f.age >= KNIGHT.orbFloat) launchKnightOrb(f, p);
+      }
       else {
-        if (f.homeFor > 0) { f.homeFor -= w.dt; const want = Math.atan2(p.y - f.y, p.x - f.x), cur = Math.atan2(f.vy, f.vx), diff = ((want - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-KNIGHT.orbTurn * w.dt, Math.min(KNIGHT.orbTurn * w.dt, diff)); f.vx = Math.cos(a) * KNIGHT.orbSpeed; f.vy = Math.sin(a) * KNIGHT.orbSpeed; }
+        if (f.homeFor > 0) { const turnTime = Math.min(f.homeFor, w.dt); f.homeFor = Math.max(0, f.homeFor - w.dt); const want = Math.atan2(p.y - f.y, p.x - f.x), cur = Math.atan2(f.vy, f.vx), diff = ((want - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-KNIGHT.orbTurn * turnTime, Math.min(KNIGHT.orbTurn * turnTime, diff)); f.vx = Math.cos(a) * KNIGHT.orbSpeed; f.vy = Math.sin(a) * KNIGHT.orbSpeed; }
+        if (!(f.homeFor > 0)) f.state = "straight";
         f.x += f.vx * w.dt; f.y += f.vy * w.dt;
         if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0;
         else if (distance(p, f) <= f.radius + .3) { f.life = 0; w.hurt(owner || null, f.damage, { jumpable: false, source: "knightOrb" }); }
@@ -1470,7 +1659,12 @@ export function tickPackEffects(effects, w) {
       const nx = f.x + f.vx * w.dt, ny = f.y + f.vy * w.dt, wall = w.tileOpen && !w.tileOpen(nx + .5, ny + .5), hit = distance(p, f) <= f.radius + .35;
       if (!wall && !hit && f.life - w.dt > 0) { f.x = nx; f.y = ny; }
       else { if (distance(p, f) <= KNIGHT.missileBlast + .2) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "knightMissile" }); w.addEffect({ kind: "nanoBurst", owner: f.owner, x: f.x, y: f.y, radius: KNIGHT.missileBlast, arming: 0, life: .4, total: .4, damage: 0 }); f.life = 0; continue; }
-    } else if (f.kind === "nanoBurst" || f.kind === "swordArc" || f.kind === "swordBeam") { /* drawn only */
+    } else if (f.kind === "debris") { // release 249: stones the Crystal lifts, circling it until thrown
+      const owner = w.enemies.find((q) => q.id === f.owner && !q.dead);
+      if (f.state === "lift") { if (!owner) { f.life = 0; continue; } f.orbit += 1.4 * w.dt; f.x = owner.x + Math.cos(f.orbit) * CRYSTAL.debrisOrbit; f.y = owner.y + Math.sin(f.orbit) * CRYSTAL.debrisOrbit * .6; f.lift = Math.min(CRYSTAL.debrisRise, (f.lift || 0) + w.dt * 1.5); f.life = 99; }
+      else { f.x += f.vx * w.dt; f.y += f.vy * w.dt; if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0; else if (distance(p, f) <= f.radius + .3) { f.life = 0; w.hurt(owner || null, f.damage, { jumpable: false, source: "psyDebris" }); } }
+    } else if (f.kind === "psyWall") { if (!w.enemies.some((q) => q.id === f.owner && !q.dead) && f.life > .3) f.life = .3;
+    } else if (f.kind === "nanoBurst" || f.kind === "swordArc" || f.kind === "swordBeam" || f.kind === "psyRing") { /* drawn only */
     } else if (f.kind === "iceBurst") { /* the shatter, drawn only */ }
     else if (f.kind === "furrow") { /* release 239: the fleeing worm's wake; harmless, it only fades */ }
     else if (f.kind === "flesh") { if (distance(p, f) <= f.radius) { w.slow(f.slow || .55, .25); if (!(f.nextBite > f.age)) { f.nextBite = f.age + .8; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "fleshBloom", beam: true }); } } }
@@ -1484,7 +1678,11 @@ export function tickPackEffects(effects, w) {
 
 export const PACK_EFFECT_CAP = 48;
 export function addPackEffect(effects, effect, now = 0) {
-  if (effects.length >= PACK_EFFECT_CAP) effects.splice(0, effects.length - PACK_EFFECT_CAP + 1);
+  while (effects.length >= PACK_EFFECT_CAP) {
+    // Discard the Crystal's cosmetic trail before a combat effect when another attack needs space.
+    const scorch = effects.findIndex((f) => f.kind === "scorch");
+    effects.splice(scorch < 0 ? 0 : scorch, 1);
+  }
   effects.push({ id: `pack-fx-${effect.owner}-${now}-${effects.length}`, life: undefined, ...effect });
   return effects;
 }

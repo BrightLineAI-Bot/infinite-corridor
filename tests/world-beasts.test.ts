@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { generateRegion } from '../src/world.ts';
 import { WORLD_BEASTS, ensureWorldBeasts, worldBeastFor, worldBeastPlayerFell, worldBeastSlain, tuneWorldBeast, worldBeastTriesLeft } from '../src/world-beasts.ts';
-import { MONSTER_PACK, BLOB, WORM, TURTLE, KNIGHT, nanoScatters, updatePackMonster, tickPackEffects, addPackEffect, freshPackState, packCombatantFields } from '../src/monster-pack.ts';
+import { MONSTER_PACK, BLOB, WORM, TURTLE, KNIGHT, CRYSTAL, nanoScatters, glyphsReachSwarm, reflectShots, updatePackMonster, tickPackEffects, addPackEffect, freshPackState, packCombatantFields } from '../src/monster-pack.ts';
 import { createCombatant } from '../src/combat.ts';
 
 function world({ size = 24, player = { x: 12, y: 12 } } = {}) {
@@ -321,24 +321,26 @@ test('plain steel scatters the Nanobot Knight; elements, spells and an Echo-glyp
   assert.equal(nanoScatters(k, { physical: false }), false, 'magic shots, spells, glyph procs, burns, echoes');
   assert.equal(nanoScatters({ kind: 'questingBeast' }, { physical: true }), false, 'nobody else');
   const g = readFileSync(new URL('../src/game.ts', import.meta.url), 'utf8');
-  assert.match(g, /scattered = this\.scatterCheck\(e, true, glyphs\.has\("echo"\), now\), dealt = scattered \? 0/, 'melee swings');
-  assert.match(g, /this\.scatterCheck\(e, shot\.damageType === "physical", !!shot\.glyphHost && this\.glyphLoadout\(shot\.glyphHost\)\.has\("echo"\), now\) \? 0/, 'shots');
+  assert.match(g, /scattered = this\.scatterCheck\(e, true, glyphsReachSwarm\(glyphs\), now\), dealt = scattered \? 0/, 'melee swings');
+  assert.match(g, /this\.scatterCheck\(e, shot\.damageType === "physical", !!shot\.glyphHost && glyphsReachSwarm\(this\.glyphLoadout\(shot\.glyphHost\)\), now\)\) \? 0/, 'shots');
+  const has = (...ids) => ({ has: (id) => ids.includes(id) }); // release 249: an elemental glyph reaches it as well
+  for (const id of ['echo', 'ignite', 'chain', 'volatile']) assert.equal(glyphsReachSwarm(has(id)), true, id);
+  for (const id of ['heavy', 'swift', 'pierce', 'leech']) assert.equal(glyphsReachSwarm(has(id)), false, id);
   assert.equal(WORLD_BEASTS.nanobotKnight.home, 'glass'); assert.equal(MONSTER_PACK.nanobotKnight.unique, true);
 });
 
-test('the Knight\'s attacks: sliding cuts, a tracking arm cannon, swordfall, an orbital lance that scorches, seeker orbs, a missile barrage, mist step', () => {
+test('the Knight\'s attacks: sliding cuts, a tracking arm cannon, swordfall, seeker orbs, a missile barrage, mist step; no orbital lance', () => {
   const w = world({ size: 40, player: { x: 20, y: 20 } }), kn = knight(w, 14, 20);
   const run = (id, seconds, px = 20, py = 20, seq = 0) => { kn.x = 14; kn.y = 20; w.player.x = px; w.player.y = py; kn.packAttacks = [id]; kn.pack = freshPackState(); kn.pack.gap = 0; kn.pack.seq = seq; w.hurts = []; w.fx = []; step(w, seconds); };
   run('knightSlide', 2.4); assert.ok(w.hurts.filter((h) => h.source === 'knightSlide').length >= 2, 'it skids in and cuts, again and again'); assert.ok(kn.x > 16, 'sliding');
   run('knightCannon', 2.2, 19, 23); assert.ok(w.hurts.some((h) => h.source === 'knightCannon'), 'the cannon tracked you while charging');
   run('knightSwordfall', 2.4); assert.equal(w.fx.filter((f) => f.kind === 'swordfall').length, KNIGHT.swords); assert.ok(w.hurts.some((h) => h.source === 'swordfall'), 'one falls on you');
-  kn.x = 9; w.fx = []; kn.packAttacks = ['knightOrbital']; kn.pack = freshPackState(); kn.pack.gap = 0; w.player.x = 20; w.player.y = 20; w.hurts = []; step(w, 1.4); w.player.x = 26; step(w, 2.4);
-  assert.ok(w.fx.filter((f) => f.kind === 'scorch').length >= 4, 'the lance scorches the ground behind it'); assert.ok(w.hurts.some((h) => h.source === 'knightOrbital'));
-  const lance = w.fx.find((f) => f.kind === 'orbital'); if (lance) assert.ok(lance.x > 21, 'and follows you');
+  assert.ok(![...MONSTER_PACK.nanobotKnight.attacks, ...MONSTER_PACK.nanobotKnight.bossAttacks].includes('knightOrbital'), 'the orbital sky beam belongs to the Crystal, not the Knight');
+  assert.ok(![...MONSTER_PACK.nanobotKnight.attacks, ...MONSTER_PACK.nanobotKnight.bossAttacks].includes('psyOrbital'));
   for (const seq of [0, 1]) {
     run('knightOrbs', .65, 24, 20, seq); const orbs = w.fx.filter((f) => f.kind === 'nanoOrb'); assert.equal(orbs.length, KNIGHT.orbs, 'orbs gather');
     assert.ok(orbs.every((f) => Math.hypot(f.x - kn.x, f.y - kn.y) < KNIGHT.orbOrbit + .2), 'circling it');
-    step(w, .6); const sent = orbs.filter((f) => f.state !== 'circle').length;
+    step(w, KNIGHT.orbFloat + .1); const sent = orbs.filter((f) => f.state !== 'circle').length;
     assert.ok(seq ? sent >= 1 : sent >= 1, 'then sent'); step(w, 3); assert.ok(w.hurts.some((h) => h.source === 'knightOrb'), 'they find you');
   }
   run('knightMissiles', .8, 22, 26); assert.equal(w.fx.filter((f) => f.kind === 'missile').length, KNIGHT.missiles); w.player.x = 39; w.player.y = 39; step(w, KNIGHT.missileFuel + 1);
@@ -388,4 +390,51 @@ test('the Knight\'s blade: a thrust along any of eight ways with a beam off the 
   // and sometimes, when it slips an attack, it leaps back slashing instead of turning to mist
   let slashes = 0, mists = 0; for (let n = 0; n < 60; n++) { const v = world(), m = knight(v, 12, 12); m.id = `kb-${n}`; m.packAttacks = []; m.evasive = true; v.player.x = 13.5; v.player.y = 12; v.playerSwinging = true; step(v, .1); if (m.pack.attack === 'knightBackslash') slashes++; if (m.mist) mists++; }
   assert.ok(slashes > 0 && mists > 0, `both answers (${slashes} slashes, ${mists} mists)`);
+});
+
+// Release 249: the Psychic Crystal.
+import { worldBeastForDungeon, beginDungeonRetreat } from '../src/world-beasts.ts';
+function crystal(w, x = 10, y = 12) { const c = createCombatant('psychicCrystal', x, y, true, []); Object.assign(c, { id: 'crystal-1', aggro: true, hp: 3000, maxHp: 3000, damage: 20 }); w.enemies.push(c); return c; }
+
+test('the Psychic Crystal: push, pull, a command grab you can dodge or struggle out of, hurled debris', () => {
+  assert.equal(MONSTER_PACK.psychicCrystal.unique, true); assert.equal(MONSTER_PACK.psychicCrystal.movement, 'hover'); assert.equal(WORLD_BEASTS.psychicCrystal.home, 'water'); assert.ok(WORLD_BEASTS.psychicCrystal.dungeonChance > 0);
+  const make = () => { const w = world({ size: 30, player: { x: 13, y: 12 } }); w.pulled = 0; w.pull = (src, st) => { w.pulled += st; }; let heldUntil = 0, dodging = false; w.grab = () => { if (dodging) return false; heldUntil = w.now + CRYSTAL.grabHold * 1000; return true; }; w.held = () => w.now < heldUntil; w.release = () => { heldUntil = 0; }; w.struggle = () => { heldUntil -= 3000; }; w.dodge = (on) => { dodging = on; }; return w; };
+  const run = (w, c, id, seconds, seq = 0) => { c.packAttacks = [id]; c.pack = freshPackState(); c.pack.gap = 0; c.pack.seq = seq; w.hurts = []; step(w, seconds); c.packAttacks = []; };
+  let w = make(), c = crystal(w); run(w, c, 'psyPush', 1.2); assert.ok(w.pushed > 0, 'thrown back'); assert.ok(w.hurts.some((h) => h.source === 'psyPush'));
+  w = make(); c = crystal(w); w.player.x = 16; run(w, c, 'psyPull', 2); assert.ok(w.pulled > 0, 'drawn in');
+  w = make(); c = crystal(w); run(w, c, 'psyGrab', .8); assert.ok(w.held(), 'seized'); step(w, CRYSTAL.grabHold + .2); assert.ok(w.hurts.some((h) => h.source === 'psyGrab'), 'and crushed');
+  w = make(); c = crystal(w); run(w, c, 'psyGrab', .8); assert.ok(w.held()); w.struggle(); step(w, CRYSTAL.grabHold + .2); assert.ok(!w.hurts.some((h) => h.source === 'psyGrab'), 'struggled free: no crush');
+  w = make(); c = crystal(w); w.dodge(true); run(w, c, 'psyGrab', .8); assert.ok(!w.held(), 'dodged as it reached'); step(w, 3); assert.ok(!w.hurts.some((h) => h.source === 'psyGrab'));
+  w = make(); c = crystal(w); w.player.x = 17; c.packAttacks = ['psyDebris']; c.pack.gap = 0; step(w, 1.2);
+  const rocks = w.fx.filter((f) => f.kind === 'debris'); assert.equal(rocks.length, CRYSTAL.debris, 'stones rise'); assert.ok(rocks.some((f) => f.state === 'lift'));
+  c.packAttacks = []; step(w, 2.5); assert.ok(w.hurts.some((h) => h.source === 'psyDebris'), 'and are flung at you one by one');
+});
+
+test('the mirror wall sends arrows and bolts back; blades pass through; it falls with the Crystal', () => {
+  const w = world({ size: 30, player: { x: 16, y: 12 } }), c = crystal(w); c.packAttacks = ['psyWall']; c.pack.gap = 0; step(w, .7); c.packAttacks = [];
+  const wall = w.fx.find((f) => f.kind === 'psyWall'); assert.ok(wall, 'a wall stands between you'); assert.ok(wall.x > c.x && wall.x < 16);
+  const arrow = { x: wall.x + .5 + 1, y: wall.y + .45, dx: -1, dy: 0, damage: 10 }, far = { x: 3, y: 3, dx: 1, dy: 0, damage: 10 }, foe = { x: wall.x + .5 + .2, y: wall.y + .45, dx: -1, dy: 0, damage: 10, hostile: true };
+  arrow.x = wall.x + .5 + .2; assert.equal(reflectShots([arrow, far, foe], w.fx), 1);
+  assert.ok(arrow.hostile && arrow.dx > 0, 'your arrow comes back at you'); assert.equal(arrow.damage, Math.round(10 * CRYSTAL.reflectShare)); assert.ok(!far.hostile && foe.dx < 0, 'others untouched');
+  c.dead = true; step(w, .5); assert.ok(!w.fx.some((f) => f.kind === 'psyWall'), 'the wall goes with it');
+  const g = readFileSync(new URL('../src/game.ts', import.meta.url), 'utf8'); assert.match(g, /reflectShotStep\(p, mirrorWalls, step\)/, 'mirror contact is swept within projectile substeps'); assert.match(g, /this\.packEffects \|\| \[\]\)\.filter\(f => f\.kind === \"psyWall\"/, 'the production adapter passes mirror walls'); assert.match(g, /now < \(p\.heldUntil \|\| 0\)\) \{ x = 0; y = 0; if \(input\.consume\("dodge"\)\)/, 'held: no moving, and dodge struggles');
+});
+
+test('the Crystal haunts only dungeons with water, holds them, takes tries there, and retreats into the water', () => {
+  const dry = { tiles: Array.from({ length: 900 }, (_, i) => ({ x: i % 30, y: Math.floor(i / 30), kind: 'deepFloor', blocked: false })), width: 30, entry: { x: 3, y: 3 } };
+  const wet = { ...dry, tiles: dry.tiles.map((t) => (t.x >= 20 && t.x <= 22 && t.y >= 10 && t.y <= 14 ? { ...t, kind: 'dungeonWater', blocked: true } : t)) };
+  const s = freshSave(); s.seed = 'HAUNT'; s.level = 12; ensureWorldBeasts(s); const dun = (tag, i) => `dungeon:HAUNT:g1:${3 + i}:4:${tag}-${i}`;
+  for (let i = 0; i < 40; i++) assert.equal(worldBeastForDungeon(s, dry, dun('dry', i)), null, 'never without water');
+  const young = freshSave(); young.seed = 'HAUNT'; ensureWorldBeasts(young); for (let i = 0; i < 40; i++) assert.equal(worldBeastForDungeon(young, wet, dun('wet', i)), null, 'never a new Wayfarer\'s');
+  for (const odd of ['dungeon:HAUNT:g1', 'arena:x', 'hunt-instance:y', 'dungeon:HAUNT:g1:1:1:near']) for (let n = 0; n < 5; n++) assert.equal(worldBeastForDungeon(s, wet, odd + (n ? `-${n}` : '')), null, `not ${odd}`);
+  let id = null, spawn = null; for (let i = 0; i < 40 && !spawn; i++) { spawn = worldBeastForDungeon(s, wet, dun('wet', i)); if (spawn) id = dun('wet', i); }
+  assert.ok(spawn && spawn.kind === 'psychicCrystal', 'some wet dungeons'); assert.ok(Math.hypot(spawn.x - 3, spawn.y - 3) >= 7, 'away from the entry');
+  assert.ok(wet.tiles.some((t) => t.kind === 'dungeonWater' && Math.abs(t.x - spawn.x) + Math.abs(t.y - spawn.y) <= 4), 'near the water');
+  assert.equal(worldBeastForDungeon(s, wet, id)?.id, spawn.id, 'it stays'); assert.equal(worldBeastForDungeon(s, wet, dun('other', 9)), null, 'one place at a time');
+  assert.deepEqual(migrateSave(JSON.parse(JSON.stringify(s))).worldBeasts.psychicCrystal.active.dungeon, id, 'saved');
+  assert.match(worldBeastPlayerFell(s, null, null, ['psychicCrystal'], id), /2 tries remain/); assert.equal(worldBeastPlayerFell(s, 5, 5, ['psychicCrystal']), null, 'not from the overworld');
+  const r = beginDungeonRetreat(s, 'psychicCrystal', wet); assert.ok(r.home.found);
+  const t = retreatTarget(s.worldBeasts.psychicCrystal.active.retreat, 'psychicCrystal', wet, 0, 0, {}, spawn); assert.ok(t.home && wet.tiles.find((q) => q.x === t.x && q.y === t.y).kind === 'dungeonWater', 'into the water');
+  assert.deepEqual(worldBeastsLost(s, 'dungeon', 0, 0, id), [], 'while you are there'); assert.deepEqual(worldBeastsLost(s, 'overworld', 0, 0), ['psychicCrystal'], 'gone when you leave');
+  const g = readFileSync(new URL('../src/game.ts', import.meta.url), 'utf8'); assert.match(g, /worldBeastForDungeon\(this\.save,this\.map,this\.areaId\(\)\)/); assert.match(g, /!c\.worldBeast\) tuneDungeonThreat\(c\)/);
 });

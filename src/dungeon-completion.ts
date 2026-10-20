@@ -3,12 +3,12 @@ export function requiredBossId(e) { return e.id || `${e.kind}-${e.x}-${e.y}`; }
 export function registerDungeonBosses(history, maps) {
   const clear = history.combatClear ||= { version: 1, required: [], defeated: [], completed: false, rewardClaimed: false };
   for (const map of maps) for (const e of map.enemySpawns || [])
-    if (e.boss && !clear.required.includes(requiredBossId(e))) clear.required.push(requiredBossId(e));
+    if (e.boss && !e.worldBeast && !clear.required.includes(requiredBossId(e))) clear.required.push(requiredBossId(e)); // release 249: a world beast haunting a dungeon is never one of its guardians
   return clear;
 }
 export function recordDungeonBossDefeat(history, enemy) {
   const clear = history.combatClear;
-  if (!clear || !enemy.boss) return false;
+  if (!clear || !enemy.boss || enemy.worldBeast) return false;
   const id = requiredBossId(enemy);
   if (!clear.defeated.includes(id)) clear.defeated.push(id);
   clear.completed = clear.required.length > 0 && clear.required.every(id => clear.defeated.includes(id));

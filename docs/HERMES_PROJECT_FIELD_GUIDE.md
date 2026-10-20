@@ -26,6 +26,76 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Crystal pause and mirror-wall review fixes (release 249 continuation)
+
+**CODE:** `Game.setPaused` shifts `player.heldUntil` with the other combat deadlines, preserving the remaining grip across a pause. `reflectShotStep` sweeps each projectile substep against the oriented mirror-wall rectangle, selects its earliest contact, reflects the shot and spends only the remaining substep distance in the reflected direction. `updateProjectiles` runs this before actor collision; `Game.update` supplies active pack effects instead of doing a single pre-frame point check.
+
+**BOUNDARY:** The grab still fails during a dodge, each deliberate dodge shortens the hold, and a hold that runs out normally still crushes. Reflection remains player-shot only, once per shot, at 80% damage, without pierce; reflected grenades become straight shots. Ordinary projectile paths are unchanged when no mirror wall is present. No save schema, generator, release-script or workflow change.
+
+## The Crystal roams its dungeon domain (release 249 continuation)
+
+Tim, 2026-10-20: in a dungeon the Psychic Crystal should roam, so the Wayfarer can find it and fight it, rather than float in one location. It floats over terrain and obstacles and can phase through dungeon walls. The same roaming requirement applies to the future Void Walker.
+
+**CODE:** `src/monster-pack.ts` opts the dungeon Psychic Crystal into deterministic, direct patrol routes. Each new route samples at most 625 cells across the entire dungeon, prefers open-floor destinations with recent-destination avoidance, and can cross disconnected rooms; an interior fallback lets a saved Crystal leave solid terrain without teleporting. `CRYSTAL` holds the tuning. `Game.packWorld` bounds its patrol and combat movement to the map but ignores walls, locked doors and lethal floor. Phasing does not change terrain, open player doors or confer combat invulnerability. `activeDungeonEnemies` keeps the hunter awake off-screen within the existing actor cap. It engages within seven tiles with line of sight, then uses its combat movement, approaching through walls if sight is lost; it cannot begin a new attack until it can see the player. Already committed attacks and the separate through-terrain water retreat retain their behavior.
+
+**CODE:** `crystalFlightLift` in `src/monster-render.ts` samples nine nearby terrain heights, using a smooth one-tile approach to higher ground. The body rises before crossing a cliff and descends after clearing it, never lagging below the ground. This applies in both overworld and dungeon. `src/renderer.ts` passes only the difference from its existing terrain translation to the Crystal body, keeping the shadow on actual ground; the health bar and grab tether follow their appropriate body/target heights. Beam contact and scorch stay grounded. Reduced motion and safe mode suppress cosmetic Crystal bobbing and spinning, not terrain clearance or attack timing.
+
+**BOUNDARY:** No generator or save-schema change. Health, hunt progress and in-bounds saved positions, including water, walls and disconnected pockets, survive reload exactly; only invalid/out-of-bounds coordinates are clamped. Transient routes replan. There is no entrance-connected spawn restriction or new relocation migration: phasing makes those unnecessary. Pausing freezes simulation. Water remains an eligibility and retreat condition, not a patrol anchor. Single-pool eligibility, ordinary-dungeon, level 8, five-section and guardian-clear rules remain unchanged. Overworld flight retains its existing collision rules; wall phasing is dungeon-specific. The Void Walker's dungeon roaming is a design requirement only, pending its appearance and combat specification.
+
+## The Crystal's sky beams and the Knight's seekers (release 249 continuation)
+
+**CODE:** `src/monster-pack.ts` assigns `psyOrbital` to the Psychic Crystal and removes `knightOrbital` from the Knight. `CRYSTAL` holds the beam and cosmetic-scorch tuning. A deterministic volley contains one to four beams and selects a spiral, square, circle, zigzag or slash path. Each beam warns for 0.7 seconds, then traces its continuous path around a centre that pursues the Wayfarer for four seconds. Contact is checked along each frame's travelled segment. The beams stop doing damage when their owner dies or retreats. Harmless scorch lasts 1.5 seconds, is capped separately and cannot evict combat effects from the shared 48-effect budget. `src/monster-render.ts` aligns the warning, beam contact and fading cool mark with terrain height.
+
+**CODE:** `KNIGHT` now defines three seeker orbs, six at half health or below, a 0.6-second gathering float, two seconds of homing and a five-second launched lifetime. Orbs then keep their last velocity until collision or lifetime expiry. An interrupted gather finishes the float and launches instead of remaining in orbit forever; death or retreat removes still-circling orbs. `resetPackRuntime` corrects the two beasts' saved attack lists while preserving their health, tuning and cooldowns. A comment/newline typo that swallowed recoil and hit-stun decay is also repaired.
+
+**BOUNDARY:** No save-schema or generator changes. The existing single-`dungeonWater` eligibility, ordinary-dungeon restriction, level 8 minimum, five-section minimum, grab/dodge struggle, reflected projectiles, elemental glyph damage and dungeon-clear exemption remain unchanged. This extends the unmerged release 249 PR, so it retains that PR's single release-number bump.
+
+## The Psychic Crystal; a dungeon hunt (release 249)
+
+The fifth of Tim's world beasts. He asked (2026-10-19, 2026-10-20) for:
+- a floating crystal whose aura changes: hazy white; red or larger when attacking; blue or purple before a grab;
+- a force push and a force pull;
+- a command grab that holds you for a few seconds while it winds up a powerful attack;
+- debris it levitates and throws;
+- a psychic wall that reflects ranged attacks while physical attacks pass through;
+- it may appear in the overworld, and in dungeons only where there is some water, retreating into that water.
+
+**CODE:**
+
+- **`src/monster-pack.ts`.**
+  - `CRYSTAL` holds the balance.
+  - `psyPush`: a hit at its windup end, a `psyRing`, then `w.push` for its active time.
+  - `psyPull`: `w.pull`, plus one lash when you arrive.
+  - `psyGrab`: a violet `tether` telegraph. At the windup end it calls `w.grab(e)`, which fails if you are dodging or invulnerable. Held, a holding tether shows. The crush lands when the hold ends unless you broke free earlier (`w.held` false before then).
+  - `psyDebris`: `debris` effects circle it in state `lift`, then are thrown every `debrisEvery`; they hit once and stop at walls.
+  - `psyWall`: a `psyWall` effect between you and it, perpendicular to you, lasting `wallLife` seconds.
+  - `reflectShots(shots, effects)`: any non-hostile shot crossing a standing wall reflects about its normal, turns hostile (it then hits the Wayfarer through the existing hostile-shot rule), and keeps `reflectShare` of its damage. Melee is untouched.
+  - `MONSTER_PACK.psychicCrystal`: `hover`, `orbit`, boss attack `sweepBeam`.
+- **`src/game.ts`.**
+  - The pack world gains `grab`, `held` and `release`. The hold is `p.heldUntil`/`p.heldBy`, lasting `grabHold` + 0.1 s.
+  - While held, movement input is zeroed and each dodge press shortens the hold by `CRYSTAL.struggle`.
+  - `reflectShots` runs each frame before `updateProjectiles`.
+  - World beasts are exempt from `tuneDungeonThreat`, both on spawn and on snapshot restore.
+  - `shouldSimulateEnemy` keeps an aggro world beast awake in dungeons, so a retreat out of sight finishes.
+- **`src/world-beasts.ts`, the dungeon hunt.**
+  - A beast with `dungeonChance` (the Crystal, .35) may claim a dungeon on entry. It needs `dungeonWater` tiles, a free hunt and no cooldown. The dungeon must also be an ordinary `dungeon:…:g<n>:<rx>:<ry>:<object>` dungeon at least `minDepth` sections out (never the story dungeon, arenas, hunts or runs), and the Wayfarer must be at least `dungeonMinLevel` (8). The claim is stored as `active = { dungeon, tries }`, which `ensureWorldBeasts` keeps, and lasts until the hunt ends.
+  - `worldBeastForDungeon` spawns it on an open tile at least 7 tiles from the entry, preferably within 4 of the water. `loadArea` calls it, with its arrival line shown on the first frame.
+  - Tries count on deaths in that dungeon (`worldBeastPlayerFell`'s `dungeonId`).
+  - A haunting beast is never one of the dungeon's guardians: `registerDungeonBosses` and `recordDungeonBossDefeat` (`src/dungeon-completion.ts`) skip `worldBeast`, so it neither blocks nor counts toward a combat clear.
+  - Out of patience, `beginDungeonRetreat` sends it to the nearest `dungeonWater` (`BEAST_HOMES.water` now includes it), along a `through` path. `worldBeastsLost` ends the hunt if you leave that dungeon while it retreats.
+  - `cleanRetreat` accepts `{ dungeon }` homes.
+  - Overworld claims, cooldowns and the Atlas are unchanged; dungeon claims carry no Atlas mark.
+- **`src/monster-render.ts`.**
+  - `BODY.psychicCrystal`: flat faceted faces that slide as it turns, two lesser crystals at its foot, circling shards, a core in the aura's colour, and the three-layer aura.
+  - Effects: the `tether` telegraph, `debris` stones, a leaning `psyWall` pane with rising motes, and `psyRing`.
+- **`src/echoes.ts`.** "Mind Ward": being hurt throws foes within 3 tiles back.
+- **Knight fixes from the 247 review.**
+  - `e.scattered` now decays each frame.
+  - A stray duplicate line was removed.
+  - `glyphsReachSwarm`: echo, ignite, chain or volatile on the weapon's loadout reaches the Knight (Tim: "unless the attack is elemental").
+
+**BOUNDARY:** The save change is additive at schema 14: `worldBeasts.psychicCrystal`, plus dungeon-held `active` rows. No generator changes; dungeons are read, never altered.
+
 ## The Nanobot Knight's swarm cape (release 247)
 
 Tim, 2026-10-20: the cape was too clean. It should be "a series of small particles that trail behind him like a cape … like smoke", not a solid cape.
