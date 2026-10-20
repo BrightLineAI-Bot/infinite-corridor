@@ -329,19 +329,18 @@ test('plain steel scatters the Nanobot Knight; elements, spells and an Echo-glyp
   assert.equal(WORLD_BEASTS.nanobotKnight.home, 'glass'); assert.equal(MONSTER_PACK.nanobotKnight.unique, true);
 });
 
-test('the Knight\'s attacks: sliding cuts, a tracking arm cannon, swordfall, an orbital lance that scorches, seeker orbs, a missile barrage, mist step', () => {
+test('the Knight\'s attacks: sliding cuts, a tracking arm cannon, swordfall, seeker orbs, a missile barrage, mist step; no orbital lance', () => {
   const w = world({ size: 40, player: { x: 20, y: 20 } }), kn = knight(w, 14, 20);
   const run = (id, seconds, px = 20, py = 20, seq = 0) => { kn.x = 14; kn.y = 20; w.player.x = px; w.player.y = py; kn.packAttacks = [id]; kn.pack = freshPackState(); kn.pack.gap = 0; kn.pack.seq = seq; w.hurts = []; w.fx = []; step(w, seconds); };
   run('knightSlide', 2.4); assert.ok(w.hurts.filter((h) => h.source === 'knightSlide').length >= 2, 'it skids in and cuts, again and again'); assert.ok(kn.x > 16, 'sliding');
   run('knightCannon', 2.2, 19, 23); assert.ok(w.hurts.some((h) => h.source === 'knightCannon'), 'the cannon tracked you while charging');
   run('knightSwordfall', 2.4); assert.equal(w.fx.filter((f) => f.kind === 'swordfall').length, KNIGHT.swords); assert.ok(w.hurts.some((h) => h.source === 'swordfall'), 'one falls on you');
-  kn.x = 9; w.fx = []; kn.packAttacks = ['knightOrbital']; kn.pack = freshPackState(); kn.pack.gap = 0; w.player.x = 20; w.player.y = 20; w.hurts = []; step(w, 1.4); w.player.x = 26; step(w, 2.4);
-  assert.ok(w.fx.filter((f) => f.kind === 'scorch').length >= 4, 'the lance scorches the ground behind it'); assert.ok(w.hurts.some((h) => h.source === 'knightOrbital'));
-  const lance = w.fx.find((f) => f.kind === 'orbital'); if (lance) assert.ok(lance.x > 21, 'and follows you');
+  assert.ok(![...MONSTER_PACK.nanobotKnight.attacks, ...MONSTER_PACK.nanobotKnight.bossAttacks].includes('knightOrbital'), 'the orbital sky beam belongs to the Crystal, not the Knight');
+  assert.ok(![...MONSTER_PACK.nanobotKnight.attacks, ...MONSTER_PACK.nanobotKnight.bossAttacks].includes('psyOrbital'));
   for (const seq of [0, 1]) {
     run('knightOrbs', .65, 24, 20, seq); const orbs = w.fx.filter((f) => f.kind === 'nanoOrb'); assert.equal(orbs.length, KNIGHT.orbs, 'orbs gather');
     assert.ok(orbs.every((f) => Math.hypot(f.x - kn.x, f.y - kn.y) < KNIGHT.orbOrbit + .2), 'circling it');
-    step(w, .6); const sent = orbs.filter((f) => f.state !== 'circle').length;
+    step(w, KNIGHT.orbFloat + .1); const sent = orbs.filter((f) => f.state !== 'circle').length;
     assert.ok(seq ? sent >= 1 : sent >= 1, 'then sent'); step(w, 3); assert.ok(w.hurts.some((h) => h.source === 'knightOrb'), 'they find you');
   }
   run('knightMissiles', .8, 22, 26); assert.equal(w.fx.filter((f) => f.kind === 'missile').length, KNIGHT.missiles); w.player.x = 39; w.player.y = 39; step(w, KNIGHT.missileFuel + 1);
@@ -418,7 +417,7 @@ test('the mirror wall sends arrows and bolts back; blades pass through; it falls
   arrow.x = wall.x + .5 + .2; assert.equal(reflectShots([arrow, far, foe], w.fx), 1);
   assert.ok(arrow.hostile && arrow.dx > 0, 'your arrow comes back at you'); assert.equal(arrow.damage, Math.round(10 * CRYSTAL.reflectShare)); assert.ok(!far.hostile && foe.dx < 0, 'others untouched');
   c.dead = true; step(w, .5); assert.ok(!w.fx.some((f) => f.kind === 'psyWall'), 'the wall goes with it');
-  const g = readFileSync(new URL('../src/game.ts', import.meta.url), 'utf8'); assert.match(g, /reflectShots\(this\.projectiles,this\.packEffects\)/); assert.match(g, /now < \(p\.heldUntil \|\| 0\)\) \{ x = 0; y = 0; if \(input\.consume\("dodge"\)\)/, 'held: no moving, and dodge struggles');
+  const g = readFileSync(new URL('../src/game.ts', import.meta.url), 'utf8'); assert.match(g, /reflectShotStep\(p, mirrorWalls, step\)/, 'mirror contact is swept within projectile substeps'); assert.match(g, /this\.packEffects \|\| \[\]\)\.filter\(f => f\.kind === \"psyWall\"/, 'the production adapter passes mirror walls'); assert.match(g, /now < \(p\.heldUntil \|\| 0\)\) \{ x = 0; y = 0; if \(input\.consume\("dodge"\)\)/, 'held: no moving, and dodge struggles');
 });
 
 test('the Crystal haunts only dungeons with water, holds them, takes tries there, and retreats into the water', () => {

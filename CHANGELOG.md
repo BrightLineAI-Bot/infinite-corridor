@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 249 review fixes — pausing preserves the remaining Crystal grab time rather than silently breaking its hold. Mirror walls reflect at swept projectile contact, so fast arrows and bolts cannot slip through between frames.
+
+- Release 249 continuation — the Psychic Crystal now patrols dungeon halls instead of circling its spawn. It floats over terrain and phases through dungeon walls, patrolling even off-screen. Its model rises smoothly over higher ground and settles down beyond it. It engages when it sees you and never starts a new attack through a wall. Its separate retreat still ends in the dungeon's water.
+- Release 249 continuation — orbital lasers belong to the Psychic Crystal, not the Nanobot Knight. One to four sky beams follow you for four seconds, tracing spiral, square, circle, zigzag or slash patterns. Their scorch marks are harmless and fade in 1.5 seconds. The Knight gathers three seeker orbs, or six at half health and below; they float first, home for two seconds after launch, then keep flying straight. Interrupted gathers no longer leave immortal orbiting orbs. Existing saved beasts receive the corrected attack assignment without changing their health or hunt state. Recoil and hit-stun decay correctly again.
 - Release 249 — the fifth world beast: the Psychic Crystal. It is a long faceted crystal floating at head height, with lesser shards circling it. Its aura tells you what it means to do: a hazy white at rest, red and larger when it attacks, violet just before it grabs. Its attacks:
   - a force push that throws you back;
   - a force pull that drags you in and lashes out as you arrive;

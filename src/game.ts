@@ -61,7 +61,7 @@ import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.ts";
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
 import { applyLandscape, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.ts";
-import { nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShots, MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.ts";
+import { nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
 import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, digSpot } from "./digging.ts";
@@ -470,6 +470,7 @@ export function updateProjectiles(
   onPlayerHit = () => {},
   damageFor = (p) => p.damage,
   onHit = () => {},
+  mirrorWalls = [],
 ) {
   for (const p of projectiles) {
     if (p.dead) continue;
@@ -487,8 +488,8 @@ export function updateProjectiles(
       steps = Math.max(1, Math.ceil(distance / 0.2)),
       step = distance / steps;
     for (let i = 0; i < steps && !p.dead; i++) {
-      const nx = p.x + p.dx * step,
-        ny = p.y + p.dy * step;
+      const next = mirrorWalls.length ? reflectShotStep(p, mirrorWalls, step) : { x: p.x + p.dx * step, y: p.y + p.dy * step };
+      const nx = next.x, ny = next.y;
       if (!projectileTileOpen(map, width, nx, ny)) {
         if(p.path==="grenade"){p.dead=true;onDetonate(p);break}
         if (p.path === "boomerang" && !p.returning) {
@@ -1056,14 +1057,14 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
 }
 export function shouldSimulateEnemy(e,player,area="overworld"){
   if(!e||e.dead)return false;
-  if(area==="dungeon"){if(e.worldBeast&&e.aggro)return true;/* release 249: a world beast in a dungeon is always awake (it must finish a retreat out of sight) */const d=Math.hypot(e.x-player.x,e.y-player.y);return d<=(e.aggro?18:e.boss||e.eliteId?14:10)||e.telegraph>0||e.strike>0||e.eliteWindup>0||e.eliteActive>0}
+  if(area==="dungeon"){if(e.worldBeast&&(e.aggro||isDungeonRoamer(e,area)))return true;/* release 249: hunters patrol and finish their retreat even out of sight */const d=Math.hypot(e.x-player.x,e.y-player.y);return d<=(e.aggro?18:e.boss||e.eliteId?14:10)||e.telegraph>0||e.strike>0||e.eliteWindup>0||e.eliteActive>0}
   if(area!=="overworld")return true;
   if(e.aggro||e.boss||e.eliteId||e.worldBoss||e.gatePredator||e.telegraph>0||e.strike>0||e.eliteWindup>0||e.eliteActive>0||e.summonedBy)return true;
   return Math.hypot(e.x-player.x,e.y-player.y)<=10;
 }
 export function activeDungeonEnemies(enemies,player,map){
  const cap=Math.max(1,Number(map?.activeEnemyCap)||DUNGEON_ACTIVE_CAP[map?.encounterProfile]||DUNGEON_ACTIVE_CAP.normal);
- return enemies.filter(e=>shouldSimulateEnemy(e,player,"dungeon")).sort((a,b)=>Number(!!b.aggro)-Number(!!a.aggro)||Number(!!b.boss)-Number(!!a.boss)||Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y)||String(a.id).localeCompare(String(b.id))).slice(0,cap);
+ return enemies.filter(e=>shouldSimulateEnemy(e,player,"dungeon")).sort((a,b)=>Number(isDungeonRoamer(b,"dungeon"))-Number(isDungeonRoamer(a,"dungeon"))||Number(!!b.aggro)-Number(!!a.aggro)||Number(!!b.boss)-Number(!!a.boss)||Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y)||String(a.id).localeCompare(String(b.id))).slice(0,cap);
 }
 export function settlementSanctuary(map,rx,ry,save){if(!map||rx===0&&ry===0&&save?.consequences?.settlements?.['ember-refuge']?.status==='fallen')return null;if(map.settlement?.procedural)return{x:map.settlement.x,y:map.settlement.y,radius:map.settlement.radius};return map.settlement||rx===0&&ry===0?{x:16,y:16,radius:9}:null}
 export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y-z.y,d=Math.hypot(dx,dy);if(d>=z.radius)return false;const m=d||1;e.x=z.x+(d?dx/m:1)*(z.radius+.5);e.y=z.y+(d?dy/m:0)*(z.radius+.5);const ai=ensureAI(e);ai.homeX=e.x;ai.homeY=e.y;e.telegraph=0;return true}
@@ -1733,7 +1734,13 @@ export class Game {
     }
     const areaWidth = mapWidth(this.map, area),
       playerRelocated = !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
-    for (const e of this.enemies) if (!e.seaKind) relocateIfStranded(e, this.map, areaWidth);
+    for (const e of this.enemies) {
+      if (isDungeonRoamer(e, area)) {
+        // Walls, water and isolated pockets are valid saved flight positions. Only repair invalid map bounds.
+        e.x = Math.max(0, Math.min(areaWidth - 1, Number.isFinite(e.x) ? e.x : this.map.entry?.x ?? 4));
+        e.y = Math.max(0, Math.min(mapHeight(this.map, area) - 1, Number.isFinite(e.y) ? e.y : this.map.entry?.y ?? 5));
+      } else if (!e.seaKind) relocateIfStranded(e, this.map, areaWidth);
+    }
     if (playerRelocated)
       this.message =
         "The changed Corridor settles you onto the nearest stable ground. Your progress and carried items remain intact.";
@@ -1809,6 +1816,7 @@ export class Game {
         "dodgeReadyAt",
         "invulnerableUntil",
         "dodgeUntil",
+        "heldUntil",
       ])
         if (this.player[k]) this.player[k] += d;
       if (this.jumpUntil) this.jumpUntil += d;
@@ -2563,7 +2571,7 @@ export class Game {
   packWorld(dt, now, sanctuary = null) {
     const map = this.map, width = mapWidth(map, this.area), height = mapHeight(map, this.area), p = this.player, last = this._packLastPlayer || p, game = this;
     return {
-      player: p, map, width, height, dt, now, enemies: this.enemies, sanctuary,
+      player: p, map, width, height, area: this.area, dt, now, enemies: this.enemies, sanctuary,
       playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - last.y) / dt } : { x: 0, y: 0 },
       playerShots: this.projectiles, playerSwinging: now < (p.meleeUntil || 0), playerBlasts: this.effects.filter((fx) => !fx.hostile && fx.damage > 0), // release 187: the Questing Beast reads these to dodge (release 245: the Nanobot Knight reads spells too)
       playerFacing: ({ left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, up: { x: 0, y: -1 }, down: { x: 0, y: 1 } })[p.facing] || { x: 0, y: 1 },
@@ -2572,9 +2580,12 @@ export class Game {
       tileOpen: (x, y) => tileOpen(map, width, x, y),
       los: (a, b, projectile = false) => hasLineOfSight(a, b, map, width, projectile),
       move(e, dx, dy, opts = {}) {
-        if (opts.phase) { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)), moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
+        if (opts.phase || isDungeonRoamer(e, game.area)) { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)), moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
         return moveAxis(e, dx, dy, map, width, !!e.flying);
       },
+      // The dungeon is the Crystal's domain: patrol and combat use the same bounded wall-phasing movement.
+      roamMove(e, dx, dy) { return this.move(e, dx, dy); },
+      roamWork: (n) => { game.performanceStats.pathfindingWork += n; },
       detour(e, speed) { const step = boundedChaseStep(e, p, map, width); if (step) { const px = step[0] - e.x, py = step[1] - e.y, m = Math.hypot(px, py) || 1; moveAxis(e, px / m * speed, py / m * speed, map, width, !!e.flying); } },
       hurt: (source, amount, options) => !(sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) && game.packHurt(source, amount, options, now),
       grab(source) { if (now < (p.dodgeUntil || 0) || now <= (p.invulnerableUntil || 0)) return false; p.heldUntil = now + CRYSTAL.grabHold * 1000 + 100; p.heldBy = source.id; game.message = "It has you. Struggle: dodge, again and again!"; return true; }, // release 249
@@ -3269,7 +3280,6 @@ export class Game {
     }
     const combatNpcTargets=(this.projectiles.length||this.effects.length)?this.npcTargets():[];
     if(!fellIntoHazard&&this.projectiles.length)this.projectiles = advanceEnemyProjectileBehaviors(this.projectiles,p,dt,{cap:this.area==="dungeon"?32:64});
-    if(this.projectiles.length&&this.packEffects?.length)reflectShots(this.projectiles,this.packEffects); // release 249: the Psychic Crystal's mirror wall
     if(!fellIntoHazard&&this.projectiles.length)this.projectiles = updateProjectiles(
       this.projectiles,
       [...this.enemies, ...combatNpcTargets],
@@ -3290,6 +3300,7 @@ export class Game {
       },
       (shot, e) => (e.kind === "nanobotKnight" && this.scatterCheck(e, shot.damageType === "physical", !!shot.glyphHost && glyphsReachSwarm(this.glyphLoadout(shot.glyphHost)), now)) ? 0 : shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
       (shot, e, dealt) => { if (shot.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); },
+      (this.packEffects || []).filter(f => f.kind === "psyWall" && !(f.arming > 0)), // swept wall contact precedes actor collision at every substep
     );
     if(combatNpcTargets.length)this.syncNpcDamage("projectile");
     for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))));p.invulnerableUntil=now+700}}

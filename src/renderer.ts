@@ -5,7 +5,7 @@ import { BOAT } from "./boats.ts";
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.ts";
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { liftAt } from "./landscape.ts";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.ts";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
@@ -818,6 +818,7 @@ export function render(ctx, g, w, h, now) {
   const activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y),activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
   setLandscapeClock(now);
   const groundLift = (x, y) => (g.map?.landscape ? liftAt(g.map, mw, x, y) : 0);
+  const crystalLift = e => crystalFlightLift(g.map, mw, e.x, e.y);
   ctx.save();
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - groundLift(p.x, p.y)) * s));
   const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b });
@@ -843,7 +844,7 @@ export function render(ctx, g, w, h, now) {
   drawHazardBrinks(ctx,g.map,mw,l,t,r,b,s,seenTile); // per frame: brinks sit over animated water, as before
   drawTraversalCues(ctx,g.map,mw,p,s,now,g.ledgeHint,seenTile);
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,3),(f)=>groundLift(f.x,f.y));
-  drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10));
+  drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift });
   for(const e of g.enemies)if(!e.dead&&discoveredInDungeon(g,e)&&e.eliteWindup>0&&visibleInCamera(e,l,t,r,b,e.kind==='gravitantBell'?6:3)){ctx.strokeStyle=e.kind==='gravitantBell'?"#8bb8bdcc":"#c6885ccc";ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
   for (const e of g.enemies)
     if (!e.dead && discoveredInDungeon(g,e) && e.telegraph > 0 && visibleInCamera(e,l,t,r,b,e.threatRange||2)) {
@@ -991,7 +992,7 @@ export function render(ctx, g, w, h, now) {
         },
       });
   for (const e of g.enemies)
-    if (!e.dead && discoveredInDungeon(g,e) && visibleInCamera(e,l,t,r,b,2))
+    if (!e.dead && discoveredInDungeon(g,e) && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" ? 5 : 2))
       draws.push({
         y: e.y, x: e.x,
         fn: () => {
@@ -1000,7 +1001,7 @@ export function render(ctx, g, w, h, now) {
             q = e.recoil > 0 ? 0.12 : 0,
             ox = f === "left" ? q : f === "right" ? -q : 0,
             oy = f === "up" ? q : f === "down" ? -q : 0;
-          if (e.hitFlash > 0) {
+          if (e.hitFlash > 0 && e.kind !== "psychicCrystal") {
             ctx.save();
             ctx.globalAlpha = 0.45;
             ctx.fillStyle = "#d9b38b";
@@ -1008,7 +1009,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillRect((e.x + .5 - .4*flashScale) * s, (e.y + .45 - .42*flashScale) * s, s * .8*flashScale, s * .75*flashScale);
             ctx.restore();
           }
-          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy }, s, now, f)) return;
+          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
           actor(
             ctx,
             e.x + ox,
@@ -1142,8 +1143,8 @@ export function render(ctx, g, w, h, now) {
     ctx.fillStyle = grad; ctx.fillRect(l * s, t * s, (r - l) * s, (b - t) * s);
   }
   for (const e of g.enemies)
-    if (!e.dead && discoveredInDungeon(g,e) && !e.ambient && !e.hidden && !e.aloft && visibleInCamera(e,l,t,r,b,2)) {
-      const barY = e.packKind ? e.y - 0.1 - Math.max(0, (Number(e.scale) || 1) - 1) * 0.75 - (e.flying ? 0.35 : 0) : e.y - 0.1;
+    if (!e.dead && discoveredInDungeon(g,e) && !e.ambient && !e.hidden && !e.aloft && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" ? 5 : 2)) {
+      const barY = e.packKind ? e.y - 0.1 - Math.max(0, (Number(e.scale) || 1) - 1) * 0.75 - (e.flying ? 0.35 : 0) - (e.kind === "psychicCrystal" ? crystalLift(e) : 0) : e.y - 0.1;
       ctx.fillStyle = "#211617";
       ctx.fillRect(e.x * s, barY * s, s, 3);
       ctx.fillStyle = "#9b4d50";

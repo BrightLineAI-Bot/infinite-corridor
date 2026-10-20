@@ -59,7 +59,7 @@ export const WORLD_BEASTS = {
     fleeDungeon: "The Psychic Crystal's haze goes still and grey. It drifts toward the water.",
     homeLine: "The Psychic Crystal sinks into the water without a ripple, and is gone.",
     arrive: "The air here is thin and bright, and your thoughts feel watched. The Psychic Crystal is here.",
-    arriveDungeon: "Something floats above the water ahead, turning slowly. The Psychic Crystal haunts this place.",
+    arriveDungeon: "A pale light drifts through the halls. The Psychic Crystal roams this place.",
     slain: "The Psychic Crystal cracks from end to end, and its light goes out.",
     gone: "The Psychic Crystal has had enough of your mind. It drifts away; in time it will settle somewhere else.",
   },
