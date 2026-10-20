@@ -31,6 +31,8 @@ export const ECHOES = {
   questingBeast: { name: "Beast's Spines", cost: 3, trigger: "kill", module: "spikeVolley", text: "Kills fling spines into up to two nearby foes." },
   morphingBlob: { name: "Blob's Spatter", cost: 2, trigger: "hurt", module: "blobGasCloud", text: "Being hurt spatters ooze around you that slows foes by 40% for 3 s." },
   bloblet: { name: "Bloblet Mend", cost: 1, trigger: "kill", module: "blobBloblets", text: "Kills mend 3 health." },
+  tremorWorm: { name: "Worm's Upheaval", cost: 3, trigger: "dodge", module: "wormRise", text: "Dodging heaves the ground under the nearest foe within 5 tiles; it bursts a moment later." },
+  wormTentacle: { name: "Tentacle Ember", cost: 1, trigger: "kill", module: "wormTentacles", text: "Kills set the nearest foe within 4 tiles burning." },
   graveLantern: { name: "Lantern Stillness", cost: 1, trigger: "still", module: "stillnessCurse", text: "Standing still for a second mends 2 health each second." },
 };
 export const ECHO_IDS = Object.keys(ECHOES);
@@ -78,6 +80,7 @@ export function echoEvent(game, event, now, data = {}) {
     if (eq.includes("riftLynx")) p.echoPounceUntil = now + 1200;
     if (eq.includes("pallidCrawler")) p.stamina = Math.min(save.maxStamina, p.stamina + 5);
     if (eq.includes("veilSpinner")) (game.echoPatches ||= []).push({ kind: "web", x: me.x, y: me.y, radius: 1.4, until: now + 3000, slow: .5 });
+    if (eq.includes("tremorWorm")) { const foe = nearest(game, me.x, me.y, 5)[0]; if (foe) { const c = centre(foe); (game.echoPatches ||= []).push({ kind: "mortar", x: c.x, y: c.y, radius: 1.4, until: now + 600, detonate: Math.round(dmg * 1.3) }); } } // release 237
     if (eq.includes("strataEel")) p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, (p.dodgeUntil || now) + 250);
   } else if (event === "land" && eq.includes("sunderjaw")) world.blast(me.x, me.y, 1.8, dmg);
   else if (event === "kill") {
@@ -85,6 +88,7 @@ export function echoEvent(game, event, now, data = {}) {
     if (eq.includes("gnawingMaw")) for (const e of nearest(game, at.x, at.y, 4, data.enemy)) { const c = centre(e), m = Math.hypot(at.x - c.x, at.y - c.y) || 1; world.nudge(e, (at.x - c.x) / m * Math.min(1, m - .4), (at.y - c.y) / m * Math.min(1, m - .4)); e.hitStun = Math.max(e.hitStun || 0, .3); }
     if (eq.includes("questingBeast")) for (const e of nearest(game, at.x, at.y, 4.5, data.enemy).slice(0, 2)) { world.arc(data.enemy, e, "#f2ece0"); world.damage(e, Math.round(dmg * 1.2)); }
     if (eq.includes("bloblet")) p.hp = Math.min(p.maxHp || save.maxHp || p.hp, p.hp + 3); // release 235
+    if (eq.includes("wormTentacle")) { const foe = nearest(game, at.x, at.y, 4, data.enemy)[0]; if (foe) { foe.glyphBurn = { until: now + 2500, dps: Math.max(2, Math.round(dmg * .3)), tick: 0 }; world.arc(data.enemy, foe, "#ff7a2a"); } } // release 237
     if (eq.includes("amalgam")) (game.echoPatches ||= []).push({ kind: "flesh", x: at.x, y: at.y, radius: 1.3, until: now + 4000, slow: .55 });
     if (eq.includes("cinderSeraph")) for (const e of nearest(game, at.x, at.y, 4).slice(0, 3)) { e.glyphBurn = { until: now + 2500, dps: Math.max(2, Math.round(dmg * .3)), tick: 0 }; world.arc(data.enemy, e, "#ff9a4a"); }
   } else if (event === "hurt") {

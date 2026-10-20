@@ -80,6 +80,14 @@ export const ATTACK_MODULES = {
   blobGasCloud: { id: "blobGasCloud", name: "Gas Bloom", range: [0, 10], cooldown: 8, windup: .6, recover: .35, damage: .3, tags: ["gas", "ground"], text: "Breathes out clouds of poison that roll away in every direction." },
   blobBloblets: { id: "blobBloblets", name: "Bloblets", range: [0, 10], cooldown: 6.5, windup: .6, recover: .3, damage: 0, tags: ["summon"], text: "Throws off bloblets. They wander, then crawl home to merge back in and heal it. Kill them first." },
   blobEngulf: { id: "blobEngulf", name: "Engulfing Surge", range: [1.5, 6.5], cooldown: 4.2, windup: .5, active: .45, recover: .45, damage: 1.3, tags: ["charge"], text: "The whole mass surges forward to swallow you." },
+  // The Tremor Worm's kit (release 237, Tim 2026-10-19): it burrows and pops its head out to fight; tentacles lash from its
+  // maw; it inhales; it raises tentacles out of the ground around you that spit fire or hold burning lasers until they are
+  // cut down; it rises under you; it lobs rocks that burst. Between attacks it sinks and surfaces somewhere else (wormCycle).
+  wormMaw: { id: "wormMaw", name: "Maw Tentacles", range: [0, 5.6], cooldown: 2.6, windup: .5, recover: .35, damage: .9, tags: ["melee"], text: "Tentacles lash out of its maw along four lanes." },
+  wormSuction: { id: "wormSuction", name: "Suction", range: [2, 8.5], cooldown: 7, windup: .7, active: 1.6, recover: .5, damage: 1.3, tags: ["control"], text: "It inhales: you are dragged toward the maw. Dodge or run against it." },
+  wormTentacles: { id: "wormTentacles", name: "Rising Tentacles", range: [0, 12], cooldown: 7.5, windup: .6, recover: .35, damage: .35, tags: ["summon", "ranged"], text: "Tentacles burst out of the ground around you. Some spit fire; some hold a laser on you until they are cut down." },
+  wormRise: { id: "wormRise", name: "Rise Beneath", range: [2.5, 12], cooldown: 6.5, windup: .45, recover: .7, damage: 1.45, tags: ["ground", "burrow"], text: "It dives, tunnels under you and bursts up where the ground cracks. Get off the cracks." },
+  wormRocks: { id: "wormRocks", name: "Rock Lob", range: [2.5, 10], cooldown: 5, windup: .55, recover: .45, damage: .9, jumpable: true, tags: ["ground", "ranged"], text: "Hurls rocks that burst where they land: one at you, one ahead of you, the rest around." },
   firefall: { id: "firefall", name: "Firefall", range: [1.5, 9], cooldown: 6.5, windup: .7, recover: .8, damage: .85, jumpable: true, tags: ["ground"], text: "Embers rain across the floor around you." },
 };
 
@@ -214,6 +222,20 @@ export const MONSTER_PACK = {
     attacks: ["bite"], bossAttacks: [],
     palette: ["#6fd17e", "#163f20", "#e2ff7a", "#f4ffe8"], render: "bloblet", tags: ["ooze", "brood"],
     lore: "It wanders off, then hurries home to the Blob. If it gets there, it is part of it again.",
+  },
+  tremorWorm: {
+    id: "tremorWorm", name: "The Tremor Worm", epithet: "The Ground That Opens Its Mouth", unique: true,
+    stats: [300, 16, 0], form: { scale: 1.7 }, sizeClass: "large", movement: "burrow", brain: "duelist",
+    attacks: ["wormMaw", "wormSuction", "wormTentacles", "wormRise", "wormRocks"], bossAttacks: ["shockwave"],
+    palette: ["#b08a5a", "#2a1c12", "#ff7a2a", "#f3e2c0"], render: "tremorWorm", tags: ["beast", "elder", "earth", "burrow"],
+    lore: "A worm as wide as a cart, armoured in sand-coloured rings. It swims under the ground and comes up to feed: tentacles boil out of its round maw, it drinks the air, and the ground around it sprouts lesser tentacles that spit fire and burn lines of light until they are cut down.",
+  },
+  wormTentacle: {
+    id: "wormTentacle", name: "Worm Tentacle", epithet: "A Limb of the Tremor Worm", unique: true, minion: true,
+    stats: [34, 6, 6], form: { scale: 1.15 }, sizeClass: "medium", movement: "lurch", brain: "artillery",
+    attacks: ["bite"], bossAttacks: [],
+    palette: ["#c27a5a", "#3a1a12", "#ff7a2a", "#ffe0b0"], render: "wormTentacle", tags: ["beast", "brood"],
+    lore: "It does not move once it is up. It spits fire, or it holds a burning line on you, until you cut it down.",
   },
   gnawingMaw: {
     id: "gnawingMaw", name: "Gnawing Maw", epithet: "The Hunger in the Walls", dungeonOnly: true,
@@ -397,6 +419,18 @@ export const BLOB = {
   safeElev: 4,                                           // Tim: ground this high stays above the Blob: no ooze lands there, and its ooze and touch cannot reach you
   mergeGrow: .25, mergeMax: 1.5,                         // each bloblet that makes it home swells it by this much more (up to mergeMax in all)
 };
+// The Tremor Worm (release 237). Balance as data.
+export const WORM = {
+  surfaceTime: 3.4, emergeTime: .7, travelTime: 2.6, travelSpeed: 4.4, surfaceRange: [3, 5.5], // it fights surfaced, then sinks and comes up elsewhere
+  emergeBite: .8,                                              // coming up under you: this share of its damage
+  mawTentacles: 4, mawSpread: .3, mawLength: 5.2, mawWidth: .42,
+  suctionRadius: 9, suctionPull: 3.3,
+  fieldTentacles: 2, tentaclesMax: 6, lasersMax: 3, tentacleRing: [3, 6.5], tentacleRise: .8,
+  fireEvery: .26, fireBurst: 5, fireRest: 1.4, fireSpeed: 6.4, fireLife: 1.8, fireRadius: .3,
+  laserCharge: 1.3, laserTurn: .42, laserLength: 10, laserTick: .4, laserWidth: .5, // lasers stay on, turning slowly after you, until their tentacle is cut down
+  riseTravel: 2.2, riseSpeed: 5.2, riseMark: .8, riseRadius: 1.6,
+  rocks: 4, rockRadius: 1.25, rockFlight: 1.1, rockSpread: 2.2,
+};
 const aboveBlob = (w, x, y) => (Number(w.elevation?.(x, y)) || 0) >= BLOB.safeElev;
 function blobOwner(w, f) { return w.enemies.find((q) => q.id === f.owner && !q.dead) || null; }
 function addOrb(e, w, angle, damage) { w.addEffect({ kind: "orb", owner: e.id, x: e.x, y: e.y, vx: Math.cos(angle) * QB_ORB.speed, vy: Math.sin(angle) * QB_ORB.speed, radius: QB_ORB.radius, arming: 0, life: QB_ORB.life, damage }); }
@@ -456,6 +490,15 @@ const START = {
   broodBirth(e, s) { s.tele = { type: "shimmer" }; },
   fleshBloom(e, s) { s.tele = { type: "spit", target: { ...s.data.target } }; },
   blobTendrils(e, s) { const a = Math.atan2(s.data.aim.y, s.data.aim.x); s.data.dirs = Array.from({ length: BLOB.tendrils }, (_, i) => { const b = a + (i - (BLOB.tendrils - 1) / 2) * BLOB.tendrilSpread; return { x: Math.cos(b), y: Math.sin(b) }; }); s.tele = { type: "tendrils", dirs: s.data.dirs, length: BLOB.tendrilLength + bodyRadius(e) * .6, width: BLOB.tendrilWidth }; },
+  wormMaw(e, s) { const a = Math.atan2(s.data.aim.y, s.data.aim.x); s.data.dirs = Array.from({ length: WORM.mawTentacles }, (_, i) => { const b = a + (i - (WORM.mawTentacles - 1) / 2) * WORM.mawSpread; return { x: Math.cos(b), y: Math.sin(b) }; }); s.tele = { type: "tendrils", dirs: s.data.dirs, length: WORM.mawLength, width: WORM.mawWidth, flesh: true }; },
+  wormSuction(e, s) { s.tele = { type: "ring", radius: WORM.suctionRadius, inhale: true }; },
+  wormTentacles(e, s) { s.tele = { type: "shimmer" }; },
+  wormRise(e, s) { s.tele = { type: "submerge" }; },
+  wormRocks(e, s, w) {
+    const p = s.data.target, v = playerVelocity(w), turn = (hashSeed(`${e.id}:${s.seq}:rocks`) % 628) / 100;
+    s.data.rocks = [{ x: p.x, y: p.y }, { x: p.x + v.x * 1.2, y: p.y + v.y * 1.2 }, ...Array.from({ length: Math.max(0, WORM.rocks - 2) }, (_, i) => ({ x: p.x + Math.cos(turn + i * TAU / (WORM.rocks - 2)) * WORM.rockSpread, y: p.y + Math.sin(turn + i * TAU / (WORM.rocks - 2)) * WORM.rockSpread }))];
+    s.tele = { type: "brace" };
+  },
   blobGasJet(e, s) { s.tele = { type: "cone", aim: s.data.aim, length: BLOB.jetLength + bodyRadius(e) * .5, arc: BLOB.jetArc, gas: true }; },
   blobGasCloud(e, s) { s.tele = { type: "brace" }; },
   blobBloblets(e, s) { s.tele = { type: "shimmer" }; },
@@ -520,6 +563,59 @@ const RUN = {
       const step = s.data.len / attack.active * w.dt; if (s.data.done < s.data.len && w.move(e, s.data.aim.x * step, s.data.aim.y * step)) s.data.done += step;
       if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + .5 && !aboveBlob(w, w.player.x, w.player.y)) { s.hitOnce = true; w.hurt(e, damageOf(e, "blobEngulf"), { jumpable: false, source: "blobEngulf" }); }
       if (s.t <= 0) { s.tele = null; toPhase(s, "recover", attack.recover); }
+    }
+  },
+  wormMaw(e, s, w) {
+    if (s.phase === "windup" && s.t <= 0) {
+      const L = WORM.mawLength, W = WORM.mawWidth + .3;
+      resolveMelee(e, s, w, "wormMaw", (p) => s.data.dirs.some((a) => { const dx = p.x - e.x, dy = p.y - e.y, f = dx * a.x + dy * a.y; return f >= 0 && f <= L && Math.abs(dx * a.y - dy * a.x) <= W; }));
+      s.data.lashed = w.now; toPhase(s, "recover", ATTACK_MODULES.wormMaw.recover);
+    }
+  },
+  wormSuction(e, s, w) {
+    const attack = ATTACK_MODULES.wormSuction;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", attack.active); return; }
+    if (s.phase === "active") {
+      w.pull?.(e, WORM.suctionPull * w.dt, WORM.suctionRadius);
+      if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + .8) { s.hitOnce = true; w.hurt(e, damageOf(e, "wormSuction"), { jumpable: false, source: "wormSuction" }); }
+      if (s.t <= 0) { s.tele = null; toPhase(s, "recover", attack.recover); }
+    }
+  },
+  wormTentacles(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const mine = w.enemies.filter((q) => !q.dead && q.wormOf === e.id), lasers = mine.filter((q) => q.tentacleMode === "laser").length, p = s.data.target, turn = (hashSeed(`${e.id}:${s.seq}:field`) % 628) / 100;
+    for (let i = 0, made = 0, lit = lasers; i < WORM.fieldTentacles && mine.length + made < WORM.tentaclesMax; i++) {
+      const [lo, hi] = WORM.tentacleRing, r = lo + (hashSeed(`${e.id}:${s.seq}:ring:${i}`) % 100) / 100 * (hi - lo), a = turn + i * TAU / WORM.fieldTentacles;
+      const spot = nearestOpen(w, p.x + Math.cos(a) * r, p.y + Math.sin(a) * r, 2);
+      if (!spot || distance(spot, e) < bodyRadius(e) + 1) continue;
+      const mode = (s.seq + i) % 2 && lit < WORM.lasersMax ? "laser" : "fire";
+      const c = w.spawnMinion?.(e, "wormTentacle", spot.x, spot.y, i);
+      if (c) { Object.assign(c, { wormOf: e.id, bornAt: w.now, tentacleMode: mode }); made++; if (mode === "laser") lit++; }
+    }
+    s.tele = null; toPhase(s, "recover", ATTACK_MODULES.wormTentacles.recover);
+  },
+  wormRise(e, s, w) {
+    const attack = ATTACK_MODULES.wormRise, p = center(w.player);
+    if (s.phase === "windup") { if (s.t <= 0) { toPhase(s, "travel", WORM.riseTravel); s.tele = { type: "mound" }; } return; }
+    if (s.phase === "travel" || s.phase === "erupt") { e.hidden = s.phase === "travel"; e.untargetable = true; }
+    if (s.phase === "travel") {
+      const d = unit(p.x - e.x, p.y - e.y), step = Math.min(distance(p, e), WORM.riseSpeed * w.dt * (e.speedMultiplier || 1));
+      e.x = Math.max(0, Math.min(w.width - 1, e.x + d.x * step)); e.y = Math.max(0, Math.min(w.height - 1, e.y + d.y * step));
+      if (s.t <= 0 || distance(p, e) < .3) { const land = w.open(e.x, e.y) ? { x: e.x, y: e.y } : nearestOpen(w, e.x, e.y, 4); if (land) { e.x = land.x; e.y = land.y; } toPhase(s, "erupt", WORM.riseMark); s.tele = { type: "circle", x: e.x, y: e.y, radius: WORM.riseRadius, erupt: true, total: WORM.riseMark }; }
+      return;
+    }
+    if (s.phase === "erupt" && s.t <= 0) {
+      e.hidden = false; e.untargetable = false;
+      if (distance(p, e) <= WORM.riseRadius + .3) w.hurt(e, damageOf(e, "wormRise"), { jumpable: false, source: "wormRise" });
+      w.addEffect({ kind: "dust", owner: e.id, x: e.x, y: e.y, radius: WORM.riseRadius + .4, arming: 0, life: .7, damage: 0 });
+      if (s.worm) { s.worm.mode = "surfaced"; s.worm.t = WORM.surfaceTime; }
+      s.tele = null; toPhase(s, "recover", attack.recover);
+    }
+  },
+  wormRocks(e, s, w) {
+    if (s.phase === "windup" && s.t <= 0) {
+      s.data.rocks.forEach((q, i) => w.addEffect({ kind: "mortar", rock: true, owner: e.id, x: q.x, y: q.y, radius: WORM.rockRadius, arming: WORM.rockFlight + i * .15, damage: damageOf(e, "wormRocks"), jumpable: true, from: { x: e.x, y: e.y } }));
+      s.tele = null; toPhase(s, "recover", ATTACK_MODULES.wormRocks.recover);
     }
   },
   devourPull(e, s, w) {
@@ -834,6 +930,64 @@ function blobletHome(e, s, w) {
   return true;
 }
 
+// The Tremor Worm between attacks (release 237): it stays up for WORM.surfaceTime, then sinks and swims under the ground
+// (hidden, untargetable) to a spot near the Wayfarer, and comes up there (a short, cracking emergence that bites whoever
+// stands on it). Returns true while it is under or emerging (no attack or dodge then).
+function wormCycle(e, s, w, p) {
+  const W = s.worm ||= { mode: "surfaced", t: WORM.surfaceTime, trips: 0 };
+  if (s.attack) return false;
+  if (W.mode === "surfaced") {
+    W.t -= w.dt;
+    if (W.t > 0 || s.evade) return false;
+    const a = (hashSeed(`${e.id}:worm-trip:${W.trips}`) % 628) / 100, [lo, hi] = WORM.surfaceRange, r = lo + (hashSeed(`${e.id}:worm-r:${W.trips}`) % 100) / 100 * (hi - lo);
+    W.trips++; W.dest = { x: Math.max(1, Math.min(w.width - 2, p.x + Math.cos(a) * r)), y: Math.max(1, Math.min(w.height - 2, p.y + Math.sin(a) * r)) }; W.mode = "under"; W.t = WORM.travelTime;
+  }
+  if (W.mode === "under") {
+    e.hidden = true; e.untargetable = true; W.t -= w.dt;
+    const d = distance(W.dest, e), u = unit(W.dest.x - e.x, W.dest.y - e.y), step = Math.min(d, WORM.travelSpeed * w.dt * (e.speedMultiplier || 1));
+    e.x = Math.max(0, Math.min(w.width - 1, e.x + u.x * step)); e.y = Math.max(0, Math.min(w.height - 1, e.y + u.y * step));
+    if (d < .3 || W.t <= 0) { const land = w.open(e.x, e.y) ? { x: e.x, y: e.y } : nearestOpen(w, e.x, e.y, 4); if (land) { e.x = land.x; e.y = land.y; W.mode = "emerge"; W.t = WORM.emergeTime; } else { W.dest = { x: p.x, y: p.y }; W.t = WORM.travelTime; } } // no open ground there (a lake, a cliff): it swims back toward the Wayfarer, who stands on open ground
+    return true;
+  }
+  // emerging
+  e.hidden = false; e.untargetable = true; W.t -= w.dt;
+  if (W.t <= 0) {
+    e.untargetable = false; W.mode = "surfaced"; W.t = WORM.surfaceTime; s.gap = Math.min(s.gap || 0, .15);
+    if (distance(p, e) <= bodyRadius(e) + .6) w.hurt(e, Math.max(1, Math.ceil((Number(e.damage) || 1) * WORM.emergeBite)), { jumpable: false, source: "wormEmerge" });
+    w.addEffect({ kind: "dust", owner: e.id, x: e.x, y: e.y, radius: bodyRadius(e) + 1, arming: 0, life: .6, damage: 0 });
+  }
+  return true;
+}
+// A tentacle the worm raised: it never moves. It rises, then spits bursts of fire at the Wayfarer or (laser) holds a
+// burning line that turns slowly after them, until it is cut down. It sinks when the worm dies.
+function tentacleTurret(e, s, w, p) {
+  const owner = w.enemies.find((q) => q.id === e.wormOf && !q.dead);
+  if (!owner) { e.dead = true; e.noRewards = true; return true; }
+  const age = (w.now - (e.bornAt || 0)) / 1000;
+  if (age < WORM.tentacleRise) { e.untargetable = true; e.rising = 1 - age / WORM.tentacleRise; s.tele = { type: "circle", x: e.x, y: e.y, radius: .8, erupt: true, total: WORM.tentacleRise, left: WORM.tentacleRise - age }; return true; }
+  if (e.rising) { e.rising = 0; e.untargetable = false; s.tele = null; if (distance(p, e) <= 1.1) w.hurt(owner, Math.max(1, Math.ceil((Number(owner.damage) || 1) * .4)), { jumpable: false, source: "wormTentacle" }); }
+  e.facingX = (p.x - e.x) >= 0 ? 1 : -1;
+  const dmg = Math.max(1, Math.ceil((Number(owner.damage) || 1) * ATTACK_MODULES.wormTentacles.damage));
+  if (e.tentacleMode === "laser") {
+    const want = Math.atan2(p.y - e.y, p.x - e.x), L = s.laser ||= { angle: want, charge: WORM.laserCharge, tick: 0 };
+    let diff = ((want - L.angle) % TAU + TAU * 1.5) % TAU - Math.PI;
+    L.angle += Math.max(-WORM.laserTurn * w.dt, Math.min(WORM.laserTurn * w.dt, diff));
+    const dir = { x: Math.cos(L.angle), y: Math.sin(L.angle) }, len = rayLength(w, e, dir, WORM.laserLength);
+    if (L.charge > 0) { L.charge -= w.dt; s.tele = { type: "beam", angle: L.angle, length: len, charging: true, laser: true }; return true; }
+    s.tele = { type: "beam", angle: L.angle, length: len, charging: false, laser: true };
+    L.tick -= w.dt;
+    if (L.tick <= 0 && segmentDistance(p, e, { x: e.x + dir.x * len, y: e.y + dir.y * len }) <= WORM.laserWidth) { L.tick = WORM.laserTick; w.hurt(owner, dmg, { jumpable: false, source: "wormLaser", beam: true }); }
+    return true;
+  }
+  const F = s.fire ||= { next: .4, shots: 0 };
+  F.next -= w.dt;
+  if (F.next <= 0) {
+    if (w.los(e, w.player, true)) { const a = Math.atan2(p.y - e.y, p.x - e.x); w.addEffect({ kind: "orb", fire: true, owner: owner.id, x: e.x, y: e.y, vx: Math.cos(a) * WORM.fireSpeed, vy: Math.sin(a) * WORM.fireSpeed, radius: WORM.fireRadius, arming: 0, life: WORM.fireLife, damage: dmg }); }
+    F.shots++; F.next = F.shots % WORM.fireBurst ? WORM.fireEvery : WORM.fireRest;
+  }
+  return true;
+}
+
 // One simulation step for a pack creature. `w` is the world adapter built by the game (or a test).
 export function updatePackMonster(e, w) {
   const def = packDefinition(e);
@@ -857,6 +1011,8 @@ export function updatePackMonster(e, w) {
   if (!e.illusion) passiveStillness(e, s, w);
   if (e.kind === "morphingBlob") blobPassive(e, s, w, p, d);
   if (e.blobletOf && blobletHome(e, s, w)) return;
+  if (e.wormOf && tentacleTurret(e, s, w, p)) return;
+  if (e.kind === "tremorWorm" && wormCycle(e, s, w, p)) return;
   if (e.evasive && evade(e, s, w, p, d)) return;
   if (s.attack) {
     s.t -= dt;

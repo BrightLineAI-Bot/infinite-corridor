@@ -16,6 +16,13 @@ export const WORLD_BEASTS = {
     slain: "The Morphing Blob shudders, sags and runs away into the soil.",
     gone: "The Morphing Blob has fed enough on you, and seeps away. In time it will settle somewhere else.",
   },
+  tremorWorm: {
+    kind: "tremorWorm", name: "The Tremor Worm", chance: .03, minDepth: 5, tries: 3, cooldownSlain: 20, cooldownEscaped: 26,
+    hitsToKill: 62, hpPerLevel: 28, damageShare: .22, speed: 1, attackGap: .2, staggerResistance: .95, rewardMarks: 175, rewardPerLevel: 17,
+    arrive: "The ground here trembles under your feet. The Tremor Worm is hunting.",
+    slain: "The Tremor Worm thrashes, sinks, and the ground stops shaking.",
+    gone: "The Tremor Worm has had its fill of you, and sinks away. In time it will surface somewhere else.",
+  },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
 export const isWorldBeastKind = (kind) => WORLD_BEAST_IDS.some((id) => WORLD_BEASTS[id].kind === kind);
