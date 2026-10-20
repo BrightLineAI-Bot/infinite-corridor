@@ -54,7 +54,19 @@ Tim, 2026-10-20: a beast should not hold its section forever. If neither side wi
   - `tickWorldBeasts` runs each overworld frame. It counts patience, starts the retreat (message, journal, its minions dissolve) and aims the beast with `fleeTo`.
   - When the beast is done, it either ends the hunt at home or crosses it into the next section, and removes the beast from the area without a kill.
   - `loadArea` calls `worldBeastsLost`.
-- **`src/monster-pack.ts`.** `fleeStep`: with `fleeTo` set, the creature does nothing else. It is untargetable, does not attack or dodge, and moves straight at `fleeSpeed`, ignoring the map. At home it fades (`fleeFade`). The Worm swims as a mound.
+- **Pathing (Tim, the same day: it "should still respect the geometry of the world").**
+  - `RETREAT_GROUND` and `retreatPassable` sort tiles into water, chasm (canyon, abyss, lava) and walls (other blocked tiles).
+  - Each beast's `retreatMoves` sets how it crosses them:
+    - `walk` goes round walls, crosses water only by a bridge, and leaps chasms.
+    - `burrow` passes under walls but not water.
+    - `through` crosses everything. It is meant for the Mountain Turtle.
+  - `retreatPath` is an 8-way BFS on the 32×32 grid with no corner cutting. It returns turn waypoints, with chasm tiles marked `leap`. It is computed once when the beast is aimed.
+  - With no path, the beast goes straight. Its large body is not footprint-tested: only the tile it walks on counts.
+- **`src/monster-pack.ts`.**
+  - `fleeStep`: with `fleeTo` set, the creature does nothing else. It is untargetable and does not attack or dodge.
+  - It follows `fleePath` at `fleeSpeed`, with `hopLift` rising over `leap` waypoints. At home it fades (`fleeFade`).
+  - The Worm swims as a mound and drops harmless `furrow` effects. They are churned earth, 1.6 s each, under the effect cap.
+- **`src/monster-render.ts`.** Fleeing, the Worm's mound draws three rolling humps behind it. `furrow` is drawn as a sinking ridge of churned earth with clods.
 - **`src/monster-render.ts`.** A fading beast is drawn sinking and fading.
 - **`tests/world-beasts.test.ts`.** Home choice, the fallback, sides and crossing, lost-when-unfollowed, no tries, save round-trip, movement through walls, the fade, and a real-Game run.
 

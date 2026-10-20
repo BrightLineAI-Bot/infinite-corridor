@@ -183,7 +183,7 @@ test('the worm\'s tentacles cannot be outrun: left behind, they sink and come up
 });
 
 // Release 239: retreat.
-import { BEAST_HOMES, RETREAT, worldBeastPatience, beginRetreat, retreatSide, retreatTarget, retreatCrossed, worldBeastsLost } from '../src/world-beasts.ts';
+import { BEAST_HOMES, RETREAT, retreatPath, worldBeastPatience, beginRetreat, retreatSide, retreatTarget, retreatCrossed, worldBeastsLost } from '../src/world-beasts.ts';
 import { Game } from '../src/game.ts';
 
 test('out of patience, a beast picks the nearest home section and heads for it; unfollowed, it is gone; it takes no tries', () => {
@@ -207,7 +207,7 @@ test('out of patience, a beast picks the nearest home section and heads for it; 
   assert.ok(BEAST_HOMES.mire && BEAST_HOMES.dunes && BEAST_HOMES.water && BEAST_HOMES.canyon && BEAST_HOMES.glass && BEAST_HOMES.dungeon);
 });
 
-test('a retreating beast cannot be hurt, ignores walls, leaves by its gate, and fades into its home ground', () => {
+test('a retreating beast cannot be hurt, goes straight when it has no path, leaves by its gate, and fades into its home ground', () => {
   const w = world(), b = blob(w, 4, 12); w.open = () => false; w.tileOpen = () => false; // nothing is open: it moves by its own laws
   b.fleeTo = { x: 20, y: 12, side: 'east' }; b.fleeSpeed = 4; step(w, 1);
   assert.ok(b.untargetable); assert.ok(b.x > 7, 'straight through'); assert.equal(w.hurts.length, 0, 'it no longer fights');
@@ -239,4 +239,26 @@ test('in a real game: the Blob runs out of patience, flees through the gate, and
     g.transitionSection(-dx, -dy); assert.equal(s.worldBeasts.morphingBlob.active, null, 'turn back and it is gone');
   }
   assert.ok(before >= 0);
+});
+
+test('a retreat respects the land: around walls, over chasms with a bound, by the bridge over water; the worm under walls, the turtle through all', () => {
+  // Tim (2026-10-20): "if there's a wall … go around it … a creature that can't fly … find a bridge … jump over the large chasms".
+  const W = 12, map = (paint) => ({ tiles: Array.from({ length: W * W }, (_, i) => paint(i % W, Math.floor(i / W))) });
+  const t = (x, y, kind, blocked = false) => ({ x, y, kind, blocked });
+  const wall = map((x, y) => x === 6 && y < 10 ? t(x, y, 'ash', true) : t(x, y, 'ash'));
+  const p1 = retreatPath(wall, { x: 2, y: 2 }, { x: 10, y: 2 }, 'walk', W); assert.ok(p1); assert.ok(p1.some((q) => q.y >= 10), 'round the end of the wall');
+  const wp = retreatPath(wall, { x: 2, y: 2 }, { x: 10, y: 2 }, 'burrow', W); assert.ok(wp.every((q) => q.y < 4), 'the worm goes under it');
+  const river = map((x, y) => x === 6 ? (y === 9 ? t(x, y, 'bridge') : t(x, y, 'river', true)) : t(x, y, 'ash'));
+  const p2 = retreatPath(river, { x: 2, y: 2 }, { x: 10, y: 2 }, 'walk', W); assert.ok(p2.some((q) => q.x === 6 && q.y === 9) || p2.some((q, i) => i && q.y >= 8), 'by the bridge');
+  const sea = map((x, y) => x === 6 ? t(x, y, 'lakeWater', true) : t(x, y, 'ash'));
+  assert.equal(retreatPath(sea, { x: 2, y: 2 }, { x: 10, y: 2 }, 'walk', W), null, 'no bridge, no way (it then goes by its own laws)');
+  assert.equal(retreatPath(sea, { x: 2, y: 2 }, { x: 10, y: 2 }, 'burrow', W), null, 'not even under the water');
+  assert.ok(retreatPath(sea, { x: 2, y: 2 }, { x: 10, y: 2 }, 'through', W), 'the turtle wades through');
+  const canyon = map((x, y) => x >= 5 && x <= 7 ? t(x, y, 'canyon', true) : t(x, y, 'ash'));
+  const p3 = retreatPath(canyon, { x: 2, y: 2 }, { x: 10, y: 2 }, 'walk', W); assert.ok(p3.some((q) => q.leap), 'it bounds over the chasm');
+  const w = world(), b = blob(w, 2, 2); b.fleeTo = { x: 10, y: 2, side: 'east' }; b.fleePath = p3; b.fleeSpeed = 4; let lift = 0; step(w, 4, () => { lift = Math.max(lift, b.hopLift || 0); });
+  assert.ok(lift > .5, 'airborne over it'); assert.ok(b.fleeDone);
+  const v = world(), m = worm(v, 2, 2); m.fleeTo = { x: 12, y: 2, side: 'east' }; m.fleeSpeed = 3; step(v, 2);
+  assert.ok(v.fx.filter((f) => f.kind === 'furrow').length >= 3, 'the worm leaves a wake of churned earth'); assert.ok(v.hurts.length === 0);
+  step(v, 2.5); assert.ok(!v.fx.some((f) => f.kind === 'furrow' && f.age > 2.3), 'which settles away');
 });

@@ -13,7 +13,7 @@ export const WORLD_BEASTS = {
   morphingBlob: {
     kind: "morphingBlob", name: "The Morphing Blob", chance: .03, minDepth: 5, tries: 3, cooldownSlain: 20, cooldownEscaped: 26,
     hitsToKill: 70, hpPerLevel: 30, damageShare: .22, speed: 1, attackGap: .18, staggerResistance: .95, rewardMarks: 170, rewardPerLevel: 17,
-    patience: 180, home: "mire",
+    patience: 180, home: "mire", retreatMoves: "walk",
     flee: "The Morphing Blob has had enough of you. It pulls itself together and flows away toward the Blight Mire.",
     homeLine: "The Morphing Blob slides into the toxic pools of the mire and is gone.",
     arrive: "Something wet and enormous has settled over this ground. The Morphing Blob is here.",
@@ -23,7 +23,7 @@ export const WORLD_BEASTS = {
   tremorWorm: {
     kind: "tremorWorm", name: "The Tremor Worm", chance: .03, minDepth: 5, tries: 3, cooldownSlain: 20, cooldownEscaped: 26,
     hitsToKill: 62, hpPerLevel: 28, damageShare: .22, speed: 1, attackGap: .2, staggerResistance: .95, rewardMarks: 175, rewardPerLevel: 17,
-    patience: 180, home: "dunes",
+    patience: 180, home: "dunes", retreatMoves: "burrow",
     flee: "The Tremor Worm dives and swims away under the ground, toward the Dune Sea.",
     homeLine: "The Tremor Worm's wake reaches the dunes and sinks into the sand.",
     arrive: "The ground here trembles under your feet. The Tremor Worm is hunting.",
@@ -34,19 +34,60 @@ export const WORLD_BEASTS = {
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
 
 // Release 239 (Tim, 2026-10-20): a beast that has neither killed the Wayfarer nor died within its `patience` (seconds of
-// fighting in its section) gives up and retreats home: invulnerable, moving by its own laws (straight through walls and
-// water), section after section, until it reaches its home ground and goes into it. The Wayfarer can follow and watch;
+// fighting in its section) gives up and retreats home: invulnerable, finding its way across the land (see RETREAT_GROUND),
+// section after section, until it reaches its home ground and goes into it. The Wayfarer can follow and watch;
 // stop following and it is gone. Homes: a section that has one (`section`), and in it the ground it goes into (`tile`,
 // or `object`). Later beasts name theirs here too: the Void Walker a dungeon, the Psychic Crystal water, the Mountain
 // Turtle a canyon, the Nanobot Knight glass.
 export const BEAST_HOMES = {
-  mire: { name: "the Blight Mire", section: (q) => q.biome === "blight" || q.biome === "swamp", tile: (t) => t.kind === "toxicWater" || t.kind === "swampWater" || t.landscape === "blight" },
+  mire: { name: "the Blight Mire", section: (q) => q.biome === "blight" || q.biome === "swamp", tile: (t) => ["toxicWater", "swampWater", "toxicBog", "toxicMire", "mireWater"].includes(t.kind) },
   dunes: { name: "the Dune Sea", section: (q) => q.biome === "desert", tile: (t) => t.landscape === "desert" },
   water: { name: "open water", section: (q) => ["sea", "coast", "lake", "isles"].includes(q.biome), tile: (t) => ["ocean", "deepOcean", "lakeWater", "shallows"].includes(t.kind) },
   canyon: { name: "a canyon", section: (q) => q.canyon, tile: (t) => t.kind === "canyon" },
   glass: { name: "the glass", section: (q) => q.dominant === "glass", tile: (t) => t.kind === "glass" },
   dungeon: { name: "a dungeon", section: (q) => q.dungeon, object: (o) => o.kind === "dungeon" },
 };
+// How a retreating beast crosses the land (Tim: "it should still respect the geometry of the world"): `walk` goes around
+// walls, jumps chasms and needs a bridge over water; `burrow` passes under walls but not under water; `through` (the
+// Mountain Turtle, too big to care) goes over everything. Its body is its own business: only the tile it walks matters.
+export const RETREAT_GROUND = {
+  water: new Set(["ocean", "deepOcean", "lakeWater", "swampWater", "toxicWater", "river", "dungeonWater", "water", "alienPool"]),
+  chasm: new Set(["canyon", "abyss", "lava"]),
+};
+export function retreatPassable(t, mode) {
+  if (!t) return false;
+  if (mode === "through") return true;
+  const water = RETREAT_GROUND.water.has(t.kind);
+  if (mode === "burrow") return !water;
+  return RETREAT_GROUND.chasm.has(t.kind) || (!t.blocked && !water);
+}
+// A path across the section (8-way, no cutting corners) from `from` to `to`, as waypoints; chasm tiles are marked `leap`.
+// Null when there is no way: then it goes straight, by its own laws.
+export function retreatPath(map, from, to, mode, width = 32) {
+  const tiles = map?.tiles || [], height = Math.floor(tiles.length / width) || 32, cell = (x, y) => ({ x: Math.max(0, Math.min(width - 1, Math.round(x))), y: Math.max(0, Math.min(height - 1, Math.round(y))) });
+  const a = cell(from.x, from.y), b = cell(to.x, to.y), key = (x, y) => y * width + x, goal = key(b.x, b.y);
+  const ok = (x, y) => x >= 0 && y >= 0 && x < width && y < height && (key(x, y) === goal || retreatPassable(tiles[key(x, y)], mode));
+  const prev = new Int32Array(width * height).fill(-1), queue = [key(a.x, a.y)]; prev[queue[0]] = queue[0];
+  for (let i = 0; i < queue.length && prev[goal] < 0; i++) {
+    const k = queue[i], x = k % width, y = Math.floor(k / width);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      const nx = x + dx, ny = y + dy; if (!ok(nx, ny) || prev[key(nx, ny)] >= 0) continue;
+      if (dx && dy && (!ok(x + dx, y) || !ok(x, y + dy))) continue;
+      prev[key(nx, ny)] = k; queue.push(key(nx, ny));
+    }
+  }
+  if (prev[goal] < 0) return null;
+  const cells = []; for (let k = goal; ; k = prev[k]) { cells.push(k); if (prev[k] === k) break; }
+  cells.reverse();
+  const out = [];
+  for (let i = 1; i < cells.length; i++) { // keep the turns (and every chasm tile), drop the straight runs
+    const k = cells[i], x = k % width, y = Math.floor(k / width), leap = RETREAT_GROUND.chasm.has(tiles[k]?.kind) && mode === "walk";
+    const n = cells[i + 1], p = cells[i - 1], straight = n !== undefined && (n % width) - x === x - (p % width) && Math.floor(n / width) - y === y - Math.floor(p / width);
+    if (!straight || leap) out.push({ x, y, ...(leap ? { leap: true } : {}) });
+  }
+  out.push({ x: to.x, y: to.y });
+  return out;
+}
 export const RETREAT = { search: 8, fallback: 6, speed: 2.1, inset: 1.5, fade: 1.4 };
 const SIDES = { east: [1, 0], west: [-1, 0], south: [0, 1], north: [0, -1] }, OPPOSITE = { east: "west", west: "east", north: "south", south: "north" };
 
