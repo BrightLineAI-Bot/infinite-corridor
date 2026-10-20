@@ -403,6 +403,7 @@ const BODY = {
       ctx.fillStyle = p[0] + "cc"; ctx.beginPath(); ctx.ellipse(k, b - u * .1 * heave, R * .8 * heave, R * .24 * heave, 0, Math.PI, TAU); ctx.fill();
       ctx.strokeStyle = "#140c06cc"; ctx.lineWidth = Math.max(1, u * .015); for (let i = 0; i < 6; i++) { const a = i * 1.05 + .3; ctx.beginPath(); ctx.moveTo(k, b - u * .08); ctx.lineTo(k + Math.cos(a) * R * .55 * heave, b - u * .08 + Math.sin(a) * R * .18 * heave); ctx.lineTo(k + Math.cos(a + .2) * R * .9 * heave, b - u * .06 + Math.sin(a + .2) * R * .28 * heave); ctx.stroke(); } // cracks
       for (let i = 0; i < 8; i++) { const a = t * 4 + i * .8, h = Math.abs(Math.sin(a * 1.3)) * u * .2 * heave; ctx.fillStyle = i % 2 ? p[0] : "#6a5238"; ctx.fillRect(k + Math.cos(a) * R * .7, b - u * .12 - h, Math.max(2, u * .05), Math.max(2, u * .04)); } // thrown earth
+      if (e.fleeTo && e.fleeDir) for (let i = 1; i <= 3; i++) { const hx = k - e.fleeDir.x * R * 1.1 * i, hy = b - u * .04 - e.fleeDir.y * R * .55 * i, rise = Math.max(0, Math.sin(t * 7 - i * 1.3)), hr = R * (.7 - i * .12); ctx.fillStyle = "#c8a274"; ctx.beginPath(); ctx.ellipse(hx, hy - rise * u * .08, hr, hr * .4 * (.5 + rise * .5), 0, Math.PI, TAU); ctx.fill(); ctx.strokeStyle = "#2a1c10aa"; ctx.lineWidth = Math.max(1, u * .015); ctx.stroke(); ctx.fillStyle = "#3a2a1a88"; ctx.beginPath(); ctx.ellipse(hx, hy, hr, hr * .18, 0, 0, Math.PI); ctx.fill(); } // release 239: its back rolls through the ground behind it as it flees
       return;
     }
     const up = W?.mode === "emerge" ? Math.max(.05, 1 - Math.max(0, W.t) / WORM.emergeTime) : 1, scale = Math.max(.6, Number(e.scale) || 1), tile = u / scale;
@@ -566,7 +567,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
     sp.key = key;
   }
   sp.used = now;
-  const alpha = (e.phasing || (e.phases && e.untargetable)) ? .45 : e.aloft && e.kind === "cinderSeraph" ? .35 : 1, prior = ctx.globalAlpha;
+  const alpha = ((e.phasing || (e.phases && e.untargetable)) ? .45 : e.aloft && e.kind === "cinderSeraph" ? .35 : 1) * (e.fleeFade ?? 1), prior = ctx.globalAlpha;
   ctx.globalAlpha = prior * alpha * (e.illusion ? .92 : 1);
   ctx.drawImage(sp.canvas, k - L - 1 / m.a, b - U - 1 / m.d, sp.canvas.width / m.a, sp.canvas.height / m.d);
   ctx.globalAlpha = prior;
@@ -592,6 +593,7 @@ function paintPackMonster(ctx, e, s, now, facing, def, sprite) {
   if (e.phasing || (e.phases && e.untargetable)) ctx.globalAlpha = .45;
   if (e.aloft && e.kind === "cinderSeraph") { if (!sprite) ctx.globalAlpha = .35; q.b -= u * .9; }
   if (e.illusion) ctx.globalAlpha *= .92;
+  if (e.fleeFade != null) { ctx.globalAlpha *= e.fleeFade; q.b += (1 - e.fleeFade) * u * .5; } // release 239: going into its home ground
   if (e.boss) { glow(ctx, k, b - u * .4, u * 1.05, def.palette[2], .18); }
   BODY[def.render]?.(ctx, q);
   if (e.hitFlash > 0) { ctx.globalCompositeOperation = "lighter"; glow(ctx, k, b - u * .4, u * .55, "#ffffff", .5); }
@@ -669,6 +671,13 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift
         const seed = f.x * 7.3 + f.y * 3.1;
         if (cool > .35) { ctx.globalAlpha *= Math.min(1, (cool - .35) * 2); ctx.strokeStyle = "#1a100c"; ctx.lineWidth = Math.max(1, s * .04); for (let i = 0; i < 4; i++) { const a = seed + i * 1.6; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r * .15, y + Math.sin(a) * r * .1); ctx.lineTo(x + Math.cos(a + .4) * r * .6, y + Math.sin(a + .4) * r * .35); ctx.stroke(); } } // the crust cracking as it cools
         else { const b = (now / 500 + seed) % 1; ctx.fillStyle = `rgba(255,250,200,${.8 * (1 - b)})`; ctx.beginPath(); ctx.arc(x + Math.sin(seed) * r * .3, y - b * r * .2, r * .08 * (1 + b), 0, TAU); ctx.fill(); } // a bubble bursting
+      }
+      else if (f.kind === "furrow") { // release 239: churned earth in the fleeing worm's wake, settling as it fades
+        const k2 = Math.max(0, Math.min(1, life / (f.total || 1.6))), d = f.dir || { x: 1, y: 0 }, a = Math.atan2(d.y * .6, d.x), seed = f.x * 5.1 + f.y * 2.3;
+        ctx.globalAlpha = k2; ctx.translate(x, y); ctx.rotate(a);
+        ctx.fillStyle = "#24170cee"; ctx.beginPath(); ctx.ellipse(0, 0, r * 1.15, r * .5, 0, 0, TAU); ctx.fill(); ctx.fillStyle = "#4a3420"; ctx.beginPath(); ctx.ellipse(0, r * .05, r * .95, r * .32, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = "#c09a68"; ctx.beginPath(); ctx.ellipse(0, -r * .1, r * .85, r * .3 * (.3 + k2 * .7), 0, Math.PI, TAU); ctx.fill(); // the ridge, sinking
+        for (let i = 0; i < 6; i++) { const ox = Math.sin(seed + i * 2.1) * r * .9, oy = (i % 2 ? 1 : -1) * r * (.3 + .1 * Math.sin(seed * 3 + i)); ctx.fillStyle = i % 3 ? "#6a5238" : "#a08060"; ctx.beginPath(); ctx.ellipse(ox, oy, s * .06, s * .045, i, 0, TAU); ctx.fill(); } // clods
       }
       else if (f.kind === "gas") { ctx.globalAlpha = Math.min(.85, life * .6); for (let i = 0; i < 4; i++) { const a = i * 1.7 + now / 900, gx = x + Math.cos(a) * r * .35, gy = y - s * .2 + Math.sin(a) * r * .2, g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * .9); g.addColorStop(0, "#d8ef6a66"); g.addColorStop(.6, "#9ac04a33"); g.addColorStop(1, "#6a903a00"); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(gx, gy, r * .9, r * .65, 0, 0, TAU); ctx.fill(); } }
       else if (f.kind === "flesh") { ctx.globalAlpha = Math.min(.9, life); ctx.fillStyle = "#7a1f2a99"; ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU); ctx.fill(); for (let i = 0; i < 7; i++) { const a = i * TAU / 7 + now / 900, rr = r * (.4 + ((i * 37) % 10) / 20); ctx.fillStyle = i % 2 ? "#c98a86" : "#3a0d12"; ctx.beginPath(); ctx.ellipse(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .6, s * .09, s * .05 * (1 + Math.sin(now / 200 + i) * .3), a, 0, TAU); ctx.fill(); } }
