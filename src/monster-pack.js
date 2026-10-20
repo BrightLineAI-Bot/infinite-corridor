@@ -7,7 +7,7 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { hashSeed } from "./random.js?v=r237-74592043bc57";
+import { hashSeed } from "./random.js?v=r239-0a2af28b4090";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -438,7 +438,7 @@ export const WORM = {
   lavaLength: 6.2, lavaArc: 44, lavaEvery: .09, lavaPerPour: 2, lavaFlight: .12, lavaRun: 1.8, lavaRunTime: .55, lavaGrow: [.35, 1.05], lavaGrowTime: .45, lavaLife: 1.8, lavaTick: .5,
 };
 const aboveBlob = (w, x, y) => (Number(w.elevation?.(x, y)) || 0) >= BLOB.safeElev;
-// Release r237-74592043bc57 (Tim: "ooze can still land on high ground, and bloblets"): high ground is drawn raised, a level-4 plateau
+// Release 237 (Tim: "ooze can still land on high ground, and bloblets"): high ground is drawn raised, a level-4 plateau
 // about 1.4 tiles up, so its top covers the low tiles just north of it. Ooze and bloblets keep clear of every tile a
 // plateau covers, not only of the plateau's own tiles.
 function nearHigh(w, x, y) { if (!w.elevation) return false; for (let dy = -1; dy <= 2; dy++) for (let dx = -1; dx <= 1; dx++) if (aboveBlob(w, x + dx * .6, y + dy * .75)) return true; return false; }
@@ -1039,6 +1039,24 @@ function tentacleTurret(e, s, w, p) {
   return true;
 }
 
+// A world beast in retreat (release 239; the game sets `fleeTo`): it no longer fights or dodges, cannot be touched, and
+// follows `fleePath` (found by the game around walls, over chasms with a bound, by bridges over water) to the gate it leaves
+// by or to its home ground, where it fades into the ground (`fleeFade` from 1 to 0). With no path it goes straight. The
+// Tremor Worm swims there under the ground, leaving a wake of churned earth. The game reads `fleeDone`.
+function fleeStep(e, s, w) {
+  if (s.attack) endAttack(e, s);
+  s.evade = null; s.tele = null; e.untargetable = true; e.hidden = e.kind === "tremorWorm";
+  if (e.fleeFade != null) { e.hopLift = 0; e.fleeFade = Math.max(0, e.fleeFade - w.dt / (e.fleeFadeTime || 1.4)); if (e.fleeFade <= 0) e.fleeDone = true; return; }
+  const next = e.fleePath?.[0] || e.fleeTo, dx = next.x - e.x, dy = next.y - e.y, d = Math.hypot(dx, dy), step = (e.fleeSpeed || 2) * w.dt;
+  e.hopLift = next.leap ? Math.min(1, (Number(e.hopLift) || 0) + w.dt * 4) : Math.max(0, (Number(e.hopLift) || 0) - w.dt * 4); // a bound over the chasm
+  if (d > .01) { e.fleeDir = { x: dx / d, y: dy / d }; e.facingX = dx >= 0 ? 1 : -1; }
+  if (e.hidden && (s.furrow = (s.furrow || 0) - w.dt) <= 0) { s.furrow = .2; w.addEffect({ kind: "furrow", owner: e.id, x: e.x, y: e.y, radius: .9, arming: 0, life: 2.2, total: 2.2, damage: 0, dir: e.fleeDir || { x: 1, y: 0 } }); } // the worm's wake of churned earth
+  if (d > step + .05) { e.x += dx / d * step; e.y += dy / d * step; return; }
+  e.x = next.x; e.y = next.y;
+  if (e.fleePath?.length) { e.fleePath.shift(); if (e.fleePath.length) return; }
+  if (e.fleeTo.home) e.fleeFade = 1; else e.fleeDone = true;
+}
+
 // One simulation step for a pack creature. `w` is the world adapter built by the game (or a test).
 export function updatePackMonster(e, w) {
   const def = packDefinition(e);
@@ -1048,6 +1066,7 @@ export function updatePackMonster(e, w) {
   e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt); e.recoil = Math.max(0, (e.recoil || 0) - dt); e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
   for (const id of Object.keys(s.cd)) s.cd[id] = Math.max(0, s.cd[id] - dt);
   s.gap = Math.max(0, (s.gap || 0) - dt);
+  if (e.fleeTo) { fleeStep(e, s, w); return; }
   if (e.illusion && (w.now - (e.bornAt || 0)) > 14000) { e.dead = true; return; }
   const p = center(w.player), d = distance(p, e), brain = BRAINS[e.brain || def.brain];
   if (!e.aggro && d < (brain?.hiddenUntilAggro ? 4.2 : 7)) e.aggro = true;
@@ -1110,6 +1129,7 @@ export function tickPackEffects(effects, w) {
       f.radius = WORM.lavaGrow[0] + (f.grow - WORM.lavaGrow[0]) * Math.min(1, f.age / WORM.lavaGrowTime);
       if (distance(p, f) <= f.radius + .15 && !(f.nextBite > f.age)) { f.nextBite = f.age + WORM.lavaTick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "wormLava", beam: true }); }
     }
+    else if (f.kind === "furrow") { /* release 239: the fleeing worm's wake; harmless, it only fades */ }
     else if (f.kind === "flesh") { if (distance(p, f) <= f.radius) { w.slow(f.slow || .55, .25); if (!(f.nextBite > f.age)) { f.nextBite = f.age + .8; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "fleshBloom", beam: true }); } } }
     else if (f.kind === "orb") { f.x += f.vx * w.dt; f.y += f.vy * w.dt; if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0; else if (!f.hit && distance(p, f) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "orb" }); } }
     else if (f.kind === "shock") { const total = f.total ??= f.life ?? .8, r = f.radius * (1 - Math.max(0, f.life ?? total) / total); f.ring = r; if (!f.hit && f.damage > 0 && Math.abs(distance(p, f) - r) < .5) { f.hit = true; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "shockwave" }); } }
