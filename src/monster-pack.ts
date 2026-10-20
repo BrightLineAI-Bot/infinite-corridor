@@ -494,7 +494,7 @@ export const KNIGHT = {
   mistTime: .55, mistLand: 1.6,
   // Tim: its swings sometimes throw energy off the sword, reaching about as far as the Wayfarer's own blades
   // (Verge Cleaver's 1.75, Cinder Pike's 2.45), so it can strike from where you strike it
-  arcReach: 1.75, arcChance: 45, thrustSpeed: 13, thrustReach: 1.2, thrustBeam: 2.45, beamChance: 55, comboArc: 150, comboPause: .22, comboPlan: ["cut", "cut", "dash", "cut", "cut", "dash", "cut", "cut"], comboDash: .4, comboClose: 1.1, // Tim: a six-cut onslaught, two cuts between dashes
+  arcReach: 1.75, arcChance: 45, thrustSpeed: 13, thrustReach: 1.2, thrustBeam: 2.45, beamChance: 55, comboArc: 150, comboPause: .22, comboPlan: ["cut", "cut", "dash", "cut", "cut", "dash", "cut", "cut"], comboDash: .4, comboClose: 1.1, comboLengths: [[2, 40], [4, 35], [6, 25]], comboLengthsEnraged: [[2, 20], [4, 35], [6, 45]], // Tim: up to six cuts, two between dashes; how many varies (weights in %), longer when it is hurt
   backHop: 2.6, backslashChance: 40, // of the times it slips your attack, this % it leaps back slashing instead of turning to mist
   dodgeMist: .3, dodgeLeap: 2.8, // its dodge: it dissolves and comes together a few tiles aside
   mistChance: 40, mistEvery: .9, // Tim: any attack coming at it (blade, shot or spell) has this % chance to find only mist, even mid-attack
@@ -592,7 +592,12 @@ const START = {
     const len = Math.min(rayLength(w, e, s.data.dir, KNIGHT.thrustSpeed * ATTACK_MODULES.knightThrust.active), KNIGHT.thrustSpeed * ATTACK_MODULES.knightThrust.active);
     s.tele = { type: "lane", aim: s.data.dir, length: len + bodyRadius(e) + KNIGHT.thrustReach + (s.data.beam ? KNIGHT.thrustBeam : 0), width: .45 };
   },
-  knightCombo(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach, arc: KNIGHT.comboArc }; s.data.step = 0; s.data.cuts = 0; s.data.sub = 0; },
+  knightCombo(e, s) {
+    const table = e.hp <= e.maxHp * PACK_BOSS_TEMPLATE.enrage ? KNIGHT.comboLengthsEnraged : KNIGHT.comboLengths, roll = hashSeed(`${e.id}:${s.seq}:combo`) % 100;
+    let acc = 0, cuts = table[table.length - 1][0]; for (const [n, wgt] of table) { acc += wgt; if (roll < acc) { cuts = n; break; } }
+    s.data.plan = KNIGHT.comboPlan.slice(0, cuts / 2 * 3 - 1); // 2 cuts; 2, dash, 2; or the full six
+    s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach, arc: KNIGHT.comboArc }; s.data.step = 0; s.data.cuts = 0; s.data.sub = 0;
+  },
   knightBackslash(e, s) { s.tele = null; s.data.cut = false; },
   turtleStomp(e, s) { s.tele = { type: "ring", radius: bodyRadius(e) + TURTLE.stompRadius }; },
   turtleDash(e, s, w) { const len = Math.min(11, TURTLE.dashSpeed * ATTACK_MODULES.turtleDash.active); s.data.ice = hashSeed(`${e.id}:${s.seq}:dash`) % 2 === 1; s.tele = { type: "lane", aim: s.data.aim, length: len, width: bodyRadius(e) * 1.2 }; s.data.next = 0; },
@@ -748,7 +753,7 @@ const RUN = {
     }
   },
   knightCombo(e, s, w) { // the onslaught: cut, cut, dash after you, cut, cut, dash, cut, cut (each pair forward then back)
-    const attack = ATTACK_MODULES.knightCombo, plan = KNIGHT.comboPlan, p = center(w.player);
+    const attack = ATTACK_MODULES.knightCombo, plan = s.data.plan || KNIGHT.comboPlan, p = center(w.player);
     if (s.phase === "windup") { if (s.t <= 0) { s.data.step = 0; s.data.sub = 0; toPhase(s, "active", attack.active); } return; }
     if (s.phase !== "active") return;
     const what = plan[s.data.step];

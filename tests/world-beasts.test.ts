@@ -374,9 +374,13 @@ test('the Knight\'s blade: a thrust along any of eight ways with a beam off the 
   for (let seq = 0; seq < 12; seq++) { const w = world({ size: 30, player: { x: 15 + .67 + KNIGHT.slideReach + 1.2, y: 12 } }), k = knight(w, 15, 12); k.packAttacks = ['knightCombo']; k.pack.gap = 0; k.pack.seq = seq; const swings = []; let arc = false; step(w, .75, () => { /* the first pair of cuts, before it dashes */ if (k.swing) swings.push(k.swing); arc ||= w.fx.some((f) => f.kind === 'swordArc'); }); assert.ok(swings.includes('fore') && swings.includes('back'), 'a cut forward and a cut back'); if (w.hurts.some((h) => h.source === 'knightCombo')) far++; assert.ok(!w.hurts.length || arc, 'the far hit came with an energy arc'); }
   assert.ok(far > 0 && far < 12, `only an energized cut reaches that far (${far}/12)`);
   { // the onslaught: six cuts, two dashes after you between the pairs
-    const w = world({ size: 40, player: { x: 20, y: 20 } }), k = knight(w, 14, 20); k.packAttacks = ['knightCombo']; k.pack.gap = 0; let dashes = 0, was = false, cuts = 0;
-    step(w, 4.5, () => { if (k.sliding && !was) dashes++; was = !!k.sliding; if (w.player.x < 34 && k.pack.data?.cuts > cuts) { cuts = k.pack.data.cuts; w.player.x += 2.2; } });
-    assert.equal(cuts, 6, 'six cuts'); assert.ok(dashes >= 2, `dashing after you between them (${dashes})`); assert.ok(k.x > 20, 'it followed');
+    const lengths = new Set();
+    for (let seq = 0; seq < 20; seq++) {
+      const w = world({ size: 40, player: { x: 20, y: 20 } }), k = knight(w, 14, 20); k.packAttacks = ['knightCombo']; k.pack.gap = 0; k.pack.seq = seq; let dashes = 0, was = false, cuts = 0;
+      step(w, 4.5, () => { if (k.sliding && !was) dashes++; was = !!k.sliding; if (w.player.x < 34 && k.pack.data?.cuts > cuts) { cuts = k.pack.data.cuts; w.player.x += 2.2; } if (!k.pack.attack) k.packAttacks = []; });
+      assert.ok([2, 4, 6].includes(cuts), `two, four or six cuts (${cuts})`); assert.equal(dashes, cuts / 2 - 1, 'a dash between each pair'); lengths.add(cuts);
+    }
+    assert.deepEqual([...lengths].sort(), [2, 4, 6], 'it varies how far it takes the onslaught');
   }
   // the retreating slash: it leaps away while its energy arc still finds you
   const w = world({ size: 30, player: { x: 13.5, y: 12 } }), k = knight(w, 12, 12); k.packAttacks = ['knightBackslash']; k.pack.gap = 0; step(w, .8);
