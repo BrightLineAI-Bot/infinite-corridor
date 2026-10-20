@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Release 249 — the fifth world beast: the Psychic Crystal. It is a long faceted crystal floating at head height, with lesser shards circling it. Its aura tells you what it means to do: a hazy white at rest, red and larger when it attacks, violet just before it grabs. Its attacks:
+  - a force push that throws you back;
+  - a force pull that drags you in and lashes out as you arrive;
+  - a command grab: dodge as it reaches, or once held (you cannot move) struggle free by dodging again and again, or it crushes you;
+  - stones it lifts and flings at you one by one;
+  - a mirror wall of light that sends your arrows and bolts back at you, while a blade passes straight through it.
+  It hunts the overworld like the others and retreats to open water. It also haunts dungeons (from level 8, in ordinary dungeons well away from the Refuge), but only ones with water in them. There it waits near the water and, out of patience, sinks into it. It never counts as one of the dungeon's guardians, so it never stands between you and a clear. Also:
+  - the Nanobot Knight no longer stays drawn scattered after the first plain-steel hit;
+  - a weapon carrying an elemental glyph (Ignite, Chain, Volatile) now reaches the Knight as the Echo glyph does;
+  - world beasts keep their own strength in dungeons.
 - Release 247 — the Nanobot Knight's cape is no longer cloth: it is the swarm itself. A stream of dark motes (a few glowing red) pours off its shoulders and trails out behind it like a billowing plume of smoke, thinning to nothing at the tail. Its swordplay grows:
   - a lunging thrust with the sword outstretched, at you or cutting across along any of the eight ways, sometimes ending in a beam of energy off the tip that reaches about as far as a Cinder Pike's thrust;
   - an onslaught of up to six cuts: two cuts (forward, then back), and it may dash after you for two more, and again for two more. How far it takes it varies, and it goes longer when hurt;

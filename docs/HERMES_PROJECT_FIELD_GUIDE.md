@@ -26,6 +26,52 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Psychic Crystal; a dungeon hunt (release 249)
+
+The fifth of Tim's world beasts. He asked (2026-10-19, 2026-10-20) for:
+- a floating crystal whose aura changes: hazy white; red or larger when attacking; blue or purple before a grab;
+- a force push and a force pull;
+- a command grab that holds you for a few seconds while it winds up a powerful attack;
+- debris it levitates and throws;
+- a psychic wall that reflects ranged attacks while physical attacks pass through;
+- it may appear in the overworld, and in dungeons only where there is some water, retreating into that water.
+
+**CODE:**
+
+- **`src/monster-pack.ts`.**
+  - `CRYSTAL` holds the balance.
+  - `psyPush`: a hit at its windup end, a `psyRing`, then `w.push` for its active time.
+  - `psyPull`: `w.pull`, plus one lash when you arrive.
+  - `psyGrab`: a violet `tether` telegraph. At the windup end it calls `w.grab(e)`, which fails if you are dodging or invulnerable. Held, a holding tether shows. The crush lands when the hold ends unless you broke free earlier (`w.held` false before then).
+  - `psyDebris`: `debris` effects circle it in state `lift`, then are thrown every `debrisEvery`; they hit once and stop at walls.
+  - `psyWall`: a `psyWall` effect between you and it, perpendicular to you, lasting `wallLife` seconds.
+  - `reflectShots(shots, effects)`: any non-hostile shot crossing a standing wall reflects about its normal, turns hostile (it then hits the Wayfarer through the existing hostile-shot rule), and keeps `reflectShare` of its damage. Melee is untouched.
+  - `MONSTER_PACK.psychicCrystal`: `hover`, `orbit`, boss attack `sweepBeam`.
+- **`src/game.ts`.**
+  - The pack world gains `grab`, `held` and `release`. The hold is `p.heldUntil`/`p.heldBy`, lasting `grabHold` + 0.1 s.
+  - While held, movement input is zeroed and each dodge press shortens the hold by `CRYSTAL.struggle`.
+  - `reflectShots` runs each frame before `updateProjectiles`.
+  - World beasts are exempt from `tuneDungeonThreat`, both on spawn and on snapshot restore.
+  - `shouldSimulateEnemy` keeps an aggro world beast awake in dungeons, so a retreat out of sight finishes.
+- **`src/world-beasts.ts`, the dungeon hunt.**
+  - A beast with `dungeonChance` (the Crystal, .35) may claim a dungeon on entry. It needs `dungeonWater` tiles, a free hunt and no cooldown. The dungeon must also be an ordinary `dungeon:…:g<n>:<rx>:<ry>:<object>` dungeon at least `minDepth` sections out (never the story dungeon, arenas, hunts or runs), and the Wayfarer must be at least `dungeonMinLevel` (8). The claim is stored as `active = { dungeon, tries }`, which `ensureWorldBeasts` keeps, and lasts until the hunt ends.
+  - `worldBeastForDungeon` spawns it on an open tile at least 7 tiles from the entry, preferably within 4 of the water. `loadArea` calls it, with its arrival line shown on the first frame.
+  - Tries count on deaths in that dungeon (`worldBeastPlayerFell`'s `dungeonId`).
+  - A haunting beast is never one of the dungeon's guardians: `registerDungeonBosses` and `recordDungeonBossDefeat` (`src/dungeon-completion.ts`) skip `worldBeast`, so it neither blocks nor counts toward a combat clear.
+  - Out of patience, `beginDungeonRetreat` sends it to the nearest `dungeonWater` (`BEAST_HOMES.water` now includes it), along a `through` path. `worldBeastsLost` ends the hunt if you leave that dungeon while it retreats.
+  - `cleanRetreat` accepts `{ dungeon }` homes.
+  - Overworld claims, cooldowns and the Atlas are unchanged; dungeon claims carry no Atlas mark.
+- **`src/monster-render.ts`.**
+  - `BODY.psychicCrystal`: flat faceted faces that slide as it turns, two lesser crystals at its foot, circling shards, a core in the aura's colour, and the three-layer aura.
+  - Effects: the `tether` telegraph, `debris` stones, a leaning `psyWall` pane with rising motes, and `psyRing`.
+- **`src/echoes.ts`.** "Mind Ward": being hurt throws foes within 3 tiles back.
+- **Knight fixes from the 247 review.**
+  - `e.scattered` now decays each frame.
+  - A stray duplicate line was removed.
+  - `glyphsReachSwarm`: echo, ignite, chain or volatile on the weapon's loadout reaches the Knight (Tim: "unless the attack is elemental").
+
+**BOUNDARY:** The save change is additive at schema 14: `worldBeasts.psychicCrystal`, plus dungeon-held `active` rows. No generator changes; dungeons are read, never altered.
+
 ## The Nanobot Knight's swarm cape (release 247)
 
 Tim, 2026-10-20: the cape was too clean. It should be "a series of small particles that trail behind him like a cape … like smoke", not a solid cape.
