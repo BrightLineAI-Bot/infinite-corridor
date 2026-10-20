@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { generateRegion } from '../src/world.ts';
 import { WORLD_BEASTS, ensureWorldBeasts, worldBeastFor, worldBeastPlayerFell, worldBeastSlain, tuneWorldBeast, worldBeastTriesLeft } from '../src/world-beasts.ts';
-import { MONSTER_PACK, BLOB, WORM, updatePackMonster, tickPackEffects, addPackEffect, freshPackState, packCombatantFields } from '../src/monster-pack.ts';
+import { MONSTER_PACK, BLOB, WORM, TURTLE, updatePackMonster, tickPackEffects, addPackEffect, freshPackState, packCombatantFields } from '../src/monster-pack.ts';
 import { createCombatant } from '../src/combat.ts';
 
 function world({ size = 24, player = { x: 12, y: 12 } } = {}) {
@@ -261,4 +261,40 @@ test('a retreat respects the land: around walls, over chasms with a bound, by th
   const v = world(), m = worm(v, 2, 2); m.fleeTo = { x: 12, y: 2, side: 'east' }; m.fleeSpeed = 3; step(v, 2);
   assert.ok(v.fx.filter((f) => f.kind === 'furrow').length >= 3, 'the worm leaves a wake of churned earth'); assert.ok(v.hurts.length === 0);
   step(v, 2.5); assert.ok(!v.fx.some((f) => f.kind === 'furrow' && f.age > 2.3), 'which settles away');
+});
+
+// Release 241: the Mountain Turtle.
+function turtle(w, x = 6, y = 12) { const c = createCombatant('mountainTurtle', x, y, true, []); Object.assign(c, { id: 'turtle-1', aggro: true, hp: 3000, maxHp: 3000, damage: 20 }); w.enemies.push(c); return c; }
+
+test('the Mountain Turtle: about twice the Questing Beast, slow, a world beast that goes home to a canyon through everything', () => {
+  assert.ok(MONSTER_PACK.mountainTurtle.form.scale >= MONSTER_PACK.questingBeast.form.scale * 1.9); assert.equal(MONSTER_PACK.mountainTurtle.movement, 'lurch'); assert.equal(MONSTER_PACK.mountainTurtle.unique, true);
+  assert.equal(WORLD_BEASTS.mountainTurtle.home, 'canyon'); assert.equal(WORLD_BEASTS.mountainTurtle.retreatMoves, 'through');
+  const s = freshSave(); s.level = 10; const c = createCombatant('mountainTurtle', 5, 5, true, []); tuneWorldBeast(c, s, 'mountainTurtle', { meleeBonus: 4 }); assert.ok(c.hp > 700); assert.equal(c.evasive, true);
+});
+
+test('the Turtle\'s attacks: a stomp you jump, a dash that leaves fire or bursting ice, a spin that flings lasting twisters, an ice comet, an ice shield', () => {
+  const w = world({ size: 40, player: { x: 12, y: 20 } }), t = turtle(w, 12, 12); w.pulled = 0; w.pull = (src, step) => { w.pulled += step; }; w.slowed = 0; w.slow = () => { w.slowed++; };
+  const run = (id, seconds, dx = 2.5, dy = 0, seq = 0) => { t.x = 12; t.y = 12; w.player.x = t.x + dx; w.player.y = t.y + dy; t.packAttacks = [id]; t.pack = freshPackState(); t.pack.gap = 0; t.pack.seq = seq; w.hurts = []; step(w, seconds); };
+  run('turtleStomp', 1); assert.ok(w.hurts.some((h) => h.source === 'turtleStomp')); assert.ok(w.fx.some((f) => f.kind === 'shock' && f.stone), 'a ring of heaved ground rolls out');
+  w.fx = []; run('turtleDash', 1.8, 6, 0, 0); const trailA = w.fx.filter((f) => f.kind === 'flameTrail' || f.kind === 'frostTrail');
+  assert.ok(trailA.length >= 3, 'a trail'); assert.ok(t.x > 15, 'it bursts forward');
+  w.fx = []; let kinds = new Set(trailA.map((f) => f.kind)); for (let q = 1; q < 6 && kinds.size < 2; q++) { w.fx = []; run('turtleDash', 1.8, 6, 0, q); for (const f of w.fx) if (f.kind === 'flameTrail' || f.kind === 'frostTrail') kinds.add(f.kind); }
+  assert.deepEqual([...kinds].sort(), ['flameTrail', 'frostTrail'], 'fire one time, ice another');
+  const ice = { kind: 'frostTrail', owner: t.id, x: 30, y: 30, radius: .75, arming: 0, life: 2.1, total: 2.1, damage: 3, burst: 9 }; w.fx = [ice]; t.packAttacks = []; w.player.x = 30.5; w.player.y = 30; w.hurts = []; step(w, 2.4);
+  assert.ok(w.hurts.some((h) => h.source === 'frostTrail'), 'the ice stings'); assert.ok(w.hurts.some((h) => h.source === 'iceBurst'), 'and bursts after a couple of seconds');
+  w.fx = []; run('turtleSpin', 3.2, 2.2); const tw = w.fx.filter((f) => f.kind === 'twister'); assert.ok(tw.length >= 3 && tw.length <= TURTLE.twisterMax, `twisters: ${tw.length}`);
+  assert.ok(w.hurts.some((h) => h.source === 'turtleSpin')); t.packAttacks = []; w.player.x = 38; w.player.y = 38; step(w, 5); assert.ok(w.fx.filter((f) => f.kind === 'twister').length === tw.length, 'they persist'); assert.ok(tw.some((f) => Math.hypot(f.x - 12, f.y - 12) > 3), 'and wander off');
+  w.fx = []; run('turtleComet', 3, 6); assert.ok(w.hurts.some((h) => h.source === 'turtleComet'), 'the comet bursts on you'); assert.ok(w.fx.some((f) => f.kind === 'frostTrail' && f.radius === TURTLE.cometFrost), 'and leaves the ground frozen');
+  run('turtleShield', .8, 5); assert.ok(t.iceShield && t.untargetable, 'shielded, nothing reaches it'); step(w, 3.6 + .5); assert.ok(!t.iceShield && !t.untargetable, 'then the ice falls away');
+  const v = world(), u = turtle(v, 12, 12); u.packAttacks = []; u.evasive = true; v.player.x = 13.5; v.player.y = 12; v.playerSwinging = true; const x0 = u.x; step(v, .1);
+  assert.ok(u.tucked && u.untargetable, 'its dodge: it pulls into its shell'); assert.equal(u.x, x0, 'without springing anywhere'); v.playerSwinging = false; step(v, 1); assert.ok(!u.tucked);
+});
+
+test('retreat fixes: a fleeing beast passes through settlements and the Questing Beast\'s ground, says it is fleeing, and a claim with nowhere to stand is let go', () => {
+  const s = freshSave(); s.seed = 'FIX'; s.worldBeasts = { tremorWorm: { active: { rx: 3, ry: 4, tries: 0, retreat: { home: { rx: 9, ry: 4, found: true }, side: 'west', legs: 2 } }, cycle: 1 } }; ensureWorldBeasts(s);
+  const settled = { settlement: { id: 'x' }, tiles: [] }; const sp = worldBeastFor(s, settled, 3, 4); assert.ok(sp && sp.retreating, 'through a settlement');
+  const g = readFileSync(new URL('../src/game.ts', import.meta.url), 'utf8'); assert.match(g, /is fleeing through here toward/); assert.match(g, /beast&&!worldBeastFound\?\.retreating\?null:worldBeastFound/); assert.match(g, /get canyon\(\)/);
+  const t = freshSave(); t.worldBeasts = { mountainTurtle: { active: { rx: 7, ry: 7, tries: 0 }, cycle: 0 } }; ensureWorldBeasts(t);
+  const sea = { tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: 'ocean', blocked: true })) };
+  assert.equal(worldBeastFor(t, sea, 7, 7), null); assert.equal(t.worldBeasts.mountainTurtle.active, null, 'all water: it does not hold the section');
 });

@@ -26,6 +26,43 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Mountain Turtle; retreat fixes (release 241)
+
+The third of Tim's world beasts (2026-10-19: "a walking mausoleum … about twice the size of the Questing Beast … slow … stomps … a burst dash leaving a trail of fire or ice; the ice damages, then bursts after a couple of seconds … a spinning attack with an ice tornado that spawns small tornadoes which persist, damage and slow … a comet ice-ball from its mouth … a periodic invulnerable ice shield").
+
+**CODE:**
+
+- **`src/monster-pack.ts`.**
+  - `TURTLE` holds the balance.
+  - Attacks:
+    - `turtleStomp`: a jumpable hit at its feet, plus a `shock` ring marked `stone`.
+    - `turtleDash`: it moves at `dashSpeed` and stops at what it cannot pass. Each dash is fire or ice, by hash. It leaves `flameTrail` (burns per `fireTick`) or `frostTrail` (stings, slows, then bursts with an `iceBurst` once its hashed `iceBurst` time ends).
+    - `turtleSpin`: sets `e.spinning`, damages and slows in the vortex with a slight pull, and flings `twister` effects. Twisters are capped at `twisterMax` per turtle, wander, sting and slow for `twisterLife` seconds, and blow out when it is gone.
+    - `turtleComet`: a `comet` effect flies to the aimed spot or to whoever it meets, bursts, and leaves a non-bursting `frostTrail` of radius `cometFrost`.
+    - `turtleShield`: `e.iceShield` plus `untargetable` while it is active. Every damage path already skips untargetable foes, so nothing lands.
+  - `MONSTER_PACK.mountainTurtle`: scale 2.9 (about 3.9 with the boss form), `lurch` (slow), `juggernaut` brain, `shockwave` boss attack.
+  - Its dodge: in `evade`, the Turtle does not spring aside. It tucks (`e.tucked`, untargetable, no movement, `tuckTime`).
+  - `endAttack` clears `iceShield` and `spinning`.
+- **`src/monster-render.ts`.**
+  - `BODY.mountainTurtle` is painted directly. Its shell is a stone dome with courses of blocks, raised tortoise plates, moss, an arched door lit from inside with steps, a rim of plates, snow and icicles, and a crypt with columns on the crown.
+  - Its four elephantine legs (wrinkled, scaled, flared feet with nails) step slowly under the shell's overhang. Its head is a long, plated tortoise skull on a folded neck, with a hooked beak and a lidded ice-blue eye; its mouth lights while a comet winds up.
+  - Spinning and tucked, it draws legs and head in. Spinning adds the ice tornado; the shield is a faceted dome.
+  - Effects: `flameTrail`, `frostTrail` (crystals; it flickers white before bursting), `twister`, `comet` (with its shadow) and `iceBurst`, plus the stone stomp ring. Trails are drawn at ground height.
+- **`src/world-beasts.ts`.**
+  - A `mountainTurtle` row: chance .025, minDepth 6, home `canyon`, `retreatMoves: "through"`.
+  - Retreat fixes from the 239 review:
+    - `fleeSpawn` serves a retreating beast in settlement and Questing Beast sections too. `game.ts` keeps the fleeing spawn alongside the Questing Beast.
+    - Its arrival message says it is fleeing.
+    - The home probe is lazy: a section is generated only for homes that need it (canyon, glass, dungeon), and the biome check is cheap.
+    - A claim on a section with no open tile is released (`q.active = null`), unless tries were already spent there.
+- **`src/echoes.ts`.** `mountainTurtle` "Turtle's Ward": being hurt makes you untouchable for 1 s, once every 8 s.
+
+**BOUNDARY:** No save change; `ensureWorldBeasts` adds the row on load. No generator changes. Effects stay under the pack cap: a dash lays about 7 trails, and twisters are capped at 6.
+
+**Tim's decisions for beasts still to come (2026-10-20):**
+- The Void Walker can appear in the overworld and in dungeons.
+- The Psychic Crystal can appear in the overworld, retreating to open water. It also appears in dungeons, but only dungeons with some water (any amount, even a puddle); there it retreats into that water.
+
 ## World beasts retreat home (release 239)
 
 Tim, 2026-10-20: a beast should not hold its section forever. If neither side wins in time, it retreats to a home of its own in the landscape, and you can follow it over several sections. Once it retreats, it is invulnerable and moves "on its own special geometry and laws".
