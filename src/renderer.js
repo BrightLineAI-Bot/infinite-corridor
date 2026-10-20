@@ -1,14 +1,14 @@
-import { enemyMeleeGeometry } from "./combat.js?v=r241-45286473b10a";
-import { ruleRows } from "./elders.js?v=r241-45286473b10a";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r241-45286473b10a";
-import { BOAT } from "./boats.js?v=r241-45286473b10a";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r241-45286473b10a";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r241-45286473b10a";
-import { liftAt } from "./landscape.js?v=r241-45286473b10a";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=r241-45286473b10a";
-import { drawRelayNode } from "./relay-network.js?v=r241-45286473b10a";
-import { structureOccupancy } from "./world.js?v=r241-45286473b10a";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r241-45286473b10a";
+import { enemyMeleeGeometry } from "./combat.js?v=r243-79e75c3186cb";
+import { ruleRows } from "./elders.js?v=r243-79e75c3186cb";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r243-79e75c3186cb";
+import { BOAT } from "./boats.js?v=r243-79e75c3186cb";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r243-79e75c3186cb";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r243-79e75c3186cb";
+import { liftAt } from "./landscape.js?v=r243-79e75c3186cb";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects } from "./monster-render.js?v=r243-79e75c3186cb";
+import { drawRelayNode } from "./relay-network.js?v=r243-79e75c3186cb";
+import { structureOccupancy } from "./world.js?v=r243-79e75c3186cb";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r243-79e75c3186cb";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.

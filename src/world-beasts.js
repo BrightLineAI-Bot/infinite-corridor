@@ -4,9 +4,9 @@
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.js?v=r241-45286473b10a";
-import { LETHAL_KINDS } from "./landscape.js?v=r241-45286473b10a";
-import { sectionExits } from "./world.js?v=r241-45286473b10a";
+import { hashSeed } from "./random.js?v=r243-79e75c3186cb";
+import { LETHAL_KINDS } from "./landscape.js?v=r243-79e75c3186cb";
+import { sectionExits } from "./world.js?v=r243-79e75c3186cb";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {

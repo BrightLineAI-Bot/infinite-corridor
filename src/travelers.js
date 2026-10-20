@@ -4,12 +4,12 @@
 // Travellers: groups of people (some mounted) walk the trails or wander a section, stop when the Wayfarer comes near,
 // and talk. Peddlers trade. Old Quillon, a wandering cartographer, gives one errand at a time; finish it and the next
 // time you meet him he pays and hands you the next.
-import { hashSeed, rng, pick } from "./random.js?v=r241-45286473b10a";
-import { LETHAL_KINDS } from "./landscape.js?v=r241-45286473b10a";
-import { hamletSection } from "./settlements.js?v=r241-45286473b10a";
-import { RECITERS, RECITATIONS } from "./recitations.js?v=r241-45286473b10a";
-import { ELDERS, ELDER_NAME, elderPlan } from "./elders.js?v=r241-45286473b10a";
-import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading, readingKnown } from "./lore.js?v=r241-45286473b10a";
+import { hashSeed, rng, pick } from "./random.js?v=r243-79e75c3186cb";
+import { LETHAL_KINDS } from "./landscape.js?v=r243-79e75c3186cb";
+import { hamletSection } from "./settlements.js?v=r243-79e75c3186cb";
+import { RECITERS, RECITATIONS } from "./recitations.js?v=r243-79e75c3186cb";
+import { ELDERS, ELDER_NAME, elderPlan } from "./elders.js?v=r243-79e75c3186cb";
+import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading, readingKnown } from "./lore.js?v=r243-79e75c3186cb";
 
 export const TRAVEL_VERSION = 1;
 export const TRAVEL = { reciterChance: 0.12, trailChance: 0.08, trailNearTown: 0.6, groupChance: 0.2, groupChanceOnTrail: 0.42, minDepth: 1, speed: 1.15, pauseRadius: 2.4, spacing: 0.9, wandererChance: 0.07, wandererChanceReady: 0.22 };
