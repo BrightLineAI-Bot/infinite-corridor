@@ -98,6 +98,17 @@ export const ATTACK_MODULES = {
   turtleCyclone: { id: "turtleCyclone", name: "Icicle Cyclone", range: [0, 10], cooldown: 9.5, windup: .6, active: 3.2, recover: .7, damage: .9, tags: ["charge", "ice"], text: "Spins in its shell inside the tornado and careens around, rebounding off walls and flinging icicles in every direction. Keep your distance and dodge the shards." },
   turtleComet: { id: "turtleComet", name: "Ice Comet", range: [3, 11], cooldown: 5.5, windup: .95, recover: .6, damage: 1.5, tags: ["ranged", "ice"], text: "A ball of ice the size of a cart leaves its mouth and bursts where it lands, leaving the ground frozen." },
   turtleShield: { id: "turtleShield", name: "Ice Shield", range: [0, 14], cooldown: 13, windup: .5, active: 3.6, recover: .3, damage: 0, tags: ["defense", "ice"], text: "Ice grows over its shell. While the shield stands nothing hurts it; wait it out." },
+  // The Nanobot Knight's kit (release 245, Tim 2026-10-19: black with red accents; teleports or dissolves into mist;
+  // physical hits scatter it unless elemental, a spell or an Echo-glyphed weapon; Abyss Watcher sword slides; an arm
+  // laser cannon; swords falling from the sky; an orbital tracking laser that scorches the ground; homing orbs that
+  // circle it and are sent one by one or all at once; a homing missile barrage that explodes on timeout).
+  knightSlide: { id: "knightSlide", name: "Sliding Cuts", range: [0, 6.5], cooldown: 3, windup: .35, active: 1.6, recover: .45, damage: .9, tags: ["melee", "combo"], text: "Three sliding sword cuts: it skids in low along the ground, cuts, and comes again." },
+  knightCannon: { id: "knightCannon", name: "Arm Cannon", range: [0, 11], cooldown: 6, windup: .9, active: 1, recover: .5, damage: .5, tags: ["ranged", "beam"], text: "Its arm opens into a cannon; a red beam charges, tracking you, then fires straight. Step off the line before it fires." },
+  knightSwordfall: { id: "knightSwordfall", name: "Swordfall", range: [0, 11], cooldown: 7, windup: .5, recover: .5, damage: 1, tags: ["ground"], text: "Swords fall out of the sky around and onto you. Each marks the ground first." },
+  knightOrbital: { id: "knightOrbital", name: "Orbital Lance", range: [0, 14], cooldown: 11, windup: .5, recover: .3, damage: .45, tags: ["ground", "beam"], text: "A lance of red light from the sky follows you, scorching the ground where it has been. Outpace it." },
+  knightOrbs: { id: "knightOrbs", name: "Seeker Orbs", range: [0, 11], cooldown: 8, windup: .6, active: 2.6, recover: .3, damage: .6, tags: ["ranged", "orbs"], text: "Orbs gather and circle it, then go for you: one by one or all at once. They home for a moment, then fly straight." },
+  knightMissiles: { id: "knightMissiles", name: "Missile Barrage", range: [0, 13], cooldown: 9, windup: .7, recover: .5, damage: .7, tags: ["ranged"], text: "A barrage of homing missiles. They burst on whatever they meet, or on their own when their fuel runs out." },
+  knightMist: { id: "knightMist", name: "Mist Step", range: [1, 12], cooldown: 5, windup: .3, recover: .35, damage: 1.1, tags: ["teleport", "melee"], text: "It dissolves into a swarm, drifts, and comes together beside you mid-cut." },
   firefall: { id: "firefall", name: "Firefall", range: [1.5, 9], cooldown: 6.5, windup: .7, recover: .8, damage: .85, jumpable: true, tags: ["ground"], text: "Embers rain across the floor around you." },
 };
 
@@ -254,6 +265,13 @@ export const MONSTER_PACK = {
     palette: ["#6f7a72", "#1e2420", "#8fd8ff", "#e8f6ff"], render: "mountainTurtle", tags: ["beast", "elder", "ice", "stone"],
     lore: "A tortoise the size of a barrow, its shell a tomb of fitted stone: doors, steps and a cold light inside. It walks slowly and stamps the ground flat; it rushes in bursts that leave fire or ice behind; it spins inside a tornado of ice and breathes comets of it; and when it chooses, it grows a shield of ice that nothing gets through.",
   },
+  nanobotKnight: {
+    id: "nanobotKnight", name: "The Nanobot Knight", epithet: "The Swarm in Armour", unique: true,
+    stats: [300, 17, 0], form: { scale: 1.45 }, sizeClass: "large", movement: "walk", brain: "duelist",
+    attacks: ["knightSlide", "knightCannon", "knightSwordfall", "knightOrbital", "knightOrbs", "knightMissiles", "knightMist"], bossAttacks: ["blinkStrike"],
+    palette: ["#16161a", "#060608", "#ff2a2a", "#ffd0c8"], render: "nanobotKnight", tags: ["construct", "elder", "swarm"],
+    lore: "Black armour with a red seam of light, and nothing inside but a swarm. Plain steel scatters it like smoke; fire, sparks, spells and a blade that strikes twice find it. It slides in low with its sword, opens its arm into a cannon, calls down swords and a lance of light from the sky, and sends seeker orbs and missiles after you.",
+  },
   gnawingMaw: {
     id: "gnawingMaw", name: "Gnawing Maw", epithet: "The Hunger in the Walls", dungeonOnly: true,
     stats: [70, 14, 0], form: { scale: 1.35 }, sizeClass: "large", movement: "phase", brain: "ambush",
@@ -377,7 +395,7 @@ export function resetPackRuntime(enemy) {
   if (!enemy?.packKind) return enemy;
   const cd = enemy.pack?.cd || {};
   enemy.pack = { ...freshPackState(), cd: { ...cd } };
-  enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false;
+  enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; // release 245: no pose survives a reload
   return enemy;
 }
 
@@ -462,7 +480,22 @@ export const TURTLE = {
   cometSpeed: 5.5, cometRadius: .6, cometBlast: 1.9, cometFrost: 1.6, cometFrostLife: 3.5,
   tuckTime: .8, // its dodge: it pulls into its shell (no blow lands) instead of springing aside
 };
+// The Nanobot Knight (release 245). Balance as data.
+export const KNIGHT = {
+  slides: 3, slideTime: .28, slideSpeed: 11, slideReach: 2.3, slideArc: 120, slidePause: .2,
+  cannonTrack: 1.8, cannonLength: 11, cannonTick: .3, cannonWidth: .5,
+  swords: 6, swordRing: [1.2, 2.6], swordRadius: .75, swordFall: [.9, 1.6],
+  orbitalLife: 3.4, orbitalWarn: .6, orbitalSpeed: 2.1, orbitalRadius: .85, orbitalTick: .35, scorchEvery: .25, scorchLife: 3, scorchRadius: .6, scorchTick: .5, scorchBite: .25,
+  orbs: 5, orbOrbit: 1.6, orbSpin: 3, orbSpeed: 5.5, orbHome: [1, 2], orbTurn: 3.2, orbLife: 3.4, orbRadius: .3, orbEvery: .4,
+  missiles: 8, missileSpeed: 5, missileTurn: 2.4, missileFuel: 2.4, missileBlast: 1.1, missileRadius: .25,
+  mistTime: .55, mistLand: 1.6,
+  dodgeMist: .3, dodgeLeap: 2.8, // its dodge: it dissolves and comes together a few tiles aside
+  mistChance: 40, mistEvery: .9, // Tim: any attack coming at it (blade, shot or spell) has this % chance to find only mist, even mid-attack
+};
+// Plain physical blows scatter the Knight (Tim: "unless the attack is elemental, a spell, or the weapon has the Echo glyph").
+export function nanoScatters(e, { physical = false, echoGlyph = false } = {}) { return e?.kind === "nanobotKnight" && physical && !echoGlyph; }
 const aboveBlob = (w, x, y) => (Number(w.elevation?.(x, y)) || 0) >= BLOB.safeElev;
+(w, x, y) => (Number(w.elevation?.(x, y)) || 0) >= BLOB.safeElev;
 // Release 237 (Tim: "ooze can still land on high ground, and bloblets"): high ground is drawn raised, a level-4 plateau
 // about 1.4 tiles up, so its top covers the low tiles just north of it. Ooze and bloblets keep clear of every tile a
 // plateau covers, not only of the plateau's own tiles.
@@ -488,7 +521,7 @@ function endAttack(e, s) {
   const attack = ATTACK_MODULES[s.attack];
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
   s.gap = e.attackGap ?? (attack?.recover || .6) * .6 + .45; // the Questing Beast barely pauses (release 187)
-  e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false;
+  e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false;
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
 
@@ -530,6 +563,13 @@ const START = {
   broodBirth(e, s) { s.tele = { type: "shimmer" }; },
   fleshBloom(e, s) { s.tele = { type: "spit", target: { ...s.data.target } }; },
   blobTendrils(e, s) { const a = Math.atan2(s.data.aim.y, s.data.aim.x); s.data.dirs = Array.from({ length: BLOB.tendrils }, (_, i) => { const b = a + (i - (BLOB.tendrils - 1) / 2) * BLOB.tendrilSpread; return { x: Math.cos(b), y: Math.sin(b) }; }); s.tele = { type: "tendrils", dirs: s.data.dirs, length: BLOB.tendrilLength + bodyRadius(e) * .6, width: BLOB.tendrilWidth }; },
+  knightSlide(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach, arc: KNIGHT.slideArc }; s.data.cut = 0; s.data.sub = 0; s.data.mode = "slide"; },
+  knightCannon(e, s, w) { s.data.angle = Math.atan2(s.data.aim.y, s.data.aim.x); s.tele = { type: "beam", angle: s.data.angle, length: rayLength(w, e, s.data.aim, KNIGHT.cannonLength), charging: true, laser: true }; },
+  knightSwordfall(e, s) { s.tele = { type: "brace" }; },
+  knightOrbital(e, s) { s.tele = { type: "brace" }; },
+  knightOrbs(e, s) { s.tele = { type: "shimmer" }; s.data.allAtOnce = hashSeed(`${e.id}:${s.seq}:orbs`) % 2 === 0; s.data.next = 0; },
+  knightMissiles(e, s) { s.tele = { type: "brace" }; },
+  knightMist(e, s) { s.tele = { type: "shimmer" }; },
   turtleStomp(e, s) { s.tele = { type: "ring", radius: bodyRadius(e) + TURTLE.stompRadius }; },
   turtleDash(e, s, w) { const len = Math.min(11, TURTLE.dashSpeed * ATTACK_MODULES.turtleDash.active); s.data.ice = hashSeed(`${e.id}:${s.seq}:dash`) % 2 === 1; s.tele = { type: "lane", aim: s.data.aim, length: len, width: bodyRadius(e) * 1.2 }; s.data.next = 0; },
   turtleSpin(e, s) { s.tele = { type: "brace" }; s.data.next = 0; s.data.flung = 0; },
@@ -611,6 +651,76 @@ const RUN = {
       if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + .5 && !aboveBlob(w, w.player.x, w.player.y)) { s.hitOnce = true; w.hurt(e, damageOf(e, "blobEngulf"), { jumpable: false, source: "blobEngulf" }); }
       if (s.t <= 0) { s.tele = null; toPhase(s, "recover", attack.recover); }
     }
+  },
+  knightSlide(e, s, w) {
+    const attack = ATTACK_MODULES.knightSlide;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", attack.active); return; }
+    if (s.phase !== "active") return;
+    s.data.sub -= w.dt;
+    if (s.data.mode === "slide") { // skid in low, then cut
+      const p = center(w.player), to = unit(p.x - e.x, p.y - e.y), step = KNIGHT.slideSpeed * w.dt;
+      if (distance(p, e) > bodyRadius(e) + 1) w.move(e, to.x * step, to.y * step);
+      s.data.aim = to; e.sliding = true;
+      if (s.data.sub <= -KNIGHT.slideTime || distance(p, e) <= bodyRadius(e) + 1) { s.data.mode = "cut"; s.data.sub = KNIGHT.slidePause; e.sliding = false; resolveMelee(e, s, w, "knightSlide", (q) => inArc(e, q, s.data.aim, bodyRadius(e) + KNIGHT.slideReach, KNIGHT.slideArc)); s.data.cut++; s.data.cutAt = w.now; s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach, arc: KNIGHT.slideArc }; }
+    } else if (s.data.sub <= 0) { if (s.data.cut >= KNIGHT.slides) { s.tele = null; e.sliding = false; toPhase(s, "recover", attack.recover); return; } s.data.mode = "slide"; s.data.sub = 0; }
+    if (s.t <= 0) { e.sliding = false; s.tele = null; toPhase(s, "recover", attack.recover); }
+  },
+  knightCannon(e, s, w) {
+    const attack = ATTACK_MODULES.knightCannon, p = center(w.player);
+    if (s.phase === "windup") { // charging: it tracks you
+      const want = Math.atan2(p.y - e.y, p.x - e.x), diff = ((want - s.data.angle) % TAU + TAU * 1.5) % TAU - Math.PI;
+      s.data.angle += Math.max(-KNIGHT.cannonTrack * w.dt, Math.min(KNIGHT.cannonTrack * w.dt, diff));
+      const dir = { x: Math.cos(s.data.angle), y: Math.sin(s.data.angle) }; s.tele = { type: "beam", angle: s.data.angle, length: rayLength(w, e, dir, KNIGHT.cannonLength), charging: true, laser: true };
+      if (s.t <= 0) { toPhase(s, "active", attack.active); s.data.tick = 0; } return;
+    }
+    if (s.phase !== "active") return;
+    const dir = { x: Math.cos(s.data.angle), y: Math.sin(s.data.angle) }, len = rayLength(w, e, dir, KNIGHT.cannonLength);
+    s.tele = { type: "beam", angle: s.data.angle, length: len, charging: false, laser: true };
+    s.data.tick -= w.dt;
+    if (s.data.tick <= 0 && segmentDistance(p, e, { x: e.x + dir.x * len, y: e.y + dir.y * len }) <= KNIGHT.cannonWidth) { s.data.tick = KNIGHT.cannonTick; w.hurt(e, damageOf(e, "knightCannon"), { jumpable: false, source: "knightCannon", beam: true }); }
+    if (s.t <= 0) { s.tele = null; toPhase(s, "recover", attack.recover); }
+  },
+  knightSwordfall(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const p = s.data.target, turn = (hashSeed(`${e.id}:${s.seq}:swords`) % 628) / 100, [lo, hi] = KNIGHT.swordRing, [f0, f1] = KNIGHT.swordFall;
+    for (let i = 0; i < KNIGHT.swords; i++) { const on = i === 0, a = turn + i * TAU / (KNIGHT.swords - 1), r = on ? 0 : lo + (hi - lo) * ((hashSeed(`${e.id}:${s.seq}:sr:${i}`) % 100) / 100); w.addEffect({ kind: "swordfall", owner: e.id, x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r, radius: KNIGHT.swordRadius, arming: f0 + (f1 - f0) * (on ? .4 : i / KNIGHT.swords), damage: damageOf(e, "knightSwordfall"), jumpable: false, life: 1.4 }); }
+    s.tele = null; toPhase(s, "recover", ATTACK_MODULES.knightSwordfall.recover);
+  },
+  knightOrbital(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const p = center(w.player); w.addEffect({ kind: "orbital", owner: e.id, x: p.x, y: p.y, radius: KNIGHT.orbitalRadius, arming: KNIGHT.orbitalWarn, life: KNIGHT.orbitalLife, total: KNIGHT.orbitalLife, damage: damageOf(e, "knightOrbital"), scorch: Math.max(1, Math.ceil(e.damage * KNIGHT.scorchBite)) });
+    s.tele = null; toPhase(s, "recover", ATTACK_MODULES.knightOrbital.recover);
+  },
+  knightOrbs(e, s, w) {
+    const attack = ATTACK_MODULES.knightOrbs;
+    if (s.phase === "windup") {
+      if (s.t <= 0) { for (let i = 0; i < KNIGHT.orbs; i++) w.addEffect({ kind: "nanoOrb", owner: e.id, x: e.x, y: e.y, radius: KNIGHT.orbRadius, arming: 0, life: 99, orbit: i * TAU / KNIGHT.orbs, state: "circle", damage: damageOf(e, "knightOrbs") }); toPhase(s, "active", attack.active); s.data.next = .5; }
+      return;
+    }
+    if (s.phase !== "active") return;
+    s.data.next -= w.dt;
+    const waiting = (w.effects?.() || []).filter((f) => f.kind === "nanoOrb" && f.owner === e.id && f.state === "circle");
+    if (s.data.next <= 0 && waiting.length) { // send them: all at once, or one at a time
+      for (const f of s.data.allAtOnce ? waiting : waiting.slice(0, 1)) { f.state = "home"; f.homeFor = KNIGHT.orbHome[0] + (KNIGHT.orbHome[1] - KNIGHT.orbHome[0]) * ((hashSeed(`${f.id}`) % 100) / 100); f.life = KNIGHT.orbLife; const a = Math.atan2(w.player.y - f.y, w.player.x - f.x); f.vx = Math.cos(a) * KNIGHT.orbSpeed; f.vy = Math.sin(a) * KNIGHT.orbSpeed; }
+      s.data.next = s.data.allAtOnce ? 99 : KNIGHT.orbEvery;
+    }
+    if (s.t <= 0) { for (const f of waiting) { f.state = "home"; f.homeFor = KNIGHT.orbHome[0]; f.life = KNIGHT.orbLife; const a = Math.atan2(w.player.y - f.y, w.player.x - f.x); f.vx = Math.cos(a) * KNIGHT.orbSpeed; f.vy = Math.sin(a) * KNIGHT.orbSpeed; } s.tele = null; toPhase(s, "recover", attack.recover); }
+  },
+  knightMissiles(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    for (let i = 0; i < KNIGHT.missiles; i++) { const a = -Math.PI / 2 + (i - (KNIGHT.missiles - 1) / 2) * .38 + ((hashSeed(`${e.id}:${s.seq}:m:${i}`) % 100) / 100 - .5) * .3; w.addEffect({ kind: "missile", owner: e.id, x: e.x, y: e.y - .3, vx: Math.cos(a) * KNIGHT.missileSpeed, vy: Math.sin(a) * KNIGHT.missileSpeed, radius: KNIGHT.missileRadius, arming: 0, life: KNIGHT.missileFuel + i * .05, damage: damageOf(e, "knightMissiles") }); }
+    s.tele = null; toPhase(s, "recover", ATTACK_MODULES.knightMissiles.recover);
+  },
+  knightMist(e, s, w) {
+    const p = center(w.player);
+    if (s.phase === "windup") { if (s.t <= 0) { e.mist = true; e.untargetable = true; toPhase(s, "travel", KNIGHT.mistTime); } return; }
+    if (s.phase === "travel") {
+      e.untargetable = true;
+      if (s.t <= 0) { const v = playerVelocity(w), side = s.orbitDir || 1, base = Math.hypot(v.x, v.y) > .1 ? unit(-v.x, -v.y) : unit(e.x - p.x, e.y - p.y), a = Math.atan2(base.y, base.x) + side * .9, spot = nearestOpen(w, p.x + Math.cos(a) * KNIGHT.mistLand, p.y + Math.sin(a) * KNIGHT.mistLand, 2);
+        if (spot) { e.x = spot.x; e.y = spot.y; } e.mist = false; e.untargetable = false; s.data.aim = unit(p.x - e.x, p.y - e.y); s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach, arc: KNIGHT.slideArc }; toPhase(s, "strike", .22); }
+      return;
+    }
+    if (s.phase === "strike" && s.t <= 0) { resolveMelee(e, s, w, "knightMist", (q) => inArc(e, q, s.data.aim, bodyRadius(e) + KNIGHT.slideReach, KNIGHT.slideArc)); s.data.cutAt = w.now; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.knightMist.recover); }
   },
   turtleStomp(e, s, w) {
     if (s.phase !== "windup" || s.t > 0) return;
@@ -1007,13 +1117,31 @@ function fluid(s, v, dt) {
   s.vel = { x: prev.x + (v.x - prev.x) * k, y: prev.y + (v.y - prev.y) * k, speed: prev.speed + (v.speed - prev.speed) * k };
   return s.vel;
 }
+// Release 245 (Tim: "periodically he'll dodge your attack … turn to mist … doesn't matter if it's magic or physical … it
+// can be random"). Whenever a blade, shot or spell threatens it, it rolls once per threat (at most every mistEvery): at
+// mistChance % it dissolves, mid-attack or not, and reforms a few tiles aside. Rolls are hashed, so runs are repeatable.
+function knightMistDodge(e, s, w, p, d) {
+  if ((s.cd.qbEvade || 0) > 0 || e.mist) return false;
+  let threat = null;
+  for (const q of w.playerShots || []) { const dx = e.x - q.x + .5, dy = e.y - q.y + .45, m = Math.hypot(q.dx || 0, q.dy || 0) || 1, ux = (q.dx || 0) / m, uy = (q.dy || 0) / m, along = dx * ux + dy * uy; if (Math.hypot(dx, dy) <= QB_MOVES.threatRange && along > 0 && Math.abs(dx * uy - dy * ux) <= bodyRadius(e) + .7) { const side = (dx * uy - dy * ux) >= 0 ? 1 : -1; threat = { x: -uy * side, y: ux * side }; break; } }
+  if (!threat) for (const fx of w.playerBlasts || []) if (Math.hypot(e.x + .5 - fx.x, e.y + .45 - fx.y) <= (fx.radius || 1) + bodyRadius(e) + .6) { threat = unit(e.x + .5 - fx.x, e.y + .45 - fx.y); break; }
+  if (!threat && w.playerSwinging && d <= QB_MOVES.swingRange) { const away = unit(e.x - p.x, e.y - p.y), side = s.orbitDir || 1; threat = unit(away.x - away.y * side * .8, away.y + away.x * side * .8); }
+  if (!threat) return false;
+  s.cd.qbEvade = KNIGHT.mistEvery; s.mistRolls = (s.mistRolls || 0) + 1;
+  if (hashSeed(`${e.id}:mist:${s.mistRolls}`) % 100 >= KNIGHT.mistChance) return false; // this time it stands and takes it
+  if (s.attack) endAttack(e, s);
+  const to = nearestOpen(w, e.x + threat.x * KNIGHT.dodgeLeap, e.y + threat.y * KNIGHT.dodgeLeap, 1.5);
+  s.evade = { x: 0, y: 0, t: KNIGHT.dodgeMist, to }; e.untargetable = true; e.mist = true;
+  return true;
+}
 function evade(e, s, w, p, d) {
   if (s.evade) {
     const step = QB_MOVES.evadeSpeed * w.dt; if ((s.evade.x || s.evade.y) && !w.move(e, s.evade.x * step, s.evade.y * step)) s.evade.t = 0;
-    s.evade.t -= w.dt; e.hopLift = e.tucked ? 0 : Math.sin(Math.max(0, s.evade.t) / QB_MOVES.evadeTime * Math.PI) * .5;
-    if (s.evade.t <= 0) { s.evade = null; e.untargetable = false; e.hopLift = 0; e.tucked = false; }
+    s.evade.t -= w.dt; e.hopLift = e.tucked || e.mist ? 0 : Math.sin(Math.max(0, s.evade.t) / QB_MOVES.evadeTime * Math.PI) * .5;
+    if (s.evade.t <= 0) { if (s.evade.to) { e.x = s.evade.to.x; e.y = s.evade.to.y; } s.evade = null; e.untargetable = false; e.hopLift = 0; e.tucked = false; e.mist = false; }
     return true;
   }
+  if (e.kind === "nanobotKnight") return knightMistDodge(e, s, w, p, d);
   if ((s.attack && s.phase !== "recover") || (s.cd.qbEvade || 0) > 0) return false; // it may spring out of an attack's recovery
   let dir = null;
   for (const q of w.playerShots || []) {
@@ -1145,7 +1273,7 @@ function tentacleTurret(e, s, w, p) {
 // Tremor Worm swims there under the ground, leaving a wake of churned earth. The game reads `fleeDone`.
 function fleeStep(e, s, w) {
   if (s.attack) endAttack(e, s);
-  s.evade = null; s.tele = null; e.untargetable = true; e.hidden = e.kind === "tremorWorm";
+  s.evade = null; s.tele = null; e.untargetable = true; e.hidden = e.kind === "tremorWorm"; e.tucked = false; e.mist = e.kind === "nanobotKnight"; // the Knight goes home as a swarm
   if (e.fleeFade != null) { e.hopLift = 0; e.fleeFade = Math.max(0, e.fleeFade - w.dt / (e.fleeFadeTime || 1.4)); if (e.fleeFade <= 0) e.fleeDone = true; return; }
   const next = e.fleePath?.[0] || e.fleeTo, dx = next.x - e.x, dy = next.y - e.y, d = Math.hypot(dx, dy), step = (e.fleeSpeed || 2) * w.dt;
   e.hopLift = next.leap ? Math.min(1, (Number(e.hopLift) || 0) + w.dt * 4) : Math.max(0, (Number(e.hopLift) || 0) - w.dt * 4); // a bound over the chasm
@@ -1250,6 +1378,30 @@ export function tickPackEffects(effects, w) {
         w.addEffect({ kind: "frostTrail", owner: f.owner, x: f.x, y: f.y, radius: TURTLE.cometFrost, arming: 0, life: TURTLE.cometFrostLife, total: TURTLE.cometFrostLife, damage: f.frost, burst: 0 });
         f.life = 0; continue;
       }
+    } else if (f.kind === "orbital") { // release 245: the lance from the sky follows the Wayfarer, burning, scorching the ground behind it
+      const owner = w.enemies.find((q) => q.id === f.owner && !q.dead) || null, d = distance(p, f), sp = KNIGHT.orbitalSpeed * w.dt;
+      if (d > .05) { f.x += (p.x - f.x) / d * Math.min(d, sp); f.y += (p.y - f.y) / d * Math.min(d, sp); }
+      if (d <= f.radius + .1 && !(f.nextBite > f.age)) { f.nextBite = f.age + KNIGHT.orbitalTick; w.hurt(owner, f.damage, { jumpable: false, source: "knightOrbital", beam: true }); }
+      if (!(f.nextScorch > f.age)) { f.nextScorch = f.age + KNIGHT.scorchEvery; w.addEffect({ kind: "scorch", owner: f.owner, x: f.x, y: f.y, radius: KNIGHT.scorchRadius, arming: 0, life: KNIGHT.scorchLife, total: KNIGHT.scorchLife, damage: f.scorch }); }
+      if (!owner && f.life > .3) f.life = .3;
+    } else if (f.kind === "scorch") {
+      if (distance(p, f) <= f.radius && !(f.nextBite > f.age)) { f.nextBite = f.age + KNIGHT.scorchTick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "scorch", beam: true }); }
+    } else if (f.kind === "nanoOrb") { // circling the Knight until sent; then homing for a moment, then straight
+      const owner = w.enemies.find((q) => q.id === f.owner && !q.dead);
+      if (f.state === "circle") { if (!owner) { f.life = 0; continue; } f.orbit += KNIGHT.orbSpin * w.dt; f.x = owner.x + Math.cos(f.orbit) * KNIGHT.orbOrbit; f.y = owner.y + Math.sin(f.orbit) * KNIGHT.orbOrbit * .7; f.life = 99; }
+      else {
+        if (f.homeFor > 0) { f.homeFor -= w.dt; const want = Math.atan2(p.y - f.y, p.x - f.x), cur = Math.atan2(f.vy, f.vx), diff = ((want - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-KNIGHT.orbTurn * w.dt, Math.min(KNIGHT.orbTurn * w.dt, diff)); f.vx = Math.cos(a) * KNIGHT.orbSpeed; f.vy = Math.sin(a) * KNIGHT.orbSpeed; }
+        f.x += f.vx * w.dt; f.y += f.vy * w.dt;
+        if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0;
+        else if (distance(p, f) <= f.radius + .3) { f.life = 0; w.hurt(owner || null, f.damage, { jumpable: false, source: "knightOrb" }); }
+      }
+    } else if (f.kind === "missile") { // homing; bursts on whatever it meets, or by itself when its fuel runs out
+      const want = Math.atan2(p.y - f.y, p.x - f.x), cur = Math.atan2(f.vy, f.vx), diff = ((want - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-KNIGHT.missileTurn * w.dt, Math.min(KNIGHT.missileTurn * w.dt, diff));
+      f.vx = Math.cos(a) * KNIGHT.missileSpeed; f.vy = Math.sin(a) * KNIGHT.missileSpeed;
+      const nx = f.x + f.vx * w.dt, ny = f.y + f.vy * w.dt, wall = w.tileOpen && !w.tileOpen(nx + .5, ny + .5), hit = distance(p, f) <= f.radius + .35;
+      if (!wall && !hit && f.life - w.dt > 0) { f.x = nx; f.y = ny; }
+      else { if (distance(p, f) <= KNIGHT.missileBlast + .2) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "knightMissile" }); w.addEffect({ kind: "nanoBurst", owner: f.owner, x: f.x, y: f.y, radius: KNIGHT.missileBlast, arming: 0, life: .4, total: .4, damage: 0 }); f.life = 0; continue; }
+    } else if (f.kind === "nanoBurst") { /* drawn only */
     } else if (f.kind === "iceBurst") { /* the shatter, drawn only */ }
     else if (f.kind === "furrow") { /* release 239: the fleeing worm's wake; harmless, it only fades */ }
     else if (f.kind === "flesh") { if (distance(p, f) <= f.radius) { w.slow(f.slow || .55, .25); if (!(f.nextBite > f.age)) { f.nextBite = f.age + .8; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "fleshBloom", beam: true }); } } }

@@ -61,7 +61,7 @@ import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.ts";
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
 import { applyLandscape, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.ts";
-import { MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.ts";
+import { nanoScatters, MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
 import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, digSpot } from "./digging.ts";
@@ -525,8 +525,10 @@ export function updateProjectiles(
           }
           const dealt = damageFor(p, e);
           e.hp -= dealt;
-          e.hitFlash = 0.18;
-          e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.1 : 0.18);
+          if (dealt > 0) { // a scattered blow (release 245) neither flashes nor staggers
+            e.hitFlash = 0.18;
+            e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.1 : 0.18);
+          }
           if (p.path === "boomerang" || p.pierce > 0) {
             (p.hits ||= {})[e.id] = true;
             if (p.path !== "boomerang") p.pierce -= 1;
@@ -2562,7 +2564,7 @@ export class Game {
     return {
       player: p, map, width, height, dt, now, enemies: this.enemies, sanctuary,
       playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - last.y) / dt } : { x: 0, y: 0 },
-      playerShots: this.projectiles, playerSwinging: now < (p.meleeUntil || 0), // release 187: the Questing Beast reads these to dodge
+      playerShots: this.projectiles, playerSwinging: now < (p.meleeUntil || 0), playerBlasts: this.effects.filter((fx) => !fx.hostile && fx.damage > 0), // release 187: the Questing Beast reads these to dodge (release 245: the Nanobot Knight reads spells too)
       playerFacing: ({ left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, up: { x: 0, y: -1 }, down: { x: 0, y: 1 } })[p.facing] || { x: 0, y: 1 },
       pull(source, step, radius) { const ddx = source.x - p.x, ddy = source.y - p.y, dd = Math.hypot(ddx, ddy); if (!dd || dd > radius || now < (p.dodgeUntil || 0)) return false; moveAxis(p, ddx / dd * Math.min(step, Math.max(0, dd - 1)), ddy / dd * Math.min(step, Math.max(0, dd - 1)), map, width, true); return true; },
       open: (x, y) => footprintOpen(map, width, x, y),
@@ -2627,6 +2629,14 @@ export class Game {
       else { retreatCrossed(this.save, id, e.fleeTo.side); this.message = `${B.name} flees ${e.fleeTo.side}, out of this section. Follow it, or it is gone.`; }
     }
     if (gone) this.enemies = this.enemies.filter((e) => !gone.includes(e));
+  }
+  // Release 245: a plain physical blow scatters the Nanobot Knight into its swarm (no damage); elements, spells and a
+  // weapon carrying the Echo glyph reach it. Returns true when the blow scatters.
+  scatterCheck(e, physical, echoGlyph, now) {
+    if (!nanoScatters(e, { physical, echoGlyph })) return false;
+    e.scattered = .45;
+    if (now > (this.scatterNoteAt || 0)) { this.scatterNoteAt = now + 9000; this.message = "It scatters into a swarm around your blow and reforms. Plain steel will not hurt it: use spells, elements, or a weapon with the Echo glyph."; }
+    return true;
   }
   createEnemyFromSpawn(e, area = this.area) {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
@@ -2848,11 +2858,11 @@ export class Game {
         continue;
       }
       alertEnemy(e);
-      const base = (profile.damage + characterStats(this.save).meleeBonus) * (echo ? echo.share : 1) * pounce, dealt = glyphDamage(glyphs, e, base, { echo: !!echo }, now);
+      const base = (profile.damage + characterStats(this.save).meleeBonus) * (echo ? echo.share : 1) * pounce, scattered = this.scatterCheck(e, true, glyphs.has("echo"), now), dealt = scattered ? 0 : glyphDamage(glyphs, e, base, { echo: !!echo }, now); // release 245: plain steel scatters the Nanobot Knight
       e.hp -= dealt;
-      e.hitFlash = 0.18;
-      e.recoil = 0.2;
-      e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.12 : 0.22);
+      e.hitFlash = scattered ? 0 : 0.18;
+      e.recoil = scattered ? 0 : 0.2;
+      if (!scattered) e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.12 : 0.22);
       if (e.hp <= 0) {
         e.dead = true;
         this.defeatEnemy(e);
@@ -3270,7 +3280,7 @@ export class Game {
         p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))));
         p.invulnerableUntil=now+700;
       },
-      (shot, e) => shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
+      (shot, e) => this.scatterCheck(e, shot.damageType === "physical", !!shot.glyphHost && this.glyphLoadout(shot.glyphHost).has("echo"), now) ? 0 : shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
       (shot, e, dealt) => { if (shot.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); },
     );
     if(combatNpcTargets.length)this.syncNpcDamage("projectile");

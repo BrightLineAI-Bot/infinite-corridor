@@ -40,6 +40,16 @@ export const WORLD_BEASTS = {
     slain: "The Mountain Turtle sinks to its knees, and its shell settles like a tomb.",
     gone: "The Mountain Turtle has trampled you enough, and walks on. In time it will settle somewhere else.",
   },
+  nanobotKnight: {
+    kind: "nanobotKnight", name: "The Nanobot Knight", chance: .025, minDepth: 6, tries: 3, cooldownSlain: 22, cooldownEscaped: 28,
+    hitsToKill: 60, hpPerLevel: 28, damageShare: .22, speed: 1.1, attackGap: .22, staggerResistance: .95, rewardMarks: 190, rewardPerLevel: 19,
+    patience: 180, home: "glass", retreatMoves: "through",
+    flee: "The Nanobot Knight comes apart into a red-black swarm and streams away toward the glass.",
+    homeLine: "The swarm settles into the glass and soaks into it like water into sand.",
+    arrive: "Something black and red stands very still here, and the air hums. The Nanobot Knight is waiting.",
+    slain: "The Nanobot Knight's armour falls empty, and the swarm inside it goes dark.",
+    gone: "The Nanobot Knight has learned you, and drifts apart. In time it will gather somewhere else.",
+  },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
 
