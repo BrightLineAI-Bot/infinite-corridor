@@ -15,7 +15,7 @@
 //   storm    Stormkraken: a tentacle at a time, and an ink cloud that darkens the sea around the Wayfarer.
 // Every strike is telegraphed first; submerged creatures are hidden and untargetable. Data and pure rules: game.ts
 // supplies the world (water test, hurt, pull) and calls `updateSeaCreature` from its enemy loop.
-import { hashSeed } from "./random.js?v=r229-67bd013e8d1e";
+import { hashSeed } from "./random.js?v=r237-74592043bc57";
 
 export const SEA_HABITATS = {
   open: ["ocean", "deepOcean", "lakeWater"],
@@ -31,7 +31,7 @@ export const SEA_CREATURES = {
   breachfin: { name: "Breachfin", habitat: "open", pattern: "leap", hp: 30, damage: 12, xp: 16, aggro: 7, telegraph: .8, air: .9, splash: 1, rest: 1.8, segments: 1, colors: ["#9aa7b5", "#2b3440", "#f4f8ff"] },
   mireLeech: { name: "Mire Leech", habitat: "swamp", pattern: "hop", hp: 14, damage: 4, xp: 6, aggro: 6, hop: .9, every: .7, biteAt: .7, rest: 1, segments: 2, colors: ["#4d4a2a", "#1d1c10", "#c4c27a"] },
   greywhale: { name: "Greywhale", habitat: "deep", pattern: "whale", leviathan: true, hp: 420, damage: 14, xp: 60, aggro: 12, drift: .6, telegraph: 1.2, push: 1.5, rest: 4, size: 3, segments: 4, colors: ["#7b8a98", "#2c343c", "#e8eef4"] },
-  // Release r229-67bd013e8d1e (Tim): the Tyrant Mosasaur has its own body (a pointed snout, great jaws, a heavy barrel body, four
+  // Release 229 (Tim): the Tyrant Mosasaur has its own body (a pointed snout, great jaws, a heavy barrel body, four
   // flippers, a shark-like tail), and is bigger and tougher. The segmented creature it used to be is the Undertow Leviathan.
   tyrantMosasaur: { name: "Tyrant Mosasaur", habitat: "deep", pattern: "lunge", leviathan: true, boss: true, body: "mosasaur", hp: 480, damage: 24, xp: 120, aggro: 12, stalk: 2.6, lockAt: 4.8, telegraph: .9, speed: 10, exposed: 1.8, hitReach: 1.6, size: 3, segments: 1, colors: ["#56634e", "#1c2319", "#e8dcb0"] },
   undertowLeviathan: { name: "Undertow Leviathan", habitat: "deep", pattern: "lunge", leviathan: true, boss: true, hp: 320, damage: 22, xp: 90, aggro: 12, stalk: 2.6, lockAt: 4.5, telegraph: .9, speed: 10, exposed: 1.6, size: 2.2, segments: 5, colors: ["#4b5d4a", "#1a2219", "#e9d38a"] },
@@ -58,7 +58,7 @@ export const SEA_SPAWNS = {
   // Leviathans: sections with this many deep-ocean tiles, about one in `every`, one leviathan, weighted table.
   leviathanTiles: 120,
   leviathanEvery: 4,
-  // Release r229-67bd013e8d1e: one of the Tyrant Mosasaur's two places goes to the Undertow Leviathan; the table keeps its length, so
+  // Release 229: one of the Tyrant Mosasaur's two places goes to the Undertow Leviathan; the table keeps its length, so
   // every section still rolls the same place it always did.
   leviathans: ["greywhale", "greywhale", "greywhale", "tyrantMosasaur", "undertowLeviathan", "reefKraken", "reefKraken", "abyssalKraken", "stormkraken"],
   leviathanFromPlaza: 8,

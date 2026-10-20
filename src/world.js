@@ -1,9 +1,9 @@
-import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.js?v=r229-67bd013e8d1e';
-import{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=r229-67bd013e8d1e';export{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=r229-67bd013e8d1e';
-export{generateVariedDungeon,generateBespokeArena}from'./arenas.js?v=r229-67bd013e8d1e';
-import{arenaEligible}from'./arenas.js?v=r229-67bd013e8d1e';
-import{annotateDungeon}from'./dungeon-framework.js?v=r229-67bd013e8d1e';
-import{APERTURE_BANDS}from'./items.js?v=r229-67bd013e8d1e';import{hashSeed,rng,pick}from'./random.js?v=r229-67bd013e8d1e';import{storySiteFor}from'./story.js?v=r229-67bd013e8d1e';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
+import{worldBeastsHeld}from'./world-beasts.js?v=r237-74592043bc57';import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.js?v=r237-74592043bc57';
+import{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=r237-74592043bc57';export{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=r237-74592043bc57';
+export{generateVariedDungeon,generateBespokeArena}from'./arenas.js?v=r237-74592043bc57';
+import{arenaEligible}from'./arenas.js?v=r237-74592043bc57';
+import{annotateDungeon}from'./dungeon-framework.js?v=r237-74592043bc57';
+import{APERTURE_BANDS}from'./items.js?v=r237-74592043bc57';import{hashSeed,rng,pick}from'./random.js?v=r237-74592043bc57';import{storySiteFor}from'./story.js?v=r237-74592043bc57';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
 function passage(seed,axis,a,b){const r=rng(`${seed}:edge:${axis}:${a}:${b}`);return 5+Math.floor(r()*22)}export function sectionExits(seed,rx,ry){return{north:passage(seed,'h',rx,ry),south:passage(seed,'h',rx,ry+1),west:passage(seed,'v',rx,ry),east:passage(seed,'v',rx+1,ry)}}
 function carve(tiles,x,y,kind='ash'){if(kind==='refuge'&&x===12&&y===17)return;if(x>=0&&x<32&&y>=0&&y<32)tiles[y*32+x]={...tiles[y*32+x],x,y,kind,blocked:false}}
 function supply(seed,rx,ry,tiles,w=32){const r=rng(`${seed}:supplies:v2:${rx}:${ry}`),rare=w===32&&r()<.06,types=['restorativeDraught','ironbarkTonic','lumenPhial','secondary'],spots=w===24?[[6,6],[7,6],[6,7]]:[[15,17],[17,17],[15,18],[17,18]],[x,y]=spots[Math.floor(r()*spots.length)],supplyType=rare?'crossingSigil':types[Math.floor(r()*types.length)];return{id:`supply-${rx}-${ry}`,kind:supplyType==='secondary'?'weaponCache':'supplyCache',supplyType,x,y,state:'ready',actions:['collect']}}
@@ -149,7 +149,7 @@ export function wayfindingTargets(seed,rx,ry,generation=1,save=null){
   const targets=[],seen=new Set(),add=(kind,x,y,name)=>{const key=`${kind}:${x},${y}`;if((x!==rx||y!==ry)&&!seen.has(key)){seen.add(key);targets.push({kind,rx:x,ry:y,name})}};
   const hunt=save?.viewport?.contracts?.[save?.viewport?.activeHuntId],huntTarget=hunt?.target;if(huntTarget&&['accepted','tracking','target-located'].includes(hunt.status))add(hunt.kind==='trial'||hunt.domain?'danger':'story',huntTarget.rx,huntTarget.ry,hunt.title);
   const far=save?.relayNetwork?.coordinate;if(far)add('story',far.rx,far.ry,'the Far Array');
-  const beast=save?.questingBeast?.active;if(beast)add('danger',beast.rx,beast.ry,'the Questing Beast');
+  const beast=save?.questingBeast?.active;if(beast)add('danger',beast.rx,beast.ry,'the Questing Beast');for(const b of worldBeastsHeld(save||{}))add('danger',b.rx,b.ry,b.name);
   const quill=save?.wanderer?.quest;if(quill?.type==='cache'&&!quill.done&&quill.target)add('story',quill.target.rx,quill.target.ry,"Quillon's satchel");
   const echo=save?.story?.arcs?.cartographersEcho?.site;if(echo&&!save.story.arcs.cartographersEcho.completed)add('story',echo.rx,echo.ry,'the Unwritten Meridian');
   for(const c of Object.values(save?.checkpoints||{}))if(Number.isFinite(c?.rx)&&Number.isFinite(c?.ry))add('beacon',c.rx,c.ry,c.name||'Wayglass');
