@@ -2575,6 +2575,7 @@ export class Game {
       push(source, step, radius) { const ddx = p.x - source.x, ddy = p.y - source.y, dd = Math.hypot(ddx, ddy) || 1; if (dd > radius || now < (p.dodgeUntil || 0)) return false; moveAxis(p, ddx / dd * step, ddy / dd * step, map, width, true); return true; }, // release 235: the Blob's jet
       poison(seconds, dps) { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return; if (now < (p.dodgeUntil || 0)) return; applyPoison(ensureEliteState(game.save).status, seconds, dps); },
       effects: () => game.packEffects || [],
+      elevation: (x, y) => elevationAt(map, width, x, y), // release 235: high ground stays above the Blob
       slow(factor, seconds) { p.slowFactor = Math.min(now < (p.slowUntil || 0) ? (p.slowFactor || 1) : 1, factor); p.slowUntil = Math.max(p.slowUntil || 0, now + seconds * 1000); },
       addEffect: (effect) => addPackEffect(game.packEffects ||= [], effect, now),
       spawnMinion(owner, kind, x, y, index) {

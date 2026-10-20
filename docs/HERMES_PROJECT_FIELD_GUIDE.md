@@ -42,7 +42,8 @@ Tim, 2026-10-19: the Questing Beast is a little too large. He wants five or six 
   - The Blob's attacks are `blobTendrils`, `blobGasJet`, `blobGasCloud`, `blobBloblets` and `blobEngulf`, with START and RUN runners.
   - `BLOB` is the balance table.
   - `blobPassive` handles stepped growth, the burning touch, and ooze spatter on taking damage.
-  - `blobletHome` makes a bloblet wander, return and merge, healing the Blob.
+  - `blobletHome` makes a bloblet wander, return and merge, healing the Blob and swelling it (`BLOB.mergeGrow`, up to `mergeMax`).
+  - High ground stays above the Blob (Tim): on elevation of `BLOB.safeElev` (4) or more, no ooze lands, and its ooze, touch and surge do no harm (`aboveBlob`, via the world's optional `elevation`). Tendrils and gas still reach.
   - The new effects are `ooze`, which persists until its owner dies, and `gas`, which drifts and poisons. The world adapter gains optional `push`, `poison` and `effects`.
   - `questingBeast.form.scale` drops from 1.75 to 1.5.
 - **`src/monster-render.ts`.**
@@ -52,7 +53,7 @@ Tim, 2026-10-19: the Questing Beast is a little too large. He wants five or six 
 - **`game.ts`.**
   - Overworld load calls `worldBeastFor` and announces the beast. Spawning tunes it, and it is exempt from the global damage scale.
   - Its death pays the bounty, and the Wayfarer's death counts a try.
-  - `packWorld` gains `push`, `poison` and `effects`.
+  - `packWorld` gains `push`, `poison`, `effects` and `elevation`.
 - **`src/echoes.ts`.** Every pack creature has one Echo. Blob's Spatter: being hurt leaves a slowing patch. Bloblet Mend: kills heal 3.
 - **`world.ts`.** Held sections are Atlas danger marks.
 - **`types.ts`.** `ensureWorldBeasts` runs in `freshSave` and `migrateSave`.

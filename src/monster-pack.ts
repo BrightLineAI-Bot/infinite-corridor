@@ -394,7 +394,10 @@ export const BLOB = {
   clouds: 8, cloudSpeed: 1.5, cloudLife: 6, cloudGrow: [.6, 1.6],
   bloblets: 3, blobletsMax: 6, blobletWander: 2.4, blobletHeal: .03, // a merging bloblet restores this share of its max health
   surgeLength: 4.5,
+  safeElev: 4,                                           // Tim: ground this high stays above the Blob: no ooze lands there, and its ooze and touch cannot reach you
+  mergeGrow: .25, mergeMax: 1.5,                         // each bloblet that makes it home swells it by this much more (up to mergeMax in all)
 };
+const aboveBlob = (w, x, y) => (Number(w.elevation?.(x, y)) || 0) >= BLOB.safeElev;
 function blobOwner(w, f) { return w.enemies.find((q) => q.id === f.owner && !q.dead) || null; }
 function addOrb(e, w, angle, damage) { w.addEffect({ kind: "orb", owner: e.id, x: e.x, y: e.y, vx: Math.cos(angle) * QB_ORB.speed, vy: Math.sin(angle) * QB_ORB.speed, radius: QB_ORB.radius, arming: 0, life: QB_ORB.life, damage }); }
 
@@ -515,7 +518,7 @@ const RUN = {
     if (s.phase === "windup") { if (s.t <= 0) { s.data.len = s.tele?.length || 2; s.data.done = 0; toPhase(s, "active", attack.active); } return; }
     if (s.phase === "active") {
       const step = s.data.len / attack.active * w.dt; if (s.data.done < s.data.len && w.move(e, s.data.aim.x * step, s.data.aim.y * step)) s.data.done += step;
-      if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + .5) { s.hitOnce = true; w.hurt(e, damageOf(e, "blobEngulf"), { jumpable: false, source: "blobEngulf" }); }
+      if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + .5 && !aboveBlob(w, w.player.x, w.player.y)) { s.hitOnce = true; w.hurt(e, damageOf(e, "blobEngulf"), { jumpable: false, source: "blobEngulf" }); }
       if (s.t <= 0) { s.tele = null; toPhase(s, "recover", attack.recover); }
     }
   },
@@ -803,17 +806,17 @@ function evade(e, s, w, p, d) {
 function blobPassive(e, s, w, p, d) {
   e.blobBase ||= { scale: Number(e.scale) || 1, radius: bodyRadius(e) };
   e.blobAge = (Number(e.blobAge) || 0) + w.dt;
-  const grow = 1 + Math.min(1, e.blobAge / BLOB.growTime) * (BLOB.maxGrow - 1), stepped = Math.round(grow / BLOB.growStep) * BLOB.growStep;
+  const grow = 1 + Math.min(1, e.blobAge / BLOB.growTime) * (BLOB.maxGrow - 1) + Math.min(BLOB.mergeMax, Number(e.blobMerged) || 0), stepped = Math.round(grow / BLOB.growStep) * BLOB.growStep;
   e.scale = Math.round(e.blobBase.scale * stepped * 100) / 100; e.bodyRadius = e.blobBase.radius * stepped;
   s.contactCd = Math.max(0, (s.contactCd || 0) - w.dt); s.oozeCd = Math.max(0, (s.oozeCd || 0) - w.dt);
-  if (s.contactCd <= 0 && d <= bodyRadius(e) + .2) { s.contactCd = BLOB.contactEvery; w.hurt(e, Math.max(1, Math.ceil((Number(e.damage) || 1) * BLOB.contact)), { jumpable: false, source: "blobTouch" }); }
+  if (s.contactCd <= 0 && d <= bodyRadius(e) + .2 && !aboveBlob(w, p.x, p.y)) { s.contactCd = BLOB.contactEvery; w.hurt(e, Math.max(1, Math.ceil((Number(e.damage) || 1) * BLOB.contact)), { jumpable: false, source: "blobTouch" }); }
   const hp = Number(e.hp) || 0;
   if (s.lastHp !== undefined && hp < s.lastHp && s.oozeCd <= 0) {
     s.oozeCd = BLOB.oozeEvery; s.oozes = (s.oozes || 0) + 1;
     const lying = (w.effects?.() || []).filter((f) => f.kind === "ooze" && f.owner === e.id).length;
     for (let i = 0; i < BLOB.oozePerHit && lying + i < BLOB.oozeMax; i++) {
       const a = (hashSeed(`${e.id}:ooze:${s.oozes}:${i}`) % 628) / 100, r = bodyRadius(e) + 1 + (hashSeed(`${e.id}:ooze-r:${s.oozes}:${i}`) % 100) / 45, spot = nearestOpen(w, e.x + Math.cos(a) * r, e.y + Math.sin(a) * r, 1.5);
-      if (spot) w.addEffect({ kind: "ooze", owner: e.id, x: spot.x, y: spot.y, from: { x: e.x, y: e.y }, radius: BLOB.oozeRadius, arming: BLOB.oozeFlight, life: 1e6, damage: Math.max(1, Math.ceil((Number(e.damage) || 1) * BLOB.oozeBite)), slow: BLOB.oozeSlow });
+      if (spot && !aboveBlob(w, spot.x, spot.y)) w.addEffect({ kind: "ooze", owner: e.id, x: spot.x, y: spot.y, from: { x: e.x, y: e.y }, radius: BLOB.oozeRadius, arming: BLOB.oozeFlight, life: 1e6, damage: Math.max(1, Math.ceil((Number(e.damage) || 1) * BLOB.oozeBite)), slow: BLOB.oozeSlow });
     }
   }
   s.lastHp = hp;
@@ -826,7 +829,7 @@ function blobletHome(e, s, w) {
   const age = (w.now - (e.bornAt || 0)) / 1000;
   if (age < BLOB.blobletWander) { const a = e.wanderAngle || 0, sp = .9 * (MOVEMENT_MODES.skitter.speed) * w.dt; w.move(e, Math.cos(a) * sp, Math.sin(a) * sp); return true; }
   const dx = owner.x - e.x, dy = owner.y - e.y, dd = Math.hypot(dx, dy) || 1;
-  if (dd <= bodyRadius(owner) + .3) { e.dead = true; e.noRewards = true; e.merged = true; owner.hp = Math.min(owner.maxHp, (Number(owner.hp) || 0) + Math.round(owner.maxHp * BLOB.blobletHeal)); const os = owner.pack; if (os) os.lastHp = owner.hp; return true; }
+  if (dd <= bodyRadius(owner) + .3) { e.dead = true; e.noRewards = true; e.merged = true; owner.hp = Math.min(owner.maxHp, (Number(owner.hp) || 0) + Math.round(owner.maxHp * BLOB.blobletHeal)); owner.blobMerged = Math.min(BLOB.mergeMax, (Number(owner.blobMerged) || 0) + BLOB.mergeGrow); /* and it swells */ const os = owner.pack; if (os) os.lastHp = owner.hp; return true; }
   const sp = 1.1 * MOVEMENT_MODES.skitter.speed * w.dt; if (!w.move(e, dx / dd * sp, dy / dd * sp)) w.detour?.(e, sp);
   return true;
 }
@@ -889,7 +892,7 @@ export function tickPackEffects(effects, w) {
     if (f.kind === "web") { if (distance(p, f) <= f.radius) w.slow(f.slow || .5, .25); }
     else if (f.kind === "ooze") { // release 235: lies where it fell until the Blob is dead
       const owner = blobOwner(w, f); if (!owner && f.life > 1) f.life = 1;
-      if (distance(p, f) <= f.radius) { w.slow(f.slow || .7, .25); if (!(f.nextBite > f.age)) { f.nextBite = f.age + .9; w.hurt(owner, f.damage, { jumpable: false, source: "ooze", beam: true }); } }
+      if (distance(p, f) <= f.radius && !aboveBlob(w, p.x, p.y)) { w.slow(f.slow || .7, .25); if (!(f.nextBite > f.age)) { f.nextBite = f.age + .9; w.hurt(owner, f.damage, { jumpable: false, source: "ooze", beam: true }); } }
     } else if (f.kind === "gas") { // release 235: drifts outward and swells; poisons whoever stands in it
       f.x += (f.vx || 0) * w.dt; f.y += (f.vy || 0) * w.dt; const k = Math.min(1, f.age / BLOB.cloudLife); f.radius = BLOB.cloudGrow[0] + (BLOB.cloudGrow[1] - BLOB.cloudGrow[0]) * k;
       if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) { f.vx = 0; f.vy = 0; }

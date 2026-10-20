@@ -88,3 +88,17 @@ test('the Questing Beast is a little smaller; the Blob and its bloblets are neve
   const g = readFileSync(new URL('../src/game.ts', import.meta.url), 'utf8');
   assert.match(g, /worldBeastFor\(this\.save,this\.map,this\.rx,this\.ry\)/); assert.match(g, /tuneWorldBeast\(c, this\.save, e\.worldBeast/); assert.match(g, /worldBeastSlain\(this\.save, e\.worldBeast\)/); assert.match(g, /worldBeastPlayerFell\(/);
 });
+
+test('high ground (elevation 4 and up) stays above the Blob; every bloblet that merges swells it', () => {
+  // Tim: "ground that's level four or above … the ooze will not spread to you"; "each ooze creature that joins him makes the blob noticeably bigger".
+  const w = world(), b = blob(w); b.packAttacks = []; w.elevation = (x, y) => (x > 13 ? 5 : 0);
+  w.player.x = b.x + .2; w.player.y = b.y; step(w, 1); assert.ok(w.hurts.some((h) => h.source === 'blobTouch'), 'low ground: it burns');
+  b.x = 14.2; b.y = 12; w.player.x = 14.4; w.player.y = 12; w.hurts = []; step(w, 1.5);
+  assert.ok(!w.hurts.some((h) => h.source === 'blobTouch'), 'high ground: its touch cannot reach you');
+  w.fx = []; b.x = 15; b.hp -= 60; w.player.x = 2; w.player.y = 2; step(w, 1);
+  assert.ok(w.fx.filter((f) => f.kind === 'ooze').every((f) => f.x <= 13.5), 'no ooze lands on high ground');
+  const v = world(), c = blob(v); c.packAttacks = []; step(v, .1); const before = c.scale;
+  v.player.x = c.x + 6; v.player.y = c.y; c.packAttacks = ['blobBloblets']; c.pack = freshPackState(); c.pack.gap = 0; step(v, 1); c.packAttacks = []; v.player.x = 22; v.player.y = 2; step(v, 12);
+  const merged = v.enemies.filter((q) => q.merged).length; assert.ok(merged >= 1);
+  assert.ok(c.blobMerged >= BLOB.mergeGrow, 'merging records the swell'); assert.ok(c.scale > before + .3, `noticeably bigger: ${before} → ${c.scale}`);
+});
