@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Release 245 — the fourth world beast: the Nanobot Knight. It is black plate with a red seam of light and nothing inside but a swarm, with a tall helm and red visor, a fraying cape, and a long black greatsword with a red edge. Plain steel scatters it: an ordinary sword swing or a physical shot does no damage and it reforms. Spells, magic shots, glyph powers (burning, chaining, bursts), echoes and any weapon carrying the Echo glyph hurt it. Its attacks:
+- Release 245 — the fourth world beast: the Nanobot Knight. It is black plate with a red seam of light and nothing inside but a swarm, with a tall helm and red visor, a cape that billows behind it, a faint miasma haze hanging about it, and a long black greatsword with a red edge. Plain steel scatters it: an ordinary sword swing or a physical shot does no damage and it reforms. Spells, magic shots, glyph powers (burning, chaining, bursts), echoes and any weapon carrying the Echo glyph hurt it. Its attacks:
   - it slides in low with three sliding cuts in a row;
   - its arm opens into a cannon whose red beam tracks you while it charges, then fires straight;
   - swords fall out of the sky onto marked ground around and on you;

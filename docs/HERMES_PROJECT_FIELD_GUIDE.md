@@ -67,6 +67,7 @@ The fourth of Tim's world beasts (2026-10-19). He asked for:
   - The figure: angular greaves, a breastplate with a red seam, pauldrons, a tall helm with a glowing visor slit and a spike, a tattered cape with red lining, and a long black greatsword with a red edge (low at rest, trailing in a slide, raised with an arc in a cut).
   - The cannon arm opens along the beam angle with a charging glow.
   - Motes drift off it; in mist it is only a swarm; when scattered it is jittered and translucent with a burst of motes.
+  - Tim's touches: the cape streams back from the shoulders like a sail. Its ragged hem rolls in slow waves (harder while it slides), with folds and a red lining where it turns. A faint dark-red miasma drifts up around it in six translucent puffs, all flat fills.
   - Effects: falling and fallen swords, the orbital lance column and its scorch, seeker orbs, missiles with exhaust, and missile bursts.
 - **`src/world-beasts.ts`.** A `nanobotKnight` row: home `glass`, `retreatMoves: "through"`.
 - **`src/echoes.ts`.** "Nanite Seekers": kills strike up to two foes within 5 tiles.

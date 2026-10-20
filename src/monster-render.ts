@@ -571,15 +571,18 @@ const BODY = {
     const poly = (pts, fill, stroke) => { ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = Math.max(1, u * .008); ctx.stroke(); } };
     const motes = (n, cx, cy, spread, rise, size) => { for (let i = 0; i < n; i++) { const ph = (t * .7 + i * .137) % 1, a = i * 2.39, x = cx + Math.cos(a) * spread * (.3 + ph) - flip * ph * spread * .6, y = cy + Math.sin(a) * spread * .5 - ph * rise; ctx.fillStyle = i % 5 ? `rgba(20,20,26,${1 - ph})` : `rgba(255,60,50,${.9 * (1 - ph)})`; ctx.fillRect(x, y, size, size); } };
     ctx.fillStyle = "rgba(4,4,6,.5)"; ctx.beginPath(); ctx.ellipse(k, b, u * .3, u * .08, 0, 0, TAU); ctx.fill();
+    for (let i = 0; i < 6; i++) { const ph = (t * .12 + i / 6) % 1, a = i * 2.1 + t * .2, hx0 = k + Math.cos(a) * u * (.25 + ph * .3), hy0 = b - u * (.15 + ph * .55); ctx.fillStyle = i % 3 ? `rgba(28,10,14,${.22 * Math.sin(ph * Math.PI)})` : `rgba(120,20,24,${.14 * Math.sin(ph * Math.PI)})`; ctx.beginPath(); ctx.ellipse(hx0, hy0, u * (.16 + ph * .14), u * (.09 + ph * .08), a, 0, TAU); ctx.fill(); } // release 245: a faint miasma hanging about it, drifting up and thinning
     if (e.mist) { motes(110, k, b - u * .45, u * .3, u * .55, Math.max(2.5, u * .035)); glow(ctx, k, b - u * .5, u * .4, p[2], .25); return; } // only the swarm
     const H = u * 1.05, hip = b - H * .44, sh = b - H * .76, lean = e.sliding ? .35 : att === "knightSlide" ? .15 : 0, step = Math.sin(t * 5) * u * .02;
     const jit = scat > 0 ? (n) => (Math.sin(t * 60 + n * 7) * u * .05 * scat / .45) : () => 0;
     ctx.save(); if (scat > 0) ctx.globalAlpha *= .55 + .45 * (1 - scat / .45);
     ctx.translate(k, 0); if (lean) { ctx.translate(0, b); ctx.transform(1, 0, -flip * lean * .6, 1, 0, 0); ctx.translate(0, -b); }
-    // the cape: long, tattered, fraying into motes
-    const cw = u * .3, sway = Math.sin(t * 2.2) * u * .03 - flip * (e.sliding ? u * .12 : 0);
-    const cape = [-flip * cw * .5, sh]; for (let i = 0; i <= 6; i++) { const f = i / 6, x = -flip * (cw * (.6 + f * .5)) + sway * f, y = b - u * .06 - (i % 2 ? u * .07 : 0); cape.push(x + flip * f * cw * 1.3 - flip * cw * .2 * f, y); } cape.push(flip * cw * .25, sh);
-    poly(cape, "#0c0c10", "#000000"); poly([-flip * cw * .35, sh + u * .02, -flip * cw * .5 + sway * .5, b - u * .2, flip * cw * .1, sh + u * .05], "#3a0a0e"); // the red lining
+    // the cape: long and tattered, billowing behind it in slow waves (harder when it slides), fraying into motes
+    const cw = u * .3, gust = e.sliding ? 1.8 : 1, billow = u * (.22 + .06 * Math.sin(t * 1.3)) * gust, hem = (f) => [-flip * (cw * .85 + billow) * (1 - f) + flip * cw * .4 * f + Math.sin(t * 2.6 - f * 5) * u * .05 * gust * (1 - f * .5), b - u * .04 - (Math.round(f * 8) % 2 ? u * .08 : 0) - Math.sin(t * 1.9 - f * 4 + 1) * u * .06 * gust * (1 - f)];
+    const cape = [-flip * cw * .5, sh - u * .01]; for (let i = 0; i <= 8; i++) cape.push(...hem(i / 8)); cape.push(flip * cw * .25, sh + u * .02);
+    poly(cape, "#1a1a22", "#000000"); // the cape streaming back from the shoulders, its hem ragged and rolling
+    ctx.strokeStyle = "#0a0a0e"; ctx.lineWidth = Math.max(1, u * .008); for (const f of [.15, .4, .65]) { const [x2, y2] = hem(f); ctx.beginPath(); ctx.moveTo(-flip * cw * .3 + flip * f * cw * .4, sh + u * .03); ctx.quadraticCurveTo((x2 - flip * cw * .2) * .7, (sh + y2) / 2, x2, y2 - u * .02); ctx.stroke(); } // folds
+    const [lx2, ly2] = hem(.08), [lx3, ly3] = hem(.3); poly([-flip * cw * .45, sh + u * .02, lx2, ly2 - u * .02, lx3, ly3 - u * .03, -flip * cw * .2, sh + u * .1], "#4a0c12"); // the red lining where it turns
     // legs: angular greaves, a wide stance
     for (const [side, ph] of [[-1, 0], [1, Math.PI]]) { const lx = side * u * .1 + jit(side), lift = Math.max(0, Math.sin(t * 5 + ph)) * u * .02 * (att ? 0 : 1);
       poly([lx - u * .06, hip, lx + u * .06, hip, lx + u * .05, b - u * .2 - lift, lx - u * .055, b - u * .2 - lift], side * flip > 0 ? "#2a2a32" : "#1a1a20", "#000"); // thigh
