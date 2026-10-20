@@ -164,3 +164,20 @@ test('the Tremor Worm spews lava that spills outward, lies hot for a couple of s
   assert.ok(w.hurts.some((h) => h.source === 'wormLava'), 'it burns whoever stands in it');
   m.packAttacks = []; m.dead = true; step(w, WORM.lavaLife + .5); assert.ok(!w.fx.some((f) => f.kind === 'lava'), 'and cools away after a couple of seconds');
 });
+
+test('the worm\'s tentacles cannot be outrun: left behind, they sink and come up around you again', () => {
+  // Tim (2026-10-20): "wherever you go … they'll go back in the ground and pop up around you … you can't really escape them".
+  const w = world({ size: 40, player: { x: 12, y: 12 } }), m = worm(w, 6, 12);
+  m.packAttacks = ['wormTentacles']; m.pack.worm = { mode: 'surfaced', t: 99, trips: 0 }; m.pack.gap = 0; step(w, 1.6);
+  m.packAttacks = []; const field = w.enemies.filter((q) => q.wormOf === m.id && !q.dead); assert.equal(field.length, WORM.fieldTentacles);
+  field[0].hp = 7; const modes = field.map((q) => q.tentacleMode);
+  w.player.x = 34; w.player.y = 34; m.pack.worm = { mode: 'surfaced', t: 99, trips: 0 };
+  let sank = false; step(w, 1, () => { m.pack.worm.t = 99; });
+  assert.ok(field.every((q) => !q.hidden), 'not at once');
+  step(w, WORM.tentacleFollowDelay + WORM.tentacleSink + .2, () => { m.pack.worm.t = 99; sank ||= field.some((q) => q.hidden); });
+  assert.ok(sank, 'they go back into the ground');
+  step(w, WORM.tentacleUnder[1] + WORM.tentacleRise + .5, () => { m.pack.worm.t = 99; });
+  for (const q of field) { assert.ok(!q.dead && !q.hidden && !q.untargetable, 'and come up again'); assert.ok(Math.hypot(q.x - 34, q.y - 34) <= WORM.tentacleRing[1] + 2.1, `around you: ${q.x},${q.y}`); }
+  assert.equal(field[0].hp, 7, 'the same tentacle, wounds and all'); assert.deepEqual(field.map((q) => q.tentacleMode), modes);
+  assert.equal(w.enemies.filter((q) => q.wormOf === m.id && !q.dead).length, WORM.fieldTentacles, 'no new ones');
+});

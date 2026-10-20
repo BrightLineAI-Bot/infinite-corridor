@@ -459,6 +459,7 @@ const BODY = {
   // carry a glowing orifice at the tip, the laser ones a single lidded lens.
   wormTentacle(ctx, q) {
     const { k, b, u, t, p, flip, e } = q, up = 1 - Math.max(0, Math.min(1, Number(e.rising) || 0)), laser = e.tentacleMode === "laser";
+    if (e.hidden) return; // under the ground, on its way to you
     shadowAt(ctx, k, b, u * .32, u * .1, .5);
     ctx.fillStyle = "#120a06"; ctx.beginPath(); ctx.ellipse(k, b - u * .02, u * .24, u * .08, 0, 0, TAU); ctx.fill();
     for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; ctx.fillStyle = i % 2 ? "#7a6044" : "#56422e"; ctx.beginPath(); ctx.ellipse(k + Math.cos(a) * u * .25, b - u * .02 + Math.sin(a) * u * .08, u * .05, u * .03, a, 0, TAU); ctx.fill(); }

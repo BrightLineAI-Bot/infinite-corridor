@@ -427,6 +427,8 @@ export const WORM = {
   mawTentacles: 4, mawSpread: .3, mawLength: 5.2, mawWidth: .42,
   suctionRadius: 9, suctionPull: 3.3,
   fieldTentacles: 2, tentaclesMax: 6, lasersMax: 3, tentacleRing: [3, 6.5], tentacleRise: .8,
+  // Tim: "you can't really escape them": a tentacle left far behind sinks, and comes up again around the Wayfarer a little later
+  tentacleFollow: 8, tentacleFollowDelay: 1.4, tentacleSink: .5, tentacleUnder: [1, 2.4],
   fireEvery: .26, fireBurst: 5, fireRest: 1.4, fireSpeed: 6.4, fireLife: 1.8, fireRadius: .3,
   laserCharge: 1.3, laserTurn: .42, laserLength: 10, laserTick: .4, laserWidth: .5, // lasers stay on, turning slowly after you, until their tentacle is cut down
   riseTravel: 2.2, riseSpeed: 5.2, riseMark: .8, riseRadius: 1.6,
@@ -991,13 +993,30 @@ function wormCycle(e, s, w, p) {
   return true;
 }
 // A tentacle the worm raised: it never moves. It rises, then spits bursts of fire at the Wayfarer or (laser) holds a
-// burning line that turns slowly after them, until it is cut down. It sinks when the worm dies.
+// burning line that turns slowly after them, until it is cut down. It sinks when the worm dies. Left far behind, it sinks
+// and comes up again around the Wayfarer a little later, so running never leaves the tentacles behind.
 function tentacleTurret(e, s, w, p) {
   const owner = w.enemies.find((q) => q.id === e.wormOf && !q.dead);
   if (!owner) { e.dead = true; e.noRewards = true; return true; }
+  if (e.tentPhase === "sinking") { // going back into the ground
+    e.untargetable = true; s.tele = null; e.rising = Math.min(1, (Number(e.rising) || 0) + w.dt / WORM.tentacleSink);
+    if (e.rising >= 1) { const [lo, hi] = WORM.tentacleUnder; e.tentPhase = "under"; e.surfaceAt = w.now + (lo + (hashSeed(`${e.id}:under:${e.moves || 0}`) % 100) / 100 * (hi - lo)) * 1000; }
+    return true;
+  }
+  if (e.tentPhase === "under") { // travelling under the ground; then it comes up somewhere around the Wayfarer
+    e.hidden = true; e.untargetable = true; s.tele = null;
+    if (w.now < e.surfaceAt) return true;
+    e.moves = (e.moves || 0) + 1;
+    const [lo, hi] = WORM.tentacleRing, a = (hashSeed(`${e.id}:follow:${e.moves}`) % 628) / 100, r = lo + (hashSeed(`${e.id}:follow-r:${e.moves}`) % 100) / 100 * (hi - lo);
+    const spot = nearestOpen(w, p.x + Math.cos(a) * r, p.y + Math.sin(a) * r, 2);
+    if (!spot) { e.surfaceAt = w.now + 400; return true; }
+    e.x = spot.x; e.y = spot.y; e.tentPhase = null; e.hidden = false; e.bornAt = w.now; s.laser = null; s.fire = null; e.farFor = 0;
+  }
   const age = (w.now - (e.bornAt || 0)) / 1000;
   if (age < WORM.tentacleRise) { e.untargetable = true; e.rising = 1 - age / WORM.tentacleRise; s.tele = { type: "circle", x: e.x, y: e.y, radius: .8, erupt: true, total: WORM.tentacleRise, left: WORM.tentacleRise - age }; return true; }
   if (e.rising) { e.rising = 0; e.untargetable = false; s.tele = null; if (distance(p, e) <= 1.1) w.hurt(owner, Math.max(1, Math.ceil((Number(owner.damage) || 1) * .4)), { jumpable: false, source: "wormTentacle" }); }
+  if (distance(p, e) > WORM.tentacleFollow) { e.farFor = (Number(e.farFor) || 0) + w.dt; if (e.farFor >= WORM.tentacleFollowDelay) { e.tentPhase = "sinking"; e.farFor = 0; s.tele = null; return true; } }
+  else e.farFor = 0;
   e.facingX = (p.x - e.x) >= 0 ? 1 : -1;
   const dmg = Math.max(1, Math.ceil((Number(owner.damage) || 1) * ATTACK_MODULES.wormTentacles.damage));
   if (e.tentacleMode === "laser") {
