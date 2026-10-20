@@ -1039,6 +1039,18 @@ function tentacleTurret(e, s, w, p) {
   return true;
 }
 
+// A world beast in retreat (release 239; the game sets `fleeTo`): it no longer fights or dodges, cannot be touched, and
+// moves by its own laws, straight through walls and water, to the gate it leaves by or to its home ground, where it fades
+// into the ground (`fleeFade` from 1 to 0). The Tremor Worm swims there under the ground. The game reads `fleeDone`.
+function fleeStep(e, s, w) {
+  if (s.attack) endAttack(e, s);
+  s.evade = null; s.tele = null; e.untargetable = true; e.hidden = e.kind === "tremorWorm"; e.hopLift = 0;
+  if (e.fleeFade != null) { e.fleeFade = Math.max(0, e.fleeFade - w.dt / (e.fleeFadeTime || 1.4)); if (e.fleeFade <= 0) e.fleeDone = true; return; }
+  const dx = e.fleeTo.x - e.x, dy = e.fleeTo.y - e.y, d = Math.hypot(dx, dy), step = (e.fleeSpeed || 2) * w.dt;
+  if (d <= step + .05) { e.x = e.fleeTo.x; e.y = e.fleeTo.y; if (e.fleeTo.home) e.fleeFade = 1; else e.fleeDone = true; return; }
+  e.x += dx / d * step; e.y += dy / d * step; e.facingX = dx >= 0 ? 1 : -1;
+}
+
 // One simulation step for a pack creature. `w` is the world adapter built by the game (or a test).
 export function updatePackMonster(e, w) {
   const def = packDefinition(e);
@@ -1048,6 +1060,7 @@ export function updatePackMonster(e, w) {
   e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt); e.recoil = Math.max(0, (e.recoil || 0) - dt); e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
   for (const id of Object.keys(s.cd)) s.cd[id] = Math.max(0, s.cd[id] - dt);
   s.gap = Math.max(0, (s.gap || 0) - dt);
+  if (e.fleeTo) { fleeStep(e, s, w); return; }
   if (e.illusion && (w.now - (e.bornAt || 0)) > 14000) { e.dead = true; return; }
   const p = center(w.player), d = distance(p, e), brain = BRAINS[e.brain || def.brain];
   if (!e.aggro && d < (brain?.hiddenUntilAggro ? 4.2 : 7)) e.aggro = true;

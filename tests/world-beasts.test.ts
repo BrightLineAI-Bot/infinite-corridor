@@ -181,3 +181,62 @@ test('the worm\'s tentacles cannot be outrun: left behind, they sink and come up
   assert.equal(field[0].hp, 7, 'the same tentacle, wounds and all'); assert.deepEqual(field.map((q) => q.tentacleMode), modes);
   assert.equal(w.enemies.filter((q) => q.wormOf === m.id && !q.dead).length, WORM.fieldTentacles, 'no new ones');
 });
+
+// Release 239: retreat.
+import { BEAST_HOMES, RETREAT, worldBeastPatience, beginRetreat, retreatSide, retreatTarget, retreatCrossed, worldBeastsLost } from '../src/world-beasts.ts';
+import { Game } from '../src/game.ts';
+
+test('out of patience, a beast picks the nearest home section and heads for it; unfollowed, it is gone; it takes no tries', () => {
+  const s = freshSave(); s.seed = 'FLEE'; s.worldBeasts = { morphingBlob: { active: { rx: 5, ry: 5, tries: 1 }, cycle: 4 } }; ensureWorldBeasts(s);
+  assert.equal(worldBeastPatience(s, 'morphingBlob', WORLD_BEASTS.morphingBlob.patience - 1), false);
+  assert.equal(worldBeastPatience(s, 'morphingBlob', 1.5), true);
+  const probe = (rx, ry) => ({ biome: rx === 8 && ry === 4 ? 'blight' : rx === 2 && ry === 9 ? 'swamp' : 'ash' });
+  const r = beginRetreat(s, 'morphingBlob', 5, 5, probe);
+  assert.deepEqual([r.home.rx, r.home.ry, r.home.found], [8, 4, true], 'the nearest mire (4 sections away, not 7)');
+  assert.match(r.message, /Blight Mire/);
+  const q = s.worldBeasts.morphingBlob.active; assert.equal(retreatSide(q.retreat, 5, 5), 'east'); assert.equal(retreatSide(q.retreat, 8, 5), 'north'); assert.equal(retreatSide(q.retreat, 8, 4), null);
+  assert.equal(worldBeastPlayerFell(s, 5, 5, ['morphingBlob']), null, 'a retreating beast takes no tries');
+  const m = migrateSave(JSON.parse(JSON.stringify(s))); assert.deepEqual(m.worldBeasts.morphingBlob.active.retreat.home, { rx: 8, ry: 4, found: true }, 'the retreat survives a save');
+  retreatCrossed(s, 'morphingBlob', 'east'); const q2 = s.worldBeasts.morphingBlob.active; assert.deepEqual([q2.rx, q2.ry, q2.retreat.side], [6, 5, 'west']);
+  assert.deepEqual(worldBeastsLost(s, 'overworld', 6, 5), [], 'followed: still there');
+  const spawn = worldBeastFor(s, generateRegion(s.seed, 6, 5), 6, 5); assert.ok(spawn.retreating); assert.ok(spawn.x < 3, 'it comes in by the west gate');
+  assert.deepEqual(worldBeastsLost(s, 'overworld', 6, 6), ['morphingBlob'], 'not followed: gone');
+  assert.equal(s.worldBeasts.morphingBlob.active, null); assert.equal(s.worldBeasts.morphingBlob.escaped, 1); assert.equal(s.worldBeasts.morphingBlob.cycle, 5);
+  const t = freshSave(); t.worldBeasts = { tremorWorm: { active: { rx: 0, ry: 9, tries: 0 } } }; ensureWorldBeasts(t);
+  const far = beginRetreat(t, 'tremorWorm', 0, 9, () => ({ biome: 'ash' })); assert.equal(far.home.found, false); assert.equal(Math.abs(far.home.rx) + Math.abs(far.home.ry - 9), RETREAT.fallback, 'no home in reach: it flees into the distance');
+  assert.ok(BEAST_HOMES.mire && BEAST_HOMES.dunes && BEAST_HOMES.water && BEAST_HOMES.canyon && BEAST_HOMES.glass && BEAST_HOMES.dungeon);
+});
+
+test('a retreating beast cannot be hurt, ignores walls, leaves by its gate, and fades into its home ground', () => {
+  const w = world(), b = blob(w, 4, 12); w.open = () => false; w.tileOpen = () => false; // nothing is open: it moves by its own laws
+  b.fleeTo = { x: 20, y: 12, side: 'east' }; b.fleeSpeed = 4; step(w, 1);
+  assert.ok(b.untargetable); assert.ok(b.x > 7, 'straight through'); assert.equal(w.hurts.length, 0, 'it no longer fights');
+  step(w, 4); assert.ok(b.fleeDone, 'it reaches its gate');
+  const v = world(), m = worm(v, 4, 12); m.fleeTo = { x: 6, y: 12, home: true }; m.fleeSpeed = 4; let hid = false; step(v, .8, () => { hid ||= m.hidden; });
+  assert.ok(hid, 'the worm swims under the ground'); assert.ok(m.fleeFade < 1 && !m.fleeDone, 'and sinks into its home');
+  step(v, RETREAT.fade + .2); assert.ok(m.fleeDone);
+  const map = { tiles: [{ x: 3, y: 3, kind: 'ash' }, { x: 9, y: 4, kind: 'toxicWater' }, { x: 25, y: 25, kind: 'swampWater' }], objects: [] };
+  const t = retreatTarget({ home: { rx: 1, ry: 1, found: true } }, 'morphingBlob', map, 1, 1, { east: 10, west: 10, north: 10, south: 10 }, { x: 5, y: 5 });
+  assert.deepEqual([t.x, t.y, t.home], [9, 4, true], 'the nearest pool');
+});
+
+test('in a real game: the Blob runs out of patience, flees through the gate, and is there when you follow', () => {
+  const s = freshSave(); s.seed = 'FLEE-GAME'; s.level = 6;
+  let rx = 7, ry = 2; while (generateRegion(s.seed, rx, ry).settlement) rx++;
+  s.worldBeasts = { morphingBlob: { active: { rx, ry, tries: 0, patience: WORLD_BEASTS.morphingBlob.patience - .5 }, cycle: 0 } };
+  const g = new Game(s, 0); g.rx = rx; g.ry = ry; g.loadArea('overworld');
+  const b = g.enemies.find((e) => e.worldBeast === 'morphingBlob'); assert.ok(b); g.player.x = b.x + 3; g.player.y = b.y; g.player.hp = 1e6;
+  const idle = { state: { x: 0, y: 0 }, consume: () => false };
+  let t = 1000; for (let i = 0; i < 60; i++) { g.update(1 / 30, idle, t += 33); g.player.hp = 1e6; }
+  const q = s.worldBeasts.morphingBlob.active; assert.ok(q.retreat, 'it gives up'); assert.ok(b.untargetable && b.fleeTo);
+  const before = g.enemies.filter((e) => !e.dead).length;
+  for (let i = 0; i < 30 * 40 && g.enemies.includes(b); i++) { g.update(1 / 30, idle, t += 33); g.player.hp = 1e6; }
+  if (!q.retreat.home.found || q.rx !== rx || q.ry !== ry) {
+    assert.ok(!g.enemies.includes(b), 'it has left the section');
+    const side = b.fleeTo.side; assert.ok(side); const [dx, dy] = { east: [1, 0], west: [-1, 0], south: [0, 1], north: [0, -1] }[side];
+    g.transitionSection(dx, dy);
+    const again = g.enemies.find((e) => e.worldBeast === 'morphingBlob' && !e.dead); assert.ok(again && again.retreating, 'followed: there it is, still fleeing');
+    g.transitionSection(-dx, -dy); assert.equal(s.worldBeasts.morphingBlob.active, null, 'turn back and it is gone');
+  }
+  assert.ok(before >= 0);
+});

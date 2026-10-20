@@ -566,7 +566,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
     sp.key = key;
   }
   sp.used = now;
-  const alpha = (e.phasing || (e.phases && e.untargetable)) ? .45 : e.aloft && e.kind === "cinderSeraph" ? .35 : 1, prior = ctx.globalAlpha;
+  const alpha = ((e.phasing || (e.phases && e.untargetable)) ? .45 : e.aloft && e.kind === "cinderSeraph" ? .35 : 1) * (e.fleeFade ?? 1), prior = ctx.globalAlpha;
   ctx.globalAlpha = prior * alpha * (e.illusion ? .92 : 1);
   ctx.drawImage(sp.canvas, k - L - 1 / m.a, b - U - 1 / m.d, sp.canvas.width / m.a, sp.canvas.height / m.d);
   ctx.globalAlpha = prior;
@@ -592,6 +592,7 @@ function paintPackMonster(ctx, e, s, now, facing, def, sprite) {
   if (e.phasing || (e.phases && e.untargetable)) ctx.globalAlpha = .45;
   if (e.aloft && e.kind === "cinderSeraph") { if (!sprite) ctx.globalAlpha = .35; q.b -= u * .9; }
   if (e.illusion) ctx.globalAlpha *= .92;
+  if (e.fleeFade != null) { ctx.globalAlpha *= e.fleeFade; q.b += (1 - e.fleeFade) * u * .5; } // release 239: going into its home ground
   if (e.boss) { glow(ctx, k, b - u * .4, u * 1.05, def.palette[2], .18); }
   BODY[def.render]?.(ctx, q);
   if (e.hitFlash > 0) { ctx.globalCompositeOperation = "lighter"; glow(ctx, k, b - u * .4, u * .55, "#ffffff", .5); }

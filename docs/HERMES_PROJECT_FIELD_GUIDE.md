@@ -26,6 +26,40 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## World beasts retreat home (release 239)
+
+Tim, 2026-10-20: a beast should not hold its section forever. If neither side wins in time, it retreats to a home of its own in the landscape, and you can follow it over several sections. Once it retreats, it is invulnerable and moves "on its own special geometry and laws".
+
+**CODE:**
+
+- **`src/world-beasts.ts`.**
+  - Each `WORLD_BEASTS` row gains `patience` (seconds), `home`, `flee` and `homeLine`.
+  - `BEAST_HOMES` defines each home: a section test over a probe `{ biome, dominant, canyon, dungeon }`, and the tile or object the beast goes into.
+    - `mire`: blight or swamp; toxic or swamp water.
+    - `dunes`: desert sand.
+    - `water`: sea, coast, lake or isles; ocean or lake water. (For the Psychic Crystal.)
+    - `canyon`: canyon tiles. (For the Mountain Turtle.)
+    - `glass`: glass tiles. (For the Nanobot Knight.)
+    - `dungeon`: a dungeon entrance. (For the Void Walker.)
+  - `RETREAT` holds the tuning: search 8, fallback 6, speed 2.1 tiles/s (a little under walking pace), entry inset and fade time.
+  - `worldBeastPatience` counts fighting time in the save (`active.patience`).
+  - `beginRetreat` picks the nearest home section, by steps across sections, in deterministic order. With none in reach it picks a point `fallback` sections away. It stores `active.retreat = { home, side, legs }`.
+  - `retreatSide` and `retreatTarget` give the gate it leaves by, or its home ground in the home section.
+  - `retreatCrossed` moves `active.rx/ry` into the next section with the opposite entry side, so the Atlas danger mark follows it.
+  - `worldBeastsLost` runs on every area load. A retreating beast whose section is not the one being loaded (including any dungeon load, or a death) is gone.
+  - `retreatEnded` ends the hunt as an escape.
+  - `worldBeastFor` spawns a retreating beast at its entry gate, with a per-leg id, so the restored snapshot never merges into it.
+  - `worldBeastPlayerFell` takes no tries while it retreats.
+- **`src/game.ts`.**
+  - `tickWorldBeasts` runs each overworld frame. It counts patience, starts the retreat (message, journal, its minions dissolve) and aims the beast with `fleeTo`.
+  - When the beast is done, it either ends the hunt at home or crosses it into the next section, and removes the beast from the area without a kill.
+  - `loadArea` calls `worldBeastsLost`.
+- **`src/monster-pack.ts`.** `fleeStep`: with `fleeTo` set, the creature does nothing else. It is untargetable, does not attack or dodge, and moves straight at `fleeSpeed`, ignoring the map. At home it fades (`fleeFade`). The Worm swims as a mound.
+- **`src/monster-render.ts`.** A fading beast is drawn sinking and fading.
+- **`tests/world-beasts.test.ts`.** Home choice, the fallback, sides and crossing, lost-when-unfollowed, no tries, save round-trip, movement through walls, the fade, and a real-Game run.
+
+**BOUNDARY:** The save change is additive and stays at schema 14. `active.patience` and `active.retreat` are kept only when set; older saves load unchanged. No generator changes: homes are read from existing sections (`biomeFor`, `generateRegion`), probed once when a retreat begins.
+
 ## The Tremor Worm (release 237)
 
 The second of Tim's world beasts (2026-10-19: "burrows … its head pops out … tentacles from its maw … suction … tentacles pop up around the map shooting rapid fireballs and long persistent lasers that accumulate until killed … rises under you … lobbed rocks that explode").
