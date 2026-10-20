@@ -2,8 +2,8 @@
 // Wayfarer's level and power. Now and then it claims a wild section. It stays there until it is killed or it has
 // killed the Wayfarer QUESTING_BEAST.tries times; then it is gone, and after a cooldown (counted in sections entered)
 // a new hunt can begin somewhere else.
-import { hashSeed } from "./random.js?v=r247-5d8a8126e8b6";
-import { LETHAL_KINDS } from "./landscape.js?v=r247-5d8a8126e8b6";
+import { hashSeed } from "./random.js?v=r249-4a43f3ccc5cd";
+import { LETHAL_KINDS } from "./landscape.js?v=r249-4a43f3ccc5cd";
 
 // Release 187 (Tim, 2026-10-18): far tougher and far more dangerous. About twice the health; each blow takes about
 // 27% of maximum health (four unhealed hits kill); it runs fast and barely pauses between attacks.

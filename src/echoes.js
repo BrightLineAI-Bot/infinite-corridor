@@ -6,7 +6,7 @@
 // Guardians always leave their creature's Echo the first time; ordinary pack kills about one in twenty-five.
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
-import { hashSeed } from "./random.js?v=r247-5d8a8126e8b6";
+import { hashSeed } from "./random.js?v=r249-4a43f3ccc5cd";
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;
@@ -35,6 +35,7 @@ export const ECHOES = {
   wormTentacle: { name: "Tentacle Ember", cost: 1, trigger: "kill", module: "wormTentacles", text: "Kills set the nearest foe within 4 tiles burning." },
   mountainTurtle: { name: "Turtle's Ward", cost: 3, trigger: "hurt", module: "turtleShield", text: "Being hurt grows ice over you: no blow lands for a second (once every 8 s)." },
   nanobotKnight: { name: "Nanite Seekers", cost: 3, trigger: "kill", module: "knightOrbs", text: "Kills loose nanite seekers into up to two foes within 5 tiles." },
+  psychicCrystal: { name: "Mind Ward", cost: 2, trigger: "hurt", module: "psyPush", text: "Being hurt throws foes within 3 tiles back from you." },
   graveLantern: { name: "Lantern Stillness", cost: 1, trigger: "still", module: "stillnessCurse", text: "Standing still for a second mends 2 health each second." },
 };
 export const ECHO_IDS = Object.keys(ECHOES);
@@ -98,6 +99,7 @@ export function echoEvent(game, event, now, data = {}) {
     if (eq.includes("hangedChoir")) world.blast(me.x, me.y, 2.2, Math.round(dmg * .8));
     if (eq.includes("morphingBlob")) (game.echoPatches ||= []).push({ kind: "web", x: me.x, y: me.y, radius: 2, until: now + 3000, slow: .6 }); // release 235
     if (eq.includes("mountainTurtle") && now >= (p.echoWardReadyAt || 0)) { p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + 1000); p.echoWardReadyAt = now + 8000; } // release 241
+    if (eq.includes("psychicCrystal")) for (const e of nearest(game, me.x, me.y, 3)) { const c = centre(e), m = Math.hypot(c.x - me.x, c.y - me.y) || 1; world.nudge(e, (c.x - me.x) / m * 1.5, (c.y - me.y) / m * 1.5); e.hitStun = Math.max(e.hitStun || 0, .25); } // release 249
     if (eq.includes("listener")) { const foe = nearest(game, me.x, me.y, 3)[0]; if (foe) { world.arc(p, foe, "#c9a6ff"); world.damage(foe, Math.round(dmg * .9)); } }
     if (eq.includes("mirrorShade") && now >= (p.echoMirrorReadyAt || 0)) {
       const foe = nearest(game, me.x, me.y, 5).find((e) => !e.flying && world.canStand(e.x, e.y)); // never swap onto a pit, water or a wall

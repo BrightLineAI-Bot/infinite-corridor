@@ -1,5 +1,5 @@
-import{normalizeSockets}from'./glyphs.js?v=r247-5d8a8126e8b6';
-import{rng,pick}from'./random.js?v=r247-5d8a8126e8b6';
+import{normalizeSockets}from'./glyphs.js?v=r249-4a43f3ccc5cd';
+import{rng,pick}from'./random.js?v=r249-4a43f3ccc5cd';
 export const ITEM_TABLE={primary:[['Cinder Pike','reach'],['Verge Cleaver','impact']],secondary:[['Lumen Spindle','focus'],['Needle Caster','quick'],['Rift Bombard','blast']],armor:[['Kiln Mantle','guard'],['Glassweave Coat','stamina']],charm:[['Quiet Compass','discovery']]};
 export const ITEM_TIERS=['common','rare','epic','relic'];
 export const RANGED_WEAPONS={'spark-coil':{name:'Spark Coil',damage:8,speed:12,lifetime:1.6,damageType:'magic',path:'straight'},'secondary-lumen-spindle':{name:'Lumen Spindle',damage:11,speed:10,lifetime:1.8,turnAfter:.8,damageType:'magic',path:'boomerang'},'secondary-needle-caster':{name:'Needle Caster',damage:10,speed:15,lifetime:1.25,damageType:'physical',path:'straight'},'secondary-rift-bombard':{name:'Rift Bombard',damage:16,speed:8,lifetime:1.4,radius:2.15,damageType:'magic',path:'grenade'}};

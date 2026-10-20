@@ -1,4 +1,4 @@
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=r247-5d8a8126e8b6";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=r249-4a43f3ccc5cd";
 import {
   generateRegion,
   generateDungeon,
@@ -14,7 +14,7 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
-} from "./world.js?v=r247-5d8a8126e8b6";
+} from "./world.js?v=r249-4a43f3ccc5cd";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -25,15 +25,15 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness } from "./spell-slots.js?v=r247-5d8a8126e8b6";
-import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=r247-5d8a8126e8b6";
-import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=r247-5d8a8126e8b6";
-import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=r247-5d8a8126e8b6";
-import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.js?v=r247-5d8a8126e8b6";
-import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState } from "./boats.js?v=r247-5d8a8126e8b6";
-import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt } from "./open-sea.js?v=r247-5d8a8126e8b6";
-import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=r247-5d8a8126e8b6";
-import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=r247-5d8a8126e8b6";
+import { ensureSlots, slotted, pairingMods, slotReadiness } from "./spell-slots.js?v=r249-4a43f3ccc5cd";
+import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=r249-4a43f3ccc5cd";
+import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=r249-4a43f3ccc5cd";
+import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=r249-4a43f3ccc5cd";
+import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.js?v=r249-4a43f3ccc5cd";
+import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState } from "./boats.js?v=r249-4a43f3ccc5cd";
+import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt } from "./open-sea.js?v=r249-4a43f3ccc5cd";
+import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=r249-4a43f3ccc5cd";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=r249-4a43f3ccc5cd";
 import {
   applyInteraction,
   validActions,
@@ -43,36 +43,36 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=r247-5d8a8126e8b6";
-import { ensurePerception } from "./types.js?v=r247-5d8a8126e8b6";
-import { generateItem } from "./items.js?v=r247-5d8a8126e8b6";
-import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=r247-5d8a8126e8b6";
-import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.js?v=r247-5d8a8126e8b6";
-import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=r247-5d8a8126e8b6";
-import { hashSeed } from "./random.js?v=r247-5d8a8126e8b6";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.js?v=r247-5d8a8126e8b6';
-import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=r247-5d8a8126e8b6';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=r247-5d8a8126e8b6';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=r247-5d8a8126e8b6';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=r247-5d8a8126e8b6';
-import{ensureSceneState,queueScene}from'./scenes.js?v=r247-5d8a8126e8b6';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=r247-5d8a8126e8b6";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r247-5d8a8126e8b6";
-import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=r247-5d8a8126e8b6";
-import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r247-5d8a8126e8b6";
-import { applyLandscape, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.js?v=r247-5d8a8126e8b6";
-import { nanoScatters, MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack } from "./monster-pack.js?v=r247-5d8a8126e8b6";
-import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.js?v=r247-5d8a8126e8b6";
-import { addStrange, touchStrange } from "./strange.js?v=r247-5d8a8126e8b6";
-import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, digSpot } from "./digging.js?v=r247-5d8a8126e8b6";
-import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.js?v=r247-5d8a8126e8b6";
-import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.js?v=r247-5d8a8126e8b6";
-import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=r247-5d8a8126e8b6";
-import { WORLD_BEASTS, BEAST_HOMES, RETREAT, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost } from "./world-beasts.js?v=r247-5d8a8126e8b6";
-import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.js?v=r247-5d8a8126e8b6";
-import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss } from "./far-array.js?v=r247-5d8a8126e8b6";
-import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=r247-5d8a8126e8b6";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=r247-5d8a8126e8b6";
+} from "./interactions.js?v=r249-4a43f3ccc5cd";
+import { ensurePerception } from "./types.js?v=r249-4a43f3ccc5cd";
+import { generateItem } from "./items.js?v=r249-4a43f3ccc5cd";
+import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=r249-4a43f3ccc5cd";
+import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.js?v=r249-4a43f3ccc5cd";
+import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=r249-4a43f3ccc5cd";
+import { hashSeed } from "./random.js?v=r249-4a43f3ccc5cd";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.js?v=r249-4a43f3ccc5cd';
+import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=r249-4a43f3ccc5cd';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=r249-4a43f3ccc5cd';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=r249-4a43f3ccc5cd';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=r249-4a43f3ccc5cd';
+import{ensureSceneState,queueScene}from'./scenes.js?v=r249-4a43f3ccc5cd';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=r249-4a43f3ccc5cd";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r249-4a43f3ccc5cd";
+import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=r249-4a43f3ccc5cd";
+import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r249-4a43f3ccc5cd";
+import { applyLandscape, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.js?v=r249-4a43f3ccc5cd";
+import { nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer } from "./monster-pack.js?v=r249-4a43f3ccc5cd";
+import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.js?v=r249-4a43f3ccc5cd";
+import { addStrange, touchStrange } from "./strange.js?v=r249-4a43f3ccc5cd";
+import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, digSpot } from "./digging.js?v=r249-4a43f3ccc5cd";
+import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.js?v=r249-4a43f3ccc5cd";
+import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.js?v=r249-4a43f3ccc5cd";
+import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=r249-4a43f3ccc5cd";
+import { WORLD_BEASTS, BEAST_HOMES, RETREAT, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost } from "./world-beasts.js?v=r249-4a43f3ccc5cd";
+import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.js?v=r249-4a43f3ccc5cd";
+import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss } from "./far-array.js?v=r249-4a43f3ccc5cd";
+import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=r249-4a43f3ccc5cd";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=r249-4a43f3ccc5cd";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function pinDungeonLayout(save, id) {
@@ -470,6 +470,7 @@ export function updateProjectiles(
   onPlayerHit = () => {},
   damageFor = (p) => p.damage,
   onHit = () => {},
+  mirrorWalls = [],
 ) {
   for (const p of projectiles) {
     if (p.dead) continue;
@@ -487,8 +488,8 @@ export function updateProjectiles(
       steps = Math.max(1, Math.ceil(distance / 0.2)),
       step = distance / steps;
     for (let i = 0; i < steps && !p.dead; i++) {
-      const nx = p.x + p.dx * step,
-        ny = p.y + p.dy * step;
+      const next = mirrorWalls.length ? reflectShotStep(p, mirrorWalls, step) : { x: p.x + p.dx * step, y: p.y + p.dy * step };
+      const nx = next.x, ny = next.y;
       if (!projectileTileOpen(map, width, nx, ny)) {
         if(p.path==="grenade"){p.dead=true;onDetonate(p);break}
         if (p.path === "boomerang" && !p.returning) {
@@ -1056,14 +1057,14 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
 }
 export function shouldSimulateEnemy(e,player,area="overworld"){
   if(!e||e.dead)return false;
-  if(area==="dungeon"){const d=Math.hypot(e.x-player.x,e.y-player.y);return d<=(e.aggro?18:e.boss||e.eliteId?14:10)||e.telegraph>0||e.strike>0||e.eliteWindup>0||e.eliteActive>0}
+  if(area==="dungeon"){if(e.worldBeast&&(e.aggro||isDungeonRoamer(e,area)))return true;/* release 249: hunters patrol and finish their retreat even out of sight */const d=Math.hypot(e.x-player.x,e.y-player.y);return d<=(e.aggro?18:e.boss||e.eliteId?14:10)||e.telegraph>0||e.strike>0||e.eliteWindup>0||e.eliteActive>0}
   if(area!=="overworld")return true;
   if(e.aggro||e.boss||e.eliteId||e.worldBoss||e.gatePredator||e.telegraph>0||e.strike>0||e.eliteWindup>0||e.eliteActive>0||e.summonedBy)return true;
   return Math.hypot(e.x-player.x,e.y-player.y)<=10;
 }
 export function activeDungeonEnemies(enemies,player,map){
  const cap=Math.max(1,Number(map?.activeEnemyCap)||DUNGEON_ACTIVE_CAP[map?.encounterProfile]||DUNGEON_ACTIVE_CAP.normal);
- return enemies.filter(e=>shouldSimulateEnemy(e,player,"dungeon")).sort((a,b)=>Number(!!b.aggro)-Number(!!a.aggro)||Number(!!b.boss)-Number(!!a.boss)||Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y)||String(a.id).localeCompare(String(b.id))).slice(0,cap);
+ return enemies.filter(e=>shouldSimulateEnemy(e,player,"dungeon")).sort((a,b)=>Number(isDungeonRoamer(b,"dungeon"))-Number(isDungeonRoamer(a,"dungeon"))||Number(!!b.aggro)-Number(!!a.aggro)||Number(!!b.boss)-Number(!!a.boss)||Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y)||String(a.id).localeCompare(String(b.id))).slice(0,cap);
 }
 export function settlementSanctuary(map,rx,ry,save){if(!map||rx===0&&ry===0&&save?.consequences?.settlements?.['ember-refuge']?.status==='fallen')return null;if(map.settlement?.procedural)return{x:map.settlement.x,y:map.settlement.y,radius:map.settlement.radius};return map.settlement||rx===0&&ry===0?{x:16,y:16,radius:9}:null}
 export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y-z.y,d=Math.hypot(dx,dy);if(d>=z.radius)return false;const m=d||1;e.x=z.x+(d?dx/m:1)*(z.radius+.5);e.y=z.y+(d?dy/m:0)*(z.radius+.5);const ai=ensureAI(e);ai.homeX=e.x;ai.homeY=e.y;e.telegraph=0;return true}
@@ -1561,7 +1562,7 @@ export class Game {
   loadArea(area, capture = true) {
     if (capture) this.snapshotArea();
     this.area = area;
-    const lostBeasts = worldBeastsLost(this.save, area, this.rx, this.ry); // release 239: a retreating beast not followed is gone
+    const lostBeasts = worldBeastsLost(this.save, area, this.rx, this.ry, area === "dungeon" ? this.areaId() : null); // release 239: a retreating beast not followed is gone
     for (const id of lostBeasts) journalOnce(this.save, `world-beast-away:${id}:${this.save.worldBeasts[id].cycle}`, `${WORLD_BEASTS[id].name} got away to ${BEAST_HOMES[WORLD_BEASTS[id].home].name}.`, "World beasts");
     const loadingId=area==="dungeon"?this.areaId():null,history=loadingId?dungeonHistory(this.save,loadingId):null;
     this.map = area === "dungeon"
@@ -1659,6 +1660,7 @@ export class Game {
     if(area==="overworld"&&arrayMouthAt(this.save,this.rx,this.ry)&&!this.map.objects.some(o=>o.kind==="arrayMouth")){const spots=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>10&&t.x<22&&t.y>10&&t.y<22).sort((a,b)=>Math.hypot(a.x-16,a.y-16)-Math.hypot(b.x-16,b.y-16));const at=spots[0]||{x:16,y:16};this.map.objects.push({id:"array-mouth",kind:"arrayMouth",name:"The Array Mouth",lore:"A ruined relay terminal, half sunk into ground no map has charted. Its line hums under your feet.",x:at.x,y:at.y,state:"ready",actions:["enter"],landmark:true});this.message="The Array Mouth: the far end of the relay line."}
     if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry,this.save),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);const beast=questingBeastFor(this.save,this.map,this.rx,this.ry),elder=addElder(this.map,this.save,this.rx,this.ry),worldBeastFound=worldBeastFor(this.save,this.map,this.rx,this.ry),worldBeast=beast&&!worldBeastFound?.retreating?null:worldBeastFound;if(worldBeast){this.map.enemySpawns.push(worldBeast);const B=WORLD_BEASTS[worldBeast.worldBeast];this.message=worldBeast.retreating?`${B.name} is fleeing through here toward ${BEAST_HOMES[B.home].name}. It cannot be hurt now.`:`${B.arrive} ${worldBeastTriesLeft(this.save,worldBeast.worldBeast)} of ${B.tries} tries remain.`}/* release 241: a fleeing beast says so, and passes through the Questing Beast's ground too *//* release 235: world beasts */addStrange(this.map,this.save,this.rx,this.ry);/* release 215: a rare strange tree or stone */addDigSpot(this.map,this.save,this.rx,this.ry);/* release 225: a rare patch of disturbed earth */for(const id of mouthsIn(this.save,this.rx,this.ry))placeMouth(this.map,id);/* release 217: second mouths of linked dungeons */if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastTriesLeft(this.save)} of ${QUESTING_BEAST.tries} tries remain.`}if(beast||worldBeast){}else if(elder)this.message="Something tall and silent walks the road.";else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, murmuring.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
     this.activatedEncounterGroups=new Set;
+    if(area==="dungeon"){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is drifting toward the water. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastTriesLeft(this.save,haunt.worldBeast)} of ${B.tries} tries remain.`}} /* release 249: the Psychic Crystal haunts dungeons with water */
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
     // Far Array bosses are tuned to the Wayfarer last, over the depth and boss-form scaling (release 138).
     if(area==="dungeon"&&isArrayRun(loadingId))for(const e of this.enemies)if(e.farArrayBoss)tuneArrayBoss(e,this.save,characterStats(this.save),e.farArrayBoss);
@@ -1709,7 +1711,7 @@ export class Game {
           ai: { ...ensureAI(e), ...restored.ai },
         };
         if (restored.dungeonThreatTuningVersion === undefined) delete merged.dungeonThreatTuningVersion;
-        if(area === "dungeon" && !merged.passiveBehavior && !merged.ambient) tuneDungeonThreat(merged);
+        if(area === "dungeon" && !merged.passiveBehavior && !merged.ambient && !merged.worldBeast) tuneDungeonThreat(merged); // release 249: a world beast keeps its own tuning
         ensureAI(merged);
         resetPackRuntime(merged);
         return merged;
@@ -1732,7 +1734,13 @@ export class Game {
     }
     const areaWidth = mapWidth(this.map, area),
       playerRelocated = !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
-    for (const e of this.enemies) if (!e.seaKind) relocateIfStranded(e, this.map, areaWidth);
+    for (const e of this.enemies) {
+      if (isDungeonRoamer(e, area)) {
+        // Walls, water and isolated pockets are valid saved flight positions. Only repair invalid map bounds.
+        e.x = Math.max(0, Math.min(areaWidth - 1, Number.isFinite(e.x) ? e.x : this.map.entry?.x ?? 4));
+        e.y = Math.max(0, Math.min(mapHeight(this.map, area) - 1, Number.isFinite(e.y) ? e.y : this.map.entry?.y ?? 5));
+      } else if (!e.seaKind) relocateIfStranded(e, this.map, areaWidth);
+    }
     if (playerRelocated)
       this.message =
         "The changed Corridor settles you onto the nearest stable ground. Your progress and carried items remain intact.";
@@ -1808,6 +1816,7 @@ export class Game {
         "dodgeReadyAt",
         "invulnerableUntil",
         "dodgeUntil",
+        "heldUntil",
       ])
         if (this.player[k]) this.player[k] += d;
       if (this.jumpUntil) this.jumpUntil += d;
@@ -2562,7 +2571,7 @@ export class Game {
   packWorld(dt, now, sanctuary = null) {
     const map = this.map, width = mapWidth(map, this.area), height = mapHeight(map, this.area), p = this.player, last = this._packLastPlayer || p, game = this;
     return {
-      player: p, map, width, height, dt, now, enemies: this.enemies, sanctuary,
+      player: p, map, width, height, area: this.area, dt, now, enemies: this.enemies, sanctuary,
       playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - last.y) / dt } : { x: 0, y: 0 },
       playerShots: this.projectiles, playerSwinging: now < (p.meleeUntil || 0), playerBlasts: this.effects.filter((fx) => !fx.hostile && fx.damage > 0), // release 187: the Questing Beast reads these to dodge (release 245: the Nanobot Knight reads spells too)
       playerFacing: ({ left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, up: { x: 0, y: -1 }, down: { x: 0, y: 1 } })[p.facing] || { x: 0, y: 1 },
@@ -2571,11 +2580,17 @@ export class Game {
       tileOpen: (x, y) => tileOpen(map, width, x, y),
       los: (a, b, projectile = false) => hasLineOfSight(a, b, map, width, projectile),
       move(e, dx, dy, opts = {}) {
-        if (opts.phase) { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)), moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
+        if (opts.phase || isDungeonRoamer(e, game.area)) { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)), moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
         return moveAxis(e, dx, dy, map, width, !!e.flying);
       },
+      // The dungeon is the Crystal's domain: patrol and combat use the same bounded wall-phasing movement.
+      roamMove(e, dx, dy) { return this.move(e, dx, dy); },
+      roamWork: (n) => { game.performanceStats.pathfindingWork += n; },
       detour(e, speed) { const step = boundedChaseStep(e, p, map, width); if (step) { const px = step[0] - e.x, py = step[1] - e.y, m = Math.hypot(px, py) || 1; moveAxis(e, px / m * speed, py / m * speed, map, width, !!e.flying); } },
       hurt: (source, amount, options) => !(sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) && game.packHurt(source, amount, options, now),
+      grab(source) { if (now < (p.dodgeUntil || 0) || now <= (p.invulnerableUntil || 0)) return false; p.heldUntil = now + CRYSTAL.grabHold * 1000 + 100; p.heldBy = source.id; game.message = "It has you. Struggle: dodge, again and again!"; return true; }, // release 249
+      held(source) { return now < (p.heldUntil || 0) && p.heldBy === source.id; },
+      release(source) { if (p.heldBy === source.id) p.heldUntil = 0; },
       push(source, step, radius) { const ddx = p.x - source.x, ddy = p.y - source.y, dd = Math.hypot(ddx, ddy) || 1; if (dd > radius || now < (p.dodgeUntil || 0)) return false; moveAxis(p, ddx / dd * step, ddy / dd * step, map, width, true); return true; }, // release 235: the Blob's jet
       poison(seconds, dps) { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return; if (now < (p.dodgeUntil || 0)) return; applyPoison(ensureEliteState(game.save).status, seconds, dps); },
       effects: () => game.packEffects || [],
@@ -2611,18 +2626,20 @@ export class Game {
   // Release 239: a world beast runs out of patience and retreats home, invulnerable and through everything; it leaves
   // each section by the gate toward home (the Wayfarer may follow) and, in the home section, goes into its home ground.
   tickWorldBeasts(dt) {
+    if (this.beastNote) { this.message = this.beastNote; this.beastNote = null; }
     let gone = null;
     for (const e of this.enemies) {
       if (!e.worldBeast || e.dead || !WORLD_BEASTS[e.worldBeast]) continue;
       const id = e.worldBeast, B = WORLD_BEASTS[id], q = this.save.worldBeasts?.[id]?.active;
       if (!q) continue;
-      if (!e.retreating && e.aggro && worldBeastPatience(this.save, id, dt)) {
+      if (!e.retreating && e.aggro && q.dungeon && worldBeastPatience(this.save, id, dt)) { const r = beginDungeonRetreat(this.save, id, this.map); e.retreating = true; this.message = r.message; for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; } journalOnce(this.save, `world-beast-flees:${id}:${this.save.worldBeasts[id].cycle}`, r.message, "World beasts"); }
+      if (!e.retreating && e.aggro && !q.dungeon && this.area === "overworld" && worldBeastPatience(this.save, id, dt)) {
         const seed = this.save.seed, gen = this.save.worldGeneration, r = beginRetreat(this.save, id, this.rx, this.ry, (x, y) => { let g = null; const region = () => (g ||= generateRegion(seed, x, y, gen)); return { get biome() { return biomeFor(seed, x, y); }, get dominant() { return region().dominant; }, get canyon() { return region().environment?.kind === "canyon"; }, get dungeon() { return (region().objects || []).some((o) => o.kind === "dungeon"); } }; }); // release 241: a section is generated only for homes that need it
         e.retreating = true; this.message = r.message;
         for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; }
         journalOnce(this.save, `world-beast-flees:${id}:${this.save.worldBeasts[id].cycle}`, r.message, "World beasts");
       }
-      if (e.retreating && !e.fleeTo && q.retreat) { const to = retreatTarget(q.retreat, id, this.map, this.rx, this.ry, sectionExits(this.save.seed, this.rx, this.ry), e); Object.assign(e, { fleeTo: to, fleePath: retreatPath(this.map, e, to, B.retreatMoves), fleeSpeed: RETREAT.speed, fleeFadeTime: RETREAT.fade, untargetable: true }); } // release 239: it finds its way round walls, over chasms, by bridges
+      if (e.retreating && !e.fleeTo && q.retreat) { const to = retreatTarget(q.retreat, id, this.map, this.rx, this.ry, q.dungeon ? {} : sectionExits(this.save.seed, this.rx, this.ry), e); Object.assign(e, { fleeTo: to, fleePath: retreatPath(this.map, e, to, B.retreatMoves, Number(this.map.width) || 32), fleeSpeed: RETREAT.speed, fleeFadeTime: RETREAT.fade, untargetable: true }); } // release 239: it finds its way round walls, over chasms, by bridges
       if (!e.fleeDone) continue;
       (gone ||= []).push(e);
       if (e.fleeTo.home) { const line = retreatEnded(this.save, id); this.message = line; journalOnce(this.save, `world-beast-home:${id}:${this.save.worldBeasts[id].cycle}`, line, "World beasts"); }
@@ -2635,7 +2652,7 @@ export class Game {
   scatterCheck(e, physical, echoGlyph, now) {
     if (!nanoScatters(e, { physical, echoGlyph })) return false;
     e.scattered = .45;
-    if (now > (this.scatterNoteAt || 0)) { this.scatterNoteAt = now + 9000; this.message = "It scatters into a swarm around your blow and reforms. Plain steel will not hurt it: use spells, elements, or a weapon with the Echo glyph."; }
+    if (now > (this.scatterNoteAt || 0)) { this.scatterNoteAt = now + 9000; this.message = "It scatters into a swarm around your blow and reforms. Plain steel will not hurt it: use spells, magic, or a weapon carrying the Echo glyph or an elemental glyph (Ignite, Chain, Volatile)."; }
     return true;
   }
   createEnemyFromSpawn(e, area = this.area) {
@@ -2680,7 +2697,7 @@ export class Game {
         if(c.kind==="gateRevenant"){c.maxHp=360;c.hp=360;c.damage=22;c.range=5.5}
         c.maxHp=Math.round(c.maxHp*hp);c.hp=c.maxHp;c.damage=Math.max(1,Math.round(c.damage*damage));c.speedMultiplier*=speed;c.attackCooldownScale=attackCooldownScale;c.telegraphScale=telegraphScale;
       }
-      if(area === "dungeon" && !c.passiveBehavior && !c.ambient) tuneDungeonThreat(c);
+      if(area === "dungeon" && !c.passiveBehavior && !c.ambient && !c.worldBeast) tuneDungeonThreat(c);
       // Every monster hits harder (Tim, 2026-10-16). Foes tuned to the Wayfarer (the Questing Beast, Far Array bosses) are exempt.
       if(c.damage>0&&!c.questingBeast&&!c.worldBeast&&!c.farArrayBoss)c.damage=Math.max(1,Math.round(c.damage*ENEMY_DAMAGE_SCALE));
       ensureAI(c);
@@ -2858,7 +2875,7 @@ export class Game {
         continue;
       }
       alertEnemy(e);
-      const base = (profile.damage + characterStats(this.save).meleeBonus) * (echo ? echo.share : 1) * pounce, scattered = this.scatterCheck(e, true, glyphs.has("echo"), now), dealt = scattered ? 0 : glyphDamage(glyphs, e, base, { echo: !!echo }, now); // release 245: plain steel scatters the Nanobot Knight
+      const base = (profile.damage + characterStats(this.save).meleeBonus) * (echo ? echo.share : 1) * pounce, scattered = this.scatterCheck(e, true, glyphsReachSwarm(glyphs), now), dealt = scattered ? 0 : glyphDamage(glyphs, e, base, { echo: !!echo }, now); // release 245: plain steel scatters the Nanobot Knight
       e.hp -= dealt;
       e.hitFlash = scattered ? 0 : 0.18;
       e.recoil = scattered ? 0 : 0.2;
@@ -3120,6 +3137,7 @@ export class Game {
       scale = m > 1 ? 1 / m : 1,
       x = rawX * scale,
       y = rawY * scale;
+    if (now < (p.heldUntil || 0)) { x = 0; y = 0; if (input.consume("dodge")) { p.heldUntil -= CRYSTAL.struggle * 1000; if (now >= p.heldUntil) this.message = "You tear free of its grip."; } } // release 249: held by the Psychic Crystal; dodge to struggle
     if (Math.hypot(x, y) > 0.15)
       this.save.lastAim = projectileDirection(x, y, p.facing);
     if (input.consume("tool")) {
@@ -3280,8 +3298,9 @@ export class Game {
         p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))));
         p.invulnerableUntil=now+700;
       },
-      (shot, e) => this.scatterCheck(e, shot.damageType === "physical", !!shot.glyphHost && this.glyphLoadout(shot.glyphHost).has("echo"), now) ? 0 : shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
+      (shot, e) => (e.kind === "nanobotKnight" && this.scatterCheck(e, shot.damageType === "physical", !!shot.glyphHost && glyphsReachSwarm(this.glyphLoadout(shot.glyphHost)), now)) ? 0 : shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
       (shot, e, dealt) => { if (shot.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); },
+      (this.packEffects || []).filter(f => f.kind === "psyWall" && !(f.arming > 0)), // swept wall contact precedes actor collision at every substep
     );
     if(combatNpcTargets.length)this.syncNpcDamage("projectile");
     for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))));p.invulnerableUntil=now+700}}
@@ -3327,7 +3346,7 @@ export class Game {
       const onOcean = TYRANT_HUNT.water.includes(tileUnder(this.map, 32, this.player.x, this.player.y)?.kind), present = this.enemies.some((e) => !e.dead && e.seaKind === TYRANT_HUNT.kind);
       if (tickTyrantHunt(this.tyrantVisit, dt, onOcean, present, Math.random)) this.riseTyrant();
     }
-    if (this.area === "overworld") this.tickWorldBeasts(dt); // release 239
+    if (this.area === "overworld" || this.area === "dungeon") this.tickWorldBeasts(dt); // release 239 (release 249: in dungeons too)
     if (this.area === "overworld" && (this._shoreCheck = (this._shoreCheck || 0) - dt) <= 0) { this._shoreCheck = .5; if ((this.save.materials?.wood || 0) >= WOOD.skiffCost && this.save.capabilities?.swim && !this.nearestObject() && this.shoreWater() && now > (this.woodHintAt || 0)) { this.woodHintAt = now + 15000; this.message = `Act: build a skiff here (${WOOD.skiffCost} wood).`; } }
     if (this.swimming) { const hurt = swimUpkeep(p, dt, this.swimKind, this.area === "overworld" && !!this.map.openSea); if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "Exhausted in the water — reach the shore."; } } }
     else p.stamina = Math.min(p.maxStamina, p.stamina + (9 + pairingMods(this.save).stamina) * dt);
@@ -3418,7 +3437,7 @@ export class Game {
     if (p.hp <= 0) {
       const beastNote = this.area === "overworld" ? questingBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.some((e) => e.questingBeast && !e.dead)) : null;
       if (beastNote) journalOnce(this.save, `questing-beast-try:${this.save.questingBeast.cycle}:${this.save.questingBeast.active?.tries ?? "gone"}`, beastNote, "The Questing Beast");
-      const worldNote = this.area === "overworld" ? worldBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.filter((e) => e.worldBeast && !e.dead).map((e) => e.worldBeast)) : null; // release 235
+      const worldNote = this.area === "overworld" || this.area === "dungeon" ? worldBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.filter((e) => e.worldBeast && !e.dead).map((e) => e.worldBeast), this.area === "dungeon" ? this.areaId() : null) : null; // release 235
       if (worldNote) journalOnce(this.save, `world-beast-try:${this.rx},${this.ry}:${JSON.stringify(this.save.worldBeasts)}`.slice(0, 160), worldNote, "World beasts");
       this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
       if (this.area === "dungeon") {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}

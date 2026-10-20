@@ -2,8 +2,8 @@
 // expedition's exit) does not lead back to where you came in: it opens a second mouth in an unexplored section far
 // away. The link is remembered, so either mouth enters the same dungeon and its guardian's door then leads to the
 // other. The Atlas draws linked mouths joined. Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r247-5d8a8126e8b6";
-import { LETHAL_KINDS } from "./landscape.js?v=r247-5d8a8126e8b6";
+import { hashSeed } from "./random.js?v=r249-4a43f3ccc5cd";
+import { LETHAL_KINDS } from "./landscape.js?v=r249-4a43f3ccc5cd";
 
 // Balance: the share of dungeons that are linked, and how far the second mouth lies (sections, Chebyshev-ish).
 export const LINKED = { version: 1, share: .3, distance: [7, 14] };
