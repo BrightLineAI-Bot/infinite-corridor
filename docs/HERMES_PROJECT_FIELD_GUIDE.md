@@ -26,6 +26,28 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Nanobot Knight's swarm cape (release 247)
+
+Tim, 2026-10-20: the cape was too clean. It should be "a series of small particles that trail behind him like a cape … like smoke", not a solid cape.
+
+**CODE:**
+
+- **`src/monster-render.ts`, `BODY.nanobotKnight`.** The solid cape polygon and its lining are gone. In their place:
+  - 90 motes (`fillRect`, dark, every ninth one red) flow along a trailing field `at(f, g)`, where `f` runs from the shoulders to the tail and `g` runs across the stream.
+  - The stream pours off the shoulders and trails out behind and down like a plume. It billows in slow waves, harder while the Knight slides. Each mote loops from the shoulders to the tail, shrinking and fading.
+  - Four translucent smoke wisps run along the same field.
+  - Tim picked this trailing version over a hanging, sail-shaped one.
+  - The cost is about a hundred small rect fills per Knight per frame, with no gradients.
+
+- **Swordplay (Tim, the same day).** He asked for a thrust (dashing "forward or sideways … in the cardinal directions and diagonally", a beam off the tip "but it doesn't always have to"), "a forward swing, a back swing", "a dodging swing where he jumps back … while swinging", and energy off the sword "about as large as the player's weapon melee attacks". In `src/monster-pack.ts`:
+  - `knightThrust`: picks one of `EIGHT` directions, hashed: straight at the Wayfarer (snapped) 60%, or 45° to either side. It dashes at `thrustSpeed` and hits with the sword's segment. At `beamChance` it ends in a `swordBeam` reaching `thrustBeam` (2.45, a Cinder Pike) beyond the tip.
+  - `knightCombo` (Tim: "a six-cut combo … he should be oppressive … an aggressive sword fighter"): it follows `KNIGHT.comboPlan` (cut, cut, dash, cut, cut, dash, cut, cut). Each cut is re-aimed, shows its arc during the `comboPause` gather, and alternates fore and back (`e.swing`). Each dash skids after the Wayfarer at `slideSpeed` for up to `comboDash` seconds, or until within `comboClose`. The length is chosen per attack (hashed) from `comboLengths` (2/4/6 cuts at 40/35/25%), or `comboLengthsEnraged` (20/35/45%) below half health (Tim: "it can be up to six cuts … increasing levels"). The plan is cut to the first 2, 5 or 8 steps.
+  - `knightBackslash`: hops back `backHop` away, cutting early in the hop with an energized arc. `knightMistDodge` uses it instead of mist at `backslashChance` when the Wayfarer is within 4 tiles.
+  - `knightCut`: the shared cut. When energized (hashed `arcChance`, always for the backslash), it reaches `arcReach` (1.75, a Verge Cleaver) farther and draws a `swordArc`. The slides use it too.
+  - Drawing: the blade is outstretched along the thrust and swept low behind on a back cut. `swordArc` and `swordBeam` are drawn at the sword's height, from the effect's `lift`.
+
+**BOUNDARY:** Drawing and the Knight's own attack kit only. No save or generator change.
+
 ## The Nanobot Knight (release 245)
 
 The fourth of Tim's world beasts (2026-10-19). He asked for:

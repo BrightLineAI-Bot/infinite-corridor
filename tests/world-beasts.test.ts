@@ -358,3 +358,34 @@ test('the Knight turns to mist at random when any attack comes at it: blade, sho
   assert.ok(m.mist, 'it can vanish out of its own attack'); assert.equal(m.pack.attack, null);
   const at = { x: m.x, y: m.y }; v.playerShots = []; step(v, .5); assert.ok(!m.mist && Math.hypot(m.x - at.x, m.y - at.y) > 1, 'and comes together aside');
 });
+
+test('the Knight\'s blade: a thrust along any of eight ways with a beam off the tip at times, fore and back cuts with energy arcs, a retreating slash', () => {
+  // Tim (2026-10-20): a thrust "forward or sideways … cardinal directions and diagonally", "a forward swing, a back swing", "a dodging
+  // swing where he jumps back … while swinging", energy off the sword "about as large as the player's weapon melee attacks".
+  const dirs = new Set(), beams = { yes: 0, no: 0 };
+  for (let seq = 0; seq < 24; seq++) {
+    const w = world({ size: 40, player: { x: 23, y: 21 } }), k = knight(w, 18, 20); k.packAttacks = ['knightThrust']; k.pack.gap = 0; k.pack.seq = seq; const x0 = k.x, y0 = k.y;
+    step(w, .5); const d = k.pack.data?.dir; if (d) { dirs.add(`${Math.round(d.x)},${Math.round(d.y)}`); assert.ok(Math.abs(Math.hypot(d.x, d.y) - 1) < .01); }
+    step(w, .4); if (Math.hypot(k.x - x0, k.y - y0) > 2) { if (w.fx.some((f) => f.kind === 'swordBeam')) beams.yes++; else beams.no++; }
+  }
+  assert.ok(dirs.size >= 3, `at you, and off at angles (${[...dirs]})`); assert.ok(beams.yes > 0 && beams.no > 0, `a beam off the tip, not always (${beams.yes}/${beams.no})`);
+  // fore and back cuts; an energized cut reaches a Wayfarer standing beyond the blade
+  let far = 0;
+  for (let seq = 0; seq < 12; seq++) { const w = world({ size: 30, player: { x: 15 + .67 + KNIGHT.slideReach + 1.2, y: 12 } }), k = knight(w, 15, 12); k.packAttacks = ['knightCombo']; k.pack.gap = 0; k.pack.seq = seq; const swings = []; let arc = false; step(w, .75, () => { /* the first pair of cuts, before it dashes */ if (k.swing) swings.push(k.swing); arc ||= w.fx.some((f) => f.kind === 'swordArc'); }); assert.ok(swings.includes('fore') && swings.includes('back'), 'a cut forward and a cut back'); if (w.hurts.some((h) => h.source === 'knightCombo')) far++; assert.ok(!w.hurts.length || arc, 'the far hit came with an energy arc'); }
+  assert.ok(far > 0 && far < 12, `only an energized cut reaches that far (${far}/12)`);
+  { // the onslaught: six cuts, two dashes after you between the pairs
+    const lengths = new Set();
+    for (let seq = 0; seq < 20; seq++) {
+      const w = world({ size: 40, player: { x: 20, y: 20 } }), k = knight(w, 14, 20); k.packAttacks = ['knightCombo']; k.pack.gap = 0; k.pack.seq = seq; let dashes = 0, was = false, cuts = 0;
+      step(w, 4.5, () => { if (k.sliding && !was) dashes++; was = !!k.sliding; if (w.player.x < 34 && k.pack.data?.cuts > cuts) { cuts = k.pack.data.cuts; w.player.x += 2.2; } if (!k.pack.attack) k.packAttacks = []; });
+      assert.ok([2, 4, 6].includes(cuts), `two, four or six cuts (${cuts})`); assert.equal(dashes, cuts / 2 - 1, 'a dash between each pair'); lengths.add(cuts);
+    }
+    assert.deepEqual([...lengths].sort(), [2, 4, 6], 'it varies how far it takes the onslaught');
+  }
+  // the retreating slash: it leaps away while its energy arc still finds you
+  const w = world({ size: 30, player: { x: 13.5, y: 12 } }), k = knight(w, 12, 12); k.packAttacks = ['knightBackslash']; k.pack.gap = 0; step(w, .8);
+  assert.ok(k.x < 10.5, 'it leaps back'); assert.ok(w.hurts.some((h) => h.source === 'knightBackslash'), 'cutting as it goes');
+  // and sometimes, when it slips an attack, it leaps back slashing instead of turning to mist
+  let slashes = 0, mists = 0; for (let n = 0; n < 60; n++) { const v = world(), m = knight(v, 12, 12); m.id = `kb-${n}`; m.packAttacks = []; m.evasive = true; v.player.x = 13.5; v.player.y = 12; v.playerSwinging = true; step(v, .1); if (m.pack.attack === 'knightBackslash') slashes++; if (m.mist) mists++; }
+  assert.ok(slashes > 0 && mists > 0, `both answers (${slashes} slashes, ${mists} mists)`);
+});
