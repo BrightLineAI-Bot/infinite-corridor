@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { generateRegion } from '../src/world.ts';
 import { WORLD_BEASTS, ensureWorldBeasts, worldBeastFor, worldBeastPlayerFell, worldBeastSlain, tuneWorldBeast, worldBeastTriesLeft } from '../src/world-beasts.ts';
-import { MONSTER_PACK, BLOB, WORM, TURTLE, updatePackMonster, tickPackEffects, addPackEffect, freshPackState, packCombatantFields } from '../src/monster-pack.ts';
+import { MONSTER_PACK, BLOB, WORM, TURTLE, KNIGHT, nanoScatters, updatePackMonster, tickPackEffects, addPackEffect, freshPackState, packCombatantFields } from '../src/monster-pack.ts';
 import { createCombatant } from '../src/combat.ts';
 
 function world({ size = 24, player = { x: 12, y: 12 } } = {}) {
@@ -308,4 +308,53 @@ test('the Turtle\'s second spin: it careens around rebounding off walls, flingin
   assert.ok(turns >= 1, 'it rebounds'); assert.ok(angles.size >= 8, `icicles every way (${angles.size} headings)`); assert.ok(maxIcicles <= 30, `bounded (${maxIcicles})`);
   assert.ok(w.hurts.some((h) => h.source === 'turtleCyclone' || h.source === 'orb'), 'it hurts whoever it meets');
   assert.ok(MONSTER_PACK.mountainTurtle.attacks.includes('turtleSpin') && MONSTER_PACK.mountainTurtle.attacks.includes('turtleCyclone'), 'both spins');
+});
+
+// Release 245: the Nanobot Knight.
+function knight(w, x = 6, y = 12) { const c = createCombatant('nanobotKnight', x, y, true, []); Object.assign(c, { id: 'knight-1', aggro: true, hp: 3000, maxHp: 3000, damage: 20 }); w.enemies.push(c); return c; }
+
+test('plain steel scatters the Nanobot Knight; elements, spells and an Echo-glyphed weapon reach it', () => {
+  // Tim (2026-10-19): "physical hits scatter it unless the attack is elemental, a spell, or the weapon has the echo glyph".
+  const k = { kind: 'nanobotKnight' };
+  assert.equal(nanoScatters(k, { physical: true }), true, 'a plain sword or arrow');
+  assert.equal(nanoScatters(k, { physical: true, echoGlyph: true }), false, 'a weapon carrying the Echo glyph');
+  assert.equal(nanoScatters(k, { physical: false }), false, 'magic shots, spells, glyph procs, burns, echoes');
+  assert.equal(nanoScatters({ kind: 'questingBeast' }, { physical: true }), false, 'nobody else');
+  const g = readFileSync(new URL('../src/game.ts', import.meta.url), 'utf8');
+  assert.match(g, /scattered = this\.scatterCheck\(e, true, glyphs\.has\("echo"\), now\), dealt = scattered \? 0/, 'melee swings');
+  assert.match(g, /this\.scatterCheck\(e, shot\.damageType === "physical", !!shot\.glyphHost && this\.glyphLoadout\(shot\.glyphHost\)\.has\("echo"\), now\) \? 0/, 'shots');
+  assert.equal(WORLD_BEASTS.nanobotKnight.home, 'glass'); assert.equal(MONSTER_PACK.nanobotKnight.unique, true);
+});
+
+test('the Knight\'s attacks: sliding cuts, a tracking arm cannon, swordfall, an orbital lance that scorches, seeker orbs, a missile barrage, mist step', () => {
+  const w = world({ size: 40, player: { x: 20, y: 20 } }), kn = knight(w, 14, 20);
+  const run = (id, seconds, px = 20, py = 20, seq = 0) => { kn.x = 14; kn.y = 20; w.player.x = px; w.player.y = py; kn.packAttacks = [id]; kn.pack = freshPackState(); kn.pack.gap = 0; kn.pack.seq = seq; w.hurts = []; w.fx = []; step(w, seconds); };
+  run('knightSlide', 2.4); assert.ok(w.hurts.filter((h) => h.source === 'knightSlide').length >= 2, 'it skids in and cuts, again and again'); assert.ok(kn.x > 16, 'sliding');
+  run('knightCannon', 2.2, 19, 23); assert.ok(w.hurts.some((h) => h.source === 'knightCannon'), 'the cannon tracked you while charging');
+  run('knightSwordfall', 2.4); assert.equal(w.fx.filter((f) => f.kind === 'swordfall').length, KNIGHT.swords); assert.ok(w.hurts.some((h) => h.source === 'swordfall'), 'one falls on you');
+  kn.x = 9; w.fx = []; kn.packAttacks = ['knightOrbital']; kn.pack = freshPackState(); kn.pack.gap = 0; w.player.x = 20; w.player.y = 20; w.hurts = []; step(w, 1.4); w.player.x = 26; step(w, 2.4);
+  assert.ok(w.fx.filter((f) => f.kind === 'scorch').length >= 4, 'the lance scorches the ground behind it'); assert.ok(w.hurts.some((h) => h.source === 'knightOrbital'));
+  const lance = w.fx.find((f) => f.kind === 'orbital'); if (lance) assert.ok(lance.x > 21, 'and follows you');
+  for (const seq of [0, 1]) {
+    run('knightOrbs', .65, 24, 20, seq); const orbs = w.fx.filter((f) => f.kind === 'nanoOrb'); assert.equal(orbs.length, KNIGHT.orbs, 'orbs gather');
+    assert.ok(orbs.every((f) => Math.hypot(f.x - kn.x, f.y - kn.y) < KNIGHT.orbOrbit + .2), 'circling it');
+    step(w, .6); const sent = orbs.filter((f) => f.state !== 'circle').length;
+    assert.ok(seq ? sent >= 1 : sent >= 1, 'then sent'); step(w, 3); assert.ok(w.hurts.some((h) => h.source === 'knightOrb'), 'they find you');
+  }
+  run('knightMissiles', .8, 22, 26); assert.equal(w.fx.filter((f) => f.kind === 'missile').length, KNIGHT.missiles); w.player.x = 39; w.player.y = 39; step(w, KNIGHT.missileFuel + 1);
+  assert.equal(w.fx.filter((f) => f.kind === 'missile').length, 0, 'out of fuel, they burst');
+  run('knightMist', 1.5, 24, 20); assert.ok(Math.hypot(kn.x - 24, kn.y - 20) < KNIGHT.mistLand + 1.5, 'it comes together beside you'); assert.ok(w.hurts.some((h) => h.source === 'knightMist'));
+});
+
+test('the Knight turns to mist at random when any attack comes at it: blade, shot or spell, even mid-attack', () => {
+  // Tim (2026-10-20): "periodically … he'll dodge your attack … turn to mist … doesn't matter if it's a magic attack or a physical attack … it can be random".
+  const tally = (setup) => { let mists = 0, rolls = 0; for (let n = 0; n < 60; n++) { const v = world(), m = knight(v, 12, 12); m.id = `knight-${n}`; m.packAttacks = []; m.evasive = true; setup(v, m); step(v, .1); rolls++; if (m.mist) mists++; } return mists / rolls; };
+  const blade = tally((v) => { v.player.x = 13.5; v.player.y = 12; v.playerSwinging = true; });
+  const shot = tally((v) => { v.player.x = 9; v.player.y = 12; v.playerShots = [{ x: 10.5, y: 12.45, dx: 1, dy: 0, damageType: 'magic' }]; });
+  const spell = tally((v) => { v.player.x = 8; v.player.y = 12; v.playerBlasts = [{ x: 12.8, y: 12.5, radius: 1.2, damage: 9 }]; });
+  for (const [name, r] of [['blade', blade], ['shot', shot], ['spell', spell]]) assert.ok(r > .15 && r < .7, `${name}: sometimes, not always (${r.toFixed(2)})`);
+  const v = world(), m = knight(v, 12, 12); m.evasive = true; v.player.x = 15; v.player.y = 12; m.packAttacks = ['knightCannon']; m.pack.gap = 0; step(v, .4); assert.equal(m.pack.attack, 'knightCannon');
+  let n = 0; for (; n < 40 && !m.mist; n++) { m.pack.cd.qbEvade = 0; v.playerShots = [{ x: 14, y: 12.45, dx: -1, dy: 0 }]; step(v, 1 / 30); }
+  assert.ok(m.mist, 'it can vanish out of its own attack'); assert.equal(m.pack.attack, null);
+  const at = { x: m.x, y: m.y }; v.playerShots = []; step(v, .5); assert.ok(!m.mist && Math.hypot(m.x - at.x, m.y - at.y) > 1, 'and comes together aside');
 });

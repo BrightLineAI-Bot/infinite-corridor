@@ -563,6 +563,64 @@ const BODY = {
       ctx.strokeStyle = "#ffffff55"; ctx.lineWidth = 1; for (let i = 1; i < 8; i += 2) { ctx.beginPath(); ctx.moveTo(pts[i * 2], pts[i * 2 + 1]); ctx.lineTo(k + (pts[i * 2] - k) * .45, cyy + (pts[i * 2 + 1] - cyy) * .45); ctx.stroke(); }
     }
   },
+  // Release 245: the Nanobot Knight. Black plate with a red seam of light, flat-shaded and angular: a tall helm with a red
+  // visor slit, a tattered cape fraying into nanobot motes, a long black greatsword with a red edge, an arm that opens into
+  // a cannon. In mist it is only a swarm; struck by plain steel it scatters apart and pulls itself back together.
+  nanobotKnight(ctx, q) {
+    const { k, b, u, t, p, flip, e, state } = q, s0 = e.pack, att = s0?.attack, red = p[2], scat = Math.max(0, Number(e.scattered) || 0);
+    const poly = (pts, fill, stroke) => { ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = Math.max(1, u * .008); ctx.stroke(); } };
+    const motes = (n, cx, cy, spread, rise, size) => { for (let i = 0; i < n; i++) { const ph = (t * .7 + i * .137) % 1, a = i * 2.39, x = cx + Math.cos(a) * spread * (.3 + ph) - flip * ph * spread * .6, y = cy + Math.sin(a) * spread * .5 - ph * rise; ctx.fillStyle = i % 5 ? `rgba(20,20,26,${1 - ph})` : `rgba(255,60,50,${.9 * (1 - ph)})`; ctx.fillRect(x, y, size, size); } };
+    ctx.fillStyle = "rgba(4,4,6,.5)"; ctx.beginPath(); ctx.ellipse(k, b, u * .3, u * .08, 0, 0, TAU); ctx.fill();
+    for (let i = 0; i < 6; i++) { const ph = (t * .12 + i / 6) % 1, a = i * 2.1 + t * .2, hx0 = k + Math.cos(a) * u * (.25 + ph * .3), hy0 = b - u * (.15 + ph * .55); ctx.fillStyle = i % 3 ? `rgba(28,10,14,${.22 * Math.sin(ph * Math.PI)})` : `rgba(120,20,24,${.14 * Math.sin(ph * Math.PI)})`; ctx.beginPath(); ctx.ellipse(hx0, hy0, u * (.16 + ph * .14), u * (.09 + ph * .08), a, 0, TAU); ctx.fill(); } // release 245: a faint miasma hanging about it, drifting up and thinning
+    if (e.mist) { motes(110, k, b - u * .45, u * .3, u * .55, Math.max(2.5, u * .035)); glow(ctx, k, b - u * .5, u * .4, p[2], .25); return; } // only the swarm
+    const H = u * 1.05, hip = b - H * .44, sh = b - H * .76, lean = e.sliding ? .35 : att === "knightSlide" ? .15 : 0, step = Math.sin(t * 5) * u * .02;
+    const jit = scat > 0 ? (n) => (Math.sin(t * 60 + n * 7) * u * .05 * scat / .45) : () => 0;
+    ctx.save(); if (scat > 0) ctx.globalAlpha *= .55 + .45 * (1 - scat / .45);
+    ctx.translate(k, 0); if (lean) { ctx.translate(0, b); ctx.transform(1, 0, -flip * lean * .6, 1, 0, 0); ctx.translate(0, -b); }
+    // the cape: long and tattered, billowing behind it in slow waves (harder when it slides), fraying into motes
+    const cw = u * .3, gust = e.sliding ? 1.8 : 1, billow = u * (.22 + .06 * Math.sin(t * 1.3)) * gust, hem = (f) => [-flip * (cw * .85 + billow) * (1 - f) + flip * cw * .4 * f + Math.sin(t * 2.6 - f * 5) * u * .05 * gust * (1 - f * .5), b - u * .04 - (Math.round(f * 8) % 2 ? u * .08 : 0) - Math.sin(t * 1.9 - f * 4 + 1) * u * .06 * gust * (1 - f)];
+    const cape = [-flip * cw * .5, sh - u * .01]; for (let i = 0; i <= 8; i++) cape.push(...hem(i / 8)); cape.push(flip * cw * .25, sh + u * .02);
+    poly(cape, "#1a1a22", "#000000"); // the cape streaming back from the shoulders, its hem ragged and rolling
+    ctx.strokeStyle = "#0a0a0e"; ctx.lineWidth = Math.max(1, u * .008); for (const f of [.15, .4, .65]) { const [x2, y2] = hem(f); ctx.beginPath(); ctx.moveTo(-flip * cw * .3 + flip * f * cw * .4, sh + u * .03); ctx.quadraticCurveTo((x2 - flip * cw * .2) * .7, (sh + y2) / 2, x2, y2 - u * .02); ctx.stroke(); } // folds
+    const [lx2, ly2] = hem(.08), [lx3, ly3] = hem(.3); poly([-flip * cw * .45, sh + u * .02, lx2, ly2 - u * .02, lx3, ly3 - u * .03, -flip * cw * .2, sh + u * .1], "#4a0c12"); // the red lining where it turns
+    // legs: angular greaves, a wide stance
+    for (const [side, ph] of [[-1, 0], [1, Math.PI]]) { const lx = side * u * .1 + jit(side), lift = Math.max(0, Math.sin(t * 5 + ph)) * u * .02 * (att ? 0 : 1);
+      poly([lx - u * .06, hip, lx + u * .06, hip, lx + u * .05, b - u * .2 - lift, lx - u * .055, b - u * .2 - lift], side * flip > 0 ? "#2a2a32" : "#1a1a20", "#000"); // thigh
+      poly([lx - u * .06, b - u * .22 - lift, lx + u * .065, b - u * .22 - lift, lx + u * .05, b - u * .2 - lift + u * .03, lx - u * .055, b - u * .18 - lift], "#3a3a44", "#000"); // knee
+      poly([lx - u * .05, b - u * .19 - lift, lx + u * .05, b - u * .19 - lift, lx + u * .045, b - u * .03 - lift, lx - u * .045, b - u * .03 - lift], side * flip > 0 ? "#24242c" : "#16161c", "#000"); // greave
+      poly([lx - u * .05, b - u * .035 - lift, lx + u * .05 + flip * u * .05, b - u * .03 - lift, lx + u * .045 + flip * u * .06, b - lift, lx - u * .05, b - lift], "#101014", "#000"); } // sabaton
+    // the torso: breastplate, faulds, pauldrons, the red seam
+    poly([-u * .17 + jit(1), sh, u * .17 + jit(2), sh, u * .12, hip - u * .04, -u * .12, hip - u * .04], "#22222a", "#000");
+    poly([flip * u * .02, sh, flip * u * .17, sh, flip * u * .12, hip - u * .04, flip * u * .01, hip - u * .04], "#30303a"); // the lit half
+    poly([-u * .13, hip - u * .05, u * .13, hip - u * .05, u * .15, hip + u * .05, -u * .15, hip + u * .05], "#18181e", "#000"); // faulds
+    ctx.strokeStyle = red; ctx.lineWidth = Math.max(1, u * .012); ctx.beginPath(); ctx.moveTo(flip * u * .015, sh + u * .03); ctx.lineTo(0, hip - u * .05); ctx.moveTo(-u * .12, hip - u * .045); ctx.lineTo(u * .12, hip - u * .045); ctx.stroke(); // the seam of light
+    for (const side of [-1, 1]) poly([side * u * .1, sh - u * .03, side * u * .25, sh + u * .01, side * u * .23, sh + u * .1, side * u * .12, sh + u * .07], side * flip > 0 ? "#34343e" : "#1c1c22", "#000"); // pauldrons
+    // the helm: tall, angular, a red visor slit, a spike
+    const hx = flip * u * .015 + jit(3), hy = sh - u * .02;
+    poly([hx - u * .085, hy, hx + u * .085, hy, hx + u * .095, hy - u * .17, hx + u * .03, hy - u * .25, hx - u * .07, hy - u * .2], "#26262e", "#000");
+    poly([hx + flip * u * .01, hy, hx + flip * u * .085, hy, hx + flip * u * .095, hy - u * .17, hx + flip * u * .03, hy - u * .25], "#34343e");
+    poly([hx - u * .05 + flip * u * .02, hy - u * .12, hx + u * .07 * flip + flip * u * .02, hy - u * .125, hx + u * .07 * flip + flip * u * .02, hy - u * .105, hx - u * .05 + flip * u * .02, hy - u * .1], red); // the visor slit
+    glow(ctx, hx + flip * u * .03, hy - u * .115, u * .07, red, .6);
+    poly([hx + u * .03, hy - u * .25, hx - u * .01, hy - u * .34, hx + u * .005, hy - u * .23], "#16161c", "#000"); // spike
+    // the cannon arm (rear arm): at its side, or raised and opened along the beam
+    const cannon = att === "knightCannon", ang = cannon ? (s0.data?.angle ?? 0) : 0, ax = -flip * u * .2, ay = sh + u * .05;
+    if (cannon) { const dx = Math.cos(ang), dy = Math.sin(ang) * .75, L = u * .38, wv = u * .055, nx = -dy, ny = dx, ex2 = ax + dx * L, ey2 = ay + dy * L;
+      poly([ax + nx * wv, ay + ny * wv, ex2 + nx * wv * 1.4, ey2 + ny * wv * 1.4, ex2 - nx * wv * 1.4, ey2 - ny * wv * 1.4, ax - nx * wv, ay - ny * wv], "#1e1e26", "#000");
+      poly([ex2 + nx * wv * 1.6, ey2 + ny * wv * 1.6, ex2 + dx * u * .06 + nx * wv * 1.2, ey2 + dy * u * .06 + ny * wv * 1.2, ex2 + dx * u * .06 - nx * wv * 1.2, ey2 + dy * u * .06 - ny * wv * 1.2, ex2 - nx * wv * 1.6, ey2 - ny * wv * 1.6], "#2e2e38", "#000"); // the opened muzzle
+      glow(ctx, ex2 + dx * u * .06, ey2 + dy * u * .06, u * (state === "windup" ? .14 + .05 * Math.sin(t * 30) : .2), red, .9); }
+    else poly([ax - u * .045, ay, ax + u * .045, ay, ax + u * .035, hip + u * .02, ax - u * .04, hip + u * .02], "#1a1a20", "#000");
+    // the sword arm and greatsword: held low behind; swept forward and up in a cut; trailing low in a slide
+    const swing = s0?.data?.mode === "cut" || s0?.phase === "strike" || (s0?.phase === "recover" && (att === "knightSlide" || att === "knightMist")), bx = flip * u * .2, by = sh + u * .06;
+    const bladeA = e.sliding ? Math.atan2(.35, -flip * 1) : swing ? Math.atan2(-.55, flip * 1) : Math.atan2(.95, flip * .32), BL = u * .85, bw = u * .03;
+    const hx2 = bx + Math.cos(bladeA) * u * .12, hy2 = by + Math.sin(bladeA) * u * .12, tx2 = hx2 + Math.cos(bladeA) * BL, ty2 = hy2 + Math.sin(bladeA) * BL, pnx = -Math.sin(bladeA), pny = Math.cos(bladeA);
+    poly([bx - u * .045, by, bx + u * .045, by, hx2 + u * .03, hy2, hx2 - u * .03, hy2], "#202028", "#000"); // gauntleted forearm
+    poly([hx2 + pnx * bw, hy2 + pny * bw, tx2, ty2, hx2 - pnx * bw, hy2 - pny * bw], "#0a0a0e", "#000"); // the blade
+    ctx.strokeStyle = red; ctx.lineWidth = Math.max(1, u * .008); ctx.beginPath(); ctx.moveTo(hx2 + pnx * bw * .7, hy2 + pny * bw * .7); ctx.lineTo(tx2, ty2); ctx.stroke(); // its red edge
+    poly([hx2 + pnx * u * .07, hy2 + pny * u * .07, hx2 + pnx * u * .07 + Math.cos(bladeA) * u * .02, hy2 + pny * u * .07 + Math.sin(bladeA) * u * .02, hx2 - pnx * u * .07 + Math.cos(bladeA) * u * .02, hy2 - pny * u * .07 + Math.sin(bladeA) * u * .02, hx2 - pnx * u * .07, hy2 - pny * u * .07], "#30303a", "#000"); // crossguard
+    if (swing && s0?.data?.aim) { ctx.strokeStyle = "rgba(255,60,50,.55)"; ctx.lineWidth = Math.max(2, u * .05); ctx.beginPath(); const a0 = Math.atan2(s0.data.aim.y, s0.data.aim.x); ctx.ellipse(0, hip - u * .1, u * .55, u * .35, 0, a0 - 1, a0 + 1); ctx.stroke(); } // the arc of the cut
+    ctx.restore();
+    motes(scat > 0 ? 40 : 10, k, sh, scat > 0 ? u * .45 : u * .18, u * .35, Math.max(1.5, u * .018)); // motes drifting off it (a burst when it scatters)
+  },
   bloblet(ctx, q) {
     const { k, b, u, t, p, flip } = q, R = u * .5, cy = b - R * .55, hop = Math.abs(Math.sin(t * 8)) * u * .06;
     shadowAt(ctx, k, b, R * .9, R * .22, .45);
@@ -636,7 +694,7 @@ function spriteState(e) { const s0 = e.pack; return s0?.attack ? (s0.phase === "
 function drawPackSprite(ctx, e, s, now, facing, def) {
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
-  if (e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle") return false; // release 235: its tendrils reach far past the sprite box; one creature, painted directly
+  if (e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight") return false; // release 235: its tendrils reach far past the sprite box; one creature, painted directly
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
   const flip = e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, step = Math.floor(now * PACK_SPRITE.fps / 1000);
@@ -724,7 +782,7 @@ function drawWarningCircle(ctx, x, y, r, color, pulse, progress = 0) {
 
 // Ground effects (mortars, sigils, ruptures, webs, embers, shockwaves, dust).
 // Puddles and clouds lie on the ground they cover, so they are drawn raised with it (`lift`, in tiles; release 237).
-const ON_GROUND = new Set(["ooze", "lava", "gas", "web", "flesh", "flameTrail", "frostTrail", "furrow"]);
+const ON_GROUND = new Set(["ooze", "lava", "gas", "web", "flesh", "flameTrail", "frostTrail", "furrow", "scorch"]);
 function lavaCool(f, life) { return 1 - Math.max(0, Math.min(1, life / (f.total || 1.8))); }
 function lavaShape(ctx, f, x, y, r, k) {
   const seed = f.x * 7.3 + f.y * 3.1, vx = f.vx || 0, vy = f.vy || 0, m = Math.hypot(vx, vy) || 1, ax = vx / m, ay = vy / m;
@@ -746,6 +804,8 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift
       if (f.kind === "web") { drawWeb(ctx, x, y, r, .5 * progress); }
       else if (f.kind === "sigil" || f.kind === "condemn") { drawSigil(ctx, x, y, r, f.kind === "condemn" ? "#9dff8a" : "#7fe7ff", now, progress); }
       else if (f.kind === "ooze") { const fx = ((f.from?.x ?? f.x) + .5) * s, fy = ((f.from?.y ?? f.y) + .3) * s, bx = fx + (x - fx) * progress, by = fy + (y - fy) * progress - Math.sin(progress * Math.PI) * s * 1.1; ctx.fillStyle = "#5fbf6e"; ctx.beginPath(); ctx.ellipse(bx, by, s * .16, s * .13, 0, 0, TAU); ctx.fill(); ctx.fillStyle = "#f4ffe8aa"; ctx.beginPath(); ctx.arc(bx - s * .05, by - s * .04, s * .04, 0, TAU); ctx.fill(); ctx.strokeStyle = "#c8ff6a55"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU); ctx.stroke(); }
+      else if (f.kind === "swordfall") { drawWarningCircle(ctx, x, y, r, "#ff2a2a", pulse, progress); const drop = (1 - progress) * s * 6, sy = y - s * .3 - drop; ctx.globalAlpha = Math.min(1, progress * 2); ctx.fillStyle = "#0a0a0e"; ctx.beginPath(); ctx.moveTo(x, sy + s * .45); ctx.lineTo(x - s * .05, sy + s * .3); ctx.lineTo(x - s * .04, sy - s * .5); ctx.lineTo(x + s * .04, sy - s * .5); ctx.lineTo(x + s * .05, sy + s * .3); ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#ff2a2a"; ctx.lineWidth = 1; ctx.stroke(); } // release 245: a sword falling onto its mark
+      else if (f.kind === "orbital") { drawWarningCircle(ctx, x, y, r, "#ff2a2a", pulse, progress); ctx.fillStyle = `rgba(255,42,42,${.15 * progress})`; ctx.fillRect(x - r * .2, y - s * 12, r * .4, s * 12); }
       else if (f.kind === "lava") { const fx = ((f.from?.x ?? f.x) + .5) * s, fy = ((f.from?.y ?? f.y) + .1) * s, bx = fx + (x - fx) * progress, by = fy + (y - fy) * progress - Math.sin(progress * Math.PI) * s * .5; glow(ctx, bx, by, s * .35, "#ff7a2a", .7); ctx.fillStyle = "#ffd25a"; ctx.beginPath(); ctx.ellipse(bx, by, s * .14, s * .11, 0, 0, TAU); ctx.fill(); }
       else if (f.kind === "mortar" || f.kind === "lavaBomb") { drawWarningCircle(ctx, x, y, r, f.kind === "lavaBomb" ? "#ff5a2a" : "#ff9d4a", pulse, progress); if (f.from) { const fx = (f.from.x + .5) * s, fy = (f.from.y + .3) * s, k = progress, sx = fx + (x - fx) * k, sy = fy + (y - fy) * k - Math.sin(k * Math.PI) * s * 2.2; if (f.rock) { ctx.fillStyle = "#6a5238"; ctx.beginPath(); for (let i = 0; i < 7; i++) { const a = i / 7 * TAU + k * 6, rr = s * (.22 + .05 * Math.sin(i * 2.3)); i ? ctx.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr) : ctx.moveTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#2a1c12"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.fillStyle = "#b9a184"; ctx.beginPath(); ctx.arc(sx - s * .06, sy - s * .07, s * .05, 0, TAU); ctx.fill(); } else { ctx.fillStyle = "#2a1c12"; ctx.beginPath(); ctx.arc(sx, sy, s * .14, 0, TAU); ctx.fill(); glow(ctx, sx, sy, s * .3, "#ff9d4a", .6); } } }
       else drawWarningCircle(ctx, x, y, r, f.kind === "ember" ? "#ffc35a" : f.kind === "rupture" ? "#e0b071" : "#ff7a6b", pulse, progress);
@@ -765,6 +825,12 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift
       else if (f.kind === "twister") { ctx.globalAlpha = Math.min(1, life); const h = s * 1.7, spin2 = now / 90 + f.x; for (let i = 0; i < 6; i++) { const yy = y - h * i / 6, rr = r * (.35 + i * .13); ctx.strokeStyle = `rgba(220,244,255,${.75 - i * .07})`; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.ellipse(x + Math.sin(spin2 * .3 + i * .6) * s * .08, yy, rr, rr * .3, 0, spin2 + i, spin2 + i + Math.PI * 1.4); ctx.stroke(); } ctx.fillStyle = "#c8ecff88"; ctx.beginPath(); ctx.ellipse(x, y, r * .5, r * .2, 0, 0, TAU); ctx.fill(); } // a small ice twister
       else if (f.kind === "comet") { const m = Math.hypot(f.vx, f.vy) || 1, cy2 = y - s * .55; for (let i = 5; i >= 1; i--) { ctx.fillStyle = `rgba(190,232,255,${.5 / i})`; ctx.beginPath(); ctx.arc(x - f.vx / m * r * i * .9, cy2 - f.vy / m * r * i * .9, r * (1 - i * .12), 0, TAU); ctx.fill(); } glow(ctx, x, cy2, r * 2.4, "#8fd8ff", .8); const g = ctx.createRadialGradient(x - r * .3, cy2 - r * .3, r * .1, x, cy2, r); g.addColorStop(0, "#ffffff"); g.addColorStop(.6, "#bfe8ff"); g.addColorStop(1, "#5aa8d8"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, cy2, r, 0, TAU); ctx.fill(); ctx.fillStyle = "#00000022"; ctx.beginPath(); ctx.ellipse(x, y, r * .9, r * .35, 0, 0, TAU); ctx.fill(); } // the ice comet and its shadow
       else if (f.kind === "iceBurst") { const k2 = 1 - Math.max(0, life) / (f.total || .5); ctx.globalAlpha = 1 - k2; ctx.strokeStyle = "#e8f8ff"; ctx.lineWidth = Math.max(1.5, s * .05); for (let i = 0; i < 10; i++) { const a = i * TAU / 10 + f.x, r0 = r * k2 * .3, r1 = r * (.4 + k2 * .7); ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0 * .6); ctx.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1 * .6 - s * .1); ctx.stroke(); } glow(ctx, x, y, r * (1 - k2 * .5), "#bfe8ff", .6 * (1 - k2)); } // shards flung out
+      else if (f.kind === "swordfall") { const k2 = 1 - Math.max(0, life) / 1.4; ctx.globalAlpha = 1 - k2 * k2; ctx.fillStyle = "#0a0a0e"; ctx.beginPath(); ctx.moveTo(x - s * .05, y - s * .1); ctx.lineTo(x, y + s * .05); ctx.lineTo(x + s * .05, y - s * .1); ctx.lineTo(x + s * .04, y - s * .9); ctx.lineTo(x - s * .04, y - s * .9); ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#ff2a2a"; ctx.lineWidth = 1; ctx.stroke(); ctx.fillStyle = "#30303a"; ctx.fillRect(x - s * .14, y - s * .9, s * .28, s * .05); ctx.strokeStyle = "rgba(255,60,50,.5)"; ctx.beginPath(); ctx.ellipse(x, y, r * .7, r * .35, 0, 0, TAU); ctx.stroke(); } // release 245: a fallen sword, standing in the ground
+      else if (f.kind === "orbital") { const k2 = Math.min(1, life * 2); ctx.globalAlpha = k2; ctx.fillStyle = "rgba(255,42,42,.28)"; ctx.fillRect(x - r * .45, y - s * 12, r * .9, s * 12); ctx.fillStyle = "rgba(255,200,190,.85)"; ctx.fillRect(x - r * .14, y - s * 12, r * .28, s * 12); glow(ctx, x, y, r * 1.6, "#ff2a2a", .8); ctx.strokeStyle = "#ffd0c8"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y, r, r * .55, 0, 0, TAU); ctx.stroke(); } // the lance from the sky
+      else if (f.kind === "scorch") { ctx.globalAlpha = Math.min(.9, life * .6); ctx.fillStyle = "#140806"; ctx.beginPath(); ctx.ellipse(x, y, r, r * .55, 0, 0, TAU); ctx.fill(); ctx.fillStyle = "#ff5a2a"; for (let i = 0; i < 4; i++) { const a = i * 1.7 + f.x * 3, rr = r * (.2 + (i % 2) * .4); if ((now / 300 + i) % 2 > .7) ctx.fillRect(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .55, Math.max(1.5, s * .04), Math.max(1.5, s * .04)); } } // scorched ground, embers winking
+      else if (f.kind === "nanoOrb") { const oy = y - s * .4; glow(ctx, x, oy, r * 2.4, "#ff2a2a", .55); ctx.fillStyle = "#0a0a0e"; ctx.beginPath(); ctx.arc(x, oy, r, 0, TAU); ctx.fill(); ctx.strokeStyle = "#ff3a32"; ctx.lineWidth = Math.max(1.5, s * .04); ctx.beginPath(); ctx.arc(x, oy, r * .75, now / 150, now / 150 + 4); ctx.stroke(); } // a seeker orb
+      else if (f.kind === "missile") { const m = Math.hypot(f.vx, f.vy) || 1, ux = f.vx / m, uy = f.vy / m, oy = y - s * .4; for (let i = 1; i <= 4; i++) { ctx.fillStyle = `rgba(255,${80 + i * 30},60,${.6 / i})`; ctx.beginPath(); ctx.arc(x - ux * s * .16 * i, oy - uy * s * .16 * i, s * (.11 - i * .015), 0, TAU); ctx.fill(); } ctx.fillStyle = "#14141a"; ctx.beginPath(); ctx.moveTo(x + ux * s * .28, oy + uy * s * .28); ctx.lineTo(x - uy * s * .08, oy + ux * s * .08); ctx.lineTo(x - ux * s * .18, oy - uy * s * .18); ctx.lineTo(x + uy * s * .08, oy - ux * s * .08); ctx.closePath(); ctx.fill(); ctx.fillStyle = "#ff2a2a"; ctx.fillRect(x - s * .02, oy - s * .02, s * .04, s * .04); } // a missile and its exhaust
+      else if (f.kind === "nanoBurst") { const k2 = 1 - Math.max(0, life) / (f.total || .4); ctx.globalAlpha = 1 - k2; glow(ctx, x, y - s * .2, r * (.6 + k2), "#ff3a2a", .8); ctx.fillStyle = "#14141a"; for (let i = 0; i < 10; i++) { const a = i * TAU / 10 + f.x, rr = r * (.2 + k2); ctx.fillRect(x + Math.cos(a) * rr, y - s * .2 + Math.sin(a) * rr * .6, Math.max(2, s * .05), Math.max(2, s * .05)); } } // a missile bursting into motes
       else if (f.kind === "furrow") { // release 239: churned earth in the fleeing worm's wake, settling as it fades
         const k2 = Math.max(0, Math.min(1, life / (f.total || 1.6))), d = f.dir || { x: 1, y: 0 }, a = Math.atan2(d.y * .6, d.x), seed = f.x * 5.1 + f.y * 2.3;
         ctx.globalAlpha = k2; ctx.translate(x, y); ctx.rotate(a);

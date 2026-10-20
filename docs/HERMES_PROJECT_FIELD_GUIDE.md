@@ -26,6 +26,54 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The Nanobot Knight (release 245)
+
+The fourth of Tim's world beasts (2026-10-19). He asked for:
+- black with red accents;
+- it teleports or dissolves into mist;
+- physical hits scatter it, unless the attack is elemental, a spell, or the weapon has the Echo glyph, which hits twice;
+- Abyss Watcher sword slides, an arm laser cannon, and swords falling from the sky;
+- an orbital tracking laser that scorches the ground;
+- homing orbs that circle it, sent one at a time or all at once, homing for 1–2 s and then flying straight;
+- a homing missile barrage that explodes on timeout.
+
+**CODE:**
+
+- **The scatter rule.**
+  - `nanoScatters(e, { physical, echoGlyph })` in `src/monster-pack.ts` decides it. `Game.scatterCheck` in `src/game.ts` applies it, sets `e.scattered` for the drawing, and gives a throttled hint message.
+  - It is wired into the only two plain-physical hit sites, so both scatter unless the weapon's loadout has the `echo` glyph:
+    - melee swings (`primaryAttack`, glyph host `melee`);
+    - physical shots (the projectile `damageFor`, `shot.damageType === "physical"`, including the crescent).
+  - A scattered blow does no damage, no hit flash and no stagger. `updateProjectiles` only flashes and staggers when damage is above 0.
+  - These still hurt it, by design:
+    - magic shots;
+    - spells and rift blasts (`updateEffects`);
+    - glyph procs, echoes and constellation effects (`glyphWorld.damage`);
+    - burns (`tickGlyphStatus`).
+- **`src/monster-pack.ts`.** `KNIGHT` holds the balance. The attacks:
+  - `knightSlide`: three skid-and-cut cycles. `e.sliding` is set while it skids.
+  - `knightCannon`: tracks the player at `cannonTrack` while charging, then fires a fixed beam.
+  - `knightSwordfall`: `swords` marks, one on the player and the rest in a ring. They are generic detonating effects that stay standing as fallen swords.
+  - `knightOrbital`: an `orbital` effect that, once armed, follows the player at `orbitalSpeed`, bites each `orbitalTick` and drops `scorch` patches.
+  - `knightOrbs`: `nanoOrb` effects circle the Knight in state `circle`. They are sent all at once or every `orbEvery`, chosen by hash per attack, home for a hashed 1–2 s, then fly straight. Any still circling are sent when the attack ends.
+  - `knightMissiles`: `missile` effects home at `missileTurn` and burst (`nanoBurst`) on contact, at a wall, or when their fuel runs out.
+  - `knightMist`: it is untargetable in mist (`e.mist`), reforms beside the player, and cuts.
+  - Its dodge is `knightMistDodge` (Tim, 2026-10-20: "periodically … he'll dodge your attack … turn to mist … doesn't matter if it's a magic attack or a physical attack … it can be random").
+    - A threat is a player shot heading at it, a spell or blast effect reaching it (`packWorld.playerBlasts`), or a swing in reach.
+    - Each threat triggers one hashed roll, at most every `mistEvery`. At `mistChance` % it dissolves for `dodgeMist`, ending any attack in progress, and reforms `dodgeLeap` aside.
+    - Otherwise it stands and takes the hit.
+  - `resetPackRuntime` now clears every pose flag (`iceShield`, `spinning`, `tucked`, `sliding`, `mist`). `fleeStep` clears `tucked`, and the Knight flees as mist.
+- **`src/monster-render.ts`.** `BODY.nanobotKnight` is flat-shaded and painted directly.
+  - The figure: angular greaves, a breastplate with a red seam, pauldrons, a tall helm with a glowing visor slit and a spike, a tattered cape with red lining, and a long black greatsword with a red edge (low at rest, trailing in a slide, raised with an arc in a cut).
+  - The cannon arm opens along the beam angle with a charging glow.
+  - Motes drift off it; in mist it is only a swarm; when scattered it is jittered and translucent with a burst of motes.
+  - Tim's touches: the cape streams back from the shoulders like a sail. Its ragged hem rolls in slow waves (harder while it slides), with folds and a red lining where it turns. A faint dark-red miasma drifts up around it in six translucent puffs, all flat fills.
+  - Effects: falling and fallen swords, the orbital lance column and its scorch, seeker orbs, missiles with exhaust, and missile bursts.
+- **`src/world-beasts.ts`.** A `nanobotKnight` row: home `glass`, `retreatMoves: "through"`.
+- **`src/echoes.ts`.** "Nanite Seekers": kills strike up to two foes within 5 tiles.
+
+**BOUNDARY:** No save or generator change. Effects stay under the pack cap: an in-game run peaked at 26.
+
 ## The Mountain Turtle's Icicle Cyclone (release 243)
 
 Tim, 2026-10-20: the spin should come in two variants. The first makes tornadoes that wander for a while. In the second, the Turtle spins and bounces around the stage inside its tornado, launching icicles in all directions.
