@@ -371,8 +371,13 @@ test('the Knight\'s blade: a thrust along any of eight ways with a beam off the 
   assert.ok(dirs.size >= 3, `at you, and off at angles (${[...dirs]})`); assert.ok(beams.yes > 0 && beams.no > 0, `a beam off the tip, not always (${beams.yes}/${beams.no})`);
   // fore and back cuts; an energized cut reaches a Wayfarer standing beyond the blade
   let far = 0;
-  for (let seq = 0; seq < 12; seq++) { const w = world({ size: 30, player: { x: 15 + .67 + KNIGHT.slideReach + 1.2, y: 12 } }), k = knight(w, 15, 12); k.packAttacks = ['knightCombo']; k.pack.gap = 0; k.pack.seq = seq; const swings = []; let arc = false; step(w, 1.2, () => { if (k.swing) swings.push(k.swing); arc ||= w.fx.some((f) => f.kind === 'swordArc'); }); assert.ok(swings.includes('fore') && swings.includes('back'), 'a cut forward and a cut back'); if (w.hurts.some((h) => h.source === 'knightCombo')) far++; assert.ok(!w.hurts.length || arc, 'the far hit came with an energy arc'); }
+  for (let seq = 0; seq < 12; seq++) { const w = world({ size: 30, player: { x: 15 + .67 + KNIGHT.slideReach + 1.2, y: 12 } }), k = knight(w, 15, 12); k.packAttacks = ['knightCombo']; k.pack.gap = 0; k.pack.seq = seq; const swings = []; let arc = false; step(w, .75, () => { /* the first pair of cuts, before it dashes */ if (k.swing) swings.push(k.swing); arc ||= w.fx.some((f) => f.kind === 'swordArc'); }); assert.ok(swings.includes('fore') && swings.includes('back'), 'a cut forward and a cut back'); if (w.hurts.some((h) => h.source === 'knightCombo')) far++; assert.ok(!w.hurts.length || arc, 'the far hit came with an energy arc'); }
   assert.ok(far > 0 && far < 12, `only an energized cut reaches that far (${far}/12)`);
+  { // the onslaught: six cuts, two dashes after you between the pairs
+    const w = world({ size: 40, player: { x: 20, y: 20 } }), k = knight(w, 14, 20); k.packAttacks = ['knightCombo']; k.pack.gap = 0; let dashes = 0, was = false, cuts = 0;
+    step(w, 4.5, () => { if (k.sliding && !was) dashes++; was = !!k.sliding; if (w.player.x < 34 && k.pack.data?.cuts > cuts) { cuts = k.pack.data.cuts; w.player.x += 2.2; } });
+    assert.equal(cuts, 6, 'six cuts'); assert.ok(dashes >= 2, `dashing after you between them (${dashes})`); assert.ok(k.x > 20, 'it followed');
+  }
   // the retreating slash: it leaps away while its energy arc still finds you
   const w = world({ size: 30, player: { x: 13.5, y: 12 } }), k = knight(w, 12, 12); k.packAttacks = ['knightBackslash']; k.pack.gap = 0; step(w, .8);
   assert.ok(k.x < 10.5, 'it leaps back'); assert.ok(w.hurts.some((h) => h.source === 'knightBackslash'), 'cutting as it goes');

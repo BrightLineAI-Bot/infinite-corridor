@@ -4,7 +4,7 @@
 
 - Release 247 — the Nanobot Knight's cape is no longer cloth: it is the swarm itself. A stream of dark motes (a few glowing red) pours off its shoulders and trails out behind it like a billowing plume of smoke, thinning to nothing at the tail. Its swordplay grows:
   - a lunging thrust with the sword outstretched, at you or cutting across along any of the eight ways, sometimes ending in a beam of energy off the tip that reaches about as far as a Cinder Pike's thrust;
-  - a cut forward and a cut back;
+  - a six-cut onslaught: two cuts (forward, then back), a dash after you, two more, another dash, two more;
   - a retreating slash, leaping back away from you while it cuts, which it sometimes uses instead of turning to mist when you attack it.
   Some of its cuts throw an arc of energy off the sword, reaching about a Verge Cleaver's swing farther, so it can strike from where you strike it.
 - Release 245 — the fourth world beast: the Nanobot Knight. It is black plate with a red seam of light and nothing inside but a swarm, with a tall helm and red visor, a cape that billows behind it, a faint miasma haze hanging about it, and a long black greatsword with a red edge. Plain steel scatters it: an ordinary sword swing or a physical shot does no damage and it reforms. Spells, magic shots, glyph powers (burning, chaining, bursts), echoes and any weapon carrying the Echo glyph hurt it. Its attacks:

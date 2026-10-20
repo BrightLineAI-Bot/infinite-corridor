@@ -109,7 +109,7 @@ export const ATTACK_MODULES = {
   knightOrbs: { id: "knightOrbs", name: "Seeker Orbs", range: [0, 11], cooldown: 8, windup: .6, active: 2.6, recover: .3, damage: .6, tags: ["ranged", "orbs"], text: "Orbs gather and circle it, then go for you: one by one or all at once. They home for a moment, then fly straight." },
   knightMissiles: { id: "knightMissiles", name: "Missile Barrage", range: [0, 13], cooldown: 9, windup: .7, recover: .5, damage: .7, tags: ["ranged"], text: "A barrage of homing missiles. They burst on whatever they meet, or on their own when their fuel runs out." },
   knightThrust: { id: "knightThrust", name: "Lunging Thrust", range: [0, 8], cooldown: 3.6, windup: .45, active: .35, recover: .45, damage: 1.2, tags: ["charge", "melee"], text: "It dashes with its sword outstretched, at you or off to the side, along any of the eight ways; sometimes a beam of energy leaves the tip at the end." },
-  knightCombo: { id: "knightCombo", name: "Fore and Back Cut", range: [0, 4.5], cooldown: 2.6, windup: .4, active: .6, recover: .4, damage: .85, tags: ["melee", "combo"], text: "A cut forward and a cut back. Some cuts throw an arc of energy off the tip, reaching as far as your own blade." },
+  knightCombo: { id: "knightCombo", name: "Six-Cut Onslaught", range: [0, 6], cooldown: 4.2, windup: .4, active: 6, recover: .5, damage: .85, tags: ["melee", "combo"], text: "Two cuts, a dash after you, two more, another dash, two more: six cuts in all, each pair forward then back. Some throw an arc of energy off the tip, reaching as far as your own blade." },
   knightBackslash: { id: "knightBackslash", name: "Retreating Slash", range: [0, 3.5], cooldown: 4.5, windup: .15, active: .4, recover: .35, damage: 1, tags: ["melee", "evade"], text: "It leaps back away from you, slashing as it goes; the arc of energy off its sword covers its retreat." },
   knightMist: { id: "knightMist", name: "Mist Step", range: [1, 12], cooldown: 5, windup: .3, recover: .35, damage: 1.1, tags: ["teleport", "melee"], text: "It dissolves into a swarm, drifts, and comes together beside you mid-cut." },
   firefall: { id: "firefall", name: "Firefall", range: [1.5, 9], cooldown: 6.5, windup: .7, recover: .8, damage: .85, jumpable: true, tags: ["ground"], text: "Embers rain across the floor around you." },
@@ -494,7 +494,7 @@ export const KNIGHT = {
   mistTime: .55, mistLand: 1.6,
   // Tim: its swings sometimes throw energy off the sword, reaching about as far as the Wayfarer's own blades
   // (Verge Cleaver's 1.75, Cinder Pike's 2.45), so it can strike from where you strike it
-  arcReach: 1.75, arcChance: 45, thrustSpeed: 13, thrustReach: 1.2, thrustBeam: 2.45, beamChance: 55, comboArc: 150, comboPause: .22,
+  arcReach: 1.75, arcChance: 45, thrustSpeed: 13, thrustReach: 1.2, thrustBeam: 2.45, beamChance: 55, comboArc: 150, comboPause: .22, comboPlan: ["cut", "cut", "dash", "cut", "cut", "dash", "cut", "cut"], comboDash: .4, comboClose: 1.1, // Tim: a six-cut onslaught, two cuts between dashes
   backHop: 2.6, backslashChance: 40, // of the times it slips your attack, this % it leaps back slashing instead of turning to mist
   dodgeMist: .3, dodgeLeap: 2.8, // its dodge: it dissolves and comes together a few tiles aside
   mistChance: 40, mistEvery: .9, // Tim: any attack coming at it (blade, shot or spell) has this % chance to find only mist, even mid-attack
@@ -592,7 +592,7 @@ const START = {
     const len = Math.min(rayLength(w, e, s.data.dir, KNIGHT.thrustSpeed * ATTACK_MODULES.knightThrust.active), KNIGHT.thrustSpeed * ATTACK_MODULES.knightThrust.active);
     s.tele = { type: "lane", aim: s.data.dir, length: len + bodyRadius(e) + KNIGHT.thrustReach + (s.data.beam ? KNIGHT.thrustBeam : 0), width: .45 };
   },
-  knightCombo(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach, arc: KNIGHT.comboArc }; s.data.cuts = 0; s.data.sub = 0; },
+  knightCombo(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach, arc: KNIGHT.comboArc }; s.data.step = 0; s.data.cuts = 0; s.data.sub = 0; },
   knightBackslash(e, s) { s.tele = null; s.data.cut = false; },
   turtleStomp(e, s) { s.tele = { type: "ring", radius: bodyRadius(e) + TURTLE.stompRadius }; },
   turtleDash(e, s, w) { const len = Math.min(11, TURTLE.dashSpeed * ATTACK_MODULES.turtleDash.active); s.data.ice = hashSeed(`${e.id}:${s.seq}:dash`) % 2 === 1; s.tele = { type: "lane", aim: s.data.aim, length: len, width: bodyRadius(e) * 1.2 }; s.data.next = 0; },
@@ -747,13 +747,23 @@ const RUN = {
       e.thrusting = null; toPhase(s, "recover", attack.recover);
     }
   },
-  knightCombo(e, s, w) { // a cut forward, a cut back
-    const attack = ATTACK_MODULES.knightCombo;
-    if (s.phase === "windup") { if (s.t <= 0) { const p = center(w.player); s.data.aim = unit(p.x - e.x, p.y - e.y); e.swing = "fore"; knightCut(e, s, w, "knightCombo", s.data.aim, energized(e, s, 0), KNIGHT.comboArc); s.data.cuts = 1; s.data.sub = KNIGHT.comboPause; s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach, arc: KNIGHT.comboArc }; toPhase(s, "active", attack.active); } return; }
+  knightCombo(e, s, w) { // the onslaught: cut, cut, dash after you, cut, cut, dash, cut, cut (each pair forward then back)
+    const attack = ATTACK_MODULES.knightCombo, plan = KNIGHT.comboPlan, p = center(w.player);
+    if (s.phase === "windup") { if (s.t <= 0) { s.data.step = 0; s.data.sub = 0; toPhase(s, "active", attack.active); } return; }
     if (s.phase !== "active") return;
+    const what = plan[s.data.step];
+    if (!what || s.t <= 0) { e.swing = null; e.sliding = false; s.tele = null; toPhase(s, "recover", attack.recover); return; }
     s.data.sub -= w.dt;
-    if (s.data.cuts === 1 && s.data.sub <= 0) { const p = center(w.player); s.data.aim = unit(p.x - e.x, p.y - e.y); e.swing = "back"; knightCut(e, s, w, "knightCombo", s.data.aim, energized(e, s, 1), KNIGHT.comboArc); s.data.cuts = 2; s.tele = null; }
-    if (s.t <= 0) { e.swing = null; s.tele = null; toPhase(s, "recover", attack.recover); }
+    if (what === "dash") { // skid in after you
+      e.sliding = true; e.swing = null; const to = unit(p.x - e.x, p.y - e.y), step = KNIGHT.slideSpeed * w.dt;
+      if (distance(p, e) > bodyRadius(e) + KNIGHT.comboClose) w.move(e, to.x * step, to.y * step);
+      if (s.data.sub <= -KNIGHT.comboDash || distance(p, e) <= bodyRadius(e) + KNIGHT.comboClose) { e.sliding = false; s.data.step++; s.data.sub = KNIGHT.comboPause; }
+      return;
+    }
+    s.data.aim = unit(p.x - e.x, p.y - e.y); s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach, arc: KNIGHT.comboArc }; // the cut's reach shows while it gathers
+    if (s.data.sub > 0) return;
+    e.swing = s.data.cuts % 2 ? "back" : "fore"; knightCut(e, s, w, "knightCombo", s.data.aim, energized(e, s, s.data.cuts), KNIGHT.comboArc);
+    s.data.cuts++; s.data.step++; s.data.sub = KNIGHT.comboPause;
   },
   knightBackslash(e, s, w) { // it leaps back away from you, slashing as it goes; the energy arc covers its retreat
     const attack = ATTACK_MODULES.knightBackslash, p = center(w.player);
