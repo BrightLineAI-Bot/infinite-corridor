@@ -892,7 +892,8 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 /* Release 265 (Tim: "we'll put the stone building block tool down where the A button is right now... just say, build"):
    Build takes Spell A's old corner of the cluster, mirroring Potion. */
 .action-diamond button.build { left: 0; top: calc(var(--button) * 2.52); right: auto; bottom: auto; transform: none; width: calc(var(--button) * 1.16); height: calc(var(--button) * .72); }
-/* Tim: "The build button can just have a hammer. Instead of the word build". */
-.action-diamond button.build { display: grid; place-items: center; padding: 0; }
-.action-diamond button.build .hammer { width: calc(var(--button) * .44); height: calc(var(--button) * .44); color: #e3c58f; transform: rotate(-12deg); }
-.action-diamond button.build[data-kind="stone"] .hammer { color: #c9ced6; }
+/* Release 265 (Tim: "The build button can just have a hammer"; then "make it look better... the potion... move the word
+   potion and just put like a bottle there"): Build and Potion show drawn icons, with their status line beneath. */
+.action-diamond button.build, .action-diamond button.potion { display: grid; place-items: center; padding: 0 0 9px; }
+.action-diamond button .icon { width: calc(var(--button) * .5); height: calc(var(--button) * .5); filter: drop-shadow(0 1px 1px #000a); pointer-events: none; }
+.action-diamond button.build .hammer { width: calc(var(--button) * .54); height: calc(var(--button) * .54); }
