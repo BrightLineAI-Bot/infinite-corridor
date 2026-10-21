@@ -1,12 +1,16 @@
 # Agent context — current state
 
-For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-10-18.
+For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-10-21.
 
 ## Void Walker design handoff — recorded 2026-10-21 UTC
 
 Before implementing or reviewing the Void Walker, read [the detailed owner design and acceptance record](void-walker-design.md) and [the verbatim dictated source](void-walker-source-transcript.md). The description includes player-scale proportions, cosmic rends, transient wraiths, teleport/evasion, tracking portal constellations, pulling event horizons/pulsars, and a terrain-consuming supernova with straight teleport-dash barrages and damaging afterimages. The record separates explicit requirements from interpretations and tuning choices; its review statuses begin **NOT YET VERIFIED**. It is a design handoff, not a completion or publication claim. It supersedes earlier statements that the appearance/combat description has not yet been supplied.
 
 ## Where things stand
+
+Verified 2026-10-21 before release preparation: live and `main` are release 249, candidate `r249-4a43f3ccc5cd`, commit `4a43f3ccc5cdbc918310ea41f8e53425a1cedac3`. Release 251 is being prepared locally for the Void Walker and [current-HP-only Blob growth regeneration](blob-growth-health.md). Read `gh-pages:release-identity.json` again before any publication; this paragraph is not a deployment claim. Latest Walker retreat clarification permits disappearing at a reached physical inter-level doorway, but not teleporting there. Tests and independent review must cover the final exact candidate.
+
+### Historical release snapshots (retained, not current deployment state)
 
 Publishing moved to GitHub Actions on 2026-10-18 (see Tim's standing decisions). The live site was last published by the retired PC tool: release 171, candidate `icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa` (commit `ef56426`); read `gh-pages:release-identity.json` for the current one.
 

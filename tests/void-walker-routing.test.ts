@@ -3,10 +3,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   WALKER_ROUTE, walkerGroundSegmentOpen, walkerDungeonRoute, moveAxis,
-  activeDungeonEnemies, Game,
+  activeDungeonEnemies, Game, beginWalkerRetreatSearch, advanceWalkerRetreatSearch,
 } from '../src/game.ts';
 import { MONSTER_PACK, isDungeonRoamer } from '../src/monster-pack.ts';
-import { WORLD_BEASTS } from '../src/world-beasts.ts';
+import { WORLD_BEASTS, walkerRetreatDoors } from '../src/world-beasts.ts';
 
 function mapOf(width = 28, height = 20) {
   return { width, height, landscape: true, entry: { x: 3, y: 4 }, objects: [],
@@ -186,4 +186,69 @@ test('Crystal keeps its existing bounded dungeon phasing while a ground segment 
   assert.equal(walkerGroundSegmentOpen(crystal, map, map.width, crystal, { x: 7, y: 7 }), false);
   assert.equal(game.packWorld(.05, 0).move(crystal, 2, 0), true);
   assert.equal(crystal.x, 8);
+});
+
+
+function retreatPlan(e,map,targets){let result,state=beginWalkerRetreatSearch(e,map,map.width,targets),rounds=0;do{result=advanceWalkerRetreatSearch(e,state);assert.ok(result.visited<=WALKER_ROUTE.nodes);}while(result.status==='pending'&&++rounds<200);return result;}
+
+test('nearest retreat means shortest reachable terrain path, not straight-line proximity',()=>{
+ const map=rect(mapOf(18,16),1,1,16,14),e=actor(5,8),near={x:7,y:8},short={x:3,y:12};
+ for(let y=3;y<14;y++)Object.assign(map.tiles[y*18+6],{blocked:true,kind:'wall'});
+ const plan=retreatPlan(e,map,[near,short]);assert.equal(plan.status,'reached');assert.deepEqual(plan.target,short);assert.deepEqual(plan.route.at(-1),short);
+ assertWalkable(e,map,plan.route);
+});
+
+test('equal-distance multiple doors use a deterministic coordinate tie break independent of object order',()=>{
+ const map=rect(mapOf(18,16),1,1,16,14),e=actor(8,8),doors=[{x:11,y:8},{x:8,y:5},{x:5,y:8}];
+ assert.deepEqual(retreatPlan(e,map,doors).target,{x:8,y:5});assert.deepEqual(retreatPlan(e,map,[...doors].reverse()),retreatPlan(e,map,doors));
+});
+
+test('fractional actor and completion-exit positions retain exact cardinal joins without snapping',()=>{
+ const map=rect(mapOf(18,16),1,1,16,14),e=actor(8.37,8.16),target={x:11.24,y:9.33};
+ const plan=retreatPlan(e,map,[target]);assert.deepEqual(plan.target,target);assert.deepEqual(plan.route.at(-1),target);assertWalkable(e,map,plan.route);assert.equal(e.x,8.37);
+});
+
+test('retreat jump permission is only one ordinary level in either direction and never clears lethal terrain',()=>{
+ for(const delta of [-4,-2,-1,1,2,4]){
+  const map=rect(mapOf(14,8),1,4,12,4,{elev:4}),e=actor(2,4),target={x:10,y:4};rect(map,6,4,12,4,{elev:4+delta});
+  const plan=retreatPlan(e,map,target);assert.equal(plan.status,Math.abs(delta)===1?'reached':'no-path',`delta ${delta}`);
+ }
+ for(const kind of ['wall','sealedGate','dungeonWater','river','lava','abyss','canyon','ocean','deepOcean']){
+  const map=rect(mapOf(14,8),1,4,12,4),e={...actor(2,4),phases:true,flying:true};Object.assign(map.tiles[4*14+6],{kind,blocked:kind==='wall'||kind==='sealedGate'});
+  assert.equal(retreatPlan(e,map,{x:10,y:4}).status,'no-path',kind);
+ }
+});
+
+test('retreat door representations include physical level passages but exclude portals and room doors',()=>{
+ const map=mapOf();assert.deepEqual(walkerRetreatDoors(map),[map.entry]);
+ map.objects=[{kind:'door',state:'open',x:5,y:4},{kind:'deepPortal',state:'open',x:6,y:4},{kind:'deepTransition',state:'open',x:7,y:4},{kind:'exit',state:'open',x:9,y:4},{kind:'exit',state:'locked',x:4,y:4}];
+ assert.deepEqual(walkerRetreatDoors(map),[{x:7,y:4},{x:9,y:4}]);map.objects=map.objects.filter(o=>!['exit','deepTransition'].includes(o.kind));map.multiLevel=true;assert.deepEqual(walkerRetreatDoors(map),[]);
+ map.objects=[{kind:'dungeon',state:'open',x:10,y:6},{kind:'exit',state:'open',x:4,y:4}];assert.deepEqual(walkerRetreatDoors(map,'overworld'),[{x:10,y:6}]);
+});
+
+
+test('fractional retreat doors compete by direct legal distance, including the door already occupied',()=>{
+ const map=rect(mapOf(20,20),1,1,18,18);
+ for(const [e,doors,expected] of [
+  [actor(10.25,10),[{x:10.3,y:10},{x:10,y:10}],{x:10.3,y:10}],
+  [actor(10.25,10.2),[{x:10.25,y:10.2},{x:10,y:10}],{x:10.25,y:10.2}],
+  [actor(10.25,10.2),[{x:13.25,y:10.2},{x:10,y:13}],{x:13.25,y:10.2}],
+ ]){
+  const result=retreatPlan(e,map,doors);assert.equal(result.status,'reached');assert.deepEqual(result.target,expected);assertWalkable(e,map,result.route);
+  if(e.x===expected.x&&e.y===expected.y)assert.deepEqual(result.route,[],'already at the actual door; never walk away');
+ }
+});
+
+test('direct fractional joins cannot cut a wall corner and still compete with cheaper graph detours',()=>{
+ const map=rect(mapOf(20,20),1,1,18,18),e=actor(10.25,10.2),near={x:13.25,y:10.2},alternate={x:10,y:13};
+ Object.assign(map.tiles[10*20+12],{blocked:true,kind:'wall'});const plan=retreatPlan(e,map,[near,alternate]);assert.deepEqual(plan.target,alternate);assertWalkable(e,map,plan.route);
+ const corner=rect(mapOf(10,10),1,1,8,8),start=actor(3.25,3.2),target={x:4.3,y:4.2};
+ for(const [x,y] of [[4,3],[3,4]])Object.assign(corner.tiles[y*10+x],{blocked:true,kind:'wall'});
+ const result=retreatPlan(start,corner,target);if(result.status==='reached')assertWalkable(start,corner,result.route);assert.ok(result.route.length===0||result.route.length>3,'never a diagonal shortcut');
+});
+
+test('long fractional direct checks share the route budget and never return before a nearer route competes',()=>{
+ const map=rect(mapOf(128,128),1,1,126,126),e=actor(2.25,2.2),far={x:124.25,y:124.2},near={x:2,y:5};
+ const result=retreatPlan(e,map,[far,near]);assert.deepEqual(result.target,near);assertWalkable(e,map,result.route);
+ const aligned=retreatPlan(e,map,{x:124.25,y:2.2});assert.deepEqual(aligned.target,{x:124.25,y:2.2});assert.ok(aligned.route.length>=122);assertWalkable(e,map,aligned.route);
 });

@@ -5,7 +5,7 @@ import { freshSave, migrateSave } from '../src/types.ts';
 import { createCombatant } from '../src/combat.ts';
 import { echoEvent, tickEchoes, VOID_ECHO } from '../src/echoes.ts';
 import { freshPackState, updatePackMonster, tickPackEffects, VOID } from '../src/monster-pack.ts';
-import { worldBeastForDungeon, worldBeastFor, WORLD_BEAST_IDS, beginDungeonRetreat, retreatTarget, walkerReachableTiles, applyVoidScars } from '../src/world-beasts.ts';
+import { worldBeastForDungeon, worldBeastFor, WORLD_BEAST_IDS, beginDungeonRetreat, retreatTarget, walkerReachableTiles, walkerRetreatDoors, worldBeastsLost, applyVoidScars } from '../src/world-beasts.ts';
 function mapOf(w=40,h=32) { return { width:w,height:h,entry:{x:3,y:3},objects:[],enemySpawns:[],landscape:true,tiles:Array.from({length:w*h},(_,i)=>({x:i%w,y:Math.floor(i/w),kind:i%w===0||i%w===w-1||i<w||i>=w*(h-1)?'wall':'floor',blocked:i%w===0||i%w===w-1||i<w||i>=w*(h-1),elev:0})) }; }
 function saveOf() { const s=freshSave();s.seed='VOID-INTEGRATION';s.level=12;for(const id of WORLD_BEAST_IDS)if(id!=='voidWalker')s.worldBeasts[id].cooldown=999;return s; }
 function fixture(map=mapOf(), x=20,y=18) { const e=createCombatant('voidWalker',x,y,true,[]);Object.assign(e,{id:'walker-integration',worldBeast:'voidWalker',aggro:false}); const save=saveOf();const g=Object.assign(Object.create(Game.prototype),{map,area:'dungeon',save,rx:5,ry:0,player:{x:3,y:3,hp:10000,invulnerableUntil:0},enemies:[e],projectiles:[],effects:[],packEffects:[],performanceStats:{pathfindingWork:0},areaId:()=> 'dungeon:VOID-INTEGRATION:g1:5:0:fixture',areaStateId:()=> 'dungeon:VOID-INTEGRATION:g1:5:0:fixture'});return {g,e}; }
@@ -52,9 +52,13 @@ test('normal entrance retreat walks without teleporting, remains invulnerable an
  let previous={x:e.x,y:e.y};for(let i=0;i<500&&!e.fleeDone;i++){frames(g,1);assert.ok(Math.hypot(e.x-previous.x,e.y-previous.y)<=.106);assert.equal(e.untargetable,true);previous={x:e.x,y:e.y};}
  assert.equal(e.fleeDone,true);assert.ok(Math.hypot(e.x-g.map.entry.x,e.y-g.map.entry.y)<.05);assert.equal(g.packEffects.length,0);
 });
-test('a disconnected retreat uses a visible safe entrance rift, not a through-wall walking fallback',()=>{
+test('a disconnected retreat waits safely without a rift, fade or hidden escape, then retries an opened route',()=>{
  const map=mapOf();for(let y=0;y<map.height;y++)Object.assign(map.tiles[y*map.width+15],{kind:'wall',blocked:true});const {g,e}=fixture(map,22,12);e.retreating=true;e.fleeTo={...map.entry,home:true};
- frames(g,3);assert.ok(e.x<15);assert.ok(Math.hypot(e.x-map.entry.x,e.y-map.entry.y)<=2.9);assert.ok(e.voidTeleport>0);frames(g,40);assert.equal(e.fleeDone,true);
+ const start={x:e.x,y:e.y};let teleports=0;g.walkerSafeTeleport=()=>{teleports++;return true;};
+ frames(g,240);assert.deepEqual({x:e.x,y:e.y},start);assert.equal(e.voidTeleport,0);assert.equal(e.fleeDone,undefined);assert.equal(e.fleeFade,undefined);assert.equal(teleports,0);
+ Object.assign(map.tiles[12*map.width+15],{kind:'floor',blocked:false});let previous=start;
+ for(let i=0;i<650&&!e.fleeDone;i++){frames(g,1);assert.ok(Math.hypot(e.x-previous.x,e.y-previous.y)<=.106);previous={x:e.x,y:e.y};}
+ assert.equal(e.fleeDone,true);assert.ok(Math.hypot(e.x-map.entry.x,e.y-map.entry.y)<1e-6);assert.equal(teleports,0);
 });
 test('route invalidation stops at a new obstruction and replans without clipping',()=>{
  const {g,e}=fixture(mapOf(),20,18),w=g.packWorld(.05,0);w.walkerPatrol(e,e.pack);const route=g._walkerRoutes.get(e).route;assert.ok(route.length);const target=route[0];Object.assign(g.map.tiles[target.y*g.map.width+target.x],{kind:'wall',blocked:true});const start={x:e.x,y:e.y};w.walkerPatrol(e,e.pack);assert.deepEqual({x:e.x,y:e.y},start);assert.deepEqual(g._walkerRoutes.get(e).route,[]);
@@ -97,7 +101,7 @@ test('a multi-level hunt stays on its original floor instead of spawning fresh-h
  save.worldBeasts.voidWalker.active={dungeon:id,tries:1};const first=worldBeastForDungeon(save,upper,id);assert.ok(first);assert.equal(save.worldBeasts.voidWalker.active.dungeonLevel,'upper');
  assert.equal(worldBeastForDungeon(save,lower,id),null);assert.equal(worldBeastForDungeon(save,upper,id).id,first.id);assert.equal(save.worldBeasts.voidWalker.active.tries,1);
  const round=migrateSave(JSON.parse(JSON.stringify(save)));assert.equal(worldBeastForDungeon(round,lower,id),null);
- beginDungeonRetreat(round,'voidWalker',upper);assert.equal(worldBeastForDungeon(round,lower,id),null);assert.equal(round.worldBeasts.voidWalker.active,null);assert.equal(round.worldBeasts.voidWalker.escaped,1);
+ beginDungeonRetreat(round,'voidWalker',upper);assert.equal(worldBeastForDungeon(round,lower,id),null);assert.equal(round.worldBeasts.voidWalker.active.dungeonLevel,'upper');assert.equal(round.worldBeasts.voidWalker.escaped,0);assert.ok(worldBeastForDungeon(round,upper,id)?.retreating);
 });
 
 
@@ -135,4 +139,121 @@ test('Rift Upheaval retains its remaining warning and cooldown across real Game 
  tickEchoes(game,1/60,11100,{x:0,y:0});assert.equal(blasts.length,0);echoEvent(game,'dodge',11200);assert.equal(game.echoPatches.length,1);assert.equal(game.echoPatches[0].until,11500);
  tickEchoes(game,1/60,11499,{x:0,y:0});assert.equal(blasts.length,0);tickEchoes(game,1/60,11500,{x:0,y:0});assert.equal(blasts.length,1);
  echoEvent(game,'dodge',14999);assert.equal(game.echoPatches.length,0);echoEvent(game,'dodge',15000);assert.equal(game.echoPatches.length,1);
+});
+
+
+test('retreat takes the nearest reachable real door, not the entrance or an enticing blocked door',()=>{
+ const map=mapOf(),{g,e}=fixture(map,20,18);map.objects=[{kind:'exit',state:'open',x:22,y:18},{kind:'exit',state:'open',x:20,y:22},{kind:'deepPortal',state:'open',x:20,y:19}];
+ for(const [x,y] of [[21,18],[23,18],[22,17],[22,19]])Object.assign(map.tiles[y*map.width+x],{kind:'wall',blocked:true});
+ e.retreating=true;e.fleeTo={...map.entry,home:true};frames(g,100);assert.equal(e.fleeDone,true);assert.deepEqual({x:e.x,y:e.y},{x:20,y:22});assert.equal(e.voidTeleport,0);
+});
+
+test('one-level retreat jumps visibly and continuously, while ramps need no jump and cliffs remain blocked',()=>{
+ for(const slope of [false,true]){
+  const map=mapOf(16,9);for(const t of map.tiles)Object.assign(t,{kind:'wall',blocked:true});
+  for(let x=2;x<=12;x++)Object.assign(map.tiles[4*16+x],{kind:'floor',blocked:false,elev:x>=7?1:0,slope:slope&&x===7});
+  map.objects=[{kind:'exit',state:'open',x:11,y:4}];const {g,e}=fixture(map,3,4);e.retreating=true;e.fleeTo={x:11,y:4,home:true};let jumped=false,previous=e.x;
+  for(let i=0;i<180&&!e.fleeDone;i++){frames(g,1);jumped ||= e.jumping===true;assert.ok(e.x-previous<=.106);assert.ok(e.x>=previous);previous=e.x;assert.equal(e.voidTeleport,0);}
+  assert.equal(e.fleeDone,true);assert.equal(jumped,!slope);assert.equal(e.hopLift,0);
+ }
+ const map=mapOf(16,9);for(const t of map.tiles)Object.assign(t,{kind:'wall',blocked:true});for(let x=2;x<=12;x++)Object.assign(map.tiles[4*16+x],{kind:'floor',blocked:false,elev:x>=7?2:0});
+ map.objects=[{kind:'exit',state:'open',x:11,y:4}];const {g,e}=fixture(map,3,4);e.retreating=true;e.fleeTo={x:11,y:4,home:true};frames(g,100);assert.equal(e.x,3);assert.equal(e.fleeDone,undefined);
+});
+
+test('a long offscreen retreat completes through production scheduling within each frame budget',()=>{
+ const map=mapOf(100,100),{g,e}=fixture(map,90,90);e.retreating=true;e.fleeTo={...map.entry,home:true};map.activeEnemyCap=8;
+ g.enemies.push(...Array.from({length:40},(_,i)=>({id:`nearby-${i}`,x:4,y:4,aggro:true})));
+ let peak=0;for(let i=0;i<2400&&!e.fleeDone;i++){g.performanceStats.pathfindingWork=0;frames(g,1);peak=Math.max(peak,g.performanceStats.pathfindingWork);assert.ok(g.performanceStats.pathfindingWork<=WALKER_ROUTE.nodes);assert.equal(activeDungeonEnemies(g.enemies,g.player,map).length,8);}
+ assert.ok(peak>0);assert.equal(e.fleeDone,true);assert.ok(Math.hypot(e.x-map.entry.x,e.y-map.entry.y)<1e-6);
+});
+
+test('door additions and terrain changes invalidate a pending or completed retreat route',()=>{
+ const map=mapOf(100,100),{g,e}=fixture(map,90,90);e.retreating=true;e.fleeTo={...map.entry,home:true};frames(g,1);assert.ok(g._walkerRoutes.get(e).search);
+ map.objects.push({kind:'exit',state:'open',x:92,y:90});frames(g,100);assert.equal(e.fleeDone,true);assert.equal(e.x,92);assert.equal(e.y,90);
+ const second=fixture(mapOf(),20,18);second.e.retreating=true;second.e.fleeTo={...second.g.map.entry,home:true};for(let i=0;i<5&&!second.g._walkerRoutes?.get(second.e)?.route.length;i++)frames(second.g,1);const route=second.g._walkerRoutes.get(second.e).route;
+ const to=route[0];Object.assign(second.g.map.tiles[to.y*second.g.map.width+to.x],{blocked:true,kind:'wall'});const before={x:second.e.x,y:second.e.y};frames(second.g,1);assert.deepEqual({x:second.e.x,y:second.e.y},before);assert.equal(second.e.fleeDone,undefined);
+});
+
+test('Supernova opening a wall lets a blocked retreat resume without changing any surviving wall',()=>{
+ const map=mapOf();for(let y=0;y<map.height;y++)Object.assign(map.tiles[y*map.width+15],{kind:'wall',blocked:true});const {g,e}=fixture(map,22,12);e.retreating=true;e.fleeTo={...map.entry,home:true};frames(g,40);assert.equal(e.x,22);
+ assert.ok(g.packWorld(.05,0).consumeVoidTerrain(e,{x:15,y:12},2).changed);assert.equal(map.tiles[2*map.width+15].blocked,true);
+ frames(g,700);assert.equal(e.fleeDone,true);assert.equal(e.voidTeleport,0);assert.equal(map.tiles[2*map.width+15].blocked,true);
+});
+
+test('a multi-level landing without a physical door cannot hide an unfinished retreat',()=>{
+ const map=mapOf();map.multiLevel=true;map.levelId='lower';map.objects=[{kind:'deepPortal',state:'open',x:22,y:18}];const {g,e}=fixture(map,20,18);
+ g.save.worldBeasts.voidWalker.active={dungeon:g.areaId(),dungeonLevel:'lower',tries:1};beginDungeonRetreat(g.save,'voidWalker',map);e.retreating=true;e.fleeTo=retreatTarget(g.save.worldBeasts.voidWalker.active.retreat,'voidWalker',map,0,0,{},e);
+ assert.deepEqual(walkerRetreatDoors(map),[]);frames(g,120);assert.equal(e.x,20);assert.equal(e.y,18);assert.equal(e.fleeDone,undefined);assert.equal(e.fleeFade,undefined);
+ assert.deepEqual(worldBeastsLost(g.save,'overworld',0,0),[]);assert.equal(g.save.worldBeasts.voidWalker.active.dungeonLevel,'lower');assert.equal(g.save.worldBeasts.voidWalker.escaped,0);
+});
+
+test('overworld retreat preserves section crossing and uses the nearest reachable dungeon mouth at home',()=>{
+ const {g,e}=fixture(mapOf(32,32),20,18);g.area='overworld';g.map.objects=[{kind:'dungeon',state:'open',x:24,y:18},{kind:'dungeon',state:'open',x:20,y:21}];
+ e.retreating=true;e.fleeTo=retreatTarget({home:{rx:0,ry:0,found:true}},'voidWalker',g.map,0,0,{},e);frames(g,100);assert.equal(e.fleeDone,true);assert.deepEqual({x:e.x,y:e.y},{x:20,y:21});
+ const crossing=fixture(mapOf(32,32),20,18);crossing.g.area='overworld';for(let x=29;x<32;x++)Object.assign(crossing.g.map.tiles[18*32+x],{kind:'floor',blocked:false});
+ crossing.e.retreating=true;crossing.e.fleeTo={x:31.4,y:18,side:'east'};frames(crossing.g,180);assert.equal(crossing.e.fleeDone,true);assert.equal(crossing.e.fleeTo.side,'east');assert.equal(crossing.e.fleeFade,undefined);
+});
+
+
+test('unfinished overworld Walker leg survives area departure and reuses its saved actor ID',()=>{
+ const save=saveOf(),map=mapOf(32,32);save.worldBeasts.voidWalker.active={rx:5,ry:0,tries:1,retreat:{home:{rx:5,ry:0,found:true},side:null,legs:0}};
+ assert.deepEqual(worldBeastsLost(save,'overworld',6,0),[]);const spawn=worldBeastFor(save,map,5,0);assert.equal(spawn.id,`world-beast:voidWalker:${save.worldBeasts.voidWalker.cycle}`);assert.equal(spawn.retreating,true);assert.equal(save.worldBeasts.voidWalker.escaped,0);
+});
+
+
+test('arrival at a reachable inter-level dungeon doorway ends retreat without travelling between floors',()=>{
+ const map=mapOf();map.multiLevel=true;map.levelId='lower';map.objects=[{kind:'deepTransition',state:'open',x:22,y:18,toLevelId:'upper',actions:['travel']},{kind:'exit',state:'open',x:30,y:18}];const {g,e}=fixture(map,20,18);
+ e.retreating=true;e.fleeTo={...map.entry,home:true};frames(g,100);assert.equal(e.fleeDone,true);assert.deepEqual({x:e.x,y:e.y},{x:22,y:18});assert.equal(map.levelId,'lower');assert.equal(e.voidTeleport,0);
+});
+
+
+test('real reload preserves valid disconnected retreat ground and repairs only genuinely invalid saved coordinates',()=>{
+ const save=saveOf();save.seed='RETREAT-RESUME-1';const id=`dungeon:${save.seed}:g1:5:0:resume`;save.session.activeDungeonId=id;save.worldBeasts.voidWalker.active={dungeon:id,tries:1};const game=new Game(save,0);game.loadArea('dungeon',false);
+ const connected=walkerReachableTiles(game.map),at=game.map.tiles.find(t=>!connected.has(t.y*game.map.width+t.x)&&walkerGroundPositionOpen(game.map,game.map.width,t.x,t.y)),e=game.enemies.find(q=>q.worldBeast==='voidWalker');assert.ok(at);assert.ok(e);
+ Object.assign(e,{x:at.x,y:at.y,hp:117,retreating:true});beginDungeonRetreat(save,'voidWalker',game.map);e.fleeTo=retreatTarget(save.worldBeasts.voidWalker.active.retreat,'voidWalker',game.map,0,0,{},e);game.exportSnapshot(0);
+ const resumed=new Game(migrateSave(JSON.parse(JSON.stringify(save))),0);resumed.loadArea('dungeon',false);const r=resumed.enemies.find(q=>q.worldBeast==='voidWalker');assert.equal(r.x,at.x);assert.equal(r.y,at.y);assert.equal(r.hp,117);assert.equal(r.retreating,true);assert.equal(resumed.save.worldBeasts.voidWalker.escaped,0);
+ r.x=-5;resumed.exportSnapshot(0);const repaired=new Game(migrateSave(JSON.parse(JSON.stringify(resumed.save))),0);repaired.loadArea('dungeon',false);const fixed=repaired.enemies.find(q=>q.worldBeast==='voidWalker');assert.ok(fixed.x>=0);assert.ok(walkerGroundPositionOpen(repaired.map,repaired.map.width,fixed.x,fixed.y));assert.equal(fixed.hp,117);assert.equal(repaired.save.worldBeasts.voidWalker.escaped,0);
+});
+
+test('real overworld first-leg reload keeps exact retreat position, health and original actor identity',()=>{
+ const save=saveOf();save.worldBeasts.voidWalker.active={rx:0,ry:0,tries:1};const game=new Game(save,0),e=game.enemies.find(q=>q.worldBeast==='voidWalker');assert.ok(e);
+ Object.assign(e,{x:16.12,y:16.03,hp:113,retreating:true,fleeTo:{x:5,y:5,home:true,nearestDoor:true}});save.worldBeasts.voidWalker.active.retreat={home:{rx:0,ry:0,found:true},side:null,legs:0};game.exportSnapshot(0);
+ const resumed=new Game(migrateSave(JSON.parse(JSON.stringify(save))),0),r=resumed.enemies.find(q=>q.worldBeast==='voidWalker');assert.ok(r);assert.equal(r.id,e.id);assert.equal(r.x,e.x);assert.equal(r.y,e.y);assert.equal(r.hp,113);assert.equal(r.retreating,true);
+});
+
+
+const retreatInput={state:{x:0,y:0},consume:()=>false};
+function sanctuaryRetreat(){
+ const save=saveOf();save.seed='RETREAT-SANCTUARY';for(const id of WORLD_BEAST_IDS)save.worldBeasts[id].cooldown=999;
+ save.worldBeasts.voidWalker.active={rx:0,ry:0,tries:1,retreat:{home:{rx:1,ry:0,found:true},side:'west',legs:1}};
+ const g=new Game(save,0),e=g.enemies.find(q=>q.worldBeast==='voidWalker');assert.ok(e);g.enemies=[e];return{g,e};
+}
+test('production Game.update keeps a harmless Walker retreat moving while the player rests inside sanctuary',()=>{
+ const {g,e}=sanctuaryRetreat(),start={x:e.x,y:e.y};assert.equal(g.player.x,16);assert.equal(g.player.y,16);let work=0,previous=start;
+ for(let i=1;i<=60;i++){g.update(.05,retreatInput,i*50);work+=g.performanceStats.pathfindingWork;assert.ok(Math.hypot(e.x-previous.x,e.y-previous.y)<=.106);previous={x:e.x,y:e.y};}
+ assert.ok(work>0);assert.ok(Math.hypot(e.x-start.x,e.y-start.y)>1);assert.equal(e.voidTeleport,0);
+});
+test('production Game.update never uses sanctuary relocation for a retreating Walker inside its perimeter',()=>{
+ const {g,e}=sanctuaryRetreat();Object.assign(e,{x:16,y:16});Object.assign(g.player,{x:3,y:3});assert.ok(walkerGroundPositionOpen(g.map,32,e.x,e.y));
+ g.update(.05,retreatInput,50);assert.ok(Math.hypot(e.x-16,e.y-16)<=.106);assert.equal(e.voidTeleport,0);assert.ok(walkerGroundPositionOpen(g.map,32,e.x,e.y));
+ // Combat keeps the established sanctuary restriction; only harmless retreat is exempted.
+ e.retreating=false;delete e.fleeTo;delete g.save.worldBeasts.voidWalker.active.retreat;g.update(.05,retreatInput,100);assert.ok(Math.hypot(e.x-16,e.y-16)>=9);
+});
+test('production Game.update cannot finish an overworld fallback without a real dungeon mouth, even from an old center-target save',()=>{
+ const save=saveOf();save.seed='RETREAT-MISSING-MOUTH';const g=new Game(save,0),map=mapOf(32,32),e=createCombatant('voidWalker',15,15,true,[]);
+ Object.assign(g,{area:'overworld',rx:6,ry:0,map,enemies:[e],effects:[],packEffects:[],projectiles:[],paused:false,seaHazards:null,storm:null});Object.assign(g.player,{x:3,y:3});
+ Object.assign(e,{id:'retreat-no-mouth',worldBeast:'voidWalker',retreating:true,fleeTo:{x:15.5,y:15.5,home:true}});
+ save.worldBeasts.voidWalker.active={rx:6,ry:0,tries:1,retreat:{home:{rx:6,ry:0,found:false},side:null,legs:0}};
+ const target=retreatTarget(save.worldBeasts.voidWalker.active.retreat,'voidWalker',map,6,0,{},e);assert.equal(target.nearestDoor,true);
+ for(let i=1;i<=120;i++)g.update(.05,retreatInput,i*50);
+ assert.deepEqual({x:e.x,y:e.y},{x:15,y:15});assert.equal(e.fleeFade,undefined);assert.equal(e.fleeDone,undefined);assert.equal(save.worldBeasts.voidWalker.escaped,0);assert.ok(g.enemies.includes(e));
+ map.objects.push({id:'new-mouth',kind:'dungeon',state:'open',x:17,y:15,actions:['enter']});
+ for(let i=121;i<=240&&g.enemies.includes(e);i++)g.update(.05,retreatInput,i*50);
+ assert.equal(g.enemies.includes(e),false);assert.deepEqual({x:e.x,y:e.y},{x:17,y:15});assert.equal(save.worldBeasts.voidWalker.escaped,1);
+});
+
+
+test('production retreat stays at an occupied fractional completion doorway instead of walking to a grid anchor',()=>{
+ const {g,e}=fixture(mapOf(),10.25,10.2);g.map.objects=[{kind:'exit',state:'open',completionExit:true,x:e.x,y:e.y},{kind:'exit',state:'open',x:10,y:10}];e.retreating=true;e.fleeTo={...g.map.entry,home:true};
+ frames(g,1);assert.deepEqual({x:e.x,y:e.y},{x:10.25,y:10.2});assert.equal(e.fleeFade,1);frames(g,35);assert.equal(e.fleeDone,true);assert.deepEqual({x:e.x,y:e.y},{x:10.25,y:10.2});
 });

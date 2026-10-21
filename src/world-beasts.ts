@@ -69,8 +69,8 @@ export const WORLD_BEASTS = {
     hitsToKill: 60, hpPerLevel: 28, damageShare: .2, speed: 1.1, attackGap: .3, staggerResistance: .9, rewardMarks: 180, rewardPerLevel: 18,
     patience: 180, home: "dungeon", retreatMoves: "walk", dungeonChance: .3, dungeonMinLevel: 8,
     flee: "The Void Walker folds its rends shut and leaves toward a dungeon entrance.",
-    fleeDungeon: "The Void Walker closes its constellation and returns toward the dungeon entrance.",
-    homeLine: "The Void Walker slips through a narrow violet rend at the entrance and is gone.",
+    fleeDungeon: "The Void Walker closes its constellation and heads for the nearest reachable dungeon door.",
+    homeLine: "The Void Walker passes through the dungeon door and is gone.",
     arrive: "A figure your own size stands beneath a tear of violet stars. The Void Walker is here.",
     arriveDungeon: "Violet starlight moves through the halls. The Void Walker roams this place.",
     slain: "The Void Walker's silhouette unravels into a scattering of stars.",
@@ -166,11 +166,23 @@ export function retreatSide(r, rx, ry) {
   if (!dx && !dy) return null;
   return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "east" : "west") : (dy > 0 ? "south" : "north");
 }
+// Actual exits and physical inter-level passages, never room doors or teleport portals. A level landing is not an
+// exterior entrance. Legacy single-level maps may expose only `entry`; generated maps expose exit objects.
+export function walkerRetreatDoors(map, area = "dungeon") {
+  const kinds = area === "dungeon" ? ["exit", "deepTransition"] : ["dungeon"], represented = (map?.objects || []).filter(o => kinds.includes(o.kind));
+  const doors = represented.length ? represented.filter(o => !["closed", "locked", "sealed", "dormant", "hidden"].includes(o.state)) :
+    area === "dungeon" && !map?.multiLevel && map?.entry ? [map.entry] : [];
+  return doors.filter(o => Number.isFinite(o.x) && Number.isFinite(o.y)).map(o => ({ x: o.x, y: o.y }))
+    .sort((a, b) => a.y - b.y || a.x - b.x).filter((o, i, all) => !i || o.x !== all[i - 1].x || o.y !== all[i - 1].y);
+}
 // Where a retreating beast is heading in the loaded section: the gate it leaves by, or the home ground it goes into.
 export function retreatTarget(r, id, map, rx, ry, exits, from) {
   const side = retreatSide(r, rx, ry);
   if (side) return { x: side === "east" ? 31.4 : side === "west" ? -.4 : exits[side], y: side === "south" ? 31.4 : side === "north" ? -.4 : exits[side], side };
-  if (r.home.dungeon && id === "voidWalker") return { x: map.entry?.x ?? 4, y: map.entry?.y ?? 5, side: null, home: true };
+  if (id === "voidWalker") {
+    const doors = walkerRetreatDoors(map, r.home.dungeon ? "dungeon" : "overworld");
+    return { ...(doors[0] || { x: from.x, y: from.y }), side: null, home: true, nearestDoor: true };
+  }
   const H = BEAST_HOMES[WORLD_BEASTS[id]?.home] || null, spots = !r.home.found || !H ? [] : H.object ? (map.objects || []).filter(H.object) : (map.tiles || []).filter(H.tile);
   const best = spots.sort((a, b) => Math.hypot(a.x - from.x, a.y - from.y) - Math.hypot(b.x - from.x, b.y - from.y))[0];
   return { x: best ? best.x : (Number(map?.width) || 32) / 2 - .5, y: best ? best.y : Math.floor((map?.tiles?.length || 1024) / (Number(map?.width) || 32)) / 2 - .5, side: null, home: true };
@@ -186,10 +198,11 @@ export function retreatEnded(save, id) {
   const B = WORLD_BEASTS[id], q = save.worldBeasts[id]; q.escaped++; q.cycle++; q.active = null; q.cooldown = B.cooldownEscaped;
   return B.homeLine;
 }
-// Called on every area load: a retreating beast the Wayfarer did not follow into its current section is gone.
+// Called on every area load: older beasts escape when unfollowed. An unfinished Walker retreat stays
+// in its saved source area/leg until actually reaching its door; unloaded areas are not simulated.
 export function worldBeastsLost(save, area, rx, ry, dungeonId = null) {
   ensureWorldBeasts(save, false); const lost = [];
-  for (const id of WORLD_BEAST_IDS) { const a = save.worldBeasts[id].active; if (a?.retreat && (a.dungeon ? area !== "dungeon" || dungeonId !== a.dungeon : area !== "overworld" || a.rx !== rx || a.ry !== ry)) { retreatEnded(save, id); lost.push(id); } }
+  for (const id of WORLD_BEAST_IDS) { const a = save.worldBeasts[id].active; if (a?.retreat && id !== "voidWalker" && (a.dungeon ? area !== "dungeon" || dungeonId !== a.dungeon : area !== "overworld" || a.rx !== rx || a.ry !== ry)) { retreatEnded(save, id); lost.push(id); } }
   return lost;
 }
 export const isWorldBeastKind = (kind) => WORLD_BEAST_IDS.some((id) => WORLD_BEASTS[id].kind === kind);
@@ -219,7 +232,7 @@ function cleanRetreat(r) {
 // A retreating beast's spawn: it comes in by the gate on its entry side (or stands mid-section, where it fled from).
 function fleeSpawn(save, here, rx, ry) {
   const q = save.worldBeasts[here], r = q.active.retreat, side = r.side, ex = sectionExits(save.seed, rx, ry), at = side === "east" ? { x: 31 - RETREAT.inset, y: ex.east } : side === "west" ? { x: RETREAT.inset, y: ex.west } : side === "south" ? { x: ex.south, y: 31 - RETREAT.inset } : side === "north" ? { x: ex.north, y: RETREAT.inset } : { x: 15.5, y: 15.5 };
-  return { id: `world-beast:${here}:${q.cycle}:flee:${r.legs}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, retreating: true, traits: [] };
+  return { id: `world-beast:${here}:${q.cycle}${here === "voidWalker" && !r.legs ? "" : `:flee:${r.legs}`}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, retreating: true, traits: [] };
 }
 // Called once per overworld section load. Returns the spawn of the beast holding this section, or null. One beast holds
 // a section at a time, and never one the Questing Beast holds.
@@ -294,7 +307,7 @@ export function worldBeastForDungeon(save, map, dungeonId) {
   if (here === "voidWalker") {
     const level = map.levelId || "root";
     q.active.dungeonLevel ??= level; // one physical Walker, not a fresh-health copy on every dungeon floor
-    if (q.active.dungeonLevel !== level) { if (q.active.retreat) retreatEnded(save, here); return null; }
+    if (q.active.dungeonLevel !== level) return null; // an unfinished retreat remains on its source floor for revisit
   }
   const near = (t) => water.some((w) => Math.abs(w.x - t.x) + Math.abs(w.y - t.y) <= 4);
   const reachable = here === "voidWalker" ? walkerReachableTiles(map, entry) : null;
@@ -322,10 +335,10 @@ export function walkerReachableTiles(map, origin = map?.entry) {
   }
   return seen;
 }
-// A retreat inside a dungeon: it goes to the water there (no sections to cross).
+// A retreat inside a dungeon: the Crystal seeks water; the Walker seeks a reachable dungeon doorway.
 export function beginDungeonRetreat(save, id, map) {
   ensureWorldBeasts(save, false); const B = WORLD_BEASTS[id], q = save.worldBeasts[id];
-  q.active.retreat = { home: { dungeon: q.active.dungeon, found: id === "voidWalker" ? !!map?.entry : (map?.tiles || []).some((t) => t.kind === "dungeonWater") }, side: null, legs: 0 };
+  q.active.retreat = { home: { dungeon: q.active.dungeon, found: id === "voidWalker" ? walkerRetreatDoors(map).length > 0 : (map?.tiles || []).some((t) => t.kind === "dungeonWater") }, side: null, legs: 0 };
   return { message: B.fleeDungeon || B.flee, home: q.active.retreat.home };
 }
 // Sections held by a beast, for the Atlas's danger marks.

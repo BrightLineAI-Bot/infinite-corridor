@@ -423,7 +423,7 @@ test('the mirror wall sends arrows and bolts back; blades pass through; it falls
 test('the Crystal haunts only dungeons with water, holds them, takes tries there, and retreats into the water', () => {
   const dry = { tiles: Array.from({ length: 900 }, (_, i) => ({ x: i % 30, y: Math.floor(i / 30), kind: 'deepFloor', blocked: false })), width: 30, entry: { x: 3, y: 3 } };
   const wet = { ...dry, tiles: dry.tiles.map((t) => (t.x >= 20 && t.x <= 22 && t.y >= 10 && t.y <= 14 ? { ...t, kind: 'dungeonWater', blocked: true } : t)) };
-  const s = freshSave(); s.seed = 'HAUNT'; s.level = 12; ensureWorldBeasts(s); const dun = (tag, i) => `dungeon:HAUNT:g1:${3 + i}:4:${tag}-${i}`;
+  const s = freshSave(); s.seed = 'HAUNT'; s.level = 12; ensureWorldBeasts(s); s.worldBeasts.voidWalker.cooldown = 999; const dun = (tag, i) => `dungeon:HAUNT:g1:${3 + i}:4:${tag}-${i}`;
   for (let i = 0; i < 40; i++) assert.equal(worldBeastForDungeon(s, dry, dun('dry', i)), null, 'never without water');
   const young = freshSave(); young.seed = 'HAUNT'; ensureWorldBeasts(young); for (let i = 0; i < 40; i++) assert.equal(worldBeastForDungeon(young, wet, dun('wet', i)), null, 'never a new Wayfarer\'s');
   for (const odd of ['dungeon:HAUNT:g1', 'arena:x', 'hunt-instance:y', 'dungeon:HAUNT:g1:1:1:near']) for (let n = 0; n < 5; n++) assert.equal(worldBeastForDungeon(s, wet, odd + (n ? `-${n}` : '')), null, `not ${odd}`);

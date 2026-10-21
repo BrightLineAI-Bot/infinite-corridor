@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 251 — the player-sized Void Walker roams ordinary dungeons and the overworld. Warned violet rends release hands, claws, swords, slashes, spikes and short-lived wraiths; rifts enable evasion and mixed tracking constellations; event horizons pull and pulse. Its Supernova consumes walls in the loaded circular region without revealing fog or completing objectives, then leaves permanent harmless smooth white ground with subtle red cracks. Saved scars persist in both worlds. Straight teleport-dash barrages leave one-second damaging afterimages. Retreat follows the nearest reachable physical dungeon doorway using normal terrain and one-level jumps, then disappears at the door; no fallback teleport.
+- Release 251 — the Morphing Blob regenerates current HP while naturally growing, up to half its unchanged maximum HP over the existing two-minute growth. Its maximum health, growth geometry and separate bloblet-merge healing do not increase. Growth-cap, pause and reload handling prevent extra healing.
+
 - Release 249 review fixes — pausing preserves the remaining Crystal grab time rather than silently breaking its hold. Mirror walls reflect at swept projectile contact, so fast arrows and bolts cannot slip through between frames.
 
 - Release 249 continuation — the Psychic Crystal now patrols dungeon halls instead of circling its spawn. It floats over terrain and phases through dungeon walls, patrolling even off-screen. Its model rises smoothly over higher ground and settles down beyond it. It engages when it sees you and never starts a new attack through a wall. Its separate retreat still ends in the dungeon's water.

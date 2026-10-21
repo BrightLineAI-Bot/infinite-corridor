@@ -408,7 +408,7 @@ function dungeonMap(wet = true) {
   }) };
 }
 function dungeonSave(level = 8, seed = 'LOCAL-PUDDLE') {
-  const s = freshSave(); s.seed = seed; s.level = level; ensureWorldBeasts(s); return s;
+  const s = freshSave(); s.seed = seed; s.level = level; ensureWorldBeasts(s); s.worldBeasts.voidWalker.cooldown = 999; return s; // Crystal-only fixture, independent of the dry-dungeon Walker.
 }
 test('one dungeonWater tile qualifies at level eight and depth five and survives save/retreat', () => {
   const map = dungeonMap();

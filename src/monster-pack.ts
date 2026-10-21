@@ -485,6 +485,7 @@ export const QB_MOVES = { flurryStrikes: 4, flurryEvery: .2, flurryLunge: .35, b
 // The Morphing Blob (release 235). Balance as data.
 export const BLOB = {
   growTime: 120, maxGrow: 2.4, growStep: .08,            // it swells to maxGrow× its size over growTime seconds alive
+  growHeal: .5,                                         // natural growth restores this share of max HP in all; never enlarges the health pool
   contact: .8, contactEvery: .8,                         // touching it: this share of its damage, at most once per contactEvery
   oozePerHit: 2, oozeEvery: .35, oozeMax: 16, oozeRadius: .55, oozeFlight: .55, oozeBite: .3, oozeSlow: .7,
   tendrils: 3, tendrilSpread: .55, tendrilLength: 4.2, tendrilWidth: .45,
@@ -1568,7 +1569,8 @@ function evade(e, s, w, p, d) {
 // frame), burns what touches it, and every time it is struck it spatters ooze that lies on the ground until it dies.
 function blobPassive(e, s, w, p, d) {
   e.blobBase ||= { scale: Number(e.scale) || 1, radius: bodyRadius(e) };
-  e.blobAge = (Number(e.blobAge) || 0) + w.dt;
+  const age = Math.max(0, Math.min(BLOB.growTime, Number(e.blobAge) || 0)), dt = Number.isFinite(w.dt) ? Math.max(0, w.dt) : 0;
+  e.blobAge = Math.min(BLOB.growTime, age + dt);
   const grow = 1 + Math.min(1, e.blobAge / BLOB.growTime) * (BLOB.maxGrow - 1) + Math.min(BLOB.mergeMax, Number(e.blobMerged) || 0), stepped = Math.round(grow / BLOB.growStep) * BLOB.growStep;
   e.scale = Math.round(e.blobBase.scale * stepped * 100) / 100; e.bodyRadius = e.blobBase.radius * stepped;
   s.contactCd = Math.max(0, (s.contactCd || 0) - w.dt); s.oozeCd = Math.max(0, (s.oozeCd || 0) - w.dt);
@@ -1582,7 +1584,11 @@ function blobPassive(e, s, w, p, d) {
       if (spot) w.addEffect({ kind: "ooze", owner: e.id, x: spot.x, y: spot.y, from: { x: e.x, y: e.y }, radius: BLOB.oozeRadius, arming: BLOB.oozeFlight, life: 1e6, damage: Math.max(1, Math.ceil((Number(e.damage) || 1) * BLOB.oozeBite)), slow: BLOB.oozeSlow });
     }
   }
-  s.lastHp = hp;
+  // Detect the hit before regenerating, even when this tick's growth restores more than the hit dealt.
+  // Deriving the increment from saved age avoids catch-up healing on reload and discards healing at full HP.
+  const maxHp = Number(e.maxHp), grown = (e.blobAge - age) / BLOB.growTime;
+  if (grown > 0 && Number.isFinite(hp) && hp > 0 && Number.isFinite(maxHp) && hp < maxHp) e.hp = Math.min(maxHp, hp + maxHp * BLOB.growHeal * grown);
+  s.lastHp = Number(e.hp) || 0;
 }
 // A bloblet wanders off for a while, then crawls home; reaching the Blob, it merges back in and heals it.
 // Returns true while it is heading home (its own attacks wait).

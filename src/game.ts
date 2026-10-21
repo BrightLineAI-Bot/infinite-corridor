@@ -68,7 +68,7 @@ import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, 
 import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
 import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.ts";
 import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
-import { WORLD_BEASTS, BEAST_HOMES, RETREAT, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, applyVoidScars, consumeVoidTerrain } from "./world-beasts.ts";
+import { WORLD_BEASTS, BEAST_HOMES, RETREAT, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.ts";
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
@@ -456,7 +456,7 @@ function boundedChaseStep(entity,player,map,width,radius=12){
 }
 
 // Void Walker ground navigation stays separate from Crystal phasing and from its explicit rift teleports.
-export const WALKER_ROUTE = { nodes: 625, distance: 8, segment: .125, speed: 1.35, retry: 1, pause: .2, recent: 8 };
+export const WALKER_ROUTE = { nodes: 625, distance: 8, segment: .125, speed: 1.35, retry: 1, pause: .2, recent: 8, jumpLift: 1.4, jumpTime: .38 };
 export function walkerGroundPositionOpen(map, width, x, y) {
   if (!Number.isFinite(x) || !Number.isFinite(y) || !map?.tiles || !Number.isInteger(width) || width < 1 || !footprintOpen(map, width, x, y)) return false;
   for (let ty = Math.floor(y + .5); ty <= Math.floor(y + .88 - 1e-6); ty++) for (let tx = Math.floor(x + .24); tx <= Math.floor(x + .76 - 1e-6); tx++)
@@ -472,7 +472,7 @@ export function moveWalkerGround(entity, dx, dy, map, width) {
   }
   return moved;
 }
-export function walkerGroundSegmentOpen(entity, map, width, from, to) {
+export function walkerGroundSegmentOpen(entity, map, width, from, to, allowJump = false) {
   const height = Math.floor((map?.tiles?.length || 0) / width);
   if (!Number.isInteger(width) || width < 1 || !(height > 0)) return false;
   if (!Number.isFinite(from?.x) || !Number.isFinite(from?.y) || !Number.isFinite(to?.x) || !Number.isFinite(to?.y)) return false;
@@ -480,13 +480,17 @@ export function walkerGroundSegmentOpen(entity, map, width, from, to) {
       Math.abs(to.x - from.x) > 1 || Math.abs(to.y - from.y) > 1) return false;
   // Cardinal segments match moveAxis exactly. A diagonal fractional join could skip a non-ramp corner.
   if (Math.abs(to.x - from.x) > 1e-8 && Math.abs(to.y - from.y) > 1e-8) return false;
-  const body = { ...entity, isPlayer: false, flying: false, phases: false };
+  const body = { isPlayer: allowJump, jumping: allowJump, flying: false, phases: false };
   const steps = Math.max(1, Math.ceil(Math.max(Math.abs(to.x - from.x), Math.abs(to.y - from.y)) / WALKER_ROUTE.segment));
   let last = from;
   for (let i = 0; i <= steps; i++) {
     const at = { x: from.x + (to.x - from.x) * i / steps, y: from.y + (to.y - from.y) * i / steps };
-    if (!walkerGroundPositionOpen(map, width, at.x, at.y) ||
-        !canStep(body, map, width, last.x, last.y, at.x, at.y) || !canStep(body, map, width, at.x, at.y, last.x, last.y)) return false;
+    if (!walkerGroundPositionOpen(map, width, at.x, at.y)) return false;
+    const a = tileUnder(map, width, last.x, last.y), b = tileUnder(map, width, at.x, at.y);
+    // Retreat may jump one ordinary level, including a safe one-level descent. It never jumps a wall,
+    // lethal floor, or a larger cliff. Genuine consumed terrain keeps its existing shared scar semantics.
+    if (allowJump && map.landscape && a !== b && !safeVoidScarTransition(a, b) && Math.abs((b?.elev || 0) - (a?.elev || 0)) > 1) return false;
+    if (!canStep(body, map, width, last.x, last.y, at.x, at.y) || !canStep(body, map, width, at.x, at.y, last.x, last.y)) return false;
     last = at;
   }
   return true;
@@ -537,35 +541,112 @@ export function walkerDungeonRoute(entity, map, width, { seq = 0, recent = [], t
   if (Math.hypot(route[0].x - entity.x, route[0].y - entity.y) <= 1e-8) route.shift();
   return { route, visited: queue.length, status: target ? "reached" : "patrol" };
 }
-// Long retreats keep their frontier between frames: no repeated capped search and no wall-crossing fallback.
-export function beginWalkerRetreatSearch(entity, map, width, target) {
-  const height = Math.floor((map?.tiles?.length || 0) / width);
-  if (![entity?.x, entity?.y, target?.x, target?.y].every(Number.isFinite) || width * height > 65536) return null;
-  const starts = [...new Set([Math.floor(entity.x), Math.ceil(entity.x)])].flatMap(x => [...new Set([Math.floor(entity.y), Math.ceil(entity.y)])].map(y => ({ x, y })));
-  starts.sort((a, b) => Math.hypot(a.x - entity.x, a.y - entity.y) - Math.hypot(b.x - entity.x, b.y - entity.y));
-  for (const at of starts) for (const via of [{ x: at.x, y: entity.y }, { x: entity.x, y: at.y }]) {
-    if (!walkerGroundSegmentOpen(entity, map, width, entity, via) || !walkerGroundSegmentOpen(entity, map, width, via, at)) continue;
-    const join = [via, at].filter((p, i, all) => Math.hypot(p.x - (i ? all[i - 1].x : entity.x), p.y - (i ? all[i - 1].y : entity.y)) > 1e-8);
-    return { map, width, target: { x: Math.max(0, Math.min(width - 1, Math.round(target.x))), y: Math.max(0, Math.min(height - 1, Math.round(target.y))) }, queue: [at], parent: [-1], seen: new Set([at.y * width + at.x]), cursor: 0, join };
+// Long retreats keep a Dijkstra frontier between frames. Multiple cardinal joins preserve fractional saved
+// positions, and actual route length (not straight-line proximity) chooses the nearest reachable door.
+function walkerHeapPush(heap, item) {
+  heap.push(item); let i = heap.length - 1;
+  while (i) { const p = (i - 1) >> 1; if (walkerHeapOrder(heap[p], item) <= 0) break; heap[i] = heap[p]; i = p; } heap[i] = item;
+}
+const walkerHeapOrder = (a, b) => a.cost - b.cost || a.y - b.y || a.x - b.x || a.index - b.index;
+function walkerHeapPop(heap) {
+  const first = heap[0], last = heap.pop(); if (!heap.length) return first;
+  let i = 0; while (i * 2 + 1 < heap.length) { let n = i * 2 + 1; if (n + 1 < heap.length && walkerHeapOrder(heap[n + 1], heap[n]) < 0) n++;
+    if (walkerHeapOrder(last, heap[n]) <= 0) break; heap[i] = heap[n]; i = n; } heap[i] = last; return first;
+}
+function walkerCardinalJoins(entity, map, width, from, to) {
+  const joins = [];
+  for (const via of [{ x: to.x, y: from.y }, { x: from.x, y: to.y }]) {
+    if (!walkerGroundSegmentOpen(entity, map, width, from, via, true) || !walkerGroundSegmentOpen(entity, map, width, via, to, true)) continue;
+    joins.push([via, to].filter((p, i, all) => Math.hypot(p.x - (i ? all[i - 1].x : from.x), p.y - (i ? all[i - 1].y : from.y)) > 1e-8));
   }
-  return null;
+  return joins;
+}
+export function beginWalkerRetreatSearch(entity, map, width, targets) {
+  const height = Math.floor((map?.tiles?.length || 0) / width);
+  if (!Number.isInteger(width) || width < 1 || !height || width * height > 65536 || ![entity?.x, entity?.y].every(Number.isFinite)) return null;
+  targets = (Array.isArray(targets) ? targets : [targets]).filter(p => p && Number.isFinite(p.x) && Number.isFinite(p.y) && p.x >= 0 && p.y >= 0 && p.x <= width - 1 && p.y <= height - 1)
+    .map(p => ({ x: p.x, y: p.y })).sort((a, b) => a.y - b.y || a.x - b.x);
+  if (!targets.length) return null;
+  const corners = p => [...new Set([Math.floor(p.x), Math.ceil(p.x)])].flatMap(x => [...new Set([Math.floor(p.y), Math.ceil(p.y)])].map(y => ({ x, y })));
+  const origin = { x: entity.x, y: entity.y }, directTargets = targets.map((target, order) => ({ target, order, cost: Math.abs(target.x - origin.x) + Math.abs(target.y - origin.y) }))
+    .filter(({ target }) => ![origin.x, origin.y, target.x, target.y].every(Number.isInteger)).sort((a, b) => a.cost - b.cost || a.order - b.order);
+  const state = { map, width, targets, origin, directTargets, directIndex: 0, directTrial: null, queue: [], heap: [], best: new Map(), goals: new Map(), solution: null };
+  for (const [order, target] of targets.entries()) for (const at of corners(target)) {
+    const tail = walkerCardinalJoins(entity, map, width, at, target)[0]; if (!tail) continue;
+    const key = at.y * width + at.x, goals = state.goals.get(key) || [];
+    goals.push({ target, tail, order, cost: Math.abs(target.x - at.x) + Math.abs(target.y - at.y) }); state.goals.set(key, goals);
+  }
+  for (const at of corners(entity)) {
+    const join = walkerCardinalJoins(entity, map, width, entity, at)[0]; if (!join) continue;
+    const cost = Math.abs(entity.x - at.x) + Math.abs(entity.y - at.y), index = state.queue.length, node = { ...at, cost, index, parent: -1, join };
+    state.queue.push(node); state.best.set(at.y * width + at.x, index); walkerHeapPush(state.heap, node);
+  }
+  return state.heap.length || directTargets.length ? state : null;
 }
 export function advanceWalkerRetreatSearch(entity, state) {
   if (!state) return { status: "invalid", route: [], visited: 0 };
-  const { map, width, queue, parent, seen, target } = state, height = Math.floor(map.tiles.length / width); let work = 0;
-  while (state.cursor < queue.length && work < WALKER_ROUTE.nodes) {
-    const i = state.cursor++, at = queue[i]; work++;
-    if (at.x === target.x && at.y === target.y) {
-      const route = []; for (let k = i; k >= 0; k = parent[k]) route.push({ ...queue[k] }); route.reverse(); route.shift();
-      return { status: "reached", route: [...state.join, ...route], visited: work };
+  const { map, width, queue, heap, best, goals } = state, height = Math.floor(map.tiles.length / width); let work = 0;
+  const finish = () => {
+    const { index, goal, directRoute } = state.solution, route = []; let root = index;
+    if (directRoute) return { status: "reached", route: directRoute, target: goal.target, visited: work };
+    for (let i = index; i >= 0; i = queue[i].parent) { root = i; if (queue[i].parent >= 0) route.push({ x: queue[i].x, y: queue[i].y }); }
+    route.reverse(); return { status: "reached", route: [...queue[root].join, ...route, ...goal.tail], target: goal.target, visited: work };
+  };
+  // A fractional source/door may share a shorter legal row or column than either integer anchor.
+  // Try both cardinal L joins, subdividing every span into <=1-tile collision-checked segments. These
+  // checks share the same 625-work budget as graph expansions, including long direct joins. A direct
+  // result is only an incumbent: a cheaper graph route can still beat it below.
+  while (state.directIndex < state.directTargets.length && work < WALKER_ROUTE.nodes) {
+    const candidate = state.directTargets[state.directIndex];
+    if (state.solution && candidate.cost > state.solution.cost + 1e-8) { state.directIndex = state.directTargets.length; break; }
+    let trial = state.directTrial;
+    if (!trial) {
+      work++;
+      if (!walkerGroundSegmentOpen(entity, map, width, state.origin, state.origin, true)) { state.directIndex = state.directTargets.length; break; }
+      trial = state.directTrial = { mode: 0, phase: 0, at: { ...state.origin }, route: [] };
+    }
+    const via = trial.mode ? { x: state.origin.x, y: candidate.target.y } : { x: candidate.target.x, y: state.origin.y }, to = trial.phase ? candidate.target : via;
+    const dx = to.x - trial.at.x, dy = to.y - trial.at.y;
+    if (Math.abs(dx) < 1e-8 && Math.abs(dy) < 1e-8) {
+      if (!trial.phase) { trial.phase = 1; continue; }
+      const old = state.solution;
+      if (!old || candidate.cost < old.cost - 1e-8 || Math.abs(candidate.cost - old.cost) < 1e-8 && candidate.order < old.goal.order)
+        state.solution = { goal: candidate, cost: candidate.cost, directRoute: trial.route };
+      state.directTrial = null; state.directIndex++; continue;
+    }
+    if (work >= WALKER_ROUTE.nodes) break;
+    const next = { x: trial.at.x + Math.sign(dx) * Math.min(1, Math.abs(dx)), y: trial.at.y + Math.sign(dy) * Math.min(1, Math.abs(dy)) }; work++;
+    if (walkerGroundSegmentOpen(entity, map, width, trial.at, next, true)) { trial.route.push(next); trial.at = next; }
+    else if (!trial.mode) state.directTrial = { mode: 1, phase: 0, at: { ...state.origin }, route: [] };
+    else { state.directTrial = null; state.directIndex++; }
+  }
+  if (state.directIndex < state.directTargets.length) return { status: "pending", route: [], visited: work };
+  while (heap.length && work < WALKER_ROUTE.nodes) {
+    if (state.solution && heap[0].cost > state.solution.cost + 1e-8) return finish();
+    const at = walkerHeapPop(heap); work++; const key = at.y * width + at.x;
+    if (best.get(key) !== at.index) continue;
+    for (const goal of goals.get(key) || []) {
+      const cost = at.cost + goal.cost, old = state.solution;
+      if (!old || cost < old.cost - 1e-8 || Math.abs(cost - old.cost) < 1e-8 && goal.order < old.goal.order) state.solution = { index: at.index, goal, cost };
     }
     for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
-      const next = { x: at.x + dx, y: at.y + dy }, k = next.y * width + next.x;
-      if (next.x < 0 || next.y < 0 || next.x >= width || next.y >= height || seen.has(k) || !walkerGroundSegmentOpen(entity, map, width, at, next)) continue;
-      seen.add(k); queue.push(next); parent.push(i);
+      const next = { x: at.x + dx, y: at.y + dy }, k = next.y * width + next.x, cost = at.cost + 1;
+      if (next.x < 0 || next.y < 0 || next.x >= width || next.y >= height || best.has(k) && queue[best.get(k)].cost <= cost + 1e-8 || !walkerGroundSegmentOpen(entity, map, width, at, next, true)) continue;
+      const index = queue.length, node = { ...next, cost, index, parent: at.index }; queue.push(node); best.set(k, index); walkerHeapPush(heap, node);
     }
   }
-  return { status: state.cursor < queue.length ? "pending" : "no-path", route: [], visited: work };
+  if (!heap.length && state.solution) return finish();
+  return { status: heap.length ? "pending" : "no-path", route: [], visited: work };
+}
+// Compact terrain comparisons invalidate an incremental search as well as a finished path when a gate, ramp,
+// scar or door changes. This does not run a second graph search or spend another node-expansion budget.
+const walkerTerrainFlag = t => !t ? -1 : (t.blocked ? 1 : 0) | (LETHAL_KINDS.has(t.kind) ? 2 : 0) | (t.slope ? 4 : 0) | (t.voidScar ? 8 : 0) | (t.pit ? 16 : 0) |
+  (t.kind === "void" || t.kind === "sealedGate" ? 32 : 0) | (["districtWall", "shackWall"].includes(t.structure) ? 64 | (t.wallSides || []).reduce((n, side) => n | ({ north: 128, east: 256, south: 512, west: 1024 }[side] || 0), 0) : 0);
+function walkerRetreatTopology(map, width, targets, old) {
+  const tiles = map.tiles, doors = targets.map(p => `${p.x},${p.y}`).join(";");
+  let changed = !old || old.width !== width || old.landscape !== !!map.landscape || old.doors !== doors || old.flags.length !== tiles.length;
+  if (!changed) for (let i = 0; i < tiles.length; i++) if (old.flags[i] !== walkerTerrainFlag(tiles[i]) || old.heights[i] !== (Number(tiles[i]?.elev) || 0)) { changed = true; break; }
+  return changed ? { width, landscape: !!map.landscape, doors, flags: Int16Array.from(tiles, walkerTerrainFlag), heights: Float64Array.from(tiles, t => Number(t?.elev) || 0) } : old;
 }
 export function projectileDirection(x, y, facing = "down") {
   const m = Math.hypot(x, y);
@@ -1781,7 +1862,7 @@ export class Game {
     if(area==="overworld"&&arrayMouthAt(this.save,this.rx,this.ry)&&!this.map.objects.some(o=>o.kind==="arrayMouth")){const spots=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>10&&t.x<22&&t.y>10&&t.y<22).sort((a,b)=>Math.hypot(a.x-16,a.y-16)-Math.hypot(b.x-16,b.y-16));const at=spots[0]||{x:16,y:16};this.map.objects.push({id:"array-mouth",kind:"arrayMouth",name:"The Array Mouth",lore:"A ruined relay terminal, half sunk into ground no map has charted. Its line hums under your feet.",x:at.x,y:at.y,state:"ready",actions:["enter"],landmark:true});this.message="The Array Mouth: the far end of the relay line."}
     if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry,this.save),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);const beast=questingBeastFor(this.save,this.map,this.rx,this.ry),elder=addElder(this.map,this.save,this.rx,this.ry),worldBeastFound=worldBeastFor(this.save,this.map,this.rx,this.ry),worldBeast=beast&&!worldBeastFound?.retreating?null:worldBeastFound;if(worldBeast){this.map.enemySpawns.push(worldBeast);const B=WORLD_BEASTS[worldBeast.worldBeast];this.message=worldBeast.retreating?`${B.name} is fleeing through here toward ${BEAST_HOMES[B.home].name}. It cannot be hurt now.`:`${B.arrive} ${worldBeastTriesLeft(this.save,worldBeast.worldBeast)} of ${B.tries} tries remain.`}/* release 241: a fleeing beast says so, and passes through the Questing Beast's ground too *//* release 235: world beasts */addStrange(this.map,this.save,this.rx,this.ry);/* release 215: a rare strange tree or stone */addDigSpot(this.map,this.save,this.rx,this.ry);/* release 225: a rare patch of disturbed earth */for(const id of mouthsIn(this.save,this.rx,this.ry))placeMouth(this.map,id);/* release 217: second mouths of linked dungeons */if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastTriesLeft(this.save)} of ${QUESTING_BEAST.tries} tries remain.`}if(beast||worldBeast){}else if(elder)this.message="Something tall and silent walks the road.";else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, murmuring.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
     this.activatedEncounterGroups=new Set;
-    if(area==="dungeon"){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is retreating ${haunt.worldBeast === "voidWalker" ? "toward the entrance" : "toward the water"}. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastTriesLeft(this.save,haunt.worldBeast)} of ${B.tries} tries remain.`}} /* release 249: the Psychic Crystal haunts dungeons with water */
+    if(area==="dungeon"){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is retreating ${haunt.worldBeast === "voidWalker" ? "toward the nearest reachable dungeon door" : "toward the water"}. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastTriesLeft(this.save,haunt.worldBeast)} of ${B.tries} tries remain.`}} /* release 249: the Psychic Crystal haunts dungeons with water */
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
     // Far Array bosses are tuned to the Wayfarer last, over the depth and boss-form scaling (release 138).
     if(area==="dungeon"&&isArrayRun(loadingId))for(const e of this.enemies)if(e.farArrayBoss)tuneArrayBoss(e,this.save,characterStats(this.save),e.farArrayBoss);
@@ -1871,8 +1952,10 @@ export class Game {
         e.y = Math.max(0, Math.min(mapHeight(this.map, area) - 1, Number.isFinite(e.y) ? e.y : this.map.entry?.y ?? 5));
       } else if (e.worldBeast === "voidWalker" && area === "dungeon") {
         if (e.retreating) e.untargetable = true;
+        // A safe disconnected retreat position is unfinished work, not a corrupted save. Repair only
+        // genuinely invalid ground/bounds; never relocate a valid retreat to manufacture an escape.
         const connected = this.walkerLandingGraph(), k = Math.round(e.y) * areaWidth + Math.round(e.x);
-        if (!Number.isFinite(e.x) || !Number.isFinite(e.y) || !connected.has(k) || !walkerGroundPositionOpen(this.map, areaWidth, e.x, e.y)) {
+        if (!Number.isFinite(e.x) || !Number.isFinite(e.y) || e.x < 0 || e.y < 0 || e.x > areaWidth - 1 || e.y > mapHeight(this.map, area) - 1 || (!e.retreating && !connected.has(k)) || !walkerGroundPositionOpen(this.map, areaWidth, e.x, e.y)) {
           const candidates = [...connected].map(k => ({ x: k % areaWidth, y: Math.floor(k / areaWidth) }));
           candidates.sort((a, b) => Math.hypot(a.x - (Number.isFinite(e.x) ? e.x : 0), a.y - (Number.isFinite(e.y) ? e.y : 0)) - Math.hypot(b.x - (Number.isFinite(e.x) ? e.x : 0), b.y - (Number.isFinite(e.y) ? e.y : 0)));
           if (candidates.length) Object.assign(e, candidates[0]);
@@ -2735,39 +2818,69 @@ export class Game {
     if (!(dt > 0)) return;
     const width = mapWidth(this.map, this.area), routes = this._walkerRoutes ||= new WeakMap();
     let r = routes.get(e);
-    if (!r || r.retreat !== retreat || r.map !== this.map) { r = { map: this.map, retreat, route: [], recent: [], seq: 0, wait: 0 }; routes.set(e, r); }
+    if (!r || r.retreat !== retreat || r.map !== this.map) { r = { map: this.map, retreat, route: [], recent: [], seq: 0, wait: 0, topologyTime: 0 }; routes.set(e, r); }
     s.vel = { x: 0, y: 0 }; r.wait = Math.max(0, r.wait - dt);
-    if (retreat) e.untargetable = true;
-    if (retreat && e.fleeFade != null) { e.voidTeleport = .2; e.fleeFade = Math.max(0, e.fleeFade - dt / RETREAT.fade); if (!e.fleeFade) e.fleeDone = true; return; }
+    let targets;
+    if (retreat) {
+      e.untargetable = true;
+      // Overworld sections retain their existing home/exit-leg policy; only a real dungeon mouth ends a
+      // found-home leg. Outside targets clamp to the safe gate tile, never teleport across the boundary.
+      targets = this.area === "dungeon" || e.fleeTo.home || e.fleeTo.nearestDoor ? walkerRetreatDoors(this.map, this.area) : [{
+        x: Math.max(0, Math.min(width - 1, e.fleeTo.x)), y: Math.max(0, Math.min(mapHeight(this.map, this.area) - 1, e.fleeTo.y)) }];
+      r.topologyTime -= dt;
+      // At most one compact terrain scan per second. The very next movement edge is still checked every
+      // frame, and Supernova's terrain callback invalidates all routes immediately.
+      if (r.topologyTime <= 0) {
+        const topology = walkerRetreatTopology(this.map, width, targets, r.topology);
+        if (topology !== r.topology) { r.route = []; r.search = null; r.jump = null; r.wait = 0; delete e.fleeFade; e.hopLift = 0; e.jumping = false; }
+        r.topology = topology; r.topologyTime = WALKER_ROUTE.retry;
+      }
+      if (e.fleeFade != null) {
+        const atDoor = targets.some(p => Math.hypot(e.x - p.x, e.y - p.y) < .00001 && walkerGroundPositionOpen(this.map, width, p.x, p.y));
+        if (!atDoor) { delete e.fleeFade; r.route = []; r.search = null; }
+        else { e.hopLift = 0; e.fleeFade = Math.max(0, e.fleeFade - dt / RETREAT.fade); if (!e.fleeFade) e.fleeDone = true; return; }
+      }
+    }
     if (r.wait > 0) return;
+    const arrive = () => { e.hopLift = 0; e.jumping = false; if (e.fleeTo.home) e.fleeFade = 1; else e.fleeDone = true; };
     if (!r.route.length) {
       let plan;
       if (retreat) {
-        r.search ||= beginWalkerRetreatSearch(e, this.map, width, e.fleeTo);
+        r.search ||= beginWalkerRetreatSearch(e, this.map, width, targets);
         plan = advanceWalkerRetreatSearch(e, r.search);
       } else plan = walkerDungeonRoute(e, this.map, width, { seq: r.seq++, recent: r.recent });
       this.performanceStats.pathfindingWork += plan.visited;
       if (plan.status === "pending") return;
       r.search = null; r.route = plan.route;
-      if (!r.route.length) {
-        const target = retreat && { x: Math.max(0, Math.min(width - 1, Math.round(e.fleeTo.x))), y: Math.max(0, Math.min(mapHeight(this.map, this.area) - 1, Math.round(e.fleeTo.y))) };
-        if (target && Math.hypot(e.x - target.x, e.y - target.y) < .05) { if (e.fleeTo.home) e.fleeFade = 1; else e.fleeDone = true; return; }
-        // A broken/disconnected saved route cannot trap the hunt forever. Its own visible rift escapes to a
-        // verified landing in the entrance component, never forward through a sealed progression region.
-        if (target) {
-          const landings = [{ ...target }];
-          if (e.fleeTo.home) for (let ring = 1; ring <= 2; ring++) for (let dx = -ring; dx <= ring; dx++) for (let dy = -ring; dy <= ring; dy++) if (Math.max(Math.abs(dx), Math.abs(dy)) === ring) landings.push({ x: target.x + dx, y: target.y + dy });
-          if (landings.some(at => this.walkerSafeTeleport(e, at.x, at.y))) { e.voidTeleport = .45; if (e.fleeTo.home) e.fleeFade = 1; else e.fleeDone = true; return; }
-        }
-        r.wait = WALKER_ROUTE.retry; return;
+      if (retreat && plan.status === "reached") {
+        r.target = plan.target; e.fleeTo = { ...e.fleeTo, ...plan.target };
+        if (!r.route.length) { arrive(); return; }
       }
+      if (!r.route.length) { r.wait = WALKER_ROUTE.retry; return; } // no path means wait safely, never rift or despawn
       if (!retreat) { r.recent.push({ ...r.route.at(-1) }); r.recent = r.recent.slice(-WALKER_ROUTE.recent); }
     }
     const to = r.route[0];
-    if (!walkerGroundSegmentOpen(e, this.map, width, e, to)) { r.route = []; r.search = null; r.wait = WALKER_ROUTE.pause; return; }
-    const dx = to.x - e.x, dy = to.y - e.y, d = Math.hypot(dx, dy), step = Math.min(d, (retreat ? RETREAT.speed : WALKER_ROUTE.speed * (e.speedMultiplier || 1)) * dt);
-    if (d > 1e-8) { const x = e.x, y = e.y; moveAxis(e, dx / d * step, dy / d * step, this.map, width); s.vel = { x: (e.x - x) / dt, y: (e.y - y) / dt }; if (Math.abs(dx) > .001) e.facingX = dx > 0 ? 1 : -1; }
-    if (Math.hypot(e.x - to.x, e.y - to.y) < 1e-6) { r.route.shift(); if (!r.route.length && !retreat) r.wait = WALKER_ROUTE.pause; }
+    if (!walkerGroundSegmentOpen(e, this.map, width, e, to, retreat)) { r.route = []; r.search = null; r.jump = null; e.hopLift = 0; e.jumping = false; r.wait = WALKER_ROUTE.pause; return; }
+    const dx = to.x - e.x, dy = to.y - e.y, d = Math.hypot(dx, dy), speed = retreat ? RETREAT.speed : WALKER_ROUTE.speed * (e.speedMultiplier || 1);
+    if (retreat && !r.jump && !walkerGroundSegmentOpen(e, this.map, width, e, to)) r.jump = { from: { x: e.x, y: e.y }, to, distance: d };
+    const jump = r.jump, step = Math.min(d, jump ? jump.distance * dt / Math.max(WALKER_ROUTE.jumpTime, jump.distance / speed) : speed * dt);
+    if (d > 1e-8) {
+      const x = e.x, y = e.y, body = retreat ? { ...e, isPlayer: true, jumping: true, flying: false, phases: false } : e;
+      moveAxis(body, dx / d * step, dy / d * step, this.map, width); e.x = body.x; e.y = body.y;
+      s.vel = { x: (e.x - x) / dt, y: (e.y - y) / dt }; if (Math.abs(dx) > .001) e.facingX = dx > 0 ? 1 : -1;
+    }
+    if (jump) {
+      const progress = Math.min(1, Math.hypot(e.x - jump.from.x, e.y - jump.from.y) / jump.distance),
+        fromLift = liftAt(this.map, width, jump.from.x, jump.from.y), toLift = liftAt(this.map, width, jump.to.x, jump.to.y);
+      e.jumping = true;
+      // Shared monster rendering subtracts hopLift * .2 tiles. Compensate the discrete terrain lift so
+      // the body follows a continuous arc rather than snapping vertically when its feet cross the ledge.
+      e.hopLift = Math.sin(progress * Math.PI) * WALKER_ROUTE.jumpLift + (fromLift + (toLift - fromLift) * progress - liftAt(this.map, width, e.x, e.y)) / .2;
+    }
+    if (Math.hypot(e.x - to.x, e.y - to.y) < 1e-6) {
+      r.route.shift(); r.jump = null; e.hopLift = 0; e.jumping = false;
+      if (!r.route.length) { if (retreat) arrive(); else r.wait = WALKER_ROUTE.pause; }
+    }
   }
   packWorld(dt, now, sanctuary = null) {
     const map = this.map, width = mapWidth(map, this.area), height = mapHeight(map, this.area), p = this.player, last = this._packLastPlayer || p, game = this;
@@ -3594,7 +3707,9 @@ export class Game {
       if(!activeEnemySet.has(e)){this.performanceStats.dormantEnemies++;continue}
       if(e.farArrayBoss==="listener"&&!e.dead){if(this.updateListener(e,now))continue}
       if(e.skirmishId&&!e.skirmishProvoked){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&updateSkirmisher(e,this.enemies,this.map,dt,skirmishHooks))continue}
-      if(e.packKind){this.performanceStats.activeEnemies++;const zone=packWorld.sanctuary;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(zone)enforceSanctuary(e,zone);continue}
+      // A retreating Walker is harmless and must traverse settlements normally. Sanctuary combat
+      // displacement must neither relocate it nor freeze its retreat while the player rests inside.
+      if(e.packKind){this.performanceStats.activeEnemies++;const zone=e.kind==="voidWalker"&&(e.retreating||e.fleeTo)?null:packWorld.sanctuary;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(zone)enforceSanctuary(e,zone);continue}
       if(e.seaKind){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateSeaCreature(e,seaWorld,dt);continue}
       if(e.encounterGroup&&!this.activatedEncounterGroups.has(e.encounterGroup)){this.activatedEncounterGroups.add(e.encounterGroup);this.performanceStats.encounterActivations++}
       let simulationDt=dt;

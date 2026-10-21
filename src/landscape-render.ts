@@ -1,7 +1,7 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { LIFT_PER_LEVEL } from "./landscape.ts";
+import { LIFT_PER_LEVEL, safeVoidScarTransition } from "./landscape.ts";
 
 const TAU = Math.PI * 2;
 const cache = new Map();
@@ -253,7 +253,9 @@ export function drawHazardBrinks(ctx, map, w, l, t, r, b, s, visible = () => tru
 // Traversal cues near the player: stripes on dangerous drops, chevrons on walkable slopes, and the ledge prompt.
 export function drawTraversalCues(ctx, map, w, player, s, now, hint, visible = () => true) {
   if (!player) return;
-  if (!map?.landscape) { if (hint?.kind === "brink" && now < hint.until) edgePrompt(ctx, hint, s, 0, .55 + .35 * Math.sin(now / 160)); return; }
+  // A pre-blast ledge hint can outlive the ledge. Match the movement rule without clearing game state.
+  const hintSafe = hint && safeVoidScarTransition(map?.tiles?.[Math.floor(player.y+.75)*w+Math.floor(player.x+.5)],map?.tiles?.[hint.y*w+hint.x]);
+  if (!map?.landscape) { if (hint?.kind === "brink" && now < hint.until && !hintSafe) edgePrompt(ctx, hint, s, 0, .55 + .35 * Math.sin(now / 160)); return; }
   const px = Math.floor(player.x + .5), py = Math.floor(player.y + .75), at = (x, y) => map.tiles[y * w + x], h = Math.floor(map.tiles.length / w), pulse = .55 + .35 * Math.sin(now / 160);
   for (let y = Math.max(0, py - 5); y <= Math.min(h - 1, py + 5); y++) for (let x = Math.max(0, px - 6); x <= Math.min(w - 1, px + 6); x++) {
     const t = at(x, y);
@@ -261,7 +263,7 @@ export function drawTraversalCues(ctx, map, w, player, s, now, hint, visible = (
     const lift = Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * s, tx = x * s, ty = y * s - lift;
     for (const [dx, dy, side] of [[0, 1, "s"], [0, -1, "n"], [1, 0, "e"], [-1, 0, "w"]]) {
       const n = at(x + dx, y + dy), drop = (t.elev || 0) - (n && !n.blocked ? (n.elev || 0) : (t.elev || 0));
-      if (drop < 2 || Math.hypot(x - px, y - py) > 4.5) continue;
+      if (drop < 2 || safeVoidScarTransition(t,n) || Math.hypot(x - px, y - py) > 4.5) continue;
       ctx.fillStyle = drop >= 4 ? `rgba(230,40,40,${pulse})` : `rgba(255,150,40,${pulse * .85})`;
       const band = Math.max(2, s * .1);
       for (let k = 0; k < 4; k++) { // hazard stripes along the edge
@@ -271,19 +273,20 @@ export function drawTraversalCues(ctx, map, w, player, s, now, hint, visible = (
     }
     if (!t.slope && Math.hypot(x - px, y - py) <= 3.5) for (const [dx, dy] of N4) { // what rises beside you: jumpable (+1) or too high (+2)
       const n = at(x + dx, y + dy), up = n && !n.blocked && !n.slope ? (n.elev || 0) - (t.elev || 0) : 0;
-      if (up < 1) continue;
+      if (up < 1 || safeVoidScarTransition(t,n)) continue;
       const ex = tx + s / 2 + dx * s * .36, ey = ty + s / 2 + dy * s * .36;
       if (up === 1) { ctx.strokeStyle = "rgba(130,232,255,.85)"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.moveTo(ex - s * .1 - dy * 0, ey + s * .06); ctx.lineTo(ex, ey - s * .06); ctx.lineTo(ex + s * .1, ey + s * .06); ctx.stroke(); }
       else { ctx.strokeStyle = "rgba(255,95,80,.85)"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.moveTo(ex - s * .08, ey - s * .08); ctx.lineTo(ex + s * .08, ey + s * .08); ctx.moveTo(ex + s * .08, ey - s * .08); ctx.lineTo(ex - s * .08, ey + s * .08); ctx.stroke(); }
     }
     if (t.slope && Math.hypot(x - px, y - py) <= 6) { // chevrons point uphill
       const up = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([dx, dy]) => { const n = at(x + dx, y + dy); return n && !n.blocked && (n.elev || 0) > (t.elev || 0) - (t.slope ? 0 : 1) && (n.elev || 0) >= (t.elev || 0); }) || [0, -1];
+      if(safeVoidScarTransition(t,at(x+up[0],y+up[1])))continue;
       ctx.strokeStyle = "rgba(255,244,214,.65)"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath();
       const cx = tx + s / 2, cy = ty + s / 2, ux = up[0] * s * .18, uy = up[1] * s * .18, vx = -up[1] * s * .16, vy = up[0] * s * .16;
       ctx.moveTo(cx - ux + vx, cy - uy + vy); ctx.lineTo(cx + ux, cy + uy); ctx.lineTo(cx - ux - vx, cy - uy - vy); ctx.stroke();
     }
   }
-  if (hint && now < hint.until) {
+  if (hint && now < hint.until && !hintSafe) {
     const t = at(hint.x, hint.y), lift = t ? Math.max(0, (t.elev || 0)) * LIFT_PER_LEVEL * s : 0, cx = hint.x * s + s / 2, cy = hint.y * s - lift + s / 2;
     if (hint.kind === "brink") return edgePrompt(ctx, hint, s, lift, pulse);
     ctx.fillStyle = hint.kind === "climb" ? `rgba(120,230,255,${pulse})` : `rgba(255,120,80,${pulse})`;

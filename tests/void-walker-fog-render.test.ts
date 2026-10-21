@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { render, rendererDiagnostics } from '../src/renderer.ts';
 import { freshSave } from '../src/types.ts';
-import { liftAt } from '../src/landscape.ts';
+import { liftAt, safeVoidScarTransition } from '../src/landscape.ts';
+import { drawTraversalCues, drawHazardBrinks } from '../src/landscape-render.ts';
+import { consumeVoidTerrain } from '../src/world-beasts.ts';
 import { createCombatant } from '../src/combat.ts';
 import { applyDungeonDiscovery, dungeonPointDiscovered, revealDungeonAt, dungeonChunkId } from '../src/dungeon-framework.ts';
 
@@ -202,12 +204,13 @@ test('Fresh exact-circle scars have sparse fine fractures, while legacy cell-onl
   assert.notDeepEqual(legacy, calls, 'legacy cell-only state does not invent an exact cast center');
 });
 
-test('Cached animated lower terrain is excluded from every projected scar disk, including overlaps', () => {
+test('Cached scar material is composited once over animated lower terrain, including overlaps', () => {
   const g = fixture({ discovered: true }); g.area = 'overworld'; g.map.landscape = true; g.map._hasLevels = true;
   g.map.tiles = g.map.tiles.map(t => ({ ...t, landscape: true, elev: t.kind === 'voidScar' ? 4 : 0, kind: t.kind === 'voidScar' ? 'voidScar' : 'lakeWater' }));
   g.map._voidScarCircles = [{ x: 14.5, y: 12.62, radius: 3.5, visualLift: 1.36 }, { x: 15, y: 12.62, radius: 3.5, visualLift: 1.36 }];
   const calls = capture(g, { cached: true });
-  assert.equal(calls.filter(c => c[0] === 'clip' && c[1] === 'evenodd').length, 2, 'separate inverse clips exclude the union, not XOR overlapping holes');
+  assert.equal(calls.filter(c => c[0] === 'clip' && c[1] === 'evenodd').length, 0, 'no per-circle inverse clips are needed');
+  assert.equal(calls.filter(c => c[0] === 'drawImage' && styleCalls(c[1], '#ba3e4d').length).length, 1, 'one transparent static layer covers both projected disks');
 });
 
 test('Width-less native overworld sections hide consumed door, gate and shortcut imagery', () => {
@@ -220,4 +223,96 @@ test('Width-less native overworld sections hide consumed door, gate and shortcut
   const empty = capture(g); g.map.objects = objects;
   assert.deepEqual(capture(g), empty, 'native 32-tile section fallback locates each consumed physical object');
   assert.equal(g.map.objects, objects); assert.equal(g.map.objects.length, 3, 'interaction records remain intact');
+});
+
+function producedHeightScar() {
+  const g = fixture({ discovered: true }); g.area = 'overworld'; g.player.x = 12; g.player.y = 12;
+  g.map.landscape = true; g.map._hasLevels = true;
+  g.map.tiles = g.map.tiles.map(t => ({ x: t.x, y: t.y, kind: 'floor', blocked: false, landscape: true, elev: t.x <= 12 ? 4 : 0, detail: 0 }));
+  const center = { x: 12.5, y: 12.62, visualLift: liftAt(g.map, g.map.width, 12, 12) };
+  const result = consumeVoidTerrain(g.save, g.map, 'overworld:0,0', center, 7);
+  assert.equal(result.ok, true); assert.ok(result.changed > 0);
+  assert.equal(safeVoidScarTransition(g.map.tiles[12 * 24 + 12], g.map.tiles[12 * 24 + 13]), true);
+  return g;
+}
+function traversalCommands(g, now = 1000, hint = undefined) {
+  const canvas = new CommandCanvas(600, 600); drawTraversalCues(canvas.context, g.map, g.map.width, g.player, 44, now, hint); return canvas.context.calls;
+}
+
+for (const cached of [false, true]) test(`Real consumed height joins have no obsolete animated cliff or climb cues (${cached ? 'cached' : 'fallback'})`, () => {
+  const g = producedHeightScar(), before = structuredClone(g);
+  assert.equal(traversalCommands(g).length, 0, 'safe scar joins need neither drop stripes nor cannot-climb Xs');
+  assert.deepEqual(capture(g, { cached, now: 1000 }), capture(g, { cached, now: 4000 }), 'varied preserved elevations do not animate the permanent scar');
+  assert.deepEqual(structuredClone(g), before, 'presentation does not flatten elevations or mutate simulation');
+});
+
+test('Ordinary cliff, uphill and surviving lethal-edge warnings remain visible', () => {
+  const g = producedHeightScar();
+  for (const t of g.map.tiles) { delete t.voidScar; t.kind = 'floor'; }
+  const a = traversalCommands(g, 1000), b = traversalCommands(g, 4000);
+  assert.notDeepEqual(a, b, 'ordinary dangerous cliffs retain their pulsing stripes');
+  assert.ok(a.some(c => c.at(-1)?.fillStyle?.startsWith('rgba(230,40,40,')));
+  assert.ok(a.some(c => c.at(-1)?.strokeStyle === 'rgba(255,95,80,.85)'), 'ordinary impassable climbs keep red Xs');
+  const high = g.map.tiles[12 * 24 + 12], low = g.map.tiles[12 * 24 + 13];
+  high.voidScar = true; high.kind = 'voidScar'; low.kind = 'lava';
+  assert.equal(safeVoidScarTransition(high, low), false);
+  const canvas = new CommandCanvas(600, 600); drawHazardBrinks(canvas.context, g.map, 24, 12, 12, 13, 13, 44);
+  assert.ok(canvas.context.calls.some(c => c.at(-1)?.fillStyle === '#ffb35c'), 'real lava keeps its warning brink beside a scar');
+  assert.ok(traversalCommands(g).some(c => c.at(-1)?.fillStyle?.startsWith('rgba(230,40,40,')), 'surviving lethal drop keeps its warning stripes');
+});
+
+test('Only stale hints and slope cues on now-safe scar transitions disappear', () => {
+  const g = producedHeightScar(), hint = { x: 13, y: 12, kind: 'tooHigh', until: 5000 };
+  assert.equal(traversalCommands(g, 1000, hint).length, 0);
+  assert.equal(traversalCommands(g, 1000, { ...hint, kind: 'brink' }).length, 0);
+  g.map.tiles[12 * 24 + 13].kind = 'lava';
+  assert.ok(traversalCommands(g, 1000, { ...hint, kind: 'brink' }).some(c => c[0] === 'strokeText' && c[1] === 'EDGE'), 'real hazard hints remain');
+  const slope = producedHeightScar(); slope.map.tiles[12 * 24 + 12].slope = true;
+  assert.equal(traversalCommands(slope).length, 0, 'scar-safe slope joins need no old ascent chevron');
+});
+
+test('Active Nova, rend and pulsar attack warnings remain visible over safe white scars', () => {
+  const g = producedHeightScar(), quiet = capture(g);
+  for (const f of [nova(), { kind: 'voidHorizon', x: 13, y: 12, radius: 2.2, coreRadius: .35, pulsar: true, angle: 0, arming: .3, armTotal: .6, age: .1, life: 1 }, { kind: 'voidRend', x: 13, y: 12, variant: 'spike', radius: 1.2, arming: .3, armTotal: .6, age: .1, life: 1 }, { kind: 'voidBeam', x: 13, y: 12, radius: .25, width: .25, angle: 0, length: 5, arming: .3, armTotal: .6, age: .1, life: 1 }]) {
+    g.packEffects = [f]; assert.notDeepEqual(capture(g), quiet, `${f.kind} combat warning is not a terrain-cue suppression target`);
+  }
+});
+
+test('Hundreds of retained circles use one static raster blit per frame without mutating history', () => {
+  const g = fixture({ discovered: true });
+  g.map._voidScarCircles = Array.from({ length: 500 }, (_, i) => ({ x: 14.5 + Math.sin(i * 2.399) * .5, y: 12.62 + Math.cos(i * 2.399) * .5, radius: 3.5, visualLift: 0 }));
+  const before = structuredClone(g.map._voidScarCircles);
+  capture(g, { cached: true }); const builds = rendererDiagnostics().scarBuilds;
+  for (const now of [2000, 3000, 4000]) {
+    const calls = capture(g, { cached: true, now });
+    assert.equal(rendererDiagnostics().scarBuilds, builds, 'unchanged geometry reuses the raster');
+    assert.equal(calls.filter(c => c[0] === 'drawImage' && styleCalls(c[1], '#ba3e4d').length).length, 1);
+    assert.equal(calls.filter(c => c[0] === 'clip' && c[1] === 'evenodd').length, 0);
+  }
+  assert.deepEqual(g.map._voidScarCircles, before); assert.equal(g.map._voidScarCircles.length, 500);
+});
+
+test('Scar raster invalidates on ordinary exploration without showing unknown circles early', () => {
+  const g = fixture(); capture(g, { cached: true }); const builds = rendererDiagnostics().scarBuilds;
+  const hidden = capture(g, { cached: true }); assert.equal(rendererDiagnostics().scarBuilds, builds);
+  applyDungeonDiscovery(g.map, revealDungeonAt(g.map, [...g.map._dungeonRevealed], 14, 12));
+  const revealed = capture(g, { cached: true }); assert.equal(rendererDiagnostics().scarBuilds, builds + 1);
+  assert.notDeepEqual(hidden, revealed); assert.equal(g.map._dungeonRevealMode, 'normal');
+  capture(g, { cached: true }); assert.equal(rendererDiagnostics().scarBuilds, builds + 1);
+});
+
+test('Large-map ground fallback retains a bounded native-resolution scar viewport cache', () => {
+  const g = fixture(); g.map.width = 128; g.map.height = 128; g.player.x = 64; g.player.y = 64;
+  g.map.tiles = Array.from({ length: 128 * 128 }, (_, i) => ({ x: i % 128, y: Math.floor(i / 128), kind: 'floor', blocked: false, elev: 0 }));
+  applyDungeonDiscovery(g.map, [], 'full');
+  assert.equal(consumeVoidTerrain(g.save, g.map, 'dungeon:large-scar', { x: 64.5, y: 64.62 }, 7).ok, true);
+  const groundBuilds = rendererDiagnostics().groundBuilds;
+  capture(g, { cached: true }); const builds = rendererDiagnostics().scarBuilds;
+  assert.equal(rendererDiagnostics().groundBuilds, groundBuilds, 'large dungeon uses the existing per-tile base-ground fallback');
+  assert.ok(rendererDiagnostics().scarPixels <= 8.4e6); assert.equal(rendererDiagnostics().scarScale, 1, 'visible scar stays at native resolution, not whole-map downsampling');
+  capture(g, { cached: true, now: 4000 }); assert.equal(rendererDiagnostics().scarBuilds, builds);
+  g.player.x += .1; capture(g, { cached: true }); assert.equal(rendererDiagnostics().scarBuilds, builds, 'small movement remains inside the padded raster region');
+  const history = structuredClone(g.map._voidScarCircles);
+  g.player.x = 100; capture(g, { cached: true }); assert.equal(rendererDiagnostics().scarBuilds, builds + 1, 'leaving the cached region rebuilds one bounded raster');
+  assert.ok(rendererDiagnostics().scarPixels <= 8.4e6); assert.deepEqual(g.map._voidScarCircles, history);
 });

@@ -56,6 +56,33 @@ It bypasses it bypasses the walls and so like if I want to. And so the Supernova
 Make the circle an actual circle right? Like an actual one hundred percent circle, not the pixelated circle. That's there. So it just matches the shape of the supernova, and then also reduce the amount of cracks that are there. So it's a little bit more visually appealing, a little bit more subtle
 ```
 
+## S6 — retreat to the nearest dungeon door using ordinary terrain rules
+
+- Author: Tim (owner), user message `Sentinel_bc97dff018dc81918643dcf631ed5d61`.
+- Recorded from the parent-provided conversation evidence on 2026-10-21 UTC (2026-10-20 UTC-04); exact delivery timestamp was not supplied in that evidence.
+- Exact message:
+
+```text
+Okay, and then the void walkers retreat. Mechanic is to just go to the nearest. Door for the dungeon. He just goes to the door for the dungeon, and he can chump, you know, and he'll just follow the rest, the regular terrain rules
+```
+
+## S7 — reaching a dungeon door ends retreat, including lower-floor passages
+
+- Context question: assistant message `Sentinel_9acb6fa0ffb4819196d170c138b770df`.
+- Answer: Tim (owner), user message `Sentinel_b2434e2affe881919c5f40fe1191eeda`.
+- Recorded from the parent-provided conversation evidence on 2026-10-21 UTC (2026-10-20 UTC-04); exact delivery timestamps were not supplied.
+- Exact assistant question, preserved because it defines the alternatives in the owner's answer:
+
+```text
+One detail for multi-level dungeons: if he’s on a lower floor, should reaching the nearest doorway/stair passage let him retreat out of the encounter, or should he travel all the way to the dungeon’s outside entrance?
+```
+
+- Exact owner answer:
+
+```text
+Yeah, I know he's done once he reaches a dungeon door where he's gone. He's retreated, he doesn't travel the same way that we do. He is obviously more control over the corridor and the void
+```
+
 ## Earlier repository-recorded context, not a new verbatim user transcript
 
 The existing `HERMES_PROJECT_FIELD_GUIDE.md` records overworld and dungeon appearances, dungeon roaming, and a dungeon-entrance retreat/home for the future Void Walker. Those are retained as prior project requirements; the full earlier owner transcripts are not reproduced here. The Crystal's independent wall-phasing permission does not by itself authorize permanent Walker wall phasing.
