@@ -2331,6 +2331,15 @@ Tim's follow-up rules (same day):
 - **Upswing.** `giantUpswing` runs charge, upswing, air (barrage of `giantBolt` or a dash with a `giantArc`), then slamFall or fall. `e.giantAir` lifts the body while the shadow stays on the ground; `endAttack` and `resetPackRuntime` clear it. The air dash uses `w.move`, so it never ends inside a wall.
 - **Art.** `form.scale` 1.9 (boss 2.565). The crest is drawn in `drawLightningGiant`, with new poses `menace`, `chest`, `chargeLow` and `upswing`.
 
+Tim's second follow-up (same day):
+- **Crest:** blue, swept back like a pteranodon's, made of lightning bolts.
+- **Movement, "like Armored Core":** slow on the ground. He closes distance with shoulder-thruster burst dashes, up to two in a row, sometimes bursting into the air. The charge can be dash plus swing, two dashes, dash-swing-dash-swing, or two dashes plus a swing.
+
+**CODE (second follow-up):**
+- **Movement.** `giantDashStep` is the single burst. `giantTraverse` handles traversal between attacks when the player is beyond `GIANT.dashRange`: one or two dashes, `dashGap` spool, `hopChance` hop and `dashCooldown`, with state in `e.giantDash`/`giantDashCd`. Ground speed is `WORLD_BEASTS.lightningGiant.speed` .65.
+- **Charge.** `giantUpswing` runs one of `GIANT.chargePlans`, inserting one extra dash before a swing that would miss. The leap follows only the last swing.
+- **Render.** `e.giantThrust` draws the shoulder exhaust and speed streaks. The crest is three bolt-glyph blades with a glow and a spark.
+
 **BOUNDARY:**
 - Numbers are provisional data, not Tim's.
 - The Giant is overworld-only, with no dungeon claim.

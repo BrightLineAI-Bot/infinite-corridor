@@ -55,7 +55,7 @@ export const WORLD_BEASTS = {
   // under it and carries it up into the sky.
   lightningGiant: {
     kind: "lightningGiant", name: "The Lightning Giant", chance: .025, minDepth: 6, tries: 3, cooldownSlain: 22, cooldownEscaped: 28,
-    hitsToKill: 72, hpPerLevel: 32, damageShare: .24, speed: 1, attackGap: .3, staggerResistance: 1, rewardMarks: 190, rewardPerLevel: 19,
+    hitsToKill: 72, hpPerLevel: 32, damageShare: .24, speed: .65, attackGap: .3, staggerResistance: 1, rewardMarks: 190, rewardPerLevel: 19,
     patience: 180, home: "canyon", retreatMoves: "walk",
     flee: "The Lightning Giant lowers its club and strides away toward the chasms, sparks trailing from its coils.",
     homeLine: "At the chasm's edge a storm cloud gathers under the Lightning Giant, and it rides the cloud up into the sky.",

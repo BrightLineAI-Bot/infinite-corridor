@@ -24,6 +24,7 @@ function world({ size = 32, player = { x: 16, y: 12 } } = {}) {
 function giant(w, only, x = 13, y = 12) {
   const e = createCombatant('lightningGiant', x, y, true, []); Object.assign(e, { id: 'giant-1', aggro: true, hp: 5000, maxHp: 5000, damage: 40 });
   if (only) e.packAttacks = [only];
+  e.giantDashCd = 1e9; // attack tests isolate the attack from traversal dashes (tested separately)
   w.enemies.push(e); return e;
 }
 function until(w, e, id, max = 5) { for (let t = 0; t < max && e.pack.attack !== id; t += w.dt) step(w, w.dt); assert.equal(e.pack.attack, id, `${id} starts`); }
@@ -112,7 +113,7 @@ test('render: every pose, the cloud and every lightning effect draw without muta
   const calls = []; const ctx = new Proxy({ getTransform: undefined, createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }) },
     { get: (o, k) => k in o ? o[k] : (...a) => calls.push(k), set: () => true });
   for (const pose of [null, 'arcs', 'point', 'pointFire', 'swingReady', 'swingFore', 'swingBack', 'slamRaise', 'slamDown', 'raise', 'menace', 'chest', 'chargeLow', 'upswing']) for (const reduceMotion of [false, true]) {
-    const e = createCombatant('lightningGiant', 3, 3, true, []); Object.assign(e, { id: 'r', giantPose: pose, giantCharged: pose === 'raise' ? 2 : 0, giantAir: pose === 'upswing' ? 1.5 : 0, reduceMotion });
+    const e = createCombatant('lightningGiant', 3, 3, true, []); Object.assign(e, { id: 'r', giantPose: pose, giantCharged: pose === 'raise' ? 2 : 0, giantAir: pose === 'upswing' ? 1.5 : 0, giantThrust: pose === 'chargeLow', reduceMotion });
     const before = JSON.stringify(e); assert.equal(drawPackMonster(ctx, e, 40, 1000, 'right'), true); assert.equal(JSON.stringify(e), before);
   }
   const cloud = createCombatant('lightningGiant', 3, 3, true, []); Object.assign(cloud, { id: 'c', giantCloud: true, fleeFade: .5 }); drawPackMonster(ctx, cloud, 40, 1000, 'right');
@@ -178,17 +179,39 @@ test('menacing slam: it stalks with the club up, slams (or fires a chest bolt) o
   assert.notEqual(e.pack.attack, 'giantMenace', 'gives up'); assert.equal(w.added.filter((f) => f.kind === 'shock' || f.kind === 'giantChest').length, 0, 'no strike without an opening');
 });
 
-test('charging upswing: it runs in and swings up; sometimes it leaps, attacks from the air, and lands plainly or in a tracking slam', () => {
-  const seen = { jump: 0, barrage: 0, dash: 0, slamLand: 0, plain: 0 };
-  for (let seq = 0; seq < 30; seq++) {
-    const w = world({ player: { x: 20, y: 12 } }), e = giant(w, 'giantUpswing', 12, 12); e.id = `up-${seq}`; e.pack.seq = seq;
+test('charging upswing: burst dashes and upswings in one of four plans; sometimes a leap with an air attack, landing plainly or in a tracking slam', () => {
+  const seen = { jump: 0, barrage: 0, dash: 0, slamLand: 0, plain: 0 }, plans = new Set();
+  for (let seq = 0; seq < 40; seq++) {
+    const w = world({ player: { x: 19, y: 12 } }), e = giant(w, 'giantUpswing', 12, 12); e.id = `up-${seq}`; e.pack.seq = seq;
     until(w, e, 'giantUpswing'); const x0 = e.x;
-    let peak = 0;
-    for (let t = 0; t < 6 && e.pack.attack === 'giantUpswing'; t += w.dt) { step(w, w.dt); peak = Math.max(peak, e.giantAir || 0); }
-    assert.ok(e.x > x0 + 2, 'it ran in'); assert.ok(w.hurts.some((h) => h.source === 'giantUpswing') || peak > 0, 'the upswing or its follow-up connects');
+    let peak = 0, plan = null, thrust = false;
+    for (let t = 0; t < 7 && e.pack.attack === 'giantUpswing'; t += w.dt) { step(w, w.dt); plan ||= e.pack.data?.plan; thrust ||= !!e.giantThrust; if (e.pack.data?.mode === 'air' || e.pack.data?.mode === 'slamFall' || e.pack.data?.mode === 'fall') peak = Math.max(peak, e.giantAir || 0); }
+    plans.add(plan.join('+'));
+    assert.ok(e.x > x0 + 2, 'it burst in'); assert.ok(thrust, 'shoulder thrusters fire');
+    const swings = plan.filter((x) => x === 'swing').length;
+    if (swings) assert.ok(w.hurts.some((h) => h.source === 'giantUpswing'), 'an upswing connects');
+    else assert.equal(peak, 0, 'a dash-only plan never leaps');
     assert.equal(e.giantAir || 0, 0, 'always lands');
     if (peak > 0) { seen.jump++; if (w.added.some((f) => f.kind === 'giantBolt')) seen.barrage++; if (w.added.some((f) => f.kind === 'giantArc')) seen.dash++; if (w.added.some((f) => f.kind === 'shock')) seen.slamLand++; else seen.plain++; }
   }
+  assert.deepEqual([...plans].sort(), GIANT.chargePlans.map((p) => p.join('+')).sort(), 'all four charge plans occur');
   for (const k of Object.keys(seen)) assert.ok(seen[k] > 0, `${k} happens (${JSON.stringify(seen)})`);
-  assert.ok(seen.jump < 30, 'not every upswing leaps');
+});
+
+test('traversal: it walks slowly but closes distance in up to two shoulder-thruster burst dashes, sometimes hopping', () => {
+  let hops = 0, doubles = 0;
+  for (let n = 0; n < 16; n++) {
+    const w = world({ size: 64, player: { x: 40, y: 12 } }), e = giant(w, null, 12, 12); e.id = `trav-${n}`; e.packAttacks = []; e.giantDashCd = 0; e.speedMultiplier = WORLD_BEASTS.lightningGiant.speed;
+    let peak = 0, bursts = 0, was = false;
+    const x0 = e.x;
+    for (let t = 0; t < 1.5; t += w.dt) { step(w, w.dt); peak = Math.max(peak, e.giantAir || 0); const on = !!e.giantDash && e.giantDash.gap <= 0; if (on && !was) bursts++; was = on; }
+    assert.ok(e.x - x0 > GIANT.dashSpeed * GIANT.dashTime * .8, 'a burst covers ground fast');
+    assert.ok(bursts >= 1 && bursts <= GIANT.dashMax);
+    if (peak > 0) hops++; if (bursts === 2) doubles++;
+  }
+  assert.ok(hops > 0, 'some dashes hop through the air'); assert.ok(doubles > 0, 'some chains are two dashes');
+  // Close by, it just walks (slowly) and never dashes.
+  const w = world({ player: { x: 15, y: 12 } }), e = giant(w, null, 12, 12); e.packAttacks = []; e.giantDashCd = 0;
+  for (let t = 0; t < 1; t += w.dt) step(w, w.dt); assert.equal(e.giantDash ?? null, null);
+  assert.ok(WORLD_BEASTS.lightningGiant.speed < 1, 'slow on foot');
 });

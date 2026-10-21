@@ -8,7 +8,7 @@ export const GIANT_ART = Object.freeze({
   height: 1.12, hipY: .5, shoulderY: .9, headY: 1.04, legGap: .26, thigh: .25, shin: .25, stride: .1, stepRate: 3.2,
   upperArm: .2, foreArm: .19, clubLength: .58, clubHead: .2,
   metal: "#6c7681", metalDark: "#3a424c", metalEdge: "#15191e", plate: "#8a95a1", copper: "#b8743c", copperDark: "#7a4a24",
-  core: "#7fd6ff", coreHot: "#eafaff", haze: "#7fd6ff", crest: "#8e1c24", crestLight: "#c8434a",
+  core: "#7fd6ff", coreHot: "#eafaff", haze: "#7fd6ff", crest: "#2f8fe8", crestLight: "#dff4ff", crestEdge: "#0d3a66",
   poses: { idle: 1.05, arcs: .15, point: 1.2, pointFire: 1.2, swingReady: -2.35, swingFore: .75, swingBack: 2.55, slamRaise: -1.75, slamDown: .95, raise: -1.57, menace: -1.95, chest: 1.15, chargeLow: 2.2, upswing: -1.05 },
   freeArm: { idle: 1.25, arcs: -.05, point: -.05, pointFire: -.1, raise: -1.45, slamRaise: -1.5, slamDown: 1.2, menace: -1.6, chest: 2.4, chargeLow: .4, upswing: .2 },
   ease: 14,
@@ -102,18 +102,30 @@ export function drawLightningGiant(ctx, q, now = 0) {
     ctx.fillStyle = "#c9d3dc"; ctx.beginPath(); ctx.ellipse(sx, shY - u * .26, u * .055, u * .025, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = A.metalEdge; ctx.lineWidth = Math.max(1, u * .01); ctx.stroke();
     if (!reduce && (charged || pose === "arcs" || Math.sin(t * 7 + sx) > .85)) lightningBolt(ctx, sx, shY - u * .26, sx + u * .12 * Math.sin(t * 9 + sx), shY - u * .42, { now, seed: Math.round(sx), segments: 4, width: Math.max(1, u * .012), branch: false });
   }
+  // Shoulder thrusters (burst dashes): the pylons blast blue-white exhaust out behind it, with speed streaks.
+  if (e.giantThrust) for (const [i, sx] of [-u * .25, u * .27].entries()) {
+    const len = u * (.42 + (reduce ? 0 : .08 * Math.sin(t * 40 + i))), x0 = sx - u * .08, y0 = shY - u * .13;
+    const g = ctx.createLinearGradient(x0, y0, x0 - len, y0); g.addColorStop(0, "rgba(234,250,255,.95)"); g.addColorStop(.35, "rgba(127,214,255,.75)"); g.addColorStop(1, "rgba(127,214,255,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x0, y0 - u * .05); ctx.lineTo(x0 - len, y0 - u * .015); ctx.lineTo(x0 - len, y0 + u * .015); ctx.lineTo(x0, y0 + u * .05); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "rgba(200,240,255,.45)"; ctx.lineWidth = Math.max(1, u * .01);
+    for (let j = 0; j < 3; j++) { const yy = shY + u * (.1 + j * .22), off = reduce ? 0 : ((t * 9 + j * .37) % 1) * u * .2; ctx.beginPath(); ctx.moveTo(-u * .32 - off, yy); ctx.lineTo(-u * .32 - off - u * .3, yy); ctx.stroke(); }
+  }
   // Head: a squared helm with a lit visor slit.
   const hy = b - u * A.headY - bob;
   poly([-u * .11, hy + u * .12, u * .13, hy + u * .12, u * .13, hy - u * .05, u * .08, hy - u * .1, -u * .09, hy - u * .1, -u * .12, hy - u * .04], A.metal);
-  // Centurion crest: a crimson brush standing in a tall arc from brow to nape on a bronze ridge, its edge spiky with bristles.
-  { const cx = -u * .005, cy = hy - u * .04, r1 = u * .1, r2 = u * .26, a0 = Math.PI * 1.08, a1 = Math.PI * 1.92, n = 16;
-    ctx.beginPath();
-    for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n, r = r2 * (i % 2 ? .9 : 1) * (.82 + .18 * Math.sin(Math.PI * i / n)); ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r * .95); }
-    for (let i = n; i >= 0; i--) { const a = a0 + (a1 - a0) * i / n; ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1 * .8); }
-    ctx.closePath(); ctx.fillStyle = A.crest; ctx.fill(); ctx.strokeStyle = "#3a0c10"; ctx.lineWidth = Math.max(1, u * .01); ctx.stroke();
-    ctx.strokeStyle = A.crestLight; ctx.lineWidth = Math.max(1, u * .007);
-    for (let i = 1; i < n; i += 2) { const a = a0 + (a1 - a0) * i / n; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r1 * 1.1, cy + Math.sin(a) * r1 * .9); ctx.lineTo(cx + Math.cos(a) * r2 * .8, cy + Math.sin(a) * r2 * .78); ctx.stroke(); }
-    ctx.strokeStyle = A.copper; ctx.lineWidth = Math.max(1.5, u * .025); ctx.beginPath(); ctx.ellipse(cx, cy, r1, r1 * .8, 0, a0, a1); ctx.stroke(); }
+  // Lightning crest (Tim 2026-10-21): blue, swept back like a pteranodon's crest, three bold lightning-bolt blades
+  // streaming off the back of the head (facing is +x, so they run toward -x and upward), with a soft electric glow.
+  { const rx = -u * .04, ry = hy - u * .08, flick = reduce ? 0 : Math.sin(t * 9) * .03;
+    const blade = (L, rise, w, alpha) => { // a lightning-bolt glyph laid along the sweep: shoulder, jog, long tail
+      const pts = [[0, -w], [-.5 * L, -w * .55 - rise * .5], [-.4 * L, -rise * .35 + w * .15], [-L, -rise * (1 + flick)], [-.56 * L, -rise * .45 + w * .55], [-.64 * L, -rise * .3 + w * .95], [0, w]];
+      return () => { ctx.beginPath(); ctx.moveTo(rx + pts[0][0], ry + pts[0][1]); for (const [x, y] of pts.slice(1)) ctx.lineTo(rx + x, ry + y); ctx.closePath(); };
+    };
+    const blades = [blade(u * .5, u * .28, u * .055), blade(u * .38, u * .14, u * .045), blade(u * .27, u * .02, u * .038)];
+    ctx.save(); ctx.globalAlpha *= .35; ctx.strokeStyle = A.crestLight; ctx.lineWidth = u * .05; ctx.lineJoin = "round"; for (const path of blades) { path(); ctx.stroke(); } ctx.restore();
+    for (const path of blades) { path(); ctx.fillStyle = A.crest; ctx.fill(); ctx.strokeStyle = A.crestEdge; ctx.lineWidth = Math.max(1, u * .012); ctx.stroke(); }
+    ctx.strokeStyle = A.crestLight; ctx.lineWidth = Math.max(1, u * .01); ctx.beginPath(); ctx.moveTo(rx - u * .02, ry - u * .01); ctx.lineTo(rx - u * .26, ry - u * .1); ctx.lineTo(rx - u * .21, ry - u * .1); ctx.lineTo(rx - u * .47, ry - u * .26); ctx.stroke();
+    if (!reduce && Math.sin(t * 5.3) > .55) lightningBolt(ctx, rx - u * .5, ry - u * .28, rx - u * .66, ry - u * .36, { now, seed: 77, segments: 3, width: Math.max(1, u * .012), branch: false });
+    ctx.fillStyle = A.metalDark; ctx.beginPath(); ctx.ellipse(rx, ry, u * .05, u * .04, -.4, 0, TAU); ctx.fill(); }
   ctx.fillStyle = A.core; ctx.fillRect(u * .0, hy - u * .015, u * .12, u * .035); ctx.fillStyle = A.coreHot; ctx.fillRect(u * .03, hy - u * .005, u * .07, u * .014);
   leg(1, 0, false); arm(u * .29, clubAngle, false, true);
   ctx.restore();

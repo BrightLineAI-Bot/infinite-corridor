@@ -469,7 +469,7 @@ export function resetPackRuntime(enemy) {
   if (enemy.kind === "nanobotKnight") enemy.packAttacks = (enemy.packAttacks || MONSTER_PACK.nanobotKnight.attacks).filter((id) => id !== "knightOrbital");
   if (enemy.kind === "psychicCrystal" && !(enemy.packAttacks || []).includes("psyOrbital")) enemy.packAttacks = [...(enemy.packAttacks || MONSTER_PACK.psychicCrystal.attacks), "psyOrbital"].filter((id, i, ids) => ids.indexOf(id) === i);
   enemy.voidDashing = false; enemy.voidCharging = false; enemy.voidTeleport = 0;
-  enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; enemy.giantPose = null; enemy.giantCharged = 0; enemy.giantAir = 0; // release 245: no pose survives a reload
+  enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; enemy.giantPose = null; enemy.giantCharged = 0; enemy.giantAir = 0; enemy.giantThrust = false; enemy.giantDash = null; // release 245: no pose survives a reload
   return enemy;
 }
 
@@ -574,6 +574,11 @@ export const GIANT = {
   // (or a short chest bolt); up to menaceStrikes times.
   menaceHold: 3.2, menaceSpeed: 1.15, menaceStrikes: 2, menaceReach: 1.1, menaceWindup: .42, menaceBeat: .3, chestChance: .35, chestRange: 5, chestWidth: .45, chestWindup: .3,
   // Charging upswing and its optional leap.
+  // Burst dashes (Tim 2026-10-21, "like Armored Core"): it walks slowly but closes distance with shoulder-thruster dashes,
+  // up to dashMax in a row, sometimes as a hop through the air. Traversal dashes start when the Wayfarer is beyond dashRange.
+  dashRange: 4.5, dashSpeed: 11, dashTime: .3, dashGap: .18, dashMax: 2, dashCooldown: 2.4, hopChance: .3, hopHeight: .9,
+  // Charge plans: how a charge attack strings its dashes and upswings together.
+  chargePlans: [["dash", "swing"], ["dash", "dash"], ["dash", "swing", "dash", "swing"], ["dash", "dash", "swing"]],
   chargeRun: 6.5, chargeTime: .9, upswingReach: 1.8, upswingArc: 130, upswingTime: .3, jumpChance: .55, jumpHeight: 2, jumpRise: .35,
   barrageBolts: 5, barrageEvery: .1, barrageSpread: 40, airDashSpeed: 9, airDashTime: .35, airArcReach: 2.6, slamLandChance: .5, landWarn: .45, landRadius: 1.6, landFall: .25,
 };
@@ -849,7 +854,7 @@ function endAttack(e, s) {
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
   s.gap = e.attackGap ?? (attack?.recover || .6) * .6 + .45; // the Questing Beast barely pauses (release 187)
   e.voidDashing = false; e.voidCharging = false;
-  e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0;
+  e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0; e.giantThrust = false;
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
 
@@ -968,6 +973,35 @@ const START = {
 // One lightning hit: damage, then (if it landed) a pip on the Wayfarer's shock counter.
 function giantZap(w, owner, damage, source, opts = {}) { const landed = w.hurt(owner || null, damage, { jumpable: false, source, ...opts }); if (landed) w.shockHit?.(); return landed; }
 function giantSlamPoint(e, aim) { const r = bodyRadius(e) + GIANT.slamReach; return { x: e.x + aim.x * r, y: e.y + aim.y * r }; }
+// One burst dash toward the Wayfarer (shared by traversal and charge plans). d: { left, hop, dir }. Returns true while it runs.
+function giantDashStep(e, w, d, p) {
+  const reach = bodyRadius(e) + GIANT.upswingReach * .8, dist = distance(p, e);
+  if (!d.dir) d.dir = unit(p.x - e.x, p.y - e.y);
+  const step = Math.min(GIANT.dashSpeed * w.dt, Math.max(0, dist - reach));
+  if (step > 0 && !w.move(e, d.dir.x * step, d.dir.y * step)) w.detour?.(e, step);
+  e.facingX = d.dir.x >= 0 ? 1 : -1; e.giantThrust = true;
+  d.left -= w.dt; const k = 1 - Math.max(0, d.left) / GIANT.dashTime;
+  e.giantAir = d.hop ? Math.sin(Math.PI * Math.min(1, k)) * GIANT.hopHeight : 0;
+  if (d.left > 0 && dist - step > reach) return true;
+  e.giantAir = 0; e.giantThrust = false; return false;
+}
+// Traversal: out of reach and between attacks, it closes the gap in up to GIANT.dashMax shoulder-thruster bursts.
+function giantTraverse(e, s, w) {
+  const p = center(w.player), dist = distance(p, e);
+  e.giantDashCd = Math.max(0, (Number(e.giantDashCd) || 0) - w.dt);
+  let d = e.giantDash;
+  if (!d) {
+    if (s.attack || e.retreating || e.fleeTo || e.giantDashCd > 0 || dist <= GIANT.dashRange || !w.los(e, w.player)) return false;
+    const n = (Number(e.giantDashes) || 0) + 1; e.giantDashes = n;
+    const roll = (key) => (hashSeed(`${e.id}:giant-dash:${n}:${key}`) % 1000) / 1000;
+    d = e.giantDash = { count: roll("count") < .5 ? 1 : GIANT.dashMax, gap: GIANT.dashGap, left: GIANT.dashTime, hop: roll("hop0") < GIANT.hopChance, i: 0, seed: n };
+  }
+  if (d.gap > 0) { d.gap -= w.dt; e.giantThrust = true; return true; } // the thrusters flare before it lunges
+  if (giantDashStep(e, w, d, p)) return true;
+  d.i++;
+  if (d.i < d.count && distance(p, e) > bodyRadius(e) + GIANT.upswingReach) { Object.assign(d, { gap: GIANT.dashGap, left: GIANT.dashTime, dir: null, hop: (hashSeed(`${e.id}:giant-dash:${d.seed}:hop${d.i}`) % 1000) / 1000 < GIANT.hopChance }); return true; }
+  e.giantDash = null; e.giantDashCd = GIANT.dashCooldown; e.giantThrust = false; e.giantAir = 0; return false;
+}
 // Electrified (giantElectrify): a timed state ticked every frame, even mid-attack; bolts drop around the Giant.
 function giantPassive(e, w) {
   if (!(e.giantCharged > 0)) return;
@@ -1063,18 +1097,28 @@ const RUN = {
   giantUpswing(e, s, w) {
     const attack = ATTACK_MODULES.giantUpswing, d = s.data, p = center(w.player), dist = distance(p, e);
     const roll = (key) => (hashSeed(`${e.id}:${s.seq}:upswing:${key}`) % 1000) / 1000;
-    if (s.phase === "windup") { if (s.t <= 0) { d.mode = "charge"; d.left = GIANT.chargeTime; toPhase(s, "active", attack.active); } return; }
+    // A charge plan strings burst dashes and upswings: dash+swing, dash+dash, dash+swing+dash+swing, or dash+dash+swing.
+    const nextStep = () => {
+      const step = d.plan[d.step++];
+      if (step === "dash") { d.mode = "dash"; d.dash = { left: GIANT.dashTime, hop: roll(`hop${d.step}`) < GIANT.hopChance }; d.left = GIANT.dashGap; e.giantPose = "chargeLow"; return true; }
+      // Still out of reach when a swing is due: one extra burst to close the gap first (once per swing).
+      if (step === "swing" && !d.extra && distance(p, e) > bodyRadius(e) + GIANT.upswingReach) { d.extra = true; d.step--; d.mode = "dash"; d.dash = { left: GIANT.dashTime, hop: false }; d.left = GIANT.dashGap; e.giantPose = "chargeLow"; return true; }
+      if (step === "swing") { d.extra = false; d.aim = unit(p.x - e.x, p.y - e.y); d.mode = "upswing"; d.left = GIANT.upswingTime; e.giantPose = "upswing"; e.giantThrust = false;
+        resolveMelee(e, s, w, "giantUpswing", (q) => inArc(e, q, d.aim, bodyRadius(e) + GIANT.upswingReach, GIANT.upswingArc)); return true; }
+      return false;
+    };
+    if (s.phase === "windup") { if (s.t <= 0) { d.plan = GIANT.chargePlans[Math.floor(roll("plan") * GIANT.chargePlans.length)]; d.step = 0; toPhase(s, "active", attack.active); nextStep(); } return; }
     if (s.phase !== "active") return;
     d.left -= w.dt;
-    if (d.mode === "charge") { // it runs at you, club low
-      const reach = bodyRadius(e) + GIANT.upswingReach * .8, to = unit(p.x - e.x, p.y - e.y), step = GIANT.chargeRun * w.dt;
-      if (dist > reach && d.left > 0) { if (!w.move(e, to.x * step, to.y * step)) w.detour?.(e, step); e.facingX = to.x >= 0 ? 1 : -1; return; }
-      d.aim = to; d.mode = "upswing"; d.left = GIANT.upswingTime; e.giantPose = "upswing";
-      resolveMelee(e, s, w, "giantUpswing", (q) => inArc(e, q, d.aim, bodyRadius(e) + GIANT.upswingReach, GIANT.upswingArc));
+    if (d.mode === "dash") { // thrusters flare, then the burst
+      if (d.left > 0) { e.giantThrust = true; return; }
+      if (giantDashStep(e, w, d.dash, p)) return;
+      if (!nextStep()) { e.giantThrust = false; toPhase(s, "recover", attack.recover); }
       return;
     }
     if (d.mode === "upswing") {
       if (d.left > 0) return;
+      if (d.step < d.plan.length) { nextStep(); return; }
       if (roll("jump") >= GIANT.jumpChance) { toPhase(s, "recover", attack.recover); return; }
       d.mode = "air"; d.left = GIANT.jumpRise + GIANT.airDashTime + GIANT.barrageEvery * GIANT.barrageBolts; d.air = roll("air") < .5 ? "barrage" : "dash"; d.fired = 0; d.clock = GIANT.jumpRise; e.giantPose = "raise";
       return;
@@ -1990,7 +2034,7 @@ export function updatePackMonster(e, w) {
   if (e.hitStun > 0 && s.attack && !e.boss && s.phase === "windup" && !e.untargetable) { endAttack(e, s); return; }
   if (!e.illusion) passiveStillness(e, s, w);
   if (e.kind === "morphingBlob") blobPassive(e, s, w, p, d);
-  if (e.kind === "lightningGiant") giantPassive(e, w);
+  if (e.kind === "lightningGiant") { giantPassive(e, w); if (giantTraverse(e, s, w)) return; }
   if (e.blobletOf && blobletHome(e, s, w)) return;
   if (e.wormOf && tentacleTurret(e, s, w, p)) return;
   if (e.kind === "tremorWorm" && wormCycle(e, s, w, p)) return;

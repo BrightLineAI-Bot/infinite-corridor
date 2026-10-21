@@ -2,12 +2,12 @@
 
 ## Unreleased
 
-- Release 257 — the Lightning Giant, a new roaming world boss (three tries, the level-8 strength floor, and a canyon home). He's a giant robot, about as tall as the Astral Worm is long, with a crimson centurion crest, Tesla coils on his shoulders and an iron-and-copper club:
+- Release 257 — the Lightning Giant, a new roaming world boss (three tries, the level-8 strength floor, and a canyon home). He's a giant robot, about as tall as the Astral Worm is long, with a blue crest of lightning bolts swept back off his head, Tesla-coil thruster pylons on his shoulders and an iron-and-copper club. He walks slowly but closes distance in burst dashes (up to two in a row, sometimes hopping through the air):
   - **Arcs:** a sheaf of lightning links him to you and burns while you stay within reach.
   - **Shock:** a crackling mark you can step off.
   - **Stun counter:** every third lightning hit knocks you flat for half a second, shaking on the ground before you get back up, and the count shows as three pips under the HUD. Club blows count only while he's electrified.
   - **Menacing slam:** he raises the club and stalks you. When you come within reach he slams it down (or fires a short bolt from his chest), up to twice; keep away and he lowers it.
-  - **Charging upswing:** he runs at you and swings up. Sometimes he leaps from the swing to rain bolts or dash at you in a crackle of arcs, then lands, or comes down in a slam onto where you stand.
+  - **Charging upswing:** he burst-dashes in and swings up. Sometimes he dashes twice without swinging, or goes dash-swing-dash-swing. After his last swing he sometimes leaps, rains bolts or dashes at you in a crackle of arcs, then lands, or comes down in a slam onto where you stand.
   - **Club swings:** a forward swing, then a re-aimed back-swing.
   - **Slam:** may call a delayed lightning blast from the sky where you stood, and may throw three bolts in a tight cone straight at you.
   - **Electrify:** he raises the club, the sky strikes it, and wrapped in a crackling haze he moves faster while bolts drop around him.
