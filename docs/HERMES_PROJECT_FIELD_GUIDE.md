@@ -2567,3 +2567,20 @@ Tim, 2026-10-21. On building: "you can build walls out of stone or wood... in th
 - Tests:
   - `tests/building.test.ts`;
   - `tests/refuge-lands.test.ts`.
+
+## Release 267: build mode, and the wall-trap fix — 2026-10-21
+
+Tim, 2026-10-21: "build will be like another one of those toggle buttons... when you just press the button, it'll just build... the standard block or the standard fence... when you have it toggled on... you tap the screen... it'll build... in one of the 8... directions... with its longitudinal axis... perpendicular to that direction heading... 3 character lengths away... if your finger is farther away than three character lengths, it'll... cast the fence at the maximum distance. If your finger is within those three character lengths, it'll cast it exactly where you click"; "always aim at the tap". The pre-publish Fable review of release 265 found the trap fixed here.
+
+**CODE:**
+- `building.ts` `BUILD.reach` 3 and `tapTarget(player, wx, wy)`: the target tile is the tap, or `reach` tiles from the Wayfarer's feet along the same line. The fence's `buildRun` is at right angles to the heading snapped to the nearest of 8 directions: "v", "h", "ne" (/) or "nw" (\\).
+- `placeBuild(..., moving, run)` takes the run.
+- `Game.buildAt(wx, wy)` builds there. The `build` action now also sets `save.aimMode = "build"` (the constructor accepts it), and `main.ts` and `proving-ground.ts` send world taps in build mode to `buildAt`. `main.ts` marks the Build button `selected` in build mode.
+- `renderer.ts` draws diagonal fences.
+- **Trap fix.** `placeBuild` refuses a wood wall on any tile the Wayfarer's walking footprint (x+.24..x+.76, y+.5..y+.88) overlaps. A wall there closed the footprint, and `moveAxis` could not move from a closed position. `Game.loadArea` clears `builds` on every load, not only overworld ones.
+
+**BOUNDARY:**
+- Stone blocks never trapped anyone: a perch is open to the Wayfarer's movement.
+- Build mode uses the same 5-build limit and costs.
+- A fence's run is only how it is drawn: it blocks its whole tile.
+- Tests: `tests/building.test.ts` covers build mode and the trap.

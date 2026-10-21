@@ -1,7 +1,7 @@
 // Release 265 (Tim, 2026-10-21): wood walls and stone blocks raised from carried materials.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BUILD, ensureBuild, setBuildKind, placeBuild, breakBuild, buildSpot, tickBuilds, buildBetween, buildRefusal } from '../src/building.ts';
+import { BUILD, ensureBuild, setBuildKind, placeBuild, breakBuild, buildSpot, tickBuilds, buildBetween, buildRefusal, tapTarget } from '../src/building.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, footprintOpen, updateProjectiles } from '../src/game.ts';
 import { canStep } from '../src/landscape.ts';
@@ -78,4 +78,26 @@ test('a hostile shot is absorbed by a build in its path; one from the block the 
   game.player.x = 11.5; game.player.y = 9.6; const close = { id: 't', hostile: true, x: 12.9, y: 10.12, dx: -1, dy: 0, speed: 4, life: 2, damage: 5 }; hits = 0;
   updateProjectiles([close], [], map, 32, .5, undefined, undefined, game.player, () => { hits++; }, undefined, undefined, [], () => { hits += 10; });
   assert.equal(hits, 1, 'standing on the block, the shot reaches the Wayfarer');
+});
+
+test('release 267: build mode: a tap builds there, or 3 tiles out along the line; a fence turns across the line in 8 directions', () => {
+  const { game, map, save } = field(); Object.assign(game.player, { x: 10, y: 10 }); // feet at (10.5, 10.75)
+  assert.deepEqual(tapTarget(game.player, 12.2, 10.6), { x: 12, y: 10, run: 'v' }, 'within reach: exactly where tapped; heading east, the fence runs up and down');
+  const far = tapTarget(game.player, 30.5, 10.75); assert.deepEqual([far.x, far.y, far.run], [13, 10, 'v'], 'beyond reach: 3 tiles out');
+  assert.equal(tapTarget(game.player, 10.5, 7.5).run, 'h', 'north: across');
+  assert.equal(tapTarget(game.player, 12.5, 8.75).run, 'nw', 'north-east: the fence runs \\');
+  assert.equal(tapTarget(game.player, 8.5, 8.75).run, 'ne', 'north-west: /');
+  assert.equal(tapTarget(game.player, 12.5, 12.75).run, 'ne', 'south-east: /');
+  const g = new Game(Object.assign(freshSave(), { seed: 'BUILDMODE' }), 0); g.map = map; g.area = 'overworld'; g.builds = []; g.enemies = []; Object.assign(g.player, { x: 10, y: 10 }); g.save.materials.wood = 20;
+  const r = g.buildAt(12.5, 8.75); assert.equal(r.ok, true, r.message); assert.equal(at(map, 12, 8).buildRun, 'nw');
+  assert.equal(new Game(Object.assign(freshSave(), { aimMode: 'build' }), 0).save.aimMode, 'build', 'build mode survives a reload');
+});
+
+test('a wood wall never closes around the Wayfarer: no wall on any tile their body overlaps (the Fable review\'s trap)', () => {
+  for (const [x, y, facing, tx, ty] of [[10.52, 10, 'left', 10, 10], [10.45, 10, 'right', 11, 10], [10, 10.3, 'up', 10, 10]]) {
+    const { game, map } = field(); Object.assign(game.player, { x, y, facing });
+    const r = placeBuild(game, tx, ty, 'wood'); assert.equal(r.ok, false, `${facing}: refused`); assert.match(r.message, /Step back/);
+    assert.equal(footprintOpen(map, 32, x, y, true), true, 'still free to move');
+  }
+  const { game } = field(); Object.assign(game.player, { x: 10, y: 10, facing: 'right' }); assert.equal(placeBuild(game, 11, 10, 'wood').ok, true, 'a step clear: built');
 });

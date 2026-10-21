@@ -157,6 +157,17 @@ function quarryTurtle(ctx, x, y, s, now) {
 // Release 265: a wood wall (upright planks with a cross brace) or a stone block (a cut block, a second course when stacked).
 function buildTile(ctx, t, x, y, s) {
   const px = x * s, py = y * s;
+  if (t.build === "wood" && (t.buildRun === "ne" || t.buildRun === "nw")) { // release 267: a fence on the diagonal
+    const up = t.buildRun === "ne", ax = px + s * .1, bx = px + s * .9, ay = up ? py + s * .88 : py + s * .2, by = up ? py + s * .2 : py + s * .88;
+    ctx.strokeStyle = "#00000045"; ctx.lineWidth = s * .12; ctx.beginPath(); ctx.moveTo(ax, ay + s * .06); ctx.lineTo(bx, by + s * .06); ctx.stroke();
+    ctx.strokeStyle = "#6b4426"; ctx.lineWidth = s * .07; ctx.beginPath(); ctx.moveTo(ax, ay - s * .12); ctx.lineTo(bx, by - s * .12); ctx.stroke();
+    for (let k = 0; k < 5; k++) {
+      const f = (k + .5) / 5, x0 = ax + (bx - ax) * f, y0 = ay + (by - ay) * f, w = s * .14;
+      ctx.fillStyle = k % 2 ? "#8a5a32" : "#a06d3e"; ctx.beginPath(); ctx.moveTo(x0 - w / 2, y0); ctx.lineTo(x0 - w / 2, y0 - s * .34); ctx.lineTo(x0, y0 - s * .46); ctx.lineTo(x0 + w / 2, y0 - s * .34); ctx.lineTo(x0 + w / 2, y0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#4e321a"; ctx.lineWidth = Math.max(1, s * .025); ctx.stroke();
+    }
+    return;
+  }
   if (t.build === "wood" && t.buildRun === "v") { // release 265: built facing sideways, the fence runs up and down
     ctx.fillStyle = "#00000045"; ctx.fillRect(px + s * .5, py + s * .06, s * .14, s * .94);
     for (let k = 0; k < 4; k++) {
