@@ -38,7 +38,7 @@ Change-Control is disabled workspace-wide. `.change-control/` is historical; do 
 
 ## Release checklist
 
-One release bump per PR that changes the game. Bump the release number N in all of:
+Before choosing a release number, read and update `docs/RELEASE_LOG.md`, the shared Claude ↔ Codex log of which numbers are live, in flight or reserved. One release bump per PR that changes the game. Bump the release number N in all of:
 
 - `index.html`, `sw.js`, `proving-ground/index.html`, `proving-ground/sw.js`
 - `scripts/build.mjs`, `src/main.ts`, `src/proving-ground-mobile.ts`
