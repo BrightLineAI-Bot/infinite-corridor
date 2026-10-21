@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Release 257 — the Lightning Giant, a new roaming world boss (three tries, the level-8 strength floor, and a canyon home). He's a big armoured robot in the Armored Core mould, about as tall as the Astral Worm is long, built of lit, overlapping plates with blue trim, with three small Tesla-coil jets on the back of his head and a bigger one on the front, each firing a bolt-shaped burst of blue energy. He has lost one arm; its torn shoulder socket is his booster, erupting with energy as he leans into each dash. He swings a copper-wound Tesla mace in his remaining hand, and walks with a heavy, planted stride (the feet never slide):
+- Release 257 — the Lightning Giant, a new roaming world boss (three tries, the level-8 strength floor, and a canyon home). He's a big armoured robot in the Armored Core mould, about as tall as the Astral Worm is long, built of lit, overlapping plates with blue trim, with a plume of four Tesla-coil jets fanned over the back of his head (the biggest leading), each firing a bolt-shaped burst of blue energy. He has lost one arm; its torn shoulder socket is his booster, erupting with energy as he leans into each dash. He swings a copper-wound Tesla mace in his remaining hand, and walks with a heavy, planted stride (the feet never slide):
   - **Arcs:** a sheaf of lightning links him to you and burns while you stay within reach.
   - **Shock:** a crackling mark you can step off.
   - **Stun counter:** every third lightning hit knocks you flat for half a second, shaking on the ground before you get back up, and the count shows as three pips under the HUD. Club blows count only while he's electrified.
