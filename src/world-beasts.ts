@@ -51,6 +51,18 @@ export const WORLD_BEASTS = {
     slain: "The Nanobot Knight's armour falls empty, and the swarm inside it goes dark.",
     gone: "The Nanobot Knight has learned you, and drifts apart. In time it will gather somewhere else.",
   },
+  // Release 257 (Tim 2026-10-21): a giant lightning robot. It retreats on foot to a chasm, where a storm cloud gathers
+  // under it and carries it up into the sky.
+  lightningGiant: {
+    kind: "lightningGiant", name: "The Lightning Giant", chance: .025, minDepth: 6, tries: 3, cooldownSlain: 22, cooldownEscaped: 28,
+    hitsToKill: 72, hpPerLevel: 32, damageShare: .24, speed: .65, attackGap: .3, staggerResistance: 1, rewardMarks: 190, rewardPerLevel: 19,
+    patience: 180, home: "canyon", retreatMoves: "walk",
+    flee: "The Lightning Giant lowers its club and strides away toward the chasms, sparks trailing from its coils.",
+    homeLine: "At the chasm's edge a storm cloud gathers under the Lightning Giant, and it rides the cloud up into the sky.",
+    arrive: "The air smells of a storm, and the ground shakes with heavy, measured steps. The Lightning Giant walks here.",
+    slain: "The Lightning Giant's coils spit and go dark, and it falls like a felled tower.",
+    gone: "The Lightning Giant has had enough of you, and strides off into the weather. In time it will walk somewhere else.",
+  },
   psychicCrystal: {
     kind: "psychicCrystal", name: "The Psychic Crystal", chance: .025, minDepth: 5, tries: 3, cooldownSlain: 20, cooldownEscaped: 26,
     hitsToKill: 58, hpPerLevel: 26, damageShare: .2, speed: 1, attackGap: .3, staggerResistance: .9, rewardMarks: 180, rewardPerLevel: 18,
@@ -276,7 +288,7 @@ export function worldBeastFor(save, map, rx, ry) {
   if (!here) return null;
   const q = save.worldBeasts[here];
   if (q.active.retreat) return fleeSpawn(save, here, rx, ry);
-  const marine = here === "voidWalker" || here === "psychicCrystal" || here === "astralWorm";
+  const marine = here === "voidWalker" || here === "psychicCrystal" || here === "astralWorm" || here === "lightningGiant"; // release 257: met at sea, riding its cloud
   const open = map.tiles.filter((t) => (marine && marineTileOpen(t) || here === "astralWorm" && astralSpawnWater(t) || !t.blocked && !t.structure && !t.environment && !LETHAL_KINDS.has(t.kind)) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24);
   const at = open.sort((a, b) => hashSeed(`wb:${here}:${q.cycle}:${a.x},${a.y}`) - hashSeed(`wb:${here}:${q.cycle}:${b.x},${b.y}`))[0];
   if (!at) { if (!q.active.tries) q.active = null; return null; } // no valid terrain for this beast: it does not hold the section

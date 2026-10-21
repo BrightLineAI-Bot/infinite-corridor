@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Release 257 — the Lightning Giant, a new roaming world boss (three tries, the level-8 strength floor, and a canyon home). He's a big armoured robot in the Armored Core mould, about as tall as the Astral Worm is long, built of lit, overlapping plates with blue trim, with a plume of four Tesla-coil jets fanned over the back of his head (the biggest leading), each firing a bolt-shaped burst of blue energy. He has lost one arm; its torn shoulder socket is his booster, erupting with energy as he leans into each dash. He swings a copper-wound Tesla mace in his remaining hand, and walks with a heavy, planted stride (the feet never slide):
+  - **Arcs:** a sheaf of lightning links him to you and burns while you stay within reach.
+  - **Shock:** a crackling mark you can step off.
+  - **Stun counter:** every third lightning hit knocks you flat for half a second, shaking on the ground before you get back up, and the count shows as three pips under the HUD. Club blows count only while he's electrified.
+  - **Menacing slam:** he raises the club and stalks you. When you come within reach he slams it down (or fires a short bolt from his chest), up to twice. Keep away and he fires two quick chest beams after you, one after the other, the second turning a little toward you, before he lowers it.
+  - **Charging upswing:** he burst-dashes in and swings up. Sometimes he dashes twice without swinging, or goes dash-swing-dash-swing. After his last swing he sometimes leaps, rains bolts or dashes at you in a crackle of arcs, then lands, or comes down in a slam onto where you stand.
+  - **Club swings:** a forward swing, then a re-aimed back-swing.
+  - **Slam:** may call a delayed lightning blast from the sky where you stood, and may throw three bolts in a tight cone straight at you.
+  - **Electrify:** he raises the club, the sky strikes it, and wrapped in a crackling haze he moves faster while bolts drop around him.
+  - **Retreat:** he walks to a chasm, where a storm cloud gathers under him and carries him up into the sky.
+  - **At sea:** you can meet him on open water, riding the billowing front of his big storm cloud instead of a boat; behind him it trails away in jagged streaks of different lengths, swinging round when he turns.
+  - His Echo, Giant's Arc, sends lightning from your kills into up to three nearby foes.
+- Release 257 — a Void Walker Supernova set off in an open-sea section, or one that is at least 70% ocean, boils the sea into fog: the whole section fogs over for 30 seconds, then clears (another Supernova there renews it).
 - Release 253 review fix — a Walker who climbed down from or was knocked off the Astral Worm now gets his random chance to leave like any Walker fighting on foot (the seated check no longer mistakes "dismounted" for "mounted").
 - Release 253 — the Void Walker now boards the Astral Worm visibly. He hurls his silver saddle disk at the Worm (it homes on a moving Worm, trailing violet), the disk latches on and its violet pillar rises, then he phases out in a column of violet light and phases in standing on the plinth. The disk does no damage, and he can still be hit on the ground until he phases in. If the Worm dies or retreats mid-throw, the boarding is cancelled where he stands.
 - Release 253 — new rules for the Astral Worm and Void Walker pair:

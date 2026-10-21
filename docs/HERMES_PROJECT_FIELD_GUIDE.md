@@ -2293,3 +2293,97 @@ Tim's rules:
 - A Worm followed across sections while retreating appears without its rider: he leaves with it at the section edge rather than being re-spawned beside it.
 - A helping Walker still leaves when the Worm dies or retreats, as before.
 - Mirage drain targets only the current focus.
+
+## Release 257: the Lightning Giant — 2026-10-21
+
+Tim's brief, verbatim, is in `docs/lightning-giant-source-transcript.md`:
+- **Body:** a giant robot, bigger than the Void Walker and about the Astral Worm's height, that bends its legs and moves its arms.
+- **Arcs:** Tesla-coil lightning arcs to the player and links the two.
+- **Shock:** knocks the player down, shaking, before they get up.
+- **Club:** forward and back swings, and a slam. The slam sometimes brings a delayed sky strike and sometimes fires three bolts in a tight cone toward the player, whichever way the Giant faces.
+- **Electrify:** a club-raised electrify (lightning strikes it; it holds still for a second or two), then a haze, more speed, and bolts dropping around it.
+- **Retreat:** to a chasm, where it forms a large cloud and rides it up into the sky.
+
+**CODE:**
+- **Registry.** `WORLD_BEASTS.lightningGiant` (`src/world-beasts.ts`) has home `canyon` (the chasm) and `retreatMoves: "walk"`. `MONSTER_PACK.lightningGiant` (`src/monster-pack.ts`) is scale 1.6 (2.16 as a boss), brain `duelist`. Its attacks are `giantArcs`, `giantShock`, `giantSwing`, `giantSlam` and `giantElectrify`; tuning is in `GIANT`.
+- **Effects.** `giantArc` (tracks owner and player; ticks damage while connected), `giantBolt` (cone projectile), `giantShock` (calls `w.stun`), `giantSky` (armed, generic detonation) and `giantStrike`, plus the existing `shock` ring.
+- **Electrified state.** `giantPassive` ticks `e.giantCharged` and the storm bolts. Movement speed multiplies by `GIANT.chargeSpeed`. At its home, `fleeStep` sets `e.giantCloud`.
+- **Stun (`src/game.ts`).** The pack world gains `stun(seconds)`, which sets `p.stunnedUntil` and `stunnedAt`; both shift on pause. While stunned, movement and every action input are swallowed.
+- **Render.** The new module `src/lightning-giant-render.ts` (registered in `scripts/build.mjs` and both precache lists) holds:
+  - `drawLightningGiant`: two-bone IK legs, arms, a club on pose angles eased per actor through a WeakMap (no actor mutation), shoulder Tesla coils, a core and a visor;
+  - `drawGiantCloud`;
+  - `drawGiantEffect`;
+  - `lightningBolt`;
+  - `knockdownPose` and `drawShockSparks`, which `src/renderer.ts` uses to tip, shake and raise the player.
+- **Echo.** `ECHOES.lightningGiant` (Giant's Arc).
+- **Tests.** `tests/lightning-giant.test.ts`.
+
+Tim's follow-up rules (same day):
+- **Stun counter:** three lightning hits knock the Wayfarer down for half a second, then the counter resets. Club blows don't count unless the Giant is electrified. The pips sit under the HUD, not over the character.
+- **Look:** a centurion crest, and a height to match the Astral Worm's length.
+- **Menacing slam:** he raises the club and stalks, gauging reach. When the player is in reach: a dodgeable wind-up, then a slam or a short chest bolt, up to twice. If the player never comes in reach, he lowers the club.
+- **Charging upswing:** he runs in and swings up. He may then jump, and from the air fire a bolt barrage or air-dash with arcs, then land plainly or in a slam that tracks the player.
+
+**CODE (follow-up):**
+- **Counter.** `GIANT.stunHits`/`stunTime`/`shockDecay`. `giantZap` calls `w.shockHit()` for every landed lightning hit; arcs count once per arc, and the slam ring counts via `shock.lightning`. `resolveMelee` adds a pip for club blows only while `giantCharged`. `Game.packWorld.shockHit` stuns on the third pip; `p.shockCount`/`shockAt` fade after 10 s and shift on pause.
+- **HUD.** `#shockPips` in both `index.html` files, styled in `styles.css`, updated in `updateHud`.
+- **Menacing slam.** `giantMenace` runs stalk, then strike or bolt, then a beat: `menaceHold`, `menaceStrikes`, `chestChance`, and a beam telegraph for the chest bolt. The `giantChest` effect is visual; damage is a segment test.
+- **Upswing.** `giantUpswing` runs charge, upswing, air (barrage of `giantBolt` or a dash with a `giantArc`), then slamFall or fall. `e.giantAir` lifts the body while the shadow stays on the ground; `endAttack` and `resetPackRuntime` clear it. The air dash uses `w.move`, so it never ends inside a wall.
+- **Art.** `form.scale` 1.9 (boss 2.565). The crest is drawn in `drawLightningGiant`, with new poses `menace`, `chest`, `chargeLow` and `upswing`.
+
+Tim's second follow-up (same day):
+- **Crest:** blue, swept back like a pteranodon's, made of lightning bolts.
+- **Movement, "like Armored Core":** slow on the ground. He closes distance with shoulder-thruster burst dashes, up to two in a row, sometimes bursting into the air. The charge can be dash plus swing, two dashes, dash-swing-dash-swing, or two dashes plus a swing.
+
+**CODE (second follow-up):**
+- **Movement.** `giantDashStep` is the single burst. `giantTraverse` handles traversal between attacks when the player is beyond `GIANT.dashRange`: one or two dashes, `dashGap` spool, `hopChance` hop and `dashCooldown`, with state in `e.giantDash`/`giantDashCd`. Ground speed is `WORLD_BEASTS.lightningGiant.speed` .65.
+- **Charge.** `giantUpswing` runs one of `GIANT.chargePlans`, inserting one extra dash before a swing that would miss. The leap follows only the last swing.
+- **Render.** `e.giantThrust` draws the shoulder exhaust and speed streaks. The crest is three bolt-glyph blades with a glow and a spark.
+
+Visual polish (Tim: six passes; "chunky and fun, but disjointed and amateurish"; focus on the crest). `drawLightningGiant` was rebuilt as overlapping, lit armour plates. The passes, in order:
+1. **Structure:** a barrel chest, segmented waist, hip skirt over the thigh roots, rounded pauldrons over the arm roots, a raised collar, and tapered armoured limbs with knee caps and wedge feet.
+2. **Stance and helm:** a grounded leg stance with mild knee bend, and a larger helm with brow, visor and jaw guard.
+3. **Crest:** a sculpted crest grown from the helm crown. One long lightning-notched blade plus two fins, with a gradient from deep blue to cyan and a white-hot spine (`drawCrest`).
+4. **Club and coils:** a Tesla mace (wrapped haft, flange, copper windings, vents, capacitor cap), a gauntlet fist over the haft, and back-leaning Tesla-coil pylons on vented mounts.
+5. **Detail:** calf hydraulics, a blue trim system echoing the crest (pauldron rims, chest seams, brow, knees), and rivets and panel lines.
+6. **Finish:** a larger, lower helm, and catch-lights on the top edges of the large plates.
+
+Shading uses `shadeHex` gradients from a fixed upper-left light. Behaviour, poses and hit geometry are unchanged.
+
+Redesign and gait (Tim, same day): "not a knight, more a robot", "a weathered old Neanderthal robot", "just a giant of his people", with a weathered garment strapped over the shoulder that has no weapon, down to the waist. Also "especially focus on his walking mechanics".
+
+**CODE (redesign and gait):**
+- **Gait.** `gait()` keeps per-actor render state in a WeakMap and advances the walk phase by the distance actually travelled. `giantFoot(phase, moving, offset)` sweeps a planted foot back at exactly the body's speed (no sliding) and lifts the swing foot in an eased arc.
+- **Body motion.** The weight drops at each heel strike. The torso pitches forward (the hunch) and rocks with the stride; it breathes when still. The free arm counter-swings, and the loin flap trails a beat behind.
+- **Stand, dash, air.** The legs settle under the hips when he stops, brace in a long stride while dashing, and tuck in the air.
+- **Look.** Faded olive-grey, dented, rust-streaked, mismatched plates (a newer patch on the chest). The head is low and thrust forward, with a brow ridge, deep visor and jutting jaw.
+- **Shoulders and garment.** A bare mechanical shoulder ball with a cable bundle on the club arm. A frayed hide sash runs over the other shoulder to a knot at the near hip.
+- **Club.** Hide grip wraps, and at rest the mace is carried low in front.
+- **Framing.** Only the torso and head are skewed for the hunch; the arms hang unskewed from the leaned shoulders.
+- **Tests.** A no-slide test covers `giantFoot`.
+
+Clean-up (Tim: "his head is in his chest, and we haven't addressed the crest"):
+- **Upper body.** Rebuilt around a Neanderthal silhouette: a broad hump plate rising above the shoulders, and the head thrust forward from it on a ringed neck at shoulder height, clear of the chest. The skull is squared, with a brow ridge, deep visor, jutting jaw and mouth grille.
+- **No shear.** The upper body is no longer sheared; it rocks slightly about the hips through `R()`.
+- **Crest.** `drawCrest` builds explicit sweep vectors (`GIANT_CREST`): a slim lightning-glyph blade rising up and back from the top-back of the skull, plus a shorter fin. The skull is drawn over the crest's root.
+- **Coils and shoulders.** The thruster coils lean back off the hump, with exhaust along their axis. The shoulders are lowered so the club arm no longer crowds the head.
+
+Final direction (Tim, same day; this supersedes the weathered/Neanderthal redesign and the clean-up above): scrap that archetype for this robot and keep it for a future creature (a warrior shaman, upright "like the Onyx Lords"). The Giant goes back to the look after the six visual passes (no weathering, no hunch, no garment), with these changes:
+- **One arm.** He is "a big Armored Core robot that's lost one arm". The far arm, its pauldron and its coil are gone; `socket()` draws a ring housing, a glowing open socket and severed cables.
+- **Socket boost.** The socket is the booster. While boosting (`e.giantThrust`) the hole itself glows white and a layered energy plume erupts out of it (the plume starts at the mouth inside the hole, not behind the shoulder) with sparks, and the whole machine leans into the burst (`GIANT_ART.boostLean`, eased). Tim, 2026-10-21: "It should be coming out of that hole." `socket()` is drawn after the torso so the hole and plume sit over the torso's back edge.
+- **Crest.** About 45% of its six-pass size (Tim: "too large").
+
+Late additions (Tim, 2026-10-21):
+- **Honest beams.** When the menacing slam times out with no opening, `giantMenace` enters mode `honest` instead of just lowering the club. It fires `GIANT.honestShots` (2) chest beams (`giantChest` effects flagged `honest`, range `honestRange` 10). Each has a short charging beam telegraph: `honestWindup` for the first, `honestStagger` between them, so only one fires at a time. The beams sit on either side of a small cone (`honestCone`°). The second re-aims toward the Wayfarer's current position, turning by at most `honestTrack`°. Each beam deals `honestShare` of the menace damage and counts toward the stun. Then the club lowers.
+- **At sea.** The Giant is a marine world beast: `refreshMarineBeast`, world-beast placement, pack-world `los` and the no-phase rule in `move` list `lightningGiant` beside the Void Walker and Psychic Crystal, so it can hold and cross open water. On a marine tile (`e.marine`) `drawLightningGiant` stands it on its storm cloud (`drawStormCloud`, a back layer with rain under the body and a front layer over its feet; `GIANT_ART.cloudRide`/`cloudBob`), legs still, with a wide shadow on the water. The chasm ascent cloud (`drawGiantCloud`) draws the same cloud. The cloud is a traditional layered cartoon cloud in flat tones (`CLOUD_TONES`), not 3D-shaded. Tim, after the soft-shaded and merged versions: "we're doing too much... billowy sections in the cloud front, up into the middle, and then... other sections that are not billowing... layered". From the leading edge (its facing) back past the middle are billows (`CLOUD_BILLOWS`), each with a dark edge copy below, a lit cap and a flat belly shadow. A large round billow closes the cluster at the trailing end. Behind, it trails away in flat, tapered streaks (`CLOUD_STREAKS`) of different lengths, more of them along the bottom, so the trailing edge is jagged and reads as movement (Tim: "they're not all the same... a little bit jagged, kind of indicating movement"). `drawStormCloud(..., trail)` takes the trailing side, which `drawLightningGiant` eases toward `-flip` (the `cloudTrail` render state); while it turns, the layers draw in under the billows, so the cloud swaps ends without a jump.
+- **Head jets** (replacing the blade crest; Tim: "3 small Tesla coils that conform to the back of the head... each... an individual burst of energy... like a bolt"). A raised armoured crown cap over the dome carries a lit channel from the brow trim back to three copper-wound coil jets of different sizes along the back of the helm, fanned from up-and-back to straight back. A fourth, larger generator (Tim: "one more bolt generator... towards the front of his head... a larger bolt") leads the group from the top of the crown (Tim: "closer to the group... so it reads more like a plumage"): the four fan out like the old crest's plumage, the lead jet most upright with the biggest bolt. Each jet fires a pulsing, bolt-shaped burst (white at the nozzle, fading to blue) with a soft glow and an occasional stray arc. Before Tim's change of direction, three passes rebuilt the old blade crest as fins slotted into the crown cap; only the cap survives.
+- **Supernova fog** (`open-sea.ts` `NOVA_FOG`, `novaFogCapable`, `novaFog`, `tickNovaFog`). An overworld Supernova (the pack world's `consumeVoidTerrain` hook) in an open-sea section, or one at least `oceanShare` (70%) ocean, blankets the section in fog banks (`game.novaFog`) for `duration` 30 s, fading over `fade` s at each end. Another Supernova renews it in place: the 30 s timer resets and no banks are added, so repeated Supernovas never stack (the Supernova's own cooldown is 23 s). It is transient (cleared on section load, never saved) and is drawn and sight-limited the same way as sea fog banks.
+- **Gait.** The planted, distance-driven gait (`giantFoot`/`gait`, with the no-slide test) is kept underneath: legs brace while boosting and tuck in the air.
+
+**BOUNDARY:**
+- Numbers are provisional data, not Tim's.
+- The Giant is overworld-only, with no dungeon claim.
+- The stun is blocked by dodge frames, like any hit.
+- The knock-down pose is presentation only; collision and position are unchanged.
+- The cloud ascent is the existing home-fade timing, with the body lifted instead of sunk.
+- At sea, the Giant's attacks are unchanged (slams land on the water). Supernova fog only limits sight; it has no damage and no saved state.

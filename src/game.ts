@@ -34,7 +34,7 @@ import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breat
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
 import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.ts";
 import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState } from "./boats.ts";
-import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt } from "./open-sea.ts";
+import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.ts";
 import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.ts";
 import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.ts";
 import {
@@ -64,7 +64,7 @@ import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.ts";
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
 import { applyLandscape, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.ts";
-import { GATE_REVENANT, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
+import { GATE_REVENANT, GIANT, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
 import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, digSpot } from "./digging.ts";
@@ -470,7 +470,7 @@ function boundedChaseStep(entity,player,map,width,radius=12){
 // Runtime navigation permission is derived from the current area/kind, never from player boat ownership or
 // restored actor flags. The presentation flag is recomputed after movement and is not durable boat state.
 function refreshMarineBeast(entity, map, width, area) {
-  if (!["voidWalker", "psychicCrystal", "astralWorm", "astralMirage"].includes(entity?.kind)) return false;
+  if (!["voidWalker", "psychicCrystal", "astralWorm", "astralMirage", "lightningGiant"].includes(entity?.kind)) return false; // release 257: the Giant crosses the sea on its cloud
   const capable = area === "overworld";
   Object.defineProperty(entity, "_marineTraversal", { value: capable, writable: true, configurable: true, enumerable: false });
   entity.marine = capable && marineAt(map, width, entity.x, entity.y);
@@ -1851,7 +1851,7 @@ export class Game {
           );
     if(area==="overworld")this.tyrantVisit=null; // release 233: entering a section (from anywhere, or after a death) starts a fresh Tyrant visit
     if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
-    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION,openSea:!seen?OPEN_SEA_VERSION:seen.seaVersion||0,buoy:!this.save.checkpoints?.[`${this.rx},${this.ry}`]||this.save.checkpoints[`${this.rx},${this.ry}`].name==="Lighthouse Buoy",hamlet:(!seen||!!seen.hamletVersion)&&hamletSection(this.save.seed,this.rx,this.ry)});if(!seen||seen.hamletVersion)applyHamlet(this.map,this.save.seed,this.rx,this.ry,seen?.hamletVersion||HAMLET_VERSION);if(!seen||seen.travelVersion)applyTrails(this.map,this.save.seed,this.rx,this.ry);this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.storm=null;this._stormCheck=0;const b=ensureBoatState(this.save),m=b.moored;if(b.owned&&!b.aboard&&m&&m.rx===this.rx&&m.ry===this.ry)this.map.objects.push({id:"skiff-moored",kind:"skiff",name:"Your skiff",lore:"Your skiff rides at its mooring.",x:m.x,y:m.y,state:"moored",actions:["board"]});const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive)}
+    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION,openSea:!seen?OPEN_SEA_VERSION:seen.seaVersion||0,buoy:!this.save.checkpoints?.[`${this.rx},${this.ry}`]||this.save.checkpoints[`${this.rx},${this.ry}`].name==="Lighthouse Buoy",hamlet:(!seen||!!seen.hamletVersion)&&hamletSection(this.save.seed,this.rx,this.ry)});if(!seen||seen.hamletVersion)applyHamlet(this.map,this.save.seed,this.rx,this.ry,seen?.hamletVersion||HAMLET_VERSION);if(!seen||seen.travelVersion)applyTrails(this.map,this.save.seed,this.rx,this.ry);this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.storm=null;this._stormCheck=0;const b=ensureBoatState(this.save),m=b.moored;if(b.owned&&!b.aboard&&m&&m.rx===this.rx&&m.ry===this.ry)this.map.objects.push({id:"skiff-moored",kind:"skiff",name:"Your skiff",lore:"Your skiff rides at its mooring.",x:m.x,y:m.y,state:"moored",actions:["board"]});const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive)}
     if(area==="dungeon"){const reader=addDungeonReciter(this.map,loadingId,this.save,mapWidth(this.map,area)),elder=addDungeonElder(this.map,loadingId,this.save,mapWidth(this.map,area));if(elder)this.message="Something tall and silent wanders these halls.";else if(reader)this.message=`${reader.name} wanders these halls, murmuring.`}
     if(area==="dungeon"&&isArrayRun(loadingId)&&ensureFarArray(this.save).activeRun?.id===loadingId){const run=this.save.farArray.activeRun,spawns=this.map.enemySpawns,multi=!!this.map.multiLevel,g=spawns.find(e=>e.dungeonRole==="finalBoss")||spawns.find(e=>e.dungeonRole==="gateWarden")||(multi?null:spawns.find(e=>e.boss)||spawns[spawns.length-1]);if(g){const boss=runBossSpawn(this.save,{x:g.x,y:g.y});if(boss){spawns.splice(spawns.indexOf(g),1);if(!spawns.some(e=>e.id===boss.id))spawns.push({...boss,objectiveId:g.objectiveId||null})}}if(!this.map.objects.some(o=>o.kind==="arrayPylon"))this.map.objects.push(...arrayPylons(this.map,`${loadingId}:${this.map.levelId||""}`,mapWidth(this.map,area)));this.map.name=runName(run,run.gate)}
     if(area==="dungeon"&&history?.relayNode){if(placeRelayNode(this.map,loadingId,this.save))ensureRelayNetwork(this.save).seen=true;}
@@ -2136,6 +2136,9 @@ export class Game {
         "invulnerableUntil",
         "dodgeUntil",
         "heldUntil",
+        "stunnedUntil",
+        "stunnedAt",
+        "shockAt",
         "echoVoidReadyAt",
       ])
         if (this.player[k]) this.player[k] += d;
@@ -3132,18 +3135,19 @@ export class Game {
         const result = consumeVoidTerrain(game.save, map, game.areaStateId(), { x: center.x + .5, y: center.y + .62, visualLift: liftAt(map, width, center.x, center.y) }, radius, [p, ...game.enemies.filter(q => !q.dead)]);
         if (result.changed) { game._walkerLandingGraph = null; game._walkerRoutes = new WeakMap(); map.wallGlints = (map.wallGlints || []).filter(q => map.tiles[q.y * width + q.x]?.blocked); }
         if (game.area === "overworld" && result.ok !== false) game.spillVoidTerrain({ x: center.x + .5, y: center.y + .62, visualLift: liftAt(map, width, center.x, center.y) }, radius);
+        if (game.area === "overworld" && novaFogCapable(map)) { const was = !!game.novaFog; game.novaFog = novaFog(game.novaFog, center.x + .5, center.y + .62, e.pack?.seq || 0); if (!was) game.message = "The Supernova boils the sea into fog."; } // release 257
         return result;
       },
       groundHeight: (x,y) => map.landscape ? liftAt(map,width,x,y) : 0,
       playerDeathFinal: () => game.astralPlayerFell(),
       deferAstralHeal: (owner,amount) => { if(amount>0&&(game._astralDrainCredits||=[]).length<32)game._astralDrainCredits.push({owner,amount}); },
       astralLos: (a,b) => hasLineOfSight(a,b,map,width,true,game.area === "overworld"),
-      los: (a, b, projectile = false) => hasLineOfSight(a, b, map, width, projectile, game.area === "overworld" && ["voidWalker", "psychicCrystal"].includes(a?.kind)),
+      los: (a, b, projectile = false) => hasLineOfSight(a, b, map, width, projectile, game.area === "overworld" && ["voidWalker", "psychicCrystal", "lightningGiant"].includes(a?.kind)),
       move(e, dx, dy, opts = {}) {
         if (game.astralRiderHeld(e)) return false;
         const marine = refreshMarineBeast(e, map, width, game.area);
         if (e.kind === "voidWalker") { const moved = moveWalkerGround(e, dx, dy, map, width); refreshMarineBeast(e, map, width, game.area); return moved; }
-        if (isDungeonRoamer(e, game.area) || opts.phase && e.kind !== "psychicCrystal") { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)), moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
+        if (isDungeonRoamer(e, game.area) || opts.phase && !["psychicCrystal", "lightningGiant"].includes(e.kind)) { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)), moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
         const moved = moveAxis(e, dx, dy, map, width, !!e.flying, null, marine); refreshMarineBeast(e, map, width, game.area); return moved;
       },
       gateChase(e, step) {
@@ -3170,6 +3174,10 @@ export class Game {
       poison(seconds, dps) { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return; if (now < (p.dodgeUntil || 0)) return; applyPoison(ensureEliteState(game.save).status, seconds, dps); },
       effects: () => game.packEffects || [],
       elevation: (x, y) => elevationAt(map, width, x, y), // release 235: high ground stays above the Blob
+      // Release 257: the Lightning Giant's shock knocks the Wayfarer flat; dodge frames already blocked the hit itself.
+      stun(seconds) { if (!(seconds > 0) || p.hp <= 0) return; if (!(now < (p.stunnedUntil || 0))) p.stunnedAt = now; p.stunnedUntil = Math.max(p.stunnedUntil || 0, now + seconds * 1000); game.message = "The shock knocks you flat!"; },
+      // One landed lightning hit from the Lightning Giant: every GIANT.stunHits-th one knocks the Wayfarer down (Tim 2026-10-21).
+      shockHit() { if (p.hp <= 0 || now < (p.stunnedUntil || 0)) return; p.shockCount = (p.shockCount || 0) + 1; p.shockAt = now; if (p.shockCount >= GIANT.stunHits) { p.shockCount = 0; this.stun(GIANT.stunTime); } },
       slow(factor, seconds) { p.slowFactor = Math.min(now < (p.slowUntil || 0) ? (p.slowFactor || 1) : 1, factor); p.slowUntil = Math.max(p.slowUntil || 0, now + seconds * 1000); },
       addEffect: (effect) => addPackEffect(game.packEffects ||= [], effect, now),
       spawnMinion(owner, kind, x, y, index) {
@@ -3732,6 +3740,9 @@ export class Game {
       x = rawX * scale,
       y = rawY * scale;
     if (now < (p.heldUntil || 0)) { x = 0; y = 0; if (input.consume("dodge")) { p.heldUntil -= CRYSTAL.struggle * 1000; if (now >= p.heldUntil) this.message = "You tear free of its grip."; } } // release 249: held by the Psychic Crystal; dodge to struggle
+    // Knocked down by a shock (release 257): no movement or actions until the Wayfarer gets back up.
+    if (p.shockCount && now - (p.shockAt || 0) > GIANT.shockDecay * 1000) p.shockCount = 0; // the shock counter fades
+    if (now < (p.stunnedUntil || 0)) { x = 0; y = 0; for (const action of ["tool", "spell", "spell2", "dodge", "jump", "potion", "attack", "interact"]) input.consume(action); }
     if (Math.hypot(x, y) > 0.15)
       this.save.lastAim = projectileDirection(x, y, p.facing);
     if (input.consume("tool")) {
@@ -4036,6 +4047,7 @@ export class Game {
         if (spot) { disembark(this.save, { rx: this.rx, ry: this.ry, ...spot }); this.map.objects = this.map.objects.filter((o) => o.id !== "skiff-moored"); this.map.objects.push({ id: "skiff-moored", kind: "skiff", name: "Your skiff", lore: "Tied alongside the buoy.", x: spot.x, y: spot.y, state: "moored", actions: ["board"] }); this.message = "The buoy keeper's line holds your skiff alongside."; }
       }
     }
+    if (this.novaFog) this.novaFog = this.area === "overworld" ? tickNovaFog(this.novaFog, dt, p) : null; // release 257: a Supernova's fog clears
     // Open-sea hazards (release 152): whirlpools, rogue waves and drifting ice.
     if (this.area === "overworld" && this.seaHazards && p.hp > 0) {
       const onBoard = aboard(this.save);

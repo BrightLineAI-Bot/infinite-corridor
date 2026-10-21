@@ -171,3 +171,36 @@ export function tickSeaHazards(state, dt, w) {
 
 // True when a position is blocked by a drifting iceberg (for the skiff's footprint test).
 export function bergAt(state, x, y) { return !!state?.bergs?.some((b) => Math.hypot(x + .5 - b.x, y + .7 - b.y) < b.radius + .3); }
+
+// Supernova fog (release 257; Tim, 2026-10-21): a Void Walker Supernova set off in a section that can hold fog (an open-
+// sea section) or that is at least `oceanShare` ocean blankets the section in fog banks for `duration` seconds, fading
+// in and out over `fade` s; another Supernova there renews it. Transient like the sea's own fog: nothing is saved.
+export const NOVA_FOG = { oceanShare: .7, duration: 30, fade: 3, radius: [7.5, 9.5], drift: .25 };
+export function novaFogCapable(map) {
+  if (map?.openSea) return true;
+  const tiles = map?.tiles || []; if (!tiles.length) return false;
+  let ocean = 0; for (const t of tiles) if (DEEP.has(t?.kind)) ocean++;
+  return ocean / tiles.length >= NOVA_FOG.oceanShare;
+}
+// Returns the fog state after a Supernova at (x, y): a fresh blanket, or the existing one renewed.
+export function novaFog(state, x, y, seq = 0) {
+  if (state) { state.left = NOVA_FOG.duration; return state; }
+  const r = rng(`nova-fog:${seq}:${Math.round(x)}:${Math.round(y)}`), a = r() * Math.PI * 2, R = NOVA_FOG.radius, size = () => R[0] + r() * (R[1] - R[0]);
+  // One bank on the blast and a ring of six around the section's centre, so the whole section goes grey.
+  const fog = [{ x, y, radius: size() }];
+  for (let i = 0; i < 6; i++) { const b = a + i * Math.PI / 3; fog.push({ x: 16 + Math.cos(b) * 10, y: 16 + Math.sin(b) * 10, radius: size() }); }
+  fog.push({ x: 16, y: 16, radius: size() });
+  for (const f of fog) { f.vx = Math.cos(a) * NOVA_FOG.drift; f.vy = Math.sin(a) * NOVA_FOG.drift; f.swirl = r() * 6; }
+  return { fog, left: NOVA_FOG.duration, age: 0, alpha: 0, fogLevel: 0 };
+}
+// One tick; returns null once the fog has cleared. `alpha` (0..1) fades the banks in and out.
+export function tickNovaFog(state, dt, player) {
+  if (!state) return null;
+  state.left -= dt; state.age += dt; if (state.left <= 0) return null;
+  state.alpha = Math.max(0, Math.min(1, state.age / NOVA_FOG.fade, state.left / NOVA_FOG.fade));
+  const wrap = (v) => ((v + 8) % 48 + 48) % 48 - 8, px = player.x + .5, py = player.y + .7;
+  let depth = 0;
+  for (const f of state.fog) { f.x = wrap(f.x + f.vx * dt); f.y = wrap(f.y + f.vy * dt); f.swirl += dt * .12; const d = Math.hypot(px - f.x, py - f.y) / f.radius; if (d < 1) depth = Math.max(depth, Math.min(1, (1 - d) * 1.8)); }
+  state.fogLevel += (depth * state.alpha - state.fogLevel) * Math.min(1, dt * 1.5);
+  return state;
+}
