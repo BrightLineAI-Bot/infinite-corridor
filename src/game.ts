@@ -3983,7 +3983,7 @@ export class Game {
       // displacement must neither relocate it nor freeze its retreat while the player rests inside.
       if(e.gatePredator){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateGatePredator(e,packWorld);continue}
       if(e.packKind&&e.astralMount?.status==="mounted"&&e.astralMount.ridingAway){this.performanceStats.activeEnemies++;continue} // rides the retreating Worm home
-      if(e.packKind&&e.worldBeast==="voidWalker"&&!e.astralMount?.status?.match(/mounted|boarding|landing/)&&!e.retreating){
+      if(e.packKind&&e.worldBeast==="voidWalker"&&!this.astralRiderHeld(e)&&!e.retreating){
         const q=this.save.worldBeasts?.voidWalker?.active;
         if(tickAstralFighterChoice(q,dt,n=>(hashSeed(`${this.save.seed}:${e.id}:astral-fighter:${n}`)%100000)/100000)){q.astralLeave=true;this.message="The Void Walker breaks off the fight and leaves.";}
       }

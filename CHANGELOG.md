@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 253 review fix — a Walker who climbed down from or was knocked off the Astral Worm now gets his random chance to leave like any Walker fighting on foot (the seated check no longer mistakes "dismounted" for "mounted").
 - Release 253 — the Void Walker now boards the Astral Worm visibly. He hurls his silver saddle disk at the Worm (it homes on a moving Worm, trailing violet), the disk latches on and its violet pillar rises, then he phases out in a column of violet light and phases in standing on the plinth. The disk does no damage, and he can still be hit on the ground until he phases in. If the Worm dies or retreats mid-throw, the boarding is cancelled where he stands.
 - Release 253 — new rules for the Astral Worm and Void Walker pair:
   - **Hostile rider:** once on, he stays on through every form and through the player's death. Every 12 seconds he randomly stays on, leaps down to fight on foot, or leaves the fight. If the Worm retreats while he rides, he rides it home and vanishes with it.
