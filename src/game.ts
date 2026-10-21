@@ -2179,7 +2179,10 @@ export class Game {
   applyHorde() {
     const here = this.hordeHere(); if (!here) return;
     this.enemies = this.enemies.filter((e) => e.hordeOf === here.id && !e.dead); this.map.enemySpawns = [];
-    this.hordePoints = hordeSpawnPoints(this.map, this.map.entry || { x: 4, y: 5 }, 6, this.playerFloor());
+    // The Wayfarer is placed on map.entry only after loadArea, so the reachable floor is read from there (review note).
+    const entry = this.map.entry || { x: 4, y: 5 }, p = this.player, was = { x: p.x, y: p.y }; Object.assign(p, { x: entry.x, y: entry.y });
+    const reach = this.playerFloor(); Object.assign(p, was);
+    this.hordePoints = hordeSpawnPoints(this.map, entry, 6, reach);
     while (this.enemies.length < Math.min(HORDE.active, here.horde.left)) if (!this.spawnHordeRevenant(here.id)) break;
   }
   spawnHordeRevenant(id) {
@@ -4231,7 +4234,7 @@ export class Game {
       if(e.skirmishId&&!e.skirmishProvoked){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&updateSkirmisher(e,this.enemies,this.map,dt,skirmishHooks))continue}
       // A retreating Walker is harmless and must traverse settlements normally. Sanctuary combat
       // displacement must neither relocate it nor freeze its retreat while the player rests inside.
-      if(e.gatePredator){this.performanceStats.activeEnemies++;const ox=e.x,oy=e.y;if(!fellIntoHazard&&!e.dead)updateGatePredator(e,packWorld);if(this.area==="dungeon"&&!this.roamerInBounds(e)){e.x=ox;e.y=oy}continue} // release 271: through walls, never into the black beyond
+      if(e.gatePredator){this.performanceStats.activeEnemies++;const ox=e.x,oy=e.y;if(!fellIntoHazard&&!e.dead)updateGatePredator(e,packWorld);if(this.area==="dungeon"&&!this.roamerInBounds(e)){e.x=ox;e.y=oy;e.gateWalkFor=GATE_REVENANT.walkAround}continue} // release 271: through walls, never into the black beyond (and, held at the edge, it walks around for a while)
       if(e.packKind&&e.astralMount?.status==="mounted"&&e.astralMount.ridingAway){this.performanceStats.activeEnemies++;continue} // rides the retreating Worm home
       if(e.packKind&&e.worldBeast==="voidWalker"&&!this.astralRiderHeld(e)&&!e.retreating){
         const q=this.save.worldBeasts?.voidWalker?.active;

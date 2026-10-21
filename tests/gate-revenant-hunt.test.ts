@@ -52,3 +52,9 @@ test('it may slip a swing (smart dodge), and enough quick blows break its poise 
   assert.ok(e.gateBroken > 0, 'poise broken'); const x = e.x; run(g, 1, t); assert.equal(e.x, x, 'down: it does not move');
   run(g, GATE_REVENANT.poiseBreak.time, t + 2000); assert.ok(!(e.gateBroken > 0), 'up again');
 });
+
+test('horde Revenants start on floor reachable from the entrance', () => {
+  const { g } = hordeDungeon(), w = g.map.width, entry = g.map.entry, p = g.player; Object.assign(p, { x: entry.x, y: entry.y });
+  const reach = g.playerFloor(); assert.ok(g.hordePoints.length > 0);
+  for (const q of g.hordePoints) assert.ok(reach.has(q.y * w + q.x), `spawn ${q.x},${q.y} reachable`);
+});

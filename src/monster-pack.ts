@@ -2302,7 +2302,7 @@ export const GATE_REVENANT = {
   // `stalkAggro` or wound it; then it hunts, passing through walls straight at them, and if it has been in rock for
   // `wallLinger` s it blinks to the nearest floor the Wayfarer can reach. Everywhere it slips some blows (`dodge`), and
   // `poiseBreak.hits` blows inside `poiseBreak.forget` s break it for `poiseBreak.time` s before it springs away.
-  huntAfter: 120, stalkAggro: 3.5, stalkKeep: [5, 8], stalkSpeed: .55, wallLinger: 1.4, manifestSearch: 7,
+  huntAfter: 120, stalkAggro: 3.5, stalkKeep: [5, 8], stalkSpeed: .55, wallLinger: 1.4, manifestSearch: 7, walkAround: 2.5,
   dodge: { chance: .45, cooldown: 2.2, time: .22, speed: 9, reach: 2.4, shotReach: 1.6 },
   poiseBreak: { hits: 8, forget: 3, time: 2.4, away: .38 },
 };
@@ -2327,7 +2327,9 @@ function gateMove(e, w, dt, fraction = 1) {
   if (d < 1.4) return;
   const slow = e.glyphBaseSpeed > 0 ? Math.max(.05, Math.min(1, e.speedMultiplier / e.glyphBaseSpeed)) : 1;
   const step = Math.min(d - 1.4, GATE_REVENANT.baseWalk * GATE_REVENANT.chaseRatio * dt * fraction * slow);
-  if (w.walkable) { w.move(e, (p.x - e.x) / d * step, (p.y - e.y) / d * step, { phase: true }); return; } // release 271: in a dungeon, straight through the walls
+  // Release 271: in a dungeon, straight through the walls; held back at the dungeon's edge, it paths around for `walkAround` s.
+  if (e.gateWalkFor > 0) e.gateWalkFor = Math.max(0, e.gateWalkFor - dt);
+  if (w.walkable && !(e.gateWalkFor > 0 && w.walkable(e.x, e.y))) { w.move(e, (p.x - e.x) / d * step, (p.y - e.y) / d * step, { phase: true }); return; }
   if (w.gateChase) { w.gateChase(e, step); return; }
   if (!w.los(e, p)) { w.detour?.(e, step); return; }
   w.move(e, (p.x - e.x) / d * step, (p.y - e.y) / d * step, { phase: false });
