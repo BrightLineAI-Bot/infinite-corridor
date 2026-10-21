@@ -761,8 +761,8 @@ export function drawGateRevenant(ctx, e, s, now, ox = 0, oy = 0) { // exported f
     ctx.fill();
     // ...and four great curved canines (Tim: "more pronounced, like canine. Fangs"), the upper pair reaching past the lower lip.
     ctx.beginPath();
-    for (const [up, t, len] of [[-1, .22, .62], [-1, .78, .62], [1, .4, .42], [1, .6, .42]]) {
-      const x = -w + 2 * w * t, lip = lipAt(up, t), L = h * 2 * len * .8 + .02, half = .026 + .012 * maw, bow = (t < .5 ? 1 : -1) * .03;
+    for (const [up, t, len] of [[-1, .22, .62], [-1, .78, .62], [1, .35, .26], [1, .65, .26]]) { // the lower pair small and apart: the lava's way out
+      const x = -w + 2 * w * t, lip = lipAt(up, t), L = h * 2 * len * .8 + .02, half = (up > 0 ? .7 : 1) * (.026 + .012 * maw), bow = (t < .5 ? 1 : -1) * .03;
       // A cone: broad at the gum, tapering to a point that curves in toward the middle of the mouth.
       ctx.moveTo(x - half, lip + up * .012); ctx.quadraticCurveTo(x - half * .85, lip - up * L * .45, x + bow, lip - up * L);
       ctx.quadraticCurveTo(x + half * .55, lip - up * L * .4, x + half, lip + up * .012); ctx.closePath();
