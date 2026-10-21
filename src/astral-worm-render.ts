@@ -11,6 +11,33 @@ export function drawAstralWorm(ctx, { x = 0, y = 0, scale = 24, time = 0, form =
     ctx.strokeStyle = ink; ctx.lineWidth = .105; ctx.stroke();
     if (hand) for (let j = 0; j < 4; j++) { ctx.lineWidth = .045; ctx.strokeStyle = rim; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + (j - 1.5) * .1, ey + .2 + (j % 2) * .08); ctx.stroke(); }
   };
+  // Raptor foreleg: feathered upper leg with ragged trailing plumes, a tapered scaled tarsus, three
+  // jointed forward toes and a rear hallux, each ending in a hooked, pale-edged claw.
+  const foreleg = (hx, hy, fx, fy, far = false) => {
+    const body = far ? '#05070b' : ink, edge = far ? '#47525c' : rim, scale = far ? '#262f37' : '#3b4752', claw = far ? '#7d8790' : '#aeb8c0';
+    const jx = hx + (fx - hx) * .4 - .07, jy = hy + (fy - hy) * .48;
+    ctx.lineWidth = .024; ctx.strokeStyle = edge; ctx.fillStyle = body;
+    ctx.beginPath(); ctx.moveTo(hx - .2, hy - .1); ctx.bezierCurveTo(hx, hy - .16, hx + .24, hy - .06, hx + .2, hy + .08);
+    ctx.quadraticCurveTo(jx + .16, jy - .14, jx + .1, jy + .02);
+    ctx.lineTo(jx + .02, jy + .1); ctx.lineTo(jx - .03, jy + .01); ctx.lineTo(jx - .1, jy + .08); ctx.lineTo(jx - .13, jy - .03);
+    ctx.lineTo(jx - .21, jy + .01); ctx.quadraticCurveTo(hx - .24, hy + .2, hx - .2, hy - .1); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = scale; ctx.lineWidth = .016; for (let j = 0; j < 3; j++) { const k = .3 + j * .2; ctx.beginPath(); ctx.moveTo(hx - .12 + (jx - hx) * k, hy + (jy - hy) * k - .02); ctx.quadraticCurveTo(hx + (jx - hx) * k, hy + (jy - hy) * k + .05, hx + .1 + (jx - hx) * k, hy + (jy - hy) * k - .01); ctx.stroke(); }
+    const ax = fx, ay = fy - .02;
+    ctx.fillStyle = body; ctx.strokeStyle = edge; ctx.lineWidth = .022; ctx.beginPath(); ctx.moveTo(jx - .075, jy + .02); ctx.lineTo(jx + .075, jy); ctx.lineTo(ax + .05, ay - .02); ctx.lineTo(ax - .045, ay - .01); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = scale; ctx.lineWidth = .014; for (let j = 1; j < 6; j++) { const k = j / 6, cx = jx + (ax - jx) * k, cy = jy + (ay - jy) * k, w = .07 - .02 * k; ctx.beginPath(); ctx.moveTo(cx - w, cy - .012); ctx.quadraticCurveTo(cx, cy + .02, cx + w, cy - .012); ctx.stroke(); }
+    const ground = fy + .12, toes = [{ x: .3, y: ground - .03 }, { x: .2, y: ground - .005 }, { x: .23, y: ground - .07 }, { x: -.16, y: ground - .02 }];
+    for (const [i, toe] of toes.entries()) {
+      // Each toe drops from the ankle and then grips flat along the ground through two knuckle pads.
+      const tx = ax + toe.x, ty = toe.y, cx = ax + toe.x * .2, cy = ty - .01, dir = toe.x > 0 ? 1 : -1, w = i === 3 ? .052 : .064;
+      ctx.strokeStyle = edge; ctx.lineWidth = w + .026; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo(cx, cy, tx, ty); ctx.stroke();
+      ctx.strokeStyle = body; ctx.lineWidth = w; ctx.stroke();
+      ctx.fillStyle = scale; for (const k of [.45, .75]) { ctx.beginPath(); ctx.ellipse(ax + toe.x * k, ty - .012 + (1 - k) * (ay - ty) * .25, .026, .016, 0, 0, TAU); ctx.fill(); }
+      // Slender hooked claw: a sharp crescent curving down into the ground.
+      ctx.fillStyle = '#12161c'; ctx.strokeStyle = claw; ctx.lineWidth = .011; ctx.beginPath();
+      ctx.moveTo(tx - dir * .012, ty - .026); ctx.quadraticCurveTo(tx + dir * .115, ty - .04, tx + dir * .125, ty + .08);
+      ctx.quadraticCurveTo(tx + dir * .07, ty + .005, tx - dir * .008, ty + .022); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  };
   oval(-.25, .9, 2.1, .23, 0, '#0a101a70');
   if (form === 'pool') {
     for (let i = 0; i < 12; i++) { const a = i * TAU / 12, r = 1.8 + .2 * Math.sin(t * 2 + i); ctx.fillStyle = ink; ctx.strokeStyle = rim; ctx.beginPath(); ctx.moveTo(Math.cos(a - .18), Math.sin(a - .18) * .5); ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r * .55 - .12); ctx.lineTo(Math.cos(a + .18), Math.sin(a + .18) * .5); ctx.closePath(); ctx.fill(); ctx.stroke(); }
@@ -27,8 +54,7 @@ export function drawAstralWorm(ctx, { x = 0, y = 0, scale = 24, time = 0, form =
     for(let i=0;i<7;i++){const bx=.1-i*.1,by=-.35-i*.07,tx=-.45-i*.2,ty=-1.65+i*.105;ctx.fillStyle=i%2?'#0b1017':ink;ctx.beginPath();ctx.moveTo(bx,by);ctx.bezierCurveTo(tx+.28,ty+.02,tx+.08,ty-.035,tx,ty-.12);ctx.bezierCurveTo(tx+.015,ty+.12,bx-.12,by+.1,bx,by);ctx.closePath();ctx.fill();ctx.stroke();}
     oval(-.15,-.46,.43,.24,-.65);
     // Far legs, hock and weight-bearing paws.
-    limb(-.55,.15,-.35,.85);oval(-.27,.85,.2,.1);limb(.65,.05,.98,.86);
-    ctx.strokeStyle=rim;ctx.lineWidth=.025;for(let j=0;j<3;j++){ctx.beginPath();ctx.moveTo(.95,.83);ctx.quadraticCurveTo(1.04+j*.08,.87,1.03+j*.08,.97);ctx.stroke();}
+    limb(-.55,.15,-.35,.85);oval(-.27,.85,.2,.1);foreleg(.66,.0,.92,.78,true);
     ctx.lineWidth=.13;ctx.strokeStyle=ink;ctx.beginPath();ctx.moveTo(-1.0,.02);ctx.bezierCurveTo(-1.65,-.1,-1.55,-.8,-1.93,-.65);ctx.stroke();
     ctx.lineWidth=.035;ctx.strokeStyle=rim;ctx.stroke();oval(-1.96,-.65,.16,.1,-.2);
     oval(-.5,-.06,.9,.46);oval(-.92,.18,.42,.45,-.4);
@@ -36,10 +62,7 @@ export function drawAstralWorm(ctx, { x = 0, y = 0, scale = 24, time = 0, form =
     oval(-.98,.88,.27,.12);for(let j=0;j<3;j++){ctx.beginPath();ctx.moveTo(-1.16+j*.11,.88);ctx.lineTo(-1.2+j*.11,.98);ctx.stroke();}
     // High, powerful breast narrows into the unmistakable raptor neck.
     const breast=ctx.createRadialGradient(.35,-.3,.05,.35,-.25,.8);breast.addColorStop(0,'#253039');breast.addColorStop(.4,'#0d141c');breast.addColorStop(1,ink);ctx.fillStyle=breast;ctx.beginPath();ctx.moveTo(.05,.28);ctx.bezierCurveTo(.6,.45,.87,.04,.82,-.35);ctx.bezierCurveTo(.86,-.58,1.04,-.61,1.17,-.68);ctx.lineTo(.83,-.89);ctx.bezierCurveTo(.38,-.85,.02,-.54,-.05,-.38);ctx.closePath();ctx.fill();ctx.stroke();
-    limb(.48,.05,.5,.79);
-    // Scaled raptor tarsus and three curled, separate front talons.
-    ctx.strokeStyle=rim;ctx.lineWidth=.025;for(let j=0;j<4;j++){ctx.beginPath();ctx.moveTo(.47,.51+j*.065);ctx.lineTo(.57,.51+j*.065);ctx.stroke();}
-    for(let j=0;j<3;j++){const xx=.42+j*.12;ctx.fillStyle=ink;ctx.beginPath();ctx.moveTo(.52,.75);ctx.quadraticCurveTo(xx+.18,.82,xx+.2,.91);ctx.lineTo(xx+.14,1.0);ctx.quadraticCurveTo(xx+.13,.87,xx,.88);ctx.closePath();ctx.fill();ctx.stroke();}
+    foreleg(.44,.02,.52,.8);
     ctx.save();ctx.translate(.22,.39);oval(.86,-1.2,.35,.28,-.12);
     // Broad cere, hooked upper beak and separate lower mandible, not a triangular snout.
     ctx.fillStyle='#10151c';ctx.beginPath();ctx.moveTo(.92,-1.34);ctx.bezierCurveTo(1.22,-1.4,1.55,-1.18,1.32,-.88);ctx.lineTo(1.31,-1.08);ctx.quadraticCurveTo(1.17,-1.16,.96,-1.12);ctx.closePath();ctx.fill();
@@ -108,22 +131,33 @@ export function drawAstralMorph(ctx, options, previousForm, progress) {
   drawAstralWorm(ctx, {...options, alpha: (options.alpha ?? 1) * k});
 }
 
-// Owner-requested compact riding-only seat. Low-profile dark angular panels and
-// one faint violet seam; no dangling tack or change to creature geometry/hitboxes.
+// Owner-requested riding seat (revised 2026-10-21): a traditional tan leather saddle, large enough to read
+// on a phone against the black ink body, over an oxblood pad, with cream stitching and a steel stirrup.
+// Pure decoration; it never changes creature geometry or hitboxes.
+export const ASTRAL_SADDLE = Object.freeze({ width: { worm: .64, griffin: .68, pool: .74, flight: .64 },
+  leather: '#8a5428', shadow: '#5a3216', shine: '#c08a52', outline: '#2a1609', pad: '#6a2621', stitch: '#e2c48e', iron: '#bfc5ca' });
 export function drawAstralSaddle(ctx, {x,y,unit,form='worm',facing=1}) {
-  const width=form==='pool'?.46:form==='griffin'?.40:.38, depth=form==='pool'?.065:.09;
-  ctx.save();ctx.translate(x,y);ctx.scale(unit*facing,unit);
-  ctx.fillStyle='#20212e';ctx.strokeStyle='#454253';ctx.lineWidth=.012;ctx.lineJoin='round';
-  ctx.beginPath();ctx.moveTo(-width/2,-.015);ctx.lineTo(-width*.38,-.075);
-  ctx.lineTo(width*.33,-.075);ctx.lineTo(width/2,-.025);ctx.lineTo(width*.4,depth);
-  ctx.lineTo(-width*.38,depth);ctx.closePath();ctx.fill();ctx.stroke();
-  // Shallow recessed seat and tiny swept-back lip, rather than a bulky raised frame.
-  ctx.fillStyle='#2c2b3b';ctx.beginPath();ctx.moveTo(-width*.35,-.055);
-  ctx.lineTo(-width*.28,-.10);ctx.lineTo(-width*.18,-.052);
-  ctx.lineTo(width*.24,-.052);ctx.lineTo(width*.34,-.095);ctx.lineTo(width*.4,-.035);
-  ctx.lineTo(width*.27,.025);ctx.lineTo(-width*.25,.025);ctx.closePath();ctx.fill();
-  ctx.strokeStyle='#665778';ctx.lineWidth=.009;ctx.beginPath();ctx.moveTo(-width*.26,.043);
-  ctx.lineTo(width*.22,.043);ctx.lineTo(width*.32,.008);ctx.stroke();
+  const S=ASTRAL_SADDLE, W=S.width[form]??S.width.worm;
+  ctx.save();ctx.translate(x,y);ctx.scale(unit*facing,unit);ctx.lineJoin='round';ctx.lineCap='round';
+  // Wool pad peeks out under the tree, front and back.
+  ctx.fillStyle=S.pad;ctx.strokeStyle=S.outline;ctx.lineWidth=.016;ctx.beginPath();
+  ctx.moveTo(-W*.56,-.05);ctx.quadraticCurveTo(-W*.6,.1,-W*.48,.13);ctx.lineTo(W*.5,.13);ctx.quadraticCurveTo(W*.6,.1,W*.56,-.05);ctx.closePath();ctx.fill();ctx.stroke();
+  // Tree and seat: a high cantle behind, a dished seat and a raised pommel in front.
+  ctx.fillStyle=S.leather;ctx.beginPath();ctx.moveTo(-W*.5,.02);
+  ctx.quadraticCurveTo(-W*.56,-.17,-W*.44,-.22);ctx.quadraticCurveTo(-W*.38,-.24,-W*.33,-.17);
+  ctx.bezierCurveTo(-W*.18,-.1,W*.12,-.1,W*.3,-.15);ctx.quadraticCurveTo(W*.4,-.25,W*.5,-.2);
+  ctx.quadraticCurveTo(W*.55,-.08,W*.47,.03);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.strokeStyle=S.shine;ctx.lineWidth=.014;ctx.beginPath();ctx.moveTo(-W*.3,-.15);ctx.bezierCurveTo(-W*.16,-.09,W*.1,-.09,W*.27,-.13);ctx.stroke();
+  ctx.fillStyle=S.shadow;ctx.beginPath();ctx.ellipse(-W*.44,-.17,W*.05,.04,-.3,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(W*.46,-.17,W*.04,.035,.3,0,Math.PI*2);ctx.fill();
+  // Hanging fender with stitched border, then stirrup leather and a steel stirrup.
+  ctx.fillStyle=S.shadow;ctx.strokeStyle=S.outline;ctx.lineWidth=.016;ctx.beginPath();
+  ctx.moveTo(-W*.2,-.04);ctx.lineTo(W*.17,-.04);ctx.quadraticCurveTo(W*.21,.13,W*.15,.26);ctx.quadraticCurveTo(0,.29,-W*.17,.26);ctx.quadraticCurveTo(-W*.23,.13,-W*.2,-.04);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.strokeStyle=S.stitch;ctx.lineWidth=.009;ctx.setLineDash([.026,.02]);ctx.beginPath();
+  ctx.moveTo(-W*.16,0);ctx.lineTo(W*.13,0);ctx.quadraticCurveTo(W*.16,.13,W*.115,.225);ctx.quadraticCurveTo(0,.25,-W*.135,.225);ctx.quadraticCurveTo(-W*.19,.13,-W*.16,0);ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle=S.outline;ctx.lineWidth=.04;ctx.beginPath();ctx.moveTo(W*.02,.2);ctx.lineTo(W*.02,.33);ctx.stroke();
+  ctx.strokeStyle=S.leather;ctx.lineWidth=.024;ctx.stroke();
+  ctx.strokeStyle=S.outline;ctx.lineWidth=.036;ctx.beginPath();ctx.moveTo(W*.02-.06,.33);ctx.lineTo(W*.02+.06,.33);ctx.lineTo(W*.02+.075,.42);ctx.lineTo(W*.02-.075,.42);ctx.closePath();ctx.stroke();
+  ctx.strokeStyle=S.iron;ctx.lineWidth=.02;ctx.stroke();
   ctx.restore();
 }
 
@@ -133,7 +167,7 @@ export function drawAstralInkBlobs(ctx, blobs, project, unit=24) {
   for(const blob of blobs){
     const at=project(blob.x,blob.y),r=Math.max(.04,Number(blob.radius)||.14)*unit;
     ctx.save();ctx.lineWidth=Math.max(.7,unit*.018);ctx.lineJoin='round';
-    if(blob.phase==='warning'){
+    if(blob.phase==='warning'){ if(!blob.target){ctx.restore();continue;}
       const target=project(blob.target.x,blob.target.y);ctx.strokeStyle=blob.blocked?'#46525c':'#8393ab';
       ctx.beginPath();ctx.ellipse(target.x,target.y,r,r*.55,0,0,Math.PI*2);ctx.stroke();
     } else {

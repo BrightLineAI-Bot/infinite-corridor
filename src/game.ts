@@ -2971,9 +2971,35 @@ export class Game {
     if (Math.hypot(this.player.x - x, this.player.y - y) < .85) return false;
     e.x = x; e.y = y; refreshMarineBeast(e, map, width, this.area); this._walkerRoutes?.delete(e); return true;
   }
+  // An overworld Supernova near a section edge also scars the overlapping part of each adjacent section. The
+  // neighbor is previewed read-only (as for Walker crossings) and its scar row is stored under its own key; it is
+  // applied when that section next loads. Nothing there is visited, generated into history, or simulated.
+  spillVoidTerrain(center, radius) {
+    const width = mapWidth(this.map, this.area), height = mapHeight(this.map, this.area), out = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      // Nearest point of the neighbor's rectangle, in this section's coordinates.
+      const nx = Math.max(dx * width, Math.min((dx + 1) * width, center.x)), ny = Math.max(dy * height, Math.min((dy + 1) * height, center.y));
+      if (Math.hypot(center.x - nx, center.y - ny) >= radius) continue;
+      const rx = this.rx + dx, ry = this.ry + dy, neighbor = walkerCrossingMap(this.save, rx, ry);
+      const result = consumeVoidTerrain(this.save, neighbor, `overworld:${rx}:${ry}:g${this.save.worldGeneration}`, { ...center, x: center.x - dx * width, y: center.y - dy * height }, radius, [], { spill: true });
+      out.push({ rx, ry, result });
+    }
+    return out;
+  }
   walkerExitTargets(e, route) {
     const width = mapWidth(this.map, this.area), gate = { x: Math.max(0, Math.min(width - 1, e.fleeTo.x)), y: Math.max(0, Math.min(mapHeight(this.map, this.area) - 1, e.fleeTo.y)) };
-    if (this.area !== "overworld" || !(route.marineSection ??= this.map.tiles.some(isMarineTile))) return [gate];
+    if (this.area !== "overworld") return [gate];
+    if (!(route.marineSection ??= this.map.tiles.some(isMarineTile))) {
+      // Any open tile along the exit edge leaves the section, the clamped gate first; a single blocked
+      // gate tile no longer strands the retreat.
+      const height = mapHeight(this.map, this.area), side = e.fleeTo.side, edge = side === "east" ? n => ({ x: width - 1, y: n }) : side === "west" ? n => ({ x: 0, y: n }) :
+        side === "south" ? n => ({ x: n, y: height - 1 }) : side === "north" ? n => ({ x: n, y: 0 }) : null;
+      if (!edge) return [gate];
+      const out = [gate];
+      for (let n = 0; n < (side === "east" || side === "west" ? height : width); n++) { const p = edge(n); if ((p.x !== gate.x || p.y !== gate.y) && walkerGroundPositionOpen(this.map, width, p.x, p.y, e._marineTraversal)) out.push(p); }
+      return out;
+    }
     const side = e.fleeTo.side, dir = { east: [1, 0], west: [-1, 0], south: [0, 1], north: [0, -1] }[side];
     if (!dir) return [];
     const key = `${this.rx + dir[0]},${this.ry + dir[1]}`;
@@ -3089,6 +3115,7 @@ export class Game {
         // Match the native Supernova's continuous world-space disk, not rounded tile centers.
         const result = consumeVoidTerrain(game.save, map, game.areaStateId(), { x: center.x + .5, y: center.y + .62, visualLift: liftAt(map, width, center.x, center.y) }, radius, [p, ...game.enemies.filter(q => !q.dead)]);
         if (result.changed) { game._walkerLandingGraph = null; game._walkerRoutes = new WeakMap(); map.wallGlints = (map.wallGlints || []).filter(q => map.tiles[q.y * width + q.x]?.blocked); }
+        if (game.area === "overworld" && result.ok !== false) game.spillVoidTerrain({ x: center.x + .5, y: center.y + .62, visualLift: liftAt(map, width, center.x, center.y) }, radius);
         return result;
       },
       groundHeight: (x,y) => map.landscape ? liftAt(map,width,x,y) : 0,

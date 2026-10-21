@@ -23,12 +23,12 @@ test('Level-eight floor, Questing dominance, simultaneous attempts and productio
     if(attempt<3){assert.equal(live.length,1);assert(live.every(e=>e.hp===e.maxHp));}else assert.equal(live.length,0);
     const restored=migrateSave(JSON.parse(JSON.stringify(save)));assert.equal(restored.worldBeasts.morphingBlob.active?.tries??3,attempt);
   }
-  
-  
+
+
   // Test each natural spawning family independently for full-health return.
   for(const kind of ['questingBeast','morphingBlob']) { const save=freshSave();save.seed='GATE-BEAST-DEATH';const g=new Game(save,0);g.rx=7;g.ry=2;g.loadArea('overworld',false);if(kind==='questingBeast')save.questingBeast.active={rx:7,ry:2,tries:0};else {save.questingBeast.active=null;save.questingBeast.cooldown=999;save.worldBeasts[kind].active={rx:7,ry:2,tries:0}}
   const e=g.createEnemyFromSpawn({id:kind==='questingBeast'?'questing-beast:0':'world-beast:morphingBlob:0',kind,questingBeast:kind==='questingBeast',worldBeast:kind==='questingBeast'?undefined:kind,boss:true,x:10,y:10},'overworld');e.hp=40;g.enemies=[e];g.player.hp=0;g.update(.001,idle,10000);g.rx=7;g.ry=2;g.loadArea('overworld',false);const r=g.enemies.find(q=>q.id===e.id);assert(r);assert.equal(r.hp,r.maxHp);r.hp=50;g.snapshotArea();g.loadArea('overworld',false);assert.equal(g.enemies.find(q=>q.id===e.id).hp,50); }
-  
+
 });
 
 test('The level-eight reference is attainable with seven real level-ups and starter equipment', async () => {

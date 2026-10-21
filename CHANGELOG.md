@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 251 review fixes — the Gate Revenant has poise: rapid blows still interrupt it, but after 0.6 s of accumulated stun it shrugs off hit-stun for 2.4 s, so fast weapons can no longer lock it out of attacking. A retreating Void Walker may leave a land section by any open tile on its exit edge, not only the single gate tile. An overworld Supernova near a section edge now also scars the overlapping part of each neighbouring section, recorded for when you go there. The Astral Griffin's front legs are rebuilt as feathered raptor legs with scaled shanks, jointed toes and hooked talons, and the Walker's riding saddle is now a larger traditional tan leather saddle with a pad, stitched fender and steel stirrup.
+
 - Implement Astral Worm natural encounters, approved black-ink forms/no-Echo bounty, bounded physical Wayglass retreat, independent-health Walker riding with a compact futuristic saddle, mouth-origin beam and finite three-blob worm/pool/trample ink recall on the reviewed r251/Gate baseline; included in the single combined release 251 candidate, with final packaging/CI/preview and publication verification pending.
 
 - Release 251 ocean extension: the Void Walker sails a small personal skiff and the Crystal throws lifted water; ocean Supernova retains combat but never converts or scars ocean water.

@@ -402,7 +402,7 @@ function voidCell(value, width, height) {
   return Number.isSafeInteger(x) && Number.isSafeInteger(y) && x < width && y < height ? `${x},${y}` : null;
 }
 const voidCircleOrder = (a, b) => a.x - b.x || a.y - b.y || a.radius - b.radius || (a.visualLift || 0) - (b.visualLift || 0);
-const voidCircle = (value, width, height) => voidRecord(value) && Number.isFinite(value.x) && Number.isFinite(value.y) && Number.isFinite(value.radius) && value.x >= 0 && value.y >= 0 && value.x < width && value.y < height && value.radius > 0 && value.radius <= VOID_SCARS.maxRadius && (value.visualLift === undefined || Number.isFinite(value.visualLift) && Math.abs(value.visualLift) <= VOID_SCARS.maxElevation);
+const voidCircle = (value, width, height) => voidRecord(value) && Number.isFinite(value.x) && Number.isFinite(value.y) && Number.isFinite(value.radius) && value.radius > 0 && value.x > -value.radius && value.y > -value.radius && value.x < width + value.radius && value.y < height + value.radius && value.radius <= VOID_SCARS.maxRadius && (value.visualLift === undefined || Number.isFinite(value.visualLift) && Math.abs(value.visualLift) <= VOID_SCARS.maxElevation);
 function voidCircles(circles, width, height) {
   const unique = new Map();
   // Enumerate actual entries, not a malformed sparse array's potentially enormous declared length.
@@ -497,10 +497,12 @@ function voidStoredArea(save, areaKey, dimensions) {
 // based; only the visual white/red union is continuous. Outside-disk portions of intersected tiles render ordinary
 // safe floor, not false remaining walls. Floor repaint and pit neutralization are durable too. The compatibility
 // `actors` argument is never read or mutated: terrain is separate from actor/object/reward/inventory/discovery state. Existing scars, including their heights, are immutable history.
-export function consumeVoidTerrain(save, map, areaKey, center, radius, actors = []) {
+// `spill` records the part of a blast cast in an adjacent section: its center may then lie outside this map,
+// as long as the disk still overlaps it. Circles store that out-of-section center unchanged.
+export function consumeVoidTerrain(save, map, areaKey, center, radius, actors = [], { spill = false } = {}) {
   if (!voidAreaKey(areaKey)) return voidResult(false, 'unsupported-area');
   const dimensions = voidGeometry(map, areaKey); if (!dimensions) return voidResult(false, 'unsupported-area');
-  if (!Number.isFinite(center?.x) || !Number.isFinite(center?.y) || !Number.isFinite(radius) || radius <= 0 || radius > VOID_SCARS.maxRadius || center.x < 0 || center.y < 0 || center.x >= dimensions.width || center.y >= dimensions.height || center.visualLift !== undefined && (!Number.isFinite(center.visualLift) || Math.abs(center.visualLift) > VOID_SCARS.maxElevation) || !Array.isArray(actors)) return voidResult(false, 'invalid-region');
+  if (!Number.isFinite(center?.x) || !Number.isFinite(center?.y) || !Number.isFinite(radius) || radius <= 0 || radius > VOID_SCARS.maxRadius || (spill ? center.x <= -radius || center.y <= -radius || center.x >= dimensions.width + radius || center.y >= dimensions.height + radius : center.x < 0 || center.y < 0 || center.x >= dimensions.width || center.y >= dimensions.height) || center.visualLift !== undefined && (!Number.isFinite(center.visualLift) || Math.abs(center.visualLift) > VOID_SCARS.maxElevation) || !Array.isArray(actors)) return voidResult(false, 'invalid-region');
   ensureVoidScars(save, areaKey);
   const stored = voidStoredArea(save, areaKey, dimensions); if (stored.error) return voidResult(false, stored.error);
   const { width, height } = dimensions, candidates = [];

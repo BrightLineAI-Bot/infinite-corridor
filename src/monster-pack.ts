@@ -1939,6 +1939,9 @@ export const GATE_REVENANT = {
   baseWalk: 2.4, chaseRatio: 1.5, hpFloor: 320, damageFloor: 40, beastShare: 2 / 3,
   referenceHits: 60, referenceLevelHp: 28, referenceDamageShare: .2,
   range: 6, ownerEffects: 16, step: .05, recover: .3, gap: .55,
+  // Poise: stun accumulated within one exchange beyond `poise` seconds grants `unstoppable` seconds of
+  // ignoring hit-stun, so rapid blows interrupt it but never lock it out of attacking.
+  poise: .6, unstoppable: 2.4,
   breath: { warn: .4, duration: 1.4, every: .35, length: 7, width: .5, bite: .26 },
   burst: { warn: .32, count: 4, every: .18, speed: 6.2, life: 1.5, bite: .38 },
   lob: { warn: .35, count: 3, every: .22, flight: .8, radius: .85, bite: .55 },
@@ -1949,7 +1952,7 @@ export function tuneGatePredator(e, save, stats = {}) {
   if (!e.gatePredator || e.gateTuningVersion === 1) return e;
   const t = GATE_REVENANT, level = Math.max(1, Number(save.level) || 1), weapon = save.equipment?.[save.activeWeaponSlot];
   const hit = Math.max(6, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0)), guard = Math.max(0, Math.min(.75, Number(stats.damageReduction) || 0));
-  const oldMax = Math.max(1, e.maxHp), missing = Math.max(0, oldMax - e.hp);
+  const oldMax = Math.max(1, Number(e.maxHp) || 1), missing = Math.max(0, oldMax - (Number.isFinite(e.hp) ? e.hp : oldMax));
   e.maxHp = Math.max(oldMax, t.hpFloor, Math.round((hit * t.referenceHits + level * t.referenceLevelHp) * t.beastShare));
   e.hp = e.dead ? 0 : Math.max(1, e.maxHp - missing);
   e.damage = Math.max(e.damage, t.damageFloor, Math.round((Number(save.maxHp) || 60) * t.referenceDamageShare / (1 - guard) * t.beastShare));
@@ -2002,7 +2005,13 @@ export function updateGatePredator(e, w) {
     if (distance < 6) e.aggro = true;
     if (!e.aggro) continue;
     e.facingX = w.player.x >= e.x ? 1 : -1;
-    if (e.hitStun > 0) { resetGateAttack(e); e.gateGap = .4; continue; }
+    e.gateUnstoppable = Math.max(0, (e.gateUnstoppable || 0) - dt);
+    if (e.gateUnstoppable > 0) e.hitStun = 0;
+    if (e.hitStun > 0) {
+      e.gateStunned = (e.gateStunned || 0) + dt;
+      if (e.gateStunned >= GATE_REVENANT.poise) { e.hitStun = 0; e.gateStunned = 0; e.gateUnstoppable = GATE_REVENANT.unstoppable; }
+      else { resetGateAttack(e); e.gateGap = .4; continue; }
+    } else if (!e.gateAttack && e.gateGap <= 0) e.gateStunned = 0;
     e.gateGap = Math.max(0, (e.gateGap || 0) - dt);
     let a = e.gateAttack;
     if (!a) {

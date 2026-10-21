@@ -2221,3 +2221,22 @@ The following original protocol is retained as historical evidence only. The lin
 **CODE:** The previously isolated Walker/ocean/Blob, Gate/shared lifecycle and Astral histories now form one combined release 251 candidate. Earlier follow-on boundaries above are historical checkpoint descriptions, not exclusions from this candidate. Gameplay remains identical to reviewed commit `1054a167`; packaging consolidates duplicate Proving Ground worker declarations into one complete precache and adds syntax checks to the existing release-coherence regression. Both source and emitted workers are checked, including all six Astral modules.
 
 **BOUNDARY:** Retaining the allocated 251 is deliberate because it has not been merged or published. Local tests, build and simulated precache installation are not browser/offline certification or publication evidence. Upload, CI, merged preview, fresh full-range publication review and final live verification remain separate coordinator-owned gates; workflow files are unchanged.
+
+## Release 251 review fixes, Griffin forelegs and leather saddle — 2026-10-21
+
+Claude reviewed all 17 Codex commits from live r249 to the combined r251 candidate. Tim then asked for higher-quality Griffin front paws, a bigger traditional leather saddle that is easy to see, and a reconcile of his Void Walker descriptions across Codex and Claude, adding anything left out and removing nothing.
+
+**CODE:**
+- **Gate poise.** `GATE_REVENANT.poise` (0.6 s) and `GATE_REVENANT.unstoppable` (2.4 s) cap the hit-stun lock in `updateGatePredator`. `tuneGatePredator` tolerates a non-finite `hp` or `maxHp`.
+- **Walker exits.** `Game.walkerExitTargets` returns every ground-open tile on a non-marine overworld exit edge, the clamped gate first.
+- **Supernova spill.** `Game.spillVoidTerrain` previews each overlapping neighbour with `walkerCrossingMap`. It records that neighbour's scar through `consumeVoidTerrain(..., { spill: true })`, under the neighbour's own `overworld:rx:ry:gN` key. Scar circles may now keep a centre outside their section, as long as the disk still overlaps it. This is additive at schema 14.
+- **Griffin forelegs.** `drawAstralWorm`'s griffin uses a `foreleg` helper: feathered upper leg, scaled tapering tarsus, three ground-gripping toes and a hallux, with crescent claws.
+- **Saddle.** `drawAstralSaddle` draws tan leather from the `ASTRAL_SADDLE` table: an oxblood pad, cantle and pommel, a stitched fender, and a stirrup leather with a steel iron, at a width of 0.64–0.74 units.
+- Tests are in `tests/review-251-fixes.test.ts`. The saddle render test now looks for the new leather colour.
+
+**BOUNDARY:**
+- A walled-in retreating Walker still waits and retries, never fading or teleporting (Codex's owner-backed rule and its tests).
+- An unfollowed Walker retreat still resumes when you return, rather than escaping. Tim has not ruled on this for the Walker.
+- The Questing Beast keeps its 1.15× dominance over every beast, including the Astral Worm's native floor (Tim's "strongest" rule). It can reach about 5,500 HP at level 1.
+- The spill never simulates actors in the neighbour section and never marks it visited.
+- The reconcile found no described Walker feature missing; the section-clipped overworld scar was the one partial, and the spill completes it.
