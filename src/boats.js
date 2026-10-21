@@ -3,7 +3,7 @@
 // and shallows), never the blight's toxic water or rivers. It has its own hull: hits taken aboard are shared with it,
 // and a hull at zero sinks the skiff, which the Shipwright's crew returns to its home dock.
 // Data and pure rules; game.ts calls in from movement, interaction, damage and section loading.
-import { hashSeed } from "./random.js?v=r267-345b89326368";
+import { hashSeed } from "./random.js?v=r271-ad06c7fbd51e";
 
 export const BOAT = {
   price: { currency: 120, cinderIron: 2 },
@@ -19,7 +19,14 @@ export const BOAT = {
   // Hull shields (release 263; Tim: "a boat deployment shield... we can buy them from the boatman... deploy them... last for
   // like 3 minutes"): bought from the Shipwright, deployed from the Pack while aboard; while it holds, the hull takes no
   // damage (hits still share with it, so the Wayfarer keeps only their own share). Deploying again refreshes it.
-  shield: { price: 40, seconds: 180 },
+  // Release 269 makes it a hull guard (Tim: "The hull should take reduced damage... and it has more health"; "a slight
+  // damage reduction to the player... five percent"): while it holds, blows to the hull are `hullTaken` as strong, `bonus`
+  // extra hull soaks them first (gone when the guard ends), and the Wayfarer keeps `guard` less of their share.
+  shield: { price: 40, seconds: 180, guard: .05, hullTaken: .5, bonus: 30 },
+  // Repairs with the Build button (release 269; Tim: "break up the hull into thirds... one [wood] would get the boat
+  // half health... two woods should get the boat back up to full... I don't want to have to manage the boat too much"):
+  // each press costs `wood` and mends `share` of the full hull. Holding Build `shieldHold` s at sea deploys a shield.
+  mend: { wood: 1, share: .5, shieldHold: .6 },
   pushOff: .6,           // release 263: a skiff built at the shore pushes off at this share of sailing speed
   dockMinWater: 40,
   dockEvery: 3,
@@ -61,6 +68,8 @@ export function ensureBoatState(save) {
   // Release 263: seconds left on a deployed hull shield (additive). Shields carried are save.consumables.hullShield,
   // read as a count (missing or bad = 0) and written only when one is bought.
   save.boat.shield = Math.max(0, Math.min(BOAT.shield.seconds, Number.isFinite(Number(b.shield)) ? Number(b.shield) : 0));
+  // Release 269: the guard's extra hull (additive; only while the guard holds).
+  save.boat.guardHull = save.boat.shield > 0 ? Math.max(0, Math.min(BOAT.shield.bonus, Number(b.guardHull) || 0)) : 0;
   const spare = b.owned === true && place(b.spare); save.boat.spare = spare ? { ...spare, hull: Math.max(0, Math.min(BOAT.maxHull, Number.isFinite(b.spare.hull) ? b.spare.hull : BOAT.maxHull)) } : null;
   return save.boat;
 }
@@ -70,6 +79,14 @@ export function takeSpare(save) {
   b.spare = b.moored && !b.aboard ? { ...b.moored, hull: b.hull } : null;
   b.moored = { rx: s.rx, ry: s.ry, x: s.x, y: s.y }; b.hull = s.hull; b.aboard = false;
   return true;
+}
+// One press of Build on a damaged skiff: 1 wood mends half the hull. Returns { ok, message }.
+export function mendSkiff(save) {
+  const b = ensureBoatState(save), wood = Number(save.materials?.wood) || 0;
+  if (!b.owned || b.hull >= BOAT.maxHull) return { ok: false, message: "The hull is sound." };
+  if (wood < BOAT.mend.wood) return { ok: false, message: `Patching the hull takes ${BOAT.mend.wood} wood.` };
+  save.materials.wood = wood - BOAT.mend.wood; b.hull = Math.min(BOAT.maxHull, b.hull + BOAT.maxHull * BOAT.mend.share);
+  return { ok: true, message: b.hull >= BOAT.maxHull ? "The hull is whole again." : `Hull patched: ${Math.round(b.hull)}/${BOAT.maxHull}.` };
 }
 export const shieldsCarried = (save) => Math.max(0, Math.floor(Number(save?.consumables?.hullShield) || 0));
 export const shielded = (save) => (Number(save?.boat?.shield) || 0) > 0;
@@ -84,10 +101,18 @@ export function deployHullShield(save) {
   const b = ensureBoatState(save);
   if (!(shieldsCarried(save) > 0)) return { ok: false, message: "You carry no hull shield. The Shipwright sells them." };
   if (!b.aboard) return { ok: false, message: "Deploy a hull shield aboard your skiff." };
-  save.consumables.hullShield = shieldsCarried(save) - 1; b.shield = BOAT.shield.seconds;
-  return { ok: true, message: `The hull shield unfurls around the skiff: the hull takes no damage for ${BOAT.shield.seconds / 60} minutes.` };
+  save.consumables.hullShield = shieldsCarried(save) - 1; b.shield = BOAT.shield.seconds; b.guardHull = BOAT.shield.bonus;
+  return { ok: true, message: `The skiff rises into a longboat under sail: for ${BOAT.shield.seconds / 60} minutes the hull takes half damage, with ${BOAT.shield.bonus} more to give.` };
 }
-export function tickHullShield(save, dt) { const b = save?.boat; if (b && b.shield > 0 && dt > 0) b.shield = Math.max(0, b.shield - dt); }
+export function tickHullShield(save, dt) { const b = save?.boat; if (b && b.shield > 0 && dt > 0) { b.shield = Math.max(0, b.shield - dt); if (!b.shield) b.guardHull = 0; } }
+// Takes `n` from the hull: under the guard, a reduced blow, the guard's extra hull first. Returns true at zero hull.
+// Release 269 (Tim: "it'll get like a shield bar... when it takes damage that bar... gets eaten into... when that bar
+// finally gets destroyed... you go back to the smaller wooden ship... it'll just run out after 3 minutes"): emptying
+// the guard's bar ends the guard.
+function wearHull(save, n) {
+  const b = save.boat; if (shielded(save)) { n *= BOAT.shield.hullTaken; const g = Math.min(b.guardHull || 0, n); b.guardHull = (b.guardHull || 0) - g; n -= g; if (b.guardHull <= 0) { b.guardHull = 0; b.shield = 0; } }
+  b.hull = Math.max(0, b.hull - n); return b.hull <= 0;
+}
 export const aboard = (save) => save?.boat?.owned === true && save.boat.aboard === true;
 export const sailable = (kind) => BOAT.waterKinds.includes(kind);
 
@@ -130,21 +155,18 @@ export function disembark(save, where) { const b = ensureBoatState(save); b.aboa
 export function hullAbsorb(save, damage) {
   const b = ensureBoatState(save);
   if (!b.aboard || !(damage > 0)) return { kept: damage, sunk: false };
-  const take = Math.min(b.hull, damage * BOAT.hullShare);
-  if (shielded(save)) return { kept: damage - take, sunk: false }; // release 263: the shield takes the hull's share
-  b.hull = Math.max(0, b.hull - take);
-  if (b.hull > 0) return { kept: damage - take, sunk: false };
-  b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home;
-  return { kept: damage - take, sunk: true };
+  const guarded = shielded(save), take = Math.min(b.hull + (guarded ? (b.guardHull || 0) / BOAT.shield.hullTaken : 0), damage * BOAT.hullShare), kept = (damage - take) * (guarded ? 1 - BOAT.shield.guard : 1);
+  if (!wearHull(save, take)) return { kept, sunk: false }; // release 269: the guard halves the hull's wear and keeps 5% off the Wayfarer's share
+  b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home; b.shield = 0; b.guardHull = 0;
+  return { kept, sunk: true };
 }
 
 // A blow to the hull alone (open-sea hazards, release 152). Returns true when it sinks the skiff.
 export function hullStrike(save, n) {
   const b = ensureBoatState(save);
-  if (!b.aboard || !(n > 0) || shielded(save)) return false;
-  b.hull = Math.max(0, b.hull - n);
-  if (b.hull > 0) return false;
-  b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home;
+  if (!b.aboard || !(n > 0)) return false;
+  if (!wearHull(save, n)) return false;
+  b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home; b.shield = 0; b.guardHull = 0;
   return true;
 }
 

@@ -9,12 +9,12 @@
 // block is a `perch`, one landscape level higher per block stacked (only the Wayfarer may step onto a perch, jumping
 // as onto any ledge; in a dungeon, which has no levels, it is simply a block they can stand on). Builds are transient
 // like the Turtle's ice: a section load clears them and they are never saved. Data and rules; game.ts calls in.
-import { LETHAL_KINDS } from "./landscape.js?v=r267-345b89326368";
+import { LETHAL_KINDS } from "./landscape.js?v=r271-ad06c7fbd51e";
 
 export const BUILD = {
   kinds: {
-    wood: { name: "Wood wall", cost: { wood: 5 }, hits: 1 },
-    stone: { name: "Stone block", cost: { stone: 10 }, hits: 2, stack: 2 },
+    wood: { name: "Wood wall", cost: { wood: 4 }, hits: 1 }, // release 269 (Tim: "a wall takes 4 wood"; it was 5)
+    stone: { name: "Stone block", cost: { stone: 5 }, hits: 2, stack: 2 }, // release 269 (Tim: "five stone... twenty blocks with the full inventory"; it was 10)
   },
   life: 10,       // seconds a build stands
   maxOut: 5,      // builds standing at once
@@ -119,7 +119,7 @@ export function tickBuilds(game, dt, tagsOf = () => []) {
   }
 }
 
-// Release r267-345b89326368 (Tim: "you hit the toggle button, and then you tap the screen... it'll build... in one of the 8 directions...
+// Release 267 (Tim: "you hit the toggle button, and then you tap the screen... it'll build... in one of the 8 directions...
 // with its longitudinal axis... perpendicular to that direction heading... you can cast the fence... 3 character lengths
 // away... if your finger is farther away than three character lengths, it'll... cast the fence at the maximum distance.
 // If your finger is within those three character lengths, it'll cast it exactly where you click"; "always aim at the
