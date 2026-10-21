@@ -4,8 +4,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { generateRegion } from '../src/world.ts';
-import { WORLD_BEASTS, WORLD_BEAST_IDS, ENCOUNTER, ensureBeastGap, noteSectionVisit, encounterReady, encounterMet, worldBeastFor, ensureWorldBeasts } from '../src/world-beasts.ts';
-import { questingBeastFor } from '../src/questing-beast.ts';
+import { WORLD_BEASTS, WORLD_BEAST_IDS, ENCOUNTER, ensureBeastGap, noteSectionVisit, encounterReady, encounterMet, worldBeastFor, ensureWorldBeasts, placementRegions } from '../src/world-beasts.ts';
+import { questingBeastFor, QB_SEA } from '../src/questing-beast.ts';
 import { Game } from '../src/game.ts';
 
 test('the buffer is additive save state: a save without it starts ready; bad values are clamped', () => {
@@ -41,4 +41,38 @@ test('chances are scaled down from each beast\'s own rate', () => {
   assert.ok(ENCOUNTER.chanceScale > 0 && ENCOUNTER.chanceScale < 1);
   const total = WORLD_BEAST_IDS.reduce((n, id) => n + WORLD_BEASTS[id].chance * ENCOUNTER.chanceScale, 0);
   assert.ok(total < .2, `combined per-section chance ${total.toFixed(3)}`);
+});
+
+// A 32x32 section: open sea all round, with land drawn by `land(x, y)`.
+function sectionOf(land) { return { tiles: Array.from({ length: 1024 }, (_, i) => { const x = i % 32, y = Math.floor(i / 32), l = land(x, y); return { x, y, kind: l ? 'grass' : 'ocean', blocked: !l }; }) }; }
+
+test('placement: a land beast never stands on a small island or anywhere it could not retreat from; marine beasts may hold the sea', () => {
+  const island = sectionOf((x, y) => x >= 13 && x <= 18 && y >= 13 && y <= 18); // 36 tiles, cut off by the sea
+  const coast = sectionOf((x, y) => x <= 20); // a mainland reaching the west edge
+  for (const id of ['morphingBlob', 'tremorWorm']) { // they walk or burrow home: the sea traps them
+    assert.equal(placementRegions(island, id).ok[15 * 32 + 15], 0, `${id}: not on a small island`);
+    assert.equal(placementRegions(coast, id).ok[15 * 32 + 10], 1, `${id}: fine on the mainland`);
+  }
+  for (const id of ['mountainTurtle', 'nanobotKnight']) assert.equal(placementRegions(island, id).ok[15 * 32 + 15], 1, `${id} retreats through anything, water included`);
+  assert.equal(placementRegions(island, 'psychicCrystal').ok[15 * 32 + 15], 1, 'a marine beast can leave over the water');
+  const small = sectionOf((x, y) => x <= 4 && y >= 10 && y <= 20); // touches the edge but only 55 tiles
+  assert.equal(placementRegions(small, 'morphingBlob').ok[15 * 32 + 2], 0, 'too small for a big beast');
+  assert.equal(placementRegions(small, 'nanobotKnight').ok[15 * 32 + 2], 1, 'room enough for a smaller one');
+  // In the game: a fresh claim on an island section does not hold; a beast already met keeps its ground.
+  const s = freshSave(); s.seed = 'ISLE'; ensureWorldBeasts(s); for (const id of WORLD_BEAST_IDS) s.worldBeasts[id].cooldown = id === 'morphingBlob' ? 0 : 999; s.questingBeast.cooldown = 999;
+  const scale = ENCOUNTER.chanceScale; ENCOUNTER.chanceScale = 1e6;
+  try {
+    assert.equal(worldBeastFor(s, island, 9, 9), null, 'no Blob on the island'); assert.equal(s.worldBeasts.morphingBlob.active, null); assert.equal(encounterReady(s), true, 'nothing was met');
+    s.worldBeasts.morphingBlob.active = { rx: 9, ry: 9, tries: 1 }; assert.equal(worldBeastFor(s, island, 9, 9)?.worldBeast, 'morphingBlob', 'a Blob already met there stays');
+  } finally { ENCOUNTER.chanceScale = scale; }
+});
+
+test('the Questing Beast never claims a section that is nearly all ocean, and is much rarer over water', () => {
+  assert.ok(QB_SEA.none <= .95 && QB_SEA.wateryChance < .5);
+  const s = freshSave(); s.seed = 'QB-SEA'; ensureWorldBeasts(s); s.questingBeast.cooldown = 0;
+  const scale = ENCOUNTER.chanceScale; ENCOUNTER.chanceScale = 1e6;
+  try {
+    assert.equal(questingBeastFor(s, sectionOf((x) => x === 0), 9, 9), null, 'nearly all ocean');
+    assert.ok(questingBeastFor(s, sectionOf((x) => x <= 20), 9, 9), 'on land it still comes');
+  } finally { ENCOUNTER.chanceScale = scale; }
 });
