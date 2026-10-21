@@ -290,6 +290,11 @@ export function worldBeastForDungeon(save, map, dungeonId) {
   }
   if (!here) return null;
   const q = save.worldBeasts[here], entry = map.entry || { x: 4, y: 5 }, width = Number(map.width) || 32;
+  if (here === "voidWalker") {
+    const level = map.levelId || "root";
+    q.active.dungeonLevel ??= level; // one physical Walker, not a fresh-health copy on every dungeon floor
+    if (q.active.dungeonLevel !== level) { if (q.active.retreat) retreatEnded(save, here); return null; }
+  }
   const near = (t) => water.some((w) => Math.abs(w.x - t.x) + Math.abs(w.y - t.y) <= 4);
   const reachable = here === "voidWalker" ? walkerReachableTiles(map, entry) : null;
   const spots = map.tiles.filter((t) => (!reachable || reachable.has(t.y * width + t.x)) && !t.blocked && !LETHAL_KINDS.has(t.kind) && t.kind !== "dungeonWater" && t.x > 1 && t.y > 1 && t.x < width - 2 && Math.hypot(t.x - entry.x, t.y - entry.y) >= 7);

@@ -88,3 +88,12 @@ test('a changed gate invalidates cached teleport connectivity before the next la
  for(let y=1;y<g.map.height-1;y++)Object.assign(g.map.tiles[y*g.map.width+15],{kind:'floor',blocked:false});
  assert.equal(g.walkerSafeTeleport(e,20,12),true);
 });
+
+
+test('a multi-level hunt stays on its original floor instead of spawning fresh-health copies',()=>{
+ const save=saveOf(),id='dungeon:VOID-INTEGRATION:g1:5:0:levels',upper=mapOf(),lower=mapOf();upper.levelId='upper';lower.levelId='lower';
+ save.worldBeasts.voidWalker.active={dungeon:id,tries:1};const first=worldBeastForDungeon(save,upper,id);assert.ok(first);assert.equal(save.worldBeasts.voidWalker.active.dungeonLevel,'upper');
+ assert.equal(worldBeastForDungeon(save,lower,id),null);assert.equal(worldBeastForDungeon(save,upper,id).id,first.id);assert.equal(save.worldBeasts.voidWalker.active.tries,1);
+ const round=migrateSave(JSON.parse(JSON.stringify(save)));assert.equal(worldBeastForDungeon(round,lower,id),null);
+ beginDungeonRetreat(round,'voidWalker',upper);assert.equal(worldBeastForDungeon(round,lower,id),null);assert.equal(round.worldBeasts.voidWalker.active,null);assert.equal(round.worldBeasts.voidWalker.escaped,1);
+});
