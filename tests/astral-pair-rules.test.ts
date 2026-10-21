@@ -127,3 +127,18 @@ test('a Walker fighting on foot keeps fighting after the Worm is gone, until he 
   assert.equal(tickAstralFighterChoice({ tries: 0 }, 999, () => 0), false, 'only a Walker that joined an Astral fight');
   assert.equal(tickAstralFighterChoice({ astralJoined: true, retreat: {} }, 999, () => 0), false);
 });
+
+test('in the game loop, a joined Walker on foot (never seated or dismounted) gets his leave rolls; a seated one does not', async () => {
+  const { ASTRAL_FIGHTER } = await import('../src/astral-worm-mount.ts');
+  for (const status of [undefined, 'dismounted', 'mounted']) {
+    const { g, worm } = arena();
+    const walker = createCombatant('voidWalker', 4, 4, true, []); Object.assign(walker, { id: 'world-beast:voidWalker:0', worldBeast: 'voidWalker', hp: 400, maxHp: 400, aggro: true });
+    if (status === 'mounted') { Object.assign(walker, { x: worm.x, y: worm.y }); assert.equal(mountAstralWalker(worm, walker, g.astralMountHost()), true); }
+    else if (status) walker.astralMount = { status, ownerId: worm.id, reason: 'dismount' };
+    g.enemies = [worm, walker]; g.save.worldBeasts.voidWalker.active = { rx: 5, ry: 5, tries: 0, astralJoined: true };
+    const q = g.save.worldBeasts.voidWalker.active, input = { state: { x: 0, y: 0 }, consume: () => false };
+    for (let i = 0, now = 1000; i < Math.ceil(ASTRAL_FIGHTER.decideEvery / .05) + 4; i++) { g.update(.05, input, now += 50); g.player.hp = 10000; if (walker.dead) break; }
+    if (status === 'mounted') assert.equal(q.fightDecisions ?? 0, 0, 'seated: rider choices apply instead');
+    else assert.equal(q.fightDecisions, 1, `${status ?? 'never seated'}: one leave roll after the interval`);
+  }
+});
