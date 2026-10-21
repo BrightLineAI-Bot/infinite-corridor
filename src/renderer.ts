@@ -563,42 +563,54 @@ function drawSkiff(ctx, x, y, s, facing, now) {
 }
 // Release 269 (Tim: "it can turn into... a Viking longboat with a sail and a mast... the head of the Viking boat...
 // something interesting, something cosmic, something understated... [for] the Wanderer's position in this whole cosmic
-// nightmare"): while the hull guard holds, the skiff is a longer clinker-built longboat (still wood), round shields along
-// both gunwales, a striped square sail on its yard, and a prow that curls into a spiral cradling a pale crescent and one
-// faint star, its stern curling the other way.
-function drawLongboat(ctx, x, y, s, facing, now) {
-  const cx = (x + .5) * s, cy = (y + .72) * s + Math.sin(now / 480 + x) * s * .035, along = facing === "left" || facing === "right";
-  ctx.save(); ctx.translate(cx, cy); if (!along) ctx.rotate(Math.PI / 2); if (facing === "left" || facing === "up") ctx.scale(-1, 1);
-  const L = s * .95, W = s * .17; // long and slim, its sides near straight (Tim: "longer... flatter on the sides")
-  ctx.fillStyle = "#00000048"; ctx.beginPath(); ctx.ellipse(0, s * .1, L * 1.02, W * 1.3, 0, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-L, 0); ctx.quadraticCurveTo(-L * .9, -W, -L * .62, -W); ctx.lineTo(L * .62, -W); ctx.quadraticCurveTo(L * .9, -W, L, 0); ctx.quadraticCurveTo(L * .9, W, L * .62, W); ctx.lineTo(-L * .62, W); ctx.quadraticCurveTo(-L * .9, W, -L, 0); ctx.closePath();
-  ctx.fillStyle = "#6f4b2c"; ctx.fill(); ctx.strokeStyle = "#3e2614"; ctx.lineWidth = Math.max(1, s * .035); ctx.stroke();
-  ctx.save(); ctx.clip(); ctx.strokeStyle = "#8a6038"; ctx.lineWidth = Math.max(1, s * .02); // clinker strakes
-  for (const k of [-.55, 0, .55]) { ctx.beginPath(); ctx.moveTo(-L, k * W); ctx.lineTo(L, k * W); ctx.stroke(); }
+// nightmare"; then "show it in a profile in like an isometric view... we can see... the sides of a hull that are
+// somewhat submerged in the water as it rides along the water"): while the hull guard holds, the skiff is a clinker-
+// built longboat seen three-quarters on: a foreshortened deck, the near side of the hull with its strakes and a row of
+// round shields, the lower hull under a foaming waterline, a stem post curling up into a spiral that cradles a pale
+// crescent and one faint star, a lower stern curl, and an upright mast with a striped square sail. It always shows its
+// side: heading up or down it keeps its last side-on bearing.
+function drawLongboat(ctx, x, y, s, facing, now, side = "right", part = "back") {
+  const dir = facing === "left" || (facing !== "right" && side === "left") ? -1 : 1, rock = Math.sin(now / 480 + x) * s * .035;
+  const cx = (x + .5) * s, gy = (y + .6) * s + rock, L = s * .86, D = s * .13, H = s * .26, wl = H * .6;
+  ctx.save(); ctx.translate(cx, gy); ctx.scale(dir, 1);
+  // the hull's near side, from gunwale (y 0) down past the waterline, its ends sweeping up into the posts
+  const hull = () => { ctx.beginPath(); ctx.moveTo(-L, -s * .06); ctx.quadraticCurveTo(-L * .86, H, -L * .55, H); ctx.lineTo(L * .55, H); ctx.quadraticCurveTo(L * .86, H, L, -s * .06); ctx.lineTo(L * .95, 0); ctx.lineTo(-L * .95, 0); ctx.closePath(); };
+  if (part === "front") { // drawn over the Wayfarer, so they sit inside the boat
+  ctx.fillStyle = "#00000040"; ctx.beginPath(); ctx.ellipse(0, wl + s * .04, L * 1.02, s * .09, 0, 0, 7); ctx.fill();
+  hull(); ctx.fillStyle = "#6a4629"; ctx.fill();
+  ctx.save(); hull(); ctx.clip(); ctx.strokeStyle = "#8c6039"; ctx.lineWidth = Math.max(1, s * .022);
+  for (const k of [.28, .55, .82]) { ctx.beginPath(); ctx.moveTo(-L, k * H - s * .04); ctx.quadraticCurveTo(0, k * H + s * .015, L, k * H - s * .04); ctx.stroke(); } // clinker strakes
   ctx.restore();
-  for (let k = 0; k < 5; k++) for (const side of [-1, 1]) { // shields along the gunwales
-    const sx = -L * .6 + k * L * .3, sy = side * W * .95; ctx.fillStyle = ["#7b2f2a", "#c9b48c", "#2f4a5a"][(k + (side > 0 ? 1 : 0)) % 3];
-    ctx.beginPath(); ctx.arc(sx, sy, s * .065, 0, 7); ctx.fill(); ctx.strokeStyle = "#2a1a0e"; ctx.lineWidth = Math.max(1, s * .02); ctx.stroke();
+  hull(); ctx.strokeStyle = "#3e2614"; ctx.lineWidth = Math.max(1, s * .03); ctx.stroke();
+  for (let k = 0; k < 5; k++) { // the near shields, hung along the gunwale
+    const sx = -L * .5 + k * L * .25, sy = s * .03; ctx.fillStyle = ["#7b2f2a", "#c9b48c", "#2f4a5a"][k % 3];
+    ctx.beginPath(); ctx.arc(sx, sy, s * .068, 0, 7); ctx.fill(); ctx.strokeStyle = "#2a1a0e"; ctx.lineWidth = Math.max(1, s * .02); ctx.stroke();
     ctx.fillStyle = "#b9a27a"; ctx.beginPath(); ctx.arc(sx, sy, s * .022, 0, 7); ctx.fill();
   }
-  // the prow's spiral, a pale crescent within it and one faint star; the stern curls back the other way
-  const curl = (px, dir, r) => { ctx.strokeStyle = "#4a2f17"; ctx.lineWidth = Math.max(1.5, s * .045); ctx.lineCap = "round"; ctx.beginPath(); for (let t = 0; t <= 5.2; t += .2) { const rr = r * (1 - t / 6.2), a = -Math.PI / 2 + t * dir; const qx = px + dir * (r * .4) + Math.cos(a) * rr * dir, qy = Math.sin(a) * rr; t ? ctx.lineTo(qx, qy) : ctx.moveTo(px, 0); } ctx.stroke(); };
-  curl(L * .98, 1, s * .16); curl(-L * .98, -1, s * .1);
-  const hx = L * 1.07, glow = .6 + Math.sin(now / 1300) * .2;
-  ctx.fillStyle = `rgba(214,226,255,${glow * .25})`; ctx.beginPath(); ctx.arc(hx, -s * .03, s * .13, 0, 7); ctx.fill(); // a faint halo
-  ctx.fillStyle = `rgba(214,226,255,${glow})`; ctx.beginPath(); ctx.arc(hx, -s * .03, s * .085, Math.PI * .35, Math.PI * 1.65); ctx.arc(hx + s * .035, -s * .03, s * .07, Math.PI * 1.55, Math.PI * .45, true); ctx.fill();
-  ctx.fillStyle = `rgba(244,247,255,${glow})`; ctx.beginPath(); ctx.arc(hx + s * .07, -s * .12, Math.max(1, s * .022), 0, 7); ctx.fill();
-  ctx.restore();
-  // The mast and its square sail stand upright, like everything else that stands (the Wayfarer sits amidships, the mast
-  // forward of them): a striped cloth on its yard, bellied by the wind.
-  const off = L * .55 / s, mx = facing === "right" ? off : facing === "left" ? -off : 0, my = facing === "down" ? off : facing === "up" ? -off : 0;
-  const bx = (x + .5 + mx) * s, base = (y + .66 + my) * s + Math.sin(now / 480 + x) * s * .035, top = base - s * 1.25, sw = s * .62, belly = s * (.08 + Math.sin(now / 760) * .02);
-  ctx.save();
-  ctx.strokeStyle = "#3a2412"; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.moveTo(bx, base); ctx.lineTo(bx, top - s * .08); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(bx - sw / 2, top); ctx.quadraticCurveTo(bx, top - belly * .4, bx + sw / 2, top); ctx.lineTo(bx + sw / 2 + belly * .2, top + s * .72); ctx.quadraticCurveTo(bx, top + s * .72 + belly, bx - sw / 2 - belly * .2, top + s * .72); ctx.closePath();
-  ctx.fillStyle = "#e9dcbc"; ctx.fill(); ctx.save(); ctx.clip(); ctx.fillStyle = "#a33a2f"; for (let k = 0; k < 4; k++) ctx.fillRect(bx - sw / 2 + k * sw / 3.5, top - s * .1, sw / 7, s); ctx.restore();
+  // the waterline: the sea laps over the lower hull, with a line of foam
+  ctx.fillStyle = "#1d4f78b0"; ctx.beginPath(); ctx.moveTo(-L * 1.05, wl); for (let k = 0; k <= 12; k++) { const qx = -L * 1.05 + k * L * 2.1 / 12; ctx.lineTo(qx, wl + Math.sin(now / 300 + k * 1.3) * s * .012); } ctx.lineTo(L * 1.05, H + s * .08); ctx.lineTo(-L * 1.05, H + s * .08); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#e8f4ffcc"; ctx.lineWidth = Math.max(1, s * .025); ctx.beginPath(); for (let k = 0; k <= 12; k++) { const qx = -L * 1.02 + k * L * 2.04 / 12, qy = wl + Math.sin(now / 300 + k * 1.3) * s * .012; k ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy); } ctx.stroke();
+    ctx.restore(); return;
+  }
+  // the deck, foreshortened behind the near gunwale
+  ctx.beginPath(); ctx.moveTo(-L * .95, 0); ctx.quadraticCurveTo(-L * .7, -D, -L * .4, -D); ctx.lineTo(L * .4, -D); ctx.quadraticCurveTo(L * .7, -D, L * .95, 0); ctx.closePath();
+  ctx.fillStyle = "#8a6038"; ctx.fill(); ctx.strokeStyle = "#3e2614"; ctx.lineWidth = Math.max(1, s * .025); ctx.stroke();
+  ctx.strokeStyle = "#6f4b2c"; ctx.lineWidth = Math.max(1, s * .015); for (let k = -3; k <= 3; k++) { ctx.beginPath(); ctx.moveTo(k * L * .2, -D * .9); ctx.lineTo(k * L * .2, -s * .01); ctx.stroke(); } // thwarts
+  for (let k = 0; k < 5; k++) { const sx = -L * .5 + k * L * .25; ctx.fillStyle = "#4a3324"; ctx.beginPath(); ctx.ellipse(sx, -D * .95, s * .05, s * .022, 0, Math.PI, 0); ctx.fill(); } // the far shields' rims
+  // the posts: the stem rises and curls into a spiral holding a pale crescent and one faint star; the stern curls lower
+  const post = (px, up, r, sgn) => { ctx.strokeStyle = "#4a2f17"; ctx.lineWidth = Math.max(1.5, s * .045); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(px, -s * .06); ctx.quadraticCurveTo(px + sgn * s * .1, -up * .5, px + sgn * s * .06, -up); for (let t = 0; t <= 5; t += .25) { const rr = r * (1 - t / 6), a = Math.PI + t * sgn; ctx.lineTo(px + sgn * s * .06 + r + Math.cos(a) * rr * sgn, -up + Math.sin(a) * rr - (r - rr) * .2); } ctx.stroke(); };
+  post(L, s * .42, s * .1, 1); post(-L, s * .26, s * .07, -1);
+  const hx = L + s * .16, hy = -s * .44, glow = .6 + Math.sin(now / 1300) * .2;
+  ctx.fillStyle = `rgba(214,226,255,${glow * .22})`; ctx.beginPath(); ctx.arc(hx, hy, s * .11, 0, 7); ctx.fill();
+  ctx.fillStyle = `rgba(214,226,255,${glow})`; ctx.beginPath(); ctx.arc(hx, hy, s * .065, Math.PI * .35, Math.PI * 1.65); ctx.arc(hx + s * .028, hy, s * .055, Math.PI * 1.55, Math.PI * .45, true); ctx.fill();
+  ctx.fillStyle = `rgba(244,247,255,${glow})`; ctx.beginPath(); ctx.arc(hx + s * .06, hy - s * .07, Math.max(1, s * .018), 0, 7); ctx.fill();
+  // the mast and its square sail, upright, forward of the Wayfarer who sits amidships
+  const mx = L * .42, top = -s * 1.32, sw = s * .6, belly = s * (.08 + Math.sin(now / 760) * .02);
+  ctx.strokeStyle = "#3a2412"; ctx.lineWidth = Math.max(2, s * .055); ctx.beginPath(); ctx.moveTo(mx, -D * .5); ctx.lineTo(mx, top - s * .08); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(mx - sw / 2, top); ctx.quadraticCurveTo(mx, top - belly * .4, mx + sw / 2, top); ctx.lineTo(mx + sw / 2 + belly * .2, top + s * .7); ctx.quadraticCurveTo(mx, top + s * .7 + belly, mx - sw / 2 - belly * .2, top + s * .7); ctx.closePath();
+  ctx.fillStyle = "#e9dcbc"; ctx.fill(); ctx.save(); ctx.clip(); ctx.fillStyle = "#a33a2f"; for (let k = 0; k < 4; k++) ctx.fillRect(mx - sw / 2 + k * sw / 3.5, top - s * .1, sw / 7, s); ctx.restore();
   ctx.strokeStyle = "#6e5a3c"; ctx.lineWidth = Math.max(1, s * .025); ctx.stroke();
-  ctx.strokeStyle = "#3a2412"; ctx.lineWidth = Math.max(1.5, s * .045); ctx.beginPath(); ctx.moveTo(bx - sw / 2 - s * .05, top); ctx.lineTo(bx + sw / 2 + s * .05, top); ctx.stroke(); // the yard
+  ctx.strokeStyle = "#3a2412"; ctx.lineWidth = Math.max(1.5, s * .045); ctx.beginPath(); ctx.moveTo(mx - sw / 2 - s * .05, top); ctx.lineTo(mx + sw / 2 + s * .05, top); ctx.stroke(); // the yard
   ctx.restore();
 }
 // Release 269: a small REPAIR tag over a skiff the Build button would patch.
@@ -1290,7 +1302,9 @@ export function render(ctx, g, w, h, now) {
       if (g.area === "overworld" && g.save.boat?.aboard) {
         // A jump lifts the skiff with the Wayfarer (release 158: leap a rogue wave's crest).
         const shieldLeft = Number(g.save.boat.shield) || 0; // release 269: under the hull guard, the skiff is a longboat (flickering back in its last 10 s)
-        (shieldLeft > 0 && (shieldLeft > 10 || Math.floor(now / 200) % 2 === 1) ? drawLongboat : drawSkiff)(ctx, p.x, p.y - lift / s, s, p.facing, now);
+        if (p.facing === "left" || p.facing === "right") g.longboatSide = p.facing;
+        g._longboatFront = shieldLeft > 0 && (shieldLeft > 10 || Math.floor(now / 200) % 2 === 1); // the near hull goes over the Wayfarer, below
+        (g._longboatFront ? drawLongboat : drawSkiff)(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right");
         if (g.mendTarget?.()) repairTag(ctx, p.x, p.y - .9 - lift / s, s);
         // Hull gauge under the skiff: green to amber to red as the hull takes damage.
         const hull = Math.max(0, Math.min(1, (g.save.boat.hull || 0) / BOAT.maxHull)), bx = (p.x + .08) * s, by = (p.y + 1.12) * s, bw = s * .84, bh = Math.max(3, s * .09);
@@ -1316,6 +1330,7 @@ export function render(ctx, g, w, h, now) {
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
+      if (g._longboatFront && g.area === "overworld" && g.save.boat?.aboard) drawLongboat(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right", "front"); // release 269
       // Poisoned (release 165): the Wayfarer pulses green while poison lasts.
       if (g.save.elites?.status?.poison > 0) { const pulse = .5 + .5 * Math.sin(now / 160); ctx.fillStyle = `rgba(120,230,90,${.12 + pulse * .22})`; ctx.strokeStyle = `rgba(150,255,110,${.35 + pulse * .45})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y - lift / s + .35) * s, s * (.42 + pulse * .08), s * (.55 + pulse * .08), 0, 0, 7); ctx.fill(); ctx.stroke(); }
       if (now < (p.attackUntil || 0)) {
