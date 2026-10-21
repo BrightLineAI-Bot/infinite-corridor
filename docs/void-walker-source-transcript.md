@@ -83,6 +83,16 @@ One detail for multi-level dungeons: if he’s on a lower floor, should reaching
 Yeah, I know he's done once he reaches a dungeon door where he's gone. He's retreated, he doesn't travel the same way that we do. He is obviously more control over the corridor and the void
 ```
 
+## S8 — ocean encounters and no ocean supernova scar
+
+- Author: Tim (owner), user message `Sentinel_60d57e5d3c70819195dfe31858f42a90`.
+- Recorded from the parent-provided conversation evidence on 2026-10-21 UTC (2026-10-20 UTC-04); exact delivery timestamp was not supplied.
+- This later ocean exception narrows earlier universal terrain/aftermath readings; it also explicitly covers the Psychic Crystal. Exact message:
+
+```text
+So, as far as locations, I don't know, I don't think the creatures can appear in the ocean. It's probably not the, it's probably probably already noted, but the void Walker can appear in the ocean. When he does his Supernova the ocean, it doesn't turn nothing happens to the ocean. I mean, it shows the Supernova. Still, it takes place. The attack still takes place, but nothing happens to it. You know, it doesn't leave like a scar on the ground or anything like that. You can do a Supernova on the either. The ocean, the void Walker, and the psychic crystal both can appear in the ocean. Like the void Walker, what have his own little boat? The void Walker will have his own little boat when he appears on the on the ocean. And hey, if he appears in an ocean tile, and then the crystal will just, you know, just float when it appears in the ocean. And rather than making earth that like earth attacks, it will make like water attacks.
+```
+
 ## Earlier repository-recorded context, not a new verbatim user transcript
 
 The existing `HERMES_PROJECT_FIELD_GUIDE.md` records overworld and dungeon appearances, dungeon roaming, and a dungeon-entrance retreat/home for the future Void Walker. Those are retained as prior project requirements; the full earlier owner transcripts are not reproduced here. The Crystal's independent wall-phasing permission does not by itself authorize permanent Walker wall phasing.

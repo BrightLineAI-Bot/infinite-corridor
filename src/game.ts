@@ -68,7 +68,7 @@ import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, 
 import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
 import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.ts";
 import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
-import { WORLD_BEASTS, BEAST_HOMES, RETREAT, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain } from "./world-beasts.ts";
+import { WORLD_BEASTS, BEAST_HOMES, RETREAT, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.ts";
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
@@ -360,11 +360,12 @@ export function tileOpen(map, width, x, y) {
   }
   return true;
 }
-export function footprintOpen(map, width, x, y, allowLethalTerrain=false) {
+export function footprintOpen(map, width, x, y, allowLethalTerrain=false, allowMarineTerrain=false) {
   const left=x+.24,right=x+.76,top=y+.5,bottom=y+.88,height=map.tiles.length/width,overlaps=(a,b,c,d)=>right>a&&left<b&&bottom>c&&top<d;
   for(let ty=Math.floor(top);ty<=Math.floor(bottom-1e-6);ty++)for(let tx=Math.floor(left);tx<=Math.floor(right-1e-6);tx++){
     if(tx<0||ty<0||tx>=width||ty>=height)return false;
-    const tile=map.tiles[ty*width+tx],lethal=allowLethalTerrain&&["canyon","river","dungeonWater",...DEEP_WATER].includes(tile?.kind);if(!tile||tile.blocked&&!lethal)return false;
+    const tile=map.tiles[ty*width+tx],marine=allowMarineTerrain&&isMarineTile(tile),lethal=allowLethalTerrain&&["canyon","river","dungeonWater",...DEEP_WATER].includes(tile?.kind);
+    if(!tile||marine&&!marineTileOpen(tile)||tile.blocked&&!lethal&&!marine)return false;
     if(!["shackWall","districtWall"].includes(tile.structure)||!tile.wallSides?.length)continue;
     const thickness=.22;
     for(const side of tile.wallSides){
@@ -425,19 +426,19 @@ export function relocateIfStranded(entity, map, width) {
   }
   return false;
 }
-export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false, onStep=null) {
+export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false, onStep=null, allowMarineTerrain=false) {
   let moved = false,
     steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 0.16)),
     sx = dx / steps,
     sy = dy / steps;
   for (let i = 0; i < steps; i++) {
-    if (sx && footprintOpen(map, width, entity.x + sx, entity.y, allowLethalTerrain) && canStep(entity, map, width, entity.x, entity.y, entity.x + sx, entity.y)) {
+    if (sx && footprintOpen(map, width, entity.x + sx, entity.y, allowLethalTerrain, allowMarineTerrain) && canStep(entity, map, width, entity.x, entity.y, entity.x + sx, entity.y)) {
       const fromX = entity.x;
       entity.x += sx;
       onStep?.(fromX, entity.y, entity.x, entity.y);
       moved = true;
     }
-    if (sy && footprintOpen(map, width, entity.x, entity.y + sy, allowLethalTerrain) && canStep(entity, map, width, entity.x, entity.y, entity.x, entity.y + sy)) {
+    if (sy && footprintOpen(map, width, entity.x, entity.y + sy, allowLethalTerrain, allowMarineTerrain) && canStep(entity, map, width, entity.x, entity.y, entity.x, entity.y + sy)) {
       const fromY = entity.y;
       entity.y += sy;
       onStep?.(entity.x, fromY, entity.x, entity.y);
@@ -450,25 +451,76 @@ function boundedChaseStep(entity,player,map,width,radius=12){
   const sx=Math.round(entity.x),sy=Math.round(entity.y),gx=Math.round(player.x),gy=Math.round(player.y),start=`${sx},${sy}`,queue=[[sx,sy]],seen=new Set([start]),first=new Map([[start,null]]);let best=[sx,sy],bestDistance=Math.hypot(gx-sx,gy-sy);
   for(let index=0;index<queue.length&&index<625;index++){
     const [x,y]=queue[index],distance=Math.hypot(gx-x,gy-y);if(distance<bestDistance){best=[x,y];bestDistance=distance}if(x===gx&&y===gy){best=[x,y];break}
-    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,key=`${nx},${ny}`;if(seen.has(key)||Math.abs(nx-sx)>radius||Math.abs(ny-sy)>radius||!footprintOpen(map,width,nx,ny))continue;seen.add(key);queue.push([nx,ny]);first.set(key,first.get(`${x},${y}`)||[nx,ny])}
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,key=`${nx},${ny}`;if(seen.has(key)||Math.abs(nx-sx)>radius||Math.abs(ny-sy)>radius||!footprintOpen(map,width,nx,ny,false,entity._marineTraversal===true))continue;seen.add(key);queue.push([nx,ny]);first.set(key,first.get(`${x},${y}`)||[nx,ny])}
   }
   return first.get(`${best[0]},${best[1]}`)||null;
 }
 
+// Runtime navigation permission is derived from the current area/kind, never from player boat ownership or
+// restored actor flags. The presentation flag is recomputed after movement and is not durable boat state.
+function refreshMarineBeast(entity, map, width, area) {
+  if (!["voidWalker", "psychicCrystal"].includes(entity?.kind)) return false;
+  const capable = area === "overworld";
+  Object.defineProperty(entity, "_marineTraversal", { value: capable, writable: true, configurable: true, enumerable: false });
+  entity.marine = capable && marineAt(map, width, entity.x, entity.y);
+  return capable;
+}
+function marineAt(map, width, x, y) {
+  const ix = Math.floor(x + .5), iy = Math.floor(y + .75), height = Math.floor((map?.tiles?.length || 0) / width);
+  return [x, y].every(Number.isFinite) && ix >= 0 && iy >= 0 && ix < width && iy < height && isMarineTile(map.tiles[iy * width + ix]);
+}
+function marinePointOpen(map, width, x, y, projectile = false) {
+  const ix = Math.floor(x), iy = Math.floor(y), height = Math.floor((map?.tiles?.length || 0) / width);
+  if (![x, y].every(Number.isFinite) || ix < 0 || iy < 0 || ix >= width || iy >= height) return false;
+  const tile = map.tiles[iy * width + ix];
+  return isMarineTile(tile) ? marineTileOpen(tile) : (projectile ? projectileTileOpen : tileOpen)(map, width, x, y);
+}
+// Read-only terrain preview for one adjacent section boundary. No visits, discoveries, hunts or actors advance.
+// Interior-only rafts/wayglass sites are irrelevant to edge legality. Pinned landscape, hamlets, trails, fallen
+// crossings and durable scars match the corresponding production load before any boundary can be crossed.
+export function walkerCrossingMap(save, rx, ry) {
+  const map = generateRegion(save.seed, rx, ry, save.worldGeneration), seen = save.atlas?.[`${rx},${ry}`];
+  applyLandscape(map, save.seed, rx, ry, { explored: !!seen && !seen.landscapeVersion, version: seen?.landscapeVersion || LANDSCAPE_VERSION,
+    openSea: !seen ? OPEN_SEA_VERSION : seen.seaVersion || 0, buoy: !save.checkpoints?.[`${rx},${ry}`] || save.checkpoints[`${rx},${ry}`].name === "Lighthouse Buoy",
+    hamlet: (!seen || !!seen.hamletVersion) && hamletSection(save.seed, rx, ry) });
+  if (!seen || seen.hamletVersion) applyHamlet(map, save.seed, rx, ry, seen?.hamletVersion || HAMLET_VERSION);
+  if (!seen || seen.travelVersion) applyTrails(map, save.seed, rx, ry);
+  const key = `overworld:${rx}:${ry}:g${save.worldGeneration}`, saved = save.session?.areas?.[key];
+  for (const o of map.objects || []) if (saved?.objects?.[o.id]) Object.assign(o, saved.objects[o.id]);
+  applyFallenTreeCrossings(map);
+  // Replay only this area's detached record, never normalize/mutate the live save while probing a neighbor.
+  const row = save.voidScars?.areas?.[key], overlay = { voidScars: { ...save.voidScars, areas: row ? { [key]: structuredClone(row) } : {} } };
+  applyVoidScars(overlay, map, key);
+  return map;
+}
+// At most 32 marine edge pairs plus the old ordinary gate. Every landing keeps its exact cross-edge coordinate.
+export function walkerSectionCrossings(map, neighbor, side, gate = null) {
+  if (map?.tiles?.length !== 1024 || neighbor?.tiles?.length !== 1024 || !["north", "south", "east", "west"].includes(side)) return [];
+  const pair = n => side === "east" ? [{ x: 31, y: n }, { x: 0, y: n }] : side === "west" ? [{ x: 0, y: n }, { x: 31, y: n }] :
+    side === "south" ? [{ x: n, y: 31 }, { x: n, y: 0 }] : [{ x: n, y: 0 }, { x: n, y: 31 }];
+  const out = [], values = [...new Set([...(gate ? [side === "east" || side === "west" ? gate.y : gate.x] : []), ...Array.from({ length: 32 }, (_, i) => i)])];
+  for (const n of values) {
+    const [at, entry] = pair(n), a = tileUnder(map, 32, at.x, at.y), b = tileUnder(neighbor, 32, entry.x, entry.y), ordinaryGate = gate && at.x === gate.x && at.y === gate.y;
+    if (!(ordinaryGate || marineTileOpen(a) && marineTileOpen(b)) || !walkerGroundPositionOpen(map, 32, at.x, at.y, true) || !walkerGroundPositionOpen(neighbor, 32, entry.x, entry.y, true)) continue;
+    if (!safeVoidScarTransition(a, b) && Math.abs((a?.elev || 0) - (b?.elev || 0)) > 1) continue;
+    out.push({ ...at, entry });
+  }
+  return out;
+}
 // Void Walker ground navigation stays separate from Crystal phasing and from its explicit rift teleports.
 export const WALKER_ROUTE = { nodes: 625, distance: 8, segment: .125, speed: 1.35, retry: 1, pause: .2, recent: 8, jumpLift: 1.4, jumpTime: .38 };
-export function walkerGroundPositionOpen(map, width, x, y) {
-  if (!Number.isFinite(x) || !Number.isFinite(y) || !map?.tiles || !Number.isInteger(width) || width < 1 || !footprintOpen(map, width, x, y)) return false;
+export function walkerGroundPositionOpen(map, width, x, y, allowMarineTerrain = false) {
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !map?.tiles || !Number.isInteger(width) || width < 1 || !footprintOpen(map, width, x, y, false, allowMarineTerrain)) return false;
   for (let ty = Math.floor(y + .5); ty <= Math.floor(y + .88 - 1e-6); ty++) for (let tx = Math.floor(x + .24); tx <= Math.floor(x + .76 - 1e-6); tx++)
-    if (LETHAL_KINDS.has(map.tiles[ty * width + tx]?.kind)) return false;
+    if (LETHAL_KINDS.has(map.tiles[ty * width + tx]?.kind) && !(allowMarineTerrain && marineTileOpen(map.tiles[ty * width + tx]))) return false;
   return true;
 }
-export function moveWalkerGround(entity, dx, dy, map, width) {
+export function moveWalkerGround(entity, dx, dy, map, width, allowJump = false) {
   if (![dx, dy].every(Number.isFinite) || Math.max(Math.abs(dx), Math.abs(dy)) > 4) return false;
   const n = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / WALKER_ROUTE.segment)), sx = dx / n, sy = dy / n; let moved = false;
   for (let i = 0; i < n; i++) {
-    if (sx && walkerGroundSegmentOpen(entity, map, width, entity, { x: entity.x + sx, y: entity.y })) { entity.x += sx; moved = true; }
-    if (sy && walkerGroundSegmentOpen(entity, map, width, entity, { x: entity.x, y: entity.y + sy })) { entity.y += sy; moved = true; }
+    if (sx && walkerGroundSegmentOpen(entity, map, width, entity, { x: entity.x + sx, y: entity.y }, allowJump)) { entity.x += sx; moved = true; }
+    if (sy && walkerGroundSegmentOpen(entity, map, width, entity, { x: entity.x, y: entity.y + sy }, allowJump)) { entity.y += sy; moved = true; }
   }
   return moved;
 }
@@ -485,7 +537,7 @@ export function walkerGroundSegmentOpen(entity, map, width, from, to, allowJump 
   let last = from;
   for (let i = 0; i <= steps; i++) {
     const at = { x: from.x + (to.x - from.x) * i / steps, y: from.y + (to.y - from.y) * i / steps };
-    if (!walkerGroundPositionOpen(map, width, at.x, at.y)) return false;
+    if (!walkerGroundPositionOpen(map, width, at.x, at.y, entity?._marineTraversal === true)) return false;
     const a = tileUnder(map, width, last.x, last.y), b = tileUnder(map, width, at.x, at.y);
     // Retreat may jump one ordinary level, including a safe one-level descent. It never jumps a wall,
     // lethal floor, or a larger cliff. Genuine consumed terrain keeps its existing shared scar semantics.
@@ -641,7 +693,7 @@ export function advanceWalkerRetreatSearch(entity, state) {
 // Compact terrain comparisons invalidate an incremental search as well as a finished path when a gate, ramp,
 // scar or door changes. This does not run a second graph search or spend another node-expansion budget.
 const walkerTerrainFlag = t => !t ? -1 : (t.blocked ? 1 : 0) | (LETHAL_KINDS.has(t.kind) ? 2 : 0) | (t.slope ? 4 : 0) | (t.voidScar ? 8 : 0) | (t.pit ? 16 : 0) |
-  (t.kind === "void" || t.kind === "sealedGate" ? 32 : 0) | (["districtWall", "shackWall"].includes(t.structure) ? 64 | (t.wallSides || []).reduce((n, side) => n | ({ north: 128, east: 256, south: 512, west: 1024 }[side] || 0), 0) : 0);
+  (t.kind === "void" || t.kind === "sealedGate" ? 32 : 0) | (marineTileOpen(t) ? 2048 : 0) | (["districtWall", "shackWall"].includes(t.structure) ? 64 | (t.wallSides || []).reduce((n, side) => n | ({ north: 128, east: 256, south: 512, west: 1024 }[side] || 0), 0) : 0);
 function walkerRetreatTopology(map, width, targets, old) {
   const tiles = map.tiles, doors = targets.map(p => `${p.x},${p.y}`).join(";");
   let changed = !old || old.width !== width || old.landscape !== !!map.landscape || old.doors !== doors || old.flags.length !== tiles.length;
@@ -1129,13 +1181,13 @@ export function attackInRange(enemy, player) {
     enemyDangerRadius(enemy)
   );
 }
-export function hasLineOfSight(enemy, player, map, width, projectile=false) {
+export function hasLineOfSight(enemy, player, map, width, projectile=false, allowMarineTerrain=false) {
   const dx = player.x - enemy.x,
     dy = player.y - enemy.y,
     steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) * 4));
   for (let i = 1; i < steps; i++)
     if (
-      !(projectile?projectileTileOpen:tileOpen)(
+      !(allowMarineTerrain ? (m, w, x, y) => marinePointOpen(m, w, x, y, projectile) : projectile?projectileTileOpen:tileOpen)(
         map,
         width,
         enemy.x + (dx * i) / steps,
@@ -1536,7 +1588,7 @@ export class Game {
         const q = regionalThreat(this.rx, this.ry);
         for (const e of this.enemies) {
           if (e.foundryValidated) continue;
-          if (e.farArrayBoss) continue; // Far Array bosses are tuned to the Wayfarer instead
+          if (e.farArrayBoss || e.worldBeast === "voidWalker" && e.retreating) continue; // A crossing retreat carries its existing health; never rebirth/retune it on a fresh section.
           e.threatRing = q.ring;
           e.maxHp = Math.round(e.maxHp * q.hpMultiplier);
           e.hp = e.maxHp;
@@ -1583,7 +1635,7 @@ export class Game {
         const q = regionalThreat(this.rx, this.ry);
         for (const e of this.enemies) {
           if (e.foundryValidated) continue;
-          if (e.farArrayBoss) continue; // Far Array bosses are tuned to the Wayfarer instead
+          if (e.farArrayBoss || e.worldBeast === "voidWalker" && e.retreating) continue; // A crossing retreat carries its existing health; never rebirth/retune it on a fresh section.
           e.threatRing = q.ring;
           e.maxHp = Math.round(e.maxHp * q.hpMultiplier);
           e.hp = e.maxHp;
@@ -1946,6 +1998,7 @@ export class Game {
     const areaWidth = mapWidth(this.map, area),
       playerRelocated = !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
     for (const e of this.enemies) {
+      refreshMarineBeast(e, this.map, areaWidth, area);
       if (isDungeonRoamer(e, area)) {
         // Walls, water and isolated pockets are valid saved flight positions. Only repair invalid map bounds.
         e.x = Math.max(0, Math.min(areaWidth - 1, Number.isFinite(e.x) ? e.x : this.map.entry?.x ?? 4));
@@ -1960,7 +2013,16 @@ export class Game {
           candidates.sort((a, b) => Math.hypot(a.x - (Number.isFinite(e.x) ? e.x : 0), a.y - (Number.isFinite(e.y) ? e.y : 0)) - Math.hypot(b.x - (Number.isFinite(e.x) ? e.x : 0), b.y - (Number.isFinite(e.y) ? e.y : 0)));
           if (candidates.length) Object.assign(e, candidates[0]);
         }
+      } else if (e._marineTraversal) {
+        // A valid ocean/shore position is exact-resume state, including a disconnected unfinished retreat.
+        const open = (x, y) => e.kind === "voidWalker" ? walkerGroundPositionOpen(this.map, areaWidth, x, y, true) : footprintOpen(this.map, areaWidth, x, y, !!e.flying, true);
+        if (!Number.isFinite(e.x) || !Number.isFinite(e.y) || !open(e.x, e.y)) {
+          const candidates = this.map.tiles.filter(t => open(t.x, t.y));
+          candidates.sort((a, b) => Math.hypot(a.x - (Number.isFinite(e.x) ? e.x : 0), a.y - (Number.isFinite(e.y) ? e.y : 0)) - Math.hypot(b.x - (Number.isFinite(e.x) ? e.x : 0), b.y - (Number.isFinite(e.y) ? e.y : 0)));
+          if (candidates.length) { e.x = candidates[0].x; e.y = candidates[0].y; }
+        }
       } else if (!e.seaKind) relocateIfStranded(e, this.map, areaWidth);
+      refreshMarineBeast(e, this.map, areaWidth, area);
     }
     if (playerRelocated)
       this.message =
@@ -2011,6 +2073,8 @@ export class Game {
       this.save.explored[`${this.rx},${this.ry}`] = true;recordSectionVisit(this.save,this.rx,this.ry,this.map);
   }
   recoverPosition() {
+    // Match load-time exact resume: pausing aboard a valid skiff must not relocate its sailor onto land.
+    if (this.area === "overworld" && aboard(this.save) && footprintSailable(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)) return false;
     const moved = relocateIfStranded(
       this.player,
       this.map,
@@ -2805,18 +2869,29 @@ export class Game {
   }
   walkerSafeTeleport(e, x, y) {
     const map = this.map, width = mapWidth(map, this.area), height = mapHeight(map, this.area);
-    if (![x, y].every(Number.isFinite) || x < 0 || y < 0 || x > width - 1 || y > height - 1 || !walkerGroundPositionOpen(map, width, x, y)) return false;
+    const marine = refreshMarineBeast(e, map, width, this.area);
+    if (![x, y].every(Number.isFinite) || x < 0 || y < 0 || x > width - 1 || y > height - 1 || !walkerGroundPositionOpen(map, width, x, y, marine)) return false;
     if (this.area === "dungeon") {
       const connected = this.walkerLandingGraph();
       for (let ty = Math.floor(y + .5); ty <= Math.floor(y + .88 - 1e-6); ty++) for (let tx = Math.floor(x + .24); tx <= Math.floor(x + .76 - 1e-6); tx++) if (!connected.has(ty * width + tx)) return false;
     }
     if (this.enemies.some(other => other !== e && !other.dead && Math.hypot(other.x - x, other.y - y) < .65)) return false;
     if (Math.hypot(this.player.x - x, this.player.y - y) < .85) return false;
-    e.x = x; e.y = y; this._walkerRoutes?.delete(e); return true;
+    e.x = x; e.y = y; refreshMarineBeast(e, map, width, this.area); this._walkerRoutes?.delete(e); return true;
+  }
+  walkerExitTargets(e, route) {
+    const width = mapWidth(this.map, this.area), gate = { x: Math.max(0, Math.min(width - 1, e.fleeTo.x)), y: Math.max(0, Math.min(mapHeight(this.map, this.area) - 1, e.fleeTo.y)) };
+    if (this.area !== "overworld" || !(route.marineSection ??= this.map.tiles.some(isMarineTile))) return [gate];
+    const side = e.fleeTo.side, dir = { east: [1, 0], west: [-1, 0], south: [0, 1], north: [0, -1] }[side];
+    if (!dir) return [];
+    const key = `${this.rx + dir[0]},${this.ry + dir[1]}`;
+    if (route.crossingKey !== key) { route.crossingKey = key; route.crossingMap = walkerCrossingMap(this.save, this.rx + dir[0], this.ry + dir[1]); }
+    return walkerSectionCrossings(this.map, route.crossingMap, side, gate);
   }
   walkWalkerRoute(e, s, dt, retreat = false) {
     if (!(dt > 0)) return;
     const width = mapWidth(this.map, this.area), routes = this._walkerRoutes ||= new WeakMap();
+    refreshMarineBeast(e, this.map, width, this.area);
     let r = routes.get(e);
     if (!r || r.retreat !== retreat || r.map !== this.map) { r = { map: this.map, retreat, route: [], recent: [], seq: 0, wait: 0, topologyTime: 0 }; routes.set(e, r); }
     s.vel = { x: 0, y: 0 }; r.wait = Math.max(0, r.wait - dt);
@@ -2825,8 +2900,7 @@ export class Game {
       e.untargetable = true;
       // Overworld sections retain their existing home/exit-leg policy; only a real dungeon mouth ends a
       // found-home leg. Outside targets clamp to the safe gate tile, never teleport across the boundary.
-      targets = this.area === "dungeon" || e.fleeTo.home || e.fleeTo.nearestDoor ? walkerRetreatDoors(this.map, this.area) : [{
-        x: Math.max(0, Math.min(width - 1, e.fleeTo.x)), y: Math.max(0, Math.min(mapHeight(this.map, this.area) - 1, e.fleeTo.y)) }];
+      targets = this.area === "dungeon" || e.fleeTo.home || e.fleeTo.nearestDoor ? walkerRetreatDoors(this.map, this.area) : this.walkerExitTargets(e, r);
       r.topologyTime -= dt;
       // At most one compact terrain scan per second. The very next movement edge is still checked every
       // frame, and Supernova's terrain callback invalidates all routes immediately.
@@ -2836,7 +2910,7 @@ export class Game {
         r.topology = topology; r.topologyTime = WALKER_ROUTE.retry;
       }
       if (e.fleeFade != null) {
-        const atDoor = targets.some(p => Math.hypot(e.x - p.x, e.y - p.y) < .00001 && walkerGroundPositionOpen(this.map, width, p.x, p.y));
+        const atDoor = targets.some(p => Math.hypot(e.x - p.x, e.y - p.y) < .00001 && walkerGroundPositionOpen(this.map, width, p.x, p.y, e._marineTraversal));
         if (!atDoor) { delete e.fleeFade; r.route = []; r.search = null; }
         else { e.hopLift = 0; e.fleeFade = Math.max(0, e.fleeFade - dt / RETREAT.fade); if (!e.fleeFade) e.fleeDone = true; return; }
       }
@@ -2853,7 +2927,9 @@ export class Game {
       if (plan.status === "pending") return;
       r.search = null; r.route = plan.route;
       if (retreat && plan.status === "reached") {
-        r.target = plan.target; e.fleeTo = { ...e.fleeTo, ...plan.target };
+        r.target = plan.target;
+        const crossing = targets.find(p => p.x === plan.target.x && p.y === plan.target.y)?.entry;
+        e.fleeTo = { ...e.fleeTo, ...plan.target, ...(crossing ? { crossingEntry: { ...crossing } } : {}) };
         if (!r.route.length) { arrive(); return; }
       }
       if (!r.route.length) { r.wait = WALKER_ROUTE.retry; return; } // no path means wait safely, never rift or despawn
@@ -2865,8 +2941,9 @@ export class Game {
     if (retreat && !r.jump && !walkerGroundSegmentOpen(e, this.map, width, e, to)) r.jump = { from: { x: e.x, y: e.y }, to, distance: d };
     const jump = r.jump, step = Math.min(d, jump ? jump.distance * dt / Math.max(WALKER_ROUTE.jumpTime, jump.distance / speed) : speed * dt);
     if (d > 1e-8) {
-      const x = e.x, y = e.y, body = retreat ? { ...e, isPlayer: true, jumping: true, flying: false, phases: false } : e;
-      moveAxis(body, dx / d * step, dy / d * step, this.map, width); e.x = body.x; e.y = body.y;
+      const x = e.x, y = e.y;
+      moveWalkerGround(e, dx / d * step, dy / d * step, this.map, width, retreat);
+      refreshMarineBeast(e, this.map, width, this.area);
       s.vel = { x: (e.x - x) / dt, y: (e.y - y) / dt }; if (Math.abs(dx) > .001) e.facingX = dx > 0 ? 1 : -1;
     }
     if (jump) {
@@ -2893,6 +2970,10 @@ export class Game {
       open: (x, y) => footprintOpen(map, width, x, y),
       tileOpen: (x, y) => tileOpen(map, width, x, y),
       projectileOpen: (x, y) => projectileTileOpen(map, width, x, y),
+      marineOpen: (x, y) => [x, y].every(Number.isFinite) && x >= 0 && y >= 0 && x <= width - 1 && y <= height - 1 && footprintOpen(map, width, x, y, false, game.area === "overworld"),
+      marineTileOpen: (x, y) => game.area === "overworld" ? marinePointOpen(map, width, x, y) : tileOpen(map, width, x, y),
+      marineProjectileOpen: (x, y) => game.area === "overworld" ? marinePointOpen(map, width, x, y, true) : projectileTileOpen(map, width, x, y),
+      oceanAt: (x, y) => game.area === "overworld" && marineAt(map, width, x, y),
       safeTeleport: (e, x, y) => game.walkerSafeTeleport(e, x, y),
       walkerPatrol: (e, s) => game.walkWalkerRoute(e, s, dt),
       walkerRetreat: (e, s) => game.walkWalkerRoute(e, s, dt, true),
@@ -2902,16 +2983,17 @@ export class Game {
         if (result.changed) { game._walkerLandingGraph = null; game._walkerRoutes = new WeakMap(); map.wallGlints = (map.wallGlints || []).filter(q => map.tiles[q.y * width + q.x]?.blocked); }
         return result;
       },
-      los: (a, b, projectile = false) => hasLineOfSight(a, b, map, width, projectile),
+      los: (a, b, projectile = false) => hasLineOfSight(a, b, map, width, projectile, game.area === "overworld" && ["voidWalker", "psychicCrystal"].includes(a?.kind)),
       move(e, dx, dy, opts = {}) {
-        if (e.kind === "voidWalker") return moveWalkerGround(e, dx, dy, map, width);
-        if (opts.phase || isDungeonRoamer(e, game.area)) { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)), moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
-        return moveAxis(e, dx, dy, map, width, !!e.flying);
+        const marine = refreshMarineBeast(e, map, width, game.area);
+        if (e.kind === "voidWalker") { const moved = moveWalkerGround(e, dx, dy, map, width); refreshMarineBeast(e, map, width, game.area); return moved; }
+        if (isDungeonRoamer(e, game.area) || opts.phase && e.kind !== "psychicCrystal") { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)), moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
+        const moved = moveAxis(e, dx, dy, map, width, !!e.flying, null, marine); refreshMarineBeast(e, map, width, game.area); return moved;
       },
       // The dungeon is the Crystal's domain: patrol and combat use the same bounded wall-phasing movement.
       roamMove(e, dx, dy) { return this.move(e, dx, dy); },
       roamWork: (n) => { game.performanceStats.pathfindingWork += n; },
-      detour(e, speed) { const step = boundedChaseStep(e, p, map, width); if (step) { const px = step[0] - e.x, py = step[1] - e.y, m = Math.hypot(px, py) || 1; (e.kind === "voidWalker" ? moveWalkerGround : moveAxis)(e, px / m * speed, py / m * speed, map, width, !!e.flying); } },
+      detour(e, speed) { const step = boundedChaseStep(e, p, map, width); if (step) { const px = step[0] - e.x, py = step[1] - e.y, m = Math.hypot(px, py) || 1; this.move(e, px / m * speed, py / m * speed); } },
       hurt: (source, amount, options) => !(sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) && game.packHurt(source, amount, options, now),
       grab(source) { if (now < (p.dodgeUntil || 0) || now <= (p.invulnerableUntil || 0)) return false; p.heldUntil = now + CRYSTAL.grabHold * 1000 + 100; p.heldBy = source.id; game.message = "It has you. Struggle: dodge, again and again!"; return true; }, // release 249
       held(source) { return now < (p.heldUntil || 0) && p.heldBy === source.id; },
@@ -2968,7 +3050,7 @@ export class Game {
       if (!e.fleeDone) continue;
       (gone ||= []).push(e);
       if (e.fleeTo.home) { const line = retreatEnded(this.save, id); this.message = line; journalOnce(this.save, `world-beast-home:${id}:${this.save.worldBeasts[id].cycle}`, line, "World beasts"); }
-      else { retreatCrossed(this.save, id, e.fleeTo.side); this.message = `${B.name} flees ${e.fleeTo.side}, out of this section. Follow it, or it is gone.`; }
+      else { retreatCrossed(this.save, id, e.fleeTo.side, id === "voidWalker" ? e.fleeTo.crossingEntry : null, e); this.message = `${B.name} flees ${e.fleeTo.side}, out of this section.${id === "voidWalker" ? " Its retreat continues there when you follow." : " Follow it, or it is gone."}`; }
     }
     if (gone) this.enemies = this.enemies.filter((e) => !gone.includes(e));
   }
@@ -3025,7 +3107,12 @@ export class Game {
       if(area === "dungeon" && !c.passiveBehavior && !c.ambient && !c.worldBeast) tuneDungeonThreat(c);
       // Every monster hits harder (Tim, 2026-10-16). Foes tuned to the Wayfarer (the Questing Beast, Far Array bosses) are exempt.
       if(c.damage>0&&!c.questingBeast&&!c.worldBeast&&!c.farArrayBoss)c.damage=Math.max(1,Math.round(c.damage*ENEMY_DAMAGE_SCALE));
+      if (e.kind === "voidWalker" && e.retreating && e.retreatVitals) {
+        const v = e.retreatVitals;
+        if ([v.hp, v.maxHp, v.damage].every(Number.isFinite) && v.hp > 0 && v.maxHp >= v.hp && v.damage >= 0) Object.assign(c, { hp: v.hp, maxHp: v.maxHp, damage: v.damage });
+      }
       ensureAI(c);
+      refreshMarineBeast(c, this.map, mapWidth(this.map, area), area);
       return c;
   }
   prepareDungeonCompletion() {
@@ -3709,7 +3796,7 @@ export class Game {
       if(e.skirmishId&&!e.skirmishProvoked){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&updateSkirmisher(e,this.enemies,this.map,dt,skirmishHooks))continue}
       // A retreating Walker is harmless and must traverse settlements normally. Sanctuary combat
       // displacement must neither relocate it nor freeze its retreat while the player rests inside.
-      if(e.packKind){this.performanceStats.activeEnemies++;const zone=e.kind==="voidWalker"&&(e.retreating||e.fleeTo)?null:packWorld.sanctuary;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(zone)enforceSanctuary(e,zone);continue}
+      if(e.packKind){refreshMarineBeast(e,this.map,width,this.area);this.performanceStats.activeEnemies++;const zone=e.kind==="voidWalker"&&(e.retreating||e.fleeTo)?null:packWorld.sanctuary;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(zone)enforceSanctuary(e,zone);continue}
       if(e.seaKind){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateSeaCreature(e,seaWorld,dt);continue}
       if(e.encounterGroup&&!this.activatedEncounterGroups.has(e.encounterGroup)){this.activatedEncounterGroups.add(e.encounterGroup);this.performanceStats.encounterActivations++}
       let simulationDt=dt;

@@ -122,7 +122,7 @@ test('saved scar replays beneath a subsequently moved object or actor without ch
   assert.deepEqual(player, { x: 7.2, y: 5.1 }); assert.deepEqual(restored.objects, original);
 });
 
-test('native width-less overworld sections persist wall, thin building wall and hazardous-ground scars across reloads', () => {
+test('native width-less overworld sections persist wall scars while preserving ocean across reloads', () => {
   const save = freshSave(), map = room(32, 32);
   delete map.width; delete map.height;
   Object.assign(tile(map, 15, 15), { kind: 'districtWall', blocked: false, structure: 'districtWall', buildingId: 'house', wallSides: ['north', 'west'] });
@@ -130,7 +130,7 @@ test('native width-less overworld sections persist wall, thin building wall and 
   map.objects.push({ id: 'house', kind: 'architecturalBuilding', x: 15, y: 15, state: 'quiet', bounds: { x: 15, y: 15, w: 2, h: 2 } });
   const base = structuredClone(map), objects = structuredClone(map.objects);
   assert.equal(consumeVoidTerrain(save, map, surfaceKey, { x: 15, y: 15 }, 4).ok, true);
-  assertScar(tile(map, 15, 15)); assertScar(tile(map, 16, 15)); assert.equal(footprintHazard(map, 32, 16, 15), null);
+  assertScar(tile(map, 15, 15)); assert.deepEqual(tile(map, 16, 15), tile(base, 16, 15)); assert.equal(footprintHazard(map, 32, 16, 15), 'deepOcean');
   for (let revisit = 0; revisit < 3; revisit++) {
     const migrated = migrateSave(JSON.parse(JSON.stringify(snapshotSave(save, revisit)))), restored = structuredClone(base);
     assert.equal(applyVoidScars(migrated, restored, surfaceKey).ok, true); assert.deepEqual(restored.tiles, map.tiles); assert.deepEqual(restored.objects, objects);

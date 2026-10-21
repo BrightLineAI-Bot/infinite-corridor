@@ -8,7 +8,7 @@ Before implementing or reviewing the Void Walker, read [the detailed owner desig
 
 ## Where things stand
 
-Verified 2026-10-21 before release preparation: live and `main` are release 249, candidate `r249-4a43f3ccc5cd`, commit `4a43f3ccc5cdbc918310ea41f8e53425a1cedac3`. Release 251 is being prepared locally for the Void Walker and [current-HP-only Blob growth regeneration](blob-growth-health.md). Read `gh-pages:release-identity.json` again before any publication; this paragraph is not a deployment claim. Latest Walker retreat clarification permits disappearing at a reached physical inter-level doorway, but not teleporting there. Tests and independent review must cover the final exact candidate.
+Verified 2026-10-21 before release preparation: live and `main` are release 249, candidate `r249-4a43f3ccc5cd`, commit `4a43f3ccc5cdbc918310ea41f8e53425a1cedac3`. Release 251 is being prepared locally for the Void Walker and [current-HP-only Blob growth regeneration](blob-growth-health.md). Read `gh-pages:release-identity.json` again before any publication; this paragraph is not a deployment claim. Latest Walker retreat clarification permits disappearing at a reached physical inter-level doorway, but not teleporting there. Later owner source S8 adds ocean Walker/Crystal encounters, a personal Walker skiff and Crystal water attacks, while forbidding ocean terrain/scar changes; sea-retreat completion is being clarified separately. Tests and independent review must cover the final exact candidate.
 
 ### Historical release snapshots (retained, not current deployment state)
 

@@ -38,6 +38,31 @@ function outline(ctx, width, color = "#0b0a0dcc") { ctx.lineWidth = width; ctx.s
 function eye(ctx, x, y, r, color) { glow(ctx, x, y, r * 3.2, color, .5); ctx.fillStyle = "#fffef4"; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r * .55, 0, TAU); ctx.fill(); }
 function shadowAt(ctx, x, y, rx, ry, alpha = .55) { ctx.fillStyle = `rgba(4,4,6,${alpha})`; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, TAU); ctx.fill(); }
 
+// A personal skiff, only 1.12 tiles long: no ship-sized hull, inventory, sail or player-boat state.
+// The rear deck goes below the unchanged player-scale body; the near gunwale finishes in front of its boots.
+function drawWalkerSkiff(ctx, q, foreground = false) {
+  const { k, b, u, e, flip } = q, quiet = !!e.reduceMotion, time = quiet ? 0 : q.t;
+  const X = x => k + flip * x * u, Y = y => b + y * u;
+  const hull = () => { ctx.beginPath(); ctx.moveTo(X(-.56), Y(-.015)); ctx.quadraticCurveTo(X(-.39), Y(.17), X(.34), Y(.15)); ctx.lineTo(X(.56), Y(-.045)); ctx.quadraticCurveTo(X(.13), Y(.025), X(-.56), Y(-.015)); ctx.closePath(); };
+  ctx.save(); if (e.voidTeleport > 0 || e.pack?.phase === "teleport") ctx.globalAlpha *= .64;
+  const alpha = ctx.globalAlpha;
+  if (!foreground) {
+    ctx.strokeStyle = "#a8e6ec66"; ctx.lineWidth = Math.max(.8, u * .012);
+    for (let i = 0; i < 2; i++) { const phase = quiet ? .35 + i * .3 : (time * .35 + i * .5) % 1; ctx.globalAlpha *= .8; ctx.beginPath(); ctx.ellipse(k - flip * u * .05, Y(.11), u * (.57 + phase * .15), u * (.12 + phase * .07), 0, .08, Math.PI - .08); ctx.stroke(); }
+    ctx.globalAlpha = alpha;
+    ctx.beginPath(); ctx.moveTo(X(-.56), Y(-.015)); ctx.quadraticCurveTo(X(-.26), Y(-.21), X(.56), Y(-.045)); ctx.quadraticCurveTo(X(.18), Y(.095), X(-.56), Y(-.015)); ctx.closePath();
+    ctx.fillStyle = "#564850"; ctx.fill(); ctx.strokeStyle = "#c3a897"; ctx.lineWidth = Math.max(.9, u * .018); ctx.stroke();
+    ctx.strokeStyle = "#211c2a"; ctx.lineWidth = Math.max(.7, u * .012);
+    for (const x of [-.3, .28]) { ctx.beginPath(); ctx.moveTo(X(x), Y(-.115)); ctx.lineTo(X(x + .04), Y(.035)); ctx.stroke(); }
+    ctx.strokeStyle = "#8f7581"; ctx.beginPath(); ctx.moveTo(X(-.4), Y(-.035)); ctx.lineTo(X(.4), Y(-.045)); ctx.stroke();
+  } else {
+    hull(); const wood = ctx.createLinearGradient(k, Y(-.02), k, Y(.16)); wood.addColorStop(0, "#73606a"); wood.addColorStop(.45, "#45333f"); wood.addColorStop(1, "#211b2c"); ctx.fillStyle = wood; ctx.fill(); ctx.strokeStyle = "#1a1422"; ctx.lineWidth = Math.max(.8, u * .014); ctx.stroke();
+    ctx.strokeStyle = "#bda3a6"; ctx.lineWidth = Math.max(1, u * .018); ctx.beginPath(); ctx.moveTo(X(-.55), Y(-.014)); ctx.quadraticCurveTo(X(.05), Y(.06), X(.55), Y(-.044)); ctx.stroke();
+    ctx.strokeStyle = "#b48dd166"; ctx.lineWidth = Math.max(.7, u * .01); ctx.beginPath(); ctx.moveTo(X(-.4), Y(.065)); ctx.quadraticCurveTo(X(.04), Y(.13), X(.39), Y(.065)); ctx.stroke();
+  }
+  ctx.restore();
+}
+
 // ---------------------------------------------------------------- creatures
 
 const BODY = {
@@ -169,12 +194,12 @@ const BODY = {
   voidWalker(ctx, q) {
     const { k, b, u, p, flip, e, state } = q, s0 = e.pack, quiet = !!e.reduceMotion, t = quiet ? 0 : q.t;
     const dash = !!e.voidDashing || s0?.phase === "dash", teleport = Number(e.voidTeleport) > 0 || s0?.phase === "teleport";
-    const casting = state !== "idle" && !dash && !teleport, moving = !casting && !dash && !teleport && Math.hypot(s0?.vel?.x || 0, s0?.vel?.y || 0) > .12;
+    const boat = !!e.marine, casting = state !== "idle" && !dash && !teleport, moving = !boat && !casting && !dash && !teleport && Math.hypot(s0?.vel?.x || 0, s0?.vel?.y || 0) > .12;
     const stride = quiet || !moving ? 0 : Math.sin(t * 8) * .035, breath = quiet || dash || teleport ? 0 : Math.sin(t * 2) * .006;
     const cloth = p[0] || "#494256", dark = p[1] || "#18151f", violet = p[2] || "#ad7df2", pale = p[3] || "#e5d7ff";
     const X = x => k + flip * x * u, Y = y => b + y * u, lw = Math.max(.65, u * .009);
     const poly = (pts, fill, edge) => { ctx.beginPath(); ctx.moveTo(X(pts[0]), Y(pts[1])); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(X(pts[i]), Y(pts[i + 1])); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); if (edge) { ctx.strokeStyle = edge; ctx.lineWidth = lw; ctx.stroke(); } };
-    shadowAt(ctx, k, b + u * .025, u * .26, u * .075, teleport ? .23 : .45);
+    if (boat) drawWalkerSkiff(ctx, q); else shadowAt(ctx, k, b + u * .025, u * .26, u * .075, teleport ? .23 : .45);
     if (teleport) {
       // A narrow rend behind the traveller: the silhouette remains legible as it slips through.
       glow(ctx, k, Y(-.36), u * .5, violet, quiet ? .22 : .3);
@@ -215,6 +240,7 @@ const BODY = {
     poly([.015, -.505 + breath, .038, -.485 + breath, .015, -.46 + breath, -.006, -.485 + breath], violet);
     if (teleport && !quiet) { ctx.strokeStyle = pale + "88"; ctx.lineWidth = Math.max(.8, u * .008); for (let i = 0; i < 4; i++) { const y = -.19 - i * .13, shift = Math.sin(t * 6 + i * 1.8) * .035; ctx.beginPath(); ctx.moveTo(X(-.22 + shift), Y(y)); ctx.lineTo(X(.2 + shift), Y(y - .015)); ctx.stroke(); } }
     ctx.restore();
+    if (boat) drawWalkerSkiff(ctx, q, true);
   },
   // The Listener (release 138): a cloaked figure shaped like the Wayfarer, its face a violet void; hidden it fades.
   listener(ctx, q) {
@@ -1009,6 +1035,38 @@ function lavaShape(ctx, f, x, y, r, k) {
   const seed = f.x * 7.3 + f.y * 3.1, vx = f.vx || 0, vy = f.vy || 0, m = Math.hypot(vx, vy) || 1, ax = vx / m, ay = vy / m;
   ctx.beginPath(); for (let i = 0; i <= 18; i++) { const a = i / 18 * TAU, along = Math.cos(a) * ax + Math.sin(a) * ay, rr = r * k * (1 + .14 * Math.sin(a * 3 + seed) + .08 * Math.sin(a * 5 - seed) + .3 * Math.max(0, along)); i ? ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .6) : ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .6); } ctx.closePath();
 }
+function drawCrystalWater(ctx, f, s, now, lift, presentation) {
+  const quiet = !!(presentation?.reduceMotion || presentation?.safeMode || f.reduceMotion), time = quiet ? 0 : now / 1000;
+  const x = (f.x + .5) * s, y = (f.y + .62 - (Number(lift(f)) || 0)) * s, r = (f.radius || CRYSTAL.debrisRadius) * s;
+  const raised = Math.max(0, f.lift || 0), ry = y - (raised + .2) * s;
+  ctx.save(); ctx.lineCap = "round";
+  if (f.state === "splash") {
+    const progress = 1 - Math.max(0, Math.min(1, f.life / (f.total || CRYSTAL.waterSplashLife))), spread = quiet ? .9 : .4 + progress;
+    ctx.globalAlpha *= 1 - progress; ctx.strokeStyle = "#ccf9ff"; ctx.lineWidth = Math.max(1, s * .035);
+    ctx.beginPath(); ctx.ellipse(x, y, r * spread * 1.6, r * spread * .6, 0, 0, TAU); ctx.stroke();
+    if (!quiet) for (let i = 0; i < 6; i++) { const a = i * TAU / 6 + (f.shape || 0), dx = Math.cos(a) * r * spread * 1.5, dy = Math.sin(a) * r * spread * .6 - Math.sin(progress * Math.PI) * r; ctx.fillStyle = "#bcefffcc"; ctx.beginPath(); ctx.ellipse(x + dx, y + dy, r * .1, r * .17, a, 0, TAU); ctx.fill(); }
+    ctx.restore(); return;
+  }
+  // A bright reflection and a lifting water filament distinguish this from the dry, angular stone.
+  ctx.strokeStyle = "#79dae8aa"; ctx.lineWidth = Math.max(.8, s * .018); ctx.beginPath(); ctx.ellipse(x, y, r * 1.05, r * .38, 0, 0, TAU); ctx.stroke();
+  if (f.state === "lift") {
+    ctx.strokeStyle = "#79d8ec66"; ctx.lineWidth = Math.max(1, r * .18 * (1 - raised / (CRYSTAL.debrisRise * 1.3)));
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.bezierCurveTo(x - r * .5, y - s * .2, x + r * .4, ry + r * .9, x, ry + r * .45); ctx.stroke();
+  }
+  const speed = Math.hypot(f.vx || 0, f.vy || 0), dx = speed ? f.vx / speed : 0, dy = speed ? f.vy / speed : 0;
+  if (f.state === "thrown") {
+    for (let i = 3; i >= 1; i--) { ctx.fillStyle = `rgba(111,219,244,${.32 / i})`; ctx.beginPath(); ctx.ellipse(x - dx * r * i * .65, ry - dy * r * i * .65, r * (.7 - i * .12), r * (.45 - i * .07), Math.atan2(dy, dx), 0, TAU); ctx.fill(); }
+  }
+  glow(ctx, x, ry, r * 1.8, "#96dfff", .25);
+  ctx.save(); ctx.translate(x, ry); if (f.state === "thrown") ctx.rotate(Math.atan2(dy, dx));
+  const wide = f.state === "thrown" ? 1.2 : 1, high = f.state === "thrown" ? .65 : .85;
+  const water = ctx.createRadialGradient(-r * .3, -r * .35, r * .05, 0, 0, r * 1.25);
+  water.addColorStop(0, "#e7fcffed"); water.addColorStop(.3, "#85def5de"); water.addColorStop(.75, "#309fcbd9"); water.addColorStop(1, "#22658da8");
+  ctx.beginPath(); ctx.ellipse(0, 0, r * wide, r * high, 0, 0, TAU); ctx.fillStyle = water; ctx.fill(); ctx.strokeStyle = "#b3f3ffcc"; ctx.lineWidth = Math.max(.8, s * .02); ctx.stroke();
+  ctx.strokeStyle = "#e5fcffcc"; ctx.lineWidth = Math.max(.8, s * .018); ctx.beginPath(); ctx.ellipse(-r * .18, -r * .13, r * .58, r * .38, -.3, 3.2 + Math.sin(time * 1.8) * .2, 5.7); ctx.stroke();
+  ctx.restore(); ctx.restore();
+}
+
 export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift = () => 0, presentation = {}) {
   // Release 237: the glow and dark rims of every settled lava pool first, so pools that touch read as one spill.
   for (const f of effects || []) {
@@ -1019,6 +1077,7 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift
   for (const f of effects || []) {
     if (!visible(f)) continue;
     if (VOID_EFFECTS.has(f.kind)) { drawVoidEffect(ctx, f, s, now, lift, presentation); continue; }
+    if (f.kind === "debris" && f.medium === "water") { drawCrystalWater(ctx, f, s, now, lift, presentation); continue; }
     const x = (f.x + .5) * s, y = (f.y + .62 - (ON_GROUND.has(f.kind) ? Number(lift(f)) || 0 : 0)) * s, r = (f.radius || 1) * s, pulse = .6 + Math.sin(now / 80) * .25;
     ctx.save();
     if (f.arming > 0) {

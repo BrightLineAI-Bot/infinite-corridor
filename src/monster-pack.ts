@@ -118,7 +118,7 @@ export const ATTACK_MODULES = {
   psyPush: { id: "psyPush", name: "Force Push", range: [0, 4.5], cooldown: 4, windup: .55, active: .35, recover: .45, damage: .7, tags: ["control"], text: "A ring of force throws you back. Hit a wall and it hurts more." },
   psyPull: { id: "psyPull", name: "Force Pull", range: [2.5, 9], cooldown: 6, windup: .6, active: 1.2, recover: .45, damage: .9, tags: ["control"], text: "It drags you toward it, then lashes out as you arrive. Dodge or run against it." },
   psyGrab: { id: "psyGrab", name: "Command Grab", range: [0, 7.5], cooldown: 10, windup: .75, active: 2.4, recover: .6, damage: 2.2, tags: ["control", "grab"], text: "Its aura turns violet: then it seizes you where you stand and crushes you. Dodge as it reaches, or struggle (dodge, again and again) to break free." },
-  psyDebris: { id: "psyDebris", name: "Hurled Debris", range: [2, 11], cooldown: 5.5, windup: .9, active: 1.6, recover: .4, damage: 1, tags: ["ranged"], text: "Stones rise around it and are flung at you one by one." },
+  psyDebris: { id: "psyDebris", name: "Hurled Debris", range: [2, 11], cooldown: 5.5, windup: .9, active: 1.6, recover: .4, damage: 1, tags: ["ranged"], text: "Stones rise around it and are flung at you one by one. Over the open ocean it lifts and hurls water instead." },
   psyWall: { id: "psyWall", name: "Mirror Wall", range: [2, 12], cooldown: 9, windup: .4, recover: .3, damage: 0, tags: ["defense"], text: "A wall of light stands between you. Arrows and bolts that touch it fly back at you; a blade passes straight through." },
   psyOrbital: { id: "psyOrbital", name: "Orbital Lances", range: [0, 14], cooldown: 11, windup: .5, recover: .3, damage: .45, tags: ["ground", "beam"], text: "One to four sky beams trace shifting patterns after you. Outrun the light; the fading marks it leaves are harmless." },
   // Void Walker (release 251): the owner's full kit, with implementation-choice timings in seconds.
@@ -468,12 +468,13 @@ function inArc(e, target, aim, radius, arcDegrees) {
 }
 // Walk a ray until the first tile that blocks sight; beams and charge lanes stop there.
 export function rayLength(w, from, dir, max) {
-  for (let t = .25; t <= max; t += .25) if (!w.tileOpen(from.x + .5 + dir.x * t, from.y + .5 + dir.y * t)) return Math.max(.25, t - .25);
+  const open = from.kind === "psychicCrystal" && w.marineTileOpen ? w.marineTileOpen : w.tileOpen;
+  for (let t = .25; t <= max; t += .25) if (!open.call(w, from.x + .5 + dir.x * t, from.y + .5 + dir.y * t)) return Math.max(.25, t - .25);
   return max;
 }
-function nearestOpen(w, x, y, radius = 3) {
-  if (w.open(x, y)) return { x, y };
-  for (let r = .5; r <= radius; r += .5) for (let i = 0; i < 12; i++) { const a = i * TAU / 12, q = { x: x + Math.cos(a) * r, y: y + Math.sin(a) * r }; if (w.open(q.x, q.y)) return q; }
+function nearestOpen(w, x, y, radius = 3, open = w.open) {
+  if (open.call(w, x, y)) return { x, y };
+  for (let r = .5; r <= radius; r += .5) for (let i = 0; i < 12; i++) { const a = i * TAU / 12, q = { x: x + Math.cos(a) * r, y: y + Math.sin(a) * r }; if (open.call(w, q.x, q.y)) return q; }
   return null;
 }
 function playerVelocity(w) { return w.playerVelocity || { x: 0, y: 0 }; }
@@ -557,6 +558,7 @@ export const CRYSTAL = {
   pullRadius: 9.5, pullForce: 3.6, pullReach: 1.2,
   grabRange: 7.5, grabHold: 2.4, struggle: .35, // each dodge pressed while held shortens the hold by this many seconds
   debris: 4, debrisOrbit: 1.3, debrisRise: .7, debrisEvery: .32, debrisSpeed: 7.5, debrisLife: 2.2, debrisRadius: .3,
+  waterStep: .2, waterSplashLife: .3, // the ocean variant has the same attack; its spent projectile becomes a harmless splash
   wallLength: 3.4, wallGap: 1.8, wallLife: 5, wallThickness: .35, reflectShare: .8,
   orbitalBeams: [1, 4], orbitalPatterns: ["spiral", "square", "circle", "zigzag", "slash"],
   orbitalLife: 4, orbitalWarn: .7, orbitalSpeed: 2.1, orbitalRadius: .65, orbitalTick: .35,
@@ -646,7 +648,8 @@ const voidEffects = (w) => typeof w.effects === "function" ? w.effects() : (w.ef
 const liveVoidOwner = (w, f) => w.enemies?.find((q) => q.id === f.owner && !q.dead && !q.retreating && !q.fleeTo);
 function voidAdd(w, e, effect) {
   // Do not evict another creature's warned strike to create a decoration or a new Walker hazard.
-  const effects = voidEffects(w); if (effects.length >= PACK_EFFECT_CAP) return null;
+  const effects = voidEffects(w);
+  if (effects.length >= PACK_EFFECT_CAP) { const spent = effects.findIndex((f) => f.kind === "debris" && f.medium === "water" && f.state === "splash"); if (spent >= 0) effects.splice(spent, 1); else return null; }
   const f = { owner: e.id, arming: 0, damage: 0, life: VOID.rendLife, ...effect };
   w.addEffect(f);
   return effects[effects.length - 1] || null;
@@ -659,9 +662,10 @@ function voidTeleport(e, w, at) {
   if (!at || !w.safeTeleport?.(e, at.x, at.y)) return false;
   e.voidTeleport = VOID.teleportFlash; return true;
 }
-function voidSpot(w, at, angle, radius) { return nearestOpen(w, at.x + Math.cos(angle) * radius, at.y + Math.sin(angle) * radius, 1); }
+const voidOpen = (w, x, y) => w.marineOpen ? w.marineOpen(x, y) : w.open(x, y);
+function voidSpot(w, at, angle, radius) { return nearestOpen(w, at.x + Math.cos(angle) * radius, at.y + Math.sin(angle) * radius, 1, w.marineOpen || w.open); }
 function voidRay(w, from, dir, max) {
-  const open = w.projectileOpen || w.tileOpen;
+  const open = w.marineProjectileOpen || w.projectileOpen || w.tileOpen;
   if (!open) return max;
   for (let i = 1; i <= Math.ceil(max / VOID.effectStep); i++) { const t = Math.min(max, i * VOID.effectStep); if (!open(from.x + .5 + dir.x * t, from.y + .5 + dir.y * t)) return Math.max(0, (i - 1) * VOID.effectStep); }
   return max;
@@ -717,7 +721,7 @@ function voidEvade(e, s, w, p, d) {
     return Math.hypot(dx, dy) < VOID.evadeThreat && dx * u.x + dy * u.y > 0 && Math.abs(dx * u.y - dy * u.x) < .9;
   }) || (w.playerBlasts || []).some((q) => Math.hypot(e.x + .5 - q.x, e.y + .45 - q.y) < (q.radius || 1) + .5);
   if (!threat) return false;
-  const rifts = voidEffects(w).filter((f) => f.kind === "voidRift" && f.owner === e.id && !f.tracking && f.life > VOID.evadeWarn && w.open(f.x, f.y) && distance(f, e) > 1);
+  const rifts = voidEffects(w).filter((f) => f.kind === "voidRift" && f.owner === e.id && !f.tracking && f.life > VOID.evadeWarn && voidOpen(w, f.x, f.y) && distance(f, e) > 1);
   let at = rifts.sort((a, b) => distance(b, p) - distance(a, p))[0];
   if (!at) {
     at = voidSpot(w, p, Math.atan2(e.y - p.y, e.x - p.x) + s.orbitDir * .9, VOID.riftRing);
@@ -747,7 +751,7 @@ function voidDashStep(e, s, w) {
   const from = { x: e.x, y: e.y }, travel = VOID.dashSpeed * Math.min(w.dt, Math.max(0, dash.left + w.dt)), steps = Math.ceil(travel / VOID.effectStep);
   for (let i = 0; i < steps; i++) {
     const step = Math.min(VOID.effectStep, travel - i * VOID.effectStep), nx = e.x + dash.dir.x * step, ny = e.y + dash.dir.y * step;
-    if (!w.open(nx, ny)) { dash.left = 0; break; }
+    if (!voidOpen(w, nx, ny)) { dash.left = 0; break; }
     const ox = e.x, oy = e.y;
     if (!w.move(e, dash.dir.x * step, dash.dir.y * step) || Math.abs(e.x - nx) + Math.abs(e.y - ny) > .001) { e.x = ox; e.y = oy; dash.left = 0; break; }
   }
@@ -1111,7 +1115,13 @@ const RUN = {
   psyDebris(e, s, w) {
     const attack = ATTACK_MODULES.psyDebris;
     if (s.phase === "windup") {
-      if (s.t <= 0) { for (let i = 0; i < CRYSTAL.debris; i++) w.addEffect({ kind: "debris", owner: e.id, x: e.x, y: e.y, radius: CRYSTAL.debrisRadius, arming: 0, life: 99, orbit: i * TAU / CRYSTAL.debris, state: "lift", shape: hashSeed(`${e.id}:${s.seq}:rock:${i}`) % 5, damage: damageOf(e, "psyDebris") }); s.data.next = .25; toPhase(s, "active", attack.active); }
+      if (s.t <= 0) {
+        // Choose the material where the Crystal actually lifts it, not from its saved spawn or the player's boat.
+        // The material remains fixed after launch, even if either combatant crosses the shoreline.
+        const water = typeof w.oceanAt === "function" ? w.oceanAt(e.x, e.y) : !!e.marine;
+        for (let i = 0; i < CRYSTAL.debris; i++) w.addEffect({ kind: "debris", owner: e.id, x: e.x, y: e.y, radius: CRYSTAL.debrisRadius, arming: 0, life: 99, orbit: i * TAU / CRYSTAL.debris, state: "lift", ...(water ? { medium: "water" } : {}), shape: hashSeed(`${e.id}:${s.seq}:rock:${i}`) % 5, damage: damageOf(e, "psyDebris") });
+        s.data.next = .25; toPhase(s, "active", attack.active);
+      }
       return;
     }
     if (s.phase !== "active") return;
@@ -1814,7 +1824,7 @@ function tickVoidEffect(f, w, dt) {
   // Constellation movement and fixed-direction aim locking happen during the warning, not while a beam fires.
   if (f.kind === "voidRift" && f.tracking && !f.activated && f.age < f.activationAt - VOID.constellationLock) {
     const nx = p.x + f.offsetX, ny = p.y + f.offsetY;
-    if (w.open(nx, ny)) { f.x = nx; f.y = ny; }
+    if (voidOpen(w, nx, ny)) { f.x = nx; f.y = ny; }
     f.angle = Math.atan2(p.y - f.y, p.x - f.x);
   }
   if (f.arming > 0 || !(activeDt > 0)) return true;
@@ -1986,6 +1996,8 @@ export function tickPackEffects(effects, w) {
       const nx = f.x + f.vx * w.dt, ny = f.y + f.vy * w.dt, wall = w.tileOpen && !w.tileOpen(nx + .5, ny + .5), hit = distance(p, f) <= f.radius + .35;
       if (!wall && !hit && f.life - w.dt > 0) { f.x = nx; f.y = ny; }
       else { if (distance(p, f) <= KNIGHT.missileBlast + .2) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "knightMissile" }); w.addEffect({ kind: "nanoBurst", owner: f.owner, x: f.x, y: f.y, radius: KNIGHT.missileBlast, arming: 0, life: .4, total: .4, damage: 0 }); f.life = 0; continue; }
+    } else if (f.kind === "debris" && f.medium === "water") {
+      tickCrystalWater(f, w, p); // separate material, identical volley timing and damage; no terrain mutation
     } else if (f.kind === "debris") { // release 249: stones the Crystal lifts, circling it until thrown
       const owner = w.enemies.find((q) => q.id === f.owner && !q.dead);
       if (f.state === "lift") { if (!owner) { f.life = 0; continue; } f.orbit += 1.4 * w.dt; f.x = owner.x + Math.cos(f.orbit) * CRYSTAL.debrisOrbit; f.y = owner.y + Math.sin(f.orbit) * CRYSTAL.debrisOrbit * .6; f.lift = Math.min(CRYSTAL.debrisRise, (f.lift || 0) + w.dt * 1.5); f.life = 99; }
@@ -2003,11 +2015,39 @@ export function tickPackEffects(effects, w) {
   return effects.filter((f) => f.arming > 0 || f.life > 0);
 }
 
+function crystalSplash(f) {
+  // Reuse this projectile's budget slot. A splash is cosmetic and cannot hit again or create more effects.
+  Object.assign(f, { state: "splash", life: CRYSTAL.waterSplashLife, total: CRYSTAL.waterSplashLife, damage: 0, vx: 0, vy: 0 });
+}
+function tickCrystalWater(f, w, p) {
+  if (f.state === "splash") return;
+  const owner = w.enemies.find((q) => q.id === f.owner && !q.dead && !q.retreating && !q.fleeTo);
+  if (f.state === "lift") {
+    if (!owner || owner.pack?.attack !== "psyDebris") { crystalSplash(f); return; }
+    f.orbit += 1.4 * w.dt;
+    f.x = owner.x + Math.cos(f.orbit) * CRYSTAL.debrisOrbit; f.y = owner.y + Math.sin(f.orbit) * CRYSTAL.debrisOrbit * .6;
+    f.lift = Math.min(CRYSTAL.debrisRise, (f.lift || 0) + w.dt * 1.5); f.life = 99;
+    return;
+  }
+  const open = w.marineProjectileOpen || w.projectileOpen || w.tileOpen, start = { x: f.x, y: f.y };
+  if (open && !open(f.x + .5, f.y + .5)) { crystalSplash(f); return; }
+  // Sweep only its remaining lifetime, in bounded substeps. It neither tunnels across a wall nor dies on open sea.
+  const dt = Math.min(w.dt, Math.max(0, f.life)), dx = (f.vx || 0) * dt, dy = (f.vy || 0) * dt;
+  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / CRYSTAL.waterStep));
+  for (let i = 1; i <= steps; i++) {
+    const next = { x: start.x + dx * i / steps, y: start.y + dy * i / steps }, before = { x: f.x, y: f.y };
+    if (open && !open(next.x + .5, next.y + .5)) { crystalSplash(f); return; }
+    f.x = next.x; f.y = next.y;
+    if (segmentDistance(p, before, f) <= f.radius + .3) { w.hurt(owner || null, f.damage, { jumpable: false, source: "psyDebris" }); crystalSplash(f); return; }
+  }
+  if (f.life <= w.dt) crystalSplash(f);
+}
+
 export const PACK_EFFECT_CAP = 48;
 export function addPackEffect(effects, effect, now = 0) {
   while (effects.length >= PACK_EFFECT_CAP) {
-    // Discard the Crystal's cosmetic trail before a combat effect when another attack needs space.
-    const scorch = effects.findIndex((f) => f.kind === "scorch");
+    // Discard the Crystal's cosmetic trail or spent water before a combat effect needs that slot.
+    const scorch = effects.findIndex((f) => f.kind === "scorch" || f.kind === "debris" && f.medium === "water" && f.state === "splash");
     effects.splice(scorch < 0 ? 0 : scorch, 1);
   }
   effects.push({ id: `pack-fx-${effect.owner}-${now}-${effects.length}`, life: undefined, ...effect });
