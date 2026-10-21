@@ -106,8 +106,11 @@ export function deployHullShield(save) {
 }
 export function tickHullShield(save, dt) { const b = save?.boat; if (b && b.shield > 0 && dt > 0) { b.shield = Math.max(0, b.shield - dt); if (!b.shield) b.guardHull = 0; } }
 // Takes `n` from the hull: under the guard, a reduced blow, the guard's extra hull first. Returns true at zero hull.
+// Release 269 (Tim: "it'll get like a shield bar... when it takes damage that bar... gets eaten into... when that bar
+// finally gets destroyed... you go back to the smaller wooden ship... it'll just run out after 3 minutes"): emptying
+// the guard's bar ends the guard.
 function wearHull(save, n) {
-  const b = save.boat; if (shielded(save)) { n *= BOAT.shield.hullTaken; const g = Math.min(b.guardHull || 0, n); b.guardHull = (b.guardHull || 0) - g; n -= g; }
+  const b = save.boat; if (shielded(save)) { n *= BOAT.shield.hullTaken; const g = Math.min(b.guardHull || 0, n); b.guardHull = (b.guardHull || 0) - g; n -= g; if (b.guardHull <= 0) { b.guardHull = 0; b.shield = 0; } }
   b.hull = Math.max(0, b.hull - n); return b.hull <= 0;
 }
 export const aboard = (save) => save?.boat?.owned === true && save.boat.aboard === true;

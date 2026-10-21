@@ -569,16 +569,16 @@ function drawSkiff(ctx, x, y, s, facing, now) {
 function drawLongboat(ctx, x, y, s, facing, now) {
   const cx = (x + .5) * s, cy = (y + .72) * s + Math.sin(now / 480 + x) * s * .035, along = facing === "left" || facing === "right";
   ctx.save(); ctx.translate(cx, cy); if (!along) ctx.rotate(Math.PI / 2); if (facing === "left" || facing === "up") ctx.scale(-1, 1);
-  const L = s * .95, W = s * .24;
-  ctx.fillStyle = "#00000048"; ctx.beginPath(); ctx.ellipse(0, s * .1, L * 1.05, W * 1.15, 0, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-L, 0); ctx.quadraticCurveTo(-L * .7, -W * 1.05, 0, -W); ctx.quadraticCurveTo(L * .7, -W * 1.05, L, 0); ctx.quadraticCurveTo(L * .7, W * 1.05, 0, W); ctx.quadraticCurveTo(-L * .7, W * 1.05, -L, 0); ctx.closePath();
+  const L = s * 1.05, W = s * .17; // long and slim, its sides near straight (Tim: "longer... flatter on the sides")
+  ctx.fillStyle = "#00000048"; ctx.beginPath(); ctx.ellipse(0, s * .1, L * 1.02, W * 1.3, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-L, 0); ctx.quadraticCurveTo(-L * .9, -W, -L * .62, -W); ctx.lineTo(L * .62, -W); ctx.quadraticCurveTo(L * .9, -W, L, 0); ctx.quadraticCurveTo(L * .9, W, L * .62, W); ctx.lineTo(-L * .62, W); ctx.quadraticCurveTo(-L * .9, W, -L, 0); ctx.closePath();
   ctx.fillStyle = "#6f4b2c"; ctx.fill(); ctx.strokeStyle = "#3e2614"; ctx.lineWidth = Math.max(1, s * .035); ctx.stroke();
   ctx.save(); ctx.clip(); ctx.strokeStyle = "#8a6038"; ctx.lineWidth = Math.max(1, s * .02); // clinker strakes
-  for (const k of [-.6, -.25, .25, .6]) { ctx.beginPath(); ctx.moveTo(-L, k * W); ctx.quadraticCurveTo(0, k * W * 1.12, L, k * W); ctx.stroke(); }
+  for (const k of [-.55, 0, .55]) { ctx.beginPath(); ctx.moveTo(-L, k * W); ctx.lineTo(L, k * W); ctx.stroke(); }
   ctx.restore();
   for (let k = 0; k < 5; k++) for (const side of [-1, 1]) { // shields along the gunwales
-    const sx = -L * .62 + k * L * .3, sy = side * W * .9; ctx.fillStyle = ["#7b2f2a", "#c9b48c", "#2f4a5a"][(k + (side > 0 ? 1 : 0)) % 3];
-    ctx.beginPath(); ctx.arc(sx, sy, s * .075, 0, 7); ctx.fill(); ctx.strokeStyle = "#2a1a0e"; ctx.lineWidth = Math.max(1, s * .02); ctx.stroke();
+    const sx = -L * .6 + k * L * .3, sy = side * W * .95; ctx.fillStyle = ["#7b2f2a", "#c9b48c", "#2f4a5a"][(k + (side > 0 ? 1 : 0)) % 3];
+    ctx.beginPath(); ctx.arc(sx, sy, s * .065, 0, 7); ctx.fill(); ctx.strokeStyle = "#2a1a0e"; ctx.lineWidth = Math.max(1, s * .02); ctx.stroke();
     ctx.fillStyle = "#b9a27a"; ctx.beginPath(); ctx.arc(sx, sy, s * .022, 0, 7); ctx.fill();
   }
   // the prow's spiral, a pale crescent within it and one faint star; the stern curls back the other way
@@ -1297,9 +1297,10 @@ export function render(ctx, g, w, h, now) {
         ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
         ctx.fillStyle = hull > .6 ? "#6fcf7a" : hull > .3 ? "#e3b04b" : "#e2574a"; ctx.fillRect(bx, by, bw * hull, bh);
         if (hull <= .3 && Math.floor(now / 350) % 2) { ctx.strokeStyle = "#ffb3a8"; ctx.lineWidth = 1; ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2); }
-        // Release 263/269: a bar under the hull gauge shows the shield's time left (the skiff itself becomes a longboat), and its extra hull.
+        // Release 263/269: the hull guard (the skiff itself becomes a longboat).
         const shield = Number(g.save.boat.shield) || 0;
-        if (shield > 0) { ctx.fillStyle = "#cfd6dd"; ctx.fillRect(bx, by + bh + 1, bw * Math.min(1, shield / BOAT.shield.seconds), Math.max(2, bh * .6)); const extra = Math.min(1, (Number(g.save.boat.guardHull) || 0) / BOAT.shield.bonus); if (extra > 0) { ctx.fillStyle = "#8fd0ff"; ctx.fillRect(bx + bw * (1 - extra * .3), by, bw * extra * .3, bh); } }
+        // Release 269: the guard's own bar, bright fuchsia, extends the hull gauge to the right; blows eat into it, and when it is gone so is the guard.
+        if (shield > 0) { const gw = bw * BOAT.shield.bonus / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.guardHull) || 0) / BOAT.shield.bonus); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx + bw + 1, by - 1, gw + 2, bh + 2); ctx.fillStyle = "#ff2fb4"; ctx.fillRect(bx + bw + 2, by, gw * left, bh); }
       }
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
