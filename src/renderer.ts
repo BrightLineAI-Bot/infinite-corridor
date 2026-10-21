@@ -3,9 +3,10 @@ import { enemyMeleeGeometry } from "./combat.ts";
 import { ruleRows } from "./elders.ts";
 import { SEA_CREATURES } from "./sea-creatures.ts";
 import { BOAT } from "./boats.ts";
+import { isMarineTile } from "./world-beasts.ts";
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.ts";
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
-import { liftAt } from "./landscape.ts";
+import { liftAt, tileUnder } from "./landscape.ts";
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
@@ -135,11 +136,14 @@ function tile(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=null) 
 // Exact Supernova disks are static material on the cast-center ground plane. A single constant
 // visual lift preserves a true circle across uneven physical tiles and survives later revisits.
 const voidScarSurfaceCache = new WeakMap();
-function voidScarSurface(map) {
+function voidScarSurface(map, area) {
   const source = map._voidScarCircles, legacySource = map._voidScarLegacyCells;
   const circles = (Array.isArray(source) ? source : []).filter(c=>Number.isFinite(c.x)&&Number.isFinite(c.y)&&Number.isFinite(c.radius)&&c.radius>0);
   const legacy = Array.isArray(legacySource) ? legacySource : [];
-  const signature = circles.map(c=>`${c.x},${c.y},${c.radius},${Number(c.visualLift)||0}`).join(';')+'|'+legacy.join(';');
+  // Only the active overworld section is scanned. Water never acquires scar material, even where
+  // a saved exact circle overlaps a coast; include the mask in cache identity for in-place changes.
+  const marine = area === 'overworld' && circles.length ? (map.tiles || []).flatMap((tile, i) => isMarineTile(tile) ? [i] : []) : [];
+  const signature = circles.map(c=>`${c.x},${c.y},${c.radius},${Number(c.visualLift)||0}`).join(';')+'|'+legacy.join(';')+'|water:'+marine.join(',');
   const prior = voidScarSurfaceCache.get(map);
   if(prior&&prior.source===source&&prior.legacySource===legacySource&&prior.signature===signature)return prior;
   const shapes=circles.map(circle=>{
@@ -154,7 +158,7 @@ function voidScarSurface(map) {
     }
     return {...circle,y,cracks};
   });
-  const surface={source,legacySource,signature,shapes,legacy:new Set(legacy),legacyAll:!Array.isArray(source)&&!Array.isArray(legacySource)};
+  const surface={source,legacySource,signature,shapes,marine,legacy:new Set(legacy),legacyAll:!Array.isArray(source)&&!Array.isArray(legacySource)};
   voidScarSurfaceCache.set(map,surface);return surface;
 }
 function drawVoidScarTile(ctx,t,x,y,s,map,w,activeBuildingId,surface){
@@ -176,7 +180,19 @@ function drawVoidScarSurface(ctx,g,s,mw,mh,surface){
     for(let y=0;y<mh;y+=DUNGEON_CHUNK_SIZE)for(let x=0;x<mw;x+=DUNGEON_CHUNK_SIZE)
       if(dungeonTileVisibility(g.map,x,y)!=='unseen')ctx.rect(x*s,y*s,Math.min(DUNGEON_CHUNK_SIZE,mw-x)*s,Math.min(DUNGEON_CHUNK_SIZE,mh-y)*s);
   }else ctx.rect(0,0,mw*s,mh*s);
-  ctx.clip();ctx.fillStyle='#fffefd';
+  ctx.clip();
+  if(surface.marine.length){
+    // Nonoverlapping row runs subtract ocean from the continuous disk, not from terrain/fog.
+    // The outer blast contour stays smooth; shoreline clipping follows the existing tile geometry.
+    ctx.beginPath();ctx.rect(0,0,mw*s,mh*s);
+    for(let i=0;i<surface.marine.length;i++){
+      const start=surface.marine[i],row=Math.floor(start/mw);let end=start;
+      while(i+1<surface.marine.length&&surface.marine[i+1]===end+1&&Math.floor((end+1)/mw)===row)end=surface.marine[++i];
+      ctx.rect((start%mw)*s,row*s,(end-start+1)*s,s);
+    }
+    ctx.clip('evenodd');
+  }
+  ctx.fillStyle='#fffefd';
   // Opaque raster fills form the exact circle union without a superlinear overlapping vector clip.
   // Every fracture segment lies inside its own convex disk, so no additional union clip is needed.
   for(const c of surface.shapes){ctx.beginPath();ctx.arc(c.x*s,c.y*s,c.radius*s,0,Math.PI*2);ctx.fill()}
@@ -904,13 +920,14 @@ export function render(ctx, g, w, h, now) {
         0.42
       : 0,
     dodging = now < (p.dodgeUntil || 0);
-  const objectLists=mapObjectLists(g.map), scarSurface=voidScarSurface(g.map);
+  const objectLists=mapObjectLists(g.map), scarSurface=voidScarSurface(g.map,g.area);
   renderCacheStats.visibleTiles=(r-l)*(b-t);
   renderCacheStats.visibleObjects=0;
   const activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y),activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
   setLandscapeClock(now);
   const groundLift = (x, y) => (g.map?.landscape ? liftAt(g.map, mw, x, y) : 0);
   const crystalLift = e => crystalFlightLift(g.map, mw, e.x, e.y);
+  const marineAt = e => g.area === "overworld" && isMarineTile(tileUnder(g.map, mw, e.x, e.y));
   ctx.save();
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - groundLift(p.x, p.y)) * s));
   const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
@@ -1103,7 +1120,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillRect((e.x + .5 - .4*flashScale) * s, (e.y + .45 - .42*flashScale) * s, s * .8*flashScale, s * .75*flashScale);
             ctx.restore();
           }
-          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "astralWorm", "astralMirage"].includes(e.kind) ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
+          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal"].includes(e.kind) ? { marine: marineAt(e) } : {}), ...(["voidWalker", "astralWorm", "astralMirage"].includes(e.kind) ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
           actor(
             ctx,
             e.x + ox,

@@ -4,6 +4,8 @@
 
 - Stage Astral Worm combat/forms, approved no-Echo catalog, bounded Wayglass retreat and independent-health Walker riding fixtures with additive regressions; natural activation awaits final r251/Gate integration.
 
+- Release 251 ocean extension: the Void Walker sails a small personal skiff and the Crystal throws lifted water; ocean Supernova retains combat but never converts or scars ocean water.
+
 - Release 251 — the player-sized Void Walker roams ordinary dungeons and the overworld. Warned violet rends release hands, claws, swords, slashes, spikes and short-lived wraiths; rifts enable evasion and mixed tracking constellations; event horizons pull and pulse. Its Supernova consumes walls in the loaded circular region without revealing fog or completing objectives, then leaves permanent harmless smooth white ground with subtle red cracks. Saved scars persist in both worlds. Straight teleport-dash barrages leave one-second damaging afterimages. Retreat follows the nearest reachable physical dungeon doorway using normal terrain and one-level jumps, then disappears at the door; no fallback teleport.
 - Release 251 — the Morphing Blob regenerates current HP while naturally growing, up to half its unchanged maximum HP over the existing two-minute growth. Its maximum health, growth geometry and separate bloblet-merge healing do not increase. Growth-cap, pause and reload handling prevent extra healing.
 
@@ -296,3 +298,6 @@ The following summaries reconcile recent Git history into project records. They 
 - **Intent:** added deterministic, bounded hunt and domain systems with explicit instance lifecycle behavior.
 - **Compatibility:** persisted Viewport state and migration coverage exist in the current suite.
 - **Verification evidence:** current tests cover hunt lifecycle, domain topology, and migration initialization. No historical Android validation is asserted.
+
+## Unreleased follow-on prototype: Gate Revenant
+- More frequent first-pinned encounters, increased player-scaled health/damage floors, actual1.5× player-base pursuit, passing rift wraiths, rapid fireball/lob bursts, sustained breath and finite stationary barrage. Predator-only; shelter and normal terrain retained. Isolated work, not published or assigned a release number.

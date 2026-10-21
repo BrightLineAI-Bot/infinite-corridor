@@ -11,10 +11,10 @@ function saveOf() { const s=freshSave();s.seed='VOID-INTEGRATION';s.level=12;for
 function fixture(map=mapOf(), x=20,y=18) { const e=createCombatant('voidWalker',x,y,true,[]);Object.assign(e,{id:'walker-integration',worldBeast:'voidWalker',aggro:false}); const save=saveOf();const g=Object.assign(Object.create(Game.prototype),{map,area:'dungeon',save,rx:5,ry:0,player:{x:3,y:3,hp:10000,invulnerableUntil:0},enemies:[e],projectiles:[],effects:[],packEffects:[],performanceStats:{pathfindingWork:0},areaId:()=> 'dungeon:VOID-INTEGRATION:g1:5:0:fixture',areaStateId:()=> 'dungeon:VOID-INTEGRATION:g1:5:0:fixture'});return {g,e}; }
 function frames(g,n,dt=.05) { for(let i=0;i<n;i++){const w=g.packWorld(dt,(g.now=(g.now||0)+dt*1000));for(const e of activeDungeonEnemies(g.enemies,g.player,g.map))updatePackMonster(e,w);g.packEffects=tickPackEffects(g.packEffects,w);} }
 
-test('Walker appears in ordinary dry dungeons without weakening Crystal water, depth or level gates',()=>{
+test('Walker appears in ordinary dry dungeons for young players without weakening Crystal water or depth gates',()=>{
  let found=null;const map=mapOf();for(let i=0;i<100&&!found;i++){const s=saveOf();found=worldBeastForDungeon(s,map,`dungeon:VOID-INTEGRATION:g1:5:0:room-${i}`);if(found)assert.ok(walkerReachableTiles(map).has(found.y*map.width+found.x));}
  assert.equal(found?.kind,'voidWalker');assert.equal(found.worldBeast,'voidWalker');assert.equal(found.dungeonRole,undefined);assert.equal(found.packGuardian,undefined);
- for(let i=0;i<40;i++){for(const id of [`dungeon:VOID-INTEGRATION:g1:2:2:room-${i}`,'dungeon:VOID-INTEGRATION:g1',`hunt-instance:${i}`,`arena:${i}`])assert.equal(worldBeastForDungeon(saveOf(),map,id),null);const young=saveOf();young.level=7;assert.equal(worldBeastForDungeon(young,map,`dungeon:VOID-INTEGRATION:g1:5:0:room-${i}`),null);}
+ for(let i=0;i<40;i++){for(const id of [`dungeon:VOID-INTEGRATION:g1:2:2:room-${i}`,'dungeon:VOID-INTEGRATION:g1',`hunt-instance:${i}`,`arena:${i}`])assert.equal(worldBeastForDungeon(saveOf(),map,id),null);const young=saveOf();young.level=1;assert.deepEqual(worldBeastForDungeon(young,map,`dungeon:VOID-INTEGRATION:g1:5:0:room-${i}`),worldBeastForDungeon(saveOf(),map,`dungeon:VOID-INTEGRATION:g1:5:0:room-${i}`));}
 });
 test('Walker also participates in the normal overworld hunt and keeps its player-size boss model',()=>{
  const map=mapOf(32,32);let found;for(let i=5;i<200&&!found;i++)found=worldBeastFor(saveOf(),map,i,0);
