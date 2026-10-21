@@ -14,7 +14,10 @@ import { hashSeed } from "./random.ts";
 import { isDeepDungeonId } from "./world.ts";
 import { ensureFarArray, piecesNeeded, gateOpen } from "./far-array.ts";
 
-export const HORDE = { perThousand: 5, total: [28, 44], active: 3, respawn: 4, version: 1 };
+// Release 273 (Tim: "in the swarm dungeon... maybe you'll get like four crossing sigils throughout... you can break it into
+// waves"): the count is cut into `sigils` waves, and the kill that ends each wave leaves a Crossing Sigil.
+export const HORDE = { perThousand: 5, total: [28, 44], active: 3, respawn: 4, version: 1, sigils: 4 };
+const wave = (q) => Math.floor((q.total - q.left) * HORDE.sigils / q.total);
 
 const eligible = (id) => typeof id === "string" && id.startsWith("dungeon:") && !isDeepDungeonId(id);
 // Decided on the first visit only (`history.visits` still 0), so dungeons already entered never become hordes.
@@ -34,11 +37,11 @@ export function ensureHorde(history) {
 // A horde Revenant fell (anywhere). Returns a message, and the Gate piece's message on the last one.
 export function hordeKill(save, history) {
   const q = ensureHorde(history); if (!q || q.left <= 0) return null;
-  q.left -= 1;
-  if (q.left > 0) return { message: `${q.left} Gate Revenant${q.left === 1 ? "" : "s"} remain in that crossing.` };
+  const before = wave(q); q.left -= 1; const sigils = wave(q) > before ? 1 : 0;
+  if (q.left > 0) return { message: `${sigils ? "A wave breaks; a Crossing Sigil falls. " : ""}${q.left} Gate Revenant${q.left === 1 ? "" : "s"} remain in that crossing.`, sigils };
   history.resolved = true;
   const f = ensureFarArray(save); f.pieces = Math.min(piecesNeeded(f.gate), f.pieces + 1); f.history.push({ run: f.runs, gate: f.gate, won: "horde" });
-  return { message: `The horde is broken. ${gateOpen(f) ? `The last piece locks into the Gate. It stands whole. Gate ${f.gate} is open.` : `A piece of the Gate locks into place (${f.pieces}/${piecesNeeded(f.gate)}).`}`, cleared: true };
+  return { sigils, message: `The horde is broken${sigils ? ", and its last Crossing Sigil falls" : ""}. ${gateOpen(f) ? `The last piece locks into the Gate. It stands whole. Gate ${f.gate} is open.` : `A piece of the Gate locks into place (${f.pieces}/${piecesNeeded(f.gate)}).`}`, cleared: true };
 }
 // The spawn points for a horde dungeon: open tiles far from the entrance, spread out.
 export function hordeSpawnPoints(map, entry, n = 6, reach = null) {

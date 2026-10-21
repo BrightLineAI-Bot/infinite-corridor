@@ -2585,6 +2585,20 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 273: world beasts by Aperture tier; Crossing Sigils from a horde — 2026-10-21
+
+Tim, 2026-10-21: "you won't see all of these world monsters... until... that'll be tied to your aperture... at aperture 3... aperture 4, you can see the blob... 5, you can see the robot... 6, you can see the astral worm... we'll just do a phase rollout... the void walker... at any level starting at aperture 3... and the crystal... at aperture 8, you can see the questing beast"; "Revenants can still give crossing sigils... in regular dungeons, but in the swarm dungeon... maybe... four crossing sigils throughout... break it into waves".
+
+**CODE:**
+- **The gate.** `world-beasts.ts` `BEAST_APERTURE = { mountainTurtle 3, voidWalker 3, psychicCrystal 3, morphingBlob 4, lightningGiant 5, astralWorm 6, nanobotKnight 7, tremorWorm 7, questingBeast 8 }`. `beastUnlocked(save, id)` compares `apertureTier(save.perception.aperture)` (world.ts; tier n is band n of `APERTURE_BANDS`, tier 3 = Resonant) with the table.
+  - `worldBeastFor` and `worldBeastForDungeon` skip a locked beast when choosing a new meeting; `questingBeastFor` needs tier 8.
+  - Only a new claim is gated: an `active` beast (held, retreating, tracked or in a dungeon) keeps appearing at any tier. The Astral Worm's Void Walker companion needs nothing more (tier 6 > 3).
+- **Horde Sigils.** `revenant-horde.ts` `HORDE.sigils = 4`. `hordeKill` returns `sigils: 1` when a kill moves `floor(killed * sigils / total)` up a step (kills 8, 15, 23 and 30 of 30), and `defeatEnemy` adds them to `consumables.crossingSigil`. Horde Revenants still skip `sigilDrop`.
+
+**BOUNDARY:**
+- No save changes. The tier choices for "the robot" (the Lightning Giant at 5) and for the unnamed tier-7 pair (the Nanobot Knight and the Tremor Worm) are provisional, pending Tim's word; the Mountain Turtle at 3 reads Tim's "eternal" as the Turtle.
+- Tests: `tests/aperture-beasts.test.ts`. Existing world-beast tests (beast-ocean, beast-continuation, dungeon-roaming, encounter-pacing, void-walker-integration, world-beasts) now give their fixture saves a high Aperture, so they keep testing spawning itself.
+
 ## Release 271: Gate Revenants stalk, hunt through walls, dodge and break; the new Revenant — 2026-10-21
 
 Tim, 2026-10-21: "When you get into a dungeon... it can be like two minutes, and then the gate revenants start hunting you... It should be stalking... after about two minutes... hunting regardless of whether or not you run into them"; "the gate revenant can borrow some of the crystal's behavior where it can hop between walls... it should still not go to a place that you can't go"; "smart Dodge behavior and... poise break behavior"; "a model rework on the gate revenant... increase its Fidelity, without increasing... processing requirements".

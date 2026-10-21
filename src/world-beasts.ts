@@ -7,7 +7,7 @@ import { ASTRAL_PROFILE } from "./astral-worm.ts";
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
 import { hashSeed } from "./random.ts";
 import { LETHAL_KINDS, canStep } from "./landscape.ts";
-import { sectionExits } from "./world.ts";
+import { sectionExits, apertureTier } from "./world.ts";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -346,6 +346,13 @@ function fleeSpawn(save, here, rx, ry) {
 }
 // Called once per overworld section load. Returns the spawn of the beast holding this section, or null. One beast holds
 // a section at a time, and never one the Questing Beast holds.
+// Release 273 (Tim, 2026-10-21: "you won't see all of these world monsters... until... that'll be tied to your aperture...
+// at aperture 3... aperture 4, you can see the blob... 5, you can see the robot... 6, you can see the astral worm... a phased
+// rollout... the void walker... at any level starting at aperture 3... and the crystal... at aperture 8, you can see the
+// questing beast"). The Aperture tier (items.ts APERTURE_BANDS; tier 3 is the Resonant band) a new meeting needs. A beast
+// already met (active, retreating or tracked) is never withdrawn by this.
+export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 };
+export const beastUnlocked = (save, id) => apertureTier(save?.perception?.aperture || 0) >= (BEAST_APERTURE[id] ?? 0);
 export function worldBeastFor(save, map, rx, ry) {
   ensureWorldBeasts(save, false);
   if (!map) return null;
@@ -356,7 +363,7 @@ export function worldBeastFor(save, map, rx, ry) {
     const B = WORLD_BEASTS[id], q = save.worldBeasts[id];
     if (q.active) continue;
     if (q.cooldown > 0) { q.cooldown--; continue; }
-    if (here || held || Math.abs(rx) + Math.abs(ry) < B.minDepth || !encounterReady(save)) continue; // release 261: the buffer between meetings
+    if (here || held || Math.abs(rx) + Math.abs(ry) < B.minDepth || !beastUnlocked(save, id) || !encounterReady(save)) continue; // release 261: the buffer between meetings (273: and the Aperture)
     if ((hashSeed(`${save.seed}:world-beast:${id}:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= B.chance * ENCOUNTER.chanceScale) continue;
     q.active = { rx, ry, tries: 0 }; here = id; encounterMet(save); claimed = true;
   }
@@ -425,7 +432,7 @@ export function worldBeastForDungeon(save, map, dungeonId) {
   const coords = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/.exec(dungeonId), depth = coords ? Math.abs(Number(coords[1])) + Math.abs(Number(coords[2])) : -1; // ordinary dungeons only (not the story dungeon, arenas, hunts or runs)
   if (!here && depth >= 0) for (const k of ids) {
     const q = save.worldBeasts[k], B = WORLD_BEASTS[k];
-    if (q.active || q.cooldown > 0 || depth < B.minDepth || (Number(save.level) || 1) < (B.dungeonMinLevel || 1) || (k === "psychicCrystal" && !water.length) || !encounterReady(save)) continue; // release 261: the buffer applies in dungeons too
+    if (q.active || q.cooldown > 0 || depth < B.minDepth || !beastUnlocked(save, k) || (Number(save.level) || 1) < (B.dungeonMinLevel || 1) || (k === "psychicCrystal" && !water.length) || !encounterReady(save)) continue; // release 261: the buffer applies in dungeons too
     if ((hashSeed(`${save.seed}:world-beast-dungeon:${k}:v1:${q.cycle}:${dungeonId}`) % 1000) / 1000 >= WORLD_BEASTS[k].dungeonChance) continue;
     q.active = { dungeon: dungeonId, tries: 0 }; here = k; encounterMet(save); break;
   }

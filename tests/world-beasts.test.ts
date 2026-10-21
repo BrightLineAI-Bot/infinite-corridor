@@ -24,7 +24,7 @@ function step(w, seconds, each = () => {}) { for (let t = 0; t < seconds; t += w
 function blob(w, x = 6, y = 12) { const c = createCombatant('morphingBlob', x, y, true, []); Object.assign(c, { id: 'blob-1', aggro: true, hp: 2000, maxHp: 2000, damage: 20 }); w.enemies.push(c); return c; }
 
 test('world beasts: rare, one per section, never where the Questing Beast is, three tries, bounty and cooldown', () => {
-  const s = freshSave(); s.seed = 'WB'; ensureWorldBeasts(s);
+  const s = opened(freshSave()); s.seed = 'WB'; ensureWorldBeasts(s);
   const map = generateRegion(s.seed, 9, 9);
   let claimed = null;
   for (let ry = 6; ry < 40 && !claimed; ry++) for (let rx = 6; rx < 40 && !claimed; rx++) { const m = generateRegion(s.seed, rx, ry); if (m.settlement) continue; const sp = worldBeastFor(s, m, rx, ry); if (sp) claimed = { rx, ry, sp }; }
@@ -38,9 +38,9 @@ test('world beasts: rare, one per section, never where the Questing Beast is, th
   worldBeastPlayerFell(s, claimed.rx, claimed.ry, [id]);
   assert.equal(worldBeastPlayerFell(s, claimed.rx, claimed.ry, [id]), WORLD_BEASTS[id].gone);
   assert.equal(s.worldBeasts[id].active, null); assert.equal(s.worldBeasts[id].cooldown, WORLD_BEASTS[id].cooldownEscaped);
-  const t = freshSave(); t.worldBeasts = { morphingBlob: { active: { rx: 8, ry: 8, tries: 1 }, cycle: 2 } }; ensureWorldBeasts(t); const marks = t.currency;
+  const t = opened(freshSave()); t.worldBeasts = { morphingBlob: { active: { rx: 8, ry: 8, tries: 1 }, cycle: 2 } }; ensureWorldBeasts(t); const marks = t.currency;
   const won = worldBeastSlain(t, 'morphingBlob'); assert.equal(t.currency, marks + won.marks); assert.equal(t.worldBeasts.morphingBlob.active, null); assert.equal(t.worldBeasts.morphingBlob.slain, 1);
-  const q = freshSave(); ensureWorldBeasts(q); q.questingBeast = { active: { rx: 30, ry: 30, tries: 0 } };
+  const q = opened(freshSave()); ensureWorldBeasts(q); q.questingBeast = { active: { rx: 30, ry: 30, tries: 0 } };
   for (let i = 0; i < 40; i++) assert.equal(worldBeastFor(q, generateRegion(q.seed, 30, 30), 30, 30), null, 'the Questing Beast\'s section is its own');
 });
 
@@ -395,6 +395,7 @@ test('the Knight\'s blade: a thrust along any of eight ways with a beam off the 
 
 // Release 249: the Psychic Crystal.
 import { worldBeastForDungeon, beginDungeonRetreat } from '../src/world-beasts.ts';
+const opened = (s) => { s.perception.aperture = 1e6; return s; }; // release 273: world beasts are met only from their Aperture tier (world-beasts.ts BEAST_APERTURE)
 function crystal(w, x = 10, y = 12) { const c = createCombatant('psychicCrystal', x, y, true, []); Object.assign(c, { id: 'crystal-1', aggro: true, hp: 3000, maxHp: 3000, damage: 20 }); w.enemies.push(c); return c; }
 
 test('the Psychic Crystal: push, pull, a command grab you can dodge or struggle out of, hurled debris', () => {
@@ -424,9 +425,9 @@ test('the mirror wall sends arrows and bolts back; blades pass through; it falls
 test('the Crystal haunts only dungeons with water, holds them, takes tries there, and retreats into the water', () => {
   const dry = { tiles: Array.from({ length: 900 }, (_, i) => ({ x: i % 30, y: Math.floor(i / 30), kind: 'deepFloor', blocked: false })), width: 30, entry: { x: 3, y: 3 } };
   const wet = { ...dry, tiles: dry.tiles.map((t) => (t.x >= 20 && t.x <= 22 && t.y >= 10 && t.y <= 14 ? { ...t, kind: 'dungeonWater', blocked: true } : t)) };
-  const s = freshSave(); s.seed = 'HAUNT'; s.level = 12; ensureWorldBeasts(s); s.worldBeasts.voidWalker.cooldown = 999; const dun = (tag, i) => `dungeon:HAUNT:g1:${3 + i}:4:${tag}-${i}`;
+  const s = opened(freshSave()); s.seed = 'HAUNT'; s.level = 12; ensureWorldBeasts(s); s.worldBeasts.voidWalker.cooldown = 999; const dun = (tag, i) => `dungeon:HAUNT:g1:${3 + i}:4:${tag}-${i}`;
   for (let i = 0; i < 40; i++) assert.equal(worldBeastForDungeon(s, dry, dun('dry', i)), null, 'never without water');
-  const young = freshSave(); young.seed = 'HAUNT'; ensureWorldBeasts(young); young.worldBeasts.voidWalker.cooldown = 999; let youngSpawn = null; for (let i = 0; i < 40 && !youngSpawn; i++) youngSpawn = worldBeastForDungeon(young, wet, dun('wet', i)); assert.equal(youngSpawn?.kind, 'psychicCrystal', 'new Wayfarers can meet the level-eight-strength threat');
+  const young = opened(freshSave()); young.seed = 'HAUNT'; ensureWorldBeasts(young); young.worldBeasts.voidWalker.cooldown = 999; let youngSpawn = null; for (let i = 0; i < 40 && !youngSpawn; i++) youngSpawn = worldBeastForDungeon(young, wet, dun('wet', i)); assert.equal(youngSpawn?.kind, 'psychicCrystal', 'new Wayfarers can meet the level-eight-strength threat');
   for (const odd of ['dungeon:HAUNT:g1', 'arena:x', 'hunt-instance:y', 'dungeon:HAUNT:g1:1:1:near']) for (let n = 0; n < 5; n++) assert.equal(worldBeastForDungeon(s, wet, odd + (n ? `-${n}` : '')), null, `not ${odd}`);
   let id = null, spawn = null; for (let i = 0; i < 40 && !spawn; i++) { spawn = worldBeastForDungeon(s, wet, dun('wet', i)); if (spawn) id = dun('wet', i); }
   assert.ok(spawn && spawn.kind === 'psychicCrystal', 'some wet dungeons'); assert.ok(Math.hypot(spawn.x - 3, spawn.y - 3) >= 7, 'away from the entry');
