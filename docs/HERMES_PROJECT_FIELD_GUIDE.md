@@ -2362,6 +2362,12 @@ Redesign and gait (Tim, same day): "not a knight, more a robot", "a weathered ol
 - **Framing.** Only the torso and head are skewed for the hunch; the arms hang unskewed from the leaned shoulders.
 - **Tests.** A no-slide test covers `giantFoot`.
 
+Clean-up (Tim: "his head is in his chest, and we haven't addressed the crest"):
+- **Upper body.** Rebuilt around a Neanderthal silhouette: a broad hump plate rising above the shoulders, and the head thrust forward from it on a ringed neck at shoulder height, clear of the chest. The skull is squared, with a brow ridge, deep visor, jutting jaw and mouth grille.
+- **No shear.** The upper body is no longer sheared; it rocks slightly about the hips through `R()`.
+- **Crest.** `drawCrest` builds explicit sweep vectors (`GIANT_CREST`): a slim lightning-glyph blade rising up and back from the top-back of the skull, plus a shorter fin. The skull is drawn over the crest's root.
+- **Coils and shoulders.** The thruster coils lean back off the hump, with exhaust along their axis. The shoulders are lowered so the club arm no longer crowds the head.
+
 **BOUNDARY:**
 - Numbers are provisional data, not Tim's.
 - The Giant is overworld-only, with no dungeon claim.
