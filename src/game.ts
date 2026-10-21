@@ -3013,6 +3013,19 @@ export class Game {
     }
     this._roamerBounds = { key, width, ok: ok.some((v) => v) ? ok : null }; return this._roamerBounds.ok;
   }
+  // Release 259: the floor connected to the Wayfarer's own tile (4-way over open, non-lethal ground). Cached until the
+  // terrain changes (the walker landing graph is rebuilt then) or the Wayfarer stands outside the cached area.
+  playerFloor() {
+    const key = this.walkerLandingGraph(), map = this.map, tiles = map.tiles || [], width = mapWidth(map, this.area), height = mapHeight(map, this.area);
+    const p = this.player, px = Math.max(0, Math.min(width - 1, Math.floor(p.x + .5))), py = Math.max(0, Math.min(height - 1, Math.floor(p.y + .72))), start = py * width + px;
+    const c = this._playerFloor; if (c?.key === key && c.width === width && c.cells.has(start)) return c.cells;
+    const open = (t) => t && !t.blocked && !LETHAL_KINDS.has(t.kind) && !["districtWall", "shackWall"].includes(t.structure), cells = new Set(), queue = open(tiles[start]) ? [start] : [];
+    for (const k of queue) cells.add(k);
+    for (let i = 0; i < queue.length; i++) { const k = queue[i], x = k % width, y = Math.floor(k / width);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, n = ny * width + nx; if (nx < 0 || ny < 0 || nx >= width || ny >= height || cells.has(n) || !open(tiles[n])) continue; cells.add(n); queue.push(n); } }
+    this.performanceStats && (this.performanceStats.pathfindingWork += cells.size);
+    this._playerFloor = { key, width, cells: cells.size ? cells : key }; return this._playerFloor.cells;
+  }
   roamerInBounds(e) { const ok = this.roamerBounds(), width = mapWidth(this.map, this.area); return !ok || ok[Math.round(e.y) * width + Math.round(e.x)] === 1; }
   walkerSafeTeleport(e, x, y) {
     if (this.astralRiderHeld(e)) return false;
@@ -3201,6 +3214,8 @@ export class Game {
       },
       // The dungeon is the Crystal's domain: patrol and combat use the same bounded wall-phasing movement.
       roamMove(e, dx, dy) { return this.move(e, dx, dy); },
+      // Release 259: floor the Wayfarer can reach from where they stand, where the dungeon Crystal sets its goals.
+      walkable: game.area === "dungeon" ? (x, y) => { const k = Math.round(y) * width + Math.round(x); return x >= 0 && y >= 0 && x <= width - 1 && y <= height - 1 && game.playerFloor().has(k); } : null,
       roamWork: (n) => { game.performanceStats.pathfindingWork += n; },
       detour(e, speed) { if (game.astralRiderHeld(e)) return; const step = boundedChaseStep(e, p, map, width); if (step) { const px = step[0] - e.x, py = step[1] - e.y, m = Math.hypot(px, py) || 1; this.move(e, px / m * speed, py / m * speed); } },
       hurt: (source, amount, options) => !(sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) && game.packHurt(source, amount, options, now),

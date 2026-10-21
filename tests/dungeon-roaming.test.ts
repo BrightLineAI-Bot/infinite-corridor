@@ -395,7 +395,8 @@ test('a saved position inside a dungeon wall is not teleported on load, and patr
   assert.ok(restored.pack.roam);
 });
 test('new routes sample at most 625 cells over the whole domain rather than flooding every reachable node', () => {
-  const f = fixture(mapOf(140, 100), { x: 4, y: 5 });
+  // Release 259: patrol goals are floor the Wayfarer can reach, so the Wayfarer stands in the distant room.
+  const f = fixture(mapOf(140, 100), { x: 4, y: 5, player: { x: 120, y: 80 } });
   rect(f.map, 110, 70, 135, 95);
   let calls = 0; const original = f.w.roamMove.bind(f.w);
   f.w.roamMove = (...args) => { calls++; return original(...args); };

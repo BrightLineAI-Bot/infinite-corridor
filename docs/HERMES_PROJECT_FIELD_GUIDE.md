@@ -2435,6 +2435,11 @@ Tim, 2026-10-21. On pursuit: "these world bosses should pursue you... The blob c
   - an interior wall with open ground on both opposite sides within `CRYSTAL.boundsSpan` 3 tiles.
 
   The game loop undoes a roamer tick that ends outside the bounds (not while retreating). A roamer saved outside them is moved to the nearest allowed tile on load.
+- **Crystal goals.** Tim: "its end goal should be... a place the player can walk to... it can spend some time between walls, that's fine".
+  - The pack world's `walkable(x, y)` (dungeons only) is `Game.playerFloor()`: the floor 4-way connected to the Wayfarer's own tile over open, non-lethal ground. It is cached until the terrain changes or the Wayfarer leaves the cached area.
+  - `dungeonPatrolRoute` picks its goals from `walkable` (open ground where a world gives none).
+  - `crystalManifest` runs each tick after any attack. Off reachable floor for `CRYSTAL.wallLinger` 2.5 s, the Crystal makes for the nearest reachable floor within `manifestSearch` 10 at `manifestSpeed` 2.4, and blinks onto it if held back `manifestBlink` 1.2 s. It can still attack from inside walls before then.
+  - A Crystal's bounds (`roamerBounds`) still allow any room and the walls between, so a haunt placed in a sealed room stays valid (release 249). From there it makes for your floor.
 - **Rift Step.** `constellation.ts` `RIFT` = `{ reach: 2, longStep: 2 }`.
   - The recall (`magicSkills.riftAnchor`) is gone; a stale one from an older save is dropped on the next step.
   - The `anchor` capstone keeps its id and is renamed Long Step: `+RIFT.longStep` reach. The step still stops at walls, ledges and unstandable ground.
@@ -2445,4 +2450,4 @@ Tim, 2026-10-21. On pursuit: "these world bosses should pursue you... The blob c
 - A beast that follows is placed fresh by the gate. Its position in the section it left is not kept.
 - The pursuit numbers and the Blob split numbers are provisional, not Tim's.
 - The Glyphs fix was checked in Chromium at 390 px against a build of `main` (which threw "constlit is not defined" with an empty screen). Glyphs then showed its hosts, sockets, tiles and footer, and Echoes and the Arcanum opened without errors.
-- Tests: `tests/world-beast-pursuit.test.ts`, `tests/constellation.test.ts` (Long Step, no recall), `tests/crystal-259.test.ts` (poise break, dungeon bounds) and `tests/digging.test.ts` (carry limits; the old chip-then-break total now stops at the stone limit).
+- Tests: `tests/world-beast-pursuit.test.ts`, `tests/constellation.test.ts` (Long Step, no recall), `tests/crystal-259.test.ts` (poise break, dungeon bounds, reachable goals and settling out of walls), and `tests/dungeon-roaming.test.ts` (the sampling-bound fixture now stands the Wayfarer in its distant room) and `tests/digging.test.ts` (carry limits; the old chip-then-break total now stops at the stone limit).

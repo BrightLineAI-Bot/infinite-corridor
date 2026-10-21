@@ -19,7 +19,7 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 259 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #108) | World beasts pursue you 3 sections in all (the Blob 1); a grown Blob's retreat leaves a fading mass; fix for the Glyphs screen crash (release 112 typo); Rift Step no longer recalls you (Anchor becomes Long Step); the Pack is tabbed (Wayfarer, Gear, Forge, Arcanum, Supplies); the phone's back button closes menus to the pause menu; carry limits (6 wood, 2 stone); the Psychic Crystal has poise (4 hits break it to the floor) and stays inside dungeons | Building. |
+| 259 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #108) | World beasts pursue you 3 sections in all (the Blob 1); a grown Blob's retreat leaves a fading mass; fix for the Glyphs screen crash (release 112 typo); Rift Step no longer recalls you (Anchor becomes Long Step); the Pack is tabbed (Wayfarer, Gear, Forge, Arcanum, Supplies); the phone's back button closes menus to the pause menu; carry limits (6 wood, 2 stone); the Psychic Crystal has poise (4 hits break it to the floor), stays inside dungeons and settles on floor you can reach | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)

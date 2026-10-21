@@ -2,7 +2,7 @@
 // beyond the dungeon's edge into the black.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CRYSTAL, updatePackMonster } from '../src/monster-pack.ts';
+import { CRYSTAL, updatePackMonster, dungeonPatrolRoute } from '../src/monster-pack.ts';
 import { Game } from '../src/game.ts';
 import { createCombatant } from '../src/combat.ts';
 import { freshSave } from '../src/types.ts';
@@ -63,4 +63,27 @@ test('poise forgets: hits spread out more than poiseForget apart never break it'
   const { game, e } = fixture(dungeon(), { x: 6, y: 6 }); const w = game.packWorld(1 / 30, 0); w.los = () => true;
   const tick = () => { w.now += 33; updatePackMonster(e, w); };
   for (let k = 0; k < CRYSTAL.poiseHits * 2; k++) { e.hp -= 10; tick(); for (let i = 0; i < Math.ceil(CRYSTAL.poiseForget * 30) + 2; i++) tick(); assert.ok(!(e.pack.broken > 0)); }
+});
+
+test('its goals are floor the Wayfarer can reach; it may linger in a wall a while, then settles onto reachable floor', () => {
+  // The Wayfarer in the left room; the right room is behind a 3-thick wall (reachable only by phasing); a far room no one can reach.
+  const { game, e, map } = fixture(dungeon(), { x: 5, y: 5 }); game.player.x = 6; game.player.y = 6;
+  const w = game.packWorld(1 / 30, 0); w.los = () => false;
+  assert.equal(w.walkable(5, 5), true); assert.equal(w.walkable(15, 5), false, 'the other room is not reachable on foot'); assert.equal(w.walkable(25, 23), false);
+  e.aggro = false; e.pack.roam = null;
+  for (let seq = 0; seq < 12; seq++) { const [goal] = dungeonPatrolRoute(e, w, seq, []); assert.ok(goal && w.walkable(goal.x, goal.y), `patrol goal ${JSON.stringify(goal)} is reachable floor`); }
+  // Engaged and sitting inside the wall: it stays a while, then makes for the nearest reachable floor.
+  e.aggro = true; e.x = 11; e.y = 5; e.packAttacks = []; e.evasive = false; const tick = () => { w.now += 33; updatePackMonster(e, w); };
+  let t = 0; for (; t < CRYSTAL.wallLinger * .8; t += 1 / 30) tick();
+  assert.equal(w.walkable(e.x, e.y), false, 'it may spend some time between walls');
+  for (let i = 0; i < 30 * 6 && !w.walkable(e.x, e.y); i++) tick();
+  assert.ok(w.walkable(e.x, e.y), `it settles where the Wayfarer can reach it (${e.x},${e.y})`); assert.ok(e.x <= 10);
+});
+
+test('held back on its way out of the walls, it blinks onto the reachable floor', () => {
+  const { game, e } = fixture(dungeon(), { x: 11, y: 5 }); game.player.x = 6; game.player.y = 6;
+  const w = game.packWorld(1 / 30, 0); w.los = () => false; w.roamMove = () => false; // something holds it in place
+  e.aggro = true; e.packAttacks = []; e.evasive = false; const tick = () => { w.now += 33; updatePackMonster(e, w); };
+  for (let i = 0; i < 30 * (CRYSTAL.wallLinger + CRYSTAL.manifestBlink + 1) && !w.walkable(e.x, e.y); i++) tick();
+  assert.ok(w.walkable(e.x, e.y), 'it blinked out');
 });

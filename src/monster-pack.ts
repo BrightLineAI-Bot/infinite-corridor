@@ -632,6 +632,11 @@ export const CRYSTAL = {
   // `poiseHits` landed blows (forgotten after `poiseForget` s without one) break it: it drops to the floor for `breakTime`
   // s (falling over `fallTime`, rising over `riseTime`) and cannot dodge, attack or move; then it rises and springs away.
   poiseHits: 4, poiseForget: 5, breakTime: 3.2, fallTime: .25, riseTime: .4,
+  // Where it settles (release 259; Tim: "its end goal should be... a place the player can walk to... it can spend some time
+  // between walls, that's fine"): patrol goals are floor the Wayfarer can reach; after `wallLinger` s inside walls (or over
+  // ground the Wayfarer cannot reach) it heads for the nearest reachable floor within `manifestSearch` tiles at
+  // `manifestSpeed`, and blinks onto it if held back for `manifestBlink` s.
+  wallLinger: 2.5, manifestSearch: 10, manifestSpeed: 2.4, manifestBlink: 1.2,
   // In a dungeon it may phase through an interior wall up to this many tiles thick (Game.roamerBounds), never beyond the edge.
   boundsSpan: 3,
 };
@@ -2002,19 +2007,44 @@ function crystalPoise(e, s, w, p) {
   return true;
 }
 
+// The dungeon Crystal settles where the Wayfarer can reach it (release 259; CRYSTAL.wallLinger etc.). It may pass through
+// and linger in walls, but after wallLinger s off reachable floor it makes for the nearest reachable floor, and blinks
+// onto it if something holds it back. Returns true while it is on its way (the tick is spent).
+function crystalManifest(e, s, w) {
+  if (!w.walkable) return false;
+  if (w.walkable(e.x, e.y)) { s.wallTime = 0; s.manifest = null; return false; }
+  s.wallTime = (s.wallTime || 0) + w.dt;
+  if (!s.manifest) {
+    if (s.wallTime < CRYSTAL.wallLinger) return false;
+    let best = null, bd = Infinity; const R = CRYSTAL.manifestSearch, cx = Math.round(e.x), cy = Math.round(e.y);
+    for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) { const dd = Math.hypot(x - e.x, y - e.y); if (dd < bd && dd <= R && w.walkable(x, y)) { bd = dd; best = { x, y }; } }
+    w.roamWork?.((2 * R + 1) ** 2);
+    if (!best) return false;
+    s.manifest = { ...best, stuck: 0 };
+  }
+  const to = s.manifest, dx = to.x - e.x, dy = to.y - e.y, d = Math.hypot(dx, dy), step = CRYSTAL.manifestSpeed * w.dt, ox = e.x, oy = e.y;
+  if (Math.abs(dx) > .001) e.facingX = dx > 0 ? 1 : -1;
+  if (d <= step + .02) { e.x = to.x; e.y = to.y; s.manifest = null; s.wallTime = 0; return true; }
+  if (w.roamMove) w.roamMove(e, dx / d * step, dy / d * step); else w.move(e, dx / d * step, dy / d * step);
+  to.stuck = Math.hypot(e.x - ox, e.y - oy) < step * .5 ? to.stuck + w.dt : 0;
+  if (to.stuck >= CRYSTAL.manifestBlink) { w.addEffect?.({ kind: "blinkTrail", owner: e.id, x: e.x, y: e.y, radius: .7, arming: 0, life: .35, damage: 0 }); e.x = to.x; e.y = to.y; s.manifest = null; s.wallTime = 0; }
+  return true;
+}
+
 // Wall-phasing remains Crystal-only. Hunter scheduling is separate from locomotion permissions.
 export function isDungeonRoamer(e, area) { return area === "dungeon" && e?.worldBeast === "psychicCrystal"; }
 export function isDungeonHunter(e, area) { return isDungeonRoamer(e, area) || (area === "dungeon" && e?.worldBeast === "voidWalker"); }
 
-// Sample the whole dungeon domain, not its connected floor graph. Open destinations keep encounters discoverable,
-// but travel between them phases through walls and hazards. Sampling and recent-memory are strictly bounded.
+// Sample the whole dungeon domain for destinations the Wayfarer can reach (release 259: `w.walkable`, the floor connected to
+// the entrance; open ground where a world gives no such test). Travel between them still phases through walls and
+// hazards. Sampling and recent-memory are strictly bounded.
 export function dungeonPatrolRoute(e, w, seq = 0, recent = []) {
   const size = w.width * w.height, count = Math.min(size, CRYSTAL.roamNodes), cells = [];
   if (!(count > 0)) return [];
   const offset = hashSeed(`${e.id}:dungeon-sample:${seq}`) % size;
   for (let i = 0; i < count; i++) {
     const k = (Math.floor(i * size / count) + offset) % size, x = k % w.width, y = Math.floor(k / w.width);
-    if (x < 1 || y < 1 || x >= w.width - 1 || y >= w.height - 1 || !w.open(x, y)) continue;
+    if (x < 1 || y < 1 || x >= w.width - 1 || y >= w.height - 1 || !(w.walkable ? w.walkable(x, y) : w.open(x, y))) continue; // release 259: goals the Wayfarer can reach
     cells.push({ x, y });
   }
   w.roamWork?.(count);
@@ -2093,6 +2123,7 @@ export function updatePackMonster(e, w) {
     if (s.attack && s.phase === "recover" && s.t <= 0) endAttack(e, s);
     return;
   }
+  if (roaming && crystalManifest(e, s, w)) return; // release 259: it does not stay in the walls
   // The Weeping Saint never moves or starts an attack while the Wayfarer faces it.
   if ((e.brain || def.brain) === "weeping") {
     const f = w.playerFacing || { x: 0, y: 1 }, to = unit(e.x - p.x, e.y - p.y);
