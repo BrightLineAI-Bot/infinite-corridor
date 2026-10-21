@@ -1,14 +1,15 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID } from "./monster-pack.js?v=r253-447383f7b357";
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID } from "./monster-pack.js?v=r257-204a3837382b";
 
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r253-447383f7b357";
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r257-204a3837382b";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r253-447383f7b357";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r253-447383f7b357";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r257-204a3837382b";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r257-204a3837382b";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r257-204a3837382b";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r253-447383f7b357";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r257-204a3837382b";
 
 const TAU = Math.PI * 2;
 
@@ -71,6 +72,7 @@ function drawWalkerSkiff(ctx, q, foreground = false) {
 // ---------------------------------------------------------------- creatures
 
 const BODY = {
+  lightningGiant(ctx, q) { drawLightningGiant(ctx, q, q.t * 1000); },
   astralWorm(ctx,q) { const a=q.e.astral;
     // The downward beam is painted first, behind the mandibles, so it reads as leaving the mouth.
     if(a?.form==='flight'){
@@ -834,7 +836,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
   if (e.kind === "astralWorm" || e.kind === "astralMirage") return false; // Continuous morphology has state outside the shared sprite key.
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
-  if (e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker") return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
+  if (e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant") return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (["astralWorm","astralMirage"].includes(e.kind)?0:e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
   const flip = ["astralWorm","astralMirage"].includes(e.kind)&&e.astral?.facingX ? (e.astral.facingX<0?-1:1) : e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, step = Math.floor(now * PACK_SPRITE.fps / 1000);
@@ -880,7 +882,8 @@ function paintPackMonster(ctx, e, s, now, facing, def, sprite) {
   if (e.phasing || (e.phases && e.untargetable)) ctx.globalAlpha = .45;
   if (e.aloft && e.kind === "cinderSeraph") { if (!sprite) ctx.globalAlpha = .35; q.b -= u * .9; }
   if (e.illusion) ctx.globalAlpha *= .92;
-  if (e.fleeFade != null) { ctx.globalAlpha *= e.fleeFade; q.b += (1 - e.fleeFade) * u * .5; } // release 239: going into its home ground
+  if (e.fleeFade != null && e.giantCloud) { q.b -= (1 - e.fleeFade) * u * 2.4; drawGiantCloud(ctx, k, q.b, u, e.fleeFade, t, -flip); ctx.globalAlpha *= Math.min(1, e.fleeFade * 1.6); } // release 257: up into the sky on its cloud
+  else if (e.fleeFade != null) { ctx.globalAlpha *= e.fleeFade; q.b += (1 - e.fleeFade) * u * .5; } // release 239: going into its home ground
   if (e.boss) { glow(ctx, k, b - u * .4 - bodyLift, u * 1.05, def.palette[2], .18); }
   const riding=astralMountPresentation(e), boarding=riding?.boarding;
   if(boarding)drawAstralBoarding(ctx,{...boarding,form:riding.form},{tile:s,unit:u,facing:flip,riderX:k,riderY:b,reducedMotion:!!e.reduceMotion});
@@ -1105,6 +1108,7 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift
   for (const f of effects || []) {
     if (!visible(f)) continue;
     if (VOID_EFFECTS.has(f.kind)) { drawVoidEffect(ctx, f, s, now, lift, presentation); continue; }
+    if (GIANT_EFFECT_KINDS.has(f.kind)) { drawGiantEffect(ctx, f, s, now, presentation); continue; }
     if (f.kind === "debris" && f.medium === "water") { drawCrystalWater(ctx, f, s, now, lift, presentation); continue; }
     const x = (f.x + .5) * s, y = (f.y + .62 - (ON_GROUND.has(f.kind) ? Number(lift(f)) || 0 : 0)) * s, r = (f.radius || 1) * s, pulse = .6 + Math.sin(now / 80) * .25;
     ctx.save();

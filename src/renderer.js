@@ -1,17 +1,18 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r253-447383f7b357";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r253-447383f7b357";
-import { enemyMeleeGeometry } from "./combat.js?v=r253-447383f7b357";
-import { ruleRows } from "./elders.js?v=r253-447383f7b357";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r253-447383f7b357";
-import { BOAT } from "./boats.js?v=r253-447383f7b357";
-import { isMarineTile } from "./world-beasts.js?v=r253-447383f7b357";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r253-447383f7b357";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r253-447383f7b357";
-import { liftAt, tileUnder } from "./landscape.js?v=r253-447383f7b357";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r253-447383f7b357";
-import { drawRelayNode } from "./relay-network.js?v=r253-447383f7b357";
-import { structureOccupancy } from "./world.js?v=r253-447383f7b357";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r253-447383f7b357";
+import { astralBeamAnchors } from "./astral-worm.js?v=r257-204a3837382b";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r257-204a3837382b";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r257-204a3837382b";
+import { enemyMeleeGeometry } from "./combat.js?v=r257-204a3837382b";
+import { ruleRows } from "./elders.js?v=r257-204a3837382b";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r257-204a3837382b";
+import { BOAT } from "./boats.js?v=r257-204a3837382b";
+import { isMarineTile } from "./world-beasts.js?v=r257-204a3837382b";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r257-204a3837382b";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r257-204a3837382b";
+import { liftAt, tileUnder } from "./landscape.js?v=r257-204a3837382b";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r257-204a3837382b";
+import { drawRelayNode } from "./relay-network.js?v=r257-204a3837382b";
+import { structureOccupancy } from "./world.js?v=r257-204a3837382b";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r257-204a3837382b";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1104,7 +1105,7 @@ export function render(ctx, g, w, h, now) {
         },
       });
   for (const e of g.enemies)
-    if (!e.dead && discoveredInDungeon(g,e) && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" ? 5 : 2))
+    if (!e.dead && discoveredInDungeon(g,e) && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
       draws.push({
         y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
         fn: () => {
@@ -1121,7 +1122,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillRect((e.x + .5 - .4*flashScale) * s, (e.y + .45 - .42*flashScale) * s, s * .8*flashScale, s * .75*flashScale);
             ctx.restore();
           }
-          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage"].includes(e.kind) ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
+          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant"].includes(e.kind) ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
           actor(
             ctx,
             e.x + ox,
@@ -1178,6 +1179,9 @@ export function render(ctx, g, w, h, now) {
         ctx.fillStyle = hull > .6 ? "#6fcf7a" : hull > .3 ? "#e3b04b" : "#e2574a"; ctx.fillRect(bx, by, bw * hull, bh);
         if (hull <= .3 && Math.floor(now / 350) % 2) { ctx.strokeStyle = "#ffb3a8"; ctx.lineWidth = 1; ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2); }
       }
+      // Release r257-204a3837382b: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
+      const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
+      if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
       actor(
         ctx,
         p.x,
@@ -1188,6 +1192,7 @@ export function render(ctx, g, w, h, now) {
         Math.floor(p.walkPhase || 0),
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
+      if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       // Poisoned (release 165): the Wayfarer pulses green while poison lasts.
       if (g.save.elites?.status?.poison > 0) { const pulse = .5 + .5 * Math.sin(now / 160); ctx.fillStyle = `rgba(120,230,90,${.12 + pulse * .22})`; ctx.strokeStyle = `rgba(150,255,110,${.35 + pulse * .45})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y - lift / s + .35) * s, s * (.42 + pulse * .08), s * (.55 + pulse * .08), 0, 0, 7); ctx.fill(); ctx.stroke(); }
       if (now < (p.attackUntil || 0)) {
@@ -1231,15 +1236,17 @@ export function render(ctx, g, w, h, now) {
     for (let i = 0; i < 4; i++) { const x0 = (l + ((i * 7 + now / 900) % (r - l + 6)) - 3) * s; ctx.fillStyle = "rgba(200,240,255,.06)"; ctx.beginPath(); ctx.moveTo(x0, t * s); ctx.lineTo(x0 + s * 1.5, t * s); ctx.lineTo(x0 + s * 4, b * s); ctx.lineTo(x0 + s * 2, b * s); ctx.fill(); }
   }
   // Stormkraken ink (W4): the sea goes dark beyond a small circle around the Wayfarer.
-  if (g.area === "overworld" && g.seaHazards?.fog?.length) {
+  if (g.area === "overworld" && (g.seaHazards?.fog?.length || g.novaFog)) {
     // Fog banks (release 156; release 158 smooths them): each bank is a cluster of soft puffs turning slowly about its
     // centre. Inside a bank the mist closes in around the Wayfarer gradually (fogLevel is eased in open-sea.ts).
-    const level = g.seaHazards.fogLevel || 0, time = now / 1000;
-    for (const f of g.seaHazards.fog) {
+    // Release r257-204a3837382b: a Supernova's fog (g.novaFog) draws the same way, faded in and out by its alpha.
+    const level = Math.max(g.seaHazards?.fogLevel || 0, g.novaFog?.fogLevel || 0), time = now / 1000;
+    for (const [f, fade] of [...(g.seaHazards?.fog || []).map((f) => [f, 1]), ...(g.novaFog?.fog || []).map((f) => [f, g.novaFog.alpha ?? 1])]) {
+      if (fade <= 0) continue;
       for (let i = 0; i < 7; i++) {
         const a = (f.swirl || 0) + i * 2.399 + Math.sin(time * .2 + i) * .15, d = f.radius * (.15 + .55 * ((i * 37) % 10) / 10), pr = f.radius * (.45 + .1 * Math.sin(time * .3 + i * 1.7));
         const x = (f.x + Math.cos(a) * d) * s, y = (f.y + Math.sin(a) * d) * s, gr = ctx.createRadialGradient(x, y, 0, x, y, pr * s);
-        gr.addColorStop(0, `rgba(222,231,236,${.22 * (1 - level * .5)})`); gr.addColorStop(1, "rgba(222,231,236,0)");
+        gr.addColorStop(0, `rgba(222,231,236,${.22 * fade * (1 - level * .5)})`); gr.addColorStop(1, "rgba(222,231,236,0)");
         ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, pr * s, 0, 7); ctx.fill();
       }
     }
@@ -1255,7 +1262,7 @@ export function render(ctx, g, w, h, now) {
     ctx.fillStyle = grad; ctx.fillRect(l * s, t * s, (r - l) * s, (b - t) * s);
   }
   for (const e of g.enemies)
-    if (!e.dead && discoveredInDungeon(g,e) && !e.ambient && !e.hidden && !e.aloft && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" ? 5 : 2)) {
+    if (!e.dead && discoveredInDungeon(g,e) && !e.ambient && !e.hidden && !e.aloft && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2)) {
       const barY = e.packKind ? e.y - 0.1 - Math.max(0, (Number(e.scale) || 1) - 1) * 0.75 - (e.flying ? 0.35 : 0) - (e.kind === "psychicCrystal" ? crystalLift(e) : 0) : e.y - 0.1;
       ctx.fillStyle = "#211617";
       ctx.fillRect(e.x * s, barY * s, s, 3);

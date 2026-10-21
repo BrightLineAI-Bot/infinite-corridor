@@ -1,13 +1,13 @@
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r253-447383f7b357";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r257-204a3837382b";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.js?v=r253-447383f7b357";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r253-447383f7b357";
-import { sectionExits } from "./world.js?v=r253-447383f7b357";
+import { hashSeed } from "./random.js?v=r257-204a3837382b";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r257-204a3837382b";
+import { sectionExits } from "./world.js?v=r257-204a3837382b";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -50,6 +50,18 @@ export const WORLD_BEASTS = {
     arrive: "Something black and red stands very still here, and the air hums. The Nanobot Knight is waiting.",
     slain: "The Nanobot Knight's armour falls empty, and the swarm inside it goes dark.",
     gone: "The Nanobot Knight has learned you, and drifts apart. In time it will gather somewhere else.",
+  },
+  // Release r257-204a3837382b (Tim 2026-10-21): a giant lightning robot. It retreats on foot to a chasm, where a storm cloud gathers
+  // under it and carries it up into the sky.
+  lightningGiant: {
+    kind: "lightningGiant", name: "The Lightning Giant", chance: .025, minDepth: 6, tries: 3, cooldownSlain: 22, cooldownEscaped: 28,
+    hitsToKill: 72, hpPerLevel: 32, damageShare: .24, speed: .65, attackGap: .3, staggerResistance: 1, rewardMarks: 190, rewardPerLevel: 19,
+    patience: 180, home: "canyon", retreatMoves: "walk",
+    flee: "The Lightning Giant lowers its club and strides away toward the chasms, sparks trailing from its coils.",
+    homeLine: "At the chasm's edge a storm cloud gathers under the Lightning Giant, and it rides the cloud up into the sky.",
+    arrive: "The air smells of a storm, and the ground shakes with heavy, measured steps. The Lightning Giant walks here.",
+    slain: "The Lightning Giant's coils spit and go dark, and it falls like a felled tower.",
+    gone: "The Lightning Giant has had enough of you, and strides off into the weather. In time it will walk somewhere else.",
   },
   psychicCrystal: {
     kind: "psychicCrystal", name: "The Psychic Crystal", chance: .025, minDepth: 5, tries: 3, cooldownSlain: 20, cooldownEscaped: 26,
@@ -276,7 +288,7 @@ export function worldBeastFor(save, map, rx, ry) {
   if (!here) return null;
   const q = save.worldBeasts[here];
   if (q.active.retreat) return fleeSpawn(save, here, rx, ry);
-  const marine = here === "voidWalker" || here === "psychicCrystal" || here === "astralWorm";
+  const marine = here === "voidWalker" || here === "psychicCrystal" || here === "astralWorm" || here === "lightningGiant"; // release 257: met at sea, riding its cloud
   const open = map.tiles.filter((t) => (marine && marineTileOpen(t) || here === "astralWorm" && astralSpawnWater(t) || !t.blocked && !t.structure && !t.environment && !LETHAL_KINDS.has(t.kind)) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24);
   const at = open.sort((a, b) => hashSeed(`wb:${here}:${q.cycle}:${a.x},${a.y}`) - hashSeed(`wb:${here}:${q.cycle}:${b.x},${b.y}`))[0];
   if (!at) { if (!q.active.tries) q.active = null; return null; } // no valid terrain for this beast: it does not hold the section

@@ -7,7 +7,7 @@
 //
 // DRAFT NARRATIVE: the fragment texts below are placeholders written to fit the existing lore. The operator owns the
 // relay story; rewrite FRAGMENTS freely. The mechanics never depend on their wording.
-import { hashSeed } from "./random.js?v=r253-447383f7b357";
+import { hashSeed } from "./random.js?v=r257-204a3837382b";
 
 export const RELAY_VERSION = 1;
 // Relay placement v2 (release 142): Wolfram's Rule 110, a class IV ("complex") cellular automaton. Each row of sections
