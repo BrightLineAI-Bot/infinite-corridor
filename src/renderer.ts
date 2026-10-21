@@ -126,6 +126,11 @@ function tile(ctx, t, x, y, s, map, w, activeBuildingId=null) {
   }
 }
 function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null) {
+  if (t?.kind === "voidScar") { // A solid aftermath floor, not a lethal hole or an animated combat hazard.
+    const px = x * s, py = y * s, d = h(x, y); ctx.fillStyle = (d & 1) ? "#494452" : "#45414d"; ctx.fillRect(px, py, s + 1, s + 1);
+    ctx.strokeStyle = "#ba9ed044"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + s * .1, py + s * .3); ctx.lineTo(px + s * .45, py + s * .5); ctx.lineTo(px + s * .85, py + s * .4); ctx.stroke();
+    ctx.fillStyle = "#dbbff28a"; ctx.fillRect(px + s * (.2 + (d % 5) * .12), py + s * .7, Math.max(1, s * .035), Math.max(1, s * .035)); return;
+  }
   if (t?.landscape && drawLandscapeTile(ctx, t, x, y, s, map, w)) return;
   const p = PAL[t.kind] || PAL.ash,
     d = Number.isFinite(t.detail) ? t.detail : h(x, y),
@@ -843,8 +848,8 @@ export function render(ctx, g, w, h, now) {
   const seenTile=(x,y)=>g.area!=="dungeon"||dungeonTileVisibility(g.map,x,y)!=="unseen";
   drawHazardBrinks(ctx,g.map,mw,l,t,r,b,s,seenTile); // per frame: brinks sit over animated water, as before
   drawTraversalCues(ctx,g.map,mw,p,s,now,g.ledgeHint,seenTile);
-  drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,3),(f)=>groundLift(f.x,f.y));
-  drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift });
+  drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),g.presentation);
+  drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) });
   for(const e of g.enemies)if(!e.dead&&discoveredInDungeon(g,e)&&e.eliteWindup>0&&visibleInCamera(e,l,t,r,b,e.kind==='gravitantBell'?6:3)){ctx.strokeStyle=e.kind==='gravitantBell'?"#8bb8bdcc":"#c6885ccc";ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
   for (const e of g.enemies)
     if (!e.dead && discoveredInDungeon(g,e) && e.telegraph > 0 && visibleInCamera(e,l,t,r,b,e.threatRange||2)) {
@@ -1009,7 +1014,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillRect((e.x + .5 - .4*flashScale) * s, (e.y + .45 - .42*flashScale) * s, s * .8*flashScale, s * .75*flashScale);
             ctx.restore();
           }
-          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
+          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(e.kind === "voidWalker" ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
           actor(
             ctx,
             e.x + ox,
@@ -1259,7 +1264,7 @@ function drawEchoPatches(ctx,g,s,now){
   for(const q of g.echoPatches||[]){const left=Math.max(0,(q.until-now)/1000),x=q.x*s,y=q.y*s,r=q.radius*s;
     if(q.kind==="web"){ctx.strokeStyle=`rgba(230,235,240,${Math.min(.7,left)})`;ctx.lineWidth=1;ctx.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.6)}ctx.stroke();for(const f of[.4,.75,1]){ctx.beginPath();ctx.ellipse(x,y,r*f,r*f*.6,0,0,7);ctx.stroke()}}
     else if(q.kind==="flesh"){ctx.fillStyle=`rgba(150,40,60,${Math.min(.45,left*.2)})`;ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.fill();ctx.fillStyle=`rgba(220,120,130,${Math.min(.5,left*.2)})`;for(let k=0;k<5;k++){ctx.beginPath();ctx.arc(x+Math.cos(k*1.3+now/700)*r*.6,y+Math.sin(k*1.7)*r*.35,s*.06,0,7);ctx.fill()}}
-    else if(q.kind==="mortar"){const t=1-Math.min(1,left/.65);ctx.strokeStyle=`rgba(255,200,90,${.4+t*.5})`;ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.stroke();ctx.fillStyle=`rgba(255,170,60,${t*.3})`;ctx.fill()}}
+    else if(q.kind==="mortar"){const t=1-Math.min(1,left/.65);ctx.strokeStyle=q.voidEcho?`rgba(206,150,255,${.4+t*.5})`:`rgba(255,200,90,${.4+t*.5})`;ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.stroke();ctx.fillStyle=q.voidEcho?`rgba(151,82,224,${t*.3})`:`rgba(255,170,60,${t*.3})`;ctx.fill()}}
 }
 
 const SEA_SURFACE = new Set(["ocean", "deepOcean", "shallows"]);

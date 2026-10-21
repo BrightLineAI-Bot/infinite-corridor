@@ -36,6 +36,7 @@ export const ECHOES = {
   mountainTurtle: { name: "Turtle's Ward", cost: 3, trigger: "hurt", module: "turtleShield", text: "Being hurt grows ice over you: no blow lands for a second (once every 8 s)." },
   nanobotKnight: { name: "Nanite Seekers", cost: 3, trigger: "kill", module: "knightOrbs", text: "Kills loose nanite seekers into up to two foes within 5 tiles." },
   psychicCrystal: { name: "Mind Ward", cost: 2, trigger: "hurt", module: "psyPush", text: "Being hurt throws foes within 3 tiles back from you." },
+  voidWalker: { name: "Rift Upheaval", cost: 2, trigger: "dodge", module: "voidSpikes", text: "Dodging marks the nearest foe within 5 tiles with a void spike; it erupts after half a second (once every 4 s)." },
   graveLantern: { name: "Lantern Stillness", cost: 1, trigger: "still", module: "stillnessCurse", text: "Standing still for a second mends 2 health each second." },
 };
 export const ECHO_IDS = Object.keys(ECHOES);
@@ -68,6 +69,9 @@ export function echoDrop(save, enemy, guardian, n) {
   return id;
 }
 
+// Proposed Void Walker Echo tuning: a small signature spike, not the terrain-erasing Supernova.
+export const VOID_ECHO = { cooldown: 4000, delay: 500, radius: 1, range: 5, damage: 1.1 };
+
 // ---------------------------------------------------------------- effects
 const echoDamage = (save) => 6 + Math.round(1.5 * (save.level || 1));
 function nearest(game, x, y, radius, skip = null) {
@@ -84,6 +88,16 @@ export function echoEvent(game, event, now, data = {}) {
     if (eq.includes("pallidCrawler")) p.stamina = Math.min(save.maxStamina, p.stamina + 5);
     if (eq.includes("veilSpinner")) (game.echoPatches ||= []).push({ kind: "web", x: me.x, y: me.y, radius: 1.4, until: now + 3000, slow: .5 });
     if (eq.includes("tremorWorm")) { const foe = nearest(game, me.x, me.y, 5)[0]; if (foe) { const c = centre(foe); (game.echoPatches ||= []).push({ kind: "mortar", x: c.x, y: c.y, radius: 1.4, until: now + 600, detonate: Math.round(dmg * 1.3) }); } } // release 237
+    if (eq.includes("voidWalker") && now >= (p.echoVoidReadyAt || 0)) {
+      const foe = nearest(game, me.x, me.y, VOID_ECHO.range)[0];
+      if (foe) {
+        const c = centre(foe); game.echoPatches ||= [];
+        // One pending Walker patch even if another caller repeats a dodge event in the same frame.
+        game.echoPatches = game.echoPatches.filter((q) => !q.voidEcho);
+        game.echoPatches.push({ kind: "mortar", voidEcho: true, x: c.x, y: c.y, radius: VOID_ECHO.radius, until: now + VOID_ECHO.delay, detonate: Math.round(dmg * VOID_ECHO.damage) });
+        p.echoVoidReadyAt = now + VOID_ECHO.cooldown;
+      }
+    }
     if (eq.includes("strataEel")) p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, (p.dodgeUntil || now) + 250);
   } else if (event === "land" && eq.includes("sunderjaw")) world.blast(me.x, me.y, 1.8, dmg);
   else if (event === "kill") {
@@ -117,6 +131,7 @@ export function echoEvent(game, event, now, data = {}) {
 
 // Continuous Echoes, ground patches, charge contact and trigger detection. `moving` is the player's input vector.
 export function tickEchoes(game, dt, now, moving) {
+  if (!(dt > 0)) return;
   const save = game.save, p = game.player, eq = save.echoes?.equipped || [], me = centre(p), world = game.glyphWorld(now);
   // hurt / land detection runs even with nothing equipped so state stays fresh
   const hurt = game._echoLastHp !== undefined && p.hp < game._echoLastHp && p.hp > 0, airborne = now < (game.jumpUntil || 0), landed = game._echoAirborne && !airborne;

@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-10-18.
 
+## Void Walker design handoff — recorded 2026-10-21 UTC
+
+Before implementing or reviewing the Void Walker, read [the detailed owner design and acceptance record](void-walker-design.md) and [the verbatim dictated source](void-walker-source-transcript.md). The description includes player-scale proportions, cosmic rends, transient wraiths, teleport/evasion, tracking portal constellations, pulling event horizons/pulsars, and a terrain-consuming supernova with straight teleport-dash barrages and damaging afterimages. The record separates explicit requirements from interpretations and tuning choices; its review statuses begin **NOT YET VERIFIED**. It is a design handoff, not a completion or publication claim. It supersedes earlier statements that the appearance/combat description has not yet been supplied.
+
 ## Where things stand
 
 Publishing moved to GitHub Actions on 2026-10-18 (see Tim's standing decisions). The live site was last published by the retired PC tool: release 171, candidate `icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa` (commit `ef56426`); read `gh-pages:release-identity.json` for the current one.
