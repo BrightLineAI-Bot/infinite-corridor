@@ -177,26 +177,31 @@ export function drawLightningGiant(ctx, q, now = 0) {
   };
   // The lost arm: a torn shoulder socket on the far side, capped by a ring housing with severed cable stubs. It is the
   // booster: a steady glow inside, and an eruption of energy out behind the machine whenever it boosts.
+  // The lost arm: a torn shoulder socket at the back of the far shoulder, a ring housing with severed cable stubs, drawn
+  // over the torso's back edge so the hole stays in view. It is the booster: a steady glow inside, and while boosting an
+  // eruption of energy that blasts straight out of the hole, with a white-hot flare filling its mouth.
   const socket = (sx) => {
-    const cy = shoulderY - u * .01, boost = e.giantThrust ? 1 : 0, flick = reduce ? 0 : Math.sin(t * 38) * .5 + .5;
-    if (boost) { // the eruption: a long plume blasting out behind, a bright core, and sparks
-      const len = u * A.boostPlume * (.85 + .15 * flick), dir = { x: -.99, y: .06 }, px = -dir.y, py = dir.x;
-      for (const [wide, color, alpha] of [[.16, "127,214,255", .35], [.1, "160,226,255", .7], [.045, "234,250,255", .95]]) {
-        const g = ctx.createLinearGradient(sx, cy, sx + dir.x * len, cy + dir.y * len); g.addColorStop(0, `rgba(${color},${alpha})`); g.addColorStop(1, `rgba(${color},0)`);
-        ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(sx + px * u * wide * .5, cy + py * u * wide * .5); ctx.quadraticCurveTo(sx + dir.x * len * .5 + px * u * wide, cy + dir.y * len * .5 + py * u * wide, sx + dir.x * len, cy + dir.y * len);
-        ctx.quadraticCurveTo(sx + dir.x * len * .5 - px * u * wide, cy + dir.y * len * .5 - py * u * wide, sx - px * u * wide * .5, cy - py * u * wide * .5); ctx.closePath(); ctx.fill();
-      }
-      if (!reduce) for (let i = 0; i < 4; i++) { const f = ((t * 6 + i * .27) % 1), d = len * (.3 + f * .8); ctx.fillStyle = `rgba(234,250,255,${1 - f})`; ctx.fillRect(sx + dir.x * d + px * u * .08 * Math.sin(i * 2.3 + t * 9) - u * .01, cy + dir.y * d + py * u * .08 * Math.sin(i * 2.3 + t * 9) - u * .01, u * .02, u * .02); }
-    }
+    const cy = shoulderY - u * .01, boost = e.giantThrust ? 1 : 0, flick = reduce ? 0 : Math.sin(t * 38) * .5 + .5, mouth = { x: sx - u * .02, y: cy };
     plate([sx - u * .1, cy + u * .05, sx - u * .08, cy - u * .07, sx + u * .06, cy - u * .1, sx + u * .12, cy - u * .02, sx + u * .09, cy + u * .08], "#4a535d"); // ring housing
-    const g = ctx.createRadialGradient(sx, cy, u * .01, sx, cy, u * .07); g.addColorStop(0, boost ? A.coreHot : "rgba(127,214,255,.9)"); g.addColorStop(.6, boost ? A.core : "rgba(40,70,90,.9)"); g.addColorStop(1, "#11161b");
-    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(sx, cy, u * .065, u * .075, -.3, 0, TAU); ctx.fill(); ctx.strokeStyle = A.metalEdge; ctx.lineWidth = lw; ctx.stroke(); // the open socket
+    const g = ctx.createRadialGradient(mouth.x, cy, u * .01, mouth.x, cy, u * .07); g.addColorStop(0, boost ? "#ffffff" : "rgba(127,214,255,.9)"); g.addColorStop(.6, boost ? A.coreHot : "rgba(40,70,90,.9)"); g.addColorStop(1, boost ? A.core : "#11161b");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(mouth.x, cy, u * .062, u * .072, -.3, 0, TAU); ctx.fill(); ctx.strokeStyle = A.metalEdge; ctx.lineWidth = lw; ctx.stroke(); // the open socket
     ctx.strokeStyle = A.copperDark; ctx.lineWidth = Math.max(1, u * .016); ctx.lineCap = "round";
     for (const [a, l] of [[2.5, .06], [3.2, .045], [3.9, .055]]) { ctx.beginPath(); ctx.moveTo(sx + Math.cos(a) * u * .06, cy + Math.sin(a) * u * .07); ctx.lineTo(sx + Math.cos(a) * u * (.06 + l), cy + Math.sin(a) * u * (.07 + l) + u * .02); ctx.stroke(); } // severed cables
+    if (!boost) return;
+    // The eruption, from inside the hole outward: layered plume, then a flare over the mouth, then sparks.
+    const len = u * A.boostPlume * (.85 + .15 * flick), dir = { x: -.99, y: .06 }, px = -dir.y, py = dir.x;
+    for (const [wide, color, alpha] of [[.15, "127,214,255", .4], [.095, "160,226,255", .75], [.045, "234,250,255", 1]]) {
+      const pg = ctx.createLinearGradient(mouth.x, cy, mouth.x + dir.x * len, cy + dir.y * len); pg.addColorStop(0, `rgba(${color},${alpha})`); pg.addColorStop(1, `rgba(${color},0)`);
+      ctx.fillStyle = pg; ctx.beginPath(); ctx.moveTo(mouth.x + px * u * wide * .45, cy + py * u * wide * .45); ctx.quadraticCurveTo(mouth.x + dir.x * len * .45 + px * u * wide, cy + dir.y * len * .45 + py * u * wide, mouth.x + dir.x * len, cy + dir.y * len);
+      ctx.quadraticCurveTo(mouth.x + dir.x * len * .45 - px * u * wide, cy + dir.y * len * .45 - py * u * wide, mouth.x - px * u * wide * .45, cy - py * u * wide * .45); ctx.closePath(); ctx.fill();
+    }
+    const fl = ctx.createRadialGradient(mouth.x, cy, 0, mouth.x, cy, u * (.11 + .03 * flick)); fl.addColorStop(0, "rgba(255,255,255,.95)"); fl.addColorStop(.45, "rgba(170,230,255,.6)"); fl.addColorStop(1, "rgba(127,214,255,0)");
+    ctx.fillStyle = fl; ctx.beginPath(); ctx.arc(mouth.x, cy, u * (.11 + .03 * flick), 0, TAU); ctx.fill(); // flare at the mouth
+    if (!reduce) for (let i = 0; i < 5; i++) { const f = ((t * 6 + i * .21) % 1), d = len * (.15 + f * .85), wob = Math.sin(i * 2.3 + t * 9) * u * .07 * f; ctx.fillStyle = `rgba(234,250,255,${1 - f})`; ctx.fillRect(mouth.x + dir.x * d + px * wob - u * .01, cy + dir.y * d + py * wob - u * .01, u * .02, u * .02); }
   };
   const clubAngle = eased(e, "club", A.poses[pose] ?? A.poses.idle, now, A.ease) + (pose === "idle" ? m * Math.sin(ph) * .1 : 0);
   // Far side.
-  leg(-1, Math.PI, true); socket(-u * .27);
+  leg(-1, Math.PI, true);
   // Torso: segmented waist, a barrel chest, a breastplate around the glowing core.
   plate([-u * .16, Y(.64), u * .18, Y(.64), u * .16, Y(.54), -u * .14, Y(.54)], A.metalDark);
   ctx.strokeStyle = A.metalEdge; ctx.lineWidth = lw; for (const h of [.575, .61]) { ctx.beginPath(); ctx.moveTo(-u * .14, Y(h)); ctx.lineTo(u * .16, Y(h)); ctx.stroke(); }
@@ -210,6 +215,7 @@ export function drawLightningGiant(ctx, q, now = 0) {
   ctx.fillStyle = A.metalDark; ctx.beginPath(); ctx.arc(u * .02, coreY, u * .085, 0, TAU); ctx.fill(); ctx.strokeStyle = A.metalEdge; ctx.stroke();
   ctx.fillStyle = A.core; ctx.globalAlpha = Math.min(1, .35 + .4 * pulse); ctx.beginPath(); ctx.arc(u * .02, coreY, u * .07, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
   ctx.fillStyle = A.coreHot; ctx.beginPath(); ctx.arc(u * .02, coreY, u * .038, 0, TAU); ctx.fill();
+  socket(-u * .3); // the lost arm's socket, over the torso's back edge
   // Near leg, then the hip skirt over both thigh roots.
   leg(1, 0, false);
   plate([-u * .22, Y(.59), u * .24, Y(.59), u * .22, Y(.47), u * .07, Y(.44), -u * .05, Y(.46), -u * .2, Y(.48)], A.metalDark);

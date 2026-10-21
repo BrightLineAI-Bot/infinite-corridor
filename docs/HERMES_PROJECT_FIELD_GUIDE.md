@@ -2370,7 +2370,7 @@ Clean-up (Tim: "his head is in his chest, and we haven't addressed the crest"):
 
 Final direction (Tim, same day; this supersedes the weathered/Neanderthal redesign and the clean-up above): scrap that archetype for this robot and keep it for a future creature (a warrior shaman, upright "like the Onyx Lords"). The Giant goes back to the look after the six visual passes (no weathering, no hunch, no garment), with these changes:
 - **One arm.** He is "a big Armored Core robot that's lost one arm". The far arm, its pauldron and its coil are gone; `socket()` draws a ring housing, a glowing open socket and severed cables.
-- **Socket boost.** The socket is the booster. While boosting (`e.giantThrust`) it erupts a layered energy plume straight back with sparks, and the whole machine leans into the burst (`GIANT_ART.boostLean`, eased).
+- **Socket boost.** The socket is the booster. While boosting (`e.giantThrust`) the hole itself glows white and a layered energy plume erupts out of it (the plume starts at the mouth inside the hole, not behind the shoulder) with sparks, and the whole machine leans into the burst (`GIANT_ART.boostLean`, eased). Tim, 2026-10-21: "It should be coming out of that hole." `socket()` is drawn after the torso so the hole and plume sit over the torso's back edge.
 - **Crest.** About 45% of its six-pass size (Tim: "too large").
 - **Gait.** The planted, distance-driven gait (`giantFoot`/`gait`, with the no-slide test) is kept underneath: legs brace while boosting and tuck in the air.
 
