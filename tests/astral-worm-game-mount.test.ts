@@ -77,7 +77,10 @@ test('Game owner death, owner removal and either retreat detach riders without h
     if(reason==='owner-missing')g.enemies=[rider];
     if(reason==='owner-retreat')owner.retreating=true;
     if(reason==='rider-retreat')rider.retreating=true;
-    g.syncAstralRiders();assert.equal(rider.astralMount.status,'dismounted');assert.equal(rider.astralMount.reason,reason);
+    g.syncAstralRiders();
+    // Owner rule 2026-10-21: a rider stays on a retreating Worm and rides it home.
+    if(reason==='owner-retreat'){assert.equal(rider.astralMount.status,'mounted');assert.equal(rider.astralMount.ridingAway,true);assert.equal(rider.untargetable,true);}
+    else {assert.equal(rider.astralMount.status,'dismounted');assert.equal(rider.astralMount.reason,reason);}
     assert.equal(rider.hp,500);assert.equal(rider.maxHp,500);
   }
 });

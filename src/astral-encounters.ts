@@ -12,7 +12,8 @@ export function astralCompanionFor(save,main,scene,actorCount) {
     const available=!walker.active&&walker.cooldown===0&&actorCount<ASTRAL.maxActorArray-ASTRAL_PAIR.actorReserve;
     const alignment=astralWalkerPair(roll(`${save.seed}:astral-pair:v1:${worm.cycle}`),{walkerAvailable:available});
     a.astralPair={v:1,alignment,walkerId:alignment?`world-beast:voidWalker:${walker.cycle}`:null,mount:alignment==='hostile'&&roll(`${save.seed}:astral-mount:v1:${worm.cycle}`)<ASTRAL_PAIR.mountedShare,mountStarted:false};
-    if(alignment)walker.active={...(scene.dungeon?{dungeon:scene.dungeon,dungeonLevel:scene.level}:{rx:scene.rx,ry:scene.ry}),tries:0,astralPairOf:main.id,astralRole:alignment};
+    // The three tries count from the first monster met: a joining Walker inherits the Worm's spent tries.
+    if(alignment)walker.active={...(scene.dungeon?{dungeon:scene.dungeon,dungeonLevel:scene.level}:{rx:scene.rx,ry:scene.ry}),tries:Number(a.tries)||0,astralPairOf:main.id,astralRole:alignment,...(alignment==='hostile'?{astralJoined:true}:{})};
   }
   const pair=a.astralPair;
   if(!pair.alignment||!present(walker.active,scene)||walker.active.astralPairOf!==main.id||actorCount>=ASTRAL.maxActorArray-ASTRAL_PAIR.actorReserve)return null;
@@ -36,7 +37,7 @@ export function reconcileAstralCompanions(game) {
       if(walker?.active?.astralPairOf===e.astralCompanionOf){delete walker.active.astralPairOf;delete walker.active.astralRole;}
     }
     if(e.astralMountWanted&&owner&&!owner.dead&&!owner.retreating) {
-      if(game.mountAstralFixture(owner,e)) { e.astralMountWanted=false;if(state?.active?.astralPair)state.active.astralPair.mountStarted=true; }
+      if((game.boardAstralWalker||game.mountAstralFixture).call(game,owner,e)) { e.astralMountWanted=false;if(state?.active?.astralPair)state.active.astralPair.mountStarted=true; }
     }
   }
 }

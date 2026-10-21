@@ -90,8 +90,10 @@ test('owner death, owner disappearance, owner retreat and rider retreat detach w
     if(reason==='owner-missing')host.findOwner=()=>null;
     if(reason==='owner-retreat')owner.retreating=true;
     if(reason==='rider-retreat')rider.fleeTo={x:1,y:1};
-    assert.equal(syncAstralMount(rider,host),false);
-    assert.equal(rider.astralMount.reason,reason); assert.equal(rider.astralMount.status,'dismounted');
+    // Owner rule 2026-10-21: a rider stays on a retreating Worm and rides it home.
+    if(reason==='owner-retreat'){assert.equal(syncAstralMount(rider,host),true);assert.equal(rider.astralMount.status,'mounted');assert.equal(rider.astralMount.ridingAway,true);}
+    else {assert.equal(syncAstralMount(rider,host),false);
+    assert.equal(rider.astralMount.reason,reason); assert.equal(rider.astralMount.status,'dismounted');}
     assert.equal(rider.hp,400); assert.equal(owner.hp,reason==='owner-dead'?0:900);
   }
 });

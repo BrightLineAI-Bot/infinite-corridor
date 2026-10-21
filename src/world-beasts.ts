@@ -148,6 +148,9 @@ const SIDES = { east: [1, 0], west: [-1, 0], south: [0, 1], north: [0, -1] }, OP
 // Counts fighting time; true when the beast's patience has just run out.
 export function worldBeastPatience(save, id, dt) {
   const q = save.worldBeasts?.[id]?.active; if (!q || q.retreat) return false;
+  // A Walker that joined an Astral fight stays until it is killed or the player's tries run out, unless it chose to leave.
+  if (q.astralLeave) return true;
+  if (q.astralJoined) return false;
   q.patience = (Number(q.patience) || 0) + dt;
   return q.patience >= WORLD_BEASTS[id].patience;
 }
