@@ -106,7 +106,7 @@ export const ATTACK_MODULES = {
   giantShock: { id: "giantShock", name: "Grounding Shock", range: [0, 8], cooldown: 9, windup: .75, recover: .5, damage: .8, tags: ["ranged", "lightning"], text: "It points, and the ground under you crackles: step off the mark, or the shock knocks you flat for a moment." },
   giantSwing: { id: "giantSwing", name: "Club Swings", range: [0, 3.2], cooldown: 3.2, windup: .45, active: .7, recover: .45, damage: 1.1, tags: ["melee", "combo"], text: "A forward swing of its great club, then the back-swing." },
   giantSlam: { id: "giantSlam", name: "Club Slam", range: [0, 4.5], cooldown: 5, windup: .7, recover: .7, damage: 1.4, tags: ["melee", "ground", "lightning"], text: "It slams the club down. Sometimes lightning answers from the sky where you stood; sometimes three bolts leap from the club straight at you." },
-  giantMenace: { id: "giantMenace", name: "Menacing Slam", range: [0, 9], cooldown: 8, windup: .5, active: 30, recover: .5, damage: 1.5, tags: ["melee", "ground"], text: "It raises its club and stalks you with it held high. Come within reach and it slams it down (or fires a short bolt from its chest), and may do it again; keep away and it lowers the club." },
+  giantMenace: { id: "giantMenace", name: "Menacing Slam", range: [0, 9], cooldown: 8, windup: .5, active: 30, recover: .5, damage: 1.5, tags: ["melee", "ground"], text: "It raises its club and stalks you with it held high. Come within reach and it slams it down (or fires a short bolt from its chest), and may do it again; keep away and it fires two quick chest beams after you before it lowers the club." },
   giantUpswing: { id: "giantUpswing", name: "Charging Upswing", range: [0, 8], cooldown: 7, windup: .35, active: 30, recover: .5, damage: 1.2, tags: ["melee", "charge"], text: "It runs at you and swings the club up. Sometimes it leaps from the swing: from the air it hurls a barrage of bolts or dashes at you in a crackle of arcs, then lands, or comes down in a slam onto where you stand." },
   giantElectrify: { id: "giantElectrify", name: "Electrify", range: [0, 14], cooldown: 18, windup: 1.6, recover: .3, damage: .7, tags: ["buff", "lightning"], text: "It raises the club to the sky and lightning strikes it. Wrapped in a crackling haze it moves faster, and bolts drop around it." },
   // The Nanobot Knight's kit (release 245, Tim 2026-10-19: black with red accents; teleports or dissolves into mist;
@@ -573,6 +573,10 @@ export const GIANT = {
   // Menacing slam: stalk with the club up for up to menaceHold s; when within reach, a dodgeable wind-up then the slam
   // (or a short chest bolt); up to menaceStrikes times.
   menaceHold: 3.2, menaceSpeed: 1.15, menaceStrikes: 2, menaceReach: 1.1, menaceWindup: .42, menaceBeat: .3, chestChance: .35, chestRange: 5, chestWidth: .45, chestWindup: .3,
+  // Kept out of reach, it doesn't just lower the club: it fires honestShots chest beams one after another to keep you
+  // honest, each with a short charge, honestStagger s apart, in a small cone (±honestCone/2°), the later one turned
+  // toward where you are now by at most honestTrack°. Tim, 2026-10-21: "being and then being... slightly track you".
+  honestShots: 2, honestRange: 10, honestWindup: .32, honestStagger: .2, honestCone: 9, honestTrack: 12, honestShare: .6,
   // Charging upswing and its optional leap.
   // Burst dashes (Tim 2026-10-21, "like Armored Core"): it walks slowly but closes distance with shoulder-thruster dashes,
   // up to dashMax in a row, sometimes as a hop through the air. Traversal dashes start when the Wayfarer is beyond dashRange.
@@ -1061,6 +1065,14 @@ const RUN = {
   giantMenace(e, s, w) {
     const attack = ATTACK_MODULES.giantMenace, d = s.data, p = center(w.player), dist = distance(p, e);
     const roll = (key) => (hashSeed(`${e.id}:${s.seq}:menace:${key}`) % 1000) / 1000;
+    // One honest beam: aim at you (a later shot turns toward you by at most honestTrack°), offset to its side of the cone.
+    const honestAim = () => {
+      const want = Math.atan2(p.y - e.y, p.x - e.x), turn = GIANT.honestTrack * Math.PI / 180;
+      d.base = d.base == null ? want : d.base + Math.max(-turn, Math.min(turn, Math.atan2(Math.sin(want - d.base), Math.cos(want - d.base))));
+      const side = GIANT.honestShots > 1 ? d.shot / (GIANT.honestShots - 1) - .5 : 0, a = d.base + side * GIANT.honestCone * Math.PI / 180;
+      d.aim = { x: Math.cos(a), y: Math.sin(a) }; d.wait = d.shot ? GIANT.honestStagger : GIANT.honestWindup;
+      s.tele = { type: "beam", angle: a, length: rayLength(w, e, d.aim, GIANT.honestRange), charging: true }; e.giantPose = "chest"; e.facingX = d.aim.x >= 0 ? 1 : -1;
+    };
     const nextStrike = () => { d.mode = "stalk"; d.hold = GIANT.menaceHold; d.action = roll(`act${d.strikes}`) < GIANT.chestChance ? "bolt" : "slam"; e.giantPose = "menace"; s.tele = null; };
     if (s.phase === "windup") { if (s.t <= 0) { d.strikes = 0; nextStrike(); toPhase(s, "active", attack.active); } return; }
     if (s.phase !== "active") return;
@@ -1075,12 +1087,19 @@ const RUN = {
         else { d.mode = "bolt"; d.wait = GIANT.chestWindup; s.tele = { type: "beam", angle: Math.atan2(d.aim.y, d.aim.x), length: rayLength(w, e, d.aim, GIANT.chestRange), charging: true }; e.giantPose = "chest"; }
         return;
       }
-      if (d.hold <= 0) { e.giantPose = null; s.tele = null; toPhase(s, "recover", attack.recover); return; } // no opening: it lowers the club
+      if (d.hold <= 0) { d.mode = "honest"; d.shot = 0; d.base = null; honestAim(); return; } // no opening: two chest beams, then it lowers the club
       const to = unit(p.x - e.x, p.y - e.y), step = GIANT.menaceSpeed * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * w.dt;
       if (dist > bodyRadius(e) + .6 && !w.move(e, to.x * step, to.y * step)) w.detour?.(e, step);
       e.facingX = p.x >= e.x ? 1 : -1; return;
     }
     d.wait -= w.dt; if (d.wait > 0) return;
+    if (d.mode === "honest") {
+      const len = rayLength(w, e, d.aim, GIANT.honestRange), end = { x: e.x + d.aim.x * len, y: e.y + d.aim.y * len };
+      w.addEffect({ kind: "giantChest", owner: e.id, x: e.x, y: e.y, tx: end.x, ty: end.y, scale: e.scale, radius: 0, arming: 0, life: .26, total: .26, damage: 0, honest: true });
+      if (segmentDistance(p, e, end) <= GIANT.chestWidth + .3) giantZap(w, e, Math.ceil(damageOf(e, "giantMenace") * GIANT.honestShare), "giantChest", { beam: true });
+      if (++d.shot < GIANT.honestShots) { honestAim(); return; }
+      e.giantPose = null; s.tele = null; toPhase(s, "recover", attack.recover); return;
+    }
     if (d.mode === "strike") {
       const f = giantSlamPoint(e, d.aim), dmg = damageOf(e, "giantMenace"); e.giantPose = "slamDown";
       resolveMelee(e, s, w, "giantMenace", (q) => distance(q, f) <= GIANT.slamRadius);

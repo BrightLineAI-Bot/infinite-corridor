@@ -11,6 +11,8 @@ export const GIANT_ART = Object.freeze({
   stride: .15, stanceShare: .6, footLift: .09, bob: .018, settle: 4,
   // Boost: the forward lean and the eruption from the empty shoulder socket.
   boostLean: .14, boostPlume: .62,
+  // At sea (release 257, Tim: "he'll just be riding his big cloud") it stands on a storm cloud this high above the water, bobbing.
+  cloudRide: .16, cloudBob: .02,
   upperArm: .2, foreArm: .19, clubLength: .58, clubHead: .2,
   metal: "#6c7681", metalDark: "#3a424c", metalEdge: "#15191e", plate: "#8a95a1", copper: "#b8743c", copperDark: "#7a4a24",
   core: "#7fd6ff", coreHot: "#eafaff", haze: "#7fd6ff", crest: "#2f8fe8", crestLight: "#dff4ff", crestEdge: "#0d3a66", trim: "#3b9cf0", rivet: "#c3ccd5",
@@ -75,11 +77,13 @@ function eased(e, key, target, now, rate) {
 // Drawn as one machine of overlapping, lit armour plates (key light from the upper left, cyan bounce from the core):
 // far leg and the empty far socket first, then torso, skirt, near leg, collar, helm and crest, then the club arm on top.
 export function drawLightningGiant(ctx, q, now = 0) {
-  const A = GIANT_ART, { k, u, t, flip, e } = q, s0 = e.pack, pose = e.giantPose || "idle", attacking = !!s0?.attack, ground = q.b, b = ground - Math.max(0, Number(e.giantAir) || 0) * (q.s || u);
-  const charged = e.giantCharged > 0, still = attacking || e.giantCloud, reduce = !!e.reduceMotion;
+  const A = GIANT_ART, { k, u, t, flip, e } = q, s0 = e.pack, pose = e.giantPose || "idle", attacking = !!s0?.attack, reduce = !!e.reduceMotion;
+  const afloat = !!e.marine && e.fleeFade == null, ground = q.b - (afloat ? u * (A.cloudRide + (reduce ? 0 : Math.sin(t * 1.6) * A.cloudBob)) : 0), b = ground - Math.max(0, Number(e.giantAir) || 0) * (q.s || u);
+  const charged = e.giantCharged > 0, still = attacking || e.giantCloud || afloat;
   const G = reduce ? { phase: 0, moving: 0 } : gait(e, now, q.s || u, u), m = still || e.giantThrust || b < ground - 1 ? 0 : G.moving, ph = G.phase;
   const air = Math.max(0, Math.min(1, (ground - b) / Math.max(1, u))); // the shadow stays on the ground and shrinks while it leaps
-  ctx.fillStyle = `rgba(6,8,12,${.45 * (1 - air * .5)})`; ctx.beginPath(); ctx.ellipse(k, ground, u * .36 * (1 - air * .35), u * .09 * (1 - air * .35), 0, 0, TAU); ctx.fill();
+  if (afloat) { ctx.fillStyle = "rgba(6,12,20,.32)"; ctx.beginPath(); ctx.ellipse(k, q.b, u * .62, u * .11, 0, 0, TAU); ctx.fill(); drawStormCloud(ctx, k, b, u, t, now, "back", reduce); }
+  else { ctx.fillStyle = `rgba(6,8,12,${.45 * (1 - air * .5)})`; ctx.beginPath(); ctx.ellipse(k, ground, u * .36 * (1 - air * .35), u * .09 * (1 - air * .35), 0, 0, TAU); ctx.fill(); }
   if (charged) {
     const g = ctx.createRadialGradient(k, b - u * .6, u * .1, k, b - u * .6, u * .85); g.addColorStop(0, "rgba(127,214,255,.32)"); g.addColorStop(1, "rgba(127,214,255,0)");
     ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(k, b - u * .6, u * .7, u * .82, 0, 0, TAU); ctx.fill();
@@ -199,6 +203,51 @@ export function drawLightningGiant(ctx, q, now = 0) {
     ctx.fillStyle = fl; ctx.beginPath(); ctx.arc(mouth.x, cy, u * (.11 + .03 * flick), 0, TAU); ctx.fill(); // flare at the mouth
     if (!reduce) for (let i = 0; i < 5; i++) { const f = ((t * 6 + i * .21) % 1), d = len * (.15 + f * .85), wob = Math.sin(i * 2.3 + t * 9) * u * .07 * f; ctx.fillStyle = `rgba(234,250,255,${1 - f})`; ctx.fillRect(mouth.x + dir.x * d + px * wob - u * .01, cy + dir.y * d + py * wob - u * .01, u * .02, u * .02); }
   };
+  // Head jets (Tim, 2026-10-21, replacing the blade crest: "3 small Tesla coils that conform to the back of the head...
+  // each of them will have an individual burst of energy coming out of it. It looks kind of like a bolt"). Three copper-
+  // wound coil jets of different sizes sit along the back of the helm, fanned from up-and-back to straight back; each
+  // fires its own bolt-shaped burst of energy, with a stray arc now and then. The crown cap's lit channel feeds them.
+  const crest = (hb, H) => {
+    const jets = [ // [root x, root y, direction, coil length, coil radius, burst length]
+      [-u * .09, hb - H * .96, -2.45, u * .085, u * .032, u * .26],
+      [-u * .145, hb - H * .78, -2.78, u * .07, u * .027, u * .2],
+      [-u * .165, hb - H * .58, -3.04, u * .055, u * .022, u * .14],
+    ];
+    const headCap = () => {
+    // The crown cap: a solid armoured plate over the top of the dome (its lower edge a seam across the helm), so the crest
+    // reads as one piece with the head; the jets mount over its back edge.
+    const cap = [u * .175, hb - H * .63, u * .13, hb - H * .9, u * .04, hb - H - u * .03, -u * .07, hb - H * .98 - u * .025, -u * .15, hb - H * .78, -u * .16, hb - H * .5, -u * .02, hb - H * .58];
+    plate(cap, A.metal, { light: .32, shadow: .18 });
+    edgeLight([u * .165, hb - H * .66, u * .125, hb - H * .91, u * .04, hb - H - u * .026, -u * .065, hb - H * .975 - u * .022]);
+    ctx.strokeStyle = shadeHex(A.metal, -.4); ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(u * .02, hb - H - u * .02); ctx.lineTo(u * .0, hb - H * .6); ctx.stroke(); // panel line
+    // The lit channel: from the brow trim, up over the crown and back to the jets.
+    const channel = [u * .17, hb - H * .64, u * .1, hb - H * .86, u * .02, hb - H * .94, -u * .08, hb - H * .88, -u * .13, hb - H * .74];
+    trim(channel, .016);
+    ctx.globalAlpha *= reduce ? .6 : .35 + .35 * Math.sin(t * 4); ctx.strokeStyle = A.coreHot; ctx.lineWidth = Math.max(1, u * .006); ctx.beginPath(); for (let n = 0; n < channel.length; n += 2) n ? ctx.lineTo(channel[n], channel[n + 1]) : ctx.moveTo(channel[0], channel[1]); ctx.stroke(); ctx.globalAlpha = 1;
+    rivets([u * .11, hb - H * .7, -u * .12, hb - H * .6]);
+    };
+    const jet = ([x0, y0, a, len, r, burst], n) => {
+      const c = Math.cos(a), sn = Math.sin(a), nx = -sn, ny = c, P = (f, o) => [x0 + c * f + nx * o, y0 + sn * f + ny * o];
+      const pulse = reduce ? .85 : .75 + .25 * Math.sin(t * 13 + n * 2.1), L = burst * pulse, w = r * 1.5;
+      // The burst first, so the nozzle sits over its root: a lightning-bolt glyph of energy, white at the nozzle.
+      const tip = len + r * .3;
+      { const [gx, gy] = P(tip + L * .3, 0), gl = ctx.createRadialGradient(gx, gy, 0, gx, gy, L * .65); gl.addColorStop(0, "rgba(127,214,255,.35)"); gl.addColorStop(1, "rgba(127,214,255,0)"); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(gx, gy, L * .65, 0, TAU); ctx.fill(); } // soft glow
+      const glyph = [[0, -w * .55], [L * .5, -w * .15], [L * .44, -w * .85], [L, 0], [L * .52, w * .2], [L * .58, w * .9], [0, w * .55]].map(([f, o]) => P(tip + f, o));
+      const g = ctx.createLinearGradient(...P(tip, 0), ...P(tip + L, 0)); g.addColorStop(0, "rgba(255,255,255,.98)"); g.addColorStop(.35, "rgba(160,226,255,.92)"); g.addColorStop(1, "rgba(47,143,232,.15)");
+      ctx.beginPath(); glyph.forEach(([x, y], k2) => k2 ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = "rgba(47,143,232,.7)"; ctx.lineWidth = Math.max(1, u * .006); ctx.stroke();
+      if (!reduce && Math.sin(t * 7.3 + n * 2.6) > .6) { const [ax, ay] = P(tip + L * .6, 0); lightningBolt(ctx, ax, ay, ax + Math.cos(a + .6) * u * .1, ay + Math.sin(a + .6) * u * .1, { now, seed: 60 + n, segments: 4, width: Math.max(1, u * .008), branch: false }); }
+      // The coil: a mount on the helm, a copper-wound core, and a flared steel nozzle.
+      joint(x0, y0, r * 1.15, A.metalDark);
+      plate([...P(0, r), ...P(len * .82, r * .9), ...P(len * .82, -r * .9), ...P(0, -r)], "#3e464f");
+      const turns = Math.max(3, Math.round(len / (u * .016)));
+      for (let k2 = 0; k2 < turns; k2++) { const f = len * (.12 + .66 * k2 / (turns - 1)); ctx.strokeStyle = k2 % 2 ? A.copperDark : A.copper; ctx.lineWidth = Math.max(1, u * .011); ctx.beginPath(); ctx.moveTo(...P(f, r * 1.05)); ctx.lineTo(...P(f, -r * 1.05)); ctx.stroke(); }
+      plate([...P(len * .78, r * .95), ...P(tip, r * 1.4), ...P(tip, -r * 1.4), ...P(len * .78, -r * .95)], A.metal, { light: .3 }); // nozzle
+      ctx.fillStyle = A.coreHot; ctx.beginPath(); ctx.ellipse(...P(tip, 0), r * .35, r * 1.1, a, 0, TAU); ctx.fill(); // white-hot mouth
+    };
+    headCap();
+    jets.slice().reverse().forEach((J, n) => jet(J, jets.length - 1 - n)); // lowest first, so the top jet overlaps
+  };
   const clubAngle = eased(e, "club", A.poses[pose] ?? A.poses.idle, now, A.ease) + (pose === "idle" ? m * Math.sin(ph) * .1 : 0);
   // Far side.
   leg(-1, Math.PI, true);
@@ -229,11 +278,12 @@ export function drawLightningGiant(ctx, q, now = 0) {
   trim([u * .0, hb - H * .58, u * .2, hb - H * .6], .02); // brow ridge
   ctx.fillStyle = A.core; ctx.fillRect(u * .06, hb - H * .48, u * .13, u * .028); ctx.fillStyle = A.coreHot; ctx.fillRect(u * .085, hb - H * .46, u * .08, u * .012);
   plate([u * .05, hb - H * .26, u * .19, hb - H * .26, u * .17, hb - u * .01, u * .05, hb - u * .01], A.metalDark); // jaw guard
-  drawCrest(ctx, A, u, -u * .01, hb - H * .9, t, now, reduce);
+  crest(hb, H);
   // Near side on top: thruster pylon, club arm, pauldron.
   pylon(u * .29);
   arm(u * .29, clubAngle, false, true); pauldron(u * .29, false);
   ctx.restore();
+  if (afloat) drawStormCloud(ctx, k, b, u, t, now, "front", reduce); // the near puffs swallow its feet
   if (charged && !reduce) for (let i = 0; i < 3; i++) { const a = (t * 3 + i * 2.1) % TAU, r = u * .45; lightningBolt(ctx, k + Math.cos(a) * r * .6, b - u * .55 + Math.sin(a) * r, k + Math.cos(a + 1.2) * r * .6, b - u * .55 + Math.sin(a + 1.2) * r, { now, seed: i + 7, segments: 5, width: Math.max(1, u * .014), branch: false }); }
 }
 
@@ -244,42 +294,39 @@ function shadeHex(hex, amount) {
   return `#${((1 << 24) | (r << 16) | (g << 8) | bl).toString(16).slice(1)}`;
 }
 
-// Lightning crest (Tim 2026-10-21): blue, swept back like a pteranodon's crest and shaped like lightning. One long blade
-// grows from the helm's crown and sweeps back and up with two sharp lightning notches; two shorter fins sit under it.
-// Each blade shades from deep blue at the root to bright cyan at the edges, with a white-hot energy line along its spine.
-// (rx, ry) is the crown point; facing is +x, so the crest runs toward -x.
-function drawCrest(ctx, A, u, rx, ry, t, now, reduce) {
-  const flick = reduce ? 0 : Math.sin(t * 9) * .02;
-  const blade = (L, rise, w, drop) => {
-    // Upper edge: root -> first notch -> second notch -> tip; lower edge returns with offset notches (a lightning zig).
-    const top = [[u * .07, 0], [-L * .3, -rise * .42 - w * .3], [-L * .26, -rise * .5 + w * .05], [-L * .64, -rise * .82], [-L * .6, -rise * .76 + w * .08], [-L, -rise * (1 + flick)]];
-    const bottom = [[-L * .7, -rise * .7 + w * .55], [-L * .74, -rise * .64 + w * .55], [-L * .36, -rise * .36 + w * .7], [-L * .4, -rise * .3 + w * .78], [-u * .04, drop]];
-    return { pts: [...top, ...bottom], spine: [[u * .03, -w * .1], [-L * .28, -rise * .38], [-L * .62, -rise * .74], [-L * .96, -rise * .98]] };
-  };
-  // Kept compact (Tim: the crest was too large): about 45% of its first size.
-  const blades = [blade(u * .27, u * .17, u * .05, u * .03), blade(u * .2, u * .08, u * .04, u * .045), blade(u * .14, u * .015, u * .032, u * .05)];
-  const path = (pts) => { ctx.beginPath(); ctx.moveTo(rx + pts[0][0], ry + pts[0][1]); for (const [x, y] of pts.slice(1)) ctx.lineTo(rx + x, ry + y); ctx.closePath(); };
-  ctx.save(); ctx.lineJoin = "round";
-  // Soft electric halo behind the whole crest.
-  ctx.globalAlpha *= .28; ctx.strokeStyle = A.crestLight; ctx.lineWidth = u * .06; for (const B of blades) { path(B.pts); ctx.stroke(); } ctx.globalAlpha /= .28;
-  for (const [i, B] of [...blades.entries()].reverse()) {
-    const g = ctx.createLinearGradient(rx, ry, rx - u * .5, ry - u * .35); g.addColorStop(0, A.crestEdge); g.addColorStop(.45, A.crest); g.addColorStop(1, "#8fd3ff");
-    path(B.pts); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.crestEdge; ctx.lineWidth = Math.max(1, u * .011); ctx.stroke();
-    ctx.strokeStyle = i ? "rgba(223,244,255,.7)" : A.crestLight; ctx.lineWidth = Math.max(1, u * (i ? .007 : .011)); ctx.beginPath(); ctx.moveTo(rx + B.spine[0][0], ry + B.spine[0][1]); for (const [x, y] of B.spine.slice(1)) ctx.lineTo(rx + x, ry + y); ctx.stroke();
+// Its big storm cloud: ridden across the sea, and the one it rises on at its chasm. (k, y) is where its feet stand. The
+// "back" layer (a flat dark underside, rain, lit billows behind its legs) goes under the body; the "front" layer (the
+// near billows that swallow its feet, and lightning flickering inside) goes over it.
+const CLOUD_BACK = [[-.56, .04, .14], [-.4, -.06, .19], [-.16, -.13, .23], [.1, -.11, .22], [.34, -.05, .19], [.54, .03, .14]];
+const CLOUD_FRONT = [[-.46, .08, .14], [-.24, .1, .17], [0, .11, .17], [.24, .1, .16], [.46, .08, .13]];
+export function drawStormCloud(ctx, k, y, u, t, now, layer, reduce = false) {
+  const drift = reduce ? 0 : t * .9, set = layer === "back" ? CLOUD_BACK : CLOUD_FRONT, o = layer === "back" ? 0 : 6;
+  const at = ([x, dy, r], i) => ({ x: k + x * u + Math.sin(drift + (i + o) * 1.7) * u * .012, y: y + dy * u + Math.cos(drift * .8 + i + o) * u * .008, r: r * u });
+  const P = set.map(at), top = Math.min(...P.map((c) => c.y - c.r)), bottom = y + u * .2;
+  // One merged billow mass: every puff in a single path, filled with one storm gradient (lit top, dark belly).
+  const mass = () => { ctx.beginPath(); for (const c of P) { ctx.moveTo(c.x + c.r, c.y); ctx.arc(c.x, c.y, c.r, 0, TAU); } ctx.rect(P[0].x, Math.max(...P.map((c) => c.y)), P[P.length - 1].x - P[0].x, bottom - u * .06 - Math.max(...P.map((c) => c.y))); };
+  ctx.save();
+  if (layer === "back") {
+    if (!reduce) { ctx.strokeStyle = "rgba(160,190,215,.35)"; ctx.lineWidth = Math.max(1, u * .008); ctx.beginPath(); for (let i = 0; i < 11; i++) { const x = k + (i / 10 - .5) * u * 1.05, f = (t * 1.8 + i * .37) % 1, y0 = bottom - u * .04 + f * u * .1; ctx.moveTo(x, y0); ctx.lineTo(x - u * .02, y0 + u * .07); } ctx.stroke(); } // rain
   }
-  // The crown mount the crest grows from.
-  ctx.fillStyle = A.metalDark; ctx.beginPath(); ctx.moveTo(rx - u * .08, ry + u * .05); ctx.quadraticCurveTo(rx + u * .02, ry - u * .04, rx + u * .1, ry + u * .03); ctx.closePath(); ctx.fill(); ctx.strokeStyle = A.metalEdge; ctx.lineWidth = Math.max(1, u * .01); ctx.stroke();
-  if (!reduce && Math.sin(t * 5.3) > .55) lightningBolt(ctx, rx - u * .27, ry - u * .18, rx - u * .36, ry - u * .24, { now, seed: 77, segments: 3, width: Math.max(1, u * .012), branch: false });
+  const g = ctx.createLinearGradient(0, top, 0, bottom);
+  if (layer === "back") { g.addColorStop(0, "#9aa5b1"); g.addColorStop(.5, "#5d6874"); g.addColorStop(1, "#2a313a"); }
+  else { g.addColorStop(0, "#8794a1"); g.addColorStop(.45, "#56616d"); g.addColorStop(1, "#262c34"); }
+  mass(); ctx.fillStyle = g; ctx.fill();
+  // Soft lit rims along the upper-left of each billow, and a dark seam where they overlap below.
+  ctx.lineCap = "round";
+  for (const c of P) { ctx.strokeStyle = layer === "back" ? "rgba(214,224,233,.55)" : "rgba(196,208,220,.5)"; ctx.lineWidth = Math.max(1, u * .014); ctx.beginPath(); ctx.arc(c.x, c.y, c.r * .9, Math.PI * 1.08, Math.PI * 1.62); ctx.stroke(); }
+  if (layer === "front") {
+    ctx.strokeStyle = "rgba(20,26,34,.4)"; ctx.lineWidth = Math.max(1, u * .012); ctx.beginPath(); ctx.ellipse(k, bottom - u * .05, u * .5, u * .035, 0, 0, Math.PI); ctx.stroke(); // underside shadow line
+    ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = "rgba(90,170,220,.14)"; ctx.beginPath(); ctx.ellipse(k, y + u * .08, u * .36, u * .06, 0, 0, TAU); ctx.fill(); ctx.globalCompositeOperation = "source-over"; // storm light inside
+    if (!reduce && Math.sin(t * 4.1) > .7) { const a = Math.floor(t * 4.1 / TAU) * 2.39, x0 = k + Math.sin(a) * u * .36; lightningBolt(ctx, x0, y + u * .03, x0 + u * .12, y + u * .14, { now, seed: 90 + Math.floor(t), segments: 4, width: Math.max(1, u * .012), branch: false }); }
+  }
   ctx.restore();
 }
-
-// The storm cloud that carries it away at its chasm (drawn under the body while `fleeFade` runs 1 -> 0).
+// The cloud that carries it away at its chasm (drawn under the body while `fleeFade` runs 1 -> 0): the same storm cloud.
 export function drawGiantCloud(ctx, k, b, u, fade, t) {
-  const rise = 1 - fade;
-  ctx.save(); ctx.globalAlpha *= Math.min(1, .3 + rise * 1.5) * Math.max(.2, fade + .2);
-  for (let i = 0; i < 7; i++) { const a = i / 7 * TAU + t * .4, rx = u * (.18 + (i % 3) * .05), x = k + Math.cos(a) * u * .32, y = b + Math.sin(a) * u * .07 + u * .04;
-    ctx.fillStyle = i % 2 ? "#3d4652" : "#59636f"; ctx.beginPath(); ctx.ellipse(x, y, rx, rx * .55, 0, 0, TAU); ctx.fill(); }
-  ctx.fillStyle = "#77818c"; ctx.beginPath(); ctx.ellipse(k, b - u * .02, u * .3, u * .1, 0, 0, TAU); ctx.fill();
+  ctx.save(); ctx.globalAlpha *= Math.min(1, .45 + (1 - fade) * 1.5) * Math.max(.25, fade + .2);
+  drawStormCloud(ctx, k, b, u, t, t * 1000, "back"); drawStormCloud(ctx, k, b, u, t, t * 1000, "front");
   ctx.restore();
 }
 

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { WORLD_BEASTS, BEAST_HOMES } from '../src/world-beasts.ts';
+import { WORLD_BEASTS, BEAST_HOMES, worldBeastFor } from '../src/world-beasts.ts';
+import { NOVA_FOG, novaFogCapable, novaFog, tickNovaFog } from '../src/open-sea.ts';
 import { MONSTER_PACK, ATTACK_MODULES, GIANT, updatePackMonster, tickPackEffects, addPackEffect } from '../src/monster-pack.ts';
 import { ECHOES } from '../src/echoes.ts';
 import { createCombatant } from '../src/combat.ts';
@@ -117,6 +118,7 @@ test('render: every pose, the cloud and every lightning effect draw without muta
     const before = JSON.stringify(e); assert.equal(drawPackMonster(ctx, e, 40, 1000, 'right'), true); assert.equal(JSON.stringify(e), before);
   }
   const cloud = createCombatant('lightningGiant', 3, 3, true, []); Object.assign(cloud, { id: 'c', giantCloud: true, fleeFade: .5 }); drawPackMonster(ctx, cloud, 40, 1000, 'right');
+  for (const reduceMotion of [false, true]) { const sea = createCombatant('lightningGiant', 3, 3, true, []); Object.assign(sea, { id: 's', marine: true, reduceMotion }); const before = JSON.stringify(sea); assert.equal(drawPackMonster(ctx, sea, 40, 1000, 'right'), true); assert.equal(JSON.stringify(sea), before, 'riding its cloud at sea'); }
   const fx = [{ kind: 'giantArc', x: 1, y: 1, tx: 4, ty: 1, connected: true, life: 1 }, { kind: 'giantBolt', x: 1, y: 1, vx: 1, vy: 0, life: .5 }, { kind: 'giantShock', x: 1, y: 1, radius: 1, life: .3, total: .5 },
     { kind: 'giantSky', x: 1, y: 1, radius: 1, arming: .5, armTotal: 1, life: .4, total: .4 }, { kind: 'giantSky', x: 1, y: 1, radius: 1, arming: 0, life: .2, total: .4 }, { kind: 'giantStrike', x: 1, y: 1, life: .3, total: .5 }, { kind: 'giantChest', x: 1, y: 1, tx: 4, ty: 1, life: .2, total: .3 }];
   for (const f of fx) assert.ok(GIANT_EFFECT_KINDS.has(f.kind));
@@ -172,11 +174,30 @@ test('menacing slam: it stalks with the club up, slams (or fires a chest bolt) o
     assert.ok(w.added.filter((f) => f.kind === 'shock' || f.kind === 'giantChest').length <= GIANT.menaceStrikes);
   }
   assert.ok(slams > 0 && bolts > 0, `both finishers occur (${slams} slams, ${bolts} bolts)`);
-  // Kept out of reach (the Wayfarer keeps running away), it lowers the club without striking.
+  // Kept far out of reach (the Wayfarer keeps running away), it never slams; its two honest beams fall short.
   const w = world({ size: 64, player: { x: 20, y: 12 } }), e = giant(w, 'giantMenace', 13, 12);
   until(w, e, 'giantMenace');
   for (let t = 0; t < 6 && e.pack.attack === 'giantMenace'; t += w.dt) { w.player.x = e.x + 12; step(w, w.dt); }
-  assert.notEqual(e.pack.attack, 'giantMenace', 'gives up'); assert.equal(w.added.filter((f) => f.kind === 'shock' || f.kind === 'giantChest').length, 0, 'no strike without an opening');
+  assert.notEqual(e.pack.attack, 'giantMenace', 'gives up'); assert.equal(w.added.filter((f) => f.kind === 'shock' || f.kind === 'giantChest' && !f.honest).length, 0, 'no strike without an opening');
+  assert.equal(w.hurts.length, 0, 'the honest beams fall short');
+});
+
+test('menacing slam with no opening: two staggered honest chest beams in a small cone, the second tracking', () => {
+  // The Wayfarer stays just out of reach (beyond the slam and the chest bolt, within the beams' range).
+  const w = world({ size: 64, player: { x: 20, y: 12 } }), e = giant(w, 'giantMenace', 13, 12); e.giantDashCd = 1e9;
+  until(w, e, 'giantMenace');
+  const fired = [];
+  for (let t = 0; t < 8 && e.pack.attack === 'giantMenace'; t += w.dt) {
+    w.player.x = e.x + 7.5; w.player.y = 12 + (fired.length ? 1.2 : 0);
+    const n = w.added.length; step(w, w.dt); for (const f of w.added.slice(n)) if (f.kind === 'giantChest') fired.push({ f, at: w.now, y: w.player.y });
+  }
+  assert.equal(fired.length, GIANT.honestShots, 'two beams'); assert.ok(fired.every(({ f }) => f.honest));
+  assert.ok(fired[1].at - fired[0].at >= GIANT.honestStagger * 1000 - 20, 'staggered, one at a time');
+  const ang = ({ f }) => Math.atan2(f.ty - f.y, f.tx - f.x), turn = ang(fired[1]) - ang(fired[0]);
+  assert.ok(turn > 0, 'the second beam turns toward where the Wayfarer moved');
+  assert.ok(turn <= (GIANT.honestTrack + GIANT.honestCone) * Math.PI / 180 + 1e-6, 'only slightly');
+  assert.ok(w.hurts.some((h) => h.source === 'giantChest'), 'a beam lands on a Wayfarer standing in range');
+  assert.notEqual(e.pack.attack, 'giantMenace', 'then it lowers the club');
 });
 
 test('charging upswing: burst dashes and upswings in one of four plans; sometimes a leap with an air attack, landing plainly or in a tracking slam', () => {
@@ -231,4 +252,26 @@ test('walk cycle: a planted foot never slides (it sweeps back exactly as fast as
   assert.deepEqual(giantFoot(1.3, 0), { x: 0, lift: 0, planted: true }, 'standing still: feet under the hips');
   // The two feet are half a cycle apart: one is always planted.
   for (let i = 0; i < 100; i++) { const ph = i / 100 * Math.PI * 2; assert.ok(giantFoot(ph, 1, 0).planted || giantFoot(ph, 1, Math.PI).planted); }
+});
+
+test('Supernova fog: open sea or a 70% ocean section fogs over for 30 s, then clears; another Supernova renews it', () => {
+  const section = (share) => ({ tiles: Array.from({ length: 1024 }, (_, i) => ({ kind: i < Math.round(1024 * share) ? 'ocean' : 'grass' })) });
+  assert.equal(novaFogCapable(section(.69)), false); assert.equal(novaFogCapable(section(.7)), true); assert.equal(novaFogCapable(section(1)), true);
+  assert.equal(novaFogCapable({ ...section(.2), openSea: true }), true, 'a section that can hold fog');
+  let fog = novaFog(null, 16, 16, 3); const player = { x: 15.5, y: 15.3 };
+  assert.ok(fog.fog.length >= 6, 'banks across the section');
+  let t = 0; for (; t < 3; t += .1) fog = tickNovaFog(fog, .1, player);
+  assert.ok(fog.alpha > .95 && fog.fogLevel > .5, 'the Wayfarer is in thick fog');
+  for (; t < 20; t += .1) fog = tickNovaFog(fog, .1, player);
+  fog = novaFog(fog, 10, 10, 4); assert.ok(Math.abs(fog.left - NOVA_FOG.duration) < 1e-9, 'renewed'); assert.ok(fog.alpha > .95, 'without flickering out');
+  let cleared = 0; for (let k = 0; k < 400 && fog; k++) { fog = tickNovaFog(fog, .1, player); cleared = (k + 1) * .1; }
+  assert.equal(fog, null, 'the fog clears'); assert.ok(Math.abs(cleared - NOVA_FOG.duration) < .25, `after ${NOVA_FOG.duration} s (${cleared})`);
+});
+
+test('the Giant can be met at sea: it holds an all-ocean section, riding its cloud', () => {
+  const save = freshSave(); save.seed = 'giant-sea'; worldBeastFor(save, null, 0, 0);
+  save.worldBeasts.lightningGiant.active = { rx: 9, ry: 9, tries: 0 };
+  const map = { tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: 'deepOcean', blocked: true })) };
+  const spawn = worldBeastFor(save, map, 9, 9);
+  assert.equal(spawn?.worldBeast, 'lightningGiant'); assert.equal(map.tiles[spawn.y * 32 + spawn.x].kind, 'deepOcean');
 });
