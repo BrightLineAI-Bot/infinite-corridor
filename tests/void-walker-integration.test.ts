@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { Game, WALKER_ROUTE, beginWalkerRetreatSearch, advanceWalkerRetreatSearch, walkerGroundPositionOpen, activeDungeonEnemies, shouldSimulateEnemy } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { createCombatant } from '../src/combat.ts';
+import { echoEvent, tickEchoes, VOID_ECHO } from '../src/echoes.ts';
 import { freshPackState, updatePackMonster, tickPackEffects, VOID } from '../src/monster-pack.ts';
 import { worldBeastForDungeon, worldBeastFor, WORLD_BEAST_IDS, beginDungeonRetreat, retreatTarget, walkerReachableTiles, applyVoidScars } from '../src/world-beasts.ts';
 function mapOf(w=40,h=32) { return { width:w,height:h,entry:{x:3,y:3},objects:[],enemySpawns:[],landscape:true,tiles:Array.from({length:w*h},(_,i)=>({x:i%w,y:Math.floor(i/w),kind:i%w===0||i%w===w-1||i<w||i>=w*(h-1)?'wall':'floor',blocked:i%w===0||i%w===w-1||i<w||i>=w*(h-1),elev:0})) }; }
@@ -96,4 +97,41 @@ test('a multi-level hunt stays on its original floor instead of spawning fresh-h
  assert.equal(worldBeastForDungeon(save,lower,id),null);assert.equal(worldBeastForDungeon(save,upper,id).id,first.id);assert.equal(save.worldBeasts.voidWalker.active.tries,1);
  const round=migrateSave(JSON.parse(JSON.stringify(save)));assert.equal(worldBeastForDungeon(round,lower,id),null);
  beginDungeonRetreat(round,'voidWalker',upper);assert.equal(worldBeastForDungeon(round,lower,id),null);assert.equal(round.worldBeasts.voidWalker.active,null);assert.equal(round.worldBeasts.voidWalker.escaped,1);
+});
+
+
+test('real consumed-wall treasure glints stay removed after export, migration and dungeon reload',()=>{
+ const save=saveOf();save.seed='VW-REVIEW-0';save.session.activeDungeonId='dungeon:VW-REVIEW-0:g1:5:0:review';save.session.area='dungeon';for(const id of WORLD_BEAST_IDS)save.worldBeasts[id].cooldown=999;
+ const game=new Game(save,0);game.loadArea('dungeon',false);const glints=game.map.wallGlints.map(q=>({...q}));
+ const result=game.packWorld(.05,0).consumeVoidTerrain({}, {x:43,y:4},7);assert.equal(result.ok,true);const removed=glints.filter(q=>game.map.tiles[q.y*game.map.width+q.x].kind==='voidScar');assert.ok(removed.length>=3);
+ assert.ok(removed.every(q=>!game.map.wallGlints.some(g=>g.x===q.x&&g.y===q.y)));
+ const resumed=new Game(migrateSave(JSON.parse(JSON.stringify(game.exportSnapshot(0)))),0);
+ for(const q of removed){assert.equal(resumed.map.tiles[q.y*resumed.map.width+q.x].kind,'voidScar');assert.equal(resumed.map.wallGlints.some(g=>g.x===q.x&&g.y===q.y),false);}
+});
+
+
+test('scarred dungeon revisits preserve one Aperture object per stable ID, original position and consumed state',()=>{
+ const save=saveOf();save.seed='VW-REVIEW-0';save.session.activeDungeonId='dungeon:VW-REVIEW-0:g1:5:0:review';save.session.area='dungeon';for(const id of WORLD_BEAST_IDS)save.worldBeasts[id].cooldown=999;
+ const game=new Game(save,0),original=game.map.objects.filter(q=>q.id.startsWith('aperture-')).map(q=>({id:q.id,x:q.x,y:q.y}));assert.equal(original.length,3);
+ game.map.objects.find(q=>q.id==='aperture-memory').state='read';game.map.objects.find(q=>q.id==='aperture-relic').state='taken';
+ assert.equal(game.packWorld(.05,0).consumeVoidTerrain({}, {x:43,y:4},7).ok,true);
+ for(let revisit=0;revisit<3;revisit++){
+  game.loadArea('dungeon',true);
+  assert.deepEqual(game.map.objects.filter(q=>q.id.startsWith('aperture-')).map(q=>({id:q.id,x:q.x,y:q.y})),original);
+  assert.equal(game.map.objects.find(q=>q.id==='aperture-memory').state,'read');assert.equal(game.map.objects.find(q=>q.id==='aperture-relic').state,'taken');
+ }
+ const resumed=new Game(migrateSave(JSON.parse(JSON.stringify(game.exportSnapshot(0)))),0);
+ assert.deepEqual(resumed.map.objects.filter(q=>q.id.startsWith('aperture-')).map(q=>({id:q.id,x:q.x,y:q.y})),original);
+ assert.equal(resumed.map.objects.find(q=>q.id==='aperture-relic').state,'taken');
+});
+
+test('Rift Upheaval retains its remaining warning and cooldown across real Game pause/resume',()=>{
+ const save=saveOf();save.echoes={owned:{voidWalker:true},equipped:['voidWalker']};const game=new Game(save,0),blasts=[];
+ game.enemies=[{id:'echo-target',x:game.player.x+1,y:game.player.y,hp:100}];game.glyphWorld=()=>({blast:(...args)=>blasts.push(args)});
+ echoEvent(game,'dodge',1000);assert.equal(game.echoPatches.length,1);assert.equal(game.echoPatches[0].until,1500);
+ game.setPaused(true,1100);game.setPaused(true,2000);game.setPaused(false,11100);game.setPaused(false,11110);
+ assert.equal(game.echoPatches[0].until,11500);assert.equal(game.player.echoVoidReadyAt,1000+VOID_ECHO.cooldown+10000);
+ tickEchoes(game,1/60,11100,{x:0,y:0});assert.equal(blasts.length,0);echoEvent(game,'dodge',11200);assert.equal(game.echoPatches.length,1);assert.equal(game.echoPatches[0].until,11500);
+ tickEchoes(game,1/60,11499,{x:0,y:0});assert.equal(blasts.length,0);tickEchoes(game,1/60,11500,{x:0,y:0});assert.equal(blasts.length,1);
+ echoEvent(game,'dodge',14999);assert.equal(game.echoPatches.length,0);echoEvent(game,'dodge',15000);assert.equal(game.echoPatches.length,1);
 });

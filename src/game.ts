@@ -1486,8 +1486,12 @@ export class Game {
             this.map.tiles,
             mapWidth(this.map, this.area),
           );
+        // Base loading already restores these stable IDs before terrain scars replay.
+        // A scar changes the overlay's sampled open cells; never append relocated duplicates
+        // or reset an inscription/relic that the player already consumed.
         this.map.objects.push(
-          ...overlay.objects.filter((o) => !annex || o.kind !== "apertureDoor"),
+          ...overlay.objects.filter((o) => (!annex || o.kind !== "apertureDoor") &&
+            !this.map.objects.some((existing) => existing.id === o.id)),
         );
       }
       if (!had) {
@@ -1845,7 +1849,12 @@ export class Game {
       const progress = applyDeepDungeonProgress(this.save, this.areaId(), this.map), defeated = new Set([...(progress.defeatedWingIds || []).map((wing) => `deep-v1-miniboss-${wing}`), ...(progress.defeatedFinalIds || [])]);
       this.enemies = this.enemies.filter((e) => !defeated.has(e.id) && !(e.objectiveId && progress.completedObjectiveIds.includes(e.objectiveId)));
     }
-    if (area === "dungeon") applyVoidScars(this.save, this.map, this.areaStateId());
+    if (area === "dungeon") {
+      applyVoidScars(this.save, this.map, this.areaStateId());
+      // Wall glints were generated before the persistent overlay. A consumed wall must not regain a
+      // floating treasure marker when the dungeon is loaded again.
+      this.map.wallGlints = (this.map.wallGlints || []).filter(q => this.map.tiles[q.y * mapWidth(this.map, area) + q.x]?.blocked);
+    }
     this._walkerRoutes = new WeakMap(); this._walkerLandingGraph = null;
     const areaWidth = mapWidth(this.map, area),
       playerRelocated = !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
@@ -1940,9 +1949,12 @@ export class Game {
         "invulnerableUntil",
         "dodgeUntil",
         "heldUntil",
+        "echoVoidReadyAt",
       ])
         if (this.player[k]) this.player[k] += d;
       if (this.jumpUntil) this.jumpUntil += d;
+      for (const patch of this.echoPatches || [])
+        if (patch.voidEcho && patch.until) patch.until += d;
     }
     this.paused = v;
     this.pauseStarted = v ? this.pauseStarted : null;
