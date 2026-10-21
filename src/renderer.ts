@@ -1406,10 +1406,11 @@ export function render(ctx, g, w, h, now) {
     // Release 269 (Tim: "in fog it should cast a... violet glow"): the longboat's lantern lights the mist around it,
     // more strongly the deeper the fog.
     if (g._longboatFront && g.save.boat?.aboard) {
-      const dir = g.longboatSide === "left" ? -1 : 1, lx = (p.x + .5) * s + dir * s * 1.0, ly = (p.y + .6) * s - s * .34, pulse = .9 + Math.sin(now / 1300) * .1, k = (.35 + .65 * level) * pulse;
+      const dir = g.longboatSide === "left" ? -1 : 1, lx = (p.x + .5) * s + dir * s * 1.0, ly = (p.y + .6) * s - s * .34, pulse = .9 + Math.sin(now / 1300) * .1, k = (.5 + .7 * level) * pulse;
       ctx.save(); ctx.globalCompositeOperation = "lighter";
-      const lg = ctx.createRadialGradient(lx, ly, 0, lx, ly, s * 3); lg.addColorStop(0, `rgba(190,70,255,${.75 * k})`); lg.addColorStop(.3, `rgba(150,40,230,${.38 * k})`); lg.addColorStop(1, "rgba(110,20,190,0)");
-      ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(lx, ly, s * 3, 0, 7); ctx.fill(); ctx.restore();
+      const lg = ctx.createRadialGradient(lx, ly, 0, lx, ly, s * 3.6); lg.addColorStop(0, `rgba(205,70,255,${Math.min(1, 1.1 * k)})`); lg.addColorStop(.25, `rgba(165,40,245,${.65 * k})`); lg.addColorStop(.6, `rgba(130,25,215,${.28 * k})`); lg.addColorStop(1, "rgba(110,20,190,0)");
+      ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(lx, ly, s * 3.6, 0, 7); ctx.fill();
+      ctx.globalCompositeOperation = "source-over"; const tint = ctx.createRadialGradient(lx, ly, 0, lx, ly, s * 2.4); tint.addColorStop(0, `rgba(150,40,230,${.28 * k})`); tint.addColorStop(1, "rgba(150,40,230,0)"); ctx.fillStyle = tint; ctx.beginPath(); ctx.arc(lx, ly, s * 2.4, 0, 7); ctx.fill(); ctx.restore(); // the mist itself takes the colour
     }
   }
   if (g.area === "overworld" && g.storm) { ctx.fillStyle = `rgba(16,24,38,${.28 * g.storm.strength})`; ctx.fillRect((p.x + .5) * s - w, (p.y + .6) * s - h, w * 2, h * 2); }
