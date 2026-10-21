@@ -3,12 +3,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  Game, WALKER_ROUTE, footprintOpen, footprintSailable, footprintHazard,
+  Game, WALKER_ROUTE, footprintOpen, footprintSailable, footprintHazard, moveAxis,
   walkerGroundPositionOpen, walkerCrossingMap, walkerSectionCrossings,
 } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { createCombatant } from '../src/combat.ts';
-import { MONSTER_PACK, freshPackState, updatePackMonster, tickPackEffects } from '../src/monster-pack.ts';
+import { bergAt } from '../src/open-sea.ts';
+import { MONSTER_PACK, VOID, freshPackState, updatePackMonster, tickPackEffects } from '../src/monster-pack.ts';
 import {
   WORLD_BEAST_IDS, isMarineTile, marineTileOpen, worldBeastFor, retreatCrossed,
   worldBeastsLost, consumeVoidTerrain, applyVoidScars,
@@ -354,4 +355,144 @@ test('reaching a sea edge without a dungeon door never completes the Walker retr
   }
   assert.deepEqual(position(actor), { x: 29, y: 12 }); assert.equal(game.enemies.includes(actor), false);
   assert.equal(save.worldBeasts.voidWalker.escaped, 1); assert.equal(save.worldBeasts.voidWalker.active, null);
+});
+
+const IDLE_INPUT = { state: { x: 0, y: 0 }, consume() { return false; } };
+function coastalGame(side = 'west') {
+  const save = isolatedSave(`FORCED-COAST-${side}`), game = new Game(save, 0), map = seaMap('ocean');
+  for (const tile of map.tiles) {
+    const land = side === 'west' ? tile.x < 16 : side === 'east' ? tile.x >= 16 : side === 'north' ? tile.y < 16 : tile.y >= 16;
+    if (land) Object.assign(tile, { kind: 'floor', blocked: false });
+  }
+  save.maxHp = 200;
+  Object.assign(save.boat, { owned: true, aboard: true, hull: 60, home: { rx: 5, ry: 5, x: 20, y: 20 }, moored: null });
+  Object.assign(game, { area: 'overworld', rx: 5, ry: 5, map, enemies: [], effects: [], packEffects: [], projectiles: [], paused: false, seaHazards: null, storm: null });
+  const start = { west: { x: 15.8, y: 15 }, east: { x: 15.2, y: 15 }, north: { x: 15, y: 15.54 }, south: { x: 15, y: 15.08 } }[side];
+  Object.assign(game.player, { ...start, hp: 200, invulnerableUntil: 0, dodgeUntil: 0, sailVx: 0, sailVy: 0 });
+  assert.ok(footprintSailable(map, 32, game.player.x, game.player.y));
+  return { game, save, map, landward: SIDES[side] };
+}
+
+test('coastal forced pull cannot strand an aboard player and trigger idle disembark/drowning', () => {
+  const { game, save } = coastalGame(), boat = structuredClone(save.boat);
+  game.packWorld(.05, 100).pull({ x: 13, y: 15 }, .11, 4.3);
+  const afterPull = { ...position(game.player), sailable: footprintSailable(game.map, 32, game.player.x, game.player.y) };
+  game.update(.05, IDLE_INPUT, 150);
+  const afterIdle = { ...position(game.player), aboard: save.boat.aboard, hull: save.boat.hull };
+  game.update(.05, IDLE_INPUT, 200);
+  assert.equal(afterPull.sailable, true, JSON.stringify({ afterPull, afterIdle, deaths: save.worldFlags.deaths || 0 }));
+  assert.deepEqual(save.boat, boat); assert.equal(save.worldFlags.deaths || 0, 0);
+  assert.equal(game.player.hp, 200); assert.ok(footprintSailable(game.map, 32, game.player.x, game.player.y));
+});
+
+// Start at the production active effect/attack boundary, rather than replacing the movement or damage callbacks.
+function startCoastalForce(game, attack, source) {
+  const crystal = attack.startsWith('psy'), actor = game.createEnemyFromSpawn({ kind: crystal ? 'psychicCrystal' : 'voidWalker', ...source, id: `coast-${attack}`, boss: true });
+  Object.assign(actor, { aggro: true, hp: 3000, maxHp: 3000, damage: 10, packAttacks: [], packBossAttacks: [] });
+  actor.pack = freshPackState(); actor.pack.gap = 999; game.enemies = [actor];
+  if (crystal) Object.assign(actor.pack, { state: 'attack', attack, phase: attack === 'psyPush' ? 'windup' : 'active', t: attack === 'psyPush' ? .001 : 1.2, data: {}, hitOnce: false });
+  else {
+    actor.hitStun = 60; // hold the emitter still; its real independent effects continue ticking
+    const effect = attack === 'voidHorizon'
+      ? { kind: attack, radius: VOID.horizonRadius, coreRadius: VOID.horizonCore, life: VOID.horizonLife, pulsar: false, nextBite: 0 }
+      : { kind: attack, radius: VOID.novaRadius, life: VOID.novaLife, total: VOID.novaLife, stage: 'charge', elapsed: 0, nextLocal: .25, nextAfter: VOID.novaCharge, waves: 2, wavesFired: 0, nextWave: VOID.novaCharge, eruptions: 0, seed: 1 };
+    game.packWorld(.05, 0).addEffect({ ...effect, ...source, owner: actor.id, arming: 0, damage: 10 });
+  }
+  return actor;
+}
+function assertAfloat(game, before, label) {
+  const { player: p, save } = game;
+  assert.ok(footprintSailable(game.map, 32, p.x, p.y), `${label}: entire footprint remains sailable at ${p.x},${p.y}`);
+  assert.equal(bergAt(game.seaHazards, p.x, p.y), false, `${label}: no iceberg penetration`);
+  assert.deepEqual({ ...save.boat, hull: before.hull }, before, `${label}: no forced disembark, mooring or boat transfer`);
+  assert.ok(save.boat.hull > 0 && save.boat.hull <= before.hull); assert.equal(save.worldFlags.deaths || 0, 0);
+  assert.ok([p.x, p.y, p.hp, save.boat.hull].every(Number.isFinite));
+}
+
+for (const side of Object.keys(SIDES)) for (const attack of ['voidHorizon', 'voidNova', 'psyPull', 'psyPush'])
+  test(`${attack} cannot force a sailing player across the ${side} coast during full Game.update`, () => {
+    const { game, save, landward: [dx, dy] } = coastalGame(side), boat = structuredClone(save.boat), start = position(game.player);
+    const direction = attack === 'psyPush' ? -1 : 1;
+    startCoastalForce(game, attack, { x: start.x + dx * direction * 2.8, y: start.y + dy * direction * 2.8 });
+    for (let frame = 0; frame < 12; frame++) { game.update(.05, IDLE_INPUT, 100 + frame * 50); assertAfloat(game, boat, `${attack}/${side}/${frame}`); }
+    assert.ok(Math.hypot(game.player.x - start.x, game.player.y - start.y) < .06, 'the attempted force reaches the shore guard, not dry land');
+    game.enemies = []; game.packEffects = [];
+    for (let frame = 0; frame < 3; frame++) { game.update(.05, IDLE_INPUT, 1000 + frame * 50); assertAfloat(game, boat, 'subsequent idle frame'); }
+    assert.equal(game.map.objects.some(o => o.id === 'skiff-moored'), false);
+  });
+
+for (const method of ['pull', 'push']) for (const blocker of ['island', 'building', 'iceberg'])
+  test(`long-step marine ${method} sweeps against a thin ${blocker} instead of tunnelling`, () => {
+    const { game, save } = coastalGame(), map = game.map = seaMap('ocean'), boat = structuredClone(save.boat);
+    Object.assign(game.player, { x: 8, y: 15 });
+    if (blocker === 'iceberg') game.seaHazards = { bergs: [{ x: 12.5, y: 15.7, radius: .35 }] };
+    else Object.assign(at(map, 12, 15), blocker === 'island' ? { kind: 'floor', blocked: false } : { structure: 'shackWall', buildingId: 'sea-house' });
+    assert.ok(footprintSailable(map, 32, 20, 15), 'the distant endpoint alone is legal; only a sweep detects the obstacle');
+    game.packWorld(.05, 100)[method]({ x: method === 'pull' ? 22 : 2, y: 15 }, 12, 30);
+    assert.ok(game.player.x > 8, 'legal water before the obstacle remains traversable');
+    assert.ok(game.player.x < 12, `${blocker} cannot be crossed even when the far endpoint is water`);
+    assertAfloat(game, boat, `${method}/${blocker}`);
+  });
+
+for (const attack of ['voidHorizon', 'voidNova', 'psyPull', 'psyPush'])
+  test(`${attack} coastal force is frozen by pause and resisted while dodging`, () => {
+    const { game, save, landward: [dx, dy] } = coastalGame(), start = position(game.player), boat = structuredClone(save.boat);
+    const direction = attack === 'psyPush' ? -1 : 1;
+    const actor = startCoastalForce(game, attack, { x: start.x + dx * direction * 2.8, y: start.y + dy * direction * 2.8 });
+    game.setPaused(true, 100);
+    const frozen = structuredClone({ player: position(game.player), hp: game.player.hp, boat: save.boat, pack: actor.pack, effects: game.packEffects });
+    for (let frame = 0; frame < 4; frame++) game.update(.05, IDLE_INPUT, 500 + frame * 50);
+    assert.deepEqual({ player: position(game.player), hp: game.player.hp, boat: save.boat, pack: actor.pack, effects: game.packEffects }, frozen);
+    game.setPaused(false, 1000);
+    Object.assign(game.player, { dodgeUntil: 2000, dodgeX: 0, dodgeY: 0 });
+    for (let frame = 0; frame < 6; frame++) { game.update(.05, IDLE_INPUT, 1050 + frame * 50); assert.deepEqual(position(game.player), start); assertAfloat(game, boat, attack); }
+  });
+
+for (const attack of ['voidHorizon', 'voidNova', 'psyPull', 'psyPush'])
+  test(`${attack} still damages the sailor and real hull on open water`, () => {
+    const { game, save } = coastalGame(); game.map = seaMap('ocean'); Object.assign(game.player, { x: 16, y: 15 });
+    const boat = structuredClone(save.boat), actor = startCoastalForce(game, attack, { x: 17.05, y: 15 });
+    if (attack === 'voidNova') Object.assign(game.packEffects[0], { x: game.player.x, y: game.player.y, elapsed: VOID.novaCharge });
+    for (let frame = 0; frame < 12; frame++) { game.update(.05, IDLE_INPUT, 100 + frame * 50); assertAfloat(game, boat, attack); }
+    assert.ok(game.player.hp < 200, 'navigation safety must not grant combat invulnerability');
+    assert.ok(save.boat.hull < 60, 'ordinary hull absorption is still exercised'); assert.equal(actor.dead, false);
+  });
+
+for (const method of ['pull', 'push']) test(`on-foot ${method} retains ordinary land/wall/hazard movement instead of marine rules`, () => {
+  const { game, save } = coastalGame(), map = game.map = seaMap('ocean'); save.boat.aboard = false;
+  for (const tile of map.tiles) Object.assign(tile, { kind: 'floor', blocked: false });
+  const boat = structuredClone(save.boat), source = { x: method === 'pull' ? 20 : 2, y: 15 };
+  for (const terrain of ['floor', 'wall', 'ocean']) {
+    Object.assign(game.player, { x: 10, y: 15, dodgeUntil: 0 }); Object.assign(at(map, 11, 15), { kind: terrain, blocked: terrain !== 'floor' });
+    const expected = { x: 10, y: 15 }; moveAxis(expected, 1, 0, map, 32, true);
+    game.packWorld(.05, 100)[method](source, 1, 30);
+    assert.deepEqual(position(game.player), expected, `${terrain} keeps the original allow-lethal movement semantics`);
+    assert.deepEqual(save.boat, boat);
+  }
+  const start = position(game.player); game.player.dodgeUntil = 500;
+  assert.equal(game.packWorld(.05, 100)[method](source, 1, 30), false); assert.deepEqual(position(game.player), start);
+});
+
+for (const method of ['pull', 'push']) test(`unobstructed marine ${method} retains its force and does not alter skiff momentum or ownership`, () => {
+  const { game, save } = coastalGame(); game.map = seaMap('ocean');
+  Object.assign(game.player, { x: 16, y: 15, sailVx: .7, sailVy: -.3 });
+  const boat = structuredClone(save.boat), source = method === 'pull' ? { x: 20, y: 19 } : { x: 12, y: 11 };
+  game.packWorld(.05, 100)[method](source, .5, 10);
+  assert.ok(Math.abs(game.player.x - (16 + .5 / Math.SQRT2)) < 1e-10);
+  assert.ok(Math.abs(game.player.y - (15 + .5 / Math.SQRT2)) < 1e-10);
+  assert.deepEqual({ x: game.player.sailVx, y: game.player.sailVy }, { x: .7, y: -.3 });
+  assert.deepEqual(save.boat, boat); assertAfloat(game, boat, method);
+});
+
+test('deliberate player-directed coastal landing still disembarks and moors normally', () => {
+  const { game, save } = coastalGame(), home = structuredClone(save.boat.home);
+  const towardShore = { state: { x: -1, y: 0 }, consume() { return false; } };
+  for (let frame = 0; frame < 8 && save.boat.aboard; frame++) game.update(.05, towardShore, 100 + frame * 50);
+  assert.equal(save.boat.aboard, false); assert.equal(save.boat.owned, true); assert.equal(save.boat.hull, 60);
+  assert.deepEqual(save.boat.home, home); assert.deepEqual(save.boat.moored, { rx: 5, ry: 5, x: 16, y: 15 });
+  assert.ok(game.map.objects.some(o => o.id === 'skiff-moored'));
+  game.update(.05, IDLE_INPUT, 1000);
+  assert.equal(game.player.hp, 200); assert.equal(save.worldFlags.deaths || 0, 0);
+  assert.ok(footprintOpen(game.map, 32, game.player.x, game.player.y));
+  assert.equal(footprintHazard(game.map, 32, game.player.x, game.player.y), null);
 });
