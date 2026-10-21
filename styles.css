@@ -876,3 +876,8 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
    the Forge and the Arcanum; the Arcanum's own sub-tabs sit below it and scroll with the page. */
 .pack-tabs{flex-wrap:nowrap;gap:.2rem;margin:0 2.2rem .4rem 0}.pack-tabs button{flex:1 1 auto;min-width:0;padding:.5rem .15rem;font-size:.7rem;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .codex-tabs.arc-subtabs{position:static;backdrop-filter:none;background:none}
+/* Release 261 (Tim: "the potion should be where the B button currently sits... the A and B... next to each other"; "a preset
+   button... a square... with the number 1 or 2... next to the map button"): Potion takes Spell B's old corner of the
+   cluster; Spells A and B sit side by side in the quick row; a small square preset button follows Map and Pack. */
+.action-diamond button.potion { left: calc(var(--button) * 2.4); top: calc(var(--button) * 2.52); right: auto; bottom: auto; transform: none; width: calc(var(--button) * 1.16); height: calc(var(--button) * .72); }
+.utility-buttons button.preset { min-width: 0; width: 34px; padding: 0; font-weight: 800; font-size: 14px; }

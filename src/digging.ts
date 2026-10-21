@@ -16,7 +16,7 @@ export const DIG = {
   reach: 3,                      // blocks deep from open floor a tunnel may go
   shovelUses: 6,                 // wall blocks a shovel digs before it breaks
   recipe: { wood: 1, stone: 1 }, // what a shovel costs (release 259, Tim: "one wood and one stone to make a shovel")
-  carryStone: 2,                 // release 259 (Tim: "up to 2 stones... that's 2 shovels"): the most stone the Wayfarer carries
+  carryStone: 99,                // the most stone the Wayfarer carries (release 259 set 2; release 261, Tim: "99 wood and 99 stone. You can dig as much as you want")
   stone: { wall: 1, chip: 1, break: 2, spot: 2 },
   treasureChance: .1,            // share of wall blocks that hide something
   glintShare: .4,                // share of those whose glint shows on an exposed face

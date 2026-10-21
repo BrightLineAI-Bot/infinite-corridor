@@ -154,6 +154,22 @@ export function retreatPath(map, from, to, mode, width = 32) {
   out.push({ x: to.x, y: to.y });
   return out;
 }
+// Encounter pacing (release 261; Tim, 2026-10-21: "these world bosses should be more rare... if you meet a world boss, it
+// shouldn't be another world boss for... 8 tiles... unless you put your foot into eight different tiles... you've never
+// been in"). Every spawn chance (world beasts and the Questing Beast) is scaled by `chanceScale`, and after meeting one,
+// no new one is claimed until the Wayfarer has entered `newSections` overworld sections they had never visited before.
+// Beasts already met keep their state; the buffer only gates new claims. save.beastGap = { fresh } (additive; a save
+// without it starts ready).
+export const ENCOUNTER = { newSections: 8, chanceScale: .5 };
+export function ensureBeastGap(save) {
+  const g = save.beastGap && typeof save.beastGap === "object" ? save.beastGap : {}, n = Number(g.fresh);
+  save.beastGap = { ...g, fresh: Number.isFinite(n) ? Math.max(0, Math.min(ENCOUNTER.newSections, Math.floor(n))) : ENCOUNTER.newSections };
+  return save.beastGap;
+}
+// Called once per overworld section load, before any beast is placed: a first visit counts toward the buffer.
+export function noteSectionVisit(save, firstVisit) { const g = ensureBeastGap(save); if (firstVisit) g.fresh = Math.min(ENCOUNTER.newSections, g.fresh + 1); return g.fresh; }
+export const encounterReady = (save) => ensureBeastGap(save).fresh >= ENCOUNTER.newSections;
+export function encounterMet(save) { ensureBeastGap(save).fresh = 0; }
 export const RETREAT = { search: 8, fallback: 6, speed: 2.1, inset: 1.5, fade: 1.4 };
 // Pursuit (release 259; Tim, 2026-10-21: "they should pursue you out of the tile that you meet them... The blob can just
 // take one", then "three tiles max... it'll chase you 2 tiles, and then it'll stop there and then it'll chase you 1 more...
@@ -260,9 +276,26 @@ export function pursuitSpawn(save, id, map, rx, ry, dx, dy) {
   const at = (map?.tiles || []).filter((t) => beastGround(id, t) && t.x > 1 && t.y > 1 && t.x < 30 && t.y < 30).sort((a, b) => Math.hypot(a.x - want.x, a.y - want.y) - Math.hypot(b.x - want.x, b.y - want.y))[0];
   return at ? { id: `world-beast:${id}:${q.cycle}`, kind: WORLD_BEASTS[id].kind, x: at.x, y: at.y, boss: true, worldBeast: id, traits: [] } : null;
 }
+// Placement geometry (release 261; Tim: "there should always be a path of retreat for the creature, that's a rule... the
+// large creatures shouldn't be trapped on small islands"). Flood the section over the ground the beast can stand on or
+// cross in its retreat (retreatPassable for its retreatMoves). A region is sound when it reaches a section edge (a way
+// out) and holds at least PLACEMENT.minRegion tiles (PLACEMENT.big for the large beasts). Returns { ok: Uint8Array(1024) }.
+export const PLACEMENT = { minRegion: 40, big: 120, bigBeasts: ["mountainTurtle", "morphingBlob", "tremorWorm", "lightningGiant", "astralWorm"] };
+export function placementRegions(map, here) {
+  const tiles = map?.tiles || [], B = WORLD_BEASTS[here], mode = B?.retreatMoves || "walk", need = PLACEMENT.bigBeasts.includes(here) ? PLACEMENT.big : PLACEMENT.minRegion;
+  const pass = (t) => !!t && (beastGround(here, t) || retreatPassable(t, mode)), label = new Int32Array(1024).fill(-1), ok = new Uint8Array(1024);
+  for (let i = 0; i < 1024; i++) {
+    if (label[i] >= 0 || !pass(tiles[i])) continue;
+    const queue = [i], comp = []; label[i] = i; let edge = false;
+    for (let n = 0; n < queue.length; n++) { const k = queue[n], x = k % 32, y = Math.floor(k / 32); comp.push(k); if (x === 0 || y === 0 || x === 31 || y === 31) edge = true;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, j = ny * 32 + nx; if (nx < 0 || ny < 0 || nx > 31 || ny > 31 || label[j] >= 0 || !pass(tiles[j])) continue; label[j] = i; queue.push(j); } }
+    if (edge && comp.length >= need) for (const k of comp) ok[k] = 1;
+  }
+  return { ok };
+}
 // Ground a beast can be placed on: open land, or open sea for the marine beasts.
 function beastGround(here, t) {
-  const marine = here === "voidWalker" || here === "psychicCrystal" || here === "astralWorm" || here === "lightningGiant";
+  const marine = here === "voidWalker" || here === "psychicCrystal" || here === "astralWorm" || here === "lightningGiant" || here === "mountainTurtle"; // release 261: the Turtle walks the sea on ice
   return marine && marineTileOpen(t) || here === "astralWorm" && astralSpawnWater(t) || !t.blocked && !t.structure && !t.environment && !LETHAL_KINDS.has(t.kind);
 }
 export const isWorldBeastKind = (kind) => WORLD_BEAST_IDS.some((id) => WORLD_BEASTS[id].kind === kind);
@@ -278,7 +311,7 @@ export function ensureWorldBeasts(save, normalizeScarHistory = true) {
     if (a) { const chase = Math.max(0, Math.floor(Number(q.active.chase) || 0)); if (chase) a.chase = chase; else delete a.chase; } // release 259: sections it has followed this encounter
     all[id] = { cycle: Math.max(0, Math.floor(Number(q.cycle) || 0)), cooldown: Math.max(0, Math.floor(Number(q.cooldown) || 0)), active: a, slain: Math.max(0, Math.floor(Number(q.slain) || 0)), escaped: Math.max(0, Math.floor(Number(q.escaped) || 0)) };
   }
-  save.worldBeasts = all;
+  save.worldBeasts = all; ensureBeastGap(save);
   // Only save creation/migration normalizes all permanent history; gameplay stays independent of other areas.
   ensureVoidScars(save, normalizeScarHistory ? undefined : null);
   return save;
@@ -311,21 +344,23 @@ export function worldBeastFor(save, map, rx, ry) {
   if (!map) return null;
   if (map.settlement || map.tiles?.length !== 1024) { const id = WORLD_BEAST_IDS.find((k) => { const a = save.worldBeasts[k].active; return a?.retreat && !a.dungeon && a.rx === rx && a.ry === ry; }); return id ? fleeSpawn(save, id, rx, ry) : null; } // release 241: fleeing, it passes through a settlement too
   const qb = save.questingBeast?.active, held = qb && qb.rx === rx && qb.ry === ry;
-  let here = WORLD_BEAST_IDS.find((id) => { const a = save.worldBeasts[id].active; return a && !a.dungeon && !astralReservedCompanion(save,id) && a.rx === rx && a.ry === ry; });
+  let here = WORLD_BEAST_IDS.find((id) => { const a = save.worldBeasts[id].active; return a && !a.dungeon && !astralReservedCompanion(save,id) && a.rx === rx && a.ry === ry; }), claimed = false;
   for (const id of WORLD_BEAST_IDS) { // cooldowns run down as sections are entered, and a free beast may claim this one
     const B = WORLD_BEASTS[id], q = save.worldBeasts[id];
     if (q.active) continue;
     if (q.cooldown > 0) { q.cooldown--; continue; }
-    if (here || held || Math.abs(rx) + Math.abs(ry) < B.minDepth) continue;
-    if ((hashSeed(`${save.seed}:world-beast:${id}:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= B.chance) continue;
-    q.active = { rx, ry, tries: 0 }; here = id;
+    if (here || held || Math.abs(rx) + Math.abs(ry) < B.minDepth || !encounterReady(save)) continue; // release 261: the buffer between meetings
+    if ((hashSeed(`${save.seed}:world-beast:${id}:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= B.chance * ENCOUNTER.chanceScale) continue;
+    q.active = { rx, ry, tries: 0 }; here = id; encounterMet(save); claimed = true;
   }
   if (!here) return null;
   const q = save.worldBeasts[here];
   if (q.active.retreat) return fleeSpawn(save, here, rx, ry);
   const open = map.tiles.filter((t) => beastGround(here, t) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24); // release 257: the Giant may be met at sea
-  const at = open.sort((a, b) => hashSeed(`wb:${here}:${q.cycle}:${a.x},${a.y}`) - hashSeed(`wb:${here}:${q.cycle}:${b.x},${b.y}`))[0];
-  if (!at) { if (!q.active.tries) q.active = null; return null; } // no valid terrain for this beast: it does not hold the section
+  // Release 261: only ground it could retreat from (placementRegions); a beast already met keeps whatever ground it had.
+  const regions = placementRegions(map, here), sound = open.filter((t) => regions.ok[t.y * 32 + t.x]), pool = sound.length || q.active.tries ? (sound.length ? sound : open) : [];
+  const at = pool.sort((a, b) => hashSeed(`wb:${here}:${q.cycle}:${a.x},${a.y}`) - hashSeed(`wb:${here}:${q.cycle}:${b.x},${b.y}`))[0];
+  if (!at) { if (!q.active.tries) { q.active = null; if (claimed) ensureBeastGap(save).fresh = ENCOUNTER.newSections; } return null; } // no valid terrain for this beast: it does not hold the section (and was never met)
   return { id: `world-beast:${here}:${q.cycle}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, traits: [] };
 }
 export function worldBeastTriesLeft(save, id) { return WORLD_BEASTS[id].tries - (save.worldBeasts?.[id]?.active?.tries || 0); }
@@ -383,9 +418,9 @@ export function worldBeastForDungeon(save, map, dungeonId) {
   const coords = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/.exec(dungeonId), depth = coords ? Math.abs(Number(coords[1])) + Math.abs(Number(coords[2])) : -1; // ordinary dungeons only (not the story dungeon, arenas, hunts or runs)
   if (!here && depth >= 0) for (const k of ids) {
     const q = save.worldBeasts[k], B = WORLD_BEASTS[k];
-    if (q.active || q.cooldown > 0 || depth < B.minDepth || (Number(save.level) || 1) < (B.dungeonMinLevel || 1) || (k === "psychicCrystal" && !water.length)) continue;
+    if (q.active || q.cooldown > 0 || depth < B.minDepth || (Number(save.level) || 1) < (B.dungeonMinLevel || 1) || (k === "psychicCrystal" && !water.length) || !encounterReady(save)) continue; // release 261: the buffer applies in dungeons too
     if ((hashSeed(`${save.seed}:world-beast-dungeon:${k}:v1:${q.cycle}:${dungeonId}`) % 1000) / 1000 >= WORLD_BEASTS[k].dungeonChance) continue;
-    q.active = { dungeon: dungeonId, tries: 0 }; here = k; break;
+    q.active = { dungeon: dungeonId, tries: 0 }; here = k; encounterMet(save); break;
   }
   if (!here) return null;
   const q = save.worldBeasts[here], entry = map.entry || { x: 4, y: 5 }, width = Number(map.width) || 32;

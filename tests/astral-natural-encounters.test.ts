@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { Game } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { hashSeed } from '../src/random.ts';
-import { WORLD_BEASTS, WORLD_BEAST_IDS } from '../src/world-beasts.ts';
+import { WORLD_BEASTS, WORLD_BEAST_IDS, ENCOUNTER } from '../src/world-beasts.ts';
 import { ASTRAL, startAstralMove } from '../src/astral-worm.ts';
 import { ASTRAL_PAIR } from '../src/astral-encounters.ts';
 import { ECHOES, echoEvent } from '../src/echoes.ts';
@@ -36,12 +36,18 @@ function natural(role='hostile',mount=false) {
   }
   assert.fail(`no natural ${role} encounter within deterministic candidate bound`);
 }
+// These fixtures test Astral behaviour, not encounter rarity: they find and create their encounter at full chance
+// (release 261 scales live chances by ENCOUNTER.chanceScale), then restore the live setting.
 function naturalOverworld(kind='astralWorm', options={}) {
+  const scale=ENCOUNTER.chanceScale; ENCOUNTER.chanceScale=1;
+  try { return naturalOverworldAt(kind, options); } finally { ENCOUNTER.chanceScale=scale; }
+}
+function naturalOverworldAt(kind='astralWorm', options={}) {
   const rx=6,ry=0;
   for(let n=0;n<(options.role?200000:20000);n++) {
     const seed=`ASTRAL-OVERWORLD-${kind}-${n}`;
-    if(roll(`${seed}:world-beast:${kind}:v1:0:${rx}:${ry}`,1000)>=WORLD_BEASTS[kind].chance)continue;
-    if(options.role && (alignment(seed)!==options.role || options.mounted && roll(`${seed}:astral-mount:v1:0`)>=ASTRAL_PAIR.mountedShare || roll(`${seed}:world-beast:voidWalker:v1:0:${rx}:${ry}`,1000)<WORLD_BEASTS.voidWalker.chance))continue;
+    if(roll(`${seed}:world-beast:${kind}:v1:0:${rx}:${ry}`,1000)>=WORLD_BEASTS[kind].chance*ENCOUNTER.chanceScale)continue;
+    if(options.role && (alignment(seed)!==options.role || options.mounted && roll(`${seed}:astral-mount:v1:0`)>=ASTRAL_PAIR.mountedShare || roll(`${seed}:world-beast:voidWalker:v1:0:${rx}:${ry}`,1000)<WORLD_BEASTS.voidWalker.chance*ENCOUNTER.chanceScale))continue;
     const save=freshSave();save.seed=seed;save.level=1;save.session.rx=rx;save.session.ry=ry;save.questingBeast.cooldown=999;
     for(const id of WORLD_BEAST_IDS)save.worldBeasts[id].cooldown=id===kind||options.role&&id==='voidWalker'?0:999;
     const g=new Game(save,0),actor=g.enemies.find(e=>e.worldBeast===kind);

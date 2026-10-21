@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, characterStats, actionReadiness } from '../src/game.ts';
 import { learnRank, learnMod, chooseCap } from '../src/constellation.ts';
-import { ATTRIBUTES, CASTABLES, PAIRINGS, pairKey, ensureSlots, setSlot, slotted, activePairing, pairingMods, availableCastables } from '../src/spell-slots.ts';
+import { ATTRIBUTES, CASTABLES, PAIRINGS, pairKey, ensureSlots, setSlot, slotted, activePairing, pairingMods, availableCastables, togglePreset, PRESETS } from '../src/spell-slots.ts';
 import { SPELLS } from '../src/items.ts';
 
 const learned = () => { const s = freshSave(); s.perception.aperture = 72; for (let i = 0; i < 3; i++) learnRank(s, 'motion'); learnMod(s, 'motion'); chooseCap(s, 'motion', 'aerial-step'); learnRank(s, 'veil'); return s; };
@@ -67,4 +67,17 @@ test('the bottom row trades the Menu toggle for spell slot B', () => {
     const html = readFileSync(new URL(file, import.meta.url), 'utf8');
     assert.match(html, /data-action="spell2"/); assert.doesNotMatch(html, /id="fieldMenuToggle"/); assert.match(html, /id="hudExpand"/, 'field details stay reachable');
   }
+});
+
+test('release 261: two spell presets; the preset button swaps A and B; passives stay; older saves start with both as their slots', () => {
+  const s = freshSave(); const slots = ensureSlots(s); const before = JSON.stringify(s.constellation);
+  assert.equal(s.magicSkills.preset, 0); assert.deepEqual(s.magicSkills.presets, [{ ...slots }, { ...slots }], 'both presets start as the current slots');
+  setSlot(s, 'a', 'spell:cinder-dart'); setSlot(s, 'b', null); assert.deepEqual(s.magicSkills.presets[0], { a: 'spell:cinder-dart', b: null }, 'setting a slot sets the active preset');
+  let r = togglePreset(s); assert.equal(r.preset, 2); assert.equal(s.magicSkills.preset, 1); assert.deepEqual(s.magicSkills.slots, { ...slots }, 'preset 2 still holds the original spells');
+  setSlot(s, 'a', 'spell:grave-sun'); setSlot(s, 'b', 'spell:ember-ring');
+  r = togglePreset(s); assert.deepEqual(s.magicSkills.slots, { a: 'spell:cinder-dart', b: null }); assert.match(r.message, /preset 1/i);
+  togglePreset(s); assert.deepEqual(s.magicSkills.slots, { a: 'spell:grave-sun', b: 'spell:ember-ring' });
+  assert.equal(JSON.stringify(s.constellation), before, 'passives are untouched');
+  const old = freshSave(); delete old.magicSkills.presets; delete old.magicSkills.preset; ensureSlots(old); assert.equal(old.magicSkills.preset, 0); assert.equal(old.magicSkills.presets.length, PRESETS);
+  const bad = freshSave(); bad.magicSkills.presets = [{ a: 'spell:nonsense', b: 7 }, 'x']; bad.magicSkills.preset = 5; ensureSlots(bad); assert.equal(bad.magicSkills.preset, 0); assert.deepEqual(bad.magicSkills.presets[1], { ...bad.magicSkills.slots });
 });

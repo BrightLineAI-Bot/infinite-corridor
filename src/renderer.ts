@@ -127,7 +127,17 @@ function h(x, y) {
 }
 const TRAVELER_LOOKS = new Set(["pilgrim", "peddler", "mercenary", "minstrel", "scholar", "traveler", "cartographer"]);
 // Trails (release 115): a worn dirt track drawn over whatever ground the tile already shows.
+// A frozen sea tile: pale blue-white ice with a lighter rim and a few cracks, seeded by position.
+function seaIceTile(ctx, x, y, s) {
+  const px = x * s, py = y * s, d = h(x, y);
+  ctx.fillStyle = "#cfe6f2"; ctx.fillRect(px, py, s, s);
+  ctx.fillStyle = "#e9f6fc"; ctx.fillRect(px + s * .06, py + s * .06, s * .88, s * .3);
+  ctx.strokeStyle = "#8fb4c8"; ctx.lineWidth = Math.max(1, s * .03); ctx.beginPath();
+  ctx.moveTo(px + s * (.15 + (d % 5) * .1), py + s * .2); ctx.lineTo(px + s * .5, py + s * (.45 + (d % 3) * .08)); ctx.lineTo(px + s * (.85 - (d % 4) * .08), py + s * .8);
+  ctx.moveTo(px + s * .5, py + s * (.45 + (d % 3) * .08)); ctx.lineTo(px + s * .25, py + s * .85); ctx.stroke();
+}
 function tile(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=null) {
+  if (t?.kind === "seaIce") { seaIceTile(ctx, x, y, s); return; } // release 261: the Mountain Turtle's ice floor
   tileBase(ctx, t, x, y, s, map, w, activeBuildingId, scarSurface);
   if (t?.trail) {
     const d = Number.isFinite(t.detail) ? t.detail : h(x, y), px = x * s, py = y * s;

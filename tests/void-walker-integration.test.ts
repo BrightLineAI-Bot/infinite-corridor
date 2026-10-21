@@ -17,7 +17,8 @@ test('Walker appears in ordinary dry dungeons for young players without weakenin
  for(let i=0;i<40;i++){for(const id of [`dungeon:VOID-INTEGRATION:g1:2:2:room-${i}`,'dungeon:VOID-INTEGRATION:g1',`hunt-instance:${i}`,`arena:${i}`])assert.equal(worldBeastForDungeon(saveOf(),map,id),null);const young=saveOf();young.level=1;assert.deepEqual(worldBeastForDungeon(young,map,`dungeon:VOID-INTEGRATION:g1:5:0:room-${i}`),worldBeastForDungeon(saveOf(),map,`dungeon:VOID-INTEGRATION:g1:5:0:room-${i}`));}
 });
 test('Walker also participates in the normal overworld hunt and keeps its player-size boss model',()=>{
- const map=mapOf(32,32);let found;for(let i=5;i<200&&!found;i++)found=worldBeastFor(saveOf(),map,i,0);
+ const map=mapOf(32,32);for(const t of map.tiles)Object.assign(t,{kind:'floor',blocked:false}); // release 261: an overworld section has a way out (a walled box gives no retreat path)
+ let found;for(let i=5;i<200&&!found;i++)found=worldBeastFor(saveOf(),map,i,0);
  assert.equal(found?.kind,'voidWalker');const {g}=fixture();const e=g.createEnemyFromSpawn(found,'overworld');assert.equal(e.scale,1);assert.equal(e.worldBeast,'voidWalker');assert.equal(e.phases,false);
 });
 test('sealed disconnected rooms cannot receive the dungeon spawn or a teleport',()=>{

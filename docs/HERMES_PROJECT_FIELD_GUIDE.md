@@ -2450,3 +2450,48 @@ Tim, 2026-10-21. On pursuit: "these world bosses should pursue you... The blob c
 - The pursuit numbers and the Blob split numbers are provisional, not Tim's.
 - The Glyphs fix was checked in Chromium at 390 px against a build of `main` (which threw "constlit is not defined" with an empty screen). Glyphs then showed its hosts, sockets, tiles and footer, and Echoes and the Arcanum opened without errors.
 - Tests: `tests/world-beast-pursuit.test.ts`, `tests/constellation.test.ts` (Long Step, no recall), `tests/crystal-259.test.ts` (poise break, dungeon bounds, patrol anywhere, settling out of walls when engaged, losing the Wayfarer) and `tests/digging.test.ts` (carry limits; the old chip-then-break total now stops at the stone limit).
+
+## Release 261: world-boss pacing, placement geometry, the Turtle at sea, wood and skiffs, controls and spell presets — 2026-10-21
+
+Tim, 2026-10-21. On rarity: "these world bosses should be more rare... if you meet a world boss, it shouldn't be another world boss for... 8 tiles... unless you put your foot into eight different tiles... you've never been in". On placement: "there should always be a path of retreat for the creature, that's a rule... the large creatures shouldn't really be trapped on... small islands... the questing beast can't be on totally ocean tiles... much, much more rare". On the Turtle: "the turtle can appear in the water... he'll make like a temporary ice floor... walkable tiles... your boat can slide across it... they'll persist for... 5, maybe 10 seconds". On wood and boats: "99 wood and 99 stone... I can have up to 2 boats at a time... I'll just make a boat, and one of them will despawn". On the controls: "the potion should be where the B button currently sits... the A and B... next to each other... a preset button... with the number 1 or 2... two different presets for the spells... the passives won't change".
+
+**CODE:**
+- **Pacing.** `world-beasts.ts` `ENCOUNTER` = `{ newSections: 8, chanceScale: .5 }`.
+  - `save.beastGap.fresh` (additive at schema 14, normalised in `ensureWorldBeasts`; a save without it starts ready) counts first visits. `Game.loadArea` calls `noteSectionVisit(save, !prior)` where it writes the atlas entry, before any beast is placed.
+  - `worldBeastFor`, `questingBeastFor` and `worldBeastForDungeon` claim nothing new until `encounterReady`, and a claim calls `encounterMet` (fresh = 0). A claim that finds no ground to stand on gives the buffer back.
+  - World beast and Questing Beast chances are multiplied by `chanceScale`. Dungeon haunt chances are unchanged (they are per dungeon).
+- **Placement.** `PLACEMENT` and `placementRegions(map, id)` flood a section over the ground a beast can stand on or cross in its retreat (`beastGround`, or `retreatPassable` for its `retreatMoves`). A region is sound when it touches a section edge and holds at least `minRegion` 40 tiles (`big` 120 for `bigBeasts`).
+  - `worldBeastFor` places a new beast only on sound ground. A beast already met (`tries` > 0) keeps any ground it had.
+  - "Through" movers (the Turtle, the Knight) and marine beasts can always leave.
+  - `questing-beast.ts` `QB_SEA`: no claim in a section at least 90% ocean; the chance is ×.25 over 30% ocean.
+- **The Turtle at sea.** It joins the marine lists: `refreshMarineBeast`, spawn ground, pack-world `los`, and the no-phase rule.
+  - `Game.tickSeaIce` (every `TURTLE.seaIce.tick` .5 s) turns open sea (`marineTileOpen`) within `radius` 2.2 into `seaIce` tiles (`blocked: false`, `seaIce: true`), keeping the original tile.
+  - Each ice tile thaws `life` 8 s after the Turtle last froze it, except under the Wayfarer's footprint.
+  - `seaIce` is in `BOAT.waterKinds`, so a skiff slides over it. `renderer.ts` `seaIceTile` draws it.
+  - The ice is transient: cleared on section load, never saved. Because it is batched, the ground cache redraws at most every half second.
+- **Wood, stone, skiffs.** `WOOD.carry` and `DIG.carryStone` are 99.
+  - `save.boat.spare` (additive) is a second moored skiff `{ rx, ry, x, y, hull }`. `buildSkiff` turns a moored skiff into the spare, and an older spare is gone. `takeSpare` swaps them.
+  - `Game.placeSpareSkiff` shows the spare as the `skiff-spare` object in its section, and boarding it calls `takeSpare`.
+- **Controls and presets.**
+  - In `index.html` and `proving-ground/index.html`, Potion moves into the cluster at Spell B's old corner (`.action-diamond button.potion`). Spells A and B move into `.quick-row` side by side. A `data-action="preset"` square follows Map and Pack. `input.ts` adds the `preset` action (key T).
+  - In `spell-slots.ts`, `magicSkills.presets` (two `{a, b}`) and `magicSkills.preset` are normalised in `ensureSlots`; both start as the slots. `setSlot` writes the active preset, and `togglePreset` swaps.
+  - `game.ts` toggles the preset on the `preset` action. `main.ts` shows the number on the button and adds a Preset 1 / Preset 2 row to the Arcanum's Spell slots.
+
+**BOUNDARY:**
+- Encounter state already in saves is left alone. Only new claims are paced and placed by the new rules.
+- No beast's strength changed; Tim: "let's not change anything yet".
+- The ice floor never forms over structures or anything that isn't open sea.
+- A skiff over ice obeys the usual sailing rules.
+- The HUD was checked in Chromium at 390×844 and 844×390, before and after opening and closing the Pack, and the ice in the real renderer. Not on a phone.
+- The numbers (8 sections, chance ×.5, region sizes, ice radius and life, Questing Beast sea shares) are provisional, not Tim's.
+- Tests:
+  - `tests/encounter-pacing.test.ts` (the buffer, placement, the Questing Beast and the sea);
+  - `tests/turtle-sea-ice.test.ts`;
+  - `tests/wood-boats.test.ts` (two skiffs);
+  - `tests/spell-slots.test.ts` (presets);
+  - `tests/digging.test.ts` (the 99 limits).
+- Fixtures that relied on the old numbers now say so:
+  - `tests/astral-natural-encounters.test.ts` finds its encounters at full chance;
+  - the Walker hunt fixture gets open ground;
+  - the "nowhere to stand" example is the Blob;
+  - `tests/beast-ocean.test.ts` lists the Turtle as marine.

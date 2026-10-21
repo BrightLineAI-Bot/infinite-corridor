@@ -66,7 +66,24 @@ export function ensureSlots(save) {
   ms.slots = raw ? { a: valid(raw.a), b: valid(raw.b) } : { a: `spell:${SPELLS[save.equippedSpell] ? save.equippedSpell : "ember-ring"}`, b: ms.selected && CASTABLES[`skill:${ms.selected}`] ? `skill:${ms.selected}` : null };
   if (ms.slots.a && ms.slots.a === ms.slots.b) ms.slots.b = null;
   ms.pairingsSeen = { ...(ms.pairingsSeen || {}) };
+  // Release 261 spell presets (Tim: "two different presets for the spells... I'll just toggle it"): two saved A/B pairs;
+  // the slots always hold the active one. Additive at schema 14: a save without presets starts with both as its slots.
+  const pair = (q) => (q && typeof q === "object" ? { a: valid(q.a), b: valid(q.b) } : null);
+  const list = Array.isArray(ms.presets) ? ms.presets.slice(0, PRESETS).map(pair) : [];
+  ms.preset = ms.preset === 1 ? 1 : 0;
+  ms.presets = Array.from({ length: PRESETS }, (_, i) => list[i] || { ...ms.slots });
+  ms.presets[ms.preset] = { ...ms.slots };
   return ms.slots;
+}
+export const PRESETS = 2;
+// Switch to the other preset: its spells go into A and B (passives are untouched). Returns the message to show.
+export function togglePreset(save) {
+  const slots = ensureSlots(save), ms = save.magicSkills, next = (ms.preset + 1) % PRESETS, p = ms.presets[next], have = availableCastables(save);
+  ms.presets[ms.preset] = { ...slots }; ms.preset = next;
+  slots.a = p.a && have.includes(p.a) ? p.a : null; slots.b = p.b && have.includes(p.b) && p.b !== slots.a ? p.b : null;
+  ms.presets[next] = { ...slots }; syncLegacy(save);
+  const a = slotted(save, "a"), b = slotted(save, "b");
+  return { ok: true, preset: next + 1, message: `Spell preset ${next + 1}: A ${a ? a.name : "empty"} · B ${b ? b.name : "empty"}.` };
 }
 export function slotted(save, slot) {
   const k = ensureSlots(save)[slot], c = CASTABLES[k];
@@ -81,6 +98,7 @@ export function setSlot(save, slot, key) {
   if (key && !availableCastables(save).includes(key)) return { ok: false, message: "Not learned yet." };
   if (key && slots[other] === key) slots[other] = slots[slot];
   slots[slot] = key || null;
+  save.magicSkills.presets[save.magicSkills.preset] = { ...slots }; // release 261: setting a slot sets the active preset
   syncLegacy(save);
   const p = activePairing(save);
   if (p && !save.magicSkills.pairingsSeen[p.key]) { save.magicSkills.pairingsSeen[p.key] = true; return { ok: true, message: `Pairing found: ${p.name} — ${p.text}`, pairing: p }; }

@@ -8,11 +8,11 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="../styles.css?v=259" />
+    <link rel="stylesheet" href="../styles.css?v=261" />
     <title>Infinite Corridor — Proving Ground</title>
   </head>
   <body>
-    <aside id="pgIdentity" class="pg-identity" role="status"><strong>PROVING GROUND</strong><span>Experimental · isolated scratch state · build PG-1 / Release 259</span><button id="pgDiagnosticsToggle" type="button">Diagnostics</button><button id="pgGlimpsesToggle" type="button">Glimpses</button></aside>
+    <aside id="pgIdentity" class="pg-identity" role="status"><strong>PROVING GROUND</strong><span>Experimental · isolated scratch state · build PG-1 / Release 261</span><button id="pgDiagnosticsToggle" type="button">Diagnostics</button><button id="pgGlimpsesToggle" type="button">Glimpses</button></aside>
     <dialog id="pgDiagnostics"><button id="pgDiagnosticsClose" class="close" aria-label="Close diagnostics">×</button><h2>Mobile diagnostics</h2><dl id="pgDiagnosticsBody"></dl><button id="pgReset" type="button">Reset Proving Ground data</button><p id="pgResetStatus" role="status"></p></dialog>
     <dialog id="pgGlimpses"><button id="pgGlimpsesClose" class="close" aria-label="Close Glimpses">×</button><h2>Glimpses</h2><p>First-person scenes. Tap a scene to let go of it.</p><div id="pgGlimpseList"></div></dialog>
     <section id="glimpse" class="glimpse" hidden aria-label="Glimpse"><canvas id="glimpseCanvas"></canvas><p id="glimpseHint" class="glimpse-hint">Tap to let go</p></section>
@@ -67,11 +67,13 @@
           </div></div>
           <div class="utility-buttons">
             <button data-action="map">Map</button
-            ><button data-action="menu">Pack</button>
+            ><button data-action="menu">Pack</button
+            ><button class="preset" data-action="preset" aria-label="Spell preset 1">1</button>
           </div>
         </div>
         <div class="quick-row buttons">
-          <button class="quick potion" data-action="potion">Potion</button>
+          <button class="quick spell spell-a" data-action="spell" data-slot="A">Spell A</button
+          ><button class="quick spell spell-b" data-action="spell2" data-slot="B">Spell B</button>
         </div>
         <div class="action-diamond buttons">
           <button class="core tool" data-action="tool">Tool</button
@@ -79,8 +81,7 @@
           ><button class="core dodge" data-action="dodge">Dodge</button
           ><button class="core attack" data-action="attack">Attack</button
           ><button class="core jump" data-action="jump">Jump</button
-          ><button class="core spell spell-a" data-action="spell" data-slot="A">Spell A</button
-          ><button class="core spell spell-b" data-action="spell2" data-slot="B">Spell B</button>
+          ><button class="core potion" data-action="potion">Potion</button>
         </div>
       </section>
       <dialog id="panel">
@@ -153,7 +154,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "259";
+      const release = "261";
       const params = new URLSearchParams(location.search);
       const entry = "../src/proving-ground-mobile.js";
       const updateServiceWorker = async () => {

@@ -550,6 +550,10 @@ export const WORM = {
 };
 // The Mountain Turtle (release 241). Balance as data.
 export const TURTLE = {
+  // Release 261 (Tim: "the turtle can appear in the water... he'll make like a temporary ice floor... walkable tiles... your
+  // boat can slide across it... they'll persist for... 5, maybe 10 seconds, and then... unfreeze"): open sea within
+  // `radius` of it freezes to walkable ice every `tick` s; each ice tile thaws `life` s after the Turtle last froze it.
+  seaIce: { radius: 2.2, life: 8, tick: .5 },
   stompRadius: 1.9, stompRing: 4.2,
   dashSpeed: 7.5, dashEvery: .14, trailLife: 3.2, trailRadius: .75, trailBite: .45, fireTick: .5, iceTick: .6, iceSlow: .55, iceBurst: [2, 2.6], iceBurstRadius: 1.3, iceBurstBite: .9, // fire burns while it lasts; ice stings and slows, then bursts
   spinRadius: 1.4, spinTick: .4, spinPull: .9, twisterEvery: .5, twisterMax: 6, twisterSpeed: 1.4, twisterLife: 10, twisterRadius: .7, twisterTick: .7, twisterSlow: .5, twisterBite: .35,
