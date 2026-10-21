@@ -120,6 +120,8 @@ A Glimpse is a short scene, 8 to 20 seconds, seen **in first person**: through t
 
 You see what they see: sometimes their hands, sometimes their body at the edge of vision, sometimes nothing you could call a body. All Glimpses aim at the same level of quality.
 
+**Hand authoring and review:** before drawing or revising a hand, use the [hand reference guide](hand-reference-guide.md), inspect the relevant licensed pose images, and check construction, grip/contact and readability at the scene's actual display size. Technical tests and visual acceptance are separate gates; these documentation references are not shipped game assets.
+
 ### Kinds of eyes
 
 The way an entity sees is part of the scene:

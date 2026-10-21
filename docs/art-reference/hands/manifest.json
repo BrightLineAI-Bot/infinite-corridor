@@ -1,0 +1,478 @@
+[
+  {
+    "title": "A man's right hand holding a pen.jpg",
+    "author": "Oliver Ritchie",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source_url": "https://commons.wikimedia.org/wiki/File:A_man%27s_right_hand_holding_a_pen.jpg",
+    "download_url": "https://upload.wikimedia.org/wikipedia/commons/6/6c/A_man%27s_right_hand_holding_a_pen.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "description": "A man's right hand holding a pen.",
+    "id": 1,
+    "purpose": "Dorsal mass and wrist taper ONLY. Pen lies over the hand, not a writing grip. Negative control for misleading titles.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "attribution": "A man's right hand holding a pen.jpg — Oliver Ritchie. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:A_man%27s_right_hand_holding_a_pen.jpg | https://creativecommons.org/licenses/by-sa/4.0",
+    "original_path_in_full_corpus": "photos/01-right-hand-pen.jpg",
+    "original_dimensions": [
+      2250,
+      2810
+    ],
+    "original_sha256": "5686d582630077e89d1f57759946ef1ed264f4c561819933ba59d6114659253f",
+    "original_bytes": 2409448,
+    "path": "images/01-right-hand-pen.jpg",
+    "dimensions": [
+      801,
+      1000
+    ],
+    "sha256": "36d780def1ab2a8d4274c89850b141073aca1df9a6780d0ec7c43f90ed9bdafa",
+    "bytes": 103152
+  },
+  {
+    "title": "Handwriting hand position.png",
+    "author": "Roozitaa",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Handwriting_hand_position.png",
+    "download_url": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Handwriting_hand_position.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "description": "Hand writing for use in PowerPoint",
+    "id": 2,
+    "purpose": "Isolated photo cutout. Readable thumb-index pinch and wrist silhouette; paper contact absent.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "attribution": "Handwriting hand position.png — Roozitaa. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:Handwriting_hand_position.png | https://creativecommons.org/licenses/by-sa/4.0",
+    "original_path_in_full_corpus": "photos/02-writing-position.png",
+    "original_dimensions": [
+      481,
+      600
+    ],
+    "original_sha256": "910ff0942361a94757a84013037cab03793a98a8a9edff26419f4170f0b62500",
+    "original_bytes": 143259,
+    "path": "images/02-writing-position.jpg",
+    "dimensions": [
+      481,
+      600
+    ],
+    "sha256": "e305548d58211a41964c6efc005f76bfe6ad3d99ecf685e30d6ba1095f860dba",
+    "bytes": 18172
+  },
+  {
+    "title": "Left hand holding pen.jpg",
+    "author": "Magioladitis",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Left_hand_holding_pen.jpg",
+    "download_url": "https://upload.wikimedia.org/wikipedia/commons/f/fe/Left_hand_holding_pen.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "description": "Φωτογραφία από ένα αριστερό χέρι που κρατάει ένα στυλό",
+    "id": 3,
+    "purpose": "Left hand and narrow pen: three-quarter dorsal view, pinching fingertips and thumb web. Do not silently treat as right hand.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "attribution": "Left hand holding pen.jpg — Magioladitis. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:Left_hand_holding_pen.jpg | https://creativecommons.org/licenses/by-sa/4.0",
+    "original_path_in_full_corpus": "photos/03-left-hand-pen.jpg",
+    "original_dimensions": [
+      4000,
+      3000
+    ],
+    "original_sha256": "caf27219efb861cd7c0aac58364056f31bfd356f4a047fd3e61be60263a6f5b4",
+    "original_bytes": 1375937,
+    "path": "images/03-left-hand-pen.jpg",
+    "dimensions": [
+      750,
+      1000
+    ],
+    "sha256": "788426551b80056d58a975ebd5e34b34ce5304cdef43c3241f99a662618941df",
+    "bytes": 97998
+  },
+  {
+    "title": "Schreiben mit Kugelschreiber.jpg",
+    "author": "Mummelgrummel",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Schreiben_mit_Kugelschreiber.jpg",
+    "download_url": "https://upload.wikimedia.org/wikipedia/commons/0/0c/Schreiben_mit_Kugelschreiber.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "description": "A child is writing with a pen.",
+    "id": 4,
+    "purpose": "Low frontal angle exposes nib-to-paper contact and foreshortened fingers. Child proportions are not an adult master.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "attribution": "Schreiben mit Kugelschreiber.jpg — Mummelgrummel. CC BY-SA 3.0. https://commons.wikimedia.org/wiki/File:Schreiben_mit_Kugelschreiber.jpg | https://creativecommons.org/licenses/by-sa/3.0",
+    "original_path_in_full_corpus": "photos/04-writing-ballpoint.jpg",
+    "original_dimensions": [
+      4608,
+      3456
+    ],
+    "original_sha256": "64311121ecbb88fd412af457a6a824139023d5d9246ffce9d96a1f183ef86335",
+    "original_bytes": 2502477,
+    "path": "images/04-writing-ballpoint.jpg",
+    "dimensions": [
+      1000,
+      750
+    ],
+    "sha256": "8dd449b7d6a61a6df3b4589c5a304793ae1e59ddc177b9db4984089af9e38eae",
+    "bytes": 93943
+  },
+  {
+    "title": "Studies of the Hands of Erasmus, by Hans Holbein the Younger.jpg",
+    "author": "Hans Holbein the Younger",
+    "license": "Public domain",
+    "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Studies_of_the_Hands_of_Erasmus,_by_Hans_Holbein_the_Younger.jpg",
+    "download_url": "https://upload.wikimedia.org/wikipedia/commons/d/db/Studies_of_the_Hands_of_Erasmus%2C_by_Hans_Holbein_the_Younger.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "description": " Two Studies of the Left Hand of Erasmus of Rotterdam; Study of the Right Hand Writing.   Silverpoint , black crayon and red chalk on grey-primed paper,  20.6 × 15.3 cm ,  Louvre , Paris.\nThis sketch, along with  one of the right hand , can be linked with Holbein's   Portrait of Erasmus with Renaissance Pilaster  . The writing hand drawn in black crayon may have been added later (Müller, pp. 288–89).",
+    "id": 5,
+    "purpose": "Holbein: economical contour, multiple resting and writing studies. Separate wrist block from finger arcs.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "attribution": "Studies of the Hands of Erasmus, by Hans Holbein the Younger.jpg — Hans Holbein the Younger. Public domain. https://commons.wikimedia.org/wiki/File:Studies_of_the_Hands_of_Erasmus,_by_Hans_Holbein_the_Younger.jpg | https://creativecommons.org/publicdomain/mark/1.0/",
+    "original_path_in_full_corpus": "anatomy/05-erasmus-writing.jpg",
+    "original_dimensions": [
+      1269,
+      1698
+    ],
+    "original_sha256": "302eaacb006f3fda2a3643dda44efce256cc1c3ffb194bfc9f9f84e9fa9d7bd4",
+    "original_bytes": 1017742,
+    "path": "images/05-erasmus-writing.jpg",
+    "dimensions": [
+      747,
+      1000
+    ],
+    "sha256": "47b9bc79c95e7bd309c376ea0d322c9f3cad5186f0639fe3725d1f054dcf3665",
+    "bytes": 232550
+  },
+  {
+    "title": "Carlo Dolci - Pair of hands crossed, resting on a book.jpg",
+    "author": "Carlo Dolci",
+    "license": "Public domain",
+    "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Carlo_Dolci_-_Pair_of_hands_crossed,_resting_on_a_book.jpg",
+    "download_url": "https://upload.wikimedia.org/wikipedia/commons/5/52/Carlo_Dolci_-_Pair_of_hands_crossed%2C_resting_on_a_book.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "description": "",
+    "id": 6,
+    "purpose": "PRIMARY OVERLAY: Dolci crossed hands resting on book. Broad contact patch; upper fingers drape in unequal arcs, not a rigid claw.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "attribution": "Carlo Dolci - Pair of hands crossed, resting on a book.jpg — Carlo Dolci. Public domain. https://commons.wikimedia.org/wiki/File:Carlo_Dolci_-_Pair_of_hands_crossed,_resting_on_a_book.jpg | https://creativecommons.org/publicdomain/mark/1.0/",
+    "original_path_in_full_corpus": "anatomy/06-hands-resting.jpg",
+    "original_dimensions": [
+      2989,
+      2467
+    ],
+    "original_sha256": "6f1265678bb1436704fb13ed42c5210e8399a4f8cb649b224e6583e6b141f79a",
+    "original_bytes": 7623938,
+    "path": "images/06-hands-resting.jpg",
+    "dimensions": [
+      1000,
+      825
+    ],
+    "sha256": "2d662092518e998c09bb296d8409c83fda6c6650bcae4cc9288fa1c5d954760d",
+    "bytes": 250542
+  },
+  {
+    "title": "M. Klein's hands, writing. Wellcome L0018664.jpg",
+    "author": "Hans A. Thorner; credit: Wellcome Library, London / Wellcome Images",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0",
+    "source_url": "https://commons.wikimedia.org/wiki/File:M._Klein%27s_hands,_writing._Wellcome_L0018664.jpg",
+    "download_url": "https://upload.wikimedia.org/wikipedia/commons/0/09/M._Klein%27s_hands%2C_writing._Wellcome_L0018664.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "description": " \n M. Klein's hands, writing. \n Archives  &  Manuscripts \nKeywords: cmac/pp/kle; cmac/pp/kle. access restricted; cmac/pp/kle/a.111; klein, melanie {1882-1960}; Melanie Klein; Hans A. Thorner ",
+    "id": 7,
+    "purpose": "PRIMARY RIGHT-HAND GRIP: Thorner photograph of Klein writing. Pen supported between thumb, index and middle; curled ulnar fingers; wrist-to-hand continuity.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "attribution": "M. Klein's hands, writing. Wellcome L0018664.jpg — Hans A. Thorner; credit: Wellcome Library, London / Wellcome Images. CC BY 4.0. https://commons.wikimedia.org/wiki/File:M._Klein%27s_hands,_writing._Wellcome_L0018664.jpg | https://creativecommons.org/licenses/by/4.0",
+    "original_path_in_full_corpus": "photos/07-writing-klein.jpg",
+    "original_dimensions": [
+      1610,
+      1186
+    ],
+    "original_sha256": "ca1fd7612f39c35d6c1ec70acc96fc42d34fd694a977bcdd19faf131ff13c67a",
+    "original_bytes": 857923,
+    "path": "images/07-writing-klein.jpg",
+    "dimensions": [
+      1000,
+      737
+    ],
+    "sha256": "d3da0c7a7c3c726d0b18c7bd6990dfc892cc245bb8a9c85f62ec622dfb2e71db",
+    "bytes": 148019
+  },
+  {
+    "title": "Dolní metoda psaní.jpg",
+    "author": "Nessa124",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Doln%C3%AD_metoda_psan%C3%AD.jpg",
+    "download_url": "https://upload.wikimedia.org/wikipedia/commons/6/67/Doln%C3%AD_metoda_psan%C3%AD.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "description": "Levá ruka držící psací náčiní tzv. dolním způsobem.",
+    "id": 8,
+    "purpose": "PRIMARY FIRST-PERSON ANGLE: left-handed writing from above. Forearm widens into hand; index knuckle rises; middle finger supports pencil. Mirror only intentionally if designing a right hand.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "attribution": "Dolní metoda psaní.jpg — Nessa124. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:Doln%C3%AD_metoda_psan%C3%AD.jpg | https://creativecommons.org/licenses/by-sa/4.0",
+    "original_path_in_full_corpus": "photos/08-writing-underhand.jpg",
+    "original_dimensions": [
+      800,
+      533
+    ],
+    "original_sha256": "b1c44d84d092df61e79a60d8d4693f33f92f2a3781b678e8440aa78110b8de98",
+    "original_bytes": 35223,
+    "path": "images/08-writing-underhand.jpg",
+    "dimensions": [
+      800,
+      533
+    ],
+    "sha256": "35162e5dad6aea82464b5f32c7896cebe51caddc9e3b0823a81d5e0ca08a67da",
+    "bytes": 41357
+  },
+  {
+    "title": "Gray220 - Phalanges of the hand.png",
+    "author": "Henry Vandyke Carter",
+    "license": "Public domain",
+    "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Gray220_-_Phalanges_of_the_hand.png",
+    "download_url": "https://upload.wikimedia.org/wikipedia/commons/2/2f/Gray220_-_Phalanges_of_the_hand.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "description": " Phalanges of the hand  (shown in yellow).",
+    "id": 9,
+    "purpose": "Phalanx lengths and knuckle arc. Thumb has two phalanges; other digits three. Do not place finger roots in a straight row.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "attribution": "Gray220 - Phalanges of the hand.png — Henry Vandyke Carter. Public domain. https://commons.wikimedia.org/wiki/File:Gray220_-_Phalanges_of_the_hand.png | https://creativecommons.org/publicdomain/mark/1.0/",
+    "original_path_in_full_corpus": "anatomy/09-finger-bones.png",
+    "original_dimensions": [
+      733,
+      900
+    ],
+    "original_sha256": "8b26659f14ec8e1f5792a387ef012d4692787eb79764e2981ede71465f588339",
+    "original_bytes": 279198,
+    "path": "images/09-finger-bones.jpg",
+    "dimensions": [
+      733,
+      900
+    ],
+    "sha256": "d1bfbd629fec82000eac75880b907033e8e29d9b8e90fede6ec1bba998bfd747",
+    "bytes": 144814
+  },
+  {
+    "title": "Human palm.jpg",
+    "author": "ANTHONY DERY",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Human_palm.jpg",
+    "download_url": "https://upload.wikimedia.org/wikipedia/commons/2/2d/Human_palm.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "description": "Human palm",
+    "id": 11,
+    "purpose": "Palm pads, thumb opposition, skin creases and wrist width. Creases are not identical to joint pivots.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "attribution": "Human palm.jpg — ANTHONY DERY. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:Human_palm.jpg | https://creativecommons.org/licenses/by-sa/4.0",
+    "original_path_in_full_corpus": "photos/11-palm.jpg",
+    "original_dimensions": [
+      3264,
+      2448
+    ],
+    "original_sha256": "43f45c9b15885148584fb2e4128679ff241c7347dbad307c8c3f6dac6a714fe6",
+    "original_bytes": 3544484,
+    "path": "images/11-palm.jpg",
+    "dimensions": [
+      750,
+      1000
+    ],
+    "sha256": "2cb3de7cb300b4e4f6bcdb482bdd11d777ed0af570cda98b14a10fdc798562d0",
+    "bytes": 175976
+  },
+  {
+    "title": "Hand - Fingers.jpg",
+    "author": "Coolgirly88 at English Wikipedia",
+    "license": "Public domain",
+    "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Hand_-_Fingers.jpg",
+    "download_url": "https://upload.wikimedia.org/wikipedia/commons/3/30/Hand_-_Fingers.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "description": "Hand - Fingers",
+    "id": 12,
+    "purpose": "Dorsal finger length hierarchy, webbing and natural spread. Not a relaxed pose because fingers are splayed.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "attribution": "Hand - Fingers.jpg — Coolgirly88 at English Wikipedia. Public domain. https://commons.wikimedia.org/wiki/File:Hand_-_Fingers.jpg | https://creativecommons.org/publicdomain/mark/1.0/",
+    "original_path_in_full_corpus": "photos/12-dorsal.jpg",
+    "original_dimensions": [
+      2063,
+      1523
+    ],
+    "original_sha256": "454582310becbb87fe37618ddc7e3b11f4b91822a6b4182d5a6a29e483b7e43e",
+    "original_bytes": 757428,
+    "path": "images/12-dorsal.jpg",
+    "dimensions": [
+      1000,
+      738
+    ],
+    "sha256": "500e73cfb5caeb1773649428dfd7429e455da4f94f698aaf6acd3236ccbad946",
+    "bytes": 61587
+  },
+  {
+    "title": "Marcosticks-Human hand curled in prep for holding chopsticks.png",
+    "author": "Marcosticks",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Marcosticks-Human_hand_curled_in_prep_for_holding_chopsticks.png",
+    "download_url": "https://upload.wikimedia.org/wikipedia/commons/8/8e/Marcosticks-Human_hand_curled_in_prep_for_holding_chopsticks.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "description": "Human hand curled in preparation for holding chopsticks - useful for identification of fingers in how-to instructions",
+    "id": 14,
+    "purpose": "Stylized curled palm. Clear thumb saddle, unequal finger curl and silhouette. Drawing abstraction, not a calibrated anatomy diagram.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "attribution": "Marcosticks-Human hand curled in prep for holding chopsticks.png — Marcosticks. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:Marcosticks-Human_hand_curled_in_prep_for_holding_chopsticks.png | https://creativecommons.org/licenses/by-sa/4.0",
+    "original_path_in_full_corpus": "stylized/14-curled-hand.png",
+    "original_dimensions": [
+      2048,
+      2119
+    ],
+    "original_sha256": "d2a5fdaa20124d124c5edc5bf7253abb3e49898106573fe5623c42fbc682bcdc",
+    "original_bytes": 2259562,
+    "path": "images/14-curled-hand.jpg",
+    "dimensions": [
+      966,
+      1000
+    ],
+    "sha256": "9b09926b7ea35b0b5c8799b4f15ed97f4f0321de4ad87f9cb0e1753e612b6d53",
+    "bytes": 78948
+  },
+  {
+    "title": "Marcosticks-Standard Grip-using chopsticks.png",
+    "author": "Marcosticks",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Marcosticks-Standard_Grip-using_chopsticks.png",
+    "download_url": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Marcosticks-Standard_Grip-using_chopsticks.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "description": "Standard Grip is one of many ways to use chopsticks. More chopstick grip types can be found on the \"12 common grips\" cool guide shown in the \"other versions\" section.",
+    "id": 15,
+    "purpose": "Stylized side grip. Shows contact ordering and overlapping finger forms; CHOPSTICK grip, not a pen-writing pose to copy literally.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "attribution": "Marcosticks-Standard Grip-using chopsticks.png — Marcosticks. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:Marcosticks-Standard_Grip-using_chopsticks.png | https://creativecommons.org/licenses/by-sa/4.0",
+    "original_path_in_full_corpus": "stylized/15-tripod-side.png",
+    "original_dimensions": [
+      2048,
+      1384
+    ],
+    "original_sha256": "cbd10b58d036d5a572833e25e0b5bf6e827b691b56cae7ea0be3b18612dd3b78",
+    "original_bytes": 1486394,
+    "path": "images/15-tripod-side.jpg",
+    "dimensions": [
+      1000,
+      676
+    ],
+    "sha256": "704ebe79f10b39653328a98fea45359e5d48ed15102ecb1d8825469613489b0f",
+    "bytes": 64206
+  },
+  {
+    "title": "Marcosticks-Chopstick motion color-Standard Grip-Planetary gears view-Open posture.png",
+    "author": "Marcosticks",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Marcosticks-Chopstick_motion_color-Standard_Grip-Planetary_gears_view-Open_posture.png",
+    "download_url": "https://upload.wikimedia.org/wikipedia/commons/8/83/Marcosticks-Chopstick_motion_color-Standard_Grip-Planetary_gears_view-Open_posture.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "description": "Front view of Standard Grip at its open posture, showing thumb, index and middle fingers in a tripod hold rolling top chopstick as planetary gears.",
+    "id": 16,
+    "purpose": "Stylized front grip. Shows thumb/index/middle opposition around upper stick; CHOPSTICK study only.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "attribution": "Marcosticks-Chopstick motion color-Standard Grip-Planetary gears view-Open posture.png — Marcosticks. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:Marcosticks-Chopstick_motion_color-Standard_Grip-Planetary_gears_view-Open_posture.png | https://creativecommons.org/licenses/by-sa/4.0",
+    "original_path_in_full_corpus": "stylized/16-tripod-front.png",
+    "original_dimensions": [
+      2049,
+      1022
+    ],
+    "original_sha256": "037b5cb2dd8fbd5c7a42687980b387a1f46b7071704c9036af38f3c1347fb69a",
+    "original_bytes": 1045031,
+    "path": "images/16-tripod-front.jpg",
+    "dimensions": [
+      1000,
+      499
+    ],
+    "sha256": "fe49a3c955fe4c16959afc4f5fc4b830d3c19dee72bbeb1ec03d7d98221aa820",
+    "bytes": 50948
+  },
+  {
+    "id": 19,
+    "title": "We Are Beautiful 000000-HSNN-1: clasped-hands STL preview",
+    "author": "We Are Beautiful",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source_url": "https://commons.wikimedia.org/wiki/File:We_Are_Beautiful_%E2%80%93_000000-HSNN-1_%E2%80%93_solid.stl",
+    "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f6/We_Are_Beautiful_%E2%80%93_000000-HSNN-1_%E2%80%93_solid.stl/960px-We_Are_Beautiful_%E2%80%93_000000-HSNN-1_%E2%80%93_solid.stl.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "purpose": "Wikimedia generated PNG preview of a real CC0 STL scan. Useful for clasped contact, palm bulk and intersecting wrist directions; NOT a relaxed touch or pen grip.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "license_evidence": "Commons per-asset metadata identifies CC0 source model; downloaded its generated PNG preview.",
+    "attribution": "We Are Beautiful 000000-HSNN-1: clasped-hands STL preview — We Are Beautiful. CC0. https://commons.wikimedia.org/wiki/File:We_Are_Beautiful_%E2%80%93_000000-HSNN-1_%E2%80%93_solid.stl | https://creativecommons.org/publicdomain/zero/1.0/",
+    "original_path_in_full_corpus": "rendered/19-clasped-3d.png",
+    "original_dimensions": [
+      960,
+      720
+    ],
+    "original_sha256": "80fd8d542140eb289327085f071bdd5b7524018b5da66537e3907bcf8d48cf95",
+    "original_bytes": 93093,
+    "path": "images/19-clasped-3d.jpg",
+    "dimensions": [
+      960,
+      720
+    ],
+    "sha256": "2a3a02edb1936b485a977ae7d0a8b8469def96b7f777b6f5e5f34b0c88f0789f",
+    "bytes": 18658
+  },
+  {
+    "id": 20,
+    "title": "Hands Rigged: Blender/Cycles render preview",
+    "author": "SparrowHawk",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source_url": "https://blendswap.com/blend/22269",
+    "download_url": "https://img.blendswap.com/archive/images/2018/11/22/Blend/92895/623d10c7ecf4dba0add9be6a87c5d816.jpg",
+    "purpose": "Creator-provided Blender/Cycles render preview captured in Blender UI. Useful for approaching hand silhouettes, finger curvature and subtle asymmetry. Hands are not in contact; not a writing pose.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "license_evidence": "Asset page explicitly CC0. https://blendswap.com/terms/contributors sections 2 and 4 include files, images, text and previews in assets provided under chosen license. Model download is login-gated and was not attempted beyond the public download page.",
+    "attribution": "Hands Rigged: Blender/Cycles render preview — SparrowHawk. CC0. https://blendswap.com/blend/22269 | https://creativecommons.org/publicdomain/zero/1.0/",
+    "original_path_in_full_corpus": "rendered/20-rigged-hands-render.jpg",
+    "original_dimensions": [
+      1024,
+      576
+    ],
+    "original_sha256": "3ee264f8eb41384d5ef21bf45388e62fb8034e6655ffad9b3a874bedf449548c",
+    "original_bytes": 48918,
+    "path": "images/20-rigged-hands-render.jpg",
+    "dimensions": [
+      1000,
+      563
+    ],
+    "sha256": "0125275b89b1e9c4090040d88a785de6785edffcc57b9413cc46d68d9de9370e",
+    "bytes": 38888
+  },
+  {
+    "id": 21,
+    "title": "Hands Rigged: shaded palm-side viewport preview",
+    "author": "SparrowHawk",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source_url": "https://blendswap.com/blend/22269",
+    "download_url": "https://img.blendswap.com/archive/images/2018/11/22/Blend/92895/ae27bc3211d4dae4a5f21177bbfb16fe.jpg",
+    "purpose": "Creator-provided shaded Blender 3D viewport, not a photographic image or final Cycles render. Useful low-angle palm volume, curled finger depth and wrist taper. Same model as 20, different purposeful view.",
+    "retrieved_at": "2026-10-21",
+    "modifications": "Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.",
+    "license_evidence": "Asset page explicitly CC0. https://blendswap.com/terms/contributors sections 2 and 4 include files, images, text and previews in assets provided under chosen license. Model download is login-gated and was not attempted beyond the public download page.",
+    "attribution": "Hands Rigged: shaded palm-side viewport preview — SparrowHawk. CC0. https://blendswap.com/blend/22269 | https://creativecommons.org/publicdomain/zero/1.0/",
+    "original_path_in_full_corpus": "rendered/21-curled-palm-viewport.jpg",
+    "original_dimensions": [
+      1024,
+      576
+    ],
+    "original_sha256": "9a5c88b813760d6a712546b53163fa396f8a3a7006520b8473a29d444788de0f",
+    "original_bytes": 49024,
+    "path": "images/21-curled-palm-viewport.jpg",
+    "dimensions": [
+      1000,
+      563
+    ],
+    "sha256": "57333fdca7fd86da9d9a05d779f25162f26c78e4d67e01d87379b5a2c7ab80bb",
+    "bytes": 39337
+  }
+]

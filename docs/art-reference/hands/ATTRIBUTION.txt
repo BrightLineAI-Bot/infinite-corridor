@@ -1,0 +1,69 @@
+Individual images retain the licenses below. Derivative operations are stated per image in manifest.json.
+
+A man's right hand holding a pen.jpg — Oliver Ritchie. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:A_man%27s_right_hand_holding_a_pen.jpg | https://creativecommons.org/licenses/by-sa/4.0
+Local derivative: images/01-right-hand-pen.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+Handwriting hand position.png — Roozitaa. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:Handwriting_hand_position.png | https://creativecommons.org/licenses/by-sa/4.0
+Local derivative: images/02-writing-position.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+Left hand holding pen.jpg — Magioladitis. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:Left_hand_holding_pen.jpg | https://creativecommons.org/licenses/by-sa/4.0
+Local derivative: images/03-left-hand-pen.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+Schreiben mit Kugelschreiber.jpg — Mummelgrummel. CC BY-SA 3.0. https://commons.wikimedia.org/wiki/File:Schreiben_mit_Kugelschreiber.jpg | https://creativecommons.org/licenses/by-sa/3.0
+Local derivative: images/04-writing-ballpoint.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+Studies of the Hands of Erasmus, by Hans Holbein the Younger.jpg — Hans Holbein the Younger. Public domain. https://commons.wikimedia.org/wiki/File:Studies_of_the_Hands_of_Erasmus,_by_Hans_Holbein_the_Younger.jpg | https://creativecommons.org/publicdomain/mark/1.0/
+Local derivative: images/05-erasmus-writing.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+Carlo Dolci - Pair of hands crossed, resting on a book.jpg — Carlo Dolci. Public domain. https://commons.wikimedia.org/wiki/File:Carlo_Dolci_-_Pair_of_hands_crossed,_resting_on_a_book.jpg | https://creativecommons.org/publicdomain/mark/1.0/
+Local derivative: images/06-hands-resting.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+M. Klein's hands, writing. Wellcome L0018664.jpg — Hans A. Thorner; credit: Wellcome Library, London / Wellcome Images. CC BY 4.0. https://commons.wikimedia.org/wiki/File:M._Klein%27s_hands,_writing._Wellcome_L0018664.jpg | https://creativecommons.org/licenses/by/4.0
+Local derivative: images/07-writing-klein.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+Dolní metoda psaní.jpg — Nessa124. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:Doln%C3%AD_metoda_psan%C3%AD.jpg | https://creativecommons.org/licenses/by-sa/4.0
+Local derivative: images/08-writing-underhand.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+Gray220 - Phalanges of the hand.png — Henry Vandyke Carter. Public domain. https://commons.wikimedia.org/wiki/File:Gray220_-_Phalanges_of_the_hand.png | https://creativecommons.org/publicdomain/mark/1.0/
+Local derivative: images/09-finger-bones.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+Human palm.jpg — ANTHONY DERY. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:Human_palm.jpg | https://creativecommons.org/licenses/by-sa/4.0
+Local derivative: images/11-palm.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+Hand - Fingers.jpg — Coolgirly88 at English Wikipedia. Public domain. https://commons.wikimedia.org/wiki/File:Hand_-_Fingers.jpg | https://creativecommons.org/publicdomain/mark/1.0/
+Local derivative: images/12-dorsal.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+Marcosticks-Human hand curled in prep for holding chopsticks.png — Marcosticks. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:Marcosticks-Human_hand_curled_in_prep_for_holding_chopsticks.png | https://creativecommons.org/licenses/by-sa/4.0
+Local derivative: images/14-curled-hand.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+Marcosticks-Standard Grip-using chopsticks.png — Marcosticks. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:Marcosticks-Standard_Grip-using_chopsticks.png | https://creativecommons.org/licenses/by-sa/4.0
+Local derivative: images/15-tripod-side.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+Marcosticks-Chopstick motion color-Standard Grip-Planetary gears view-Open posture.png — Marcosticks. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:Marcosticks-Chopstick_motion_color-Standard_Grip-Planetary_gears_view-Open_posture.png | https://creativecommons.org/licenses/by-sa/4.0
+Local derivative: images/16-tripod-front.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+We Are Beautiful 000000-HSNN-1: clasped-hands STL preview — We Are Beautiful. CC0. https://commons.wikimedia.org/wiki/File:We_Are_Beautiful_%E2%80%93_000000-HSNN-1_%E2%80%93_solid.stl | https://creativecommons.org/publicdomain/zero/1.0/
+Local derivative: images/19-clasped-3d.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+Hands Rigged: Blender/Cycles render preview — SparrowHawk. CC0. https://blendswap.com/blend/22269 | https://creativecommons.org/publicdomain/zero/1.0/
+Local derivative: images/20-rigged-hands-render.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
+
+Hands Rigged: shaded palm-side viewport preview — SparrowHawk. CC0. https://blendswap.com/blend/22269 | https://creativecommons.org/publicdomain/zero/1.0/
+Local derivative: images/21-curled-palm-viewport.jpg
+Reference-sized derivative: EXIF orientation applied, proportional resize to maximum 1000 pixels, transparent areas flattened onto #f2f0ea, JPEG quality 87. No cropping, mirroring or anatomical alteration.
