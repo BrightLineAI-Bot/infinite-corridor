@@ -204,7 +204,9 @@ export function drawLightningGiant(ctx, q, now = 0) {
     if (!reduce) for (let i = 0; i < 5; i++) { const f = ((t * 6 + i * .21) % 1), d = len * (.15 + f * .85), wob = Math.sin(i * 2.3 + t * 9) * u * .07 * f; ctx.fillStyle = `rgba(234,250,255,${1 - f})`; ctx.fillRect(mouth.x + dir.x * d + px * wob - u * .01, cy + dir.y * d + py * wob - u * .01, u * .02, u * .02); }
   };
   // Head jets (Tim, 2026-10-21, replacing the blade crest: "3 small Tesla coils that conform to the back of the head...
-  // each of them will have an individual burst of energy coming out of it. It looks kind of like a bolt"). Three copper-
+  // each of them will have an individual burst of energy coming out of it. It looks kind of like a bolt"; then "one more
+  // bolt generator... towards the front of his head... a larger bolt"). A fourth, larger jet on the front of the crown
+  // fires the biggest bolt up and forward. Three copper-
   // wound coil jets of different sizes sit along the back of the helm, fanned from up-and-back to straight back; each
   // fires its own bolt-shaped burst of energy, with a stray arc now and then. The crown cap's lit channel feeds them.
   const crest = (hb, H) => {
@@ -212,6 +214,7 @@ export function drawLightningGiant(ctx, q, now = 0) {
       [-u * .09, hb - H * .96, -2.45, u * .085, u * .032, u * .26],
       [-u * .145, hb - H * .78, -2.78, u * .07, u * .027, u * .2],
       [-u * .165, hb - H * .58, -3.04, u * .055, u * .022, u * .14],
+      [u * .085, hb - H * .97, -1.15, u * .1, u * .036, u * .38], // the front generator: the biggest, angled up and forward, with the largest bolt
     ];
     const headCap = () => {
     // The crown cap: a solid armoured plate over the top of the dome (its lower edge a seam across the helm), so the crest
@@ -246,7 +249,7 @@ export function drawLightningGiant(ctx, q, now = 0) {
       ctx.fillStyle = A.coreHot; ctx.beginPath(); ctx.ellipse(...P(tip, 0), r * .35, r * 1.1, a, 0, TAU); ctx.fill(); // white-hot mouth
     };
     headCap();
-    jets.slice().reverse().forEach((J, n) => jet(J, jets.length - 1 - n)); // lowest first, so the top jet overlaps
+    [2, 1, 0, 3].forEach((n) => jet(jets[n], n)); // the back jets lowest first, then the front generator over them
   };
   const clubAngle = eased(e, "club", A.poses[pose] ?? A.poses.idle, now, A.ease) + (pose === "idle" ? m * Math.sin(ph) * .1 : 0);
   // Far side.
@@ -327,7 +330,8 @@ export function drawStormCloud(ctx, k, y, u, t, now, layer, reduce = false) {
   const g = ctx.createLinearGradient(0, top, 0, bottom);
   if (layer === "back") { g.addColorStop(0, "#9aa5b1"); g.addColorStop(.5, "#5d6874"); g.addColorStop(1, "#2a313a"); }
   else { g.addColorStop(0, "#8794a1"); g.addColorStop(.45, "#56616d"); g.addColorStop(1, "#262c34"); }
-  mass(); ctx.fillStyle = g; ctx.fill();
+  mass(); ctx.fillStyle = g; ctx.globalAlpha *= layer === "back" ? 1 : .88; ctx.fill(); ctx.globalAlpha /= layer === "back" ? 1 : .88;
+  if (layer === "front") for (const c of P) soft(c.x, c.y + c.r * .35, c.r * 1.25, c.r * .8, "92,102,114", .45); // the near billows' lower edges dissolve
   ctx.lineCap = "round";
   for (const c of P) soft(c.x - c.r * .3, c.y - c.r * .45, c.r * .6, c.r * .38, layer === "back" ? "220,228,236" : "200,210,220", .32); // soft light on each billow's top
   if (layer === "front") {
