@@ -2340,6 +2340,16 @@ Tim's second follow-up (same day):
 - **Charge.** `giantUpswing` runs one of `GIANT.chargePlans`, inserting one extra dash before a swing that would miss. The leap follows only the last swing.
 - **Render.** `e.giantThrust` draws the shoulder exhaust and speed streaks. The crest is three bolt-glyph blades with a glow and a spark.
 
+Visual polish (Tim: six passes; "chunky and fun, but disjointed and amateurish"; focus on the crest). `drawLightningGiant` was rebuilt as overlapping, lit armour plates. The passes, in order:
+1. **Structure:** a barrel chest, segmented waist, hip skirt over the thigh roots, rounded pauldrons over the arm roots, a raised collar, and tapered armoured limbs with knee caps and wedge feet.
+2. **Stance and helm:** a grounded leg stance with mild knee bend, and a larger helm with brow, visor and jaw guard.
+3. **Crest:** a sculpted crest grown from the helm crown. One long lightning-notched blade plus two fins, with a gradient from deep blue to cyan and a white-hot spine (`drawCrest`).
+4. **Club and coils:** a Tesla mace (wrapped haft, flange, copper windings, vents, capacitor cap), a gauntlet fist over the haft, and back-leaning Tesla-coil pylons on vented mounts.
+5. **Detail:** calf hydraulics, a blue trim system echoing the crest (pauldron rims, chest seams, brow, knees), and rivets and panel lines.
+6. **Finish:** a larger, lower helm, and catch-lights on the top edges of the large plates.
+
+Shading uses `shadeHex` gradients from a fixed upper-left light. Behaviour, poses and hit geometry are unchanged.
+
 **BOUNDARY:**
 - Numbers are provisional data, not Tim's.
 - The Giant is overworld-only, with no dungeon claim.

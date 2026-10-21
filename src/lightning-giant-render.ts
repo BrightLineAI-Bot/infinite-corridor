@@ -8,7 +8,7 @@ export const GIANT_ART = Object.freeze({
   height: 1.12, hipY: .5, shoulderY: .9, headY: 1.04, legGap: .26, thigh: .25, shin: .25, stride: .1, stepRate: 3.2,
   upperArm: .2, foreArm: .19, clubLength: .58, clubHead: .2,
   metal: "#6c7681", metalDark: "#3a424c", metalEdge: "#15191e", plate: "#8a95a1", copper: "#b8743c", copperDark: "#7a4a24",
-  core: "#7fd6ff", coreHot: "#eafaff", haze: "#7fd6ff", crest: "#2f8fe8", crestLight: "#dff4ff", crestEdge: "#0d3a66",
+  core: "#7fd6ff", coreHot: "#eafaff", haze: "#7fd6ff", crest: "#2f8fe8", crestLight: "#dff4ff", crestEdge: "#0d3a66", trim: "#3b9cf0", rivet: "#c3ccd5",
   poses: { idle: 1.05, arcs: .15, point: 1.2, pointFire: 1.2, swingReady: -2.35, swingFore: .75, swingBack: 2.55, slamRaise: -1.75, slamDown: .95, raise: -1.57, menace: -1.95, chest: 1.15, chargeLow: 2.2, upswing: -1.05 },
   freeArm: { idle: 1.25, arcs: -.05, point: -.05, pointFire: -.1, raise: -1.45, slamRaise: -1.5, slamDown: 1.2, menace: -1.6, chest: 2.4, chargeLow: .4, upswing: .2 },
   ease: 14,
@@ -41,96 +41,181 @@ function eased(e, key, target, now, rate) {
 }
 
 // q: the shared pack paint context { k, b, u, t, flip, e, s }. `now` (ms) drives easing and flicker only.
+// Drawn as one machine of overlapping, lit armour plates (key light from the upper left, cyan bounce from the core):
+// far limbs first, then torso, skirt, near leg, collar, helm and crest, then the club arm and its pauldron on top.
 export function drawLightningGiant(ctx, q, now = 0) {
   const A = GIANT_ART, { k, u, t, flip, e } = q, s0 = e.pack, pose = e.giantPose || "idle", attacking = !!s0?.attack, ground = q.b, b = ground - Math.max(0, Number(e.giantAir) || 0) * (q.s || u);
   const charged = e.giantCharged > 0, still = attacking || e.giantCloud, reduce = !!e.reduceMotion;
   const walk = still || reduce ? 0 : t * A.stepRate;
-  // Ground shadow and, when charged, the crackling haze around the whole body.
   const air = Math.max(0, Math.min(1, (ground - b) / Math.max(1, u))); // the shadow stays on the ground and shrinks while it leaps
-  ctx.fillStyle = `rgba(6,8,12,${.45 * (1 - air * .5)})`; ctx.beginPath(); ctx.ellipse(k, ground, u * .34 * (1 - air * .35), u * .09 * (1 - air * .35), 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = `rgba(6,8,12,${.45 * (1 - air * .5)})`; ctx.beginPath(); ctx.ellipse(k, ground, u * .36 * (1 - air * .35), u * .09 * (1 - air * .35), 0, 0, TAU); ctx.fill();
   if (charged) {
     const g = ctx.createRadialGradient(k, b - u * .6, u * .1, k, b - u * .6, u * .85); g.addColorStop(0, "rgba(127,214,255,.32)"); g.addColorStop(1, "rgba(127,214,255,0)");
     ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(k, b - u * .6, u * .7, u * .82, 0, 0, TAU); ctx.fill();
   }
   ctx.save(); ctx.translate(k, 0); ctx.scale(flip, 1);
-  const bob = Math.abs(Math.sin(walk)) * u * .015, hipY = b - u * A.hipY - bob, shY = b - u * A.shoulderY - bob;
-  const line = (pts, w, fill, edge = A.metalEdge) => { ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = edge; ctx.lineWidth = w + Math.max(2, u * .02); ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.stroke(); ctx.strokeStyle = fill; ctx.lineWidth = w; ctx.stroke(); };
-  const poly = (pts, fill, edge = A.metalEdge) => { ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = edge; ctx.lineWidth = Math.max(1, u * .012); ctx.stroke(); };
-  // Legs: hip, a forward-bending knee and a heavy foot; the far leg is darker. Two-bone IK in the walk cycle.
+  const bob = Math.abs(Math.sin(walk)) * u * .015, Y = (h) => b - u * h - bob, lw = Math.max(1, u * .011);
+  // A lit plate: base fill, a lighter upper-left sheen, a darker lower band, and a crisp dark outline.
+  const plate = (pts, base, { light = .16, shadow = .22, edge = A.metalEdge } = {}) => {
+    const path = () => { ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.closePath(); };
+    let minY = Infinity, maxY = -Infinity; for (let i = 1; i < pts.length; i += 2) { minY = Math.min(minY, pts[i]); maxY = Math.max(maxY, pts[i]); }
+    const g = ctx.createLinearGradient(0, minY, 0, maxY); g.addColorStop(0, shadeHex(base, light)); g.addColorStop(.55, base); g.addColorStop(1, shadeHex(base, -shadow));
+    path(); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = edge; ctx.lineWidth = lw; ctx.lineJoin = "round"; ctx.stroke();
+  };
+  // A tapered armoured limb segment from (x1,y1) to (x2,y2), widths w1 -> w2.
+  const segment = (x1, y1, x2, y2, w1, w2, base) => {
+    const dx = x2 - x1, dy = y2 - y1, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
+    plate([x1 + nx * w1 / 2, y1 + ny * w1 / 2, x2 + nx * w2 / 2, y2 + ny * w2 / 2, x2 - nx * w2 / 2, y2 - ny * w2 / 2, x1 - nx * w1 / 2, y1 - ny * w1 / 2], base);
+  };
+  const rivets = (pts) => { ctx.fillStyle = A.rivet; for (let i = 0; i < pts.length; i += 2) { ctx.beginPath(); ctx.arc(pts[i], pts[i + 1], Math.max(.8, u * .011), 0, TAU); ctx.fill(); } };
+  const edgeLight = (pts) => { ctx.strokeStyle = "rgba(235,242,248,.75)"; ctx.lineWidth = Math.max(1, u * .009); ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.stroke(); }; // crisp catch-light on a top edge
+  const trim = (pts, width = .016) => { ctx.strokeStyle = A.trim; ctx.lineWidth = Math.max(1, u * width); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.stroke(); };
+  const joint = (x, y, r, base) => { const g = ctx.createRadialGradient(x - r * .35, y - r * .35, r * .1, x, y, r); g.addColorStop(0, shadeHex(base, .25)); g.addColorStop(1, shadeHex(base, -.25)); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.strokeStyle = A.metalEdge; ctx.lineWidth = lw; ctx.stroke(); };
+  // Legs: two-bone IK in the walk cycle; armoured thigh and shin, a knee cap, a heavy wedge foot with a toe plate.
+  const hipY = Y(.55);
   const leg = (side, phase, far) => {
     const swing = Math.sin(walk + phase), lift = Math.max(0, Math.cos(walk + phase)) * u * .05 * (still ? 0 : 1);
-    const hx = side * u * A.legGap * .5, fx = hx + swing * u * A.stride, fy = b - lift, L1 = u * A.thigh, L2 = u * A.shin;
-    const dx = fx - hx, dy = fy - hipY, d = Math.min(L1 + L2 - 1e-3, Math.hypot(dx, dy)), a = Math.atan2(dy, dx), c = Math.acos(Math.max(-1, Math.min(1, (L1 * L1 + d * d - L2 * L2) / (2 * L1 * d))));
-    const kx = hx + Math.cos(a - c) * L1, ky = hipY + Math.sin(a - c) * L1; // knee bends forward (+x)
-    const tone = far ? A.metalDark : A.metal;
-    line([hx, hipY, kx, ky], u * .17, tone); line([kx, ky, fx, fy - u * .06], u * .15, tone);
-    line([kx + u * .02, ky + u * .03, fx + u * .02, fy - u * .1], u * .05, far ? "#2c333b" : A.plate, "rgba(0,0,0,0)"); // shin plate
-    ctx.fillStyle = far ? "#2c333b" : A.plate; ctx.beginPath(); ctx.arc(kx, ky, u * .07, 0, TAU); ctx.fill(); ctx.strokeStyle = A.metalEdge; ctx.lineWidth = Math.max(1, u * .012); ctx.stroke();
-    poly([fx - u * .1, fy, fx + u * .16, fy, fx + u * .13, fy - u * .09, fx - u * .08, fy - u * .11], far ? "#232a31" : A.metalDark);
+    const hx = side * u * .13, fx = hx + side * u * .03 + swing * u * A.stride, fy = b - lift, L1 = u * .27, L2 = u * .27;
+    const dx = fx - hx, dy = fy - u * .07 - hipY, d = Math.min(L1 + L2 - 1e-3, Math.hypot(dx, dy)), a = Math.atan2(dy, dx), c = Math.acos(Math.max(-1, Math.min(1, (L1 * L1 + d * d - L2 * L2) / (2 * L1 * d))));
+    const kx = hx + Math.cos(a - c) * L1, ky = hipY + Math.sin(a - c) * L1, ax = fx, ay = fy - u * .07;
+    const tone = far ? A.metalDark : A.metal, plateTone = far ? "#4a535d" : A.plate;
+    segment(hx, hipY, kx, ky, u * .2, u * .16, tone);
+    segment(kx, ky, ax, ay, u * .17, u * .13, tone);
+    segment(kx + u * .03, ky + u * .02, ax + u * .03, ay - u * .04, u * .08, u * .06, plateTone); // shin guard
+    // Calf hydraulics: a cylinder and a polished rod from behind the knee to the heel.
+    const px1 = kx - u * .05, py1 = ky + u * .04, px2 = ax - u * .05, py2 = ay - u * .02, pm = .55;
+    segment(px1, py1, px1 + (px2 - px1) * pm, py1 + (py2 - py1) * pm, u * .045, u * .045, far ? "#30363d" : "#3e464f");
+    ctx.strokeStyle = far ? "#7d8893" : "#c9d3dc"; ctx.lineWidth = Math.max(1, u * .018); ctx.beginPath(); ctx.moveTo(px1 + (px2 - px1) * pm, py1 + (py2 - py1) * pm); ctx.lineTo(px2, py2); ctx.stroke();
+    plate([kx - u * .06, ky - u * .05, kx + u * .08, ky - u * .06, kx + u * .09, ky + u * .04, kx - u * .04, ky + u * .06], plateTone); // knee cap
+    if (!far) trim([kx - u * .04, ky + u * .045, kx + u * .075, ky + u * .03]);
+    plate([ax - u * .11, fy, ax + u * .17, fy, ax + u * .15, fy - u * .06, ax + u * .05, fy - u * .1, ax - u * .09, fy - u * .1], far ? "#2b3138" : A.metalDark); // foot
+    plate([ax + u * .09, fy, ax + u * .19, fy, ax + u * .16, fy - u * .05, ax + u * .09, fy - u * .05], plateTone); // toe plate
   };
-  // Arms: shoulder to elbow to hand, then the club along its pose angle.
+  // Arms: a pauldron over the shoulder root, an armoured upper arm, an elbow joint, a gauntlet and a fist.
+  const shoulderY = Y(.9);
   const arm = (shx, angle, far, club) => {
-    const ua = angle * .55 + .35, ex = shx + Math.cos(ua) * u * A.upperArm, ey = shY + Math.sin(ua) * u * A.upperArm;
-    const hx = ex + Math.cos(angle) * u * A.foreArm, hy = ey + Math.sin(angle) * u * A.foreArm, tone = far ? A.metalDark : A.metal;
-    line([shx, shY, ex, ey], u * .15, tone); line([ex, ey, hx, hy], u * .14, tone);
-    ctx.fillStyle = far ? "#2c333b" : A.plate; ctx.beginPath(); ctx.arc(ex, ey, u * .06, 0, TAU); ctx.fill(); ctx.strokeStyle = A.metalEdge; ctx.lineWidth = Math.max(1, u * .012); ctx.stroke();
-    if (!club) { ctx.fillStyle = A.metalDark; ctx.beginPath(); ctx.arc(hx, hy, u * .07, 0, TAU); ctx.fill(); ctx.stroke(); return; }
-    const cx = hx + Math.cos(angle) * u * A.clubLength, cy = hy + Math.sin(angle) * u * A.clubLength, nx = -Math.sin(angle), ny = Math.cos(angle), w = u * .045, W = u * .11;
-    // Shaft, then a flared head banded in copper with a glowing cap.
-    poly([hx + nx * w, hy + ny * w, cx - Math.cos(angle) * u * A.clubHead + nx * w, cy - Math.sin(angle) * u * A.clubHead + ny * w, cx - Math.cos(angle) * u * A.clubHead - nx * w, cy - Math.sin(angle) * u * A.clubHead - ny * w, hx - nx * w, hy - ny * w], "#4a3a2e");
-    const h0x = cx - Math.cos(angle) * u * A.clubHead, h0y = cy - Math.sin(angle) * u * A.clubHead;
-    poly([h0x + nx * w * 1.2, h0y + ny * w * 1.2, cx + nx * W, cy + ny * W, cx - nx * W, cy - ny * W, h0x - nx * w * 1.2, h0y - ny * w * 1.2], A.metalDark);
-    for (const f of [.3, .62]) { const bx = h0x + (cx - h0x) * f, by = h0y + (cy - h0y) * f, ww = w * 1.2 + (W - w * 1.2) * f; line([bx + nx * ww, by + ny * ww, bx - nx * ww, by - ny * ww], u * .03, A.copper, A.copperDark); }
-    ctx.fillStyle = charged || pose === "raise" ? A.coreHot : A.core; ctx.beginPath(); ctx.arc(cx, cy, u * .045, 0, TAU); ctx.fill();
-    ctx.fillStyle = A.metalDark; ctx.beginPath(); ctx.arc(hx, hy, u * .075, 0, TAU); ctx.fill(); ctx.strokeStyle = A.metalEdge; ctx.stroke();
+    const ua = angle * .55 + .35, ex = shx + Math.cos(ua) * u * .21, ey = shoulderY + Math.sin(ua) * u * .21;
+    const hx = ex + Math.cos(angle) * u * .2, hy = ey + Math.sin(angle) * u * .2, tone = far ? A.metalDark : A.metal;
+    segment(shx, shoulderY, ex, ey, u * .16, u * .13, tone); joint(ex, ey, u * .065, far ? "#4a535d" : A.plate);
+    segment(ex, ey, hx, hy, u * .17, u * .14, tone); // gauntlet
+    if (club) drawClub(hx, hy, angle);
+    const fc = Math.cos(angle), fs = Math.sin(angle), fnx = -fs, fny = fc, r = u * .075; // a blocky gauntlet fist, knuckles across the haft
+    plate([hx - fc * r + fnx * r, hy - fs * r + fny * r, hx + fc * r * .7 + fnx * r * 1.05, hy + fs * r * .7 + fny * r * 1.05, hx + fc * r * .7 - fnx * r * 1.05, hy + fs * r * .7 - fny * r * 1.05, hx - fc * r - fnx * r, hy - fs * r - fny * r], far ? "#2b3138" : A.metalDark);
+    ctx.strokeStyle = A.metalEdge; ctx.lineWidth = lw; for (const o of [-.45, 0, .45]) { ctx.beginPath(); ctx.moveTo(hx + fc * r * .2 + fnx * r * o, hy + fs * r * .2 + fny * r * o); ctx.lineTo(hx + fc * r * .65 + fnx * r * o, hy + fs * r * .65 + fny * r * o); ctx.stroke(); } // knuckle lines
+  };
+  const drawClub = (hx, hy, angle) => { // a Tesla mace: steel haft with grip wraps, a flanged capacitor head wound in copper
+    const c = Math.cos(angle), sn = Math.sin(angle), nx = -sn, ny = c, L = u * A.clubLength, H = u * A.clubHead * 1.15;
+    const cx = hx + c * L, cy = hy + sn * L, h0x = cx - c * H, h0y = cy - sn * H, W = u * .12, P = (f, o) => [hx + c * L * f + nx * o, hy + sn * L * f + ny * o];
+    segment(hx - c * u * .08, hy - sn * u * .08, h0x, h0y, u * .07, u * .075, "#59626c"); // haft
+    ctx.strokeStyle = "#2a2f35"; ctx.lineWidth = Math.max(1, u * .012); for (const f of [-.06, .02, .1]) { const [x1, y1] = P(f, u * .04), [x2, y2] = P(f + .03, -u * .04); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); } // grip wraps
+    const [fx1, fy1] = P((L - H) / L - .02, W * 1.25), [fx2, fy2] = P((L - H) / L - .02, -W * 1.25); // lower flange
+    plate([fx1, fy1, fx2, fy2, h0x - nx * W * .7, h0y - ny * W * .7, h0x + nx * W * .7, h0y + ny * W * .7], A.metalDark);
+    plate([h0x + nx * W, h0y + ny * W, cx + nx * W * .9, cy + ny * W * .9, cx + c * u * .03 + nx * W * .5, cy + sn * u * .03 + ny * W * .5, cx + c * u * .03 - nx * W * .5, cy + sn * u * .03 - ny * W * .5, cx - nx * W * .9, cy - ny * W * .9, h0x - nx * W, h0y - ny * W], A.metal, { light: .25 }); // head
+    for (const f of [.2, .42, .64]) { const bx = h0x + (cx - h0x) * f, by = h0y + (cy - h0y) * f, ww = W * .98; ctx.strokeStyle = A.copperDark; ctx.lineWidth = u * .04; ctx.beginPath(); ctx.moveTo(bx + nx * ww, by + ny * ww); ctx.lineTo(bx - nx * ww, by - ny * ww); ctx.stroke(); ctx.strokeStyle = A.copper; ctx.lineWidth = u * .02; ctx.stroke(); } // windings
+    const vx = h0x + (cx - h0x) * .85, vy = h0y + (cy - h0y) * .85, hot = charged || pose === "raise";
+    ctx.fillStyle = hot ? A.coreHot : A.core; ctx.globalAlpha = hot ? 1 : .85; for (const o of [-.5, .5]) { ctx.beginPath(); ctx.arc(vx + nx * W * o, vy + ny * W * o, u * .022, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1; // vents
+    ctx.fillStyle = hot ? A.coreHot : A.core; ctx.beginPath(); ctx.arc(cx + c * u * .03, cy + sn * u * .03, u * .04, 0, TAU); ctx.fill(); // capacitor cap
     q.clubTip = { x: k + flip * cx, y: cy };
+  };
+  const pauldron = (sx, far) => { // a rounded armoured shell over the arm root
+    plate([sx - u * .15, shoulderY + u * .02, sx - u * .12, shoulderY - u * .09, sx, shoulderY - u * .13, sx + u * .13, shoulderY - u * .08, sx + u * .15, shoulderY + u * .04, sx + u * .08, shoulderY + u * .1, sx - u * .1, shoulderY + u * .09], far ? "#4a535d" : A.plate);
+    if (far) return;
+    edgeLight([sx - u * .11, shoulderY - u * .09, sx, shoulderY - u * .125, sx + u * .12, shoulderY - u * .075]);
+    trim([sx - u * .13, shoulderY + u * .045, sx + u * .13, shoulderY + u * .065], .022); // blue rim band
+    rivets([sx - u * .08, shoulderY - u * .07, sx + u * .02, shoulderY - u * .1, sx + u * .1, shoulderY - u * .05]);
+  };
+  const pylon = (sx) => { // a Tesla coil on a vented mount, leaning back; it doubles as the dash thruster
+    const bx = sx + (sx < 0 ? -u * .05 : u * .03), by = shoulderY - u * .11, lean = -.22;
+    ctx.save(); ctx.translate(bx, by); ctx.rotate(lean);
+    plate([-u * .06, 0, u * .06, 0, u * .045, -u * .045, -u * .045, -u * .045], A.metalDark); // vented mount
+    ctx.strokeStyle = A.metalEdge; ctx.lineWidth = lw; for (const x of [-.025, 0, .025]) { ctx.beginPath(); ctx.moveTo(x * u, -u * .008); ctx.lineTo(x * u, -u * .037); ctx.stroke(); }
+    segment(0, -u * .045, 0, -u * .2, u * .045, u * .038, "#4a535d"); // core rod
+    for (let i = 0; i < 5; i++) { const cy = -u * (.065 + i * .028); ctx.fillStyle = i % 2 ? A.copperDark : A.copper; ctx.beginPath(); ctx.ellipse(0, cy, u * (.04 - i * .003), u * .012, 0, 0, TAU); ctx.fill(); } // windings
+    const g = ctx.createRadialGradient(-u * .015, -u * .225, u * .005, 0, -u * .215, u * .06); g.addColorStop(0, "#f2f6fa"); g.addColorStop(1, "#7d8893");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, -u * .215, u * .06, u * .026, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = A.metalEdge; ctx.lineWidth = lw; ctx.stroke(); // toroid
+    ctx.restore();
+    const top = { x: bx + Math.sin(-lean) * -u * .215 * -1, y: by - Math.cos(lean) * u * .215 };
+    if (!reduce && (charged || pose === "arcs" || Math.sin(t * 7 + sx) > .85)) lightningBolt(ctx, top.x, top.y, top.x + u * .12 * Math.sin(t * 9 + sx), top.y - u * .16, { now, seed: Math.round(sx), segments: 4, width: Math.max(1, u * .012), branch: false });
+    return top;
   };
   const clubAngle = eased(e, "club", A.poses[pose] ?? A.poses.idle, now, A.ease) + (pose === "idle" && !reduce ? Math.sin(walk) * .08 : 0);
   const freeAngle = eased(e, "free", A.freeArm[pose] ?? A.freeArm.idle, now, A.ease) - (pose === "idle" && !reduce ? Math.sin(walk) * .1 : 0);
-  leg(-1, Math.PI, true); arm(-u * .27, freeAngle, true, false);
-  // Pelvis, torso plates, the glowing core and the shoulder coils.
-  poly([-u * .22, hipY + u * .06, u * .22, hipY + u * .06, u * .19, hipY - u * .1, -u * .19, hipY - u * .1], A.metalDark);
-  poly([-u * .3, shY - u * .04, u * .32, shY - u * .04, u * .22, hipY - u * .08, -u * .21, hipY - u * .08], A.metal);
-  poly([-u * .22, shY + u * .03, u * .25, shY + u * .03, u * .17, shY + u * .22, -u * .16, shY + u * .22], A.plate);
-  for (const yy of [.3, .36]) { ctx.strokeStyle = A.metalDark; ctx.lineWidth = Math.max(1, u * .012); ctx.beginPath(); ctx.moveTo(-u * .19, shY + u * yy); ctx.lineTo(u * .21, shY + u * yy); ctx.stroke(); } // belly ribs
-  const pulse = pose === "chest" ? 1.4 : .55 + .45 * Math.sin(t * (charged ? 14 : 4));
-  ctx.fillStyle = A.core; ctx.globalAlpha = .35 + .4 * pulse; ctx.beginPath(); ctx.arc(u * .03, shY + u * .13, u * .11, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
-  ctx.fillStyle = A.coreHot; ctx.beginPath(); ctx.arc(u * .03, shY + u * .13, u * .055, 0, TAU); ctx.fill();
-  for (const sx of [-u * .25, u * .27]) {
-    poly([sx - u * .12, shY + u * .08, sx + u * .12, shY + u * .08, sx + u * .09, shY - u * .06, sx - u * .09, shY - u * .06], A.metalDark);
-    for (let i = 0; i < 4; i++) { const cy = shY - u * (.07 + i * .045); ctx.fillStyle = i % 2 ? A.copperDark : A.copper; ctx.beginPath(); ctx.ellipse(sx, cy, u * (.05 - i * .006), u * .018, 0, 0, TAU); ctx.fill(); }
-    ctx.fillStyle = "#c9d3dc"; ctx.beginPath(); ctx.ellipse(sx, shY - u * .26, u * .055, u * .025, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = A.metalEdge; ctx.lineWidth = Math.max(1, u * .01); ctx.stroke();
-    if (!reduce && (charged || pose === "arcs" || Math.sin(t * 7 + sx) > .85)) lightningBolt(ctx, sx, shY - u * .26, sx + u * .12 * Math.sin(t * 9 + sx), shY - u * .42, { now, seed: Math.round(sx), segments: 4, width: Math.max(1, u * .012), branch: false });
-  }
-  // Shoulder thrusters (burst dashes): the pylons blast blue-white exhaust out behind it, with speed streaks.
-  if (e.giantThrust) for (const [i, sx] of [-u * .25, u * .27].entries()) {
-    const len = u * (.42 + (reduce ? 0 : .08 * Math.sin(t * 40 + i))), x0 = sx - u * .08, y0 = shY - u * .13;
+  // Far side.
+  leg(-1, Math.PI, true); pylon(-u * .27); arm(-u * .27, freeAngle, true, false); pauldron(-u * .27, true);
+  // Torso: segmented waist, a barrel chest, a breastplate around the glowing core.
+  plate([-u * .16, Y(.64), u * .18, Y(.64), u * .16, Y(.54), -u * .14, Y(.54)], A.metalDark);
+  ctx.strokeStyle = A.metalEdge; ctx.lineWidth = lw; for (const h of [.575, .61]) { ctx.beginPath(); ctx.moveTo(-u * .14, Y(h)); ctx.lineTo(u * .16, Y(h)); ctx.stroke(); }
+  plate([-u * .19, Y(.63), u * .21, Y(.63), u * .34, Y(.81), u * .3, Y(.94), -u * .27, Y(.94), -u * .31, Y(.81)], A.metal);
+  plate([-u * .2, Y(.66), u * .22, Y(.66), u * .28, Y(.8), u * .2, Y(.9), -u * .17, Y(.9), -u * .25, Y(.8)], A.plate, { light: .2 });
+  edgeLight([-u * .25, Y(.81), -u * .17, Y(.895), u * .19, Y(.895)]);
+  trim([-u * .23, Y(.8), -u * .1, Y(.8)]); trim([u * .14, Y(.8), u * .26, Y(.8)]); // seams either side of the core
+  rivets([-u * .16, Y(.875), u * .19, Y(.875), -u * .19, Y(.7), u * .21, Y(.7)]);
+  ctx.strokeStyle = shadeHex(A.plate, -.35); ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(u * .02, Y(.66)); ctx.lineTo(u * .02, Y(.7)); ctx.moveTo(u * .02, Y(.885)); ctx.lineTo(u * .02, Y(.9)); ctx.stroke(); // centre panel line
+  const pulse = pose === "chest" ? 1.4 : .55 + .45 * Math.sin(t * (charged ? 14 : 4)), coreY = Y(.79);
+  ctx.fillStyle = A.metalDark; ctx.beginPath(); ctx.arc(u * .02, coreY, u * .085, 0, TAU); ctx.fill(); ctx.strokeStyle = A.metalEdge; ctx.stroke();
+  ctx.fillStyle = A.core; ctx.globalAlpha = Math.min(1, .35 + .4 * pulse); ctx.beginPath(); ctx.arc(u * .02, coreY, u * .07, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+  ctx.fillStyle = A.coreHot; ctx.beginPath(); ctx.arc(u * .02, coreY, u * .038, 0, TAU); ctx.fill();
+  // Near leg, then the hip skirt over both thigh roots.
+  leg(1, 0, false);
+  plate([-u * .22, Y(.59), u * .24, Y(.59), u * .22, Y(.47), u * .07, Y(.44), -u * .05, Y(.46), -u * .2, Y(.48)], A.metalDark);
+  ctx.strokeStyle = A.metalEdge; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(u * .01, Y(.59)); ctx.lineTo(u * .01, Y(.455)); ctx.stroke(); // tasset split
+  // Collar, helm (with a brow and a visor), and the crest.
+  plate([-u * .17, Y(.92), u * .18, Y(.92), u * .15, Y(1.01), -u * .14, Y(1.01)], A.metalDark); // raised collar
+  const hb = Y(.965), H = u * .255; // the helm: a heavy dome with a jutting brow, a visor slit and a jaw guard
+  plate([-u * .14, hb, u * .18, hb, u * .215, hb - H * .45, u * .15, hb - H * .85, u * .03, hb - H, -u * .11, hb - H * .9, -u * .16, hb - H * .45], A.metal, { light: .24 });
+  edgeLight([-u * .11, hb - H * .88, u * .03, hb - H * .98, u * .14, hb - H * .84]);
+  plate([u * .03, hb - H * .52, u * .21, hb - H * .55, u * .2, hb - H * .3, u * .04, hb - H * .3], "#1a2026"); // visor recess
+  trim([u * .0, hb - H * .58, u * .2, hb - H * .6], .02); // brow ridge
+  ctx.fillStyle = A.core; ctx.fillRect(u * .06, hb - H * .48, u * .13, u * .028); ctx.fillStyle = A.coreHot; ctx.fillRect(u * .085, hb - H * .46, u * .08, u * .012);
+  plate([u * .05, hb - H * .26, u * .19, hb - H * .26, u * .17, hb - u * .01, u * .05, hb - u * .01], A.metalDark); // jaw guard
+  drawCrest(ctx, A, u, -u * .01, hb - H * .9, t, now, reduce);
+  // Near side on top: thruster pylon, club arm, pauldron.
+  pylon(u * .29);
+  if (e.giantThrust) for (const [i, sx] of [-u * .27, u * .29].entries()) {
+    const len = u * (.42 + (reduce ? 0 : .08 * Math.sin(t * 40 + i))), x0 = sx - u * .1, y0 = shoulderY - u * .22;
     const g = ctx.createLinearGradient(x0, y0, x0 - len, y0); g.addColorStop(0, "rgba(234,250,255,.95)"); g.addColorStop(.35, "rgba(127,214,255,.75)"); g.addColorStop(1, "rgba(127,214,255,0)");
     ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x0, y0 - u * .05); ctx.lineTo(x0 - len, y0 - u * .015); ctx.lineTo(x0 - len, y0 + u * .015); ctx.lineTo(x0, y0 + u * .05); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = "rgba(200,240,255,.45)"; ctx.lineWidth = Math.max(1, u * .01);
-    for (let j = 0; j < 3; j++) { const yy = shY + u * (.1 + j * .22), off = reduce ? 0 : ((t * 9 + j * .37) % 1) * u * .2; ctx.beginPath(); ctx.moveTo(-u * .32 - off, yy); ctx.lineTo(-u * .32 - off - u * .3, yy); ctx.stroke(); }
+    for (let j = 0; j < 3; j++) { const yy = shoulderY + u * (.1 + j * .22), off = reduce ? 0 : ((t * 9 + j * .37) % 1) * u * .2; ctx.beginPath(); ctx.moveTo(-u * .36 - off, yy); ctx.lineTo(-u * .36 - off - u * .3, yy); ctx.stroke(); }
   }
-  // Head: a squared helm with a lit visor slit.
-  const hy = b - u * A.headY - bob;
-  poly([-u * .11, hy + u * .12, u * .13, hy + u * .12, u * .13, hy - u * .05, u * .08, hy - u * .1, -u * .09, hy - u * .1, -u * .12, hy - u * .04], A.metal);
-  // Lightning crest (Tim 2026-10-21): blue, swept back like a pteranodon's crest, three bold lightning-bolt blades
-  // streaming off the back of the head (facing is +x, so they run toward -x and upward), with a soft electric glow.
-  { const rx = -u * .04, ry = hy - u * .08, flick = reduce ? 0 : Math.sin(t * 9) * .03;
-    const blade = (L, rise, w, alpha) => { // a lightning-bolt glyph laid along the sweep: shoulder, jog, long tail
-      const pts = [[0, -w], [-.5 * L, -w * .55 - rise * .5], [-.4 * L, -rise * .35 + w * .15], [-L, -rise * (1 + flick)], [-.56 * L, -rise * .45 + w * .55], [-.64 * L, -rise * .3 + w * .95], [0, w]];
-      return () => { ctx.beginPath(); ctx.moveTo(rx + pts[0][0], ry + pts[0][1]); for (const [x, y] of pts.slice(1)) ctx.lineTo(rx + x, ry + y); ctx.closePath(); };
-    };
-    const blades = [blade(u * .5, u * .28, u * .055), blade(u * .38, u * .14, u * .045), blade(u * .27, u * .02, u * .038)];
-    ctx.save(); ctx.globalAlpha *= .35; ctx.strokeStyle = A.crestLight; ctx.lineWidth = u * .05; ctx.lineJoin = "round"; for (const path of blades) { path(); ctx.stroke(); } ctx.restore();
-    for (const path of blades) { path(); ctx.fillStyle = A.crest; ctx.fill(); ctx.strokeStyle = A.crestEdge; ctx.lineWidth = Math.max(1, u * .012); ctx.stroke(); }
-    ctx.strokeStyle = A.crestLight; ctx.lineWidth = Math.max(1, u * .01); ctx.beginPath(); ctx.moveTo(rx - u * .02, ry - u * .01); ctx.lineTo(rx - u * .26, ry - u * .1); ctx.lineTo(rx - u * .21, ry - u * .1); ctx.lineTo(rx - u * .47, ry - u * .26); ctx.stroke();
-    if (!reduce && Math.sin(t * 5.3) > .55) lightningBolt(ctx, rx - u * .5, ry - u * .28, rx - u * .66, ry - u * .36, { now, seed: 77, segments: 3, width: Math.max(1, u * .012), branch: false });
-    ctx.fillStyle = A.metalDark; ctx.beginPath(); ctx.ellipse(rx, ry, u * .05, u * .04, -.4, 0, TAU); ctx.fill(); }
-  ctx.fillStyle = A.core; ctx.fillRect(u * .0, hy - u * .015, u * .12, u * .035); ctx.fillStyle = A.coreHot; ctx.fillRect(u * .03, hy - u * .005, u * .07, u * .014);
-  leg(1, 0, false); arm(u * .29, clubAngle, false, true);
+  arm(u * .29, clubAngle, false, true); pauldron(u * .29, false);
   ctx.restore();
-  // Charged: bolts crawl over the silhouette.
   if (charged && !reduce) for (let i = 0; i < 3; i++) { const a = (t * 3 + i * 2.1) % TAU, r = u * .45; lightningBolt(ctx, k + Math.cos(a) * r * .6, b - u * .55 + Math.sin(a) * r, k + Math.cos(a + 1.2) * r * .6, b - u * .55 + Math.sin(a + 1.2) * r, { now, seed: i + 7, segments: 5, width: Math.max(1, u * .014), branch: false }); }
+}
+
+// Lighten (amount > 0) or darken (< 0) a #rrggbb colour.
+function shadeHex(hex, amount) {
+  const n = parseInt(hex.slice(1, 7), 16), f = (c) => Math.round(amount >= 0 ? c + (255 - c) * amount : c * (1 + amount));
+  const r = f(n >> 16 & 255), g = f(n >> 8 & 255), bl = f(n & 255);
+  return `#${((1 << 24) | (r << 16) | (g << 8) | bl).toString(16).slice(1)}`;
+}
+
+// Lightning crest (Tim 2026-10-21): blue, swept back like a pteranodon's crest and shaped like lightning. One long blade
+// grows from the helm's crown and sweeps back and up with two sharp lightning notches; two shorter fins sit under it.
+// Each blade shades from deep blue at the root to bright cyan at the edges, with a white-hot energy line along its spine.
+// (rx, ry) is the crown point; facing is +x, so the crest runs toward -x.
+function drawCrest(ctx, A, u, rx, ry, t, now, reduce) {
+  const flick = reduce ? 0 : Math.sin(t * 9) * .02;
+  const blade = (L, rise, w, drop) => {
+    // Upper edge: root -> first notch -> second notch -> tip; lower edge returns with offset notches (a lightning zig).
+    const top = [[u * .07, 0], [-L * .3, -rise * .42 - w * .3], [-L * .26, -rise * .5 + w * .05], [-L * .64, -rise * .82], [-L * .6, -rise * .76 + w * .08], [-L, -rise * (1 + flick)]];
+    const bottom = [[-L * .7, -rise * .7 + w * .55], [-L * .74, -rise * .64 + w * .55], [-L * .36, -rise * .36 + w * .7], [-L * .4, -rise * .3 + w * .78], [-u * .04, drop]];
+    return { pts: [...top, ...bottom], spine: [[u * .03, -w * .1], [-L * .28, -rise * .38], [-L * .62, -rise * .74], [-L * .96, -rise * .98]] };
+  };
+  const blades = [blade(u * .58, u * .36, u * .07, u * .04), blade(u * .42, u * .17, u * .055, u * .06), blade(u * .28, u * .03, u * .045, u * .07)];
+  const path = (pts) => { ctx.beginPath(); ctx.moveTo(rx + pts[0][0], ry + pts[0][1]); for (const [x, y] of pts.slice(1)) ctx.lineTo(rx + x, ry + y); ctx.closePath(); };
+  ctx.save(); ctx.lineJoin = "round";
+  // Soft electric halo behind the whole crest.
+  ctx.globalAlpha *= .28; ctx.strokeStyle = A.crestLight; ctx.lineWidth = u * .06; for (const B of blades) { path(B.pts); ctx.stroke(); } ctx.globalAlpha /= .28;
+  for (const [i, B] of [...blades.entries()].reverse()) {
+    const g = ctx.createLinearGradient(rx, ry, rx - u * .5, ry - u * .35); g.addColorStop(0, A.crestEdge); g.addColorStop(.45, A.crest); g.addColorStop(1, "#8fd3ff");
+    path(B.pts); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.crestEdge; ctx.lineWidth = Math.max(1, u * .011); ctx.stroke();
+    ctx.strokeStyle = i ? "rgba(223,244,255,.7)" : A.crestLight; ctx.lineWidth = Math.max(1, u * (i ? .007 : .011)); ctx.beginPath(); ctx.moveTo(rx + B.spine[0][0], ry + B.spine[0][1]); for (const [x, y] of B.spine.slice(1)) ctx.lineTo(rx + x, ry + y); ctx.stroke();
+  }
+  // The crown mount the crest grows from.
+  ctx.fillStyle = A.metalDark; ctx.beginPath(); ctx.moveTo(rx - u * .08, ry + u * .05); ctx.quadraticCurveTo(rx + u * .02, ry - u * .04, rx + u * .1, ry + u * .03); ctx.closePath(); ctx.fill(); ctx.strokeStyle = A.metalEdge; ctx.lineWidth = Math.max(1, u * .01); ctx.stroke();
+  if (!reduce && Math.sin(t * 5.3) > .55) lightningBolt(ctx, rx - u * .58, ry - u * .37, rx - u * .74, ry - u * .46, { now, seed: 77, segments: 3, width: Math.max(1, u * .012), branch: false });
+  ctx.restore();
 }
 
 // The storm cloud that carries it away at its chasm (drawn under the body while `fleeFade` runs 1 -> 0).

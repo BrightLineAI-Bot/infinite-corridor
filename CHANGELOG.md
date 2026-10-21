@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Release 257 — the Lightning Giant, a new roaming world boss (three tries, the level-8 strength floor, and a canyon home). He's a giant robot, about as tall as the Astral Worm is long, with a blue crest of lightning bolts swept back off his head, Tesla-coil thruster pylons on his shoulders and an iron-and-copper club. He walks slowly but closes distance in burst dashes (up to two in a row, sometimes hopping through the air):
+- Release 257 — the Lightning Giant, a new roaming world boss (three tries, the level-8 strength floor, and a canyon home). He's a giant armoured robot, about as tall as the Astral Worm is long, drawn as lit, overlapping plates with blue trim. A sculpted blue lightning crest is swept back from his helm, Tesla-coil thruster pylons sit on his pauldrons, and he carries a copper-wound Tesla mace. He walks slowly but closes distance in burst dashes (up to two in a row, sometimes hopping through the air):
   - **Arcs:** a sheaf of lightning links him to you and burns while you stay within reach.
   - **Shock:** a crackling mark you can step off.
   - **Stun counter:** every third lightning hit knocks you flat for half a second, shaking on the ground before you get back up, and the count shows as three pips under the HUD. Club blows count only while he's electrified.
