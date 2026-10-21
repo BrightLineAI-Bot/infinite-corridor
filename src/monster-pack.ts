@@ -8,6 +8,7 @@
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
 import { hashSeed } from "./random.ts";
+import { updateAstralActor } from "./astral-worm.ts";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -118,9 +119,20 @@ export const ATTACK_MODULES = {
   psyPush: { id: "psyPush", name: "Force Push", range: [0, 4.5], cooldown: 4, windup: .55, active: .35, recover: .45, damage: .7, tags: ["control"], text: "A ring of force throws you back. Hit a wall and it hurts more." },
   psyPull: { id: "psyPull", name: "Force Pull", range: [2.5, 9], cooldown: 6, windup: .6, active: 1.2, recover: .45, damage: .9, tags: ["control"], text: "It drags you toward it, then lashes out as you arrive. Dodge or run against it." },
   psyGrab: { id: "psyGrab", name: "Command Grab", range: [0, 7.5], cooldown: 10, windup: .75, active: 2.4, recover: .6, damage: 2.2, tags: ["control", "grab"], text: "Its aura turns violet: then it seizes you where you stand and crushes you. Dodge as it reaches, or struggle (dodge, again and again) to break free." },
-  psyDebris: { id: "psyDebris", name: "Hurled Debris", range: [2, 11], cooldown: 5.5, windup: .9, active: 1.6, recover: .4, damage: 1, tags: ["ranged"], text: "Stones rise around it and are flung at you one by one." },
+  psyDebris: { id: "psyDebris", name: "Hurled Debris", range: [2, 11], cooldown: 5.5, windup: .9, active: 1.6, recover: .4, damage: 1, tags: ["ranged"], text: "Stones rise around it and are flung at you one by one. Over the open ocean it lifts and hurls water instead." },
   psyWall: { id: "psyWall", name: "Mirror Wall", range: [2, 12], cooldown: 9, windup: .4, recover: .3, damage: 0, tags: ["defense"], text: "A wall of light stands between you. Arrows and bolts that touch it fly back at you; a blade passes straight through." },
   psyOrbital: { id: "psyOrbital", name: "Orbital Lances", range: [0, 14], cooldown: 11, windup: .5, recover: .3, damage: .45, tags: ["ground", "beam"], text: "One to four sky beams trace shifting patterns after you. Outrun the light; the fading marks it leaves are harmless." },
+  // Void Walker (release 251): the owner's full kit, with implementation-choice timings in seconds.
+  voidHand: { id: "voidHand", name: "Rending Hands", range: [0, 12], cooldown: 2.7, windup: .25, recover: .22, damage: 1.05, los: true, tags: ["void", "ground"], text: "Galaxy rends open above the marked ground; open hands slam down." },
+  voidClaw: { id: "voidClaw", name: "Rift Claws", range: [0, 12], cooldown: 3.1, windup: .25, recover: .22, damage: .9, los: true, tags: ["void", "melee"], text: "Claws rake out of two warned rends, not from the Walker's hands." },
+  voidSword: { id: "voidSword", name: "Swords Beyond", range: [0, 12], cooldown: 3.4, windup: .25, recover: .22, damage: 1.1, los: true, tags: ["void", "melee"], text: "Long swords stab along two narrow, committed rift lanes." },
+  voidSlash: { id: "voidSlash", name: "Travelling Slashes", range: [0, 12], cooldown: 3.6, windup: .28, recover: .24, damage: .8, los: true, tags: ["void", "ranged"], text: "Rends fling straight-travelling violet slashes. Walls stop them." },
+  voidSpikes: { id: "voidSpikes", name: "Void Spikes", range: [0, 12], cooldown: 4.2, windup: .25, recover: .25, damage: .9, los: true, jumpable: true, tags: ["void", "ground"], text: "The marked ground breaks into spikes in rapid succession." },
+  voidWraiths: { id: "voidWraiths", name: "Passing Wraiths", range: [0, 12], cooldown: 6, windup: .35, recover: .3, damage: .7, los: true, tags: ["void", "ranged"], text: "Brief wraiths emerge, travel straight toward your sampled position, slash three times and disappear." },
+  voidRifts: { id: "voidRifts", name: "Open Ways", range: [0, 12], cooldown: 10, windup: .4, recover: .3, damage: .8, los: true, tags: ["void", "teleport"], text: "Persistent galaxy rends spit attacks and let the Walker evade into another opening." },
+  voidConstellation: { id: "voidConstellation", name: "Rift Constellation", range: [0, 14], cooldown: 12, windup: .45, recover: .3, damage: .8, los: true, tags: ["void", "ranged", "teleport"], text: "Three to six rends follow you; each opens once, with wraiths, beams and the Walker arriving together or in rapid succession." },
+  voidHorizons: { id: "voidHorizons", name: "Event Horizons", range: [0, 12], cooldown: 10, windup: .45, recover: .3, damage: .55, los: true, tags: ["void", "control", "beam"], text: "Dark cores draw you in and hurt on contact. Some pulse a fixed-direction beam two or three times." },
+  voidSupernova: { id: "voidSupernova", name: "Supernova", range: [0, 14], cooldown: 23, windup: 1.1, active: 7.8, recover: .6, damage: 1.2, los: true, tags: ["void", "ground", "charge"], text: "A great void consumes dungeon terrain, draws you through local eruptions and two or three radial particle waves. The Walker teleports and dashes straight through sampled positions, leaving one-second damaging trails." },
   firefall: { id: "firefall", name: "Firefall", range: [1.5, 9], cooldown: 6.5, windup: .7, recover: .8, damage: .85, jumpable: true, tags: ["ground"], text: "Embers rain across the floor around you." },
 };
 
@@ -291,6 +303,26 @@ export const MONSTER_PACK = {
     palette: ["#c8d4f0", "#3a3a6a", "#e8eeff", "#ffffff"], render: "psychicCrystal", tags: ["construct", "elder", "mind"],
     lore: "A shard of something larger, floating at the height of a head, turning slowly. Its haze goes red when it means harm and violet just before it takes hold of you. It throws you back, draws you in, lifts the stones from the ground, and raises walls of light that send your arrows home.",
   },
+  voidWalker: {
+    id: "voidWalker", name: "The Void Walker", epithet: "The Space Between Footsteps", unique: true,
+    stats: [280, 16, 0], form: { scale: 1 }, sizeClass: "medium", movement: "walk", brain: "orbit",
+    attacks: ["voidHand", "voidClaw", "voidSword", "voidSlash", "voidSpikes", "voidWraiths", "voidRifts", "voidConstellation", "voidHorizons", "voidSupernova"], bossAttacks: [],
+    palette: ["#29213f", "#0c0918", "#b779ff", "#f1ddff"], render: "voidWalker", tags: ["spirit", "elder", "void"],
+    lore: "A figure no larger than a Wayfarer. Behind its quiet silhouette, galaxies open: hands, blades and passing wraiths reach through. Its greatest star leaves a permanent wound in the dungeon floor.",
+  },
+  // Unique fixture entries only; natural hunts await final r251/Gate lifecycle integration.
+  astralWorm: {
+    id: "astralWorm", noEcho: true, name: "The Astral Worm", epithet: "The Ink That Remembers Shapes", unique: true,
+    stats: [1400, 60, 0], form: { scale: 1 }, sizeClass: "large", movement: "hover", brain: "orbit",
+    attacks: ["bite"], bossAttacks: [], palette: ["#080b10", "#030508", "#9eafce", "#c4d0dc"], render: "astralWorm", tags: ["elder", "ink"],
+    lore: "An elongated blackness that makes and unmakes its own limbs.",
+  },
+  astralMirage: {
+    id: "astralMirage", prototypeOnly: true, name: "Astral Mirage", epithet: "A Borrowed Outline", unique: true, minion: true,
+    stats: [168, 0, 0], form: { scale: 1 }, sizeClass: "large", movement: "hover", brain: "orbit",
+    attacks: ["bite"], bossAttacks: [], palette: ["#080b10", "#030508", "#9eafce", "#c4d0dc"], render: "astralWorm", tags: ["ink"],
+    lore: "A fragile, hungry outline of the Astral Worm.",
+  },
   gnawingMaw: {
     id: "gnawingMaw", name: "Gnawing Maw", epithet: "The Hunger in the Walls", dungeonOnly: true,
     stats: [70, 14, 0], form: { scale: 1.35 }, sizeClass: "large", movement: "phase", brain: "ambush",
@@ -300,10 +332,12 @@ export const MONSTER_PACK = {
   },
 };
 
-export const PACK_KINDS = Object.keys(MONSTER_PACK);
+// Unreleased fixture-only entries are explicitly addressable, but not part of the player catalog,
+// generator, Echo list or standard Proving Ground menu until their integration contract is complete.
+export const PACK_KINDS = Object.keys(MONSTER_PACK).filter(id => !MONSTER_PACK[id].prototypeOnly);
 export function isPackKind(kind) { return Object.hasOwn(MONSTER_PACK, kind); }
-export const PACK_FORMS = Object.fromEntries(PACK_KINDS.map((id) => [id, { ...MONSTER_PACK[id].form }]));
-export const PACK_STATS = Object.fromEntries(PACK_KINDS.map((id) => [id, [...MONSTER_PACK[id].stats]]));
+export const PACK_FORMS = Object.fromEntries(Object.keys(MONSTER_PACK).map((id) => [id, { ...MONSTER_PACK[id].form }]));
+export const PACK_STATS = Object.fromEntries(Object.keys(MONSTER_PACK).map((id) => [id, [...MONSTER_PACK[id].stats]]));
 
 // Boss form shared by every pack creature: tougher, larger, faster cadence, and its
 // `bossAttacks` unlock at 66% and 33% health so the fight changes as it goes.
@@ -371,7 +405,7 @@ export function validateMonster(def) {
 // monster (only modules their movement can perform), so encounters keep surprising.
 export function packVariant(kind, identity) {
   const def = MONSTER_PACK[kind];
-  if (!def) return { hybridAttack: null, donor: null };
+  if (!def || kind === "voidWalker") return { hybridAttack: null, donor: null };
   const n = hashSeed(`pack-variant:v${MONSTER_PACK_VERSION}:${kind}:${identity}`);
   if (n % 100 >= 22) return { hybridAttack: null, donor: null };
   const move = MOVEMENT_MODES[def.movement], own = new Set([...def.attacks, ...(def.bossAttacks || [])]);
@@ -401,7 +435,7 @@ export function applyPackBossForm(enemy) {
   const t = PACK_BOSS_TEMPLATE;
   enemy.maxHp = enemy.hp = Math.round(enemy.maxHp * t.hp);
   enemy.damage = Math.max(1, Math.round(enemy.damage * t.damage));
-  enemy.scale = Math.round(enemy.scale * t.scale * 100) / 100;
+  enemy.scale = enemy.kind === "voidWalker" ? 1 : Math.round(enemy.scale * t.scale * 100) / 100;
   enemy.bodyRadius = .38 + Math.max(0, enemy.scale - 1) * .3;
   enemy.attackCooldownScale = (Number(enemy.attackCooldownScale) || 1) * t.cooldown;
   return enemy;
@@ -417,6 +451,7 @@ export function resetPackRuntime(enemy) {
   // Snapshots retain attack lists. Move the sky attack for existing journeys too, without retuning their beasts.
   if (enemy.kind === "nanobotKnight") enemy.packAttacks = (enemy.packAttacks || MONSTER_PACK.nanobotKnight.attacks).filter((id) => id !== "knightOrbital");
   if (enemy.kind === "psychicCrystal" && !(enemy.packAttacks || []).includes("psyOrbital")) enemy.packAttacks = [...(enemy.packAttacks || MONSTER_PACK.psychicCrystal.attacks), "psyOrbital"].filter((id, i, ids) => ids.indexOf(id) === i);
+  enemy.voidDashing = false; enemy.voidCharging = false; enemy.voidTeleport = 0;
   enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; // release 245: no pose survives a reload
   return enemy;
 }
@@ -449,12 +484,13 @@ function inArc(e, target, aim, radius, arcDegrees) {
 }
 // Walk a ray until the first tile that blocks sight; beams and charge lanes stop there.
 export function rayLength(w, from, dir, max) {
-  for (let t = .25; t <= max; t += .25) if (!w.tileOpen(from.x + .5 + dir.x * t, from.y + .5 + dir.y * t)) return Math.max(.25, t - .25);
+  const open = from.kind === "psychicCrystal" && w.marineTileOpen ? w.marineTileOpen : w.tileOpen;
+  for (let t = .25; t <= max; t += .25) if (!open.call(w, from.x + .5 + dir.x * t, from.y + .5 + dir.y * t)) return Math.max(.25, t - .25);
   return max;
 }
-function nearestOpen(w, x, y, radius = 3) {
-  if (w.open(x, y)) return { x, y };
-  for (let r = .5; r <= radius; r += .5) for (let i = 0; i < 12; i++) { const a = i * TAU / 12, q = { x: x + Math.cos(a) * r, y: y + Math.sin(a) * r }; if (w.open(q.x, q.y)) return q; }
+function nearestOpen(w, x, y, radius = 3, open = w.open) {
+  if (open.call(w, x, y)) return { x, y };
+  for (let r = .5; r <= radius; r += .5) for (let i = 0; i < 12; i++) { const a = i * TAU / 12, q = { x: x + Math.cos(a) * r, y: y + Math.sin(a) * r }; if (open.call(w, q.x, q.y)) return q; }
   return null;
 }
 function playerVelocity(w) { return w.playerVelocity || { x: 0, y: 0 }; }
@@ -466,6 +502,7 @@ export const QB_MOVES = { flurryStrikes: 4, flurryEvery: .2, flurryLunge: .35, b
 // The Morphing Blob (release 235). Balance as data.
 export const BLOB = {
   growTime: 120, maxGrow: 2.4, growStep: .08,            // it swells to maxGrow× its size over growTime seconds alive
+  growHeal: .5,                                         // natural growth restores this share of max HP in all; never enlarges the health pool
   contact: .8, contactEvery: .8,                         // touching it: this share of its damage, at most once per contactEvery
   oozePerHit: 2, oozeEvery: .35, oozeMax: 16, oozeRadius: .55, oozeFlight: .55, oozeBite: .3, oozeSlow: .7,
   tendrils: 3, tendrilSpread: .55, tendrilLength: 4.2, tendrilWidth: .45,
@@ -537,6 +574,7 @@ export const CRYSTAL = {
   pullRadius: 9.5, pullForce: 3.6, pullReach: 1.2,
   grabRange: 7.5, grabHold: 2.4, struggle: .35, // each dodge pressed while held shortens the hold by this many seconds
   debris: 4, debrisOrbit: 1.3, debrisRise: .7, debrisEvery: .32, debrisSpeed: 7.5, debrisLife: 2.2, debrisRadius: .3,
+  waterStep: .2, waterSplashLife: .3, // the ocean variant has the same attack; its spent projectile becomes a harmless splash
   wallLength: 3.4, wallGap: 1.8, wallLife: 5, wallThickness: .35, reflectShare: .8,
   orbitalBeams: [1, 4], orbitalPatterns: ["spiral", "square", "circle", "zigzag", "slash"],
   orbitalLife: 4, orbitalWarn: .7, orbitalSpeed: 2.1, orbitalRadius: .65, orbitalTick: .35,
@@ -603,6 +641,162 @@ function lowOpen(w, x, y, radius = 2) {
 function blobOwner(w, f) { return w.enemies.find((q) => q.id === f.owner && !q.dead) || null; }
 function addOrb(e, w, angle, damage) { w.addEffect({ kind: "orb", owner: e.id, x: e.x, y: e.y, vx: Math.cos(angle) * QB_ORB.speed, vy: Math.sin(angle) * QB_ORB.speed, radius: QB_ORB.radius, arming: 0, life: QB_ORB.life, damage }); }
 
+// All numbers below are implementation choices, not extra owner requirements. The effect budget is shared with
+// every other pack creature. Wraiths are transient effects, never summoned actors or reward-bearing enemies.
+export const VOID = {
+  rendWarn: .48, rendStagger: .16, rendLife: .3, handRadius: 1.05, clawLength: 2.7, clawWidth: .65,
+  swordLength: 3.5, swordWidth: .3, slashSpeed: 6.5, slashLife: 1.5, slashRadius: .4, spikeRadius: .8,
+  riftLife: 7, riftRadius: .65, riftCount: 3, riftRing: 3.3, riftMax: 9, riftEmitEvery: 2.1,
+  evadeEvery: 2.3, evadeWarn: .23, evadeThreat: 3.2, teleportFlash: .25,
+  wraithLife: 1.7, wraithSpeed: 3.4, wraithSlashes: 3, wraithEvery: .45, wraithReach: 1.15,
+  constellationMin: 3, constellationMax: 6, constellationRing: 3.4, constellationWarn: 1.1, constellationBatch: .65, constellationLock: .35,
+  beamWarn: .35, beamLife: .3, beamLength: 10, beamWidth: .32,
+  horizonLife: 4.6, horizonWarn: .65, horizonRadius: 4.3, horizonCore: 1.1, horizonPull: 2.2, horizonTick: .5,
+  pulsarFirst: .6, pulsarEvery: 1.1, pulsarMin: 2, pulsarMax: 3,
+  novaRadius: 7, novaCharge: 2.3, novaLife: 7.5, novaPull: 1.8, novaLocalEvery: .55, novaAfterEvery: .55,
+  novaEruptionWarn: .65, novaEruptionRadius: 1.05, novaWaveMin: 2, novaWaveMax: 3,
+  novaWaveEvery: .65, novaParticles: 16, novaParticleSpeed: 10, novaParticleLife: 1.1, novaParticleRadius: .35,
+  dashCount: 6, dashRing: 3.6, dashWarn: .28, dashTime: .4, dashSpeed: 18, dashRest: .45, dashRadius: .48,
+  trailEvery: .1, trailLife: 1, trailRadius: .38, trailDamage: .75,
+  roamSight: 7, effectStep: .2,
+};
+const voidEffects = (w) => typeof w.effects === "function" ? w.effects() : (w.effects || []);
+const liveVoidOwner = (w, f) => w.enemies?.find((q) => q.id === f.owner && !q.dead && !q.retreating && !q.fleeTo);
+function voidAdd(w, e, effect) {
+  // Do not evict another creature's warned strike to create a decoration or a new Walker hazard.
+  const effects = voidEffects(w);
+  if (effects.length >= PACK_EFFECT_CAP) { const spent = effects.findIndex((f) => f.kind === "debris" && f.medium === "water" && f.state === "splash"); if (spent >= 0) effects.splice(spent, 1); else return null; }
+  const f = { owner: e.id, arming: 0, damage: 0, life: VOID.rendLife, ...effect };
+  w.addEffect(f);
+  return effects[effects.length - 1] || null;
+}
+function voidClear(e, w) {
+  const fx = voidEffects(w); for (let i = fx.length - 1; i >= 0; i--) if (fx[i].owner === e.id && fx[i].kind.startsWith("void")) fx.splice(i, 1);
+  e.voidDashing = false; e.voidCharging = false; e.voidTeleport = 0;
+}
+function voidTeleport(e, w, at) {
+  if (!at || !w.safeTeleport?.(e, at.x, at.y)) return false;
+  e.voidTeleport = VOID.teleportFlash; return true;
+}
+const voidOpen = (w, x, y) => w.marineOpen ? w.marineOpen(x, y) : w.open(x, y);
+function voidSpot(w, at, angle, radius) { return nearestOpen(w, at.x + Math.cos(angle) * radius, at.y + Math.sin(angle) * radius, 1, w.marineOpen || w.open); }
+function voidRay(w, from, dir, max) {
+  const open = w.marineProjectileOpen || w.projectileOpen || w.tileOpen;
+  if (!open) return max;
+  for (let i = 1; i <= Math.ceil(max / VOID.effectStep); i++) { const t = Math.min(max, i * VOID.effectStep); if (!open(from.x + .5 + dir.x * t, from.y + .5 + dir.y * t)) return Math.max(0, (i - 1) * VOID.effectStep); }
+  return max;
+}
+function voidHurt(w, e, amount, source, jumpable = false) { if (amount > 0) w.hurt(e, amount, { jumpable, source, beam: true }); }
+function voidRend(e, w, variant, at, aim, delay = VOID.rendWarn, damage = damageOf(e, "voidHand")) {
+  return voidAdd(w, e, { kind: "voidRend", variant, x: at.x, y: at.y, angle: Math.atan2(aim.y, aim.x),
+    radius: variant === "hand" ? VOID.handRadius : variant === "spike" ? VOID.spikeRadius : VOID.slashRadius,
+    length: variant === "sword" ? VOID.swordLength : VOID.clawLength, width: variant === "sword" ? VOID.swordWidth : VOID.clawWidth,
+    vx: aim.x * VOID.slashSpeed, vy: aim.y * VOID.slashSpeed, arming: delay, life: variant === "slash" ? VOID.slashLife : VOID.rendLife, damage });
+}
+function voidWraith(e, w, at, target, delay = VOID.rendWarn, damage = damageOf(e, "voidWraiths")) {
+  const aim = unit(target.x - at.x, target.y - at.y);
+  return voidAdd(w, e, { kind: "voidWraith", x: at.x, y: at.y, angle: Math.atan2(aim.y, aim.x), vx: aim.x * VOID.wraithSpeed, vy: aim.y * VOID.wraithSpeed,
+    radius: VOID.wraithReach, arming: delay, life: VOID.wraithLife, slashes: 0, nextSlash: VOID.wraithEvery, slashFlash: 0, damage });
+}
+function voidBeam(e, w, at, angle, damage, delay = VOID.beamWarn) {
+  const dir = { x: Math.cos(angle), y: Math.sin(angle) };
+  return voidAdd(w, e, { kind: "voidBeam", x: at.x, y: at.y, angle, length: voidRay(w, at, dir, VOID.beamLength), width: VOID.beamWidth, radius: VOID.beamWidth, arming: delay, life: VOID.beamLife, damage });
+}
+function voidBasicStart(e, s, w, variant) {
+  const p = s.data.target, turn = hashSeed(`${e.id}:${s.seq}:rends`) % 628 / 100;
+  const count = variant === "spike" ? 4 : 2;
+  for (let i = 0; i < count; i++) {
+    const a = turn + i * Math.PI, at = variant === "hand" || variant === "spike" ? { x: p.x + (i ? Math.cos(a) * 1.6 : 0), y: p.y + (i ? Math.sin(a) * 1.6 : 0) } : { x: p.x + Math.cos(a) * 2.4, y: p.y + Math.sin(a) * 2.4 };
+    voidRend(e, w, variant, at, unit(p.x - at.x, p.y - at.y), VOID.rendWarn + i * VOID.rendStagger, damageOf(e, s.attack));
+  }
+  s.tele = { type: "brace", void: true };
+}
+function voidSimpleRun(e, s) { if (s.phase === "windup" && s.t <= 0) { s.tele = null; toPhase(s, "recover", ATTACK_MODULES[s.attack].recover); } }
+function voidOpenRifts(e, s, w, tracking) {
+  const count = tracking ? VOID.constellationMin + hashSeed(`${e.id}:${s.seq}:constellation`) % (VOID.constellationMax - VOID.constellationMin + 1) : VOID.riftCount;
+  const turn = hashSeed(`${e.id}:${s.seq}:rift-turn`) % 628 / 100, p = center(w.player);
+  let live = voidEffects(w).filter((f) => f.owner === e.id && f.kind === "voidRift" && f.life > 0).length;
+  for (let i = 0; i < count && live < VOID.riftMax; i++) {
+    const a = turn + i * TAU / count, radius = tracking ? VOID.constellationRing : VOID.riftRing;
+    const at = voidSpot(w, p, a, radius); if (!at) continue;
+    const output = ["wraith", "beam", "walker"][i % 3];
+    if (voidAdd(w, e, { kind: "voidRift", x: at.x, y: at.y, radius: VOID.riftRadius, life: tracking ? 3.4 : VOID.riftLife,
+      arming: .25, tracking, offsetX: at.x - p.x, offsetY: at.y - p.y, activationAt: VOID.constellationWarn + Math.floor(i / 3) * VOID.constellationBatch,
+      output, activated: false, angle: Math.atan2(p.y - at.y, p.x - at.x), nextEmit: VOID.riftEmitEvery, emits: 0, damage: damageOf(e, s.attack) })) live++;
+  }
+}
+function voidEvade(e, s, w, p, d) {
+  if (s.voidEvade) {
+    const ev = s.voidEvade; ev.left -= w.dt;
+    if (ev.left <= 0) { voidTeleport(e, w, ev.to); s.voidEvade = null; s.tele = null; }
+    return true;
+  }
+  if (s.attack || (s.cd.voidEvade || 0) > 0) return false;
+  const threat = (w.playerSwinging && d < 2.8) || (w.playerShots || []).some((q) => {
+    const dx = e.x + .5 - q.x, dy = e.y + .45 - q.y, u = unit(q.dx || 0, q.dy || 0);
+    return Math.hypot(dx, dy) < VOID.evadeThreat && dx * u.x + dy * u.y > 0 && Math.abs(dx * u.y - dy * u.x) < .9;
+  }) || (w.playerBlasts || []).some((q) => Math.hypot(e.x + .5 - q.x, e.y + .45 - q.y) < (q.radius || 1) + .5);
+  if (!threat) return false;
+  const rifts = voidEffects(w).filter((f) => f.kind === "voidRift" && f.owner === e.id && !f.tracking && f.life > VOID.evadeWarn && voidOpen(w, f.x, f.y) && distance(f, e) > 1);
+  let at = rifts.sort((a, b) => distance(b, p) - distance(a, p))[0];
+  if (!at) {
+    at = voidSpot(w, p, Math.atan2(e.y - p.y, e.x - p.x) + s.orbitDir * .9, VOID.riftRing);
+    if (at && !voidAdd(w, e, { kind: "voidRift", x: at.x, y: at.y, radius: VOID.riftRadius, arming: VOID.evadeWarn, life: VOID.riftLife, tracking: false, nextEmit: VOID.riftEmitEvery, emits: 0, damage: damageOf(e, "voidRifts") })) at = null;
+  }
+  s.cd.voidEvade = VOID.evadeEvery;
+  if (!at) return false;
+  s.voidEvade = { left: VOID.evadeWarn, to: { x: at.x, y: at.y } }; s.tele = { type: "blink", x: at.x, y: at.y, void: true };
+  return true;
+}
+function voidStartDash(e, s, w) {
+  const p = center(w.player), a = hashSeed(`${e.id}:${s.seq}:dash:${s.data.dashes}`) % 628 / 100;
+  s.data.dashes++;
+  let teleported = false;
+  for (let i = 0; i < 8 && !teleported; i++) { const at = voidSpot(w, p, a + i * TAU / 8, VOID.dashRing); if (at) teleported = voidTeleport(e, w, at); }
+  // A blocked teleport consumes this attempt instead of jumping into unsafe geometry or stalling the attack.
+  if (!teleported) { s.data.dash = { stage: "rest", left: VOID.dashRest }; s.tele = null; return; }
+  const dir = unit(p.x - e.x, p.y - e.y);
+  s.data.dash = { stage: "warn", left: VOID.dashWarn, dir, target: { ...p }, trail: { x: e.x, y: e.y }, trailT: 0, hit: false };
+  s.tele = { type: "lane", aim: dir, length: VOID.dashSpeed * VOID.dashTime, width: VOID.dashRadius, void: true };
+}
+function voidDashStep(e, s, w) {
+  if (!s.data.dash) { if (s.data.dashes < VOID.dashCount) voidStartDash(e, s, w); return; }
+  const dash = s.data.dash; dash.left -= w.dt;
+  if (dash.stage === "warn") { if (dash.left <= 0) { dash.stage = "run"; dash.left = VOID.dashTime; s.tele = null; e.voidDashing = true; } return; }
+  if (dash.stage === "rest") { if (dash.left <= 0) s.data.dash = null; return; }
+  const from = { x: e.x, y: e.y }, travel = VOID.dashSpeed * Math.min(w.dt, Math.max(0, dash.left + w.dt)), steps = Math.ceil(travel / VOID.effectStep);
+  for (let i = 0; i < steps; i++) {
+    const step = Math.min(VOID.effectStep, travel - i * VOID.effectStep), nx = e.x + dash.dir.x * step, ny = e.y + dash.dir.y * step;
+    if (!voidOpen(w, nx, ny)) { dash.left = 0; break; }
+    const ox = e.x, oy = e.y;
+    if (!w.move(e, dash.dir.x * step, dash.dir.y * step) || Math.abs(e.x - nx) + Math.abs(e.y - ny) > .001) { e.x = ox; e.y = oy; dash.left = 0; break; }
+  }
+  if (!dash.hit && segmentDistance(w.player, from, e) <= VOID.dashRadius + .3) { dash.hit = true; voidHurt(w, e, damageOf(e, "voidSupernova"), "voidDash"); }
+  dash.trailT += w.dt;
+  if (dash.trailT >= VOID.trailEvery || dash.left <= 0) {
+    if (distance(dash.trail, e) > .01) voidAdd(w, e, { kind: "voidAfterimage", x: dash.trail.x, y: dash.trail.y, tx: e.x, ty: e.y, radius: VOID.trailRadius,
+      life: VOID.trailLife, total: VOID.trailLife, damage: Math.max(1, Math.round(damageOf(e, "voidSupernova") * VOID.trailDamage)) });
+    dash.trail = { x: e.x, y: e.y }; dash.trailT = 0;
+  }
+  if (dash.left <= 0) { dash.stage = "rest"; dash.left = VOID.dashRest; e.voidDashing = false; }
+}
+function voidNovaRun(e, s, w) {
+  if (s.phase === "windup") {
+    if (s.t > 0) return;
+    const at = { x: e.x, y: e.y }, waves = VOID.novaWaveMin + hashSeed(`${e.id}:${s.seq}:nova-waves`) % (VOID.novaWaveMax - VOID.novaWaveMin + 1);
+    const nova = voidAdd(w, e, { kind: "voidNova", ...at, radius: VOID.novaRadius, stage: "charge", life: VOID.novaLife, total: VOID.novaLife,
+      elapsed: 0, nextLocal: .25, nextAfter: VOID.novaCharge, waves, wavesFired: 0, nextWave: VOID.novaCharge, eruptions: 0, seed: s.seq, damage: damageOf(e, "voidSupernova") });
+    if (!nova) { e.voidCharging = false; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.voidSupernova.recover); return; }
+    // The Game owns permanent scars and save writes (physical destruction is separate from quest state); this module only asks once on activation.
+    s.data.terrainResult = w.consumeVoidTerrain?.(e, at, VOID.novaRadius);
+    s.data.dashes = 0; s.tele = null; toPhase(s, "active", ATTACK_MODULES.voidSupernova.active); return;
+  }
+  if (s.phase !== "active") return;
+  e.voidCharging = s.t > ATTACK_MODULES.voidSupernova.active - VOID.novaCharge;
+  voidDashStep(e, s, w);
+  if (s.t <= 0) { e.voidCharging = false; e.voidDashing = false; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.voidSupernova.recover); }
+}
+
 function beginAttack(e, s, id, w) {
   const attack = ATTACK_MODULES[id];
   s.attack = id; s.phase = "windup"; s.t = attack.windup || .5; s.seq++; s.data = {}; s.hitOnce = false;
@@ -616,12 +810,27 @@ function endAttack(e, s) {
   const attack = ATTACK_MODULES[s.attack];
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
   s.gap = e.attackGap ?? (attack?.recover || .6) * .6 + .45; // the Questing Beast barely pauses (release 187)
+  e.voidDashing = false; e.voidCharging = false;
   e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null;
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
 
 // Each runner advances its attack; it reads/writes s.data and s.tele (the renderer draws s.tele).
 const START = {
+  voidHand(e, s, w) { voidBasicStart(e, s, w, "hand"); },
+  voidClaw(e, s, w) { voidBasicStart(e, s, w, "claw"); },
+  voidSword(e, s, w) { voidBasicStart(e, s, w, "sword"); },
+  voidSlash(e, s, w) { voidBasicStart(e, s, w, "slash"); },
+  voidSpikes(e, s, w) { voidBasicStart(e, s, w, "spike"); },
+  voidWraiths(e, s, w) {
+    const p = s.data.target, a = hashSeed(`${e.id}:${s.seq}:wraiths`) % 628 / 100;
+    for (let i = 0; i < 2; i++) { const at = voidSpot(w, p, a + i * Math.PI, VOID.riftRing); if (at) voidWraith(e, w, at, p); }
+    s.tele = { type: "brace", void: true };
+  },
+  voidRifts(e, s) { s.tele = { type: "shimmer", void: true }; },
+  voidConstellation(e, s) { s.tele = { type: "shimmer", void: true }; },
+  voidHorizons(e, s) { s.tele = { type: "brace", void: true }; },
+  voidSupernova(e, s) { e.voidCharging = true; s.tele = { type: "circle", x: e.x, y: e.y, radius: VOID.novaRadius, void: true }; },
   bite(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + 1.25, arc: 100 }; },
   clawSweep(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + 1.45, arc: 140 }; },
   longStab(e, s) { s.tele = { type: "rect", aim: s.data.aim, length: 3, width: .5 }; },
@@ -717,6 +926,21 @@ function resolveMelee(e, s, w, attackId, test) {
 }
 
 const RUN = {
+  voidHand: voidSimpleRun, voidClaw: voidSimpleRun, voidSword: voidSimpleRun, voidSlash: voidSimpleRun, voidSpikes: voidSimpleRun, voidWraiths: voidSimpleRun,
+  voidRifts(e, s, w) { if (s.phase === "windup" && s.t <= 0) { voidOpenRifts(e, s, w, false); voidSimpleRun(e, s); } },
+  voidConstellation(e, s, w) { if (s.phase === "windup" && s.t <= 0) { voidOpenRifts(e, s, w, true); voidSimpleRun(e, s); } },
+  voidHorizons(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const p = s.data.target, a = hashSeed(`${e.id}:${s.seq}:horizons`) % 628 / 100;
+    for (let i = 0; i < 2; i++) {
+      const at = { x: p.x + Math.cos(a + i * Math.PI) * 2, y: p.y + Math.sin(a + i * Math.PI) * 2 };
+      voidAdd(w, e, { kind: "voidHorizon", ...at, radius: VOID.horizonRadius, coreRadius: VOID.horizonCore, angle: Math.atan2(p.y - at.y, p.x - at.x),
+        pulsar: i === 0, pulses: 0, pulseCount: VOID.pulsarMin + hashSeed(`${e.id}:${s.seq}:pulses`) % (VOID.pulsarMax - VOID.pulsarMin + 1), nextPulse: VOID.pulsarFirst,
+        arming: VOID.horizonWarn, life: VOID.horizonLife, damage: damageOf(e, "voidHorizons") });
+    }
+    voidSimpleRun(e, s);
+  },
+  voidSupernova: voidNovaRun,
   blobTendrils(e, s, w) {
     if (s.phase === "windup" && s.t <= 0) {
       const L = BLOB.tendrilLength + bodyRadius(e) * .6, W = BLOB.tendrilWidth + .3;
@@ -907,7 +1131,13 @@ const RUN = {
   psyDebris(e, s, w) {
     const attack = ATTACK_MODULES.psyDebris;
     if (s.phase === "windup") {
-      if (s.t <= 0) { for (let i = 0; i < CRYSTAL.debris; i++) w.addEffect({ kind: "debris", owner: e.id, x: e.x, y: e.y, radius: CRYSTAL.debrisRadius, arming: 0, life: 99, orbit: i * TAU / CRYSTAL.debris, state: "lift", shape: hashSeed(`${e.id}:${s.seq}:rock:${i}`) % 5, damage: damageOf(e, "psyDebris") }); s.data.next = .25; toPhase(s, "active", attack.active); }
+      if (s.t <= 0) {
+        // Choose the material where the Crystal actually lifts it, not from its saved spawn or the player's boat.
+        // The material remains fixed after launch, even if either combatant crosses the shoreline.
+        const water = typeof w.oceanAt === "function" ? w.oceanAt(e.x, e.y) : !!e.marine;
+        for (let i = 0; i < CRYSTAL.debris; i++) w.addEffect({ kind: "debris", owner: e.id, x: e.x, y: e.y, radius: CRYSTAL.debrisRadius, arming: 0, life: 99, orbit: i * TAU / CRYSTAL.debris, state: "lift", ...(water ? { medium: "water" } : {}), shape: hashSeed(`${e.id}:${s.seq}:rock:${i}`) % 5, damage: damageOf(e, "psyDebris") });
+        s.data.next = .25; toPhase(s, "active", attack.active);
+      }
       return;
     }
     if (s.phase !== "active") return;
@@ -1292,6 +1522,7 @@ function attackReady(e, s, w, id, d) {
   if (d < lo || d > hi + bodyRadius(e)) return false;
   if (e.phases && !w.open(e.x, e.y)) return false;
   if (attack.los && !w.los(e, w.player, attack.tags.includes("ranged"))) return false;
+  if (id === "voidSupernova" && voidEffects(w).some((f) => f.owner === e.id && f.kind === "voidRift" && f.tracking && !f.activated)) return false;
   if (id === "mirrorSwap" && !w.enemies.some((q) => !q.dead && q.illusion && q.summonedBy === e.id)) return false;
   if (id === "mirrorClones" && w.enemies.filter((q) => !q.dead && q.illusion && q.summonedBy === e.id).length >= 2) return false;
   return true;
@@ -1364,7 +1595,8 @@ function evade(e, s, w, p, d) {
 // frame), burns what touches it, and every time it is struck it spatters ooze that lies on the ground until it dies.
 function blobPassive(e, s, w, p, d) {
   e.blobBase ||= { scale: Number(e.scale) || 1, radius: bodyRadius(e) };
-  e.blobAge = (Number(e.blobAge) || 0) + w.dt;
+  const age = Math.max(0, Math.min(BLOB.growTime, Number(e.blobAge) || 0)), dt = Number.isFinite(w.dt) ? Math.max(0, w.dt) : 0;
+  e.blobAge = Math.min(BLOB.growTime, age + dt);
   const grow = 1 + Math.min(1, e.blobAge / BLOB.growTime) * (BLOB.maxGrow - 1) + Math.min(BLOB.mergeMax, Number(e.blobMerged) || 0), stepped = Math.round(grow / BLOB.growStep) * BLOB.growStep;
   e.scale = Math.round(e.blobBase.scale * stepped * 100) / 100; e.bodyRadius = e.blobBase.radius * stepped;
   s.contactCd = Math.max(0, (s.contactCd || 0) - w.dt); s.oozeCd = Math.max(0, (s.oozeCd || 0) - w.dt);
@@ -1378,7 +1610,11 @@ function blobPassive(e, s, w, p, d) {
       if (spot) w.addEffect({ kind: "ooze", owner: e.id, x: spot.x, y: spot.y, from: { x: e.x, y: e.y }, radius: BLOB.oozeRadius, arming: BLOB.oozeFlight, life: 1e6, damage: Math.max(1, Math.ceil((Number(e.damage) || 1) * BLOB.oozeBite)), slow: BLOB.oozeSlow });
     }
   }
-  s.lastHp = hp;
+  // Detect the hit before regenerating, even when this tick's growth restores more than the hit dealt.
+  // Deriving the increment from saved age avoids catch-up healing on reload and discards healing at full HP.
+  const maxHp = Number(e.maxHp), grown = (e.blobAge - age) / BLOB.growTime;
+  if (grown > 0 && Number.isFinite(hp) && hp > 0 && Number.isFinite(maxHp) && hp < maxHp) e.hp = Math.min(maxHp, hp + maxHp * BLOB.growHeal * grown);
+  s.lastHp = Number(e.hp) || 0;
 }
 // A bloblet wanders off for a while, then crawls home; reaching the Blob, it merges back in and heals it.
 // Returns true while it is heading home (its own attacks wait).
@@ -1486,8 +1722,9 @@ function fleeStep(e, s, w) {
   if (e.fleeTo.home) e.fleeFade = 1; else e.fleeDone = true;
 }
 
-// Only the implemented dungeon hunter opts in. The future Void Walker needs its own approved design first.
+// Wall-phasing remains Crystal-only. Hunter scheduling is separate from locomotion permissions.
 export function isDungeonRoamer(e, area) { return area === "dungeon" && e?.worldBeast === "psychicCrystal"; }
+export function isDungeonHunter(e, area) { return isDungeonRoamer(e, area) || (area === "dungeon" && e?.worldBeast === "voidWalker"); }
 
 // Sample the whole dungeon domain, not its connected floor graph. Open destinations keep encounters discoverable,
 // but travel between them phases through walls and hazards. Sampling and recent-memory are strictly bounded.
@@ -1528,20 +1765,33 @@ function patrolDungeon(e, s, w) {
 
 // One simulation step for a pack creature. `w` is the world adapter built by the game (or a test).
 export function updatePackMonster(e, w) {
+  if(e.kind === "voidWalker" && e.astralAllyOf && !w.astralAllyContext) { updateAstralWalkerAllyFixture(e,w.enemies.find(q=>q.id===e.astralAllyOf),w); return; }
   const def = packDefinition(e);
-  if (!def || e.dead) return;
+  if (!def) return;
+  if (e.kind === "astralWorm" || e.kind === "astralMirage") { if (w.dt > 0) updateAstralActor(e, w); return; }
+  if (e.kind === "voidWalker" && !(w.dt > 0)) return;
+  if (e.dead) { if (e.kind === "voidWalker") { voidClear(e, w); if (e.pack?.attack) endAttack(e, e.pack); } return; }
   const s = e.pack && e.pack.v === MONSTER_PACK_VERSION ? e.pack : (e.pack = freshPackState()), dt = w.dt;
   if (!s.orbitDir) s.orbitDir = hashSeed(`${e.id}:orbit`) % 2 ? 1 : -1;
   e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt); e.scattered = Math.max(0, (Number(e.scattered) || 0) - dt); // release 249: a scatter is brief
   e.recoil = Math.max(0, (e.recoil || 0) - dt); e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
   for (const id of Object.keys(s.cd)) s.cd[id] = Math.max(0, s.cd[id] - dt);
   s.gap = Math.max(0, (s.gap || 0) - dt);
+  if (e.kind === "voidWalker") {
+    e.voidTeleport = Math.max(0, (e.voidTeleport || 0) - dt);
+    if (e.retreating || e.fleeTo) {
+      voidClear(e, w); if (s.attack) endAttack(e, s); s.voidEvade = null; s.tele = null;
+      if (e.fleeTo) w.walkerRetreat?.(e, s);
+      return;
+    }
+  }
   if (e.fleeTo) { fleeStep(e, s, w); return; }
   if (e.illusion && (w.now - (e.bornAt || 0)) > 14000) { e.dead = true; return; }
-  const p = center(w.player), d = distance(p, e), brain = BRAINS[e.brain || def.brain], roaming = isDungeonRoamer(e, w.area);
-  if (!e.aggro && d < (roaming ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!roaming || w.los(e, w.player))) e.aggro = true;
+  const p = center(w.player), d = distance(p, e), brain = BRAINS[e.brain || def.brain], roaming = isDungeonRoamer(e, w.area), hunting = isDungeonHunter(e, w.area);
+  if (!e.aggro && d < (hunting ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!hunting || w.los(e, w.player))) e.aggro = true;
   e.hidden = !!(brain?.hiddenUntilAggro && !e.aggro) || (s.attack === "burrowAmbush" && ["travel", "erupt"].includes(s.phase));
   if (!e.aggro) {
+    if (hunting && e.kind === "voidWalker") { w.walkerPatrol?.(e, s); return; }
     if (roaming) { patrolDungeon(e, s, w); return; }
     s.wander = ((s.wander ?? (hashSeed(e.id) % 628) / 100) + dt / 2.4) % TAU;
     if (!brain?.hiddenUntilAggro) w.move(e, Math.cos(s.wander) * .28 * dt, Math.sin(s.wander * .8) * .28 * dt, { phase: false });
@@ -1554,7 +1804,7 @@ export function updatePackMonster(e, w) {
   if (e.blobletOf && blobletHome(e, s, w)) return;
   if (e.wormOf && tentacleTurret(e, s, w, p)) return;
   if (e.kind === "tremorWorm" && wormCycle(e, s, w, p)) return;
-  if (e.evasive && evade(e, s, w, p, d)) return;
+  if (e.kind === "voidWalker" ? voidEvade(e, s, w, p, d) : e.evasive && evade(e, s, w, p, d)) return;
   if (s.attack) {
     s.t -= dt;
     RUN[s.attack]?.(e, s, w);
@@ -1573,7 +1823,7 @@ export function updatePackMonster(e, w) {
   if (!moved && !move.phases) w.detour?.(e, speed);
   e.facingX = (p.x - e.x) >= 0 ? 1 : -1;
   if (s.gap > 0) return;
-  if (roaming && !w.los(e, w.player)) return; // phase toward the player first; never begin a grab/sky attack from an unseen room
+  if (hunting && !w.los(e, w.player)) return; // move toward the player first; never begin a grab/sky attack from an unseen room
   const ready = availableAttacks(e).filter((id) => attackReady(e, s, w, id, d));
   if (!ready.length) return;
   const preferred = ready.filter((id) => id !== s.last), pool = preferred.length ? preferred : ready, id = pool[hashSeed(`${e.id}:pick:${s.seq}`) % pool.length];
@@ -1581,10 +1831,243 @@ export function updatePackMonster(e, w) {
   beginAttack(e, s, id, w);
 }
 
+// Returns true when this is a Walker effect. Each promised activation is one-shot and every lifetime is finite.
+function tickVoidEffect(f, w, dt) {
+  if (!f.kind.startsWith("void")) return false;
+  const owner = liveVoidOwner(w, f); if (!owner) { f.life = 0; f.arming = 0; return true; }
+  const p = center(w.player), before = { x: f.x, y: f.y };
+  f.age = (f.age || 0) + dt;
+  const waiting = Math.max(0, f.arming || 0), activeDt = Math.max(0, dt - waiting);
+  f.arming = Math.max(0, waiting - dt);
+  // Constellation movement and fixed-direction aim locking happen during the warning, not while a beam fires.
+  if (f.kind === "voidRift" && f.tracking && !f.activated && f.age < f.activationAt - VOID.constellationLock) {
+    const nx = p.x + f.offsetX, ny = p.y + f.offsetY;
+    if (voidOpen(w, nx, ny)) { f.x = nx; f.y = ny; }
+    f.angle = Math.atan2(p.y - f.y, p.x - f.x);
+  }
+  if (f.arming > 0 || !(activeDt > 0)) return true;
+  f.elapsed = (f.elapsed || 0) + activeDt;
+  if (f.kind === "voidRend") {
+    if (f.variant === "slash") {
+      const speed = Math.hypot(f.vx, f.vy), dir = unit(f.vx, f.vy), travel = speed * activeDt, length = voidRay(w, f, dir, travel);
+      f.x += dir.x * length; f.y += dir.y * length;
+      if (!f.hit && segmentDistance(p, before, f) <= f.radius + .3) { f.hit = true; voidHurt(w, owner, f.damage, "voidSlash"); f.life = 0; }
+      if (length < travel) f.life = 0;
+    } else if (!f.detonated) {
+      f.detonated = true;
+      if (f.variant === "hand" || f.variant === "spike") {
+        if (distance(p, f) <= f.radius + .3) voidHurt(w, owner, f.damage, f.variant === "hand" ? "voidHand" : "voidSpikes", f.variant === "spike");
+      } else {
+        const dir = { x: Math.cos(f.angle), y: Math.sin(f.angle) }, length = voidRay(w, f, dir, f.length), end = { x: f.x + dir.x * length, y: f.y + dir.y * length };
+        f.length = length;
+        if (segmentDistance(p, f, end) <= f.width + .3) voidHurt(w, owner, f.damage, f.variant === "claw" ? "voidClaw" : "voidSword");
+      }
+    }
+  } else if (f.kind === "voidWraith") {
+    f.slashFlash = Math.max(0, (f.slashFlash || 0) - activeDt);
+    const dir = unit(f.vx, f.vy), travel = Math.hypot(f.vx, f.vy) * activeDt, length = voidRay(w, f, dir, travel);
+    f.x += dir.x * length; f.y += dir.y * length;
+    if (length < travel) { f.life = 0; return true; }
+    if (f.slashes < VOID.wraithSlashes && f.elapsed >= f.nextSlash) {
+      f.slashes++; f.nextSlash += VOID.wraithEvery; f.slashFlash = .22;
+      if (segmentDistance(p, before, f) <= VOID.wraithReach + .3) voidHurt(w, owner, f.damage, "voidWraith");
+    }
+  } else if (f.kind === "voidBeam") {
+    const dir = { x: Math.cos(f.angle), y: Math.sin(f.angle) };
+    f.length = Math.min(f.length, voidRay(w, f, dir, VOID.beamLength));
+    if (!f.hit && segmentDistance(p, f, { x: f.x + dir.x * f.length, y: f.y + dir.y * f.length }) <= f.width + .3) { f.hit = true; voidHurt(w, owner, f.damage, "voidBeam"); }
+  } else if (f.kind === "voidRift") {
+    if (f.tracking && !f.activated && f.age >= f.activationAt) {
+      // Independent rifts can activate concurrently, but each has exactly one output.
+      f.activated = true; f.life = Math.min(f.life, .7);
+      if (f.output === "wraith") voidWraith(owner, w, f, p, VOID.beamWarn, f.damage);
+      else if (f.output === "beam") voidBeam(owner, w, f, f.angle, f.damage);
+      else if (voidTeleport(owner, w, f)) voidRend(owner, w, "claw", f, unit(p.x - f.x, p.y - f.y), VOID.rendWarn, f.damage);
+    } else if (!f.tracking && f.emits < 2 && f.elapsed >= f.nextEmit) {
+      f.emits++; f.nextEmit += VOID.riftEmitEvery;
+      const variant = f.emits === 1 ? "slash" : "sword";
+      voidRend(owner, w, variant, f, unit(p.x - f.x, p.y - f.y), VOID.rendWarn, f.damage);
+    }
+  } else if (f.kind === "voidHorizon") {
+    f.pulseFlash = Math.max(0, (f.pulseFlash || 0) - activeDt);
+    if (distance(p, f) <= f.radius) w.pull?.(f, VOID.horizonPull * activeDt, f.radius);
+    if (distance(p, f) <= f.coreRadius + .3 && !(f.nextBite > f.elapsed)) { f.nextBite = f.elapsed + VOID.horizonTick; voidHurt(w, owner, f.damage, "voidHorizon"); }
+    if (f.pulsar && f.pulses < f.pulseCount && f.elapsed >= f.nextPulse) {
+      f.pulses++; f.nextPulse += VOID.pulsarEvery; f.pulseFlash = .22;
+      voidBeam(owner, w, f, f.angle, f.damage, VOID.beamWarn);
+    }
+  } else if (f.kind === "voidNova") {
+    f.stage = f.elapsed < VOID.novaCharge ? "charge" : f.wavesFired < f.waves ? "burst" : "aftermath";
+    if (f.stage === "charge") {
+      if (distance(p, f) <= f.radius) w.pull?.(f, VOID.novaPull * activeDt, f.radius);
+      if (f.elapsed >= f.nextLocal) { f.nextLocal += VOID.novaLocalEvery; voidNovaEruption(f, owner, w); }
+    } else {
+      if (f.wavesFired < f.waves && f.elapsed >= f.nextWave) {
+        const turn = f.wavesFired * Math.PI / VOID.novaParticles;
+        f.wavesFired++; f.nextWave += VOID.novaWaveEvery;
+        for (let i = 0; i < VOID.novaParticles; i++) {
+          const a = turn + i * TAU / VOID.novaParticles;
+          voidAdd(w, owner, { kind: "voidParticle", x: f.x, y: f.y, vx: Math.cos(a) * VOID.novaParticleSpeed, vy: Math.sin(a) * VOID.novaParticleSpeed,
+            radius: VOID.novaParticleRadius, life: VOID.novaParticleLife, damage: f.damage, wave: f.wavesFired });
+        }
+      }
+      if (f.elapsed >= f.nextAfter) { f.nextAfter += VOID.novaAfterEvery; voidNovaEruption(f, owner, w); }
+    }
+  } else if (f.kind === "voidParticle") {
+    const dir = unit(f.vx, f.vy), travel = Math.hypot(f.vx, f.vy) * activeDt, length = voidRay(w, f, dir, travel);
+    f.x += dir.x * length; f.y += dir.y * length;
+    if (!f.hit && segmentDistance(p, before, f) <= f.radius + .3) { f.hit = true; voidHurt(w, owner, f.damage, "voidSupernova"); f.life = 0; }
+    if (length < travel) f.life = 0;
+  } else if (f.kind === "voidEruption") {
+    if (!f.detonated) { f.detonated = true; if (distance(p, f) <= f.radius + .3) voidHurt(w, owner, f.damage, "voidEruption", true); }
+  } else if (f.kind === "voidAfterimage") {
+    if (!f.hit && segmentDistance(p, f, { x: f.tx, y: f.ty }) <= f.radius + .3) { f.hit = true; voidHurt(w, owner, f.damage, "voidAfterimage"); }
+  }
+  f.life -= activeDt;
+  return true;
+}
+function voidNovaEruption(f, owner, w) {
+  const n = f.eruptions++, a = hashSeed(`${owner.id}:${f.seed}:eruption:${n}`) % 628 / 100;
+  const radius = Math.sqrt((hashSeed(`${owner.id}:${f.seed}:eruption-r:${n}`) % 100) / 100) * (f.radius - VOID.novaEruptionRadius);
+  voidAdd(w, owner, { kind: "voidEruption", x: f.x + Math.cos(a) * radius, y: f.y + Math.sin(a) * radius, radius: VOID.novaEruptionRadius,
+    arming: VOID.novaEruptionWarn, life: .35, damage: Math.max(1, Math.round(f.damage * .65)) });
+}
+
+// Follow-on prototype: predator only. Final-boss Revenants retain their progression profile.
+export const GATE_REVENANT = {
+  spawnPerThousand: 24, legacySpawnPerThousand: 12,
+  baseWalk: 2.4, chaseRatio: 1.5, hpFloor: 320, damageFloor: 40, beastShare: 2 / 3,
+  referenceHits: 60, referenceLevelHp: 28, referenceDamageShare: .2,
+  range: 6, ownerEffects: 16, step: .05, recover: .3, gap: .55,
+  // Poise: stun accumulated within one exchange beyond `poise` seconds grants `unstoppable` seconds of
+  // ignoring hit-stun, so rapid blows interrupt it but never lock it out of attacking.
+  poise: .6, unstoppable: 2.4,
+  breath: { warn: .4, duration: 1.4, every: .35, length: 7, width: .5, bite: .26 },
+  burst: { warn: .32, count: 4, every: .18, speed: 6.2, life: 1.5, bite: .38 },
+  lob: { warn: .35, count: 3, every: .22, flight: .8, radius: .85, bite: .55 },
+  barrage: { warn: .5, count: 9, every: .13, flight: .85, radius: .8, bite: .36 },
+  moves: ["burst", "lob", "wraith", "breath", "burst", "barrage"],
+};
+export function tuneGatePredator(e, save, stats = {}) {
+  if (!e.gatePredator || e.gateTuningVersion === 1) return e;
+  const t = GATE_REVENANT, level = Math.max(1, Number(save.level) || 1), weapon = save.equipment?.[save.activeWeaponSlot];
+  const hit = Math.max(6, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0)), guard = Math.max(0, Math.min(.75, Number(stats.damageReduction) || 0));
+  const oldMax = Math.max(1, Number(e.maxHp) || 1), missing = Math.max(0, oldMax - (Number.isFinite(e.hp) ? e.hp : oldMax));
+  e.maxHp = Math.max(oldMax, t.hpFloor, Math.round((hit * t.referenceHits + level * t.referenceLevelHp) * t.beastShare));
+  e.hp = e.dead ? 0 : Math.max(1, e.maxHp - missing);
+  e.damage = Math.max(e.damage, t.damageFloor, Math.round((Number(save.maxHp) || 60) * t.referenceDamageShare / (1 - guard) * t.beastShare));
+  e.gateTuningVersion = 1; return e;
+}
+function gateAdd(e, w, effect) {
+  const fx = voidEffects(w);
+  if (fx.length >= PACK_EFFECT_CAP || fx.filter(f => f.owner === e.id).length >= GATE_REVENANT.ownerEffects) return false;
+  w.addEffect({ owner: e.id, gateOwned: true, life: .4, arming: 0, ...effect }); return true;
+}
+export function resetGateAttack(e, resetRoute = false) { if (e.gatePredator) { e.gateAttack = null; e.telegraph = 0; if (resetRoute && e.ai) { delete e.ai.gateStep; delete e.ai.gatePathRetry; } } }
+function gateMove(e, w, dt, fraction = 1) {
+  const p = w.player, d = Math.hypot(p.x - e.x, p.y - e.y);
+  if (d < 1.4) return;
+  const slow = e.glyphBaseSpeed > 0 ? Math.max(.05, Math.min(1, e.speedMultiplier / e.glyphBaseSpeed)) : 1;
+  const step = Math.min(d - 1.4, GATE_REVENANT.baseWalk * GATE_REVENANT.chaseRatio * dt * fraction * slow);
+  if (w.gateChase) { w.gateChase(e, step); return; }
+  if (!w.los(e, p)) { w.detour?.(e, step); return; }
+  w.move(e, (p.x - e.x) / d * step, (p.y - e.y) / d * step, { phase: false });
+}
+function gateEmit(e, a, w) {
+  const t = GATE_REVENANT, dir = unit(a.target.x - e.x, a.target.y - e.y);
+  if (a.move === "wraith") { if (a.emitted++) return; if (voidEffects(w).filter(f => f.owner === e.id).length + 2 > t.ownerEffects) return; START.voidWraiths(e, { data: { target: a.target }, seq: a.seq }, w); return; }
+  if (a.move === "breath") {
+    if (a.emitted++) return;
+    gateAdd(e, w, { kind: "gateBreath", x: e.x, y: e.y, dx: dir.x, dy: dir.y, length: t.breath.length, radius: t.breath.width, life: t.breath.duration, nextBite: 0, damage: Math.ceil(e.damage * t.breath.bite) }); return;
+  }
+  const cfg = t[a.move], i = a.emitted++;
+  if (a.move === "burst") {
+    // Fixed aim and small fan; no homing. Simultaneous final pair still obeys the owner budget.
+    for (const angle of i === cfg.count - 1 ? [-.12, .12] : [0]) {
+      const dx = dir.x * Math.cos(angle) - dir.y * Math.sin(angle), dy = dir.x * Math.sin(angle) + dir.y * Math.cos(angle);
+      gateAdd(e, w, { kind: "orb", fire: true, x: e.x, y: e.y, vx: dx * cfg.speed, vy: dy * cfg.speed, radius: .22, life: cfg.life, damage: Math.ceil(e.damage * cfg.bite) });
+    }
+  } else {
+    const angle = i * 2.39996 + (a.seq % 7), radius = a.move === "barrage" ? 1.1 + i % 3 : .8 * i;
+    const target = { x: a.target.x + Math.cos(angle) * radius, y: a.target.y + Math.sin(angle) * radius };
+    // Lob across open ground only; an intervening wall cannot be bombed through.
+    if (w.open(target.x, target.y) && w.los(e, target, true)) gateAdd(e, w, { kind: "lavaBomb", x: target.x, y: target.y, from: { x: e.x, y: e.y }, radius: cfg.radius, arming: cfg.flight, armTotal: cfg.flight, damage: Math.ceil(e.damage * cfg.bite), jumpable: true });
+  }
+}
+export function updateGatePredator(e, w) {
+  if (!e.gatePredator || e.dead || !(w.dt > 0)) return;
+  // Bounded fixed substeps, never catch up a suspended tab with a burst of untelegraphed attacks.
+  let remaining = Math.min(w.dt, .25);
+  while (remaining > 1e-8) {
+    const dt = Math.min(GATE_REVENANT.step, remaining); remaining -= dt;
+    e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt); e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
+    const distance = Math.hypot(w.player.x - e.x, w.player.y - e.y);
+    if (distance < 6) e.aggro = true;
+    if (!e.aggro) continue;
+    e.facingX = w.player.x >= e.x ? 1 : -1;
+    e.gateUnstoppable = Math.max(0, (e.gateUnstoppable || 0) - dt);
+    if (e.gateUnstoppable > 0) e.hitStun = 0;
+    if (e.hitStun > 0) {
+      e.gateStunned = (e.gateStunned || 0) + dt;
+      if (e.gateStunned >= GATE_REVENANT.poise) { e.hitStun = 0; e.gateStunned = 0; e.gateUnstoppable = GATE_REVENANT.unstoppable; }
+      else { resetGateAttack(e); e.gateGap = .4; continue; }
+    } else if (!e.gateAttack && e.gateGap <= 0) e.gateStunned = 0;
+    e.gateGap = Math.max(0, (e.gateGap || 0) - dt);
+    let a = e.gateAttack;
+    if (!a) {
+      gateMove(e, w, dt);
+      if (e.gateGap > 0 || distance > GATE_REVENANT.range || !w.los(e, w.player, true)) continue;
+      const seq = e.gateSequence || 0, move = GATE_REVENANT.moves[seq % GATE_REVENANT.moves.length]; e.gateSequence = seq + 1;
+      const cfg = GATE_REVENANT[move], warn = move === "wraith" ? ATTACK_MODULES.voidWraiths.windup : cfg.warn;
+      a = e.gateAttack = { move, seq, target: { x: w.player.x, y: w.player.y }, phase: "warn", left: warn, emitted: 0, emitIn: 0 };
+      e.telegraph = warn; continue;
+    }
+    if (a.phase !== "recover" && a.move !== "barrage") gateMove(e, w, dt, a.phase === "warn" || a.move === "breath" ? .85 : 1);
+    a.left -= dt;
+    if (a.phase === "warn") {
+      e.telegraph = Math.max(0, a.left);
+      if (a.left > 0) continue;
+      a.phase = "active"; const cfg = GATE_REVENANT[a.move];
+      a.left = a.move === "wraith" ? .05 : a.move === "breath" ? cfg.duration : (cfg.count - 1) * cfg.every + .05;
+    }
+    if (a.phase === "active") {
+      const cfg = GATE_REVENANT[a.move]; a.emitIn -= dt;
+      if (a.emitIn <= 0 && a.emitted < (cfg?.count || 1)) { gateEmit(e, a, w); a.emitIn += cfg?.every || 99; }
+      if (a.left <= 0) { a.phase = "recover"; a.left = GATE_REVENANT.recover; }
+    } else if (a.phase === "recover") {
+      gateMove(e, w, dt);
+      if (a.left <= 0) { resetGateAttack(e); e.gateGap = GATE_REVENANT.gap; }
+    }
+  }
+}
+function tickGateEffect(f, w) {
+  if (!f.gateOwned) return false;
+  const owner = w.enemies.find(e => e.id === f.owner && !e.dead);
+  if (!owner) { f.life = 0; f.arming = 0; return true; }
+  if (f.kind === "lavaBomb") return false; // generic arc warning and single detonation
+  const dt = Math.min(w.dt, .25), p = center(w.player);
+  if (f.kind === "orb") {
+    const dir = unit(f.vx, f.vy), travel = Math.hypot(f.vx, f.vy) * dt, length = voidRay(w, f, dir, travel), old = { x: f.x, y: f.y };
+    f.x += dir.x * length; f.y += dir.y * length;
+    if (segmentDistance(p, old, f) <= f.radius + .3) { w.hurt(owner, f.damage, { source: "gateFireball", jumpable: false }); f.life = 0; }
+    if (length < travel) f.life = 0;
+  } else if (f.kind === "gateBreath") {
+    f.x = owner.x; f.y = owner.y;
+    f.length = voidRay(w, f, { x: f.dx, y: f.dy }, GATE_REVENANT.breath.length);
+    f.nextBite -= dt;
+    if (f.nextBite <= 0) { f.nextBite = GATE_REVENANT.breath.every; if (segmentDistance(p, f, { x: f.x + f.dx * f.length, y: f.y + f.dy * f.length }) < f.radius + .3) w.hurt(owner, f.damage, { source: "gateBreath", jumpable: false, beam: true }); }
+  }
+  f.life -= dt; return true;
+}
+
 // Ground effects: arming, detonation (once, if the player is inside), webs that slow, and rings.
 export function tickPackEffects(effects, w) {
+  if (!(w.dt > 0)) return effects;
   const p = center(w.player);
-  for (const f of effects) {
+  // New effects wait until the next tick: an emitter cannot recursively simulate its own new outputs this frame.
+  for (const f of [...effects]) {
+    if (tickGateEffect(f, w)) continue;
+    if (tickVoidEffect(f, w, w.dt)) continue;
     f.age = (f.age || 0) + w.dt;
     if (f.arming > 0) { f.arming -= w.dt; if (f.arming > 0) continue; f.armed = true; }
     if (f.kind === "web") { if (distance(p, f) <= f.radius) w.slow(f.slow || .5, .25); }
@@ -1659,6 +2142,8 @@ export function tickPackEffects(effects, w) {
       const nx = f.x + f.vx * w.dt, ny = f.y + f.vy * w.dt, wall = w.tileOpen && !w.tileOpen(nx + .5, ny + .5), hit = distance(p, f) <= f.radius + .35;
       if (!wall && !hit && f.life - w.dt > 0) { f.x = nx; f.y = ny; }
       else { if (distance(p, f) <= KNIGHT.missileBlast + .2) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "knightMissile" }); w.addEffect({ kind: "nanoBurst", owner: f.owner, x: f.x, y: f.y, radius: KNIGHT.missileBlast, arming: 0, life: .4, total: .4, damage: 0 }); f.life = 0; continue; }
+    } else if (f.kind === "debris" && f.medium === "water") {
+      tickCrystalWater(f, w, p); // separate material, identical volley timing and damage; no terrain mutation
     } else if (f.kind === "debris") { // release 249: stones the Crystal lifts, circling it until thrown
       const owner = w.enemies.find((q) => q.id === f.owner && !q.dead);
       if (f.state === "lift") { if (!owner) { f.life = 0; continue; } f.orbit += 1.4 * w.dt; f.x = owner.x + Math.cos(f.orbit) * CRYSTAL.debrisOrbit; f.y = owner.y + Math.sin(f.orbit) * CRYSTAL.debrisOrbit * .6; f.lift = Math.min(CRYSTAL.debrisRise, (f.lift || 0) + w.dt * 1.5); f.life = 99; }
@@ -1676,11 +2161,39 @@ export function tickPackEffects(effects, w) {
   return effects.filter((f) => f.arming > 0 || f.life > 0);
 }
 
+function crystalSplash(f) {
+  // Reuse this projectile's budget slot. A splash is cosmetic and cannot hit again or create more effects.
+  Object.assign(f, { state: "splash", life: CRYSTAL.waterSplashLife, total: CRYSTAL.waterSplashLife, damage: 0, vx: 0, vy: 0 });
+}
+function tickCrystalWater(f, w, p) {
+  if (f.state === "splash") return;
+  const owner = w.enemies.find((q) => q.id === f.owner && !q.dead && !q.retreating && !q.fleeTo);
+  if (f.state === "lift") {
+    if (!owner || owner.pack?.attack !== "psyDebris") { crystalSplash(f); return; }
+    f.orbit += 1.4 * w.dt;
+    f.x = owner.x + Math.cos(f.orbit) * CRYSTAL.debrisOrbit; f.y = owner.y + Math.sin(f.orbit) * CRYSTAL.debrisOrbit * .6;
+    f.lift = Math.min(CRYSTAL.debrisRise, (f.lift || 0) + w.dt * 1.5); f.life = 99;
+    return;
+  }
+  const open = w.marineProjectileOpen || w.projectileOpen || w.tileOpen, start = { x: f.x, y: f.y };
+  if (open && !open(f.x + .5, f.y + .5)) { crystalSplash(f); return; }
+  // Sweep only its remaining lifetime, in bounded substeps. It neither tunnels across a wall nor dies on open sea.
+  const dt = Math.min(w.dt, Math.max(0, f.life)), dx = (f.vx || 0) * dt, dy = (f.vy || 0) * dt;
+  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / CRYSTAL.waterStep));
+  for (let i = 1; i <= steps; i++) {
+    const next = { x: start.x + dx * i / steps, y: start.y + dy * i / steps }, before = { x: f.x, y: f.y };
+    if (open && !open(next.x + .5, next.y + .5)) { crystalSplash(f); return; }
+    f.x = next.x; f.y = next.y;
+    if (segmentDistance(p, before, f) <= f.radius + .3) { w.hurt(owner || null, f.damage, { jumpable: false, source: "psyDebris" }); crystalSplash(f); return; }
+  }
+  if (f.life <= w.dt) crystalSplash(f);
+}
+
 export const PACK_EFFECT_CAP = 48;
 export function addPackEffect(effects, effect, now = 0) {
   while (effects.length >= PACK_EFFECT_CAP) {
-    // Discard the Crystal's cosmetic trail before a combat effect when another attack needs space.
-    const scorch = effects.findIndex((f) => f.kind === "scorch");
+    // Discard the Crystal's cosmetic trail or spent water before a combat effect needs that slot.
+    const scorch = effects.findIndex((f) => f.kind === "scorch" || f.kind === "debris" && f.medium === "water" && f.state === "splash");
     effects.splice(scorch < 0 ? 0 : scorch, 1);
   }
   effects.push({ id: `pack-fx-${effect.owner}-${now}-${effects.length}`, life: undefined, ...effect });
@@ -1729,4 +2242,31 @@ export function populateOverworldPack(map, seed, rx, ry, { safe = null } = {}) {
   map.monsterPack = MONSTER_PACK_VERSION;
   map.diagnostic = { ...(map.diagnostic || {}), overworldPack: { converted: packCount - placed.length, added: placed.length } };
   return map;
+}
+
+// Astral-owned helper adapter, shared by explicit fixtures and the narrow natural ally role.
+// An ally's effect list and damage callbacks cannot enter the hostile player's effect pipeline.
+export function updateAstralWalkerAllyFixture(ally, target, world) {
+  ally.noRewards = true;
+  if (!target || target.kind !== 'astralWorm' || target.dead || target.hp <= 0 || target.retreating || target.fleeTo || target.astral?.terminated || ally.dead || (world.playerDeathFinal?world.playerDeathFinal():world.player.hp <= 0)) {
+    ally.astralAllyEffects = []; ally.dead = true; ally.hp = 0; return;
+  }
+  ally.aggro = true; ally.astralAllyOf = target.id;
+  const effects = ally.astralAllyEffects ||= [];
+  // Reserve one worm descriptor; later growth of the shared list cannot exceed the combined cap.
+  effects.length=Math.min(effects.length,Math.max(0,PACK_EFFECT_CAP-1-(world.effects?.().length||0)));
+  const wrapped = { ...world, astralAllyContext:true, player: target, playerVelocity: {x:0,y:0}, playerShots: [], playerBlasts: [], playerSwinging:false,
+    enemies: [ally,target], sanctuary:null, effects:()=>effects,
+    addEffect: effect => { if(effects.length+(world.effects?.().length||0)<PACK_EFFECT_CAP-1) addPackEffect(effects,effect,world.now); },
+    hurt(source,amount) { if(target.dead||target.retreating||target.untargetable||!(amount>0))return false; target.hp=Math.max(0,target.hp-amount); if(target.hp<=0)target.dead=true; if(target.astral)target.astral.hp=target.hp; return true; },
+    // No borrowed callbacks which close over the real player, boat, or terrain are allowed here.
+    consumeVoidTerrain:()=>({changed:false}), pull:()=>false, push:()=>false, grab:()=>false, held:()=>false,
+    release:()=>{}, poison:()=>{}, slow:()=>{}, detour(e,speed) { const dx=target.x-e.x,dy=target.y-e.y,d=Math.hypot(dx,dy)||1;world.move(e,dx/d*speed,dy/d*speed); },
+    spawnIllusion:()=>null, spawnMinion:()=>null, walkerPatrol:()=>{}, walkerRetreat:()=>{},
+  };
+  updatePackMonster(ally,wrapped);
+  ally.astralAllyEffects=tickPackEffects(effects,wrapped);
+  // Provisional fixture policy: the player cannot accidentally injure their temporary helper.
+  ally.untargetable=true;
+  if(target.hp<=0){ally.astralAllyEffects=[];ally.dead=true;ally.hp=0;}
 }

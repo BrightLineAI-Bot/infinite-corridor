@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho, echoDrop, ensureEchoState, echoEvent } from '../src/echoes.ts';
-import { PACK_KINDS } from '../src/monster-pack.ts';
+import { PACK_KINDS, MONSTER_PACK } from '../src/monster-pack.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
 import { createCombatant } from '../src/combat.ts';
@@ -21,8 +21,11 @@ const idle = { state: { x: 0, y: 0 }, consume: () => false };
 const run = (g, ms, from, input = idle) => { for (let t = 0; t < ms; t += 50) g.update(.05, input, from + t); };
 const once = (key, x = 1, y = 0) => { let done = false; return { state: { x, y }, consume: (k) => k === key && !done && (done = true) }; };
 
-test('every pack creature has exactly one Echo; notches cap what can be set at once', () => {
-  assert.deepEqual([...ECHO_IDS].sort(), [...PACK_KINDS].sort());
+test('every Echo-eligible pack creature has exactly one Echo; explicit no-Echo creatures grant none; notches cap what can be set at once', () => {
+  assert.deepEqual([...ECHO_IDS].sort(), PACK_KINDS.filter(id=>!MONSTER_PACK[id].noEcho).sort());
+  assert.deepEqual(PACK_KINDS.filter(id=>MONSTER_PACK[id].noEcho), ['astralWorm']);
+  assert.equal(ECHOES.astralWorm, undefined);
+  assert.equal(echoDrop(freshSave(), {id:'astral-bounty-only',packKind:'astralWorm'}, true, 1), null);
   for (const e of Object.values(ECHOES)) assert.ok(e.cost >= 1 && e.cost <= 3 && e.text && e.trigger, e.name);
   const s = freshSave();
   assert.deepEqual(s.echoes.equipped, []);

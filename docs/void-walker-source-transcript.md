@@ -1,0 +1,98 @@
+# Void Walker: owner source transcript
+
+This file preserves the owner's dictated source wording, including transcription errors, repetitions, and mid-description corrections. Do not treat an unclear transcription as a new mechanic. See [the normalized design and review record](void-walker-design.md) for requirement IDs, interpretations, and unresolved choices. These source excerpts document design intent, not release or publishing authorization.
+
+## S1 — scale clarification
+
+- Author: Tim (owner), user message `Sentinel_6db4dd3f2c388191aa4abfecd469d4d0`.
+- Sent: 2026-10-20 21:40:08 UTC (2026-10-20 17:40:08 UTC-04).
+- Exact message:
+
+```text
+Okay, the void walker should be about the same size as the character as the main character. Oh, okay. I guess you don't have the information for it. There's no descriptions for it already saved somewhere
+```
+
+## S2 — full dictated combat and presentation description
+
+- Author: Tim (owner), user message `Sentinel_d648802108108191a61503af9eca4677`.
+- Received in this session: 2026-10-21 01:21 UTC (2026-10-20 21:21 UTC-04); exact delivery timestamp was not supplied in the incoming message.
+- Exact message, with original wording and line breaks:
+
+```text
+The boardwalker is supposed to be a character that
+ A character that is about the same model as day is the main character. Enables the user to paranize like before you branding attacks right? So it like I would open app like friends and time, space, like purpleish voids, that kind of look like a universe is or Galaxy's. And open up in space and like claws what swords
+ Or fists, sublazes will come out of them and attack. You from all over the screen, you can do multiple of these. If you know the character jp from a street fighter 6I have somewhat similar attacks to him. Where he makes like phantoms that come out at you. And then spikes, can you know up here? All of the ground, but these void reds, these are for you to brand our as primary attacks. They doesn 't necessarily use his hands or anything, but at one point he has a supernova where he like charges up, and the whole thing, not the whole screen of life session out of the I would play a little tile. Because this looks like a universe or you know, galaxy or star, you know, or something like that? And then it drives us up in a like pulls the character, and then there's explosions all over the place. And then he does a massive, like supernova explosion that launches energy out in ll directions. After the explosion, after the explosion, you know, after the big supernova, there should be like a. There should be multiple little like explosion, little eruptions in the world like in the in, the like, the void area that he that he created right. So, you know, when he starts a supernova, there should be. He should just like spread out a large area. Avoid around him right? So the floor tiles in the in a lot of the floors, the floor in the, you know, the area where I'm fighting him. It could be a dungeon, or it could be A. There could be a you know, a tile out in the overworld. In the overworld, if the when he does his void attacks, all the walls of everything and the dungeons are sorry in the dungeon, all the walls and everything around him will turn into the void. Geometry will be. I don't wanna say suspended for a while right. Like, as far as the world's in the walls and so on, maybe they will. Yeah, I guess geometry will be suspended for a while right? So here's his actually his Supernova attack. If we're in a dungeon, it will just erase all the walls that to which the void spreads to right. So all the walls will just be erased and consumed. And there'll be like separate explosions. So when the when the Supernova is over, right? So you won't so you won't have to worry about getting trapped in like walls or floors or like pits or anything like that. Everything will just be made into a blank. Canvas, when it's done, like, we'll try to make it so that after the Supernova's done, like the area around the supernova, if you're in a dungeon, just looks like it just looks like the floor or it just I don't know, there should be something else. Right? That indicates like the Supernova has happened. So yeah, so like the floor will change. And I'll be like walls that were in that area will be consumed. And will be destroyed, there'll be it won't, you won't be able to see them anymore. And then, while he's doing the Supernova, the the void Walker will - back-and-forth, and he can hurt the character when he, if he touches him like, he'll just - back-and-forth around the screen, it could be random. But it could, it's kind of random, but it's mostly like localized around the character, right? So he'll - back-and-forth, and like at points that intersect to where the character is right. So if the character is moving, he'll still the void Walker will - to where he thinks where the character is positioned at the beginning of his movement, right? He won't curb or anything, he'll just move in straight lines. But when they like his straight line will start from where he from where, like, from one point, randomly around the character, in like a you know, potential area or radius around the character. And kind of dashed towards the character where the character is. You know position when he starts is not his - And this series of dashes, he'll just, he'll just like appear, right? He'll teleport to one place and - through and then teleport to another place and - through then teleport to another place in - through so it could be like a series of gashes while the characters moving through the Supernova area, while the characters moving if the characters out of the Supernova, if the character is out of the Supernova area, he'll still - the Ford Walker. Will still - at you, right? He'll teleport and - at you. And while he's dashing, there can be streaks that follow him, but they don't, they don't like, they just follow him just to look cool, right like the streaks. After him, just to look cool, they persist for like a second, so I guess if you walk into the streets that persist after him, you'll take damage. And it'll be like he dashed into you. So they just persist for like a second, just like, you know, just an after image.
+ And then, you know, and while there's a Supernova, there's one large explosion, you know, that goes out in a wave, right? That just that'll just go across the screen, like if it runs into it can. If it runs into like a wall or something like that, portions of it can get stopped, right? So the Supernova can be like, I don't know a series of small particles that spread out right from him right, or maybe it could be a couple waves of small particles that spread out from him. Maybe like 2 or 3 waves of small particles that spread out from him. And then if they encounter like walls beyond the void area, you know, they can. Those portion of the particles can stop, you know, that's fine. They don't have to travel through walls or above walls. But the void area will still consume. You know all the walls in the within its radius
+ And then the void Walker should also have an event horizon. Move where he can just form and borrow in space, right? And it'll pull the character in to it, but it also has like some of them have a pulsar. Function where they're, they'll pull the character into it. But then there's also, like an energy beam that shoots out in one specific direction that can pulse. It'll shoot out, and then it'll send like a couple pulses, it'll be one energy beam, and then it'll pulse, you know periodically, so there'll be, like, maybe 2 or 3 pulses that shoot out in one direction from the event horizon. So you get pulled into the event horizon, and they'll do damage. You know, if you get pulled into it, and then also a pulsar, from a periodically, a pulsar, will shoot out from it. And some of them will have some of the event horizons will have a pulsar, some of them won't, and again, you know, the void the void Walker. You know should have fast attacks. Most of his attacks are from void rems, right? That come, you know, that appear. And have like claws or swords or fists that come out and try to slam you down or hands. That come out and try to slam you down. Rather than fist, they should be hands that come out and try to slam me down. Additionally, like, you know, he'll send that he can send out like void. Race, which will exit the void the void rents for and like chase. You for a little bit but not necessarily be like persistent. They'll just go for a while. And do a couple swings, a couple/attacks, and they can. Yeah, they'll just move in straight lines from the rend. They'll just, and they'll do a couple/attacks. They'll move in straight lines, you know, towards you towards the character, of course, and they'll do a couple/attacks. And then they'll be like, you know, like spikes that can shoot from the ground like void spikes that can shoot from the ground or like, void slashes, you know, that can, like, they can shoot out of the I can shoot out at the void runs. Additionally, the void Walker can teleford to the different voids. So some of the void rands like so the void rans can be, you know, they can persist in space for a little bit. And they can use similar to how jp does from street fighter 6? He can teleport to the void. Rans, or he can shoot like, you know, attacks from the void. Rans, right, and he can use the void rents to Dodge your attacks right? He can open up a void rend at some point, right? And then you can teleport to it. There can be an attack where he does. Where he opens up multiple void reds around the character. And they like, follow the character. Right? So there's the character move across the stage. The void rends will be in like a constellation around the character. And he can - out from the void rands, right? And like a techniqu, captain, so it's like one of his moves right? Where he was just spawn, like some of them sometimes would be 3. Sometimes it'll 4, it'll be up to six different void. Runs around the character and he can spawn from them, or he can. A laser can shoot out of them, or actually, you know, he can spawn from them or avoid creatures. Can spawn from them by his void. Breaks can spawn from them, so but only one spawn per, you know, like void rend, that's around the character that's floating around the character. All right, so it can be like, you know, multiple, like you can make it. So it's not like crazy punishing. Although it can't be pretty punishing, right, like multiple like beams and void. Rapes, and he can spawn out of the out of the the void rents that are around the character. You know at once, right? So it's not just like one. You know, only a single void. Race can spawn out of the out of the rent at a time. It can be a void race and a laser, and him teleporting, you know, all that, like all at once or like, in rapid succession, right? So it's like you have a lot of things to deal with
+```
+
+## S3 — instruction to preserve this description for later review
+
+- Author: Tim (owner), user message `Sentinel_3a9a71525a108191bada050d4bbf4dfb`.
+- Received in this session: 2026-10-21 01:21 UTC (2026-10-20 21:21 UTC-04); exact delivery timestamp was not supplied in the incoming message.
+- Exact message:
+
+```text
+I want you to make detailed notes of my description and include it in the repository. So that when you're so that went claude, or picks back up, so that when the anthropic model picks up, it can understand what I described here. And it can use it to review what you've prepared for the void walker
+```
+
+## S4 — terrain bypass, fog, and permanent white/red aftermath clarification
+
+- Author: Tim (owner), user message `Sentinel_85f7443ee8d481919d3e820545a343f8`.
+- Recorded from the parent-provided conversation evidence on 2026-10-21 UTC (2026-10-20 UTC-04); exact delivery timestamp was not supplied in that evidence.
+- This later clarification governs conflicting provisional interpretations of S2. Exact message:
+
+```text
+It bypasses it bypasses the walls and so like if I want to. And so the Supernova should like, extend extend and then destroy everything, and then you know, after I mean, it shouldn't take app the remove the black fog right? You know, the, you know, the area that isn't explored. Area should still remain unexplored, but just the supernovae. Just be like it overlay, or something like that. It should just be seen through the dark. You know, through the fog, and when the Supernova is consumed, you know, all the Wells in that area will be consumed. You know, in AI guess in at least a circle or semicircle around, you know, the or in a circle around the void Walker. And his and the ground will be rent. Lbo, sorry, it'll be like a crisp. White, right? But it'll be rent through with, like red cracks, and they don't do any damage or anything. After the supernova's over, but that's just what the world looks, that's just what it'll look like. And then I think that this should persist in the world, I think that they should persist in the world forever, right? So if it happens in a tile or in a square or like overworld or underworld, I should just persist forever so that it shows like, you know, the corridor takes, you know, kind of shows a record of the passage or the traversal, you know, and everything that you know has happened in it. It might be too much adding too much to the to the world, right? But it's just like it'll just be like a static feature. Right, just like a circle with red rents. You know, that has like red cracks, and I'll just, you know, it doesn't have to be marked on the map, or anything that can I can interact with. But it's just there for me to know that, and just to show that the world is, you know, the corridor takes marks the damage
+```
+
+## S5 — smooth circular boundary and subtler cracks
+
+- Author: Tim (owner), user message `Sentinel_05d976388b308191a60bb909abc4965f`.
+- Recorded from the parent-provided conversation evidence on 2026-10-21 UTC (2026-10-20 UTC-04); exact delivery timestamp was not supplied in that evidence.
+- This visual correction supersedes acceptance of a tile-stepped/pixelated circular outline or dense crack treatment. Exact message:
+
+```text
+Make the circle an actual circle right? Like an actual one hundred percent circle, not the pixelated circle. That's there. So it just matches the shape of the supernova, and then also reduce the amount of cracks that are there. So it's a little bit more visually appealing, a little bit more subtle
+```
+
+## S6 — retreat to the nearest dungeon door using ordinary terrain rules
+
+- Author: Tim (owner), user message `Sentinel_bc97dff018dc81918643dcf631ed5d61`.
+- Recorded from the parent-provided conversation evidence on 2026-10-21 UTC (2026-10-20 UTC-04); exact delivery timestamp was not supplied in that evidence.
+- Exact message:
+
+```text
+Okay, and then the void walkers retreat. Mechanic is to just go to the nearest. Door for the dungeon. He just goes to the door for the dungeon, and he can chump, you know, and he'll just follow the rest, the regular terrain rules
+```
+
+## S7 — reaching a dungeon door ends retreat, including lower-floor passages
+
+- Context question: assistant message `Sentinel_9acb6fa0ffb4819196d170c138b770df`.
+- Answer: Tim (owner), user message `Sentinel_b2434e2affe881919c5f40fe1191eeda`.
+- Recorded from the parent-provided conversation evidence on 2026-10-21 UTC (2026-10-20 UTC-04); exact delivery timestamps were not supplied.
+- Exact assistant question, preserved because it defines the alternatives in the owner's answer:
+
+```text
+One detail for multi-level dungeons: if he’s on a lower floor, should reaching the nearest doorway/stair passage let him retreat out of the encounter, or should he travel all the way to the dungeon’s outside entrance?
+```
+
+- Exact owner answer:
+
+```text
+Yeah, I know he's done once he reaches a dungeon door where he's gone. He's retreated, he doesn't travel the same way that we do. He is obviously more control over the corridor and the void
+```
+
+## S8 — ocean encounters and no ocean supernova scar
+
+- Author: Tim (owner), user message `Sentinel_60d57e5d3c70819195dfe31858f42a90`.
+- Recorded from the parent-provided conversation evidence on 2026-10-21 UTC (2026-10-20 UTC-04); exact delivery timestamp was not supplied.
+- This later ocean exception narrows earlier universal terrain/aftermath readings; it also explicitly covers the Psychic Crystal. Exact message:
+
+```text
+So, as far as locations, I don't know, I don't think the creatures can appear in the ocean. It's probably not the, it's probably probably already noted, but the void Walker can appear in the ocean. When he does his Supernova the ocean, it doesn't turn nothing happens to the ocean. I mean, it shows the Supernova. Still, it takes place. The attack still takes place, but nothing happens to it. You know, it doesn't leave like a scar on the ground or anything like that. You can do a Supernova on the either. The ocean, the void Walker, and the psychic crystal both can appear in the ocean. Like the void Walker, what have his own little boat? The void Walker will have his own little boat when he appears on the on the ocean. And hey, if he appears in an ocean tile, and then the crystal will just, you know, just float when it appears in the ocean. And rather than making earth that like earth attacks, it will make like water attacks.
+```
+
+## Earlier repository-recorded context, not a new verbatim user transcript
+
+The existing `HERMES_PROJECT_FIELD_GUIDE.md` records overworld and dungeon appearances, dungeon roaming, and a dungeon-entrance retreat/home for the future Void Walker. Those are retained as prior project requirements; the full earlier owner transcripts are not reproduced here. The Crystal's independent wall-phasing permission does not by itself authorize permanent Walker wall phasing.

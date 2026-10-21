@@ -413,25 +413,26 @@ export function reciterPlan(seed, key, save, chance = RECITER_CHANCE.wild, readi
 // A reciter mills about its patch of ground; most (RECITER_LEAVE.share) leave after a while: they walk to the edge of
 // the section (or back to a dungeon's entrance) and are gone.
 export const RECITER_LEAVE = { share: 0.6, after: [25, 70] };
-function placeReciter(map, who, id, open, r, width) {
+function placeReciter(map, who, id, open, r, width, preview = false) {
   if (!open.length) return null;
   const start = open[Math.floor(r() * open.length)], region = groundRegion(map, width, start, 900);
   if (region.length < 6) return null;
   const path = stitch(map, width, [start, ...[0, 1, 2, 3].map(() => region[Math.floor(r() * region.length)])]);
   if (!path) return null;
-  const leaves = Math.random() < RECITER_LEAVE.share, [lo, hi] = RECITER_LEAVE.after;
+  const leaves = !preview && Math.random() < RECITER_LEAVE.share, [lo, hi] = RECITER_LEAVE.after;
   const o = { id, kind: "traveler", reciter: who.id, name: who.name, role: "Wandering reciter", look: who.look, mount: null, x: start.x, y: start.y, state: "walking", actions: ["speak"], facing: "down",
     // How much they will say this meeting: one to three lines, then nothing more until you meet them again.
-    linesLeft: 1 + Math.floor(Math.random() * RECITER_LINES_PER_MEETING), age: 0, leaveAfter: leaves ? lo + Math.random() * (hi - lo) : null };
+    linesLeft: preview ? 1 : 1 + Math.floor(Math.random() * RECITER_LINES_PER_MEETING), age: 0, leaveAfter: leaves ? lo + Math.random() * (hi - lo) : null };
   map.objects.push(o);
   map.reciterWalk = { path, index: 1, dir: 1, region, width };
   return o;
 }
-export function addReciter(map, seed, rx, ry, save = null) {
+export function addReciter(map, seed, rx, ry, save = null, preview = false) {
   if (!map || map.reciterWalk || map.skirmish || map.tiles?.length !== 1024 || Math.abs(rx) + Math.abs(ry) < TRAVEL.minDepth) return null;
   const who = reciterPlan(seed, `${rx}:${ry}`, save, map.settlement ? RECITER_CHANCE.town : RECITER_CHANCE.wild, readingAt(rx, ry)); if (!who) return null;
   const r = rng(`${seed}:reciter-walk:${rx}:${ry}`), open = map.tiles.filter((t) => t.x > 4 && t.y > 4 && t.x < 27 && t.y < 27 && walkable(t));
-  return placeReciter(map, who, `reciter:${rx},${ry}`, open, r, 32);
+  // Route previews need only seeded occupancy, never live conversation/departure randomness.
+  return placeReciter(map, who, `reciter:${rx},${ry}`, open, r, 32, preview);
 }
 // ------------------------------------------------------------------ the Elder Wanderers (release 197)
 // An Elder walks the section's road when it has one (they are road creatures), otherwise a stitched stroll; in a

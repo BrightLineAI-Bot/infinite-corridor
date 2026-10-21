@@ -1,10 +1,13 @@
+import { astralBeamAnchors } from "./astral-worm.ts";
+import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { enemyMeleeGeometry } from "./combat.ts";
 import { ruleRows } from "./elders.ts";
 import { SEA_CREATURES } from "./sea-creatures.ts";
 import { BOAT } from "./boats.ts";
+import { isMarineTile } from "./world-beasts.ts";
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.ts";
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
-import { liftAt } from "./landscape.ts";
+import { liftAt, tileUnder } from "./landscape.ts";
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
@@ -75,7 +78,13 @@ function mapObjectLists(map) {
 export function rendererDiagnostics() { return { ...renderCacheStats }; }
 // Where render time goes (release 167): the diagnostic probe switches this on and reads the three parts each frame.
 export const renderTimings = { on: false, ground: 0, world: 0, overlay: 0 };
-function renderableObject(g,o){return !g.renderObjectPredicate||g.renderObjectPredicate(o)}
+function renderableObject(g,o){
+  // Keep progression/interaction records, but do not repaint a consumed physical door or gate.
+  const width = Math.max(1,Number(g.map?.width)||(g.area === "dungeon" ? 24 : 32));
+  if ((o.kind === "sealedGate" || o.kind === "door" || o.kind === "deepShortcut") &&
+      g.map?.tiles?.[Math.floor(o.y) * width + Math.floor(o.x)]?.kind === "voidScar") return false;
+  return !g.renderObjectPredicate||g.renderObjectPredicate(o);
+}
 const PAL = {
   ash: ["#3b3834", "#5a5049"],
   glass: ["#345052", "#52716d"],
@@ -117,15 +126,83 @@ function h(x, y) {
 }
 const TRAVELER_LOOKS = new Set(["pilgrim", "peddler", "mercenary", "minstrel", "scholar", "traveler", "cartographer"]);
 // Trails (release 115): a worn dirt track drawn over whatever ground the tile already shows.
-function tile(ctx, t, x, y, s, map, w, activeBuildingId=null) {
-  tileBase(ctx, t, x, y, s, map, w, activeBuildingId);
+function tile(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=null) {
+  tileBase(ctx, t, x, y, s, map, w, activeBuildingId, scarSurface);
   if (t?.trail) {
     const d = Number.isFinite(t.detail) ? t.detail : h(x, y), px = x * s, py = y * s;
     ctx.fillStyle = "#8a744f55"; ctx.fillRect(px + s * .12, py + s * .12, s * .76, s * .76);
     ctx.fillStyle = "#c2a87a33"; ctx.fillRect(px + s * (.2 + (d % 3) * .12), py + s * (.3 + (d % 2) * .25), s * .14, s * .1);
   }
 }
-function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null) {
+// Exact Supernova disks are static material on the cast-center ground plane. A single constant
+// visual lift preserves a true circle across uneven physical tiles and survives later revisits.
+const voidScarSurfaceCache = new WeakMap();
+function voidScarSurface(map, area) {
+  const source = map._voidScarCircles, legacySource = map._voidScarLegacyCells;
+  const circles = (Array.isArray(source) ? source : []).filter(c=>Number.isFinite(c.x)&&Number.isFinite(c.y)&&Number.isFinite(c.radius)&&c.radius>0);
+  const legacy = Array.isArray(legacySource) ? legacySource : [];
+  // Only the active overworld section is scanned. Water never acquires scar material, even where
+  // a saved exact circle overlaps a coast; include the mask in cache identity for in-place changes.
+  const marine = area === 'overworld' && circles.length ? (map.tiles || []).flatMap((tile, i) => isMarineTile(tile) ? [i] : []) : [];
+  const signature = circles.map(c=>`${c.x},${c.y},${c.radius},${Number(c.visualLift)||0}`).join(';')+'|'+legacy.join(';')+'|water:'+marine.join(',');
+  const prior = voidScarSurfaceCache.get(map);
+  if(prior&&prior.source===source&&prior.legacySource===legacySource&&prior.signature===signature)return prior;
+  const shapes=circles.map(circle=>{
+    const {x,radius:r}=circle,y=circle.y-(Number(circle.visualLift)||0),seed=h(Math.round(x*1000),Math.round(circle.y*1000)),cracks=[];
+    // Five fine rents across an entire disk, not a busy crack network in every tile.
+    for(let i=0;i<5;i++){
+      const a=(seed%628)/100+i*Math.PI*2/5,dx=Math.cos(a),dy=Math.sin(a),bend=((seed>>>(i*3))&7)/7-.5;
+      const point=(rad,side)=>[x+r*(dx*rad-dy*side),y+r*(dy*rad+dx*side)];
+      const path=[point(.94,0),point(.76,bend*.09),point(.61,-bend*.1),point(.4+(i%3)*.055,bend*.035)];
+      cracks.push(path);
+      if(i===1||i===4)cracks.push([path[2],point(.56,bend*.1+.07),point(.5,bend*.1+.12)]);
+    }
+    return {...circle,y,cracks};
+  });
+  const surface={source,legacySource,signature,shapes,marine,legacy:new Set(legacy),legacyAll:!Array.isArray(source)&&!Array.isArray(legacySource)};
+  voidScarSurfaceCache.set(map,surface);return surface;
+}
+function drawVoidScarTile(ctx,t,x,y,s,map,w,activeBuildingId,surface){
+  // Collision uses whole cells. Corners outside the exact disk remain ordinary harmless floor,
+  // never a surviving wall or a white stair-step around the circular visual boundary.
+  tileBase(ctx,{kind:'floor',blocked:false,detail:t.detail},x,y,s,map,w,activeBuildingId);
+  if(surface&&!surface.legacyAll&&!surface.legacy.has(`${x},${y}`))return;
+  // Old cell-only saves have no recoverable center. Preserve only those historical footprints.
+  const px=x*s,py=y*s;ctx.fillStyle='#fffefd';ctx.fillRect(px,py,s,s);
+  if(h(x,y)%5!==0)return;
+  ctx.strokeStyle='#ba3e4d';ctx.lineWidth=Math.max(.65,s*.02);ctx.beginPath();
+  ctx.moveTo(px+s*.18,py+s*.34);ctx.lineTo(px+s*.42,py+s*.48);ctx.lineTo(px+s*.7,py+s*.4);ctx.stroke();
+}
+function drawVoidScarSurface(ctx,g,s,mw,mh,surface){
+  if(!surface.shapes.length)return;
+  ctx.save();ctx.beginPath();
+  if(g.area==='dungeon'&&g.map.dungeonContract?.discoveryEnabled&&g.map._dungeonRevealMode!=='full'){
+    // Clip by ordinary discovery only, never reveal because a blast crossed into a chunk.
+    for(let y=0;y<mh;y+=DUNGEON_CHUNK_SIZE)for(let x=0;x<mw;x+=DUNGEON_CHUNK_SIZE)
+      if(dungeonTileVisibility(g.map,x,y)!=='unseen')ctx.rect(x*s,y*s,Math.min(DUNGEON_CHUNK_SIZE,mw-x)*s,Math.min(DUNGEON_CHUNK_SIZE,mh-y)*s);
+  }else ctx.rect(0,0,mw*s,mh*s);
+  ctx.clip();
+  if(surface.marine.length){
+    // Nonoverlapping row runs subtract ocean from the continuous disk, not from terrain/fog.
+    // The outer blast contour stays smooth; shoreline clipping follows the existing tile geometry.
+    ctx.beginPath();ctx.rect(0,0,mw*s,mh*s);
+    for(let i=0;i<surface.marine.length;i++){
+      const start=surface.marine[i],row=Math.floor(start/mw);let end=start;
+      while(i+1<surface.marine.length&&surface.marine[i+1]===end+1&&Math.floor((end+1)/mw)===row)end=surface.marine[++i];
+      ctx.rect((start%mw)*s,row*s,(end-start+1)*s,s);
+    }
+    ctx.clip('evenodd');
+  }
+  ctx.fillStyle='#fffefd';
+  // Opaque raster fills form the exact circle union without a superlinear overlapping vector clip.
+  // Every fracture segment lies inside its own convex disk, so no additional union clip is needed.
+  for(const c of surface.shapes){ctx.beginPath();ctx.arc(c.x*s,c.y*s,c.radius*s,0,Math.PI*2);ctx.fill()}
+  ctx.strokeStyle='#ba3e4d';ctx.lineWidth=Math.max(.65,s*.02);ctx.lineCap='butt';ctx.lineJoin='miter';ctx.beginPath();
+  for(const c of surface.shapes)for(const crack of c.cracks){ctx.moveTo(crack[0][0]*s,crack[0][1]*s);for(let i=1;i<crack.length;i++)ctx.lineTo(crack[i][0]*s,crack[i][1]*s)}
+  ctx.stroke();ctx.restore();
+}
+function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=null) {
+  if (t?.kind === "voidScar") { drawVoidScarTile(ctx,t,x,y,s,map,w,activeBuildingId,scarSurface); return; }
   if (t?.landscape && drawLandscapeTile(ctx, t, x, y, s, map, w)) return;
   const p = PAL[t.kind] || PAL.ash,
     d = Number.isFinite(t.detail) ? t.detail : h(x, y),
@@ -708,14 +785,14 @@ function architecturalBuilding(ctx,o,s,p,map){
 // The image is rebuilt when the map, tile size, scale or occupied building changes, or when any tile is replaced or
 // changes kind, blocking or elevation. Without an offscreen canvas (tests, old browsers) the per-tile path is used.
 const GROUND_MAX_PIXELS = 8.4e6; // ~32 MB; larger sections are cached at a reduced scale
-const ground = { canvas: null, map: null, s: 0, scale: 0, building: null, top: 0, reveal: null, revealSize: 0, revealIds: null, refs: [], kinds: [], blocked: [], elev: [] };
+const ground = { canvas: null, map: null, s: 0, scale: 0, building: null, top: 0, reveal: null, revealSize: 0, revealIds: null, refs: [], kinds: [], blocked: [], elev: [], scarSurface: null };
 function makeGroundCanvas() { if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(1, 1); if (typeof document !== "undefined") return document.createElement("canvas"); return null; }
-function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, view) {
+function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, view, scarSurface) {
   const T = g.map?.tiles, m = typeof ctx.getTransform === "function" ? ctx.getTransform() : null;
   if (!T || T.length !== mw * mh || !m || typeof ctx.drawImage !== "function") return false;
   // Dungeons (release 159) also cache their fog: the image changes whenever discovery installs a new revealed set.
   const dungeon = g.area === "dungeon", reveal = dungeon ? (g.map._dungeonRevealMode === "full" ? "full" : g.map._dungeonRevealed || null) : null, revealSize = reveal && reveal !== "full" ? reveal.size : 0;
-  let dirty = !ground.canvas || ground.map !== g.map || ground.s !== s || ground.building !== activeBuildingId || ground.refs.length !== T.length;
+  let dirty = !ground.canvas || ground.map !== g.map || ground.s !== s || ground.building !== activeBuildingId || ground.refs.length !== T.length || ground.scarSurface !== scarSurface;
   if (!dirty) for (let i = 0; i < T.length; i++) { const q = T[i]; if (q !== ground.refs[i] || q.kind !== ground.kinds[i] || q.blocked !== ground.blocked[i] || q.elev !== ground.elev[i]) { dirty = true; break; } }
   let top = 0; if (dirty) for (const q of T) top = Math.max(top, landscapeTileLift(q, s));
   const want = Math.hypot(m.a, m.b) || 1, fit = Math.sqrt(GROUND_MAX_PIXELS / (mw * s * (mh * s + (dirty ? top : ground.top)))), scale = Math.min(want, fit);
@@ -742,7 +819,7 @@ function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, view) {
         // rebuild exactly.
         const cx0 = Math.max(0, x0 - 1) * s, cx1 = Math.min(mw, x1 + 1) * s, cy0 = Math.max(0, y0 - 1) * s - ground.top, cy1 = Math.min(mh, y1 + 1) * s;
         gc.save(); gc.beginPath(); gc.rect(cx0, cy0, cx1 - cx0, cy1 - cy0); gc.clip(); gc.clearRect(cx0, cy0, cx1 - cx0, cy1 - cy0);
-        for (let y = Math.max(0, y0 - 1 - reach); y < Math.min(mh, y1 + 1 + reach); y++) for (let x = Math.max(0, x0 - 3); x < Math.min(mw, x1 + 3); x++) { if (!seen(x, y)) fogTile(gc, x, y, s); else tile(gc, T[y * mw + x], x, y, s, T, mw, activeBuildingId); }
+        for (let y = Math.max(0, y0 - 1 - reach); y < Math.min(mh, y1 + 1 + reach); y++) for (let x = Math.max(0, x0 - 3); x < Math.min(mw, x1 + 3); x++) { if (!seen(x, y)) fogTile(gc, x, y, s); else tile(gc, T[y * mw + x], x, y, s, T, mw, activeBuildingId, scarSurface); }
         gc.restore();
       }
     } finally { setLandscapeStaticPass(false); }
@@ -759,15 +836,47 @@ function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, view) {
     gc.setTransform(1, 0, 0, 1, 0, 0); gc.clearRect(0, 0, cw, ch);
     gc.setTransform(scale, 0, 0, scale, 0, top * scale); gc.imageSmoothingEnabled = false;
     setLandscapeStaticPass(true);
-    try { for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) { if (!seen(x, y)) fogTile(gc, x, y, s); else tile(gc, T[y * mw + x], x, y, s, T, mw, activeBuildingId); } }
+    try { for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) { if (!seen(x, y)) fogTile(gc, x, y, s); else tile(gc, T[y * mw + x], x, y, s, T, mw, activeBuildingId, scarSurface); } }
     finally { setLandscapeStaticPass(false); }
-    Object.assign(ground, { map: g.map, s, scale, building: activeBuildingId, top, reveal, revealSize, revealIds: reveal && reveal !== "full" ? new Set(reveal) : null, refs: T.slice(), kinds: T.map((q) => q.kind), blocked: T.map((q) => q.blocked), elev: T.map((q) => q.elev) });
+    Object.assign(ground, { map: g.map, s, scale, building: activeBuildingId, scarSurface, top, reveal, revealSize, revealIds: reveal && reveal !== "full" ? new Set(reveal) : null, refs: T.slice(), kinds: T.map((q) => q.kind), blocked: T.map((q) => q.blocked), elev: T.map((q) => q.elev) });
     renderCacheStats.groundBuilds = (renderCacheStats.groundBuilds || 0) + 1;
   }
   // Copy only the part on screen (view: visible tile bounds), rather than handing the browser the whole image to clip.
   const k = ground.scale, sx = Math.max(0, view.l * s), sy = Math.max(0, view.t * s), ex = Math.min(mw * s, view.r * s), ey = Math.min(mh * s + ground.top, view.b * s + ground.top);
   if (ex > sx && ey > sy) ctx.drawImage(ground.canvas, sx * k, sy * k, (ex - sx) * k, (ey - sy) * k, sx, sy - ground.top, ex - sx, ey - sy);
   return true;
+}
+// Permanent scars are one derived transparent raster layer, composited after animated terrain.
+// Retained circle history never adds per-frame clip operations; geometry work happens only on a cache miss.
+const scarOverlay = { canvas:null, map:null, surface:null, s:0, scale:0, want:0, width:0, height:0, reveal:null, revealSize:0, area:null, x0:0, y0:0, x1:0, y1:0 };
+function drawVoidScarOverlay(ctx,g,s,mw,mh,view,surface){
+  if(!surface.shapes.length)return;
+  const m=typeof ctx.getTransform==='function'?ctx.getTransform():null;
+  if(!m||typeof ctx.drawImage!=='function'){drawVoidScarSurface(ctx,g,s,mw,mh,surface);return}
+  const want=Math.hypot(m.a,m.b)||1;
+  const reveal=g.area==='dungeon'&&g.map.dungeonContract?.discoveryEnabled?(g.map._dungeonRevealMode==='full'?'full':g.map._dungeonRevealed||null):'full',revealSize=reveal&&reveal!=='full'?reveal.size:0;
+  const covered=view.l*s>=scarOverlay.x0&&view.t*s>=scarOverlay.y0&&view.r*s<=scarOverlay.x1&&view.b*s<=scarOverlay.y1;
+  if(!scarOverlay.canvas||scarOverlay.map!==g.map||scarOverlay.surface!==surface||scarOverlay.s!==s||scarOverlay.want!==want||scarOverlay.width!==mw||scarOverlay.height!==mh||scarOverlay.reveal!==reveal||scarOverlay.revealSize!==revealSize||scarOverlay.area!==g.area||!covered){
+    const canvas=scarOverlay.canvas||(scarOverlay.canvas=makeGroundCanvas());
+    if(!canvas){drawVoidScarSurface(ctx,g,s,mw,mh,surface);return}
+    // Large dungeons keep a padded, chunk-aligned viewport raster at native pixel scale instead of
+    // downsampling the whole map or falling back to historical-circle work every frame.
+    const full=mw*s*mh*s*want*want<=GROUND_MAX_PIXELS,chunk=8;
+    const x0=full?0:Math.max(0,Math.floor(view.l/chunk)*chunk)*s,y0=full?0:Math.max(0,Math.floor(view.t/chunk)*chunk)*s;
+    const x1=full?mw*s:Math.min(mw,Math.ceil(view.r/chunk)*chunk)*s,y1=full?mh*s:Math.min(mh,Math.ceil(view.b/chunk)*chunk)*s;
+    const scale=Math.min(want,Math.sqrt(GROUND_MAX_PIXELS/((x1-x0)*(y1-y0))));
+    const cw=Math.max(1,Math.floor((x1-x0)*scale)),ch=Math.max(1,Math.floor((y1-y0)*scale));
+    if(canvas.width!==cw||canvas.height!==ch){canvas.width=cw;canvas.height=ch}
+    const gc=canvas.getContext('2d');
+    if(!gc){scarOverlay.canvas=null;drawVoidScarSurface(ctx,g,s,mw,mh,surface);return}
+    gc.setTransform(1,0,0,1,0,0);gc.clearRect(0,0,cw,ch);gc.setTransform(scale,0,0,scale,-x0*scale,-y0*scale);
+    drawVoidScarSurface(gc,g,s,mw,mh,surface);
+    Object.assign(scarOverlay,{map:g.map,surface,s,scale,want,width:mw,height:mh,reveal,revealSize,area:g.area,x0,y0,x1,y1});
+    renderCacheStats.scarBuilds=(renderCacheStats.scarBuilds||0)+1;
+    renderCacheStats.scarPixels=cw*ch;renderCacheStats.scarScale=scale;
+  }
+  const sx=Math.max(scarOverlay.x0,view.l*s),sy=Math.max(scarOverlay.y0,view.t*s),ex=Math.min(scarOverlay.x1,view.r*s),ey=Math.min(scarOverlay.y1,view.b*s),k=scarOverlay.scale;
+  if(ex>sx&&ey>sy){ctx.drawImage(scarOverlay.canvas,(sx-scarOverlay.x0)*k,(sy-scarOverlay.y0)*k,(ex-sx)*k,(ey-sy)*k,sx,sy,ex-sx,ey-sy);renderCacheStats.scarBlits=(renderCacheStats.scarBlits||0)+1}
 }
 // The warm tint and vignette over the whole screen (release 167: painted once into a screen-sized image and copied each
 // frame; filling the radial gradient anew every frame was the costliest single draw when Firefox renders on the CPU).
@@ -812,22 +921,23 @@ export function render(ctx, g, w, h, now) {
         0.42
       : 0,
     dodging = now < (p.dodgeUntil || 0);
-  const objectLists=mapObjectLists(g.map);
+  const objectLists=mapObjectLists(g.map), scarSurface=voidScarSurface(g.map,g.area);
   renderCacheStats.visibleTiles=(r-l)*(b-t);
   renderCacheStats.visibleObjects=0;
   const activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y),activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
   setLandscapeClock(now);
   const groundLift = (x, y) => (g.map?.landscape ? liftAt(g.map, mw, x, y) : 0);
   const crystalLift = e => crystalFlightLift(g.map, mw, e.x, e.y);
+  const marineAt = e => g.area === "overworld" && isMarineTile(tileUnder(g.map, mw, e.x, e.y));
   ctx.save();
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - groundLift(p.x, p.y)) * s));
-  const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b });
+  const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
   if (groundCached) {
     const animated = render.animatedTiles || (render.animatedTiles = []); animated.length = 0;
     for (let y = t; y < b; y++) for (let x = l; x < r; x++) {
       const q = g.map.tiles[y * mw + x];
       // In a dungeon, a lethal tile right beside the Wayfarer shows through the fog (as the per-tile path always did).
-      if (g.area === "dungeon" && LETHAL_KINDS.has(q?.kind) && Math.hypot(x - p.x, y - p.y) < 2.6 && dungeonTileVisibility(g.map, x, y) === "unseen") tile(ctx, q, x, y, s, g.map.tiles, mw, activeBuildingId);
+      if (g.area === "dungeon" && LETHAL_KINDS.has(q?.kind) && Math.hypot(x - p.x, y - p.y) < 2.6 && dungeonTileVisibility(g.map, x, y) === "unseen") tile(ctx, q, x, y, s, g.map.tiles, mw, activeBuildingId, scarSurface);
       else if (landscapeTileAnimated(q) && (g.area !== "dungeon" || dungeonTileVisibility(g.map, x, y) !== "unseen")) animated.push(q, x, y);
     }
     animateLandscapeTiles(ctx, animated, s); // release 185: one stroke per water kind, not one per tile
@@ -835,16 +945,18 @@ export function render(ctx, g, w, h, now) {
   else for (let y = t; y < b; y++)
     for (let x = l; x < r; x++) {
       if(g.area==="dungeon"&&dungeonTileVisibility(g.map,x,y)==="unseen"&&!(LETHAL_KINDS.has(g.map.tiles[y*mw+x]?.kind)&&Math.hypot(x-p.x,y-p.y)<2.6)){fogTile(ctx,x,y,s);continue}
-      tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId);
+      tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId, scarSurface);
     }
+  drawVoidScarOverlay(ctx,g,s,mw,mh,{l,t,r,b},scarSurface);
   const t1 = timed ? performance.now() : 0;
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
   if(g.area==="overworld"&&g.seaHazards)drawSeaHazards(ctx,g.seaHazards,s,now,l,t,r,b,g.map);
   const seenTile=(x,y)=>g.area!=="dungeon"||dungeonTileVisibility(g.map,x,y)!=="unseen";
   drawHazardBrinks(ctx,g.map,mw,l,t,r,b,s,seenTile); // per frame: brinks sit over animated water, as before
   drawTraversalCues(ctx,g.map,mw,p,s,now,g.ledgeHint,seenTile);
-  drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,3),(f)=>groundLift(f.x,f.y));
-  drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift });
+  // Active combat effects, including Supernova, intentionally paint over fog. They never reveal tiles or actors.
+  drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),g.presentation);
+  drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) });
   for(const e of g.enemies)if(!e.dead&&discoveredInDungeon(g,e)&&e.eliteWindup>0&&visibleInCamera(e,l,t,r,b,e.kind==='gravitantBell'?6:3)){ctx.strokeStyle=e.kind==='gravitantBell'?"#8bb8bdcc":"#c6885ccc";ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
   for (const e of g.enemies)
     if (!e.dead && discoveredInDungeon(g,e) && e.telegraph > 0 && visibleInCamera(e,l,t,r,b,e.threatRange||2)) {
@@ -994,11 +1106,11 @@ export function render(ctx, g, w, h, now) {
   for (const e of g.enemies)
     if (!e.dead && discoveredInDungeon(g,e) && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" ? 5 : 2))
       draws.push({
-        y: e.y, x: e.x,
+        y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
         fn: () => {
           if (e.seaKind) { drawSeaCreature(ctx, e, s, now, SEA_CREATURES[e.seaKind].colors, g); return; }
           const f = e.ai?.facing || "down",
-            q = e.recoil > 0 ? 0.12 : 0,
+            q = e.recoil > 0 && !["astralWorm","astralMirage"].includes(e.kind) ? 0.12 : 0,
             ox = f === "left" ? q : f === "right" ? -q : 0,
             oy = f === "up" ? q : f === "down" ? -q : 0;
           if (e.hitFlash > 0 && e.kind !== "psychicCrystal") {
@@ -1009,7 +1121,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillRect((e.x + .5 - .4*flashScale) * s, (e.y + .45 - .42*flashScale) * s, s * .8*flashScale, s * .75*flashScale);
             ctx.restore();
           }
-          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
+          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage"].includes(e.kind) ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
           actor(
             ctx,
             e.x + ox,
@@ -1152,12 +1264,28 @@ export function render(ctx, g, w, h, now) {
     }
   drawEchoPatches(ctx,g,s,now);
   drawGlyphStatus(ctx,g,s,now,(e)=>discoveredInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2));
-  for(const o of objectLists.structures)if(renderableObject(g,o)&&visibleInCamera(o,l,t,r,b)){if(o.kind==="shack")shack(ctx,o,s,p,g.map.tiles);else architecturalBuilding(ctx,o,s,p,g.map.tiles)}
-  const frontShelter=objectLists.shelters.find(o=>renderableObject(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
+  for(const o of objectLists.structures)if(renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)){const drawStructure=o.kind==="shack"?shack:architecturalBuilding;
+    // Object records outlive consumed building tiles. Clip roofs/facades to their surviving footprint
+    // so they cannot visually restore destroyed walls or expose unexplored building geometry.
+    const bounds = o.bounds || { x:o.x-2, y:o.y-2, w:5, h:4 };
+    const cells = o.footprint?.length ? o.footprint : Array.from({length:Math.max(0,bounds.w*bounds.h)},(_,i)=>({x:bounds.x+i%bounds.w,y:bounds.y+Math.floor(i/bounds.w)}));
+    let surviving = 0;
+    for(const c of cells)if(g.map.tiles[c.y*mw+c.x]?.kind!=="voidScar"&&discoveredInDungeon(g,c))surviving++;
+    if(!surviving)continue;
+    ctx.save();
+    if(surviving!==cells.length){
+      ctx.beginPath();
+      for(const c of cells)if(g.map.tiles[c.y*mw+c.x]?.kind!=="voidScar"&&discoveredInDungeon(g,c))ctx.rect(c.x*s,c.y*s,s,s);
+      ctx.clip();
+    }
+    drawStructure(ctx,o,s,p,g.map.tiles);
+    ctx.restore();
+  }
+  const frontShelter=objectLists.shelters.find(o=>renderableObject(g,o)&&discoveredInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
   if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1);
   const motion = now / 1000;
   for (const o of objectLists.animated)
-    if (renderableObject(g,o)&&visibleInCamera(o,l,t,r,b)) {
+    if (renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)) {
       const cx = (o.x + 0.5) * s,
         cy = (o.y + 0.35) * s,
         spin = motion * 0.55 + ((o.x * 13 + o.y * 7) % 11);
@@ -1259,7 +1387,7 @@ function drawEchoPatches(ctx,g,s,now){
   for(const q of g.echoPatches||[]){const left=Math.max(0,(q.until-now)/1000),x=q.x*s,y=q.y*s,r=q.radius*s;
     if(q.kind==="web"){ctx.strokeStyle=`rgba(230,235,240,${Math.min(.7,left)})`;ctx.lineWidth=1;ctx.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.6)}ctx.stroke();for(const f of[.4,.75,1]){ctx.beginPath();ctx.ellipse(x,y,r*f,r*f*.6,0,0,7);ctx.stroke()}}
     else if(q.kind==="flesh"){ctx.fillStyle=`rgba(150,40,60,${Math.min(.45,left*.2)})`;ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.fill();ctx.fillStyle=`rgba(220,120,130,${Math.min(.5,left*.2)})`;for(let k=0;k<5;k++){ctx.beginPath();ctx.arc(x+Math.cos(k*1.3+now/700)*r*.6,y+Math.sin(k*1.7)*r*.35,s*.06,0,7);ctx.fill()}}
-    else if(q.kind==="mortar"){const t=1-Math.min(1,left/.65);ctx.strokeStyle=`rgba(255,200,90,${.4+t*.5})`;ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.stroke();ctx.fillStyle=`rgba(255,170,60,${t*.3})`;ctx.fill()}}
+    else if(q.kind==="mortar"){const t=1-Math.min(1,left/.65);ctx.strokeStyle=q.voidEcho?`rgba(206,150,255,${.4+t*.5})`:`rgba(255,200,90,${.4+t*.5})`;ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.stroke();ctx.fillStyle=q.voidEcho?`rgba(151,82,224,${t*.3})`:`rgba(255,170,60,${t*.3})`;ctx.fill()}}
 }
 
 const SEA_SURFACE = new Set(["ocean", "deepOcean", "shallows"]);

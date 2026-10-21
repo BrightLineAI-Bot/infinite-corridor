@@ -26,6 +26,18 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## Void Walker, permanent scars and Blob regeneration (release 251)
+
+**CODE:** `src/world-beasts.ts`, `src/monster-pack.ts`, `src/monster-render.ts` and `src/game.ts` add the player-scale Void Walker hunter with ten bounded attack modules, dungeon patrol, combat rifts and nearest-reachable-door retreat. Retreat walks/jumps normal terrain to a physical `exit` or `deepTransition` doorway, disappearing only after arrival; no-route states wait/retry and persist across unloaded scenes. Search work is capped at 625 expansions per frame, and sanctuary handling cannot relocate/freeze a harmless retiring Walker. See [owner requirements/source](void-walker-design.md) and [implementation/review evidence](void-walker-implementation.md).
+
+**CODE:** Supernova permanently overlays intersected in-bounds nonmarine terrain cells, including progression walls, in the current loaded dungeon or overworld section; the later ocean exception is described below. Additive schema-14 `voidScars` records retain exact circle center/radius/projection and safe floor heights. Physical destruction does not complete quests or change discovery. `src/renderer.ts` draws cached smooth white/red circular material; active Nova is visible through fog while hidden terrain/entities and undiscovered aftermath remain concealed. `src/landscape.ts` and `src/landscape-render.ts` agree on safe scar-edge movement and danger cues.
+
+**CODE:** `BLOB.growHeal` in `src/monster-pack.ts` links only current-HP recovery to newly elapsed natural growth, restoring at most 50% of fixed maximum HP over 120 active seconds. Maximum HP, stepped geometry and existing 3% bloblet-merge healing are unchanged. Saved age prevents catch-up healing; full-health excess is discarded. Details and exact owner correction: [Blob growth health](blob-growth-health.md).
+
+**CODE:** Owner source S8 extends Walker/Crystal encounters to `ocean` and `deepOcean`. Shared marine classification drives legal footprints, actor-specific attack callbacks, a derived small Walker skiff and Crystal water debris with the original volley timing/damage. Water is excluded from both terrain mutation/replay and cached permanent-circle artwork; mixed coastal land retains the existing rule. Other monsters keep their original ground callbacks and the player's boat ownership/hull are not repurposed. An existing pause-position repair now respects an aboard player at a valid sailable position, matching load-time resume. Hostile pull/push sweeps an occupied skiff using its full sailable footprint and iceberg collision rather than stranding it partly ashore; on-foot forces and deliberate player-directed landings retain their existing rules. The conservative sea-retreat interpretation retains physical-door completion: legal sailing/shore traversal, exact cross-section entry and wounded vitals, no arbitrary edge escape or fallback teleport, and safe wait/retry when no route exists.
+
+**BOUNDARY:** No new generator version or save schema is introduced; base generation remains pinned. Scars clip to the loaded section, not adjacent unloaded maps. Tile-based collision consumes intersected boundary cells; only the white/red material has an exact continuous contour. It uses the saved cast-center projection plane across uneven physical heights. Permanent history is not evicted, but storage and current-section geometry can grow. Cached raster layers stay within the pixel budget and very large viewports may downsample. Combat/model art and numerical balance are implementation proposals; native tests/previews do not certify human combat fairness or mobile performance. Unloaded retreat pauses rather than simulating another floor. A proposed bounded Rift Upheaval Echo was added separately from the dictated attacks. Publishing still requires the independent live-range review and the owner's authorization under `AGENTS.md`.
+
 ## Crystal pause and mirror-wall review fixes (release 249 continuation)
 
 **CODE:** `Game.setPaused` shifts `player.heldUntil` with the other combat deadlines, preserving the remaining grip across a pause. `reflectShotStep` sweeps each projectile substep against the oriented mirror-wall rectangle, selects its earliest contact, reflects the shot and spends only the remaining substep distance in the reflected direction. `updateProjectiles` runs this before actor collision; `Game.update` supplies active pack effects instead of doing a single pre-frame point check.
@@ -2179,3 +2191,55 @@ The following original protocol is retained as historical evidence only. The lin
 - Keep section 19 private. Do not move its content into player-facing surfaces.
 - When a claim in this guide is found wrong, correct it in place and note the correction rather than deleting the trail.
 - Record the reading ledger honestly. An unread span listed as unread is more useful than a confident claim over unread code.
+
+## Astral Worm follow-on integration (unreleased)
+
+**CODE:** Six `astral-*` modules provide bounded deterministic combat and owner-approved black-ink forms, natural main/paired encounters, independent-health Walker riding and physical nearest-Wayglass retreat. The main Worm is publicly catalogued with no new Echo and normal beast bounty; mirages/helpers are rewardless. The narrow pairing does not alter other beasts' single-occupancy rule. Shared Gate level8 floor, Questing dominance and three-attempt/full-health resets are retained. The reviewed corrected r251/Gate histories were merged, not replaced. Exact sources, provisional tuning, budgets and validation boundaries are in `docs/astral-worm-prototype.md`.
+
+**BOUNDARY:** This is local follow-on source, not a release. Release packaging, final exact-source tests and independent review still apply. No merged HP, Worm boat, magical retreat fallback, unrelated generator changes, remote write or publication is enabled by these edits. Native captures do not certify browser/mobile gameplay or balance. The r251 aboard-only swept sailable-footprint force fix is preserved. The ocean regression's unrelated-beast loop now explicitly excludes owner-authorized Astral; every prior unrelated creature assertion remains.
+
+## Unreleased follow-on: Gate Revenant pressure kit
+
+**CODE:** The roaming gatePredator now has a separate bounded controller, actual3.6-unit chase against player base2.4, finite rapid fireball/lob/barrage attacks, sustained wall-clipped mouth-fire, and exactly reused Void Walker passing wraiths. Its final health/damage are increased with320HP/40damage floors and an approximate two-thirds player-scaled Walker reference; the floors take precedence where the ratio would nerf the old predator. New first-pinned layouts provisionally double rarity from12 to24 per1000; existing pins keep their old threshold. Ordinary terrain, exit/cross-section pursuit and shelter escape remain. See [exact owner dictation](gate-revenant-source-transcript.md), [audit/design](gate-revenant-design.md) and [implementation/validation](gate-revenant-implementation.md).
+
+**BOUNDARY:** This is an isolated future prototype, not part of r251 clearance or a live release. §9.3 describes intermediate historical stats: legacy predator22 becomes36 after dungeon/global scaling, and deep final boss26 becomes43. Its claimed arena/hunt/elite exclusions are broader than the actual predator condition; this prototype preserves the condition rather than silently widening or narrowing eligibility. Deep final bosses are not upgraded. New protected regression files, final r251 integration, release assignment and publication remain pending.
+
+## Unreleased follow-on: major-beast baseline and rematches
+
+**CODE:** World beasts now use an attainable level8 reference even for new characters; stronger existing tuning remains. Questing receives at least1.15× the strongest same-reference beast HP/damage, retaining its fastest existing cadence. Additional delivered-damage floor60 is provisional balance, not an owner number. Crystal/Walker dungeon level eligibility is1, with other environment/depth restrictions unchanged. Player death resets participating surviving major beasts to fullHP and spends all relevant attempts; third failure clears them without reward. Gate instead disappears after player death with no rematch counter. Source-area snapshots are captured before switching checkpoint coordinates. See [source](beast-level-eight-source-transcript.md) and [design/validation](beast-level-eight-design.md).
+
+**BOUNDARY:** Ordinary enemies are not globally buffed. Normal leave/reload retains wounds; no attempt count resets. Co-encounter spawn rules remain separate. This is a follow-on prototype, not live or included in current r251 review; protected regression updates and fresh shared-lifecycle review remain pending.
+
+### Astral mouth beam and ink recall follow-on
+
+**CODE:** Shared `astralBeamAnchors` ties the mouth-origin flight beam and ground AoE to actor scale/cast-facing; native projection includes terrain-height differences. `inkWorm`, `inkPool`, and `inkTrample` preserve their silhouette while three JSON-only blobs telegraph, fly, briefly spread and recall. The current riding-only saddle is compact, dark and subtly violet.
+
+**BOUNDARY:** Only temporary ground splats damage; no added healing, actors, persistent terrain, rewards or player boat. Three descriptors and normal hit cadence stay bounded. New owner-approved regressions preserve prior coverage; final exact-source review/full suite and follow-on release packaging remain separate gates.
+
+## Combined release 251 packaging audit — 2026-10-21
+
+**CODE:** The previously isolated Walker/ocean/Blob, Gate/shared lifecycle and Astral histories now form one combined release 251 candidate. Earlier follow-on boundaries above are historical checkpoint descriptions, not exclusions from this candidate. Gameplay remains identical to reviewed commit `1054a167`; packaging consolidates duplicate Proving Ground worker declarations into one complete precache and adds syntax checks to the existing release-coherence regression. Both source and emitted workers are checked, including all six Astral modules.
+
+**BOUNDARY:** Retaining the allocated 251 is deliberate because it has not been merged or published. Local tests, build and simulated precache installation are not browser/offline certification or publication evidence. Upload, CI, merged preview, fresh full-range publication review and final live verification remain separate coordinator-owned gates; workflow files are unchanged.
+
+## Release 251 review fixes, Griffin forelegs and leather saddle — 2026-10-21
+
+Claude reviewed all 17 Codex commits from live r249 to the combined r251 candidate. Tim then asked for higher-quality Griffin front paws, a bigger traditional leather saddle that is easy to see, and a reconcile of his Void Walker descriptions across Codex and Claude, adding anything left out and removing nothing.
+
+**CODE:**
+- **Gate poise.** `GATE_REVENANT.poise` (0.6 s) and `GATE_REVENANT.unstoppable` (2.4 s) cap the hit-stun lock in `updateGatePredator`. `tuneGatePredator` tolerates a non-finite `hp` or `maxHp`.
+- **Walker exits.** `Game.walkerExitTargets` returns every ground-open tile on a non-marine overworld exit edge, the clamped gate first.
+- **Supernova spill.** `Game.spillVoidTerrain` previews each overlapping neighbour with `walkerCrossingMap`. It records that neighbour's scar through `consumeVoidTerrain(..., { spill: true })`, under the neighbour's own `overworld:rx:ry:gN` key. Scar circles may now keep a centre outside their section, as long as the disk still overlaps it. This is additive at schema 14.
+- **Griffin forelegs.** `drawAstralWorm`'s griffin uses a `foreleg` helper: feathered upper leg, scaled tapering tarsus, three ground-gripping toes and a hallux, with crescent claws.
+- **Saddle.** `drawAstralSaddle` draws tan leather from the `ASTRAL_SADDLE` table: an oxblood pad, cantle and pommel, a stitched fender, and a stirrup leather with a steel iron, at a width of 0.64–0.74 units.
+- **Griffin, second pass (Tim: rework all the legs).** A `hindleg` helper draws a lion leg: gaskin to a backward hock, a slim metatarsus, a padded paw with claw tips, and a teardrop thigh outlined only on its front and underside. The `foreleg` plumes now layer over the tarsus as a scalloped hem. The tail gets a hair tuft and the throat scallop feathers.
+- **Saddle size.** `ASTRAL_SADDLE.size` is 0.8 (Tim: a little smaller).
+- **Beam.** `drawAstralBeam` (`ASTRAL_BEAM_FX` table) is painted before the Worm, so the beam sits behind the mandibles. It adds a glow and core, two expanding impact rings, a splash and ten sparks, driven by the active clock; reduced motion shows one steady ring and no sparks. It is visual only: the combat hazard is unchanged.
+- Tests are in `tests/review-251-fixes.test.ts`. The saddle render test now looks for the new leather colour.
+
+**BOUNDARY:**
+- A walled-in retreating Walker still waits and retries, never fading or teleporting (Codex's owner-backed rule and its tests).
+- An unfollowed Walker retreat still resumes when you return, rather than escaping. Tim has not ruled on this for the Walker.
+- The Questing Beast keeps its 1.15× dominance over every beast, including the Astral Worm's native floor (Tim's "strongest" rule). It can reach about 5,500 HP at level 1.
+- The spill never simulates actors in the neighbour section and never marks it visited.
+- The reconcile found no described Walker feature missing; the section-clipped overworld scar was the one partial, and the spill completes it.

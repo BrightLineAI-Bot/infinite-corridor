@@ -1,8 +1,16 @@
 # Agent context — current state
 
-For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-10-18.
+For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-10-21.
+
+## Void Walker design handoff — recorded 2026-10-21 UTC
+
+Before implementing or reviewing the Void Walker, read [the detailed owner design and acceptance record](void-walker-design.md) and [the verbatim dictated source](void-walker-source-transcript.md). The description includes player-scale proportions, cosmic rends, transient wraiths, teleport/evasion, tracking portal constellations, pulling event horizons/pulsars, and a terrain-consuming supernova with straight teleport-dash barrages and damaging afterimages. The record separates explicit requirements from interpretations and tuning choices; its review statuses begin **NOT YET VERIFIED**. It is a design handoff, not a completion or publication claim. It supersedes earlier statements that the appearance/combat description has not yet been supplied.
 
 ## Where things stand
+
+Verified 2026-10-21 before release preparation: live and `main` are release 249, candidate `r249-4a43f3ccc5cd`, commit `4a43f3ccc5cdbc918310ea41f8e53425a1cedac3`. Release 251 is the single combined candidate for the completed Void Walker kit, ocean Walker/Crystal behavior, [current-HP-only Blob growth regeneration](blob-growth-health.md), Gate Revenant/shared major-beast lifecycle, and Astral Worm forms/ink attacks/riding/Wayglass retreat. The reviewed histories are merged through `1054a1673c94a08993fcafbcc13f58ebb54b0ef8`; that local implementation passed 1,062 tests. Final combined packaging is being audited and retested before upload/CI/preview; it is not live. The coordinator verified that 251 has never been merged, so the already allocated odd release 251 is retained rather than creating a second consecutive deployment. Read `gh-pages:release-identity.json` again before any publication; this paragraph is not a deployment claim. Latest Walker retreat clarification permits disappearing at a reached physical inter-level doorway, but not teleporting there. Later owner source S8 adds ocean Walker/Crystal encounters, a personal Walker skiff and Crystal water attacks, while forbidding ocean terrain/scar changes; sea retreat conservatively retains the existing physical-dungeon-door rule, not escape at an arbitrary water edge. Tests and independent review must cover the final exact candidate.
+
+### Historical release snapshots (retained, not current deployment state)
 
 Publishing moved to GitHub Actions on 2026-10-18 (see Tim's standing decisions). The live site was last published by the retired PC tool: release 171, candidate `icp_8b8c9160c4e74af2a537d919_cfb0bbaab605f8aa` (commit `ef56426`); read `gh-pages:release-identity.json` for the current one.
 
@@ -37,3 +45,7 @@ Release 101 is live; release 102 (Tidemantle surface swimming) is merged and in 
 - Balance (monster pack, glyphs, echoes, constellation, Leech, lethal terrain) is checked in tests and simulation only, untested on device.
 - Elevation does not yet affect attacks, projectiles or line of sight.
 - The Far Array approach (relay pylons and quiet "listening" ground in the last sections before the coordinate) is proposed but not built; runs are one dungeon level each, with extra relays adding difficulty rather than extra levels.
+
+## Combined Gate Revenant and Astral Worm candidate
+
+The Gate pressure kit and shared major-beast lifecycle are now integrated with corrected ocean/Walker history and the completed Astral Worm. Read `docs/gate-revenant-implementation.md`, `docs/astral-worm-prototype.md`, and their exact owner transcripts. Earlier isolated-prototype/publication-boundary statements in historical stage records describe those earlier checkpoints, not the scope of this combined release 251 candidate. Roaming Gate behavior still preserves deep-boss progression; Astral uses the shared strength/death/reset contract. Owner-approved regression coverage is present. Upload, exact-candidate CI/preview and the required fresh publication review remain distinct from local implementation validation.

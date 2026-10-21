@@ -1,0 +1,91 @@
+# Astral Worm follow-on implementation
+
+Status: completed local implementation included in the single combined release 251 candidate, not yet live. The original isolated checkpoint is `c33c89f` (870/870 tests); `e94f1b5` merges it with reviewed Gate/r251 baseline `4c619f768685d4e44eff3c22d8f764ce13297385`, preserving both histories. The final natural integration and latest owner changes passed 1,062/1,062 full-suite tests, module-inclusive build and exact-source independent review; see the final receipt below. The release coordinator verified that 251 has never been merged and retained that allocated odd number for the combined Walker/ocean/Blob/Gate/Astral candidate; the synchronized checklist is being audited before exact final validation. No remote writes or publication are authorized by this document.
+
+## Owner source and approved decisions
+
+The exact source is preserved in `astral-worm-source-transcript.md`, with acceptance mapping in `astral-worm-design.md`. S4–S6 approve the fourth visual pass, confirm nearest reachable Wayglass retreat, add any-form Walker riding with separate unchanged HP and simultaneous pierce/splash damage, and approve normal world-beast bounty with no new Echo, rewardless mirages/allied Walker, and corresponding formal regressions. Cross-franchise references are motion/mood only; all geometry is original native Canvas code. Astral Worm has no boat, underwater form or water-elemental attack.
+
+## Source map
+
+- `astral-worm.ts`: JSON deterministic combat core, actor adapter, bounded encounter/ownership planning helpers and registered profile.
+- `astral-worm-render.ts`: approved original black-ink forms, active-time morph dissolve and telegraphed hazards.
+- `astral-worm-mount.ts`: coupled presentation/position only, independent HP, actual player rider-damage knockoff, safe pending landing.
+- `astral-encounters.ts`: narrowly scoped deterministic natural Walker reservation, role persistence, cleanup and optional initial riding.
+- `astral-worm-retreat.ts`: bounded resumable weighted physical-graph search and journey following.
+- `astral-world-retreat.ts`: native version-pinned scene previews, physical section/door transitions, exact carry state and Wayglass arrival verification.
+- `game.ts`, `monster-pack.ts`, `monster-render.ts`, `renderer.ts`, `world-beasts.ts`: ordinary source hooks. All new emitted modules are registered in build and both service-worker precaches.
+
+## Combat and budgets
+
+The primary body moves quickly as an elongated segmented black-ink creature. Pool form emits radial spikes; trample has excess malformed limbs and hands; the grotesque mouth bites repeatedly. Dragonfly flight has organic hooked/serrated pincers, four veined membrane wings and a downward continuous beam with damaging impact radius. Mirage duplicates surround and track the player, have reduced killable HP and drain only after a grace period; only actual player HP lost heals the main actor. Fast movement/dodges or killing enough clones breaks the enclosure. Griffin form performs finite telegraphed pounces. Ring sequences support outward, inward and both orders, with warning, active band and silent gaps. Every ring, including the innermost, has a real safe central hole.
+
+Provisional tables, not owner-specified balance: movement 3.4 tiles/s; morph .35s; four clones at 12% main maxHP, seven-second lifetime, radius 2.8, tracking 1.05 tiles/s, grace 1.4s and .4s drain interval; beam radius .9, life 3.5s and .25s hit interval; three bites; griffin five seconds; four ring bands with .35 minimum inner radius, .85 width, 1.2 spacing, .6 warning/.16 active/.22 gap. Active simulation clamps dt to .25 and substeps at 1/60. The clone adapter respects a 32-actor array cap; private Walker plus ordinary effects reserve the Worm descriptor within 48 effects. Routing, preview maps and per-tick search work have explicit caps. Exhaustion waits safely rather than teleporting or claiming global reachability certainty. Automated checks do not establish mobile performance or human fairness.
+
+## Natural encounter, strength and rewards
+
+Astral Worm is a unique registered WORLD_BEAST, never an ordinary generator-pool or dungeon-guardian replacement. Its public PACK_KINDS/Proving Ground entry explicitly has noEcho; mirages remain private. Provisional ordinary encounter chance is2%, minimum section depth5, including eligible ordinary dungeons at character level1. Above-water ocean placement is permitted without giving other beasts new terrain access. Existing native Questing priority and one-beast default remain, with only the narrow paired exception below.
+
+Gate's canonical shared lifecycle owns level8 strength floor, no nerfs, Questing dominance, attempt counts, full-health rematches and third-failure departure. Astral's native boss-scaled4760HP/78damage floor is included in the profile comparison so Questing remains strongest at the same progression. No duplicate failure counter exists. A player's death clears the living main actor's Astral runtime and removes mirages before the source-area snapshot; ordinary save/reload retains wounds and full attack state. Normal beast bounty flows through the existing idempotent actor reward guard, not a new reward system. Mirages and allied helpers never pay marks, XP, Echoes, quest/hunt completion or separate attempts.
+
+## Narrow Walker pairing and riding
+
+Provisional pair rates are 2.5% hostile and .5% allied, with one reserved Walker maximum. A Walker active elsewhere, retreating or on cooldown cannot be stolen. Pair role and initial mount choice are saved once under active.astralPair; reload never rerolls or clones a second Walker. The optional initial riding share is 35% of hostile pairs. Allied helpers never ride the Worm they are fighting. The hostile Walker retains its own shared hunt/HP/attempts/bounty, and survives independently when the Worm dies. The helper's real Walker kit is privately retargeted only to its named Worm; player-closed-over forces and terrain consumption are not forwarded. Helper effects are bounded and removed on target/player/helper death or departure. Unique reservation is released on helper death, without respawn.
+
+Riding has no short expiry and does not merge health, hide either ordinary hitbox, grant immunity or deduplicate pair damage. Actual player-inflicted rider damage accumulates toward a provisional 20% rider-maxHP knockoff threshold. Ordinary attacks continue while self-movement/routes/teleports are suppressed. Piercing has a narrowly scoped same-substep mounted-counterpart exception; unrelated piercing behavior is unchanged. Splash enumerates both independently. Mirror Echo cannot coordinate-swap a mounted/pending rider.
+
+Dismount is a bounded validated descent, rejecting wall crossings, cliffs and invalid footprints. If no valid landing exists, the independently targetable actor waits in pending-landing state instead of guessing a dry tile. Natural above-water Walker dismount may use its existing r251 marine/skiff capability, never a Worm boat. Death, retreat and missing owner dismount safely; physical Worm boundary crossing waits for its rider to be safely detached. JSON state and counters survive pause/save. Render-only contact lift is .3 tiles (.18 pooled/.45 griffin), plus .8 times owner scale in flight. Rider draws after the Worm; approved form geometry is unchanged.
+
+## Wayglass retreat
+
+After shared patience expires, the Worm stops combat and searches for the nearest reachable actual checkpoint/Wayglass by physical route cost. It does not substitute shrines or use the generic biome retreat fallback. Version-pinned previews preserve saved terrain, doors, progress, tunnels and scars without loading the player's scene, discovering fog or mutating real history. The graph follows contiguous terrain and actual open physical dungeon/section transitions, not magical portal shortcuts. Search/journey/carry records live in active.astralRetreat, preserved by normalization. Destination actors restore exact carried state only in the matching scene/floor. Unloaded travel pauses. Arrival revalidates the actual Wayglass, then invokes existing retreat completion once, without rewards. Routing caps and unreachable topology wait explicitly; a changed path can be searched again.
+
+## Visual review and validation history
+
+Exactly four anatomy passes were requested, independently inspected and delivered in order, then the fourth was owner-approved. They refined insect mandibles/membrane wings and eagle/lion griffin anatomy while retaining black liquid material. No fifth anatomy pass was made. The later mounted sheet demonstrates two native actors with the same approved geometry. Still images and the eight-second morph clip are source-rendered demonstrations, not browser or gameplay certification.
+
+The original independent review caught real bugs: prototype filtering caused fallback ashling stats; allied lethal damage failed to mark dead; clone drain preceded collision validation; helper cleanup omitted retreat; and real Game reduced-motion forwarding/cache keys were incomplete. All were fixed with adversarial probes and additive regressions. Runtime definitions now retain intended stats while catalog rules stay explicit. Real Game render probes verify reducedMotion/safeMode and same-frame morph redraw. Native tests separately exercise deterministic natural spawning, save/migration, actual three-death lifecycle, reward isolation, same-progression Questing dominance, physical retreat and independent mounting. Exact final evidence and source hashes must correspond to the final reviewed tree, not the historical 870-test checkpoint.
+
+## Saddle and final integrated review corrections
+
+S7 requests a saddle while the Walker rides; the later owner refinement requests a smaller, subtler, more futuristic version. The current fitted low-profile dark angular seat uses a faint violet seam, lower-contrast outline and no dangling stirrups. It renders for mounted status only across every form, disappearing on dismount/pending landing. This is an additive riding layer, not a fifth creature-anatomy pass. Six dependency-free native draw regressions check its presence/absence, reduced-motion stability and no actor/health mutation.
+
+The integrated review found two additional real simulation-boundary bugs: damage immediately before save could restore a mirage's stale owner-state HP, and skiff hull mitigation happened after drain healing. Clone authoritative wounds/death now synchronize at player-hit, defeat and snapshot boundaries, and only matching live owned clones restore within the actor cap. Drain healing is settled after the existing end-of-frame hull mitigation and capped by actual player HP lost. Dedicated immediate-save wound/death and real ocean/skiff-drain regressions preserve both fixes. Physical retreat canyon parity and terminal remote-topology liveness are separately reviewed in native routing tests; completion claims require the final exact-source review.
+
+Finalized-death regression also covers a hull-protected player at 1 HP: provisional negative HP during damage calculation must not terminate the Worm, dismiss an ally/reservation, or dismount a hostile rider before hull absorption settles. Astral-only lifecycle callbacks now defer those decisions until the existing authoritative end-of-frame death boundary. Truly lethal hits still trigger the canonical attempt/reset and rewardless-helper cleanup.
+
+Native retreat preview parity also covers pre-mouth traveler/object occupancy and terrain hazards, with preview-only reciter metadata avoiding global random draws. Prospective linked exits remain isolated until the one validated physical departure commits its selected link. Regressions cover stale moved-mouth rejection, exact landing/health after reload, all legal native flight-start terrain, and bounded paused-safe revisits of remote topology.
+
+Pre-ink-attack checkpoint receipt (2026-10-21): module-inclusive build passed; full suite ran 1,032 tests, with 1,030 passing and two failing legacy Crystal compatibility checks. One Crystal-only fixture must explicitly exclude the newly registered Astral spawn (protected-test approval pending); the other is a source-text assertion whose expected trailing world-beast guard moved when the companion guard was added. No existing assertions were removed. Independent combat/routing review and all Astral tests passed this checkpoint. The subsequent mouth-beam correction and three-blob ink recall requested by the owner are not part of this receipt.
+
+## Mouth beam and three-blob ink recall
+
+Latest owner source requires the flight beam to originate at its mouth, not the center of its body. Shared mouth/ground anchors now drive both the native draw and damage endpoint, including cast-facing and actor scale. Flight pursuit aims the mouth endpoint toward the player. Native rendering includes target-versus-body terrain elevation and does not apply a separate recoil displacement to this morphing actor.
+
+The requested ink attack has three natural variants: worm, pool and trample, each retaining its own silhouette. Exactly three black blobs telegraph a fixed fan, fly out, briefly splat and spread, then shrink while returning into the body. Only the brief ground splats deal damage through the normal shared cadence and dodge/invulnerability pipeline. Outbound and recall are harmless. There is no added healing, permanent terrain, extra actor, reward or independent loot. Blocked landing positions cannot damage the player. JSON descriptors retain phase, progress, origin, target and return state across pause/save; death/retreat clears them with the existing combat state.
+
+Provisional ink tuning: .65-second warning, .48-second outbound, .65-second splat, .48-second recall; three .34-radian fan positions, range capped at 4.2 tiles; splat radius grows from .32 to .50 tiles; damage share .30 of base damage. These values are implementation choices, not owner-supplied balance.
+
+Owner approval Sentinel_3f50b2b556b48191b0ffbd67983337bd permits the narrow Crystal-only test isolation, preserving every assertion. Approval Sentinel_3780c5aa2bc481919f4b3a41c0bcf63c explicitly covers corresponding Astral regression additions/updates for the mouth beam and ink attack; neither authorizes uploads or publication. Both historical Crystal checks now pass after fixture isolation and equivalent source guard ordering.
+
+Mouth/ink integration receipt (2026-10-21): all 1,061 full-suite tests passed, module-inclusive build passed, and independent exact-manifest review passed 201 Astral/ocean tests plus native beam/mount/ink projection and save probes. Manifest SHA-256 `b09bd7c37d51cf5132329ae8c35e07f313b0f1ad0f48304195fa59f078a52ed2`. A subsequent cosmetic first-flight-warning-frame clearance regression is tracked separately; this receipt does not claim to cover later source edits. No remote action or release-number change occurred.
+
+
+## Final local validation receipt — 2026-10-21
+
+- Full suite: **1,062/1,062 passing**, zero failed/skipped/cancelled tests.
+- Module-inclusive static build: passed; all six Astral modules remain in build and both precaches.
+- Exact polished source/test manifest SHA-256: `de4c2de3f2e0a2dead58974cbd1a3bfcbbb947ecf731825f89bb41d19e2dc402`.
+- Final core SHA-256: `0c4ab09b9b0f6f8eedcc6bc5f6be7faef3d5ab1738d5efb6ed933296d70d597c`.
+- Independent review: no remaining confirmed blocker or cosmetic finding. Narrow final 44-test rerun and original first-flight-frame cliff reproduction passed; the beam is downward on its first warning frame. Prior 201-test Astral/ocean review and 24 beam / 24 mount / 84 ink native projection cases remain valid, with the latter rerun on the polished source.
+- Independent routing checks: 37 focused cases, 50 generated dungeon comparisons and isolated selected-link mutation probes passed.
+- Native real Game reduced-motion/safe-mode and same-clock form-cache checks passed. Visuals are native source-rendered captures, not browser/mobile certification.
+
+No mechanics feature remains intentionally fixture-only. Natural spawn, public no-Echo catalog, normal bounty, paired ownership/ally rewards, mounted independent health, above-water presence, Wayglass retreat, saved phases, shared death/reset and corresponding formal regressions are implemented. Balance values and on-device fairness/performance remain provisional. This is a local follow-on feature: release number 251 is deliberately unchanged, and release packaging, repository upload, CI/preview and any owner-authorized publication are separate required steps. No remote writes or publication occurred.
+
+
+## Combined release packaging audit — 2026-10-21
+
+The coordinator selected one combined release 251, not a second follow-on deployment. All release markers already agree on 251. The final worker audit found duplicate top-level Proving Ground service-worker declarations from earlier additive module registrations, which the historical suite did not parse. These were consolidated into one precache list containing all six Astral modules. Both source and emitted service workers now receive direct syntax/install-list checks alongside the full suite/build. Gameplay source remains byte-identical to reviewed `1054a167`. Upload, CI/preview and final publication verification are coordinated separately; documentation is not an authorization source.
+
+Combined packaging validation: **1,062/1,062 full-suite tests passed** with zero failures/skips/cancellations; module-inclusive build passed. Both source and both emitted workers pass `node --check` and an independent simulated install audit, each with 78 unique resolvable precache assets and all six Astral modules. The existing release-coherence regression now parses both source workers, preserving its prior assertions. No gameplay, build-script or workflow changes were needed for this packaging correction. Simulated installation does not certify browser/mobile offline behavior.

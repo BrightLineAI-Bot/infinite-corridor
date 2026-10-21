@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Release 251 review fixes — the Gate Revenant has poise: rapid blows still interrupt it, but after 0.6 s of accumulated stun it shrugs off hit-stun for 2.4 s, so fast weapons can no longer lock it out of attacking. A retreating Void Walker may leave a land section by any open tile on its exit edge, not only the single gate tile. An overworld Supernova near a section edge now also scars the overlapping part of each neighbouring section, recorded for when you go there. The Astral Griffin's front legs are rebuilt as feathered raptor legs with scaled shanks, jointed toes and hooked talons, and the Walker's riding saddle is now a traditional tan leather saddle with a pad, stitched fender and steel stirrup. All four Griffin legs are reworked: lion hind legs with a muscled thigh, a backward hock and padded paws, and raptor forelegs with layered plume hems. The tail ends in a hair tuft, and the throat feathers are soft scallops. The flight-form beam now leaves from behind the mandibles, with expanding rings, a hot splash and sparks where it strikes the ground (a steady ring under reduced motion).
+
+- Implement Astral Worm natural encounters, approved black-ink forms/no-Echo bounty, bounded physical Wayglass retreat, independent-health Walker riding with a compact futuristic saddle, mouth-origin beam and finite three-blob worm/pool/trample ink recall on the reviewed r251/Gate baseline; included in the single combined release 251 candidate, with final packaging/CI/preview and publication verification pending.
+
+- Release 251 ocean extension: the Void Walker sails a small personal skiff and the Crystal throws lifted water; ocean Supernova retains combat but never converts or scars ocean water.
+
+- Release 251 — the player-sized Void Walker roams ordinary dungeons and the overworld. Warned violet rends release hands, claws, swords, slashes, spikes and short-lived wraiths; rifts enable evasion and mixed tracking constellations; event horizons pull and pulse. Its Supernova consumes walls in the loaded circular region without revealing fog or completing objectives, then leaves permanent harmless smooth white ground with subtle red cracks. Saved scars persist in both worlds. Straight teleport-dash barrages leave one-second damaging afterimages. Retreat follows the nearest reachable physical dungeon doorway using normal terrain and one-level jumps, then disappears at the door; no fallback teleport.
+- Release 251 — the Morphing Blob regenerates current HP while naturally growing, up to half its unchanged maximum HP over the existing two-minute growth. Its maximum health, growth geometry and separate bloblet-merge healing do not increase. Growth-cap, pause and reload handling prevent extra healing.
+
 - Release 249 review fixes — pausing preserves the remaining Crystal grab time rather than silently breaking its hold. Mirror walls reflect at swept projectile contact, so fast arrows and bolts cannot slip through between frames.
 
 - Release 249 continuation — the Psychic Crystal now patrols dungeon halls instead of circling its spawn. It floats over terrain and phases through dungeon walls, patrolling even off-screen. Its model rises smoothly over higher ground and settles down beyond it. It engages when it sees you and never starts a new attack through a wall. Its separate retreat still ends in the dungeon's water.
@@ -291,3 +300,6 @@ The following summaries reconcile recent Git history into project records. They 
 - **Intent:** added deterministic, bounded hunt and domain systems with explicit instance lifecycle behavior.
 - **Compatibility:** persisted Viewport state and migration coverage exist in the current suite.
 - **Verification evidence:** current tests cover hunt lifecycle, domain topology, and migration initialization. No historical Android validation is asserted.
+
+## Unreleased follow-on prototype: Gate Revenant
+- More frequent first-pinned encounters, increased player-scaled health/damage floors, actual1.5× player-base pursuit, passing rift wraiths, rapid fireball/lob bursts, sustained breath and finite stationary barrage. Predator-only; shelter and normal terrain retained. Isolated work, not published or assigned a release number.
