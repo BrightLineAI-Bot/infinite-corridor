@@ -56,6 +56,9 @@ export function placeBuild(game, x, y, kind = ensureBuild(game.save).build.kind,
   if (have < need) return { ok: false, message: `A ${K.name.toLowerCase()} takes ${need} ${mat} (you have ${have}).` };
   const p = game.player, foot = { x: Math.floor(p.x + .5), y: Math.floor(p.y + .75) };
   if (foot.x === x && foot.y === y) return { ok: false, message: "Face open ground to build." };
+  // A wall never goes up where any part of the Wayfarer's body stands (the walking footprint, x+.24..x+.76 by
+  // y+.5..y+.88), or it would close around them.
+  if (kind === "wood" && p.x + .76 > x && p.x + .24 < x + 1 && p.y + .88 > y && p.y + .5 < y + 1) return { ok: false, message: "Step back a little to build there." };
   const occupied = (game.enemies || []).some((e) => !e.dead && Math.floor(e.x + .5) === x && Math.floor(e.y + .75) === y);
   const why = buildRefusal(game.map, x, y, kind, occupied); if (why) return { ok: false, message: why };
   const w = W(game.map), i = y * w + x, t = game.map.tiles[i];

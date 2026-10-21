@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 267 — build mode. Pressing Build still builds in front of you, and now also turns on build mode (the button lights up, like Tool's aiming). In build mode, a tap on the map builds exactly where you tap if it's within 3 tiles, or 3 tiles out along the same line if it's farther. A fence there is turned across the line from you to the tap, straight or diagonal, in 8 directions. Act, Tool or Attack switch back.
+- Release 267 — a wood wall is never built where any part of you stands (it used to be possible to wall yourself in for its 10 seconds), and builds are cleared when you enter a dungeon.
+
 - Release 265 — the Potion button shows a red flask instead of the word, with the count beneath it.
 - Release 265 — building. A Build button with a drawn claw hammer (and WOOD or STONE beneath it) sits in the action cluster's lower-left corner (Spell A's old place); choose wood or stone in the Pack's Supplies tab. It raises a build on the tile in front of you. A wood wall (5 wood) blocks the way and takes one blow; built while moving sideways it runs up and down across your way, otherwise it stands across as usual. A stone block (10 stone) takes two blows, and only you can stand on it: jump onto it like a ledge; creatures can't climb it. Stack two to make a step. Builds crumble after 10 seconds, at most 5 stand at once, and none go on water, chasms or anything already built. A build between a creature and you takes the hit instead of you. A world beast's charge or dash goes straight through, and its close blows smash a build while stopping the damage.
 - Release 265 — the Refuge's lands. A farm with big trees and a quarry with a stone block's worth of rock lie near Ember Refuge, apart from each other. Shale, the quarry keeper, a small stone turtle in a straw hat, tells you plainly how it works; stone is still never sold. Hollis Dray, the Refuge Farmer, says where they are, and other, stranger things.

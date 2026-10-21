@@ -92,3 +92,12 @@ test('release 267: build mode: a tap builds there, or 3 tiles out along the line
   const r = g.buildAt(12.5, 8.75); assert.equal(r.ok, true, r.message); assert.equal(at(map, 12, 8).buildRun, 'nw');
   assert.equal(new Game(Object.assign(freshSave(), { aimMode: 'build' }), 0).save.aimMode, 'build', 'build mode survives a reload');
 });
+
+test('a wood wall never closes around the Wayfarer: no wall on any tile their body overlaps (the Fable review\'s trap)', () => {
+  for (const [x, y, facing, tx, ty] of [[10.52, 10, 'left', 10, 10], [10.45, 10, 'right', 11, 10], [10, 10.3, 'up', 10, 10]]) {
+    const { game, map } = field(); Object.assign(game.player, { x, y, facing });
+    const r = placeBuild(game, tx, ty, 'wood'); assert.equal(r.ok, false, `${facing}: refused`); assert.match(r.message, /Step back/);
+    assert.equal(footprintOpen(map, 32, x, y, true), true, 'still free to move');
+  }
+  const { game } = field(); Object.assign(game.player, { x: 10, y: 10, facing: 'right' }); assert.equal(placeBuild(game, 11, 10, 'wood').ok, true, 'a step clear: built');
+});

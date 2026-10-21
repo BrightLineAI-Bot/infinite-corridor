@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**267**
+**269**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 265 | Claude | `claude/dreamy-rubin-yn6q2p` | Building (wood walls, stone blocks); the Refuge's farm, quarry and farmer; regrowth around the Refuge | Building. |
+| 267 | Claude | `claude/dreamy-rubin-yn6q2p` | Build mode (taps build, fences turned in 8 directions); the wall-trap fix from the 265 review | Building; to be published with 263 and 265. |
+| 265 | Claude | PR #111 | Building (wood walls, stone blocks); the Refuge's farm, quarry, farmer and Shale; regrowth; icon buttons | Merged. Its pre-publish review found the wall trap, fixed in 267, so 265 is not published on its own. |
 | 263 | Claude | PR #110 | Echo drops fixed; Crossing Sigils; safe dungeon arrivals; the boss gap; the Turtle's ice per combo; hull shields; skiffs at the shore; 2-dig shovels; spells beside the compass | Merged; preview `r263-4c5e470602e7`. Not yet published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
