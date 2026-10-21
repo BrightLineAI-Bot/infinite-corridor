@@ -13,12 +13,13 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**257**
+**259**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 257 | Claude | `claude/dreamy-rubin-yn6q2p` | The Lightning Giant: a new roaming world boss (giant lightning robot with a club; arcs, knock-down shock, swings, slam with sky strike and bolt cone, electrify; retreats to a chasm and rises away on a cloud) | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 | 253 | Claude | `claude/dreamy-rubin-yn6q2p`, [PR #105](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/105) | The Void Walker boards the Astral Worm (disk throw, pillar, phase out and in); Astral pair rules (rider, fighter, ally free-for-all, shared three tries) | Merging for preview. Not published. |
 

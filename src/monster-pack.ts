@@ -99,6 +99,14 @@ export const ATTACK_MODULES = {
   turtleCyclone: { id: "turtleCyclone", name: "Icicle Cyclone", range: [0, 10], cooldown: 9.5, windup: .6, active: 3.2, recover: .7, damage: .9, tags: ["charge", "ice"], text: "Spins in its shell inside the tornado and careens around, rebounding off walls and flinging icicles in every direction. Keep your distance and dodge the shards." },
   turtleComet: { id: "turtleComet", name: "Ice Comet", range: [3, 11], cooldown: 5.5, windup: .95, recover: .6, damage: 1.5, tags: ["ranged", "ice"], text: "A ball of ice the size of a cart leaves its mouth and bursts where it lands, leaving the ground frozen." },
   turtleShield: { id: "turtleShield", name: "Ice Shield", range: [0, 14], cooldown: 13, windup: .5, active: 3.6, recover: .3, damage: 0, tags: ["defense", "ice"], text: "Ice grows over its shell. While the shield stands nothing hurts it; wait it out." },
+  // The Lightning Giant's kit (release 257, Tim 2026-10-21: a giant robot with a club; Tesla-coil arcs that link it to
+  // you; a shock that knocks you down; forward and back club swings; a slam that may call a delayed sky strike and/or
+  // throw three bolts in a tight cone at you; and an electrified state: haze, more speed, bolts dropping around it).
+  giantArcs: { id: "giantArcs", name: "Tesla Arcs", range: [0, 7.5], cooldown: 6, windup: .6, active: 1.6, recover: .4, damage: .35, tags: ["ranged", "lightning", "beam"], text: "Its coils crackle and a sheaf of lightning arcs to you, linking you to it. Get out of reach to break the link." },
+  giantShock: { id: "giantShock", name: "Grounding Shock", range: [0, 8], cooldown: 9, windup: .75, recover: .5, damage: .8, tags: ["ranged", "lightning"], text: "It points, and the ground under you crackles: step off the mark, or the shock knocks you flat for a moment." },
+  giantSwing: { id: "giantSwing", name: "Club Swings", range: [0, 3.2], cooldown: 3.2, windup: .45, active: .7, recover: .45, damage: 1.1, tags: ["melee", "combo"], text: "A forward swing of its great club, then the back-swing." },
+  giantSlam: { id: "giantSlam", name: "Club Slam", range: [0, 4.5], cooldown: 5, windup: .7, recover: .7, damage: 1.4, tags: ["melee", "ground", "lightning"], text: "It slams the club down. Sometimes lightning answers from the sky where you stood; sometimes three bolts leap from the club straight at you." },
+  giantElectrify: { id: "giantElectrify", name: "Electrify", range: [0, 14], cooldown: 18, windup: 1.6, recover: .3, damage: .7, tags: ["buff", "lightning"], text: "It raises the club to the sky and lightning strikes it. Wrapped in a crackling haze it moves faster, and bolts drop around it." },
   // The Nanobot Knight's kit (release 245, Tim 2026-10-19: black with red accents; teleports or dissolves into mist;
   // physical hits scatter it unless elemental, a spell or an Echo-glyphed weapon; Abyss Watcher sword slides; an arm
   // laser cannon; swords falling from the sky; homing orbs that
@@ -310,6 +318,13 @@ export const MONSTER_PACK = {
     palette: ["#29213f", "#0c0918", "#b779ff", "#f1ddff"], render: "voidWalker", tags: ["spirit", "elder", "void"],
     lore: "A figure no larger than a Wayfarer. Behind its quiet silhouette, galaxies open: hands, blades and passing wraiths reach through. Its greatest star leaves a permanent wound in the dungeon floor.",
   },
+  lightningGiant: {
+    id: "lightningGiant", name: "The Lightning Giant", epithet: "The Walking Storm", unique: true,
+    stats: [340, 18, 0], form: { scale: 1.6 }, sizeClass: "huge", movement: "walk", brain: "duelist",
+    attacks: ["giantArcs", "giantShock", "giantSwing", "giantSlam", "giantElectrify"], bossAttacks: [],
+    palette: ["#5d6670", "#1d2229", "#7fd6ff", "#eafaff"], render: "lightningGiant", tags: ["construct", "elder", "lightning"],
+    lore: "A robot as tall as a house, with a club of iron and copper and Tesla coils on its shoulders. Lightning arcs from it to whatever it hunts. It knocks you flat with a shock, swings and slams its club, and when it calls the sky down onto itself it runs hot and fast while bolts fall all around it.",
+  },
   // Unique fixture entries only; natural hunts await final r251/Gate lifecycle integration.
   astralWorm: {
     id: "astralWorm", noEcho: true, name: "The Astral Worm", epithet: "The Ink That Remembers Shapes", unique: true,
@@ -452,7 +467,7 @@ export function resetPackRuntime(enemy) {
   if (enemy.kind === "nanobotKnight") enemy.packAttacks = (enemy.packAttacks || MONSTER_PACK.nanobotKnight.attacks).filter((id) => id !== "knightOrbital");
   if (enemy.kind === "psychicCrystal" && !(enemy.packAttacks || []).includes("psyOrbital")) enemy.packAttacks = [...(enemy.packAttacks || MONSTER_PACK.psychicCrystal.attacks), "psyOrbital"].filter((id, i, ids) => ids.indexOf(id) === i);
   enemy.voidDashing = false; enemy.voidCharging = false; enemy.voidTeleport = 0;
-  enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; // release 245: no pose survives a reload
+  enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; enemy.giantPose = null; enemy.giantCharged = 0; // release 245: no pose survives a reload
   return enemy;
 }
 
@@ -540,6 +555,17 @@ export const TURTLE = {
   tuckTime: .8, // its dodge: it pulls into its shell (no blow lands) instead of springing aside
 };
 // The Nanobot Knight (release 245). Balance as data.
+// Lightning Giant tuning (release 257). Provisional numbers, not the owner's.
+export const GIANT = {
+  arcRange: 7.5, arcTick: .35, arcBolts: 4,
+  shockRadius: .95, shockStun: 1.4,
+  swingReach: 1.8, swingArc: 150,
+  slamReach: .9, slamRadius: 1.5, slamRing: 3.2, slamRingShare: .5,
+  skyChance: .55, skyWarn: .95, skyRadius: 1.4, skyLife: .45,
+  coneChance: .55, coneBolts: 3, coneSpread: 22, boltSpeed: 12, boltLife: .9, boltRadius: .32,
+  chargeTime: 8, chargeSpeed: 1.5, stormEvery: .5, stormRing: [1.5, 4.5], stormWarn: .6, stormRadius: .8, stormLife: .35,
+  strikeAt: .55,
+};
 export const KNIGHT = {
   slides: 3, slideTime: .28, slideSpeed: 11, slideReach: 2.3, slideArc: 120, slidePause: .2,
   cannonTrack: 1.8, cannonLength: 11, cannonTick: .3, cannonWidth: .5,
@@ -812,12 +838,17 @@ function endAttack(e, s) {
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
   s.gap = e.attackGap ?? (attack?.recover || .6) * .6 + .45; // the Questing Beast barely pauses (release 187)
   e.voidDashing = false; e.voidCharging = false;
-  e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null;
+  e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null;
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
 
 // Each runner advances its attack; it reads/writes s.data and s.tele (the renderer draws s.tele).
 const START = {
+  giantArcs(e, s) { s.tele = { type: "brace" }; e.giantPose = "arcs"; },
+  giantShock(e, s) { const p = s.data.target; s.tele = { type: "circle", x: p.x, y: p.y, radius: GIANT.shockRadius }; e.giantPose = "point"; },
+  giantSwing(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + GIANT.swingReach, arc: GIANT.swingArc }; e.giantPose = "swingReady"; },
+  giantSlam(e, s) { const f = giantSlamPoint(e, s.data.aim); s.tele = { type: "circle", x: f.x, y: f.y, radius: GIANT.slamRadius }; e.giantPose = "slamRaise"; },
+  giantElectrify(e, s) { s.tele = { type: "brace" }; e.giantPose = "raise"; },
   voidHand(e, s, w) { voidBasicStart(e, s, w, "hand"); },
   voidClaw(e, s, w) { voidBasicStart(e, s, w, "claw"); },
   voidSword(e, s, w) { voidBasicStart(e, s, w, "sword"); },
@@ -921,12 +952,71 @@ const START = {
   qbBarrage(e, s, w) { const len = rayLength(w, e, s.data.aim, 9); s.tele = { type: "lane", aim: s.data.aim, length: len, width: .8 }; s.data.next = 0; },
 };
 
+function giantSlamPoint(e, aim) { const r = bodyRadius(e) + GIANT.slamReach; return { x: e.x + aim.x * r, y: e.y + aim.y * r }; }
+// Electrified (giantElectrify): a timed state ticked every frame, even mid-attack; bolts drop around the Giant.
+function giantPassive(e, w) {
+  if (!(e.giantCharged > 0)) return;
+  e.giantCharged = Math.max(0, e.giantCharged - w.dt); e.giantStormClock = (Number(e.giantStormClock) || 0) - w.dt;
+  while (e.giantStormClock <= 0 && e.giantCharged > 0) {
+    e.giantStormClock += GIANT.stormEvery; e.giantStorms = (Number(e.giantStorms) || 0) + 1;
+    const h = hashSeed(`${e.id}:giant-storm:${e.giantStorms}`), a = (h % 628) / 100, r = GIANT.stormRing[0] + (GIANT.stormRing[1] - GIANT.stormRing[0]) * ((h >>> 10) % 100) / 100;
+    w.addEffect({ kind: "giantSky", owner: e.id, x: e.x + Math.cos(a) * r, y: e.y + Math.sin(a) * r, radius: GIANT.stormRadius, arming: GIANT.stormWarn, armTotal: GIANT.stormWarn, life: GIANT.stormLife, total: GIANT.stormLife, damage: damageOf(e, "giantElectrify"), storm: true });
+  }
+}
 function resolveMelee(e, s, w, attackId, test) {
   const p = center(w.player);
   if (test(p) && w.los(e, w.player)) w.hurt(e, damageOf(e, attackId), { jumpable: false, source: attackId });
 }
 
 const RUN = {
+  giantArcs(e, s, w) {
+    const attack = ATTACK_MODULES.giantArcs;
+    if (s.phase === "windup") { if (s.t <= 0) { w.addEffect({ kind: "giantArc", owner: e.id, x: e.x, y: e.y, scale: e.scale, range: GIANT.arcRange, tick: 0, seed: s.seq, life: attack.active, total: attack.active, damage: damageOf(e, "giantArcs") }); s.tele = null; toPhase(s, "active", attack.active); } return; }
+    if (s.phase === "active" && s.t <= 0) toPhase(s, "recover", attack.recover);
+  },
+  giantShock(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const p = s.data.target;
+    w.addEffect({ kind: "giantShock", owner: e.id, x: p.x, y: p.y, radius: GIANT.shockRadius, stun: GIANT.shockStun, arming: 0, life: .5, total: .5, damage: damageOf(e, "giantShock") });
+    s.tele = null; e.giantPose = "pointFire"; toPhase(s, "recover", ATTACK_MODULES.giantShock.recover);
+  },
+  giantSwing(e, s, w) {
+    const attack = ATTACK_MODULES.giantSwing, reach = bodyRadius(e) + GIANT.swingReach;
+    if (s.phase === "windup") { if (s.t <= 0) { toPhase(s, "active", attack.active); s.data.cut = 0; } return; }
+    if (s.phase !== "active") return;
+    if (s.data.cut === 0) { e.giantPose = "swingFore"; resolveMelee(e, s, w, "giantSwing", (p) => inArc(e, p, s.data.aim, reach, GIANT.swingArc)); s.data.cut = 1; }
+    else if (s.data.cut === 1 && s.t <= attack.active / 2) {
+      // The back-swing re-aims at you.
+      const p = center(w.player); s.data.aim = unit(p.x - e.x, p.y - e.y); s.tele = { type: "arc", aim: s.data.aim, radius: reach, arc: GIANT.swingArc };
+      e.giantPose = "swingBack"; resolveMelee(e, s, w, "giantSwing", (q) => inArc(e, q, s.data.aim, reach, GIANT.swingArc)); s.data.cut = 2;
+    }
+    if (s.t <= 0) { s.tele = null; toPhase(s, "recover", attack.recover); }
+  },
+  giantSlam(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const f = giantSlamPoint(e, s.data.aim), p = center(w.player), dmg = damageOf(e, "giantSlam");
+    e.giantPose = "slamDown"; s.tele = null;
+    resolveMelee(e, s, w, "giantSlam", (q) => distance(q, f) <= GIANT.slamRadius);
+    w.addEffect({ kind: "shock", owner: e.id, x: f.x, y: f.y, radius: GIANT.slamRing, life: .6, total: .6, damage: Math.ceil(dmg * GIANT.slamRingShare) });
+    const roll = (key) => (hashSeed(`${e.id}:${s.seq}:slam:${key}`) % 1000) / 1000;
+    // Sometimes the sky answers where you stood (a delayed blast); sometimes three bolts leave the club straight at you,
+    // in a tight cone toward you whichever way it faces. Either, both, or neither.
+    if (roll("sky") < GIANT.skyChance) w.addEffect({ kind: "giantSky", owner: e.id, x: p.x, y: p.y, radius: GIANT.skyRadius, arming: GIANT.skyWarn, armTotal: GIANT.skyWarn, life: GIANT.skyLife, total: GIANT.skyLife, damage: dmg });
+    if (roll("cone") < GIANT.coneChance) {
+      const a0 = Math.atan2(p.y - f.y, p.x - f.x), spread = GIANT.coneSpread * Math.PI / 180;
+      for (let i = 0; i < GIANT.coneBolts; i++) { const a = a0 + (GIANT.coneBolts > 1 ? (i / (GIANT.coneBolts - 1) - .5) * spread : 0);
+        w.addEffect({ kind: "giantBolt", owner: e.id, x: f.x, y: f.y, vx: Math.cos(a) * GIANT.boltSpeed, vy: Math.sin(a) * GIANT.boltSpeed, radius: GIANT.boltRadius, arming: 0, life: GIANT.boltLife, damage: Math.ceil(dmg * .6) }); }
+    }
+    toPhase(s, "recover", ATTACK_MODULES.giantSlam.recover);
+  },
+  giantElectrify(e, s, w) {
+    if (s.phase !== "windup") return;
+    // The sky strikes the raised club partway through the stand; at the end of it the Giant runs hot.
+    if (!s.data.struck && s.t <= ATTACK_MODULES.giantElectrify.windup * (1 - GIANT.strikeAt)) { s.data.struck = true; w.addEffect({ kind: "giantStrike", owner: e.id, x: e.x, y: e.y, scale: e.scale, radius: 0, arming: 0, life: .5, total: .5, damage: 0 }); }
+    if (s.t > 0) return;
+    e.giantCharged = GIANT.chargeTime; e.giantStormClock = GIANT.stormEvery; s.tele = null;
+    toPhase(s, "recover", ATTACK_MODULES.giantElectrify.recover);
+  },
   voidHand: voidSimpleRun, voidClaw: voidSimpleRun, voidSword: voidSimpleRun, voidSlash: voidSimpleRun, voidSpikes: voidSimpleRun, voidWraiths: voidSimpleRun,
   voidRifts(e, s, w) { if (s.phase === "windup" && s.t <= 0) { voidOpenRifts(e, s, w, false); voidSimpleRun(e, s); } },
   voidConstellation(e, s, w) { if (s.phase === "windup" && s.t <= 0) { voidOpenRifts(e, s, w, true); voidSimpleRun(e, s); } },
@@ -1720,7 +1810,7 @@ function fleeStep(e, s, w) {
   if (d > step + .05) { e.x += dx / d * step; e.y += dy / d * step; return; }
   e.x = next.x; e.y = next.y;
   if (e.fleePath?.length) { e.fleePath.shift(); if (e.fleePath.length) return; }
-  if (e.fleeTo.home) e.fleeFade = 1; else e.fleeDone = true;
+  if (e.fleeTo.home) { e.fleeFade = 1; if (e.kind === "lightningGiant") e.giantCloud = true; } else e.fleeDone = true;
 }
 
 // Wall-phasing remains Crystal-only. Hunter scheduling is separate from locomotion permissions.
@@ -1802,6 +1892,7 @@ export function updatePackMonster(e, w) {
   if (e.hitStun > 0 && s.attack && !e.boss && s.phase === "windup" && !e.untargetable) { endAttack(e, s); return; }
   if (!e.illusion) passiveStillness(e, s, w);
   if (e.kind === "morphingBlob") blobPassive(e, s, w, p, d);
+  if (e.kind === "lightningGiant") giantPassive(e, w);
   if (e.blobletOf && blobletHome(e, s, w)) return;
   if (e.wormOf && tentacleTurret(e, s, w, p)) return;
   if (e.kind === "tremorWorm" && wormCycle(e, s, w, p)) return;
@@ -1819,7 +1910,7 @@ export function updatePackMonster(e, w) {
     if (e.watched) return;
   }
   // Move according to the brain, then start the best ready attack.
-  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && !w.los(e, w.player) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : brainVector(e, s, w, def), v = e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * dt;
+  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && !w.los(e, w.player) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : brainVector(e, s, w, def), v = e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * dt;
   const moved = w.move(e, v.x / m * speed, v.y / m * speed, { phase: !!move.phases });
   if (!moved && !move.phases) w.detour?.(e, speed);
   e.facingX = (p.x - e.x) >= 0 ? 1 : -1;
@@ -2174,6 +2265,22 @@ export function tickPackEffects(effects, w) {
     } else if (f.kind === "iceBurst") { /* the shatter, drawn only */ }
     else if (f.kind === "furrow") { /* release 239: the fleeing worm's wake; harmless, it only fades */ }
     else if (f.kind === "flesh") { if (distance(p, f) <= f.radius) { w.slow(f.slow || .55, .25); if (!(f.nextBite > f.age)) { f.nextBite = f.age + .8; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "fleshBloom", beam: true }); } } }
+    else if (f.kind === "giantArc") { // Tesla arcs: linked to the Giant, they hurt while you stay within reach and sight
+      const owner = w.enemies.find((q) => q.id === f.owner && !q.dead);
+      if (!owner) { f.life = 0; continue; }
+      f.x = owner.x; f.y = owner.y; f.tx = p.x; f.ty = p.y;
+      f.connected = distance(p, center(owner)) <= f.range && (!w.los || w.los(owner, w.player));
+      f.tick -= w.dt;
+      if (f.connected && f.tick <= 0) { f.tick = GIANT.arcTick; w.hurt(owner, f.damage, { jumpable: false, source: "giantArcs", beam: true }); }
+    }
+    else if (f.kind === "giantBolt") {
+      const before = { x: f.x, y: f.y }; f.x += f.vx * w.dt; f.y += f.vy * w.dt;
+      if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0;
+      else if (!f.hit && segmentDistance(p, center(before), center(f)) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "giantBolt" }); }
+    }
+    else if (f.kind === "giantShock") {
+      if (!f.detonated) { f.detonated = true; if (distance(p, f) <= f.radius + .3 && w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "giantShock" })) w.stun?.(f.stun); }
+    }
     else if (f.kind === "orb") { f.x += f.vx * w.dt; f.y += f.vy * w.dt; if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0; else if (!f.hit && distance(p, f) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "orb" }); } }
     else if (f.kind === "shock") { const total = f.total ??= f.life ?? .8, r = f.radius * (1 - Math.max(0, f.life ?? total) / total); f.ring = r; if (!f.hit && f.damage > 0 && Math.abs(distance(p, f) - r) < .5) { f.hit = true; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "shockwave" }); } }
     else if (!f.detonated) { f.detonated = true; f.life ??= .4; if (f.damage > 0 && distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: !!f.jumpable, source: f.kind }); }

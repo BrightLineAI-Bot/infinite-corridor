@@ -2293,3 +2293,34 @@ Tim's rules:
 - A Worm followed across sections while retreating appears without its rider: he leaves with it at the section edge rather than being re-spawned beside it.
 - A helping Walker still leaves when the Worm dies or retreats, as before.
 - Mirage drain targets only the current focus.
+
+## Release 257: the Lightning Giant — 2026-10-21
+
+Tim's brief, verbatim, is in `docs/lightning-giant-source-transcript.md`:
+- **Body:** a giant robot, bigger than the Void Walker and about the Astral Worm's height, that bends its legs and moves its arms.
+- **Arcs:** Tesla-coil lightning arcs to the player and links the two.
+- **Shock:** knocks the player down, shaking, before they get up.
+- **Club:** forward and back swings, and a slam. The slam sometimes brings a delayed sky strike and sometimes fires three bolts in a tight cone toward the player, whichever way the Giant faces.
+- **Electrify:** a club-raised electrify (lightning strikes it; it holds still for a second or two), then a haze, more speed, and bolts dropping around it.
+- **Retreat:** to a chasm, where it forms a large cloud and rides it up into the sky.
+
+**CODE:**
+- **Registry.** `WORLD_BEASTS.lightningGiant` (`src/world-beasts.ts`) has home `canyon` (the chasm) and `retreatMoves: "walk"`. `MONSTER_PACK.lightningGiant` (`src/monster-pack.ts`) is scale 1.6 (2.16 as a boss), brain `duelist`. Its attacks are `giantArcs`, `giantShock`, `giantSwing`, `giantSlam` and `giantElectrify`; tuning is in `GIANT`.
+- **Effects.** `giantArc` (tracks owner and player; ticks damage while connected), `giantBolt` (cone projectile), `giantShock` (calls `w.stun`), `giantSky` (armed, generic detonation) and `giantStrike`, plus the existing `shock` ring.
+- **Electrified state.** `giantPassive` ticks `e.giantCharged` and the storm bolts. Movement speed multiplies by `GIANT.chargeSpeed`. At its home, `fleeStep` sets `e.giantCloud`.
+- **Stun (`src/game.ts`).** The pack world gains `stun(seconds)`, which sets `p.stunnedUntil` and `stunnedAt`; both shift on pause. While stunned, movement and every action input are swallowed.
+- **Render.** The new module `src/lightning-giant-render.ts` (registered in `scripts/build.mjs` and both precache lists) holds:
+  - `drawLightningGiant`: two-bone IK legs, arms, a club on pose angles eased per actor through a WeakMap (no actor mutation), shoulder Tesla coils, a core and a visor;
+  - `drawGiantCloud`;
+  - `drawGiantEffect`;
+  - `lightningBolt`;
+  - `knockdownPose` and `drawShockSparks`, which `src/renderer.ts` uses to tip, shake and raise the player.
+- **Echo.** `ECHOES.lightningGiant` (Giant's Arc).
+- **Tests.** `tests/lightning-giant.test.ts`.
+
+**BOUNDARY:**
+- Numbers are provisional data, not Tim's.
+- The Giant is overworld-only, with no dungeon claim.
+- The stun is blocked by dodge frames, like any hit.
+- The knock-down pose is presentation only; collision and position are unchanged.
+- The cloud ascent is the existing home-fade timing, with the body lifted instead of sunk.

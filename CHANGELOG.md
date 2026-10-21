@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Release 257 — the Lightning Giant, a new roaming world boss (three tries, the level-8 strength floor, and a canyon home). He's a giant robot with Tesla coils on his shoulders and an iron-and-copper club:
+  - **Arcs:** a sheaf of lightning links him to you and burns while you stay within reach.
+  - **Shock:** a crackling mark; if it lands, you're knocked flat, shaking on the ground for a moment before you get back up.
+  - **Club swings:** a forward swing, then a re-aimed back-swing.
+  - **Slam:** may call a delayed lightning blast from the sky where you stood, and may throw three bolts in a tight cone straight at you.
+  - **Electrify:** he raises the club, the sky strikes it, and wrapped in a crackling haze he moves faster while bolts drop around him.
+  - **Retreat:** he walks to a chasm, where a storm cloud gathers under him and carries him up into the sky.
+  - His Echo, Giant's Arc, sends lightning from your kills into up to three nearby foes.
 - Release 253 review fix — a Walker who climbed down from or was knocked off the Astral Worm now gets his random chance to leave like any Walker fighting on foot (the seated check no longer mistakes "dismounted" for "mounted").
 - Release 253 — the Void Walker now boards the Astral Worm visibly. He hurls his silver saddle disk at the Worm (it homes on a moving Worm, trailing violet), the disk latches on and its violet pillar rises, then he phases out in a column of violet light and phases in standing on the plinth. The disk does no damage, and he can still be hit on the ground until he phases in. If the Worm dies or retreats mid-throw, the boarding is cancelled where he stands.
 - Release 253 — new rules for the Astral Worm and Void Walker pair:

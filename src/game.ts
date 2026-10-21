@@ -2136,6 +2136,8 @@ export class Game {
         "invulnerableUntil",
         "dodgeUntil",
         "heldUntil",
+        "stunnedUntil",
+        "stunnedAt",
         "echoVoidReadyAt",
       ])
         if (this.player[k]) this.player[k] += d;
@@ -3170,6 +3172,8 @@ export class Game {
       poison(seconds, dps) { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return; if (now < (p.dodgeUntil || 0)) return; applyPoison(ensureEliteState(game.save).status, seconds, dps); },
       effects: () => game.packEffects || [],
       elevation: (x, y) => elevationAt(map, width, x, y), // release 235: high ground stays above the Blob
+      // Release 257: the Lightning Giant's shock knocks the Wayfarer flat; dodge frames already blocked the hit itself.
+      stun(seconds) { if (!(seconds > 0) || p.hp <= 0) return; if (!(now < (p.stunnedUntil || 0))) p.stunnedAt = now; p.stunnedUntil = Math.max(p.stunnedUntil || 0, now + seconds * 1000); game.message = "The shock knocks you flat!"; },
       slow(factor, seconds) { p.slowFactor = Math.min(now < (p.slowUntil || 0) ? (p.slowFactor || 1) : 1, factor); p.slowUntil = Math.max(p.slowUntil || 0, now + seconds * 1000); },
       addEffect: (effect) => addPackEffect(game.packEffects ||= [], effect, now),
       spawnMinion(owner, kind, x, y, index) {
@@ -3732,6 +3736,8 @@ export class Game {
       x = rawX * scale,
       y = rawY * scale;
     if (now < (p.heldUntil || 0)) { x = 0; y = 0; if (input.consume("dodge")) { p.heldUntil -= CRYSTAL.struggle * 1000; if (now >= p.heldUntil) this.message = "You tear free of its grip."; } } // release 249: held by the Psychic Crystal; dodge to struggle
+    // Knocked down by a shock (release 257): no movement or actions until the Wayfarer gets back up.
+    if (now < (p.stunnedUntil || 0)) { x = 0; y = 0; for (const action of ["tool", "spell", "spell2", "dodge", "jump", "potion", "attack", "interact"]) input.consume(action); }
     if (Math.hypot(x, y) > 0.15)
       this.save.lastAim = projectileDirection(x, y, p.facing);
     if (input.consume("tool")) {
