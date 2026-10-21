@@ -3,7 +3,7 @@
 // no images, so it scales cleanly with the device pixel ratio.
 import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID } from "./monster-pack.ts";
 
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam } from "./astral-worm-render.ts";
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.ts";
 
 import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { ASTRAL, astralBeamAnchors } from "./astral-worm.ts";
@@ -882,10 +882,14 @@ function paintPackMonster(ctx, e, s, now, facing, def, sprite) {
   if (e.illusion) ctx.globalAlpha *= .92;
   if (e.fleeFade != null) { ctx.globalAlpha *= e.fleeFade; q.b += (1 - e.fleeFade) * u * .5; } // release 239: going into its home ground
   if (e.boss) { glow(ctx, k, b - u * .4 - bodyLift, u * 1.05, def.palette[2], .18); }
-  const riding=astralMountPresentation(e);
+  const riding=astralMountPresentation(e), boarding=riding?.boarding;
+  if(boarding)drawAstralBoarding(ctx,{...boarding,form:riding.form},{tile:s,unit:u,facing:flip,riderX:k,riderY:b,reducedMotion:!!e.reduceMotion});
   if(riding?.riding)drawAstralSaddle(ctx,{x:k,y:b,unit:u,form:riding.form,facing:flip});
-  BODY[def.render]?.(ctx, q);
+  const riderAlpha=astralBoardingRiderAlpha(boarding),fullAlpha=ctx.globalAlpha;ctx.globalAlpha*=riderAlpha;
+  if(riderAlpha>0)BODY[def.render]?.(ctx, q);
+  ctx.globalAlpha=fullAlpha;
   if(riding?.riding)drawAstralSaddle(ctx,{x:k,y:b,unit:u,form:riding.form,facing:flip,layer:'front'});
+  if(boarding)drawAstralBoarding(ctx,boarding,{tile:s,unit:u,facing:flip,riderX:k,riderY:b,layer:'front'});
   if (e.hitFlash > 0) { ctx.globalCompositeOperation = "lighter"; glow(ctx, k, b - u * .4 - bodyLift, u * .55, "#ffffff", .5); }
   ctx.restore();
   return true;

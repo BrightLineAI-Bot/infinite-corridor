@@ -1,3 +1,5 @@
+import {tickAstralBoarding,ASTRAL_BOARDING} from '../src/astral-worm-mount.ts';
+const ASTRAL_BOARDING_TOTAL=ASTRAL_BOARDING.throwTime+ASTRAL_BOARDING.pillarTime+ASTRAL_BOARDING.phaseOutTime+ASTRAL_BOARDING.phaseInTime;
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Game } from '../src/game.ts';
@@ -65,7 +67,7 @@ test('natural Game.loadArea creates Astral at level one with deterministic hosti
 });
 
 test('natural hostile riding keeps independent wounded HP and exact mount counters through Game save/migration/reload',()=>{
-  const {g,save,owner,rider}=natural('hostile',true);advance(g);
+  const {g,save,owner,rider}=natural('hostile',true);for(let i=0,now=50;i<60&&rider.astralMount?.status!=='mounted';i++)advance(g,now+=50);
   assert.equal(rider.astralMount?.status,'mounted');assert.equal(save.worldBeasts.astralWorm.active.astralPair.mountStarted,true);
   owner.hp-=31;g.glyphWorld(100).damage(rider,13);
   const before={ownerHp:owner.hp,ownerMax:owner.maxHp,riderHp:rider.hp,riderMax:rider.maxHp,mount:JSON.parse(JSON.stringify(rider.astralMount)),pair:JSON.parse(JSON.stringify(save.worldBeasts.astralWorm.active.astralPair))};
@@ -155,7 +157,7 @@ test('defeated natural allied helper releases its unique reservation and cannot 
 
 
 test('natural hostile rider death unmounts, pays only its own bounty and cannot revive alongside the living Worm',()=>{
-  const {g,save,owner,rider}=natural('hostile',true);advance(g);assert.equal(rider.astralMount.status,'mounted');
+  const {g,save,owner,rider}=natural('hostile',true);for(let i=0,now=50;i<60&&rider.astralMount?.status!=='mounted';i++)advance(g,now+=50);assert.equal(rider.astralMount.status,'mounted');
   const ownerHp=owner.hp;g.glyphWorld(100).damage(rider,rider.hp+999);advance(g,150);
   assert.equal(rider.dead,true);assert.equal(rider.astralMount.status,'dismounted');assert.equal(rider.astralMount.reason,'rider-dead');
   assert.equal(owner.hp,ownerHp);assert.equal(save.worldBeasts.voidWalker.active,null);assert.equal(save.worldBeasts.voidWalker.slain,1);assert.equal(save.worldBeasts.astralWorm.slain,0);
@@ -164,7 +166,7 @@ test('natural hostile rider death unmounts, pays only its own bounty and cannot 
 });
 
 test('Mirror Echo cannot directly swap a naturally mounted Walker out from under its owner',()=>{
-  const {g,save,owner,rider}=natural('hostile',true);advance(g);assert.equal(rider.astralMount.status,'mounted');
+  const {g,save,owner,rider}=natural('hostile',true);for(let i=0,now=50;i<60&&rider.astralMount?.status!=='mounted';i++)advance(g,now+=50);assert.equal(rider.astralMount.status,'mounted');
   Object.assign(g.player,{x:rider.x+1,y:rider.y});assert.equal(g.glyphWorld(100).canStand(rider.x,rider.y),true);
   save.echoes={owned:{mirrorShade:true},equipped:['mirrorShade']};const at={x:rider.x,y:rider.y};
   echoEvent(g,'hurt',1000,{damage:1});
@@ -173,7 +175,7 @@ test('Mirror Echo cannot directly swap a naturally mounted Walker out from under
 
 test('natural marine hostile rider safely dismounts above ocean water without receiving or changing player boat ownership',()=>{
   const {g,save,actor:owner,rider}=naturalOverworld('astralWorm',{role:'hostile',mounted:true,marine:true});
-  const boat=JSON.stringify(save.boat);advance(g);assert.equal(rider.astralMount?.status,'mounted');assert.equal(owner.marine,true);
+  const boat=JSON.stringify(save.boat);advance(g);tickAstralBoarding(rider,ASTRAL_BOARDING_TOTAL,g.astralMountHost());assert.equal(rider.astralMount?.status,'mounted');assert.equal(owner.marine,true);
   const hit=Math.ceil(rider.astralMount.knockoffDamage);g.glyphWorld(100).damage(rider,hit);
   assert.equal(rider.astralMount.status,'dismounted');assert.equal(g.astralLandingOpen(rider,{x:rider.x,y:rider.y}),true);
   assert.equal(JSON.stringify(save.boat),boat);assert.equal(rider.hp,rider.maxHp-hit);assert.equal(owner.hp,owner.maxHp);
@@ -194,7 +196,7 @@ for(const role of ['ally','hostile'])for(const survives of [true,false])test(`na
  const {g,save,actor:o,rider}=naturalOverworld('astralWorm',{role,mounted:role==='hostile',marine:true});
  g.map.tiles=g.map.tiles.map(t=>({...t,kind:'ocean',blocked:false,structure:null,buildingId:null,environment:null,pit:false,elev:0}));g.map.objects=[];g.map.settlement=null;g.map.environment=null;g.map.landscape=false;g.seaHazards=null;g.storm=null;g.paused=false;save.maxHp=1000;g.enemies=[o,rider];
  Object.assign(g.player,{x:16,y:16,hp:1000,invulnerableUntil:0,dodgeUntil:0});Object.assign(o,{x:16,y:16,hp:1000,aggro:true});Object.assign(save.boat,{owned:true,aboard:true,hull:60,home:{rx:g.rx,ry:g.ry,x:16,y:16},moored:null});
- Object.assign(rider,{x:16,y:16});advance(g,100);if(role==='hostile')assert.equal(rider.astralMount?.status,'mounted');startAstralMove(o.astral,'mirage',g.player);advance(g,150);o.astral.enclosed=1.4;o.astral.hitClock=0;g.player.invulnerableUntil=0;g.player.hp=survives?6:4;advance(g,1000);
+ Object.assign(rider,{x:16,y:16});advance(g,100);if(role==='hostile'){for(let i=0;i<60&&rider.astralMount?.status!=='mounted';i++)advance(g,100);assert.equal(rider.astralMount?.status,'mounted');}startAstralMove(o.astral,'mirage',g.player);advance(g,150);o.astral.enclosed=1.4;o.astral.hitClock=0;g.player.invulnerableUntil=0;g.player.hp=survives?6:4;advance(g,1000);
  if(survives){assert.equal(g.player.hp,1);assert.equal(o.astral.terminated,false);assert.equal(o.astral.clones.length,4);assert.equal(rider.dead,false);assert.ok(save.worldBeasts.voidWalker.active);assert.equal(save.worldBeasts.astralWorm.active.tries,0);if(role==='hostile')assert.equal(rider.astralMount.status,'mounted');}
  else {assert.equal(save.worldBeasts.astralWorm.active.tries,1);assert.equal(o.hp,o.maxHp);assert.equal(o.astral,undefined);if(role==='ally'){assert.equal(rider.dead,true);assert.equal(save.worldBeasts.voidWalker.active,null);}else {assert.notEqual(rider.astralMount.status,'mounted');assert.equal(save.worldBeasts.voidWalker.active.tries,1);}}
 });

@@ -2251,3 +2251,22 @@ Tim saw the violet rider placeholder in a test render and asked for that as the 
 **CODE:** `drawAstralSaddle` (data in `ASTRAL_SADDLE`) now draws a gunmetal clamp with two bracket feet, over a radial violet underglow. Above it sits a silver disc platform with a shaded side band, a glowing seam and an inset ring. A violet light column with glowing edges and streaks rises `glowHeight` 0.46 units. `paintPackMonster` calls it twice: `layer: 'back'` before the rider body, and `layer: 'front'` (the column only, at `veilAlpha` 0.4) after it. The saddle test now looks for the platform colour.
 
 **BOUNDARY:** It is visual only. Riding, knock-off, health and hitboxes are unchanged. The leather saddle from earlier the same day is replaced. The column is static, so reduced motion needs no special case.
+
+## Release 253: Void Walker boards the Astral Worm — 2026-10-21
+
+Tim's description: the Walker throws his saddle disk at the Astral Worm, which can be moving, like an attack. A purple pillar rises from the disk. He phases out with a purple light and phases in on top of the plinth.
+
+**CODE:**
+- **State machine.** `src/astral-worm-mount.ts` adds `ASTRAL_BOARDING` (reach 8; throw 0.6 s, pillar 0.45 s, phase out 0.3 s, phase in 0.3 s), `beginAstralBoarding` and `tickAstralBoarding`. A new `astralMount.status: 'boarding'` carries `phase`, `t`, `from`, `disk` and `seat`. The disk homes on the Worm's current position along an arc; the tick handles any `dt`, carrying time over between phases.
+- **Shared code.** `canBind` and `mountedState` are now shared with `mountAstralWalker`, which stays instant for fixtures.
+- **Interrupts.** `dismountAstralWalker` cancels boarding where the Walker stands. During the phase-in it lands normally instead. `syncAstralMount` never shortcuts boarding.
+- **Presentation.** `astralMountPresentation` exposes `boarding`, and gives zero lift until the phase-in.
+- **Game wiring.** `Game.boardAstralWalker` is the natural path, called from `reconcileAstralCompanions`. The pack update ticks a boarding Walker instead of running his AI. `astralRiderHeld` includes `'boarding'`.
+- **Render.** `drawAstralBoarding` and `ASTRAL_BOARDING_FX` draw the spinning disk with its trail, the latched plinth with the pillar rising (`drawAstralSaddle({rise})`), and the violet phase bursts. `astralBoardingRiderAlpha` fades the rider out and in.
+- **Tests.** New tests are in `tests/astral-boarding.test.ts`. Natural-pair tests now wait for, or fast-forward, the boarding.
+
+**BOUNDARY:**
+- The disk deals no damage.
+- Knock-off damage counts only once he is mounted.
+- Riding, health, hitboxes and the fixture mount are unchanged.
+- The boarding state saves with the enemy snapshot and resumes exactly.

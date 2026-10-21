@@ -36,7 +36,7 @@ export function reconcileAstralCompanions(game) {
       if(walker?.active?.astralPairOf===e.astralCompanionOf){delete walker.active.astralPairOf;delete walker.active.astralRole;}
     }
     if(e.astralMountWanted&&owner&&!owner.dead&&!owner.retreating) {
-      if(game.mountAstralFixture(owner,e)) { e.astralMountWanted=false;if(state?.active?.astralPair)state.active.astralPair.mountStarted=true; }
+      if((game.boardAstralWalker||game.mountAstralFixture).call(game,owner,e)) { e.astralMountWanted=false;if(state?.active?.astralPair)state.active.astralPair.mountStarted=true; }
     }
   }
 }

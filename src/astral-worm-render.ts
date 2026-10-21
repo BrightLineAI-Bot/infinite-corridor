@@ -210,11 +210,11 @@ export function drawAstralMorph(ctx, options, previousForm, progress) {
 export const ASTRAL_SADDLE = Object.freeze({ size: .75, width: { worm: .66, griffin: .68, pool: .74, flight: .66 },
   clamp: '#181b22', clampEdge: '#8f99a5', plate: '#b9c2cc', plateSide: '#5b6470', plateShade: '#3a414b', outline: '#0b0d12',
   seam: '#c58bff', glow: '#9b5cff', glowHeight: .46, veilAlpha: .4 });
-export function drawAstralSaddle(ctx, {x,y,unit,form='worm',facing=1,layer='back'}) {
+export function drawAstralSaddle(ctx, {x,y,unit,form='worm',facing=1,layer='back',rise=1}) {
   const S=ASTRAL_SADDLE, W=S.width[form]??S.width.worm, TAU=Math.PI*2, top=-.03, rx=W*.5, ry=.075;
   ctx.save();ctx.translate(x,y);ctx.scale(unit*facing*S.size,unit*S.size);ctx.lineJoin='round';
   const column=(alpha)=>{
-    const h=S.glowHeight/S.size, g=ctx.createLinearGradient(0,top,0,top-h);
+    const h=S.glowHeight/S.size*Math.max(0,Math.min(1,rise)); if(!(h>0))return; const g=ctx.createLinearGradient(0,top,0,top-h);
     g.addColorStop(0,S.glow+'ee');g.addColorStop(.5,S.glow+'88');g.addColorStop(1,S.glow+'00');
     const base=ctx.globalAlpha;ctx.globalAlpha=base*alpha;ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-rx*.92,top);ctx.lineTo(-rx*.78,top-h);ctx.lineTo(rx*.78,top-h);ctx.lineTo(rx*.92,top);
     ctx.ellipse(0,top,rx*.92,ry*.85,0,0,Math.PI);ctx.closePath();ctx.fill();
@@ -242,6 +242,44 @@ export function drawAstralSaddle(ctx, {x,y,unit,form='worm',facing=1,layer='back
   ctx.fillStyle=S.plateShade;ctx.beginPath();ctx.ellipse(0,top+.008,rx*.68,ry*.6,0,0,TAU);ctx.fill();
   ctx.strokeStyle=S.seam;ctx.lineWidth=.01;ctx.beginPath();ctx.ellipse(0,top+.008,rx*.68,ry*.6,0,0,TAU);ctx.stroke();
   ctx.restore();
+}
+
+// Boarding presentation. `b` is astralMountPresentation(rider).boarding; positions are world tiles, drawn with
+// the shared actor projection (x+.5, y+.82). 'back' paints the flying disk or the latched plinth and its rising
+// pillar; 'front' paints the violet phase burst over the rider. riderAlpha() fades him out and in.
+export const ASTRAL_BOARDING_FX = Object.freeze({ trail: 4, trailStep: .07, burst: '#c58bff', core: '#f3e6ff', beamWidth: .34, beamHeight: 1.3, ringRadius: .5 });
+export function astralBoardingRiderAlpha(b) { return !b ? 1 : b.phase === 'phaseOut' ? 1 - b.k : b.phase === 'phaseIn' ? b.k : 1; }
+function boardingDisk(ctx, x, y, unit, spin, alpha) {
+  const S=ASTRAL_SADDLE, rx=S.width.worm*.5*S.size*unit, ry=Math.max(.15,Math.abs(Math.cos(spin)))*.075*S.size*unit;
+  ctx.save();ctx.globalAlpha*=alpha;
+  const g=ctx.createRadialGradient(x,y,0,x,y,rx*1.5);g.addColorStop(0,S.glow+'aa');g.addColorStop(1,S.glow+'00');ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(x,y,rx*1.5,rx*.9,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=S.plateSide;ctx.strokeStyle=S.outline;ctx.lineWidth=Math.max(1,unit*.01);ctx.beginPath();ctx.ellipse(x,y+ry*.5,rx,ry,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle=S.plate;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.strokeStyle=S.seam;ctx.lineWidth=Math.max(1,unit*.012);ctx.beginPath();ctx.ellipse(x,y,rx*.68,ry*.6,0,0,Math.PI*2);ctx.stroke();ctx.restore();
+}
+function phaseBurst(ctx, x, y, unit, k, rising) {
+  const F=ASTRAL_BOARDING_FX, a=rising?1-k:k, h=F.beamHeight*unit*(rising?.4+.6*k:1-.6*k), w=F.beamWidth*unit*(1-.5*Math.abs(k-.5));
+  ctx.save();ctx.globalAlpha*=Math.max(0,Math.min(1,.25+a));
+  const g=ctx.createLinearGradient(0,y,0,y-h);g.addColorStop(0,F.burst+'ee');g.addColorStop(.6,F.burst+'66');g.addColorStop(1,F.burst+'00');
+  ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(x-w/2,y);ctx.lineTo(x-w*.2,y-h);ctx.lineTo(x+w*.2,y-h);ctx.lineTo(x+w/2,y);ctx.closePath();ctx.fill();
+  ctx.fillStyle=F.core;ctx.globalAlpha*=.8;ctx.fillRect(x-w*.08,y-h*.85,w*.16,h*.85);
+  ctx.globalAlpha=Math.max(0,1-k);ctx.strokeStyle=F.burst;ctx.lineWidth=Math.max(1,unit*.03);ctx.beginPath();ctx.ellipse(x,y,F.ringRadius*unit*(.4+k),F.ringRadius*unit*(.4+k)*.4,0,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
+}
+export function drawAstralBoarding(ctx, b, {tile, unit, facing=1, riderX, riderY, layer='back', reducedMotion=false}) {
+  if(!b)return;
+  const at=(p,h=0)=>({x:(p.x+.5)*tile,y:(p.y+.82)*tile-h*tile}), seat=b.seat&&at(b.seat,b.seatLift||0), rider={x:riderX,y:riderY};
+  if(layer==='back'){
+    if(b.phase==='throw'&&b.disk){
+      const F=ASTRAL_BOARDING_FX, from=b.from||b.disk;
+      for(let i=F.trail;i>=0;i--){const k=Math.max(0,b.k-i*F.trailStep),seatP=b.seat||b.disk,px={x:from.x+(seatP.x-from.x)*k,y:from.y+(seatP.y-from.y)*k},
+        h=(b.disk.h||0)*(i?.95:1),p=at(i?px:b.disk,i?h:b.disk.h);boardingDisk(ctx,p.x,p.y,unit,reducedMotion?0:b.k*Math.PI*6-i*.6,i?.35/i:1);}
+    } else if(seat&&b.phase!=='phaseIn') drawAstralSaddle(ctx,{x:seat.x,y:seat.y,unit,form:b.form||'worm',facing,rise:b.phase==='pillar'?b.k:1}); // phaseIn: the riding saddle draws it
+    if(b.phase==='pillar'&&seat&&b.k<.4) phaseBurst(ctx,seat.x,seat.y,unit,b.k/.4,true);
+  } else {
+    if(b.phase==='phaseOut') phaseBurst(ctx,rider.x,rider.y,unit,b.k,true);
+    if(b.phase==='phaseIn') phaseBurst(ctx,rider.x,rider.y,unit,b.k,false);
+  }
 }
 
 // Exactly the combat core's three finite ink descriptors. Ground impact radii and
