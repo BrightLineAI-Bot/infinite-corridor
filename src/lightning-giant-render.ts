@@ -298,56 +298,46 @@ function shadeHex(hex, amount) {
 }
 
 // Its big storm cloud: ridden across the sea, and the one it rises on at its chasm. (k, y) is where its feet stand. The
-// "back" layer (rain, the lit upper billows behind its legs) goes under the body; the "front" layer (the near billows
-// that swallow its feet, lightning flickering inside) goes over it.
-// Shape (Tim, 2026-10-21: "there's a leading edge, and there's a trailing edge, and it kind of billows out in diminishing
-// billows towards the trailing edge... so he's riding the cloud front"): the big billows sit under it and just ahead, and
-// behind it the cloud recedes in a long run of ever smaller billows that feather and fade into a little trailing wisp.
-// Billows are [x, y, r] in units of u with +x the leading direction (its facing).
-const CLOUD_BODY = { back: [[-.3, -.02, .17], [-.12, -.11, .21], [.08, -.12, .22], [.27, -.06, .19], [.43, .02, .13]], front: [[-.26, .08, .15], [-.06, .1, .17], [.15, .1, .16], [.35, .07, .12]] };
-const CLOUD_TAIL = { back: { start: -.42, r: .16, shrink: .87, n: 12, rise: -.03, fall: .0025 }, front: { start: -.4, r: .13, shrink: .84, n: 8, rise: .07, fall: -.005 }, gap: .75 };
-// `trail` (-1..1) is the side the cloud recedes toward: opposite its facing, eased by the caller as it turns. While it
-// turns (|trail| small) the tail draws in under the body, so the cloud swaps ends without a jump.
+// "back" layer goes under the body, the "front" layer (the near billows that swallow its feet) over it.
+// Drawn as a traditional layered cartoon cloud in flat tones, not shaded in 3D (Tim, 2026-10-21: "billowy sections in
+// the cloud front, up into the middle, and then... other sections that are not billowing... layered"). From the leading
+// edge (its facing) to the middle it is billows, each with a lit cap and a shadowed belly; behind that it trails away in
+// flat, tapered streaks stacked in layers. Shapes are [x, y, r] or streaks [from, to, y, h] in units of u, +x = facing.
+const CLOUD_TONES = { edge: "#2a3038", dark: "#3d4550", mid: "#5f6a76", light: "#8a95a1", cap: "#b4bec8" };
+const CLOUD_BILLOWS = { back: [[-.2, -.04, .18], [-.02, -.13, .22], [.2, -.13, .22], [.4, -.04, .18], [.55, .04, .12]], front: [[-.18, .1, .15], [.04, .11, .17], [.26, .1, .16], [.45, .07, .12]] };
+const CLOUD_STREAKS = { back: [[-.1, -.9, -.07, .16, "mid"], [-.15, -.72, .05, .12, "dark"]], front: [[-.1, -.62, .13, .1, "dark"]] };
+// `trail` (-1..1) is the side the streaks trail toward: opposite its facing, eased by the caller as it turns. While it
+// turns (|trail| small) the streaks draw in under the billows, so the cloud swaps ends without a jump.
 export function drawStormCloud(ctx, k, y, u, t, now, layer, reduce = false, trail = 0) {
-  const drift = reduce ? 0 : t * .9, F = -(Math.sign(trail) || -1), amt = Math.abs(trail), o = layer === "back" ? 0 : 20;
-  const wob = (i) => ({ dx: Math.sin(drift + (i + o) * 1.7) * u * .012, dy: Math.cos(drift * .8 + i + o) * u * .008 });
-  const body = CLOUD_BODY[layer].map(([x, dy, r], i) => { const w = wob(i); return { x: k + F * x * u + w.dx, y: y + dy * u + w.dy, r: r * u * .86, a: 1 }; });
-  // The receding tail: each billow smaller than the last, spaced by its size, rising or sinking a little, fading at the end.
-  const T = CLOUD_TAIL[layer], tail = []; let along = T.start, r = T.r;
-  for (let n = 0; n < T.n; n++) { const w = wob(n + 7), f = n / (T.n - 1); tail.push({ x: k + F * along * u * (.3 + .7 * amt) + w.dx, y: y + (T.rise + T.fall * n * n * .5) * u + w.dy * (1 - f), r: r * u * .86, a: 1 - Math.max(0, f - .45) * 1.4 }); along -= r * CLOUD_TAIL.gap; r *= T.shrink; }
-  const all = [...body, ...tail], top = Math.min(...all.map((c) => c.y - c.r)), bottom = y + u * .2;
-  // Feathered vapour: one fading blob.
-  const soft = (x, yy, rx, ry, rgb, alpha) => {
-    if (alpha <= .005) return;
-    ctx.save(); ctx.translate(x, yy); ctx.scale(1, ry / rx);
-    const sg = ctx.createRadialGradient(0, 0, 0, 0, 0, rx); sg.addColorStop(0, `rgba(${rgb},${alpha})`); sg.addColorStop(.55, `rgba(${rgb},${alpha * .55})`); sg.addColorStop(1, `rgba(${rgb},0)`);
-    ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(0, 0, rx, 0, TAU); ctx.fill(); ctx.restore();
-  };
-  const g = ctx.createLinearGradient(0, top, 0, bottom);
-  if (layer === "back") { g.addColorStop(0, "#9aa5b1"); g.addColorStop(.5, "#5d6874"); g.addColorStop(1, "#2a313a"); }
-  else { g.addColorStop(0, "#8794a1"); g.addColorStop(.45, "#56616d"); g.addColorStop(1, "#262c34"); }
+  const C = CLOUD_TONES, F = -(Math.sign(trail) || -1), L = .35 + .65 * Math.abs(trail), bob = (i) => reduce ? 0 : Math.sin(t * .9 + i * 1.7) * u * .008;
+  const X = (x) => k + F * x * u, billows = CLOUD_BILLOWS[layer].map(([x, dy, r], i) => ({ x: X(x), y: y + dy * u + bob(i), r: r * u }));
+  // A trailing layer: a strip of low, flattened lobes (scalloped on top, flat underneath), getting smaller toward its end.
+  const lobes = ([from, to, dy, h]) => { const N = 5, out = []; let x = from; const span = (to * L + (1 - L) * from) - from;
+    for (let n = 0; n < N; n++) { const f = n / (N - 1), rx = Math.abs(span) / N * (1.35 - .45 * f), ry = h / 2 * (1 - .45 * f); out.push({ x: X(from + span * (n + .5) / N), y: y + (dy + h * .25 * f) * u + bob(n + 9), rx: rx * u, ry: ry * u }); x += span / N; }
+    return out; };
+  const strip = (Ls, dx = 0, dy = 0) => { ctx.beginPath(); for (const c of Ls) { ctx.moveTo(c.x + c.rx + dx, c.y + dy); ctx.ellipse(c.x + dx, c.y + dy, c.rx, c.ry, 0, 0, TAU); } };
+  const blob = (dx = 0, dy = 0) => { ctx.beginPath(); for (const c of billows) { ctx.moveTo(c.x + c.r + dx, c.y + dy); ctx.arc(c.x + dx, c.y + dy, c.r, 0, TAU); } };
   ctx.save();
-  if (layer === "back") {
-    if (!reduce) { ctx.strokeStyle = "rgba(160,190,215,.35)"; ctx.lineWidth = Math.max(1, u * .008); ctx.beginPath(); for (let i = 0; i < 9; i++) { const x = k + F * ((i / 8 - .5) * .8 + .05) * u, f = (t * 1.8 + i * .37) % 1, y0 = bottom - u * .04 + f * u * .1; ctx.moveTo(x, y0); ctx.lineTo(x - u * .02, y0 + u * .07); } ctx.stroke(); } // rain, under the body
-    for (const c of all) soft(c.x, c.y, c.r * 1.55, c.r * 1.4, "150,162,175", .6 * c.a); // a vapour halo round every billow
-    for (let i = 0; i < 4; i++) { const sway = reduce ? 0 : Math.sin(t * .7 + i * 1.9) * u * .03; soft(k + F * u * (.55 + i * .1) + sway, y + u * (.03 - i * .02), u * (.17 - i * .03), u * (.045 - i * .006), "158,170,183", .5 - i * .1); } // short tendrils off the leading edge
-  } else for (const c of all) soft(c.x, c.y + c.r * .1, c.r * 1.45, c.r * 1.3, "120,131,143", .5 * c.a); // the near billows feather out too
-  // The solid billows. The body is one mass with a flat belly; the tail billows go one by one, fading toward the end.
-  const flatY = Math.max(...body.map((c) => c.y)), xs = body.map((c) => c.x);
-  ctx.fillStyle = g; ctx.globalAlpha *= layer === "back" ? 1 : .88;
-  ctx.beginPath(); for (const c of body) { ctx.moveTo(c.x + c.r, c.y); ctx.arc(c.x, c.y, c.r, 0, TAU); } ctx.rect(Math.min(...xs), flatY, Math.max(...xs) - Math.min(...xs), bottom - u * .06 - flatY); ctx.fill();
-  const base = ctx.globalAlpha; for (const c of tail) { ctx.globalAlpha = base * Math.max(0, c.a); ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, TAU); ctx.fill(); } ctx.globalAlpha = base;
-  if (layer === "front") ctx.globalAlpha /= .88;
-  const end = tail[tail.length - 1]; for (let i = 0; i < 3; i++) { const sway = reduce ? 0 : Math.sin(t * 1.1 + i) * u * .01; soft(end.x - F * u * (.04 + i * .06) * (.3 + .7 * amt), end.y - u * i * .006 + sway, u * (.06 - i * .014), u * (.018 - i * .004), "165,176,188", (.4 - i * .12) * amt); } // the trailing wisp
-  for (const c of all) soft(c.x - F * c.r * .1 - c.r * .2, c.y - c.r * .45, c.r * .6, c.r * .38, layer === "back" ? "220,228,236" : "200,210,220", .32 * Math.max(0, c.a)); // soft light on each billow's top
-  if (layer === "front") {
-    // A ragged, fading fringe under the belly, with a few wisps hanging lower, then storm light and lightning inside.
-    for (let i = 0; i < 8; i++) { const x = k + F * ((i / 7 - .5) * .8 + .05) * u, hang = (i * 37 % 5) / 5; soft(x + (reduce ? 0 : Math.sin(t * .9 + i) * u * .015), bottom - u * .06 + hang * u * .03, u * (.09 + hang * .03), u * (.035 + hang * .02), "52,60,70", .55); }
-    for (const c of tail) soft(c.x, c.y + c.r * .35, c.r * 1.2, c.r * .75, "92,102,114", .4 * Math.max(0, c.a));
-    for (const c of body) soft(c.x, c.y + c.r * .35, c.r * 1.25, c.r * .8, "92,102,114", .45);
-    ctx.globalCompositeOperation = "lighter"; soft(k + F * u * .05, y + u * .07, u * .34, u * .07, "70,150,210", .2); ctx.globalCompositeOperation = "source-over";
-    if (!reduce && Math.sin(t * 4.1) > .7) { const a = Math.floor(t * 4.1 / TAU) * 2.39, x0 = k + Math.sin(a) * u * .3; lightningBolt(ctx, x0, y + u * .03, x0 + u * .12, y + u * .14, { now, seed: 90 + Math.floor(t), segments: 4, width: Math.max(1, u * .012), branch: false }); }
+  if (layer === "back" && !reduce) { ctx.strokeStyle = "rgba(160,190,215,.35)"; ctx.lineWidth = Math.max(1, u * .008); ctx.beginPath(); for (let i = 0; i < 8; i++) { const x = X((i / 7 - .5) * .7 + .1), f = (t * 1.8 + i * .37) % 1, y0 = y + u * (.16 + f * .1); ctx.moveTo(x, y0); ctx.lineTo(x - u * .02, y0 + u * .07); } ctx.stroke(); } // rain
+  // Trailing layers first (furthest back): a dark edge copy, the body, a lit cap on each lobe and a flat belly shadow.
+  for (const S of CLOUD_STREAKS[layer]) {
+    const Ls = lobes(S), belly = Math.max(...Ls.map((c) => c.y));
+    strip(Ls, 0, u * .012); ctx.fillStyle = C.edge; ctx.fill();
+    strip(Ls); ctx.fillStyle = C[S[4]]; ctx.fill();
+    ctx.save(); ctx.clip();
+    ctx.fillStyle = S[4] === "dark" ? C.mid : C.light; for (const c of Ls) { ctx.beginPath(); ctx.ellipse(c.x, c.y - c.ry * .35, c.rx * .8, c.ry * .6, 0, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = C.dark; ctx.fillRect(k - u * 2, belly + u * .01, u * 4, u);
+    ctx.restore();
   }
+  // Billows: a dark edge copy, the mid-tone body, then (clipped to it) a lit cap on each and a flat shadow across the belly.
+  blob(0, u * .016); ctx.fillStyle = C.edge; ctx.fill();
+  blob(); ctx.fillStyle = C.mid; ctx.fill();
+  ctx.save(); ctx.clip();
+  ctx.fillStyle = C.light; for (const c of billows) { ctx.beginPath(); ctx.arc(c.x - c.r * .18, c.y - c.r * .28, c.r * .78, 0, TAU); ctx.fill(); }
+  ctx.fillStyle = C.cap; for (const c of billows) { ctx.beginPath(); ctx.arc(c.x - c.r * .3, c.y - c.r * .48, c.r * .42, 0, TAU); ctx.fill(); }
+  ctx.fillStyle = C.dark; const belly = Math.max(...billows.map((c) => c.y)) + u * (layer === "back" ? .02 : .04); ctx.fillRect(k - u * 2, belly, u * 4, u);
+  ctx.restore();
+  if (layer === "front" && !reduce && Math.sin(t * 4.1) > .7) { const a = Math.floor(t * 4.1 / TAU) * 2.39, x0 = X(.1 + Math.sin(a) * .25); lightningBolt(ctx, x0, y + u * .06, x0 + u * .1, y + u * .17, { now, seed: 90 + Math.floor(t), segments: 4, width: Math.max(1, u * .012), branch: false }); } // lightning flickering inside
   ctx.restore();
 }
 // The cloud that carries it away at its chasm (drawn under the body while `fleeFade` runs 1 -> 0): the same storm cloud.
