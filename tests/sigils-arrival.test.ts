@@ -21,6 +21,8 @@ test('sigils: world beasts and Gate Revenants always; a lower-level guardian ult
     plain += sigilDrop(s, { id: `b${n}`, kind: 'ashling' }, deep, n);
   }
   assert.ok(lower > 20 && lower < 110, `about ${SIGIL_DROPS.deepGuardian}% (${lower}/2000)`); assert.equal(first, 0); assert.equal(plain, 0);
+  let three = 0; for (let n = 0; n < 2000; n++) three += sigilDrop(s, { id: `t${n}`, kind: 'hollowMarshal', boss: true, dungeonRole: 'wingMiniboss' }, { name: 'The Threefold Deep' }, n);
+  assert.ok(SIGIL_DROPS.threefold > SIGIL_DROPS.deepGuardian && three > 70 && three < 180, `the Threefold Deep: about ${SIGIL_DROPS.threefold}% (${three}/2000)`);
 });
 
 test('a guardian kill in the game adds the sigil to the Wayfarer\'s consumables', () => {

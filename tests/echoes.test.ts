@@ -41,9 +41,9 @@ test('every Echo-eligible pack creature has exactly one Echo; explicit no-Echo c
   ensureEchoState(bad); assert.deepEqual(bad.echoes.equipped, ['weepingSaint']); assert.equal(bad.echoes.owned.fake, undefined);
 });
 
-test('release 263: guardians leave their Echo by chance (about 1 in 5) while you lack it; ordinary kills and summons never', () => {
-  let got = 0; for (let n = 0; n < 600; n++) { const t = freshSave(); if (echoDrop(t, { id: `g${n}`, packKind: 'gnawingMaw' }, true, n)) got++; }
-  assert.ok(got > 80 && got < 160, `about ${ECHO_DROPS.guardian}% (${got}/600)`);
+test('release 263: guardians leave their Echo by chance (3%) while you lack it; ordinary kills and summons never', () => {
+  let got = 0; for (let n = 0; n < 3000; n++) { const t = freshSave(); if (echoDrop(t, { id: `g${n}`, packKind: 'gnawingMaw' }, true, n)) got++; }
+  assert.equal(ECHO_DROPS.guardian, 3); assert.ok(got > 50 && got < 140, `about ${ECHO_DROPS.guardian}% (${got}/3000)`);
   const s = freshSave(); let n = 0; while (!echoDrop(s, { id: 'g', packKind: 'gnawingMaw' }, true, n)) n++;
   assert.equal(s.echoes.owned.gnawingMaw, true);
   for (let k = 0; k < 50; k++) assert.equal(echoDrop(s, { id: 'g', packKind: 'gnawingMaw' }, true, k), null, 'already owned');
@@ -53,7 +53,7 @@ test('release 263: guardians leave their Echo by chance (about 1 in 5) while you
 
 test('release 263 fix: a real pack guardian killed in the game can leave its Echo (live combatants carry packKind: true)', () => {
   let won = null;
-  for (let n = 0; n < 40 && !won; n++) {
+  for (let n = 0; n < 400 && !won; n++) {
     const s = freshSave(); s.seed = `ECHO-${n}`; const g = new Game(s, 0);
     const e = g.createEnemyFromSpawn({ id: 'gw', kind: 'riftLynx', x: 10, y: 10, boss: true, dungeonRole: 'gateWarden', packGuardian: true });
     assert.equal(e.packKind, true, 'the live flag'); assert.equal(echoKindOf(e), 'riftLynx');

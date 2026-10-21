@@ -58,9 +58,9 @@ export function ensureBoatState(save) {
   save.boat = Object.assign(b, { version: 1, owned: b.owned === true, hull: Math.max(0, Math.min(BOAT.maxHull, Number.isFinite(b.hull) ? b.hull : BOAT.maxHull)),
     aboard: b.owned === true && b.aboard === true, moored: place(b.moored), home: place(b.home) });
   // Release 261: a second, spare skiff moored elsewhere (additive at schema 14): { rx, ry, x, y, hull }.
-  // Release 263: seconds left on a deployed hull shield, and shields carried (save.consumables.hullShield); additive.
+  // Release 263: seconds left on a deployed hull shield (additive). Shields carried are save.consumables.hullShield,
+  // read as a count (missing or bad = 0) and written only when one is bought.
   save.boat.shield = Math.max(0, Math.min(BOAT.shield.seconds, Number.isFinite(Number(b.shield)) ? Number(b.shield) : 0));
-  save.consumables ||= {}; save.consumables.hullShield = Math.max(0, Math.floor(Number(save.consumables.hullShield) || 0));
   const spare = b.owned === true && place(b.spare); save.boat.spare = spare ? { ...spare, hull: Math.max(0, Math.min(BOAT.maxHull, Number.isFinite(b.spare.hull) ? b.spare.hull : BOAT.maxHull)) } : null;
   return save.boat;
 }
@@ -71,19 +71,20 @@ export function takeSpare(save) {
   b.moored = { rx: s.rx, ry: s.ry, x: s.x, y: s.y }; b.hull = s.hull; b.aboard = false;
   return true;
 }
+export const shieldsCarried = (save) => Math.max(0, Math.floor(Number(save?.consumables?.hullShield) || 0));
 export const shielded = (save) => (Number(save?.boat?.shield) || 0) > 0;
 export function buyHullShield(save) {
   const b = ensureBoatState(save), price = BOAT.shield.price;
   if (!b.owned) return { ok: false, message: "Shipwright: “A hull shield is no use without a hull. Buy a skiff first.”" };
   if ((save.currency || 0) < price) return { ok: false, message: `Shipwright: “A hull shield costs ${price} marks.”` };
-  save.currency -= price; save.consumables.hullShield += 1;
+  save.consumables ||= {}; save.currency -= price; save.consumables.hullShield = shieldsCarried(save) + 1;
   return { ok: true, message: `Hull shield bought (${save.consumables.hullShield} carried). Deploy it from the Pack while aboard; it holds ${BOAT.shield.seconds / 60} minutes.` };
 }
 export function deployHullShield(save) {
   const b = ensureBoatState(save);
-  if (!(save.consumables.hullShield > 0)) return { ok: false, message: "You carry no hull shield. The Shipwright sells them." };
+  if (!(shieldsCarried(save) > 0)) return { ok: false, message: "You carry no hull shield. The Shipwright sells them." };
   if (!b.aboard) return { ok: false, message: "Deploy a hull shield aboard your skiff." };
-  save.consumables.hullShield -= 1; b.shield = BOAT.shield.seconds;
+  save.consumables.hullShield = shieldsCarried(save) - 1; b.shield = BOAT.shield.seconds;
   return { ok: true, message: `The hull shield unfurls around the skiff: the hull takes no damage for ${BOAT.shield.seconds / 60} minutes.` };
 }
 export function tickHullShield(save, dt) { const b = save?.boat; if (b && b.shield > 0 && dt > 0) b.shield = Math.max(0, b.shield - dt); }

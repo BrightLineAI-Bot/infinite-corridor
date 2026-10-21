@@ -2502,9 +2502,9 @@ Tim, 2026-10-21. On Echoes: "there should be a pretty low chance to drop them...
 
 **CODE:**
 - **Echo drops.** `echoes.ts` `echoDrop` read `enemy.packKind` as the creature id, but `packCombatantFields` sets `packKind: true`, so no real kill ever matched an Echo. `echoKindOf` uses `kind` when the flag is a boolean.
-  - `ECHO_DROPS = { guardian: 20, ordinary: 0 }` (percent). `Game.defeatEnemy` passes `guardian` for `boss`, crossing guardians, world beasts and the Questing Beast.
+  - `ECHO_DROPS = { guardian: 3, ordinary: 0 }` (percent; Tim: "Okay three percent"). The roll is `rng(key)()`, not the raw hash modulo 100, which ran at about a third of the stated chance when only the drop counter changed. `Game.defeatEnemy` passes `guardian` for `boss`, crossing guardians, world beasts and the Questing Beast.
   - `monster-pack.ts` `GUARDIAN_POOL` gains `pallidCrawler`, the one non-unique creature with an Echo that could not guard. A dungeon keeps the guardian stored in `history.guardianKind`, so only dungeons never entered draw from the wider pool.
-- **Crossing Sigils.** `game.ts` `SIGIL_DROPS = { worldBeast: 1, gateRevenant: 1, deepGuardian: 3 }` and `sigilDrop(save, e, map, n)`. World beasts, the Questing Beast and any `gateRevenant` give one; a guardian (`isDungeonGuardian`) on level index 1 or more of a `multiLevel` map has a seeded 3% chance. Summons and `noRewards` give none. `defeatEnemy` adds them to `save.consumables.crossingSigil`.
+- **Crossing Sigils.** `game.ts` `SIGIL_DROPS = { worldBeast: 1, gateRevenant: 1, deepGuardian: 3, threefold: 6 }` and `sigilDrop(save, e, map, n)`. World beasts, the Questing Beast and any `gateRevenant` give one; a guardian (`isDungeonGuardian`) on level index 1 or more of a `multiLevel` map has a seeded 3% chance, and any guardian of the Threefold Deep (`map.name`) 6% (Tim: "a slightly greater chance"). Summons and `noRewards` give none. `defeatEnemy` adds them to `save.consumables.crossingSigil`.
 - **Arrivals.** `ARRIVAL = { clear: 8, search: 2000 }` and `clearArrival(map, width, at, enemies)`: when a living guardian is within `clear` tiles, a breadth-first walk over open floor (`footprintOpen`) finds the nearest spot clear of all of them (the farthest reachable one when none is). It runs after a `deepTransition`, after being felled in a dungeon, and on re-entering one at its anchor.
 - **The gap.** `ensureBeastGap` adds `recent` (the last `newSections` different section keys). `noteSectionVisit(save, key)` counts a section only when it is not in `recent`; `Game.loadArea` passes `"rx,ry"`.
 - **The Turtle's ice.** `TURTLE.seaIce = { radius: 2.6, life: 8, tick: .5, settle: 1 }`. `Game.tickSeaIce` marks a Turtle that attacks (`e.pack.attack`), and once it has made no attack for `settle` s freezes one patch where it stands. Ice thaws on schedule even under the Wayfarer; the existing deep-water rule then applies.
@@ -2520,7 +2520,7 @@ Tim, 2026-10-21. On Echoes: "there should be a pretty low chance to drop them...
 - The arrival fix moves the Wayfarer only along floor they could walk; it never moves a guardian. The reported spawn did not reproduce in a scan of overworld dungeons (10 multi-level dungeons, 15 descents), so the fix covers every way onto a level.
 - Boat dodging already granted the land dodge's 420 ms of invulnerability, and the hull is only struck when the Wayfarer is, so a dodge already protected the hull; nothing changed there. Rift Step already blinks along the last movement direction.
 - The HUD was checked in Chromium at 390×844, 844×390, 884×1104, 1104×884 and 360×740. Not on a phone.
-- The numbers (20% Echo, 3% sigil, 8-tile arrival gap, 2.6 ice radius, 1 s settle, 40 marks, 3 minutes) are provisional except where Tim named them (2 digs, 3 minutes).
+- The numbers (3% sigil, 6% Threefold, 8-tile arrival gap, 2.6 ice radius, 1 s settle, 40 marks, 3 minutes) are provisional except where Tim named them (3% Echo, 2 digs, 3 minutes).
 - Tests:
   - `tests/echoes.test.ts` (rates and a real guardian kill);
   - `tests/sigils-arrival.test.ts`;

@@ -6,15 +6,15 @@
 // Release 263: guardians and world beasts leave their creature's Echo by chance (ECHO_DROPS); ordinary kills do not.
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
-import { hashSeed } from "./random.ts";
+import { rng } from "./random.ts";
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;
 export const ECHO_DROP_CHANCE = 4; // percent, ordinary pack kills, first copy only (until release 263)
-// Release 263 (Tim, 2026-10-21: "there should be a pretty low chance to drop them... from different guardians"): Echoes
-// come only from guardians and world beasts, as a chance (percent) at the Echo of that creature while you lack it.
-// Ordinary pack kills no longer leave one.
-export const ECHO_DROPS = { guardian: 20, ordinary: 0 };
+// Release 263 (Tim, 2026-10-21: "there should be a pretty low chance to drop them... from different guardians", then "Okay
+// three percent"): Echoes come only from guardians and world beasts, as a chance (percent) at the Echo of that creature
+// while you lack it. Ordinary pack kills no longer leave one.
+export const ECHO_DROPS = { guardian: 3, ordinary: 0 };
 
 export const ECHOES = {
   thunderhorn: { name: "Thunderhorn's Charge", cost: 2, trigger: "dodge", module: "ramCharge", text: "Your dodge becomes a charge: foes you pass through are trampled and staggered." },
@@ -72,7 +72,8 @@ export const echoKindOf = (enemy) => typeof enemy?.packKind === "string" ? enemy
 export function echoDrop(save, enemy, guardian, n) {
   const id = echoKindOf(enemy);
   if (!id || !ECHOES[id] || save.echoes.owned[id] || enemy.summonedBy || enemy.noRewards) return null;
-  if (hashSeed(`${save.seed}:echo-drop:v${ECHO_VERSION}:${enemy.id}:${n}`) % 100 >= (guardian ? ECHO_DROPS.guardian : ECHO_DROPS.ordinary)) return null;
+  // A mixed roll: the raw FNV hash modulo 100 runs well under the stated chance when only the counter changes.
+  if (rng(`${save.seed}:echo-drop:v${ECHO_VERSION}:${enemy.id}:${n}`)() * 100 >= (guardian ? ECHO_DROPS.guardian : ECHO_DROPS.ordinary)) return null;
   save.echoes.owned[id] = true;
   return id;
 }

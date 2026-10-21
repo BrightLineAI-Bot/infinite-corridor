@@ -52,7 +52,7 @@ import { generateItem } from "./items.ts";
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
 import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.ts";
 import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.ts";
-import { hashSeed } from "./random.ts";
+import { hashSeed, rng } from "./random.ts";
 import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.ts';
 import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.ts';
 import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.ts';
@@ -1223,15 +1223,19 @@ export const SHORE_PASSIVE = ["tree", "rock"];
 // Crossing Sigils (release 263; Tim, 2026-10-21: "it's great that they're rare... but they're too rare... when you kill
 // these world bosses, and then when you also kill the [Gate Revenants], those will drop crossing sigils... the first
 // guardian in a dungeon won't ever drop a crossing sigil. Only the second guardian... has a chance... ultra rare").
-// `deepGuardian` is a percent chance, for a guardian on any level but the first of a multi-level dungeon.
-export const SIGIL_DROPS = { worldBeast: 1, gateRevenant: 1, deepGuardian: 3 };
-export const isDungeonGuardian = (e) => !!e && (!!e.boss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e.dungeonRole));
+// `deepGuardian` is a percent chance, for a guardian on any level but the first of a multi-level dungeon. `threefold`
+// (Tim: "when you do the threefold deep... a slightly greater chance") is the chance for any guardian of the Threefold Deep.
+export const SIGIL_DROPS = { worldBeast: 1, gateRevenant: 1, deepGuardian: 3, threefold: 6 };
+// A dungeon's own guardian (a world beast or Questing Beast haunting it is not one; they roam and have their own rules).
+export const isDungeonGuardian = (e) => !!e && !e.worldBeast && !e.questingBeast && (!!e.boss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e.dungeonRole));
 export function sigilDrop(save, e, map, n) {
   if (!e || e.summonedBy || e.noRewards) return 0;
   if (e.worldBeast || e.questingBeast) return SIGIL_DROPS.worldBeast;
   if (e.kind === "gateRevenant") return SIGIL_DROPS.gateRevenant;
+  if (!isDungeonGuardian(e)) return 0;
   const levels = map?.multiLevel ? map.levels || [] : [], at = levels.findIndex((q) => q.id === map.levelId);
-  if (at >= 1 && isDungeonGuardian(e) && hashSeed(`${save.seed}:sigil-drop:v1:${e.id}:${n}`) % 100 < SIGIL_DROPS.deepGuardian) return 1;
+  const chance = map?.name === "The Threefold Deep" ? SIGIL_DROPS.threefold : at >= 1 ? SIGIL_DROPS.deepGuardian : 0;
+  if (chance && rng(`${save.seed}:sigil-drop:v1:${e.id}:${n}`)() * 100 < chance) return 1;
   return 0;
 }
 // Release 263 (Tim: "In the second level of a dungeon... I spawn into like right next to The Guardian... I should not
@@ -1239,16 +1243,21 @@ export function sigilDrop(save, e, map, n) {
 // least `ARRIVAL.clear` tiles from every living guardian (unchanged when the arrival is already clear).
 export const ARRIVAL = { clear: 8, search: 2000 };
 export function clearArrival(map, width, at, enemies) {
-  const guards = (enemies || []).filter((e) => !e.dead && isDungeonGuardian(e)), far = (x, y) => guards.every((e) => Math.hypot(e.x - x, e.y - y) >= ARRIVAL.clear);
-  if (!guards.length || far(at.x, at.y)) return null;
-  const height = Math.floor(map.tiles.length / width), sx = Math.round(at.x), sy = Math.round(at.y), seen = new Set([sy * width + sx]), queue = [[sx, sy]];
-  let best = null;
+  const guards = (enemies || []).filter((e) => !e.dead && isDungeonGuardian(e) && Math.hypot(e.x - at.x, e.y - at.y) < ARRIVAL.clear * 2);
+  if (!guards.length) return null;
+  // Walk the open floor from the arrival; only a guardian standing on that floor (not one sealed behind a gate or wall)
+  // can reach the Wayfarer, so only those count.
+  const height = Math.floor(map.tiles.length / width), sx = Math.round(at.x), sy = Math.round(at.y), seen = new Set([sy * width + sx]), queue = [[sx, sy]], open = [];
   for (let k = 0; k < queue.length && k < ARRIVAL.search; k++) {
     const [x, y] = queue[k];
-    if (footprintOpen(map, width, x, y)) { if (far(x, y)) return { x, y }; const gap = Math.min(...guards.map((e) => Math.hypot(e.x - x, e.y - y))); if (!best || gap > best.gap) best = { x, y, gap }; }
-    else if (k) continue; // walk only over open floor (the arrival tile itself always expands)
+    if (footprintOpen(map, width, x, y)) open.push([x, y]); else if (k) continue; // the arrival tile itself always expands
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, i = ny * width + nx; if (nx < 0 || ny < 0 || nx >= width || ny >= height || seen.has(i)) continue; seen.add(i); queue.push([nx, ny]); }
   }
+  const floor = new Set(open.map(([x, y]) => y * width + x)), near = (e) => [[0, 0], [1, 0], [0, 1], [1, 1], [-1, 0], [0, -1]].some(([dx, dy]) => floor.has((Math.round(e.y) + dy) * width + Math.round(e.x) + dx));
+  const threats = guards.filter(near), far = (x, y) => threats.every((e) => Math.hypot(e.x - x, e.y - y) >= ARRIVAL.clear);
+  if (!threats.length || far(at.x, at.y)) return null;
+  let best = null;
+  for (const [x, y] of open) { if (far(x, y)) return { x, y }; const gap = Math.min(...threats.map((e) => Math.hypot(e.x - x, e.y - y))); if (!best || gap > best.gap) best = { x, y, gap }; }
   return best && { x: best.x, y: best.y }; // nowhere far enough: the farthest reachable spot
 }
 // The crossing guardian of an ordinary dungeon: the Hollow Marshal, or the pack creature that replaced it.

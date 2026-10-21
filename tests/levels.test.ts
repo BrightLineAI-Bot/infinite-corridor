@@ -102,7 +102,7 @@ test('controls: Jump sits in the centre of the action diamond and the compass ta
     const html = readFileSync(new URL(page, import.meta.url), 'utf8'), diamond = html.slice(html.indexOf('class="action-diamond'), html.indexOf('</div>', html.indexOf('class="action-diamond'))), quick = html.slice(html.indexOf('class="quick-row'), html.indexOf('class="action-diamond'));
     assert.match(diamond, /class="core jump" data-action="jump"/, page); assert.doesNotMatch(quick, /data-action="jump"/);
     // release 114 (Tim, 2026-10-16): the compass moved from the quick row to just above the Map button
-    const left = html.slice(html.indexOf('class="left-controls'), html.indexOf('class="quick-row'));
+    const left = html.slice(html.indexOf('class="left-controls'), html.indexOf('class="action-diamond'));
     assert.match(left, /id="navCompassSlot"[\s\S]*id="navCompass"[\s\S]*data-action="map"/, page); assert.doesNotMatch(quick, /navCompassSlot/, page);
   }
   const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');

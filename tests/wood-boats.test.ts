@@ -112,7 +112,7 @@ test('release 263: hull shields are bought from the Shipwright and deployed aboa
   tickHullShield(s, BOAT.shield.seconds - 1); assert.ok(s.boat.shield > 0); tickHullShield(s, 2); assert.equal(s.boat.shield, 0);
   hullAbsorb(s, 20); assert.ok(s.boat.hull < BOAT.maxHull, 'unshielded again');
   const m = migrateSave(JSON.parse(JSON.stringify({ ...s, boat: { ...s.boat, shield: 'x' }, consumables: { ...s.consumables, hullShield: -2 } })));
-  assert.equal(m.boat.shield, 0); assert.equal(m.consumables.hullShield, 0);
+  assert.equal(m.boat.shield, 0); assert.equal(deployHullShield(m).ok, false, 'a bad count is none');
   const g = new Game(Object.assign(freshSave(), { seed: SEED }), 0); g.save.boat = { owned: true, aboard: true, hull: 30 }; ensureBoatState(g.save); g.save.consumables.hullShield = 1;
   assert.equal(g.useConsumable('hullShield', 0), true); assert.equal(g.save.boat.shield, BOAT.shield.seconds);
 });
