@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 259 — world beasts now pursue you. A world beast you're fighting follows you out of its section, coming in behind you by the gate with its wounds, for up to three sections in a row (the Morphing Blob only one). Then it stops and stays in the last section it reached. Come back into that section and it can follow you again. Its patience keeps running the whole time, so if you don't finish it, it still gives up and goes home. The Void Walker and the Astral Worm keep their own rules and don't pursue.
+- Release 259 — when the Morphing Blob gives up, only part of it flees home. The big mass it leaves behind slumps where it stood, then fades away. It's gone if you leave the section.
+- Release 259 fix — the Glyphs screen works again. Since release 112 a typo crashed it every time it opened, leaving only its tabs, with no sockets, no pouch and no way back. Glyphs, Echoes and the Arcanum are reached from the Pack ("✦ Arcanum", or the Glyphs and Echoes buttons).
+- Release 259 — Rift Step never pulls you back. The Rift capstone Anchor (which returned you to where you started if you used Rift Step again within 3 seconds) is now Long Step: Rift Step reaches 2 tiles farther and still stops short of walls and ledges. If you took Anchor, you keep it as Long Step.
 - Release 257 — the Lightning Giant, a new roaming world boss (three tries, the level-8 strength floor, and a canyon home). He's a big armoured robot in the Armored Core mould, about as tall as the Astral Worm is long, built of lit, overlapping plates with blue trim, with a plume of four Tesla-coil jets fanned over the back of his head (the biggest leading), each firing a bolt-shaped burst of blue energy. He has lost one arm; its torn shoulder socket is his booster, erupting with energy as he leans into each dash. He swings a copper-wound Tesla mace in his remaining hand, and walks with a heavy, planted stride (the feet never slide):
   - **Arcs:** a sheaf of lightning links him to you and burns while you stay within reach.
   - **Shock:** a crackling mark you can step off.

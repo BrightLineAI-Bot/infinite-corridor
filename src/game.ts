@@ -71,7 +71,7 @@ import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, 
 import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
 import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.ts";
 import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
-import { WORLD_BEASTS, BEAST_HOMES, RETREAT, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
+import { WORLD_BEASTS, BEAST_HOMES, RETREAT, PURSUIT, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.ts";
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
@@ -1821,7 +1821,7 @@ export class Game {
       };
     this.save.session.areas[this.areaStateId()] = {
       encounterVersion:this.map.encounterVersion||0,
-      enemies: this.enemies.map((e) => ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } })),
+      enemies: this.enemies.filter((e) => !e.blobRemnant).map((e) => ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } })), // release 259: the Blob's remnant is never saved
       objects,
       projectiles: this.projectiles.map((p) => ({ ...p })),
       effects: this.effects.map((f) => ({ ...f, hits: { ...f.hits } })),
@@ -2399,9 +2399,25 @@ export class Game {
     this.save.magicBuff = this.magicBuffRemaining;
     this.save.spellCooldown = this.spellCooldownRemaining;
   }
+  // Release 259: once the crossing has held, each pursuing world beast comes over the edge behind the Wayfarer with its
+  // wounds, unless this section is a settlement or another beast's ground already stands here; then it stays behind.
+  worldBeastsFollow(hunters, fromArea, dx, dy) {
+    for (const h of hunters) {
+      if (this.map.settlement || this.enemies.some(e => (e.worldBeast || e.questingBeast) && !e.dead) || !canPursue(this.save, h.id, this.rx - dx, this.ry - dy, dx, dy)) continue;
+      const spawn = pursuitSpawn(this.save, h.id, this.map, this.rx, this.ry, dx, dy); if (!spawn) continue;
+      pursued(this.save, h.id, dx, dy);
+      const e = this.createEnemyFromSpawn(spawn, "overworld"); if (h.maxHp > 0) { e.maxHp = h.maxHp; e.damage = h.damage; } e.hp = Math.max(1, Math.min(e.maxHp, Number(h.hp) || e.maxHp)); e.aggro = true; // the same creature: its own vitals ensureAI(e).mode = "chase";
+      this.enemies.push(e);
+      const left = this.save.session.areas[fromArea]; if (left?.enemies) left.enemies = left.enemies.filter(q => q.id !== h.actorId); // it is no longer back there
+      const B = WORLD_BEASTS[h.id], q = this.save.worldBeasts[h.id].active, more = (PURSUIT.limits[h.id] ?? PURSUIT.sections) - (q.chase || 0);
+      this.message = `${B.name} follows you across.${more > 0 ? "" : " It will go no further."}`;
+    }
+  }
   transitionSection(dx, dy) {
     const from = { rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y };
     const pursuers=this.enemies.filter(e=>e.gatePredator&&e.aggro&&!e.dead).map(e=>({...e,ai:{...ensureAI(e)}}));
+    // Release 259: a fighting world beast may follow the Wayfarer over the edge (world-beasts.ts PURSUIT).
+    const fromArea = this.areaStateId(), hunters = this.enemies.filter(e => e.worldBeast && e.aggro && !e.dead && !e.retreating && !e.astralCompanionOf && canPursue(this.save, e.worldBeast, this.rx, this.ry, dx, dy)).map(e => ({ id: e.worldBeast, actorId: e.id, hp: e.hp, maxHp: e.maxHp, damage: e.damage }));
     for(const e of this.enemies)if(!e.gatePredator&&e.aggro&&!e.dead){e.aggro=false;ensureAI(e).mode="return"}
     for(const e of this.enemies)if(e.gatePredator&&e.aggro&&!e.dead)e.dead=true;
     this.snapshotArea();
@@ -2428,6 +2444,7 @@ export class Game {
     // Open seas (release 152): a skiff crosses wherever the water runs on; a walker cannot step out into open sea.
     if (aboard(this.save)) { if (!this.sailAcross(dx, dy, from)) return false; }
     else if (DEEP_WATER.includes(footprintHazard(this.map, 32, this.player.x, this.player.y)) && !canSwim(this.save)) { this.returnFrom(from, "Open sea lies beyond. You need a boat to cross it."); return false; }
+    this.worldBeastsFollow(hunters, fromArea, dx, dy);
     for(const pursuer of pursuers){const e={...pursuer,id:`${pursuer.id}-pursuit-${this.rx}-${this.ry}`,dead:false,aggro:true,x:this.player.x-dx*1.4,y:this.player.y-dy*1.4,ai:{...pursuer.ai,homeX:this.player.x,homeY:this.player.y}};placeGatePursuer(e,this.player,this.map,mapWidth(this.map,this.area));resetGateAttack(e, true);this.enemies.push(e)}
     if(pursuers.length)this.message="The Gate Revenant tears through the crossing behind you.";
     this.sync();
@@ -3208,8 +3225,20 @@ export class Game {
   }
   // Release 239: a world beast runs out of patience and retreats home, invulnerable and through everything; it leaves
   // each section by the gate toward home (the Wayfarer may follow) and, in the home section, goes into its home ground.
+  // Release 259 (Tim: "when the blob retreats the whole mass doesn't retreat with it... a portion of it just detaches and
+  // retreats home and just leaves the large mass... and then it'll just fade gracefully"): the fleeing blob shrinks to a
+  // portion of itself, and the mass left behind stays as an inert remnant (no AI, no hits, no rewards, never saved) that
+  // lingers, then fades away (BLOB_SPLIT).
+  splitBlob(e) {
+    const mass = this.createEnemyFromSpawn({ id: `${e.id}:remnant`, kind: e.kind, x: e.x, y: e.y, traits: [] }, this.area);
+    Object.assign(mass, { blobRemnant: true, remnantLeft: BLOB_SPLIT.linger, untargetable: true, noRewards: true, aggro: false, scale: e.scale, facingX: e.facingX, hp: 1, maxHp: 1 });
+    e.scale = Math.max(.6, (Number(e.scale) || 1) * BLOB_SPLIT.portion); if (e.blobBase) e.blobBase = { scale: e.blobBase.scale * BLOB_SPLIT.portion, radius: e.blobBase.radius * BLOB_SPLIT.portion }; // it regrows from its base each tick
+    this.enemies.push(mass);
+    this.message = "Part of the Blob tears away and flees. The rest of the mass slumps where it stood.";
+  }
   tickWorldBeasts(dt) {
     if (this.beastNote) { this.message = this.beastNote; this.beastNote = null; }
+    if (this.enemies.some((e) => e.remnantGone)) this.enemies = this.enemies.filter((e) => !e.remnantGone);
     let gone = null;
     for (const e of this.enemies) {
       if (!e.worldBeast || e.dead || !WORLD_BEASTS[e.worldBeast]) continue;
@@ -3225,6 +3254,7 @@ export class Game {
         const seed = this.save.seed, gen = this.save.worldGeneration, r = beginRetreat(this.save, id, this.rx, this.ry, (x, y) => { let g = null; const region = () => (g ||= generateRegion(seed, x, y, gen)); return { get biome() { return biomeFor(seed, x, y); }, get dominant() { return region().dominant; }, get canyon() { return region().environment?.kind === "canyon"; }, get dungeon() { return (region().objects || []).some((o) => o.kind === "dungeon"); } }; }); // release 241: a section is generated only for homes that need it
         e.retreating = true; this.message = r.message;
         for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; }
+        if (id === "morphingBlob") this.splitBlob(e);
         journalOnce(this.save, `world-beast-flees:${id}:${this.save.worldBeasts[id].cycle}`, r.message, "World beasts");
       }
       if (e.retreating && !e.fleeTo && q.retreat) { const to = retreatTarget(q.retreat, id, this.map, this.rx, this.ry, q.dungeon ? {} : sectionExits(this.save.seed, this.rx, this.ry), e); Object.assign(e, { fleeTo: to, fleePath: id === "voidWalker" ? [] : retreatPath(this.map, e, to, B.retreatMoves, Number(this.map.width) || 32), fleeSpeed: RETREAT.speed, fleeFadeTime: RETREAT.fade, untargetable: true }); } // release 239: it finds its way round walls, over chasms, by bridges
@@ -4004,6 +4034,7 @@ export class Game {
           if(choice==="leave"&&q){q.astralLeave=true;this.message="The Void Walker leaps from the Astral Worm and leaves the fight.";}
           else this.message="The Void Walker leaps down from the Astral Worm to fight on foot.";}
       }
+      if(e.blobRemnant){e.remnantLeft-=dt;e.fleeFade=Math.max(0,Math.min(1,e.remnantLeft/BLOB_SPLIT.fade));if(e.remnantLeft<=0)e.remnantGone=true;continue} // release 259: the Blob's left-behind mass fades
       if(e.packKind&&e.astralMount?.status==="boarding"){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)tickAstralBoarding(e,dt,this.astralMountHost());continue}
       if(e.packKind){refreshMarineBeast(e,this.map,width,this.area);this.performanceStats.activeEnemies++;const zone=this.astralRiderHeld(e)||e.kind==="voidWalker"&&(e.retreating||e.fleeTo)?null:packWorld.sanctuary;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(zone)enforceSanctuary(e,zone);continue}
       if(e.seaKind){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateSeaCreature(e,seaWorld,dt);continue}

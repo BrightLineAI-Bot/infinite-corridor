@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**259**
+**261**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 257 | Claude | `claude/dreamy-rubin-yn6q2p` | The Lightning Giant: a new roaming world boss (giant lightning robot with a club; arcs, knock-down shock, swings, slam with sky strike and bolt cone, electrify; retreats to a chasm and rises away on a cloud) | Building. |
+| 259 | Claude | `claude/dreamy-rubin-yn6q2p` | World beasts pursue you up to 3 sections (the Blob 1); the Blob's retreat splits and leaves a fading mass; fix for the Glyphs screen crash (release 112 typo); Rift Step no longer recalls you (Anchor becomes Long Step) | Building. |
+| 257 | Claude | PR #107, merged (`204a383`) | The Lightning Giant world boss, Giant at sea on his cloud, Supernova fog at sea | Merged; preview `r257-204a3837382b`. Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)

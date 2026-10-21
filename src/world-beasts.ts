@@ -155,6 +155,16 @@ export function retreatPath(map, from, to, mode, width = 32) {
   return out;
 }
 export const RETREAT = { search: 8, fallback: 6, speed: 2.1, inset: 1.5, fade: 1.4 };
+// Pursuit (release 259; Tim, 2026-10-21: "they should pursue you out of the tile that you meet them... up to 3 tiles...
+// The blob can just take one... then they should just stop and stay in that tile. If you come back into that tile, it can
+// pursue you for like 3 more"). A fighting world beast follows the Wayfarer across a section edge, coming in `inset` tiles
+// inside the gate behind them, up to `sections` times in a row (per-beast overrides below); then it stays where it is.
+// Coming back into its section starts a fresh run. Its patience keeps counting the whole time. The Void Walker and the
+// Astral Worm keep their own section rules and do not pursue.
+export const PURSUIT = { sections: 3, inset: 3.5, limits: { morphingBlob: 1 }, exclude: ["voidWalker", "astralWorm"] };
+// The Morphing Blob's retreat (release 259): a `portion` of it breaks away and goes home; the mass it leaves stays put,
+// lingers `linger` s and fades out over its last `fade` s. It is never saved, so leaving the section clears it.
+export const BLOB_SPLIT = { portion: .45, linger: 14, fade: 5 };
 const SIDES = { east: [1, 0], west: [-1, 0], south: [0, 1], north: [0, -1] }, OPPOSITE = { east: "west", west: "east", north: "south", south: "north" };
 
 // Counts fighting time; true when the beast's patience has just run out.
@@ -231,6 +241,28 @@ export function worldBeastsLost(save, area, rx, ry, dungeonId = null) {
   for (const id of WORLD_BEAST_IDS) { const a = save.worldBeasts[id].active; if (a?.retreat && id !== "voidWalker" && id !== "astralWorm" && (a.dungeon ? area !== "dungeon" || dungeonId !== a.dungeon : area !== "overworld" || a.rx !== rx || a.ry !== ry)) { retreatEnded(save, id); lost.push(id); } }
   return lost;
 }
+// Release 259 pursuit. `canPursue` says whether beast `id` may follow the Wayfarer out of (rx, ry) by (dx, dy) now.
+export function canPursue(save, id, rx, ry, dx, dy) {
+  const q = save.worldBeasts?.[id]?.active, tx = rx + dx, ty = ry + dy;
+  if (!q || q.retreat || q.dungeon || q.astralJoined || PURSUIT.exclude.includes(id) || q.rx !== rx || q.ry !== ry) return false;
+  if ((q.chase || 0) >= (PURSUIT.limits[id] ?? PURSUIT.sections)) return false;
+  if (WORLD_BEAST_IDS.some((k) => k !== id && save.worldBeasts[k]?.active && !save.worldBeasts[k].active.dungeon && save.worldBeasts[k].active.rx === tx && save.worldBeasts[k].active.ry === ty)) return false; // one beast to a section
+  const qb = save.questingBeast?.active; return !(qb && qb.rx === tx && qb.ry === ty);
+}
+// It followed: it now holds the next section, one more step into this run.
+export function pursued(save, id, dx, dy) { const q = save.worldBeasts[id].active; q.rx += dx; q.ry += dy; q.chase = (q.chase || 0) + 1; return q; }
+// Where it comes in: `inset` tiles inside the gate the Wayfarer entered by, on the nearest ground it can hold.
+export function pursuitSpawn(save, id, map, rx, ry, dx, dy) {
+  const q = save.worldBeasts[id], ex = sectionExits(save.seed, rx, ry), I = PURSUIT.inset;
+  const want = dx > 0 ? { x: I, y: ex.west } : dx < 0 ? { x: 31 - I, y: ex.east } : dy > 0 ? { x: ex.north, y: I } : { x: ex.south, y: 31 - I };
+  const at = (map?.tiles || []).filter((t) => beastGround(id, t) && t.x > 1 && t.y > 1 && t.x < 30 && t.y < 30).sort((a, b) => Math.hypot(a.x - want.x, a.y - want.y) - Math.hypot(b.x - want.x, b.y - want.y))[0];
+  return at ? { id: `world-beast:${id}:${q.cycle}`, kind: WORLD_BEASTS[id].kind, x: at.x, y: at.y, boss: true, worldBeast: id, traits: [] } : null;
+}
+// Ground a beast can be placed on: open land, or open sea for the marine beasts.
+function beastGround(here, t) {
+  const marine = here === "voidWalker" || here === "psychicCrystal" || here === "astralWorm" || here === "lightningGiant";
+  return marine && marineTileOpen(t) || here === "astralWorm" && astralSpawnWater(t) || !t.blocked && !t.structure && !t.environment && !LETHAL_KINDS.has(t.kind);
+}
 export const isWorldBeastKind = (kind) => WORLD_BEAST_IDS.some((id) => WORLD_BEASTS[id].kind === kind);
 
 // save.worldBeasts: { id: { cycle, cooldown, active: { rx, ry, tries } | null, slain, escaped } } (additive; unknown ids kept).
@@ -241,6 +273,7 @@ export function ensureWorldBeasts(save, normalizeScarHistory = true) {
     const a = q.active && ((Number.isInteger(q.active.rx) && Number.isInteger(q.active.ry)) || typeof q.active.dungeon === "string") ? { ...q.active, rx: q.active.rx, ry: q.active.ry, tries: Math.max(0, Math.floor(Number(q.active.tries) || 0)), patience: Math.max(0, Number(q.active.patience) || 0), retreat: cleanRetreat(q.active.retreat) } : null;
     if (a && !a.retreat) delete a.retreat;
     if (a && !a.patience) delete a.patience; // both are added only once there is something to keep
+    if (a) { const chase = Math.max(0, Math.floor(Number(q.active.chase) || 0)); if (chase) a.chase = chase; else delete a.chase; } // release 259: sections followed in this run
     all[id] = { cycle: Math.max(0, Math.floor(Number(q.cycle) || 0)), cooldown: Math.max(0, Math.floor(Number(q.cooldown) || 0)), active: a, slain: Math.max(0, Math.floor(Number(q.slain) || 0)), escaped: Math.max(0, Math.floor(Number(q.escaped) || 0)) };
   }
   save.worldBeasts = all;
@@ -288,8 +321,8 @@ export function worldBeastFor(save, map, rx, ry) {
   if (!here) return null;
   const q = save.worldBeasts[here];
   if (q.active.retreat) return fleeSpawn(save, here, rx, ry);
-  const marine = here === "voidWalker" || here === "psychicCrystal" || here === "astralWorm" || here === "lightningGiant"; // release 257: met at sea, riding its cloud
-  const open = map.tiles.filter((t) => (marine && marineTileOpen(t) || here === "astralWorm" && astralSpawnWater(t) || !t.blocked && !t.structure && !t.environment && !LETHAL_KINDS.has(t.kind)) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24);
+  if (q.active.chase) delete q.active.chase; // release 259: back in its section, it may pursue a fresh run
+  const open = map.tiles.filter((t) => beastGround(here, t) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24); // release 257: the Giant may be met at sea
   const at = open.sort((a, b) => hashSeed(`wb:${here}:${q.cycle}:${a.x},${a.y}`) - hashSeed(`wb:${here}:${q.cycle}:${b.x},${b.y}`))[0];
   if (!at) { if (!q.active.tries) q.active = null; return null; } // no valid terrain for this beast: it does not hold the section
   return { id: `world-beast:${here}:${q.cycle}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, traits: [] };

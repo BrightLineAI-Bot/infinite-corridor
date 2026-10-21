@@ -2387,3 +2387,33 @@ Late additions (Tim, 2026-10-21):
 - The knock-down pose is presentation only; collision and position are unchanged.
 - The cloud ascent is the existing home-fade timing, with the body lifted instead of sunk.
 - At sea, the Giant's attacks are unchanged (slams land on the water). Supernova fog only limits sight; it has no damage and no saved state.
+
+## Release 259: world beasts pursue; the Blob splits; Glyphs fix; Rift Step without recall — 2026-10-21
+
+Tim, 2026-10-21: "these world bosses should pursue you... up to 3 tiles... The blob can just take one... then they should just stop and stay in that tile. If you come back into that tile, it can pursue you for like 3 more, and if you don't kill it, then it'll just lose patience and leave"; "when the blob retreats the whole mass doesn't retreat with it... a portion of it just detaches and retreats home and just leaves the large mass... and then it'll just fade"; "the glyphs and echoes aren't working... nothing accessible"; "the rift step... should not recall you back to a point... disable that".
+
+**CODE:**
+- **Pursuit.** `world-beasts.ts` `PURSUIT` = `{ sections: 3, inset: 3.5, limits: { morphingBlob: 1 }, exclude: [voidWalker, astralWorm] }`.
+  - `canPursue(save, id, rx, ry, dx, dy)` checks that the beast is active, not retreating, not in a dungeon and not excluded. Its `active.chase` must be under its limit, no other world beast may hold the next section, and the Questing Beast must not be there.
+  - `pursued` moves `active.rx/ry` and increments `chase`.
+  - `pursuitSpawn` places it `inset` tiles inside the gate the Wayfarer entered by, on the nearest ground it can hold (`beastGround`, which `worldBeastFor` now shares).
+  - `Game.transitionSection` collects the aggro, non-retreating world beasts that may pursue before the snapshot. After the crossing holds (the sea checks pass), `worldBeastsFollow` spawns each one in the new section with its own `hp`/`maxHp`/`damage`, aggro and chasing, and removes its record from the section it left. It does not follow into a settlement or a section that already has a world beast or the Questing Beast.
+  - `worldBeastFor` clears `chase` when it places the beast in its section on an ordinary load, which starts a fresh run.
+  - `patience` is untouched, so it keeps counting across sections.
+  - `ensureWorldBeasts` normalises `chase` (a positive integer, or absent). This is additive at schema 14.
+- **Blob split.** `BLOB_SPLIT` = `{ portion: .45, linger: 14, fade: 5 }`.
+  - When the Blob begins an overworld retreat, `Game.splitBlob` shrinks the fleeing Blob (and its `blobBase`, from which it regrows each tick) to `portion`.
+  - It leaves an inert `blobRemnant` copy at full size: untargetable, no rewards, no AI.
+  - The update loop counts the remnant's `remnantLeft` down and drives `fleeFade` over the last `fade` s. The renderer's fade does the rest, and the remnant is removed at 0.
+  - `snapshotArea` never saves remnants, so leaving the section clears it.
+- **Glyphs fix.** `openGlyphs` in `main.ts` read `constlit=` for `const lit=`, a merge typo from release 112 (89015a9). In the strict module it threw `ReferenceError` on every open, after `arcanumShell` had drawn only the tabs.
+- **Rift Step.** `constellation.ts` `RIFT` = `{ reach: 2, longStep: 2 }`.
+  - The recall (`magicSkills.riftAnchor`) is gone; a stale one from an older save is dropped on the next step.
+  - The `anchor` capstone keeps its id and is renamed Long Step: `+RIFT.longStep` reach. The step still stops at walls, ledges and unstandable ground.
+
+**BOUNDARY:**
+- Pursuit applies only to overworld section edges. Dungeons, the Void Walker's and the Astral Worm's own crossings, and retreats are unchanged.
+- A beast that follows is placed fresh by the gate. Its position in the section it left is not kept.
+- The pursuit numbers and the Blob split numbers are provisional, not Tim's.
+- The Glyphs fix was checked in Chromium at 390 px against a build of `main` (which threw "constlit is not defined" with an empty screen). Glyphs then showed its hosts, sockets, tiles and footer, and Echoes and the Arcanum opened without errors.
+- Tests: `tests/world-beast-pursuit.test.ts` and `tests/constellation.test.ts` (Long Step, no recall).
