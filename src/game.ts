@@ -33,7 +33,7 @@ import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
 import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.ts";
-import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.ts";
+import { aboard, sailable, BOAT, canBuildSkiff, buyHullShield, deployHullShield, tickHullShield, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.ts";
 import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.ts";
 import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.ts";
 import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.ts";
@@ -1218,6 +1218,39 @@ export function hasLineOfSight(enemy, player, map, width, projectile=false, allo
       return false;
   return true;
 }
+// Objects that do not keep Act from building a skiff at the water's edge (release 263).
+export const SHORE_PASSIVE = ["tree", "rock"];
+// Crossing Sigils (release 263; Tim, 2026-10-21: "it's great that they're rare... but they're too rare... when you kill
+// these world bosses, and then when you also kill the [Gate Revenants], those will drop crossing sigils... the first
+// guardian in a dungeon won't ever drop a crossing sigil. Only the second guardian... has a chance... ultra rare").
+// `deepGuardian` is a percent chance, for a guardian on any level but the first of a multi-level dungeon.
+export const SIGIL_DROPS = { worldBeast: 1, gateRevenant: 1, deepGuardian: 3 };
+export const isDungeonGuardian = (e) => !!e && (!!e.boss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e.dungeonRole));
+export function sigilDrop(save, e, map, n) {
+  if (!e || e.summonedBy || e.noRewards) return 0;
+  if (e.worldBeast || e.questingBeast) return SIGIL_DROPS.worldBeast;
+  if (e.kind === "gateRevenant") return SIGIL_DROPS.gateRevenant;
+  const levels = map?.multiLevel ? map.levels || [] : [], at = levels.findIndex((q) => q.id === map.levelId);
+  if (at >= 1 && isDungeonGuardian(e) && hashSeed(`${save.seed}:sigil-drop:v1:${e.id}:${n}`) % 100 < SIGIL_DROPS.deepGuardian) return 1;
+  return 0;
+}
+// Release 263 (Tim: "In the second level of a dungeon... I spawn into like right next to The Guardian... I should not
+// spawn next to The Guardian"): arriving on a level, the Wayfarer is moved along the walkable floor to the nearest spot at
+// least `ARRIVAL.clear` tiles from every living guardian (unchanged when the arrival is already clear).
+export const ARRIVAL = { clear: 8, search: 2000 };
+export function clearArrival(map, width, at, enemies) {
+  const guards = (enemies || []).filter((e) => !e.dead && isDungeonGuardian(e)), far = (x, y) => guards.every((e) => Math.hypot(e.x - x, e.y - y) >= ARRIVAL.clear);
+  if (!guards.length || far(at.x, at.y)) return null;
+  const height = Math.floor(map.tiles.length / width), sx = Math.round(at.x), sy = Math.round(at.y), seen = new Set([sy * width + sx]), queue = [[sx, sy]];
+  let best = null;
+  for (let k = 0; k < queue.length && k < ARRIVAL.search; k++) {
+    const [x, y] = queue[k];
+    if (footprintOpen(map, width, x, y)) { if (far(x, y)) return { x, y }; const gap = Math.min(...guards.map((e) => Math.hypot(e.x - x, e.y - y))); if (!best || gap > best.gap) best = { x, y, gap }; }
+    else if (k) continue; // walk only over open floor (the arrival tile itself always expands)
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, i = ny * width + nx; if (nx < 0 || ny < 0 || nx >= width || ny >= height || seen.has(i)) continue; seen.add(i); queue.push([nx, ny]); }
+  }
+  return best && { x: best.x, y: best.y }; // nowhere far enough: the farthest reachable spot
+}
 // The crossing guardian of an ordinary dungeon: the Hollow Marshal, or the pack creature that replaced it.
 export function isCrossingGuardian(e) { return !!e && (!e.dungeonRole || e.dungeonRole === "gateWarden") && (e.kind === "hollowMarshal" || !!e.packGuardian); }
 export function ensureAI(e) {
@@ -1919,7 +1952,7 @@ export class Game {
     }
     if (area === "overworld") {
       const atlas = (this.save.atlas ||= {}), key = `${this.rx},${this.ry}`, prior = atlas[key];
-      noteSectionVisit(this.save, !prior); // release 261: a first visit counts toward the buffer between world beasts
+      noteSectionVisit(this.save, key); // release 263: a section not among the last 8 different ones counts toward the buffer
       // A section first seen now is pinned to the current landscape version; one explored earlier keeps none.
       atlas[key] = { terrain: this.map.dominant, ...(prior ? (prior.landscapeVersion ? { landscapeVersion: prior.landscapeVersion } : {}) : { landscapeVersion: LANDSCAPE_VERSION }),
         // Hamlets (release 111; version 2 at 112) follow the same rule: only sections first seen from now on can hold one.
@@ -2361,6 +2394,7 @@ export class Game {
       p.x = deep ? (anchor?.x ?? this.map.hub?.x ?? this.map.entry?.x ?? 4) : (this.map.entry?.x ?? 4);
       p.y = deep ? (anchor?.y ?? this.map.hub?.y ?? this.map.entry?.y ?? 5) : (this.map.entry?.y ?? 5);
       relocateIfStranded(p,this.map,mapWidth(this.map,"dungeon"));
+      { const away = clearArrival(this.map, mapWidth(this.map, "dungeon"), p, this.enemies); if (away) { p.x = away.x; p.y = away.y; } } // release 263
       this.updateDungeonDiscovery(true);
       p.invulnerableUntil = now + 2000;
       this.message = deep ? `Felled — recovered at the central anchor of ${this.map.name}. Cleared wings, shortcuts, carried items, XP, and map progress remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}` : `Felled — returned to the entrance of ${this.map.name}. The run begins again; your map and everything carried remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
@@ -2518,6 +2552,9 @@ export class Game {
     // Wood (release 119): with nothing else to act on, Act at deep water's edge builds a skiff from wood.
     if (!o && !objectId) { const d = this.digAhead(); if (d) return d; } // release 225: Act facing a dungeon wall digs
     if (!o && !objectId && this.shoreWater()) return this.buildSkiffHere();
+    // Release 263 (Tim: "if I go to the edge of the water and hit action, I should be building a boat and getting on that
+    // boat and moving"): at the water's edge a tree or rock beside you no longer takes the press when a skiff can be built.
+    if (o && !objectId && SHORE_PASSIVE.includes(o.kind) && this.shoreWater() && canBuildSkiff(this.save)) return this.buildSkiffHere();
     if (!o)
       return {
         ok: false,
@@ -2554,7 +2591,7 @@ export class Game {
     // Release 151: a level's fixed landing point (toX/toY) can sit in a wall on some generated floors; every move to a
     // landing point now steps onto the nearest open ground, as loading an area and recovering after a fall already do.
     if(o.kind==="deepTransition"){
-      const progress=deepDungeonProgress(this.save,this.areaId());this.snapshotArea();this.save.session.activeDungeonLevelId=o.toLevelId;progress.currentLevelId=o.toLevelId;if(!progress.discoveredLevelIds.includes(o.toLevelId))progress.discoveredLevelIds.push(o.toLevelId);this.loadArea("dungeon",false);this.player.x=o.toX;this.player.y=o.toY;relocateIfStranded(this.player,this.map,mapWidth(this.map,"dungeon"));this.projectiles=[];this.effects=[];this.message=`${this.map.levelName||o.toLevelId} reached.`;this.sync();return{ok:true,message:this.message};
+      const progress=deepDungeonProgress(this.save,this.areaId());this.snapshotArea();this.save.session.activeDungeonLevelId=o.toLevelId;progress.currentLevelId=o.toLevelId;if(!progress.discoveredLevelIds.includes(o.toLevelId))progress.discoveredLevelIds.push(o.toLevelId);this.loadArea("dungeon",false);this.player.x=o.toX;this.player.y=o.toY;relocateIfStranded(this.player,this.map,mapWidth(this.map,"dungeon"));{const away=clearArrival(this.map,mapWidth(this.map,"dungeon"),this.player,this.enemies);if(away){this.player.x=away.x;this.player.y=away.y}}this.projectiles=[];this.effects=[];this.message=`${this.map.levelName||o.toLevelId} reached.`;this.sync();return{ok:true,message:this.message};
     }
     if(o.kind==="deepShortcut"){
       const progress=deepDungeonProgress(this.save,this.areaId()),ready=progress.completedObjectiveIds.includes(o.unlockObjectiveId);if(!ready)return{ok:false,message:this.message=`${o.name} has no visible seam yet.`};if(!progress.openedShortcutIds.includes(o.id))progress.openedShortcutIds.push(o.id);applyDeepDungeonProgress(this.save,this.areaId(),this.map);this.defeatNotice={title:"SHORTCUT OPENED",detail:`${o.name} · a physical route returns toward the hub`,kind:"discovery"};this.message=`${o.name} opens. The concealed corridor now joins the explored floor.`;this.sync();return{ok:true,message:this.message};
@@ -2690,6 +2727,7 @@ export class Game {
     else if (action === "buySkiff") r = buySkiff(s, { rx: this.rx, ry: this.ry, x: o.berth.x, y: o.berth.y });
     else if (action === "repair") r = repairSkiff(s);
     else if (action === "buyRig") r = buyRig(s);
+    else if (action === "buyShield") r = buyHullShield(s); // release 263
     else if (action === "board") {
       if (o.id === "skiff-spare") takeSpare(s); // release 261: the spare becomes the skiff in use
       const at = o.kind === "skiff" ? { x: o.x, y: o.y } : o.berth;
@@ -2761,7 +2799,11 @@ export class Game {
     const at = this.shoreWater();
     if (!at) { this.message = "Find deep water's edge to build a skiff."; return { ok: false, message: this.message }; }
     const r = buildSkiff(this.save, { rx: this.rx, ry: this.ry, x: at.x, y: at.y - .2 });
-    if (r.ok) { this.map.objects = this.map.objects.filter((q) => q.kind !== "skiff"); this.placeSpareSkiff(); Object.assign(this.player, { x: at.x, y: at.y - .2, sailVx: 0, sailVy: 0 }); this.swimming = false; }
+    if (r.ok) {
+      const p = this.player, fx = at.x - p.x, fy = at.y - .2 - p.y, m = Math.hypot(fx, fy) || 1, push = BOAT.pushOff * 2.4 * BOAT.speed;
+      this.map.objects = this.map.objects.filter((q) => q.kind !== "skiff"); this.placeSpareSkiff();
+      Object.assign(p, { x: at.x, y: at.y - .2, sailVx: fx / m * push, sailVy: fy / m * push }); this.swimming = false; // release 263: it pushes off, away from the shore
+    }
     this.message = r.message; this.sync(); return r;
   }
 
@@ -2874,6 +2916,7 @@ export class Game {
         this.player.x = deep ? (recovery?.x ?? this.map.hub?.x ?? this.map.entry?.x ?? 4) : (this.map.entry?.x ?? 4);
         this.player.y = deep ? (recovery?.y ?? this.map.hub?.y ?? this.map.entry?.y ?? 5) : (this.map.entry?.y ?? 5);
         relocateIfStranded(this.player,this.map,mapWidth(this.map,"dungeon"));
+        { const away = clearArrival(this.map, mapWidth(this.map, "dungeon"), this.player, this.enemies); if (away) { this.player.x = away.x; this.player.y = away.y; } } // release 263
         this.updateDungeonDiscovery(true);
         this.player.invulnerableUntil = now + 2000;
         this.projectiles = [];
@@ -3267,17 +3310,25 @@ export class Game {
   }
   // Release 239: a world beast runs out of patience and retreats home, invulnerable and through everything; it leaves
   // each section by the gate toward home (the Wayfarer may follow) and, in the home section, goes into its home ground.
-  // Release 261: the Mountain Turtle walks the sea on ice of its own making (TURTLE.seaIce). Open sea tiles near it become
-  // walkable `seaIce` tiles (the original tile is kept and put back when it thaws). Batched every `tick` s so the ground
-  // cache redraws at most that often. Transient: a section load clears it, and it is never saved.
+  // Release 261: the Mountain Turtle at sea freezes a floor of ice (TURTLE.seaIce). Open sea tiles become walkable
+  // `seaIce` tiles (the original tile is kept and put back when it thaws). Batched every `tick` s so the ground cache
+  // redraws at most that often. Transient: a section load clears it, and it is never saved.
+  // Release 263: one patch at the end of each combo (once it has attacked and then made no attack for `settle` s), not a
+  // trail; and a thaw does not wait for the Wayfarer: ice that melts under them drops them into the deep water.
   tickSeaIce(dt) {
     const I = TURTLE.seaIce; if (this.area !== "overworld") { this.seaIce = null; return; }
     const turtles = this.enemies.filter((e) => e.kind === "mountainTurtle" && !e.dead);
     if (!turtles.length && !this.seaIce?.tiles.size) return;
-    const ice = (this.seaIce ||= { tiles: new Map(), clock: 0, next: 0 }); ice.clock += dt; if (ice.clock < ice.next) return; ice.next = ice.clock + I.tick;
-    const map = this.map, tiles = map.tiles, width = mapWidth(map, this.area), height = mapHeight(map, this.area);
+    const ice = (this.seaIce ||= { tiles: new Map(), clock: 0, next: 0, pending: [] }); ice.clock += dt;
     for (const e of turtles) {
-      const cx = e.x + .5, cy = e.y + .7, R = I.radius;
+      if (e.pack?.attack) { e.iceCombo = true; e.iceQuiet = 0; continue; }
+      if (!e.iceCombo) continue;
+      e.iceQuiet = (e.iceQuiet || 0) + dt; if (e.iceQuiet < I.settle) continue;
+      e.iceCombo = false; e.iceQuiet = 0; (ice.pending ||= []).push({ x: e.x + .5, y: e.y + .7 });
+    }
+    if (ice.clock < ice.next) return; ice.next = ice.clock + I.tick;
+    const map = this.map, tiles = map.tiles, width = mapWidth(map, this.area), height = mapHeight(map, this.area), R = I.radius;
+    for (const { x: cx, y: cy } of ice.pending || []) {
       for (let y = Math.floor(cy - R); y <= Math.ceil(cy + R); y++) for (let x = Math.floor(cx - R); x <= Math.ceil(cx + R); x++) {
         if (x < 0 || y < 0 || x >= width || y >= height || Math.hypot(x + .5 - cx, y + .5 - cy) > R) continue;
         const i = y * width + x, t = tiles[i], held = ice.tiles.get(i);
@@ -3286,9 +3337,8 @@ export class Game {
         ice.tiles.set(i, { orig: t, until: ice.clock + I.life }); tiles[i] = { ...t, kind: "seaIce", blocked: false, seaIce: true };
       }
     }
-    // Ice under the Wayfarer's feet holds until they step off it (a thaw must not drop them into the deep).
-    const p = this.player, stand = new Set(); for (const ox of [-.3, .3]) for (const oy of [-.2, .2]) { const x = Math.floor(p.x + .5 + ox), y = Math.floor(p.y + .72 + oy); if (x >= 0 && y >= 0 && x < width && y < height) stand.add(y * width + x); }
-    for (const [i, q] of ice.tiles) if (q.until <= ice.clock && tiles[i]?.seaIce && !stand.has(i)) { tiles[i] = q.orig; ice.tiles.delete(i); }
+    ice.pending = [];
+    for (const [i, q] of ice.tiles) if (q.until <= ice.clock && tiles[i]?.seaIce) { tiles[i] = q.orig; ice.tiles.delete(i); }
   }
   // Release 259 (Tim: "when the blob retreats the whole mass doesn't retreat with it... a portion of it just detaches and
   // retreats home and just leaves the large mass... and then it'll just fade gracefully"; then "only if it's larger will it
@@ -3517,7 +3567,8 @@ export class Game {
     if (!e.summonedBy && !e.noRewards) { const g = glyphDrop(this.save, `${this.areaId()}:${e.id}`, this.save.dropCounter, e.boss || isCrossingGuardian(e)); if (g) this.glyphNotice = `${GLYPHS[g].name} glyph recovered.`; }
     echoEvent(this, "kill", this.lastUpdateNow || 0, { enemy: e });
     onConstellationKill(this);
-    { const echo = echoDrop(this.save, e, e.boss || isCrossingGuardian(e), this.save.dropCounter); if (echo) this.glyphNotice = `An Echo lingers: ${ECHOES[echo].name}. Set it in the Echoes screen (Pack).`; }
+    { const echo = echoDrop(this.save, e, e.boss || isCrossingGuardian(e) || !!e.worldBeast || !!e.questingBeast, this.save.dropCounter); if (echo) this.glyphNotice = `An Echo lingers: ${ECHOES[echo].name}. Set it in the Echoes screen (Pack).`; }
+    { const sigils = sigilDrop(this.save, e, this.map, this.save.dropCounter); if (sigils) { const c = (this.save.consumables ||= {}); c.crossingSigil = (c.crossingSigil || 0) + sigils; this.glyphNotice = `A Crossing Sigil falls from ${e.packName || e.name || "the fallen"}.`; } } // release 263
     if (!levels) this.message = `Recovered ${marks} mark${marks === 1 ? "" : "s"} from the fallen creature.`;
     if(this.save.narrative.facts['leads.active']){this.save.worldFlags['lead.hunt.count']=(this.save.worldFlags['lead.hunt.count']||0)+1;if(this.save.worldFlags['lead.hunt.count']>=5)progressLead(this.save,'hunt');if(isCrossingGuardian(e))progressLead(this.save,'guardian')}
     const key = `drop:v1:${this.areaId()}:${e.id}`;
@@ -3767,6 +3818,7 @@ export class Game {
       this.message = "That supply is exhausted.";
       return false;
     }
+    if (type === "hullShield") { const r = deployHullShield(this.save); this.message = r.message; this.sync(); return r.ok; } // release 263
     if (type === "restorativeDraught") {
       if (this.player.hp >= this.save.maxHp) {
         this.message = "Health is already full.";
@@ -4147,6 +4199,7 @@ export class Game {
       }
     }
     if (this.novaFog) this.novaFog = this.area === "overworld" ? tickNovaFog(this.novaFog, dt, p) : null; // release 257: a Supernova's fog clears
+    tickHullShield(this.save, dt); // release 263: a deployed hull shield wears off
     this.tickSeaIce(dt); // release 261: the Mountain Turtle's ice floor freezes and thaws
     // Open-sea hazards (release 152): whirlpools, rogue waves and drifting ice.
     if (this.area === "overworld" && this.seaHazards && p.hp > 0) {

@@ -1188,6 +1188,13 @@ export function render(ctx, g, w, h, now) {
         ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
         ctx.fillStyle = hull > .6 ? "#6fcf7a" : hull > .3 ? "#e3b04b" : "#e2574a"; ctx.fillRect(bx, by, bw * hull, bh);
         if (hull <= .3 && Math.floor(now / 350) % 2) { ctx.strokeStyle = "#ffb3a8"; ctx.lineWidth = 1; ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2); }
+        // Release 263: a deployed hull shield rings the skiff in pale blue and overlays the gauge; it flickers in its last 10 s.
+        const shield = Number(g.save.boat.shield) || 0;
+        if (shield > 0 && (shield > 10 || Math.floor(now / 200) % 2)) {
+          ctx.save(); ctx.strokeStyle = "#9fdcffcc"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.fillStyle = "#9fdcff22";
+          ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y + .8 - lift / s) * s, s * .78, s * .5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = "#9fdcff"; ctx.fillRect(bx, by + bh + 1, bw * Math.min(1, shield / BOAT.shield.seconds), Math.max(2, bh * .6)); ctx.restore();
+        }
       }
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;

@@ -1,5 +1,5 @@
 // Release 261 (Tim, 2026-10-21): world beasts are rarer, and after meeting one no new one appears until the Wayfarer has
-// set foot in 8 sections they had never visited before (going back and forth over old ground does not count).
+// set foot in 8 sections they had never visited before; release 263 makes that 8 different sections in a row.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
@@ -14,11 +14,15 @@ test('the buffer is additive save state: a save without it starts ready; bad val
   for (const [v, want] of [[-3, 0], [2.7, 2], [99, ENCOUNTER.newSections], ['x', ENCOUNTER.newSections]]) { const q = freshSave(); q.beastGap = { fresh: v, other: 1 }; ensureBeastGap(q); assert.equal(q.beastGap.fresh, want); assert.equal(q.beastGap.other, 1, 'unknown fields kept'); }
 });
 
-test('only first visits count; meeting a beast resets the count', () => {
-  const s = freshSave(); encounterMet(s); assert.equal(encounterReady(s), false);
-  noteSectionVisit(s, false); noteSectionVisit(s, false); assert.equal(s.beastGap.fresh, 0, 'old ground does not count');
-  for (let i = 1; i < ENCOUNTER.newSections; i++) { noteSectionVisit(s, true); assert.equal(encounterReady(s), false); }
-  noteSectionVisit(s, true); assert.equal(encounterReady(s), true);
+test('release 263: a section counts unless it is among the last 8 different ones entered; going back neither adds nor resets', () => {
+  const s = freshSave(); noteSectionVisit(s, '0,0'); encounterMet(s); assert.equal(encounterReady(s), false);
+  noteSectionVisit(s, '0,0'); assert.equal(s.beastGap.fresh, 0, 'the section you are in does not count again');
+  noteSectionVisit(s, '1,0'); noteSectionVisit(s, '0,0'); noteSectionVisit(s, '1,0'); assert.equal(s.beastGap.fresh, 1, 'back and forth: no more, and no reset');
+  for (let i = 2; i < ENCOUNTER.newSections; i++) { noteSectionVisit(s, `${i},0`); assert.equal(encounterReady(s), false); }
+  noteSectionVisit(s, `${ENCOUNTER.newSections},0`); assert.equal(encounterReady(s), true, 'eight different sections in a row');
+  encounterMet(s); noteSectionVisit(s, `${ENCOUNTER.newSections},0`); assert.equal(s.beastGap.fresh, 0, 'one of the last 8');
+  noteSectionVisit(s, '0,0'); assert.equal(s.beastGap.fresh, 1, 'ground visited longer ago counts again: only the last 8 are remembered');
+  const q = freshSave(); q.beastGap = { fresh: 3, recent: ['a', 'a', 7, 'b'] }; ensureBeastGap(q); assert.deepEqual(q.beastGap.recent, ['a', 'b'], 'normalised additively');
 });
 
 test('no new world beast or Questing Beast is claimed inside the buffer; an encounter already met is unaffected', () => {
@@ -28,7 +32,7 @@ test('no new world beast or Questing Beast is claimed inside the buffer; an enco
   const scale = ENCOUNTER.chanceScale; ENCOUNTER.chanceScale = 1e6;
   try {
     let claims = 0, rx = 9;
-    for (let n = 0; n < 40; n++, rx++) { const m = generateRegion(s.seed, rx, 9); if (m.settlement) continue; noteSectionVisit(s, true);
+    for (let n = 0; n < 40; n++, rx++) { const m = generateRegion(s.seed, rx, 9); if (m.settlement) continue; noteSectionVisit(s, `${rx},9`);
       const qb = questingBeastFor(s, m, rx, 9), wb = worldBeastFor(s, m, rx, 9);
       if (qb || wb) { claims++; assert.equal(s.beastGap.fresh, 0, 'a meeting resets the buffer'); for (const id of WORLD_BEAST_IDS) if (s.worldBeasts[id].active?.rx === rx) { s.worldBeasts[id].active = null; } s.questingBeast.active = null; } }
     assert.ok(claims >= 2 && claims <= Math.ceil(40 / ENCOUNTER.newSections) + 1, `at most one meeting per ${ENCOUNTER.newSections} new sections (${claims})`);

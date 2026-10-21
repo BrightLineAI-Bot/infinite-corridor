@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=261" />
+    <link rel="stylesheet" href="./styles.css?v=263" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -61,15 +61,16 @@
             <span id="navGuidanceArrow" class="nav-arrow guidance-arrow" aria-hidden="true">▲</span>
             <span id="navManualArrow" class="nav-arrow manual-arrow" aria-hidden="true">▲</span>
           </div></div>
+          <!-- release 263: Spells A and B sit beside the compass on every screen -->
+          <div class="quick-row buttons">
+            <button class="quick spell spell-a" data-action="spell" data-slot="A">Spell A</button
+            ><button class="quick spell spell-b" data-action="spell2" data-slot="B">Spell B</button>
+          </div>
           <div class="utility-buttons">
             <button data-action="map">Map</button
             ><button data-action="menu">Pack</button
             ><button class="preset" data-action="preset" aria-label="Spell preset 1">1</button>
           </div>
-        </div>
-        <div class="quick-row buttons">
-          <button class="quick spell spell-a" data-action="spell" data-slot="A">Spell A</button
-          ><button class="quick spell spell-b" data-action="spell2" data-slot="B">Spell B</button>
         </div>
         <div class="action-diamond buttons">
           <button class="core tool" data-action="tool">Tool</button
@@ -152,7 +153,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "261";
+      const release = "263";
       const params = new URLSearchParams(location.search);
       const entry = params.get("dev") === "proving-ground"
         ? "./src/proving-ground.js"

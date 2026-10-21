@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho, echoDrop, ensureEchoState, echoEvent } from '../src/echoes.ts';
+import { ECHOES, ECHO_IDS, NOTCHES, ECHO_DROPS, notchesUsed, toggleEcho, echoDrop, echoKindOf, ensureEchoState, echoEvent } from '../src/echoes.ts';
 import { PACK_KINDS, MONSTER_PACK } from '../src/monster-pack.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
@@ -41,13 +41,26 @@ test('every Echo-eligible pack creature has exactly one Echo; explicit no-Echo c
   ensureEchoState(bad); assert.deepEqual(bad.echoes.equipped, ['weepingSaint']); assert.equal(bad.echoes.owned.fake, undefined);
 });
 
-test('guardians always leave their Echo once; ordinary pack kills rarely; summons never', () => {
-  const s = freshSave();
-  assert.equal(echoDrop(s, { id: 'g', packKind: 'gnawingMaw' }, true, 1), 'gnawingMaw');
-  assert.equal(echoDrop(s, { id: 'g2', packKind: 'gnawingMaw' }, true, 2), null, 'already owned');
-  assert.equal(echoDrop(s, { id: 'c', packKind: 'pallidCrawler', summonedBy: 'x' }, true, 3), null);
-  let got = 0; for (let n = 0; n < 600; n++) { const t = freshSave(); if (echoDrop(t, { id: `e${n}`, packKind: 'riftLynx' }, false, n)) got++; }
-  assert.ok(got > 8 && got < 50, `about 4% (${got}/600)`);
+test('release 263: guardians leave their Echo by chance (about 1 in 5) while you lack it; ordinary kills and summons never', () => {
+  let got = 0; for (let n = 0; n < 600; n++) { const t = freshSave(); if (echoDrop(t, { id: `g${n}`, packKind: 'gnawingMaw' }, true, n)) got++; }
+  assert.ok(got > 80 && got < 160, `about ${ECHO_DROPS.guardian}% (${got}/600)`);
+  const s = freshSave(); let n = 0; while (!echoDrop(s, { id: 'g', packKind: 'gnawingMaw' }, true, n)) n++;
+  assert.equal(s.echoes.owned.gnawingMaw, true);
+  for (let k = 0; k < 50; k++) assert.equal(echoDrop(s, { id: 'g', packKind: 'gnawingMaw' }, true, k), null, 'already owned');
+  for (let k = 0; k < 50; k++) assert.equal(echoDrop(freshSave(), { id: 'c', packKind: 'pallidCrawler', summonedBy: 'x' }, true, k), null);
+  for (let k = 0; k < 300; k++) assert.equal(echoDrop(freshSave(), { id: `e${k}`, packKind: 'riftLynx' }, false, k), null, 'ordinary kills leave none');
+});
+
+test('release 263 fix: a real pack guardian killed in the game can leave its Echo (live combatants carry packKind: true)', () => {
+  let won = null;
+  for (let n = 0; n < 40 && !won; n++) {
+    const s = freshSave(); s.seed = `ECHO-${n}`; const g = new Game(s, 0);
+    const e = g.createEnemyFromSpawn({ id: 'gw', kind: 'riftLynx', x: 10, y: 10, boss: true, dungeonRole: 'gateWarden', packGuardian: true });
+    assert.equal(e.packKind, true, 'the live flag'); assert.equal(echoKindOf(e), 'riftLynx');
+    g.enemies.push(e); e.hp = 0; e.dead = true; g.defeatEnemy(e);
+    if (s.echoes.owned.riftLynx) won = s;
+  }
+  assert.ok(won, 'some guardian kill leaves the Echo');
 });
 
 test('dodge Echoes: charge tramples, pounce empowers the next strike, skitter saves stamina, web slows, phase extends', () => {
