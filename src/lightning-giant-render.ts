@@ -301,33 +301,31 @@ function shadeHex(hex, amount) {
 // "back" layer goes under the body, the "front" layer (the near billows that swallow its feet) over it.
 // Drawn as a traditional layered cartoon cloud in flat tones, not shaded in 3D (Tim, 2026-10-21: "billowy sections in
 // the cloud front, up into the middle, and then... other sections that are not billowing... layered"). From the leading
-// edge (its facing) to the middle it is billows, each with a lit cap and a shadowed belly; behind that it trails away in
-// flat, tapered streaks stacked in layers. Shapes are [x, y, r] or streaks [from, to, y, h] in units of u, +x = facing.
+// edge (its facing) back past the middle it is billows, each with a lit cap and a shadowed belly, ending in a large one
+// at the trailing end; behind that it trails away in flat, tapered streaks of different lengths, stacked in layers. Shapes are [x, y, r] or streaks [from, to, y, h] in units of u, +x = facing.
 const CLOUD_TONES = { edge: "#2a3038", dark: "#3d4550", mid: "#5f6a76", light: "#8a95a1", cap: "#b4bec8" };
-const CLOUD_BILLOWS = { back: [[-.2, -.04, .18], [-.02, -.13, .22], [.2, -.13, .22], [.4, -.04, .18], [.55, .04, .12]], front: [[-.18, .1, .15], [.04, .11, .17], [.26, .1, .16], [.45, .07, .12]] };
-const CLOUD_STREAKS = { back: [[-.1, -.9, -.07, .16, "mid"], [-.15, -.72, .05, .12, "dark"]], front: [[-.1, -.62, .13, .1, "dark"]] };
+const CLOUD_BILLOWS = { back: [[-.38, .0, .19], [-.2, -.04, .18], [-.02, -.13, .22], [.2, -.13, .22], [.4, -.04, .18], [.55, .04, .12]], front: [[-.36, .1, .15], [-.18, .1, .15], [.04, .11, .17], [.26, .1, .16], [.45, .07, .12]] };
+const CLOUD_STREAKS = { back: [[-.2, -1.05, -.05, .2, "mid"], [-.3, -1.25, -.12, .09, "light"], [-.35, -.95, .07, .08, "dark"]], front: [[-.3, -.8, .13, .1, "dark"], [-.35, -1.1, .17, .06, "mid"], [-.4, -.68, .2, .05, "dark"], [-.38, -.92, .23, .04, "mid"]] };
 // `trail` (-1..1) is the side the streaks trail toward: opposite its facing, eased by the caller as it turns. While it
 // turns (|trail| small) the streaks draw in under the billows, so the cloud swaps ends without a jump.
 export function drawStormCloud(ctx, k, y, u, t, now, layer, reduce = false, trail = 0) {
   const C = CLOUD_TONES, F = -(Math.sign(trail) || -1), L = .35 + .65 * Math.abs(trail), bob = (i) => reduce ? 0 : Math.sin(t * .9 + i * 1.7) * u * .008;
   const X = (x) => k + F * x * u, billows = CLOUD_BILLOWS[layer].map(([x, dy, r], i) => ({ x: X(x), y: y + dy * u + bob(i), r: r * u }));
-  // A trailing layer: a strip of low, flattened lobes (scalloped on top, flat underneath), getting smaller toward its end.
-  const lobes = ([from, to, dy, h]) => { const N = 5, out = []; let x = from; const span = (to * L + (1 - L) * from) - from;
-    for (let n = 0; n < N; n++) { const f = n / (N - 1), rx = Math.abs(span) / N * (1.35 - .45 * f), ry = h / 2 * (1 - .45 * f); out.push({ x: X(from + span * (n + .5) / N), y: y + (dy + h * .25 * f) * u + bob(n + 9), rx: rx * u, ry: ry * u }); x += span / N; }
-    return out; };
-  const strip = (Ls, dx = 0, dy = 0) => { ctx.beginPath(); for (const c of Ls) { ctx.moveTo(c.x + c.rx + dx, c.y + dy); ctx.ellipse(c.x + dx, c.y + dy, c.rx, c.ry, 0, 0, TAU); } };
+  // A streak: a flat band, its head under the billows, thinning to a tapered end; their lengths differ, so the trailing
+  // edge is jagged, which reads as movement.
+  const streak = ([from, to, dy, h], dyOff = 0) => {
+    const x0 = X(from), x1 = X(to * L + (1 - L) * from), cy = y + dy * u + dyOff, hh = h * u / 2;
+    ctx.beginPath(); ctx.moveTo(x0, cy - hh); ctx.lineTo(x0 + (x1 - x0) * .55, cy - hh * .9); ctx.quadraticCurveTo(x0 + (x1 - x0) * .85, cy - hh * .6, x1, cy + hh * .15);
+    ctx.quadraticCurveTo(x0 + (x1 - x0) * .8, cy + hh * .95, x0 + (x1 - x0) * .4, cy + hh); ctx.lineTo(x0, cy + hh); ctx.arc(x0, cy, hh, Math.PI / 2, -Math.PI / 2, F < 0); ctx.closePath();
+  };
   const blob = (dx = 0, dy = 0) => { ctx.beginPath(); for (const c of billows) { ctx.moveTo(c.x + c.r + dx, c.y + dy); ctx.arc(c.x + dx, c.y + dy, c.r, 0, TAU); } };
   ctx.save();
   if (layer === "back" && !reduce) { ctx.strokeStyle = "rgba(160,190,215,.35)"; ctx.lineWidth = Math.max(1, u * .008); ctx.beginPath(); for (let i = 0; i < 8; i++) { const x = X((i / 7 - .5) * .7 + .1), f = (t * 1.8 + i * .37) % 1, y0 = y + u * (.16 + f * .1); ctx.moveTo(x, y0); ctx.lineTo(x - u * .02, y0 + u * .07); } ctx.stroke(); } // rain
-  // Trailing layers first (furthest back): a dark edge copy, the body, a lit cap on each lobe and a flat belly shadow.
+  // Streaks first (furthest back), each with a dark edge copy just below it and a lit band along its top.
   for (const S of CLOUD_STREAKS[layer]) {
-    const Ls = lobes(S), belly = Math.max(...Ls.map((c) => c.y));
-    strip(Ls, 0, u * .012); ctx.fillStyle = C.edge; ctx.fill();
-    strip(Ls); ctx.fillStyle = C[S[4]]; ctx.fill();
-    ctx.save(); ctx.clip();
-    ctx.fillStyle = S[4] === "dark" ? C.mid : C.light; for (const c of Ls) { ctx.beginPath(); ctx.ellipse(c.x, c.y - c.ry * .35, c.rx * .8, c.ry * .6, 0, 0, TAU); ctx.fill(); }
-    ctx.fillStyle = C.dark; ctx.fillRect(k - u * 2, belly + u * .01, u * 4, u);
-    ctx.restore();
+    streak(S, u * .012); ctx.fillStyle = C.edge; ctx.fill();
+    streak(S); ctx.fillStyle = C[S[4]]; ctx.fill();
+    ctx.save(); ctx.clip(); streak(S, -S[3] * u * .6); ctx.fillStyle = S[4] === "light" ? C.cap : C.light; ctx.globalAlpha *= .5; ctx.fill(); ctx.restore();
   }
   // Billows: a dark edge copy, the mid-tone body, then (clipped to it) a lit cap on each and a flat shadow across the belly.
   blob(0, u * .016); ctx.fillStyle = C.edge; ctx.fill();
