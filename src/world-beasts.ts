@@ -154,6 +154,22 @@ export function retreatPath(map, from, to, mode, width = 32) {
   out.push({ x: to.x, y: to.y });
   return out;
 }
+// Encounter pacing (release 261; Tim, 2026-10-21: "these world bosses should be more rare... if you meet a world boss, it
+// shouldn't be another world boss for... 8 tiles... unless you put your foot into eight different tiles... you've never
+// been in"). Every spawn chance (world beasts and the Questing Beast) is scaled by `chanceScale`, and after meeting one,
+// no new one is claimed until the Wayfarer has entered `newSections` overworld sections they had never visited before.
+// Beasts already met keep their state; the buffer only gates new claims. save.beastGap = { fresh } (additive; a save
+// without it starts ready).
+export const ENCOUNTER = { newSections: 8, chanceScale: .5 };
+export function ensureBeastGap(save) {
+  const g = save.beastGap && typeof save.beastGap === "object" ? save.beastGap : {}, n = Number(g.fresh);
+  save.beastGap = { ...g, fresh: Number.isFinite(n) ? Math.max(0, Math.min(ENCOUNTER.newSections, Math.floor(n))) : ENCOUNTER.newSections };
+  return save.beastGap;
+}
+// Called once per overworld section load, before any beast is placed: a first visit counts toward the buffer.
+export function noteSectionVisit(save, firstVisit) { const g = ensureBeastGap(save); if (firstVisit) g.fresh = Math.min(ENCOUNTER.newSections, g.fresh + 1); return g.fresh; }
+export const encounterReady = (save) => ensureBeastGap(save).fresh >= ENCOUNTER.newSections;
+export function encounterMet(save) { ensureBeastGap(save).fresh = 0; }
 export const RETREAT = { search: 8, fallback: 6, speed: 2.1, inset: 1.5, fade: 1.4 };
 // Pursuit (release 259; Tim, 2026-10-21: "they should pursue you out of the tile that you meet them... The blob can just
 // take one", then "three tiles max... it'll chase you 2 tiles, and then it'll stop there and then it'll chase you 1 more...
@@ -278,7 +294,7 @@ export function ensureWorldBeasts(save, normalizeScarHistory = true) {
     if (a) { const chase = Math.max(0, Math.floor(Number(q.active.chase) || 0)); if (chase) a.chase = chase; else delete a.chase; } // release 259: sections it has followed this encounter
     all[id] = { cycle: Math.max(0, Math.floor(Number(q.cycle) || 0)), cooldown: Math.max(0, Math.floor(Number(q.cooldown) || 0)), active: a, slain: Math.max(0, Math.floor(Number(q.slain) || 0)), escaped: Math.max(0, Math.floor(Number(q.escaped) || 0)) };
   }
-  save.worldBeasts = all;
+  save.worldBeasts = all; ensureBeastGap(save);
   // Only save creation/migration normalizes all permanent history; gameplay stays independent of other areas.
   ensureVoidScars(save, normalizeScarHistory ? undefined : null);
   return save;
@@ -316,9 +332,9 @@ export function worldBeastFor(save, map, rx, ry) {
     const B = WORLD_BEASTS[id], q = save.worldBeasts[id];
     if (q.active) continue;
     if (q.cooldown > 0) { q.cooldown--; continue; }
-    if (here || held || Math.abs(rx) + Math.abs(ry) < B.minDepth) continue;
-    if ((hashSeed(`${save.seed}:world-beast:${id}:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= B.chance) continue;
-    q.active = { rx, ry, tries: 0 }; here = id;
+    if (here || held || Math.abs(rx) + Math.abs(ry) < B.minDepth || !encounterReady(save)) continue; // release 261: the buffer between meetings
+    if ((hashSeed(`${save.seed}:world-beast:${id}:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= B.chance * ENCOUNTER.chanceScale) continue;
+    q.active = { rx, ry, tries: 0 }; here = id; encounterMet(save);
   }
   if (!here) return null;
   const q = save.worldBeasts[here];
@@ -383,9 +399,9 @@ export function worldBeastForDungeon(save, map, dungeonId) {
   const coords = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/.exec(dungeonId), depth = coords ? Math.abs(Number(coords[1])) + Math.abs(Number(coords[2])) : -1; // ordinary dungeons only (not the story dungeon, arenas, hunts or runs)
   if (!here && depth >= 0) for (const k of ids) {
     const q = save.worldBeasts[k], B = WORLD_BEASTS[k];
-    if (q.active || q.cooldown > 0 || depth < B.minDepth || (Number(save.level) || 1) < (B.dungeonMinLevel || 1) || (k === "psychicCrystal" && !water.length)) continue;
+    if (q.active || q.cooldown > 0 || depth < B.minDepth || (Number(save.level) || 1) < (B.dungeonMinLevel || 1) || (k === "psychicCrystal" && !water.length) || !encounterReady(save)) continue; // release 261: the buffer applies in dungeons too
     if ((hashSeed(`${save.seed}:world-beast-dungeon:${k}:v1:${q.cycle}:${dungeonId}`) % 1000) / 1000 >= WORLD_BEASTS[k].dungeonChance) continue;
-    q.active = { dungeon: dungeonId, tries: 0 }; here = k; break;
+    q.active = { dungeon: dungeonId, tries: 0 }; here = k; encounterMet(save); break;
   }
   if (!here) return null;
   const q = save.worldBeasts[here], entry = map.entry || { x: 4, y: 5 }, width = Number(map.width) || 32;
