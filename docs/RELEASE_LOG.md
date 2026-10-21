@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**265**
+**267**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 263 | Claude | `claude/dreamy-rubin-yn6q2p` | Echo drops fixed (guardians and world beasts, by chance); the boss buffer counts 8 different sections in a row; the Turtle's ice once per combo; boat dodge and hull shields; crossing sigils; dungeon arrivals away from the guardian; shovels; Rift Step direction; spells beside the compass | Building. |
+| 265 | Claude | `claude/dreamy-rubin-yn6q2p` | Building (wood walls, stone blocks); the Refuge's farm, quarry and farmer; regrowth around the Refuge | Building. |
+| 263 | Claude | PR #110 | Echo drops fixed; Crossing Sigils; safe dungeon arrivals; the boss gap; the Turtle's ice per combo; hull shields; skiffs at the shore; 2-dig shovels; spells beside the compass | Merged; preview `r263-4c5e470602e7`. Not yet published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
