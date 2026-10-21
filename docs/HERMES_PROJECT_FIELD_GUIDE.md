@@ -2368,6 +2368,12 @@ Clean-up (Tim: "his head is in his chest, and we haven't addressed the crest"):
 - **Crest.** `drawCrest` builds explicit sweep vectors (`GIANT_CREST`): a slim lightning-glyph blade rising up and back from the top-back of the skull, plus a shorter fin. The skull is drawn over the crest's root.
 - **Coils and shoulders.** The thruster coils lean back off the hump, with exhaust along their axis. The shoulders are lowered so the club arm no longer crowds the head.
 
+Final direction (Tim, same day; this supersedes the weathered/Neanderthal redesign and the clean-up above): scrap that archetype for this robot and keep it for a future creature (a warrior shaman, upright "like the Onyx Lords"). The Giant goes back to the look after the six visual passes (no weathering, no hunch, no garment), with these changes:
+- **One arm.** He is "a big Armored Core robot that's lost one arm". The far arm, its pauldron and its coil are gone; `socket()` draws a ring housing, a glowing open socket and severed cables.
+- **Socket boost.** The socket is the booster. While boosting (`e.giantThrust`) it erupts a layered energy plume straight back with sparks, and the whole machine leans into the burst (`GIANT_ART.boostLean`, eased).
+- **Crest.** About 45% of its six-pass size (Tim: "too large").
+- **Gait.** The planted, distance-driven gait (`giantFoot`/`gait`, with the no-slide test) is kept underneath: legs brace while boosting and tuck in the air.
+
 **BOUNDARY:**
 - Numbers are provisional data, not Tim's.
 - The Giant is overworld-only, with no dungeon claim.
