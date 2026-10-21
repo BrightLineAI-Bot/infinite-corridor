@@ -2418,6 +2418,20 @@ Tim, 2026-10-21. On pursuit: "these world bosses should pursue you... The blob c
   - The pause menu continues play.
   - In play, it opens the pause menu.
   - It runs from each dialog's `cancel` (close request; default prevented) and from `popstate`. A guard history entry (`{icBack:true}`), re-armed after each back, keeps the page from navigating away.
+- **Carry limits.** `boats.ts` `WOOD.carry` = 6 (two skiffs at `skiffCost` 3). `digging.ts` `DIG.carryStone` = 2 (one shovel at `recipe.stone` 2; a shovel digs `shovelUses` 6).
+  - `addWood` and `addStone` add up to the limit, and never take away wood or stone an older save already holds over it.
+  - Chipping a rock with a full pouch is refused without using up the rock. Cutting a tree says when you are full.
+  - Tim, 2026-10-21: "up to 6 wood because that's 2 boats... up to 2 stones... you can at maximum dig 6 into a dungeon wall".
+- **Crystal dodge.** `CRYSTAL.dodgeAfterHits` 3, `dodgeCooldown` 2.4.
+  - `updatePackMonster` counts the Crystal's landed blows (`pack.hitsTaken`, from hp drops).
+  - `evade` refuses its dodge until `dodgeAfterHits`, then resets the count and rests `dodgeCooldown`.
+  - Other beasts keep the generic dodge. Tim kept the Void Walker as it was.
+- **Crystal dungeon bounds.** `Game.roamerBounds()`, cached against the walker landing graph so it rebuilds when the terrain changes, marks where a dungeon roamer may be:
+  - any open (unblocked) tile, so every room counts, including one walking cannot reach (the release 249 decision);
+  - any tile touching one;
+  - an interior wall with open ground on both opposite sides within `CRYSTAL.boundsSpan` 3 tiles.
+
+  The game loop undoes a roamer tick that ends outside the bounds (not while retreating). A roamer saved outside them is moved to the nearest allowed tile on load.
 - **Rift Step.** `constellation.ts` `RIFT` = `{ reach: 2, longStep: 2 }`.
   - The recall (`magicSkills.riftAnchor`) is gone; a stale one from an older save is dropped on the next step.
   - The `anchor` capstone keeps its id and is renamed Long Step: `+RIFT.longStep` reach. The step still stops at walls, ledges and unstandable ground.
@@ -2428,4 +2442,4 @@ Tim, 2026-10-21. On pursuit: "these world bosses should pursue you... The blob c
 - A beast that follows is placed fresh by the gate. Its position in the section it left is not kept.
 - The pursuit numbers and the Blob split numbers are provisional, not Tim's.
 - The Glyphs fix was checked in Chromium at 390 px against a build of `main` (which threw "constlit is not defined" with an empty screen). Glyphs then showed its hosts, sockets, tiles and footer, and Echoes and the Arcanum opened without errors.
-- Tests: `tests/world-beast-pursuit.test.ts` and `tests/constellation.test.ts` (Long Step, no recall).
+- Tests: `tests/world-beast-pursuit.test.ts`, `tests/constellation.test.ts` (Long Step, no recall), `tests/crystal-259.test.ts` (dodge after hits, dungeon bounds) and `tests/digging.test.ts` (carry limits; the old chip-then-break total now stops at the stone limit).

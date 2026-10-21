@@ -626,6 +626,11 @@ export const CRYSTAL = {
   orbitalLife: 4, orbitalWarn: .7, orbitalSpeed: 2.1, orbitalRadius: .65, orbitalTick: .35,
   orbitalSpread: 1.6, orbitalPeriod: 2.4, scorchEvery: .3, scorchLife: 1.5, scorchRadius: .5, scorchMax: 24,
   roamSpeed: 1.1, roamNodes: 625, roamDistance: 6, roamRecent: 6, roamPause: .25, roamRetry: 1, roamSight: 7, terrainLookahead: 1,
+  // Release 259 (Tim: "its dodging was a little bit too tuned... it will take a few hits and then it will dodge out of the
+  // way"): it springs aside only after `dodgeAfterHits` landed blows since its last dodge, then rests `dodgeCooldown` s.
+  dodgeAfterHits: 3, dodgeCooldown: 2.4,
+  // In a dungeon it may phase through an interior wall up to this many tiles thick (Game.roamerBounds), never beyond the edge.
+  boundsSpan: 3,
 };
 // A continuous path around a slowly tracking centre. Beam phases spread a volley around the same pattern;
 // all choices and motion are deterministic, and none of these transient effects changes dungeon geometry.
@@ -1826,6 +1831,7 @@ function evade(e, s, w, p, d) {
     return true;
   }
   if (e.kind === "nanobotKnight") return knightMistDodge(e, s, w, p, d);
+  if (e.kind === "psychicCrystal" && (s.hitsTaken || 0) < CRYSTAL.dodgeAfterHits) return false; // release 259: it takes a few hits first
   if ((s.attack && s.phase !== "recover") || (s.cd.qbEvade || 0) > 0) return false; // it may spring out of an attack's recovery
   let dir = null;
   for (const q of w.playerShots || []) {
@@ -1837,7 +1843,8 @@ function evade(e, s, w, p, d) {
   if (!dir) return false;
   if (e.kind === "mountainTurtle") { s.cd.qbEvade = QB_MOVES.evadeCooldown * 1.6; if (s.attack) endAttack(e, s); s.evade = { x: 0, y: 0, t: TURTLE.tuckTime }; e.untargetable = true; e.tucked = true; return true; } // release 241: too big to spring aside; it pulls into its shell
   const enraged = e.hp <= e.maxHp * PACK_BOSS_TEMPLATE.enrage;
-  s.cd.qbEvade = enraged ? QB_MOVES.evadeCooldownEnraged : QB_MOVES.evadeCooldown;
+  s.cd.qbEvade = e.kind === "psychicCrystal" ? CRYSTAL.dodgeCooldown : enraged ? QB_MOVES.evadeCooldownEnraged : QB_MOVES.evadeCooldown;
+  if (e.kind === "psychicCrystal") s.hitsTaken = 0;
   if (s.attack) endAttack(e, s);
   s.evade = { ...dir, t: QB_MOVES.evadeTime }; e.untargetable = true; s.vel = null;
   return true;
@@ -2057,6 +2064,7 @@ export function updatePackMonster(e, w) {
   if (e.blobletOf && blobletHome(e, s, w)) return;
   if (e.wormOf && tentacleTurret(e, s, w, p)) return;
   if (e.kind === "tremorWorm" && wormCycle(e, s, w, p)) return;
+  if (e.kind === "psychicCrystal") { const hp = Number(e.hp) || 0; if (s.hpSeen != null && hp < s.hpSeen) s.hitsTaken = (s.hitsTaken || 0) + 1; s.hpSeen = hp; } // release 259: blows landed since its last dodge
   if (e.kind === "voidWalker" ? voidEvade(e, s, w, p, d) : e.evasive && evade(e, s, w, p, d)) return;
   if (s.attack) {
     s.t -= dt;

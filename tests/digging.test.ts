@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { validActions, applyInteraction } from '../src/interactions.ts';
-import { DIG, ensureDigging, ensureShovel, planDig, dig, applyTunnels, wallTreasure, wallGlints, canDigArea, addDigSpot, digSpot, spotHere } from '../src/digging.ts';
+import { DIG, ensureDigging, ensureShovel, planDig, dig, applyTunnels, wallTreasure, wallGlints, canDigArea, addDigSpot, digSpot, spotHere, addStone } from '../src/digging.ts';
+import { WOOD, addWood } from '../src/boats.ts';
 
 // A 12×9 test dungeon: two rooms split by a wall 2 thick (x 5–6); a sealed room behind a sealed gate at (10,4).
 function map() {
@@ -95,7 +96,17 @@ test('anyone can chip a stone from a rock once; breaking one gives more', () => 
   assert.equal(applyInteraction(rock, 'chip', s).ok, true); assert.equal(s.materials.stone, DIG.stone.chip);
   assert.deepEqual(validActions(rock, s), []);
   s.stats.Might = 3; assert.deepEqual(validActions(rock, s), ['move', 'break']);
-  applyInteraction(rock, 'break', s); assert.equal(s.materials.stone, DIG.stone.chip + DIG.stone.break);
+  applyInteraction(rock, 'break', s); assert.equal(s.materials.stone, Math.min(DIG.carryStone, DIG.stone.chip + DIG.stone.break), 'up to the carry limit (release 259)');
+});
+
+test('release 259: the Wayfarer carries at most 2 stone and 6 wood; a full pouch refuses a chip; an older save over the limit keeps it', () => {
+  const s = save(); s.materials.stone = 0;
+  assert.equal(addStone(s, 5), DIG.carryStone); assert.equal(addStone(s, 1), DIG.carryStone);
+  const rock = { id: 'rock-full', kind: 'rock', state: 'sealed', actions: ['move', 'break'], environmental: true }; s.stats.Might = 1;
+  const r = applyInteraction(rock, 'chip', s); assert.equal(r.ok, false); assert.match(r.message, /no more stone/);
+  assert.notEqual(s.worldFlags['rock-full:chip'], true, 'the rock keeps its stone for later');
+  s.materials.wood = 0; assert.equal(addWood(s, 4), 4); assert.equal(addWood(s, 3), WOOD.carry); assert.equal(WOOD.carry, 2 * WOOD.skiffCost);
+  s.materials.wood = 9; assert.equal(addWood(s, 2), 9, 'never taken away'); s.materials.stone = 4; assert.equal(addStone(s, 1), 4);
 });
 
 test('disturbed earth is rare, deterministic, dug once', () => {

@@ -22,13 +22,15 @@ export const BOAT = {
 export const SAILABLE_DEEP = ["ocean", "deepOcean", "lakeWater", "swampWater"];
 // Wood (release 119; Tim, 2026-10-16): felling a tree yields wood by its size, and enough wood builds a skiff at any
 // water's edge, so the Shipwright is no longer the only way to a boat.
-export const WOOD = { byForm: { shrub: 1, spindle: 2, canopy: 3 }, skiffCost: 3, reach: 1.6 };
+// carry: the most wood the Wayfarer carries (release 259, Tim: "up to 6 wood... that's 2 boats").
+export const WOOD = { byForm: { shrub: 1, spindle: 2, canopy: 3 }, skiffCost: 3, reach: 1.6, carry: 6 };
 export const woodFor = (tree) => WOOD.byForm[tree?.vegetationForm] ?? WOOD.byForm.spindle;
 // Normalised in freshSave/migrateSave (additive at schema 14).
 export function ensureWood(save) { save.materials ||= {}; save.materials.wood = Math.max(0, Math.floor(Number(save.materials.wood) || 0)); return save; }
 // Death drops the wood you carry (Tim, 2026-10-16). Returns how much was lost.
 export function loseWood(save) { const n = Math.max(0, Number(save.materials?.wood) || 0); if (n && save.materials) save.materials.wood = 0; return n; }
-export function addWood(save, n) { save.materials ||= {}; save.materials.wood = Math.max(0, Number(save.materials.wood) || 0) + n; return save.materials.wood; }
+// Adds up to the carry limit; wood already held over it (an older save) is kept, never taken away.
+export function addWood(save, n) { save.materials ||= {}; const have = Math.max(0, Number(save.materials.wood) || 0); save.materials.wood = have >= WOOD.carry ? have : Math.min(WOOD.carry, have + n); return save.materials.wood; }
 // Build a skiff on `water` (a sailable deep-water tile next to the Wayfarer) for WOOD.skiffCost wood, and board it.
 // Owning a skiff already just means the new one replaces it (one boat at a time).
 export function buildSkiff(save, at) {
