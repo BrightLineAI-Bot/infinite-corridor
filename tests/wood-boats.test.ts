@@ -108,8 +108,10 @@ test('release 263: hull shields are bought from the Shipwright and deployed aboa
   assert.equal(deployHullShield(s).ok, false, 'only aboard'); s.boat.aboard = true;
   assert.equal(deployHullShield(s).ok, true); assert.equal(s.consumables.hullShield, 0); assert.equal(s.boat.shield, BOAT.shield.seconds);
   const r = hullAbsorb(s, 20); assert.equal(s.boat.hull, BOAT.maxHull, 'the hull is untouched'); assert.equal(r.kept, (20 - 20 * BOAT.hullShare) * (1 - BOAT.shield.guard), 'the Wayfarer keeps only their share, 5% less (release 269)'); assert.equal(BOAT.shield.guard, .05);
-  assert.equal(hullStrike(s, 50), false); assert.equal(s.boat.hull, BOAT.maxHull);
-  tickHullShield(s, BOAT.shield.seconds - 1); assert.ok(s.boat.shield > 0); tickHullShield(s, 2); assert.equal(s.boat.shield, 0);
+  assert.equal(s.boat.guardHull, BOAT.shield.bonus - 10 * BOAT.shield.hullTaken, 'release 269: the guard\'s extra hull soaks a halved blow first');
+  assert.equal(hullStrike(s, 50), false); assert.equal(s.boat.hull, BOAT.maxHull, 'still within the extra hull'); assert.equal(s.boat.guardHull, 0);
+  hullStrike(s, 40); assert.equal(s.boat.hull, BOAT.maxHull - 20, 'then the hull wears, at half');
+  tickHullShield(s, BOAT.shield.seconds - 1); assert.ok(s.boat.shield > 0); tickHullShield(s, 2); assert.equal(s.boat.shield, 0); assert.equal(s.boat.guardHull, 0); s.boat.hull = BOAT.maxHull;
   hullAbsorb(s, 20); assert.ok(s.boat.hull < BOAT.maxHull, 'unshielded again');
   const m = migrateSave(JSON.parse(JSON.stringify({ ...s, boat: { ...s.boat, shield: 'x' }, consumables: { ...s.consumables, hullShield: -2 } })));
   assert.equal(m.boat.shield, 0); assert.equal(deployHullShield(m).ok, false, 'a bad count is none');
