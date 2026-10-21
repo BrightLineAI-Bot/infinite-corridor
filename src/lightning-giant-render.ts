@@ -331,17 +331,16 @@ export function drawStormCloud(ctx, k, y, u, t, now, layer, reduce = false, trai
   const g = ctx.createLinearGradient(0, top, 0, bottom);
   if (layer === "back") { g.addColorStop(0, "#9aa5b1"); g.addColorStop(.5, "#5d6874"); g.addColorStop(1, "#2a313a"); }
   else { g.addColorStop(0, "#8794a1"); g.addColorStop(.45, "#56616d"); g.addColorStop(1, "#262c34"); }
-  // The trailing edge (Tim: "the cloud kind of trails off... to a sharp point... a little bit of wisp on the sharp point"):
-  // behind it, opposite its facing, the back billows draw out into one tapered tail with a small wisp off its tip.
+  // The trailing edge (Tim: "the cloud kind of trails off", then "it doesn't have to be a sharp point... more of like a
+  // receding series of diminishing billows"): behind it, opposite its facing, a run of billows each smaller than the last.
   const back = Math.sign(trail) || 0, amt = Math.abs(trail);
   if (layer === "back" && amt > .02) {
-    // Billows that shrink toward the back, then a sharp taper from the last one to the point.
-    const tipX = k + back * u * (.7 + .45 * amt), tipY = y - u * .035 + (reduce ? 0 : Math.sin(t * 1.3) * u * .006);
-    const bumps = [0, 1, 2, 3].map((n) => ({ x: k + back * u * (.5 + n * .095 * (.5 + .5 * amt)), y: y - u * (.01 + n * .006), r: u * (.13 - n * .026) }));
+    // A receding run of billows, each smaller than the last.
+    const bumps = [0, 1, 2, 3, 4, 5].map((n) => ({ x: k + back * u * (.5 + (n * .1 - n * n * .006) * (.55 + .45 * amt)), y: y - u * (.01 + n * .007), r: u * .13 * Math.pow(.76, n) }));
+    const end = bumps[5], tipX = end.x + back * end.r * 1.6, tipY = end.y - end.r * .2 + (reduce ? 0 : Math.sin(t * 1.3) * u * .006);
     ctx.fillStyle = g; ctx.beginPath(); for (const c of bumps) { ctx.moveTo(c.x + c.r, c.y); ctx.arc(c.x, c.y, c.r, 0, TAU); } ctx.fill();
-    const last = bumps[3]; ctx.beginPath(); ctx.moveTo(last.x, last.y - last.r); ctx.quadraticCurveTo(last.x + back * last.r * 1.6, last.y - last.r * .6, tipX, tipY); ctx.quadraticCurveTo(last.x + back * last.r * 1.4, last.y + last.r * .7, last.x, last.y + last.r); ctx.closePath(); ctx.fill();
     for (const c of bumps) soft(c.x - back * c.r * .2, c.y - c.r * .45, c.r * .6, c.r * .35, "220,228,236", .28); // soft light on the tail's billows
-    for (let i = 0; i < 3; i++) { const f = i / 2, drift = reduce ? 0 : Math.sin(t * 1.1 + i) * u * .01; soft(tipX + back * u * (.04 + f * .12 * amt), tipY - u * f * .012 + drift, u * (.07 - f * .025), u * (.022 - f * .007), "170,181,193", (.5 - f * .25) * amt); } // the wisp off the point
+    for (let i = 0; i < 2; i++) { const drift = reduce ? 0 : Math.sin(t * 1.1 + i) * u * .008; soft(tipX + back * u * i * .05, tipY - u * i * .006 + drift, u * (.05 - i * .015), u * (.016 - i * .004), "170,181,193", (.35 - i * .15) * amt); } // a faint wisp off the last billow
   }
   mass(); ctx.fillStyle = g; ctx.globalAlpha *= layer === "back" ? 1 : .88; ctx.fill(); ctx.globalAlpha /= layer === "back" ? 1 : .88;
   if (layer === "front") for (const c of P) soft(c.x, c.y + c.r * .35, c.r * 1.25, c.r * .8, "92,102,114", .45); // the near billows' lower edges dissolve
