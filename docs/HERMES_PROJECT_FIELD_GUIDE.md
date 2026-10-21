@@ -2585,6 +2585,29 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 275: creature stages; the Aperture holds at a stage's top tier; Stage 1 beasts held from tier 13 — 2026-10-21
+
+Tim, 2026-10-21: "after you beat the listener you get access to stage 2, and you... go up to another 24... each time you beat the gate... unlock the different tier... maybe it'll be like two or three [required] for the next... stage"; "Yep, I like your plan for the listener kills and the aperture system"; "cap the strength of the stage one monsters... they'll be capped at... tier 13, until... you've beaten the listener maybe like 3 times and then... start increasing again to start matching your power level".
+
+**CODE:**
+- **New `src/stages.ts`.** `STAGES = { tiersPerStage: 12, firstKills: 1, killsPerStage: 2, freezeTier: 13, thawKills: 3 }`.
+  - `listenerKills(save)` reads `save.farArray.listeners`.
+  - `stageOf(save)` is 1 below `firstKills`, then `2 + floor((kills - 1) / 2)`: kills 1–2 give Stage 2, 3–4 Stage 3, and so on.
+  - `tierCap(save) = stage * 12`. `apertureCeiling(save)` is one short of the next stage's first tier (`APERTURE_THRESHOLDS[tierCap]`).
+  - `cappedAperture(save, value)` clamps to the ceiling but never below what the save holds.
+- **Aperture gains.** `interactions.ts` `gainAperture` stores `cappedAperture(...)`. Every Aperture gain goes through it; the Proving Ground's fixtures set the value directly and are unaffected.
+- **Stage 1 beasts.** `world-beasts.ts` `beastTuningReference` returns `stageOneBeastReference(save, ref)`. At `apertureTier >= freezeTier` with fewer than `thawKills` Listener kills, the first measure taken is stored in `save.beastCeiling = { level, perHit, maxHp, guard }`. Each field is then the lower of the live and the stored value. `beastProfileVitals` (world beasts, the Astral Worm and the Questing Beast) all read it.
+- **Saves.** `save.beastCeiling` is additive (absent until frozen). `ensureBeastCeiling` in `migrateSave` keeps a valid one (numbers coerced) and drops a malformed one.
+- **UI.** The HUD Aperture readout gains ` · S<stage>`. The Aperture card says "Stage n: the Aperture holds at tier N until the Listener falls (again) at the Far Gate" while held.
+- **Build.** `stages` is in `scripts/build.mjs` and both `sw.js` precache lists.
+
+**BOUNDARY:**
+- Saves stay at schema 14. A save past its stage's top tier keeps its Aperture (it only stops growing) and freezes its beasts at its first measure.
+- The ceiling is taken at the first Stage 1 beast measured at tier 13 or above, not at the instant of reaching tier 13.
+- Only world beasts, the Astral Worm and the Questing Beast are held. Ordinary creatures, guardians and Far Array guardians keep their own scaling.
+- Stage 2 creatures do not exist yet; `BEAST_APERTURE` will take their tiers (13+).
+- Tests: `tests/stages.test.ts`.
+
 ## Release 273: world beasts by Aperture tier; Crossing Sigils from a horde — 2026-10-21
 
 Tim, 2026-10-21: "you won't see all of these world monsters... until... that'll be tied to your aperture... at aperture 3... aperture 4, you can see the blob... 5, you can see the robot... 6, you can see the astral worm... we'll just do a phase rollout... the void walker... at any level starting at aperture 3... and the crystal... at aperture 8, you can see the questing beast"; "Revenants can still give crossing sigils... in regular dungeons, but in the swarm dungeon... maybe... four crossing sigils throughout... break it into waves".

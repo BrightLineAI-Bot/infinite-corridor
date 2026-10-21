@@ -1,0 +1,44 @@
+// Release 275 (Tim, 2026-10-21): creature stages. Aperture holds at the stage's top tier until the Listener falls; Stage 1
+// beasts stop growing from tier 13 until three Listener kills.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { freshSave, migrateSave } from '../src/types.ts';
+import { APERTURE_THRESHOLDS, apertureTier } from '../src/world.ts';
+import { gainAperture } from '../src/interactions.ts';
+import { STAGES, stageOf, tierCap, apertureCeiling } from '../src/stages.ts';
+import { beastProfileVitals, WORLD_BEASTS } from '../src/world-beasts.ts';
+
+const kills = (s, n) => { s.farArray.listeners = n; return s; };
+
+test('the stage rises with Listener kills: the first opens Stage 2, then every two more', () => {
+  const s = freshSave();
+  assert.deepEqual([0, 1, 2, 3, 4, 5, 6, 7].map((n) => stageOf(kills(s, n))), [1, 2, 2, 3, 3, 4, 4, 5]);
+  assert.equal(tierCap(kills(s, 0)), 12); assert.equal(tierCap(kills(s, 1)), 24); assert.equal(STAGES.thawKills, 3);
+});
+
+test('Aperture holds one short of tier 13 until the Listener falls, and a save already past it keeps what it has', () => {
+  const s = freshSave(); s.perception.aperture = APERTURE_THRESHOLDS[11] + 10; // tier 12
+  gainAperture(s, 1e7, 'test:huge'); assert.equal(apertureTier(s.perception.aperture), 12); assert.equal(s.perception.aperture, APERTURE_THRESHOLDS[12] - 1);
+  assert.equal(s.perception.aperture, apertureCeiling(s));
+  kills(s, 1); gainAperture(s, 1e9, 'test:after'); assert.equal(apertureTier(s.perception.aperture), 24, 'Stage 2 holds at tier 24');
+  const past = freshSave(); past.perception.aperture = APERTURE_THRESHOLDS[14]; const was = past.perception.aperture;
+  gainAperture(past, 50, 'test:past'); assert.equal(past.perception.aperture, was, 'never taken away, never grows');
+});
+
+test('Stage 1 beasts are held from tier 13 until three Listener kills, then match the Wayfarer again', () => {
+  const B = WORLD_BEASTS.morphingBlob, s = kills(freshSave(), 1); s.level = 30; s.maxHp = 400; s.perception.aperture = APERTURE_THRESHOLDS[12];
+  const held = beastProfileVitals(B, s, { meleeBonus: 40, damageReduction: .2 });
+  assert.ok(s.beastCeiling, 'the measure is kept');
+  s.level = 45; s.maxHp = 700; const later = beastProfileVitals(B, s, { meleeBonus: 90, damageReduction: .3 });
+  assert.deepEqual(later, held, 'stronger Wayfarer, same beast');
+  kills(s, 3); const thawed = beastProfileVitals(B, s, { meleeBonus: 90, damageReduction: .3 });
+  assert.ok(thawed.hp > held.hp && thawed.damage > held.damage, 'after three Listeners it matches again');
+  const young = freshSave(); young.level = 10; beastProfileVitals(B, young, {}); assert.equal(young.beastCeiling, undefined, 'below tier 13 nothing is held');
+});
+
+test('saves: beastCeiling is additive and normalised by migrateSave', () => {
+  const s = freshSave(); assert.equal(s.beastCeiling, undefined);
+  const good = migrateSave({ ...JSON.parse(JSON.stringify(s)), beastCeiling: { level: '20', perHit: 50, maxHp: 300, guard: .1 } });
+  assert.deepEqual(good.beastCeiling, { level: 20, perHit: 50, maxHp: 300, guard: .1 });
+  assert.equal(migrateSave({ ...JSON.parse(JSON.stringify(s)), beastCeiling: { level: 'x' } }).beastCeiling, undefined);
+});

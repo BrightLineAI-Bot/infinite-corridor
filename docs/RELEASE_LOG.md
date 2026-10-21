@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**275**
+**277**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 273 | Claude | `claude/dreamy-rubin-yn6q2p` | World beasts by Aperture tier (3–8); four Crossing Sigils per horde | Building. |
+| 275 | Claude | `claude/dreamy-rubin-yn6q2p` | Creature stages: Aperture holds at a stage's top tier until the Listener falls (1 kill → Stage 2, then every 2); Stage 1 beasts held from tier 13 until 3 Listener kills | Building. |
+| 273 | Claude | PR #115 | World beasts by Aperture tier (3–8); four Crossing Sigils per horde; Stage 1 canon | Merged. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
