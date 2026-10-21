@@ -20,13 +20,13 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
-| 253 | Claude | `claude/dreamy-rubin-yn6q2p`, [PR #105](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/105) | The Void Walker boards the Astral Worm (disk throw, pillar, phase out and in); Astral pair rules (rider, fighter, ally free-for-all, shared three tries) | Draft. It merges after 251 is published. |
-| 251 | Codex + Claude | merged: PRs #103, #104 | The Void Walker, Astral Worm, Gate Revenant, Blob regeneration and ocean work, with Claude's review fixes, the Griffin art and the plinth saddle | Merged. Candidate `r251-567504e5a114`. Publish approved by Tim on 2026-10-21; pre-publish review running. |
+| 253 | Claude | `claude/dreamy-rubin-yn6q2p`, [PR #105](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/105) | The Void Walker boards the Astral Worm (disk throw, pillar, phase out and in); Astral pair rules (rider, fighter, ally free-for-all, shared three tries) | Merging for preview. Not published. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 251 | `r251-567504e5a114` | 2026-10-21 | The Void Walker, Astral Worm, Gate Revenant, Blob regeneration, ocean; review fixes; Griffin art; plinth saddle (PRs #103, #104). Pre-publish review found no blockers. |
 | 249 | `r249-4a43f3ccc5cd` | 2026-10-20 | Psychic Crystal continuation (orbital lasers, Knight homing orbs) |
 | 247 | `r247-5d8a8126e8b6` | 2026-10-20 | |
 | 243 | `r243-79e75c3186cb` | 2026-10-20 | |
