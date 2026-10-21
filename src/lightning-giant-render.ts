@@ -321,28 +321,28 @@ export function drawStormCloud(ctx, k, y, u, t, now, layer, reduce = false, trai
   };
   if (layer === "back") {
     for (const c of P) soft(c.x, c.y, c.r * 1.55, c.r * 1.4, "150,162,175", .6); // a vapour halo round every billow
-    // Short tendrils off the leading edge; on the trailing edge they fade into the long streaming wake below.
-    for (const side of [-1, 1]) { const lead = 1 - Math.max(0, side * trail) * .8; for (let i = 0; i < 5; i++) {
+    // Short tendrils off the leading edge; on the trailing edge they give way to the tapered tail.
+    for (const side of [-1, 1]) { const lead = 1 - Math.max(0, side * trail); for (let i = 0; i < 5; i++) {
       const sway = reduce ? 0 : Math.sin(t * .7 + i * 1.9 + side) * u * .035, reach = .52 + i * .11, lift = side > 0 ? -.012 : .008;
       soft(k + side * u * reach + sway, y + u * (.03 + i * lift * 2 + .012 * Math.sin(i * 2.7)), u * (.2 - i * .028), u * (.05 - i * .006), "158,170,183", (.55 - i * .09) * lead);
     } }
-    // The wake (Tim: "the trailing edge... like a trailing wisp... more pronounced... so it indicates motion"): three
-    // strands streaming out behind, each a run of soft blobs that thins, rises a little and fades as it reaches back.
-    const back = Math.sign(trail) || 0, amt = Math.abs(trail);
-    if (amt > .02) {
-      // The body tapers into the wake: dense billow-coloured blobs off the back edge, then the strands.
-      for (let i = 0; i < 4; i++) soft(k + back * u * (.5 + i * .13 * amt), y + u * (.02 - i * .01), u * (.2 - i * .03), u * (.11 - i * .02), "112,124,137", .9 * amt);
-      for (let j = 0; j < 3; j++) for (let i = 0; i < 14; i++) {
-        const f = i / 13, flow = reduce ? 0 : t * 2.2, wave = Math.sin(f * 4 - flow + j * 2.1) * u * .03 * f;
-        const x = k + back * u * (.55 + f * (1.05 + j * .25) * amt), yy = y + u * (-.05 + j * .065 - f * (.06 - j * .035)) + wave;
-        soft(x, yy, u * (.2 - j * .035) * (1 - f * .65), u * (.07 - j * .012) * (1 - f * .5), j === 1 ? "150,162,175" : "176,187,198", (.85 - j * .15) * (1 - f * .9) * amt);
-      }
-    }
   }
   else for (const c of P) soft(c.x, c.y + c.r * .1, c.r * 1.45, c.r * 1.3, "120,131,143", .5); // the near billows feather out too
   const g = ctx.createLinearGradient(0, top, 0, bottom);
   if (layer === "back") { g.addColorStop(0, "#9aa5b1"); g.addColorStop(.5, "#5d6874"); g.addColorStop(1, "#2a313a"); }
   else { g.addColorStop(0, "#8794a1"); g.addColorStop(.45, "#56616d"); g.addColorStop(1, "#262c34"); }
+  // The trailing edge (Tim: "the cloud kind of trails off... to a sharp point... a little bit of wisp on the sharp point"):
+  // behind it, opposite its facing, the back billows draw out into one tapered tail with a small wisp off its tip.
+  const back = Math.sign(trail) || 0, amt = Math.abs(trail);
+  if (layer === "back" && amt > .02) {
+    // Billows that shrink toward the back, then a sharp taper from the last one to the point.
+    const tipX = k + back * u * (.7 + .45 * amt), tipY = y - u * .035 + (reduce ? 0 : Math.sin(t * 1.3) * u * .006);
+    const bumps = [0, 1, 2, 3].map((n) => ({ x: k + back * u * (.5 + n * .095 * (.5 + .5 * amt)), y: y - u * (.01 + n * .006), r: u * (.13 - n * .026) }));
+    ctx.fillStyle = g; ctx.beginPath(); for (const c of bumps) { ctx.moveTo(c.x + c.r, c.y); ctx.arc(c.x, c.y, c.r, 0, TAU); } ctx.fill();
+    const last = bumps[3]; ctx.beginPath(); ctx.moveTo(last.x, last.y - last.r); ctx.quadraticCurveTo(last.x + back * last.r * 1.6, last.y - last.r * .6, tipX, tipY); ctx.quadraticCurveTo(last.x + back * last.r * 1.4, last.y + last.r * .7, last.x, last.y + last.r); ctx.closePath(); ctx.fill();
+    for (const c of bumps) soft(c.x - back * c.r * .2, c.y - c.r * .45, c.r * .6, c.r * .35, "220,228,236", .28); // soft light on the tail's billows
+    for (let i = 0; i < 3; i++) { const f = i / 2, drift = reduce ? 0 : Math.sin(t * 1.1 + i) * u * .01; soft(tipX + back * u * (.04 + f * .12 * amt), tipY - u * f * .012 + drift, u * (.07 - f * .025), u * (.022 - f * .007), "170,181,193", (.5 - f * .25) * amt); } // the wisp off the point
+  }
   mass(); ctx.fillStyle = g; ctx.globalAlpha *= layer === "back" ? 1 : .88; ctx.fill(); ctx.globalAlpha /= layer === "back" ? 1 : .88;
   if (layer === "front") for (const c of P) soft(c.x, c.y + c.r * .35, c.r * 1.25, c.r * .8, "92,102,114", .45); // the near billows' lower edges dissolve
   ctx.lineCap = "round";
