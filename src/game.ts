@@ -53,7 +53,7 @@ import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.t
 import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.ts";
 import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.ts";
 import { hashSeed, rng } from "./random.ts";
-import { placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn } from "./building.ts";
+import { placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget } from "./building.ts";
 import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.ts";
 import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.ts';
 import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.ts';
@@ -1402,7 +1402,7 @@ export class Game {
     this.performanceStats={totalDungeonEncounterRecords:0,activeEnemies:0,dormantEnemies:0,activeProjectiles:0,activeHazardsAndEffects:0,pathfindingWork:0,encounterActivations:0,peakActiveEnemies:0,updateBudgetViolations:0,ambientTicks:0};
     ensureEliteState(save);
     ensureCorridorSystems(save);
-    if (!["attack", "tool", "act"].includes(save.aimMode))
+    if (!["attack", "tool", "act", "build"].includes(save.aimMode))
       save.aimMode = save.toolMode ? "tool" : "attack";
     save.toolMode = save.aimMode === "tool";
     settleProgression(save);
@@ -2814,6 +2814,12 @@ export class Game {
     const seed = this.save.seed;
     return refugeLands(seed, (rx, ry) => !(rx === 0 && ry === 0) && !["sea", "isles", "lake", "coast", "swamp", "blight", "castle"].includes(biomeFor(seed, rx, ry)?.id ?? biomeFor(seed, rx, ry)) && !hamletSection(seed, rx, ry) && !openSeaSection(seed, rx, ry));
   }
+  // Release 267: build mode. A tap at world point (wx, wy) builds there (or BUILD.reach tiles out along the same line), a
+  // fence turned across the line from the Wayfarer to the tap.
+  buildAt(wx, wy) {
+    const t = tapTarget(this.player, wx, wy), r = placeBuild(this, t.x, t.y, undefined, true, t.run);
+    this.message = r.message; return r;
+  }
   shoreWater() {
     if (this.area !== "overworld" || aboard(this.save) || !this.map?.landscape) return null;
     const p = this.player, w = mapWidth(this.map, this.area), cx = p.x + .5, cy = p.y + .75; let best = null;
@@ -3950,7 +3956,7 @@ export class Game {
     }
     if (input.consume("potion")) this.useConsumable("restorativeDraught", now);
     if (input.consume("preset")) this.message = togglePreset(this.save).message; // release 261: swap spell presets 1 and 2
-    if (input.consume("build")) { const at = buildSpot(p); this.message = placeBuild(this, at.x, at.y, undefined, Math.hypot(x, y) > .15).message; } // release 265: raise a wood wall or stone block in front
+    if (input.consume("build")) { const at = buildSpot(p); this.message = placeBuild(this, at.x, at.y, undefined, Math.hypot(x, y) > .15).message; this.save.aimMode = "build"; this.save.toolMode = false; } // release 267: the button also turns on build mode: taps build // release 265: raise a wood wall or stone block in front
     const dodging = now < (p.dodgeUntil || 0);
     if (dodging) {
       x = p.dodgeX;

@@ -146,6 +146,7 @@ setTimeout(() => {
     else if (save.aimMode === "tool" || (!save.aimMode && save.activeWeaponSlot === "secondary"))
       game.fireSecondary(performance.now(), direction);
     else if (save.aimMode === "act") game.interactAt(q.x, q.y);
+    else if (save.aimMode === "build") game.buildAt(q.x, q.y); // release 267: build mode
     persist();
   });
   setInterval(() => {
@@ -170,6 +171,7 @@ setTimeout(() => {
     tool?.classList.toggle("selected", save.aimMode === "tool");
     attack?.classList.toggle("selected", save.aimMode === "attack");
     act?.classList.toggle("selected", save.aimMode === "act");
+    document.querySelector('[data-action="build"]')?.classList.toggle("selected", save.aimMode === "build");
   }, 100);
 }, 0);
 import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.ts";

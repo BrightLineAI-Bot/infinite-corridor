@@ -19,6 +19,7 @@ export const BUILD = {
   life: 10,       // seconds a build stands
   maxOut: 5,      // builds standing at once
   breakReach: .9, // a charging world beast this far past its body from a build's tile breaks it
+  reach: 3,       // release 267: in build mode a tap builds up to this many tiles away (Tim: "3 character lengths")
 };
 export const BUILD_KINDS = Object.keys(BUILD.kinds);
 
@@ -48,7 +49,7 @@ export function buildRefusal(map, x, y, kind, occupied) {
 }
 
 // Raises a build on (x, y). `game` supplies map, area, builds, save. Returns { ok, message }.
-export function placeBuild(game, x, y, kind = ensureBuild(game.save).build.kind, moving = true) {
+export function placeBuild(game, x, y, kind = ensureBuild(game.save).build.kind, moving = true, run = null) {
   const K = BUILD.kinds[kind], m = (game.save.materials ||= {}), builds = (game.builds ||= []);
   const [[mat, need]] = Object.entries(K.cost), have = Number(m[mat]) || 0;
   if (builds.length >= BUILD.maxOut) return { ok: false, message: `${BUILD.maxOut} builds already stand. Wait for one to crumble.` };
@@ -66,7 +67,7 @@ export function placeBuild(game, x, y, kind = ensureBuild(game.save).build.kind,
     const orig = t, level = 1;
     // Tim: "if I'm just not moving, it can just be the standard regular fence, but if I'm moving to the side it'll be
     // positioned that way": facing left or right, the fence runs up and down across the way; otherwise across.
-    game.map.tiles[i] = kind === "wood" ? { ...t, build: "wood", blocked: true, buildOrig: orig, buildRun: moving && (p.facing === "left" || p.facing === "right") ? "v" : "h" } : { ...t, build: "stone", perch: true, buildLevel: level, landscapeElev: t.elev || 0, elev: (t.elev || 0) + level, buildOrig: orig };
+    game.map.tiles[i] = kind === "wood" ? { ...t, build: "wood", blocked: true, buildOrig: orig, buildRun: run || (moving && (p.facing === "left" || p.facing === "right") ? "v" : "h") } : { ...t, build: "stone", perch: true, buildLevel: level, landscapeElev: t.elev || 0, elev: (t.elev || 0) + level, buildOrig: orig };
   }
   builds.push({ id: `build-${(game.buildSeq = (game.buildSeq || 0) + 1)}`, kind, x, y, hits: K.hits, life: BUILD.life });
   return { ok: true, message: `${K.name} raised. ${m[mat]} ${mat} left.` };
@@ -113,4 +114,18 @@ export function tickBuilds(game, dt, tagsOf = () => []) {
     const r = (e.bodyRadius || .5 * (e.scale || 1)) + BUILD.breakReach, cx = e.x + .5, cy = e.y + .6;
     for (const b of [...game.builds]) if (Math.hypot(b.x + .5 - cx, b.y + .5 - cy) <= r) breakBuild(game, b);
   }
+}
+
+// Release 267 (Tim: "you hit the toggle button, and then you tap the screen... it'll build... in one of the 8 directions...
+// with its longitudinal axis... perpendicular to that direction heading... you can cast the fence... 3 character lengths
+// away... if your finger is farther away than three character lengths, it'll... cast the fence at the maximum distance.
+// If your finger is within those three character lengths, it'll cast it exactly where you click"; "always aim at the
+// tap"). Returns where a tap at world point (wx, wy) builds, and which way a fence there runs: "h" (across), "v" (up and
+// down), "ne" (/) or "nw" (\), at right angles to the heading snapped to the nearest of 8 directions.
+export function tapTarget(p, wx, wy) {
+  const fx = p.x + .5, fy = p.y + .75, dx = wx - fx, dy = wy - fy, d = Math.hypot(dx, dy);
+  const k = d > BUILD.reach ? BUILD.reach / d : 1, tx = fx + dx * k, ty = fy + dy * k;
+  const oct = ((Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) % 8) + 8) % 8; // 0 east, 1 south-east, 2 south ... (screen y down)
+  const run = ["v", "ne", "h", "nw", "v", "ne", "h", "nw"][oct];
+  return { x: Math.floor(tx), y: Math.floor(ty), run };
 }
