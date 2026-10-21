@@ -107,3 +107,22 @@ export function drawAstralMorph(ctx, options, previousForm, progress) {
   if (k < 1 && previousForm !== options.form) drawAstralWorm(ctx, {...options, form: previousForm, alpha: (options.alpha ?? 1) * (1-k)});
   drawAstralWorm(ctx, {...options, alpha: (options.alpha ?? 1) * k});
 }
+
+// Owner-requested compact riding-only seat. Low-profile dark angular panels and
+// one faint violet seam; no dangling tack or change to creature geometry/hitboxes.
+export function drawAstralSaddle(ctx, {x,y,unit,form='worm',facing=1}) {
+  const width=form==='pool'?.46:form==='griffin'?.40:.38, depth=form==='pool'?.065:.09;
+  ctx.save();ctx.translate(x,y);ctx.scale(unit*facing,unit);
+  ctx.fillStyle='#20212e';ctx.strokeStyle='#454253';ctx.lineWidth=.012;ctx.lineJoin='round';
+  ctx.beginPath();ctx.moveTo(-width/2,-.015);ctx.lineTo(-width*.38,-.075);
+  ctx.lineTo(width*.33,-.075);ctx.lineTo(width/2,-.025);ctx.lineTo(width*.4,depth);
+  ctx.lineTo(-width*.38,depth);ctx.closePath();ctx.fill();ctx.stroke();
+  // Shallow recessed seat and tiny swept-back lip, rather than a bulky raised frame.
+  ctx.fillStyle='#2c2b3b';ctx.beginPath();ctx.moveTo(-width*.35,-.055);
+  ctx.lineTo(-width*.28,-.10);ctx.lineTo(-width*.18,-.052);
+  ctx.lineTo(width*.24,-.052);ctx.lineTo(width*.34,-.095);ctx.lineTo(width*.4,-.035);
+  ctx.lineTo(width*.27,.025);ctx.lineTo(-width*.25,.025);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#665778';ctx.lineWidth=.009;ctx.beginPath();ctx.moveTo(-width*.26,.043);
+  ctx.lineTo(width*.22,.043);ctx.lineTo(width*.32,.008);ctx.stroke();
+  ctx.restore();
+}

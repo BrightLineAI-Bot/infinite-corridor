@@ -2235,11 +2235,11 @@ export function populateOverworldPack(map, seed, rx, ry, { safe = null } = {}) {
   return map;
 }
 
-// Explicit Astral fixture helper only. Never used by natural encounter selection.
+// Astral-owned helper adapter, shared by explicit fixtures and the narrow natural ally role.
 // An ally's effect list and damage callbacks cannot enter the hostile player's effect pipeline.
 export function updateAstralWalkerAllyFixture(ally, target, world) {
   ally.noRewards = true;
-  if (!target || target.kind !== 'astralWorm' || target.dead || target.hp <= 0 || target.retreating || target.fleeTo || target.astral?.terminated || ally.dead || world.player.hp <= 0) {
+  if (!target || target.kind !== 'astralWorm' || target.dead || target.hp <= 0 || target.retreating || target.fleeTo || target.astral?.terminated || ally.dead || (world.playerDeathFinal?world.playerDeathFinal():world.player.hp <= 0)) {
     ally.astralAllyEffects = []; ally.dead = true; ally.hp = 0; return;
   }
   ally.aggro = true; ally.astralAllyOf = target.id;

@@ -45,6 +45,7 @@ All requirements in this section derive from S1 unless another source is specifi
 | AW-27 | Mounted actors retain independent, unchanged health pools. Appropriate piercing or splash attacks can damage both. | S4. Riding is a presentation/combat relationship, not a merged boss HP bar, extra health bonus, or blanket damage immunity. Ordinary single-target hits are not automatically doubled. |
 | AW-28 | Astral Worm awards the normal beast bounty and adds no new Echo. Mirages and the allied Walker are rewardless. | S6 explicitly approves this proposal. Use the actual existing bounty policy, not a fabricated reward amount; hostile Walker reward rules are not changed by the allied-only statement. |
 | AW-29 | Add corresponding regression tests for the approved reward policy. | S6. Explicit approval is limited to corresponding updates, not unrelated configuration/workflow edits or publication. |
+| AW-30 | Put a saddle on Astral Worm while Void Walker rides it. | S7. Preserve the optional any-form mounting rule and unchanged health pools. A recognizable form-fitted saddle, shown only while mounted and removed on dismount, is the implementation interpretation. |
 
 ## Attack/readability walkthrough, not new tuning
 
@@ -114,10 +115,11 @@ Every row is **NOT VERIFIED IN THIS HANDOFF**; the staged document does not asse
 | AW-V14 | AW-25 | Nearest-Wayglass selection, no-Wayglass/unreachable cases, movement from land/water, save/reload and arrival under the chosen policy; no accidental inherited door retreat or Gate no-retreat. |
 | AW-V15 | AW-26–27, AW-Q13–15 | Mounted and independent fixtures, all morph forms including griffin, extended riding and threshold-based knock-off. Verify unchanged separate HP; eligible piercing/splash damages both once per intended hit, ordinary targeting does not auto-double; safe separation/death/retreat cleanup. Record all tuning decisions. |
 | AW-V16 | AW-28–29 | Normal Worm bounty exactly once, no new Echo, zero mirage/allied-Walker rewards, existing hostile-Walker policy preserved. Regression coverage includes repeated death callbacks, save/reload, mounted kills and decided allied-kill credit. |
+| AW-V17 | AW-26–27, AW-30 | Mounted captures show a recognizable saddle correctly positioned on every supported form, with rider/saddle alignment maintained during morphs; dismount, death, retreat and reload do not leave an orphan saddle. Unmounted forms retain their approved appearance. Saddle visuals must not change health pools or hit policy. |
 
 ## Handoff completeness checklist
 
-- [x] Sources S1–S6 preserved with exact owner wording and IDs, including the approval question/answer pair; unrelated Gate correction explicitly excluded from Astral Worm scope.
+- [x] Sources S1–S7 preserved with exact owner wording and IDs, including the approval question/answer pair; unrelated Gate correction explicitly excluded from Astral Worm scope.
 - [x] Final Astral Worm spelling and default-form correction recorded.
 - [x] Every distinct described morphology, attack family and paired-encounter outcome mapped to stable IDs.
 - [x] Correct rarity hierarchy and open tuning preserved without invented percentages.
@@ -139,3 +141,7 @@ AW-23 adds above-water appearance to the design; it does not change the black in
 The latest fourth-pass appearance is approved. Astral Worm retreats to the nearest Wayglass, not a dungeon doorway or water by default. Void Walker may ride any form for an extended period, then be knocked off by sufficient damage or fight independently. Keep both health pools unchanged and allow suitable piercing/splash hits to affect both. Knock-off tuning, attachment placement, faction compatibility and transition safety are still choices to make visibly, not owner-provided numbers.
 
 The separate explicit question/answer approval in S6 settles normal beast bounty, no new Echo, rewardless mirages and allied Walker, and the corresponding regression-test updates. No publication authorization is inferred from appearance approval, destination confirmation, or S6.
+
+## Latest clarification: mounted saddle (S7)
+
+The owner requests a saddle while the Walker rides Astral Worm. Show it as a recognizable, form-fitted riding accessory rather than a permanent mutation of the approved creature anatomy. Remove it with the mounted state; exact saddle material, ornament and attachment geometry are implementation choices. The builder reports the render is implemented and a new sheet was inspected/delivered by the parent, but this documentation handoff independently verifies neither code nor captures and supplies no publication approval.

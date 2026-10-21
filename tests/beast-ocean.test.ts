@@ -95,7 +95,7 @@ test('unrelated world beasts and their ordinary landing/LOS callbacks do not gai
   assert.equal(footprintOpen(map, 32, 15, 15), false); assert.equal(footprintSailable(map, 32, 15, 15), true);
   assert.equal(world.marineOpen(15, 15), true); assert.equal(world.marineTileOpen(15.5, 15.5), true);
   assert.equal(world.los({ kind: 'tremorWorm', x: 10, y: 12 }, { x: 17, y: 12 }), false);
-  for (const kind of WORLD_BEAST_IDS.filter(id => !MARINE_BEASTS.includes(id))) {
+  for (const kind of WORLD_BEAST_IDS.filter(id => !MARINE_BEASTS.includes(id) && id !== "astralWorm")) {
     const save = isolatedSave(); save.worldBeasts[kind].active = { rx: 12, ry: 8, tries: 0 };
     assert.equal(worldBeastFor(save, map, 12, 8), null, `${kind} still needs its original terrain`);
   }

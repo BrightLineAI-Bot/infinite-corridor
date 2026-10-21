@@ -2192,11 +2192,11 @@ The following original protocol is retained as historical evidence only. The lin
 - When a claim in this guide is found wrong, correct it in place and note the correction rather than deleting the trail.
 - Record the reading ledger honestly. An unread span listed as unread is more useful than a confident claim over unread code.
 
-## Astral Worm isolated prototype (unreleased, not naturally activated)
+## Astral Worm follow-on integration (unreleased)
 
-**CODE:** `src/astral-worm.ts`, `astral-worm-render.ts`, `astral-worm-retreat.ts` and `astral-worm-mount.ts` provide deterministic bounded attack state, original owner-approved four-pass Canvas forms, nearest-reachable Wayglass graph search and independent-health hostile Walker riding. Pack/Game/renderer hooks support explicit fixtures. The main Worm is in the public catalog without a new Echo; mirages remain private/rewardless. Corresponding formal tests and narrow no-Echo contract changes are explicitly owner-approved. See `docs/astral-worm-prototype.md` for exact implementation and integration contracts.
+**CODE:** Six `astral-*` modules provide bounded deterministic combat and owner-approved black-ink forms, natural main/paired encounters, independent-health Walker riding and physical nearest-Wayglass retreat. The main Worm is publicly catalogued with no new Echo and normal beast bounty; mirages/helpers are rewardless. The narrow pairing does not alter other beasts' single-occupancy rule. Shared Gate level8 floor, Questing dominance and three-attempt/full-health resets are retained. The reviewed corrected r251/Gate histories were merged, not replaced. Exact sources, provisional tuning, budgets and validation boundaries are in `docs/astral-worm-prototype.md`.
 
-**BOUNDARY:** Natural encounters, normal bounty and shared three-attempt/full-health death reset require reconciliation with reviewed final r251 and Gate. No global two-beast rule, merged health, random riding activation, release bump, remote write or publication is enabled here. Native model/fixture captures are not browser or mobile playtest certification. Keep r251's swept sailable-footprint aboard-only forces during integration. All unspecified tuning is provisional.
+**BOUNDARY:** This is local follow-on source, not a release. Release packaging, final exact-source tests and independent review still apply. No merged HP, Worm boat, magical retreat fallback, unrelated generator changes, remote write or publication is enabled by these edits. Native captures do not certify browser/mobile gameplay or balance. The r251 aboard-only swept sailable-footprint force fix is preserved. The ocean regression's unrelated-beast loop now explicitly excludes owner-authorized Astral; every prior unrelated creature assertion remains.
 
 ## Unreleased follow-on: Gate Revenant pressure kit
 

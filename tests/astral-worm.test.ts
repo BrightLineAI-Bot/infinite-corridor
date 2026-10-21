@@ -25,3 +25,5 @@ check('explicit Astral actors retain intended base stats, clone health, and resu
   const restored=JSON.parse(JSON.stringify(e));resetPackRuntime(restored);assert.deepEqual(restored.astral,e.astral);
   e.astral.enclosed=ASTRAL.cloneGrace;e.astral.hitClock=0;p.x=.1;const before=p.hp;w.move=(q,dx,dy)=>{if(q.kind!=='astralMirage'){q.x+=dx;q.y+=dy}};updatePackMonster(e,w);assert.equal(p.hp,before);assert.equal(e.astral.clones.length,0);
 });
+
+check('every native ring band including the innermost has a real safe central hole',()=>{const s=createAstralState(),w=world();startAstralMove(s,'rings',w.player,ASTRAL_RING_MODES[0]);let seen=false;for(let i=0;i<300&&s.move==='rings';i++){tickAstral(s,1/60,w);for(const h of s.hazards){seen=true;assert(h.inner>0);assert(!astralHazardContains(h,{x:h.x,y:h.y}));}}assert(seen);});

@@ -8,13 +8,14 @@ export const ASTRAL = Object.freeze({
   poolRadius: 2.8, poolLife: .5, biteRadius: 1.3, biteCount: 3, biteGap: .55, biteActive: .12, hitGap: .3, flightPursuit: .7, maxActorArray: 32,
   trampleRadius: .85, trampleLife: 1.4, trampleSpeed: 5.5,
   griffinLife: 5, pounceGap: 1.15, pounceWindup: .55, pounceActive: .4, pounceSpeed: 7,
-  ringCount: 4, ringWidth: .85, ringSpacing: 1.2, ringWarning: .6, ringActive: .16, ringGap: .22,
+  ringCount: 4, ringInner: .35, ringWidth: .85, ringSpacing: 1.2, ringWarning: .6, ringActive: .16, ringGap: .22,
   hostileWalkerChance: .025, allyWalkerChance: .005, maxCompanions: 1,
 });
 // Register only on the reviewed Gate baseline: inherits its strength floor, retries and Questing dominance.
 export const ASTRAL_PROFILE = Object.freeze({ kind: 'astralWorm', name: 'The Astral Worm', chance: .02,
   minDepth: 5, tries: 3, cooldownSlain: 20, cooldownEscaped: 26, hitsToKill: 64, hpPerLevel: 30,
   damageShare: .24, speed: 1.35, attackGap: .2, staggerResistance: .95, rewardMarks: 190, rewardPerLevel: 18,
+  nativeHpFloor: 4760, nativeDamageFloor: 78, dungeonChance: .02, dungeonMinLevel: 1,
   patience: 180, home: 'wayglass', retreatMoves: 'astral-wayglass',
   flee: 'The Astral Worm draws its limbs into ink and turns toward the nearest reachable Wayglass.',
   homeLine: 'The Astral Worm pools beneath the Wayglass and slips from sight.',
@@ -80,7 +81,7 @@ function finish(s){s.previousForm=s.form;s.morphStart=s.clock;s.move=null;s.form
 export function tickAstral(s,dt,w) {
   if(!Number.isFinite(dt)||dt<0||dt>ASTRAL.maxFrame)throw new Error('Astral tick expects 0..0.25 active seconds');
   if(w.paused||w.unloaded||s.terminated)return;
-  if(s.hp<=0||w.player.hp<=0){endAstral(s);return;}
+  if(s.hp<=0||(w.playerDeathFinal?w.playerDeathFinal():w.player.hp<=0)){endAstral(s);return;}
   const n=Math.ceil(dt/ASTRAL.maxStep);for(let i=0;i<n;i++){if(s.terminated)break;step(s,dt/n,w);}
 }
 function step(s,dt,w) {
@@ -98,7 +99,7 @@ function step(s,dt,w) {
   if(s.move==='rings'){
     const span=ASTRAL.ringWarning+ASTRAL.ringActive+ASTRAL.ringGap,index=Math.floor(t/span);s.ringIndex=index;
     if(index>=s.ringSequence.length){finish(s);return;}const band=s.ringSequence[index],phase=t%span,outer=band*ASTRAL.ringSpacing+ASTRAL.ringWidth;
-    if(phase<ASTRAL.ringWarning+ASTRAL.ringActive)s.hazards=[hazard(s,s.center.x,s.center.y,band===0?0:outer-ASTRAL.ringWidth,outer,phase>=ASTRAL.ringWarning)];
+    if(phase<ASTRAL.ringWarning+ASTRAL.ringActive)s.hazards=[hazard(s,s.center.x,s.center.y,Math.max(ASTRAL.ringInner,outer-ASTRAL.ringWidth),outer,phase>=ASTRAL.ringWarning)];
   }
   if(s.move==='mirage'){
     // Entire ring has bounded lag, not perfect per-clone homing. A fast dodge can leave it geometrically.
@@ -108,10 +109,11 @@ function step(s,dt,w) {
     if(s.enclosed>=ASTRAL.cloneGrace&&s.hitClock<=0){const actual=w.damagePlayer(s.damage*ASTRAL.drainShare,{kind:'astralDrain'});s.hp=Math.min(s.maxHp,s.hp+Math.max(0,Math.min(s.damage*ASTRAL.drainShare,Number(actual)||0)));s.hitClock=ASTRAL.cloneTick;}
     if(t>ASTRAL.cloneLife){finish(s);return;}
   } else if(s.hitClock<=0){const hit=s.hazards.find(h=>h.active&&astralHazardContains(h,p));if(hit){w.damagePlayer(s.damage*hit.share,{kind:`astral:${s.move}`});s.hitClock=s.move==='flight'?ASTRAL.beamTick:ASTRAL.hitGap;}}
-  if(p.hp<=0||s.hp<=0)endAstral(s);
+  if((w.playerDeathFinal?w.playerDeathFinal():p.hp<=0)||s.hp<=0)endAstral(s);
 }
 
-// Thin production-system fixture adapter. Does not spawn natural hunts or own world-beast lifecycle.
+// Production actor adapter, shared by fixtures and registered natural hunts.
+// Encounter selection and world-beast lifecycle remain owned by the host.
 export function updateAstralActor(e,w) {
   if (e.kind === 'astralMirage') {
     const owner=w.enemies.find(q=>q.id===e.astralOwner&&!q.dead&&q.hp>0);
@@ -120,25 +122,30 @@ export function updateAstralActor(e,w) {
   }
   const s=e.astral ||= createAstralState({x:e.x,y:e.y,hp:e.maxHp,damage:e.damage,seed:e.astralSeed||1,namespace:e.id});
   if(e.dead||e.hp<=0||e.retreating||e.fleeTo){if(e.hp<=0)e.dead=true;endAstral(s);for(const c of w.enemies)if(c.astralOwner===e.id){c.hp=0;c.dead=true;}return;}
+  const sight=w.astralLos||w.los;
+  if(!e.aggro&&w.player.hp>0&&(!sight||sight(e,w.player)))e.aggro=true;
+  if(!e.aggro)return;
   s.x=e.x;s.y=e.y;s.hp=e.hp;s.maxHp=e.maxHp;s.damage=e.damage;
   for(const c of s.clones){const actor=w.enemies.find(a=>a.id===c.id);if(actor)c.hp=actor.dead?0:Math.min(c.hp,actor.hp);}
   s.clones=s.clones.filter(c=>c.hp>0);
   const canOccupy=(x,y)=>{const probe={...e,x:s.x,y:s.y,flying:true};w.move(probe,x-s.x,y-s.y);return Math.abs(probe.x-x)<1e-6&&Math.abs(probe.y-y)<1e-6;};
-  tickAstral(s,w.dt,{player:w.player,canOccupy,canCloneOccupy:(c,x,y)=>{
+  tickAstral(s,w.dt,{player:w.player,playerDeathFinal:w.playerDeathFinal,canOccupy,canCloneOccupy:(c,x,y)=>{
     const actor=w.enemies.find(a=>a.id===c.id);
-    if(!actor)return w.enemies.length<ASTRAL.maxActorArray&&canOccupy(x,y)&&(!w.los||w.los(w.player,{x,y}));
+    if(!actor)return w.enemies.length<ASTRAL.maxActorArray&&canOccupy(x,y)&&(!(w.astralLos||w.los)||(w.astralLos||w.los)(w.player,{x,y}));
     const probe={...actor,x:c.x,y:c.y};w.move(probe,x-c.x,y-c.y);
     return Math.abs(probe.x-x)<1e-6&&Math.abs(probe.y-y)<1e-6;
   },damagePlayer:(amount,source)=>{
     if(w.now<(w.player.dodgeUntil||0))return 0;const before=Math.max(0,w.player.hp);
-    w.hurt(e,amount,{beam:s.move==='flight',source:source.kind});return Math.max(0,before-Math.max(0,w.player.hp));
+    w.hurt(e,amount,{beam:s.move==='flight',source:source.kind});const actual=Math.max(0,before-Math.max(0,w.player.hp));
+    if(source.kind==='astralDrain'&&w.deferAstralHeal){w.deferAstralHeal(e,Math.min(amount,actual));return 0;}
+    return actual;
   }});
   e.x=s.x;e.y=s.y;e.hp=s.hp;e.flying=true;if(e.pack)e.pack.attack=s.move?`astral:${s.move}`:null;
   for(const c of [...s.clones]){
     let actor=w.enemies.find(a=>a.id===c.id);
     if(!actor){
       // Conservative total-array cap and footprint check: never evict unrelated actors to make a ring.
-      if(w.enemies.length>=ASTRAL.maxActorArray||!canOccupy(c.x,c.y)||(w.los&&!w.los(w.player,c))){s.clones=s.clones.filter(q=>q.id!==c.id);continue;}
+      if(w.enemies.length>=ASTRAL.maxActorArray||!canOccupy(c.x,c.y)||((w.astralLos||w.los)&&!(w.astralLos||w.los)(w.player,c))){s.clones=s.clones.filter(q=>q.id!==c.id);continue;}
       actor=w.spawnMinion(e,'astralMirage',c.x,c.y,Number(c.id.split(':').at(-1)));
       Object.assign(actor,{id:c.id,astralOwner:e.id,noRewards:true,astralEncounterId:e.id,hp:c.hp,maxHp:c.hp,damage:0,aggro:true});
     }

@@ -92,3 +92,15 @@ Yes
 END VERBATIM ANSWER S6
 
 Approved scope: normal beast bounty for Astral Worm, no new Echo, no rewards from mirages or the allied Walker, and corresponding regression-test updates. This does not constitute publication approval or permission for unrelated test/configuration changes.
+
+## S7 — saddle while the Walker rides
+
+User message ID: `Sentinel_5c3c9f26fb9481918455360d36e78935`
+
+BEGIN VERBATIM SOURCE S7
+
+But let's put a saddle on the beast while he's riding it
+
+END VERBATIM SOURCE S7
+
+Scope: add a saddle to Astral Worm while Void Walker rides it. Recognizable, form-fitted placement and removal on dismount are implementation interpretations of this mounted-only presentation, not additional verbatim owner wording. No health, reward, knock-off threshold or publication policy is changed.

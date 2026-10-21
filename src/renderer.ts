@@ -1120,7 +1120,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillRect((e.x + .5 - .4*flashScale) * s, (e.y + .45 - .42*flashScale) * s, s * .8*flashScale, s * .75*flashScale);
             ctx.restore();
           }
-          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal"].includes(e.kind) ? { marine: marineAt(e) } : {}), ...(["voidWalker", "astralWorm", "astralMirage"].includes(e.kind) ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
+          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(["voidWalker", "astralWorm", "astralMirage"].includes(e.kind) ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
           actor(
             ctx,
             e.x + ox,

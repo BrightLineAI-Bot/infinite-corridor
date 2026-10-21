@@ -1,3 +1,4 @@
+import { ASTRAL_PROFILE } from "./astral-worm.ts";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
@@ -76,11 +77,13 @@ export const WORLD_BEASTS = {
     slain: "The Void Walker's silhouette unravels into a scattering of stars.",
     gone: "The Void Walker closes its hunt. In time, another rend will open.",
   },
+  astralWorm: ASTRAL_PROFILE,
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
 // One exact shared marine classification for encounter placement, movement, attack variants and scars.
 // Lake, river, swamp, dungeon water and shallows retain their existing behavior.
 export const isMarineTile = (tile) => tile?.kind === "ocean" || tile?.kind === "deepOcean";
+const astralSpawnWater = tile => ['ocean','deepOcean','lakeWater','river','dungeonWater','shallows','swampWater','mireWater','toxicWater'].includes(tile?.kind) && !tile.structure && !tile.buildingId && !tile.environment && !tile.pit;
 export const marineTileOpen = (tile) => isMarineTile(tile) && !tile.structure && !tile.buildingId && !tile.environment && !tile.pit;
 
 // Release 239 (Tim, 2026-10-20): a beast that has neither killed the Wayfarer nor died within its `patience` (seconds of
@@ -90,6 +93,7 @@ export const marineTileOpen = (tile) => isMarineTile(tile) && !tile.structure &&
 // or `object`). Later beasts name theirs here too: the Void Walker a dungeon, the Psychic Crystal water, the Mountain
 // Turtle a canyon, the Nanobot Knight glass.
 export const BEAST_HOMES = {
+  wayglass: { name: "the nearest reachable Wayglass" },
   mire: { name: "the Blight Mire", section: (q) => q.biome === "blight" || q.biome === "swamp", tile: (t) => ["toxicWater", "swampWater", "toxicBog", "toxicMire", "mireWater"].includes(t.kind) },
   dunes: { name: "the Dune Sea", section: (q) => q.biome === "desert", tile: (t) => t.landscape === "desert" },
   water: { name: "open water", section: (q) => ["sea", "coast", "lake", "isles"].includes(q.biome), tile: (t) => ["ocean", "deepOcean", "lakeWater", "shallows", "dungeonWater"].includes(t.kind) },
@@ -209,7 +213,7 @@ export function retreatEnded(save, id) {
 // in its saved source area/leg until actually reaching its door; unloaded areas are not simulated.
 export function worldBeastsLost(save, area, rx, ry, dungeonId = null) {
   ensureWorldBeasts(save, false); const lost = [];
-  for (const id of WORLD_BEAST_IDS) { const a = save.worldBeasts[id].active; if (a?.retreat && id !== "voidWalker" && (a.dungeon ? area !== "dungeon" || dungeonId !== a.dungeon : area !== "overworld" || a.rx !== rx || a.ry !== ry)) { retreatEnded(save, id); lost.push(id); } }
+  for (const id of WORLD_BEAST_IDS) { const a = save.worldBeasts[id].active; if (a?.retreat && id !== "voidWalker" && id !== "astralWorm" && (a.dungeon ? area !== "dungeon" || dungeonId !== a.dungeon : area !== "overworld" || a.rx !== rx || a.ry !== ry)) { retreatEnded(save, id); lost.push(id); } }
   return lost;
 }
 export const isWorldBeastKind = (kind) => WORLD_BEAST_IDS.some((id) => WORLD_BEASTS[id].kind === kind);
@@ -245,7 +249,9 @@ function cleanRetreat(r) {
 }
 // A retreating beast's spawn: it comes in by the gate on its entry side (or stands mid-section, where it fled from).
 function fleeSpawn(save, here, rx, ry) {
-  const q = save.worldBeasts[here], r = q.active.retreat, side = r.side, ex = sectionExits(save.seed, rx, ry), at = here === "voidWalker" && validRetreatEntry(r.entry, side) ? r.entry : side === "east" ? { x: 31 - RETREAT.inset, y: ex.east } : side === "west" ? { x: RETREAT.inset, y: ex.west } : side === "south" ? { x: ex.south, y: 31 - RETREAT.inset } : side === "north" ? { x: ex.north, y: RETREAT.inset } : { x: 15.5, y: 15.5 };
+  const q = save.worldBeasts[here];
+  if(here==="astralWorm"&&q.active.astralRetreat?.actor)return {...JSON.parse(JSON.stringify(q.active.astralRetreat.actor)),dead:false,retreating:true,untargetable:true};
+  const r = q.active.retreat, side = r.side, ex = sectionExits(save.seed, rx, ry), at = here === "voidWalker" && validRetreatEntry(r.entry, side) ? r.entry : side === "east" ? { x: 31 - RETREAT.inset, y: ex.east } : side === "west" ? { x: RETREAT.inset, y: ex.west } : side === "south" ? { x: ex.south, y: 31 - RETREAT.inset } : side === "north" ? { x: ex.north, y: RETREAT.inset } : { x: 15.5, y: 15.5 };
   return { id: `world-beast:${here}:${q.cycle}${here === "voidWalker" && !r.legs ? "" : `:flee:${r.legs}`}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, retreating: true, ...(here === "voidWalker" && validRetreatVitals(r.vitals) ? { retreatVitals: { ...r.vitals } } : {}), traits: [] };
 }
 // Called once per overworld section load. Returns the spawn of the beast holding this section, or null. One beast holds
@@ -253,9 +259,9 @@ function fleeSpawn(save, here, rx, ry) {
 export function worldBeastFor(save, map, rx, ry) {
   ensureWorldBeasts(save, false);
   if (!map) return null;
-  if (map.settlement || map.tiles?.length !== 1024) { const id = WORLD_BEAST_IDS.find((k) => { const a = save.worldBeasts[k].active; return a?.retreat && a.rx === rx && a.ry === ry; }); return id ? fleeSpawn(save, id, rx, ry) : null; } // release 241: fleeing, it passes through a settlement too
+  if (map.settlement || map.tiles?.length !== 1024) { const id = WORLD_BEAST_IDS.find((k) => { const a = save.worldBeasts[k].active; return a?.retreat && !a.dungeon && a.rx === rx && a.ry === ry; }); return id ? fleeSpawn(save, id, rx, ry) : null; } // release 241: fleeing, it passes through a settlement too
   const qb = save.questingBeast?.active, held = qb && qb.rx === rx && qb.ry === ry;
-  let here = WORLD_BEAST_IDS.find((id) => { const a = save.worldBeasts[id].active; return a && a.rx === rx && a.ry === ry; });
+  let here = WORLD_BEAST_IDS.find((id) => { const a = save.worldBeasts[id].active; return a && !a.dungeon && !astralReservedCompanion(save,id) && a.rx === rx && a.ry === ry; });
   for (const id of WORLD_BEAST_IDS) { // cooldowns run down as sections are entered, and a free beast may claim this one
     const B = WORLD_BEASTS[id], q = save.worldBeasts[id];
     if (q.active) continue;
@@ -267,8 +273,8 @@ export function worldBeastFor(save, map, rx, ry) {
   if (!here) return null;
   const q = save.worldBeasts[here];
   if (q.active.retreat) return fleeSpawn(save, here, rx, ry);
-  const marine = here === "voidWalker" || here === "psychicCrystal";
-  const open = map.tiles.filter((t) => (marine && marineTileOpen(t) || !t.blocked && !t.structure && !t.environment && !LETHAL_KINDS.has(t.kind)) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24);
+  const marine = here === "voidWalker" || here === "psychicCrystal" || here === "astralWorm";
+  const open = map.tiles.filter((t) => (marine && marineTileOpen(t) || here === "astralWorm" && astralSpawnWater(t) || !t.blocked && !t.structure && !t.environment && !LETHAL_KINDS.has(t.kind)) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24);
   const at = open.sort((a, b) => hashSeed(`wb:${here}:${q.cycle}:${a.x},${a.y}`) - hashSeed(`wb:${here}:${q.cycle}:${b.x},${b.y}`))[0];
   if (!at) { if (!q.active.tries) q.active = null; return null; } // no valid terrain for this beast: it does not hold the section
   return { id: `world-beast:${here}:${q.cycle}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, traits: [] };
@@ -286,8 +292,8 @@ export function beastTuningReference(save, stats = {}) {
 }
 export function beastProfileVitals(profile, save, stats = {}) {
   const r = beastTuningReference(save, stats);
-  return { hp: Math.round(r.perHit * profile.hitsToKill + profile.hpPerLevel * r.level),
-    damage: Math.max(Math.ceil(BEAST_BASELINE.damageFloor / (1 - r.guard)), Math.round(r.maxHp * profile.damageShare / (1 - r.guard))) };
+  return { hp: Math.max(Number(profile.nativeHpFloor)||0, Math.round(r.perHit * profile.hitsToKill + profile.hpPerLevel * r.level)),
+    damage: Math.max(Number(profile.nativeDamageFloor)||0, Math.ceil(BEAST_BASELINE.damageFloor / (1 - r.guard)), Math.round(r.maxHp * profile.damageShare / (1 - r.guard))) };
 }
 
 // Tunes a created combatant to the Wayfarer, as the Questing Beast is tuned.
@@ -324,7 +330,7 @@ export function worldBeastForDungeon(save, map, dungeonId) {
   ensureWorldBeasts(save, false);
   if (!map?.tiles || !dungeonId) return null;
   const ids = WORLD_BEAST_IDS.filter((k) => WORLD_BEASTS[k].dungeonChance), water = map.tiles.filter((t) => t.kind === "dungeonWater");
-  let here = ids.find((k) => save.worldBeasts[k].active?.dungeon === dungeonId);
+  let here = ids.find((k) => !astralReservedCompanion(save,k) && save.worldBeasts[k].active?.dungeon === dungeonId);
   const coords = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/.exec(dungeonId), depth = coords ? Math.abs(Number(coords[1])) + Math.abs(Number(coords[2])) : -1; // ordinary dungeons only (not the story dungeon, arenas, hunts or runs)
   if (!here && depth >= 0) for (const k of ids) {
     const q = save.worldBeasts[k], B = WORLD_BEASTS[k];
@@ -334,14 +340,15 @@ export function worldBeastForDungeon(save, map, dungeonId) {
   }
   if (!here) return null;
   const q = save.worldBeasts[here], entry = map.entry || { x: 4, y: 5 }, width = Number(map.width) || 32;
-  if (here === "voidWalker") {
+  if (here === "voidWalker" || here === "astralWorm") {
     const level = map.levelId || "root";
     q.active.dungeonLevel ??= level; // one physical Walker, not a fresh-health copy on every dungeon floor
     if (q.active.dungeonLevel !== level) return null; // an unfinished retreat remains on its source floor for revisit
   }
+  if(here==="astralWorm"&&q.active.astralRetreat?.actor)return {...JSON.parse(JSON.stringify(q.active.astralRetreat.actor)),dead:false,retreating:true,untargetable:true};
   const near = (t) => water.some((w) => Math.abs(w.x - t.x) + Math.abs(w.y - t.y) <= 4);
   const reachable = here === "voidWalker" ? walkerReachableTiles(map, entry) : null;
-  const spots = map.tiles.filter((t) => (!reachable || reachable.has(t.y * width + t.x)) && !t.blocked && !LETHAL_KINDS.has(t.kind) && t.kind !== "dungeonWater" && t.x > 1 && t.y > 1 && t.x < width - 2 && Math.hypot(t.x - entry.x, t.y - entry.y) >= 7);
+  const spots = map.tiles.filter((t) => (!reachable || reachable.has(t.y * width + t.x)) && ((!t.blocked && !LETHAL_KINDS.has(t.kind) && t.kind !== "dungeonWater") || here === "astralWorm" && astralSpawnWater(t)) && t.x > 1 && t.y > 1 && t.x < width - 2 && Math.hypot(t.x - entry.x, t.y - entry.y) >= 7);
   const pool = here === "psychicCrystal" && spots.filter(near).length ? spots.filter(near) : spots, at = pool.sort((a, b) => hashSeed(`wbd:${here}:${q.cycle}:${a.x},${a.y}`) - hashSeed(`wbd:${here}:${q.cycle}:${b.x},${b.y}`))[0];
   if (!at) { if (!q.active.tries && !q.active.retreat) q.active = null; return null; }
   return { id: `world-beast:${here}:${q.cycle}${q.active.retreat && here !== "voidWalker" ? ":flee" : ""}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, retreating: !!q.active.retreat, inDungeon: true, traits: [] };
@@ -537,4 +544,10 @@ export function applyVoidScars(save, map, areaKey) {
     const [x, y] = clean.split(',').map(Number); if (!isMarineTile(map.tiles[y * width + x])) candidates.push(y * width + x);
   }
   return voidResult(true, null, voidInstall(map, areaKey, width, candidates, stored.row));
+}
+
+// A narrow exception: an explicitly reserved Walker is emitted by the Astral companion path only.
+function astralReservedCompanion(save,id) {
+  const a=save.worldBeasts?.[id]?.active,w=save.worldBeasts?.astralWorm;
+  return id==='voidWalker' && a?.astralPairOf && w?.active && a.astralPairOf===`world-beast:astralWorm:${w.cycle}`;
 }

@@ -116,7 +116,7 @@ export function echoEvent(game, event, now, data = {}) {
     if (eq.includes("psychicCrystal")) for (const e of nearest(game, me.x, me.y, 3)) { const c = centre(e), m = Math.hypot(c.x - me.x, c.y - me.y) || 1; world.nudge(e, (c.x - me.x) / m * 1.5, (c.y - me.y) / m * 1.5); e.hitStun = Math.max(e.hitStun || 0, .25); } // release 249
     if (eq.includes("listener")) { const foe = nearest(game, me.x, me.y, 3)[0]; if (foe) { world.arc(p, foe, "#c9a6ff"); world.damage(foe, Math.round(dmg * .9)); } }
     if (eq.includes("mirrorShade") && now >= (p.echoMirrorReadyAt || 0)) {
-      const foe = nearest(game, me.x, me.y, 5).find((e) => !e.flying && world.canStand(e.x, e.y)); // never swap onto a pit, water or a wall
+      const foe = nearest(game, me.x, me.y, 5).find((e) => !e.flying && !game.astralRiderHeld?.(e) && world.canStand(e.x, e.y)); // never swap onto a pit, water or a wall
       if (foe) { const fx = foe.x, fy = foe.y; world.arc(p, foe, "#c9d6ff"); foe.x = p.x; foe.y = p.y; p.x = fx; p.y = fy; foe.hitStun = Math.max(foe.hitStun || 0, .5); p.echoMirrorReadyAt = now + 4000; }
     }
   } else if (event === "spell" && eq.includes("lumenWraith")) {

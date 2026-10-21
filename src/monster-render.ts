@@ -3,7 +3,7 @@
 // no images, so it scales cleanly with the device pixel ratio.
 import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID } from "./monster-pack.ts";
 
-import { drawAstralMorph, drawAstralHazards } from "./astral-worm-render.ts";
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle } from "./astral-worm-render.ts";
 
 import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { ASTRAL } from "./astral-worm.ts";
@@ -876,6 +876,8 @@ function paintPackMonster(ctx, e, s, now, facing, def, sprite) {
   if (e.illusion) ctx.globalAlpha *= .92;
   if (e.fleeFade != null) { ctx.globalAlpha *= e.fleeFade; q.b += (1 - e.fleeFade) * u * .5; } // release 239: going into its home ground
   if (e.boss) { glow(ctx, k, b - u * .4 - bodyLift, u * 1.05, def.palette[2], .18); }
+  const riding=astralMountPresentation(e);
+  if(riding?.riding)drawAstralSaddle(ctx,{x:k,y:b,unit:u,form:riding.form,facing:flip});
   BODY[def.render]?.(ctx, q);
   if (e.hitFlash > 0) { ctx.globalCompositeOperation = "lighter"; glow(ctx, k, b - u * .4 - bodyLift, u * .55, "#ffffff", .5); }
   ctx.restore();

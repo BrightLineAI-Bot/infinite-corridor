@@ -1,3 +1,5 @@
+import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
+import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.ts";
 import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage } from "./astral-worm-mount.ts";
 import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.ts";
 import {
@@ -468,7 +470,7 @@ function boundedChaseStep(entity,player,map,width,radius=12){
 // Runtime navigation permission is derived from the current area/kind, never from player boat ownership or
 // restored actor flags. The presentation flag is recomputed after movement and is not durable boat state.
 function refreshMarineBeast(entity, map, width, area) {
-  if (!["voidWalker", "psychicCrystal"].includes(entity?.kind)) return false;
+  if (!["voidWalker", "psychicCrystal", "astralWorm", "astralMirage"].includes(entity?.kind)) return false;
   const capable = area === "overworld";
   Object.defineProperty(entity, "_marineTraversal", { value: capable, writable: true, configurable: true, enumerable: false });
   entity.marine = capable && marineAt(map, width, entity.x, entity.y);
@@ -1808,6 +1810,7 @@ export class Game {
   areaStateId(){const id=this.areaId();return this.area==="dungeon"&&this.map?.multiLevel&&this.save.session.activeDungeonLevelId?`${id}:level:${this.save.session.activeDungeonLevelId}`:id;}
   snapshotArea() {
     if (!this.map) return;
+    for(const e of this.enemies)this.syncAstralClone(e);
     const objects = {};
     for (const o of this.map.objects)
       objects[o.id] = {
@@ -1931,9 +1934,9 @@ export class Game {
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save)});
     if(area==="overworld"){const war=addSkirmish(this.map,this.save.seed,this.rx,this.ry,this.save);if(war)this.message=war.text;else if(this.map.settlement?.procedural)this.message=`${this.map.settlement.name} — a ${this.map.settlement.label.toLowerCase()} holds this ground.`}
     if(area==="overworld"&&arrayMouthAt(this.save,this.rx,this.ry)&&!this.map.objects.some(o=>o.kind==="arrayMouth")){const spots=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>10&&t.x<22&&t.y>10&&t.y<22).sort((a,b)=>Math.hypot(a.x-16,a.y-16)-Math.hypot(b.x-16,b.y-16));const at=spots[0]||{x:16,y:16};this.map.objects.push({id:"array-mouth",kind:"arrayMouth",name:"The Array Mouth",lore:"A ruined relay terminal, half sunk into ground no map has charted. Its line hums under your feet.",x:at.x,y:at.y,state:"ready",actions:["enter"],landmark:true});this.message="The Array Mouth: the far end of the relay line."}
-    if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry,this.save),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);const beast=questingBeastFor(this.save,this.map,this.rx,this.ry),elder=addElder(this.map,this.save,this.rx,this.ry),worldBeastFound=worldBeastFor(this.save,this.map,this.rx,this.ry),worldBeast=beast&&!worldBeastFound?.retreating?null:worldBeastFound;if(worldBeast){this.map.enemySpawns.push(worldBeast);const B=WORLD_BEASTS[worldBeast.worldBeast];this.message=worldBeast.retreating?`${B.name} is fleeing through here toward ${BEAST_HOMES[B.home].name}. It cannot be hurt now.`:`${B.arrive} ${worldBeastTriesLeft(this.save,worldBeast.worldBeast)} of ${B.tries} tries remain.`}/* release 241: a fleeing beast says so, and passes through the Questing Beast's ground too *//* release 235: world beasts */addStrange(this.map,this.save,this.rx,this.ry);/* release 215: a rare strange tree or stone */addDigSpot(this.map,this.save,this.rx,this.ry);/* release 225: a rare patch of disturbed earth */for(const id of mouthsIn(this.save,this.rx,this.ry))placeMouth(this.map,id);/* release 217: second mouths of linked dungeons */if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastTriesLeft(this.save)} of ${QUESTING_BEAST.tries} tries remain.`}if(beast||worldBeast){}else if(elder)this.message="Something tall and silent walks the road.";else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, murmuring.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
+    if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry,this.save),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);const beast=questingBeastFor(this.save,this.map,this.rx,this.ry),elder=addElder(this.map,this.save,this.rx,this.ry),worldBeastFound=worldBeastFor(this.save,this.map,this.rx,this.ry),worldBeast=beast&&!worldBeastFound?.retreating?null:worldBeastFound;if(worldBeast){this.map.enemySpawns.push(worldBeast);const companion=astralCompanionFor(this.save,worldBeast,{rx:this.rx,ry:this.ry},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[worldBeast.worldBeast];this.message=worldBeast.retreating?`${B.name} is fleeing through here toward ${BEAST_HOMES[B.home].name}. It cannot be hurt now.`:`${B.arrive} ${worldBeastTriesLeft(this.save,worldBeast.worldBeast)} of ${B.tries} tries remain.`}/* release 241: a fleeing beast says so, and passes through the Questing Beast's ground too *//* release 235: world beasts */addStrange(this.map,this.save,this.rx,this.ry);/* release 215: a rare strange tree or stone */addDigSpot(this.map,this.save,this.rx,this.ry);/* release 225: a rare patch of disturbed earth */for(const id of mouthsIn(this.save,this.rx,this.ry))placeMouth(this.map,id);/* release 217: second mouths of linked dungeons */if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastTriesLeft(this.save)} of ${QUESTING_BEAST.tries} tries remain.`}if(beast||worldBeast){}else if(elder)this.message="Something tall and silent walks the road.";else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, murmuring.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
     this.activatedEncounterGroups=new Set;
-    if(area==="dungeon"){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is retreating ${haunt.worldBeast === "voidWalker" ? "toward the nearest reachable dungeon door" : "toward the water"}. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastTriesLeft(this.save,haunt.worldBeast)} of ${B.tries} tries remain.`}} /* release 249: the Psychic Crystal haunts dungeons with water */
+    if(area==="dungeon"){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const companion=astralCompanionFor(this.save,haunt,{dungeon:this.areaId(),level:this.map.levelId||"root"},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is retreating ${haunt.worldBeast === "voidWalker" ? "toward the nearest reachable dungeon door" : haunt.worldBeast === "astralWorm" ? "toward the nearest reachable Wayglass" : "toward the water"}. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastTriesLeft(this.save,haunt.worldBeast)} of ${B.tries} tries remain.`}} /* release 249: the Psychic Crystal haunts dungeons with water */
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
     // Far Array bosses are tuned to the Wayfarer last, over the depth and boss-form scaling (release 138).
     if(area==="dungeon"&&isArrayRun(loadingId))for(const e of this.enemies)if(e.farArrayBoss)tuneArrayBoss(e,this.save,characterStats(this.save),e.farArrayBoss);
@@ -1984,7 +1987,7 @@ export class Game {
           ai: { ...ensureAI(e), ...restored.ai },
         };
         if (restored.dungeonThreatTuningVersion === undefined) delete merged.dungeonThreatTuningVersion;
-        if(area === "dungeon" && !merged.passiveBehavior && !merged.ambient && !merged.worldBeast) tuneDungeonThreat(merged); // release 249: a world beast keeps its own tuning
+        if(area === "dungeon" && !merged.passiveBehavior && !merged.ambient && !merged.worldBeast && !merged.astralCompanionOf) tuneDungeonThreat(merged); // release 249: a world beast keeps its own tuning
         ensureAI(merged);
         resetPackRuntime(merged);
         if ((merged.worldBeast || merged.questingBeast) && restored.beastTuningVersion == null) {
@@ -1996,6 +1999,7 @@ export class Game {
         return merged;
       });
       for(const saved of s.enemies||[])if((saved.gatePredator||saved.foundryId||saved.astralMountFixture)&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);if(restored.gatePredator){tuneGatePredator(restored,this.save,characterStats(this.save));resetGateAttack(restored, true)}this.enemies.push(restored)}
+      for(const saved of s.enemies||[])if(saved.astralOwner&&!saved.dead&&this.enemies.length<32&&!this.enemies.some(e=>e.id===saved.id)){const owner=this.enemies.find(e=>e.id===saved.astralOwner&&!e.dead),clone=owner?.astral?.clones?.find(c=>c.id===saved.id&&c.hp>0);if(clone){const restored={...saved,hp:Math.min(saved.hp,clone.hp),noRewards:true,summonedBy:owner.id,ai:{...saved.ai}};delete restored.worldBeast;delete restored.questingBeast;ensureAI(restored);this.enemies.push(restored);}}
       for (const o of this.map.objects)
         if (s.objects?.[o.id]) Object.assign(o, s.objects[o.id]);
       applyFallenTreeCrossings(this.map);
@@ -2019,12 +2023,14 @@ export class Game {
       // floating treasure marker when the dungeon is loaded again.
       this.map.wallGlints = (this.map.wallGlints || []).filter(q => this.map.tiles[q.y * mapWidth(this.map, area) + q.x]?.blocked);
     }
+    const ar=this.save.worldBeasts?.astralWorm?.active?.astralRetreat;
+    if(ar&&astralRetreatSceneMatches(ar.scenes?.[ar.sceneKey],this)){const carried=astralRetreatSpawn(this.save.worldBeasts.astralWorm.active);if(carried){const existing=this.enemies.find(e=>e.worldBeast==='astralWorm');if(existing)Object.assign(existing,carried);else this.enemies.push(carried);ensureAI(existing||carried);}}
     this._walkerRoutes = new WeakMap(); this._walkerLandingGraph = null;
     const areaWidth = mapWidth(this.map, area),
       playerRelocated = !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
     for (const e of this.enemies) {
       refreshMarineBeast(e, this.map, areaWidth, area);
-      if (this.astralRiderHeld(e) || e.astralMountFixture && e.kind === "astralWorm") {
+      if (this.astralRiderHeld(e) || e.kind === "astralWorm" || e.kind === "astralMirage") {
         // Explicit fixture snapshots retain supported above-water positions exactly.
         continue;
       } else if (isDungeonRoamer(e, area)) {
@@ -2229,7 +2235,7 @@ export class Game {
     };
   }
   tickGlyphs(dt, now) {
-    const mountedHp = this.enemies.filter(e => e.astralMount?.status === "mounted").map(e => [e, Math.max(0,e.hp)]);
+    const mountedHp = this.enemies.filter(e => e.astralOwner || e.astralMount?.status === "mounted").map(e => [e, Math.max(0,e.hp)]);
     tickGlyphStatus(this.enemies, dt, now, (e) => this.defeatEnemy(e));
     for (const [e, hp] of mountedHp) this.astralPlayerHit(e, Math.max(0,hp-Math.max(0,e.hp)));
     const due = (this.glyphTimers ||= []).filter((t) => t.at <= now);
@@ -2901,18 +2907,18 @@ export class Game {
     const host = this.astralMountHost();
     host.canMount = (a,b) => hasLineOfSight(a,b,this.map,mapWidth(this.map,this.area));
     if (!mountAstralWalker(owner,rider,host)) return false;
-    owner.astralMountFixture = true; rider.astralMountFixture = true;
+    if(!owner.worldBeast){owner.astralMountFixture = true; rider.astralMountFixture = true;}
     return true;
   }
   astralRiderHeld(e) { return e?.astralMount?.status === "mounted" || e?.astralMount?.status === "landing"; }
   astralLandingOpen(rider, at) {
-    const width = mapWidth(this.map,this.area), height = mapHeight(this.map,this.area), {x,y} = at;
-    if (![x,y].every(Number.isFinite) || x < 0 || y < 0 || x > width-1 || y > height-1 || !walkerGroundPositionOpen(this.map,width,x,y)) return false;
+    const width = mapWidth(this.map,this.area), height = mapHeight(this.map,this.area), {x,y} = at, marine=this.area==="overworld"&&!!rider.astralCompanionOf;
+    if (![x,y].every(Number.isFinite) || x < 0 || y < 0 || x > width-1 || y > height-1 || !walkerGroundPositionOpen(this.map,width,x,y,marine)) return false;
     // Dismount is a short unobstructed descent, not a blink through a wall or across a cliff.
     if (Math.abs(elevationAt(this.map,width,rider.x,rider.y)-elevationAt(this.map,width,x,y))>1 ||
-        !hasLineOfSight({x:rider.x+.5,y:rider.y+.7},{x:x+.5,y:y+.7},this.map,width,true)) return false;
+        !hasLineOfSight({x:rider.x+.5,y:rider.y+.7},{x:x+.5,y:y+.7},this.map,width,true,marine)) return false;
     const steps=Math.max(1,Math.ceil(Math.hypot(x-rider.x,y-rider.y)*4));
-    for(let i=1;i<steps;i++) if(!footprintOpen(this.map,width,rider.x+(x-rider.x)*i/steps,rider.y+(y-rider.y)*i/steps,true)) return false;
+    for(let i=1;i<steps;i++) if(!footprintOpen(this.map,width,rider.x+(x-rider.x)*i/steps,rider.y+(y-rider.y)*i/steps,true,marine)) return false;
     if (this.area === "dungeon") {
       const connected = this.walkerLandingGraph();
       for (let ty=Math.floor(y+.5);ty<=Math.floor(y+.88-1e-6);ty++) for(let tx=Math.floor(x+.24);tx<=Math.floor(x+.76-1e-6);tx++) if(!connected.has(ty*width+tx)) return false;
@@ -2930,12 +2936,14 @@ export class Game {
         return candidates.find(at=>this.astralLandingOpen(rider,at)) || null;
       } };
   }
-  astralPlayerHit(e, actual) { return recordAstralRiderDamage(e,actual,{playerInflicted:true},this.astralMountHost()); }
+  astralPlayerFell() { return !this._astralDamagePending && this.player.hp<=0; }
+  syncAstralClone(e) { if(!e?.astralOwner)return;const owner=this.enemies.find(q=>q.id===e.astralOwner),clone=owner?.astral?.clones?.find(q=>q.id===e.id);if(clone)clone.hp=Math.max(0,Math.min(clone.hp,e.dead?0:Number(e.hp)||0)); }
+  astralPlayerHit(e, actual) { this.syncAstralClone(e);return recordAstralRiderDamage(e,actual,{playerInflicted:true},this.astralMountHost()); }
   syncAstralRiders() {
     if (this.paused) return;
     const host=this.astralMountHost();
     for(const rider of this.enemies) if(rider.astralMount) {
-      if(this.player.hp<=0) dismountAstralWalker(rider,"player-dead",host);
+      if(this.astralPlayerFell()) dismountAstralWalker(rider,"player-dead",host);
       else syncAstralMount(rider,host);
     }
   }
@@ -3083,6 +3091,9 @@ export class Game {
         if (result.changed) { game._walkerLandingGraph = null; game._walkerRoutes = new WeakMap(); map.wallGlints = (map.wallGlints || []).filter(q => map.tiles[q.y * width + q.x]?.blocked); }
         return result;
       },
+      playerDeathFinal: () => game.astralPlayerFell(),
+      deferAstralHeal: (owner,amount) => { if(amount>0&&(game._astralDrainCredits||=[]).length<32)game._astralDrainCredits.push({owner,amount}); },
+      astralLos: (a,b) => hasLineOfSight(a,b,map,width,true,game.area === "overworld"),
       los: (a, b, projectile = false) => hasLineOfSight(a, b, map, width, projectile, game.area === "overworld" && ["voidWalker", "psychicCrystal"].includes(a?.kind)),
       move(e, dx, dy, opts = {}) {
         if (game.astralRiderHeld(e)) return false;
@@ -3152,6 +3163,11 @@ export class Game {
       if (!e.worldBeast || e.dead || !WORLD_BEASTS[e.worldBeast]) continue;
       const id = e.worldBeast, B = WORLD_BEASTS[id], q = this.save.worldBeasts?.[id]?.active;
       if (!q) continue;
+      if(id==='astralWorm') {
+        if(!e.retreating&&e.aggro&&worldBeastPatience(this.save,id,dt)){beginAstralWorldRetreat(this,e);this.message=B.flee;reconcileAstralCompanions(this);this.syncAstralRiders();}
+        if(q.astralRetreat){const result=tickAstralWorldRetreat(this,e,dt,{previewDungeon:(save,id,levelId)=>generatePinnedDungeon(save,id,{levelId}),applyDungeonProgress:(save,id,map)=>applyDeepDungeonProgress(save,id,map),domainAt:domainSectionAt,beforeCross:actor=>{for(const rider of this.enemies)if(rider.astralMount?.ownerId===actor.id&&this.astralRiderHeld(rider))dismountAstralWalker(rider,'owner-retreat',this.astralMountHost());return !this.enemies.some(rider=>rider.astralMount?.ownerId===actor.id&&this.astralRiderHeld(rider));}});if(result.arrived){this.message=retreatEnded(this.save,id);e.dead=true;e.noRewards=true;reconcileAstralCompanions(this);}}
+        continue;
+      }
       if (!e.retreating && e.aggro && q.dungeon && worldBeastPatience(this.save, id, dt)) { const r = beginDungeonRetreat(this.save, id, this.map); e.retreating = true; this.message = r.message; for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; } journalOnce(this.save, `world-beast-flees:${id}:${this.save.worldBeasts[id].cycle}`, r.message, "World beasts"); }
       if (!e.retreating && e.aggro && !q.dungeon && this.area === "overworld" && worldBeastPatience(this.save, id, dt)) {
         const seed = this.save.seed, gen = this.save.worldGeneration, r = beginRetreat(this.save, id, this.rx, this.ry, (x, y) => { let g = null; const region = () => (g ||= generateRegion(seed, x, y, gen)); return { get biome() { return biomeFor(seed, x, y); }, get dominant() { return region().dominant; }, get canyon() { return region().environment?.kind === "canyon"; }, get dungeon() { return (region().objects || []).some((o) => o.kind === "dungeon"); } }; }); // release 241: a section is generated only for homes that need it
@@ -3178,10 +3194,12 @@ export class Game {
   createEnemyFromSpawn(e, area = this.area) {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
       if (e.id) c.id = e.id;
+      if(e.kind === "astralWorm")c.astralSeed=hashSeed(`${this.save.seed}:${c.id}:astral-v1`);
       if (e.packGuardian) c.packGuardian = true;
       if (e.skirmishId) Object.assign(c, skirmishFields(e));
       if (e.questingBeast) tuneQuestingBeast(c, this.save, characterStats(this.save));
-      if (e.worldBeast) tuneWorldBeast(c, this.save, e.worldBeast, characterStats(this.save)); // release 235
+      if (e.worldBeast) tuneWorldBeast(c, this.save, e.worldBeast, characterStats(this.save));
+      if(e.astralCompanionOf){if(e.astralRole==='ally'){tuneWorldBeast(c,this.save,'voidWalker',characterStats(this.save));delete c.worldBeast;}Object.assign(c,{astralCompanionOf:e.astralCompanionOf,astralRole:e.astralRole,astralAllyOf:e.astralAllyOf,noRewards:!!e.noRewards,astralMountWanted:!!e.astralMountWanted});} // release 235
       if (e.retreating) Object.assign(c, { retreating: true, aggro: true, untargetable: true }); // release 239: fleeing through
       if (area === "dungeon" && isArrayRun(this.save.session.activeDungeonId)) {
         if (e.farArrayBoss === "listener") { const form = LISTENER_FORMS[e.listenerPhase] || LISTENER_FORMS.open; Object.assign(c, { farArrayBoss: "listener", listenerForm: e.listenerForm, listenerPhase: e.listenerPhase, packAttacks: [...form.attacks], packBossAttacks: [...form.boss], summoned: 0, foundryName: form.name }); }
@@ -3217,9 +3235,9 @@ export class Game {
         if(c.kind==="gateRevenant"){c.maxHp=360;c.hp=360;c.damage=22;c.range=5.5}
         c.maxHp=Math.round(c.maxHp*hp);c.hp=c.maxHp;c.damage=Math.max(1,Math.round(c.damage*damage));c.speedMultiplier*=speed;c.attackCooldownScale=attackCooldownScale;c.telegraphScale=telegraphScale;
       }
-      if(area === "dungeon" && !c.passiveBehavior && !c.ambient && !c.worldBeast) tuneDungeonThreat(c);
+      if(area === "dungeon" && !c.passiveBehavior && !c.ambient && !c.worldBeast && !c.astralCompanionOf) tuneDungeonThreat(c);
       // Every monster hits harder (Tim, 2026-10-16). Foes tuned to the Wayfarer (the Questing Beast, Far Array bosses) are exempt.
-      if(c.damage>0&&!c.questingBeast&&!c.worldBeast&&!c.farArrayBoss)c.damage=Math.max(1,Math.round(c.damage*ENEMY_DAMAGE_SCALE));
+      if(c.damage>0&&!c.questingBeast&&!c.worldBeast&&!c.astralCompanionOf&&!c.farArrayBoss)c.damage=Math.max(1,Math.round(c.damage*ENEMY_DAMAGE_SCALE));
       if (c.gatePredator) tuneGatePredator(c, this.save, characterStats(this.save));
       if (e.kind === "voidWalker" && e.retreating && e.retreatVitals) {
         const v = e.retreatVitals;
@@ -3246,6 +3264,7 @@ export class Game {
     return clear;
   }
   defeatEnemy(e) {
+    this.syncAstralClone(e);
     if (e.rewarded) return;
     if(e.noRewards){e.rewarded=true;return}
     if(e.arenaId&&this.map?.arena){const history=dungeonHistory(this.save,this.areaId());history.resolved=true;history.guardianDefeated=true;history.visitOpen=false;this.defeatNotice={title:'WORLD THREAT BROKEN',detail:`${this.map.name} · the persistent arena falls quiet`,kind:'danger'}}
@@ -3653,8 +3672,10 @@ export class Game {
   update(dt, input, now) {
     this.lastUpdateNow = now;
     if (this.paused) return;
+    reconcileAstralCompanions(this);
     this.syncAstralRiders();
     const p = this.player, hpStart = p.hp;
+    this._astralDrainCredits=[];
     this.guardRemaining = Math.max(0, this.guardRemaining - dt);
     this.magicBuffRemaining = Math.max(0, this.magicBuffRemaining - dt);
     this.spellCooldownRemaining = Math.max(0, this.spellCooldownRemaining - dt);
@@ -3856,6 +3877,7 @@ export class Game {
       (fx, e) => fx.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(fx.glyphHost), e, fx.damage, { echo: !!fx.echo }, now) : fx.damage,
       (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (fx.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); },
     );
+    for(const e of this.enemies)if(e.kind==="astralWorm"&&e.dead&&!e.rewarded)this.defeatEnemy(e);
     this.tickGlyphs(dt, now);
     tickEchoes(this, dt, now, { x, y });
     tickConstellation(this, dt, now);
@@ -3888,6 +3910,8 @@ export class Game {
       const onOcean = TYRANT_HUNT.water.includes(tileUnder(this.map, 32, this.player.x, this.player.y)?.kind), present = this.enemies.some((e) => !e.dead && e.seaKind === TYRANT_HUNT.kind);
       if (tickTyrantHunt(this.tyrantVisit, dt, onOcean, present, Math.random)) this.riseTyrant();
     }
+    // Actor death decisions wait for the existing end-of-frame hull mitigation.
+    this._astralDamagePending=true;
     if (this.area === "overworld" || this.area === "dungeon") this.tickWorldBeasts(dt); // release 239 (release 249: in dungeons too)
     if (this.area === "overworld" && (this._shoreCheck = (this._shoreCheck || 0) - dt) <= 0) { this._shoreCheck = .5; if ((this.save.materials?.wood || 0) >= WOOD.skiffCost && this.save.capabilities?.swim && !this.nearestObject() && this.shoreWater() && now > (this.woodHintAt || 0)) { this.woodHintAt = now + 15000; this.message = `Act: build a skiff here (${WOOD.skiffCost} wood).`; } }
     if (this.swimming) { const hurt = swimUpkeep(p, dt, this.swimKind, this.area === "overworld" && !!this.map.openSea); if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "Exhausted in the water — reach the shore."; } } }
@@ -3939,12 +3963,13 @@ export class Game {
       }
       if((e.ai?.pathRetryAt||0)!==pathRetryBefore)this.performanceStats.pathfindingWork++;
     }
+    reconcileAstralCompanions(this);
     this.syncAstralRiders();
     if(seaSummons.length)this.enemies.push(...seaSummons);
     this.performanceStats.peakActiveEnemies=Math.max(this.performanceStats.peakActiveEnemies,this.performanceStats.activeEnemies);
     const volcano=this.area==="overworld"&&this.map.volcano;
     if(volcano&&Math.hypot(p.x-volcano.x,p.y-volcano.y)<12){this.volcanoClock=(this.volcanoClock||0)+dt;if(this.volcanoClock>=volcano.period){this.volcanoClock=0;this.volcanoSeq=(this.volcanoSeq||0)+1;const n=hashSeed(`${this.save.seed}:eruption:${this.rx}:${this.ry}:${this.volcanoSeq}`);for(let i=0;i<4;i++){const a=((n>>(i*5))%360)*Math.PI/180,r=i===0?0:1.2+((n>>(i*3))%30)/10;addPackEffect(this.packEffects||=[],{kind:"lavaBomb",owner:"volcano",x:p.x+Math.cos(a)*r,y:p.y+Math.sin(a)*r,radius:1.05,arming:1.3+i*.2,damage:Math.ceil(this.save.maxHp*.18),jumpable:false,from:{x:volcano.x,y:volcano.y-1}},now)}this.message="The caldera erupts. Watch the burning circles."}}
-    this.packEffects=tickPackEffects(this.packEffects||[],packWorld);this.performanceStats.activeHazardsAndEffects+=this.packEffects.length;this._packLastPlayer={x:p.x,y:p.y};this.syncAstralRiders();
+    this.packEffects=tickPackEffects(this.packEffects||[],packWorld);this.performanceStats.activeHazardsAndEffects+=this.packEffects.length;this._packLastPlayer={x:p.x,y:p.y};this.syncAstralRiders();for(const e of this.enemies)if(e.kind==="astralWorm"&&e.dead&&!e.rewarded)this.defeatEnemy(e);reconcileAstralCompanions(this);
     // A Lighthouse Buoy (release 156) keeps a line for the Wayfarer's skiff: whoever wakes or lands there without it
     // finds it tied alongside, so a rest point at sea is never a prison.
     if (this.area === "overworld" && this.map.openSea && ((this._buoyCheck = (this._buoyCheck || 0) - dt) <= 0)) {
@@ -3974,12 +3999,19 @@ export class Game {
       if (wave && (onBoard || this.swimming)) { const c = waveCrest(wave, this.seaHazards.clock); if (c.pos !== null && wave.warned !== c.cycle) { wave.warned = c.cycle; this.message = "A rogue wave sweeps across the sea. Burst through it (dodge) or brace!"; } }
       if (onBoard && this.seaHazards.whirlpools.some((v) => Math.hypot(v.x - p.x - .5, v.y - p.y - .7) < v.radius) && now > (this.whirlMessageAt || 0)) { this.whirlMessageAt = now + 9000; this.message = "A maelstrom has the skiff. Row hard for the rim!"; }
     }
+    const astralRawLoss=Math.max(0,hpStart-p.hp);
     // Aboard, the hull takes its share of every hit; a hull at zero sinks the skiff (it returns to its home dock).
     if (this.area === "overworld" && aboard(this.save) && p.hp < hpStart) {
       const { kept, sunk } = hullAbsorb(this.save, hpStart - p.hp);
       p.hp = hpStart - kept;
       if (sunk) { p.sailVx = p.sailVy = 0; this.message = "The skiff founders and sinks! Swim for shore; the Shipwright will raise it at the dock."; }
     }
+    this._astralDamagePending=false;
+    // Drain healing is settled only after the existing hull mitigation, never from intercepted damage.
+    const drainCredits=this._astralDrainCredits||[],creditSum=drainCredits.reduce((n,c)=>n+c.amount,0),actualLoss=Math.max(0,hpStart-Math.max(0,p.hp));
+    const creditScale=creditSum>0?Math.min(1,astralRawLoss>0?actualLoss/astralRawLoss:0,actualLoss/creditSum):0;
+    for(const {owner,amount} of drainCredits)if(!owner.dead&&owner.hp>0){owner.hp=Math.min(owner.maxHp,owner.hp+amount*creditScale);if(owner.astral)owner.astral.hp=owner.hp;}
+    this._astralDrainCredits=[];
     if (p.hp <= 0) {
       const beastNote = this.area === "overworld" ? questingBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.some((e) => e.questingBeast && !e.dead)) : null;
       if (beastNote) journalOnce(this.save, `questing-beast-try:${this.save.questingBeast.cycle}:${this.save.questingBeast.active?.tries ?? "gone"}`, beastNote, "The Questing Beast");
@@ -3998,7 +4030,10 @@ export class Game {
         delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow;
         e.hitStun = 0; e.recoil = 0; e.hitFlash = 0;
         resetPackRuntime(e); e.aggro = false;
+        if(e.kind === "astralWorm")delete e.astral;
       }
+      for(const e of this.enemies)if(e.astralOwner){e.dead=true;e.noRewards=true;}
+      reconcileAstralCompanions(this);this.syncAstralRiders();
       this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
       if (this.area === "dungeon") {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
       const c = this.save.activeCheckpoint;
