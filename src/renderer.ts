@@ -10,6 +10,7 @@ import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrin
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { liftAt, tileUnder } from "./landscape.ts";
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.ts";
+import { GATE_REVENANT } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
@@ -702,6 +703,10 @@ export function drawGateRevenant(ctx, e, s, now, ox = 0, oy = 0) { // exported f
   const [cloth, shade, ember] = COLORS.gateRevenant, sc = Math.max(.6, Number(e.scale) || 1), u = s * sc, T = now / 1000;
   const k = (e.x + ox + .5) * s, base = (e.y + oy) * s + s * .82, fx = (e.facingX || 1) < 0 ? -1 : 1;
   const broken = e.gateBroken > 0, flare = e.telegraph > 0 || e.strike > 0 || e.gateAttack?.phase === "windup" || e.gateUnstoppable > 0;
+  // Tim, 2026-10-21: in the long lava barrage "his chest... opens up to a large mouth that spews out lava, and [the] cape
+  // flies back to be like wings... that reveals his true nature... his body is actually just a gaping maw". `maw` is 0..1:
+  // opening through the warning, wide while the bombs fly, closing through the recovery.
+  const atk = e.gateAttack, maw = broken || atk?.move !== "barrage" ? 0 : atk.phase === "warn" ? Math.min(1, 1 - atk.left / GATE_REVENANT.barrage.warn) : atk.phase === "recover" ? Math.max(0, atk.left / GATE_REVENANT.recover) : 1;
   const hover = broken ? 0 : Math.sin(T * 2.3 + (e.x + e.y) * .7) * .035 * u, sway = Math.sin(T * 3.1 + e.x) * .05;
   ctx.fillStyle = "#050504aa"; ctx.beginPath(); ctx.ellipse(k, base, u * .32, u * .1, 0, 0, 7); ctx.fill();
   ctx.save(); ctx.translate(k, base - hover); ctx.scale(fx * u, (broken ? .74 : 1) * u);
@@ -713,11 +718,23 @@ export function drawGateRevenant(ctx, e, s, now, ox = 0, oy = 0) { // exported f
     ctx.quadraticCurveTo(dx + .44, -.4, dx + .2, -.74); ctx.closePath();
   };
   if (e.gateEvade) { const g = ctx.globalAlpha; ctx.globalAlpha = g * .3; ctx.fillStyle = ember; cloak(-(e.gateEvade.x || 0) * fx * .45); ctx.fill(); ctx.globalAlpha = g; }
+  if (maw > 0) { // the cape flung back into wings
+    const span = .45 + .5 * maw, lift = .25 * maw, flap = Math.sin(T * 9) * .03 * maw;
+    ctx.fillStyle = shade; ctx.strokeStyle = ember + "8c"; ctx.lineWidth = .03; ctx.beginPath();
+    for (const d of [-1, 1]) {
+      ctx.moveTo(d * .14, -.72); ctx.quadraticCurveTo(d * span * .7, -.98 - lift - flap, d * span, -.92 - lift + flap);
+      for (let i = 1; i <= 4; i++) { const f = 1 - i / 4.4; ctx.lineTo(d * span * f + d * .03, -.6 - lift * f + (i % 2 ? .1 : 0)); ctx.lineTo(d * span * (f - .08), -.72 - lift * f * 1.1); }
+      ctx.lineTo(d * .16, -.3); ctx.closePath();
+    }
+    ctx.fill(); ctx.stroke();
+  }
   // Trailing tatters, one stroke.
   ctx.strokeStyle = cloth; ctx.lineWidth = .05; ctx.lineCap = "round"; ctx.beginPath();
   for (let i = 0; i < 4; i++) { const y0 = -.55 + i * .13, w = Math.sin(T * 3.4 + i * 1.3) * .08; ctx.moveTo(-.3, y0); ctx.quadraticCurveTo(-.52, y0 + .05 + w, -.66 + w * .5, y0 + .16 + w); }
   ctx.stroke();
+  if (maw > 0) { ctx.save(); ctx.scale(1 - .3 * maw, 1); } // the cape gone to wings, the body narrows
   ctx.fillStyle = shade; cloak(0); ctx.fill(); ctx.strokeStyle = ember + "8c"; ctx.lineWidth = .03; ctx.stroke();
+  if (maw > 0) ctx.restore();
   // The inner fold, lit from the sigil.
   ctx.fillStyle = cloth; ctx.beginPath(); ctx.moveTo(-.1, -.68); ctx.quadraticCurveTo(-.17, -.32, -.12 + sway * .3, -.06); ctx.lineTo(.12 + sway * .3, -.08); ctx.quadraticCurveTo(.17, -.32, .1, -.68); ctx.closePath(); ctx.fill();
   // Pauldrons and talons.
@@ -727,11 +744,22 @@ export function drawGateRevenant(ctx, e, s, now, ox = 0, oy = 0) { // exported f
   const reach = flare ? .14 : 0; ctx.strokeStyle = "#cfc2d6"; ctx.lineWidth = .028; ctx.beginPath();
   for (const t of [-.05, .02, .09]) { ctx.moveTo(.33, -.42 + t); ctx.lineTo(.47 + reach, -.36 + t * 1.5); }
   ctx.stroke();
+  if (maw > .05) { // the chest split into a gaping maw, lava welling up and spat out
+    const h = .58 * maw, w = .13 + .13 * maw, cy = -.4, out = Math.sin(T * 14) * .015;
+    ctx.fillStyle = "#4a0c18"; ctx.beginPath(); ctx.ellipse(0, cy, w + .04, h / 2 + .04, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ff6a2a"; ctx.beginPath(); ctx.ellipse(0, cy, w, h / 2 + out, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ffd27a"; ctx.beginPath(); ctx.ellipse(0, cy + h * .08, w * .45, h * .28, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#e8dccf"; ctx.beginPath(); // teeth round the rim
+    for (let i = 0; i < 6; i++) { const a0 = (i / 6) * Math.PI * 2 + .26, x = Math.cos(a0) * w, y = cy + Math.sin(a0) * h / 2, ix = -Math.cos(a0) * .06, iy = -Math.sin(a0) * .06 * (h / .58); ctx.moveTo(x - Math.sin(a0) * .025, y + Math.cos(a0) * .025 * (h / .58)); ctx.lineTo(x + ix, y + iy); ctx.lineTo(x + Math.sin(a0) * .025, y - Math.cos(a0) * .025 * (h / .58)); }
+    ctx.fill();
+    if (atk?.phase === "active") { ctx.fillStyle = "#ff8a3a"; ctx.beginPath(); for (let i = 0; i < 4; i++) { const q = (T * 2.6 + i / 4) % 1; ctx.moveTo(0, 0); ctx.ellipse(Math.sin(i * 2.1 + T * 3) * .1 * q, cy - h * .3 - q * .55, .045 * (1 - q * .5), .045 * (1 - q * .5), 0, 0, 7); } ctx.fill(); }
+  } else {
   // The Gate burning on its chest: a pointed arch and its keystone.
   const glow = broken ? .25 + .25 * (Math.sin(T * 17) > .3) : flare ? 1 : .55 + .2 * Math.sin(T * 2.6);
   ctx.globalAlpha *= glow; ctx.strokeStyle = ember; ctx.lineWidth = .035; ctx.beginPath();
   ctx.moveTo(-.07, -.3); ctx.lineTo(-.07, -.44); ctx.quadraticCurveTo(-.07, -.53, 0, -.58); ctx.quadraticCurveTo(.07, -.53, .07, -.44); ctx.lineTo(.07, -.3);
   ctx.moveTo(0, -.58); ctx.lineTo(0, -.5); ctx.stroke(); ctx.globalAlpha /= glow;
+  }
   // Horns swept back, bone pale, then the hood over them.
   ctx.fillStyle = "#a58f9e"; ctx.beginPath();
   ctx.moveTo(-.17, -.86); ctx.quadraticCurveTo(-.44, -.86, -.52, -1.13); ctx.quadraticCurveTo(-.3, -1.0, -.06, -.98);
