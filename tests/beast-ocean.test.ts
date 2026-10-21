@@ -15,7 +15,7 @@ import {
   worldBeastsLost, consumeVoidTerrain, applyVoidScars,
 } from '../src/world-beasts.ts';
 
-const MARINE_BEASTS = ['voidWalker', 'psychicCrystal', 'lightningGiant']; // release 257: the Giant crosses the sea on its cloud
+const MARINE_BEASTS = ['voidWalker', 'psychicCrystal', 'lightningGiant', 'mountainTurtle']; // release 257: the Giant crosses the sea on its cloud; release 261: the Turtle walks it on ice
 const SIDES = { east: [1, 0], west: [-1, 0], north: [0, -1], south: [0, 1] };
 const at = (map, x, y) => map.tiles[y * 32 + x];
 const position = e => ({ x: e.x, y: e.y });

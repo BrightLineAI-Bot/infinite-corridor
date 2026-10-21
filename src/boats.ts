@@ -14,7 +14,7 @@ export const BOAT = {
   hullShare: .5,         // share of damage taken aboard that the hull absorbs
   repairCostPerPoint: .5, // marks per hull point, rounded up
   sunkHull: .4,          // a sunk skiff comes back with this share of its hull
-  waterKinds: ["ocean", "deepOcean", "lakeWater", "swampWater", "shallows"],
+  waterKinds: ["ocean", "deepOcean", "lakeWater", "swampWater", "shallows", "seaIce"], // seaIce (release 261): the Mountain Turtle's ice floor; a skiff slides over it
   // Docks (landscape version 3): sections with at least this much open water, about one in `dockEvery`.
   dockMinWater: 40,
   dockEvery: 3,

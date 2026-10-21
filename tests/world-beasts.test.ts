@@ -294,9 +294,10 @@ test('retreat fixes: a fleeing beast passes through settlements and the Questing
   const s = freshSave(); s.seed = 'FIX'; s.worldBeasts = { tremorWorm: { active: { rx: 3, ry: 4, tries: 0, retreat: { home: { rx: 9, ry: 4, found: true }, side: 'west', legs: 2 } }, cycle: 1 } }; ensureWorldBeasts(s);
   const settled = { settlement: { id: 'x' }, tiles: [] }; const sp = worldBeastFor(s, settled, 3, 4); assert.ok(sp && sp.retreating, 'through a settlement');
   const g = readFileSync(new URL('../src/game.ts', import.meta.url), 'utf8'); assert.match(g, /is fleeing through here toward/); assert.match(g, /beast&&!worldBeastFound\?\.retreating\?null:worldBeastFound/); assert.match(g, /get canyon\(\)/);
-  const t = freshSave(); t.worldBeasts = { mountainTurtle: { active: { rx: 7, ry: 7, tries: 0 }, cycle: 0 } }; ensureWorldBeasts(t);
+  // Release 261: the Mountain Turtle now walks the sea on ice, so the land-bound Blob stands in for "nowhere to stand".
+  const t = freshSave(); t.worldBeasts = { morphingBlob: { active: { rx: 7, ry: 7, tries: 0 }, cycle: 0 } }; ensureWorldBeasts(t);
   const sea = { tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: 'ocean', blocked: true })) };
-  assert.equal(worldBeastFor(t, sea, 7, 7), null); assert.equal(t.worldBeasts.mountainTurtle.active, null, 'all water: it does not hold the section');
+  assert.equal(worldBeastFor(t, sea, 7, 7), null); assert.equal(t.worldBeasts.morphingBlob.active, null, 'all water: it does not hold the section');
 });
 
 test('the Turtle\'s second spin: it careens around rebounding off walls, flinging icicles every way', () => {

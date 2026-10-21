@@ -295,7 +295,7 @@ export function placementRegions(map, here) {
 }
 // Ground a beast can be placed on: open land, or open sea for the marine beasts.
 function beastGround(here, t) {
-  const marine = here === "voidWalker" || here === "psychicCrystal" || here === "astralWorm" || here === "lightningGiant";
+  const marine = here === "voidWalker" || here === "psychicCrystal" || here === "astralWorm" || here === "lightningGiant" || here === "mountainTurtle"; // release 261: the Turtle walks the sea on ice
   return marine && marineTileOpen(t) || here === "astralWorm" && astralSpawnWater(t) || !t.blocked && !t.structure && !t.environment && !LETHAL_KINDS.has(t.kind);
 }
 export const isWorldBeastKind = (kind) => WORLD_BEAST_IDS.some((id) => WORLD_BEASTS[id].kind === kind);
