@@ -78,11 +78,11 @@ function eased(e, key, target, now, rate) {
 // far leg and the empty far socket first, then torso, skirt, near leg, collar, helm and crest, then the club arm on top.
 export function drawLightningGiant(ctx, q, now = 0) {
   const A = GIANT_ART, { k, u, t, flip, e } = q, s0 = e.pack, pose = e.giantPose || "idle", attacking = !!s0?.attack, reduce = !!e.reduceMotion;
-  const afloat = !!e.marine && e.fleeFade == null, ground = q.b - (afloat ? u * (A.cloudRide + (reduce ? 0 : Math.sin(t * 1.6) * A.cloudBob)) : 0), b = ground - Math.max(0, Number(e.giantAir) || 0) * (q.s || u);
+  const afloat = !!e.marine && e.fleeFade == null, trail = eased(e, "cloudTrail", -flip, now, 3), ground = q.b - (afloat ? u * (A.cloudRide + (reduce ? 0 : Math.sin(t * 1.6) * A.cloudBob)) : 0), b = ground - Math.max(0, Number(e.giantAir) || 0) * (q.s || u);
   const charged = e.giantCharged > 0, still = attacking || e.giantCloud || afloat;
   const G = reduce ? { phase: 0, moving: 0 } : gait(e, now, q.s || u, u), m = still || e.giantThrust || b < ground - 1 ? 0 : G.moving, ph = G.phase;
   const air = Math.max(0, Math.min(1, (ground - b) / Math.max(1, u))); // the shadow stays on the ground and shrinks while it leaps
-  if (afloat) { ctx.fillStyle = "rgba(6,12,20,.32)"; ctx.beginPath(); ctx.ellipse(k, q.b, u * .62, u * .11, 0, 0, TAU); ctx.fill(); drawStormCloud(ctx, k, b, u, t, now, "back", reduce); }
+  if (afloat) { ctx.fillStyle = "rgba(6,12,20,.32)"; ctx.beginPath(); ctx.ellipse(k, q.b, u * .62, u * .11, 0, 0, TAU); ctx.fill(); drawStormCloud(ctx, k, b, u, t, now, "back", reduce, trail); }
   else { ctx.fillStyle = `rgba(6,8,12,${.45 * (1 - air * .5)})`; ctx.beginPath(); ctx.ellipse(k, ground, u * .36 * (1 - air * .35), u * .09 * (1 - air * .35), 0, 0, TAU); ctx.fill(); }
   if (charged) {
     const g = ctx.createRadialGradient(k, b - u * .6, u * .1, k, b - u * .6, u * .85); g.addColorStop(0, "rgba(127,214,255,.32)"); g.addColorStop(1, "rgba(127,214,255,0)");
@@ -286,7 +286,7 @@ export function drawLightningGiant(ctx, q, now = 0) {
   pylon(u * .29);
   arm(u * .29, clubAngle, false, true); pauldron(u * .29, false);
   ctx.restore();
-  if (afloat) drawStormCloud(ctx, k, b, u, t, now, "front", reduce); // the near puffs swallow its feet
+  if (afloat) drawStormCloud(ctx, k, b, u, t, now, "front", reduce, trail); // the near puffs swallow its feet
   if (charged && !reduce) for (let i = 0; i < 3; i++) { const a = (t * 3 + i * 2.1) % TAU, r = u * .45; lightningBolt(ctx, k + Math.cos(a) * r * .6, b - u * .55 + Math.sin(a) * r, k + Math.cos(a + 1.2) * r * .6, b - u * .55 + Math.sin(a + 1.2) * r, { now, seed: i + 7, segments: 5, width: Math.max(1, u * .014), branch: false }); }
 }
 
@@ -302,7 +302,8 @@ function shadeHex(hex, amount) {
 // near billows that swallow its feet, and lightning flickering inside) goes over it.
 const CLOUD_BACK = [[-.56, .04, .14], [-.4, -.06, .19], [-.16, -.13, .23], [.1, -.11, .22], [.34, -.05, .19], [.54, .03, .14]];
 const CLOUD_FRONT = [[-.46, .08, .14], [-.24, .1, .17], [0, .11, .17], [.24, .1, .16], [.46, .08, .13]];
-export function drawStormCloud(ctx, k, y, u, t, now, layer, reduce = false) {
+// `trail` (-1..1) is the side the cloud streams out behind: opposite its facing, eased by the caller as it turns.
+export function drawStormCloud(ctx, k, y, u, t, now, layer, reduce = false, trail = 0) {
   const drift = reduce ? 0 : t * .9, set = layer === "back" ? CLOUD_BACK : CLOUD_FRONT, o = layer === "back" ? 0 : 6;
   const at = ([x, dy, r], i) => ({ x: k + x * u + Math.sin(drift + (i + o) * 1.7) * u * .012, y: y + dy * u + Math.cos(drift * .8 + i + o) * u * .008, r: r * u });
   const P = set.map(at).map((c) => ({ ...c, r: c.r * (layer === "back" ? .86 : .84) })), top = Math.min(...P.map((c) => c.y - c.r)), bottom = y + u * .2;
@@ -320,10 +321,22 @@ export function drawStormCloud(ctx, k, y, u, t, now, layer, reduce = false) {
   };
   if (layer === "back") {
     for (const c of P) soft(c.x, c.y, c.r * 1.55, c.r * 1.4, "150,162,175", .6); // a vapour halo round every billow
-    // Tendrils trailing off both ends, stretched and drifting, thinner and fainter the further they reach.
-    for (const side of [-1, 1]) for (let i = 0; i < 5; i++) {
+    // Short tendrils off the leading edge; on the trailing edge they fade into the long streaming wake below.
+    for (const side of [-1, 1]) { const lead = 1 - Math.max(0, side * trail) * .8; for (let i = 0; i < 5; i++) {
       const sway = reduce ? 0 : Math.sin(t * .7 + i * 1.9 + side) * u * .035, reach = .52 + i * .11, lift = side > 0 ? -.012 : .008;
-      soft(k + side * u * reach + sway, y + u * (.03 + i * lift * 2 + .012 * Math.sin(i * 2.7)), u * (.2 - i * .028), u * (.05 - i * .006), "158,170,183", .55 - i * .09);
+      soft(k + side * u * reach + sway, y + u * (.03 + i * lift * 2 + .012 * Math.sin(i * 2.7)), u * (.2 - i * .028), u * (.05 - i * .006), "158,170,183", (.55 - i * .09) * lead);
+    } }
+    // The wake (Tim: "the trailing edge... like a trailing wisp... more pronounced... so it indicates motion"): three
+    // strands streaming out behind, each a run of soft blobs that thins, rises a little and fades as it reaches back.
+    const back = Math.sign(trail) || 0, amt = Math.abs(trail);
+    if (amt > .02) {
+      // The body tapers into the wake: dense billow-coloured blobs off the back edge, then the strands.
+      for (let i = 0; i < 4; i++) soft(k + back * u * (.5 + i * .13 * amt), y + u * (.02 - i * .01), u * (.2 - i * .03), u * (.11 - i * .02), "112,124,137", .9 * amt);
+      for (let j = 0; j < 3; j++) for (let i = 0; i < 14; i++) {
+        const f = i / 13, flow = reduce ? 0 : t * 2.2, wave = Math.sin(f * 4 - flow + j * 2.1) * u * .03 * f;
+        const x = k + back * u * (.55 + f * (1.05 + j * .25) * amt), yy = y + u * (-.05 + j * .065 - f * (.06 - j * .035)) + wave;
+        soft(x, yy, u * (.2 - j * .035) * (1 - f * .65), u * (.07 - j * .012) * (1 - f * .5), j === 1 ? "150,162,175" : "176,187,198", (.85 - j * .15) * (1 - f * .9) * amt);
+      }
     }
   }
   else for (const c of P) soft(c.x, c.y + c.r * .1, c.r * 1.45, c.r * 1.3, "120,131,143", .5); // the near billows feather out too
@@ -344,9 +357,9 @@ export function drawStormCloud(ctx, k, y, u, t, now, layer, reduce = false) {
   ctx.restore();
 }
 // The cloud that carries it away at its chasm (drawn under the body while `fleeFade` runs 1 -> 0): the same storm cloud.
-export function drawGiantCloud(ctx, k, b, u, fade, t) {
+export function drawGiantCloud(ctx, k, b, u, fade, t, trail = 0) {
   ctx.save(); ctx.globalAlpha *= Math.min(1, .45 + (1 - fade) * 1.5) * Math.max(.25, fade + .2);
-  drawStormCloud(ctx, k, b, u, t, t * 1000, "back"); drawStormCloud(ctx, k, b, u, t, t * 1000, "front");
+  drawStormCloud(ctx, k, b, u, t, t * 1000, "back", false, trail); drawStormCloud(ctx, k, b, u, t, t * 1000, "front", false, trail);
   ctx.restore();
 }
 

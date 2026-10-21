@@ -882,7 +882,7 @@ function paintPackMonster(ctx, e, s, now, facing, def, sprite) {
   if (e.phasing || (e.phases && e.untargetable)) ctx.globalAlpha = .45;
   if (e.aloft && e.kind === "cinderSeraph") { if (!sprite) ctx.globalAlpha = .35; q.b -= u * .9; }
   if (e.illusion) ctx.globalAlpha *= .92;
-  if (e.fleeFade != null && e.giantCloud) { q.b -= (1 - e.fleeFade) * u * 2.4; drawGiantCloud(ctx, k, q.b, u, e.fleeFade, t); ctx.globalAlpha *= Math.min(1, e.fleeFade * 1.6); } // release 257: up into the sky on its cloud
+  if (e.fleeFade != null && e.giantCloud) { q.b -= (1 - e.fleeFade) * u * 2.4; drawGiantCloud(ctx, k, q.b, u, e.fleeFade, t, -flip); ctx.globalAlpha *= Math.min(1, e.fleeFade * 1.6); } // release 257: up into the sky on its cloud
   else if (e.fleeFade != null) { ctx.globalAlpha *= e.fleeFade; q.b += (1 - e.fleeFade) * u * .5; } // release 239: going into its home ground
   if (e.boss) { glow(ctx, k, b - u * .4 - bodyLift, u * 1.05, def.palette[2], .18); }
   const riding=astralMountPresentation(e), boarding=riding?.boarding;
