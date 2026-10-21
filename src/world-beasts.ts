@@ -78,6 +78,10 @@ export const WORLD_BEASTS = {
   },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
+// One exact shared marine classification for encounter placement, movement, attack variants and scars.
+// Lake, river, swamp, dungeon water and shallows retain their existing behavior.
+export const isMarineTile = (tile) => tile?.kind === "ocean" || tile?.kind === "deepOcean";
+export const marineTileOpen = (tile) => isMarineTile(tile) && !tile.structure && !tile.buildingId && !tile.environment && !tile.pit;
 
 // Release 239 (Tim, 2026-10-20): a beast that has neither killed the Wayfarer nor died within its `patience` (seconds of
 // fighting in its section) gives up and retreats home: invulnerable, finding its way across the land (see RETREAT_GROUND),
@@ -188,9 +192,12 @@ export function retreatTarget(r, id, map, rx, ry, exits, from) {
   return { x: best ? best.x : (Number(map?.width) || 32) / 2 - .5, y: best ? best.y : Math.floor((map?.tiles?.length || 1024) / (Number(map?.width) || 32)) / 2 - .5, side: null, home: true };
 }
 // The beast crossed out of a section: it is now in the next one, coming in from the opposite side.
-export function retreatCrossed(save, id, side) {
+export function retreatCrossed(save, id, side, entry = null, actor = null) {
   const q = save.worldBeasts[id].active, [dx, dy] = SIDES[side];
   q.rx += dx; q.ry += dy; q.retreat.side = OPPOSITE[side]; q.retreat.legs++;
+  if (id === "voidWalker" && validRetreatEntry(entry, q.retreat.side)) q.retreat.entry = { x: entry.x, y: entry.y };
+  else delete q.retreat.entry;
+  if (id === "voidWalker" && validRetreatVitals(actor)) q.retreat.vitals = { hp: actor.hp, maxHp: actor.maxHp, damage: actor.damage };
   return { rx: q.rx, ry: q.ry };
 }
 // It is home, or got away because the Wayfarer did not follow: the hunt ends as an escape (no try is lost).
@@ -223,16 +230,23 @@ export function ensureWorldBeasts(save, normalizeScarHistory = true) {
   return save;
 }
 
+function validRetreatVitals(vitals) {
+  return vitals && [vitals.hp, vitals.maxHp, vitals.damage].every(Number.isFinite) && vitals.hp > 0 && vitals.maxHp >= vitals.hp && vitals.damage >= 0;
+}
+function validRetreatEntry(entry, side) {
+  return entry && [entry.x, entry.y].every(Number.isFinite) && entry.x >= 0 && entry.x <= 31 && entry.y >= 0 && entry.y <= 31 &&
+    (side === "west" && entry.x === 0 || side === "east" && entry.x === 31 || side === "north" && entry.y === 0 || side === "south" && entry.y === 31);
+}
 function cleanRetreat(r) {
   if (!r || typeof r !== "object" || !r.home) return null;
   if (typeof r.home.dungeon === "string") return { home: { dungeon: r.home.dungeon, found: !!r.home.found }, side: null, legs: 0 }; // release 249: a retreat inside a dungeon
   if (!Number.isInteger(r.home.rx) || !Number.isInteger(r.home.ry)) return null;
-  return { home: { rx: r.home.rx, ry: r.home.ry, found: !!r.home.found }, side: Object.hasOwn(OPPOSITE, r.side) ? r.side : null, legs: Math.max(0, Math.floor(Number(r.legs) || 0)) };
+  return { home: { rx: r.home.rx, ry: r.home.ry, found: !!r.home.found }, side: Object.hasOwn(OPPOSITE, r.side) ? r.side : null, legs: Math.max(0, Math.floor(Number(r.legs) || 0)), ...(validRetreatEntry(r.entry, r.side) ? { entry: { x: r.entry.x, y: r.entry.y } } : {}), ...(validRetreatVitals(r.vitals) ? { vitals: { hp: r.vitals.hp, maxHp: r.vitals.maxHp, damage: r.vitals.damage } } : {}) };
 }
 // A retreating beast's spawn: it comes in by the gate on its entry side (or stands mid-section, where it fled from).
 function fleeSpawn(save, here, rx, ry) {
-  const q = save.worldBeasts[here], r = q.active.retreat, side = r.side, ex = sectionExits(save.seed, rx, ry), at = side === "east" ? { x: 31 - RETREAT.inset, y: ex.east } : side === "west" ? { x: RETREAT.inset, y: ex.west } : side === "south" ? { x: ex.south, y: 31 - RETREAT.inset } : side === "north" ? { x: ex.north, y: RETREAT.inset } : { x: 15.5, y: 15.5 };
-  return { id: `world-beast:${here}:${q.cycle}${here === "voidWalker" && !r.legs ? "" : `:flee:${r.legs}`}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, retreating: true, traits: [] };
+  const q = save.worldBeasts[here], r = q.active.retreat, side = r.side, ex = sectionExits(save.seed, rx, ry), at = here === "voidWalker" && validRetreatEntry(r.entry, side) ? r.entry : side === "east" ? { x: 31 - RETREAT.inset, y: ex.east } : side === "west" ? { x: RETREAT.inset, y: ex.west } : side === "south" ? { x: ex.south, y: 31 - RETREAT.inset } : side === "north" ? { x: ex.north, y: RETREAT.inset } : { x: 15.5, y: 15.5 };
+  return { id: `world-beast:${here}:${q.cycle}${here === "voidWalker" && !r.legs ? "" : `:flee:${r.legs}`}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, retreating: true, ...(here === "voidWalker" && validRetreatVitals(r.vitals) ? { retreatVitals: { ...r.vitals } } : {}), traits: [] };
 }
 // Called once per overworld section load. Returns the spawn of the beast holding this section, or null. One beast holds
 // a section at a time, and never one the Questing Beast holds.
@@ -253,9 +267,10 @@ export function worldBeastFor(save, map, rx, ry) {
   if (!here) return null;
   const q = save.worldBeasts[here];
   if (q.active.retreat) return fleeSpawn(save, here, rx, ry);
-  const open = map.tiles.filter((t) => !t.blocked && !t.structure && !t.environment && !LETHAL_KINDS.has(t.kind) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24);
+  const marine = here === "voidWalker" || here === "psychicCrystal";
+  const open = map.tiles.filter((t) => (marine && marineTileOpen(t) || !t.blocked && !t.structure && !t.environment && !LETHAL_KINDS.has(t.kind)) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24);
   const at = open.sort((a, b) => hashSeed(`wb:${here}:${q.cycle}:${a.x},${a.y}`) - hashSeed(`wb:${here}:${q.cycle}:${b.x},${b.y}`))[0];
-  if (!at) { if (!q.active.tries) q.active = null; return null; } // nowhere to stand here (all water): it does not hold the section
+  if (!at) { if (!q.active.tries) q.active = null; return null; } // no valid terrain for this beast: it does not hold the section
   return { id: `world-beast:${here}:${q.cycle}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, traits: [] };
 }
 export function worldBeastTriesLeft(save, id) { return WORLD_BEASTS[id].tries - (save.worldBeasts?.[id]?.active?.tries || 0); }
@@ -484,10 +499,12 @@ export function consumeVoidTerrain(save, map, areaKey, center, radius, actors = 
   const { width, height } = dimensions, candidates = [];
   for (let y = Math.max(0, Math.floor(center.y - radius)); y <= Math.min(height - 1, Math.floor(center.y + radius)); y++) for (let x = Math.max(0, Math.floor(center.x - radius)); x <= Math.min(width - 1, Math.floor(center.x + radius)); x++) {
     const dx = Math.max(x - center.x, 0, center.x - x - 1), dy = Math.max(y - center.y, 0, center.y - y - 1);
-    if (Math.hypot(dx, dy) >= radius) continue;
+    if (Math.hypot(dx, dy) >= radius || isMarineTile(map.tiles[y * width + x])) continue;
     candidates.push(y * width + x);
     if (candidates.length > VOID_SCARS.maxRegionCells) return voidResult(false, 'region-capacity');
   }
+  // A marine-only blast still deals damage and plays its transient effects; it has no permanent terrain footprint.
+  if (!candidates.length) return voidResult(true);
   const all = new Set(stored.row?.cells || []), elevations = { ...stored.row?.elevations }, slopes = new Set(stored.row?.slopes || []), heights = voidFloorHeights(map, width, height);
   for (const i of candidates) {
     const key = `${i % width},${Math.floor(i / width)}`; if (all.has(key)) continue;
@@ -517,7 +534,7 @@ export function applyVoidScars(save, map, areaKey) {
   const { width, height } = dimensions, candidates = [];
   for (const key of stored.row.cells) {
     const clean = voidCell(key, width, height); if (!clean) return voidResult(false, 'invalid-record');
-    const [x, y] = clean.split(',').map(Number); candidates.push(y * width + x);
+    const [x, y] = clean.split(',').map(Number); if (!isMarineTile(map.tiles[y * width + x])) candidates.push(y * width + x);
   }
   return voidResult(true, null, voidInstall(map, areaKey, width, candidates, stored.row));
 }
