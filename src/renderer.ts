@@ -1,3 +1,4 @@
+import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { enemyMeleeGeometry } from "./combat.ts";
 import { ruleRows } from "./elders.ts";
 import { SEA_CREATURES } from "./sea-creatures.ts";
@@ -1087,7 +1088,7 @@ export function render(ctx, g, w, h, now) {
   for (const e of g.enemies)
     if (!e.dead && discoveredInDungeon(g,e) && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" ? 5 : 2))
       draws.push({
-        y: e.y, x: e.x,
+        y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
         fn: () => {
           if (e.seaKind) { drawSeaCreature(ctx, e, s, now, SEA_CREATURES[e.seaKind].colors, g); return; }
           const f = e.ai?.facing || "down",
@@ -1102,7 +1103,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillRect((e.x + .5 - .4*flashScale) * s, (e.y + .45 - .42*flashScale) * s, s * .8*flashScale, s * .75*flashScale);
             ctx.restore();
           }
-          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(e.kind === "voidWalker" ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
+          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "astralWorm", "astralMirage"].includes(e.kind) ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
           actor(
             ctx,
             e.x + ox,

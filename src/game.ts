@@ -1,3 +1,4 @@
+import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage } from "./astral-worm-mount.ts";
 import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.ts";
 import {
   generateRegion,
@@ -707,9 +708,11 @@ export function updateProjectiles(
         p.dead=true;p.impact={x:p.x,y:p.y};onPlayerHit(p);break;
       }
       if(p.hostile)continue;
+      let mountedPeerId = null;
       for (const e of enemies)
         if (
           !e.dead &&
+          (!mountedPeerId || e.id === mountedPeerId) &&
           !e.untargetable &&
           !p.hits?.[e.id] &&
           Math.hypot(e.x + 0.5 - p.x, e.y + 0.45 - p.y) <
@@ -722,8 +725,14 @@ export function updateProjectiles(
             onDetonate(p);
             break;
           }
-          const dealt = damageFor(p, e);
+          // Only the co-located Astral mounted counterpart may share this substep. Preserve the
+          // existing one-actor-per-substep behavior for every unrelated piercing target.
+          const peer = (e.kind === "astralWorm" || e.astralMount?.status === "mounted") ? enemies.find(q => q !== e && !q.dead && !q.untargetable && !p.hits?.[q.id] &&
+            Math.hypot(q.x-e.x,q.y-e.y)<1e-6 && (e.astralMount?.status === "mounted" && e.astralMount.ownerId === q.id ||
+              q.astralMount?.status === "mounted" && q.astralMount.ownerId === e.id)) : null;
+          const dealt = damageFor(p, e), hpBefore = Math.max(0, e.hp);
           e.hp -= dealt;
+          const actual = Math.max(0, hpBefore - Math.max(0, e.hp));
           if (dealt > 0) { // a scattered blow (release 245) neither flashes nor staggers
             e.hitFlash = 0.18;
             e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.1 : 0.18);
@@ -737,8 +746,9 @@ export function updateProjectiles(
             e.dead = true;
             onDefeat(e);
           }
-          onHit(p, e, dealt);
-          break;
+          onHit(p, e, dealt, actual);
+          if (p.dead || mountedPeerId || !peer) break;
+          mountedPeerId = peer.id;
         }
     }
     p.life -= dt;
@@ -909,15 +919,16 @@ export function updateEffects(effects, enemies, dt, onDefeat = () => {}, damageF
         if (fx.hits[key]) continue;
         fx.hits[key] = true;
         alertEnemy(e);
-        const dealt = damageFor(fx, e);
+        const dealt = damageFor(fx, e), hpBefore = Math.max(0, e.hp);
         e.hp -= dealt;
+        const actual = Math.max(0, hpBefore - Math.max(0, e.hp));
         e.hitFlash = 0.18;
         e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.1 : 0.18);
         if (e.hp <= 0 && !e.dead) {
           e.dead = true;
           onDefeat(e);
         }
-        onHit(fx, e, dealt);
+        onHit(fx, e, dealt, actual);
       }
     }
   }
@@ -1747,7 +1758,7 @@ export class Game {
       };
     this.save.session.areas[this.areaStateId()] = {
       encounterVersion:this.map.encounterVersion||0,
-      enemies: this.enemies.map((e) => ({ ...e, ai: { ...ensureAI(e) } })),
+      enemies: this.enemies.map((e) => ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } })),
       objects,
       projectiles: this.projectiles.map((p) => ({ ...p })),
       effects: this.effects.map((f) => ({ ...f, hits: { ...f.hits } })),
@@ -1918,7 +1929,7 @@ export class Game {
         resetPackRuntime(merged);
         return merged;
       });
-      for(const saved of s.enemies||[])if((saved.gatePredator||saved.foundryId)&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);this.enemies.push(restored)}
+      for(const saved of s.enemies||[])if((saved.gatePredator||saved.foundryId||saved.astralMountFixture)&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);this.enemies.push(restored)}
       for (const o of this.map.objects)
         if (s.objects?.[o.id]) Object.assign(o, s.objects[o.id]);
       applyFallenTreeCrossings(this.map);
@@ -1946,7 +1957,10 @@ export class Game {
     const areaWidth = mapWidth(this.map, area),
       playerRelocated = !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
     for (const e of this.enemies) {
-      if (isDungeonRoamer(e, area)) {
+      if (this.astralRiderHeld(e) || e.astralMountFixture && e.kind === "astralWorm") {
+        // Explicit fixture snapshots retain supported above-water positions exactly.
+        continue;
+      } else if (isDungeonRoamer(e, area)) {
         // Walls, water and isolated pockets are valid saved flight positions. Only repair invalid map bounds.
         e.x = Math.max(0, Math.min(areaWidth - 1, Number.isFinite(e.x) ? e.x : this.map.entry?.x ?? 4));
         e.y = Math.max(0, Math.min(mapHeight(this.map, area) - 1, Number.isFinite(e.y) ? e.y : this.map.entry?.y ?? 5));
@@ -2124,7 +2138,7 @@ export class Game {
     const game = this, p = this.player;
     return {
       now, enemies: this.enemies,
-      damage(e, amount) { if (e.dead) return; alertEnemy(e); e.hp -= Math.round(amount * strikeAmplifier(game.save)); e.hitFlash = .18; if (e.hp <= 0) { e.dead = true; game.defeatEnemy(e); } },
+      damage(e, amount) { if (e.dead) return; alertEnemy(e); const before = Math.max(0,e.hp); e.hp -= Math.round(amount * strikeAmplifier(game.save)); game.astralPlayerHit(e, Math.max(0,before-Math.max(0,e.hp))); e.hitFlash = .18; if (e.hp <= 0) { e.dead = true; game.defeatEnemy(e); } },
       heal(amount) { game.glyphHealPool = (game.glyphHealPool || 0) + amount; const whole = Math.floor(game.glyphHealPool); if (whole > 0) { game.glyphHealPool -= whole; const before = p.hp; p.hp = Math.min(game.save.maxHp, p.hp + whole); if (p.hp > before) (game.glyphVisuals ||= []).push({ kind: "heal", x: p.x + .5, y: p.y - .1, amount: p.hp - before, life: .9, max: .9 }); } },
       stamina(amount) { p.stamina = Math.min(game.save.maxStamina, (p.stamina || 0) + amount); },
       blast(x, y, radius, amount) {
@@ -2133,11 +2147,13 @@ export class Game {
       },
       arc(from, to, color) { (game.glyphVisuals ||= []).push({ kind: "arc", x: from.x + .5, y: from.y + .45, tx: to.x + .5, ty: to.y + .45, color, life: .22, max: .22 }); },
       canStand(x, y) { const w = mapWidth(game.map, game.area); return footprintOpen(game.map, w, x, y) && !footprintHazard(game.map, w, x, y); },
-      nudge(e, dx, dy) { const w = mapWidth(game.map, game.area); if (footprintOpen(game.map, w, e.x + dx, e.y + dy)) { e.x += dx; e.y += dy; } },
+      nudge(e, dx, dy) { if (game.astralRiderHeld(e)) return; const w = mapWidth(game.map, game.area); if (footprintOpen(game.map, w, e.x + dx, e.y + dy)) { e.x += dx; e.y += dy; } },
     };
   }
   tickGlyphs(dt, now) {
+    const mountedHp = this.enemies.filter(e => e.astralMount?.status === "mounted").map(e => [e, Math.max(0,e.hp)]);
     tickGlyphStatus(this.enemies, dt, now, (e) => this.defeatEnemy(e));
+    for (const [e, hp] of mountedHp) this.astralPlayerHit(e, Math.max(0,hp-Math.max(0,e.hp)));
     const due = (this.glyphTimers ||= []).filter((t) => t.at <= now);
     this.glyphTimers = this.glyphTimers.filter((t) => t.at > now);
     for (const t of due) {
@@ -2792,6 +2808,51 @@ export class Game {
     p.invulnerableUntil = now + (options.beam ? 320 : 700);
     return true;
   }
+  // Explicit prototype fixture entry only. Natural pairing stays disabled until reviewed integration.
+  mountAstralFixture(owner, rider) {
+    if (!this.enemies.includes(owner) || !this.enemies.includes(rider) || rider.astralAllyOf ||
+        this.enemies.some(e => e !== rider && this.astralRiderHeld(e) && e.astralMount.ownerId === owner.id)) return false;
+    const host = this.astralMountHost();
+    host.canMount = (a,b) => hasLineOfSight(a,b,this.map,mapWidth(this.map,this.area));
+    if (!mountAstralWalker(owner,rider,host)) return false;
+    owner.astralMountFixture = true; rider.astralMountFixture = true;
+    return true;
+  }
+  astralRiderHeld(e) { return e?.astralMount?.status === "mounted" || e?.astralMount?.status === "landing"; }
+  astralLandingOpen(rider, at) {
+    const width = mapWidth(this.map,this.area), height = mapHeight(this.map,this.area), {x,y} = at;
+    if (![x,y].every(Number.isFinite) || x < 0 || y < 0 || x > width-1 || y > height-1 || !walkerGroundPositionOpen(this.map,width,x,y)) return false;
+    // Dismount is a short unobstructed descent, not a blink through a wall or across a cliff.
+    if (Math.abs(elevationAt(this.map,width,rider.x,rider.y)-elevationAt(this.map,width,x,y))>1 ||
+        !hasLineOfSight({x:rider.x+.5,y:rider.y+.7},{x:x+.5,y:y+.7},this.map,width,true)) return false;
+    const steps=Math.max(1,Math.ceil(Math.hypot(x-rider.x,y-rider.y)*4));
+    for(let i=1;i<steps;i++) if(!footprintOpen(this.map,width,rider.x+(x-rider.x)*i/steps,rider.y+(y-rider.y)*i/steps,true)) return false;
+    if (this.area === "dungeon") {
+      const connected = this.walkerLandingGraph();
+      for (let ty=Math.floor(y+.5);ty<=Math.floor(y+.88-1e-6);ty++) for(let tx=Math.floor(x+.24);tx<=Math.floor(x+.76-1e-6);tx++) if(!connected.has(ty*width+tx)) return false;
+    }
+    return !this.enemies.some(e=>e!==rider&&!e.dead&&e.hp>0&&Math.hypot(e.x-x,e.y-y)<.65) && Math.hypot(this.player.x-x,this.player.y-y)>=.85;
+  }
+  astralMountHost() {
+    return { alignment:"hostile", paused:this.paused, findOwner:id=>this.enemies.find(e=>e.id===id),
+      canLand:(rider,at)=>this.astralLandingOpen(rider,at),
+      findLanding:(rider)=>{
+        // Bounded 9x9 local search. No shore guess or remote relocation if all candidates fail.
+        const candidates=[];
+        for(let dy=-4;dy<=4;dy++) for(let dx=-4;dx<=4;dx++) if(dx*dx+dy*dy<=16) candidates.push({x:rider.x+dx,y:rider.y+dy,d:dx*dx+dy*dy});
+        candidates.sort((a,b)=>a.d-b.d);
+        return candidates.find(at=>this.astralLandingOpen(rider,at)) || null;
+      } };
+  }
+  astralPlayerHit(e, actual) { return recordAstralRiderDamage(e,actual,{playerInflicted:true},this.astralMountHost()); }
+  syncAstralRiders() {
+    if (this.paused) return;
+    const host=this.astralMountHost();
+    for(const rider of this.enemies) if(rider.astralMount) {
+      if(this.player.hp<=0) dismountAstralWalker(rider,"player-dead",host);
+      else syncAstralMount(rider,host);
+    }
+  }
   walkerLandingGraph() {
     const map = this.map, tiles = map.tiles || [], width = mapWidth(map, this.area), entry = map.entry || {};
     const flag = t => !t || t.blocked || LETHAL_KINDS.has(t.kind) || ["districtWall", "shackWall"].includes(t.structure) ? 1 : t.slope ? 2 : 0;
@@ -2804,6 +2865,7 @@ export class Game {
     return this._walkerLandingGraph.cells;
   }
   walkerSafeTeleport(e, x, y) {
+    if (this.astralRiderHeld(e)) return false;
     const map = this.map, width = mapWidth(map, this.area), height = mapHeight(map, this.area);
     if (![x, y].every(Number.isFinite) || x < 0 || y < 0 || x > width - 1 || y > height - 1 || !walkerGroundPositionOpen(map, width, x, y)) return false;
     if (this.area === "dungeon") {
@@ -2815,6 +2877,7 @@ export class Game {
     e.x = x; e.y = y; this._walkerRoutes?.delete(e); return true;
   }
   walkWalkerRoute(e, s, dt, retreat = false) {
+    if (this.astralRiderHeld(e)) return;
     if (!(dt > 0)) return;
     const width = mapWidth(this.map, this.area), routes = this._walkerRoutes ||= new WeakMap();
     let r = routes.get(e);
@@ -2904,6 +2967,7 @@ export class Game {
       },
       los: (a, b, projectile = false) => hasLineOfSight(a, b, map, width, projectile),
       move(e, dx, dy, opts = {}) {
+        if (game.astralRiderHeld(e)) return false;
         if (e.kind === "voidWalker") return moveWalkerGround(e, dx, dy, map, width);
         if (opts.phase || isDungeonRoamer(e, game.area)) { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)), moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
         return moveAxis(e, dx, dy, map, width, !!e.flying);
@@ -2911,7 +2975,7 @@ export class Game {
       // The dungeon is the Crystal's domain: patrol and combat use the same bounded wall-phasing movement.
       roamMove(e, dx, dy) { return this.move(e, dx, dy); },
       roamWork: (n) => { game.performanceStats.pathfindingWork += n; },
-      detour(e, speed) { const step = boundedChaseStep(e, p, map, width); if (step) { const px = step[0] - e.x, py = step[1] - e.y, m = Math.hypot(px, py) || 1; (e.kind === "voidWalker" ? moveWalkerGround : moveAxis)(e, px / m * speed, py / m * speed, map, width, !!e.flying); } },
+      detour(e, speed) { if (game.astralRiderHeld(e)) return; const step = boundedChaseStep(e, p, map, width); if (step) { const px = step[0] - e.x, py = step[1] - e.y, m = Math.hypot(px, py) || 1; (e.kind === "voidWalker" ? moveWalkerGround : moveAxis)(e, px / m * speed, py / m * speed, map, width, !!e.flying); } },
       hurt: (source, amount, options) => !(sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) && game.packHurt(source, amount, options, now),
       grab(source) { if (now < (p.dodgeUntil || 0) || now <= (p.invulnerableUntil || 0)) return false; p.heldUntil = now + CRYSTAL.grabHold * 1000 + 100; p.heldBy = source.id; game.message = "It has you. Struggle: dodge, again and again!"; return true; }, // release 249
       held(source) { return now < (p.heldUntil || 0) && p.heldBy === source.id; },
@@ -3201,7 +3265,9 @@ export class Game {
       }
       alertEnemy(e);
       const base = (profile.damage + characterStats(this.save).meleeBonus) * (echo ? echo.share : 1) * pounce, scattered = this.scatterCheck(e, true, glyphsReachSwarm(glyphs), now), dealt = scattered ? 0 : glyphDamage(glyphs, e, base, { echo: !!echo }, now); // release 245: plain steel scatters the Nanobot Knight
+      const hpBefore = Math.max(0,e.hp);
       e.hp -= dealt;
+      this.astralPlayerHit(e,Math.max(0,hpBefore-Math.max(0,e.hp)));
       e.hitFlash = scattered ? 0 : 0.18;
       e.recoil = scattered ? 0 : 0.2;
       if (!scattered) e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.12 : 0.22);
@@ -3450,6 +3516,7 @@ export class Game {
   update(dt, input, now) {
     this.lastUpdateNow = now;
     if (this.paused) return;
+    this.syncAstralRiders();
     const p = this.player, hpStart = p.hp;
     this.guardRemaining = Math.max(0, this.guardRemaining - dt);
     this.magicBuffRemaining = Math.max(0, this.magicBuffRemaining - dt);
@@ -3637,7 +3704,7 @@ export class Game {
         p.invulnerableUntil=now+700;
       },
       (shot, e) => (e.kind === "nanobotKnight" && this.scatterCheck(e, shot.damageType === "physical", !!shot.glyphHost && glyphsReachSwarm(this.glyphLoadout(shot.glyphHost)), now)) ? 0 : shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
-      (shot, e, dealt) => { if (shot.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); },
+      (shot, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (shot.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); },
       (this.packEffects || []).filter(f => f.kind === "psyWall" && !(f.arming > 0)), // swept wall contact precedes actor collision at every substep
     );
     if(combatNpcTargets.length)this.syncNpcDamage("projectile");
@@ -3650,7 +3717,7 @@ export class Game {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
       (fx, e) => fx.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(fx.glyphHost), e, fx.damage, { echo: !!fx.echo }, now) : fx.damage,
-      (fx, e, dealt) => { if (fx.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); },
+      (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (fx.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); },
     );
     this.tickGlyphs(dt, now);
     tickEchoes(this, dt, now, { x, y });
@@ -3709,7 +3776,7 @@ export class Game {
       if(e.skirmishId&&!e.skirmishProvoked){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&updateSkirmisher(e,this.enemies,this.map,dt,skirmishHooks))continue}
       // A retreating Walker is harmless and must traverse settlements normally. Sanctuary combat
       // displacement must neither relocate it nor freeze its retreat while the player rests inside.
-      if(e.packKind){this.performanceStats.activeEnemies++;const zone=e.kind==="voidWalker"&&(e.retreating||e.fleeTo)?null:packWorld.sanctuary;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(zone)enforceSanctuary(e,zone);continue}
+      if(e.packKind){this.performanceStats.activeEnemies++;const zone=this.astralRiderHeld(e)||e.kind==="voidWalker"&&(e.retreating||e.fleeTo)?null:packWorld.sanctuary;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(zone)enforceSanctuary(e,zone);continue}
       if(e.seaKind){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateSeaCreature(e,seaWorld,dt);continue}
       if(e.encounterGroup&&!this.activatedEncounterGroups.has(e.encounterGroup)){this.activatedEncounterGroups.add(e.encounterGroup);this.performanceStats.encounterActivations++}
       let simulationDt=dt;
@@ -3734,11 +3801,12 @@ export class Game {
       }
       if((e.ai?.pathRetryAt||0)!==pathRetryBefore)this.performanceStats.pathfindingWork++;
     }
+    this.syncAstralRiders();
     if(seaSummons.length)this.enemies.push(...seaSummons);
     this.performanceStats.peakActiveEnemies=Math.max(this.performanceStats.peakActiveEnemies,this.performanceStats.activeEnemies);
     const volcano=this.area==="overworld"&&this.map.volcano;
     if(volcano&&Math.hypot(p.x-volcano.x,p.y-volcano.y)<12){this.volcanoClock=(this.volcanoClock||0)+dt;if(this.volcanoClock>=volcano.period){this.volcanoClock=0;this.volcanoSeq=(this.volcanoSeq||0)+1;const n=hashSeed(`${this.save.seed}:eruption:${this.rx}:${this.ry}:${this.volcanoSeq}`);for(let i=0;i<4;i++){const a=((n>>(i*5))%360)*Math.PI/180,r=i===0?0:1.2+((n>>(i*3))%30)/10;addPackEffect(this.packEffects||=[],{kind:"lavaBomb",owner:"volcano",x:p.x+Math.cos(a)*r,y:p.y+Math.sin(a)*r,radius:1.05,arming:1.3+i*.2,damage:Math.ceil(this.save.maxHp*.18),jumpable:false,from:{x:volcano.x,y:volcano.y-1}},now)}this.message="The caldera erupts. Watch the burning circles."}}
-    this.packEffects=tickPackEffects(this.packEffects||[],packWorld);this.performanceStats.activeHazardsAndEffects+=this.packEffects.length;this._packLastPlayer={x:p.x,y:p.y};
+    this.packEffects=tickPackEffects(this.packEffects||[],packWorld);this.performanceStats.activeHazardsAndEffects+=this.packEffects.length;this._packLastPlayer={x:p.x,y:p.y};this.syncAstralRiders();
     // A Lighthouse Buoy (release 156) keeps a line for the Wayfarer's skiff: whoever wakes or lands there without it
     // finds it tied alongside, so a rest point at sea is never a prison.
     if (this.area === "overworld" && this.map.openSea && ((this._buoyCheck = (this._buoyCheck || 0) - dt) <= 0)) {

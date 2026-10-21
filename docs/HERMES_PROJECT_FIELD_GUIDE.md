@@ -2189,3 +2189,9 @@ The following original protocol is retained as historical evidence only. The lin
 - Keep section 19 private. Do not move its content into player-facing surfaces.
 - When a claim in this guide is found wrong, correct it in place and note the correction rather than deleting the trail.
 - Record the reading ledger honestly. An unread span listed as unread is more useful than a confident claim over unread code.
+
+## Astral Worm isolated prototype (unreleased, not naturally activated)
+
+**CODE:** `src/astral-worm.ts`, `astral-worm-render.ts`, `astral-worm-retreat.ts` and `astral-worm-mount.ts` provide deterministic bounded attack state, original owner-approved four-pass Canvas forms, nearest-reachable Wayglass graph search and independent-health hostile Walker riding. Pack/Game/renderer hooks support explicit fixtures. The main Worm is in the public catalog without a new Echo; mirages remain private/rewardless. Corresponding formal tests and narrow no-Echo contract changes are explicitly owner-approved. See `docs/astral-worm-prototype.md` for exact implementation and integration contracts.
+
+**BOUNDARY:** Natural encounters, normal bounty and shared three-attempt/full-health death reset require reconciliation with reviewed final r251 and Gate. No global two-beast rule, merged health, random riding activation, release bump, remote write or publication is enabled here. Native model/fixture captures are not browser or mobile playtest certification. Keep r251's swept sailable-footprint aboard-only forces during integration. All unspecified tuning is provisional.

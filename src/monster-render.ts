@@ -3,6 +3,11 @@
 // no images, so it scales cleanly with the device pixel ratio.
 import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID } from "./monster-pack.ts";
 
+import { drawAstralMorph, drawAstralHazards } from "./astral-worm-render.ts";
+
+import { astralMountPresentation } from "./astral-worm-mount.ts";
+import { ASTRAL } from "./astral-worm.ts";
+
 import { liftAt, LIFT_PER_LEVEL } from "./landscape.ts";
 
 const TAU = Math.PI * 2;
@@ -41,6 +46,9 @@ function shadowAt(ctx, x, y, rx, ry, alpha = .55) { ctx.fillStyle = `rgba(4,4,6,
 // ---------------------------------------------------------------- creatures
 
 const BODY = {
+  astralWorm(ctx,q) { const a=q.e.astral; drawAstralMorph(ctx,{x:q.k,y:q.b-(a?.form==='flight'?q.u*.8:0),scale:q.u*.65,time:a?.clock||0,form:a?.form||'worm',facing:q.flip,alpha:q.e.kind==='astralMirage'?.5:1,reducedMotion:!!q.e.reduceMotion},a?.previousForm||'worm',a?(a.clock-a.morphStart)/ASTRAL.morphTime:1);
+    if(a?.form==='flight'){ctx.strokeStyle='#db9fc5';ctx.lineWidth=Math.max(1,q.u*.06);ctx.beginPath();ctx.moveTo(q.k,q.b-q.u*.8);ctx.lineTo(q.k,q.b);ctx.stroke();}
+  },
   lumenWraith(ctx, q) {
     const { k, b, u, t, p, flip } = q, lift = u * (.35 + Math.sin(t * 2.1) * .06), cy = b - lift - u * .45;
     shadowAt(ctx, k, b, u * .32, u * .1, .35);
@@ -791,6 +799,7 @@ const sprites = new Map();
 function makeSpriteCanvas() { if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(1, 1); if (typeof document !== "undefined") return document.createElement("canvas"); return null; }
 function spriteState(e) { const s0 = e.pack; return s0?.attack ? (s0.phase === "windup" ? "windup" : "attack") : "idle"; }
 function drawPackSprite(ctx, e, s, now, facing, def) {
+  if (e.kind === "astralWorm" || e.kind === "astralMirage") return false; // Continuous morphology has state outside the shared sprite key.
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
   if (e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker") return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
@@ -830,7 +839,7 @@ export function drawPackMonster(ctx, e, s, now, facing = "down") {
   return paintPackMonster(ctx, e, s, now, facing, def, false);
 }
 function paintPackMonster(ctx, e, s, now, facing, def, sprite) {
-  const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (e.hopLift || 0) * s * .2, t = now / 1000 + ((e.id?.length || 3) * 1.7);
+  const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (e.hopLift || 0) * s * .2 - (astralMountPresentation(e)?.lift || 0) * s, t = now / 1000 + ((e.id?.length || 3) * 1.7);
   const flip = e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, s0 = e.pack;
   const state = s0?.attack ? (s0.phase === "windup" ? "windup" : "attack") : "idle";
   const bodyLift = e.kind === "psychicCrystal" ? (Number(e.flightLiftDelta) || 0) * s : 0;
@@ -850,6 +859,8 @@ function paintPackMonster(ctx, e, s, now, facing, def, sprite) {
 // Telegraphs of in-progress attacks (drawn under creatures).
 export function drawPackTelegraphs(ctx, enemies, s, now, visible = () => true, heights = {}) {
   for (const e of enemies) {
+    if(e.astralAllyOf&&!e.dead&&visible(e)&&e.astralAllyEffects?.length) drawPackEffects(ctx,e.astralAllyEffects,s,now,()=>true,(x,y)=>heights.ground?.(x,y)||0,{reduceMotion:!!heights.reduceMotion});
+    if(e.kind==='astralWorm'&&!e.dead&&visible(e)&&e.astral) drawAstralHazards(ctx,e.astral.hazards,(x,y)=>({x:(x+.5)*s,y:(y+.62-(heights.ground?.(x,y)||0))*s}),s);
     const tele = e.pack?.tele;
     if (e.dead || !tele || !visible(e)) continue;
     const crystal = e.kind === "psychicCrystal", walker = e.kind === "voidWalker", ground = crystal || walker ? heights.ground?.(e.x, e.y) || 0 : 0;

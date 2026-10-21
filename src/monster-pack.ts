@@ -8,6 +8,7 @@
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
 import { hashSeed } from "./random.ts";
+import { updateAstralActor } from "./astral-worm.ts";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -309,6 +310,19 @@ export const MONSTER_PACK = {
     palette: ["#29213f", "#0c0918", "#b779ff", "#f1ddff"], render: "voidWalker", tags: ["spirit", "elder", "void"],
     lore: "A figure no larger than a Wayfarer. Behind its quiet silhouette, galaxies open: hands, blades and passing wraiths reach through. Its greatest star leaves a permanent wound in the dungeon floor.",
   },
+  // Unique fixture entries only; natural hunts await final r251/Gate lifecycle integration.
+  astralWorm: {
+    id: "astralWorm", noEcho: true, name: "The Astral Worm", epithet: "The Ink That Remembers Shapes", unique: true,
+    stats: [1400, 60, 0], form: { scale: 1 }, sizeClass: "large", movement: "hover", brain: "orbit",
+    attacks: ["bite"], bossAttacks: [], palette: ["#080b10", "#030508", "#9eafce", "#c4d0dc"], render: "astralWorm", tags: ["elder", "ink"],
+    lore: "An elongated blackness that makes and unmakes its own limbs.",
+  },
+  astralMirage: {
+    id: "astralMirage", prototypeOnly: true, name: "Astral Mirage", epithet: "A Borrowed Outline", unique: true, minion: true,
+    stats: [168, 0, 0], form: { scale: 1 }, sizeClass: "large", movement: "hover", brain: "orbit",
+    attacks: ["bite"], bossAttacks: [], palette: ["#080b10", "#030508", "#9eafce", "#c4d0dc"], render: "astralWorm", tags: ["ink"],
+    lore: "A fragile, hungry outline of the Astral Worm.",
+  },
   gnawingMaw: {
     id: "gnawingMaw", name: "Gnawing Maw", epithet: "The Hunger in the Walls", dungeonOnly: true,
     stats: [70, 14, 0], form: { scale: 1.35 }, sizeClass: "large", movement: "phase", brain: "ambush",
@@ -318,10 +332,12 @@ export const MONSTER_PACK = {
   },
 };
 
-export const PACK_KINDS = Object.keys(MONSTER_PACK);
+// Unreleased fixture-only entries are explicitly addressable, but not part of the player catalog,
+// generator, Echo list or standard Proving Ground menu until their integration contract is complete.
+export const PACK_KINDS = Object.keys(MONSTER_PACK).filter(id => !MONSTER_PACK[id].prototypeOnly);
 export function isPackKind(kind) { return Object.hasOwn(MONSTER_PACK, kind); }
-export const PACK_FORMS = Object.fromEntries(PACK_KINDS.map((id) => [id, { ...MONSTER_PACK[id].form }]));
-export const PACK_STATS = Object.fromEntries(PACK_KINDS.map((id) => [id, [...MONSTER_PACK[id].stats]]));
+export const PACK_FORMS = Object.fromEntries(Object.keys(MONSTER_PACK).map((id) => [id, { ...MONSTER_PACK[id].form }]));
+export const PACK_STATS = Object.fromEntries(Object.keys(MONSTER_PACK).map((id) => [id, [...MONSTER_PACK[id].stats]]));
 
 // Boss form shared by every pack creature: tougher, larger, faster cadence, and its
 // `bossAttacks` unlock at 66% and 33% health so the fight changes as it goes.
@@ -1739,8 +1755,10 @@ function patrolDungeon(e, s, w) {
 
 // One simulation step for a pack creature. `w` is the world adapter built by the game (or a test).
 export function updatePackMonster(e, w) {
+  if(e.kind === "voidWalker" && e.astralAllyOf && !w.astralAllyContext) { updateAstralWalkerAllyFixture(e,w.enemies.find(q=>q.id===e.astralAllyOf),w); return; }
   const def = packDefinition(e);
   if (!def) return;
+  if (e.kind === "astralWorm" || e.kind === "astralMirage") { if (w.dt > 0) updateAstralActor(e, w); return; }
   if (e.kind === "voidWalker" && !(w.dt > 0)) return;
   if (e.dead) { if (e.kind === "voidWalker") { voidClear(e, w); if (e.pack?.attack) endAttack(e, e.pack); } return; }
   const s = e.pack && e.pack.v === MONSTER_PACK_VERSION ? e.pack : (e.pack = freshPackState()), dt = w.dt;
@@ -2056,4 +2074,31 @@ export function populateOverworldPack(map, seed, rx, ry, { safe = null } = {}) {
   map.monsterPack = MONSTER_PACK_VERSION;
   map.diagnostic = { ...(map.diagnostic || {}), overworldPack: { converted: packCount - placed.length, added: placed.length } };
   return map;
+}
+
+// Explicit Astral fixture helper only. Never used by natural encounter selection.
+// An ally's effect list and damage callbacks cannot enter the hostile player's effect pipeline.
+export function updateAstralWalkerAllyFixture(ally, target, world) {
+  ally.noRewards = true;
+  if (!target || target.kind !== 'astralWorm' || target.dead || target.hp <= 0 || target.retreating || target.fleeTo || target.astral?.terminated || ally.dead || world.player.hp <= 0) {
+    ally.astralAllyEffects = []; ally.dead = true; ally.hp = 0; return;
+  }
+  ally.aggro = true; ally.astralAllyOf = target.id;
+  const effects = ally.astralAllyEffects ||= [];
+  // Reserve one worm descriptor; later growth of the shared list cannot exceed the combined cap.
+  effects.length=Math.min(effects.length,Math.max(0,PACK_EFFECT_CAP-1-(world.effects?.().length||0)));
+  const wrapped = { ...world, astralAllyContext:true, player: target, playerVelocity: {x:0,y:0}, playerShots: [], playerBlasts: [], playerSwinging:false,
+    enemies: [ally,target], sanctuary:null, effects:()=>effects,
+    addEffect: effect => { if(effects.length+(world.effects?.().length||0)<PACK_EFFECT_CAP-1) addPackEffect(effects,effect,world.now); },
+    hurt(source,amount) { if(target.dead||target.retreating||target.untargetable||!(amount>0))return false; target.hp=Math.max(0,target.hp-amount); if(target.hp<=0)target.dead=true; if(target.astral)target.astral.hp=target.hp; return true; },
+    // No borrowed callbacks which close over the real player, boat, or terrain are allowed here.
+    consumeVoidTerrain:()=>({changed:false}), pull:()=>false, push:()=>false, grab:()=>false, held:()=>false,
+    release:()=>{}, poison:()=>{}, slow:()=>{}, detour(e,speed) { const dx=target.x-e.x,dy=target.y-e.y,d=Math.hypot(dx,dy)||1;world.move(e,dx/d*speed,dy/d*speed); },
+    spawnIllusion:()=>null, spawnMinion:()=>null, walkerPatrol:()=>{}, walkerRetreat:()=>{},
+  };
+  updatePackMonster(ally,wrapped);
+  ally.astralAllyEffects=tickPackEffects(effects,wrapped);
+  // Provisional fixture policy: the player cannot accidentally injure their temporary helper.
+  ally.untargetable=true;
+  if(target.hp<=0){ally.astralAllyEffects=[];ally.dead=true;ally.hp=0;}
 }
