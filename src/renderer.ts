@@ -751,13 +751,23 @@ export function drawGateRevenant(ctx, e, s, now, ox = 0, oy = 0) { // exported f
     ctx.fillStyle = "#c2321c"; lips(0); ctx.fill();
     ctx.fillStyle = "#ff8a2e"; ctx.beginPath(); ctx.ellipse(0, cy + h * .25, w * .62, h * (.75 + .1 * pulse), 0, 0, 7); ctx.fill();
     ctx.fillStyle = "#ffe08a"; ctx.beginPath(); ctx.ellipse(0, cy + h * .35, w * .28, h * (.35 + .1 * pulse), 0, 0, 7); ctx.fill();
-    // Fangs: a row along each lip, long ones at the corners of the bite, pointing into the mouth.
+    // Teeth: a row of small ones along each lip, pointing into the mouth...
+    const lipAt = (up, t) => cy + up * h * 4 * t * (1 - t);
     ctx.fillStyle = "#ece2d4"; ctx.beginPath();
-    for (const [up, n, fangs] of [[-1, 7, [1, 5]], [1, 6, [1, 4]]]) for (let i = 0; i < n; i++) {
-      const t = (i + .5) / n, x = -w + 2 * w * t, lip = cy + up * h * 2 * 2 * t * (1 - t), half = w / n * .8, long = fangs.includes(i) ? 2.6 : 1, len = Math.min(h * 1.25, .05 * long + .02);
+    for (const [up, n] of [[-1, 8], [1, 7]]) for (let i = 0; i < n; i++) {
+      const t = (i + .5) / n, x = -w + 2 * w * t, lip = lipAt(up, t), half = w / n * .75, len = Math.min(h * .6, .045);
       ctx.moveTo(x - half, lip); ctx.lineTo(x, lip - up * len); ctx.lineTo(x + half, lip);
     }
     ctx.fill();
+    // ...and four great curved canines (Tim: "more pronounced, like canine. Fangs"), the upper pair reaching past the lower lip.
+    ctx.beginPath();
+    for (const [up, t, len] of [[-1, .22, .62], [-1, .78, .62], [1, .4, .42], [1, .6, .42]]) {
+      const x = -w + 2 * w * t, lip = lipAt(up, t), L = h * 2 * len * .8 + .02, half = .026 + .012 * maw, bow = (t < .5 ? 1 : -1) * .03;
+      // A cone: broad at the gum, tapering to a point that curves in toward the middle of the mouth.
+      ctx.moveTo(x - half, lip + up * .012); ctx.quadraticCurveTo(x - half * .85, lip - up * L * .45, x + bow, lip - up * L);
+      ctx.quadraticCurveTo(x + half * .55, lip - up * L * .4, x + half, lip + up * .012); ctx.closePath();
+    }
+    ctx.fill(); ctx.strokeStyle = "#7d5f55"; ctx.lineWidth = .012; ctx.stroke();
     if (atk?.phase === "active") { ctx.fillStyle = "#ff8a3a"; ctx.beginPath(); for (let i = 0; i < 4; i++) { const q = (T * 2.6 + i / 4) % 1, r = .045 * (1 - q * .5), x = Math.sin(i * 2.1 + T * 3) * .1 * q, y = cy - h - q * .55; ctx.moveTo(x + r, y); ctx.ellipse(x, y, r, r, 0, 0, 7); } ctx.fill(); }
   } else {
   // The Gate burning on its chest: a pointed arch and its keystone.
