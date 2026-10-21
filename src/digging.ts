@@ -19,7 +19,8 @@ export const DIG = {
   heldUses: 6,                   // the most uses a saved shovel may keep (a 6-use shovel from before 263 is not cut down)
   recipe: { wood: 1, stone: 1 }, // what a shovel costs (release 259, Tim: "one wood and one stone to make a shovel")
   carryStone: 99,                // the most stone the Wayfarer carries (release 259 set 2; release 261, Tim: "99 wood and 99 stone. You can dig as much as you want")
-  stone: { wall: 1, chip: 3, break: 2, spot: 2 }, // release 275 (Tim: "each one of those can be 3 stone... so I don't have to spend so much time picking up stone"): a chip was 1
+  stone: { wall: 1, chip: 1, break: 0, spot: 2 }, // release 275 (Tim: "every rock gives one stone"): breaking a chipped rock now only clears it (it gave 2)
+  cache: { stone: 2, wood: 1 }, // release 275 (Tim: "The supply caches give 2 stone and one wood"), on top of their supply
   treasureChance: .1,            // share of wall blocks that hide something
   glintShare: .4,                // share of those whose glint shows on an exposed face
   spotChance: .03, spotMinDepth: 2,

@@ -43,12 +43,12 @@ test('saves: beastCeiling is additive and normalised by migrateSave', () => {
   assert.equal(migrateSave({ ...JSON.parse(JSON.stringify(s)), beastCeiling: { level: 'x' } }).beastCeiling, undefined);
 });
 
-test('Act on a rock gathers stone: chip first, then break, never rolling it away first (Tim, 2026-10-21 probe)', async () => {
+test('Act on a rock gathers its one stone: chip first, then break, never rolling it away first (Tim, 2026-10-21 probe)', async () => {
   const { validActions, applyInteraction } = await import('../src/interactions.ts');
   const s = freshSave(); s.stats.Might = 5; s.materials.stone = 0; const rock = { id: 'q-rock', kind: 'rock', state: 'sealed', actions: ['move', 'break'], environmental: true };
   assert.deepEqual(validActions(rock, s), ['chip', 'break', 'move']);
-  applyInteraction(rock, validActions(rock, s)[0], s); assert.equal(s.materials.stone, 3, 'a chip is three stone');
-  applyInteraction(rock, validActions(rock, s)[0], s); assert.equal(s.materials.stone, 5); assert.equal(rock.state, 'broken');
+  applyInteraction(rock, validActions(rock, s)[0], s); assert.equal(s.materials.stone, 1, 'every rock gives one stone');
+  applyInteraction(rock, validActions(rock, s)[0], s); assert.equal(s.materials.stone, 1, 'breaking only clears it'); assert.equal(rock.state, 'broken');
   assert.deepEqual(validActions(rock, s), [], 'rubble takes no more presses');
 });
 
@@ -60,4 +60,11 @@ test('the Gate Revenant is held with the world beasts; nothing else is', async (
   assert.equal(b.maxHp, a.maxHp); assert.equal(b.damage, a.damage);
   kills(s, 3); const c = tuneGatePredator({ gatePredator: true, maxHp: 360, hp: 360, damage: 22 }, s, { meleeBonus: 120, damageReduction: .3 });
   assert.ok(c.maxHp > a.maxHp && c.damage > a.damage);
+});
+
+test('a supply cache gives 2 stone and 1 wood on top of its supply', async () => {
+  const { applyInteraction } = await import('../src/interactions.ts');
+  const s = freshSave(); s.materials.stone = 0; s.materials.wood = 0;
+  const r = applyInteraction({ id: 'sc', kind: 'supplyCache', supplyType: 'potion', state: 'sealed', actions: ['collect'] }, 'collect', s);
+  assert.equal(s.materials.stone, 2); assert.equal(s.materials.wood, 1); assert.match(r.message, /\+2 stone, \+1 wood/);
 });

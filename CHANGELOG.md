@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Release 275 — gathering stone fixed. With Might 3 or more, Act (and Tool) on a rock used to roll it aside first, giving no stone and leaving nothing to chip. Now the first press chips three stone free (it was one), the next breaks the rock for two more, and only then can it be rolled aside. Rubble and rolled-aside rocks no longer catch your presses, so Act goes to the next rock.
+- Release 275 — supply caches now also give 2 stone and 1 wood, on top of their supplies.
+- Release 275 — gathering stone fixed. With Might 3 or more, Act (and Tool) on a rock used to roll it aside first, giving no stone and leaving nothing to chip. Now the first press chips the rock's stone (every rock gives one), the next breaks it into rubble (breaking no longer adds stone), and only then can it be rolled aside. Rubble and rolled-aside rocks no longer catch your presses, so Act goes to the next rock.
 - Release 275 — creature stages. Every creature so far is Stage 1, and Stage 1 runs to Aperture tier 12. Your Aperture now stops one point short of tier 13 until you fell the Listener at the Far Gate; the first Listener opens Stage 2 (up to tier 24), and every two more open the next stage (tier 36 after the third, and so on). A save already past its stage's top tier keeps its Aperture but gains no more until the Listener falls. The HUD shows your stage beside the tier (S1), and the Aperture card says when the stage is holding you.
 - Release 275 — Stage 1 world beasts and the Gate Revenant stop growing. Until now world beasts, the Questing Beast and the Gate Revenant always matched your strength. From Aperture tier 13 (Stage 2) they are held at the strength they had when you got there, so you outgrow them, until you have felled the Listener three times; then they match you again. Every other creature and boss keeps growing as before.
 
