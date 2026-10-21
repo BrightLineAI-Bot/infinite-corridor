@@ -766,7 +766,7 @@ function voidNovaRun(e, s, w) {
     const nova = voidAdd(w, e, { kind: "voidNova", ...at, radius: VOID.novaRadius, stage: "charge", life: VOID.novaLife, total: VOID.novaLife,
       elapsed: 0, nextLocal: .25, nextAfter: VOID.novaCharge, waves, wavesFired: 0, nextWave: VOID.novaCharge, eruptions: 0, seed: s.seq, damage: damageOf(e, "voidSupernova") });
     if (!nova) { e.voidCharging = false; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.voidSupernova.recover); return; }
-    // The Game owns permanent scars, save writes and progression protection; this module only asks once on activation.
+    // The Game owns permanent scars and save writes (physical destruction is separate from quest state); this module only asks once on activation.
     s.data.terrainResult = w.consumeVoidTerrain?.(e, at, VOID.novaRadius);
     s.data.dashes = 0; s.tele = null; toPhase(s, "active", ATTACK_MODULES.voidSupernova.active); return;
   }

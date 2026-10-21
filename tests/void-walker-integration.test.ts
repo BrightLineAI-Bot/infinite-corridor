@@ -65,10 +65,11 @@ test('Supernova reaches the production persistence callback only after the charg
  frames(g,70);assert.ok(Object.keys(g.save.voidScars.areas).length);assert.equal(g.map.tiles[23*50+27].kind,'voidScar');const record=JSON.parse(JSON.stringify(g.save.voidScars));frames(g,100);assert.deepEqual(g.save.voidScars,record);assert.ok(g.packEffects.length<=48);
  const migrated=migrateSave(JSON.parse(JSON.stringify(g.save))),fresh=mapOf(50,50);Object.assign(fresh.tiles[23*50+27],{kind:'wall',blocked:true});assert.ok(applyVoidScars(migrated,fresh,g.areaStateId()).ok);assert.equal(fresh.tiles[23*50+27].kind,'voidScar');assert.equal(fresh.tiles[23*50+27].blocked,false);
 });
-test('terrain refuses unsafe progression atomically and overworld effects never persist dungeon scars',()=>{
- const {g,e}=fixture();const before=JSON.stringify(g.map.tiles);Object.assign(g.map.tiles[18*40+22],{kind:'sealedGate',blocked:true,gateId:'final'});const protectedBefore=JSON.stringify(g.map.tiles);
- assert.equal(g.packWorld(.05,0).consumeVoidTerrain(e,e,7).ok,false);assert.equal(JSON.stringify(g.map.tiles),protectedBefore);
- g.area='overworld';assert.equal(g.packWorld(.05,0).consumeVoidTerrain(e,e,7).reason,'overworld-visual-only');assert.equal(Object.keys(g.save.voidScars.areas).length,0);assert.notEqual(before,protectedBefore);
+test('Supernova intentionally consumes sealed terrain without completing quests and persists in either world',()=>{
+ const {g,e}=fixture();Object.assign(g.map.tiles[18*40+22],{kind:'sealedGate',blocked:true,gateId:'final'});
+ g.save.worldFlags.pendingQuest='unresolved';const questBefore=JSON.stringify(g.save.worldFlags);
+ assert.equal(g.packWorld(.05,0).consumeVoidTerrain(e,e,7).ok,true);assert.equal(g.map.tiles[18*40+22].kind,'voidScar');assert.equal(JSON.stringify(g.save.worldFlags),questBefore);
+ g.area='overworld';g.areaStateId=()=> 'overworld:5:0:g1';assert.equal(g.packWorld(.05,0).consumeVoidTerrain(e,e,7).ok,true);assert.ok(g.save.voidScars.areas['overworld:5:0:g1']);
 });
 test('dt zero cannot move patrol, retreat, teleports or active Supernova simulation',()=>{
  const {g,e}=fixture();e.retreating=true;e.fleeTo={...g.map.entry,home:true};const before=JSON.stringify(e);updatePackMonster(e,g.packWorld(0,100));assert.equal(JSON.stringify(e),before);

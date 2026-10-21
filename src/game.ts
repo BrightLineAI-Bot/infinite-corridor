@@ -60,7 +60,7 @@ import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatt
 import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.ts";
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
-import { applyLandscape, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo } from "./landscape.ts";
+import { applyLandscape, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.ts";
 import { nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
@@ -131,12 +131,12 @@ export function applyDeepDungeonProgress(save, id, map) {
     if (o.kind === "storyGhost" && progress.story.completed) Object.assign(o, { state: "released", actions: [] });
     if (o.kind === "storyActor") Object.assign(o, progress.story.completed ? {state:"departed",actions:[]} : progress.story.started ? {state:"manifest",actions:["witness"]}:{state:"veiled",actions:["witness"]});
     if (o.kind === "storyScene" && progress.story.completedBeatIds.includes(o.beatId)) Object.assign(o,{state:"witnessed",actions:[]});
-    if (o.kind === "deepShortcut") {const opened=progress.openedShortcutIds.includes(o.id),available=completed.has(o.unlockObjectiveId);Object.assign(o,opened?{state:"open",actions:["inspect"]}:available?{state:"revealed",actions:["open"]}:{state:"hidden",actions:["inspect"]});for(const p of o.cells||[])if(opened)map.tiles[p.y*map.width+p.x]={...map.tiles[p.y*map.width+p.x],kind:map.floorKind||"deepFloor",blocked:false,routeId:o.id};}
+    if (o.kind === "deepShortcut") {const opened=progress.openedShortcutIds.includes(o.id),available=completed.has(o.unlockObjectiveId);Object.assign(o,opened?{state:"open",actions:["inspect"]}:available?{state:"revealed",actions:["open"]}:{state:"hidden",actions:["inspect"]});for(const p of o.cells||[])if(opened&&!map.tiles[p.y*map.width+p.x]?.voidScar)map.tiles[p.y*map.width+p.x]={...map.tiles[p.y*map.width+p.x],kind:map.floorKind||"deepFloor",blocked:false,routeId:o.id};}
     if (o.kind === "deepPortal") {const active=o.unlockOnCompletion?progress.completed:!o.unlockObjectiveId||completed.has(o.unlockObjectiveId);Object.assign(o,active?{state:"active",actions:["travel"]}:{state:"dormant",actions:["inspect"]});}
     if (o.kind === "sealedGate") Object.assign(o, progress.gateOpened ? { state: "open", blocked: false, actions: ["enter"] } : { state: "sealed", blocked: true, actions: ["inspect"] });
   }
   const width = mapWidth(map, "dungeon");
-  for (const p of map.finalGateTiles || []) map.tiles[p.y * width + p.x] = { ...map.tiles[p.y * width + p.x], kind: progress.gateOpened ? map.floorKind||"deepFloor" : "sealedGate", blocked: !progress.gateOpened, gateId: map.finalGateId };
+  for (const p of map.finalGateTiles || []) if (!map.tiles[p.y * width + p.x]?.voidScar) map.tiles[p.y * width + p.x] = { ...map.tiles[p.y * width + p.x], kind: progress.gateOpened ? map.floorKind||"deepFloor" : "sealedGate", blocked: !progress.gateOpened, gateId: map.finalGateId };
   return progress;
 }
 export function completeDeepStory(save, id, map) {
@@ -425,18 +425,22 @@ export function relocateIfStranded(entity, map, width) {
   }
   return false;
 }
-export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false) {
+export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false, onStep=null) {
   let moved = false,
     steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 0.16)),
     sx = dx / steps,
     sy = dy / steps;
   for (let i = 0; i < steps; i++) {
     if (sx && footprintOpen(map, width, entity.x + sx, entity.y, allowLethalTerrain) && canStep(entity, map, width, entity.x, entity.y, entity.x + sx, entity.y)) {
+      const fromX = entity.x;
       entity.x += sx;
+      onStep?.(fromX, entity.y, entity.x, entity.y);
       moved = true;
     }
     if (sy && footprintOpen(map, width, entity.x, entity.y + sy, allowLethalTerrain) && canStep(entity, map, width, entity.x, entity.y, entity.x, entity.y + sy)) {
+      const fromY = entity.y;
       entity.y += sy;
+      onStep?.(entity.x, fromY, entity.x, entity.y);
       moved = true;
     }
   }
@@ -1849,8 +1853,10 @@ export class Game {
       const progress = applyDeepDungeonProgress(this.save, this.areaId(), this.map), defeated = new Set([...(progress.defeatedWingIds || []).map((wing) => `deep-v1-miniboss-${wing}`), ...(progress.defeatedFinalIds || [])]);
       this.enemies = this.enemies.filter((e) => !defeated.has(e.id) && !(e.objectiveId && progress.completedObjectiveIds.includes(e.objectiveId)));
     }
+    // Persistent scars overlay pinned generation in either world, after saved objects
+    // and quest progress are restored; they never complete those objectives themselves.
+    applyVoidScars(this.save, this.map, this.areaStateId());
     if (area === "dungeon") {
-      applyVoidScars(this.save, this.map, this.areaStateId());
       // Wall glints were generated before the persistent overlay. A consumed wall must not regain a
       // floating treasure marker when the dungeon is loaded again.
       this.map.wallGlints = (this.map.wallGlints || []).filter(q => this.map.tiles[q.y * mapWidth(this.map, area) + q.x]?.blocked);
@@ -2778,8 +2784,8 @@ export class Game {
       walkerPatrol: (e, s) => game.walkWalkerRoute(e, s, dt),
       walkerRetreat: (e, s) => game.walkWalkerRoute(e, s, dt, true),
       consumeVoidTerrain(e, center, radius) {
-        if (game.area !== "dungeon") return { ok: false, reason: "overworld-visual-only", changed: 0 };
-        const result = consumeVoidTerrain(game.save, map, game.areaStateId(), center, radius, [p, ...game.enemies.filter(q => !q.dead)]);
+        // Match the native Supernova's continuous world-space disk, not rounded tile centers.
+        const result = consumeVoidTerrain(game.save, map, game.areaStateId(), { x: center.x + .5, y: center.y + .62, visualLift: liftAt(map, width, center.x, center.y) }, radius, [p, ...game.enemies.filter(q => !q.dead)]);
         if (result.changed) { game._walkerLandingGraph = null; game._walkerRoutes = new WeakMap(); map.wallGlints = (map.wallGlints || []).filter(q => map.tiles[q.y * width + q.x]?.blocked); }
         return result;
       },
@@ -3430,8 +3436,21 @@ export class Game {
     else {
       p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0);
       const before = elevationAt(this.map, width, p.x, p.y), fromX = p.x, fromY = p.y;
-      moveAxis(p, dx, dy, this.map, width, true);
-      let drop = before - elevationAt(this.map, width, p.x, p.y), hurt = fallDamage(drop, this.save.maxHp);
+      let fallStart = before, drop = 0, hurt = 0;
+      const finishFall = (height) => {
+        const distance = fallStart - height, damage = fallDamage(distance, this.save.maxHp);
+        if (damage > 0) { hurt += damage; drop = Math.max(drop, distance); }
+      };
+      // Evaluate the actual X-then-Y substeps, not just frame endpoints: a diagonal can enter and
+      // leave a scar in one frame. A safe scar edge ends one ordinary fall segment; it must not
+      // erase a real ordinary cliff crossed before or after it. Non-scar movement keeps its net-drop rule.
+      moveAxis(p, dx, dy, this.map, width, true, (ax, ay, bx, by) => {
+        if (safeVoidScarTransition(tileUnder(this.map, width, ax, ay), tileUnder(this.map, width, bx, by))) {
+          finishFall(elevationAt(this.map, width, ax, ay));
+          fallStart = elevationAt(this.map, width, bx, by);
+        }
+      });
+      finishFall(elevationAt(this.map, width, p.x, p.y));
       // Traversal cue: pushing against a ledge explains what it takes (operator ask 2026-10-14: climbing was confusing).
       if (this.map.landscape && Math.hypot(x, y) > .4 && Math.hypot(p.x - fromX, p.y - fromY) < Math.hypot(dx, dy) * .3) {
         const here = tileUnder(this.map, width, p.x, p.y), ahead = tileUnder(this.map, width, p.x + x * .6, p.y + y * .6), up = (ahead?.elev || 0) - (here?.elev || 0);

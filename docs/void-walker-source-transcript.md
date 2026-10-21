@@ -36,6 +36,26 @@ The boardwalker is supposed to be a character that
 I want you to make detailed notes of my description and include it in the repository. So that when you're so that went claude, or picks back up, so that when the anthropic model picks up, it can understand what I described here. And it can use it to review what you've prepared for the void walker
 ```
 
+## S4 — terrain bypass, fog, and permanent white/red aftermath clarification
+
+- Author: Tim (owner), user message `Sentinel_85f7443ee8d481919d3e820545a343f8`.
+- Recorded from the parent-provided conversation evidence on 2026-10-21 UTC (2026-10-20 UTC-04); exact delivery timestamp was not supplied in that evidence.
+- This later clarification governs conflicting provisional interpretations of S2. Exact message:
+
+```text
+It bypasses it bypasses the walls and so like if I want to. And so the Supernova should like, extend extend and then destroy everything, and then you know, after I mean, it shouldn't take app the remove the black fog right? You know, the, you know, the area that isn't explored. Area should still remain unexplored, but just the supernovae. Just be like it overlay, or something like that. It should just be seen through the dark. You know, through the fog, and when the Supernova is consumed, you know, all the Wells in that area will be consumed. You know, in AI guess in at least a circle or semicircle around, you know, the or in a circle around the void Walker. And his and the ground will be rent. Lbo, sorry, it'll be like a crisp. White, right? But it'll be rent through with, like red cracks, and they don't do any damage or anything. After the supernova's over, but that's just what the world looks, that's just what it'll look like. And then I think that this should persist in the world, I think that they should persist in the world forever, right? So if it happens in a tile or in a square or like overworld or underworld, I should just persist forever so that it shows like, you know, the corridor takes, you know, kind of shows a record of the passage or the traversal, you know, and everything that you know has happened in it. It might be too much adding too much to the to the world, right? But it's just like it'll just be like a static feature. Right, just like a circle with red rents. You know, that has like red cracks, and I'll just, you know, it doesn't have to be marked on the map, or anything that can I can interact with. But it's just there for me to know that, and just to show that the world is, you know, the corridor takes marks the damage
+```
+
+## S5 — smooth circular boundary and subtler cracks
+
+- Author: Tim (owner), user message `Sentinel_05d976388b308191a60bb909abc4965f`.
+- Recorded from the parent-provided conversation evidence on 2026-10-21 UTC (2026-10-20 UTC-04); exact delivery timestamp was not supplied in that evidence.
+- This visual correction supersedes acceptance of a tile-stepped/pixelated circular outline or dense crack treatment. Exact message:
+
+```text
+Make the circle an actual circle right? Like an actual one hundred percent circle, not the pixelated circle. That's there. So it just matches the shape of the supernova, and then also reduce the amount of cracks that are there. So it's a little bit more visually appealing, a little bit more subtle
+```
+
 ## Earlier repository-recorded context, not a new verbatim user transcript
 
 The existing `HERMES_PROJECT_FIELD_GUIDE.md` records overworld and dungeon appearances, dungeon roaming, and a dungeon-entrance retreat/home for the future Void Walker. Those are retained as prior project requirements; the full earlier owner transcripts are not reproduced here. The Crystal's independent wall-phasing permission does not by itself authorize permanent Walker wall phasing.

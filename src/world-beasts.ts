@@ -147,7 +147,7 @@ export function worldBeastPatience(save, id, dt) {
 // RETREAT.search; `probe(rx, ry)` describes a section ({ biome, dominant, canyon, dungeon }). With none in reach it flees
 // RETREAT.fallback sections straight away and fades into the distance there.
 export function beginRetreat(save, id, rx, ry, probe) {
-  ensureWorldBeasts(save); const B = WORLD_BEASTS[id], q = save.worldBeasts[id], H = BEAST_HOMES[B.home];
+  ensureWorldBeasts(save, false); const B = WORLD_BEASTS[id], q = save.worldBeasts[id], H = BEAST_HOMES[B.home];
   let home = null;
   for (let d = 0; d <= RETREAT.search && !home; d++) {
     const ring = [];
@@ -188,14 +188,14 @@ export function retreatEnded(save, id) {
 }
 // Called on every area load: a retreating beast the Wayfarer did not follow into its current section is gone.
 export function worldBeastsLost(save, area, rx, ry, dungeonId = null) {
-  ensureWorldBeasts(save); const lost = [];
+  ensureWorldBeasts(save, false); const lost = [];
   for (const id of WORLD_BEAST_IDS) { const a = save.worldBeasts[id].active; if (a?.retreat && (a.dungeon ? area !== "dungeon" || dungeonId !== a.dungeon : area !== "overworld" || a.rx !== rx || a.ry !== ry)) { retreatEnded(save, id); lost.push(id); } }
   return lost;
 }
 export const isWorldBeastKind = (kind) => WORLD_BEAST_IDS.some((id) => WORLD_BEASTS[id].kind === kind);
 
 // save.worldBeasts: { id: { cycle, cooldown, active: { rx, ry, tries } | null, slain, escaped } } (additive; unknown ids kept).
-export function ensureWorldBeasts(save) {
+export function ensureWorldBeasts(save, normalizeScarHistory = true) {
   const all = save.worldBeasts && typeof save.worldBeasts === "object" ? { ...save.worldBeasts } : {};
   for (const id of WORLD_BEAST_IDS) {
     const q = all[id] && typeof all[id] === "object" ? all[id] : {};
@@ -205,7 +205,8 @@ export function ensureWorldBeasts(save) {
     all[id] = { cycle: Math.max(0, Math.floor(Number(q.cycle) || 0)), cooldown: Math.max(0, Math.floor(Number(q.cooldown) || 0)), active: a, slain: Math.max(0, Math.floor(Number(q.slain) || 0)), escaped: Math.max(0, Math.floor(Number(q.escaped) || 0)) };
   }
   save.worldBeasts = all;
-  ensureVoidScars(save);
+  // Only save creation/migration normalizes all permanent history; gameplay stays independent of other areas.
+  ensureVoidScars(save, normalizeScarHistory ? undefined : null);
   return save;
 }
 
@@ -223,7 +224,7 @@ function fleeSpawn(save, here, rx, ry) {
 // Called once per overworld section load. Returns the spawn of the beast holding this section, or null. One beast holds
 // a section at a time, and never one the Questing Beast holds.
 export function worldBeastFor(save, map, rx, ry) {
-  ensureWorldBeasts(save);
+  ensureWorldBeasts(save, false);
   if (!map) return null;
   if (map.settlement || map.tiles?.length !== 1024) { const id = WORLD_BEAST_IDS.find((k) => { const a = save.worldBeasts[k].active; return a?.retreat && a.rx === rx && a.ry === ry; }); return id ? fleeSpawn(save, id, rx, ry) : null; } // release 241: fleeing, it passes through a settlement too
   const qb = save.questingBeast?.active, held = qb && qb.rx === rx && qb.ry === ry;
@@ -256,14 +257,14 @@ export function tuneWorldBeast(c, save, id, stats = {}) {
 }
 // The beast falls: pay its bounty and start its cooldown.
 export function worldBeastSlain(save, id) {
-  ensureWorldBeasts(save); const B = WORLD_BEASTS[id], q = save.worldBeasts[id], marks = B.rewardMarks + B.rewardPerLevel * (Number(save.level) || 1);
+  ensureWorldBeasts(save, false); const B = WORLD_BEASTS[id], q = save.worldBeasts[id], marks = B.rewardMarks + B.rewardPerLevel * (Number(save.level) || 1);
   save.currency = (Number(save.currency) || 0) + marks;
   q.slain++; q.cycle++; q.active = null; q.cooldown = B.cooldownSlain;
   return { marks, message: `${B.slain} +${marks} marks.` };
 }
 // The Wayfarer fell in a beast's section while it lived. Returns a message, or null.
 export function worldBeastPlayerFell(save, rx, ry, aliveIds, dungeonId = null) {
-  ensureWorldBeasts(save);
+  ensureWorldBeasts(save, false);
   for (const id of WORLD_BEAST_IDS) {
     const B = WORLD_BEASTS[id], q = save.worldBeasts[id];
     if (!aliveIds.includes(id) || !q.active || q.active.retreat || (q.active.dungeon ? q.active.dungeon !== dungeonId : q.active.rx !== rx || q.active.ry !== ry)) continue; // a retreating beast takes no tries
@@ -277,7 +278,7 @@ export function worldBeastPlayerFell(save, rx, ry, aliveIds, dungeonId = null) {
 // Release 249: a beast that haunts dungeons (the Psychic Crystal, `dungeonChance`) may claim a dungeon with water in it on
 // entry, and is there whenever that dungeon is loaded until the hunt ends. Returns its spawn, or null.
 export function worldBeastForDungeon(save, map, dungeonId) {
-  ensureWorldBeasts(save);
+  ensureWorldBeasts(save, false);
   if (!map?.tiles || !dungeonId) return null;
   const ids = WORLD_BEAST_IDS.filter((k) => WORLD_BEASTS[k].dungeonChance), water = map.tiles.filter((t) => t.kind === "dungeonWater");
   let here = ids.find((k) => save.worldBeasts[k].active?.dungeon === dungeonId);
@@ -323,7 +324,7 @@ export function walkerReachableTiles(map, origin = map?.entry) {
 }
 // A retreat inside a dungeon: it goes to the water there (no sections to cross).
 export function beginDungeonRetreat(save, id, map) {
-  ensureWorldBeasts(save); const B = WORLD_BEASTS[id], q = save.worldBeasts[id];
+  ensureWorldBeasts(save, false); const B = WORLD_BEASTS[id], q = save.worldBeasts[id];
   q.active.retreat = { home: { dungeon: q.active.dungeon, found: id === "voidWalker" ? !!map?.entry : (map?.tiles || []).some((t) => t.kind === "dungeonWater") }, side: null, legs: 0 };
   return { message: B.fleeDungeon || B.flee, home: q.active.retreat.home };
 }
@@ -332,200 +333,163 @@ export function worldBeastsHeld(save) { return WORLD_BEAST_IDS.map((id) => ({ id
 
 // Void Walker terrain, additive at save schema 14. The base/pinned generator is never edited. A scar belongs to
 // the exact areaStateId (including a level suffix), not to a beast's temporary hunt or a shared dungeon family.
-// Safety is provisional pending the owner's review: unsafe progression/elevation regions are refused atomically,
-// with explicit reasons, rather than quietly leaving an unadvertised maze inside the Supernova.
-export const VOID_SCARS = Object.freeze({ schema: 1, maxRadius: 32, maxRegionCells: 4096, maxAreaCells: 16384, maxAreas: 256, maxDimension: 256, maxMapCells: 65536, maxEntities: 512 });
+// Every in-bounds tile in the disk is consumed, including gates, building walls and outer edge tiles. Quest/object
+// state is separate: destroying their physical terrain never completes, opens, discovers or deletes those objects.
+// History has no area-count or scar-count eviction limit. Collision cells are bounded by actual map geometry.
+// Exact continuous visual circles retain their cast-center projection lift. Duplicate and contained circles are
+// removed, never approximated/evicted; distinct noncontained boundaries can still grow indefinitely. Runtime casts/replays normalize only this area.
+// Saving the whole journey is ultimately subject to the storage backend's capacity/error handling.
+export const VOID_SCARS = Object.freeze({ schema: 1, maxRadius: 32, maxRegionCells: 4096, maxDimension: 256, maxMapCells: 65536, maxElevation: 5 });
 const VOID_NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const voidRecord = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
-const voidAreaKey = (key) => typeof key === 'string' && key.startsWith('dungeon:') && key.length <= 1024;
+const voidAreaKey = (key) => typeof key === 'string' && /^(dungeon|overworld):/.test(key) && key.length <= 1024;
 const voidDimensions = (width, height) => Number.isInteger(width) && Number.isInteger(height) && width >= 3 && height >= 3 && width <= VOID_SCARS.maxDimension && height <= VOID_SCARS.maxDimension && width * height <= VOID_SCARS.maxMapCells;
+const voidElevation = (value) => Number.isFinite(value) && value >= 0 && value <= VOID_SCARS.maxElevation;
+const voidHeight = (tile) => voidElevation(tile?.elev) ? tile.elev : 0;
 function voidCell(value, width, height) {
   if (typeof value !== 'string' || value.length > 15 || !/^\d+,\d+$/.test(value)) return null;
   const [x, y] = value.split(',').map(Number);
   return Number.isSafeInteger(x) && Number.isSafeInteger(y) && x < width && y < height ? `${x},${y}` : null;
 }
-function voidAreaRows(areas) {
-  if (!voidRecord(areas)) return [];
-  const rows = [];
-  for (const key in areas) if (Object.hasOwn(areas, key)) { rows.push([key, areas[key]]); if (rows.length > VOID_SCARS.maxAreas) return null; }
-  return rows;
+const voidCircleOrder = (a, b) => a.x - b.x || a.y - b.y || a.radius - b.radius || (a.visualLift || 0) - (b.visualLift || 0);
+const voidCircle = (value, width, height) => voidRecord(value) && Number.isFinite(value.x) && Number.isFinite(value.y) && Number.isFinite(value.radius) && value.x >= 0 && value.y >= 0 && value.x < width && value.y < height && value.radius > 0 && value.radius <= VOID_SCARS.maxRadius && (value.visualLift === undefined || Number.isFinite(value.visualLift) && Math.abs(value.visualLift) <= VOID_SCARS.maxElevation);
+function voidCircles(circles, width, height) {
+  const unique = new Map();
+  // Enumerate actual entries, not a malformed sparse array's potentially enormous declared length.
+  for (const key of Object.keys(circles)) { const c = circles[key]; if (voidCircle(c, width, height)) unique.set(`${c.x},${c.y},${c.radius},${c.visualLift || 0}`, { ...c }); }
+  return [...unique.values()].sort(voidCircleOrder);
 }
-// Valid scars are deduplicated, not truncated. Imported/future over-budget records remain intact but inert: no
-// bounded operation can silently erase history to make room. Unknown root/area fields survive normalization.
-export function ensureVoidScars(save) {
+const voidCircleContains = (a, b) => (a.visualLift || 0) === (b.visualLift || 0) && Math.hypot(a.x - b.x, a.y - b.y) + b.radius <= a.radius;
+const voidCellOrder = (a, b) => { const [ax, ay] = a.split(',').map(Number), [bx, by] = b.split(',').map(Number); return ay - by || ax - bx; };
+// This is an input-shape guard, not a history quota: no generated record can contain more cells than the largest
+// supported map. Oversized malformed/imported arrays stay intact and inert, never truncated to lose old history.
+const voidCellArray = (value) => Array.isArray(value) && value.length <= VOID_SCARS.maxMapCells;
+function voidNormalizeArea(row) {
+  if (!voidRecord(row) || !voidDimensions(row.width, row.height) || !voidCellArray(row.cells)) return row;
+  const cells = [...new Set(row.cells.map((p) => voidCell(p, row.width, row.height)).filter(Boolean))].sort(voidCellOrder), next = { ...row, cells };
+  if (voidRecord(row.elevations)) {
+    const elevations = {};
+    for (const p of cells) if (Object.hasOwn(row.elevations, p) && voidElevation(row.elevations[p])) elevations[p] = row.elevations[p];
+    next.elevations = elevations;
+  }
+  if (Array.isArray(row.circles)) next.circles = voidCircles(row.circles, row.width, row.height);
+  if (voidCellArray(row.legacyCells)) {
+    const recorded = new Set(cells);
+    next.legacyCells = [...new Set(row.legacyCells.map((p) => voidCell(p, row.width, row.height)).filter((p) => recorded.has(p)))].sort(voidCellOrder);
+  }
+  if (voidCellArray(row.slopes)) {
+    const recorded = new Set(cells);
+    next.slopes = [...new Set(row.slopes.map((p) => voidCell(p, row.width, row.height)).filter((p) => recorded.has(p)))].sort(voidCellOrder);
+  }
+  return next;
+}
+// Called without an area key by freshSave/migrateSave; optional current-area normalization keeps a cast/replay
+// independent of the number of other scarred sections. Unknown root/area fields and future schema records survive.
+export function ensureVoidScars(save, areaKey) {
   const source = voidRecord(save.voidScars) ? save.voidScars : {}, areas = voidRecord(source.areas) ? source.areas : {};
   if (source.schema !== undefined && source.schema !== VOID_SCARS.schema) return save;
-  const rows = voidAreaRows(areas);
-  if (!rows) { save.voidScars = { ...source, schema: VOID_SCARS.schema, areas }; return save; }
-  const clean = {};
-  for (const [key, row] of rows) {
-    if (!voidRecord(row) || !voidDimensions(row.width, row.height) || !Array.isArray(row.cells) || row.cells.length > VOID_SCARS.maxAreaCells) { Object.defineProperty(clean, key, { value: row, enumerable: true, writable: true, configurable: true }); continue; }
-    const cells = [...new Set(row.cells.map((p) => voidCell(p, row.width, row.height)).filter(Boolean))];
-    cells.sort((a, b) => { const [ax, ay] = a.split(',').map(Number), [bx, by] = b.split(',').map(Number); return ay - by || ax - bx; });
-    Object.defineProperty(clean, key, { value: { ...row, cells }, enumerable: true, writable: true, configurable: true });
-  }
-  save.voidScars = { ...source, schema: VOID_SCARS.schema, areas: clean };
+  const keys = areaKey === undefined ? Object.keys(areas) : Object.hasOwn(areas, areaKey) ? [areaKey] : [];
+  for (const key of keys) Object.defineProperty(areas, key, { value: voidNormalizeArea(areas[key]), enumerable: true, writable: true, configurable: true });
+  save.voidScars = { ...source, schema: VOID_SCARS.schema, areas };
   return save;
 }
-function voidGeometry(map) {
-  const width = map?.width, height = map?.height ?? (Array.isArray(map?.tiles) ? map.tiles.length / width : 0);
+function voidGeometry(map, areaKey) {
+  // Overworld generators intentionally omit width/height; their established section contract is 32 by 32.
+  const width = map?.width ?? (areaKey.startsWith('overworld:') && map?.tiles?.length === 1024 ? 32 : 0), height = map?.height ?? (Array.isArray(map?.tiles) ? map.tiles.length / width : 0);
   if (!voidDimensions(width, height) || !Array.isArray(map.tiles) || map.tiles.length !== width * height) return null;
-  let footprintWork = 0;
-  for (const field of ['objects', 'items', 'enemySpawns', 'objectives', 'shortcuts', 'routes', 'finalGateTiles']) {
-    const list = map[field]; if (list == null) continue;
-    if (!Array.isArray(list) || list.length > VOID_SCARS.maxEntities) return null;
-    for (const item of list) {
-      if (field === 'shortcuts' && typeof item === 'string') continue; // deep-v1/v2 also record shortcut IDs
-      if (!voidRecord(item)) return null;
-      for (const cells of [item.cells, item.footprint]) if (cells != null) {
-        if (!Array.isArray(cells) || (footprintWork += cells.length) > VOID_SCARS.maxMapCells) return null;
-      }
-      const b = item.bounds;
-      if (b && [b.x, b.y, b.w, b.h].every(Number.isFinite)) {
-        const cells = Math.max(0, Math.min(width, Math.ceil(b.x + b.w)) - Math.max(0, Math.floor(b.x))) * Math.max(0, Math.min(height, Math.ceil(b.y + b.h)) - Math.max(0, Math.floor(b.y)));
-        if ((footprintWork += cells) > VOID_SCARS.maxMapCells) return null;
-      }
-    }
-  }
+  for (let i = 0; i < map.tiles.length; i++) if (!voidRecord(map.tiles[i])) return null;
   return { width, height };
 }
-const voidSafe = (tile) => !!tile && !tile.blocked && tile.kind !== 'void' && tile.kind !== 'sealedGate' && !LETHAL_KINDS.has(tile.kind) && !tile.pit;
-function voidProtection(map, width, height, actors = [], restore = false) {
-  const hard = new Set(), occupied = new Set(), blockers = new Set();
-  const add = (set, x, y) => { if (Number.isFinite(x) && Number.isFinite(y)) { x = Math.floor(x); y = Math.floor(y); if (x >= 0 && y >= 0 && x < width && y < height) set.add(y * width + x); } };
-  const point = (set, p) => { if (p) add(set, p.x, p.y); };
-  for (let i = 0; i < map.tiles.length; i++) {
-    const t = map.tiles[i];
-    if (!t || t.gateId || t.door || t.structure || t.buildingId || t.kind === 'sealedGate' || t.kind === 'void') hard.add(i);
-  }
-  for (const p of map.finalGateTiles || []) point(hard, p);
-  for (const o of map.objects || []) {
-    const critical = /gate|door|shortcut/i.test(String(o.kind || ''));
-    if (!restore || critical) point(occupied, o);
-    if (critical) point(hard, o);
-    if (o.blocked || o.kind === 'sealedGate' && o.state !== 'open') point(blockers, o);
-    for (const p of o.cells || []) point(hard, p);
-    for (const p of o.footprint || []) if (!restore || critical) point(occupied, p);
-    if (!restore && Number.isFinite(o.toX) && Number.isFinite(o.toY)) add(occupied, o.toX, o.toY);
-    if (!restore && o.bounds) {
-      const b = o.bounds;
-      if ([b.x, b.y, b.w, b.h].every(Number.isFinite)) for (let y = Math.max(0, Math.floor(b.y)); y < Math.min(height, Math.ceil(b.y + b.h)); y++) for (let x = Math.max(0, Math.floor(b.x)); x < Math.min(width, Math.ceil(b.x + b.w)); x++) add(occupied, x, y);
-    }
-  }
-  for (const route of [...(map.shortcuts || []), ...(map.routes || [])]) for (const p of route.cells || []) point(hard, p);
-  if (!restore) {
-    for (const p of [map.entry, map.hub, ...(map.objectives || []), ...(map.items || []), ...(map.enemySpawns || [])]) point(occupied, p);
-    for (const a of actors) if (a && Number.isFinite(a.x) && Number.isFinite(a.y)) {
-      point(occupied, a);
-      for (const [dx, dy] of [[.24, .5], [.76, .5], [.24, .88], [.76, .88]]) add(occupied, a.x + dx, a.y + dy);
-    }
-  }
-  return { hard, occupied, blockers };
-}
+const voidSafe = (tile) => !!tile && !tile.blocked && tile.kind !== 'void' && tile.kind !== 'sealedGate' && !LETHAL_KINDS.has(tile.kind) && !tile.pit && !(/Wall$/.test(tile.structure || '') && tile.wallSides?.length);
 function voidNeighbours(i, width, height, visit) {
   const x = i % width, y = Math.floor(i / width);
   for (const [dx, dy] of VOID_NEIGHBOURS) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < width && ny < height) visit(ny * width + nx); }
 }
-// One full-map linear scan before committing a batch. Merely preserving the gate tile does not preserve a gate:
-// a large disk can go around both ends. No newly joined component may contain two formerly separate floor regions.
-function voidRegionSafety(map, width, height, candidates, blockers) {
-  const labels = new Int32Array(map.tiles.length).fill(-1), passable = (i) => voidSafe(map.tiles[i]) && !blockers.has(i);
-  let count = 0;
-  for (let start = 0; start < labels.length; start++) if (labels[start] < 0 && passable(start)) {
-    const queue = [start]; labels[start] = count;
-    for (let q = 0; q < queue.length; q++) voidNeighbours(queue[q], width, height, (n) => { if (labels[n] < 0 && passable(n)) { labels[n] = count; queue.push(n); } });
-    count++;
-  }
-  const seen = new Uint8Array(map.tiles.length);
-  for (const start of candidates) if (!seen[start]) {
-    const queue = [start]; seen[start] = 1; let original = -1;
-    for (let q = 0; q < queue.length; q++) {
-      const i = queue[q], label = labels[i];
-      if (label >= 0) { if (original >= 0 && label !== original) return 'disconnected-regions'; original = label; }
-      let unsafeHeight = false;
-      voidNeighbours(i, width, height, (n) => {
-        // A level-zero scar must not introduce a cliff or strand a protected actor/object on a raised island.
-        // Height-changing regions are explicitly refused until a separately approved edge/ramp treatment exists.
-        if (candidates.has(i) && !candidates.has(n) && passable(n) && Number(map.tiles[n].elev || 0) !== 0) unsafeHeight = true;
-        if (!seen[n] && !blockers.has(n) && (candidates.has(n) || passable(n))) { seen[n] = 1; queue.push(n); }
-      });
-      if (unsafeHeight) return 'unsafe-elevation';
-    }
-  }
-  return null;
+// Preserve every existing safe floor's height. Consumed walls/pits copy the nearest safe floor's elevation through
+// a deterministic, map-bounded multi-source search (row-major tie break). With no safe floor, use level zero.
+// The shared scar-edge traversal rule handles steep new joins without changing any non-scar cliff or lethal tile.
+function voidFloorHeights(map, width, height) {
+  const elevations = new Float64Array(map.tiles.length), seen = new Uint8Array(map.tiles.length), queue = [];
+  for (let i = 0; i < map.tiles.length; i++) if (voidSafe(map.tiles[i])) { elevations[i] = voidHeight(map.tiles[i]); seen[i] = 1; queue.push(i); }
+  for (let q = 0; q < queue.length; q++) voidNeighbours(queue[q], width, height, (n) => { if (!seen[n]) { seen[n] = 1; elevations[n] = elevations[queue[q]]; queue.push(n); } });
+  return elevations;
 }
-const voidResult = (ok, reason = null, cells = [], protectedCells = [], rejected = []) => ({ ok, reason, changed: cells.length, cells, protected: protectedCells, rejected });
-function voidTile(areaKey, width, i) {
+const voidResult = (ok, reason = null, cells = [], visualChanged = false) => ({ ok, reason, changed: cells.length, visualChanged, cells, protected: [], rejected: [] });
+function voidTile(areaKey, width, i, elevation = 0, slope = false) {
   const x = i % width, y = Math.floor(i / width);
   // Do not spread the old wall: environment, pit, structure, gate and collision metadata must not survive.
-  return { x, y, kind: 'voidScar', blocked: false, elev: 0, slope: false, voidScar: true, detail: hashSeed(`void-scar:v1:${areaKey}:${x},${y}`) % 4 };
+  return { x, y, kind: 'voidScar', blocked: false, elev: elevation, slope, voidScar: true, detail: hashSeed(`void-scar:v1:${areaKey}:${x},${y}`) % 4 };
 }
-function voidInstall(map, areaKey, width, indices) {
-  const changed = [];
+function voidInstall(map, areaKey, width, indices, row) {
+  // Runtime metadata is detached from saved records; rendering never mutates persistent geometry.
+  map._voidScarCircles = (row.circles || []).map((c) => ({ ...c }));
+  map._voidScarLegacyCells = [...(row.legacyCells || (row.circles?.length ? [] : row.cells))];
+  const changed = [], slopes = new Set(row.slopes || []);
   for (const i of indices) {
-    const next = voidTile(areaKey, width, i), old = map.tiles[i];
+    const key = `${i % width},${Math.floor(i / width)}`, elevation = row.elevations?.[key] ?? row.elevation;
+    const next = voidTile(areaKey, width, i, elevation, slopes.has(key)), old = map.tiles[i];
     if (old && Object.keys(old).length === Object.keys(next).length && Object.keys(next).every((k) => old[k] === next[k])) continue;
-    map.tiles[i] = next; changed.push(`${next.x},${next.y}`);
+    map.tiles[i] = next; changed.push(key);
   }
   return changed;
 }
 function voidStoredArea(save, areaKey, dimensions) {
-  if (save.voidScars?.schema !== VOID_SCARS.schema || !voidRecord(save.voidScars?.areas)) return { error: 'capacity-or-schema' };
-  const row = save.voidScars.areas[areaKey];
+  if (save.voidScars?.schema !== VOID_SCARS.schema || !voidRecord(save.voidScars?.areas)) return { error: 'unsupported-schema' };
+  const row = Object.hasOwn(save.voidScars.areas, areaKey) ? save.voidScars.areas[areaKey] : undefined;
   if (row === undefined) return { row: null };
-  if (!voidRecord(row) || !Array.isArray(row.cells) || row.cells.length > VOID_SCARS.maxAreaCells) return { error: 'capacity-or-record' };
+  if (!voidRecord(row) || !voidCellArray(row.cells) || row.elevations !== undefined && !voidRecord(row.elevations) || row.slopes !== undefined && !voidCellArray(row.slopes) || row.circles !== undefined && !Array.isArray(row.circles) || row.legacyCells !== undefined && !voidCellArray(row.legacyCells)) return { error: 'invalid-record' };
   if (row.width !== dimensions.width || row.height !== dimensions.height || row.elevation !== 0) return { error: 'geometry-mismatch' };
   return { row };
 }
-// Converts a proposed dungeon disk atomically. Floor repaint and pit neutralization are durable too, not just walls.
-// `actors` must include the player and live actors. No actor, object, reward, inventory or generator state is edited.
+// `center` is the exact world-space rendered center (Game supplies effect.x + .5, effect.y + .62).
+// Optional center.visualLift pins the cast projection; legacy/direct-helper circles default to zero lift.
+// Convert every in-bounds tile square intersected by the disk, excluding tangent-only contact. Collision is tile
+// based; only the visual white/red union is continuous. Outside-disk portions of intersected tiles render ordinary
+// safe floor, not false remaining walls. Floor repaint and pit neutralization are durable too. The compatibility
+// `actors` argument is never read or mutated: terrain is separate from actor/object/reward/inventory/discovery state. Existing scars, including their heights, are immutable history.
 export function consumeVoidTerrain(save, map, areaKey, center, radius, actors = []) {
-  const dimensions = voidGeometry(map);
-  if (!voidAreaKey(areaKey) || !dimensions) return voidResult(false, 'unsupported-area');
-  if (!Number.isFinite(center?.x) || !Number.isFinite(center?.y) || !Number.isFinite(radius) || radius <= 0 || radius > VOID_SCARS.maxRadius || center.x < 0 || center.y < 0 || center.x >= dimensions.width || center.y >= dimensions.height || !Array.isArray(actors) || actors.length > VOID_SCARS.maxEntities) return voidResult(false, 'invalid-region');
-  ensureVoidScars(save);
-  if (!voidAreaRows(save.voidScars?.areas)) return voidResult(false, 'area-capacity');
+  if (!voidAreaKey(areaKey)) return voidResult(false, 'unsupported-area');
+  const dimensions = voidGeometry(map, areaKey); if (!dimensions) return voidResult(false, 'unsupported-area');
+  if (!Number.isFinite(center?.x) || !Number.isFinite(center?.y) || !Number.isFinite(radius) || radius <= 0 || radius > VOID_SCARS.maxRadius || center.x < 0 || center.y < 0 || center.x >= dimensions.width || center.y >= dimensions.height || center.visualLift !== undefined && (!Number.isFinite(center.visualLift) || Math.abs(center.visualLift) > VOID_SCARS.maxElevation) || !Array.isArray(actors)) return voidResult(false, 'invalid-region');
+  ensureVoidScars(save, areaKey);
   const stored = voidStoredArea(save, areaKey, dimensions); if (stored.error) return voidResult(false, stored.error);
-  const { width, height } = dimensions, protection = voidProtection(map, width, height, actors), candidates = new Set(), protectedCells = [], rejected = [];
-  let total = 0;
-  for (let y = Math.max(0, Math.ceil(center.y - radius)); y <= Math.min(height - 1, Math.floor(center.y + radius)); y++) for (let x = Math.max(0, Math.ceil(center.x - radius)); x <= Math.min(width - 1, Math.floor(center.x + radius)); x++) {
-    if (Math.hypot(x - center.x, y - center.y) > radius) continue;
-    if (++total > VOID_SCARS.maxRegionCells) return voidResult(false, 'region-capacity');
-    const i = y * width + x, key = `${x},${y}`;
-    if (x === 0 || y === 0 || x === width - 1 || y === height - 1) { protectedCells.push(key); continue; }
-    if (protection.hard.has(i) || protection.occupied.has(i)) {
-      protectedCells.push(key);
-      if (protection.hard.has(i) || !voidSafe(map.tiles[i])) rejected.push(key);
-      continue;
-    }
-    candidates.add(i);
+  const { width, height } = dimensions, candidates = [];
+  for (let y = Math.max(0, Math.floor(center.y - radius)); y <= Math.min(height - 1, Math.floor(center.y + radius)); y++) for (let x = Math.max(0, Math.floor(center.x - radius)); x <= Math.min(width - 1, Math.floor(center.x + radius)); x++) {
+    const dx = Math.max(x - center.x, 0, center.x - x - 1), dy = Math.max(y - center.y, 0, center.y - y - 1);
+    if (Math.hypot(dx, dy) >= radius) continue;
+    candidates.push(y * width + x);
+    if (candidates.length > VOID_SCARS.maxRegionCells) return voidResult(false, 'region-capacity');
   }
-  if (rejected.length) return voidResult(false, 'protected-region', [], protectedCells, rejected);
-  const unsafe = voidRegionSafety(map, width, height, candidates, protection.blockers);
-  if (unsafe) return voidResult(false, unsafe, [], protectedCells, [...candidates].map((i) => `${i % width},${Math.floor(i / width)}`));
-  const prior = stored.row?.cells || [], all = new Set(prior);
-  for (const i of candidates) all.add(`${i % width},${Math.floor(i / width)}`);
-  if (all.size > VOID_SCARS.maxAreaCells || !stored.row && voidAreaRows(save.voidScars.areas).length >= VOID_SCARS.maxAreas) return voidResult(false, 'area-capacity', [], protectedCells);
-  if (all.size) save.voidScars.areas[areaKey] = { ...stored.row, width, height, elevation: 0, cells: [...all].sort((a, b) => { const [ax, ay] = a.split(',').map(Number), [bx, by] = b.split(',').map(Number); return ay - by || ax - bx; }) };
-  return voidResult(true, null, voidInstall(map, areaKey, width, candidates), protectedCells);
+  const all = new Set(stored.row?.cells || []), elevations = { ...stored.row?.elevations }, slopes = new Set(stored.row?.slopes || []), heights = voidFloorHeights(map, width, height);
+  for (const i of candidates) {
+    const key = `${i % width},${Math.floor(i / width)}`; if (all.has(key)) continue;
+    all.add(key);
+    if (heights[i] !== 0) elevations[key] = heights[i];
+    if (voidSafe(map.tiles[i]) && map.tiles[i].slope) slopes.add(key);
+  }
+  const visualLift = center.visualLift ?? 0;
+  const circle = { x: center.x, y: center.y, radius, ...(visualLift ? { visualLift } : {}) }, priorCircles = stored.row?.circles || [], visualChanged = !priorCircles.some((c) => voidCircleContains(c, circle));
+  const circles = visualChanged ? [...priorCircles.filter((c) => !voidCircleContains(circle, c)), circle].sort(voidCircleOrder) : priorCircles;
+  const legacyCells = stored.row?.legacyCells || (priorCircles.length ? [] : stored.row?.cells || []);
+  const row = { ...stored.row, width, height, elevation: 0, cells: [...all].sort(voidCellOrder), circles };
+  if (legacyCells.length || stored.row?.legacyCells !== undefined) row.legacyCells = [...legacyCells];
+  if (Object.keys(elevations).length || stored.row?.elevations !== undefined) row.elevations = elevations;
+  if (slopes.size || stored.row?.slopes !== undefined) row.slopes = [...slopes].sort(voidCellOrder);
+  if (all.size) save.voidScars.areas[areaKey] = row;
+  return voidResult(true, null, voidInstall(map, areaKey, width, candidates, row), visualChanged);
 }
-// Call after saved object/deep-progress restoration, before position repair. Do not repeat spawn generation or
-// occupancy exclusions: a moved actor can legitimately now stand on one of its dungeon's previously consumed cells.
+// Replay after saved object/deep-progress restoration and before position repair, in both dungeon and overworld.
+// Original gates, buildings and later occupants cannot restore consumed collision or veto its permanent scar.
 export function applyVoidScars(save, map, areaKey) {
-  const dimensions = voidGeometry(map);
-  if (!voidAreaKey(areaKey) || !dimensions) return voidResult(false, 'unsupported-area');
-  ensureVoidScars(save);
+  if (!voidAreaKey(areaKey)) return voidResult(false, 'unsupported-area');
+  const dimensions = voidGeometry(map, areaKey); if (!dimensions) return voidResult(false, 'unsupported-area');
+  ensureVoidScars(save, areaKey);
   const stored = voidStoredArea(save, areaKey, dimensions); if (stored.error) return voidResult(false, stored.error);
-  if (!stored.row) return voidResult(true);
-  const { width, height } = dimensions, protection = voidProtection(map, width, height, [], true), candidates = new Set(), rejected = [];
+  if (!stored.row) { map._voidScarCircles = []; map._voidScarLegacyCells = []; return voidResult(true); }
+  const { width, height } = dimensions, candidates = [];
   for (const key of stored.row.cells) {
     const clean = voidCell(key, width, height); if (!clean) return voidResult(false, 'invalid-record');
-    const [x, y] = clean.split(',').map(Number), i = y * width + x;
-    if (x === 0 || y === 0 || x === width - 1 || y === height - 1 || protection.hard.has(i)) rejected.push(clean);
-    else candidates.add(i);
+    const [x, y] = clean.split(',').map(Number); candidates.push(y * width + x);
   }
-  if (rejected.length) return voidResult(false, 'protected-record', [], rejected, rejected);
-  const unsafe = voidRegionSafety(map, width, height, candidates, protection.blockers);
-  if (unsafe) return voidResult(false, unsafe);
-  return voidResult(true, null, voidInstall(map, areaKey, width, candidates));
+  return voidResult(true, null, voidInstall(map, areaKey, width, candidates, stored.row));
 }

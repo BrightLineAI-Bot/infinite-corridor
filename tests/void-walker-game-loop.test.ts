@@ -29,7 +29,7 @@ function scenario(area, attack) {
   }
  }
  assert.ok(began,`${attack} began in ${area}`);assert.equal(e.pack.attack,null,`${attack} completes`);assert.equal(g.packEffects.length,0,'effects finish');
- if(area==='overworld')assert.equal(Object.keys(save.voidScars.areas).length,0,'overworld terrain not persisted');
+ if(attack==='voidSupernova'){assert.ok(map.tiles.some(t=>t.kind==='voidScar'));assert.ok(save.voidScars.areas[g.areaStateId()],`${area} aftermath persists`);}else assert.equal(Object.keys(save.voidScars.areas).length,0,'other attacks never change terrain');
  return{area,attack,began,peakEffects:peak,damage,paused,scarCells:map.tiles.filter(t=>t.kind==='voidScar').length};
 }
 // The attack is deliberately selected, but input, scheduling, damage, pause and cleanup
