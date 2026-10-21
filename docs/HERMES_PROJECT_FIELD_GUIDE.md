@@ -2387,3 +2387,66 @@ Late additions (Tim, 2026-10-21):
 - The knock-down pose is presentation only; collision and position are unchanged.
 - The cloud ascent is the existing home-fade timing, with the body lifted instead of sunk.
 - At sea, the Giant's attacks are unchanged (slams land on the water). Supernova fog only limits sight; it has no damage and no saved state.
+
+## Release 259: world beasts pursue; the Blob splits; Glyphs fix; Rift Step without recall; Pack tabs; back button — 2026-10-21
+
+Tim, 2026-10-21. On pursuit: "these world bosses should pursue you... The blob can just take one", then "three tiles max... it'll chase you 2 tiles, and then it'll stop there and then it'll chase you 1 more... If you don't wanna fight it within three tiles, you're obviously running away". On the Blob: "a portion of it just detaches and retreats home and just leaves the large mass", then "if the blob is at its original size, it will just leave... only if it's larger will it shrink and leave a residue". On the Arcanum: "the glyphs and echoes aren't working", then "Glyphs, echoes, arcanum, all those steps should just be under... an arcanum tab... so I can just flip through them... in one place... the armor and weapon upgrading system should be another tab". On Rift Step: "should not recall you back to a point... disable that". On the back button: "the back button just freezes the game... it should go back to pause or resume, it should give me that menu".
+
+**CODE:**
+- **Pursuit.** `world-beasts.ts` `PURSUIT` = `{ sections: 3, inset: 3.5, limits: { morphingBlob: 1 }, exclude: [voidWalker, astralWorm] }`.
+  - `canPursue(save, id, rx, ry, dx, dy)` checks that the beast is active, not retreating, not in a dungeon and not excluded. Its `active.chase` must be under its limit, no other world beast may hold the next section, and the Questing Beast must not be there.
+  - `pursued` moves `active.rx/ry` and increments `chase`.
+  - `pursuitSpawn` places it `inset` tiles inside the gate the Wayfarer entered by, on the nearest ground it can hold (`beastGround`, which `worldBeastFor` now shares).
+  - `Game.transitionSection` collects the aggro, non-retreating world beasts that may pursue before the snapshot. After the crossing holds (the sea checks pass), `worldBeastsFollow` spawns each one in the new section with its own `hp`/`maxHp`/`damage`, aggro and chasing, and removes its record from the section it left. It does not follow into a settlement or a section that already has a world beast or the Questing Beast.
+  - `chase` counts crossings for the whole encounter and is never reset on return, so three is the total. It ends with the encounter (`active` is cleared).
+  - `patience` is untouched, so it keeps counting across sections.
+  - `ensureWorldBeasts` normalises `chase` (a positive integer, or absent). This is additive at schema 14.
+- **Blob split.** `BLOB_SPLIT` = `{ grown: .05, linger: 14, fade: 5 }`.
+  - When the Blob begins an overworld retreat, `Game.splitBlob` checks its size. Only a Blob grown more than `grown` past its original size (`blobBase.scale`) splits.
+  - The grown Blob flees at its original size (`blobAge`/`blobMerged` reset) and leaves an inert `blobRemnant` at its grown size: untargetable, no rewards, no AI.
+  - The update loop counts `remnantLeft` down, drives `fleeFade` over the last `fade` s and removes the remnant at 0. `snapshotArea` never saves remnants.
+  - A Blob still at its original size leaves whole.
+- **Glyphs fix.** `openGlyphs` in `main.ts` read `constlit=` for `const lit=`, a merge typo from release 112 (89015a9). In the strict module it threw `ReferenceError` on every open, after `arcanumShell` had drawn only the tabs.
+- **Pack tabs.** `main.ts` `PACK_TABS` (Wayfarer, Gear, Forge, Arcanum, Supplies) and `packTabBar(current)`, a sticky `.pack-tabs` row.
+  - `openPack(tab)` shows one tab. It remembers `packTab` and ignores a click event passed as the argument.
+  - `openForge` and `arcanumShell` draw the same bar (Forge, Arcanum). The Arcanum keeps its own non-sticky `.arc-subtabs` row (Spells & Constellation, Glyphs, Echoes).
+  - "Reinforce weapon · 3 iron" moved from the Pack to the Forge. The Pack's separate Glyphs, Echoes and Constellation buttons were removed.
+  - The Aperture card still attaches under the Wayfarer heading (the save's name).
+- **Back button.** `backPressed()` in `main.ts`:
+  - The creature viewer closes on its own.
+  - Any open Pack/Atlas/Journal/Options closes and the pause menu shows.
+  - The pause menu continues play.
+  - In play, it opens the pause menu.
+  - It runs from each dialog's `cancel` (close request; default prevented) and from `popstate`. A guard history entry (`{icBack:true}`), re-armed after each back, keeps the page from navigating away.
+- **Carry limits and the shovel.** `boats.ts` `WOOD.carry` = 6 (two skiffs at `skiffCost` 3). `digging.ts` `DIG.carryStone` = 2, and `DIG.recipe` is now 1 wood + 1 stone. Tim: "one wood and one stone to make a shovel... 3 wood for a boat... up to 6... the choice between 2 boats or a boat and 2 shovels". `ensureShovel` crafts it on the first dig with the materials, one at a time, `shovelUses` 6.
+  - `addWood` and `addStone` add up to the limit, and never take away wood or stone an older save already holds over it.
+  - Chipping a rock with a full pouch is refused without using up the rock. Cutting a tree says when you are full.
+- **Crystal poise.** `CRYSTAL.poiseHits` 10 (Tim: "ten hits for a poise break"), `poiseForget` 5, `breakTime` 3.2, `fallTime` .25, `riseTime` .4.
+  - Tim first asked for fewer dodges ("dodges after a few hits"). He then changed it: "it dodges a lot, that's fine... it has poise, so if it takes a few hits, then it will break and fall... you can get a bunch of hits in... then it will get up and dodge away". So the generic dodge is unchanged.
+  - `crystalPoise` in `monster-pack.ts`, run each tick before the dodge, counts landed blows from hp drops into `pack.poiseHits`. The count is forgotten after `poiseForget` s without one.
+  - At `poiseHits` the Crystal breaks (`pack.broken`) and loses any attack, telegraph or grab hold.
+  - While broken it is targetable and does not move, dodge or attack. `e.crystalFall` (0 to 1) eases over `fallTime` and `riseTime`. The renderer sinks the Crystal to the floor, tips it over and greys its aura; its two lesser crystals and four circling shards drop out of the tipped frame and clatter to the floor around it with a small bounce.
+  - When the break ends, it springs away from the Wayfarer (an immediate evade).
+  - `resetPackRuntime` clears the break and `crystalFall`.
+- **Crystal dungeon bounds.** `Game.roamerBounds()`, cached against the walker landing graph so it rebuilds when the terrain changes, marks where a dungeon roamer may be:
+  - any open (unblocked) tile, so every room counts, including one walking cannot reach (the release 249 decision);
+  - any tile touching one;
+  - an interior wall with open ground on both opposite sides within `CRYSTAL.boundsSpan` 3 tiles.
+
+  The game loop undoes a roamer tick that ends outside the bounds (not while retreating). A roamer saved outside them is moved to the nearest allowed tile on load.
+- **Crystal goals.** Tim: "its end goal should be... a place the player can walk to... it can spend some time between walls". Then: unaggroed "he can just roam around the dungeon... whatever his own ends are... if you do find him... he'll try and find you for a while, until... you die and you leave his aggro area".
+  - The pack world's `walkable(x, y)` (dungeons only) is `Game.playerFloor()`: the floor 4-way connected to the Wayfarer's own tile, cached until the terrain changes or the Wayfarer leaves it.
+  - Unaggroed patrol (`dungeonPatrolRoute`) still samples the whole domain's open ground, as before.
+  - Engaged, `crystalManifest` runs each tick after any attack. Off reachable floor for `CRYSTAL.wallLinger` 2.5 s, the Crystal makes for the nearest reachable floor within `manifestSearch` 10 at `manifestSpeed` 2.4, and blinks onto it if held back `manifestBlink` 1.2 s. It can still attack from inside walls before then.
+  - It hunts for a while: out of sight and beyond `roamSight` for `forgetAfter` 12 s (`pack.lostFor`), it drops aggro and resumes its patrol. Sighting it again re-engages it as before.
+- **Rift Step.** `constellation.ts` `RIFT` = `{ reach: 2, longStep: 2 }`.
+  - The recall (`magicSkills.riftAnchor`) is gone; a stale one from an older save is dropped on the next step.
+  - The `anchor` capstone keeps its id and is renamed Long Step: `+RIFT.longStep` reach. The step still stops at walls, ledges and unstandable ground.
+
+**BOUNDARY:**
+- The back button was checked in Chromium at 390 px with real history back and Escape: Pack, then pause menu, then play, then pause menu; Atlas, then pause menu. The page never navigated away. Not tested on a phone.
+- Pursuit applies only to overworld section edges. Dungeons, the Void Walker's and the Astral Worm's own crossings, and retreats are unchanged.
+- A beast that follows is placed fresh by the gate. Its position in the section it left is not kept.
+- The pursuit numbers and the Blob split numbers are provisional, not Tim's.
+- The Glyphs fix was checked in Chromium at 390 px against a build of `main` (which threw "constlit is not defined" with an empty screen). Glyphs then showed its hosts, sockets, tiles and footer, and Echoes and the Arcanum opened without errors.
+- Tests: `tests/world-beast-pursuit.test.ts`, `tests/constellation.test.ts` (Long Step, no recall), `tests/crystal-259.test.ts` (poise break, dungeon bounds, patrol anywhere, settling out of walls when engaged, losing the Wayfarer) and `tests/digging.test.ts` (carry limits; the old chip-then-break total now stops at the stone limit).

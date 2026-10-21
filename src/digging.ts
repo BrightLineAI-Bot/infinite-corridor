@@ -15,7 +15,8 @@ export const DIG = {
   version: 1,
   reach: 3,                      // blocks deep from open floor a tunnel may go
   shovelUses: 6,                 // wall blocks a shovel digs before it breaks
-  recipe: { wood: 2, stone: 2 }, // what a shovel costs
+  recipe: { wood: 1, stone: 1 }, // what a shovel costs (release 259, Tim: "one wood and one stone to make a shovel")
+  carryStone: 2,                 // release 259 (Tim: "up to 2 stones... that's 2 shovels"): the most stone the Wayfarer carries
   stone: { wall: 1, chip: 1, break: 2, spot: 2 },
   treasureChance: .1,            // share of wall blocks that hide something
   glintShare: .4,                // share of those whose glint shows on an exposed face
@@ -42,7 +43,8 @@ export function ensureDigging(save) {
   save.materials ||= {}; save.materials.stone = Math.max(0, Math.floor(Number(save.materials.stone) || 0));
   return save;
 }
-export function addStone(save, n) { save.materials ||= {}; save.materials.stone = Math.max(0, Number(save.materials.stone) || 0) + n; return save.materials.stone; }
+// Adds up to the carry limit; stone already held over it (an older save) is kept, never taken away.
+export function addStone(save, n) { save.materials ||= {}; const have = Math.max(0, Number(save.materials.stone) || 0); save.materials.stone = have >= DIG.carryStone ? have : Math.min(DIG.carryStone, have + n); return save.materials.stone; }
 export const canDigArea = (areaKey) => typeof areaKey === "string" && areaKey.length > 0 && !TEMPORARY.test(areaKey);
 
 // Crafts a shovel from the recipe if there is none. Returns { ok, crafted, message }.

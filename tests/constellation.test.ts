@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BRANCHES, BRANCH_IDS, POINT_EVERY, ensureConstellation, pointsEarned, pointsSpent, pointsFree, learnRank, learnMod, chooseCap, respec, respecCost, hasNode, awakenCheck, awaken, AWAKEN_COST } from '../src/constellation.ts';
+import { BRANCHES, BRANCH_IDS, POINT_EVERY, ensureConstellation, pointsEarned, pointsSpent, pointsFree, learnRank, learnMod, chooseCap, respec, respecCost, hasNode, awakenCheck, awaken, AWAKEN_COST, RIFT } from '../src/constellation.ts';
 import { APERTURE_SKILLS, skillRank } from '../src/items.ts';
 import { normalizeSockets } from '../src/glyphs.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
@@ -77,6 +77,22 @@ test('Rift Step blinks along the move direction, stops at walls and ledges, and 
   const f = rich(); master(f, 'rift'); chooseCap(f, 'rift', 'fold');
   g = arena(f, []); g.lastUpdateNow = 1000;
   assert.equal(g.activateApertureSkill('rift-step'), true); assert.equal(g.activateApertureSkill('rift-step'), true, 'second charge');
+});
+
+test('release 259: Rift Step never recalls you; the Anchor capstone is Long Step and reaches farther', () => {
+  const plain = rich(); master(plain, 'rift'); let g = arena(plain, []); g.lastUpdateNow = 1000; const x0 = g.player.x;
+  g.activateApertureSkill('rift-step'); const short = g.player.x - x0;
+  const s = rich(); master(s, 'rift'); chooseCap(s, 'rift', 'anchor');
+  g = arena(s, []); g.lastUpdateNow = 1000;
+  assert.equal(g.activateApertureSkill('rift-step'), true); const long = g.player.x - x0;
+  assert.ok(long > short + RIFT.longStep - .3, `Long Step goes farther (${short} -> ${long})`);
+  s.magicSkills.riftCharges = 1; s.magicSkills.cooldowns['rift-step'] = 0; const landed = g.player.x; g.lastUpdateNow = 1500;
+  g.activateApertureSkill('rift-step');
+  assert.ok(g.player.x >= landed, 'a second use within 3 s steps on; it never pulls you back');
+  assert.equal(s.magicSkills.riftAnchor, undefined, 'no recall point is kept');
+  s.magicSkills.riftAnchor = { x: 1, y: 1, until: 1e12, areaId: g.areaId() }; s.magicSkills.riftCharges = 1; const before = g.player.x;
+  g.activateApertureSkill('rift-step'); assert.notEqual(g.player.x, 1, 'a recall point saved by an older release is ignored'); assert.equal(s.magicSkills.riftAnchor, undefined);
+  assert.ok(g.player.x >= before);
 });
 
 test('modifiers and capstones act in play: Ember Skin burns, Mirror Veil undoes a blow, Overflow speeds spells, Cinder Heart bursts', () => {

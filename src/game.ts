@@ -71,7 +71,7 @@ import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, 
 import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
 import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.ts";
 import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
-import { WORLD_BEASTS, BEAST_HOMES, RETREAT, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
+import { WORLD_BEASTS, BEAST_HOMES, RETREAT, PURSUIT, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.ts";
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
@@ -1821,7 +1821,7 @@ export class Game {
       };
     this.save.session.areas[this.areaStateId()] = {
       encounterVersion:this.map.encounterVersion||0,
-      enemies: this.enemies.map((e) => ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } })),
+      enemies: this.enemies.filter((e) => !e.blobRemnant).map((e) => ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } })), // release 259: the Blob's remnant is never saved
       objects,
       projectiles: this.projectiles.map((p) => ({ ...p })),
       effects: this.effects.map((f) => ({ ...f, hits: { ...f.hits } })),
@@ -2037,6 +2037,8 @@ export class Game {
         // Walls, water and isolated pockets are valid saved flight positions. Only repair invalid map bounds.
         e.x = Math.max(0, Math.min(areaWidth - 1, Number.isFinite(e.x) ? e.x : this.map.entry?.x ?? 4));
         e.y = Math.max(0, Math.min(mapHeight(this.map, area) - 1, Number.isFinite(e.y) ? e.y : this.map.entry?.y ?? 5));
+        // Release 259: never left beyond the dungeon's edge; it comes back to the nearest place it may be.
+        const ok = !e.retreating && this.roamerBounds(); if (ok && ok[Math.round(e.y) * areaWidth + Math.round(e.x)] !== 1) { let best = null, bd = Infinity; for (let i = 0; i < ok.length; i++) if (ok[i]) { const d = Math.hypot(i % areaWidth - e.x, Math.floor(i / areaWidth) - e.y); if (d < bd) { bd = d; best = i; } } if (best != null) { e.x = best % areaWidth; e.y = Math.floor(best / areaWidth); } }
       } else if (e.worldBeast === "voidWalker" && area === "dungeon") {
         if (e.retreating) e.untargetable = true;
         // A safe disconnected retreat position is unfinished work, not a corrupted save. Repair only
@@ -2399,9 +2401,25 @@ export class Game {
     this.save.magicBuff = this.magicBuffRemaining;
     this.save.spellCooldown = this.spellCooldownRemaining;
   }
+  // Release 259: once the crossing has held, each pursuing world beast comes over the edge behind the Wayfarer with its
+  // wounds, unless this section is a settlement or another beast's ground already stands here; then it stays behind.
+  worldBeastsFollow(hunters, fromArea, dx, dy) {
+    for (const h of hunters) {
+      if (this.map.settlement || this.enemies.some(e => (e.worldBeast || e.questingBeast) && !e.dead) || !canPursue(this.save, h.id, this.rx - dx, this.ry - dy, dx, dy)) continue;
+      const spawn = pursuitSpawn(this.save, h.id, this.map, this.rx, this.ry, dx, dy); if (!spawn) continue;
+      pursued(this.save, h.id, dx, dy);
+      const e = this.createEnemyFromSpawn(spawn, "overworld"); if (h.maxHp > 0) { e.maxHp = h.maxHp; e.damage = h.damage; } e.hp = Math.max(1, Math.min(e.maxHp, Number(h.hp) || e.maxHp)); e.aggro = true; // the same creature: its own vitals ensureAI(e).mode = "chase";
+      this.enemies.push(e);
+      const left = this.save.session.areas[fromArea]; if (left?.enemies) left.enemies = left.enemies.filter(q => q.id !== h.actorId); // it is no longer back there
+      const B = WORLD_BEASTS[h.id], q = this.save.worldBeasts[h.id].active, more = (PURSUIT.limits[h.id] ?? PURSUIT.sections) - (q.chase || 0);
+      this.message = `${B.name} follows you across.${more > 0 ? "" : " It will go no further."}`;
+    }
+  }
   transitionSection(dx, dy) {
     const from = { rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y };
     const pursuers=this.enemies.filter(e=>e.gatePredator&&e.aggro&&!e.dead).map(e=>({...e,ai:{...ensureAI(e)}}));
+    // Release 259: a fighting world beast may follow the Wayfarer over the edge (world-beasts.ts PURSUIT).
+    const fromArea = this.areaStateId(), hunters = this.enemies.filter(e => e.worldBeast && e.aggro && !e.dead && !e.retreating && !e.astralCompanionOf && canPursue(this.save, e.worldBeast, this.rx, this.ry, dx, dy)).map(e => ({ id: e.worldBeast, actorId: e.id, hp: e.hp, maxHp: e.maxHp, damage: e.damage }));
     for(const e of this.enemies)if(!e.gatePredator&&e.aggro&&!e.dead){e.aggro=false;ensureAI(e).mode="return"}
     for(const e of this.enemies)if(e.gatePredator&&e.aggro&&!e.dead)e.dead=true;
     this.snapshotArea();
@@ -2428,6 +2446,7 @@ export class Game {
     // Open seas (release 152): a skiff crosses wherever the water runs on; a walker cannot step out into open sea.
     if (aboard(this.save)) { if (!this.sailAcross(dx, dy, from)) return false; }
     else if (DEEP_WATER.includes(footprintHazard(this.map, 32, this.player.x, this.player.y)) && !canSwim(this.save)) { this.returnFrom(from, "Open sea lies beyond. You need a boat to cross it."); return false; }
+    this.worldBeastsFollow(hunters, fromArea, dx, dy);
     for(const pursuer of pursuers){const e={...pursuer,id:`${pursuer.id}-pursuit-${this.rx}-${this.ry}`,dead:false,aggro:true,x:this.player.x-dx*1.4,y:this.player.y-dy*1.4,ai:{...pursuer.ai,homeX:this.player.x,homeY:this.player.y}};placeGatePursuer(e,this.player,this.map,mapWidth(this.map,this.area));resetGateAttack(e, true);this.enemies.push(e)}
     if(pursuers.length)this.message="The Gate Revenant tears through the crossing behind you.";
     this.sync();
@@ -2611,7 +2630,7 @@ export class Game {
     // Release 193: moments that may open a Glimpse (main.ts reads the cue on the next frame).
     if ((o.kind === "ruinMarker" || o.kind === "shrine") && chosen === "inspect") this.glimpseCue = "touch";
     if (r.transition === "dungeon") this.glimpseCue = "crossing";
-    if (o.kind === "tree" && chosen === "cut") { applyFallenTreeCrossings(this.map); const n = woodFor(o), total = addWood(this.save, n); this.message = `${this.message} +${n} wood (${total}).`; r.message = this.message; }
+    if (o.kind === "tree" && chosen === "cut") { applyFallenTreeCrossings(this.map); const before = Number(this.save.materials?.wood) || 0, total = addWood(this.save, woodFor(o)), n = total - before; this.message = n > 0 ? `${this.message} +${n} wood (${total}${total >= WOOD.carry ? ", all you can carry" : ""}).` : `${this.message} You can carry no more wood (${WOOD.carry}).`; r.message = this.message; }
     if(r.transition==="elitePortal"){
       this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=`elite-portal:${this.save.seed}:knife-choir`;const h=dungeonHistory(this.save,this.save.session.activeDungeonId);h.visits++;h.visitOpen=true;this.loadArea('dungeon');this.player.x=4;this.player.y=5;relocateIfStranded(this.player,this.map,mapWidth(this.map,'dungeon'));
     } else if(r.transition==="displacement"){
@@ -2977,6 +2996,37 @@ export class Game {
     if (changed) this._walkerLandingGraph = { map, width, landscape: !!map.landscape, entryX: entry.x, entryY: entry.y, flags: Uint8Array.from(tiles, flag), heights: Float64Array.from(tiles, t => Number(t?.elev) || 0), cells: walkerReachableTiles(map) };
     return this._walkerLandingGraph.cells;
   }
+  // Release 259 (Tim: the Psychic Crystal "went into... beyond the edge of the dungeon, so I couldn't see it... it stays
+  // within the confines of the dungeon, even if there's black space"). Where a dungeon roamer may be: the dungeon's open
+  // ground (every room, water and pit included; a room walking cannot reach stays valid, as approved for release 249), any
+  // wall touching it, and an interior wall with open ground on both opposite sides within CRYSTAL.boundsSpan tiles (so it
+  // still phases between rooms); never the solid black beyond the dungeon's edge. Rebuilt when the terrain changes (the
+  // walker landing graph is rebuilt then too, so its identity is the cache key).
+  roamerBounds() {
+    const key = this.walkerLandingGraph(), map = this.map, tiles = map.tiles || [], width = mapWidth(map, this.area), height = mapHeight(map, this.area);
+    if (this._roamerBounds?.key === key && this._roamerBounds.width === width) return this._roamerBounds.ok;
+    const ok = new Uint8Array(width * height), floor = (x, y) => x >= 0 && y >= 0 && x < width && y < height && !!tiles[y * width + x] && !tiles[y * width + x].blocked, N = CRYSTAL.boundsSpan;
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      let near = false; for (let dy = -1; dy <= 1 && !near; dy++) for (let dx = -1; dx <= 1 && !near; dx++) near = floor(x + dx, y + dy);
+      if (!near) { let l = false, r = false, u = false, d = false; for (let k = 1; k <= N; k++) { l ||= floor(x - k, y); r ||= floor(x + k, y); u ||= floor(x, y - k); d ||= floor(x, y + k); } near = l && r || u && d; }
+      if (near) ok[y * width + x] = 1;
+    }
+    this._roamerBounds = { key, width, ok: ok.some((v) => v) ? ok : null }; return this._roamerBounds.ok;
+  }
+  // Release 259: the floor connected to the Wayfarer's own tile (4-way over open, non-lethal ground). Cached until the
+  // terrain changes (the walker landing graph is rebuilt then) or the Wayfarer stands outside the cached area.
+  playerFloor() {
+    const key = this.walkerLandingGraph(), map = this.map, tiles = map.tiles || [], width = mapWidth(map, this.area), height = mapHeight(map, this.area);
+    const p = this.player, px = Math.max(0, Math.min(width - 1, Math.floor(p.x + .5))), py = Math.max(0, Math.min(height - 1, Math.floor(p.y + .72))), start = py * width + px;
+    const c = this._playerFloor; if (c?.key === key && c.width === width && c.cells.has(start)) return c.cells;
+    const open = (t) => t && !t.blocked && !LETHAL_KINDS.has(t.kind) && !["districtWall", "shackWall"].includes(t.structure), cells = new Set(), queue = open(tiles[start]) ? [start] : [];
+    for (const k of queue) cells.add(k);
+    for (let i = 0; i < queue.length; i++) { const k = queue[i], x = k % width, y = Math.floor(k / width);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, n = ny * width + nx; if (nx < 0 || ny < 0 || nx >= width || ny >= height || cells.has(n) || !open(tiles[n])) continue; cells.add(n); queue.push(n); } }
+    this.performanceStats && (this.performanceStats.pathfindingWork += cells.size);
+    this._playerFloor = { key, width, cells: cells.size ? cells : key }; return this._playerFloor.cells;
+  }
+  roamerInBounds(e) { const ok = this.roamerBounds(), width = mapWidth(this.map, this.area); return !ok || ok[Math.round(e.y) * width + Math.round(e.x)] === 1; }
   walkerSafeTeleport(e, x, y) {
     if (this.astralRiderHeld(e)) return false;
     const map = this.map, width = mapWidth(map, this.area), height = mapHeight(map, this.area);
@@ -3164,6 +3214,8 @@ export class Game {
       },
       // The dungeon is the Crystal's domain: patrol and combat use the same bounded wall-phasing movement.
       roamMove(e, dx, dy) { return this.move(e, dx, dy); },
+      // Release 259: floor the Wayfarer can reach from where they stand, where the dungeon Crystal sets its goals.
+      walkable: game.area === "dungeon" ? (x, y) => { const k = Math.round(y) * width + Math.round(x); return x >= 0 && y >= 0 && x <= width - 1 && y <= height - 1 && game.playerFloor().has(k); } : null,
       roamWork: (n) => { game.performanceStats.pathfindingWork += n; },
       detour(e, speed) { if (game.astralRiderHeld(e)) return; const step = boundedChaseStep(e, p, map, width); if (step) { const px = step[0] - e.x, py = step[1] - e.y, m = Math.hypot(px, py) || 1; this.move(e, px / m * speed, py / m * speed); } },
       hurt: (source, amount, options) => !(sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) && game.packHurt(source, amount, options, now),
@@ -3208,8 +3260,22 @@ export class Game {
   }
   // Release 239: a world beast runs out of patience and retreats home, invulnerable and through everything; it leaves
   // each section by the gate toward home (the Wayfarer may follow) and, in the home section, goes into its home ground.
+  // Release 259 (Tim: "when the blob retreats the whole mass doesn't retreat with it... a portion of it just detaches and
+  // retreats home and just leaves the large mass... and then it'll just fade gracefully"; then "only if it's larger will it
+  // shrink and leave a residue"). A Blob grown past its original size flees at that original size (its growth and merges
+  // undone), and the extra mass stays as an inert remnant (no AI, no hits, no rewards, never saved) that lingers, then
+  // fades away (BLOB_SPLIT). A Blob at its original size leaves whole.
+  splitBlob(e) {
+    const base = Number(e.blobBase?.scale) || 0; if (!base || !((Number(e.scale) || 0) > base * (1 + BLOB_SPLIT.grown))) return;
+    const mass = this.createEnemyFromSpawn({ id: `${e.id}:remnant`, kind: e.kind, x: e.x, y: e.y, traits: [] }, this.area);
+    Object.assign(mass, { blobRemnant: true, remnantLeft: BLOB_SPLIT.linger, untargetable: true, noRewards: true, aggro: false, scale: e.scale, facingX: e.facingX, hp: 1, maxHp: 1 });
+    e.blobAge = 0; e.blobMerged = 0; e.scale = base; e.bodyRadius = e.blobBase.radius; // back to its original size: it regrows from blobBase each tick
+    this.enemies.push(mass);
+    this.message = "Part of the Blob tears away and flees. The rest of the mass slumps where it stood.";
+  }
   tickWorldBeasts(dt) {
     if (this.beastNote) { this.message = this.beastNote; this.beastNote = null; }
+    if (this.enemies.some((e) => e.remnantGone)) this.enemies = this.enemies.filter((e) => !e.remnantGone);
     let gone = null;
     for (const e of this.enemies) {
       if (!e.worldBeast || e.dead || !WORLD_BEASTS[e.worldBeast]) continue;
@@ -3225,6 +3291,7 @@ export class Game {
         const seed = this.save.seed, gen = this.save.worldGeneration, r = beginRetreat(this.save, id, this.rx, this.ry, (x, y) => { let g = null; const region = () => (g ||= generateRegion(seed, x, y, gen)); return { get biome() { return biomeFor(seed, x, y); }, get dominant() { return region().dominant; }, get canyon() { return region().environment?.kind === "canyon"; }, get dungeon() { return (region().objects || []).some((o) => o.kind === "dungeon"); } }; }); // release 241: a section is generated only for homes that need it
         e.retreating = true; this.message = r.message;
         for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; }
+        if (id === "morphingBlob") this.splitBlob(e);
         journalOnce(this.save, `world-beast-flees:${id}:${this.save.worldBeasts[id].cycle}`, r.message, "World beasts");
       }
       if (e.retreating && !e.fleeTo && q.retreat) { const to = retreatTarget(q.retreat, id, this.map, this.rx, this.ry, q.dungeon ? {} : sectionExits(this.save.seed, this.rx, this.ry), e); Object.assign(e, { fleeTo: to, fleePath: id === "voidWalker" ? [] : retreatPath(this.map, e, to, B.retreatMoves, Number(this.map.width) || 32), fleeSpeed: RETREAT.speed, fleeFadeTime: RETREAT.fade, untargetable: true }); } // release 239: it finds its way round walls, over chasms, by bridges
@@ -4004,8 +4071,9 @@ export class Game {
           if(choice==="leave"&&q){q.astralLeave=true;this.message="The Void Walker leaps from the Astral Worm and leaves the fight.";}
           else this.message="The Void Walker leaps down from the Astral Worm to fight on foot.";}
       }
+      if(e.blobRemnant){e.remnantLeft-=dt;e.fleeFade=Math.max(0,Math.min(1,e.remnantLeft/BLOB_SPLIT.fade));if(e.remnantLeft<=0)e.remnantGone=true;continue} // release 259: the Blob's left-behind mass fades
       if(e.packKind&&e.astralMount?.status==="boarding"){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)tickAstralBoarding(e,dt,this.astralMountHost());continue}
-      if(e.packKind){refreshMarineBeast(e,this.map,width,this.area);this.performanceStats.activeEnemies++;const zone=this.astralRiderHeld(e)||e.kind==="voidWalker"&&(e.retreating||e.fleeTo)?null:packWorld.sanctuary;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(zone)enforceSanctuary(e,zone);continue}
+      if(e.packKind){refreshMarineBeast(e,this.map,width,this.area);this.performanceStats.activeEnemies++;const zone=this.astralRiderHeld(e)||e.kind==="voidWalker"&&(e.retreating||e.fleeTo)?null:packWorld.sanctuary;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}const roam=isDungeonRoamer(e,this.area)&&!e.retreating,ox=e.x,oy=e.y;if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(roam&&!this.roamerInBounds(e)){e.x=ox;e.y=oy}if(zone)enforceSanctuary(e,zone);continue}
       if(e.seaKind){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateSeaCreature(e,seaWorld,dt);continue}
       if(e.encounterGroup&&!this.activatedEncounterGroups.has(e.encounterGroup)){this.activatedEncounterGroups.add(e.encounterGroup);this.performanceStats.encounterActivations++}
       let simulationDt=dt;

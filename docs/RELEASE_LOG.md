@@ -13,19 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**259**
+**261**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 257 | Claude | `claude/dreamy-rubin-yn6q2p` | The Lightning Giant: a new roaming world boss (giant lightning robot with a club; arcs, knock-down shock, swings, slam with sky strike and bolt cone, electrify; retreats to a chasm and rises away on a cloud) | Building. |
+| 259 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #108) | World beasts pursue you 3 sections in all (the Blob 1); a grown Blob's retreat leaves a fading mass; fix for the Glyphs screen crash (release 112 typo); Rift Step no longer recalls you (Anchor becomes Long Step); the Pack is tabbed (Wayfarer, Gear, Forge, Arcanum, Supplies); the phone's back button closes menus to the pause menu; carry limits (6 wood, 2 stone) and a 1 wood + 1 stone shovel; the Psychic Crystal has poise (10 hits break it to the floor), stays inside dungeons, and when engaged settles on floor you can reach and hunts you for a while | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 257 | `r257-204a3837382b` | 2026-10-21 | The Lightning Giant world boss; the Giant at sea on his cloud; Supernova fog at sea (PR #107). The pre-publish review found no blockers. |
 | 253 | `r253-447383f7b357` | 2026-10-21 | The Void Walker boards the Astral Worm; Astral pair rules; release log (PRs #105, #106). The re-review after the leave-roll fix found no blockers. |
 | 251 | `r251-567504e5a114` | 2026-10-21 | The Void Walker, Astral Worm, Gate Revenant, Blob regeneration, ocean; review fixes; Griffin art; plinth saddle (PRs #103, #104). Pre-publish review found no blockers. |
 | 249 | `r249-4a43f3ccc5cd` | 2026-10-20 | Psychic Crystal continuation (orbital lasers, Knight homing orbs) |
