@@ -2528,3 +2528,42 @@ Tim, 2026-10-21. On Echoes: "there should be a pretty low chance to drop them...
   - `tests/turtle-sea-ice.test.ts`;
   - `tests/wood-boats.test.ts` (shields, building at the shore);
   - `tests/digging.test.ts`.
+
+## Release 265: building, the Refuge's lands and regrowth — 2026-10-21
+
+Tim, 2026-10-21. On building: "you can build walls out of stone or wood... in the pack menu, you can... select which wall type... if you build it out of wood, it'll be like a thin wooden wall... it'll block enemy attacks and enemies can't walk through it... a wooden wall would block one enemy attack... you can stand on a [stone block]... stack 2... If you put a [block] into a chasm, into water... it won't even let you do that... they despawn after 10 seconds... we'll put the... building block tool down where the A button is... the max blocks you could have out... is 5... world bosses... charge through... melee attacks... will destroy the blocks... they'll stop the damage... any range attack... 2 attacks for a stone block, and one attack for a wood wall". Then: "2 hits on the stone block". On regrowth: "the trees and The Rocks around the town will just repopulate in a widening circle... the more you explore, the more area around the ember refuge gets populated. We'll just do the ember refuge for now". On the lands: "a farm near the Ember Refuge and a quarry... a farmer... says... you're turning the corridor into fuel... cryptic, enigmatic things... you won't be able to buy stone... the quarry and the farm will be populated first".
+
+**CODE:**
+- **Building.** New `src/building.ts`: `BUILD = { kinds: { wood: { cost 5 wood, hits 1 }, stone: { cost 10 stone, hits 2, stack 2 } }, life 10, maxOut 5, breakReach .9 }`.
+  - `save.build.kind` is additive and normalised by `ensureBuild` in `freshSave` and `migrateSave`. The Supplies tab chooses it, and the HUD's `data-action="build"` button (key B; an inline SVG hammer, Tim: "The build button can just have a hammer") raises one via `placeBuild(game, buildSpot(player))`.
+  - A build replaces its tile and keeps the original (`buildOrig`). A wood wall is `blocked`, with `buildRun` "v" when built while moving left or right and "h" otherwise (Tim: "if I'm just not moving, it can just be the standard regular fence, but if I'm moving to the side it'll be positioned that way"); only its drawing differs. A stone block is a `perch` with `elev` +1 per level (stacked blocks share a tile, and the top one goes first).
+  - `footprintOpen` refuses a perch unless `allowLethalTerrain` is set, which only the Wayfarer's movement and fliers pass. So creatures cannot step on it, and `canStep` makes the Wayfarer jump onto it as onto any ledge.
+  - `buildRefusal` refuses map edges, lethal or water kinds, ice, slopes, structures, blocked ground and occupied tiles.
+  - Builds are transient: `Game.builds` is cleared on every area load, never saved, and `tickBuilds` expires them.
+  - **Absorbing hits.** `buildBetween(game, source)` finds a build on the line to the Wayfarer, skipping the tiles of the source and of the Wayfarer's feet.
+    - `packHurt` gives the blow to it (`strikeBuild`); a world beast's or Questing Beast's `melee`-tagged attack smashes it outright.
+    - Ordinary creatures' melee in `update` does the same.
+    - `updateProjectiles` takes an `onBuildHit` callback: a hostile shot entering a build tile, other than the one under the Wayfarer, dies there and strikes it.
+  - `tickBuilds` also breaks every build within a world beast's body plus `breakReach` while it rushes (`voidDashing`, `sliding`, `thrusting`, `spinning`, `giantThrust`, or a pack attack tagged charge, dash, leap, combo or phase).
+  - `renderer.ts` `buildTile` draws planks or a stone block (two courses when stacked) over the original ground.
+  - `styles.css` puts `.action-diamond button.build` in Spell A's old corner.
+- **The Refuge's lands.** New `src/refuge-lands.ts`.
+  - `refugeLands(seed, suitable)` takes the first two suitable sections (dry, open land, no hamlet or open sea) from a seeded order of the twelve around the Refuge, never side by side: the farm and the quarry.
+  - `plantRefugeLands` adds the farm's 6 canopy trees (`farm-tree-k`), the quarry's 10 rocks (`quarry-rock-k`), Shale the quarry keeper (`quarry-keeper`, a `villager` with `quarryTurtle`, drawn by `renderer.ts` `quarryTurtle`: a small fitted-stone turtle in a straw hat; Tim: "a small stone turtle... very straightforward... no ice on him... wearing a hat"), and the farmer `refuge-farmer` (a `villager`) in the Refuge, all with stable ids. It runs at every overworld load, after the landscape.
+  - A villager with a `talkKey` says `talkLine` on each word, counted in `worldFlags[talkKey]`. The farmer's lines are two that point the way, then `FARMER_LINES`; Shale's are the plain `QUARRY_LINES`.
+- **Regrowth.** `REGROW = { every: 20, maxRadius: 5 }`.
+  - `save.regrowth = { epoch, mark, done }` is additive. An older save's `mark` starts at its atlas size; `migrateSave` drops the fresh default when the raw save had none.
+  - `Game.loadArea` calls `noteDiscovery` on a first visit: every 20 atlas entries is a new epoch.
+  - After saved objects are restored, `regrowSection` sets environmental trees back to `standing` and rocks to `sealed`, and clears their cut, chip, break, move and ignite flags. This happens once per epoch per section, on the farm and quarry, and within `ringFor(epoch)` sections of the Refuge. Trees with `crossingTiles` and story rocks without `environmental` are left alone.
+
+**BOUNDARY:**
+- No creature's strength changed.
+- Saves stay at schema 14.
+- Builds are never saved.
+- The farm, quarry and farmer are added to their sections in existing journeys too (new objects with new ids; nothing existing moves). Tim asked for them in his world.
+- In dungeons, which have no levels, a stone block is still a perch creatures can't enter but needs no jump.
+- The absorbing rule is the line between attacker and Wayfarer. A ground attack aimed at the Wayfarer's own tile is also stopped when a build stands on that line.
+- The numbers Tim gave are 5 wood, 10 stone, 1 and 2 hits, 10 s and 5 builds. The rest (`breakReach`, 6 trees, 10 rocks, every 20, radius 5) are provisional.
+- Tests:
+  - `tests/building.test.ts`;
+  - `tests/refuge-lands.test.ts`.
