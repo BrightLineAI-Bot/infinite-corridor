@@ -12,7 +12,7 @@
   - **Slam:** may call a delayed lightning blast from the sky where you stood, and may throw three bolts in a tight cone straight at you.
   - **Electrify:** he raises the club, the sky strikes it, and wrapped in a crackling haze he moves faster while bolts drop around him.
   - **Retreat:** he walks to a chasm, where a storm cloud gathers under him and carries him up into the sky.
-  - **At sea:** you can meet him on open water, riding his big storm cloud instead of a boat, the back of it trailing off behind him in smaller and smaller billows and swinging round when he turns.
+  - **At sea:** you can meet him on open water, riding the front of his big storm cloud instead of a boat; behind him it trails away in smaller and smaller billows, swinging round when he turns.
   - His Echo, Giant's Arc, sends lightning from your kills into up to three nearby foes.
 - Release 257 — a Void Walker Supernova set off in an open-sea section, or one that is at least 70% ocean, boils the sea into fog: the whole section fogs over for 30 seconds, then clears (another Supernova there renews it).
 - Release 253 review fix — a Walker who climbed down from or was knocked off the Astral Worm now gets his random chance to leave like any Walker fighting on foot (the seated check no longer mistakes "dismounted" for "mounted").

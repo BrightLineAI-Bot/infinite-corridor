@@ -298,60 +298,55 @@ function shadeHex(hex, amount) {
 }
 
 // Its big storm cloud: ridden across the sea, and the one it rises on at its chasm. (k, y) is where its feet stand. The
-// "back" layer (a flat dark underside, rain, lit billows behind its legs) goes under the body; the "front" layer (the
-// near billows that swallow its feet, and lightning flickering inside) goes over it.
-const CLOUD_BACK = [[-.56, .04, .14], [-.4, -.06, .19], [-.16, -.13, .23], [.1, -.11, .22], [.34, -.05, .19], [.54, .03, .14]];
-const CLOUD_FRONT = [[-.46, .08, .14], [-.24, .1, .17], [0, .11, .17], [.24, .1, .16], [.46, .08, .13]];
-// `trail` (-1..1) is the side the cloud streams out behind: opposite its facing, eased by the caller as it turns.
+// "back" layer (rain, the lit upper billows behind its legs) goes under the body; the "front" layer (the near billows
+// that swallow its feet, lightning flickering inside) goes over it.
+// Shape (Tim, 2026-10-21: "there's a leading edge, and there's a trailing edge, and it kind of billows out in diminishing
+// billows towards the trailing edge... so he's riding the cloud front"): the big billows sit under it and just ahead, and
+// behind it the cloud recedes in a long run of ever smaller billows that feather and fade into a little trailing wisp.
+// Billows are [x, y, r] in units of u with +x the leading direction (its facing).
+const CLOUD_BODY = { back: [[-.3, -.02, .17], [-.12, -.11, .21], [.08, -.12, .22], [.27, -.06, .19], [.43, .02, .13]], front: [[-.26, .08, .15], [-.06, .1, .17], [.15, .1, .16], [.35, .07, .12]] };
+const CLOUD_TAIL = { back: { start: -.42, r: .16, shrink: .87, n: 12, rise: -.03, fall: .0025 }, front: { start: -.4, r: .13, shrink: .84, n: 8, rise: .07, fall: -.005 }, gap: .75 };
+// `trail` (-1..1) is the side the cloud recedes toward: opposite its facing, eased by the caller as it turns. While it
+// turns (|trail| small) the tail draws in under the body, so the cloud swaps ends without a jump.
 export function drawStormCloud(ctx, k, y, u, t, now, layer, reduce = false, trail = 0) {
-  const drift = reduce ? 0 : t * .9, set = layer === "back" ? CLOUD_BACK : CLOUD_FRONT, o = layer === "back" ? 0 : 6;
-  const at = ([x, dy, r], i) => ({ x: k + x * u + Math.sin(drift + (i + o) * 1.7) * u * .012, y: y + dy * u + Math.cos(drift * .8 + i + o) * u * .008, r: r * u });
-  const P = set.map(at).map((c) => ({ ...c, r: c.r * (layer === "back" ? .86 : .84) })), top = Math.min(...P.map((c) => c.y - c.r)), bottom = y + u * .2;
-  // One merged billow mass: every puff in a single path, filled with one storm gradient (lit top, dark belly).
-  const mass = () => { ctx.beginPath(); for (const c of P) { ctx.moveTo(c.x + c.r, c.y); ctx.arc(c.x, c.y, c.r, 0, TAU); } ctx.rect(P[0].x, Math.max(...P.map((c) => c.y)), P[P.length - 1].x - P[0].x, bottom - u * .06 - Math.max(...P.map((c) => c.y))); };
-  ctx.save();
-  if (layer === "back") {
-    if (!reduce) { ctx.strokeStyle = "rgba(160,190,215,.35)"; ctx.lineWidth = Math.max(1, u * .008); ctx.beginPath(); for (let i = 0; i < 11; i++) { const x = k + (i / 10 - .5) * u * 1.05, f = (t * 1.8 + i * .37) % 1, y0 = bottom - u * .04 + f * u * .1; ctx.moveTo(x, y0); ctx.lineTo(x - u * .02, y0 + u * .07); } ctx.stroke(); } // rain
-  }
-  // Wispy edges: soft vapour that fades to nothing, drawn around the solid mass. `soft` is one feathered blob.
+  const drift = reduce ? 0 : t * .9, F = -(Math.sign(trail) || -1), amt = Math.abs(trail), o = layer === "back" ? 0 : 20;
+  const wob = (i) => ({ dx: Math.sin(drift + (i + o) * 1.7) * u * .012, dy: Math.cos(drift * .8 + i + o) * u * .008 });
+  const body = CLOUD_BODY[layer].map(([x, dy, r], i) => { const w = wob(i); return { x: k + F * x * u + w.dx, y: y + dy * u + w.dy, r: r * u * .86, a: 1 }; });
+  // The receding tail: each billow smaller than the last, spaced by its size, rising or sinking a little, fading at the end.
+  const T = CLOUD_TAIL[layer], tail = []; let along = T.start, r = T.r;
+  for (let n = 0; n < T.n; n++) { const w = wob(n + 7), f = n / (T.n - 1); tail.push({ x: k + F * along * u * (.3 + .7 * amt) + w.dx, y: y + (T.rise + T.fall * n * n * .5) * u + w.dy * (1 - f), r: r * u * .86, a: 1 - Math.max(0, f - .45) * 1.4 }); along -= r * CLOUD_TAIL.gap; r *= T.shrink; }
+  const all = [...body, ...tail], top = Math.min(...all.map((c) => c.y - c.r)), bottom = y + u * .2;
+  // Feathered vapour: one fading blob.
   const soft = (x, yy, rx, ry, rgb, alpha) => {
+    if (alpha <= .005) return;
     ctx.save(); ctx.translate(x, yy); ctx.scale(1, ry / rx);
     const sg = ctx.createRadialGradient(0, 0, 0, 0, 0, rx); sg.addColorStop(0, `rgba(${rgb},${alpha})`); sg.addColorStop(.55, `rgba(${rgb},${alpha * .55})`); sg.addColorStop(1, `rgba(${rgb},0)`);
     ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(0, 0, rx, 0, TAU); ctx.fill(); ctx.restore();
   };
-  if (layer === "back") {
-    for (const c of P) soft(c.x, c.y, c.r * 1.55, c.r * 1.4, "150,162,175", .6); // a vapour halo round every billow
-    // Short tendrils off the leading edge; on the trailing edge they give way to the tapered tail.
-    for (const side of [-1, 1]) { const lead = 1 - Math.max(0, side * trail); for (let i = 0; i < 5; i++) {
-      const sway = reduce ? 0 : Math.sin(t * .7 + i * 1.9 + side) * u * .035, reach = .52 + i * .11, lift = side > 0 ? -.012 : .008;
-      soft(k + side * u * reach + sway, y + u * (.03 + i * lift * 2 + .012 * Math.sin(i * 2.7)), u * (.2 - i * .028), u * (.05 - i * .006), "158,170,183", (.55 - i * .09) * lead);
-    } }
-  }
-  else for (const c of P) soft(c.x, c.y + c.r * .1, c.r * 1.45, c.r * 1.3, "120,131,143", .5); // the near billows feather out too
   const g = ctx.createLinearGradient(0, top, 0, bottom);
   if (layer === "back") { g.addColorStop(0, "#9aa5b1"); g.addColorStop(.5, "#5d6874"); g.addColorStop(1, "#2a313a"); }
   else { g.addColorStop(0, "#8794a1"); g.addColorStop(.45, "#56616d"); g.addColorStop(1, "#262c34"); }
-  // The trailing edge (Tim: "the cloud kind of trails off", then "it doesn't have to be a sharp point... more of like a
-  // receding series of diminishing billows"): behind it, opposite its facing, a run of billows each smaller than the last.
-  const back = Math.sign(trail) || 0, amt = Math.abs(trail);
-  if (layer === "back" && amt > .02) {
-    // A receding run of billows, each smaller than the last.
-    const bumps = [0, 1, 2, 3, 4, 5].map((n) => ({ x: k + back * u * (.5 + (n * .1 - n * n * .006) * (.55 + .45 * amt)), y: y - u * (.01 + n * .007), r: u * .13 * Math.pow(.76, n) }));
-    const end = bumps[5], tipX = end.x + back * end.r * 1.6, tipY = end.y - end.r * .2 + (reduce ? 0 : Math.sin(t * 1.3) * u * .006);
-    ctx.fillStyle = g; ctx.beginPath(); for (const c of bumps) { ctx.moveTo(c.x + c.r, c.y); ctx.arc(c.x, c.y, c.r, 0, TAU); } ctx.fill();
-    for (const c of bumps) soft(c.x - back * c.r * .2, c.y - c.r * .45, c.r * .6, c.r * .35, "220,228,236", .28); // soft light on the tail's billows
-    for (let i = 0; i < 2; i++) { const drift = reduce ? 0 : Math.sin(t * 1.1 + i) * u * .008; soft(tipX + back * u * i * .05, tipY - u * i * .006 + drift, u * (.05 - i * .015), u * (.016 - i * .004), "170,181,193", (.35 - i * .15) * amt); } // a faint wisp off the last billow
-  }
-  mass(); ctx.fillStyle = g; ctx.globalAlpha *= layer === "back" ? 1 : .88; ctx.fill(); ctx.globalAlpha /= layer === "back" ? 1 : .88;
-  if (layer === "front") for (const c of P) soft(c.x, c.y + c.r * .35, c.r * 1.25, c.r * .8, "92,102,114", .45); // the near billows' lower edges dissolve
-  ctx.lineCap = "round";
-  for (const c of P) soft(c.x - c.r * .3, c.y - c.r * .45, c.r * .6, c.r * .38, layer === "back" ? "220,228,236" : "200,210,220", .32); // soft light on each billow's top
+  ctx.save();
+  if (layer === "back") {
+    if (!reduce) { ctx.strokeStyle = "rgba(160,190,215,.35)"; ctx.lineWidth = Math.max(1, u * .008); ctx.beginPath(); for (let i = 0; i < 9; i++) { const x = k + F * ((i / 8 - .5) * .8 + .05) * u, f = (t * 1.8 + i * .37) % 1, y0 = bottom - u * .04 + f * u * .1; ctx.moveTo(x, y0); ctx.lineTo(x - u * .02, y0 + u * .07); } ctx.stroke(); } // rain, under the body
+    for (const c of all) soft(c.x, c.y, c.r * 1.55, c.r * 1.4, "150,162,175", .6 * c.a); // a vapour halo round every billow
+    for (let i = 0; i < 4; i++) { const sway = reduce ? 0 : Math.sin(t * .7 + i * 1.9) * u * .03; soft(k + F * u * (.55 + i * .1) + sway, y + u * (.03 - i * .02), u * (.17 - i * .03), u * (.045 - i * .006), "158,170,183", .5 - i * .1); } // short tendrils off the leading edge
+  } else for (const c of all) soft(c.x, c.y + c.r * .1, c.r * 1.45, c.r * 1.3, "120,131,143", .5 * c.a); // the near billows feather out too
+  // The solid billows. The body is one mass with a flat belly; the tail billows go one by one, fading toward the end.
+  const flatY = Math.max(...body.map((c) => c.y)), xs = body.map((c) => c.x);
+  ctx.fillStyle = g; ctx.globalAlpha *= layer === "back" ? 1 : .88;
+  ctx.beginPath(); for (const c of body) { ctx.moveTo(c.x + c.r, c.y); ctx.arc(c.x, c.y, c.r, 0, TAU); } ctx.rect(Math.min(...xs), flatY, Math.max(...xs) - Math.min(...xs), bottom - u * .06 - flatY); ctx.fill();
+  const base = ctx.globalAlpha; for (const c of tail) { ctx.globalAlpha = base * Math.max(0, c.a); ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, TAU); ctx.fill(); } ctx.globalAlpha = base;
+  if (layer === "front") ctx.globalAlpha /= .88;
+  const end = tail[tail.length - 1]; for (let i = 0; i < 3; i++) { const sway = reduce ? 0 : Math.sin(t * 1.1 + i) * u * .01; soft(end.x - F * u * (.04 + i * .06) * (.3 + .7 * amt), end.y - u * i * .006 + sway, u * (.06 - i * .014), u * (.018 - i * .004), "165,176,188", (.4 - i * .12) * amt); } // the trailing wisp
+  for (const c of all) soft(c.x - F * c.r * .1 - c.r * .2, c.y - c.r * .45, c.r * .6, c.r * .38, layer === "back" ? "220,228,236" : "200,210,220", .32 * Math.max(0, c.a)); // soft light on each billow's top
   if (layer === "front") {
-    // A ragged, fading fringe under the belly instead of a hard bottom edge, with a few wisps hanging lower.
-    for (let i = 0; i < 9; i++) { const x = k + (i / 8 - .5) * u * .98, hang = (i * 37 % 5) / 5; soft(x + (reduce ? 0 : Math.sin(t * .9 + i) * u * .015), bottom - u * .06 + hang * u * .03, u * (.09 + hang * .03), u * (.035 + hang * .02), "52,60,70", .55); }
-    for (const c of P) soft(c.x - c.r * .25, c.y - c.r * .35, c.r * .9, c.r * .6, "190,202,214", .16); // misty light on the tops
-    ctx.globalCompositeOperation = "lighter"; soft(k, y + u * .07, u * .34, u * .07, "70,150,210", .2); ctx.globalCompositeOperation = "source-over"; // storm light inside
-    if (!reduce && Math.sin(t * 4.1) > .7) { const a = Math.floor(t * 4.1 / TAU) * 2.39, x0 = k + Math.sin(a) * u * .36; lightningBolt(ctx, x0, y + u * .03, x0 + u * .12, y + u * .14, { now, seed: 90 + Math.floor(t), segments: 4, width: Math.max(1, u * .012), branch: false }); }
+    // A ragged, fading fringe under the belly, with a few wisps hanging lower, then storm light and lightning inside.
+    for (let i = 0; i < 8; i++) { const x = k + F * ((i / 7 - .5) * .8 + .05) * u, hang = (i * 37 % 5) / 5; soft(x + (reduce ? 0 : Math.sin(t * .9 + i) * u * .015), bottom - u * .06 + hang * u * .03, u * (.09 + hang * .03), u * (.035 + hang * .02), "52,60,70", .55); }
+    for (const c of tail) soft(c.x, c.y + c.r * .35, c.r * 1.2, c.r * .75, "92,102,114", .4 * Math.max(0, c.a));
+    for (const c of body) soft(c.x, c.y + c.r * .35, c.r * 1.25, c.r * .8, "92,102,114", .45);
+    ctx.globalCompositeOperation = "lighter"; soft(k + F * u * .05, y + u * .07, u * .34, u * .07, "70,150,210", .2); ctx.globalCompositeOperation = "source-over";
+    if (!reduce && Math.sin(t * 4.1) > .7) { const a = Math.floor(t * 4.1 / TAU) * 2.39, x0 = k + Math.sin(a) * u * .3; lightningBolt(ctx, x0, y + u * .03, x0 + u * .12, y + u * .14, { now, seed: 90 + Math.floor(t), segments: 4, width: Math.max(1, u * .012), branch: false }); }
   }
   ctx.restore();
 }
