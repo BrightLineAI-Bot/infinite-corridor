@@ -755,7 +755,7 @@ const BODY = {
     ctx.fillStyle = "rgba(4,4,8,.35)"; ctx.beginPath(); ctx.ellipse(k, b, u * .22, u * .06, 0, 0, TAU); ctx.fill(); // its shadow far below
     if (fall) { ctx.save(); ctx.translate(k, b - u * .05); ctx.rotate(fall * 1.25 * (e.facingX < 0 ? -1 : 1)); ctx.translate(-k, -(b - u * .05)); } // tipped over on the floor
     for (let i = 0; i < 3; i++) { const a2 = (hostile ? .13 - i * .035 : .18 - i * .05) * (state === "windup" ? 1.3 : 1); ctx.fillStyle = `rgba(${aura[0]},${aura[1]},${aura[2]},${a2})`; ctx.beginPath(); ctx.ellipse(k + Math.sin(t * .9 + i * 2) * u * .03, cy, ar * (1 + i * .22), ar * (1.15 + i * .2), 0, 0, TAU); ctx.fill(); } // the aura, in three soft layers
-    for (const side of [-1, 1]) { const bx = k + side * W * 1.2, by = cy + H * .35, h2 = H * .5, w2 = W * .45, lean = side * W * .5; // two lesser crystals grown from its foot
+    if (!fall) for (const side of [-1, 1]) { const bx = k + side * W * 1.2, by = cy + H * .35, h2 = H * .5, w2 = W * .45, lean = side * W * .5; // two lesser crystals grown from its foot
       poly([bx + lean, by - h2, bx - w2, by - h2 * .2, bx, by + h2 * .25], side < 0 ? "#8a95c4" : "#4a5288"); poly([bx + lean, by - h2, bx + w2, by - h2 * .2, bx, by + h2 * .25], side < 0 ? "#cdd6f6" : "#6d78a8"); }
     const spin = t * .8, sx = Math.cos(spin) * W * .35; // the crystal turns: its lit face slides across
     poly([k, cy - H, k - W + sx * .3, cy - H * .25, k - W * .9 + sx * .3, cy + H * .35, k, cy + H], "#7d88b8");
@@ -764,8 +764,22 @@ const BODY = {
     ctx.strokeStyle = "#20244a"; ctx.lineWidth = Math.max(1, u * .008); ctx.beginPath(); ctx.moveTo(k, cy - H); ctx.lineTo(k - W + sx * .3, cy - H * .25); ctx.lineTo(k - W * .9 + sx * .3, cy + H * .35); ctx.lineTo(k, cy + H); ctx.lineTo(k + W * .9 + sx * .3, cy + H * .35); ctx.lineTo(k + W + sx * .3, cy - H * .25); ctx.closePath(); ctx.stroke();
     ctx.strokeStyle = "#ffffff88"; ctx.beginPath(); ctx.moveTo(k + sx * .5, cy - H * .7); ctx.lineTo(k + sx * .5, cy + H * .5); ctx.stroke(); // a glint down its edge
     ctx.fillStyle = `rgba(${aura[0]},${aura[1]},${aura[2]},.9)`; ctx.beginPath(); ctx.ellipse(k, cy, W * .35, H * .22, 0, 0, TAU); ctx.fill(); // the core takes the aura's colour
-    for (let i = 0; i < 4; i++) { const a2 = t * 1.2 + i * TAU / 4, ox = k + Math.cos(a2) * u * .3, oy = cy + Math.sin(a2) * u * .12, h2 = u * .07, w2 = u * .025; poly([ox, oy - h2, ox + w2, oy, ox, oy + h2, ox - w2, oy], Math.sin(a2) > 0 ? "#dfe6ff" : "#6d78a8"); } // shards circling it
-    if (fall) ctx.restore();
+    if (!fall) for (let i = 0; i < 4; i++) { const a2 = t * 1.2 + i * TAU / 4, ox = k + Math.cos(a2) * u * .3, oy = cy + Math.sin(a2) * u * .12, h2 = u * .07, w2 = u * .025; poly([ox, oy - h2, ox + w2, oy, ox, oy + h2, ox - w2, oy], Math.sin(a2) > 0 ? "#dfe6ff" : "#6d78a8"); } // shards circling it
+    if (fall) {
+      ctx.restore();
+      // The lesser crystals and the circling shards clatter to the floor around it, with a small bounce as they land.
+      const ease = fall * fall * (3 - 2 * fall), hop = Math.abs(Math.sin(ease * Math.PI * 2)) * (1 - ease) * u * .06, floatY = b - u * .8 - q.bodyLift, gy = b - u * .04;
+      for (const side of [-1, 1]) {
+        const fx = k + side * W * 1.2, fy = floatY + H * .35, x = fx + (k + side * u * .36 - fx) * ease, y = fy + (gy - fy) * ease - hop, h2 = H * .5, w2 = W * .45, lean = side * W * .5;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(side * ease * 1.45);
+        poly([lean, -h2, -w2, -h2 * .2, 0, h2 * .25], side < 0 ? "#8a95c4" : "#4a5288"); poly([lean, -h2, w2, -h2 * .2, 0, h2 * .25], side < 0 ? "#cdd6f6" : "#6d78a8"); ctx.restore();
+      }
+      for (let i = 0; i < 4; i++) {
+        const a2 = i * TAU / 4 + .6, fx = k + Math.cos(a2) * u * .3, fy = floatY + Math.sin(a2) * u * .12, tx = k + Math.cos(i * 1.9 + .4) * u * .5, ty = gy + Math.sin(i * 2.3) * u * .05;
+        const x = fx + (tx - fx) * ease, y = fy + (ty - fy) * ease - hop * (1 + i * .3), h2 = u * .07 * (1 - .45 * ease), w2 = u * .025 * (1 + 1.6 * ease); // lying flat
+        poly([x, y - h2, x + w2, y, x, y + h2, x - w2, y], i % 2 ? "#dfe6ff" : "#6d78a8");
+      }
+    }
   },
   bloblet(ctx, q) {
     const { k, b, u, t, p, flip } = q, R = u * .5, cy = b - R * .55, hop = Math.abs(Math.sin(t * 8)) * u * .06;

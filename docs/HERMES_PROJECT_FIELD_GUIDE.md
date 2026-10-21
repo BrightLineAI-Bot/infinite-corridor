@@ -2418,15 +2418,14 @@ Tim, 2026-10-21. On pursuit: "these world bosses should pursue you... The blob c
   - The pause menu continues play.
   - In play, it opens the pause menu.
   - It runs from each dialog's `cancel` (close request; default prevented) and from `popstate`. A guard history entry (`{icBack:true}`), re-armed after each back, keeps the page from navigating away.
-- **Carry limits.** `boats.ts` `WOOD.carry` = 6 (two skiffs at `skiffCost` 3). `digging.ts` `DIG.carryStone` = 2 (one shovel at `recipe.stone` 2; a shovel digs `shovelUses` 6).
+- **Carry limits and the shovel.** `boats.ts` `WOOD.carry` = 6 (two skiffs at `skiffCost` 3). `digging.ts` `DIG.carryStone` = 2, and `DIG.recipe` is now 1 wood + 1 stone. Tim: "one wood and one stone to make a shovel... 3 wood for a boat... up to 6... the choice between 2 boats or a boat and 2 shovels". `ensureShovel` crafts it on the first dig with the materials, one at a time, `shovelUses` 6.
   - `addWood` and `addStone` add up to the limit, and never take away wood or stone an older save already holds over it.
   - Chipping a rock with a full pouch is refused without using up the rock. Cutting a tree says when you are full.
-  - Tim, 2026-10-21: "up to 6 wood because that's 2 boats... up to 2 stones... you can at maximum dig 6 into a dungeon wall".
-- **Crystal poise.** `CRYSTAL.poiseHits` 4, `poiseForget` 5, `breakTime` 3.2, `fallTime` .25, `riseTime` .4.
+- **Crystal poise.** `CRYSTAL.poiseHits` 10 (Tim: "ten hits for a poise break"), `poiseForget` 5, `breakTime` 3.2, `fallTime` .25, `riseTime` .4.
   - Tim first asked for fewer dodges ("dodges after a few hits"). He then changed it: "it dodges a lot, that's fine... it has poise, so if it takes a few hits, then it will break and fall... you can get a bunch of hits in... then it will get up and dodge away". So the generic dodge is unchanged.
   - `crystalPoise` in `monster-pack.ts`, run each tick before the dodge, counts landed blows from hp drops into `pack.poiseHits`. The count is forgotten after `poiseForget` s without one.
   - At `poiseHits` the Crystal breaks (`pack.broken`) and loses any attack, telegraph or grab hold.
-  - While broken it is targetable and does not move, dodge or attack. `e.crystalFall` (0 to 1) eases over `fallTime` and `riseTime`, and the renderer sinks it to the floor, tips it over and greys its aura.
+  - While broken it is targetable and does not move, dodge or attack. `e.crystalFall` (0 to 1) eases over `fallTime` and `riseTime`. The renderer sinks the Crystal to the floor, tips it over and greys its aura; its two lesser crystals and four circling shards drop out of the tipped frame and clatter to the floor around it with a small bounce.
   - When the break ends, it springs away from the Wayfarer (an immediate evade).
   - `resetPackRuntime` clears the break and `crystalFall`.
 - **Crystal dungeon bounds.** `Game.roamerBounds()`, cached against the walker landing graph so it rebuilds when the terrain changes, marks where a dungeon roamer may be:

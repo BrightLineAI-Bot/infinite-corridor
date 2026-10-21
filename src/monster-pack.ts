@@ -631,7 +631,7 @@ export const CRYSTAL = {
   // break and fall through the floor and then you can get a bunch of hits in, and then it will... get up and dodge away").
   // `poiseHits` landed blows (forgotten after `poiseForget` s without one) break it: it drops to the floor for `breakTime`
   // s (falling over `fallTime`, rising over `riseTime`) and cannot dodge, attack or move; then it rises and springs away.
-  poiseHits: 4, poiseForget: 5, breakTime: 3.2, fallTime: .25, riseTime: .4,
+  poiseHits: 10, poiseForget: 5, breakTime: 3.2, fallTime: .25, riseTime: .4, // poiseHits: Tim, "let's do like ten hits for a poise break"
   // Where it settles (release 259; Tim: "its end goal should be... a place the player can walk to... it can spend some time
   // between walls, that's fine"): patrol goals are floor the Wayfarer can reach; after `wallLinger` s inside walls (or over
   // ground the Wayfarer cannot reach) it heads for the nearest reachable floor within `manifestSearch` tiles at
