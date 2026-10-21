@@ -1,3 +1,4 @@
+import { hashSeed } from './random.ts';
 // Registered natural encounter source on the reviewed r251/Gate baseline; not yet released.
 // All numbers are provisional design proposals, not owner-specified balance.
 export const ASTRAL = Object.freeze({
@@ -149,6 +150,7 @@ export function tickAstral(s,dt,w) {
   if(!Number.isFinite(dt)||dt<0||dt>ASTRAL.maxFrame)throw new Error('Astral tick expects 0..0.25 active seconds');
   if(w.paused||w.unloaded||s.terminated)return;
   if(s.hp<=0||(w.playerDeathFinal?w.playerDeathFinal():w.player.hp<=0)){endAstral(s);return;}
+  if(w.bystander&&!(w.bystander.actor?.hp>0))w={...w,bystander:null};
   if(dt>0)ensureAstralGeometry(s);
   const n=Math.ceil(dt/ASTRAL.maxStep);for(let i=0;i<n;i++){if(s.terminated)break;step(s,dt/n,w);}
 }
@@ -186,6 +188,9 @@ function step(s,dt,w) {
     if(s.enclosed>=ASTRAL.cloneGrace&&s.hitClock<=0){const actual=w.damagePlayer(s.damage*ASTRAL.drainShare,{kind:'astralDrain'});s.hp=Math.min(s.maxHp,s.hp+Math.max(0,Math.min(s.damage*ASTRAL.drainShare,Number(actual)||0)));s.hitClock=ASTRAL.cloneTick;}
     if(t>ASTRAL.cloneLife){finish(s);return;}
   } else if(s.hitClock<=0){const hit=s.hazards.find(h=>h.active&&astralHazardContains(h,p)&&(!w.canHazardHit||w.canHazardHit(h,p)));if(hit){w.damagePlayer(s.damage*hit.share,{kind:`astral:${s.move}`});s.hitClock=s.move==='flight'?ASTRAL.beamTick:ASTRAL.hitGap;}}
+  // Free-for-all: whoever is not the current focus is still hurt when caught in an active hazard, on its own clock.
+  const b=w.bystander;if(b&&s.move!=='mirage'){s.bystanderClock=(Number(s.bystanderClock)||0)-dt;
+    if(s.bystanderClock<=0){const hit=s.hazards.find(h=>h.active&&astralHazardContains(h,b.actor)&&(!w.canHazardHit||w.canHazardHit(h,b.actor)));if(hit){b.hurt(s.damage*hit.share,{kind:`astral:${s.move}`});s.bystanderClock=s.move==='flight'?ASTRAL.beamTick:ASTRAL.hitGap;}}}
   if((w.playerDeathFinal?w.playerDeathFinal():p.hp<=0)||s.hp<=0)endAstral(s);
 }
 
@@ -209,7 +214,22 @@ export function updateAstralActor(e,w) {
   for(const c of s.clones){const actor=w.enemies.find(a=>a.id===c.id);if(actor)c.hp=actor.dead?0:Math.min(c.hp,actor.hp);}
   s.clones=s.clones.filter(c=>c.hp>0);
   const canOccupy=(x,y)=>{const probe={...e,x:s.x,y:s.y,flying:true};w.move(probe,x-s.x,y-s.y);return Math.abs(probe.x-x)<1e-6&&Math.abs(probe.y-y)<1e-6;};
-  tickAstral(s,w.dt,{player:w.player,playerDeathFinal:w.playerDeathFinal,groundHeight:w.groundHeight,canOccupy,
+  // A helping Walker draws the Worm's attention from time to time (ASTRAL_ALLY_FOCUS); otherwise the Worm hunts the player.
+  // The one it is not focused on is still hurt by any active hazard it stands in.
+  const ally=w.enemies.find(q=>q.astralAllyOf===e.id&&q.kind==='voidWalker'&&!q.dead&&q.hp>0&&!q.astralAllyLeaving);
+  const F=ASTRAL_ALLY_FOCUS;s.focusClock=(Number(s.focusClock)||0)-w.dt;
+  if(!ally)s.focusAlly=false;
+  else if(s.focusClock<=0){s.focusIndex=(Number(s.focusIndex)||0)+1;s.focusAlly=(hashSeed(`${e.id}:ally-focus:${s.focusIndex}`)%1000)/1000<F.allyShare;s.focusClock=s.focusAlly?F.allyTime:F.playerTime;}
+  const realDeath=()=>w.playerDeathFinal?w.playerDeathFinal():w.player.hp<=0;
+  const hurtAlly=(amount,source)=>{if(!ally||ally.dead||!(amount>0))return 0;const before=ally.hp;w.hurtAlly?w.hurtAlly(e,ally,amount,source):(ally.hp=Math.max(0,ally.hp-amount),ally.hp<=0&&(ally.dead=true));return Math.max(0,before-Math.max(0,ally.hp));};
+  const hurtPlayer=(amount,source)=>{
+    if(w.now<(w.player.dodgeUntil||0))return 0;const before=Math.max(0,w.player.hp);
+    w.hurt(e,amount,{beam:s.move==='flight',source:source.kind});const actual=Math.max(0,before-Math.max(0,w.player.hp));
+    if(source.kind==='astralDrain'&&w.deferAstralHeal){w.deferAstralHeal(e,Math.min(amount,actual));return 0;}
+    return actual;
+  };
+  const focusAlly=!!(ally&&s.focusAlly);
+  tickAstral(s,w.dt,{player:focusAlly?ally:w.player,playerDeathFinal:realDeath,bystander:ally?{actor:focusAlly?w.player:ally,hurt:focusAlly?hurtPlayer:hurtAlly}:null,groundHeight:w.groundHeight,canOccupy,
     canBlobOccupy:(blob,x,y)=>{const probe={...e,x:blob.x,y:blob.y,flying:true};w.move(probe,x-blob.x,y-blob.y);
       return Math.abs(probe.x-x)<1e-6&&Math.abs(probe.y-y)<1e-6&&(!sight||sight({x:s.x,y:s.y},{x,y}));},
     canHazardHit:(h,p)=>!(s.move==='flight'||ASTRAL_INK_FORMS[s.move])||(canOccupy(h.x,h.y)&&(!sight||(sight({x:s.x,y:s.y},h)&&sight(h,p)))),
@@ -218,12 +238,7 @@ export function updateAstralActor(e,w) {
     if(!actor)return w.enemies.length<ASTRAL.maxActorArray&&canOccupy(x,y)&&(!(w.astralLos||w.los)||(w.astralLos||w.los)(w.player,{x,y}));
     const probe={...actor,x:c.x,y:c.y};w.move(probe,x-c.x,y-c.y);
     return Math.abs(probe.x-x)<1e-6&&Math.abs(probe.y-y)<1e-6;
-  },damagePlayer:(amount,source)=>{
-    if(w.now<(w.player.dodgeUntil||0))return 0;const before=Math.max(0,w.player.hp);
-    w.hurt(e,amount,{beam:s.move==='flight',source:source.kind});const actual=Math.max(0,before-Math.max(0,w.player.hp));
-    if(source.kind==='astralDrain'&&w.deferAstralHeal){w.deferAstralHeal(e,Math.min(amount,actual));return 0;}
-    return actual;
-  }});
+  },damagePlayer:(amount,source)=>focusAlly?hurtAlly(amount,source):hurtPlayer(amount,source)});
   e.x=s.x;e.y=s.y;e.hp=s.hp;e.flying=true;e.facingX=s.facingX;if(e.pack)e.pack.attack=s.move?`astral:${s.move}`:null;
   for(const c of [...s.clones]){
     let actor=w.enemies.find(a=>a.id===c.id);
@@ -243,6 +258,8 @@ export function updateAstralActor(e,w) {
 // Natural-integration planning adapter. Pure: it does not enroll an encounter, mutate journeys,
 // claim a Walker, pay rewards, or bypass the reviewed shared world-beast lifecycle.
 // Host supplies deterministic rolls and its final-r251 footprint/terrain predicate.
+// Owner rule 2026-10-21: with a helping Walker the Worm mostly hunts the player but turns on him from time to time.
+export const ASTRAL_ALLY_FOCUS = Object.freeze({ allyShare: .3, allyTime: 3, playerTime: 6 });
 export const ASTRAL_SPAWN = Object.freeze({ maxSamples:625, playerClearance:6, margin:1, dungeonChance:.02 });
 export function planAstralEncounter(context, host) {
   const {map,area='overworld',depth=0,spawnRoll,pairRoll,questingPresent=false,otherBeastPresent=false,walkerAvailable=false,player,encounterId}=context;

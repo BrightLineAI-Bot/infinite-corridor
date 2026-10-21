@@ -56,6 +56,31 @@ export function tickAstralBoarding(rider, dt, host = {}) {
   return false;
 }
 
+// Owner rule 2026-10-21: once on, a hostile rider stays on through every form and through the player's death.
+// Every ASTRAL_RIDER.decideEvery riding seconds he picks at random (deterministic per rider and decision): stay on,
+// get off and fight on foot, or leave the fight. He never takes over the fight; the host acts on 'dismount'/'leave'.
+export const ASTRAL_RIDER = Object.freeze({ decideEvery: 12, stay: .6, dismount: .25, leave: .15 });
+export function tickAstralRiderChoice(rider, dt, roll, host = {}) {
+  const state = rider?.astralMount;
+  if (suspended(host) || state?.status !== 'mounted' || state.ridingAway || rider.astralAllyOf || !(dt > 0) || typeof roll !== 'function') return 'stay';
+  state.decideClock = (Number(state.decideClock) || 0) + dt;
+  if (state.decideClock < ASTRAL_RIDER.decideEvery) return 'stay';
+  state.decideClock -= ASTRAL_RIDER.decideEvery; state.decisions = (Number(state.decisions) || 0) + 1;
+  const r = roll(state.decisions);
+  return r < ASTRAL_RIDER.stay ? 'stay' : r < ASTRAL_RIDER.stay + ASTRAL_RIDER.dismount ? 'dismount' : 'leave';
+}
+
+// A Walker that joined the fight on foot keeps fighting, even after the Worm dies or retreats, until he is killed,
+// the player's tries run out, or he decides to leave (checked every ASTRAL_FIGHTER.decideEvery seconds).
+export const ASTRAL_FIGHTER = Object.freeze({ decideEvery: 15, leave: .15 });
+export function tickAstralFighterChoice(active, dt, roll) {
+  if (!active?.astralJoined || active.astralLeave || active.retreat || !(dt > 0) || typeof roll !== 'function') return false;
+  active.fightClock = (Number(active.fightClock) || 0) + dt;
+  if (active.fightClock < ASTRAL_FIGHTER.decideEvery) return false;
+  active.fightClock -= ASTRAL_FIGHTER.decideEvery; active.fightDecisions = (Number(active.fightDecisions) || 0) + 1;
+  return roll(active.fightDecisions) < ASTRAL_FIGHTER.leave;
+}
+
 // Explicit host choice, not a random mount decision. One reserved Walker per encounter is the
 // host's responsibility. An actor can never be rebound while mounted or awaiting safe landing.
 export function mountAstralWalker(owner, rider, host = {}) {
@@ -102,9 +127,13 @@ export function syncAstralMount(rider, host = {}) {
   if (state.status === 'landing') { land(rider, ownerOf(rider, host), host); return false; }
   if (state.status === 'boarding') { const owner = ownerOf(rider, host); if (state.phase === 'phaseIn' && alive(owner) && point(owner)) { rider.x = owner.x; rider.y = owner.y; } return false; }
   const owner = ownerOf(rider, host);
-  const reason = !owner ? 'owner-missing' : !alive(owner) ? 'owner-dead' : departing(owner) ? 'owner-retreat' :
+  // Owner rule 2026-10-21: a rider stays on a retreating Worm and rides it home; the host removes both on arrival
+  // or when the Worm leaves the section. He neither attacks nor can be hit while riding it away.
+  const ridingAway = alive(owner) && point(owner) && departing(owner) && !departing(rider);
+  const reason = !owner ? 'owner-missing' : !alive(owner) ? 'owner-dead' : ridingAway ? null : departing(owner) ? 'owner-retreat' :
     departing(rider) ? 'rider-retreat' : !point(owner) ? 'owner-position-invalid' : null;
   if (reason) { dismountAstralWalker(rider, reason, host); return false; }
+  if (ridingAway) { state.ridingAway = true; rider.untargetable = true; }
   rider.x = owner.x; rider.y = owner.y; state.form = owner.astral?.form || 'worm';
   state.flightLiftExtra = Math.max(0,Number(owner.astral?.flightLiftExtra)||0);
   state.ownerScale = astralActorScale(owner);

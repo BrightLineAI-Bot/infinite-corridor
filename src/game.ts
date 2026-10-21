@@ -1,6 +1,6 @@
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
 import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.ts";
-import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage, beginAstralBoarding, tickAstralBoarding } from "./astral-worm-mount.ts";
+import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage, beginAstralBoarding, tickAstralBoarding, tickAstralRiderChoice, tickAstralFighterChoice } from "./astral-worm-mount.ts";
 import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.ts";
 import {
   generateRegion,
@@ -2910,6 +2910,16 @@ export class Game {
     if(!owner.worldBeast){owner.astralMountFixture = true; rider.astralMountFixture = true;}
     return true;
   }
+  // A rider still on a retreating Worm leaves with it (owner rule 2026-10-21): his hunt ends as an escape, no try lost.
+  // Anyone not seated (boarding or landing) is set down first, as before.
+  astralRiderLeavesWith(owner) {
+    const host=this.astralMountHost();
+    for(const rider of this.enemies) if(rider.astralMount?.ownerId===owner.id&&this.astralRiderHeld(rider)) {
+      if(rider.astralMount.status==="mounted"&&!rider.dead){rider.dead=true;rider.noRewards=true;rider.astralMount={...rider.astralMount,status:"dismounted",reason:"left-with-owner"};
+        const q=this.save.worldBeasts?.voidWalker;if(rider.worldBeast==="voidWalker"&&q?.active)retreatEnded(this.save,"voidWalker");}
+      else dismountAstralWalker(rider,"owner-retreat",host);
+    }
+  }
   // Natural pairs board visibly: disk throw, pillar, phase out and in (see ASTRAL_BOARDING).
   boardAstralWalker(owner, rider) {
     if (!this.enemies.includes(owner) || !this.enemies.includes(rider) || rider.astralAllyOf ||
@@ -2950,10 +2960,8 @@ export class Game {
   syncAstralRiders() {
     if (this.paused) return;
     const host=this.astralMountHost();
-    for(const rider of this.enemies) if(rider.astralMount) {
-      if(this.astralPlayerFell()) dismountAstralWalker(rider,"player-dead",host);
-      else syncAstralMount(rider,host);
-    }
+    // Owner rule 2026-10-21: the player's death does not unseat a rider; he stays on through the rematch.
+    for(const rider of this.enemies) if(rider.astralMount) syncAstralMount(rider,host);
   }
   walkerLandingGraph() {
     const map = this.map, tiles = map.tiles || [], width = mapWidth(map, this.area), entry = map.entry || {};
@@ -3201,7 +3209,7 @@ export class Game {
       if (!q) continue;
       if(id==='astralWorm') {
         if(!e.retreating&&e.aggro&&worldBeastPatience(this.save,id,dt)){beginAstralWorldRetreat(this,e);this.message=B.flee;reconcileAstralCompanions(this);this.syncAstralRiders();}
-        if(q.astralRetreat){const result=tickAstralWorldRetreat(this,e,dt,{previewDungeon:(save,id,levelId)=>generatePinnedDungeon(save,id,{levelId}),applyDungeonProgress:(save,id,map)=>applyDeepDungeonProgress(save,id,map),domainAt:domainSectionAt,beforeCross:actor=>{for(const rider of this.enemies)if(rider.astralMount?.ownerId===actor.id&&this.astralRiderHeld(rider))dismountAstralWalker(rider,'owner-retreat',this.astralMountHost());return !this.enemies.some(rider=>rider.astralMount?.ownerId===actor.id&&this.astralRiderHeld(rider));}});if(result.arrived){this.message=retreatEnded(this.save,id);e.dead=true;e.noRewards=true;reconcileAstralCompanions(this);}}
+        if(q.astralRetreat){const result=tickAstralWorldRetreat(this,e,dt,{previewDungeon:(save,id,levelId)=>generatePinnedDungeon(save,id,{levelId}),applyDungeonProgress:(save,id,map)=>applyDeepDungeonProgress(save,id,map),domainAt:domainSectionAt,beforeCross:actor=>{this.astralRiderLeavesWith(actor);return !this.enemies.some(rider=>rider.astralMount?.ownerId===actor.id&&this.astralRiderHeld(rider));}});if(result.arrived){this.astralRiderLeavesWith(e);this.message=retreatEnded(this.save,id);e.dead=true;e.noRewards=true;reconcileAstralCompanions(this);}}
         continue;
       }
       if (!e.retreating && e.aggro && q.dungeon && worldBeastPatience(this.save, id, dt)) { const r = beginDungeonRetreat(this.save, id, this.map); e.retreating = true; this.message = r.message; for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; } journalOnce(this.save, `world-beast-flees:${id}:${this.save.worldBeasts[id].cycle}`, r.message, "World beasts"); }
@@ -3974,6 +3982,17 @@ export class Game {
       // A retreating Walker is harmless and must traverse settlements normally. Sanctuary combat
       // displacement must neither relocate it nor freeze its retreat while the player rests inside.
       if(e.gatePredator){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateGatePredator(e,packWorld);continue}
+      if(e.packKind&&e.astralMount?.status==="mounted"&&e.astralMount.ridingAway){this.performanceStats.activeEnemies++;continue} // rides the retreating Worm home
+      if(e.packKind&&e.worldBeast==="voidWalker"&&!e.astralMount?.status?.match(/mounted|boarding|landing/)&&!e.retreating){
+        const q=this.save.worldBeasts?.voidWalker?.active;
+        if(tickAstralFighterChoice(q,dt,n=>(hashSeed(`${this.save.seed}:${e.id}:astral-fighter:${n}`)%100000)/100000)){q.astralLeave=true;this.message="The Void Walker breaks off the fight and leaves.";}
+      }
+      if(e.packKind&&e.astralMount?.status==="mounted"&&!e.astralMountFixture){
+        const choice=tickAstralRiderChoice(e,dt,n=>(hashSeed(`${this.save.seed}:${e.id}:astral-rider:${n}`)%100000)/100000,this.astralMountHost());
+        if(choice!=="stay"){const q=this.save.worldBeasts?.voidWalker?.active;dismountAstralWalker(e,choice,this.astralMountHost());
+          if(choice==="leave"&&q){q.astralLeave=true;this.message="The Void Walker leaps from the Astral Worm and leaves the fight.";}
+          else this.message="The Void Walker leaps down from the Astral Worm to fight on foot.";}
+      }
       if(e.packKind&&e.astralMount?.status==="boarding"){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)tickAstralBoarding(e,dt,this.astralMountHost());continue}
       if(e.packKind){refreshMarineBeast(e,this.map,width,this.area);this.performanceStats.activeEnemies++;const zone=this.astralRiderHeld(e)||e.kind==="voidWalker"&&(e.retreating||e.fleeTo)?null:packWorld.sanctuary;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(zone)enforceSanctuary(e,zone);continue}
       if(e.seaKind){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateSeaCreature(e,seaWorld,dt);continue}
