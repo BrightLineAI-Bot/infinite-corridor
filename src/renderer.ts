@@ -744,15 +744,21 @@ export function drawGateRevenant(ctx, e, s, now, ox = 0, oy = 0) { // exported f
   const reach = flare ? .14 : 0; ctx.strokeStyle = "#cfc2d6"; ctx.lineWidth = .028; ctx.beginPath();
   for (const t of [-.05, .02, .09]) { ctx.moveTo(.33, -.42 + t); ctx.lineTo(.47 + reach, -.36 + t * 1.5); }
   ctx.stroke();
-  if (maw > .05) { // the chest split into a gaping maw, lava welling up and spat out
-    const h = .58 * maw, w = .13 + .13 * maw, cy = -.4, out = Math.sin(T * 14) * .015;
-    ctx.fillStyle = "#4a0c18"; ctx.beginPath(); ctx.ellipse(0, cy, w + .04, h / 2 + .04, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = "#ff6a2a"; ctx.beginPath(); ctx.ellipse(0, cy, w, h / 2 + out, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = "#ffd27a"; ctx.beginPath(); ctx.ellipse(0, cy + h * .08, w * .45, h * .28, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = "#e8dccf"; ctx.beginPath(); // teeth round the rim
-    for (let i = 0; i < 6; i++) { const a0 = (i / 6) * Math.PI * 2 + .26, x = Math.cos(a0) * w, y = cy + Math.sin(a0) * h / 2, ix = -Math.cos(a0) * .06, iy = -Math.sin(a0) * .06 * (h / .58); ctx.moveTo(x - Math.sin(a0) * .025, y + Math.cos(a0) * .025 * (h / .58)); ctx.lineTo(x + ix, y + iy); ctx.lineTo(x + Math.sin(a0) * .025, y - Math.cos(a0) * .025 * (h / .58)); }
+  if (maw > .05) { // the chest split into one gaping mouth, fangs above and below, lava glowing in its throat
+    const w = .2 + .1 * maw, h = .27 * maw, cy = -.4, pulse = .5 + .5 * Math.sin(T * 6);
+    const lips = (g) => { ctx.beginPath(); ctx.moveTo(-w - g, cy); ctx.quadraticCurveTo(0, cy - h * 2 - g, w + g, cy); ctx.quadraticCurveTo(0, cy + h * 2 + g, -w - g, cy); ctx.closePath(); };
+    ctx.fillStyle = "#4a0c18"; lips(.035); ctx.fill();
+    ctx.fillStyle = "#c2321c"; lips(0); ctx.fill();
+    ctx.fillStyle = "#ff8a2e"; ctx.beginPath(); ctx.ellipse(0, cy + h * .25, w * .62, h * (.75 + .1 * pulse), 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ffe08a"; ctx.beginPath(); ctx.ellipse(0, cy + h * .35, w * .28, h * (.35 + .1 * pulse), 0, 0, 7); ctx.fill();
+    // Fangs: a row along each lip, long ones at the corners of the bite, pointing into the mouth.
+    ctx.fillStyle = "#ece2d4"; ctx.beginPath();
+    for (const [up, n, fangs] of [[-1, 7, [1, 5]], [1, 6, [1, 4]]]) for (let i = 0; i < n; i++) {
+      const t = (i + .5) / n, x = -w + 2 * w * t, lip = cy + up * h * 2 * 2 * t * (1 - t), half = w / n * .8, long = fangs.includes(i) ? 2.6 : 1, len = Math.min(h * 1.25, .05 * long + .02);
+      ctx.moveTo(x - half, lip); ctx.lineTo(x, lip - up * len); ctx.lineTo(x + half, lip);
+    }
     ctx.fill();
-    if (atk?.phase === "active") { ctx.fillStyle = "#ff8a3a"; ctx.beginPath(); for (let i = 0; i < 4; i++) { const q = (T * 2.6 + i / 4) % 1; ctx.moveTo(0, 0); ctx.ellipse(Math.sin(i * 2.1 + T * 3) * .1 * q, cy - h * .3 - q * .55, .045 * (1 - q * .5), .045 * (1 - q * .5), 0, 0, 7); } ctx.fill(); }
+    if (atk?.phase === "active") { ctx.fillStyle = "#ff8a3a"; ctx.beginPath(); for (let i = 0; i < 4; i++) { const q = (T * 2.6 + i / 4) % 1, r = .045 * (1 - q * .5), x = Math.sin(i * 2.1 + T * 3) * .1 * q, y = cy - h - q * .55; ctx.moveTo(x + r, y); ctx.ellipse(x, y, r, r, 0, 0, 7); } ctx.fill(); }
   } else {
   // The Gate burning on its chest: a pointed arch and its keystone.
   const glow = broken ? .25 + .25 * (Math.sin(T * 17) > .3) : flare ? 1 : .55 + .2 * Math.sin(T * 2.6);
