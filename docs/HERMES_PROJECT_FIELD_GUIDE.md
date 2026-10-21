@@ -2600,12 +2600,12 @@ Tim, 2026-10-21: "after you beat the listener you get access to stage 2, and you
 - **Saves.** `save.beastCeiling` is additive (absent until frozen). `ensureBeastCeiling` in `migrateSave` keeps a valid one (numbers coerced) and drops a malformed one.
 - **UI.** The HUD Aperture readout gains ` · S<stage>`. The Aperture card says "Stage n: the Aperture holds at tier N until the Listener falls (again) at the Far Gate" while held.
 - **Build.** `stages` is in `scripts/build.mjs` and both `sw.js` precache lists.
-- **Stone fix (Tim's probe, 2026-10-21).** `interactions.ts` `validActions` for a sealed rock is now `chip` (once), then `break`, `move` (Might 3+). Before, it was `move`, `break`, `chip`, so Act (which takes the first action) rolled a quarry rock aside for no stone and spent it. A rock that is not sealed (rubble, rolled aside) has no actions unless it is strange, so it no longer takes the press from the next rock. `tests/digging.test.ts` line 98 now expects `['break', 'move']`.
+- **Stone fix (Tim's probe, 2026-10-21).** `interactions.ts` `validActions` for a sealed rock is now `chip` (once), then `break`, `move` (Might 3+); `DIG.stone.chip` is 3 (was 1; Tim: "each one of those can be 3 stone"), and Shale's lines say so. Before, it was `move`, `break`, `chip`, so Act (which takes the first action) rolled a quarry rock aside for no stone and spent it. A rock that is not sealed (rubble, rolled aside) has no actions unless it is strange, so it no longer takes the press from the next rock. `tests/digging.test.ts` line 98 now expects `['break', 'move']`.
 
 **BOUNDARY:**
 - Saves stay at schema 14. A save past its stage's top tier keeps its Aperture (it only stops growing) and freezes its beasts at its first measure.
 - The ceiling is taken at the first Stage 1 beast measured at tier 13 or above, not at the instant of reaching tier 13.
-- Only world beasts, the Astral Worm and the Questing Beast are held. Ordinary creatures, guardians and Far Array guardians keep their own scaling.
+- Only world beasts (the Astral Worm among them), the Questing Beast and the Gate Revenant are held (Tim: "The damage freeze should only be on the world bosses and the revenant. All the other... creatures should keep getting stronger"). `monster-pack.ts` `tuneGatePredator` runs its reference through `stageOneBeastReference` (sharing `save.beastCeiling`), so every `gatePredator` (horde ones too) is held. The Deep's final-boss Revenants are not `gatePredator`s and keep scaling, as do ordinary creatures, guardians, elites and Far Array guardians.
 - Stage 2 creatures do not exist yet; `BEAST_APERTURE` will take their tiers (13+).
 - Tests: `tests/stages.test.ts`.
 

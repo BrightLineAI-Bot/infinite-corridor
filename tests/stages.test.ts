@@ -47,7 +47,17 @@ test('Act on a rock gathers stone: chip first, then break, never rolling it away
   const { validActions, applyInteraction } = await import('../src/interactions.ts');
   const s = freshSave(); s.stats.Might = 5; s.materials.stone = 0; const rock = { id: 'q-rock', kind: 'rock', state: 'sealed', actions: ['move', 'break'], environmental: true };
   assert.deepEqual(validActions(rock, s), ['chip', 'break', 'move']);
-  applyInteraction(rock, validActions(rock, s)[0], s); assert.equal(s.materials.stone, 1);
-  applyInteraction(rock, validActions(rock, s)[0], s); assert.equal(s.materials.stone, 3); assert.equal(rock.state, 'broken');
+  applyInteraction(rock, validActions(rock, s)[0], s); assert.equal(s.materials.stone, 3, 'a chip is three stone');
+  applyInteraction(rock, validActions(rock, s)[0], s); assert.equal(s.materials.stone, 5); assert.equal(rock.state, 'broken');
   assert.deepEqual(validActions(rock, s), [], 'rubble takes no more presses');
+});
+
+test('the Gate Revenant is held with the world beasts; nothing else is', async () => {
+  const { tuneGatePredator } = await import('../src/monster-pack.ts');
+  const s = kills(freshSave(), 1); s.level = 30; s.maxHp = 400; s.perception.aperture = APERTURE_THRESHOLDS[12];
+  const a = tuneGatePredator({ gatePredator: true, maxHp: 360, hp: 360, damage: 22 }, s, { meleeBonus: 40, damageReduction: .2 });
+  s.level = 50; s.maxHp = 800; const b = tuneGatePredator({ gatePredator: true, maxHp: 360, hp: 360, damage: 22 }, s, { meleeBonus: 120, damageReduction: .3 });
+  assert.equal(b.maxHp, a.maxHp); assert.equal(b.damage, a.damage);
+  kills(s, 3); const c = tuneGatePredator({ gatePredator: true, maxHp: 360, hp: 360, damage: 22 }, s, { meleeBonus: 120, damageReduction: .3 });
+  assert.ok(c.maxHp > a.maxHp && c.damage > a.damage);
 });

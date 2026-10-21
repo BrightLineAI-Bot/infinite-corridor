@@ -14,7 +14,7 @@ export const REGROW = { every: 20, maxRadius: 5 };
 export const REFUGE_LANDS = {
   near: [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, 1], [-1, -1], [1, -1], [2, 0], [0, 2], [-2, 0], [0, -2]],
   farmTrees: 6,     // big trees (3 wood each)
-  quarryRocks: 10,  // one stone each by chipping (two more each for the strong, by breaking): a stone block's worth
+  quarryRocks: 10,  // three stone each by chipping (two more each for the strong, by breaking; release 275)
   spacing: 2,
 };
 export const ringFor = (epoch) => Math.min(REGROW.maxRadius, Math.max(0, epoch));
@@ -94,9 +94,9 @@ export const FARMER_LINES = [
 ];
 // The quarry keeper says it plainly.
 export const QUARRY_LINES = [
-  "This is the Refuge quarry. Chip a rock and you get a stone. If you're strong enough to break one, you get two more.",
+  "This is the Refuge quarry. Chip a rock and you get three stone. If you're strong enough to break it after, you get two more.",
   "When your stone runs out, come back here. The rocks grow back as you explore.",
-  "Ten stone makes a stone block. Five wood makes a wall. Neither lasts long, so build them when you need them.",
+  "Five stone makes a stone block. Four wood makes a wall. Neither lasts long, so build them when you need them.",
   "Nobody sells stone. This is where it comes from.",
 ];
 // What a speaking villager with a `talkKey` says on its `n`th word.
