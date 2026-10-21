@@ -3,15 +3,17 @@
 // right beside its guardian.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { freshSave } from '../src/types.ts';
+import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, SIGIL_DROPS, ARRIVAL, sigilDrop, clearArrival, isDungeonGuardian } from '../src/game.ts';
 import { DEEP_ARCHETYPE_IDS, deepV2Id } from '../src/deep-dungeons.ts';
 
 const deep = { multiLevel: true, levels: [{ id: 'mouth' }, { id: 'lower' }], levelId: 'lower' };
-test('sigils: world beasts and Gate Revenants always; a lower-level guardian ultra rarely; a first-level guardian never', () => {
+test('sigils: a world beast\'s first kill and Gate Revenants always, later world-beast kills 20%; a lower-level guardian ultra rarely; a first-level guardian never', () => {
   const s = freshSave();
-  assert.equal(sigilDrop(s, { id: 'g', worldBeast: 'lightningGiant' }, {}, 1), SIGIL_DROPS.worldBeast);
-  assert.equal(sigilDrop(s, { id: 'q', questingBeast: true }, {}, 1), SIGIL_DROPS.worldBeast);
+  assert.equal(sigilDrop(s, { id: 'g', worldBeast: 'lightningGiant' }, {}, 1, true), 1, 'a first kill: certain');
+  assert.equal(sigilDrop(s, { id: 'q', questingBeast: true }, {}, 1, true), 1);
+  let later = 0; for (let n = 0; n < 2000; n++) later += sigilDrop(s, { id: 'g', worldBeast: 'lightningGiant' }, {}, n);
+  assert.ok(later > 330 && later < 480, `later kills: about ${SIGIL_DROPS.worldBeast}% (${later}/2000)`);
   assert.equal(sigilDrop(s, { id: 'r', kind: 'gateRevenant' }, {}, 1), SIGIL_DROPS.gateRevenant);
   assert.equal(sigilDrop(s, { id: 'r', kind: 'gateRevenant', noRewards: true }, {}, 1), 0);
   let lower = 0, first = 0, plain = 0;
@@ -56,4 +58,16 @@ test('going down every level of the deep dungeons never lands the Wayfarer withi
     }
   }
   assert.ok(checked > 4, `levels checked (${checked})`); console.log(`# arrivals checked ${checked}, would have landed near a guardian ${near}`);
+});
+
+test('release 263: a world beast\'s first kill since 263 gives its Sigil and its Echo; later kills only a 20% Sigil chance', () => {
+  const s = freshSave(); s.seed = 'SPOILS'; const g = new Game(s, 0), before = s.consumables.crossingSigil || 0;
+  s.worldBeasts.lightningGiant.slain = 3; // slain before 263: the first kill since still counts
+  const kill = (id) => { const e = g.createEnemyFromSpawn({ id, kind: 'lightningGiant', x: 10, y: 10, worldBeast: 'lightningGiant' }); g.enemies.push(e); e.hp = 0; e.dead = true; g.defeatEnemy(e); };
+  kill('giant-1'); assert.equal(s.consumables.crossingSigil, before + 1); assert.equal(s.echoes.owned.lightningGiant, true); assert.equal(s.worldBeasts.lightningGiant.spoils, true);
+  assert.match(g.glyphNotice, /Crossing Sigil[\s\S]*Echo/);
+  for (let k = 2; k < 40; k++) kill(`giant-${k}`);
+  const got = s.consumables.crossingSigil - before - 1; assert.ok(got >= 1 && got < 20, `later kills: some, not all (${got}/38)`);
+  const m = migrateSave(JSON.parse(JSON.stringify(s))); assert.equal(m.worldBeasts.lightningGiant.spoils, true, 'the record survives a reload'); assert.equal('spoils' in migrateSave(JSON.parse(JSON.stringify(freshSave()))).worldBeasts.tremorWorm, false);
+  const qb = freshSave(); qb.questingBeast.spoils = true; assert.equal(migrateSave(JSON.parse(JSON.stringify(qb))).questingBeast.spoils, true);
 });

@@ -1225,12 +1225,21 @@ export const SHORE_PASSIVE = ["tree", "rock"];
 // guardian in a dungeon won't ever drop a crossing sigil. Only the second guardian... has a chance... ultra rare").
 // `deepGuardian` is a percent chance, for a guardian on any level but the first of a multi-level dungeon. `threefold`
 // (Tim: "when you do the threefold deep... a slightly greater chance") is the chance for any guardian of the Threefold Deep.
-export const SIGIL_DROPS = { worldBeast: 1, gateRevenant: 1, deepGuardian: 3, threefold: 6 };
+// `worldBeast` (Tim: "The first time you kill it, there's a hundred percent chance you'll get a sigil, and its echo. But
+// each time [after], there's a twenty percent chance") is the percent chance after a beast's first spoils.
+export const SIGIL_DROPS = { worldBeast: 20, gateRevenant: 1, deepGuardian: 3, threefold: 6 };
+// A world beast's or the Questing Beast's first kill since release 263 gives its Sigil and Echo for certain. The record is
+// save.worldBeasts[id].spoils / save.questingBeast.spoils (additive), so beasts slain before 263 count as new once.
+export function takeFirstSpoils(save, e) {
+  const q = e?.worldBeast ? save.worldBeasts?.[e.worldBeast] : e?.questingBeast ? save.questingBeast : null;
+  if (!q || q.spoils || e.summonedBy || e.noRewards) return false;
+  q.spoils = true; return true;
+}
 // A dungeon's own guardian (a world beast or Questing Beast haunting it is not one; they roam and have their own rules).
 export const isDungeonGuardian = (e) => !!e && !e.worldBeast && !e.questingBeast && (!!e.boss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e.dungeonRole));
-export function sigilDrop(save, e, map, n) {
+export function sigilDrop(save, e, map, n, first = false) {
   if (!e || e.summonedBy || e.noRewards) return 0;
-  if (e.worldBeast || e.questingBeast) return SIGIL_DROPS.worldBeast;
+  if (e.worldBeast || e.questingBeast) return first || rng(`${save.seed}:sigil-drop:beast:v1:${e.id}:${n}`)() * 100 < SIGIL_DROPS.worldBeast ? 1 : 0;
   if (e.kind === "gateRevenant") return SIGIL_DROPS.gateRevenant;
   if (!isDungeonGuardian(e)) return 0;
   const levels = map?.multiLevel ? map.levels || [] : [], at = levels.findIndex((q) => q.id === map.levelId);
@@ -3576,8 +3585,10 @@ export class Game {
     if (!e.summonedBy && !e.noRewards) { const g = glyphDrop(this.save, `${this.areaId()}:${e.id}`, this.save.dropCounter, e.boss || isCrossingGuardian(e)); if (g) this.glyphNotice = `${GLYPHS[g].name} glyph recovered.`; }
     echoEvent(this, "kill", this.lastUpdateNow || 0, { enemy: e });
     onConstellationKill(this);
-    { const echo = echoDrop(this.save, e, e.boss || isCrossingGuardian(e) || !!e.worldBeast || !!e.questingBeast, this.save.dropCounter); if (echo) this.glyphNotice = `An Echo lingers: ${ECHOES[echo].name}. Set it in the Echoes screen (Pack).`; }
-    { const sigils = sigilDrop(this.save, e, this.map, this.save.dropCounter); if (sigils) { const c = (this.save.consumables ||= {}); c.crossingSigil = (c.crossingSigil || 0) + sigils; this.glyphNotice = `A Crossing Sigil falls from ${e.packName || e.name || "the fallen"}.`; } } // release 263
+    const firstSpoils = takeFirstSpoils(this.save, e); // release 263: a world beast's first kill: its Sigil and Echo for certain
+    const echo = echoDrop(this.save, e, e.boss || isCrossingGuardian(e) || !!e.worldBeast || !!e.questingBeast, this.save.dropCounter, firstSpoils), echoNote = echo ? `An Echo lingers: ${ECHOES[echo].name}. Set it in the Echoes screen (Pack).` : "";
+    if (echo) this.glyphNotice = echoNote;
+    { const sigils = sigilDrop(this.save, e, this.map, this.save.dropCounter, firstSpoils); if (sigils) { const c = (this.save.consumables ||= {}); c.crossingSigil = (c.crossingSigil || 0) + sigils; this.glyphNotice = `A Crossing Sigil falls from ${e.packName || e.name || "the fallen"}.${echoNote ? " " + echoNote : ""}`; } } // release 263
     if (!levels) this.message = `Recovered ${marks} mark${marks === 1 ? "" : "s"} from the fallen creature.`;
     if(this.save.narrative.facts['leads.active']){this.save.worldFlags['lead.hunt.count']=(this.save.worldFlags['lead.hunt.count']||0)+1;if(this.save.worldFlags['lead.hunt.count']>=5)progressLead(this.save,'hunt');if(isCrossingGuardian(e))progressLead(this.save,'guardian')}
     const key = `drop:v1:${this.areaId()}:${e.id}`;

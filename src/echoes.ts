@@ -69,11 +69,11 @@ export function toggleEcho(save, id) {
 // Release 263 fix: live pack combatants carry `packKind: true` (a flag), not their id, so every real drop used to miss;
 // the creature is now read from `kind` when the flag is a boolean.
 export const echoKindOf = (enemy) => typeof enemy?.packKind === "string" ? enemy.packKind : enemy?.packKind ? enemy.kind : null;
-export function echoDrop(save, enemy, guardian, n) {
+export function echoDrop(save, enemy, guardian, n, certain = false) {
   const id = echoKindOf(enemy);
   if (!id || !ECHOES[id] || save.echoes.owned[id] || enemy.summonedBy || enemy.noRewards) return null;
   // A mixed roll: the raw FNV hash modulo 100 runs well under the stated chance when only the counter changes.
-  if (rng(`${save.seed}:echo-drop:v${ECHO_VERSION}:${enemy.id}:${n}`)() * 100 >= (guardian ? ECHO_DROPS.guardian : ECHO_DROPS.ordinary)) return null;
+  if (!certain && rng(`${save.seed}:echo-drop:v${ECHO_VERSION}:${enemy.id}:${n}`)() * 100 >= (guardian ? ECHO_DROPS.guardian : ECHO_DROPS.ordinary)) return null;
   save.echoes.owned[id] = true;
   return id;
 }
