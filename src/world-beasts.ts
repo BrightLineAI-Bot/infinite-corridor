@@ -8,6 +8,7 @@ import { ASTRAL_PROFILE } from "./astral-worm.ts";
 import { hashSeed } from "./random.ts";
 import { LETHAL_KINDS, canStep } from "./landscape.ts";
 import { sectionExits, apertureTier } from "./world.ts";
+import { stageOneBeastReference } from "./stages.ts";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -384,9 +385,9 @@ export const BEAST_BASELINE = { level: 8, starterHit: 16, starterHp: 102, starte
 export function beastTuningReference(save, stats = {}) {
   const actualLevel = Math.max(1, Number(save.level) || 1), level = Math.max(BEAST_BASELINE.level, actualLevel);
   const weapon = save.equipment?.[save.activeWeaponSlot], levelBonus = Math.floor((level - 1) * .6) - Math.floor((actualLevel - 1) * .6);
-  return { level, perHit: Math.max(BEAST_BASELINE.starterHit, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0) + levelBonus),
+  return stageOneBeastReference(save, { level, perHit: Math.max(BEAST_BASELINE.starterHit, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0) + levelBonus),
     maxHp: Math.max(BEAST_BASELINE.starterHp, (Number(save.maxHp) || 60) + (level - actualLevel) * 6),
-    guard: Math.max(BEAST_BASELINE.starterGuard, Math.min(.75, Number(stats.damageReduction) || 0)) };
+    guard: Math.max(BEAST_BASELINE.starterGuard, Math.min(.75, Number(stats.damageReduction) || 0)) }); // release 275: Stage 1 beasts are held from tier 13 until three Listeners
 }
 export function beastProfileVitals(profile, save, stats = {}) {
   const r = beastTuningReference(save, stats);
