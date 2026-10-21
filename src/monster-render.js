@@ -1,15 +1,15 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID } from "./monster-pack.js?v=r261-2215f2781a82";
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID } from "./monster-pack.js?v=r267-345b89326368";
 
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r261-2215f2781a82";
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r267-345b89326368";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r261-2215f2781a82";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r261-2215f2781a82";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r261-2215f2781a82";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r267-345b89326368";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r267-345b89326368";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r267-345b89326368";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r261-2215f2781a82";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r267-345b89326368";
 
 const TAU = Math.PI * 2;
 

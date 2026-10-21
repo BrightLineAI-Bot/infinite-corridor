@@ -2,9 +2,9 @@
 // Wayfarer's level and power. Now and then it claims a wild section. It stays there until it is killed or it has
 // killed the Wayfarer QUESTING_BEAST.tries times; then it is gone, and after a cooldown (counted in sections entered)
 // a new hunt can begin somewhere else.
-import { hashSeed } from "./random.js?v=r261-2215f2781a82";
-import { WORLD_BEASTS, BEAST_BASELINE, beastProfileVitals, ENCOUNTER, encounterReady, encounterMet, isMarineTile } from "./world-beasts.js?v=r261-2215f2781a82";
-import { LETHAL_KINDS } from "./landscape.js?v=r261-2215f2781a82";
+import { hashSeed } from "./random.js?v=r267-345b89326368";
+import { WORLD_BEASTS, BEAST_BASELINE, beastProfileVitals, ENCOUNTER, encounterReady, encounterMet, isMarineTile } from "./world-beasts.js?v=r267-345b89326368";
+import { LETHAL_KINDS } from "./landscape.js?v=r267-345b89326368";
 
 // Release 187 (Tim, 2026-10-18): far tougher and far more dangerous. About twice the health; each blow takes about
 // 27% of maximum health (four unhealed hits kill); it runs fast and barely pauses between attacks.
@@ -13,7 +13,7 @@ export const QUESTING_BEAST = { chance: 0.035, minDepth: 4, tries: 3, cooldownSl
 export function ensureQuestingBeast(s) {
   const q = s.questingBeast && typeof s.questingBeast === "object" ? s.questingBeast : {};
   const a = q.active && typeof q.active === "object" && Number.isInteger(q.active.rx) && Number.isInteger(q.active.ry) ? { rx: q.active.rx, ry: q.active.ry, tries: Math.max(0, Number(q.active.tries) || 0) } : null;
-  s.questingBeast = { v: 1, cycle: Math.max(0, Number(q.cycle) || 0), cooldown: Math.max(0, Number(q.cooldown) || 0), active: a, slain: Math.max(0, Number(q.slain) || 0), escaped: Math.max(0, Number(q.escaped) || 0) };
+  s.questingBeast = { v: 1, cycle: Math.max(0, Number(q.cycle) || 0), cooldown: Math.max(0, Number(q.cooldown) || 0), active: a, slain: Math.max(0, Number(q.slain) || 0), escaped: Math.max(0, Number(q.escaped) || 0), ...(q.spoils === true ? { spoils: true } : {}) }; // spoils: release 263
   return s;
 }
 
@@ -27,7 +27,7 @@ export function questingBeastFor(save, map, rx, ry) {
   if (!q.active) {
     if (q.cooldown > 0) { q.cooldown--; return null; }
     if (!encounterReady(save)) return null; // release 261: the buffer between meetings
-    // Release r261-2215f2781a82 (Tim: "the questing beast can't be on totally ocean tiles... much, much more rare" on water).
+    // Release 261 (Tim: "the questing beast can't be on totally ocean tiles... much, much more rare" on water).
     const sea = map.tiles.filter(isMarineTile).length / map.tiles.length; if (sea >= QB_SEA.none) return null;
     if ((hashSeed(`${save.seed}:questing-beast:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= QUESTING_BEAST.chance * ENCOUNTER.chanceScale * (sea > QB_SEA.watery ? QB_SEA.wateryChance : 1)) return null;
     q.active = { rx, ry, tries: 0 }; encounterMet(save);

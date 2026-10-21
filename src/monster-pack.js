@@ -7,8 +7,8 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { hashSeed } from "./random.js?v=r261-2215f2781a82";
-import { updateAstralActor } from "./astral-worm.js?v=r261-2215f2781a82";
+import { hashSeed } from "./random.js?v=r267-345b89326368";
+import { updateAstralActor } from "./astral-worm.js?v=r267-345b89326368";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -362,7 +362,11 @@ export const PACK_BOSS_TEMPLATE = { hp: 3.4, damage: 1.3, scale: 1.35, cooldown:
 
 // Ordinary-dungeon guardians: the Hollow Marshal stays in the rotation; every pack creature
 // can now guard a dungeon in its boss form.
-export const GUARDIAN_POOL = ["hollowMarshal", "weepingSaint", "amalgam", "hangedChoir", "gnawingMaw", "sunderjaw", "thunderhorn", "cinderSeraph", "siegeBeetle", "lumenWraith", "mirrorShade", "strataEel", "veilSpinner", "riftLynx", "graveLantern"];
+// Release 263 (Tim, 2026-10-21: "make sure that all the creatures that can [leave Echoes] can also be guardians"): every
+// non-unique pack creature with an Echo is in the pool (the Pallid Crawler joins). Unique creatures are world beasts or
+// the Far Gate's Listener and leave their Echoes where they are fought. A dungeon keeps the guardian it first rolled
+// (history.guardianKind), so only dungeons never entered can draw from the wider pool.
+export const GUARDIAN_POOL = ["hollowMarshal", "weepingSaint", "amalgam", "hangedChoir", "gnawingMaw", "sunderjaw", "thunderhorn", "cinderSeraph", "siegeBeetle", "lumenWraith", "mirrorShade", "strataEel", "veilSpinner", "riftLynx", "graveLantern", "pallidCrawler"];
 export function guardianKindFor(seed, identity) { return GUARDIAN_POOL[hashSeed(`${seed}:guardian:pack-v${MONSTER_PACK_VERSION}:${identity}`) % GUARDIAN_POOL.length]; }
 
 // Dungeon ecologies gain pack residents; each entry is [kind, encounter role].
@@ -550,10 +554,13 @@ export const WORM = {
 };
 // The Mountain Turtle (release 241). Balance as data.
 export const TURTLE = {
-  // Release r261-2215f2781a82 (Tim: "the turtle can appear in the water... he'll make like a temporary ice floor... walkable tiles... your
+  // Release 261 (Tim: "the turtle can appear in the water... he'll make like a temporary ice floor... walkable tiles... your
   // boat can slide across it... they'll persist for... 5, maybe 10 seconds, and then... unfreeze"): open sea within
   // `radius` of it freezes to walkable ice every `tick` s; each ice tile thaws `life` s after the Turtle last froze it.
-  seaIce: { radius: 2.2, life: 8, tick: .5 },
+  // Release 263 (Tim: "Don't make an ice floor [all the time]... at the end of its attacks it'll make an ice floor... if
+  // it's bouncing all over the screen, it's not gonna make a bunch of ice floors"): one patch of `radius`, frozen where it
+  // stands once it has made no attack for `settle` s after a combo; it thaws `life` s later, whoever stands on it.
+  seaIce: { radius: 2.6, life: 8, tick: .5, settle: 1 },
   stompRadius: 1.9, stompRing: 4.2,
   dashSpeed: 7.5, dashEvery: .14, trailLife: 3.2, trailRadius: .75, trailBite: .45, fireTick: .5, iceTick: .6, iceSlow: .55, iceBurst: [2, 2.6], iceBurstRadius: 1.3, iceBurstBite: .9, // fire burns while it lasts; ice stings and slows, then bursts
   spinRadius: 1.4, spinTick: .4, spinPull: .9, twisterEvery: .5, twisterMax: 6, twisterSpeed: 1.4, twisterLife: 10, twisterRadius: .7, twisterTick: .7, twisterSlow: .5, twisterBite: .35,

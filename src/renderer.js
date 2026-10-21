@@ -1,18 +1,18 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r261-2215f2781a82";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r261-2215f2781a82";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r261-2215f2781a82";
-import { enemyMeleeGeometry } from "./combat.js?v=r261-2215f2781a82";
-import { ruleRows } from "./elders.js?v=r261-2215f2781a82";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r261-2215f2781a82";
-import { BOAT } from "./boats.js?v=r261-2215f2781a82";
-import { isMarineTile } from "./world-beasts.js?v=r261-2215f2781a82";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r261-2215f2781a82";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r261-2215f2781a82";
-import { liftAt, tileUnder } from "./landscape.js?v=r261-2215f2781a82";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r261-2215f2781a82";
-import { drawRelayNode } from "./relay-network.js?v=r261-2215f2781a82";
-import { structureOccupancy } from "./world.js?v=r261-2215f2781a82";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r261-2215f2781a82";
+import { astralBeamAnchors } from "./astral-worm.js?v=r267-345b89326368";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r267-345b89326368";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r267-345b89326368";
+import { enemyMeleeGeometry } from "./combat.js?v=r267-345b89326368";
+import { ruleRows } from "./elders.js?v=r267-345b89326368";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r267-345b89326368";
+import { BOAT } from "./boats.js?v=r267-345b89326368";
+import { isMarineTile } from "./world-beasts.js?v=r267-345b89326368";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r267-345b89326368";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r267-345b89326368";
+import { liftAt, tileUnder } from "./landscape.js?v=r267-345b89326368";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r267-345b89326368";
+import { drawRelayNode } from "./relay-network.js?v=r267-345b89326368";
+import { structureOccupancy } from "./world.js?v=r267-345b89326368";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r267-345b89326368";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -136,8 +136,71 @@ function seaIceTile(ctx, x, y, s) {
   ctx.moveTo(px + s * (.15 + (d % 5) * .1), py + s * .2); ctx.lineTo(px + s * .5, py + s * (.45 + (d % 3) * .08)); ctx.lineTo(px + s * (.85 - (d % 4) * .08), py + s * .8);
   ctx.moveTo(px + s * .5, py + s * (.45 + (d % 3) * .08)); ctx.lineTo(px + s * .25, py + s * .85); ctx.stroke();
 }
+// Release 265: Shale, the quarry keeper (Tim: "a small stone turtle... looks kind of like the mountain turtle, but...
+// smaller... no ice on him... He could be wearing a hat"). A fitted-stone shell, stubby legs, a patient head and a
+// wide-brimmed straw hat; he breathes slowly.
+function quarryTurtle(ctx, x, y, s, now) {
+  const cx = (x + .5) * s, cy = (y + .62) * s, b = 1 + Math.sin(now / 900) * .02, u = s / 32;
+  ctx.save(); ctx.translate(cx, cy);
+  ctx.fillStyle = "#00000040"; ctx.beginPath(); ctx.ellipse(0, 9 * u, 14 * u, 4 * u, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#5d6660"; for (const [lx, ly] of [[-10, 5], [10, 5], [-7, 9], [7, 9]]) { ctx.beginPath(); ctx.ellipse(lx * u, ly * u, 3.4 * u, 2.6 * u, 0, 0, 7); ctx.fill(); }
+  ctx.fillStyle = "#6f7a72"; ctx.beginPath(); ctx.ellipse(13 * u, 0, 5 * u, 4 * u, 0, 0, 7); ctx.fill(); // head, looking right
+  ctx.fillStyle = "#1e2420"; ctx.beginPath(); ctx.arc(15 * u, -1 * u, 1.1 * u, 0, 7); ctx.fill();
+  ctx.scale(1, b); ctx.fillStyle = "#7d8780"; ctx.beginPath(); ctx.ellipse(0, 0, 12 * u, 9 * u, 0, Math.PI, 0); ctx.lineTo(12 * u, 3 * u); ctx.lineTo(-12 * u, 3 * u); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#4b534e"; ctx.lineWidth = Math.max(1, u * .9); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-11 * u, -2 * u); ctx.lineTo(11 * u, -2 * u); ctx.moveTo(-6 * u, -2 * u); ctx.lineTo(-5 * u, -8 * u); ctx.moveTo(4 * u, -2 * u); ctx.lineTo(5 * u, -8 * u); ctx.moveTo(-1 * u, -8.5 * u); ctx.lineTo(-1 * u, -2 * u); ctx.stroke(); // fitted stones
+  ctx.fillStyle = "#c9a85a"; ctx.beginPath(); ctx.ellipse(0, -9 * u, 11 * u, 2.6 * u, 0, 0, 7); ctx.fill(); // the hat's brim
+  ctx.fillStyle = "#b8954a"; ctx.beginPath(); ctx.ellipse(0, -12 * u, 5.5 * u, 4 * u, 0, Math.PI, 0); ctx.lineTo(5.5 * u, -9.5 * u); ctx.lineTo(-5.5 * u, -9.5 * u); ctx.fill();
+  ctx.fillStyle = "#7a4a2a"; ctx.fillRect(-5.5 * u, -11 * u, 11 * u, 1.6 * u); // band
+  ctx.restore();
+}
+// Release 265: a wood wall (upright planks with a cross brace) or a stone block (a cut block, a second course when stacked).
+function buildTile(ctx, t, x, y, s) {
+  const px = x * s, py = y * s;
+  if (t.build === "wood" && (t.buildRun === "ne" || t.buildRun === "nw")) { // release 267: a fence on the diagonal
+    const up = t.buildRun === "ne", ax = px + s * .1, bx = px + s * .9, ay = up ? py + s * .88 : py + s * .2, by = up ? py + s * .2 : py + s * .88;
+    ctx.strokeStyle = "#00000045"; ctx.lineWidth = s * .12; ctx.beginPath(); ctx.moveTo(ax, ay + s * .06); ctx.lineTo(bx, by + s * .06); ctx.stroke();
+    ctx.strokeStyle = "#6b4426"; ctx.lineWidth = s * .07; ctx.beginPath(); ctx.moveTo(ax, ay - s * .12); ctx.lineTo(bx, by - s * .12); ctx.stroke();
+    for (let k = 0; k < 5; k++) {
+      const f = (k + .5) / 5, x0 = ax + (bx - ax) * f, y0 = ay + (by - ay) * f, w = s * .14;
+      ctx.fillStyle = k % 2 ? "#8a5a32" : "#a06d3e"; ctx.beginPath(); ctx.moveTo(x0 - w / 2, y0); ctx.lineTo(x0 - w / 2, y0 - s * .34); ctx.lineTo(x0, y0 - s * .46); ctx.lineTo(x0 + w / 2, y0 - s * .34); ctx.lineTo(x0 + w / 2, y0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#4e321a"; ctx.lineWidth = Math.max(1, s * .025); ctx.stroke();
+    }
+    return;
+  }
+  if (t.build === "wood" && t.buildRun === "v") { // release 265: built facing sideways, the fence runs up and down
+    ctx.fillStyle = "#00000045"; ctx.fillRect(px + s * .5, py + s * .06, s * .14, s * .94);
+    for (let k = 0; k < 4; k++) {
+      const y0 = py + s * (.02 + k * .24);
+      ctx.fillStyle = k % 2 ? "#8a5a32" : "#a06d3e"; ctx.beginPath(); ctx.moveTo(px + s * .38, y0 + s * .26); ctx.lineTo(px + s * .38, y0 + s * .06); ctx.lineTo(px + s * .47, y0 - s * .04); ctx.lineTo(px + s * .56, y0 + s * .06); ctx.lineTo(px + s * .56, y0 + s * .26); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#4e321a"; ctx.lineWidth = Math.max(1, s * .025); ctx.stroke();
+    }
+    ctx.fillStyle = "#6b4426"; ctx.fillRect(px + s * .43, py, s * .08, s);
+    return;
+  }
+  if (t.build === "wood") { // a thin palisade of pointed stakes on a crossbar
+    ctx.fillStyle = "#00000045"; ctx.fillRect(px + s * .02, py + s * .74, s * .96, s * .1);
+    for (let k = 0; k < 5; k++) {
+      const x0 = px + s * (.03 + k * .19), w = s * .17;
+      ctx.fillStyle = k % 2 ? "#8a5a32" : "#a06d3e"; ctx.beginPath(); ctx.moveTo(x0, py + s * .78); ctx.lineTo(x0, py + s * .3); ctx.lineTo(x0 + w / 2, py + s * .16); ctx.lineTo(x0 + w, py + s * .3); ctx.lineTo(x0 + w, py + s * .78); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#4e321a"; ctx.lineWidth = Math.max(1, s * .025); ctx.stroke();
+    }
+    ctx.fillStyle = "#6b4426"; ctx.fillRect(px, py + s * .5, s, s * .08);
+    return;
+  }
+  const level = t.buildLevel || 1;
+  for (let k = 0; k < level; k++) {
+    const top = py + s * (.18 - k * .16);
+    ctx.fillStyle = "#00000038"; ctx.fillRect(px + s * .06, top + s * .74, s * .9, s * .12);
+    ctx.fillStyle = "#7b7f86"; ctx.fillRect(px + s * .06, top + s * .5, s * .88, s * .3);
+    ctx.fillStyle = "#a9aeb5"; ctx.fillRect(px + s * .06, top + s * .14, s * .88, s * .38);
+    ctx.strokeStyle = "#4e5258"; ctx.lineWidth = Math.max(1, s * .04); ctx.strokeRect(px + s * .06, top + s * .14, s * .88, s * .66);
+    ctx.beginPath(); ctx.moveTo(px + s * .06, top + s * .52); ctx.lineTo(px + s * .94, top + s * .52); ctx.stroke();
+  }
+}
 function tile(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=null) {
   if (t?.kind === "seaIce") { seaIceTile(ctx, x, y, s); return; } // release 261: the Mountain Turtle's ice floor
+  if (t?.build) { tileBase(ctx, t.buildOrig || t, x, y, s, map, w, activeBuildingId, scarSurface); buildTile(ctx, t, x, y, s); return; }
   tileBase(ctx, t, x, y, s, map, w, activeBuildingId, scarSurface);
   if (t?.trail) {
     const d = Number.isFinite(t.detail) ? t.detail : h(x, y), px = x * s, py = y * s;
@@ -1037,6 +1100,7 @@ export function render(ctx, g, w, h, now) {
             if (o.wanderer) { const q = g.save.wanderer?.quest; ctx.fillStyle = !q || q.done ? "#f0d58a" : "#9cc8b5"; ctx.font = `bold ${Math.max(10, s * .32)}px monospace`; ctx.textAlign = "center"; ctx.fillText(!q || q.done ? "!" : "…", (o.x + .5) * s, (o.y - lift - .25) * s); }
           }
           else if (o.kind === "wandererCache") { if (o.state !== "used") { actor(ctx, o.x, o.y, s, "wandererCache", "down", 0, "idle"); } }
+          else if (o.quarryTurtle) quarryTurtle(ctx, o.x, o.y, s, now); // release 265: Shale, the quarry keeper
           else if (o.kind === "villager") { actor(ctx, o.x, o.y, s, o.guard ? "militia" : "villager", "down", 0, "idle"); ctx.fillStyle = "#9cc8b5"; ctx.beginPath(); ctx.arc((o.x + 0.5) * s, o.y * s - 6, 3, 0, 7); ctx.fill(); }
           else if (o.kind === "npc") {
             const n = g.save.consequences.npcs[o.id],
@@ -1188,6 +1252,13 @@ export function render(ctx, g, w, h, now) {
         ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
         ctx.fillStyle = hull > .6 ? "#6fcf7a" : hull > .3 ? "#e3b04b" : "#e2574a"; ctx.fillRect(bx, by, bw * hull, bh);
         if (hull <= .3 && Math.floor(now / 350) % 2) { ctx.strokeStyle = "#ffb3a8"; ctx.lineWidth = 1; ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2); }
+        // Release 263: a deployed hull shield rings the skiff in pale blue and overlays the gauge; it flickers in its last 10 s.
+        const shield = Number(g.save.boat.shield) || 0;
+        if (shield > 0 && (shield > 10 || Math.floor(now / 200) % 2)) {
+          ctx.save(); ctx.strokeStyle = "#9fdcffcc"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.fillStyle = "#9fdcff22";
+          ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y + .8 - lift / s) * s, s * .78, s * .5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = "#9fdcff"; ctx.fillRect(bx, by + bh + 1, bw * Math.min(1, shield / BOAT.shield.seconds), Math.max(2, bh * .6)); ctx.restore();
+        }
       }
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;

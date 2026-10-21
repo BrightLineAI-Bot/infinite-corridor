@@ -4,7 +4,7 @@
 // always-on bonus while both are in place, discovered the first time the pair is slotted. Spells now keep their own
 // cooldowns (`magicSkills.cooldowns["spell:<id>"]`), so two spells can share the buttons.
 // Data and pure rules; game.ts casts, main.ts draws the buttons and the Arcanum.
-import { SPELLS, APERTURE_SKILLS, skillRank } from "./items.js?v=r261-2215f2781a82";
+import { SPELLS, APERTURE_SKILLS, skillRank } from "./items.js?v=r267-345b89326368";
 
 export const ATTRIBUTES = {
   // icon (release 157): the element's mark beside every spell and discipline in the Arcanum.
@@ -66,7 +66,7 @@ export function ensureSlots(save) {
   ms.slots = raw ? { a: valid(raw.a), b: valid(raw.b) } : { a: `spell:${SPELLS[save.equippedSpell] ? save.equippedSpell : "ember-ring"}`, b: ms.selected && CASTABLES[`skill:${ms.selected}`] ? `skill:${ms.selected}` : null };
   if (ms.slots.a && ms.slots.a === ms.slots.b) ms.slots.b = null;
   ms.pairingsSeen = { ...(ms.pairingsSeen || {}) };
-  // Release r261-2215f2781a82 spell presets (Tim: "two different presets for the spells... I'll just toggle it"): two saved A/B pairs;
+  // Release 261 spell presets (Tim: "two different presets for the spells... I'll just toggle it"): two saved A/B pairs;
   // the slots always hold the active one. Additive at schema 14: a save without presets starts with both as its slots.
   const pair = (q) => (q && typeof q === "object" ? { a: valid(q.a), b: valid(q.b) } : null);
   const list = Array.isArray(ms.presets) ? ms.presets.slice(0, PRESETS).map(pair) : [];
