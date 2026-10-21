@@ -1,18 +1,18 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r257-204a3837382b";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r257-204a3837382b";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r257-204a3837382b";
-import { enemyMeleeGeometry } from "./combat.js?v=r257-204a3837382b";
-import { ruleRows } from "./elders.js?v=r257-204a3837382b";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r257-204a3837382b";
-import { BOAT } from "./boats.js?v=r257-204a3837382b";
-import { isMarineTile } from "./world-beasts.js?v=r257-204a3837382b";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r257-204a3837382b";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r257-204a3837382b";
-import { liftAt, tileUnder } from "./landscape.js?v=r257-204a3837382b";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r257-204a3837382b";
-import { drawRelayNode } from "./relay-network.js?v=r257-204a3837382b";
-import { structureOccupancy } from "./world.js?v=r257-204a3837382b";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r257-204a3837382b";
+import { astralBeamAnchors } from "./astral-worm.js?v=r259-a490b918fa7e";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r259-a490b918fa7e";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r259-a490b918fa7e";
+import { enemyMeleeGeometry } from "./combat.js?v=r259-a490b918fa7e";
+import { ruleRows } from "./elders.js?v=r259-a490b918fa7e";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r259-a490b918fa7e";
+import { BOAT } from "./boats.js?v=r259-a490b918fa7e";
+import { isMarineTile } from "./world-beasts.js?v=r259-a490b918fa7e";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r259-a490b918fa7e";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r259-a490b918fa7e";
+import { liftAt, tileUnder } from "./landscape.js?v=r259-a490b918fa7e";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r259-a490b918fa7e";
+import { drawRelayNode } from "./relay-network.js?v=r259-a490b918fa7e";
+import { structureOccupancy } from "./world.js?v=r259-a490b918fa7e";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r259-a490b918fa7e";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1179,7 +1179,7 @@ export function render(ctx, g, w, h, now) {
         ctx.fillStyle = hull > .6 ? "#6fcf7a" : hull > .3 ? "#e3b04b" : "#e2574a"; ctx.fillRect(bx, by, bw * hull, bh);
         if (hull <= .3 && Math.floor(now / 350) % 2) { ctx.strokeStyle = "#ffb3a8"; ctx.lineWidth = 1; ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2); }
       }
-      // Release r257-204a3837382b: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
+      // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
       actor(
@@ -1239,7 +1239,7 @@ export function render(ctx, g, w, h, now) {
   if (g.area === "overworld" && (g.seaHazards?.fog?.length || g.novaFog)) {
     // Fog banks (release 156; release 158 smooths them): each bank is a cluster of soft puffs turning slowly about its
     // centre. Inside a bank the mist closes in around the Wayfarer gradually (fogLevel is eased in open-sea.ts).
-    // Release r257-204a3837382b: a Supernova's fog (g.novaFog) draws the same way, faded in and out by its alpha.
+    // Release 257: a Supernova's fog (g.novaFog) draws the same way, faded in and out by its alpha.
     const level = Math.max(g.seaHazards?.fogLevel || 0, g.novaFog?.fogLevel || 0), time = now / 1000;
     for (const [f, fade] of [...(g.seaHazards?.fog || []).map((f) => [f, 1]), ...(g.novaFog?.fog || []).map((f) => [f, g.novaFog.alpha ?? 1])]) {
       if (fade <= 0) continue;

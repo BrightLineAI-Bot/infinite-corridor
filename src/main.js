@@ -1,26 +1,26 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r257-204a3837382b";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r257-204a3837382b";
-import { renderTimings } from "./renderer.js?v=r257-204a3837382b";
-import { createProbe, PROBE } from "./diagnostic-probe.js?v=r257-204a3837382b";
-import { vendorShop, buyFromVendor } from "./game.js?v=r257-204a3837382b";
-import { CREATURE_TRAITS } from "./combat.js?v=r257-204a3837382b";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=r257-204a3837382b";
-import { drawPackPortrait } from "./monster-render.js?v=r257-204a3837382b";
-import { landscapeAtlasColor } from "./landscape-render.js?v=r257-204a3837382b";
-import { hashSeed } from "./random.js?v=r257-204a3837382b";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r257-204a3837382b";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r257-204a3837382b";
-import { hamletSection, hamletIdentity } from "./settlements.js?v=r257-204a3837382b";
-import { linksKnown } from "./linked-dungeons.js?v=r257-204a3837382b";
-import { DIG } from "./digging.js?v=r257-204a3837382b";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces } from "./atlas-view.js?v=r257-204a3837382b";
-import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses } from "./glimpses.js?v=r257-204a3837382b";
-import { startGlimpse, paintRule } from "./glimpse-render.js?v=r257-204a3837382b";
-import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r257-204a3837382b";
-import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=r257-204a3837382b";
-import { questingBeastTriesLeft } from "./questing-beast.js?v=r257-204a3837382b";
-import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=r257-204a3837382b";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r257-204a3837382b";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r259-a490b918fa7e";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r259-a490b918fa7e";
+import { renderTimings } from "./renderer.js?v=r259-a490b918fa7e";
+import { createProbe, PROBE } from "./diagnostic-probe.js?v=r259-a490b918fa7e";
+import { vendorShop, buyFromVendor } from "./game.js?v=r259-a490b918fa7e";
+import { CREATURE_TRAITS } from "./combat.js?v=r259-a490b918fa7e";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=r259-a490b918fa7e";
+import { drawPackPortrait } from "./monster-render.js?v=r259-a490b918fa7e";
+import { landscapeAtlasColor } from "./landscape-render.js?v=r259-a490b918fa7e";
+import { hashSeed } from "./random.js?v=r259-a490b918fa7e";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r259-a490b918fa7e";
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r259-a490b918fa7e";
+import { hamletSection, hamletIdentity } from "./settlements.js?v=r259-a490b918fa7e";
+import { linksKnown } from "./linked-dungeons.js?v=r259-a490b918fa7e";
+import { DIG } from "./digging.js?v=r259-a490b918fa7e";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces } from "./atlas-view.js?v=r259-a490b918fa7e";
+import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses } from "./glimpses.js?v=r259-a490b918fa7e";
+import { startGlimpse, paintRule } from "./glimpse-render.js?v=r259-a490b918fa7e";
+import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r259-a490b918fa7e";
+import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=r259-a490b918fa7e";
+import { questingBeastTriesLeft } from "./questing-beast.js?v=r259-a490b918fa7e";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=r259-a490b918fa7e";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r259-a490b918fa7e";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -171,7 +171,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r257-204a3837382b";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r259-a490b918fa7e";
 import {
   Game,
   actionReadiness,
@@ -180,19 +180,19 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=r257-204a3837382b";
-import { createInput } from "./input.js?v=r257-204a3837382b";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r257-204a3837382b";
-import { STATS } from "./types.js?v=r257-204a3837382b";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=r257-204a3837382b";
-import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=r257-204a3837382b";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=r257-204a3837382b";
-import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=r257-204a3837382b";
-import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=r257-204a3837382b";
-import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=r257-204a3837382b";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r257-204a3837382b";
-import { worldStewardReport } from "./story.js?v=r257-204a3837382b";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r257-204a3837382b";
+} from "./game.js?v=r259-a490b918fa7e";
+import { createInput } from "./input.js?v=r259-a490b918fa7e";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r259-a490b918fa7e";
+import { STATS } from "./types.js?v=r259-a490b918fa7e";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=r259-a490b918fa7e";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=r259-a490b918fa7e";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=r259-a490b918fa7e";
+import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=r259-a490b918fa7e";
+import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=r259-a490b918fa7e";
+import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=r259-a490b918fa7e";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r259-a490b918fa7e";
+import { worldStewardReport } from "./story.js?v=r259-a490b918fa7e";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r259-a490b918fa7e";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -204,8 +204,8 @@ import {
   perceived,
   wayfindingTargets,
   wayfindingCues,
-} from "./world.js?v=r257-204a3837382b";
-import { warmWayfindingSignals } from "./world.js?v=r257-204a3837382b";
+} from "./world.js?v=r259-a490b918fa7e";
+import { warmWayfindingSignals } from "./world.js?v=r259-a490b918fa7e";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
@@ -1096,7 +1096,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r257-204a3837382b",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r257-204a3837382b\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r259-a490b918fa7e",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r259-a490b918fa7e\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1108,7 +1108,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r257-204a3837382b",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r259-a490b918fa7e",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1437,11 +1437,23 @@ function openMap() {
 // Release 151: each part of the Pack is built separately, so a fault in one (seen on a player's save, cause still
 // unknown) shows a note naming the part and its error instead of stopping the whole Pack from opening.
 function packSectionFailed(name,error){noteError(error);console.error(`Pack section ${name} failed`,error);const note=document.createElement("p");note.className="options-note options-danger";note.textContent=`${name} could not be shown (${error?.message||error}). Options → System → Copy diagnostics, then paste it to Claude.`;body.append(note)}
-function openPack() {
+// Release r259-a490b918fa7e (Tim, 2026-10-21: "I get to the pack, I should just hit... Arcanum and it should just take me there... there
+// should be just buttons to get through things... spells and echoes... under one tab, and then the armor and weapon
+// upgrading system should be another tab"): the Pack is tabbed, and one tab bar runs across the Pack, the Forge and the
+// Arcanum, so everything is a tap apart. The Arcanum keeps its own sub-tabs (Spells & Constellation, Glyphs, Echoes).
+const PACK_TABS=[['wayfarer','Wayfarer'],['gear','Gear'],['forge','Forge'],['arcanum','Arcanum'],['supplies','Supplies']];
+let packTab='wayfarer';
+function packTabBar(current){const bar=document.createElement('nav');bar.className='codex-tabs pack-tabs';bar.setAttribute('aria-label','Pack');
+ for(const[id,label]of PACK_TABS){const b=uiButton(label,()=>id==='arcanum'?openSkills():id==='forge'?openForge():openPack(id));if(id===current)b.setAttribute('aria-current','page');bar.append(b)}
+ return bar}
+function openPack(tab) {
+  if (typeof tab === "string" && PACK_TABS.some(([id]) => id === tab && id !== "arcanum" && id !== "forge")) packTab = tab; // a click event is not a tab
+  if (packTab === "arcanum" || packTab === "forge") packTab = "wayfarer";
   pauseForOverlay();
   if (pausePanel.open) pausePanel.close();
-  body.replaceChildren();
-  try{
+  body.replaceChildren(packTabBar(packTab));
+  if (packTab !== "wayfarer") body.append(Object.assign(document.createElement("h2"), { textContent: packTab === "gear" ? "Gear" : "Supplies" }));
+  if (packTab === "wayfarer") try{
   const heading = document.createElement("h2"),
     summary = document.createElement("p"),
     xp = document.createElement("progress"),
@@ -1467,10 +1479,10 @@ function openPack() {
   }
   body.append(heading, summary, xp, character);
   }catch(error){packSectionFailed("Character",error)}
-  try{
-  for(const [kind,label] of [['weapon','Weapon sphere'],['armor','Armor sphere']]){const row=document.createElement('div'),key=kind+'Sphere';row.className='item';row.textContent=`${label} ×${save.materials[key]||0} · Sela Rook at Ember Refuge strengthens fitted equipment with these.`;body.append(row)}
+  if (packTab === "supplies") try{
+  for(const [kind,label] of [['weapon','Weapon sphere'],['armor','Armor sphere']]){const row=document.createElement('div'),key=kind+'Sphere';row.className='item';row.textContent=`${label} ×${save.materials[key]||0} · strengthens fitted equipment at the Forge.`;body.append(row)}
   }catch(error){packSectionFailed("Spheres",error)}
-  try{
+  if (packTab === "wayfarer") try{
   const statHelp = {
     Might: "+2 melee damage per rank.",
     Finesse: "+3 maximum stamina per rank.",
@@ -1497,22 +1509,13 @@ function openPack() {
     body.append(row);
   }
   }catch(error){packSectionFailed("Stats",error)}
-  try{
+  if (packTab === "supplies") try{
   const resource = document.createElement("p");
   resource.textContent = `Cinder Iron ${save.materials.cinderIron} · weapon +${save.weaponLevel || 0} · section ${game.rx},${game.ry} `;
-  resource.append(uiButton(`✦ Arcanum · spells, constellation, glyphs`, () => openSkills()));
   resource.append(Object.assign(document.createElement('span'), { className: 'wood-count', textContent: `Wood ${save.materials?.wood || 0} · Stone ${save.materials?.stone || 0} · ${save.digging?.shovel ? `Shovel ${save.digging.shovel}/${DIG.shovelUses} digs left` : `a shovel takes ${DIG.recipe.wood} wood and ${DIG.recipe.stone} stone (Act facing a dungeon wall)`} · a skiff takes 3 wood (Act at deep water)` })); // release 119; stone and the shovel, release 225
-  resource.append(uiButton(`Glyphs · ${Object.values(save.glyphs||{}).reduce((a,b)=>a+b,0)} in pouch`, openGlyphs));
-  resource.append(uiButton(`Echoes · ${notchesUsed(save.echoes?.equipped||[])}/${NOTCHES} notches`, openEchoes));
-  resource.append(uiButton(`Constellation · ${pointsFree(save)} free`, () => openSkills()));
-  resource.append(uiButton("Reinforce weapon · 3 iron", () => {
-    game.upgrade();
-    persist();
-    openPack();
-  }));
   body.append(resource);
   }catch(error){packSectionFailed("Resources",error)}
-  try{
+  if (packTab === "gear") try{
   const gearHeading = document.createElement("h3");
   gearHeading.textContent = "Equipped gear and effects";
   const gear = document.createElement("div");
@@ -1537,14 +1540,14 @@ function openPack() {
   }
   body.append(gearHeading, gear);
   }catch(error){packSectionFailed("Equipped gear",error)}
-  try{
-  // Spells, disciplines and capstones live in one place: the Arcanum (release 109).
-  const arcane=document.createElement('div');arcane.className='item';const bound=save.magicSkills.selected?APERTURE_SKILLS[save.magicSkills.selected]?.name:null;
-  const sa=slotted(save,'a'),sb=slotted(save,'b'),pr=activePairing(save);void bound;
-  arcane.textContent=`Slot A: ${sa?`${sa.symbol} ${sa.name}`:'empty'} · Slot B: ${sb?`${sb.symbol} ${sb.name}`:'empty'}${pr?` · Pairing: ${pr.name}`:''} · ${pointsFree(save)} constellation point${pointsFree(save)===1?'':'s'} free`;
-  arcane.append(uiButton('Open the Arcanum',()=>openSkills()));body.append(arcane);
+  if (packTab === "wayfarer") try{
+  // Spells, disciplines and capstones live in one place: the Arcanum tab (release 109; tabbed in release 259).
+  const arcane=document.createElement('div');arcane.className='item';
+  const sa=slotted(save,'a'),sb=slotted(save,'b'),pr=activePairing(save);
+  arcane.textContent=`Slot A: ${sa?`${sa.symbol} ${sa.name}`:'empty'} · Slot B: ${sb?`${sb.symbol} ${sb.name}`:'empty'}${pr?` · Pairing: ${pr.name}`:''} · ${pointsFree(save)} constellation point${pointsFree(save)===1?'':'s'} free · Echoes ${notchesUsed(save.echoes?.equipped||[])}/${NOTCHES} notches`;
+  body.append(arcane);
   }catch(error){packSectionFailed("Arcanum",error)}
-  try{
+  if (packTab === "supplies") try{
   for (const [type, name, description] of [
     [
       "restorativeDraught",
@@ -1581,7 +1584,7 @@ function openPack() {
     body.append(row);
   }
   }catch(error){packSectionFailed("Consumables",error)}
-  try{
+  if (packTab === "gear") try{
   const inventoryHeading = document.createElement("h3");
   inventoryHeading.textContent = `Carried equipment (${save.inventory.length}/${EQUIPMENT_CAPACITY})`;
   body.append(inventoryHeading);
@@ -1882,7 +1885,7 @@ function updateHud(now) {
   hudSet(hudEl("#healthBar"),"value",health);
   hudSet(hudEl("#staminaBar"),"max",save.maxStamina);
   hudSet(hudEl("#staminaBar"),"value",stamina);
-  // Release r257-204a3837382b: Lightning Giant shock pips (shown only while charged or knocked down).
+  // Release 257: Lightning Giant shock pips (shown only while charged or knocked down).
   { const pips = hudEl("#shockPips"), stunned = now < (game.player.stunnedUntil || 0), count = stunned ? 3 : Math.max(0, Math.min(3, game.player.shockCount || 0)); hudSet(pips,"class:off",!count); hudSet(pips,"class:stunned",stunned); hudSet(pips,"data-count",String(count)); }
   const aperture = save.perception?.aperture || 0,
     tier = apertureTier(aperture),
@@ -2197,6 +2200,23 @@ for (const d of [panel, atlas, journal, optionsPanel])
       else pausePanel.showModal();
     }
   });
+// Release r259-a490b918fa7e (Tim, 2026-10-21: the phone's back button "just freezes the game... it should go back to pause or resume,
+// it should give me that menu"). One back action, from either route a phone sends it by: a dialog's close request
+// (cancel) or browser history (popstate, kept armed by a guard entry so back never leaves the game page).
+// A menu open: close it and show the pause menu. Only the creature viewer: close it, back to the codex under it.
+// The pause menu open: Continue (as release 125). In play: open the pause menu.
+function backPressed(){
+  if(glimpseRun)return;
+  const viewer=$("#creatureViewer");if(viewer?.open){viewer.close();return}
+  const open=[panel,atlas,journal,optionsPanel].filter((d)=>d.open);
+  if(open.length){overlayPause=false;for(const d of open)d.close();pause(true);return}
+  if(pausePanel.open){resume();return}
+  pause(true);
+}
+for(const d of [panel,atlas,journal,optionsPanel,$("#creatureViewer")])d?.addEventListener("cancel",(event)=>{event.preventDefault();backPressed()});
+const backGuard=()=>{try{history.pushState({icBack:true},"")}catch{}};
+if(!history.state?.icBack)backGuard();
+addEventListener("popstate",()=>{backPressed();backGuard()});
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     overlayPause = false;
@@ -2229,8 +2249,8 @@ const ARCANUM_TABS=[['constellation','Spells & Constellation'],['glyphs','Glyphs
 let arcanumFocus=null,arcanumSocket=null,arcanumAtShrine=false;
 function el(tag,cls,text){ // small DOM helper for the Arcanum
  const q=document.createElement(tag);if(cls)q.className=cls;if(text!==undefined)q.textContent=text;return q}
-function arcanumShell(tab,title,subtitle){pauseForOverlay();body.replaceChildren();
- const h=el('h2','',title),sub=el('p','',subtitle),tabs=el('div','codex-tabs');
+function arcanumShell(tab,title,subtitle){pauseForOverlay();if(pausePanel.open)pausePanel.close();body.replaceChildren(packTabBar('arcanum'));
+ const h=el('h2','',title),sub=el('p','',subtitle),tabs=el('div','codex-tabs arc-subtabs');
  for(const[id,label]of ARCANUM_TABS){const b=uiButton(label,()=>({constellation:()=>openSkills(arcanumAtShrine),glyphs:openGlyphs,echoes:openEchoes})[id]());if(id===tab)b.setAttribute('aria-current','page');tabs.append(b)}
  body.append(h,sub,tabs);if(!panel.open)panel.showModal()}
 function arcanumFooter(){const f=el('footer','arc-foot');f.append(uiButton('Sphere forge',openForge),uiButton('Pack',openPack),uiButton('Return to world',resume));body.append(f)}
@@ -2296,7 +2316,7 @@ function openGlyphs(){arcanumShell('glyphs','Glyphs & Resonances',`Glyph dust ${
  for(const id of spellIds)save.spellGlyphs[id]||=Array(SPELL_SOCKETS).fill(null);
  const hosts=[['melee','Primary',save.equipment.primary,save.equipment.primary?.glyphs],['tool','Tool',save.equipment.secondary,save.equipment.secondary?.glyphs],...spellIds.map(id=>[`spell:${id}`,'Spell',SPELLS[id],save.spellGlyphs[id]])];
  const altar=el('div','arc-altar');
- for(const[host,label,item,sockets]of hosts){const isSpell=host.startsWith('spell:');if(isSpell)save.equippedSpell=host.slice(6);const d=sockets?.length?describeHost(save,isSpell?'spell':host):{glyphs:[],resonances:[]};save.equippedSpell=readied;constlit=d.resonances.length>0,card=el('section','arc-host'+(lit?' resonant':''));
+ for(const[host,label,item,sockets]of hosts){const isSpell=host.startsWith('spell:');if(isSpell)save.equippedSpell=host.slice(6);const d=sockets?.length?describeHost(save,isSpell?'spell':host):{glyphs:[],resonances:[]};save.equippedSpell=readied;const lit=d.resonances.length>0,card=el('section','arc-host'+(lit?' resonant':''));
   card.append(el('small','arc-host-label',label),el('strong','',item?.name||'Nothing equipped'));
   const ring=el('div','arc-socket-row');
   if(!sockets?.length)ring.append(el('span','arc-empty',item?'No sockets.':'Equip one to set glyphs.'));
@@ -2329,8 +2349,9 @@ function openEchoes(){const used=notchesUsed(save.echoes.equipped);
   if(owned){c.append(el('em','arc-state',on?'Set — tap to set aside':`Tap to set · ${e.cost} notch${e.cost===1?'':'es'}`));c.onclick=()=>{const r=toggleEcho(save,id);game.message=r.message;persist();openEchoes()}}
   grid.append(c)}
  body.append(grid);arcanumFooter()}
-function openForge(){pauseForOverlay();body.replaceChildren();const h=document.createElement('h2'),intro=document.createElement('p');h.textContent='Sela’s Sphere Forge';intro.textContent=`Weapon Spheres ${save.materials.weaponSphere||0} · Armor Spheres ${save.materials.armorSphere||0}. Rank cost rises by one sphere each step; affixes and identity are preserved.`;body.append(h,intro);for(const slot of ['primary','secondary','armor','charm']){const item=save.equipment[slot];if(!item)continue;const cost=upgradeCost(item),row=document.createElement('div'),title=document.createElement('strong'),preview=document.createElement('div'),next={...item,basePower:item.basePower??item.power,upgradeRank:(item.upgradeRank||0)+1,power:(item.basePower??item.power)+(item.upgradeRank||0)+1};row.className='item';preview.className='item-comparison';title.textContent=`${slot.toUpperCase()} · ${item.name} +${item.upgradeRank||0}`;for(const stat of compareItemStats(next,item)){if(stat.direction==='same')continue;const q=document.createElement('span');q.className=`stat-${stat.direction}`;q.textContent=`↑ ${stat.label} ${stat.current} → ${stat.value}`;preview.append(q)}row.append(title,preview,uiButton(cost.eligible?`Strengthen · ${cost.amount} ${cost.kind==='weaponSphere'?'weapon':'armor'} sphere${cost.amount===1?'':'s'}`:'Upgrade limit reached',()=>{game.upgradeEquipmentSlot(slot);persist();openForge()}));body.append(row)}for(const slot of ['primary','secondary']){const item=save.equipment[slot];if(!item)continue;const row=document.createElement('div'),t=document.createElement('strong'),c=awakenCheck(save,slot);row.className='item';t.textContent=item.awakened?`${slot.toUpperCase()} · ${item.name} · ${awakenedText(item)}`:`Awaken ${item.name}: ${c.message}`;row.append(t);if(c.ok)row.append(uiButton(`Awaken · ${AWAKEN_COST} lumen dust`,()=>{const r=awaken(save,slot);game.message=r.message;persist();openForge()}));body.append(row)}
- body.append(uiButton('Glyphs & Resonances',openGlyphs),uiButton('Aperture constellation',()=>openSkills()),uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
+function openForge(){pauseForOverlay();if(pausePanel.open)pausePanel.close();body.replaceChildren(packTabBar('forge'));const h=document.createElement('h2'),intro=document.createElement('p');h.textContent='Sela’s Sphere Forge';intro.textContent=`Weapon Spheres ${save.materials.weaponSphere||0} · Armor Spheres ${save.materials.armorSphere||0}. Rank cost rises by one sphere each step; affixes and identity are preserved.`;body.append(h,intro);for(const slot of ['primary','secondary','armor','charm']){const item=save.equipment[slot];if(!item)continue;const cost=upgradeCost(item),row=document.createElement('div'),title=document.createElement('strong'),preview=document.createElement('div'),next={...item,basePower:item.basePower??item.power,upgradeRank:(item.upgradeRank||0)+1,power:(item.basePower??item.power)+(item.upgradeRank||0)+1};row.className='item';preview.className='item-comparison';title.textContent=`${slot.toUpperCase()} · ${item.name} +${item.upgradeRank||0}`;for(const stat of compareItemStats(next,item)){if(stat.direction==='same')continue;const q=document.createElement('span');q.className=`stat-${stat.direction}`;q.textContent=`↑ ${stat.label} ${stat.current} → ${stat.value}`;preview.append(q)}row.append(title,preview,uiButton(cost.eligible?`Strengthen · ${cost.amount} ${cost.kind==='weaponSphere'?'weapon':'armor'} sphere${cost.amount===1?'':'s'}`:'Upgrade limit reached',()=>{game.upgradeEquipmentSlot(slot);persist();openForge()}));body.append(row)}for(const slot of ['primary','secondary']){const item=save.equipment[slot];if(!item)continue;const row=document.createElement('div'),t=document.createElement('strong'),c=awakenCheck(save,slot);row.className='item';t.textContent=item.awakened?`${slot.toUpperCase()} · ${item.name} · ${awakenedText(item)}`:`Awaken ${item.name}: ${c.message}`;row.append(t);if(c.ok)row.append(uiButton(`Awaken · ${AWAKEN_COST} lumen dust`,()=>{const r=awaken(save,slot);game.message=r.message;persist();openForge()}));body.append(row)}
+ const iron=document.createElement('div');iron.className='item';iron.textContent=`Cinder Iron ${save.materials.cinderIron||0} · weapon +${save.weaponLevel||0}`;iron.append(uiButton('Reinforce weapon · 3 iron',()=>{game.upgrade();persist();openForge()}));body.append(iron); // release 259: moved here from the Pack
+ body.append(uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
 function openInteraction(id, confirmAttack = false) {
   const o = game.map.objects.find((q) => q.id === id);
   if (!o) return;

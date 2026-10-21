@@ -8,12 +8,14 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade } from "./items.js?v=r257-204a3837382b";
-import { resonancesOf, RESONANCES } from "./glyphs.js?v=r257-204a3837382b";
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade } from "./items.js?v=r259-a490b918fa7e";
+import { resonancesOf, RESONANCES } from "./glyphs.js?v=r259-a490b918fa7e";
 
 export const CONSTELLATION_VERSION = 1;
 export const POINT_EVERY = 6;
 export const AWAKEN_COST = 6; // lumen dust
+// Rift Step distances in tiles: base reach (plus its rank), and the Long Step capstone's extra (release 259).
+export const RIFT = { reach: 2, longStep: 2 };
 export const BRANCHES = {
   form: { name: "Form", active: "ember-form", mod: { id: "ember-skin", name: "Ember Skin", text: "While Ember Form holds, your strikes set foes burning." }, caps: [
     { id: "colossus", name: "Colossus", text: "Ember Form lasts 50% longer and you take 15% less damage while it holds." },
@@ -29,7 +31,9 @@ export const BRANCHES = {
     { id: "resonant-force", name: "Resonant Force", text: "Kills during Force Channel extend it by 1 s." }] },
   rift: { name: "Rift", active: "rift-step", mod: { id: "rift-wake", name: "Rift Wake", text: "Rift Step tears a line that wounds foes you pass through." }, caps: [
     { id: "fold", name: "Fold", text: "Rift Step holds two charges." },
-    { id: "anchor", name: "Anchor", text: "Using Rift Step again within 3 s returns you to where you began." }] },
+    // Release r259-a490b918fa7e (Tim: "it should not recall you back to a point... disable that"): the old Anchor recall is gone; the
+    // capstone keeps its id (saves that took it keep it) and now lengthens the step instead.
+    { id: "anchor", name: "Long Step", text: `Rift Step reaches ${RIFT.longStep} tiles farther. It still stops short of walls, ledges and ground it cannot stand on.` }] },
 };
 export const BRANCH_IDS = Object.keys(BRANCHES);
 // How each modifier and capstone works (release 157, for the Arcanum's labels): "cast" is a new ability for slot A or B;
@@ -150,12 +154,11 @@ export function tickConstellation(game, dt, now) {
 export function riftStep(game, now) {
   const s = game.save, st = s.magicSkills, rank = skillRank(s, "rift-step"), p = game.player, world = game.glyphWorld(now);
   if (!rank) { game.message = "Rift Step has not been learned."; return false; }
-  const anchor = st.riftAnchor;
-  if (anchor && hasNode(s, "anchor") && now < anchor.until && anchor.areaId === game.areaId()) { p.x = anchor.x; p.y = anchor.y; st.riftAnchor = null; game.message = "The Anchor pulls you back."; game.sync(); return true; }
+  if (st.riftAnchor) delete st.riftAnchor; // release 259: no recall; a recall point left by an older release is dropped
   const charges = hasNode(s, "fold") ? 2 : 1;
   st.riftCharges = Math.min(charges, st.riftCharges ?? charges);
   if (st.riftCharges < 1) { game.message = `Rift Step recovers in ${Math.ceil(st.cooldowns["rift-step"] || 0)}s.`; return false; }
-  const d = p.lastMoveVector || s.lastAim || { x: 0, y: 1 }, m = Math.hypot(d.x, d.y) || 1, dx = d.x / m, dy = d.y / m, reach = 2 + rank;
+  const d = p.lastMoveVector || s.lastAim || { x: 0, y: 1 }, m = Math.hypot(d.x, d.y) || 1, dx = d.x / m, dy = d.y / m, reach = RIFT.reach + rank + (hasNode(s, "anchor") ? RIFT.longStep : 0);
   const startElev = game.elevationHere ? game.elevationHere(p.x, p.y) : 0, from = { x: p.x, y: p.y };
   let best = null;
   for (let t = .25; t <= reach + 1e-6; t += .25) {
@@ -169,7 +172,6 @@ export function riftStep(game, now) {
   (game.glyphVisuals ||= []).push({ kind: "arc", x: from.x + .5, y: from.y + .45, tx: best.x + .5, ty: best.y + .45, color: "#b48cff", life: .3, max: .3 });
   p.x = best.x; p.y = best.y; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + 150);
   st.riftCharges -= 1; st.cooldowns["rift-step"] = Math.max(st.cooldowns["rift-step"] || 0, APERTURE_SKILLS["rift-step"].cooldown - rank);
-  if (hasNode(s, "anchor")) st.riftAnchor = { x: from.x, y: from.y, until: now + 3000, areaId: game.areaId() };
   game.message = "Rift Step."; game.sync();
   return true;
 }

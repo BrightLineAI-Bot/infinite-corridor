@@ -7,8 +7,8 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { hashSeed } from "./random.js?v=r257-204a3837382b";
-import { updateAstralActor } from "./astral-worm.js?v=r257-204a3837382b";
+import { hashSeed } from "./random.js?v=r259-a490b918fa7e";
+import { updateAstralActor } from "./astral-worm.js?v=r259-a490b918fa7e";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -465,6 +465,7 @@ export function resetPackRuntime(enemy) {
   if (!enemy?.packKind) return enemy;
   const cd = enemy.pack?.cd || {};
   enemy.pack = { ...freshPackState(), cd: { ...cd } };
+  if (enemy.kind === "psychicCrystal") enemy.crystalFall = 0; // release 259: a poise break does not survive a reload
   // Snapshots retain attack lists. Move the sky attack for existing journeys too, without retuning their beasts.
   if (enemy.kind === "nanobotKnight") enemy.packAttacks = (enemy.packAttacks || MONSTER_PACK.nanobotKnight.attacks).filter((id) => id !== "knightOrbital");
   if (enemy.kind === "psychicCrystal" && !(enemy.packAttacks || []).includes("psyOrbital")) enemy.packAttacks = [...(enemy.packAttacks || MONSTER_PACK.psychicCrystal.attacks), "psyOrbital"].filter((id, i, ids) => ids.indexOf(id) === i);
@@ -626,6 +627,19 @@ export const CRYSTAL = {
   orbitalLife: 4, orbitalWarn: .7, orbitalSpeed: 2.1, orbitalRadius: .65, orbitalTick: .35,
   orbitalSpread: 1.6, orbitalPeriod: 2.4, scorchEvery: .3, scorchLife: 1.5, scorchRadius: .5, scorchMax: 24,
   roamSpeed: 1.1, roamNodes: 625, roamDistance: 6, roamRecent: 6, roamPause: .25, roamRetry: 1, roamSight: 7, terrainLookahead: 1,
+  // Poise (release 259; Tim: "it dodges a lot... that's fine... it has poise, so if it takes a few hits, then it will
+  // break and fall through the floor and then you can get a bunch of hits in, and then it will... get up and dodge away").
+  // `poiseHits` landed blows (forgotten after `poiseForget` s without one) break it: it drops to the floor for `breakTime`
+  // s (falling over `fallTime`, rising over `riseTime`) and cannot dodge, attack or move; then it rises and springs away.
+  poiseHits: 10, poiseForget: 5, breakTime: 3.2, fallTime: .25, riseTime: .4, // poiseHits: Tim, "let's do like ten hits for a poise break"
+  // Engaged, it settles where the Wayfarer can reach it (release 259; Tim: "its end goal should be... a place the player can
+  // walk to... it can spend some time between walls, that's fine"): after `wallLinger` s inside walls (or over ground the
+  // Wayfarer cannot reach) it heads for the nearest reachable floor within `manifestSearch` tiles at `manifestSpeed`, and
+  // blinks onto it if held back for `manifestBlink` s. It hunts the Wayfarer "for a while": out of sight and beyond
+  // `roamSight` for `forgetAfter` s, it drops its aggro and returns to its own patrol, which roams the whole dungeon.
+  wallLinger: 2.5, manifestSearch: 10, manifestSpeed: 2.4, manifestBlink: 1.2, forgetAfter: 12,
+  // In a dungeon it may phase through an interior wall up to this many tiles thick (Game.roamerBounds), never beyond the edge.
+  boundsSpan: 3,
 };
 // A continuous path around a slowly tracking centre. Beam phases spread a volley around the same pattern;
 // all choices and motion are deterministic, and none of these transient effects changes dungeon geometry.
@@ -1974,12 +1988,57 @@ function fleeStep(e, s, w) {
   if (e.fleeTo.home) { e.fleeFade = 1; if (e.kind === "lightningGiant") e.giantCloud = true; } else e.fleeDone = true;
 }
 
+// The Psychic Crystal's poise (release 259; CRYSTAL.poise*). Counts landed blows (from hp drops); enough of them break
+// it: it falls to the floor (`e.crystalFall` 0..1 for the renderer), helpless, for CRYSTAL.breakTime, then rises and
+// springs away from the Wayfarer. Returns true while it is broken (the tick is spent).
+function crystalPoise(e, s, w, p) {
+  const hp = Number(e.hp) || 0, dt = Number.isFinite(w.dt) ? Math.max(0, w.dt) : 0;
+  if (s.hpSeen != null && hp < s.hpSeen) { s.poiseHits = (s.poiseHits || 0) + 1; s.poiseIdle = 0; } else s.poiseIdle = (s.poiseIdle || 0) + dt;
+  s.hpSeen = hp; if (s.poiseIdle >= CRYSTAL.poiseForget) s.poiseHits = 0;
+  if (!(s.broken > 0) && (s.poiseHits || 0) >= CRYSTAL.poiseHits && !s.evade) {
+    s.broken = CRYSTAL.breakTime; s.poiseHits = 0; if (s.attack) endAttack(e, s); s.tele = null; s.vel = null; w.release?.(e); // a held Wayfarer is let go
+  }
+  if (!(s.broken > 0)) { e.crystalFall = 0; return false; }
+  s.broken -= dt; e.untargetable = false; e.hopLift = 0; s.evade = null;
+  const gone = CRYSTAL.breakTime - s.broken; e.crystalFall = Math.max(0, Math.min(1, gone / CRYSTAL.fallTime, s.broken / CRYSTAL.riseTime));
+  if (s.broken > 0) return true;
+  // Up again: it springs away from the Wayfarer at once.
+  s.broken = 0; e.crystalFall = 0; const away = unit(e.x - p.x, e.y - p.y), side = s.orbitDir || 1;
+  s.evade = { ...unit(away.x - away.y * side * .6, away.y + away.x * side * .6), t: QB_MOVES.evadeTime }; e.untargetable = true; s.cd.qbEvade = QB_MOVES.evadeCooldown;
+  return true;
+}
+
+// The dungeon Crystal settles where the Wayfarer can reach it (release 259; CRYSTAL.wallLinger etc.). It may pass through
+// and linger in walls, but after wallLinger s off reachable floor it makes for the nearest reachable floor, and blinks
+// onto it if something holds it back. Returns true while it is on its way (the tick is spent).
+function crystalManifest(e, s, w) {
+  if (!w.walkable) return false;
+  if (w.walkable(e.x, e.y)) { s.wallTime = 0; s.manifest = null; return false; }
+  s.wallTime = (s.wallTime || 0) + w.dt;
+  if (!s.manifest) {
+    if (s.wallTime < CRYSTAL.wallLinger) return false;
+    let best = null, bd = Infinity; const R = CRYSTAL.manifestSearch, cx = Math.round(e.x), cy = Math.round(e.y);
+    for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) { const dd = Math.hypot(x - e.x, y - e.y); if (dd < bd && dd <= R && w.walkable(x, y)) { bd = dd; best = { x, y }; } }
+    w.roamWork?.((2 * R + 1) ** 2);
+    if (!best) return false;
+    s.manifest = { ...best, stuck: 0 };
+  }
+  const to = s.manifest, dx = to.x - e.x, dy = to.y - e.y, d = Math.hypot(dx, dy), step = CRYSTAL.manifestSpeed * w.dt, ox = e.x, oy = e.y;
+  if (Math.abs(dx) > .001) e.facingX = dx > 0 ? 1 : -1;
+  if (d <= step + .02) { e.x = to.x; e.y = to.y; s.manifest = null; s.wallTime = 0; return true; }
+  if (w.roamMove) w.roamMove(e, dx / d * step, dy / d * step); else w.move(e, dx / d * step, dy / d * step);
+  to.stuck = Math.hypot(e.x - ox, e.y - oy) < step * .5 ? to.stuck + w.dt : 0;
+  if (to.stuck >= CRYSTAL.manifestBlink) { w.addEffect?.({ kind: "blinkTrail", owner: e.id, x: e.x, y: e.y, radius: .7, arming: 0, life: .35, damage: 0 }); e.x = to.x; e.y = to.y; s.manifest = null; s.wallTime = 0; }
+  return true;
+}
+
 // Wall-phasing remains Crystal-only. Hunter scheduling is separate from locomotion permissions.
 export function isDungeonRoamer(e, area) { return area === "dungeon" && e?.worldBeast === "psychicCrystal"; }
 export function isDungeonHunter(e, area) { return isDungeonRoamer(e, area) || (area === "dungeon" && e?.worldBeast === "voidWalker"); }
 
-// Sample the whole dungeon domain, not its connected floor graph. Open destinations keep encounters discoverable,
-// but travel between them phases through walls and hazards. Sampling and recent-memory are strictly bounded.
+// Sample the whole dungeon domain, not its connected floor graph (Tim, release 259: unaggroed "he can just roam around the
+// dungeon... whatever his own ends are"). Open destinations keep encounters discoverable, but travel between them phases
+// through walls and hazards. Sampling and recent-memory are strictly bounded.
 export function dungeonPatrolRoute(e, w, seq = 0, recent = []) {
   const size = w.width * w.height, count = Math.min(size, CRYSTAL.roamNodes), cells = [];
   if (!(count > 0)) return [];
@@ -2049,6 +2108,8 @@ export function updatePackMonster(e, w) {
     if (!brain?.hiddenUntilAggro) w.move(e, Math.cos(s.wander) * .28 * dt, Math.sin(s.wander * .8) * .28 * dt, { phase: false });
     return;
   }
+  // Release r259-a490b918fa7e: a dungeon Crystal that has lost the Wayfarer for a while goes back to its patrol.
+  if (roaming && !e.retreating) { const seen = d <= CRYSTAL.roamSight || w.los(e, w.player); s.lostFor = seen ? 0 : (s.lostFor || 0) + dt; if (s.lostFor >= CRYSTAL.forgetAfter && !s.attack) { e.aggro = false; s.lostFor = 0; s.manifest = null; s.wallTime = 0; s.roam = null; patrolDungeon(e, s, w); return; } }
   if (e.hitStun > 0 && s.state === "move") return;
   if (e.hitStun > 0 && s.attack && !e.boss && s.phase === "windup" && !e.untargetable) { endAttack(e, s); return; }
   if (!e.illusion) passiveStillness(e, s, w);
@@ -2057,6 +2118,7 @@ export function updatePackMonster(e, w) {
   if (e.blobletOf && blobletHome(e, s, w)) return;
   if (e.wormOf && tentacleTurret(e, s, w, p)) return;
   if (e.kind === "tremorWorm" && wormCycle(e, s, w, p)) return;
+  if (e.kind === "psychicCrystal" && crystalPoise(e, s, w, p)) return; // release 259: a poise break grounds it
   if (e.kind === "voidWalker" ? voidEvade(e, s, w, p, d) : e.evasive && evade(e, s, w, p, d)) return;
   if (s.attack) {
     s.t -= dt;
@@ -2064,6 +2126,7 @@ export function updatePackMonster(e, w) {
     if (s.attack && s.phase === "recover" && s.t <= 0) endAttack(e, s);
     return;
   }
+  if (roaming && crystalManifest(e, s, w)) return; // release 259: it does not stay in the walls
   // The Weeping Saint never moves or starts an attack while the Wayfarer faces it.
   if ((e.brain || def.brain) === "weeping") {
     const f = w.playerFacing || { x: 0, y: 1 }, to = unit(e.x - p.x, e.y - p.y);
