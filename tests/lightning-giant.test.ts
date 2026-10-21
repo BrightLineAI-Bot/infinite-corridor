@@ -5,7 +5,7 @@ import { MONSTER_PACK, ATTACK_MODULES, GIANT, updatePackMonster, tickPackEffects
 import { ECHOES } from '../src/echoes.ts';
 import { createCombatant } from '../src/combat.ts';
 import { drawPackMonster, drawPackEffects } from '../src/monster-render.ts';
-import { GIANT_EFFECT_KINDS, knockdownPose, GIANT_KNOCKDOWN } from '../src/lightning-giant-render.ts';
+import { GIANT_EFFECT_KINDS, knockdownPose, GIANT_KNOCKDOWN, giantFoot, GIANT_ART } from '../src/lightning-giant-render.ts';
 import { Game } from '../src/game.ts';
 import { freshSave } from '../src/types.ts';
 
@@ -214,4 +214,21 @@ test('traversal: it walks slowly but closes distance in up to two shoulder-thrus
   const w = world({ player: { x: 15, y: 12 } }), e = giant(w, null, 12, 12); e.packAttacks = []; e.giantDashCd = 0;
   for (let t = 0; t < 1; t += w.dt) step(w, w.dt); assert.equal(e.giantDash ?? null, null);
   assert.ok(WORLD_BEASTS.lightningGiant.speed < 1, 'slow on foot');
+});
+
+test('walk cycle: a planted foot never slides (it sweeps back exactly as fast as the body travels), and the swing lifts it', () => {
+  const u = 100, S = GIANT_ART.stride * u, cycle = 2 * S / GIANT_ART.stanceShare; // body travel per full cycle, as the renderer uses
+  for (const offset of [0, Math.PI]) {
+    let prev = null, planted = 0, swung = 0;
+    for (let i = 0; i <= 400; i++) {
+      const phase = i / 400 * Math.PI * 2, body = phase / (Math.PI * 2) * cycle, f = giantFoot(phase, 1, offset), world = body + f.x * S;
+      if (f.planted) { planted++; if (prev?.planted) assert.ok(Math.abs(world - prev.world) < 1e-6, 'no slide while planted'); assert.equal(f.lift, 0); }
+      else { swung++; assert.ok(f.lift >= 0 && f.lift <= 1); }
+      prev = { planted: f.planted, world };
+    }
+    assert.ok(planted > swung, 'more time on the ground than in the air');
+  }
+  assert.deepEqual(giantFoot(1.3, 0), { x: 0, lift: 0, planted: true }, 'standing still: feet under the hips');
+  // The two feet are half a cycle apart: one is always planted.
+  for (let i = 0; i < 100; i++) { const ph = i / 100 * Math.PI * 2; assert.ok(giantFoot(ph, 1, 0).planted || giantFoot(ph, 1, Math.PI).planted); }
 });

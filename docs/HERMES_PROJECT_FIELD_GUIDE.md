@@ -2350,6 +2350,18 @@ Visual polish (Tim: six passes; "chunky and fun, but disjointed and amateurish";
 
 Shading uses `shadeHex` gradients from a fixed upper-left light. Behaviour, poses and hit geometry are unchanged.
 
+Redesign and gait (Tim, same day): "not a knight, more a robot", "a weathered old Neanderthal robot", "just a giant of his people", with a weathered garment strapped over the shoulder that has no weapon, down to the waist. Also "especially focus on his walking mechanics".
+
+**CODE (redesign and gait):**
+- **Gait.** `gait()` keeps per-actor render state in a WeakMap and advances the walk phase by the distance actually travelled. `giantFoot(phase, moving, offset)` sweeps a planted foot back at exactly the body's speed (no sliding) and lifts the swing foot in an eased arc.
+- **Body motion.** The weight drops at each heel strike. The torso pitches forward (the hunch) and rocks with the stride; it breathes when still. The free arm counter-swings, and the loin flap trails a beat behind.
+- **Stand, dash, air.** The legs settle under the hips when he stops, brace in a long stride while dashing, and tuck in the air.
+- **Look.** Faded olive-grey, dented, rust-streaked, mismatched plates (a newer patch on the chest). The head is low and thrust forward, with a brow ridge, deep visor and jutting jaw.
+- **Shoulders and garment.** A bare mechanical shoulder ball with a cable bundle on the club arm. A frayed hide sash runs over the other shoulder to a knot at the near hip.
+- **Club.** Hide grip wraps, and at rest the mace is carried low in front.
+- **Framing.** Only the torso and head are skewed for the hunch; the arms hang unskewed from the leaned shoulders.
+- **Tests.** A no-slide test covers `giantFoot`.
+
 **BOUNDARY:**
 - Numbers are provisional data, not Tim's.
 - The Giant is overworld-only, with no dungeon claim.
