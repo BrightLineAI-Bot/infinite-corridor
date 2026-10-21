@@ -2584,3 +2584,31 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - Build mode uses the same 5-build limit and costs.
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
+
+## Release 269: the Gate Revenant horde, skiff repairs, the hull guard's longboat, cheaper building — 2026-10-21
+
+Tim, 2026-10-21. On the horde: "There's a 1/2 a percent chance that you spawn a dungeon that's all gate revenants, and those gate revenants can leave the dungeon... chase you until you die... it'll keep track of them until they're all cleared out... If you kill 2... while they're chasing you, then... they'll be 18 in the dungeon next time"; "capped at for spawning... a different number per dungeon... like 36... 3 gate revenants at a time is probably even a challenge"; "If you complete a... revenant swarm dungeon, then you get a piece of the gate". On boats: "two woods should get the boat back up to full, and one would get the boat like half health... if you hold the build button while you're at sea, it will apply the hull shield"; "The hull should take reduced damage"; "a slight damage reduction to the player... five percent"; "it'll get like a shield bar... when that bar finally gets destroyed... you go back to the smaller wooden ship"; "a Viking longboat with a sail and a mast"; "the figurehead should be a lantern... a spiral in it... like a spiral galaxy... it can just sit there and hang there"; "in fog it should cast a... violet glow"; "show it in a profile in like an isometric view". On costs: "a wall takes 4 wood... five stone".
+
+**CODE:**
+- **The horde.** New `src/revenant-horde.ts`: `HORDE = { perThousand: 5, total: [28, 44], active: 3, respawn: 4, version: 1 }`.
+  - `rollHorde(save, id, history)` decides on a dungeon's first visit only (`visits` 0; ordinary `dungeon:` ids, never deep ones) and stores `history.horde = { total, left }` in `save.consequences.dungeons[id]` (additive; `ensureHorde` normalises in place).
+  - `Game.applyHorde` (end of `loadArea` in a dungeon) clears every other creature and the spawn list, and stands up to `active` Revenants at `hordeSpawnPoints` (open tiles far from the entrance, 4+ apart). `tickHorde` brings another after `respawn` seconds while fewer stand than `min(active, left)`.
+  - Horde Revenants are ordinary `gatePredator`s with `hordeOf`, so they pursue outdoors and across sections as the Gate Revenant does. `leaveDungeon` now carries every aggroed pursuer out (at most `active`), not only the first.
+  - `defeatEnemy` calls `hordeKill` for a `hordeOf` kill anywhere: `left` falls by one; the last one marks the dungeon resolved and adds a Far Gate piece (`ensureFarArray`; it never touches an active run). Horde Revenants drop no Crossing Sigils.
+  - A death or a lost trail removes the live ones without counting; the next load stands them up again from `left`.
+- **Costs.** `BUILD.kinds.wood.cost` 4 wood, `stone.cost` 5 stone.
+- **Skiff repairs.** `boats.ts` `BOAT.mend = { wood: 1, share: .5, shieldHold: .6 }` and `mendSkiff`. `Game.mendTarget` is the skiff you're aboard or your moored `skiff-moored` within reach, while its hull is not whole; the `build` action patches it instead of building. Aboard with a whole hull, Build says to hold it. `renderer.ts` `repairTag` marks it.
+- **The hull guard.** `BOAT.shield = { price 40, seconds 180, guard .05, hullTaken .5, bonus 30 }`.
+  - `save.boat.guardHull` (additive) is the guard's bar. `wearHull` halves hull wear under the guard, takes it from `guardHull` first, and ends the guard when the bar is gone. `hullAbsorb` and `hullStrike` both go through it, and the Wayfarer keeps 5% less of their share.
+  - Holding `build` for `shieldHold` s aboard calls `deployHullShield`.
+  - `renderer.ts` `drawLongboat` draws the longboat three-quarters on, in two parts: the back (deck, far shields, posts, the lantern, mast and sail) before the Wayfarer, the front (near hull, strakes, shields, waterline and foam) after, so the Wayfarer sits inside. It keeps its last side-on bearing (`g.longboatSide`).
+  - The guard bar is a fuchsia extension of the hull gauge. In sea fog or Supernova fog the lantern lights the mist violet (an additive radial glow plus a tint, stronger with fog depth).
+
+**BOUNDARY:**
+- Saves stay at schema 14. Dungeons entered before 269 never become hordes.
+- The boat's hurt box is unchanged: hits reach the Wayfarer, and the hull takes its share through them. The sail, mast and lantern are only drawn.
+- The horde's numbers (28 to 44, 3 at once, 4 s) are Tim's ("like 36", "3 at a time"), except the respawn delay, which is provisional.
+- Tests:
+  - `tests/revenant-horde.test.ts`;
+  - `tests/wood-boats.test.ts` (repairs, the guard);
+  - `tests/building.test.ts` (costs).

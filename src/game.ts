@@ -33,7 +33,7 @@ import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
 import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.ts";
-import { aboard, sailable, BOAT, canBuildSkiff, buyHullShield, deployHullShield, tickHullShield, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.ts";
+import { aboard, sailable, BOAT, canBuildSkiff, mendSkiff, buyHullShield, deployHullShield, tickHullShield, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.ts";
 import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.ts";
 import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.ts";
 import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.ts";
@@ -55,6 +55,7 @@ import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discover
 import { hashSeed, rng } from "./random.ts";
 import { placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget } from "./building.ts";
 import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.ts";
+import { HORDE, rollHorde, ensureHorde, hordeKill, hordeSpawnPoints } from "./revenant-horde.ts";
 import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.ts';
 import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.ts';
 import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.ts';
@@ -2169,6 +2170,29 @@ export class Game {
     }
     if (area === "overworld")
       this.save.explored[`${this.rx},${this.ry}`] = true;recordSectionVisit(this.save,this.rx,this.ry,this.map);
+    this.hordeTimer = 0; if (area === "dungeon") this.applyHorde(); // release 269: a horde dungeon holds only its Revenants
+  }
+  // Release 269: the Gate Revenant horde (revenant-horde.ts). In a horde dungeon every other creature is gone, and up to
+  // HORDE.active Revenants stand at once, drawn from the dungeon's remaining count.
+  hordeHere() { if (this.area !== "dungeon") return null; const id = this.save.session.activeDungeonId, h = id && this.save.consequences?.dungeons?.[id]; return h?.horde ? { id, history: h, horde: ensureHorde(h) } : null; }
+  applyHorde() {
+    const here = this.hordeHere(); if (!here) return;
+    this.enemies = this.enemies.filter((e) => e.hordeOf === here.id && !e.dead); this.map.enemySpawns = [];
+    this.hordePoints = hordeSpawnPoints(this.map, this.map.entry || { x: 4, y: 5 });
+    while (this.enemies.length < Math.min(HORDE.active, here.horde.left)) if (!this.spawnHordeRevenant(here.id)) break;
+  }
+  spawnHordeRevenant(id) {
+    const pts = this.hordePoints || [], p = this.player, at = [...pts].sort((a, b) => Math.hypot(b.x - p.x, b.y - p.y) - Math.hypot(a.x - p.x, a.y - p.y)).find((q) => !this.enemies.some((e) => !e.dead && Math.hypot(e.x - q.x, e.y - q.y) < 2)) || pts[0];
+    if (!at) return null;
+    const e = this.createEnemyFromSpawn({ id: `horde-${id}-${(this.hordeSeq = (this.hordeSeq || 0) + 1)}`, kind: "gateRevenant", x: at.x, y: at.y, gatePredator: true });
+    e.hordeOf = id; this.enemies.push(e); return e;
+  }
+  tickHorde(dt) {
+    const here = this.hordeHere(); if (!here) return;
+    const alive = this.enemies.filter((e) => e.hordeOf === here.id && !e.dead).length;
+    if (alive >= Math.min(HORDE.active, here.horde.left)) { this.hordeTimer = 0; return; }
+    this.hordeTimer = (this.hordeTimer || 0) + dt; if (this.hordeTimer < HORDE.respawn) return;
+    this.hordeTimer = 0; if (this.spawnHordeRevenant(here.id)) this.message = "Another Gate Revenant tears through the crossing.";
   }
   recoverPosition() {
     // Match load-time exact resume: pausing aboard a valid skiff must not relocate its sailor onto land.
@@ -2352,8 +2376,8 @@ export class Game {
   leaveDungeon(message = "You return to the dungeon entrance.") {
     const q = this.save.session.dungeonReturn || this.save.activeCheckpoint;
     if (!q) return false;
-    const pursuer = this.enemies.find((e) => e.gatePredator && e.aggro && !e.dead);
-    if (pursuer) pursuer.dead = true;
+    const pursuers = this.enemies.filter((e) => e.gatePredator && e.aggro && !e.dead).slice(0, HORDE.active); // release 269: a horde's pursuers all follow
+    for (const q of pursuers) q.dead = true;
     const leavingId=this.save.session.activeDungeonId,isHuntInstance=String(leavingId||'').startsWith('hunt-instance:');
     abandonDungeon(this.save, this.areaId());
     if(isHuntInstance){const instance=this.save.viewport.instances[leavingId];if(instance&&!instance.completed)abandonHuntInstance(this.save,leavingId)}
@@ -2366,12 +2390,12 @@ export class Game {
     if(isHuntInstance&&this.save.viewport.instances[leavingId]?.completed)cleanupHuntInstance(this.save,leavingId);
     this.player.x = q.x;
     this.player.y = q.y;
-    if (pursuer) {
-      const e = { ...pursuer, id: `${pursuer.id}-breach-${this.rx}-${this.ry}`, dead: false, x: q.x + 1.2, y: q.y - .4, aggro: true, ai: { ...ensureAI(pursuer), homeX: q.x, homeY: q.y } };
+    for (const [k, pursuer] of pursuers.entries()) {
+      const e = { ...pursuer, id: `${pursuer.id}-breach-${this.rx}-${this.ry}`, dead: false, x: q.x + 1.2 + k * .8, y: q.y - .4 - k * .6, aggro: true, ai: { ...ensureAI(pursuer), homeX: q.x, homeY: q.y } };
       placeGatePursuer(e, this.player, this.map, mapWidth(this.map, this.area));
       resetGateAttack(e, true);
       this.enemies.push(e);
-      message = "THE GATE REMAINS OPEN — something impossible follows you into the Corridor.";
+      message = pursuers.length > 1 ? `THE GATE REMAINS OPEN — ${pursuers.length} impossible things follow you into the Corridor.` : "THE GATE REMAINS OPEN — something impossible follows you into the Corridor.";
     }
     this.projectiles = [];
     this.effects = [];
@@ -2720,9 +2744,11 @@ export class Game {
       this.save.session.activeDungeonLevelId=null;
       pinDungeonLayout(this.save,this.save.session.activeDungeonId);const preview=generatePinnedDungeon(this.save,this.save.session.activeDungeonId);if(preview.multiLevel)this.save.session.activeDungeonLevelId=preview.levels[0].id;
       const h = dungeonHistory(this.save, this.save.session.activeDungeonId);
+      const horde = rollHorde(this.save, this.save.session.activeDungeonId, h); // release 269: decided on the first visit
       h.visits++;
       h.visitOpen = true;
       this.loadArea("dungeon");
+      if (horde?.left > 0) this.message = `The crossing is thick with Gate Revenants: ${horde.left} remain.`;
       this.player.x = this.map.entry?.x ?? 4;
       this.player.y = this.map.entry?.y ?? 5;
       relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon"));
@@ -2820,6 +2846,14 @@ export class Game {
   buildAt(wx, wy) {
     const t = tapTarget(this.player, wx, wy), r = placeBuild(this, t.x, t.y, undefined, true, t.run);
     this.message = r.message; return r;
+  }
+  // Release 269: the skiff a Build press would patch: the one you're aboard, or yours moored within reach, while its
+  // hull is not whole.
+  mendTarget() {
+    const b = this.save.boat; if (this.area !== "overworld" || !b?.owned || !(b.hull < BOAT.maxHull)) return null;
+    if (aboard(this.save)) return { aboard: true, x: this.player.x, y: this.player.y };
+    const o = (this.map?.objects || []).find((q) => q.id === "skiff-moored" && Math.hypot(q.x - this.player.x, q.y - this.player.y) < 1.6);
+    return o ? { x: o.x, y: o.y } : null;
   }
   shoreWater() {
     if (this.area !== "overworld" || aboard(this.save) || !this.map?.landscape) return null;
@@ -3611,7 +3645,8 @@ export class Game {
     const firstSpoils = takeFirstSpoils(this.save, e); // release 263: a world beast's first kill: its Sigil and Echo for certain
     const echo = echoDrop(this.save, e, e.boss || isCrossingGuardian(e) || !!e.worldBeast || !!e.questingBeast, this.save.dropCounter, firstSpoils), echoNote = echo ? `An Echo lingers: ${ECHOES[echo].name}. Set it in the Echoes screen (Pack).` : "";
     if (echo) this.glyphNotice = echoNote;
-    { const sigils = sigilDrop(this.save, e, this.map, this.save.dropCounter, firstSpoils); if (sigils) { const c = (this.save.consumables ||= {}); c.crossingSigil = (c.crossingSigil || 0) + sigils; this.glyphNotice = `A Crossing Sigil falls from ${e.packName || e.name || "the fallen"}.${echoNote ? " " + echoNote : ""}`; } } // release 263
+    if (e.hordeOf) { const r = hordeKill(this.save, dungeonHistory(this.save, e.hordeOf)); if (r) { this.glyphNotice = r.message; if (r.cleared) { this.defeatNotice = { title: "THE HORDE IS BROKEN", detail: r.message, kind: "danger" }; journalOnce(this.save, `horde-cleared:${e.hordeOf}`, r.message, "The Gate Revenant horde"); } } } // release 269
+    if (!e.hordeOf) { const sigils = sigilDrop(this.save, e, this.map, this.save.dropCounter, firstSpoils); if (sigils) { const c = (this.save.consumables ||= {}); c.crossingSigil = (c.crossingSigil || 0) + sigils; this.glyphNotice = `A Crossing Sigil falls from ${e.packName || e.name || "the fallen"}.${echoNote ? " " + echoNote : ""}`; } } // release 263 (269: none from a horde Revenant)
     if (!levels) this.message = `Recovered ${marks} mark${marks === 1 ? "" : "s"} from the fallen creature.`;
     if(this.save.narrative.facts['leads.active']){this.save.worldFlags['lead.hunt.count']=(this.save.worldFlags['lead.hunt.count']||0)+1;if(this.save.worldFlags['lead.hunt.count']>=5)progressLead(this.save,'hunt');if(isCrossingGuardian(e))progressLead(this.save,'guardian')}
     const key = `drop:v1:${this.areaId()}:${e.id}`;
@@ -3957,7 +3992,14 @@ export class Game {
     }
     if (input.consume("potion")) this.useConsumable("restorativeDraught", now);
     if (input.consume("preset")) this.message = togglePreset(this.save).message; // release 261: swap spell presets 1 and 2
-    if (input.consume("build")) { const at = buildSpot(p); this.message = placeBuild(this, at.x, at.y, undefined, Math.hypot(x, y) > .15).message; this.save.aimMode = "build"; this.save.toolMode = false; } // release 267: the button also turns on build mode: taps build // release 265: raise a wood wall or stone block in front
+    if (input.consume("build")) { // release 269: beside (or aboard) a damaged skiff, Build patches the hull instead
+      if (this.mendTarget()) this.message = mendSkiff(this.save).message;
+      else if (this.area === "overworld" && aboard(this.save)) this.message = "Hold Build to raise a hull shield.";
+      else { const at = buildSpot(p); this.message = placeBuild(this, at.x, at.y, undefined, Math.hypot(x, y) > .15).message; this.save.aimMode = "build"; this.save.toolMode = false; } // release 267: the button also turns on build mode: taps build
+    }
+    // Release 269 (Tim: "if you hold the build button while you're at sea, it will apply the hull shield"): held aboard.
+    if (this.area === "overworld" && aboard(this.save) && input.held?.("build")) { this.buildHold = (this.buildHold || 0) + dt; if (this.buildHold >= BOAT.mend.shieldHold && !this.buildHoldDone) { this.buildHoldDone = true; this.message = deployHullShield(this.save).message; } }
+    else { this.buildHold = 0; this.buildHoldDone = false; } // release 265: raise a wood wall or stone block in front
     const dodging = now < (p.dodgeUntil || 0);
     if (dodging) {
       x = p.dodgeX;
@@ -4247,6 +4289,7 @@ export class Game {
     if (this.novaFog) this.novaFog = this.area === "overworld" ? tickNovaFog(this.novaFog, dt, p) : null; // release 257: a Supernova's fog clears
     tickHullShield(this.save, dt); // release 263: a deployed hull shield wears off
     tickBuilds(this, dt, (e) => ATTACK_MODULES[e.pack?.attack]?.tags || []); // release 265: builds crumble; rushing world beasts break them
+    this.tickHorde(dt); // release 269: the horde keeps coming
     this.tickSeaIce(dt); // release 261: the Mountain Turtle's ice floor freezes and thaws
     // Open-sea hazards (release 152): whirlpools, rogue waves and drifting ice.
     if (this.area === "overworld" && this.seaHazards && p.hp > 0) {

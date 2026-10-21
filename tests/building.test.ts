@@ -19,12 +19,12 @@ test('the build choice is additive save state, wood by default', () => {
   const old = freshSave(); delete old.build; assert.equal(migrateSave(JSON.parse(JSON.stringify(old))).build.kind, 'wood');
   const s = freshSave(); s.build = { kind: 'gold', other: 1 }; ensureBuild(s); assert.deepEqual(s.build, { kind: 'wood', other: 1 });
   assert.equal(setBuildKind(s, 'stone'), 'stone'); assert.equal(setBuildKind(s, 'nope'), 'stone');
-  assert.deepEqual([BUILD.kinds.wood.cost.wood, BUILD.kinds.wood.hits, BUILD.kinds.stone.cost.stone, BUILD.kinds.stone.hits, BUILD.life, BUILD.maxOut], [5, 1, 10, 2, 10, 5], 'Tim\'s numbers');
+  assert.deepEqual([BUILD.kinds.wood.cost.wood, BUILD.kinds.wood.hits, BUILD.kinds.stone.cost.stone, BUILD.kinds.stone.hits, BUILD.life, BUILD.maxOut], [4, 1, 5, 2, 10, 5], 'Tim\'s numbers (release 269: 4 wood, 5 stone)');
 });
 
 test('a wood wall goes in front, costs 5 wood, blocks everyone, and crumbles after 10 s back to the ground it stood on', () => {
   const { game, map, save } = field(), spot = buildSpot(game.player); assert.deepEqual(spot, { x: 11, y: 10 });
-  const r = placeBuild(game, spot.x, spot.y, 'wood'); assert.equal(r.ok, true, r.message); assert.equal(save.materials.wood, 15);
+  const r = placeBuild(game, spot.x, spot.y, 'wood'); assert.equal(r.ok, true, r.message); assert.equal(save.materials.wood, 16);
   assert.equal(at(map, 11, 10).build, 'wood'); assert.equal(footprintOpen(map, 32, 10.8, 9.5, true), false, 'not even the Wayfarer walks through');
   assert.equal(at(map, 11, 10).buildRun, 'v', 'built facing sideways, it runs across the way'); game.player.facing = 'down'; placeBuild(game, 10, 11, 'wood'); assert.equal(at(map, 10, 11).buildRun, 'h'); breakBuild(game, game.builds[1]);
   game.player.facing = 'left'; placeBuild(game, 9, 10, 'wood', false); assert.equal(at(map, 9, 10).buildRun, 'h', 'standing still: the standard fence'); breakBuild(game, game.builds[1]);
@@ -36,7 +36,7 @@ test('refusals: water, an occupied tile, too few materials, and more than five s
   const { game, map, save } = field();
   assert.match(buildRefusal(map, 27, 10, 'stone', false), /sink/); assert.match(placeBuild(game, 27, 10, 'stone').message, /sink/); assert.equal(save.materials.stone, 40, 'nothing spent');
   game.enemies = [{ x: 11.5 - .5, y: 10, dead: false }]; assert.match(placeBuild(game, 11, 10, 'wood').message, /stands there/); game.enemies = [];
-  save.materials.stone = 60; save.materials.wood = 4; assert.match(placeBuild(game, 11, 10, 'wood').message, /takes 5 wood \(you have 4\)/);
+  save.materials.stone = 60; save.materials.wood = 3; assert.match(placeBuild(game, 11, 10, 'wood').message, /takes 4 wood \(you have 3\)/);
   for (let k = 0; k < BUILD.maxOut; k++) assert.equal(placeBuild(game, 12 + k, 5, 'stone').ok, true);
   assert.match(placeBuild(game, 12, 7, 'stone').message, /5 builds already stand/);
 });

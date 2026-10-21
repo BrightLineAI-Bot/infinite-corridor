@@ -561,6 +561,71 @@ function drawSkiff(ctx, x, y, s, facing, now) {
   ctx.fillStyle = "#8d6a43"; for (const k of [-.3, .05]) ctx.fillRect(k * s, -s * .13, s * .07, s * .26);
   ctx.restore();
 }
+// Release 269 (Tim: "it can turn into... a Viking longboat with a sail and a mast... the head of the Viking boat...
+// something interesting, something cosmic, something understated... [for] the Wanderer's position in this whole cosmic
+// nightmare"; then "show it in a profile in like an isometric view... we can see... the sides of a hull that are
+// somewhat submerged in the water as it rides along the water"): while the hull guard holds, the skiff is a clinker-
+// built longboat seen three-quarters on: a foreshortened deck, the near side of the hull with its strakes and a row of
+// round shields, the lower hull under a foaming waterline, a stem post curling up into a spiral from which a
+// lantern hangs, a little spiral galaxy behind its glass, a lower stern curl, and an upright mast with a striped square sail. It always shows its
+// side: heading up or down it keeps its last side-on bearing.
+function drawLongboat(ctx, x, y, s, facing, now, side = "right", part = "back") {
+  const dir = facing === "left" || (facing !== "right" && side === "left") ? -1 : 1, rock = Math.sin(now / 480 + x) * s * .035;
+  const cx = (x + .5) * s, gy = (y + .6) * s + rock, L = s * .86, D = s * .13, H = s * .26, wl = H * .6;
+  ctx.save(); ctx.translate(cx, gy); ctx.scale(dir, 1);
+  // the hull's near side, from gunwale (y 0) down past the waterline, its ends sweeping up into the posts
+  const hull = () => { ctx.beginPath(); ctx.moveTo(-L, -s * .06); ctx.quadraticCurveTo(-L * .86, H, -L * .55, H); ctx.lineTo(L * .55, H); ctx.quadraticCurveTo(L * .86, H, L, -s * .06); ctx.lineTo(L * .95, 0); ctx.lineTo(-L * .95, 0); ctx.closePath(); };
+  if (part === "front") { // drawn over the Wayfarer, so they sit inside the boat
+  ctx.fillStyle = "#00000040"; ctx.beginPath(); ctx.ellipse(0, wl + s * .04, L * 1.02, s * .09, 0, 0, 7); ctx.fill();
+  hull(); ctx.fillStyle = "#6a4629"; ctx.fill();
+  ctx.save(); hull(); ctx.clip(); ctx.strokeStyle = "#8c6039"; ctx.lineWidth = Math.max(1, s * .022);
+  for (const k of [.28, .55, .82]) { ctx.beginPath(); ctx.moveTo(-L, k * H - s * .04); ctx.quadraticCurveTo(0, k * H + s * .015, L, k * H - s * .04); ctx.stroke(); } // clinker strakes
+  ctx.restore();
+  hull(); ctx.strokeStyle = "#3e2614"; ctx.lineWidth = Math.max(1, s * .03); ctx.stroke();
+  for (let k = 0; k < 5; k++) { // the near shields, hung along the gunwale
+    const sx = -L * .5 + k * L * .25, sy = s * .03; ctx.fillStyle = ["#7b2f2a", "#c9b48c", "#2f4a5a"][k % 3];
+    ctx.beginPath(); ctx.arc(sx, sy, s * .068, 0, 7); ctx.fill(); ctx.strokeStyle = "#2a1a0e"; ctx.lineWidth = Math.max(1, s * .02); ctx.stroke();
+    ctx.fillStyle = "#b9a27a"; ctx.beginPath(); ctx.arc(sx, sy, s * .022, 0, 7); ctx.fill();
+  }
+  // the waterline: the sea laps over the lower hull, with a line of foam
+  ctx.fillStyle = "#1d4f78b0"; ctx.beginPath(); ctx.moveTo(-L * 1.05, wl); for (let k = 0; k <= 12; k++) { const qx = -L * 1.05 + k * L * 2.1 / 12; ctx.lineTo(qx, wl + Math.sin(now / 300 + k * 1.3) * s * .012); } ctx.lineTo(L * 1.05, H + s * .08); ctx.lineTo(-L * 1.05, H + s * .08); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#e8f4ffcc"; ctx.lineWidth = Math.max(1, s * .025); ctx.beginPath(); for (let k = 0; k <= 12; k++) { const qx = -L * 1.02 + k * L * 2.04 / 12, qy = wl + Math.sin(now / 300 + k * 1.3) * s * .012; k ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy); } ctx.stroke();
+    ctx.restore(); return;
+  }
+  // the deck, foreshortened behind the near gunwale
+  ctx.beginPath(); ctx.moveTo(-L * .95, 0); ctx.quadraticCurveTo(-L * .7, -D, -L * .4, -D); ctx.lineTo(L * .4, -D); ctx.quadraticCurveTo(L * .7, -D, L * .95, 0); ctx.closePath();
+  ctx.fillStyle = "#8a6038"; ctx.fill(); ctx.strokeStyle = "#3e2614"; ctx.lineWidth = Math.max(1, s * .025); ctx.stroke();
+  ctx.strokeStyle = "#6f4b2c"; ctx.lineWidth = Math.max(1, s * .015); for (let k = -3; k <= 3; k++) { ctx.beginPath(); ctx.moveTo(k * L * .2, -D * .9); ctx.lineTo(k * L * .2, -s * .01); ctx.stroke(); } // thwarts
+  for (let k = 0; k < 5; k++) { const sx = -L * .5 + k * L * .25; ctx.fillStyle = "#4a3324"; ctx.beginPath(); ctx.ellipse(sx, -D * .95, s * .05, s * .022, 0, Math.PI, 0); ctx.fill(); } // the far shields' rims
+  // the posts: the stem rises and curls into a spiral from which the lantern hangs; the stern curls lower
+  const post = (px, up, r, sgn) => { ctx.strokeStyle = "#4a2f17"; ctx.lineWidth = Math.max(1.5, s * .045); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(px, -s * .06); ctx.quadraticCurveTo(px + sgn * s * .1, -up * .5, px + sgn * s * .06, -up); for (let t = 0; t <= 5; t += .25) { const rr = r * (1 - t / 6), a = Math.PI + t * sgn; ctx.lineTo(px + sgn * s * .06 + r + Math.cos(a) * rr * sgn, -up + Math.sin(a) * rr - (r - rr) * .2); } ctx.stroke(); };
+  post(L, s * .42, s * .1, 1); post(-L, s * .26, s * .07, -1);
+  const hx = L + s * .16, hy = -s * .44, glow = .6 + Math.sin(now / 1300) * .2;
+  // a lantern hangs still from the curl (Tim: "the figurehead should be a lantern... a spiral in it... like a spiral
+  // galaxy"): a short cord, a dark iron cap and frame, and behind the glass a small two-armed spiral of pale light
+  const lx = hx - s * .02, ly = hy + s * .1, lw = s * .11, lh = s * .14;
+  ctx.strokeStyle = "#2a1a0e"; ctx.lineWidth = Math.max(1, s * .018); ctx.beginPath(); ctx.moveTo(lx, hy - s * .02); ctx.lineTo(lx, ly - lh / 2); ctx.stroke();
+  ctx.fillStyle = `rgba(150,170,255,${glow * .28})`; ctx.beginPath(); ctx.arc(lx, ly, s * .14, 0, 7); ctx.fill();
+  ctx.fillStyle = "#121726"; ctx.fillRect(lx - lw / 2, ly - lh / 2, lw, lh); // the glass, dark like night
+  ctx.save(); ctx.beginPath(); ctx.rect(lx - lw / 2, ly - lh / 2, lw, lh); ctx.clip();
+  ctx.strokeStyle = `rgba(214,226,255,${.75 + glow * .25})`; ctx.lineWidth = Math.max(1, s * .016); ctx.lineCap = "round";
+  for (const arm of [0, Math.PI]) { ctx.beginPath(); for (let t = 0; t <= 1; t += .1) { const a = arm + t * 4.2, r = s * (.005 + t * .042); const qx = lx + Math.cos(a) * r, qy = ly + Math.sin(a) * r * .8; t ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy); } ctx.stroke(); }
+  ctx.fillStyle = "#f4f2ff"; ctx.beginPath(); ctx.arc(lx, ly, Math.max(1, s * .014), 0, 7); ctx.fill(); // its bright core
+  ctx.restore();
+  ctx.strokeStyle = "#3a2c22"; ctx.lineWidth = Math.max(1, s * .02); ctx.strokeRect(lx - lw / 2, ly - lh / 2, lw, lh); // the frame
+  ctx.fillStyle = "#3a2c22"; ctx.beginPath(); ctx.moveTo(lx - lw * .62, ly - lh / 2); ctx.lineTo(lx, ly - lh / 2 - s * .045); ctx.lineTo(lx + lw * .62, ly - lh / 2); ctx.closePath(); ctx.fill(); // the cap
+  ctx.fillRect(lx - lw * .6, ly + lh / 2, lw * 1.2, s * .02); // the base
+  // the mast and its square sail, upright, forward of the Wayfarer who sits amidships
+  const mx = L * .42, top = -s * 1.32, sw = s * .6, belly = s * (.08 + Math.sin(now / 760) * .02);
+  ctx.strokeStyle = "#3a2412"; ctx.lineWidth = Math.max(2, s * .055); ctx.beginPath(); ctx.moveTo(mx, -D * .5); ctx.lineTo(mx, top - s * .08); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(mx - sw / 2, top); ctx.quadraticCurveTo(mx, top - belly * .4, mx + sw / 2, top); ctx.lineTo(mx + sw / 2 + belly * .2, top + s * .7); ctx.quadraticCurveTo(mx, top + s * .7 + belly, mx - sw / 2 - belly * .2, top + s * .7); ctx.closePath();
+  ctx.fillStyle = "#e9dcbc"; ctx.fill(); ctx.save(); ctx.clip(); ctx.fillStyle = "#a33a2f"; for (let k = 0; k < 4; k++) ctx.fillRect(mx - sw / 2 + k * sw / 3.5, top - s * .1, sw / 7, s); ctx.restore();
+  ctx.strokeStyle = "#6e5a3c"; ctx.lineWidth = Math.max(1, s * .025); ctx.stroke();
+  ctx.strokeStyle = "#3a2412"; ctx.lineWidth = Math.max(1.5, s * .045); ctx.beginPath(); ctx.moveTo(mx - sw / 2 - s * .05, top); ctx.lineTo(mx + sw / 2 + s * .05, top); ctx.stroke(); // the yard
+  ctx.restore();
+}
+// Release 269: a small REPAIR tag over a skiff the Build button would patch.
+function repairTag(ctx, x, y, s) { const bx = (x + .5) * s, by = (y + .2) * s; ctx.fillStyle = "#1d1c19e0"; ctx.fillRect(bx - s * .5, by - s * .32, s, s * .3); ctx.strokeStyle = "#b58c50"; ctx.lineWidth = 1; ctx.strokeRect(bx - s * .5, by - s * .32, s, s * .3); ctx.fillStyle = "#f0dbb5"; ctx.font = `bold ${Math.max(8, Math.round(s * .2))}px monospace`; ctx.textAlign = "center"; ctx.fillText("REPAIR", bx, by - s * .11); ctx.textAlign = "start"; }
 // Release 197: an Elder Wanderer. Tall and faceless on four stilt legs; its body is its own rule, unfolding upward
 // row by row, in the rule's colour. A pale disc floats where a head would be.
 export function drawElder(ctx, o, s, now) {
@@ -1164,6 +1229,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "digSpot") { drawDigSpot(ctx, o, s, now);
           } else if (o.kind === "skiff") {
             drawSkiff(ctx, o.x, o.y, s, "right", performance.now());
+            if (o.id === "skiff-moored" && g.mendTarget?.() && !g.mendTarget().aboard) repairTag(ctx, o.x, o.y, s); // release 269
           } else if (o.kind === "shipwright") {
             actor(ctx, o.x, o.y, s, "shipwright", "down", 0, "idle");
             ctx.fillStyle = "#e2d5ba"; ctx.font = "10px monospace"; ctx.textAlign = "center";
@@ -1246,19 +1312,20 @@ export function render(ctx, g, w, h, now) {
       }
       if (g.area === "overworld" && g.save.boat?.aboard) {
         // A jump lifts the skiff with the Wayfarer (release 158: leap a rogue wave's crest).
-        drawSkiff(ctx, p.x, p.y - lift / s, s, p.facing, now);
+        const shieldLeft = Number(g.save.boat.shield) || 0; // release 269: under the hull guard, the skiff is a longboat (flickering back in its last 10 s)
+        if (p.facing === "left" || p.facing === "right") g.longboatSide = p.facing;
+        g._longboatFront = shieldLeft > 0 && (shieldLeft > 10 || Math.floor(now / 200) % 2 === 1); // the near hull goes over the Wayfarer, below
+        (g._longboatFront ? drawLongboat : drawSkiff)(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right");
+        if (g.mendTarget?.()) repairTag(ctx, p.x, p.y - .9 - lift / s, s);
         // Hull gauge under the skiff: green to amber to red as the hull takes damage.
         const hull = Math.max(0, Math.min(1, (g.save.boat.hull || 0) / BOAT.maxHull)), bx = (p.x + .08) * s, by = (p.y + 1.12) * s, bw = s * .84, bh = Math.max(3, s * .09);
         ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
         ctx.fillStyle = hull > .6 ? "#6fcf7a" : hull > .3 ? "#e3b04b" : "#e2574a"; ctx.fillRect(bx, by, bw * hull, bh);
         if (hull <= .3 && Math.floor(now / 350) % 2) { ctx.strokeStyle = "#ffb3a8"; ctx.lineWidth = 1; ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2); }
-        // Release 263: a deployed hull shield rings the skiff in pale blue and overlays the gauge; it flickers in its last 10 s.
+        // Release 263/269: the hull guard (the skiff itself becomes a longboat).
         const shield = Number(g.save.boat.shield) || 0;
-        if (shield > 0 && (shield > 10 || Math.floor(now / 200) % 2)) {
-          ctx.save(); ctx.strokeStyle = "#9fdcffcc"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.fillStyle = "#9fdcff22";
-          ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y + .8 - lift / s) * s, s * .78, s * .5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = "#9fdcff"; ctx.fillRect(bx, by + bh + 1, bw * Math.min(1, shield / BOAT.shield.seconds), Math.max(2, bh * .6)); ctx.restore();
-        }
+        // Release 269: the guard's own bar, bright fuchsia, extends the hull gauge to the right; blows eat into it, and when it is gone so is the guard.
+        if (shield > 0) { const gw = bw * BOAT.shield.bonus / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.guardHull) || 0) / BOAT.shield.bonus); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx + bw + 1, by - 1, gw + 2, bh + 2); ctx.fillStyle = "#ff2fb4"; ctx.fillRect(bx + bw + 2, by, gw * left, bh); }
       }
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
@@ -1274,6 +1341,7 @@ export function render(ctx, g, w, h, now) {
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
+      if (g._longboatFront && g.area === "overworld" && g.save.boat?.aboard) drawLongboat(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right", "front"); // release 269
       // Poisoned (release 165): the Wayfarer pulses green while poison lasts.
       if (g.save.elites?.status?.poison > 0) { const pulse = .5 + .5 * Math.sin(now / 160); ctx.fillStyle = `rgba(120,230,90,${.12 + pulse * .22})`; ctx.strokeStyle = `rgba(150,255,110,${.35 + pulse * .45})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y - lift / s + .35) * s, s * (.42 + pulse * .08), s * (.55 + pulse * .08), 0, 0, 7); ctx.fill(); ctx.stroke(); }
       if (now < (p.attackUntil || 0)) {
@@ -1334,6 +1402,15 @@ export function render(ctx, g, w, h, now) {
     if (level > .01) {
       const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - level) * 3), px, py, s * (3.6 + (1 - level) * 7));
       gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.92 * level})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
+    }
+    // Release 269 (Tim: "in fog it should cast a... violet glow"): the longboat's lantern lights the mist around it,
+    // more strongly the deeper the fog.
+    if (g._longboatFront && g.save.boat?.aboard) {
+      const dir = g.longboatSide === "left" ? -1 : 1, lx = (p.x + .5) * s + dir * s * 1.0, ly = (p.y + .6) * s - s * .34, pulse = .9 + Math.sin(now / 1300) * .1, k = (.4 + .55 * level) * pulse;
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      const lg = ctx.createRadialGradient(lx, ly, 0, lx, ly, s * 3.6); lg.addColorStop(0, `rgba(205,70,255,${Math.min(1, 1.1 * k)})`); lg.addColorStop(.25, `rgba(165,40,245,${.65 * k})`); lg.addColorStop(.6, `rgba(130,25,215,${.28 * k})`); lg.addColorStop(1, "rgba(110,20,190,0)");
+      ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(lx, ly, s * 3.6, 0, 7); ctx.fill();
+      ctx.globalCompositeOperation = "source-over"; const tint = ctx.createRadialGradient(lx, ly, 0, lx, ly, s * 2.4); tint.addColorStop(0, `rgba(150,40,230,${.28 * k})`); tint.addColorStop(1, "rgba(150,40,230,0)"); ctx.fillStyle = tint; ctx.beginPath(); ctx.arc(lx, ly, s * 2.4, 0, 7); ctx.fill(); ctx.restore(); // the mist itself takes the colour
     }
   }
   if (g.area === "overworld" && g.storm) { ctx.fillStyle = `rgba(16,24,38,${.28 * g.storm.strength})`; ctx.fillRect((p.x + .5) * s - w, (p.y + .6) * s - h, w * 2, h * 2); }

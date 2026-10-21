@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 269 — the Gate Revenant horde. About one new dungeon in two hundred holds nothing but Gate Revenants, 28 to 44 of them. Three stand at a time, and as each falls another comes after a few seconds, until the dungeon's count is spent. Any you've drawn follow you out of the dungeon and across sections. A kill anywhere counts down the dungeon's number, which is kept in your save: if you die or lose them, the survivors go back and wait. Breaking the horde locks a piece of the Far Gate into place. Horde Revenants don't drop Crossing Sigils.
+- Release 269 — building costs less: a wood wall is 4 wood, a stone block 5 stone.
+- Release 269 — Build patches your skiff. Beside your damaged skiff or aboard it (a REPAIR tag shows), each press of Build spends a wood and mends half the hull.
+- Release 269 — the hull guard. Holding Build at sea deploys a hull shield you carry. For up to 3 minutes the skiff becomes a Viking longboat, seen three-quarters on: a striped square sail, shields along its side, and a lantern hanging from its curled prow with a small spiral galaxy behind the glass (in fog it lights the mist violet). The hull takes half damage, a fuchsia guard bar beside the hull gauge soaks blows first (the guard ends when it's gone), and you take 5% less.
+
 - Release 267 — build mode. Pressing Build still builds in front of you, and now also turns on build mode (the button lights up, like Tool's aiming). In build mode, a tap on the map builds exactly where you tap if it's within 3 tiles, or 3 tiles out along the same line if it's farther. A fence there is turned across the line from you to the tap, straight or diagonal, in 8 directions. Act, Tool or Attack switch back.
 - Release 267 — a wood wall is never built where any part of you stands (it used to be possible to wall yourself in for its 10 seconds), and builds are cleared when you enter a dungeon.
 

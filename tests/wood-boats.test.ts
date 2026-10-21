@@ -4,7 +4,7 @@ import { generateRegion } from '../src/world.ts';
 import { applyLandscape, biomeFor } from '../src/landscape.ts';
 import { Game } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { WOOD, woodFor, addWood, buildSkiff, BOAT, disembark, takeSpare, ensureBoatState, buyHullShield, deployHullShield, tickHullShield, hullAbsorb, hullStrike, shipwrightActions } from '../src/boats.ts';
+import { WOOD, woodFor, addWood, buildSkiff, BOAT, disembark, takeSpare, ensureBoatState, mendSkiff, buyHullShield, deployHullShield, tickHullShield, hullAbsorb, hullStrike, shipwrightActions } from '../src/boats.ts';
 import { grantTidemantle } from '../src/water-traversal.ts';
 
 const SEED = 'LANDTEST';
@@ -107,12 +107,32 @@ test('release 263: hull shields are bought from the Shipwright and deployed aboa
   assert.equal(buyHullShield(s).ok, true); assert.equal(s.consumables.hullShield, 1); assert.equal(s.currency, 100 - BOAT.shield.price);
   assert.equal(deployHullShield(s).ok, false, 'only aboard'); s.boat.aboard = true;
   assert.equal(deployHullShield(s).ok, true); assert.equal(s.consumables.hullShield, 0); assert.equal(s.boat.shield, BOAT.shield.seconds);
-  const r = hullAbsorb(s, 20); assert.equal(s.boat.hull, BOAT.maxHull, 'the hull is untouched'); assert.equal(r.kept, 20 - 20 * BOAT.hullShare, 'the Wayfarer keeps only their share');
-  assert.equal(hullStrike(s, 50), false); assert.equal(s.boat.hull, BOAT.maxHull);
-  tickHullShield(s, BOAT.shield.seconds - 1); assert.ok(s.boat.shield > 0); tickHullShield(s, 2); assert.equal(s.boat.shield, 0);
+  const r = hullAbsorb(s, 20); assert.equal(s.boat.hull, BOAT.maxHull, 'the hull is untouched'); assert.equal(r.kept, (20 - 20 * BOAT.hullShare) * (1 - BOAT.shield.guard), 'the Wayfarer keeps only their share, 5% less (release 269)'); assert.equal(BOAT.shield.guard, .05);
+  assert.equal(s.boat.guardHull, BOAT.shield.bonus - 10 * BOAT.shield.hullTaken, 'release 269: the guard\'s extra hull soaks a halved blow first');
+  assert.equal(hullStrike(s, 50), false); assert.equal(s.boat.hull, BOAT.maxHull, 'still within the extra hull'); assert.equal(s.boat.guardHull, 0);
+  assert.equal(s.boat.shield, 0, 'its bar destroyed, the guard is over: back to the skiff');
+  hullStrike(s, 40); assert.equal(s.boat.hull, BOAT.maxHull - 40, 'unguarded, the hull wears in full');
+  s.boat.hull = BOAT.maxHull; s.consumables.hullShield = 1; deployHullShield(s);
+  tickHullShield(s, BOAT.shield.seconds - 1); assert.ok(s.boat.shield > 0); tickHullShield(s, 2); assert.equal(s.boat.shield, 0); assert.equal(s.boat.guardHull, 0); s.boat.hull = BOAT.maxHull;
   hullAbsorb(s, 20); assert.ok(s.boat.hull < BOAT.maxHull, 'unshielded again');
   const m = migrateSave(JSON.parse(JSON.stringify({ ...s, boat: { ...s.boat, shield: 'x' }, consumables: { ...s.consumables, hullShield: -2 } })));
   assert.equal(m.boat.shield, 0); assert.equal(deployHullShield(m).ok, false, 'a bad count is none');
   const g = new Game(Object.assign(freshSave(), { seed: SEED }), 0); g.save.boat = { owned: true, aboard: true, hull: 30 }; ensureBoatState(g.save); g.save.consumables.hullShield = 1;
   assert.equal(g.useConsumable('hullShield', 0), true); assert.equal(g.save.boat.shield, BOAT.shield.seconds);
+});
+
+test('release 269: Build patches a damaged skiff, a wood for half the hull, beside it or aboard; held at sea it raises a hull shield', () => {
+  const s = freshSave(); s.materials.wood = 3; Object.assign(ensureBoatState(s), { owned: true, aboard: true, hull: 10 });
+  assert.equal(mendSkiff(s).ok, true); assert.equal(s.boat.hull, 10 + BOAT.maxHull / 2); assert.equal(s.materials.wood, 2);
+  assert.equal(mendSkiff(s).ok, true); assert.equal(s.boat.hull, BOAT.maxHull, 'two woods: whole'); assert.equal(s.materials.wood, 1);
+  assert.equal(mendSkiff(s).ok, false, 'nothing charged on a sound hull'); assert.equal(s.materials.wood, 1);
+  const g = new Game(Object.assign(freshSave(), { seed: SEED }), 0); g.area = 'overworld'; g.map = { width: 32, tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: 'grass', blocked: false })), objects: [] };
+  Object.assign(ensureBoatState(g.save), { owned: true, aboard: false, hull: 20, moored: { rx: 0, ry: 0, x: 11, y: 10 } }); g.save.materials.wood = 5;
+  g.map.objects.push({ id: 'skiff-moored', kind: 'skiff', x: 11, y: 10, actions: ['board'] }); Object.assign(g.player, { x: 10, y: 10, facing: 'right' });
+  assert.ok(g.mendTarget(), 'beside the moored skiff');
+  let pressed = false; g.update(.05, { state: { x: 0, y: 0 }, consume: (a) => a === 'build' && !pressed && (pressed = true), held: () => false }, 1000);
+  assert.equal(g.save.boat.hull, 20 + BOAT.maxHull / 2, 'Build patched it rather than building'); assert.equal(g.builds?.length || 0, 0);
+  g.map.tiles = g.map.tiles.map((t) => ({ ...t, kind: 'ocean', blocked: true })); g.map.objects = []; g.save.boat.aboard = true; g.save.boat.hull = BOAT.maxHull; g.save.consumables.hullShield = 1;
+  for (let t = 0; t < 1; t += .1) g.update(.1, { state: { x: 0, y: 0 }, consume: () => false, held: (a) => a === 'build' }, 2000 + t * 1000);
+  assert.ok(g.save.boat.shield > BOAT.shield.seconds - 1, 'holding Build raised the shield'); assert.equal(g.save.consumables.hullShield, 0);
 });

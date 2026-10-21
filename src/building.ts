@@ -13,8 +13,8 @@ import { LETHAL_KINDS } from "./landscape.ts";
 
 export const BUILD = {
   kinds: {
-    wood: { name: "Wood wall", cost: { wood: 5 }, hits: 1 },
-    stone: { name: "Stone block", cost: { stone: 10 }, hits: 2, stack: 2 },
+    wood: { name: "Wood wall", cost: { wood: 4 }, hits: 1 }, // release 269 (Tim: "a wall takes 4 wood"; it was 5)
+    stone: { name: "Stone block", cost: { stone: 5 }, hits: 2, stack: 2 }, // release 269 (Tim: "five stone... twenty blocks with the full inventory"; it was 10)
   },
   life: 10,       // seconds a build stands
   maxOut: 5,      // builds standing at once
