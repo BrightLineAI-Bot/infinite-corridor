@@ -202,33 +202,45 @@ export function drawAstralMorph(ctx, options, previousForm, progress) {
   drawAstralWorm(ctx, {...options, alpha: (options.alpha ?? 1) * k});
 }
 
-// Owner-requested riding seat (revised 2026-10-21): a traditional tan leather saddle, large enough to read
-// on a phone against the black ink body, over an oxblood pad, with cream stitching and a steel stirrup.
+// Owner-requested riding mount (revised again 2026-10-21): a compact futuristic plinth the Walker stands on.
+// A dark gunmetal clamp grips the beast with a violet glow bleeding out beneath it; above, a silver disc
+// platform with a glowing seam, and a violet light column rising to about the rider's hips. The 'back'
+// layer paints behind the rider; the 'front' layer adds a faint veil over his legs so he stands inside it.
 // Pure decoration; it never changes creature geometry or hitboxes.
-export const ASTRAL_SADDLE = Object.freeze({ size: .8, width: { worm: .64, griffin: .68, pool: .74, flight: .64 },
-  leather: '#8a5428', shadow: '#5a3216', shine: '#c08a52', outline: '#2a1609', pad: '#6a2621', stitch: '#e2c48e', iron: '#bfc5ca' });
-export function drawAstralSaddle(ctx, {x,y,unit,form='worm',facing=1}) {
-  const S=ASTRAL_SADDLE, W=S.width[form]??S.width.worm;
-  ctx.save();ctx.translate(x,y);ctx.scale(unit*facing*S.size,unit*S.size);ctx.lineJoin='round';ctx.lineCap='round';
-  // Wool pad peeks out under the tree, front and back.
-  ctx.fillStyle=S.pad;ctx.strokeStyle=S.outline;ctx.lineWidth=.016;ctx.beginPath();
-  ctx.moveTo(-W*.56,-.05);ctx.quadraticCurveTo(-W*.6,.1,-W*.48,.13);ctx.lineTo(W*.5,.13);ctx.quadraticCurveTo(W*.6,.1,W*.56,-.05);ctx.closePath();ctx.fill();ctx.stroke();
-  // Tree and seat: a high cantle behind, a dished seat and a raised pommel in front.
-  ctx.fillStyle=S.leather;ctx.beginPath();ctx.moveTo(-W*.5,.02);
-  ctx.quadraticCurveTo(-W*.56,-.17,-W*.44,-.22);ctx.quadraticCurveTo(-W*.38,-.24,-W*.33,-.17);
-  ctx.bezierCurveTo(-W*.18,-.1,W*.12,-.1,W*.3,-.15);ctx.quadraticCurveTo(W*.4,-.25,W*.5,-.2);
-  ctx.quadraticCurveTo(W*.55,-.08,W*.47,.03);ctx.closePath();ctx.fill();ctx.stroke();
-  ctx.strokeStyle=S.shine;ctx.lineWidth=.014;ctx.beginPath();ctx.moveTo(-W*.3,-.15);ctx.bezierCurveTo(-W*.16,-.09,W*.1,-.09,W*.27,-.13);ctx.stroke();
-  ctx.fillStyle=S.shadow;ctx.beginPath();ctx.ellipse(-W*.44,-.17,W*.05,.04,-.3,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(W*.46,-.17,W*.04,.035,.3,0,Math.PI*2);ctx.fill();
-  // Hanging fender with stitched border, then stirrup leather and a steel stirrup.
-  ctx.fillStyle=S.shadow;ctx.strokeStyle=S.outline;ctx.lineWidth=.016;ctx.beginPath();
-  ctx.moveTo(-W*.2,-.04);ctx.lineTo(W*.17,-.04);ctx.quadraticCurveTo(W*.21,.13,W*.15,.26);ctx.quadraticCurveTo(0,.29,-W*.17,.26);ctx.quadraticCurveTo(-W*.23,.13,-W*.2,-.04);ctx.closePath();ctx.fill();ctx.stroke();
-  ctx.strokeStyle=S.stitch;ctx.lineWidth=.009;ctx.setLineDash([.026,.02]);ctx.beginPath();
-  ctx.moveTo(-W*.16,0);ctx.lineTo(W*.13,0);ctx.quadraticCurveTo(W*.16,.13,W*.115,.225);ctx.quadraticCurveTo(0,.25,-W*.135,.225);ctx.quadraticCurveTo(-W*.19,.13,-W*.16,0);ctx.stroke();ctx.setLineDash([]);
-  ctx.strokeStyle=S.outline;ctx.lineWidth=.04;ctx.beginPath();ctx.moveTo(W*.02,.2);ctx.lineTo(W*.02,.33);ctx.stroke();
-  ctx.strokeStyle=S.leather;ctx.lineWidth=.024;ctx.stroke();
-  ctx.strokeStyle=S.outline;ctx.lineWidth=.036;ctx.beginPath();ctx.moveTo(W*.02-.06,.33);ctx.lineTo(W*.02+.06,.33);ctx.lineTo(W*.02+.075,.42);ctx.lineTo(W*.02-.075,.42);ctx.closePath();ctx.stroke();
-  ctx.strokeStyle=S.iron;ctx.lineWidth=.02;ctx.stroke();
+export const ASTRAL_SADDLE = Object.freeze({ size: .75, width: { worm: .66, griffin: .68, pool: .74, flight: .66 },
+  clamp: '#181b22', clampEdge: '#8f99a5', plate: '#b9c2cc', plateSide: '#5b6470', plateShade: '#3a414b', outline: '#0b0d12',
+  seam: '#c58bff', glow: '#9b5cff', glowHeight: .46, veilAlpha: .4 });
+export function drawAstralSaddle(ctx, {x,y,unit,form='worm',facing=1,layer='back'}) {
+  const S=ASTRAL_SADDLE, W=S.width[form]??S.width.worm, TAU=Math.PI*2, top=-.03, rx=W*.5, ry=.075;
+  ctx.save();ctx.translate(x,y);ctx.scale(unit*facing*S.size,unit*S.size);ctx.lineJoin='round';
+  const column=(alpha)=>{
+    const h=S.glowHeight/S.size, g=ctx.createLinearGradient(0,top,0,top-h);
+    g.addColorStop(0,S.glow+'ee');g.addColorStop(.5,S.glow+'88');g.addColorStop(1,S.glow+'00');
+    const base=ctx.globalAlpha;ctx.globalAlpha=base*alpha;ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-rx*.92,top);ctx.lineTo(-rx*.78,top-h);ctx.lineTo(rx*.78,top-h);ctx.lineTo(rx*.92,top);
+    ctx.ellipse(0,top,rx*.92,ry*.85,0,0,Math.PI);ctx.closePath();ctx.fill();
+    // Glowing field edges and light streaks fade upward, so the column reads even where the rider covers it.
+    const edge=ctx.createLinearGradient(0,top,0,top-h);edge.addColorStop(0,S.seam);edge.addColorStop(1,S.seam+'00');
+    ctx.strokeStyle=edge;ctx.lineWidth=.018;ctx.beginPath();ctx.moveTo(-rx*.92,top);ctx.lineTo(-rx*.78,top-h);ctx.moveTo(rx*.92,top);ctx.lineTo(rx*.78,top-h);
+    for(const k of [-.45,.1,.55]){ctx.moveTo(rx*k,top+.02);ctx.lineTo(rx*k*.9,top-h*.75);}ctx.stroke();ctx.globalAlpha=base;
+  };
+  if(layer==='front'){column(S.veilAlpha);ctx.restore();return;}
+  // Violet glow beneath, where the clamp meets the beast.
+  const under=ctx.createRadialGradient(0,.13,0,0,.13,W*.6);under.addColorStop(0,S.glow+'aa');under.addColorStop(1,S.glow+'00');
+  ctx.fillStyle=under;ctx.beginPath();ctx.ellipse(0,.13,W*.6,.12,0,0,TAU);ctx.fill();
+  // Gunmetal clamp with silver edges and two bracket feet.
+  ctx.fillStyle=S.clamp;ctx.strokeStyle=S.clampEdge;ctx.lineWidth=.014;ctx.beginPath();
+  ctx.moveTo(-rx*.78,top+.04);ctx.lineTo(rx*.78,top+.04);ctx.lineTo(rx*.58,.13);ctx.lineTo(rx*.3,.15);ctx.lineTo(-rx*.3,.15);ctx.lineTo(-rx*.58,.13);ctx.closePath();ctx.fill();ctx.stroke();
+  for(const sx of [-1,1]){ctx.beginPath();ctx.moveTo(sx*rx*.62,.1);ctx.lineTo(sx*rx*.9,.17);ctx.lineTo(sx*rx*.78,.19);ctx.lineTo(sx*rx*.5,.13);ctx.closePath();ctx.fill();ctx.stroke();}
+  ctx.strokeStyle=S.seam;ctx.lineWidth=.012;ctx.beginPath();ctx.moveTo(-rx*.4,.11);ctx.lineTo(rx*.4,.11);ctx.stroke();
+  // Light column behind the rider, rising from the platform.
+  column(1);
+  // Silver disc platform: shaded side band with a glowing seam, then the bright top face.
+  ctx.fillStyle=S.plateSide;ctx.strokeStyle=S.outline;ctx.lineWidth=.014;ctx.beginPath();
+  ctx.ellipse(0,top+.05,rx,ry,0,0,Math.PI);ctx.lineTo(-rx,top);ctx.ellipse(0,top,rx,ry,0,Math.PI,0,true);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.strokeStyle=S.seam;ctx.lineWidth=.016;ctx.beginPath();ctx.ellipse(0,top+.028,rx*.985,ry*.98,0,.15,Math.PI-.15);ctx.stroke();
+  ctx.fillStyle=S.plate;ctx.strokeStyle=S.outline;ctx.lineWidth=.014;ctx.beginPath();ctx.ellipse(0,top,rx,ry,0,0,TAU);ctx.fill();ctx.stroke();
+  ctx.fillStyle=S.plateShade;ctx.beginPath();ctx.ellipse(0,top+.008,rx*.68,ry*.6,0,0,TAU);ctx.fill();
+  ctx.strokeStyle=S.seam;ctx.lineWidth=.01;ctx.beginPath();ctx.ellipse(0,top+.008,rx*.68,ry*.6,0,0,TAU);ctx.stroke();
   ctx.restore();
 }
 
