@@ -601,9 +601,12 @@ function drawLongboat(ctx, x, y, s, facing, now, side = "right", part = "back") 
   const post = (px, up, r, sgn) => { ctx.strokeStyle = "#4a2f17"; ctx.lineWidth = Math.max(1.5, s * .045); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(px, -s * .06); ctx.quadraticCurveTo(px + sgn * s * .1, -up * .5, px + sgn * s * .06, -up); for (let t = 0; t <= 5; t += .25) { const rr = r * (1 - t / 6), a = Math.PI + t * sgn; ctx.lineTo(px + sgn * s * .06 + r + Math.cos(a) * rr * sgn, -up + Math.sin(a) * rr - (r - rr) * .2); } ctx.stroke(); };
   post(L, s * .42, s * .1, 1); post(-L, s * .26, s * .07, -1);
   const hx = L + s * .16, hy = -s * .44, glow = .6 + Math.sin(now / 1300) * .2;
-  ctx.fillStyle = `rgba(214,226,255,${glow * .22})`; ctx.beginPath(); ctx.arc(hx, hy, s * .11, 0, 7); ctx.fill();
-  ctx.fillStyle = `rgba(214,226,255,${glow})`; ctx.beginPath(); ctx.arc(hx, hy, s * .065, Math.PI * .35, Math.PI * 1.65); ctx.arc(hx + s * .028, hy, s * .055, Math.PI * 1.55, Math.PI * .45, true); ctx.fill();
-  ctx.fillStyle = `rgba(244,247,255,${glow})`; ctx.beginPath(); ctx.arc(hx + s * .06, hy - s * .07, Math.max(1, s * .018), 0, 7); ctx.fill();
+  // the crescent reads at a glance (Tim: "more prominent... easier to discern"): a chunky bright crescent opening
+  // forward, outlined dark, a soft halo behind it, and a small star set clear in its mouth
+  ctx.fillStyle = `rgba(170,200,255,${glow * .3})`; ctx.beginPath(); ctx.arc(hx, hy, s * .13, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(hx, hy, s * .09, 0, Math.PI * 2); ctx.arc(hx + s * .055, hy - s * .01, s * .075, 0, Math.PI * 2, true);
+  ctx.fillStyle = "#f4f7ff"; ctx.fill("evenodd"); ctx.strokeStyle = "#141b2e"; ctx.lineWidth = Math.max(1, s * .02); ctx.stroke();
+  ctx.fillStyle = "#fff2c4"; ctx.beginPath(); ctx.arc(hx + s * .07, hy - s * .005, Math.max(1.2, s * .022), 0, 7); ctx.fill();
   // the mast and its square sail, upright, forward of the Wayfarer who sits amidships
   const mx = L * .42, top = -s * 1.32, sw = s * .6, belly = s * (.08 + Math.sin(now / 760) * .02);
   ctx.strokeStyle = "#3a2412"; ctx.lineWidth = Math.max(2, s * .055); ctx.beginPath(); ctx.moveTo(mx, -D * .5); ctx.lineTo(mx, top - s * .08); ctx.stroke();
