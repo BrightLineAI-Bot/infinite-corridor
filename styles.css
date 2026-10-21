@@ -892,3 +892,7 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 /* Release 265 (Tim: "we'll put the stone building block tool down where the A button is right now... just say, build"):
    Build takes Spell A's old corner of the cluster, mirroring Potion. */
 .action-diamond button.build { left: 0; top: calc(var(--button) * 2.52); right: auto; bottom: auto; transform: none; width: calc(var(--button) * 1.16); height: calc(var(--button) * .72); }
+/* Tim: "The build button can just have a hammer. Instead of the word build". */
+.action-diamond button.build { display: grid; place-items: center; padding: 0; }
+.action-diamond button.build .hammer { width: calc(var(--button) * .44); height: calc(var(--button) * .44); color: #e3c58f; transform: rotate(-12deg); }
+.action-diamond button.build[data-kind="stone"] .hammer { color: #c9ced6; }

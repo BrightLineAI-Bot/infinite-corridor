@@ -1920,7 +1920,7 @@ function updateHud(now) {
   }
   // Release 261: the spell preset button shows which preset (1 or 2) is in the slots.
   { const pb = hudEl('[data-action="preset"]'), n = String((save.magicSkills?.preset || 0) + 1); if (pb) { hudSet(pb, "text", n); hudSet(pb, "aria-label", `Spell preset ${n}: tap to switch`); } }
-  { const bb = hudEl('[data-action="build"]'), k = ensureBuild(save).build.kind; if (bb) { hudSet(bb, "text", k === "stone" ? "Build ▣" : "Build ▥"); hudSet(bb, "aria-label", `Build a ${BUILD.kinds[k].name.toLowerCase()}`); } } // release 265
+  { const bb = hudEl('[data-action="build"]'), k = ensureBuild(save).build.kind; if (bb) { hudSet(bb, "aria-label", `Build a ${BUILD.kinds[k].name.toLowerCase()}`); bb.dataset.kind = k; } } // release 265
   // Spell slots A and B (release 113): each shows its castable's symbol in its attribute colour.
   for (const [action, slot] of [["spell", "a"], ["spell2", "b"]]) {
     const button = hudEl(`[data-action="${action}"]`), c = slotted(save, slot);

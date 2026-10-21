@@ -31,7 +31,7 @@ test('the farm and the quarry lie near the Refuge, apart, with big trees and a s
   visit(g, where.farm.rx, where.farm.ry); const trees = g.map.objects.filter((o) => o.refugeFarm);
   assert.equal(trees.length, REFUGE_LANDS.farmTrees); assert.ok(trees.every((t) => t.kind === 'tree' && t.vegetationForm === 'canopy'));
   visit(g, where.quarry.rx, where.quarry.ry); const rocks = g.map.objects.filter((o) => o.refugeQuarry);
-  assert.ok(rocks.length >= 10, 'enough to chip a stone block\'s worth'); assert.ok(g.map.objects.some((o) => o.id === 'quarry-sign'));
+  assert.ok(rocks.length >= 10, 'enough to chip a stone block\'s worth'); const keeper = g.map.objects.find((o) => o.id === 'quarry-keeper'); assert.ok(keeper?.quarryTurtle); Object.assign(g.player, { x: keeper.x, y: keeper.y + .5 }); assert.match(g.interact('speak', keeper.id).message, /Shale/);
   visit(g, 0, 0); const farmer = g.map.objects.find((o) => o.refugeFarmer); assert.ok(farmer);
   const heard = new Set(); for (let k = 0; k < FARMER_LINES.length + 2; k++) { Object.assign(g.player, { x: farmer.x, y: farmer.y + .5 }); const r = g.interact('speak', farmer.id); heard.add(r.message); }
   assert.ok(heard.size > 3, 'the farmer has more than one thing to say'); assert.ok([...heard].some((m) => /quarry/.test(m)) && [...heard].some((m) => /orchard/.test(m)));

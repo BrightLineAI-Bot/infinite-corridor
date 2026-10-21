@@ -73,11 +73,13 @@ export function plantRefugeLands(map, rx, ry, where) {
   if (same(where.quarry, rx, ry)) {
     const spots = plots(map, REFUGE_LANDS.quarryRocks + 1), sign = spots.shift();
     for (const [k, p] of spots.entries()) map.objects.push({ id: `quarry-rock-${k}`, kind: "rock", x: p.x, y: p.y, state: "sealed", actions: ["move", "break"], environmental: true, refugeQuarry: true });
-    if (sign) map.objects.push({ id: "quarry-sign", kind: "ruinMarker", name: "The Refuge Quarry", lore: "A post driven into the spoil, a Refuge mark burned into it: when your stone runs out, come here. Chip what you need. The ground gives it back in time.", x: sign.x, y: sign.y, state: "quiet", actions: ["inspect"] });
+    // Tim: "The quarry operator can be a small stone turtle... very straightforward... looks kind of like the mountain
+    // turtle, but... smaller... no ice on him... He could be wearing a hat."
+    if (sign) map.objects.push({ id: "quarry-keeper", kind: "villager", name: "Shale", role: "Quarry Keeper", line: QUARRY_LINES[0], x: sign.x, y: sign.y, state: "calm", actions: ["speak"], quarryTurtle: true, talkKey: "quarry:talks" });
     map.refugeQuarry = true;
   }
   if (rx === 0 && ry === 0 && !(map.objects || []).some((o) => o.id === "refuge-farmer")) {
-    map.objects.push({ id: "refuge-farmer", kind: "villager", name: "Hollis Dray", role: "Refuge Farmer", line: "", x: 12, y: 18, state: "calm", actions: ["speak"], settlement: "ember-refuge", refugeFarmer: true });
+    map.objects.push({ id: "refuge-farmer", kind: "villager", name: "Hollis Dray", role: "Refuge Farmer", line: "", x: 12, y: 18, state: "calm", actions: ["speak"], settlement: "ember-refuge", refugeFarmer: true, talkKey: "farmer:talks" });
   }
 }
 // The farmer's lines (Tim: "you're turning the corridor into fuel... cryptic, enigmatic things like that"), and the two
@@ -90,6 +92,15 @@ export const FARMER_LINES = [
   "Stone remembers being a mountain. Don't tell it otherwise.",
   "The more of the world you walk, the greener it gets around here. Funny, that. Or not funny at all.",
 ];
+// The quarry keeper says it plainly.
+export const QUARRY_LINES = [
+  "This is the Refuge quarry. Chip a rock and you get a stone. If you're strong enough to break one, you get two more.",
+  "When your stone runs out, come back here. The rocks grow back as you explore.",
+  "Ten stone makes a stone block. Five wood makes a wall. Neither lasts long, so build them when you need them.",
+  "Nobody sells stone. This is where it comes from.",
+];
+// What a speaking villager with a `talkKey` says on its `n`th word.
+export function talkLine(o, where, n) { return o.quarryTurtle ? QUARRY_LINES[Math.abs(n) % QUARRY_LINES.length] : farmerLine(null, where, n); }
 export function farmerLine(save, where, n) {
   const guide = [where.farm && `My orchard's ${AWAY(where.farm)} of here. Big trees. Take what you need; they come back.`, where.quarry && `Stone? Nobody sells stone. There's a quarry ${AWAY(where.quarry)}. Chip it when yours runs out.`].filter(Boolean);
   const all = [...guide, ...FARMER_LINES];

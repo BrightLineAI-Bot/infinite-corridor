@@ -2535,7 +2535,7 @@ Tim, 2026-10-21. On building: "you can build walls out of stone or wood... in th
 
 **CODE:**
 - **Building.** New `src/building.ts`: `BUILD = { kinds: { wood: { cost 5 wood, hits 1 }, stone: { cost 10 stone, hits 2, stack 2 } }, life 10, maxOut 5, breakReach .9 }`.
-  - `save.build.kind` is additive and normalised by `ensureBuild` in `freshSave` and `migrateSave`. The Supplies tab chooses it, and the HUD's `data-action="build"` button (key B) raises one via `placeBuild(game, buildSpot(player))`.
+  - `save.build.kind` is additive and normalised by `ensureBuild` in `freshSave` and `migrateSave`. The Supplies tab chooses it, and the HUD's `data-action="build"` button (key B; an inline SVG hammer, Tim: "The build button can just have a hammer") raises one via `placeBuild(game, buildSpot(player))`.
   - A build replaces its tile and keeps the original (`buildOrig`). A wood wall is `blocked`. A stone block is a `perch` with `elev` +1 per level (stacked blocks share a tile, and the top one goes first).
   - `footprintOpen` refuses a perch unless `allowLethalTerrain` is set, which only the Wayfarer's movement and fliers pass. So creatures cannot step on it, and `canStep` makes the Wayfarer jump onto it as onto any ledge.
   - `buildRefusal` refuses map edges, lethal or water kinds, ice, slopes, structures, blocked ground and occupied tiles.
@@ -2549,8 +2549,8 @@ Tim, 2026-10-21. On building: "you can build walls out of stone or wood... in th
   - `styles.css` puts `.action-diamond button.build` in Spell A's old corner.
 - **The Refuge's lands.** New `src/refuge-lands.ts`.
   - `refugeLands(seed, suitable)` takes the first two suitable sections (dry, open land, no hamlet or open sea) from a seeded order of the twelve around the Refuge, never side by side: the farm and the quarry.
-  - `plantRefugeLands` adds the farm's 6 canopy trees (`farm-tree-k`), the quarry's 10 rocks (`quarry-rock-k`) with a `quarry-sign`, and the farmer `refuge-farmer` (a `villager`) in the Refuge, all with stable ids. It runs at every overworld load, after the landscape.
-  - The farmer's `line` cycles through `farmerLine` (two that point the way, then `FARMER_LINES`), counted in `worldFlags["farmer:talks"]`.
+  - `plantRefugeLands` adds the farm's 6 canopy trees (`farm-tree-k`), the quarry's 10 rocks (`quarry-rock-k`), Shale the quarry keeper (`quarry-keeper`, a `villager` with `quarryTurtle`, drawn by `renderer.ts` `quarryTurtle`: a small fitted-stone turtle in a straw hat; Tim: "a small stone turtle... very straightforward... no ice on him... wearing a hat"), and the farmer `refuge-farmer` (a `villager`) in the Refuge, all with stable ids. It runs at every overworld load, after the landscape.
+  - A villager with a `talkKey` says `talkLine` on each word, counted in `worldFlags[talkKey]`. The farmer's lines are two that point the way, then `FARMER_LINES`; Shale's are the plain `QUARRY_LINES`.
 - **Regrowth.** `REGROW = { every: 20, maxRadius: 5 }`.
   - `save.regrowth = { epoch, mark, done }` is additive. An older save's `mark` starts at its atlas size; `migrateSave` drops the fresh default when the raw save had none.
   - `Game.loadArea` calls `noteDiscovery` on a first visit: every 20 atlas entries is a new epoch.
