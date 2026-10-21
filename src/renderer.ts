@@ -569,7 +569,7 @@ function drawSkiff(ctx, x, y, s, facing, now) {
 function drawLongboat(ctx, x, y, s, facing, now) {
   const cx = (x + .5) * s, cy = (y + .72) * s + Math.sin(now / 480 + x) * s * .035, along = facing === "left" || facing === "right";
   ctx.save(); ctx.translate(cx, cy); if (!along) ctx.rotate(Math.PI / 2); if (facing === "left" || facing === "up") ctx.scale(-1, 1);
-  const L = s * 1.05, W = s * .17; // long and slim, its sides near straight (Tim: "longer... flatter on the sides")
+  const L = s * .95, W = s * .17; // long and slim, its sides near straight (Tim: "longer... flatter on the sides")
   ctx.fillStyle = "#00000048"; ctx.beginPath(); ctx.ellipse(0, s * .1, L * 1.02, W * 1.3, 0, 0, 7); ctx.fill();
   ctx.beginPath(); ctx.moveTo(-L, 0); ctx.quadraticCurveTo(-L * .9, -W, -L * .62, -W); ctx.lineTo(L * .62, -W); ctx.quadraticCurveTo(L * .9, -W, L, 0); ctx.quadraticCurveTo(L * .9, W, L * .62, W); ctx.lineTo(-L * .62, W); ctx.quadraticCurveTo(-L * .9, W, -L, 0); ctx.closePath();
   ctx.fillStyle = "#6f4b2c"; ctx.fill(); ctx.strokeStyle = "#3e2614"; ctx.lineWidth = Math.max(1, s * .035); ctx.stroke();
