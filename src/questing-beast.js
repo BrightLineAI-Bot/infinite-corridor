@@ -2,8 +2,9 @@
 // Wayfarer's level and power. Now and then it claims a wild section. It stays there until it is killed or it has
 // killed the Wayfarer QUESTING_BEAST.tries times; then it is gone, and after a cooldown (counted in sections entered)
 // a new hunt can begin somewhere else.
-import { hashSeed } from "./random.js?v=r249-4a43f3ccc5cd";
-import { LETHAL_KINDS } from "./landscape.js?v=r249-4a43f3ccc5cd";
+import { hashSeed } from "./random.js?v=r251-567504e5a114";
+import { WORLD_BEASTS, BEAST_BASELINE, beastProfileVitals } from "./world-beasts.js?v=r251-567504e5a114";
+import { LETHAL_KINDS } from "./landscape.js?v=r251-567504e5a114";
 
 // Release 187 (Tim, 2026-10-18): far tougher and far more dangerous. About twice the health; each blow takes about
 // 27% of maximum health (four unhealed hits kill); it runs fast and barely pauses between attacks.
@@ -36,9 +37,10 @@ export function questingBeastTriesLeft(save) { return QUESTING_BEAST.tries - (sa
 // Tunes a created combatant to the Wayfarer: health is about `hitsToKill` of the Wayfarer's current melee blows
 // (weapon power + might) plus a little per level; its blows land as a share of the Wayfarer's max health, offset by armour.
 export function tuneQuestingBeast(c, save, stats = {}) {
-  const level = Math.max(1, Number(save.level) || 1), weapon = save.equipment?.[save.activeWeaponSlot], perHit = Math.max(6, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0));
-  const guard = Math.max(0, Math.min(.75, Number(stats.damageReduction) || 0)), hp = Math.round(perHit * QUESTING_BEAST.hitsToKill + QUESTING_BEAST.hpPerLevel * level);
-  Object.assign(c, { questingBeast: true, boss: true, hp, maxHp: hp, damage: Math.max(4, Math.round((Number(save.maxHp) || 60) * QUESTING_BEAST.damageShare / (1 - guard))), staggerResistance: QUESTING_BEAST.staggerResistance, speedMultiplier: QUESTING_BEAST.speed, attackGap: QUESTING_BEAST.attackGap, evasive: true });
+  const own = beastProfileVitals(QUESTING_BEAST, save, stats), others = Object.values(WORLD_BEASTS).map(profile => beastProfileVitals(profile, save, stats));
+  const hp = Math.max(Number(c.maxHp) || 0, own.hp, Math.ceil(Math.max(...others.map(v => v.hp)) * BEAST_BASELINE.questingDominance));
+  const damage = Math.max(Number(c.damage) || 0, own.damage, Math.ceil(Math.max(...others.map(v => v.damage)) * BEAST_BASELINE.questingDominance));
+  Object.assign(c, { questingBeast: true, boss: true, hp, maxHp: hp, damage, beastTuningVersion: 1, staggerResistance: QUESTING_BEAST.staggerResistance, speedMultiplier: QUESTING_BEAST.speed, attackGap: QUESTING_BEAST.attackGap, evasive: true });
   return c;
 }
 

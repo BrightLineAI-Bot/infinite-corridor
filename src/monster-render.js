@@ -1,9 +1,14 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL } from "./monster-pack.js?v=r249-4a43f3ccc5cd";
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID } from "./monster-pack.js?v=r251-567504e5a114";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r249-4a43f3ccc5cd";
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam } from "./astral-worm-render.js?v=r251-567504e5a114";
+
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r251-567504e5a114";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r251-567504e5a114";
+
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r251-567504e5a114";
 
 const TAU = Math.PI * 2;
 
@@ -38,9 +43,43 @@ function outline(ctx, width, color = "#0b0a0dcc") { ctx.lineWidth = width; ctx.s
 function eye(ctx, x, y, r, color) { glow(ctx, x, y, r * 3.2, color, .5); ctx.fillStyle = "#fffef4"; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r * .55, 0, TAU); ctx.fill(); }
 function shadowAt(ctx, x, y, rx, ry, alpha = .55) { ctx.fillStyle = `rgba(4,4,6,${alpha})`; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, TAU); ctx.fill(); }
 
+// A personal skiff, only 1.12 tiles long: no ship-sized hull, inventory, sail or player-boat state.
+// The rear deck goes below the unchanged player-scale body; the near gunwale finishes in front of its boots.
+function drawWalkerSkiff(ctx, q, foreground = false) {
+  const { k, b, u, e, flip } = q, quiet = !!e.reduceMotion, time = quiet ? 0 : q.t;
+  const X = x => k + flip * x * u, Y = y => b + y * u;
+  const hull = () => { ctx.beginPath(); ctx.moveTo(X(-.56), Y(-.015)); ctx.quadraticCurveTo(X(-.39), Y(.17), X(.34), Y(.15)); ctx.lineTo(X(.56), Y(-.045)); ctx.quadraticCurveTo(X(.13), Y(.025), X(-.56), Y(-.015)); ctx.closePath(); };
+  ctx.save(); if (e.voidTeleport > 0 || e.pack?.phase === "teleport") ctx.globalAlpha *= .64;
+  const alpha = ctx.globalAlpha;
+  if (!foreground) {
+    ctx.strokeStyle = "#a8e6ec66"; ctx.lineWidth = Math.max(.8, u * .012);
+    for (let i = 0; i < 2; i++) { const phase = quiet ? .35 + i * .3 : (time * .35 + i * .5) % 1; ctx.globalAlpha *= .8; ctx.beginPath(); ctx.ellipse(k - flip * u * .05, Y(.11), u * (.57 + phase * .15), u * (.12 + phase * .07), 0, .08, Math.PI - .08); ctx.stroke(); }
+    ctx.globalAlpha = alpha;
+    ctx.beginPath(); ctx.moveTo(X(-.56), Y(-.015)); ctx.quadraticCurveTo(X(-.26), Y(-.21), X(.56), Y(-.045)); ctx.quadraticCurveTo(X(.18), Y(.095), X(-.56), Y(-.015)); ctx.closePath();
+    ctx.fillStyle = "#564850"; ctx.fill(); ctx.strokeStyle = "#c3a897"; ctx.lineWidth = Math.max(.9, u * .018); ctx.stroke();
+    ctx.strokeStyle = "#211c2a"; ctx.lineWidth = Math.max(.7, u * .012);
+    for (const x of [-.3, .28]) { ctx.beginPath(); ctx.moveTo(X(x), Y(-.115)); ctx.lineTo(X(x + .04), Y(.035)); ctx.stroke(); }
+    ctx.strokeStyle = "#8f7581"; ctx.beginPath(); ctx.moveTo(X(-.4), Y(-.035)); ctx.lineTo(X(.4), Y(-.045)); ctx.stroke();
+  } else {
+    hull(); const wood = ctx.createLinearGradient(k, Y(-.02), k, Y(.16)); wood.addColorStop(0, "#73606a"); wood.addColorStop(.45, "#45333f"); wood.addColorStop(1, "#211b2c"); ctx.fillStyle = wood; ctx.fill(); ctx.strokeStyle = "#1a1422"; ctx.lineWidth = Math.max(.8, u * .014); ctx.stroke();
+    ctx.strokeStyle = "#bda3a6"; ctx.lineWidth = Math.max(1, u * .018); ctx.beginPath(); ctx.moveTo(X(-.55), Y(-.014)); ctx.quadraticCurveTo(X(.05), Y(.06), X(.55), Y(-.044)); ctx.stroke();
+    ctx.strokeStyle = "#b48dd166"; ctx.lineWidth = Math.max(.7, u * .01); ctx.beginPath(); ctx.moveTo(X(-.4), Y(.065)); ctx.quadraticCurveTo(X(.04), Y(.13), X(.39), Y(.065)); ctx.stroke();
+  }
+  ctx.restore();
+}
+
 // ---------------------------------------------------------------- creatures
 
 const BODY = {
+  astralWorm(ctx,q) { const a=q.e.astral;
+    // The downward beam is painted first, behind the mandibles, so it reads as leaving the mouth.
+    if(a?.form==='flight'){
+      const anchors=astralBeamAnchors({...a,x:q.e.x,y:q.e.y,scale:Math.max(.6,Number(q.e.scale)||1),facingX:q.flip});
+      const groundLift=Number(q.e.astralBeamGroundLiftDelta)||0;
+      drawAstralBeam(ctx,{x:(anchors.mouth.x+.5)*q.s,y:(anchors.mouth.y+.62)*q.s},{x:(anchors.ground.x+.5)*q.s,y:(anchors.ground.y+.62+groundLift)*q.s},q.u,a.clock||0,!!q.e.reduceMotion);
+    }
+    drawAstralMorph(ctx,{x:q.k,y:q.b-(a?.form==='flight'?q.u*.8+Math.max(0,Number(a.flightLiftExtra)||0)*q.s:0),scale:q.u*.65,time:a?.clock||0,form:a?.form||'worm',facing:q.flip,alpha:q.e.kind==='astralMirage'?.5:1,reducedMotion:!!q.e.reduceMotion},a?.previousForm||'worm',a?(a.clock-a.morphStart)/ASTRAL.morphTime:1);
+  },
   lumenWraith(ctx, q) {
     const { k, b, u, t, p, flip } = q, lift = u * (.35 + Math.sin(t * 2.1) * .06), cy = b - lift - u * .45;
     shadowAt(ctx, k, b, u * .32, u * .1, .35);
@@ -162,6 +201,60 @@ const BODY = {
     ctx.fillStyle = shade(ctx, h.x + flip * u * .1, h.y, u * .3, p[3], p[0]); ctx.fill(); outline(ctx, Math.max(1.5, u * .03));
     ctx.strokeStyle = "#08201f"; ctx.lineWidth = Math.max(1, u * .025); ctx.beginPath(); ctx.moveTo(h.x + flip * u * .42, h.y); ctx.lineTo(h.x + flip * u * .12, h.y + u * .04); ctx.stroke(); // jawline
     eye(ctx, h.x + flip * u * .2, h.y - u * .07, u * .035, p[2]);
+  },
+  // The Void Walker: a Wayfarer-sized traveller, not an armoured boss. Its 0.80-unit body matches the player's
+  // hood-to-boot height at scale 1. The small galaxy within the hood hints at its rends; attacks live outside the
+  // body, so casting never turns into a giant weapon or a punching animation. Cloth/face detail remains provisional.
+  voidWalker(ctx, q) {
+    const { k, b, u, p, flip, e, state } = q, s0 = e.pack, quiet = !!e.reduceMotion, t = quiet ? 0 : q.t;
+    const dash = !!e.voidDashing || s0?.phase === "dash", teleport = Number(e.voidTeleport) > 0 || s0?.phase === "teleport";
+    const boat = !!e.marine, casting = state !== "idle" && !dash && !teleport, moving = !boat && !casting && !dash && !teleport && Math.hypot(s0?.vel?.x || 0, s0?.vel?.y || 0) > .12;
+    const stride = quiet || !moving ? 0 : Math.sin(t * 8) * .035, breath = quiet || dash || teleport ? 0 : Math.sin(t * 2) * .006;
+    const cloth = p[0] || "#494256", dark = p[1] || "#18151f", violet = p[2] || "#ad7df2", pale = p[3] || "#e5d7ff";
+    const X = x => k + flip * x * u, Y = y => b + y * u, lw = Math.max(.65, u * .009);
+    const poly = (pts, fill, edge) => { ctx.beginPath(); ctx.moveTo(X(pts[0]), Y(pts[1])); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(X(pts[i]), Y(pts[i + 1])); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); if (edge) { ctx.strokeStyle = edge; ctx.lineWidth = lw; ctx.stroke(); } };
+    if (boat) drawWalkerSkiff(ctx, q); else shadowAt(ctx, k, b + u * .025, u * .26, u * .075, teleport ? .23 : .45);
+    if (teleport) {
+      // A narrow rend behind the traveller: the silhouette remains legible as it slips through.
+      glow(ctx, k, Y(-.36), u * .5, violet, quiet ? .22 : .3);
+      ctx.fillStyle = "#100a1bcc"; ctx.strokeStyle = violet + "bb"; ctx.lineWidth = Math.max(1, u * .015);
+      ctx.beginPath(); ctx.ellipse(k, Y(-.36), u * .23, u * .42, -.08 * flip, 0, TAU); ctx.fill(); ctx.stroke();
+      if (!quiet) for (let i = 0; i < 9; i++) { const a = i * 2.399 + t * .4, r = u * (.22 + (i % 3) * .025); ctx.fillStyle = i % 3 ? violet + "77" : pale; ctx.fillRect(k + Math.cos(a) * r, Y(-.36) + Math.sin(a) * u * .38, Math.max(.8, u * .012), Math.max(.8, u * .012)); }
+    } else if (casting) glow(ctx, k, Y(-.5), u * .42, violet, state === "windup" ? .19 : .27);
+    ctx.save();
+    if (teleport) ctx.globalAlpha *= .64;
+    if (dash) { ctx.translate(k, b); ctx.transform(1, 0, -flip * .24, 1, 0, 0); ctx.translate(-k, -b); }
+    // Familiar Wayfarer proportions: two visible boots beneath a short, split traveller's coat.
+    poly([-.19, -.12 - stride, -.075, -.12 - stride, -.07, .04 - stride, -.2, .04 - stride], "#14121b", "#09080d");
+    poly([.075, -.12 + stride, .18, -.12 + stride, .2, .04 + stride, .07, .04 + stride], "#1f1b29", "#09080d");
+    poly([-.215, -.565 + breath, .205, -.565 + breath, .22, -.09, .075, -.075, .01, -.15, -.055, -.075, -.22, -.09], dark, "#0d0b14");
+    // Layered cloth, not segmented plates. The left fold keeps the silhouette readable on dim dungeon floors.
+    poly([-.215, -.565 + breath, -.055, -.54 + breath, -.075, -.13, -.19, -.1], cloth);
+    poly([-.055, -.54 + breath, .205, -.565 + breath, .17, -.12, .015, -.15], shade(ctx, k, Y(-.4), u * .38, "#373044", dark));
+    ctx.strokeStyle = violet + "88"; ctx.lineWidth = Math.max(.8, u * .012); ctx.beginPath(); ctx.moveTo(X(-.2), Y(-.12)); ctx.lineTo(X(-.08), Y(-.1)); ctx.moveTo(X(.045), Y(-.12)); ctx.lineTo(X(.18), Y(-.11)); ctx.stroke();
+    // Quiet sleeves stay at its sides even while casting: the rends do the attacking.
+    poly([-.21, -.51 + breath, -.15, -.48 + breath, -.18, -.29, -.245, -.3], "#302a3d", "#13101c");
+    poly([.17, -.5 + breath, .23, -.49 + breath, .25, -.3, .18, -.29], "#252032", "#13101c");
+    poly([.19, -.31, .25, -.31, .245, -.26, .205, -.26], "#171022");
+    // Hood top and boots span exactly the same 0.80 tile as the ordinary main character.
+    poly([-.18, -.76 + breath, .14, -.76 + breath, .19, -.7 + breath, .18, -.48 + breath, -.17, -.48 + breath, -.2, -.66 + breath], cloth, "#15101f");
+    poly([-.18, -.76 + breath, -.04, -.735 + breath, -.105, -.68 + breath, -.145, -.52 + breath, -.18, -.49 + breath, -.2, -.66 + breath], "#5c526f");
+    poly([-.04, -.735 + breath, .14, -.76 + breath, .19, -.7 + breath, .145, -.65 + breath], "#655878");
+    const face = () => { ctx.beginPath(); ctx.moveTo(X(-.105), Y(-.69 + breath)); ctx.lineTo(X(.125), Y(-.69 + breath)); ctx.lineTo(X(.13), Y(-.54 + breath)); ctx.lineTo(X(-.105), Y(-.535 + breath)); ctx.closePath(); };
+    face(); ctx.fillStyle = "#090615"; ctx.fill();
+    ctx.save(); face(); ctx.clip();
+    // A slanted nebula with tiny stars, not a pair of glowing eyes or a visor.
+    const nebula = ctx.createLinearGradient(X(-.1), Y(-.69), X(.14), Y(-.53)); nebula.addColorStop(0, "#140e30"); nebula.addColorStop(.45, "#68419b"); nebula.addColorStop(.57, "#ba91eb"); nebula.addColorStop(.7, "#382355"); nebula.addColorStop(1, "#090615");
+    ctx.fillStyle = nebula; ctx.fillRect(k - u * .16, Y(-.7 + breath), u * .32, u * .18);
+    ctx.fillStyle = "#0a081575"; ctx.beginPath(); ctx.ellipse(X(.03), Y(-.615 + breath), u * .065, u * .04, -.5 * flip, 0, TAU); ctx.fill();
+    for (const [x, y, r] of [[-.075, -.657, .006], [.095, -.665, .009], [.055, -.568, .006], [-.055, -.56, .004]]) { ctx.fillStyle = pale; ctx.beginPath(); ctx.arc(X(x), Y(y + breath), Math.max(.45, u * r), 0, TAU); ctx.fill(); }
+    ctx.restore();
+    ctx.strokeStyle = violet + (casting ? "dd" : "77"); ctx.lineWidth = Math.max(.7, u * .009); ctx.beginPath(); ctx.moveTo(X(-.105), Y(-.69 + breath)); ctx.lineTo(X(.125), Y(-.69 + breath)); ctx.lineTo(X(.13), Y(-.54 + breath)); ctx.stroke();
+    // One small clasp, never a breastplate/core. Its hue ties the traveller to the cosmic effects.
+    poly([.015, -.505 + breath, .038, -.485 + breath, .015, -.46 + breath, -.006, -.485 + breath], violet);
+    if (teleport && !quiet) { ctx.strokeStyle = pale + "88"; ctx.lineWidth = Math.max(.8, u * .008); for (let i = 0; i < 4; i++) { const y = -.19 - i * .13, shift = Math.sin(t * 6 + i * 1.8) * .035; ctx.beginPath(); ctx.moveTo(X(-.22 + shift), Y(y)); ctx.lineTo(X(.2 + shift), Y(y - .015)); ctx.stroke(); } }
+    ctx.restore();
+    if (boat) drawWalkerSkiff(ctx, q, true);
   },
   // The Listener (release 138): a cloaked figure shaped like the Wayfarer, its face a violet void; hidden it fades.
   listener(ctx, q) {
@@ -647,7 +740,7 @@ const BODY = {
     ctx.restore();
     motes(scat > 0 ? 40 : 10, k, sh, scat > 0 ? u * .45 : u * .18, u * .35, Math.max(1.5, u * .018)); // motes drifting off it (a burst when it scatters)
   },
-  // Release r249-4a43f3ccc5cd: the Psychic Crystal. A long faceted crystal floating at head height, flat-shaded (lit, mid and shadow
+  // Release 249: the Psychic Crystal. A long faceted crystal floating at head height, flat-shaded (lit, mid and shadow
   // faces), smaller shards circling it, a cold core; its aura says what it means: a hazy white at rest, red and larger
   // when it attacks, violet and drawn tight just before it takes hold of you.
   psychicCrystal(ctx, q) {
@@ -738,12 +831,13 @@ const sprites = new Map();
 function makeSpriteCanvas() { if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(1, 1); if (typeof document !== "undefined") return document.createElement("canvas"); return null; }
 function spriteState(e) { const s0 = e.pack; return s0?.attack ? (s0.phase === "windup" ? "windup" : "attack") : "idle"; }
 function drawPackSprite(ctx, e, s, now, facing, def) {
+  if (e.kind === "astralWorm" || e.kind === "astralMirage") return false; // Continuous morphology has state outside the shared sprite key.
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
-  if (e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal") return false; // release 235: its tendrils reach far past the sprite box; one creature, painted directly
-  const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (e.hopLift || 0) * s * .2;
+  if (e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker") return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
+  const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (["astralWorm","astralMirage"].includes(e.kind)?0:e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
-  const flip = e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, step = Math.floor(now * PACK_SPRITE.fps / 1000);
+  const flip = ["astralWorm","astralMirage"].includes(e.kind)&&e.astral?.facingX ? (e.astral.facingX<0?-1:1) : e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, step = Math.floor(now * PACK_SPRITE.fps / 1000);
   const key = `${e.kind}|${step}|${flip}|${spriteState(e)}|${scale}|${s}|${m.a}|${m.d}|${!!e.boss}|${!!e.aloft}`;
   let sp = sprites.get(e.id);
   if (!sp) { const canvas = makeSpriteCanvas(); if (!canvas) return false; sp = { canvas, key: null, used: now }; sprites.set(e.id, sp); }
@@ -777,18 +871,21 @@ export function drawPackMonster(ctx, e, s, now, facing = "down") {
   return paintPackMonster(ctx, e, s, now, facing, def, false);
 }
 function paintPackMonster(ctx, e, s, now, facing, def, sprite) {
-  const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (e.hopLift || 0) * s * .2, t = now / 1000 + ((e.id?.length || 3) * 1.7);
-  const flip = e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, s0 = e.pack;
+  const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (["astralWorm","astralMirage"].includes(e.kind)?0:e.hopLift || 0) * s * .2 - (astralMountPresentation(e)?.lift || 0) * s, t = now / 1000 + ((e.id?.length || 3) * 1.7);
+  const flip = ["astralWorm","astralMirage"].includes(e.kind)&&e.astral?.facingX ? (e.astral.facingX<0?-1:1) : e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, s0 = e.pack;
   const state = s0?.attack ? (s0.phase === "windup" ? "windup" : "attack") : "idle";
   const bodyLift = e.kind === "psychicCrystal" ? (Number(e.flightLiftDelta) || 0) * s : 0;
-  const q = { k, b, u, t, p: def.palette, flip, e, state, bodyLift };
+  const q = { k, b, u, s, t, p: def.palette, flip, e, state, bodyLift };
   ctx.save();
   if (e.phasing || (e.phases && e.untargetable)) ctx.globalAlpha = .45;
   if (e.aloft && e.kind === "cinderSeraph") { if (!sprite) ctx.globalAlpha = .35; q.b -= u * .9; }
   if (e.illusion) ctx.globalAlpha *= .92;
   if (e.fleeFade != null) { ctx.globalAlpha *= e.fleeFade; q.b += (1 - e.fleeFade) * u * .5; } // release 239: going into its home ground
   if (e.boss) { glow(ctx, k, b - u * .4 - bodyLift, u * 1.05, def.palette[2], .18); }
+  const riding=astralMountPresentation(e);
+  if(riding?.riding)drawAstralSaddle(ctx,{x:k,y:b,unit:u,form:riding.form,facing:flip});
   BODY[def.render]?.(ctx, q);
+  if(riding?.riding)drawAstralSaddle(ctx,{x:k,y:b,unit:u,form:riding.form,facing:flip,layer:'front'});
   if (e.hitFlash > 0) { ctx.globalCompositeOperation = "lighter"; glow(ctx, k, b - u * .4 - bodyLift, u * .55, "#ffffff", .5); }
   ctx.restore();
   return true;
@@ -797,13 +894,25 @@ function paintPackMonster(ctx, e, s, now, facing, def, sprite) {
 // Telegraphs of in-progress attacks (drawn under creatures).
 export function drawPackTelegraphs(ctx, enemies, s, now, visible = () => true, heights = {}) {
   for (const e of enemies) {
+    if(e.astralAllyOf&&!e.dead&&visible(e)&&e.astralAllyEffects?.length) drawPackEffects(ctx,e.astralAllyEffects,s,now,()=>true,(x,y)=>heights.ground?.(x,y)||0,{reduceMotion:!!heights.reduceMotion});
+    if(e.kind==='astralWorm'&&!e.dead&&visible(e)&&e.astral){
+      const project=(x,y)=>({x:(x+.5)*s,y:(y+.62-(heights.ground?.(x,y)||0))*s});
+      drawAstralHazards(ctx,e.astral.hazards,project,s);
+      drawAstralInkBlobs(ctx,e.astral.blobs||[],project,s);
+    }
     const tele = e.pack?.tele;
     if (e.dead || !tele || !visible(e)) continue;
-    const crystal = e.kind === "psychicCrystal", ground = crystal ? heights.ground?.(e.x, e.y) || 0 : 0;
+    const crystal = e.kind === "psychicCrystal", walker = e.kind === "voidWalker", ground = crystal || walker ? heights.ground?.(e.x, e.y) || 0 : 0;
     const lift = crystal && ["tether", "brace", "shimmer"].includes(tele.type) ? heights.body?.(e) ?? ground : ground;
     const def = MONSTER_PACK[e.kind], c = def?.palette?.[2] || "#ff7a6b", cx = (e.x + .5) * s, cy = (e.y + .45 - lift) * s, pulse = .55 + Math.sin(now / 90) * .25;
     ctx.save(); ctx.lineCap = "round";
-    if (tele.type === "arc") { const a = Math.atan2(tele.aim.y, tele.aim.x), half = tele.arc * Math.PI / 360; ctx.fillStyle = "#c0404034"; ctx.strokeStyle = "#ff9a7acc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, tele.radius * s, a - half, a + half); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    if (walker && tele.void) {
+      const quiet = !!(heights.reduceMotion || heights.safeMode || e.reduceMotion), clock = quiet ? 0 : now / 1000;
+      if (tele.type === "lane") { const a = Math.atan2(tele.aim.y, tele.aim.x); drawVoidLane(ctx, cx, cy + s * .17, a, tele.length * s, tele.width * s, true, s); }
+      else if (tele.type === "blink") drawVoidGalaxy(ctx, (tele.x + .5) * s, (tele.y + .28 - (heights.ground?.(tele.x, tele.y) || 0)) * s, s * .25, s * .44, -.1, clock, .65);
+      else glow(ctx, cx, cy - s * .15, s * .52, "#b779ff", .2);
+    }
+    else if (tele.type === "arc") { const a = Math.atan2(tele.aim.y, tele.aim.x), half = tele.arc * Math.PI / 360; ctx.fillStyle = "#c0404034"; ctx.strokeStyle = "#ff9a7acc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, tele.radius * s, a - half, a + half); ctx.closePath(); ctx.fill(); ctx.stroke(); }
     else if (tele.type === "rect") { const a = tele.aim, w = tele.width * s, px = -a.y * w, py = a.x * w, l = tele.length * s; ctx.fillStyle = "#c0404034"; ctx.strokeStyle = "#ff9a7acc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + px, cy + py); ctx.lineTo(cx + a.x * l + px, cy + a.y * l + py); ctx.lineTo(cx + a.x * l - px, cy + a.y * l - py); ctx.lineTo(cx - px, cy - py); ctx.closePath(); ctx.fill(); ctx.stroke(); }
     else if (tele.type === "beam") {
       const ex = cx + Math.cos(tele.angle) * tele.length * s, ey = cy + Math.sin(tele.angle) * tele.length * s;
@@ -833,12 +942,156 @@ function drawWarningCircle(ctx, x, y, r, color, pulse, progress = 0) {
 // Ground effects (mortars, sigils, ruptures, webs, embers, shockwaves, dust).
 // Puddles and clouds lie on the ground they cover, so they are drawn raised with it (`lift`, in tiles; release 237).
 const ON_GROUND = new Set(["ooze", "lava", "gas", "web", "flesh", "flameTrail", "frostTrail", "furrow", "scorch", "orbital"]);
+const VOID_EFFECTS = new Set(["voidRend", "voidRift", "voidWraith", "voidBeam", "voidHorizon", "voidNova", "voidParticle", "voidEruption", "voidAfterimage"]);
+const VOID_COLORS = { edge: "#be91ff", core: "#f0dcff", dark: "#110923", warn: "#dfbaff" };
+// Original cosmic motifs shared by the Walker's effects. Stars are deterministic and the draw path never changes
+// combat state. Reduced motion freezes decorative rotation, but preserves warning, activation and expiry states.
+function drawVoidGalaxy(ctx, x, y, rx, ry, angle, time, alpha = 1) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.globalAlpha *= alpha;
+  ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, TAU); ctx.fillStyle = "#0a0616"; ctx.fill();
+  ctx.save(); ctx.clip();
+  const g = ctx.createLinearGradient(-rx, -ry, rx, ry); g.addColorStop(0, "#0b0820"); g.addColorStop(.34, "#211341"); g.addColorStop(.49, "#7547a8"); g.addColorStop(.54, "#bc8cec"); g.addColorStop(.62, "#39245b"); g.addColorStop(1, "#090615");
+  ctx.fillStyle = g; ctx.fillRect(-rx, -ry, rx * 2, ry * 2);
+  ctx.strokeStyle = "#ceb6ff44"; ctx.lineWidth = Math.max(.7, rx * .025);
+  for (let i = 0; i < 2; i++) { ctx.beginPath(); ctx.ellipse(0, 0, rx * (.38 + i * .2), ry * (.17 + i * .14), -.45 + time * .08, i * Math.PI, i * Math.PI + 4.6); ctx.stroke(); }
+  for (let i = 0; i < 16; i++) { const a = i * 2.399, d = .2 + ((i * 7) % 13) / 16, sx = Math.cos(a) * rx * d, sy = Math.sin(a) * ry * d; ctx.fillStyle = i % 4 ? "#eedcffaa" : "#ffffff"; ctx.beginPath(); ctx.arc(sx, sy, Math.max(.55, Math.min(1.6, Math.min(rx, ry) * (i % 4 ? .016 : .025))), 0, TAU); ctx.fill(); }
+  ctx.restore(); ctx.strokeStyle = VOID_COLORS.edge; ctx.lineWidth = Math.max(1, Math.min(rx, ry) * .045); ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, TAU); ctx.stroke();
+  ctx.strokeStyle = "#f3dfffaa"; ctx.lineWidth = Math.max(.7, Math.min(rx, ry) * .015); ctx.beginPath(); ctx.ellipse(0, 0, rx * 1.035, ry * 1.035, 0, -.9, 1.4); ctx.stroke(); ctx.restore();
+}
+function drawVoidWarning(ctx, x, y, r, progress) {
+  ctx.fillStyle = "#9750ce20"; ctx.strokeStyle = VOID_COLORS.warn; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = "#f2dfff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0, Math.min(1, progress))); ctx.stroke();
+}
+function drawVoidLane(ctx, x, y, angle, length, half, arming, s) {
+  const dx = Math.cos(angle), dy = Math.sin(angle), nx = -dy * half, ny = dx * half;
+  ctx.fillStyle = arming ? "#9855d320" : "#a46ae22b"; ctx.strokeStyle = arming ? VOID_COLORS.warn : "#cf98ff99"; ctx.lineWidth = arming ? 1.5 : 1;
+  if (arming) ctx.setLineDash([s * .12, s * .1]);
+  ctx.beginPath(); ctx.moveTo(x + nx, y + ny); ctx.lineTo(x + dx * length + nx, y + dy * length + ny); ctx.arc(x + dx * length, y + dy * length, half, angle + Math.PI / 2, angle - Math.PI / 2, true); ctx.lineTo(x - nx, y - ny); ctx.arc(x, y, half, angle - Math.PI / 2, angle + Math.PI / 2, true); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+}
+function drawVoidEffect(ctx, f, s, now, lift, presentation) {
+  const quiet = !!(presentation?.reduceMotion || presentation?.safeMode || f.reduceMotion), time = quiet ? 0 : now / 1000;
+  const x = (f.x + .5) * s, y = (f.y + .62 - (Number(lift(f)) || 0)) * s, r = Math.max(.04, Number(f.radius) || .5) * s;
+  const arming = (Number(f.arming) || 0) > 0, life = Math.max(0, Number(f.life) || 0), age = Math.max(0, Number(f.age) || 0);
+  const armTotal = Math.max(.001, Number(f.armTotal) || (Number(f.arming) || 0) + age), progress = arming ? Math.max(0, Math.min(1, 1 - f.arming / armTotal)) : 1;
+  const edge = VOID_COLORS.edge, core = VOID_COLORS.core, fade = Math.min(1, life * 5), angle = Number(f.angle) || 0;
+  const line = (ax, ay, bx, by, width, color) => { ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); };
+  const polygon = (pts, color, border = edge) => { ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.closePath(); ctx.fillStyle = color; ctx.fill(); if (border) { ctx.strokeStyle = border; ctx.lineWidth = Math.max(.8, s * .025); ctx.stroke(); } };
+  ctx.save(); ctx.globalAlpha *= fade; ctx.lineJoin = "round";
+  if (f.kind === "voidRend") {
+    const lane = f.variant === "claw" || f.variant === "sword", length = Math.max(0, Number(f.length) || 0) * s, half = Math.max(.04, Number(f.width) || .3) * s;
+    if (lane) {
+      drawVoidLane(ctx, x, y, angle, length, half, arming, s);
+      drawVoidGalaxy(ctx, x, y, s * .24, s * .5, angle, time, arming ? .65 : 1);
+      if (!arming) {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+        if (f.variant === "sword") { polygon([0, -half * .45, length * .76, -half * .45, length, 0, length * .76, half * .45, 0, half * .45], "#47266c", core); line(s * .1, 0, length * .91, 0, Math.max(1, s * .04), "#c79af6"); line(s * .14, -half * .85, s * .14, half * .85, Math.max(2, s * .06), "#9565c5"); }
+        else for (let i = -1; i <= 1; i++) { const yy = i * half * .65; ctx.beginPath(); ctx.moveTo(0, yy - half * .09); ctx.quadraticCurveTo(length * .65, yy - half * .35, length, yy + half * .18); ctx.quadraticCurveTo(length * .5, yy + half * .02, 0, yy + half * .08); ctx.closePath(); ctx.fillStyle = "#43205f"; ctx.fill(); ctx.strokeStyle = core; ctx.lineWidth = Math.max(1, s * .025); ctx.stroke(); }
+        ctx.restore();
+      }
+      ctx.restore(); return;
+    }
+    if (arming) drawVoidWarning(ctx, x, y, r, progress);
+    else { ctx.strokeStyle = "#cf98ff99"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke(); }
+    const spike = f.variant === "spike", py = spike ? y : y - r * .72;
+    if (arming || f.variant !== "slash") drawVoidGalaxy(ctx, x, py, r * (spike ? .75 : .55), r * (spike ? .2 : .66), spike ? 0 : -.15, time, arming ? .6 : 1);
+    if (!arming) {
+      ctx.translate(x, y); if (f.variant !== "hand" && !spike) ctx.rotate(angle);
+      if (f.variant === "hand") { // an open hand with five distinct fingers, never a clenched fist
+        polygon([-r * .22, -r * .85, r * .2, -r * .85, r * .34, -r * .2, r * .21, r * .05, -r * .22, r * .05, -r * .34, -r * .24], "#382052");
+        ctx.lineCap = "round";
+        for (let i = 0; i < 5; i++) { const ax = (i - 2) * r * .13, bx = (i - 2) * r * .22, ey = r * (.55 - Math.abs(i - 2) * .09); line(ax, -r * .16, bx, ey, Math.max(2, r * .13), "#28133e"); line(ax - r * .025, -r * .16, bx - r * .02, ey, Math.max(1, r * .035), "#c9a5f3"); }
+        ctx.strokeStyle = "#e9caff88"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, -r * .1, r * .18, 0, Math.PI); ctx.stroke();
+      } else if (spike) {
+        for (let i = -1; i <= 1; i++) { const xx = i * r * .38, h = r * (i ? .78 : 1.35); polygon([xx - r * .18, r * .15, xx + r * .02, -h, xx + r * .19, r * .15], i ? "#27123e" : "#4f2b73"); line(xx + r * .02, -h, xx + r * .03, r * .05, 1, core); }
+      } else { for (const a of [-.35, .35]) { ctx.save(); ctx.rotate(a); ctx.strokeStyle = core; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.arc(-r * .6, 0, r * 1.2, -.8, .8); ctx.stroke(); ctx.restore(); } }
+    }
+  } else if (f.kind === "voidRift") {
+    const py = y - s * .35, rx = r * .58, ry = r * .88;
+    glow(ctx, x, py, r * 1.3, edge, f.activated ? .14 : .3); drawVoidGalaxy(ctx, x, py, rx, ry, -.12, time, f.activated ? .42 : 1);
+    // The small rim mark indicates a pending output; an exhausted constellation rend becomes visibly dim.
+    if (!f.activated) { const activation = f.tracking ? Math.min(1, age / Math.max(.1, Number(f.activationAt) || 1)) : progress; ctx.strokeStyle = f.output === "beam" ? "#efd3ff" : f.output === "walker" ? "#b3d6ff" : edge; ctx.lineWidth = Math.max(2, s * .04); ctx.beginPath(); ctx.arc(x, py, rx * .92, -Math.PI / 2, -Math.PI / 2 + .9 + activation * 1.5); ctx.stroke(); }
+  } else if (f.kind === "voidBeam") {
+    const dx = Math.cos(angle), dy = Math.sin(angle), length = Math.max(0, Number(f.length) || 0) * s, half = Math.max(.04, Number(f.width) || .18) * s, tx = x + dx * length, ty = y + dy * length;
+    if (arming) { drawVoidLane(ctx, x, y, angle, length, half, true, s); line(x, y, tx, ty, Math.max(1, half * .2), "#b078d866"); }
+    else { ctx.lineCap = "round"; line(x, y, tx, ty, half * 2, "#6e35b285"); line(x, y, tx, ty, half * 1.05, "#c38affdd"); line(x, y, tx, ty, Math.max(1, half * .24), core); }
+  } else if (f.kind === "voidWraith") {
+    if (arming) { drawVoidWarning(ctx, x, y, r, progress); drawVoidGalaxy(ctx, x, y - s * .3, s * .25, s * .45, -.1, time, .7); ctx.restore(); return; }
+    const yy = y - s * .3, rr = Math.min(r, s * .5);
+    ctx.save(); ctx.translate(x, yy); ctx.rotate(angle); polygon([-rr * .8, -rr * .43, rr * .55, -rr * .3, rr * .85, 0, rr * .55, rr * .3, -rr * .8, rr * .43, -rr * .35, 0], "#2e184bd9");
+    drawVoidGalaxy(ctx, rr * .18, 0, rr * .32, rr * .28, 0, time);
+    ctx.restore();
+    if (f.slashFlash > 0) { ctx.strokeStyle = "#c59aee77"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke(); ctx.strokeStyle = core; ctx.lineWidth = Math.max(2, s * .05); ctx.beginPath(); ctx.arc(x, y, r, angle - 1.15, angle + 1.15); ctx.stroke(); }
+  } else if (f.kind === "voidHorizon") {
+    const coreR = Math.max(.1, Number(f.coreRadius) || .35) * s;
+    ctx.strokeStyle = "#a675dc66"; ctx.lineWidth = 1; ctx.setLineDash([s * .12, s * .14]); ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    for (let i = 0; i < 3; i++) { const rr = coreR + (r - coreR) * (.25 + i * .23), a = time * .5 + i * 2.1; ctx.strokeStyle = "#c399ff55"; ctx.beginPath(); ctx.arc(x, y, rr, a, a + 1.8); ctx.stroke(); }
+    glow(ctx, x, y, coreR * 2.6, edge, .4); drawVoidGalaxy(ctx, x, y, coreR * 1.55, coreR * .66, -.35, time);
+    ctx.fillStyle = "#050309"; ctx.beginPath(); ctx.arc(x, y, coreR, 0, TAU); ctx.fill(); ctx.strokeStyle = core; ctx.lineWidth = Math.max(1.2, s * .035); ctx.stroke();
+    if (arming) drawVoidWarning(ctx, x, y, coreR, progress);
+    if (f.pulsar) { const dx = Math.cos(angle), dy = Math.sin(angle); line(x + dx * coreR, y + dy * coreR, x + dx * coreR * 2.4, y + dy * coreR * 2.4, Math.max(2, s * .04), f.pulseFlash > 0 ? core : "#af73e9aa"); }
+  } else if (f.kind === "voidNova") {
+    const charge = f.stage === "charge", burst = f.stage === "burst";
+    drawVoidGalaxy(ctx, x, y, r, r, -.2, time * .3, charge ? .62 : .42);
+    ctx.strokeStyle = charge ? "#d2a4ffdd" : "#a879df77"; ctx.lineWidth = Math.max(1.5, s * .04); ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke();
+    const chargeProgress = Math.min(1, Math.max(0, Number(f.elapsed) || 0) / VOID.novaCharge), coreR = s * (burst ? .8 : charge ? .3 + chargeProgress * .3 : .28); glow(ctx, x, y, coreR * 2, edge, charge ? .6 : .3);
+    ctx.fillStyle = charge ? "#e8cbff" : "#3e2361"; ctx.beginPath(); ctx.arc(x, y, coreR * .4, 0, TAU); ctx.fill();
+    if (charge) for (let i = 0; i < 6; i++) { const a = i * TAU / 6 + time * .12; line(x + Math.cos(a) * r * .62, y + Math.sin(a) * r * .62, x + Math.cos(a) * r * .45, y + Math.sin(a) * r * .45, Math.max(1, s * .025), "#dbc3ff66"); }
+    // Burst damage is represented by separate, wall-colliding particles, not a misleading solid lethal ring.
+  } else if (f.kind === "voidParticle") {
+    const m = Math.hypot(f.vx || 0, f.vy || 0) || 1, dx = (f.vx || 0) / m, dy = (f.vy || 0) / m;
+    line(x - dx * r * 2.6, y - dy * r * 2.6, x, y, Math.max(1, r), "#bd83f366");
+    polygon([x + dx * r, y + dy * r, x - dy * r * .6, y + dx * r * .6, x - dx * r, y - dy * r, x + dy * r * .6, y - dx * r * .6], core, edge);
+  } else if (f.kind === "voidEruption") {
+    if (arming) drawVoidWarning(ctx, x, y, r, progress);
+    else { glow(ctx, x, y, r * 1.3, edge, .45); ctx.strokeStyle = core; ctx.lineWidth = Math.max(1.5, s * .04); ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke(); for (let i = 0; i < 7; i++) { const a = i * TAU / 7 + f.x * .7, dx = Math.cos(a), dy = Math.sin(a); polygon([x + dx * r * .25 - dy * r * .09, y + dy * r * .25 + dx * r * .09, x + dx * r * .85, y + dy * r * .85 - s * .22, x + dx * r * .25 + dy * r * .09, y + dy * r * .25 - dx * r * .09], i % 2 ? "#71449c" : "#c39be9", core); } }
+  } else if (f.kind === "voidAfterimage") {
+    const tx = ((Number(f.tx) || 0) + .5) * s, ty = ((Number(f.ty) || 0) + .62 - (Number(lift(f)) || 0)) * s;
+    ctx.globalAlpha *= Math.max(.22, Math.min(1, life / (Number(f.total) || 1))); ctx.lineCap = "round";
+    // This whole band is the one-second damage footprint. It is not merely cosmetic smoke.
+    line(x, y, tx, ty, r * 2, "#9c60e36b"); line(x, y, tx, ty, Math.max(1, r * .6), "#dfb9ffbb");
+    ctx.setLineDash([s * .12, s * .1]); line(x, y, tx, ty, Math.max(1, s * .025), core); ctx.setLineDash([]);
+  }
+  ctx.restore();
+}
 function lavaCool(f, life) { return 1 - Math.max(0, Math.min(1, life / (f.total || 1.8))); }
 function lavaShape(ctx, f, x, y, r, k) {
   const seed = f.x * 7.3 + f.y * 3.1, vx = f.vx || 0, vy = f.vy || 0, m = Math.hypot(vx, vy) || 1, ax = vx / m, ay = vy / m;
   ctx.beginPath(); for (let i = 0; i <= 18; i++) { const a = i / 18 * TAU, along = Math.cos(a) * ax + Math.sin(a) * ay, rr = r * k * (1 + .14 * Math.sin(a * 3 + seed) + .08 * Math.sin(a * 5 - seed) + .3 * Math.max(0, along)); i ? ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .6) : ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .6); } ctx.closePath();
 }
-export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift = () => 0) {
+function drawCrystalWater(ctx, f, s, now, lift, presentation) {
+  const quiet = !!(presentation?.reduceMotion || presentation?.safeMode || f.reduceMotion), time = quiet ? 0 : now / 1000;
+  const x = (f.x + .5) * s, y = (f.y + .62 - (Number(lift(f)) || 0)) * s, r = (f.radius || CRYSTAL.debrisRadius) * s;
+  const raised = Math.max(0, f.lift || 0), ry = y - (raised + .2) * s;
+  ctx.save(); ctx.lineCap = "round";
+  if (f.state === "splash") {
+    const progress = 1 - Math.max(0, Math.min(1, f.life / (f.total || CRYSTAL.waterSplashLife))), spread = quiet ? .9 : .4 + progress;
+    ctx.globalAlpha *= 1 - progress; ctx.strokeStyle = "#ccf9ff"; ctx.lineWidth = Math.max(1, s * .035);
+    ctx.beginPath(); ctx.ellipse(x, y, r * spread * 1.6, r * spread * .6, 0, 0, TAU); ctx.stroke();
+    if (!quiet) for (let i = 0; i < 6; i++) { const a = i * TAU / 6 + (f.shape || 0), dx = Math.cos(a) * r * spread * 1.5, dy = Math.sin(a) * r * spread * .6 - Math.sin(progress * Math.PI) * r; ctx.fillStyle = "#bcefffcc"; ctx.beginPath(); ctx.ellipse(x + dx, y + dy, r * .1, r * .17, a, 0, TAU); ctx.fill(); }
+    ctx.restore(); return;
+  }
+  // A bright reflection and a lifting water filament distinguish this from the dry, angular stone.
+  ctx.strokeStyle = "#79dae8aa"; ctx.lineWidth = Math.max(.8, s * .018); ctx.beginPath(); ctx.ellipse(x, y, r * 1.05, r * .38, 0, 0, TAU); ctx.stroke();
+  if (f.state === "lift") {
+    ctx.strokeStyle = "#79d8ec66"; ctx.lineWidth = Math.max(1, r * .18 * (1 - raised / (CRYSTAL.debrisRise * 1.3)));
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.bezierCurveTo(x - r * .5, y - s * .2, x + r * .4, ry + r * .9, x, ry + r * .45); ctx.stroke();
+  }
+  const speed = Math.hypot(f.vx || 0, f.vy || 0), dx = speed ? f.vx / speed : 0, dy = speed ? f.vy / speed : 0;
+  if (f.state === "thrown") {
+    for (let i = 3; i >= 1; i--) { ctx.fillStyle = `rgba(111,219,244,${.32 / i})`; ctx.beginPath(); ctx.ellipse(x - dx * r * i * .65, ry - dy * r * i * .65, r * (.7 - i * .12), r * (.45 - i * .07), Math.atan2(dy, dx), 0, TAU); ctx.fill(); }
+  }
+  glow(ctx, x, ry, r * 1.8, "#96dfff", .25);
+  ctx.save(); ctx.translate(x, ry); if (f.state === "thrown") ctx.rotate(Math.atan2(dy, dx));
+  const wide = f.state === "thrown" ? 1.2 : 1, high = f.state === "thrown" ? .65 : .85;
+  const water = ctx.createRadialGradient(-r * .3, -r * .35, r * .05, 0, 0, r * 1.25);
+  water.addColorStop(0, "#e7fcffed"); water.addColorStop(.3, "#85def5de"); water.addColorStop(.75, "#309fcbd9"); water.addColorStop(1, "#22658da8");
+  ctx.beginPath(); ctx.ellipse(0, 0, r * wide, r * high, 0, 0, TAU); ctx.fillStyle = water; ctx.fill(); ctx.strokeStyle = "#b3f3ffcc"; ctx.lineWidth = Math.max(.8, s * .02); ctx.stroke();
+  ctx.strokeStyle = "#e5fcffcc"; ctx.lineWidth = Math.max(.8, s * .018); ctx.beginPath(); ctx.ellipse(-r * .18, -r * .13, r * .58, r * .38, -.3, 3.2 + Math.sin(time * 1.8) * .2, 5.7); ctx.stroke();
+  ctx.restore(); ctx.restore();
+}
+
+export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift = () => 0, presentation = {}) {
   // Release 237: the glow and dark rims of every settled lava pool first, so pools that touch read as one spill.
   for (const f of effects || []) {
     if (f.kind !== "lava" || f.arming > 0 || !visible(f)) continue;
@@ -847,8 +1100,37 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift
   }
   for (const f of effects || []) {
     if (!visible(f)) continue;
+    if (VOID_EFFECTS.has(f.kind)) { drawVoidEffect(ctx, f, s, now, lift, presentation); continue; }
+    if (f.kind === "debris" && f.medium === "water") { drawCrystalWater(ctx, f, s, now, lift, presentation); continue; }
     const x = (f.x + .5) * s, y = (f.y + .62 - (ON_GROUND.has(f.kind) ? Number(lift(f)) || 0 : 0)) * s, r = (f.radius || 1) * s, pulse = .6 + Math.sin(now / 80) * .25;
     ctx.save();
+    if (f.kind === "gateBreath") {
+      // Gate-only flame silhouette within the unchanged wall-clipped damage lane.
+      // Deterministic, bounded tongues/embers; accessibility modes freeze all flicker.
+      const quiet = !!(presentation?.reduceMotion || presentation?.safeMode || f.reduceMotion);
+      const clock = quiet ? 0 : now / 1000, length = Math.max(0, f.length * s);
+      ctx.translate(x, y); ctx.rotate(Math.atan2(f.dy, f.dx));
+      for (const [scale, color, phase] of [[1, "#e94d19dc", 0], [.74, "#ff9829ee", 1.7], [.38, "#ffe6a1", 3.2]]) {
+        ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, 0);
+        for (const side of [-1, 1]) {
+          for (let j = 0; j <= 24; j++) {
+            const u = side < 0 ? j / 24 : 1 - j / 24;
+            const envelope = Math.sin(Math.PI * u) ** .5 * (.42 + .58 * u);
+            const tongue = .72 + .18 * Math.sin(u * 39 - clock * 8 + phase + side) + .1 * Math.sin(u * 73 - clock * 5 + phase);
+            ctx.lineTo(u * length, side * r * scale * envelope * tongue);
+          }
+        }
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = "#ffc15baa";
+      for (let i = 0; i < 6; i++) {
+        const u = .18 + ((i * .137 + clock * .18) % .76), side = i % 2 ? 1 : -1;
+        const size = Math.min(s * .035, length * .015), yy = side * r * (.55 + .12 * Math.sin(i * 2.1));
+        // Embers stay inside the collision lane, never imply damage past a clipped wall.
+        ctx.fillRect(Math.max(0, Math.min(length - size, u * length)), yy - size / 2, Math.min(size, length), size);
+      }
+      ctx.restore(); continue;
+    }
     if (f.arming > 0) {
       const total = f.armTotal ??= f.arming, progress = 1 - f.arming / total;
       if (f.kind === "web") { drawWeb(ctx, x, y, r, .5 * progress); }

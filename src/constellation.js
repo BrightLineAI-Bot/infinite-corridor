@@ -8,8 +8,8 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade } from "./items.js?v=r249-4a43f3ccc5cd";
-import { resonancesOf, RESONANCES } from "./glyphs.js?v=r249-4a43f3ccc5cd";
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade } from "./items.js?v=r251-567504e5a114";
+import { resonancesOf, RESONANCES } from "./glyphs.js?v=r251-567504e5a114";
 
 export const CONSTELLATION_VERSION = 1;
 export const POINT_EVERY = 6;

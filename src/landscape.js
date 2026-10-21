@@ -10,8 +10,8 @@
 //
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
-import { hashSeed } from "./random.js?v=r249-4a43f3ccc5cd";
-import { placeDock } from "./boats.js?v=r249-4a43f3ccc5cd";
+import { hashSeed } from "./random.js?v=r251-567504e5a114";
+import { placeDock } from "./boats.js?v=r251-567504e5a114";
 
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
@@ -331,7 +331,7 @@ export function reachableFromPlaza(map, start = { x: 16, y: 16 }) {
       const nx = x + dx, ny = y + dy, j = idx(nx, ny), b = map.tiles[j];
       if (nx < 0 || ny < 0 || nx > 31 || ny > 31 || seen[j] || !b || b.blocked) continue;
       const up = (b.elev || 0) - (a.elev || 0);
-      if (up > 1) continue;
+      if (up > 1 && !safeVoidScarTransition(a, b)) continue;
       seen[j] = 1; q.push(j);
     }
   }
@@ -344,7 +344,12 @@ export function reachableFromPlaza(map, start = { x: 16, y: 16 }) {
 // burn a Crossing Sigil. These helpers work on any map (overworld 32x32 or dungeon of any size).
 export const LETHAL_KINDS = new Set(["abyss", "lava", "canyon", "river", "dungeonWater", ...DEEP_WATER]);
 const walkable = (t) => t && !t.blocked && !LETHAL_KINDS.has(t.kind);
-const step = (a, b) => (b.elev || 0) - (a.elev || 0) <= 1;
+// A consumed wall can join floors of different heights. The inert scar is a safe
+// transition, not a newly lethal cliff; ordinary terrain keeps its original fall rules.
+export const safeVoidScarTransition = (a, b) => !!(a?.voidScar || b?.voidScar) &&
+  walkable(a) && walkable(b) && !a.pit && !b.pit &&
+  ![a.kind, b.kind].some(kind => kind === "void" || kind === "sealedGate");
+const step = (a, b) => safeVoidScarTransition(a, b) || (b.elev || 0) - (a.elev || 0) <= 1;
 function sweep(map, width, height, start, reverse) {
   const T = map.tiles, seen = new Uint8Array(width * height), s0 = start.y * width + start.x;
   if (!walkable(T[s0])) return seen;
@@ -581,7 +586,7 @@ export function canStep(entity, map, width, fromX, fromY, toX, toY) {
   const a = tileUnder(map, width, fromX, fromY), b = tileUnder(map, width, toX, toY);
   if (!a || !b || a === b) return true;
   const ea = a.elev || 0, eb = b.elev || 0, diff = eb - ea;
-  if (diff === 0) return true;
+  if (diff === 0 || safeVoidScarTransition(a, b)) return true;
   if ((a.slope || b.slope) && Math.abs(diff) <= 1) return true;
   if (!entity?.isPlayer) return false;
   if (diff === 1) return !!entity.jumping;
