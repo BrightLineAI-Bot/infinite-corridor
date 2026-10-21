@@ -263,7 +263,10 @@ test('Supernova fog: open sea or a 70% ocean section fogs over for 30 s, then cl
   let t = 0; for (; t < 3; t += .1) fog = tickNovaFog(fog, .1, player);
   assert.ok(fog.alpha > .95 && fog.fogLevel > .5, 'the Wayfarer is in thick fog');
   for (; t < 20; t += .1) fog = tickNovaFog(fog, .1, player);
-  fog = novaFog(fog, 10, 10, 4); assert.ok(Math.abs(fog.left - NOVA_FOG.duration) < 1e-9, 'renewed'); assert.ok(fog.alpha > .95, 'without flickering out');
+  const banks = fog.fog.length, same = fog;
+  for (let k = 0; k < 5; k++) fog = novaFog(fog, 10 + k, 10, 4 + k);
+  assert.equal(fog, same, 'renewed in place'); assert.equal(fog.fog.length, banks, 'no stacking: repeated Supernovas add no banks');
+  assert.ok(Math.abs(fog.left - NOVA_FOG.duration) < 1e-9, 'the timer refreshes to 30 s'); assert.ok(fog.alpha > .95, 'without flickering out');
   let cleared = 0; for (let k = 0; k < 400 && fog; k++) { fog = tickNovaFog(fog, .1, player); cleared = (k + 1) * .1; }
   assert.equal(fog, null, 'the fog clears'); assert.ok(Math.abs(cleared - NOVA_FOG.duration) < .25, `after ${NOVA_FOG.duration} s (${cleared})`);
 });
