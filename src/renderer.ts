@@ -567,7 +567,7 @@ function drawSkiff(ctx, x, y, s, facing, now) {
 // somewhat submerged in the water as it rides along the water"): while the hull guard holds, the skiff is a clinker-
 // built longboat seen three-quarters on: a foreshortened deck, the near side of the hull with its strakes and a row of
 // round shields, the lower hull under a foaming waterline, a stem post curling up into a spiral that cradles a pale
-// crescent and one faint star, a lower stern curl, and an upright mast with a striped square sail. It always shows its
+// crescent, a lower stern curl, and an upright mast with a striped square sail. It always shows its
 // side: heading up or down it keeps its last side-on bearing.
 function drawLongboat(ctx, x, y, s, facing, now, side = "right", part = "back") {
   const dir = facing === "left" || (facing !== "right" && side === "left") ? -1 : 1, rock = Math.sin(now / 480 + x) * s * .035;
@@ -602,11 +602,10 @@ function drawLongboat(ctx, x, y, s, facing, now, side = "right", part = "back") 
   post(L, s * .42, s * .1, 1); post(-L, s * .26, s * .07, -1);
   const hx = L + s * .16, hy = -s * .44, glow = .6 + Math.sin(now / 1300) * .2;
   // the crescent reads at a glance (Tim: "more prominent... easier to discern"): a chunky bright crescent opening
-  // forward, outlined dark, a soft halo behind it, and a small star set clear in its mouth
+  // forward, outlined dark, and a soft halo behind it (Tim: "just a crescent... by itself")
   ctx.fillStyle = `rgba(170,200,255,${glow * .3})`; ctx.beginPath(); ctx.arc(hx, hy, s * .13, 0, 7); ctx.fill();
   ctx.beginPath(); ctx.arc(hx, hy, s * .09, 0, Math.PI * 2); ctx.arc(hx + s * .055, hy - s * .01, s * .075, 0, Math.PI * 2, true);
   ctx.fillStyle = "#f4f7ff"; ctx.fill("evenodd"); ctx.strokeStyle = "#141b2e"; ctx.lineWidth = Math.max(1, s * .02); ctx.stroke();
-  ctx.fillStyle = "#fff2c4"; ctx.beginPath(); ctx.arc(hx + s * .07, hy - s * .005, Math.max(1.2, s * .022), 0, 7); ctx.fill();
   // the mast and its square sail, upright, forward of the Wayfarer who sits amidships
   const mx = L * .42, top = -s * 1.32, sw = s * .6, belly = s * (.08 + Math.sin(now / 760) * .02);
   ctx.strokeStyle = "#3a2412"; ctx.lineWidth = Math.max(2, s * .055); ctx.beginPath(); ctx.moveTo(mx, -D * .5); ctx.lineTo(mx, top - s * .08); ctx.stroke();
