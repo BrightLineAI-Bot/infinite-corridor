@@ -95,7 +95,7 @@ test('anyone can chip a stone from a rock once; breaking one gives more', () => 
   s.stats.Might = 1; assert.deepEqual(validActions(rock, s), ['chip']);
   assert.equal(applyInteraction(rock, 'chip', s).ok, true); assert.equal(s.materials.stone, DIG.stone.chip);
   assert.deepEqual(validActions(rock, s), []);
-  s.stats.Might = 3; assert.deepEqual(validActions(rock, s), ['move', 'break']);
+  s.stats.Might = 3; assert.deepEqual(validActions(rock, s), ['break', 'move'], 'release 275: break before move, so Act gathers stone');
   applyInteraction(rock, 'break', s); assert.equal(s.materials.stone, Math.min(DIG.carryStone, DIG.stone.chip + DIG.stone.break), 'up to the carry limit (release 259)');
 });
 

@@ -42,3 +42,12 @@ test('saves: beastCeiling is additive and normalised by migrateSave', () => {
   assert.deepEqual(good.beastCeiling, { level: 20, perHit: 50, maxHp: 300, guard: .1 });
   assert.equal(migrateSave({ ...JSON.parse(JSON.stringify(s)), beastCeiling: { level: 'x' } }).beastCeiling, undefined);
 });
+
+test('Act on a rock gathers stone: chip first, then break, never rolling it away first (Tim, 2026-10-21 probe)', async () => {
+  const { validActions, applyInteraction } = await import('../src/interactions.ts');
+  const s = freshSave(); s.stats.Might = 5; s.materials.stone = 0; const rock = { id: 'q-rock', kind: 'rock', state: 'sealed', actions: ['move', 'break'], environmental: true };
+  assert.deepEqual(validActions(rock, s), ['chip', 'break', 'move']);
+  applyInteraction(rock, validActions(rock, s)[0], s); assert.equal(s.materials.stone, 1);
+  applyInteraction(rock, validActions(rock, s)[0], s); assert.equal(s.materials.stone, 3); assert.equal(rock.state, 'broken');
+  assert.deepEqual(validActions(rock, s), [], 'rubble takes no more presses');
+});

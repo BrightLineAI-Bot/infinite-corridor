@@ -2600,6 +2600,7 @@ Tim, 2026-10-21: "after you beat the listener you get access to stage 2, and you
 - **Saves.** `save.beastCeiling` is additive (absent until frozen). `ensureBeastCeiling` in `migrateSave` keeps a valid one (numbers coerced) and drops a malformed one.
 - **UI.** The HUD Aperture readout gains ` · S<stage>`. The Aperture card says "Stage n: the Aperture holds at tier N until the Listener falls (again) at the Far Gate" while held.
 - **Build.** `stages` is in `scripts/build.mjs` and both `sw.js` precache lists.
+- **Stone fix (Tim's probe, 2026-10-21).** `interactions.ts` `validActions` for a sealed rock is now `chip` (once), then `break`, `move` (Might 3+). Before, it was `move`, `break`, `chip`, so Act (which takes the first action) rolled a quarry rock aside for no stone and spent it. A rock that is not sealed (rubble, rolled aside) has no actions unless it is strange, so it no longer takes the press from the next rock. `tests/digging.test.ts` line 98 now expects `['break', 'move']`.
 
 **BOUNDARY:**
 - Saves stay at schema 14. A save past its stage's top tier keeps its Aperture (it only stops growing) and freezes its beasts at its first measure.
