@@ -152,17 +152,21 @@ export function tickAstral(s,dt,w) {
   if(dt>0)ensureAstralGeometry(s);
   const n=Math.ceil(dt/ASTRAL.maxStep);for(let i=0;i<n;i++){if(s.terminated)break;step(s,dt/n,w);}
 }
+function clearFlightGround(s,w) {
+  const at=astralBeamAnchors(s).ground,g=ASTRAL_GEOMETRY;
+  s.flightLiftExtra=Math.max(0,groundHeight(w,at)-groundHeight(w,s)+g.minBeamDrop-(g.flightLift-g.mouthY*g.drawScale)*s.scale);
+  return at;
+}
 function step(s,dt,w) {
   const p=w.player;s.clock+=dt;
-  if(!s.move){s.recovery-=dt;faceTarget(s,p);moveToward(s,p,ASTRAL.speed,dt,w);if(s.recovery<=0)startAstralMove(s,ASTRAL_MOVES[Math.floor(random(s)*ASTRAL_MOVES.length)],p);return;}
+  if(!s.move){s.recovery-=dt;faceTarget(s,p);moveToward(s,p,ASTRAL.speed,dt,w);if(s.recovery<=0){startAstralMove(s,ASTRAL_MOVES[Math.floor(random(s)*ASTRAL_MOVES.length)],p);if(s.form==='flight')clearFlightGround(s,w);}return;}
   s.elapsed+=dt;s.hitClock-=dt;s.hazards=[];const t=s.elapsed,active=t>=ASTRAL.windup;
   if(s.move==='pool') {s.hazards=[hazard(s,s.x,s.y,0,ASTRAL.poolRadius,active)];if(t>ASTRAL.windup+ASTRAL.poolLife){finish(s);return;}}
   if(s.move==='trample'){if(active)moveToward(s,s.target,ASTRAL.trampleSpeed,dt,w);s.hazards=[hazard(s,s.x,s.y,0,ASTRAL.trampleRadius,active)];if(t>ASTRAL.windup+ASTRAL.trampleLife){finish(s);return;}}
   if(s.move==='bite'){moveToward(s,p,ASTRAL.speed,dt,w);const phase=(t-ASTRAL.windup)%ASTRAL.biteGap;s.hazards=[hazard(s,s.x,s.y,0,ASTRAL.biteRadius,active&&phase<ASTRAL.biteActive)];if(t>ASTRAL.windup+ASTRAL.biteCount*ASTRAL.biteGap){finish(s);return;}}
   if(s.move==='flight'){
     const before=astralBeamAnchors(s).ground;moveToward(s,{x:p.x-(before.x-s.x),y:p.y-(before.y-s.y)},ASTRAL.speed*ASTRAL.flightPursuit,dt,w);
-    const at=astralBeamAnchors(s).ground,g=ASTRAL_GEOMETRY;
-    s.flightLiftExtra=Math.max(0,groundHeight(w,at)-groundHeight(w,s)+g.minBeamDrop-(g.flightLift-g.mouthY*g.drawScale)*s.scale);
+    const at=clearFlightGround(s,w);
     s.hazards=[hazard(s,at.x,at.y,0,ASTRAL.beamRadius,active,ASTRAL.beamShare)];if(t>ASTRAL.windup+ASTRAL.beamLife){finish(s);return;}}
   if(ASTRAL_INK_FORMS[s.move]){tickInk(s,w);if(!s.move)return;}
   if(s.move==='griffin'){

@@ -192,3 +192,9 @@ test('ink absolute launch and return heights stay attached to body over differin
     advance(s,.3,w);assert.deepEqual(s.blobs,[]);
   }
 });
+
+test('naturally selected flight clears higher ground on its first warning frame',()=>{
+ const s=createAstralState({seed:200}),w=world();s.recovery=0;w.player={x:3,y:0,hp:1000};w.groundHeight=x=>x>.2?1.7:0;
+ tickAstral(s,1/60,w);assert.equal(s.move,'flight');assert.equal(s.elapsed,0);assert.deepEqual(s.hazards,[]);const a=astralBeamAnchors(s);
+ assert(s.flightLiftExtra>0);assert(a.ground.y-w.groundHeight(a.ground.x,a.ground.y)-(a.mouth.y-w.groundHeight(s.x,s.y))>=ASTRAL_GEOMETRY.minBeamDrop-1e-10);
+});

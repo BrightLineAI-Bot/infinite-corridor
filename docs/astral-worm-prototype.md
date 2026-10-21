@@ -1,6 +1,6 @@
 # Astral Worm follow-on implementation
 
-Status: locally integrated source, not released or publishable yet. The original isolated checkpoint is `c33c89f` (870/870 tests); `e94f1b5` merges it with reviewed Gate/r251 baseline `4c619f768685d4e44eff3c22d8f764ce13297385`, preserving both histories. Subsequent natural integration requires its own exact-source full test/build and independent review. Release number remains 251 locally; eventual follow-on packaging must use the synchronized release checklist. No remote writes or publication are authorized by this document.
+Status: locally integrated source, not released or publishable yet. The original isolated checkpoint is `c33c89f` (870/870 tests); `e94f1b5` merges it with reviewed Gate/r251 baseline `4c619f768685d4e44eff3c22d8f764ce13297385`, preserving both histories. The final natural integration and latest owner changes passed 1,062/1,062 full-suite tests, module-inclusive build and exact-source independent review; see the final receipt below. Release number remains 251 locally; eventual follow-on packaging must use the synchronized release checklist. No remote writes or publication are authorized by this document.
 
 ## Owner source and approved decisions
 
@@ -69,3 +69,16 @@ Provisional ink tuning: .65-second warning, .48-second outbound, .65-second spla
 Owner approval Sentinel_3f50b2b556b48191b0ffbd67983337bd permits the narrow Crystal-only test isolation, preserving every assertion. Approval Sentinel_3780c5aa2bc481919f4b3a41c0bcf63c explicitly covers corresponding Astral regression additions/updates for the mouth beam and ink attack; neither authorizes uploads or publication. Both historical Crystal checks now pass after fixture isolation and equivalent source guard ordering.
 
 Mouth/ink integration receipt (2026-10-21): all 1,061 full-suite tests passed, module-inclusive build passed, and independent exact-manifest review passed 201 Astral/ocean tests plus native beam/mount/ink projection and save probes. Manifest SHA-256 `b09bd7c37d51cf5132329ae8c35e07f313b0f1ad0f48304195fa59f078a52ed2`. A subsequent cosmetic first-flight-warning-frame clearance regression is tracked separately; this receipt does not claim to cover later source edits. No remote action or release-number change occurred.
+
+
+## Final local validation receipt — 2026-10-21
+
+- Full suite: **1,062/1,062 passing**, zero failed/skipped/cancelled tests.
+- Module-inclusive static build: passed; all six Astral modules remain in build and both precaches.
+- Exact polished source/test manifest SHA-256: `de4c2de3f2e0a2dead58974cbd1a3bfcbbb947ecf731825f89bb41d19e2dc402`.
+- Final core SHA-256: `0c4ab09b9b0f6f8eedcc6bc5f6be7faef3d5ab1738d5efb6ed933296d70d597c`.
+- Independent review: no remaining confirmed blocker or cosmetic finding. Narrow final 44-test rerun and original first-flight-frame cliff reproduction passed; the beam is downward on its first warning frame. Prior 201-test Astral/ocean review and 24 beam / 24 mount / 84 ink native projection cases remain valid, with the latter rerun on the polished source.
+- Independent routing checks: 37 focused cases, 50 generated dungeon comparisons and isolated selected-link mutation probes passed.
+- Native real Game reduced-motion/safe-mode and same-clock form-cache checks passed. Visuals are native source-rendered captures, not browser/mobile certification.
+
+No mechanics feature remains intentionally fixture-only. Natural spawn, public no-Echo catalog, normal bounty, paired ownership/ally rewards, mounted independent health, above-water presence, Wayglass retreat, saved phases, shared death/reset and corresponding formal regressions are implemented. Balance values and on-device fairness/performance remain provisional. This is a local follow-on feature: release number 251 is deliberately unchanged, and release packaging, repository upload, CI/preview and any owner-authorized publication are separate required steps. No remote writes or publication occurred.
