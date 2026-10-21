@@ -2232,6 +2232,9 @@ Claude reviewed all 17 Codex commits from live r249 to the combined r251 candida
 - **Supernova spill.** `Game.spillVoidTerrain` previews each overlapping neighbour with `walkerCrossingMap`. It records that neighbour's scar through `consumeVoidTerrain(..., { spill: true })`, under the neighbour's own `overworld:rx:ry:gN` key. Scar circles may now keep a centre outside their section, as long as the disk still overlaps it. This is additive at schema 14.
 - **Griffin forelegs.** `drawAstralWorm`'s griffin uses a `foreleg` helper: feathered upper leg, scaled tapering tarsus, three ground-gripping toes and a hallux, with crescent claws.
 - **Saddle.** `drawAstralSaddle` draws tan leather from the `ASTRAL_SADDLE` table: an oxblood pad, cantle and pommel, a stitched fender, and a stirrup leather with a steel iron, at a width of 0.64–0.74 units.
+- **Griffin, second pass (Tim: rework all the legs).** A `hindleg` helper draws a lion leg: gaskin to a backward hock, a slim metatarsus, a padded paw with claw tips, and a teardrop thigh outlined only on its front and underside. The `foreleg` plumes now layer over the tarsus as a scalloped hem. The tail gets a hair tuft and the throat scallop feathers.
+- **Saddle size.** `ASTRAL_SADDLE.size` is 0.8 (Tim: a little smaller).
+- **Beam.** `drawAstralBeam` (`ASTRAL_BEAM_FX` table) is painted before the Worm, so the beam sits behind the mandibles. It adds a glow and core, two expanding impact rings, a splash and ten sparks, driven by the active clock; reduced motion shows one steady ring and no sparks. It is visual only: the combat hazard is unchanged.
 - Tests are in `tests/review-251-fixes.test.ts`. The saddle render test now looks for the new leather colour.
 
 **BOUNDARY:**

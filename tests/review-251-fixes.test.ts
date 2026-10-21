@@ -58,3 +58,20 @@ test('an overworld Supernova at a section edge also scars the overlapping neighb
   g.rx = 4; g.ry = 4; g.loadArea('overworld', false);
   assert.deepEqual(g.spillVoidTerrain({ x: 31, y: 31 }, 3).map(o => `${o.rx},${o.ry}`).sort(), ['4,5', '5,4', '5,5']);
 });
+
+test('the flight beam is painted behind the mandibles and keeps a ground-impact effect', async () => {
+  const { createCombatant } = await import('../src/combat.ts');
+  const { createAstralState } = await import('../src/astral-worm.ts');
+  const { drawPackMonster } = await import('../src/monster-render.ts');
+  for (const reduceMotion of [true, false]) {
+    const calls = [], state = {};
+    const ctx = new Proxy({ getTransform: undefined, createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }) },
+      { get: (o, k) => k in o ? o[k] : k in state ? state[k] : (...args) => calls.push({ kind: k, args, fill: state.fillStyle, stroke: state.strokeStyle }), set: (o, k, v) => (state[k] = v, true) });
+    const e = createCombatant('astralWorm', 3, 4, false, []); e.id = 'beam'; e.astral = createAstralState(); Object.assign(e.astral, { x: 3, y: 4, form: 'flight', previousForm: 'flight', facingX: 1, clock: 1.3 }); e.reduceMotion = reduceMotion;
+    drawPackMonster(ctx, e, 44, 1000, 'right');
+    const beam = calls.findIndex(c => c.kind === 'moveTo' && c.stroke === '#db9fc5'), mandible = calls.findIndex(c => c.kind === 'moveTo' && c.stroke === '#354450');
+    assert(beam >= 0 && mandible > beam, 'beam before mandibles');
+    assert(calls.some(c => c.kind === 'ellipse' && c.stroke === '#f2c4e2'), 'impact ring');
+    assert.equal(calls.some(c => c.kind === 'fillRect' && c.fill === '#ffe3f4'), !reduceMotion, 'sparks only with motion');
+  }
+});

@@ -3,7 +3,7 @@
 // no images, so it scales cleanly with the device pixel ratio.
 import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID } from "./monster-pack.ts";
 
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs } from "./astral-worm-render.ts";
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam } from "./astral-worm-render.ts";
 
 import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { ASTRAL, astralBeamAnchors } from "./astral-worm.ts";
@@ -71,14 +71,14 @@ function drawWalkerSkiff(ctx, q, foreground = false) {
 // ---------------------------------------------------------------- creatures
 
 const BODY = {
-  astralWorm(ctx,q) { const a=q.e.astral; drawAstralMorph(ctx,{x:q.k,y:q.b-(a?.form==='flight'?q.u*.8+Math.max(0,Number(a.flightLiftExtra)||0)*q.s:0),scale:q.u*.65,time:a?.clock||0,form:a?.form||'worm',facing:q.flip,alpha:q.e.kind==='astralMirage'?.5:1,reducedMotion:!!q.e.reduceMotion},a?.previousForm||'worm',a?(a.clock-a.morphStart)/ASTRAL.morphTime:1);
+  astralWorm(ctx,q) { const a=q.e.astral;
+    // The downward beam is painted first, behind the mandibles, so it reads as leaving the mouth.
     if(a?.form==='flight'){
       const anchors=astralBeamAnchors({...a,x:q.e.x,y:q.e.y,scale:Math.max(.6,Number(q.e.scale)||1),facingX:q.flip});
       const groundLift=Number(q.e.astralBeamGroundLiftDelta)||0;
-      ctx.strokeStyle='#db9fc5';ctx.lineWidth=Math.max(1,q.u*.06);ctx.beginPath();
-      ctx.moveTo((anchors.mouth.x+.5)*q.s,(anchors.mouth.y+.62)*q.s);
-      ctx.lineTo((anchors.ground.x+.5)*q.s,(anchors.ground.y+.62+groundLift)*q.s);ctx.stroke();
+      drawAstralBeam(ctx,{x:(anchors.mouth.x+.5)*q.s,y:(anchors.mouth.y+.62)*q.s},{x:(anchors.ground.x+.5)*q.s,y:(anchors.ground.y+.62+groundLift)*q.s},q.u,a.clock||0,!!q.e.reduceMotion);
     }
+    drawAstralMorph(ctx,{x:q.k,y:q.b-(a?.form==='flight'?q.u*.8+Math.max(0,Number(a.flightLiftExtra)||0)*q.s:0),scale:q.u*.65,time:a?.clock||0,form:a?.form||'worm',facing:q.flip,alpha:q.e.kind==='astralMirage'?.5:1,reducedMotion:!!q.e.reduceMotion},a?.previousForm||'worm',a?(a.clock-a.morphStart)/ASTRAL.morphTime:1);
   },
   lumenWraith(ctx, q) {
     const { k, b, u, t, p, flip } = q, lift = u * (.35 + Math.sin(t * 2.1) * .06), cy = b - lift - u * .45;
