@@ -566,8 +566,8 @@ function drawSkiff(ctx, x, y, s, facing, now) {
 // nightmare"; then "show it in a profile in like an isometric view... we can see... the sides of a hull that are
 // somewhat submerged in the water as it rides along the water"): while the hull guard holds, the skiff is a clinker-
 // built longboat seen three-quarters on: a foreshortened deck, the near side of the hull with its strakes and a row of
-// round shields, the lower hull under a foaming waterline, a stem post curling up into a spiral that cradles a pale
-// crescent, a lower stern curl, and an upright mast with a striped square sail. It always shows its
+// round shields, the lower hull under a foaming waterline, a stem post curling up into a spiral from which a
+// lantern hangs, a little spiral galaxy behind its glass, a lower stern curl, and an upright mast with a striped square sail. It always shows its
 // side: heading up or down it keeps its last side-on bearing.
 function drawLongboat(ctx, x, y, s, facing, now, side = "right", part = "back") {
   const dir = facing === "left" || (facing !== "right" && side === "left") ? -1 : 1, rock = Math.sin(now / 480 + x) * s * .035;
@@ -597,15 +597,24 @@ function drawLongboat(ctx, x, y, s, facing, now, side = "right", part = "back") 
   ctx.fillStyle = "#8a6038"; ctx.fill(); ctx.strokeStyle = "#3e2614"; ctx.lineWidth = Math.max(1, s * .025); ctx.stroke();
   ctx.strokeStyle = "#6f4b2c"; ctx.lineWidth = Math.max(1, s * .015); for (let k = -3; k <= 3; k++) { ctx.beginPath(); ctx.moveTo(k * L * .2, -D * .9); ctx.lineTo(k * L * .2, -s * .01); ctx.stroke(); } // thwarts
   for (let k = 0; k < 5; k++) { const sx = -L * .5 + k * L * .25; ctx.fillStyle = "#4a3324"; ctx.beginPath(); ctx.ellipse(sx, -D * .95, s * .05, s * .022, 0, Math.PI, 0); ctx.fill(); } // the far shields' rims
-  // the posts: the stem rises and curls into a spiral holding a pale crescent; the stern curls lower
+  // the posts: the stem rises and curls into a spiral from which the lantern hangs; the stern curls lower
   const post = (px, up, r, sgn) => { ctx.strokeStyle = "#4a2f17"; ctx.lineWidth = Math.max(1.5, s * .045); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(px, -s * .06); ctx.quadraticCurveTo(px + sgn * s * .1, -up * .5, px + sgn * s * .06, -up); for (let t = 0; t <= 5; t += .25) { const rr = r * (1 - t / 6), a = Math.PI + t * sgn; ctx.lineTo(px + sgn * s * .06 + r + Math.cos(a) * rr * sgn, -up + Math.sin(a) * rr - (r - rr) * .2); } ctx.stroke(); };
   post(L, s * .42, s * .1, 1); post(-L, s * .26, s * .07, -1);
   const hx = L + s * .16, hy = -s * .44, glow = .6 + Math.sin(now / 1300) * .2;
-  // the crescent reads at a glance (Tim: "more prominent... easier to discern"): a chunky bright crescent opening
-  // forward, outlined dark, and a soft halo behind it (Tim: "just a crescent... by itself")
-  ctx.fillStyle = `rgba(170,200,255,${glow * .3})`; ctx.beginPath(); ctx.arc(hx, hy, s * .13, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.arc(hx, hy, s * .09, 0, Math.PI * 2); ctx.arc(hx + s * .055, hy - s * .01, s * .075, 0, Math.PI * 2, true);
-  ctx.fillStyle = "#f4f7ff"; ctx.fill("evenodd"); ctx.strokeStyle = "#141b2e"; ctx.lineWidth = Math.max(1, s * .02); ctx.stroke();
+  // a lantern hangs still from the curl (Tim: "the figurehead should be a lantern... a spiral in it... like a spiral
+  // galaxy"): a short cord, a dark iron cap and frame, and behind the glass a small two-armed spiral of pale light
+  const lx = hx - s * .02, ly = hy + s * .1, lw = s * .11, lh = s * .14;
+  ctx.strokeStyle = "#2a1a0e"; ctx.lineWidth = Math.max(1, s * .018); ctx.beginPath(); ctx.moveTo(lx, hy - s * .02); ctx.lineTo(lx, ly - lh / 2); ctx.stroke();
+  ctx.fillStyle = `rgba(150,170,255,${glow * .28})`; ctx.beginPath(); ctx.arc(lx, ly, s * .14, 0, 7); ctx.fill();
+  ctx.fillStyle = "#121726"; ctx.fillRect(lx - lw / 2, ly - lh / 2, lw, lh); // the glass, dark like night
+  ctx.save(); ctx.beginPath(); ctx.rect(lx - lw / 2, ly - lh / 2, lw, lh); ctx.clip();
+  ctx.strokeStyle = `rgba(214,226,255,${.75 + glow * .25})`; ctx.lineWidth = Math.max(1, s * .016); ctx.lineCap = "round";
+  for (const arm of [0, Math.PI]) { ctx.beginPath(); for (let t = 0; t <= 1; t += .1) { const a = arm + t * 4.2, r = s * (.005 + t * .042); const qx = lx + Math.cos(a) * r, qy = ly + Math.sin(a) * r * .8; t ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy); } ctx.stroke(); }
+  ctx.fillStyle = "#f4f2ff"; ctx.beginPath(); ctx.arc(lx, ly, Math.max(1, s * .014), 0, 7); ctx.fill(); // its bright core
+  ctx.restore();
+  ctx.strokeStyle = "#3a2c22"; ctx.lineWidth = Math.max(1, s * .02); ctx.strokeRect(lx - lw / 2, ly - lh / 2, lw, lh); // the frame
+  ctx.fillStyle = "#3a2c22"; ctx.beginPath(); ctx.moveTo(lx - lw * .62, ly - lh / 2); ctx.lineTo(lx, ly - lh / 2 - s * .045); ctx.lineTo(lx + lw * .62, ly - lh / 2); ctx.closePath(); ctx.fill(); // the cap
+  ctx.fillRect(lx - lw * .6, ly + lh / 2, lw * 1.2, s * .02); // the base
   // the mast and its square sail, upright, forward of the Wayfarer who sits amidships
   const mx = L * .42, top = -s * 1.32, sw = s * .6, belly = s * (.08 + Math.sin(now / 760) * .02);
   ctx.strokeStyle = "#3a2412"; ctx.lineWidth = Math.max(2, s * .055); ctx.beginPath(); ctx.moveTo(mx, -D * .5); ctx.lineTo(mx, top - s * .08); ctx.stroke();
