@@ -107,7 +107,7 @@ test('release 263: hull shields are bought from the Shipwright and deployed aboa
   assert.equal(buyHullShield(s).ok, true); assert.equal(s.consumables.hullShield, 1); assert.equal(s.currency, 100 - BOAT.shield.price);
   assert.equal(deployHullShield(s).ok, false, 'only aboard'); s.boat.aboard = true;
   assert.equal(deployHullShield(s).ok, true); assert.equal(s.consumables.hullShield, 0); assert.equal(s.boat.shield, BOAT.shield.seconds);
-  const r = hullAbsorb(s, 20); assert.equal(s.boat.hull, BOAT.maxHull, 'the hull is untouched'); assert.equal(r.kept, 20 - 20 * BOAT.hullShare, 'the Wayfarer keeps only their share');
+  const r = hullAbsorb(s, 20); assert.equal(s.boat.hull, BOAT.maxHull, 'the hull is untouched'); assert.equal(r.kept, (20 - 20 * BOAT.hullShare) * (1 - BOAT.shield.guard), 'the Wayfarer keeps only their share, 5% less (release 269)'); assert.equal(BOAT.shield.guard, .05);
   assert.equal(hullStrike(s, 50), false); assert.equal(s.boat.hull, BOAT.maxHull);
   tickHullShield(s, BOAT.shield.seconds - 1); assert.ok(s.boat.shield > 0); tickHullShield(s, 2); assert.equal(s.boat.shield, 0);
   hullAbsorb(s, 20); assert.ok(s.boat.hull < BOAT.maxHull, 'unshielded again');

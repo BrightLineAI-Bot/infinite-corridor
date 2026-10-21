@@ -19,7 +19,8 @@ export const BOAT = {
   // Hull shields (release 263; Tim: "a boat deployment shield... we can buy them from the boatman... deploy them... last for
   // like 3 minutes"): bought from the Shipwright, deployed from the Pack while aboard; while it holds, the hull takes no
   // damage (hits still share with it, so the Wayfarer keeps only their own share). Deploying again refreshes it.
-  shield: { price: 40, seconds: 180 },
+  // guard (release 269; Tim: "a slight damage reduction to the player... five percent... while the hull shield is active").
+  shield: { price: 40, seconds: 180, guard: .05 },
   // Repairs with the Build button (release 269; Tim: "break up the hull into thirds... one [wood] would get the boat
   // half health... two woods should get the boat back up to full... I don't want to have to manage the boat too much"):
   // each press costs `wood` and mends `share` of the full hull. Holding Build `shieldHold` s at sea deploys a shield.
@@ -143,7 +144,7 @@ export function hullAbsorb(save, damage) {
   const b = ensureBoatState(save);
   if (!b.aboard || !(damage > 0)) return { kept: damage, sunk: false };
   const take = Math.min(b.hull, damage * BOAT.hullShare);
-  if (shielded(save)) return { kept: damage - take, sunk: false }; // release 263: the shield takes the hull's share
+  if (shielded(save)) return { kept: (damage - take) * (1 - BOAT.shield.guard), sunk: false }; // release 263: the shield takes the hull's share; 269: and 5% off the Wayfarer's
   b.hull = Math.max(0, b.hull - take);
   if (b.hull > 0) return { kept: damage - take, sunk: false };
   b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home;

@@ -552,18 +552,24 @@ function drawMosasaur(ctx, e, cx, cy, s, now, colors) {
 const mixHex = (a, b, k) => { const p = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)), x = p(a), y = p(b); return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * k)).join(",")})`; };
 
 // The skiff (water world W2): a plank hull with a bow pointing along `facing`, bobbing on the water.
-// Release 269 (Tim: "The hull shield will make the boat like silver... look like it's made of metal"): `metal` plates it.
-function drawSkiff(ctx, x, y, s, facing, now, metal = false) {
+// Release 269 (Tim: "Instead of making the hull shield make the boat silver... our boat will just get a little bit
+// larger... We should go from a skiff to... a small sailboat when the hull guard is active... we still have... a wooden
+// boat"): with `sail`, the wooden hull is a fifth larger and carries a mast and a patched canvas sail.
+function drawSkiff(ctx, x, y, s, facing, now, sail = false) {
   const cx = (x + .5) * s, cy = (y + .72) * s + Math.sin(now / 420 + x) * s * .03, along = facing === "left" || facing === "right";
   ctx.save(); ctx.translate(cx, cy); if (!along) ctx.rotate(Math.PI / 2); if (facing === "left" || facing === "up") ctx.scale(-1, 1);
+  if (sail) ctx.scale(1.22, 1.22);
   ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(0, s * .08, s * .62, s * .2, 0, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-s * .55, -s * .16); ctx.lineTo(s * .38, -s * .16); ctx.quadraticCurveTo(s * .66, 0, s * .38, s * .16); ctx.lineTo(-s * .55, s * .16); ctx.closePath();
-  if (metal) { const g = ctx.createLinearGradient(0, -s * .16, 0, s * .16); g.addColorStop(0, "#f2f5f8"); g.addColorStop(.45, "#aab3bc"); g.addColorStop(1, "#6e7781"); ctx.fillStyle = g; } else ctx.fillStyle = "#6b4a2e";
-  ctx.fill(); ctx.strokeStyle = metal ? "#eef3f7" : "#c9a571"; ctx.lineWidth = Math.max(1, s * .04); ctx.stroke();
-  ctx.fillStyle = metal ? "#7c858f" : "#8d6a43"; for (const k of [-.3, .05]) ctx.fillRect(k * s, -s * .13, s * .07, s * .26);
-  if (metal) { // rivets, and a glint that runs along the plating
-    ctx.fillStyle = "#e3e8ee"; for (let k = -.48; k <= .3; k += .13) { ctx.beginPath(); ctx.arc(k * s, -s * .115, Math.max(.8, s * .018), 0, 7); ctx.arc(k * s, s * .115, Math.max(.8, s * .018), 0, 7); ctx.fill(); }
-    const gx = ((now / 900) % 1.6 - .6) * s; ctx.fillStyle = "#ffffff66"; ctx.fillRect(gx, -s * .15, s * .06, s * .3);
+  ctx.fillStyle = "#6b4a2e"; ctx.beginPath(); ctx.moveTo(-s * .55, -s * .16); ctx.lineTo(s * .38, -s * .16); ctx.quadraticCurveTo(s * .66, 0, s * .38, s * .16); ctx.lineTo(-s * .55, s * .16); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#c9a571"; ctx.lineWidth = Math.max(1, s * .04); ctx.stroke();
+  ctx.fillStyle = "#8d6a43"; for (const k of [-.3, .05]) ctx.fillRect(k * s, -s * .13, s * .07, s * .26);
+  if (sail) { // the mast stands amidships; the sail, seen from above, bellies to one side and breathes with the wind
+    const belly = s * (.2 + Math.sin(now / 700) * .025);
+    ctx.fillStyle = "#e8dcc0"; ctx.strokeStyle = "#8a7a5a"; ctx.lineWidth = Math.max(1, s * .03);
+    ctx.beginPath(); ctx.moveTo(-s * .38, -s * .02); ctx.quadraticCurveTo(-s * .12, -s * .02 - belly * 1.6, s * .2, -s * .02); ctx.lineTo(-s * .38, -s * .02); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#c9b48c"; ctx.fillRect(-s * .2, -s * .02 - belly * .9, s * .1, belly * .45); // a patch
+    ctx.strokeStyle = "#5a3a1e"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.moveTo(-s * .4, -s * .01); ctx.lineTo(s * .22, -s * .01); ctx.stroke(); // the boom
+    ctx.fillStyle = "#4a2f17"; ctx.beginPath(); ctx.arc(-s * .1, 0, s * .055, 0, 7); ctx.fill(); // the mast's foot
   }
   ctx.restore();
 }
@@ -1255,7 +1261,7 @@ export function render(ctx, g, w, h, now) {
       }
       if (g.area === "overworld" && g.save.boat?.aboard) {
         // A jump lifts the skiff with the Wayfarer (release 158: leap a rogue wave's crest).
-        const shieldLeft = Number(g.save.boat.shield) || 0; // release 269: shielded, the skiff is plated silver (flickering in its last 10 s)
+        const shieldLeft = Number(g.save.boat.shield) || 0; // release 269: shielded, the skiff becomes a small sailboat (flickering back in its last 10 s)
         drawSkiff(ctx, p.x, p.y - lift / s, s, p.facing, now, shieldLeft > 0 && (shieldLeft > 10 || Math.floor(now / 200) % 2 === 1));
         if (g.mendTarget?.()) repairTag(ctx, p.x, p.y - .9 - lift / s, s);
         // Hull gauge under the skiff: green to amber to red as the hull takes damage.
@@ -1263,7 +1269,7 @@ export function render(ctx, g, w, h, now) {
         ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
         ctx.fillStyle = hull > .6 ? "#6fcf7a" : hull > .3 ? "#e3b04b" : "#e2574a"; ctx.fillRect(bx, by, bw * hull, bh);
         if (hull <= .3 && Math.floor(now / 350) % 2) { ctx.strokeStyle = "#ffb3a8"; ctx.lineWidth = 1; ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2); }
-        // Release 263/269: a bar under the hull gauge shows the shield's time left (the skiff itself turns silver).
+        // Release 263/269: a bar under the hull gauge shows the shield's time left (the skiff itself rigs a sail).
         const shield = Number(g.save.boat.shield) || 0;
         if (shield > 0) { ctx.fillStyle = "#cfd6dd"; ctx.fillRect(bx, by + bh + 1, bw * Math.min(1, shield / BOAT.shield.seconds), Math.max(2, bh * .6)); }
       }
