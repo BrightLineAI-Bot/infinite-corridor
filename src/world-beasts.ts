@@ -155,16 +155,18 @@ export function retreatPath(map, from, to, mode, width = 32) {
   return out;
 }
 export const RETREAT = { search: 8, fallback: 6, speed: 2.1, inset: 1.5, fade: 1.4 };
-// Pursuit (release 259; Tim, 2026-10-21: "they should pursue you out of the tile that you meet them... up to 3 tiles...
-// The blob can just take one... then they should just stop and stay in that tile. If you come back into that tile, it can
-// pursue you for like 3 more"). A fighting world beast follows the Wayfarer across a section edge, coming in `inset` tiles
-// inside the gate behind them, up to `sections` times in a row (per-beast overrides below); then it stays where it is.
-// Coming back into its section starts a fresh run. Its patience keeps counting the whole time. The Void Walker and the
-// Astral Worm keep their own section rules and do not pursue.
+// Pursuit (release 259; Tim, 2026-10-21: "they should pursue you out of the tile that you meet them... The blob can just
+// take one", then "three tiles max... it'll chase you 2 tiles, and then it'll stop there and then it'll chase you 1 more...
+// If you don't wanna fight it within three tiles, you're obviously running away"). A fighting world beast follows the
+// Wayfarer across a section edge, coming in `inset` tiles inside the gate behind them, `sections` times in all for this
+// encounter (per-beast overrides below), however the crossings are spread out; then it stays where it is. Its patience
+// keeps counting the whole time. The Void Walker and the Astral Worm keep their own section rules and do not pursue.
 export const PURSUIT = { sections: 3, inset: 3.5, limits: { morphingBlob: 1 }, exclude: ["voidWalker", "astralWorm"] };
-// The Morphing Blob's retreat (release 259): a `portion` of it breaks away and goes home; the mass it leaves stays put,
-// lingers `linger` s and fades out over its last `fade` s. It is never saved, so leaving the section clears it.
-export const BLOB_SPLIT = { portion: .45, linger: 14, fade: 5 };
+// The Morphing Blob's retreat (release 259; Tim: "if the blob is at its original size, it will just leave... only if it's
+// larger will it shrink and leave a residue"): a Blob grown past its original size by more than `grown` goes home at its
+// original size, and the extra mass it leaves stays put, lingers `linger` s and fades out over its last `fade` s. It is
+// never saved, so leaving the section clears it. A Blob still at its original size leaves whole.
+export const BLOB_SPLIT = { grown: .05, linger: 14, fade: 5 };
 const SIDES = { east: [1, 0], west: [-1, 0], south: [0, 1], north: [0, -1] }, OPPOSITE = { east: "west", west: "east", north: "south", south: "north" };
 
 // Counts fighting time; true when the beast's patience has just run out.
@@ -249,7 +251,7 @@ export function canPursue(save, id, rx, ry, dx, dy) {
   if (WORLD_BEAST_IDS.some((k) => k !== id && save.worldBeasts[k]?.active && !save.worldBeasts[k].active.dungeon && save.worldBeasts[k].active.rx === tx && save.worldBeasts[k].active.ry === ty)) return false; // one beast to a section
   const qb = save.questingBeast?.active; return !(qb && qb.rx === tx && qb.ry === ty);
 }
-// It followed: it now holds the next section, one more step into this run.
+// It followed: it now holds the next section, and has one fewer crossing left in this encounter.
 export function pursued(save, id, dx, dy) { const q = save.worldBeasts[id].active; q.rx += dx; q.ry += dy; q.chase = (q.chase || 0) + 1; return q; }
 // Where it comes in: `inset` tiles inside the gate the Wayfarer entered by, on the nearest ground it can hold.
 export function pursuitSpawn(save, id, map, rx, ry, dx, dy) {
@@ -273,7 +275,7 @@ export function ensureWorldBeasts(save, normalizeScarHistory = true) {
     const a = q.active && ((Number.isInteger(q.active.rx) && Number.isInteger(q.active.ry)) || typeof q.active.dungeon === "string") ? { ...q.active, rx: q.active.rx, ry: q.active.ry, tries: Math.max(0, Math.floor(Number(q.active.tries) || 0)), patience: Math.max(0, Number(q.active.patience) || 0), retreat: cleanRetreat(q.active.retreat) } : null;
     if (a && !a.retreat) delete a.retreat;
     if (a && !a.patience) delete a.patience; // both are added only once there is something to keep
-    if (a) { const chase = Math.max(0, Math.floor(Number(q.active.chase) || 0)); if (chase) a.chase = chase; else delete a.chase; } // release 259: sections followed in this run
+    if (a) { const chase = Math.max(0, Math.floor(Number(q.active.chase) || 0)); if (chase) a.chase = chase; else delete a.chase; } // release 259: sections it has followed this encounter
     all[id] = { cycle: Math.max(0, Math.floor(Number(q.cycle) || 0)), cooldown: Math.max(0, Math.floor(Number(q.cooldown) || 0)), active: a, slain: Math.max(0, Math.floor(Number(q.slain) || 0)), escaped: Math.max(0, Math.floor(Number(q.escaped) || 0)) };
   }
   save.worldBeasts = all;
@@ -321,7 +323,6 @@ export function worldBeastFor(save, map, rx, ry) {
   if (!here) return null;
   const q = save.worldBeasts[here];
   if (q.active.retreat) return fleeSpawn(save, here, rx, ry);
-  if (q.active.chase) delete q.active.chase; // release 259: back in its section, it may pursue a fresh run
   const open = map.tiles.filter((t) => beastGround(here, t) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24); // release 257: the Giant may be met at sea
   const at = open.sort((a, b) => hashSeed(`wb:${here}:${q.cycle}:${a.x},${a.y}`) - hashSeed(`wb:${here}:${q.cycle}:${b.x},${b.y}`))[0];
   if (!at) { if (!q.active.tries) q.active = null; return null; } // no valid terrain for this beast: it does not hold the section

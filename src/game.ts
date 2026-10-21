@@ -3226,13 +3226,15 @@ export class Game {
   // Release 239: a world beast runs out of patience and retreats home, invulnerable and through everything; it leaves
   // each section by the gate toward home (the Wayfarer may follow) and, in the home section, goes into its home ground.
   // Release 259 (Tim: "when the blob retreats the whole mass doesn't retreat with it... a portion of it just detaches and
-  // retreats home and just leaves the large mass... and then it'll just fade gracefully"): the fleeing blob shrinks to a
-  // portion of itself, and the mass left behind stays as an inert remnant (no AI, no hits, no rewards, never saved) that
-  // lingers, then fades away (BLOB_SPLIT).
+  // retreats home and just leaves the large mass... and then it'll just fade gracefully"; then "only if it's larger will it
+  // shrink and leave a residue"). A Blob grown past its original size flees at that original size (its growth and merges
+  // undone), and the extra mass stays as an inert remnant (no AI, no hits, no rewards, never saved) that lingers, then
+  // fades away (BLOB_SPLIT). A Blob at its original size leaves whole.
   splitBlob(e) {
+    const base = Number(e.blobBase?.scale) || 0; if (!base || !((Number(e.scale) || 0) > base * (1 + BLOB_SPLIT.grown))) return;
     const mass = this.createEnemyFromSpawn({ id: `${e.id}:remnant`, kind: e.kind, x: e.x, y: e.y, traits: [] }, this.area);
     Object.assign(mass, { blobRemnant: true, remnantLeft: BLOB_SPLIT.linger, untargetable: true, noRewards: true, aggro: false, scale: e.scale, facingX: e.facingX, hp: 1, maxHp: 1 });
-    e.scale = Math.max(.6, (Number(e.scale) || 1) * BLOB_SPLIT.portion); if (e.blobBase) e.blobBase = { scale: e.blobBase.scale * BLOB_SPLIT.portion, radius: e.blobBase.radius * BLOB_SPLIT.portion }; // it regrows from its base each tick
+    e.blobAge = 0; e.blobMerged = 0; e.scale = base; e.bodyRadius = e.blobBase.radius; // back to its original size: it regrows from blobBase each tick
     this.enemies.push(mass);
     this.message = "Part of the Blob tears away and flees. The rest of the mass slumps where it stood.";
   }

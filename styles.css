@@ -872,3 +872,7 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 
 /* Release 185: the "new release ready" prompt, shown when an updated service worker takes over the page. */
 .update-ready { position: fixed; z-index: 95; top: calc(env(safe-area-inset-top) + 6px); left: 50%; transform: translateX(-50%); min-height: 40px; padding: 0 16px; border: 1px solid #b58c50; border-radius: 999px; background: #1d1c19f0; color: #f0dbb5; font: 700 12px ui-monospace, monospace; box-shadow: 0 4px 14px #000a; }
+/* Release 259: the Pack's tab bar (Wayfarer, Gear, Forge, Arcanum, Supplies) is one compact sticky row across the Pack,
+   the Forge and the Arcanum; the Arcanum's own sub-tabs sit below it and scroll with the page. */
+.pack-tabs{flex-wrap:nowrap;gap:.2rem;margin:0 2.2rem .4rem 0}.pack-tabs button{flex:1 1 auto;min-width:0;padding:.5rem .15rem;font-size:.7rem;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.codex-tabs.arc-subtabs{position:static;backdrop-filter:none;background:none}

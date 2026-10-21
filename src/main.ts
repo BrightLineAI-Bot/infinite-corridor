@@ -1437,11 +1437,23 @@ function openMap() {
 // Release 151: each part of the Pack is built separately, so a fault in one (seen on a player's save, cause still
 // unknown) shows a note naming the part and its error instead of stopping the whole Pack from opening.
 function packSectionFailed(name,error){noteError(error);console.error(`Pack section ${name} failed`,error);const note=document.createElement("p");note.className="options-note options-danger";note.textContent=`${name} could not be shown (${error?.message||error}). Options → System → Copy diagnostics, then paste it to Claude.`;body.append(note)}
-function openPack() {
+// Release 259 (Tim, 2026-10-21: "I get to the pack, I should just hit... Arcanum and it should just take me there... there
+// should be just buttons to get through things... spells and echoes... under one tab, and then the armor and weapon
+// upgrading system should be another tab"): the Pack is tabbed, and one tab bar runs across the Pack, the Forge and the
+// Arcanum, so everything is a tap apart. The Arcanum keeps its own sub-tabs (Spells & Constellation, Glyphs, Echoes).
+const PACK_TABS=[['wayfarer','Wayfarer'],['gear','Gear'],['forge','Forge'],['arcanum','Arcanum'],['supplies','Supplies']];
+let packTab='wayfarer';
+function packTabBar(current){const bar=document.createElement('nav');bar.className='codex-tabs pack-tabs';bar.setAttribute('aria-label','Pack');
+ for(const[id,label]of PACK_TABS){const b=uiButton(label,()=>id==='arcanum'?openSkills():id==='forge'?openForge():openPack(id));if(id===current)b.setAttribute('aria-current','page');bar.append(b)}
+ return bar}
+function openPack(tab) {
+  if (typeof tab === "string" && PACK_TABS.some(([id]) => id === tab && id !== "arcanum" && id !== "forge")) packTab = tab; // a click event is not a tab
+  if (packTab === "arcanum" || packTab === "forge") packTab = "wayfarer";
   pauseForOverlay();
   if (pausePanel.open) pausePanel.close();
-  body.replaceChildren();
-  try{
+  body.replaceChildren(packTabBar(packTab));
+  if (packTab !== "wayfarer") body.append(Object.assign(document.createElement("h2"), { textContent: packTab === "gear" ? "Gear" : "Supplies" }));
+  if (packTab === "wayfarer") try{
   const heading = document.createElement("h2"),
     summary = document.createElement("p"),
     xp = document.createElement("progress"),
@@ -1467,10 +1479,10 @@ function openPack() {
   }
   body.append(heading, summary, xp, character);
   }catch(error){packSectionFailed("Character",error)}
-  try{
-  for(const [kind,label] of [['weapon','Weapon sphere'],['armor','Armor sphere']]){const row=document.createElement('div'),key=kind+'Sphere';row.className='item';row.textContent=`${label} ×${save.materials[key]||0} · Sela Rook at Ember Refuge strengthens fitted equipment with these.`;body.append(row)}
+  if (packTab === "supplies") try{
+  for(const [kind,label] of [['weapon','Weapon sphere'],['armor','Armor sphere']]){const row=document.createElement('div'),key=kind+'Sphere';row.className='item';row.textContent=`${label} ×${save.materials[key]||0} · strengthens fitted equipment at the Forge.`;body.append(row)}
   }catch(error){packSectionFailed("Spheres",error)}
-  try{
+  if (packTab === "wayfarer") try{
   const statHelp = {
     Might: "+2 melee damage per rank.",
     Finesse: "+3 maximum stamina per rank.",
@@ -1497,22 +1509,13 @@ function openPack() {
     body.append(row);
   }
   }catch(error){packSectionFailed("Stats",error)}
-  try{
+  if (packTab === "supplies") try{
   const resource = document.createElement("p");
   resource.textContent = `Cinder Iron ${save.materials.cinderIron} · weapon +${save.weaponLevel || 0} · section ${game.rx},${game.ry} `;
-  resource.append(uiButton(`✦ Arcanum · spells, constellation, glyphs`, () => openSkills()));
   resource.append(Object.assign(document.createElement('span'), { className: 'wood-count', textContent: `Wood ${save.materials?.wood || 0} · Stone ${save.materials?.stone || 0} · ${save.digging?.shovel ? `Shovel ${save.digging.shovel}/${DIG.shovelUses} digs left` : `a shovel takes ${DIG.recipe.wood} wood and ${DIG.recipe.stone} stone (Act facing a dungeon wall)`} · a skiff takes 3 wood (Act at deep water)` })); // release 119; stone and the shovel, release 225
-  resource.append(uiButton(`Glyphs · ${Object.values(save.glyphs||{}).reduce((a,b)=>a+b,0)} in pouch`, openGlyphs));
-  resource.append(uiButton(`Echoes · ${notchesUsed(save.echoes?.equipped||[])}/${NOTCHES} notches`, openEchoes));
-  resource.append(uiButton(`Constellation · ${pointsFree(save)} free`, () => openSkills()));
-  resource.append(uiButton("Reinforce weapon · 3 iron", () => {
-    game.upgrade();
-    persist();
-    openPack();
-  }));
   body.append(resource);
   }catch(error){packSectionFailed("Resources",error)}
-  try{
+  if (packTab === "gear") try{
   const gearHeading = document.createElement("h3");
   gearHeading.textContent = "Equipped gear and effects";
   const gear = document.createElement("div");
@@ -1537,14 +1540,14 @@ function openPack() {
   }
   body.append(gearHeading, gear);
   }catch(error){packSectionFailed("Equipped gear",error)}
-  try{
-  // Spells, disciplines and capstones live in one place: the Arcanum (release 109).
-  const arcane=document.createElement('div');arcane.className='item';const bound=save.magicSkills.selected?APERTURE_SKILLS[save.magicSkills.selected]?.name:null;
-  const sa=slotted(save,'a'),sb=slotted(save,'b'),pr=activePairing(save);void bound;
-  arcane.textContent=`Slot A: ${sa?`${sa.symbol} ${sa.name}`:'empty'} · Slot B: ${sb?`${sb.symbol} ${sb.name}`:'empty'}${pr?` · Pairing: ${pr.name}`:''} · ${pointsFree(save)} constellation point${pointsFree(save)===1?'':'s'} free`;
-  arcane.append(uiButton('Open the Arcanum',()=>openSkills()));body.append(arcane);
+  if (packTab === "wayfarer") try{
+  // Spells, disciplines and capstones live in one place: the Arcanum tab (release 109; tabbed in release 259).
+  const arcane=document.createElement('div');arcane.className='item';
+  const sa=slotted(save,'a'),sb=slotted(save,'b'),pr=activePairing(save);
+  arcane.textContent=`Slot A: ${sa?`${sa.symbol} ${sa.name}`:'empty'} · Slot B: ${sb?`${sb.symbol} ${sb.name}`:'empty'}${pr?` · Pairing: ${pr.name}`:''} · ${pointsFree(save)} constellation point${pointsFree(save)===1?'':'s'} free · Echoes ${notchesUsed(save.echoes?.equipped||[])}/${NOTCHES} notches`;
+  body.append(arcane);
   }catch(error){packSectionFailed("Arcanum",error)}
-  try{
+  if (packTab === "supplies") try{
   for (const [type, name, description] of [
     [
       "restorativeDraught",
@@ -1581,7 +1584,7 @@ function openPack() {
     body.append(row);
   }
   }catch(error){packSectionFailed("Consumables",error)}
-  try{
+  if (packTab === "gear") try{
   const inventoryHeading = document.createElement("h3");
   inventoryHeading.textContent = `Carried equipment (${save.inventory.length}/${EQUIPMENT_CAPACITY})`;
   body.append(inventoryHeading);
@@ -2197,6 +2200,23 @@ for (const d of [panel, atlas, journal, optionsPanel])
       else pausePanel.showModal();
     }
   });
+// Release 259 (Tim, 2026-10-21: the phone's back button "just freezes the game... it should go back to pause or resume,
+// it should give me that menu"). One back action, from either route a phone sends it by: a dialog's close request
+// (cancel) or browser history (popstate, kept armed by a guard entry so back never leaves the game page).
+// A menu open: close it and show the pause menu. Only the creature viewer: close it, back to the codex under it.
+// The pause menu open: Continue (as release 125). In play: open the pause menu.
+function backPressed(){
+  if(glimpseRun)return;
+  const viewer=$("#creatureViewer");if(viewer?.open){viewer.close();return}
+  const open=[panel,atlas,journal,optionsPanel].filter((d)=>d.open);
+  if(open.length){overlayPause=false;for(const d of open)d.close();pause(true);return}
+  if(pausePanel.open){resume();return}
+  pause(true);
+}
+for(const d of [panel,atlas,journal,optionsPanel,$("#creatureViewer")])d?.addEventListener("cancel",(event)=>{event.preventDefault();backPressed()});
+const backGuard=()=>{try{history.pushState({icBack:true},"")}catch{}};
+if(!history.state?.icBack)backGuard();
+addEventListener("popstate",()=>{backPressed();backGuard()});
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     overlayPause = false;
@@ -2229,8 +2249,8 @@ const ARCANUM_TABS=[['constellation','Spells & Constellation'],['glyphs','Glyphs
 let arcanumFocus=null,arcanumSocket=null,arcanumAtShrine=false;
 function el(tag,cls,text){ // small DOM helper for the Arcanum
  const q=document.createElement(tag);if(cls)q.className=cls;if(text!==undefined)q.textContent=text;return q}
-function arcanumShell(tab,title,subtitle){pauseForOverlay();body.replaceChildren();
- const h=el('h2','',title),sub=el('p','',subtitle),tabs=el('div','codex-tabs');
+function arcanumShell(tab,title,subtitle){pauseForOverlay();if(pausePanel.open)pausePanel.close();body.replaceChildren(packTabBar('arcanum'));
+ const h=el('h2','',title),sub=el('p','',subtitle),tabs=el('div','codex-tabs arc-subtabs');
  for(const[id,label]of ARCANUM_TABS){const b=uiButton(label,()=>({constellation:()=>openSkills(arcanumAtShrine),glyphs:openGlyphs,echoes:openEchoes})[id]());if(id===tab)b.setAttribute('aria-current','page');tabs.append(b)}
  body.append(h,sub,tabs);if(!panel.open)panel.showModal()}
 function arcanumFooter(){const f=el('footer','arc-foot');f.append(uiButton('Sphere forge',openForge),uiButton('Pack',openPack),uiButton('Return to world',resume));body.append(f)}
@@ -2329,8 +2349,9 @@ function openEchoes(){const used=notchesUsed(save.echoes.equipped);
   if(owned){c.append(el('em','arc-state',on?'Set — tap to set aside':`Tap to set · ${e.cost} notch${e.cost===1?'':'es'}`));c.onclick=()=>{const r=toggleEcho(save,id);game.message=r.message;persist();openEchoes()}}
   grid.append(c)}
  body.append(grid);arcanumFooter()}
-function openForge(){pauseForOverlay();body.replaceChildren();const h=document.createElement('h2'),intro=document.createElement('p');h.textContent='Sela’s Sphere Forge';intro.textContent=`Weapon Spheres ${save.materials.weaponSphere||0} · Armor Spheres ${save.materials.armorSphere||0}. Rank cost rises by one sphere each step; affixes and identity are preserved.`;body.append(h,intro);for(const slot of ['primary','secondary','armor','charm']){const item=save.equipment[slot];if(!item)continue;const cost=upgradeCost(item),row=document.createElement('div'),title=document.createElement('strong'),preview=document.createElement('div'),next={...item,basePower:item.basePower??item.power,upgradeRank:(item.upgradeRank||0)+1,power:(item.basePower??item.power)+(item.upgradeRank||0)+1};row.className='item';preview.className='item-comparison';title.textContent=`${slot.toUpperCase()} · ${item.name} +${item.upgradeRank||0}`;for(const stat of compareItemStats(next,item)){if(stat.direction==='same')continue;const q=document.createElement('span');q.className=`stat-${stat.direction}`;q.textContent=`↑ ${stat.label} ${stat.current} → ${stat.value}`;preview.append(q)}row.append(title,preview,uiButton(cost.eligible?`Strengthen · ${cost.amount} ${cost.kind==='weaponSphere'?'weapon':'armor'} sphere${cost.amount===1?'':'s'}`:'Upgrade limit reached',()=>{game.upgradeEquipmentSlot(slot);persist();openForge()}));body.append(row)}for(const slot of ['primary','secondary']){const item=save.equipment[slot];if(!item)continue;const row=document.createElement('div'),t=document.createElement('strong'),c=awakenCheck(save,slot);row.className='item';t.textContent=item.awakened?`${slot.toUpperCase()} · ${item.name} · ${awakenedText(item)}`:`Awaken ${item.name}: ${c.message}`;row.append(t);if(c.ok)row.append(uiButton(`Awaken · ${AWAKEN_COST} lumen dust`,()=>{const r=awaken(save,slot);game.message=r.message;persist();openForge()}));body.append(row)}
- body.append(uiButton('Glyphs & Resonances',openGlyphs),uiButton('Aperture constellation',()=>openSkills()),uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
+function openForge(){pauseForOverlay();if(pausePanel.open)pausePanel.close();body.replaceChildren(packTabBar('forge'));const h=document.createElement('h2'),intro=document.createElement('p');h.textContent='Sela’s Sphere Forge';intro.textContent=`Weapon Spheres ${save.materials.weaponSphere||0} · Armor Spheres ${save.materials.armorSphere||0}. Rank cost rises by one sphere each step; affixes and identity are preserved.`;body.append(h,intro);for(const slot of ['primary','secondary','armor','charm']){const item=save.equipment[slot];if(!item)continue;const cost=upgradeCost(item),row=document.createElement('div'),title=document.createElement('strong'),preview=document.createElement('div'),next={...item,basePower:item.basePower??item.power,upgradeRank:(item.upgradeRank||0)+1,power:(item.basePower??item.power)+(item.upgradeRank||0)+1};row.className='item';preview.className='item-comparison';title.textContent=`${slot.toUpperCase()} · ${item.name} +${item.upgradeRank||0}`;for(const stat of compareItemStats(next,item)){if(stat.direction==='same')continue;const q=document.createElement('span');q.className=`stat-${stat.direction}`;q.textContent=`↑ ${stat.label} ${stat.current} → ${stat.value}`;preview.append(q)}row.append(title,preview,uiButton(cost.eligible?`Strengthen · ${cost.amount} ${cost.kind==='weaponSphere'?'weapon':'armor'} sphere${cost.amount===1?'':'s'}`:'Upgrade limit reached',()=>{game.upgradeEquipmentSlot(slot);persist();openForge()}));body.append(row)}for(const slot of ['primary','secondary']){const item=save.equipment[slot];if(!item)continue;const row=document.createElement('div'),t=document.createElement('strong'),c=awakenCheck(save,slot);row.className='item';t.textContent=item.awakened?`${slot.toUpperCase()} · ${item.name} · ${awakenedText(item)}`:`Awaken ${item.name}: ${c.message}`;row.append(t);if(c.ok)row.append(uiButton(`Awaken · ${AWAKEN_COST} lumen dust`,()=>{const r=awaken(save,slot);game.message=r.message;persist();openForge()}));body.append(row)}
+ const iron=document.createElement('div');iron.className='item';iron.textContent=`Cinder Iron ${save.materials.cinderIron||0} · weapon +${save.weaponLevel||0}`;iron.append(uiButton('Reinforce weapon · 3 iron',()=>{game.upgrade();persist();openForge()}));body.append(iron); // release 259: moved here from the Pack
+ body.append(uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
 function openInteraction(id, confirmAttack = false) {
   const o = game.map.objects.find((q) => q.id === id);
   if (!o) return;

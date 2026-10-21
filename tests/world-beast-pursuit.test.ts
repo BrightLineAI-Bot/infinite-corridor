@@ -23,9 +23,9 @@ function hunt(id, n = 5, seed = 'PURSUIT') {
 const beast = (g, id) => g.enemies.find((e) => e.worldBeast === id && !e.dead);
 function cross(g, dx) { const before = g.rx; g.transitionSection(dx, 0); assert.equal(g.rx, before + dx, 'the crossing held'); }
 
-test('a fighting world beast follows you up to 3 sections with its wounds, then stays; coming back starts a fresh run', () => {
+test('a fighting world beast follows you 3 sections in all, with its wounds, then stays; coming back does not reset it', () => {
   const { g, s, rx } = hunt('lightningGiant'), q = () => s.worldBeasts.lightningGiant.active;
-  for (let k = 1; k <= PURSUIT.sections; k++) {
+  for (let k = 1; k <= 2; k++) {
     const from = g.areaStateId(); cross(g, 1);
     const e = beast(g, 'lightningGiant'); assert.ok(e, `it follows into section ${k}`);
     assert.equal(e.hp, e.maxHp - 100, 'it keeps its wounds'); assert.ok(e.aggro);
@@ -34,11 +34,12 @@ test('a fighting world beast follows you up to 3 sections with its wounds, then 
     assert.ok(!(s.session.areas[from]?.enemies || []).some((r) => r.worldBeast === 'lightningGiant'), 'it is no longer back there');
     e.aggro = true; g.player.x = 16; g.player.y = 16;
   }
-  cross(g, 1);
-  assert.equal(beast(g, 'lightningGiant'), undefined, 'after 3 it goes no further'); assert.equal(q().rx, rx + 3, 'it stays in the last section');
-  cross(g, -1);
-  const e = beast(g, 'lightningGiant'); assert.ok(e, 'back in its section, it is there'); assert.equal(q().chase, undefined, 'a fresh run');
-  e.aggro = true; cross(g, -1); assert.ok(beast(g, 'lightningGiant'), 'and it follows again'); assert.equal(q().chase, 1);
+  // Tim: "it'll chase you 2 tiles, and then it'll stop there and then it'll chase you 1 more".
+  beast(g, 'lightningGiant').aggro = false; cross(g, 1); assert.equal(beast(g, 'lightningGiant'), undefined, 'not fighting: it stays'); assert.equal(q().rx, rx + 2);
+  cross(g, -1); const back = beast(g, 'lightningGiant'); assert.ok(back, 'back in its section'); assert.equal(q().chase, 2, 'the count is not reset');
+  back.aggro = true; cross(g, -1); assert.ok(beast(g, 'lightningGiant'), 'its third crossing'); assert.deepEqual([q().rx, q().chase], [rx + 1, PURSUIT.sections]);
+  beast(g, 'lightningGiant').aggro = true; cross(g, -1); assert.equal(beast(g, 'lightningGiant'), undefined, 'three in all: no more'); assert.equal(q().rx, rx + 1, 'it stays in the last section');
+  cross(g, 1); const e = beast(g, 'lightningGiant'); assert.ok(e); e.aggro = true; cross(g, 1); assert.equal(beast(g, 'lightningGiant'), undefined, 'still no more after coming back');
 });
 
 test('the Blob follows only one section; the Void Walker and Astral Worm keep their own rules; one beast to a section', () => {
@@ -65,13 +66,19 @@ test('patience keeps counting through a pursuit; the chase count is normalised a
   o.worldBeasts.tremorWorm.active.chase = -3; ensureWorldBeasts(o, false); assert.equal('chase' in o.worldBeasts.tremorWorm.active, false);
 });
 
-test('a retreating Blob splits: a portion flees home, the mass left behind lingers, fades and is never saved', () => {
-  const { g, s, e } = hunt('morphingBlob'); s.worldBeasts.morphingBlob.active.patience = WORLD_BEASTS.morphingBlob.patience - .2;
-  const scale = e.scale; g.player.x = e.x + 3; g.player.y = e.y;
+function retreatBlob(grown) {
+  const h = hunt('morphingBlob'), { g, s, e } = h; s.worldBeasts.morphingBlob.active.patience = WORLD_BEASTS.morphingBlob.patience - .2;
+  if (grown) { e.blobAge = 1e9; e.blobMerged = .3; } g.player.x = e.x + 3; g.player.y = e.y;
   let t = 1000; for (let i = 0; i < 90 && !e.retreating; i++) { g.update(1 / 30, idle, t += 33); g.player.hp = 1e6; }
-  assert.ok(e.retreating, 'it gives up');
-  const mass = g.enemies.find((q) => q.blobRemnant); assert.ok(mass, 'the mass stays');
-  g.update(1 / 30, idle, t += 33); assert.ok(e.scale <= scale * BLOB_SPLIT.portion + .05, `only a portion flees (${scale} -> ${e.scale})`); assert.ok(mass.scale >= scale && mass.scale > e.scale * 1.8, 'the big mass stays');
+  assert.ok(e.retreating, 'it gives up'); return { ...h, t };
+}
+test('a Blob at its original size leaves whole; a grown Blob flees at its original size and leaves the extra mass, which fades and is never saved', () => {
+  const small = retreatBlob(false); assert.equal(small.g.enemies.some((q) => q.blobRemnant), false, 'no residue at its original size');
+  assert.ok(small.e.scale <= small.e.blobBase.scale * (1 + BLOB_SPLIT.grown) + 1e-9, 'it leaves whole, at about its original size');
+  let { g, s, e, t } = retreatBlob(true); const base = e.blobBase.scale;
+  const mass = g.enemies.find((q) => q.blobRemnant); assert.ok(mass, 'the extra mass stays');
+  assert.ok(mass.scale > base * (1 + BLOB_SPLIT.grown), `it was grown (${mass.scale} vs ${base})`);
+  g.update(1 / 30, idle, t += 33); assert.ok(Math.abs(e.scale - base) <= base * BLOB_SPLIT.grown, `it flees at its original size (${e.scale} vs ${base})`);
   assert.ok(mass.untargetable && mass.noRewards && !mass.worldBeast);
   const [mx, my] = [mass.x, mass.y]; g.update(1 / 30, idle, t += 33); assert.deepEqual([mass.x, mass.y], [mx, my], 'it does not move or fight');
   g.snapshotArea(); assert.ok(!s.session.areas[g.areaStateId()].enemies.some((r) => r.blobRemnant), 'never saved');

@@ -2388,9 +2388,9 @@ Late additions (Tim, 2026-10-21):
 - The cloud ascent is the existing home-fade timing, with the body lifted instead of sunk.
 - At sea, the Giant's attacks are unchanged (slams land on the water). Supernova fog only limits sight; it has no damage and no saved state.
 
-## Release 259: world beasts pursue; the Blob splits; Glyphs fix; Rift Step without recall — 2026-10-21
+## Release 259: world beasts pursue; the Blob splits; Glyphs fix; Rift Step without recall; Pack tabs; back button — 2026-10-21
 
-Tim, 2026-10-21: "these world bosses should pursue you... up to 3 tiles... The blob can just take one... then they should just stop and stay in that tile. If you come back into that tile, it can pursue you for like 3 more, and if you don't kill it, then it'll just lose patience and leave"; "when the blob retreats the whole mass doesn't retreat with it... a portion of it just detaches and retreats home and just leaves the large mass... and then it'll just fade"; "the glyphs and echoes aren't working... nothing accessible"; "the rift step... should not recall you back to a point... disable that".
+Tim, 2026-10-21. On pursuit: "these world bosses should pursue you... The blob can just take one", then "three tiles max... it'll chase you 2 tiles, and then it'll stop there and then it'll chase you 1 more... If you don't wanna fight it within three tiles, you're obviously running away". On the Blob: "a portion of it just detaches and retreats home and just leaves the large mass", then "if the blob is at its original size, it will just leave... only if it's larger will it shrink and leave a residue". On the Arcanum: "the glyphs and echoes aren't working", then "Glyphs, echoes, arcanum, all those steps should just be under... an arcanum tab... so I can just flip through them... in one place... the armor and weapon upgrading system should be another tab". On Rift Step: "should not recall you back to a point... disable that". On the back button: "the back button just freezes the game... it should go back to pause or resume, it should give me that menu".
 
 **CODE:**
 - **Pursuit.** `world-beasts.ts` `PURSUIT` = `{ sections: 3, inset: 3.5, limits: { morphingBlob: 1 }, exclude: [voidWalker, astralWorm] }`.
@@ -2398,20 +2398,32 @@ Tim, 2026-10-21: "these world bosses should pursue you... up to 3 tiles... The b
   - `pursued` moves `active.rx/ry` and increments `chase`.
   - `pursuitSpawn` places it `inset` tiles inside the gate the Wayfarer entered by, on the nearest ground it can hold (`beastGround`, which `worldBeastFor` now shares).
   - `Game.transitionSection` collects the aggro, non-retreating world beasts that may pursue before the snapshot. After the crossing holds (the sea checks pass), `worldBeastsFollow` spawns each one in the new section with its own `hp`/`maxHp`/`damage`, aggro and chasing, and removes its record from the section it left. It does not follow into a settlement or a section that already has a world beast or the Questing Beast.
-  - `worldBeastFor` clears `chase` when it places the beast in its section on an ordinary load, which starts a fresh run.
+  - `chase` counts crossings for the whole encounter and is never reset on return, so three is the total. It ends with the encounter (`active` is cleared).
   - `patience` is untouched, so it keeps counting across sections.
   - `ensureWorldBeasts` normalises `chase` (a positive integer, or absent). This is additive at schema 14.
-- **Blob split.** `BLOB_SPLIT` = `{ portion: .45, linger: 14, fade: 5 }`.
-  - When the Blob begins an overworld retreat, `Game.splitBlob` shrinks the fleeing Blob (and its `blobBase`, from which it regrows each tick) to `portion`.
-  - It leaves an inert `blobRemnant` copy at full size: untargetable, no rewards, no AI.
-  - The update loop counts the remnant's `remnantLeft` down and drives `fleeFade` over the last `fade` s. The renderer's fade does the rest, and the remnant is removed at 0.
-  - `snapshotArea` never saves remnants, so leaving the section clears it.
+- **Blob split.** `BLOB_SPLIT` = `{ grown: .05, linger: 14, fade: 5 }`.
+  - When the Blob begins an overworld retreat, `Game.splitBlob` checks its size. Only a Blob grown more than `grown` past its original size (`blobBase.scale`) splits.
+  - The grown Blob flees at its original size (`blobAge`/`blobMerged` reset) and leaves an inert `blobRemnant` at its grown size: untargetable, no rewards, no AI.
+  - The update loop counts `remnantLeft` down, drives `fleeFade` over the last `fade` s and removes the remnant at 0. `snapshotArea` never saves remnants.
+  - A Blob still at its original size leaves whole.
 - **Glyphs fix.** `openGlyphs` in `main.ts` read `constlit=` for `const lit=`, a merge typo from release 112 (89015a9). In the strict module it threw `ReferenceError` on every open, after `arcanumShell` had drawn only the tabs.
+- **Pack tabs.** `main.ts` `PACK_TABS` (Wayfarer, Gear, Forge, Arcanum, Supplies) and `packTabBar(current)`, a sticky `.pack-tabs` row.
+  - `openPack(tab)` shows one tab. It remembers `packTab` and ignores a click event passed as the argument.
+  - `openForge` and `arcanumShell` draw the same bar (Forge, Arcanum). The Arcanum keeps its own non-sticky `.arc-subtabs` row (Spells & Constellation, Glyphs, Echoes).
+  - "Reinforce weapon · 3 iron" moved from the Pack to the Forge. The Pack's separate Glyphs, Echoes and Constellation buttons were removed.
+  - The Aperture card still attaches under the Wayfarer heading (the save's name).
+- **Back button.** `backPressed()` in `main.ts`:
+  - The creature viewer closes on its own.
+  - Any open Pack/Atlas/Journal/Options closes and the pause menu shows.
+  - The pause menu continues play.
+  - In play, it opens the pause menu.
+  - It runs from each dialog's `cancel` (close request; default prevented) and from `popstate`. A guard history entry (`{icBack:true}`), re-armed after each back, keeps the page from navigating away.
 - **Rift Step.** `constellation.ts` `RIFT` = `{ reach: 2, longStep: 2 }`.
   - The recall (`magicSkills.riftAnchor`) is gone; a stale one from an older save is dropped on the next step.
   - The `anchor` capstone keeps its id and is renamed Long Step: `+RIFT.longStep` reach. The step still stops at walls, ledges and unstandable ground.
 
 **BOUNDARY:**
+- The back button was checked in Chromium at 390 px with real history back and Escape: Pack, then pause menu, then play, then pause menu; Atlas, then pause menu. The page never navigated away. Not tested on a phone.
 - Pursuit applies only to overworld section edges. Dungeons, the Void Walker's and the Astral Worm's own crossings, and retreats are unchanged.
 - A beast that follows is placed fresh by the gate. Its position in the section it left is not kept.
 - The pursuit numbers and the Blob split numbers are provisional, not Tim's.
