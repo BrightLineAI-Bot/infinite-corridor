@@ -155,19 +155,26 @@ export function retreatPath(map, from, to, mode, width = 32) {
   return out;
 }
 // Encounter pacing (release 261; Tim, 2026-10-21: "these world bosses should be more rare... if you meet a world boss, it
-// shouldn't be another world boss for... 8 tiles... unless you put your foot into eight different tiles... you've never
-// been in"). Every spawn chance (world beasts and the Questing Beast) is scaled by `chanceScale`, and after meeting one,
-// no new one is claimed until the Wayfarer has entered `newSections` overworld sections they had never visited before.
-// Beasts already met keep their state; the buffer only gates new claims. save.beastGap = { fresh } (additive; a save
-// without it starts ready).
+// shouldn't be another world boss for... 8 tiles"). Every spawn chance (world beasts and the Questing Beast) is scaled by
+// `chanceScale`, and after meeting one, no new one is claimed until the buffer is full again.
+// Release 263 (Tim: "8 consecutively different tiles. They don't have to be completely new... If you go back into one of
+// the tiles, the counter won't increase, but it won't decrease either"): a section counts when it is not among the last
+// `newSections` different sections entered (`recent`), whether or not it was ever visited before.
+// save.beastGap = { fresh, recent } (additive; a save without it starts ready).
 export const ENCOUNTER = { newSections: 8, chanceScale: .5 };
 export function ensureBeastGap(save) {
   const g = save.beastGap && typeof save.beastGap === "object" ? save.beastGap : {}, n = Number(g.fresh);
-  save.beastGap = { ...g, fresh: Number.isFinite(n) ? Math.max(0, Math.min(ENCOUNTER.newSections, Math.floor(n))) : ENCOUNTER.newSections };
+  const recent = (Array.isArray(g.recent) ? g.recent : []).filter((k, i, a) => typeof k === "string" && a.indexOf(k) === i).slice(-ENCOUNTER.newSections);
+  save.beastGap = { ...g, fresh: Number.isFinite(n) ? Math.max(0, Math.min(ENCOUNTER.newSections, Math.floor(n))) : ENCOUNTER.newSections, recent };
   return save.beastGap;
 }
-// Called once per overworld section load, before any beast is placed: a first visit counts toward the buffer.
-export function noteSectionVisit(save, firstVisit) { const g = ensureBeastGap(save); if (firstVisit) g.fresh = Math.min(ENCOUNTER.newSections, g.fresh + 1); return g.fresh; }
+// Called once per overworld section load (`key` is "rx,ry"), before any beast is placed.
+export function noteSectionVisit(save, key) {
+  const g = ensureBeastGap(save); key = String(key);
+  if (g.recent.includes(key)) return g.fresh;
+  g.recent.push(key); if (g.recent.length > ENCOUNTER.newSections) g.recent.shift();
+  g.fresh = Math.min(ENCOUNTER.newSections, g.fresh + 1); return g.fresh;
+}
 export const encounterReady = (save) => ensureBeastGap(save).fresh >= ENCOUNTER.newSections;
 export function encounterMet(save) { ensureBeastGap(save).fresh = 0; }
 export const RETREAT = { search: 8, fallback: 6, speed: 2.1, inset: 1.5, fade: 1.4 };
@@ -309,7 +316,7 @@ export function ensureWorldBeasts(save, normalizeScarHistory = true) {
     if (a && !a.retreat) delete a.retreat;
     if (a && !a.patience) delete a.patience; // both are added only once there is something to keep
     if (a) { const chase = Math.max(0, Math.floor(Number(q.active.chase) || 0)); if (chase) a.chase = chase; else delete a.chase; } // release 259: sections it has followed this encounter
-    all[id] = { cycle: Math.max(0, Math.floor(Number(q.cycle) || 0)), cooldown: Math.max(0, Math.floor(Number(q.cooldown) || 0)), active: a, slain: Math.max(0, Math.floor(Number(q.slain) || 0)), escaped: Math.max(0, Math.floor(Number(q.escaped) || 0)) };
+    all[id] = { cycle: Math.max(0, Math.floor(Number(q.cycle) || 0)), cooldown: Math.max(0, Math.floor(Number(q.cooldown) || 0)), active: a, slain: Math.max(0, Math.floor(Number(q.slain) || 0)), escaped: Math.max(0, Math.floor(Number(q.escaped) || 0)), ...(q.spoils === true ? { spoils: true } : {}) }; // spoils (release 263): its first-kill Sigil and Echo were given
   }
   save.worldBeasts = all; ensureBeastGap(save);
   // Only save creation/migration normalizes all permanent history; gameplay stays independent of other areas.

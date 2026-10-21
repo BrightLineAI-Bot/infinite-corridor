@@ -16,6 +16,11 @@ export const BOAT = {
   sunkHull: .4,          // a sunk skiff comes back with this share of its hull
   waterKinds: ["ocean", "deepOcean", "lakeWater", "swampWater", "shallows", "seaIce"], // seaIce (release 261): the Mountain Turtle's ice floor; a skiff slides over it
   // Docks (landscape version 3): sections with at least this much open water, about one in `dockEvery`.
+  // Hull shields (release 263; Tim: "a boat deployment shield... we can buy them from the boatman... deploy them... last for
+  // like 3 minutes"): bought from the Shipwright, deployed from the Pack while aboard; while it holds, the hull takes no
+  // damage (hits still share with it, so the Wayfarer keeps only their own share). Deploying again refreshes it.
+  shield: { price: 40, seconds: 180 },
+  pushOff: .6,           // release 263: a skiff built at the shore pushes off at this share of sailing speed
   dockMinWater: 40,
   dockEvery: 3,
 };
@@ -34,6 +39,7 @@ export function loseWood(save) { const n = Math.max(0, Number(save.materials?.wo
 export function addWood(save, n) { save.materials ||= {}; const have = Math.max(0, Number(save.materials.wood) || 0); save.materials.wood = have >= WOOD.carry ? have : Math.min(WOOD.carry, have + n); return save.materials.wood; }
 // Build a skiff on `water` (a sailable deep-water tile next to the Wayfarer) for WOOD.skiffCost wood, and board it.
 // Owning a skiff already just means the new one replaces it (one boat at a time).
+export const canBuildSkiff = (save) => save?.capabilities?.swim === true && (Number(save.materials?.wood) || 0) >= WOOD.skiffCost;
 export function buildSkiff(save, at) {
   const b = ensureBoatState(save), wood = Number(save.materials?.wood) || 0;
   if (save.capabilities?.swim !== true) return { ok: false, message: "You could lash a skiff together, but without the Tidemantle a capsize would drown you." };
@@ -52,6 +58,9 @@ export function ensureBoatState(save) {
   save.boat = Object.assign(b, { version: 1, owned: b.owned === true, hull: Math.max(0, Math.min(BOAT.maxHull, Number.isFinite(b.hull) ? b.hull : BOAT.maxHull)),
     aboard: b.owned === true && b.aboard === true, moored: place(b.moored), home: place(b.home) });
   // Release 261: a second, spare skiff moored elsewhere (additive at schema 14): { rx, ry, x, y, hull }.
+  // Release 263: seconds left on a deployed hull shield (additive). Shields carried are save.consumables.hullShield,
+  // read as a count (missing or bad = 0) and written only when one is bought.
+  save.boat.shield = Math.max(0, Math.min(BOAT.shield.seconds, Number.isFinite(Number(b.shield)) ? Number(b.shield) : 0));
   const spare = b.owned === true && place(b.spare); save.boat.spare = spare ? { ...spare, hull: Math.max(0, Math.min(BOAT.maxHull, Number.isFinite(b.spare.hull) ? b.spare.hull : BOAT.maxHull)) } : null;
   return save.boat;
 }
@@ -62,6 +71,23 @@ export function takeSpare(save) {
   b.moored = { rx: s.rx, ry: s.ry, x: s.x, y: s.y }; b.hull = s.hull; b.aboard = false;
   return true;
 }
+export const shieldsCarried = (save) => Math.max(0, Math.floor(Number(save?.consumables?.hullShield) || 0));
+export const shielded = (save) => (Number(save?.boat?.shield) || 0) > 0;
+export function buyHullShield(save) {
+  const b = ensureBoatState(save), price = BOAT.shield.price;
+  if (!b.owned) return { ok: false, message: "Shipwright: “A hull shield is no use without a hull. Buy a skiff first.”" };
+  if ((save.currency || 0) < price) return { ok: false, message: `Shipwright: “A hull shield costs ${price} marks.”` };
+  save.consumables ||= {}; save.currency -= price; save.consumables.hullShield = shieldsCarried(save) + 1;
+  return { ok: true, message: `Hull shield bought (${save.consumables.hullShield} carried). Deploy it from the Pack while aboard; it holds ${BOAT.shield.seconds / 60} minutes.` };
+}
+export function deployHullShield(save) {
+  const b = ensureBoatState(save);
+  if (!(shieldsCarried(save) > 0)) return { ok: false, message: "You carry no hull shield. The Shipwright sells them." };
+  if (!b.aboard) return { ok: false, message: "Deploy a hull shield aboard your skiff." };
+  save.consumables.hullShield = shieldsCarried(save) - 1; b.shield = BOAT.shield.seconds;
+  return { ok: true, message: `The hull shield unfurls around the skiff: the hull takes no damage for ${BOAT.shield.seconds / 60} minutes.` };
+}
+export function tickHullShield(save, dt) { const b = save?.boat; if (b && b.shield > 0 && dt > 0) b.shield = Math.max(0, b.shield - dt); }
 export const aboard = (save) => save?.boat?.owned === true && save.boat.aboard === true;
 export const sailable = (kind) => BOAT.waterKinds.includes(kind);
 
@@ -70,7 +96,7 @@ export function shipwrightActions(save) {
   const b = ensureBoatState(save);
   if (!b.owned) return ["speak", "buySkiff"];
   const rig = save.worldFlags?.diveRig === true ? [] : ["buyRig"]; // Diving (W5): the Shipwright also sells a dive rig
-  return [...(b.hull < BOAT.maxHull ? ["board", "repair"] : ["board"]), ...rig];
+  return [...(b.hull < BOAT.maxHull ? ["board", "repair"] : ["board"]), "buyShield", ...rig];
 }
 export function repairCost(save) { return Math.ceil((BOAT.maxHull - ensureBoatState(save).hull) * BOAT.repairCostPerPoint); }
 export function buySkiff(save, dock) {
@@ -105,6 +131,7 @@ export function hullAbsorb(save, damage) {
   const b = ensureBoatState(save);
   if (!b.aboard || !(damage > 0)) return { kept: damage, sunk: false };
   const take = Math.min(b.hull, damage * BOAT.hullShare);
+  if (shielded(save)) return { kept: damage - take, sunk: false }; // release 263: the shield takes the hull's share
   b.hull = Math.max(0, b.hull - take);
   if (b.hull > 0) return { kept: damage - take, sunk: false };
   b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home;
@@ -114,7 +141,7 @@ export function hullAbsorb(save, damage) {
 // A blow to the hull alone (open-sea hazards, release 152). Returns true when it sinks the skiff.
 export function hullStrike(save, n) {
   const b = ensureBoatState(save);
-  if (!b.aboard || !(n > 0)) return false;
+  if (!b.aboard || !(n > 0) || shielded(save)) return false;
   b.hull = Math.max(0, b.hull - n);
   if (b.hull > 0) return false;
   b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home;

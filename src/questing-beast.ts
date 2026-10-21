@@ -13,7 +13,7 @@ export const QUESTING_BEAST = { chance: 0.035, minDepth: 4, tries: 3, cooldownSl
 export function ensureQuestingBeast(s) {
   const q = s.questingBeast && typeof s.questingBeast === "object" ? s.questingBeast : {};
   const a = q.active && typeof q.active === "object" && Number.isInteger(q.active.rx) && Number.isInteger(q.active.ry) ? { rx: q.active.rx, ry: q.active.ry, tries: Math.max(0, Number(q.active.tries) || 0) } : null;
-  s.questingBeast = { v: 1, cycle: Math.max(0, Number(q.cycle) || 0), cooldown: Math.max(0, Number(q.cooldown) || 0), active: a, slain: Math.max(0, Number(q.slain) || 0), escaped: Math.max(0, Number(q.escaped) || 0) };
+  s.questingBeast = { v: 1, cycle: Math.max(0, Number(q.cycle) || 0), cooldown: Math.max(0, Number(q.cooldown) || 0), active: a, slain: Math.max(0, Number(q.slain) || 0), escaped: Math.max(0, Number(q.escaped) || 0), ...(q.spoils === true ? { spoils: true } : {}) }; // spoils: release 263
   return s;
 }
 

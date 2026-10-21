@@ -4,7 +4,7 @@ import { generateRegion } from '../src/world.ts';
 import { applyLandscape, biomeFor } from '../src/landscape.ts';
 import { Game } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { WOOD, woodFor, addWood, buildSkiff, BOAT, disembark, takeSpare, ensureBoatState } from '../src/boats.ts';
+import { WOOD, woodFor, addWood, buildSkiff, BOAT, disembark, takeSpare, ensureBoatState, buyHullShield, deployHullShield, tickHullShield, hullAbsorb, hullStrike, shipwrightActions } from '../src/boats.ts';
 import { grantTidemantle } from '../src/water-traversal.ts';
 
 const SEED = 'LANDTEST';
@@ -87,4 +87,32 @@ test('release 261 in play: Act at the water builds a second skiff; the first wai
   disembark(s, { rx: g.rx, ry: g.ry, x: g.player.x, y: g.player.y });
   const r = g.boatAction(spare, 'board'); assert.equal(r.ok, true); assert.equal(s.boat.aboard, true);
   assert.ok(s.boat.spare && g.map.objects.some((o) => o.id === 'skiff-spare'), 'the other is now the spare');
+});
+
+test('release 263: Act at the water\'s edge builds and boards a skiff even beside a tree, and it pushes off', () => {
+  const { s, g } = shore(); grantTidemantle(s, 't'); addWood(s, WOOD.skiffCost);
+  g.map.objects.push({ id: 'shore-tree', kind: 'tree', state: 'standing', x: g.player.x + .4, y: g.player.y, actions: ['cut'], vegetationForm: 'spindle' });
+  assert.equal(g.nearestObject()?.id, 'shore-tree');
+  const r = g.interact(); assert.equal(r.ok, true, r.message); assert.equal(s.boat.aboard, true);
+  assert.ok(Math.hypot(g.player.sailVx, g.player.sailVy) > 0, 'moving off the shore');
+  const t = shore(); t.g.map.objects.push({ id: 'shore-tree', kind: 'tree', state: 'standing', x: t.g.player.x + .4, y: t.g.player.y, actions: ['cut'], vegetationForm: 'spindle' });
+  assert.match(t.g.interact().message, /wood|fell|cut|tree/i, 'without the means to build, the tree still answers'); assert.equal(t.s.boat.aboard, false);
+});
+
+test('release 263: hull shields are bought from the Shipwright and deployed aboard; the hull takes no damage for 3 minutes', () => {
+  const s = freshSave(); s.currency = 100; ensureBoatState(s);
+  assert.equal(buyHullShield(s).ok, false, 'no skiff, no shield');
+  Object.assign(s.boat, { owned: true, aboard: false, hull: BOAT.maxHull });
+  assert.ok(shipwrightActions(s).includes('buyShield'));
+  assert.equal(buyHullShield(s).ok, true); assert.equal(s.consumables.hullShield, 1); assert.equal(s.currency, 100 - BOAT.shield.price);
+  assert.equal(deployHullShield(s).ok, false, 'only aboard'); s.boat.aboard = true;
+  assert.equal(deployHullShield(s).ok, true); assert.equal(s.consumables.hullShield, 0); assert.equal(s.boat.shield, BOAT.shield.seconds);
+  const r = hullAbsorb(s, 20); assert.equal(s.boat.hull, BOAT.maxHull, 'the hull is untouched'); assert.equal(r.kept, 20 - 20 * BOAT.hullShare, 'the Wayfarer keeps only their share');
+  assert.equal(hullStrike(s, 50), false); assert.equal(s.boat.hull, BOAT.maxHull);
+  tickHullShield(s, BOAT.shield.seconds - 1); assert.ok(s.boat.shield > 0); tickHullShield(s, 2); assert.equal(s.boat.shield, 0);
+  hullAbsorb(s, 20); assert.ok(s.boat.hull < BOAT.maxHull, 'unshielded again');
+  const m = migrateSave(JSON.parse(JSON.stringify({ ...s, boat: { ...s.boat, shield: 'x' }, consumables: { ...s.consumables, hullShield: -2 } })));
+  assert.equal(m.boat.shield, 0); assert.equal(deployHullShield(m).ok, false, 'a bad count is none');
+  const g = new Game(Object.assign(freshSave(), { seed: SEED }), 0); g.save.boat = { owned: true, aboard: true, hull: 30 }; ensureBoatState(g.save); g.save.consumables.hullShield = 1;
+  assert.equal(g.useConsumable('hullShield', 0), true); assert.equal(g.save.boat.shield, BOAT.shield.seconds);
 });

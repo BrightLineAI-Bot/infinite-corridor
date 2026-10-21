@@ -1,5 +1,6 @@
 // The shovel (release 225; Tim, 2026-10-19). A shovel is lashed together from wood and stone wherever you stand, digs
-// up to three blocks deep into a dungeon wall, and breaks after six blocks. Walls hide treasure, now and then showing a
+// up to three blocks deep into a dungeon wall, and breaks after DIG.shovelUses blocks (two since release 263; a new one is
+// lashed together automatically on the next dig while you have the materials). Walls hide treasure, now and then showing a
 // glint. In the overworld it digs up the rare patch of disturbed earth.
 //
 // The rule that keeps digging from breaking anything: a shovel makes shortcuts, never keys. It never digs the map's
@@ -14,7 +15,8 @@ import { LETHAL_KINDS } from "./landscape.ts";
 export const DIG = {
   version: 1,
   reach: 3,                      // blocks deep from open floor a tunnel may go
-  shovelUses: 6,                 // wall blocks a shovel digs before it breaks
+  shovelUses: 2,                 // wall blocks a shovel digs before it breaks (release 263, Tim: "one shovel will only dig two blocks, and then it breaks"; it was 6)
+  heldUses: 6,                   // the most uses a saved shovel may keep (a 6-use shovel from before 263 is not cut down)
   recipe: { wood: 1, stone: 1 }, // what a shovel costs (release 259, Tim: "one wood and one stone to make a shovel")
   carryStone: 99,                // the most stone the Wayfarer carries (release 259 set 2; release 261, Tim: "99 wood and 99 stone. You can dig as much as you want")
   stone: { wall: 1, chip: 1, break: 2, spot: 2 },
@@ -39,7 +41,7 @@ export function ensureDigging(save) {
   const d = save.digging && typeof save.digging === "object" ? save.digging : {}, dug = {};
   for (const [k, list] of Object.entries(d.dug || {})) if (typeof k === "string" && Array.isArray(list)) dug[k] = [...new Set(list.filter((p) => typeof p === "string" && /^-?\d+,-?\d+$/.test(p)))].slice(0, DIG.maxTunnelsPerArea);
   const spots = {}; for (const [k, v] of Object.entries(d.spots || {})) if (v === true && /^-?\d+,-?\d+$/.test(k)) spots[k] = true;
-  save.digging = { ...d, shovel: Math.max(0, Math.min(DIG.shovelUses, Math.floor(Number(d.shovel) || 0))), dug, spots };
+  save.digging = { ...d, shovel: Math.max(0, Math.min(DIG.heldUses, Math.floor(Number(d.shovel) || 0))), dug, spots };
   save.materials ||= {}; save.materials.stone = Math.max(0, Math.floor(Number(save.materials.stone) || 0));
   return save;
 }
@@ -145,7 +147,7 @@ export function dig(save, map, plan, areaKey) {
   openTunnel(map, plan.x, plan.y); list.push(`${plan.x},${plan.y}`);
   save.digging.shovel -= 1; addStone(save, DIG.stone.wall);
   const find = wallTreasure(save.seed, areaKey, plan.x, plan.y), got = find ? creditFind(save, find) : null, broke = save.digging.shovel === 0;
-  const parts = [plan.through ? "You break through into the passage beyond." : "You dig a block into the wall.", got ? `Something in the rock: ${got}.` : null, broke ? "The shovel snaps." : `Shovel ${save.digging.shovel}/${DIG.shovelUses}.`];
+  const parts = [plan.through ? "You break through into the passage beyond." : "You dig a block into the wall.", got ? `Something in the rock: ${got}.` : null, broke ? "The shovel snaps." : `Shovel: ${save.digging.shovel} dig${save.digging.shovel === 1 ? "" : "s"} left.`];
   return { ok: true, message: parts.filter(Boolean).join(" "), broke, find };
 }
 
@@ -173,5 +175,5 @@ export function digSpot(save, o, rx, ry) {
   save.digging.spots[key] = true; save.digging.shovel -= 1; addStone(save, DIG.stone.spot);
   const h = hashSeed(`${save.seed}:dig-spot-find:${rx}:${ry}`), got = creditFind(save, pickFind(h)), broke = save.digging.shovel === 0;
   o.state = "dug"; o.actions = []; o.name = "Turned earth";
-  return { ok: true, message: `You dig down and find ${got}, and some stone.${broke ? " The shovel snaps." : ` Shovel ${save.digging.shovel}/${DIG.shovelUses}.`}` };
+  return { ok: true, message: `You dig down and find ${got}, and some stone.${broke ? " The shovel snaps." : ` Shovel: ${save.digging.shovel} dig${save.digging.shovel === 1 ? "" : "s"} left.`}` };
 }

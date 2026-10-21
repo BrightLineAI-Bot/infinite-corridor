@@ -20,14 +20,14 @@ function map() {
 }
 const save = () => { const s = freshSave(); s.seed = 'DIG-TEST'; ensureDigging(s); return s; };
 
-test('a shovel is lashed from wood and stone, and breaks after six blocks', () => {
+test('a shovel is lashed from wood and stone, and breaks after two blocks (release 263)', () => {
   const s = save();
   assert.equal(ensureShovel(s).ok, false);
   s.materials.wood = DIG.recipe.wood; s.materials.stone = DIG.recipe.stone;
   const c = ensureShovel(s); assert.equal(c.crafted, true); assert.equal(s.digging.shovel, DIG.shovelUses);
   assert.equal(s.materials.wood, 0); assert.equal(s.materials.stone, 0);
   assert.equal(ensureShovel(s).crafted, false, 'a shovel in hand is not crafted again');
-  assert.equal(DIG.shovelUses, 6); assert.equal(DIG.reach, 3);
+  assert.equal(DIG.shovelUses, 2); assert.equal(DIG.reach, 3);
 });
 
 test('digging goes up to three blocks deep, breaks through only into floor you can already reach', () => {
@@ -70,11 +70,11 @@ test('tunnels survive leaving and reloading, and migration keeps them', () => {
   const back = migrateSave(JSON.parse(JSON.stringify(s)));
   assert.deepEqual(back.digging.dug[key], ['5,3']); assert.equal(back.digging.shovel, 5);
   const odd = migrateSave({ ...JSON.parse(JSON.stringify(s)), digging: { shovel: 99, dug: { [key]: ['5,3', 'nope', 5] }, spots: { 'x': true, '3,4': true } } });
-  assert.equal(odd.digging.shovel, DIG.shovelUses); assert.deepEqual(odd.digging.dug[key], ['5,3']); assert.deepEqual(odd.digging.spots, { '3,4': true });
+  assert.equal(odd.digging.shovel, DIG.heldUses, 'a shovel from before 263 keeps up to its old six uses'); assert.deepEqual(odd.digging.dug[key], ['5,3']); assert.deepEqual(odd.digging.spots, { '3,4': true });
   assert.deepEqual(freshSave().digging, { shovel: 0, dug: {}, spots: {} }); assert.equal(freshSave().materials.stone, 0);
 });
 
-test('the shovel snaps on its sixth block', () => {
+test('the shovel snaps on its last block', () => {
   const s = save(), m = map(), key = 'dungeon:DIG-TEST:g1:4:4:gate'; s.digging.shovel = 1;
   const r = dig(s, m, planDig(m, 4, 3, 'right', key), key); assert.equal(r.broke, true); assert.match(r.message, /snaps/); assert.equal(s.digging.shovel, 0);
   assert.equal(dig(s, m, planDig(m, 5, 3, 'right', key), key).ok, false);

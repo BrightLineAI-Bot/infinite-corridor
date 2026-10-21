@@ -23,34 +23,42 @@ test('the Turtle can hold an all-ocean section', () => {
   assert.equal(worldBeastFor(s, sea, 7, 7)?.worldBeast, 'mountainTurtle');
 });
 
-test('the sea freezes into walkable ice around it, a skiff slides over it, and it thaws after its life', () => {
+// Release 263: one patch when a combo ends, not a trail.
+function combo(game, t, quiet = TURTLE.seaIce.settle + TURTLE.seaIce.tick) {
+  t.pack = { attack: 'turtleSpin' }; game.tickSeaIce(.1); t.pack = { attack: null };
+  for (let s = 0; s < quiet; s += .1) game.tickSeaIce(.1);
+}
+
+test('release 263: no ice while it moves or attacks; one walkable patch where it settles after a combo; a skiff slides over it; it thaws', () => {
   const { game, map, t } = seaGame();
-  game.tickSeaIce(.01); const under = at(map, 16, 17);
-  assert.equal(under.kind, 'seaIce'); assert.equal(under.blocked, false, 'walkable');
+  for (let s = 0; s < 3; s += .1) { t.x = 10 + s * 4; game.tickSeaIce(.1); }
+  assert.ok(map.tiles.every((q) => q.kind !== 'seaIce'), 'no trail while it roams');
+  t.pack = { attack: 'turtleDash' }; for (let s = 0; s < 2; s += .1) { t.x = 10 + s * 5; game.tickSeaIce(.1); }
+  assert.ok(map.tiles.every((q) => q.kind !== 'seaIce'), 'none while the combo runs');
+  t.x = 16; t.y = 16; t.pack = { attack: null }; for (let s = 0; s < TURTLE.seaIce.settle - .3; s += .1) game.tickSeaIce(.1);
+  assert.ok(map.tiles.every((q) => q.kind !== 'seaIce'), 'a pause between attacks is not the end of the combo');
+  for (let s = 0; s < 1; s += .1) game.tickSeaIce(.1);
+  const under = at(map, 16, 17); assert.equal(under.kind, 'seaIce'); assert.equal(under.blocked, false, 'walkable');
   assert.ok(sailable('seaIce') && BOAT.waterKinds.includes('seaIce'), 'a skiff slides over it');
   assert.equal(at(map, 2, 16).kind, 'grass', 'land is untouched'); assert.equal(at(map, 28, 4).kind, 'ocean', 'far water is untouched');
-  // The Turtle walks on: the ice under it is renewed, and ice it left behind thaws after TURTLE.seaIce.life.
-  const left = { x: 16, y: 17 }; t.x = 26; t.y = 16;
-  for (let s = 0; s < TURTLE.seaIce.life - 1; s += .1) game.tickSeaIce(.1);
-  assert.equal(at(map, left.x, left.y).kind, 'seaIce', 'still frozen a while');
-  for (let s = 0; s < 2; s += .1) game.tickSeaIce(.1);
-  assert.equal(at(map, left.x, left.y).kind, 'ocean', 'thawed back to sea'); assert.equal(at(map, left.x, left.y).blocked, true);
-  assert.equal(at(map, 26, 17).kind, 'seaIce', 'where it stands now is frozen');
-  const tiles = [...game.seaIce.tiles.keys()]; assert.ok(tiles.length > 0 && tiles.length < 40, 'a bounded patch');
+  const n = game.seaIce.tiles.size; assert.ok(n > 8 && n < 40, `one bounded patch (${n})`);
+  for (let s = 0; s < 3; s += .1) game.tickSeaIce(.1); assert.equal(game.seaIce.tiles.size, n, 'no second patch without another combo');
+  for (let s = 0; s < TURTLE.seaIce.life; s += .1) game.tickSeaIce(.1);
+  assert.equal(at(map, 16, 17).kind, 'ocean', 'thawed back to sea'); assert.equal(at(map, 16, 17).blocked, true);
+  t.x = 24; combo(game, t); assert.equal(at(map, 24, 17).kind, 'seaIce', 'the next combo leaves the next patch');
 });
 
 test('with no Turtle the ice all thaws; leaving the overworld clears it; it is never saved', () => {
-  const { game, map } = seaGame(); game.tickSeaIce(.01); assert.ok(game.seaIce.tiles.size > 0);
+  const { game, map, t } = seaGame(); combo(game, t); assert.ok(game.seaIce.tiles.size > 0);
   game.enemies = []; for (let s = 0; s < TURTLE.seaIce.life + 1; s += .25) game.tickSeaIce(.25);
-  assert.equal(game.seaIce.tiles.size, 0); assert.ok(map.tiles.every((t) => t.kind !== 'seaIce'));
-  const again = seaGame(); again.game.tickSeaIce(.01); again.game.area = 'dungeon'; again.game.tickSeaIce(.01); assert.equal(again.game.seaIce, null);
+  assert.equal(game.seaIce.tiles.size, 0); assert.ok(map.tiles.every((q) => q.kind !== 'seaIce'));
+  const again = seaGame(); combo(again.game, again.t); again.game.area = 'dungeon'; again.game.tickSeaIce(.01); assert.equal(again.game.seaIce, null);
   assert.ok(!JSON.stringify(freshSave()).includes('seaIce'));
 });
 
-test('ice under the Wayfarer does not thaw until they step off it', () => {
-  const { game, map, t } = seaGame(); game.tickSeaIce(.01);
+test('release 263: ice that thaws under the Wayfarer drops them into the deep water', () => {
+  const { game, map, t } = seaGame(); combo(game, t);
   Object.assign(game.player, { x: 16, y: 16.3 }); const under = Math.floor(16.3 + .72) * 32 + 16; assert.equal(map.tiles[under].kind, 'seaIce');
-  t.x = 28; for (let s = 0; s < TURTLE.seaIce.life + 3; s += .25) game.tickSeaIce(.25);
-  assert.equal(map.tiles[under].kind, 'seaIce', 'still holding them up');
-  game.player.x = 2; game.tickSeaIce(TURTLE.seaIce.tick); assert.equal(map.tiles[under].kind, 'ocean', 'thaws once they leave');
+  t.x = 28; for (let s = 0; s < TURTLE.seaIce.life + 1; s += .25) game.tickSeaIce(.25);
+  assert.equal(map.tiles[under].kind, 'ocean', 'it thaws with them on it');
 });

@@ -2495,3 +2495,36 @@ Tim, 2026-10-21. On rarity: "these world bosses should be more rare... if you me
   - the Walker hunt fixture gets open ground;
   - the "nowhere to stand" example is the Blob;
   - `tests/beast-ocean.test.ts` lists the Turtle as marine.
+
+## Release 263: Echo drops, Crossing Sigils, safe dungeon arrivals, the boss gap, the Turtle's ice, hull shields, skiffs and shovels, spells by the compass — 2026-10-21
+
+Tim, 2026-10-21. On Echoes: "there should be a pretty low chance to drop them... from different guardians... make sure that all the creatures that can [leave Echoes] can also be guardians". On sigils: "they're too rare... when you kill these world bosses... and the [Gate Revenants], those will drop crossing sigils... the first guardian in a dungeon won't ever drop a crossing sigil. Only the second guardian... ultra rare". On arrivals: "I spawn into like right next to The Guardian... I should not spawn next to The Guardian". On the gap: "8 consecutively different tiles. They don't have to be completely new". On the Turtle: "one ice floor whenever it stops doing its combo attack... if the ice dissolves while you're standing on it, then you will fall into the deep water". On boats: "a boat deployment shield... buy them from the boatman... last for like 3 minutes"; "if I go to the edge of the water and hit action, I should be building a boat and getting on that boat and moving". On shovels: "one shovel will only dig two blocks, and then it breaks". On the HUD: "the AB spells should always be positioned next to the compass, permanently".
+
+**CODE:**
+- **Echo drops.** `echoes.ts` `echoDrop` read `enemy.packKind` as the creature id, but `packCombatantFields` sets `packKind: true`, so no real kill ever matched an Echo. `echoKindOf` uses `kind` when the flag is a boolean.
+  - `ECHO_DROPS = { guardian: 3, ordinary: 0 }` (percent; Tim: "Okay three percent"). The roll is `rng(key)()`, not the raw hash modulo 100, which ran at about a third of the stated chance when only the drop counter changed. `Game.defeatEnemy` passes `guardian` for `boss`, crossing guardians, world beasts and the Questing Beast.
+  - `monster-pack.ts` `GUARDIAN_POOL` gains `pallidCrawler`, the one non-unique creature with an Echo that could not guard. A dungeon keeps the guardian stored in `history.guardianKind`, so only dungeons never entered draw from the wider pool.
+- **Crossing Sigils.** `game.ts` `SIGIL_DROPS = { worldBeast: 20, gateRevenant: 1, deepGuardian: 3, threefold: 6 }` and `sigilDrop(save, e, map, n, first)`. `takeFirstSpoils` marks `save.worldBeasts[id].spoils` / `save.questingBeast.spoils` (additive, kept by the ensure functions): a beast's first kill since 263 gives a Sigil and, through `echoDrop(..., certain)`, its Echo for certain; later kills a 20% Sigil chance (Tim: "The first time you kill it, there's a hundred percent chance... But each time [after], there's a twenty percent chance"). Any `gateRevenant` gives one; a guardian (`isDungeonGuardian`) on level index 1 or more of a `multiLevel` map has a seeded 3% chance, and any guardian of the Threefold Deep (`map.name`) 6% (Tim: "a slightly greater chance"). Summons and `noRewards` give none. `defeatEnemy` adds them to `save.consumables.crossingSigil`.
+- **Arrivals.** `ARRIVAL = { clear: 8, search: 2000 }` and `clearArrival(map, width, at, enemies)`: when a living guardian is within `clear` tiles, a breadth-first walk over open floor (`footprintOpen`) finds the nearest spot clear of all of them (the farthest reachable one when none is). It runs after a `deepTransition`, after being felled in a dungeon, and on re-entering one at its anchor.
+- **The gap.** `ensureBeastGap` adds `recent` (the last `newSections` different section keys). `noteSectionVisit(save, key)` counts a section only when it is not in `recent`; `Game.loadArea` passes `"rx,ry"`.
+- **The Turtle's ice.** `TURTLE.seaIce = { radius: 2.6, life: 8, tick: .5, settle: 1 }`. `Game.tickSeaIce` marks a Turtle that attacks (`e.pack.attack`), and once it has made no attack for `settle` s freezes one patch where it stands. Ice thaws on schedule even under the Wayfarer; the existing deep-water rule then applies.
+- **Hull shields.** `boats.ts` `BOAT.shield = { price: 40, seconds: 180 }`, `buyHullShield`, `deployHullShield` (aboard only; refreshes, never stacks) and `tickHullShield`. `save.boat.shield` (seconds) and `save.consumables.hullShield` are additive and normalised in `ensureBoatState`. While shielded, `hullAbsorb` keeps the hull's share off the Wayfarer without touching the hull, and `hullStrike` does nothing. The Shipwright offers `buyShield`; the Pack's Supplies list deploys it (`useConsumable("hullShield")`); `renderer.ts` rings the skiff and adds a shield bar under the hull gauge.
+- **Skiffs at the shore.** `SHORE_PASSIVE` (`tree`, `rock`): when the nearest object is one of these, Act at the water's edge builds the skiff instead, if `canBuildSkiff`. `buildSkiffHere` gives the skiff a push away from the shore (`BOAT.pushOff`).
+- **Shovels.** `DIG.shovelUses` is 2; `DIG.heldUses` 6 is the clamp in `ensureDigging`, so a shovel saved with more uses keeps them. Crafting on the next dig was already automatic (`ensureShovel`). The dig messages say how many digs are left.
+- **Spells by the compass.** In `index.html` and `proving-ground/index.html` the `.quick-row` moves inside `.left-controls`, after the compass. `styles.css` lays the left controls out as a grid: compass and spells on the first row, Map, Pack and the preset button on the second.
+
+**BOUNDARY:**
+- Saves stay at schema 14. All new fields are additive and normalised.
+- No creature's strength changed.
+- Echoes already owned stay owned; nothing is reset.
+- The arrival fix moves the Wayfarer only along floor they could walk; it never moves a guardian. The reported spawn did not reproduce in a scan of overworld dungeons (10 multi-level dungeons, 15 descents), so the fix covers every way onto a level.
+- Boat dodging already granted the land dodge's 420 ms of invulnerability, and the hull is only struck when the Wayfarer is, so a dodge already protected the hull; nothing changed there. Rift Step already blinks along the last movement direction.
+- The HUD was checked in Chromium at 390×844, 844×390, 884×1104, 1104×884 and 360×740. Not on a phone.
+- The numbers (3% sigil, 6% Threefold, 8-tile arrival gap, 2.6 ice radius, 1 s settle, 40 marks, 3 minutes) are provisional except where Tim named them (3% Echo, 2 digs, 3 minutes).
+- Tests:
+  - `tests/echoes.test.ts` (rates and a real guardian kill);
+  - `tests/sigils-arrival.test.ts`;
+  - `tests/encounter-pacing.test.ts`;
+  - `tests/turtle-sea-ice.test.ts`;
+  - `tests/wood-boats.test.ts` (shields, building at the shore);
+  - `tests/digging.test.ts`.

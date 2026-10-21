@@ -13,19 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**263**
+**265**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 261 | Claude | `claude/dreamy-rubin-yn6q2p` | World-boss pacing: rarer encounters with an 8-new-section buffer between meetings; placement geometry (no big beast on a small island, always a retreat path; the Questing Beast never over open sea); the Mountain Turtle at sea, walking on ice it freezes | Building. |
+| 263 | Claude | `claude/dreamy-rubin-yn6q2p` | Echo drops fixed (guardians and world beasts, by chance); the boss buffer counts 8 different sections in a row; the Turtle's ice once per combo; boat dodge and hull shields; crossing sigils; dungeon arrivals away from the guardian; shovels; Rift Step direction; spells beside the compass | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 261 | `r261-2215f2781a82` | 2026-10-21 | World-boss pacing and placement; the Questing Beast's sea rules; the Mountain Turtle at sea on ice; 99 wood and stone, two skiffs; HUD rearranged with spell presets (PR #109). The pre-publish review found no blockers. |
 | 259 | `r259-a490b918fa7e` | 2026-10-21 | World beasts pursue (3 crossings, Blob 1); Blob split; Glyphs fix; Rift Step without recall; Pack tabs; back button; carry limits and the 1+1 shovel; Psychic Crystal poise, dungeon bounds and hunting (PR #108). The pre-publish review found no blockers. |
 | 257 | `r257-204a3837382b` | 2026-10-21 | The Lightning Giant world boss; the Giant at sea on his cloud; Supernova fog at sea (PR #107). The pre-publish review found no blockers. |
 | 253 | `r253-447383f7b357` | 2026-10-21 | The Void Walker boards the Astral Worm; Astral pair rules; release log (PRs #105, #106). The re-review after the leave-roll fix found no blockers. |
