@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 271 — Gate Revenants stalk, then hunt. In a dungeon a Gate Revenant keeps 5 to 8 tiles off at first, slipping through the walls to stay near you, and turns on you at once if you come within a few tiles or wound it. Two minutes after you enter a dungeon they all hunt you wherever you are. Hunting, they pass straight through dungeon walls, never out into the black beyond, and one left inside rock steps out onto floor you can reach.
+- Release 271 — Gate Revenants fight smarter. A Revenant may slip a swing or a shot about to land, side-stepping in a blink (not every time, and not again for a couple of seconds). Land 8 blows on one inside 3 seconds and its poise breaks: it sinks to one knee, open and still, for 2.4 seconds, then springs away.
+- Release 271 — the Gate Revenant has a new look: a hooded, horned wraith in a tattered cloak with the Gate's arch burning on its chest. It looks faded while it stalks, its eyes flare red on the hunt and brighter as it winds up, it leaves an afterimage when it dodges, and it kneels while its poise is broken. It costs no more to draw than before.
+
 - Release 269 — the Gate Revenant horde. About one new dungeon in two hundred holds nothing but Gate Revenants, 28 to 44 of them. Three stand at a time, and as each falls another comes after a few seconds, until the dungeon's count is spent. Any you've drawn follow you out of the dungeon and across sections. A kill anywhere counts down the dungeon's number, which is kept in your save: if you die or lose them, the survivors go back and wait. Breaking the horde locks a piece of the Far Gate into place. Horde Revenants don't drop Crossing Sigils.
 - Release 269 — building costs less: a wood wall is 4 wood, a stone block 5 stone.
 - Release 269 — Build patches your skiff. Beside your damaged skiff or aboard it (a REPAIR tag shows), each press of Build spends a wood and mends half the hull.
