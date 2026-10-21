@@ -465,6 +465,7 @@ export function resetPackRuntime(enemy) {
   if (!enemy?.packKind) return enemy;
   const cd = enemy.pack?.cd || {};
   enemy.pack = { ...freshPackState(), cd: { ...cd } };
+  if (enemy.kind === "psychicCrystal") enemy.crystalFall = 0; // release 259: a poise break does not survive a reload
   // Snapshots retain attack lists. Move the sky attack for existing journeys too, without retuning their beasts.
   if (enemy.kind === "nanobotKnight") enemy.packAttacks = (enemy.packAttacks || MONSTER_PACK.nanobotKnight.attacks).filter((id) => id !== "knightOrbital");
   if (enemy.kind === "psychicCrystal" && !(enemy.packAttacks || []).includes("psyOrbital")) enemy.packAttacks = [...(enemy.packAttacks || MONSTER_PACK.psychicCrystal.attacks), "psyOrbital"].filter((id, i, ids) => ids.indexOf(id) === i);
@@ -626,9 +627,11 @@ export const CRYSTAL = {
   orbitalLife: 4, orbitalWarn: .7, orbitalSpeed: 2.1, orbitalRadius: .65, orbitalTick: .35,
   orbitalSpread: 1.6, orbitalPeriod: 2.4, scorchEvery: .3, scorchLife: 1.5, scorchRadius: .5, scorchMax: 24,
   roamSpeed: 1.1, roamNodes: 625, roamDistance: 6, roamRecent: 6, roamPause: .25, roamRetry: 1, roamSight: 7, terrainLookahead: 1,
-  // Release 259 (Tim: "its dodging was a little bit too tuned... it will take a few hits and then it will dodge out of the
-  // way"): it springs aside only after `dodgeAfterHits` landed blows since its last dodge, then rests `dodgeCooldown` s.
-  dodgeAfterHits: 3, dodgeCooldown: 2.4,
+  // Poise (release 259; Tim: "it dodges a lot... that's fine... it has poise, so if it takes a few hits, then it will
+  // break and fall through the floor and then you can get a bunch of hits in, and then it will... get up and dodge away").
+  // `poiseHits` landed blows (forgotten after `poiseForget` s without one) break it: it drops to the floor for `breakTime`
+  // s (falling over `fallTime`, rising over `riseTime`) and cannot dodge, attack or move; then it rises and springs away.
+  poiseHits: 4, poiseForget: 5, breakTime: 3.2, fallTime: .25, riseTime: .4,
   // In a dungeon it may phase through an interior wall up to this many tiles thick (Game.roamerBounds), never beyond the edge.
   boundsSpan: 3,
 };
@@ -1831,7 +1834,6 @@ function evade(e, s, w, p, d) {
     return true;
   }
   if (e.kind === "nanobotKnight") return knightMistDodge(e, s, w, p, d);
-  if (e.kind === "psychicCrystal" && (s.hitsTaken || 0) < CRYSTAL.dodgeAfterHits) return false; // release 259: it takes a few hits first
   if ((s.attack && s.phase !== "recover") || (s.cd.qbEvade || 0) > 0) return false; // it may spring out of an attack's recovery
   let dir = null;
   for (const q of w.playerShots || []) {
@@ -1843,8 +1845,7 @@ function evade(e, s, w, p, d) {
   if (!dir) return false;
   if (e.kind === "mountainTurtle") { s.cd.qbEvade = QB_MOVES.evadeCooldown * 1.6; if (s.attack) endAttack(e, s); s.evade = { x: 0, y: 0, t: TURTLE.tuckTime }; e.untargetable = true; e.tucked = true; return true; } // release 241: too big to spring aside; it pulls into its shell
   const enraged = e.hp <= e.maxHp * PACK_BOSS_TEMPLATE.enrage;
-  s.cd.qbEvade = e.kind === "psychicCrystal" ? CRYSTAL.dodgeCooldown : enraged ? QB_MOVES.evadeCooldownEnraged : QB_MOVES.evadeCooldown;
-  if (e.kind === "psychicCrystal") s.hitsTaken = 0;
+  s.cd.qbEvade = enraged ? QB_MOVES.evadeCooldownEnraged : QB_MOVES.evadeCooldown;
   if (s.attack) endAttack(e, s);
   s.evade = { ...dir, t: QB_MOVES.evadeTime }; e.untargetable = true; s.vel = null;
   return true;
@@ -1981,6 +1982,26 @@ function fleeStep(e, s, w) {
   if (e.fleeTo.home) { e.fleeFade = 1; if (e.kind === "lightningGiant") e.giantCloud = true; } else e.fleeDone = true;
 }
 
+// The Psychic Crystal's poise (release 259; CRYSTAL.poise*). Counts landed blows (from hp drops); enough of them break
+// it: it falls to the floor (`e.crystalFall` 0..1 for the renderer), helpless, for CRYSTAL.breakTime, then rises and
+// springs away from the Wayfarer. Returns true while it is broken (the tick is spent).
+function crystalPoise(e, s, w, p) {
+  const hp = Number(e.hp) || 0, dt = Number.isFinite(w.dt) ? Math.max(0, w.dt) : 0;
+  if (s.hpSeen != null && hp < s.hpSeen) { s.poiseHits = (s.poiseHits || 0) + 1; s.poiseIdle = 0; } else s.poiseIdle = (s.poiseIdle || 0) + dt;
+  s.hpSeen = hp; if (s.poiseIdle >= CRYSTAL.poiseForget) s.poiseHits = 0;
+  if (!(s.broken > 0) && (s.poiseHits || 0) >= CRYSTAL.poiseHits && !s.evade) {
+    s.broken = CRYSTAL.breakTime; s.poiseHits = 0; if (s.attack) endAttack(e, s); s.tele = null; s.vel = null; w.release?.(e); // a held Wayfarer is let go
+  }
+  if (!(s.broken > 0)) { e.crystalFall = 0; return false; }
+  s.broken -= dt; e.untargetable = false; e.hopLift = 0; s.evade = null;
+  const gone = CRYSTAL.breakTime - s.broken; e.crystalFall = Math.max(0, Math.min(1, gone / CRYSTAL.fallTime, s.broken / CRYSTAL.riseTime));
+  if (s.broken > 0) return true;
+  // Up again: it springs away from the Wayfarer at once.
+  s.broken = 0; e.crystalFall = 0; const away = unit(e.x - p.x, e.y - p.y), side = s.orbitDir || 1;
+  s.evade = { ...unit(away.x - away.y * side * .6, away.y + away.x * side * .6), t: QB_MOVES.evadeTime }; e.untargetable = true; s.cd.qbEvade = QB_MOVES.evadeCooldown;
+  return true;
+}
+
 // Wall-phasing remains Crystal-only. Hunter scheduling is separate from locomotion permissions.
 export function isDungeonRoamer(e, area) { return area === "dungeon" && e?.worldBeast === "psychicCrystal"; }
 export function isDungeonHunter(e, area) { return isDungeonRoamer(e, area) || (area === "dungeon" && e?.worldBeast === "voidWalker"); }
@@ -2064,7 +2085,7 @@ export function updatePackMonster(e, w) {
   if (e.blobletOf && blobletHome(e, s, w)) return;
   if (e.wormOf && tentacleTurret(e, s, w, p)) return;
   if (e.kind === "tremorWorm" && wormCycle(e, s, w, p)) return;
-  if (e.kind === "psychicCrystal") { const hp = Number(e.hp) || 0; if (s.hpSeen != null && hp < s.hpSeen) s.hitsTaken = (s.hitsTaken || 0) + 1; s.hpSeen = hp; } // release 259: blows landed since its last dodge
+  if (e.kind === "psychicCrystal" && crystalPoise(e, s, w, p)) return; // release 259: a poise break grounds it
   if (e.kind === "voidWalker" ? voidEvade(e, s, w, p, d) : e.evasive && evade(e, s, w, p, d)) return;
   if (s.attack) {
     s.t -= dt;

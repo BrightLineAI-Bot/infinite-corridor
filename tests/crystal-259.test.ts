@@ -41,12 +41,26 @@ test('in play it never ends a tick in the black; one saved out there comes back 
   for (let i = 0; i < 150; i++) { g.update(1 / 30, IDLE, t += 33); g.player.hp = 1e6; assert.ok(g.roamerInBounds(back), `in bounds at ${back.x},${back.y}`); }
 });
 
-test('the Crystal takes a few hits before it dodges, then rests before it can dodge again', () => {
+test('poise: the Crystal still dodges freely; enough landed hits break it to the floor, helpless, then it rises and springs away', () => {
   const { game, e } = fixture(dungeon(), { x: 6, y: 6 }); e.evasive = true; game.player.x = 7; game.player.y = 6;
   const w = game.packWorld(1 / 30, 0); w.playerSwinging = true; w.los = () => true;
   const tick = () => { w.now += 33; updatePackMonster(e, w); };
-  tick(); assert.equal(!!e.pack.evade, false, 'no dodge before it has been hit');
-  for (let k = 1; k < CRYSTAL.dodgeAfterHits; k++) { e.hp -= 50; tick(); assert.equal(!!e.pack.evade, false, `still standing after ${k} hit(s)`); }
-  e.hp -= 50; tick(); assert.ok(e.pack.evade, `it dodges after ${CRYSTAL.dodgeAfterHits} hits`);
-  assert.equal(e.pack.hitsTaken, 0); assert.ok(e.pack.cd.qbEvade >= CRYSTAL.dodgeCooldown - .1);
+  tick(); assert.ok(e.pack.evade, 'it still dodges a swing before it has been hit');
+  while (e.pack.evade) tick(); e.pack.cd.qbEvade = 1e9; // keep it standing for the hits
+  for (let k = 1; k < CRYSTAL.poiseHits; k++) { e.hp -= 50; tick(); assert.ok(!(e.pack.broken > 0), `holds after ${k} hit(s)`); }
+  e.hp -= 50; tick(); assert.ok(e.pack.broken > 0, `breaks after ${CRYSTAL.poiseHits} hits`);
+  for (let i = 0; i < 12; i++) tick(); assert.equal(e.crystalFall, 1, 'down on the floor');
+  e.pack.cd.qbEvade = 0; const at = { x: e.x, y: e.y };
+  for (let i = 0; i < 30; i++) { tick(); assert.equal(!!e.pack.evade, false, 'no dodge while broken'); assert.equal(e.untargetable, false, 'it can be hit'); assert.equal(e.pack.attack, null, 'no attacks'); }
+  assert.deepEqual({ x: e.x, y: e.y }, at, 'it does not move');
+  let t = 0; while (e.pack.broken > 0 && t++ < 200) tick();
+  assert.ok(e.pack.evade && e.untargetable, 'up again, it springs away'); assert.equal(e.crystalFall, 0);
+  const d0 = Math.hypot(at.x - game.player.x, at.y - game.player.y); while (e.pack.evade) tick();
+  assert.ok(Math.hypot(e.x - game.player.x, e.y - game.player.y) > d0, 'away from the Wayfarer');
+});
+
+test('poise forgets: hits spread out more than poiseForget apart never break it', () => {
+  const { game, e } = fixture(dungeon(), { x: 6, y: 6 }); const w = game.packWorld(1 / 30, 0); w.los = () => true;
+  const tick = () => { w.now += 33; updatePackMonster(e, w); };
+  for (let k = 0; k < CRYSTAL.poiseHits * 2; k++) { e.hp -= 10; tick(); for (let i = 0; i < Math.ceil(CRYSTAL.poiseForget * 30) + 2; i++) tick(); assert.ok(!(e.pack.broken > 0)); }
 });

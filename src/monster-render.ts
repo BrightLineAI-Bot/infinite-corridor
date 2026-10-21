@@ -746,10 +746,14 @@ const BODY = {
   // faces), smaller shards circling it, a cold core; its aura says what it means: a hazy white at rest, red and larger
   // when it attacks, violet and drawn tight just before it takes hold of you.
   psychicCrystal(ctx, q) {
-    const { k, b, u, e, state } = q, t = e.reduceMotion ? 0 : q.t, s0 = e.pack, att = s0?.attack, bob = Math.sin(t * 1.6) * u * .05, cy = b - u * .8 + bob - q.bodyLift, H = u * .55, W = u * .17;
-    const grab = att === "psyGrab", hostile = att && !grab && att !== "psyWall", aura = grab ? [170, 90, 255] : hostile ? [255, 60, 60] : [235, 240, 255], ar = u * (grab ? .42 + .04 * Math.sin(t * 12) : hostile ? .66 + .05 * Math.sin(t * 9) : .52);
+    // Release 259: a poise break (`e.crystalFall` 0..1) drops it out of the air: it sinks to the floor, tips over, and its
+    // aura goes grey until it rises again.
+    const fall = Math.max(0, Math.min(1, Number(q.e.crystalFall) || 0));
+    const { k, b, u, e, state } = q, t = e.reduceMotion ? 0 : q.t, s0 = e.pack, att = s0?.attack, bob = Math.sin(t * 1.6) * u * .05 * (1 - fall), cy = b - u * .8 + bob - q.bodyLift * (1 - fall) + fall * u * .42, H = u * .55, W = u * .17;
+    const grab = att === "psyGrab", hostile = att && !grab && att !== "psyWall", aura = fall > 0 ? [140, 145, 165] : grab ? [170, 90, 255] : hostile ? [255, 60, 60] : [235, 240, 255], ar = u * (grab ? .42 + .04 * Math.sin(t * 12) : hostile ? .66 + .05 * Math.sin(t * 9) : .52);
     const poly = (pts, fill) => { ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
     ctx.fillStyle = "rgba(4,4,8,.35)"; ctx.beginPath(); ctx.ellipse(k, b, u * .22, u * .06, 0, 0, TAU); ctx.fill(); // its shadow far below
+    if (fall) { ctx.save(); ctx.translate(k, b - u * .05); ctx.rotate(fall * 1.25 * (e.facingX < 0 ? -1 : 1)); ctx.translate(-k, -(b - u * .05)); } // tipped over on the floor
     for (let i = 0; i < 3; i++) { const a2 = (hostile ? .13 - i * .035 : .18 - i * .05) * (state === "windup" ? 1.3 : 1); ctx.fillStyle = `rgba(${aura[0]},${aura[1]},${aura[2]},${a2})`; ctx.beginPath(); ctx.ellipse(k + Math.sin(t * .9 + i * 2) * u * .03, cy, ar * (1 + i * .22), ar * (1.15 + i * .2), 0, 0, TAU); ctx.fill(); } // the aura, in three soft layers
     for (const side of [-1, 1]) { const bx = k + side * W * 1.2, by = cy + H * .35, h2 = H * .5, w2 = W * .45, lean = side * W * .5; // two lesser crystals grown from its foot
       poly([bx + lean, by - h2, bx - w2, by - h2 * .2, bx, by + h2 * .25], side < 0 ? "#8a95c4" : "#4a5288"); poly([bx + lean, by - h2, bx + w2, by - h2 * .2, bx, by + h2 * .25], side < 0 ? "#cdd6f6" : "#6d78a8"); }
@@ -761,6 +765,7 @@ const BODY = {
     ctx.strokeStyle = "#ffffff88"; ctx.beginPath(); ctx.moveTo(k + sx * .5, cy - H * .7); ctx.lineTo(k + sx * .5, cy + H * .5); ctx.stroke(); // a glint down its edge
     ctx.fillStyle = `rgba(${aura[0]},${aura[1]},${aura[2]},.9)`; ctx.beginPath(); ctx.ellipse(k, cy, W * .35, H * .22, 0, 0, TAU); ctx.fill(); // the core takes the aura's colour
     for (let i = 0; i < 4; i++) { const a2 = t * 1.2 + i * TAU / 4, ox = k + Math.cos(a2) * u * .3, oy = cy + Math.sin(a2) * u * .12, h2 = u * .07, w2 = u * .025; poly([ox, oy - h2, ox + w2, oy, ox, oy + h2, ox - w2, oy], Math.sin(a2) > 0 ? "#dfe6ff" : "#6d78a8"); } // shards circling it
+    if (fall) ctx.restore();
   },
   bloblet(ctx, q) {
     const { k, b, u, t, p, flip } = q, R = u * .5, cy = b - R * .55, hop = Math.abs(Math.sin(t * 8)) * u * .06;

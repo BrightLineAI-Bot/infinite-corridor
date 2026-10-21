@@ -2422,10 +2422,13 @@ Tim, 2026-10-21. On pursuit: "these world bosses should pursue you... The blob c
   - `addWood` and `addStone` add up to the limit, and never take away wood or stone an older save already holds over it.
   - Chipping a rock with a full pouch is refused without using up the rock. Cutting a tree says when you are full.
   - Tim, 2026-10-21: "up to 6 wood because that's 2 boats... up to 2 stones... you can at maximum dig 6 into a dungeon wall".
-- **Crystal dodge.** `CRYSTAL.dodgeAfterHits` 3, `dodgeCooldown` 2.4.
-  - `updatePackMonster` counts the Crystal's landed blows (`pack.hitsTaken`, from hp drops).
-  - `evade` refuses its dodge until `dodgeAfterHits`, then resets the count and rests `dodgeCooldown`.
-  - Other beasts keep the generic dodge. Tim kept the Void Walker as it was.
+- **Crystal poise.** `CRYSTAL.poiseHits` 4, `poiseForget` 5, `breakTime` 3.2, `fallTime` .25, `riseTime` .4.
+  - Tim first asked for fewer dodges ("dodges after a few hits"). He then changed it: "it dodges a lot, that's fine... it has poise, so if it takes a few hits, then it will break and fall... you can get a bunch of hits in... then it will get up and dodge away". So the generic dodge is unchanged.
+  - `crystalPoise` in `monster-pack.ts`, run each tick before the dodge, counts landed blows from hp drops into `pack.poiseHits`. The count is forgotten after `poiseForget` s without one.
+  - At `poiseHits` the Crystal breaks (`pack.broken`) and loses any attack, telegraph or grab hold.
+  - While broken it is targetable and does not move, dodge or attack. `e.crystalFall` (0 to 1) eases over `fallTime` and `riseTime`, and the renderer sinks it to the floor, tips it over and greys its aura.
+  - When the break ends, it springs away from the Wayfarer (an immediate evade).
+  - `resetPackRuntime` clears the break and `crystalFall`.
 - **Crystal dungeon bounds.** `Game.roamerBounds()`, cached against the walker landing graph so it rebuilds when the terrain changes, marks where a dungeon roamer may be:
   - any open (unblocked) tile, so every room counts, including one walking cannot reach (the release 249 decision);
   - any tile touching one;
@@ -2442,4 +2445,4 @@ Tim, 2026-10-21. On pursuit: "these world bosses should pursue you... The blob c
 - A beast that follows is placed fresh by the gate. Its position in the section it left is not kept.
 - The pursuit numbers and the Blob split numbers are provisional, not Tim's.
 - The Glyphs fix was checked in Chromium at 390 px against a build of `main` (which threw "constlit is not defined" with an empty screen). Glyphs then showed its hosts, sockets, tiles and footer, and Echoes and the Arcanum opened without errors.
-- Tests: `tests/world-beast-pursuit.test.ts`, `tests/constellation.test.ts` (Long Step, no recall), `tests/crystal-259.test.ts` (dodge after hits, dungeon bounds) and `tests/digging.test.ts` (carry limits; the old chip-then-break total now stops at the stone limit).
+- Tests: `tests/world-beast-pursuit.test.ts`, `tests/constellation.test.ts` (Long Step, no recall), `tests/crystal-259.test.ts` (poise break, dungeon bounds) and `tests/digging.test.ts` (carry limits; the old chip-then-break total now stops at the stone limit).
