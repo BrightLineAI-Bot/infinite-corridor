@@ -32,6 +32,7 @@ export function createInput(root, host = globalThis, options = {}) {
       pause: false,
       map: false,
       journal: false,
+      preset: false,
     },
     target = { x: 0, y: 0 },
     keys = new Set(),
@@ -55,6 +56,7 @@ export function createInput(root, host = globalThis, options = {}) {
     m: "map",
     i: "menu",
     l: "journal",
+    t: "preset",
   };
   function clearPointer() {
     movementPointer = null;

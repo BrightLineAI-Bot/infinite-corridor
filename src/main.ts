@@ -187,7 +187,7 @@ import { STATS } from "./types.ts";
 import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.ts";
 import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.ts";
 import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.ts";
-import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.ts";
+import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS } from "./spell-slots.ts";
 import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.ts";
 import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.ts";
 import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
@@ -1910,6 +1910,8 @@ function updateHud(now) {
     hudSet(button,"data-cooldown",label);
     hudSet(button,"aria-label",`${action} ${label}`);
   }
+  // Release 261: the spell preset button shows which preset (1 or 2) is in the slots.
+  { const pb = hudEl('[data-action="preset"]'), n = String((save.magicSkills?.preset || 0) + 1); if (pb) { hudSet(pb, "text", n); hudSet(pb, "aria-label", `Spell preset ${n}: tap to switch`); } }
   // Spell slots A and B (release 113): each shows its castable's symbol in its attribute colour.
   for (const [action, slot] of [["spell", "a"], ["spell2", "b"]]) {
     const button = hudEl(`[data-action="${action}"]`), c = slotted(save, slot);
@@ -2266,6 +2268,8 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
  const inSlot=(key)=>['a','b'].find(q=>save.magicSkills.slots[q]===key),slotButtons=(key,after)=>['a','b'].map(q=>{const here=save.magicSkills.slots[q]===key,b=uiButton(here?`In slot ${q.toUpperCase()}`:`Set in ${q.toUpperCase()}`,()=>{const r=setSlot(save,q,key);game.message=r.message;persist();after();openSkills(atShrine)});if(here)b.disabled=true;return b});
  // Slots A and B, and the Pairing their two attributes make.
  {const box=el('section','arc-branch arc-slots');box.append(el('h3','','Spell slots'));
+  // Release 261: two spell presets; the slots below belong to the active one (the HUD's preset button switches them too).
+  {const row=el('div','codex-tabs arc-presets');for(let i=0;i<PRESETS;i++){const b=uiButton(`Preset ${i+1}`,()=>{if((save.magicSkills.preset||0)!==i){const r=togglePreset(save);game.message=r.message;persist()}openSkills(atShrine)});if((save.magicSkills.preset||0)===i)b.setAttribute('aria-current','page');row.append(b)}box.append(row)}
   for(const q of ['a','b']){const c=slotted(save,q),row=el('div','arc-slot');const sym=el('span','slot-sym',c?c.symbol:'+');sym.style.color=c?c.color:'';row.append(el('strong','',q.toUpperCase()),sym,el('span','',c?c.name:'Empty — choose below'));if(c)row.append(elemBadge(c.attr));if(c){const clear=uiButton('Clear',()=>{const r=setSlot(save,q,null);game.message=r.message;persist();openSkills(atShrine)});row.append(clear)}box.append(row)}
   const pr=activePairing(save);box.append(el('p','',pr?`Pairing: ${pr.name} — ${pr.text}`:'Fill both slots: their two attributes form a Pairing, a small bonus while both stay set.'));
   sky.append(box)}

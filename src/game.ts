@@ -28,7 +28,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness } from "./spell-slots.ts";
+import { ensureSlots, slotted, pairingMods, slotReadiness , togglePreset } from "./spell-slots.ts";
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
@@ -3838,6 +3838,7 @@ export class Game {
       else this.jumpUntil = now + 520 + skillRank(this.save,"quickening") * 140;
     }
     if (input.consume("potion")) this.useConsumable("restorativeDraught", now);
+    if (input.consume("preset")) this.message = togglePreset(this.save).message; // release 261: swap spell presets 1 and 2
     const dodging = now < (p.dodgeUntil || 0);
     if (dodging) {
       x = p.dodgeX;

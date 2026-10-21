@@ -67,11 +67,13 @@
           </div></div>
           <div class="utility-buttons">
             <button data-action="map">Map</button
-            ><button data-action="menu">Pack</button>
+            ><button data-action="menu">Pack</button
+            ><button class="preset" data-action="preset" aria-label="Spell preset 1">1</button>
           </div>
         </div>
         <div class="quick-row buttons">
-          <button class="quick potion" data-action="potion">Potion</button>
+          <button class="quick spell spell-a" data-action="spell" data-slot="A">Spell A</button
+          ><button class="quick spell spell-b" data-action="spell2" data-slot="B">Spell B</button>
         </div>
         <div class="action-diamond buttons">
           <button class="core tool" data-action="tool">Tool</button
@@ -79,8 +81,7 @@
           ><button class="core dodge" data-action="dodge">Dodge</button
           ><button class="core attack" data-action="attack">Attack</button
           ><button class="core jump" data-action="jump">Jump</button
-          ><button class="core spell spell-a" data-action="spell" data-slot="A">Spell A</button
-          ><button class="core spell spell-b" data-action="spell2" data-slot="B">Spell B</button>
+          ><button class="core potion" data-action="potion">Potion</button>
         </div>
       </section>
       <dialog id="panel">
