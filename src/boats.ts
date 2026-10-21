@@ -22,8 +22,9 @@ export const BOAT = {
 export const SAILABLE_DEEP = ["ocean", "deepOcean", "lakeWater", "swampWater"];
 // Wood (release 119; Tim, 2026-10-16): felling a tree yields wood by its size, and enough wood builds a skiff at any
 // water's edge, so the Shipwright is no longer the only way to a boat.
-// carry: the most wood the Wayfarer carries (release 259, Tim: "up to 6 wood... that's 2 boats").
-export const WOOD = { byForm: { shrub: 1, spindle: 2, canopy: 3 }, skiffCost: 3, reach: 1.6, carry: 6 };
+// carry: the most wood the Wayfarer carries (release 259 set 6; release 261, Tim: "we should do 99 wood... you can build as
+// many boats as you want... the limit... is how much you want to farm").
+export const WOOD = { byForm: { shrub: 1, spindle: 2, canopy: 3 }, skiffCost: 3, reach: 1.6, carry: 99 };
 export const woodFor = (tree) => WOOD.byForm[tree?.vegetationForm] ?? WOOD.byForm.spindle;
 // Normalised in freshSave/migrateSave (additive at schema 14).
 export function ensureWood(save) { save.materials ||= {}; save.materials.wood = Math.max(0, Math.floor(Number(save.materials.wood) || 0)); return save; }
@@ -38,6 +39,9 @@ export function buildSkiff(save, at) {
   if (save.capabilities?.swim !== true) return { ok: false, message: "You could lash a skiff together, but without the Tidemantle a capsize would drown you." };
   if (wood < WOOD.skiffCost) return { ok: false, message: `A skiff needs ${WOOD.skiffCost} wood (you have ${wood}). Fell trees: shrubs give 1, spindles 2, big trees 3.` };
   save.materials.wood = wood - WOOD.skiffCost;
+  // Release 261 (Tim: "I can have up to 2 boats at a time... I'll just make a boat, and one of them will despawn"): a
+  // skiff left moored becomes the spare; an older spare is gone.
+  if (b.owned && !b.aboard && b.moored) b.spare = { ...b.moored, hull: b.hull };
   Object.assign(b, { owned: true, hull: BOAT.maxHull, aboard: true, moored: null, home: at });
   return { ok: true, message: `You lash ${WOOD.skiffCost} wood into a skiff and push off.${save.materials.wood ? ` ${save.materials.wood} wood left.` : ""}` };
 }
@@ -47,7 +51,16 @@ export function ensureBoatState(save) {
   const place = (q) => q && Number.isFinite(q.rx) && Number.isFinite(q.ry) && Number.isFinite(q.x) && Number.isFinite(q.y) ? { rx: q.rx, ry: q.ry, x: q.x, y: q.y } : null;
   save.boat = Object.assign(b, { version: 1, owned: b.owned === true, hull: Math.max(0, Math.min(BOAT.maxHull, Number.isFinite(b.hull) ? b.hull : BOAT.maxHull)),
     aboard: b.owned === true && b.aboard === true, moored: place(b.moored), home: place(b.home) });
+  // Release 261: a second, spare skiff moored elsewhere (additive at schema 14): { rx, ry, x, y, hull }.
+  const spare = b.owned === true && place(b.spare); save.boat.spare = spare ? { ...spare, hull: Math.max(0, Math.min(BOAT.maxHull, Number.isFinite(b.spare.hull) ? b.spare.hull : BOAT.maxHull)) } : null;
   return save.boat;
+}
+// Boarding the spare: it becomes the skiff in use, and the one left moored (if any) becomes the spare.
+export function takeSpare(save) {
+  const b = ensureBoatState(save), s = b.spare; if (!s) return false;
+  b.spare = b.moored && !b.aboard ? { ...b.moored, hull: b.hull } : null;
+  b.moored = { rx: s.rx, ry: s.ry, x: s.x, y: s.y }; b.hull = s.hull; b.aboard = false;
+  return true;
 }
 export const aboard = (save) => save?.boat?.owned === true && save.boat.aboard === true;
 export const sailable = (kind) => BOAT.waterKinds.includes(kind);

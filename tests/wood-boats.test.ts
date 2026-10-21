@@ -4,7 +4,7 @@ import { generateRegion } from '../src/world.ts';
 import { applyLandscape, biomeFor } from '../src/landscape.ts';
 import { Game } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { WOOD, woodFor, addWood, buildSkiff, BOAT } from '../src/boats.ts';
+import { WOOD, woodFor, addWood, buildSkiff, BOAT, disembark, takeSpare, ensureBoatState } from '../src/boats.ts';
 import { grantTidemantle } from '../src/water-traversal.ts';
 
 const SEED = 'LANDTEST';
@@ -61,4 +61,30 @@ test('dying drops the wood you carry, and nothing else', () => {
   g.player.hp = 0; g.update(1 / 30, { state: { x: 0, y: 0 }, consume: () => false, reset() {} }, 1000);
   assert.equal(s.worldFlags.deaths, 1); assert.equal(s.materials.wood, 0); assert.match(g.message, /4 wood you carried is gone/);
   assert.equal(s.materials.weaponSphere, spheres); assert.equal(s.materials.cinderIron, iron);
+});
+
+test('release 261: up to two skiffs: a new one turns the moored one into the spare, an older spare is gone, and boarding the spare swaps them', () => {
+  const s = freshSave(); s.capabilities = { ...(s.capabilities || {}), swim: true }; s.materials.wood = 99;
+  const at = (rx, x) => ({ rx, ry: 0, x, y: 5 });
+  assert.equal(buildSkiff(s, at(1, 4)).ok, true); disembark(s, at(1, 4)); s.boat.hull = 30;
+  assert.equal(buildSkiff(s, at(2, 6)).ok, true); assert.deepEqual(s.boat.spare, { ...at(1, 4), hull: 30 }, 'the first skiff waits as the spare, its hull kept');
+  assert.equal(s.boat.aboard, true); assert.equal(s.boat.hull, BOAT.maxHull);
+  disembark(s, at(2, 6)); assert.equal(buildSkiff(s, at(3, 8)).ok, true);
+  assert.deepEqual(s.boat.spare, { ...at(2, 6), hull: BOAT.maxHull }, 'two at a time: the oldest is gone'); disembark(s, at(3, 8));
+  assert.equal(takeSpare(s), true); assert.deepEqual(s.boat.moored, at(2, 6)); assert.deepEqual(s.boat.spare, { ...at(3, 8), hull: BOAT.maxHull }, 'boarding the spare swaps them');
+  const again = JSON.parse(JSON.stringify(s)); ensureBoatState(again); assert.deepEqual(again.boat.spare, s.boat.spare, 'kept across a reload');
+  const old = freshSave(); delete old.boat.spare; ensureBoatState(old); assert.equal(old.boat.spare, null, 'additive');
+});
+
+test('release 261 in play: Act at the water builds a second skiff; the first waits as the spare in its section and can be boarded', () => {
+  const { s, g } = shore(); s.capabilities = { ...(s.capabilities || {}), swim: true }; s.materials.wood = 9;
+  const first = { x: g.player.x, y: g.player.y };
+  assert.equal(g.buildSkiffHere().ok, true); const where = { rx: g.rx, ry: g.ry, x: g.player.x, y: g.player.y };
+  disembark(s, where); g.player.x = first.x; g.player.y = first.y; g.map.objects = g.map.objects.filter((o) => o.kind !== 'skiff');
+  assert.equal(g.buildSkiffHere().ok, true, 'a second skiff, though the first is moored nearby');
+  assert.deepEqual({ rx: s.boat.spare.rx, ry: s.boat.spare.ry }, { rx: g.rx, ry: g.ry });
+  const spare = g.map.objects.find((o) => o.id === 'skiff-spare'); assert.ok(spare, 'the first skiff waits as the spare');
+  disembark(s, { rx: g.rx, ry: g.ry, x: g.player.x, y: g.player.y });
+  const r = g.boatAction(spare, 'board'); assert.equal(r.ok, true); assert.equal(s.boat.aboard, true);
+  assert.ok(s.boat.spare && g.map.objects.some((o) => o.id === 'skiff-spare'), 'the other is now the spare');
 });

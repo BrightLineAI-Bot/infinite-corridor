@@ -99,14 +99,16 @@ test('anyone can chip a stone from a rock once; breaking one gives more', () => 
   applyInteraction(rock, 'break', s); assert.equal(s.materials.stone, Math.min(DIG.carryStone, DIG.stone.chip + DIG.stone.break), 'up to the carry limit (release 259)');
 });
 
-test('release 259: the Wayfarer carries at most 2 stone and 6 wood; a full pouch refuses a chip; an older save over the limit keeps it', () => {
+test('carry limits: 99 wood and 99 stone (release 261); a full pouch refuses a chip; an older save over the limit keeps it', () => {
   const s = save(); s.materials.stone = 0;
-  assert.equal(addStone(s, 5), DIG.carryStone); assert.equal(addStone(s, 1), DIG.carryStone);
+  assert.equal(DIG.carryStone, 99); assert.equal(WOOD.carry, 99);
+  assert.equal(addStone(s, 500), DIG.carryStone); assert.equal(addStone(s, 1), DIG.carryStone);
   const rock = { id: 'rock-full', kind: 'rock', state: 'sealed', actions: ['move', 'break'], environmental: true }; s.stats.Might = 1;
   const r = applyInteraction(rock, 'chip', s); assert.equal(r.ok, false); assert.match(r.message, /no more stone/);
   assert.notEqual(s.worldFlags['rock-full:chip'], true, 'the rock keeps its stone for later');
-  s.materials.wood = 0; assert.equal(addWood(s, 4), 4); assert.equal(addWood(s, 3), WOOD.carry); assert.equal(WOOD.carry, 2 * WOOD.skiffCost);
-  s.materials.wood = 9; assert.equal(addWood(s, 2), 9, 'never taken away'); s.materials.stone = 4; assert.equal(addStone(s, 1), 4);
+  s.materials.wood = 0; assert.equal(addWood(s, 40), 40); assert.equal(addWood(s, 80), WOOD.carry);
+  s.materials.wood = 150; assert.equal(addWood(s, 2), 150, 'never taken away'); s.materials.stone = 120; assert.equal(addStone(s, 1), 120);
+  assert.deepEqual(DIG.recipe, { wood: 1, stone: 1 });
 });
 
 test('disturbed earth is rare, deterministic, dug once', () => {
