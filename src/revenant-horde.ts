@@ -41,8 +41,8 @@ export function hordeKill(save, history) {
   return { message: `The horde is broken. ${gateOpen(f) ? `The last piece locks into the Gate. It stands whole. Gate ${f.gate} is open.` : `A piece of the Gate locks into place (${f.pieces}/${piecesNeeded(f.gate)}).`}`, cleared: true };
 }
 // The spawn points for a horde dungeon: open tiles far from the entrance, spread out.
-export function hordeSpawnPoints(map, entry, n = 6) {
-  const w = map.width || 32, open = map.tiles.filter((t) => !t.blocked && t.x > 1 && t.y > 1 && t.x < w - 2);
+export function hordeSpawnPoints(map, entry, n = 6, reach = null) {
+  const w = map.width || 32, open = map.tiles.filter((t) => !t.blocked && t.x > 1 && t.y > 1 && t.x < w - 2 && (!reach || reach.has(t.y * w + t.x))); // only floor the Wayfarer can reach
   const far = open.map((t) => ({ t, d: Math.hypot(t.x - entry.x, t.y - entry.y) })).sort((a, b) => b.d - a.d).slice(0, Math.max(n * 12, 40));
   const out = []; for (const { t } of far) { if (out.every((q) => Math.hypot(q.x - t.x, q.y - t.y) >= 4)) out.push({ x: t.x, y: t.y }); if (out.length >= n) break; }
   return out;

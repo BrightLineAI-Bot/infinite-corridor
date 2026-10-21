@@ -10,6 +10,7 @@ import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrin
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { liftAt, tileUnder } from "./landscape.ts";
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.ts";
+import { GATE_REVENANT } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
@@ -693,6 +694,101 @@ export function drawStrange(ctx, o, s, kind, now) {
   ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = g; ctx.fillRect(cx - s * 1.3, cy - s * 1.3, s * 2.6, s * 2.6); ctx.restore();
   for (let k = 0; k < 9; k++) { const p = ((T * .18 + k / 9) % 1), x = cx + Math.sin(T * .9 + k * 2.1) * s * .45, y = cy + s * .35 - p * s * 1.7, m = Math.max(2, s * .07); ctx.fillStyle = k % 3 ? `rgba(230,240,255,${(1 - p) * .95})` : `rgba(200,160,255,${(1 - p) * .95})`; ctx.fillRect(x, y, m, m); }
 }
+// Release 271 (Tim, 2026-10-21: "let's see if we can do a model rework on the gate revenant... increase its Fidelity,
+// without increasing... processing requirements"). A hooded, horned wraith in a tattered cloak with the Gate's arch burning
+// on its chest. Flat fills and batched paths only (no gradients or blur): about a dozen fills and strokes a frame, no more
+// than the old ellipse, slabs and seven tendrils. Its pose shows its mind: faded while it stalks, an afterimage as it
+// slips a blow, down on one knee while its poise is broken, eyes and sigil flaring as it winds up.
+export function drawGateRevenant(ctx, e, s, now, ox = 0, oy = 0) { // exported for the creature preview tests
+  const [cloth, shade, ember] = COLORS.gateRevenant, sc = Math.max(.6, Number(e.scale) || 1), u = s * sc, T = now / 1000;
+  const k = (e.x + ox + .5) * s, base = (e.y + oy) * s + s * .82, fx = (e.facingX || 1) < 0 ? -1 : 1;
+  const broken = e.gateBroken > 0, flare = e.telegraph > 0 || e.strike > 0 || e.gateAttack?.phase === "windup" || e.gateUnstoppable > 0;
+  // Tim, 2026-10-21: in the long lava barrage "his chest... opens up to a large mouth that spews out lava, and [the] cape
+  // flies back to be like wings... that reveals his true nature... his body is actually just a gaping maw". `maw` is 0..1:
+  // opening through the warning, wide while the bombs fly, closing through the recovery.
+  const atk = e.gateAttack, maw = broken || atk?.move !== "barrage" ? 0 : atk.phase === "warn" ? Math.min(1, 1 - atk.left / GATE_REVENANT.barrage.warn) : atk.phase === "recover" ? Math.max(0, atk.left / GATE_REVENANT.recover) : 1;
+  const hover = broken ? 0 : Math.sin(T * 2.3 + (e.x + e.y) * .7) * .035 * u, sway = Math.sin(T * 3.1 + e.x) * .05;
+  ctx.fillStyle = "#050504aa"; ctx.beginPath(); ctx.ellipse(k, base, u * .32, u * .1, 0, 0, 7); ctx.fill();
+  ctx.save(); ctx.translate(k, base - hover); ctx.scale(fx * u, (broken ? .74 : 1) * u);
+  if (broken) ctx.rotate(-.12);
+  if (!e.aggro && !broken) ctx.globalAlpha = .7; // stalking: half in the dark
+  const cloak = (dx) => { // shoulders to a ragged, drifting hem
+    ctx.beginPath(); ctx.moveTo(dx - .2, -.74); ctx.quadraticCurveTo(dx - .42, -.4, dx - .38 - sway * .6, -.02);
+    for (let i = 0; i < 5; i++) { const a = dx - .38 + (i + .5) * .152, w = Math.sin(T * 4 + i * 1.9) * .025; ctx.lineTo(a - .04 + sway * .4, -.13 + w); ctx.lineTo(a + .076 + sway * .3, (i % 2 ? .02 : -.05) + w); }
+    ctx.quadraticCurveTo(dx + .44, -.4, dx + .2, -.74); ctx.closePath();
+  };
+  if (e.gateEvade) { const g = ctx.globalAlpha; ctx.globalAlpha = g * .3; ctx.fillStyle = ember; cloak(-(e.gateEvade.x || 0) * fx * .45); ctx.fill(); ctx.globalAlpha = g; }
+  if (maw > 0) { // the cape flung back into wings
+    const span = .45 + .5 * maw, lift = .25 * maw, flap = Math.sin(T * 9) * .03 * maw;
+    ctx.fillStyle = shade; ctx.strokeStyle = ember + "8c"; ctx.lineWidth = .03; ctx.beginPath();
+    for (const d of [-1, 1]) {
+      ctx.moveTo(d * .14, -.72); ctx.quadraticCurveTo(d * span * .7, -.98 - lift - flap, d * span, -.92 - lift + flap);
+      for (let i = 1; i <= 4; i++) { const f = 1 - i / 4.4; ctx.lineTo(d * span * f + d * .03, -.6 - lift * f + (i % 2 ? .1 : 0)); ctx.lineTo(d * span * (f - .08), -.72 - lift * f * 1.1); }
+      ctx.lineTo(d * .16, -.3); ctx.closePath();
+    }
+    ctx.fill(); ctx.stroke();
+  }
+  // Trailing tatters, one stroke.
+  ctx.strokeStyle = cloth; ctx.lineWidth = .05; ctx.lineCap = "round"; ctx.beginPath();
+  for (let i = 0; i < 4; i++) { const y0 = -.55 + i * .13, w = Math.sin(T * 3.4 + i * 1.3) * .08; ctx.moveTo(-.3, y0); ctx.quadraticCurveTo(-.52, y0 + .05 + w, -.66 + w * .5, y0 + .16 + w); }
+  ctx.stroke();
+  if (maw > 0) { ctx.save(); ctx.scale(1 - .3 * maw, 1); } // the cape gone to wings, the body narrows
+  ctx.fillStyle = shade; cloak(0); ctx.fill(); ctx.strokeStyle = ember + "8c"; ctx.lineWidth = .03; ctx.stroke();
+  if (maw > 0) ctx.restore();
+  // The inner fold, lit from the sigil.
+  ctx.fillStyle = cloth; ctx.beginPath(); ctx.moveTo(-.1, -.68); ctx.quadraticCurveTo(-.17, -.32, -.12 + sway * .3, -.06); ctx.lineTo(.12 + sway * .3, -.08); ctx.quadraticCurveTo(.17, -.32, .1, -.68); ctx.closePath(); ctx.fill();
+  // Pauldrons and talons.
+  ctx.fillStyle = cloth; ctx.beginPath();
+  for (const d of [-1, 1]) { ctx.moveTo(d * .1, -.76); ctx.quadraticCurveTo(d * .38, -.82, d * .4, -.6); ctx.quadraticCurveTo(d * .27, -.66, d * .12, -.62); ctx.closePath(); }
+  ctx.fill();
+  const reach = flare ? .14 : 0; ctx.strokeStyle = "#cfc2d6"; ctx.lineWidth = .028; ctx.beginPath();
+  for (const t of [-.05, .02, .09]) { ctx.moveTo(.33, -.42 + t); ctx.lineTo(.47 + reach, -.36 + t * 1.5); }
+  ctx.stroke();
+  if (maw > .05) { // the chest split into one gaping mouth, fangs above and below, lava glowing in its throat
+    const w = .2 + .1 * maw, h = .27 * maw, cy = -.4, pulse = .5 + .5 * Math.sin(T * 6);
+    const lips = (g) => { ctx.beginPath(); ctx.moveTo(-w - g, cy); ctx.quadraticCurveTo(0, cy - h * 2 - g, w + g, cy); ctx.quadraticCurveTo(0, cy + h * 2 + g, -w - g, cy); ctx.closePath(); };
+    ctx.fillStyle = "#4a0c18"; lips(.035); ctx.fill();
+    ctx.fillStyle = "#c2321c"; lips(0); ctx.fill();
+    ctx.fillStyle = "#ff8a2e"; ctx.beginPath(); ctx.ellipse(0, cy + h * .25, w * .62, h * (.75 + .1 * pulse), 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ffe08a"; ctx.beginPath(); ctx.ellipse(0, cy + h * .35, w * .28, h * (.35 + .1 * pulse), 0, 0, 7); ctx.fill();
+    // Teeth: a row of small ones along each lip, pointing into the mouth...
+    const lipAt = (up, t) => cy + up * h * 4 * t * (1 - t);
+    ctx.fillStyle = "#ece2d4"; ctx.beginPath();
+    for (const [up, n] of [[-1, 8], [1, 7]]) for (let i = 0; i < n; i++) {
+      const t = (i + .5) / n, x = -w + 2 * w * t, lip = lipAt(up, t), half = w / n * .75, len = Math.min(h * .6, .045);
+      ctx.moveTo(x - half, lip); ctx.lineTo(x, lip - up * len); ctx.lineTo(x + half, lip);
+    }
+    ctx.fill();
+    // ...and four great curved canines (Tim: "more pronounced, like canine. Fangs"), the upper pair reaching past the lower lip.
+    ctx.beginPath();
+    for (const [up, t, len] of [[-1, .22, .62], [-1, .78, .62], [1, .35, .26], [1, .65, .26]]) { // the lower pair small and apart: the lava's way out
+      const x = -w + 2 * w * t, lip = lipAt(up, t), L = h * 2 * len * .8 + .02, half = (up > 0 ? .7 : 1) * (.026 + .012 * maw), bow = (t < .5 ? 1 : -1) * .03;
+      // A cone: broad at the gum, tapering to a point that curves in toward the middle of the mouth.
+      ctx.moveTo(x - half, lip + up * .012); ctx.quadraticCurveTo(x - half * .85, lip - up * L * .45, x + bow, lip - up * L);
+      ctx.quadraticCurveTo(x + half * .55, lip - up * L * .4, x + half, lip + up * .012); ctx.closePath();
+    }
+    ctx.fill(); ctx.strokeStyle = "#7d5f55"; ctx.lineWidth = .012; ctx.stroke();
+    if (atk?.phase === "active") { ctx.fillStyle = "#ff8a3a"; ctx.beginPath(); for (let i = 0; i < 4; i++) { const q = (T * 2.6 + i / 4) % 1, r = .045 * (1 - q * .5), x = Math.sin(i * 2.1 + T * 3) * .1 * q, y = cy - h - q * .55; ctx.moveTo(x + r, y); ctx.ellipse(x, y, r, r, 0, 0, 7); } ctx.fill(); }
+  } else {
+  // The Gate burning on its chest: a pointed arch and its keystone.
+  const glow = broken ? .25 + .25 * (Math.sin(T * 17) > .3) : flare ? 1 : .55 + .2 * Math.sin(T * 2.6);
+  ctx.globalAlpha *= glow; ctx.strokeStyle = ember; ctx.lineWidth = .035; ctx.beginPath();
+  ctx.moveTo(-.07, -.3); ctx.lineTo(-.07, -.44); ctx.quadraticCurveTo(-.07, -.53, 0, -.58); ctx.quadraticCurveTo(.07, -.53, .07, -.44); ctx.lineTo(.07, -.3);
+  ctx.moveTo(0, -.58); ctx.lineTo(0, -.5); ctx.stroke(); ctx.globalAlpha /= glow;
+  }
+  // Horns swept back, bone pale, then the hood over them.
+  ctx.fillStyle = "#a58f9e"; ctx.beginPath();
+  ctx.moveTo(-.17, -.86); ctx.quadraticCurveTo(-.44, -.86, -.52, -1.13); ctx.quadraticCurveTo(-.3, -1.0, -.06, -.98);
+  ctx.moveTo(.04, -.99); ctx.quadraticCurveTo(-.02, -1.13, -.17, -1.25); ctx.quadraticCurveTo(.1, -1.17, .17, -.9); ctx.fill();
+  ctx.fillStyle = shade; ctx.beginPath(); ctx.moveTo(-.19, -.68); ctx.quadraticCurveTo(-.22, -.96, .02, -1.02); ctx.quadraticCurveTo(.2, -.95, .19, -.68); ctx.quadraticCurveTo(0, -.62, -.19, -.68); ctx.fill();
+  ctx.strokeStyle = ember + "b0"; ctx.lineWidth = .03; ctx.stroke();
+  ctx.fillStyle = "#050308"; ctx.beginPath(); ctx.ellipse(.02, -.8, .1, .085, 0, 0, 7); ctx.fill();
+  // Eyes: slits, brighter on the hunt.
+  ctx.fillStyle = flare ? "#ffd0dc" : e.aggro ? "#ff6e89" : ember; ctx.beginPath();
+  for (const d of [-.045, .065]) { ctx.moveTo(d - .03, -.81); ctx.lineTo(d + .03, -.825); ctx.lineTo(d + .02, -.795); ctx.closePath(); }
+  ctx.fill();
+  ctx.restore();
+}
 function actor(
   ctx,
   x,
@@ -1263,7 +1359,8 @@ export function render(ctx, g, w, h, now) {
             ctx.restore();
           }
           if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant"].includes(e.kind) ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
-          actor(
+          if (e.kind === "gateRevenant") drawGateRevenant(ctx, e, s, now, ox, oy); // release 271
+          else actor(
             ctx,
             e.x + ox,
             e.y + oy,

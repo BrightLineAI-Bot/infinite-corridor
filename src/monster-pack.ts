@@ -2294,6 +2294,17 @@ export const GATE_REVENANT = {
   lob: { warn: .35, count: 3, every: .22, flight: .8, radius: .85, bite: .55 },
   barrage: { warn: .5, count: 9, every: .13, flight: .85, radius: .8, bite: .36 },
   moves: ["burst", "lob", "wraith", "breath", "burst", "barrage"],
+  // Release 271 (Tim, 2026-10-21: "When you get into a dungeon... it can be like two minutes, and then the gate revenants
+  // start hunting you... It should be stalking... after about two minutes... hunting regardless of whether or not you
+  // run into them"; "the gate revenant can borrow some of the crystal's behavior... hop between walls... it's more
+  // aggressive... it should still not go to a place that you can't go"; "smart dodge behavior and... poise break").
+  // In a dungeon it stalks at `stalkKeep` tiles for `huntAfter` s, turning on the Wayfarer at once if they come within
+  // `stalkAggro` or wound it; then it hunts, passing through walls straight at them, and if it has been in rock for
+  // `wallLinger` s it blinks to the nearest floor the Wayfarer can reach. Everywhere it slips some blows (`dodge`), and
+  // `poiseBreak.hits` blows inside `poiseBreak.forget` s break it for `poiseBreak.time` s before it springs away.
+  huntAfter: 120, stalkAggro: 3.5, stalkKeep: [5, 8], stalkSpeed: .55, wallLinger: 1.4, manifestSearch: 7, walkAround: 2.5,
+  dodge: { chance: .45, cooldown: 2.2, time: .22, speed: 9, reach: 2.4, shotReach: 1.6 },
+  poiseBreak: { hits: 8, forget: 3, time: 2.4, away: .38 },
 };
 export function tuneGatePredator(e, save, stats = {}) {
   if (!e.gatePredator || e.gateTuningVersion === 1) return e;
@@ -2316,9 +2327,52 @@ function gateMove(e, w, dt, fraction = 1) {
   if (d < 1.4) return;
   const slow = e.glyphBaseSpeed > 0 ? Math.max(.05, Math.min(1, e.speedMultiplier / e.glyphBaseSpeed)) : 1;
   const step = Math.min(d - 1.4, GATE_REVENANT.baseWalk * GATE_REVENANT.chaseRatio * dt * fraction * slow);
+  // Release 271: in a dungeon, straight through the walls; held back at the dungeon's edge, it paths around for `walkAround` s.
+  if (e.gateWalkFor > 0) e.gateWalkFor = Math.max(0, e.gateWalkFor - dt);
+  if (w.walkable && !(e.gateWalkFor > 0 && w.walkable(e.x, e.y))) { w.move(e, (p.x - e.x) / d * step, (p.y - e.y) / d * step, { phase: true }); return; }
   if (w.gateChase) { w.gateChase(e, step); return; }
   if (!w.los(e, p)) { w.detour?.(e, step); return; }
   w.move(e, (p.x - e.x) / d * step, (p.y - e.y) / d * step, { phase: false });
+}
+// Release 271: before it hunts, a dungeon Revenant keeps its distance (GATE_REVENANT.stalkKeep), through walls if need be.
+function gateStalk(e, w, dt, d) {
+  const G = GATE_REVENANT, p = w.player, [near, far] = G.stalkKeep; if (!(d > 0)) return;
+  const sign = d > far ? 1 : d < near ? -1 : 0; if (!sign) return;
+  const step = G.baseWalk * G.stalkSpeed * dt; e.facingX = p.x >= e.x ? 1 : -1;
+  w.move(e, (p.x - e.x) / d * step * sign, (p.y - e.y) / d * step * sign, { phase: true });
+}
+// After GATE_REVENANT.wallLinger s inside rock it blinks to the nearest floor the Wayfarer can reach. Returns true on the blink.
+function gateManifest(e, w, dt) {
+  if (w.walkable(e.x, e.y)) { e.gateWallTime = 0; return false; }
+  e.gateWallTime = (e.gateWallTime || 0) + dt; if (e.gateWallTime < GATE_REVENANT.wallLinger) return false;
+  let best = null, bd = Infinity; const R = GATE_REVENANT.manifestSearch, cx = Math.round(e.x), cy = Math.round(e.y), p = w.player;
+  for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) { if (!w.walkable(x, y)) continue; const dd = Math.hypot(x - e.x, y - e.y) + Math.hypot(x - p.x, y - p.y) * .5; if (dd < bd) { bd = dd; best = { x, y }; } }
+  w.roamWork?.((2 * R + 1) ** 2); e.gateWallTime = 0;
+  if (!best) return false;
+  w.addEffect?.({ kind: "blinkTrail", owner: e.id, x: e.x, y: e.y, radius: .8, arming: 0, life: .35, damage: 0 }); e.x = best.x; e.y = best.y; return true;
+}
+// Smart dodge: a blow or a shot about to land may be slipped, sideways, with a cooldown.
+function gateDodge(e, w, d, dt) {
+  const G = GATE_REVENANT.dodge; e.gateDodgeAt = (e.gateDodgeAt || 0) - dt; if (e.gateDodgeAt > 0 || e.gateAttack?.phase === "active") return false;
+  const swing = w.playerSwinging && d < G.reach, shot = (w.playerShots || []).some((q) => !q.dead && !q.hostile && Math.hypot(q.x - e.x - .5, q.y - e.y - .45) < G.shotReach);
+  if (!swing && !shot) return false;
+  e.gateDodgeAt = G.cooldown; const n = (e.gateDodges = (e.gateDodges || 0) + 1);
+  if (hashSeed(`${e.id}:gate-dodge:${n}`) % 100 >= G.chance * 100) return false;
+  const away = unit(e.x - w.player.x, e.y - w.player.y), side = n % 2 ? 1 : -1;
+  e.gateEvade = { ...unit(-away.y * side + away.x * .3, away.x * side + away.y * .3), t: G.time }; e.untargetable = true; resetGateAttack(e);
+  return true;
+}
+// Poise break: enough blows in quick succession knock it down, open to harm, before it springs away.
+function gatePoiseBreak(e, w, dt) {
+  const G = GATE_REVENANT.poiseBreak, hp = Number(e.hp) || 0;
+  if (e.gateHpSeen != null && hp < e.gateHpSeen) { e.gatePoiseHits = (e.gatePoiseHits || 0) + 1; e.gatePoiseIdle = 0; } else e.gatePoiseIdle = (e.gatePoiseIdle || 0) + dt;
+  e.gateHpSeen = hp; if (e.gatePoiseIdle >= G.forget) e.gatePoiseHits = 0;
+  if (!(e.gateBroken > 0) && (e.gatePoiseHits || 0) >= G.hits) { e.gateBroken = G.time; e.gatePoiseHits = 0; resetGateAttack(e); e.gateEvade = null; e.untargetable = false; e.aggro = true; }
+  if (!(e.gateBroken > 0)) return false;
+  e.gateBroken -= dt; e.hitStun = 0;
+  if (e.gateBroken > 0) return true;
+  e.gateBroken = 0; const away = unit(e.x - w.player.x, e.y - w.player.y); e.gateEvade = { ...away, t: G.away }; e.untargetable = true; e.gateDodgeAt = GATE_REVENANT.dodge.cooldown;
+  return true;
 }
 function gateEmit(e, a, w) {
   const t = GATE_REVENANT, dir = unit(a.target.x - e.x, a.target.y - e.y);
@@ -2348,9 +2402,17 @@ export function updateGatePredator(e, w) {
   while (remaining > 1e-8) {
     const dt = Math.min(GATE_REVENANT.step, remaining); remaining -= dt;
     e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt); e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
+    const inDungeon = !!w.walkable, G = GATE_REVENANT;
+    if (gatePoiseBreak(e, w, dt)) continue; // release 271
+    if (e.gateEvade) { const v = e.gateEvade; w.move(e, v.x * G.dodge.speed * dt, v.y * G.dodge.speed * dt, { phase: inDungeon }); v.t -= dt; if (v.t <= 0) { e.gateEvade = null; e.untargetable = false; } continue; }
     const distance = Math.hypot(w.player.x - e.x, w.player.y - e.y);
-    if (distance < 6) e.aggro = true;
-    if (!e.aggro) continue;
+    if (!e.aggro) {
+      const hunting = inDungeon && (w.dungeonClock || 0) >= G.huntAfter, wounded = e.hp < e.maxHp;
+      if (hunting || wounded || distance < (inDungeon ? G.stalkAggro : 6)) e.aggro = true;
+      else { if (inDungeon) gateStalk(e, w, dt, distance); continue; }
+    }
+    if (gateDodge(e, w, distance, dt)) continue;
+    if (inDungeon && gateManifest(e, w, dt)) continue;
     e.facingX = w.player.x >= e.x ? 1 : -1;
     e.gateUnstoppable = Math.max(0, (e.gateUnstoppable || 0) - dt);
     if (e.gateUnstoppable > 0) e.hitStun = 0;
