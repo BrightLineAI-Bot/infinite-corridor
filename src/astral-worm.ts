@@ -1,10 +1,13 @@
-// Isolated, source-only prototype. Not registered in production until final r251/Gate integration.
+// Registered natural encounter source on the reviewed r251/Gate baseline; not yet released.
 // All numbers are provisional design proposals, not owner-specified balance.
 export const ASTRAL = Object.freeze({
   name: 'Astral Worm', version: 1, speed: 3.4, travelSeconds: .9, maxStep: 1 / 60, maxFrame: .25,
   windup: .65, recovery: .65, morphTime: .35, cloneCount: 4, cloneHpShare: .12, cloneLife: 7,
   cloneRadius: 2.8, cloneTrackSpeed: 1.05, cloneGrace: 1.4, cloneTick: .4, drainShare: .12,
   beamRadius: .9, beamLife: 3.5, beamTick: .25, beamShare: .15,
+  inkCount: 3, inkWarning: .65, inkOutbound: .48, inkSplat: .65, inkRecall: .48,
+  inkRadius: .32, inkSpread: .18, inkArc: .7, inkRange: 4.2, inkMinRange: 1.4, inkFan: .34,
+  inkLaunchOffset: .55, inkLaunchHeight: .45, inkPoolHeight: .15, inkShare: .3,
   poolRadius: 2.8, poolLife: .5, biteRadius: 1.3, biteCount: 3, biteGap: .55, biteActive: .12, hitGap: .3, flightPursuit: .7, maxActorArray: 32,
   trampleRadius: .85, trampleLife: 1.4, trampleSpeed: 5.5,
   griffinLife: 5, pounceGap: 1.15, pounceWindup: .55, pounceActive: .4, pounceSpeed: 7,
@@ -22,8 +25,26 @@ export const ASTRAL_PROFILE = Object.freeze({ kind: 'astralWorm', name: 'The Ast
   arrive: 'Black ink hangs above the ground. The Astral Worm unfolds.',
   slain: 'The Astral Worm loses its shape and falls still.',
   gone: 'The Astral Worm has had its fill. Its ink fades from the hunt.' });
-export const ASTRAL_MOVES = ['pool', 'trample', 'bite', 'flight', 'mirage', 'griffin', 'rings'];
+export const ASTRAL_INK_FORMS = Object.freeze({inkWorm:'worm',inkPool:'pool',inkTrample:'trample'});
+export const ASTRAL_MOVES = ['pool', 'trample', 'bite', 'flight', 'mirage', 'griffin', 'rings', ...Object.keys(ASTRAL_INK_FORMS)];
 export const ASTRAL_RING_MODES = ['outward', 'inward', 'outward-inward', 'inward-outward'];
+// Native mouth geometry and world projection shared with the renderer. Both anchors are in the
+// hazard/actor coordinate domain, projected at x+.5, y+.62 by the host. The ground point is directly
+// below the mouth, not below the body's center. The optional host groundHeight sampler agrees with
+// renderer terrain projection; saved extra flight lift keeps the beam downward across a cliff.
+export const ASTRAL_GEOMETRY = Object.freeze({drawScale:.65,mouthX:1.20,mouthY:-.10,flightLift:.8,bodyBaseY:.82,groundProjectionY:.62,minScale:.6,minBeamDrop:.2});
+export function astralActorScale(s) { const n=Number(s.scale);return Math.max(ASTRAL_GEOMETRY.minScale,Number.isFinite(n)&&n!==0?n:1); }
+const actorScale = astralActorScale;
+const facingSign = s => s.facingX<0?-1:1;
+export function astralBeamAnchors(s) {
+  const g=ASTRAL_GEOMETRY,scale=actorScale(s),x=s.x+facingSign(s)*g.mouthX*g.drawScale*scale,y=s.y+g.bodyBaseY-g.groundProjectionY;
+  const extra=Number.isFinite(s.flightLiftExtra)?Math.max(0,s.flightLiftExtra):0;
+  return {mouth:{x,y:y-g.flightLift*scale+g.mouthY*g.drawScale*scale-extra},ground:{x,y}};
+}
+export function astralInkOrigin(s) {
+  return {x:s.x+facingSign(s)*ASTRAL.inkLaunchOffset*actorScale(s),y:s.y+ASTRAL_GEOMETRY.bodyBaseY-ASTRAL_GEOMETRY.groundProjectionY,
+    height:(s.form==='pool'?ASTRAL.inkPoolHeight:ASTRAL.inkLaunchHeight)*actorScale(s)};
+}
 const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
 function random(s) { s.rng = (Math.imul(s.rng, 1664525) + 1013904223) >>> 0; return s.rng / 4294967296; }
 export function astralRingSequence(mode) {
@@ -31,15 +52,15 @@ export function astralRingSequence(mode) {
   const out = Array.from({length:ASTRAL.ringCount},(_,i)=>i), into = [...out].reverse();
   return mode === 'outward' ? out : mode === 'inward' ? into : mode === 'outward-inward' ? [...out,...into] : [...into,...out];
 }
-export function createAstralState({x=0,y=0,hp=1400,damage=60,seed=1,namespace='prototype'}={}) {
+export function createAstralState({x=0,y=0,hp=1400,damage=60,seed=1,namespace='prototype',facingX=1,scale=1}={}) {
   if (![x,y,hp,damage,seed].every(Number.isFinite) || hp<=0 || damage<=0) throw new Error('Invalid Astral initial state');
   return {v:1,namespace,x,y,hp,maxHp:hp,damage,rng:seed>>>0,clock:0,form:'worm',previousForm:'worm',morphStart:0,move:null,elapsed:0,recovery:ASTRAL.travelSeconds,
-    hitClock:0,cast:0,clones:[],hazards:[],ringMode:'outward',ringSequence:[],ringIndex:0,center:{x,y},target:{x,y},enclosed:0,terminated:false};
+    facingX:facingSign({facingX}),scale:actorScale({scale}),flightLiftExtra:0,hitClock:0,cast:0,clones:[],hazards:[],blobs:[],ringMode:'outward',ringSequence:[],ringIndex:0,center:{x,y},target:{x,y},enclosed:0,terminated:false};
 }
 // State is JSON-only and uses active-time offsets. Caller stores it verbatim in existing actor snapshot.
 // No wall clock, global timers, external RNG, reward mutation, or unloaded simulation.
 export function snapshotAstral(s) { return JSON.parse(JSON.stringify(s)); }
-export function endAstral(s) { s.terminated=true;s.move=null;s.form='worm';s.clones=[];s.hazards=[]; }
+export function endAstral(s) { s.terminated=true;s.move=null;s.form='worm';s.flightLiftExtra=0;s.clones=[];s.hazards=[];s.blobs=[]; }
 export function damageAstralClone(s,id,amount) {
   const c=s.clones.find(c=>c.id===id); if(!c||!Number.isFinite(amount)||amount<=0) return 0;
   const dealt=Math.min(c.hp,amount); c.hp-=dealt;s.clones=s.clones.filter(c=>c.hp>0);return dealt;
@@ -65,16 +86,62 @@ export function astralEncloses(clones,p) {
 export function astralHazardContains(h,p) { const d=distance(h,p);return d>=h.inner&&d<=h.outer; }
 function moveToward(s,p,speed,dt,w) { const d=distance(s,p);if(d<1e-9)return;const step=Math.min(d,speed*dt),x=s.x+(p.x-s.x)/d*step,y=s.y+(p.y-s.y)/d*step;if(w.canOccupy(x,y,s.form)){s.x=x;s.y=y;} }
 function hazard(s,x,y,inner,outer,active,share=1) { return {x,y,inner,outer,active,share}; }
+function groundHeight(w,p) { const h=Number(w.groundHeight?.(p.x,p.y));return Number.isFinite(h)?h:0; }
+function faceTarget(s,p) { if(Math.abs(p.x-s.x)>1e-6)s.facingX=p.x>s.x?1:-1; }
+function createInkBlobs(s) {
+  const origin=astralInkOrigin(s),dx=s.target.x-origin.x,dy=s.target.y-origin.y,d=Math.hypot(dx,dy),angle=d>1e-6?Math.atan2(dy,dx):s.facingX<0?Math.PI:0;
+  const reach=Math.max(ASTRAL.inkMinRange,Math.min(ASTRAL.inkRange,d));
+  return Array.from({length:ASTRAL.inkCount},(_,i)=>{const a=angle+(i-1)*ASTRAL.inkFan;
+    return {id:`${s.namespace}:astral-ink:${s.cast}:${i}`,x:origin.x,y:origin.y,origin:{x:origin.x,y:origin.y},originHeight:origin.height,
+      target:{x:origin.x+Math.cos(a)*reach,y:origin.y+Math.sin(a)*reach},phase:'warning',progress:0,height:origin.height,radius:ASTRAL.inkRadius,blocked:false};});
+}
+// Additive fields permit old saved actors to resume their existing move, health and RNG unchanged.
+function ensureAstralGeometry(s) { s.facingX=facingSign(s);s.scale=actorScale(s);s.flightLiftExtra??=0;s.blobs??=[]; }
 export function startAstralMove(s,move,player,ringMode) {
   if(!ASTRAL_MOVES.includes(move)||s.terminated||s.hp<=0)return false;
-  s.previousForm=s.form;s.morphStart=s.clock;s.move=move;s.form=move==='mirage'||move==='rings'?'worm':move;s.elapsed=0;s.hitClock=0;s.cast++;s.hazards=[];s.clones=[];s.enclosed=0;
+  ensureAstralGeometry(s);faceTarget(s,player);
+  s.previousForm=s.form;s.morphStart=s.clock;s.move=move;s.form=ASTRAL_INK_FORMS[move]||(move==='mirage'||move==='rings'?'worm':move);s.flightLiftExtra=0;s.elapsed=0;s.hitClock=0;s.cast++;s.hazards=[];s.clones=[];s.blobs=[];s.enclosed=0;
   s.center={x:s.x,y:s.y};s.target={x:player.x,y:player.y};
+  if(ASTRAL_INK_FORMS[move])s.blobs=createInkBlobs(s);
   if(move==='rings'){s.ringMode=ringMode??ASTRAL_RING_MODES[Math.floor(random(s)*4)];s.ringSequence=astralRingSequence(s.ringMode);s.ringIndex=0;}
   if(move==='mirage')s.center={x:player.x,y:player.y};
   if(move==='mirage')for(let i=0;i<ASTRAL.cloneCount;i++){const a=i*Math.PI*2/ASTRAL.cloneCount;s.clones.push({id:`${s.namespace}:astral-mirage:${s.cast}:${i}`,x:player.x+Math.cos(a)*ASTRAL.cloneRadius,y:player.y+Math.sin(a)*ASTRAL.cloneRadius,hp:s.maxHp*ASTRAL.cloneHpShare,angle:a});}
   return true;
 }
-function finish(s){s.previousForm=s.form;s.morphStart=s.clock;s.move=null;s.form='worm';s.recovery=ASTRAL.recovery;s.clones=[];s.hazards=[];}
+function finish(s){s.previousForm=s.form;s.morphStart=s.clock;s.move=null;s.form='worm';s.flightLiftExtra=0;s.recovery=ASTRAL.recovery;s.clones=[];s.hazards=[];s.blobs=[];}
+function tickInk(s,w) {
+  const t=s.elapsed,a=ASTRAL.inkWarning,b=a+ASTRAL.inkOutbound,c=b+ASTRAL.inkSplat,end=c+ASTRAL.inkRecall;
+  if(t>=end){finish(s);return;}
+  const phase=t<a?'warning':t<b?'outbound':t<c?'splat':'recall',start=phase==='warning'?0:phase==='outbound'?a:phase==='splat'?b:c,
+    duration=phase==='warning'?a:phase==='outbound'?ASTRAL.inkOutbound:phase==='splat'?ASTRAL.inkSplat:ASTRAL.inkRecall,progress=Math.max(0,Math.min(1,(t-start)/duration));
+  // Only our own three descriptors are serialized, never scene actors, projectiles or persistent ink.
+  if(s.blobs.length!==ASTRAL.inkCount)s.blobs=createInkBlobs(s);
+  for(const blob of s.blobs){
+    blob.phase=phase;blob.progress=progress;
+    // Heights are measured in world tiles but RELATIVE to the terrain at the blob's current point.
+    // Keep source/landing absolute heights in JSON so pause and reload do not reset a flight arc.
+    blob.originGround??=groundHeight(w,s.center);blob.targetGround??=groundHeight(w,blob.target);
+    if(phase==='warning')blob.height=blob.originGround+blob.originHeight-groundHeight(w,blob);
+    if(phase==='outbound'&&!blob.blocked){
+      const x=blob.origin.x+(blob.target.x-blob.origin.x)*progress,y=blob.origin.y+(blob.target.y-blob.origin.y)*progress;
+      if((w.canBlobOccupy?w.canBlobOccupy(blob,x,y):w.canOccupy(x,y,s.form))){blob.x=x;blob.y=y;blob.height=(blob.originGround+blob.originHeight)*(1-progress)+blob.targetGround*progress+Math.sin(Math.PI*progress)*ASTRAL.inkArc-groundHeight(w,blob);}
+      else blob.blocked=true;
+    }
+    if(phase==='splat'){
+      // Check the actual landing before enabling damage, including when a frame skips the last
+      // outbound position. Recheck each active substep so changed terrain cannot leave a live splat.
+      if(!blob.blocked&&(w.canBlobOccupy?w.canBlobOccupy(blob,blob.target.x,blob.target.y):w.canOccupy(blob.target.x,blob.target.y,s.form))){blob.x=blob.target.x;blob.y=blob.target.y;}
+      else blob.blocked=true;
+      blob.height=0;blob.radius=ASTRAL.inkRadius+ASTRAL.inkSpread*progress;
+    }
+    if(phase==='recall'){
+      const origin=astralInkOrigin(s);blob.returnFrom??={x:blob.x,y:blob.y};blob.returnGround??=groundHeight(w,blob.returnFrom);
+      blob.x=blob.returnFrom.x+(origin.x-blob.returnFrom.x)*progress;blob.y=blob.returnFrom.y+(origin.y-blob.returnFrom.y)*progress;
+      blob.height=blob.returnGround*(1-progress)+(groundHeight(w,s)+origin.height)*progress-groundHeight(w,blob);blob.radius=(ASTRAL.inkRadius+ASTRAL.inkSpread)*(1-progress);
+    }
+    if(phase!=='recall'&&!blob.blocked)s.hazards.push(hazard(s,blob.target.x,blob.target.y,0,phase==='splat'?blob.radius:ASTRAL.inkRadius+ASTRAL.inkSpread,phase==='splat',ASTRAL.inkShare));
+  }
+}
 // w.player uses the game's ordinary invulnerability/hit checks in damagePlayer. Return ACTUAL HP removed,
 // not requested damage, so dodging, armour, death and shields never yield free healing. canOccupy also
 // validates line-of-travel via these <=1/60 active-time movement steps. All terrain policy stays in adapter.
@@ -82,16 +149,22 @@ export function tickAstral(s,dt,w) {
   if(!Number.isFinite(dt)||dt<0||dt>ASTRAL.maxFrame)throw new Error('Astral tick expects 0..0.25 active seconds');
   if(w.paused||w.unloaded||s.terminated)return;
   if(s.hp<=0||(w.playerDeathFinal?w.playerDeathFinal():w.player.hp<=0)){endAstral(s);return;}
+  if(dt>0)ensureAstralGeometry(s);
   const n=Math.ceil(dt/ASTRAL.maxStep);for(let i=0;i<n;i++){if(s.terminated)break;step(s,dt/n,w);}
 }
 function step(s,dt,w) {
   const p=w.player;s.clock+=dt;
-  if(!s.move){s.recovery-=dt;moveToward(s,p,ASTRAL.speed,dt,w);if(s.recovery<=0)startAstralMove(s,ASTRAL_MOVES[Math.floor(random(s)*ASTRAL_MOVES.length)],p);return;}
+  if(!s.move){s.recovery-=dt;faceTarget(s,p);moveToward(s,p,ASTRAL.speed,dt,w);if(s.recovery<=0)startAstralMove(s,ASTRAL_MOVES[Math.floor(random(s)*ASTRAL_MOVES.length)],p);return;}
   s.elapsed+=dt;s.hitClock-=dt;s.hazards=[];const t=s.elapsed,active=t>=ASTRAL.windup;
   if(s.move==='pool') {s.hazards=[hazard(s,s.x,s.y,0,ASTRAL.poolRadius,active)];if(t>ASTRAL.windup+ASTRAL.poolLife){finish(s);return;}}
   if(s.move==='trample'){if(active)moveToward(s,s.target,ASTRAL.trampleSpeed,dt,w);s.hazards=[hazard(s,s.x,s.y,0,ASTRAL.trampleRadius,active)];if(t>ASTRAL.windup+ASTRAL.trampleLife){finish(s);return;}}
   if(s.move==='bite'){moveToward(s,p,ASTRAL.speed,dt,w);const phase=(t-ASTRAL.windup)%ASTRAL.biteGap;s.hazards=[hazard(s,s.x,s.y,0,ASTRAL.biteRadius,active&&phase<ASTRAL.biteActive)];if(t>ASTRAL.windup+ASTRAL.biteCount*ASTRAL.biteGap){finish(s);return;}}
-  if(s.move==='flight'){moveToward(s,p,ASTRAL.speed*ASTRAL.flightPursuit,dt,w);s.hazards=[hazard(s,s.x,s.y,0,ASTRAL.beamRadius,active,ASTRAL.beamShare)];if(t>ASTRAL.windup+ASTRAL.beamLife){finish(s);return;}}
+  if(s.move==='flight'){
+    const before=astralBeamAnchors(s).ground;moveToward(s,{x:p.x-(before.x-s.x),y:p.y-(before.y-s.y)},ASTRAL.speed*ASTRAL.flightPursuit,dt,w);
+    const at=astralBeamAnchors(s).ground,g=ASTRAL_GEOMETRY;
+    s.flightLiftExtra=Math.max(0,groundHeight(w,at)-groundHeight(w,s)+g.minBeamDrop-(g.flightLift-g.mouthY*g.drawScale)*s.scale);
+    s.hazards=[hazard(s,at.x,at.y,0,ASTRAL.beamRadius,active,ASTRAL.beamShare)];if(t>ASTRAL.windup+ASTRAL.beamLife){finish(s);return;}}
+  if(ASTRAL_INK_FORMS[s.move]){tickInk(s,w);if(!s.move)return;}
   if(s.move==='griffin'){
     const phase=t%ASTRAL.pounceGap, jumping=phase>=ASTRAL.pounceWindup&&phase<ASTRAL.pounceWindup+ASTRAL.pounceActive;
     if(phase<ASTRAL.pounceWindup)s.target={x:p.x,y:p.y};if(jumping)moveToward(s,s.target,ASTRAL.pounceSpeed,dt,w);
@@ -108,28 +181,35 @@ function step(s,dt,w) {
     if(astralEncloses(s.clones,p))s.enclosed+=dt;else s.enclosed=0;
     if(s.enclosed>=ASTRAL.cloneGrace&&s.hitClock<=0){const actual=w.damagePlayer(s.damage*ASTRAL.drainShare,{kind:'astralDrain'});s.hp=Math.min(s.maxHp,s.hp+Math.max(0,Math.min(s.damage*ASTRAL.drainShare,Number(actual)||0)));s.hitClock=ASTRAL.cloneTick;}
     if(t>ASTRAL.cloneLife){finish(s);return;}
-  } else if(s.hitClock<=0){const hit=s.hazards.find(h=>h.active&&astralHazardContains(h,p));if(hit){w.damagePlayer(s.damage*hit.share,{kind:`astral:${s.move}`});s.hitClock=s.move==='flight'?ASTRAL.beamTick:ASTRAL.hitGap;}}
+  } else if(s.hitClock<=0){const hit=s.hazards.find(h=>h.active&&astralHazardContains(h,p)&&(!w.canHazardHit||w.canHazardHit(h,p)));if(hit){w.damagePlayer(s.damage*hit.share,{kind:`astral:${s.move}`});s.hitClock=s.move==='flight'?ASTRAL.beamTick:ASTRAL.hitGap;}}
   if((w.playerDeathFinal?w.playerDeathFinal():p.hp<=0)||s.hp<=0)endAstral(s);
 }
 
 // Production actor adapter, shared by fixtures and registered natural hunts.
 // Encounter selection and world-beast lifecycle remain owned by the host.
 export function updateAstralActor(e,w) {
+  if(w.paused||w.unloaded||!(w.dt>0))return;
   if (e.kind === 'astralMirage') {
     const owner=w.enemies.find(q=>q.id===e.astralOwner&&!q.dead&&q.hp>0);
     if(!owner || !owner.astral?.clones.some(c=>c.id===e.id)) {e.hp=0;e.dead=true;}
     return;
   }
-  const s=e.astral ||= createAstralState({x:e.x,y:e.y,hp:e.maxHp,damage:e.damage,seed:e.astralSeed||1,namespace:e.id});
+  const s=e.astral ||= createAstralState({x:e.x,y:e.y,hp:e.maxHp,damage:e.damage,seed:e.astralSeed||1,namespace:e.id,facingX:e.facingX,scale:e.scale});
   if(e.dead||e.hp<=0||e.retreating||e.fleeTo){if(e.hp<=0)e.dead=true;endAstral(s);for(const c of w.enemies)if(c.astralOwner===e.id){c.hp=0;c.dead=true;}return;}
   const sight=w.astralLos||w.los;
   if(!e.aggro&&w.player.hp>0&&(!sight||sight(e,w.player)))e.aggro=true;
   if(!e.aggro)return;
   s.x=e.x;s.y=e.y;s.hp=e.hp;s.maxHp=e.maxHp;s.damage=e.damage;
+  if(!s.move||!Number.isFinite(s.facingX))s.facingX=facingSign(e);
+  s.scale=actorScale(e);
   for(const c of s.clones){const actor=w.enemies.find(a=>a.id===c.id);if(actor)c.hp=actor.dead?0:Math.min(c.hp,actor.hp);}
   s.clones=s.clones.filter(c=>c.hp>0);
   const canOccupy=(x,y)=>{const probe={...e,x:s.x,y:s.y,flying:true};w.move(probe,x-s.x,y-s.y);return Math.abs(probe.x-x)<1e-6&&Math.abs(probe.y-y)<1e-6;};
-  tickAstral(s,w.dt,{player:w.player,playerDeathFinal:w.playerDeathFinal,canOccupy,canCloneOccupy:(c,x,y)=>{
+  tickAstral(s,w.dt,{player:w.player,playerDeathFinal:w.playerDeathFinal,groundHeight:w.groundHeight,canOccupy,
+    canBlobOccupy:(blob,x,y)=>{const probe={...e,x:blob.x,y:blob.y,flying:true};w.move(probe,x-blob.x,y-blob.y);
+      return Math.abs(probe.x-x)<1e-6&&Math.abs(probe.y-y)<1e-6&&(!sight||sight({x:s.x,y:s.y},{x,y}));},
+    canHazardHit:(h,p)=>!(s.move==='flight'||ASTRAL_INK_FORMS[s.move])||(canOccupy(h.x,h.y)&&(!sight||(sight({x:s.x,y:s.y},h)&&sight(h,p)))),
+    canCloneOccupy:(c,x,y)=>{
     const actor=w.enemies.find(a=>a.id===c.id);
     if(!actor)return w.enemies.length<ASTRAL.maxActorArray&&canOccupy(x,y)&&(!(w.astralLos||w.los)||(w.astralLos||w.los)(w.player,{x,y}));
     const probe={...actor,x:c.x,y:c.y};w.move(probe,x-c.x,y-c.y);
@@ -140,7 +220,7 @@ export function updateAstralActor(e,w) {
     if(source.kind==='astralDrain'&&w.deferAstralHeal){w.deferAstralHeal(e,Math.min(amount,actual));return 0;}
     return actual;
   }});
-  e.x=s.x;e.y=s.y;e.hp=s.hp;e.flying=true;if(e.pack)e.pack.attack=s.move?`astral:${s.move}`:null;
+  e.x=s.x;e.y=s.y;e.hp=s.hp;e.flying=true;e.facingX=s.facingX;if(e.pack)e.pack.attack=s.move?`astral:${s.move}`:null;
   for(const c of [...s.clones]){
     let actor=w.enemies.find(a=>a.id===c.id);
     if(!actor){

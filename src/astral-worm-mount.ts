@@ -1,3 +1,4 @@
+import { astralActorScale } from "./astral-worm.ts";
 // Isolated Astral Worm riding adapter. Numbers are provisional, not owner-specified balance.
 // No merged HP, damage interception, immunity, reward writes, timers or terrain assumptions.
 export const ASTRAL_MOUNT = Object.freeze({ version: 1, mountReach: 2.25, knockoffHpShare: .2, renderLift: .3, griffinLift: .45, poolLift: .18, flightLift: .8 });
@@ -16,7 +17,7 @@ export function mountAstralWalker(owner, rider, host = {}) {
       !Number.isFinite(rider.maxHp) || rider.maxHp <= 0 || Math.hypot(owner.x-rider.x, owner.y-rider.y) > ASTRAL_MOUNT.mountReach) return false;
   if (host.canMount && !host.canMount(owner, rider)) return false;
   rider.astralMount = { v: ASTRAL_MOUNT.version, ownerId: owner.id, status: 'mounted', damageTaken: 0,
-    knockoffDamage: rider.maxHp * ASTRAL_MOUNT.knockoffHpShare, reason: null, form: owner.astral?.form || 'worm', ownerScale: Number.isFinite(owner.scale) && owner.scale > 0 ? owner.scale : 1 };
+    knockoffDamage: rider.maxHp * ASTRAL_MOUNT.knockoffHpShare, reason: null, form: owner.astral?.form || 'worm', flightLiftExtra: Math.max(0,Number(owner.astral?.flightLiftExtra)||0), ownerScale: astralActorScale(owner) };
   rider.x = owner.x; rider.y = owner.y;
   return true;
 }
@@ -56,7 +57,8 @@ export function syncAstralMount(rider, host = {}) {
     departing(rider) ? 'rider-retreat' : !point(owner) ? 'owner-position-invalid' : null;
   if (reason) { dismountAstralWalker(rider, reason, host); return false; }
   rider.x = owner.x; rider.y = owner.y; state.form = owner.astral?.form || 'worm';
-  state.ownerScale = Number.isFinite(owner.scale) && owner.scale > 0 ? owner.scale : 1;
+  state.flightLiftExtra = Math.max(0,Number(owner.astral?.flightLiftExtra)||0);
+  state.ownerScale = astralActorScale(owner);
   return true;
 }
 
@@ -81,5 +83,5 @@ export function astralMountPresentation(rider) {
   if (!state || state.status === 'dismounted') return null;
   return { ownerId: state.ownerId, form: state.form, riding: state.status === 'mounted',
     pendingLanding: state.status === 'landing', aboveWater: true, lift: state.form === 'pool' ? ASTRAL_MOUNT.poolLift : state.form === 'griffin' ? ASTRAL_MOUNT.griffinLift :
-      ASTRAL_MOUNT.renderLift + (state.form === 'flight' ? ASTRAL_MOUNT.flightLift * (state.ownerScale || 1) : 0) };
+      ASTRAL_MOUNT.renderLift + (state.form === 'flight' ? ASTRAL_MOUNT.flightLift * (state.ownerScale || 1) + Math.max(0,Number(state.flightLiftExtra)||0) : 0) };
 }

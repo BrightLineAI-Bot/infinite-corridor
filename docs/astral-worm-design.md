@@ -26,7 +26,7 @@ All requirements in this section derive from S1 unless another source is specifi
 | AW-08 | In elongated form, extend many limbs from both sides and move forward in a trample attack. | Excess legs are intentional, more than locomotion needs; some may resemble hands or imperfect approximations of legs. Not a tidy natural centipede. |
 | AW-09 | Produce a large grotesque human-like mouth for repeated chasing bite attacks, then morph the mouth back into the inky body. | Mouth is temporary morphology, not a permanent face. Grab/immobilization is not established by this requirement. |
 | AW-10 | Fly with an elongated body and insect/dragonfly-like wings, with facial pincers available as part of the morphology. | Altitude, flight permissions, collision and whether pincers are their own damaging move are unspecified. |
-| AW-11 | While flying, sustain a beam directed down to the ground. Its impact has damaging area around the narrow beam. | Dodging only the beam center must not guarantee safety; the impact/splash footprint matters. No automatic inference of a terrain scar or orbital laser. |
+| AW-11 | While flying, sustain a beam directed down to the ground from the head/mouth (origin clarified by AW-32/S9). Its impact has damaging area around the narrow beam. | Dodging only the beam center must not guarantee safety; the impact/splash footprint matters. No automatic inference of a terrain scar or orbital laser. |
 | AW-12 | Create mirage/afterimage-like duplicates around the player that can move together, approach and track the player. | Suggested count is three or four, with potentially a couple more; no hard cap has been chosen. Their depiction is illusory but their combat effect is real. |
 | AW-13 | Duplicates have significantly less health than the main creature, but still a meaningful amount, and the player can attack and kill them. | Not invulnerable decorations or necessarily one-hit ghosts. Exact health fraction and rewards unspecified. |
 | AW-14 | Staying enclosed by the tracking duplicate ring for long enough causes player damage and restores life to the main monster. | Interpret healed monster as Astral Worm, not Walker. “Energy” appears earlier: additional stamina/energy drain is unresolved. Exact grace period and healing conversion unspecified. |
@@ -46,6 +46,11 @@ All requirements in this section derive from S1 unless another source is specifi
 | AW-28 | Astral Worm awards the normal beast bounty and adds no new Echo. Mirages and the allied Walker are rewardless. | S6 explicitly approves this proposal. Use the actual existing bounty policy, not a fabricated reward amount; hostile Walker reward rules are not changed by the allied-only statement. |
 | AW-29 | Add corresponding regression tests for the approved reward policy. | S6. Explicit approval is limited to corresponding updates, not unrelated configuration/workflow edits or publication. |
 | AW-30 | Put a saddle on Astral Worm while Void Walker rides it. | S7. Preserve the optional any-form mounting rule and unchanged health pools. A recognizable form-fitted saddle, shown only while mounted and removed on dismount, is the implementation interpretation. |
+| AW-31 | Refine the mounted saddle to be smaller, subtler and more futuristic. | S8 supersedes any bulky saddle interpretation. Compact dark angular styling, faint violet seam and no dangling stirrups are implementation choices, not verbatim owner requirements. |
+| AW-32 | The downward beam originates from the head/mouth, not the middle of the body. | S9 corrects prior imagery. Keep AW-11's ground-impact area damage. Rendering the mouth-to-impact beam against the actual damage endpoint is an implementation correctness requirement. |
+| AW-33 | Spew three inky black blobs that land/splat, spread a little, and are then drawn back to the creature. | S9. Splitting is not required. Implementation uses exactly three finite blobs, not unbounded copies; timing, damage, radius and return targeting remain tuning. |
+| AW-34 | Provide the ink-spitting move in worm, pool and trample forms. | S10–S11 resolve form eligibility, including worm without an elaborate head. Do not silently add it to griffin or winged forms. |
+| AW-35 | Isolate the two existing Crystal-only test setups from Astral Worm spawning while preserving every Crystal assertion and production behavior. | S12 explicitly approves only this test interference fix, not unrelated test or gameplay changes. |
 
 ## Attack/readability walkthrough, not new tuning
 
@@ -75,6 +80,8 @@ Additional unresolved mounted-mode decisions:
 - AW-Q13: Which paired alignments may mount? The owner did not specify whether a player-allied Walker may ride a hostile Astral Worm. Do not assume friendly mounting is approved or disallowed.
 - AW-Q14: What damage amount, accumulation window and recipient count toward knock-off? Does damage to the mount count, rider only, both, or stagger? No number was owner-specified.
 - AW-Q15: Attachment position/orientation and animation on each form, collision/hit targeting, transition behavior, separation placement, water/elevation safety, arrival/death cleanup, and simultaneous attack budgets require explicit choices.
+
+- AW-Q16: For the recalled ink blobs, choose telegraph duration, trajectories, spread radius, ground dwell, recall speed, hit cadence and collision/obstacle behavior; decide how the move is cancelled on death, dismount, transformation, retreat or scene exit. The owner specified no numeric damage/healing values. Do not infer healing when blobs return.
 
 These are review/design questions, not requests already posed to the owner. Use safe, clearly labeled proposals when implementation needs them; seek owner input where a choice materially changes the design.
 
@@ -116,10 +123,14 @@ Every row is **NOT VERIFIED IN THIS HANDOFF**; the staged document does not asse
 | AW-V15 | AW-26–27, AW-Q13–15 | Mounted and independent fixtures, all morph forms including griffin, extended riding and threshold-based knock-off. Verify unchanged separate HP; eligible piercing/splash damages both once per intended hit, ordinary targeting does not auto-double; safe separation/death/retreat cleanup. Record all tuning decisions. |
 | AW-V16 | AW-28–29 | Normal Worm bounty exactly once, no new Echo, zero mirage/allied-Walker rewards, existing hostile-Walker policy preserved. Regression coverage includes repeated death callbacks, save/reload, mounted kills and decided allied-kill credit. |
 | AW-V17 | AW-26–27, AW-30 | Mounted captures show a recognizable saddle correctly positioned on every supported form, with rider/saddle alignment maintained during morphs; dismount, death, retreat and reload do not leave an orphan saddle. Unmounted forms retain their approved appearance. Saddle visuals must not change health pools or hit policy. |
+| AW-V18 | AW-30–31 | Mounted snapshots on all supported forms demonstrate smaller, understated futuristic saddle without a bulky frame; preserve rider alignment and riding-only visibility. Owner styling request is distinct from the chosen violet/dark implementation. |
+| AW-V19 | AW-11, AW-32 | Motion captures and endpoint assertions show beam starting at the animated mouth and ending at its actual ground damage footprint, including heading/elevation changes. No beam from mid-body, detached mouth endpoint or mismatched impact area. |
+| AW-V20 | AW-33–34 | Worm, pool and trample fixtures each emit exactly three blobs, with visible landing/spread then recall; no unsupported forms, clone explosion, extra persistent hazards or return-healing. Verify finite lifecycle, chosen damage windows, collisions, frame-rate independence and cancellation/cleanup on death/retreat/unload. |
+| AW-V21 | AW-35 | Diff inspection and focused tests establish only the two Crystal-only setups exclude Worm spawning; every Crystal assertion remains unchanged and no production eligibility changes leak from this fixture fix. |
 
 ## Handoff completeness checklist
 
-- [x] Sources S1–S7 preserved with exact owner wording and IDs, including the approval question/answer pair; unrelated Gate correction explicitly excluded from Astral Worm scope.
+- [x] Sources S1–S12 preserved with exact owner wording and IDs, including the approval question/answer pair; unrelated Gate correction explicitly excluded from Astral Worm scope.
 - [x] Final Astral Worm spelling and default-form correction recorded.
 - [x] Every distinct described morphology, attack family and paired-encounter outcome mapped to stable IDs.
 - [x] Correct rarity hierarchy and open tuning preserved without invented percentages.
@@ -145,3 +156,15 @@ The separate explicit question/answer approval in S6 settles normal beast bounty
 ## Latest clarification: mounted saddle (S7)
 
 The owner requests a saddle while the Walker rides Astral Worm. Show it as a recognizable, form-fitted riding accessory rather than a permanent mutation of the approved creature anatomy. Remove it with the mounted state; exact saddle material, ornament and attachment geometry are implementation choices. The builder reports the render is implemented and a new sheet was inspected/delivered by the parent, but this documentation handoff independently verifies neither code nor captures and supplies no publication approval.
+
+## Latest refinements: saddle, mouth beam and recalled ink (S8–S12)
+
+S8 refines the saddle toward smaller, more subtle futuristic styling; the chosen compact dark angular seat with faint violet seam, lower outline contrast and no bulky leather frame/dangling stirrups is an implementation interpretation. It changes no combat geometry or health policy.
+
+S9 requires mouth/head origin for the downward beam, replacing the mid-body origin shown in earlier imagery. Keep the mouth anchor, rendered ground endpoint and damaging impact area aligned. This does not remove the previously requested splash area.
+
+S9–S11 add the three-blob black-ink spew in worm, pool and trample forms: launch, land/splat with slight spread, then recall to the creature. Exactly three finite blobs and telegraph/outbound/brief-ground/recall phases are the chosen bounded interpretation. No healing or persistent hazard is being inferred; exact numeric timings and damage remain tuning choices, not owner numbers. Blobs need not split. The headless worm presentation must not depend on a permanent humanoid face to use this move.
+
+S12 separately approves only isolating the two existing Crystal-only test setups against Worm spawn interference while retaining all Crystal assertions. It supplies no publication authorization. None of these documentation additions independently verifies the reported implementation or render delivery.
+
+S13 explicitly approves adding/updating Astral Worm regressions for the requested changes, including mouth beam and ink attack, while preserving existing coverage. This is a bounded protected-test approval only, not upload/publication authority.

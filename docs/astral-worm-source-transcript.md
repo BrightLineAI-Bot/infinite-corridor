@@ -104,3 +104,77 @@ But let's put a saddle on the beast while he's riding it
 END VERBATIM SOURCE S7
 
 Scope: add a saddle to Astral Worm while Void Walker rides it. Recognizable, form-fitted placement and removal on dismount are implementation interpretations of this mounted-only presentation, not additional verbatim owner wording. No health, reward, knock-off threshold or publication policy is changed.
+
+## S8 — smaller, subtle, futuristic saddle
+
+User message ID: `Sentinel_9af9791da3b48191a7ed08c0c225dc60`
+
+BEGIN VERBATIM SOURCE S8
+
+Make the saddle more subtle and slightly more futuristic. Actually, I make it more make it smaller, more subtle and more futuristic
+
+END VERBATIM SOURCE S8
+
+## S9 — mouth-origin beam and three recalled ink blobs
+
+User message ID: `Sentinel_9a2f8a4cea3c819183a4603aa14a2cdd`
+
+BEGIN VERBATIM SOURCE S9
+
+Also, the beam that the astroworm shoots all the images show it coming from the middle of its body. The beam should come from its head from its mouth. So it's like she's from its mouth downward. Oh, and another thing when it's in the worm form with a bunch of legs are just when it's in the warm form without any kind of head on it. It can do a move where it spews out anky goo and the inky goo will splat on the floor and then right? So it'll like splat and like, spread out a little bit. And then it'll draw it back to itself. So spew out like three inky glue inky tube blobs, inky, you know, blackness, blobs, that'll splat, or that'll just land on the floor they don't have to split whatever, that'll splat on the floor and then it'll call them back to itself
+
+END VERBATIM SOURCE S9
+
+## S10 — pool form also gets ink move
+
+User message ID: `Sentinel_7e71f50c16688191be298541aeebfd1e`
+
+BEGIN VERBATIM SOURCE S10
+
+It can do that in pool form to
+
+END VERBATIM SOURCE S10
+
+## S11 — final ink-move form list
+
+User message ID: `Sentinel_31698dca3a5081918a8cc959fedd93bf`
+
+BEGIN VERBATIM SOURCE S11
+
+Yeah, so worm form pool form and trample form. I'll get the inky goo spitting
+
+END VERBATIM SOURCE S11
+
+## S12 — narrow Crystal-only test-isolation approval
+
+Assistant message ID: `Sentinel_40275e9b09b48191b8da81605ffd6bdc`
+
+BEGIN VERBATIM QUESTION S12
+
+One test-only approval: may I prevent the Astral Worm from spawning inside the two existing Crystal-only test setups? I’ll keep every Crystal assertion unchanged; this fixes test interference, not game behavior.
+
+END VERBATIM QUESTION S12
+
+User message ID: `Sentinel_3f50b2b556b48191b0ffbd67983337bd`
+
+BEGIN VERBATIM ANSWER S12
+
+Yes
+
+END VERBATIM ANSWER S12
+
+Scope: this approves excluding Astral Worm from the two existing Crystal-only test setups without changing Crystal assertions or game behavior. It is not permission to weaken tests, change unrelated fixtures or publish.
+
+S8 refines S7's saddle: smaller, subtler and futuristic. S9 corrects beam origin to head/mouth, directed downward, and adds three spewed ink blobs that land/spread and return. S10–S11 establish worm, pool and trample form eligibility. Dark angular saddle styling, faint violet accents, exactly three finite blobs, telegraph/outbound/brief-ground/recall phases, no healing/persistent hazards, and shared rendered/damaging beam endpoint are implementation interpretations; the owner did not specify numeric timing, damage or blob radius. S9 says blobs need not split.
+
+## S13 — Explicit Astral regression scope approval
+
+Assistant — `Sentinel_123ad25a3a308191bbf727dd7c2366a7`
+
+> To avoid asking for each test file, may I add and update the Astral Worm regression tests for your requested changes, including the mouth beam and ink attack, while preserving existing coverage? The repository requires explicit permission for test edits.
+
+User — `Sentinel_3780c5aa2bc481919f4b3a41c0bcf63c`
+
+> Yes
+
+The reply approves the preceding bounded test-edit request, not uploads or publication.

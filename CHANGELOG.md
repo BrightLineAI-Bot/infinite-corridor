@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Implement Astral Worm natural encounters, approved black-ink forms/no-Echo bounty, bounded physical Wayglass retreat and independent-health Walker riding on the reviewed r251/Gate baseline; follow-on release packaging and independent final review remain pending.
+- Implement Astral Worm natural encounters, approved black-ink forms/no-Echo bounty, bounded physical Wayglass retreat, independent-health Walker riding with a compact futuristic saddle, mouth-origin beam and finite three-blob worm/pool/trample ink recall on the reviewed r251/Gate baseline; follow-on release packaging and independent final review remain pending.
 
 - Release 251 ocean extension: the Void Walker sails a small personal skiff and the Crystal throws lifted water; ocean Supernova retains combat but never converts or scars ocean water.
 

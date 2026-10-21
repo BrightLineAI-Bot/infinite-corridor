@@ -2209,3 +2209,9 @@ The following original protocol is retained as historical evidence only. The lin
 **CODE:** World beasts now use an attainable level8 reference even for new characters; stronger existing tuning remains. Questing receives at least1.15× the strongest same-reference beast HP/damage, retaining its fastest existing cadence. Additional delivered-damage floor60 is provisional balance, not an owner number. Crystal/Walker dungeon level eligibility is1, with other environment/depth restrictions unchanged. Player death resets participating surviving major beasts to fullHP and spends all relevant attempts; third failure clears them without reward. Gate instead disappears after player death with no rematch counter. Source-area snapshots are captured before switching checkpoint coordinates. See [source](beast-level-eight-source-transcript.md) and [design/validation](beast-level-eight-design.md).
 
 **BOUNDARY:** Ordinary enemies are not globally buffed. Normal leave/reload retains wounds; no attempt count resets. Co-encounter spawn rules remain separate. This is a follow-on prototype, not live or included in current r251 review; protected regression updates and fresh shared-lifecycle review remain pending.
+
+### Astral mouth beam and ink recall follow-on
+
+**CODE:** Shared `astralBeamAnchors` ties the mouth-origin flight beam and ground AoE to actor scale/cast-facing; native projection includes terrain-height differences. `inkWorm`, `inkPool`, and `inkTrample` preserve their silhouette while three JSON-only blobs telegraph, fly, briefly spread and recall. The current riding-only saddle is compact, dark and subtly violet.
+
+**BOUNDARY:** Only temporary ground splats damage; no added healing, actors, persistent terrain, rewards or player boat. Three descriptors and normal hit cadence stay bounded. New owner-approved regressions preserve prior coverage; final exact-source review/full suite and follow-on release packaging remain separate gates.

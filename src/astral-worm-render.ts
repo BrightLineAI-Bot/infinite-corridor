@@ -126,3 +126,23 @@ export function drawAstralSaddle(ctx, {x,y,unit,form='worm',facing=1}) {
   ctx.lineTo(width*.22,.043);ctx.lineTo(width*.32,.008);ctx.stroke();
   ctx.restore();
 }
+
+// Exactly the combat core's three finite ink descriptors. Ground impact radii and
+// visual spreading share the same values; outbound/recall droplets do not damage.
+export function drawAstralInkBlobs(ctx, blobs, project, unit=24) {
+  for(const blob of blobs){
+    const at=project(blob.x,blob.y),r=Math.max(.04,Number(blob.radius)||.14)*unit;
+    ctx.save();ctx.lineWidth=Math.max(.7,unit*.018);ctx.lineJoin='round';
+    if(blob.phase==='warning'){
+      const target=project(blob.target.x,blob.target.y);ctx.strokeStyle=blob.blocked?'#46525c':'#8393ab';
+      ctx.beginPath();ctx.ellipse(target.x,target.y,r,r*.55,0,0,Math.PI*2);ctx.stroke();
+    } else {
+      const y=at.y-(Number(blob.height)||0)*unit,splat=blob.phase==='splat';
+      ctx.fillStyle=blob.blocked?'#10141b88':'#07090e';ctx.strokeStyle='#5b6978';
+      ctx.beginPath();ctx.ellipse(at.x,y,r,splat?r*.56:r*.8,splat?0:-.18,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.strokeStyle='#28343f';ctx.beginPath();ctx.ellipse(at.x-r*.18,y-r*(splat?.12:.2),r*.48,r*.12,-.15,Math.PI,Math.PI*2);ctx.stroke();
+      if(splat){ctx.fillStyle='#080b11';for(const sign of [-1,1]){ctx.beginPath();ctx.ellipse(at.x+sign*r*.85,y+r*.12,r*.2,r*.09,sign*.2,0,Math.PI*2);ctx.fill();}}
+    }
+    ctx.restore();
+  }
+}

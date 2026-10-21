@@ -3091,6 +3091,7 @@ export class Game {
         if (result.changed) { game._walkerLandingGraph = null; game._walkerRoutes = new WeakMap(); map.wallGlints = (map.wallGlints || []).filter(q => map.tiles[q.y * width + q.x]?.blocked); }
         return result;
       },
+      groundHeight: (x,y) => map.landscape ? liftAt(map,width,x,y) : 0,
       playerDeathFinal: () => game.astralPlayerFell(),
       deferAstralHeal: (owner,amount) => { if(amount>0&&(game._astralDrainCredits||=[]).length<32)game._astralDrainCredits.push({owner,amount}); },
       astralLos: (a,b) => hasLineOfSight(a,b,map,width,true,game.area === "overworld"),
@@ -3235,7 +3236,7 @@ export class Game {
         if(c.kind==="gateRevenant"){c.maxHp=360;c.hp=360;c.damage=22;c.range=5.5}
         c.maxHp=Math.round(c.maxHp*hp);c.hp=c.maxHp;c.damage=Math.max(1,Math.round(c.damage*damage));c.speedMultiplier*=speed;c.attackCooldownScale=attackCooldownScale;c.telegraphScale=telegraphScale;
       }
-      if(area === "dungeon" && !c.passiveBehavior && !c.ambient && !c.worldBeast && !c.astralCompanionOf) tuneDungeonThreat(c);
+      if(area === "dungeon" && !c.passiveBehavior && !c.ambient && !c.astralCompanionOf && !c.worldBeast) tuneDungeonThreat(c);
       // Every monster hits harder (Tim, 2026-10-16). Foes tuned to the Wayfarer (the Questing Beast, Far Array bosses) are exempt.
       if(c.damage>0&&!c.questingBeast&&!c.worldBeast&&!c.astralCompanionOf&&!c.farArrayBoss)c.damage=Math.max(1,Math.round(c.damage*ENEMY_DAMAGE_SCALE));
       if (c.gatePredator) tuneGatePredator(c, this.save, characterStats(this.save));
