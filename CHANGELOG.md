@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 273 — world beasts come with your Aperture. A world beast is met for the first time only once your Aperture reaches its tier: the Mountain Turtle, the Void Walker and the Psychic Crystal from tier 3 (Resonant), the Morphing Blob from tier 4, the Lightning Giant from tier 5, the Astral Worm from tier 6, the Nanobot Knight and the Tremor Worm from tier 7, and the Questing Beast last, from tier 8. Below tier 3 none appear. A beast you have already met (or are tracking) stays where it is.
+- Release 273 — a Gate Revenant horde now gives Crossing Sigils: its count is split into four waves, and the kill that ends each wave leaves a Sigil (four in all, the last with the Gate piece). Ordinary Gate Revenants still leave one each.
+
 - Release 271 — Gate Revenants stalk, then hunt. In a dungeon a Gate Revenant keeps 5 to 8 tiles off at first, slipping through the walls to stay near you, and turns on you at once if you come within a few tiles or wound it. Two minutes after you enter a dungeon they all hunt you wherever you are. Hunting, they pass straight through dungeon walls, never out into the black beyond, and one left inside rock steps out onto floor you can reach.
 - Release 271 — Gate Revenants fight smarter. A Revenant may slip a swing or a shot about to land, side-stepping in a blink (not every time, and not again for a couple of seconds). Land 8 blows on one inside 3 seconds and its poise breaks: it sinks to one knee, open and still, for 2.4 seconds, then springs away.
 - Release 271 — the Gate Revenant has a new look: a hooded, horned wraith in a tattered cloak with the Gate's arch burning on its chest. It looks faded while it stalks, its eyes flare red on the hunt and brighter as it winds up, it leaves an afterimage when it dodges, and it kneels while its poise is broken. It costs no more to draw than before.

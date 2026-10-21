@@ -13,20 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**273**
+**275**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 271 | Claude | `claude/dreamy-rubin-yn6q2p` | Gate Revenants stalk then hunt after 2 min in a dungeon, pass through dungeon walls, dodge and poise-break; model rework | Building. |
-| 269 | Claude | PR #113 | Build costs 4 wood / 5 stone; Build patches the skiff; the hull guard (a Viking longboat, a fuchsia guard bar); the Gate Revenant horde | Merged; preview `r269-ad5f1c3ae5cc`. |
+| 273 | Claude | `claude/dreamy-rubin-yn6q2p` | World beasts by Aperture tier (3–8); four Crossing Sigils per horde | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 271 | `r271-ad06c7fbd51e` | 2026-10-21 | Published with 269 (which never went live alone): the Gate Revenant horde, skiff repairs, the hull guard's longboat, cheaper building (269, PR #113); Gate Revenants stalk then hunt through walls, dodge, poise break, the new Revenant with its barrage maw (271, PR #114). The pre-publish review found no blockers; its two notes were fixed before merge. |
 | 267 | `r267-345b89326368` | 2026-10-21 | Published with 263 and 265 (neither went live alone): Echo drops fixed, Crossing Sigils, safe dungeon arrivals, hull shields, 2-dig shovels (263, PR #110); building, the Refuge's farm, quarry, Hollis and Shale, regrowth, icon buttons (265, PR #111); build mode and the wall-trap fix (267, PR #112). The 265 review found the wall trap; the 267 re-review found no blockers. |
 | 261 | `r261-2215f2781a82` | 2026-10-21 | World-boss pacing and placement; the Questing Beast's sea rules; the Mountain Turtle at sea on ice; 99 wood and stone, two skiffs; HUD rearranged with spell presets (PR #109). The pre-publish review found no blockers. |
 | 259 | `r259-a490b918fa7e` | 2026-10-21 | World beasts pursue (3 crossings, Blob 1); Blob split; Glyphs fix; Rift Step without recall; Pack tabs; back button; carry limits and the 1+1 shovel; Psychic Crystal poise, dungeon bounds and hunting (PR #108). The pre-publish review found no blockers. |

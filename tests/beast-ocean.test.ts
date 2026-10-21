@@ -31,7 +31,7 @@ function seaMap(kind = null) {
   };
 }
 function isolatedSave(seed = 'CROSSING-OCEAN') {
-  const save = freshSave(); save.seed = seed; save.level = 12;
+  const save = freshSave(); save.seed = seed; save.level = 12; save.perception.aperture = 1e6; // release 273: world beasts are met only from their Aperture tier
   for (const id of WORLD_BEAST_IDS) save.worldBeasts[id].cooldown = 9999;
   return save;
 }

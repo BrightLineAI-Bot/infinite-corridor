@@ -92,7 +92,7 @@ function entryComponent(map) {
   return seen;
 }
 function realDungeon(site, active = null) {
-  const save = freshSave(); save.seed = 'ROAM-REVIEW'; save.level = 8;
+  const save = freshSave(); save.seed = 'ROAM-REVIEW'; save.level = 8; save.perception.aperture = 1e6; // release 273: world beasts are met only from their Aperture tier
   const game = new Game(save, 0), id = `dungeon:ROAM-REVIEW:g1:5:5:site-${site}`;
   save.session.activeDungeonId = id;
   if (active) save.worldBeasts.psychicCrystal.active = { dungeon: id, ...active };
@@ -349,7 +349,7 @@ test('a sealed puddle still qualifies and retreat still crosses walls, reaches w
   const map = rect(mapOf(30, 18), 2, 2, 12, 12); tile(map, 21, 8, 'dungeonWater', true);
   let save, spawn, id;
   for (let i = 0; i < 100 && !spawn; i++) {
-    save = freshSave(); save.seed = 'SEALED-POOL'; save.level = 8;
+    save = freshSave(); save.seed = 'SEALED-POOL'; save.level = 8; save.perception.aperture = 1e6; // release 273: Aperture-tier gate
     id = `dungeon:SEALED-POOL:g1:5:5:site-${i}`; spawn = worldBeastForDungeon(save, map, id);
   }
   assert.ok(spawn);

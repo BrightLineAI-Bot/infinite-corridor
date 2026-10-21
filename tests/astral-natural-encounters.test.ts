@@ -24,7 +24,7 @@ function natural(role='hostile',mount=false) {
         roll(`${seed}:world-beast-dungeon:voidWalker:v1:0:${key}`,1000)>=WORLD_BEASTS.voidWalker.dungeonChance){id=key;break;}
     }
     assert.ok(id,'bounded deterministic dungeon-roll search');
-    const save=freshSave();save.seed=seed;save.level=1;save.questingBeast.cooldown=999;
+    const save=freshSave();save.seed=seed;save.level=1;save.perception.aperture=1e6;/* release 273: Aperture-tier gate */save.questingBeast.cooldown=999;
     for(const kind of WORLD_BEAST_IDS)save.worldBeasts[kind].cooldown=['astralWorm','voidWalker'].includes(kind)?0:999;
     save.session.area='dungeon';save.session.activeDungeonId=id;
     const g=new Game(save,0),owner=g.enemies.find(e=>e.worldBeast==='astralWorm'),rider=g.enemies.find(e=>e.astralCompanionOf===owner?.id);
@@ -48,7 +48,7 @@ function naturalOverworldAt(kind='astralWorm', options={}) {
     const seed=`ASTRAL-OVERWORLD-${kind}-${n}`;
     if(roll(`${seed}:world-beast:${kind}:v1:0:${rx}:${ry}`,1000)>=WORLD_BEASTS[kind].chance*ENCOUNTER.chanceScale)continue;
     if(options.role && (alignment(seed)!==options.role || options.mounted && roll(`${seed}:astral-mount:v1:0`)>=ASTRAL_PAIR.mountedShare || roll(`${seed}:world-beast:voidWalker:v1:0:${rx}:${ry}`,1000)<WORLD_BEASTS.voidWalker.chance*ENCOUNTER.chanceScale))continue;
-    const save=freshSave();save.seed=seed;save.level=1;save.session.rx=rx;save.session.ry=ry;save.questingBeast.cooldown=999;
+    const save=freshSave();save.seed=seed;save.level=1;save.perception.aperture=1e6;/* release 273: Aperture-tier gate */save.session.rx=rx;save.session.ry=ry;save.questingBeast.cooldown=999;
     for(const id of WORLD_BEAST_IDS)save.worldBeasts[id].cooldown=id===kind||options.role&&id==='voidWalker'?0:999;
     const g=new Game(save,0),actor=g.enemies.find(e=>e.worldBeast===kind);
     const rider=g.enemies.find(e=>e.astralCompanionOf===actor?.id);
@@ -137,7 +137,7 @@ test('actual level-one Questing actor dominates naturally loaded beasts at the s
   for(let n=0;n<20000;n++) {
     const seed=`ASTRAL-QUESTING-DOMINANCE-${n}`;
     if(roll(`${seed}:questing-beast:v1:0:${rx}:${ry}`,1000)>=.035||roll(`${seed}:world-beast:astralWorm:v1:0:${rx}:${ry}`,1000)>=WORLD_BEASTS.astralWorm.chance)continue;
-    const save=freshSave();save.seed=seed;save.level=1;save.session.rx=rx;save.session.ry=ry;
+    const save=freshSave();save.seed=seed;save.level=1;save.perception.aperture=1e6;/* release 273: Aperture-tier gate */save.session.rx=rx;save.session.ry=ry;
     for(const kind of WORLD_BEAST_IDS)save.worldBeasts[kind].cooldown=kind==='astralWorm'?0:999;
     const candidate=new Game(save,0);if(candidate.enemies.some(e=>e.questingBeast)){g=candidate;break;}
   }

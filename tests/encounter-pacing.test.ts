@@ -7,6 +7,7 @@ import { generateRegion } from '../src/world.ts';
 import { WORLD_BEASTS, WORLD_BEAST_IDS, ENCOUNTER, ensureBeastGap, noteSectionVisit, encounterReady, encounterMet, worldBeastFor, ensureWorldBeasts, placementRegions } from '../src/world-beasts.ts';
 import { questingBeastFor, QB_SEA } from '../src/questing-beast.ts';
 import { Game } from '../src/game.ts';
+const opened = (s) => { s.perception.aperture = 1e6; return s; }; // release 273: world beasts are met only from their Aperture tier (world-beasts.ts BEAST_APERTURE)
 
 test('the buffer is additive save state: a save without it starts ready; bad values are clamped', () => {
   const s = freshSave(); assert.equal(s.beastGap.fresh, ENCOUNTER.newSections); assert.equal(encounterReady(s), true);
@@ -26,7 +27,7 @@ test('release 263: a section counts unless it is among the last 8 different ones
 });
 
 test('no new world beast or Questing Beast is claimed inside the buffer; an encounter already met is unaffected', () => {
-  const s = freshSave(); s.seed = 'PACE'; ensureWorldBeasts(s); s.questingBeast.cooldown = 0;
+  const s = opened(freshSave()); s.seed = 'PACE'; ensureWorldBeasts(s); s.questingBeast.cooldown = 0;
   for (const id of WORLD_BEAST_IDS) s.worldBeasts[id].cooldown = 0;
   // Force every roll to pass by scaling chance up, then show the buffer alone holds them back.
   const scale = ENCOUNTER.chanceScale; ENCOUNTER.chanceScale = 1e6;
@@ -36,7 +37,7 @@ test('no new world beast or Questing Beast is claimed inside the buffer; an enco
       const qb = questingBeastFor(s, m, rx, 9), wb = worldBeastFor(s, m, rx, 9);
       if (qb || wb) { claims++; assert.equal(s.beastGap.fresh, 0, 'a meeting resets the buffer'); for (const id of WORLD_BEAST_IDS) if (s.worldBeasts[id].active?.rx === rx) { s.worldBeasts[id].active = null; } s.questingBeast.active = null; } }
     assert.ok(claims >= 2 && claims <= Math.ceil(40 / ENCOUNTER.newSections) + 1, `at most one meeting per ${ENCOUNTER.newSections} new sections (${claims})`);
-    const k = freshSave(); k.seed = 'PACE'; ensureWorldBeasts(k); k.worldBeasts.tremorWorm.active = { rx: 3, ry: 3, tries: 1 }; encounterMet(k);
+    const k = opened(freshSave()); k.seed = 'PACE'; ensureWorldBeasts(k); k.worldBeasts.tremorWorm.active = { rx: 3, ry: 3, tries: 1 }; encounterMet(k);
     const m = generateRegion(k.seed, 3, 3); assert.equal(worldBeastFor(k, m, 3, 3)?.worldBeast, 'tremorWorm', 'a beast already met is still there');
   } finally { ENCOUNTER.chanceScale = scale; }
 });
@@ -73,7 +74,7 @@ test('placement: a land beast never stands on a small island or anywhere it coul
 
 test('the Questing Beast never claims a section that is nearly all ocean, and is much rarer over water', () => {
   assert.ok(QB_SEA.none <= .95 && QB_SEA.wateryChance < .5);
-  const s = freshSave(); s.seed = 'QB-SEA'; ensureWorldBeasts(s); s.questingBeast.cooldown = 0;
+  const s = opened(freshSave()); s.seed = 'QB-SEA'; ensureWorldBeasts(s); s.questingBeast.cooldown = 0;
   const scale = ENCOUNTER.chanceScale; ENCOUNTER.chanceScale = 1e6;
   try {
     assert.equal(questingBeastFor(s, sectionOf((x) => x === 0), 9, 9), null, 'nearly all ocean');
