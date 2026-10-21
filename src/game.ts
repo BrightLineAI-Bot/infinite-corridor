@@ -61,7 +61,7 @@ import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.ts";
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
 import { applyLandscape, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.ts";
-import { nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
+import { GATE_REVENANT, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
 import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, digSpot } from "./digging.ts";
@@ -78,6 +78,7 @@ export const EQUIPMENT_CAPACITY = 60;
 export function pinDungeonLayout(save, id) {
   const history = dungeonHistory(save, id);
   const visited = () => history.visits > 0 || Object.keys(save.session.areas || {}).some(key => key === id || key.startsWith(id + ':level:'));
+  if (history.gatePredatorSpawnThreshold == null) history.gatePredatorSpawnThreshold = visited() || history.layoutVersion !== undefined ? GATE_REVENANT.legacySpawnPerThousand : GATE_REVENANT.spawnPerThousand;
   if (history.layoutVersion === undefined) history.layoutVersion = visited() ? 0 : 1;
   // Dungeon Monster Pack: only histories that have never been entered adopt the new population and guardians.
   if (history.monsterPack === undefined) history.monsterPack = visited() ? 0 : MONSTER_PACK_VERSION;
@@ -402,6 +403,13 @@ export function projectileTileOpen(map,width,x,y){
   if(ix<0||iy<0||ix>=width||iy>=height||!tile)return false;
   if(["canyon","river","dungeonWater",...DEEP_WATER].includes(tile.kind))return true;
   return tileOpen(map,width,x,y);
+}
+// A following predator must land inside the entered section, not beyond its edge.
+export function placeGatePursuer(e, player, map, width) {
+  if (footprintOpen(map, width, e.x, e.y) && hasLineOfSight(e, player, map, width)) return;
+  const offsets = [[-1.2,0],[1.2,0],[0,-1.2],[0,1.2],[0,0]];
+  for (const [dx,dy] of offsets) { const at={x:player.x+dx,y:player.y+dy}; if (footprintOpen(map,width,at.x,at.y) && hasLineOfSight(at,player,map,width)) { e.x=at.x; e.y=at.y; return; } }
+  e.x=player.x; e.y=player.y; relocateIfStranded(e,map,width);
 }
 export function relocateIfStranded(entity, map, width) {
   if (!entity || footprintOpen(map, width, entity.x, entity.y)) return false;
@@ -1831,7 +1839,7 @@ export class Game {
       if(guardian){history.guardianKind??=guardianKindFor(this.save.seed,packAreaId);guardian.kind=history.guardianKind;guardian.packGuardian=history.guardianKind!=="hollowMarshal"}
     }
     if(packAdopted&&this.map.encounterVersion&&this.map.monsterPack!==MONSTER_PACK_VERSION){this.map.enemySpawns=this.map.enemySpawns.filter(e=>!e.encounterSpawn);this.map.encounterVersion=0;this.map.encounterGroups=[]}
-    if (area === "dungeon" && !this.map.deepDungeon && this.map.recipe !== "deep-v1" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < 12)
+    if (area === "dungeon" && !this.map.deepDungeon && this.map.recipe !== "deep-v1" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < (history.gatePredatorSpawnThreshold || GATE_REVENANT.legacySpawnPerThousand))
       this.map.enemySpawns.push({ kind: "gateRevenant", x: 18, y: 6, gatePredator: true });
     if(area==="dungeon"&&!this.map.arena&&!String(this.areaId()).startsWith("hunt-instance:")&&!String(this.areaId()).startsWith("elite-portal:")&&!String(this.areaId()).includes("aperture-annex"))populateDungeonEncounters(this.map,{deep:!!this.map.deepDungeon||this.map.recipe==="deep-v1",monsterPack:packAdopted});
     if (area === "overworld" && (this.rx !== 0 || this.ry !== 0)) {
@@ -1916,9 +1924,15 @@ export class Game {
         if(area === "dungeon" && !merged.passiveBehavior && !merged.ambient && !merged.worldBeast) tuneDungeonThreat(merged); // release 249: a world beast keeps its own tuning
         ensureAI(merged);
         resetPackRuntime(merged);
+        if ((merged.worldBeast || merged.questingBeast) && restored.beastTuningVersion == null) {
+          const hp = merged.hp; if (merged.worldBeast) tuneWorldBeast(merged,this.save,merged.worldBeast,characterStats(this.save)); else tuneQuestingBeast(merged,this.save,characterStats(this.save));
+          merged.hp = merged.dead ? 0 : Math.min(merged.maxHp, hp); // Ordinary reload never heals a wounded beast.
+        }
+        if (restored.gateTuningVersion == null) delete merged.gateTuningVersion;
+        if (merged.gatePredator) { tuneGatePredator(merged, this.save, characterStats(this.save)); resetGateAttack(merged, true); }
         return merged;
       });
-      for(const saved of s.enemies||[])if((saved.gatePredator||saved.foundryId)&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);this.enemies.push(restored)}
+      for(const saved of s.enemies||[])if((saved.gatePredator||saved.foundryId)&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);if(restored.gatePredator){tuneGatePredator(restored,this.save,characterStats(this.save));resetGateAttack(restored, true)}this.enemies.push(restored)}
       for (const o of this.map.objects)
         if (s.objects?.[o.id]) Object.assign(o, s.objects[o.id]);
       applyFallenTreeCrossings(this.map);
@@ -2201,6 +2215,8 @@ export class Game {
     this.player.y = q.y;
     if (pursuer) {
       const e = { ...pursuer, id: `${pursuer.id}-breach-${this.rx}-${this.ry}`, dead: false, x: q.x + 1.2, y: q.y - .4, aggro: true, ai: { ...ensureAI(pursuer), homeX: q.x, homeY: q.y } };
+      placeGatePursuer(e, this.player, this.map, mapWidth(this.map, this.area));
+      resetGateAttack(e, true);
       this.enemies.push(e);
       message = "THE GATE REMAINS OPEN — something impossible follows you into the Corridor.";
     }
@@ -2323,7 +2339,7 @@ export class Game {
     // Open seas (release 152): a skiff crosses wherever the water runs on; a walker cannot step out into open sea.
     if (aboard(this.save)) { if (!this.sailAcross(dx, dy, from)) return false; }
     else if (DEEP_WATER.includes(footprintHazard(this.map, 32, this.player.x, this.player.y)) && !canSwim(this.save)) { this.returnFrom(from, "Open sea lies beyond. You need a boat to cross it."); return false; }
-    for(const pursuer of pursuers){const e={...pursuer,id:`${pursuer.id}-pursuit-${this.rx}-${this.ry}`,dead:false,aggro:true,x:this.player.x-dx*1.4,y:this.player.y-dy*1.4,ai:{...pursuer.ai,homeX:this.player.x,homeY:this.player.y}};this.enemies.push(e)}
+    for(const pursuer of pursuers){const e={...pursuer,id:`${pursuer.id}-pursuit-${this.rx}-${this.ry}`,dead:false,aggro:true,x:this.player.x-dx*1.4,y:this.player.y-dy*1.4,ai:{...pursuer.ai,homeX:this.player.x,homeY:this.player.y}};placeGatePursuer(e,this.player,this.map,mapWidth(this.map,this.area));resetGateAttack(e, true);this.enemies.push(e)}
     if(pursuers.length)this.message="The Gate Revenant tears through the crossing behind you.";
     this.sync();
   }
@@ -2729,7 +2745,13 @@ export class Game {
         if(anchor?.levelId)this.save.session.activeDungeonLevelId=anchor.levelId;
         const stateId=this.save.session.activeDungeonLevelId?`${id}:level:${this.save.session.activeDungeonLevelId}`:id,claimed = this.save.session.areas[stateId]?.objects || {},
           deep = String(id).includes(":deep-v");
-        if (!deep) delete this.save.session.areas[id];
+        if (!deep) {
+          // Ordinary rooms reset, but a failed exceptional encounter retains its lifecycle record.
+          // Gate tombstones prevent a new hunt; major actors already have full HP and spent attempts.
+          const exceptional = (this.save.session.areas[stateId]?.enemies || []).filter(e => e.gatePredator || e.worldBeast || e.questingBeast);
+          if (exceptional.length) this.save.session.areas[stateId] = { encounterVersion: this.save.session.areas[stateId]?.encounterVersion || 0, enemies: exceptional, objects: {}, projectiles: [], effects: [], eliteHazards: [] };
+          else delete this.save.session.areas[stateId];
+        }
         this.loadArea("dungeon", false);
         for (const o of this.map.objects)
           if (claimed[o.id]?.state === "used") o.state = "used";
@@ -2908,6 +2930,18 @@ export class Game {
         if (opts.phase || isDungeonRoamer(e, game.area)) { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)), moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
         return moveAxis(e, dx, dy, map, width, !!e.flying);
       },
+      gateChase(e, step) {
+        const ai = ensureAI(e), blockedSight = !hasLineOfSight(e, p, map, width);
+        if (ai.gateStep && Math.hypot(ai.gateStep[0]-e.x,ai.gateStep[1]-e.y)<.08) ai.gateStep=null;
+        if (blockedSight && !(ai.gatePathRetry > now)) { ai.gatePathRetry=now+350; ai.gateStep=boundedChaseStep(e,p,map,width); }
+        const target=ai.gateStep?{x:ai.gateStep[0],y:ai.gateStep[1]}:p;
+        const dx=target.x-e.x,dy=target.y-e.y,d=Math.hypot(dx,dy);
+        if (d<.01) return false;
+        const travel=Math.min(step,d),moved=moveAxis(e,dx/d*travel,dy/d*travel,map,width);
+        // Point LOS can clear a corner that the actor footprint cannot. Cache a bounded detour on collision too.
+        if (!moved && !(ai.gatePathRetry>now)) { ai.gatePathRetry=now+350; ai.gateStep=boundedChaseStep(e,p,map,width); }
+        return moved;
+      },
       // The dungeon is the Crystal's domain: patrol and combat use the same bounded wall-phasing movement.
       roamMove(e, dx, dy) { return this.move(e, dx, dy); },
       roamWork: (n) => { game.performanceStats.pathfindingWork += n; },
@@ -3025,6 +3059,7 @@ export class Game {
       if(area === "dungeon" && !c.passiveBehavior && !c.ambient && !c.worldBeast) tuneDungeonThreat(c);
       // Every monster hits harder (Tim, 2026-10-16). Foes tuned to the Wayfarer (the Questing Beast, Far Array bosses) are exempt.
       if(c.damage>0&&!c.questingBeast&&!c.worldBeast&&!c.farArrayBoss)c.damage=Math.max(1,Math.round(c.damage*ENEMY_DAMAGE_SCALE));
+      if (c.gatePredator) tuneGatePredator(c, this.save, characterStats(this.save));
       ensureAI(c);
       return c;
   }
@@ -3709,6 +3744,7 @@ export class Game {
       if(e.skirmishId&&!e.skirmishProvoked){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&updateSkirmisher(e,this.enemies,this.map,dt,skirmishHooks))continue}
       // A retreating Walker is harmless and must traverse settlements normally. Sanctuary combat
       // displacement must neither relocate it nor freeze its retreat while the player rests inside.
+      if(e.gatePredator){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateGatePredator(e,packWorld);continue}
       if(e.packKind){this.performanceStats.activeEnemies++;const zone=e.kind==="voidWalker"&&(e.retreating||e.fleeTo)?null:packWorld.sanctuary;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(zone)enforceSanctuary(e,zone);continue}
       if(e.seaKind){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateSeaCreature(e,seaWorld,dt);continue}
       if(e.encounterGroup&&!this.activatedEncounterGroups.has(e.encounterGroup)){this.activatedEncounterGroups.add(e.encounterGroup);this.performanceStats.encounterActivations++}
@@ -3779,6 +3815,20 @@ export class Game {
       if (beastNote) journalOnce(this.save, `questing-beast-try:${this.save.questingBeast.cycle}:${this.save.questingBeast.active?.tries ?? "gone"}`, beastNote, "The Questing Beast");
       const worldNote = this.area === "overworld" || this.area === "dungeon" ? worldBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.filter((e) => e.worldBeast && !e.dead).map((e) => e.worldBeast), this.area === "dungeon" ? this.areaId() : null) : null; // release 235
       if (worldNote) journalOnce(this.save, `world-beast-try:${this.rx},${this.ry}:${JSON.stringify(this.save.worldBeasts)}`.slice(0, 160), worldNote, "World beasts");
+      // Gate predators have no rematches: a player death ends their hunt, without rewards.
+      for (const e of this.enemies) if (e.gatePredator && !e.dead) { e.dead = true; e.noRewards = true; resetGateAttack(e, true); }
+      // A failed attempt is a fresh duel, not damage banked across deaths. Preserve tries and rewards.
+      for (const e of this.enemies) if (!e.dead && (e.questingBeast || e.worldBeast)) {
+        const state = e.questingBeast ? this.save.questingBeast : this.save.worldBeasts?.[e.worldBeast];
+        if (!state?.active) { e.dead = true; e.noRewards = true; continue; }
+        if (e.retreating || e.fleeTo) continue;
+        state.active.patience = 0; // A fresh duel gets a fresh per-fight clock, not fresh attempts.
+        e.hp = e.maxHp;
+        if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed;
+        delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow;
+        e.hitStun = 0; e.recoil = 0; e.hitFlash = 0;
+        resetPackRuntime(e); e.aggro = false;
+      }
       this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
       if (this.area === "dungeon") {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
       const c = this.save.activeCheckpoint;
@@ -3802,9 +3852,10 @@ export class Game {
       this.effects = [];
       this.eliteHazards=[];this.packEffects=[];Object.assign(ensureEliteState(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});
       input.reset?.();
+      this.snapshotArea(); // Capture the source coordinates BEFORE switching to the checkpoint.
       this.rx = c.rx;
       this.ry = c.ry;
-      this.loadArea("overworld");
+      this.loadArea("overworld", false);
       p.x = c.x;
       p.y = c.y;
       p.invulnerableUntil = now + 2000;

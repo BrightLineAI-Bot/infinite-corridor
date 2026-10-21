@@ -294,3 +294,6 @@ The following summaries reconcile recent Git history into project records. They 
 - **Intent:** added deterministic, bounded hunt and domain systems with explicit instance lifecycle behavior.
 - **Compatibility:** persisted Viewport state and migration coverage exist in the current suite.
 - **Verification evidence:** current tests cover hunt lifecycle, domain topology, and migration initialization. No historical Android validation is asserted.
+
+## Unreleased follow-on prototype: Gate Revenant
+- More frequent first-pinned encounters, increased player-scaled health/damage floors, actual1.5× player-base pursuit, passing rift wraiths, rapid fireball/lob bursts, sustained breath and finite stationary barrage. Predator-only; shelter and normal terrain retained. Isolated work, not published or assigned a release number.

@@ -54,7 +54,7 @@ export const WORLD_BEASTS = {
     kind: "psychicCrystal", name: "The Psychic Crystal", chance: .025, minDepth: 5, tries: 3, cooldownSlain: 20, cooldownEscaped: 26,
     hitsToKill: 58, hpPerLevel: 26, damageShare: .2, speed: 1, attackGap: .3, staggerResistance: .9, rewardMarks: 180, rewardPerLevel: 18,
     patience: 180, home: "water", retreatMoves: "through",
-    dungeonChance: .35, dungeonMinLevel: 8, // Tim: it also haunts dungeons, but only ones with water in them (any amount); not a new Wayfarer's, and only ordinary dungeons minDepth sections out
+    dungeonChance: .35, dungeonMinLevel: 1, // Follow-on: level is a strength floor, not eligibility; water and depth still required
     flee: "The Psychic Crystal's haze goes still and grey. It drifts away toward open water.",
     fleeDungeon: "The Psychic Crystal's haze goes still and grey. It drifts toward the water.",
     homeLine: "The Psychic Crystal sinks into the water without a ripple, and is gone.",
@@ -67,7 +67,7 @@ export const WORLD_BEASTS = {
   voidWalker: {
     kind: "voidWalker", name: "The Void Walker", chance: .025, minDepth: 5, tries: 3, cooldownSlain: 20, cooldownEscaped: 26,
     hitsToKill: 60, hpPerLevel: 28, damageShare: .2, speed: 1.1, attackGap: .3, staggerResistance: .9, rewardMarks: 180, rewardPerLevel: 18,
-    patience: 180, home: "dungeon", retreatMoves: "walk", dungeonChance: .3, dungeonMinLevel: 8,
+    patience: 180, home: "dungeon", retreatMoves: "walk", dungeonChance: .3, dungeonMinLevel: 1,
     flee: "The Void Walker folds its rends shut and leaves toward a dungeon entrance.",
     fleeDungeon: "The Void Walker closes its constellation and heads for the nearest reachable dungeon door.",
     homeLine: "The Void Walker passes through the dungeon door and is gone.",
@@ -260,12 +260,26 @@ export function worldBeastFor(save, map, rx, ry) {
 }
 export function worldBeastTriesLeft(save, id) { return WORLD_BEASTS[id].tries - (save.worldBeasts?.[id]?.active?.tries || 0); }
 
+// Provisional follow-on balance: level is a strength floor, never a spawn gate.
+export const BEAST_BASELINE = { level: 8, starterHit: 16, starterHp: 102, starterGuard: .025, damageFloor: 60, questingDominance: 1.15 };
+export function beastTuningReference(save, stats = {}) {
+  const actualLevel = Math.max(1, Number(save.level) || 1), level = Math.max(BEAST_BASELINE.level, actualLevel);
+  const weapon = save.equipment?.[save.activeWeaponSlot], levelBonus = Math.floor((level - 1) * .6) - Math.floor((actualLevel - 1) * .6);
+  return { level, perHit: Math.max(BEAST_BASELINE.starterHit, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0) + levelBonus),
+    maxHp: Math.max(BEAST_BASELINE.starterHp, (Number(save.maxHp) || 60) + (level - actualLevel) * 6),
+    guard: Math.max(BEAST_BASELINE.starterGuard, Math.min(.75, Number(stats.damageReduction) || 0)) };
+}
+export function beastProfileVitals(profile, save, stats = {}) {
+  const r = beastTuningReference(save, stats);
+  return { hp: Math.round(r.perHit * profile.hitsToKill + profile.hpPerLevel * r.level),
+    damage: Math.max(Math.ceil(BEAST_BASELINE.damageFloor / (1 - r.guard)), Math.round(r.maxHp * profile.damageShare / (1 - r.guard))) };
+}
+
 // Tunes a created combatant to the Wayfarer, as the Questing Beast is tuned.
 export function tuneWorldBeast(c, save, id, stats = {}) {
   const B = WORLD_BEASTS[id]; if (!B) return c;
-  const level = Math.max(1, Number(save.level) || 1), weapon = save.equipment?.[save.activeWeaponSlot], perHit = Math.max(6, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0));
-  const guard = Math.max(0, Math.min(.75, Number(stats.damageReduction) || 0)), hp = Math.round(perHit * B.hitsToKill + B.hpPerLevel * level);
-  Object.assign(c, { worldBeast: id, boss: true, hp, maxHp: hp, damage: Math.max(4, Math.round((Number(save.maxHp) || 60) * B.damageShare / (1 - guard))), staggerResistance: B.staggerResistance, speedMultiplier: B.speed, attackGap: B.attackGap, evasive: true });
+  const v = beastProfileVitals(B, save, stats), hp = Math.max(Number(c.maxHp) || 0, v.hp), damage = Math.max(Number(c.damage) || 0, v.damage);
+  Object.assign(c, { worldBeast: id, boss: true, hp, maxHp: hp, damage, beastTuningVersion: 1, staggerResistance: B.staggerResistance, speedMultiplier: B.speed, attackGap: B.attackGap, evasive: true });
   return c;
 }
 // The beast falls: pay its bounty and start its cooldown.
@@ -278,15 +292,16 @@ export function worldBeastSlain(save, id) {
 // The Wayfarer fell in a beast's section while it lived. Returns a message, or null.
 export function worldBeastPlayerFell(save, rx, ry, aliveIds, dungeonId = null) {
   ensureWorldBeasts(save, false);
+  const notes = [];
   for (const id of WORLD_BEAST_IDS) {
     const B = WORLD_BEASTS[id], q = save.worldBeasts[id];
     if (!aliveIds.includes(id) || !q.active || q.active.retreat || (q.active.dungeon ? q.active.dungeon !== dungeonId : q.active.rx !== rx || q.active.ry !== ry)) continue; // a retreating beast takes no tries
     q.active.tries++;
-    if (q.active.tries < B.tries) { const left = B.tries - q.active.tries; return `${B.name} still holds ${q.active.dungeon ? "that place" : `${rx},${ry}`}. ${left} ${left === 1 ? "try remains" : "tries remain"}.`; }
+    if (q.active.tries < B.tries) { const left = B.tries - q.active.tries; notes.push(`${B.name} still holds ${q.active.dungeon ? "that place" : `${rx},${ry}`}. ${left} ${left === 1 ? "try remains" : "tries remain"}.`); continue; }
     q.escaped++; q.cycle++; q.active = null; q.cooldown = B.cooldownEscaped;
-    return B.gone;
+    notes.push(B.gone);
   }
-  return null;
+  return notes.length ? notes.join(" ") : null;
 }
 // Release 249: a beast that haunts dungeons (the Psychic Crystal, `dungeonChance`) may claim a dungeon with water in it on
 // entry, and is there whenever that dungeon is loaded until the hunt ends. Returns its spawn, or null.

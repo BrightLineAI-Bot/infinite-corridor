@@ -2570,7 +2570,7 @@ test("rare gate predators alone can carry aggro through a dungeon exit",()=>{
   const s=freshSave();let id=null;
   for(let i=0;i<5000&&!id;i++){const q=`dungeon:${s.seed}:g1:rare:${i}`;if(hashSeed(`${s.seed}:gate-predator:v1:${q}`)%1000<12)id=q;}
   assert.ok(id);const g=new Game(s,0);g.save.session.activeDungeonId=id;g.save.session.dungeonReturn={rx:2,ry:3,x:9,y:10};g.loadArea("dungeon",false);
-  const predator=g.enemies.find(e=>e.gatePredator);assert.ok(predator);assert.equal(predator.maxHp,260);assert.ok(predator.scale>1.8);predator.aggro=true;
+  const predator=g.enemies.find(e=>e.gatePredator);assert.ok(predator);assert.equal(predator.maxHp,499);assert.equal(predator.damage,40);assert.ok(predator.scale>1.8);predator.aggro=true;
   assert.equal(g.leaveDungeon(),true);assert.equal(g.area,"overworld");const escaped=g.enemies.find(e=>e.gatePredator&&!e.dead);assert.ok(escaped);assert.equal(escaped.aggro,true);assert.match(g.message,/GATE REMAINS OPEN/);
   g.transitionSection(1,0);const crossing=g.enemies.find(e=>e.gatePredator&&!e.dead);assert.ok(crossing);assert.equal(crossing.aggro,true);
   const shelterMap={tiles:Array.from({length:16},(_,i)=>({x:i%4,y:Math.floor(i/4),kind:"ash",blocked:false}))};shelterMap.tiles[5].structure="shackInterior";assert.equal(footprintInsideStructure(shelterMap,4,.8,.4),true);shelterMap.tiles[5].structure="shackDoor";assert.equal(footprintInsideStructure(shelterMap,4,.8,.4),false);

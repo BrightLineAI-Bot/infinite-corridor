@@ -1905,12 +1905,131 @@ function voidNovaEruption(f, owner, w) {
     arming: VOID.novaEruptionWarn, life: .35, damage: Math.max(1, Math.round(f.damage * .65)) });
 }
 
+// Follow-on prototype: predator only. Final-boss Revenants retain their progression profile.
+export const GATE_REVENANT = {
+  spawnPerThousand: 24, legacySpawnPerThousand: 12,
+  baseWalk: 2.4, chaseRatio: 1.5, hpFloor: 320, damageFloor: 40, beastShare: 2 / 3,
+  referenceHits: 60, referenceLevelHp: 28, referenceDamageShare: .2,
+  range: 6, ownerEffects: 16, step: .05, recover: .3, gap: .55,
+  breath: { warn: .4, duration: 1.4, every: .35, length: 7, width: .5, bite: .26 },
+  burst: { warn: .32, count: 4, every: .18, speed: 6.2, life: 1.5, bite: .38 },
+  lob: { warn: .35, count: 3, every: .22, flight: .8, radius: .85, bite: .55 },
+  barrage: { warn: .5, count: 9, every: .13, flight: .85, radius: .8, bite: .36 },
+  moves: ["burst", "lob", "wraith", "breath", "burst", "barrage"],
+};
+export function tuneGatePredator(e, save, stats = {}) {
+  if (!e.gatePredator || e.gateTuningVersion === 1) return e;
+  const t = GATE_REVENANT, level = Math.max(1, Number(save.level) || 1), weapon = save.equipment?.[save.activeWeaponSlot];
+  const hit = Math.max(6, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0)), guard = Math.max(0, Math.min(.75, Number(stats.damageReduction) || 0));
+  const oldMax = Math.max(1, e.maxHp), missing = Math.max(0, oldMax - e.hp);
+  e.maxHp = Math.max(oldMax, t.hpFloor, Math.round((hit * t.referenceHits + level * t.referenceLevelHp) * t.beastShare));
+  e.hp = e.dead ? 0 : Math.max(1, e.maxHp - missing);
+  e.damage = Math.max(e.damage, t.damageFloor, Math.round((Number(save.maxHp) || 60) * t.referenceDamageShare / (1 - guard) * t.beastShare));
+  e.gateTuningVersion = 1; return e;
+}
+function gateAdd(e, w, effect) {
+  const fx = voidEffects(w);
+  if (fx.length >= PACK_EFFECT_CAP || fx.filter(f => f.owner === e.id).length >= GATE_REVENANT.ownerEffects) return false;
+  w.addEffect({ owner: e.id, gateOwned: true, life: .4, arming: 0, ...effect }); return true;
+}
+export function resetGateAttack(e, resetRoute = false) { if (e.gatePredator) { e.gateAttack = null; e.telegraph = 0; if (resetRoute && e.ai) { delete e.ai.gateStep; delete e.ai.gatePathRetry; } } }
+function gateMove(e, w, dt, fraction = 1) {
+  const p = w.player, d = Math.hypot(p.x - e.x, p.y - e.y);
+  if (d < 1.4) return;
+  const slow = e.glyphBaseSpeed > 0 ? Math.max(.05, Math.min(1, e.speedMultiplier / e.glyphBaseSpeed)) : 1;
+  const step = Math.min(d - 1.4, GATE_REVENANT.baseWalk * GATE_REVENANT.chaseRatio * dt * fraction * slow);
+  if (w.gateChase) { w.gateChase(e, step); return; }
+  if (!w.los(e, p)) { w.detour?.(e, step); return; }
+  w.move(e, (p.x - e.x) / d * step, (p.y - e.y) / d * step, { phase: false });
+}
+function gateEmit(e, a, w) {
+  const t = GATE_REVENANT, dir = unit(a.target.x - e.x, a.target.y - e.y);
+  if (a.move === "wraith") { if (a.emitted++) return; if (voidEffects(w).filter(f => f.owner === e.id).length + 2 > t.ownerEffects) return; START.voidWraiths(e, { data: { target: a.target }, seq: a.seq }, w); return; }
+  if (a.move === "breath") {
+    if (a.emitted++) return;
+    gateAdd(e, w, { kind: "gateBreath", x: e.x, y: e.y, dx: dir.x, dy: dir.y, length: t.breath.length, radius: t.breath.width, life: t.breath.duration, nextBite: 0, damage: Math.ceil(e.damage * t.breath.bite) }); return;
+  }
+  const cfg = t[a.move], i = a.emitted++;
+  if (a.move === "burst") {
+    // Fixed aim and small fan; no homing. Simultaneous final pair still obeys the owner budget.
+    for (const angle of i === cfg.count - 1 ? [-.12, .12] : [0]) {
+      const dx = dir.x * Math.cos(angle) - dir.y * Math.sin(angle), dy = dir.x * Math.sin(angle) + dir.y * Math.cos(angle);
+      gateAdd(e, w, { kind: "orb", fire: true, x: e.x, y: e.y, vx: dx * cfg.speed, vy: dy * cfg.speed, radius: .22, life: cfg.life, damage: Math.ceil(e.damage * cfg.bite) });
+    }
+  } else {
+    const angle = i * 2.39996 + (a.seq % 7), radius = a.move === "barrage" ? 1.1 + i % 3 : .8 * i;
+    const target = { x: a.target.x + Math.cos(angle) * radius, y: a.target.y + Math.sin(angle) * radius };
+    // Lob across open ground only; an intervening wall cannot be bombed through.
+    if (w.open(target.x, target.y) && w.los(e, target, true)) gateAdd(e, w, { kind: "lavaBomb", x: target.x, y: target.y, from: { x: e.x, y: e.y }, radius: cfg.radius, arming: cfg.flight, armTotal: cfg.flight, damage: Math.ceil(e.damage * cfg.bite), jumpable: true });
+  }
+}
+export function updateGatePredator(e, w) {
+  if (!e.gatePredator || e.dead || !(w.dt > 0)) return;
+  // Bounded fixed substeps, never catch up a suspended tab with a burst of untelegraphed attacks.
+  let remaining = Math.min(w.dt, .25);
+  while (remaining > 1e-8) {
+    const dt = Math.min(GATE_REVENANT.step, remaining); remaining -= dt;
+    e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt); e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
+    const distance = Math.hypot(w.player.x - e.x, w.player.y - e.y);
+    if (distance < 6) e.aggro = true;
+    if (!e.aggro) continue;
+    e.facingX = w.player.x >= e.x ? 1 : -1;
+    if (e.hitStun > 0) { resetGateAttack(e); e.gateGap = .4; continue; }
+    e.gateGap = Math.max(0, (e.gateGap || 0) - dt);
+    let a = e.gateAttack;
+    if (!a) {
+      gateMove(e, w, dt);
+      if (e.gateGap > 0 || distance > GATE_REVENANT.range || !w.los(e, w.player, true)) continue;
+      const seq = e.gateSequence || 0, move = GATE_REVENANT.moves[seq % GATE_REVENANT.moves.length]; e.gateSequence = seq + 1;
+      const cfg = GATE_REVENANT[move], warn = move === "wraith" ? ATTACK_MODULES.voidWraiths.windup : cfg.warn;
+      a = e.gateAttack = { move, seq, target: { x: w.player.x, y: w.player.y }, phase: "warn", left: warn, emitted: 0, emitIn: 0 };
+      e.telegraph = warn; continue;
+    }
+    if (a.phase !== "recover" && a.move !== "barrage") gateMove(e, w, dt, a.phase === "warn" || a.move === "breath" ? .85 : 1);
+    a.left -= dt;
+    if (a.phase === "warn") {
+      e.telegraph = Math.max(0, a.left);
+      if (a.left > 0) continue;
+      a.phase = "active"; const cfg = GATE_REVENANT[a.move];
+      a.left = a.move === "wraith" ? .05 : a.move === "breath" ? cfg.duration : (cfg.count - 1) * cfg.every + .05;
+    }
+    if (a.phase === "active") {
+      const cfg = GATE_REVENANT[a.move]; a.emitIn -= dt;
+      if (a.emitIn <= 0 && a.emitted < (cfg?.count || 1)) { gateEmit(e, a, w); a.emitIn += cfg?.every || 99; }
+      if (a.left <= 0) { a.phase = "recover"; a.left = GATE_REVENANT.recover; }
+    } else if (a.phase === "recover") {
+      gateMove(e, w, dt);
+      if (a.left <= 0) { resetGateAttack(e); e.gateGap = GATE_REVENANT.gap; }
+    }
+  }
+}
+function tickGateEffect(f, w) {
+  if (!f.gateOwned) return false;
+  const owner = w.enemies.find(e => e.id === f.owner && !e.dead);
+  if (!owner) { f.life = 0; f.arming = 0; return true; }
+  if (f.kind === "lavaBomb") return false; // generic arc warning and single detonation
+  const dt = Math.min(w.dt, .25), p = center(w.player);
+  if (f.kind === "orb") {
+    const dir = unit(f.vx, f.vy), travel = Math.hypot(f.vx, f.vy) * dt, length = voidRay(w, f, dir, travel), old = { x: f.x, y: f.y };
+    f.x += dir.x * length; f.y += dir.y * length;
+    if (segmentDistance(p, old, f) <= f.radius + .3) { w.hurt(owner, f.damage, { source: "gateFireball", jumpable: false }); f.life = 0; }
+    if (length < travel) f.life = 0;
+  } else if (f.kind === "gateBreath") {
+    f.x = owner.x; f.y = owner.y;
+    f.length = voidRay(w, f, { x: f.dx, y: f.dy }, GATE_REVENANT.breath.length);
+    f.nextBite -= dt;
+    if (f.nextBite <= 0) { f.nextBite = GATE_REVENANT.breath.every; if (segmentDistance(p, f, { x: f.x + f.dx * f.length, y: f.y + f.dy * f.length }) < f.radius + .3) w.hurt(owner, f.damage, { source: "gateBreath", jumpable: false, beam: true }); }
+  }
+  f.life -= dt; return true;
+}
+
 // Ground effects: arming, detonation (once, if the player is inside), webs that slow, and rings.
 export function tickPackEffects(effects, w) {
   if (!(w.dt > 0)) return effects;
   const p = center(w.player);
   // New effects wait until the next tick: an emitter cannot recursively simulate its own new outputs this frame.
   for (const f of [...effects]) {
+    if (tickGateEffect(f, w)) continue;
     if (tickVoidEffect(f, w, w.dt)) continue;
     f.age = (f.age || 0) + w.dt;
     if (f.arming > 0) { f.arming -= w.dt; if (f.arming > 0) continue; f.armed = true; }

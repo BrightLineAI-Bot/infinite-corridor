@@ -1021,6 +1021,33 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift
     if (VOID_EFFECTS.has(f.kind)) { drawVoidEffect(ctx, f, s, now, lift, presentation); continue; }
     const x = (f.x + .5) * s, y = (f.y + .62 - (ON_GROUND.has(f.kind) ? Number(lift(f)) || 0 : 0)) * s, r = (f.radius || 1) * s, pulse = .6 + Math.sin(now / 80) * .25;
     ctx.save();
+    if (f.kind === "gateBreath") {
+      // Gate-only flame silhouette within the unchanged wall-clipped damage lane.
+      // Deterministic, bounded tongues/embers; accessibility modes freeze all flicker.
+      const quiet = !!(presentation?.reduceMotion || presentation?.safeMode || f.reduceMotion);
+      const clock = quiet ? 0 : now / 1000, length = Math.max(0, f.length * s);
+      ctx.translate(x, y); ctx.rotate(Math.atan2(f.dy, f.dx));
+      for (const [scale, color, phase] of [[1, "#e94d19dc", 0], [.74, "#ff9829ee", 1.7], [.38, "#ffe6a1", 3.2]]) {
+        ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, 0);
+        for (const side of [-1, 1]) {
+          for (let j = 0; j <= 24; j++) {
+            const u = side < 0 ? j / 24 : 1 - j / 24;
+            const envelope = Math.sin(Math.PI * u) ** .5 * (.42 + .58 * u);
+            const tongue = .72 + .18 * Math.sin(u * 39 - clock * 8 + phase + side) + .1 * Math.sin(u * 73 - clock * 5 + phase);
+            ctx.lineTo(u * length, side * r * scale * envelope * tongue);
+          }
+        }
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = "#ffc15baa";
+      for (let i = 0; i < 6; i++) {
+        const u = .18 + ((i * .137 + clock * .18) % .76), side = i % 2 ? 1 : -1;
+        const size = Math.min(s * .035, length * .015), yy = side * r * (.55 + .12 * Math.sin(i * 2.1));
+        // Embers stay inside the collision lane, never imply damage past a clipped wall.
+        ctx.fillRect(Math.max(0, Math.min(length - size, u * length)), yy - size / 2, Math.min(size, length), size);
+      }
+      ctx.restore(); continue;
+    }
     if (f.arming > 0) {
       const total = f.armTotal ??= f.arming, progress = 1 - f.arming / total;
       if (f.kind === "web") { drawWeb(ctx, x, y, r, .5 * progress); }

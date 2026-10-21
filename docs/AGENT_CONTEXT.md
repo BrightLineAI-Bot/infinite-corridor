@@ -45,3 +45,7 @@ Release 101 is live; release 102 (Tidemantle surface swimming) is merged and in 
 - Balance (monster pack, glyphs, echoes, constellation, Leech, lethal terrain) is checked in tests and simulation only, untested on device.
 - Elevation does not yet affect attacks, projectiles or line of sight.
 - The Far Array approach (relay pylons and quiet "listening" ground in the last sections before the coordinate) is proposed but not built; runs are one dungeon level each, with extra relays adding difficulty rather than extra levels.
+
+## Isolated Gate Revenant follow-on prototype
+
+This branch also contains an unreleased Gate Revenant pressure-kit prototype; read `docs/gate-revenant-implementation.md` and its linked exact owner transcript. It targets the roaming predator, preserves deep-boss progression, and must integrate the final reviewed r251 ocean baseline before release. It is not included in r251 publication clearance. No protected new tests or release markers were modified for this prototype.

@@ -431,11 +431,11 @@ test('one dungeonWater tile qualifies at level eight and depth five and survives
   assert.deepEqual(worldBeastsLost(round, 'overworld', 0, 0), ['psychicCrystal']);
 });
 
-test('single-puddle eligibility retains level, depth, ordinary-ID, cooldown, and one-hunt gates', () => {
+test('single-puddle eligibility allows young players and retains depth, ordinary-ID, cooldown, and one-hunt gates', () => {
   for (let i = 0; i < 80; i++) {
     const wet = dungeonMap(), ordinary = `dungeon:LOCAL-PUDDLE:g1:3:2:puddle-${i}`;
     assert.equal(worldBeastForDungeon(dungeonSave(8), dungeonMap(false), ordinary), null, 'dry');
-    assert.equal(worldBeastForDungeon(dungeonSave(7), wet, ordinary), null, 'level seven');
+    assert.deepEqual(worldBeastForDungeon(dungeonSave(1), wet, ordinary), worldBeastForDungeon(dungeonSave(8), wet, ordinary), 'young players share the same eligibility, not weaker beasts');
     for (const id of [`dungeon:LOCAL-PUDDLE:g1:2:2:near-${i}`, 'dungeon:LOCAL-PUDDLE:g1', `arena:${i}`, `hunt-instance:${i}`, `dungeon:LOCAL-PUDDLE:g1:3:2:room:level:${i}`]) {
       assert.equal(worldBeastForDungeon(dungeonSave(8), wet, id), null, id);
     }
