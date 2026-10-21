@@ -1,0 +1,219 @@
+{
+  "repository": "BrightLineAI-Bot/infinite-corridor",
+  "baseline": "4a43f3ccc5cdbc918310ea41f8e53425a1cedac3",
+  "sourceBranch": "claude/handoff-d88a268",
+  "originalTip": "d88a2683cb3f4eab0e2c4dd806f7dd6b6ac4b39c",
+  "remoteTip": "15281d504c01cac44448461a7cf1cdf613fdb742",
+  "tree": "dafae05ef798459f05e3e4e1b57652aadff91c52",
+  "reason": "The supported GitHub connector preserves file trees and commit-parent topology but assigns new commit metadata and IDs. The bundled original history preserves the original IDs.",
+  "commits": [
+    {
+      "original": "06853792825643937b6dfc567577c3c77d4f41bd",
+      "remote": "40b6eca1235e35bbb14c33a3ec9ed1b6892cbc79",
+      "tree": "d5e4883545715024e87e6d79a5a3bd55b4e50b86",
+      "originalParents": [
+        "4a43f3ccc5cdbc918310ea41f8e53425a1cedac3"
+      ],
+      "remoteParents": [
+        "4a43f3ccc5cdbc918310ea41f8e53425a1cedac3"
+      ],
+      "subject": "WIP: implement Void Walker native model, combat, routing and scar persistence"
+    },
+    {
+      "original": "80d3d0b2ebd5b454ca6a4328460feb191771a2a4",
+      "remote": "e730393704fe072b9f8d791147677d62986f5726",
+      "tree": "5df146da37bd861c51dbdbc5b5c910a02a56cb15",
+      "originalParents": [
+        "06853792825643937b6dfc567577c3c77d4f41bd"
+      ],
+      "remoteParents": [
+        "40b6eca1235e35bbb14c33a3ec9ed1b6892cbc79"
+      ],
+      "subject": "Keep each Void Walker hunt on one dungeon level"
+    },
+    {
+      "original": "d1afe4104c66b3e94863b10e34f6a7cd97b1ca24",
+      "remote": "46af05acf83def33cd0eec07383a60024179ab62",
+      "tree": "5bf91a6a3fc24989a1ae5e2aa934c07072a540eb",
+      "originalParents": [
+        "80d3d0b2ebd5b454ca6a4328460feb191771a2a4"
+      ],
+      "remoteParents": [
+        "e730393704fe072b9f8d791147677d62986f5726"
+      ],
+      "subject": "Fix Void Walker reload and pause review regressions"
+    },
+    {
+      "original": "bc15154039d5c302494eb611a1df7c35d498bf95",
+      "remote": "aba20fb714d6e9816b1cd3e7b094422f73680ecf",
+      "tree": "7c30c5d9a7c4fe7d58bc54a55d88972f3a229530",
+      "originalParents": [
+        "d1afe4104c66b3e94863b10e34f6a7cd97b1ca24"
+      ],
+      "remoteParents": [
+        "46af05acf83def33cd0eec07383a60024179ab62"
+      ],
+      "subject": "Persist smooth Void Walker scars without fog reveal"
+    },
+    {
+      "original": "a91cc8c54c088fc7430798c23b7e908722b6d1a1",
+      "remote": "07140ac245486c8306af6acd549aa29f2d3b3869",
+      "tree": "dfdac0533c3e379bc049d2c257070f91e8c33d4d",
+      "originalParents": [
+        "bc15154039d5c302494eb611a1df7c35d498bf95"
+      ],
+      "remoteParents": [
+        "aba20fb714d6e9816b1cd3e7b094422f73680ecf"
+      ],
+      "subject": "Release 251: finish Void Walker retreat, persistent scars and Blob regeneration"
+    },
+    {
+      "original": "c33c89f22623a861011ae32b9128d70fa6e94363",
+      "remote": "d2209d505ad147dbea8d9ac31da7772f8a951eb1",
+      "tree": "9d76f5d83164ef59d27e0ea7d15d69b0405025fa",
+      "originalParents": [
+        "a91cc8c54c088fc7430798c23b7e908722b6d1a1"
+      ],
+      "remoteParents": [
+        "07140ac245486c8306af6acd549aa29f2d3b3869"
+      ],
+      "subject": "Stage Astral Worm combat, approved forms and mounted Walker fixtures"
+    },
+    {
+      "original": "735d16903ae9eccc2dd22bd37453eaf115331d66",
+      "remote": "70d23b0b2d5ecdc395f3806aa89588225d4f0b5f",
+      "tree": "d78355d96ede98d97c3d7a0633b826fdc3021ead",
+      "originalParents": [
+        "a91cc8c54c088fc7430798c23b7e908722b6d1a1"
+      ],
+      "remoteParents": [
+        "07140ac245486c8306af6acd549aa29f2d3b3869"
+      ],
+      "subject": "Upgrade Gate predator and major beast rematch balance"
+    },
+    {
+      "original": "ce5f06e073a0eb5d35225767e40a66afca0bee1a",
+      "remote": "6f250c6a96cfed083fe1c4b1afc3772685e219e4",
+      "tree": "d8c7399cc81e4924b339d0e04d109e2ac0db9a16",
+      "originalParents": [
+        "a91cc8c54c088fc7430798c23b7e908722b6d1a1"
+      ],
+      "remoteParents": [
+        "07140ac245486c8306af6acd549aa29f2d3b3869"
+      ],
+      "subject": "Add ocean beast encounters and native scene documentation"
+    },
+    {
+      "original": "05f5cd663dc46180d4b692f720bb08787c614ac7",
+      "remote": "19484127993cbf416141ed5335869da65696c93c",
+      "tree": "ba1e5a4fbcbb5fe565702c15ca8c0189407b8560",
+      "originalParents": [
+        "ce5f06e073a0eb5d35225767e40a66afca0bee1a"
+      ],
+      "remoteParents": [
+        "6f250c6a96cfed083fe1c4b1afc3772685e219e4"
+      ],
+      "subject": "Document conservative door-only ocean retreat"
+    },
+    {
+      "original": "ffac5465ae2cd5e5bf73d318e9c2d6e3f0c535cc",
+      "remote": "ebaf6c3b66592e9e79e20e165607b1eb6ef4fe45",
+      "tree": "fb33f052c95fc3c8e5adf72542323ee55601ba08",
+      "originalParents": [
+        "05f5cd663dc46180d4b692f720bb08787c614ac7"
+      ],
+      "remoteParents": [
+        "19484127993cbf416141ed5335869da65696c93c"
+      ],
+      "subject": "Add approved ocean behavior and render regressions"
+    },
+    {
+      "original": "083c03959cb1f7c2be8d62f4a5620ee849f23bdc",
+      "remote": "1f0e0cfa6178bcd9ba9deef4fca11126b4ad09a5",
+      "tree": "dc31b3e02f768881134188eeca7eca8f1cb54f7d",
+      "originalParents": [
+        "ffac5465ae2cd5e5bf73d318e9c2d6e3f0c535cc"
+      ],
+      "remoteParents": [
+        "ebaf6c3b66592e9e79e20e165607b1eb6ef4fe45"
+      ],
+      "subject": "Keep hostile boat displacement safely within sailable terrain"
+    },
+    {
+      "original": "4c619f768685d4e44eff3c22d8f764ce13297385",
+      "remote": "deba9b5da9b8d8ac5a701e22267ca9e94649149e",
+      "tree": "4fb4a69b9e8341bdf922ad1cb074510cd778eabd",
+      "originalParents": [
+        "735d16903ae9eccc2dd22bd37453eaf115331d66",
+        "083c03959cb1f7c2be8d62f4a5620ee849f23bdc"
+      ],
+      "remoteParents": [
+        "70d23b0b2d5ecdc395f3806aa89588225d4f0b5f",
+        "1f0e0cfa6178bcd9ba9deef4fca11126b4ad09a5"
+      ],
+      "subject": "Merge corrected r251 ocean behavior into Gate balance stage"
+    },
+    {
+      "original": "e94f1b5f92575fbd0e9f7c246b077cd2c2ae71e5",
+      "remote": "36cc064648d8bb20248a2e7cf91f45e18db3e2b8",
+      "tree": "6c0a1f1c8eaa627a241566ab01804efeea4076f5",
+      "originalParents": [
+        "c33c89f22623a861011ae32b9128d70fa6e94363",
+        "4c619f768685d4e44eff3c22d8f764ce13297385"
+      ],
+      "remoteParents": [
+        "d2209d505ad147dbea8d9ac31da7772f8a951eb1",
+        "deba9b5da9b8d8ac5a701e22267ca9e94649149e"
+      ],
+      "subject": "Merge reviewed Gate and corrected r251 baseline into Astral Worm"
+    },
+    {
+      "original": "3b5e0d4eb83085d58cdcd79c972565fbac7b8810",
+      "remote": "abe3e4cd6b7392c529a3604be0235d017e5b6f64",
+      "tree": "f846cdbb06da95ec251aad8522a86baed05394b0",
+      "originalParents": [
+        "e94f1b5f92575fbd0e9f7c246b077cd2c2ae71e5"
+      ],
+      "remoteParents": [
+        "36cc064648d8bb20248a2e7cf91f45e18db3e2b8"
+      ],
+      "subject": "Integrate natural Astral hunts, riding and physical Wayglass retreat"
+    },
+    {
+      "original": "5fbc7bb9fb82eb61dcca7e67db692b303b105357",
+      "remote": "1140ecbf7b90d48917b8c320215f0630d317dad0",
+      "tree": "b7f23d290243a12250ade15026e14e2d183bbbb5",
+      "originalParents": [
+        "3b5e0d4eb83085d58cdcd79c972565fbac7b8810"
+      ],
+      "remoteParents": [
+        "abe3e4cd6b7392c529a3604be0235d017e5b6f64"
+      ],
+      "subject": "Add mouth-anchored beam and three-form ink spew and recall"
+    },
+    {
+      "original": "1054a1673c94a08993fcafbcc13f58ebb54b0ef8",
+      "remote": "dff21bd657f91fb4aef0d73fe64363e5149bc774",
+      "tree": "8e68715862cacf303c7d62f5eb609be4fcdbe287",
+      "originalParents": [
+        "5fbc7bb9fb82eb61dcca7e67db692b303b105357"
+      ],
+      "remoteParents": [
+        "1140ecbf7b90d48917b8c320215f0630d317dad0"
+      ],
+      "subject": "Initialize Astral flight clearance on its first warning frame"
+    },
+    {
+      "original": "d88a2683cb3f4eab0e2c4dd806f7dd6b6ac4b39c",
+      "remote": "15281d504c01cac44448461a7cf1cdf613fdb742",
+      "tree": "dafae05ef798459f05e3e4e1b57652aadff91c52",
+      "originalParents": [
+        "1054a1673c94a08993fcafbcc13f58ebb54b0ef8"
+      ],
+      "remoteParents": [
+        "dff21bd657f91fb4aef0d73fe64363e5149bc774"
+      ],
+      "subject": "Prepare combined r251 packaging and validate worker syntax"
+    }
+  ]
+}
