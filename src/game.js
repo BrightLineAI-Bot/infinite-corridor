@@ -1,7 +1,7 @@
-import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.js?v=r251-567504e5a114";
-import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.js?v=r251-567504e5a114";
-import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage } from "./astral-worm-mount.js?v=r251-567504e5a114";
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=r251-567504e5a114";
+import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.js?v=r253-447383f7b357";
+import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.js?v=r253-447383f7b357";
+import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage, beginAstralBoarding, tickAstralBoarding, tickAstralRiderChoice, tickAstralFighterChoice } from "./astral-worm-mount.js?v=r253-447383f7b357";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=r253-447383f7b357";
 import {
   generateRegion,
   generateDungeon,
@@ -17,7 +17,7 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
-} from "./world.js?v=r251-567504e5a114";
+} from "./world.js?v=r253-447383f7b357";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -28,15 +28,15 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness } from "./spell-slots.js?v=r251-567504e5a114";
-import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=r251-567504e5a114";
-import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=r251-567504e5a114";
-import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=r251-567504e5a114";
-import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.js?v=r251-567504e5a114";
-import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState } from "./boats.js?v=r251-567504e5a114";
-import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt } from "./open-sea.js?v=r251-567504e5a114";
-import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=r251-567504e5a114";
-import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=r251-567504e5a114";
+import { ensureSlots, slotted, pairingMods, slotReadiness } from "./spell-slots.js?v=r253-447383f7b357";
+import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=r253-447383f7b357";
+import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=r253-447383f7b357";
+import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=r253-447383f7b357";
+import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.js?v=r253-447383f7b357";
+import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState } from "./boats.js?v=r253-447383f7b357";
+import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt } from "./open-sea.js?v=r253-447383f7b357";
+import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=r253-447383f7b357";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=r253-447383f7b357";
 import {
   applyInteraction,
   validActions,
@@ -46,36 +46,36 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=r251-567504e5a114";
-import { ensurePerception } from "./types.js?v=r251-567504e5a114";
-import { generateItem } from "./items.js?v=r251-567504e5a114";
-import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=r251-567504e5a114";
-import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.js?v=r251-567504e5a114";
-import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=r251-567504e5a114";
-import { hashSeed } from "./random.js?v=r251-567504e5a114";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.js?v=r251-567504e5a114';
-import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=r251-567504e5a114';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=r251-567504e5a114';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=r251-567504e5a114';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=r251-567504e5a114';
-import{ensureSceneState,queueScene}from'./scenes.js?v=r251-567504e5a114';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=r251-567504e5a114";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r251-567504e5a114";
-import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=r251-567504e5a114";
-import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r251-567504e5a114";
-import { applyLandscape, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.js?v=r251-567504e5a114";
-import { GATE_REVENANT, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.js?v=r251-567504e5a114";
-import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.js?v=r251-567504e5a114";
-import { addStrange, touchStrange } from "./strange.js?v=r251-567504e5a114";
-import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, digSpot } from "./digging.js?v=r251-567504e5a114";
-import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.js?v=r251-567504e5a114";
-import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.js?v=r251-567504e5a114";
-import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=r251-567504e5a114";
-import { WORLD_BEASTS, BEAST_HOMES, RETREAT, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.js?v=r251-567504e5a114";
-import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.js?v=r251-567504e5a114";
-import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss } from "./far-array.js?v=r251-567504e5a114";
-import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=r251-567504e5a114";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=r251-567504e5a114";
+} from "./interactions.js?v=r253-447383f7b357";
+import { ensurePerception } from "./types.js?v=r253-447383f7b357";
+import { generateItem } from "./items.js?v=r253-447383f7b357";
+import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=r253-447383f7b357";
+import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.js?v=r253-447383f7b357";
+import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=r253-447383f7b357";
+import { hashSeed } from "./random.js?v=r253-447383f7b357";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.js?v=r253-447383f7b357';
+import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=r253-447383f7b357';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=r253-447383f7b357';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=r253-447383f7b357';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=r253-447383f7b357';
+import{ensureSceneState,queueScene}from'./scenes.js?v=r253-447383f7b357';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=r253-447383f7b357";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r253-447383f7b357";
+import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=r253-447383f7b357";
+import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r253-447383f7b357";
+import { applyLandscape, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.js?v=r253-447383f7b357";
+import { GATE_REVENANT, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.js?v=r253-447383f7b357";
+import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.js?v=r253-447383f7b357";
+import { addStrange, touchStrange } from "./strange.js?v=r253-447383f7b357";
+import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, digSpot } from "./digging.js?v=r253-447383f7b357";
+import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.js?v=r253-447383f7b357";
+import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.js?v=r253-447383f7b357";
+import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=r253-447383f7b357";
+import { WORLD_BEASTS, BEAST_HOMES, RETREAT, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.js?v=r253-447383f7b357";
+import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.js?v=r253-447383f7b357";
+import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss } from "./far-array.js?v=r253-447383f7b357";
+import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=r253-447383f7b357";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=r253-447383f7b357";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function pinDungeonLayout(save, id) {
@@ -2910,7 +2910,25 @@ export class Game {
     if(!owner.worldBeast){owner.astralMountFixture = true; rider.astralMountFixture = true;}
     return true;
   }
-  astralRiderHeld(e) { return e?.astralMount?.status === "mounted" || e?.astralMount?.status === "landing"; }
+  // A rider still on a retreating Worm leaves with it (owner rule 2026-10-21): his hunt ends as an escape, no try lost.
+  // Anyone not seated (boarding or landing) is set down first, as before.
+  astralRiderLeavesWith(owner) {
+    const host=this.astralMountHost();
+    for(const rider of this.enemies) if(rider.astralMount?.ownerId===owner.id&&this.astralRiderHeld(rider)) {
+      if(rider.astralMount.status==="mounted"&&!rider.dead){rider.dead=true;rider.noRewards=true;rider.astralMount={...rider.astralMount,status:"dismounted",reason:"left-with-owner"};
+        const q=this.save.worldBeasts?.voidWalker;if(rider.worldBeast==="voidWalker"&&q?.active)retreatEnded(this.save,"voidWalker");}
+      else dismountAstralWalker(rider,"owner-retreat",host);
+    }
+  }
+  // Natural pairs board visibly: disk throw, pillar, phase out and in (see ASTRAL_BOARDING).
+  boardAstralWalker(owner, rider) {
+    if (!this.enemies.includes(owner) || !this.enemies.includes(rider) || rider.astralAllyOf ||
+        this.enemies.some(e => e !== rider && this.astralRiderHeld(e) && e.astralMount.ownerId === owner.id)) return false;
+    const host = this.astralMountHost();
+    host.canMount = (a,b) => hasLineOfSight(a,b,this.map,mapWidth(this.map,this.area));
+    return beginAstralBoarding(owner,rider,host);
+  }
+  astralRiderHeld(e) { return ["mounted", "landing", "boarding"].includes(e?.astralMount?.status); }
   astralLandingOpen(rider, at) {
     const width = mapWidth(this.map,this.area), height = mapHeight(this.map,this.area), {x,y} = at, marine=this.area==="overworld"&&!!rider.astralCompanionOf;
     if (![x,y].every(Number.isFinite) || x < 0 || y < 0 || x > width-1 || y > height-1 || !walkerGroundPositionOpen(this.map,width,x,y,marine)) return false;
@@ -2942,10 +2960,8 @@ export class Game {
   syncAstralRiders() {
     if (this.paused) return;
     const host=this.astralMountHost();
-    for(const rider of this.enemies) if(rider.astralMount) {
-      if(this.astralPlayerFell()) dismountAstralWalker(rider,"player-dead",host);
-      else syncAstralMount(rider,host);
-    }
+    // Owner rule 2026-10-21: the player's death does not unseat a rider; he stays on through the rematch.
+    for(const rider of this.enemies) if(rider.astralMount) syncAstralMount(rider,host);
   }
   walkerLandingGraph() {
     const map = this.map, tiles = map.tiles || [], width = mapWidth(map, this.area), entry = map.entry || {};
@@ -3193,7 +3209,7 @@ export class Game {
       if (!q) continue;
       if(id==='astralWorm') {
         if(!e.retreating&&e.aggro&&worldBeastPatience(this.save,id,dt)){beginAstralWorldRetreat(this,e);this.message=B.flee;reconcileAstralCompanions(this);this.syncAstralRiders();}
-        if(q.astralRetreat){const result=tickAstralWorldRetreat(this,e,dt,{previewDungeon:(save,id,levelId)=>generatePinnedDungeon(save,id,{levelId}),applyDungeonProgress:(save,id,map)=>applyDeepDungeonProgress(save,id,map),domainAt:domainSectionAt,beforeCross:actor=>{for(const rider of this.enemies)if(rider.astralMount?.ownerId===actor.id&&this.astralRiderHeld(rider))dismountAstralWalker(rider,'owner-retreat',this.astralMountHost());return !this.enemies.some(rider=>rider.astralMount?.ownerId===actor.id&&this.astralRiderHeld(rider));}});if(result.arrived){this.message=retreatEnded(this.save,id);e.dead=true;e.noRewards=true;reconcileAstralCompanions(this);}}
+        if(q.astralRetreat){const result=tickAstralWorldRetreat(this,e,dt,{previewDungeon:(save,id,levelId)=>generatePinnedDungeon(save,id,{levelId}),applyDungeonProgress:(save,id,map)=>applyDeepDungeonProgress(save,id,map),domainAt:domainSectionAt,beforeCross:actor=>{this.astralRiderLeavesWith(actor);return !this.enemies.some(rider=>rider.astralMount?.ownerId===actor.id&&this.astralRiderHeld(rider));}});if(result.arrived){this.astralRiderLeavesWith(e);this.message=retreatEnded(this.save,id);e.dead=true;e.noRewards=true;reconcileAstralCompanions(this);}}
         continue;
       }
       if (!e.retreating && e.aggro && q.dungeon && worldBeastPatience(this.save, id, dt)) { const r = beginDungeonRetreat(this.save, id, this.map); e.retreating = true; this.message = r.message; for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; } journalOnce(this.save, `world-beast-flees:${id}:${this.save.worldBeasts[id].cycle}`, r.message, "World beasts"); }
@@ -3966,6 +3982,18 @@ export class Game {
       // A retreating Walker is harmless and must traverse settlements normally. Sanctuary combat
       // displacement must neither relocate it nor freeze its retreat while the player rests inside.
       if(e.gatePredator){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateGatePredator(e,packWorld);continue}
+      if(e.packKind&&e.astralMount?.status==="mounted"&&e.astralMount.ridingAway){this.performanceStats.activeEnemies++;continue} // rides the retreating Worm home
+      if(e.packKind&&e.worldBeast==="voidWalker"&&!this.astralRiderHeld(e)&&!e.retreating){
+        const q=this.save.worldBeasts?.voidWalker?.active;
+        if(tickAstralFighterChoice(q,dt,n=>(hashSeed(`${this.save.seed}:${e.id}:astral-fighter:${n}`)%100000)/100000)){q.astralLeave=true;this.message="The Void Walker breaks off the fight and leaves.";}
+      }
+      if(e.packKind&&e.astralMount?.status==="mounted"&&!e.astralMountFixture){
+        const choice=tickAstralRiderChoice(e,dt,n=>(hashSeed(`${this.save.seed}:${e.id}:astral-rider:${n}`)%100000)/100000,this.astralMountHost());
+        if(choice!=="stay"){const q=this.save.worldBeasts?.voidWalker?.active;dismountAstralWalker(e,choice,this.astralMountHost());
+          if(choice==="leave"&&q){q.astralLeave=true;this.message="The Void Walker leaps from the Astral Worm and leaves the fight.";}
+          else this.message="The Void Walker leaps down from the Astral Worm to fight on foot.";}
+      }
+      if(e.packKind&&e.astralMount?.status==="boarding"){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)tickAstralBoarding(e,dt,this.astralMountHost());continue}
       if(e.packKind){refreshMarineBeast(e,this.map,width,this.area);this.performanceStats.activeEnemies++;const zone=this.astralRiderHeld(e)||e.kind==="voidWalker"&&(e.retreating||e.fleeTo)?null:packWorld.sanctuary;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(zone)enforceSanctuary(e,zone);continue}
       if(e.seaKind){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateSeaCreature(e,seaWorld,dt);continue}
       if(e.encounterGroup&&!this.activatedEncounterGroups.has(e.encounterGroup)){this.activatedEncounterGroups.add(e.encounterGroup);this.performanceStats.encounterActivations++}

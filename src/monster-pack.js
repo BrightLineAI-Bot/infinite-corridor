@@ -7,8 +7,8 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { hashSeed } from "./random.js?v=r251-567504e5a114";
-import { updateAstralActor } from "./astral-worm.js?v=r251-567504e5a114";
+import { hashSeed } from "./random.js?v=r253-447383f7b357";
+import { updateAstralActor } from "./astral-worm.js?v=r253-447383f7b357";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -772,6 +772,7 @@ function voidDashStep(e, s, w) {
     if (!w.move(e, dash.dir.x * step, dash.dir.y * step) || Math.abs(e.x - nx) + Math.abs(e.y - ny) > .001) { e.x = ox; e.y = oy; dash.left = 0; break; }
   }
   if (!dash.hit && segmentDistance(w.player, from, e) <= VOID.dashRadius + .3) { dash.hit = true; voidHurt(w, e, damageOf(e, "voidSupernova"), "voidDash"); }
+  if (w.bystander && !dash.bystanderHit && segmentDistance(center(w.bystander.actor), from, e) <= VOID.dashRadius + .3) { dash.bystanderHit = true; w.bystander.hurt(e, damageOf(e, "voidSupernova"), { source: "voidDash", beam: true }); }
   dash.trailT += w.dt;
   if (dash.trailT >= VOID.trailEvery || dash.left <= 0) {
     if (distance(dash.trail, e) > .01) voidAdd(w, e, { kind: "voidAfterimage", x: dash.trail.x, y: dash.trail.y, tx: e.x, ty: e.y, radius: VOID.trailRadius,
@@ -1855,6 +1856,7 @@ function tickVoidEffect(f, w, dt) {
       if (length < travel) f.life = 0;
     } else if (!f.detonated) {
       f.detonated = true;
+      f.detonatedNow = true;
       if (f.variant === "hand" || f.variant === "spike") {
         if (distance(p, f) <= f.radius + .3) voidHurt(w, owner, f.damage, f.variant === "hand" ? "voidHand" : "voidSpikes", f.variant === "spike");
       } else {
@@ -1869,7 +1871,7 @@ function tickVoidEffect(f, w, dt) {
     f.x += dir.x * length; f.y += dir.y * length;
     if (length < travel) { f.life = 0; return true; }
     if (f.slashes < VOID.wraithSlashes && f.elapsed >= f.nextSlash) {
-      f.slashes++; f.nextSlash += VOID.wraithEvery; f.slashFlash = .22;
+      f.slashes++; f.nextSlash += VOID.wraithEvery; f.slashFlash = .22; f.slashedNow = true;
       if (segmentDistance(p, before, f) <= VOID.wraithReach + .3) voidHurt(w, owner, f.damage, "voidWraith");
     }
   } else if (f.kind === "voidBeam") {
@@ -1919,12 +1921,31 @@ function tickVoidEffect(f, w, dt) {
     if (!f.hit && segmentDistance(p, before, f) <= f.radius + .3) { f.hit = true; voidHurt(w, owner, f.damage, "voidSupernova"); f.life = 0; }
     if (length < travel) f.life = 0;
   } else if (f.kind === "voidEruption") {
-    if (!f.detonated) { f.detonated = true; if (distance(p, f) <= f.radius + .3) voidHurt(w, owner, f.damage, "voidEruption", true); }
+    if (!f.detonated) { f.detonated = true; f.detonatedNow = true; if (distance(p, f) <= f.radius + .3) voidHurt(w, owner, f.damage, "voidEruption", true); }
   } else if (f.kind === "voidAfterimage") {
     if (!f.hit && segmentDistance(p, f, { x: f.tx, y: f.ty }) <= f.radius + .3) { f.hit = true; voidHurt(w, owner, f.damage, "voidAfterimage"); }
   }
+  if (w.bystander) voidBystander(f, w, owner, before);
+  delete f.detonatedNow; delete f.slashedNow;
   f.life -= activeDt;
   return true;
+}
+// Free-for-all (owner rule 2026-10-21): a helping Walker's attacks, aimed at the Worm, also strike the player where
+// they pass. Same geometry as the primary checks, with separate one-shot flags and bite clock for the bystander.
+function voidBystander(f, w, owner, before) {
+  const b = w.bystander, q = center(b.actor), hit = (source, jumpable = false) => { if (f.damage > 0) b.hurt(owner, f.damage, { jumpable, source, beam: true }); };
+  if (f.kind === "voidRend") {
+    if (f.variant === "slash") { if (!f.bystanderHit && segmentDistance(q, before, f) <= f.radius + .3) { f.bystanderHit = true; hit("voidSlash"); } }
+    else if (f.detonatedNow) {
+      if (f.variant === "hand" || f.variant === "spike") { if (distance(q, f) <= f.radius + .3) hit(f.variant === "hand" ? "voidHand" : "voidSpikes", f.variant === "spike"); }
+      else { const dir = { x: Math.cos(f.angle), y: Math.sin(f.angle) }; if (segmentDistance(q, f, { x: f.x + dir.x * f.length, y: f.y + dir.y * f.length }) <= f.width + .3) hit(f.variant === "claw" ? "voidClaw" : "voidSword"); }
+    }
+  } else if (f.kind === "voidWraith") { if (f.slashedNow && segmentDistance(q, before, f) <= VOID.wraithReach + .3) hit("voidWraith"); }
+  else if (f.kind === "voidBeam") { const dir = { x: Math.cos(f.angle), y: Math.sin(f.angle) }; if (!f.bystanderHit && segmentDistance(q, f, { x: f.x + dir.x * f.length, y: f.y + dir.y * f.length }) <= f.width + .3) { f.bystanderHit = true; hit("voidBeam"); } }
+  else if (f.kind === "voidHorizon") { if (distance(q, f) <= f.coreRadius + .3 && !(f.bystanderBite > f.elapsed)) { f.bystanderBite = f.elapsed + VOID.horizonTick; hit("voidHorizon"); } }
+  else if (f.kind === "voidParticle") { if (!f.bystanderHit && segmentDistance(q, before, f) <= f.radius + .3) { f.bystanderHit = true; hit("voidSupernova"); } }
+  else if (f.kind === "voidEruption") { if (f.detonatedNow && distance(q, f) <= f.radius + .3) hit("voidEruption", true); }
+  else if (f.kind === "voidAfterimage") { if (!f.bystanderHit && segmentDistance(q, f, { x: f.tx, y: f.ty }) <= f.radius + .3) { f.bystanderHit = true; hit("voidAfterimage"); } }
 }
 function voidNovaEruption(f, owner, w) {
   const n = f.eruptions++, a = hashSeed(`${owner.id}:${f.seed}:eruption:${n}`) % 628 / 100;
@@ -2246,8 +2267,19 @@ export function populateOverworldPack(map, seed, rx, ry, { safe = null } = {}) {
 
 // Astral-owned helper adapter, shared by explicit fixtures and the narrow natural ally role.
 // An ally's effect list and damage callbacks cannot enter the hostile player's effect pipeline.
+// Owner rules 2026-10-21: a helping Walker never rides; the Worm sometimes turns on him; his attacks also hit the
+// player where they pass, and the player's attacks hit him; after losing ASTRAL_WALKER_ALLY.leaveShare of his health
+// he leaves, fading out over ASTRAL_WALKER_ALLY.leaveTime without rewards.
+export const ASTRAL_WALKER_ALLY = Object.freeze({ leaveShare: .5, leaveTime: .8 });
 export function updateAstralWalkerAllyFixture(ally, target, world) {
   ally.noRewards = true;
+  if (ally.astralAllyLeaving != null) {
+    ally.untargetable = true; ally.astralAllyEffects = []; ally.fleeFade = ally.astralAllyLeaving;
+    ally.astralAllyLeaving = Math.max(0, ally.astralAllyLeaving - (world.dt || 0) / ASTRAL_WALKER_ALLY.leaveTime);
+    if (!ally.astralAllyLeaving) { ally.dead = true; ally.hp = Math.max(1, ally.hp); }
+    return;
+  }
+  if (!ally.dead && ally.maxHp > 0 && ally.hp <= ally.maxHp * (1 - ASTRAL_WALKER_ALLY.leaveShare)) { ally.astralAllyLeaving = 1; ally.untargetable = true; ally.astralAllyEffects = []; return; }
   if (!target || target.kind !== 'astralWorm' || target.dead || target.hp <= 0 || target.retreating || target.fleeTo || target.astral?.terminated || ally.dead || (world.playerDeathFinal?world.playerDeathFinal():world.player.hp <= 0)) {
     ally.astralAllyEffects = []; ally.dead = true; ally.hp = 0; return;
   }
@@ -2263,10 +2295,11 @@ export function updateAstralWalkerAllyFixture(ally, target, world) {
     consumeVoidTerrain:()=>({changed:false}), pull:()=>false, push:()=>false, grab:()=>false, held:()=>false,
     release:()=>{}, poison:()=>{}, slow:()=>{}, detour(e,speed) { const dx=target.x-e.x,dy=target.y-e.y,d=Math.hypot(dx,dy)||1;world.move(e,dx/d*speed,dy/d*speed); },
     spawnIllusion:()=>null, spawnMinion:()=>null, walkerPatrol:()=>{}, walkerRetreat:()=>{},
+    bystander: { actor: world.player, hurt: (source, amount, opts) => (world.playerDeathFinal ? world.playerDeathFinal() : world.player.hp <= 0) ? false : world.hurt(source, amount, opts) },
   };
   updatePackMonster(ally,wrapped);
   ally.astralAllyEffects=tickPackEffects(effects,wrapped);
-  // Provisional fixture policy: the player cannot accidentally injure their temporary helper.
-  ally.untargetable=true;
+  // Free-for-all: the player's blows land on the helper too.
+  ally.untargetable=false;
   if(target.hp<=0){ally.astralAllyEffects=[];ally.dead=true;ally.hp=0;}
 }

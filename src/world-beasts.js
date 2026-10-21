@@ -1,13 +1,13 @@
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r251-567504e5a114";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r253-447383f7b357";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.js?v=r251-567504e5a114";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r251-567504e5a114";
-import { sectionExits } from "./world.js?v=r251-567504e5a114";
+import { hashSeed } from "./random.js?v=r253-447383f7b357";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r253-447383f7b357";
+import { sectionExits } from "./world.js?v=r253-447383f7b357";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -148,6 +148,9 @@ const SIDES = { east: [1, 0], west: [-1, 0], south: [0, 1], north: [0, -1] }, OP
 // Counts fighting time; true when the beast's patience has just run out.
 export function worldBeastPatience(save, id, dt) {
   const q = save.worldBeasts?.[id]?.active; if (!q || q.retreat) return false;
+  // A Walker that joined an Astral fight stays until it is killed or the player's tries run out, unless it chose to leave.
+  if (q.astralLeave) return true;
+  if (q.astralJoined) return false;
   q.patience = (Number(q.patience) || 0) + dt;
   return q.patience >= WORLD_BEASTS[id].patience;
 }

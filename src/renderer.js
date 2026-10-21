@@ -1,17 +1,17 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r251-567504e5a114";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r251-567504e5a114";
-import { enemyMeleeGeometry } from "./combat.js?v=r251-567504e5a114";
-import { ruleRows } from "./elders.js?v=r251-567504e5a114";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r251-567504e5a114";
-import { BOAT } from "./boats.js?v=r251-567504e5a114";
-import { isMarineTile } from "./world-beasts.js?v=r251-567504e5a114";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r251-567504e5a114";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r251-567504e5a114";
-import { liftAt, tileUnder } from "./landscape.js?v=r251-567504e5a114";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r251-567504e5a114";
-import { drawRelayNode } from "./relay-network.js?v=r251-567504e5a114";
-import { structureOccupancy } from "./world.js?v=r251-567504e5a114";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r251-567504e5a114";
+import { astralBeamAnchors } from "./astral-worm.js?v=r253-447383f7b357";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r253-447383f7b357";
+import { enemyMeleeGeometry } from "./combat.js?v=r253-447383f7b357";
+import { ruleRows } from "./elders.js?v=r253-447383f7b357";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r253-447383f7b357";
+import { BOAT } from "./boats.js?v=r253-447383f7b357";
+import { isMarineTile } from "./world-beasts.js?v=r253-447383f7b357";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r253-447383f7b357";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r253-447383f7b357";
+import { liftAt, tileUnder } from "./landscape.js?v=r253-447383f7b357";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r253-447383f7b357";
+import { drawRelayNode } from "./relay-network.js?v=r253-447383f7b357";
+import { structureOccupancy } from "./world.js?v=r253-447383f7b357";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r253-447383f7b357";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
