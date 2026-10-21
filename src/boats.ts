@@ -20,6 +20,10 @@ export const BOAT = {
   // like 3 minutes"): bought from the Shipwright, deployed from the Pack while aboard; while it holds, the hull takes no
   // damage (hits still share with it, so the Wayfarer keeps only their own share). Deploying again refreshes it.
   shield: { price: 40, seconds: 180 },
+  // Repairs with the Build button (release 269; Tim: "break up the hull into thirds... one [wood] would get the boat
+  // half health... two woods should get the boat back up to full... I don't want to have to manage the boat too much"):
+  // each press costs `wood` and mends `share` of the full hull. Holding Build `shieldHold` s at sea deploys a shield.
+  mend: { wood: 1, share: .5, shieldHold: .6 },
   pushOff: .6,           // release 263: a skiff built at the shore pushes off at this share of sailing speed
   dockMinWater: 40,
   dockEvery: 3,
@@ -70,6 +74,14 @@ export function takeSpare(save) {
   b.spare = b.moored && !b.aboard ? { ...b.moored, hull: b.hull } : null;
   b.moored = { rx: s.rx, ry: s.ry, x: s.x, y: s.y }; b.hull = s.hull; b.aboard = false;
   return true;
+}
+// One press of Build on a damaged skiff: 1 wood mends half the hull. Returns { ok, message }.
+export function mendSkiff(save) {
+  const b = ensureBoatState(save), wood = Number(save.materials?.wood) || 0;
+  if (!b.owned || b.hull >= BOAT.maxHull) return { ok: false, message: "The hull is sound." };
+  if (wood < BOAT.mend.wood) return { ok: false, message: `Patching the hull takes ${BOAT.mend.wood} wood.` };
+  save.materials.wood = wood - BOAT.mend.wood; b.hull = Math.min(BOAT.maxHull, b.hull + BOAT.maxHull * BOAT.mend.share);
+  return { ok: true, message: b.hull >= BOAT.maxHull ? "The hull is whole again." : `Hull patched: ${Math.round(b.hull)}/${BOAT.maxHull}.` };
 }
 export const shieldsCarried = (save) => Math.max(0, Math.floor(Number(save?.consumables?.hullShield) || 0));
 export const shielded = (save) => (Number(save?.boat?.shield) || 0) > 0;

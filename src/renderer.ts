@@ -552,15 +552,23 @@ function drawMosasaur(ctx, e, cx, cy, s, now, colors) {
 const mixHex = (a, b, k) => { const p = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)), x = p(a), y = p(b); return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * k)).join(",")})`; };
 
 // The skiff (water world W2): a plank hull with a bow pointing along `facing`, bobbing on the water.
-function drawSkiff(ctx, x, y, s, facing, now) {
+// Release 269 (Tim: "The hull shield will make the boat like silver... look like it's made of metal"): `metal` plates it.
+function drawSkiff(ctx, x, y, s, facing, now, metal = false) {
   const cx = (x + .5) * s, cy = (y + .72) * s + Math.sin(now / 420 + x) * s * .03, along = facing === "left" || facing === "right";
   ctx.save(); ctx.translate(cx, cy); if (!along) ctx.rotate(Math.PI / 2); if (facing === "left" || facing === "up") ctx.scale(-1, 1);
   ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(0, s * .08, s * .62, s * .2, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = "#6b4a2e"; ctx.beginPath(); ctx.moveTo(-s * .55, -s * .16); ctx.lineTo(s * .38, -s * .16); ctx.quadraticCurveTo(s * .66, 0, s * .38, s * .16); ctx.lineTo(-s * .55, s * .16); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = "#c9a571"; ctx.lineWidth = Math.max(1, s * .04); ctx.stroke();
-  ctx.fillStyle = "#8d6a43"; for (const k of [-.3, .05]) ctx.fillRect(k * s, -s * .13, s * .07, s * .26);
+  ctx.beginPath(); ctx.moveTo(-s * .55, -s * .16); ctx.lineTo(s * .38, -s * .16); ctx.quadraticCurveTo(s * .66, 0, s * .38, s * .16); ctx.lineTo(-s * .55, s * .16); ctx.closePath();
+  if (metal) { const g = ctx.createLinearGradient(0, -s * .16, 0, s * .16); g.addColorStop(0, "#f2f5f8"); g.addColorStop(.45, "#aab3bc"); g.addColorStop(1, "#6e7781"); ctx.fillStyle = g; } else ctx.fillStyle = "#6b4a2e";
+  ctx.fill(); ctx.strokeStyle = metal ? "#eef3f7" : "#c9a571"; ctx.lineWidth = Math.max(1, s * .04); ctx.stroke();
+  ctx.fillStyle = metal ? "#7c858f" : "#8d6a43"; for (const k of [-.3, .05]) ctx.fillRect(k * s, -s * .13, s * .07, s * .26);
+  if (metal) { // rivets, and a glint that runs along the plating
+    ctx.fillStyle = "#e3e8ee"; for (let k = -.48; k <= .3; k += .13) { ctx.beginPath(); ctx.arc(k * s, -s * .115, Math.max(.8, s * .018), 0, 7); ctx.arc(k * s, s * .115, Math.max(.8, s * .018), 0, 7); ctx.fill(); }
+    const gx = ((now / 900) % 1.6 - .6) * s; ctx.fillStyle = "#ffffff66"; ctx.fillRect(gx, -s * .15, s * .06, s * .3);
+  }
   ctx.restore();
 }
+// Release 269: a small REPAIR tag over a skiff the Build button would patch.
+function repairTag(ctx, x, y, s) { const bx = (x + .5) * s, by = (y + .2) * s; ctx.fillStyle = "#1d1c19e0"; ctx.fillRect(bx - s * .5, by - s * .32, s, s * .3); ctx.strokeStyle = "#b58c50"; ctx.lineWidth = 1; ctx.strokeRect(bx - s * .5, by - s * .32, s, s * .3); ctx.fillStyle = "#f0dbb5"; ctx.font = `bold ${Math.max(8, Math.round(s * .2))}px monospace`; ctx.textAlign = "center"; ctx.fillText("REPAIR", bx, by - s * .11); ctx.textAlign = "start"; }
 // Release 197: an Elder Wanderer. Tall and faceless on four stilt legs; its body is its own rule, unfolding upward
 // row by row, in the rule's colour. A pale disc floats where a head would be.
 export function drawElder(ctx, o, s, now) {
@@ -1164,6 +1172,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "digSpot") { drawDigSpot(ctx, o, s, now);
           } else if (o.kind === "skiff") {
             drawSkiff(ctx, o.x, o.y, s, "right", performance.now());
+            if (o.id === "skiff-moored" && g.mendTarget?.() && !g.mendTarget().aboard) repairTag(ctx, o.x, o.y, s); // release 269
           } else if (o.kind === "shipwright") {
             actor(ctx, o.x, o.y, s, "shipwright", "down", 0, "idle");
             ctx.fillStyle = "#e2d5ba"; ctx.font = "10px monospace"; ctx.textAlign = "center";
@@ -1246,19 +1255,17 @@ export function render(ctx, g, w, h, now) {
       }
       if (g.area === "overworld" && g.save.boat?.aboard) {
         // A jump lifts the skiff with the Wayfarer (release 158: leap a rogue wave's crest).
-        drawSkiff(ctx, p.x, p.y - lift / s, s, p.facing, now);
+        const shieldLeft = Number(g.save.boat.shield) || 0; // release 269: shielded, the skiff is plated silver (flickering in its last 10 s)
+        drawSkiff(ctx, p.x, p.y - lift / s, s, p.facing, now, shieldLeft > 0 && (shieldLeft > 10 || Math.floor(now / 200) % 2 === 1));
+        if (g.mendTarget?.()) repairTag(ctx, p.x, p.y - .9 - lift / s, s);
         // Hull gauge under the skiff: green to amber to red as the hull takes damage.
         const hull = Math.max(0, Math.min(1, (g.save.boat.hull || 0) / BOAT.maxHull)), bx = (p.x + .08) * s, by = (p.y + 1.12) * s, bw = s * .84, bh = Math.max(3, s * .09);
         ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
         ctx.fillStyle = hull > .6 ? "#6fcf7a" : hull > .3 ? "#e3b04b" : "#e2574a"; ctx.fillRect(bx, by, bw * hull, bh);
         if (hull <= .3 && Math.floor(now / 350) % 2) { ctx.strokeStyle = "#ffb3a8"; ctx.lineWidth = 1; ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2); }
-        // Release 263: a deployed hull shield rings the skiff in pale blue and overlays the gauge; it flickers in its last 10 s.
+        // Release 263/269: a bar under the hull gauge shows the shield's time left (the skiff itself turns silver).
         const shield = Number(g.save.boat.shield) || 0;
-        if (shield > 0 && (shield > 10 || Math.floor(now / 200) % 2)) {
-          ctx.save(); ctx.strokeStyle = "#9fdcffcc"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.fillStyle = "#9fdcff22";
-          ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y + .8 - lift / s) * s, s * .78, s * .5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = "#9fdcff"; ctx.fillRect(bx, by + bh + 1, bw * Math.min(1, shield / BOAT.shield.seconds), Math.max(2, bh * .6)); ctx.restore();
-        }
+        if (shield > 0) { ctx.fillStyle = "#cfd6dd"; ctx.fillRect(bx, by + bh + 1, bw * Math.min(1, shield / BOAT.shield.seconds), Math.max(2, bh * .6)); }
       }
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
