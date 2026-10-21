@@ -632,11 +632,12 @@ export const CRYSTAL = {
   // `poiseHits` landed blows (forgotten after `poiseForget` s without one) break it: it drops to the floor for `breakTime`
   // s (falling over `fallTime`, rising over `riseTime`) and cannot dodge, attack or move; then it rises and springs away.
   poiseHits: 10, poiseForget: 5, breakTime: 3.2, fallTime: .25, riseTime: .4, // poiseHits: Tim, "let's do like ten hits for a poise break"
-  // Where it settles (release 259; Tim: "its end goal should be... a place the player can walk to... it can spend some time
-  // between walls, that's fine"): patrol goals are floor the Wayfarer can reach; after `wallLinger` s inside walls (or over
-  // ground the Wayfarer cannot reach) it heads for the nearest reachable floor within `manifestSearch` tiles at
-  // `manifestSpeed`, and blinks onto it if held back for `manifestBlink` s.
-  wallLinger: 2.5, manifestSearch: 10, manifestSpeed: 2.4, manifestBlink: 1.2,
+  // Engaged, it settles where the Wayfarer can reach it (release 259; Tim: "its end goal should be... a place the player can
+  // walk to... it can spend some time between walls, that's fine"): after `wallLinger` s inside walls (or over ground the
+  // Wayfarer cannot reach) it heads for the nearest reachable floor within `manifestSearch` tiles at `manifestSpeed`, and
+  // blinks onto it if held back for `manifestBlink` s. It hunts the Wayfarer "for a while": out of sight and beyond
+  // `roamSight` for `forgetAfter` s, it drops its aggro and returns to its own patrol, which roams the whole dungeon.
+  wallLinger: 2.5, manifestSearch: 10, manifestSpeed: 2.4, manifestBlink: 1.2, forgetAfter: 12,
   // In a dungeon it may phase through an interior wall up to this many tiles thick (Game.roamerBounds), never beyond the edge.
   boundsSpan: 3,
 };
@@ -2035,16 +2036,16 @@ function crystalManifest(e, s, w) {
 export function isDungeonRoamer(e, area) { return area === "dungeon" && e?.worldBeast === "psychicCrystal"; }
 export function isDungeonHunter(e, area) { return isDungeonRoamer(e, area) || (area === "dungeon" && e?.worldBeast === "voidWalker"); }
 
-// Sample the whole dungeon domain for destinations the Wayfarer can reach (release 259: `w.walkable`, the floor connected to
-// the entrance; open ground where a world gives no such test). Travel between them still phases through walls and
-// hazards. Sampling and recent-memory are strictly bounded.
+// Sample the whole dungeon domain, not its connected floor graph (Tim, release 259: unaggroed "he can just roam around the
+// dungeon... whatever his own ends are"). Open destinations keep encounters discoverable, but travel between them phases
+// through walls and hazards. Sampling and recent-memory are strictly bounded.
 export function dungeonPatrolRoute(e, w, seq = 0, recent = []) {
   const size = w.width * w.height, count = Math.min(size, CRYSTAL.roamNodes), cells = [];
   if (!(count > 0)) return [];
   const offset = hashSeed(`${e.id}:dungeon-sample:${seq}`) % size;
   for (let i = 0; i < count; i++) {
     const k = (Math.floor(i * size / count) + offset) % size, x = k % w.width, y = Math.floor(k / w.width);
-    if (x < 1 || y < 1 || x >= w.width - 1 || y >= w.height - 1 || !(w.walkable ? w.walkable(x, y) : w.open(x, y))) continue; // release 259: goals the Wayfarer can reach
+    if (x < 1 || y < 1 || x >= w.width - 1 || y >= w.height - 1 || !w.open(x, y)) continue;
     cells.push({ x, y });
   }
   w.roamWork?.(count);
@@ -2107,6 +2108,8 @@ export function updatePackMonster(e, w) {
     if (!brain?.hiddenUntilAggro) w.move(e, Math.cos(s.wander) * .28 * dt, Math.sin(s.wander * .8) * .28 * dt, { phase: false });
     return;
   }
+  // Release 259: a dungeon Crystal that has lost the Wayfarer for a while goes back to its patrol.
+  if (roaming && !e.retreating) { const seen = d <= CRYSTAL.roamSight || w.los(e, w.player); s.lostFor = seen ? 0 : (s.lostFor || 0) + dt; if (s.lostFor >= CRYSTAL.forgetAfter && !s.attack) { e.aggro = false; s.lostFor = 0; s.manifest = null; s.wallTime = 0; s.roam = null; patrolDungeon(e, s, w); return; } }
   if (e.hitStun > 0 && s.state === "move") return;
   if (e.hitStun > 0 && s.attack && !e.boss && s.phase === "windup" && !e.untargetable) { endAttack(e, s); return; }
   if (!e.illusion) passiveStillness(e, s, w);

@@ -65,13 +65,14 @@ test('poise forgets: hits spread out more than poiseForget apart never break it'
   for (let k = 0; k < CRYSTAL.poiseHits * 2; k++) { e.hp -= 10; tick(); for (let i = 0; i < Math.ceil(CRYSTAL.poiseForget * 30) + 2; i++) tick(); assert.ok(!(e.pack.broken > 0)); }
 });
 
-test('its goals are floor the Wayfarer can reach; it may linger in a wall a while, then settles onto reachable floor', () => {
+test('unaggroed it patrols anywhere in the dungeon; engaged, it may linger in a wall a while, then settles onto floor the Wayfarer can reach', () => {
   // The Wayfarer in the left room; the right room is behind a 3-thick wall (reachable only by phasing); a far room no one can reach.
   const { game, e, map } = fixture(dungeon(), { x: 5, y: 5 }); game.player.x = 6; game.player.y = 6;
   const w = game.packWorld(1 / 30, 0); w.los = () => false;
   assert.equal(w.walkable(5, 5), true); assert.equal(w.walkable(15, 5), false, 'the other room is not reachable on foot'); assert.equal(w.walkable(25, 23), false);
-  e.aggro = false; e.pack.roam = null;
-  for (let seq = 0; seq < 12; seq++) { const [goal] = dungeonPatrolRoute(e, w, seq, []); assert.ok(goal && w.walkable(goal.x, goal.y), `patrol goal ${JSON.stringify(goal)} is reachable floor`); }
+  e.aggro = false; e.pack.roam = null; const goals = [];
+  for (let seq = 0; seq < 24; seq++) { const [goal] = dungeonPatrolRoute(e, w, seq, []); assert.ok(goal && w.open(goal.x, goal.y)); goals.push(goal); }
+  assert.ok(goals.some((g) => !w.walkable(g.x, g.y)), 'its own patrol goes wherever it likes, not only where the Wayfarer can walk');
   // Engaged and sitting inside the wall: it stays a while, then makes for the nearest reachable floor.
   e.aggro = true; e.x = 11; e.y = 5; e.packAttacks = []; e.evasive = false; const tick = () => { w.now += 33; updatePackMonster(e, w); };
   let t = 0; for (; t < CRYSTAL.wallLinger * .8; t += 1 / 30) tick();
@@ -86,4 +87,13 @@ test('held back on its way out of the walls, it blinks onto the reachable floor'
   e.aggro = true; e.packAttacks = []; e.evasive = false; const tick = () => { w.now += 33; updatePackMonster(e, w); };
   for (let i = 0; i < 30 * (CRYSTAL.wallLinger + CRYSTAL.manifestBlink + 1) && !w.walkable(e.x, e.y); i++) tick();
   assert.ok(w.walkable(e.x, e.y), 'it blinked out');
+});
+
+test('it hunts the Wayfarer for a while; lost (out of sight and beyond its sight range) long enough, it drops aggro and patrols again', () => {
+  const { game, e } = fixture(dungeon(), { x: 5, y: 5 }); game.player.x = 26; game.player.y = 24; // far off, in the room no one can reach
+  const w = game.packWorld(1 / 30, 0); w.los = () => false; e.aggro = true; e.packAttacks = []; e.evasive = false;
+  const tick = () => { w.now += 33; updatePackMonster(e, w); };
+  for (let t = 0; t < CRYSTAL.forgetAfter - 1; t += 1 / 30) tick(); assert.equal(e.aggro, true, 'still hunting');
+  for (let t = 0; t < 2; t += 1 / 30) tick(); assert.equal(e.aggro, false, 'it gives up the hunt'); assert.ok(e.pack.roam, 'and is back on its patrol');
+  game.player.x = e.x + 2; game.player.y = e.y; w.los = () => true; tick(); assert.equal(e.aggro, true, 'find it again and it engages');
 });
