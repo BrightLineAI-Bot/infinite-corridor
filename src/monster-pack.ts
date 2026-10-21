@@ -106,6 +106,8 @@ export const ATTACK_MODULES = {
   giantShock: { id: "giantShock", name: "Grounding Shock", range: [0, 8], cooldown: 9, windup: .75, recover: .5, damage: .8, tags: ["ranged", "lightning"], text: "It points, and the ground under you crackles: step off the mark, or the shock knocks you flat for a moment." },
   giantSwing: { id: "giantSwing", name: "Club Swings", range: [0, 3.2], cooldown: 3.2, windup: .45, active: .7, recover: .45, damage: 1.1, tags: ["melee", "combo"], text: "A forward swing of its great club, then the back-swing." },
   giantSlam: { id: "giantSlam", name: "Club Slam", range: [0, 4.5], cooldown: 5, windup: .7, recover: .7, damage: 1.4, tags: ["melee", "ground", "lightning"], text: "It slams the club down. Sometimes lightning answers from the sky where you stood; sometimes three bolts leap from the club straight at you." },
+  giantMenace: { id: "giantMenace", name: "Menacing Slam", range: [0, 9], cooldown: 8, windup: .5, active: 30, recover: .5, damage: 1.5, tags: ["melee", "ground"], text: "It raises its club and stalks you with it held high. Come within reach and it slams it down (or fires a short bolt from its chest), and may do it again; keep away and it lowers the club." },
+  giantUpswing: { id: "giantUpswing", name: "Charging Upswing", range: [0, 8], cooldown: 7, windup: .35, active: 30, recover: .5, damage: 1.2, tags: ["melee", "charge"], text: "It runs at you and swings the club up. Sometimes it leaps from the swing: from the air it hurls a barrage of bolts or dashes at you in a crackle of arcs, then lands, or comes down in a slam onto where you stand." },
   giantElectrify: { id: "giantElectrify", name: "Electrify", range: [0, 14], cooldown: 18, windup: 1.6, recover: .3, damage: .7, tags: ["buff", "lightning"], text: "It raises the club to the sky and lightning strikes it. Wrapped in a crackling haze it moves faster, and bolts drop around it." },
   // The Nanobot Knight's kit (release 245, Tim 2026-10-19: black with red accents; teleports or dissolves into mist;
   // physical hits scatter it unless elemental, a spell or an Echo-glyphed weapon; Abyss Watcher sword slides; an arm
@@ -320,8 +322,8 @@ export const MONSTER_PACK = {
   },
   lightningGiant: {
     id: "lightningGiant", name: "The Lightning Giant", epithet: "The Walking Storm", unique: true,
-    stats: [340, 18, 0], form: { scale: 1.6 }, sizeClass: "huge", movement: "walk", brain: "duelist",
-    attacks: ["giantArcs", "giantShock", "giantSwing", "giantSlam", "giantElectrify"], bossAttacks: [],
+    stats: [340, 18, 0], form: { scale: 1.9 }, sizeClass: "huge", movement: "walk", brain: "duelist",
+    attacks: ["giantArcs", "giantShock", "giantSwing", "giantSlam", "giantMenace", "giantUpswing", "giantElectrify"], bossAttacks: [],
     palette: ["#5d6670", "#1d2229", "#7fd6ff", "#eafaff"], render: "lightningGiant", tags: ["construct", "elder", "lightning"],
     lore: "A robot as tall as a house, with a club of iron and copper and Tesla coils on its shoulders. Lightning arcs from it to whatever it hunts. It knocks you flat with a shock, swings and slams its club, and when it calls the sky down onto itself it runs hot and fast while bolts fall all around it.",
   },
@@ -467,7 +469,7 @@ export function resetPackRuntime(enemy) {
   if (enemy.kind === "nanobotKnight") enemy.packAttacks = (enemy.packAttacks || MONSTER_PACK.nanobotKnight.attacks).filter((id) => id !== "knightOrbital");
   if (enemy.kind === "psychicCrystal" && !(enemy.packAttacks || []).includes("psyOrbital")) enemy.packAttacks = [...(enemy.packAttacks || MONSTER_PACK.psychicCrystal.attacks), "psyOrbital"].filter((id, i, ids) => ids.indexOf(id) === i);
   enemy.voidDashing = false; enemy.voidCharging = false; enemy.voidTeleport = 0;
-  enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; enemy.giantPose = null; enemy.giantCharged = 0; // release 245: no pose survives a reload
+  enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; enemy.giantPose = null; enemy.giantCharged = 0; enemy.giantAir = 0; // release 245: no pose survives a reload
   return enemy;
 }
 
@@ -558,13 +560,22 @@ export const TURTLE = {
 // Lightning Giant tuning (release 257). Provisional numbers, not the owner's.
 export const GIANT = {
   arcRange: 7.5, arcTick: .35, arcBolts: 4,
-  shockRadius: .95, shockStun: 1.4,
+  shockRadius: .95,
+  // Stun counter (Tim 2026-10-21): every third lightning hit knocks the Wayfarer down for stunTime; club blows count only
+  // while the Giant is electrified. The counter fades after shockDecay seconds without a lightning hit.
+  stunHits: 3, stunTime: .5, shockDecay: 10,
   swingReach: 1.8, swingArc: 150,
   slamReach: .9, slamRadius: 1.5, slamRing: 3.2, slamRingShare: .5,
   skyChance: .55, skyWarn: .95, skyRadius: 1.4, skyLife: .45,
   coneChance: .55, coneBolts: 3, coneSpread: 22, boltSpeed: 12, boltLife: .9, boltRadius: .32,
   chargeTime: 8, chargeSpeed: 1.5, stormEvery: .5, stormRing: [1.5, 4.5], stormWarn: .6, stormRadius: .8, stormLife: .35,
   strikeAt: .55,
+  // Menacing slam: stalk with the club up for up to menaceHold s; when within reach, a dodgeable wind-up then the slam
+  // (or a short chest bolt); up to menaceStrikes times.
+  menaceHold: 3.2, menaceSpeed: 1.15, menaceStrikes: 2, menaceReach: 1.1, menaceWindup: .42, menaceBeat: .3, chestChance: .35, chestRange: 5, chestWidth: .45, chestWindup: .3,
+  // Charging upswing and its optional leap.
+  chargeRun: 6.5, chargeTime: .9, upswingReach: 1.8, upswingArc: 130, upswingTime: .3, jumpChance: .55, jumpHeight: 2, jumpRise: .35,
+  barrageBolts: 5, barrageEvery: .1, barrageSpread: 40, airDashSpeed: 9, airDashTime: .35, airArcReach: 2.6, slamLandChance: .5, landWarn: .45, landRadius: 1.6, landFall: .25,
 };
 export const KNIGHT = {
   slides: 3, slideTime: .28, slideSpeed: 11, slideReach: 2.3, slideArc: 120, slidePause: .2,
@@ -838,7 +849,7 @@ function endAttack(e, s) {
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
   s.gap = e.attackGap ?? (attack?.recover || .6) * .6 + .45; // the Questing Beast barely pauses (release 187)
   e.voidDashing = false; e.voidCharging = false;
-  e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null;
+  e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0;
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
 
@@ -849,6 +860,8 @@ const START = {
   giantSwing(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + GIANT.swingReach, arc: GIANT.swingArc }; e.giantPose = "swingReady"; },
   giantSlam(e, s) { const f = giantSlamPoint(e, s.data.aim); s.tele = { type: "circle", x: f.x, y: f.y, radius: GIANT.slamRadius }; e.giantPose = "slamRaise"; },
   giantElectrify(e, s) { s.tele = { type: "brace" }; e.giantPose = "raise"; },
+  giantMenace(e, s) { s.tele = { type: "brace" }; e.giantPose = "menace"; },
+  giantUpswing(e, s) { s.tele = { type: "brace" }; e.giantPose = "chargeLow"; },
   voidHand(e, s, w) { voidBasicStart(e, s, w, "hand"); },
   voidClaw(e, s, w) { voidBasicStart(e, s, w, "claw"); },
   voidSword(e, s, w) { voidBasicStart(e, s, w, "sword"); },
@@ -952,6 +965,8 @@ const START = {
   qbBarrage(e, s, w) { const len = rayLength(w, e, s.data.aim, 9); s.tele = { type: "lane", aim: s.data.aim, length: len, width: .8 }; s.data.next = 0; },
 };
 
+// One lightning hit: damage, then (if it landed) a pip on the Wayfarer's shock counter.
+function giantZap(w, owner, damage, source, opts = {}) { const landed = w.hurt(owner || null, damage, { jumpable: false, source, ...opts }); if (landed) w.shockHit?.(); return landed; }
 function giantSlamPoint(e, aim) { const r = bodyRadius(e) + GIANT.slamReach; return { x: e.x + aim.x * r, y: e.y + aim.y * r }; }
 // Electrified (giantElectrify): a timed state ticked every frame, even mid-attack; bolts drop around the Giant.
 function giantPassive(e, w) {
@@ -965,7 +980,7 @@ function giantPassive(e, w) {
 }
 function resolveMelee(e, s, w, attackId, test) {
   const p = center(w.player);
-  if (test(p) && w.los(e, w.player)) w.hurt(e, damageOf(e, attackId), { jumpable: false, source: attackId });
+  if (test(p) && w.los(e, w.player) && w.hurt(e, damageOf(e, attackId), { jumpable: false, source: attackId }) && e.kind === "lightningGiant" && e.giantCharged > 0) w.shockHit?.();
 }
 
 const RUN = {
@@ -977,7 +992,7 @@ const RUN = {
   giantShock(e, s, w) {
     if (s.phase !== "windup" || s.t > 0) return;
     const p = s.data.target;
-    w.addEffect({ kind: "giantShock", owner: e.id, x: p.x, y: p.y, radius: GIANT.shockRadius, stun: GIANT.shockStun, arming: 0, life: .5, total: .5, damage: damageOf(e, "giantShock") });
+    w.addEffect({ kind: "giantShock", owner: e.id, x: p.x, y: p.y, radius: GIANT.shockRadius, arming: 0, life: .5, total: .5, damage: damageOf(e, "giantShock") });
     s.tele = null; e.giantPose = "pointFire"; toPhase(s, "recover", ATTACK_MODULES.giantShock.recover);
   },
   giantSwing(e, s, w) {
@@ -997,7 +1012,7 @@ const RUN = {
     const f = giantSlamPoint(e, s.data.aim), p = center(w.player), dmg = damageOf(e, "giantSlam");
     e.giantPose = "slamDown"; s.tele = null;
     resolveMelee(e, s, w, "giantSlam", (q) => distance(q, f) <= GIANT.slamRadius);
-    w.addEffect({ kind: "shock", owner: e.id, x: f.x, y: f.y, radius: GIANT.slamRing, life: .6, total: .6, damage: Math.ceil(dmg * GIANT.slamRingShare) });
+    w.addEffect({ kind: "shock", lightning: true, owner: e.id, x: f.x, y: f.y, radius: GIANT.slamRing, life: .6, total: .6, damage: Math.ceil(dmg * GIANT.slamRingShare) });
     const roll = (key) => (hashSeed(`${e.id}:${s.seq}:slam:${key}`) % 1000) / 1000;
     // Sometimes the sky answers where you stood (a delayed blast); sometimes three bolts leave the club straight at you,
     // in a tight cone toward you whichever way it faces. Either, both, or neither.
@@ -1008,6 +1023,89 @@ const RUN = {
         w.addEffect({ kind: "giantBolt", owner: e.id, x: f.x, y: f.y, vx: Math.cos(a) * GIANT.boltSpeed, vy: Math.sin(a) * GIANT.boltSpeed, radius: GIANT.boltRadius, arming: 0, life: GIANT.boltLife, damage: Math.ceil(dmg * .6) }); }
     }
     toPhase(s, "recover", ATTACK_MODULES.giantSlam.recover);
+  },
+  giantMenace(e, s, w) {
+    const attack = ATTACK_MODULES.giantMenace, d = s.data, p = center(w.player), dist = distance(p, e);
+    const roll = (key) => (hashSeed(`${e.id}:${s.seq}:menace:${key}`) % 1000) / 1000;
+    const nextStrike = () => { d.mode = "stalk"; d.hold = GIANT.menaceHold; d.action = roll(`act${d.strikes}`) < GIANT.chestChance ? "bolt" : "slam"; e.giantPose = "menace"; s.tele = null; };
+    if (s.phase === "windup") { if (s.t <= 0) { d.strikes = 0; nextStrike(); toPhase(s, "active", attack.active); } return; }
+    if (s.phase !== "active") return;
+    if (d.mode === "beat") { d.wait -= w.dt; if (d.wait <= 0) nextStrike(); return; }
+    if (d.mode === "stalk") {
+      d.hold -= w.dt;
+      // It reads the distance: it only commits when the swing (or the bolt) would actually reach you.
+      const reach = d.action === "slam" ? bodyRadius(e) + GIANT.slamReach + GIANT.menaceReach : GIANT.chestRange;
+      if (dist <= reach && w.los(e, w.player)) {
+        d.aim = unit(p.x - e.x, p.y - e.y);
+        if (d.action === "slam") { d.mode = "strike"; d.wait = GIANT.menaceWindup; const f = giantSlamPoint(e, d.aim); s.tele = { type: "circle", x: f.x, y: f.y, radius: GIANT.slamRadius }; e.giantPose = "slamRaise"; }
+        else { d.mode = "bolt"; d.wait = GIANT.chestWindup; s.tele = { type: "beam", angle: Math.atan2(d.aim.y, d.aim.x), length: rayLength(w, e, d.aim, GIANT.chestRange), charging: true }; e.giantPose = "chest"; }
+        return;
+      }
+      if (d.hold <= 0) { e.giantPose = null; s.tele = null; toPhase(s, "recover", attack.recover); return; } // no opening: it lowers the club
+      const to = unit(p.x - e.x, p.y - e.y), step = GIANT.menaceSpeed * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * w.dt;
+      if (dist > bodyRadius(e) + .6 && !w.move(e, to.x * step, to.y * step)) w.detour?.(e, step);
+      e.facingX = p.x >= e.x ? 1 : -1; return;
+    }
+    d.wait -= w.dt; if (d.wait > 0) return;
+    if (d.mode === "strike") {
+      const f = giantSlamPoint(e, d.aim), dmg = damageOf(e, "giantMenace"); e.giantPose = "slamDown";
+      resolveMelee(e, s, w, "giantMenace", (q) => distance(q, f) <= GIANT.slamRadius);
+      w.addEffect({ kind: "shock", lightning: true, owner: e.id, x: f.x, y: f.y, radius: GIANT.slamRing, life: .6, total: .6, damage: Math.ceil(dmg * GIANT.slamRingShare) });
+    } else {
+      const len = rayLength(w, e, d.aim, GIANT.chestRange), end = { x: e.x + d.aim.x * len, y: e.y + d.aim.y * len };
+      w.addEffect({ kind: "giantChest", owner: e.id, x: e.x, y: e.y, tx: end.x, ty: end.y, scale: e.scale, radius: 0, arming: 0, life: .3, total: .3, damage: 0 });
+      if (segmentDistance(p, e, end) <= GIANT.chestWidth + .3) giantZap(w, e, damageOf(e, "giantMenace"), "giantChest", { beam: true });
+    }
+    s.tele = null; d.strikes++;
+    if (d.strikes >= GIANT.menaceStrikes) { toPhase(s, "recover", attack.recover); return; }
+    d.mode = "beat"; d.wait = GIANT.menaceBeat;
+  },
+  giantUpswing(e, s, w) {
+    const attack = ATTACK_MODULES.giantUpswing, d = s.data, p = center(w.player), dist = distance(p, e);
+    const roll = (key) => (hashSeed(`${e.id}:${s.seq}:upswing:${key}`) % 1000) / 1000;
+    if (s.phase === "windup") { if (s.t <= 0) { d.mode = "charge"; d.left = GIANT.chargeTime; toPhase(s, "active", attack.active); } return; }
+    if (s.phase !== "active") return;
+    d.left -= w.dt;
+    if (d.mode === "charge") { // it runs at you, club low
+      const reach = bodyRadius(e) + GIANT.upswingReach * .8, to = unit(p.x - e.x, p.y - e.y), step = GIANT.chargeRun * w.dt;
+      if (dist > reach && d.left > 0) { if (!w.move(e, to.x * step, to.y * step)) w.detour?.(e, step); e.facingX = to.x >= 0 ? 1 : -1; return; }
+      d.aim = to; d.mode = "upswing"; d.left = GIANT.upswingTime; e.giantPose = "upswing";
+      resolveMelee(e, s, w, "giantUpswing", (q) => inArc(e, q, d.aim, bodyRadius(e) + GIANT.upswingReach, GIANT.upswingArc));
+      return;
+    }
+    if (d.mode === "upswing") {
+      if (d.left > 0) return;
+      if (roll("jump") >= GIANT.jumpChance) { toPhase(s, "recover", attack.recover); return; }
+      d.mode = "air"; d.left = GIANT.jumpRise + GIANT.airDashTime + GIANT.barrageEvery * GIANT.barrageBolts; d.air = roll("air") < .5 ? "barrage" : "dash"; d.fired = 0; d.clock = GIANT.jumpRise; e.giantPose = "raise";
+      return;
+    }
+    if (d.mode === "air") {
+      e.giantAir = Math.min(GIANT.jumpHeight, (e.giantAir || 0) + GIANT.jumpHeight * w.dt / GIANT.jumpRise);
+      d.clock -= w.dt;
+      if (d.clock <= 0 && d.air === "barrage" && d.fired < GIANT.barrageBolts) { // a fan of bolts thrown down at you
+        d.clock += GIANT.barrageEvery; const a0 = Math.atan2(p.y - e.y, p.x - e.x), a = a0 + ((d.fired / Math.max(1, GIANT.barrageBolts - 1)) - .5) * GIANT.barrageSpread * Math.PI / 180;
+        w.addEffect({ kind: "giantBolt", owner: e.id, x: e.x, y: e.y, vx: Math.cos(a) * GIANT.boltSpeed, vy: Math.sin(a) * GIANT.boltSpeed, radius: GIANT.boltRadius, arming: 0, life: GIANT.boltLife, damage: Math.ceil(damageOf(e, "giantUpswing") * .5) }); d.fired++;
+      }
+      if (d.clock <= 0 && d.air === "dash") { // a quick dash through the air at you, trailing arcs
+        if (!d.arc) { d.arc = true; w.addEffect({ kind: "giantArc", owner: e.id, x: e.x, y: e.y, scale: e.scale, range: GIANT.airArcReach, tick: 0, seed: s.seq + 7, life: GIANT.airDashTime + .15, total: GIANT.airDashTime + .15, damage: Math.ceil(damageOf(e, "giantUpswing") * .4) }); }
+        const to = unit(p.x - e.x, p.y - e.y), step = Math.min(GIANT.airDashSpeed * w.dt, Math.max(0, dist - bodyRadius(e)));
+        w.move(e, to.x * step, to.y * step); e.facingX = to.x >= 0 ? 1 : -1; // it still cannot pass through walls, so it never lands inside one
+      }
+      if (d.left > 0) return;
+      if (roll("land") < GIANT.slamLandChance) { d.mode = "slamFall"; d.left = GIANT.landWarn; d.mark = { x: p.x, y: p.y }; s.tele = { type: "circle", x: p.x, y: p.y, radius: GIANT.landRadius }; e.giantPose = "slamRaise"; }
+      else { d.mode = "fall"; d.left = GIANT.landFall; }
+      return;
+    }
+    if (d.mode === "slamFall") { // it comes down onto where you stood, tracking across the mark
+      const to = unit(d.mark.x - e.x, d.mark.y - e.y), gap = distance(d.mark, e), step = Math.min(gap, gap * w.dt / Math.max(w.dt, d.left));
+      e.x += to.x * step; e.y += to.y * step; e.giantAir = Math.max(0, GIANT.jumpHeight * d.left / GIANT.landWarn);
+      if (d.left > 0) return;
+      e.giantAir = 0; e.giantPose = "slamDown"; s.tele = null;
+      const dmg = damageOf(e, "giantUpswing"); resolveMelee(e, s, w, "giantUpswing", (q) => distance(q, d.mark) <= GIANT.landRadius);
+      w.addEffect({ kind: "shock", lightning: true, owner: e.id, x: d.mark.x, y: d.mark.y, radius: GIANT.slamRing, life: .6, total: .6, damage: Math.ceil(dmg * GIANT.slamRingShare) });
+      toPhase(s, "recover", attack.recover); return;
+    }
+    if (d.mode === "fall") { e.giantAir = Math.max(0, (e.giantAir || 0) - GIANT.jumpHeight * w.dt / GIANT.landFall); if (d.left <= 0) { e.giantAir = 0; toPhase(s, "recover", attack.recover); } }
   },
   giantElectrify(e, s, w) {
     if (s.phase !== "windup") return;
@@ -2271,18 +2369,19 @@ export function tickPackEffects(effects, w) {
       f.x = owner.x; f.y = owner.y; f.tx = p.x; f.ty = p.y;
       f.connected = distance(p, center(owner)) <= f.range && (!w.los || w.los(owner, w.player));
       f.tick -= w.dt;
-      if (f.connected && f.tick <= 0) { f.tick = GIANT.arcTick; w.hurt(owner, f.damage, { jumpable: false, source: "giantArcs", beam: true }); }
+      if (f.connected && f.tick <= 0) { f.tick = GIANT.arcTick; if (w.hurt(owner, f.damage, { jumpable: false, source: "giantArcs", beam: true }) && !f.counted) { f.counted = true; w.shockHit?.(); } } // one pip per arc attack
     }
     else if (f.kind === "giantBolt") {
       const before = { x: f.x, y: f.y }; f.x += f.vx * w.dt; f.y += f.vy * w.dt;
       if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0;
-      else if (!f.hit && segmentDistance(p, center(before), center(f)) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "giantBolt" }); }
+      else if (!f.hit && segmentDistance(p, center(before), center(f)) <= f.radius + .3) { f.hit = true; f.life = 0; giantZap(w, w.enemies.find((q) => q.id === f.owner), f.damage, "giantBolt"); }
     }
     else if (f.kind === "giantShock") {
-      if (!f.detonated) { f.detonated = true; if (distance(p, f) <= f.radius + .3 && w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "giantShock" })) w.stun?.(f.stun); }
+      if (!f.detonated) { f.detonated = true; if (distance(p, f) <= f.radius + .3) giantZap(w, w.enemies.find((q) => q.id === f.owner), f.damage, "giantShock"); }
     }
+    else if (f.kind === "giantSky") { if (!f.detonated) { f.detonated = true; if (f.damage > 0 && distance(p, f) <= f.radius + .3) giantZap(w, w.enemies.find((q) => q.id === f.owner), f.damage, "giantSky"); } }
     else if (f.kind === "orb") { f.x += f.vx * w.dt; f.y += f.vy * w.dt; if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0; else if (!f.hit && distance(p, f) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "orb" }); } }
-    else if (f.kind === "shock") { const total = f.total ??= f.life ?? .8, r = f.radius * (1 - Math.max(0, f.life ?? total) / total); f.ring = r; if (!f.hit && f.damage > 0 && Math.abs(distance(p, f) - r) < .5) { f.hit = true; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "shockwave" }); } }
+    else if (f.kind === "shock") { const total = f.total ??= f.life ?? .8, r = f.radius * (1 - Math.max(0, f.life ?? total) / total); f.ring = r; if (!f.hit && f.damage > 0 && Math.abs(distance(p, f) - r) < .5) { f.hit = true; if (w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "shockwave" }) && f.lightning) w.shockHit?.(); } }
     else if (!f.detonated) { f.detonated = true; f.life ??= .4; if (f.damage > 0 && distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: !!f.jumpable, source: f.kind }); }
     f.life = (f.life ?? .4) - w.dt;
   }

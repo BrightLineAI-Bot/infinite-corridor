@@ -1882,6 +1882,8 @@ function updateHud(now) {
   hudSet(hudEl("#healthBar"),"value",health);
   hudSet(hudEl("#staminaBar"),"max",save.maxStamina);
   hudSet(hudEl("#staminaBar"),"value",stamina);
+  // Release 257: Lightning Giant shock pips (shown only while charged or knocked down).
+  { const pips = hudEl("#shockPips"), stunned = now < (game.player.stunnedUntil || 0), count = stunned ? 3 : Math.max(0, Math.min(3, game.player.shockCount || 0)); hudSet(pips,"class:off",!count); hudSet(pips,"class:stunned",stunned); hudSet(pips,"data-count",String(count)); }
   const aperture = save.perception?.aperture || 0,
     tier = apertureTier(aperture),
     apertureNext = APERTURE_THRESHOLDS[tier];

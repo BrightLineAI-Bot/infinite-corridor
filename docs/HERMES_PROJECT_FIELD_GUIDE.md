@@ -2318,6 +2318,19 @@ Tim's brief, verbatim, is in `docs/lightning-giant-source-transcript.md`:
 - **Echo.** `ECHOES.lightningGiant` (Giant's Arc).
 - **Tests.** `tests/lightning-giant.test.ts`.
 
+Tim's follow-up rules (same day):
+- **Stun counter:** three lightning hits knock the Wayfarer down for half a second, then the counter resets. Club blows don't count unless the Giant is electrified. The pips sit under the HUD, not over the character.
+- **Look:** a centurion crest, and a height to match the Astral Worm's length.
+- **Menacing slam:** he raises the club and stalks, gauging reach. When the player is in reach: a dodgeable wind-up, then a slam or a short chest bolt, up to twice. If the player never comes in reach, he lowers the club.
+- **Charging upswing:** he runs in and swings up. He may then jump, and from the air fire a bolt barrage or air-dash with arcs, then land plainly or in a slam that tracks the player.
+
+**CODE (follow-up):**
+- **Counter.** `GIANT.stunHits`/`stunTime`/`shockDecay`. `giantZap` calls `w.shockHit()` for every landed lightning hit; arcs count once per arc, and the slam ring counts via `shock.lightning`. `resolveMelee` adds a pip for club blows only while `giantCharged`. `Game.packWorld.shockHit` stuns on the third pip; `p.shockCount`/`shockAt` fade after 10 s and shift on pause.
+- **HUD.** `#shockPips` in both `index.html` files, styled in `styles.css`, updated in `updateHud`.
+- **Menacing slam.** `giantMenace` runs stalk, then strike or bolt, then a beat: `menaceHold`, `menaceStrikes`, `chestChance`, and a beam telegraph for the chest bolt. The `giantChest` effect is visual; damage is a segment test.
+- **Upswing.** `giantUpswing` runs charge, upswing, air (barrage of `giantBolt` or a dash with a `giantArc`), then slamFall or fall. `e.giantAir` lifts the body while the shadow stays on the ground; `endAttack` and `resetPackRuntime` clear it. The air dash uses `w.move`, so it never ends inside a wall.
+- **Art.** `form.scale` 1.9 (boss 2.565). The crest is drawn in `drawLightningGiant`, with new poses `menace`, `chest`, `chargeLow` and `upswing`.
+
 **BOUNDARY:**
 - Numbers are provisional data, not Tim's.
 - The Giant is overworld-only, with no dungeon claim.

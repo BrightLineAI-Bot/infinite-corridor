@@ -8,9 +8,9 @@ export const GIANT_ART = Object.freeze({
   height: 1.12, hipY: .5, shoulderY: .9, headY: 1.04, legGap: .26, thigh: .25, shin: .25, stride: .1, stepRate: 3.2,
   upperArm: .2, foreArm: .19, clubLength: .58, clubHead: .2,
   metal: "#6c7681", metalDark: "#3a424c", metalEdge: "#15191e", plate: "#8a95a1", copper: "#b8743c", copperDark: "#7a4a24",
-  core: "#7fd6ff", coreHot: "#eafaff", haze: "#7fd6ff",
-  poses: { idle: 1.05, arcs: .15, point: 1.2, pointFire: 1.2, swingReady: -2.35, swingFore: .75, swingBack: 2.55, slamRaise: -1.75, slamDown: .95, raise: -1.57 },
-  freeArm: { idle: 1.25, arcs: -.05, point: -.05, pointFire: -.1, raise: -1.45, slamRaise: -1.5, slamDown: 1.2 },
+  core: "#7fd6ff", coreHot: "#eafaff", haze: "#7fd6ff", crest: "#8e1c24", crestLight: "#c8434a",
+  poses: { idle: 1.05, arcs: .15, point: 1.2, pointFire: 1.2, swingReady: -2.35, swingFore: .75, swingBack: 2.55, slamRaise: -1.75, slamDown: .95, raise: -1.57, menace: -1.95, chest: 1.15, chargeLow: 2.2, upswing: -1.05 },
+  freeArm: { idle: 1.25, arcs: -.05, point: -.05, pointFire: -.1, raise: -1.45, slamRaise: -1.5, slamDown: 1.2, menace: -1.6, chest: 2.4, chargeLow: .4, upswing: .2 },
   ease: 14,
 });
 
@@ -42,11 +42,12 @@ function eased(e, key, target, now, rate) {
 
 // q: the shared pack paint context { k, b, u, t, flip, e, s }. `now` (ms) drives easing and flicker only.
 export function drawLightningGiant(ctx, q, now = 0) {
-  const A = GIANT_ART, { k, b, u, t, flip, e } = q, s0 = e.pack, pose = e.giantPose || "idle", attacking = !!s0?.attack;
+  const A = GIANT_ART, { k, u, t, flip, e } = q, s0 = e.pack, pose = e.giantPose || "idle", attacking = !!s0?.attack, ground = q.b, b = ground - Math.max(0, Number(e.giantAir) || 0) * (q.s || u);
   const charged = e.giantCharged > 0, still = attacking || e.giantCloud, reduce = !!e.reduceMotion;
   const walk = still || reduce ? 0 : t * A.stepRate;
   // Ground shadow and, when charged, the crackling haze around the whole body.
-  ctx.fillStyle = "rgba(6,8,12,.45)"; ctx.beginPath(); ctx.ellipse(k, b, u * .34, u * .09, 0, 0, TAU); ctx.fill();
+  const air = Math.max(0, Math.min(1, (ground - b) / Math.max(1, u))); // the shadow stays on the ground and shrinks while it leaps
+  ctx.fillStyle = `rgba(6,8,12,${.45 * (1 - air * .5)})`; ctx.beginPath(); ctx.ellipse(k, ground, u * .34 * (1 - air * .35), u * .09 * (1 - air * .35), 0, 0, TAU); ctx.fill();
   if (charged) {
     const g = ctx.createRadialGradient(k, b - u * .6, u * .1, k, b - u * .6, u * .85); g.addColorStop(0, "rgba(127,214,255,.32)"); g.addColorStop(1, "rgba(127,214,255,0)");
     ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(k, b - u * .6, u * .7, u * .82, 0, 0, TAU); ctx.fill();
@@ -92,7 +93,7 @@ export function drawLightningGiant(ctx, q, now = 0) {
   poly([-u * .3, shY - u * .04, u * .32, shY - u * .04, u * .22, hipY - u * .08, -u * .21, hipY - u * .08], A.metal);
   poly([-u * .22, shY + u * .03, u * .25, shY + u * .03, u * .17, shY + u * .22, -u * .16, shY + u * .22], A.plate);
   for (const yy of [.3, .36]) { ctx.strokeStyle = A.metalDark; ctx.lineWidth = Math.max(1, u * .012); ctx.beginPath(); ctx.moveTo(-u * .19, shY + u * yy); ctx.lineTo(u * .21, shY + u * yy); ctx.stroke(); } // belly ribs
-  const pulse = .55 + .45 * Math.sin(t * (charged ? 14 : 4));
+  const pulse = pose === "chest" ? 1.4 : .55 + .45 * Math.sin(t * (charged ? 14 : 4));
   ctx.fillStyle = A.core; ctx.globalAlpha = .35 + .4 * pulse; ctx.beginPath(); ctx.arc(u * .03, shY + u * .13, u * .11, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
   ctx.fillStyle = A.coreHot; ctx.beginPath(); ctx.arc(u * .03, shY + u * .13, u * .055, 0, TAU); ctx.fill();
   for (const sx of [-u * .25, u * .27]) {
@@ -104,6 +105,15 @@ export function drawLightningGiant(ctx, q, now = 0) {
   // Head: a squared helm with a lit visor slit.
   const hy = b - u * A.headY - bob;
   poly([-u * .11, hy + u * .12, u * .13, hy + u * .12, u * .13, hy - u * .05, u * .08, hy - u * .1, -u * .09, hy - u * .1, -u * .12, hy - u * .04], A.metal);
+  // Centurion crest: a crimson brush standing in a tall arc from brow to nape on a bronze ridge, its edge spiky with bristles.
+  { const cx = -u * .005, cy = hy - u * .04, r1 = u * .1, r2 = u * .26, a0 = Math.PI * 1.08, a1 = Math.PI * 1.92, n = 16;
+    ctx.beginPath();
+    for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n, r = r2 * (i % 2 ? .9 : 1) * (.82 + .18 * Math.sin(Math.PI * i / n)); ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r * .95); }
+    for (let i = n; i >= 0; i--) { const a = a0 + (a1 - a0) * i / n; ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1 * .8); }
+    ctx.closePath(); ctx.fillStyle = A.crest; ctx.fill(); ctx.strokeStyle = "#3a0c10"; ctx.lineWidth = Math.max(1, u * .01); ctx.stroke();
+    ctx.strokeStyle = A.crestLight; ctx.lineWidth = Math.max(1, u * .007);
+    for (let i = 1; i < n; i += 2) { const a = a0 + (a1 - a0) * i / n; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r1 * 1.1, cy + Math.sin(a) * r1 * .9); ctx.lineTo(cx + Math.cos(a) * r2 * .8, cy + Math.sin(a) * r2 * .78); ctx.stroke(); }
+    ctx.strokeStyle = A.copper; ctx.lineWidth = Math.max(1.5, u * .025); ctx.beginPath(); ctx.ellipse(cx, cy, r1, r1 * .8, 0, a0, a1); ctx.stroke(); }
   ctx.fillStyle = A.core; ctx.fillRect(u * .0, hy - u * .015, u * .12, u * .035); ctx.fillStyle = A.coreHot; ctx.fillRect(u * .03, hy - u * .005, u * .07, u * .014);
   leg(1, 0, false); arm(u * .29, clubAngle, false, true);
   ctx.restore();
@@ -121,7 +131,7 @@ export function drawGiantCloud(ctx, k, b, u, fade, t) {
   ctx.restore();
 }
 
-export const GIANT_EFFECT_KINDS = new Set(["giantArc", "giantBolt", "giantShock", "giantSky", "giantStrike"]);
+export const GIANT_EFFECT_KINDS = new Set(["giantArc", "giantBolt", "giantShock", "giantSky", "giantStrike", "giantChest"]);
 // f: a pack effect; s: tile size. Positions use the shared projection (x+.5, y+.62).
 export function drawGiantEffect(ctx, f, s, now, { reduceMotion = false } = {}) {
   const P = (x, y) => ({ x: (x + .5) * s, y: (y + .62) * s }), at = P(f.x, f.y), r = (f.radius || 1) * s, life = Math.max(0, f.life ?? 0), total = f.total || .5;
@@ -150,6 +160,9 @@ export function drawGiantEffect(ctx, f, s, now, { reduceMotion = false } = {}) {
       const g = ctx.createRadialGradient(at.x, at.y, 0, at.x, at.y, r * 1.3); g.addColorStop(0, "rgba(234,250,255,.85)"); g.addColorStop(1, "rgba(127,214,255,0)");
       ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(at.x, at.y, r * 1.3, r * .6, 0, 0, TAU); ctx.fill();
     }
+  } else if (f.kind === "giantChest") { // a short, thick bolt fired from the chest core
+    const u = s * Math.max(.6, Number(f.scale) || 2), from = { x: at.x, y: at.y + .2 * s - u * .77 }, to = P(f.tx ?? f.x, f.ty ?? f.y), k2 = 1 - life / total; ctx.globalAlpha = 1 - k2 * k2;
+    for (let i = 0; i < 2; i++) lightningBolt(ctx, from.x, from.y, to.x, to.y - .4 * s, { now: reduceMotion ? 0 : now, seed: 40 + i, segments: 7, jitter: .1, width: Math.max(2, s * (i ? .06 : .13)) });
   } else if (f.kind === "giantStrike") {
     const k2 = 1 - life / total, u = s * Math.max(.6, Number(f.scale) || 2); ctx.globalAlpha = 1 - k2;
     lightningBolt(ctx, at.x + s * .2, at.y - s * 9, at.x + u * .25, at.y + .2 * s - u * 1.3, { now, seed: 11, segments: 12, jitter: .06, width: Math.max(2, s * .12) });
@@ -159,7 +172,7 @@ export function drawGiantEffect(ctx, f, s, now, { reduceMotion = false } = {}) {
 
 // The Wayfarer knocked flat by a shock: tips over, shakes, then gets back up. Returns the transform to apply around
 // the player draw ({ angle, shake }) for the time since the shock (ms) and its length (ms).
-export const GIANT_KNOCKDOWN = Object.freeze({ fall: 180, rise: 260, shake: 2.2, shakeRate: 45 });
+export const GIANT_KNOCKDOWN = Object.freeze({ fall: 110, rise: 150, shake: 2.2, shakeRate: 40 });
 export function knockdownPose(sinceMs, totalMs, reduceMotion = false) {
   const K = GIANT_KNOCKDOWN, left = totalMs - sinceMs;
   const down = sinceMs < K.fall ? sinceMs / K.fall : left < K.rise ? Math.max(0, left / K.rise) : 1;
