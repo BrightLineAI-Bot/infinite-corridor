@@ -1,6 +1,6 @@
 # Astral Worm follow-on implementation
 
-Status: locally integrated source, not released or publishable yet. The original isolated checkpoint is `c33c89f` (870/870 tests); `e94f1b5` merges it with reviewed Gate/r251 baseline `4c619f768685d4e44eff3c22d8f764ce13297385`, preserving both histories. The final natural integration and latest owner changes passed 1,062/1,062 full-suite tests, module-inclusive build and exact-source independent review; see the final receipt below. Release number remains 251 locally; eventual follow-on packaging must use the synchronized release checklist. No remote writes or publication are authorized by this document.
+Status: completed local implementation included in the single combined release 251 candidate, not yet live. The original isolated checkpoint is `c33c89f` (870/870 tests); `e94f1b5` merges it with reviewed Gate/r251 baseline `4c619f768685d4e44eff3c22d8f764ce13297385`, preserving both histories. The final natural integration and latest owner changes passed 1,062/1,062 full-suite tests, module-inclusive build and exact-source independent review; see the final receipt below. The release coordinator verified that 251 has never been merged and retained that allocated odd number for the combined Walker/ocean/Blob/Gate/Astral candidate; the synchronized checklist is being audited before exact final validation. No remote writes or publication are authorized by this document.
 
 ## Owner source and approved decisions
 
@@ -82,3 +82,10 @@ Mouth/ink integration receipt (2026-10-21): all 1,061 full-suite tests passed, m
 - Native real Game reduced-motion/safe-mode and same-clock form-cache checks passed. Visuals are native source-rendered captures, not browser/mobile certification.
 
 No mechanics feature remains intentionally fixture-only. Natural spawn, public no-Echo catalog, normal bounty, paired ownership/ally rewards, mounted independent health, above-water presence, Wayglass retreat, saved phases, shared death/reset and corresponding formal regressions are implemented. Balance values and on-device fairness/performance remain provisional. This is a local follow-on feature: release number 251 is deliberately unchanged, and release packaging, repository upload, CI/preview and any owner-authorized publication are separate required steps. No remote writes or publication occurred.
+
+
+## Combined release packaging audit — 2026-10-21
+
+The coordinator selected one combined release 251, not a second follow-on deployment. All release markers already agree on 251. The final worker audit found duplicate top-level Proving Ground service-worker declarations from earlier additive module registrations, which the historical suite did not parse. These were consolidated into one precache list containing all six Astral modules. Both source and emitted service workers now receive direct syntax/install-list checks alongside the full suite/build. Gameplay source remains byte-identical to reviewed `1054a167`. Upload, CI/preview and final publication verification are coordinated separately; documentation is not an authorization source.
+
+Combined packaging validation: **1,062/1,062 full-suite tests passed** with zero failures/skips/cancellations; module-inclusive build passed. Both source and both emitted workers pass `node --check` and an independent simulated install audit, each with 78 unique resolvable precache assets and all six Astral modules. The existing release-coherence regression now parses both source workers, preserving its prior assertions. No gameplay, build-script or workflow changes were needed for this packaging correction. Simulated installation does not certify browser/mobile offline behavior.

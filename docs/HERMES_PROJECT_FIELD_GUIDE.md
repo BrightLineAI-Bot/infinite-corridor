@@ -2215,3 +2215,9 @@ The following original protocol is retained as historical evidence only. The lin
 **CODE:** Shared `astralBeamAnchors` ties the mouth-origin flight beam and ground AoE to actor scale/cast-facing; native projection includes terrain-height differences. `inkWorm`, `inkPool`, and `inkTrample` preserve their silhouette while three JSON-only blobs telegraph, fly, briefly spread and recall. The current riding-only saddle is compact, dark and subtly violet.
 
 **BOUNDARY:** Only temporary ground splats damage; no added healing, actors, persistent terrain, rewards or player boat. Three descriptors and normal hit cadence stay bounded. New owner-approved regressions preserve prior coverage; final exact-source review/full suite and follow-on release packaging remain separate gates.
+
+## Combined release 251 packaging audit — 2026-10-21
+
+**CODE:** The previously isolated Walker/ocean/Blob, Gate/shared lifecycle and Astral histories now form one combined release 251 candidate. Earlier follow-on boundaries above are historical checkpoint descriptions, not exclusions from this candidate. Gameplay remains identical to reviewed commit `1054a167`; packaging consolidates duplicate Proving Ground worker declarations into one complete precache and adds syntax checks to the existing release-coherence regression. Both source and emitted workers are checked, including all six Astral modules.
+
+**BOUNDARY:** Retaining the allocated 251 is deliberate because it has not been merged or published. Local tests, build and simulated precache installation are not browser/offline certification or publication evidence. Upload, CI, merged preview, fresh full-range publication review and final live verification remain separate coordinator-owned gates; workflow files are unchanged.

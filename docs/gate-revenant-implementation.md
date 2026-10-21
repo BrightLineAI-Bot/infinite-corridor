@@ -1,4 +1,8 @@
-# Gate Revenant follow-on prototype
+# Gate Revenant implementation and historical stage records
+
+Current status, 2026-10-21: integrated in the single combined release 251 candidate with corrected Walker/ocean/Blob work and completed Astral Worm. The combined local implementation at `1054a167` passed 1,062 tests and build. Final packaging is being audited and retested; CI, preview and publication verification remain separate. The isolated-stage notes below preserve their historical facts and are superseded only as to current integration/release scope.
+
+## Historical isolated starting point
 
 Unreleased, not a publication candidate. Branch `claude/gate-revenant-upgrade` is isolated from the ongoing r251 ocean work and provisionally based on a91cc8c54c088fc7430798c23b7e908722b6d1a1. Integrate the reviewed final r251 baseline and obtain fresh review before any release. No release markers or protected test/config/script files changed.
 

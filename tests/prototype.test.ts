@@ -1,4 +1,5 @@
 import test from "node:test";
+import { Script } from "node:vm";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -2409,6 +2410,8 @@ test("release 251 loads normal play and the isolated Proving Ground coherently",
   assert.match(html,/const release = "251"/);assert.match(html,/styles\.css\?v=251/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
   assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v251`/);assert.match(sw,/styles\.css\?v=251/);assert.match(sw,/proving-ground-labs\.js\?v=251/);assert.match(sw,/dungeon-framework\.js\?v=251/);assert.match(sw,/renderer\.js\?v=251/);
   assert.match(build,/release='251'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.doesNotThrow(()=>new Script(sw),"normal-play service worker parses");
+  assert.doesNotThrow(()=>new Script(readFileSync(new URL("../proving-ground/sw.js",import.meta.url),"utf8")),"Proving Ground service worker parses");
 });
 
 test("Shelter Gallery uses six deterministic production shelter families",()=>{
