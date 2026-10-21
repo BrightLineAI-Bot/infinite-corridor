@@ -8,8 +8,8 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade } from "./items.js?v=r259-a490b918fa7e";
-import { resonancesOf, RESONANCES } from "./glyphs.js?v=r259-a490b918fa7e";
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade } from "./items.js?v=r261-2215f2781a82";
+import { resonancesOf, RESONANCES } from "./glyphs.js?v=r261-2215f2781a82";
 
 export const CONSTELLATION_VERSION = 1;
 export const POINT_EVERY = 6;
@@ -31,7 +31,7 @@ export const BRANCHES = {
     { id: "resonant-force", name: "Resonant Force", text: "Kills during Force Channel extend it by 1 s." }] },
   rift: { name: "Rift", active: "rift-step", mod: { id: "rift-wake", name: "Rift Wake", text: "Rift Step tears a line that wounds foes you pass through." }, caps: [
     { id: "fold", name: "Fold", text: "Rift Step holds two charges." },
-    // Release r259-a490b918fa7e (Tim: "it should not recall you back to a point... disable that"): the old Anchor recall is gone; the
+    // Release 259 (Tim: "it should not recall you back to a point... disable that"): the old Anchor recall is gone; the
     // capstone keeps its id (saves that took it keep it) and now lengthens the step instead.
     { id: "anchor", name: "Long Step", text: `Rift Step reaches ${RIFT.longStep} tiles farther. It still stops short of walls, ledges and ground it cannot stand on.` }] },
 };

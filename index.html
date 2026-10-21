@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=r259-a490b918fa7e" />
+    <link rel="stylesheet" href="./styles.css?v=r261-2215f2781a82" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -63,11 +63,13 @@
           </div></div>
           <div class="utility-buttons">
             <button data-action="map">Map</button
-            ><button data-action="menu">Pack</button>
+            ><button data-action="menu">Pack</button
+            ><button class="preset" data-action="preset" aria-label="Spell preset 1">1</button>
           </div>
         </div>
         <div class="quick-row buttons">
-          <button class="quick potion" data-action="potion">Potion</button>
+          <button class="quick spell spell-a" data-action="spell" data-slot="A">Spell A</button
+          ><button class="quick spell spell-b" data-action="spell2" data-slot="B">Spell B</button>
         </div>
         <div class="action-diamond buttons">
           <button class="core tool" data-action="tool">Tool</button
@@ -75,8 +77,7 @@
           ><button class="core dodge" data-action="dodge">Dodge</button
           ><button class="core attack" data-action="attack">Attack</button
           ><button class="core jump" data-action="jump">Jump</button
-          ><button class="core spell spell-a" data-action="spell" data-slot="A">Spell A</button
-          ><button class="core spell spell-b" data-action="spell2" data-slot="B">Spell B</button>
+          ><button class="core potion" data-action="potion">Potion</button>
         </div>
       </section>
       <dialog id="panel">
@@ -151,7 +152,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "r259-a490b918fa7e";
+      const release = "r261-2215f2781a82";
       const params = new URLSearchParams(location.search);
       const entry = params.get("dev") === "proving-ground"
         ? "./src/proving-ground.js"

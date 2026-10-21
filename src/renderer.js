@@ -1,18 +1,18 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r259-a490b918fa7e";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r259-a490b918fa7e";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r259-a490b918fa7e";
-import { enemyMeleeGeometry } from "./combat.js?v=r259-a490b918fa7e";
-import { ruleRows } from "./elders.js?v=r259-a490b918fa7e";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r259-a490b918fa7e";
-import { BOAT } from "./boats.js?v=r259-a490b918fa7e";
-import { isMarineTile } from "./world-beasts.js?v=r259-a490b918fa7e";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r259-a490b918fa7e";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r259-a490b918fa7e";
-import { liftAt, tileUnder } from "./landscape.js?v=r259-a490b918fa7e";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r259-a490b918fa7e";
-import { drawRelayNode } from "./relay-network.js?v=r259-a490b918fa7e";
-import { structureOccupancy } from "./world.js?v=r259-a490b918fa7e";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r259-a490b918fa7e";
+import { astralBeamAnchors } from "./astral-worm.js?v=r261-2215f2781a82";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r261-2215f2781a82";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r261-2215f2781a82";
+import { enemyMeleeGeometry } from "./combat.js?v=r261-2215f2781a82";
+import { ruleRows } from "./elders.js?v=r261-2215f2781a82";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r261-2215f2781a82";
+import { BOAT } from "./boats.js?v=r261-2215f2781a82";
+import { isMarineTile } from "./world-beasts.js?v=r261-2215f2781a82";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r261-2215f2781a82";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r261-2215f2781a82";
+import { liftAt, tileUnder } from "./landscape.js?v=r261-2215f2781a82";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r261-2215f2781a82";
+import { drawRelayNode } from "./relay-network.js?v=r261-2215f2781a82";
+import { structureOccupancy } from "./world.js?v=r261-2215f2781a82";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r261-2215f2781a82";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -127,7 +127,17 @@ function h(x, y) {
 }
 const TRAVELER_LOOKS = new Set(["pilgrim", "peddler", "mercenary", "minstrel", "scholar", "traveler", "cartographer"]);
 // Trails (release 115): a worn dirt track drawn over whatever ground the tile already shows.
+// A frozen sea tile: pale blue-white ice with a lighter rim and a few cracks, seeded by position.
+function seaIceTile(ctx, x, y, s) {
+  const px = x * s, py = y * s, d = h(x, y);
+  ctx.fillStyle = "#cfe6f2"; ctx.fillRect(px, py, s, s);
+  ctx.fillStyle = "#e9f6fc"; ctx.fillRect(px + s * .06, py + s * .06, s * .88, s * .3);
+  ctx.strokeStyle = "#8fb4c8"; ctx.lineWidth = Math.max(1, s * .03); ctx.beginPath();
+  ctx.moveTo(px + s * (.15 + (d % 5) * .1), py + s * .2); ctx.lineTo(px + s * .5, py + s * (.45 + (d % 3) * .08)); ctx.lineTo(px + s * (.85 - (d % 4) * .08), py + s * .8);
+  ctx.moveTo(px + s * .5, py + s * (.45 + (d % 3) * .08)); ctx.lineTo(px + s * .25, py + s * .85); ctx.stroke();
+}
 function tile(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=null) {
+  if (t?.kind === "seaIce") { seaIceTile(ctx, x, y, s); return; } // release 261: the Mountain Turtle's ice floor
   tileBase(ctx, t, x, y, s, map, w, activeBuildingId, scarSurface);
   if (t?.trail) {
     const d = Number.isFinite(t.detail) ? t.detail : h(x, y), px = x * s, py = y * s;

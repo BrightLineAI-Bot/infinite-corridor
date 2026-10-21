@@ -1,15 +1,15 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID } from "./monster-pack.js?v=r259-a490b918fa7e";
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID } from "./monster-pack.js?v=r261-2215f2781a82";
 
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r259-a490b918fa7e";
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r261-2215f2781a82";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r259-a490b918fa7e";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r259-a490b918fa7e";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r259-a490b918fa7e";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r261-2215f2781a82";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r261-2215f2781a82";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r261-2215f2781a82";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r259-a490b918fa7e";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r261-2215f2781a82";
 
 const TAU = Math.PI * 2;
 
@@ -746,7 +746,7 @@ const BODY = {
   // faces), smaller shards circling it, a cold core; its aura says what it means: a hazy white at rest, red and larger
   // when it attacks, violet and drawn tight just before it takes hold of you.
   psychicCrystal(ctx, q) {
-    // Release r259-a490b918fa7e: a poise break (`e.crystalFall` 0..1) drops it out of the air: it sinks to the floor, tips over, and its
+    // Release 259: a poise break (`e.crystalFall` 0..1) drops it out of the air: it sinks to the floor, tips over, and its
     // aura goes grey until it rises again.
     const fall = Math.max(0, Math.min(1, Number(q.e.crystalFall) || 0));
     const { k, b, u, e, state } = q, t = e.reduceMotion ? 0 : q.t, s0 = e.pack, att = s0?.attack, bob = Math.sin(t * 1.6) * u * .05 * (1 - fall), cy = b - u * .8 + bob - q.bodyLift * (1 - fall) + fall * u * .42, H = u * .55, W = u * .17;

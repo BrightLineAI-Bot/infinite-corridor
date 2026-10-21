@@ -1,7 +1,7 @@
-import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.js?v=r259-a490b918fa7e";
-import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.js?v=r259-a490b918fa7e";
-import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage, beginAstralBoarding, tickAstralBoarding, tickAstralRiderChoice, tickAstralFighterChoice } from "./astral-worm-mount.js?v=r259-a490b918fa7e";
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=r259-a490b918fa7e";
+import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.js?v=r261-2215f2781a82";
+import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.js?v=r261-2215f2781a82";
+import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage, beginAstralBoarding, tickAstralBoarding, tickAstralRiderChoice, tickAstralFighterChoice } from "./astral-worm-mount.js?v=r261-2215f2781a82";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=r261-2215f2781a82";
 import {
   generateRegion,
   generateDungeon,
@@ -17,7 +17,7 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
-} from "./world.js?v=r259-a490b918fa7e";
+} from "./world.js?v=r261-2215f2781a82";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -28,15 +28,15 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness } from "./spell-slots.js?v=r259-a490b918fa7e";
-import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=r259-a490b918fa7e";
-import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=r259-a490b918fa7e";
-import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=r259-a490b918fa7e";
-import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.js?v=r259-a490b918fa7e";
-import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState } from "./boats.js?v=r259-a490b918fa7e";
-import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.js?v=r259-a490b918fa7e";
-import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=r259-a490b918fa7e";
-import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=r259-a490b918fa7e";
+import { ensureSlots, slotted, pairingMods, slotReadiness , togglePreset } from "./spell-slots.js?v=r261-2215f2781a82";
+import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=r261-2215f2781a82";
+import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=r261-2215f2781a82";
+import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=r261-2215f2781a82";
+import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.js?v=r261-2215f2781a82";
+import { aboard, sailable, BOAT, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.js?v=r261-2215f2781a82";
+import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.js?v=r261-2215f2781a82";
+import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=r261-2215f2781a82";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=r261-2215f2781a82";
 import {
   applyInteraction,
   validActions,
@@ -46,36 +46,36 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=r259-a490b918fa7e";
-import { ensurePerception } from "./types.js?v=r259-a490b918fa7e";
-import { generateItem } from "./items.js?v=r259-a490b918fa7e";
-import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=r259-a490b918fa7e";
-import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.js?v=r259-a490b918fa7e";
-import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=r259-a490b918fa7e";
-import { hashSeed } from "./random.js?v=r259-a490b918fa7e";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.js?v=r259-a490b918fa7e';
-import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=r259-a490b918fa7e';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=r259-a490b918fa7e';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=r259-a490b918fa7e';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=r259-a490b918fa7e';
-import{ensureSceneState,queueScene}from'./scenes.js?v=r259-a490b918fa7e';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=r259-a490b918fa7e";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r259-a490b918fa7e";
-import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=r259-a490b918fa7e";
-import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r259-a490b918fa7e";
-import { applyLandscape, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.js?v=r259-a490b918fa7e";
-import { GATE_REVENANT, GIANT, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.js?v=r259-a490b918fa7e";
-import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.js?v=r259-a490b918fa7e";
-import { addStrange, touchStrange } from "./strange.js?v=r259-a490b918fa7e";
-import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, digSpot } from "./digging.js?v=r259-a490b918fa7e";
-import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.js?v=r259-a490b918fa7e";
-import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.js?v=r259-a490b918fa7e";
-import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=r259-a490b918fa7e";
-import { WORLD_BEASTS, BEAST_HOMES, RETREAT, PURSUIT, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.js?v=r259-a490b918fa7e";
-import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.js?v=r259-a490b918fa7e";
-import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss } from "./far-array.js?v=r259-a490b918fa7e";
-import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=r259-a490b918fa7e";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=r259-a490b918fa7e";
+} from "./interactions.js?v=r261-2215f2781a82";
+import { ensurePerception } from "./types.js?v=r261-2215f2781a82";
+import { generateItem } from "./items.js?v=r261-2215f2781a82";
+import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=r261-2215f2781a82";
+import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.js?v=r261-2215f2781a82";
+import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.js?v=r261-2215f2781a82";
+import { hashSeed } from "./random.js?v=r261-2215f2781a82";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.js?v=r261-2215f2781a82';
+import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=r261-2215f2781a82';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=r261-2215f2781a82';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=r261-2215f2781a82';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=r261-2215f2781a82';
+import{ensureSceneState,queueScene}from'./scenes.js?v=r261-2215f2781a82';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=r261-2215f2781a82";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r261-2215f2781a82";
+import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.js?v=r261-2215f2781a82";
+import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r261-2215f2781a82";
+import { applyLandscape, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.js?v=r261-2215f2781a82";
+import { GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.js?v=r261-2215f2781a82";
+import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.js?v=r261-2215f2781a82";
+import { addStrange, touchStrange } from "./strange.js?v=r261-2215f2781a82";
+import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, digSpot } from "./digging.js?v=r261-2215f2781a82";
+import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.js?v=r261-2215f2781a82";
+import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.js?v=r261-2215f2781a82";
+import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=r261-2215f2781a82";
+import { WORLD_BEASTS, BEAST_HOMES, RETREAT, PURSUIT, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.js?v=r261-2215f2781a82";
+import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.js?v=r261-2215f2781a82";
+import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss } from "./far-array.js?v=r261-2215f2781a82";
+import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=r261-2215f2781a82";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=r261-2215f2781a82";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function pinDungeonLayout(save, id) {
@@ -470,7 +470,7 @@ function boundedChaseStep(entity,player,map,width,radius=12){
 // Runtime navigation permission is derived from the current area/kind, never from player boat ownership or
 // restored actor flags. The presentation flag is recomputed after movement and is not durable boat state.
 function refreshMarineBeast(entity, map, width, area) {
-  if (!["voidWalker", "psychicCrystal", "astralWorm", "astralMirage", "lightningGiant"].includes(entity?.kind)) return false; // release 257: the Giant crosses the sea on its cloud
+  if (!["voidWalker", "psychicCrystal", "astralWorm", "astralMirage", "lightningGiant", "mountainTurtle"].includes(entity?.kind)) return false; // release 257: the Giant crosses the sea on its cloud; release 261: the Turtle walks it on ice
   const capable = area === "overworld";
   Object.defineProperty(entity, "_marineTraversal", { value: capable, writable: true, configurable: true, enumerable: false });
   entity.marine = capable && marineAt(map, width, entity.x, entity.y);
@@ -1851,7 +1851,7 @@ export class Game {
           );
     if(area==="overworld")this.tyrantVisit=null; // release 233: entering a section (from anywhere, or after a death) starts a fresh Tyrant visit
     if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
-    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION,openSea:!seen?OPEN_SEA_VERSION:seen.seaVersion||0,buoy:!this.save.checkpoints?.[`${this.rx},${this.ry}`]||this.save.checkpoints[`${this.rx},${this.ry}`].name==="Lighthouse Buoy",hamlet:(!seen||!!seen.hamletVersion)&&hamletSection(this.save.seed,this.rx,this.ry)});if(!seen||seen.hamletVersion)applyHamlet(this.map,this.save.seed,this.rx,this.ry,seen?.hamletVersion||HAMLET_VERSION);if(!seen||seen.travelVersion)applyTrails(this.map,this.save.seed,this.rx,this.ry);this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.storm=null;this._stormCheck=0;const b=ensureBoatState(this.save),m=b.moored;if(b.owned&&!b.aboard&&m&&m.rx===this.rx&&m.ry===this.ry)this.map.objects.push({id:"skiff-moored",kind:"skiff",name:"Your skiff",lore:"Your skiff rides at its mooring.",x:m.x,y:m.y,state:"moored",actions:["board"]});const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive)}
+    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION,openSea:!seen?OPEN_SEA_VERSION:seen.seaVersion||0,buoy:!this.save.checkpoints?.[`${this.rx},${this.ry}`]||this.save.checkpoints[`${this.rx},${this.ry}`].name==="Lighthouse Buoy",hamlet:(!seen||!!seen.hamletVersion)&&hamletSection(this.save.seed,this.rx,this.ry)});if(!seen||seen.hamletVersion)applyHamlet(this.map,this.save.seed,this.rx,this.ry,seen?.hamletVersion||HAMLET_VERSION);if(!seen||seen.travelVersion)applyTrails(this.map,this.save.seed,this.rx,this.ry);this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.storm=null;this._stormCheck=0;const b=ensureBoatState(this.save),m=b.moored;if(b.owned&&!b.aboard&&m&&m.rx===this.rx&&m.ry===this.ry)this.map.objects.push({id:"skiff-moored",kind:"skiff",name:"Your skiff",lore:"Your skiff rides at its mooring.",x:m.x,y:m.y,state:"moored",actions:["board"]});this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive)}
     if(area==="dungeon"){const reader=addDungeonReciter(this.map,loadingId,this.save,mapWidth(this.map,area)),elder=addDungeonElder(this.map,loadingId,this.save,mapWidth(this.map,area));if(elder)this.message="Something tall and silent wanders these halls.";else if(reader)this.message=`${reader.name} wanders these halls, murmuring.`}
     if(area==="dungeon"&&isArrayRun(loadingId)&&ensureFarArray(this.save).activeRun?.id===loadingId){const run=this.save.farArray.activeRun,spawns=this.map.enemySpawns,multi=!!this.map.multiLevel,g=spawns.find(e=>e.dungeonRole==="finalBoss")||spawns.find(e=>e.dungeonRole==="gateWarden")||(multi?null:spawns.find(e=>e.boss)||spawns[spawns.length-1]);if(g){const boss=runBossSpawn(this.save,{x:g.x,y:g.y});if(boss){spawns.splice(spawns.indexOf(g),1);if(!spawns.some(e=>e.id===boss.id))spawns.push({...boss,objectiveId:g.objectiveId||null})}}if(!this.map.objects.some(o=>o.kind==="arrayPylon"))this.map.objects.push(...arrayPylons(this.map,`${loadingId}:${this.map.levelId||""}`,mapWidth(this.map,area)));this.map.name=runName(run,run.gate)}
     if(area==="dungeon"&&history?.relayNode){if(placeRelayNode(this.map,loadingId,this.save))ensureRelayNetwork(this.save).seen=true;}
@@ -1919,6 +1919,7 @@ export class Game {
     }
     if (area === "overworld") {
       const atlas = (this.save.atlas ||= {}), key = `${this.rx},${this.ry}`, prior = atlas[key];
+      noteSectionVisit(this.save, !prior); // release 261: a first visit counts toward the buffer between world beasts
       // A section first seen now is pinned to the current landscape version; one explored earlier keeps none.
       atlas[key] = { terrain: this.map.dominant, ...(prior ? (prior.landscapeVersion ? { landscapeVersion: prior.landscapeVersion } : {}) : { landscapeVersion: LANDSCAPE_VERSION }),
         // Hamlets (release 111; version 2 at 112) follow the same rule: only sections first seen from now on can hold one.
@@ -2037,7 +2038,7 @@ export class Game {
         // Walls, water and isolated pockets are valid saved flight positions. Only repair invalid map bounds.
         e.x = Math.max(0, Math.min(areaWidth - 1, Number.isFinite(e.x) ? e.x : this.map.entry?.x ?? 4));
         e.y = Math.max(0, Math.min(mapHeight(this.map, area) - 1, Number.isFinite(e.y) ? e.y : this.map.entry?.y ?? 5));
-        // Release r259-a490b918fa7e: never left beyond the dungeon's edge; it comes back to the nearest place it may be.
+        // Release 259: never left beyond the dungeon's edge; it comes back to the nearest place it may be.
         const ok = !e.retreating && this.roamerBounds(); if (ok && ok[Math.round(e.y) * areaWidth + Math.round(e.x)] !== 1) { let best = null, bd = Infinity; for (let i = 0; i < ok.length; i++) if (ok[i]) { const d = Math.hypot(i % areaWidth - e.x, Math.floor(i / areaWidth) - e.y); if (d < bd) { bd = d; best = i; } } if (best != null) { e.x = best % areaWidth; e.y = Math.floor(best / areaWidth); } }
       } else if (e.worldBeast === "voidWalker" && area === "dungeon") {
         if (e.retreating) e.untargetable = true;
@@ -2401,14 +2402,14 @@ export class Game {
     this.save.magicBuff = this.magicBuffRemaining;
     this.save.spellCooldown = this.spellCooldownRemaining;
   }
-  // Release r259-a490b918fa7e: once the crossing has held, each pursuing world beast comes over the edge behind the Wayfarer with its
+  // Release 259: once the crossing has held, each pursuing world beast comes over the edge behind the Wayfarer with its
   // wounds, unless this section is a settlement or another beast's ground already stands here; then it stays behind.
   worldBeastsFollow(hunters, fromArea, dx, dy) {
     for (const h of hunters) {
       if (this.map.settlement || this.enemies.some(e => (e.worldBeast || e.questingBeast) && !e.dead) || !canPursue(this.save, h.id, this.rx - dx, this.ry - dy, dx, dy)) continue;
       const spawn = pursuitSpawn(this.save, h.id, this.map, this.rx, this.ry, dx, dy); if (!spawn) continue;
       pursued(this.save, h.id, dx, dy);
-      const e = this.createEnemyFromSpawn(spawn, "overworld"); if (h.maxHp > 0) { e.maxHp = h.maxHp; e.damage = h.damage; } e.hp = Math.max(1, Math.min(e.maxHp, Number(h.hp) || e.maxHp)); e.aggro = true; // the same creature: its own vitals ensureAI(e).mode = "chase";
+      const e = this.createEnemyFromSpawn(spawn, "overworld"); if (h.maxHp > 0) { e.maxHp = h.maxHp; e.damage = h.damage; } e.hp = Math.max(1, Math.min(e.maxHp, Number(h.hp) || e.maxHp)); e.aggro = true; ensureAI(e).mode = "chase"; // the same creature, with its own vitals
       this.enemies.push(e);
       const left = this.save.session.areas[fromArea]; if (left?.enemies) left.enemies = left.enemies.filter(q => q.id !== h.actorId); // it is no longer back there
       const B = WORLD_BEASTS[h.id], q = this.save.worldBeasts[h.id].active, more = (PURSUIT.limits[h.id] ?? PURSUIT.sections) - (q.chase || 0);
@@ -2418,7 +2419,7 @@ export class Game {
   transitionSection(dx, dy) {
     const from = { rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y };
     const pursuers=this.enemies.filter(e=>e.gatePredator&&e.aggro&&!e.dead).map(e=>({...e,ai:{...ensureAI(e)}}));
-    // Release r259-a490b918fa7e: a fighting world beast may follow the Wayfarer over the edge (world-beasts.ts PURSUIT).
+    // Release 259: a fighting world beast may follow the Wayfarer over the edge (world-beasts.ts PURSUIT).
     const fromArea = this.areaStateId(), hunters = this.enemies.filter(e => e.worldBeast && e.aggro && !e.dead && !e.retreating && !e.astralCompanionOf && canPursue(this.save, e.worldBeast, this.rx, this.ry, dx, dy)).map(e => ({ id: e.worldBeast, actorId: e.id, hp: e.hp, maxHp: e.maxHp, damage: e.damage }));
     for(const e of this.enemies)if(!e.gatePredator&&e.aggro&&!e.dead){e.aggro=false;ensureAI(e).mode="return"}
     for(const e of this.enemies)if(e.gatePredator&&e.aggro&&!e.dead)e.dead=true;
@@ -2690,10 +2691,11 @@ export class Game {
     else if (action === "repair") r = repairSkiff(s);
     else if (action === "buyRig") r = buyRig(s);
     else if (action === "board") {
+      if (o.id === "skiff-spare") takeSpare(s); // release 261: the spare becomes the skiff in use
       const at = o.kind === "skiff" ? { x: o.x, y: o.y } : o.berth;
       if (!board(s, at)) r = { ok: false, message: b.owned ? "The skiff needs repair before it can sail." : "You own no skiff." };
       else {
-        this.map.objects = this.map.objects.filter((q) => q.kind !== "skiff");
+        this.map.objects = this.map.objects.filter((q) => q.kind !== "skiff"); this.placeSpareSkiff();
         Object.assign(this.player, { x: at.x, y: at.y, sailVx: 0, sailVy: 0 }); this.swimming = false;
         if (o.kind === "shipwright") b.home = { rx: this.rx, ry: this.ry, x: at.x, y: at.y };
         r = { ok: true, message: "Aboard the skiff. Sail onto land to step ashore." };
@@ -2750,11 +2752,16 @@ export class Game {
     }
     return best;
   }
+  // Release r261-2215f2781a82: the spare skiff, when it is moored in this section.
+  placeSpareSkiff() {
+    const sp = ensureBoatState(this.save).spare; this.map.objects = this.map.objects.filter((o) => o.id !== "skiff-spare");
+    if (this.area === "overworld" && sp && sp.rx === this.rx && sp.ry === this.ry) this.map.objects.push({ id: "skiff-spare", kind: "skiff", name: "Your spare skiff", lore: "Your other skiff rides at its mooring.", x: sp.x, y: sp.y, state: "moored", actions: ["board"] });
+  }
   buildSkiffHere() {
     const at = this.shoreWater();
     if (!at) { this.message = "Find deep water's edge to build a skiff."; return { ok: false, message: this.message }; }
     const r = buildSkiff(this.save, { rx: this.rx, ry: this.ry, x: at.x, y: at.y - .2 });
-    if (r.ok) { this.map.objects = this.map.objects.filter((q) => q.kind !== "skiff"); Object.assign(this.player, { x: at.x, y: at.y - .2, sailVx: 0, sailVy: 0 }); this.swimming = false; }
+    if (r.ok) { this.map.objects = this.map.objects.filter((q) => q.kind !== "skiff"); this.placeSpareSkiff(); Object.assign(this.player, { x: at.x, y: at.y - .2, sailVx: 0, sailVy: 0 }); this.swimming = false; }
     this.message = r.message; this.sync(); return r;
   }
 
@@ -2996,7 +3003,7 @@ export class Game {
     if (changed) this._walkerLandingGraph = { map, width, landscape: !!map.landscape, entryX: entry.x, entryY: entry.y, flags: Uint8Array.from(tiles, flag), heights: Float64Array.from(tiles, t => Number(t?.elev) || 0), cells: walkerReachableTiles(map) };
     return this._walkerLandingGraph.cells;
   }
-  // Release r259-a490b918fa7e (Tim: the Psychic Crystal "went into... beyond the edge of the dungeon, so I couldn't see it... it stays
+  // Release 259 (Tim: the Psychic Crystal "went into... beyond the edge of the dungeon, so I couldn't see it... it stays
   // within the confines of the dungeon, even if there's black space"). Where a dungeon roamer may be: the dungeon's open
   // ground (every room, water and pit included; a room walking cannot reach stays valid, as approved for release 249), any
   // wall touching it, and an interior wall with open ground on both opposite sides within CRYSTAL.boundsSpan tiles (so it
@@ -3013,7 +3020,7 @@ export class Game {
     }
     this._roamerBounds = { key, width, ok: ok.some((v) => v) ? ok : null }; return this._roamerBounds.ok;
   }
-  // Release r259-a490b918fa7e: the floor connected to the Wayfarer's own tile (4-way over open, non-lethal ground). Cached until the
+  // Release 259: the floor connected to the Wayfarer's own tile (4-way over open, non-lethal ground). Cached until the
   // terrain changes (the walker landing graph is rebuilt then) or the Wayfarer stands outside the cached area.
   playerFloor() {
     const key = this.walkerLandingGraph(), map = this.map, tiles = map.tiles || [], width = mapWidth(map, this.area), height = mapHeight(map, this.area);
@@ -3192,12 +3199,12 @@ export class Game {
       playerDeathFinal: () => game.astralPlayerFell(),
       deferAstralHeal: (owner,amount) => { if(amount>0&&(game._astralDrainCredits||=[]).length<32)game._astralDrainCredits.push({owner,amount}); },
       astralLos: (a,b) => hasLineOfSight(a,b,map,width,true,game.area === "overworld"),
-      los: (a, b, projectile = false) => hasLineOfSight(a, b, map, width, projectile, game.area === "overworld" && ["voidWalker", "psychicCrystal", "lightningGiant"].includes(a?.kind)),
+      los: (a, b, projectile = false) => hasLineOfSight(a, b, map, width, projectile, game.area === "overworld" && ["voidWalker", "psychicCrystal", "lightningGiant", "mountainTurtle"].includes(a?.kind)),
       move(e, dx, dy, opts = {}) {
         if (game.astralRiderHeld(e)) return false;
         const marine = refreshMarineBeast(e, map, width, game.area);
         if (e.kind === "voidWalker") { const moved = moveWalkerGround(e, dx, dy, map, width); refreshMarineBeast(e, map, width, game.area); return moved; }
-        if (isDungeonRoamer(e, game.area) || opts.phase && !["psychicCrystal", "lightningGiant"].includes(e.kind)) { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)), moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
+        if (isDungeonRoamer(e, game.area) || opts.phase && !["psychicCrystal", "lightningGiant", "mountainTurtle"].includes(e.kind)) { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)), moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
         const moved = moveAxis(e, dx, dy, map, width, !!e.flying, null, marine); refreshMarineBeast(e, map, width, game.area); return moved;
       },
       gateChase(e, step) {
@@ -3214,7 +3221,7 @@ export class Game {
       },
       // The dungeon is the Crystal's domain: patrol and combat use the same bounded wall-phasing movement.
       roamMove(e, dx, dy) { return this.move(e, dx, dy); },
-      // Release r259-a490b918fa7e: floor the Wayfarer can reach from where they stand, where the dungeon Crystal sets its goals.
+      // Release 259: floor the Wayfarer can reach from where they stand, where the dungeon Crystal sets its goals.
       walkable: game.area === "dungeon" ? (x, y) => { const k = Math.round(y) * width + Math.round(x); return x >= 0 && y >= 0 && x <= width - 1 && y <= height - 1 && game.playerFloor().has(k); } : null,
       roamWork: (n) => { game.performanceStats.pathfindingWork += n; },
       detour(e, speed) { if (game.astralRiderHeld(e)) return; const step = boundedChaseStep(e, p, map, width); if (step) { const px = step[0] - e.x, py = step[1] - e.y, m = Math.hypot(px, py) || 1; this.move(e, px / m * speed, py / m * speed); } },
@@ -3260,7 +3267,30 @@ export class Game {
   }
   // Release 239: a world beast runs out of patience and retreats home, invulnerable and through everything; it leaves
   // each section by the gate toward home (the Wayfarer may follow) and, in the home section, goes into its home ground.
-  // Release r259-a490b918fa7e (Tim: "when the blob retreats the whole mass doesn't retreat with it... a portion of it just detaches and
+  // Release r261-2215f2781a82: the Mountain Turtle walks the sea on ice of its own making (TURTLE.seaIce). Open sea tiles near it become
+  // walkable `seaIce` tiles (the original tile is kept and put back when it thaws). Batched every `tick` s so the ground
+  // cache redraws at most that often. Transient: a section load clears it, and it is never saved.
+  tickSeaIce(dt) {
+    const I = TURTLE.seaIce; if (this.area !== "overworld") { this.seaIce = null; return; }
+    const turtles = this.enemies.filter((e) => e.kind === "mountainTurtle" && !e.dead);
+    if (!turtles.length && !this.seaIce?.tiles.size) return;
+    const ice = (this.seaIce ||= { tiles: new Map(), clock: 0, next: 0 }); ice.clock += dt; if (ice.clock < ice.next) return; ice.next = ice.clock + I.tick;
+    const map = this.map, tiles = map.tiles, width = mapWidth(map, this.area), height = mapHeight(map, this.area);
+    for (const e of turtles) {
+      const cx = e.x + .5, cy = e.y + .7, R = I.radius;
+      for (let y = Math.floor(cy - R); y <= Math.ceil(cy + R); y++) for (let x = Math.floor(cx - R); x <= Math.ceil(cx + R); x++) {
+        if (x < 0 || y < 0 || x >= width || y >= height || Math.hypot(x + .5 - cx, y + .5 - cy) > R) continue;
+        const i = y * width + x, t = tiles[i], held = ice.tiles.get(i);
+        if (held) { held.until = ice.clock + I.life; continue; }
+        if (!marineTileOpen(t)) continue;
+        ice.tiles.set(i, { orig: t, until: ice.clock + I.life }); tiles[i] = { ...t, kind: "seaIce", blocked: false, seaIce: true };
+      }
+    }
+    // Ice under the Wayfarer's feet holds until they step off it (a thaw must not drop them into the deep).
+    const p = this.player, stand = new Set(); for (const ox of [-.3, .3]) for (const oy of [-.2, .2]) { const x = Math.floor(p.x + .5 + ox), y = Math.floor(p.y + .72 + oy); if (x >= 0 && y >= 0 && x < width && y < height) stand.add(y * width + x); }
+    for (const [i, q] of ice.tiles) if (q.until <= ice.clock && tiles[i]?.seaIce && !stand.has(i)) { tiles[i] = q.orig; ice.tiles.delete(i); }
+  }
+  // Release 259 (Tim: "when the blob retreats the whole mass doesn't retreat with it... a portion of it just detaches and
   // retreats home and just leaves the large mass... and then it'll just fade gracefully"; then "only if it's larger will it
   // shrink and leave a residue"). A Blob grown past its original size flees at that original size (its growth and merges
   // undone), and the extra mass stays as an inert remnant (no AI, no hits, no rewards, never saved) that lingers, then
@@ -3831,6 +3861,7 @@ export class Game {
       else this.jumpUntil = now + 520 + skillRank(this.save,"quickening") * 140;
     }
     if (input.consume("potion")) this.useConsumable("restorativeDraught", now);
+    if (input.consume("preset")) this.message = togglePreset(this.save).message; // release 261: swap spell presets 1 and 2
     const dodging = now < (p.dodgeUntil || 0);
     if (dodging) {
       x = p.dodgeX;
@@ -4116,6 +4147,7 @@ export class Game {
       }
     }
     if (this.novaFog) this.novaFog = this.area === "overworld" ? tickNovaFog(this.novaFog, dt, p) : null; // release 257: a Supernova's fog clears
+    this.tickSeaIce(dt); // release 261: the Mountain Turtle's ice floor freezes and thaws
     // Open-sea hazards (release 152): whirlpools, rogue waves and drifting ice.
     if (this.area === "overworld" && this.seaHazards && p.hp > 0) {
       const onBoard = aboard(this.save);

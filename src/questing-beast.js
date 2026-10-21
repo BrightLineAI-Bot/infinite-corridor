@@ -2,9 +2,9 @@
 // Wayfarer's level and power. Now and then it claims a wild section. It stays there until it is killed or it has
 // killed the Wayfarer QUESTING_BEAST.tries times; then it is gone, and after a cooldown (counted in sections entered)
 // a new hunt can begin somewhere else.
-import { hashSeed } from "./random.js?v=r259-a490b918fa7e";
-import { WORLD_BEASTS, BEAST_BASELINE, beastProfileVitals } from "./world-beasts.js?v=r259-a490b918fa7e";
-import { LETHAL_KINDS } from "./landscape.js?v=r259-a490b918fa7e";
+import { hashSeed } from "./random.js?v=r261-2215f2781a82";
+import { WORLD_BEASTS, BEAST_BASELINE, beastProfileVitals, ENCOUNTER, encounterReady, encounterMet, isMarineTile } from "./world-beasts.js?v=r261-2215f2781a82";
+import { LETHAL_KINDS } from "./landscape.js?v=r261-2215f2781a82";
 
 // Release 187 (Tim, 2026-10-18): far tougher and far more dangerous. About twice the health; each blow takes about
 // 27% of maximum health (four unhealed hits kill); it runs fast and barely pauses between attacks.
@@ -17,14 +17,20 @@ export function ensureQuestingBeast(s) {
   return s;
 }
 
+// The Questing Beast and the sea (release 261): never claims a section at least `none` ocean, and in one over `watery` ocean
+// its chance is scaled by `wateryChance`.
+export const QB_SEA = { none: .9, watery: .3, wateryChance: .25 };
 // Called once per overworld section load. Returns a spawn for the beast in this section, or null.
 export function questingBeastFor(save, map, rx, ry) {
   ensureQuestingBeast(save); const q = save.questingBeast;
   if (!map || map.settlement || map.tiles?.length !== 1024 || Math.abs(rx) + Math.abs(ry) < QUESTING_BEAST.minDepth) return null;
   if (!q.active) {
     if (q.cooldown > 0) { q.cooldown--; return null; }
-    if ((hashSeed(`${save.seed}:questing-beast:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= QUESTING_BEAST.chance) return null;
-    q.active = { rx, ry, tries: 0 };
+    if (!encounterReady(save)) return null; // release 261: the buffer between meetings
+    // Release r261-2215f2781a82 (Tim: "the questing beast can't be on totally ocean tiles... much, much more rare" on water).
+    const sea = map.tiles.filter(isMarineTile).length / map.tiles.length; if (sea >= QB_SEA.none) return null;
+    if ((hashSeed(`${save.seed}:questing-beast:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= QUESTING_BEAST.chance * ENCOUNTER.chanceScale * (sea > QB_SEA.watery ? QB_SEA.wateryChance : 1)) return null;
+    q.active = { rx, ry, tries: 0 }; encounterMet(save);
   }
   if (q.active.rx !== rx || q.active.ry !== ry) return null;
   const open = map.tiles.filter((t) => !t.blocked && !t.structure && !t.environment && !LETHAL_KINDS.has(t.kind) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24);

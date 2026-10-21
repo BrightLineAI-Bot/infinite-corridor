@@ -7,8 +7,8 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { hashSeed } from "./random.js?v=r259-a490b918fa7e";
-import { updateAstralActor } from "./astral-worm.js?v=r259-a490b918fa7e";
+import { hashSeed } from "./random.js?v=r261-2215f2781a82";
+import { updateAstralActor } from "./astral-worm.js?v=r261-2215f2781a82";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -550,6 +550,10 @@ export const WORM = {
 };
 // The Mountain Turtle (release 241). Balance as data.
 export const TURTLE = {
+  // Release r261-2215f2781a82 (Tim: "the turtle can appear in the water... he'll make like a temporary ice floor... walkable tiles... your
+  // boat can slide across it... they'll persist for... 5, maybe 10 seconds, and then... unfreeze"): open sea within
+  // `radius` of it freezes to walkable ice every `tick` s; each ice tile thaws `life` s after the Turtle last froze it.
+  seaIce: { radius: 2.2, life: 8, tick: .5 },
   stompRadius: 1.9, stompRing: 4.2,
   dashSpeed: 7.5, dashEvery: .14, trailLife: 3.2, trailRadius: .75, trailBite: .45, fireTick: .5, iceTick: .6, iceSlow: .55, iceBurst: [2, 2.6], iceBurstRadius: 1.3, iceBurstBite: .9, // fire burns while it lasts; ice stings and slows, then bursts
   spinRadius: 1.4, spinTick: .4, spinPull: .9, twisterEvery: .5, twisterMax: 6, twisterSpeed: 1.4, twisterLife: 10, twisterRadius: .7, twisterTick: .7, twisterSlow: .5, twisterBite: .35,
@@ -2108,7 +2112,7 @@ export function updatePackMonster(e, w) {
     if (!brain?.hiddenUntilAggro) w.move(e, Math.cos(s.wander) * .28 * dt, Math.sin(s.wander * .8) * .28 * dt, { phase: false });
     return;
   }
-  // Release r259-a490b918fa7e: a dungeon Crystal that has lost the Wayfarer for a while goes back to its patrol.
+  // Release 259: a dungeon Crystal that has lost the Wayfarer for a while goes back to its patrol.
   if (roaming && !e.retreating) { const seen = d <= CRYSTAL.roamSight || w.los(e, w.player); s.lostFor = seen ? 0 : (s.lostFor || 0) + dt; if (s.lostFor >= CRYSTAL.forgetAfter && !s.attack) { e.aggro = false; s.lostFor = 0; s.manifest = null; s.wallTime = 0; s.roam = null; patrolDungeon(e, s, w); return; } }
   if (e.hitStun > 0 && s.state === "move") return;
   if (e.hitStun > 0 && s.attack && !e.boss && s.phase === "windup" && !e.untargetable) { endAttack(e, s); return; }

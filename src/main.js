@@ -1,26 +1,26 @@
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r259-a490b918fa7e";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r259-a490b918fa7e";
-import { renderTimings } from "./renderer.js?v=r259-a490b918fa7e";
-import { createProbe, PROBE } from "./diagnostic-probe.js?v=r259-a490b918fa7e";
-import { vendorShop, buyFromVendor } from "./game.js?v=r259-a490b918fa7e";
-import { CREATURE_TRAITS } from "./combat.js?v=r259-a490b918fa7e";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=r259-a490b918fa7e";
-import { drawPackPortrait } from "./monster-render.js?v=r259-a490b918fa7e";
-import { landscapeAtlasColor } from "./landscape-render.js?v=r259-a490b918fa7e";
-import { hashSeed } from "./random.js?v=r259-a490b918fa7e";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r259-a490b918fa7e";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r259-a490b918fa7e";
-import { hamletSection, hamletIdentity } from "./settlements.js?v=r259-a490b918fa7e";
-import { linksKnown } from "./linked-dungeons.js?v=r259-a490b918fa7e";
-import { DIG } from "./digging.js?v=r259-a490b918fa7e";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces } from "./atlas-view.js?v=r259-a490b918fa7e";
-import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses } from "./glimpses.js?v=r259-a490b918fa7e";
-import { startGlimpse, paintRule } from "./glimpse-render.js?v=r259-a490b918fa7e";
-import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r259-a490b918fa7e";
-import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=r259-a490b918fa7e";
-import { questingBeastTriesLeft } from "./questing-beast.js?v=r259-a490b918fa7e";
-import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=r259-a490b918fa7e";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r259-a490b918fa7e";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r261-2215f2781a82";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r261-2215f2781a82";
+import { renderTimings } from "./renderer.js?v=r261-2215f2781a82";
+import { createProbe, PROBE } from "./diagnostic-probe.js?v=r261-2215f2781a82";
+import { vendorShop, buyFromVendor } from "./game.js?v=r261-2215f2781a82";
+import { CREATURE_TRAITS } from "./combat.js?v=r261-2215f2781a82";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=r261-2215f2781a82";
+import { drawPackPortrait } from "./monster-render.js?v=r261-2215f2781a82";
+import { landscapeAtlasColor } from "./landscape-render.js?v=r261-2215f2781a82";
+import { hashSeed } from "./random.js?v=r261-2215f2781a82";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r261-2215f2781a82";
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r261-2215f2781a82";
+import { hamletSection, hamletIdentity } from "./settlements.js?v=r261-2215f2781a82";
+import { linksKnown } from "./linked-dungeons.js?v=r261-2215f2781a82";
+import { DIG } from "./digging.js?v=r261-2215f2781a82";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces } from "./atlas-view.js?v=r261-2215f2781a82";
+import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses } from "./glimpses.js?v=r261-2215f2781a82";
+import { startGlimpse, paintRule } from "./glimpse-render.js?v=r261-2215f2781a82";
+import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r261-2215f2781a82";
+import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=r261-2215f2781a82";
+import { questingBeastTriesLeft } from "./questing-beast.js?v=r261-2215f2781a82";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=r261-2215f2781a82";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r261-2215f2781a82";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -171,7 +171,7 @@ setTimeout(() => {
     act?.classList.toggle("selected", save.aimMode === "act");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r259-a490b918fa7e";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r261-2215f2781a82";
 import {
   Game,
   actionReadiness,
@@ -180,19 +180,19 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=r259-a490b918fa7e";
-import { createInput } from "./input.js?v=r259-a490b918fa7e";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r259-a490b918fa7e";
-import { STATS } from "./types.js?v=r259-a490b918fa7e";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=r259-a490b918fa7e";
-import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=r259-a490b918fa7e";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=r259-a490b918fa7e";
-import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots } from "./spell-slots.js?v=r259-a490b918fa7e";
-import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=r259-a490b918fa7e";
-import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=r259-a490b918fa7e";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r259-a490b918fa7e";
-import { worldStewardReport } from "./story.js?v=r259-a490b918fa7e";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r259-a490b918fa7e";
+} from "./game.js?v=r261-2215f2781a82";
+import { createInput } from "./input.js?v=r261-2215f2781a82";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r261-2215f2781a82";
+import { STATS } from "./types.js?v=r261-2215f2781a82";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=r261-2215f2781a82";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=r261-2215f2781a82";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=r261-2215f2781a82";
+import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS } from "./spell-slots.js?v=r261-2215f2781a82";
+import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=r261-2215f2781a82";
+import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=r261-2215f2781a82";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r261-2215f2781a82";
+import { worldStewardReport } from "./story.js?v=r261-2215f2781a82";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r261-2215f2781a82";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -204,8 +204,8 @@ import {
   perceived,
   wayfindingTargets,
   wayfindingCues,
-} from "./world.js?v=r259-a490b918fa7e";
-import { warmWayfindingSignals } from "./world.js?v=r259-a490b918fa7e";
+} from "./world.js?v=r261-2215f2781a82";
+import { warmWayfindingSignals } from "./world.js?v=r261-2215f2781a82";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
@@ -1096,7 +1096,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r259-a490b918fa7e",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r259-a490b918fa7e\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r261-2215f2781a82",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r261-2215f2781a82\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1108,7 +1108,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r259-a490b918fa7e",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r261-2215f2781a82",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1437,7 +1437,7 @@ function openMap() {
 // Release 151: each part of the Pack is built separately, so a fault in one (seen on a player's save, cause still
 // unknown) shows a note naming the part and its error instead of stopping the whole Pack from opening.
 function packSectionFailed(name,error){noteError(error);console.error(`Pack section ${name} failed`,error);const note=document.createElement("p");note.className="options-note options-danger";note.textContent=`${name} could not be shown (${error?.message||error}). Options → System → Copy diagnostics, then paste it to Claude.`;body.append(note)}
-// Release r259-a490b918fa7e (Tim, 2026-10-21: "I get to the pack, I should just hit... Arcanum and it should just take me there... there
+// Release 259 (Tim, 2026-10-21: "I get to the pack, I should just hit... Arcanum and it should just take me there... there
 // should be just buttons to get through things... spells and echoes... under one tab, and then the armor and weapon
 // upgrading system should be another tab"): the Pack is tabbed, and one tab bar runs across the Pack, the Forge and the
 // Arcanum, so everything is a tap apart. The Arcanum keeps its own sub-tabs (Spells & Constellation, Glyphs, Echoes).
@@ -1910,6 +1910,8 @@ function updateHud(now) {
     hudSet(button,"data-cooldown",label);
     hudSet(button,"aria-label",`${action} ${label}`);
   }
+  // Release r261-2215f2781a82: the spell preset button shows which preset (1 or 2) is in the slots.
+  { const pb = hudEl('[data-action="preset"]'), n = String((save.magicSkills?.preset || 0) + 1); if (pb) { hudSet(pb, "text", n); hudSet(pb, "aria-label", `Spell preset ${n}: tap to switch`); } }
   // Spell slots A and B (release 113): each shows its castable's symbol in its attribute colour.
   for (const [action, slot] of [["spell", "a"], ["spell2", "b"]]) {
     const button = hudEl(`[data-action="${action}"]`), c = slotted(save, slot);
@@ -2200,7 +2202,7 @@ for (const d of [panel, atlas, journal, optionsPanel])
       else pausePanel.showModal();
     }
   });
-// Release r259-a490b918fa7e (Tim, 2026-10-21: the phone's back button "just freezes the game... it should go back to pause or resume,
+// Release 259 (Tim, 2026-10-21: the phone's back button "just freezes the game... it should go back to pause or resume,
 // it should give me that menu"). One back action, from either route a phone sends it by: a dialog's close request
 // (cancel) or browser history (popstate, kept armed by a guard entry so back never leaves the game page).
 // A menu open: close it and show the pause menu. Only the creature viewer: close it, back to the codex under it.
@@ -2266,6 +2268,8 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
  const inSlot=(key)=>['a','b'].find(q=>save.magicSkills.slots[q]===key),slotButtons=(key,after)=>['a','b'].map(q=>{const here=save.magicSkills.slots[q]===key,b=uiButton(here?`In slot ${q.toUpperCase()}`:`Set in ${q.toUpperCase()}`,()=>{const r=setSlot(save,q,key);game.message=r.message;persist();after();openSkills(atShrine)});if(here)b.disabled=true;return b});
  // Slots A and B, and the Pairing their two attributes make.
  {const box=el('section','arc-branch arc-slots');box.append(el('h3','','Spell slots'));
+  // Release r261-2215f2781a82: two spell presets; the slots below belong to the active one (the HUD's preset button switches them too).
+  {const row=el('div','codex-tabs arc-presets');for(let i=0;i<PRESETS;i++){const b=uiButton(`Preset ${i+1}`,()=>{if((save.magicSkills.preset||0)!==i){const r=togglePreset(save);game.message=r.message;persist()}openSkills(atShrine)});if((save.magicSkills.preset||0)===i)b.setAttribute('aria-current','page');row.append(b)}box.append(row)}
   for(const q of ['a','b']){const c=slotted(save,q),row=el('div','arc-slot');const sym=el('span','slot-sym',c?c.symbol:'+');sym.style.color=c?c.color:'';row.append(el('strong','',q.toUpperCase()),sym,el('span','',c?c.name:'Empty — choose below'));if(c)row.append(elemBadge(c.attr));if(c){const clear=uiButton('Clear',()=>{const r=setSlot(save,q,null);game.message=r.message;persist();openSkills(atShrine)});row.append(clear)}box.append(row)}
   const pr=activePairing(save);box.append(el('p','',pr?`Pairing: ${pr.name} — ${pr.text}`:'Fill both slots: their two attributes form a Pairing, a small bonus while both stay set.'));
   sky.append(box)}
