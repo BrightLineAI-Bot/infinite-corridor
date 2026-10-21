@@ -2243,3 +2243,11 @@ Claude reviewed all 17 Codex commits from live r249 to the combined r251 candida
 - The Questing Beast keeps its 1.15× dominance over every beast, including the Astral Worm's native floor (Tim's "strongest" rule). It can reach about 5,500 HP at level 1.
 - The spill never simulates actors in the neighbour section and never marks it visited.
 - The reconcile found no described Walker feature missing; the section-clipped overworld scar was the one partial, and the spill completes it.
+
+## Release 251 saddle: futuristic plinth — 2026-10-21
+
+Tim saw the violet rider placeholder in a test render and asked for that as the saddle. He wants it compact, black and silver and futuristic, with a purple glow beneath where it mounts to the beast, a platform the Walker stands on, and a purple glow rising to about his hips.
+
+**CODE:** `drawAstralSaddle` (data in `ASTRAL_SADDLE`) now draws a gunmetal clamp with two bracket feet, over a radial violet underglow. Above it sits a silver disc platform with a shaded side band, a glowing seam and an inset ring. A violet light column with glowing edges and streaks rises `glowHeight` 0.46 units. `paintPackMonster` calls it twice: `layer: 'back'` before the rider body, and `layer: 'front'` (the column only, at `veilAlpha` 0.4) after it. The saddle test now looks for the platform colour.
+
+**BOUNDARY:** It is visual only. Riding, knock-off, health and hitboxes are unchanged. The leather saddle from earlier the same day is replaced. The column is static, so reduced motion needs no special case.

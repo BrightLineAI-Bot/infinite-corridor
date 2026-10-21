@@ -885,6 +885,7 @@ function paintPackMonster(ctx, e, s, now, facing, def, sprite) {
   const riding=astralMountPresentation(e);
   if(riding?.riding)drawAstralSaddle(ctx,{x:k,y:b,unit:u,form:riding.form,facing:flip});
   BODY[def.render]?.(ctx, q);
+  if(riding?.riding)drawAstralSaddle(ctx,{x:k,y:b,unit:u,form:riding.form,facing:flip,layer:'front'});
   if (e.hitFlash > 0) { ctx.globalCompositeOperation = "lighter"; glow(ctx, k, b - u * .4 - bodyLift, u * .55, "#ffffff", .5); }
   ctx.restore();
   return true;
