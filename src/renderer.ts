@@ -1403,6 +1403,14 @@ export function render(ctx, g, w, h, now) {
       const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - level) * 3), px, py, s * (3.6 + (1 - level) * 7));
       gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.92 * level})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
     }
+    // Release 269 (Tim: "in fog it should cast a... violet glow"): the longboat's lantern lights the mist around it,
+    // more strongly the deeper the fog.
+    if (g._longboatFront && g.save.boat?.aboard) {
+      const dir = g.longboatSide === "left" ? -1 : 1, lx = (p.x + .5) * s + dir * s * 1.0, ly = (p.y + .6) * s - s * .34, pulse = .9 + Math.sin(now / 1300) * .1, k = (.35 + .65 * level) * pulse;
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      const lg = ctx.createRadialGradient(lx, ly, 0, lx, ly, s * 3); lg.addColorStop(0, `rgba(190,70,255,${.75 * k})`); lg.addColorStop(.3, `rgba(150,40,230,${.38 * k})`); lg.addColorStop(1, "rgba(110,20,190,0)");
+      ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(lx, ly, s * 3, 0, 7); ctx.fill(); ctx.restore();
+    }
   }
   if (g.area === "overworld" && g.storm) { ctx.fillStyle = `rgba(16,24,38,${.28 * g.storm.strength})`; ctx.fillRect((p.x + .5) * s - w, (p.y + .6) * s - h, w * 2, h * 2); }
   if (g.area === "overworld" && now < (g.inkUntil || 0)) {
