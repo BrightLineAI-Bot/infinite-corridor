@@ -2536,7 +2536,7 @@ Tim, 2026-10-21. On building: "you can build walls out of stone or wood... in th
 **CODE:**
 - **Building.** New `src/building.ts`: `BUILD = { kinds: { wood: { cost 5 wood, hits 1 }, stone: { cost 10 stone, hits 2, stack 2 } }, life 10, maxOut 5, breakReach .9 }`.
   - `save.build.kind` is additive and normalised by `ensureBuild` in `freshSave` and `migrateSave`. The Supplies tab chooses it, and the HUD's `data-action="build"` button (key B; an inline SVG hammer, Tim: "The build button can just have a hammer") raises one via `placeBuild(game, buildSpot(player))`.
-  - A build replaces its tile and keeps the original (`buildOrig`). A wood wall is `blocked`. A stone block is a `perch` with `elev` +1 per level (stacked blocks share a tile, and the top one goes first).
+  - A build replaces its tile and keeps the original (`buildOrig`). A wood wall is `blocked`, with `buildRun` "v" when built while moving left or right and "h" otherwise (Tim: "if I'm just not moving, it can just be the standard regular fence, but if I'm moving to the side it'll be positioned that way"); only its drawing differs. A stone block is a `perch` with `elev` +1 per level (stacked blocks share a tile, and the top one goes first).
   - `footprintOpen` refuses a perch unless `allowLethalTerrain` is set, which only the Wayfarer's movement and fliers pass. So creatures cannot step on it, and `canStep` makes the Wayfarer jump onto it as onto any ledge.
   - `buildRefusal` refuses map edges, lethal or water kinds, ice, slopes, structures, blocked ground and occupied tiles.
   - Builds are transient: `Game.builds` is cleared on every area load, never saved, and `tickBuilds` expires them.

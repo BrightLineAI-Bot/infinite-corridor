@@ -48,7 +48,7 @@ export function buildRefusal(map, x, y, kind, occupied) {
 }
 
 // Raises a build on (x, y). `game` supplies map, area, builds, save. Returns { ok, message }.
-export function placeBuild(game, x, y, kind = ensureBuild(game.save).build.kind) {
+export function placeBuild(game, x, y, kind = ensureBuild(game.save).build.kind, moving = true) {
   const K = BUILD.kinds[kind], m = (game.save.materials ||= {}), builds = (game.builds ||= []);
   const [[mat, need]] = Object.entries(K.cost), have = Number(m[mat]) || 0;
   if (builds.length >= BUILD.maxOut) return { ok: false, message: `${BUILD.maxOut} builds already stand. Wait for one to crumble.` };
@@ -64,7 +64,9 @@ export function placeBuild(game, x, y, kind = ensureBuild(game.save).build.kind)
     game.map.tiles[i] = { ...t, buildLevel: level, elev: t.landscapeElev + level };
   } else {
     const orig = t, level = 1;
-    game.map.tiles[i] = kind === "wood" ? { ...t, build: "wood", blocked: true, buildOrig: orig } : { ...t, build: "stone", perch: true, buildLevel: level, landscapeElev: t.elev || 0, elev: (t.elev || 0) + level, buildOrig: orig };
+    // Tim: "if I'm just not moving, it can just be the standard regular fence, but if I'm moving to the side it'll be
+    // positioned that way": facing left or right, the fence runs up and down across the way; otherwise across.
+    game.map.tiles[i] = kind === "wood" ? { ...t, build: "wood", blocked: true, buildOrig: orig, buildRun: moving && (p.facing === "left" || p.facing === "right") ? "v" : "h" } : { ...t, build: "stone", perch: true, buildLevel: level, landscapeElev: t.elev || 0, elev: (t.elev || 0) + level, buildOrig: orig };
   }
   builds.push({ id: `build-${(game.buildSeq = (game.buildSeq || 0) + 1)}`, kind, x, y, hits: K.hits, life: BUILD.life });
   return { ok: true, message: `${K.name} raised. ${m[mat]} ${mat} left.` };

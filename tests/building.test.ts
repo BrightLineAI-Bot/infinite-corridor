@@ -26,6 +26,8 @@ test('a wood wall goes in front, costs 5 wood, blocks everyone, and crumbles aft
   const { game, map, save } = field(), spot = buildSpot(game.player); assert.deepEqual(spot, { x: 11, y: 10 });
   const r = placeBuild(game, spot.x, spot.y, 'wood'); assert.equal(r.ok, true, r.message); assert.equal(save.materials.wood, 15);
   assert.equal(at(map, 11, 10).build, 'wood'); assert.equal(footprintOpen(map, 32, 10.8, 9.5, true), false, 'not even the Wayfarer walks through');
+  assert.equal(at(map, 11, 10).buildRun, 'v', 'built facing sideways, it runs across the way'); game.player.facing = 'down'; placeBuild(game, 10, 11, 'wood'); assert.equal(at(map, 10, 11).buildRun, 'h'); breakBuild(game, game.builds[1]);
+  game.player.facing = 'left'; placeBuild(game, 9, 10, 'wood', false); assert.equal(at(map, 9, 10).buildRun, 'h', 'standing still: the standard fence'); breakBuild(game, game.builds[1]);
   tickBuilds(game, BUILD.life - .5); assert.equal(at(map, 11, 10).build, 'wood');
   tickBuilds(game, 1); assert.equal(at(map, 11, 10).build, undefined); assert.equal(at(map, 11, 10).blocked, false); assert.equal(game.builds.length, 0);
 });

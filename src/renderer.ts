@@ -157,6 +157,16 @@ function quarryTurtle(ctx, x, y, s, now) {
 // Release 265: a wood wall (upright planks with a cross brace) or a stone block (a cut block, a second course when stacked).
 function buildTile(ctx, t, x, y, s) {
   const px = x * s, py = y * s;
+  if (t.build === "wood" && t.buildRun === "v") { // release 265: built facing sideways, the fence runs up and down
+    ctx.fillStyle = "#00000045"; ctx.fillRect(px + s * .5, py + s * .06, s * .14, s * .94);
+    for (let k = 0; k < 4; k++) {
+      const y0 = py + s * (.02 + k * .24);
+      ctx.fillStyle = k % 2 ? "#8a5a32" : "#a06d3e"; ctx.beginPath(); ctx.moveTo(px + s * .38, y0 + s * .26); ctx.lineTo(px + s * .38, y0 + s * .06); ctx.lineTo(px + s * .47, y0 - s * .04); ctx.lineTo(px + s * .56, y0 + s * .06); ctx.lineTo(px + s * .56, y0 + s * .26); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#4e321a"; ctx.lineWidth = Math.max(1, s * .025); ctx.stroke();
+    }
+    ctx.fillStyle = "#6b4426"; ctx.fillRect(px + s * .43, py, s * .08, s);
+    return;
+  }
   if (t.build === "wood") { // a thin palisade of pointed stakes on a crossbar
     ctx.fillStyle = "#00000045"; ctx.fillRect(px + s * .02, py + s * .74, s * .96, s * .1);
     for (let k = 0; k < 5; k++) {
