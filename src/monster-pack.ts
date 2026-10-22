@@ -525,7 +525,7 @@ export const QB_MOVES = { flurryStrikes: 4, flurryEvery: .2, flurryLunge: .35, b
 // The Morphing Blob (release 235). Balance as data.
 export const BLOB = {
   growTime: 120, maxGrow: 2.4, growStep: .08,            // it swells to maxGrow× its size over growTime seconds alive
-  growHeal: .5,                                         // natural growth restores this share of max HP in all; never enlarges the health pool
+  growHeal: 0,                                          // release 307 (Tim: "the blob doesn't need to regenerate health... just when his little bloblings get to him"); was .5
   contact: .8, contactEvery: .8,                         // touching it: this share of its damage, at most once per contactEvery
   oozePerHit: 2, oozeEvery: .35, oozeMax: 16, oozeRadius: .55, oozeFlight: .55, oozeBite: .3, oozeSlow: .7,
   tendrils: 3, tendrilSpread: .55, tendrilLength: 4.2, tendrilWidth: .45,
@@ -628,6 +628,25 @@ function knightCut(e, s, w, id, aim, energized, arc = KNIGHT.slideArc) {
 const energized = (e, s, n, chance = KNIGHT.arcChance) => hashSeed(`${e.id}:${s.seq}:energy:${n}`) % 100 < chance;
 export function nanoScatters(e, { physical = false, echoGlyph = false } = {}) { return e?.kind === "nanobotKnight" && physical && !echoGlyph; }
 // The Psychic Crystal (release 249). Balance as data.
+// Boss poise (release 307, Tim: "all the bosses should be able to be staggered... a tiered stagger system... a few hits,
+// and then a few more... at the third tier... a set amount of hits and a set... cool down between staggers... the larger
+// monsters can... have larger poise... the turtle and the robot... the largest... the astral worm... surprisingly low...
+// the Void Walker... pretty sturdy"). `hits` are the landed blows for the first, second and every later break (forgotten
+// after `forget` s without one); after rising it cannot break again for `guard` s. The Psychic Crystal keeps its own
+// (CRYSTAL.poiseHits). Applies to world beasts, the Questing Beast and the Mire Heart.
+export const BOSS_POISE = {
+  default: { hits: [8, 12, 18], guard: 9, breakTime: 2.4 },
+  mountainTurtle: { hits: [14, 20, 28], guard: 10, breakTime: 2.6 },
+  lightningGiant: { hits: [14, 20, 28], guard: 10, breakTime: 2.6 },
+  nanobotKnight: { hits: [10, 15, 22], guard: 9, breakTime: 2.4 },
+  voidWalker: { hits: [12, 17, 24], guard: 10, breakTime: 2.4 },
+  astralWorm: { hits: [5, 7, 10], guard: 8, breakTime: 2.8 },
+  morphingBlob: { hits: [9, 13, 19], guard: 9, breakTime: 2.4 },
+  tremorWorm: { hits: [9, 13, 19], guard: 9, breakTime: 2.4 },
+  questingBeast: { hits: [10, 15, 22], guard: 9, breakTime: 2.2 },
+  forget: 6,
+};
+export const bossPoiseOf = (e) => e.kind !== "psychicCrystal" && (e.worldBeast || e.questingBeast || e.mireHeart) ? BOSS_POISE[e.kind] || BOSS_POISE.default : null;
 export const CRYSTAL = {
   pushRadius: 4.5, pushForce: 9, pushBite: .7,
   pullRadius: 9.5, pullForce: 3.6, pullReach: 1.2,
@@ -2031,6 +2050,23 @@ function crystalPoise(e, s, w, p) {
   return true;
 }
 
+// Release 307: landed blows (seen as health falling) build toward the next tier's break; a break ends the attack in hand and
+// holds the boss still for breakTime (e.poiseBreak 1..0 for the renderer); then `guard` s before blows count again.
+function bossPoise(e, s, w) {
+  const P = bossPoiseOf(e), hp = Number(e.hp) || 0, dt = Number.isFinite(w.dt) ? Math.max(0, w.dt) : 0;
+  s.poiseGuard = Math.max(0, (s.poiseGuard || 0) - dt);
+  if (!(s.broken > 0)) {
+    if (s.hpSeen != null && hp < s.hpSeen && !(s.poiseGuard > 0)) { s.poiseHits = (s.poiseHits || 0) + 1; s.poiseIdle = 0; } else s.poiseIdle = (s.poiseIdle || 0) + dt;
+    s.hpSeen = hp; if (s.poiseIdle >= BOSS_POISE.forget) s.poiseHits = 0;
+    const need = P.hits[Math.min(P.hits.length - 1, s.poiseTier || 0)];
+    if ((s.poiseHits || 0) < need || e.untargetable || e.retreating) { e.poiseBreak = 0; return false; }
+    s.broken = P.breakTime; s.poiseHits = 0; s.poiseTier = (s.poiseTier || 0) + 1; if (s.attack) endAttack(e, s); s.tele = null; s.vel = null; w.release?.(e);
+  }
+  s.broken -= dt; s.hpSeen = hp; e.poiseBreak = Math.max(0, s.broken / P.breakTime);
+  if (s.broken > 0) return true;
+  s.broken = 0; e.poiseBreak = 0; s.poiseGuard = P.guard; return false;
+}
+
 // The dungeon Crystal settles where the Wayfarer can reach it (release 259; CRYSTAL.wallLinger etc.). It may pass through
 // and linger in walls, but after wallLinger s off reachable floor it makes for the nearest reachable floor, and blinks
 // onto it if something holds it back. Returns true while it is on its way (the tick is spent).
@@ -2148,6 +2184,7 @@ export function updatePackMonster(e, w) {
   if (e.wormOf && tentacleTurret(e, s, w, p)) return;
   if (e.kind === "tremorWorm" && wormCycle(e, s, w, p)) return;
   if (e.kind === "psychicCrystal" && crystalPoise(e, s, w, p)) return; // release 259: a poise break grounds it
+  if (bossPoiseOf(e) && bossPoise(e, s, w)) return; // release 307: every boss can be staggered
   if (roaming && crystalManifest(e, s, w)) return; // release 285: before evading or attacking, so neither keeps it in the walls
   if (e.kind === "voidWalker" ? voidEvade(e, s, w, p, d) : e.evasive && evade(e, s, w, p, d)) return;
   if (s.attack) {

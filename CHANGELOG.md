@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 307 — world bosses are fairer:
+  - **Health and damage.** Every world beast (and the Questing Beast and the Poison Crypt's Mire Heart) has half the health it had, and deals 10% less damage.
+  - **Four tries.** You now get four tries at each before it moves on, instead of three.
+  - **The Morphing Blob** no longer heals as it grows. It still swells, and its bloblets still heal it a little when they make it home.
+  - **Staggers.** Every boss can now be staggered. Land enough blows and it breaks: it stops what it was doing and stands dazed for a couple of seconds, swaying, with stars circling over it. The first break comes fairly quickly, the second takes more blows, and from the third on every break takes the same, larger number. After it recovers there is a cooldown before your blows count again. The Mountain Turtle and the Lightning Giant are the hardest to break and the Void Walker is sturdy; the Astral Worm breaks surprisingly easily. The Psychic Crystal keeps its own break.
+
 - Release 305 — the Far Sleep made strange. Past the farthest Readings, more than 35 sections out, the ground stops pretending:
   - pale sleep-meadow scattered with small luminous flowers;
   - white marble terraces climbing in wide stairs;

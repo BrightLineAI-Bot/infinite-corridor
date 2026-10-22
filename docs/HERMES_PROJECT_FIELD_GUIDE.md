@@ -2585,6 +2585,31 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 307: boss balance; tiered boss poise — 2026-10-22
+
+Tim, 2026-10-22:
+- "everybody's health is too much... cut their health in half... decrease their overall damage output by ten percent".
+- "the blob doesn't need to regenerate health... just when his little bloblings get to him".
+- "you should get 4 tries to kill them".
+- "all the bosses should be able to be staggered... a tiered stagger system... a few hits, and then a few more... at the third tier... a set amount of hits and a set... cool down between staggers... the turtle and the robot will have the largest poise... the astral worm... surprisingly low... the Void Walker... pretty sturdy".
+
+**CODE:**
+- **`world-beasts.ts`**:
+  - `BEAST_BALANCE` ({ hp: .5, damage: .9 }) scales `beastProfileVitals`, and so every world beast, the Questing Beast (`tuneQuestingBeast`) and the Mire Heart.
+  - `tuneWorldBeast` and `tuneQuestingBeast` scale the creature's own pack floor by the same factors, so a body sturdier than its profile is halved too.
+  - Every `tries` is 4 (also `QUESTING_BEAST`, `ASTRAL_PROFILE`).
+- **`monster-pack.ts`**:
+  - `BLOB.growHeal` is 0; bloblet merges still heal (`blobletHeal`).
+  - `BOSS_POISE` gives per-kind `hits` [first, second, every later break], `guard` (cooldown after rising) and `breakTime`. `bossPoiseOf(e)` applies to world beasts, the Questing Beast and the Mire Heart, but not the Psychic Crystal, which keeps `CRYSTAL.poiseHits`.
+  - `bossPoise` counts landed blows as falling health (forgotten after `forget` s) and ignores them during `guard`, while untargetable and while retreating. A break ends the attack in hand, clears telegraph and velocity, releases a held Wayfarer, and holds the boss still for `breakTime`. `e.poiseBreak` runs 1→0 for the renderer.
+- **`monster-render.ts`**: while `poiseBreak` > 0 the body sags and sways (`drawPackMonster`), with circling stars and a closing ring at its feet (`drawDazed`). There is one shared animation, not one per boss.
+
+**BOUNDARY:**
+- Ordinary monsters, dungeon guardians and the Gate Revenant are unchanged.
+- The Mire Heart keeps `MIRE_CRYPT.heartHp` 0.5 of the (now halved) overland Blob.
+- No save change.
+- Tests: `tests/boss-poise-307.test.ts`. Older tests that pinned 3 tries, the old vitals and the Blob's growth healing now pin the new rules (`world-beasts`, `lightning-giant`, `beast-baseline-rematch`, `astral-natural-encounters`, `blob-growth-health`).
+
 ## Release 305: the Far Sleep made strange — 2026-10-22
 
 This release is step 4 of `docs/narrative-bible.md` section 7 ("The Far Sleep made strange... Dreamlands landscapes... for the far regions... used only for sections not yet explored"). The daily narrative session began it, and Tim approved it on 2026-10-22: "you can continue working on the dream section".

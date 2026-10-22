@@ -64,7 +64,7 @@ test('natural Game.loadArea creates Astral at level one with deterministic hosti
   for(const role of [null,'hostile','ally']) {
     const {g,save,owner,rider}=natural(role);
     assert.equal(owner.kind,'astralWorm');assert.equal(owner.worldBeast,'astralWorm');assert.equal(owner.hp,owner.maxHp);
-    assert.equal(save.level,1);assert.ok(owner.damage>=60);assert.ok(owner.maxHp>=4760);
+    assert.equal(save.level,1);assert.ok(owner.damage>=60);assert.ok(owner.maxHp>=2380);/* release 307: beast health halved */
     assert.equal(save.worldBeasts.astralWorm.active.astralPair.alignment,role);
     assert.equal(g.enemies.filter(e=>e.kind==='astralWorm').length,1);
     if(role){assert.equal(rider.astralRole,role);assert.equal(save.worldBeasts.voidWalker.active.astralPairOf,owner.id);assert.equal(rider.worldBeast,role==='hostile'?'voidWalker':undefined);}
@@ -111,16 +111,16 @@ test('natural hostile survivor retains wounded health and its own hunt when the 
   assert.equal(restored.enemies.filter(e=>e.worldBeast==='voidWalker').length,1);assert.equal(restored.save.worldBeasts.voidWalker.active.dungeon,id);
 });
 
-test('natural hostile pair uses shared three-death retries, full-HP rematches and terminal third departure',()=>{
+test('natural hostile pair uses shared four-death retries, full-HP rematches and terminal fourth departure',()=>{ // release 307: four tries
   const {g,save,id}=natural('hostile');const currency=save.currency;
-  for(let attempt=1;attempt<=3;attempt++) {
+  for(let attempt=1;attempt<=4;attempt++) {
     const owner=g.enemies.find(e=>e.worldBeast==='astralWorm'),rider=g.enemies.find(e=>e.worldBeast==='voidWalker');assert.ok(owner&&rider);
     owner.hp=Math.max(1,owner.maxHp-111);rider.hp=Math.max(1,rider.maxHp-222);const max=[owner.maxHp,rider.maxHp];
     g.player.hp=0;advance(g,attempt*1000);assert.equal(g.save.worldFlags.deaths,attempt);assert.equal(g.area,'dungeon','ordinary dungeon death wrapper returns to its entry');
-    if(attempt<3){assert.equal(save.worldBeasts.astralWorm.active.tries,attempt);assert.equal(save.worldBeasts.voidWalker.active.tries,attempt);}
+    if(attempt<4){assert.equal(save.worldBeasts.astralWorm.active.tries,attempt);assert.equal(save.worldBeasts.voidWalker.active.tries,attempt);}
     else {assert.equal(save.worldBeasts.astralWorm.active,null);assert.equal(save.worldBeasts.voidWalker.active,null);assert.equal(save.worldBeasts.astralWorm.escaped,1);assert.equal(save.worldBeasts.voidWalker.escaped,1);}
     returnToDungeon(g,id);
-    if(attempt<3){const o=g.enemies.find(e=>e.worldBeast==='astralWorm'),r=g.enemies.find(e=>e.worldBeast==='voidWalker');assert.ok(o&&r);assert.deepEqual([o.hp,r.hp],max);assert.equal(o.astral,undefined);}
+    if(attempt<4){const o=g.enemies.find(e=>e.worldBeast==='astralWorm'),r=g.enemies.find(e=>e.worldBeast==='voidWalker');assert.ok(o&&r);assert.deepEqual([o.hp,r.hp],max);assert.equal(o.astral,undefined);}
     else assert.equal(g.enemies.some(e=>!e.dead&&(e.worldBeast==='astralWorm'||e.worldBeast==='voidWalker')),false);
   }
   assert.equal(save.currency,currency);assert.equal(save.worldBeasts.astralWorm.slain,0);assert.equal(save.worldBeasts.voidWalker.slain,0);
@@ -202,7 +202,7 @@ for(const role of ['ally','hostile'])for(const survives of [true,false])test(`na
  const {g,save,actor:o,rider}=naturalOverworld('astralWorm',{role,mounted:role==='hostile',marine:true});
  g.map.tiles=g.map.tiles.map(t=>({...t,kind:'ocean',blocked:false,structure:null,buildingId:null,environment:null,pit:false,elev:0}));g.map.objects=[];g.map.settlement=null;g.map.environment=null;g.map.landscape=false;g.seaHazards=null;g.storm=null;g.paused=false;save.maxHp=1000;g.enemies=[o,rider];
  Object.assign(g.player,{x:16,y:16,hp:1000,invulnerableUntil:0,dodgeUntil:0});Object.assign(o,{x:16,y:16,hp:1000,aggro:true});Object.assign(save.boat,{owned:true,aboard:true,hull:60,home:{rx:g.rx,ry:g.ry,x:16,y:16},moored:null});
- Object.assign(rider,{x:16,y:16});advance(g,100);if(role==='hostile'){for(let i=0;i<60&&rider.astralMount?.status!=='mounted';i++)advance(g,100);assert.equal(rider.astralMount?.status,'mounted');}startAstralMove(o.astral,'mirage',g.player);advance(g,150);o.astral.enclosed=1.4;o.astral.hitClock=0;g.player.invulnerableUntil=0;g.player.hp=survives?6:4;advance(g,1000);
+ Object.assign(rider,{x:16,y:16});advance(g,100);if(role==='hostile'){for(let i=0;i<60&&rider.astralMount?.status!=='mounted';i++)advance(g,100);assert.equal(rider.astralMount?.status,'mounted');}startAstralMove(o.astral,'mirage',g.player);advance(g,150);o.astral.enclosed=1.4;o.astral.hitClock=0;g.player.invulnerableUntil=0;g.player.hp=survives?5.5:4;advance(g,1000);/* release 307: the drain is 10% smaller */
  if(survives){assert.equal(g.player.hp,1);assert.equal(o.astral.terminated,false);assert.equal(o.astral.clones.length,4);assert.equal(rider.dead,false);assert.ok(save.worldBeasts.voidWalker.active);assert.equal(save.worldBeasts.astralWorm.active.tries,0);if(role==='hostile')assert.equal(rider.astralMount.status,'mounted');}
  else {assert.equal(save.worldBeasts.astralWorm.active.tries,1);assert.equal(o.hp,o.maxHp);assert.equal(o.astral,undefined);if(role==='ally'){assert.equal(rider.dead,true);assert.equal(save.worldBeasts.voidWalker.active,null);}else {assert.equal(rider.astralMount.status,'mounted','owner rule 2026-10-21: he stays on when the player dies');assert.equal(save.worldBeasts.voidWalker.active.tries,1);}}
 });

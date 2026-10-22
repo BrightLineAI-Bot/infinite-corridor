@@ -23,40 +23,42 @@ function geometry(base, age, merged = 0) {
   return [Math.round(base.scale * stepped * 100) / 100, base.radius * stepped];
 }
 
-test('natural growth heals current HP only, with the unchanged stepped body growth', () => {
-  assert.equal(BLOB.growHeal, .5); assert.equal(BLOB.growTime, 120); assert.equal(BLOB.maxGrow, 2.4);
+// Release 307 (Tim: "the blob doesn't need to regenerate health... just when his little bloblings get to him"): growth still
+// swells the body but no longer heals (BLOB.growHeal 0). These tests pin the new rule; the stepped growth is unchanged.
+test('natural growth no longer heals, with the unchanged stepped body growth', () => {
+  assert.equal(BLOB.growHeal, 0); assert.equal(BLOB.growTime, 120); assert.equal(BLOB.maxGrow, 2.4);
   const f = fixture(), base = { scale: f.b.scale, radius: f.b.bodyRadius };
   tick(f, 30);
-  assert.equal(f.b.maxHp, 2000); close(f.b.hp, 350); assert.equal(f.b.blobAge, 30);
+  assert.equal(f.b.maxHp, 2000); close(f.b.hp, 100); assert.equal(f.b.blobAge, 30);
   assert.deepEqual([f.b.scale, f.b.bodyRadius], geometry(base, 30));
-  tick(f, 30); close(f.b.hp, 600); assert.equal(f.b.maxHp, 2000);
+  tick(f, 30); close(f.b.hp, 100); assert.equal(f.b.maxHp, 2000);
 });
 
-test('growth grants at most half max HP and stops forever at the existing size cap', () => {
+test('growth grants no HP and stops forever at the existing size cap', () => {
   const f = fixture(), base = { scale: f.b.scale, radius: f.b.bodyRadius };
-  tick(f, 180); close(f.b.hp, 1100); assert.equal(f.b.maxHp, 2000); assert.equal(f.b.blobAge, 120);
+  tick(f, 180); close(f.b.hp, 100); assert.equal(f.b.maxHp, 2000); assert.equal(f.b.blobAge, 120);
   assert.deepEqual([f.b.scale, f.b.bodyRadius], geometry(base, 120));
   f.b.hp -= 10; const shape = [f.b.scale, f.b.bodyRadius];
-  tick(f, Number.MAX_VALUE); close(f.b.hp, 1090); assert.deepEqual([f.b.scale, f.b.bodyRadius], shape);
+  tick(f, Number.MAX_VALUE); close(f.b.hp, 90); assert.deepEqual([f.b.scale, f.b.bodyRadius], shape);
   assert.ok(Number.isFinite(f.b.blobAge));
 });
 
-test('healing is capped at unchanged maximum and unused regeneration is never banked', () => {
+test('a wounded blob stays wounded; nothing is banked', () => {
   const full = fixture(2000); tick(full, 60); assert.equal(full.b.hp, 2000); assert.equal(full.b.maxHp, 2000);
-  full.b.hp = 1000; tick(full, 60); close(full.b.hp, 1500); tick(full, 600); close(full.b.hp, 1500);
-  const nearFull = fixture(1999); tick(nearFull, 60); assert.equal(nearFull.b.hp, 2000); assert.equal(nearFull.b.maxHp, 2000);
+  full.b.hp = 1000; tick(full, 60); close(full.b.hp, 1000); tick(full, 600); close(full.b.hp, 1000);
+  const nearFull = fixture(1999); tick(nearFull, 60); assert.equal(nearFull.b.hp, 1999); assert.equal(nearFull.b.maxHp, 2000);
 });
 
-test('the same active growth time heals equally at 30, 60, and 144 fps or one large step', () => {
+test('the same active growth time grows equally at 30, 60, and 144 fps or one large step', () => {
   const results = [30, 60, 144].map(fps => { const f = fixture(); frames(f, 60, fps); return f.b; });
   const single = fixture(); tick(single, 60); results.push(single.b);
-  for (const b of results) { close(b.hp, 600); assert.equal(b.maxHp, 2000); close(b.blobAge, 60); assert.equal(b.scale, results[0].scale); close(b.bodyRadius, results[0].bodyRadius); }
+  for (const b of results) { close(b.hp, 100); assert.equal(b.maxHp, 2000); close(b.blobAge, 60); assert.equal(b.scale, results[0].scale); close(b.bodyRadius, results[0].bodyRadius); }
 });
 
-test('a hit still spatters ooze when this tick heals more HP than the damage dealt', () => {
+test('a hit still spatters ooze while it grows', () => {
   const f = fixture(); tick(f, .1); f.w.fx = [];
   const before = f.b.hp; f.b.hp -= .1; tick(f, 1);
-  assert.ok(f.b.hp > before); assert.equal(f.w.fx.filter(q => q.kind === 'ooze').length, BLOB.oozePerHit);
+  assert.ok(f.b.hp < before); assert.equal(f.w.fx.filter(q => q.kind === 'ooze').length, BLOB.oozePerHit);
   const count = f.w.fx.length; tick(f, 1); assert.equal(f.w.fx.length, count, 'regeneration itself is not another hit');
 });
 
@@ -76,7 +78,7 @@ test('older saved growth resumes without retroactive healing or new save fields'
   [f.b.scale, f.b.bodyRadius] = geometry(base, 60, .5);
   f.b = resetPackRuntime(JSON.parse(JSON.stringify(f.b))); f.w.enemies = [f.b]; const keys = Object.keys(f.b).sort();
   tick(f, 0); close(f.b.hp, 100); assert.equal(f.b.maxHp, 2000);
-  tick(f, 12); close(f.b.hp, 200); assert.equal(f.b.maxHp, 2000); assert.equal(f.b.blobMerged, .5);
+  tick(f, 12); close(f.b.hp, 100); assert.equal(f.b.maxHp, 2000); assert.equal(f.b.blobMerged, .5);
   assert.deepEqual(Object.keys(f.b).sort(), [...new Set([...keys, 'hitFlash', 'scattered', 'recoil', 'hitStun', 'hidden', 'facingX'])].sort());
   assert.deepEqual([f.b.scale, f.b.bodyRadius], geometry(base, 72, .5));
 });
@@ -115,7 +117,7 @@ test('the production pause gate freezes growth and healing without wall-clock ca
   const f = realFixture(); tick(f, 30);
   f.g.setPaused(true, 1000); const before = [f.b.hp, f.b.maxHp, f.b.blobAge, f.b.scale, f.b.bodyRadius];
   f.g.update(90, idle, 91000); assert.deepEqual([f.b.hp, f.b.maxHp, f.b.blobAge, f.b.scale, f.b.bodyRadius], before);
-  f.g.setPaused(false, 91000); tick(f, 1); close(f.b.hp, before[0] + 2000 * .5 / 120); close(f.b.blobAge, 31);
+  f.g.setPaused(false, 91000); tick(f, 1); close(f.b.hp, before[0]); close(f.b.blobAge, 31);
 });
 
 test('production snapshot, schema-14 migration, and Game reload preserve healing progress exactly', () => {
