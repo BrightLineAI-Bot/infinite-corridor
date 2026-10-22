@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Release 295 — armour now has glyph sockets (one to three by tier), and the glyphs you already have give it steady bonuses:
+  - Swift: move speed
+  - Heavy: damage reduction
+  - Leech: maximum health
+  - Echo: longer Aperture skills
+  - Chain: faster spell and skill recovery
+  - Pierce: faster attacks and shots
+  - Tether: faster stamina return
+  - Still: cheaper dodges
+  - Ignite: magic damage
+  - Volatile: melee damage
+
+  Bonuses of the same kind add up, to a cap. Each weapon, tool and armour card in Glyphs has "Save layout", and "Apply saved layout" puts the same glyphs onto new gear from your pouch. The Hull Shield is no longer offered for presets: Build already raises it at sea.
+
 - Release 293 — Options → Accessibility has a Child-safe Glimpses switch. With it on, the horror and violence Glimpses never appear, and they are hidden from the Library and the previews; creatures are unchanged. Turn it off and they come back. Items now have their own drawn icons, on the Build button and in Supplies: a bark shield for Ironbark Tonic, a glowing vial for Lumen Phial, a green ampoule with roots for Clearroot, and a shielded hull for the Hull Shield. The Restorative Draught is no longer offered for presets, since it has its own Potion button.
 
 - Release 291 — presets and the back button:
