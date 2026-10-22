@@ -2585,6 +2585,24 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 297: glyphs for Aperture skills — 2026-10-22
+
+Tim, 2026-10-22: "the glyphs... don't apply to... the constellations... I'm using the rift step or some other constellation... in my spell slot instead of a spell... The glyphs should modify the constellation... that you have active".
+
+**CODE:**
+- **`glyphs.ts`**: `SKILL_GLYPHS` gives each glyph one skill effect (and its `text.skill`). Swift, Heavy, Echo and Pierce shape the skill: cooldown ×, duration ×, Rift Step reach + and charges +. The other six are `infuse`.
+- A skill's glyphs live in `save.spellGlyphs["skill:<id>"]` (`skillGlyphKey`), two sockets, through the existing spell-socket code. This is additive at schema 14.
+- `skillGlyphMods(save, id)` returns the shaping. `skillInfusion(save)` returns the infusing glyphs of the active timed skill, or of Rift Step while `magicSkills.riftInfuse > 0`. `hostLoadout` adds them to the melee and tool hosts, so they hit, and resonate, as if socketed there.
+- **`game.ts`**: `activateApertureSkill` multiplies duration and cooldown by the skill's mods. The update tick decays `riftInfuse`.
+- **`constellation.ts`**: `riftStep`/`tickRiftCharges` add the glyph charges and reach and scale the cooldown. A step with infusing glyphs sets `riftInfuse = SKILL_INFUSE_AFTER_STEP` (4 s).
+- **`main.ts`**: the Arcanum page shows a Skill card for each skill slotted in A or B, with its sockets and what each glyph does there.
+
+**BOUNDARY:**
+- Spells, weapons, tools and armour keep their glyph rules.
+- A skill not slotted in A or B shows no card, but its glyphs stay socketed.
+- No generator, save schema or balance table outside `SKILL_GLYPHS` changed.
+- Tests: `tests/skill-glyphs-297.test.ts`.
+
 ## Release 295: armor glyphs; gear glyph layouts — 2026-10-22
 
 Tim, 2026-10-22:
