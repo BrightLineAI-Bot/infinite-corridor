@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 285 — the Psychic Crystal comes out to fight. Once it has engaged you, it can spend only about one second in every five inside walls or over ground you cannot reach; when that runs out it leaves at once, even mid-attack. It dodges far less often (every 3 seconds at most, was about 1), takes 14 hits to stagger (was 10), and cannot be staggered again for 10 seconds after it rises.
+
 - Release 283 — dungeon water is dangerous now. Swimming it costs 5% of your max health every second (your health, not your maximum), and going into it, or staying in it, with no stamina drowns you on the spot. Water outside dungeons is unchanged. Rot from poison and bog pools now shows as a grey band at the end of your health bar, the share of your health it has taken, instead of an empty one. The Bone Crypt coffins now bear an arcane sigil (an eye within a ring, circled by an orbit and its moon, under a crescent, above a small constellation) instead of a cross. Pack → Supplies leads with clear tiles for wood, stone, Cinder Iron and shovel digs, and every recipe (walls, blocks, shovel, skiff) sits together under Recipes. A new Continuous build checkbox moves on to the next material when your chosen one runs out. The Build button names the material it will use, shows REPAIR beside a damaged skiff, and is crossed out when you cannot afford any build.
 
 - Release 281 — every action button lights up the instant you touch it, and taps in the gaps around Dodge reach it more readily (Dodge still needs stamina). The diagnostic probe now records what became of every Dodge press. The Leech glyph now heals at least a share of your max health per hit, so it shows at high level. A stray ">" near the action buttons is gone.
