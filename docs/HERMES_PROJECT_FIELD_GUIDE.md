@@ -2585,6 +2585,21 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 277: supply caches give a stone, a wood and a draught; Broken Observatories hold a cache — 2026-10-22
+
+Tim, 2026-10-22: "the supply cache will just give you one of each of those, a stone... a draught, and a wood, and then the observatory can give you a random of... three wood or three stone or... one stone and one draught, that's fine".
+
+**CODE:**
+- **Data.** `digging.ts` `DIG.cache = { stone: 1, wood: 1, restorativeDraught: 1 }` (275's 2 stone and 1 wood). `DIG.observatory = [{ wood: 3 }, { stone: 3 }, { stone: 1, restorativeDraught: 1 }]`.
+- **Supply caches.** `interactions.ts` `grantSpoils(s, g)` adds stone (`addStone`), wood (`addWood`) and restorative draughts (`consumables`), within carry limits, and returns the "+n ..." text. `supplyCache` collection grants `DIG.cache` after its own supply. A `restorativeDraught` cache does not add a second draught. Weapon caches are unchanged.
+- **Observatories.** Inspecting a `ruinMarker` (Broken Observatory) the first time, keyed by `observatory-spoils:<context>:<id>` in `worldFlags`, grants `DIG.observatory[hashSeed(seed:observatory:v1:context:id) % 3]`. It still gives its +2 Aperture and its signal lead. The spoils text is appended to the narrative or generic message.
+
+**BOUNDARY:**
+- Saves stay at schema 14 (one more `worldFlags` key per observatory).
+- Observatories already inspected before 277 still give their cache once, because the spoils flag is new.
+- Singing Arrays give nothing new.
+- Tests: `tests/stages.test.ts` (supply cache and observatory cases).
+
 ## Release 275: creature stages; the Aperture holds at a stage's top tier; Stage 1 beasts held from tier 13 — 2026-10-21
 
 Tim, 2026-10-21: "after you beat the listener you get access to stage 2, and you... go up to another 24... each time you beat the gate... unlock the different tier... maybe it'll be like two or three [required] for the next... stage"; "Yep, I like your plan for the listener kills and the aperture system"; "cap the strength of the stage one monsters... they'll be capped at... tier 13, until... you've beaten the listener maybe like 3 times and then... start increasing again to start matching your power level".
