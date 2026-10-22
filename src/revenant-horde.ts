@@ -22,7 +22,7 @@ const wave = (q) => Math.floor((q.total - q.left) * HORDE.sigils / q.total);
 const eligible = (id) => typeof id === "string" && id.startsWith("dungeon:") && !isDeepDungeonId(id);
 // Decided on the first visit only (`history.visits` still 0), so dungeons already entered never become hordes.
 export function rollHorde(save, id, history) {
-  if (history.horde !== undefined || history.visits > 0 || !eligible(id)) return history.horde || null;
+  if (history.horde !== undefined || history.visits > 0 || !eligible(id) || history.mire) return history.horde || null; // release 303: a Poison Crypt is never also a horde
   const h = hashSeed(`${save.seed}:revenant-horde:v${HORDE.version}:${id}`);
   if (h % 1000 >= HORDE.perThousand) return null;
   const [lo, hi] = HORDE.total, total = lo + (h >>> 10) % (hi - lo + 1);

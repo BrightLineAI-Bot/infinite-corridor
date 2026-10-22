@@ -39,6 +39,8 @@ export const UNDER_THEMES = {
   geode: { id: "geode", name: "Geode Hollow", weather: "glints", lore: "The cave is the inside of a stone, split open. Amethyst grows from every face." },
   mosaic: { id: "mosaic", name: "Mosaic Sanctum", weather: "sunbreak", lore: "A temple floor of inlaid rosettes, columns in rows, still pools. Light comes from somewhere above." },
   rootwood: { id: "rootwood", name: "Rootbound Deep", weather: "drip", lore: "Roots as thick as towers have broken through the ceiling and knotted across the floor." },
+  // Release 303: never drawn from a pool; a rare history is pinned to it (game.ts generatePinnedDungeon, MIRE_CRYPT).
+  poisonCrypt: { id: "poisonCrypt", name: "Poison Crypt", weather: "spores", lore: "Sealed tombs sunk in a green mire. Something in the pools is all one thing, and it is gathering itself." },
   brass: { id: "brass", name: "Brass Engine", weather: "steam", lore: "Grated walkways over great buried gears. Pipes still breathe steam, though nothing has turned in an age." },
 };
 // Which themes a history may draw, and how often a crossing is themed at all (percent), by its pinned theme pool.
@@ -57,6 +59,15 @@ export const THEME_POOL_VERSION = 3;
 // of Watcher's daises that, once both are found, carry you between them (Tim: "a dais... that has that symbol on it").
 export const PLAIN = { chance: 25, width: 26, height: 22, rooms: [3, 5] };
 export const WARP = { chance: 50, minApart: 16 };
+// The Poison Crypt (release 303, Tim: "a poison crypt... large sections of poison water and poison mire... poison jets... the
+// blob... a smaller version... manifest from one of those poison pools... they all try and go back to the main blob... a
+// larger... arena... a poison pool in the corner... the blob in this arena will have... half health"). A rare history
+// (perThousand) is pinned to it. Seep pools spawn seeplings that crawl home to the Mire Heart (a half-strength Morphing Blob)
+// and swell it; finding the Heart's lair stops the pools. Balance as data; the runtime is Game.tickMire.
+export const MIRE_CRYPT = { perThousand: 20, version: 1, lairRadius: 6, patch: .66, pools: 5, poolSpacing: 7, jets: 3, jetDamage: 10,
+  heartHp: .5, mergeHp: .06, seepEvery: 8, seepMax: 6, seepHp: 30, seepGrow: 40, seepGrowMax: 1, contact: 9, contactEvery: .8, poison: [4, 3] };
+export function plainCrossing(seed, id, layoutPool) { return layoutPool >= 5 && hashSeed(`${seed}:${id}:plain`) % 100 < PLAIN.chance; }
+export function rollMireCrypt(seed, id, layoutPool) { return layoutPool >= 5 && !plainCrossing(seed, id, layoutPool) && hashSeed(`${seed}:mire-crypt:v${MIRE_CRYPT.version}:${id}`) % 1000 < MIRE_CRYPT.perThousand; }
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 // ---------------------------------------------------------------- carving primitives (width-aware)
@@ -173,7 +184,7 @@ function layout(kind, g, w, h, rand, start, goal, patternId = null, catalog = PA
 export function generateExpeditionDungeon(seed, id, recipe = "hollow", options = {}) {
   const requested = String(options.sizeProfile || ""), sizeProfile = DUNGEON_SIZE_PROFILES[requested] ? requested : ["compact", "standard", "extended"][hashSeed(`${seed}:${id}:size`) % 3];
   const profile = DUNGEON_SIZE_PROFILES[sizeProfile], variant = Math.max(0, Math.floor(Number.isFinite(Number(options.variant)) && options.variant !== undefined ? Number(options.variant) : hashSeed(`${seed}:${id}:variant`) % 997));
-  const plain = options.layoutPool >= 5 && !options.layout && !options.theme && hashSeed(`${seed}:${id}:plain`) % 100 < PLAIN.chance;
+  const plain = !options.layout && !options.theme && plainCrossing(seed, id, options.layoutPool);
   const rand = rng(`${seed}:expedition-v5:${id}:${recipe}:${sizeProfile}:v${variant}`), w0 = profile.width + Math.floor(rand() * 7) - 3, h0 = profile.height + Math.floor(rand() * 7) - 3;
   const w = plain ? PLAIN.width + (variant % 3) - 1 : w0, h = plain ? PLAIN.height + (variant % 3) - 1 : h0;
   const pool = options.layoutPool >= 3 ? LAYOUTS_V3 : options.layoutPool >= 2 ? LAYOUTS_V2 : LAYOUTS, grammar = plain || options.layout === "rooms" ? "rooms" : options.layout && pool.includes(options.layout) ? options.layout : pool[hashSeed(`${seed}:${id}:layout-v5`) % pool.length];
@@ -246,8 +257,8 @@ function applyUnderTheme(map, theme, rand) {
   for (const o of [...map.objects, ...map.enemySpawns, map.entry]) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) keep.add((o.y + dy) * w + o.x + dx);
   const noise = (x, y, f, salt) => { const n = hashSeed(`${map.seed}:${map.id}:under:${salt}:${Math.floor(x / f)}:${Math.floor(y / f)}`) % 1000; return n / 1000; };
   const set = (i, props) => { T[i] = { ...T[i], ...props, landscape: "underlands" }; };
-  const floorOf = { chasm: "chasmLedge", lavaBog: "ashSlope", river: "riverStone", frozen: "frostFloor", boneCrypt: "ossuary", fungal: "fungusFloor", starHive: "alienMoss", geode: "geodeFloor", mosaic: "templeMosaic", rootwood: "rootFloor", brass: "gratingFloor" }[theme];
-  const wallOf = { chasm: "chasmWall", lavaBog: "volcanicRim", river: "riverWall", frozen: "iceWall", boneCrypt: "cryptWall", fungal: "fungusWall", starHive: "hiveWall", geode: "geodeWall", mosaic: "templeWall", rootwood: "rootWall", brass: "brassWall" }[theme];
+  const floorOf = { chasm: "chasmLedge", lavaBog: "ashSlope", river: "riverStone", frozen: "frostFloor", boneCrypt: "ossuary", fungal: "fungusFloor", starHive: "alienMoss", geode: "geodeFloor", mosaic: "templeMosaic", rootwood: "rootFloor", brass: "gratingFloor", poisonCrypt: "toxicBog" }[theme];
+  const wallOf = { chasm: "chasmWall", lavaBog: "volcanicRim", river: "riverWall", frozen: "iceWall", boneCrypt: "cryptWall", fungal: "fungusWall", starHive: "hiveWall", geode: "geodeWall", mosaic: "templeWall", rootwood: "rootWall", brass: "brassWall", poisonCrypt: "cryptWall" }[theme];
   // Release 299: patterned floors span tiles. detail picks the tile's quarter of a 2x2 motif (a rosette, a buried gear).
   const quarter = (x, y) => (x & 1) + (y & 1) * 2, tiled = theme === "mosaic" || theme === "brass";
   for (let i = 0; i < T.length; i++) { const t = T[i]; if (t.blocked) set(i, { kind: wallOf }); else set(i, { kind: floorOf, elev: 0, ...(tiled ? { detail: quarter(t.x, t.y) } : {}) }); }
@@ -263,6 +274,7 @@ function applyUnderTheme(map, theme, rand) {
     else if (theme === "geode") { if (n > .8) set(i, { kind: "geodeCluster", blocked: true }); }
     else if (theme === "mosaic") { if (x % 4 === 2 && y % 4 === 2) set(i, { kind: "templePillar", blocked: true }); else if (n > .86) set(i, { kind: "templePool", detail: t.detail }); }
     else if (theme === "rootwood") { const ridge = Math.abs(valueNoise(`${map.seed}:${map.id}:roots`, x / 4, y / 4) - .5); if (ridge < .07) set(i, { kind: "rootKnot", blocked: true }); }
+    else if (theme === "poisonCrypt") { if (n > MIRE_CRYPT.patch) set(i, { kind: "toxicMire" }); }
     else if (theme === "brass") { if (n > .82 && (x + y) % 2 === 0) set(i, { kind: "brassPipe", blocked: true }); }
   }
   if (theme === "river") { // a channel crossing the dungeon, bridged where the path crosses it
@@ -282,6 +294,7 @@ function applyUnderTheme(map, theme, rand) {
     }
     for (const i of path) { const t = T[i]; if (!t || t.blocked) continue; const higher = N4.some(([dx, dy]) => { const nb = T[(t.y + dy) * w + t.x + dx]; return nb && !nb.blocked && (nb.elev || 0) > (t.elev || 0); }); if (higher || t.elev) T[i] = { ...t, slope: true, kind: theme === "chasm" ? "chasmStair" : t.kind }; }
   }
+  if (theme === "poisonCrypt") mireCrypt(map, path, keep, set);
   unstrand(map);
   ensureReturnable(map, w, map.height, map.entry);
   addRamps(map, w, map.height, `${map.seed}:${map.id}`);
@@ -290,6 +303,26 @@ function applyUnderTheme(map, theme, rand) {
   if (UNDER_THEMES[theme].weather) map.weather = UNDER_THEMES[theme].weather;
   map.name = `${UNDER_THEMES[theme].name} · ${map.name}`;
   map.diagnostic = { ...map.diagnostic, theme };
+}
+
+// The Mire Heart's lair (a wide mire around the guardian's room, its causeway left dry), the seep pools the seeplings
+// rise from, the gas jets along the way, and the Heart itself in place of the guardian.
+function mireCrypt(map, path, keep, set) {
+  const w = map.width, T = map.tiles, M = MIRE_CRYPT, heart = map.enemySpawns.find((e) => e.dungeonRole === "gateWarden");
+  if (!heart) return;
+  for (let i = 0; i < T.length; i++) { const t = T[i]; if (t.blocked || path.has(i) || Math.hypot(t.x - heart.x, t.y - heart.y) > M.lairRadius || Math.hypot(t.x - heart.x, t.y - heart.y) < 1.5) continue; set(i, { kind: "toxicMire" }); }
+  Object.assign(heart, { kind: "morphingBlob", mireHeart: true });
+  map.mireLair = { x: heart.x, y: heart.y, radius: M.lairRadius };
+  const e = map.entry, pools = [], cands = T.filter((t) => t.kind === "toxicMire" && Math.hypot(t.x - heart.x, t.y - heart.y) > M.lairRadius + 2 && Math.hypot(t.x - e.x, t.y - e.y) > 6).sort((a, b) => Math.hypot(b.x - e.x, b.y - e.y) - Math.hypot(a.x - e.x, a.y - e.y));
+  for (const t of cands) { if (pools.length >= M.pools) break; if (pools.every((q) => Math.hypot(q.x - t.x, q.y - t.y) >= M.poolSpacing)) pools.push({ x: t.x, y: t.y }); }
+  for (const q of pools) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const i = (q.y + dy) * w + q.x + dx, t = T[i]; if (t && !t.blocked && !keep.has(i)) set(i, { kind: "toxicMire" }); }
+  map.seepPools = pools;
+  const route = [...path].map((i) => ({ x: i % w, y: Math.floor(i / w) })).filter((q) => Math.hypot(q.x - e.x, q.y - e.y) > 6 && Math.hypot(q.x - heart.x, q.y - heart.y) > M.lairRadius + 1);
+  for (let k = 1; k <= M.jets && route.length; k++) {
+    const q = route[Math.floor(route.length * k / (M.jets + 1))], dir = N4.find(([dx, dy]) => { const n = T[(q.y + dy) * w + q.x + dx]; return n && !n.blocked; }) || [1, 0];
+    if (map.objects.some((o) => Math.hypot(o.x - q.x, o.y - q.y) < 2)) continue;
+    map.objects.push({ id: `mire-jet-${k}`, kind: "trap", trapType: "fire", gas: true, x: q.x, y: q.y, dirX: dir[0], dirY: dir[1], range: 2.5, damage: M.jetDamage, phase: "armed", timer: 0, hits: {}, clue: "gas" });
+  }
 }
 
 // Anything the entry cannot reach (cut off by a river, chasm or lava) gets a bridged route.

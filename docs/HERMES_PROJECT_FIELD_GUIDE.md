@@ -2585,6 +2585,36 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 303: the Poison Crypt — 2026-10-22
+
+Tim, 2026-10-22: "a poison crypt... large sections of poison water and poison mire... poison jets... a smaller version of the blob... manifest from one of those poison pools... they all try and go back to the main blob... a larger... arena... a poison pool in the corner... he'll just be kind of stationary... until you find him... he'll grow... depending on the other blobs that get to him... once you get to the arena... other blobs will stop... the blob in this arena will have... half health"; "keep these special types rare".
+
+**CODE:**
+- **`underlands.ts`**:
+  - `UNDER_THEMES.poisonCrypt` is never drawn from a pool. `MIRE_CRYPT` holds the data.
+  - `rollMireCrypt` decides a history at 2% (`perThousand` 20), only in layout pool 5 and never for a plain crossing (`plainCrossing`).
+  - The theme has a `toxicBog` floor, `cryptWall` walls and `toxicMire` patches.
+  - `mireCrypt` makes the lair (mire within `lairRadius` of the guardian, with the critical path left dry) and up to five 3x3 seep pools (`map.seepPools`, spaced apart, far from the entry and the lair).
+  - It adds three gas jets on the path (fire-type traps with `gas: true`) and turns the guardian spawn into `morphingBlob` with `mireHeart`. It records `map.mireLair`.
+- **`game.ts`**:
+  - `generatePinnedDungeon` pins `history.mire = { version, merged, found }` for fresh histories and passes `theme: "poisonCrypt"`.
+  - `createEnemyFromSpawn`: the Heart takes `beastProfileVitals(morphingBlob)` × `heartHp` (0.5) × (1 + merged × `mergeHp`).
+  - `tickMire`:
+    - The Heart is held at the lair centre until found.
+    - Every `seepEvery` seconds a pool spawns a seepling: a `bloblet` with `blobletOf` set to the Heart, `mireSeep`, kept aggroed so the existing `blobletHome` runs.
+    - Seeplings grow to 2× health and size over `seepGrow` seconds. Touching one deals `contact` × growth and poisons.
+    - Each merge (from `blobletHome`) raises `history.mire.merged` and the Heart's maximum health.
+    - Gas jets poison.
+    - Coming within the lair radius sets `found` and stops the pools.
+  - `shouldSimulateEnemy` simulates seeplings anywhere in the dungeon.
+- **`revenant-horde.ts`**: a Poison Crypt is never a horde. **`main.ts`**: gas jets draw green.
+
+**BOUNDARY:**
+- Only histories first generated from now on can be a Poison Crypt.
+- The overland Morphing Blob is unchanged. The Heart is not a world beast (no pursuit, retreat or bounty). It is the gate warden, so defeating it completes the crossing as usual.
+- No save schema change: `history.mire` is additive in `consequences.dungeons`.
+- Tests: `tests/poison-crypt-303.test.ts`.
+
 ## Release 301: plain short dungeons; rarer themes; Watcher's daises — 2026-10-22
 
 Tim, 2026-10-22:
