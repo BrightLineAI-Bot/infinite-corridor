@@ -30,7 +30,7 @@ function applyFallenTreeCrossings(map) {
 }
 import { ensureSlots, slotted, pairingMods, slotReadiness, togglePreset, activeButton, slotTool, CASTABLES, availableCastables } from "./spell-slots.ts";
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
-import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind, unlockBandName } from "./dungeon-ladder.ts";
+import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.ts";
 import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, DRONE, ensureMech, mechAbsorb, tickMech } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
@@ -2790,7 +2790,7 @@ export class Game {
     if (o.kind === "watcherTomb") return this.touchWatcherTomb(o); // release 289
     if (o.kind === "warpDais") return this.useWarpDais(o); // release 301
     if (o.strange && (action || validActions(o, this.save)[0]) === "touch") { const r = touchStrange(this.save, o, this.rx, this.ry); this.message = r.message; if (r.ok) this.glimpseCue = "strange"; return r; }
-    if ((action || validActions(o, this.save)[0]) === "enter" && entranceKind(o)) { const sealed = this.entranceSealed(o); if (sealed) { this.message = sealed; return { ok: false, message: sealed }; } } // release 319
+    if ((action || validActions(o, this.save)[0]) === "enter" && entranceKind(o)) this.openEntrance(o); // release 319; 323: never sealed
     const chosen = action || validActions(o, this.save)[0],
       before = this.save.hp,
       r = applyInteraction(o, chosen, this.save, this.areaId(), this.area === "dungeon" ? { dungeonDepth: Math.max(0, (this.map?.multiLevel ? this.map.levels || [] : []).findIndex((q) => q.id === this.map.levelId)) } : {}); // release 287
@@ -2938,15 +2938,15 @@ export class Game {
     this.projectiles.push({ id: `drone-rocket-${now}`, x: d.x + .5, y: d.y + .45, dx: ax / n, dy: ay / n, speed: DRONE.rocketSpeed, life: DRONE.rocketLife, damage: DRONE.rocketDamage + (characterStats(this.save).magicBonus || 0), damageType: "physical", path: "straight", age: 0, hits: {}, seekId: best.id, seekTurn: DRONE.rocketTurn, droneRocket: true });
     m.rocketCd = DRONE.rocketEvery;
   }
-  // Release 319 (dungeon-ladder.ts): a Threefold Deep, a deep archetype or a world-threat arena opens by the Aperture.
-  // Entered ones never seal again; the first opening records the tier and whether it is a taste. Returns the message, or "".
-  entranceSealed(o) {
-    const kind = entranceKind(o), id = o.dungeonId || o.arenaId; if (!kind || !id) return "";
-    const h = dungeonHistory(this.save, id); if (h.visits > 0 || h.ladder) return "";
-    const tier = ladderTier(this.save), rung = ladderRoll(this.save.seed, id, kind, tier);
-    if (!rung) return tier >= (DUNGEON_LADDER.unlock[kind] ?? 0) ? "The seal stirs but holds. A wider Aperture may yet open it." : `The way is sealed. It answers to the Aperture's ${unlockBandName(kind)} band.`;
+  // Release 319 (dungeon-ladder.ts): a Threefold Deep, a deep archetype or a world-threat arena records, the first time it is
+  // entered, the tier it was found at and whether it is a taste. Release 323 (Tim: "no dungeon should be sealed... you should
+  // just be able to access all the dungeons... sometimes people will probably never come back to them"): every entrance
+  // opens. One found below its kind's unlock tier opens as a taste (a Threefold Deep wakes one wing); at or above it, whole.
+  openEntrance(o) {
+    const kind = entranceKind(o), id = o.dungeonId || o.arenaId; if (!kind || !id) return;
+    const h = dungeonHistory(this.save, id); if (h.visits > 0 || h.ladder) return;
+    const tier = ladderTier(this.save), rung = ladderRoll(this.save.seed, id, kind, tier) || (tier >= (DUNGEON_LADDER.unlock[kind] ?? 0) ? "full" : "taste");
     h.ladder = { version: DUNGEON_LADDER.version, tier, rung };
-    return "";
   }
   mechUp() { return this.save.mech?.active === true && this.save.mech.mode !== "drone" && !aboard(this.save); }
   // Release 311 (Tim: "these buoys... are connected... go to one buoy, and then go to another buoy... if you traverse the

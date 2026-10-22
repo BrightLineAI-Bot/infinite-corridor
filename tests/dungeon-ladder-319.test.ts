@@ -90,12 +90,14 @@ test('hordes: none when the ladder says no, a smaller one as a taste', () => {
   const f = rollHorde(s, id, {}); assert.ok(f.total >= HORDE.total[0], 'no ladder keeps the old horde');
 });
 
-test('deep and arena entrances: sealed below the Aperture, opened ones stay open', () => {
+test('deep and arena entrances always open (release 323); below their tier, as a taste', () => {
   const s = freshSave(); s.seed = 'E'; const g = new Game(s, 0);
   const o = { kind: 'dungeon', dungeonType: 'deep-v1', dungeonId: 'dungeon:E:g1:5:5:deep-v1' };
-  assert.match(g.entranceSealed(o), /sealed/);
-  s.consequences.dungeons[o.dungeonId].visits = 1; assert.equal(g.entranceSealed(o), '', 'already entered');
+  g.openEntrance(o); assert.deepEqual(s.consequences.dungeons[o.dungeonId].ladder, { version: 1, tier: 0, rung: 'taste' });
+  s.perception.aperture = 3255; g.openEntrance(o); assert.equal(s.consequences.dungeons[o.dungeonId].ladder.rung, 'taste', 'decided once');
+  const m = generatePinnedDungeon(s, o.dungeonId); assert.equal(m.wings.length, 1, 'a taste of the Deep');
   const a = { kind: 'arenaEntrance', dungeonId: 'arena:v1:E:9,0', arenaId: 'arena:v1:E:9,0' };
-  s.perception.aperture = 3255; assert.equal(g.entranceSealed(a), '');
-  assert.deepEqual(s.consequences.dungeons[a.dungeonId].ladder, { version: 1, tier: 13, rung: 'full' });
+  g.openEntrance(a); assert.deepEqual(s.consequences.dungeons[a.dungeonId].ladder, { version: 1, tier: 13, rung: 'full' });
+  const late = { kind: 'dungeon', dungeonType: 'deep-v2', dungeonId: 'dungeon:E:g1:6:6:deep-v2:loop' }; s.perception.aperture = 0;
+  for (let i = 0; i < 30; i++) { const q = { ...late, dungeonId: late.dungeonId + i }; g.openEntrance(q); assert.ok(s.consequences.dungeons[q.dungeonId].ladder.rung, 'never sealed'); }
 });

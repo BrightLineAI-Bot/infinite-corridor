@@ -2585,6 +2585,19 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 323: no dungeon is sealed — 2026-10-22
+
+Tim, 2026-10-22: "no dungeons should say sealed... No dungeon should be sealed, and you should just be able to access all the dungeons... Because sometimes people will probably never come back to them".
+
+**CODE:** `game.ts` replaces 319's `entranceSealed` with `openEntrance(o)`. It runs before `enter` on deep-v1, deep-v2 and arena entrances, and never blocks.
+- Its first call records `history.ladder = { version, tier, rung }`.
+- `rung` is the ladder roll when it passes. Otherwise it is "full" at or above the kind's unlock tier and "taste" below it.
+- A deep-v1 "taste" is still generated with `wings: 1`.
+- `dungeon-ladder.ts` drops `unlockBandName`.
+- `tests/dungeon-ladder-319.test.ts`: the entrance test now checks that every entrance opens.
+
+**BOUNDARY:** Ordinary crossings are unchanged from 319. The ladder still decides their size, environments, crypts, guardians and hordes, and nothing there was ever sealed.
+
 ## Release 321: the drone — 2026-10-22
 
 Tim, 2026-10-22:

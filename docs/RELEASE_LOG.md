@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**323**
+**325**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 321 | Claude | `claude/dreamy-rubin-yn6q2p` | The drone: from the fourth Gate the frame can call up a drone (homing rockets, mends on command or when low, carries you on held Jump) | Building. |
+| 323 | Claude | `claude/dreamy-rubin-yn6q2p` | No dungeon is sealed: deep and arena entrances always open, as tastes below their tier | Building. |
+| 321 | Claude | `claude/dreamy-rubin-yn6q2p` | The drone: from the fourth Gate the frame can call up a drone (homing rockets, mends on command or when low, carries you on held Jump) | Merged (PR #140). |
 | 319 | Claude | `claude/dreamy-rubin-yn6q2p` | The dungeon ladder: special dungeons, guardians, hordes, deeps and arenas unlock by Aperture tier, with tastes from Open; robot boost refill fix | Merged (PR #139). |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
