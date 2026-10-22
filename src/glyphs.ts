@@ -45,6 +45,38 @@ export const ARMOR_GLYPHS = {
   ignite: { spellDamage: .12, text: "+12% magic damage." },
   volatile: { attackDamage: .1, text: "+10% melee damage." },
 };
+// Release 297 (Tim, 2026-10-22: "a lot of times I'm using the rift step or some other constellation in my spell slot instead of
+// a spell... the glyphs should modify the constellation you have active"). An Aperture skill slotted in A or B has two glyph
+// sockets of its own (save.spellGlyphs["skill:<id>"]). Swift, Heavy, Echo and Pierce shape the skill itself; the others,
+// while the skill is active (or for SKILL_INFUSE_AFTER_STEP s after a Rift Step), ride on every weapon and tool hit.
+export const SKILL_GLYPHS = {
+  swift: { cooldown: .75, text: "Recovers 25% faster." },
+  heavy: { duration: 1.35, reach: 1, text: "Lasts 35% longer (Rift Step: +1 tile)." },
+  echo: { duration: 1.25, charges: 1, text: "Lasts 25% longer (Rift Step: one more charge)." },
+  pierce: { reach: 2, cooldown: .9, text: "Recovers 10% faster (Rift Step: +2 tiles)." },
+  ignite: { infuse: true, text: "While active, your weapon and tool hits set foes burning." },
+  chain: { infuse: true, text: "While active, your weapon and tool hits arc to more foes." },
+  leech: { infuse: true, text: "While active, your weapon and tool hits heal you." },
+  volatile: { infuse: true, text: "While active, your kills and shots burst." },
+  tether: { infuse: true, text: "While active, your hits slow foes." },
+  still: { infuse: true, text: "While active, your hits freeze foes briefly." },
+};
+export const SKILL_INFUSE_AFTER_STEP = 4;
+for (const [id, k] of Object.entries(SKILL_GLYPHS)) GLYPHS[id].text.skill = k.text;
+export const skillGlyphKey = (id) => `skill:${id}`;
+export const skillGlyphs = (save, id) => (save?.spellGlyphs?.[skillGlyphKey(id)] || []).filter((g) => GLYPHS[g]);
+// How a skill's glyphs shape it: { cooldown ×, duration ×, reach +, charges + }.
+export function skillGlyphMods(save, id) {
+  const m = { cooldown: 1, duration: 1, reach: 0, charges: 0 };
+  for (const g of skillGlyphs(save, id)) { const k = SKILL_GLYPHS[g]; if (k.cooldown) m.cooldown *= k.cooldown; if (k.duration) m.duration *= k.duration; if (k.reach) m.reach += k.reach; if (k.charges) m.charges += k.charges; }
+  return m;
+}
+// The infusing glyphs riding on weapon hits now: from the active timed skill, or from a recent Rift Step.
+export function skillInfusion(save) {
+  const ms = save?.magicSkills; if (!ms) return [];
+  const id = ms.active?.remaining > 0 ? ms.active.id : (ms.riftInfuse > 0 ? "rift-step" : null);
+  return id ? skillGlyphs(save, id).filter((g) => SKILL_GLYPHS[g]?.infuse) : [];
+}
 export const ARMOR_GLYPH_CAP = { move: .24, defense: .15, hp: .3, spellDuration: .6, spellCooldown: .36, attackSpeed: .36, staminaRegen: .75, dodgeCost: .6, spellDamage: .36, attackDamage: .3 };
 for (const [id, a] of Object.entries(ARMOR_GLYPHS)) GLYPHS[id].text.armor = a.text;
 // The bonuses from the glyphs set in the equipped armor: { move, defense, hp, ... } (each 0 when absent).
@@ -104,7 +136,8 @@ export function resonancesOf(glyphs) {
   return Object.entries(RESONANCES).filter(([, r]) => r.pair.every((g) => set.has(g))).map(([id]) => id);
 }
 export function hostLoadout(save, host) {
-  const glyphs = socketsFor(save, host).filter(Boolean), resonances = resonancesOf(glyphs), mods = { damage: 1, cooldown: 1, range: 1, radius: 1, pierce: 0 };
+  // Release 297: a weapon or tool also carries the glyphs infused by an active Aperture skill (skillInfusion).
+  const glyphs = [...socketsFor(save, host).filter(Boolean), ...(host === "melee" || host === "tool" ? skillInfusion(save) : [])], resonances = resonancesOf(glyphs), mods = { damage: 1, cooldown: 1, range: 1, radius: 1, pierce: 0 };
   for (const id of glyphs) { const m = GLYPHS[id].mods?.[host]; if (!m) continue; for (const [k, v] of Object.entries(m)) mods[k] = k === "pierce" ? mods[k] + v : mods[k] * v; }
   return { host, glyphs, has: (id) => glyphs.includes(id), count: (id) => glyphs.filter((q) => q === id).length, resonances, resonant: (id) => resonances.includes(id), mods };
 }

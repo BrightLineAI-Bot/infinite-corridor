@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**297**
+**299**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 295 | Claude | `claude/dreamy-rubin-yn6q2p` | Armor glyph sockets (existing glyphs, steady bonuses); gear glyph layouts; the Hull Shield leaves preset items | Building. |
+| 297 | Claude | `claude/dreamy-rubin-yn6q2p` | Glyph sockets for Aperture skills slotted in A or B (shape the skill; others infuse weapon hits while active) | Building. |
+| 295 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #126) | Armor glyph sockets (existing glyphs, steady bonuses); gear glyph layouts; the Hull Shield leaves preset items | Merged. |
 | 293 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #125) | Child-safe Glimpses setting (hides horror and violence Glimpses); drawn item icons; the draught leaves preset items | Merged. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 

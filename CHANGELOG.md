@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 297 — glyphs now work with Aperture skills. A skill set in Spell A or B (Rift Step, Aerial Step and the rest) has two glyph sockets of its own on the Arcanum page:
+  - Swift: recovers 25% faster.
+  - Heavy: lasts 35% longer; Rift Step goes one tile further.
+  - Echo: lasts 25% longer; Rift Step gains a charge.
+  - Pierce: recovers 10% faster; Rift Step goes two tiles further.
+  - Ignite, Chain, Leech, Volatile, Tether and Still ride on your weapon and tool hits while the skill is active, or for 4 seconds after a Rift Step.
+
 - Release 295 — armour now has glyph sockets (one to three by tier), and the glyphs you already have give it steady bonuses:
   - Swift: move speed
   - Heavy: damage reduction
