@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 299 — five new dungeon environments, each with its own floor, decorations and air. They appear only in dungeons you have not entered yet, and more dungeons now get a special environment (about 6 in 10, up from about 4 in 10):
+  - **Starfall Hive:** violet alien moss, still teal pools, crystal spires, and hexagonal platforms one jump up.
+  - **Geode Hollow:** the inside of a split stone, with amethyst clusters that catch the light.
+  - **Mosaic Sanctum:** a temple floor of large inlaid rosettes, rows of columns and still pools, lit from above.
+  - **Rootbound Deep:** mossy earth with great knotted roots winding across the floor.
+  - **Brass Engine:** iron grating over huge buried gears, with pipes that still breathe steam.
+
 - Release 297 — glyphs now work with Aperture skills. A skill set in Spell A or B (Rift Step, Aerial Step and the rest) has two glyph sockets of its own on the Arcanum page:
   - Swift: recovers 25% faster.
   - Heavy: lasts 35% longer; Rift Step goes one tile further.

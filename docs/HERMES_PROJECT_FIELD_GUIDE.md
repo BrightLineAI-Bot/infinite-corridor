@@ -2585,6 +2585,30 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 299: five new dungeon environments (theme pool 2) — 2026-10-22
+
+Tim, 2026-10-22: "I like... that fungal grotto dungeon... interesting floor... mushrooms... we can design different dungeons to have different patterns like that. And different floors, it can be like alien... just to add some variation to the dungeon".
+
+**CODE:**
+- **`underlands.ts`**: `UNDER_THEMES` gains five environments:
+  - `starHive`: alien moss, pools, crystal spires and level-1 hex platforms, with the same climbability pass as chasm and frozen.
+  - `geode`: geode floor and walls, amethyst clusters.
+  - `mosaic`: rosette mosaic, columns on a 4-tile grid, still pools.
+  - `rootwood`: root floor and walls, knots along a value-noise ridge.
+  - `brass`: grating over gears, steam pipes.
+- `THEME_POOLS` lists which themes a pool draws and how often a crossing is themed: pool 1 is the old six at 45%, pool 2 is all eleven at 60%.
+- The mosaic and brass floors set `detail` to the tile's quarter of a 2x2 motif, so four tiles draw one rosette or one gear.
+- The new blockers join `DECOR`, so the rescue route can clear them.
+- **`game.ts`**: `generatePinnedDungeon` pins `history.themePool = THEME_POOL_VERSION` (2) only for never-generated histories and passes it to the generator. Older histories keep pool 1.
+- **`landscape-render.ts`**: painters for every new tile kind. `geodeCluster` and `templePool` are animated (glint, shimmer).
+- **`renderer.ts`**: two new dungeon weathers, `glints` (Geode) and `steam` (Brass).
+
+**BOUNDARY:**
+- A dungeon generated before this release draws exactly as before: pool 1 keeps the old ids in their old order and the old 45% chance.
+- No new hazards: the pools are walkable (Mosaic) or blocking decor (Star Hive), never lethal.
+- Monsters, rewards, layouts and the save schema are unchanged (`themePool` is an additive history field).
+- Tests: `tests/dungeon-themes-299.test.ts`; the existing Underlands test covers every layout with every theme.
+
 ## Release 297: glyphs for Aperture skills — 2026-10-22
 
 Tim, 2026-10-22: "the glyphs... don't apply to... the constellations... I'm using the rift step or some other constellation... in my spell slot instead of a spell... The glyphs should modify the constellation... that you have active".
