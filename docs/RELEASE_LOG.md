@@ -19,8 +19,8 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 289 | Claude | — | Reserved: the Watcher's sigil in the world (arena floor mosaics, a rare shrine ruin with raised platforms, dungeon floor patterns), generation versioned | Reserved. |
-| 287 | Claude | `claude/dreamy-rubin-yn6q2p` | Blocks as stairs and barriers (oldest of five gives way; two high stops fliers and the Crystal); Crystal calm until touched; dungeon caches 2+2 (deeper: chance of 3+3); Supplies line and gold selection everywhere; barred Build icon; four coffin looks | Building. |
+| 289 | Claude | `claude/dreamy-rubin-yn6q2p` | The Watcher's sigil in the world: dungeon floor inlays, arena mosaics, rare shrine ruins of raised platforms, pristine haloed tombs that fold you elsewhere (shelters, crypts, shrines); generation pinned to newly seen sections and dungeons | Building. |
+| 287 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #122) | Blocks as stairs and barriers (oldest of five gives way; two high stops fliers and the Crystal); Crystal calm until touched; dungeon caches 2+2 (deeper: chance of 3+3); Supplies line and gold selection everywhere; barred Build icon; four coffin looks | Merged; preview `r287-98ec630e07c7`. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)

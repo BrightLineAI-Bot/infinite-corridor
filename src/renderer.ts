@@ -6,7 +6,7 @@ import { ruleRows } from "./elders.ts";
 import { SEA_CREATURES } from "./sea-creatures.ts";
 import { BOAT } from "./boats.ts";
 import { isMarineTile } from "./world-beasts.ts";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.ts";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.ts";
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { liftAt, tileUnder } from "./landscape.ts";
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.ts";
@@ -208,6 +208,32 @@ function tile(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=null) 
     ctx.fillStyle = "#8a744f55"; ctx.fillRect(px + s * .12, py + s * .12, s * .76, s * .76);
     ctx.fillStyle = "#c2a87a33"; ctx.fillRect(px + s * (.2 + (d % 3) * .12), py + s * (.3 + (d % 2) * .25), s * .14, s * .1);
   }
+  if (t?.sigil) sigilInlay(ctx, t, x, y, s);
+}
+// Release 289: a tile of the Watcher's sigil (watcher.ts): pale violet inlaid stone, the eye's pupil brightest; in arenas a
+// border and tesserae of small tiles around it; on a shrine, the raised platforms (their faces are the landscape's own).
+const SIGIL_INLAY = { lid: ["#b8b0d855", "#e6e0ff66"], ring: ["#b8b0d855", "#e6e0ff66"], eye: ["#a79ed066", "#e6e0ff55"], pupil: ["#d8d0ff99", "#ffffffaa"], orbit: ["#9f96c855", "#d8d2f855"], tools: ["#a79ed055", "#e6e0ff55"], border: ["#c9a15c44", "#e2c04f55"], tessera: ["#6d5f8a33", "#b8b0d833"] };
+function sigilInlay(ctx, t, x, y, s) {
+  const [fill, edge] = SIGIL_INLAY[t.sigil] || SIGIL_INLAY.ring, px = x * s, py = y * s - (t.landscape ? landscapeTileLift(t, s) : 0), d = Number.isFinite(t.detail) ? t.detail : h(x, y);
+  if (t.sigil === "tessera") { for (let k = 0; k < 4; k++) { ctx.fillStyle = (d + k) % 3 ? fill : edge; ctx.fillRect(px + s * (.08 + (k % 2) * .44), py + s * (.08 + Math.floor(k / 2) * .44), s * .38, s * .38); } return; }
+  ctx.fillStyle = fill; ctx.fillRect(px + s * .06, py + s * .06, s * .88, s * .88);
+  ctx.strokeStyle = edge; ctx.lineWidth = Math.max(1, s * .04); ctx.strokeRect(px + s * .1, py + s * .1, s * .8, s * .8);
+  if (t.sigil === "pupil") { ctx.fillStyle = "#ffffffcc"; ctx.beginPath(); ctx.arc(px + s * .5, py + s * .5, s * .16, 0, Math.PI * 2); ctx.fill(); }
+}
+// Release 289 (Tim: "pristine, where the glyph is just very bright... a little halo above it... super rare"): the pristine
+// Watcher's tomb. Opened, its lid is pushed aside and the sigil dark.
+function drawWatcherTomb(ctx, o, s, now) {
+  const x0 = (o.x + .18) * s, y0 = (o.y + .02) * s, w = s * .64, hh = s * .9, open = o.state === "opened";
+  ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse((o.x + .5) * s, (o.y + .95) * s, s * .38, s * .1, 0, 0, Math.PI * 2); ctx.fill();
+  if (open) { ctx.fillStyle = "#14110e"; ctx.fillRect(x0, y0, w, hh); }
+  ctx.save(); if (open) { ctx.translate(s * .14, s * .05); ctx.rotate(.18); }
+  const g = ctx.createLinearGradient(x0, 0, x0 + w, 0); g.addColorStop(0, "#d9d4e6"); g.addColorStop(1, "#9c96ac"); ctx.fillStyle = g; ctx.fillRect(x0, y0, w, hh);
+  ctx.strokeStyle = "#2a2433"; ctx.lineWidth = 1.5; ctx.strokeRect(x0, y0, w, hh);
+  const cx = (o.x + .5) * s, cy = (o.y + .4) * s, pulse = open ? 0 : .5 + .5 * Math.sin(now / 520);
+  if (!open) { ctx.shadowColor = "#cfc4ff"; ctx.shadowBlur = s * (.12 + pulse * .1); }
+  watcherSigil(ctx, cx, cy, s * .17, s, open ? .25 : .95, open ? "#6d6680" : "#f4f0ff");
+  ctx.restore();
+  if (!open) { ctx.strokeStyle = `rgba(236,230,255,${.45 + pulse * .35})`; ctx.lineWidth = Math.max(1.5, s * .035); ctx.beginPath(); ctx.ellipse(cx, (o.y - .32) * s - pulse * s * .04, s * .24, s * .07, 0, 0, Math.PI * 2); ctx.stroke(); }
 }
 // Exact Supernova disks are static material on the cast-center ground plane. A single constant
 // visual lift preserves a true circle across uneven physical tiles and survives later revisits.
@@ -1253,6 +1279,7 @@ export function render(ctx, g, w, h, now) {
           if (o.kind === "wayfindingCue") waymark(ctx,o,s);
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
+          else if (o.kind === "watcherTomb") { const L = groundLift(o.x, o.y + .5) * s; ctx.save(); ctx.translate(0, -L); drawWatcherTomb(ctx, o, s, now); ctx.restore(); } // release 289 (lifted onto a shrine's eye)
           else if (o.kind === "traveler" && o.elder) drawElder(ctx, o, s, now);
           else if (o.kind === "traveler") {
             const f = o.facing || "down", step = o.state === "walking" ? Math.floor(now / 180) : 0, lift = o.mount ? .42 : 0;

@@ -54,6 +54,7 @@ import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAm
 import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES } from "./glyphs.ts";
 import { hashSeed, rng } from "./random.ts";
 import { placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt } from "./building.ts";
+import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.ts";
 import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.ts";
 import { HORDE, rollHorde, ensureHorde, hordeKill, hordeSpawnPoints } from "./revenant-horde.ts";
 import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.ts';
@@ -88,6 +89,8 @@ export function pinDungeonLayout(save, id) {
   if (history.layoutVersion === undefined) history.layoutVersion = visited() ? 0 : 1;
   // Dungeon Monster Pack: only histories that have never been entered adopt the new population and guardians.
   if (history.monsterPack === undefined) history.monsterPack = visited() ? 0 : MONSTER_PACK_VERSION;
+  // Release 289: the Watcher's sigil and tombs only in dungeons first entered from now on.
+  if (history.watcherVersion === undefined) history.watcherVersion = visited() ? 0 : WATCHER.version;
   // Relay Network: decided once, before the first visit; crossings entered before this release never gain a relay.
   relayNodeDecision(save, id, history, `dungeon:${save.seed}:g${save.worldGeneration}`);
   return history;
@@ -109,6 +112,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   else if (!id.includes(':deep-v') && history.generatorVersion === 3) map = generateVariedDungeon(save.seed,id,dungeonDescriptor(id).recipe);
   else map = generateDungeon(save.seed,id,{...options,threefoldLayout:history.threefoldLayout||1});
   if (history.layoutVersion === 1 && !map.arena && !id.startsWith('displacement:') && !id.startsWith('elite-portal:') && !id.includes('aperture-annex')) varyDungeonLayout(map,save.seed,id);
+  if (history.watcherVersion && !id.startsWith('displacement:') && !id.startsWith('dive:') && !map.multiLevel) placeWatcherDungeon(map, map.width || Math.round(Math.sqrt(map.tiles.length)), save.seed, id); // release 289
   return map;
 }
 export function mapWidth(map, area = "overworld") { return Math.max(1, Number(map?.width) || (area === "dungeon" ? 24 : 32)); }
@@ -1913,6 +1917,8 @@ export class Game {
     if(area==="overworld")this.tyrantVisit=null; // release 233: entering a section (from anywhere, or after a death) starts a fresh Tyrant visit
     if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION,openSea:!seen?OPEN_SEA_VERSION:seen.seaVersion||0,buoy:!this.save.checkpoints?.[`${this.rx},${this.ry}`]||this.save.checkpoints[`${this.rx},${this.ry}`].name==="Lighthouse Buoy",hamlet:(!seen||!!seen.hamletVersion)&&hamletSection(this.save.seed,this.rx,this.ry)});if(!seen||seen.hamletVersion)applyHamlet(this.map,this.save.seed,this.rx,this.ry,seen?.hamletVersion||HAMLET_VERSION);if(!seen||seen.travelVersion)applyTrails(this.map,this.save.seed,this.rx,this.ry);this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.storm=null;this._stormCheck=0;const b=ensureBoatState(this.save),m=b.moored;if(b.owned&&!b.aboard&&m&&m.rx===this.rx&&m.ry===this.ry)this.map.objects.push({id:"skiff-moored",kind:"skiff",name:"Your skiff",lore:"Your skiff rides at its mooring.",x:m.x,y:m.y,state:"moored",actions:["board"]});this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive)}
+    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];if(!seen||seen.watcherVersion)placeWatcherOverworld(this.map,mapWidth(this.map,area),this.save.seed,this.rx,this.ry);} // release 289: sections first seen from now on
+    if(area==="overworld"||area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="watcherTomb"&&this.save.worldFlags[`watcher-tomb:${o.id}`])o.state="opened";
     if(area==="overworld"){plantRefugeLands(this.map,this.rx,this.ry,this.refugeLandsWhere());for(const o of this.map.objects)if(o.talkKey)o.line=talkLine(o,this.refugeLandsWhere(),Number(this.save.worldFlags[o.talkKey])||0)} // release 265: the farm, the quarry and the farmer
     if(area==="dungeon"){const reader=addDungeonReciter(this.map,loadingId,this.save,mapWidth(this.map,area)),elder=addDungeonElder(this.map,loadingId,this.save,mapWidth(this.map,area));if(elder)this.message="Something tall and silent wanders these halls.";else if(reader)this.message=`${reader.name} wanders these halls, murmuring.`}
     if(area==="dungeon"&&isArrayRun(loadingId)&&ensureFarArray(this.save).activeRun?.id===loadingId){const run=this.save.farArray.activeRun,spawns=this.map.enemySpawns,multi=!!this.map.multiLevel,g=spawns.find(e=>e.dungeonRole==="finalBoss")||spawns.find(e=>e.dungeonRole==="gateWarden")||(multi?null:spawns.find(e=>e.boss)||spawns[spawns.length-1]);if(g){const boss=runBossSpawn(this.save,{x:g.x,y:g.y});if(boss){spawns.splice(spawns.indexOf(g),1);if(!spawns.some(e=>e.id===boss.id))spawns.push({...boss,objectiveId:g.objectiveId||null})}}if(!this.map.objects.some(o=>o.kind==="arrayPylon"))this.map.objects.push(...arrayPylons(this.map,`${loadingId}:${this.map.levelId||""}`,mapWidth(this.map,area)));this.map.name=runName(run,run.gate)}
@@ -1991,6 +1997,8 @@ export class Game {
         ...(prior ? (prior.travelVersion ? { travelVersion: prior.travelVersion } : {}) : { travelVersion: TRAVEL_VERSION }),
         // Open seas (release 152): only sections first seen from now on run on across their borders.
         ...(prior ? (prior.seaVersion ? { seaVersion: prior.seaVersion } : {}) : { seaVersion: OPEN_SEA_VERSION }),
+        // The Watcher's shrines and tombs (release 289) likewise.
+        ...(prior ? (prior.watcherVersion ? { watcherVersion: prior.watcherVersion } : {}) : { watcherVersion: WATCHER.version }),
         ...(this.map.landscape?.biome ? { landscape: this.map.landscape.biome } : {}), sites: this.map.objects
         .filter((o) => ["diveSite","shipwright","checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho"].includes(o.kind))
         .map((o) => ({ kind: o.kind, name: o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
@@ -2591,6 +2599,17 @@ export class Game {
     }
     return f;
   }
+  // Release 289 (Tim: "they could also be teleportation traps... in a dungeon... or in a shack... teleporting you somewhere
+  // in the map or... a new location"): a pristine Watcher's tomb, touched once, folds the Wayfarer away. Above ground it is
+  // the shelter Folded Seam's displacement (a pocket crossing, then a section 8-14 away); below, a far corner of the dungeon.
+  touchWatcherTomb(o){
+    const key=`watcher-tomb:${o.id}`;if(this.save.worldFlags[key]||o.state==="opened"){this.message="The tomb's lid lies still. The eye is closed.";return{ok:false,message:this.message};}
+    if(this.area==="overworld"){this.save.worldFlags[key]=true;o.state="opened";journalOnce(this.save,"watcher-tomb","A pristine tomb bore the Watcher's sigil, bright and haloed. Touched, it folded the corridor: the eye closed, and still it saw, and you were elsewhere.","The Watcher");this.startDisplacement(o,false);this.message="The eye in the lid opens. The corridor folds, and you are carried through it.";return{ok:true,message:this.message};}
+    if(this.area==="dungeon"){const width=mapWidth(this.map,this.area),to=dungeonFoldTarget(this.playerFloor(),width,this.player,`${this.save.seed}:watcher-fold:v1:${o.id}`);if(!to){this.message="The sigil flickers, but there is nowhere here for it to carry you.";return{ok:false,message:this.message};}
+      this.save.worldFlags[key]=true;o.state="opened";journalOnce(this.save,"watcher-tomb","A pristine tomb bore the Watcher's sigil, bright and haloed. Touched, it folded the corridor: the eye closed, and still it saw, and you were elsewhere.","The Watcher");
+      this.player.x=to.x;this.player.y=to.y-.2;this.player.invulnerableUntil=Math.max(this.player.invulnerableUntil||0,(this.lastUpdateNow||0)+800);this.message="The eye in the lid opens. The halls fold, and you stand somewhere else in them.";this.sync();return{ok:true,message:this.message};}
+    this.message="The sigil is still.";return{ok:false,message:this.message};
+  }
   startDisplacement(o,hidden=false){
     const key=`displacement-trigger:${this.rx},${this.ry}:${o.id}`;if(this.save.worldFlags[key])return false;this.save.worldFlags[key]=true;o.state='used';o.consumed=true;
     const h=hashSeed(this.save.seed+":displacement:"+this.rx+":"+this.ry+":"+o.id),distance=8+h%7,sign=h&1?1:-1,destination={rx:this.rx+(h&2?distance:Math.floor(distance/2))*sign,ry:this.ry+(h&2?Math.floor(distance/2):distance)*(h&4?1:-1)};
@@ -2707,6 +2726,7 @@ export class Game {
     }
     // Release 215: touching a strange thing opens a Glimpse.
     if (o.kind === "digSpot" && (action || validActions(o, this.save)[0]) === "dig") { const c = ensureShovel(this.save); if (!c.ok) { this.message = c.message; return { ok: false, message: this.message }; } const r = digSpot(this.save, o, this.rx, this.ry); this.message = (c.crafted ? c.message + " " : "") + r.message; this.sync(); return r; }
+    if (o.kind === "watcherTomb") return this.touchWatcherTomb(o); // release 289
     if (o.strange && (action || validActions(o, this.save)[0]) === "touch") { const r = touchStrange(this.save, o, this.rx, this.ry); this.message = r.message; if (r.ok) this.glimpseCue = "strange"; return r; }
     const chosen = action || validActions(o, this.save)[0],
       before = this.save.hp,

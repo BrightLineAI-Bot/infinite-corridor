@@ -2027,7 +2027,7 @@ function crystalPoise(e, s, w, p) {
   if (s.broken > 0) return true;
   // Up again: it springs away from the Wayfarer at once.
   s.broken = 0; e.crystalFall = 0; s.poiseGuard = CRYSTAL.poiseGuard; const away = unit(e.x - p.x, e.y - p.y), side = s.orbitDir || 1;
-  s.evade = { ...unit(away.x - away.y * side * .6, away.y + away.x * side * .6), t: QB_MOVES.evadeTime }; e.untargetable = true; s.cd.qbEvade = QB_MOVES.evadeCooldown;
+  s.evade = { ...unit(away.x - away.y * side * .6, away.y + away.x * side * .6), t: QB_MOVES.evadeTime }; e.untargetable = true; s.cd.qbEvade = CRYSTAL.evadeCooldown; // release 289: its own (longer) cooldown, as after any dodge
   return true;
 }
 
