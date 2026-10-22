@@ -13,21 +13,21 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**287**
+**291**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 285 | Claude | `claude/dreamy-rubin-yn6q2p` | Psychic Crystal: a wall-time budget, fewer dodges, 14 hits to stagger, 10 s stagger guard | Building. |
-| 283 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #120) | Dungeon water wounds quickly (5% of max health a second); out of stamina in it is death; rot shows grey on the health bar; arcane sigil on crypt coffins; Supplies tiles, recipes and Continuous build | Merged; preview `r283-3758dc926c1f`. |
-| 281 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #119) | Buttons light on touch; Dodge catches more gap taps; probe logs dodges; Leech floor; stray ">" removed | Merged; preview `r281-befdf39118ec`. |
+| 289 | Claude | — | Reserved: the Watcher's sigil in the world (arena floor mosaics, a rare shrine ruin with raised platforms, dungeon floor patterns), generation versioned | Reserved. |
+| 287 | Claude | `claude/dreamy-rubin-yn6q2p` | Blocks as stairs and barriers (oldest of five gives way; two high stops fliers and the Crystal); Crystal calm until touched; dungeon caches 2+2 (deeper: chance of 3+3); Supplies line and gold selection everywhere; barred Build icon; four coffin looks | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 285 | `r285-d5a533b38404` | 2026-10-22 | Published with 281 and 283 (neither went live alone): buttons light on touch, probe logs dodges, Leech floor, stray ">" removed (281, PR #119); deadly dungeon water, grey rot band, crypt sigil, Supplies and Continuous build (283, PR #120); the Psychic Crystal comes out to fight (285, PR #121). The pre-publish Fable review found no blockers. |
 | 279 | `r279-880fe40d0946` | 2026-10-22 | The compass keeps its choice; Proving Ground test tile, environment list, Start test (PR #118). The pre-publish review found no blockers. |
 | 277 | `r277-ce71a38b8a17` | 2026-10-22 | Published with 273 and 275 (neither went live alone): world beasts by Aperture tier, four sigils per horde, Stage 1 canon (273, PR #115); creature stages, the Stage 1 strength freeze, a rock gives one stone (275, PR #116); supply caches give a stone, a wood and a draught, Broken Observatories hold a cache (277, PR #117). The pre-publish review found no blockers. |
 | 271 | `r271-ad06c7fbd51e` | 2026-10-21 | Published with 269 (which never went live alone): the Gate Revenant horde, skiff repairs, the hull guard's longboat, cheaper building (269, PR #113); Gate Revenants stalk then hunt through walls, dodge, poise break, the new Revenant with its barrage maw (271, PR #114). The pre-publish review found no blockers; its two notes were fixed before merge. |
