@@ -935,3 +935,8 @@ button[aria-current], button[aria-selected="true"], .arc-kind.active, .options-t
 .arc-preset-button small { color: #a99f8f; margin-right: 4px; }
 .consumable .preset-pick:disabled { opacity: .38; }
 .arc-layout { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; } .arc-layout button { font-size: 12px; padding: 4px 8px; } /* release 295 */
+
+/* release 313: a running skill's button glows gold; the gold drains from the left as the effect ends */
+.buttons button .buff-fill { position: absolute; right: 0; top: 0; bottom: 0; width: 0; border-radius: inherit; background: linear-gradient(90deg, #f0c85a33, #f6d36ecc); pointer-events: none; z-index: 0; transition: width .1s linear; }
+.buttons button.buffing { box-shadow: 0 0 12px #f0c85a, inset 0 0 0 2px #f6d36e; }
+.buttons button:not(.buffing) .buff-fill { display: none; }

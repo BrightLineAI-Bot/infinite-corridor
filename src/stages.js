@@ -10,7 +10,7 @@
 // the Wayfarer until they reach tier `freezeTier`; their strength is then held at that moment's measure until the Wayfarer
 // has felled the Listener `thawKills` times, when it matches them again.
 // State: save.farArray.listeners (the Listener kills, far-array.ts) and save.beastCeiling (additive; set once, when frozen).
-import { apertureTier, APERTURE_THRESHOLDS } from "./world.js?v=r311-f82b84f1e1d4";
+import { apertureTier, APERTURE_THRESHOLDS } from "./world.js?v=r317-0212d6f3ae04";
 
 export const STAGES = { tiersPerStage: 12, firstKills: 1, killsPerStage: 2, freezeTier: 13, thawKills: 3 };
 

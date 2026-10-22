@@ -1,19 +1,20 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r311-f82b84f1e1d4";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r311-f82b84f1e1d4";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r311-f82b84f1e1d4";
-import { enemyMeleeGeometry } from "./combat.js?v=r311-f82b84f1e1d4";
-import { ruleRows } from "./elders.js?v=r311-f82b84f1e1d4";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r311-f82b84f1e1d4";
-import { BOAT } from "./boats.js?v=r311-f82b84f1e1d4";
-import { isMarineTile } from "./world-beasts.js?v=r311-f82b84f1e1d4";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r311-f82b84f1e1d4";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r311-f82b84f1e1d4";
-import { liftAt, tileUnder } from "./landscape.js?v=r311-f82b84f1e1d4";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r311-f82b84f1e1d4";
-import { GATE_REVENANT } from "./monster-pack.js?v=r311-f82b84f1e1d4";
-import { drawRelayNode } from "./relay-network.js?v=r311-f82b84f1e1d4";
-import { structureOccupancy } from "./world.js?v=r311-f82b84f1e1d4";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r311-f82b84f1e1d4";
+import { astralBeamAnchors } from "./astral-worm.js?v=r317-0212d6f3ae04";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r317-0212d6f3ae04";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r317-0212d6f3ae04";
+import { enemyMeleeGeometry } from "./combat.js?v=r317-0212d6f3ae04";
+import { ruleRows } from "./elders.js?v=r317-0212d6f3ae04";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r317-0212d6f3ae04";
+import { BOAT } from "./boats.js?v=r317-0212d6f3ae04";
+import { MECH } from "./vehicle-gates.js?v=r317-0212d6f3ae04";
+import { isMarineTile } from "./world-beasts.js?v=r317-0212d6f3ae04";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r317-0212d6f3ae04";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r317-0212d6f3ae04";
+import { liftAt, tileUnder } from "./landscape.js?v=r317-0212d6f3ae04";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r317-0212d6f3ae04";
+import { GATE_REVENANT } from "./monster-pack.js?v=r317-0212d6f3ae04";
+import { drawRelayNode } from "./relay-network.js?v=r317-0212d6f3ae04";
+import { structureOccupancy } from "./world.js?v=r317-0212d6f3ae04";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r317-0212d6f3ae04";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -606,53 +607,61 @@ function drawSkiff(ctx, x, y, s, facing, now) {
 // round shields, the lower hull under a foaming waterline, a stem post curling up into a spiral from which a
 // lantern hangs, a little spiral galaxy behind its glass, a lower stern curl, and an upright mast with a striped square sail. It always shows its
 // side: heading up or down it keeps its last side-on bearing.
-// Release r311-f82b84f1e1d4: the submersible (Tim: "silver... a big viewpoint in the front, where you can see the Wayfarer... like Faye
-// Valentine's zipcraft... two larger arms and two smaller arms... you can see one arm poking above the water... robot
-// fingers"). part "back" is the hull under the Wayfarer; "front" the window's glass and the arms over them. Diving, the
-// craft is a dark shape under the surface with bubbles and one arm breaking the water.
-function drawSubmersible(ctx, x, y, s, facing, now, part = "back", diving = 0) {
-  const cx = (x + .5) * s, cy = (y + .7) * s + Math.sin(now / 420 + x) * s * .03, dir = facing === "left" ? -1 : 1, t = now / 1000;
-  ctx.save(); ctx.translate(cx, cy); ctx.scale(dir, 1);
+// Release 311/315: the submersible is a small robot (Tim, release 315: "the submersible should kind of look like a robot...
+// with a big large viewpoint... some very short legs... 2 robotic arms that extend from it... some boosters on the back...
+// a little bit larger than the player"). part "back" draws the boosters, shell and the viewport's frame behind the
+// Wayfarer; "front" draws the glass over them, the lower body (hiding their legs), the short legs and the arms. At sea
+// (`water`) everything below the waterline is drowned in blue; diving, only an arm breaks the surface, with bubbles.
+function drawSubmersible(ctx, x, y, s, facing, now, part = "back", diving = 0, water = true, boosting = false) {
+  const cx = (x + .5) * s, base = (y + .98) * s + (water ? Math.sin(now / 420 + x) * s * .03 : 0), dir = facing === "left" ? -1 : 1, t = now / 1000, u = s * 1.2;
+  const metal = (y0, y1) => { const g = ctx.createLinearGradient(-u * .5, y0, u * .5, y1); g.addColorStop(0, "#f2f5f8"); g.addColorStop(.5, "#b9c1ca"); g.addColorStop(1, "#6f7883"); return g; };
+  ctx.save(); ctx.translate(cx, base); ctx.scale(dir, 1);
+  const waterline = -u * .3;
   if (diving > 0) {
     if (part === "back") {
-      ctx.globalAlpha = .55; ctx.fillStyle = "#0b2a3a"; ctx.beginPath(); ctx.ellipse(0, s * .12, s * .62, s * .24, 0, 0, 7); ctx.fill();
-      ctx.globalAlpha = 1; ctx.strokeStyle = "#d8f2ff99"; ctx.lineWidth = 1; for (let i = 0; i < 5; i++) { const k = (t * 1.6 + i * .21) % 1; ctx.beginPath(); ctx.arc(s * (.3 - i * .14), s * (.05 - k * .5), s * (.03 + k * .03), 0, 7); ctx.stroke(); }
-      ctx.strokeStyle = "#c9cfd6"; ctx.lineWidth = s * .07; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(s * .1, s * .02); ctx.lineTo(s * .18, -s * .3); ctx.stroke(); // the arm breaks the surface
-      ctx.lineWidth = s * .035; ctx.beginPath(); ctx.moveTo(s * .18, -s * .3); ctx.lineTo(s * .1, -s * .42); ctx.moveTo(s * .18, -s * .3); ctx.lineTo(s * .27, -s * .4); ctx.stroke(); ctx.lineCap = "butt";
+      ctx.globalAlpha = .5; ctx.fillStyle = "#0b2a3a"; ctx.beginPath(); ctx.ellipse(0, -u * .2, u * .42, u * .22, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+      ctx.strokeStyle = "#d8f2ff99"; ctx.lineWidth = 1; for (let i = 0; i < 5; i++) { const k = (t * 1.6 + i * .21) % 1; ctx.beginPath(); ctx.arc(u * (.2 - i * .1), -u * (.3 + k * .4), u * (.025 + k * .03), 0, 7); ctx.stroke(); }
+      ctx.strokeStyle = "#c9cfd6"; ctx.lineWidth = u * .07; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(u * .18, -u * .28); ctx.lineTo(u * .26, -u * .62); ctx.stroke();
+      ctx.lineWidth = u * .035; ctx.beginPath(); ctx.moveTo(u * .26, -u * .62); ctx.lineTo(u * .18, -u * .74); ctx.moveTo(u * .26, -u * .62); ctx.lineTo(u * .35, -u * .72); ctx.moveTo(u * .26, -u * .62); ctx.lineTo(u * .28, -u * .76); ctx.stroke(); ctx.lineCap = "butt";
     }
     ctx.restore(); return;
   }
+  const torsoY = -u * .62, torsoR = u * .4;
   if (part === "back") {
-    ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(0, s * .14, s * .7, s * .2, 0, 0, 7); ctx.fill();
-    const hull = ctx.createLinearGradient(0, -s * .3, 0, s * .2); hull.addColorStop(0, "#eef2f5"); hull.addColorStop(.5, "#b4bcc5"); hull.addColorStop(1, "#6d7680"); ctx.fillStyle = hull;
-    ctx.beginPath(); ctx.moveTo(-s * .62, s * .02); ctx.quadraticCurveTo(-s * .6, -s * .3, -s * .1, -s * .32); ctx.lineTo(s * .3, -s * .3); ctx.quadraticCurveTo(s * .7, -s * .2, s * .64, s * .06); ctx.quadraticCurveTo(s * .5, s * .2, 0, s * .2); ctx.quadraticCurveTo(-s * .5, s * .2, -s * .62, s * .02); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = "#3a4048"; ctx.lineWidth = Math.max(1, s * .03); ctx.stroke();
-    ctx.strokeStyle = "#ffffff99"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-s * .5, -s * .2); ctx.lineTo(-s * .05, -s * .24); ctx.stroke(); // highlight
-    ctx.fillStyle = "#8f979f"; ctx.beginPath(); ctx.moveTo(-s * .62, 0); ctx.lineTo(-s * .78, -s * .14); ctx.lineTo(-s * .78, s * .12); ctx.closePath(); ctx.fill(); // tail fin
-    ctx.fillStyle = "#ff9a3a"; ctx.globalAlpha = .5 + .3 * Math.sin(t * 9); ctx.beginPath(); ctx.arc(-s * .64, s * .02, s * .05, 0, 7); ctx.fill(); ctx.globalAlpha = 1; // thruster
-    ctx.strokeStyle = "#ffffff22"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(0, s * .2, s * .72, s * .07, 0, 0, 7); ctx.stroke(); // waterline
-    // the window frame where the Wayfarer sits
-    ctx.fillStyle = "#3a4048"; ctx.beginPath(); ctx.ellipse(s * .02, -s * .34, s * .34, s * .36, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = "#123848"; ctx.beginPath(); ctx.ellipse(s * .02, -s * .34, s * .29, s * .31, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#00000040"; ctx.beginPath(); ctx.ellipse(0, 0, u * .48, u * .12, 0, 0, 7); ctx.fill();
+    // boosters on the back, with a flicker of flame
+    for (const bx of [-u * .3, u * .3]) { ctx.fillStyle = "#8f979f"; ctx.fillRect(bx - u * .07, torsoY - u * .3, u * .14, u * .36); ctx.strokeStyle = "#3a4048"; ctx.lineWidth = 1; ctx.strokeRect(bx - u * .07, torsoY - u * .3, u * .14, u * .36);
+      if (!water) { const len = boosting ? .55 + .12 * Math.sin(t * 25) : .16 + .05 * Math.sin(t * 15), wide = boosting ? .08 : .05; ctx.fillStyle = `rgba(255,170,70,${.5 + .3 * Math.sin(t * 12 + bx)})`; ctx.beginPath(); ctx.moveTo(bx - u * wide, torsoY + u * .06); ctx.lineTo(bx, torsoY + u * len); ctx.lineTo(bx + u * wide, torsoY + u * .06); ctx.fill(); if (boosting) { ctx.fillStyle = "#fff3c0cc"; ctx.beginPath(); ctx.moveTo(bx - u * .03, torsoY + u * .06); ctx.lineTo(bx, torsoY + u * len * .55); ctx.lineTo(bx + u * .03, torsoY + u * .06); ctx.fill(); } } }
+    ctx.fillStyle = metal(torsoY - torsoR, torsoY + torsoR); ctx.beginPath(); ctx.ellipse(0, torsoY, torsoR, torsoR * 1.02, 0, 0, 7); ctx.fill(); ctx.strokeStyle = "#3a4048"; ctx.lineWidth = Math.max(1, u * .025); ctx.stroke();
+    ctx.fillStyle = "#3a4048"; ctx.beginPath(); ctx.arc(0, torsoY - u * .05, u * .27, 0, 7); ctx.fill(); // the viewport's frame
+    ctx.fillStyle = "#123848"; ctx.beginPath(); ctx.arc(0, torsoY - u * .05, u * .23, 0, 7); ctx.fill();
   } else {
-    // the lower hull again, over the Wayfarer's legs: only the window shows them
-    ctx.save(); ctx.beginPath(); ctx.rect(-s, -s * .1, s * 2, s); ctx.clip();
-    const hull = ctx.createLinearGradient(0, -s * .3, 0, s * .2); hull.addColorStop(0, "#eef2f5"); hull.addColorStop(.5, "#b4bcc5"); hull.addColorStop(1, "#6d7680"); ctx.fillStyle = hull;
-    ctx.beginPath(); ctx.moveTo(-s * .62, s * .02); ctx.quadraticCurveTo(-s * .6, -s * .3, -s * .1, -s * .32); ctx.lineTo(s * .3, -s * .3); ctx.quadraticCurveTo(s * .7, -s * .2, s * .64, s * .06); ctx.quadraticCurveTo(s * .5, s * .2, 0, s * .2); ctx.quadraticCurveTo(-s * .5, s * .2, -s * .62, s * .02); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = "#3a4048"; ctx.lineWidth = Math.max(1, s * .03); ctx.stroke(); ctx.restore();
-    ctx.strokeStyle = "#3a4048"; ctx.lineWidth = Math.max(1.5, s * .03); ctx.beginPath(); ctx.ellipse(s * .02, -s * .34, s * .33, s * .35, 0, Math.PI * .08, Math.PI * .92); ctx.stroke();
-    const glass = ctx.createRadialGradient(-s * .06, -s * .44, s * .02, s * .02, -s * .34, s * .3); glass.addColorStop(0, "#d8f6ff55"); glass.addColorStop(1, "#5fc6e033"); ctx.fillStyle = glass;
-    ctx.beginPath(); ctx.ellipse(s * .02, -s * .34, s * .29, s * .31, 0, 0, 7); ctx.fill();
-    ctx.strokeStyle = "#ffffffaa"; ctx.lineWidth = Math.max(1, s * .025); ctx.beginPath(); ctx.ellipse(s * .02, -s * .34, s * .22, s * .24, 0, Math.PI * 1.05, Math.PI * 1.45); ctx.stroke(); // glint
-    ctx.strokeStyle = "#c9cfd6"; ctx.lineWidth = Math.max(1.5, s * .03); ctx.beginPath(); ctx.ellipse(s * .02, -s * .34, s * .3, s * .32, 0, 0, 7); ctx.stroke(); // rim
-    // two big manipulator arms with pincers, two small tool arms below
-    const sway = Math.sin(t * 2.2) * .06; ctx.lineCap = "round";
-    for (const [bx, by, len, w, a] of [[s * .3, -s * .12, s * .36, s * .07, -.35 + sway], [s * .34, s * .02, s * .3, s * .06, .2 - sway], [s * .2, s * .12, s * .16, s * .035, .55], [s * .1, s * .14, s * .14, s * .03, .8]]) {
-      const ex = bx + Math.cos(a) * len, ey = by + Math.sin(a) * len; ctx.strokeStyle = "#7d858e"; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(ex, ey); ctx.stroke();
-      ctx.strokeStyle = "#c9cfd6"; ctx.lineWidth = w * .5; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(ex, ey); ctx.stroke();
-      ctx.strokeStyle = "#3a4048"; ctx.lineWidth = Math.max(1, w * .45); ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(a - .5) * w * 1.6, ey + Math.sin(a - .5) * w * 1.6); ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(a + .5) * w * 1.6, ey + Math.sin(a + .5) * w * 1.6); ctx.stroke();
+    // the lower body (over the Wayfarer's legs), then the short legs
+    ctx.save(); ctx.beginPath(); ctx.rect(-u, torsoY + u * .14, u * 2, u); ctx.clip();
+    ctx.fillStyle = metal(torsoY - torsoR, torsoY + torsoR); ctx.beginPath(); ctx.ellipse(0, torsoY, torsoR, torsoR * 1.02, 0, 0, 7); ctx.fill(); ctx.strokeStyle = "#3a4048"; ctx.lineWidth = Math.max(1, u * .025); ctx.stroke(); ctx.restore();
+    ctx.strokeStyle = "#3a4048"; ctx.lineWidth = Math.max(1.5, u * .03); ctx.beginPath(); ctx.arc(0, torsoY - u * .05, u * .26, Math.PI * .1, Math.PI * .9); ctx.stroke();
+    const step = water ? 0 : Math.sin(t * 6) * u * .03;
+    for (const [lx, k] of [[-u * .16, 1], [u * .16, -1]]) { ctx.fillStyle = "#7d858e"; ctx.fillRect(lx - u * .06, torsoY + torsoR * .8, u * .12, u * .2 + k * step); ctx.fillStyle = "#4b525a"; ctx.beginPath(); ctx.ellipse(lx, torsoY + torsoR * .8 + u * .2 + k * step, u * .11, u * .045, 0, 0, 7); ctx.fill(); }
+    // the glass
+    const glass = ctx.createRadialGradient(-u * .07, torsoY - u * .14, u * .02, 0, torsoY - u * .05, u * .23); glass.addColorStop(0, "#d8f6ff55"); glass.addColorStop(1, "#5fc6e033"); ctx.fillStyle = glass; ctx.beginPath(); ctx.arc(0, torsoY - u * .05, u * .23, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#ffffffaa"; ctx.lineWidth = Math.max(1, u * .02); ctx.beginPath(); ctx.arc(0, torsoY - u * .05, u * .17, Math.PI * 1.1, Math.PI * 1.45); ctx.stroke();
+    ctx.strokeStyle = "#c9cfd6"; ctx.lineWidth = Math.max(1.5, u * .03); ctx.beginPath(); ctx.arc(0, torsoY - u * .05, u * .24, 0, 7); ctx.stroke();
+    // two robotic arms from the shoulders, elbows bent, with three-fingered manipulators
+    const sway = Math.sin(t * 2.2) * .12; ctx.lineCap = "round";
+    for (const side of [-1, 1]) {
+      const sx = side * torsoR * .92, sy = torsoY + u * .02, ex = sx + side * u * .2, ey = sy + u * (.12 + side * sway * .3), hx = ex + side * u * .08, hy = ey + u * .2;
+      ctx.strokeStyle = "#5d656e"; ctx.lineWidth = u * .09; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.strokeStyle = "#d3d9df"; ctx.lineWidth = u * .045; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.fillStyle = "#3a4048"; ctx.beginPath(); ctx.arc(ex, ey, u * .045, 0, 7); ctx.fill();
+      ctx.strokeStyle = "#3a4048"; ctx.lineWidth = Math.max(1, u * .028); ctx.beginPath(); for (const f of [-.5, 0, .5]) { ctx.moveTo(hx, hy); ctx.lineTo(hx + Math.sin(f) * u * .06, hy + Math.cos(f) * u * .08); } ctx.stroke();
     }
     ctx.lineCap = "butt";
+    if (water) { // below the waterline the sea covers it
+      ctx.save(); ctx.beginPath(); ctx.rect(-u, waterline, u * 2, u); ctx.clip();
+      const sea = ctx.createRadialGradient(0, waterline, u * .1, 0, waterline, u * .62); sea.addColorStop(0, "#1d5a86f2"); sea.addColorStop(.75, "#1d5a86d0"); sea.addColorStop(1, "#1d5a8600");
+      ctx.fillStyle = sea; ctx.beginPath(); ctx.ellipse(0, waterline, u * .62, u * .42, 0, 0, 7); ctx.fill(); ctx.restore();
+      ctx.strokeStyle = "#cfefffaa"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(0, waterline, u * (.46 + .03 * Math.sin(t * 2)), u * .08, 0, 0, 7); ctx.stroke(); // a ring of ripples where it meets the water
+    }
   }
   ctx.restore();
 }
@@ -1518,6 +1527,8 @@ export function render(ctx, g, w, h, now) {
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
+      const mech = !!g.mechUp?.(), mechLift = mech && g.mechBoosting ? s * .22 : 0; // release 317: the robot ashore, lifted while it boosts
+      if (mech) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "back", 0, false, g.mechBoosting);
       const subHidden = g.area === "overworld" && g.save.boat?.aboard && g._subDive > 0; if (subHidden) { ctx.save(); ctx.globalAlpha = .12; } // release 311: under the surface
       actor(
         ctx,
@@ -1531,6 +1542,9 @@ export function render(ctx, g, w, h, now) {
       );
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
+      if (mech) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);
+      if (mech) { const m = g.save.mech, bx = (p.x + .08) * s, by = (p.y + 1.1) * s - lift, bw = s * .84, bh = Math.max(3, s * .08); // plating (silver) and boost (blue)
+        ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh * 2 + 3); ctx.fillStyle = "#d8dee5"; ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, m.plate / MECH.plate)), bh); ctx.fillStyle = "#5fc6e0"; ctx.fillRect(bx, by + bh + 1, bw * Math.max(0, Math.min(1, m.fuel / MECH.boost)), bh); }
       if (g.area === "overworld" && g.save.boat?.aboard && g.save.boat.sub && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "front", g._subDive); // release 311: the window's glass and the arms
       if (g._longboatFront && g.area === "overworld" && g.save.boat?.aboard) drawLongboat(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right", "front"); // release 269
       // Poisoned (release 165): the Wayfarer pulses green while poison lasts.

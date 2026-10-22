@@ -3,7 +3,7 @@
 // and shallows), never the blight's toxic water or rivers. It has its own hull: hits taken aboard are shared with it,
 // and a hull at zero sinks the skiff, which the Shipwright's crew returns to its home dock.
 // Data and pure rules; game.ts calls in from movement, interaction, damage and section loading.
-import { hashSeed } from "./random.js?v=r311-f82b84f1e1d4";
+import { hashSeed } from "./random.js?v=r317-0212d6f3ae04";
 
 export const BOAT = {
   price: { currency: 120, cinderIron: 2 },
@@ -78,7 +78,7 @@ export function ensureBoatState(save) {
   save.boat.shield = Math.max(0, Math.min(BOAT.shield.seconds, Number.isFinite(Number(b.shield)) ? Number(b.shield) : 0));
   // Release 269: the guard's extra hull (additive; only while the guard holds).
   save.boat.guardHull = save.boat.shield > 0 ? Math.max(0, Math.min(BOAT.shield.bonus, Number(b.guardHull) || 0)) : 0;
-  // Release r311-f82b84f1e1d4: the submersible (additive): `sub` true while the skiff in use is fitted; `subHull` its own bar.
+  // Release 311: the submersible (additive): `sub` true while the skiff in use is fitted; `subHull` its own bar.
   save.boat.sub = b.owned === true && b.sub === true; save.boat.subHull = save.boat.sub ? Math.max(0, Math.min(BOAT.sub.hull, Number(b.subHull) || 0)) : 0;
   const spare = b.owned === true && place(b.spare); save.boat.spare = spare ? { ...spare, hull: Math.max(0, Math.min(BOAT.maxHull, Number.isFinite(b.spare.hull) ? b.spare.hull : BOAT.maxHull)), ...(b.spare.sub === true ? { sub: true, subHull: Math.max(0, Math.min(BOAT.sub.hull, Number(b.spare.subHull) || 0)) } : {}) } : null;
   return save.boat;
