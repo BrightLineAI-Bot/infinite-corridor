@@ -19,16 +19,13 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 325 | Claude | `claude/dreamy-rubin-yn6q2p` | Taste deeps open all the way; their creatures scaled to the tier entered at (tasteThreat) | Building. |
-| 323 | Claude | `claude/dreamy-rubin-yn6q2p` | No dungeon is sealed: deep and arena entrances always open, as tastes below their tier | Merged (PR #141). |
-| 321 | Claude | `claude/dreamy-rubin-yn6q2p` | The drone: from the fourth Gate the frame can call up a drone (homing rockets, mends on command or when low, carries you on held Jump) | Merged (PR #140). |
-| 319 | Claude | `claude/dreamy-rubin-yn6q2p` | The dungeon ladder: special dungeons, guardians, hordes, deeps and arenas unlock by Aperture tier, with tastes from Open; robot boost refill fix | Merged (PR #139). |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 325 | `r325-7b4e702923fb` | 2026-10-22 | Published with 319, 321 and 323 (none went live alone): the dungeon ladder (319, PR #139); the drone (321, PR #140); no dungeon is sealed (323, PR #141); taste deeps open all the way with scaled creatures (325, PR #142). The pre-publish Fable review found no blockers. |
 | 317 | `r317-0212d6f3ae04` | 2026-10-22 | Published with 313 and 315 (neither went live alone): the skill buff bar (313, PR #135); vehicle progression gates and the submersible robot (315, PR #136); the robot ashore (317, PR #137). The pre-publish Fable review found no blockers. |
 | 311 | `r311-f82b84f1e1d4` | 2026-10-22 | Published with 301–309 (none went live alone): plain short dungeons, rarer themes, Watcher's daises (301, PR #129); the Poison Crypt (303, PR #130); the Far Sleep (305, PR #131); boss balance and tiered poise (307, PR #132); target lock and any-slot presets (309, PR #133); the submersible (311, PR #134). The pre-publish Fable review found no blockers. |
 | 299 | `r299-f25a24dc4fb2` | 2026-10-22 | Published with 293, 295 and 297 (none went live alone): child-safe Glimpses and item icons (293, PR #125); armour glyphs and glyph layouts (295, PR #126); glyphs for Aperture skills (297, PR #127); five new dungeon environments (299, PR #128). The pre-publish Fable review found no blockers. |
