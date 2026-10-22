@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 313 — a skill's button now shows how long its effect has left. While Ember Form, Quickening, Aerial Step, Veil Guard or Force Channel is running (or Rift Step's glyphs are riding on your hits), its button glows gold, and the gold drains away from the left as the effect runs out. The cooldown number still counts down as before.
+
 - Release 311 — the submersible:
   - **Forging and fitting.** Forge a Submersible Frame from 3 cinder iron in Pack → Supplies, then use it aboard your skiff. Silver plates close over the boat, with a great round window at the prow where you can see the Wayfarer, and manipulator arms on the side.
   - **What it gives you.** 40 more hull in its own silver bar, which takes hits first, and 5% less damage to you while aboard.

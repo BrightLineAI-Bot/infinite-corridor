@@ -13,24 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**313**
+**315**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 311 | Claude | `claude/dreamy-rubin-yn6q2p` | The submersible: cinder-iron frame, plating, 5% guard, dive-dodge, buoy diving, deep current to the next buoy | Building. |
-| 309 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #133) | Tap-to-target lock; Build, item or spell in any of the three preset slots | Merged. |
-| 307 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #132) | Boss balance (half health, 90% damage, four tries, no Blob regeneration); tiered boss poise | Merged. |
-| 305 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #131) | The Far Sleep made strange: dream terrain past depth 35 for unexplored sections | Merged. |
-| 303 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #130) | The Poison Crypt: rare mire dungeon, seep pools, seeplings homing to the half-strength Mire Heart, gas jets | Merged; preview `r303-8511873a69c8`. |
-| 301 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #129) | Plain short dungeons (layout pool 5); rarer themes (theme pool 3); Watcher's daises in large dungeons | Merged; preview `r301-5b735031a3c9`. |
+| 313 | Claude | `claude/dreamy-rubin-yn6q2p` | Skill buff bar: a running skill's button glows gold and drains as the effect ends | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 311 | `r311-f82b84f1e1d4` | 2026-10-22 | Published with 301–309 (none went live alone): plain short dungeons, rarer themes, Watcher's daises (301, PR #129); the Poison Crypt (303, PR #130); the Far Sleep (305, PR #131); boss balance and tiered poise (307, PR #132); target lock and any-slot presets (309, PR #133); the submersible (311, PR #134). The pre-publish Fable review found no blockers. |
 | 299 | `r299-f25a24dc4fb2` | 2026-10-22 | Published with 293, 295 and 297 (none went live alone): child-safe Glimpses and item icons (293, PR #125); armour glyphs and glyph layouts (295, PR #126); glyphs for Aperture skills (297, PR #127); five new dungeon environments (299, PR #128). The pre-publish Fable review found no blockers. |
 | 291 | `r291-4bc624609d78` | 2026-10-22 | Published with 287 and 289 (neither went live alone): blocks as stairs and barriers, calm Crystal, dungeon caches, gold selection, Supplies line, four coffins (287, PR #122); the Watcher's sigil in the world (289, PR #123); preset item buttons, back button, Crossing Sigils (291, PR #124). The pre-publish Fable review found no blockers. |
 | 285 | `r285-d5a533b38404` | 2026-10-22 | Published with 281 and 283 (neither went live alone): buttons light on touch, probe logs dodges, Leech floor, stray ">" removed (281, PR #119); deadly dungeon water, grey rot band, crypt sigil, Supplies and Continuous build (283, PR #120); the Psychic Crystal comes out to fight (285, PR #121). The pre-publish Fable review found no blockers. |

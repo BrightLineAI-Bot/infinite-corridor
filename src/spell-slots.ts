@@ -145,6 +145,18 @@ export function pairingMods(save) {
   if (p) for (const [k, v] of Object.entries(p.mods)) out[k] += v;
   return out;
 }
+// Release 313 (Tim: "a timer on the skills to show how long they last... the button can... get illuminated... that color
+// can just drain out... until the buff is over"): how much of a running skill's effect is left, 0..1 (0 when not running).
+// Timed skills use magicSkills.active (duration kept since 313; older saves fall back to the skill's base duration);
+// Rift Step shows its after-step infusion (magicSkills.riftInfuse).
+export const RIFT_INFUSE_SECONDS = 4; // glyphs.ts SKILL_INFUSE_AFTER_STEP
+export function buffLeft(save, key) {
+  const c = CASTABLES[key], ms = save?.magicSkills; if (!c || c.kind !== "skill" || !ms) return 0;
+  if (c.id === "rift-step") return ms.riftInfuse > 0 ? Math.min(1, ms.riftInfuse / RIFT_INFUSE_SECONDS) : 0;
+  const a = ms.active; if (!a || a.id !== c.id || !(a.remaining > 0)) return 0;
+  const total = Number(a.duration) > 0 ? a.duration : (APERTURE_SKILLS[c.id]?.duration || a.remaining);
+  return Math.max(0, Math.min(1, a.remaining / total));
+}
 // Cooldown state of a slot for the button overlay: {remaining, duration, empty}.
 export function slotReadiness(save, slot, legacySpellRemaining = 0) {
   const c = slotted(save, slot);
