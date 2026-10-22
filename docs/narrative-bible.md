@@ -278,7 +278,7 @@ Each step is one release, built and previewed for Tim before publishing.
    - readable lore on stones and ruins.
 2. **The Glimpse engine** and three first-person Glimpses for Tim to judge (release 193): the Wagon at Dusk, the Lantern, Faceted (compound eyes) and the Rule. They are drawn in Canvas 2D; WebGL is added when the sphere, crystal and gas Glimpses need it.
 3. **More Glimpses**, with touch, entry and chance triggers. Glimpse fragments start counting, and no Glimpse is seen more than a few times.
-4. **The Far Sleep made strange.** Dreamlands landscapes and dungeons for the far regions:
+4. **The Far Sleep made strange.** Dreamlands landscapes and dungeons for the far regions (landscapes built in release 305; dream dungeons still to do):
    - a new landscape generation version, used only for sections not yet explored;
    - existing journeys never regenerate.
 5. **Gilgamesh** (Tim confirmed this is the legend he meant, so the Yoga Vasistha is set aside). The Glimpse "The Plant at the Bottom" is built (release 219). Still to do: the recited voice, taken from R. Campbell Thompson (1928) or Jastrow and Clay (1920) once a public-domain source text is reachable.

@@ -1613,6 +1613,8 @@ export function render(ctx, g, w, h, now) {
     const count=budget.quality==="full"?16:8;ctx.strokeStyle="#9ec8d066";ctx.lineWidth=1.2;ctx.beginPath();for(let i=0;i<count;i++){const x=(i*131)%w,y=((i*67+motion*260)%(h+40))-20;ctx.moveTo(x,y);ctx.lineTo(x,y+7)}ctx.stroke();
   }else if(budget.weather&&g.map.weather==="spores"){
     const count=budget.quality==="full"?30:16;for(let i=0;i<count;i++){const x=((i*97+Math.sin(motion*.6+i)*30)%w+w)%w,y=((i*61+Math.cos(motion*.4+i)*30+motion*6)%h+h)%h;ctx.fillStyle=i%2?"#a6ffdc88":"#d9b8ff88";ctx.beginPath();ctx.arc(x,y,1.2+(i%3)*.5,0,7);ctx.fill()}
+  }else if(budget.weather&&g.map.weather==="petals"){ // release 305: the Far Sleep, pale petals drifting down a violet dusk
+    const count=budget.quality==="full"?22:11;for(let i=0;i<count;i++){const f=(motion*(.05+(i%4)*.012)+i*.29)%1,x=((i*127+g.rx*37+Math.sin(motion*.7+i)*26)%w+w)%w,y=f*(h+20)-10,a=motion*1.4+i;ctx.fillStyle=["#f6e6ffcc","#ffe9b8cc","#d8f4ffcc","#ffd6eccc"][i%4];ctx.beginPath();ctx.ellipse(x,y,3,1.4,a,0,7);ctx.fill()}ctx.fillStyle="#3a2c6a1c";ctx.fillRect(0,0,w,h);
   }else if(budget.weather&&g.map.weather==="glints"){ // release 299: Geode Hollow, light catching on crystal dust
     const count=budget.quality==="full"?22:10;for(let i=0;i<count;i++){const p=Math.sin(motion*1.7+i*2.3);if(p<.55)continue;const x=(i*113+g.rx*29)%w,y=((i*71+motion*4)%h+h)%h,k=(p-.55)*9;ctx.fillStyle=i%2?"#f2e8ffcc":"#c7a8ffcc";ctx.fillRect(x-k,y-.6,k*2,1.2);ctx.fillRect(x-.6,y-k,1.2,k*2)}ctx.fillStyle="#2a1a4414";ctx.fillRect(0,0,w,h);
   }else if(budget.weather&&g.map.weather==="steam"){ // release 299: Brass Engine, steam rising from the pipes
