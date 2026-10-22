@@ -3,12 +3,12 @@
 // killed the Wayfarer QUESTING_BEAST.tries times; then it is gone, and after a cooldown (counted in sections entered)
 // a new hunt can begin somewhere else.
 import { hashSeed } from "./random.ts";
-import { WORLD_BEASTS, BEAST_BASELINE, beastProfileVitals, ENCOUNTER, encounterReady, encounterMet, isMarineTile, beastUnlocked } from "./world-beasts.ts";
+import { WORLD_BEASTS, BEAST_BASELINE, BEAST_BALANCE, beastProfileVitals, ENCOUNTER, encounterReady, encounterMet, isMarineTile, beastUnlocked } from "./world-beasts.ts";
 import { LETHAL_KINDS } from "./landscape.ts";
 
 // Release 187 (Tim, 2026-10-18): far tougher and far more dangerous. About twice the health; each blow takes about
 // 27% of maximum health (four unhealed hits kill); it runs fast and barely pauses between attacks.
-export const QUESTING_BEAST = { chance: 0.035, minDepth: 4, tries: 3, cooldownSlain: 24, cooldownEscaped: 30, hitsToKill: 55, hpPerLevel: 25, damageShare: 0.27, speed: 1.55, attackGap: .12, staggerResistance: .85, rewardMarks: 150, rewardPerLevel: 15 };
+export const QUESTING_BEAST = { chance: 0.035, minDepth: 4, tries: 4, cooldownSlain: 24, cooldownEscaped: 30, hitsToKill: 55, hpPerLevel: 25, damageShare: 0.27, speed: 1.55, attackGap: .12, staggerResistance: .85, rewardMarks: 150, rewardPerLevel: 15 };
 
 export function ensureQuestingBeast(s) {
   const q = s.questingBeast && typeof s.questingBeast === "object" ? s.questingBeast : {};
@@ -44,8 +44,8 @@ export function questingBeastTriesLeft(save) { return QUESTING_BEAST.tries - (sa
 // (weapon power + might) plus a little per level; its blows land as a share of the Wayfarer's max health, offset by armour.
 export function tuneQuestingBeast(c, save, stats = {}) {
   const own = beastProfileVitals(QUESTING_BEAST, save, stats), others = Object.values(WORLD_BEASTS).map(profile => beastProfileVitals(profile, save, stats));
-  const hp = Math.max(Number(c.maxHp) || 0, own.hp, Math.ceil(Math.max(...others.map(v => v.hp)) * BEAST_BASELINE.questingDominance));
-  const damage = Math.max(Number(c.damage) || 0, own.damage, Math.ceil(Math.max(...others.map(v => v.damage)) * BEAST_BASELINE.questingDominance));
+  const hp = Math.max(Math.round((Number(c.maxHp) || 0) * BEAST_BALANCE.hp), own.hp, Math.ceil(Math.max(...others.map(v => v.hp)) * BEAST_BASELINE.questingDominance));
+  const damage = Math.max(Math.round((Number(c.damage) || 0) * BEAST_BALANCE.damage), own.damage, Math.ceil(Math.max(...others.map(v => v.damage)) * BEAST_BASELINE.questingDominance));
   Object.assign(c, { questingBeast: true, boss: true, hp, maxHp: hp, damage, beastTuningVersion: 1, staggerResistance: QUESTING_BEAST.staggerResistance, speedMultiplier: QUESTING_BEAST.speed, attackGap: QUESTING_BEAST.attackGap, evasive: true });
   return c;
 }

@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**307**
+**309**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 305 | Claude | `claude/dreamy-rubin-yn6q2p` | The Far Sleep made strange: dream terrain past depth 35 for unexplored sections | Building. |
+| 307 | Claude | `claude/dreamy-rubin-yn6q2p` | Boss balance (half health, 90% damage, four tries, no Blob regeneration); tiered boss poise | Building. |
+| 305 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #131) | The Far Sleep made strange: dream terrain past depth 35 for unexplored sections | Merged. |
 | 303 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #130) | The Poison Crypt: rare mire dungeon, seep pools, seeplings homing to the half-strength Mire Heart, gas jets | Merged; preview `r303-8511873a69c8`. |
 | 301 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #129) | Plain short dungeons (layout pool 5); rarer themes (theme pool 3); Watcher's daises in large dungeons | Merged; preview `r301-5b735031a3c9`. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |

@@ -33,7 +33,7 @@ function step(w, seconds, each = () => {}) { for (let t = 0; t < seconds; t += w
 
 test('registry: a canyon-home roaming world beast with seven attacks and its own Echo', () => {
   const B = WORLD_BEASTS.lightningGiant, def = MONSTER_PACK.lightningGiant;
-  assert.equal(B.kind, 'lightningGiant'); assert.equal(B.home, 'canyon'); assert.ok(BEAST_HOMES.canyon); assert.equal(B.tries, 3);
+  assert.equal(B.kind, 'lightningGiant'); assert.equal(B.home, 'canyon'); assert.ok(BEAST_HOMES.canyon); assert.equal(B.tries, 4); // release 307
   assert.deepEqual(def.attacks, ['giantArcs', 'giantShock', 'giantSwing', 'giantSlam', 'giantMenace', 'giantUpswing', 'giantElectrify']);
   for (const id of def.attacks) assert.ok(ATTACK_MODULES[id], id);
   assert.ok(ECHOES.lightningGiant);

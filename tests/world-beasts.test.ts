@@ -32,10 +32,10 @@ test('world beasts: rare, one per section, never where the Questing Beast is, th
   const id = claimed.sp.worldBeast; assert.ok(WORLD_BEASTS[id]); assert.equal(claimed.sp.kind, WORLD_BEASTS[id].kind);
   assert.deepEqual(worldBeastFor(s, generateRegion(s.seed, claimed.rx, claimed.ry), claimed.rx, claimed.ry)?.id, claimed.sp.id, 'it stays in its section');
   assert.equal(worldBeastFor(s, map, 1, 1), null, 'never near the Refuge');
-  assert.equal(worldBeastTriesLeft(s, id), 3);
-  assert.match(worldBeastPlayerFell(s, claimed.rx, claimed.ry, [id]), /2 tries remain/);
+  assert.equal(worldBeastTriesLeft(s, id), 4); // release 307: four tries
+  assert.match(worldBeastPlayerFell(s, claimed.rx, claimed.ry, [id]), /3 tries remain/);
   assert.equal(worldBeastPlayerFell(s, claimed.rx, claimed.ry, []), null, 'only while it lives');
-  worldBeastPlayerFell(s, claimed.rx, claimed.ry, [id]);
+  worldBeastPlayerFell(s, claimed.rx, claimed.ry, [id]); worldBeastPlayerFell(s, claimed.rx, claimed.ry, [id]); // release 307: four tries
   assert.equal(worldBeastPlayerFell(s, claimed.rx, claimed.ry, [id]), WORLD_BEASTS[id].gone);
   assert.equal(s.worldBeasts[id].active, null); assert.equal(s.worldBeasts[id].cooldown, WORLD_BEASTS[id].cooldownEscaped);
   const t = opened(freshSave()); t.worldBeasts = { morphingBlob: { active: { rx: 8, ry: 8, tries: 1 }, cycle: 2 } }; ensureWorldBeasts(t); const marks = t.currency;
@@ -434,7 +434,7 @@ test('the Crystal haunts only dungeons with water, holds them, takes tries there
   assert.ok(wet.tiles.some((t) => t.kind === 'dungeonWater' && Math.abs(t.x - spawn.x) + Math.abs(t.y - spawn.y) <= 4), 'near the water');
   assert.equal(worldBeastForDungeon(s, wet, id)?.id, spawn.id, 'it stays'); assert.equal(worldBeastForDungeon(s, wet, dun('other', 9)), null, 'one place at a time');
   assert.deepEqual(migrateSave(JSON.parse(JSON.stringify(s))).worldBeasts.psychicCrystal.active.dungeon, id, 'saved');
-  assert.match(worldBeastPlayerFell(s, null, null, ['psychicCrystal'], id), /2 tries remain/); assert.equal(worldBeastPlayerFell(s, 5, 5, ['psychicCrystal']), null, 'not from the overworld');
+  assert.match(worldBeastPlayerFell(s, null, null, ['psychicCrystal'], id), /3 tries remain/); assert.equal(worldBeastPlayerFell(s, 5, 5, ['psychicCrystal']), null, 'not from the overworld');
   const r = beginDungeonRetreat(s, 'psychicCrystal', wet); assert.ok(r.home.found);
   const t = retreatTarget(s.worldBeasts.psychicCrystal.active.retreat, 'psychicCrystal', wet, 0, 0, {}, spawn); assert.ok(t.home && wet.tiles.find((q) => q.x === t.x && q.y === t.y).kind === 'dungeonWater', 'into the water');
   assert.deepEqual(worldBeastsLost(s, 'dungeon', 0, 0, id), [], 'while you are there'); assert.deepEqual(worldBeastsLost(s, 'overworld', 0, 0), ['psychicCrystal'], 'gone when you leave');
