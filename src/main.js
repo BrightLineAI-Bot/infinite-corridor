@@ -1,28 +1,28 @@
-import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind } from "./building.js?v=r291-4bc624609d78";
-import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.js?v=r291-4bc624609d78";
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r291-4bc624609d78";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r291-4bc624609d78";
-import { renderTimings } from "./renderer.js?v=r291-4bc624609d78";
-import { createProbe, PROBE } from "./diagnostic-probe.js?v=r291-4bc624609d78";
-import { vendorShop, buyFromVendor } from "./game.js?v=r291-4bc624609d78";
-import { CREATURE_TRAITS } from "./combat.js?v=r291-4bc624609d78";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=r291-4bc624609d78";
-import { drawPackPortrait } from "./monster-render.js?v=r291-4bc624609d78";
-import { landscapeAtlasColor } from "./landscape-render.js?v=r291-4bc624609d78";
-import { hashSeed } from "./random.js?v=r291-4bc624609d78";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r291-4bc624609d78";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r291-4bc624609d78";
-import { hamletSection, hamletIdentity } from "./settlements.js?v=r291-4bc624609d78";
-import { linksKnown } from "./linked-dungeons.js?v=r291-4bc624609d78";
-import { DIG } from "./digging.js?v=r291-4bc624609d78";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces } from "./atlas-view.js?v=r291-4bc624609d78";
-import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses } from "./glimpses.js?v=r291-4bc624609d78";
-import { startGlimpse, paintRule } from "./glimpse-render.js?v=r291-4bc624609d78";
-import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r291-4bc624609d78";
-import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=r291-4bc624609d78";
-import { questingBeastTriesLeft } from "./questing-beast.js?v=r291-4bc624609d78";
-import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=r291-4bc624609d78";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r291-4bc624609d78";
+import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind } from "./building.js?v=r299-f25a24dc4fb2";
+import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.js?v=r299-f25a24dc4fb2";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r299-f25a24dc4fb2";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r299-f25a24dc4fb2";
+import { renderTimings } from "./renderer.js?v=r299-f25a24dc4fb2";
+import { createProbe, PROBE } from "./diagnostic-probe.js?v=r299-f25a24dc4fb2";
+import { vendorShop, buyFromVendor } from "./game.js?v=r299-f25a24dc4fb2";
+import { CREATURE_TRAITS } from "./combat.js?v=r299-f25a24dc4fb2";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=r299-f25a24dc4fb2";
+import { drawPackPortrait } from "./monster-render.js?v=r299-f25a24dc4fb2";
+import { landscapeAtlasColor } from "./landscape-render.js?v=r299-f25a24dc4fb2";
+import { hashSeed } from "./random.js?v=r299-f25a24dc4fb2";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r299-f25a24dc4fb2";
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r299-f25a24dc4fb2";
+import { hamletSection, hamletIdentity } from "./settlements.js?v=r299-f25a24dc4fb2";
+import { linksKnown } from "./linked-dungeons.js?v=r299-f25a24dc4fb2";
+import { DIG } from "./digging.js?v=r299-f25a24dc4fb2";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces } from "./atlas-view.js?v=r299-f25a24dc4fb2";
+import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.js?v=r299-f25a24dc4fb2";
+import { startGlimpse, paintRule } from "./glimpse-render.js?v=r299-f25a24dc4fb2";
+import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r299-f25a24dc4fb2";
+import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=r299-f25a24dc4fb2";
+import { questingBeastTriesLeft } from "./questing-beast.js?v=r299-f25a24dc4fb2";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=r299-f25a24dc4fb2";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r299-f25a24dc4fb2";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -175,7 +175,7 @@ setTimeout(() => {
     document.querySelector('[data-action="build"]')?.classList.toggle("selected", save.aimMode === "build");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r291-4bc624609d78";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r299-f25a24dc4fb2";
 import {
   Game,
   actionReadiness,
@@ -184,21 +184,32 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=r291-4bc624609d78";
-import { createInput } from "./input.js?v=r291-4bc624609d78";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r291-4bc624609d78";
-import { STATS } from "./types.js?v=r291-4bc624609d78";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=r291-4bc624609d78";
-import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS } from "./glyphs.js?v=r291-4bc624609d78";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=r291-4bc624609d78";
-// Release r291-4bc624609d78: names and HUD glyphs for items on a preset's Build button.
-const ITEM_NAMES = { restorativeDraught: "Restorative Draught", ironbarkTonic: "Ironbark Tonic", lumenPhial: "Lumen Phial", clearrootAmpoule: "Clearroot Ampoule", hullShield: "Hull Shield" }, ITEM_GLYPHS = { restorativeDraught: "⚗", ironbarkTonic: "⛨", lumenPhial: "✦", clearrootAmpoule: "❀", hullShield: "⚓" };
-import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS, BUTTON_ITEMS, presetButton, setPresetButton, assignPresetItem, activeButton } from "./spell-slots.js?v=r291-4bc624609d78";
-import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=r291-4bc624609d78";
-import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=r291-4bc624609d78";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r291-4bc624609d78";
-import { worldStewardReport } from "./story.js?v=r291-4bc624609d78";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r291-4bc624609d78";
+} from "./game.js?v=r299-f25a24dc4fb2";
+import { createInput } from "./input.js?v=r299-f25a24dc4fb2";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r299-f25a24dc4fb2";
+import { STATS } from "./types.js?v=r299-f25a24dc4fb2";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=r299-f25a24dc4fb2";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.js?v=r299-f25a24dc4fb2";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=r299-f25a24dc4fb2";
+// Release 291: names and HUD glyphs for items on a preset's Build button.
+// Release 293 (Tim: "convincing symbols... relevant and easy to discern"): solid, filled item icons (spells stay line drawings).
+const ITEM_NAMES = { restorativeDraught: "Restorative Draught", ironbarkTonic: "Ironbark Tonic", lumenPhial: "Lumen Phial", clearrootAmpoule: "Clearroot Ampoule", hullShield: "Hull Shield" };
+const ITEM_ICONS = {
+  // Ironbark Tonic: a shield of bark, iron-rimmed (damage taken down).
+  ironbarkTonic: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2 20 5v6.2c0 5-3.4 8.6-8 10.6-4.6-2-8-5.6-8-10.6V5z" fill="#6b4426" stroke="#9aa3ab" stroke-width="1.6"/><path d="M8.3 6.5c.8 3-.6 5.4.4 9M12 5.2c-.7 3.6.8 6.8-.2 12M15.7 6.5c-.6 2.6.7 5-.3 8.4" stroke="#3e2614" stroke-width="1.1" fill="none" stroke-linecap="round"/><path d="M6.4 9.4 12 7.8l5.6 1.6" stroke="#c9ced3" stroke-width="1.2" fill="none"/></svg>',
+  // Lumen Phial: a slim vial of light, rays around it (spells brighter).
+  lumenPhial: '<svg viewBox="0 0 24 24" aria-hidden="true"><g stroke="#ffe9a3" stroke-width="1.3" stroke-linecap="round"><path d="M12 1.2v2.2M4.2 6.2l1.6 1.2M19.8 6.2l-1.6 1.2M3 13.5h2M19 13.5h2"/></g><rect x="10" y="3.6" width="4" height="2.4" rx=".6" fill="#8a5a32"/><path d="M9.6 6h4.8v3.2c2.2 1.1 3.4 3.1 3.4 5.5 0 3.5-2.6 6.3-5.8 6.3s-5.8-2.8-5.8-6.3c0-2.4 1.2-4.4 3.4-5.5z" fill="#f5c542" stroke="#fff3c4" stroke-width="1"/><path d="M12 11.2l1 2.4 2.5.2-1.9 1.6.6 2.5-2.2-1.4-2.2 1.4.6-2.5-1.9-1.6 2.5-.2z" fill="#fffdf0"/></svg>',
+  // Clearroot Ampoule: a sealed green ampoule, pale roots in it (poison cleared).
+  clearrootAmpoule: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.6c1 2.2 1.6 3.6 1.6 5.2v1.4c2.6 1.3 4.2 3.8 4.2 6.7 0 4-2.6 7.5-5.8 7.5s-5.8-3.5-5.8-7.5c0-2.9 1.6-5.4 4.2-6.7V6.8c0-1.6.6-3 1.6-5.2z" fill="#4f9a5a" stroke="#c9f2c4" stroke-width="1"/><path d="M12 10.5v8.8M12 14.2l-2.6 2.6M12 15.6l2.8 2.2M12 12.4l2 1.6M12 17.6l-1.8 2" stroke="#eafbe3" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>',
+  // Hull Shield: a skiff's hull under a shield (the hull takes no damage).
+  hullShield: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.6 14.4h18.8l-2.8 5.6H5.4z" fill="#8a5a32" stroke="#3e2614" stroke-width="1"/><path d="M12 2.4 17.4 4.4v4.3c0 3.3-2.3 5.4-5.4 6.6-3.1-1.2-5.4-3.3-5.4-6.6V4.4z" fill="#3fb6c8" stroke="#d8f6fb" stroke-width="1.2"/><path d="M12 5.4v6.4M9.4 7.8h5.2" stroke="#0f3a42" stroke-width="1.4" stroke-linecap="round"/><path d="M1.6 21.4c2-1 4-1 6 0s4 1 6 0 4-1 6 0 2.6.5 3 .3" stroke="#7fc6e6" stroke-width="1.2" fill="none"/></svg>',
+};
+import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS, BUTTON_ITEMS, presetButton, setPresetButton, assignPresetItem, activeButton } from "./spell-slots.js?v=r299-f25a24dc4fb2";
+import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=r299-f25a24dc4fb2";
+import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=r299-f25a24dc4fb2";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r299-f25a24dc4fb2";
+import { worldStewardReport } from "./story.js?v=r299-f25a24dc4fb2";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r299-f25a24dc4fb2";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -210,8 +221,8 @@ import {
   perceived,
   wayfindingTargets,
   wayfindingCues,
-} from "./world.js?v=r291-4bc624609d78";
-import { warmWayfindingSignals } from "./world.js?v=r291-4bc624609d78";
+} from "./world.js?v=r299-f25a24dc4fb2";
+import { warmWayfindingSignals } from "./world.js?v=r299-f25a24dc4fb2";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
@@ -318,7 +329,7 @@ function showEventBanner(title, detail = "", kind = "discovery") {
 function updateWorldNotices() {
   if(game.defeatNotice){const notice=game.defeatNotice;game.defeatNotice=null;showEventBanner(notice.title,notice.detail,notice.kind);}
   {const done=takeCompletedReading();if(done)showEventBanner("RECITATION COMPLETE",`${done==="elders"?"The Elder Wanderers":READINGS[done].name} · Mastered`,"discovery");} // release 191 (Tim)
-  if(game.glimpseCue){const cue=game.glimpseCue;game.glimpseCue=null;const id=glimpseRun?null:glimpseFor(save,cue,game.rx,game.ry,Math.random);if(id)playGlimpse(id)} // release 193
+  if(game.glimpseCue){const cue=game.glimpseCue;game.glimpseCue=null;const id=glimpseRun?null:glimpseFor(save,cue,game.rx,game.ry,Math.random,{family:settings.familySafe});if(id)playGlimpse(id)} // release 193
   for (const e of game.enemies) if (!e.dead && (e.boss || e.apertureEncounter) && !announcedThreats.has(e.id)) {
     announcedThreats.add(e.id);
     showEventBanner(e.boss ? "MAJOR THREAT" : "CORRIDOR BREACH", e.kind.replace(/([A-Z])/g," $1").trim() + " has entered this section", "danger");
@@ -1087,7 +1098,7 @@ function renderTome(out){
   const elderRules=eldersHeard(save);if(elderRules.length){const es=document.createElement("section"),eh=document.createElement("h3"),en=document.createElement("p"),grid=document.createElement("div"),p=elderProgress(save);es.className="library-book";eh.textContent="The Elder Wanderers";en.className="lore-book"+(p.mastered?" mastered":"");en.textContent=`${p.found} of ${p.total} patterns${p.mastered?" · Mastered":""}`;grid.className="elder-grid";es.append(eh,en,grid);out.append(es);
     for(const rule of elderRules){const c=document.createElement("canvas");c.title=`Rule ${rule}`;grid.append(c);requestAnimationFrame(()=>paintRule(c,rule,"single",{cols:31,rows:16,reduceMotion:true,rowsOf:ruleRows}))}}
   // Release 193: Glimpses already seen can be seen again here (replays record nothing).
-  const seen=witnessedGlimpses(save);if(seen.length){const gs=document.createElement("section"),gh=document.createElement("h3");gs.className="library-book";gh.textContent="Glimpses";gs.append(gh);for(const id of seen){const row=settingRow(GLIMPSES[id].name,uiButton("See again",()=>playGlimpse(id,{replay:true,after:()=>openJournal("tome")})));gs.append(row)}out.append(gs)}
+  const seen=witnessedGlimpses(save).filter((id)=>glimpseAllowed(id,settings.familySafe));if(seen.length){const gs=document.createElement("section"),gh=document.createElement("h3");gs.className="library-book";gh.textContent="Glimpses";gs.append(gh);for(const id of seen){const row=settingRow(GLIMPSES[id].name,uiButton("See again",()=>playGlimpse(id,{replay:true,after:()=>openJournal("tome")})));gs.append(row)}out.append(gs)}
   // Release 191: a book appears only once you have heard it or met its reciter; the rest of the library stays unknown.
   for(const b of libraryBooks(save).filter((b)=>b.readers.length||b.voices.some((v)=>/[1-9a-f]/.test(save.lore.heard[v]||"")))){
     const sec=document.createElement("section"),bh=document.createElement("h3"),meta=document.createElement("p");sec.className="library-book";
@@ -1106,23 +1117,23 @@ function renderTome(out){
 async function renderSettings(category){const grid=document.createElement("div");grid.className="settings-grid";
   if(category==="Performance"){grid.append(settingRow("Quality mode",selectSetting("quality",[["auto","Auto"],["low","Low"],["balanced","Balanced"],["full","Full"]]),`Active: ${currentQuality()}. Low uses a stable 1× render scale; other modes cap at 2×.`),settingRow("Safe mode",toggleSetting("safeMode"),"Reversible low-load presentation mode."),settingRow("Weather detail",toggleSetting("weather"),"Allows ambient weather when the renderer supports it."),settingRow("Performance diagnostics",toggleSetting("diagnostics"),"Records frame timings after the next reload."))}
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
-  if(category==="Accessibility")grid.append(settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
+  if(category==="Accessibility")grid.append(settingRow("Child-safe Glimpses (no horror or violence scenes; creatures stay)",toggleSetting("familySafe")),settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r291-4bc624609d78",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r291-4bc624609d78\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r299-f25a24dc4fb2",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r299-f25a24dc4fb2\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
     // Release 193: preview every Glimpse (for judging them; nothing is recorded).
-    const glimpsePreviews=document.createElement("div");glimpsePreviews.className="settings-grid";for(const id of GLIMPSE_ORDER)glimpsePreviews.append(uiButton(GLIMPSES[id].name,()=>playGlimpse(id,{replay:true,after:()=>openOptions()})));
+    const glimpsePreviews=document.createElement("div");glimpsePreviews.className="settings-grid";for(const id of GLIMPSE_ORDER.filter((q)=>glimpseAllowed(q,settings.familySafe)))glimpsePreviews.append(uiButton(GLIMPSES[id].name,()=>playGlimpse(id,{replay:true,after:()=>openOptions()})));
     const gRow=document.createElement("div"),gText=document.createElement("span");gRow.className="setting-row";gText.innerHTML="<strong>Glimpse previews</strong><br><small>Play each first-person Glimpse. Previews do not count as finding them.</small>";gRow.append(gText,glimpsePreviews);grid.append(gRow);
    // Diagnostic probe (release 165): record five minutes of play, then copy the report.
    const probeNote=document.createElement("p");probeNote.className="options-note";const saved=storedProbeReport();
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r291-4bc624609d78",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r299-f25a24dc4fb2",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1602,7 +1613,7 @@ function openPack(tab) {
       title = document.createElement("strong"),
       text = document.createElement("p");
     row.className = "item consumable";
-    title.textContent = `${name} ×${save.consumables[type] || 0}`;
+    title.textContent = `${name} ×${save.consumables[type] || 0}`; if (ITEM_ICONS[type]) title.insertAdjacentHTML("afterbegin", `<span class="item-icon">${ITEM_ICONS[type]}</span>`); // release 293
     text.textContent = description;
     row.append(
       title,
@@ -1613,11 +1624,11 @@ function openPack(tab) {
         openPack();
       }),
     );
-    // Release r291-4bc624609d78: put the item on a preset's Build button (a preset set to Build cannot take one).
+    // Release 291: put the item on a preset's Build button (a preset set to Build cannot take one).
     if (BUTTON_ITEMS.includes(type)) for (let i = 0; i < PRESETS; i++) { const pb = presetButton(save, i), b = uiButton(`Preset ${i + 1}`, () => { const r = assignPresetItem(save, i, type); game.message = r.message; persist(); openPack("supplies"); }); b.classList.add("preset-pick"); if (pb.button !== "item") { b.disabled = true; b.title = `Preset ${i + 1}'s button is Build (change it in Arcanum → presets).`; } else if (pb.item === type) b.setAttribute("aria-current", "true"); row.append(b); }
     body.append(row);
   }
-  { // Release r291-4bc624609d78 (Tim: "I don't see crossing sigils in the supplies menu anymore"): they are listed again.
+  { // Release 291 (Tim: "I don't see crossing sigils in the supplies menu anymore"): they are listed again.
     const row = document.createElement("div"), title = document.createElement("strong"), text = document.createElement("p");
     row.className = "item consumable"; title.textContent = `Crossing Sigil ×${save.consumables.crossingSigil || 0}`; text.textContent = "Carries you out of a dungeon and across the corridor: open the Atlas inside a dungeon and travel.";
     row.append(title, text); body.append(row);
@@ -1956,7 +1967,7 @@ function updateHud(now) {
   // REPAIR beside a damaged skiff, and is barred (a red circle and slash over the hammer) when no build can be afforded.
   { const bb = hudEl('[data-action="build"]'), btn = activeButton(save); if (bb && btn.mode === "item") { // release 291: a preset's item button
       const n = btn.item ? save.consumables?.[btn.item] || 0 : 0; let glyph = bb.querySelector(".item-glyph"); if (!glyph) { glyph = document.createElement("span"); glyph.className = "item-glyph"; glyph.setAttribute("aria-hidden", "true"); bb.append(glyph); }
-      hudSet(glyph, "text", btn.item ? ITEM_GLYPHS[btn.item] || "•" : "?"); hudSet(bb, "class:item-mode", true); hudSet(bb, "class:spent", !n); hudSet(bb, "data-cooldown", btn.item ? `×${n}` : "ITEM"); hudSet(bb, "aria-label", btn.item ? `Use ${ITEM_NAMES[btn.item] || btn.item} (${n} left)` : "Item button: choose an item in Supplies");
+      if (glyph.dataset.item !== (btn.item || "")) { glyph.dataset.item = btn.item || ""; glyph.innerHTML = ITEM_ICONS[btn.item] || "?"; } hudSet(bb, "class:item-mode", true); hudSet(bb, "class:spent", !n); hudSet(bb, "data-cooldown", btn.item ? `×${n}` : "ITEM"); hudSet(bb, "aria-label", btn.item ? `Use ${ITEM_NAMES[btn.item] || btn.item} (${n} left)` : "Item button: choose an item in Supplies");
     } else if (bb) { const k = activeBuildKind(save), mend = !!game.mendTarget?.(); hudSet(bb, "class:item-mode", false); hudSet(bb, "aria-label", mend ? "Repair the skiff" : k ? `Build a ${BUILD.kinds[k].name.toLowerCase()}` : "Nothing to build with"); hudSet(bb, "data-cooldown", mend ? "REPAIR" : k ? k.toUpperCase() : ""); hudSet(bb, "data-kind", k || "none"); hudSet(bb, "class:spent", !mend && !k); } } // release 265
   // Spell slots A and B (release 113): each shows its castable's symbol in its attribute colour.
   for (const [action, slot] of [["spell", "a"], ["spell2", "b"]]) {
@@ -2268,7 +2279,7 @@ function backPressed(){
 for(const d of [panel,atlas,journal,optionsPanel,pausePanel,$("#creatureViewer")])d?.addEventListener("cancel",(event)=>{event.preventDefault();backPressed()}); // release 291: the pause menu too (back on it resumes; before, the dialog closed and play stayed frozen)
 const backGuard=()=>{try{history.pushState({icBack:true},"")}catch{}};
 if(!history.state?.icBack)backGuard();
-// Release r291-4bc624609d78 (Tim: the back button "should open that pause menu... hit back again... unpause"): Chrome skips history
+// Release 291 (Tim: the back button "should open that pause menu... hit back again... unpause"): Chrome skips history
 // entries made without a user gesture when the back button is pressed, so the guard made at load could be passed over and
 // back left the app. The first touch or key arms a fresh guard that counts.
 {let armed=false;const arm=()=>{if(armed)return;armed=true;backGuard();removeEventListener("pointerdown",arm,true);removeEventListener("keydown",arm,true)};addEventListener("pointerdown",arm,true);addEventListener("keydown",arm,true)}
@@ -2324,7 +2335,7 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
  {const box=el('section','arc-branch arc-slots');box.append(el('h3','','Spell slots'));
   // Release 261: two spell presets; the slots below belong to the active one (the HUD's preset button switches them too).
   {const row=el('div','codex-tabs arc-presets');for(let i=0;i<PRESETS;i++){const b=uiButton(`Preset ${i+1}`,()=>{if((save.magicSkills.preset||0)!==i){const r=togglePreset(save);game.message=r.message;persist()}openSkills(atShrine)});if((save.magicSkills.preset||0)===i)b.setAttribute('aria-current','page');row.append(b)}box.append(row)
-   // Release r291-4bc624609d78: each preset also sets the Build button: Build, or Item (its item is chosen in Pack → Supplies).
+   // Release 291: each preset also sets the Build button: Build, or Item (its item is chosen in Pack → Supplies).
    for(let i=0;i<PRESETS;i++){const cur=presetButton(save,i),line=el('div','codex-tabs arc-preset-button');line.append(el('small','',`Preset ${i+1} · Build button:`));for(const mode of ['build','item']){const b=uiButton(mode==='build'?'Build':`Item${mode===cur.button&&cur.item?` (${ITEM_NAMES[cur.item]||cur.item})`:''}`,()=>{setPresetButton(save,i,mode);persist();openSkills(atShrine)});if(cur.button===mode)b.setAttribute('aria-current','true');line.append(b)}box.append(line)}}
   for(const q of ['a','b']){const c=slotted(save,q),row=el('div','arc-slot');const sym=el('span','slot-sym',c?c.symbol:'+');sym.style.color=c?c.color:'';row.append(el('strong','',q.toUpperCase()),sym,el('span','',c?c.name:'Empty — choose below'));if(c)row.append(elemBadge(c.attr));if(c){const clear=uiButton('Clear',()=>{const r=setSlot(save,q,null);game.message=r.message;persist();openSkills(atShrine)});row.append(clear)}box.append(row)}
   const pr=activePairing(save);box.append(el('p','',pr?`Pairing: ${pr.name} — ${pr.text}`:'Fill both slots: their two attributes form a Pairing, a small bonus while both stay set.'));
@@ -2369,31 +2380,36 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
  if(seen.length<Object.keys(PAIRINGS).length)body.append(el('p','arc-why','Set two castables of different (or matching) attributes in A and B to find more.'));
  if(atShrine){const r=uiButton(`Respec everything · ${respecCost(save)} lumen dust (you have ${save.materials.lumenDust||0})`,()=>{const q=respec(save);game.message=q.message;persist();openSkills(true)});r.className='arc-respec';body.append(r)}
  arcanumFooter()}
+// Release 295: armor glyphs change health and stamina, so the Wayfarer's maxima follow them at once.
+function syncArmorGlyphs(){syncCharacterStats(save);game.player.maxStamina=save.maxStamina;game.player.hp=Math.min(game.player.hp,save.maxHp);game.sync?.()}
 // Glyphs: tap a socket, then tap a glyph tile to set it; resonating pairs glow.
-function openGlyphs(){arcanumShell('glyphs','Glyphs & Resonances',`Glyph dust ${save.glyphDust||0}. Tap a socket, then a glyph to set it. The same glyph acts differently in a weapon, a tool or a spell; two in one host can wake a Resonance. Glyphs always come back out intact.`);
+function openGlyphs(){arcanumShell('glyphs','Glyphs & Resonances',`Glyph dust ${save.glyphDust||0}. Tap a socket, then a glyph to set it. The same glyph acts differently in a weapon, a tool, a spell, an Aperture skill or armor (armor glyphs give steady bonuses); two in one host can wake a Resonance. Glyphs always come back out intact.`);
  // one spell host per slotted spell (release 113); describeHost reads the readied spell, so it is set per host below
  const slotSpells=[...new Set(['a','b'].map(q=>slotted(save,q)).filter(c=>c?.kind==='spell').map(c=>c.id))],spellIds=slotSpells.length?slotSpells:[save.equippedSpell||'ember-ring'],readied=save.equippedSpell;
  for(const id of spellIds)save.spellGlyphs[id]||=Array(SPELL_SOCKETS).fill(null);
- const hosts=[['melee','Primary',save.equipment.primary,save.equipment.primary?.glyphs],['tool','Tool',save.equipment.secondary,save.equipment.secondary?.glyphs],...spellIds.map(id=>[`spell:${id}`,'Spell',SPELLS[id],save.spellGlyphs[id]])];
+ // Release 297: an Aperture skill slotted in A or B has its own two sockets (glyphs.ts SKILL_GLYPHS).
+ const slotSkills=[...new Set(['a','b'].map(q=>slotted(save,q)).filter(c=>c?.kind==='skill').map(c=>c.id))];for(const id of slotSkills)save.spellGlyphs[`skill:${id}`]||=Array(SPELL_SOCKETS).fill(null);
+ const hosts=[['melee','Primary',save.equipment.primary,save.equipment.primary?.glyphs],['tool','Tool',save.equipment.secondary,save.equipment.secondary?.glyphs],['armor','Armor',save.equipment.armor,save.equipment.armor?.glyphs],...spellIds.map(id=>[`spell:${id}`,'Spell',SPELLS[id],save.spellGlyphs[id]]),...slotSkills.map(id=>[`skill:${id}`,'Skill',APERTURE_SKILLS[id],save.spellGlyphs[`skill:${id}`]])];
  const altar=el('div','arc-altar');
- for(const[host,label,item,sockets]of hosts){const isSpell=host.startsWith('spell:');if(isSpell)save.equippedSpell=host.slice(6);const d=sockets?.length?describeHost(save,isSpell?'spell':host):{glyphs:[],resonances:[]};save.equippedSpell=readied;const lit=d.resonances.length>0,card=el('section','arc-host'+(lit?' resonant':''));
+ for(const[host,label,item,sockets]of hosts){const isSpell=host.startsWith('spell:');if(isSpell)save.equippedSpell=host.slice(6);const isSkill=host.startsWith('skill:'),d=isSkill?{glyphs:(sockets||[]).filter(Boolean).map(id=>({id,name:GLYPHS[id].name,text:GLYPHS[id].text.skill})),resonances:[]}:sockets?.length?describeHost(save,isSpell?'spell':host):{glyphs:[],resonances:[]};save.equippedSpell=readied;const lit=d.resonances.length>0,card=el('section','arc-host'+(lit?' resonant':''));
   card.append(el('small','arc-host-label',label),el('strong','',item?.name||'Nothing equipped'));
   const ring=el('div','arc-socket-row');
   if(!sockets?.length)ring.append(el('span','arc-empty',item?'No sockets.':'Equip one to set glyphs.'));
   else sockets.forEach((g,i)=>{const sel=arcanumSocket&&arcanumSocket.host===host&&arcanumSocket.index===i,b=el('button','arc-socket'+(g?' filled':'')+(sel?' focus':''),g?GLYPHS[g].sigil:'');b.type='button';if(g)b.style.setProperty('--glyph',GLYPHS[g].color);b.setAttribute('aria-label',`${label} socket ${i+1}: ${g?GLYPHS[g].name:'empty'}`);b.onclick=()=>{arcanumSocket=sel?null:{host,index:i};openGlyphs()};ring.append(b)});
   card.append(ring);
+  if(LAYOUT_HOSTS.includes(host)&&sockets?.length){const row=el('div','arc-layout');row.append(uiButton('Save layout',()=>{const r=saveGlyphLayout(save,host);game.message=r.message;persist();openGlyphs()}));if(save.glyphLayouts?.[host])row.append(uiButton('Apply saved layout',()=>{const r=applyGlyphLayout(save,host);game.message=r.message;if(host==='armor')syncArmorGlyphs();persist();openGlyphs()}));card.append(row)} // release 295
   for(const q of d.glyphs)card.append(el('p','arc-glyph-line',`${GLYPHS[q.id].sigil} ${q.name}: ${q.text}`));
   for(const r of d.resonances)card.append(el('p','arc-reso-line',save.glyphCodex.resonances[r.id]?`✦ ${r.name}: ${r.text}`:'✦ These glyphs hum together. Use them to learn what they make.'));
   altar.append(card)}
  body.append(altar);
  const target=arcanumSocket,hostKey=target?(target.host.startsWith('spell:')?target.host.slice(6):target.host):null,current=target?hosts.find(h=>h[0]===target.host)?.[3]?.[target.index]:null;
- const hint=el('p','arc-hint',target?`Choose a glyph for the ${target.host==='melee'?'primary':target.host.startsWith('spell:')?SPELLS[target.host.slice(6)].name:target.host} socket ${target.index+1}${current?`, or clear ${GLYPHS[current].name}`:''}.`:'Tap a socket above to start setting glyphs.');body.append(hint);
- if(target&&current){const clear=uiButton(`Clear ${GLYPHS[current].name}`,()=>{const r=socketGlyph(save,hostKey,target.index,null);game.message=r.message;persist();openGlyphs()});clear.className='arc-go';body.append(clear)}
+ const hint=el('p','arc-hint',target?`Choose a glyph for the ${target.host==='melee'?'primary':target.host==='armor'?'armor':target.host.startsWith('spell:')?SPELLS[target.host.slice(6)].name:target.host.startsWith('skill:')?APERTURE_SKILLS[target.host.slice(6)]?.name||'skill':target.host} socket ${target.index+1}${current?`, or clear ${GLYPHS[current].name}`:''}.`:'Tap a socket above to start setting glyphs.');body.append(hint);
+ if(target&&current){const clear=uiButton(`Clear ${GLYPHS[current].name}`,()=>{const r=socketGlyph(save,hostKey,target.index,null);game.message=r.message;if(hostKey==='armor')syncArmorGlyphs();persist();openGlyphs()});clear.className='arc-go';body.append(clear)}
  const pouch=el('div','arc-tiles');
  for(const id of GLYPH_IDS){const known=save.glyphCodex.glyphs[id],n=save.glyphs[id]||0,t=el('div','arc-tile'+(known?'':' unknown')+(target&&known&&n>0?' pickable':''));t.style.setProperty('--glyph',GLYPHS[id].color);
   t.append(el('span','arc-tile-sigil',known?GLYPHS[id].sigil:'?'),el('strong','',known?GLYPHS[id].name:'Unknown'),el('small','',known?`×${n}`:'Find one to learn it'));
-  if(known){const more=el('details','arc-tile-more'),sum=el('summary','','Effects');more.append(sum,el('p','',`Weapon: ${GLYPHS[id].text.melee}`),el('p','',`Tool: ${GLYPHS[id].text.tool}`),el('p','',`Spell: ${GLYPHS[id].text.spell}`));const ins=uiButton(`Inscribe · ${DUST_PER_GLYPH} dust`,()=>{const r=craftGlyph(save,id);game.message=r.message;persist();openGlyphs()});more.append(ins);t.append(more)}
-  if(target&&known&&n>0){const set=uiButton('Set here',()=>{const r=socketGlyph(save,hostKey,target.index,id);game.message=r.message;persist();arcanumSocket=null;openGlyphs()});set.className='arc-go';t.append(set)}
+  if(known){const more=el('details','arc-tile-more'),sum=el('summary','','Effects');more.append(sum,el('p','',`Weapon: ${GLYPHS[id].text.melee}`),el('p','',`Tool: ${GLYPHS[id].text.tool}`),el('p','',`Spell: ${GLYPHS[id].text.spell}`),el('p','',`Armor: ${GLYPHS[id].text.armor}`),el('p','',`Skill: ${GLYPHS[id].text.skill}`));const ins=uiButton(`Inscribe · ${DUST_PER_GLYPH} dust`,()=>{const r=craftGlyph(save,id);game.message=r.message;persist();openGlyphs()});more.append(ins);t.append(more)}
+  if(target&&known&&n>0){const set=uiButton('Set here',()=>{const r=socketGlyph(save,hostKey,target.index,id);game.message=r.message;if(hostKey==='armor')syncArmorGlyphs();persist();arcanumSocket=null;openGlyphs()});set.className='arc-go';t.append(set)}
   pouch.append(t)}
  body.append(el('h3','','Glyph pouch'),pouch);
  const found=Object.keys(RESONANCES).filter(id=>save.glyphCodex.resonances[id]);body.append(el('h3','',`Resonances · ${found.length} of ${Object.keys(RESONANCES).length}`));

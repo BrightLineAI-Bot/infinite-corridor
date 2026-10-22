@@ -4,7 +4,7 @@
 // always-on bonus while both are in place, discovered the first time the pair is slotted. Spells now keep their own
 // cooldowns (`magicSkills.cooldowns["spell:<id>"]`), so two spells can share the buttons.
 // Data and pure rules; game.ts casts, main.ts draws the buttons and the Arcanum.
-import { SPELLS, APERTURE_SKILLS, skillRank } from "./items.js?v=r291-4bc624609d78";
+import { SPELLS, APERTURE_SKILLS, skillRank } from "./items.js?v=r299-f25a24dc4fb2";
 
 export const ATTRIBUTES = {
   // icon (release 157): the element's mark beside every spell and discipline in the Arcanum.
@@ -68,7 +68,7 @@ export function ensureSlots(save) {
   ms.pairingsSeen = { ...(ms.pairingsSeen || {}) };
   // Release 261 spell presets (Tim: "two different presets for the spells... I'll just toggle it"): two saved A/B pairs;
   // the slots always hold the active one. Additive at schema 14: a save without presets starts with both as its slots.
-  // Release r291-4bc624609d78: each preset also says what the Build button does: "build", or "item" with the item it uses (additive).
+  // Release 291: each preset also says what the Build button does: "build", or "item" with the item it uses (additive).
   const pair = (q) => (q && typeof q === "object" ? { a: valid(q.a), b: valid(q.b), button: q.button === "item" ? "item" : "build", item: BUTTON_ITEMS.includes(q.item) ? q.item : null } : null);
   const list = Array.isArray(ms.presets) ? ms.presets.slice(0, PRESETS).map(pair) : [];
   ms.preset = ms.preset === 1 ? 1 : 0;
@@ -77,10 +77,10 @@ export function ensureSlots(save) {
   return ms.slots;
 }
 export const PRESETS = 2;
-// Release r291-4bc624609d78 (Tim, 2026-10-22: "you should also be able to select whether... the build button is a build or an item... on
+// Release 291 (Tim, 2026-10-22: "you should also be able to select whether... the build button is a build or an item... on
 // your preset... next to each item in the supplies menu... preset 1 or preset 2... if preset 1 is set to build, then only
 // preset 2 will be selectable"). The items the Build button can use.
-export const BUTTON_ITEMS = ["restorativeDraught", "ironbarkTonic", "lumenPhial", "clearrootAmpoule", "hullShield"];
+export const BUTTON_ITEMS = ["ironbarkTonic", "lumenPhial", "clearrootAmpoule"]; // release 293 (Tim): not the draught, which has its own Potion button; release 295: nor the Hull Shield, which Build already deploys at sea (hold)
 export function presetButton(save, i = save?.magicSkills?.preset || 0) { ensureSlots(save); const p = save.magicSkills.presets[i]; return { button: p.button === "item" ? "item" : "build", item: p.item || null }; }
 export function setPresetButton(save, i, mode) { ensureSlots(save); const p = save.magicSkills.presets[i]; if (!p) return null; p.button = mode === "item" ? "item" : "build"; return p.button; }
 // Gives `type` to preset i's Build button (only while that preset's button is set to Item); again, takes it off.

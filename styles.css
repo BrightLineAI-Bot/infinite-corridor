@@ -921,11 +921,15 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 /* Release 287 (Tim: "uniform... when you have something selected, it'll be golden"): one selected look for tabs and
    toggles everywhere in the menus. */
 button[aria-current], button[aria-selected="true"], .arc-kind.active, .options-tabs button[aria-selected="true"], .codex-tabs button[aria-current] { border-color: #e2c04f; color: #f6e3a6; background: #e2c04f1f; box-shadow: inset 0 0 0 1px #e2c04f; }
-/* Release r291-4bc624609d78: the Build button as a preset's item button: the item's glyph instead of the hammer. */
+/* Release 291: the Build button as a preset's item button: the item's glyph instead of the hammer. */
 .action-diamond button.build.item-mode .icon { display: none; }
 .action-diamond button.build .item-glyph { display: none; }
-.action-diamond button.build.item-mode .item-glyph { display: block; font-size: calc(var(--button) * .42); line-height: 1; color: #f1e6cd; text-shadow: 0 1px 2px #000; pointer-events: none; }
+.action-diamond button.build.item-mode .item-glyph { display: block; width: calc(var(--button) * .5); height: calc(var(--button) * .5); line-height: 0; filter: drop-shadow(0 1px 1px #000a); pointer-events: none; }
+.action-diamond button.build .item-glyph svg { width: 100%; height: 100%; }
+.consumable .item-icon { display: inline-block; width: 22px; height: 22px; vertical-align: -5px; margin-right: 6px; }
+.consumable .item-icon svg { width: 100%; height: 100%; }
 .consumable .preset-pick { margin-left: 6px; }
 .arc-preset-button { position: static; backdrop-filter: none; background: none; align-items: center; }
 .arc-preset-button small { color: #a99f8f; margin-right: 4px; }
 .consumable .preset-pick:disabled { opacity: .38; }
+.arc-layout { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; } .arc-layout button { font-size: 12px; padding: 4px 8px; } /* release 295 */

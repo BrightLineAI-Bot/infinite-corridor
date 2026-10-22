@@ -3,11 +3,11 @@
 // technology: chasm canyons, lava bogs, underground rivers, frozen grottoes with falling snow, bone crypts and fungal
 // hollows. It returns the same map contract as generator 4 (entry/exit, chest, trap, guardian spawn), so encounters,
 // discovery, completion and the monster pack work unchanged. Histories pinned to generators 2-4 never see it.
-import { rng, hashSeed } from "./random.js?v=r291-4bc624609d78";
-import { annotateDungeon, DUNGEON_SIZE_PROFILES } from "./dungeon-framework.js?v=r291-4bc624609d78";
-import { DUNGEON_LAYOUT_VERSION } from "./dungeon-variation.js?v=r291-4bc624609d78";
-import { carvePattern, stitchPattern, PATTERN_CATALOG, ORGANIC_CATALOG } from "./pattern-dungeons.js?v=r291-4bc624609d78";
-import { LANDSCAPE_VERSION, ensureReturnable, trappedTiles, addRamps } from "./landscape.js?v=r291-4bc624609d78";
+import { rng, hashSeed } from "./random.js?v=r299-f25a24dc4fb2";
+import { annotateDungeon, DUNGEON_SIZE_PROFILES } from "./dungeon-framework.js?v=r299-f25a24dc4fb2";
+import { DUNGEON_LAYOUT_VERSION } from "./dungeon-variation.js?v=r299-f25a24dc4fb2";
+import { carvePattern, stitchPattern, PATTERN_CATALOG, ORGANIC_CATALOG } from "./pattern-dungeons.js?v=r299-f25a24dc4fb2";
+import { LANDSCAPE_VERSION, ensureReturnable, trappedTiles, addRamps, valueNoise } from "./landscape.js?v=r299-f25a24dc4fb2";
 
 export const DUNGEON_GENERATOR_V5 = 5;
 export const LAYOUTS = ["spine", "hub", "ring", "cavern", "crypt", "descent"];
@@ -32,8 +32,21 @@ export const UNDER_THEMES = {
   frozen: { id: "frozen", name: "Frozen Grotto", weather: "snow", lore: "Snow falls from a ceiling no one has seen. Is this a place, or somewhere else?" },
   boneCrypt: { id: "boneCrypt", name: "Bone Crypt", weather: null, lore: "Rows of sealed sarcophagi. Some lids are not quite closed." },
   fungal: { id: "fungal", name: "Fungal Hollow", weather: "spores", lore: "Glowing caps the size of trees. The air is thick with drifting spores." },
+  // Theme pool 2 (release 299, Tim: "I like... that fungal grotto dungeon... interesting floor... mushrooms... we can design
+  // different dungeons to have different patterns like that. And different floors, it can be like alien"). Only dungeons
+  // generated from now on draw from it (history.themePool, pinned in game.ts generatePinnedDungeon).
+  starHive: { id: "starHive", name: "Starfall Hive", weather: "spores", lore: "Violet moss, still pools and crystal spires. Hexagonal platforms hum underfoot. Nothing here grew on this world." },
+  geode: { id: "geode", name: "Geode Hollow", weather: "glints", lore: "The cave is the inside of a stone, split open. Amethyst grows from every face." },
+  mosaic: { id: "mosaic", name: "Mosaic Sanctum", weather: "sunbreak", lore: "A temple floor of inlaid rosettes, columns in rows, still pools. Light comes from somewhere above." },
+  rootwood: { id: "rootwood", name: "Rootbound Deep", weather: "drip", lore: "Roots as thick as towers have broken through the ceiling and knotted across the floor." },
+  brass: { id: "brass", name: "Brass Engine", weather: "steam", lore: "Grated walkways over great buried gears. Pipes still breathe steam, though nothing has turned in an age." },
 };
-const THEME_IDS = Object.keys(UNDER_THEMES);
+// Which themes a history may draw, and how often a crossing is themed at all (percent), by its pinned theme pool.
+export const THEME_POOLS = {
+  1: { ids: ["chasm", "lavaBog", "river", "frozen", "boneCrypt", "fungal"], chance: 45 },
+  2: { ids: ["chasm", "lavaBog", "river", "frozen", "boneCrypt", "fungal", "starHive", "geode", "mosaic", "rootwood", "brass"], chance: 60 },
+};
+export const THEME_POOL_VERSION = 2;
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 // ---------------------------------------------------------------- carving primitives (width-aware)
@@ -166,7 +179,8 @@ export function generateExpeditionDungeon(seed, id, recipe = "hollow", options =
   };
   if (g.automaton) { map.automaton = { rule: g.automaton.rule, name: g.automaton.name, pattern: g.automaton.id || null }; map.name = `${g.automaton.name} · ${map.name}`; map.diagnostic.automatonRule = g.automaton.rule; }
   const themeRoll = hashSeed(`${seed}:${id}:under-theme`);
-  const theme = options.theme && UNDER_THEMES[options.theme] ? options.theme : options.theme === "none" ? null : themeRoll % 100 < 45 ? THEME_IDS[Math.floor(themeRoll / 100) % THEME_IDS.length] : null;
+  const themes = THEME_POOLS[options.themePool] || THEME_POOLS[1];
+  const theme = options.theme && UNDER_THEMES[options.theme] ? options.theme : options.theme === "none" ? null : themeRoll % 100 < themes.chance ? themes.ids[Math.floor(themeRoll / 100) % themes.ids.length] : null;
   if (theme) applyUnderTheme(map, theme, rand);
   return annotateDungeon(map, { generatorVersion: DUNGEON_GENERATOR_V5, sizeProfile });
 }
@@ -182,7 +196,7 @@ export function reachableInMap(map, from) {
   return seen;
 }
 const LETHAL = new Set(["abyss", "lava", "dungeonWater"]);
-const DECOR = new Set(["glowcap", "sarcophagus", "iceSpire"]); // theme blockers a rescue route may clear
+const DECOR = new Set(["glowcap", "sarcophagus", "iceSpire", "crystalSpire", "alienPool", "geodeCluster", "templePillar", "rootKnot", "brassPipe"]); // theme blockers a rescue route may clear
 
 function criticalPath(map) {
   const w = map.width, h = map.height, start = map.entry, goal = map.enemySpawns.find((e) => e.dungeonRole === "gateWarden") || map.entry;
@@ -198,9 +212,11 @@ function applyUnderTheme(map, theme, rand) {
   for (const o of [...map.objects, ...map.enemySpawns, map.entry]) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) keep.add((o.y + dy) * w + o.x + dx);
   const noise = (x, y, f, salt) => { const n = hashSeed(`${map.seed}:${map.id}:under:${salt}:${Math.floor(x / f)}:${Math.floor(y / f)}`) % 1000; return n / 1000; };
   const set = (i, props) => { T[i] = { ...T[i], ...props, landscape: "underlands" }; };
-  const floorOf = { chasm: "chasmLedge", lavaBog: "ashSlope", river: "riverStone", frozen: "frostFloor", boneCrypt: "ossuary", fungal: "fungusFloor" }[theme];
-  const wallOf = { chasm: "chasmWall", lavaBog: "volcanicRim", river: "riverWall", frozen: "iceWall", boneCrypt: "cryptWall", fungal: "fungusWall" }[theme];
-  for (let i = 0; i < T.length; i++) { const t = T[i]; if (t.blocked) set(i, { kind: wallOf }); else set(i, { kind: floorOf, elev: 0 }); }
+  const floorOf = { chasm: "chasmLedge", lavaBog: "ashSlope", river: "riverStone", frozen: "frostFloor", boneCrypt: "ossuary", fungal: "fungusFloor", starHive: "alienMoss", geode: "geodeFloor", mosaic: "templeMosaic", rootwood: "rootFloor", brass: "gratingFloor" }[theme];
+  const wallOf = { chasm: "chasmWall", lavaBog: "volcanicRim", river: "riverWall", frozen: "iceWall", boneCrypt: "cryptWall", fungal: "fungusWall", starHive: "hiveWall", geode: "geodeWall", mosaic: "templeWall", rootwood: "rootWall", brass: "brassWall" }[theme];
+  // Release r299-f25a24dc4fb2: patterned floors span tiles. detail picks the tile's quarter of a 2x2 motif (a rosette, a buried gear).
+  const quarter = (x, y) => (x & 1) + (y & 1) * 2, tiled = theme === "mosaic" || theme === "brass";
+  for (let i = 0; i < T.length; i++) { const t = T[i]; if (t.blocked) set(i, { kind: wallOf }); else set(i, { kind: floorOf, elev: 0, ...(tiled ? { detail: quarter(t.x, t.y) } : {}) }); }
   for (let i = 0; i < T.length; i++) {
     const t = T[i]; if (t.blocked || keep.has(i)) continue;
     const x = t.x, y = t.y, n = noise(x, y, 3, "a"), m = noise(x + 7, y + 3, 2, "b");
@@ -209,6 +225,11 @@ function applyUnderTheme(map, theme, rand) {
     else if (theme === "frozen") { if (n > .82) set(i, { kind: "iceSpire", blocked: true }); else set(i, { kind: m > .6 ? "snowPeak" : floorOf, elev: m > .72 ? 1 : 0 }); }
     else if (theme === "boneCrypt") { if (x % 3 === 0 && y % 2 === 0 && n > .35) set(i, { kind: "sarcophagus", blocked: true }); }
     else if (theme === "fungal") { if (n > .8) set(i, { kind: "glowcap", blocked: true }); }
+    else if (theme === "starHive") { if (n > .84) set(i, { kind: "crystalSpire", blocked: true }); else if (n < .1) set(i, { kind: "alienPool", blocked: true }); else if (m > .66) set(i, { kind: "alienPlatform", elev: 1 }); }
+    else if (theme === "geode") { if (n > .8) set(i, { kind: "geodeCluster", blocked: true }); }
+    else if (theme === "mosaic") { if (x % 4 === 2 && y % 4 === 2) set(i, { kind: "templePillar", blocked: true }); else if (n > .86) set(i, { kind: "templePool", detail: t.detail }); }
+    else if (theme === "rootwood") { const ridge = Math.abs(valueNoise(`${map.seed}:${map.id}:roots`, x / 4, y / 4) - .5); if (ridge < .07) set(i, { kind: "rootKnot", blocked: true }); }
+    else if (theme === "brass") { if (n > .82 && (x + y) % 2 === 0) set(i, { kind: "brassPipe", blocked: true }); }
   }
   if (theme === "river") { // a channel crossing the dungeon, bridged where the path crosses it
     const vertical = rand() < .5, at = Math.floor((vertical ? w : h) * (.35 + rand() * .3));
@@ -219,7 +240,7 @@ function applyUnderTheme(map, theme, rand) {
     }
   }
   // elevation stays climbable from the entry; stairs where the critical path changes level
-  if (theme === "chasm" || theme === "frozen") {
+  if (theme === "chasm" || theme === "frozen" || theme === "starHive") {
     for (let pass = 0; pass < 30; pass++) {
       const seen = reachableInMap(map, map.entry); let changed = false;
       for (let i = 0; i < T.length; i++) { const t = T[i]; if (seen[i] || t.blocked || LETHAL.has(t.kind) || !(t.elev > 0)) continue; let best = -1; for (const [dx, dy] of N4) { const j = (t.y + dy) * w + t.x + dx, nb = T[j]; if (nb && seen[j] && !nb.blocked) best = Math.max(best, (nb.elev || 0) + 1); } if (best >= 0 && best < t.elev) { t.elev = best; changed = true; } }

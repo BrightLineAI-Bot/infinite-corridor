@@ -1,20 +1,20 @@
-import { Game } from "./game.js?v=r291-4bc624609d78";
-import { freshSave, migrateSave } from "./types.js?v=r291-4bc624609d78";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r291-4bc624609d78";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r291-4bc624609d78";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r291-4bc624609d78";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r291-4bc624609d78";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r291-4bc624609d78";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r291-4bc624609d78";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r291-4bc624609d78";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r291-4bc624609d78";
-import { BIOMES, biomeFor } from "./landscape.js?v=r291-4bc624609d78";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r291-4bc624609d78";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r291-4bc624609d78";
-import { ensureConstellation } from "./constellation.js?v=r291-4bc624609d78";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r291-4bc624609d78";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r291-4bc624609d78";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r291-4bc624609d78";
+import { Game } from "./game.js?v=r299-f25a24dc4fb2";
+import { freshSave, migrateSave } from "./types.js?v=r299-f25a24dc4fb2";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r299-f25a24dc4fb2";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r299-f25a24dc4fb2";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r299-f25a24dc4fb2";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r299-f25a24dc4fb2";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r299-f25a24dc4fb2";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r299-f25a24dc4fb2";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r299-f25a24dc4fb2";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r299-f25a24dc4fb2";
+import { BIOMES, biomeFor } from "./landscape.js?v=r299-f25a24dc4fb2";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r299-f25a24dc4fb2";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r299-f25a24dc4fb2";
+import { ensureConstellation } from "./constellation.js?v=r299-f25a24dc4fb2";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r299-f25a24dc4fb2";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r299-f25a24dc4fb2";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r299-f25a24dc4fb2";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -24,7 +24,7 @@ export const LABORATORIES = [
   { id: "shelters", label: "Shelter & Building Gallery", status: "implemented", description: "Production shelters, displacement devices, and architectural districts." },
   { id: "ordinary-dungeon", label: "Ordinary Dungeon Lab", status: "implemented", description: "Production v4 deterministic exploration topology, discovery, ecology, traps, guardians, and traversal." },
   { id: "forge", label: "Glyph Forge Lab", status: "implemented", description: "Every glyph in the pouch, three-socket relic weapons and a line of practice foes; one scenario per Resonance comes pre-socketed." },
-  { id: "underlands", label: "Underlands & Relay Lab", status: "implemented", description: "Generator v5 crossings: six layout grammars, six bespoke underground environments with their weather, and a relay node ready to answer." },
+  { id: "underlands", label: "Underlands & Relay Lab", status: "implemented", description: "Generator v5 crossings: six layout grammars, eleven bespoke underground environments with their weather, and a relay node ready to answer." },
   { id: "deep-dungeon", label: "Legacy & Deep Dungeon Lab", status: "implemented", description: "Production deep-v2 archetypes, objectives, levels, shortcuts, and finales." },
   { id: "threefold", label: "Threefold Dungeon Lab", status: "implemented", description: "The production three-wing sealed expedition and its wardens." },
   { id: "landscape", label: "Landscape Pack", status: "implemented", description: "Nearest production overland section of each landscape biome: mountains with stair trails, dune seas, coasts, alien wilds and castles." },

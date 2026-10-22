@@ -1,19 +1,19 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r291-4bc624609d78";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r291-4bc624609d78";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r291-4bc624609d78";
-import { enemyMeleeGeometry } from "./combat.js?v=r291-4bc624609d78";
-import { ruleRows } from "./elders.js?v=r291-4bc624609d78";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r291-4bc624609d78";
-import { BOAT } from "./boats.js?v=r291-4bc624609d78";
-import { isMarineTile } from "./world-beasts.js?v=r291-4bc624609d78";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r291-4bc624609d78";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r291-4bc624609d78";
-import { liftAt, tileUnder } from "./landscape.js?v=r291-4bc624609d78";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r291-4bc624609d78";
-import { GATE_REVENANT } from "./monster-pack.js?v=r291-4bc624609d78";
-import { drawRelayNode } from "./relay-network.js?v=r291-4bc624609d78";
-import { structureOccupancy } from "./world.js?v=r291-4bc624609d78";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r291-4bc624609d78";
+import { astralBeamAnchors } from "./astral-worm.js?v=r299-f25a24dc4fb2";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r299-f25a24dc4fb2";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r299-f25a24dc4fb2";
+import { enemyMeleeGeometry } from "./combat.js?v=r299-f25a24dc4fb2";
+import { ruleRows } from "./elders.js?v=r299-f25a24dc4fb2";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r299-f25a24dc4fb2";
+import { BOAT } from "./boats.js?v=r299-f25a24dc4fb2";
+import { isMarineTile } from "./world-beasts.js?v=r299-f25a24dc4fb2";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r299-f25a24dc4fb2";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r299-f25a24dc4fb2";
+import { liftAt, tileUnder } from "./landscape.js?v=r299-f25a24dc4fb2";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r299-f25a24dc4fb2";
+import { GATE_REVENANT } from "./monster-pack.js?v=r299-f25a24dc4fb2";
+import { drawRelayNode } from "./relay-network.js?v=r299-f25a24dc4fb2";
+import { structureOccupancy } from "./world.js?v=r299-f25a24dc4fb2";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r299-f25a24dc4fb2";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1602,6 +1602,10 @@ export function render(ctx, g, w, h, now) {
     const count=budget.quality==="full"?16:8;ctx.strokeStyle="#9ec8d066";ctx.lineWidth=1.2;ctx.beginPath();for(let i=0;i<count;i++){const x=(i*131)%w,y=((i*67+motion*260)%(h+40))-20;ctx.moveTo(x,y);ctx.lineTo(x,y+7)}ctx.stroke();
   }else if(budget.weather&&g.map.weather==="spores"){
     const count=budget.quality==="full"?30:16;for(let i=0;i<count;i++){const x=((i*97+Math.sin(motion*.6+i)*30)%w+w)%w,y=((i*61+Math.cos(motion*.4+i)*30+motion*6)%h+h)%h;ctx.fillStyle=i%2?"#a6ffdc88":"#d9b8ff88";ctx.beginPath();ctx.arc(x,y,1.2+(i%3)*.5,0,7);ctx.fill()}
+  }else if(budget.weather&&g.map.weather==="glints"){ // release 299: Geode Hollow, light catching on crystal dust
+    const count=budget.quality==="full"?22:10;for(let i=0;i<count;i++){const p=Math.sin(motion*1.7+i*2.3);if(p<.55)continue;const x=(i*113+g.rx*29)%w,y=((i*71+motion*4)%h+h)%h,k=(p-.55)*9;ctx.fillStyle=i%2?"#f2e8ffcc":"#c7a8ffcc";ctx.fillRect(x-k,y-.6,k*2,1.2);ctx.fillRect(x-.6,y-k,1.2,k*2)}ctx.fillStyle="#2a1a4414";ctx.fillRect(0,0,w,h);
+  }else if(budget.weather&&g.map.weather==="steam"){ // release 299: Brass Engine, steam rising from the pipes
+    const count=budget.quality==="full"?12:6;for(let i=0;i<count;i++){const f=(motion*.18+i*.37)%1,x=(i*149+g.rx*31)%w+Math.sin(motion+i)*12,y=h*(1-f)-(i*53)%(h*.3);ctx.fillStyle=`rgba(220,214,200,${.16*(1-f)})`;ctx.beginPath();ctx.arc(x,y,10+f*26,0,7);ctx.fill()}ctx.fillStyle="#3a2a1210";ctx.fillRect(0,0,w,h);
   }else if(budget.weather&&g.map.weather==="sunbreak"){
     const glow=ctx.createLinearGradient(0,0,w*.8,h);glow.addColorStop(0,"#e7c87324");glow.addColorStop(.45,"#d8ad5220");glow.addColorStop(.7,"#0000");ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
   }

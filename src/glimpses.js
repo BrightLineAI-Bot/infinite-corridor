@@ -2,7 +2,7 @@
 // for a few seconds through someone's, or something's, eyes. This module holds the catalogue and the rules (where a
 // Glimpse may surface, how rarely it repeats, which fragment it gives); the drawing lives in glimpse-render.ts.
 // Pure data and rules: no DOM.
-import { readingAt, bookPieces, ensureLore, creditPiece } from "./lore.js?v=r291-4bc624609d78";
+import { readingAt, bookPieces, ensureLore, creditPiece } from "./lore.js?v=r299-f25a24dc4fb2";
 
 // `human` places a Glimpse on the drift from human residue (1) to the wholly unhuman (0). Near Ember Refuge the
 // Corridor offers mostly human Glimpses, far out mostly unhuman ones, but every region keeps some of the other end.
@@ -18,12 +18,12 @@ export const GLIMPSES = {
   edgeLight: { name: "Edge-Light", human: .05, seconds: 13, eyes: "none", reduced: [.2, .55, .9] },
   glyphRain: { name: "Glyph Rain", human: .2, seconds: 13, eyes: "other", reduced: [.1, .5, .62] },
   // Release 203: horror and violence (Tim: "some of the scenes need to be scenes of horror … some of them should be violent").
-  fourthFloor: { name: "The Fourth Floor", human: .95, seconds: 14, eyes: "two", reduced: [.2, .5, .8] },
-  theHunt: { name: "The Hunt", human: .4, seconds: 12, eyes: "heat", reduced: [.3, .66, .8] },
-  theTrench: { name: "The Trench", human: .9, seconds: 14, eyes: "two", reduced: [.3, .55, .7] },
-  theDrowning: { name: "The Drowning", human: .7, seconds: 13, eyes: "two", reduced: [.2, .5, .75] },
-  theWheat: { name: "The Wheat", human: .75, seconds: 13, eyes: "two", reduced: [.3, .6, .8] },
-  burningPlain: { name: "The Burning Plain", human: .3, seconds: 15, eyes: "two", reduced: [.2, .5, .8] },
+  fourthFloor: { name: "The Fourth Floor", human: .95, seconds: 14, eyes: "two", reduced: [.2, .5, .8], mature: true },
+  theHunt: { name: "The Hunt", human: .4, seconds: 12, eyes: "heat", reduced: [.3, .66, .8], mature: true },
+  theTrench: { name: "The Trench", human: .9, seconds: 14, eyes: "two", reduced: [.3, .55, .7], mature: true },
+  theDrowning: { name: "The Drowning", human: .7, seconds: 13, eyes: "two", reduced: [.2, .5, .75], mature: true },
+  theWheat: { name: "The Wheat", human: .75, seconds: 13, eyes: "two", reduced: [.3, .6, .8], mature: true },
+  burningPlain: { name: "The Burning Plain", human: .3, seconds: 15, eyes: "two", reduced: [.2, .5, .8], mature: true },
   // Release 219: the legends. Gilgamesh (Tim: "the legend of Gilgamesh, this is what I meant"): the plant of life lost to a snake.
   thePlant: { name: "The Plant at the Bottom", human: .85, seconds: 16, eyes: "two", reduced: [.08, .38, .76] },
 };
@@ -43,9 +43,13 @@ export function glimpseWeight(id, rx, ry) { return Math.max(GLIMPSE_FLOOR, 1 - M
 
 // Picks the Glimpse for a moment here, or null. Unseen Glimpses come first; once all are seen, one may return until
 // it has been seen GLIMPSE_MAX_SEEN times. `rand` returns [0, 1).
-export function pickGlimpse(save, rx, ry, rand) {
-  const unseen = GLIMPSE_ORDER.filter((id) => !glimpseSeen(save, id));
-  const pool = unseen.length ? unseen : GLIMPSE_ORDER.filter((id) => glimpseSeen(save, id) < GLIMPSE_MAX_SEEN);
+// Release 293 (Tim: "a child safety setting... it turns off the terrifying or horror glimpses... the creatures and monsters
+// are fine, but the glimpses that show like people getting killed... should be turned off"): with `family`, Glimpses marked
+// `mature` (release 203's horror and violence) never surface. They stay in the save; turning the setting off brings them back.
+export const glimpseAllowed = (id, family = false) => !!GLIMPSES[id] && !(family && GLIMPSES[id].mature);
+export function pickGlimpse(save, rx, ry, rand, { family = false } = {}) {
+  const order = GLIMPSE_ORDER.filter((id) => glimpseAllowed(id, family)), unseen = order.filter((id) => !glimpseSeen(save, id));
+  const pool = unseen.length ? unseen : order.filter((id) => glimpseSeen(save, id) < GLIMPSE_MAX_SEEN);
   if (!pool.length) return null;
   const weights = pool.map((id) => glimpseWeight(id, rx, ry)), total = weights.reduce((a, b) => a + b, 0);
   let roll = rand() * total;
@@ -53,9 +57,9 @@ export function pickGlimpse(save, rx, ry, rand) {
   return pool[pool.length - 1];
 }
 // Should this moment surface a Glimpse? Returns its id or null.
-export function glimpseFor(save, kind, rx, ry, rand) {
+export function glimpseFor(save, kind, rx, ry, rand, options = {}) {
   if (!(rand() < (GLIMPSE_CHANCE[kind] || 0))) return null;
-  return pickGlimpse(save, rx, ry, rand);
+  return pickGlimpse(save, rx, ry, rand, options);
 }
 
 // Records a Glimpse as witnessed at this section. The first sighting of a Glimpse gives the region one of its
