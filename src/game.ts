@@ -30,7 +30,7 @@ function applyFallenTreeCrossings(map) {
 }
 import { ensureSlots, slotted, pairingMods, slotReadiness, togglePreset, activeButton, slotTool, CASTABLES, availableCastables } from "./spell-slots.ts";
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
-import { diveGate, subGate, underwaterGate } from "./vehicle-gates.ts";
+import { diveGate, subGate, underwaterGate, mechGate, MECH, ensureMech, mechAbsorb, tickMech } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
 import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.ts";
@@ -2899,6 +2899,16 @@ export class Game {
     return { ok: true, message: this.message };
   }
 
+  // Release 317: ashore the frame builds the robot once, then calls it up and stows it (vehicle-gates.ts MECH).
+  toggleMech() {
+    const gate = mechGate(this.save); if (!gate.ok) { this.message = gate.why; return false; }
+    const m = ensureMech(this.save), c = this.save.consumables ||= {};
+    if (!m.built) { if (!(c.submersible > 0)) { this.message = "Forge a submersible frame first (Pack → Supplies): ashore it becomes your robot."; return false; } c.submersible -= 1; m.built = true; m.plate = MECH.plate; }
+    if (m.active) { m.active = false; this.message = "The robot folds away."; this.sync(); return true; }
+    if (m.cooldown > 0) { this.message = `The robot's plating is still knitting: ${Math.ceil(m.cooldown)}s.`; return false; }
+    m.active = true; this.message = "The robot unfolds around you. Hold Jump in the air to boost."; this.sync(); return true;
+  }
+  mechUp() { return this.save.mech?.active === true && !aboard(this.save); }
   // Release 311 (Tim: "these buoys... are connected... go to one buoy, and then go to another buoy... if you traverse the
   // dungeon"): the dive buoy the grotto's deep current carries you to — the nearest other buoy section, rings outward from
   // the one you dove at (dive:<seed>:<rx>:<ry>), found with the same rule diveSite uses. Returns a dungeonReturn place.
@@ -4044,6 +4054,7 @@ export class Game {
         ironbarkTonic: 0,
         lumenPhial: 0,
       });
+    if (type === "submersible" && !aboard(this.save)) return this.toggleMech(); // release 317: ashore, the frame calls up the robot
     if (!(c[type] > 0)) {
       this.message = "That supply is exhausted.";
       return false;
@@ -4143,6 +4154,9 @@ export class Game {
       if (now < this.jumpUntil) this.message = "Already airborne.";
       else this.jumpUntil = now + 520 + skillRank(this.save,"quickening") * 140;
     }
+    { const m = this.save.mech; this.mechBoosting = false; // release 317: in the robot, hold Jump in the air to boost
+      if (this.mechUp() && input.held?.("jump") && now < (this.jumpUntil || 0) + 60 && m.fuel > 0) { m.fuel = Math.max(0, m.fuel - dt); this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.mechBoosting = true; }
+      if (m?.built) tickMech(this.save, dt, !(now < (this.jumpUntil || 0))); }
     if (input.consume("potion")) this.useConsumable("restorativeDraught", now);
     if (input.consume("preset")) this.message = togglePreset(this.save).message; // release 261: swap spell presets 1 and 2
     if (input.consume("build")) { // release 269: beside (or aboard) a damaged skiff, Build patches the hull instead
@@ -4208,7 +4222,7 @@ export class Game {
       return;
     }
     const width = mapWidth(this.map, this.area);
-    let terrainHazard=footprintHazard(this.map,width,nx,ny);const aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0;
+    let terrainHazard=footprintHazard(this.map,width,nx,ny);const aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0||this.mechBoosting===true;/* release 317: the robot's boost carries over hazards */
     // Pits, lava and deep water are lethal to walk into (operator, release 101: the r97 brink guard is removed; rims,
     // fog hatching and level marks keep them readable instead).
     // Release 102: the Tidemantle lets the Wayfarer swim on surface water (stage one of the water traversal plan).
@@ -4476,6 +4490,7 @@ export class Game {
       p.hp = hpStart - kept;
       if (sunk) { p.sailVx = p.sailVy = 0; this.message = "The skiff founders and sinks! Swim for shore; the Shipwright will raise it at the dock."; }
     }
+    if (this.mechUp() && p.hp < hpStart) { const r = mechAbsorb(this.save, hpStart - p.hp); p.hp = hpStart - r.kept; if (r.broke) this.message = `The robot's plating gives out and it folds away. It can be called again in ${MECH.rebuild}s.`; } // release 317
     this._astralDamagePending=false;
     // Drain healing is settled only after the existing hull mitigation, never from intercepted damage.
     const drainCredits=this._astralDrainCredits||[],creditSum=drainCredits.reduce((n,c)=>n+c.amount,0),actualLoss=Math.max(0,hpStart-Math.max(0,p.hp));

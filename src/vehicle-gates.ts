@@ -36,3 +36,31 @@ export function droneGate(save) {
   const ok = listenerKills(save) >= VEHICLE_GATES.droneListeners;
   return { ok, why: ok ? "" : `A drone answers once the fourth Gate is unlocked (${Math.min(listenerKills(save), VEHICLE_GATES.droneListeners)}/${VEHICLE_GATES.droneListeners} Listeners).` };
 }
+
+// The robot ashore (release 317; Tim: "take the submersible... on land... walk around... boost over chasms... higher defenses...
+// your jump can be longer... hold jump and... boost... fly a little bit... everything else about your character still
+// works"). The same frame item: pressed ashore (with mechGate) the first time it is spent to build the robot; after that the
+// button calls it up and stows it. While it is up: its own `plate` takes hits first, the Wayfarer keeps `guard` less damage,
+// and holding Jump in the air burns `boost` seconds of thrust (refilled at `boostRecharge`/s on the ground) to fly over
+// chasms, water and lava. Plating regrows at `plateRegen`/s while stowed; broken, it cannot be called for `rebuild` s.
+// State: save.mech = { built, active, plate, fuel, cooldown } (additive).
+export const MECH = { plate: 60, guard: .1, boost: 1.6, boostRecharge: 1, plateRegen: 3, rebuild: 20 };
+export function ensureMech(save) {
+  const m = save.mech && typeof save.mech === "object" ? save.mech : {};
+  save.mech = { built: m.built === true, active: m.built === true && m.active === true, plate: Math.max(0, Math.min(MECH.plate, Number.isFinite(Number(m.plate)) ? Number(m.plate) : MECH.plate)),
+    fuel: Math.max(0, Math.min(MECH.boost, Number.isFinite(Number(m.fuel)) ? Number(m.fuel) : MECH.boost)), cooldown: Math.max(0, Number(m.cooldown) || 0) };
+  return save.mech;
+}
+// A blow of `loss` to the Wayfarer in the robot: returns what they keep; the plating takes the rest. Breaking it stows it.
+export function mechAbsorb(save, loss) {
+  const m = ensureMech(save); if (!m.active || !(loss > 0)) return { kept: loss, broke: false };
+  let kept = loss * (1 - MECH.guard); const take = Math.min(m.plate, kept); m.plate -= take; kept -= take;
+  if (m.plate <= 0) { m.plate = 0; m.active = false; m.cooldown = MECH.rebuild; return { kept, broke: true }; }
+  return { kept, broke: false };
+}
+export function tickMech(save, dt, grounded) {
+  const m = save.mech; if (!m || !m.built || !(dt > 0)) return;
+  m.cooldown = Math.max(0, (m.cooldown || 0) - dt);
+  if (!m.active) m.plate = Math.min(MECH.plate, m.plate + MECH.plateRegen * dt);
+  if (grounded) m.fuel = Math.min(MECH.boost, m.fuel + MECH.boostRecharge * dt);
+}

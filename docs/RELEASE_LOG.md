@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**317**
+**319**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 315 | Claude | `claude/dreamy-rubin-yn6q2p` | Vehicle progression gates (dive Infinite II; submersible Infinite II + Walker or Listener; underwater Infinite III + both); the submersible robot | Building. |
+| 317 | Claude | `claude/dreamy-rubin-yn6q2p` | The robot ashore: the frame calls up the robot on land (Infinite III + 2 Listeners), plating, guard, Jump boost over chasms | Building. |
+| 315 | Claude | `claude/dreamy-rubin-yn6q2p` | Vehicle progression gates (dive Infinite II; submersible Infinite II + Walker or Listener; underwater Infinite III + both); the submersible robot | Merged (PR #136). |
 | 313 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #135) | Skill buff bar: a running skill's button glows gold and drains as the effect ends | Merged; preview `r313-0adc609a8e70`. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 

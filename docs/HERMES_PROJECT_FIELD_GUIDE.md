@@ -2585,6 +2585,35 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 317: the robot ashore — 2026-10-22
+
+Tim, 2026-10-22:
+- "take the submersible... on land... at infinite tier 3 and after you've unlocked the second gate";
+- "walk around... boost over chasms... higher defenses";
+- "hold jump and... boost... fly a little bit";
+- "everything else about your character still works";
+- "the same robot button" turns the boat into the submersible at sea and deploys the robot on land.
+
+**CODE:**
+- **`vehicle-gates.ts`**:
+  - `MECH` (plate 60, guard .1, boost 1.6 s, boostRecharge 1/s, plateRegen 3/s, rebuild 20 s).
+  - `ensureMech` normalises the additive `save.mech = { built, active, plate, fuel, cooldown }`. `migrateSave` calls it only when the field exists; `freshSave` leaves it absent.
+  - `mechAbsorb(save, loss)`: guard first, then plating. At 0 plating the robot is stowed with the rebuild cooldown.
+  - `tickMech`: counts the cooldown down, regrows plating while stowed and refuels on the ground.
+- **`game.ts`**:
+  - `useConsumable("submersible")` while not aboard calls `toggleMech`. It checks `mechGate`, spends one frame the first time, then toggles.
+  - `mechUp()` is true only when the robot is active and the Wayfarer is not aboard.
+  - In the input step, holding Jump while airborne in the robot burns fuel and extends `jumpUntil`. `mechBoosting` joins the `aerial` hazard skip, so the boost crosses pits, water and lava.
+  - Damage settles after the hull guard through `mechAbsorb`.
+- **`renderer.ts`**: draws `drawSubmersible` on land around the Wayfarer, with flames lit and lifted while boosting, plus silver plating and blue fuel bars underneath.
+- Tests: `tests/robot-ashore-317.test.ts`.
+
+**BOUNDARY:**
+- Nothing about Rift Step, spells, skills, attacks or items changes in the robot.
+- At sea the frame behaves exactly as in 311/315.
+- `droneGate` (4 Listeners) is still unused: the drone is the next release.
+- No generator changes.
+
 ## Release 315: vehicle progression; the submersible robot — 2026-10-22
 
 Tim, 2026-10-22, with his answers: "Infinite 2" and "Infinite 3" are the bands named Infinite II and Infinite III (tiers 12 and 13); the skiff and the Tidemantle stay early. He also said:
