@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 303 — the Poison Crypt, a rare new dungeon (about 1 in 50 new crossings):
+  - Sealed crypt halls sunk in wide stretches of poison mire, with green gas jets along the way that burn and poison.
+  - In the far corner lies the lair of the Mire Heart: the Morphing Blob at half the strength of its overland self, waiting in a great pool of mire.
+  - Until you find the lair, the mire's pools keep bubbling up seeplings: small pieces of the Blob that grow as they go and crawl home to it. Each one that reaches the Heart makes it stronger. They burn and poison you if you touch them, so kill them on the way.
+  - Once you reach the lair, the pools go still.
+
 - Release 301 — more variety in new dungeons:
   - **Short plain dungeons.** About one new dungeon in four is now a small box of three to five plain rooms joined by a corridor or two: the entrance, the guardian's room, and little else.
   - **Special environments are rarer.** Most dungeons now have the ordinary look. About three in ten have a special environment (crypt, glacier, fungal hollow and the rest), and the five newest (Starfall Hive, Geode Hollow, Mosaic Sanctum, Rootbound Deep, Brass Engine) come up half as often as the others.

@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**303**
+**305**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 301 | Claude | `claude/dreamy-rubin-yn6q2p` | Plain short dungeons (layout pool 5); rarer themes (theme pool 3); Watcher's daises in large dungeons | Building. |
+| 303 | Claude | `claude/dreamy-rubin-yn6q2p` | The Poison Crypt: rare mire dungeon, seep pools, seeplings homing to the half-strength Mire Heart, gas jets | Building. |
+| 301 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #129) | Plain short dungeons (layout pool 5); rarer themes (theme pool 3); Watcher's daises in large dungeons | Merged. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
