@@ -13,12 +13,13 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**319**
+**321**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 319 | Claude | `claude/dreamy-rubin-yn6q2p` | The dungeon ladder: special dungeons, guardians, hordes, deeps and arenas unlock by Aperture tier, with tastes from Open; robot boost refill fix | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)

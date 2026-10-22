@@ -2585,6 +2585,47 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 319: the dungeon ladder — 2026-10-22
+
+Tim, 2026-10-22:
+- "for the different aperture levels... include some of the more special, unique and larger dungeons... you should always have access to some of the... unique dungeons, but they should be fewer or... smaller versions... a taste";
+- "a phased, gradual rollout... by... infinite tier 13, you should have basically everything";
+- then: "no taste... at level 2... Level one is just the normal base game... your tier system is fine... There should be a large... dungeon that's available at level one".
+
+**CODE:**
+- **`dungeon-ladder.ts`** (new module, in `scripts/build.mjs` and both precache lists):
+  - **`DUNGEON_LADDER`**: unlock tiers per kind (large, warp, newThemes, gatePredator, guardiansMid 3; guardiansAll, poisonCrypt, arena, threefold 6; deepV2, horde 9), `tasteFrom` 2, `tasteShare` .25, `ramp` .5→.8 at tier 12, `fullTier` 13, `largeQuiet` .25 and guardian pool sizes 5/10.
+  - **`ladderRoll(seed, id, kind, tier)`** returns "full", "taste", "quiet" (large only, below `tasteFrom`) or null. A fixed hash is compared with a rate that only rises, so a kind never closes as the tier climbs.
+  - **`crossingLadder`** returns `{ large, warp, newThemes }` for the generator.
+  - **`ladderGuardian`** narrows `GUARDIAN_POOL` by tier.
+  - **`entranceKind`** and **`unlockBandName`** serve the sealed entrances.
+- **`game.ts`**:
+  - **`generatePinnedDungeon`**: a fresh ordinary crossing records `history.ladder = { version, tier }`. That tier decides:
+    - the Poison Crypt (a taste is `{ taste: true }`, generated compact);
+    - `gatePredatorSpawnThreshold` (0 when locked);
+    - the guardian (`ladderGuardian`);
+    - the horde (`rollHorde`'s new `rung`);
+    - the generator's `options.ladder`.
+  - A deep-v1 history whose ladder rung is "taste" is generated with `wings: 1`.
+  - **`entranceSealed(o)`** runs before `enter` on deep-v1, deep-v2 and arena entrances. Once a history has visits or a ladder it is always open. Otherwise the current tier is rolled; a pass records `history.ladder = { version, tier, rung }` and a fail returns the band message.
+  - The boost now needs Jump released after it runs dry (`mechSpent`).
+- **`underlands.ts`** `generateExpeditionDungeon`, only with `options.ladder`:
+  - a natural extended crossing becomes standard unless `large` holds; "quiet" stays extended with no theme and no daises;
+  - daises need `warp`;
+  - a newer theme falls back to one of the original six unless `newThemes`.
+- **`world.ts`** `generateDeepDungeon` `wings: 1`: one hashed wing keeps its warden, and `finalGate.requires` names only it. The wing notice and journal count the wings the map has.
+- **`revenant-horde.ts`**: `rollHorde(..., rung)`. null means no horde, "taste" uses `HORDE.tasteTotal` [12, 18], and undefined keeps the old rule.
+- Tests:
+  - `tests/dungeon-ladder-319.test.ts`;
+  - `tests/poison-crypt-303.test.ts` now pins its crypt histories to Infinite III.
+
+**BOUNDARY:**
+- History with no `ladder` (every dungeon pinned before 319, the canonical crossing, dive grottoes) generates exactly as before.
+- At Infinite III a new crossing is identical to its pre-ladder self.
+- Deep-v2 and arena tastes are rarer but full size.
+- World beasts keep `BEAST_APERTURE`.
+- Spells, the constellation and Echo drop rates are unchanged. Echoes follow the guardians that drop them.
+
 ## Release 317: the robot ashore — 2026-10-22
 
 Tim, 2026-10-22:

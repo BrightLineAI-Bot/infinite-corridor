@@ -23,7 +23,7 @@ test('the crypt: a mire lair around the Heart, seep pools, gas jets, everything 
 test('rare, never plain, only in fresh histories, never also a horde', () => {
   let n = 0; for (let i = 0; i < 4000; i++) if (rollMireCrypt('R', `dungeon:R:g1:${i}:1:x`, 5)) { n++; assert.ok(!plainCrossing('R', `dungeon:R:g1:${i}:1:x`, 5)); }
   assert.ok(n > 30 && n < 120, `about 2% (${n}/4000)`); assert.equal(rollMireCrypt('R', 'dungeon:R:g1:1:1:x', 4), false, 'older layout pools never');
-  const s = freshSave('MC'); s.seed = 'MC'; let id = null;
+  const s = freshSave('MC'); s.seed = 'MC'; s.perception.aperture = 3255; /* release 319: the ladder opens every Poison Crypt from Infinite III */ let id = null;
   for (let i = 0; i < 4000 && !id; i++) if (rollMireCrypt('MC', `dungeon:MC:g1:${i}:3:x`, 5)) id = `dungeon:MC:g1:${i}:3:x`;
   const m = generatePinnedDungeon(s, id), h = s.consequences.dungeons[id];
   assert.deepEqual(h.mire, { version: 1, merged: 0, found: false }); assert.equal(m.theme, 'poisonCrypt');
@@ -34,7 +34,7 @@ test('rare, never plain, only in fresh histories, never also a horde', () => {
 test('seeplings rise, crawl home and swell the Heart; finding the lair stops them', () => {
   const s = freshSave('MC2'); s.seed = 'MC2'; s.level = 6; let id = null;
   for (let i = 0; i < 4000 && !id; i++) if (rollMireCrypt('MC2', `dungeon:MC2:g1:${i}:3:x`, 5)) id = `dungeon:MC2:g1:${i}:3:x`;
-  const g = new Game(s, 0); s.session.activeDungeonId = id; pinDungeonLayout(s, id); dungeonHistory(s, id).visits++; g.loadArea('dungeon');
+  const g = new Game(s, 0); s.session.activeDungeonId = id; dungeonHistory(s, id).ladder = { version: 1, tier: 13 }; /* release 319: found at Infinite III, where every Poison Crypt is open */ pinDungeonLayout(s, id); dungeonHistory(s, id).visits++; g.loadArea('dungeon');
   const heart = g.enemies.find((e) => e.mireHeart); assert.ok(heart);
   const full = beastProfileVitals(WORLD_BEASTS.morphingBlob, s, {}).hp; assert.ok(heart.maxHp < full * .7, `half strength (${heart.maxHp} of ${full})`);
   const lair = g.map.mireLair; g.player.x = g.map.entry.x; g.player.y = g.map.entry.y;
