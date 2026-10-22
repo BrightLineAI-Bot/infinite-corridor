@@ -13,22 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**301**
+**303**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 299 | Claude | `claude/dreamy-rubin-yn6q2p` | Five new dungeon environments (theme pool 2: Starfall Hive, Geode Hollow, Mosaic Sanctum, Rootbound Deep, Brass Engine) for new dungeons | Building. |
-| 297 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #127) | Glyph sockets for Aperture skills slotted in A or B (shape the skill; others infuse weapon hits while active) | Merged; preview `r297-71fa96bd4979`. |
-| 295 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #126) | Armor glyph sockets (existing glyphs, steady bonuses); gear glyph layouts; the Hull Shield leaves preset items | Merged; preview `r295-3613a0c190a5`. |
-| 293 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #125) | Child-safe Glimpses setting (hides horror and violence Glimpses); drawn item icons; the draught leaves preset items | Merged. |
+| 301 | Claude | `claude/dreamy-rubin-yn6q2p` | Plain short dungeons (layout pool 5); rarer themes (theme pool 3); Watcher's daises in large dungeons | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 299 | `r299-f25a24dc4fb2` | 2026-10-22 | Published with 293, 295 and 297 (none went live alone): child-safe Glimpses and item icons (293, PR #125); armour glyphs and glyph layouts (295, PR #126); glyphs for Aperture skills (297, PR #127); five new dungeon environments (299, PR #128). The pre-publish Fable review found no blockers. |
 | 291 | `r291-4bc624609d78` | 2026-10-22 | Published with 287 and 289 (neither went live alone): blocks as stairs and barriers, calm Crystal, dungeon caches, gold selection, Supplies line, four coffins (287, PR #122); the Watcher's sigil in the world (289, PR #123); preset item buttons, back button, Crossing Sigils (291, PR #124). The pre-publish Fable review found no blockers. |
 | 285 | `r285-d5a533b38404` | 2026-10-22 | Published with 281 and 283 (neither went live alone): buttons light on touch, probe logs dodges, Leech floor, stray ">" removed (281, PR #119); deadly dungeon water, grey rot band, crypt sigil, Supplies and Continuous build (283, PR #120); the Psychic Crystal comes out to fight (285, PR #121). The pre-publish Fable review found no blockers. |
 | 279 | `r279-880fe40d0946` | 2026-10-22 | The compass keeps its choice; Proving Ground test tile, environment list, Start test (PR #118). The pre-publish review found no blockers. |

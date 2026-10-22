@@ -46,7 +46,17 @@ export const THEME_POOLS = {
   1: { ids: ["chasm", "lavaBog", "river", "frozen", "boneCrypt", "fungal"], chance: 45 },
   2: { ids: ["chasm", "lavaBog", "river", "frozen", "boneCrypt", "fungal", "starHive", "geode", "mosaic", "rootwood", "brass"], chance: 60 },
 };
-export const THEME_POOL_VERSION = 2;
+// Pool 3 (release 301, Tim: "the basic dungeon, like tiles and setup, should be the default... everything else... a little
+// bit rare... the newer ones more rare, since they're a little bit more highly designed"): about 3 in 10 crossings are
+// themed, and each of the five newer environments comes up half as often as each of the first six.
+THEME_POOLS[3] = { ids: [...THEME_POOLS[1].ids, ...THEME_POOLS[1].ids, "starHive", "geode", "mosaic", "rootwood", "brass"], chance: 30 };
+export const THEME_POOL_VERSION = 3;
+// Layout pool 5 (release 301, Tim: "it's now actually surprising to get a short dungeon... we should have some short
+// dungeons... just short boxy dungeons... a few rooms... a corridor or two. And that's it"). A share of new crossings are
+// plain: a small box of a few rectangular rooms joined by corridors, never themed. The largest crossings may hold a pair
+// of Watcher's daises that, once both are found, carry you between them (Tim: "a dais... that has that symbol on it").
+export const PLAIN = { chance: 25, width: 26, height: 22, rooms: [3, 5] };
+export const WARP = { chance: 50, minApart: 16 };
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 // ---------------------------------------------------------------- carving primitives (width-aware)
@@ -135,6 +145,13 @@ function layout(kind, g, w, h, rand, start, goal, patternId = null, catalog = PA
     g.pattern = true;
     const floor = [...g.keys()].filter((i) => g[i]);
     for (let i = 0; i < 6 && floor.length; i++) { const c = floor[Math.floor(rand() * floor.length)]; rooms.push({ x: c % w, y: Math.floor(c / w) }); }
+  } else if (kind === "rooms") { // release 301: a plain box of a few rooms, corridors between them
+    const cols = 3, rows = 2, cells = []; for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) cells.push({ x: Math.round((c + .5) * w / cols), y: Math.round((r + .5) * h / rows) });
+    const n = PLAIN.rooms[0] + Math.floor(rand() * (PLAIN.rooms[1] - PLAIN.rooms[0] + 1)), picked = cells.filter((c) => Math.hypot(c.x - start.x, c.y - start.y) > 5 && Math.hypot(c.x - goal.x, c.y - goal.y) > 5).sort(() => rand() - .5).slice(0, Math.max(1, n - 2));
+    picked.sort((a, b) => Math.hypot(a.x - start.x, a.y - start.y) - Math.hypot(b.x - start.x, b.y - start.y));
+    let prev = start; for (const p of picked) { room(g, w, h, p.x, p.y, 2 + Math.floor(rand() * 2), "rect", rand); corridor(g, w, h, prev, p, 1, Math.floor(rand() * 2)); rooms.push(p); prev = p; }
+    corridor(g, w, h, prev, goal, 1, Math.floor(rand() * 2));
+    if (picked.length > 2 && rand() < .5) corridor(g, w, h, picked[0], picked[picked.length - 1], 1, 1); // sometimes a loop
   } else if (kind === "crypt") {
     const step = 6, ox = 3 + Math.floor(rand() * 3), oy = 3 + Math.floor(rand() * 3);
     for (let y = oy; y < h - 3; y += step) corridor(g, w, h, { x: 3, y }, { x: w - 4, y }, 1, 0);
@@ -156,8 +173,10 @@ function layout(kind, g, w, h, rand, start, goal, patternId = null, catalog = PA
 export function generateExpeditionDungeon(seed, id, recipe = "hollow", options = {}) {
   const requested = String(options.sizeProfile || ""), sizeProfile = DUNGEON_SIZE_PROFILES[requested] ? requested : ["compact", "standard", "extended"][hashSeed(`${seed}:${id}:size`) % 3];
   const profile = DUNGEON_SIZE_PROFILES[sizeProfile], variant = Math.max(0, Math.floor(Number.isFinite(Number(options.variant)) && options.variant !== undefined ? Number(options.variant) : hashSeed(`${seed}:${id}:variant`) % 997));
-  const rand = rng(`${seed}:expedition-v5:${id}:${recipe}:${sizeProfile}:v${variant}`), w = profile.width + Math.floor(rand() * 7) - 3, h = profile.height + Math.floor(rand() * 7) - 3;
-  const pool = options.layoutPool >= 3 ? LAYOUTS_V3 : options.layoutPool >= 2 ? LAYOUTS_V2 : LAYOUTS, grammar = options.layout && pool.includes(options.layout) ? options.layout : pool[hashSeed(`${seed}:${id}:layout-v5`) % pool.length];
+  const plain = options.layoutPool >= 5 && !options.layout && !options.theme && hashSeed(`${seed}:${id}:plain`) % 100 < PLAIN.chance;
+  const rand = rng(`${seed}:expedition-v5:${id}:${recipe}:${sizeProfile}:v${variant}`), w0 = profile.width + Math.floor(rand() * 7) - 3, h0 = profile.height + Math.floor(rand() * 7) - 3;
+  const w = plain ? PLAIN.width + (variant % 3) - 1 : w0, h = plain ? PLAIN.height + (variant % 3) - 1 : h0;
+  const pool = options.layoutPool >= 3 ? LAYOUTS_V3 : options.layoutPool >= 2 ? LAYOUTS_V2 : LAYOUTS, grammar = plain || options.layout === "rooms" ? "rooms" : options.layout && pool.includes(options.layout) ? options.layout : pool[hashSeed(`${seed}:${id}:layout-v5`) % pool.length];
   const corner = hashSeed(`${seed}:${id}:orientation`) % 4, corners = [[4, h - 5], [w - 5, h - 5], [w - 5, 4], [4, 4]];
   const start = { x: corners[corner][0], y: corners[corner][1] }, goal = { x: corners[(corner + 2) % 4][0], y: corners[(corner + 2) % 4][1] };
   const g = makeGrid(w, h), { rooms, dist } = layout(grammar, g, w, h, rand, start, goal, options.pattern, options.layoutPool >= 4 ? ORGANIC_CATALOG : PATTERN_CATALOG);
@@ -180,9 +199,24 @@ export function generateExpeditionDungeon(seed, id, recipe = "hollow", options =
   if (g.automaton) { map.automaton = { rule: g.automaton.rule, name: g.automaton.name, pattern: g.automaton.id || null }; map.name = `${g.automaton.name} · ${map.name}`; map.diagnostic.automatonRule = g.automaton.rule; }
   const themeRoll = hashSeed(`${seed}:${id}:under-theme`);
   const themes = THEME_POOLS[options.themePool] || THEME_POOLS[1];
-  const theme = options.theme && UNDER_THEMES[options.theme] ? options.theme : options.theme === "none" ? null : themeRoll % 100 < themes.chance ? themes.ids[Math.floor(themeRoll / 100) % themes.ids.length] : null;
+  if (options.layoutPool >= 5 && !plain && sizeProfile === "extended" && hashSeed(`${seed}:${id}:warp`) % 100 < WARP.chance) placeWarpDaises(map, dist);
+  const theme = options.theme && UNDER_THEMES[options.theme] ? options.theme : options.theme === "none" || grammar === "rooms" ? null : themeRoll % 100 < themes.chance ? themes.ids[Math.floor(themeRoll / 100) % themes.ids.length] : null;
   if (theme) applyUnderTheme(map, theme, rand);
-  return annotateDungeon(map, { generatorVersion: DUNGEON_GENERATOR_V5, sizeProfile });
+  if (grammar === "rooms") { map.plain = true; map.diagnostic.plain = true; }
+  return annotateDungeon(map, { generatorVersion: DUNGEON_GENERATOR_V5, sizeProfile: grammar === "rooms" ? "small" : sizeProfile });
+}
+
+// Two Watcher's daises far apart on the floor the entry reaches: one about a third of the way in, one deep. Each must be
+// found (attuned) before either carries you to the other (Game.useWarpDais).
+function placeWarpDaises(map, dist) {
+  const w = map.width, taken = new Set(map.objects.map((o) => o.y * w + o.x)), maxD = Math.max(...dist);
+  const guard = map.enemySpawns.find((e) => e.dungeonRole === "gateWarden"), clear = (i) => { const x = i % w, y = Math.floor(i / w); if (taken.has(i) || dist[i] < 0 || map.tiles[i].blocked) return false; if (guard && Math.hypot(x - guard.x, y - guard.y) < 5) return false; for (const [dx, dy] of N4) if (map.tiles[i + dy * w + dx]?.blocked) return false; return true; };
+  const near = (frac) => { let best = -1; for (let i = 0; i < dist.length; i++) if (clear(i) && (best < 0 || Math.abs(dist[i] - maxD * frac) < Math.abs(dist[best] - maxD * frac))) best = i; return best; };
+  const a = near(.3), b = near(.85);
+  if (a < 0 || b < 0 || Math.hypot(a % w - b % w, Math.floor(a / w) - Math.floor(b / w)) < WARP.minApart) return;
+  map.objects.push({ id: "warp-dais-a", kind: "warpDais", pair: "warp-dais-b", name: "Watcher's Dais", x: a % w, y: Math.floor(a / w), state: "dormant", actions: ["touch"] },
+    { id: "warp-dais-b", kind: "warpDais", pair: "warp-dais-a", name: "Watcher's Dais", x: b % w, y: Math.floor(b / w), state: "dormant", actions: ["touch"] });
+  map.warpDaises = true;
 }
 
 // ---------------------------------------------------------------- bespoke environments

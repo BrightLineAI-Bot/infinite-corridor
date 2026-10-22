@@ -2585,6 +2585,29 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 301: plain short dungeons; rarer themes; Watcher's daises — 2026-10-22
+
+Tim, 2026-10-22:
+- "it's now actually surprising to get a short dungeon... we should have some short dungeons... just short boxy dungeons... a few rooms... a corridor or two. And that's it".
+- "the basic dungeon, like tiles and setup, should be the default. And then everything else should be... a little bit... more rare"; the newer ones "should be more rare. Since they're a little bit more well-designed".
+- "for dungeons that are... the largest... a teleportation system... you can't teleport to one place until you found the other... a dias that you walk up to, that has that symbol on it".
+
+**CODE:**
+- **`underlands.ts`**:
+  - Layout pool 5: `PLAIN` (25% of crossings) makes a small box (about 26x22) with the `rooms` grammar: 3–5 rectangular rooms joined by 1-wide corridors, sometimes with one loop. Such a map is never themed, has `map.plain`, and is annotated with size profile "small".
+  - `THEME_POOLS[3]` themes 30% of crossings, listing the first six themes twice and the five newer ones once.
+  - `WARP` sets the chance (50%) that an "extended" crossing in pool 5 gets `placeWarpDaises`: two `warpDais` objects about 30% and 85% of the way along the entry's distance field, at least 16 tiles apart and away from the guardian.
+- **`game.ts`**:
+  - `generatePinnedDungeon` pins `layoutPool = 5` and `themePool = THEME_POOL_VERSION` (3) for never-generated histories only.
+  - `useWarpDais`: the first touch sets `worldFlags["warp-dais:<dungeon id>:<dais id>"]` (attuned). Once both are attuned, a touch moves the Wayfarer beside the other dais. `loadArea` restores the attuned state.
+- **`renderer.ts`**: `drawWarpDais` draws a stepped stone disc with the Watcher's sigil, dim when dormant, lit and haloed when attuned.
+
+**BOUNDARY:**
+- Histories pinned to layout pools 1–4 and theme pools 1–2 generate exactly as before.
+- No new hazards or monsters. Plain crossings keep the usual guardian, chest, trap and residents.
+- The daises use only `worldFlags`, so there is no save schema change.
+- Tests: `tests/plain-dungeons-301.test.ts`.
+
 ## Release 299: five new dungeon environments (theme pool 2) — 2026-10-22
 
 Tim, 2026-10-22: "I like... that fungal grotto dungeon... interesting floor... mushrooms... we can design different dungeons to have different patterns like that. And different floors, it can be like alien... just to add some variation to the dungeon".

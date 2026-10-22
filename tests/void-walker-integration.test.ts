@@ -107,7 +107,7 @@ test('a multi-level hunt stays on its original floor instead of spawning fresh-h
 
 
 test('real consumed-wall treasure glints stay removed after export, migration and dungeon reload',()=>{
- const save=saveOf();save.seed='VW-REVIEW-0';save.session.activeDungeonId='dungeon:VW-REVIEW-0:g1:5:0:review';save.session.area='dungeon';for(const id of WORLD_BEAST_IDS)save.worldBeasts[id].cooldown=999;
+ const save=saveOf();save.seed='VW-REVIEW-0';save.session.activeDungeonId='dungeon:VW-REVIEW-0:g1:5:0:review';save.session.area='dungeon';save.consequences.dungeons['dungeon:VW-REVIEW-0:g1:5:0:review']={layoutPool:4};/* release 301: written against layout pool 4 */for(const id of WORLD_BEAST_IDS)save.worldBeasts[id].cooldown=999;
  const game=new Game(save,0);game.loadArea('dungeon',false);const glints=game.map.wallGlints.map(q=>({...q}));
  const result=game.packWorld(.05,0).consumeVoidTerrain({}, {x:43,y:4},7);assert.equal(result.ok,true);const removed=glints.filter(q=>game.map.tiles[q.y*game.map.width+q.x].kind==='voidScar');assert.ok(removed.length>=3);
  assert.ok(removed.every(q=>!game.map.wallGlints.some(g=>g.x===q.x&&g.y===q.y)));
@@ -117,7 +117,7 @@ test('real consumed-wall treasure glints stay removed after export, migration an
 
 
 test('scarred dungeon revisits preserve one Aperture object per stable ID, original position and consumed state',()=>{
- const save=saveOf();save.seed='VW-REVIEW-0';save.session.activeDungeonId='dungeon:VW-REVIEW-0:g1:5:0:review';save.session.area='dungeon';for(const id of WORLD_BEAST_IDS)save.worldBeasts[id].cooldown=999;
+ const save=saveOf();save.seed='VW-REVIEW-0';save.session.activeDungeonId='dungeon:VW-REVIEW-0:g1:5:0:review';save.session.area='dungeon';save.consequences.dungeons['dungeon:VW-REVIEW-0:g1:5:0:review']={layoutPool:4};/* release 301: written against layout pool 4 */for(const id of WORLD_BEAST_IDS)save.worldBeasts[id].cooldown=999;
  const game=new Game(save,0),original=game.map.objects.filter(q=>q.id.startsWith('aperture-')).map(q=>({id:q.id,x:q.x,y:q.y}));assert.equal(original.length,3);
  game.map.objects.find(q=>q.id==='aperture-memory').state='read';game.map.objects.find(q=>q.id==='aperture-relic').state='taken';
  assert.equal(game.packWorld(.05,0).consumeVoidTerrain({}, {x:43,y:4},7).ok,true);

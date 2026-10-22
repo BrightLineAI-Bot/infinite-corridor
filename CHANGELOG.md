@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 301 — more variety in new dungeons:
+  - **Short plain dungeons.** About one new dungeon in four is now a small box of three to five plain rooms joined by a corridor or two: the entrance, the guardian's room, and little else.
+  - **Special environments are rarer.** Most dungeons now have the ordinary look. About three in ten have a special environment (crypt, glacier, fungal hollow and the rest), and the five newest (Starfall Hive, Geode Hollow, Mosaic Sanctum, Rootbound Deep, Brass Engine) come up half as often as the others.
+  - **Watcher's daises.** Some of the largest dungeons hold two stone daises bearing the Watcher's sigil, far apart. Touch one and its sigil wakes and looks for its twin. Once you have found and touched both, touching either one carries you to the other.
+
+  Dungeons you have already entered are unchanged.
+
 - Release 299 — five new dungeon environments, each with its own floor, decorations and air. They appear only in dungeons you have not entered yet, and more dungeons now get a special environment (about 6 in 10, up from about 4 in 10):
   - **Starfall Hive:** violet alien moss, still teal pools, crystal spires, and hexagonal platforms one jump up.
   - **Geode Hollow:** the inside of a split stone, with amethyst clusters that catch the light.
