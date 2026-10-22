@@ -2585,6 +2585,24 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 313: the skill buff bar — 2026-10-22
+
+Tim, 2026-10-22: "a timer on the skills to show how long they last... the button can... get illuminated, like a yellow... that color can just drain out... left to right... until the buff is over... depending on how long it is supposed to last".
+
+**CODE:**
+- **`game.ts`**: `activateApertureSkill` also stores `magicSkills.active.duration` (the starting `remaining`).
+- **`spell-slots.ts`**: `buffLeft(save, key)` gives how much is left, 0..1:
+  - for the running timed skill, `remaining / duration` (older saves without `duration` fall back to the skill's base duration);
+  - for Rift Step, `riftInfuse / RIFT_INFUSE_SECONDS` (equal to `glyphs.ts` `SKILL_INFUSE_AFTER_STEP`).
+- **`main.ts`**: `setBuffFill` keeps a `.buff-fill` span and the `buffing` class on the A/B buttons, and on the Build button when it holds a castable.
+- **`styles.css`**: a right-anchored gold fill whose width shrinks as the effect runs out, plus a gold glow.
+
+**BOUNDARY:**
+- Cooldowns and their countdown are unchanged.
+- Spells are instant, so they show no bar.
+- `duration` is an additive field inside the existing `magicSkills.active`.
+- Tests: `tests/skill-buff-bar-313.test.ts`.
+
 ## Release 311: the submersible — 2026-10-22
 
 Tim, 2026-10-22:

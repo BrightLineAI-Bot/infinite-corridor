@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**313**
+**315**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 311 | Claude | `claude/dreamy-rubin-yn6q2p` | The submersible: cinder-iron frame, plating, 5% guard, dive-dodge, buoy diving, deep current to the next buoy | Building. |
+| 313 | Claude | `claude/dreamy-rubin-yn6q2p` | Skill buff bar: a running skill's button glows gold and drains as the effect ends | Building. |
+| 311 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #134) | The submersible: cinder-iron frame, plating, 5% guard, dive-dodge, buoy diving, deep current to the next buoy | Merged; preview `r311-f82b84f1e1d4`. |
 | 309 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #133) | Tap-to-target lock; Build, item or spell in any of the three preset slots | Merged. |
 | 307 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #132) | Boss balance (half health, 90% damage, four tries, no Blob regeneration); tiered boss poise | Merged. |
 | 305 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #131) | The Far Sleep made strange: dream terrain past depth 35 for unexplored sections | Merged. |
