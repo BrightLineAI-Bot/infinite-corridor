@@ -1,19 +1,19 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r299-f25a24dc4fb2";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r299-f25a24dc4fb2";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r299-f25a24dc4fb2";
-import { enemyMeleeGeometry } from "./combat.js?v=r299-f25a24dc4fb2";
-import { ruleRows } from "./elders.js?v=r299-f25a24dc4fb2";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r299-f25a24dc4fb2";
-import { BOAT } from "./boats.js?v=r299-f25a24dc4fb2";
-import { isMarineTile } from "./world-beasts.js?v=r299-f25a24dc4fb2";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r299-f25a24dc4fb2";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r299-f25a24dc4fb2";
-import { liftAt, tileUnder } from "./landscape.js?v=r299-f25a24dc4fb2";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r299-f25a24dc4fb2";
-import { GATE_REVENANT } from "./monster-pack.js?v=r299-f25a24dc4fb2";
-import { drawRelayNode } from "./relay-network.js?v=r299-f25a24dc4fb2";
-import { structureOccupancy } from "./world.js?v=r299-f25a24dc4fb2";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r299-f25a24dc4fb2";
+import { astralBeamAnchors } from "./astral-worm.js?v=r311-f82b84f1e1d4";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r311-f82b84f1e1d4";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r311-f82b84f1e1d4";
+import { enemyMeleeGeometry } from "./combat.js?v=r311-f82b84f1e1d4";
+import { ruleRows } from "./elders.js?v=r311-f82b84f1e1d4";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r311-f82b84f1e1d4";
+import { BOAT } from "./boats.js?v=r311-f82b84f1e1d4";
+import { isMarineTile } from "./world-beasts.js?v=r311-f82b84f1e1d4";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r311-f82b84f1e1d4";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r311-f82b84f1e1d4";
+import { liftAt, tileUnder } from "./landscape.js?v=r311-f82b84f1e1d4";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r311-f82b84f1e1d4";
+import { GATE_REVENANT } from "./monster-pack.js?v=r311-f82b84f1e1d4";
+import { drawRelayNode } from "./relay-network.js?v=r311-f82b84f1e1d4";
+import { structureOccupancy } from "./world.js?v=r311-f82b84f1e1d4";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r311-f82b84f1e1d4";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -234,6 +234,16 @@ function drawWatcherTomb(ctx, o, s, now) {
   watcherSigil(ctx, cx, cy, s * .17, s, open ? .25 : .95, open ? "#6d6680" : "#f4f0ff");
   ctx.restore();
   if (!open) { ctx.strokeStyle = `rgba(236,230,255,${.45 + pulse * .35})`; ctx.lineWidth = Math.max(1.5, s * .035); ctx.beginPath(); ctx.ellipse(cx, (o.y - .32) * s - pulse * s * .04, s * .24, s * .07, 0, 0, Math.PI * 2); ctx.stroke(); }
+}
+// Release 301: a Watcher's dais, a round stepped stone with the sigil inlaid; dim while dormant, lit and haloed once attuned.
+function drawWarpDais(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .55) * s, lit = o.state === "attuned", pulse = .5 + .5 * Math.sin(now / 480);
+  ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(cx, cy + s * .14, s * .5, s * .2, 0, 0, Math.PI * 2); ctx.fill();
+  for (const [r, top, c0, c1] of [[.5, .1, "#77708a", "#4a4458"], [.4, 0, "#a39cb6", "#6c6680"]]) { const g = ctx.createLinearGradient(cx - s * r, 0, cx + s * r, 0); g.addColorStop(0, c0); g.addColorStop(1, c1); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy - top * s, s * r, s * r * .42, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#2a2433"; ctx.lineWidth = 1; ctx.stroke(); }
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(1, .45); if (lit) { ctx.shadowColor = "#d8c8ff"; ctx.shadowBlur = s * (.15 + pulse * .12); }
+  watcherSigil(ctx, 0, 0, s * .2, s, lit ? .95 : .4, lit ? "#f4f0ff" : "#3a3448"); ctx.restore();
+  if (lit) { ctx.strokeStyle = `rgba(216,200,255,${.35 + pulse * .35})`; ctx.lineWidth = Math.max(1.5, s * .03); ctx.beginPath(); ctx.ellipse(cx, cy - s * (.55 + pulse * .05), s * .22, s * .06, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = `rgba(216,200,255,${.08 + pulse * .06})`; ctx.beginPath(); ctx.moveTo(cx - s * .3, cy); ctx.lineTo(cx - s * .16, cy - s * .55); ctx.lineTo(cx + s * .16, cy - s * .55); ctx.lineTo(cx + s * .3, cy); ctx.closePath(); ctx.fill(); }
 }
 // Exact Supernova disks are static material on the cast-center ground plane. A single constant
 // visual lift preserves a true circle across uneven physical tiles and survives later revisits.
@@ -596,6 +606,56 @@ function drawSkiff(ctx, x, y, s, facing, now) {
 // round shields, the lower hull under a foaming waterline, a stem post curling up into a spiral from which a
 // lantern hangs, a little spiral galaxy behind its glass, a lower stern curl, and an upright mast with a striped square sail. It always shows its
 // side: heading up or down it keeps its last side-on bearing.
+// Release r311-f82b84f1e1d4: the submersible (Tim: "silver... a big viewpoint in the front, where you can see the Wayfarer... like Faye
+// Valentine's zipcraft... two larger arms and two smaller arms... you can see one arm poking above the water... robot
+// fingers"). part "back" is the hull under the Wayfarer; "front" the window's glass and the arms over them. Diving, the
+// craft is a dark shape under the surface with bubbles and one arm breaking the water.
+function drawSubmersible(ctx, x, y, s, facing, now, part = "back", diving = 0) {
+  const cx = (x + .5) * s, cy = (y + .7) * s + Math.sin(now / 420 + x) * s * .03, dir = facing === "left" ? -1 : 1, t = now / 1000;
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(dir, 1);
+  if (diving > 0) {
+    if (part === "back") {
+      ctx.globalAlpha = .55; ctx.fillStyle = "#0b2a3a"; ctx.beginPath(); ctx.ellipse(0, s * .12, s * .62, s * .24, 0, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1; ctx.strokeStyle = "#d8f2ff99"; ctx.lineWidth = 1; for (let i = 0; i < 5; i++) { const k = (t * 1.6 + i * .21) % 1; ctx.beginPath(); ctx.arc(s * (.3 - i * .14), s * (.05 - k * .5), s * (.03 + k * .03), 0, 7); ctx.stroke(); }
+      ctx.strokeStyle = "#c9cfd6"; ctx.lineWidth = s * .07; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(s * .1, s * .02); ctx.lineTo(s * .18, -s * .3); ctx.stroke(); // the arm breaks the surface
+      ctx.lineWidth = s * .035; ctx.beginPath(); ctx.moveTo(s * .18, -s * .3); ctx.lineTo(s * .1, -s * .42); ctx.moveTo(s * .18, -s * .3); ctx.lineTo(s * .27, -s * .4); ctx.stroke(); ctx.lineCap = "butt";
+    }
+    ctx.restore(); return;
+  }
+  if (part === "back") {
+    ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(0, s * .14, s * .7, s * .2, 0, 0, 7); ctx.fill();
+    const hull = ctx.createLinearGradient(0, -s * .3, 0, s * .2); hull.addColorStop(0, "#eef2f5"); hull.addColorStop(.5, "#b4bcc5"); hull.addColorStop(1, "#6d7680"); ctx.fillStyle = hull;
+    ctx.beginPath(); ctx.moveTo(-s * .62, s * .02); ctx.quadraticCurveTo(-s * .6, -s * .3, -s * .1, -s * .32); ctx.lineTo(s * .3, -s * .3); ctx.quadraticCurveTo(s * .7, -s * .2, s * .64, s * .06); ctx.quadraticCurveTo(s * .5, s * .2, 0, s * .2); ctx.quadraticCurveTo(-s * .5, s * .2, -s * .62, s * .02); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#3a4048"; ctx.lineWidth = Math.max(1, s * .03); ctx.stroke();
+    ctx.strokeStyle = "#ffffff99"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-s * .5, -s * .2); ctx.lineTo(-s * .05, -s * .24); ctx.stroke(); // highlight
+    ctx.fillStyle = "#8f979f"; ctx.beginPath(); ctx.moveTo(-s * .62, 0); ctx.lineTo(-s * .78, -s * .14); ctx.lineTo(-s * .78, s * .12); ctx.closePath(); ctx.fill(); // tail fin
+    ctx.fillStyle = "#ff9a3a"; ctx.globalAlpha = .5 + .3 * Math.sin(t * 9); ctx.beginPath(); ctx.arc(-s * .64, s * .02, s * .05, 0, 7); ctx.fill(); ctx.globalAlpha = 1; // thruster
+    ctx.strokeStyle = "#ffffff22"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(0, s * .2, s * .72, s * .07, 0, 0, 7); ctx.stroke(); // waterline
+    // the window frame where the Wayfarer sits
+    ctx.fillStyle = "#3a4048"; ctx.beginPath(); ctx.ellipse(s * .02, -s * .34, s * .34, s * .36, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#123848"; ctx.beginPath(); ctx.ellipse(s * .02, -s * .34, s * .29, s * .31, 0, 0, 7); ctx.fill();
+  } else {
+    // the lower hull again, over the Wayfarer's legs: only the window shows them
+    ctx.save(); ctx.beginPath(); ctx.rect(-s, -s * .1, s * 2, s); ctx.clip();
+    const hull = ctx.createLinearGradient(0, -s * .3, 0, s * .2); hull.addColorStop(0, "#eef2f5"); hull.addColorStop(.5, "#b4bcc5"); hull.addColorStop(1, "#6d7680"); ctx.fillStyle = hull;
+    ctx.beginPath(); ctx.moveTo(-s * .62, s * .02); ctx.quadraticCurveTo(-s * .6, -s * .3, -s * .1, -s * .32); ctx.lineTo(s * .3, -s * .3); ctx.quadraticCurveTo(s * .7, -s * .2, s * .64, s * .06); ctx.quadraticCurveTo(s * .5, s * .2, 0, s * .2); ctx.quadraticCurveTo(-s * .5, s * .2, -s * .62, s * .02); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#3a4048"; ctx.lineWidth = Math.max(1, s * .03); ctx.stroke(); ctx.restore();
+    ctx.strokeStyle = "#3a4048"; ctx.lineWidth = Math.max(1.5, s * .03); ctx.beginPath(); ctx.ellipse(s * .02, -s * .34, s * .33, s * .35, 0, Math.PI * .08, Math.PI * .92); ctx.stroke();
+    const glass = ctx.createRadialGradient(-s * .06, -s * .44, s * .02, s * .02, -s * .34, s * .3); glass.addColorStop(0, "#d8f6ff55"); glass.addColorStop(1, "#5fc6e033"); ctx.fillStyle = glass;
+    ctx.beginPath(); ctx.ellipse(s * .02, -s * .34, s * .29, s * .31, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#ffffffaa"; ctx.lineWidth = Math.max(1, s * .025); ctx.beginPath(); ctx.ellipse(s * .02, -s * .34, s * .22, s * .24, 0, Math.PI * 1.05, Math.PI * 1.45); ctx.stroke(); // glint
+    ctx.strokeStyle = "#c9cfd6"; ctx.lineWidth = Math.max(1.5, s * .03); ctx.beginPath(); ctx.ellipse(s * .02, -s * .34, s * .3, s * .32, 0, 0, 7); ctx.stroke(); // rim
+    // two big manipulator arms with pincers, two small tool arms below
+    const sway = Math.sin(t * 2.2) * .06; ctx.lineCap = "round";
+    for (const [bx, by, len, w, a] of [[s * .3, -s * .12, s * .36, s * .07, -.35 + sway], [s * .34, s * .02, s * .3, s * .06, .2 - sway], [s * .2, s * .12, s * .16, s * .035, .55], [s * .1, s * .14, s * .14, s * .03, .8]]) {
+      const ex = bx + Math.cos(a) * len, ey = by + Math.sin(a) * len; ctx.strokeStyle = "#7d858e"; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.strokeStyle = "#c9cfd6"; ctx.lineWidth = w * .5; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.strokeStyle = "#3a4048"; ctx.lineWidth = Math.max(1, w * .45); ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(a - .5) * w * 1.6, ey + Math.sin(a - .5) * w * 1.6); ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(a + .5) * w * 1.6, ey + Math.sin(a + .5) * w * 1.6); ctx.stroke();
+    }
+    ctx.lineCap = "butt";
+  }
+  ctx.restore();
+}
 function drawLongboat(ctx, x, y, s, facing, now, side = "right", part = "back") {
   const dir = facing === "left" || (facing !== "right" && side === "left") ? -1 : 1, rock = Math.sin(now / 480 + x) * s * .035;
   const cx = (x + .5) * s, gy = (y + .6) * s + rock, L = s * .86, D = s * .13, H = s * .26, wl = H * .6;
@@ -1279,6 +1339,7 @@ export function render(ctx, g, w, h, now) {
           if (o.kind === "wayfindingCue") waymark(ctx,o,s);
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
+          else if (o.kind === "warpDais") drawWarpDais(ctx, o, s, now); // release 301
           else if (o.kind === "watcherTomb") { const L = groundLift(o.x, o.y + .5) * s; ctx.save(); ctx.translate(0, -L); drawWatcherTomb(ctx, o, s, now); ctx.restore(); } // release 289 (lifted onto a shrine's eye)
           else if (o.kind === "traveler" && o.elder) drawElder(ctx, o, s, now);
           else if (o.kind === "traveler") {
@@ -1439,7 +1500,9 @@ export function render(ctx, g, w, h, now) {
         const shieldLeft = Number(g.save.boat.shield) || 0; // release 269: under the hull guard, the skiff is a longboat (flickering back in its last 10 s)
         if (p.facing === "left" || p.facing === "right") g.longboatSide = p.facing;
         g._longboatFront = shieldLeft > 0 && (shieldLeft > 10 || Math.floor(now / 200) % 2 === 1); // the near hull goes over the Wayfarer, below
-        (g._longboatFront ? drawLongboat : drawSkiff)(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right");
+        g._subDive = g.save.boat.sub ? Math.max(0, ((g.subDiveUntil || 0) - now) / 1000) : 0; // release 311
+        if (g.save.boat.sub && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "back", g._subDive);
+        else (g._longboatFront ? drawLongboat : drawSkiff)(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right");
         if (g.mendTarget?.()) repairTag(ctx, p.x, p.y - .9 - lift / s, s);
         // Hull gauge under the skiff: green to amber to red as the hull takes damage.
         const hull = Math.max(0, Math.min(1, (g.save.boat.hull || 0) / BOAT.maxHull)), bx = (p.x + .08) * s, by = (p.y + 1.12) * s, bw = s * .84, bh = Math.max(3, s * .09);
@@ -1449,11 +1512,13 @@ export function render(ctx, g, w, h, now) {
         // Release 263/269: the hull guard (the skiff itself becomes a longboat).
         const shield = Number(g.save.boat.shield) || 0;
         // Release 269: the guard's own bar, bright fuchsia, extends the hull gauge to the right; blows eat into it, and when it is gone so is the guard.
+        if (g.save.boat.sub) { const sw = bw * BOAT.sub.hull / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.subHull) || 0) / BOAT.sub.hull); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - sw - 3, by - 1, sw + 2, bh + 2); ctx.fillStyle = "#d8dee5"; ctx.fillRect(bx - 2 - sw * left, by, sw * left, bh); } // release 311: the submersible's plating, silver, to the left
         if (shield > 0) { const gw = bw * BOAT.shield.bonus / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.guardHull) || 0) / BOAT.shield.bonus); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx + bw + 1, by - 1, gw + 2, bh + 2); ctx.fillStyle = "#ff2fb4"; ctx.fillRect(bx + bw + 2, by, gw * left, bh); }
       }
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
+      const subHidden = g.area === "overworld" && g.save.boat?.aboard && g._subDive > 0; if (subHidden) { ctx.save(); ctx.globalAlpha = .12; } // release 311: under the surface
       actor(
         ctx,
         p.x,
@@ -1465,6 +1530,8 @@ export function render(ctx, g, w, h, now) {
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
+      if (subHidden) ctx.restore();
+      if (g.area === "overworld" && g.save.boat?.aboard && g.save.boat.sub && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "front", g._subDive); // release 311: the window's glass and the arms
       if (g._longboatFront && g.area === "overworld" && g.save.boat?.aboard) drawLongboat(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right", "front"); // release 269
       // Poisoned (release 165): the Wayfarer pulses green while poison lasts.
       if (g.save.elites?.status?.poison > 0) { const pulse = .5 + .5 * Math.sin(now / 160); ctx.fillStyle = `rgba(120,230,90,${.12 + pulse * .22})`; ctx.strokeStyle = `rgba(150,255,110,${.35 + pulse * .45})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y - lift / s + .35) * s, s * (.42 + pulse * .08), s * (.55 + pulse * .08), 0, 0, 7); ctx.fill(); ctx.stroke(); }
@@ -1602,6 +1669,8 @@ export function render(ctx, g, w, h, now) {
     const count=budget.quality==="full"?16:8;ctx.strokeStyle="#9ec8d066";ctx.lineWidth=1.2;ctx.beginPath();for(let i=0;i<count;i++){const x=(i*131)%w,y=((i*67+motion*260)%(h+40))-20;ctx.moveTo(x,y);ctx.lineTo(x,y+7)}ctx.stroke();
   }else if(budget.weather&&g.map.weather==="spores"){
     const count=budget.quality==="full"?30:16;for(let i=0;i<count;i++){const x=((i*97+Math.sin(motion*.6+i)*30)%w+w)%w,y=((i*61+Math.cos(motion*.4+i)*30+motion*6)%h+h)%h;ctx.fillStyle=i%2?"#a6ffdc88":"#d9b8ff88";ctx.beginPath();ctx.arc(x,y,1.2+(i%3)*.5,0,7);ctx.fill()}
+  }else if(budget.weather&&g.map.weather==="petals"){ // release 305: the Far Sleep, pale petals drifting down a violet dusk
+    const count=budget.quality==="full"?22:11;for(let i=0;i<count;i++){const f=(motion*(.05+(i%4)*.012)+i*.29)%1,x=((i*127+g.rx*37+Math.sin(motion*.7+i)*26)%w+w)%w,y=f*(h+20)-10,a=motion*1.4+i;ctx.fillStyle=["#f6e6ffcc","#ffe9b8cc","#d8f4ffcc","#ffd6eccc"][i%4];ctx.beginPath();ctx.ellipse(x,y,3,1.4,a,0,7);ctx.fill()}ctx.fillStyle="#3a2c6a1c";ctx.fillRect(0,0,w,h);
   }else if(budget.weather&&g.map.weather==="glints"){ // release 299: Geode Hollow, light catching on crystal dust
     const count=budget.quality==="full"?22:10;for(let i=0;i<count;i++){const p=Math.sin(motion*1.7+i*2.3);if(p<.55)continue;const x=(i*113+g.rx*29)%w,y=((i*71+motion*4)%h+h)%h,k=(p-.55)*9;ctx.fillStyle=i%2?"#f2e8ffcc":"#c7a8ffcc";ctx.fillRect(x-k,y-.6,k*2,1.2);ctx.fillRect(x-.6,y-k,1.2,k*2)}ctx.fillStyle="#2a1a4414";ctx.fillRect(0,0,w,h);
   }else if(budget.weather&&g.map.weather==="steam"){ // release 299: Brass Engine, steam rising from the pipes

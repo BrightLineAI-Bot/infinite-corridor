@@ -1,19 +1,19 @@
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r299-f25a24dc4fb2";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r311-f82b84f1e1d4";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
-// attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries"). Each one
+// attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.js?v=r299-f25a24dc4fb2";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r299-f25a24dc4fb2";
-import { sectionExits, apertureTier } from "./world.js?v=r299-f25a24dc4fb2";
-import { stageOneBeastReference } from "./stages.js?v=r299-f25a24dc4fb2";
+import { hashSeed } from "./random.js?v=r311-f82b84f1e1d4";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r311-f82b84f1e1d4";
+import { sectionExits, apertureTier } from "./world.js?v=r311-f82b84f1e1d4";
+import { stageOneBeastReference } from "./stages.js?v=r311-f82b84f1e1d4";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
   morphingBlob: {
-    kind: "morphingBlob", name: "The Morphing Blob", chance: .03, minDepth: 5, tries: 3, cooldownSlain: 20, cooldownEscaped: 26,
+    kind: "morphingBlob", name: "The Morphing Blob", chance: .03, minDepth: 5, tries: 4, cooldownSlain: 20, cooldownEscaped: 26,
     hitsToKill: 70, hpPerLevel: 30, damageShare: .22, speed: 1, attackGap: .18, staggerResistance: .95, rewardMarks: 170, rewardPerLevel: 17,
     patience: 180, home: "mire", retreatMoves: "walk",
     flee: "The Morphing Blob has had enough of you. It pulls itself together and flows away toward the Blight Mire.",
@@ -23,7 +23,7 @@ export const WORLD_BEASTS = {
     gone: "The Morphing Blob has fed enough on you, and seeps away. In time it will settle somewhere else.",
   },
   tremorWorm: {
-    kind: "tremorWorm", name: "The Tremor Worm", chance: .03, minDepth: 5, tries: 3, cooldownSlain: 20, cooldownEscaped: 26,
+    kind: "tremorWorm", name: "The Tremor Worm", chance: .03, minDepth: 5, tries: 4, cooldownSlain: 20, cooldownEscaped: 26,
     hitsToKill: 62, hpPerLevel: 28, damageShare: .22, speed: 1, attackGap: .2, staggerResistance: .95, rewardMarks: 175, rewardPerLevel: 17,
     patience: 180, home: "dunes", retreatMoves: "burrow",
     flee: "The Tremor Worm dives and swims away under the ground, toward the Dune Sea.",
@@ -33,7 +33,7 @@ export const WORLD_BEASTS = {
     gone: "The Tremor Worm has had its fill of you, and sinks away. In time it will surface somewhere else.",
   },
   mountainTurtle: {
-    kind: "mountainTurtle", name: "The Mountain Turtle", chance: .025, minDepth: 6, tries: 3, cooldownSlain: 22, cooldownEscaped: 28,
+    kind: "mountainTurtle", name: "The Mountain Turtle", chance: .025, minDepth: 6, tries: 4, cooldownSlain: 22, cooldownEscaped: 28,
     hitsToKill: 78, hpPerLevel: 34, damageShare: .24, speed: 1, attackGap: .35, staggerResistance: 1, rewardMarks: 190, rewardPerLevel: 19,
     patience: 180, home: "canyon", retreatMoves: "through",
     flee: "The Mountain Turtle turns its great head away and walks off toward the canyons, through whatever stands in its way.",
@@ -43,7 +43,7 @@ export const WORLD_BEASTS = {
     gone: "The Mountain Turtle has trampled you enough, and walks on. In time it will settle somewhere else.",
   },
   nanobotKnight: {
-    kind: "nanobotKnight", name: "The Nanobot Knight", chance: .025, minDepth: 6, tries: 3, cooldownSlain: 22, cooldownEscaped: 28,
+    kind: "nanobotKnight", name: "The Nanobot Knight", chance: .025, minDepth: 6, tries: 4, cooldownSlain: 22, cooldownEscaped: 28,
     hitsToKill: 60, hpPerLevel: 28, damageShare: .22, speed: 1.1, attackGap: .22, staggerResistance: .95, rewardMarks: 190, rewardPerLevel: 19,
     patience: 180, home: "glass", retreatMoves: "through",
     flee: "The Nanobot Knight comes apart into a red-black swarm and streams away toward the glass.",
@@ -55,7 +55,7 @@ export const WORLD_BEASTS = {
   // Release 257 (Tim 2026-10-21): a giant lightning robot. It retreats on foot to a chasm, where a storm cloud gathers
   // under it and carries it up into the sky.
   lightningGiant: {
-    kind: "lightningGiant", name: "The Lightning Giant", chance: .025, minDepth: 6, tries: 3, cooldownSlain: 22, cooldownEscaped: 28,
+    kind: "lightningGiant", name: "The Lightning Giant", chance: .025, minDepth: 6, tries: 4, cooldownSlain: 22, cooldownEscaped: 28,
     hitsToKill: 72, hpPerLevel: 32, damageShare: .24, speed: .65, attackGap: .3, staggerResistance: 1, rewardMarks: 190, rewardPerLevel: 19,
     patience: 180, home: "canyon", retreatMoves: "walk",
     flee: "The Lightning Giant lowers its club and strides away toward the chasms, sparks trailing from its coils.",
@@ -65,7 +65,7 @@ export const WORLD_BEASTS = {
     gone: "The Lightning Giant has had enough of you, and strides off into the weather. In time it will walk somewhere else.",
   },
   psychicCrystal: {
-    kind: "psychicCrystal", name: "The Psychic Crystal", chance: .025, minDepth: 5, tries: 3, cooldownSlain: 20, cooldownEscaped: 26,
+    kind: "psychicCrystal", name: "The Psychic Crystal", chance: .025, minDepth: 5, tries: 4, cooldownSlain: 20, cooldownEscaped: 26,
     hitsToKill: 58, hpPerLevel: 26, damageShare: .2, speed: 1, attackGap: .3, staggerResistance: .9, rewardMarks: 180, rewardPerLevel: 18,
     patience: 180, home: "water", retreatMoves: "through",
     dungeonChance: .35, dungeonMinLevel: 1, // Follow-on: level is a strength floor, not eligibility; water and depth still required
@@ -79,7 +79,7 @@ export const WORLD_BEASTS = {
   },
   // Initial balance proposal; owner requirements and open design decisions are in docs/void-walker-design.md.
   voidWalker: {
-    kind: "voidWalker", name: "The Void Walker", chance: .025, minDepth: 5, tries: 3, cooldownSlain: 20, cooldownEscaped: 26,
+    kind: "voidWalker", name: "The Void Walker", chance: .025, minDepth: 5, tries: 4, cooldownSlain: 20, cooldownEscaped: 26,
     hitsToKill: 60, hpPerLevel: 28, damageShare: .2, speed: 1.1, attackGap: .3, staggerResistance: .9, rewardMarks: 180, rewardPerLevel: 18,
     patience: 180, home: "dungeon", retreatMoves: "walk", dungeonChance: .3, dungeonMinLevel: 1,
     flee: "The Void Walker folds its rends shut and leaves toward a dungeon entrance.",
@@ -389,16 +389,19 @@ export function beastTuningReference(save, stats = {}) {
     maxHp: Math.max(BEAST_BASELINE.starterHp, (Number(save.maxHp) || 60) + (level - actualLevel) * 6),
     guard: Math.max(BEAST_BASELINE.starterGuard, Math.min(.75, Number(stats.damageReduction) || 0)) }); // release 275: Stage 1 beasts are held from tier 13 until three Listeners
 }
+// Release 307 (Tim: "everybody's health is too much... cut their health in half... decrease their overall damage output
+// by ten percent"): every world beast's vitals (and so the Questing Beast's and the Mire Heart's, derived from them) scale here.
+export const BEAST_BALANCE = { hp: .5, damage: .9 };
 export function beastProfileVitals(profile, save, stats = {}) {
   const r = beastTuningReference(save, stats);
-  return { hp: Math.max(Number(profile.nativeHpFloor)||0, Math.round(r.perHit * profile.hitsToKill + profile.hpPerLevel * r.level)),
-    damage: Math.max(Number(profile.nativeDamageFloor)||0, Math.ceil(BEAST_BASELINE.damageFloor / (1 - r.guard)), Math.round(r.maxHp * profile.damageShare / (1 - r.guard))) };
+  return { hp: Math.round(BEAST_BALANCE.hp * Math.max(Number(profile.nativeHpFloor)||0, Math.round(r.perHit * profile.hitsToKill + profile.hpPerLevel * r.level))),
+    damage: Math.round(BEAST_BALANCE.damage * Math.max(Number(profile.nativeDamageFloor)||0, Math.ceil(BEAST_BASELINE.damageFloor / (1 - r.guard)), Math.round(r.maxHp * profile.damageShare / (1 - r.guard)))) };
 }
 
 // Tunes a created combatant to the Wayfarer, as the Questing Beast is tuned.
 export function tuneWorldBeast(c, save, id, stats = {}) {
   const B = WORLD_BEASTS[id]; if (!B) return c;
-  const v = beastProfileVitals(B, save, stats), hp = Math.max(Number(c.maxHp) || 0, v.hp), damage = Math.max(Number(c.damage) || 0, v.damage);
+  const v = beastProfileVitals(B, save, stats), hp = Math.max(Math.round((Number(c.maxHp) || 0) * BEAST_BALANCE.hp), v.hp), damage = Math.max(Math.round((Number(c.damage) || 0) * BEAST_BALANCE.damage), v.damage); // release 307: the pack's own floor scales too
   Object.assign(c, { worldBeast: id, boss: true, hp, maxHp: hp, damage, beastTuningVersion: 1, staggerResistance: B.staggerResistance, speedMultiplier: B.speed, attackGap: B.attackGap, evasive: true });
   return c;
 }

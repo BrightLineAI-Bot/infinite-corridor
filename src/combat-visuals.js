@@ -1,4 +1,4 @@
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r299-f25a24dc4fb2";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r311-f82b84f1e1d4";
 export function drawRangedEffects(ctx,game,width,height) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [
@@ -45,6 +45,13 @@ export function drawRangedEffects(ctx,game,width,height) {
     ctx.beginPath();
     ctx.arc(x, y, fx.radius * s * (0.72 + 0.08 * Math.sin(fx.life * 12)), 0, 7);
     ctx.stroke();
+  }
+  const target = game.lockedTarget?.(); // release 309: brackets on the locked target
+  if (target) {
+    const [x, y] = toScreen({ x: target.x + .5, y: target.y + .45 }), r = Math.max(.6, (Number(target.bodyRadius) || .4) + .3, (Number(target.scale) || 1) * .45) * s, k = r * .45, t = performance.now() / 1000;
+    ctx.strokeStyle = "#ff6a5a"; ctx.lineWidth = 2.5; ctx.globalAlpha = .75 + .25 * Math.sin(t * 5); ctx.beginPath();
+    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { ctx.moveTo(x + sx * r, y + sy * (r - k)); ctx.lineTo(x + sx * r, y + sy * r); ctx.lineTo(x + sx * (r - k), y + sy * r); }
+    ctx.stroke(); ctx.globalAlpha = 1;
   }
   if (game.reticle?.life > 0) {
     const [x, y] = toScreen(game.reticle);

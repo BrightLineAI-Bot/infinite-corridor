@@ -1,20 +1,20 @@
-import { Game } from "./game.js?v=r299-f25a24dc4fb2";
-import { freshSave, migrateSave } from "./types.js?v=r299-f25a24dc4fb2";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r299-f25a24dc4fb2";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r299-f25a24dc4fb2";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r299-f25a24dc4fb2";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r299-f25a24dc4fb2";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r299-f25a24dc4fb2";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r299-f25a24dc4fb2";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r299-f25a24dc4fb2";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r299-f25a24dc4fb2";
-import { BIOMES, biomeFor } from "./landscape.js?v=r299-f25a24dc4fb2";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r299-f25a24dc4fb2";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r299-f25a24dc4fb2";
-import { ensureConstellation } from "./constellation.js?v=r299-f25a24dc4fb2";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r299-f25a24dc4fb2";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r299-f25a24dc4fb2";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r299-f25a24dc4fb2";
+import { Game } from "./game.js?v=r311-f82b84f1e1d4";
+import { freshSave, migrateSave } from "./types.js?v=r311-f82b84f1e1d4";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r311-f82b84f1e1d4";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r311-f82b84f1e1d4";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r311-f82b84f1e1d4";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r311-f82b84f1e1d4";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r311-f82b84f1e1d4";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r311-f82b84f1e1d4";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r311-f82b84f1e1d4";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r311-f82b84f1e1d4";
+import { BIOMES, biomeFor } from "./landscape.js?v=r311-f82b84f1e1d4";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r311-f82b84f1e1d4";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r311-f82b84f1e1d4";
+import { ensureConstellation } from "./constellation.js?v=r311-f82b84f1e1d4";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r311-f82b84f1e1d4";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r311-f82b84f1e1d4";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r311-f82b84f1e1d4";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 

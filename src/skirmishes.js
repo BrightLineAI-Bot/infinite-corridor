@@ -2,8 +2,8 @@
 // ashlings, a brute against a hound pack, hamlet wardens against the watchers. They fight each other, not the Wayfarer,
 // until the Wayfarer strikes one: that unit (and, for creatures, its nearby kin) turns on the player with its normal AI.
 // When a side is wiped out the battle is settled for good (a world flag); creature victors then roam as ordinary foes.
-import { rng, pick } from "./random.js?v=r299-f25a24dc4fb2";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r299-f25a24dc4fb2";
+import { rng, pick } from "./random.js?v=r311-f82b84f1e1d4";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r311-f82b84f1e1d4";
 
 export const SKIRMISH_VERSION = 1;
 export const SKIRMISH = { chance: 0.07, warChance: 0.25, minDepth: 3, reach: 1.2, cooldown: 1.4, damageScale: 0.35, speed: 1.5, provokeRadius: 4, spread: 4 };

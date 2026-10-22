@@ -1,4 +1,4 @@
-import { hashSeed } from './random.js?v=r299-f25a24dc4fb2';
+import { hashSeed } from './random.js?v=r311-f82b84f1e1d4';
 // Registered natural encounter source on the reviewed r251/Gate baseline; not yet released.
 // All numbers are provisional design proposals, not owner-specified balance.
 export const ASTRAL = Object.freeze({
@@ -17,7 +17,7 @@ export const ASTRAL = Object.freeze({
 });
 // Register only on the reviewed Gate baseline: inherits its strength floor, retries and Questing dominance.
 export const ASTRAL_PROFILE = Object.freeze({ kind: 'astralWorm', name: 'The Astral Worm', chance: .02,
-  minDepth: 5, tries: 3, cooldownSlain: 20, cooldownEscaped: 26, hitsToKill: 64, hpPerLevel: 30,
+  minDepth: 5, tries: 4, cooldownSlain: 20, cooldownEscaped: 26, hitsToKill: 64, hpPerLevel: 30,
   damageShare: .24, speed: 1.35, attackGap: .2, staggerResistance: .95, rewardMarks: 190, rewardPerLevel: 18,
   nativeHpFloor: 4760, nativeDamageFloor: 78, dungeonChance: .02, dungeonMinLevel: 1,
   patience: 180, home: 'wayglass', retreatMoves: 'astral-wayglass',

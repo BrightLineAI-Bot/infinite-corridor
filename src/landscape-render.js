@@ -1,7 +1,7 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { LIFT_PER_LEVEL, safeVoidScarTransition } from "./landscape.js?v=r299-f25a24dc4fb2";
+import { LIFT_PER_LEVEL, safeVoidScarTransition } from "./landscape.js?v=r311-f82b84f1e1d4";
 
 const TAU = Math.PI * 2;
 const cache = new Map();
@@ -11,7 +11,7 @@ export function setLandscapeClock(now) { clock = now / 1000; }
 // the animated overlays are left out (staticPass); each frame it then draws only those overlays on top.
 let staticPass = false;
 export function setLandscapeStaticPass(on) { staticPass = !!on; }
-const ANIMATED_KINDS = new Set(["lava", "seaCurrent", "deepOcean", "lakeWater", "toxicWater", "toxicMire", "swampWater", "ocean", "shallows", "glowcap", "fungusFloor", "abyss", "alienMoss", "alienPool", "crystalSpire", "alienPlatform", "geodeCluster", "templePool"]);
+const ANIMATED_KINDS = new Set(["lava", "seaCurrent", "deepOcean", "lakeWater", "toxicWater", "toxicMire", "swampWater", "ocean", "shallows", "glowcap", "fungusFloor", "abyss", "alienMoss", "alienPool", "crystalSpire", "alienPlatform", "geodeCluster", "templePool", "starVoid"]);
 export function landscapeTileAnimated(t) { return !!t?.landscape && !!PAINT[t.kind] && ANIMATED_KINDS.has(t.kind); }
 export function landscapeTileLift(t, s) { return t?.landscape ? Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * s : 0; }
 export function animateLandscapeTile(ctx, t, x, y, s) { if (landscapeTileAnimated(t) && t.kind !== "skyBridge") animate(ctx, t, x * s, y * s - landscapeTileLift(t, s), s); }
@@ -147,7 +147,7 @@ const PAINT = {
   fungusFloor(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#2a3326"], [1, "#1b2219"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 6; i++) { c.fillStyle = r() < .5 ? "#7bd8b877" : "#c49be877"; c.beginPath(); c.arc(r() * s, r() * s, 1 + r() * 1.5, 0, TAU); c.fill(); } },
   fungusWall(c, s, r) { c.fillStyle = "#151a14"; c.fillRect(0, 0, s, s); granite(c, s, r, "#00000088"); for (let i = 0; i < 3; i++) { c.fillStyle = "#6fd8b866"; c.beginPath(); c.arc(r() * s, r() * s, 2, 0, TAU); c.fill(); } },
   glowcap(c, s, r) { PAINT.fungusFloor(c, s, r); c.fillStyle = "#d7cfb8"; c.fillRect(s * .44, s * .45, s * .12, s * .5); const cap = grad(c, 0, s * .15, 0, s * .5, [[0, "#9ff2d6"], [1, "#3e9c84"]]); c.fillStyle = cap; c.beginPath(); c.ellipse(s * .5, s * .45, s * .42, s * .25, 0, Math.PI, 0); c.fill(); c.fillStyle = "#ffffff66"; for (let i = 0; i < 4; i++) c.fillRect(s * (.25 + i * .15), s * .32, 2, 2); },
-  // ---- Release r299-f25a24dc4fb2: theme pool 2 (Tim: "different dungeons... different patterns... different floors, it can be like alien").
+  // ---- Release 299: theme pool 2 (Tim: "different dungeons... different patterns... different floors, it can be like alien").
   // templeMosaic and gratingFloor draw one quarter of a 2x2 motif each (variant = the tile's quarter, set by underlands.ts),
   // so four tiles together make one rosette or one buried gear.
   hiveWall(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#2c1c44"], [1, "#160e24"]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#7a5cc066"; c.lineWidth = 1; const h = s * .25; for (let row = 0; row < 5; row++) for (let col = 0; col < 4; col++) { hexagon(c, col * h * 1.73 + (row % 2) * h * .87, row * h * 1.5 - h * .5, h); c.stroke(); } c.fillStyle = "#8ef6d044"; for (let i = 0; i < 2; i++) { c.beginPath(); c.arc(r() * s, r() * s, 1.5, 0, TAU); c.fill(); } },
@@ -183,6 +183,13 @@ const PAINT = {
   },
   brassWall(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#8a6a32"], [1, "#4a3618"]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#2a1e0e"; c.lineWidth = 1; c.strokeRect(.5, .5, s / 2 - 1, s - 1); c.strokeRect(s / 2 + .5, .5, s / 2 - 1, s - 1); c.fillStyle = "#d8b878"; for (const x of [.08, .42, .58, .92]) for (const y of [.08, .5, .92]) { c.beginPath(); c.arc(s * x, s * y, Math.max(1, s * .025), 0, TAU); c.fill(); } c.fillStyle = "#3a6a5a55"; c.fillRect(r() * s, r() * s, 4, 3); },
   brassPipe(c, s, r, variant = 0) { PAINT.gratingFloor(c, s, r, variant); const v = variant % 2 === 0; c.save(); if (!v) { c.translate(s, 0); c.rotate(Math.PI / 2); } for (const x of [.3, .66]) { c.fillStyle = grad(c, s * (x - .12), 0, s * (x + .12), 0, [[0, "#5a4220"], [.4, "#e0bc78"], [1, "#4a3418"]]); c.fillRect(s * (x - .12), 0, s * .24, s); c.fillStyle = "#3a2a14"; c.fillRect(s * (x - .15), s * .45, s * .3, s * .08); } c.restore(); c.strokeStyle = "#b8322a"; c.lineWidth = Math.max(1.5, s * .05); c.beginPath(); c.arc(s * .48, s * .5, s * .14, 0, TAU); c.stroke(); c.beginPath(); c.moveTo(s * .34, s * .5); c.lineTo(s * .62, s * .5); c.moveTo(s * .48, s * .36); c.lineTo(s * .48, s * .64); c.stroke(); },
+  // ---- Release 305: the Far Sleep (docs/narrative-bible.md, step 4). Pale sleep-meadow, white marble terraces and stairs,
+  // sleeper-stones, and starVoid: ground worn so thin the night sky shows through.
+  sleepMeadow(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#7e88b4"], [1, "#646c98"]]); c.fillRect(0, 0, s, s); c.lineWidth = 1; for (let i = 0; i < 12; i++) { const x = r() * s, y = r() * s; c.strokeStyle = r() < .5 ? "#a9b4dcaa" : "#5a6190aa"; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + 1.5, y - 2.5, x + (r() - .3) * 2, y - 4 - r() * 3); c.stroke(); } for (let i = 0; i < 4; i++) { c.fillStyle = ["#f6e6ffdd", "#ffe9b8dd", "#d8f4ffdd", "#ffd6ecdd"][i]; const x = r() * s, y = r() * s; for (let k = 0; k < 5; k++) { const a = k * TAU / 5; c.beginPath(); c.arc(x + Math.cos(a) * 1.3, y + Math.sin(a) * 1.3, 1, 0, TAU); c.fill(); } c.fillStyle = "#fff8d0"; c.fillRect(x - .5, y - .5, 1, 1); } },
+  dreamMarble(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#f2eefa"], [1, "#d4cfe4"]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#a89fc4"; c.lineWidth = 1; c.strokeRect(.5, .5, s - 1, s - 1); c.strokeStyle = "#b8b0d088"; for (let i = 0; i < 2; i++) { let x = r() * s, y = 0; c.beginPath(); c.moveTo(x, y); while (y < s) { y += s * .2; x += (r() - .5) * s * .25; c.lineTo(x, y); } c.stroke(); } c.fillStyle = "#c9a8ff33"; c.fillRect(s * .1, s * .1, s * .8, s * .08); },
+  dreamStair(c, s, r) { c.fillStyle = "#bdb6d2"; c.fillRect(0, 0, s, s); for (let y = 0; y < s; y += s / 4) { c.fillStyle = grad(c, 0, y, 0, y + s / 4, [[0, "#faf8ff"], [1, "#cfc8e2"]]); c.fillRect(1, y + 1, s - 2, s / 4 - 2); c.fillStyle = "#8f87ad66"; c.fillRect(1, y + s / 4 - 2, s - 2, 1.2); } },
+  starVoid(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#141033"], [1, "#05040f"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 9; i++) { c.fillStyle = r() < .2 ? "#ffe9b8" : r() < .5 ? "#cfd8ff" : "#8f88c8"; const k = r() < .15 ? 2 : 1.1; c.fillRect(r() * s, r() * s, k, k); } c.strokeStyle = "#b9a8e855"; c.lineWidth = 1; c.beginPath(); c.arc(s * (.2 + r() * .6), s * (.2 + r() * .6), s * .5, 0, .6); c.stroke(); },
+  sleeperStone(c, s, r) { PAINT.sleepMeadow(c, s, r); c.fillStyle = "#00000044"; c.beginPath(); c.ellipse(s * .56, s * .86, s * .3, s * .1, 0, 0, TAU); c.fill(); c.fillStyle = grad(c, s * .3, 0, s * .7, 0, [[0, "#e8e4f2"], [1, "#9c96b4"]]); c.beginPath(); c.moveTo(s * .32, s * .88); c.lineTo(s * .36, s * .18); c.quadraticCurveTo(s * .5, s * .04, s * .64, s * .18); c.lineTo(s * .68, s * .88); c.closePath(); c.fill(); c.strokeStyle = "#6c6688"; c.lineWidth = 1; c.stroke(); c.strokeStyle = "#7f78a8"; c.lineWidth = Math.max(1, s * .03); c.beginPath(); c.moveTo(s * .42, s * .42); c.quadraticCurveTo(s * .5, s * .36, s * .58, s * .42); c.stroke(); c.beginPath(); c.moveTo(s * .5, s * .5); c.lineTo(s * .5, s * .66); c.stroke(); },
   castleCourt(c, s, r) { flagstones(c, s, r, "#77706a", "#5b5550"); },
   castleStair(c, s, r) { c.fillStyle = "#4d4844"; c.fillRect(0, 0, s, s); for (let y = 0; y < s; y += s / 3) { c.fillStyle = grad(c, 0, y, 0, y + s / 3, [[0, "#a59c92"], [1, "#6f6861"]]); c.fillRect(2, y + 1, s - 4, s / 3 - 3); } },
   battlement(c, s, r) { flagstones(c, s, r, "#8c847b", "#6c655f"); c.fillStyle = "#3d3936"; for (let x = 0; x < s; x += s / 2) c.fillRect(x + 1, 0, s / 4, s * .14); },
@@ -196,7 +203,7 @@ function hexagon(c, x, y, rad) { c.beginPath(); for (let i = 0; i < 6; i++) { co
 function flagstones(c, s, r, a, b) { c.fillStyle = b; c.fillRect(0, 0, s, s); for (let y = 0; y < s; y += s / 2) for (let x = 0; x < s; x += s / 2) { c.fillStyle = r() < .5 ? a : "#827a71"; c.fillRect(x + 1, y + 1, s / 2 - 2, s / 2 - 2); } }
 function bricks(c, s, r) { c.strokeStyle = "#2c2926"; c.lineWidth = 1; for (let row = 0, y = 0; y < s; y += s / 4, row++) { c.beginPath(); c.moveTo(0, y); c.lineTo(s, y); c.stroke(); for (let x = (row % 2) * s / 4; x < s; x += s / 2) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + s / 4); c.stroke(); } } }
 
-const FACE = { underlands: ["#2e2a33", "#0d0b10"], volcanic: ["#3a2b25", "#140d0b"], mountains: ["#4f4a45", "#26231f"], desert: ["#a8743d", "#6b4422"], alien: ["#4a3878", "#1d1533"], castle: ["#57504a", "#2a2623"], coast: ["#a68b56", "#6d5933"] };
+const FACE = { underlands: ["#2e2a33", "#0d0b10"], volcanic: ["#3a2b25", "#140d0b"], mountains: ["#4f4a45", "#26231f"], desert: ["#a8743d", "#6b4422"], alien: ["#4a3878", "#1d1533"], dream: ["#c9c2dc", "#7d7698"], castle: ["#57504a", "#2a2623"], coast: ["#a68b56", "#6d5933"] };
 
 function makeCanvas(size) {
   if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(size, size);
@@ -284,13 +291,14 @@ function animate(ctx, t, px, py, s) {
   else if (t.kind === "glowcap" || t.kind === "fungusFloor") { const p = .3 + .25 * Math.sin(clock * 1.6 + d); ctx.fillStyle = `rgba(150,255,214,${p * .3})`; ctx.beginPath(); ctx.arc(px + s * .5, py + s * .45, s * .35, 0, TAU); ctx.fill(); }
   else if (t.kind === "geodeCluster") { const p = Math.max(0, Math.sin(clock * 2.4 + d * 1.7)); if (p > .6) { const a = (p - .6) * 2.5, x = px + s * (.35 + (d % 3) * .15), y = py + s * (.25 + ((d >> 2) % 3) * .12); ctx.fillStyle = `rgba(255,248,255,${a})`; ctx.fillRect(x - s * .07, y - .75, s * .14, 1.5); ctx.fillRect(x - .75, y - s * .07, 1.5, s * .14); } }
   else if (t.kind === "templePool") { ctx.strokeStyle = `rgba(230,252,255,${.25 + .15 * Math.sin(clock * 1.5 + d)})`; ctx.lineWidth = 1; const y = py + s * (.5 + .2 * Math.sin(clock * .9 + d)); ctx.beginPath(); ctx.moveTo(px + s * .18, y); ctx.quadraticCurveTo(px + s * .5, y - 2, px + s * .82, y); ctx.stroke(); }
+  else if (t.kind === "starVoid") { const p = .5 + .5 * Math.sin(clock * 1.3 + d * .9); ctx.fillStyle = `rgba(255,240,200,${p * .8})`; ctx.fillRect(px + s * ((d % 7) / 7 + .05), py + s * (((d >> 3) % 7) / 7 + .05), 1.6, 1.6); }
   else if (t.kind === "abyss") { const f = (clock * .25 + d * .17) % 1; ctx.fillStyle = `rgba(150,130,230,${.5 * (1 - f)})`; ctx.fillRect(px + s * ((d % 5) / 5 + .1), py + s * f, 1.5, 1.5); } // motes sinking into the dark
   else if (t.kind === "alienMoss" || t.kind === "alienPool" || t.kind === "crystalSpire") { const p = .35 + .3 * Math.sin(clock * 2.2 + d * .7); ctx.fillStyle = `rgba(120,255,214,${p * .35})`; ctx.beginPath(); ctx.arc(px + s * ((d % 5) / 5 + .1), py + s * (((d >> 3) % 5) / 5 + .1), s * .12, 0, TAU); ctx.fill(); }
   else if (t.kind === "alienPlatform") { ctx.strokeStyle = `rgba(233,225,255,${.4 + .3 * Math.sin(clock * 3 + d)})`; ctx.lineWidth = 1; hexagon(ctx, px + s / 2, py + s / 2, s * .48); ctx.stroke(); }
 }
 
 // Atlas colour for a section's landscape (null when plain).
-export function landscapeAtlasColor(biome) { return ({ mountains: "#d9e3ea", desert: "#d6b26e", coast: "#3f7fa3", alien: "#9a6fe0", castle: "#8a7f73", sea: "#1d4f7a", isles: "#4f9fb0", lake: "#4a90c8", swamp: "#5d6b3c", blight: "#7cbf3a" })[biome] || null; }
+export function landscapeAtlasColor(biome) { return ({ mountains: "#d9e3ea", desert: "#d6b26e", coast: "#3f7fa3", alien: "#9a6fe0", dream: "#b9a8e8", castle: "#8a7f73", sea: "#1d4f7a", isles: "#4f9fb0", lake: "#4a90c8", swamp: "#5d6b3c", blight: "#7cbf3a" })[biome] || null; }
 
 // Pit edges: every walkable tile beside lava, a chasm, a canyon or deep water gets a crumbling, lit lip on that side
 // and a shadow falling into the hazard, so a drop is never a surprise. Runs for every map, landscape or not.

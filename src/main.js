@@ -1,28 +1,29 @@
-import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind } from "./building.js?v=r299-f25a24dc4fb2";
-import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.js?v=r299-f25a24dc4fb2";
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r299-f25a24dc4fb2";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r299-f25a24dc4fb2";
-import { renderTimings } from "./renderer.js?v=r299-f25a24dc4fb2";
-import { createProbe, PROBE } from "./diagnostic-probe.js?v=r299-f25a24dc4fb2";
-import { vendorShop, buyFromVendor } from "./game.js?v=r299-f25a24dc4fb2";
-import { CREATURE_TRAITS } from "./combat.js?v=r299-f25a24dc4fb2";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=r299-f25a24dc4fb2";
-import { drawPackPortrait } from "./monster-render.js?v=r299-f25a24dc4fb2";
-import { landscapeAtlasColor } from "./landscape-render.js?v=r299-f25a24dc4fb2";
-import { hashSeed } from "./random.js?v=r299-f25a24dc4fb2";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r299-f25a24dc4fb2";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r299-f25a24dc4fb2";
-import { hamletSection, hamletIdentity } from "./settlements.js?v=r299-f25a24dc4fb2";
-import { linksKnown } from "./linked-dungeons.js?v=r299-f25a24dc4fb2";
-import { DIG } from "./digging.js?v=r299-f25a24dc4fb2";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces } from "./atlas-view.js?v=r299-f25a24dc4fb2";
-import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.js?v=r299-f25a24dc4fb2";
-import { startGlimpse, paintRule } from "./glimpse-render.js?v=r299-f25a24dc4fb2";
-import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r299-f25a24dc4fb2";
-import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=r299-f25a24dc4fb2";
-import { questingBeastTriesLeft } from "./questing-beast.js?v=r299-f25a24dc4fb2";
-import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=r299-f25a24dc4fb2";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r299-f25a24dc4fb2";
+import { BOAT, forgeSubmersible } from "./boats.js?v=r311-f82b84f1e1d4"; // release 311
+import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind } from "./building.js?v=r311-f82b84f1e1d4";
+import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.js?v=r311-f82b84f1e1d4";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r311-f82b84f1e1d4";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r311-f82b84f1e1d4";
+import { renderTimings } from "./renderer.js?v=r311-f82b84f1e1d4";
+import { createProbe, PROBE } from "./diagnostic-probe.js?v=r311-f82b84f1e1d4";
+import { vendorShop, buyFromVendor } from "./game.js?v=r311-f82b84f1e1d4";
+import { CREATURE_TRAITS } from "./combat.js?v=r311-f82b84f1e1d4";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind } from "./monster-pack.js?v=r311-f82b84f1e1d4";
+import { drawPackPortrait } from "./monster-render.js?v=r311-f82b84f1e1d4";
+import { landscapeAtlasColor } from "./landscape-render.js?v=r311-f82b84f1e1d4";
+import { hashSeed } from "./random.js?v=r311-f82b84f1e1d4";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r311-f82b84f1e1d4";
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r311-f82b84f1e1d4";
+import { hamletSection, hamletIdentity } from "./settlements.js?v=r311-f82b84f1e1d4";
+import { linksKnown } from "./linked-dungeons.js?v=r311-f82b84f1e1d4";
+import { DIG } from "./digging.js?v=r311-f82b84f1e1d4";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces } from "./atlas-view.js?v=r311-f82b84f1e1d4";
+import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.js?v=r311-f82b84f1e1d4";
+import { startGlimpse, paintRule } from "./glimpse-render.js?v=r311-f82b84f1e1d4";
+import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r311-f82b84f1e1d4";
+import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.js?v=r311-f82b84f1e1d4";
+import { questingBeastTriesLeft } from "./questing-beast.js?v=r311-f82b84f1e1d4";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding } from "./far-array.js?v=r311-f82b84f1e1d4";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r311-f82b84f1e1d4";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -137,6 +138,8 @@ setTimeout(() => {
         e.detail.clientX - r.left,
         e.detail.clientY - r.top,
       );
+    const hit = save.aimMode !== "build" && save.aimMode !== "act" && game.enemyAt(q.x, q.y); // release 309: tap a creature to lock on
+    if (hit) { game.lockTarget(hit.id); return; }
     game.aimAt(q.x, q.y);
     const direction = {
       x: q.x - game.player.x - 0.5,
@@ -175,7 +178,7 @@ setTimeout(() => {
     document.querySelector('[data-action="build"]')?.classList.toggle("selected", save.aimMode === "build");
   }, 100);
 }, 0);
-import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r299-f25a24dc4fb2";
+import { loadSave, saveGame, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r311-f82b84f1e1d4";
 import {
   Game,
   actionReadiness,
@@ -184,16 +187,16 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
-} from "./game.js?v=r299-f25a24dc4fb2";
-import { createInput } from "./input.js?v=r299-f25a24dc4fb2";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r299-f25a24dc4fb2";
-import { STATS } from "./types.js?v=r299-f25a24dc4fb2";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=r299-f25a24dc4fb2";
-import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.js?v=r299-f25a24dc4fb2";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=r299-f25a24dc4fb2";
+} from "./game.js?v=r311-f82b84f1e1d4";
+import { createInput } from "./input.js?v=r311-f82b84f1e1d4";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r311-f82b84f1e1d4";
+import { STATS } from "./types.js?v=r311-f82b84f1e1d4";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand } from "./items.js?v=r311-f82b84f1e1d4";
+import { GLYPHS, GLYPH_IDS, RESONANCES, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.js?v=r311-f82b84f1e1d4";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho } from "./echoes.js?v=r311-f82b84f1e1d4";
 // Release 291: names and HUD glyphs for items on a preset's Build button.
 // Release 293 (Tim: "convincing symbols... relevant and easy to discern"): solid, filled item icons (spells stay line drawings).
-const ITEM_NAMES = { restorativeDraught: "Restorative Draught", ironbarkTonic: "Ironbark Tonic", lumenPhial: "Lumen Phial", clearrootAmpoule: "Clearroot Ampoule", hullShield: "Hull Shield" };
+const ITEM_NAMES = { restorativeDraught: "Restorative Draught", ironbarkTonic: "Ironbark Tonic", lumenPhial: "Lumen Phial", clearrootAmpoule: "Clearroot Ampoule", hullShield: "Hull Shield", submersible: "Submersible Frame" };
 const ITEM_ICONS = {
   // Ironbark Tonic: a shield of bark, iron-rimmed (damage taken down).
   ironbarkTonic: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2 20 5v6.2c0 5-3.4 8.6-8 10.6-4.6-2-8-5.6-8-10.6V5z" fill="#6b4426" stroke="#9aa3ab" stroke-width="1.6"/><path d="M8.3 6.5c.8 3-.6 5.4.4 9M12 5.2c-.7 3.6.8 6.8-.2 12M15.7 6.5c-.6 2.6.7 5-.3 8.4" stroke="#3e2614" stroke-width="1.1" fill="none" stroke-linecap="round"/><path d="M6.4 9.4 12 7.8l5.6 1.6" stroke="#c9ced3" stroke-width="1.2" fill="none"/></svg>',
@@ -202,14 +205,16 @@ const ITEM_ICONS = {
   // Clearroot Ampoule: a sealed green ampoule, pale roots in it (poison cleared).
   clearrootAmpoule: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.6c1 2.2 1.6 3.6 1.6 5.2v1.4c2.6 1.3 4.2 3.8 4.2 6.7 0 4-2.6 7.5-5.8 7.5s-5.8-3.5-5.8-7.5c0-2.9 1.6-5.4 4.2-6.7V6.8c0-1.6.6-3 1.6-5.2z" fill="#4f9a5a" stroke="#c9f2c4" stroke-width="1"/><path d="M12 10.5v8.8M12 14.2l-2.6 2.6M12 15.6l2.8 2.2M12 12.4l2 1.6M12 17.6l-1.8 2" stroke="#eafbe3" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>',
   // Hull Shield: a skiff's hull under a shield (the hull takes no damage).
+  // Release r311-f82b84f1e1d4: a silver submersible with its great round window and a manipulator arm.
+  submersible: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 14.5c0-3.4 3.6-5.8 9-5.8s9 2.4 9 5.8-3.6 4.6-9 4.6-9-1.2-9-4.6z" fill="#c9cfd6" stroke="#3a4048" stroke-width="1"/><path d="M5 15.4h14" stroke="#ffffff" stroke-opacity=".6" stroke-width=".8"/><circle cx="15.2" cy="13.4" r="3.4" fill="#5fc6e0" stroke="#3a4048" stroke-width="1"/><path d="M13.6 12.2a2 2 0 0 1 2.4-.8" stroke="#ffffff" stroke-width=".9" fill="none"/><path d="M8 9.2 7 5.4l2.4-1.6" stroke="#8f979f" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M9.4 3.8l1.4-.6M9.4 3.8l.8 1.2" stroke="#3a4048" stroke-width="1" stroke-linecap="round"/><path d="M2.2 14.5 1 12.6v3.8z" fill="#8f979f"/></svg>',
   hullShield: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.6 14.4h18.8l-2.8 5.6H5.4z" fill="#8a5a32" stroke="#3e2614" stroke-width="1"/><path d="M12 2.4 17.4 4.4v4.3c0 3.3-2.3 5.4-5.4 6.6-3.1-1.2-5.4-3.3-5.4-6.6V4.4z" fill="#3fb6c8" stroke="#d8f6fb" stroke-width="1.2"/><path d="M12 5.4v6.4M9.4 7.8h5.2" stroke="#0f3a42" stroke-width="1.4" stroke-linecap="round"/><path d="M1.6 21.4c2-1 4-1 6 0s4 1 6 0 4-1 6 0 2.6.5 3 .3" stroke="#7fc6e6" stroke-width="1.2" fill="none"/></svg>',
 };
-import { CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS, BUTTON_ITEMS, presetButton, setPresetButton, assignPresetItem, activeButton } from "./spell-slots.js?v=r299-f25a24dc4fb2";
-import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=r299-f25a24dc4fb2";
-import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=r299-f25a24dc4fb2";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r299-f25a24dc4fb2";
-import { worldStewardReport } from "./story.js?v=r299-f25a24dc4fb2";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r299-f25a24dc4fb2";
+import { slotTool, CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS, BUTTON_ITEMS, presetButton, setPresetButton, assignPresetItem, activeButton } from "./spell-slots.js?v=r311-f82b84f1e1d4";
+import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST } from "./constellation.js?v=r311-f82b84f1e1d4";
+import { currentObjective, validActions, dungeonHistory, journalOnce } from "./interactions.js?v=r311-f82b84f1e1d4";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r311-f82b84f1e1d4";
+import { worldStewardReport } from "./story.js?v=r311-f82b84f1e1d4";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r311-f82b84f1e1d4";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -221,8 +226,8 @@ import {
   perceived,
   wayfindingTargets,
   wayfindingCues,
-} from "./world.js?v=r299-f25a24dc4fb2";
-import { warmWayfindingSignals } from "./world.js?v=r299-f25a24dc4fb2";
+} from "./world.js?v=r311-f82b84f1e1d4";
+import { warmWayfindingSignals } from "./world.js?v=r311-f82b84f1e1d4";
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
@@ -706,8 +711,8 @@ function drawDungeonSystems() {
     if (o.kind === "trap") {
       const active = o.phase === "active",
         warning = o.phase === "warning";
-      ctx.strokeStyle = active ? "#e66a3d" : warning ? "#c99a58" : "#756b5a";
-      ctx.fillStyle = active ? "#a43c2638" : "#17151288";
+      ctx.strokeStyle = o.gas ? (active ? "#9fe85a" : warning ? "#c8d86a" : "#5c6b48") : active ? "#e66a3d" : warning ? "#c99a58" : "#756b5a"; // release 303: green gas jets
+      ctx.fillStyle = o.gas ? (active ? "#7cbf3a55" : "#17151288") : active ? "#a43c2638" : "#17151288";
       ctx.lineWidth = 2;
       ctx.beginPath();
       if (o.trapType === "fire") {
@@ -1121,7 +1126,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r299-f25a24dc4fb2",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r299-f25a24dc4fb2\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r311-f82b84f1e1d4",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r311-f82b84f1e1d4\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1133,7 +1138,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r299-f25a24dc4fb2",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r311-f82b84f1e1d4",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1608,6 +1613,7 @@ function openPack(tab) {
     ],
     ["clearrootAmpoule","Clearroot Ampoule","Immediately ends elite poison."],
     ["hullShield","Hull Shield","Deploy aboard your skiff: the hull takes no damage for 3 minutes. The Shipwright sells them."],
+    ["submersible","Submersible Frame",`Fit it aboard your skiff and it becomes a silver submersible: ${BOAT.sub.hull} more hull, 5% less damage to you, Dodge dives under, and dive buoys take you down with no rig or lens. Another frame mends its plating. Forge one from ${BOAT.sub.cinderIron} cinder iron (you have ${save.materials?.cinderIron || 0}).`],
   ]) {
     const row = document.createElement("div"),
       title = document.createElement("strong"),
@@ -1624,8 +1630,9 @@ function openPack(tab) {
         openPack();
       }),
     );
+    if (type === "submersible") row.append(uiButton("Forge", () => { const r = forgeSubmersible(save); game.message = r.message; persist(); openPack("supplies"); })); // release 311
     // Release 291: put the item on a preset's Build button (a preset set to Build cannot take one).
-    if (BUTTON_ITEMS.includes(type)) for (let i = 0; i < PRESETS; i++) { const pb = presetButton(save, i), b = uiButton(`Preset ${i + 1}`, () => { const r = assignPresetItem(save, i, type); game.message = r.message; persist(); openPack("supplies"); }); b.classList.add("preset-pick"); if (pb.button !== "item") { b.disabled = true; b.title = `Preset ${i + 1}'s button is Build (change it in Arcanum → presets).`; } else if (pb.item === type) b.setAttribute("aria-current", "true"); row.append(b); }
+    if (BUTTON_ITEMS.includes(type)) for (let i = 0; i < PRESETS; i++) { const pb = presetButton(save, i), b = uiButton(`Preset ${i + 1}`, () => { const r = assignPresetItem(save, i, type); game.message = r.message; persist(); openPack("supplies"); }); b.classList.add("preset-pick"); const pr = save.magicSkills.presets[i]; if (pb.button !== "item" && pr?.a !== "item" && pr?.b !== "item") { /* release 309: any slot set to Item */ b.disabled = true; b.title = `Preset ${i + 1}'s button is Build (change it in Arcanum → presets).`; } else if (pb.item === type) b.setAttribute("aria-current", "true"); row.append(b); }
     body.append(row);
   }
   { // Release 291 (Tim: "I don't see crossing sigils in the supplies menu anymore"): they are listed again.
@@ -1967,15 +1974,20 @@ function updateHud(now) {
   // REPAIR beside a damaged skiff, and is barred (a red circle and slash over the hammer) when no build can be afforded.
   { const bb = hudEl('[data-action="build"]'), btn = activeButton(save); if (bb && btn.mode === "item") { // release 291: a preset's item button
       const n = btn.item ? save.consumables?.[btn.item] || 0 : 0; let glyph = bb.querySelector(".item-glyph"); if (!glyph) { glyph = document.createElement("span"); glyph.className = "item-glyph"; glyph.setAttribute("aria-hidden", "true"); bb.append(glyph); }
-      if (glyph.dataset.item !== (btn.item || "")) { glyph.dataset.item = btn.item || ""; glyph.innerHTML = ITEM_ICONS[btn.item] || "?"; } hudSet(bb, "class:item-mode", true); hudSet(bb, "class:spent", !n); hudSet(bb, "data-cooldown", btn.item ? `×${n}` : "ITEM"); hudSet(bb, "aria-label", btn.item ? `Use ${ITEM_NAMES[btn.item] || btn.item} (${n} left)` : "Item button: choose an item in Supplies");
-    } else if (bb) { const k = activeBuildKind(save), mend = !!game.mendTarget?.(); hudSet(bb, "class:item-mode", false); hudSet(bb, "aria-label", mend ? "Repair the skiff" : k ? `Build a ${BUILD.kinds[k].name.toLowerCase()}` : "Nothing to build with"); hudSet(bb, "data-cooldown", mend ? "REPAIR" : k ? k.toUpperCase() : ""); hudSet(bb, "data-kind", k || "none"); hudSet(bb, "class:spent", !mend && !k); } } // release 265
+      if (glyph.dataset.item !== (btn.item || "")) { glyph.dataset.item = btn.item || ""; glyph.innerHTML = ITEM_ICONS[btn.item] || "?"; glyph.classList.remove("cast-glyph"); glyph.style.color = ""; } hudSet(bb, "class:item-mode", true); hudSet(bb, "class:spent", !n); hudSet(bb, "data-cooldown", btn.item ? `×${n}` : "ITEM"); hudSet(bb, "aria-label", btn.item ? `Use ${ITEM_NAMES[btn.item] || btn.item} (${n} left)` : "Item button: choose an item in Supplies");
+    } else if (bb && btn.mode === "cast") { // release 309: a spell or discipline on the Build button
+      const c = CASTABLES[btn.key], cd = save.magicSkills?.cooldowns || {}, left = c ? Math.ceil(c.kind === "spell" ? cd[`spell:${c.id}`] || 0 : cd[c.id] || 0) : 0; let glyph = bb.querySelector(".item-glyph"); if (!glyph) { glyph = document.createElement("span"); glyph.className = "item-glyph"; glyph.setAttribute("aria-hidden", "true"); bb.append(glyph); }
+      if (glyph.dataset.item !== btn.key) { glyph.dataset.item = btn.key; glyph.textContent = c?.symbol || "?"; glyph.style.color = c ? ATTRIBUTES[c.attr].color : ""; glyph.classList.add("cast-glyph"); }
+      hudSet(bb, "class:item-mode", true); hudSet(bb, "class:spent", left > 0); hudSet(bb, "data-cooldown", left > 0 ? `${left}s` : ""); hudSet(bb, "aria-label", c ? `Cast ${c.id.replace(/-/g, " ")}` : "Spell button")
+    } else if (bb) { const k = activeBuildKind(save), mend = !!game.mendTarget?.(); hudSet(bb, "class:item-mode", false); { const g = bb.querySelector(".item-glyph"); if (g && g.dataset.item && CASTABLES[g.dataset.item]) { g.dataset.item = ""; g.textContent = ""; g.style.color = ""; g.classList.remove("cast-glyph"); } } hudSet(bb, "aria-label", mend ? "Repair the skiff" : k ? `Build a ${BUILD.kinds[k].name.toLowerCase()}` : "Nothing to build with"); hudSet(bb, "data-cooldown", mend ? "REPAIR" : k ? k.toUpperCase() : ""); hudSet(bb, "data-kind", k || "none"); hudSet(bb, "class:spent", !mend && !k); } } // release 265
   // Spell slots A and B (release 113): each shows its castable's symbol in its attribute colour.
   for (const [action, slot] of [["spell", "a"], ["spell2", "b"]]) {
-    const button = hudEl(`[data-action="${action}"]`), c = slotted(save, slot);
+    const button = hudEl(`[data-action="${action}"]`), c = slotted(save, slot), t = !c && slotTool(save, slot); // release 309: Build or the item in A or B
     if (!button) continue;
-    const key = c ? c.key : "empty";
-    if (button.dataset.slotKey !== key) { button.dataset.slotKey = key; button.replaceChildren(Object.assign(document.createElement("span"), { className: "slot-sym", textContent: c ? c.symbol : "+" }), Object.assign(document.createElement("span"), { className: "slot-letter", textContent: slot.toUpperCase() })); button.style.setProperty("--slot", c ? c.color : "#76684e"); }
-    hudSet(button,"aria-label",`Slot ${slot.toUpperCase()}: ${c ? c.name : "empty"} ${button.dataset.cooldown || ""}`);
+    const key = c ? c.key : t ? `tool:${t.tool}:${t.item || ""}` : "empty";
+    if (button.dataset.slotKey !== key) { button.dataset.slotKey = key; const sym = Object.assign(document.createElement("span"), { className: "slot-sym", textContent: c ? c.symbol : t?.tool === "build" ? "⚒" : t ? "" : "+" }); if (t?.tool === "item") sym.innerHTML = ITEM_ICONS[t.item] || "?"; button.replaceChildren(sym, Object.assign(document.createElement("span"), { className: "slot-letter", textContent: slot.toUpperCase() })); button.style.setProperty("--slot", c ? c.color : t?.tool === "build" ? "#c08a52" : t ? "#d8c49a" : "#76684e"); }
+    if (t?.tool === "item") hudSet(button, "data-cooldown", t.item ? `×${save.consumables?.[t.item] || 0}` : "ITEM");
+    hudSet(button,"aria-label",`Slot ${slot.toUpperCase()}: ${c ? c.name : t ? (t.tool === "build" ? "Build" : t.item ? ITEM_NAMES[t.item] || t.item : "item (none chosen)") : "empty"} ${button.dataset.cooldown || ""}`);
   }
 }
 let nextSlowUiRefresh = 0;
@@ -2330,14 +2342,18 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
  arcanumShell('constellation',`Spells & Constellation`,`${free} point${free===1?'':'s'} free · Aperture ${value} (${apertureBand(value).name}), one point per ${POINT_EVERY}${save.constellation.bonus?`, ${save.constellation.bonus} kept from before`:''}. Ranks and modifiers cost 1, capstones 2; a mastered branch can take both. Tap an entry to read it.${atShrine?' This shrine can reset everything.':' Respec at a shrine.'}`);
  const sky=el('div','arc-sky');ensureSlots(save);
  {const key=el('section','arc-key');key.append(el('p','','Elements:'));for(const a of Object.keys(ATTRIBUTES))key.append(elemBadge(a));key.append(el('p','',''),kindTag('⚡ Active',true),el('span','',' you cast it from slot A or B, then it recovers. '),kindTag('Passive',false),el('span','',' works by itself once learned: always, or while its discipline is active.'));sky.append(key)}
- const inSlot=(key)=>['a','b'].find(q=>save.magicSkills.slots[q]===key),slotButtons=(key,after)=>['a','b'].map(q=>{const here=save.magicSkills.slots[q]===key,b=uiButton(here?`In slot ${q.toUpperCase()}`:`Set in ${q.toUpperCase()}`,()=>{const r=setSlot(save,q,key);game.message=r.message;persist();after();openSkills(atShrine)});if(here)b.disabled=true;return b});
+ const inSlot=(key)=>['a','b'].find(q=>save.magicSkills.slots[q]===key),slotButtons=(key,after)=>[...['a','b'].map(q=>{const here=save.magicSkills.slots[q]===key,b=uiButton(here?`In slot ${q.toUpperCase()}`:`Set in ${q.toUpperCase()}`,()=>{const r=setSlot(save,q,key);game.message=r.message;persist();after();openSkills(atShrine)});if(here)b.disabled=true;return b}),
+   (()=>{const i=save.magicSkills.preset||0,here=presetButton(save,i).button===key,b=uiButton(here?'On Build button':'Set on Build button',()=>{setPresetButton(save,i,key);game.message=`Preset ${i+1}: the Build button casts it.`;persist();after();openSkills(atShrine)});if(here)b.disabled=true;return b})()]; // release 309
  // Slots A and B, and the Pairing their two attributes make.
  {const box=el('section','arc-branch arc-slots');box.append(el('h3','','Spell slots'));
   // Release 261: two spell presets; the slots below belong to the active one (the HUD's preset button switches them too).
   {const row=el('div','codex-tabs arc-presets');for(let i=0;i<PRESETS;i++){const b=uiButton(`Preset ${i+1}`,()=>{if((save.magicSkills.preset||0)!==i){const r=togglePreset(save);game.message=r.message;persist()}openSkills(atShrine)});if((save.magicSkills.preset||0)===i)b.setAttribute('aria-current','page');row.append(b)}box.append(row)
    // Release 291: each preset also sets the Build button: Build, or Item (its item is chosen in Pack → Supplies).
-   for(let i=0;i<PRESETS;i++){const cur=presetButton(save,i),line=el('div','codex-tabs arc-preset-button');line.append(el('small','',`Preset ${i+1} · Build button:`));for(const mode of ['build','item']){const b=uiButton(mode==='build'?'Build':`Item${mode===cur.button&&cur.item?` (${ITEM_NAMES[cur.item]||cur.item})`:''}`,()=>{setPresetButton(save,i,mode);persist();openSkills(atShrine)});if(cur.button===mode)b.setAttribute('aria-current','true');line.append(b)}box.append(line)}}
-  for(const q of ['a','b']){const c=slotted(save,q),row=el('div','arc-slot');const sym=el('span','slot-sym',c?c.symbol:'+');sym.style.color=c?c.color:'';row.append(el('strong','',q.toUpperCase()),sym,el('span','',c?c.name:'Empty — choose below'));if(c)row.append(elemBadge(c.attr));if(c){const clear=uiButton('Clear',()=>{const r=setSlot(save,q,null);game.message=r.message;persist();openSkills(atShrine)});row.append(clear)}box.append(row)}
+   for(let i=0;i<PRESETS;i++){const cur=presetButton(save,i),line=el('div','codex-tabs arc-preset-button');line.append(el('small','',`Preset ${i+1} · Build button:`));for(const mode of ['build','item']){const b=uiButton(mode==='build'?'Build':`Item${mode===cur.button&&cur.item?` (${ITEM_NAMES[cur.item]||cur.item})`:''}`,()=>{setPresetButton(save,i,mode);persist();openSkills(atShrine)});if(cur.button===mode)b.setAttribute('aria-current','true');line.append(b)}if(CASTABLES[cur.button]){const c=CASTABLES[cur.button],b=uiButton(`${c.symbol} ${c.kind==='spell'?SPELLS[c.id]?.name:APERTURE_SKILLS[c.id]?.name}`,()=>{});b.setAttribute('aria-current','true');line.append(b)}box.append(line)}}
+  for(const q of ['a','b']){const c=slotted(save,q),t=!c&&slotTool(save,q),row=el('div','arc-slot');const sym=el('span','slot-sym',c?c.symbol:t?.tool==='build'?'⚒':t?'◇':'+');sym.style.color=c?c.color:'';row.append(el('strong','',q.toUpperCase()),sym,el('span','',c?c.name:t?(t.tool==='build'?'Build':`Item${t.item?` (${ITEM_NAMES[t.item]||t.item})`:' (choose it in Supplies)'}`):'Empty — choose below'));if(c)row.append(elemBadge(c.attr));
+   // Release 309 (Tim: "you can put build in any one of those three available slots"): Build or the preset's item in A or B.
+   for(const tool of ['build','item']){const b=uiButton(tool==='build'?'Build':'Item',()=>{const r=setSlot(save,q,t?.tool===tool?null:tool);game.message=r.message;persist();openSkills(atShrine)});if(t?.tool===tool)b.setAttribute('aria-current','true');row.append(b)}
+   if(c||t){const clear=uiButton('Clear',()=>{const r=setSlot(save,q,null);game.message=r.message;persist();openSkills(atShrine)});row.append(clear)}box.append(row)}
   const pr=activePairing(save);box.append(el('p','',pr?`Pairing: ${pr.name} — ${pr.text}`:'Fill both slots: their two attributes form a Pairing, a small bonus while both stay set.'));
   sky.append(box)}
  // The spell branch: the cast-button spell, with its glyph sockets.

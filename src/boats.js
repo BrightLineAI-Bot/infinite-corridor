@@ -3,7 +3,7 @@
 // and shallows), never the blight's toxic water or rivers. It has its own hull: hits taken aboard are shared with it,
 // and a hull at zero sinks the skiff, which the Shipwright's crew returns to its home dock.
 // Data and pure rules; game.ts calls in from movement, interaction, damage and section loading.
-import { hashSeed } from "./random.js?v=r299-f25a24dc4fb2";
+import { hashSeed } from "./random.js?v=r311-f82b84f1e1d4";
 
 export const BOAT = {
   price: { currency: 120, cinderIron: 2 },
@@ -27,6 +27,14 @@ export const BOAT = {
   // half health... two woods should get the boat back up to full... I don't want to have to manage the boat too much"):
   // each press costs `wood` and mends `share` of the full hull. Holding Build `shieldHold` s at sea deploys a shield.
   mend: { wood: 1, share: .5, shieldHold: .6 },
+  // The submersible (release 311; Tim: "the cinder iron can build... a submersible... your boat will turn into a
+  // submersible... you can ride on top of the water or you can go underwater... dip down underwater to... dodge damage...
+  // extra health to the boat... the player will just get extra... damage reduction... 5%... an item like the hull repair...
+  // its own option to place in the... preset slot"). A frame is forged from `cinderIron` and carried as
+  // save.consumables.submersible; fitted aboard, the skiff becomes a submersible until it sinks: `hull` more hull in its own
+  // bar (eaten first), `guard` less damage to the Wayfarer aboard, and a dodge aboard is a dive of `dive` s, untouchable.
+  // Fitting another frame refills the bar. Dive buoys take a submersible down without a rig or lens.
+  sub: { cinderIron: 3, hull: 40, guard: .05, dive: 1.1 },
   pushOff: .6,           // release 263: a skiff built at the shore pushes off at this share of sailing speed
   dockMinWater: 40,
   dockEvery: 3,
@@ -54,8 +62,8 @@ export function buildSkiff(save, at) {
   save.materials.wood = wood - WOOD.skiffCost;
   // Release 261 (Tim: "I can have up to 2 boats at a time... I'll just make a boat, and one of them will despawn"): a
   // skiff left moored becomes the spare; an older spare is gone.
-  if (b.owned && !b.aboard && b.moored) b.spare = { ...b.moored, hull: b.hull };
-  Object.assign(b, { owned: true, hull: BOAT.maxHull, aboard: true, moored: null, home: at });
+  if (b.owned && !b.aboard && b.moored) b.spare = { ...b.moored, hull: b.hull, ...(b.sub ? { sub: true, subHull: b.subHull || 0 } : {}) }; // release 311: a submersible stays one
+  Object.assign(b, { owned: true, hull: BOAT.maxHull, aboard: true, moored: null, home: at, sub: false, subHull: 0 });
   return { ok: true, message: `You lash ${WOOD.skiffCost} wood into a skiff and push off.${save.materials.wood ? ` ${save.materials.wood} wood left.` : ""}` };
 }
 
@@ -70,14 +78,16 @@ export function ensureBoatState(save) {
   save.boat.shield = Math.max(0, Math.min(BOAT.shield.seconds, Number.isFinite(Number(b.shield)) ? Number(b.shield) : 0));
   // Release 269: the guard's extra hull (additive; only while the guard holds).
   save.boat.guardHull = save.boat.shield > 0 ? Math.max(0, Math.min(BOAT.shield.bonus, Number(b.guardHull) || 0)) : 0;
-  const spare = b.owned === true && place(b.spare); save.boat.spare = spare ? { ...spare, hull: Math.max(0, Math.min(BOAT.maxHull, Number.isFinite(b.spare.hull) ? b.spare.hull : BOAT.maxHull)) } : null;
+  // Release r311-f82b84f1e1d4: the submersible (additive): `sub` true while the skiff in use is fitted; `subHull` its own bar.
+  save.boat.sub = b.owned === true && b.sub === true; save.boat.subHull = save.boat.sub ? Math.max(0, Math.min(BOAT.sub.hull, Number(b.subHull) || 0)) : 0;
+  const spare = b.owned === true && place(b.spare); save.boat.spare = spare ? { ...spare, hull: Math.max(0, Math.min(BOAT.maxHull, Number.isFinite(b.spare.hull) ? b.spare.hull : BOAT.maxHull)), ...(b.spare.sub === true ? { sub: true, subHull: Math.max(0, Math.min(BOAT.sub.hull, Number(b.spare.subHull) || 0)) } : {}) } : null;
   return save.boat;
 }
 // Boarding the spare: it becomes the skiff in use, and the one left moored (if any) becomes the spare.
 export function takeSpare(save) {
   const b = ensureBoatState(save), s = b.spare; if (!s) return false;
-  b.spare = b.moored && !b.aboard ? { ...b.moored, hull: b.hull } : null;
-  b.moored = { rx: s.rx, ry: s.ry, x: s.x, y: s.y }; b.hull = s.hull; b.aboard = false;
+  b.spare = b.moored && !b.aboard ? { ...b.moored, hull: b.hull, ...(b.sub ? { sub: true, subHull: b.subHull || 0 } : {}) } : null;
+  b.moored = { rx: s.rx, ry: s.ry, x: s.x, y: s.y }; b.hull = s.hull; b.aboard = false; b.sub = s.sub === true; b.subHull = b.sub ? Math.max(0, Math.min(BOAT.sub.hull, Number(s.subHull) || 0)) : 0;
   return true;
 }
 // One press of Build on a damaged skiff: 1 wood mends half the hull. Returns { ok, message }.
@@ -87,6 +97,22 @@ export function mendSkiff(save) {
   if (wood < BOAT.mend.wood) return { ok: false, message: `Patching the hull takes ${BOAT.mend.wood} wood.` };
   save.materials.wood = wood - BOAT.mend.wood; b.hull = Math.min(BOAT.maxHull, b.hull + BOAT.maxHull * BOAT.mend.share);
   return { ok: true, message: b.hull >= BOAT.maxHull ? "The hull is whole again." : `Hull patched: ${Math.round(b.hull)}/${BOAT.maxHull}.` };
+}
+export const subsCarried = (save) => Math.max(0, Math.floor(Number(save?.consumables?.submersible) || 0));
+export const submersible = (save) => save?.boat?.owned === true && save.boat.sub === true;
+export function forgeSubmersible(save) {
+  const iron = Number(save.materials?.cinderIron) || 0;
+  if (iron < BOAT.sub.cinderIron) return { ok: false, message: `A submersible frame takes ${BOAT.sub.cinderIron} cinder iron (you have ${iron}).` };
+  save.materials.cinderIron = iron - BOAT.sub.cinderIron; save.consumables ||= {}; save.consumables.submersible = subsCarried(save) + 1;
+  return { ok: true, message: `Submersible frame forged (${save.consumables.submersible} carried). Fit it aboard your skiff.` };
+}
+export function fitSubmersible(save) {
+  const b = ensureBoatState(save);
+  if (!(subsCarried(save) > 0)) return { ok: false, message: "You carry no submersible frame. Forge one from cinder iron in Supplies." };
+  if (!b.aboard) return { ok: false, message: "Fit the submersible frame aboard your skiff." };
+  if (b.sub && b.subHull >= BOAT.sub.hull) return { ok: false, message: "The submersible is already whole." };
+  save.consumables.submersible = subsCarried(save) - 1; const was = b.sub; b.sub = true; b.subHull = BOAT.sub.hull;
+  return { ok: true, message: was ? "Fresh plating bolted on: the submersible's hull is whole again." : "Silver plates close over the skiff, a great window at its prow. It is a submersible now: Dodge to dive." };
 }
 export const shieldsCarried = (save) => Math.max(0, Math.floor(Number(save?.consumables?.hullShield) || 0));
 export const shielded = (save) => (Number(save?.boat?.shield) || 0) > 0;
@@ -110,7 +136,8 @@ export function tickHullShield(save, dt) { const b = save?.boat; if (b && b.shie
 // finally gets destroyed... you go back to the smaller wooden ship... it'll just run out after 3 minutes"): emptying
 // the guard's bar ends the guard.
 function wearHull(save, n) {
-  const b = save.boat; if (shielded(save)) { n *= BOAT.shield.hullTaken; const g = Math.min(b.guardHull || 0, n); b.guardHull = (b.guardHull || 0) - g; n -= g; if (b.guardHull <= 0) { b.guardHull = 0; b.shield = 0; } }
+  const b = save.boat; if (b.sub && b.subHull > 0) { const g = Math.min(b.subHull, n); b.subHull -= g; n -= g; } // release 311: the submersible's plating first
+  if (shielded(save)) { n *= BOAT.shield.hullTaken; const g = Math.min(b.guardHull || 0, n); b.guardHull = (b.guardHull || 0) - g; n -= g; if (b.guardHull <= 0) { b.guardHull = 0; b.shield = 0; } }
   b.hull = Math.max(0, b.hull - n); return b.hull <= 0;
 }
 export const aboard = (save) => save?.boat?.owned === true && save.boat.aboard === true;
@@ -155,9 +182,9 @@ export function disembark(save, where) { const b = ensureBoatState(save); b.aboa
 export function hullAbsorb(save, damage) {
   const b = ensureBoatState(save);
   if (!b.aboard || !(damage > 0)) return { kept: damage, sunk: false };
-  const guarded = shielded(save), take = Math.min(b.hull + (guarded ? (b.guardHull || 0) / BOAT.shield.hullTaken : 0), damage * BOAT.hullShare), kept = (damage - take) * (guarded ? 1 - BOAT.shield.guard : 1);
+  const guarded = shielded(save), take = Math.min(b.hull + (b.sub ? b.subHull || 0 : 0) + (guarded ? (b.guardHull || 0) / BOAT.shield.hullTaken : 0), damage * BOAT.hullShare), kept = (damage - take) * (guarded ? 1 - BOAT.shield.guard : 1) * (b.sub ? 1 - BOAT.sub.guard : 1); // release 311: the submersible guards 5% too
   if (!wearHull(save, take)) return { kept, sunk: false }; // release 269: the guard halves the hull's wear and keeps 5% off the Wayfarer's share
-  b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home; b.shield = 0; b.guardHull = 0;
+  b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home; b.shield = 0; b.guardHull = 0; b.sub = false; b.subHull = 0; // a sunk submersible comes back a plain skiff
   return { kept, sunk: true };
 }
 
@@ -166,7 +193,7 @@ export function hullStrike(save, n) {
   const b = ensureBoatState(save);
   if (!b.aboard || !(n > 0)) return false;
   if (!wearHull(save, n)) return false;
-  b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home; b.shield = 0; b.guardHull = 0;
+  b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home; b.shield = 0; b.guardHull = 0; b.sub = false; b.subHull = 0;
   return true;
 }
 
