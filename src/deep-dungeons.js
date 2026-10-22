@@ -1,6 +1,6 @@
-import { hashSeed, rng } from "./random.js?v=r325-7b4e702923fb";
-import { populateDungeonEncounters } from "./arenas.js?v=r325-7b4e702923fb";
-import { annotateDungeon } from "./dungeon-framework.js?v=r325-7b4e702923fb";
+import { hashSeed, rng } from "./random.js?v=r327-ae92ea7193c7";
+import { populateDungeonEncounters } from "./arenas.js?v=r327-ae92ea7193c7";
+import { annotateDungeon } from "./dungeon-framework.js?v=r327-ae92ea7193c7";
 
 export const DEEP_DUNGEON_SCHEMA_VERSION = 3;
 export const DEEP_ARCHETYPE_IDS = ["threefold", "descent", "loop", "flooded", "fortress"];
