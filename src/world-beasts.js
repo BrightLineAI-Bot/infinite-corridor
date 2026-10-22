@@ -1,13 +1,14 @@
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r271-ad06c7fbd51e";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r277-ce71a38b8a17";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.js?v=r271-ad06c7fbd51e";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r271-ad06c7fbd51e";
-import { sectionExits } from "./world.js?v=r271-ad06c7fbd51e";
+import { hashSeed } from "./random.js?v=r277-ce71a38b8a17";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r277-ce71a38b8a17";
+import { sectionExits, apertureTier } from "./world.js?v=r277-ce71a38b8a17";
+import { stageOneBeastReference } from "./stages.js?v=r277-ce71a38b8a17";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -346,6 +347,13 @@ function fleeSpawn(save, here, rx, ry) {
 }
 // Called once per overworld section load. Returns the spawn of the beast holding this section, or null. One beast holds
 // a section at a time, and never one the Questing Beast holds.
+// Release 273 (Tim, 2026-10-21: "you won't see all of these world monsters... until... that'll be tied to your aperture...
+// at aperture 3... aperture 4, you can see the blob... 5, you can see the robot... 6, you can see the astral worm... a phased
+// rollout... the void walker... at any level starting at aperture 3... and the crystal... at aperture 8, you can see the
+// questing beast"). The Aperture tier (items.ts APERTURE_BANDS; tier 3 is the Resonant band) a new meeting needs. A beast
+// already met (active, retreating or tracked) is never withdrawn by this.
+export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 };
+export const beastUnlocked = (save, id) => apertureTier(save?.perception?.aperture || 0) >= (BEAST_APERTURE[id] ?? 0);
 export function worldBeastFor(save, map, rx, ry) {
   ensureWorldBeasts(save, false);
   if (!map) return null;
@@ -356,7 +364,7 @@ export function worldBeastFor(save, map, rx, ry) {
     const B = WORLD_BEASTS[id], q = save.worldBeasts[id];
     if (q.active) continue;
     if (q.cooldown > 0) { q.cooldown--; continue; }
-    if (here || held || Math.abs(rx) + Math.abs(ry) < B.minDepth || !encounterReady(save)) continue; // release 261: the buffer between meetings
+    if (here || held || Math.abs(rx) + Math.abs(ry) < B.minDepth || !beastUnlocked(save, id) || !encounterReady(save)) continue; // release 261: the buffer between meetings (273: and the Aperture)
     if ((hashSeed(`${save.seed}:world-beast:${id}:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= B.chance * ENCOUNTER.chanceScale) continue;
     q.active = { rx, ry, tries: 0 }; here = id; encounterMet(save); claimed = true;
   }
@@ -377,9 +385,9 @@ export const BEAST_BASELINE = { level: 8, starterHit: 16, starterHp: 102, starte
 export function beastTuningReference(save, stats = {}) {
   const actualLevel = Math.max(1, Number(save.level) || 1), level = Math.max(BEAST_BASELINE.level, actualLevel);
   const weapon = save.equipment?.[save.activeWeaponSlot], levelBonus = Math.floor((level - 1) * .6) - Math.floor((actualLevel - 1) * .6);
-  return { level, perHit: Math.max(BEAST_BASELINE.starterHit, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0) + levelBonus),
+  return stageOneBeastReference(save, { level, perHit: Math.max(BEAST_BASELINE.starterHit, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0) + levelBonus),
     maxHp: Math.max(BEAST_BASELINE.starterHp, (Number(save.maxHp) || 60) + (level - actualLevel) * 6),
-    guard: Math.max(BEAST_BASELINE.starterGuard, Math.min(.75, Number(stats.damageReduction) || 0)) };
+    guard: Math.max(BEAST_BASELINE.starterGuard, Math.min(.75, Number(stats.damageReduction) || 0)) }); // release 275: Stage 1 beasts are held from tier 13 until three Listeners
 }
 export function beastProfileVitals(profile, save, stats = {}) {
   const r = beastTuningReference(save, stats);
@@ -425,7 +433,7 @@ export function worldBeastForDungeon(save, map, dungeonId) {
   const coords = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/.exec(dungeonId), depth = coords ? Math.abs(Number(coords[1])) + Math.abs(Number(coords[2])) : -1; // ordinary dungeons only (not the story dungeon, arenas, hunts or runs)
   if (!here && depth >= 0) for (const k of ids) {
     const q = save.worldBeasts[k], B = WORLD_BEASTS[k];
-    if (q.active || q.cooldown > 0 || depth < B.minDepth || (Number(save.level) || 1) < (B.dungeonMinLevel || 1) || (k === "psychicCrystal" && !water.length) || !encounterReady(save)) continue; // release 261: the buffer applies in dungeons too
+    if (q.active || q.cooldown > 0 || depth < B.minDepth || !beastUnlocked(save, k) || (Number(save.level) || 1) < (B.dungeonMinLevel || 1) || (k === "psychicCrystal" && !water.length) || !encounterReady(save)) continue; // release 261: the buffer applies in dungeons too
     if ((hashSeed(`${save.seed}:world-beast-dungeon:${k}:v1:${q.cycle}:${dungeonId}`) % 1000) / 1000 >= WORLD_BEASTS[k].dungeonChance) continue;
     q.active = { dungeon: dungeonId, tries: 0 }; here = k; encounterMet(save); break;
   }

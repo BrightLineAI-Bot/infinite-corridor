@@ -7,14 +7,14 @@
 // whole again, first on the farm and in the quarry, then in every section within `ringFor(epoch)` sections of the
 // Refuge (the ring widens by one each time, up to `maxRadius`). A section regrows when it is next loaded; trees felled
 // across a gap as a log crossing stay down. Data and rules; game.ts calls in.
-import { hashSeed } from "./random.js?v=r271-ad06c7fbd51e";
-import { LETHAL_KINDS } from "./landscape.js?v=r271-ad06c7fbd51e";
+import { hashSeed } from "./random.js?v=r277-ce71a38b8a17";
+import { LETHAL_KINDS } from "./landscape.js?v=r277-ce71a38b8a17";
 
 export const REGROW = { every: 20, maxRadius: 5 };
 export const REFUGE_LANDS = {
   near: [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, 1], [-1, -1], [1, -1], [2, 0], [0, 2], [-2, 0], [0, -2]],
   farmTrees: 6,     // big trees (3 wood each)
-  quarryRocks: 10,  // one stone each by chipping (two more each for the strong, by breaking): a stone block's worth
+  quarryRocks: 10,  // one stone each by chipping (release 275: breaking no longer adds more)
   spacing: 2,
 };
 export const ringFor = (epoch) => Math.min(REGROW.maxRadius, Math.max(0, epoch));
@@ -94,9 +94,9 @@ export const FARMER_LINES = [
 ];
 // The quarry keeper says it plainly.
 export const QUARRY_LINES = [
-  "This is the Refuge quarry. Chip a rock and you get a stone. If you're strong enough to break one, you get two more.",
+  "This is the Refuge quarry. Chip a rock and you get a stone. Every rock gives one.",
   "When your stone runs out, come back here. The rocks grow back as you explore.",
-  "Ten stone makes a stone block. Five wood makes a wall. Neither lasts long, so build them when you need them.",
+  "Five stone makes a stone block. Four wood makes a wall. Neither lasts long, so build them when you need them.",
   "Nobody sells stone. This is where it comes from.",
 ];
 // What a speaking villager with a `talkKey` says on its `n`th word.

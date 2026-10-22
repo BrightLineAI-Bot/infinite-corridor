@@ -1,19 +1,19 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r271-ad06c7fbd51e";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r271-ad06c7fbd51e";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r271-ad06c7fbd51e";
-import { enemyMeleeGeometry } from "./combat.js?v=r271-ad06c7fbd51e";
-import { ruleRows } from "./elders.js?v=r271-ad06c7fbd51e";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r271-ad06c7fbd51e";
-import { BOAT } from "./boats.js?v=r271-ad06c7fbd51e";
-import { isMarineTile } from "./world-beasts.js?v=r271-ad06c7fbd51e";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r271-ad06c7fbd51e";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r271-ad06c7fbd51e";
-import { liftAt, tileUnder } from "./landscape.js?v=r271-ad06c7fbd51e";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r271-ad06c7fbd51e";
-import { GATE_REVENANT } from "./monster-pack.js?v=r271-ad06c7fbd51e";
-import { drawRelayNode } from "./relay-network.js?v=r271-ad06c7fbd51e";
-import { structureOccupancy } from "./world.js?v=r271-ad06c7fbd51e";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r271-ad06c7fbd51e";
+import { astralBeamAnchors } from "./astral-worm.js?v=r277-ce71a38b8a17";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r277-ce71a38b8a17";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r277-ce71a38b8a17";
+import { enemyMeleeGeometry } from "./combat.js?v=r277-ce71a38b8a17";
+import { ruleRows } from "./elders.js?v=r277-ce71a38b8a17";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r277-ce71a38b8a17";
+import { BOAT } from "./boats.js?v=r277-ce71a38b8a17";
+import { isMarineTile } from "./world-beasts.js?v=r277-ce71a38b8a17";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift } from "./landscape-render.js?v=r277-ce71a38b8a17";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r277-ce71a38b8a17";
+import { liftAt, tileUnder } from "./landscape.js?v=r277-ce71a38b8a17";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r277-ce71a38b8a17";
+import { GATE_REVENANT } from "./monster-pack.js?v=r277-ce71a38b8a17";
+import { drawRelayNode } from "./relay-network.js?v=r277-ce71a38b8a17";
+import { structureOccupancy } from "./world.js?v=r277-ce71a38b8a17";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r277-ce71a38b8a17";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -694,7 +694,7 @@ export function drawStrange(ctx, o, s, kind, now) {
   ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = g; ctx.fillRect(cx - s * 1.3, cy - s * 1.3, s * 2.6, s * 2.6); ctx.restore();
   for (let k = 0; k < 9; k++) { const p = ((T * .18 + k / 9) % 1), x = cx + Math.sin(T * .9 + k * 2.1) * s * .45, y = cy + s * .35 - p * s * 1.7, m = Math.max(2, s * .07); ctx.fillStyle = k % 3 ? `rgba(230,240,255,${(1 - p) * .95})` : `rgba(200,160,255,${(1 - p) * .95})`; ctx.fillRect(x, y, m, m); }
 }
-// Release r271-ad06c7fbd51e (Tim, 2026-10-21: "let's see if we can do a model rework on the gate revenant... increase its Fidelity,
+// Release 271 (Tim, 2026-10-21: "let's see if we can do a model rework on the gate revenant... increase its Fidelity,
 // without increasing... processing requirements"). A hooded, horned wraith in a tattered cloak with the Gate's arch burning
 // on its chest. Flat fills and batched paths only (no gradients or blur): about a dozen fills and strokes a frame, no more
 // than the old ellipse, slabs and seven tendrils. Its pose shows its mind: faded while it stalks, an afterimage as it

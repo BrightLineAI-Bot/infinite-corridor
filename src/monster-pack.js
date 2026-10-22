@@ -7,8 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { hashSeed } from "./random.js?v=r271-ad06c7fbd51e";
-import { updateAstralActor } from "./astral-worm.js?v=r271-ad06c7fbd51e";
+import { stageOneBeastReference } from "./stages.js?v=r277-ce71a38b8a17";
+import { hashSeed } from "./random.js?v=r277-ce71a38b8a17";
+import { updateAstralActor } from "./astral-worm.js?v=r277-ce71a38b8a17";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -2294,7 +2295,7 @@ export const GATE_REVENANT = {
   lob: { warn: .35, count: 3, every: .22, flight: .8, radius: .85, bite: .55 },
   barrage: { warn: .5, count: 9, every: .13, flight: .85, radius: .8, bite: .36 },
   moves: ["burst", "lob", "wraith", "breath", "burst", "barrage"],
-  // Release r271-ad06c7fbd51e (Tim, 2026-10-21: "When you get into a dungeon... it can be like two minutes, and then the gate revenants
+  // Release 271 (Tim, 2026-10-21: "When you get into a dungeon... it can be like two minutes, and then the gate revenants
   // start hunting you... It should be stalking... after about two minutes... hunting regardless of whether or not you
   // run into them"; "the gate revenant can borrow some of the crystal's behavior... hop between walls... it's more
   // aggressive... it should still not go to a place that you can't go"; "smart dodge behavior and... poise break").
@@ -2309,11 +2310,13 @@ export const GATE_REVENANT = {
 export function tuneGatePredator(e, save, stats = {}) {
   if (!e.gatePredator || e.gateTuningVersion === 1) return e;
   const t = GATE_REVENANT, level = Math.max(1, Number(save.level) || 1), weapon = save.equipment?.[save.activeWeaponSlot];
-  const hit = Math.max(6, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0)), guard = Math.max(0, Math.min(.75, Number(stats.damageReduction) || 0));
+  // Release 275: the Gate Revenant is held with the Stage 1 world beasts (stages.ts), from tier 13 until three Listeners.
+  const ref = stageOneBeastReference(save, { level, perHit: Math.max(6, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0)), maxHp: Number(save.maxHp) || 60, guard: Math.max(0, Math.min(.75, Number(stats.damageReduction) || 0)) });
+  const hit = ref.perHit, guard = ref.guard;
   const oldMax = Math.max(1, Number(e.maxHp) || 1), missing = Math.max(0, oldMax - (Number.isFinite(e.hp) ? e.hp : oldMax));
-  e.maxHp = Math.max(oldMax, t.hpFloor, Math.round((hit * t.referenceHits + level * t.referenceLevelHp) * t.beastShare));
+  e.maxHp = Math.max(oldMax, t.hpFloor, Math.round((hit * t.referenceHits + ref.level * t.referenceLevelHp) * t.beastShare));
   e.hp = e.dead ? 0 : Math.max(1, e.maxHp - missing);
-  e.damage = Math.max(e.damage, t.damageFloor, Math.round((Number(save.maxHp) || 60) * t.referenceDamageShare / (1 - guard) * t.beastShare));
+  e.damage = Math.max(e.damage, t.damageFloor, Math.round(ref.maxHp * t.referenceDamageShare / (1 - guard) * t.beastShare));
   e.gateTuningVersion = 1; return e;
 }
 function gateAdd(e, w, effect) {
@@ -2327,14 +2330,14 @@ function gateMove(e, w, dt, fraction = 1) {
   if (d < 1.4) return;
   const slow = e.glyphBaseSpeed > 0 ? Math.max(.05, Math.min(1, e.speedMultiplier / e.glyphBaseSpeed)) : 1;
   const step = Math.min(d - 1.4, GATE_REVENANT.baseWalk * GATE_REVENANT.chaseRatio * dt * fraction * slow);
-  // Release r271-ad06c7fbd51e: in a dungeon, straight through the walls; held back at the dungeon's edge, it paths around for `walkAround` s.
+  // Release 271: in a dungeon, straight through the walls; held back at the dungeon's edge, it paths around for `walkAround` s.
   if (e.gateWalkFor > 0) e.gateWalkFor = Math.max(0, e.gateWalkFor - dt);
   if (w.walkable && !(e.gateWalkFor > 0 && w.walkable(e.x, e.y))) { w.move(e, (p.x - e.x) / d * step, (p.y - e.y) / d * step, { phase: true }); return; }
   if (w.gateChase) { w.gateChase(e, step); return; }
   if (!w.los(e, p)) { w.detour?.(e, step); return; }
   w.move(e, (p.x - e.x) / d * step, (p.y - e.y) / d * step, { phase: false });
 }
-// Release r271-ad06c7fbd51e: before it hunts, a dungeon Revenant keeps its distance (GATE_REVENANT.stalkKeep), through walls if need be.
+// Release 271: before it hunts, a dungeon Revenant keeps its distance (GATE_REVENANT.stalkKeep), through walls if need be.
 function gateStalk(e, w, dt, d) {
   const G = GATE_REVENANT, p = w.player, [near, far] = G.stalkKeep; if (!(d > 0)) return;
   const sign = d > far ? 1 : d < near ? -1 : 0; if (!sign) return;
