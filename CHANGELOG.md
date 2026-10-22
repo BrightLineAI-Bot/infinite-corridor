@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 309 — targeting and free slots:
+  - **Lock on.** Tap a creature to lock on to it (red brackets mark it). Until you tap it again, tap another creature, or it dies or gets far away, your swings go at it whenever it is in reach, and your tool shots and spells aim at it. Rift Step still goes where you are moving.
+  - **Any slot, anything.** Spell A, Spell B and the Build button can each hold a spell or discipline, Build, or the preset's item. Set A or B to Build or Item in Arcanum → Spell slots; put a spell on the Build button with "Set on Build button" beside it. Choose the preset's item in Pack → Supplies, as before.
+
 - Release 307 — world bosses are fairer:
   - **Health and damage.** Every world beast (and the Questing Beast and the Poison Crypt's Mire Heart) has half the health it had, and deals 10% less damage.
   - **Four tries.** You now get four tries at each before it moves on, instead of three.

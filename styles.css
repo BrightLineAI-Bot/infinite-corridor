@@ -926,6 +926,8 @@ button[aria-current], button[aria-selected="true"], .arc-kind.active, .options-t
 .action-diamond button.build .item-glyph { display: none; }
 .action-diamond button.build.item-mode .item-glyph { display: block; width: calc(var(--button) * .5); height: calc(var(--button) * .5); line-height: 0; filter: drop-shadow(0 1px 1px #000a); pointer-events: none; }
 .action-diamond button.build .item-glyph svg { width: 100%; height: 100%; }
+/* release 309: a spell or discipline on the Build button shows its symbol */
+.action-diamond button.build.item-mode .item-glyph.cast-glyph { height: auto; line-height: 1; font-size: calc(var(--button) * .44); font-weight: 700; text-align: center; }
 .consumable .item-icon { display: inline-block; width: 22px; height: 22px; vertical-align: -5px; margin-right: 6px; }
 .consumable .item-icon svg { width: 100%; height: 100%; }
 .consumable .preset-pick { margin-left: 6px; }
