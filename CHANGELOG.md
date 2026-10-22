@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 281 — Dodge always works. A dodge used to be refused (with only a small "Not enough stamina" note) once stamina fell below 15, so a burst of dodge taps did nothing after the first four or so. Now every press dodges: it still spends stamina, down to zero, but never refuses, and the Dodge button never greys out. Taps in the gaps around Dodge also reach it more readily.
+
 - Release 279 — the compass keeps what you chose. The target you step the compass to, and a quest you point it at from the Journal, are now kept in your save, so closing the Atlas, reloading or wandering far no longer changes them. Opening the Atlas no longer arms "Set manual waypoint" on the section you are standing in (tap a section first), and the tap that closes the Atlas or a panel can no longer land on the compass beneath it.
 - Release 279 — Proving Ground: a Standard Test Tile laboratory, one fixed section with a pond, a chasm, a two-level plateau with stairs, a building and a dungeon door (which leads into a real dungeon, and the tile is put back as it was when you come out). The Monster & Elite Combat Arena now has an Environment list (the test tile, the three dungeon recipes, the eight arena families and every overworld biome) instead of needing a typed seed, and nothing starts until you press Start test.
 

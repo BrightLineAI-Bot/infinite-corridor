@@ -2585,6 +2585,20 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 281: Dodge always works — 2026-10-22
+
+Tim, 2026-10-22 (with a 300-second probe): "Dodge needs to be incredibly sensitive and dodge needs to work all the time... it's the way I get out of damage... I press Dodge a bunch of times... and nothing happens... This is the second time that we've kind of addressed this."
+
+**CODE:**
+- **What the probe showed.** Ten of Tim's 13 Dodge taps landed on `action:dodge`, and the other three were within a few pixels below it, in the gap, where the gap router assigns Dodge. So the taps were reaching the game. The game refused them: `combat.ts` `dodge()` returned `{ ok: false, reason: "stamina" }` below 15 stamina. With about 67 maximum stamina and 9 a second of regeneration, a burst of taps emptied it after four dodges.
+- **The fix.** `combat.ts` `DODGE = { cost: 15 }`. `dodge()` no longer refuses: it spends `DODGE.cost`, never below 0, and always starts the dash and its 420 ms of invulnerability. `game.ts` `actionReadiness().dodge.available` is always true, so the button never dims. `input.ts`: a tap on the cluster background goes to the nearest button within `GAP_REACH` 24 px (was 18), with Dodge favoured by 16 px (was 8).
+
+**BOUNDARY:**
+- Stamina still drains with dodges and regenerates as before; it no longer gates the dodge.
+- Being stunned or knocked down still blocks every action, Dodge included. Being held by the Psychic Crystal still turns Dodge into a struggle.
+- Test edit: `tests/prototype.test.ts` (the dodge-stamina test now expects a fourth dodge on empty stamina to go through).
+- Tests: `tests/dodge-always.test.ts`.
+
 ## Release 279: the compass keeps its choice; the Proving Ground's test tile, environment list and Start test — 2026-10-22
 
 Tim, 2026-10-22: "when you close the map... it changes whatever way marker you have... or whatever active quest you have... it doesn't maintain it"; "it doesn't let you select the arena... you have to type it in... there should just be a drop down for whichever... environment"; "one area of testing that's just a tile... a standard tile, but it has... water, a chasm, and some elevated blocks... as well as a building... and also a dungeon door... we can just keep this in place"; "there should be a start simulation button".

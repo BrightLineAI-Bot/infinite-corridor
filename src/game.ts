@@ -1183,7 +1183,7 @@ export function actionReadiness(game, now = 0) {
     dodge: {
       remaining: 0,
       duration: 0,
-      available: game.player.stamina >= 15,
+      available: true, // release 281: a dodge always fires
       cost: 15,
     },
     jump: { remaining: jump / 1000, duration: 0.52 },

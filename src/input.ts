@@ -154,7 +154,7 @@ export function createInput(root, host = globalThis, options = {}) {
   // Release 179 (Tim's probe, 2026-10-18): a thumb that lands in the gap between action buttons pressed nothing; his
   // Dodge presses landed just off Dodge's lower-left curve. A press on the cluster itself goes to the button whose edge
   // is nearest, within GAP_REACH pixels, and Dodge (the action that has to land at once) wins ties by GAP_PRIORITY.
-  const GAP_REACH = 18, GAP_PRIORITY = { dodge: 8 };
+  const GAP_REACH = 24, GAP_PRIORITY = { dodge: 16 }; // release 281: wider, and Dodge wins any near tie (Tim: "Dodge needs to be incredibly sensitive")
   root.querySelectorAll?.(".action-diamond").forEach((d) => (d.onpointerdown = (e) => {
     if (e.target !== d) return;
     let best = null, bestGap = GAP_REACH;
