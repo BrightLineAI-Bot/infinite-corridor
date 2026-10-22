@@ -101,7 +101,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   const fresh = history.generatorVersion === undefined && id !== canonical && !save.session.areas[id];
   if (history.generatorVersion === undefined) history.generatorVersion = id === canonical || save.session.areas[id] ? 2 : DUNGEON_GENERATOR_V5;
   // Release 146: dungeons first generated from now on may use the automaton layout (pool 2) and threefold layout 2.
-  if (fresh && history.layoutPool === undefined) history.layoutPool = 4; // release 148: the organic pattern catalogue (pool 3: release 147's)
+  if (fresh && history.layoutPool === undefined) history.layoutPool = 5; // release 301: plain short crossings and warp daises (4: release 148's organic patterns; 3: release 147's)
   if (fresh && history.themePool === undefined) history.themePool = THEME_POOL_VERSION; // release 299: the new dungeon environments
   if (fresh && history.threefoldLayout === undefined && id.endsWith(':deep-v2:threefold')) history.threefoldLayout = 2;
   let map;
@@ -1923,6 +1923,7 @@ export class Game {
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION,openSea:!seen?OPEN_SEA_VERSION:seen.seaVersion||0,buoy:!this.save.checkpoints?.[`${this.rx},${this.ry}`]||this.save.checkpoints[`${this.rx},${this.ry}`].name==="Lighthouse Buoy",hamlet:(!seen||!!seen.hamletVersion)&&hamletSection(this.save.seed,this.rx,this.ry)});if(!seen||seen.hamletVersion)applyHamlet(this.map,this.save.seed,this.rx,this.ry,seen?.hamletVersion||HAMLET_VERSION);if(!seen||seen.travelVersion)applyTrails(this.map,this.save.seed,this.rx,this.ry);this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.storm=null;this._stormCheck=0;const b=ensureBoatState(this.save),m=b.moored;if(b.owned&&!b.aboard&&m&&m.rx===this.rx&&m.ry===this.ry)this.map.objects.push({id:"skiff-moored",kind:"skiff",name:"Your skiff",lore:"Your skiff rides at its mooring.",x:m.x,y:m.y,state:"moored",actions:["board"]});this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive)}
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];if(!seen||seen.watcherVersion)placeWatcherOverworld(this.map,mapWidth(this.map,area),this.save.seed,this.rx,this.ry);} // release 289: sections first seen from now on
     if(area==="overworld"||area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="watcherTomb"&&this.save.worldFlags[`watcher-tomb:${o.id}`])o.state="opened";
+    if(area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="warpDais"&&this.save.worldFlags[`warp-dais:${this.areaId()}:${o.id}`])o.state="attuned"; // release 301
     if(area==="overworld"){plantRefugeLands(this.map,this.rx,this.ry,this.refugeLandsWhere());for(const o of this.map.objects)if(o.talkKey)o.line=talkLine(o,this.refugeLandsWhere(),Number(this.save.worldFlags[o.talkKey])||0)} // release 265: the farm, the quarry and the farmer
     if(area==="dungeon"){const reader=addDungeonReciter(this.map,loadingId,this.save,mapWidth(this.map,area)),elder=addDungeonElder(this.map,loadingId,this.save,mapWidth(this.map,area));if(elder)this.message="Something tall and silent wanders these halls.";else if(reader)this.message=`${reader.name} wanders these halls, murmuring.`}
     if(area==="dungeon"&&isArrayRun(loadingId)&&ensureFarArray(this.save).activeRun?.id===loadingId){const run=this.save.farArray.activeRun,spawns=this.map.enemySpawns,multi=!!this.map.multiLevel,g=spawns.find(e=>e.dungeonRole==="finalBoss")||spawns.find(e=>e.dungeonRole==="gateWarden")||(multi?null:spawns.find(e=>e.boss)||spawns[spawns.length-1]);if(g){const boss=runBossSpawn(this.save,{x:g.x,y:g.y});if(boss){spawns.splice(spawns.indexOf(g),1);if(!spawns.some(e=>e.id===boss.id))spawns.push({...boss,objectiveId:g.objectiveId||null})}}if(!this.map.objects.some(o=>o.kind==="arrayPylon"))this.map.objects.push(...arrayPylons(this.map,`${loadingId}:${this.map.levelId||""}`,mapWidth(this.map,area)));this.map.name=runName(run,run.gate)}
@@ -2614,6 +2615,20 @@ export class Game {
       this.player.x=to.x;this.player.y=to.y-.2;this.player.invulnerableUntil=Math.max(this.player.invulnerableUntil||0,(this.lastUpdateNow||0)+800);this.message="The eye in the lid opens. The halls fold, and you stand somewhere else in them.";this.sync();return{ok:true,message:this.message};}
     this.message="The sigil is still.";return{ok:false,message:this.message};
   }
+  // Release 301 (Tim: "a teleportation system... you can't teleport to one place until you found the other... a dais that you
+  // walk up to, that has that symbol on it"). The first touch attunes a dais; once both are attuned, either carries you to the other.
+  useWarpDais(o){
+    const flag=(id)=>`warp-dais:${this.areaId()}:${id}`,other=this.map.objects.find((q)=>q.id===o.pair);
+    if(!this.save.worldFlags[flag(o.id)]){this.save.worldFlags[flag(o.id)]=true;o.state="attuned";
+      this.message=other&&this.save.worldFlags[flag(other.id)]?"The sigil wakes, and far off its twin answers. Touch either dais to cross between them.":"The sigil on the dais wakes and looks for its twin. Somewhere in these halls there is another.";
+      if(other&&this.save.worldFlags[flag(other.id)])journalOnce(this.save,"warp-dais","Two daises bearing the Watcher's sigil answered each other across a crossing. Stand on one and the halls fold to the other.","The Watcher");
+      this.sync();return{ok:true,message:this.message};}
+    if(!other||!this.save.worldFlags[flag(other.id)]){this.message="The sigil waits. Its twin has not been found.";return{ok:false,message:this.message};}
+    const width=mapWidth(this.map,this.area),open=(x,y)=>{const t=this.map.tiles[y*width+x];return t&&!t.blocked&&!LETHAL_KINDS.has(t.kind)},spot=[[0,1],[1,0],[-1,0],[0,-1]].map(([dx,dy])=>({x:other.x+dx,y:other.y+dy})).find((p)=>open(p.x,p.y))||{x:other.x,y:other.y};
+    this.player.x=spot.x;this.player.y=spot.y-.2;this.player.invulnerableUntil=Math.max(this.player.invulnerableUntil||0,(this.lastUpdateNow||0)+800);
+    (this.glyphVisuals||=[]).push({kind:"arc",x:o.x+.5,y:o.y+.45,tx:other.x+.5,ty:other.y+.45,color:"#d8c8ff",life:.4,max:.4});
+    this.message="The eye opens. The halls fold, and you step off the other dais.";this.sync();return{ok:true,message:this.message};
+  }
   startDisplacement(o,hidden=false){
     const key=`displacement-trigger:${this.rx},${this.ry}:${o.id}`;if(this.save.worldFlags[key])return false;this.save.worldFlags[key]=true;o.state='used';o.consumed=true;
     const h=hashSeed(this.save.seed+":displacement:"+this.rx+":"+this.ry+":"+o.id),distance=8+h%7,sign=h&1?1:-1,destination={rx:this.rx+(h&2?distance:Math.floor(distance/2))*sign,ry:this.ry+(h&2?Math.floor(distance/2):distance)*(h&4?1:-1)};
@@ -2731,6 +2746,7 @@ export class Game {
     // Release 215: touching a strange thing opens a Glimpse.
     if (o.kind === "digSpot" && (action || validActions(o, this.save)[0]) === "dig") { const c = ensureShovel(this.save); if (!c.ok) { this.message = c.message; return { ok: false, message: this.message }; } const r = digSpot(this.save, o, this.rx, this.ry); this.message = (c.crafted ? c.message + " " : "") + r.message; this.sync(); return r; }
     if (o.kind === "watcherTomb") return this.touchWatcherTomb(o); // release 289
+    if (o.kind === "warpDais") return this.useWarpDais(o); // release 301
     if (o.strange && (action || validActions(o, this.save)[0]) === "touch") { const r = touchStrange(this.save, o, this.rx, this.ry); this.message = r.message; if (r.ok) this.glimpseCue = "strange"; return r; }
     const chosen = action || validActions(o, this.save)[0],
       before = this.save.hp,

@@ -94,7 +94,7 @@ function entryComponent(map) {
 function realDungeon(site, active = null) {
   const save = freshSave(); save.seed = 'ROAM-REVIEW'; save.level = 8; save.perception.aperture = 1e6; // release 273: world beasts are met only from their Aperture tier
   const game = new Game(save, 0), id = `dungeon:ROAM-REVIEW:g1:5:5:site-${site}`;
-  save.session.activeDungeonId = id;
+  save.session.activeDungeonId = id; save.consequences.dungeons[id] = { layoutPool: 4, themePool: 2 }; // release 301: these sites were written against layout pool 4 and theme pool 2
   if (active) save.worldBeasts.psychicCrystal.active = { dungeon: id, ...active };
   game.loadArea('dungeon', false);
   return { save, game, id, e: game.enemies.find((q) => q.worldBeast === 'psychicCrystal') };

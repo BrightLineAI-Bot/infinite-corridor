@@ -235,6 +235,16 @@ function drawWatcherTomb(ctx, o, s, now) {
   ctx.restore();
   if (!open) { ctx.strokeStyle = `rgba(236,230,255,${.45 + pulse * .35})`; ctx.lineWidth = Math.max(1.5, s * .035); ctx.beginPath(); ctx.ellipse(cx, (o.y - .32) * s - pulse * s * .04, s * .24, s * .07, 0, 0, Math.PI * 2); ctx.stroke(); }
 }
+// Release 301: a Watcher's dais, a round stepped stone with the sigil inlaid; dim while dormant, lit and haloed once attuned.
+function drawWarpDais(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .55) * s, lit = o.state === "attuned", pulse = .5 + .5 * Math.sin(now / 480);
+  ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(cx, cy + s * .14, s * .5, s * .2, 0, 0, Math.PI * 2); ctx.fill();
+  for (const [r, top, c0, c1] of [[.5, .1, "#77708a", "#4a4458"], [.4, 0, "#a39cb6", "#6c6680"]]) { const g = ctx.createLinearGradient(cx - s * r, 0, cx + s * r, 0); g.addColorStop(0, c0); g.addColorStop(1, c1); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy - top * s, s * r, s * r * .42, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#2a2433"; ctx.lineWidth = 1; ctx.stroke(); }
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(1, .45); if (lit) { ctx.shadowColor = "#d8c8ff"; ctx.shadowBlur = s * (.15 + pulse * .12); }
+  watcherSigil(ctx, 0, 0, s * .2, s, lit ? .95 : .4, lit ? "#f4f0ff" : "#3a3448"); ctx.restore();
+  if (lit) { ctx.strokeStyle = `rgba(216,200,255,${.35 + pulse * .35})`; ctx.lineWidth = Math.max(1.5, s * .03); ctx.beginPath(); ctx.ellipse(cx, cy - s * (.55 + pulse * .05), s * .22, s * .06, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = `rgba(216,200,255,${.08 + pulse * .06})`; ctx.beginPath(); ctx.moveTo(cx - s * .3, cy); ctx.lineTo(cx - s * .16, cy - s * .55); ctx.lineTo(cx + s * .16, cy - s * .55); ctx.lineTo(cx + s * .3, cy); ctx.closePath(); ctx.fill(); }
+}
 // Exact Supernova disks are static material on the cast-center ground plane. A single constant
 // visual lift preserves a true circle across uneven physical tiles and survives later revisits.
 const voidScarSurfaceCache = new WeakMap();
@@ -1279,6 +1289,7 @@ export function render(ctx, g, w, h, now) {
           if (o.kind === "wayfindingCue") waymark(ctx,o,s);
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
+          else if (o.kind === "warpDais") drawWarpDais(ctx, o, s, now); // release 301
           else if (o.kind === "watcherTomb") { const L = groundLift(o.x, o.y + .5) * s; ctx.save(); ctx.translate(0, -L); drawWatcherTomb(ctx, o, s, now); ctx.restore(); } // release 289 (lifted onto a shrine's eye)
           else if (o.kind === "traveler" && o.elder) drawElder(ctx, o, s, now);
           else if (o.kind === "traveler") {
