@@ -11,7 +11,7 @@
 // large ordinary dungeon with no environment and no daises.
 //
 // Decisions are fixed per dungeon: ordinary crossings record the tier they were first generated at (history.ladder), and
-// deep and arena entrances record theirs when first entered (release 323: they never seal; below their tier they open as tastes). Histories pinned before this release have no
+// deep and arena entrances record theirs when first entered (release 323: they never seal; below their tier they open as tastes, 325: whole, with weaker creatures). Histories pinned before this release have no
 // `ladder` and keep today's rules.
 import { hashSeed } from "./random.ts";
 import { apertureTier } from "./world.ts";
@@ -25,6 +25,7 @@ export const DUNGEON_LADDER = {
   unlock: { large: 3, warp: 3, newThemes: 3, gatePredator: 3, guardiansMid: 3, guardiansAll: 6, poisonCrypt: 6, arena: 6, threefold: 6, deepV2: 9, horde: 9 },
   largeQuiet: .25,
   guardians: { base: 5, mid: 10 },
+  tasteThreat: { base: .55, perTier: .05 }, // release 325: creature strength in a deep or arena entered as a taste, by the tier it was entered at
 };
 
 export function ladderTier(save) { return apertureTier(save?.perception?.aperture || 0); }
