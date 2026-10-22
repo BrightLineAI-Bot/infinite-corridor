@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 281 — every action button lights up the instant you touch it, and taps in the gaps around Dodge reach it more readily (Dodge still needs stamina). The diagnostic probe now records what became of every Dodge press. The Leech glyph now heals at least a share of your max health per hit, so it shows at high level. A stray ">" near the action buttons is gone.
+
 - Release 279 — the compass keeps what you chose. The target you step the compass to, and a quest you point it at from the Journal, are now kept in your save, so closing the Atlas, reloading or wandering far no longer changes them. Opening the Atlas no longer arms "Set manual waypoint" on the section you are standing in (tap a section first), and the tap that closes the Atlas or a panel can no longer land on the compass beneath it.
 - Release 279 — Proving Ground: a Standard Test Tile laboratory, one fixed section with a pond, a chasm, a two-level plateau with stairs, a building and a dungeon door (which leads into a real dungeon, and the tile is put back as it was when you come out). The Monster & Elite Combat Arena now has an Environment list (the test tile, the three dungeon recipes, the eight arena families and every overworld biome) instead of needing a typed seed, and nothing starts until you press Start test.
 

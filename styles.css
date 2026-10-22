@@ -897,3 +897,6 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 .action-diamond button.build, .action-diamond button.potion { display: grid; place-items: center; padding: 0 0 9px; }
 .action-diamond button .icon { width: calc(var(--button) * .5); height: calc(var(--button) * .5); filter: drop-shadow(0 1px 1px #000a); pointer-events: none; }
 .action-diamond button.build .hammer { width: calc(var(--button) * .54); height: calc(var(--button) * .54); }
+
+/* Release 281: an action button lights the moment it is touched (input.ts press). */
+.buttons button.pressed { filter: brightness(1.7); box-shadow: 0 0 0 3px rgba(255, 236, 170, .75), inset 0 0 12px rgba(255, 236, 170, .5); transition: none; }

@@ -2585,6 +2585,25 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 281: Dodge answers every touch; Leech heals visibly; the stray ">" — 2026-10-22
+
+Tim, 2026-10-22 (two 300-second probes): "Dodge needs to be incredibly sensitive... I press Dodge a bunch of times... and nothing happens"; "dodge should be directly tied to stamina... if we don't have stamina, we should not be able to dodge"; "you don't have to change anything about the dodge. We just want the button to be more responsive"; "the leeching glyph isn't working, so I'm not getting health"; and a stray ">" floating near the action buttons.
+
+**CODE:**
+- **Dodge.** The dodge rule is unchanged: `combat.ts` `dodge()` still needs 15 stamina.
+  - `input.ts` `press()`: the touched button gets the `pressed` class at once for 160 ms (a bright ring in `styles.css`), so every touch shows that it registered.
+  - A tap on the cluster background goes to the nearest button within `GAP_REACH` 24 px (was 18), with Dodge favoured by 16 px (was 8).
+  - `main.ts`: while the diagnostic probe runs, every Dodge press that reaches `game.update` is logged as a `dodge` event. It records `dodged` with the distance moved, or the reason it did not: `no stamina`, `held (struggle)`, `stunned` or `refused`. The next probe says what happens to each tap on Tim's device.
+- **Leech.** `glyphs.ts` `glyphHit`: Leech heals its share of damage dealt (`GLYPHS.leech.hit`), but never less than `GLYPHS.leech.floor` of max health per landed hit (melee 2%, tool 1.2%, spell 0.8%). A hit that deals nothing heals nothing.
+  - Before this, Leech worked but healed 1–4 HP a hit at 328 max health.
+  - `glyphWorld` passes `maxHp`.
+  - The other glyph and echo tests pass unchanged.
+- **Stray ">".** In `index.html` and `proving-ground/index.html`, the Potion button's closing tag was complete (`</button>`), and the next line also began with `>`. That left a text node ">" in the action cluster. The tag now ends `</button`, like its siblings.
+
+**BOUNDARY:**
+- No save changes. Leech is stronger at high level (Blood Tide still doubles it).
+- Tests: `tests/leech-floor.test.ts`.
+
 ## Release 279: the compass keeps its choice; the Proving Ground's test tile, environment list and Start test — 2026-10-22
 
 Tim, 2026-10-22: "when you close the map... it changes whatever way marker you have... or whatever active quest you have... it doesn't maintain it"; "it doesn't let you select the arena... you have to type it in... there should just be a drop down for whichever... environment"; "one area of testing that's just a tile... a standard tile, but it has... water, a chasm, and some elevated blocks... as well as a building... and also a dungeon door... we can just keep this in place"; "there should be a start simulation button".

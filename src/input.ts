@@ -145,6 +145,8 @@ export function createInput(root, host = globalThis, options = {}) {
     actionTap = { button: b, pointerId: e.pointerId, until: performance.now() + 1500 };
     latch.add(b.dataset.action);
     heldButtons.add(b.dataset.action);
+    // Release 281 (Tim: "We just want the button to be more responsive"): the button lights the instant it is touched.
+    b.classList?.add("pressed"); clearTimeout(b.pressedTimer); b.pressedTimer = setTimeout(() => b.classList?.remove("pressed"), 160);
     // The release arrives where the press landed: the button itself, or the cluster for a press in a gap (release 181).
     const source = e.currentTarget || b, id = e.pointerId;
     const up = (q) => { if (q?.pointerId != null && id != null && q.pointerId !== id) return; heldButtons.delete(b.dataset.action); for (const t of ["pointerup", "pointercancel", "pointerleave"]) source.removeEventListener(t, up); };
@@ -154,7 +156,7 @@ export function createInput(root, host = globalThis, options = {}) {
   // Release 179 (Tim's probe, 2026-10-18): a thumb that lands in the gap between action buttons pressed nothing; his
   // Dodge presses landed just off Dodge's lower-left curve. A press on the cluster itself goes to the button whose edge
   // is nearest, within GAP_REACH pixels, and Dodge (the action that has to land at once) wins ties by GAP_PRIORITY.
-  const GAP_REACH = 18, GAP_PRIORITY = { dodge: 8 };
+  const GAP_REACH = 24, GAP_PRIORITY = { dodge: 16 }; // release 281: wider, and Dodge wins any near tie (Tim: "Dodge needs to be incredibly sensitive")
   root.querySelectorAll?.(".action-diamond").forEach((d) => (d.onpointerdown = (e) => {
     if (e.target !== d) return;
     let best = null, bestGap = GAP_REACH;
