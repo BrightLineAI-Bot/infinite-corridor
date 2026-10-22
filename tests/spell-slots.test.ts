@@ -70,14 +70,15 @@ test('the bottom row trades the Menu toggle for spell slot B', () => {
 });
 
 test('release 261: two spell presets; the preset button swaps A and B; passives stay; older saves start with both as their slots', () => {
+  const ab = (p) => ({ a: p.a, b: p.b }); // release 291: presets also carry the Build button's mode and item
   const s = freshSave(); const slots = ensureSlots(s); const before = JSON.stringify(s.constellation);
-  assert.equal(s.magicSkills.preset, 0); assert.deepEqual(s.magicSkills.presets, [{ ...slots }, { ...slots }], 'both presets start as the current slots');
-  setSlot(s, 'a', 'spell:cinder-dart'); setSlot(s, 'b', null); assert.deepEqual(s.magicSkills.presets[0], { a: 'spell:cinder-dart', b: null }, 'setting a slot sets the active preset');
+  assert.equal(s.magicSkills.preset, 0); assert.deepEqual(s.magicSkills.presets.map(ab), [{ ...slots }, { ...slots }], 'both presets start as the current slots');
+  setSlot(s, 'a', 'spell:cinder-dart'); setSlot(s, 'b', null); assert.deepEqual(ab(s.magicSkills.presets[0]), { a: 'spell:cinder-dart', b: null }, 'setting a slot sets the active preset');
   let r = togglePreset(s); assert.equal(r.preset, 2); assert.equal(s.magicSkills.preset, 1); assert.deepEqual(s.magicSkills.slots, { ...slots }, 'preset 2 still holds the original spells');
   setSlot(s, 'a', 'spell:grave-sun'); setSlot(s, 'b', 'spell:ember-ring');
   r = togglePreset(s); assert.deepEqual(s.magicSkills.slots, { a: 'spell:cinder-dart', b: null }); assert.match(r.message, /preset 1/i);
   togglePreset(s); assert.deepEqual(s.magicSkills.slots, { a: 'spell:grave-sun', b: 'spell:ember-ring' });
   assert.equal(JSON.stringify(s.constellation), before, 'passives are untouched');
   const old = freshSave(); delete old.magicSkills.presets; delete old.magicSkills.preset; ensureSlots(old); assert.equal(old.magicSkills.preset, 0); assert.equal(old.magicSkills.presets.length, PRESETS);
-  const bad = freshSave(); bad.magicSkills.presets = [{ a: 'spell:nonsense', b: 7 }, 'x']; bad.magicSkills.preset = 5; ensureSlots(bad); assert.equal(bad.magicSkills.preset, 0); assert.deepEqual(bad.magicSkills.presets[1], { ...bad.magicSkills.slots });
+  const bad = freshSave(); bad.magicSkills.presets = [{ a: 'spell:nonsense', b: 7 }, 'x']; bad.magicSkills.preset = 5; ensureSlots(bad); assert.equal(bad.magicSkills.preset, 0); assert.deepEqual(ab(bad.magicSkills.presets[1]), { ...bad.magicSkills.slots });
 });

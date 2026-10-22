@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 291 — presets and the back button:
+  - **Presets.** Each spell preset now also chooses what the Build button does: Build, or Item. Pick the item in Pack → Supplies: each item has Preset 1 and Preset 2 buttons, and only a preset set to Item can take one. In Item mode the button shows the item and how many you have, and pressing it uses one.
+  - **Back button.** The phone's back button now reliably opens the pause menu during play and closes it again. Before, the first press could leave the app, and pressing back on the pause menu left the game frozen.
+  - **Crossing Sigils** are listed in Supplies again.
+
 - Release 289 — the Watcher's sigil appears in the world:
   - Some dungeons have it inlaid in the floor, and arenas carry it as a large mosaic with an ornate border.
   - Rarely, out in the world, you will find a shrine ruin whose raised platforms form the sigil, each part one jump above the last.
