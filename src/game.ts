@@ -120,7 +120,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1,...(history.mire?{theme:'poisonCrypt'}:{}),...(history.mire?.taste?{sizeProfile:'compact'}:{}),...(history.ladder?{ladder:crossingLadder(save.seed,id,history.ladder.tier)}:{})});
   else if (!id.includes(':deep-v') && history.generatorVersion === 4) map = generateUnifiedDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options});
   else if (!id.includes(':deep-v') && history.generatorVersion === 3) map = generateVariedDungeon(save.seed,id,dungeonDescriptor(id).recipe);
-  else map = generateDungeon(save.seed,id,{...options,threefoldLayout:history.threefoldLayout||1,...(history.ladder?.rung==='taste'&&id.endsWith(':deep-v1')?{wings:1}:{})});
+  else map = generateDungeon(save.seed,id,{...options,threefoldLayout:history.threefoldLayout||1});
   if (history.layoutVersion === 1 && !map.arena && !id.startsWith('displacement:') && !id.startsWith('elite-portal:') && !id.includes('aperture-annex')) varyDungeonLayout(map,save.seed,id);
   if (history.watcherVersion && !id.startsWith('displacement:') && !id.startsWith('dive:') && !map.multiLevel) placeWatcherDungeon(map, map.width || Math.round(Math.sqrt(map.tiles.length)), save.seed, id); // release 289
   return map;
@@ -2941,7 +2941,16 @@ export class Game {
   // Release 319 (dungeon-ladder.ts): a Threefold Deep, a deep archetype or a world-threat arena records, the first time it is
   // entered, the tier it was found at and whether it is a taste. Release 323 (Tim: "no dungeon should be sealed... you should
   // just be able to access all the dungeons... sometimes people will probably never come back to them"): every entrance
-  // opens. One found below its kind's unlock tier opens as a taste (a Threefold Deep wakes one wing); at or above it, whole.
+  // opens. One found below its kind's unlock tier opens as a taste (325: whole, with its creatures scaled down: tasteThreat).
+  // Release 325 (Tim: "the threefold deeps should just open all the way... monsters that are scoped to the strength of the
+  // character at that point"): in a deep or arena first entered below its kind's tier (a taste), every creature's health and
+  // damage are scaled by DUNGEON_LADDER.tasteThreat for the tier it was entered at. 1 elsewhere.
+  tasteThreat() {
+    if (!(this.map?.deepDungeon || this.map?.recipe === "deep-v1" || this.map?.arena)) return 1;
+    const id = this.save.session.activeDungeonId, h = id && this.save.consequences?.dungeons?.[id];
+    if (h?.ladder?.rung !== "taste") return 1;
+    const T = DUNGEON_LADDER.tasteThreat; return Math.min(1, T.base + T.perTier * (Number(h.ladder.tier) || 0));
+  }
   openEntrance(o) {
     const kind = entranceKind(o), id = o.dungeonId || o.arenaId; if (!kind || !id) return;
     const h = dungeonHistory(this.save, id); if (h.visits > 0 || h.ladder) return;
@@ -3664,6 +3673,7 @@ export class Game {
         c.maxHp=Math.round(c.maxHp*hp);c.hp=c.maxHp;c.damage=Math.max(1,Math.round(c.damage*damage));c.speedMultiplier*=speed;c.attackCooldownScale=attackCooldownScale;c.telegraphScale=telegraphScale;
       }
       if(area === "dungeon" && !c.passiveBehavior && !c.ambient && !c.astralCompanionOf && !c.worldBeast) tuneDungeonThreat(c);
+      if(area === "dungeon" && !c.ambient && !c.astralCompanionOf && !c.worldBeast){const t=this.tasteThreat();if(t<1){c.maxHp=c.hp=Math.max(1,Math.round(c.maxHp*t));c.damage=Math.max(1,Math.round(c.damage*t));c.tasteScaled=t}} // release 325
       // Every monster hits harder (Tim, 2026-10-16). Foes tuned to the Wayfarer (the Questing Beast, Far Array bosses) are exempt.
       if(c.damage>0&&!c.questingBeast&&!c.worldBeast&&!c.astralCompanionOf&&!c.farArrayBoss)c.damage=Math.max(1,Math.round(c.damage*ENEMY_DAMAGE_SCALE));
       if (c.gatePredator) tuneGatePredator(c, this.save, characterStats(this.save));

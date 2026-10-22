@@ -74,13 +74,6 @@ test('a fresh crossing records the tier it was found at; older histories keep th
   const old = 'dungeon:L:g1:3:4:old', h = dungeonHistory(s, old); h.generatorVersion = 5; h.layoutPool = 5; generatePinnedDungeon(s, old); assert.equal(h.ladder, undefined);
 });
 
-test('a Threefold Deep taste wakes one wing, and its warden alone opens the final gate', () => {
-  const id = deepDungeonId('L'), full = generateDungeon('L', id, {}), taste = generateDungeon('L', id, { wings: 1 });
-  assert.equal(full.wings.length, 3); assert.equal(taste.wings.length, 1);
-  assert.equal(taste.finalGate.requires.length, 1); assert.equal(taste.finalGate.requires[0], taste.wings[0].minibossId);
-  assert.equal(taste.enemySpawns.filter((e) => e.dungeonRole === 'wingMiniboss').length, 1);
-});
-
 test('hordes: none when the ladder says no, a smaller one as a taste', () => {
   const s = freshSave(); s.seed = 'H';
   const id = ids(4000, 'h').map((q) => q.replace(':L:', ':H:')).find((q) => rollHorde(s, q, {}, 'full'));
@@ -95,9 +88,18 @@ test('deep and arena entrances always open (release 323); below their tier, as a
   const o = { kind: 'dungeon', dungeonType: 'deep-v1', dungeonId: 'dungeon:E:g1:5:5:deep-v1' };
   g.openEntrance(o); assert.deepEqual(s.consequences.dungeons[o.dungeonId].ladder, { version: 1, tier: 0, rung: 'taste' });
   s.perception.aperture = 3255; g.openEntrance(o); assert.equal(s.consequences.dungeons[o.dungeonId].ladder.rung, 'taste', 'decided once');
-  const m = generatePinnedDungeon(s, o.dungeonId); assert.equal(m.wings.length, 1, 'a taste of the Deep');
+  const m = generatePinnedDungeon(s, o.dungeonId); assert.equal(m.wings.length, 3, 'release 325: a taste opens all the way');
   const a = { kind: 'arenaEntrance', dungeonId: 'arena:v1:E:9,0', arenaId: 'arena:v1:E:9,0' };
   g.openEntrance(a); assert.deepEqual(s.consequences.dungeons[a.dungeonId].ladder, { version: 1, tier: 13, rung: 'full' });
   const late = { kind: 'dungeon', dungeonType: 'deep-v2', dungeonId: 'dungeon:E:g1:6:6:deep-v2:loop' }; s.perception.aperture = 0;
   for (let i = 0; i < 30; i++) { const q = { ...late, dungeonId: late.dungeonId + i }; g.openEntrance(q); assert.ok(s.consequences.dungeons[q.dungeonId].ladder.rung, 'never sealed'); }
+});
+
+test('release 325: creatures in a taste Deep are scaled to the tier it was entered at', () => {
+  const run = (aperture) => { const s = freshSave(); s.seed = 'T'; s.perception.aperture = aperture; const g = new Game(s, 0); const o = { kind: 'dungeon', dungeonType: 'deep-v1', dungeonId: 'dungeon:T:g1:5:5:deep-v1' };
+    g.openEntrance(o); s.session.dungeonReturn = { rx: 5, ry: 5, x: 4, y: 4 }; s.session.activeDungeonId = o.dungeonId; g.loadArea('dungeon'); return { g, boss: g.enemies.find((e) => e.dungeonRole === 'finalBoss' || e.kind === 'gateRevenant' && e.boss) }; };
+  const low = run(0), high = run(3255);
+  assert.equal(low.g.tasteThreat(), .55); assert.equal(high.g.tasteThreat(), 1);
+  assert.ok(low.boss && high.boss); assert.ok(low.boss.maxHp < high.boss.maxHp * .6, `${low.boss.maxHp} vs ${high.boss.maxHp}`);
+  assert.equal(low.g.map.wings.length, 3);
 });

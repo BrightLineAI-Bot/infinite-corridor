@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 325 — a Threefold Deep always opens all the way, with all three wings and their wardens. One entered below its tier (a taste) keeps its full size, but its creatures are scaled to you:
+  - **Scaling:** 55% of their usual health and damage at the start, and 5% more for each Aperture band you had reached when you first went in.
+  - **Same for the rest:** the deep archetypes and world-threat arenas entered early work the same way.
+
 - Release 323 — no dungeon is ever sealed. Every Threefold Deep, deep archetype and world-threat arena can be entered whatever your Aperture.
   - **Below its tier:** the dungeon opens as its taste. A Threefold Deep wakes only one wing; the deep archetypes and arenas open whole.
   - **At or above its tier:** it opens whole.

@@ -2585,6 +2585,19 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 325: taste deeps open all the way — 2026-10-22
+
+Tim, 2026-10-22: "the threefold deeps should just open all the way. Just one wing isn't really useful... have like... lower tier monsters... monsters that are scoped to the strength of the character at that point".
+
+**CODE:**
+- 319's `wings: 1` option is removed from `world.ts` `generateDeepDungeon` and from `generatePinnedDungeon`. No published release ever used it.
+- `DUNGEON_LADDER.tasteThreat = { base: .55, perTier: .05 }`.
+- `Game.tasteThreat()` returns min(1, base + perTier × `history.ladder.tier`) in a deep or arena whose ladder rung is "taste", and 1 everywhere else.
+- `createEnemyFromSpawn` scales every dungeon creature's maxHp, hp and damage by it, after the dungeon tuning, and marks it `tasteScaled`. Restored creatures keep their saved, already-scaled stats.
+- Test: `tests/dungeon-ladder-319.test.ts`.
+
+**BOUNDARY:** Ordinary crossings, and deeps or arenas entered at or above their tier, are untouched. World beasts, ambient creatures and astral companions are never scaled.
+
 ## Release 323: no dungeon is sealed — 2026-10-22
 
 Tim, 2026-10-22: "no dungeons should say sealed... No dungeon should be sealed, and you should just be able to access all the dungeons... Because sometimes people will probably never come back to them".
