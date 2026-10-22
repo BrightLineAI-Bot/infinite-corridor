@@ -932,3 +932,4 @@ button[aria-current], button[aria-selected="true"], .arc-kind.active, .options-t
 .arc-preset-button { position: static; backdrop-filter: none; background: none; align-items: center; }
 .arc-preset-button small { color: #a99f8f; margin-right: 4px; }
 .consumable .preset-pick:disabled { opacity: .38; }
+.arc-layout { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; } .arc-layout button { font-size: 12px; padding: 4px 8px; } /* release 295 */

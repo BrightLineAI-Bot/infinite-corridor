@@ -29,7 +29,7 @@ test('saves gain glyph state once: starter glyphs, weapon sockets by tier, two s
   assert.equal(GLYPH_IDS.length, 10); assert.equal(Object.keys(RESONANCES).length, 8);
   for (const r of Object.values(RESONANCES)) assert.ok(r.pair.every((g) => GLYPHS[g]), r.name);
   assert.equal(socketCount(weapon('primary', 'common')), 1); assert.equal(socketCount(weapon('primary', 'relic')), 3);
-  assert.equal(socketCount({ slot: 'armor', tier: 'relic' }), 0);
+  assert.equal(socketCount({ slot: 'armor', tier: 'relic' }), 3, 'release 295: armor takes glyphs too'); assert.equal(socketCount({ slot: 'charm', tier: 'relic' }), 0);
   const old = freshSave(); delete old.glyphs; delete old.glyphGrant; delete old.glyphCodex; delete old.spellGlyphs; old.inventory = [{ ...generateItem('X', 9) }]; delete old.inventory[0].glyphs;
   const m = migrateSave(JSON.parse(JSON.stringify(old)));
   assert.equal(m.glyphs.ignite, 1, 'old saves get the starter glyphs');

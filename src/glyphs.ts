@@ -29,6 +29,31 @@ export const GLYPHS = {
   still: { name: "Still", sigil: "▢", color: "#cfd6e0", text: { melee: "Hits freeze foes for 0.5 s.", tool: "Hits freeze foes for 0.6 s.", spell: "Pulses freeze foes for 0.4 s." }, hit: { melee: .5, tool: .6, spell: .4 } },
 };
 export const GLYPH_IDS = Object.keys(GLYPHS);
+// Release 295 (Tim, 2026-10-22: "a glyph setting for the armor... movement or traversal... attack speed... dodges... cost less
+// stamina... stamina increases more rapidly... spell cool down... defense and health... spell... duration"; "we could just use
+// the existing glyphs... they'll just have new attributes when slotted into the armor"). Armor carries sockets by tier like a
+// weapon; each glyph set in it gives one steady bonus. Bonuses of the same kind add, up to ARMOR_GLYPH_CAP.
+export const ARMOR_GLYPHS = {
+  swift: { move: .08, text: "+8% move speed." },
+  heavy: { defense: .05, text: "+5% damage reduction." },
+  leech: { hp: .1, text: "+10% maximum health." },
+  echo: { spellDuration: .2, text: "Aperture skills last 20% longer." },
+  chain: { spellCooldown: .12, text: "Spells and skills recover 12% faster." },
+  pierce: { attackSpeed: .12, text: "Attacks and shots ready 12% sooner." },
+  tether: { staminaRegen: .25, text: "Stamina returns 25% faster." },
+  still: { dodgeCost: .2, text: "Dodges cost 20% less stamina." },
+  ignite: { spellDamage: .12, text: "+12% magic damage." },
+  volatile: { attackDamage: .1, text: "+10% melee damage." },
+};
+export const ARMOR_GLYPH_CAP = { move: .24, defense: .15, hp: .3, spellDuration: .6, spellCooldown: .36, attackSpeed: .36, staminaRegen: .75, dodgeCost: .6, spellDamage: .36, attackDamage: .3 };
+for (const [id, a] of Object.entries(ARMOR_GLYPHS)) GLYPHS[id].text.armor = a.text;
+// The bonuses from the glyphs set in the equipped armor: { move, defense, hp, ... } (each 0 when absent).
+export function armorGlyphBonus(save) {
+  const out = Object.fromEntries(Object.keys(ARMOR_GLYPH_CAP).map((k) => [k, 0]));
+  for (const id of save?.equipment?.armor?.glyphs || []) { const a = ARMOR_GLYPHS[id]; if (a) for (const k of Object.keys(ARMOR_GLYPH_CAP)) if (a[k]) out[k] += a[k]; }
+  for (const k of Object.keys(out)) out[k] = Math.min(out[k], ARMOR_GLYPH_CAP[k]);
+  return out;
+}
 
 export const RESONANCES = {
   "ember-choir": { name: "Ember Choir", pair: ["ignite", "echo"], text: "Echoes deal double damage to burning foes." },
@@ -42,7 +67,7 @@ export const RESONANCES = {
 };
 
 // ---------------------------------------------------------------- save state
-export function socketCount(item) { return item && (item.slot === "primary" || item.slot === "secondary") ? SOCKETS_BY_TIER[item.tier] || 1 : 0; }
+export function socketCount(item) { return item && (item.slot === "primary" || item.slot === "secondary" || item.slot === "armor") ? SOCKETS_BY_TIER[item.tier] || 1 : 0; } // release 295: armor too
 export function normalizeSockets(item) {
   if (!item) return item;
   const n = socketCount(item);
@@ -60,6 +85,9 @@ export function ensureGlyphState(save) {
   save.spellGlyphs = Object.fromEntries(Object.entries(spells).map(([id, list]) => [id, Array.from({ length: SPELL_SOCKETS }, (_, i) => (GLYPHS[list?.[i]] ? list[i] : null))]));
   const gc = save.glyphCodex || {}; save.glyphCodex = { glyphs: { ...gc.glyphs }, resonances: { ...gc.resonances } };
   for (const item of [...Object.values(save.equipment || {}), ...(save.inventory || [])]) normalizeSockets(item);
+  // Release 295: saved glyph layouts per gear host (additive): { melee: [id|null...], tool: [...], armor: [...] }.
+  const lay = save.glyphLayouts && typeof save.glyphLayouts === "object" ? save.glyphLayouts : {};
+  save.glyphLayouts = Object.fromEntries(Object.entries(lay).filter(([h, v]) => LAYOUT_HOSTS.includes(h) && Array.isArray(v)).map(([h, v]) => [h, v.slice(0, 3).map((q) => (GLYPHS[q] ? q : null))]));
   if (!save.glyphGrant) { save.glyphGrant = GLYPH_VERSION; for (const id of ["ignite", "chain", "echo"]) { save.glyphs[id] += 1; save.glyphCodex.glyphs[id] = true; } }
   return save;
 }
@@ -68,6 +96,7 @@ export function ensureGlyphState(save) {
 function socketsFor(save, host) {
   if (host === "melee") return save.equipment?.primary?.glyphs || [];
   if (host === "tool") return save.equipment?.secondary?.glyphs || [];
+  if (host === "armor") return save.equipment?.armor?.glyphs || [];
   return save.spellGlyphs?.[save.equippedSpell || "ember-ring"] || [];
 }
 export function resonancesOf(glyphs) {
@@ -150,7 +179,7 @@ export function tickGlyphStatus(enemies, dt, now, onBurnDeath = () => {}) {
 
 // ---------------------------------------------------------------- socketing, drops, dust
 export function socketGlyph(save, host, index, glyphId) {
-  const list = host === "melee" ? save.equipment?.primary?.glyphs : host === "tool" ? save.equipment?.secondary?.glyphs : (save.spellGlyphs[host] ||= Array(SPELL_SOCKETS).fill(null));
+  const list = host === "melee" ? save.equipment?.primary?.glyphs : host === "tool" ? save.equipment?.secondary?.glyphs : host === "armor" ? save.equipment?.armor?.glyphs : (save.spellGlyphs[host] ||= Array(SPELL_SOCKETS).fill(null));
   if (!list || index < 0 || index >= list.length) return { ok: false, message: "That socket does not exist." };
   if (glyphId && !GLYPHS[glyphId]) return { ok: false, message: "Unknown glyph." };
   if (glyphId && !(save.glyphs[glyphId] > 0)) return { ok: false, message: `No ${GLYPHS[glyphId].name} glyph to set.` };
@@ -159,6 +188,22 @@ export function socketGlyph(save, host, index, glyphId) {
   if (glyphId) save.glyphs[glyphId] -= 1;
   list[index] = glyphId || null;
   return { ok: true, message: glyphId ? `${GLYPHS[glyphId].name} set.` : prior ? `${GLYPHS[prior].name} returned to your pack.` : "Socket already empty." };
+}
+// Release 295 (Tim: "a preset... so that you can save the glyphs that you have on your current... equipment. And then when
+// you get a new piece of gear, you can just apply the preset"): remember a gear host's layout, and set it on whatever is
+// equipped now. Applying returns the item's glyphs to the pouch first, then sets the saved ones it has, socket by socket.
+export const LAYOUT_HOSTS = ["melee", "tool", "armor"];
+export function saveGlyphLayout(save, host) {
+  const list = socketsFor(save, host); if (!LAYOUT_HOSTS.includes(host) || !list.length) return { ok: false, message: "Nothing equipped there to remember." };
+  (save.glyphLayouts ||= {})[host] = list.map((q) => q || null); return { ok: true, message: "Glyph layout saved." };
+}
+export function applyGlyphLayout(save, host) {
+  const want = save.glyphLayouts?.[host], list = socketsFor(save, host);
+  if (!want) return { ok: false, message: "No saved layout for that." }; if (!list.length) return { ok: false, message: "That has no sockets." };
+  for (let i = 0; i < list.length; i++) if (list[i]) socketGlyph(save, host, i, null);
+  const missing = [];
+  for (let i = 0; i < list.length && i < want.length; i++) if (want[i]) { const r = socketGlyph(save, host, i, want[i]); if (!r.ok) missing.push(GLYPHS[want[i]].name); }
+  return { ok: true, message: missing.length ? `Layout applied; missing: ${missing.join(", ")}.` : "Saved layout applied." };
 }
 // Weapons swapped out of a slot keep their glyphs; the glyphs travel with the item.
 export function glyphDrop(save, source, n, guaranteed = false) {
@@ -178,5 +223,5 @@ export function craftGlyph(save, id) {
 }
 export function describeHost(save, host) {
   const l = hostLoadout(save, host);
-  return { glyphs: l.glyphs.map((id) => ({ id, name: GLYPHS[id].name, text: GLYPHS[id].text[host] })), resonances: l.resonances.map((id) => ({ id, ...RESONANCES[id] })) };
+  return { glyphs: l.glyphs.map((id) => ({ id, name: GLYPHS[id].name, text: GLYPHS[id].text[host] })), resonances: host === "armor" ? [] : l.resonances.map((id) => ({ id, ...RESONANCES[id] })) }; // armor glyphs do not resonate
 }

@@ -13,22 +13,21 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**295**
+**297**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 293 | Claude | `claude/dreamy-rubin-yn6q2p` | Child-safe Glimpses setting (hides horror and violence Glimpses); drawn item icons; the draught leaves preset items | Building. |
-| 291 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #124) | Back button pauses and unpauses reliably; presets set the Build button to Build or an item (assigned in Supplies); Crossing Sigils listed in Supplies again | Merged. |
-| 289 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #123) | The Watcher's sigil in the world: dungeon floor inlays, arena mosaics, rare shrine ruins of raised platforms, pristine haloed tombs that fold you elsewhere (shelters, crypts, shrines); generation pinned to newly seen sections and dungeons | Merged; preview `r289-717a6a6907e3`. |
-| 287 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #122) | Blocks as stairs and barriers (oldest of five gives way; two high stops fliers and the Crystal); Crystal calm until touched; dungeon caches 2+2 (deeper: chance of 3+3); Supplies line and gold selection everywhere; barred Build icon; four coffin looks | Merged; preview `r287-98ec630e07c7`. |
+| 295 | Claude | `claude/dreamy-rubin-yn6q2p` | Armor glyph sockets (existing glyphs, steady bonuses); gear glyph layouts; the Hull Shield leaves preset items | Building. |
+| 293 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #125) | Child-safe Glimpses setting (hides horror and violence Glimpses); drawn item icons; the draught leaves preset items | Merged. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 291 | `r291-4bc624609d78` | 2026-10-22 | Published with 287 and 289 (neither went live alone): blocks as stairs and barriers, calm Crystal, dungeon caches, gold selection, Supplies line, four coffins (287, PR #122); the Watcher's sigil in the world (289, PR #123); preset item buttons, back button, Crossing Sigils (291, PR #124). The pre-publish Fable review found no blockers. |
 | 285 | `r285-d5a533b38404` | 2026-10-22 | Published with 281 and 283 (neither went live alone): buttons light on touch, probe logs dodges, Leech floor, stray ">" removed (281, PR #119); deadly dungeon water, grey rot band, crypt sigil, Supplies and Continuous build (283, PR #120); the Psychic Crystal comes out to fight (285, PR #121). The pre-publish Fable review found no blockers. |
 | 279 | `r279-880fe40d0946` | 2026-10-22 | The compass keeps its choice; Proving Ground test tile, environment list, Start test (PR #118). The pre-publish review found no blockers. |
 | 277 | `r277-ce71a38b8a17` | 2026-10-22 | Published with 273 and 275 (neither went live alone): world beasts by Aperture tier, four sigils per horde, Stage 1 canon (273, PR #115); creature stages, the Stage 1 strength freeze, a rock gives one stone (275, PR #116); supply caches give a stone, a wood and a draught, Broken Observatories hold a cache (277, PR #117). The pre-publish review found no blockers. |

@@ -2585,6 +2585,37 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 295: armor glyphs; gear glyph layouts — 2026-10-22
+
+Tim, 2026-10-22:
+- "there should be a glyph setting for the armor... movement or traversal... attack speed... dodges cost less stamina... stamina increases more rapidly"; "it can also reduce cool down for spells... attack speed, movement, stamina reduction, defense and health... spell... duration".
+- "we could just use the existing glyphs... they'll just have new attributes when slotted into the armor".
+- "a preset... so that you can save the glyphs that you have on your current... equipment... when you get a new piece of gear, you can just apply the preset".
+- "We don't need the hull [shield] button, because it will be under build".
+
+**CODE:**
+- **`glyphs.ts`**:
+  - `socketCount` gives armor sockets by tier (`SOCKETS_BY_TIER`). `socketsFor`/`socketGlyph` accept the "armor" host.
+  - `ARMOR_GLYPHS` gives each glyph one bonus (and its `text.armor`). `ARMOR_GLYPH_CAP` caps each kind. `armorGlyphBonus(save)` sums them.
+  - `describeHost(save, "armor")` lists no Resonances: armor glyphs do not resonate.
+- **Where the bonuses apply** (`game.ts`):
+  - `characterStats`: maxHp ×(1+hp), damageReduction +defense, moveSpeed +move, meleeBonus ×(1+attackDamage), magicBonus ×(1+spellDamage).
+  - Melee and tool readiness ×(1−attackSpeed).
+  - Spell cooldown and Aperture skill cooldown ×(1−spellCooldown); skill duration ×(1+spellDuration).
+  - Stamina regeneration ×(1+staminaRegen).
+  - `dodgeCost(save)` = 15×(1−dodgeCost), passed to `combat.ts` `dodge(…, cost)` and to action readiness.
+  - `main.ts` `syncArmorGlyphs` re-syncs max health and stamina when armor sockets change.
+- **Gear layouts**:
+  - `save.glyphLayouts` (additive; normalised in `ensureGlyphState`) for `LAYOUT_HOSTS` (melee, tool, armor).
+  - `saveGlyphLayout` / `applyGlyphLayout`: applying returns the item's glyphs to the pouch first, then sets the saved ones it can, and names any missing.
+  - Each host card in Glyphs has the buttons.
+- **Presets**: `spell-slots.ts` drops `hullShield` from `BUTTON_ITEMS`.
+
+**BOUNDARY:**
+- Armor items already saved gain empty sockets through `normalizeSockets` (additive).
+- `tests/glyphs.test.ts` now expects armor sockets.
+- Tests: `tests/armor-glyphs-295.test.ts`.
+
 ## Release 293: child-safe Glimpses; item icons — 2026-10-22
 
 Tim, 2026-10-22:
