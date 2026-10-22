@@ -30,6 +30,7 @@ function applyFallenTreeCrossings(map) {
 }
 import { ensureSlots, slotted, pairingMods, slotReadiness, togglePreset, activeButton, slotTool, CASTABLES, availableCastables } from "./spell-slots.ts";
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
+import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind, unlockBandName } from "./dungeon-ladder.ts";
 import { diveGate, subGate, underwaterGate, mechGate, MECH, ensureMech, mechAbsorb, tickMech } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
@@ -69,7 +70,7 @@ import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt } from "./underlands.ts";
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
 import { applyLandscape, applyDream, DREAM_VERSION, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.ts";
-import { GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
+import { GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
 import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, digSpot } from "./digging.ts";
@@ -104,16 +105,22 @@ export function generatePinnedDungeon(save, id, options = {}) {
   // Release 146: dungeons first generated from now on may use the automaton layout (pool 2) and threefold layout 2.
   if (fresh && history.layoutPool === undefined) history.layoutPool = 5; // release 301: plain short crossings and warp daises (4: release 148's organic patterns; 3: release 147's)
   if (fresh && history.themePool === undefined) history.themePool = THEME_POOL_VERSION; // release 299: the new dungeon environments
-  if (fresh && history.mire === undefined) history.mire = rollMireCrypt(save.seed, id, history.layoutPool) ? { version: MIRE_CRYPT.version, merged: 0, found: false } : false; // release 303: the Poison Crypt
+  // Release 319 (dungeon-ladder.ts): a crossing first generated from now on records the Aperture tier it was found at, and
+  // that tier decides its size, daises, environments, Poison Crypt, guardian, horde and Gate Revenant for good.
+  const ordinary = fresh && id.startsWith('dungeon:') && !id.includes(':deep-v');
+  if (ordinary && history.ladder === undefined) history.ladder = { version: DUNGEON_LADDER.version, tier: ladderTier(save) };
+  const rungOf = (kind) => history.ladder ? ladderRoll(save.seed, id, kind, history.ladder.tier) : 'full';
+  if (fresh && history.mire === undefined) { const rung = rollMireCrypt(save.seed, id, history.layoutPool) ? rungOf('poisonCrypt') : null; history.mire = rung ? { version: MIRE_CRYPT.version, merged: 0, found: false, ...(rung === 'taste' ? { taste: true } : {}) } : false; } // release 303: the Poison Crypt; 319: a taste is a small one
+  if (ordinary && history.ladder && !rungOf('gatePredator')) history.gatePredatorSpawnThreshold = 0; // release 319
   if (fresh && history.threefoldLayout === undefined && id.endsWith(':deep-v2:threefold')) history.threefoldLayout = 2;
   let map;
   // Dive generator pinned per history: 1 = the release-107 Sunken Reach, 2 = themed grottoes (release 108).
   if (id.startsWith('dive:')) map = (history.diveGenerator ?? 1) >= 2 ? generateGrotto(save.seed, id) : generateDiveSite(save.seed, id);
   else if (/^(arena:|hunt-arena:|hunt-instance:)/.test(id)) map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved});
-  else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1,...(history.mire?{theme:'poisonCrypt'}:{})});
+  else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1,...(history.mire?{theme:'poisonCrypt'}:{}),...(history.mire?.taste?{sizeProfile:'compact'}:{}),...(history.ladder?{ladder:crossingLadder(save.seed,id,history.ladder.tier)}:{})});
   else if (!id.includes(':deep-v') && history.generatorVersion === 4) map = generateUnifiedDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options});
   else if (!id.includes(':deep-v') && history.generatorVersion === 3) map = generateVariedDungeon(save.seed,id,dungeonDescriptor(id).recipe);
-  else map = generateDungeon(save.seed,id,{...options,threefoldLayout:history.threefoldLayout||1});
+  else map = generateDungeon(save.seed,id,{...options,threefoldLayout:history.threefoldLayout||1,...(history.ladder?.rung==='taste'&&id.endsWith(':deep-v1')?{wings:1}:{})});
   if (history.layoutVersion === 1 && !map.arena && !id.startsWith('displacement:') && !id.startsWith('elite-portal:') && !id.includes('aperture-annex')) varyDungeonLayout(map,save.seed,id);
   if (history.watcherVersion && !id.startsWith('displacement:') && !id.startsWith('dive:') && !map.multiLevel) placeWatcherDungeon(map, map.width || Math.round(Math.sqrt(map.tiles.length)), save.seed, id); // release 289
   return map;
@@ -1981,7 +1988,7 @@ export class Game {
     const packAreaId=String(this.areaId()),packAdopted=area==="dungeon"&&!!history?.monsterPack&&!this.map.arena&&!/^(hunt-instance:|elite-portal:|proving:combat:|displacement:)/.test(packAreaId)&&!packAreaId.includes("aperture-annex")&&packAreaId!==dungeonId(this.save.seed,this.save.worldGeneration);
     if(packAdopted&&!this.map.deepDungeon&&this.map.recipe!=="deep-v1"&&history.cisternGuardianChoice!=="gravitantBell"){
       const guardian=this.map.enemySpawns.find(e=>e.boss&&e.dungeonRole==="gateWarden"&&e.kind==="hollowMarshal");
-      if(guardian){history.guardianKind??=guardianKindFor(this.save.seed,packAreaId);guardian.kind=history.guardianKind;guardian.packGuardian=history.guardianKind!=="hollowMarshal"}
+      if(guardian){history.guardianKind??=history.ladder?ladderGuardian(this.save.seed,packAreaId,history.ladder.tier,guardianKindFor(this.save.seed,packAreaId),GUARDIAN_POOL):guardianKindFor(this.save.seed,packAreaId);/* release 319 */guardian.kind=history.guardianKind;guardian.packGuardian=history.guardianKind!=="hollowMarshal"}
     }
     if(packAdopted&&this.map.encounterVersion&&this.map.monsterPack!==MONSTER_PACK_VERSION){this.map.enemySpawns=this.map.enemySpawns.filter(e=>!e.encounterSpawn);this.map.encounterVersion=0;this.map.encounterGroups=[]}
     if (area === "dungeon" && !this.map.deepDungeon && this.map.recipe !== "deep-v1" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < (history.gatePredatorSpawnThreshold || GATE_REVENANT.legacySpawnPerThousand))
@@ -2782,6 +2789,7 @@ export class Game {
     if (o.kind === "watcherTomb") return this.touchWatcherTomb(o); // release 289
     if (o.kind === "warpDais") return this.useWarpDais(o); // release 301
     if (o.strange && (action || validActions(o, this.save)[0]) === "touch") { const r = touchStrange(this.save, o, this.rx, this.ry); this.message = r.message; if (r.ok) this.glimpseCue = "strange"; return r; }
+    if ((action || validActions(o, this.save)[0]) === "enter" && entranceKind(o)) { const sealed = this.entranceSealed(o); if (sealed) { this.message = sealed; return { ok: false, message: sealed }; } } // release 319
     const chosen = action || validActions(o, this.save)[0],
       before = this.save.hp,
       r = applyInteraction(o, chosen, this.save, this.areaId(), this.area === "dungeon" ? { dungeonDepth: Math.max(0, (this.map?.multiLevel ? this.map.levels || [] : []).findIndex((q) => q.id === this.map.levelId)) } : {}); // release 287
@@ -2824,7 +2832,7 @@ export class Game {
       this.save.session.activeDungeonLevelId=null;
       pinDungeonLayout(this.save,this.save.session.activeDungeonId);const preview=generatePinnedDungeon(this.save,this.save.session.activeDungeonId);if(preview.multiLevel)this.save.session.activeDungeonLevelId=preview.levels[0].id;
       const h = dungeonHistory(this.save, this.save.session.activeDungeonId);
-      const horde = rollHorde(this.save, this.save.session.activeDungeonId, h); // release 269: decided on the first visit
+      const horde = rollHorde(this.save, this.save.session.activeDungeonId, h, h.ladder ? ladderRoll(this.save.seed, this.save.session.activeDungeonId, "horde", h.ladder.tier) : undefined); // release 269: decided on the first visit; 319: by the ladder
       h.visits++;
       h.visitOpen = true;
       this.loadArea("dungeon");
@@ -2907,6 +2915,16 @@ export class Game {
     if (m.active) { m.active = false; this.message = "The robot folds away."; this.sync(); return true; }
     if (m.cooldown > 0) { this.message = `The robot's plating is still knitting: ${Math.ceil(m.cooldown)}s.`; return false; }
     m.active = true; this.message = "The robot unfolds around you. Hold Jump in the air to boost."; this.sync(); return true;
+  }
+  // Release 319 (dungeon-ladder.ts): a Threefold Deep, a deep archetype or a world-threat arena opens by the Aperture.
+  // Entered ones never seal again; the first opening records the tier and whether it is a taste. Returns the message, or "".
+  entranceSealed(o) {
+    const kind = entranceKind(o), id = o.dungeonId || o.arenaId; if (!kind || !id) return "";
+    const h = dungeonHistory(this.save, id); if (h.visits > 0 || h.ladder) return "";
+    const tier = ladderTier(this.save), rung = ladderRoll(this.save.seed, id, kind, tier);
+    if (!rung) return tier >= (DUNGEON_LADDER.unlock[kind] ?? 0) ? "The seal stirs but holds. A wider Aperture may yet open it." : `The way is sealed. It answers to the Aperture's ${unlockBandName(kind)} band.`;
+    h.ladder = { version: DUNGEON_LADDER.version, tier, rung };
+    return "";
   }
   mechUp() { return this.save.mech?.active === true && !aboard(this.save); }
   // Release 311 (Tim: "these buoys... are connected... go to one buoy, and then go to another buoy... if you traverse the
@@ -3701,8 +3719,8 @@ export class Game {
       const anchor = this.map.objects.find((o) => o.kind === "deepReturn" && o.wingId === e.wingId);
       if (anchor) progress.activeAnchor = { id: anchor.id, x: anchor.x, y: anchor.y, name: `${e.wingId} wing anchor` };
       const count = progress.defeatedWingIds.length;
-      this.defeatNotice = { title: "WING GUARDIAN CLEARED", detail: `${e.wingId.toUpperCase()} WING · ${count}/3 seals broken${progress.gateOpened ? " · final gate opened" : ""}`, kind: "danger" };
-      journalOnce(this.save, `deep-wing:${this.areaId()}:${e.wingId}`, `The ${e.wingId} wing guardian fell. Its return lattice now folds directly into the central chamber.${progress.gateOpened ? " All three seals are broken; the final chamber is open." : ""}`, "The Threefold Deep");
+      this.defeatNotice = { title: "WING GUARDIAN CLEARED", detail: `${e.wingId.toUpperCase()} WING · ${count}/${this.map.wings?.length || 3} seals broken${progress.gateOpened ? " · final gate opened" : ""}`, kind: "danger" };
+      journalOnce(this.save, `deep-wing:${this.areaId()}:${e.wingId}`, `The ${e.wingId} wing guardian fell. Its return lattice now folds directly into the central chamber.${progress.gateOpened ? ` ${(this.map.wings?.length || 3) === 1 ? "The wing's seal is" : "All three seals are"} broken; the final chamber is open.` : ""}`, "The Threefold Deep");
     }
     if (this.area === "dungeon" && (this.map.deepDungeon || this.map.recipe === "deep-v1") && e.dungeonRole === "finalBoss") {
       const progress = deepDungeonProgress(this.save, this.areaId()), history = dungeonHistory(this.save, this.areaId());
@@ -4155,7 +4173,8 @@ export class Game {
       else this.jumpUntil = now + 520 + skillRank(this.save,"quickening") * 140;
     }
     { const m = this.save.mech; this.mechBoosting = false; // release 317: in the robot, hold Jump in the air to boost
-      if (this.mechUp() && input.held?.("jump") && now < (this.jumpUntil || 0) + 60 && m.fuel > 0) { m.fuel = Math.max(0, m.fuel - dt); this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.mechBoosting = true; }
+      if (!input.held?.("jump")) this.mechSpent = false; // release 319: an emptied boost needs Jump let go before it fires again
+      if (this.mechUp() && !this.mechSpent && input.held?.("jump") && now < (this.jumpUntil || 0) + 60 && m.fuel > 0) { m.fuel = Math.max(0, m.fuel - dt); this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.mechBoosting = true; if (m.fuel <= 0) this.mechSpent = true; }
       if (m?.built) tickMech(this.save, dt, !(now < (this.jumpUntil || 0))); }
     if (input.consume("potion")) this.useConsumable("restorativeDraught", now);
     if (input.consume("preset")) this.message = togglePreset(this.save).message; // release 261: swap spell presets 1 and 2

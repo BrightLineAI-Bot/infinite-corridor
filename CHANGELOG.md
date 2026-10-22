@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Release 319 — the dungeon ladder. The special dungeons now arrive in steps as your Aperture opens:
+  - **Dormant and Stirring (tiers 0–1): the base game.**
+    - Ordinary crossings, short plain dungeons, the six original environments and five of the sixteen guardians.
+    - Now and then a large crossing, kept plain: no environment and no daises.
+  - **From Open (tier 2): tastes.** Each special kind not yet unlocked can still turn up about a quarter as often, and smaller where a smaller version exists:
+    - a one-room Poison Crypt;
+    - a Threefold Deep with only one wing awake, whose warden alone opens the final gate;
+    - a Revenant horde of 12–18.
+  - **Unlocks:**
+    - **Resonant (tier 3):** large dungeons and Watcher's daises, the newer environments, ten guardians and the roaming Gate Revenant.
+    - **Tier 6:** all sixteen guardians, Poison Crypts, world-threat arenas and the Threefold Deep.
+    - **Tier 9:** the deep archetypes and the Revenant horde.
+  - **How often.** An unlocked kind starts at half of its usual rate and climbs to 80% by Infinite II. Infinite III has everything at full rate.
+  - **Sealed entrances.** A deep or arena entrance that hasn't opened for you says which band it answers to. One you have entered stays open.
+  - **Saved dungeons are safe.** Each dungeon keeps the tier it was first found at, and dungeons found before this release are unchanged.
+  - **Robot fix.** After the boost runs dry, it waits for you to let go of Jump before firing again, so the fuel refills properly.
+
 - Release 317 — the robot ashore. From the Infinite III band, with the second Gate unlocked (2 Listeners), the submersible frame works on land too:
   - **Calling it.** Use the frame on land (from Pack or a preset button). The first time, one frame is spent to build the robot. After that the same button calls it up and folds it away. Aboard the skiff, the frame still fits the submersible as before.
   - **Defence.** The robot has 60 plating in its own silver bar under the Wayfarer, which takes hits first. You also take 10% less damage while inside.

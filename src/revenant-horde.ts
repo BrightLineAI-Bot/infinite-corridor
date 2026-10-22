@@ -16,16 +16,18 @@ import { ensureFarArray, piecesNeeded, gateOpen } from "./far-array.ts";
 
 // Release 273 (Tim: "in the swarm dungeon... maybe you'll get like four crossing sigils throughout... you can break it into
 // waves"): the count is cut into `sigils` waves, and the kill that ends each wave leaves a Crossing Sigil.
-export const HORDE = { perThousand: 5, total: [28, 44], active: 3, respawn: 4, version: 1, sigils: 4 };
+export const HORDE = { perThousand: 5, total: [28, 44], tasteTotal: [12, 18], active: 3, respawn: 4, version: 1, sigils: 4 };
 const wave = (q) => Math.floor((q.total - q.left) * HORDE.sigils / q.total);
 
 const eligible = (id) => typeof id === "string" && id.startsWith("dungeon:") && !isDeepDungeonId(id);
 // Decided on the first visit only (`history.visits` still 0), so dungeons already entered never become hordes.
-export function rollHorde(save, id, history) {
+// Release 319: `rung` is the dungeon ladder's word for crossings that have one ("full", "taste" or null; undefined keeps the
+// old rule). A taste is a smaller horde (`tasteTotal`).
+export function rollHorde(save, id, history, rung) {
   if (history.horde !== undefined || history.visits > 0 || !eligible(id) || history.mire) return history.horde || null; // release 303: a Poison Crypt is never also a horde
   const h = hashSeed(`${save.seed}:revenant-horde:v${HORDE.version}:${id}`);
-  if (h % 1000 >= HORDE.perThousand) return null;
-  const [lo, hi] = HORDE.total, total = lo + (h >>> 10) % (hi - lo + 1);
+  if (h % 1000 >= HORDE.perThousand || rung === null) return null;
+  const [lo, hi] = rung === "taste" ? HORDE.tasteTotal : HORDE.total, total = lo + (h >>> 10) % (hi - lo + 1);
   history.horde = { total, left: total };
   return history.horde;
 }
