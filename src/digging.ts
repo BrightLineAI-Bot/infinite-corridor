@@ -23,6 +23,10 @@ export const DIG = {
   // Release 277 (Tim, 2026-10-22: "the supply cache will just give you one of each of those, a stone... a draught, and a wood";
   // "the observatory can give you a random of... three wood or three stone or... one stone and one draught").
   cache: { stone: 1, wood: 1, restorativeDraught: 1 }, // on top of the cache's own supply (a draught cache gives just its one)
+  // Release 287 (Tim, 2026-10-22: "the first level should just give 2 stone and 2 wood just flat... the second level...
+  // 2 stone and 2 wood... plus... a random chance to get 3 stone and 3 wood"): a supply cache inside a dungeon gives these
+  // instead of `cache`'s stone and wood (its draught and its own supply stay). `deeperChance` is seeded per cache.
+  dungeonCache: { first: { stone: 2, wood: 2 }, deeper: { stone: 2, wood: 2 }, deeperRich: { stone: 3, wood: 3 }, deeperChance: .35 },
   observatory: [{ wood: 3 }, { stone: 3 }, { stone: 1, restorativeDraught: 1 }], // one, seeded per Broken Observatory, on its first inspection
   treasureChance: .1,            // share of wall blocks that hide something
   glintShare: .4,                // share of those whose glint shows on an exposed face

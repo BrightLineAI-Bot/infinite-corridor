@@ -2585,6 +2585,40 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 287: blocks as stairs and barriers; a calm Crystal; dungeon caches; one gold for "selected"; four coffins — 2026-10-22
+
+Tim, 2026-10-22:
+- Blocks: "you can stack 2 blocks on top of each other... jump up to the 2nd block... you can only have 5, so the bottom block would disappear"; "your blocks that are stacked too high will impede [a flying monster's] motion... if they're doing a charge attack... they'll still break through".
+- The Crystal: "doesn't have to aggro to you... if you touch him, or if you attack him".
+- Dungeon caches: "the first level should just give 2 stone and 2 wood just flat... the second level... 2 stone and 2 wood... and then there should be a random chance to get 3 stone and 3 wood".
+- Menus: "uniform... when you have something selected, it'll be golden"; Supplies "much smaller... symbols... a dot between each one"; the Build button when nothing can be built: "a circle with a / through it... red".
+- Coffins: "a few different versions... weathered... broken... faded... more subtle, understated... an empty tomb".
+
+**CODE:**
+- **Builds** (`building.ts`):
+  - At `BUILD.maxOut`, `placeBuild` breaks the oldest build (`builds[0]`) instead of refusing. A stack's lower block is older, so the stack drops a level and the upper block stays. Adding to a stack whose base is the oldest build is refused.
+  - `tallBuildAt(map, width, x, y)`: the footprint touches a wood wall or a stone stack `BUILD_FLIER_STACK` (2) or more high.
+  - `game.ts` `moveAxis`: a non-player mover passing lethal or perch terrain (fliers) may not enter such a tile. The dungeon Crystal's phasing move refuses a step into one.
+  - Charges still break builds (`tickBuilds`).
+  - Stairs need no new rule: a stack is `elev` + `buildLevel`, and `canStep` already allows one level up while jumping (`tests/blocks-287.test.ts` walks 0, 1, 2, 2, 3).
+- **Crystal** (`monster-pack.ts`): a roaming dungeon Crystal engages only within `CRYSTAL.touchAggro` (1.1) or when its hp drops (`pack.calmHp`); hits also call `alertEnemy`. The old "seen again, it engages" assertion in `tests/crystal-259.test.ts` now expects it to keep wandering.
+- **Dungeon caches**:
+  - `digging.ts` `DIG.dungeonCache`.
+  - `interactions.ts` `dungeonCacheMaterials` replaces `DIG.cache`'s stone and wood; the draught and the cache's own supply stay. The deeper roll is seeded by `${seed}:dungeon-cache:v1:${areaId}:${object id}`.
+  - `applyInteraction(o, a, s, context, place)` takes `place.dungeonDepth` from `game.ts` (the index of `map.levelId` in `map.levels`; 0 for single-level dungeons).
+- **Menus** (`main.ts`, `styles.css`):
+  - Supplies leads with `.resource-line` (wood · stone · Cinder Iron) and `.resource-note` (shovel digs, weapon level). Then comes the build block: "Build with", its choices (the chosen one `aria-current`), Continuous build, the status line, and "Recipes".
+  - One rule gives every selected tab or toggle the same gold: `button[aria-current]`, `button[aria-selected="true"]` and `.arc-kind.active`. Journal tabs now set `aria-current` on the open tab.
+  - `.action-diamond button.build.spent::before` draws a red barred circle over the hammer, and the label is empty.
+- **Coffins** (`landscape-render.ts`):
+  - `sarcophagus` paints have ten cached looks (`detail % 10`, passed to `PAINT` as `variant`): 4 clean, 3 weathered, 2 cracked, 1 opened and empty.
+  - The sigil is the exported `watcherSigil(c, cx, cy, R, s, alpha)`, at alpha .38 / .18 / .28 / .14.
+
+**BOUNDARY:**
+- No save schema change: `build.continuous` is from 283, and builds are transient.
+- Generation is unchanged. The Watcher's sigil in arenas, shrines and floors is reserved as 289, versioned.
+- Tests: `tests/blocks-287.test.ts`, `tests/crystal-287.test.ts`, `tests/dungeon-cache-287.test.ts`. `tests/building.test.ts` now expects the oldest-build rule.
+
 ## Release 285: the Psychic Crystal comes out to fight — 2026-10-22
 
 Tim, 2026-10-22 (probe of a Crystal fight): "the crystal spends way too much time in the areas where I can't fight him... he retreats to the wall constantly... also retreats to the areas... I can't access, which is breaking the rules"; "a cooling down period... when you stagger him... like 10 seconds, where it can't be staggered again"; "reduce his dodging... so he should stay and fight for a little bit... increase the amount of hits it takes to stagger him"; "for every 5 seconds he can only spend 1 second in the tile".

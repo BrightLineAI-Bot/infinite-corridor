@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 287 — building and dungeons:
+  - **Building.** Blocks make stairs: stand on a block, stack two beside it, and jump on up to a level-3 ledge. You can have five builds; a sixth replaces the oldest (a stack's lower block goes first and the top one stays). Two blocks stacked, or a wall, stop flying creatures that are not charging, and the Psychic Crystal can no longer drift through your builds.
+  - **The Psychic Crystal** keeps to itself until you touch it or attack it.
+  - **Dungeon supply caches** now give 2 stone and 2 wood. On deeper levels some give 3 and 3.
+  - **Menus.** Supplies shows one small line of counts with a dot between each, and your shovel's digs beneath it. The Build options sit under "Build with", and the chosen one is gold, the same gold that now marks the selected tab or toggle everywhere, Journal tabs included. When you cannot afford any build, the Build button shows a red barred circle over the hammer.
+  - **Crypt coffins** now come in four looks (clean, weathered, cracked, and an opened empty tomb), with the Watcher's sigil carved more quietly.
+
 - Release 285 — the Psychic Crystal comes out to fight. Once it has engaged you, it can spend only about one second in every five inside walls or over ground you cannot reach; when that runs out it leaves at once, even mid-attack. It dodges far less often (every 3 seconds at most, was about 1), takes 14 hits to stagger (was 10), and cannot be staggered again for 10 seconds after it rises.
 
 - Release 283 — dungeon water is dangerous now. Swimming it costs 5% of your max health every second (your health, not your maximum), and going into it, or staying in it, with no stamina drowns you on the spot. Water outside dungeons is unchanged. Rot from poison and bog pools now shows as a grey band at the end of your health bar, the share of your health it has taken, instead of an empty one. The Bone Crypt coffins now bear an arcane sigil (an eye within a ring, circled by an orbit and its moon, under a crescent, above a small constellation) instead of a cross. Pack → Supplies leads with clear tiles for wood, stone, Cinder Iron and shovel digs, and every recipe (walls, blocks, shovel, skiff) sits together under Recipes. A new Continuous build checkbox moves on to the next material when your chosen one runs out. The Build button names the material it will use, shows REPAIR beside a damaged skiff, and is crossed out when you cannot afford any build.

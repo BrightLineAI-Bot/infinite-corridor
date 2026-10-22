@@ -95,5 +95,7 @@ test('it hunts the Wayfarer for a while; lost (out of sight and beyond its sight
   const tick = () => { w.now += 33; updatePackMonster(e, w); };
   for (let t = 0; t < CRYSTAL.forgetAfter - 1; t += 1 / 30) tick(); assert.equal(e.aggro, true, 'still hunting');
   for (let t = 0; t < 2; t += 1 / 30) tick(); assert.equal(e.aggro, false, 'it gives up the hunt'); assert.ok(e.pack.roam, 'and is back on its patrol');
-  game.player.x = e.x + 2; game.player.y = e.y; w.los = () => true; tick(); assert.equal(e.aggro, true, 'find it again and it engages');
+  // Release 287 (Tim): seen, it keeps to itself; touched (or hurt), it engages.
+  game.player.x = e.x + 2; game.player.y = e.y; w.los = () => true; tick(); assert.equal(e.aggro, false, 'seen again, it keeps wandering');
+  game.player.x = e.x + .5; tick(); assert.equal(e.aggro, true, 'touch it and it engages');
 });

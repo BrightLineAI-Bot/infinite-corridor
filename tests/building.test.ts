@@ -38,7 +38,8 @@ test('refusals: water, an occupied tile, too few materials, and more than five s
   game.enemies = [{ x: 11.5 - .5, y: 10, dead: false }]; assert.match(placeBuild(game, 11, 10, 'wood').message, /stands there/); game.enemies = [];
   save.materials.stone = 60; save.materials.wood = 3; assert.match(placeBuild(game, 11, 10, 'wood').message, /takes 4 wood \(you have 3\)/);
   for (let k = 0; k < BUILD.maxOut; k++) assert.equal(placeBuild(game, 12 + k, 5, 'stone').ok, true);
-  assert.match(placeBuild(game, 12, 7, 'stone').message, /5 builds already stand/);
+  // Release 287 (Tim: "you can only have 5, so the bottom block would disappear"): the oldest gives way to the sixth.
+  assert.equal(placeBuild(game, 12, 7, 'stone').ok, true); assert.equal(game.builds.length, BUILD.maxOut); assert.ok(!at(map, 12, 5).build, 'the oldest is gone');
 });
 
 test('a stone block is a perch: only the Wayfarer steps onto it, jumping as onto a ledge; two stack; it takes two blows', () => {

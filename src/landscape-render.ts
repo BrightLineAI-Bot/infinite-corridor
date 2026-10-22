@@ -52,6 +52,23 @@ export function animateLandscapeTiles(ctx, tiles, s) {
 }
 
 function rand(seed) { let s = seed >>> 0 || 1; return () => ((s = Math.imul(s ^ (s >>> 15), 2246822519) ^ Math.imul(s ^ (s >>> 13), 3266489917)) >>> 0) / 4294967296; }
+// Release 287: the Watcher's sigil (Tim: "the top symbol is a closed eyelid... the eye... the existence of reality... the
+// watcher... the slash... coterminous... touching everything... and the symbol below are the tools"). A crescent (the closed
+// lid), the eye in its ring with the orbit sweeping through, and the constellation of the tools beneath, crossed by a
+// short stroke. Drawn at `alpha` so it reads as carved, not painted; R is the ring radius, s the tile size.
+export function watcherSigil(c, cx, cy, R, s, alpha = .5, color = "#b8b0d8") {
+  c.save(); c.globalAlpha *= alpha; c.strokeStyle = color; c.fillStyle = color; c.lineWidth = Math.max(1, s * .018);
+  c.beginPath(); c.arc(cx, cy, R * .72, 0, Math.PI * 2); c.stroke();
+  c.beginPath(); c.ellipse(cx, cy, R * 1.2, R * .34, -.42, Math.PI * 1.05, Math.PI * 2.0); c.stroke(); c.beginPath(); c.ellipse(cx, cy, R * 1.2, R * .34, -.42, 0, Math.PI * .02); c.stroke();
+  c.beginPath(); c.moveTo(cx - R * .48, cy); c.quadraticCurveTo(cx, cy - R * .42, cx + R * .48, cy); c.quadraticCurveTo(cx, cy + R * .42, cx - R * .48, cy); c.stroke();
+  c.beginPath(); c.arc(cx, cy, R * .15, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.arc(cx - Math.cos(-.42) * R * 1.2, cy - Math.sin(-.42) * R * 1.2 * .9, Math.max(1, R * .12), 0, Math.PI * 2); c.fill();
+  const top = cy - R * 1.42; c.beginPath(); c.arc(cx, top, R * .3, Math.PI * .15, Math.PI * .85); c.arc(cx, top - R * .1, R * .3, Math.PI * .8, Math.PI * .2, true); c.closePath(); c.fill();
+  const stars = [[cx - R * .42, cy + R * 1.32], [cx + R * .42, cy + R * 1.58], [cx, cy + R * 2.1]]; c.lineWidth = Math.max(.6, s * .01);
+  c.beginPath(); stars.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.moveTo(cx + R * .34, cy + R * 1.05); c.lineTo(cx - R * .1, cy + R * 1.71); c.stroke();
+  for (const [x, y] of stars) { c.beginPath(); c.arc(x, y, Math.max(.8, s * .02), 0, Math.PI * 2); c.fill(); }
+  c.restore();
+}
 function grad(ctx, x0, y0, x1, y1, stops) { const g = ctx.createLinearGradient(x0, y0, x1, y1); stops.forEach(([o, c]) => g.addColorStop(o, c)); return g; }
 
 // Each painter draws one tile top at (0,0) with size s, deterministic from `r`.
@@ -113,7 +130,20 @@ const PAINT = {
   iceSpire(c, s, r) { PAINT.frostFloor(c, s, r); for (let i = 0; i < 2; i++) { const x = s * (.35 + i * .3), hh = s * (.7 + r() * .25); c.fillStyle = grad(c, x - 4, 0, x + 4, 0, [[0, "#ffffff"], [1, "#6fa5c8"]]); c.beginPath(); c.moveTo(x - s * .12, s); c.lineTo(x, s - hh); c.lineTo(x + s * .12, s); c.fill(); } },
   ossuary(c, s, r) { c.fillStyle = "#4a4239"; c.fillRect(0, 0, s, s); for (let i = 0; i < 9; i++) { c.fillStyle = r() < .6 ? "#cfc3ad" : "#8c8170"; const x = r() * s, y = r() * s; if (r() < .3) { c.beginPath(); c.arc(x, y, 2.2, 0, TAU); c.fill(); c.fillStyle = "#2a241e"; c.fillRect(x - 1, y - .5, 1, 1); c.fillRect(x + .5, y - .5, 1, 1); } else c.fillRect(x, y, 4 + r() * 3, 1.5); } },
   cryptWall(c, s, r) { c.fillStyle = "#2c2622"; c.fillRect(0, 0, s, s); bricks(c, s, r); for (let i = 0; i < 2; i++) { c.fillStyle = "#cfc3ad"; c.beginPath(); c.arc(s * (.3 + i * .4), s * .5, s * .08, 0, TAU); c.fill(); c.fillStyle = "#16120f"; c.fillRect(s * (.27 + i * .4), s * .47, 2, 2); c.fillRect(s * (.32 + i * .4), s * .47, 2, 2); } },
-  sarcophagus(c, s, r) { PAINT.ossuary(c, s, r); c.fillStyle = grad(c, 0, 0, s, 0, [[0, "#7c7468"], [1, "#4c463e"]]); c.fillRect(s * .18, s * .08, s * .64, s * .84); c.strokeStyle = "#1e1a16"; c.lineWidth = 1.5; c.strokeRect(s * .18, s * .08, s * .64, s * .84); /* release 283 (Tim: not a cross; "cosmic or arcane"): the Watcher's orrery, an eye within a ring, circled by a tilted orbit and its moon, a crescent above and a three-star constellation below */ const cx = s * .5, cy = s * .44, R = s * .19; c.strokeStyle = "#b8b0d8"; c.fillStyle = "#b8b0d8"; c.lineWidth = Math.max(1, s * .02); c.beginPath(); c.arc(cx, cy, R * .72, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.ellipse(cx, cy, R * 1.2, R * .34, -.42, Math.PI * 1.05, Math.PI * 2.0); c.stroke(); c.beginPath(); c.ellipse(cx, cy, R * 1.2, R * .34, -.42, 0, Math.PI * .02); c.stroke(); c.beginPath(); c.moveTo(cx - R * .48, cy); c.quadraticCurveTo(cx, cy - R * .42, cx + R * .48, cy); c.quadraticCurveTo(cx, cy + R * .42, cx - R * .48, cy); c.stroke(); c.beginPath(); c.arc(cx, cy, R * .15, 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(cx - Math.cos(-.42) * R * 1.2, cy - Math.sin(-.42) * R * 1.2 * .9, Math.max(1, R * .12), 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(cx, s * .17, R * .3, Math.PI * .15, Math.PI * .85); c.arc(cx, s * .17 - R * .1, R * .3, Math.PI * .8, Math.PI * .2, true); c.closePath(); c.fill(); const stars = [[cx - R * .42, s * .69], [cx + R * .42, s * .74], [cx, s * .84]]; c.lineWidth = Math.max(.6, s * .01); c.beginPath(); stars.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.moveTo(cx + R * .34, s * .64); c.lineTo(cx - R * .1, s * .765); c.stroke(); /* Tim: the constellation sits on the centre line, crossed by a short stroke, longer toward the eye */ for (const [x, y] of stars) { c.beginPath(); c.arc(x, y, Math.max(.8, s * .022), 0, Math.PI * 2); c.fill(); } if (r() < .35) { c.fillStyle = "#000000aa"; c.fillRect(s * .2, s * .1, s * .6, s * .05); } },
+  // Release 287 (Tim: "a few different versions... clean... weathered, some... broken. The symbol can be faded... more
+  // subtle, understated... cracked... an empty tomb"): a coffin is clean, weathered, cracked or opened and empty, chosen by
+  // its tile's own seeded paint stream; the Watcher's sigil (watcherSigil) is carved quietly into the lid.
+  sarcophagus(c, s, r, variant = 0) {
+    PAINT.ossuary(c, s, r); const x0 = s * .18, y0 = s * .08, w = s * .64, h = s * .84;
+    const kind = variant < 4 ? "clean" : variant < 7 ? "weathered" : variant < 9 ? "cracked" : "empty"; // of ten: 4, 3, 2, 1
+    if (kind === "empty") { c.fillStyle = "#14110e"; c.fillRect(x0, y0, w, h); c.fillStyle = "#2a241e"; c.fillRect(x0 + s * .05, y0 + s * .05, w - s * .1, h - s * .1); c.strokeStyle = "#1e1a16"; c.lineWidth = 1.5; c.strokeRect(x0, y0, w, h); c.save(); c.translate(s * .62, s * .5); c.rotate(.32); c.fillStyle = grad(c, -w / 2, 0, w / 2, 0, [[0, "#6c6458"], [1, "#423c35"]]); c.fillRect(-w / 2, -h / 2, w, h); c.strokeStyle = "#1e1a16"; c.strokeRect(-w / 2, -h / 2, w, h); watcherSigil(c, 0, -h * .06, s * .17, s, .14); c.restore(); return; }
+    c.fillStyle = grad(c, 0, 0, s, 0, kind === "weathered" ? [[0, "#6d675d"], [1, "#46413a"]] : [[0, "#7c7468"], [1, "#4c463e"]]); c.fillRect(x0, y0, w, h);
+    if (kind === "weathered") for (let k = 0; k < 7; k++) { c.fillStyle = k % 2 ? "#3a352f55" : "#8b846f33"; c.beginPath(); c.arc(x0 + r() * w, y0 + r() * h, s * (.03 + r() * .06), 0, Math.PI * 2); c.fill(); }
+    c.strokeStyle = "#1e1a16"; c.lineWidth = 1.5; c.strokeRect(x0, y0, w, h);
+    watcherSigil(c, s * .5, s * .44, s * .19, s, kind === "clean" ? .38 : kind === "weathered" ? .18 : .28);
+    if (kind === "cracked") { c.strokeStyle = "#17130fcc"; c.lineWidth = Math.max(1, s * .02); c.beginPath(); let x = x0 + w * (.25 + r() * .5), y = y0; c.moveTo(x, y); while (y < y0 + h) { y += s * (.08 + r() * .08); x += s * (r() - .5) * .14; c.lineTo(x, Math.min(y, y0 + h)); } c.stroke(); c.fillStyle = "#4a4239"; c.beginPath(); c.moveTo(x0 + w, y0 + h); c.lineTo(x0 + w - s * .14, y0 + h); c.lineTo(x0 + w, y0 + h - s * .12); c.closePath(); c.fill(); }
+    if (kind === "clean" && r() < .35) { c.fillStyle = "#000000aa"; c.fillRect(s * .2, s * .1, s * .6, s * .05); }
+  },
   fungusFloor(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#2a3326"], [1, "#1b2219"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 6; i++) { c.fillStyle = r() < .5 ? "#7bd8b877" : "#c49be877"; c.beginPath(); c.arc(r() * s, r() * s, 1 + r() * 1.5, 0, TAU); c.fill(); } },
   fungusWall(c, s, r) { c.fillStyle = "#151a14"; c.fillRect(0, 0, s, s); granite(c, s, r, "#00000088"); for (let i = 0; i < 3; i++) { c.fillStyle = "#6fd8b866"; c.beginPath(); c.arc(r() * s, r() * s, 2, 0, TAU); c.fill(); } },
   glowcap(c, s, r) { PAINT.fungusFloor(c, s, r); c.fillStyle = "#d7cfb8"; c.fillRect(s * .44, s * .45, s * .12, s * .5); const cap = grad(c, 0, s * .15, 0, s * .5, [[0, "#9ff2d6"], [1, "#3e9c84"]]); c.fillStyle = cap; c.beginPath(); c.ellipse(s * .5, s * .45, s * .42, s * .25, 0, Math.PI, 0); c.fill(); c.fillStyle = "#ffffff66"; for (let i = 0; i < 4; i++) c.fillRect(s * (.25 + i * .15), s * .32, 2, 2); },
@@ -142,7 +172,7 @@ function topTexture(kind, variant, s) {
   if (cache.has(key)) return cache.get(key);
   const size = Math.max(4, Math.ceil(s)), canvas = makeCanvas(size), c = canvas?.getContext?.("2d");
   if (!c || !PAINT[kind]) return null;
-  PAINT[kind](c, size, rand(variant * 7919 + kind.length * 104729));
+  PAINT[kind](c, size, rand(variant * 7919 + kind.length * 104729), variant);
   if (cache.size > 600) cache.delete(cache.keys().next().value);
   cache.set(key, canvas);
   return canvas;
@@ -172,7 +202,7 @@ const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
   if (!t?.landscape || !PAINT[t.kind]) return false;
-  const level = (t.elev || 0) - (t.slope ? .5 : 0), lift = Math.max(0, level) * LIFT_PER_LEVEL * s, px = x * s, py = y * s - lift, variant = (t.detail || 0) % 4;
+  const level = (t.elev || 0) - (t.slope ? .5 : 0), lift = Math.max(0, level) * LIFT_PER_LEVEL * s, px = x * s, py = y * s - lift, variant = (t.detail || 0) % (t.kind === "sarcophagus" ? 10 : 4); // release 287: ten coffin looks (clean, weathered, cracked, empty)
   if (t.kind === "skyBridge") {
     ctx.fillStyle = grad(ctx, 0, y * s, 0, y * s + s, [[0, "#0d0f12"], [1, "#25282c"]]); ctx.fillRect(px, y * s, s + 1, s + 1); // the ravine below
     ctx.fillStyle = "#00000055"; ctx.fillRect(px + s * .1, y * s + s * .55, s * .8, s * .2); // the bridge's shadow far below
