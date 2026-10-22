@@ -2585,17 +2585,24 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release 281: a refused dodge is shown; Dodge catches more taps — 2026-10-22
+## Release 281: Dodge answers every touch; Leech heals visibly; the stray ">" — 2026-10-22
 
-Tim, 2026-10-22 (with a 300-second probe): "Dodge needs to be incredibly sensitive... I press Dodge a bunch of times... and nothing happens", then "dodge should be directly tied to stamina... if we don't have stamina, we should not be able to dodge, that's an important aspect of the game".
+Tim, 2026-10-22 (two 300-second probes): "Dodge needs to be incredibly sensitive... I press Dodge a bunch of times... and nothing happens"; "dodge should be directly tied to stamina... if we don't have stamina, we should not be able to dodge"; "you don't have to change anything about the dodge. We just want the button to be more responsive"; "the leeching glyph isn't working, so I'm not getting health"; and a stray ">" floating near the action buttons.
 
 **CODE:**
-- **What the probe showed.** Ten of Tim's 13 Dodge taps landed on `action:dodge`, and the other three were a few pixels below it, in the gap. The game refused them for stamina: `dodge()` needs 15, and a burst emptied about 67. The refusal was only a passing message. Most taps came just after a swim across open sea, where `swimUpkeep` drains stamina and nothing regenerates it.
-- **The fix.** Stamina still gates the dodge (`combat.ts` is unchanged). A refusal sets `game.dodgeRefusedAt`, says "Out of stamina: no dodge until it recovers.", and `main.ts` gives the Dodge button the `refused` class for 600 ms: a red flash and a shake in `styles.css`, with no shake under reduced motion. `input.ts`: a tap on the cluster background goes to the nearest button within `GAP_REACH` 24 px (was 18), with Dodge favoured by 16 px (was 8).
+- **Dodge.** The dodge rule is unchanged: `combat.ts` `dodge()` still needs 15 stamina.
+  - `input.ts` `press()`: the touched button gets the `pressed` class at once for 160 ms (a bright ring in `styles.css`), so every touch shows that it registered.
+  - A tap on the cluster background goes to the nearest button within `GAP_REACH` 24 px (was 18), with Dodge favoured by 16 px (was 8).
+  - `main.ts`: while the diagnostic probe runs, every Dodge press that reaches `game.update` is logged as a `dodge` event. It records `dodged` with the distance moved, or the reason it did not: `no stamina`, `held (struggle)`, `stunned` or `refused`. The next probe says what happens to each tap on Tim's device.
+- **Leech.** `glyphs.ts` `glyphHit`: Leech heals its share of damage dealt (`GLYPHS.leech.hit`), but never less than `GLYPHS.leech.floor` of max health per landed hit (melee 2%, tool 1.2%, spell 0.8%). A hit that deals nothing heals nothing.
+  - Before this, Leech worked but healed 1–4 HP a hit at 328 max health.
+  - `glyphWorld` passes `maxHp`.
+  - The other glyph and echo tests pass unchanged.
+- **Stray ">".** In `index.html` and `proving-ground/index.html`, the Potion button's closing tag was complete (`</button>`), and the next line also began with `>`. That left a text node ">" in the action cluster. The tag now ends `</button`, like its siblings.
 
 **BOUNDARY:**
-- No rule or save changes.
-- Tests: `tests/dodge-feedback.test.ts`.
+- No save changes. Leech is stronger at high level (Blood Tide still doubles it).
+- Tests: `tests/leech-floor.test.ts`.
 
 ## Release 279: the compass keeps its choice; the Proving Ground's test tile, environment list and Start test — 2026-10-22
 

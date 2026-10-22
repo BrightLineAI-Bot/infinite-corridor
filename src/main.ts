@@ -1926,7 +1926,6 @@ function updateHud(now) {
     hudSet(button,"--cooldown",`${Math.round(fraction * 100)}%`);
     hudSet(button,"class:cooling",cooling);
     hudSet(button,"class:unavailable",state.available === false);
-    if (action === "dodge") hudSet(button,"class:refused",now - (game.dodgeRefusedAt || -1e9) < 600); // release 281: a refused dodge flashes
     hudSet(button,"data-cooldown",label);
     hudSet(button,"aria-label",`${action} ${label}`);
   }
@@ -1984,7 +1983,10 @@ function frame(now) {
   if (input.consume("journal")) openJournal();
   if (input.consume("menu")) openPack();
   if(tickScene(now))return;
+  // Release 281 (Tim's Dodge probes): the probe records what became of every Dodge press: dodged (and how far), or why not.
+  const dodgeAsked = probe.running && input.state.dodge ? { x: game.player.x, y: game.player.y, stamina: game.player.stamina, held: now < (game.player.heldUntil || 0), stunned: now < (game.player.stunnedUntil || 0) } : null;
   measured("update", () => game.update(dt, input, now));
+  if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
   if (game.paused) return;
   warmCompassSignals();
   measured("render", () => {

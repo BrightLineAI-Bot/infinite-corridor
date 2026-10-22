@@ -145,6 +145,8 @@ export function createInput(root, host = globalThis, options = {}) {
     actionTap = { button: b, pointerId: e.pointerId, until: performance.now() + 1500 };
     latch.add(b.dataset.action);
     heldButtons.add(b.dataset.action);
+    // Release 281 (Tim: "We just want the button to be more responsive"): the button lights the instant it is touched.
+    b.classList?.add("pressed"); clearTimeout(b.pressedTimer); b.pressedTimer = setTimeout(() => b.classList?.remove("pressed"), 160);
     // The release arrives where the press landed: the button itself, or the cluster for a press in a gap (release 181).
     const source = e.currentTarget || b, id = e.pointerId;
     const up = (q) => { if (q?.pointerId != null && id != null && q.pointerId !== id) return; heldButtons.delete(b.dataset.action); for (const t of ["pointerup", "pointercancel", "pointerleave"]) source.removeEventListener(t, up); };

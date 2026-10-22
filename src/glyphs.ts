@@ -21,7 +21,7 @@ export const GLYPHS = {
   chain: { name: "Chain", sigil: "ϟ", color: "#8fd8ff", text: { melee: "A swing arcs to one more foe for 50%.", tool: "Hits arc on through two more foes for 45%.", spell: "Each pulse zaps one foe outside it for 40%." }, hit: { melee: [1, .5], tool: [2, .45], spell: [1, .4] } },
   pierce: { name: "Pierce", sigil: "➶", color: "#e8e2c8", text: { melee: "+30% reach.", tool: "Shots pass through up to three foes.", spell: "+30% radius." }, mods: { melee: { range: 1.3 }, tool: { pierce: 3 }, spell: { radius: 1.3 } } },
   echo: { name: "Echo", sigil: "◎", color: "#c9a7ff", text: { melee: "Every swing repeats a moment later for 50%.", tool: "A second shot follows for 60%.", spell: "The spell recasts where it ended for 50%." }, echo: { melee: [250, .5], tool: [150, .6], spell: [0, .5] } },
-  leech: { name: "Leech", sigil: "♁", color: "#d4495a", text: { melee: "Heal 12% of damage dealt.", tool: "Heal 8% of damage dealt.", spell: "Heal 5% of damage dealt." }, hit: { melee: .12, tool: .08, spell: .05 } },
+  leech: { name: "Leech", sigil: "♁", color: "#d4495a", text: { melee: "Heal 12% of damage dealt (at least 2% of max health a hit).", tool: "Heal 8% of damage dealt (at least 1.2% of max health a hit).", spell: "Heal 5% of damage dealt (at least 0.8% of max health a hit)." }, hit: { melee: .12, tool: .08, spell: .05 }, floor: { melee: .02, tool: .012, spell: .008 } }, // release 281: floor = share of max health per hit (Tim: "I'm not getting health")
   heavy: { name: "Heavy", sigil: "▼", color: "#b9a37a", text: { melee: "+35% damage, 25% slower, staggers.", tool: "+35% damage, 25% slower, staggers.", spell: "+35% damage, 25% longer recovery." }, mods: { melee: { damage: 1.35, cooldown: 1.25 }, tool: { damage: 1.35, cooldown: 1.25 }, spell: { damage: 1.35, cooldown: 1.25 } } },
   swift: { name: "Swift", sigil: "»", color: "#7fe0a8", text: { melee: "25% faster, -15% damage.", tool: "25% faster, -15% damage.", spell: "30% faster recovery, -15% damage." }, mods: { melee: { damage: .85, cooldown: .75 }, tool: { damage: .85, cooldown: .75 }, spell: { damage: .85, cooldown: .7 } } },
   volatile: { name: "Volatile", sigil: "✶", color: "#ffd25c", text: { melee: "Kills burst for 6 + 40% of the blow.", tool: "Shots burst on impact for 50%.", spell: "Kills inside the spell burst for 6 + 40%." }, hit: { melee: [1.6, .4], tool: [1.2, .5], spell: [1.6, .4] } },
@@ -92,7 +92,7 @@ export function echoPlan(loadout) {
 }
 
 // ---------------------------------------------------------------- hits
-// world: { enemies, now, damage(e, amount, ctx), heal(amount), stamina(amount), blast(x, y, radius, amount, ctx), arc(from, to, color) }
+// world: { enemies, now, maxHp, damage(e, amount, ctx), heal(amount), stamina(amount), blast(x, y, radius, amount, ctx), arc(from, to, color) }
 // ctx: { echo?: true, chained?: true, origin?: {x,y} (spell centre) }. Call after `dealt` damage has been applied.
 export function glyphDamage(loadout, e, base, ctx = {}, now = 0) {
   let amount = base;
@@ -103,7 +103,8 @@ export function glyphHit(world, loadout, e, dealt, ctx = {}) {
   const host = loadout.host, now = world.now, boss = e.boss || e.eliteId ? .5 : 1;
   const burn = (target, seconds) => { const dps = Math.max(1, Math.round(dealt * .25)); target.glyphBurn = { until: Math.max(target.glyphBurn?.until || 0, now + seconds * 1000), dps: Math.max(target.glyphBurn?.dps || 0, dps), tick: target.glyphBurn?.tick || 0 }; };
   if (loadout.has("ignite")) burn(e, GLYPHS.ignite.hit[host]);
-  if (loadout.has("leech")) world.heal(dealt * GLYPHS.leech.hit[host] * loadout.count("leech") * (loadout.resonant("blood-tide") ? 2 : 1));
+  // Release 281: a share of damage dealt, but never less than `floor` of max health per landed hit, so Leech still shows at high level.
+  if (loadout.has("leech") && dealt > 0) world.heal(Math.max(dealt * GLYPHS.leech.hit[host], (world.maxHp || 0) * GLYPHS.leech.floor[host]) * loadout.count("leech") * (loadout.resonant("blood-tide") ? 2 : 1));
   if (loadout.has("heavy") && host !== "spell") e.hitStun = Math.max(e.hitStun || 0, .12 * boss + .1);
   if (loadout.has("tether")) {
     if (host === "spell" && ctx.origin) { const dx = ctx.origin.x - (e.x + .5), dy = ctx.origin.y - (e.y + .45), m = Math.hypot(dx, dy) || 1, pull = Math.min(m, GLYPHS.tether.hit.spell); world.nudge?.(e, dx / m * pull, dy / m * pull); }
