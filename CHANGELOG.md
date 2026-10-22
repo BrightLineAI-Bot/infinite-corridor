@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 327 — the game's sound is about 30 dB louder and brighter. All of it, the music and the combat pulse, was mixed very quietly, around −50 dB. It now sits near a normal game level (about −20 dB average) and is less muffled. The Master and Music sliders in Options → Audio still scale it.
+
 - Release 325 — a Threefold Deep always opens all the way, with all three wings and their wardens. One entered below its tier (a taste) keeps its full size, but its creatures are scaled to you:
   - **Scaling:** 55% of their usual health and damage at the start, and 5% more for each Aperture band you had reached when you first went in.
   - **Same for the rest:** the deep archetypes and world-threat arenas entered early work the same way.

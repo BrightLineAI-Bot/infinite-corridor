@@ -2585,6 +2585,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 327: louder sound — 2026-10-22
+
+Tim, 2026-10-22: "The music and the game is too low... it needs to be louder... on my headphones, and it's just a little bit too understated".
+
+**CODE:**
+- **`main.ts` `AUDIO_MIX`:** master 0.45 (was 0.06), music 0.72, makeup 3, lowpass 2200 Hz (was 1150), and the compressor at threshold −30, knee 18, ratio 3 (it was the default, −24/30/12).
+- **The chain:** `musicBus` → `filter` → `compressor` → `makeup` → `audioGain` → destination.
+- **Where it is read:** startAmbience, the mute ramp and `applyPresentationSettings`.
+- **Measured** with an OfflineAudioContext render of the score: −49.9 → −19.5 dBFS RMS, peak −41.2 → −11.4.
+
+**BOUNDARY:** The score, the pulse and the sliders are unchanged. Every sound still goes through `musicBus`.
+
 ## Release 325: taste deeps open all the way — 2026-10-22
 
 Tim, 2026-10-22: "the threefold deeps should just open all the way. Just one wing isn't really useful... have like... lower tier monsters... monsters that are scoped to the strength of the character at that point".
