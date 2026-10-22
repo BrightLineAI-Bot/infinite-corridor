@@ -2585,6 +2585,37 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 279: the compass keeps its choice; the Proving Ground's test tile, environment list and Start test — 2026-10-22
+
+Tim, 2026-10-22: "when you close the map... it changes whatever way marker you have... or whatever active quest you have... it doesn't maintain it"; "it doesn't let you select the arena... you have to type it in... there should just be a drop down for whichever... environment"; "one area of testing that's just a tile... a standard tile, but it has... water, a chasm, and some elevated blocks... as well as a building... and also a dungeon door... we can just keep this in place"; "there should be a start simulation button".
+
+**CODE:**
+- **Guidance.** `main.ts`:
+  - `compassPick` and `compassPin` start from `save.guidance` and are written back by `rememberGuidance()` whenever the compass is tapped or a Journal quest is pinned or released. `save.guidance = { pick: "rx,ry" | null, pin: { rx, ry, name } | null }` is additive; `types.ts` `normalizeGuidance` validates it in `migrateSave` and drops a malformed one.
+  - `objectiveList` keeps the untruncated `objectiveCache.all`, and `compassObjective` finds the pick there. So a pick farther than the 12 nearest is kept, and only a finished one falls back to the nearest.
+  - `openMap` sets `mapView.chosen = false`. Tapping a section, stepping with the arrows or Center, or choosing a Wayglass sets it, and `#mapWaypoint` acts only when it is set.
+  - Every overlay `close` stamps `overlayClosedAt`, and the compass ignores a click within 500 ms of it.
+- **Proving Ground.** `proving-ground-labs.ts`:
+  - `TEST_TILE` (the Timber shelter section 0,-1 of the default seed) and `stampTestTile(map)`:
+    - a lakeWater pond at 15..19 × 3..6;
+    - an alpineGrass plateau at 24..29 × 2..7, a ring at elevation 1 and a core at 2, with mountainTrail stairs at 24,4 and 25,4;
+    - a canyon at 24..29 × 16..17;
+    - the crossing `test-tile-crossing` at 27,24.
+    The stamp sets `map.landscape` and `map.testTile`.
+  - The `test-tile` laboratory.
+  - `COMBAT_ENVIRONMENTS`: `test-tile`, `dungeon-<recipe>`, `arena-<family>`, `land-<biome>`. `combatFixture(…, environment)` builds the overworld ones with `overworldCombat`: creatures 4–9 tiles from the Wayfarer, aggro, and a Gate Revenant as a `gatePredator`. It builds arenas with `arenaCombat` and dungeons with `dungeonCombat` (the old path, now taking the recipe). `createLabFixture` takes `environment`, which defaults to the old hollow dungeon.
+- **Panel.** `proving-ground.ts`:
+  - an Environment select (combat lab only, defaulting to the test tile, mirrored to `?env=`);
+  - Generate becomes **Start test**;
+  - changing a select only readies the lab, and opening a lab readies it unless the URL names a scenario;
+  - the frame loop re-stamps the test tile when the Wayfarer comes back out to it.
+
+**BOUNDARY:**
+- Saves stay at schema 14 (`guidance` is additive).
+- The Proving Ground stays in scratch state and never touches production saves.
+- `createLabFixture` without `environment` behaves as before, for recipes and tests.
+- Tests: `tests/proving-test-tile.test.ts`.
+
 ## Release 277: supply caches give a stone, a wood and a draught; Broken Observatories hold a cache — 2026-10-22
 
 Tim, 2026-10-22: "the supply cache will just give you one of each of those, a stone... a draught, and a wood, and then the observatory can give you a random of... three wood or three stone or... one stone and one draught, that's fine".

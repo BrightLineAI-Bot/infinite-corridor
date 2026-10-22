@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 279 — the compass keeps what you chose. The target you step the compass to, and a quest you point it at from the Journal, are now kept in your save, so closing the Atlas, reloading or wandering far no longer changes them. Opening the Atlas no longer arms "Set manual waypoint" on the section you are standing in (tap a section first), and the tap that closes the Atlas or a panel can no longer land on the compass beneath it.
+- Release 279 — Proving Ground: a Standard Test Tile laboratory, one fixed section with a pond, a chasm, a two-level plateau with stairs, a building and a dungeon door (which leads into a real dungeon, and the tile is put back as it was when you come out). The Monster & Elite Combat Arena now has an Environment list (the test tile, the three dungeon recipes, the eight arena families and every overworld biome) instead of needing a typed seed, and nothing starts until you press Start test.
+
 - Release 277 — a supply cache now gives a stone, a wood and a restorative draught along with its usual supply (one draught in all if its supply is a draught; it gave 2 stone and 1 wood in 275).
 - Release 277 — a Broken Observatory holds a cache: the first time you inspect one it gives 3 wood, 3 stone, or a stone and a restorative draught (which one is fixed for each observatory).
 

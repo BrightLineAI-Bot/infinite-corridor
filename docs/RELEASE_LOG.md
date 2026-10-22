@@ -13,21 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**279**
+**281**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 277 | Claude | `claude/dreamy-rubin-yn6q2p` | Supply caches give a stone, a wood and a draught; Broken Observatories hold a seeded cache (3 wood, 3 stone, or a stone and a draught) | Building. |
-| 275 | Claude | PR #116 | Creature stages; Stage 1 world beasts and Gate Revenant held from tier 13; a rock gives one stone; supply caches 2 stone + 1 wood | Merged; preview `r275-ead972c18ec8`. |
-| 273 | Claude | PR #115 | World beasts by Aperture tier (3–8); four Crossing Sigils per horde; Stage 1 canon | Merged; preview with 275. |
+| 279 | Claude | `claude/dreamy-rubin-yn6q2p` | The compass keeps its choice (save.guidance); Proving Ground test tile, environment list, Start test | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 277 | `r277-ce71a38b8a17` | 2026-10-22 | Published with 273 and 275 (neither went live alone): world beasts by Aperture tier, four sigils per horde, Stage 1 canon (273, PR #115); creature stages, the Stage 1 strength freeze, a rock gives one stone (275, PR #116); supply caches give a stone, a wood and a draught, Broken Observatories hold a cache (277, PR #117). The pre-publish review found no blockers. |
 | 271 | `r271-ad06c7fbd51e` | 2026-10-21 | Published with 269 (which never went live alone): the Gate Revenant horde, skiff repairs, the hull guard's longboat, cheaper building (269, PR #113); Gate Revenants stalk then hunt through walls, dodge, poise break, the new Revenant with its barrage maw (271, PR #114). The pre-publish review found no blockers; its two notes were fixed before merge. |
 | 267 | `r267-345b89326368` | 2026-10-21 | Published with 263 and 265 (neither went live alone): Echo drops fixed, Crossing Sigils, safe dungeon arrivals, hull shields, 2-dig shovels (263, PR #110); building, the Refuge's farm, quarry, Hollis and Shale, regrowth, icon buttons (265, PR #111); build mode and the wall-trap fix (267, PR #112). The 265 review found the wall trap; the 267 re-review found no blockers. |
 | 261 | `r261-2215f2781a82` | 2026-10-21 | World-boss pacing and placement; the Questing Beast's sea rules; the Mountain Turtle at sea on ice; 99 wood and stone, two skiffs; HUD rearranged with spell presets (PR #109). The pre-publish review found no blockers. |
