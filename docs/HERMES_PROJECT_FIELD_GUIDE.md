@@ -2585,6 +2585,35 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 311: the submersible — 2026-10-22
+
+Tim, 2026-10-22:
+- "the cinder iron can build... a submersible... your boat will turn into a submersible... ride on top of the water or... go underwater... dip down underwater to... dodge damage... like a jet boost".
+- "these buoys... red and white... marks for... underwater travel... connect to one buoy... and then go to another buoy... if you traverse the dungeon".
+- "silver... a big viewpoint in the front, where you can see the Wayfarer... like Faye Valentine's zipcraft... 2 larger arms and 2 smaller arms... one arm poking above the water".
+- "extra health to the boat... extra... damage reduction... 5%... an item like the hull repair... its own option to place in the... preset slot".
+
+**CODE:**
+- **`boats.ts`**:
+  - `BOAT.sub` (cinderIron 3, hull 40, guard .05, dive 1.1 s). `forgeSubmersible` turns iron into `consumables.submersible`. `fitSubmersible` (aboard) sets `boat.sub` and fills `boat.subHull`; a second frame refills it.
+  - `wearHull` eats `subHull` first. `hullAbsorb` counts it and keeps 5% off the Wayfarer's share.
+  - Sinking (`hullAbsorb`, `hullStrike`) clears `sub`. A new skiff starts plain. The spare skiff carries its own `sub`/`subHull` through `takeSpare`.
+  - All boat fields are additive and normalised in `ensureBoatState`.
+- **`game.ts`**:
+  - `useConsumable("submersible")` fits a frame.
+  - A dodge aboard a submersible sets `subDiveUntil` and invulnerability for `BOAT.sub.dive`; sea hazards count it as dodging.
+  - `diveAction` lets a submersible dive without `capabilities.dive`.
+  - Grotto maps (`arenaKind: "dive"` with a lair) gain a `diveOnward` object at load, without regenerating the map. Following it calls `onwardBuoy()`, which searches rings outward (radius `DIVE_ONWARD.radius`, at most `tries` map previews) for the nearest other section where `diveSite` holds (sea biome, the same site hash). It reads the buoy from `walkerCrossingMap` and `diveSite`, falling back to deep water near the centre, and surfaces there through `leaveDungeon`.
+- **`renderer.ts`**: `drawSubmersible` draws the back (silver hull, tail fin, thruster, window frame) and the front (lower hull over the legs, window glass and glint, two large and two small manipulator arms). Diving, it draws the dark shape, bubbles and one arm through the surface, with the Wayfarer faint. A silver plating bar extends the hull gauge to the left.
+- **`main.ts`**: the Supplies row has Forge and Use, plus `ITEM_ICONS.submersible`. `spell-slots.ts` adds `submersible` to `BUTTON_ITEMS`.
+
+**BOUNDARY:**
+- The grotto generator is unchanged; the onward current is added at load only.
+- The breath, rig and lens rules are unchanged for swimmers.
+- Under water the submersible is not yet a vehicle in the grotto: the Wayfarer swims as before.
+- No save schema change.
+- Tests: `tests/submersible-311.test.ts`.
+
 ## Release 309: target lock; Build, item or spell in any slot — 2026-10-22
 
 Tim, 2026-10-22:

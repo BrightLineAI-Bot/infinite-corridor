@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Release 311 — the submersible:
+  - **Forging and fitting.** Forge a Submersible Frame from 3 cinder iron in Pack → Supplies, then use it aboard your skiff. Silver plates close over the boat, with a great round window at the prow where you can see the Wayfarer, and manipulator arms on the side.
+  - **What it gives you.** 40 more hull in its own silver bar, which takes hits first, and 5% less damage to you while aboard.
+  - **Diving.** Dodge aboard to dive under the surface for about a second, untouchable. Only one arm breaks the water while you are under.
+  - **Dive buoys.** A submersible can dive at the red-and-white buoys with no rig or lens. In each grotto's lair a deep current now runs on: follow it and you come up beside the next buoy along.
+  - **Repairs and presets.** Another frame mends the plating. The frame can go on any preset slot like other items.
+  - **Sinking.** A sunk submersible comes back a plain skiff.
+
 - Release 309 — targeting and free slots:
   - **Lock on.** Tap a creature to lock on to it (red brackets mark it). Until you tap it again, tap another creature, or it dies or gets far away, your swings go at it whenever it is in reach, and your tool shots and spells aim at it. Rift Step still goes where you are moving.
   - **Any slot, anything.** Spell A, Spell B and the Build button can each hold a spell or discipline, Build, or the preset's item. Set A or B to Build or Item in Arcanum → Spell slots; put a spell on the Build button with "Set on Build button" beside it. Choose the preset's item in Pack → Supplies, as before.
