@@ -1,4 +1,4 @@
-import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind } from "./building.ts";
+import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind } from "./building.ts";
 import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.ts";
 import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
@@ -337,7 +337,7 @@ function apertureStatsCard() {
   const h = document.createElement("strong"),
     text = document.createElement("p");
   h.textContent = `APERTURE ${p.aperture} · ${apertureBand(p.aperture).name.toUpperCase()} (TIER ${tier})`;
-  const held = p.aperture >= apertureCeiling(save); // release 281: the stage holds the Aperture
+  const held = p.aperture >= apertureCeiling(save); // release 279: the stage holds the Aperture
   text.textContent = held
     ? `Stage ${stageOf(save)}: the Aperture holds at tier ${tierCap(save)} until the Listener falls${listenerKills(save) >= STAGES.firstKills ? " again" : ""} at the Far Gate.`
     : next ? `${next - p.aperture} until the ${apertureBand(next).name} band.` : "Every band reached.";
@@ -447,7 +447,7 @@ const OBJECTIVE_KINDS={hunt:{rank:0,label:"Hunt"},story:{rank:1,label:"Story"},c
 // kept its section framed gold on the Atlas forever. It still shows as a danger sign; only crossings and arenas are open.
 const CHALLENGE_SITES={dungeon:"Crossing",arenaEntrance:"Arena"},COMPASS_OBJECTIVE_LIMIT=12;
 let objectiveCache={key:null,list:[],all:[]},compassPick=save.guidance?.pick??null,compassPin=save.guidance?.pin??null; // compassPin: a quest chosen in the Journal (release 155)
-// Release 281 (Tim: "when you close the map... it changes whatever way marker... or whatever active quest you have... it doesn't
+// Release 279 (Tim: "when you close the map... it changes whatever way marker... or whatever active quest you have... it doesn't
 // maintain it"): the compass's choice and a Journal pin are kept in the save (save.guidance, additive), so nothing but the
 // Wayfarer's own choice changes them.
 function rememberGuidance(){save.guidance={pick:compassPick,pin:compassPin?{rx:compassPin.rx,ry:compassPin.ry,name:String(compassPin.name||"")}:null};navigationCache.key=null;persist()}
@@ -469,10 +469,10 @@ function objectiveList(){
   for(const[k,site]of open){const[rx,ry]=k.split(",").map(Number);add({kind:"challenge",rx,ry,name:site.name&&site.name!==site.kind?`${CHALLENGE_SITES[site.kind]}: ${site.name}`:CHALLENGE_SITES[site.kind],x:site.x,y:site.y})}
   const here=(o)=>Math.max(Math.abs(o.rx-game.rx),Math.abs(o.ry-game.ry));
   const all=[...byKey.values()].filter((o)=>here(o)>0||o.kind==="challenge").sort((a,b)=>here(a)-here(b)||OBJECTIVE_KINDS[a.kind].rank-OBJECTIVE_KINDS[b.kind].rank);
-  objectiveCache={key,quick,list:all.slice(0,COMPASS_OBJECTIVE_LIMIT),all}; // release 281: the chosen target is looked up in all of them
+  objectiveCache={key,quick,list:all.slice(0,COMPASS_OBJECTIVE_LIMIT),all}; // release 279: the chosen target is looked up in all of them
   return objectiveCache.list;
 }
-function compassObjective(){const list=objectiveList();return objectiveCache.all.find((o)=>`${o.rx},${o.ry}`===compassPick)||list[0]||null} // release 281: a pick that is merely far off is kept; only a finished one falls back
+function compassObjective(){const list=objectiveList();return objectiveCache.all.find((o)=>`${o.rx},${o.ry}`===compassPick)||list[0]||null} // release 279: a pick that is merely far off is kept; only a finished one falls back
 function compassHeading(dx,dy){if(!dx&&!dy)return"here";return`${dy<0?"north":dy>0?"south":""}${dy&&dx?"-":""}${dx<0?"west":dx>0?"east":""}`}
 function navigationTargets() {
   navigationStats.lookups++;
@@ -534,7 +534,7 @@ function renderQuests(out){
 }
 // Tapping the compass names its target and steps to the next objective (release 153).
 navCompass.setAttribute("role","button");navCompass.tabIndex=0;
-let overlayClosedAt=-1e9; // release 281: the tap that closes the Atlas (or any panel) must not land on the compass beneath
+let overlayClosedAt=-1e9; // release 279: the tap that closes the Atlas (or any panel) must not land on the compass beneath
 navCompass.addEventListener("click",()=>{
   if(performance.now()-overlayClosedAt<500)return;
   if(game.area!=="overworld"){game.message="The compass settles while you are inside. It points again once you are back in the open.";return}
@@ -1108,7 +1108,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:281,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 281\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:283,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 283\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1120,7 +1120,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:281,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:283,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1407,7 +1407,7 @@ function updateMapModeUI(){
   updateMapWaypointButton();
   updateMapTravelButton();
 }
-function updateMapWaypointButton(){const button=$("#mapWaypoint"),selected=mapView.selected,same=selected&&save.manualWaypoint?.rx===selected.rx&&save.manualWaypoint?.ry===selected.ry;button.disabled=!selected||!mapView.chosen||!save.explored[`${selected.rx},${selected.ry}`];/* release 281: never on the section the Atlas opened on until the Wayfarer picks one */button.textContent=same?"Clear manual waypoint":"Set manual waypoint"}
+function updateMapWaypointButton(){const button=$("#mapWaypoint"),selected=mapView.selected,same=selected&&save.manualWaypoint?.rx===selected.rx&&save.manualWaypoint?.ry===selected.ry;button.disabled=!selected||!mapView.chosen||!save.explored[`${selected.rx},${selected.ry}`];/* release 279: never on the section the Atlas opened on until the Wayfarer picks one */button.textContent=same?"Clear manual waypoint":"Set manual waypoint"}
 function showMapDetail(rx, ry) {
   const key = `${rx},${ry}`;
   if (!save.explored[key]) {
@@ -1492,7 +1492,7 @@ function openPack(tab) {
   body.append(heading, summary, xp, character);
   }catch(error){packSectionFailed("Character",error)}
   if (packTab === "supplies") try{
-  for(const [kind,label] of [['weapon','Weapon sphere'],['armor','Armor sphere']]){const row=document.createElement('div'),key=kind+'Sphere';row.className='item';row.textContent=`${label} ×${save.materials[key]||0} · strengthens fitted equipment at the Forge.`;body.append(row)}
+  for(const [kind,label] of [['weapon','Weapon sphere'],['armor','Armor sphere']]){const row=document.createElement('div'),key=kind+'Sphere';row.className='item sphere-row';row.textContent=`${label} ×${save.materials[key]||0} · strengthens fitted equipment at the Forge.`;body.append(row)}
   }catch(error){packSectionFailed("Spheres",error)}
   if (packTab === "wayfarer") try{
   const statHelp = {
@@ -1522,15 +1522,26 @@ function openPack(tab) {
   }
   }catch(error){packSectionFailed("Stats",error)}
   if (packTab === "supplies") try{
-  const resource = document.createElement("p");
-  resource.textContent = `Cinder Iron ${save.materials.cinderIron} · weapon +${save.weaponLevel || 0} · section ${game.rx},${game.ry} `;
-  resource.append(Object.assign(document.createElement('span'), { className: 'wood-count', textContent: `Wood ${save.materials?.wood || 0} · Stone ${save.materials?.stone || 0} · ${save.digging?.shovel ? `Shovel: ${save.digging.shovel} dig${save.digging.shovel === 1 ? '' : 's'} left` : `a shovel takes ${DIG.recipe.wood} wood and ${DIG.recipe.stone} stone (Act facing a dungeon wall)`} · a skiff takes 3 wood (Act at deep water)` })); // release 119; stone and the shovel, release 225
-  body.append(resource);
-  // Release 265: what the Build button raises. Wood walls block a single blow; stone blocks take two and can be stood on.
+  // Release 283 (Tim: "the resources... in one line... easy to identify... I can't just quickly look and see how much wood
+  // and stone I have"): one row of resource tiles (icon, count, name), then the recipes together, with Continuous build.
+  const m = save.materials || {}, tiles = document.createElement("div"); tiles.className = "resource-tiles";
+  for (const [key, label, icon, n] of [["wood", "Wood", "🪵", m.wood], ["stone", "Stone", "🪨", m.stone], ["iron", "Cinder Iron", "⛓", m.cinderIron], ["shovel", "Shovel digs", "⛏", save.digging?.shovel]]) {
+    const t = document.createElement("div"); t.className = `resource-tile ${key}`; t.innerHTML = `<span class="icon" aria-hidden="true">${icon}</span><b>${Number(n) || 0}</b><small>${label}</small>`; tiles.append(t);
+  }
+  const note = document.createElement("p"); note.className = "resource-note"; note.textContent = `Weapon +${save.weaponLevel || 0} · Wood and stone carry up to 99 each.`;
+  { const first = body.querySelector(".sphere-row"); if (first) first.before(tiles, note); else body.append(tiles, note); } // the counts lead the tab
   const buildRow = document.createElement("div"); buildRow.className = "item build-pick";
-  const bt = document.createElement("strong"); bt.textContent = `Build with: ${BUILD.kinds[ensureBuild(save).build.kind].name}`;
-  const bp = document.createElement("p"); bp.textContent = `Wood wall: ${BUILD.kinds.wood.cost.wood} wood, blocks the way and one blow. Stone block: ${BUILD.kinds.stone.cost.stone} stone, takes two blows; jump onto it, and stack two. Builds crumble after ${BUILD.life} s; ${BUILD.maxOut} at most.`;
-  buildRow.append(bt, bp, ...BUILD_KINDS.map((k) => uiButton(BUILD.kinds[k].name, () => { setBuildKind(save, k); persist(); openPack("supplies"); })));
+  const chosen = ensureBuild(save).build.kind, now = activeBuildKind(save);
+  const bt = document.createElement("strong"); bt.textContent = "Recipes";
+  const pick = document.createElement("div"); pick.className = "build-choice";
+  pick.append(...BUILD_KINDS.map((k) => { const b = uiButton(`${BUILD.kinds[k].name} · ${Object.entries(BUILD.kinds[k].cost).map(([mat, n]) => `${n} ${mat}`).join(", ")}`, () => { setBuildKind(save, k); persist(); openPack("supplies"); }); b.classList.toggle("selected", k === chosen); return b; }));
+  const cont = document.createElement("label"); cont.className = "continuous-build";
+  const box = Object.assign(document.createElement("input"), { type: "checkbox", checked: !!save.build.continuous }); box.onchange = () => { setContinuousBuild(save, box.checked); persist(); openPack("supplies"); };
+  cont.append(box, document.createTextNode(" Continuous build: when the chosen material runs out, build with the next one"));
+  const status = document.createElement("small"); status.textContent = now ? `Build raises: ${BUILD.kinds[now].name}.` : "Build: ✕ not enough wood or stone for any build.";
+  const recipes = document.createElement("ul"); recipes.className = "recipe-list";
+  for (const line of [`Wood wall: ${BUILD.kinds.wood.cost.wood} wood. Blocks the way and one blow.`, `Stone block: ${BUILD.kinds.stone.cost.stone} stone. Takes two blows; jump onto it, and stack two.`, `Builds crumble after ${BUILD.life} s; ${BUILD.maxOut} stand at most.`, `Shovel: ${DIG.recipe.wood} wood and ${DIG.recipe.stone} stone (Act facing a dungeon wall).`, "Skiff: 3 wood (Act at deep water)."]) { const li = document.createElement("li"); li.textContent = line; recipes.append(li); }
+  buildRow.append(bt, pick, cont, status, recipes);
   body.append(buildRow);
   }catch(error){packSectionFailed("Resources",error)}
   if (packTab === "gear") try{
@@ -1901,6 +1912,7 @@ function updateHud(now) {
   const rot = Math.floor(save.rot || 0);
   hudSet(hudEl("#healthText"),"text",(rot > 0 ? `${health}/${save.maxHp - rot} (rot −${rot})` : `${health}/${save.maxHp}`) + (game.map?.underwater ? ` · air ${Math.ceil(save.session.breath ?? 20)}s` : ""));
   hudSet(hudEl("#healthBar"),"max",save.maxHp);
+  hudSet(hudEl("#healthBar"),"--rot",`${rot > 0 ? Math.min(100, rot / Math.max(1, save.maxHp) * 100).toFixed(1) : 0}%`); // release 283: the rotted share of the bar turns grey (styles.css)
   hudSet(hudEl("#healthBar"),"value",health);
   hudSet(hudEl("#staminaBar"),"max",save.maxStamina);
   hudSet(hudEl("#staminaBar"),"value",stamina);
@@ -1909,7 +1921,7 @@ function updateHud(now) {
   const aperture = save.perception?.aperture || 0,
     tier = apertureTier(aperture),
     apertureNext = APERTURE_THRESHOLDS[tier];
-  const short=(n)=>n>=10000?`${(n/1000).toFixed(n>=100000?0:1)}k`:String(n);hudSet(hudEl("#xpCompact"),"text",`LV ${save.level} · XP ${short(save.xp)}/${short(next)}`);hudSet(hudEl("#apCompact"),"text",`AP ${short(aperture)}${apertureNext ? "/" + short(apertureNext) : ""} · T${tier} · S${stageOf(save)}`);/* release 281: the creature stage */hudSet(hudEl("#apCompact"),"title",`${apertureBand(aperture).name} band`);
+  const short=(n)=>n>=10000?`${(n/1000).toFixed(n>=100000?0:1)}k`:String(n);hudSet(hudEl("#xpCompact"),"text",`LV ${save.level} · XP ${short(save.xp)}/${short(next)}`);hudSet(hudEl("#apCompact"),"text",`AP ${short(aperture)}${apertureNext ? "/" + short(apertureNext) : ""} · T${tier} · S${stageOf(save)}`);/* release 279: the creature stage */hudSet(hudEl("#apCompact"),"title",`${apertureBand(aperture).name} band`);
   const states = actionReadiness(game, now);
   for (const [action, state] of Object.entries(states)) {
     const button = hudEl(`[data-action="${action}"]`);
@@ -1931,7 +1943,9 @@ function updateHud(now) {
   }
   // Release 261: the spell preset button shows which preset (1 or 2) is in the slots.
   { const pb = hudEl('[data-action="preset"]'), n = String((save.magicSkills?.preset || 0) + 1); if (pb) { hudSet(pb, "text", n); hudSet(pb, "aria-label", `Spell preset ${n}: tap to switch`); } }
-  { const bb = hudEl('[data-action="build"]'), k = ensureBuild(save).build.kind; if (bb) { hudSet(bb, "aria-label", `Build a ${BUILD.kinds[k].name.toLowerCase()}`); hudSet(bb, "data-cooldown", k === "stone" ? "STONE" : "WOOD"); hudSet(bb, "data-kind", k); } } // release 265
+  // Release 283: the Build button names what it will raise now (continuous build may have moved on to the next material),
+  // REPAIR beside a damaged skiff, and is crossed out (an X) when no build can be afforded.
+  { const bb = hudEl('[data-action="build"]'), k = activeBuildKind(save), mend = !!game.mendTarget?.(); if (bb) { hudSet(bb, "aria-label", mend ? "Repair the skiff" : k ? `Build a ${BUILD.kinds[k].name.toLowerCase()}` : "Nothing to build with"); hudSet(bb, "data-cooldown", mend ? "REPAIR" : k ? k.toUpperCase() : "✕"); hudSet(bb, "data-kind", k || "none"); hudSet(bb, "class:spent", !mend && !k); } } // release 265
   // Spell slots A and B (release 113): each shows its castable's symbol in its attribute colour.
   for (const [action, slot] of [["spell", "a"], ["spell2", "b"]]) {
     const button = hudEl(`[data-action="${action}"]`), c = slotted(save, slot);
@@ -2122,7 +2136,7 @@ mapCanvas.onclick = (e) => {
   const now = performance.now(), again = lastMapTap && now - lastMapTap.at < 350 && lastMapTap.rx === rx && lastMapTap.ry === ry;
   lastMapTap = again ? null : { at: now, rx, ry };
   if (again) { mapView.x = rx; mapView.y = ry; mapView.zoom = clampZoom(Math.max(mapView.zoom * 2.2, ATLAS_ZOOM.detail)); }
-  if (save.explored[`${rx},${ry}`]) { mapView.chosen = true; showMapDetail(rx, ry); } // release 281: a tapped section is a choice
+  if (save.explored[`${rx},${ry}`]) { mapView.chosen = true; showMapDetail(rx, ry); } // release 279: a tapped section is a choice
   // Release 213 (Tim): a tapped section with a Wayglass is chosen for travel and the Travel button comes into view.
   if (save.checkpoints?.[`${rx},${ry}`] && game.area !== "dungeon") { const b = $("#mapTravel"); b.scrollIntoView?.({ block: "nearest", behavior: "smooth" }); b.classList.remove("ready"); void b.offsetWidth; b.classList.add("ready"); }
   drawMap();
@@ -2206,11 +2220,11 @@ mapCanvas.addEventListener("pointerup", finishAtlasDrag);
 mapCanvas.addEventListener("pointercancel", finishAtlasDrag);
 for (const id of ["mapCenter", "mapN", "mapS", "mapW", "mapE"])
   $("#" + id).addEventListener("click", () => {
-    mapView.chosen = true; showMapDetail(mapView.x, mapView.y); // release 281: so is one stepped to
+    mapView.chosen = true; showMapDetail(mapView.x, mapView.y); // release 279: so is one stepped to
   });
 for (const d of [panel, atlas, journal, optionsPanel])
   d.addEventListener("close", () => {
-    overlayClosedAt = performance.now(); // release 281
+    overlayClosedAt = performance.now(); // release 279
     // A dialog closed to make way for a Glimpse must not unpause the game under it (close fires asynchronously).
     if (
       !glimpseRun &&
