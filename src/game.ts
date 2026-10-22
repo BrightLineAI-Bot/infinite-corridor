@@ -31,7 +31,7 @@ function applyFallenTreeCrossings(map) {
 import { ensureSlots, slotted, pairingMods, slotReadiness, togglePreset, activeButton, slotTool, CASTABLES, availableCastables } from "./spell-slots.ts";
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind, unlockBandName } from "./dungeon-ladder.ts";
-import { diveGate, subGate, underwaterGate, mechGate, MECH, ensureMech, mechAbsorb, tickMech } from "./vehicle-gates.ts";
+import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, DRONE, ensureMech, mechAbsorb, tickMech } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
 import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.ts";
@@ -772,6 +772,7 @@ export function updateProjectiles(
       p.dx *= -1;
       p.dy *= -1;
     }
+    if (p.seekId && !p.hostile) { const t = enemies.find((e) => e.id === p.seekId && !e.dead); if (t) { const ax = t.x + .5 - p.x, ay = t.y + .5 - p.y, d = Math.hypot(ax, ay) || 1, k = Math.min(1, (p.seekTurn || 6) * dt); p.dx += (ax / d - p.dx) * k; p.dy += (ay / d - p.dy) * k; const n = Math.hypot(p.dx, p.dy) || 1; p.dx /= n; p.dy /= n; } } // release 321: the drone's rockets home
     const distance = p.speed * dt,
       steps = Math.max(1, Math.ceil(distance / 0.2)),
       step = distance / steps;
@@ -2909,12 +2910,33 @@ export class Game {
 
   // Release 317: ashore the frame builds the robot once, then calls it up and stows it (vehicle-gates.ts MECH).
   toggleMech() {
-    const gate = mechGate(this.save); if (!gate.ok) { this.message = gate.why; return false; }
-    const m = ensureMech(this.save), c = this.save.consumables ||= {};
+    const m = ensureMech(this.save), c = this.save.consumables ||= {}, drone = m.mode === "drone";
+    const gate = drone ? droneGate(this.save) : mechGate(this.save); if (!gate.ok) { this.message = gate.why; return false; } // release 321: the drone has its own gate
+    if (drone && m.active) { const p = this.player, max = p.maxHp || this.save.maxHp; if (p.hp < max && !(m.healCd > 0)) return this.droneHeal("You call the drone down; it mends you."); } // release 321: on command
     if (!m.built) { if (!(c.submersible > 0)) { this.message = "Forge a submersible frame first (Pack → Supplies): ashore it becomes your robot."; return false; } c.submersible -= 1; m.built = true; m.plate = MECH.plate; }
-    if (m.active) { m.active = false; this.message = "The robot folds away."; this.sync(); return true; }
-    if (m.cooldown > 0) { this.message = `The robot's plating is still knitting: ${Math.ceil(m.cooldown)}s.`; return false; }
-    m.active = true; this.message = "The robot unfolds around you. Hold Jump in the air to boost."; this.sync(); return true;
+    if (m.active) { m.active = false; this.message = drone ? "The drone docks into its frame." : "The robot folds away."; this.sync(); return true; }
+    if (!drone && m.cooldown > 0) { this.message = `The robot's plating is still knitting: ${Math.ceil(m.cooldown)}s.`; return false; }
+    m.active = true; this.droneAt = null; this.message = drone ? "The drone lifts off beside you. It fires on what comes near; hold Jump in the air and it carries you." : "The robot unfolds around you. Hold Jump in the air to boost."; this.sync(); return true;
+  }
+  droneUp() { const m = this.save.mech; return m?.active === true && m.mode === "drone" && !aboard(this.save); }
+  droneHeal(message) {
+    const m = this.save.mech, p = this.player, max = p.maxHp || this.save.maxHp, n = Math.round(max * DRONE.heal);
+    p.hp = Math.min(max, p.hp + n); this.save.hp = p.hp; m.healCd = DRONE.healCooldown;
+    this.droneHealFx = .9; // the renderer's green glow
+    this.message = `${message} +${n} health. It can mend again in ${DRONE.healCooldown}s.`; return true;
+  }
+  // Release 321: the drone's turn each frame (after tickMech): follow, fire homing rockets, mend by itself when needed.
+  tickDrone(dt, now) {
+    const m = this.save.mech, p = this.player, carry = this.mechBoosting, want = carry ? { x: p.x, y: p.y - .9 } : { x: p.x + (p.facing === "left" ? .95 : -.95), y: p.y - .55 };
+    const d = this.droneAt ||= { ...want }, k = Math.min(1, dt * (carry ? 20 : 6)); d.x += (want.x - d.x) * k; d.y += (want.y - d.y) * k;
+    this.droneHealFx = Math.max(0, (this.droneHealFx || 0) - dt);
+    const max = p.maxHp || this.save.maxHp; if (p.hp > 0 && p.hp < max * DRONE.autoHealBelow && !(m.healCd > 0)) this.droneHeal("The drone swoops in and mends you.");
+    if (m.rocketCd > 0) return;
+    let best = null, bd = DRONE.range; for (const e of this.enemies || []) { if (e.dead || e.hp <= 0 || e.hidden || e.ambient || e.astralAllyOf) continue; const r = Math.hypot(e.x - p.x, e.y - p.y); if (r < bd) { bd = r; best = e; } }
+    if (!best) return;
+    const ax = best.x + .5 - (d.x + .5), ay = best.y + .5 - (d.y + .45), n = Math.hypot(ax, ay) || 1;
+    this.projectiles.push({ id: `drone-rocket-${now}`, x: d.x + .5, y: d.y + .45, dx: ax / n, dy: ay / n, speed: DRONE.rocketSpeed, life: DRONE.rocketLife, damage: DRONE.rocketDamage + (characterStats(this.save).magicBonus || 0), damageType: "physical", path: "straight", age: 0, hits: {}, seekId: best.id, seekTurn: DRONE.rocketTurn, droneRocket: true });
+    m.rocketCd = DRONE.rocketEvery;
   }
   // Release 319 (dungeon-ladder.ts): a Threefold Deep, a deep archetype or a world-threat arena opens by the Aperture.
   // Entered ones never seal again; the first opening records the tier and whether it is a taste. Returns the message, or "".
@@ -2926,7 +2948,7 @@ export class Game {
     h.ladder = { version: DUNGEON_LADDER.version, tier, rung };
     return "";
   }
-  mechUp() { return this.save.mech?.active === true && !aboard(this.save); }
+  mechUp() { return this.save.mech?.active === true && this.save.mech.mode !== "drone" && !aboard(this.save); }
   // Release 311 (Tim: "these buoys... are connected... go to one buoy, and then go to another buoy... if you traverse the
   // dungeon"): the dive buoy the grotto's deep current carries you to — the nearest other buoy section, rings outward from
   // the one you dove at (dive:<seed>:<rx>:<ry>), found with the same rule diveSite uses. Returns a dungeonReturn place.
@@ -4174,8 +4196,8 @@ export class Game {
     }
     { const m = this.save.mech; this.mechBoosting = false; // release 317: in the robot, hold Jump in the air to boost
       if (!input.held?.("jump")) this.mechSpent = false; // release 319: an emptied boost needs Jump let go before it fires again
-      if (this.mechUp() && !this.mechSpent && input.held?.("jump") && now < (this.jumpUntil || 0) + 60 && m.fuel > 0) { m.fuel = Math.max(0, m.fuel - dt); this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.mechBoosting = true; if (m.fuel <= 0) this.mechSpent = true; }
-      if (m?.built) tickMech(this.save, dt, !(now < (this.jumpUntil || 0))); }
+      if ((this.mechUp() || this.droneUp()) && !this.mechSpent && input.held?.("jump") && now < (this.jumpUntil || 0) + 60 && m.fuel > 0) { /* release 321: the drone carries the same way */ m.fuel = Math.max(0, m.fuel - dt); this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.mechBoosting = true; if (m.fuel <= 0) this.mechSpent = true; }
+      if (m?.built) tickMech(this.save, dt, !(now < (this.jumpUntil || 0))); if (this.droneUp()) this.tickDrone(dt, now); }
     if (input.consume("potion")) this.useConsumable("restorativeDraught", now);
     if (input.consume("preset")) this.message = togglePreset(this.save).message; // release 261: swap spell presets 1 and 2
     if (input.consume("build")) { // release 269: beside (or aboard) a damaged skiff, Build patches the hull instead
