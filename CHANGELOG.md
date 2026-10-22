@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 317 — the robot ashore. From the Infinite III band, with the second Gate unlocked (2 Listeners), the submersible frame works on land too:
+  - **Calling it.** Use the frame on land (from Pack or a preset button). The first time, one frame is spent to build the robot. After that the same button calls it up and folds it away. Aboard the skiff, the frame still fits the submersible as before.
+  - **Defence.** The robot has 60 plating in its own silver bar under the Wayfarer, which takes hits first. You also take 10% less damage while inside.
+  - **Plating.** If the plating breaks, the robot folds away and can be called again after 20 seconds. Folded away, its plating mends at 3 a second.
+  - **Boosting.** Jump, then hold Jump to fire the back boosters. This gives up to 1.6 seconds of flight, shown in a blue bar, over chasms, water and lava. The bar refills on the ground.
+  - **Everything else still works.** Rift Step, spells, skills, attacks and items all still work inside the robot.
+
 - Release 315 — the submersible becomes a robot, and diving is unlocked step by step:
   - **The robot.** The submersible is now a small silver robot, a little larger than the Wayfarer: a big round viewport where you can see them, short legs, two robotic arms with three-fingered hands, and boosters on its back. At sea it sits half in the water.
   - **Diving with the rig and Lens.** This needs the Infinite II band of the Aperture. Before that the Shipwright does not offer the dive rig and the buoys only show what they need. The skiff and the Tidemantle are unchanged.
