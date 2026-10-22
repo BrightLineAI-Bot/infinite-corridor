@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Release 305 — the Far Sleep made strange. Past the farthest Readings, more than 35 sections out, the ground stops pretending:
+  - pale sleep-meadow scattered with small luminous flowers;
+  - white marble terraces climbing in wide stairs;
+  - standing sleeper-stones with closed eyes;
+  - patches where the ground has worn so thin that the night sky shows through (you cannot walk there, but it never kills you).
+
+  Pale petals drift down. At sea only the islands change. The first time you step into it, the game tells you. Only ground you have not explored yet changes.
+
 - Release 303 — the Poison Crypt, a rare new dungeon (about 1 in 50 new crossings):
   - Sealed crypt halls sunk in wide stretches of poison mire, with green gas jets along the way that burn and poison.
   - In the far corner lies the lair of the Mire Heart: the Morphing Blob at half the strength of its overland self, waiting in a great pool of mire.

@@ -2585,6 +2585,28 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 305: the Far Sleep made strange — 2026-10-22
+
+This release is step 4 of `docs/narrative-bible.md` section 7 ("The Far Sleep made strange... Dreamlands landscapes... for the far regions... used only for sections not yet explored"). The daily narrative session began it, and Tim approved it on 2026-10-22: "you can continue working on the dream section".
+
+**CODE:**
+- **`landscape.ts`**:
+  - `applyDream(map, seed, rx, ry, version)` runs after `applyLandscape` on sections past `FAR_SLEEP_DEPTH` (35, the same line as `lore.ts` `READING_BANDS.far`, where `readingAt` returns "dreamlands").
+  - Value noise from the `DREAM` table places `starVoid` (blocked, not lethal), `sleeperStone` (blocked) and marble terraces (`dreamMarble`, elev 1–2) over `sleepMeadow`.
+  - Protected tiles (plaza, exits, objects, spawns) become meadow at ground level. Structures, ruins, environments and bridges are untouched.
+  - `ensureClimbable`, `wakeStranded` (a path search that turns dream blockers on the way back into meadow) and `ensureReturnable` keep everything reachable and trap-free. Tiles beside higher ground become `dreamStair` slopes.
+  - In open sea only walkable island tiles become meadow or marble; water, docks and shallows are untouched.
+  - The Atlas colour comes from `landscapeAtlasColor("dream")`. `dream` is not in `BIOMES`, which lists only noise-made biomes.
+- **`game.ts`** (`loadArea`, `walkerCrossingMap`) and **`astral-world-retreat.ts`** apply it when `!seen || seen.dreamVersion`, the same rule as hamlets. The atlas pins `dreamVersion` for sections first seen now. The first dream section sets `narrative.facts["farSleep.entered"]` and shows one line.
+- **`landscape-render.ts`**: painters for the five kinds (`starVoid` twinkles), the `dream` cliff face and the atlas colour. **`renderer.ts`**: `petals` weather.
+
+**BOUNDARY:**
+- `LANDSCAPE_VERSION` stays 3, and versions 1–3 are byte-identical: the dream is a separate pinned pass.
+- Explored sections never change.
+- No save schema change: `dreamVersion` is an additive atlas field.
+- Dream dungeons, Ilse's last meeting and the Surveyor's statue are later steps.
+- Tests: `tests/far-sleep-305.test.ts`.
+
 ## Release 303: the Poison Crypt — 2026-10-22
 
 Tim, 2026-10-22: "a poison crypt... large sections of poison water and poison mire... poison jets... a smaller version of the blob... manifest from one of those poison pools... they all try and go back to the main blob... a larger... arena... a poison pool in the corner... he'll just be kind of stationary... until you find him... he'll grow... depending on the other blobs that get to him... once you get to the arena... other blobs will stop... the blob in this arena will have... half health"; "keep these special types rare".

@@ -478,7 +478,7 @@ function buildSkyBridges(map, seed, rx, ry, mask) {
 
 // Objects and creature spawns on islands (shallows ringed by ocean, spires, pools) get a walkable causeway.
 function connectStranded(map) {
-  const convertible = (tt) => tt.landscape && tt.blocked && [...DEEP_WATER, "alienPool", "crystalSpire", "crag"].includes(tt.kind);
+  const convertible = (tt) => tt.landscape && tt.blocked && [...DEEP_WATER, "alienPool", "crystalSpire", "crag", "starVoid", "sleeperStone"].includes(tt.kind);
   for (const o of [...map.objects.filter((q) => q.actions?.length), ...(map.enemySpawns || [])]) {
     const seen = reachableFromPlaza(map), ox = Math.round(o.x), oy = Math.round(o.y);
     if (seen[idx(ox, oy)] || N4.some(([dx, dy]) => seen[idx(ox + dx, oy + dy)])) continue;
@@ -490,7 +490,7 @@ function connectStranded(map) {
       const cells = [];
       for (const [x0, y0, x1, y1] of path) { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); for (let k = 0; k <= n; k++) cells.push([x0 + Math.sign(x1 - x0) * k, y0 + Math.sign(y1 - y0) * k]); }
       if (cells.some(([x, y]) => { const tt = map.tiles[idx(x, y)]; return tt.blocked && !convertible(tt); })) continue;
-      for (const [x, y] of cells) { const tt = map.tiles[idx(x, y)]; if (tt.blocked) setTile(map, x, y, { kind: tt.kind === "swampWater" ? "mireWater" : tt.kind === "toxicWater" ? "toxicMire" : DEEP_WATER.includes(tt.kind) ? "shallows" : tt.landscape === "alien" ? "alienMoss" : "mountainRock", blocked: false, elev: 0 }); }
+      for (const [x, y] of cells) { const tt = map.tiles[idx(x, y)]; if (tt.blocked) setTile(map, x, y, { kind: tt.kind === "swampWater" ? "mireWater" : tt.kind === "toxicWater" ? "toxicMire" : DEEP_WATER.includes(tt.kind) ? "shallows" : tt.landscape === "alien" ? "alienMoss" : tt.landscape === "dream" ? "sleepMeadow" : "mountainRock", blocked: false, elev: 0 }); }
       break;
     }
   }
@@ -594,3 +594,62 @@ export function canStep(entity, map, width, fromX, fromY, toX, toY) {
 }
 export function isLandscapeKind(kind) { return WALKABLE_LANDSCAPE.has(kind) || [...DEEP_WATER, "crag", "crystalSpire", "alienPool", "castleWall", "castleTower", "castleKeep", "lava"].includes(kind); }
 export function elevationAt(map, width, x, y) { return map?.landscape ? (tileUnder(map, width, x, y)?.elev || 0) : 0; }
+
+// ---------------------------------------------------------------- the Far Sleep (release 305)
+// docs/narrative-bible.md section 7, step 4: "The Far Sleep made strange". Past the far band of Readings (depth > 35,
+// lore.ts READING_BANDS.far) the ground stops pretending: pale sleep-meadow, white marble terraces climbing in wide steps,
+// standing sleeper-stones, and places where the ground has worn so thin that the night sky shows through underneath
+// (starVoid, impassable, never lethal). Applied after applyLandscape, only to sections first seen from this release on
+// (the atlas pins dreamVersion, as it pins hamletVersion); explored sections keep what they were. In open sea only the
+// islands turn to meadow and marble; the water is left alone so boats and the sea's own rules are unchanged.
+export const DREAM_VERSION = 1;
+export const FAR_SLEEP_DEPTH = 35; // lore.ts READING_BANDS.far
+export const DREAM = { name: "The Far Sleep", voidScale: 5, voidAbove: .72, terraceScale: 7, terraces: [.5, .64], stoneScale: 1.6, stoneAbove: .88 };
+export function farSleepSection(rx, ry) { return Math.abs(rx) + Math.abs(ry) > FAR_SLEEP_DEPTH; }
+export function applyDream(map, seed, rx, ry, version = DREAM_VERSION) {
+  if (!version || !map || map.settlement || !farSleepSection(rx, ry) || map.tiles?.length !== 1024) return map;
+  const mask = protectedMask(map, { border: true }), D = DREAM, sea = !!map.openSea; // at sea only the islands dream
+  if (sea) {
+    for (const t of map.tiles) if (t.x > 0 && t.y > 0 && t.x < 31 && t.y < 31 && !t.blocked && !t.structure && !t.buildingId && !t.environment && t.kind !== "bridge" && t.kind !== "dock" && t.kind !== "shallows" && !Number.isInteger(t.ruin))
+      setTile(map, t.x, t.y, { kind: t.slope ? "dreamStair" : t.elev ? "dreamMarble" : "sleepMeadow", landscape: "dream", detail: hashSeed(`${seed}:dream:detail:${rx * 32 + t.x}:${ry * 32 + t.y}`) % 997 });
+    map.weather = "petals"; map.dream = version;
+    return map;
+  }
+  for (let y = 1; y < 31; y++) for (let x = 1; x < 31; x++) {
+    const i = idx(x, y), t = map.tiles[i], gx = rx * 32 + x, gy = ry * 32 + y, d = hashSeed(`${seed}:dream:detail:${gx}:${gy}`) % 997;
+    if (t.structure || t.buildingId || t.environment || t.kind === "bridge" || Number.isInteger(t.ruin) || (t.blocked && !t.landscape)) continue;
+    if (mask[i]) { if (!t.blocked) setTile(map, x, y, { kind: "sleepMeadow", elev: 0, slope: false, landscape: "dream", detail: d }); continue; }
+    const v = valueNoise(`${seed}:dream:void`, gx / D.voidScale, gy / D.voidScale), stone = valueNoise(`${seed}:dream:stone`, gx / D.stoneScale, gy / D.stoneScale) > D.stoneAbove;
+    const e = valueNoise(`${seed}:dream:terrace`, gx / D.terraceScale, gy / D.terraceScale), elev = e > D.terraces[1] ? 2 : e > D.terraces[0] ? 1 : 0;
+    setTile(map, x, y, v > D.voidAbove ? { kind: "starVoid", blocked: true, elev: 0, slope: false, landscape: "dream", detail: d }
+      : stone ? { kind: "sleeperStone", blocked: true, elev, slope: false, landscape: "dream", detail: d }
+      : { kind: elev ? "dreamMarble" : "sleepMeadow", blocked: false, elev, slope: false, landscape: "dream", detail: d });
+  }
+  const sunk = (q) => map.tiles[idx(Math.round(q.x), Math.round(q.y))]?.blocked;
+  map.objects = (map.objects || []).filter((q) => !(DECOR.has(q.kind) && sunk(q)));
+  ensureClimbable(map, mask);
+  wakeStranded(map, mask);
+  ensureReturnable(map, 32, 32, { x: 16, y: 16 });
+  for (const t of map.tiles) { // marble stairs wherever a terrace meets higher ground
+    if (t.landscape !== "dream" || t.blocked) continue;
+    if (t.elev) t.kind = "dreamMarble"; else if (t.kind === "dreamMarble" || t.kind === "dreamStair") t.kind = "sleepMeadow";
+    const up = N4.some(([dx, dy]) => { const n = map.tiles[idx(t.x + dx, t.y + dy)]; return n && !n.blocked && n.landscape === "dream" && (n.elev || 0) > (t.elev || 0); });
+    if (up) { t.slope = true; t.kind = "dreamStair"; }
+  }
+  map.landscape = { version: map.landscape?.version || LANDSCAPE_VERSION, biome: "dream", name: DREAM.name };
+  map.weather = "petals"; map.dream = version;
+  return map;
+}
+// Anything the dream cut off (an object, a spawn, a ruin's doorway) gets the shortest way back across dream ground:
+// starVoid and sleeper-stones on that path become meadow at ground level.
+function wakeStranded(map, mask) {
+  for (const o of [...map.objects.filter((q) => q.actions?.length), ...(map.enemySpawns || [])]) {
+    const ox = Math.round(o.x), oy = Math.round(o.y); if (ox < 0 || oy < 0 || ox > 31 || oy > 31) continue;
+    let seen = reachableFromPlaza(map);
+    if (seen[idx(ox, oy)] || N4.some(([dx, dy]) => seen[idx(ox + dx, oy + dy)])) continue;
+    const prev = new Int16Array(1024).fill(-2), q = [idx(ox, oy)]; prev[q[0]] = -1; let hit = -1;
+    for (let h = 0; h < q.length && hit < 0; h++) { const i = q[h], x = i % 32, y = Math.floor(i / 32); for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy, j = idx(nx, ny), t = map.tiles[j]; if (nx < 0 || ny < 0 || nx > 31 || ny > 31 || prev[j] !== -2 || (t.blocked && t.landscape !== "dream")) continue; prev[j] = i; if (seen[j]) { hit = j; break; } q.push(j); } }
+    for (let c = prev[hit] ?? -1; hit >= 0 && c >= 0; c = prev[c]) { const t = map.tiles[c]; if (t.landscape === "dream" && (t.blocked || t.elev)) setTile(map, t.x, t.y, { kind: "sleepMeadow", blocked: false, elev: 0, slope: false }); }
+  }
+  ensureClimbable(map, mask);
+}
