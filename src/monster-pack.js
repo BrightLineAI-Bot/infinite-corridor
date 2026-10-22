@@ -7,9 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r279-880fe40d0946";
-import { hashSeed } from "./random.js?v=r279-880fe40d0946";
-import { updateAstralActor } from "./astral-worm.js?v=r279-880fe40d0946";
+import { stageOneBeastReference } from "./stages.js?v=r285-d5a533b38404";
+import { hashSeed } from "./random.js?v=r285-d5a533b38404";
+import { updateAstralActor } from "./astral-worm.js?v=r285-d5a533b38404";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -643,13 +643,21 @@ export const CRYSTAL = {
   // break and fall through the floor and then you can get a bunch of hits in, and then it will... get up and dodge away").
   // `poiseHits` landed blows (forgotten after `poiseForget` s without one) break it: it drops to the floor for `breakTime`
   // s (falling over `fallTime`, rising over `riseTime`) and cannot dodge, attack or move; then it rises and springs away.
-  poiseHits: 10, poiseForget: 5, breakTime: 3.2, fallTime: .25, riseTime: .4, // poiseHits: Tim, "let's do like ten hits for a poise break"
+  poiseHits: 14, poiseForget: 5, breakTime: 3.2, fallTime: .25, riseTime: .4, // poiseHits: Tim, "let's do like ten hits for a poise break"; 14 from release 285, with fewer dodges
   // Engaged, it settles where the Wayfarer can reach it (release 259; Tim: "its end goal should be... a place the player can
   // walk to... it can spend some time between walls, that's fine"): after `wallLinger` s inside walls (or over ground the
   // Wayfarer cannot reach) it heads for the nearest reachable floor within `manifestSearch` tiles at `manifestSpeed`, and
   // blinks onto it if held back for `manifestBlink` s. It hunts the Wayfarer "for a while": out of sight and beyond
   // `roamSight` for `forgetAfter` s, it drops its aggro and returns to its own patrol, which roams the whole dungeon.
-  wallLinger: 2.5, manifestSearch: 10, manifestSpeed: 2.4, manifestBlink: 1.2, forgetAfter: 12,
+  wallLinger: 1.5, manifestSearch: 10, manifestSpeed: 2.4, manifestBlink: 1.2, forgetAfter: 12, // wallLinger was 2.5 (release 285)
+  // Release r285-d5a533b38404 (Tim, 2026-10-22: "he retreats to the wall constantly... for every 5 seconds he can only spend 1 second in
+  // the tile... so that I actually get to fight him"): a hidden wall budget. Engaged, each second off reachable floor spends
+  // a second of `wallBudget`; it refills over `wallWindow` s on reachable floor. Spent, it must come out, even mid-attack.
+  wallBudget: 1, wallWindow: 5,
+  // Release r285-d5a533b38404 (Tim: "reduce his dodging... so he should stay and fight for a little bit... increase the amount of hits it
+  // takes to stagger him... maybe like 10 seconds where it can't be staggered again"): its own evade cooldown (the shared
+  // one is QB_MOVES.evadeCooldown, 1.1 s), and after rising from a poise break it cannot break again for `poiseGuard` s.
+  evadeCooldown: 3, evadeCooldownEnraged: 2.2, poiseGuard: 10,
   // In a dungeon it may phase through an interior wall up to this many tiles thick (Game.roamerBounds), never beyond the edge.
   boundsSpan: 3,
 };
@@ -1863,7 +1871,8 @@ function evade(e, s, w, p, d) {
   if (!dir) return false;
   if (e.kind === "mountainTurtle") { s.cd.qbEvade = QB_MOVES.evadeCooldown * 1.6; if (s.attack) endAttack(e, s); s.evade = { x: 0, y: 0, t: TURTLE.tuckTime }; e.untargetable = true; e.tucked = true; return true; } // release 241: too big to spring aside; it pulls into its shell
   const enraged = e.hp <= e.maxHp * PACK_BOSS_TEMPLATE.enrage;
-  s.cd.qbEvade = enraged ? QB_MOVES.evadeCooldownEnraged : QB_MOVES.evadeCooldown;
+  const cool = e.kind === "psychicCrystal" ? CRYSTAL : QB_MOVES; // release 285: the Crystal dodges less often
+  s.cd.qbEvade = enraged ? cool.evadeCooldownEnraged : cool.evadeCooldown;
   if (s.attack) endAttack(e, s);
   s.evade = { ...dir, t: QB_MOVES.evadeTime }; e.untargetable = true; s.vel = null;
   return true;
@@ -2005,7 +2014,8 @@ function fleeStep(e, s, w) {
 // springs away from the Wayfarer. Returns true while it is broken (the tick is spent).
 function crystalPoise(e, s, w, p) {
   const hp = Number(e.hp) || 0, dt = Number.isFinite(w.dt) ? Math.max(0, w.dt) : 0;
-  if (s.hpSeen != null && hp < s.hpSeen) { s.poiseHits = (s.poiseHits || 0) + 1; s.poiseIdle = 0; } else s.poiseIdle = (s.poiseIdle || 0) + dt;
+  s.poiseGuard = Math.max(0, (s.poiseGuard || 0) - dt); // release 285: no new break for CRYSTAL.poiseGuard s after rising
+  if (s.hpSeen != null && hp < s.hpSeen && !(s.poiseGuard > 0)) { s.poiseHits = (s.poiseHits || 0) + 1; s.poiseIdle = 0; } else s.poiseIdle = (s.poiseIdle || 0) + dt;
   s.hpSeen = hp; if (s.poiseIdle >= CRYSTAL.poiseForget) s.poiseHits = 0;
   if (!(s.broken > 0) && (s.poiseHits || 0) >= CRYSTAL.poiseHits && !s.evade) {
     s.broken = CRYSTAL.breakTime; s.poiseHits = 0; if (s.attack) endAttack(e, s); s.tele = null; s.vel = null; w.release?.(e); // a held Wayfarer is let go
@@ -2015,7 +2025,7 @@ function crystalPoise(e, s, w, p) {
   const gone = CRYSTAL.breakTime - s.broken; e.crystalFall = Math.max(0, Math.min(1, gone / CRYSTAL.fallTime, s.broken / CRYSTAL.riseTime));
   if (s.broken > 0) return true;
   // Up again: it springs away from the Wayfarer at once.
-  s.broken = 0; e.crystalFall = 0; const away = unit(e.x - p.x, e.y - p.y), side = s.orbitDir || 1;
+  s.broken = 0; e.crystalFall = 0; s.poiseGuard = CRYSTAL.poiseGuard; const away = unit(e.x - p.x, e.y - p.y), side = s.orbitDir || 1;
   s.evade = { ...unit(away.x - away.y * side * .6, away.y + away.x * side * .6), t: QB_MOVES.evadeTime }; e.untargetable = true; s.cd.qbEvade = QB_MOVES.evadeCooldown;
   return true;
 }
@@ -2025,10 +2035,12 @@ function crystalPoise(e, s, w, p) {
 // onto it if something holds it back. Returns true while it is on its way (the tick is spent).
 function crystalManifest(e, s, w) {
   if (!w.walkable) return false;
-  if (w.walkable(e.x, e.y)) { s.wallTime = 0; s.manifest = null; return false; }
-  s.wallTime = (s.wallTime || 0) + w.dt;
+  const full = CRYSTAL.wallBudget, budget = Number.isFinite(s.wallBudget) ? s.wallBudget : full;
+  if (w.walkable(e.x, e.y)) { s.wallBudget = Math.min(full, budget + w.dt * full / CRYSTAL.wallWindow); s.wallTime = 0; s.manifest = null; return false; }
+  s.wallBudget = Math.max(0, budget - w.dt); s.wallTime = (s.wallTime || 0) + w.dt;
   if (!s.manifest) {
-    if (s.wallTime < CRYSTAL.wallLinger) return false;
+    if (s.wallTime < CRYSTAL.wallLinger && s.wallBudget > 0) return false; // release 285: the budget, as well as one stay's limit
+    if (s.attack) endAttack(e, s); s.tele = null; s.evade = null; e.untargetable = false; e.hopLift = 0; // it breaks off whatever it was doing
     let best = null, bd = Infinity; const R = CRYSTAL.manifestSearch, cx = Math.round(e.x), cy = Math.round(e.y);
     for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) { const dd = Math.hypot(x - e.x, y - e.y); if (dd < bd && dd <= R && w.walkable(x, y)) { bd = dd; best = { x, y }; } }
     w.roamWork?.((2 * R + 1) ** 2);
@@ -2131,6 +2143,7 @@ export function updatePackMonster(e, w) {
   if (e.wormOf && tentacleTurret(e, s, w, p)) return;
   if (e.kind === "tremorWorm" && wormCycle(e, s, w, p)) return;
   if (e.kind === "psychicCrystal" && crystalPoise(e, s, w, p)) return; // release 259: a poise break grounds it
+  if (roaming && crystalManifest(e, s, w)) return; // release 285: before evading or attacking, so neither keeps it in the walls
   if (e.kind === "voidWalker" ? voidEvade(e, s, w, p, d) : e.evasive && evade(e, s, w, p, d)) return;
   if (s.attack) {
     s.t -= dt;
@@ -2138,7 +2151,6 @@ export function updatePackMonster(e, w) {
     if (s.attack && s.phase === "recover" && s.t <= 0) endAttack(e, s);
     return;
   }
-  if (roaming && crystalManifest(e, s, w)) return; // release 259: it does not stay in the walls
   // The Weeping Saint never moves or starts an attack while the Wayfarer faces it.
   if ((e.brain || def.brain) === "weeping") {
     const f = w.playerFacing || { x: 0, y: 1 }, to = unit(e.x - p.x, e.y - p.y);

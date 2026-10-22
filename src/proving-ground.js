@@ -1,7 +1,7 @@
-import { drawRangedEffects } from "./combat-visuals.js?v=r279-880fe40d0946";
-import { createInput } from "./input.js?v=r279-880fe40d0946";
-import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r279-880fe40d0946";
-import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile } from "./proving-ground-labs.js?v=r279-880fe40d0946";
+import { drawRangedEffects } from "./combat-visuals.js?v=r285-d5a533b38404";
+import { createInput } from "./input.js?v=r285-d5a533b38404";
+import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r285-d5a533b38404";
+import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile } from "./proving-ground-labs.js?v=r285-d5a533b38404";
 const canvas=document.querySelector("#game"),app=document.querySelector("#app"),ctx=canvas.getContext("2d");
 document.body.classList.add("proving-ground");document.querySelectorAll("#hud, dialog, #eventBanner, .story-scene").forEach(element=>element.hidden=true);
 const query=new URLSearchParams(location.search),implemented=LABORATORIES.filter(q=>q.status==="implemented");let selectedLab=implemented.some(q=>q.id===query.get("lab"))?query.get("lab"):"shelters";
@@ -18,7 +18,7 @@ const panel=document.createElement("aside");panel.id="provingGroundPanel";panel.
   <div class="proving-buttons"><button id="fixtureCopy">Copy recipe/report</button><button id="fixtureExit">Exit to normal game</button></div>
  </section>`;document.body.append(panel);
 const $=selector=>panel.querySelector(selector),launcher=$("#labLauncher"),controls=$("#labControls"),scenarioSelect=$("#scenarioSelect"),seedInput=$("#seedInput"),variantInput=$("#variantInput"),sizeProfileSelect=$("#sizeProfileSelect"),revealModeSelect=$("#revealModeSelect"),teleportSelect=$("#teleportSelect"),environmentSelect=$("#environmentSelect");
-// Release r279-880fe40d0946 (Tim, 2026-10-22: "there should just be a drop down for whichever arena... and then... a start simulation button"):
+// Release 279 (Tim, 2026-10-22: "there should just be a drop down for whichever arena... and then... a start simulation button"):
 // the combat lab picks its environment from a list, and nothing starts until Start test.
 for(const q of COMBAT_ENVIRONMENTS)environmentSelect.add(new Option(q.label,q.id));environmentSelect.value=COMBAT_ENVIRONMENTS.some(q=>q.id===query.get("env"))?query.get("env"):"test-tile";
 function ready(){fixture=null;game=null;teleportSelect.replaceChildren(new Option("Select target…",""));$("#fixtureDiagnostics").textContent="Ready. Choose the "+(selectedLab==="combat"?"environment and creature":"scenario")+", then press Start test.";syncUrl()}

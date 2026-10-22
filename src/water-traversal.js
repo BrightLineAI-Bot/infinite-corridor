@@ -58,6 +58,17 @@ export function swimUpkeep(player, dt, kind = null, openSea = false) {
   return TIDEMANTLE.exhaustedDamagePerSecond * dt;
 }
 
+// Release 283 (Tim, 2026-10-22: "if you go into water in the dungeons... you just start taking health damage... a pretty
+// rapid damage over time. And if you go into water when you have no stamina... while you're in a dungeon, you just die").
+// Dungeon water (not the dive grottoes) costs `hpPerSecond` of maximum health each second, as plain damage (never the
+// maximum itself), on top of the usual stamina drain. A swimmer whose stamina is below `drownBelow` drowns outright.
+export const DUNGEON_WATER = { hpPerSecond: .05, drownBelow: 1 };
+// Returns the damage to apply this frame (Infinity: drowned).
+export function dungeonWaterToll(player, dt, maxHp) {
+  if ((player.stamina || 0) < DUNGEON_WATER.drownBelow) return Infinity;
+  return Math.max(0, Number(maxHp) || 0) * DUNGEON_WATER.hpPerSecond * dt;
+}
+
 // Swamps (landscape version 2). Mire is walkable but slow; the blight mire's murk rots the body: each second in it
 // lowers maximum health (save.rot) until the Wayfarer rests at a Wayglass or rest point (or is recovered after a fall).
 export const MIRE = {

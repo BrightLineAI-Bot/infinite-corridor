@@ -1,20 +1,20 @@
-import { Game } from "./game.js?v=r279-880fe40d0946";
-import { freshSave, migrateSave } from "./types.js?v=r279-880fe40d0946";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r279-880fe40d0946";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r279-880fe40d0946";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r279-880fe40d0946";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r279-880fe40d0946";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r279-880fe40d0946";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r279-880fe40d0946";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r279-880fe40d0946";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r279-880fe40d0946";
-import { BIOMES, biomeFor } from "./landscape.js?v=r279-880fe40d0946";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r279-880fe40d0946";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r279-880fe40d0946";
-import { ensureConstellation } from "./constellation.js?v=r279-880fe40d0946";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r279-880fe40d0946";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r279-880fe40d0946";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r279-880fe40d0946";
+import { Game } from "./game.js?v=r285-d5a533b38404";
+import { freshSave, migrateSave } from "./types.js?v=r285-d5a533b38404";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r285-d5a533b38404";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r285-d5a533b38404";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r285-d5a533b38404";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r285-d5a533b38404";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r285-d5a533b38404";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r285-d5a533b38404";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r285-d5a533b38404";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r285-d5a533b38404";
+import { BIOMES, biomeFor } from "./landscape.js?v=r285-d5a533b38404";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r285-d5a533b38404";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r285-d5a533b38404";
+import { ensureConstellation } from "./constellation.js?v=r285-d5a533b38404";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r285-d5a533b38404";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r285-d5a533b38404";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r285-d5a533b38404";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -207,7 +207,7 @@ function landscapeFixture(scenario, seed, now) {
   }
   throw new Error(`No ${biome} section within 40 sections of the origin for this seed`);
 }
-// Release r279-880fe40d0946 (Tim, 2026-10-22: "one area of testing that's just a tile... a standard tile, but it has... water, a chasm, and some
+// Release 279 (Tim, 2026-10-22: "one area of testing that's just a tile... a standard tile, but it has... water, a chasm, and some
 // elevated blocks in it as well as a building... and also a dungeon door... we can keep this in place"). The Timber shelter
 // section (its shack is the building) with a pond, a canyon, a two-level plateau with stairs and a crossing stamped on.
 // Built from production tile kinds, so movement, jumping, falls, drowning and entry behave as they do in play.
