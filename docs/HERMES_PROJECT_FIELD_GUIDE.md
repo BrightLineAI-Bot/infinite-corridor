@@ -2600,7 +2600,7 @@ Tim, 2026-10-22: "in dungeons, the traversal should be a little bit more consequ
 - **Rot on the HUD.** Tim: "a portion of your health bar... just turns grey... like a necrosis".
   - `main.ts` `updateHud` sets `--rot` on `#healthBar` to rot ÷ max health. `styles.css` paints that share at the right end of the bar's track grey.
   - The bar's maximum stays the full max health.
-- **Crypt coffins.** Tim: change the cross to "some type of cosmic or arcane" symbol. `landscape-render.ts` `PAINT.sarcophagus` now carves the Watcher's orrery in pale violet: an eye within a ring, a tilted orbit with its moon, a crescent above and a three-star constellation below.
+- **Crypt coffins.** Tim: change the cross to "some type of cosmic or arcane" symbol. `landscape-render.ts` `PAINT.sarcophagus` now carves the Watcher's orrery in pale violet: an eye within a ring, a tilted orbit with its moon, a crescent above and, centred beneath, a three-star constellation crossed by a short stroke (longer toward the eye).
   - It is paint only and draws no extra random numbers, so the crack roll and the tile cache are unchanged.
 - **Supplies and Continuous build.** Tim: "the resources... in one line... easy to identify"; "the shovel and skiff recipes should just go underneath... the recipe section"; "a checkbox... continuous build... when you're out of resources... an X".
   - `building.ts`:
