@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**285**
+**287**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 283 | Claude | `claude/dreamy-rubin-yn6q2p` | Dungeon water wounds quickly (5% of max health a second); out of stamina in it is death; rot shows grey on the health bar; arcane sigil on crypt coffins; Supplies tiles, recipes and Continuous build | Building. |
+| 285 | Claude | `claude/dreamy-rubin-yn6q2p` | Psychic Crystal: a wall-time budget, fewer dodges, 14 hits to stagger, 10 s stagger guard | Building. |
+| 283 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #120) | Dungeon water wounds quickly (5% of max health a second); out of stamina in it is death; rot shows grey on the health bar; arcane sigil on crypt coffins; Supplies tiles, recipes and Continuous build | Merged; preview `r283-3758dc926c1f`. |
 | 281 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #119) | Buttons light on touch; Dodge catches more gap taps; probe logs dodges; Leech floor; stray ">" removed | Merged; preview `r281-befdf39118ec`. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 

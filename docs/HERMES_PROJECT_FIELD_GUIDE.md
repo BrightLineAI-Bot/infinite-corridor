@@ -2585,6 +2585,23 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 285: the Psychic Crystal comes out to fight — 2026-10-22
+
+Tim, 2026-10-22 (probe of a Crystal fight): "the crystal spends way too much time in the areas where I can't fight him... he retreats to the wall constantly... also retreats to the areas... I can't access, which is breaking the rules"; "a cooling down period... when you stagger him... like 10 seconds, where it can't be staggered again"; "reduce his dodging... so he should stay and fight for a little bit... increase the amount of hits it takes to stagger him"; "for every 5 seconds he can only spend 1 second in the tile".
+
+**CODE:**
+- **Wall budget** (`monster-pack.ts` `crystalManifest`):
+  - Engaged, the Crystal carries `pack.wallBudget` (`CRYSTAL.wallBudget` 1 s). Every second off floor the Wayfarer can reach (`w.walkable`, the player floor: walls and the black alike) spends a second of it. It refills over `CRYSTAL.wallWindow` 5 s on reachable floor.
+  - It sets out for the nearest reachable floor (blinking if held back) when the budget is spent, or after `wallLinger` (now 1.5 s, was 2.5) in one stay. Either way it ends any attack, evade or telegraph on leaving.
+  - The check now runs before evading and attacking, so neither can keep it inside. Before, it ran after them, and an attack begun inside a wall kept it there.
+- **Dodges**: `evade()` uses `CRYSTAL.evadeCooldown` 3 s (2.2 s enraged) for the Crystal, instead of the shared `QB_MOVES` 1.1 s (0.8 s).
+- **Poise**: `poiseHits` is 14 (was 10). After rising from a break, `pack.poiseGuard` (`CRYSTAL.poiseGuard` 10 s) stops hits from counting toward the next break.
+
+**BOUNDARY:**
+- Pack state fields are transient combat state, not save schema.
+- Other creatures are unchanged.
+- Tests: `tests/crystal-285.test.ts`. `tests/crystal-259.test.ts` passes unchanged.
+
 ## Release 283: dungeon water is deadly; rot shows grey on the health bar; the crypt sigil; Supplies and Continuous build — 2026-10-22
 
 Tim, 2026-10-22: "in dungeons, the traversal should be a little bit more consequential... if you go into water in the dungeons... you just start taking health damage... not your [max] health. Just your hp... a pretty rapid damage over time. And if you go into water when you have no stamina... while you're in a dungeon, you just die".
