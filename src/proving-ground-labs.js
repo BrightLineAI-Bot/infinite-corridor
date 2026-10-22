@@ -1,20 +1,20 @@
-import { Game } from "./game.js?v=r277-ce71a38b8a17";
-import { freshSave, migrateSave } from "./types.js?v=r277-ce71a38b8a17";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r277-ce71a38b8a17";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r277-ce71a38b8a17";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r277-ce71a38b8a17";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r277-ce71a38b8a17";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r277-ce71a38b8a17";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r277-ce71a38b8a17";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r277-ce71a38b8a17";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r277-ce71a38b8a17";
-import { BIOMES, biomeFor } from "./landscape.js?v=r277-ce71a38b8a17";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r277-ce71a38b8a17";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r277-ce71a38b8a17";
-import { ensureConstellation } from "./constellation.js?v=r277-ce71a38b8a17";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r277-ce71a38b8a17";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r277-ce71a38b8a17";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r277-ce71a38b8a17";
+import { Game } from "./game.js?v=r279-880fe40d0946";
+import { freshSave, migrateSave } from "./types.js?v=r279-880fe40d0946";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r279-880fe40d0946";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r279-880fe40d0946";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r279-880fe40d0946";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r279-880fe40d0946";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r279-880fe40d0946";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r279-880fe40d0946";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r279-880fe40d0946";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r279-880fe40d0946";
+import { BIOMES, biomeFor } from "./landscape.js?v=r279-880fe40d0946";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r279-880fe40d0946";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r279-880fe40d0946";
+import { ensureConstellation } from "./constellation.js?v=r279-880fe40d0946";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r279-880fe40d0946";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r279-880fe40d0946";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r279-880fe40d0946";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -28,7 +28,8 @@ export const LABORATORIES = [
   { id: "deep-dungeon", label: "Legacy & Deep Dungeon Lab", status: "implemented", description: "Production deep-v2 archetypes, objectives, levels, shortcuts, and finales." },
   { id: "threefold", label: "Threefold Dungeon Lab", status: "implemented", description: "The production three-wing sealed expedition and its wardens." },
   { id: "landscape", label: "Landscape Pack", status: "implemented", description: "Nearest production overland section of each landscape biome: mountains with stair trails, dune seas, coasts, alien wilds and castles." },
-  { id: "combat", label: "Monster & Elite Combat Arena", status: "implemented", description: "Production combatants in a production dungeon arena." },
+  { id: "test-tile", label: "Standard Test Tile", status: "implemented", description: "One fixed overworld section with water, a chasm, raised blocks with stairs, a building and a dungeon door, for trying creatures and interactions." },
+  { id: "combat", label: "Monster & Elite Combat Arena", status: "implemented", description: "Pick an environment and a creature, then press Start test." },
   { id: "wayglass", label: "Wayglass, Checkpoint & Compass Lab", status: "implemented", description: "Production navigation, recovery, migration, Atlas, and dual-arrow fixtures." },
   { id: "environment", label: "Bespoke Environment & District Lab", status: "implemented", description: "Production districts, overworld landmarks, domains, and arena families." },
   { id: "hunts", label: "Hunt, Domain & Boss Arena Lab", status: "implemented", description: "Scratch Viewport lifecycle, creature, elite, and boss-arena fixtures." },
@@ -68,6 +69,7 @@ const MAGIC=[...Object.keys(APERTURE_SKILLS).flatMap(id=>Array.from({length:APER
 const SIMPLE={performance:["overworld-baseline","overworld-stress","dungeon-baseline","projectile-stress"],recovery:["active-rest-point","active-wayglass","overworld-death","dungeon-death","serialized","legacy-migration","corrupted-state"],scenes:["idle","exceptional-arrival","deep-resolution","relay-transformation","aperture-ritual","interrupted"],records:["dense-atlas","all-symbols","navigation-symbols","death-marker","dungeon-map","journal-features","bestiary-groups","elite-vocabulary","creature-image","place-records"]};
 
 export function scenariosForLab(lab) {
+  if (lab === "test-tile") return [{ id: "standard", label: "Standard test tile" }];
   if (lab === "shelters") return SHELTERS;
   if (lab === "ordinary-dungeon") return ORDINARY;
   if (lab === "forge") return FORGE;
@@ -205,8 +207,69 @@ function landscapeFixture(scenario, seed, now) {
   }
   throw new Error(`No ${biome} section within 40 sections of the origin for this seed`);
 }
-function combatFixture(scenario, seed, variant, now) {
-  const packBoss=scenario.startsWith('pack-boss-')&&isPackKind(scenario.slice(10)),patternScenario=scenario.startsWith('pattern-'),kind=packBoss?scenario.slice(10):patternScenario?(scenario.includes('elite')?'hollowMarshal':'ashling'):CREATURES.some(q=>q.id===scenario)?scenario:"ashling",id=`proving:combat:${kind}:${variant}`,map=generateVariedDungeon(seed,id,"hollow");
+// Release r279-880fe40d0946 (Tim, 2026-10-22: "one area of testing that's just a tile... a standard tile, but it has... water, a chasm, and some
+// elevated blocks in it as well as a building... and also a dungeon door... we can keep this in place"). The Timber shelter
+// section (its shack is the building) with a pond, a canyon, a two-level plateau with stairs and a crossing stamped on.
+// Built from production tile kinds, so movement, jumping, falls, drowning and entry behave as they do in play.
+export const TEST_TILE = { seed: DEFAULT_PROVING_SEED, rx: 0, ry: -1, start: { x: 20, y: 10 }, crossing: { x: 27, y: 24 } };
+export function stampTestTile(map) {
+  const W = map.width || 32, at = (x, y) => y * W + x, clear = [];
+  const put = (x, y, t) => { map.tiles[at(x, y)] = { x, y, detail: 0, ...t }; clear.push(`${x},${y}`); };
+  for (let y = 3; y <= 6; y++) for (let x = 15; x <= 19; x++) put(x, y, { kind: "lakeWater", blocked: true, elev: 0, landscape: "lake" }); // the pond
+  for (let y = 2; y <= 7; y++) for (let x = 24; x <= 29; x++) { // the plateau: a ring at 1, a core at 2
+    const core = x >= 25 && x <= 28 && y >= 3 && y <= 6;
+    put(x, y, { kind: "alpineGrass", blocked: false, elev: core ? 2 : 1, landscape: "mountains" });
+  }
+  put(24, 4, { kind: "mountainTrail", blocked: false, elev: 1, landscape: "mountains", slope: true }); // stairs up
+  put(25, 4, { kind: "mountainTrail", blocked: false, elev: 2, landscape: "mountains", slope: true });
+  for (let y = 16; y <= 17; y++) for (let x = 24; x <= 29; x++) put(x, y, { kind: "canyon", blocked: true, environment: "canyon" }); // the chasm
+  const keep = new Set(clear); keep.add(`${TEST_TILE.crossing.x},${TEST_TILE.crossing.y}`);
+  map.objects = map.objects.filter((o) => !keep.has(`${Math.round(o.x)},${Math.round(o.y)}`) && o.id !== "test-tile-crossing");
+  map.objects.push({ id: "test-tile-crossing", kind: "dungeon", x: TEST_TILE.crossing.x, y: TEST_TILE.crossing.y, state: "open", actions: ["enter", "bypass"], landmark: true, name: "Test Crossing", identity: "sentinel den" });
+  map.landscape = true; map.testTile = true; map.name = "Standard test tile";
+  return map;
+}
+function testTileFixture(now) {
+  const { save, game } = gameForOverworld(TEST_TILE.seed, TEST_TILE.rx, TEST_TILE.ry, now);
+  stampTestTile(game.map); game.enemies = []; Object.assign(game.player, TEST_TILE.start); game.sync();
+  return { lab: "test-tile", scenario: "standard", label: "Standard test tile", seed: TEST_TILE.seed, variant: 0, save, game, testTile: true, production: true };
+}
+// The environments a creature can be tried in (release 279: a dropdown instead of a typed seed).
+export const COMBAT_ENVIRONMENTS = [
+  { id: "test-tile", label: "Standard test tile" },
+  ...["hollow", "cistern", "kiln"].map((r) => ({ id: `dungeon-${r}`, label: `Dungeon: ${r}` })),
+  ...ARENA_FAMILIES.map((f) => ({ id: `arena-${f}`, label: `Arena: ${f.replaceAll("-", " ")}` })),
+  ...Object.keys(BIOMES).map((b) => ({ id: `land-${b}`, label: `Overworld: ${b}` })),
+];
+function combatKind(scenario) {
+  const packBoss = scenario.startsWith('pack-boss-') && isPackKind(scenario.slice(10)), patternScenario = scenario.startsWith('pattern-');
+  return { packBoss, patternScenario, kind: packBoss ? scenario.slice(10) : patternScenario ? (scenario.includes('elite') ? 'hollowMarshal' : 'ashling') : CREATURES.some(q => q.id === scenario) ? scenario : "ashling" };
+}
+// An overworld environment (the test tile or a landscape section): the creature stands a few tiles from the Wayfarer.
+function overworldCombat(scenario, variant, base, now) {
+  const { packBoss, kind } = combatKind(scenario), { game } = base, W = game.map.width || 32, p = game.player;
+  const open = game.map.tiles.filter((t) => !t.blocked && !t.structure && !t.slope && !(t.elev > 0) && t.x > 2 && t.y > 2 && t.x < W - 3 && t.y < 29 && Math.hypot(t.x - p.x, t.y - p.y) >= 4 && Math.hypot(t.x - p.x, t.y - p.y) <= 9);
+  const count = packBoss ? 1 : scenario === 'pattern-multiple-attackers' ? 6 : 1 + Math.min(5, Math.max(0, variant % 6));
+  game.enemies = Array.from({ length: Math.min(count, open.length) }, (_, i) => { const t = open[(i * 13 + variant) % open.length]; return game.createEnemyFromSpawn({ id: `proving:combat:${kind}:${variant}:${i}`, kind, x: t.x, y: t.y, boss: packBoss || !!ELITE_DEFINITIONS[kind], ...(kind === "gateRevenant" ? { gatePredator: true } : {}) }, "overworld"); });
+  for (const e of game.enemies) e.aggro = true;
+  game.sync();
+  return { ...base, lab: "combat", scenario, label: `${kind} in ${base.label || game.map.name || "the overworld"}`, variant, diagnostics: { combatKind: kind, quantity: game.enemies.length } };
+}
+function combatFixture(scenario, seed, variant, now, environment = "dungeon-hollow") {
+  const env = COMBAT_ENVIRONMENTS.some((q) => q.id === environment) ? environment : "dungeon-hollow";
+  if (env === "test-tile") return { ...overworldCombat(scenario, variant, testTileFixture(now), now), environment: env, testTile: true };
+  if (env.startsWith("land-")) return { ...overworldCombat(scenario, variant, landscapeFixture(env.slice(5), seed, now), now), environment: env };
+  if (env.startsWith("arena-")) return { ...arenaCombat(scenario, seed, variant, now, env.slice(6)), environment: env };
+  return { ...dungeonCombat(scenario, seed, variant, now, env.slice(8)), environment: env };
+}
+function arenaCombat(scenario, seed, variant, now, family) {
+  const { kind } = combatKind(scenario), id = `proving:combat:${kind}:${variant}:arena`, map = generateBespokeArena(seed, id, { kind: "persistent", family });
+  const open = map.tiles.filter((t) => !t.blocked && Math.hypot(t.x - (map.entry?.x ?? 4), t.y - (map.entry?.y ?? 5)) >= 4);
+  map.enemySpawns = [{ id: `${id}:0`, kind, x: open[variant % open.length].x, y: open[variant % open.length].y, boss: !!ELITE_DEFINITIONS[kind] }];
+  return { lab: "combat", scenario, label: `${kind} in the ${family.replaceAll("-", " ")} arena`, seed, variant, production: true, ...gameForMap(seed, id, map, now) };
+}
+function dungeonCombat(scenario, seed, variant, now, recipe = "hollow") {
+  const {packBoss,patternScenario,kind}=combatKind(scenario),id=`proving:combat:${kind}:${variant}${recipe==="hollow"?"":`:${recipe}`}`,map=generateVariedDungeon(seed,id,recipe);
   const open=map.tiles.filter(t=>!t.blocked&&t.x>7&&t.x<23&&t.y>6&&t.y<19);
   const count=packBoss?1:scenario==='pattern-multiple-attackers'?6:1+Math.min(5,Math.max(0,variant%6));
   map.enemySpawns=Array.from({length:count},(_,index)=>({id:`${id}:${index}`,kind,x:open[(index*13+variant)%open.length].x,y:open[(index*13+variant)%open.length].y,boss:packBoss||!!ELITE_DEFINITIONS[kind]}));
@@ -234,9 +297,10 @@ function environmentFixture(scenario,seed,variant,now){if(scenario.startsWith("a
 
 function stateFixture(lab,scenario,seed,variant,now){const {save,game}=gameForOverworld(seed,0,0,now),diagnostics={state:scenario,scratch:true};if(lab==="hunts"){if(scenario!=="empty-viewport"){save.viewport.activeHuntId="lab-hunt";save.viewport.contracts["lab-hunt"]={id:"lab-hunt",title:"Diagnostic Hunt",status:scenario.includes("completed")?"completed":scenario.includes("failed")?"failed":scenario.includes("located")?"target-located":"tracking",target:{rx:3,ry:-2}}}Object.assign(diagnostics,{viewport:save.viewport,creatures:Object.keys(CREATURE_FORMS),elites:Object.keys(ELITE_DEFINITIONS)})}if(lab==="inventory"){save.inventory=Array.from({length:scenario==="full-pack"?60:12},(_,i)=>generateItem(`${seed}:lab-item:${scenario}:${i}`,1+i));const candidate=save.inventory[0];if(scenario==='empty-slot')save.equipment[candidate.slot]=null;if(scenario.includes('upgrade')){save.materials.weaponSphere=20;save.materials.armorSphere=20;const slot=scenario.startsWith('armor')?'armor':'primary';diagnostics.upgrade=upgradeEquipment(save,slot)}if(scenario==='insufficient-spheres')diagnostics.upgrade=upgradeEquipment(save,'primary');Object.assign(diagnostics,{comparison:compareItemStats(candidate,save.equipment[candidate.slot]),tiers:ITEM_TIERS,inventoryCount:save.inventory.length,equipment:save.equipment,currency:save.currency})}if(lab==="magic"){let value=36;const bandScenario=scenario.match(/^band-(.+)$/);if(bandScenario)value=APERTURE_BANDS.find(b=>b.id===bandScenario[1])?.threshold||0;save.perception.aperture=value;save.apertureBand=apertureBand(value).id;const skill=Object.values(APERTURE_SKILLS).find(q=>scenario.startsWith(q.id));if(skill){const rank=Number(scenario.match(/rank-(\d+)/)?.[1]||1);for(let i=0;i<rank;i++)learnApertureSkill(save,skill.id);save.magicSkills.selected=skill.id}if(scenario.startsWith('aerial-')){save.magicSkills.learned['aerial-step']=1;save.magicSkills.selected='aerial-step';game.activateApertureSkill('aerial-step')}Object.assign(diagnostics,{aperture:value,band:save.apertureBand,skill:save.magicSkills.selected,rank:save.magicSkills.selected?save.magicSkills.learned[save.magicSkills.selected]:0,active:save.magicSkills.active,cooldowns:save.magicSkills.cooldowns,skills:Object.keys(APERTURE_SKILLS)})}if(lab==="performance"){diagnostics.workload={enemySpawns:game.map.enemySpawns.length,objects:game.map.objects.length,tiles:game.map.tiles.length,preset:scenario}}if(lab==="recovery"){if(scenario.includes("death"))save.lastDeath={schema:1,sequence:1,areaKind:scenario.startsWith("dungeon")?"dungeon":"overworld",rx:0,ry:0,x:16,y:16,label:"Diagnostic death",valid:true};if(scenario==="serialized")diagnostics.roundTrip=roundTripScratch(save).version;if(scenario==="legacy-migration")diagnostics.migrated=migrateSave({version:9,seed,checkpoints:save.checkpoints}).version;if(scenario==="corrupted-state")diagnostics.recovered=migrateSave({version:13,seed,manualWaypoint:{rx:"bad"},checkpoints:null}).version}if(lab==="scenes"){save.scenes.pending=scenario==="idle"?[]:[{id:scenario,variant:variant%3,status:scenario==="interrupted"?"interrupted":"queued"}];diagnostics.scenes=save.scenes}if(lab==="records"){save.lastDeath={schema:1,sequence:1,areaKind:"overworld",rx:0,ry:0,x:18,y:18,label:"Diagnostic death",valid:true};save.codex.features[scenario]={encountered:1,name:scenario};Object.assign(diagnostics,{atlasSymbols:["checkpoint","shrine","ruinMarker","dungeon","lastDeath"],codex:save.codex})}game.sync();return{lab,scenario,label:scenario.replaceAll("-"," "),seed,variant,save,game,production:true,diagnostics}}
 
-export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVING_SEED,variant=0,sizeProfile="standard",revealMode="normal",now=0}={}) {
+export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVING_SEED,variant=0,sizeProfile="standard",revealMode="normal",environment="dungeon-hollow",now=0}={}) {
   const cleanSeed=String(seed||DEFAULT_PROVING_SEED).slice(0,80),cleanVariant=Math.max(0,Math.min(999,Number(variant)||0));
   if(lab==="shelters")return shelterFixture(scenario,cleanSeed,now);
+  if(lab==="test-tile")return testTileFixture(now);
   let fixture;
   if(lab==="ordinary-dungeon")fixture=ordinaryFixture(scenario,cleanSeed,cleanVariant,now,["compact","standard","extended"].includes(sizeProfile)?sizeProfile:"standard");
   else if(lab==="forge")fixture=forgeFixture(scenario,cleanSeed,cleanVariant,now);
@@ -244,7 +308,7 @@ export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVIN
   else if(lab==="deep-dungeon")fixture=deepFixture(scenario,cleanSeed,cleanVariant,now);
   else if(lab==="threefold")fixture=deepFixture("threefold",cleanSeed,cleanVariant,now,true);
   else if(lab==="landscape")fixture=landscapeFixture(scenario,cleanSeed,now);
-  else if(lab==="combat")fixture=combatFixture(scenario,cleanSeed,cleanVariant,now);
+  else if(lab==="combat"){fixture=combatFixture(scenario,cleanSeed,cleanVariant,now,environment);if(fixture.game.area!=="dungeon")return fixture}
   else if(lab==="wayglass")return navigationFixture(WAYGLASS_SCENARIOS.some(q=>q.id===scenario)?scenario:"unactivated-wayglass",cleanSeed,now);
   else if(lab==="environment")return environmentFixture(scenario,cleanSeed,cleanVariant,now);
   else if(["hunts","inventory","magic","performance","recovery","scenes","records"].includes(lab))return stateFixture(lab,scenario||scenariosForLab(lab)[0]?.id,cleanSeed,cleanVariant,now);
