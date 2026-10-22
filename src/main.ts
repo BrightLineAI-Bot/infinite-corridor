@@ -1926,6 +1926,7 @@ function updateHud(now) {
     hudSet(button,"--cooldown",`${Math.round(fraction * 100)}%`);
     hudSet(button,"class:cooling",cooling);
     hudSet(button,"class:unavailable",state.available === false);
+    if (action === "dodge") hudSet(button,"class:refused",now - (game.dodgeRefusedAt || -1e9) < 600); // release 281: a refused dodge flashes
     hudSet(button,"data-cooldown",label);
     hudSet(button,"aria-label",`${action} ${label}`);
   }

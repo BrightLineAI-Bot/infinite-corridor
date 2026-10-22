@@ -2585,19 +2585,17 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release 281: Dodge always works — 2026-10-22
+## Release 281: a refused dodge is shown; Dodge catches more taps — 2026-10-22
 
-Tim, 2026-10-22 (with a 300-second probe): "Dodge needs to be incredibly sensitive and dodge needs to work all the time... it's the way I get out of damage... I press Dodge a bunch of times... and nothing happens... This is the second time that we've kind of addressed this."
+Tim, 2026-10-22 (with a 300-second probe): "Dodge needs to be incredibly sensitive... I press Dodge a bunch of times... and nothing happens", then "dodge should be directly tied to stamina... if we don't have stamina, we should not be able to dodge, that's an important aspect of the game".
 
 **CODE:**
-- **What the probe showed.** Ten of Tim's 13 Dodge taps landed on `action:dodge`, and the other three were within a few pixels below it, in the gap, where the gap router assigns Dodge. So the taps were reaching the game. The game refused them: `combat.ts` `dodge()` returned `{ ok: false, reason: "stamina" }` below 15 stamina. With about 67 maximum stamina and 9 a second of regeneration, a burst of taps emptied it after four dodges.
-- **The fix.** `combat.ts` `DODGE = { cost: 15 }`. `dodge()` no longer refuses: it spends `DODGE.cost`, never below 0, and always starts the dash and its 420 ms of invulnerability. `game.ts` `actionReadiness().dodge.available` is always true, so the button never dims. `input.ts`: a tap on the cluster background goes to the nearest button within `GAP_REACH` 24 px (was 18), with Dodge favoured by 16 px (was 8).
+- **What the probe showed.** Ten of Tim's 13 Dodge taps landed on `action:dodge`, and the other three were a few pixels below it, in the gap. The game refused them for stamina: `dodge()` needs 15, and a burst emptied about 67. The refusal was only a passing message. Most taps came just after a swim across open sea, where `swimUpkeep` drains stamina and nothing regenerates it.
+- **The fix.** Stamina still gates the dodge (`combat.ts` is unchanged). A refusal sets `game.dodgeRefusedAt`, says "Out of stamina: no dodge until it recovers.", and `main.ts` gives the Dodge button the `refused` class for 600 ms: a red flash and a shake in `styles.css`, with no shake under reduced motion. `input.ts`: a tap on the cluster background goes to the nearest button within `GAP_REACH` 24 px (was 18), with Dodge favoured by 16 px (was 8).
 
 **BOUNDARY:**
-- Stamina still drains with dodges and regenerates as before; it no longer gates the dodge.
-- Being stunned or knocked down still blocks every action, Dodge included. Being held by the Psychic Crystal still turns Dodge into a struggle.
-- Test edit: `tests/prototype.test.ts` (the dodge-stamina test now expects a fourth dodge on empty stamina to go through).
-- Tests: `tests/dodge-always.test.ts`.
+- No rule or save changes.
+- Tests: `tests/dodge-feedback.test.ts`.
 
 ## Release 279: the compass keeps its choice; the Proving Ground's test tile, environment list and Start test — 2026-10-22
 

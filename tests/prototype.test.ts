@@ -1899,7 +1899,7 @@ test("dodge is limited by stamina rather than a separate cooldown", () => {
   assert.equal(dodge(p, 101, 1, 0).ok, true);
   assert.equal(dodge(p, 102, 1, 0).ok, true);
   assert.equal(p.stamina, 0);
-  assert.equal(dodge(p, 100000, 1, 0).ok, true); assert.equal(p.stamina, 0); // release 281: a dodge never refuses for stamina
+  assert.deepEqual(dodge(p, 100000, 1, 0), { ok: false, reason: "stamina" });
 });
 test("equippable spells expose distinct power and cooldown profiles", () => {
   const spells = Object.values(SPELLS);
@@ -2438,7 +2438,7 @@ test("Proving Ground resets scratch state and cannot import persistence",()=>{
 });
 
 test("Proving Ground exposes every production diagnostic laboratory and direct scenario",()=>{
-  assert.equal(LABORATORIES.length,18);/* release 281: the Standard Test Tile */assert.ok(LABORATORIES.every(q=>q.status==="implemented"));
+  assert.equal(LABORATORIES.length,18);/* release 279: the Standard Test Tile */assert.ok(LABORATORIES.every(q=>q.status==="implemented"));
   for(const {id} of LABORATORIES){const scenarios=scenariosForLab(id);assert.ok(scenarios.length>0,id);const first=createLabFixture({lab:id,scenario:scenarios[0].id,seed:"all-labs",variant:1,now:0});assert.equal(labReport(first).scratch,true)}
 });
 

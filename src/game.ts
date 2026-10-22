@@ -1183,7 +1183,7 @@ export function actionReadiness(game, now = 0) {
     dodge: {
       remaining: 0,
       duration: 0,
-      available: true, // release 281: a dodge always fires
+      available: game.player.stamina >= 15,
       cost: 15,
     },
     jump: { remaining: jump / 1000, duration: 0.52 },
@@ -3988,7 +3988,7 @@ export class Game {
     if (input.consume("spell2")) this.castSlot("b");
     if (input.consume("dodge")) {
       const r = dodge(p, now, x, y);
-      if (!r.ok) this.message = "Not enough stamina to dodge.";
+      if (!r.ok) { this.message = "Out of stamina: no dodge until it recovers."; this.dodgeRefusedAt = now; } // release 281: a refusal is shown on the button (main.ts) as well
       else { echoEvent(this, "dodge", now); onConstellationDodge(this); }
     }
     if (input.consume("jump")) {

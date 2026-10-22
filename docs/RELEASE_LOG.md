@@ -19,7 +19,7 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 281 | Claude | `claude/dreamy-rubin-yn6q2p` | Dodge always works (no stamina refusal; wider gap routing) | Building. |
+| 281 | Claude | `claude/dreamy-rubin-yn6q2p` | A refused dodge flashes the button; Dodge catches more gap taps | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
