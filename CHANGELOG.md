@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 289 — the Watcher's sigil appears in the world:
+  - Some dungeons have it inlaid in the floor, and arenas carry it as a large mosaic with an ornate border.
+  - Rarely, out in the world, you will find a shrine ruin whose raised platforms form the sigil, each part one jump above the last.
+  - On the shrine's eye, and very rarely in a shelter or beside a crypt's coffins, lies a pristine Watcher's tomb: its sigil bright, a halo above it. Touch it once and it folds you elsewhere: from the world, across the corridor through a pocket crossing; underground, to a far corner of the same dungeon.
+  - These appear only in sections and dungeons you have not yet explored.
+  - The Psychic Crystal's first dodge after it rises from a stagger now waits its full 3 seconds.
+
 - Release 287 — building and dungeons:
   - **Building.** Blocks make stairs: stand on a block, stack two beside it, and jump on up to a level-3 ledge. You can have five builds; a sixth replaces the oldest (a stack's lower block goes first and the top one stays). Two blocks stacked, or a wall, stop flying creatures that are not charging, and the Psychic Crystal can no longer drift through your builds.
   - **The Psychic Crystal** keeps to itself until you touch it or attack it.

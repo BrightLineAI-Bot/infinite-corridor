@@ -2585,6 +2585,41 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 289: the Watcher's sigil in the world — 2026-10-22
+
+Tim, 2026-10-22:
+- The sigil: "we can mark this symbol as an enduring mark... placed in various ways throughout the corridor... in arenas... a large fixture on the floor... intricate ornate patterns around it like a mosaic"; "floor tiles arranged in this symbol... not even frequently"; "a series of raised platforms that are built into this symbol... pretty infrequent and rare... like an ancient ruin... a shrine".
+- Pristine tombs: "pristine, where the glyph is just very bright... a little halo above it... super rare... could also be teleportation traps... in a dungeon... or in a shack... teleporting you somewhere in the map or... a new location".
+- The meaning: "the top symbol is a closed eyelid... the eye... the watcher, the wanderer... still open, still aware... the slash across... coterminous with everything... the symbol below are the tools... for accessing it"; "the listener is there, listening, but the symbol that dominates the corridor is the watcher".
+
+**CODE:**
+- **`watcher.ts`** (new module, in `scripts/build.mjs` and both service-worker precache lists):
+  - `WATCHER` holds the balance: shelter tomb 3%, crypt tomb 35%, shrine roll 25% (about 1 section in 25 has open flat ground, so roughly 1 in 100), dungeon inlay roll 20% (about 1 in 3 has room, so roughly 6%), and fold distance at least 10 tiles.
+  - `SIGIL_CELLS` lays the sigil out in tiles from the eye: lid, ring, eye, pupil, orbit, tools. `lift` gives shrine heights: 1 for all parts and 2 for the pupil, so every step is one jump.
+  - `sigilSpot` / `sigilFits` find a seeded spot. With a negative margin, only the sigil's own tiles must fit.
+  - `inlaySigil` sets `tile.sigil`. For a shrine it also raises `elev` and sets `sigilShrine`; for a mosaic it adds `border` and `tessera` tiles.
+  - `placeWatcherOverworld`: a shrine clears trees, rocks and wayfinding marks in its footprint and puts a tomb on the pupil. A shelter tomb sits on a `shackInterior` tile. Never in section 0,0.
+  - `placeWatcherDungeon`: an inlay (always in arenas, with the mosaic), and a crypt tomb beside a sarcophagus.
+  - `dungeonFoldTarget`: a seeded reachable floor tile far from the Wayfarer.
+  - `map.watcherPlaced` keeps placement to once per loaded map.
+- **Pinning** (`game.ts`):
+  - Overworld sections first seen from now on carry atlas `watcherVersion`; `loadArea` places only when the section is unseen or carries it.
+  - `pinDungeonLayout` sets history `watcherVersion` (0 for dungeons already entered). `generatePinnedDungeon` places only for new histories, never in displacement pockets, dive sites or multi-level maps.
+- **The tomb** (`Game.touchWatcherTomb`, once per tomb, `worldFlags["watcher-tomb:<id>"]`):
+  - Overworld: the shelter Folded Seam's `startDisplacement` (a pocket crossing, then a section 8–14 away).
+  - Dungeon: a far tile of `playerFloor()`.
+  - Each use writes a Journal line under "The Watcher". An opened tomb stays opened after reload.
+- **Drawing** (`renderer.ts`):
+  - `sigilInlay` draws pale violet inlaid stone, with the pupil brightest, the border gold and the tesserae as small tiles. It is lifted with the landscape on a shrine.
+  - `drawWatcherTomb` draws a pale lid with the bright sigil (`watcherSigil`, glow), a pulsing halo above, and lifts onto the shrine's eye. Opened, the lid is pushed aside and the sigil is dark.
+- **Crystal**: after a poise break it springs away with `CRYSTAL.evadeCooldown` (the 285 review's note).
+
+**BOUNDARY:**
+- Additive only: atlas `watcherVersion` and history `watcherVersion` (unversioned entries mean "explored before 289": nothing placed).
+- `tile.sigil` and `sigilShrine` live on generated maps only.
+- No change to places already explored.
+- Tests: `tests/watcher-289.test.ts`.
+
 ## Release 287: blocks as stairs and barriers; a calm Crystal; dungeon caches; one gold for "selected"; four coffins — 2026-10-22
 
 Tim, 2026-10-22:
