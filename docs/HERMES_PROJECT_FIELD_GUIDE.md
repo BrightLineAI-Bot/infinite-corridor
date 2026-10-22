@@ -2585,6 +2585,32 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 309: target lock; Build, item or spell in any slot — 2026-10-22
+
+Tim, 2026-10-22:
+- "we can click on a monster... that'll just be the targeting... whenever we shoot or attack our blasts and attacks and swings will go towards the... monster that we clicked... until we click on another monster... rift step will still go in the direction that you're pointing".
+- "I want you to be able to put build in any one of those positions... items... spells... or build".
+
+**CODE:**
+- **`game.ts`**:
+  - `TARGET_LOCK` (range 16, pick radius, melee slack).
+  - `lockTarget(id)` toggles the lock. `lockedTarget()` drops a dead or distant target. `lockedDirection(within)` gives the aim at it. `enemyAt(x, y)` hit-tests a world tap.
+  - Each update sets `save.lastAim` toward the locked target (so tools and spells aim at it) and clears `pendingAim`. The melee wrapper uses `lockedDirection(range + slack)` before `selectMeleeAim`. Rift Step keeps `lastMoveVector`.
+  - `castSlot` dispatches Build (`pressBuild`) and the item (`useButtonItem`). The Build input dispatches `activeButton` modes build, item or cast (`castKey`). Holding a Build slot aboard still raises the hull shield.
+- **`main.ts`**: the `worldtap` handler locks a tapped creature (except in Act or Build mode). The A/B HUD buttons draw ⚒ or the item's icon with its count. The Build button draws a cast symbol (`.cast-glyph`). The Arcanum slot rows have Build and Item buttons, and each castable has "Set on Build button".
+- **`combat-visuals.ts`**: pulsing red brackets on the locked target.
+- **`spell-slots.ts`**:
+  - `SLOT_TOOLS` ("build", "item") are valid in A and B. `presets[i].button` may be "build", "item" or a learned castable key; an unlearned one leaves it unchanged.
+  - `slotTool(save, slot)`. `activeButton` returns `{ mode: "cast", key }`.
+  - `assignPresetItem` needs any Item slot (A, B or the button) in that preset.
+  - All of this is additive at schema 14.
+
+**BOUNDARY:**
+- No save schema change.
+- Pairings count only castables in A and B.
+- The lock is not saved: it ends on reload or area change, when the target leaves the enemy list.
+- Tests: `tests/target-slots-309.test.ts`.
+
 ## Release 307: boss balance; tiered boss poise — 2026-10-22
 
 Tim, 2026-10-22:

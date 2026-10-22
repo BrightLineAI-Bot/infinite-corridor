@@ -28,7 +28,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness, togglePreset, activeButton } from "./spell-slots.ts";
+import { ensureSlots, slotted, pairingMods, slotReadiness, togglePreset, activeButton, slotTool, CASTABLES, availableCastables } from "./spell-slots.ts";
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
@@ -117,6 +117,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (history.watcherVersion && !id.startsWith('displacement:') && !id.startsWith('dive:') && !map.multiLevel) placeWatcherDungeon(map, map.width || Math.round(Math.sqrt(map.tiles.length)), save.seed, id); // release 289
   return map;
 }
+export const TARGET_LOCK = { range: 16, pick: .75, meleeSlack: 1.2 };
 export function mapWidth(map, area = "overworld") { return Math.max(1, Number(map?.width) || (area === "dungeon" ? 24 : 32)); }
 export function mapHeight(map, area = "overworld") { return Math.max(1, Number(map?.height) || Math.floor((map?.tiles?.length || mapWidth(map, area)) / mapWidth(map, area))); }
 export function deepDungeonProgress(save, id) {
@@ -1477,7 +1478,7 @@ export class Game {
               explicitDirection.y,
               this.player.facing,
             )
-          : selectMeleeAim(
+          : this.lockedDirection(profile.range + TARGET_LOCK.meleeSlack) || selectMeleeAim( // release 309: a locked target first
               this.player,
               this.enemies,
               this.map,
@@ -3859,11 +3860,29 @@ export class Game {
     if (plan) (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "shot", shot: { ...shot, id: shot.id + "-echo", hits: {}, damage: Math.max(1, Math.round(shot.damage * plan.share)), echo: true } });
     return true;
   }
-  // Spell slots A and B (release 115): each button casts whatever its slot holds.
-  castSlot(slot) {
+  // Spell slots A and B (release 115): each button casts whatever its slot holds. Release 309: or builds, or uses the item.
+  castSlot(slot, now = this.lastUpdateNow || 0) {
+    const t = slotTool(this.save, slot);
+    if (t) return t.tool === "build" ? this.pressBuild(false) : this.useButtonItem(t.item, now);
     const c = slotted(this.save, slot);
     if (!c) { this.message = `Slot ${slot.toUpperCase()} is empty — fill it in the Arcanum.`; return false; }
     return c.kind === "skill" ? this.activateApertureSkill(c.id) : this.castSpell(c.id);
+  }
+  castKey(key) {
+    const c = CASTABLES[key]; if (!c || !availableCastables(this.save).includes(key)) { this.message = "Not learned yet."; return false; }
+    return c.kind === "skill" ? this.activateApertureSkill(c.id) : this.castSpell(c.id);
+  }
+  // The Build action, from whichever button holds it (release 269 mend, 267 build mode, 265 walls and blocks).
+  pressBuild(moving = false) {
+    const p = this.player;
+    if (this.mendTarget()) { this.message = mendSkiff(this.save).message; return true; }
+    if (this.area === "overworld" && aboard(this.save)) { this.message = "Hold Build to raise a hull shield."; return false; }
+    const at = buildSpot(p), r = placeBuild(this, at.x, at.y, undefined, moving); this.message = r.message; this.save.aimMode = "build"; this.save.toolMode = false; return r.ok; // the button also turns on build mode: taps build
+  }
+  useButtonItem(item, now = this.lastUpdateNow || 0) {
+    if (!item) { this.message = `Preset ${(this.save.magicSkills.preset || 0) + 1}: choose its item in Pack → Supplies.`; return false; }
+    if (!((this.save.consumables?.[item] || 0) > 0)) { this.message = "None left."; return false; }
+    return this.useConsumable(item, now);
   }
   castSpell(spellId = null) {
     if(!spellId&&this.save.magicSkills?.selected&&skillRank(this.save,this.save.magicSkills.selected)>0)return this.activateApertureSkill(this.save.magicSkills.selected);
@@ -3906,6 +3925,32 @@ export class Game {
     echoEvent(this, "spell", this.lastUpdateNow || 0);
     this.message = `${spell.name} answers.`;
     return true;
+  }
+  // Release 309 (Tim: "we can click on a monster... and then that'll just be the targeting... our blasts and attacks and swings
+  // will go towards the... monster that we clicked... until we click on another monster"; "rift step will still go in the
+  // direction that you're pointing"). Tapping a creature locks it; while it lives and stays near, swings aim at it when it is
+  // in reach and every tool shot and spell aims at it (save.lastAim follows it each frame). Tapping it again releases it.
+  lockTarget(id) {
+    if (!id || this.targetId === id) { this.targetId = null; this.message = "Target released."; return null; }
+    const e = this.enemies.find((q) => q.id === id && !q.dead); if (!e) return null;
+    this.targetId = id; this.message = `Targeting ${e.name || e.kind}. Tap it again to release.`; return e;
+  }
+  lockedTarget() {
+    if (!this.targetId) return null;
+    const e = this.enemies.find((q) => q.id === this.targetId), p = this.player;
+    if (!e || e.dead || e.noRewards && e.merged || Math.hypot(e.x - p.x, e.y - p.y) > TARGET_LOCK.range) { this.targetId = null; return null; }
+    return e;
+  }
+  lockedDirection(within = Infinity) {
+    const e = this.lockedTarget(); if (!e || e.untargetable || e.hidden) return null;
+    const dx = e.x + .5 - (this.player.x + .5), dy = e.y + .45 - (this.player.y + .45);
+    return Math.hypot(dx, dy) <= within ? projectileDirection(dx, dy, this.player.facing) : null;
+  }
+  // The creature under a world tap, if any (nearest whose body covers the point).
+  enemyAt(x, y) {
+    let best = null;
+    for (const e of this.enemies) { if (e.dead || e.hidden || e.ambient || e.astralAllyOf) continue; const r = Math.max(TARGET_LOCK.pick, (Number(e.bodyRadius) || 0) + .35, (Number(e.scale) || 1) * .45), d = Math.hypot(x - (e.x + .5), y - (e.y + .4)); if (d <= r && (!best || d < best.d)) best = { e, d }; }
+    return best?.e || null;
   }
   aimAt(x, y) {
     const d = projectileDirection(
@@ -4074,14 +4119,13 @@ export class Game {
     if (input.consume("potion")) this.useConsumable("restorativeDraught", now);
     if (input.consume("preset")) this.message = togglePreset(this.save).message; // release 261: swap spell presets 1 and 2
     if (input.consume("build")) { // release 269: beside (or aboard) a damaged skiff, Build patches the hull instead
-      const btn = activeButton(this.save); // release 291: a preset may make it an item button
-      if (btn.mode === "item") { if (!btn.item) this.message = `Preset ${(this.save.magicSkills.preset || 0) + 1}: choose its item in Pack → Supplies.`; else if (!((this.save.consumables?.[btn.item] || 0) > 0)) this.message = "None left."; else this.useConsumable(btn.item, now); }
-      else if (this.mendTarget()) this.message = mendSkiff(this.save).message;
-      else if (this.area === "overworld" && aboard(this.save)) this.message = "Hold Build to raise a hull shield.";
-      else { const at = buildSpot(p); this.message = placeBuild(this, at.x, at.y, undefined, Math.hypot(x, y) > .15).message; this.save.aimMode = "build"; this.save.toolMode = false; } // release 267: the button also turns on build mode: taps build
+      const btn = activeButton(this.save); // release 291: a preset may make it an item button; release 309: or a spell
+      if (btn.mode === "item") this.useButtonItem(btn.item, now);
+      else if (btn.mode === "cast") this.castKey(btn.key);
+      else this.pressBuild(Math.hypot(x, y) > .15);
     }
     // Release 269 (Tim: "if you hold the build button while you're at sea, it will apply the hull shield"): held aboard.
-    if (this.area === "overworld" && aboard(this.save) && input.held?.("build")) { this.buildHold = (this.buildHold || 0) + dt; if (this.buildHold >= BOAT.mend.shieldHold && !this.buildHoldDone) { this.buildHoldDone = true; this.message = deployHullShield(this.save).message; } }
+    if (this.area === "overworld" && aboard(this.save) && (input.held?.("build") && activeButton(this.save).mode === "build" || ["spell", "spell2"].some((k, i) => input.held?.(k) && slotTool(this.save, i ? "b" : "a")?.tool === "build"))) { this.buildHold = (this.buildHold || 0) + dt; if (this.buildHold >= BOAT.mend.shieldHold && !this.buildHoldDone) { this.buildHoldDone = true; this.message = deployHullShield(this.save).message; } }
     else { this.buildHold = 0; this.buildHoldDone = false; } // release 265: raise a wood wall or stone block in front
     const dodging = now < (p.dodgeUntil || 0);
     if (dodging) {
@@ -4376,6 +4420,7 @@ export class Game {
     tickBuilds(this, dt, (e) => ATTACK_MODULES[e.pack?.attack]?.tags || []); // release 265: builds crumble; rushing world beasts break them
     this.tickHorde(dt); // release 269: the horde keeps coming
     this.tickMire(dt, now); // release 303
+    { const aim = this.lockedDirection(); if (aim) { this.save.lastAim = aim; this.save.pendingAim = null; } } // release 309: aim follows a locked target
     if (this.area === "dungeon") this.dungeonClock = (this.dungeonClock || 0) + dt; // release 271
     this.tickSeaIce(dt); // release 261: the Mountain Turtle's ice floor freezes and thaws
     // Open-sea hazards (release 152): whirlpools, rogue waves and drifting ice.
