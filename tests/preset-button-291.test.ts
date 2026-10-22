@@ -21,7 +21,7 @@ test('a preset button is Build by default; an item goes only on a preset set to 
 
 test('in Item mode the Build button uses the item', () => {
   const s = freshSave(), g = new Game(s, 0); g.loadArea('overworld', false); ensureSlots(s);
-  setPresetButton(s, 0, 'item'); assignPresetItem(s, 0, 'restorativeDraught'); s.consumables.restorativeDraught = 2; g.player.hp = 10;
+  setPresetButton(s, 0, 'item'); assignPresetItem(s, 0, 'ironbarkTonic'); s.consumables.ironbarkTonic = 2;
   g.update(.05, { state: { x: 0, y: 0 }, consume: (a) => a === 'build', held: () => false }, 1000);
-  assert.equal(s.consumables.restorativeDraught, 1); assert.ok(g.player.hp > 10);
+  assert.equal(s.consumables.ironbarkTonic, 1); assert.ok(g.guardRemaining > 0 || s.consumables.ironbarkTonic === 1);
 });

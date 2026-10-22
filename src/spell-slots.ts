@@ -80,7 +80,7 @@ export const PRESETS = 2;
 // Release 291 (Tim, 2026-10-22: "you should also be able to select whether... the build button is a build or an item... on
 // your preset... next to each item in the supplies menu... preset 1 or preset 2... if preset 1 is set to build, then only
 // preset 2 will be selectable"). The items the Build button can use.
-export const BUTTON_ITEMS = ["restorativeDraught", "ironbarkTonic", "lumenPhial", "clearrootAmpoule", "hullShield"];
+export const BUTTON_ITEMS = ["ironbarkTonic", "lumenPhial", "clearrootAmpoule", "hullShield"]; // release 293 (Tim): not the draught, which has its own Potion button
 export function presetButton(save, i = save?.magicSkills?.preset || 0) { ensureSlots(save); const p = save.magicSkills.presets[i]; return { button: p.button === "item" ? "item" : "build", item: p.item || null }; }
 export function setPresetButton(save, i, mode) { ensureSlots(save); const p = save.magicSkills.presets[i]; if (!p) return null; p.button = mode === "item" ? "item" : "build"; return p.button; }
 // Gives `type` to preset i's Build button (only while that preset's button is set to Item); again, takes it off.
