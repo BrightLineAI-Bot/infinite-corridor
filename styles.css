@@ -900,3 +900,6 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 
 /* Release 281: an action button lights the moment it is touched (input.ts press). */
 .buttons button.pressed { filter: brightness(1.7); box-shadow: 0 0 0 3px rgba(255, 236, 170, .75), inset 0 0 12px rgba(255, 236, 170, .5); transition: none; }
+/* Release 283 (Tim: "a portion of your health bar... just turns grey... like a necrosis"): the health lost to rot is a
+   grey band at the end of the bar (--rot, set in main.ts updateHud), instead of an empty one. */
+#vitals #healthBar, #vitals #healthBar::-webkit-progress-bar { background: linear-gradient(to left, #7a7d77 0, #5c5f5a var(--rot, 0%), #090a09 var(--rot, 0%)); }

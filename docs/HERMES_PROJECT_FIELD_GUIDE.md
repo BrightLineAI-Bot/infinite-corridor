@@ -2585,6 +2585,28 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 283: dungeon water is deadly; rot shows grey on the health bar; the crypt sigil — 2026-10-22
+
+Tim, 2026-10-22: "in dungeons, the traversal should be a little bit more consequential... if you go into water in the dungeons... you just start taking health damage... not your [max] health. Just your hp... a pretty rapid damage over time. And if you go into water when you have no stamina... while you're in a dungeon, you just die".
+
+**CODE:**
+- `water-traversal.ts`:
+  - `DUNGEON_WATER = { hpPerSecond: .05, drownBelow: 1 }`.
+  - `dungeonWaterToll(player, dt, maxHp)` returns `maxHp × hpPerSecond × dt`, or `Infinity` when stamina is below `drownBelow`.
+- `game.ts` (swim upkeep): while swimming in a dungeon that is not a dive grotto (`!map.underwater`), the toll comes off `p.hp`. Infinity sets hp to 0, and the ordinary defeat path runs ("Out of stamina in the dark water: it drags you under.").
+  - The usual Tidemantle stamina drain still runs while the Wayfarer lives, so a long swim ends in drowning once stamina runs out.
+  - Bog and blight pools in dungeons also rot as before.
+- Overworld water, open sea and dive grottoes are unchanged. Without the Tidemantle, dungeon water still drowns at once, as before.
+- **Rot on the HUD.** Tim: "a portion of your health bar... just turns grey... like a necrosis".
+  - `main.ts` `updateHud` sets `--rot` on `#healthBar` to rot ÷ max health. `styles.css` paints that share at the right end of the bar's track grey.
+  - The bar's maximum stays the full max health.
+- **Crypt coffins.** Tim: change the cross to "some type of cosmic or arcane" symbol. `landscape-render.ts` `PAINT.sarcophagus` now carves the Watcher's orrery in pale violet: an eye within a ring, a tilted orbit with its moon, a crescent above and a three-star constellation below.
+  - It is paint only and draws no extra random numbers, so the crack roll and the tile cache are unchanged.
+
+**BOUNDARY:**
+- No save or generator changes.
+- Tests: `tests/dungeon-water.test.ts`.
+
 ## Release 281: Dodge answers every touch; Leech heals visibly; the stray ">" — 2026-10-22
 
 Tim, 2026-10-22 (two 300-second probes): "Dodge needs to be incredibly sensitive... I press Dodge a bunch of times... and nothing happens"; "dodge should be directly tied to stamina... if we don't have stamina, we should not be able to dodge"; "you don't have to change anything about the dodge. We just want the button to be more responsive"; "the leeching glyph isn't working, so I'm not getting health"; and a stray ">" floating near the action buttons.

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 283 — dungeon water is dangerous now. Swimming it costs 5% of your max health every second (your health, not your maximum), and going into it, or staying in it, with no stamina drowns you on the spot. Water outside dungeons is unchanged. Rot from poison and bog pools now shows as a grey band at the end of your health bar, the share of your health it has taken, instead of an empty one. The Bone Crypt coffins now bear an arcane sigil (an eye within a ring, circled by an orbit and its moon, under a crescent, above a small constellation) instead of a cross.
+
 - Release 281 — every action button lights up the instant you touch it, and taps in the gaps around Dodge reach it more readily (Dodge still needs stamina). The diagnostic probe now records what became of every Dodge press. The Leech glyph now heals at least a share of your max health per hit, so it shows at high level. A stray ">" near the action buttons is gone.
 
 - Release 279 — the compass keeps what you chose. The target you step the compass to, and a quest you point it at from the Journal, are now kept in your save, so closing the Atlas, reloading or wandering far no longer changes them. Opening the Atlas no longer arms "Set manual waypoint" on the section you are standing in (tap a section first), and the tap that closes the Atlas or a panel can no longer land on the compass beneath it.
