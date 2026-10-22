@@ -1,20 +1,20 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r317-0212d6f3ae04";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r317-0212d6f3ae04";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r317-0212d6f3ae04";
-import { enemyMeleeGeometry } from "./combat.js?v=r317-0212d6f3ae04";
-import { ruleRows } from "./elders.js?v=r317-0212d6f3ae04";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r317-0212d6f3ae04";
-import { BOAT } from "./boats.js?v=r317-0212d6f3ae04";
-import { MECH } from "./vehicle-gates.js?v=r317-0212d6f3ae04";
-import { isMarineTile } from "./world-beasts.js?v=r317-0212d6f3ae04";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r317-0212d6f3ae04";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r317-0212d6f3ae04";
-import { liftAt, tileUnder } from "./landscape.js?v=r317-0212d6f3ae04";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r317-0212d6f3ae04";
-import { GATE_REVENANT } from "./monster-pack.js?v=r317-0212d6f3ae04";
-import { drawRelayNode } from "./relay-network.js?v=r317-0212d6f3ae04";
-import { structureOccupancy } from "./world.js?v=r317-0212d6f3ae04";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r317-0212d6f3ae04";
+import { astralBeamAnchors } from "./astral-worm.js?v=r325-7b4e702923fb";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r325-7b4e702923fb";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r325-7b4e702923fb";
+import { enemyMeleeGeometry } from "./combat.js?v=r325-7b4e702923fb";
+import { ruleRows } from "./elders.js?v=r325-7b4e702923fb";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r325-7b4e702923fb";
+import { BOAT } from "./boats.js?v=r325-7b4e702923fb";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r325-7b4e702923fb";
+import { isMarineTile } from "./world-beasts.js?v=r325-7b4e702923fb";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r325-7b4e702923fb";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r325-7b4e702923fb";
+import { liftAt, tileUnder } from "./landscape.js?v=r325-7b4e702923fb";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r325-7b4e702923fb";
+import { GATE_REVENANT } from "./monster-pack.js?v=r325-7b4e702923fb";
+import { drawRelayNode } from "./relay-network.js?v=r325-7b4e702923fb";
+import { structureOccupancy } from "./world.js?v=r325-7b4e702923fb";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r325-7b4e702923fb";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -612,6 +612,23 @@ function drawSkiff(ctx, x, y, s, facing, now) {
 // a little bit larger than the player"). part "back" draws the boosters, shell and the viewport's frame behind the
 // Wayfarer; "front" draws the glass over them, the lower body (hiding their legs), the short legs and the arms. At sea
 // (`water`) everything below the waterline is drowned in blue; diving, only an arm breaks the surface, with bubbles.
+// Release 321: the drone. A round silver body with a blue eye toward its facing, two rotor arms with spinning discs, a
+// rocket pod underneath; carrying, two claws reach down to the Wayfarer's shoulders. `heal` (0..1) glows it green.
+function drawDrone(ctx, x, y, s, facing, now, carrying = false, heal = 0) {
+  const cx = (x + .5) * s, cy = (y + .45) * s + Math.sin(now / 260) * s * .04, u = s * .34, dir = facing === "left" ? -1 : 1, spin = now / 40;
+  ctx.save();
+  if (carrying) { ctx.strokeStyle = "#6f7880"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.lineCap = "round"; for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cx + side * u * .5, cy + u * .55); ctx.lineTo(cx + side * u * .95, cy + u * 1.6); ctx.lineTo(cx + side * u * .7, cy + u * 2.05); ctx.stroke(); } }
+  ctx.fillStyle = "#00000033"; ctx.beginPath(); ctx.ellipse(cx, cy + s * (carrying ? 1.75 : 1.05), u * 1.1, u * .3, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#4b525a"; ctx.lineWidth = Math.max(1.5, s * .06); ctx.beginPath(); ctx.moveTo(cx - u * 1.55, cy - u * .35); ctx.lineTo(cx + u * 1.55, cy - u * .35); ctx.stroke();
+  for (const side of [-1, 1]) { const rx = cx + side * u * 1.55, ry = cy - u * .55; ctx.fillStyle = "#3a4048"; ctx.fillRect(rx - u * .12, ry, u * .24, u * .3); ctx.fillStyle = "#d8e6ee88"; ctx.beginPath(); ctx.ellipse(rx, ry, u * .8, u * .2, 0, 0, 7); ctx.fill(); ctx.strokeStyle = "#ffffffdd"; ctx.lineWidth = Math.max(1.5, s * .04); ctx.beginPath(); ctx.moveTo(rx - Math.cos(spin + side) * u * .75, ry - Math.sin(spin + side) * u * .14); ctx.lineTo(rx + Math.cos(spin + side) * u * .75, ry + Math.sin(spin + side) * u * .14); ctx.stroke(); }
+  ctx.fillStyle = "#5d656e"; ctx.fillRect(cx - u * .45, cy + u * .45, u * .9, u * .32); ctx.fillStyle = "#e0623c"; for (const k of [-.25, 0, .25]) { ctx.beginPath(); ctx.arc(cx + k * u, cy + u * .78, u * .09, 0, 7); ctx.fill(); }
+  const body = ctx.createRadialGradient(cx - u * .3, cy - u * .35, u * .1, cx, cy, u); body.addColorStop(0, "#f4f7fa"); body.addColorStop(.6, "#b9c2ca"); body.addColorStop(1, "#6d767f");
+  ctx.fillStyle = body; ctx.strokeStyle = "#3a4048"; ctx.lineWidth = Math.max(1, s * .035); ctx.beginPath(); ctx.ellipse(cx, cy, u, u * .78, 0, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#14202a"; ctx.beginPath(); ctx.ellipse(cx + dir * u * .38, cy, u * .36, u * .3, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#5fd6f0"; ctx.beginPath(); ctx.arc(cx + dir * u * .45, cy, u * .15, 0, 7); ctx.fill(); ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(cx + dir * u * .5, cy - u * .06, u * .05, 0, 7); ctx.fill();
+  if (heal > 0) { ctx.globalAlpha = Math.min(1, heal) * .7; ctx.strokeStyle = "#7dff9a"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); ctx.ellipse(cx, cy, u * 1.35, u * 1.1, 0, 0, 7); ctx.stroke(); }
+  ctx.restore();
+}
 function drawSubmersible(ctx, x, y, s, facing, now, part = "back", diving = 0, water = true, boosting = false) {
   const cx = (x + .5) * s, base = (y + .98) * s + (water ? Math.sin(now / 420 + x) * s * .03 : 0), dir = facing === "left" ? -1 : 1, t = now / 1000, u = s * 1.2;
   const metal = (y0, y1) => { const g = ctx.createLinearGradient(-u * .5, y0, u * .5, y1); g.addColorStop(0, "#f2f5f8"); g.addColorStop(.5, "#b9c1ca"); g.addColorStop(1, "#6f7883"); return g; };
@@ -1527,7 +1544,7 @@ export function render(ctx, g, w, h, now) {
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
-      const mech = !!g.mechUp?.(), mechLift = mech && g.mechBoosting ? s * .22 : 0; // release 317: the robot ashore, lifted while it boosts
+      const drone = !!g.droneUp?.() && !!g.droneAt, mech = !!g.mechUp?.(), mechLift = (mech || drone) && g.mechBoosting ? s * (drone ? .35 : .22) : 0; // release 317: the robot ashore, lifted while it boosts; 321: the drone carries higher
       if (mech) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "back", 0, false, g.mechBoosting);
       const subHidden = g.area === "overworld" && g.save.boat?.aboard && g._subDive > 0; if (subHidden) { ctx.save(); ctx.globalAlpha = .12; } // release 311: under the surface
       actor(
@@ -1543,6 +1560,9 @@ export function render(ctx, g, w, h, now) {
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
       if (mech) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);
+      if (drone) { const carry = !!g.mechBoosting; drawDrone(ctx, carry ? p.x : g.droneAt.x, carry ? p.y - (lift + mechLift) / s - .62 : g.droneAt.y - lift / s, s, p.facing, now, carry, g.droneHealFx || 0); // release 321
+        const m = g.save.mech, bx = (p.x + .08) * s, by = (p.y + 1.1) * s - lift, bw = s * .84, bh = Math.max(3, s * .08); // carry (blue) and mend readiness (green)
+        ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh * 2 + 3); ctx.fillStyle = "#5fc6e0"; ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, m.fuel / DRONE.carry)), bh); ctx.fillStyle = (m.healCd || 0) > 0 ? "#3f7f52" : "#7dff9a"; ctx.fillRect(bx, by + bh + 1, bw * Math.max(0, Math.min(1, 1 - (m.healCd || 0) / DRONE.healCooldown)), bh); }
       if (mech) { const m = g.save.mech, bx = (p.x + .08) * s, by = (p.y + 1.1) * s - lift, bw = s * .84, bh = Math.max(3, s * .08); // plating (silver) and boost (blue)
         ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh * 2 + 3); ctx.fillStyle = "#d8dee5"; ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, m.plate / MECH.plate)), bh); ctx.fillStyle = "#5fc6e0"; ctx.fillRect(bx, by + bh + 1, bw * Math.max(0, Math.min(1, m.fuel / MECH.boost)), bh); }
       if (g.area === "overworld" && g.save.boat?.aboard && g.save.boat.sub && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "front", g._subDive); // release 311: the window's glass and the arms

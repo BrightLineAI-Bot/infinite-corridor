@@ -3,11 +3,11 @@
 // technology: chasm canyons, lava bogs, underground rivers, frozen grottoes with falling snow, bone crypts and fungal
 // hollows. It returns the same map contract as generator 4 (entry/exit, chest, trap, guardian spawn), so encounters,
 // discovery, completion and the monster pack work unchanged. Histories pinned to generators 2-4 never see it.
-import { rng, hashSeed } from "./random.js?v=r317-0212d6f3ae04";
-import { annotateDungeon, DUNGEON_SIZE_PROFILES } from "./dungeon-framework.js?v=r317-0212d6f3ae04";
-import { DUNGEON_LAYOUT_VERSION } from "./dungeon-variation.js?v=r317-0212d6f3ae04";
-import { carvePattern, stitchPattern, PATTERN_CATALOG, ORGANIC_CATALOG } from "./pattern-dungeons.js?v=r317-0212d6f3ae04";
-import { LANDSCAPE_VERSION, ensureReturnable, trappedTiles, addRamps, valueNoise } from "./landscape.js?v=r317-0212d6f3ae04";
+import { rng, hashSeed } from "./random.js?v=r325-7b4e702923fb";
+import { annotateDungeon, DUNGEON_SIZE_PROFILES } from "./dungeon-framework.js?v=r325-7b4e702923fb";
+import { DUNGEON_LAYOUT_VERSION } from "./dungeon-variation.js?v=r325-7b4e702923fb";
+import { carvePattern, stitchPattern, PATTERN_CATALOG, ORGANIC_CATALOG } from "./pattern-dungeons.js?v=r325-7b4e702923fb";
+import { LANDSCAPE_VERSION, ensureReturnable, trappedTiles, addRamps, valueNoise } from "./landscape.js?v=r325-7b4e702923fb";
 
 export const DUNGEON_GENERATOR_V5 = 5;
 export const LAYOUTS = ["spine", "hub", "ring", "cavern", "crypt", "descent"];
@@ -182,7 +182,9 @@ function layout(kind, g, w, h, rand, start, goal, patternId = null, catalog = PA
 
 // ---------------------------------------------------------------- the generator
 export function generateExpeditionDungeon(seed, id, recipe = "hollow", options = {}) {
-  const requested = String(options.sizeProfile || ""), sizeProfile = DUNGEON_SIZE_PROFILES[requested] ? requested : ["compact", "standard", "extended"][hashSeed(`${seed}:${id}:size`) % 3];
+  const requested = String(options.sizeProfile || ""), natural = DUNGEON_SIZE_PROFILES[requested] ? requested : ["compact", "standard", "extended"][hashSeed(`${seed}:${id}:size`) % 3];
+  // Release 319 (dungeon-ladder.ts): a crossing first generated below the large tier stays standard unless its roll keeps it.
+  const ladder = options.ladder || null, quiet = !!ladder && natural === "extended" && ladder.large === "quiet", sizeProfile = ladder && natural === "extended" && !requested && !ladder.large ? "standard" : natural;
   const profile = DUNGEON_SIZE_PROFILES[sizeProfile], variant = Math.max(0, Math.floor(Number.isFinite(Number(options.variant)) && options.variant !== undefined ? Number(options.variant) : hashSeed(`${seed}:${id}:variant`) % 997));
   const plain = !options.layout && !options.theme && plainCrossing(seed, id, options.layoutPool);
   const rand = rng(`${seed}:expedition-v5:${id}:${recipe}:${sizeProfile}:v${variant}`), w0 = profile.width + Math.floor(rand() * 7) - 3, h0 = profile.height + Math.floor(rand() * 7) - 3;
@@ -210,10 +212,12 @@ export function generateExpeditionDungeon(seed, id, recipe = "hollow", options =
   if (g.automaton) { map.automaton = { rule: g.automaton.rule, name: g.automaton.name, pattern: g.automaton.id || null }; map.name = `${g.automaton.name} · ${map.name}`; map.diagnostic.automatonRule = g.automaton.rule; }
   const themeRoll = hashSeed(`${seed}:${id}:under-theme`);
   const themes = THEME_POOLS[options.themePool] || THEME_POOLS[1];
-  if (options.layoutPool >= 5 && !plain && sizeProfile === "extended" && hashSeed(`${seed}:${id}:warp`) % 100 < WARP.chance) placeWarpDaises(map, dist);
-  const theme = options.theme && UNDER_THEMES[options.theme] ? options.theme : options.theme === "none" || grammar === "rooms" ? null : themeRoll % 100 < themes.chance ? themes.ids[Math.floor(themeRoll / 100) % themes.ids.length] : null;
+  if (options.layoutPool >= 5 && !plain && !quiet && (!ladder || ladder.warp) && sizeProfile === "extended" && hashSeed(`${seed}:${id}:warp`) % 100 < WARP.chance) placeWarpDaises(map, dist);
+  let theme = options.theme && UNDER_THEMES[options.theme] ? options.theme : options.theme === "none" || grammar === "rooms" || quiet ? null : themeRoll % 100 < themes.chance ? themes.ids[Math.floor(themeRoll / 100) % themes.ids.length] : null;
+  if (ladder && !ladder.newThemes && theme && !options.theme && !THEME_POOLS[1].ids.includes(theme)) theme = THEME_POOLS[1].ids[(themeRoll >>> 8) % THEME_POOLS[1].ids.length]; // release 319: the newer environments come later
   if (theme) applyUnderTheme(map, theme, rand);
   if (grammar === "rooms") { map.plain = true; map.diagnostic.plain = true; }
+  if (quiet) map.diagnostic.quiet = true; // release 319: the large quiet crossing of the first tiers
   return annotateDungeon(map, { generatorVersion: DUNGEON_GENERATOR_V5, sizeProfile: grammar === "rooms" ? "small" : sizeProfile });
 }
 
