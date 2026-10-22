@@ -11,11 +11,10 @@
 // large ordinary dungeon with no environment and no daises.
 //
 // Decisions are fixed per dungeon: ordinary crossings record the tier they were first generated at (history.ladder), and
-// sealed deep and arena entrances record theirs when they first open. Histories pinned before this release have no
+// deep and arena entrances record theirs when first entered (release 323: they never seal; below their tier they open as tastes). Histories pinned before this release have no
 // `ladder` and keep today's rules.
 import { hashSeed } from "./random.ts";
 import { apertureTier } from "./world.ts";
-import { APERTURE_BANDS } from "./items.ts";
 
 export const DUNGEON_LADDER = {
   version: 1,
@@ -60,4 +59,3 @@ export function ladderGuardian(seed, id, tier, kind, pool) {
 }
 // Deep and arena entrances: which ladder kind an overworld object is, if any.
 export function entranceKind(o) { return o?.kind === "arenaEntrance" ? "arena" : o?.dungeonType === "deep-v1" ? "threefold" : o?.dungeonType === "deep-v2" ? "deepV2" : null; }
-export function unlockBandName(kind) { return APERTURE_BANDS[DUNGEON_LADDER.unlock[kind] ?? 0]?.name || "a wider Aperture"; }

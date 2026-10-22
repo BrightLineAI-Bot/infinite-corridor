@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 323 — no dungeon is ever sealed. Every Threefold Deep, deep archetype and world-threat arena can be entered whatever your Aperture.
+  - **Below its tier:** the dungeon opens as its taste. A Threefold Deep wakes only one wing; the deep archetypes and arenas open whole.
+  - **At or above its tier:** it opens whole.
+  - **Fixed once entered:** the version is decided the first time you go in, and stays.
+
 - Release 321 — the drone. From the fourth Gate (4 Listeners), Pack → Supplies lets you choose what the frame calls up on land: **Ashore: Robot** or **Ashore: Drone**.
   - **Look.** A small silver drone with a blue eye, two rotors and a rocket pod.
   - **Rockets.** Every 1.6 s it fires a homing rocket at the nearest creature within 8 tiles.
