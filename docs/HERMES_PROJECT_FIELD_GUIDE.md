@@ -2585,6 +2585,35 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 321: the drone — 2026-10-22
+
+Tim, 2026-10-22:
+- "whenever you have unlocked the... fourth or fifth gate, you can get a drone... it can attack for you... heal you on command... or... automatically";
+- "if you hold jump, it'll... grab you and you can... fly around";
+- "you can choose this version or the submersible version to deploy, and it can have like homing rockets".
+
+**CODE:**
+- **`vehicle-gates.ts`**:
+  - **`DRONE`** (range 8, rocketEvery 1.6 s, rocketDamage 10 + magic bonus, rocketSpeed 7.5, rocketLife 1.8, rocketTurn 7, heal .3 of max health, healCooldown 30 s, autoHealBelow .3, carry 3 s, carryRecharge 1/s).
+  - **`setMechMode(save, mode)`** is gated by `droneGate` for "drone".
+  - **`fuelMax(mode)`**.
+  - **`ensureMech`** keeps `mode`, `healCd` and `rocketCd` only once a mode has been chosen, so a 317 robot save gains nothing.
+  - **`tickMech`** counts down the drone timers and refuels at the mode's rate.
+- **`game.ts`**:
+  - **`toggleMech`**: in drone mode it checks `droneGate`. A press while the drone is up, the Wayfarer is hurt and the heal is ready mends instead of docking (`droneHeal`).
+  - **`mechUp()`** now excludes drone mode. **`droneUp()`** is the drone's test.
+  - The held-Jump carry reuses the robot's boost path (`mechBoosting`, `mechSpent`).
+  - **`tickDrone`**: eases `droneAt` beside or above the Wayfarer, heals by itself below `autoHealBelow`, and fires a `droneRocket` projectile with `seekId` at the nearest live creature, skipping ambient creatures and the Wayfarer's astral allies (the same rule as `enemyAt`).
+  - **`updateProjectiles`** steers friendly `seekId` shots toward their target.
+- **`renderer.ts`** `drawDrone`: body, eye, rotors, pod, claws while carrying and a green heal ring. It also draws the carry and heal bars. **`combat-visuals.ts`** colours rockets orange.
+- **`main.ts`**: the Supplies row gains the "Ashore: Robot / Drone" switch, and the frame's description mentions the robot and the drone.
+- Tests: `tests/drone-321.test.ts`.
+
+**BOUNDARY:**
+- The drone takes no damage and has no plating.
+- It is not available aboard the skiff, where the frame stays the submersible.
+- The robot is unchanged.
+
 ## Release 319: the dungeon ladder — 2026-10-22
 
 Tim, 2026-10-22:

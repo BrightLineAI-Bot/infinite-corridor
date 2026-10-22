@@ -46,10 +46,27 @@ export function droneGate(save) {
 // State: save.mech = { built, active, plate, fuel, cooldown } (additive).
 export const MECH = { plate: 60, guard: .1, boost: 1.6, boostRecharge: 1, plateRegen: 3, rebuild: 20 };
 export function ensureMech(save) {
-  const m = save.mech && typeof save.mech === "object" ? save.mech : {};
+  const m = save.mech && typeof save.mech === "object" ? save.mech : {}, mode = m.mode === "drone" ? "drone" : "robot", max = fuelMax(mode);
   save.mech = { built: m.built === true, active: m.built === true && m.active === true, plate: Math.max(0, Math.min(MECH.plate, Number.isFinite(Number(m.plate)) ? Number(m.plate) : MECH.plate)),
-    fuel: Math.max(0, Math.min(MECH.boost, Number.isFinite(Number(m.fuel)) ? Number(m.fuel) : MECH.boost)), cooldown: Math.max(0, Number(m.cooldown) || 0) };
+    fuel: Math.max(0, Math.min(max, Number.isFinite(Number(m.fuel)) ? Number(m.fuel) : max)), cooldown: Math.max(0, Number(m.cooldown) || 0),
+    ...(m.mode !== undefined ? { mode, healCd: Math.max(0, Number(m.healCd) || 0), rocketCd: Math.max(0, Number(m.rocketCd) || 0) } : {}) };
   return save.mech;
+}
+// The drone (release 321; Tim: "whenever you have unlocked the... fourth or fifth gate, you can get a drone... it can attack for
+// you... heal you on command... or... automatically... if you hold jump, it'll... grab you and you can... fly around... you can
+// choose this version or the submersible version to deploy, and it can have like homing rockets"). From droneGate the frame
+// can be set (Pack → Supplies) to call up the drone instead of the robot. While it flies beside the Wayfarer it fires a homing
+// rocket at the nearest creature within `range` every `rocketEvery` s; it heals `heal` of their health when they press the
+// frame's button while hurt, or by itself below `autoHealBelow`, then rests `healCooldown` s; held Jump in the air lets it
+// carry them for up to `carry` s (refilled at `carryRecharge`/s on the ground). It takes no hits. State on save.mech:
+// mode ("robot" | "drone"), healCd, rocketCd (additive).
+export const DRONE = { range: 8, rocketEvery: 1.6, rocketDamage: 10, rocketSpeed: 7.5, rocketLife: 1.8, rocketTurn: 7, heal: .3, healCooldown: 30, autoHealBelow: .3, carry: 3, carryRecharge: 1 };
+export function fuelMax(mode) { return mode === "drone" ? DRONE.carry : MECH.boost; }
+export function setMechMode(save, mode) {
+  const m = ensureMech(save), next = mode === "drone" ? "drone" : "robot";
+  if (next === "drone" && !droneGate(save).ok) return { ok: false, message: droneGate(save).why };
+  m.mode = next; m.healCd ??= 0; m.rocketCd ??= 0; m.active = false; m.fuel = Math.min(m.fuel, fuelMax(next));
+  return { ok: true, message: next === "drone" ? "The frame will call up the drone." : "The frame will call up the robot." };
 }
 // A blow of `loss` to the Wayfarer in the robot: returns what they keep; the plating takes the rest. Breaking it stows it.
 export function mechAbsorb(save, loss) {
@@ -62,5 +79,6 @@ export function tickMech(save, dt, grounded) {
   const m = save.mech; if (!m || !m.built || !(dt > 0)) return;
   m.cooldown = Math.max(0, (m.cooldown || 0) - dt);
   if (!m.active) m.plate = Math.min(MECH.plate, m.plate + MECH.plateRegen * dt);
-  if (grounded) m.fuel = Math.min(MECH.boost, m.fuel + MECH.boostRecharge * dt);
+  if (m.mode === "drone") { m.healCd = Math.max(0, (m.healCd || 0) - dt); m.rocketCd = Math.max(0, (m.rocketCd || 0) - dt); }
+  if (grounded) m.fuel = Math.min(fuelMax(m.mode), m.fuel + (m.mode === "drone" ? DRONE.carryRecharge : MECH.boostRecharge) * dt);
 }

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 321 — the drone. From the fourth Gate (4 Listeners), Pack → Supplies lets you choose what the frame calls up on land: **Ashore: Robot** or **Ashore: Drone**.
+  - **Look.** A small silver drone with a blue eye, two rotors and a rocket pod.
+  - **Rockets.** Every 1.6 s it fires a homing rocket at the nearest creature within 8 tiles.
+  - **Mending.** Press the frame's button while hurt and it mends 30% of your health; it also does this by itself when you drop below 30%. Then it rests 30 s; a green bar under you shows when it's ready.
+  - **Carrying.** Jump, then hold Jump: it grips your shoulders and carries you for up to 3 s (blue bar), over chasms, water and lava.
+  - **Calling it.** Press the button again to dock it. Nothing can hit it.
+
 - Release 319 — the dungeon ladder. The special dungeons now arrive in steps as your Aperture opens:
   - **Dormant and Stirring (tiers 0–1): the base game.**
     - Ordinary crossings, short plain dungeons, the six original environments and five of the sixteen guardians.
