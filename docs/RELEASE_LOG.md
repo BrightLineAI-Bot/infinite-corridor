@@ -19,15 +19,13 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 317 | Claude | `claude/dreamy-rubin-yn6q2p` | The robot ashore: the frame calls up the robot on land (Infinite III + 2 Listeners), plating, guard, Jump boost over chasms | Building. |
-| 315 | Claude | `claude/dreamy-rubin-yn6q2p` | Vehicle progression gates (dive Infinite II; submersible Infinite II + Walker or Listener; underwater Infinite III + both); the submersible robot | Merged (PR #136). |
-| 313 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #135) | Skill buff bar: a running skill's button glows gold and drains as the effect ends | Merged; preview `r313-0adc609a8e70`. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 317 | `r317-0212d6f3ae04` | 2026-10-22 | Published with 313 and 315 (neither went live alone): the skill buff bar (313, PR #135); vehicle progression gates and the submersible robot (315, PR #136); the robot ashore (317, PR #137). The pre-publish Fable review found no blockers. |
 | 311 | `r311-f82b84f1e1d4` | 2026-10-22 | Published with 301–309 (none went live alone): plain short dungeons, rarer themes, Watcher's daises (301, PR #129); the Poison Crypt (303, PR #130); the Far Sleep (305, PR #131); boss balance and tiered poise (307, PR #132); target lock and any-slot presets (309, PR #133); the submersible (311, PR #134). The pre-publish Fable review found no blockers. |
 | 299 | `r299-f25a24dc4fb2` | 2026-10-22 | Published with 293, 295 and 297 (none went live alone): child-safe Glimpses and item icons (293, PR #125); armour glyphs and glyph layouts (295, PR #126); glyphs for Aperture skills (297, PR #127); five new dungeon environments (299, PR #128). The pre-publish Fable review found no blockers. |
 | 291 | `r291-4bc624609d78` | 2026-10-22 | Published with 287 and 289 (neither went live alone): blocks as stairs and barriers, calm Crystal, dungeon caches, gold selection, Supplies line, four coffins (287, PR #122); the Watcher's sigil in the world (289, PR #123); preset item buttons, back button, Crossing Sigils (291, PR #124). The pre-publish Fable review found no blockers. |
