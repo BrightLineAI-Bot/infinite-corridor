@@ -24,7 +24,7 @@ export const LABORATORIES = [
   { id: "shelters", label: "Shelter & Building Gallery", status: "implemented", description: "Production shelters, displacement devices, and architectural districts." },
   { id: "ordinary-dungeon", label: "Ordinary Dungeon Lab", status: "implemented", description: "Production v4 deterministic exploration topology, discovery, ecology, traps, guardians, and traversal." },
   { id: "forge", label: "Glyph Forge Lab", status: "implemented", description: "Every glyph in the pouch, three-socket relic weapons and a line of practice foes; one scenario per Resonance comes pre-socketed." },
-  { id: "underlands", label: "Underlands & Relay Lab", status: "implemented", description: "Generator v5 crossings: six layout grammars, six bespoke underground environments with their weather, and a relay node ready to answer." },
+  { id: "underlands", label: "Underlands & Relay Lab", status: "implemented", description: "Generator v5 crossings: six layout grammars, eleven bespoke underground environments with their weather, and a relay node ready to answer." },
   { id: "deep-dungeon", label: "Legacy & Deep Dungeon Lab", status: "implemented", description: "Production deep-v2 archetypes, objectives, levels, shortcuts, and finales." },
   { id: "threefold", label: "Threefold Dungeon Lab", status: "implemented", description: "The production three-wing sealed expedition and its wardens." },
   { id: "landscape", label: "Landscape Pack", status: "implemented", description: "Nearest production overland section of each landscape biome: mountains with stair trails, dune seas, coasts, alien wilds and castles." },

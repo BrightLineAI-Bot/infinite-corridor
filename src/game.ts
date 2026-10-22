@@ -65,7 +65,7 @@ import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}fr
 import{ensureSceneState,queueScene}from'./scenes.ts';
 import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.ts";
 import { varyDungeonLayout } from "./dungeon-variation.ts";
-import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5 } from "./underlands.ts";
+import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION } from "./underlands.ts";
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
 import { applyLandscape, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.ts";
 import { GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
@@ -102,12 +102,13 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (history.generatorVersion === undefined) history.generatorVersion = id === canonical || save.session.areas[id] ? 2 : DUNGEON_GENERATOR_V5;
   // Release 146: dungeons first generated from now on may use the automaton layout (pool 2) and threefold layout 2.
   if (fresh && history.layoutPool === undefined) history.layoutPool = 4; // release 148: the organic pattern catalogue (pool 3: release 147's)
+  if (fresh && history.themePool === undefined) history.themePool = THEME_POOL_VERSION; // release 299: the new dungeon environments
   if (fresh && history.threefoldLayout === undefined && id.endsWith(':deep-v2:threefold')) history.threefoldLayout = 2;
   let map;
   // Dive generator pinned per history: 1 = the release-107 Sunken Reach, 2 = themed grottoes (release 108).
   if (id.startsWith('dive:')) map = (history.diveGenerator ?? 1) >= 2 ? generateGrotto(save.seed, id) : generateDiveSite(save.seed, id);
   else if (/^(arena:|hunt-arena:|hunt-instance:)/.test(id)) map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved});
-  else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1});
+  else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1});
   else if (!id.includes(':deep-v') && history.generatorVersion === 4) map = generateUnifiedDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options});
   else if (!id.includes(':deep-v') && history.generatorVersion === 3) map = generateVariedDungeon(save.seed,id,dungeonDescriptor(id).recipe);
   else map = generateDungeon(save.seed,id,{...options,threefoldLayout:history.threefoldLayout||1});
