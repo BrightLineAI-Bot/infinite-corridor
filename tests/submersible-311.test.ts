@@ -34,6 +34,7 @@ test('aboard a submersible a dodge is a dive: untouchable for its length', () =>
 
 test('a submersible may dive at a buoy without rig or lens; the deep current leads to another buoy', () => {
   const s = afloat(); s.seed = 'SUBNET'; forgeSubmersible(s); fitSubmersible(s); assert.notEqual(s.capabilities?.dive, true);
+  s.perception.aperture = 3255; s.worldBeasts = { voidWalker: { slain: 1 } }; s.farArray = { listeners: 1 }; // release 315: under the sea from Infinite III, Walker and a Listener beaten
   const g = new Game(s, 0); let site = null, at = null;
   for (let r = 2; r < 40 && !site; r++) for (let dx = -r; dx <= r && !site; dx++) { const rx = dx, ry = r; if (biomeFor(s.seed, rx, ry) !== 'sea' || hashSeed(`${s.seed}:dive:site:${rx}:${ry}`) % DIVE.siteEvery) continue; g.rx = rx; g.ry = ry; g.loadArea('overworld'); site = g.map.objects.find((o) => o.kind === 'diveSite'); at = { rx, ry }; }
   assert.ok(site, 'found a dive buoy'); Object.assign(g.player, { x: site.x, y: site.y + .2 }); s.boat.aboard = true;

@@ -1,5 +1,5 @@
 import{followHuntTrace}from'./foundry.ts';import{APERTURE_BANDS}from'./items.ts';import{reciterTalk,travelerTalk,wandererTalk,collectWandererCache}from'./travelers.ts';import{hearElder}from'./elders.ts';import{REFUGE_NPCS,ensurePerception}from'./types.ts';import{dungeonId,apertureTier,perceived}from'./world.ts';
-import{DIG,addStone}from'./digging.ts';import{shipwrightActions,ensureBoatState,addWood}from'./boats.ts';import{diveSiteActions}from'./diving.ts';
+import{DIG,addStone}from'./digging.ts';import{shipwrightActions,ensureBoatState,addWood}from'./boats.ts';import{diveSiteActions}from'./diving.ts';import{diveGate,underwaterGate}from'./vehicle-gates.ts';
 import{hashSeed}from'./random.ts';import{cappedAperture}from'./stages.ts';import{relayNodeActions,inspectRelayNode,commitRelayNode,relayObjectiveSuffix}from'./relay-network.ts';import{ensureEliteState,acceptContract}from'./elites.ts';// Release 277: adds { stone, wood, restorativeDraught } to the pack and returns " +1 stone, +1 wood..." (empty when nothing).
 function grantSpoils(s,g){const out=[];if(g.stone>0){addStone(s,g.stone);out.push(`+${g.stone} stone`)}if(g.wood>0){addWood(s,g.wood);out.push(`+${g.wood} wood`)}if(g.restorativeDraught>0){s.consumables.restorativeDraught=(Number(s.consumables.restorativeDraught)||0)+g.restorativeDraught;out.push(`+${g.restorativeDraught} restorative draught${g.restorativeDraught>1?'s':''}`)}return out.length?' '+out.join(', ')+'.':''}
 export const NARRATIVE_SCHEMA='infinite-corridor-narrative/1.0.0';
@@ -44,8 +44,8 @@ export function validActions(o,s){
  if(o.kind==='relayTerminal')return s.consequences.choices.relay?[]:s.narrative.facts['crossing.marshal']?['restore','sever']:['inspect'];
  if(o.kind==='apertureRitual')return apertureRitualState(s).ready?['perform','inspect']:['inspect'];
  if(o.kind==='arenaEntrance')return['enter'];
- if(o.kind==='shipwright')return shipwrightActions(s);
- if(o.kind==='diveSite')return diveSiteActions(s);
+ if(o.kind==='shipwright')return shipwrightActions(s).filter(a=>a!=='buyRig'||diveGate(s).ok);/* release 315: the rig from Infinite II */
+ if(o.kind==='diveSite')return diveGate(s).ok||underwaterGate(s).ok?diveSiteActions(s).concat(s.boat?.sub&&s.boat?.aboard&&!diveSiteActions(s).includes('dive')?['dive']:[]):['inspect'];/* release 315 */
  if(o.kind==='diveExit')return['surface'];if(o.kind==='diveOnward')return['follow'];
  if(o.kind==='airPocket')return[];
  if(o.kind==='shipwreck')return s.worldFlags[o.id]?[]:['salvage'];

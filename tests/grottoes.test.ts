@@ -64,7 +64,7 @@ test('in the real game: a new dive opens a themed grotto with its beasts; curren
     if (Math.max(Math.abs(x), Math.abs(y)) !== r || biomeFor(SEED, x, y) !== 'sea') continue;
     const m = generateRegion(SEED, x, y); applyLandscape(m, SEED, x, y); const site = diveSite(m, SEED, x, y); if (site) found = { rx: x, ry: y, site };
   }
-  const s = Object.assign(freshSave(), { seed: SEED }); grantTidemantle(s, 't'); s.currency = 999; s.materials.cinderIron = 9; buySkiff(s, { rx: 0, ry: 0, x: 1, y: 1 }); buyRig(s); grantLens(s, 't');
+  const s = Object.assign(freshSave(), { seed: SEED }); grantTidemantle(s, 't'); s.currency = 999; s.materials.cinderIron = 9; buySkiff(s, { rx: 0, ry: 0, x: 1, y: 1 }); buyRig(s); grantLens(s, 't'); s.perception.aperture = 2231; // release 315: diving opens at Infinite II
   const g = new Game(s, 0); g.rx = found.rx; g.ry = found.ry; g.loadArea('overworld'); s.boat.aboard = true;
   const buoy = g.map.objects.find((o) => o.kind === 'diveSite'); g.player.x = buoy.x; g.player.y = buoy.y - .2;
   assert.equal(g.interact('dive', buoy.id).ok, true);
@@ -78,7 +78,7 @@ test('in the real game: a new dive opens a themed grotto with its beasts; curren
   assert.ok((g.player.x - x0) * c.dx + (g.player.y - y0) * c.dy > .2, 'carried by the current');
   assert.equal(dungeonHistory(s, g.save.session.activeDungeonId).diveGenerator, DIVE_GENERATOR, 'new dives pin generator 2');
   // a dive history made under release 107 (visited, no pin) keeps the Sunken Reach
-  const old = Object.assign(freshSave(), { seed: SEED }); grantTidemantle(old, 't'); old.currency = 999; old.materials.cinderIron = 9; buySkiff(old, { rx: 0, ry: 0, x: 1, y: 1 }); buyRig(old); grantLens(old, 't');
+  const old = Object.assign(freshSave(), { seed: SEED }); grantTidemantle(old, 't'); old.currency = 999; old.materials.cinderIron = 9; buySkiff(old, { rx: 0, ry: 0, x: 1, y: 1 }); buyRig(old); grantLens(old, 't'); old.perception.aperture = 2231; // release 315
   const oldHistory = dungeonHistory(old, `dive:${SEED}:${found.rx}:${found.ry}`); oldHistory.visits = 1; delete oldHistory.diveGenerator;
   const og = new Game(old, 0); og.rx = found.rx; og.ry = found.ry; og.loadArea('overworld'); og.player.x = buoy.x; og.player.y = buoy.y - .2; old.boat.aboard = true;
   assert.equal(og.interact('dive', buoy.id).ok, true);

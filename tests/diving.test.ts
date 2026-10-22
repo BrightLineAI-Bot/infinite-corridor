@@ -20,7 +20,7 @@ function diveSection() {
   throw new Error('no dive site');
 }
 function diver() {
-  const s = Object.assign(freshSave(), { seed: SEED }); grantTidemantle(s, 'test'); s.currency = 999; s.materials.cinderIron = 9;
+  const s = Object.assign(freshSave(), { seed: SEED }); grantTidemantle(s, 'test'); s.currency = 999; s.materials.cinderIron = 9; s.perception.aperture = 2231; // release 315: diving opens at Infinite II
   buySkiff(s, { rx: 0, ry: 0, x: 1, y: 1 }); buyRig(s); grantLens(s, 'test'); return s;
 }
 // Walkable reachability inside a dive map from its entry.
@@ -31,7 +31,7 @@ function reach(map) {
 }
 
 test('the Bathysal Lens and a dive rig together grant diving; the rig needs a skiff', () => {
-  const s = freshSave(); s.currency = 999; s.materials.cinderIron = 9;
+  const s = freshSave(); s.currency = 999; s.materials.cinderIron = 9; s.perception.aperture = 2231; // release 315: the rig is offered from Infinite II
   assert.equal(buyRig(s).ok, false, 'no skiff, no rig');
   grantTidemantle(s, 't'); buySkiff(s, { rx: 0, ry: 0, x: 1, y: 1 });
   assert.ok(validActions({ kind: 'shipwright', actions: ['speak'] }, s).includes('buyRig'));

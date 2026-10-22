@@ -30,6 +30,7 @@ function applyFallenTreeCrossings(map) {
 }
 import { ensureSlots, slotted, pairingMods, slotReadiness, togglePreset, activeButton, slotTool, CASTABLES, availableCastables } from "./spell-slots.ts";
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
+import { diveGate, subGate, underwaterGate } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
 import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.ts";
@@ -2881,10 +2882,14 @@ export class Game {
     const s = this.save;
     if (o.kind === "diveExit") { const ok = this.leaveDungeon("You follow the line back to the surface."); if (ok) { s.session.breath = DIVE.breath; this.sync(); } return { ok: !!ok, message: this.message }; }
     if (o.kind === "diveOnward") { // release 311: the deep current runs on to the next dive buoy
+      { const gate = underwaterGate(s); if (!gate.ok) { this.message = `The current pulls toward somewhere far. ${gate.why}`; return { ok: false, message: this.message }; } } // release 315
       const to = this.onwardBuoy(); if (!to) { this.message = "The current turns back on itself here. Follow the line up."; return { ok: false, message: this.message }; }
       s.session.dungeonReturn = to; const ok = this.leaveDungeon("You ride the deep current and come up beside another buoy."); if (ok) { s.session.breath = DIVE.breath; this.sync(); } return { ok: !!ok, message: this.message };
     }
-    if (!canDive(s) && !(aboard(s) && submersible(s))) { this.message = diveSiteHint(s) + " (A submersible can dive without them.)"; return { ok: false, message: this.message }; } // release 311
+    // Release 315: rig and Lens dive from Infinite II; a submersible goes under from Infinite III with the Void Walker and a Listener beaten.
+    const bySub = aboard(s) && submersible(s), gate = bySub ? underwaterGate(s) : diveGate(s);
+    if (!gate.ok && !(bySub && canDive(s) && diveGate(s).ok)) { this.message = gate.why; return { ok: false, message: this.message }; }
+    if (!canDive(s) && !bySub) { this.message = diveSiteHint(s) + " (A submersible can dive without them.)"; return { ok: false, message: this.message }; } // release 311
     s.session.dungeonReturn = { rx: this.rx, ry: this.ry, x: o.x, y: o.y - .2 };
     s.session.activeDungeonId = diveId(s.seed, this.rx, this.ry); s.session.activeDungeonLevelId = null;
     const h = dungeonHistory(s, s.session.activeDungeonId); h.diveGenerator ??= h.visits > 0 ? 1 : DIVE_GENERATOR; h.visits++; h.visitOpen = true;
@@ -4044,7 +4049,7 @@ export class Game {
       return false;
     }
     if (type === "hullShield") { const r = deployHullShield(this.save); this.message = r.message; this.sync(); return r.ok; } // release 263
-    if (type === "submersible") { const r = fitSubmersible(this.save); this.message = r.message; this.sync(); return r.ok; } // release 311
+    if (type === "submersible") { const gate = subGate(this.save); if (!gate.ok) { this.message = gate.why; return false; } const r = fitSubmersible(this.save); this.message = r.message; this.sync(); return r.ok; } // release 311; 315: gated
     if (type === "restorativeDraught") {
       if (this.player.hp >= this.save.maxHp) {
         this.message = "Health is already full.";
