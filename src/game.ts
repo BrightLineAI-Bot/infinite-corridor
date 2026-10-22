@@ -125,6 +125,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (history.watcherVersion && !id.startsWith('displacement:') && !id.startsWith('dive:') && !map.multiLevel) placeWatcherDungeon(map, map.width || Math.round(Math.sqrt(map.tiles.length)), save.seed, id); // release 289
   return map;
 }
+export const DEATH_PAUSE = { seconds: 4, millSpeed: 1.1, millRadius: 3 }; // release 329: the pause after a world beast fells you
 export const DIVE_ONWARD = { radius: 8, tries: 6 }; // release 311: how far the deep current looks for the next buoy
 export const TARGET_LOCK = { range: 16, pick: .75, meleeSlack: 1.2 };
 export function mapWidth(map, area = "overworld") { return Math.max(1, Number(map?.width) || (area === "dungeon" ? 24 : 32)); }
@@ -2957,6 +2958,81 @@ export class Game {
     const tier = ladderTier(this.save), rung = ladderRoll(this.save.seed, id, kind, tier) || (tier >= (DUNGEON_LADDER.unlock[kind] ?? 0) ? "full" : "taste");
     h.ladder = { version: DUNGEON_LADDER.version, tier, rung };
   }
+  // The recovery after a fall (moved here from update by release 329, unchanged): beasts reset for a fresh duel, the
+  // Wayfarer wakes at the active checkpoint.
+  resolveDeath(now, input, fellIntoHazard = false, terrainHazard = null) {
+    const p = this.player;
+    const beastNote = this.area === "overworld" ? questingBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.some((e) => e.questingBeast && !e.dead)) : null;
+    if (beastNote) journalOnce(this.save, `questing-beast-try:${this.save.questingBeast.cycle}:${this.save.questingBeast.active?.tries ?? "gone"}`, beastNote, "The Questing Beast");
+    const worldNote = this.area === "overworld" || this.area === "dungeon" ? worldBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.filter((e) => e.worldBeast && !e.dead).map((e) => e.worldBeast), this.area === "dungeon" ? this.areaId() : null) : null; // release 235
+    if (worldNote) journalOnce(this.save, `world-beast-try:${this.rx},${this.ry}:${JSON.stringify(this.save.worldBeasts)}`.slice(0, 160), worldNote, "World beasts");
+    // Gate predators have no rematches: a player death ends their hunt, without rewards.
+    for (const e of this.enemies) if (e.gatePredator && !e.dead) { e.dead = true; e.noRewards = true; resetGateAttack(e, true); }
+    // A failed attempt is a fresh duel, not damage banked across deaths. Preserve tries and rewards.
+    for (const e of this.enemies) if (!e.dead && (e.questingBeast || e.worldBeast)) {
+      const state = e.questingBeast ? this.save.questingBeast : this.save.worldBeasts?.[e.worldBeast];
+      if (!state?.active) { e.dead = true; e.noRewards = true; continue; }
+      if (e.retreating || e.fleeTo) continue;
+      state.active.patience = 0; // A fresh duel gets a fresh per-fight clock, not fresh attempts.
+      e.hp = e.maxHp;
+      if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed;
+      delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow;
+      e.hitStun = 0; e.recoil = 0; e.hitFlash = 0;
+      resetPackRuntime(e); e.aggro = false;
+      if(e.kind === "astralWorm")delete e.astral;
+    }
+    for(const e of this.enemies)if(e.astralOwner){e.dead=true;e.noRewards=true;}
+    reconcileAstralCompanions(this);this.syncAstralRiders();
+    this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
+    if (this.area === "dungeon") {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
+    const c = this.save.activeCheckpoint;
+    this.save.worldFlags.deaths = (this.save.worldFlags.deaths || 0) + 1;
+    this.save.session.displacementJourney=null;
+    const before = this.save.consumables.restorativeDraught || 0;
+    if (before < 2) this.save.consumables.restorativeDraught = 2;
+    clearRot(this.save);
+    const woodLost = loseWood(this.save);
+    p.hp = this.save.maxHp;
+    p.stamina = this.save.maxStamina;
+    p.attackReadyAt =
+      p.dodgeReadyAt =
+      p.dodgeUntil =
+      p.attackUntil =
+      p.meleeUntil =
+        0;
+    p.meleeStrike = null;
+    this.jumpUntil = 0;
+    this.projectiles = [];
+    this.effects = [];
+    this.eliteHazards=[];this.packEffects=[];Object.assign(ensureEliteState(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});
+    input.reset?.();
+    this.snapshotArea(); // Capture the source coordinates BEFORE switching to the checkpoint.
+    this.rx = c.rx;
+    this.ry = c.ry;
+    this.loadArea("overworld", false);
+    p.x = c.x;
+    p.y = c.y;
+    p.invulnerableUntil = now + 2000;
+    this.message = `${fellIntoHazard?(terrainHazard==="canyon"?"Lost to the canyon":"Lost beneath the water"):"Felled"} — recovered at ${c.name || "checkpoint"}. No items, marks, equipment, or XP were lost${woodLost ? `, but the ${woodLost} wood you carried is gone` : ""}. You are protected briefly.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
+    if (beastNote) this.message = `${beastNote} ${this.message}`;
+
+  }
+  // Release 329: the pause after a world beast fells the Wayfarer. No control; beasts wander near where they stood.
+  tickFallen(dt, input, now) {
+    for (const action of ["tool", "spell", "spell2", "dodge", "jump", "potion", "attack", "interact", "build", "preset"]) input.consume?.(action);
+    const width = mapWidth(this.map, this.area);
+    for (const e of this.enemies) {
+      if (e.dead || !(e.worldBeast || e.questingBeast)) continue;
+      e.aggro = false; e.millTurn = (e.millTurn || 0) - dt;
+      if (e.millTurn <= 0) { e.millAngle = Math.random() * Math.PI * 2; e.millTurn = 1.1 + Math.random() * 1.2; }
+      const home = e.millHome || (e.millHome = { x: e.x, y: e.y }), sp = DEATH_PAUSE.millSpeed * dt;
+      let nx = e.x + Math.cos(e.millAngle) * sp, ny = e.y + Math.sin(e.millAngle) * sp;
+      if (Math.hypot(nx - home.x, ny - home.y) > DEATH_PAUSE.millRadius || this.map.tiles[Math.floor(ny) * width + Math.floor(nx)]?.blocked && !this.map.tiles[Math.floor(e.y) * width + Math.floor(e.x)]?.blocked) { e.millAngle += Math.PI; nx = e.x; ny = e.y; }
+      e.x = nx; e.y = ny; e.facing = Math.cos(e.millAngle) >= 0 ? "right" : "left"; e.walkPhase = (e.walkPhase || 0) + dt * 6;
+    }
+    this.projectiles = this.projectiles.filter((q) => !q.hostile);
+    if (now >= this.fallen.until) { this.fallen = null; for (const e of this.enemies) { delete e.millHome; delete e.millAngle; delete e.millTurn; } this.player.stunnedUntil = 0; this.resolveDeath(now, input); this.save.hp = this.player.hp; this.save.stamina = this.player.stamina; Object.assign(this.save.position, { area: this.area, rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y }); }
+  }
   mechUp() { return this.save.mech?.active === true && this.save.mech.mode !== "drone" && !aboard(this.save); }
   // Release 311 (Tim: "these buoys... are connected... go to one buoy, and then go to another buoy... if you traverse the
   // dungeon"): the dive buoy the grotto's deep current carries you to — the nearest other buoy section, rings outward from
@@ -4165,6 +4241,7 @@ export class Game {
   update(dt, input, now) {
     this.lastUpdateNow = now;
     if (this.paused) return;
+    if (this.fallen) { this.tickFallen(dt, input, now); return; } // release 329
     reconcileAstralCompanions(this);
     this.syncAstralRiders();
     const p = this.player, hpStart = p.hp;
@@ -4549,59 +4626,18 @@ export class Game {
     for(const {owner,amount} of drainCredits)if(!owner.dead&&owner.hp>0){owner.hp=Math.min(owner.maxHp,owner.hp+amount*creditScale);if(owner.astral)owner.astral.hp=owner.hp;}
     this._astralDrainCredits=[];
     if (p.hp <= 0) {
-      const beastNote = this.area === "overworld" ? questingBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.some((e) => e.questingBeast && !e.dead)) : null;
-      if (beastNote) journalOnce(this.save, `questing-beast-try:${this.save.questingBeast.cycle}:${this.save.questingBeast.active?.tries ?? "gone"}`, beastNote, "The Questing Beast");
-      const worldNote = this.area === "overworld" || this.area === "dungeon" ? worldBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.filter((e) => e.worldBeast && !e.dead).map((e) => e.worldBeast), this.area === "dungeon" ? this.areaId() : null) : null; // release 235
-      if (worldNote) journalOnce(this.save, `world-beast-try:${this.rx},${this.ry}:${JSON.stringify(this.save.worldBeasts)}`.slice(0, 160), worldNote, "World beasts");
-      // Gate predators have no rematches: a player death ends their hunt, without rewards.
-      for (const e of this.enemies) if (e.gatePredator && !e.dead) { e.dead = true; e.noRewards = true; resetGateAttack(e, true); }
-      // A failed attempt is a fresh duel, not damage banked across deaths. Preserve tries and rewards.
-      for (const e of this.enemies) if (!e.dead && (e.questingBeast || e.worldBeast)) {
-        const state = e.questingBeast ? this.save.questingBeast : this.save.worldBeasts?.[e.worldBeast];
-        if (!state?.active) { e.dead = true; e.noRewards = true; continue; }
-        if (e.retreating || e.fleeTo) continue;
-        state.active.patience = 0; // A fresh duel gets a fresh per-fight clock, not fresh attempts.
-        e.hp = e.maxHp;
-        if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed;
-        delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow;
-        e.hitStun = 0; e.recoil = 0; e.hitFlash = 0;
-        resetPackRuntime(e); e.aggro = false;
-        if(e.kind === "astralWorm")delete e.astral;
-      }
-      for(const e of this.enemies)if(e.astralOwner){e.dead=true;e.noRewards=true;}
-      reconcileAstralCompanions(this);this.syncAstralRiders();
-      this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
-      if (this.area === "dungeon") {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
-      const c = this.save.activeCheckpoint;
-      this.save.worldFlags.deaths = (this.save.worldFlags.deaths || 0) + 1;
-      this.save.session.displacementJourney=null;
-      const before = this.save.consumables.restorativeDraught || 0;
-      if (before < 2) this.save.consumables.restorativeDraught = 2;
-      clearRot(this.save);
-      const woodLost = loseWood(this.save);
-      p.hp = this.save.maxHp;
-      p.stamina = this.save.maxStamina;
-      p.attackReadyAt =
-        p.dodgeReadyAt =
-        p.dodgeUntil =
-        p.attackUntil =
-        p.meleeUntil =
-          0;
-      p.meleeStrike = null;
-      this.jumpUntil = 0;
-      this.projectiles = [];
-      this.effects = [];
-      this.eliteHazards=[];this.packEffects=[];Object.assign(ensureEliteState(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});
-      input.reset?.();
-      this.snapshotArea(); // Capture the source coordinates BEFORE switching to the checkpoint.
-      this.rx = c.rx;
-      this.ry = c.ry;
-      this.loadArea("overworld", false);
-      p.x = c.x;
-      p.y = c.y;
-      p.invulnerableUntil = now + 2000;
-      this.message = `${fellIntoHazard?(terrainHazard==="canyon"?"Lost to the canyon":"Lost beneath the water"):"Felled"} — recovered at ${c.name || "checkpoint"}. No items, marks, equipment, or XP were lost${woodLost ? `, but the ${woodLost} wood you carried is gone` : ""}. You are protected briefly.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
-      if (beastNote) this.message = `${beastNote} ${this.message}`;
+      // Release 329 (Tim: "for world bosses... If they kill you, there should be like a... 4 second... pause... where you see
+      // the boss just like moving around or milling around after you die. Just to give you like a second to like collect
+      // yourself"): felled in a fight with a world beast or the Questing Beast, the Wayfarer lies fallen for DEATH_PAUSE
+      // seconds while the beast calms and paces (tickFallen); then the usual recovery at the checkpoint (resolveDeath).
+      // The played game turns it on (main.ts sets deathPause); headless simulations recover at once, as before.
+      if (this.deathPause && !fellIntoHazard && !this.fallen && this.enemies.some((e) => !e.dead && (e.worldBeast || e.questingBeast))) {
+        const until = now + DEATH_PAUSE.seconds * 1000, beast = this.enemies.find((e) => !e.dead && (e.worldBeast || e.questingBeast));
+        this.fallen = { until }; p.hp = 0; p.stunnedAt = now; p.stunnedUntil = until; this.jumpUntil = 0;
+        this.projectiles = this.projectiles.filter((q) => !q.hostile);
+        for (const e of this.enemies) if (!e.dead && (e.worldBeast || e.questingBeast)) { e.aggro = false; e.millHome = { x: e.x, y: e.y }; e.millTurn = 0; }
+        this.message = `Felled. ${beast?.name || "The beast"} paces over you...`;
+      } else this.resolveDeath(now, input, fellIntoHazard, terrainHazard);
     }
     Object.assign(this.save.position, {
       area: this.area,

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 329 — a pause after a world boss fells you. When a world beast or the Questing Beast kills the Wayfarer, they lie fallen for 4 seconds before recovering at the checkpoint as usual. Meanwhile the beast calms down and paces around where it stood, and its shots fade. Other deaths recover at once, as before.
+
 - Release 327 — the game's sound is about 30 dB louder and brighter. All of it, the music and the combat pulse, was mixed very quietly, around −50 dB. It now sits near a normal game level (about −20 dB average) and is less muffled. The Master and Music sliders in Options → Audio still scale it.
 
 - Release 325 — a Threefold Deep always opens all the way, with all three wings and their wardens. One entered below its tier (a taste) keeps its full size, but its creatures are scaled to you:
