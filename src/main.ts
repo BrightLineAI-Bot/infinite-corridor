@@ -1,4 +1,4 @@
-import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind } from "./building.ts";
+import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind } from "./building.ts";
 import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.ts";
 import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
@@ -1492,7 +1492,7 @@ function openPack(tab) {
   body.append(heading, summary, xp, character);
   }catch(error){packSectionFailed("Character",error)}
   if (packTab === "supplies") try{
-  for(const [kind,label] of [['weapon','Weapon sphere'],['armor','Armor sphere']]){const row=document.createElement('div'),key=kind+'Sphere';row.className='item';row.textContent=`${label} ×${save.materials[key]||0} · strengthens fitted equipment at the Forge.`;body.append(row)}
+  for(const [kind,label] of [['weapon','Weapon sphere'],['armor','Armor sphere']]){const row=document.createElement('div'),key=kind+'Sphere';row.className='item sphere-row';row.textContent=`${label} ×${save.materials[key]||0} · strengthens fitted equipment at the Forge.`;body.append(row)}
   }catch(error){packSectionFailed("Spheres",error)}
   if (packTab === "wayfarer") try{
   const statHelp = {
@@ -1522,15 +1522,26 @@ function openPack(tab) {
   }
   }catch(error){packSectionFailed("Stats",error)}
   if (packTab === "supplies") try{
-  const resource = document.createElement("p");
-  resource.textContent = `Cinder Iron ${save.materials.cinderIron} · weapon +${save.weaponLevel || 0} · section ${game.rx},${game.ry} `;
-  resource.append(Object.assign(document.createElement('span'), { className: 'wood-count', textContent: `Wood ${save.materials?.wood || 0} · Stone ${save.materials?.stone || 0} · ${save.digging?.shovel ? `Shovel: ${save.digging.shovel} dig${save.digging.shovel === 1 ? '' : 's'} left` : `a shovel takes ${DIG.recipe.wood} wood and ${DIG.recipe.stone} stone (Act facing a dungeon wall)`} · a skiff takes 3 wood (Act at deep water)` })); // release 119; stone and the shovel, release 225
-  body.append(resource);
-  // Release 265: what the Build button raises. Wood walls block a single blow; stone blocks take two and can be stood on.
+  // Release 283 (Tim: "the resources... in one line... easy to identify... I can't just quickly look and see how much wood
+  // and stone I have"): one row of resource tiles (icon, count, name), then the recipes together, with Continuous build.
+  const m = save.materials || {}, tiles = document.createElement("div"); tiles.className = "resource-tiles";
+  for (const [key, label, icon, n] of [["wood", "Wood", "🪵", m.wood], ["stone", "Stone", "🪨", m.stone], ["iron", "Cinder Iron", "⛓", m.cinderIron], ["shovel", "Shovel digs", "⛏", save.digging?.shovel]]) {
+    const t = document.createElement("div"); t.className = `resource-tile ${key}`; t.innerHTML = `<span class="icon" aria-hidden="true">${icon}</span><b>${Number(n) || 0}</b><small>${label}</small>`; tiles.append(t);
+  }
+  const note = document.createElement("p"); note.className = "resource-note"; note.textContent = `Weapon +${save.weaponLevel || 0} · Wood and stone carry up to 99 each.`;
+  { const first = body.querySelector(".sphere-row"); if (first) first.before(tiles, note); else body.append(tiles, note); } // the counts lead the tab
   const buildRow = document.createElement("div"); buildRow.className = "item build-pick";
-  const bt = document.createElement("strong"); bt.textContent = `Build with: ${BUILD.kinds[ensureBuild(save).build.kind].name}`;
-  const bp = document.createElement("p"); bp.textContent = `Wood wall: ${BUILD.kinds.wood.cost.wood} wood, blocks the way and one blow. Stone block: ${BUILD.kinds.stone.cost.stone} stone, takes two blows; jump onto it, and stack two. Builds crumble after ${BUILD.life} s; ${BUILD.maxOut} at most.`;
-  buildRow.append(bt, bp, ...BUILD_KINDS.map((k) => uiButton(BUILD.kinds[k].name, () => { setBuildKind(save, k); persist(); openPack("supplies"); })));
+  const chosen = ensureBuild(save).build.kind, now = activeBuildKind(save);
+  const bt = document.createElement("strong"); bt.textContent = "Recipes";
+  const pick = document.createElement("div"); pick.className = "build-choice";
+  pick.append(...BUILD_KINDS.map((k) => { const b = uiButton(`${BUILD.kinds[k].name} · ${Object.entries(BUILD.kinds[k].cost).map(([mat, n]) => `${n} ${mat}`).join(", ")}`, () => { setBuildKind(save, k); persist(); openPack("supplies"); }); b.classList.toggle("selected", k === chosen); return b; }));
+  const cont = document.createElement("label"); cont.className = "continuous-build";
+  const box = Object.assign(document.createElement("input"), { type: "checkbox", checked: !!save.build.continuous }); box.onchange = () => { setContinuousBuild(save, box.checked); persist(); openPack("supplies"); };
+  cont.append(box, document.createTextNode(" Continuous build: when the chosen material runs out, build with the next one"));
+  const status = document.createElement("small"); status.textContent = now ? `Build raises: ${BUILD.kinds[now].name}.` : "Build: ✕ not enough wood or stone for any build.";
+  const recipes = document.createElement("ul"); recipes.className = "recipe-list";
+  for (const line of [`Wood wall: ${BUILD.kinds.wood.cost.wood} wood. Blocks the way and one blow.`, `Stone block: ${BUILD.kinds.stone.cost.stone} stone. Takes two blows; jump onto it, and stack two.`, `Builds crumble after ${BUILD.life} s; ${BUILD.maxOut} stand at most.`, `Shovel: ${DIG.recipe.wood} wood and ${DIG.recipe.stone} stone (Act facing a dungeon wall).`, "Skiff: 3 wood (Act at deep water)."]) { const li = document.createElement("li"); li.textContent = line; recipes.append(li); }
+  buildRow.append(bt, pick, cont, status, recipes);
   body.append(buildRow);
   }catch(error){packSectionFailed("Resources",error)}
   if (packTab === "gear") try{
@@ -1932,7 +1943,9 @@ function updateHud(now) {
   }
   // Release 261: the spell preset button shows which preset (1 or 2) is in the slots.
   { const pb = hudEl('[data-action="preset"]'), n = String((save.magicSkills?.preset || 0) + 1); if (pb) { hudSet(pb, "text", n); hudSet(pb, "aria-label", `Spell preset ${n}: tap to switch`); } }
-  { const bb = hudEl('[data-action="build"]'), k = ensureBuild(save).build.kind; if (bb) { hudSet(bb, "aria-label", `Build a ${BUILD.kinds[k].name.toLowerCase()}`); hudSet(bb, "data-cooldown", k === "stone" ? "STONE" : "WOOD"); hudSet(bb, "data-kind", k); } } // release 265
+  // Release 283: the Build button names what it will raise now (continuous build may have moved on to the next material),
+  // REPAIR beside a damaged skiff, and is crossed out (an X) when no build can be afforded.
+  { const bb = hudEl('[data-action="build"]'), k = activeBuildKind(save), mend = !!game.mendTarget?.(); if (bb) { hudSet(bb, "aria-label", mend ? "Repair the skiff" : k ? `Build a ${BUILD.kinds[k].name.toLowerCase()}` : "Nothing to build with"); hudSet(bb, "data-cooldown", mend ? "REPAIR" : k ? k.toUpperCase() : "✕"); hudSet(bb, "data-kind", k || "none"); hudSet(bb, "class:spent", !mend && !k); } } // release 265
   // Spell slots A and B (release 113): each shows its castable's symbol in its attribute colour.
   for (const [action, slot] of [["spell", "a"], ["spell2", "b"]]) {
     const button = hudEl(`[data-action="${action}"]`), c = slotted(save, slot);

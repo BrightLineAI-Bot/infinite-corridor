@@ -27,9 +27,24 @@ export const BUILD_KINDS = Object.keys(BUILD.kinds);
 export function ensureBuild(save) {
   const b = save.build && typeof save.build === "object" ? save.build : {};
   save.build = { ...b, kind: BUILD_KINDS.includes(b.kind) ? b.kind : "wood" };
+  if (save.build.continuous !== undefined) save.build.continuous = save.build.continuous === true; // release 283
   return save;
 }
 export function setBuildKind(save, kind) { ensureBuild(save); if (BUILD_KINDS.includes(kind)) save.build.kind = kind; return save.build.kind; }
+// Release 283 (Tim: "a checkbox... continuous build... it'll keep building with [your chosen material] until you've run
+// out and then it'll just automatically build with the next resource... when you're out of resources... an X"):
+// save.build.continuous (additive, boolean). The chosen kind is always tried first, so new stock of it is used again.
+export function setContinuousBuild(save, on) { ensureBuild(save); save.build.continuous = !!on; return save.build.continuous; }
+export function canAffordBuild(save, kind) { const [[mat, need]] = Object.entries(BUILD.kinds[kind].cost); return (Number(save?.materials?.[mat]) || 0) >= need; }
+// The kind the Build button raises now, or null when nothing can be afforded (the button shows an X).
+export function activeBuildKind(save) {
+  const { kind, continuous } = ensureBuild(save).build;
+  if (canAffordBuild(save, kind)) return kind;
+  if (!continuous) return null;
+  const i = BUILD_KINDS.indexOf(kind);
+  for (let k = 1; k < BUILD_KINDS.length; k++) { const next = BUILD_KINDS[(i + k) % BUILD_KINDS.length]; if (canAffordBuild(save, next)) return next; }
+  return null;
+}
 
 const W = (map) => map.width || Math.round(Math.sqrt(map.tiles.length));
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
@@ -49,7 +64,7 @@ export function buildRefusal(map, x, y, kind, occupied) {
 }
 
 // Raises a build on (x, y). `game` supplies map, area, builds, save. Returns { ok, message }.
-export function placeBuild(game, x, y, kind = ensureBuild(game.save).build.kind, moving = true, run = null) {
+export function placeBuild(game, x, y, kind = activeBuildKind(game.save) || ensureBuild(game.save).build.kind, moving = true, run = null) { // release 283: continuous build picks the kind
   const K = BUILD.kinds[kind], m = (game.save.materials ||= {}), builds = (game.builds ||= []);
   const [[mat, need]] = Object.entries(K.cost), have = Number(m[mat]) || 0;
   if (builds.length >= BUILD.maxOut) return { ok: false, message: `${BUILD.maxOut} builds already stand. Wait for one to crumble.` };

@@ -2585,7 +2585,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release 283: dungeon water is deadly; rot shows grey on the health bar; the crypt sigil — 2026-10-22
+## Release 283: dungeon water is deadly; rot shows grey on the health bar; the crypt sigil; Supplies and Continuous build — 2026-10-22
 
 Tim, 2026-10-22: "in dungeons, the traversal should be a little bit more consequential... if you go into water in the dungeons... you just start taking health damage... not your [max] health. Just your hp... a pretty rapid damage over time. And if you go into water when you have no stamina... while you're in a dungeon, you just die".
 
@@ -2602,6 +2602,15 @@ Tim, 2026-10-22: "in dungeons, the traversal should be a little bit more consequ
   - The bar's maximum stays the full max health.
 - **Crypt coffins.** Tim: change the cross to "some type of cosmic or arcane" symbol. `landscape-render.ts` `PAINT.sarcophagus` now carves the Watcher's orrery in pale violet: an eye within a ring, a tilted orbit with its moon, a crescent above and a three-star constellation below.
   - It is paint only and draws no extra random numbers, so the crack roll and the tile cache are unchanged.
+- **Supplies and Continuous build.** Tim: "the resources... in one line... easy to identify"; "the shovel and skiff recipes should just go underneath... the recipe section"; "a checkbox... continuous build... when you're out of resources... an X".
+  - `building.ts`:
+    - `save.build.continuous` (additive boolean, normalised in `ensureBuild`) and `setContinuousBuild`.
+    - `canAffordBuild` and `activeBuildKind(save)`: the chosen kind if it is affordable. Otherwise, with Continuous build, the next affordable kind in `BUILD_KINDS` order. Otherwise null.
+    - `placeBuild` defaults to the active kind.
+  - `main.ts`:
+    - Pack → Supplies opens with `.resource-tiles` (wood, stone, Cinder Iron, shovel digs).
+    - The Recipes block holds the material picker (the chosen one highlighted), the Continuous build checkbox, what Build raises now, and the recipe list.
+    - The HUD Build button shows `WOOD` or `STONE` for the active kind, `REPAIR` when `game.mendTarget()` finds a damaged skiff, and otherwise `✕` with the `spent` class (a red cross in `styles.css`).
 
 **BOUNDARY:**
 - No save or generator changes.
