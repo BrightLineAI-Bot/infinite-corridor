@@ -62,9 +62,27 @@ test('the Gate Revenant is held with the world beasts; nothing else is', async (
   assert.ok(c.maxHp > a.maxHp && c.damage > a.damage);
 });
 
-test('a supply cache gives 2 stone and 1 wood on top of its supply', async () => {
+test('a supply cache gives a stone, a wood and a restorative draught on top of its supply (release 277)', async () => {
   const { applyInteraction } = await import('../src/interactions.ts');
-  const s = freshSave(); s.materials.stone = 0; s.materials.wood = 0;
-  const r = applyInteraction({ id: 'sc', kind: 'supplyCache', supplyType: 'potion', state: 'sealed', actions: ['collect'] }, 'collect', s);
-  assert.equal(s.materials.stone, 2); assert.equal(s.materials.wood, 1); assert.match(r.message, /\+2 stone, \+1 wood/);
+  const s = freshSave(); s.materials.stone = 0; s.materials.wood = 0; s.consumables.restorativeDraught = 0; s.consumables.lumenPhial = 0;
+  const r = applyInteraction({ id: 'sc', kind: 'supplyCache', supplyType: 'lumenPhial', state: 'ready', actions: ['collect'] }, 'collect', s);
+  assert.equal(s.materials.stone, 1); assert.equal(s.materials.wood, 1); assert.equal(s.consumables.restorativeDraught, 1); assert.equal(s.consumables.lumenPhial, 1);
+  assert.match(r.message, /\+1 stone, \+1 wood, \+1 restorative draught/);
+  const d = freshSave(); d.consumables.restorativeDraught = 0;
+  applyInteraction({ id: 'sd', kind: 'supplyCache', supplyType: 'restorativeDraught', state: 'ready', actions: ['collect'] }, 'collect', d);
+  assert.equal(d.consumables.restorativeDraught, 1, 'a draught cache gives just its one');
+});
+
+test('a Broken Observatory gives one seeded cache on its first inspection: 3 wood, 3 stone, or a stone and a draught (release 277)', async () => {
+  const { applyInteraction } = await import('../src/interactions.ts');
+  const { DIG } = await import('../src/digging.ts');
+  const seen = new Set();
+  for (let i = 0; i < 24; i++) {
+    const s = freshSave(); s.materials.stone = 0; s.materials.wood = 0; s.consumables.restorativeDraught = 0;
+    const o = { id: `ruin-${i}`, kind: 'ruinMarker', state: 'ready', actions: ['inspect'] };
+    applyInteraction(o, 'inspect', s, '3,4'); applyInteraction({ ...o, state: 'ready' }, 'inspect', s, '3,4');
+    const got = JSON.stringify([s.materials.stone, s.materials.wood, s.consumables.restorativeDraught]); seen.add(got);
+    assert.ok(DIG.observatory.some((g) => JSON.stringify([g.stone || 0, g.wood || 0, g.restorativeDraught || 0]) === got), `once, one of the three (${got})`);
+  }
+  assert.equal(seen.size, 3, 'all three appear');
 });

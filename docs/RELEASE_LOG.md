@@ -13,14 +13,15 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**277**
+**279**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 275 | Claude | `claude/dreamy-rubin-yn6q2p` | Creature stages: Aperture holds at a stage's top tier until the Listener falls (1 kill → Stage 2, then every 2); Stage 1 beasts held from tier 13 until 3 Listener kills; Act gathers stone from rocks | Building. |
-| 273 | Claude | PR #115 | World beasts by Aperture tier (3–8); four Crossing Sigils per horde; Stage 1 canon | Merged. |
+| 277 | Claude | `claude/dreamy-rubin-yn6q2p` | Supply caches give a stone, a wood and a draught; Broken Observatories hold a seeded cache (3 wood, 3 stone, or a stone and a draught) | Building. |
+| 275 | Claude | PR #116 | Creature stages; Stage 1 world beasts and Gate Revenant held from tier 13; a rock gives one stone; supply caches 2 stone + 1 wood | Merged; preview `r275-ead972c18ec8`. |
+| 273 | Claude | PR #115 | World beasts by Aperture tier (3–8); four Crossing Sigils per horde; Stage 1 canon | Merged; preview with 275. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)

@@ -20,7 +20,10 @@ export const DIG = {
   recipe: { wood: 1, stone: 1 }, // what a shovel costs (release 259, Tim: "one wood and one stone to make a shovel")
   carryStone: 99,                // the most stone the Wayfarer carries (release 259 set 2; release 261, Tim: "99 wood and 99 stone. You can dig as much as you want")
   stone: { wall: 1, chip: 1, break: 0, spot: 2 }, // release 275 (Tim: "every rock gives one stone"): breaking a chipped rock now only clears it (it gave 2)
-  cache: { stone: 2, wood: 1 }, // release 275 (Tim: "The supply caches give 2 stone and one wood"), on top of their supply
+  // Release 277 (Tim, 2026-10-22: "the supply cache will just give you one of each of those, a stone... a draught, and a wood";
+  // "the observatory can give you a random of... three wood or three stone or... one stone and one draught").
+  cache: { stone: 1, wood: 1, restorativeDraught: 1 }, // on top of the cache's own supply (a draught cache gives just its one)
+  observatory: [{ wood: 3 }, { stone: 3 }, { stone: 1, restorativeDraught: 1 }], // one, seeded per Broken Observatory, on its first inspection
   treasureChance: .1,            // share of wall blocks that hide something
   glintShare: .4,                // share of those whose glint shows on an exposed face
   spotChance: .03, spotMinDepth: 2,

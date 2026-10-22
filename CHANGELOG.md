@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 277 — a supply cache now gives a stone, a wood and a restorative draught along with its usual supply (one draught in all if its supply is a draught; it gave 2 stone and 1 wood in 275).
+- Release 277 — a Broken Observatory holds a cache: the first time you inspect one it gives 3 wood, 3 stone, or a stone and a restorative draught (which one is fixed for each observatory).
+
 - Release 275 — supply caches now also give 2 stone and 1 wood, on top of their supplies.
 - Release 275 — gathering stone fixed. With Might 3 or more, Act (and Tool) on a rock used to roll it aside first, giving no stone and leaving nothing to chip. Now the first press chips the rock's stone (every rock gives one), the next breaks it into rubble (breaking no longer adds stone), and only then can it be rolled aside. Rubble and rolled-aside rocks no longer catch your presses, so Act goes to the next rock.
 - Release 275 — creature stages. Every creature so far is Stage 1, and Stage 1 runs to Aperture tier 12. Your Aperture now stops one point short of tier 13 until you fell the Listener at the Far Gate; the first Listener opens Stage 2 (up to tier 24), and every two more open the next stage (tier 36 after the third, and so on). A save already past its stage's top tier keeps its Aperture but gains no more until the Listener falls. The HUD shows your stage beside the tier (S1), and the Aperture card says when the stage is holding you.
