@@ -46,7 +46,7 @@ export function validActions(o,s){
  if(o.kind==='arenaEntrance')return['enter'];
  if(o.kind==='shipwright')return shipwrightActions(s);
  if(o.kind==='diveSite')return diveSiteActions(s);
- if(o.kind==='diveExit')return['surface'];
+ if(o.kind==='diveExit')return['surface'];if(o.kind==='diveOnward')return['follow'];
  if(o.kind==='airPocket')return[];
  if(o.kind==='shipwreck')return s.worldFlags[o.id]?[]:['salvage'];
  if(o.kind==='skiff')return ensureBoatState(s).owned?['board']:[];

@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**311**
+**313**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 309 | Claude | `claude/dreamy-rubin-yn6q2p` | Tap-to-target lock; Build, item or spell in any of the three preset slots | Building. |
+| 311 | Claude | `claude/dreamy-rubin-yn6q2p` | The submersible: cinder-iron frame, plating, 5% guard, dive-dodge, buoy diving, deep current to the next buoy | Building. |
+| 309 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #133) | Tap-to-target lock; Build, item or spell in any of the three preset slots | Merged. |
 | 307 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #132) | Boss balance (half health, 90% damage, four tries, no Blob regeneration); tiered boss poise | Merged. |
 | 305 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #131) | The Far Sleep made strange: dream terrain past depth 35 for unexplored sections | Merged. |
 | 303 | Claude | `claude/dreamy-rubin-yn6q2p` (PR #130) | The Poison Crypt: rare mire dungeon, seep pools, seeplings homing to the half-strength Mire Heart, gas jets | Merged; preview `r303-8511873a69c8`. |
