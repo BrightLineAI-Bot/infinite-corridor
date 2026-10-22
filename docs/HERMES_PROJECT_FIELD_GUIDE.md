@@ -2585,6 +2585,22 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 329: the fallen pause — 2026-10-22
+
+Tim, 2026-10-22: "for world bosses... If they kill you, there should be like a... 4 second... pause... where you see the boss just like moving around or milling around after you die. Just to give you like a second to like collect yourself. Before you have to run back into the fight."
+
+**CODE:**
+- **`game.ts`**:
+  - `DEATH_PAUSE = { seconds: 4, millSpeed: 1.1, millRadius: 3 }`.
+  - The death block in `update` is moved, unchanged, into `resolveDeath(now, input, fellIntoHazard, terrainHazard)`.
+  - At `p.hp <= 0`, when `deathPause` is on (`main.ts` turns it on for the played game; headless simulations and older tests keep the immediate recovery), the death is not a hazard fall and a live world beast or Questing Beast is present, the game sets `this.fallen = { until }`. It also knocks the Wayfarer down (`stunnedUntil`), drops hostile shots and calms the beasts (`aggro = false`, `millHome`).
+  - While `fallen`, `update` runs only `tickFallen`. That swallows input and makes each beast wander within `millRadius` of where it stood. When the time is up it calls `resolveDeath`.
+- **Tests:** `tests/fallen-pause-329.test.ts`.
+
+**BOUNDARY:**
+- Tries, rewards and the beast reset are exactly as before, because they all run in `resolveDeath`.
+- `fallen` is runtime-only, with no save change. Closing the game mid-pause leaves hp 0 in the save, and the next update recovers at the checkpoint.
+
 ## Release 327: louder sound — 2026-10-22
 
 Tim, 2026-10-22: "The music and the game is too low... it needs to be louder... on my headphones, and it's just a little bit too understated".
