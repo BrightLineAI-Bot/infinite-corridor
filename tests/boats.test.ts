@@ -62,7 +62,7 @@ test('the Shipwright sells a skiff only to a Tidemantle holder who can pay', () 
   const dock = { rx: 3, ry: 4, x: 5, y: 6 };
   const poor = freshSave(); assert.equal(buySkiff(poor, dock).ok, false, 'no Tidemantle');
   grantTidemantle(poor, 'test'); assert.equal(buySkiff(poor, dock).ok, false, 'no money');
-  const s = rich(freshSave()), r = buySkiff(s, dock);
+  const s = rich(freshSave()), r = buySkiff(s, dock); s.perception.aperture = 2231; // release 315: the rig is offered from Infinite II
   assert.ok(r.ok); assert.equal(s.currency, 500 - BOAT.price.currency); assert.equal(s.materials.cinderIron, 10 - BOAT.price.cinderIron);
   assert.deepEqual(s.boat.home, dock); assert.equal(s.boat.hull, BOAT.maxHull);
   assert.equal(buySkiff(s, dock).ok, false, 'one skiff');

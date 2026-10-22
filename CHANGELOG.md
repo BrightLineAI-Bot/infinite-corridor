@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 315 — the submersible becomes a robot, and diving is unlocked step by step:
+  - **The robot.** The submersible is now a small silver robot, a little larger than the Wayfarer: a big round viewport where you can see them, short legs, two robotic arms with three-fingered hands, and boosters on its back. At sea it sits half in the water.
+  - **Diving with the rig and Lens.** This needs the Infinite II band of the Aperture. Before that the Shipwright does not offer the dive rig and the buoys only show what they need. The skiff and the Tidemantle are unchanged.
+  - **The submersible.** This also needs Infinite II, plus the Void Walker or a Listener defeated.
+  - **Under the sea by submersible.** Diving at buoys and riding the deep current to the next buoy needs Infinite III, plus both the Void Walker and a Listener defeated.
+  - **Messages.** Each locked step tells you what is still missing.
+
 - Release 313 — a skill's button now shows how long its effect has left. While Ember Form, Quickening, Aerial Step, Veil Guard or Force Channel is running (or Rift Step's glyphs are riding on your hits), its button glows gold, and the gold drains away from the left as the effect runs out. The cooldown number still counts down as before.
 
 - Release 311 — the submersible:

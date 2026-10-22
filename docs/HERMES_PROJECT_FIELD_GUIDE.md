@@ -2585,6 +2585,33 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 315: vehicle progression; the submersible robot — 2026-10-22
+
+Tim, 2026-10-22, with his answers: "Infinite 2" and "Infinite 3" are the bands named Infinite II and Infinite III (tiers 12 and 13); the skiff and the Tidemantle stay early. He also said:
+- "you can't dive until you get to infinite 2... those quests don't become available until infinite 2";
+- "you can't get the submersible until you're at infinite 2 and... until you've beaten either the void Walker or the listener";
+- "you can't go underwater with a submersible until... infinite tier 3... you have to have beaten the void Walker and the listener at least once";
+- "the submersible should kind of look like a robot... a big large viewpoint... very short legs... 2 robotic arms... boosters on the back... a little bit larger than the player".
+
+**CODE:**
+- **`vehicle-gates.ts`** (new module, in `scripts/build.mjs` and both precache lists):
+  - `VEHICLE_GATES` (diveTier 12, subTier 12, underwaterTier 13, mechTier 13, mechListeners 2, droneListeners 4).
+  - `diveGate`, `subGate`, `underwaterGate`, `mechGate` and `droneGate` each return `{ ok, why }`. They read `apertureTier`, `worldBeasts.voidWalker.slain` and `stages.ts` `listenerKills`.
+  - `mechGate` and `droneGate` are for the next releases. Gates live outside `boats.ts`, because `landscape.ts` imports boats and a world import there would cycle.
+- **`interactions.ts`**: the Shipwright's `buyRig` and a buoy's `dive` appear only from Infinite II (a submersible's dive appears once `underwaterGate` holds).
+- **`game.ts`**:
+  - `diveAction` checks `diveGate` for rig divers, `underwaterGate` for the submersible, and `underwaterGate` for the deep current.
+  - `useConsumable("submersible")` checks `subGate`. `main.ts` disables Forge with the reason.
+- **`renderer.ts`** `drawSubmersible` draws the robot:
+  - back: boosters (flaming ashore), shell, viewport frame;
+  - front: lower shell over the legs, the short legs, glass, two jointed arms with three-fingered manipulators, and at sea a soft water cover with a ripple ring below the waterline.
+  - Diving, only an arm and bubbles show. `ITEM_ICONS.submersible` is the robot.
+
+**BOUNDARY:**
+- A save with a rig and Lens below Infinite II keeps both but cannot dive until it reaches the band. A submersible already fitted keeps its plating and dive-dodge.
+- No save change.
+- Tests: `tests/vehicle-gates-315.test.ts`. `tests/diving.test.ts`, `tests/boats.test.ts`, `tests/grottoes.test.ts` and `tests/submersible-311.test.ts` now set their divers at the required bands.
+
 ## Release 313: the skill buff bar — 2026-10-22
 
 Tim, 2026-10-22: "a timer on the skills to show how long they last... the button can... get illuminated, like a yellow... that color can just drain out... left to right... until the buff is over... depending on how long it is supposed to last".
