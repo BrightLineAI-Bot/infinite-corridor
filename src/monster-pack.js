@@ -7,9 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r285-d5a533b38404";
-import { hashSeed } from "./random.js?v=r285-d5a533b38404";
-import { updateAstralActor } from "./astral-worm.js?v=r285-d5a533b38404";
+import { stageOneBeastReference } from "./stages.js?v=r291-4bc624609d78";
+import { hashSeed } from "./random.js?v=r291-4bc624609d78";
+import { updateAstralActor } from "./astral-worm.js?v=r291-4bc624609d78";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -650,14 +650,15 @@ export const CRYSTAL = {
   // blinks onto it if held back for `manifestBlink` s. It hunts the Wayfarer "for a while": out of sight and beyond
   // `roamSight` for `forgetAfter` s, it drops its aggro and returns to its own patrol, which roams the whole dungeon.
   wallLinger: 1.5, manifestSearch: 10, manifestSpeed: 2.4, manifestBlink: 1.2, forgetAfter: 12, // wallLinger was 2.5 (release 285)
-  // Release r285-d5a533b38404 (Tim, 2026-10-22: "he retreats to the wall constantly... for every 5 seconds he can only spend 1 second in
+  // Release 285 (Tim, 2026-10-22: "he retreats to the wall constantly... for every 5 seconds he can only spend 1 second in
   // the tile... so that I actually get to fight him"): a hidden wall budget. Engaged, each second off reachable floor spends
   // a second of `wallBudget`; it refills over `wallWindow` s on reachable floor. Spent, it must come out, even mid-attack.
   wallBudget: 1, wallWindow: 5,
-  // Release r285-d5a533b38404 (Tim: "reduce his dodging... so he should stay and fight for a little bit... increase the amount of hits it
+  // Release 285 (Tim: "reduce his dodging... so he should stay and fight for a little bit... increase the amount of hits it
   // takes to stagger him... maybe like 10 seconds where it can't be staggered again"): its own evade cooldown (the shared
   // one is QB_MOVES.evadeCooldown, 1.1 s), and after rising from a poise break it cannot break again for `poiseGuard` s.
   evadeCooldown: 3, evadeCooldownEnraged: 2.2, poiseGuard: 10,
+  touchAggro: 1.1, // release 287: unprovoked, it notices the Wayfarer only this close (a touch) or when hurt
   // In a dungeon it may phase through an interior wall up to this many tiles thick (Game.roamerBounds), never beyond the edge.
   boundsSpan: 3,
 };
@@ -2026,7 +2027,7 @@ function crystalPoise(e, s, w, p) {
   if (s.broken > 0) return true;
   // Up again: it springs away from the Wayfarer at once.
   s.broken = 0; e.crystalFall = 0; s.poiseGuard = CRYSTAL.poiseGuard; const away = unit(e.x - p.x, e.y - p.y), side = s.orbitDir || 1;
-  s.evade = { ...unit(away.x - away.y * side * .6, away.y + away.x * side * .6), t: QB_MOVES.evadeTime }; e.untargetable = true; s.cd.qbEvade = QB_MOVES.evadeCooldown;
+  s.evade = { ...unit(away.x - away.y * side * .6, away.y + away.x * side * .6), t: QB_MOVES.evadeTime }; e.untargetable = true; s.cd.qbEvade = CRYSTAL.evadeCooldown; // release 289: its own (longer) cooldown, as after any dodge
   return true;
 }
 
@@ -2123,7 +2124,11 @@ export function updatePackMonster(e, w) {
   if (e.fleeTo) { fleeStep(e, s, w); return; }
   if (e.illusion && (w.now - (e.bornAt || 0)) > 14000) { e.dead = true; return; }
   const p = center(w.player), d = distance(p, e), brain = BRAINS[e.brain || def.brain], roaming = isDungeonRoamer(e, w.area), hunting = isDungeonHunter(e, w.area);
-  if (!e.aggro && d < (hunting ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!hunting || w.los(e, w.player))) e.aggro = true;
+  // Release 287 (Tim: "the crystal doesn't have to aggro to you, he can just be wandering around... if you touch him, or if
+  // you attack him, he'll aggro"): a roaming dungeon Crystal ignores the Wayfarer until touched or hurt (hits alert it).
+  const calmCrystal = roaming && e.kind === "psychicCrystal";
+  if (calmCrystal && !e.aggro) { if (d < CRYSTAL.touchAggro || (Number.isFinite(s.calmHp) && e.hp < s.calmHp)) e.aggro = true; s.calmHp = e.hp; }
+  else if (!e.aggro && d < (hunting ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!hunting || w.los(e, w.player))) e.aggro = true;
   e.hidden = !!(brain?.hiddenUntilAggro && !e.aggro) || (s.attack === "burrowAmbush" && ["travel", "erupt"].includes(s.phase));
   if (!e.aggro) {
     if (hunting && e.kind === "voidWalker") { w.walkerPatrol?.(e, s); return; }

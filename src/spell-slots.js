@@ -4,7 +4,7 @@
 // always-on bonus while both are in place, discovered the first time the pair is slotted. Spells now keep their own
 // cooldowns (`magicSkills.cooldowns["spell:<id>"]`), so two spells can share the buttons.
 // Data and pure rules; game.ts casts, main.ts draws the buttons and the Arcanum.
-import { SPELLS, APERTURE_SKILLS, skillRank } from "./items.js?v=r285-d5a533b38404";
+import { SPELLS, APERTURE_SKILLS, skillRank } from "./items.js?v=r291-4bc624609d78";
 
 export const ATTRIBUTES = {
   // icon (release 157): the element's mark beside every spell and discipline in the Arcanum.
@@ -68,20 +68,35 @@ export function ensureSlots(save) {
   ms.pairingsSeen = { ...(ms.pairingsSeen || {}) };
   // Release 261 spell presets (Tim: "two different presets for the spells... I'll just toggle it"): two saved A/B pairs;
   // the slots always hold the active one. Additive at schema 14: a save without presets starts with both as its slots.
-  const pair = (q) => (q && typeof q === "object" ? { a: valid(q.a), b: valid(q.b) } : null);
+  // Release r291-4bc624609d78: each preset also says what the Build button does: "build", or "item" with the item it uses (additive).
+  const pair = (q) => (q && typeof q === "object" ? { a: valid(q.a), b: valid(q.b), button: q.button === "item" ? "item" : "build", item: BUTTON_ITEMS.includes(q.item) ? q.item : null } : null);
   const list = Array.isArray(ms.presets) ? ms.presets.slice(0, PRESETS).map(pair) : [];
   ms.preset = ms.preset === 1 ? 1 : 0;
-  ms.presets = Array.from({ length: PRESETS }, (_, i) => list[i] || { ...ms.slots });
-  ms.presets[ms.preset] = { ...ms.slots };
+  ms.presets = Array.from({ length: PRESETS }, (_, i) => list[i] || { ...ms.slots, button: "build", item: null });
+  ms.presets[ms.preset] = { ...ms.presets[ms.preset], ...ms.slots };
   return ms.slots;
 }
 export const PRESETS = 2;
+// Release r291-4bc624609d78 (Tim, 2026-10-22: "you should also be able to select whether... the build button is a build or an item... on
+// your preset... next to each item in the supplies menu... preset 1 or preset 2... if preset 1 is set to build, then only
+// preset 2 will be selectable"). The items the Build button can use.
+export const BUTTON_ITEMS = ["restorativeDraught", "ironbarkTonic", "lumenPhial", "clearrootAmpoule", "hullShield"];
+export function presetButton(save, i = save?.magicSkills?.preset || 0) { ensureSlots(save); const p = save.magicSkills.presets[i]; return { button: p.button === "item" ? "item" : "build", item: p.item || null }; }
+export function setPresetButton(save, i, mode) { ensureSlots(save); const p = save.magicSkills.presets[i]; if (!p) return null; p.button = mode === "item" ? "item" : "build"; return p.button; }
+// Gives `type` to preset i's Build button (only while that preset's button is set to Item); again, takes it off.
+export function assignPresetItem(save, i, type) {
+  ensureSlots(save); const p = save.magicSkills.presets[i];
+  if (!p || p.button !== "item" || !BUTTON_ITEMS.includes(type)) return { ok: false, message: `Preset ${i + 1}'s button is set to Build. Switch it to Item in the Arcanum presets first.` };
+  p.item = p.item === type ? null : type; return { ok: true, message: p.item ? `Preset ${i + 1}: the button uses this item.` : `Preset ${i + 1}: no item on the button.` };
+}
+// What the Build button does now: { mode: "build" } or { mode: "item", item } (item may be null: nothing assigned).
+export function activeButton(save) { const b = presetButton(save); return b.button === "item" ? { mode: "item", item: b.item } : { mode: "build" }; }
 // Switch to the other preset: its spells go into A and B (passives are untouched). Returns the message to show.
 export function togglePreset(save) {
   const slots = ensureSlots(save), ms = save.magicSkills, next = (ms.preset + 1) % PRESETS, p = ms.presets[next], have = availableCastables(save);
-  ms.presets[ms.preset] = { ...slots }; ms.preset = next;
+  ms.presets[ms.preset] = { ...ms.presets[ms.preset], ...slots }; ms.preset = next;
   slots.a = p.a && have.includes(p.a) ? p.a : null; slots.b = p.b && have.includes(p.b) && p.b !== slots.a ? p.b : null;
-  ms.presets[next] = { ...slots }; syncLegacy(save);
+  ms.presets[next] = { ...p, ...slots }; syncLegacy(save);
   const a = slotted(save, "a"), b = slotted(save, "b");
   return { ok: true, preset: next + 1, message: `Spell preset ${next + 1}: A ${a ? a.name : "empty"} · B ${b ? b.name : "empty"}.` };
 }
@@ -98,7 +113,7 @@ export function setSlot(save, slot, key) {
   if (key && !availableCastables(save).includes(key)) return { ok: false, message: "Not learned yet." };
   if (key && slots[other] === key) slots[other] = slots[slot];
   slots[slot] = key || null;
-  save.magicSkills.presets[save.magicSkills.preset] = { ...slots }; // release 261: setting a slot sets the active preset
+  save.magicSkills.presets[save.magicSkills.preset] = { ...save.magicSkills.presets[save.magicSkills.preset], ...slots }; // release 261: setting a slot sets the active preset
   syncLegacy(save);
   const p = activePairing(save);
   if (p && !save.magicSkills.pairingsSeen[p.key]) { save.magicSkills.pairingsSeen[p.key] = true; return { ok: true, message: `Pairing found: ${p.name} — ${p.text}`, pairing: p }; }

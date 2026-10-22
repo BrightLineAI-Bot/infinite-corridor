@@ -9,7 +9,7 @@
 // block is a `perch`, one landscape level higher per block stacked (only the Wayfarer may step onto a perch, jumping
 // as onto any ledge; in a dungeon, which has no levels, it is simply a block they can stand on). Builds are transient
 // like the Turtle's ice: a section load clears them and they are never saved. Data and rules; game.ts calls in.
-import { LETHAL_KINDS } from "./landscape.js?v=r285-d5a533b38404";
+import { LETHAL_KINDS } from "./landscape.js?v=r291-4bc624609d78";
 
 export const BUILD = {
   kinds: {
@@ -67,7 +67,6 @@ export function buildRefusal(map, x, y, kind, occupied) {
 export function placeBuild(game, x, y, kind = activeBuildKind(game.save) || ensureBuild(game.save).build.kind, moving = true, run = null) { // release 283: continuous build picks the kind
   const K = BUILD.kinds[kind], m = (game.save.materials ||= {}), builds = (game.builds ||= []);
   const [[mat, need]] = Object.entries(K.cost), have = Number(m[mat]) || 0;
-  if (builds.length >= BUILD.maxOut) return { ok: false, message: `${BUILD.maxOut} builds already stand. Wait for one to crumble.` };
   if (have < need) return { ok: false, message: `A ${K.name.toLowerCase()} takes ${need} ${mat} (you have ${have}).` };
   const p = game.player, foot = { x: Math.floor(p.x + .5), y: Math.floor(p.y + .75) };
   if (foot.x === x && foot.y === y) return { ok: false, message: "Face open ground to build." };
@@ -76,6 +75,9 @@ export function placeBuild(game, x, y, kind = activeBuildKind(game.save) || ensu
   if (kind === "wood" && p.x + .76 > x && p.x + .24 < x + 1 && p.y + .88 > y && p.y + .5 < y + 1) return { ok: false, message: "Step back a little to build there." };
   const occupied = (game.enemies || []).some((e) => !e.dead && Math.floor(e.x + .5) === x && Math.floor(e.y + .75) === y);
   const why = buildRefusal(game.map, x, y, kind, occupied); if (why) return { ok: false, message: why };
+  // Release 287 (Tim: "you can only have 5, so the bottom block would disappear"): at the limit the oldest build gives way.
+  // A stack's lower block is older than the one on it: removing it lowers the stack, and the upper block stays.
+  if (builds.length >= BUILD.maxOut) { const oldest = builds[0]; if (oldest.x === x && oldest.y === y && kind === "stone") return { ok: false, message: "That stack is the oldest build: raise the next block somewhere else." }; breakBuild(game, oldest); }
   const w = W(game.map), i = y * w + x, t = game.map.tiles[i];
   m[mat] = have - need;
   if (t.build === "stone") { // stacking: the block below keeps its own record
@@ -91,6 +93,17 @@ export function placeBuild(game, x, y, kind = activeBuildKind(game.save) || ensu
   return { ok: true, message: `${K.name} raised. ${m[mat]} ${mat} left.` };
 }
 
+// Release 287 (Tim: "if a monster is flying... your blocks that are stacked too high will impede its motion... 2 blocks
+// stacked"): a tile no flier may enter (a wall is blocked for everyone already). Charges still break builds (tickBuilds).
+export const BUILD_FLIER_STACK = 2;
+export function tallBuildAt(map, width, x, y) {
+  const left = x + .24, right = x + .76, top = y + .5, bottom = y + .88, h = Math.floor(map.tiles.length / width);
+  for (let ty = Math.floor(top); ty <= Math.floor(bottom - 1e-6); ty++) for (let tx = Math.floor(left); tx <= Math.floor(right - 1e-6); tx++) {
+    if (tx < 0 || ty < 0 || tx >= width || ty >= h) continue;
+    const t = map.tiles[ty * width + tx]; if (t?.build === "wood" || (t?.build === "stone" && (t.buildLevel || 1) >= BUILD_FLIER_STACK)) return true;
+  }
+  return false;
+}
 // Removes one build (the top block of a stack first) and restores its tile.
 export function breakBuild(game, b) {
   const builds = game.builds || [], at = builds.indexOf(b); if (at < 0) return false;

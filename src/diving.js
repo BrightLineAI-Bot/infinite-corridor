@@ -4,8 +4,8 @@
 // path (id prefix `dive:`, a bounded `arena` map, so dungeon completion and discovery do not apply). Below, a readable
 // breath meter drains; air pockets refill it; at zero the diver takes damage until they reach air or surface.
 // Data and pure rules; game.ts calls in from interaction, area loading and update.
-import { hashSeed, rng } from "./random.js?v=r285-d5a533b38404";
-import { annotateDungeon } from "./dungeon-framework.js?v=r285-d5a533b38404";
+import { hashSeed, rng } from "./random.js?v=r291-4bc624609d78";
+import { annotateDungeon } from "./dungeon-framework.js?v=r291-4bc624609d78";
 
 export const DIVE = {
   rig: { currency: 80, cinderIron: 2 },
