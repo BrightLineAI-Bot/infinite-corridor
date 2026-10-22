@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 293 — Options → Accessibility has a Child-safe Glimpses switch. With it on, the horror and violence Glimpses never appear, and they are hidden from the Library and the previews; creatures are unchanged. Turn it off and they come back. Items now have their own drawn icons, on the Build button and in Supplies: a bark shield for Ironbark Tonic, a glowing vial for Lumen Phial, a green ampoule with roots for Clearroot, and a shielded hull for the Hull Shield. The Restorative Draught is no longer offered for presets, since it has its own Potion button.
+
 - Release 291 — presets and the back button:
   - **Presets.** Each spell preset now also chooses what the Build button does: Build, or Item. Pick the item in Pack → Supplies: each item has Preset 1 and Preset 2 buttons, and only a preset set to Item can take one. In Item mode the button shows the item and how many you have, and pressing it uses one.
   - **Back button.** The phone's back button now reliably opens the pause menu during play and closes it again. Before, the first press could leave the app, and pressing back on the pause menu left the game frozen.

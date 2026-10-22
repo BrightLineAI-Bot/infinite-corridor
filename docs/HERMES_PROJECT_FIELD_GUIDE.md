@@ -2585,6 +2585,29 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 293: child-safe Glimpses; item icons — 2026-10-22
+
+Tim, 2026-10-22:
+- "a child safety setting... when I'm playing with my son... it turns off the terrifying or horror glimpses... the creatures and monsters are fine, but the glimpses that show like people getting killed... I can just turn it back on".
+- "the draught doesn't need a preset... convincing symbols for each one... relevant and easy to discern".
+
+**CODE:**
+- **Child-safe Glimpses**:
+  - `glimpses.ts` marks release 203's Glimpses `mature`: The Fourth Floor, The Hunt, The Trench, The Drowning, The Wheat and The Burning Plain.
+  - `glimpseAllowed(id, family)`; `pickGlimpse` / `glimpseFor` take `{ family }`.
+  - `persistence.ts` adds the `familySafe` setting (default off, normalised).
+  - `main.ts`: the Options → Accessibility toggle. Glimpse cues pass `{ family: settings.familySafe }`, and the Library and the previews list only allowed Glimpses. Saves are untouched.
+- **Item icons** (`main.ts` `ITEM_ICONS`): solid filled SVGs, shown on the Build button in Item mode and beside the item titles in Supplies.
+  - Ironbark Tonic: a bark shield with an iron rim.
+  - Lumen Phial: a gold vial with rays.
+  - Clearroot Ampoule: a green ampoule with pale roots.
+  - Hull Shield: a teal shield over a skiff hull.
+- `spell-slots.ts` drops the draught from `BUTTON_ITEMS`; a preset holding it normalises to no item.
+
+**BOUNDARY:**
+- Device setting only; saves are unchanged.
+- Tests: `tests/family-safe-293.test.ts`. `tests/preset-button-291.test.ts` now uses the tonic.
+
 ## Release 291: preset item buttons; the back button; Crossing Sigils in Supplies — 2026-10-22
 
 Tim, 2026-10-22:
