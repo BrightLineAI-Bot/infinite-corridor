@@ -28,7 +28,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness , togglePreset } from "./spell-slots.ts";
+import { ensureSlots, slotted, pairingMods, slotReadiness, togglePreset, activeButton } from "./spell-slots.ts";
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
@@ -4020,7 +4020,9 @@ export class Game {
     if (input.consume("potion")) this.useConsumable("restorativeDraught", now);
     if (input.consume("preset")) this.message = togglePreset(this.save).message; // release 261: swap spell presets 1 and 2
     if (input.consume("build")) { // release 269: beside (or aboard) a damaged skiff, Build patches the hull instead
-      if (this.mendTarget()) this.message = mendSkiff(this.save).message;
+      const btn = activeButton(this.save); // release 291: a preset may make it an item button
+      if (btn.mode === "item") { if (!btn.item) this.message = `Preset ${(this.save.magicSkills.preset || 0) + 1}: choose its item in Pack → Supplies.`; else if (!((this.save.consumables?.[btn.item] || 0) > 0)) this.message = "None left."; else this.useConsumable(btn.item, now); }
+      else if (this.mendTarget()) this.message = mendSkiff(this.save).message;
       else if (this.area === "overworld" && aboard(this.save)) this.message = "Hold Build to raise a hull shield.";
       else { const at = buildSpot(p); this.message = placeBuild(this, at.x, at.y, undefined, Math.hypot(x, y) > .15).message; this.save.aimMode = "build"; this.save.toolMode = false; } // release 267: the button also turns on build mode: taps build
     }

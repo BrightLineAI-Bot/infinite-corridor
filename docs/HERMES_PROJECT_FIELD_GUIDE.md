@@ -2585,6 +2585,33 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 291: preset item buttons; the back button; Crossing Sigils in Supplies — 2026-10-22
+
+Tim, 2026-10-22:
+- The back button: "if you don't have any menus open... hitting the back button on the phone... should open that pause menu and then if you hit back again... it should be an unpause".
+- Presets: "in the presets... you should also be able to select whether... the build button is a build or an item... next to each item in the supplies menu... preset 1 or preset 2... if preset 1 is set to build, then only preset 2 will be selectable".
+- Crossing Sigils: "I don't see crossing sigils in the supplies menu anymore".
+
+**CODE:**
+- **Back button** (`main.ts`):
+  - `pausePanel` joins the dialogs whose `cancel` runs `backPressed()`, so back on the pause menu resumes. Before, the dialog's default close left the game paused under nothing.
+  - Chrome ignores history entries pushed without a user gesture when back is pressed, so the first `pointerdown` or `keydown` arms a fresh `backGuard()`.
+- **Presets** (`spell-slots.ts`):
+  - Each `magicSkills.presets[i]` gains `button` ("build" | "item") and `item` (one of `BUTTON_ITEMS`). They are additive and normalised in `ensureSlots`.
+  - Preset writes now merge (`{ ...preset, ...slots }`), so swapping presets or setting a slot keeps the button choice.
+  - `presetButton`, `setPresetButton`, `assignPresetItem` (only on an Item preset; again removes it) and `activeButton`.
+- **The button** (`game.ts`): in Item mode, Build uses the item (`useConsumable`) or says what is missing. Repair and build aim apply only in Build mode.
+- **Menus** (`main.ts`):
+  - The Arcanum presets have a "Preset N · Build button: Build | Item" row each.
+  - Supplies items show Preset 1 / Preset 2 buttons, disabled while that preset is Build and gold when assigned.
+  - A Crossing Sigil row is listed again.
+  - The HUD button shows the item glyph (`ITEM_GLYPHS`) and `×count`, and is barred at zero.
+- `tests/spell-slots` preset assertions compare the A/B spells only, since presets now carry the button too.
+
+**BOUNDARY:**
+- Additive save fields on presets.
+- Tests: `tests/preset-button-291.test.ts`.
+
 ## Release 289: the Watcher's sigil in the world — 2026-10-22
 
 Tim, 2026-10-22:
