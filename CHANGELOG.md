@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 335 — glyphs, buffs and presets checked and fixed. Every armor glyph, skill glyph, weapon glyph, resonance, spell pairing and constellation passive was tested in play; most already worked. Fixed:
+  - **Armor Volatile and Ignite** now scale the whole hit: +10% to each melee blow, and +12% to each spell and magic shot. Before, they only boosted a small flat bonus. Ignite no longer boosts physical tool shots, and Volatile no longer makes the world beasts stronger.
+  - **Rift Step** now recovers faster with armor Chain and with a cooldown pairing (Eclipse, Hollow and the like), like every other skill.
+  - **A spell's lingering pulses keep their own glyphs.** Before, casting your other spell swapped the glyphs on pulses already burning. A Leech Ember Ring stopped healing the moment you cast Cinder Dart.
+  - **The Arcanum follows the active preset.** The Spells panel shows the active preset's spell, not the last one cast. The Glyphs tab shows sockets for exactly what preset 1 or 2 casts: A, B and a spell or skill on its Build button. A preset with no spell no longer shows an old one.
+
 - Release 333 — the larger Threefold Deep's final gate opens again. In the larger Threefold Deep, the corridor behind the final gate stopped one row short of the Sealed Choir. With all three wardens beaten, the gate said it was open but led into a wall. The corridor now runs on into the Choir.
   - **Deeps already found:** they are fixed too, including ones you're partway through. Nothing else in them changes, except that the final boss may stand somewhere else in its chamber.
 

@@ -13,19 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**335**
+**337**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 333 | Claude | `claude/dreamy-rubin-yn6q2p` | Fix: the larger Threefold Deep's final gate opened onto a wall | Building. |
+| 335 | Claude | `claude/dreamy-rubin-yn6q2p` | Glyph and buff wiring fixes (armor Volatile/Ignite, Rift Step cooldown reductions, spell pulses keep cast glyphs); the Arcanum follows the active preset | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 333 | `r333-3ab1b81cc983` | 2026-10-23 | The larger Threefold Deep's final gate opens onto the Choir again (PR #149). The pre-publish Fable review found no blockers. |
 | 331 | `r331-46dddc4b8b03` | 2026-10-23 | Published with 329 (which never went live alone): a 4-second fallen pause after a world beast kills you (329, PR #146); world beasts catch up once per Listener kill from the third (331, PR #147). The pre-publish Fable review found no blockers. |
 | 327 | `r327-ae92ea7193c7` | 2026-10-22 | Louder, brighter sound: the whole mix about 30 dB louder (PR #144). The pre-publish Fable review found no blockers. |
 | 325 | `r325-7b4e702923fb` | 2026-10-22 | Published with 319, 321 and 323 (none went live alone): the dungeon ladder (319, PR #139); the drone (321, PR #140); no dungeon is sealed (323, PR #141); taste deeps open all the way with scaled creatures (325, PR #142). The pre-publish Fable review found no blockers. |

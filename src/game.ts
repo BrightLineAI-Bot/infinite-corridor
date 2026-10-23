@@ -296,13 +296,13 @@ export function characterStats(save) {
       (resolve - 1) * 0.02 + armorPower * 0.025 + charmPower * 0.01 +
         affixValue(armor, "ward") + affixValue(charm, "ward") + extraReduction(save) + pairingMods(save).guard + boons.guard + ag.defense,
     ),
-    meleeBonus: Math.round((1 + ag.attackDamage) * (
+    meleeBonus: Math.round(( // release 335: armor Volatile now scales the whole melee hit (meleeHit), not this bonus
       Math.max(1, Number(stats.Might) || 1) * 2 +
       (Number(save.weaponLevel) || 0) * 3 +
       Math.floor((level - 1) * 0.6) +
       Math.floor((Number(primary?.power) || 0) * 0.7) +
       affixValue(primary, "attack")+(active?.id==='ember-form'?2+rank*2:0)+(active?.id==='force-channel'?rank*2:0) + resonance * APERTURE_RESONANCE.melee + boons.melee)),
-    magicBonus: Math.round((1 + ag.spellDamage) * (
+    magicBonus: Math.round(( // release 335: armor Ignite now scales whole spells and magic shots
       Math.max(1, Number(stats.Focus) || 1) +
       Math.floor((level - 1) * 0.45) +
       Math.floor((Number(secondary?.power) || 0) * 0.55) +
@@ -2366,8 +2366,8 @@ export class Game {
     return this.travelToCheckpoint();
   }
   // ---------------------------------------------------------------- glyphs (release 98)
-  glyphLoadout(host) {
-    const l = hostLoadout(this.save, host), fresh = discoverResonances(this.save, l);
+  glyphLoadout(host, spellId = null) {
+    const l = hostLoadout(this.save, host, spellId), fresh = discoverResonances(this.save, l);
     if (fresh.length) this.glyphNotice = `Resonance discovered: ${RESONANCES[fresh[0]].name}. ${RESONANCES[fresh[0]].text}`;
     return l;
   }
@@ -3943,7 +3943,7 @@ export class Game {
         continue;
       }
       alertEnemy(e);
-      const base = (profile.damage + characterStats(this.save).meleeBonus) * (echo ? echo.share : 1) * pounce, scattered = this.scatterCheck(e, true, glyphsReachSwarm(glyphs), now), dealt = scattered ? 0 : glyphDamage(glyphs, e, base, { echo: !!echo }, now); // release 245: plain steel scatters the Nanobot Knight
+      const base = (profile.damage + characterStats(this.save).meleeBonus) * (1 + armorGlyphBonus(this.save).attackDamage) * (echo ? echo.share : 1) * pounce, /* release 335: armor Volatile */ scattered = this.scatterCheck(e, true, glyphsReachSwarm(glyphs), now), dealt = scattered ? 0 : glyphDamage(glyphs, e, base, { echo: !!echo }, now); // release 245: plain steel scatters the Nanobot Knight
       const hpBefore = Math.max(0,e.hp);
       e.hp -= dealt;
       this.astralPlayerHit(e,Math.max(0,hpBefore-Math.max(0,e.hp)));
@@ -4000,7 +4000,7 @@ export class Game {
       speed: weapon.speed,
       life: weapon.path==="grenade"&&aimedDistance!==null?Math.max(.08,Math.min(projectileLifetime,aimedDistance/weapon.speed)):projectileLifetime,
       damage: Math.round(
-        (weapon.damage + derived.magicBonus) *
+        (weapon.damage + derived.magicBonus) * (weapon.damageType === "magic" ? 1 + armorGlyphBonus(this.save).spellDamage : 1) * // release 335: armor Ignite on magic shots only
           (weapon.damageType === "magic" && this.magicBuffRemaining > 0
             ? 1.4
             : 1),
@@ -4066,7 +4066,7 @@ export class Game {
       y += dy * scale;
       this.save.pendingAim = null;
     }
-    const glyphs = this.glyphLoadout("spell"), cast = {
+    const glyphs = this.glyphLoadout("spell", spell.id), cast = {
       id: `spell-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`,
       kind: spell.id,
       x,
@@ -4075,10 +4075,11 @@ export class Game {
       radius: spell.radius * glyphs.mods.radius,
       pulse: spell.pulse,
       untilPulse: 0,
-      damage: Math.max(1, Math.round((spell.damage + characterStats(this.save).magicBonus) * glyphs.mods.damage * (1 + pairingMods(this.save).spellDamage))),
+      damage: Math.max(1, Math.round((spell.damage + characterStats(this.save).magicBonus) * glyphs.mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage))), // release 335: armor Ignite scales the whole spell
       pulseIndex: 0,
       hits: {},
       glyphHost: "spell",
+      glyphSpell: spell.id,
     };
     this.effects.push(cast);
     const plan = echoPlan(glyphs);
@@ -4463,8 +4464,8 @@ export class Game {
       (e) => {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
-      (fx, e) => fx.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(fx.glyphHost), e, fx.damage, { echo: !!fx.echo }, now) : fx.damage,
-      (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (fx.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); },
+      (fx, e) => fx.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, fx.damage, { echo: !!fx.echo }, now) : fx.damage, // release 335: a spell's pulses keep the glyphs it was cast with
+      (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (fx.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); },
     );
     for(const e of this.enemies)if(e.kind==="astralWorm"&&e.dead&&!e.rewarded)this.defeatEnemy(e);
     this.tickGlyphs(dt, now);
