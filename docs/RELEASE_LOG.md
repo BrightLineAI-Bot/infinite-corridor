@@ -19,8 +19,8 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 369 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's mirror form: reflections (up to 8, phalanx, swell, your kit), shots held and thrown back (up to 10) | Building. |
-| 371 | Claude | `claude/dreamy-rubin-yn6q2p` | Reserved: Listener towns and choosing a hometown | Reserved. |
+| 369 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's mirror form: reflections (up to 8, phalanx, swell, your kit), shots held and thrown back (up to 10) | Merged (PR #167). |
+| 371 | Claude | `claude/dreamy-rubin-yn6q2p` | Listener towns and choosing a hometown (farm, quarry and regrowth follow home) | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)

@@ -39,7 +39,7 @@ export function atlasPlaces(save) {
     const g = groupFor(rx, ry), record = save.atlas?.[`${rx},${ry}`];
     g.sections.push([rx, ry]);
     if (rx === 0 && ry === 0) g.places.push({ name: "Ember Refuge", kind: "refuge", rx, ry });
-    if (record?.hamletVersion && hamletSection(save.seed, rx, ry)) g.places.push({ name: hamletIdentity(save.seed, rx, ry).name, kind: "hamlet", rx, ry });
+    if (record?.hamletVersion && (hamletSection(save.seed, rx, ry) || (save.hometowns?.towns || []).some((t) => t.rx === rx && t.ry === ry))) g.places.push({ name: hamletIdentity(save.seed, rx, ry).name, kind: "hamlet", rx, ry });
     for (const s of record?.sites || []) if (PLACE_KINDS[s.kind]) g.places.push({ name: s.name && s.name !== s.kind ? s.name : PLACE_KINDS[s.kind], kind: s.kind, rx, ry });
   }
   const order = [...READING_ORDER, "elsewhere"];

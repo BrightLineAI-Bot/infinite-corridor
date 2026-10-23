@@ -37,20 +37,23 @@ export function noteDiscovery(save) {
 // The farm and the quarry: the first two suitable sections around the Refuge (seeded order), never side by side.
 // `suitable(rx, ry)` says whether a section is dry, open land with no settlement.
 const lands = new Map();
-export function refugeLands(seed, suitable) {
-  if (lands.has(seed)) return lands.get(seed);
-  const order = REFUGE_LANDS.near.map((q, i) => [q, hashSeed(`${seed}:refuge-lands:v1:${i}`)]).sort((a, b) => a[1] - b[1]).map(([q]) => q);
+// Release 371: around the hometown (`center`, hometowns.ts) rather than always the Refuge; the Refuge keeps its own order.
+export function refugeLands(seed, suitable, center = { rx: 0, ry: 0 }) {
+  const id = `${seed}:${center.rx},${center.ry}`;
+  if (lands.has(id)) return lands.get(id);
+  const salt = center.rx || center.ry ? `:${center.rx},${center.ry}` : "";
+  const order = REFUGE_LANDS.near.map((q, i) => [q, hashSeed(`${seed}:refuge-lands:v1${salt}:${i}`)]).sort((a, b) => a[1] - b[1]).map(([[x, y]]) => [x + center.rx, y + center.ry]);
   let farm = null, quarry = null;
   for (const [rx, ry] of order) {
     if (!suitable(rx, ry)) continue;
     if (!farm) farm = { rx, ry };
     else if (Math.max(Math.abs(rx - farm.rx), Math.abs(ry - farm.ry)) > 1) { quarry = { rx, ry }; break; }
   }
-  const out = { farm, quarry }; lands.set(seed, out); return out;
+  const out = { farm, quarry, center: { ...center } }; lands.set(id, out); return out;
 }
 const same = (a, rx, ry) => !!a && a.rx === rx && a.ry === ry;
 const DIR = (q) => q ? `${q.ry < 0 ? "north" : q.ry > 0 ? "south" : ""}${q.rx < 0 ? "west" : q.rx > 0 ? "east" : ""}` : "";
-const AWAY = (q) => { const n = Math.max(Math.abs(q.rx), Math.abs(q.ry)); return `${n === 1 ? "one section" : `${n} sections`} ${DIR(q)}`; };
+const AWAY = (q) => { const n = Math.max(Math.abs(q.rx), Math.abs(q.ry)); return `${n === 1 ? "one section" : `${n} sections`} ${DIR(q)}`; }; // from the Refuge
 
 // Open tiles for a planting, spiralling out from the section's centre, `spacing` apart, clear of objects.
 function plots(map, n) {
@@ -112,7 +115,7 @@ export function farmerLine(save, where, n) {
 export function regrowSection(save, map, rx, ry, where) {
   const g = ensureRegrowth(save), key = `${rx},${ry}`, epoch = g.epoch;
   if (!epoch || g.done[key] === epoch) return 0;
-  const lands = same(where.farm, rx, ry) || same(where.quarry, rx, ry), inRing = Math.max(Math.abs(rx), Math.abs(ry)) <= ringFor(epoch);
+  const c = where.center || { rx: 0, ry: 0 }, lands = same(where.farm, rx, ry) || same(where.quarry, rx, ry), inRing = Math.max(Math.abs(rx - c.rx), Math.abs(ry - c.ry)) <= ringFor(epoch); // release 371: around home
   if (!lands && !inRing) return 0;
   let n = 0;
   for (const o of map.objects || []) {
