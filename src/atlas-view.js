@@ -2,8 +2,8 @@
 // a worldview … zoom to region … see more of the map at large"). Pure helpers for main.ts: the zoom range, framing a
 // set of sections, and the places a player can jump to (the explored world, each region they have heard, and the
 // towns, districts and Wayglasses inside it). No DOM.
-import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r367-cff5c3a5b912";
-import { hamletSection, hamletIdentity } from "./settlements.js?v=r367-cff5c3a5b912";
+import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r371-1dc5d8e75332";
+import { hamletSection, hamletIdentity } from "./settlements.js?v=r371-1dc5d8e75332";
 
 // A section is `base × zoom` pixels across. Below `detail` the Atlas switches to its world view: one coloured cell per
 // section from a cached image, with markers at a fixed size. `step` is the factor of one zoom press.
@@ -39,7 +39,7 @@ export function atlasPlaces(save) {
     const g = groupFor(rx, ry), record = save.atlas?.[`${rx},${ry}`];
     g.sections.push([rx, ry]);
     if (rx === 0 && ry === 0) g.places.push({ name: "Ember Refuge", kind: "refuge", rx, ry });
-    if (record?.hamletVersion && hamletSection(save.seed, rx, ry)) g.places.push({ name: hamletIdentity(save.seed, rx, ry).name, kind: "hamlet", rx, ry });
+    if (record?.hamletVersion && (hamletSection(save.seed, rx, ry) || (save.hometowns?.towns || []).some((t) => t.rx === rx && t.ry === ry))) g.places.push({ name: hamletIdentity(save.seed, rx, ry).name, kind: "hamlet", rx, ry });
     for (const s of record?.sites || []) if (PLACE_KINDS[s.kind]) g.places.push({ name: s.name && s.name !== s.kind ? s.name : PLACE_KINDS[s.kind], kind: s.kind, rx, ry });
   }
   const order = [...READING_ORDER, "elsewhere"];

@@ -8,7 +8,7 @@
 // calls guardians in; from gate 3 it hides behind them until they fall. Felling it raises the Gate a tier (harder
 // guardians that borrow moves) and offers a choice of three boons; the first time, it also asks how the story ends,
 // though the climb goes on either way. State: save.farArray (additive). The lore stays open on purpose.
-import { hashSeed, rng } from "./random.js?v=r367-cff5c3a5b912";
+import { hashSeed, rng } from "./random.js?v=r371-1dc5d8e75332";
 
 export const FAR = {
   piecesBase: 2, // gate 1 needs 3 pieces, gate 2 needs 4, ...
@@ -22,7 +22,8 @@ export const GUARDIANS = {
 };
 // The Listener's moves by form. "open" mirrors the Wayfarer; "walled" is starved and heavy.
 export const LISTENER_FORMS = {
-  open: { name: "The Listener, Wearing Your Face", attacks: ["blinkStrike", "clawSweep", "longStab", "mirrorClones"], boss: ["mirrorSwap", "shockwave"] },
+  // Release 369: no more harmless reflections or place-swapping ("copy magic"); its reflections fight (listener-mirror.ts).
+  open: { name: "The Listener, Wearing Your Face", attacks: ["blinkStrike", "clawSweep", "longStab"], boss: ["shockwave"] },
   walled: { name: "The Listener, Starved Behind Its Walls", attacks: ["devourPull", "ramCharge", "bite", "groundRupture"], boss: ["shockwave", "fleshBloom"] },
 };
 // Permanent boons, three offered after each Listener falls (Astral Ascent style). Effects read in game.ts characterStats.

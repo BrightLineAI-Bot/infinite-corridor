@@ -6,7 +6,7 @@
 // offset as you move, through walls (it is a shadow), and copies every swing and tool shot at `share` of the damage. A
 // second press while it lasts carries you to it, unless that ground is a wall or somewhere you cannot stand: "Blocked".
 // Gravity Well: a slow vortex that drags foes toward its eye while it pulses (great beasts and bosses barely move).
-// Release r367-cff5c3a5b912 (Tim: "Gravity well should pull... enemy shots as well... if they fly through... the well, then they should just
+// Release 367 (Tim: "Gravity well should pull... enemy shots as well... if they fly through... the well, then they should just
 // get pulled to it... almost like a shield that just pulls in the shots that go in to it"): a hostile shot inside the swirl
 // bends toward the eye and is swallowed there; shots that never enter it fly on untouched.
 // Stillpoint: a pocket of held time. Foes inside are slowed, and hostile shots that enter it stop and fall apart.

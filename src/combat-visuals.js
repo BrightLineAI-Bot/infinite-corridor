@@ -1,4 +1,4 @@
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r367-cff5c3a5b912";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r371-1dc5d8e75332";
 export function drawRangedEffects(ctx,game,width,height) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [
@@ -54,6 +54,9 @@ export function drawRangedEffects(ctx,game,width,height) {
     if (fx.kind === "gravity-well") { ctx.strokeStyle = "#c06faecc"; ctx.lineWidth = 2; for (let k = 0; k < 3; k++) { ctx.beginPath(); for (let a = 0; a < 5.5; a += .25) { const r = R * (1 - a / 6), q = a + t * 3 + k * 2.1; a ? ctx.lineTo(x + Math.cos(q) * r, y + Math.sin(q) * r) : ctx.moveTo(x + Math.cos(q) * r, y + Math.sin(q) * r); } ctx.stroke(); } ctx.fillStyle = "#1a0d2acc"; ctx.beginPath(); ctx.arc(x, y, s * .3, 0, 7); ctx.fill(); }
     else { ctx.fillStyle = "#7c9fcf22"; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill(); ctx.strokeStyle = "#cfe3ffaa"; ctx.lineWidth = 1.5; for (const k of [.4, .7]) { ctx.beginPath(); ctx.arc(x, y, R * k, 0, 7); ctx.stroke(); } ctx.beginPath(); for (let h = 0; h < 12; h++) { const a = h * Math.PI / 6; ctx.moveTo(x + Math.cos(a) * R * .88, y + Math.sin(a) * R * .88); ctx.lineTo(x + Math.cos(a) * R, y + Math.sin(a) * R); } ctx.stroke(); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - R * .55); ctx.stroke(); }
   }
+  for (const e of game.enemies) { const f = !e.dead && e.mirror?.frozen; if (!f?.length) continue; // release 369: shots held around the Listener
+    f.forEach((q, i) => { const [x, y] = toScreen(q), r = 5 + Math.sin(t * 9 + i) * 1.5; ctx.fillStyle = "#c9a6ff55"; ctx.beginPath(); ctx.arc(x, y, r + 5, 0, 7); ctx.fill(); ctx.fillStyle = "#f3eaff"; ctx.beginPath(); ctx.arc(x, y, r * .6, 0, 7); ctx.fill(); });
+    const [lx, ly] = toScreen({ x: e.x + .5, y: e.y + .45 }); ctx.strokeStyle = "#c9a6ff88"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.arc(lx, ly, 2.2 * s, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
   const sc = game.shadowCloneActive?.() && game.shadowClone;
   if (sc) {
     const [x, y] = toScreen({ x: game.player.x + sc.ox + .5, y: game.player.y + sc.oy + .45 }), left = Math.max(0, (sc.until - (game.lastUpdateNow || 0)) / 1000), a = Math.min(1, left / 1.5) * (.62 + .08 * Math.sin(t * 6));

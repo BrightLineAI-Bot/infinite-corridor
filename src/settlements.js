@@ -2,8 +2,8 @@
 // The world is split into HAMLET.cell × HAMLET.cell blocks of sections; each block nominates one section, and most
 // nominated sections that have a flat, dry patch of ground grow a hamlet there. A section explored before release 109
 // keeps no hamlet (its atlas entry carries no hamletVersion), so existing journeys only find hamlets in new ground.
-import { hashSeed, rng, pick } from "./random.js?v=r367-cff5c3a5b912";
-import { LETHAL_KINDS } from "./landscape.js?v=r367-cff5c3a5b912";
+import { hashSeed, rng, pick } from "./random.js?v=r371-1dc5d8e75332";
+import { LETHAL_KINDS } from "./landscape.js?v=r371-1dc5d8e75332";
 
 // Version 1 (release 111) built plain huts; version 2 (release 112) builds from the world's own shelter families and
 // ruin-district styles. A section keeps the version its atlas entry was pinned to; placement and names are shared.
@@ -133,9 +133,16 @@ function buildMixed(map, r, id, x0, y0, kind, name) {
 }
 
 // Mutates an overworld section map (after the landscape pass). Returns the settlement record or null.
-export function applyHamlet(map, seed, rx, ry, version = HAMLET_VERSION) {
-  if (!map || map.settlement || map.hamlet || map.tiles?.length !== 1024 || !hamletSection(seed, rx, ry)) return null;
-  const site = hamletSite(map);
+// Release r371-1dc5d8e75332: `force` raises a hamlet on a section the seed did not choose (a town where a Listener fell, hometowns.ts);
+// with no flat patch it clears one at the centre.
+export function applyHamlet(map, seed, rx, ry, version = HAMLET_VERSION, force = false) {
+  if (!map || map.settlement || map.hamlet || map.tiles?.length !== 1024 || !(force || hamletSection(seed, rx, ry))) return null;
+  let site = hamletSite(map);
+  if (!site && force) {
+    site = { x: 16, y: 16 };
+    map.objects = (map.objects || []).filter((o) => Math.abs(o.x - 16) > HAMLET.halfW + 1 || Math.abs(o.y - 16) > HAMLET.halfH + 1);
+    for (let y = 16 - HAMLET.halfH - 1; y <= 16 + HAMLET.halfH + 1; y++) for (let x = 16 - HAMLET.halfW - 1; x <= 16 + HAMLET.halfW + 1; x++) { const i = y * 32 + x; map.tiles[i] = { ...map.tiles[i], kind: "refuge", blocked: false, elev: 0, slope: false, environment: null, structure: null, landscape: null }; }
+  }
   if (!site) return null;
   const ident = hamletIdentity(seed, rx, ry), def = HAMLET_KINDS[ident.kind], r = rng(`${seed}:hamlet:v${version}:layout:${rx}:${ry}`);
   const { x: cx, y: cy } = site, [floor, wall] = HUT_STYLES[def.style];
