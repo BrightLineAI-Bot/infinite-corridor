@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"
+    />
+    <meta name="theme-color" content="#10151d" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css?v=r347-6aae356afb82" />
+    <title>Infinite Corridor — Proving Ground</title>
+  </head>
+  <body>
+    <aside id="pgIdentity" class="pg-identity" role="status"><strong>CANDIDATE PREVIEW</strong><span>r347-6aae356afb82</span><span>Experimental · isolated scratch state · build PG-1 / Release r347-6aae356afb82</span><button id="pgDiagnosticsToggle" type="button">Diagnostics</button><button id="pgGlimpsesToggle" type="button">Glimpses</button></aside>
+    <dialog id="pgDiagnostics"><button id="pgDiagnosticsClose" class="close" aria-label="Close diagnostics">×</button><h2>Mobile diagnostics</h2><dl id="pgDiagnosticsBody"></dl><button id="pgReset" type="button">Reset Proving Ground data</button><p id="pgResetStatus" role="status"></p></dialog>
+    <dialog id="pgGlimpses"><button id="pgGlimpsesClose" class="close" aria-label="Close Glimpses">×</button><h2>Glimpses</h2><p>First-person scenes. Tap a scene to let go of it.</p><div id="pgGlimpseList"></div></dialog>
+    <section id="glimpse" class="glimpse" hidden aria-label="Glimpse"><canvas id="glimpseCanvas"></canvas><p id="glimpseHint" class="glimpse-hint">Tap to let go</p></section>
+    <main id="app">
+      <canvas id="game"></canvas>
+      <aside id="eventBanner" role="status" aria-live="assertive" aria-atomic="true"><strong></strong><span></span></aside>
+      <section id="hud">
+        <div class="hud-summary">
+          <div id="vitals">
+            <div class="health-row">
+              <progress id="healthBar" max="60"></progress
+              ><span id="healthText"></span>
+            </div>
+            <progress id="staminaBar" max="50" aria-label="Stamina"></progress>
+            <div id="shockPips" class="shock-pips off" role="status" aria-label="Lightning shock"><i></i><i></i><i></i></div>
+          </div>
+          <span id="progressCompact"><small id="xpCompact"></small><small id="apCompact"></small></span
+          ><button
+            id="hudExpand"
+            type="button"
+            aria-expanded="false"
+            aria-controls="hudDetails"
+            aria-label="Show field information"
+          >
+            ⌄
+          </button>
+        </div>
+        <div id="messageViewport" role="status" aria-live="polite">
+          <p id="message">The Verge remembers.</p>
+        </div>
+        <div id="hudDetails" hidden>
+          <div id="identity"><strong id="place">Cinder Verge</strong></div>
+          <small id="objective"></small>
+          <div id="loadout">
+            <span id="attackInfo"></span><span id="spellInfo"></span
+            ><span id="toolInfo"></span>
+          </div>
+          <span id="buff"></span>
+          <nav id="hudMenu">
+            <button data-action="pause">Pause</button
+            ><button data-action="journal">Journal</button
+            ><button id="optionsButton" type="button">Options</button>
+          </nav>
+        </div>
+      </section>
+      <section id="actions">
+        <div class="left-controls">
+          <!-- release 114: the compass sits above the Map button -->
+          <div id="navCompassSlot" class="compass-slot"><div id="navCompass" class="nav-compass" role="img" aria-label="No navigation target" hidden>
+            <span id="navGuidanceArrow" class="nav-arrow guidance-arrow" aria-hidden="true">▲</span>
+            <span id="navManualArrow" class="nav-arrow manual-arrow" aria-hidden="true">▲</span>
+          </div></div>
+          <!-- release 269: Spells A and B sit beside the compass on every screen -->
+          <div class="quick-row buttons">
+            <button class="quick spell spell-a" data-action="spell" data-slot="A">Spell A</button
+            ><button class="quick spell spell-b" data-action="spell2" data-slot="B">Spell B</button>
+          </div>
+          <div class="utility-buttons">
+            <button data-action="map">Map</button
+            ><button data-action="menu">Pack</button
+            ><button class="preset" data-action="preset" aria-label="Spell preset 1">1</button>
+          </div>
+        </div>
+        <div class="action-diamond buttons">
+          <button class="core tool" data-action="tool">Tool</button
+          ><button class="core act" data-action="interact">Act</button
+          ><button class="core dodge" data-action="dodge">Dodge</button
+          ><button class="core attack" data-action="attack">Attack</button
+          ><button class="core jump" data-action="jump">Jump</button
+          ><button class="core potion" data-action="potion" aria-label="Potion"><svg class="icon bottle" viewBox="0 0 24 24" aria-hidden="true"><rect x="9.6" y="1.6" width="4.8" height="2.4" rx=".7" fill="#8a5a32" stroke="#4a2f17" stroke-width=".6"/><path d="M10.1 4h3.8v4.3a6.6 6.6 0 1 1-3.8 0z" fill="#1d2228" fill-opacity=".55" stroke="#ece2cc" stroke-width="1"/><path d="M5.9 14.6a6.1 6.1 0 0 0 12.2 0z" fill="#d8443e"/><path d="M6.6 13.4h10.8" stroke="#ff8a7a" stroke-width=".6"/><ellipse cx="9.4" cy="11.6" rx=".9" ry="1.7" fill="#fff" opacity=".55"/></svg></button
+          ><button class="core build" data-action="build" aria-label="Build"><svg class="icon hammer" viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate(-38 12 12)"><rect x="10.7" y="7.4" width="2.6" height="15" rx="1.2" fill="#c08a52" stroke="#4a2f17" stroke-width=".7"/><rect x="10.7" y="18.2" width="2.6" height="4.2" rx="1.1" fill="#6f4426"/><path d="M6 3.6h10.4l1.6 1.2v2.4l-1.6 1.2H6z" fill="#dfe3e8" stroke="#3f4448" stroke-width=".7"/><path d="M6 3.6 3.3 2.1l.8 3.9-1 3.1L6 8.4z" fill="#a9b0b8" stroke="#3f4448" stroke-width=".7"/><path d="M7.2 4.6h8.6" stroke="#fff" stroke-opacity=".7" stroke-width=".7"/></g></svg></button>
+        </div>
+      </section>
+      <dialog id="panel">
+        <button id="close" class="close">×</button>
+        <div id="panelBody"></div>
+      </dialog>
+      <dialog id="pausePanel">
+        <h2>Paused</h2>
+        <p>Progress saved. Time is still.</p>
+        <button id="resume">Resume</button><button id="pausedMap">Atlas</button
+        ><button id="pausedJournal">Journal</button
+        ><button id="pausedPack">Pack</button
+        ><button id="pausedOptions">Options</button>
+      </dialog>
+      <dialog id="optionsPanel" aria-labelledby="optionsTitle">
+        <button id="optionsClose" class="close" aria-label="Close options">×</button>
+        <h2 id="optionsTitle">Corridor Options</h2>
+        <p class="options-intro">Journey files and device settings. The Corridor remains paused while this panel is open.</p>
+        <nav id="optionsTabs" class="options-tabs" aria-label="Options categories"></nav>
+        <div id="optionsBody"></div>
+      </dialog>
+      <dialog id="journal">
+        <button id="journalClose" class="close">×</button>
+        <h2>Wayfarer’s Journal</h2>
+        <div id="journalBody"></div>
+      </dialog>
+      <section id="storyScene" class="story-scene" hidden aria-live="polite" aria-label="Story scene">
+        <div id="sceneArt" class="scene-art" role="img"></div>
+        <div id="sceneActors" class="scene-actors" aria-hidden="true"></div>
+        <div class="scene-vignette"></div>
+        <div class="scene-copy"><strong id="sceneTitle"></strong><p id="sceneCaption"></p></div>
+        <button id="sceneSkip" type="button" hidden>Skip scene</button>
+      </section>
+      <dialog id="creatureViewer">
+        <button id="creatureViewerClose" class="close" aria-label="Close creature rendering">×</button>
+        <h2 id="creatureViewerTitle">Field rendering</h2>
+        <canvas id="creatureViewerCanvas" width="512" height="512"></canvas>
+      </dialog>
+      <dialog id="atlas">
+        <button id="mapClose" class="close">×</button>
+        <h2 id="mapTitle">Corridor Atlas</h2>
+        <button id="mapModeToggle" type="button" hidden>Dungeon Map</button>
+        <label id="dungeonLevelPicker" class="wayglass-picker" hidden>Discovered level
+          <select id="dungeonLevelSelect" aria-label="Discovered dungeon level"></select>
+        </label>
+        <canvas id="mapCanvas"></canvas>
+        <div class="maptools">
+          <button id="mapPlus">+</button><button id="mapMinus">−</button
+          ><button id="mapN">↑</button><button id="mapW">←</button
+          ><button id="mapCenter">Center</button><button id="mapE">→</button
+          ><button id="mapS">↓</button
+          ><button id="mapRelays" aria-pressed="false">Relays</button>
+        </div>
+        <div id="mapLayers" class="maplayers" role="group" aria-label="Atlas layers"></div>
+        <label class="wayglass-picker">Activated Wayglass
+          <select id="mapWayglassSelect" aria-label="Fast travel destination"></select>
+        </label>
+        <button id="mapTravel" type="button">
+          Return to active checkpoint
+        </button>
+        <button id="mapUnstick" type="button" title="Trapped by terrain? Dungeons: back to this level's entrance. Overworld: the nearest ground that leads out. Free, 30 s cooldown.">Stuck? Get me out</button>
+        <button id="mapHome" type="button">Return to Ember Refuge</button>
+        <button id="mapWaypoint" type="button">Set waypoint to selected section</button>
+        <p id="mapDetail">Select an explored section for details.</p>
+        <p id="mapInstructions">
+          Tap an explored section to select it, then use the waypoint button. Zoom in to reveal the
+          position and names of discovered sites inside each section.
+        </p>
+        <div id="mapLegend" class="atlas-legend" aria-label="Atlas symbol guide"></div>
+      </dialog>
+    </main>
+    <script type="module">
+      const release = "r347-6aae356afb82";
+      const params = new URLSearchParams(location.search);
+      const entry = "./src/proving-ground-mobile.js";
+      const updateServiceWorker = async () => {
+        if ("serviceWorker" in navigator) {
+          try {
+            const registration = await navigator.serviceWorker.register(`./sw.js?v=r347-6aae356afb82`, {
+              updateViaCache: "none",
+            });
+            registration.update().catch((error) =>
+              console.warn("Service worker update check failed; continuing with the available build.", error),
+            );
+          } catch (error) {
+            console.warn("Service worker registration failed; continuing without offline caching.", error);
+          }
+        }
+      };
+      import(`${entry}?v=${release}`).catch((error) => {
+        console.error("Infinite Corridor failed to start.", error);
+        const notice = document.createElement("p");
+        notice.className = "boot-error";
+        notice.setAttribute("role", "alert");
+        notice.textContent = "The Proving Ground could not start. Reload when your connection is stable.";
+        document.body.append(notice);
+      });
+      void updateServiceWorker();
+    </script>
+  </body>
+</html>
