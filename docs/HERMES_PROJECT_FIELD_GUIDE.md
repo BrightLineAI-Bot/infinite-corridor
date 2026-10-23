@@ -2694,6 +2694,33 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 359: secondary passives in the Arcanum — 2026-10-23
+
+Tim, 2026-10-23: "develop an additional passive for each one that you can select... a button... it'll show the secondary passive... whenever you select this button, it'll just show whatever the opposite one is. Secondary or primary... available in infinite 3 and beyond".
+
+**CODE (`constellation.ts`):**
+- **The secondary forms:** `ALT_PASSIVES` holds a secondary form for each of the 15 modifiers and capstones, with its name, text, kind and numbers.
+- **When it opens:** `ALT_UNLOCK_TIER` = 13 (Infinite III); `altUnlocked` checks it.
+- **Switching:** `toggleAlt(save, id)` flips `save.constellation.alt[id]` (additive, normalised in `ensureConstellation`). A shrine respec clears it.
+- **Which form works:** `nodeOn` is true when the primary works (learned, secondary not chosen); `altOn` is true when the secondary works. Every runtime hook reads them instead of `hasNode`, so only the chosen form works.
+- **The secondaries:**
+  - Form: Ember Ward (a foe that wounds you burns); Ember Mend (+50% duration, mends 15%); Kindling (the burst comes when Ember Form begins).
+  - Motion: Second Wind (+3 health per dodge); Long Quickening (+50% duration; Aerial Step cannot be cast while chosen); Afterimage (a burst where each dodge starts).
+  - Veil: Veil Pulse (each blow pulses 15% back at every foe within 2 tiles); Long Veil (+50% duration); Stillwater (20% less damage).
+  - Force: Wellspring (Aperture skills recover 25% faster); Bulwark Channel (15% less damage); Harvest (+4 health per kill).
+  - Rift: Rift Ward (0.6 s untouchable after a step); Quick Fold (one charge that recovers 30% faster); Rift Echo (a burst where you stood).
+
+**CODE (elsewhere):**
+- `game.ts` `activateApertureSkill` refuses Aerial Step when its secondary form is chosen.
+- `main.ts` Arcanum:
+  - a passive shows the form in use (⇄ marks a secondary);
+  - its detail names the other form and has a "⇄ Use secondary / primary" button, disabled until Infinite III and until the node is learned.
+- Tests: `tests/secondary-passives-359.test.ts`.
+
+**BOUNDARY:**
+- Costs, learning order, respec and the primaries are unchanged.
+- Below Infinite III a stored choice is kept but has no effect.
+
 ## Release 357: the Listener moves on — 2026-10-23
 
 Tim, 2026-10-23: "after you defeat [the Listener] the first time... His dungeon can stay there... but he won't be there... you have to... activate or deactivate... at least 5 more relays... for his quest to become available, and then you have to complete his quest... depending on how many relays you do in total will increase... his strength".
