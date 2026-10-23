@@ -2694,6 +2694,30 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 335: glyph and buff wiring; the Arcanum follows the preset — 2026-10-23
+
+Tim, 2026-10-23: "check the bindings between all the glyphs and all the armor... the presets... when you switch between preset 1 and preset 2, the arcanum... glyphs that appear don't reflect the... spells that are actively selected for that preset... make sure that the... passive buffs for like leeching and empowerment and cool down reduction work".
+
+An audit measured every buff with it and without it in a running Game: armor glyphs, skill glyphs and infusion, weapon/tool/spell glyphs, resonances, pairings, constellation passives and creature Echoes. Everything not listed below already applied.
+
+**CODE:**
+- **Armor Volatile and Ignite.**
+  - `game.ts` `characterStats` no longer multiplies `meleeBonus` and `magicBonus` by `armorGlyphBonus().attackDamage/spellDamage`. Those flat bonuses are also read by the beast and Gate Revenant scaling.
+  - The melee `base`, the spell cast's `damage` and magic-type tool shots now take ×(1 + bonus).
+- **Rift Step cooldown.** `constellation.ts` `riftCooldown()` adds the pairing `cooldown` and armor `spellCooldown`, both on the step and on the recharge.
+- **Spell pulses keep their glyphs.**
+  - `glyphs.ts`: `socketsFor` and `hostLoadout` take an optional spell id.
+  - `game.ts`: `castSpell` stores `glyphSpell: spell.id` on the cast (the echo copy inherits it). Pulse damage and glyph hits read `glyphLoadout(fx.glyphHost, fx.glyphSpell)`.
+- **The Arcanum (`main.ts`).** `presetCastables()` is A, B and a castable on the active preset's Build button.
+  - The Spells panel shows its spell.
+  - The Glyphs tab lists hosts only for its spells and skills, with no fallback to the stale `equippedSpell`.
+- **Tests:** `tests/buff-wiring-335.test.ts`.
+
+**BOUNDARY:**
+- **Amplifier** (constellation) still boosts only secondary strikes (arcs, bursts, Echo creatures, Rift Wake), as its text says.
+- **The Pallid Skitter Echo** refunds a flat 5 stamina.
+- No save changes.
+
 ## Release 333: the larger Threefold Deep's gate — 2026-10-23
 
 Tim, 2026-10-23, from a live r331 save in a `deep-v2:threefold` Deep: "It says the gate is open, but the gate isn't actually open. I've completed all the guardians".

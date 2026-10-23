@@ -125,19 +125,19 @@ export function ensureGlyphState(save) {
 }
 
 // ---------------------------------------------------------------- loadouts
-function socketsFor(save, host) {
+function socketsFor(save, host, spellId = null) {
   if (host === "melee") return save.equipment?.primary?.glyphs || [];
   if (host === "tool") return save.equipment?.secondary?.glyphs || [];
   if (host === "armor") return save.equipment?.armor?.glyphs || [];
-  return save.spellGlyphs?.[save.equippedSpell || "ember-ring"] || [];
+  return save.spellGlyphs?.[spellId || save.equippedSpell || "ember-ring"] || []; // release 335: a cast keeps its own spell's glyphs
 }
 export function resonancesOf(glyphs) {
   const set = new Set(glyphs.filter(Boolean));
   return Object.entries(RESONANCES).filter(([, r]) => r.pair.every((g) => set.has(g))).map(([id]) => id);
 }
-export function hostLoadout(save, host) {
+export function hostLoadout(save, host, spellId = null) {
   // Release 297: a weapon or tool also carries the glyphs infused by an active Aperture skill (skillInfusion).
-  const glyphs = [...socketsFor(save, host).filter(Boolean), ...(host === "melee" || host === "tool" ? skillInfusion(save) : [])], resonances = resonancesOf(glyphs), mods = { damage: 1, cooldown: 1, range: 1, radius: 1, pierce: 0 };
+  const glyphs = [...socketsFor(save, host, spellId).filter(Boolean), ...(host === "melee" || host === "tool" ? skillInfusion(save) : [])], resonances = resonancesOf(glyphs), mods = { damage: 1, cooldown: 1, range: 1, radius: 1, pierce: 0 };
   for (const id of glyphs) { const m = GLYPHS[id].mods?.[host]; if (!m) continue; for (const [k, v] of Object.entries(m)) mods[k] = k === "pierce" ? mods[k] + v : mods[k] * v; }
   return { host, glyphs, has: (id) => glyphs.includes(id), count: (id) => glyphs.filter((q) => q === id).length, resonances, resonant: (id) => resonances.includes(id), mods };
 }
