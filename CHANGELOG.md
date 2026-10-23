@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 367 — the Gravity Well swallows enemy shots.
+  - **A shield of sorts:** enemy shots that fly into the swirl curve toward its centre and vanish there. Shots that miss it fly on.
+
 - Release 365 — three new spells from Infinite III.
   - **Shadow Clone:** cast it and a shadow appears behind you (or beside you, if you are standing still). Tap to set it up to 2 tiles away. It follows you through walls and copies every swing and shot at half damage. Cast it again to step into it; if you can't stand there, it shows "Blocked".
   - **Gravity Well:** a vortex that drags enemies toward its centre while it hurts them. Bosses barely budge.

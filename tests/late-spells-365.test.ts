@@ -67,3 +67,13 @@ test('Gravity Well and Stillpoint cast as fields that pulse damage', () => {
   const foe = g.createEnemyFromSpawn({ kind: 'ashling', x: 15, y: 15 }); foe.maxHp = foe.hp = 500; g.enemies = [foe];
   g.update(.05, idle, 1050); assert.ok(foe.hp < 500);
 });
+
+test('release 367: the Gravity Well bends hostile shots in its swirl toward its eye and swallows them; others fly on', () => {
+  const well = { kind: 'gravity-well', x: 10, y: 10, radius: 3, life: 2 };
+  const through = { hostile: true, x: 8, y: 9, dx: 1, dy: 0, homingTurnRate: 2, seekId: 'me' }, outside = { hostile: true, x: 10, y: 4, dx: 1, dy: 0 }, mine = { x: 9, y: 10, dx: 1, dy: 0 };
+  tickSpellFields([well], [], [through, outside, mine], .05, 0);
+  assert.ok(through.dy > 0, 'bent toward the eye'); assert.ok(Math.abs(Math.hypot(through.dx, through.dy) - 1) < 1e-9); assert.equal(through.homingTurnRate, 0, 'it stops homing');
+  assert.deepEqual([outside.dx, outside.dy], [1, 0], 'outside the swirl: untouched'); assert.deepEqual([mine.dx, mine.dy], [1, 0], 'your own shots are left alone');
+  let p = { hostile: true, x: 7.5, y: 10.6, dx: 1, dy: 0 }; for (let i = 0; i < 80 && !p.dead; i++) { tickSpellFields([well], [], [p], .05, 0); p.x += p.dx * 4 * .05; p.y += p.dy * 4 * .05; }
+  assert.equal(p.dead, true, 'a shot flying through is pulled in and swallowed'); assert.ok(Math.hypot(p.impact.x - 10, p.impact.y - 10) <= GRAVITY_WELL.eye);
+});
