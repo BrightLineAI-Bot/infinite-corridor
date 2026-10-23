@@ -2694,6 +2694,19 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 367: the Gravity Well swallows shots — 2026-10-23
+
+Tim, 2026-10-23: "Gravity well should pull... enemy shots as well... if they fly through... the well, then they should just get pulled to it like anywhere within the swirl... almost like a shield that just pulls in the shots that go in to it".
+
+**CODE:**
+- `late-spells.ts` `tickSpellFields`: each frame, a hostile shot inside the well's radius turns toward the eye at `GRAVITY_WELL.shotTurn` = 9 per second.
+- The bend also ends its homing (`homingTurnRate`, `seekId`).
+- A shot that reaches the eye (`GRAVITY_WELL.eye`) is swallowed.
+- Shots outside the swirl and the Wayfarer's own shots are untouched.
+- Tests: `tests/late-spells-365.test.ts` (one more test).
+
+**BOUNDARY:** The pull on creatures, the damage pulses and the cooldown are unchanged.
+
 ## Release 365: three spells from Infinite III — 2026-10-23
 
 Tim, 2026-10-23: "let's add 3 more spells... after infinite 3... one of them will be like a shadow clone... [the] two others... you can figure em out".

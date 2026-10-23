@@ -13,7 +13,7 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**367**
+**369**
 
 ## In flight
 
@@ -24,7 +24,8 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 | 359 | Claude | `claude/dreamy-rubin-yn6q2p` | Secondary passives: every modifier and capstone has a secondary form, switched from Infinite III | Merged (PR #162). |
 | 361 | Claude | `claude/dreamy-rubin-yn6q2p` | Quiet and old Mouths stay open as random runs (never the Listener) | Merged (PR #163). |
 | 363 | Claude | `claude/dreamy-rubin-yn6q2p` | The Transit Lattice and Transit Coordinates (2+1 slots, up to 3 more of each) | Merged (PR #164). |
-| 365 | Claude | `claude/dreamy-rubin-yn6q2p` | Three Infinite III spells: Shadow Clone, Gravity Well, Stillpoint | Building. |
+| 365 | Claude | `claude/dreamy-rubin-yn6q2p` | Three Infinite III spells: Shadow Clone, Gravity Well, Stillpoint | Merged (PR #165). |
+| 367 | Claude | `claude/dreamy-rubin-yn6q2p` | The Gravity Well bends enemy shots in its swirl to its eye and swallows them | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
