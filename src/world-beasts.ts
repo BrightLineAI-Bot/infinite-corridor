@@ -162,7 +162,9 @@ export function retreatPath(map, from, to, mode, width = 32) {
 // the tiles, the counter won't increase, but it won't decrease either"): a section counts when it is not among the last
 // `newSections` different sections entered (`recent`), whether or not it was ever visited before.
 // save.beastGap = { fresh, recent } (additive; a save without it starts ready).
-export const ENCOUNTER = { newSections: 8, chanceScale: .5 };
+// Release 349 (Tim, 2026-10-23: "make... the world bosses just slightly more... frequent, so I can see a few more of them"):
+// the gap between meetings goes from 8 new sections to 6, and every beast's section chance from half its base to 70%.
+export const ENCOUNTER = { newSections: 6, chanceScale: .7 };
 export function ensureBeastGap(save) {
   const g = save.beastGap && typeof save.beastGap === "object" ? save.beastGap : {}, n = Number(g.fresh);
   const recent = (Array.isArray(g.recent) ? g.recent : []).filter((k, i, a) => typeof k === "string" && a.indexOf(k) === i).slice(-ENCOUNTER.newSections);
