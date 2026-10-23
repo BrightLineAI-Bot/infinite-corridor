@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 355 — three map marks.
+  - **Mark places to remember:** select a section on the map and press "Mark selected section". Up to three marks, each its own colour (rose, green, violet), shown as small flags at every zoom, with an arrow at the map's edge when one is off screen.
+  - **Clearing:** select a marked section and press the button again.
+  - **The compass ignores marks:** they are only for you to see.
+
 - Release 353 — a world boss stays hurt until it kills you.
   - **Wounds follow it:** a boss you have hurt stays hurt wherever it chases you, and when you leave and come back.
   - **Dying heals it:** its health resets only when it kills you, with the tries setting on or off. With tries off, a death still costs no try and its patience keeps counting down.
