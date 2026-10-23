@@ -11,6 +11,7 @@
 import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand } from "./items.ts";
 import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.ts";
 import { pairingMods } from "./spell-slots.ts";
+import { latticePassives, toggleLatticeSlot } from "./transit-lattice.ts";
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 
@@ -76,10 +77,21 @@ export const ALT_PASSIVES = {
 export const altUnlocked = (save) => APERTURE_BANDS.indexOf(apertureBand(save?.perception?.aperture || 0)) >= ALT_UNLOCK_TIER;
 // Is the secondary form chosen (and open) for a learned node?
 export const altChosen = (save, id) => !!save?.constellation?.alt?.[id] && !!ALT_PASSIVES[id] && altUnlocked(save);
-// The primary form works: the node is learned and its secondary is not chosen.
-export const nodeOn = (save, id) => hasNode(save, id) && !altChosen(save, id);
-// The secondary form works.
-export const altOn = (save, id) => hasNode(save, id) && altChosen(save, id);
+// The primary form works: the node is learned and its secondary is not chosen, or the Transit Lattice holds it (release 363).
+export const nodeOn = (save, id) => hasNode(save, id) && (!altChosen(save, id) || latticePassives(save).includes(id));
+// The secondary form works: chosen, or held in the Transit Lattice.
+export const altOn = (save, id) => hasNode(save, id) && (altChosen(save, id) || latticePassives(save).includes(`${id}:alt`));
+// Release 363: a passive form for the Transit Lattice. `key` is a node id (its primary form) or `id:alt` (its secondary).
+export function passiveForm(key) {
+  const [id, alt] = String(key).split(":"), node = Object.values(BRANCHES).flatMap((b) => [b.mod, ...b.caps]).find((q) => q.id === id);
+  if (!node || (alt && alt !== "alt")) return null;
+  return alt ? { id, alt: true, name: ALT_PASSIVES[id].name, text: ALT_PASSIVES[id].text } : { id, alt: false, name: node.name, text: node.text };
+}
+export const PASSIVE_KEYS = Object.values(BRANCHES).flatMap((b) => [b.mod, ...b.caps]).flatMap((n) => [n.id, `${n.id}:alt`]);
+export function toggleLatticePassive(save, key) {
+  const f = passiveForm(key); if (!f) return { ok: false, message: "That is not a passive." };
+  return toggleLatticeSlot(save, "passive", key, f.name, () => !hasNode(save, f.id) ? `Learn ${passiveForm(f.id).name} first: the Lattice draws in a form of a passive you know.` : f.alt === altChosen(save, f.id) ? `${f.name} already works: it is the form you have chosen.` : "");
+}
 export function toggleAlt(save, id) {
   const alt = ALT_PASSIVES[id];
   if (!alt) return { ok: false, message: "That entry has no secondary form." };

@@ -7,6 +7,7 @@
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
 import { rng } from "./random.ts";
+import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.ts";
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;
@@ -67,7 +68,12 @@ export function ensureEchoState(save) {
   return save;
 }
 export const notchesUsed = (equipped) => equipped.reduce((n, id) => n + (ECHOES[id]?.cost || 0), 0);
-export const hasEcho = (save, id) => !!save.echoes?.equipped?.includes(id);
+// Release 363: Echoes set in the Transit Lattice work too, beyond the notches.
+export const activeEchoes = (save) => { const eq = save?.echoes?.equipped || [], more = latticeEchoes(save).filter((id) => save.echoes?.owned?.[id] && !eq.includes(id)); return more.length ? [...eq, ...more] : eq; };
+export const hasEcho = (save, id) => activeEchoes(save).includes(id);
+export function toggleLatticeEcho(save, id) {
+  return toggleLatticeSlot(save, "echo", id, ECHOES[id]?.name || id, () => !ECHOES[id] ? "Unknown Echo." : !save.echoes?.owned?.[id] ? "You have not taken that Echo yet." : save.echoes.equipped.includes(id) ? `${ECHOES[id].name} is already set in your notches.` : "");
+}
 export function toggleEcho(save, id) {
   const st = save.echoes;
   if (!st.owned[id]) return { ok: false, message: "You have not taken that Echo yet." };
@@ -100,7 +106,7 @@ function nearest(game, x, y, radius, skip = null) {
 const centre = (q) => ({ x: q.x + .5, y: q.y + .45 });
 
 export function echoEvent(game, event, now, data = {}) {
-  const save = game.save, p = game.player, eq = save.echoes?.equipped || [], world = game.glyphWorld(now), dmg = echoDamage(save), me = centre(p);
+  const save = game.save, p = game.player, eq = activeEchoes(save), world = game.glyphWorld(now), dmg = echoDamage(save), me = centre(p);
   if (!eq.length) return;
   if (event === "dodge") {
     if (eq.includes("thunderhorn")) p.echoCharge = { until: p.dodgeUntil || now + 300, hit: {} };
@@ -153,7 +159,7 @@ export function echoEvent(game, event, now, data = {}) {
 // Continuous Echoes, ground patches, charge contact and trigger detection. `moving` is the player's input vector.
 export function tickEchoes(game, dt, now, moving) {
   if (!(dt > 0)) return;
-  const save = game.save, p = game.player, eq = save.echoes?.equipped || [], me = centre(p), world = game.glyphWorld(now);
+  const save = game.save, p = game.player, eq = activeEchoes(save), me = centre(p), world = game.glyphWorld(now);
   // hurt / land detection runs even with nothing equipped so state stays fresh
   const hurt = game._echoLastHp !== undefined && p.hp < game._echoLastHp && p.hp > 0, airborne = now < (game.jumpUntil || 0), landed = game._echoAirborne && !airborne;
   game._echoLastHp = p.hp; game._echoAirborne = airborne;
