@@ -2694,6 +2694,20 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 341: the potion tier toggle brews as you drink — 2026-10-23
+
+Tim, 2026-10-23: "You should... be able to set which one you want to use... I don't think you necessarily need to continuous craft. You can just do like 1 2 or 3. Select the toggle, and then it'll just craft potions for you... when you... hit the button, potions will be available to you. Potions of whichever rank you want".
+
+**CODE:**
+- **`potions.ts`:**
+  - `potionsReady(save)`: the chosen tier carried, plus floor(draughts / cost); for plain draughts, just the draughts.
+  - `potionToDrink`: the chosen tier while one is carried or brewable.
+- **`game.ts` `drinkPotion(now)`** is the Potion input. A chosen tier not carried is brewed (`craftPotion`) only when the Wayfarer is hurt, then drunk. The button's count and availability use `potionsReady`, falling back to draughts.
+- **`main.ts` Supplies:** the per-row "Potion button" buttons become one toggle on the draught row (`.potion-tiers`, `styles.css`) with "N ready".
+- **Tests:** `tests/potion-autobrew-341.test.ts`.
+
+**BOUNDARY:** No new save fields; `save.potionChoice` is from 339.
+
 ## Release 339: potion tiers — 2026-10-23
 
 Tim, 2026-10-23: "there's a potion, a high potion, and a Max potion... high potion... twice the amount... the Max potion will heal... your health to full. A high potion cost 3 potions, and the Max potion cost 5 potions"; "set the Max potion as your potion".
