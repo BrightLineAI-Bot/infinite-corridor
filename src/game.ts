@@ -31,7 +31,7 @@ function applyFallenTreeCrossings(map) {
 import { ensureSlots, slotted, pairingMods, slotReadiness, togglePreset, activeButton, slotTool, CASTABLES, availableCastables } from "./spell-slots.ts";
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { beastCatchUp } from "./stages.ts";
-import { POTIONS, potionToDrink, potionHeal } from "./potions.ts";
+import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.ts";
 import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.ts";
 import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, DRONE, ensureMech, mechAbsorb, tickMech } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
@@ -1218,9 +1218,9 @@ export function actionReadiness(game, now = 0) {
     potion: {
       remaining: 0,
       duration: 0,
-      count: game.save.consumables?.[potionToDrink(game.save)] || 0, // release 339: the tier the button will drink
+      count: potionsReady(game.save) || game.save.consumables?.restorativeDraught || 0, // release 341: carried plus brewable of the chosen tier (else plain draughts)
       available:
-        (game.save.consumables?.[potionToDrink(game.save)] || 0) > 0 &&
+        (potionsReady(game.save) || game.save.consumables?.restorativeDraught || 0) > 0 &&
         game.player.hp < game.save.maxHp,
     },
   };
@@ -3960,7 +3960,7 @@ export class Game {
     }
     // Awakened primary: every third swing releases a piercing crescent that carries the weapon's glyphs.
     if (!echo && this.save.equipment.primary?.awakened && (this.awakenSwings = (this.awakenSwings || 0) + 1) % 3 === 0)
-      this.projectiles.push({ id: `crescent-${now}`, x: this.player.x + .5 + geometry.dx * .4, y: this.player.y + .45 + geometry.dy * .4, dx: geometry.dx, dy: geometry.dy, speed: 9, life: .55, damage: Math.max(1, Math.round((profile.damage + characterStats(this.save).meleeBonus) * .7)), damageType: "physical", path: "straight", age: 0, hits: {}, pierce: 6, glyphHost: "melee", crescent: true });
+      this.projectiles.push({ id: `crescent-${now}`, x: this.player.x + .5 + geometry.dx * .4, y: this.player.y + .45 + geometry.dy * .4, dx: geometry.dx, dy: geometry.dy, speed: 9, life: .55, damage: Math.max(1, Math.round((profile.damage + characterStats(this.save).meleeBonus) * (1 + armorGlyphBonus(this.save).attackDamage) * .7)), damageType: "physical", path: "straight", age: 0, hits: {}, pierce: 6, glyphHost: "melee", crescent: true /* release 341: armor Volatile, as on the swing */ });
     const plan = !echo && echoPlan(glyphs);
     if (plan) (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "strike", share: plan.share });
     this.reconcileConsequences();
@@ -4175,6 +4175,13 @@ export class Game {
     this.sync();
     return true;
   }
+  // Release 341: the Potion button. A chosen High or Max Potion not carried is brewed from draughts first (only when it will
+  // be drunk, so nothing is brewed at full health).
+  drinkPotion(now = 0) {
+    const id = potionToDrink(this.save), c = this.save.consumables || {};
+    if (POTIONS[id]?.cost && !(c[id] > 0) && this.player.hp < this.save.maxHp) { const r = craftPotion(this.save, id); if (!r.ok) { this.message = r.message; return false; } }
+    return this.useConsumable(id, now);
+  }
   useConsumable(type, now = 0) {
     const c =
       this.save.consumables ||
@@ -4289,7 +4296,7 @@ export class Game {
       if (!input.held?.("jump")) this.mechSpent = false; // release 319: an emptied boost needs Jump let go before it fires again
       if ((this.mechUp() || this.droneUp()) && !this.mechSpent && input.held?.("jump") && now < (this.jumpUntil || 0) + 60 && m.fuel > 0) { /* release 321: the drone carries the same way */ m.fuel = Math.max(0, m.fuel - dt); this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.mechBoosting = true; if (m.fuel <= 0) this.mechSpent = true; }
       if (m?.built) tickMech(this.save, dt, !(now < (this.jumpUntil || 0))); if (this.droneUp()) this.tickDrone(dt, now); }
-    if (input.consume("potion")) this.useConsumable(potionToDrink(this.save), now); // release 339: the chosen potion tier
+    if (input.consume("potion")) this.drinkPotion(now); // release 339: the chosen potion tier; 341: brewed when needed
     if (input.consume("preset")) this.message = togglePreset(this.save).message; // release 261: swap spell presets 1 and 2
     if (input.consume("build")) { // release 269: beside (or aboard) a damaged skiff, Build patches the hull instead
       const btn = activeButton(this.save); // release 291: a preset may make it an item button; release 309: or a spell

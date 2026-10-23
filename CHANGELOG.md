@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 341 — pick the potion tier and the button brews it. In Pack → Supplies, choose what the Potion button drinks: 1 · Potion, 2 · High or 3 · Max.
+  - **Auto-brew:** with High or Max chosen, pressing the button brews one from your draughts on the spot (3 for High, 5 for Max) and drinks it. Nothing is brewed at full health.
+  - **Count and fallback:** the button's count is how many of that tier you can drink, carried plus brewable. With too few draughts to brew, it drinks a plain one.
+  - **Brewing ahead:** the Brew buttons still make potions in advance.
+  - **Fix:** an awakened weapon's crescent wave takes the armor Volatile bonus again.
+
 - Release 339 — three potion tiers.
   - **Restorative Draught:** heals 30, as before.
   - **High Potion:** heals 60. Brew one from 3 Restorative Draughts.

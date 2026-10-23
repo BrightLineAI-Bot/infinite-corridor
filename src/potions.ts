@@ -15,10 +15,17 @@ export function setPotionChoice(save, id) {
   save.potionChoice = id;
   return { ok: true, message: `The Potion button now drinks ${POTIONS[id].name}s.` };
 }
-// What the Potion button drinks now: the chosen tier while any are left, else a plain draught.
+// Release 341 (Tim: "Select the toggle, and then it'll just craft potions for you... when you... hit the button, potions will
+// be available to you. Potions of whichever rank you want"): the chosen tier is brewed from draughts the moment the button
+// needs one. How many of the chosen tier the button can give: those carried, plus what the draughts would brew.
+export function potionsReady(save) {
+  const c = save?.consumables || {}, chosen = potionChoice(save), P = POTIONS[chosen], draughts = c.restorativeDraught || 0;
+  return P.cost ? (c[chosen] || 0) + Math.floor(draughts / P.cost) : draughts;
+}
+// What the Potion button drinks now: the chosen tier while one is carried or can be brewed, else a plain draught.
 export function potionToDrink(save) {
   const c = save?.consumables || {}, chosen = potionChoice(save);
-  return (c[chosen] || 0) > 0 ? chosen : "restorativeDraught";
+  return (c[chosen] || 0) > 0 || (POTIONS[chosen].cost && (c.restorativeDraught || 0) >= POTIONS[chosen].cost) ? chosen : "restorativeDraught";
 }
 // Brews one High or Max Potion from Restorative Draughts.
 export function craftPotion(save, id) {
