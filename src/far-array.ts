@@ -35,13 +35,24 @@ export const BOONS = {
   "deep-breath": { name: "Deep Breath", text: "+8 maximum stamina.", stamina: 8 },
 };
 
+// The Listener moves on (release 357; Tim, 2026-10-23: "after you defeat them the first time... His dungeon can stay there...
+// but he won't be there... you have to... activate or deactivate... at least 5 more relays first [for his] quest to become
+// available, and then you have to complete his quest... how many relays you do in total will increase... his strength").
+// After each Listener falls the Mouth goes quiet (`quiet`, with `relaysAt` the relays answered then). Once `returnRelays`
+// more relays have answered, the line gives a new coordinate (`listenerCoordinate`, by `mouth`) and the Array opens there:
+// the same Gate climb (pieces, then the Listener) at the new Mouth. The old Mouth stays, silent (relayNetwork.pastMouths).
+export const LISTENER_RETURN = { returnRelays: 5, near: 40, spread: 23 };
+const answeredRelays = (save) => Object.keys(save?.relayNetwork?.nodes || {}).length;
 export function ensureFarArray(save) {
   const f = save.farArray && typeof save.farArray === "object" ? save.farArray : {};
+  // Journeys that felled a Listener before 357 go quiet now, counting from the relays they had then.
+  const quiet = f.quiet === undefined ? (Number(f.listeners) || 0) > 0 : !!f.quiet, relaysAt = f.relaysAt != null && Number.isFinite(Number(f.relaysAt)) ? Math.max(0, Number(f.relaysAt)) : answeredRelays(save);
   save.farArray = {
     v: 1, gate: Math.max(1, Number(f.gate) || 1), pieces: Math.max(0, Number(f.pieces) || 0), runs: Math.max(0, Number(f.runs) || 0),
     listeners: Math.max(0, Number(f.listeners) || 0), boons: (Array.isArray(f.boons) ? f.boons : []).filter((id) => BOONS[id]),
     offer: (Array.isArray(f.offer) ? f.offer : []).filter((id) => BOONS[id]), ending: ["close", "open"].includes(f.ending) ? f.ending : null,
     endingPending: !!f.endingPending, history: (Array.isArray(f.history) ? f.history : []).slice(-12), activeRun: f.activeRun && typeof f.activeRun === "object" ? f.activeRun : null,
+    quiet, relaysAt, mouth: Math.max(0, Math.floor(Number(f.mouth) || 0)), // release 357
   };
   return save.farArray;
 }
@@ -100,7 +111,7 @@ export function summonSpawn(save, at, n) {
 }
 // Gate scaling for a created combatant (the boss, its summons, and the run's ordinary foes).
 export function scaleForGate(c, save, role) {
-  const f = ensureFarArray(save), g = f.activeRun?.gate || f.gate, up = g - 1, relays = Math.min(7, relayLean(save).answered);
+  const f = ensureFarArray(save), g = f.activeRun?.gate || f.gate, up = g - 1, relays = Math.min(ARRAY_TUNING.relayCap, relayLean(save).answered);
   if (role === "boss" || role === "summon") {
     // Health and damage are set to the Wayfarer by tuneArrayBoss after all other scaling; here only the borrowed move.
     if (g >= FAR.borrowFromGate && Array.isArray(c.packAttacks)) { const extra = (c.kind === "listener" ? LISTENER_FORMS.walled.attacks : ["shockwave", "groundRupture", "leapSlam"]).find((a) => !c.packAttacks.includes(a)); if (extra) c.packAttacks = [...c.packAttacks, extra]; }
@@ -109,9 +120,9 @@ export function scaleForGate(c, save, role) {
 }
 // Bosses and summons are tuned to the Wayfarer, like the Questing Beast: health is a number of the Wayfarer's current
 // melee blows (more per gate tier and per relay answered), damage a share of the Wayfarer's maximum health.
-export const ARRAY_TUNING = { guardianHits: 32, listenerHits: 60, summonHits: 18, hitsPerGate: 8, hitsPerRelay: 1, damageShare: .085, damagePerGate: .012, maxShare: .2 };
+export const ARRAY_TUNING = { guardianHits: 32, listenerHits: 60, summonHits: 18, hitsPerGate: 8, hitsPerRelay: 1, relayCap: 40, damageShare: .085, damagePerGate: .012, maxShare: .2 }; // release 357: relays count up to relayCap (was 7)
 export function tuneArrayBoss(c, save, stats, role) {
-  const f = ensureFarArray(save), g = f.activeRun?.gate || f.gate, up = g - 1, relays = Math.min(7, relayLean(save).answered), T = ARRAY_TUNING;
+  const f = ensureFarArray(save), g = f.activeRun?.gate || f.gate, up = g - 1, relays = Math.min(ARRAY_TUNING.relayCap, relayLean(save).answered), T = ARRAY_TUNING;
   const weapon = save.equipment?.[save.activeWeaponSlot], perHit = Math.max(6, (Number(weapon?.power) || 6) + (Number(stats?.meleeBonus) || 0)), guard = Math.max(0, Math.min(.75, Number(stats?.damageReduction) || 0));
   const hits = (role === "listener" ? T.listenerHits : role === "summon" ? T.summonHits : T.guardianHits) + T.hitsPerGate * up + T.hitsPerRelay * relays;
   c.maxHp = c.hp = Math.round(perHit * hits + 15 * Math.max(1, Number(save.level) || 1));
@@ -132,8 +143,30 @@ export function listenerFelled(save) {
   const f = ensureFarArray(save), r = rng(`${save.seed}:far-array:boons:${f.gate}:${f.listeners}`), ids = Object.keys(BOONS).sort(() => r() - .5);
   f.listeners++; f.history.push({ run: f.runs, gate: f.gate, won: "listener" }); f.gate++; f.pieces = 0; f.activeRun = null;
   f.offer = ids.slice(0, 3); if (f.listeners === 1 && !f.ending) f.endingPending = true;
-  return `The Listener falls silent. The Gate climbs to tier ${f.gate}. Choose a boon in the Journal's Far Gate.`;
+  f.quiet = true; f.relaysAt = answeredRelays(save); // release 357: it moves on
+  return `The Listener falls silent. The Gate climbs to tier ${f.gate}. Choose a boon in the Journal's Far Gate. The Mouth goes quiet: answer ${LISTENER_RETURN.returnRelays} more relays and the line will say where it went.`;
 }
+// How many more relays must answer before the Listener's line speaks again (0 when it is not quiet).
+export function relaysUntilReturn(save) { const f = ensureFarArray(save); return f.quiet ? Math.max(0, f.relaysAt + LISTENER_RETURN.returnRelays - answeredRelays(save)) : 0; }
+// Where the Array Mouth stands after the Listener has moved `mouth` times: 40 to 62 sections out, never where it was.
+export function listenerCoordinate(seed, mouth, previous = null) {
+  for (let k = 0; ; k++) {
+    const c = hashSeed(`${seed}:relay-coordinate:mouth${mouth}:${k}`), L = LISTENER_RETURN;
+    const at = { rx: (c % 2 ? 1 : -1) * (L.near + c % L.spread), ry: ((c >>> 3) % 2 ? 1 : -1) * (L.near + (c >>> 5) % L.spread) };
+    if (!previous || Math.abs(at.rx - previous.rx) + Math.abs(at.ry - previous.ry) >= 20 || k > 20) return at;
+  }
+}
+// Called after a relay answers: once enough have, the Listener's line gives its new coordinate. Returns it, or null.
+export function listenerReturns(save) {
+  if (relaysUntilReturn(save) > 0) return null; // (it renormalises save.farArray, so read `f` after)
+  const f = ensureFarArray(save), net = save.relayNetwork;
+  if (!f.quiet || !net?.coordinate) return null;
+  const old = { rx: net.coordinate.rx, ry: net.coordinate.ry };
+  f.mouth++; f.quiet = false; net.pastMouths = [...(Array.isArray(net.pastMouths) ? net.pastMouths : []), old].slice(-8);
+  net.coordinate = listenerCoordinate(save.seed, f.mouth, old);
+  return net.coordinate;
+}
+export const silentMouthAt = (save, rx, ry) => (save?.relayNetwork?.pastMouths || []).some((c) => c.rx === rx && c.ry === ry) && !arrayMouthAt(save, rx, ry);
 export function chooseBoon(save, id) { const f = ensureFarArray(save); if (!f.offer.includes(id)) return false; f.boons.push(id); f.offer = []; return true; }
 export function chooseEnding(save, ending) { const f = ensureFarArray(save); if (!f.endingPending || !["close", "open"].includes(ending)) return false; f.ending = ending; f.endingPending = false; return true; }
 // Summed boon effects for characterStats.
