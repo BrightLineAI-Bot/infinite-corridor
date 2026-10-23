@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 349 — world bosses turn up a little more often.
+  - **Shorter gap:** 6 new sections between meetings instead of 8.
+  - **Higher chance:** each section's chance of a boss is 40% higher.
+  - **Unchanged:** which bosses can appear at your Aperture, and where.
+
 - Release 347 — steadier tap targeting, and retraining stats.
   - **Easier to tap:** creatures, the big ones especially, are easier to tap.
   - **Re-tapping keeps the lock:** tapping your locked target again keeps it locked instead of releasing it.

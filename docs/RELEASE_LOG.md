@@ -13,7 +13,7 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**349**
+**351**
 
 ## In flight
 
@@ -21,7 +21,8 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 |---|---|---|---|---|
 | 343 | Claude | `claude/dreamy-rubin-yn6q2p` | Auto targeting reaches farther (swing reach +3, tool range ×1.6) | Merged (PR #154). |
 | 345 | Claude | `claude/dreamy-rubin-yn6q2p` | Dying costs nothing (wood kept); Options switch for world-boss tries (off: 3-minute patience, +2 below half health, deaths do not reset) | Merged (PR #155). |
-| 347 | Claude | `claude/dreamy-rubin-yn6q2p` | Tap targeting tightened (wider pick, re-tap keeps lock, tool shots and spells follow the lock); Oren retrains stats for 500 marks | Building. |
+| 347 | Claude | `claude/dreamy-rubin-yn6q2p` | Tap targeting tightened (wider pick, re-tap keeps lock, tool shots and spells follow the lock); Oren retrains stats for 500 marks | Merged (PR #156). |
+| 349 | Claude | `claude/dreamy-rubin-yn6q2p` | World bosses slightly more frequent (gap 6 sections, chance ×0.7 of base) | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)

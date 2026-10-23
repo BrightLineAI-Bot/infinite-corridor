@@ -2694,6 +2694,19 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 349: world bosses a little more often — 2026-10-23
+
+Tim, 2026-10-23: "make... the world bosses just slightly more... frequent, so I can see a few more of them more frequently".
+
+**CODE:** `world-beasts.ts` `ENCOUNTER`:
+- `newSections` goes from 8 to 6 (the gap of new sections between meetings);
+- `chanceScale` goes from .5 to .7 (multiplies every beast's per-section `chance`).
+The encounter tests read the constants.
+
+**BOUNDARY:**
+- `BEAST_APERTURE` unlocks, placement rules, pursuit and cooldowns are unchanged.
+- The Questing Beast keeps its own chance.
+
 ## Release 347: steadier tap targeting; retraining stats — 2026-10-23
 
 Tim, 2026-10-23:
