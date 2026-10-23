@@ -13,22 +13,21 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**351**
+**353**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 343 | Claude | `claude/dreamy-rubin-yn6q2p` | Auto targeting reaches farther (swing reach +3, tool range ×1.6) | Merged (PR #154). |
-| 345 | Claude | `claude/dreamy-rubin-yn6q2p` | Dying costs nothing (wood kept); Options switch for world-boss tries (off: 3-minute patience, +2 below half health, deaths do not reset) | Merged (PR #155). |
-| 347 | Claude | `claude/dreamy-rubin-yn6q2p` | Tap targeting tightened (wider pick, re-tap keeps lock, tool shots and spells follow the lock); Oren retrains stats for 500 marks | Merged (PR #156). |
-| 349 | Claude | `claude/dreamy-rubin-yn6q2p` | World bosses slightly more frequent (gap 6 sections, chance ×0.7 of base) | Building. |
+| 349 | Claude | `claude/dreamy-rubin-yn6q2p` | World bosses slightly more frequent (gap 6 sections, chance ×0.7 of base) | Merged (PR #157). |
+| 351 | Claude | `claude/dreamy-rubin-yn6q2p` | Daily narrative: Sleeper's Hall, dream crossings in the Far Sleep (bible section 7, step 4) | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 347 | `r347-6aae356afb82` | 2026-10-23 | Published with 343 and 345 (neither went live alone): farther auto aim (343, PR #154); dying costs nothing, the world-boss tries switch (345, PR #155); steadier tap targeting, Oren retrains stats (347, PR #156). The pre-publish Fable review found no blockers. |
 | 341 | `r341-6762df1cdaab` | 2026-10-23 | The potion tier toggle brews High and Max Potions from draughts as you drink; the crescent takes armor Volatile again (PR #153). The pre-publish Fable review found no blockers. |
 | 339 | `r339-9f49bdbe23f2` | 2026-10-23 | Published with 335 and 337 (neither went live alone): glyph and buff wiring, the Arcanum follows the preset (335, PR #150); Echoes from every first kill, slain beasts grant missing Echoes (337, PR #151); potion tiers (339, PR #152). The pre-publish Fable review found no blockers. |
 | 333 | `r333-3ab1b81cc983` | 2026-10-23 | The larger Threefold Deep's final gate opens onto the Choir again (PR #149). The pre-publish Fable review found no blockers. |

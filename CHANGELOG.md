@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 351 — dream crossings in the Far Sleep.
+  - **Sleeper's Hall:** crossings first found more than 35 sections out are now dreams: meadow floors, walls worn through to the night sky, sleeping stones and marble terraces, with petals falling.
+  - **Unchanged:** crossings you have already entered, and everything inside a crossing besides its look and terrain.
+
 - Release 349 — world bosses turn up a little more often.
   - **Shorter gap:** 6 new sections between meetings instead of 8.
   - **Higher chance:** each section's chance of a boss is 40% higher.
