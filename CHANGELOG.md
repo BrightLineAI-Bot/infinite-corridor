@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 337 — Echoes from every first kill.
+  - **Guardians:** each of the 16 named guardian creatures now always leaves its Echo the first time you beat it, if you don't already have that Echo. That covers guardians you've beaten before without getting one. Before, it was a 3% chance.
+  - **World beasts and the Questing Beast:** the same rule; their first kill already gave the Echo.
+  - **Earlier kills:** a Questing Beast (or world beast) you killed in the past without getting its Echo now grants that Echo when you load the game.
+  - **Still no Echo:** the plain guardians (Hollow Marshal and the Deep wardens) and ordinary creatures.
+
 - Release 335 — glyphs, buffs and presets checked and fixed. Every armor glyph, skill glyph, weapon glyph, resonance, spell pairing and constellation passive was tested in play; most already worked. Fixed:
   - **Armor Volatile and Ignite** now scale the whole hit: +10% to each melee blow, and +12% to each spell and magic shot. Before, they only boosted a small flat bonus. Ignite no longer boosts physical tool shots, and Volatile no longer makes the world beasts stronger.
   - **Rift Step** now recovers faster with armor Chain and with a cooldown pairing (Eclipse, Hollow and the like), like every other skill.
