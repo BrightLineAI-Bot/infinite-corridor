@@ -26,6 +26,115 @@ All fourteen laboratories above are addressable and construct isolated productio
 
 The Wayglass network uses three deliberately separate concepts. A Wayglass is a cyan fast-travel and respawn anchor registered in `save.checkpoints`. A Singing Array is a lower violet/green rest point that may become the active respawn checkpoint but never enters the fast-travel list. A Broken Observatory is a discovery landmark and neither a rest point nor a fast-travel anchor. Ordinary generation retains sparse randomness but also promotes one deterministic landmark candidate per five-by-five macrocell, bounding long Wayglass droughts while keeping the network uncommon.
 
+## The tier system: Aperture bands, Listener stages and what each one opens (reference, current at release 331)
+
+Tim asked on 2026-10-23 for one place that says how the tier system works and what is tied to it. Update this section whenever a gate changes; the release sections below keep the history.
+
+### Bands
+- **What the band is.** The Wayfarer's Aperture (`save.perception.aperture`) decides their band (`apertureTier`, world.ts; names and thresholds in `APERTURE_BANDS`, items.ts).
+- **How it grows.** Aperture only ever grows:
+  - +1 for each new section;
+  - +1 for each creature, +4 for each guardian;
+  - +2 for shrines, ruin markers and shelter creatures;
+  - +2 or +3 for deep stories;
+  - +3 for each perception object.
+- **Thresholds.** Past Resonant, each band needs round(previous × 1.45 + 20).
+
+| Tier | Band | Aperture | | Tier | Band | Aperture |
+|---|---|---|---|---|---|---|
+| 0 | Dormant | 0 | | 8 | Boundless | 470 |
+| 1 | Stirring | 6 | | 9 | Unbound | 702 |
+| 2 | Open | 18 | | 10 | Sovereign | 1038 |
+| 3 | Resonant | 36 | | 11 | Infinite | 1525 |
+| 4 | Lucid | 72 | | 12 | Infinite II | 2231 |
+| 5 | Unveiled | 124 | | 13 | Infinite III | 3255 |
+| 6 | Abyssal | 200 | | 14 | Infinite IV | 4740 |
+| 7 | Starward | 310 | | 15 | Infinite V | 6893 |
+
+### Listener stages (stages.ts `STAGES`)
+- **Stage 1** is tiers 0–12. Aperture stops one point short of Infinite III (3254) until the first Listener falls.
+- **Later stages.** The first Listener kill opens Stage 2 (up to tier 24). Each 2 further kills open another stage of 12 tiers (stage 3 at 3 kills, stage 4 at 5). Kills are counted in `save.farArray.listeners`.
+- **World-beast strength:**
+  - **Below Infinite III:** world beasts (and the Questing Beast, the Mire Heart and the roaming Gate Revenant) match the Wayfarer.
+  - **From Infinite III:** their strength holds at the measure taken there, until the Wayfarer has beaten 3 Listeners.
+  - **From the third Listener on (331):** each Listener kill catches them up to the Wayfarer's strength at that moment, and they hold there until the next kill (`beastCatchUp`). The time between Listeners is the Wayfarer's to outgrow them.
+- **The Far Gate.** The Far Gate itself scales by Gate number, not tier:
+  - Gate g needs g+2 pieces.
+  - The Listener summons from Gate 2, with more phases at Gates 3 and 4.
+  - Guardians get +30% health and +12% damage for each Gate past the first.
+
+### The dungeon ladder (dungeon-ladder.ts `DUNGEON_LADDER`, 319–325)
+- **Unlock tiers:**
+
+| Kind | Unlocks at |
+|---|---|
+| Large dungeons, Watcher's daises, the newer environments, 10 of 16 guardians, the roaming Gate Revenant | Tier 3 (Resonant) |
+| All 16 guardians (and so their Echoes), Poison Crypts, world-threat arenas, the Threefold Deep | Tier 6 (Abyssal) |
+| The deep archetypes, the Revenant horde | Tier 9 (Unbound) |
+
+- **How often an unlocked kind appears.** At its unlock tier it appears at half its old rate. That climbs to 80% by Infinite II, and from Infinite III everything is at today's full rate.
+- **Tiers 0–1, the base game.** Ordinary crossings, short plain dungeons, the six original environments and 5 guardians. A quarter of would-be large crossings stay large and plain ("quiet"); there are no tastes.
+- **Tastes, from Open (tier 2).** A locked kind still appears 25% as often. A Poison Crypt taste is compact, and a horde taste is 12–18 Revenants.
+- **Deeps and arenas.** Nothing is ever sealed (323). Every deep and arena opens whole (325). One entered below its tier is a taste: its creatures have min(1, 0.55 + 0.05 × tier) of their health and damage.
+- **Fixed for good.** Each dungeon keeps the tier it was first found or entered at (`history.ladder`). Dungeons pinned before 319 keep the old rules.
+- **Aperture annex.** The "Unseen Crossing" door in a resolved dungeon needs Aperture 18 (Open).
+
+### Monsters and world beasts
+- **World beasts.** Each can first be met at (`BEAST_APERTURE`):
+
+| Tier | World beasts |
+|---|---|
+| 3 (Resonant) | Mountain Turtle, Void Walker, Psychic Crystal |
+| 4 | Morphing Blob |
+| 5 | Lightning Giant |
+| 6 | Astral Worm |
+| 7 | Nanobot Knight, Tremor Worm |
+| 8 (Boundless) | Questing Beast |
+
+- **Aperture encounters** (`apertureEncounterSpawns`, world.ts) are overworld creatures with extra traits, worth 6 marks:
+
+| Tier | Chance per section | Creatures and traits |
+|---|---|---|
+| 0 | none | — |
+| 1 | 12% | Ashen hounds, coil stalkers and glass mites, with keen or swift |
+| 2 | 20% | Brutes, wardens, stalkers and sentinels, with vital, feral or farcasting |
+| 3 | 30% | Brutes, marshals, wardens and sentinels, with vital, plated, orbital or swift |
+| Above 3 | +1.2% per tier, up to 42% | Threat 1 + 0.4 × min(3, t) + 0.15 × (t − 3) |
+
+- **Foundry domains.** Cleared domains manifest again once Aperture reaches 24 (Sentinel Manufactory) or 30 (Rootbound Crown).
+
+### The Wayfarer: stats, skills, constellation
+- **Aperture Resonance.** Every band past Resonant adds +6 max health, +2 melee and +2 magic (`APERTURE_RESONANCE`, game.ts). At Infinite IV that is +66 health, +22 melee and +22 magic.
+- **Aperture skills** (`APERTURE_SKILLS`, items.ts) are taught by Sela:
+  - **Stirring (6):** Ember Form and Quickening, rank 3.
+  - **Open (18):** Veil Guard, Force Channel and Rift Step, rank 3.
+  - **Resonant (36):** Aerial Step (rank 1, the Motion capstone).
+  - Spell slots list only learned skills.
+- **The constellation** (constellation.ts) gives 1 point per 6 Aperture. A rank needs its skill's Aperture threshold. Mods and capstones need the skill learned or mastered, and capstones cost 2 points.
+
+### Items, gear, glyphs, Echoes
+- **No band gates here.** Item tiers (common, rare, epic, relic), upgrade caps (3/4/5/6) and glyph sockets (1/2/2/3) come from item level. Shops scale by character level.
+- **Echoes** have no gate of their own: guardian Echoes follow the guardian ladder above, and world-beast Echoes follow the world-beast table.
+- **Glyphs.** Aperture skills infuse glyphs. The glyph "echo" makes Aperture skills last 20% longer.
+
+### Vehicles (vehicle-gates.ts `VEHICLE_GATES`, 315–321)
+
+| Unlock | Needs |
+|---|---|
+| Dive rig and buoy diving | Infinite II |
+| Forging the submersible | Infinite II + the Void Walker or a Listener beaten |
+| Taking the submersible under, riding the deep current | Infinite III + both the Void Walker and a Listener beaten |
+| The robot ashore | Infinite III + 2 Listeners |
+| The drone instead of the robot | 4 Listeners |
+
+### Perception objects and the rite
+- **Perception objects** appear by Aperture:
+  - Veiled Inscription at 6 (gives +3);
+  - the Unseen Crossing at 18;
+  - Deep Lattice Relic at 36 (gives +3).
+- **The Aperture rite** needs Aperture 12, the Relay resolved and one Viewport hunt done.
+- **On reaching a new band,** the band is saved and a journal entry is written. The world's colour tint caps at Resonant.
+
 ## Void Walker, permanent scars and Blob regeneration (release 251)
 
 **CODE:** `src/world-beasts.ts`, `src/monster-pack.ts`, `src/monster-render.ts` and `src/game.ts` add the player-scale Void Walker hunter with ten bounded attack modules, dungeon patrol, combat rifts and nearest-reachable-door retreat. Retreat walks/jumps normal terrain to a physical `exit` or `deepTransition` doorway, disappearing only after arrival; no-route states wait/retry and persist across unloaded scenes. Search work is capped at 625 expansions per frame, and sanctuary handling cannot relocate/freeze a harmless retiring Walker. See [owner requirements/source](void-walker-design.md) and [implementation/review evidence](void-walker-implementation.md).
