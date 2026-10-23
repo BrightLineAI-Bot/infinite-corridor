@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 365 — three new spells from Infinite III.
+  - **Shadow Clone:** cast it and a shadow appears behind you (or beside you, if you are standing still). Tap to set it up to 2 tiles away. It follows you through walls and copies every swing and shot at half damage. Cast it again to step into it; if you can't stand there, it shows "Blocked".
+  - **Gravity Well:** a vortex that drags enemies toward its centre while it hurts them. Bosses barely budge.
+  - **Stillpoint:** a pocket of held time. Enemies inside move at 40% speed, and enemy shots that enter it fall apart.
+
 - Release 363 — the Transit Lattice.
   - **When it opens:** at Infinite III, once you have felled a Listener, the Arcanum gains a Transit Lattice tab.
   - **What it holds:** 2 constellation passives and 1 Echo, on top of everything you already have set. A slot can hold either form of a passive you know, so a passive can work in both its primary and secondary form at once. An Echo in the Lattice uses no notches.

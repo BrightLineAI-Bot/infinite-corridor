@@ -2694,6 +2694,37 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 365: three spells from Infinite III — 2026-10-23
+
+Tim, 2026-10-23: "let's add 3 more spells... after infinite 3... one of them will be like a shadow clone... [the] two others... you can figure em out".
+
+**Shadow Clone (Tim's design):**
+- The first press deploys it 1.5 tiles away: behind you if you are moving, beside you if you are still.
+- The next tap on the world sets it where you tap, at most 2 tiles from you.
+- It keeps that offset as you move, through walls.
+- It copies every swing (the same blow from where it stands) and every tool shot at half damage.
+- A second press while it lasts (12 s) carries you to it, unless you cannot stand there. Then "BLOCKED" flashes over it.
+
+**My two designs:**
+- **Gravity Well:** a vortex that drags foes toward its eye while it pulses. Bosses and great beasts barely move, and nothing is pulled into a wall.
+- **Stillpoint:** foes inside move at 40% speed, and hostile shots that enter it fall apart.
+
+**CODE:**
+- **`items.ts`:** `SPELLS` gains the three with `unlockTier: 13` and a `text`; `spellOpen(save, id)` checks the band.
+- **`spell-slots.ts`:** `CASTABLES` gains them (◐ dusk, ⊛ rift, ⧗ ward). `availableCastables` and `slotted` use `spellOpen`.
+- **New module `late-spells.ts`** (added to `scripts/build.mjs` and both `sw.js` lists): `SHADOW_CLONE`, `GRAVITY_WELL`, `STILLPOINT`, `cloneOffset`, `clampPlacement`, `clonePosition`, `tickSpellFields`.
+- **`game.ts`:**
+  - Shadow Clone: `castShadowClone`, `shadowCloneActive`, `placeShadowClone`, `cloneSwing`. `primaryAttack` and `fireSecondary` call in, and `movingNow` is recorded in the movement wrapper.
+  - The clone is runtime only and ends on `loadArea`.
+  - `tickSpellFields` runs before `updateEffects`.
+- **`main.ts`:** the first world tap after casting places the clone. The Arcanum lists the new spells, locked until Infinite III, with their text.
+- **`combat-visuals.ts`:** draws the spiral, the clock rings, the shadow, its swing arc and "BLOCKED".
+- **Tests:** `tests/late-spells-365.test.ts`.
+
+**BOUNDARY:**
+- No save changes beyond the usual slot keys.
+- Glyphs still socket in Gravity Well and Stillpoint like any spell. The clone's copies carry no glyphs.
+
 ## Release 363: the Transit Lattice — 2026-10-23
 
 Tim, 2026-10-23: after Infinite III and a first Listener, a Transit Lattice holds extra passives beyond the usual rules:
