@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 357 — the Listener moves on.
+  - **Gone after it falls:** once you fell the Listener, its Mouth goes quiet. The ruin stays, but nothing waits below, and the compass stops pointing there.
+  - **Five more relays:** answer five more relays (restore or sever) and the line says where it went: a new Mouth, far out, where the Gate climb goes on.
+  - **Relays make it stronger:** every relay you have answered adds to the Listener's strength (and its guardians'), up to 40.
+  - **If you have already felled one:** the Mouth goes quiet now, counting from the relays you have.
+
 - Release 355 — three map marks.
   - **Mark places to remember:** select a section on the map and press "Mark selected section". Up to three marks, each its own colour (rose, green, violet), shown as small flags at every zoom, with an arrow at the map's edge when one is off screen.
   - **Clearing:** select a marked section and press the button again.

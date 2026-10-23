@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**357**
+**359**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 355 | Claude | `claude/dreamy-rubin-yn6q2p` | Three map marks (colours, flags, the compass ignores them) | Building. |
+| 355 | Claude | `claude/dreamy-rubin-yn6q2p` | Three map marks (colours, flags, the compass ignores them) | Merged (PR #160). |
+| 357 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener moves on: quiet Mouth after a kill, new Mouth after 5 more relays, strength by relays (cap 40) | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)

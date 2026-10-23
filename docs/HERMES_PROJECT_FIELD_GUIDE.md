@@ -2694,6 +2694,31 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 357: the Listener moves on — 2026-10-23
+
+Tim, 2026-10-23: "after you defeat [the Listener] the first time... His dungeon can stay there... but he won't be there... you have to... activate or deactivate... at least 5 more relays... for his quest to become available, and then you have to complete his quest... depending on how many relays you do in total will increase... his strength".
+
+**CODE (`far-array.ts`):**
+- **New state:** `save.farArray` gains `quiet`, `relaysAt` and `mouth` (additive, normalised in `ensureFarArray`).
+- **`listenerFelled`:** sets `quiet` and records `relaysAt`, the relays answered at the time.
+- **Returning:**
+  - `relaysUntilReturn(save)` gives how many more relays are needed (`LISTENER_RETURN.returnRelays` = 5).
+  - `relay-network.ts` `commitRelayNode` calls `listenerReturns`. Once enough relays have answered, it moves `relayNetwork.coordinate` to `listenerCoordinate(seed, mouth, previous)` (40 to 62 sections out, at least 20 from the old Mouth). It also records the old coordinate in `relayNetwork.pastMouths`, clears `quiet`, and journals "The Listener Moved".
+- **Strength:** `tuneArrayBoss` and `scaleForGate` count relays up to `ARRAY_TUNING.relayCap` = 40 (was 7). Every relay answered, restored or severed, adds `hitsPerRelay` to the Listener's and the guardians' health.
+- **Older journeys:** a journey that felled a Listener before this release goes quiet on load, counting from the relays it has now.
+
+**CODE (elsewhere):**
+- `game.ts`:
+  - While quiet, the Mouth is "The Quiet Mouth" and admits no run (`quietMouthNote`).
+  - Past Mouths get an inspect-only `silentMouth`.
+- `world.ts` `wayfindingTargets` and the Journal objectives drop the Far Array while quiet.
+- The Far Gate journal tab counts the relays still needed.
+- Tests: `tests/listener-moves-357.test.ts`.
+
+**BOUNDARY:**
+- The Gate tier, its pieces, boons and the Listener's forms are unchanged. Pieces gained while it is quiet (a Revenant horde) still count.
+- The first Listener is where it always was.
+
 ## Release 355: three map marks — 2026-10-23
 
 Tim, 2026-10-23: "on the map, there should be three... points of interest markers that you can just set on some place on the map. The compass won't navigate to them... up to 3 places can be highlighted in some color... a couple different colors".
