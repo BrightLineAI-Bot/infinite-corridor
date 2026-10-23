@@ -1,7 +1,7 @@
-import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.js?v=r327-ae92ea7193c7";
-import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.js?v=r327-ae92ea7193c7";
-import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage, beginAstralBoarding, tickAstralBoarding, tickAstralRiderChoice, tickAstralFighterChoice } from "./astral-worm-mount.js?v=r327-ae92ea7193c7";
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=r327-ae92ea7193c7";
+import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.js?v=r331-46dddc4b8b03";
+import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.js?v=r331-46dddc4b8b03";
+import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage, beginAstralBoarding, tickAstralBoarding, tickAstralRiderChoice, tickAstralFighterChoice } from "./astral-worm-mount.js?v=r331-46dddc4b8b03";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=r331-46dddc4b8b03";
 import {
   generateRegion,
   generateDungeon,
@@ -17,7 +17,7 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
-} from "./world.js?v=r327-ae92ea7193c7";
+} from "./world.js?v=r331-46dddc4b8b03";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -28,17 +28,18 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness, togglePreset, activeButton, slotTool, CASTABLES, availableCastables } from "./spell-slots.js?v=r327-ae92ea7193c7";
-import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=r327-ae92ea7193c7";
-import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.js?v=r327-ae92ea7193c7";
-import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, DRONE, ensureMech, mechAbsorb, tickMech } from "./vehicle-gates.js?v=r327-ae92ea7193c7";
-import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=r327-ae92ea7193c7";
-import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=r327-ae92ea7193c7";
-import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.js?v=r327-ae92ea7193c7";
-import { submersible, fitSubmersible, aboard, sailable, BOAT, canBuildSkiff, mendSkiff, buyHullShield, deployHullShield, tickHullShield, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.js?v=r327-ae92ea7193c7";
-import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.js?v=r327-ae92ea7193c7";
-import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, dungeonWaterToll, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=r327-ae92ea7193c7";
-import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=r327-ae92ea7193c7";
+import { ensureSlots, slotted, pairingMods, slotReadiness, togglePreset, activeButton, slotTool, CASTABLES, availableCastables } from "./spell-slots.js?v=r331-46dddc4b8b03";
+import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=r331-46dddc4b8b03";
+import { beastCatchUp } from "./stages.js?v=r331-46dddc4b8b03";
+import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.js?v=r331-46dddc4b8b03";
+import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, DRONE, ensureMech, mechAbsorb, tickMech } from "./vehicle-gates.js?v=r331-46dddc4b8b03";
+import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=r331-46dddc4b8b03";
+import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=r331-46dddc4b8b03";
+import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.js?v=r331-46dddc4b8b03";
+import { submersible, fitSubmersible, aboard, sailable, BOAT, canBuildSkiff, mendSkiff, buyHullShield, deployHullShield, tickHullShield, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.js?v=r331-46dddc4b8b03";
+import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.js?v=r331-46dddc4b8b03";
+import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, dungeonWaterToll, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=r331-46dddc4b8b03";
+import { createCombatant, dodge, playerAttack, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=r331-46dddc4b8b03";
 import {
   applyInteraction,
   validActions,
@@ -48,40 +49,40 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=r327-ae92ea7193c7";
-import { ensurePerception } from "./types.js?v=r327-ae92ea7193c7";
-import { generateItem } from "./items.js?v=r327-ae92ea7193c7";
-import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=r327-ae92ea7193c7";
-import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.js?v=r327-ae92ea7193c7";
-import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, armorGlyphBonus, skillGlyphMods } from "./glyphs.js?v=r327-ae92ea7193c7";
-import { hashSeed, rng } from "./random.js?v=r327-ae92ea7193c7";
-import { placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt } from "./building.js?v=r327-ae92ea7193c7";
-import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.js?v=r327-ae92ea7193c7";
-import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.js?v=r327-ae92ea7193c7";
-import { HORDE, rollHorde, ensureHorde, hordeKill, hordeSpawnPoints } from "./revenant-horde.js?v=r327-ae92ea7193c7";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.js?v=r327-ae92ea7193c7';
-import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=r327-ae92ea7193c7';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=r327-ae92ea7193c7';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=r327-ae92ea7193c7';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=r327-ae92ea7193c7';
-import{ensureSceneState,queueScene}from'./scenes.js?v=r327-ae92ea7193c7';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=r327-ae92ea7193c7";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r327-ae92ea7193c7";
-import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt } from "./underlands.js?v=r327-ae92ea7193c7";
-import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r327-ae92ea7193c7";
-import { applyLandscape, applyDream, DREAM_VERSION, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.js?v=r327-ae92ea7193c7";
-import { GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.js?v=r327-ae92ea7193c7";
-import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.js?v=r327-ae92ea7193c7";
-import { addStrange, touchStrange } from "./strange.js?v=r327-ae92ea7193c7";
-import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, digSpot } from "./digging.js?v=r327-ae92ea7193c7";
-import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.js?v=r327-ae92ea7193c7";
-import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.js?v=r327-ae92ea7193c7";
-import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=r327-ae92ea7193c7";
-import { beastProfileVitals, WORLD_BEASTS, BEAST_HOMES, RETREAT, PURSUIT, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.js?v=r327-ae92ea7193c7";
-import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.js?v=r327-ae92ea7193c7";
-import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss } from "./far-array.js?v=r327-ae92ea7193c7";
-import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=r327-ae92ea7193c7";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=r327-ae92ea7193c7";
+} from "./interactions.js?v=r331-46dddc4b8b03";
+import { ensurePerception } from "./types.js?v=r331-46dddc4b8b03";
+import { generateItem } from "./items.js?v=r331-46dddc4b8b03";
+import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=r331-46dddc4b8b03";
+import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation } from "./constellation.js?v=r331-46dddc4b8b03";
+import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, armorGlyphBonus, skillGlyphMods } from "./glyphs.js?v=r331-46dddc4b8b03";
+import { hashSeed, rng } from "./random.js?v=r331-46dddc4b8b03";
+import { placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt } from "./building.js?v=r331-46dddc4b8b03";
+import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.js?v=r331-46dddc4b8b03";
+import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.js?v=r331-46dddc4b8b03";
+import { HORDE, rollHorde, ensureHorde, hordeKill, hordeSpawnPoints } from "./revenant-horde.js?v=r331-46dddc4b8b03";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.js?v=r331-46dddc4b8b03';
+import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=r331-46dddc4b8b03';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=r331-46dddc4b8b03';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=r331-46dddc4b8b03';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=r331-46dddc4b8b03';
+import{ensureSceneState,queueScene}from'./scenes.js?v=r331-46dddc4b8b03';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=r331-46dddc4b8b03";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r331-46dddc4b8b03";
+import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt } from "./underlands.js?v=r331-46dddc4b8b03";
+import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r331-46dddc4b8b03";
+import { applyLandscape, applyDream, DREAM_VERSION, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.js?v=r331-46dddc4b8b03";
+import { GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.js?v=r331-46dddc4b8b03";
+import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.js?v=r331-46dddc4b8b03";
+import { addStrange, touchStrange } from "./strange.js?v=r331-46dddc4b8b03";
+import { DIG, planDig, ensureShovel, dig, applyTunnels, wallGlints, addDigSpot, digSpot } from "./digging.js?v=r331-46dddc4b8b03";
+import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.js?v=r331-46dddc4b8b03";
+import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.js?v=r331-46dddc4b8b03";
+import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=r331-46dddc4b8b03";
+import { beastProfileVitals, liveBeastReference, WORLD_BEASTS, BEAST_HOMES, RETREAT, PURSUIT, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.js?v=r331-46dddc4b8b03";
+import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.js?v=r331-46dddc4b8b03";
+import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss } from "./far-array.js?v=r331-46dddc4b8b03";
+import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=r331-46dddc4b8b03";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=r331-46dddc4b8b03";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const EQUIPMENT_CAPACITY = 60;
 export function pinDungeonLayout(save, id) {
@@ -125,6 +126,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (history.watcherVersion && !id.startsWith('displacement:') && !id.startsWith('dive:') && !map.multiLevel) placeWatcherDungeon(map, map.width || Math.round(Math.sqrt(map.tiles.length)), save.seed, id); // release 289
   return map;
 }
+export const DEATH_PAUSE = { seconds: 4, millSpeed: 1.1, millRadius: 3 }; // release 329: the pause after a world beast fells you
 export const DIVE_ONWARD = { radius: 8, tries: 6 }; // release 311: how far the deep current looks for the next buoy
 export const TARGET_LOCK = { range: 16, pick: .75, meleeSlack: 1.2 };
 export function mapWidth(map, area = "overworld") { return Math.max(1, Number(map?.width) || (area === "dungeon" ? 24 : 32)); }
@@ -2957,6 +2959,81 @@ export class Game {
     const tier = ladderTier(this.save), rung = ladderRoll(this.save.seed, id, kind, tier) || (tier >= (DUNGEON_LADDER.unlock[kind] ?? 0) ? "full" : "taste");
     h.ladder = { version: DUNGEON_LADDER.version, tier, rung };
   }
+  // The recovery after a fall (moved here from update by release 329, unchanged): beasts reset for a fresh duel, the
+  // Wayfarer wakes at the active checkpoint.
+  resolveDeath(now, input, fellIntoHazard = false, terrainHazard = null) {
+    const p = this.player;
+    const beastNote = this.area === "overworld" ? questingBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.some((e) => e.questingBeast && !e.dead)) : null;
+    if (beastNote) journalOnce(this.save, `questing-beast-try:${this.save.questingBeast.cycle}:${this.save.questingBeast.active?.tries ?? "gone"}`, beastNote, "The Questing Beast");
+    const worldNote = this.area === "overworld" || this.area === "dungeon" ? worldBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.filter((e) => e.worldBeast && !e.dead).map((e) => e.worldBeast), this.area === "dungeon" ? this.areaId() : null) : null; // release 235
+    if (worldNote) journalOnce(this.save, `world-beast-try:${this.rx},${this.ry}:${JSON.stringify(this.save.worldBeasts)}`.slice(0, 160), worldNote, "World beasts");
+    // Gate predators have no rematches: a player death ends their hunt, without rewards.
+    for (const e of this.enemies) if (e.gatePredator && !e.dead) { e.dead = true; e.noRewards = true; resetGateAttack(e, true); }
+    // A failed attempt is a fresh duel, not damage banked across deaths. Preserve tries and rewards.
+    for (const e of this.enemies) if (!e.dead && (e.questingBeast || e.worldBeast)) {
+      const state = e.questingBeast ? this.save.questingBeast : this.save.worldBeasts?.[e.worldBeast];
+      if (!state?.active) { e.dead = true; e.noRewards = true; continue; }
+      if (e.retreating || e.fleeTo) continue;
+      state.active.patience = 0; // A fresh duel gets a fresh per-fight clock, not fresh attempts.
+      e.hp = e.maxHp;
+      if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed;
+      delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow;
+      e.hitStun = 0; e.recoil = 0; e.hitFlash = 0;
+      resetPackRuntime(e); e.aggro = false;
+      if(e.kind === "astralWorm")delete e.astral;
+    }
+    for(const e of this.enemies)if(e.astralOwner){e.dead=true;e.noRewards=true;}
+    reconcileAstralCompanions(this);this.syncAstralRiders();
+    this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
+    if (this.area === "dungeon") {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
+    const c = this.save.activeCheckpoint;
+    this.save.worldFlags.deaths = (this.save.worldFlags.deaths || 0) + 1;
+    this.save.session.displacementJourney=null;
+    const before = this.save.consumables.restorativeDraught || 0;
+    if (before < 2) this.save.consumables.restorativeDraught = 2;
+    clearRot(this.save);
+    const woodLost = loseWood(this.save);
+    p.hp = this.save.maxHp;
+    p.stamina = this.save.maxStamina;
+    p.attackReadyAt =
+      p.dodgeReadyAt =
+      p.dodgeUntil =
+      p.attackUntil =
+      p.meleeUntil =
+        0;
+    p.meleeStrike = null;
+    this.jumpUntil = 0;
+    this.projectiles = [];
+    this.effects = [];
+    this.eliteHazards=[];this.packEffects=[];Object.assign(ensureEliteState(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});
+    input.reset?.();
+    this.snapshotArea(); // Capture the source coordinates BEFORE switching to the checkpoint.
+    this.rx = c.rx;
+    this.ry = c.ry;
+    this.loadArea("overworld", false);
+    p.x = c.x;
+    p.y = c.y;
+    p.invulnerableUntil = now + 2000;
+    this.message = `${fellIntoHazard?(terrainHazard==="canyon"?"Lost to the canyon":"Lost beneath the water"):"Felled"} — recovered at ${c.name || "checkpoint"}. No items, marks, equipment, or XP were lost${woodLost ? `, but the ${woodLost} wood you carried is gone` : ""}. You are protected briefly.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
+    if (beastNote) this.message = `${beastNote} ${this.message}`;
+
+  }
+  // Release 329: the pause after a world beast fells the Wayfarer. No control; beasts wander near where they stood.
+  tickFallen(dt, input, now) {
+    for (const action of ["tool", "spell", "spell2", "dodge", "jump", "potion", "attack", "interact", "build", "preset"]) input.consume?.(action);
+    const width = mapWidth(this.map, this.area);
+    for (const e of this.enemies) {
+      if (e.dead || !(e.worldBeast || e.questingBeast)) continue;
+      e.aggro = false; e.millTurn = (e.millTurn || 0) - dt;
+      if (e.millTurn <= 0) { e.millAngle = Math.random() * Math.PI * 2; e.millTurn = 1.1 + Math.random() * 1.2; }
+      const home = e.millHome || (e.millHome = { x: e.x, y: e.y }), sp = DEATH_PAUSE.millSpeed * dt;
+      let nx = e.x + Math.cos(e.millAngle) * sp, ny = e.y + Math.sin(e.millAngle) * sp;
+      if (Math.hypot(nx - home.x, ny - home.y) > DEATH_PAUSE.millRadius || this.map.tiles[Math.floor(ny) * width + Math.floor(nx)]?.blocked && !this.map.tiles[Math.floor(e.y) * width + Math.floor(e.x)]?.blocked) { e.millAngle += Math.PI; nx = e.x; ny = e.y; }
+      e.x = nx; e.y = ny; e.facing = Math.cos(e.millAngle) >= 0 ? "right" : "left"; e.walkPhase = (e.walkPhase || 0) + dt * 6;
+    }
+    this.projectiles = this.projectiles.filter((q) => !q.hostile);
+    if (now >= this.fallen.until) { this.fallen = null; for (const e of this.enemies) { delete e.millHome; delete e.millAngle; delete e.millTurn; } this.player.stunnedUntil = 0; this.resolveDeath(now, input); this.save.hp = this.player.hp; this.save.stamina = this.player.stamina; Object.assign(this.save.position, { area: this.area, rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y }); }
+  }
   mechUp() { return this.save.mech?.active === true && this.save.mech.mode !== "drone" && !aboard(this.save); }
   // Release 311 (Tim: "these buoys... are connected... go to one buoy, and then go to another buoy... if you traverse the
   // dungeon"): the dive buoy the grotto's deep current carries you to — the nearest other buoy section, rings outward from
@@ -3720,7 +3797,7 @@ export class Game {
     if(domainResult?.kind==='manifestation'){journalOnce(this.save,`domain-manifestation:${e.domainId}:${domainResult.tier}`,`${domainResult.state.name} manifested again through a higher Aperture. Its altered form was defeated and both upgrade spheres were recovered.`,domainResult.state.name);this.defeatNotice={title:'HIGHER FORM DISPERSED',detail:`${domainResult.state.name} · manifestation ${domainResult.tier}`,kind:'danger'}}
     if(e.huntInstanceId)completeHuntInstance(this.save,e.huntInstanceId);
     if(e.viewportHuntId&&completeViewportHunt(this.save,e.viewportHuntId)){const hunt=this.save.viewport.contracts[e.viewportHuntId];journalOnce(this.save,`viewport-complete:${e.viewportHuntId}`,`${hunt.title} is complete. Viewport records the victory and releases its promised reward.`,hunt.title);recordViewportArrival(this.save,{id:`hunt:${e.viewportHuntId}`,title:hunt.title,text:'A consequential threat was defeated and entered the Refuge record.',kind:'hunt'});this.defeatNotice={title:e.worldBoss?'WORLD THREAT BROKEN':'HUNT COMPLETE',detail:`${hunt.title} · return to Viewport for the enduring record`,kind:'danger'};if(hunt.domain)this.save.worldFlags[`domain-cleared:${hunt.domain}`]=true}
-    if (e.farArrayBoss && this.area === "dungeon" && isArrayRun(this.areaId())) { const listener = e.farArrayBoss === "listener", text = listener ? listenerFelled(this.save) : guardianFelled(this.save); journalOnce(this.save, `far-array:${this.save.farArray.runs}`, text, "The Far Gate"); this.defeatNotice = { title: listener ? "THE LISTENER FALLS" : "A GATE PIECE LOCKS", detail: text, kind: "danger" }; this.message = text; }
+    if (e.farArrayBoss && this.area === "dungeon" && isArrayRun(this.areaId())) { const listener = e.farArrayBoss === "listener", text = listener ? listenerFelled(this.save) : guardianFelled(this.save); if (listener && beastCatchUp(this.save, liveBeastReference(this.save, characterStats(this.save)))) journalOnce(this.save, `beast-catch-up:${this.save.farArray.listeners}`, "With the Listener fallen, the great beasts of the Corridor rise to meet your strength.", "World beasts"); /* release 331 */ journalOnce(this.save, `far-array:${this.save.farArray.runs}`, text, "The Far Gate"); this.defeatNotice = { title: listener ? "THE LISTENER FALLS" : "A GATE PIECE LOCKS", detail: text, kind: "danger" }; this.message = text; }
     if (e.worldBeast && WORLD_BEASTS[e.worldBeast]) { const B = WORLD_BEASTS[e.worldBeast], won = worldBeastSlain(this.save, e.worldBeast); journalOnce(this.save, `world-beast-slain:${e.worldBeast}:${this.save.worldBeasts[e.worldBeast].slain}`, `You slew ${B.name} at ${this.rx},${this.ry}.`, B.name); this.defeatNotice = { title: `${B.name.toUpperCase()} FALLS`, detail: `+${won.marks} marks`, kind: "danger" }; this.message = won.message; } // release 235
     if (e.questingBeast) { const won = questingBeastSlain(this.save); journalOnce(this.save, `questing-beast-slain:${this.save.questingBeast.slain}`, `You slew the Questing Beast at ${this.rx},${this.ry}.`, "The Questing Beast"); this.defeatNotice = { title: "THE QUESTING BEAST FALLS", detail: `+${won.marks} marks`, kind: "danger" }; this.message = won.message; }
     if (!e.ambient && !e.noRewards) { const done = wandererKill(this.save); if (done) { this.message = done; journalOnce(this.save, `wanderer-done:${this.save.wanderer.stage}`, done, "Old Quillon"); } }
@@ -4165,6 +4242,7 @@ export class Game {
   update(dt, input, now) {
     this.lastUpdateNow = now;
     if (this.paused) return;
+    if (this.fallen) { this.tickFallen(dt, input, now); return; } // release 329
     reconcileAstralCompanions(this);
     this.syncAstralRiders();
     const p = this.player, hpStart = p.hp;
@@ -4549,59 +4627,18 @@ export class Game {
     for(const {owner,amount} of drainCredits)if(!owner.dead&&owner.hp>0){owner.hp=Math.min(owner.maxHp,owner.hp+amount*creditScale);if(owner.astral)owner.astral.hp=owner.hp;}
     this._astralDrainCredits=[];
     if (p.hp <= 0) {
-      const beastNote = this.area === "overworld" ? questingBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.some((e) => e.questingBeast && !e.dead)) : null;
-      if (beastNote) journalOnce(this.save, `questing-beast-try:${this.save.questingBeast.cycle}:${this.save.questingBeast.active?.tries ?? "gone"}`, beastNote, "The Questing Beast");
-      const worldNote = this.area === "overworld" || this.area === "dungeon" ? worldBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.filter((e) => e.worldBeast && !e.dead).map((e) => e.worldBeast), this.area === "dungeon" ? this.areaId() : null) : null; // release 235
-      if (worldNote) journalOnce(this.save, `world-beast-try:${this.rx},${this.ry}:${JSON.stringify(this.save.worldBeasts)}`.slice(0, 160), worldNote, "World beasts");
-      // Gate predators have no rematches: a player death ends their hunt, without rewards.
-      for (const e of this.enemies) if (e.gatePredator && !e.dead) { e.dead = true; e.noRewards = true; resetGateAttack(e, true); }
-      // A failed attempt is a fresh duel, not damage banked across deaths. Preserve tries and rewards.
-      for (const e of this.enemies) if (!e.dead && (e.questingBeast || e.worldBeast)) {
-        const state = e.questingBeast ? this.save.questingBeast : this.save.worldBeasts?.[e.worldBeast];
-        if (!state?.active) { e.dead = true; e.noRewards = true; continue; }
-        if (e.retreating || e.fleeTo) continue;
-        state.active.patience = 0; // A fresh duel gets a fresh per-fight clock, not fresh attempts.
-        e.hp = e.maxHp;
-        if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed;
-        delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow;
-        e.hitStun = 0; e.recoil = 0; e.hitFlash = 0;
-        resetPackRuntime(e); e.aggro = false;
-        if(e.kind === "astralWorm")delete e.astral;
-      }
-      for(const e of this.enemies)if(e.astralOwner){e.dead=true;e.noRewards=true;}
-      reconcileAstralCompanions(this);this.syncAstralRiders();
-      this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
-      if (this.area === "dungeon") {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
-      const c = this.save.activeCheckpoint;
-      this.save.worldFlags.deaths = (this.save.worldFlags.deaths || 0) + 1;
-      this.save.session.displacementJourney=null;
-      const before = this.save.consumables.restorativeDraught || 0;
-      if (before < 2) this.save.consumables.restorativeDraught = 2;
-      clearRot(this.save);
-      const woodLost = loseWood(this.save);
-      p.hp = this.save.maxHp;
-      p.stamina = this.save.maxStamina;
-      p.attackReadyAt =
-        p.dodgeReadyAt =
-        p.dodgeUntil =
-        p.attackUntil =
-        p.meleeUntil =
-          0;
-      p.meleeStrike = null;
-      this.jumpUntil = 0;
-      this.projectiles = [];
-      this.effects = [];
-      this.eliteHazards=[];this.packEffects=[];Object.assign(ensureEliteState(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});
-      input.reset?.();
-      this.snapshotArea(); // Capture the source coordinates BEFORE switching to the checkpoint.
-      this.rx = c.rx;
-      this.ry = c.ry;
-      this.loadArea("overworld", false);
-      p.x = c.x;
-      p.y = c.y;
-      p.invulnerableUntil = now + 2000;
-      this.message = `${fellIntoHazard?(terrainHazard==="canyon"?"Lost to the canyon":"Lost beneath the water"):"Felled"} — recovered at ${c.name || "checkpoint"}. No items, marks, equipment, or XP were lost${woodLost ? `, but the ${woodLost} wood you carried is gone` : ""}. You are protected briefly.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
-      if (beastNote) this.message = `${beastNote} ${this.message}`;
+      // Release 329 (Tim: "for world bosses... If they kill you, there should be like a... 4 second... pause... where you see
+      // the boss just like moving around or milling around after you die. Just to give you like a second to like collect
+      // yourself"): felled in a fight with a world beast or the Questing Beast, the Wayfarer lies fallen for DEATH_PAUSE
+      // seconds while the beast calms and paces (tickFallen); then the usual recovery at the checkpoint (resolveDeath).
+      // The played game turns it on (main.ts sets deathPause); headless simulations recover at once, as before.
+      if (this.deathPause && !fellIntoHazard && !this.fallen && this.enemies.some((e) => !e.dead && (e.worldBeast || e.questingBeast))) {
+        const until = now + DEATH_PAUSE.seconds * 1000, beast = this.enemies.find((e) => !e.dead && (e.worldBeast || e.questingBeast));
+        this.fallen = { until }; p.hp = 0; p.stunnedAt = now; p.stunnedUntil = until; this.jumpUntil = 0;
+        this.projectiles = this.projectiles.filter((q) => !q.hostile);
+        for (const e of this.enemies) if (!e.dead && (e.worldBeast || e.questingBeast)) { e.aggro = false; e.millHome = { x: e.x, y: e.y }; e.millTurn = 0; }
+        this.message = `Felled. ${beast?.name || "The beast"} paces over you...`;
+      } else this.resolveDeath(now, input, fellIntoHazard, terrainHazard);
     }
     Object.assign(this.save.position, {
       area: this.area,

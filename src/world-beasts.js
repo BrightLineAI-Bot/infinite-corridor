@@ -1,14 +1,14 @@
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r327-ae92ea7193c7";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r331-46dddc4b8b03";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.js?v=r327-ae92ea7193c7";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r327-ae92ea7193c7";
-import { sectionExits, apertureTier } from "./world.js?v=r327-ae92ea7193c7";
-import { stageOneBeastReference } from "./stages.js?v=r327-ae92ea7193c7";
+import { hashSeed } from "./random.js?v=r331-46dddc4b8b03";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r331-46dddc4b8b03";
+import { sectionExits, apertureTier } from "./world.js?v=r331-46dddc4b8b03";
+import { stageOneBeastReference } from "./stages.js?v=r331-46dddc4b8b03";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -382,10 +382,12 @@ export function worldBeastTriesLeft(save, id) { return WORLD_BEASTS[id].tries - 
 
 // Provisional follow-on balance: level is a strength floor, never a spawn gate.
 export const BEAST_BASELINE = { level: 8, starterHit: 16, starterHp: 102, starterGuard: .025, damageFloor: 60, questingDominance: 1.15 };
-export function beastTuningReference(save, stats = {}) {
+export function beastTuningReference(save, stats = {}) { return stageOneBeastReference(save, liveBeastReference(save, stats)); }
+// The Wayfarer as they stand, before any Stage 1 hold (release 331: also what a Listener kill catches the beasts up to).
+export function liveBeastReference(save, stats = {}) {
   const actualLevel = Math.max(1, Number(save.level) || 1), level = Math.max(BEAST_BASELINE.level, actualLevel);
   const weapon = save.equipment?.[save.activeWeaponSlot], levelBonus = Math.floor((level - 1) * .6) - Math.floor((actualLevel - 1) * .6);
-  return stageOneBeastReference(save, { level, perHit: Math.max(BEAST_BASELINE.starterHit, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0) + levelBonus),
+  return ({ level, perHit: Math.max(BEAST_BASELINE.starterHit, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0) + levelBonus),
     maxHp: Math.max(BEAST_BASELINE.starterHp, (Number(save.maxHp) || 60) + (level - actualLevel) * 6),
     guard: Math.max(BEAST_BASELINE.starterGuard, Math.min(.75, Number(stats.damageReduction) || 0)) }); // release 275: Stage 1 beasts are held from tier 13 until three Listeners
 }
