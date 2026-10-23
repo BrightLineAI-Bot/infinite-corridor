@@ -2694,6 +2694,20 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 333: the larger Threefold Deep's gate — 2026-10-23
+
+Tim, 2026-10-23, from a live r331 save in a `deep-v2:threefold` Deep: "It says the gate is open, but the gate isn't actually open. I've completed all the guardians".
+
+**CODE:**
+- **The bug.** In `deep-dungeons.ts` `threefold2`, the larger Threefold Deep that `threefoldLayout` 2 histories get, the processional was carved `hall(hub, …, 24, 2)`. The Choir is `rect(28, 4, 52, 20)`, which left row 21 solid between the gate (row 23) and the Choir. Every such Deep was unwinnable.
+- **The fix.** The hall now runs to row 20. `hall` draws no random numbers, so every other tile of an existing Deep is generated as before.
+- **Existing histories are fixed in place on purpose:** players stuck behind the gate are freed. The layout variation pass (`varyDungeonLayout`) reads the tiles, so it may now place the final boss elsewhere in the Choir.
+- **Tests:** `tests/threefold-gate-333.test.ts` checks that the final boss is reachable from the rotunda once the gate opens, for threefold, loop and flooded. For loop and flooded it also checks that the gate holds before then.
+
+**BOUNDARY:**
+- **A known gap, not fixed.** About 1 in 12 of these larger Threefold Deeps have always had a way round the gate (a wing route wanders into the Choir). Closing it would add walls to existing journeys.
+- Other archetypes are unchanged.
+
 ## Release 331: beasts catch up per Listener — 2026-10-23
 
 Tim, 2026-10-23: "when you get to infinite 3, they'll stop scaling with you... until you've beaten 3 listeners... every time you beat the listener, the... world bosses will catch up to your strength... and they'll stay capped there until you beat the listener again... you can kind of have control over how strong the monsters get". Later gates may give bigger jumps; not built.
