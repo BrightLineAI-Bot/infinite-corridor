@@ -42,6 +42,8 @@ export const UNDER_THEMES = {
   // Release 303: never drawn from a pool; a rare history is pinned to it (game.ts generatePinnedDungeon, MIRE_CRYPT).
   poisonCrypt: { id: "poisonCrypt", name: "Poison Crypt", weather: "spores", lore: "Sealed tombs sunk in a green mire. Something in the pools is all one thing, and it is gathering itself." },
   brass: { id: "brass", name: "Brass Engine", weather: "steam", lore: "Grated walkways over great buried gears. Pipes still breathe steam, though nothing has turned in an age." },
+  // Release 351: never drawn from a pool; a crossing first found in the Far Sleep is pinned to it (game.ts generatePinnedDungeon).
+  dream: { id: "dream", name: "Sleeper's Hall", weather: "petals", lore: "Meadow grows where the floor should be. The walls have worn through to the night sky, and the stones are all asleep." },
 };
 // Which themes a history may draw, and how often a crossing is themed at all (percent), by its pinned theme pool.
 export const THEME_POOLS = {
@@ -66,6 +68,9 @@ export const WARP = { chance: 50, minApart: 16 };
 // and swell it; finding the Heart's lair stops the pools. Balance as data; the runtime is Game.tickMire.
 export const MIRE_CRYPT = { perThousand: 20, version: 1, lairRadius: 6, patch: .66, pools: 5, poolSpacing: 7, jets: 3, jetDamage: 10,
   heartHp: .5, mergeHp: .06, seepEvery: 8, seepMax: 6, seepHp: 30, seepGrow: 40, seepGrowMax: 1, contact: 9, contactEvery: .8, poison: [4, 3] };
+// Sleeper's Hall (release 351; docs/narrative-bible.md section 7, step 4, the Far Sleep's dream dungeons): sleep-meadow floors,
+// walls worn through to the night sky, sleeper-stones standing in the halls and low marble terraces with stairs.
+export const DREAM_HALL = { version: 1, stoneAbove: .84, marbleAbove: .62 };
 export function plainCrossing(seed, id, layoutPool) { return layoutPool >= 5 && hashSeed(`${seed}:${id}:plain`) % 100 < PLAIN.chance; }
 export function rollMireCrypt(seed, id, layoutPool) { return layoutPool >= 5 && !plainCrossing(seed, id, layoutPool) && hashSeed(`${seed}:mire-crypt:v${MIRE_CRYPT.version}:${id}`) % 1000 < MIRE_CRYPT.perThousand; }
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -245,7 +250,7 @@ export function reachableInMap(map, from) {
   return seen;
 }
 const LETHAL = new Set(["abyss", "lava", "dungeonWater"]);
-const DECOR = new Set(["glowcap", "sarcophagus", "iceSpire", "crystalSpire", "alienPool", "geodeCluster", "templePillar", "rootKnot", "brassPipe"]); // theme blockers a rescue route may clear
+const DECOR = new Set(["glowcap", "sarcophagus", "iceSpire", "crystalSpire", "alienPool", "geodeCluster", "templePillar", "rootKnot", "brassPipe", "sleeperStone"]); // theme blockers a rescue route may clear
 
 function criticalPath(map) {
   const w = map.width, h = map.height, start = map.entry, goal = map.enemySpawns.find((e) => e.dungeonRole === "gateWarden") || map.entry;
@@ -261,8 +266,8 @@ function applyUnderTheme(map, theme, rand) {
   for (const o of [...map.objects, ...map.enemySpawns, map.entry]) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) keep.add((o.y + dy) * w + o.x + dx);
   const noise = (x, y, f, salt) => { const n = hashSeed(`${map.seed}:${map.id}:under:${salt}:${Math.floor(x / f)}:${Math.floor(y / f)}`) % 1000; return n / 1000; };
   const set = (i, props) => { T[i] = { ...T[i], ...props, landscape: "underlands" }; };
-  const floorOf = { chasm: "chasmLedge", lavaBog: "ashSlope", river: "riverStone", frozen: "frostFloor", boneCrypt: "ossuary", fungal: "fungusFloor", starHive: "alienMoss", geode: "geodeFloor", mosaic: "templeMosaic", rootwood: "rootFloor", brass: "gratingFloor", poisonCrypt: "toxicBog" }[theme];
-  const wallOf = { chasm: "chasmWall", lavaBog: "volcanicRim", river: "riverWall", frozen: "iceWall", boneCrypt: "cryptWall", fungal: "fungusWall", starHive: "hiveWall", geode: "geodeWall", mosaic: "templeWall", rootwood: "rootWall", brass: "brassWall", poisonCrypt: "cryptWall" }[theme];
+  const floorOf = { chasm: "chasmLedge", lavaBog: "ashSlope", river: "riverStone", frozen: "frostFloor", boneCrypt: "ossuary", fungal: "fungusFloor", starHive: "alienMoss", geode: "geodeFloor", mosaic: "templeMosaic", rootwood: "rootFloor", brass: "gratingFloor", poisonCrypt: "toxicBog", dream: "sleepMeadow" }[theme];
+  const wallOf = { chasm: "chasmWall", lavaBog: "volcanicRim", river: "riverWall", frozen: "iceWall", boneCrypt: "cryptWall", fungal: "fungusWall", starHive: "hiveWall", geode: "geodeWall", mosaic: "templeWall", rootwood: "rootWall", brass: "brassWall", poisonCrypt: "cryptWall", dream: "starVoid" }[theme];
   // Release 299: patterned floors span tiles. detail picks the tile's quarter of a 2x2 motif (a rosette, a buried gear).
   const quarter = (x, y) => (x & 1) + (y & 1) * 2, tiled = theme === "mosaic" || theme === "brass";
   for (let i = 0; i < T.length; i++) { const t = T[i]; if (t.blocked) set(i, { kind: wallOf }); else set(i, { kind: floorOf, elev: 0, ...(tiled ? { detail: quarter(t.x, t.y) } : {}) }); }
@@ -280,6 +285,7 @@ function applyUnderTheme(map, theme, rand) {
     else if (theme === "rootwood") { const ridge = Math.abs(valueNoise(`${map.seed}:${map.id}:roots`, x / 4, y / 4) - .5); if (ridge < .07) set(i, { kind: "rootKnot", blocked: true }); }
     else if (theme === "poisonCrypt") { if (n > MIRE_CRYPT.patch) set(i, { kind: "toxicMire" }); }
     else if (theme === "brass") { if (n > .82 && (x + y) % 2 === 0) set(i, { kind: "brassPipe", blocked: true }); }
+    else if (theme === "dream") { if (n > DREAM_HALL.stoneAbove) set(i, { kind: "sleeperStone", blocked: true }); else if (m > DREAM_HALL.marbleAbove) set(i, { kind: "dreamMarble", elev: 1 }); }
   }
   if (theme === "river") { // a channel crossing the dungeon, bridged where the path crosses it
     const vertical = rand() < .5, at = Math.floor((vertical ? w : h) * (.35 + rand() * .3));
@@ -290,13 +296,13 @@ function applyUnderTheme(map, theme, rand) {
     }
   }
   // elevation stays climbable from the entry; stairs where the critical path changes level
-  if (theme === "chasm" || theme === "frozen" || theme === "starHive") {
+  if (theme === "chasm" || theme === "frozen" || theme === "starHive" || theme === "dream") {
     for (let pass = 0; pass < 30; pass++) {
       const seen = reachableInMap(map, map.entry); let changed = false;
       for (let i = 0; i < T.length; i++) { const t = T[i]; if (seen[i] || t.blocked || LETHAL.has(t.kind) || !(t.elev > 0)) continue; let best = -1; for (const [dx, dy] of N4) { const j = (t.y + dy) * w + t.x + dx, nb = T[j]; if (nb && seen[j] && !nb.blocked) best = Math.max(best, (nb.elev || 0) + 1); } if (best >= 0 && best < t.elev) { t.elev = best; changed = true; } }
       if (!changed) break;
     }
-    for (const i of path) { const t = T[i]; if (!t || t.blocked) continue; const higher = N4.some(([dx, dy]) => { const nb = T[(t.y + dy) * w + t.x + dx]; return nb && !nb.blocked && (nb.elev || 0) > (t.elev || 0); }); if (higher || t.elev) T[i] = { ...t, slope: true, kind: theme === "chasm" ? "chasmStair" : t.kind }; }
+    for (const i of path) { const t = T[i]; if (!t || t.blocked) continue; const higher = N4.some(([dx, dy]) => { const nb = T[(t.y + dy) * w + t.x + dx]; return nb && !nb.blocked && (nb.elev || 0) > (t.elev || 0); }); if (higher || t.elev) T[i] = { ...t, slope: true, kind: theme === "chasm" ? "chasmStair" : theme === "dream" ? "dreamStair" : t.kind }; }
   }
   if (theme === "poisonCrypt") mireCrypt(map, path, keep, set);
   unstrand(map);

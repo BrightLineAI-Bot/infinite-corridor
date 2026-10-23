@@ -2694,6 +2694,25 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 351: Sleeper's Hall, the Far Sleep's dream crossings — 2026-10-23
+
+The daily narrative session (docs/narrative-bible.md section 7, step 4: "The Far Sleep made strange"). Release 305 turned the Far Sleep's landscapes into Dreamlands; this release does the same for its dungeons.
+
+**CODE:**
+- `underlands.ts` adds a `dream` environment, "Sleeper's Hall", with balance in `DREAM_HALL`:
+  - sleep-meadow floors;
+  - walls of `starVoid` (worn through to the night sky; impassable, never lethal);
+  - sleeper-stones standing in the halls;
+  - low `dreamMarble` terraces with `dreamStair` steps where the path climbs;
+  - petal weather.
+- It is never drawn from a theme pool. `game.ts` `generatePinnedDungeon` pins `history.dream = DREAM_HALL.version` on a fresh ordinary crossing whose section is in the Far Sleep (`landscape.ts` `farSleepSection`, depth over 35), and generates it with that environment. A Poison Crypt still takes precedence.
+- The tiles reuse release 305's painters. Sleeper-stones are in the `DECOR` set a rescue route may clear, and the Proving Ground's environment list shows the hall automatically.
+- Tests: `tests/dream-hall-351.test.ts`; `tests/underlands.test.ts` checks reachability for every environment, this one included.
+
+**BOUNDARY:**
+- Only crossings first generated from this release on are affected. Pinned histories, deeps and arenas keep what they were.
+- The ladder, size, guardians, hordes and rewards are unchanged; only the look and the terrain change.
+
 ## Release 349: world bosses a little more often — 2026-10-23
 
 Tim, 2026-10-23: "make... the world bosses just slightly more... frequent, so I can see a few more of them more frequently".
