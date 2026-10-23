@@ -9,7 +9,7 @@
 // block is a `perch`, one landscape level higher per block stacked (only the Wayfarer may step onto a perch, jumping
 // as onto any ledge; in a dungeon, which has no levels, it is simply a block they can stand on). Builds are transient
 // like the Turtle's ice: a section load clears them and they are never saved. Data and rules; game.ts calls in.
-import { LETHAL_KINDS } from "./landscape.js?v=r331-46dddc4b8b03";
+import { LETHAL_KINDS } from "./landscape.js?v=r333-3ab1b81cc983";
 
 export const BUILD = {
   kinds: {

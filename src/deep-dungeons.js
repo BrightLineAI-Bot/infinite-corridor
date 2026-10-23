@@ -1,6 +1,6 @@
-import { hashSeed, rng } from "./random.js?v=r331-46dddc4b8b03";
-import { populateDungeonEncounters } from "./arenas.js?v=r331-46dddc4b8b03";
-import { annotateDungeon } from "./dungeon-framework.js?v=r331-46dddc4b8b03";
+import { hashSeed, rng } from "./random.js?v=r333-3ab1b81cc983";
+import { populateDungeonEncounters } from "./arenas.js?v=r333-3ab1b81cc983";
+import { annotateDungeon } from "./dungeon-framework.js?v=r333-3ab1b81cc983";
 
 export const DEEP_DUNGEON_SCHEMA_VERSION = 3;
 export const DEEP_ARCHETYPE_IDS = ["threefold", "descent", "loop", "flooded", "fortress"];
@@ -235,7 +235,10 @@ function threefold2(seed, id) {
   }
   m.zones = [{ id: "hub", name: "Oath Rotunda" }, { id: "west", name: "Root Wing" }, { id: "east", name: "Glass Wing" }, { id: "south", name: "Coil Warren" }, { id: "final", name: "Sealed Choir" }];
   // North: the sealed gate and the Sealed Choir.
-  m.hall(hub.x, hub.y, hub.x, 24, 2); m.rect(28, 4, 52, 20); chamber({ x: 40, y: 12 }, 6);
+  // Release r333-3ab1b81cc983 (Tim: "It says the gate is open, but the gate isn't actually open"): the processional stopped at row 22 and
+  // the Choir began at row 20, leaving a wall row behind the gate. It now runs on into the Choir (rows 21-22 become floor;
+  // no random draws change, so every other tile of a pinned Deep is the same).
+  m.hall(hub.x, hub.y, hub.x, 20, 2); m.rect(28, 4, 52, 20); chamber({ x: 40, y: 12 }, 6);
   m.layoutVersion = 2;
   return finalize(m, { id: "deep-v2-threefold-final-gate", kind: "sealedGate", x: 40, y: 23, state: "sealed", actions: ["inspect"] }, { id: "deep-v2-threefold-final", kind: "gateRevenant", x: 40, y: 9, boss: true, deepDungeon: true, dungeonRole: "finalBoss", arenaId: "threefold-final" }, [38, 39, 40, 41, 42].map((x) => ({ x, y: 23 })));
 }

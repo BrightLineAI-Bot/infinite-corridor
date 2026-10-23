@@ -10,7 +10,7 @@
 // the Wayfarer until they reach tier `freezeTier`; their strength is then held at that moment's measure until the Wayfarer
 // has felled the Listener `thawKills` times, when it catches up; from then on it catches up once per Listener kill (331).
 // State: save.farArray.listeners (the Listener kills, far-array.ts) and save.beastCeiling (additive; set once, when frozen).
-import { apertureTier, APERTURE_THRESHOLDS } from "./world.js?v=r331-46dddc4b8b03";
+import { apertureTier, APERTURE_THRESHOLDS } from "./world.js?v=r333-3ab1b81cc983";
 
 export const STAGES = { tiersPerStage: 12, firstKills: 1, killsPerStage: 2, freezeTier: 13, thawKills: 3 };
 
@@ -33,7 +33,7 @@ export function cappedAperture(save, value) {
 }
 
 // The Stage 1 beasts' strength: `ref` is the live tuning reference (world-beasts.ts beastTuningReference). From
-// `freezeTier` it is held at a measure taken once (save.beastCeiling). Release r331-46dddc4b8b03 (Tim, 2026-10-23: "when you get to
+// `freezeTier` it is held at a measure taken once (save.beastCeiling). Release 331 (Tim, 2026-10-23: "when you get to
 // infinite 3, they'll stop scaling with you... until you've beaten 3 listeners... every time you beat the listener... the
 // world bosses will catch up to your strength... and they'll stay capped there until you beat the listener again"): from
 // the `thawKills`-th Listener on, each Listener kill retakes the measure (beastCatchUp, at the kill; or, for a kill this
