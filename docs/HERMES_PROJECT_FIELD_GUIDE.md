@@ -2694,6 +2694,23 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 337: Echoes from every first kill — 2026-10-23
+
+Tim, 2026-10-23: guardians were not leaving Echoes; a guaranteed first kill plus a higher chance after ("option 3"); "grant the Questing Beast echo". An Echo is owned once and never drops again, so a guaranteed first kill covers every later case.
+
+**CODE:**
+- **`echoes.ts`:**
+  - `ECHO_DROPS.guardian` goes from 3 to 100. `echoDrop` already returns nothing for an owned Echo, a summon or a no-reward kill.
+  - `grantSlainEchoes(save)` grants the Echo of a Questing Beast or world beast with `slain` ≥ 1 that the save lacks. `migrateSave` calls it, so it runs once per load and does nothing after.
+- **Tests:**
+  - `tests/echo-grant-337.test.ts` (new);
+  - `tests/echoes.test.ts`: the old 3% statistics assertion now checks the guaranteed drop.
+
+**BOUNDARY:**
+- Non-pack guardians have no Echo entry and still leave none: the Hollow Marshal, the Threefold wing wardens and the Gate Revenant.
+- Guardian kills before 337 are not recorded, so they grant nothing retroactively. The next kill of that kind does.
+- No schema change; `echoes.owned` is the existing field.
+
 ## Release 335: glyph and buff wiring; the Arcanum follows the preset — 2026-10-23
 
 Tim, 2026-10-23: "check the bindings between all the glyphs and all the armor... the presets... when you switch between preset 1 and preset 2, the arcanum... glyphs that appear don't reflect the... spells that are actively selected for that preset... make sure that the... passive buffs for like leeching and empowerment and cool down reduction work".
