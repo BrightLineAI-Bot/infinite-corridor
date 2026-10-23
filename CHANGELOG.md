@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 345 — dying costs nothing, and world-boss tries can be switched off.
+  - **No loss on death:** dying no longer takes the wood you carry; you lose nothing.
+  - **New option:** Options → Accessibility, next to Child-safe Glimpses, has **World boss tries**.
+    - **On** (the default): as before. Each death is one of the boss's 4 tries.
+    - **Off:** deaths cost no tries, and the boss isn't healed or reset when you fall. It stays and fights for 3 minutes, or 5 once you have it below half its health, then loses patience and leaves.
+  - **Not affected:** the Questing Beast keeps its tries either way.
+
 - Release 343 — auto targeting reaches farther. With no target locked:
   - **Swings** turn to the nearest foe up to 3 tiles past your weapon's reach.
   - **Tool shots** aim at the nearest foe up to 60% past their range.

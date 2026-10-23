@@ -55,11 +55,11 @@ test('a new skiff replaces the old one and needs no Shipwright', () => {
   assert.equal(s.boat.hull, BOAT.maxHull); assert.deepEqual(s.boat.home, { rx: 4, ry: 4, x: 5, y: 5 }); assert.equal(s.boat.moored, null); assert.equal(s.materials.wood, 0);
 });
 
-test('dying drops the wood you carry, and nothing else', () => {
+test('dying costs nothing: the wood you carry is kept (release 345, Tim)', () => {
   const s = Object.assign(freshSave(), { seed: SEED }), g = new Game(s, 0); g.loadArea('overworld'); addWood(s, 4);
   const spheres = s.materials.weaponSphere, iron = s.materials.cinderIron;
   g.player.hp = 0; g.update(1 / 30, { state: { x: 0, y: 0 }, consume: () => false, reset() {} }, 1000);
-  assert.equal(s.worldFlags.deaths, 1); assert.equal(s.materials.wood, 0); assert.match(g.message, /4 wood you carried is gone/);
+  assert.equal(s.worldFlags.deaths, 1); assert.equal(s.materials.wood, 4); assert.doesNotMatch(g.message, /wood you carried is gone/);
   assert.equal(s.materials.weaponSphere, spheres); assert.equal(s.materials.cinderIron, iron);
 });
 
