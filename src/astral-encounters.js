@@ -1,6 +1,6 @@
 // Narrow natural Astral/Walker reservation. Probabilities and mount rate are provisional tuning.
-import { hashSeed } from './random.js?v=r339-9f49bdbe23f2';
-import { ASTRAL, astralWalkerPair } from './astral-worm.js?v=r339-9f49bdbe23f2';
+import { hashSeed } from './random.js?v=r341-6762df1cdaab';
+import { ASTRAL, astralWalkerPair } from './astral-worm.js?v=r341-6762df1cdaab';
 export const ASTRAL_PAIR = Object.freeze({ mountedShare: .35, actorReserve: 4 });
 const present = (a,scene) => a && (scene.dungeon ? a.dungeon===scene.dungeon && (!a.dungeonLevel||a.dungeonLevel===scene.level) : !a.dungeon&&a.rx===scene.rx&&a.ry===scene.ry);
 const roll = key => (hashSeed(key)%100000)/100000;
