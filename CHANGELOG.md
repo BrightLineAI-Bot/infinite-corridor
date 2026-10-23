@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 353 — a world boss stays hurt until it kills you.
+  - **Wounds follow it:** a boss you have hurt stays hurt wherever it chases you, and when you leave and come back.
+  - **Dying heals it:** its health resets only when it kills you, with the tries setting on or off. With tries off, a death still costs no try and its patience keeps counting down.
+
 - Release 351 — dream crossings in the Far Sleep.
   - **Sleeper's Hall:** crossings first found more than 35 sections out are now dreams: meadow floors, walls worn through to the night sky, sleeping stones and marble terraces, with petals falling.
   - **Unchanged:** crossings you have already entered, and everything inside a crossing besides its look and terrain.

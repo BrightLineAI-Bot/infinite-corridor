@@ -30,11 +30,11 @@ test('tries off: patience is 3 minutes, 5 once the beast is below half health', 
   const on = holding(); assert.equal(worldBeastPatience(on, 'morphingBlob', P + 1, half, false), true, 'no extension with tries on');
 });
 
-test('tries off: dying leaves the beast wounded and its clock running', async () => {
+test('tries off: dying costs no try and leaves its clock running (release 353: its health resets)', async () => {
   const { Game } = await import('../src/game.ts');
   const s = holding(), g = new Game(s, 0); g.rx = 4; g.ry = 4; g.loadArea('overworld'); g.beastTries = false;
   const b = g.createEnemyFromSpawn({ kind: 'morphingBlob', x: g.player.x + 3, y: g.player.y }); b.worldBeast = 'morphingBlob'; b.hp = Math.round(b.maxHp * .3); g.enemies = [b];
   s.worldBeasts.morphingBlob.active = { rx: 4, ry: 4, tries: 0, patience: 90 }; const hp = b.hp;
   g.player.hp = 0; g.update(.05, { state: { x: 0, y: 0 }, consume: () => false, held: () => false, reset() {} }, 1000);
-  assert.equal(b.hp, hp, 'not healed back to full'); assert.equal(s.worldBeasts.morphingBlob.active.tries, 0); assert.equal(s.worldBeasts.morphingBlob.active.patience, 90);
+  assert.ok(hp < b.maxHp); assert.equal(b.hp, b.maxHp, 'release 353: a death resets its health'); assert.equal(s.worldBeasts.morphingBlob.active.tries, 0); assert.equal(s.worldBeasts.morphingBlob.active.patience, 90);
 });
