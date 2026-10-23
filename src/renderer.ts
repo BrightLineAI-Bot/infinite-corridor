@@ -1047,6 +1047,12 @@ function actor(
     } else if (kind === "checkpoint") {
       rect("#b8f5f2", -0.08, -1.02, 0.16, 0.7);rect("#315c65", -0.32, -0.34, 0.64, 0.2);rect("#72d7df", -0.2, -0.92, 0.4, 0.12);
       ctx.strokeStyle="#d8ffff";ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.arc(k,base-s*.68,s*.25,Math.PI*.18,Math.PI*1.82);ctx.stroke();
+    } else if (kind === "listeningStone") { // release 373: a dark standing stone with the Listener's violet, ringed like an ear
+      ctx.fillStyle="#00000055";ctx.beginPath();ctx.ellipse(k,base,s*.36,s*.1,0,0,7);ctx.fill();
+      ctx.fillStyle="#1c1726";ctx.beginPath();ctx.moveTo(k-s*.26,base);ctx.lineTo(k-s*.18,base-s*1.15);ctx.lineTo(k,base-s*1.32);ctx.lineTo(k+s*.18,base-s*1.15);ctx.lineTo(k+s*.26,base);ctx.closePath();ctx.fill();ctx.strokeStyle="#3b3550";ctx.lineWidth=Math.max(1,s*.04);ctx.stroke();
+      const pulse=.55+.45*Math.sin(performance.now()/420);ctx.strokeStyle=`rgba(201,166,255,${.5+.4*pulse})`;ctx.lineWidth=Math.max(1.5,s*.05);
+      for(const [r,a0,a1] of [[.2,-.4,3.6],[.12,.4,4.6],[.05,0,6.3]]){ctx.beginPath();ctx.arc(k,base-s*.7,s*r,a0,a1);ctx.stroke()}
+      ctx.fillStyle="#f3eaff";ctx.beginPath();ctx.arc(k,base-s*1.2,s*.04+pulse*s*.02,0,7);ctx.fill();
     } else if (kind === "shrine") {
       rect("#806f91", -0.06, -0.62, 0.12, 0.5);rect("#4d665f", -0.3, -0.2, 0.6, 0.17);
       ctx.strokeStyle="#8ed1c1";ctx.lineWidth=Math.max(2,s*.055);ctx.beginPath();ctx.arc(k,base-s*.55,s*.25,0,Math.PI*1.45);ctx.stroke();ctx.beginPath();ctx.arc(k,base-s*.55,s*.13,Math.PI*.3,Math.PI*1.8);ctx.stroke();

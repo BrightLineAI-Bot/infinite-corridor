@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 373 — the Mouth becomes a town.
+  - **The town:** once a Listener falls, the next time you arrive at its Mouth (leaving the dungeon counts) a town stands around it.
+  - **What's there:** its own Wayglass, the Listening Stone (a shrine unlike any other) and the Delvers' Exchange, who trade rare goods brought up from below.
+  - **The Mouth:** it still opens a new dungeon every time.
+  - **The 371 town:** if you already had a nearby town from 371, you keep it as well.
+
 - Release 371 — Listener towns and choosing your home.
   - **A town for each Listener:** wherever you defeat a Listener, a town springs up nearby on ground you haven't explored yet. You have already defeated one, so yours is waiting near that Mouth.
   - **Making it home:** light its Wayglass, then pick it in the Atlas and press "Make <town> my home".
