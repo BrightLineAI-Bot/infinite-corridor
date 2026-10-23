@@ -130,6 +130,10 @@ export function generatePinnedDungeon(save, id, options = {}) {
 export const DEATH_PAUSE = { seconds: 4, millSpeed: 1.1, millRadius: 3 }; // release 329: the pause after a world beast fells you
 export const DIVE_ONWARD = { radius: 8, tries: 6 }; // release 311: how far the deep current looks for the next buoy
 export const TARGET_LOCK = { range: 16, pick: .75, meleeSlack: 1.2 };
+// Release 343 (Tim: "the range for auto targeting, where it just targets the next closest enemy, needs to be increased"):
+// with no locked target, a swing turns toward the nearest foe within its reach + `meleeExtra` tiles, and a tool shot toward
+// the nearest within `rangedScale` × its range (the blow and the shot still travel only as far as before).
+export const AUTO_AIM = { meleeExtra: 3, rangedScale: 1.6 };
 export function mapWidth(map, area = "overworld") { return Math.max(1, Number(map?.width) || (area === "dungeon" ? 24 : 32)); }
 export function mapHeight(map, area = "overworld") { return Math.max(1, Number(map?.height) || Math.floor((map?.tiles?.length || mapWidth(map, area)) / mapWidth(map, area))); }
 export function deepDungeonProgress(save, id) {
@@ -1496,7 +1500,7 @@ export class Game {
               this.enemies,
               this.map,
               width,
-              profile.range,
+              profile.range + AUTO_AIM.meleeExtra, // release 343
             );
       this.player.meleeAim =
         d ||
@@ -4278,7 +4282,7 @@ export class Game {
       this.save.aimMode = "tool";
       this.save.toolMode = true;
       const weapon=rangedWeapon(this.save.equipment.secondary),width=mapWidth(this.map,this.area),
-        aim=weapon&&selectRangedAim(this.player,this.enemies,this.map,width,weapon.speed*weapon.lifetime*(1+characterStats(this.save).attackReach));
+        aim=weapon&&selectRangedAim(this.player,this.enemies,this.map,width,weapon.speed*weapon.lifetime*(1+characterStats(this.save).attackReach)*AUTO_AIM.rangedScale); // release 343
       this.fireSecondary(now, aim || this.save.lastAim);
     }
     if (input.consume("spell")) this.castSlot("a");

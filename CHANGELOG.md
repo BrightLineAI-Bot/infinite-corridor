@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 343 — auto targeting reaches farther. With no target locked:
+  - **Swings** turn to the nearest foe up to 3 tiles past your weapon's reach.
+  - **Tool shots** aim at the nearest foe up to 60% past their range.
+  - **Unchanged:** blows and shots still travel only as far as before. Locking a target by tapping it works as it did.
+
 - Release 341 — pick the potion tier and the button brews it. In Pack → Supplies, choose what the Potion button drinks: 1 · Potion, 2 · High or 3 · Max.
   - **Auto-brew:** with High or Max chosen, pressing the button brews one from your draughts on the spot (3 for High, 5 for Max) and drinks it. Nothing is brewed at full health.
   - **Count and fallback:** the button's count is how many of that tier you can drink, carried plus brewable. With too few draughts to brew, it drinks a plain one.

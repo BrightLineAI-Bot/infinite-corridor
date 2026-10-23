@@ -2694,6 +2694,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 343: auto targeting reaches farther — 2026-10-23
+
+Tim, 2026-10-23: "the range for auto targeting, where it just targets the next closest enemy, needs to be increased".
+
+**CODE:** `game.ts` `AUTO_AIM = { meleeExtra: 3, rangedScale: 1.6 }`.
+- With no locked target, the melee swing's `selectMeleeAim` searches `profile.range + meleeExtra`.
+- The tool shot's `selectRangedAim` searches its travel range × `rangedScale`.
+- Only the facing changes; reach, projectile life and the target lock (`TARGET_LOCK`) are unchanged. Spells do not auto-aim.
+- Tests: `tests/auto-aim-343.test.ts`.
+
+**BOUNDARY:** No save changes.
+
 ## Release 341: the potion tier toggle brews as you drink — 2026-10-23
 
 Tim, 2026-10-23: "You should... be able to set which one you want to use... I don't think you necessarily need to continuous craft. You can just do like 1 2 or 3. Select the toggle, and then it'll just craft potions for you... when you... hit the button, potions will be available to you. Potions of whichever rank you want".
