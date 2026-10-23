@@ -129,7 +129,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
 }
 export const DEATH_PAUSE = { seconds: 4, millSpeed: 1.1, millRadius: 3 }; // release 329: the pause after a world beast fells you
 export const DIVE_ONWARD = { radius: 8, tries: 6 }; // release 311: how far the deep current looks for the next buoy
-export const TARGET_LOCK = { range: 16, pick: .75, meleeSlack: 1.2 };
+export const TARGET_LOCK = { range: 16, pick: 1.05, meleeSlack: 1.2 }; // release 347: a wider tap (was .75)
 // Release 343 (Tim: "the range for auto targeting, where it just targets the next closest enemy, needs to be increased"):
 // with no locked target, a swing turns toward the nearest foe within its reach + `meleeExtra` tiles, and a tool shot toward
 // the nearest within `rangedScale` × its range (the blow and the shot still travel only as far as before).
@@ -1495,7 +1495,7 @@ export class Game {
               explicitDirection.y,
               this.player.facing,
             )
-          : this.lockedDirection(profile.range + TARGET_LOCK.meleeSlack) || selectMeleeAim( // release 309: a locked target first
+          : this.lockedDirection(profile.range + Math.max(TARGET_LOCK.meleeSlack, AUTO_AIM.meleeExtra)) || selectMeleeAim( /* release 347: the lock wins as far as auto aim reaches */ // release 309: a locked target first
               this.player,
               this.enemies,
               this.map,
@@ -2815,6 +2815,7 @@ export class Game {
     // Release 193: moments that may open a Glimpse (main.ts reads the cue on the next frame).
     if ((o.kind === "ruinMarker" || o.kind === "shrine") && chosen === "inspect") this.glimpseCue = "touch";
     if (r.transition === "dungeon") this.glimpseCue = "crossing";
+    if (r.transition === "retrain") { syncCharacterStats(this.save); this.player.maxStamina = this.save.maxStamina; this.player.hp = Math.min(this.player.hp, this.save.maxHp); this.player.stamina = Math.min(this.player.stamina, this.save.maxStamina); this.sync(); } // release 347
     if (o.talkKey && chosen === "speak") { const n = (Number(this.save.worldFlags[o.talkKey]) || 0) + 1; this.save.worldFlags[o.talkKey] = n; o.line = talkLine(o, this.refugeLandsWhere(), n); } // release 265: the farmer and the quarry keeper have more to say each time
     if (o.kind === "tree" && chosen === "cut") { applyFallenTreeCrossings(this.map); const before = Number(this.save.materials?.wood) || 0, total = addWood(this.save, woodFor(o)), n = total - before; this.message = n > 0 ? `${this.message} +${n} wood (${total}${total >= WOOD.carry ? ", all you can carry" : ""}).` : `${this.message} You can carry no more wood (${WOOD.carry}).`; r.message = this.message; }
     if(r.transition==="elitePortal"){
@@ -4062,6 +4063,7 @@ export class Game {
     }
     let x = this.player.x + 0.5,
       y = this.player.y + 0.45;
+    { const t = !this.save.pendingAim && this.lockedTarget(); if (t && !t.untargetable && !t.hidden) this.save.pendingAim = { x: t.x + .5, y: t.y + .45 }; } // release 347: spells land on a locked target
     if (this.save.pendingAim) {
       const dx = this.save.pendingAim.x - x,
         dy = this.save.pendingAim.y - y,
@@ -4100,9 +4102,12 @@ export class Game {
   // direction that you're pointing"). Tapping a creature locks it; while it lives and stays near, swings aim at it when it is
   // in reach and every tool shot and spell aims at it (save.lastAim follows it each frame). Tapping it again releases it.
   lockTarget(id) {
-    if (!id || this.targetId === id) { this.targetId = null; this.message = "Target released."; return null; }
+    // Release 347 (Tim: "the tap to targeting system... is inconsistent... when we tap on a target it kills them"): tapping
+    // the locked creature again keeps the lock (a double tap mid-fight no longer drops it); it ends when the target falls or
+    // is left behind, or with lockTarget(null).
+    if (!id) { this.targetId = null; this.message = "Target released."; return null; }
     const e = this.enemies.find((q) => q.id === id && !q.dead); if (!e) return null;
-    this.targetId = id; this.message = `Targeting ${e.name || e.kind}. Tap it again to release.`; return e;
+    const fresh = this.targetId !== id; this.targetId = id; if (fresh) this.message = `Targeting ${e.name || e.kind}.`; return e;
   }
   lockedTarget() {
     if (!this.targetId) return null;
@@ -4118,7 +4123,7 @@ export class Game {
   // The creature under a world tap, if any (nearest whose body covers the point).
   enemyAt(x, y) {
     let best = null;
-    for (const e of this.enemies) { if (e.dead || e.hidden || e.ambient || e.astralAllyOf) continue; const r = Math.max(TARGET_LOCK.pick, (Number(e.bodyRadius) || 0) + .35, (Number(e.scale) || 1) * .45), d = Math.hypot(x - (e.x + .5), y - (e.y + .4)); if (d <= r && (!best || d < best.d)) best = { e, d }; }
+    for (const e of this.enemies) { if (e.dead || e.hidden || e.ambient || e.astralAllyOf) continue; const r = Math.max(TARGET_LOCK.pick, (Number(e.bodyRadius) || 0) + .6, (Number(e.scale) || 1) * .6), d = Math.hypot(x - (e.x + .5), y - (e.y + .4)); /* release 347: big creatures are easier to tap */ if (d <= r && (!best || d < best.d)) best = { e, d }; }
     return best?.e || null;
   }
   aimAt(x, y) {
@@ -4282,7 +4287,7 @@ export class Game {
       this.save.aimMode = "tool";
       this.save.toolMode = true;
       const weapon=rangedWeapon(this.save.equipment.secondary),width=mapWidth(this.map,this.area),
-        aim=weapon&&selectRangedAim(this.player,this.enemies,this.map,width,weapon.speed*weapon.lifetime*(1+characterStats(this.save).attackReach)*AUTO_AIM.rangedScale); // release 343
+        aim=weapon&&(this.lockedDirection()||selectRangedAim(this.player,this.enemies,this.map,width,weapon.speed*weapon.lifetime*(1+characterStats(this.save).attackReach)*AUTO_AIM.rangedScale)); // release 343; 347: a locked target first
       this.fireSecondary(now, aim || this.save.lastAim);
     }
     if (input.consume("spell")) this.castSlot("a");

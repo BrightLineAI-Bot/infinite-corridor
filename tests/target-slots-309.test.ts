@@ -13,13 +13,13 @@ function arena() {
   Object.assign(g.player, { x: 10, y: 10 }); return { s, g, a: at('a', 14, 10), b: at('b', 10, 14) };
 }
 
-test('tapping a creature locks it; aim follows it; tapping again or another switches', () => {
+test('tapping a creature locks it; aim follows it; another switches; tapping again keeps it (release 347)', () => {
   const { s, g, a, b } = arena();
   assert.equal(g.enemyAt(14.5, 10.4)?.id, 'a'); assert.equal(g.enemyAt(12, 12), null);
   g.lockTarget('a'); assert.equal(g.lockedTarget()?.id, 'a');
   g.update(.016, idle, 100); assert.ok(s.lastAim.x > .9 && Math.abs(s.lastAim.y) < .2, 'aim points east at a');
   g.lockTarget('b'); g.update(.016, idle, 120); assert.ok(s.lastAim.y > .9, 'now south at b');
-  g.lockTarget('b'); assert.equal(g.lockedTarget(), null, 'tapping it again releases');
+  g.lockTarget('b'); assert.equal(g.lockedTarget()?.id, 'b', 'tapping it again keeps the lock (release 347, Tim)');
   g.lockTarget('a'); a.dead = true; assert.equal(g.lockedTarget(), null, 'a dead target is dropped');
   g.lockTarget('b'); b.x = 40; assert.equal(g.lockedTarget(), null, 'one that goes far is dropped');
 });

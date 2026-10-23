@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Release 347 — steadier tap targeting, and retraining stats.
+  - **Easier to tap:** creatures, the big ones especially, are easier to tap.
+  - **Re-tapping keeps the lock:** tapping your locked target again keeps it locked instead of releasing it.
+  - **Every attack follows the lock:**
+    - swings turn to it as far as auto aim reaches;
+    - tool shots fire at it, not at whatever is nearest;
+    - spells land on it.
+  - **Retrain stats:** Oren Vale at Ember Refuge now offers **Retrain stats** for 500 marks. Every stat point you've spent comes back to spend again in Pack.
+
 - Release 345 — dying costs nothing, and world-boss tries can be switched off.
   - **No loss on death:** dying no longer takes the wood you carry; you lose nothing.
   - **New option:** Options → Accessibility, next to Child-safe Glimpses, has **World boss tries**.
