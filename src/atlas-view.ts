@@ -45,3 +45,28 @@ export function atlasPlaces(save) {
   const order = [...READING_ORDER, "elsewhere"];
   return [...groups.values()].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id)).map((g) => ({ ...g, bounds: boundsOf(g.sections), places: g.places.sort((a, b) => a.name.localeCompare(b.name)) }));
 }
+
+// Map marks (release 355; Tim, 2026-10-23: "three... points of interest markers that you can just set on some place on
+// the map. The compass won't navigate to them... whenever you open up the map... places can be highlighted... with a
+// couple different colors"). save.mapMarks (additive): up to `max` sections, each with its own colour. Marking a marked
+// section clears it. Only the Atlas draws them; navigation never reads them.
+export const MAP_MARKS = { max: 3, colors: ["#ff7ab6", "#7dffa0", "#b48cff"], names: ["Rose", "Green", "Violet"] };
+export function normalizeMapMarks(list) {
+  const out = [], used = new Set();
+  for (const m of Array.isArray(list) ? list : []) {
+    const rx = Number(m?.rx), ry = Number(m?.ry), c = Number(m?.color);
+    if (!Number.isInteger(rx) || !Number.isInteger(ry) || out.some((q) => q.rx === rx && q.ry === ry) || out.length >= MAP_MARKS.max) continue;
+    const color = Number.isInteger(c) && c >= 0 && c < MAP_MARKS.colors.length && !used.has(c) ? c : MAP_MARKS.colors.findIndex((_, i) => !used.has(i));
+    used.add(color); out.push({ rx, ry, color });
+  }
+  return out;
+}
+export const mapMarkAt = (save, rx, ry) => (save?.mapMarks || []).find((m) => m.rx === rx && m.ry === ry) || null;
+export function toggleMapMark(save, rx, ry) {
+  const marks = (save.mapMarks = normalizeMapMarks(save.mapMarks)), here = mapMarkAt(save, rx, ry);
+  if (here) { save.mapMarks = marks.filter((m) => m !== here); return { ok: true, message: `${MAP_MARKS.names[here.color]} mark cleared.` }; }
+  if (marks.length >= MAP_MARKS.max) return { ok: false, message: `All ${MAP_MARKS.max} marks are set. Select a marked section to clear one.` };
+  const color = MAP_MARKS.colors.findIndex((_, i) => !marks.some((m) => m.color === i));
+  marks.push({ rx, ry, color });
+  return { ok: true, message: `${MAP_MARKS.names[color]} mark set on ${rx}, ${ry}.` };
+}

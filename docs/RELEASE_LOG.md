@@ -13,21 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**355**
+**357**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 349 | Claude | `claude/dreamy-rubin-yn6q2p` | World bosses slightly more frequent (gap 6 sections, chance ×0.7 of base) | Merged (PR #157). |
-| 351 | Claude | `claude/dreamy-rubin-yn6q2p` | Daily narrative: Sleeper's Hall, dream crossings in the Far Sleep (bible section 7, step 4) | Merged (PR #158). |
-| 353 | Claude | `claude/dreamy-rubin-yn6q2p` | A world boss's health resets only when you die: wounds kept on the hunt across sections and reloads; a death heals it with tries on or off | Building. |
+| 355 | Claude | `claude/dreamy-rubin-yn6q2p` | Three map marks (colours, flags, the compass ignores them) | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 353 | `r353-77c263e939a9` | 2026-10-23 | Published with 349 and 351 (neither went live alone): world bosses a little more often (349, PR #157); Sleeper's Hall dream crossings in the Far Sleep (351, PR #158); a world boss stays hurt until it kills you (353, PR #159). The pre-publish Fable review found no blockers. |
 | 347 | `r347-6aae356afb82` | 2026-10-23 | Published with 343 and 345 (neither went live alone): farther auto aim (343, PR #154); dying costs nothing, the world-boss tries switch (345, PR #155); steadier tap targeting, Oren retrains stats (347, PR #156). The pre-publish Fable review found no blockers. |
 | 341 | `r341-6762df1cdaab` | 2026-10-23 | The potion tier toggle brews High and Max Potions from draughts as you drink; the crescent takes armor Volatile again (PR #153). The pre-publish Fable review found no blockers. |
 | 339 | `r339-9f49bdbe23f2` | 2026-10-23 | Published with 335 and 337 (neither went live alone): glyph and buff wiring, the Arcanum follows the preset (335, PR #150); Echoes from every first kill, slain beasts grant missing Echoes (337, PR #151); potion tiers (339, PR #152). The pre-publish Fable review found no blockers. |

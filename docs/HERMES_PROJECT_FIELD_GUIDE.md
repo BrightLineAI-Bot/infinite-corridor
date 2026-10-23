@@ -2694,6 +2694,24 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 355: three map marks — 2026-10-23
+
+Tim, 2026-10-23: "on the map, there should be three... points of interest markers that you can just set on some place on the map. The compass won't navigate to them... up to 3 places can be highlighted in some color... a couple different colors".
+
+**CODE:**
+- **`atlas-view.ts`:**
+  - `MAP_MARKS = { max: 3, colors, names }` (Rose, Green, Violet).
+  - `normalizeMapMarks`, `mapMarkAt`, `toggleMapMark(save, rx, ry)`. Marking a marked section clears it; a freed colour is reused.
+- **Save:** `save.mapMarks` (additive) is `[]` in `freshSave` and normalised in `migrateSave` (`types.ts`).
+- **`main.ts`:**
+  - `mapMarkButton()` creates the "Mark selected section" button under the waypoint button, so both pages get it without HTML changes.
+  - `drawAtlasPins` draws each mark as a small flag in its colour, at every zoom. Off screen, it is an edge arrow with the distance, like the waypoint. Marks are drawn whatever the layer switches say.
+- **Tests:** `tests/map-marks-355.test.ts`.
+
+**BOUNDARY:**
+- Navigation (`wayfindingTargets`, the compass, `manualWaypoint`) never reads the marks.
+- Any selected section can be marked, explored or not.
+
 ## Release 353: a world boss stays hurt until it kills you — 2026-10-23
 
 Tim, 2026-10-23: "it'll hunt you through different tiles, and you can run away and it can chase you. So it's health, only resets when you die".
