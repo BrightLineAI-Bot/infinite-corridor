@@ -2694,6 +2694,34 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 363: the Transit Lattice — 2026-10-23
+
+Tim, 2026-10-23: after Infinite III and a first Listener, a Transit Lattice holds extra passives beyond the usual rules:
+- 2 constellation passives and 1 Echo at first;
+- up to 3 more of each, bought with Transit Coordinates;
+- coordinates come from each Gate completed: its components + 1 for the Listener.
+
+The lore is his too: the Lattice bends reality between eventualities, drawing in the coordinates of other Transit Lattices (other histories where that passive exists) and merging them into yours.
+
+**CODE:**
+- **New module `transit-lattice.ts`** (added to `scripts/build.mjs` and both `sw.js` lists):
+  - `TRANSIT_LATTICE = { openTier: 13, openListeners: 1, base: { passive: 2, echo: 1 }, extra: { passive: 3, echo: 3 }, costs: [4, 4, 5, 5, 6, 6] }`.
+  - `save.lattice` (additive; `ensureLattice` in `freshSave` and `migrateSave`) holds `coordinates`, `paidFor`, `extra`, `passives` and `echoes`.
+  - `grantCoordinates` pays every unpaid Listener kill `coordinatesFor(k) = piecesNeeded(k) + 1`. Kills from before this release are paid on load. `game.ts` pays at the kill and says so (`latticeNote`).
+  - Other functions: `latticeOpen`/`latticeWhy`, `latticeSlots`, `nextSlotCost`, `unlockSlot`, `toggleLatticeSlot`.
+- **`constellation.ts`:**
+  - `nodeOn`/`altOn` also count forms held in the Lattice, so a passive can work in both its forms at once.
+  - `passiveForm`, `PASSIVE_KEYS`, `toggleLatticePassive`. A slot takes the primary (`id`) or secondary (`id:alt`) form of a learned passive, never the form already chosen.
+- **`echoes.ts`:**
+  - `activeEchoes` adds Lattice Echoes to the notched ones; `hasEcho`, `echoEvent` and `tickEchoes` read it.
+  - `toggleLatticeEcho` takes owned Echoes that are not already notched.
+- **`main.ts`:** a "Transit Lattice" Arcanum tab shows the coordinates, the lore, the slots (Clear), the unlock buttons and the choices.
+- **Tests:** `tests/transit-lattice-363.test.ts`.
+
+**BOUNDARY:**
+- A closed Lattice (below Infinite III) holds nothing, though its settings are kept.
+- Notches, constellation costs and respec are unchanged. A shrine respec does not clear the Lattice; a form of a passive no longer learned stops working until it is learned again.
+
 ## Release 361: the Mouth stays open — 2026-10-23
 
 Tim, 2026-10-23: "I like the mouth being open as a random dungeon... it just gives you another dungeon each time".

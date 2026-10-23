@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 363 — the Transit Lattice.
+  - **When it opens:** at Infinite III, once you have felled a Listener, the Arcanum gains a Transit Lattice tab.
+  - **What it holds:** 2 constellation passives and 1 Echo, on top of everything you already have set. A slot can hold either form of a passive you know, so a passive can work in both its primary and secondary form at once. An Echo in the Lattice uses no notches.
+  - **Transit Coordinates:** every fallen Listener pays its Gate in coordinates, one for each piece the Gate needed plus one for the Listener. Your first Listener already paid 4. Spend them to unlock up to 3 more passive slots and 3 more Echo slots (4, 4, 5, 5, 6 and 6 coordinates).
+
 - Release 361 — the Mouth stays open.
   - **Still a way in:** after the Listener leaves, its Mouth (and every Mouth it left before) still takes you into a new dungeon each time. The Listener is never there.
   - **Pieces still count:** Gate pieces won there still count, so the Gate may already be whole when the Listener's new Mouth appears.
