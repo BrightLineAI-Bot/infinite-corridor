@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 361 — the Mouth stays open.
+  - **Still a way in:** after the Listener leaves, its Mouth (and every Mouth it left before) still takes you into a new dungeon each time. The Listener is never there.
+  - **Pieces still count:** Gate pieces won there still count, so the Gate may already be whole when the Listener's new Mouth appears.
+
 - Release 359 — secondary passives in the Arcanum.
   - **A second form for every passive:** each discipline's modifier and both capstones now have a secondary form.
   - **Switching:** from Infinite III, select a learned passive and press "⇄ Use secondary" to switch it, or "⇄ Use primary" to switch back. Switching is free, and only the chosen form works.

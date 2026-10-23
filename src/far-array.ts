@@ -69,13 +69,14 @@ export function listenerForm(save) { const s = relayLean(save).share; return s >
 export function arrayMouthAt(save, rx, ry) { const c = save.relayNetwork?.coordinate; return !!c && c.rx === rx && c.ry === ry; }
 
 // Start a run: a fresh dungeon id; the previous run's area state and history are cleared so saves stay small.
-export function beginArrayRun(save, returnPoint) {
+export function beginArrayRun(save, returnPoint, { noListener = false } = {}) {
   const f = ensureFarArray(save);
   for (const key of Object.keys(save.session?.areas || {})) if (key.startsWith("far-array:")) delete save.session.areas[key];
   for (const key of Object.keys(save.consequences?.dungeons || {})) if (key.startsWith("far-array:")) delete save.consequences.dungeons[key];
   f.runs++;
   // Each run is a different dungeon (release 140): an Underlands expedition or one of the five deep archetypes.
-  const listener = gateOpen(f), kind = RUN_KINDS[hashSeed(`${save.seed}:far-array:kind:${f.runs}`) % RUN_KINDS.length];
+  const listener = gateOpen(f) && !f.quiet && !noListener, kind = // release 357/361: never while quiet, nor at an old Mouth
+    RUN_KINDS[hashSeed(`${save.seed}:far-array:kind:${f.runs}`) % RUN_KINDS.length];
   const id = `far-array:${save.seed}:run${f.runs}${kind === "expedition" ? "" : `:deep-v2:${kind}`}`;
   f.activeRun = { id, gate: f.gate, listener, kind, returnPoint: { ...returnPoint } };
   return f.activeRun;

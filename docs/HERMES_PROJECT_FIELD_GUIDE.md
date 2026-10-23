@@ -2694,6 +2694,20 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 361: the Mouth stays open — 2026-10-23
+
+Tim, 2026-10-23: "I like the mouth being open as a random dungeon... it just gives you another dungeon each time".
+
+**CODE:**
+- **`far-array.ts` `beginArrayRun(save, returnPoint, { noListener })`:** a run holds the Listener only when the Gate is whole, the Array is not `quiet`, and the run starts at the current Mouth.
+- **`game.ts`:**
+  - The Quiet Mouth and every old Mouth (`silentMouth`, now "A Quiet Mouth") open runs again, each a new dungeon.
+  - Their final foe is always a guardian.
+  - Pieces won while the Array is quiet still lock (up to the Gate's need), so a Gate made whole there is ready at the new Mouth.
+- **Tests:** `tests/listener-moves-357.test.ts` now expects the quiet Mouth and an old Mouth to open runs without the Listener.
+
+**BOUNDARY:** Release 357's five relays, its new coordinate, and its compass and relay-strength rules are unchanged.
+
 ## Release 359: secondary passives in the Arcanum — 2026-10-23
 
 Tim, 2026-10-23: "develop an additional passive for each one that you can select... a button... it'll show the secondary passive... whenever you select this button, it'll just show whatever the opposite one is. Secondary or primary... available in infinite 3 and beyond".

@@ -13,7 +13,7 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**361**
+**365**
 
 ## In flight
 
@@ -21,7 +21,9 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 |---|---|---|---|---|
 | 355 | Claude | `claude/dreamy-rubin-yn6q2p` | Three map marks (colours, flags, the compass ignores them) | Merged (PR #160). |
 | 357 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener moves on: quiet Mouth after a kill, new Mouth after 5 more relays, strength by relays (cap 40) | Merged (PR #161). |
-| 359 | Claude | `claude/dreamy-rubin-yn6q2p` | Secondary passives: every modifier and capstone has a secondary form, switched from Infinite III | Building. |
+| 359 | Claude | `claude/dreamy-rubin-yn6q2p` | Secondary passives: every modifier and capstone has a secondary form, switched from Infinite III | Merged (PR #162). |
+| 361 | Claude | `claude/dreamy-rubin-yn6q2p` | Quiet and old Mouths stay open as random runs (never the Listener) | Building. |
+| 363 | Claude | `claude/dreamy-rubin-yn6q2p` | Reserved: the Transit Lattice and Transit Coordinates | Reserved. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)

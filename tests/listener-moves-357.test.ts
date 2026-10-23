@@ -32,15 +32,17 @@ test('a journey that felled a Listener before this release goes quiet, counting 
   const fresh = migrateSave(JSON.parse(JSON.stringify(answered(3)))); assert.equal(fresh.farArray.quiet, false);
 });
 
-test('the quiet Mouth admits no run and the compass stops pointing at it; the old Mouth stays, silent', () => {
-  const s = answered(6); listenerFelled(s); const c = s.relayNetwork.coordinate;
+test('the quiet Mouth still opens runs (release 361), never to the Listener; the compass stops pointing at it; the old Mouth stays open', () => {
+  const s = answered(6); listenerFelled(s); s.farArray.pieces = 9; const c = s.relayNetwork.coordinate;
   const g = new Game(s, 0); g.rx = c.rx; g.ry = c.ry; g.loadArea('overworld');
   const mouth = g.map.objects.find((o) => o.kind === 'arrayMouth'); assert.equal(mouth.state, 'quiet');
-  g.player.x = mouth.x; g.player.y = mouth.y; const r = g.interact('enter', mouth.id); assert.equal(r.ok, false); assert.equal(g.area, 'overworld'); assert.equal(s.farArray.activeRun, null);
+  g.player.x = mouth.x; g.player.y = mouth.y; const r = g.interact('enter', mouth.id); assert.equal(r.ok, true); assert.equal(g.area, 'dungeon'); assert.equal(s.farArray.activeRun.listener, false, 'the Gate is whole, but the Listener is gone');
+  assert.ok(!g.enemies.some((e) => e.kind === 'listener')); g.leaveDungeon(); s.farArray.activeRun = null; s.farArray.pieces = 0;
   assert.ok(!wayfindingTargets(s.seed, 0, 0, 1, s).some((t) => t.name === 'the Far Array'));
   for (let i = 0; i < 5; i++) answer(s, i);
   assert.ok(wayfindingTargets(s.seed, 0, 0, 1, s).some((t) => t.name === 'the Far Array'));
-  g.loadArea('overworld'); assert.ok(g.map.objects.some((o) => o.kind === 'silentMouth')); assert.ok(!g.map.objects.some((o) => o.kind === 'arrayMouth'));
+  g.rx = c.rx; g.ry = c.ry; g.loadArea('overworld'); const old = g.map.objects.find((o) => o.kind === 'silentMouth'); assert.ok(old); assert.ok(!g.map.objects.some((o) => o.kind === 'arrayMouth'));
+  s.farArray.pieces = 9; g.player.x = old.x; g.player.y = old.y; assert.equal(g.interact('enter', old.id).ok, true); assert.equal(s.farArray.activeRun.listener, false, 'an old Mouth never holds the Listener'); g.leaveDungeon(); s.farArray.activeRun = null;
   const n = s.relayNetwork.coordinate; g.rx = n.rx; g.ry = n.ry; g.loadArea('overworld'); assert.equal(g.map.objects.find((o) => o.kind === 'arrayMouth').state, 'ready');
 });
 
