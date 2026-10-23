@@ -36,7 +36,7 @@ import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian,
 import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, DRONE, ensureMech, mechAbsorb, tickMech } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
-import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP, loseWood } from "./boats.ts";
+import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP } from "./boats.ts";
 import { submersible, fitSubmersible, aboard, sailable, BOAT, canBuildSkiff, mendSkiff, buyHullShield, deployHullShield, tickHullShield, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.ts";
 import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.ts";
 import { canSwim, swimsThrough, tidemantleTrial, grantTidemantle, swimUpkeep, dungeonWaterToll, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.ts";
@@ -2480,8 +2480,7 @@ export class Game {
     this.save.session.displacementJourney = null;
     if (before < 2) this.save.consumables.restorativeDraught = 2;
     clearRot(this.save);
-    loseWood(this.save);
-    p.hp = this.save.maxHp;
+    p.hp = this.save.maxHp; // release 345 (Tim: "When you die, you don't lose anything"): carried wood is kept
     p.stamina = this.save.maxStamina;
     p.attackReadyAt =
       p.dodgeReadyAt =
@@ -2970,7 +2969,7 @@ export class Game {
     const p = this.player;
     const beastNote = this.area === "overworld" ? questingBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.some((e) => e.questingBeast && !e.dead)) : null;
     if (beastNote) journalOnce(this.save, `questing-beast-try:${this.save.questingBeast.cycle}:${this.save.questingBeast.active?.tries ?? "gone"}`, beastNote, "The Questing Beast");
-    const worldNote = this.area === "overworld" || this.area === "dungeon" ? worldBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.filter((e) => e.worldBeast && !e.dead).map((e) => e.worldBeast), this.area === "dungeon" ? this.areaId() : null) : null; // release 235
+    const worldNote = this.area === "overworld" || this.area === "dungeon" ? worldBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.filter((e) => e.worldBeast && !e.dead).map((e) => e.worldBeast), this.area === "dungeon" ? this.areaId() : null, this.beastTries === false) : null; // release 235
     if (worldNote) journalOnce(this.save, `world-beast-try:${this.rx},${this.ry}:${JSON.stringify(this.save.worldBeasts)}`.slice(0, 160), worldNote, "World beasts");
     // Gate predators have no rematches: a player death ends their hunt, without rewards.
     for (const e of this.enemies) if (e.gatePredator && !e.dead) { e.dead = true; e.noRewards = true; resetGateAttack(e, true); }
@@ -2979,6 +2978,7 @@ export class Game {
       const state = e.questingBeast ? this.save.questingBeast : this.save.worldBeasts?.[e.worldBeast];
       if (!state?.active) { e.dead = true; e.noRewards = true; continue; }
       if (e.retreating || e.fleeTo) continue;
+      if (e.worldBeast && this.beastTries === false) { e.aggro = false; resetPackRuntime(e); continue; } // release 345: tries off: the fight and its clock carry on
       state.active.patience = 0; // A fresh duel gets a fresh per-fight clock, not fresh attempts.
       e.hp = e.maxHp;
       if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed;
@@ -2997,7 +2997,7 @@ export class Game {
     const before = this.save.consumables.restorativeDraught || 0;
     if (before < 2) this.save.consumables.restorativeDraught = 2;
     clearRot(this.save);
-    const woodLost = loseWood(this.save);
+    const woodLost = 0; // release 345: dying costs nothing, carried wood included
     p.hp = this.save.maxHp;
     p.stamina = this.save.maxStamina;
     p.attackReadyAt =
@@ -3682,12 +3682,12 @@ export class Game {
       const id = e.worldBeast, B = WORLD_BEASTS[id], q = this.save.worldBeasts?.[id]?.active;
       if (!q) continue;
       if(id==='astralWorm') {
-        if(!e.retreating&&e.aggro&&worldBeastPatience(this.save,id,dt)){beginAstralWorldRetreat(this,e);this.message=B.flee;reconcileAstralCompanions(this);this.syncAstralRiders();}
+        if(!e.retreating&&e.aggro&&worldBeastPatience(this.save,id,dt,e,this.beastTries===false)){beginAstralWorldRetreat(this,e);this.message=B.flee;reconcileAstralCompanions(this);this.syncAstralRiders();}
         if(q.astralRetreat){const result=tickAstralWorldRetreat(this,e,dt,{previewDungeon:(save,id,levelId)=>generatePinnedDungeon(save,id,{levelId}),applyDungeonProgress:(save,id,map)=>applyDeepDungeonProgress(save,id,map),domainAt:domainSectionAt,beforeCross:actor=>{this.astralRiderLeavesWith(actor);return !this.enemies.some(rider=>rider.astralMount?.ownerId===actor.id&&this.astralRiderHeld(rider));}});if(result.arrived){this.astralRiderLeavesWith(e);this.message=retreatEnded(this.save,id);e.dead=true;e.noRewards=true;reconcileAstralCompanions(this);}}
         continue;
       }
-      if (!e.retreating && e.aggro && q.dungeon && worldBeastPatience(this.save, id, dt)) { const r = beginDungeonRetreat(this.save, id, this.map); e.retreating = true; this.message = r.message; for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; } journalOnce(this.save, `world-beast-flees:${id}:${this.save.worldBeasts[id].cycle}`, r.message, "World beasts"); }
-      if (!e.retreating && e.aggro && !q.dungeon && this.area === "overworld" && worldBeastPatience(this.save, id, dt)) {
+      if (!e.retreating && e.aggro && q.dungeon && worldBeastPatience(this.save, id, dt, e, this.beastTries === false)) { const r = beginDungeonRetreat(this.save, id, this.map); e.retreating = true; this.message = r.message; for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; } journalOnce(this.save, `world-beast-flees:${id}:${this.save.worldBeasts[id].cycle}`, r.message, "World beasts"); }
+      if (!e.retreating && e.aggro && !q.dungeon && this.area === "overworld" && worldBeastPatience(this.save, id, dt, e, this.beastTries === false)) {
         const seed = this.save.seed, gen = this.save.worldGeneration, r = beginRetreat(this.save, id, this.rx, this.ry, (x, y) => { let g = null; const region = () => (g ||= generateRegion(seed, x, y, gen)); return { get biome() { return biomeFor(seed, x, y); }, get dominant() { return region().dominant; }, get canyon() { return region().environment?.kind === "canyon"; }, get dungeon() { return (region().objects || []).some((o) => o.kind === "dungeon"); } }; }); // release 241: a section is generated only for homes that need it
         e.retreating = true; this.message = r.message;
         for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; }

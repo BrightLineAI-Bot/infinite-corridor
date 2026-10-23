@@ -2694,6 +2694,29 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 345: no loss on death; world-boss tries switch — 2026-10-23
+
+Tim, 2026-10-23:
+- "When you die, you don't lose anything. You don't lose your resources";
+- "an option... next to the parental controls, where we can set the death sequence for the world bosses... a number of deaths... the number should actually be 4... or you can turn that setting off... if you don't beat the boss... within 3 minutes. He'll just lose patience and then leave. But if you do more than 50% of the boss's health, he will extend that 3 minutes by another two minutes".
+
+**CODE:**
+- **`game.ts`:** both death paths (`resolveDeath`, `recoverFromDeath`) stop calling `loseWood`.
+- **`persistence.ts`:** `beastTries` is a device setting, default true. `main.ts` adds an Accessibility toggle beside `familySafe`, and `applyPresentationSettings` copies it to `game.beastTries`.
+- **`world-beasts.ts`:**
+  - `BEAST_NO_TRIES = { extend: 120, below: .5 }`.
+  - `worldBeastPatience(save, id, dt, e, triesOff)` adds `extend` once the beast is below half health, and only with tries off. The base `patience` is 180 s.
+  - `worldBeastPlayerFell(..., triesOff)` takes no try with tries off and reports the patience left.
+- **`resolveDeath` with tries off:** a world beast keeps its health and its patience clock; it is only calmed (aggro off).
+- **Tests:**
+  - `tests/beast-tries-345.test.ts` (new);
+  - `tests/wood-boats.test.ts`: dying keeps wood.
+
+**BOUNDARY:**
+- The Questing Beast keeps its tries.
+- With tries on, nothing changed.
+- The setting is per device (settings), not per journey.
+
 ## Release 343: auto targeting reaches farther — 2026-10-23
 
 Tim, 2026-10-23: "the range for auto targeting, where it just targets the next closest enemy, needs to be increased".
