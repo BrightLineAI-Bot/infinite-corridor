@@ -1,6 +1,6 @@
-import { hashSeed, rng } from "./random.js?v=r333-3ab1b81cc983";
-import { populateDungeonEncounters } from "./arenas.js?v=r333-3ab1b81cc983";
-import { annotateDungeon } from "./dungeon-framework.js?v=r333-3ab1b81cc983";
+import { hashSeed, rng } from "./random.js?v=r339-9f49bdbe23f2";
+import { populateDungeonEncounters } from "./arenas.js?v=r339-9f49bdbe23f2";
+import { annotateDungeon } from "./dungeon-framework.js?v=r339-9f49bdbe23f2";
 
 export const DEEP_DUNGEON_SCHEMA_VERSION = 3;
 export const DEEP_ARCHETYPE_IDS = ["threefold", "descent", "loop", "flooded", "fortress"];
@@ -235,7 +235,7 @@ function threefold2(seed, id) {
   }
   m.zones = [{ id: "hub", name: "Oath Rotunda" }, { id: "west", name: "Root Wing" }, { id: "east", name: "Glass Wing" }, { id: "south", name: "Coil Warren" }, { id: "final", name: "Sealed Choir" }];
   // North: the sealed gate and the Sealed Choir.
-  // Release r333-3ab1b81cc983 (Tim: "It says the gate is open, but the gate isn't actually open"): the processional stopped at row 22 and
+  // Release 333 (Tim: "It says the gate is open, but the gate isn't actually open"): the processional stopped at row 22 and
   // the Choir began at row 20, leaving a wall row behind the gate. It now runs on into the Choir (rows 21-22 become floor;
   // no random draws change, so every other tile of a pinned Deep is the same).
   m.hall(hub.x, hub.y, hub.x, 20, 2); m.rect(28, 4, 52, 20); chamber({ x: 40, y: 12 }, 6);

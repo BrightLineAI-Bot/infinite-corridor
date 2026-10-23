@@ -6,7 +6,7 @@
 // Release 263: guardians and world beasts leave their creature's Echo by chance (ECHO_DROPS); ordinary kills do not.
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
-import { rng } from "./random.js?v=r333-3ab1b81cc983";
+import { rng } from "./random.js?v=r339-9f49bdbe23f2";
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;
@@ -14,7 +14,18 @@ export const ECHO_DROP_CHANCE = 4; // percent, ordinary pack kills, first copy o
 // Release 263 (Tim, 2026-10-21: "there should be a pretty low chance to drop them... from different guardians", then "Okay
 // three percent"): Echoes come only from guardians and world beasts, as a chance (percent) at the Echo of that creature
 // while you lack it. Ordinary pack kills no longer leave one.
-export const ECHO_DROPS = { guardian: 3, ordinary: 0 };
+// Release 337 (Tim, 2026-10-23: option 3, "guaranteed first kill, plus a higher chance after"): a guardian or world beast whose
+// Echo you lack now always leaves it. Each Echo is owned once, so this is the first kill of each kind; there is no "after".
+export const ECHO_DROPS = { guardian: 100, ordinary: 0 };
+// Release 337 (Tim: "grant the Questing Beast echo"): a beast already slain whose Echo was never taken (kills from before the
+// guaranteed first-kill Echo of release 263) grants it once, when the save loads. Returns the ids granted.
+export function grantSlainEchoes(save) {
+  if (!save?.echoes?.owned) return [];
+  const slain = [["questingBeast", save.questingBeast?.slain], ...Object.entries(save.worldBeasts || {}).map(([id, q]) => [id, q?.slain])];
+  const granted = slain.filter(([id, n]) => ECHOES[id] && Number(n) > 0 && !save.echoes.owned[id]).map(([id]) => id);
+  for (const id of granted) save.echoes.owned[id] = true;
+  return granted;
+}
 
 export const ECHOES = {
   thunderhorn: { name: "Thunderhorn's Charge", cost: 2, trigger: "dodge", module: "ramCharge", text: "Your dodge becomes a charge: foes you pass through are trampled and staggered." },

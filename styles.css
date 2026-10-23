@@ -940,3 +940,6 @@ button[aria-current], button[aria-selected="true"], .arc-kind.active, .options-t
 .buttons button .buff-fill { position: absolute; right: 0; top: 0; bottom: 0; width: 0; border-radius: inherit; background: linear-gradient(90deg, #f0c85a33, #f6d36ecc); pointer-events: none; z-index: 0; transition: width .1s linear; }
 .buttons button.buffing { box-shadow: 0 0 12px #f0c85a, inset 0 0 0 2px #f6d36e; }
 .buttons button:not(.buffing) .buff-fill { display: none; }
+/* Release r339-9f49bdbe23f2: the Potion button's bottle takes the chosen tier's colour (red, amber, gold). */
+.action-diamond button.potion[data-tier="highPotion"] .icon { filter: hue-rotate(28deg) saturate(1.25); }
+.action-diamond button.potion[data-tier="maxPotion"] .icon { filter: hue-rotate(48deg) saturate(1.5) brightness(1.15); }

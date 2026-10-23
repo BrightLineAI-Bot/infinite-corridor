@@ -8,8 +8,11 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade } from "./items.js?v=r333-3ab1b81cc983";
-import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP } from "./glyphs.js?v=r333-3ab1b81cc983";
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade } from "./items.js?v=r339-9f49bdbe23f2";
+import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r339-9f49bdbe23f2";
+import { pairingMods } from "./spell-slots.js?v=r339-9f49bdbe23f2";
+// Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
+const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 
 export const CONSTELLATION_VERSION = 1;
 export const POINT_EVERY = 6;
@@ -171,7 +174,7 @@ export function riftStep(game, now) {
   if (hasNode(s, "rift-wake")) { const hit = new Set(); for (let t = 0; t <= Math.hypot(best.x - from.x, best.y - from.y); t += .4) for (const e of game.enemies) if (!e.dead && !e.untargetable && !hit.has(e.id) && Math.hypot(e.x - (from.x + dx * t), e.y - (from.y + dy * t)) < .8) { hit.add(e.id); world.damage(e, 6 + Math.round(1.5 * (s.level || 1))); } }
   (game.glyphVisuals ||= []).push({ kind: "arc", x: from.x + .5, y: from.y + .45, tx: best.x + .5, ty: best.y + .45, color: "#b48cff", life: .3, max: .3 });
   p.x = best.x; p.y = best.y; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + 150);
-  st.riftCharges -= 1; st.cooldowns["rift-step"] = Math.max(st.cooldowns["rift-step"] || 0, (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown);
+  st.riftCharges -= 1; st.cooldowns["rift-step"] = Math.max(st.cooldowns["rift-step"] || 0, riftCooldown(s, rank, gm));
   if (skillInfusion({ magicSkills: { riftInfuse: 1 }, spellGlyphs: s.spellGlyphs }).length) st.riftInfuse = SKILL_INFUSE_AFTER_STEP; // release 297: its glyphs ride on hits for a while
   game.message = "Rift Step."; game.sync();
   return true;
@@ -179,7 +182,7 @@ export function riftStep(game, now) {
 export function tickRiftCharges(save) {
   const st = save.magicSkills; if (!st || !skillRank(save, "rift-step")) return;
   const gm = skillGlyphMods(save, "rift-step"), charges = (hasNode(save, "fold") ? 2 : 1) + gm.charges;
-  if ((st.cooldowns["rift-step"] || 0) <= 0 && (st.riftCharges ?? charges) < charges) { st.riftCharges = (st.riftCharges ?? 0) + 1; if (st.riftCharges < charges) st.cooldowns["rift-step"] = (APERTURE_SKILLS["rift-step"].cooldown - skillRank(save, "rift-step")) * gm.cooldown; }
+  if ((st.cooldowns["rift-step"] || 0) <= 0 && (st.riftCharges ?? charges) < charges) { st.riftCharges = (st.riftCharges ?? 0) + 1; if (st.riftCharges < charges) st.cooldowns["rift-step"] = riftCooldown(save, skillRank(save, "rift-step"), gm); }
 }
 
 // ---------------------------------------------------------------- awakenings
