@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 333 — the larger Threefold Deep's final gate opens again. In the larger Threefold Deep, the corridor behind the final gate stopped one row short of the Sealed Choir. With all three wardens beaten, the gate said it was open but led into a wall. The corridor now runs on into the Choir.
+  - **Deeps already found:** they are fixed too, including ones you're partway through. Nothing else in them changes, except that the final boss may stand somewhere else in its chamber.
+
 - Release 331 — world bosses catch up with each Listener.
   - **Before Infinite III:** they still match your strength.
   - **At Infinite III:** they hold at the strength they had then, and stay there until you've beaten 3 Listeners, as before.
