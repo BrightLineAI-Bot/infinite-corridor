@@ -2585,6 +2585,25 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 331: beasts catch up per Listener — 2026-10-23
+
+Tim, 2026-10-23: "when you get to infinite 3, they'll stop scaling with you... until you've beaten 3 listeners... every time you beat the listener, the... world bosses will catch up to your strength... and they'll stay capped there until you beat the listener again... you can kind of have control over how strong the monsters get". Later gates may give bigger jumps; not built.
+
+**CODE:**
+- **`stages.ts`**:
+  - **`stageOneBeastReference`:** from `freezeTier`, it holds the reference at `save.beastCeiling`. That measure now carries `kills`, the Listener count it was taken at.
+  - **Retaking the measure:** at `thawKills` (3) kills or more, a measure whose `kills` is below the current count is retaken. That covers saves with pre-331 measures and kills made before 331.
+  - **`beastCatchUp(save, ref)`:** retakes the measure from the live reference. The `game.ts` Listener kill calls it, with a journal line.
+  - **`ensureBeastCeiling`:** normalises the optional `kills`.
+- **`world-beasts.ts`:** `liveBeastReference` is the unheld reference, and `beastTuningReference` wraps it.
+- **Who it applies to:** world beasts, the Questing Beast, the Mire Heart and the Gate Revenant predator all read the same held reference.
+- **Tests:** `tests/beast-catch-up-331.test.ts`.
+
+**BOUNDARY:**
+- Below tier 13 nothing changed: beasts match the Wayfarer live.
+- Before the third Listener nothing changed: the beasts stay held from tier 13.
+- `kills` on the measure is additive; a missing field is fine.
+
 ## Release 329: the fallen pause — 2026-10-22
 
 Tim, 2026-10-22: "for world bosses... If they kill you, there should be like a... 4 second... pause... where you see the boss just like moving around or milling around after you die. Just to give you like a second to like collect yourself. Before you have to run back into the fight."
