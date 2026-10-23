@@ -2694,6 +2694,30 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 375: the Listener's Hall — 2026-10-23
+
+Tim, 2026-10-23: "the listener should have his own specific arena, so that I have to... complete the tasks or trials. A teleportation dais... appears and you get into it and you go to the listener's arena... something unique... There should be no fog... we don't have to do it for this dungeon. [For] the next". Also: "go ahead and build the listener arena". The new Listener model waits for the notes Tim will send.
+
+**CODE:**
+- **New module `listener-arena.ts`** (added to `scripts/build.mjs` and both `sw.js` lists):
+  - `LISTENER_ARENA` holds the layout numbers.
+  - `daisDue(f)` is true when a Listener has fallen before, the Array is not quiet and the Gate is whole.
+  - `isArenaRun(id)` matches `far-array:<seed>:arena<n>`.
+  - `generateListenerArena` builds a 32×32 round hall of radius 13 over `starVoid`: a `templeMosaic` dais at the centre, a `geodeFloor` band, a `dreamMarble` rim, and eight `crystalSpire` relay pylons for cover, off the straight line from the entry. The Listener is the only spawn (`finalBoss`), with a Return Dais (`exit`) at the entry. There is no `dungeonContract`, so no fog; `arena: true` means no residents, layout variation or completion objectives.
+- **`far-array.ts`:**
+  - `beginListenerArena` starts the run. It is an Array run, so `runBossSpawn`, `tuneArrayBoss`, the mirror form, `listenerFelled`, coordinates and towns all apply unchanged. `RUN_NOUNS.arena` names it "The Listener's Hall".
+  - `beginArrayRun` never holds the Listener while the dais is due.
+- **`game.ts`:**
+  - `generatePinnedDungeon` routes arena ids to the hall.
+  - The `listenerDais` object rises beside the current Mouth while `daisDue`, and entering it loads the hall.
+  - The 373 fix: `raiseMouthTown` now runs after old Mouths are placed, so their towns get the Listening Stone and the Delvers' Exchange.
+- **`renderer.ts`:** draws the dais, a dark glass disc with a lit rim and a column of light.
+- **Tests:** `tests/listener-arena-375.test.ts`.
+
+**BOUNDARY:**
+- The first Listener of a journey is met in a Mouth run as before (Tim's current one counts as done).
+- No save changes: the run is the usual `farArray.activeRun`.
+
 ## Release 373: the Mouth becomes a town — 2026-10-23
 
 Tim, 2026-10-23: after the Listener falls, a town should spring up around its dungeon, with a shrine of its own (not the ordinary shrine's symbol). When you leave and come back, the section is a town. The Mouth stays an open random dungeon, "a source of adventure and prosperity": people go in and come back with goods, gems, tools and rare items.

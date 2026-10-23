@@ -19,14 +19,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 373 | Claude | `claude/dreamy-rubin-yn6q2p` | The Mouth becomes a town (Listening Stone, Delvers' Exchange); the Mouth stays open | Building. |
-| 375 | Claude | `claude/dreamy-rubin-yn6q2p` | Reserved: the Listener's arena (teleport dais, no fog) and a new Listener model | Reserved. |
+| 375 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's Hall: a dais at the whole Gate (from the second Listener) to a fog-free arena | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 373 | `r373-6fe1259fae38` | 2026-10-23 | The Mouth becomes a town: Listening Stone, Delvers' Exchange (PR #169). The pre-publish Fable review found no blockers. |
 | 371 | `r371-1dc5d8e75332` | 2026-10-23 | Published with 369 (which never went live alone): the Listener's mirror form fights with reflections (369, PR #167); Listener towns and choosing a hometown (371, PR #168). The pre-publish Fable review found no blockers. |
 | 367 | `r367-cff5c3a5b912` | 2026-10-23 | Published with 355–365 (none went live alone): map marks (355, PR #160); the Listener moves on (357, PR #161); secondary passives (359, PR #162); the Mouth stays open (361, PR #163); the Transit Lattice (363, PR #164); three Infinite III spells (365, PR #165); the Gravity Well swallows shots (367, PR #166). The pre-publish Fable review found no blockers. |
 | 353 | `r353-77c263e939a9` | 2026-10-23 | Published with 349 and 351 (neither went live alone): world bosses a little more often (349, PR #157); Sleeper's Hall dream crossings in the Far Sleep (351, PR #158); a world boss stays hurt until it kills you (353, PR #159). The pre-publish Fable review found no blockers. |
