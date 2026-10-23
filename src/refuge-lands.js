@@ -7,8 +7,8 @@
 // whole again, first on the farm and in the quarry, then in every section within `ringFor(epoch)` sections of the
 // Refuge (the ring widens by one each time, up to `maxRadius`). A section regrows when it is next loaded; trees felled
 // across a gap as a log crossing stay down. Data and rules; game.ts calls in.
-import { hashSeed } from "./random.js?v=r371-1dc5d8e75332";
-import { LETHAL_KINDS } from "./landscape.js?v=r371-1dc5d8e75332";
+import { hashSeed } from "./random.js?v=r373-6fe1259fae38";
+import { LETHAL_KINDS } from "./landscape.js?v=r373-6fe1259fae38";
 
 export const REGROW = { every: 20, maxRadius: 5 };
 export const REFUGE_LANDS = {
@@ -37,7 +37,7 @@ export function noteDiscovery(save) {
 // The farm and the quarry: the first two suitable sections around the Refuge (seeded order), never side by side.
 // `suitable(rx, ry)` says whether a section is dry, open land with no settlement.
 const lands = new Map();
-// Release r371-1dc5d8e75332: around the hometown (`center`, hometowns.ts) rather than always the Refuge; the Refuge keeps its own order.
+// Release 371: around the hometown (`center`, hometowns.ts) rather than always the Refuge; the Refuge keeps its own order.
 export function refugeLands(seed, suitable, center = { rx: 0, ry: 0 }) {
   const id = `${seed}:${center.rx},${center.ry}`;
   if (lands.has(id)) return lands.get(id);

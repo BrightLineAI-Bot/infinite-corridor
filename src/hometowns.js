@@ -3,14 +3,14 @@
 // like they should be like a quarry and a farm... when you... go through 20 tiles, it'll start regrowing that town, not
 // the ember refuge... new towns all around... spaced... around the world. Based on... where you find the listener").
 //
-// Each fallen Listener raises a town near the Mouth it fell at: a hamlet (settlements.ts applyHamlet, forced) on the
-// nearest section not yet explored, so no section already seen changes. save.hometowns (additive) holds the towns and the
+// Each fallen Listener raises a town at the Mouth it fell at (release 373; 371 used a nearby unexplored section): a hamlet
+// (settlements.ts applyHamlet, forced) built around the Mouth. save.hometowns (additive) holds the towns and the
 // chosen home ("rx,ry"; Ember Refuge, "0,0", when unset). Home is where the Atlas's Return button goes, and where the farm,
 // the quarry and the regrowth ring sit (refuge-lands.ts, by `homeCenter`). A town becomes home from the Atlas once its
 // Wayglass is lit.
-import { hashSeed } from "./random.js?v=r371-1dc5d8e75332";
-import { hamletIdentity, hamletSection } from "./settlements.js?v=r371-1dc5d8e75332";
-import { openSeaSection } from "./landscape.js?v=r371-1dc5d8e75332";
+import { hashSeed } from "./random.js?v=r373-6fe1259fae38";
+import { hamletIdentity, hamletSection } from "./settlements.js?v=r373-6fe1259fae38";
+import { openSeaSection } from "./landscape.js?v=r373-6fe1259fae38";
 
 export const HOMETOWNS = { search: 4 };
 const REFUGE = "0,0";
@@ -18,12 +18,13 @@ const key = (q) => `${q.rx},${q.ry}`;
 
 export function ensureHometowns(save) {
   const h = save.hometowns && typeof save.hometowns === "object" ? save.hometowns : {};
-  const towns = (Array.isArray(h.towns) ? h.towns : []).filter((t) => Number.isInteger(t?.rx) && Number.isInteger(t?.ry)).map((t, i) => ({ rx: t.rx, ry: t.ry, name: String(t.name || hamletIdentity(save.seed, t.rx, t.ry).name).slice(0, 40), listener: Math.max(1, Math.floor(Number(t.listener) || i + 1)) }));
+  const towns = (Array.isArray(h.towns) ? h.towns : []).filter((t) => Number.isInteger(t?.rx) && Number.isInteger(t?.ry)).map((t, i) => ({ rx: t.rx, ry: t.ry, name: String(t.name || hamletIdentity(save.seed, t.rx, t.ry).name).slice(0, 40), listener: Math.max(1, Math.floor(Number(t.listener) || i + 1)), ...(t.mouth === true ? { mouth: true } : {}) }));
   save.hometowns = { towns, home: typeof h.home === "string" && (h.home === REFUGE || towns.some((t) => key(t) === h.home)) ? h.home : null };
   grantTowns(save);
   return save.hometowns;
 }
-// The section a town rises on: the nearest unexplored dry section around the Mouth (seeded order within each ring).
+// Release 371's rule, kept for reference and for tests: the nearest unexplored dry section around a Mouth. Since 373 towns
+// rise on the Mouth itself.
 export function townSite(save, mouth) {
   const taken = new Set((save.hometowns?.towns || []).map(key));
   for (let d = 1; d <= HOMETOWNS.search; d++) {
@@ -35,14 +36,18 @@ export function townSite(save, mouth) {
   }
   return null;
 }
-// One town per fallen Listener, at the Mouth it fell at (old Mouths in order, then the current one). Returns the towns added.
+// Release r373-6fe1259fae38 (Tim: "a town should spring up around the [Listener's] dungeon... when you leave... [and] come back...
+// it becomes like a town now... [the Mouth] becomes a source of adventure and prosperity"): the town rises on the Mouth's
+// own section, around the Mouth (`mouth: true`), with the Listening Stone and a delver's exchange beside it (game.ts).
+// It replaces the 371 town on a nearby section; a journey that already has one keeps it as one more town.
+// One Mouth town per fallen Listener, at the Mouth it fell at (old Mouths in order, then the current one). Returns those added.
 export function grantTowns(save) {
   const h = save.hometowns; if (!h) return [];
   const kills = Math.max(0, Math.floor(Number(save.farArray?.listeners) || 0)), net = save.relayNetwork || {}, mouths = [...(Array.isArray(net.pastMouths) ? net.pastMouths : []), ...(net.coordinate ? [net.coordinate] : [])], added = [];
-  while (h.towns.length < kills && mouths.length) {
-    const n = h.towns.length + 1, at = townSite(save, mouths[Math.min(n - 1, mouths.length - 1)]);
-    if (!at) break;
-    const t = { rx: at.rx, ry: at.ry, name: hamletIdentity(save.seed, at.rx, at.ry).name, listener: n }; h.towns.push(t); added.push(t);
+  for (let n = h.towns.filter((t) => t.mouth).length + 1; n <= kills && mouths.length; n++) {
+    const m = mouths[Math.min(n - 1, mouths.length - 1)];
+    if (h.towns.some((t) => t.rx === m.rx && t.ry === m.ry)) { const t = h.towns.find((q) => q.rx === m.rx && q.ry === m.ry); t.mouth = true; continue; }
+    const t = { rx: m.rx, ry: m.ry, name: hamletIdentity(save.seed, m.rx, m.ry).name, listener: n, mouth: true }; h.towns.push(t); added.push(t);
   }
   return added;
 }

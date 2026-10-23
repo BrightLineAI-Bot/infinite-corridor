@@ -2,8 +2,8 @@
 // The world is split into HAMLET.cell × HAMLET.cell blocks of sections; each block nominates one section, and most
 // nominated sections that have a flat, dry patch of ground grow a hamlet there. A section explored before release 109
 // keeps no hamlet (its atlas entry carries no hamletVersion), so existing journeys only find hamlets in new ground.
-import { hashSeed, rng, pick } from "./random.js?v=r371-1dc5d8e75332";
-import { LETHAL_KINDS } from "./landscape.js?v=r371-1dc5d8e75332";
+import { hashSeed, rng, pick } from "./random.js?v=r373-6fe1259fae38";
+import { LETHAL_KINDS } from "./landscape.js?v=r373-6fe1259fae38";
 
 // Version 1 (release 111) built plain huts; version 2 (release 112) builds from the world's own shelter families and
 // ruin-district styles. A section keeps the version its atlas entry was pinned to; placement and names are shared.
@@ -133,7 +133,7 @@ function buildMixed(map, r, id, x0, y0, kind, name) {
 }
 
 // Mutates an overworld section map (after the landscape pass). Returns the settlement record or null.
-// Release r371-1dc5d8e75332: `force` raises a hamlet on a section the seed did not choose (a town where a Listener fell, hometowns.ts);
+// Release 371: `force` raises a hamlet on a section the seed did not choose (a town where a Listener fell, hometowns.ts);
 // with no flat patch it clears one at the centre.
 export function applyHamlet(map, seed, rx, ry, version = HAMLET_VERSION, force = false) {
   if (!map || map.settlement || map.hamlet || map.tiles?.length !== 1024 || !(force || hamletSection(seed, rx, ry))) return null;
