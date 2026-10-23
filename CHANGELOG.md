@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 339 — three potion tiers.
+  - **Restorative Draught:** heals 30, as before.
+  - **High Potion:** heals 60. Brew one from 3 Restorative Draughts.
+  - **Max Potion:** heals you to full. Brew one from 5 Restorative Draughts.
+  - **Where:** brew them in Pack → Supplies, and press "Potion button" on a tier to have the Potion button drink it. The bottle on the button turns amber for High and gold for Max, and shows that tier's count. When the chosen tier runs out, the button drinks plain draughts.
+
 - Release 337 — Echoes from every first kill.
   - **Guardians:** each of the 16 named guardian creatures now always leaves its Echo the first time you beat it, if you don't already have that Echo. That covers guardians you've beaten before without getting one. Before, it was a 3% chance.
   - **World beasts and the Questing Beast:** the same rule; their first kill already gave the Echo.
