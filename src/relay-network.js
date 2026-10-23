@@ -7,7 +7,8 @@
 //
 // DRAFT NARRATIVE: the fragment texts below are placeholders written to fit the existing lore. The operator owns the
 // relay story; rewrite FRAGMENTS freely. The mechanics never depend on their wording.
-import { hashSeed } from "./random.js?v=r353-77c263e939a9";
+import { hashSeed } from "./random.js?v=r367-cff5c3a5b912";
+import { listenerReturns } from "./far-array.js?v=r367-cff5c3a5b912";
 
 export const RELAY_VERSION = 1;
 // Relay placement v2 (release 142): Wolfram's Rule 110, a class IV ("complex") cellular automaton. Each row of sections
@@ -161,7 +162,10 @@ export function commitRelayNode(save, o, choice, history, now = Date.now()) {
     net.coordinate = coordinate;
     add("relay-network-answered", "The Network Answers", `${RELAY_TARGET} relays have answered. The buried network answers back with a coordinate that belongs to no charted section: ${coordinate.rx}, ${coordinate.ry}.`);
   }
-  const message = `${choice === "restore" ? "The relay wakes; its line opens toward the far Array. A restorative draught is left in its cradle." : "The relay goes dark for good. You salvage two lumen dust."} Network: ${answered}/${RELAY_TARGET}.${networkAnswered ? " The whole line answers at once — a coordinate burns into your journal." : ""}`;
+  // Release 357: enough relays since the last Listener fell, and the line says where it went.
+  const moved = networkAnswered ? null : listenerReturns(save);
+  if (moved) add(`listener-moved-${save.farArray.mouth}`, "The Listener Moved", `The line speaks again. What listened at the old Mouth has gone deeper; its new Mouth stands at ${moved.rx}, ${moved.ry}.`);
+  const message = `${choice === "restore" ? "The relay wakes; its line opens toward the far Array. A restorative draught is left in its cradle." : "The relay goes dark for good. You salvage two lumen dust."} Network: ${answered}/${RELAY_TARGET}.${networkAnswered ? " The whole line answers at once — a coordinate burns into your journal." : ""}${moved ? ` The line speaks again: the Listener's new Mouth is at ${moved.rx}, ${moved.ry}.` : ""}`;
   return { ok: true, message, answered, networkAnswered };
 }
 
