@@ -2694,6 +2694,26 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 373: the Mouth becomes a town — 2026-10-23
+
+Tim, 2026-10-23: after the Listener falls, a town should spring up around its dungeon, with a shrine of its own (not the ordinary shrine's symbol). When you leave and come back, the section is a town. The Mouth stays an open random dungeon, "a source of adventure and prosperity": people go in and come back with goods, gems, tools and rare items.
+
+**CODE:**
+- **`hometowns.ts` `grantTowns`:** a fallen Listener's town now rises on the Mouth's own section (`mouth: true`). A 371 town on a nearby section stays as one more town.
+- **`game.ts`:**
+  - The Mouth section's hamlet is applied even though the section is explored (it is the change Tim asked for), from the next load after the kill, which is leaving the run.
+  - `raiseMouthTown()` adds "The Listening Stone" (`listeningStone`, inspect for its lore) and "The Delvers' Exchange" (a `shelterMerchant` with the usual rotating rare stock) beside the Mouth.
+  - The Mouth and every old Mouth still open runs (release 361).
+- **`renderer.ts`:** the Listening Stone is a dark standing stone with pulsing violet ear-like rings, unlike the shrine.
+- **Tests:**
+  - `tests/mouth-town-373.test.ts` (new);
+  - `tests/hometowns-371.test.ts`: the first test now expects the town on the Mouth.
+
+**BOUNDARY:**
+- Only a section where a Listener fell changes.
+- Home, farm and quarry rules are unchanged from 371.
+- The Listener's arena and its new model are the next release.
+
 ## Release 371: Listener towns and a hometown — 2026-10-23
 
 Tim, 2026-10-23: a new town springs up where you find the Listener. You can set it as your hometown, so travel goes there instead of Ember Refuge. Its quarry, farm and 20-section regrowth then belong to the hometown, and new towns appear around the world wherever Listeners fall.
