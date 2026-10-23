@@ -1762,6 +1762,7 @@ export class Game {
             ? Math.max(2, tier)
             : tier,
         );
+      this.applyBeastWounds();
     };
     const transition = this.transitionSection.bind(this);
     this.transitionSection = (dx, dy) => {
@@ -2571,6 +2572,17 @@ export class Game {
       this.message = `${B.name} follows you across.${more > 0 ? "" : " It will go no further."}`;
     }
   }
+  // Release 353 (Tim: "it'll hunt you through different tiles, and you can run away and it can chase you. So it's health,
+  // only resets when you die"): a world beast's wounds live on its hunt (save.worldBeasts[id].active.wounds, the share of
+  // health it has left), so whichever way it is loaded again (left behind, followed, reloaded) it comes back as hurt as it
+  // was. Only a death (resolveDeath) or the end of the hunt clears them.
+  applyBeastWounds() {
+    for (const e of this.enemies) {
+      const f = Number(this.save.worldBeasts?.[e.worldBeast]?.active?.wounds);
+      if (!e.worldBeast || e.dead || e.retreating || !(f > 0 && f < 1)) continue;
+      e.hp = Math.min(e.hp, Math.max(1, Math.round(e.maxHp * f)));
+    }
+  }
   transitionSection(dx, dy) {
     const from = { rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y };
     const pursuers=this.enemies.filter(e=>e.gatePredator&&e.aggro&&!e.dead).map(e=>({...e,ai:{...ensureAI(e)}}));
@@ -2981,7 +2993,8 @@ export class Game {
       const state = e.questingBeast ? this.save.questingBeast : this.save.worldBeasts?.[e.worldBeast];
       if (!state?.active) { e.dead = true; e.noRewards = true; continue; }
       if (e.retreating || e.fleeTo) continue;
-      if (e.worldBeast && this.beastTries === false) { e.aggro = false; resetPackRuntime(e); continue; } // release 345: tries off: the fight and its clock carry on
+      if (e.worldBeast) delete state.active.wounds; // release 353: a death is the one thing that heals a world beast
+      if (e.worldBeast && this.beastTries === false) { e.hp = e.maxHp; e.aggro = false; resetPackRuntime(e); continue; } // release 345: tries off: no try is spent and the clock carries on; 353: its health resets
       state.active.patience = 0; // A fresh duel gets a fresh per-fight clock, not fresh attempts.
       e.hp = e.maxHp;
       if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed;
@@ -3684,6 +3697,7 @@ export class Game {
       if (!e.worldBeast || e.dead || !WORLD_BEASTS[e.worldBeast]) continue;
       const id = e.worldBeast, B = WORLD_BEASTS[id], q = this.save.worldBeasts?.[id]?.active;
       if (!q) continue;
+      if (!e.retreating) { const f = e.hp / (e.maxHp || 1); if (f > 0 && f < 1) q.wounds = Math.round(f * 1e4) / 1e4; else delete q.wounds; } // release 353
       if(id==='astralWorm') {
         if(!e.retreating&&e.aggro&&worldBeastPatience(this.save,id,dt,e,this.beastTries===false)){beginAstralWorldRetreat(this,e);this.message=B.flee;reconcileAstralCompanions(this);this.syncAstralRiders();}
         if(q.astralRetreat){const result=tickAstralWorldRetreat(this,e,dt,{previewDungeon:(save,id,levelId)=>generatePinnedDungeon(save,id,{levelId}),applyDungeonProgress:(save,id,map)=>applyDeepDungeonProgress(save,id,map),domainAt:domainSectionAt,beforeCross:actor=>{this.astralRiderLeavesWith(actor);return !this.enemies.some(rider=>rider.astralMount?.ownerId===actor.id&&this.astralRiderHeld(rider));}});if(result.arrived){this.astralRiderLeavesWith(e);this.message=retreatEnded(this.save,id);e.dead=true;e.noRewards=true;reconcileAstralCompanions(this);}}

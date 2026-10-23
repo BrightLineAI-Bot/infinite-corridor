@@ -2694,6 +2694,25 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 353: a world boss stays hurt until it kills you — 2026-10-23
+
+Tim, 2026-10-23: "it'll hunt you through different tiles, and you can run away and it can chase you. So it's health, only resets when you die".
+
+**CODE:**
+- **The wounds live on the hunt:** `save.worldBeasts[id].active.wounds` is the share of health a hurt beast has left (0–1, exclusive). It is additive, normalised in `world-beasts.ts` `ensureWorldBeasts` and dropped when it is not a number in that range.
+- **Writing it:** `game.ts` writes it every frame for a live, non-retreating world beast, in the patience loop.
+- **Reading it back:** `Game.applyBeastWounds()` runs at the end of every `loadArea`, after the fresh-section scaling. It lowers the beast to that share, never heals it. Whichever way the beast is loaded again (left behind, followed, or with its section record gone), it is as hurt as it was.
+- **Death heals it:** `resolveDeath` clears `wounds` for a beast present at your death, and now resets its health with tries off too. With tries off a death still costs no try, and the patience clock still carries on (release 345).
+- **Tests:**
+  - `tests/beast-wounds-353.test.ts` (new);
+  - `tests/beast-tries-345.test.ts`: its death test now expects the reset.
+
+**BOUNDARY:**
+- A death away from the beast does not heal it.
+- Slaying it or its escape ends the hunt, and with it the wounds.
+- The Questing Beast is unchanged.
+- No schema bump.
+
 ## Release 351: Sleeper's Hall, the Far Sleep's dream crossings — 2026-10-23
 
 The daily narrative session (docs/narrative-bible.md section 7, step 4: "The Far Sleep made strange"). Release 305 turned the Far Sleep's landscapes into Dreamlands; this release does the same for its dungeons.

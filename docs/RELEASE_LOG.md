@@ -13,14 +13,15 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**353**
+**355**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
 | 349 | Claude | `claude/dreamy-rubin-yn6q2p` | World bosses slightly more frequent (gap 6 sections, chance ×0.7 of base) | Merged (PR #157). |
-| 351 | Claude | `claude/dreamy-rubin-yn6q2p` | Daily narrative: Sleeper's Hall, dream crossings in the Far Sleep (bible section 7, step 4) | Building. |
+| 351 | Claude | `claude/dreamy-rubin-yn6q2p` | Daily narrative: Sleeper's Hall, dream crossings in the Far Sleep (bible section 7, step 4) | Merged (PR #158). |
+| 353 | Claude | `claude/dreamy-rubin-yn6q2p` | A world boss's health resets only when you die: wounds kept on the hunt across sections and reloads; a death heals it with tries on or off | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
