@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 375 — the Listener's Hall.
+  - **The dais:** from your second Listener on, when the Gate is whole a dais rises beside the Mouth. Step onto it and it carries you to the Listener's Hall.
+  - **The hall:** a round hall of dark glass over the night sky, ringed by relay pylons, with no fog and nothing else in it. The Listener waits across the central dais.
+  - **The Mouth:** while the dais waits, the Mouth's own runs no longer hold the Listener.
+  - **Fix:** towns on older Mouths now get their Listening Stone and Delvers' Exchange too.
+
 - Release 373 — the Mouth becomes a town.
   - **The town:** once a Listener falls, the next time you arrive at its Mouth (leaving the dungeon counts) a town stands around it.
   - **What's there:** its own Wayglass, the Listening Stone (a shrine unlike any other) and the Delvers' Exchange, who trade rare goods brought up from below.
