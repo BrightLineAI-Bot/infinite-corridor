@@ -943,6 +943,6 @@ button[aria-current], button[aria-selected="true"], .arc-kind.active, .options-t
 /* Release 339: the Potion button's bottle takes the chosen tier's colour (red, amber, gold). */
 .action-diamond button.potion[data-tier="highPotion"] .icon { filter: hue-rotate(28deg) saturate(1.25); }
 .action-diamond button.potion[data-tier="maxPotion"] .icon { filter: hue-rotate(48deg) saturate(1.5) brightness(1.15); }
-/* Release r341-6762df1cdaab: the Potion button's tier toggle in Supplies. */
+/* Release 341: the Potion button's tier toggle in Supplies. */
 .potion-tiers { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
 .potion-tiers button[aria-current="true"] { outline: 2px solid #e8c25a; }

@@ -1,14 +1,14 @@
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r341-6762df1cdaab";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r347-6aae356afb82";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.js?v=r341-6762df1cdaab";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r341-6762df1cdaab";
-import { sectionExits, apertureTier } from "./world.js?v=r341-6762df1cdaab";
-import { stageOneBeastReference } from "./stages.js?v=r341-6762df1cdaab";
+import { hashSeed } from "./random.js?v=r347-6aae356afb82";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r347-6aae356afb82";
+import { sectionExits, apertureTier } from "./world.js?v=r347-6aae356afb82";
+import { stageOneBeastReference } from "./stages.js?v=r347-6aae356afb82";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -193,14 +193,21 @@ export const PURSUIT = { sections: 3, inset: 3.5, limits: { morphingBlob: 1 }, e
 export const BLOB_SPLIT = { grown: .05, linger: 14, fade: 5 };
 const SIDES = { east: [1, 0], west: [-1, 0], south: [0, 1], north: [0, -1] }, OPPOSITE = { east: "west", west: "east", north: "south", south: "north" };
 
-// Counts fighting time; true when the beast's patience has just run out.
-export function worldBeastPatience(save, id, dt) {
+// Release 345 (Tim, 2026-10-23: "set an option... where we can set the death sequence for the world bosses... turn it off... so
+// that there's no deaths... if you don't beat the boss... within 3 minutes. He'll just lose patience and then leave. But if you
+// do more than 50% of the boss's health, he will extend that 3 minutes by another two minutes"). With tries off (Options →
+// Accessibility, settings.beastTries), deaths cost no tries and do not reset the beast; its own `patience` clock runs across
+// deaths, and once it is below `below` of its health the clock gains `extend` seconds.
+export const BEAST_NO_TRIES = { extend: 120, below: .5 };
+// Counts fighting time; true when the beast's patience has just run out. `e` is the live beast (for the extension).
+export function worldBeastPatience(save, id, dt, e = null, triesOff = false) {
   const q = save.worldBeasts?.[id]?.active; if (!q || q.retreat) return false;
   // A Walker that joined an Astral fight stays until it is killed or the player's tries run out, unless it chose to leave.
   if (q.astralLeave) return true;
   if (q.astralJoined) return false;
   q.patience = (Number(q.patience) || 0) + dt;
-  return q.patience >= WORLD_BEASTS[id].patience;
+  const extended = triesOff && e && e.hp < (e.maxHp || 1) * BEAST_NO_TRIES.below;
+  return q.patience >= WORLD_BEASTS[id].patience + (extended ? BEAST_NO_TRIES.extend : 0);
 }
 // Chooses its home: the nearest section (by steps across sections) that has its home ground, searched out to
 // RETREAT.search; `probe(rx, ry)` describes a section ({ biome, dominant, canyon, dungeon }). With none in reach it flees
@@ -415,12 +422,13 @@ export function worldBeastSlain(save, id) {
   return { marks, message: `${B.slain} +${marks} marks.` };
 }
 // The Wayfarer fell in a beast's section while it lived. Returns a message, or null.
-export function worldBeastPlayerFell(save, rx, ry, aliveIds, dungeonId = null) {
+export function worldBeastPlayerFell(save, rx, ry, aliveIds, dungeonId = null, triesOff = false) {
   ensureWorldBeasts(save, false);
   const notes = [];
   for (const id of WORLD_BEAST_IDS) {
     const B = WORLD_BEASTS[id], q = save.worldBeasts[id];
     if (!aliveIds.includes(id) || !q.active || q.active.retreat || (q.active.dungeon ? q.active.dungeon !== dungeonId : q.active.rx !== rx || q.active.ry !== ry)) continue; // a retreating beast takes no tries
+    if (triesOff) { const left = Math.max(0, Math.ceil(B.patience - (Number(q.active.patience) || 0))); notes.push(`${B.name} still holds ${q.active.dungeon ? "that place" : `${rx},${ry}`}. Its patience: about ${Math.ceil(left / 60)} minute${left > 60 ? "s" : ""} of fighting left.`); continue; } // release 345
     q.active.tries++;
     if (q.active.tries < B.tries) { const left = B.tries - q.active.tries; notes.push(`${B.name} still holds ${q.active.dungeon ? "that place" : `${rx},${ry}`}. ${left} ${left === 1 ? "try remains" : "tries remain"}.`); continue; }
     q.escaped++; q.cycle++; q.active = null; q.cooldown = B.cooldownEscaped;

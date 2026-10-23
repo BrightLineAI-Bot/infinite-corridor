@@ -1,20 +1,20 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r341-6762df1cdaab";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r341-6762df1cdaab";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r341-6762df1cdaab";
-import { enemyMeleeGeometry } from "./combat.js?v=r341-6762df1cdaab";
-import { ruleRows } from "./elders.js?v=r341-6762df1cdaab";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r341-6762df1cdaab";
-import { BOAT } from "./boats.js?v=r341-6762df1cdaab";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r341-6762df1cdaab";
-import { isMarineTile } from "./world-beasts.js?v=r341-6762df1cdaab";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r341-6762df1cdaab";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r341-6762df1cdaab";
-import { liftAt, tileUnder } from "./landscape.js?v=r341-6762df1cdaab";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r341-6762df1cdaab";
-import { GATE_REVENANT } from "./monster-pack.js?v=r341-6762df1cdaab";
-import { drawRelayNode } from "./relay-network.js?v=r341-6762df1cdaab";
-import { structureOccupancy } from "./world.js?v=r341-6762df1cdaab";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r341-6762df1cdaab";
+import { astralBeamAnchors } from "./astral-worm.js?v=r347-6aae356afb82";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r347-6aae356afb82";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r347-6aae356afb82";
+import { enemyMeleeGeometry } from "./combat.js?v=r347-6aae356afb82";
+import { ruleRows } from "./elders.js?v=r347-6aae356afb82";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r347-6aae356afb82";
+import { BOAT } from "./boats.js?v=r347-6aae356afb82";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r347-6aae356afb82";
+import { isMarineTile } from "./world-beasts.js?v=r347-6aae356afb82";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r347-6aae356afb82";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r347-6aae356afb82";
+import { liftAt, tileUnder } from "./landscape.js?v=r347-6aae356afb82";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r347-6aae356afb82";
+import { GATE_REVENANT } from "./monster-pack.js?v=r347-6aae356afb82";
+import { drawRelayNode } from "./relay-network.js?v=r347-6aae356afb82";
+import { structureOccupancy } from "./world.js?v=r347-6aae356afb82";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r347-6aae356afb82";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.

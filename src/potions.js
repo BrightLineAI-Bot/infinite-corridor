@@ -15,7 +15,7 @@ export function setPotionChoice(save, id) {
   save.potionChoice = id;
   return { ok: true, message: `The Potion button now drinks ${POTIONS[id].name}s.` };
 }
-// Release r341-6762df1cdaab (Tim: "Select the toggle, and then it'll just craft potions for you... when you... hit the button, potions will
+// Release 341 (Tim: "Select the toggle, and then it'll just craft potions for you... when you... hit the button, potions will
 // be available to you. Potions of whichever rank you want"): the chosen tier is brewed from draughts the moment the button
 // needs one. How many of the chosen tier the button can give: those carried, plus what the draughts would brew.
 export function potionsReady(save) {
