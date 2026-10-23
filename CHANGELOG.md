@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 331 — world bosses catch up with each Listener.
+  - **Before Infinite III:** they still match your strength.
+  - **At Infinite III:** they hold at the strength they had then, and stay there until you've beaten 3 Listeners, as before.
+  - **From the third Listener on:** each Listener you beat catches the world bosses (and the Questing Beast and the roaming Gate Revenant) up to your strength at that moment. They then hold there until you beat the next one.
+  - **You set the pace:** the time between Listeners is yours to grow stronger than them.
+
 - Release 329 — a pause after a world boss fells you. When a world beast or the Questing Beast kills the Wayfarer, they lie fallen for 4 seconds before recovering at the checkpoint as usual. Meanwhile the beast calms down and paces around where it stood, and its shots fade. Other deaths recover at once, as before.
 
 - Release 327 — the game's sound is about 30 dB louder and brighter. All of it, the music and the combat pulse, was mixed very quietly, around −50 dB. It now sits near a normal game level (about −20 dB average) and is less muffled. The Master and Music sliders in Options → Audio still scale it.
