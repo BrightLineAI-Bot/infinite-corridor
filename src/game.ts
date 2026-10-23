@@ -31,6 +31,7 @@ function applyFallenTreeCrossings(map) {
 import { ensureSlots, slotted, pairingMods, slotReadiness, togglePreset, activeButton, slotTool, CASTABLES, availableCastables } from "./spell-slots.ts";
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { beastCatchUp } from "./stages.ts";
+import { POTIONS, potionToDrink, potionHeal } from "./potions.ts";
 import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.ts";
 import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, DRONE, ensureMech, mechAbsorb, tickMech } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
@@ -1217,9 +1218,9 @@ export function actionReadiness(game, now = 0) {
     potion: {
       remaining: 0,
       duration: 0,
-      count: game.save.consumables?.restorativeDraught || 0,
+      count: game.save.consumables?.[potionToDrink(game.save)] || 0, // release 339: the tier the button will drink
       available:
-        (game.save.consumables?.restorativeDraught || 0) > 0 &&
+        (game.save.consumables?.[potionToDrink(game.save)] || 0) > 0 &&
         game.player.hp < game.save.maxHp,
     },
   };
@@ -4189,14 +4190,15 @@ export class Game {
     }
     if (type === "hullShield") { const r = deployHullShield(this.save); this.message = r.message; this.sync(); return r.ok; } // release 263
     if (type === "submersible") { const gate = subGate(this.save); if (!gate.ok) { this.message = gate.why; return false; } const r = fitSubmersible(this.save); this.message = r.message; this.sync(); return r.ok; } // release 311; 315: gated
-    if (type === "restorativeDraught") {
+    if (POTIONS[type]) { // release 339: the Restorative Draught, High Potion and Max Potion (potions.ts)
       if (this.player.hp >= this.save.maxHp) {
         this.message = "Health is already full.";
         return false;
       }
-      this.player.hp = Math.min(this.save.maxHp, this.player.hp + 30);
+      const before = this.player.hp;
+      this.player.hp = Math.min(this.save.maxHp, this.player.hp + potionHeal(type, this.save.maxHp));
       c[type]--;
-      this.message = "Restorative draught mends 30 health.";
+      this.message = `${POTIONS[type].name} mends ${Math.round(this.player.hp - before)} health.`;
       this.sync();
       return true;
     }
@@ -4287,7 +4289,7 @@ export class Game {
       if (!input.held?.("jump")) this.mechSpent = false; // release 319: an emptied boost needs Jump let go before it fires again
       if ((this.mechUp() || this.droneUp()) && !this.mechSpent && input.held?.("jump") && now < (this.jumpUntil || 0) + 60 && m.fuel > 0) { /* release 321: the drone carries the same way */ m.fuel = Math.max(0, m.fuel - dt); this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.mechBoosting = true; if (m.fuel <= 0) this.mechSpent = true; }
       if (m?.built) tickMech(this.save, dt, !(now < (this.jumpUntil || 0))); if (this.droneUp()) this.tickDrone(dt, now); }
-    if (input.consume("potion")) this.useConsumable("restorativeDraught", now);
+    if (input.consume("potion")) this.useConsumable(potionToDrink(this.save), now); // release 339: the chosen potion tier
     if (input.consume("preset")) this.message = togglePreset(this.save).message; // release 261: swap spell presets 1 and 2
     if (input.consume("build")) { // release 269: beside (or aboard) a damaged skiff, Build patches the hull instead
       const btn = activeButton(this.save); // release 291: a preset may make it an item button; release 309: or a spell

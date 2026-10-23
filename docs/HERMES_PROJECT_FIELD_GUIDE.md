@@ -2694,6 +2694,31 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 339: potion tiers — 2026-10-23
+
+Tim, 2026-10-23: "there's a potion, a high potion, and a Max potion... high potion... twice the amount... the Max potion will heal... your health to full. A high potion cost 3 potions, and the Max potion cost 5 potions"; "set the Max potion as your potion".
+
+**CODE:**
+- **`potions.ts`** (new module, in `scripts/build.mjs` and both precache lists):
+  - `POTIONS` table: the Restorative Draught heals 30, `highPotion` heals 60 (cost 3) and `maxPotion` heals to full (cost 5).
+  - `craftPotion` brews a tier from draughts.
+  - `setPotionChoice` and `potionChoice` store the choice in `save.potionChoice` (additive; an unknown value falls back to the draught).
+  - `potionToDrink` is the chosen tier while any are left, else the draught.
+  - `potionHeal` gives the heal amount.
+- **`game.ts`:**
+  - `useConsumable` treats every `POTIONS` id as a heal and is never used at full health.
+  - The Potion input drinks `potionToDrink`, and the button's count and availability follow it.
+- **`main.ts`:**
+  - Supplies lists the High and Max Potions, with Brew (disabled without enough draughts) and a "Potion button" choice on all three tiers.
+  - `ITEM_ICONS` gains red, amber and gold bottles.
+  - The HUD sets the potion button's `data-tier`; `styles.css` tints the bottle.
+- **Tests:** `tests/potions-339.test.ts`.
+
+**BOUNDARY:**
+- Recovering at a checkpoint still tops up plain draughts to 2.
+- Shops sell only plain draughts.
+- Counts live in `save.consumables` (additive).
+
 ## Release 337: Echoes from every first kill — 2026-10-23
 
 Tim, 2026-10-23: guardians were not leaving Echoes; a guaranteed first kill plus a higher chance after ("option 3"); "grant the Questing Beast echo". An Echo is owned once and never drops again, so a guaranteed first kill covers every later case.
