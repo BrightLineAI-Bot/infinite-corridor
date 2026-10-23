@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 359 — secondary passives in the Arcanum.
+  - **A second form for every passive:** each discipline's modifier and both capstones now have a secondary form.
+  - **Switching:** from Infinite III, select a learned passive and press "⇄ Use secondary" to switch it, or "⇄ Use primary" to switch back. Switching is free, and only the chosen form works.
+  - **For example:** Second Wind (each dodge heals 3) instead of Light Feet; Quick Fold (Rift Step recovers 30% faster) instead of Fold's second charge; Stillwater (20% less damage during Veil Guard) instead of Mirror Veil.
+
 - Release 357 — the Listener moves on.
   - **Gone after it falls:** once you fell the Listener, its Mouth goes quiet. The ruin stays, but nothing waits below, and the compass stops pointing there.
   - **Five more relays:** answer five more relays (restore or sever) and the line says where it went: a new Mouth, far out, where the Gate climb goes on.
