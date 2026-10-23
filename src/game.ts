@@ -82,6 +82,7 @@ import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonRecite
 import { beastProfileVitals, liveBeastReference, WORLD_BEASTS, BEAST_HOMES, RETREAT, PURSUIT, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.ts";
 import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.ts";
+import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./listener-mirror.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, tickSpellFields } from "./late-spells.ts";
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, piecesNeeded, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
@@ -3642,6 +3643,21 @@ export class Game {
       },
     };
   }
+  // Release 369 (listener-mirror.ts): what the Listener's mirror form and its reflections may touch, built once a frame.
+  mirrorWorld(dt, now) {
+    if (this._mirrorWorld?.now === now) return this._mirrorWorld;
+    const width = mapWidth(this.map, this.area), s = this.save, slot = (q) => slotted(s, q)?.kind === "spell";
+    return (this._mirrorWorld = { now, dt, enemies: this.enemies, projectiles: this.projectiles, player: this.player,
+      kit: { tool: !!rangedWeapon(s.equipment?.secondary), spell: slot("a") || slot("b") },
+      open: (x, y) => { const t = this.map.tiles[Math.floor(y + .6) * width + Math.floor(x + .5)]; return !!t && !t.blocked && !t.environment; },
+      spawn: (owner, x, y, i, f) => {
+        const c = createCombatant("listener", x, y, false, []), hp = Math.max(1, Math.round(owner.maxHp * f.hpShare)), damage = Math.max(1, Math.round(owner.damage * MIRROR_FORM.cloneDamage)), scale = (owner.scale || 1) * MIRROR_FORM.cloneScale;
+        Object.assign(c, { id: `${owner.id}:reflection:${Math.round(now)}:${i}`, mirrorClone: true, summonedBy: owner.id, noRewards: true, aggro: true, hp, maxHp: hp, damage, baseDamage: damage, scale, baseScale: scale, bodyRadius: (owner.bodyRadius || .5) * MIRROR_FORM.cloneScale, packAttacks: f.packAttacks, packBossAttacks: [], evasive: true, lifeUntil: f.lifeUntil, spread: f.spread, archer: f.archer, nextShot: now + 1200, seed: 1 + i * 7919, foundryName: "A Reflection of You" });
+        ensureAI(c); this.enemies.push(c); return c;
+      },
+      hurt: (source, amount) => this.packHurt(source, amount, { source: "phalanx" }, now),
+      shock: (source, radius, damage) => addPackEffect(this.packEffects ||= [], { kind: "shock", owner: source.id, x: source.x, y: source.y, radius, arming: .35, life: .8, damage, jumpable: true }, now) });
+  }
   // The Listener's turn (release 138): call guardians in at its health thresholds, hide behind them from gate 3, and
   // (in its "both" form) change from mirror to walled at half health. Returns true while it is hidden (skip its AI).
   updateListener(e, now) {
@@ -4607,7 +4623,8 @@ export class Game {
     const skirmishHooks={settled:(side,survivors)=>{const war=this.map.skirmish;if(!war)return;this.save.worldFlags[war.id]=side;const winner=war[side],loser=war[side==="a"?"b":"a"];this.message=`The fighting ends: the ${winner.label} hold the field against the ${loser.label}.`;journalOnce(this.save,war.id,`At ${this.rx},${this.ry}, ${war.a.label} and ${war.b.label} fought; the ${winner.label} held the field.`,"Skirmishes")}};
     for (const e of this.enemies) {
       if(!activeEnemySet.has(e)){this.performanceStats.dormantEnemies++;continue}
-      if(e.farArrayBoss==="listener"&&!e.dead){if(this.updateListener(e,now))continue}
+      if(e.farArrayBoss==="listener"&&!e.dead){if(isMirror(e))tickMirrorListener(e,this.mirrorWorld(dt,now));if(this.updateListener(e,now))continue} // release 369: the mirror form
+      if(e.mirrorClone&&!e.dead){this.performanceStats.activeEnemies++;if(tickReflection(e,this.mirrorWorld(dt,now)))continue}
       if(e.skirmishId&&!e.skirmishProvoked){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&updateSkirmisher(e,this.enemies,this.map,dt,skirmishHooks))continue}
       // A retreating Walker is harmless and must traverse settlements normally. Sanctuary combat
       // displacement must neither relocate it nor freeze its retreat while the player rests inside.

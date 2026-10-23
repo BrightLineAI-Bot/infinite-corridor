@@ -13,25 +13,21 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**369**
+**373**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 355 | Claude | `claude/dreamy-rubin-yn6q2p` | Three map marks (colours, flags, the compass ignores them) | Merged (PR #160). |
-| 357 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener moves on: quiet Mouth after a kill, new Mouth after 5 more relays, strength by relays (cap 40) | Merged (PR #161). |
-| 359 | Claude | `claude/dreamy-rubin-yn6q2p` | Secondary passives: every modifier and capstone has a secondary form, switched from Infinite III | Merged (PR #162). |
-| 361 | Claude | `claude/dreamy-rubin-yn6q2p` | Quiet and old Mouths stay open as random runs (never the Listener) | Merged (PR #163). |
-| 363 | Claude | `claude/dreamy-rubin-yn6q2p` | The Transit Lattice and Transit Coordinates (2+1 slots, up to 3 more of each) | Merged (PR #164). |
-| 365 | Claude | `claude/dreamy-rubin-yn6q2p` | Three Infinite III spells: Shadow Clone, Gravity Well, Stillpoint | Merged (PR #165). |
-| 367 | Claude | `claude/dreamy-rubin-yn6q2p` | The Gravity Well bends enemy shots in its swirl to its eye and swallows them | Building. |
+| 369 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's mirror form: reflections (up to 8, phalanx, swell, your kit), shots held and thrown back (up to 10) | Building. |
+| 371 | Claude | `claude/dreamy-rubin-yn6q2p` | Reserved: Listener towns and choosing a hometown | Reserved. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 367 | `r367-cff5c3a5b912` | 2026-10-23 | Published with 355–365 (none went live alone): map marks (355, PR #160); the Listener moves on (357, PR #161); secondary passives (359, PR #162); the Mouth stays open (361, PR #163); the Transit Lattice (363, PR #164); three Infinite III spells (365, PR #165); the Gravity Well swallows shots (367, PR #166). The pre-publish Fable review found no blockers. |
 | 353 | `r353-77c263e939a9` | 2026-10-23 | Published with 349 and 351 (neither went live alone): world bosses a little more often (349, PR #157); Sleeper's Hall dream crossings in the Far Sleep (351, PR #158); a world boss stays hurt until it kills you (353, PR #159). The pre-publish Fable review found no blockers. |
 | 347 | `r347-6aae356afb82` | 2026-10-23 | Published with 343 and 345 (neither went live alone): farther auto aim (343, PR #154); dying costs nothing, the world-boss tries switch (345, PR #155); steadier tap targeting, Oren retrains stats (347, PR #156). The pre-publish Fable review found no blockers. |
 | 341 | `r341-6762df1cdaab` | 2026-10-23 | The potion tier toggle brews High and Max Potions from draughts as you drink; the crescent takes armor Volatile again (PR #153). The pre-publish Fable review found no blockers. |

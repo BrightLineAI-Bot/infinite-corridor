@@ -22,7 +22,8 @@ export const GUARDIANS = {
 };
 // The Listener's moves by form. "open" mirrors the Wayfarer; "walled" is starved and heavy.
 export const LISTENER_FORMS = {
-  open: { name: "The Listener, Wearing Your Face", attacks: ["blinkStrike", "clawSweep", "longStab", "mirrorClones"], boss: ["mirrorSwap", "shockwave"] },
+  // Release 369: no more harmless reflections or place-swapping ("copy magic"); its reflections fight (listener-mirror.ts).
+  open: { name: "The Listener, Wearing Your Face", attacks: ["blinkStrike", "clawSweep", "longStab"], boss: ["shockwave"] },
   walled: { name: "The Listener, Starved Behind Its Walls", attacks: ["devourPull", "ramCharge", "bite", "groundRupture"], boss: ["shockwave", "fleshBloom"] },
 };
 // Permanent boons, three offered after each Listener falls (Astral Ascent style). Effects read in game.ts characterStats.

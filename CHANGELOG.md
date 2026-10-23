@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 369 — the Listener's mirror form fights with reflections of you.
+  - **Reflections:** no more harmless illusions or place-swapping. It keeps stepping out reflections, up to eight at once, each with its own health. They fight with your kit (sword, your tool's shots if you carry one, a shockwave if you have a spell set), dodge your blows, and fade after a while. They are much easier to kill than it, and give nothing.
+  - **Phalanx:** they form a line between it and you, then rush you all at once.
+  - **Swell:** sometimes they grow, hit harder and each cast a shockwave.
+  - **Mirror:** your shots that come near it stop in the air around it (up to ten), then fly back at you one after another.
+
 - Release 367 — the Gravity Well swallows enemy shots.
   - **A shield of sorts:** enemy shots that fly into the swirl curve toward its centre and vanish there. Shots that miss it fly on.
 

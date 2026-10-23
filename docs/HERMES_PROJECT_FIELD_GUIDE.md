@@ -2694,6 +2694,30 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 369: the Listener's mirror form fights with reflections — 2026-10-23
+
+Tim, 2026-10-23 ("Far away wanderer"): the mirror form should not use "copy magic". It should spawn many versions of itself (up to eight), each with different health. They are easier to kill than it, fade after a while, use the Wayfarer's sword, tools and spells, dodge and position, rush in a phalanx, or swell and cast. Like the Psychic Crystal, it holds the Wayfarer's shots in the air (up to ten) and throws them back in quick succession. The grotesque (walled) form waits for his verdict.
+
+**CODE:**
+- **`far-array.ts` `LISTENER_FORMS.open`:** loses `mirrorClones` and `mirrorSwap`.
+- **New module `listener-mirror.ts`** (added to `scripts/build.mjs` and both `sw.js` lists):
+  - `MIRROR_FORM` holds the balance.
+  - `tickMirrorListener` handles spawning (every 1.5–2.5 s, up to 8; 5–13% of its health each; 14–22 s life; a short walk-out), the phalanx (from 4 reflections, every 14 s: a line between it and you, a hold, a rush), the swell (every 17 s: ×1.35 size, ×1.4 damage for 5 s, and a shockwave each) and the mirror (shots within 2.2 tiles are held, up to 10; after 1.2 s they are thrown back one every 0.12 s at 80% damage; it holds nothing new while throwing).
+  - `tickReflection` handles fading, the walk-out, phalanx moves and the "archer" reflections' shots.
+- **The Wayfarer's kit on a reflection:**
+  - always a sword sweep and lance;
+  - a tool shot (half of them) if the Wayfarer carries a tool;
+  - a shockwave if a spell is slotted.
+  Reflections use the pack's evasive brain to dodge.
+- **`game.ts`:** `mirrorWorld(dt, now)` builds the hooks. The enemy loop calls in for the Listener (open phase only) and for reflections, which are `noRewards` `listener` combatants.
+- **`combat-visuals.ts`:** draws the held shots and the mirror ring.
+- **Tests:** `tests/listener-mirror-369.test.ts`.
+
+**BOUNDARY:**
+- The walled form, the "both" switch at half health, gate summons and hiding, and the Listener's own health and damage are unchanged.
+- Reflections never heal it and give nothing.
+- No save changes: the rhythm is runtime state.
+
 ## Release 367: the Gravity Well swallows shots — 2026-10-23
 
 Tim, 2026-10-23: "Gravity well should pull... enemy shots as well... if they fly through... the well, then they should just get pulled to it like anywhere within the swirl... almost like a shield that just pulls in the shots that go in to it".
