@@ -2694,6 +2694,31 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 347: steadier tap targeting; retraining stats — 2026-10-23
+
+Tim, 2026-10-23:
+- "the tap to targeting system... works, but it's inconsistent... make that a little bit tighter... so that when we tap on a target it kills them";
+- "we need to have ability to respec... at the Ember Refuge... pay marks... five hundred marks".
+
+**CODE:**
+- **`game.ts` targeting:**
+  - `TARGET_LOCK.pick` goes from .75 to 1.05, and `enemyAt` uses the larger of bodyRadius + .6 and scale × .6.
+  - `lockTarget` no longer toggles off when the locked creature is tapped again.
+  - The melee lock reaches `range + max(meleeSlack, AUTO_AIM.meleeExtra)`, so it wins over auto aim.
+  - Tool shots use `lockedDirection()` before `selectRangedAim`. Before this they ignored the lock.
+  - `castSpell` aims at the locked target when it has no tap aim.
+- **Retraining:**
+  - `interactions.ts` `STAT_RESPEC = { marks: 500 }` and `retrainStats` reset every stat to 1 and return the spent points. `validActions` adds `retrain` to Oren Vale when he is not hostile. It is not added to `REFUGE_NPCS`, so the generated Refuge stays byte-identical.
+  - `game.ts` syncs character stats on the `retrain` transition; `main.ts` labels it.
+- **Tests:**
+  - `tests/target-respec-347.test.ts` (new);
+  - `tests/target-slots-309.test.ts`: re-tapping now keeps the lock.
+
+**BOUNDARY:**
+- The constellation respec at shrines is unchanged.
+- Spending stat points, and how they are earned, is unchanged.
+- No save fields.
+
 ## Release 345: no loss on death; world-boss tries switch — 2026-10-23
 
 Tim, 2026-10-23:
