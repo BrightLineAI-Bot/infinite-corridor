@@ -46,6 +46,28 @@ export function drawRangedEffects(ctx,game,width,height) {
     ctx.arc(x, y, fx.radius * s * (0.72 + 0.08 * Math.sin(fx.life * 12)), 0, 7);
     ctx.stroke();
   }
+  // Release 365: Gravity Well (a turning spiral) and Stillpoint (still clock rings) over their circles; the Shadow Clone.
+  {const t = performance.now() / 1000;
+  for (const fx of game.effects) {
+    if (fx.kind !== "gravity-well" && fx.kind !== "stillpoint") continue;
+    const [x, y] = toScreen(fx), R = fx.radius * s;
+    if (fx.kind === "gravity-well") { ctx.strokeStyle = "#c06faecc"; ctx.lineWidth = 2; for (let k = 0; k < 3; k++) { ctx.beginPath(); for (let a = 0; a < 5.5; a += .25) { const r = R * (1 - a / 6), q = a + t * 3 + k * 2.1; a ? ctx.lineTo(x + Math.cos(q) * r, y + Math.sin(q) * r) : ctx.moveTo(x + Math.cos(q) * r, y + Math.sin(q) * r); } ctx.stroke(); } ctx.fillStyle = "#1a0d2acc"; ctx.beginPath(); ctx.arc(x, y, s * .3, 0, 7); ctx.fill(); }
+    else { ctx.fillStyle = "#7c9fcf22"; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill(); ctx.strokeStyle = "#cfe3ffaa"; ctx.lineWidth = 1.5; for (const k of [.4, .7]) { ctx.beginPath(); ctx.arc(x, y, R * k, 0, 7); ctx.stroke(); } ctx.beginPath(); for (let h = 0; h < 12; h++) { const a = h * Math.PI / 6; ctx.moveTo(x + Math.cos(a) * R * .88, y + Math.sin(a) * R * .88); ctx.lineTo(x + Math.cos(a) * R, y + Math.sin(a) * R); } ctx.stroke(); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - R * .55); ctx.stroke(); }
+  }
+  const sc = game.shadowCloneActive?.() && game.shadowClone;
+  if (sc) {
+    const [x, y] = toScreen({ x: game.player.x + sc.ox + .5, y: game.player.y + sc.oy + .45 }), left = Math.max(0, (sc.until - (game.lastUpdateNow || 0)) / 1000), a = Math.min(1, left / 1.5) * (.62 + .08 * Math.sin(t * 6));
+    ctx.save(); ctx.globalAlpha = a;
+    ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(x, y + s * .36, s * .3, s * .1, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#1b1030"; ctx.beginPath(); ctx.moveTo(x - s * .24, y + s * .34); ctx.quadraticCurveTo(x - s * .28, y - s * .1, x - s * .12, y - s * .2); ctx.lineTo(x + s * .12, y - s * .2); ctx.quadraticCurveTo(x + s * .28, y - s * .1, x + s * .24, y + s * .34); ctx.closePath(); ctx.fill(); // cloak
+    ctx.beginPath(); ctx.arc(x, y - s * .32, s * .15, 0, 7); ctx.fill(); // hood
+    ctx.fillStyle = "#b48cff"; ctx.fillRect(x - s * .07, y - s * .34, s * .04, s * .03); ctx.fillRect(x + s * .03, y - s * .34, s * .04, s * .03); // eyes
+    ctx.strokeStyle = "#7a5fc0"; ctx.lineWidth = 1.5; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.arc(x, y, s * .45, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+    if ((sc.swingUntil || 0) > (game.lastUpdateNow || 0) && sc.swingDir) { const ang = Math.atan2(sc.swingDir.y, sc.swingDir.x); ctx.strokeStyle = "#b48cffcc"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, s * .9, ang - .9, ang + .9); ctx.stroke(); }
+    if (game.cloneAim) { ctx.globalAlpha = .5; ctx.strokeStyle = "#b48cff"; ctx.lineWidth = 1; ctx.setLineDash([2, 5]); const [px, py] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }); ctx.beginPath(); ctx.arc(px, py, 2 * s, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+    if ((sc.blockedUntil || 0) > (game.lastUpdateNow || 0)) { ctx.globalAlpha = 1; ctx.font = `bold ${Math.round(s * .36)}px monospace`; ctx.textAlign = "center"; ctx.lineWidth = 3; ctx.strokeStyle = "#091018"; ctx.strokeText("BLOCKED", x, y - s * .7); ctx.fillStyle = "#ff7a7a"; ctx.fillText("BLOCKED", x, y - s * .7); ctx.textAlign = "left"; }
+    ctx.restore();
+  }}
   const target = game.lockedTarget?.(); // release 309: brackets on the locked target
   if (target) {
     const [x, y] = toScreen({ x: target.x + .5, y: target.y + .45 }), r = Math.max(.6, (Number(target.bodyRadius) || .4) + .3, (Number(target.scale) || 1) * .45) * s, k = r * .45, t = performance.now() / 1000;

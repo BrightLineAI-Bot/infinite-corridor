@@ -4,7 +4,7 @@
 // always-on bonus while both are in place, discovered the first time the pair is slotted. Spells now keep their own
 // cooldowns (`magicSkills.cooldowns["spell:<id>"]`), so two spells can share the buttons.
 // Data and pure rules; game.ts casts, main.ts draws the buttons and the Arcanum.
-import { SPELLS, APERTURE_SKILLS, skillRank } from "./items.ts";
+import { SPELLS, APERTURE_SKILLS, skillRank, spellOpen } from "./items.ts";
 
 export const ATTRIBUTES = {
   // icon (release 157): the element's mark beside every spell and discipline in the Arcanum.
@@ -19,6 +19,9 @@ export const CASTABLES = {
   "spell:cinder-dart": { kind: "spell", id: "cinder-dart", symbol: "➶", attr: "fire" },
   "spell:ember-ring": { kind: "spell", id: "ember-ring", symbol: "◎", attr: "fire" },
   "spell:grave-sun": { kind: "spell", id: "grave-sun", symbol: "☀", attr: "dusk" },
+  "spell:shadow-clone": { kind: "spell", id: "shadow-clone", symbol: "◐", attr: "dusk" }, // release 365: from Infinite III
+  "spell:gravity-well": { kind: "spell", id: "gravity-well", symbol: "⊛", attr: "rift" },
+  "spell:stillpoint": { kind: "spell", id: "stillpoint", symbol: "⧗", attr: "ward" },
   "skill:ember-form": { kind: "skill", id: "ember-form", symbol: "✶", attr: "fire" },
   "skill:quickening": { kind: "skill", id: "quickening", symbol: "≫", attr: "wind" },
   "skill:aerial-step": { kind: "skill", id: "aerial-step", symbol: "⇡", attr: "wind" },
@@ -59,7 +62,7 @@ export const pairKey = (x, y) => [x, y].sort().join("+");
 
 // Castables the Wayfarer can slot now: every spell, every discipline with a rank, Aerial Step once learned.
 export function availableCastables(save) {
-  return Object.keys(CASTABLES).filter((k) => { const c = CASTABLES[k]; return c.kind === "spell" ? !!SPELLS[c.id] : skillRank(save, c.id) > 0 && !!APERTURE_SKILLS[c.id]; });
+  return Object.keys(CASTABLES).filter((k) => { const c = CASTABLES[k]; return c.kind === "spell" ? spellOpen(save, c.id) : skillRank(save, c.id) > 0 && !!APERTURE_SKILLS[c.id]; });
 }
 // Additive at schema 14: seeds A from the equipped spell and B from the discipline bound to the old Spell button.
 export function ensureSlots(save) {
@@ -111,6 +114,7 @@ export function slotted(save, slot) {
   const k = ensureSlots(save)[slot], c = CASTABLES[k];
   if (!c) return null;
   if (c.kind === "skill" && skillRank(save, c.id) <= 0) return null;
+  if (c.kind === "spell" && !spellOpen(save, c.id)) return null; // release 365
   return { key: k, ...c, name: c.kind === "spell" ? SPELLS[c.id].name : APERTURE_SKILLS[c.id].name, color: ATTRIBUTES[c.attr].color };
 }
 // Put a castable in a slot (null empties it). Slotting what the other slot holds swaps them.
