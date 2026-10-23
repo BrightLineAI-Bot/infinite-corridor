@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 371 — Listener towns and choosing your home.
+  - **A town for each Listener:** wherever you defeat a Listener, a town springs up nearby on ground you haven't explored yet. You have already defeated one, so yours is waiting near that Mouth.
+  - **Making it home:** light its Wayglass, then pick it in the Atlas and press "Make <town> my home".
+  - **What moves with home:** the Atlas's Return button takes you there, the farm and quarry move beside it, and the regrowth every 20 new sections now regrows the land around your home. You can switch back to Ember Refuge the same way.
+
 - Release 369 — the Listener's mirror form fights with reflections of you.
   - **Reflections:** no more harmless illusions or place-swapping. It keeps stepping out reflections, up to eight at once, each with its own health. They fight with your kit (sword, your tool's shots if you carry one, a shockwave if you have a spell set), dodge your blows, and fade after a while. They are much easier to kill than it, and give nothing.
   - **Phalanx:** they form a line between it and you, then rush you all at once.

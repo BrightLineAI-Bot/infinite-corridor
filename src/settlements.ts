@@ -133,9 +133,16 @@ function buildMixed(map, r, id, x0, y0, kind, name) {
 }
 
 // Mutates an overworld section map (after the landscape pass). Returns the settlement record or null.
-export function applyHamlet(map, seed, rx, ry, version = HAMLET_VERSION) {
-  if (!map || map.settlement || map.hamlet || map.tiles?.length !== 1024 || !hamletSection(seed, rx, ry)) return null;
-  const site = hamletSite(map);
+// Release 371: `force` raises a hamlet on a section the seed did not choose (a town where a Listener fell, hometowns.ts);
+// with no flat patch it clears one at the centre.
+export function applyHamlet(map, seed, rx, ry, version = HAMLET_VERSION, force = false) {
+  if (!map || map.settlement || map.hamlet || map.tiles?.length !== 1024 || !(force || hamletSection(seed, rx, ry))) return null;
+  let site = hamletSite(map);
+  if (!site && force) {
+    site = { x: 16, y: 16 };
+    map.objects = (map.objects || []).filter((o) => Math.abs(o.x - 16) > HAMLET.halfW + 1 || Math.abs(o.y - 16) > HAMLET.halfH + 1);
+    for (let y = 16 - HAMLET.halfH - 1; y <= 16 + HAMLET.halfH + 1; y++) for (let x = 16 - HAMLET.halfW - 1; x <= 16 + HAMLET.halfW + 1; x++) { const i = y * 32 + x; map.tiles[i] = { ...map.tiles[i], kind: "refuge", blocked: false, elev: 0, slope: false, environment: null, structure: null, landscape: null }; }
+  }
   if (!site) return null;
   const ident = hamletIdentity(seed, rx, ry), def = HAMLET_KINDS[ident.kind], r = rng(`${seed}:hamlet:v${version}:layout:${rx}:${ry}`);
   const { x: cx, y: cy } = site, [floor, wall] = HUT_STYLES[def.style];

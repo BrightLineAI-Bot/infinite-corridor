@@ -2694,6 +2694,33 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 371: Listener towns and a hometown — 2026-10-23
+
+Tim, 2026-10-23: a new town springs up where you find the Listener. You can set it as your hometown, so travel goes there instead of Ember Refuge. Its quarry, farm and 20-section regrowth then belong to the hometown, and new towns appear around the world wherever Listeners fall.
+
+**CODE:**
+- **New module `hometowns.ts`** (added to `scripts/build.mjs` and both `sw.js` lists):
+  - `save.hometowns = { towns: [{ rx, ry, name, listener }], home }` is additive; `ensureHometowns` runs in `freshSave` and `migrateSave`.
+  - `grantTowns` raises one town per fallen Listener at the Mouth it fell at (`relayNetwork.pastMouths`, then `coordinate`). `townSite` picks the nearest unexplored, dry section within 4 rings that is not already a hamlet, so no explored section changes. Journeys that felled a Listener before get their town on load.
+  - Other functions: `townAt`, `homeKey`, `homeCenter`, `homeName`, `homeCandidate`, `setHome` (needs the town's Wayglass lit).
+- **`settlements.ts` `applyHamlet(..., force)`:** raises the town's hamlet on that section, clearing a patch at the centre if no flat one exists. `game.ts` passes it for town sections on first load (then the atlas pins `hamletVersion` as usual).
+- **`refuge-lands.ts`:**
+  - `refugeLands(seed, suitable, center)` places the farm and quarry around home. The Refuge keeps its exact old order.
+  - `regrowSection` centres the regrowth ring on `where.center`.
+  - `game.ts` `refugeLandsWhere` passes the home, and `returnHome` travels there.
+- **The kill:** a Listener kill journals the town and names it in the defeat notice (`townNote`).
+- **`main.ts` and `atlas-view.ts`:**
+  - "Return to <home>";
+  - a "Make <town> my home" button for the selected Wayglass (the Refuge too);
+  - towns listed and drawn like hamlets.
+- **Tests:** `tests/hometowns-371.test.ts`.
+
+**BOUNDARY:**
+- Ember Refuge stays home until the player chooses otherwise.
+- The farmer stays in the Refuge.
+- When home moves, the Refuge's farm trees and quarry rocks are no longer planted there; the new home's are.
+- Death still wakes you at the active checkpoint.
+
 ## Release 369: the Listener's mirror form fights with reflections — 2026-10-23
 
 Tim, 2026-10-23 ("Far away wanderer"): the mirror form should not use "copy magic". It should spawn many versions of itself (up to eight), each with different health. They are easier to kill than it, fade after a while, use the Wayfarer's sword, tools and spells, dodge and position, rush in a phalanx, or swell and cast. Like the Psychic Crystal, it holds the Wayfarer's shots in the air (up to ten) and throws them back in quick succession. The grotesque (walled) form waits for his verdict.
