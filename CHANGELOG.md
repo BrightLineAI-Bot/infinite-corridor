@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 403 — bosses on the dungeon map.
+  - **Where the bosses are:** the dungeon map marks every living boss on your level with a pink diamond, wherever it is: the Psychic Crystal, the Void Walker or any world beast in the dungeon, guardians, wardens and final bosses, the Listener and Gate Revenants. It updates as they move.
+
 - Release 401 — a fair fight with the Crystal; daises on the map.
   - **The Psychic Crystal** no longer drifts into walls while it fights you and can see you. It still floats over pits and water, and it still phases between rooms while patrolling or hunting you out of sight.
   - **Fewer dodges:** it dodges at most every 5 seconds (3.5 when enraged; it was 3 and 2.2).
