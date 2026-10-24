@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 419 — sharper auto targeting.
+  - **Longer reach:** with no locked target, a swing turns to the nearest foe up to 5 tiles past its reach (was 3), and a tool shot to one up to 2.2 times its range (was 1.6). Big creatures are measured to their edge, so they are found sooner.
+  - **More sensitive:** a foe roughly ahead of you wins over one a little nearer behind; hidden, untouchable and harmless things no longer pull the aim. Tapping a creature to lock it is more forgiving.
+  - **Shadow Clone from Build:** cast from the Build button's spell preset, holding Build sends the shadow out just as the spell slots do.
+  - **Safe dungeon arrivals:** taking stairs, a return lattice, an entrance, or getting up after a fall now always lands you on the level's open floor, never in a black sealed pocket (such as the guardian's closed chamber), out of bounds or in a wall. It is a hard rule that you never arrive within 8 tiles of a living guardian. A wing anchor on a lower level now remembers its level.
 - Release 417 — the Shadow Clone, placed by holding.
   - **A press sets it beside you,** one tile away (to your side, or behind you while you move).
   - **Hold the button** and its shadow travels over the floor, out to 5 tiles, inside a dotted ring that shows the reach; let go and the clone rises where the shadow is. A tap is simply the shortest hold. Screen taps no longer move it (a tap on a creature still locks it).
