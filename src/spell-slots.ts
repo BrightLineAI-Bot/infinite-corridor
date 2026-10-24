@@ -75,7 +75,7 @@ export function ensureSlots(save) {
   // Release 261 spell presets (Tim: "two different presets for the spells... I'll just toggle it"): two saved A/B pairs;
   // the slots always hold the active one. Additive at schema 14: a save without presets starts with both as its slots.
   // Release 291: each preset also says what the Build button does: "build", or "item" with the item it uses (additive).
-  const pair = (q) => (q && typeof q === "object" ? { a: valid(q.a), b: valid(q.b), button: q.button === "item" ? "item" : CASTABLES[q.button] ? q.button : "build", item: BUTTON_ITEMS.includes(q.item) ? q.item : null } : null);
+  const pair = (q) => (q && typeof q === "object" ? { a: valid(q.a), b: valid(q.b), button: q.button === "item" ? "item" : CASTABLES[q.button] ? q.button : "build", item: BUTTON_ITEMS.includes(q.item) ? q.item : null, ...(q.build && typeof q.build === "object" ? { build: q.build } : {}) } : null); // release 393: `build` (build-presets.ts) rides along
   const list = Array.isArray(ms.presets) ? ms.presets.slice(0, PRESETS).map(pair) : [];
   ms.preset = ms.preset === 1 ? 1 : 0;
   ms.presets = Array.from({ length: PRESETS }, (_, i) => list[i] || { ...ms.slots, button: "build", item: null });

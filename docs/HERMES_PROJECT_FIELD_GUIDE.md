@@ -2694,6 +2694,21 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 393: whole-build presets; the suit's violet cosmos — 2026-10-24
+
+Tim, 2026-10-24: "all the spells that are equippable and the Transit Lattice... need presets in the Arcanum... for glyphs, and all the skills need presets"; "I'll take your recommendation on the presets"; "the suit should have the same... purple cosmic world as the lantern, rather than that... golden... emblem... all the gold [should] be that same color".
+
+**CODE:**
+- New module `src/build-presets.ts`, registered in `scripts/build.mjs` and both `sw.js` lists: `normalizeBuild`, `snapshotBuild`, `applyBuild` and `swapPreset`.
+- `save.magicSkills.presets[i].build` (additive) holds `{ glyphs: spellGlyphs by host, alt: constellation.alt, lattice: { passives, echoes } }`.
+- `spell-slots.ts` `ensureSlots` `pair()` keeps `build`.
+- `swapPreset` snapshots the outgoing build into the outgoing preset and calls `togglePreset`. It then applies the incoming build: every spell/skill glyph returns to the pouch, the preset's glyphs are set from the pouch (missing ones are named), `constellation.alt` is replaced, and the Lattice lists are replaced and clamped by `ensureLattice`. A preset with no build adopts the current one.
+- `game.ts` (Preset input) and `main.ts` (Arcanum preset buttons) call `swapPreset`.
+- `renderer.ts` `drawPowerSuit`: the amber status lights become a violet cosmos orb (night glass, two-armed spiral, core); the back light is violet.
+- Tests: `tests/build-presets-393.test.ts`.
+
+**BOUNDARY:** Glyphs are never copied or lost: they move between pouch and sockets through `socketGlyph`. Gear glyph layouts keep their own release-295 save and apply. Echoes outside the Lattice are not part of a preset.
+
 ## Release 391: re-plating cost; the Morphling's cyborg head; an understated suit — 2026-10-24
 
 Tim, 2026-10-24: "when the plating breaks... three cinder iron"; "remove his horns and... make his head... more mechanical, electromechanical, like cyborg... tubes... Ghost in the Shell... but not so overly futuristic... more so like Remnant: From the Ashes"; "[the suit] looks too much like a Gundam or Ultraman Tiga... more understated... more like a spacesuit... almost like a Black Panther suit, but still spacey, like Iron Man or War Machine... we don't want to depart from the overall gritty, down-to-earth feel".

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 393 — whole-build presets.
+  - **Presets carry the whole build:** preset 1 and preset 2 now each remember the glyphs set in every spell and skill, which form (primary or secondary) each passive takes, and your Transit Lattice picks, as well as A, B and the Build button. Switching swaps all of it. A glyph that is no longer in your pouch (set in your gear, or spent) shows as an empty socket and is named. The first switch keeps the build you have, so set it up once on each preset. Weapon, tool and armor glyphs are not part of a preset.
+  - **The suit's light:** the empowered suit's chest now holds a small orb of the lantern's violet cosmos, a spiral of pale light, in place of the amber light.
+
 - Release 391 — grit.
   - **Robot plating:** re-forging plating that gives out now costs 3 cinder iron (it was 1).
   - **The Morphling's head:** the horns are gone. Its skull is now caged in corroded, riveted iron, with a slatted breathing grille over the jaw, ribbed hoses running down into its shoulders, cables from the back of the skull, and mismatched optics: one big dull lens and a small cluster.
