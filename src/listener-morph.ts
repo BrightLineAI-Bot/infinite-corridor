@@ -19,9 +19,18 @@
 //   `worms.heal` of its health), nip you when you are close, and dry up after `worms.life` s. Kill them before they return.
 // - Spin: arms spread, it spins and bounces around the hall off the walls for `spin.time` s (jump or dodge it).
 // - Lunge: it rears, then dives along a line at you as a writhing wave of tentacles.
+// - Beams, orbs and barbs (release 389): its ranged patterns, below.
 // State is runtime only (e.morph on the actor); a reload starts the fight's rhythm again.
 export const MORPH_FORM = {
-  scale: 1.35, every: [2.2, 3.4], moves: ["cables", "jaw", "sink", "worms", "spin", "lunge"],
+  scale: 1.35, every: [2.2, 3.4], moves: ["cables", "jaw", "sink", "worms", "spin", "lunge", "beams", "orbs", "barbs"],
+  // Release 389 (Tim: "a bunch of beams... I send out like 4 beams, and then they'll rotate around him... several orbs...
+  // in a spiral pattern around him... come up with some convincing and unique ranged patterns"):
+  // - Beams: four beams in a cross, shown thin for `telegraph` s, then live and turning round it at `turn` rad/s.
+  // - Orbs: `arms` arms of orbs wound out in a spiral, one ring every `every` s for `time` s.
+  // - Barbs: `volleys` fans of cable barbs that bend toward you for `homingUntil` s.
+  beams: { count: 4, telegraph: .7, live: 3, length: 9, turn: 1.1, width: .5, damage: .6, hitEvery: .5 },
+  orbs: { arms: 3, every: .11, time: 1.8, twist: 3.2, speed: 4.2, life: 3, damage: .45 },
+  barbs: { volleys: 2, gap: .55, count: 5, spread: .95, speed: 6, life: 2.4, damage: .6, homing: 1.1, homingUntil: .8 },
   cables: { count: 8, telegraph: .8, live: 3.4, pulseSpeed: 8, width: .55, damage: .7, hitEvery: .6, length: 18 },
   jaw: { range: 8, reach: .65, clamp: .45, radius: 1.15, damage: 1.6, after: .35 },
   sink: { under: 1.3, near: [2.5, 4], erupt: 2.3, damage: 1 },
@@ -70,8 +79,11 @@ export function tickMorphListener(e, w) {
     }
     if (st.move === "spin") { const d = unit(pc.x - ec.x, pc.y - ec.y); st.spin = { vx: d.x, vy: d.y, until: now + M.spin.time * 1000, hitAt: 0 }; }
     if (st.move === "lunge") { const d = unit(pc.x - ec.x, pc.y - ec.y); st.lunge = { dir: d, from: ec, goAt: now + M.lunge.telegraph * 1000, gone: 0, hit: false }; }
+    if (st.move === "beams") st.beams = { a0: rand(e, 8) * Math.PI * 2, turn: rand(e, 9) < .5 ? -1 : 1, liveAt: now + M.beams.telegraph * 1000, until: now + (M.beams.telegraph + M.beams.live) * 1000, hitAt: 0 };
+    if (st.move === "orbs") st.orbs = { a: Math.atan2(pc.y - ec.y, pc.x - ec.x), nextAt: now, until: now + M.orbs.time * 1000, ring: 0 };
+    if (st.move === "barbs") st.barbs = { fired: 0 };
   }
-  const done = () => { st.move = null; st.jaw = st.sink = st.spin = st.lunge = null; st.next = now + between(rand(e, 7), M.every) * 1000; return false; };
+  const done = () => { st.move = null; st.jaw = st.sink = st.spin = st.lunge = st.beams = st.orbs = st.barbs = null; st.next = now + between(rand(e, 7), M.every) * 1000; return false; };
   switch (st.move) {
     case "cables": if (now >= st.t0 + (M.cables.telegraph + .4) * 1000) return done(); return true;
     case "jaw": { const j = st.jaw; if (!j.bit && now >= j.clampAt) { j.bit = true; if (Math.hypot(pc.x - j.to.x, pc.y - j.to.y) <= M.jaw.radius) w.hurtAs(e, dmg(M.jaw.damage), {}); } if (now >= j.clampAt + M.jaw.after * 1000) return done(); return true; }
@@ -89,9 +101,25 @@ export function tickMorphListener(e, w) {
       e.x = x; e.y = y; l.gone += step;
       if (!l.hit && segDist(pc, centre(e), { x: centre(e).x - l.dir.x * 1.2, y: centre(e).y - l.dir.y * 1.2 }) <= M.lunge.width / 2 + .3) { l.hit = true; w.hurtAs(e, dmg(M.lunge.damage), {}); }
       return true; }
+    case "beams": { const b = st.beams; if (now >= b.until) return done(); if (now < b.liveAt) return true;
+      const c = centre(e);
+      for (let i = 0; i < M.beams.count; i++) { const a = beamAngle(b, i, now), end = { x: c.x + Math.cos(a) * M.beams.length, y: c.y + Math.sin(a) * M.beams.length }; if (now >= b.hitAt && segDist(pc, c, end) <= M.beams.width && w.hurtAs(e, dmg(M.beams.damage), {})) b.hitAt = now + M.beams.hitEvery * 1000; }
+      return true; }
+    case "orbs": { const o = st.orbs; if (now >= o.until) return done();
+      while (now >= o.nextAt && now < o.until) { const c = centre(e); o.ring++; o.a += M.orbs.twist * M.orbs.every;
+        for (let i = 0; i < M.orbs.arms; i++) { const a = o.a + i * Math.PI * 2 / M.orbs.arms; w.projectiles.push({ id: `${e.id}:orb:${Math.round(o.nextAt)}:${i}`, x: c.x + Math.cos(a) * .6, y: c.y + Math.sin(a) * .6, dx: Math.cos(a), dy: Math.sin(a), speed: M.orbs.speed, life: M.orbs.life, damage: dmg(M.orbs.damage), hostile: true, path: "straight", age: 0, hits: {}, morphOrb: true }); }
+        o.nextAt += M.orbs.every * 1000; }
+      return true; }
+    case "barbs": { const b = st.barbs, B = M.barbs;
+      while (b.fired < B.volleys && now >= st.t0 + b.fired * B.gap * 1000) { const c = centre(e), aim = Math.atan2(pc.y - c.y, pc.x - c.x) + (b.fired % 2 ? B.spread / (B.count * 2) : 0);
+        for (let i = 0; i < B.count; i++) { const a = aim + (i - (B.count - 1) / 2) * B.spread / (B.count - 1); w.projectiles.push({ id: `${e.id}:barb:${b.fired}:${i}:${Math.round(now)}`, x: c.x + Math.cos(a) * .7, y: c.y + Math.sin(a) * .7, dx: Math.cos(a), dy: Math.sin(a), speed: B.speed, life: B.life, damage: dmg(B.damage), hostile: true, path: "straight", age: 0, hits: {}, homingTurnRate: B.homing, homingUntil: B.homingUntil, morphBarb: true }); }
+        b.fired++; }
+      if (now >= st.t0 + ((B.volleys - 1) * B.gap + .4) * 1000) return done(); return true; }
   }
   return done();
 }
+// The angle of beam `i` at `now` (shared with the renderer).
+export const beamAngle = (b, i, now) => b.a0 + i * Math.PI * 2 / MORPH_FORM.beams.count + b.turn * MORPH_FORM.beams.turn * Math.max(0, now - b.liveAt) / 1000;
 
 // A worm's own turn. Always moves itself (returns true).
 export function tickWorm(c, w) {

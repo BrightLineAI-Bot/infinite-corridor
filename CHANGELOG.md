@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 389 — the Morphling's reach, and the empowered suit.
+  - **Ranged patterns:** the Morphling now also casts four beams in a cross that turn around it, winds out a spiral of orbs, and throws fans of cable barbs that bend toward you.
+  - **A new look for the Morphling:** a hulking, V-shaped, muscular titan on goat's legs, with heavy shoulders and arms, ridged and suckered tentacles whose ends keep changing (fist, claws, curl, cable, stone, dragon's head), a goat's head with ridged horns and a cluster of eyes, and the glowing chamber of teeth in its chest.
+  - **The empowered suit:** in Empowered mode the robot is now a slim silver suit at your own size, with a gold V-fin, glowing eyes, an ember core in the chest and blue thrusters when you boost. The plain robot still looks as before.
+
 - Release 387 — your journey, and richer walls.
   - **Your journey:** the Wayfarer tab now lists time played, sections explored, dungeons cleared, world bosses and Listeners felled, towns raised and blocks dug.
   - **Digging scales with the Aperture:** every 4 Aperture tiers, walls are a little likelier to hold something (+2 points), and marks and materials come half again as plentiful (spheres stay one). Disturbed earth scales the same way.

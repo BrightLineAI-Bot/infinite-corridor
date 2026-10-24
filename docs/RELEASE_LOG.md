@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**389**
+**391**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 387 | Claude | `claude/dreamy-rubin-yn6q2p` | Your journey stats; digging finds scale with the Aperture tier; Shadow Clone range 5 and locked-target aim; dead playerAttack removed | Building. |
+| 389 | Claude | `claude/dreamy-rubin-yn6q2p` | Morphling ranged patterns (beams, orb spiral, barbs) and six art passes; the empowered robot as a svelte silver suit | Building. |
+| 387 | Claude | PR #176 | Your journey stats; digging finds scale with the Aperture tier; Shadow Clone range 5 and locked-target aim; dead playerAttack removed | Merged; preview `r387-413445097461`. Not published. |
 | 385 | Claude | PR #175 | The Listener's walled form becomes the Morphling: cables, jaw, sink, worms, spin, lunge | Merged. Not published. |
 | 383 | Claude | PR #174 | Cinder iron smelts into spheres; the robot's Empowered mode and iron re-plating | Merged. Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
