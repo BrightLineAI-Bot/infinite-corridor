@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 377 — no more stagger-locking bosses.
+  - **Stagger, but not lock:** bosses, dungeon guardians, elites, Gate Revenants and the great beasts can still be staggered by a flurry of blows, but only for a while. Then they shrug stuns off for 3 seconds (your hits still land) and fight back.
+  - **Unchanged:** knockdowns, and ordinary creatures.
+  - **Watcher's Daises in every large dungeon:** every large dungeon you find from now on has its pair. Before, it was a coin flip, and none appeared at low tiers.
+
 - Release 375 — the Listener's Hall.
   - **The dais:** from your second Listener on, when the Gate is whole a dais rises beside the Mouth. Step onto it and it carries you to the Listener's Hall.
   - **The hall:** a round hall of dark glass over the night sky, ringed by relay pylons, with no fog and nothing else in it. The Listener waits across the central dais.
