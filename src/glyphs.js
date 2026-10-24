@@ -7,7 +7,7 @@
 //
 // Everything balance-related is data in GLYPHS and RESONANCES. The Game calls hostLoadout() when it attacks and
 // glyphHit() after each hit lands; world-side effects go through a small adapter so this file stays testable.
-import { hashSeed } from "./random.js?v=r395-fc69302ceeff";
+import { hashSeed } from "./random.js?v=r413-580567b8bd76";
 
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];
@@ -119,7 +119,7 @@ export function ensureGlyphState(save) {
   for (const item of [...Object.values(save.equipment || {}), ...(save.inventory || [])]) normalizeSockets(item);
   // Release 295: saved glyph layouts per gear host (additive): { melee: [id|null...], tool: [...], armor: [...] }.
   const lay = save.glyphLayouts && typeof save.glyphLayouts === "object" ? save.glyphLayouts : {};
-  save.glyphLayouts = Object.fromEntries(Object.entries(lay).filter(([h, v]) => LAYOUT_HOSTS.includes(h) && Array.isArray(v)).map(([h, v]) => [h, v.slice(0, 3).map((q) => (GLYPHS[q] ? q : null))]));
+  save.glyphLayouts = Object.fromEntries(Object.entries(lay).filter(([h, v]) => LAYOUT_HOSTS.includes(h) && Array.isArray(v)).map(([h, v]) => [h, v.slice(0, 4).map((q) => (GLYPHS[q] ? q : null))])); // release 397: 4, for a relic with the smith's extra socket
   if (!save.glyphGrant) { save.glyphGrant = GLYPH_VERSION; for (const id of ["ignite", "chain", "echo"]) { save.glyphs[id] += 1; save.glyphCodex.glyphs[id] = true; } }
   return save;
 }

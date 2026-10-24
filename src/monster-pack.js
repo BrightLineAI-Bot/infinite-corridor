@@ -7,9 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r395-fc69302ceeff";
-import { hashSeed } from "./random.js?v=r395-fc69302ceeff";
-import { updateAstralActor } from "./astral-worm.js?v=r395-fc69302ceeff";
+import { stageOneBeastReference } from "./stages.js?v=r413-580567b8bd76";
+import { hashSeed } from "./random.js?v=r413-580567b8bd76";
+import { updateAstralActor } from "./astral-worm.js?v=r413-580567b8bd76";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -134,16 +134,17 @@ export const ATTACK_MODULES = {
   psyWall: { id: "psyWall", name: "Mirror Wall", range: [2, 12], cooldown: 9, windup: .4, recover: .3, damage: 0, tags: ["defense"], text: "A wall of light stands between you. Arrows and bolts that touch it fly back at you; a blade passes straight through." },
   psyOrbital: { id: "psyOrbital", name: "Orbital Lances", range: [0, 14], cooldown: 11, windup: .5, recover: .3, damage: .45, tags: ["ground", "beam"], text: "One to four sky beams trace shifting patterns after you. Outrun the light; the fading marks it leaves are harmless." },
   // Void Walker (release 251): the owner's full kit, with implementation-choice timings in seconds.
-  voidHand: { id: "voidHand", name: "Rending Hands", range: [0, 12], cooldown: 2.7, windup: .25, recover: .22, damage: 1.05, los: true, tags: ["void", "ground"], text: "Galaxy rends open above the marked ground; open hands slam down." },
-  voidClaw: { id: "voidClaw", name: "Rift Claws", range: [0, 12], cooldown: 3.1, windup: .25, recover: .22, damage: .9, los: true, tags: ["void", "melee"], text: "Claws rake out of two warned rends, not from the Walker's hands." },
-  voidSword: { id: "voidSword", name: "Swords Beyond", range: [0, 12], cooldown: 3.4, windup: .25, recover: .22, damage: 1.1, los: true, tags: ["void", "melee"], text: "Long swords stab along two narrow, committed rift lanes." },
-  voidSlash: { id: "voidSlash", name: "Travelling Slashes", range: [0, 12], cooldown: 3.6, windup: .28, recover: .24, damage: .8, los: true, tags: ["void", "ranged"], text: "Rends fling straight-travelling violet slashes. Walls stop them." },
-  voidSpikes: { id: "voidSpikes", name: "Void Spikes", range: [0, 12], cooldown: 4.2, windup: .25, recover: .25, damage: .9, los: true, jumpable: true, tags: ["void", "ground"], text: "The marked ground breaks into spikes in rapid succession." },
-  voidWraiths: { id: "voidWraiths", name: "Passing Wraiths", range: [0, 12], cooldown: 6, windup: .35, recover: .3, damage: .7, los: true, tags: ["void", "ranged"], text: "Brief wraiths emerge, travel straight toward your sampled position, slash three times and disappear." },
-  voidRifts: { id: "voidRifts", name: "Open Ways", range: [0, 12], cooldown: 10, windup: .4, recover: .3, damage: .8, los: true, tags: ["void", "teleport"], text: "Persistent galaxy rends spit attacks and let the Walker evade into another opening." },
-  voidConstellation: { id: "voidConstellation", name: "Rift Constellation", range: [0, 14], cooldown: 12, windup: .45, recover: .3, damage: .8, los: true, tags: ["void", "ranged", "teleport"], text: "Three to six rends follow you; each opens once, with wraiths, beams and the Walker arriving together or in rapid succession." },
-  voidHorizons: { id: "voidHorizons", name: "Event Horizons", range: [0, 12], cooldown: 10, windup: .45, recover: .3, damage: .55, los: true, tags: ["void", "control", "beam"], text: "Dark cores draw you in and hurt on contact. Some pulse a fixed-direction beam two or three times." },
-  voidSupernova: { id: "voidSupernova", name: "Supernova", range: [0, 14], cooldown: 23, windup: 1.1, active: 7.8, recover: .6, damage: 1.2, los: true, tags: ["void", "ground", "charge"], text: "A great void consumes dungeon terrain, draws you through local eruptions and two or three radial particle waves. The Walker teleports and dashes straight through sampled positions, leaving one-second damaging trails." },
+  // Release 407 (Tim: "the Void Walker should attack less frequently"): every Void Walker cooldown is about 40% longer.
+  voidHand: { id: "voidHand", name: "Rending Hands", range: [0, 12], cooldown: 3.8, windup: .25, recover: .22, damage: 1.05, los: true, tags: ["void", "ground"], text: "Galaxy rends open above the marked ground; open hands slam down." },
+  voidClaw: { id: "voidClaw", name: "Rift Claws", range: [0, 12], cooldown: 4.3, windup: .25, recover: .22, damage: .9, los: true, tags: ["void", "melee"], text: "Claws rake out of two warned rends, not from the Walker's hands." },
+  voidSword: { id: "voidSword", name: "Swords Beyond", range: [0, 12], cooldown: 4.8, windup: .25, recover: .22, damage: 1.1, los: true, tags: ["void", "melee"], text: "Long swords stab along two narrow, committed rift lanes." },
+  voidSlash: { id: "voidSlash", name: "Travelling Slashes", range: [0, 12], cooldown: 5, windup: .28, recover: .24, damage: .8, los: true, tags: ["void", "ranged"], text: "Rends fling straight-travelling violet slashes. Walls stop them." },
+  voidSpikes: { id: "voidSpikes", name: "Void Spikes", range: [0, 12], cooldown: 5.8, windup: .25, recover: .25, damage: .9, los: true, jumpable: true, tags: ["void", "ground"], text: "The marked ground breaks into spikes in rapid succession." },
+  voidWraiths: { id: "voidWraiths", name: "Passing Wraiths", range: [0, 12], cooldown: 8, windup: .35, recover: .3, damage: .7, los: true, tags: ["void", "ranged"], text: "Brief wraiths emerge, travel straight toward your sampled position, slash three times and disappear." },
+  voidRifts: { id: "voidRifts", name: "Open Ways", range: [0, 12], cooldown: 13, windup: .4, recover: .3, damage: .8, los: true, tags: ["void", "teleport"], text: "Persistent galaxy rends spit attacks and let the Walker evade into another opening." },
+  voidConstellation: { id: "voidConstellation", name: "Rift Constellation", range: [0, 14], cooldown: 15, windup: .45, recover: .3, damage: .8, los: true, tags: ["void", "ranged", "teleport"], text: "Three to six rends follow you; each opens once, with wraiths, beams and the Walker arriving together or in rapid succession." },
+  voidHorizons: { id: "voidHorizons", name: "Event Horizons", range: [0, 12], cooldown: 13, windup: .45, recover: .3, damage: .55, los: true, tags: ["void", "control", "beam"], text: "Dark cores draw you in and hurt on contact. Some pulse a fixed-direction beam two or three times." },
+  voidSupernova: { id: "voidSupernova", name: "Supernova", range: [0, 14], cooldown: 30, windup: 1.1, active: 7.8, recover: .6, damage: 1.2, los: true, tags: ["void", "ground", "charge"], text: "A great void consumes dungeon terrain, draws you through local eruptions and two or three radial particle waves. The Walker teleports and dashes straight through sampled positions, leaving one-second damaging trails." },
   firefall: { id: "firefall", name: "Firefall", range: [1.5, 9], cooldown: 6.5, windup: .7, recover: .8, damage: .85, jumpable: true, tags: ["ground"], text: "Embers rain across the floor around you." },
 };
 
@@ -554,6 +555,10 @@ export const WORM = {
   lavaLength: 6.2, lavaArc: 44, lavaEvery: .09, lavaPerPour: 2, lavaFlight: .12, lavaRun: 1.8, lavaRunTime: .55, lavaGrow: [.35, 1.05], lavaGrowTime: .45, lavaLife: 1.8, lavaTick: .5,
 };
 // The Mountain Turtle (release 241). Balance as data.
+// Release 397 (Tim, 2026-10-24: "the hits... where they're gonna be going on the floor... right now it's like pale red. It
+// should be... pale hot pink... understated and not very bright... translucent... the uniform color for damage all across
+// the game"): every warning of where a blow will land uses these.
+export const DANGER = { fill: "rgba(255,80,190,.18)", fillStrong: "rgba(255,80,190,.32)", edge: "rgba(255,130,210,.72)", hex: "#ff7ccf" };
 export const TURTLE = {
   // Release 261 (Tim: "the turtle can appear in the water... he'll make like a temporary ice floor... walkable tiles... your
   // boat can slide across it... they'll persist for... 5, maybe 10 seconds, and then... unfreeze"): open sea within
@@ -580,7 +585,7 @@ export const GIANT = {
   swingReach: 1.8, swingArc: 150,
   slamReach: .9, slamRadius: 1.5, slamRing: 3.2, slamRingShare: .5,
   skyChance: .55, skyWarn: .95, skyRadius: 1.4, skyLife: .45,
-  coneChance: .55, coneBolts: 3, coneSpread: 22, boltSpeed: 12, boltLife: .9, boltRadius: .32,
+  coneChance: .55, coneBolts: 3, coneSpread: 22, boltSpeed: 12, boltLife: .9, boltRadius: .32, boltWarn: .45, // boltWarn (release 397): the slam's bolts hold, lane shown, before they fly
   chargeTime: 8, chargeSpeed: 1.5, stormEvery: .5, stormRing: [1.5, 4.5], stormWarn: .6, stormRadius: .8, stormLife: .35,
   strikeAt: .55,
   // Menacing slam: stalk with the club up for up to menaceHold s; when within reach, a dodgeable wind-up then the slam
@@ -662,7 +667,7 @@ export const CRYSTAL = {
   // break and fall through the floor and then you can get a bunch of hits in, and then it will... get up and dodge away").
   // `poiseHits` landed blows (forgotten after `poiseForget` s without one) break it: it drops to the floor for `breakTime`
   // s (falling over `fallTime`, rising over `riseTime`) and cannot dodge, attack or move; then it rises and springs away.
-  poiseHits: 14, poiseForget: 5, breakTime: 3.2, fallTime: .25, riseTime: .4, // poiseHits: Tim, "let's do like ten hits for a poise break"; 14 from release 285, with fewer dodges
+  poiseHits: 10, poiseForget: 5, breakTime: 3.2, fallTime: .25, riseTime: .4, // poiseHits: Tim, "let's do like ten hits for a poise break"; 14 from release 285, with fewer dodges
   // Engaged, it settles where the Wayfarer can reach it (release 259; Tim: "its end goal should be... a place the player can
   // walk to... it can spend some time between walls, that's fine"): after `wallLinger` s inside walls (or over ground the
   // Wayfarer cannot reach) it heads for the nearest reachable floor within `manifestSearch` tiles at `manifestSpeed`, and
@@ -670,13 +675,17 @@ export const CRYSTAL = {
   // `roamSight` for `forgetAfter` s, it drops its aggro and returns to its own patrol, which roams the whole dungeon.
   wallLinger: 1.5, manifestSearch: 10, manifestSpeed: 2.4, manifestBlink: 1.2, forgetAfter: 12, // wallLinger was 2.5 (release 285)
   // Release 285 (Tim, 2026-10-22: "he retreats to the wall constantly... for every 5 seconds he can only spend 1 second in
-  // the tile... so that I actually get to fight him"): a hidden wall budget. Engaged, each second off reachable floor spends
+  // the tile... so that I actually get to fight him"): a hidden wall budget. Release 401: in a dungeon it no longer drifts into
+  // walls at all (game.ts move), so the budget only governs ground the Wayfarer cannot reach (pits, deep water). Engaged, each second off reachable floor spends
   // a second of `wallBudget`; it refills over `wallWindow` s on reachable floor. Spent, it must come out, even mid-attack.
   wallBudget: 1, wallWindow: 5,
   // Release 285 (Tim: "reduce his dodging... so he should stay and fight for a little bit... increase the amount of hits it
   // takes to stagger him... maybe like 10 seconds where it can't be staggered again"): its own evade cooldown (the shared
   // one is QB_MOVES.evadeCooldown, 1.1 s), and after rising from a poise break it cannot break again for `poiseGuard` s.
-  evadeCooldown: 3, evadeCooldownEnraged: 2.2, poiseGuard: 10,
+  // Release 401 (Tim: "he dodges too much... a smaller stagger cooldown... he just runs too much, and I never get to actually
+  // fight him"): it dodges at most every 5 s (3.5 s enraged), breaks after 10 blows (was 14), and can break again 4 s after
+  // rising (was 10).
+  evadeCooldown: 5, evadeCooldownEnraged: 3.5, poiseGuard: 4,
   touchAggro: 1.1, // release 287: unprovoked, it notices the Wayfarer only this close (a touch) or when hurt
   // In a dungeon it may phase through an interior wall up to this many tiles thick (Game.roamerBounds), never beyond the edge.
   boundsSpan: 3,
@@ -918,7 +927,7 @@ function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
 
 // Each runner advances its attack; it reads/writes s.data and s.tele (the renderer draws s.tele).
 const START = {
-  giantArcs(e, s) { s.tele = { type: "brace" }; e.giantPose = "arcs"; },
+  giantArcs(e, s) { s.tele = { type: "ring", radius: GIANT.arcRange }; e.giantPose = "arcs"; }, // release 397: the arcs' reach, shown while it crackles
   giantShock(e, s) { const p = s.data.target; s.tele = { type: "circle", x: p.x, y: p.y, radius: GIANT.shockRadius }; e.giantPose = "point"; },
   giantSwing(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + GIANT.swingReach, arc: GIANT.swingArc }; e.giantPose = "swingReady"; },
   giantSlam(e, s) { const f = giantSlamPoint(e, s.data.aim); s.tele = { type: "circle", x: f.x, y: f.y, radius: GIANT.slamRadius }; e.giantPose = "slamRaise"; },
@@ -1112,7 +1121,7 @@ const RUN = {
     if (roll("cone") < GIANT.coneChance) {
       const a0 = Math.atan2(p.y - f.y, p.x - f.x), spread = GIANT.coneSpread * Math.PI / 180;
       for (let i = 0; i < GIANT.coneBolts; i++) { const a = a0 + (GIANT.coneBolts > 1 ? (i / (GIANT.coneBolts - 1) - .5) * spread : 0);
-        w.addEffect({ kind: "giantBolt", owner: e.id, x: f.x, y: f.y, vx: Math.cos(a) * GIANT.boltSpeed, vy: Math.sin(a) * GIANT.boltSpeed, radius: GIANT.boltRadius, arming: 0, life: GIANT.boltLife, damage: Math.ceil(dmg * .6) }); }
+        w.addEffect({ kind: "giantBolt", owner: e.id, x: f.x, y: f.y, vx: Math.cos(a) * GIANT.boltSpeed, vy: Math.sin(a) * GIANT.boltSpeed, radius: GIANT.boltRadius, arming: GIANT.boltWarn, armTotal: GIANT.boltWarn, life: GIANT.boltLife, damage: Math.ceil(dmg * .6) }); } // release 397: each bolt shows its lane before it flies
     }
     toPhase(s, "recover", ATTACK_MODULES.giantSlam.recover);
   },
@@ -2037,7 +2046,7 @@ function crystalPoise(e, s, w, p) {
   s.poiseGuard = Math.max(0, (s.poiseGuard || 0) - dt); // release 285: no new break for CRYSTAL.poiseGuard s after rising
   if (s.hpSeen != null && hp < s.hpSeen && !(s.poiseGuard > 0)) { s.poiseHits = (s.poiseHits || 0) + 1; s.poiseIdle = 0; } else s.poiseIdle = (s.poiseIdle || 0) + dt;
   s.hpSeen = hp; if (s.poiseIdle >= CRYSTAL.poiseForget) s.poiseHits = 0;
-  if (!(s.broken > 0) && (s.poiseHits || 0) >= CRYSTAL.poiseHits && !s.evade) {
+  if (!(s.broken > 0) && (s.poiseHits || 0) >= CRYSTAL.poiseHits) { // release 401: a dodge no longer saves it once its poise is spent
     s.broken = CRYSTAL.breakTime; s.poiseHits = 0; if (s.attack) endAttack(e, s); s.tele = null; s.vel = null; w.release?.(e); // a held Wayfarer is let go
   }
   if (!(s.broken > 0)) { e.crystalFall = 0; return false; }

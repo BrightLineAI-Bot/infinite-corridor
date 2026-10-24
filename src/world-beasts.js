@@ -1,14 +1,14 @@
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r395-fc69302ceeff";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r413-580567b8bd76";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.js?v=r395-fc69302ceeff";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r395-fc69302ceeff";
-import { sectionExits, apertureTier } from "./world.js?v=r395-fc69302ceeff";
-import { stageOneBeastReference } from "./stages.js?v=r395-fc69302ceeff";
+import { hashSeed } from "./random.js?v=r413-580567b8bd76";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r413-580567b8bd76";
+import { sectionExits, apertureTier } from "./world.js?v=r413-580567b8bd76";
+import { stageOneBeastReference } from "./stages.js?v=r413-580567b8bd76";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -80,7 +80,7 @@ export const WORLD_BEASTS = {
   // Initial balance proposal; owner requirements and open design decisions are in docs/void-walker-design.md.
   voidWalker: {
     kind: "voidWalker", name: "The Void Walker", chance: .025, minDepth: 5, tries: 4, cooldownSlain: 20, cooldownEscaped: 26,
-    hitsToKill: 60, hpPerLevel: 28, damageShare: .2, speed: 1.1, attackGap: .3, staggerResistance: .9, rewardMarks: 180, rewardPerLevel: 18,
+    hitsToKill: 60, hpPerLevel: 28, damageShare: .2, speed: 1.1, attackGap: 1.1, /* release 407 (Tim: "the Void Walker should attack less frequently... it covers up the entire screen with attacks... a little bit more pacing"): was .3 */ staggerResistance: .9, rewardMarks: 180, rewardPerLevel: 18,
     patience: 180, home: "dungeon", retreatMoves: "walk", dungeonChance: .3, dungeonMinLevel: 1,
     flee: "The Void Walker folds its rends shut and leaves toward a dungeon entrance.",
     fleeDungeon: "The Void Walker closes its constellation and heads for the nearest reachable dungeon door.",

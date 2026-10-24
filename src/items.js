@@ -1,5 +1,5 @@
-import{normalizeSockets}from'./glyphs.js?v=r395-fc69302ceeff';
-import{rng,pick}from'./random.js?v=r395-fc69302ceeff';
+import{normalizeSockets}from'./glyphs.js?v=r413-580567b8bd76';
+import{rng,pick}from'./random.js?v=r413-580567b8bd76';
 export const ITEM_TABLE={primary:[['Cinder Pike','reach'],['Verge Cleaver','impact']],secondary:[['Lumen Spindle','focus'],['Needle Caster','quick'],['Rift Bombard','blast']],armor:[['Kiln Mantle','guard'],['Glassweave Coat','stamina']],charm:[['Quiet Compass','discovery']]};
 export const ITEM_TIERS=['common','rare','epic','relic'];
 export const RANGED_WEAPONS={'spark-coil':{name:'Spark Coil',damage:8,speed:12,lifetime:1.6,damageType:'magic',path:'straight'},'secondary-lumen-spindle':{name:'Lumen Spindle',damage:11,speed:10,lifetime:1.8,turnAfter:.8,damageType:'magic',path:'boomerang'},'secondary-needle-caster':{name:'Needle Caster',damage:10,speed:15,lifetime:1.25,damageType:'physical',path:'straight'},'secondary-rift-bombard':{name:'Rift Bombard',damage:16,speed:8,lifetime:1.4,radius:2.15,damageType:'magic',path:'grenade'}};
@@ -12,7 +12,7 @@ export const SPELLS={'cinder-dart':{id:'cinder-dart',name:'Cinder Dart',cooldown
 // Release 365: whether a spell is open to the Wayfarer (the Infinite III spells need that band of the Aperture).
 export function spellOpen(save,id){const sp=SPELLS[id];return !!sp&&(!sp.unlockTier||APERTURE_BANDS.indexOf(apertureBand(save?.perception?.aperture||0))>=sp.unlockTier)}
 export const UPGRADE_CAPS={common:3,rare:4,epic:5,relic:6};
-// Release r395-fc69302ceeff: a masterworked item (the town smith) goes one rank past its tier's cap.
+// Release 395: a masterworked item (the town smith) goes one rank past its tier's cap.
 export const itemCap=(item)=>(UPGRADE_CAPS[itemTier(item)]||3)+(item?.masterwork===true?1:0);
 export const APERTURE_SKILLS={
  'ember-form':{id:'ember-form',name:'Ember Form',branch:'Form',threshold:6,maxRank:3,cooldown:18,duration:5,description:'Grow into a guarded striking form with greater melee reach and impact.'},
@@ -54,7 +54,7 @@ export function apertureBand(value){const n=Math.max(0,Number(value)||0);return[
 export function availableApertureSkills(value){return Object.values(APERTURE_SKILLS).filter(s=>Number(value)>=s.threshold)}
 export function skillRank(save,id){return Math.max(0,Math.min(APERTURE_SKILLS[id]?.maxRank||0,Number(save?.magicSkills?.learned?.[id])||0))}
 export function learnApertureSkill(save,id){const skill=APERTURE_SKILLS[id];if(!skill)return{ok:false,message:'That Aperture discipline is unknown.'};if((save.perception?.aperture||0)<skill.threshold)return{ok:false,message:`Aperture ${skill.threshold} is required.`};save.magicSkills||={schema:1,learned:{},selected:null,active:null,cooldowns:{},lastSafe:null};const rank=skillRank(save,id);if(rank>=skill.maxRank)return{ok:false,message:`${skill.name} is fully learned.`};save.magicSkills.learned[id]=rank+1;save.magicSkills.selected=id;return{ok:true,rank:rank+1,message:`${skill.name} rank ${rank+1} learned.`}}
-// Release r395-fc69302ceeff: one affix of `id` rolled for a tier index (the smith's reforge uses the same numbers as loot).
+// Release 395: one affix of `id` rolled for a tier index (the smith's reforge uses the same numbers as loot).
 export const AFFIX_POOLS={primary:['attack','reach'],secondary:['attack','reach'],armor:['ward'],charm:['movement','reach']};
 export function rollAffixValue(r,id,tier){const value=id==='attack'?1+Math.floor(r()*3)+tier:id==='reach'?.08+r()*.05*tier:id==='movement'?.03+r()*.025*tier:.02+r()*.015*tier;return Math.round(value*100)/100}
 function rollAffixes(r,slot,tier){const pools={primary:['attack','reach'],secondary:['attack','reach'],armor:['ward'],charm:['movement','reach']}[slot],out=[];for(let i=0;i<tier;i++){const id=pools[i%pools.length];if(out.some(a=>a.id===id))continue;const value=id==='attack'?1+Math.floor(r()*3)+tier:id==='reach'?.08+r()*.05*tier:id==='movement'?.03+r()*.025*tier:.02+r()*.015*tier;out.push({id,value:Math.round(value*100)/100})}return out}

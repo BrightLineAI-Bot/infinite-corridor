@@ -1,20 +1,20 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r395-fc69302ceeff";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r395-fc69302ceeff";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r395-fc69302ceeff";
-import { enemyMeleeGeometry } from "./combat.js?v=r395-fc69302ceeff";
-import { ruleRows } from "./elders.js?v=r395-fc69302ceeff";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r395-fc69302ceeff";
-import { BOAT } from "./boats.js?v=r395-fc69302ceeff";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r395-fc69302ceeff";
-import { isMarineTile } from "./world-beasts.js?v=r395-fc69302ceeff";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r395-fc69302ceeff";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r395-fc69302ceeff";
-import { liftAt, tileUnder } from "./landscape.js?v=r395-fc69302ceeff";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r395-fc69302ceeff";
-import { GATE_REVENANT } from "./monster-pack.js?v=r395-fc69302ceeff";
-import { drawRelayNode } from "./relay-network.js?v=r395-fc69302ceeff";
-import { structureOccupancy } from "./world.js?v=r395-fc69302ceeff";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r395-fc69302ceeff";
+import { astralBeamAnchors } from "./astral-worm.js?v=r413-580567b8bd76";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r413-580567b8bd76";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r413-580567b8bd76";
+import { enemyMeleeGeometry } from "./combat.js?v=r413-580567b8bd76";
+import { ruleRows } from "./elders.js?v=r413-580567b8bd76";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r413-580567b8bd76";
+import { BOAT } from "./boats.js?v=r413-580567b8bd76";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r413-580567b8bd76";
+import { isMarineTile } from "./world-beasts.js?v=r413-580567b8bd76";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r413-580567b8bd76";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r413-580567b8bd76";
+import { liftAt, tileUnder } from "./landscape.js?v=r413-580567b8bd76";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r413-580567b8bd76";
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r413-580567b8bd76";
+import { drawRelayNode } from "./relay-network.js?v=r413-580567b8bd76";
+import { structureOccupancy } from "./world.js?v=r413-580567b8bd76";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r413-580567b8bd76";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -51,7 +51,11 @@ export function visibleInCamera(o, left, top, right, bottom, padding = 2) {
   return Number(o.x) >= left - padding && Number(o.x) <= right + padding &&
     Number(o.y) >= top - padding && Number(o.y) <= bottom + padding;
 }
-const discoveredInDungeon=(g,point)=>g.area!=="dungeon"||dungeonPointDiscovered(g.map,point);
+// Release 409 (Tim: "the white cracked area [after the Supernova]... overlays enemies and the Void Walker himself, so I can't
+// see him... the characters and all enemies should still be visible"): ground the Supernova has scarred counts as seen, and
+// a world beast is always drawn, so nothing fights unseen inside the white.
+const scarredAt=(g,point)=>{const w=g.map?.width||32,t=g.map?.tiles?.[Math.floor(Number(point?.y)+.5)*w+Math.floor(Number(point?.x)+.5)];return !!t?.voidScar};
+const discoveredInDungeon=(g,point)=>g.area!=="dungeon"||!!point?.worldBeast||scarredAt(g,point)||dungeonPointDiscovered(g.map,point);
 
 const structureRenderCache = new WeakMap();
 const mapObjectCache = new WeakMap();
@@ -1391,12 +1395,12 @@ export function render(ctx, g, w, h, now) {
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),g.presentation);
   drawMorphEffects(ctx,g.enemies,s,now); // release 385: the Morphling's cables, jaw, lunge and rising
   drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) });
-  for(const e of g.enemies)if(!e.dead&&discoveredInDungeon(g,e)&&e.eliteWindup>0&&visibleInCamera(e,l,t,r,b,e.kind==='gravitantBell'?6:3)){ctx.strokeStyle=e.kind==='gravitantBell'?"#8bb8bdcc":"#c6885ccc";ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
+  for(const e of g.enemies)if(!e.dead&&discoveredInDungeon(g,e)&&e.eliteWindup>0&&visibleInCamera(e,l,t,r,b,e.kind==='gravitantBell'?6:3)){ctx.strokeStyle=DANGER.edge;ctx.lineWidth=3;/* release 397: the uniform warning colour */ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
   for (const e of g.enemies)
     if (!e.dead && discoveredInDungeon(g,e) && e.telegraph > 0 && visibleInCamera(e,l,t,r,b,e.threatRange||2)) {
       const pulse = e.threatRange||(.65 + (0.9 - e.telegraph) * 0.2);
-      ctx.fillStyle = "#873f4338";
-      ctx.strokeStyle = "#bd8257bb";
+      ctx.fillStyle = DANGER.fill; // release 397: the uniform warning colour
+      ctx.strokeStyle = DANGER.edge;
       ctx.lineWidth = 2;
       ctx.beginPath();
       if (e.meleePhase) {
@@ -1703,13 +1707,13 @@ export function render(ctx, g, w, h, now) {
     // Fog banks (release 156; release 158 smooths them): each bank is a cluster of soft puffs turning slowly about its
     // centre. Inside a bank the mist closes in around the Wayfarer gradually (fogLevel is eased in open-sea.ts).
     // Release 257: a Supernova's fog (g.novaFog) draws the same way, faded in and out by its alpha.
-    const level = Math.max(g.seaHazards?.fogLevel || 0, g.novaFog?.fogLevel || 0), time = now / 1000;
-    for (const [f, fade] of [...(g.seaHazards?.fog || []).map((f) => [f, 1]), ...(g.novaFog?.fog || []).map((f) => [f, g.novaFog.alpha ?? 1])]) {
+    const level = g.seaHazards?.fogLevel || 0, time = now / 1000; // release 407 (Tim: "the Supernova... covers the entire world, so I can't see him... the Supernova shouldn't cover the Void Walker or other creatures"): its fog no longer closes in around the Wayfarer, and its mist is thin
+    for (const [f, fade] of [...(g.seaHazards?.fog || []).map((f) => [f, 1]), ...(g.novaFog?.fog || []).map((f) => [{ ...f, nova: true }, g.novaFog.alpha ?? 1])]) {
       if (fade <= 0) continue;
       for (let i = 0; i < 7; i++) {
         const a = (f.swirl || 0) + i * 2.399 + Math.sin(time * .2 + i) * .15, d = f.radius * (.15 + .55 * ((i * 37) % 10) / 10), pr = f.radius * (.45 + .1 * Math.sin(time * .3 + i * 1.7));
         const x = (f.x + Math.cos(a) * d) * s, y = (f.y + Math.sin(a) * d) * s, gr = ctx.createRadialGradient(x, y, 0, x, y, pr * s);
-        gr.addColorStop(0, `rgba(222,231,236,${.22 * fade * (1 - level * .5)})`); gr.addColorStop(1, "rgba(222,231,236,0)");
+        gr.addColorStop(0, `rgba(222,231,236,${(f.nova ? .1 : .22) * fade * (1 - level * .5)})`); gr.addColorStop(1, "rgba(222,231,236,0)");
         ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, pr * s, 0, 7); ctx.fill();
       }
     }
