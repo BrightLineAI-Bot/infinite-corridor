@@ -629,65 +629,66 @@ function drawDrone(ctx, x, y, s, facing, now, carrying = false, heal = 0) {
   if (heal > 0) { ctx.globalAlpha = Math.min(1, heal) * .7; ctx.strokeStyle = "#7dff9a"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); ctx.ellipse(cx, cy, u * 1.35, u * 1.1, 0, 0, 7); ctx.stroke(); }
   ctx.restore();
 }
-// The empowered robot (release 389; Tim, 2026-10-24: "it should be like a svelte Gundam... like Armored Core... almost like an
-// Iron Man suit... it can be silver... pretty much the same size as a character model"). Drawn in place of the Wayfarer: a
-// slim silver frame with a gold V-fin, a glowing visor, an ember core in the chest, angular pauldrons, a narrow waist,
-// long armoured legs and thrusters that flare while it boosts. Front, back and side views follow the facing.
+// The empowered robot (release 389; redrawn in release 391, Tim: "less... more understated... more like a spacesuit...
+// almost like a Black Panther suit, but still spacey, like Iron Man or War Machine... it looks too much like a Gundam or
+// Ultraman Tiga... we don't want to depart from the overall gritty, down-to-earth feel"). Drawn in place of the Wayfarer, at
+// their size: a dark graphite pressure suit, segmented and scuffed, with low plates at chest, shoulders, knees and forearms,
+// a smooth helmet with one smoked visor band, a compact life-support pack with hoses to the chest, a dim amber status
+// light, and small, cold thrusters at the back and heels that only show while it boosts.
 export function drawPowerSuit(ctx, x, y, s, facing, now, frame = 0, attacking = false, boosting = false) {
-  const t = now / 1000, k = x * s + s / 2, base = y * s + s * .84, u = s * .92, side = facing === "left" || facing === "right", back = facing === "up", dir = facing === "left" ? -1 : 1;
-  const step = Math.sin((frame + t * 0) * Math.PI / 2) , lift = boosting ? 0 : 0;
-  const steel = (x0, y0, x1, y1) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, "#ffffff"); g.addColorStop(.35, "#d5dbe2"); g.addColorStop(.7, "#9aa4b0"); g.addColorStop(1, "#5d6672"); return g; };
-  const dark = "#2a3038", seam = "#3d4550", gold = "#e8b73a", eye = "#7ff3ff", core = "#ffb05a", lw = Math.max(1, u * .018);
-  const poly = (pts, fill, stroke = seam) => { ctx.beginPath(); pts.forEach(([px, py], i) => ctx[i ? "lineTo" : "moveTo"](px, py)); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.stroke(); };
+  const t = now / 1000, k = x * s + s / 2, base = y * s + s * .84, u = s * .9, side = facing === "left" || facing === "right", back = facing === "up", dir = facing === "left" ? -1 : 1;
+  const plate = (x0, y0, x1, y1) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, "#5d636b"); g.addColorStop(.4, "#363a41"); g.addColorStop(1, "#1a1c20"); return g; };
+  const suit = (x0, y0, x1, y1) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, "#2c3036"); g.addColorStop(1, "#121418"); return g; };
+  const edge = "#0a0b0d", worn = "#8a8f96", amber = "#ffb347", lw = Math.max(1, u * .016);
+  const poly = (pts, fill, stroke = edge) => { ctx.beginPath(); pts.forEach(([px, py], i) => ctx[i ? "lineTo" : "moveTo"](px, py)); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.stroke(); };
+  const seg = (x0, y0, x1, y1, w0, w1, fill) => { const a = Math.atan2(y1 - y0, x1 - x0), nx = -Math.sin(a), ny = Math.cos(a); poly([[x0 + nx * w0, y0 + ny * w0], [x1 + nx * w1, y1 + ny * w1], [x1 - nx * w1, y1 - ny * w1], [x0 - nx * w0, y0 - ny * w0]], fill || suit(x0 - w0, y0, x1 + w1, y1)); };
   const glowAt = (gx, gy, r, c, a) => { const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r); g.addColorStop(0, c + Math.round(a * 255).toString(16).padStart(2, "0")); g.addColorStop(1, c + "00"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(gx, gy, r, 0, Math.PI * 2); ctx.fill(); };
+  const scuff = (x0, y0, x1, y1) => { ctx.strokeStyle = worn + "66"; ctx.lineWidth = Math.max(.6, u * .006); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); };
+  const jet = (jx, jy, len) => { const g = ctx.createLinearGradient(jx, jy, jx, jy + len); g.addColorStop(0, "#e8f6ff"); g.addColorStop(.35, "#7fb9d8aa"); g.addColorStop(1, "#4a7fa000"); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(jx - u * .025, jy); ctx.lineTo(jx + u * .025, jy); ctx.lineTo(jx, jy + len); ctx.closePath(); ctx.fill(); };
   ctx.save(); ctx.translate(k, base); if (side) ctx.scale(dir, 1);
-  ctx.fillStyle = "rgba(4,6,10,.45)"; ctx.beginPath(); ctx.ellipse(0, 0, u * .3, u * .08, 0, 0, Math.PI * 2); ctx.fill();
-  const sw = side ? Math.sin(t * 9) * (frame ? .5 : .15) : 0, stride = side ? u * .12 * sw : 0, bob = Math.abs(Math.sin(t * 9)) * u * .015 * (frame ? 1 : 0);
-  ctx.translate(0, -bob);
-  // Thrusters (behind): back-pack flames while boosting.
-  if (boosting) for (const sx of side ? [-.22] : [-.14, .14]) { const fx = sx * u, fy = -u * .5, fl = u * (.35 + .1 * Math.sin(t * 40)); const g = ctx.createLinearGradient(fx, fy, fx, fy + fl); g.addColorStop(0, "#ffffff"); g.addColorStop(.3, "#7ff3ff"); g.addColorStop(1, "#2a7fff00"); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(fx - u * .05, fy); ctx.lineTo(fx + u * .05, fy); ctx.lineTo(fx, fy + fl); ctx.closePath(); ctx.fill(); }
-  if (boosting) for (const sx of side ? [0] : [-.1, .1]) glowAt(sx * u, 0, u * .25, "#7ff3ff", .6);
+  ctx.fillStyle = "rgba(4,6,10,.45)"; ctx.beginPath(); ctx.ellipse(0, 0, u * .26, u * .07, 0, 0, Math.PI * 2); ctx.fill();
+  const walk = frame ? Math.sin(t * 9) : 0, bob = Math.abs(walk) * u * .012; ctx.translate(0, -bob);
+  if (boosting) { const fl = u * (.22 + .06 * Math.sin(t * 38)); for (const jx of side ? [-u * .17] : [-u * .09, u * .09]) jet(jx, -u * .5, fl); for (const jx of side ? [0] : [-u * .07, u * .07]) jet(jx, 0, fl * .7); }
   if (side) {
-    // Side view: legs in stride, a slim torso, the backpack behind, the arm forward.
-    for (const [o, shade] of [[-1, .7], [1, 1]]) { const sx = o * stride; ctx.globalAlpha = shade; poly([[sx - u * .06, -u * .36], [sx + u * .06, -u * .36], [sx + u * .05, -u * .19], [sx + u * .065, -u * .04], [sx + u * .12, -u * .01], [sx + u * .12, 0], [sx - u * .07, 0], [sx - u * .05, -u * .19]], steel(sx - u * .1, -u * .4, sx + u * .1, 0)); poly([[sx - u * .03, -u * .22], [sx + u * .055, -u * .21], [sx + u * .05, -u * .17], [sx - u * .02, -u * .17]], gold); ctx.globalAlpha = 1; }
-    poly([[-u * .2, -u * .72], [-u * .1, -u * .76], [-u * .08, -u * .5], [-u * .2, -u * .46]], steel(-u * .2, -u * .75, -u * .08, -u * .45)); // the backpack
-    for (const ny of [-.68, -.56]) { ctx.fillStyle = dark; ctx.beginPath(); ctx.ellipse(-u * .21, ny * u, u * .025, u * .04, 0, 0, Math.PI * 2); ctx.fill(); }
-    poly([[-u * .08, -u * .38], [u * .07, -u * .38], [u * .1, -u * .52], [u * .09, -u * .74], [-u * .1, -u * .76], [-u * .1, -u * .52]], steel(-u * .1, -u * .78, u * .1, -u * .38)); // torso
-    poly([[-u * .07, -u * .42], [u * .06, -u * .42], [u * .05, -u * .36], [-u * .06, -u * .36]], dark); // waist
-    glowAt(u * .08, -u * .62, u * .08, core, .7); ctx.fillStyle = "#fff4e0"; ctx.beginPath(); ctx.arc(u * .085, -u * .62, u * .022, 0, Math.PI * 2); ctx.fill();
-    { const ex = attacking ? u * .1 : u * .01, ey = attacking ? -u * .62 : -u * .57, hx = attacking ? u * .22 : u * .04, hy = attacking ? -u * .62 : -u * .43; // the near arm: upper arm, elbow, forearm guard, fist
-      const seg = (x0, y0, x1, y1, w0, w1) => { const a = Math.atan2(y1 - y0, x1 - x0), nx = -Math.sin(a), ny = Math.cos(a); poly([[x0 + nx * w0, y0 + ny * w0], [x1 + nx * w1, y1 + ny * w1], [x1 - nx * w1, y1 - ny * w1], [x0 - nx * w0, y0 - ny * w0]], steel(x0 - w0, y0 - w0, x1 + w1, y1 + w1)); };
-      seg(0, -u * .71, ex, ey, u * .035, u * .03); seg(ex, ey, hx, hy, u * .042, u * .036); ctx.fillStyle = dark; ctx.beginPath(); ctx.arc(ex, ey, u * .025, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(hx + (attacking ? u * .02 : 0), hy + (attacking ? 0 : u * .02), u * .03, 0, Math.PI * 2); ctx.fill(); glowAt(hx, hy, u * .05, eye, .45); }
-    poly([[-u * .07, -u * .79], [u * .03, -u * .8], [u * .02, -u * .7], [-u * .08, -u * .69]], steel(-u * .08, -u * .8, u * .03, -u * .68)); // pauldron
-    // Helmet: a sleek profile, the visor slit and the V-fin swept back.
-    poly([[-u * .07, -u * .78], [u * .07, -u * .79], [u * .1, -u * .86], [u * .07, -u * .95], [-u * .05, -u * .97], [-u * .09, -u * .88]], steel(-u * .09, -u * .97, u * .1, -u * .78));
-    ctx.fillStyle = eye; ctx.fillRect(u * .02, -u * .885, u * .075, u * .018); glowAt(u * .07, -u * .876, u * .06, eye, .6);
-    poly([[u * .0, -u * .94], [u * .1, -u * 1.04], [u * .06, -u * .94]], gold, "#8a6418");
+    const st = walk * u * .09;
+    for (const [o, a] of [[-1, .65], [1, 1]]) { const fx = o * st; ctx.globalAlpha = a; seg(0, -u * .38, fx * .5 + u * .01, -u * .2, u * .05, u * .045); seg(fx * .5 + u * .01, -u * .2, fx, -u * .03, u * .042, u * .04); poly([[fx - u * .05, -u * .045], [fx + u * .08, -u * .03], [fx + u * .085, 0], [fx - u * .055, 0]], plate(fx - u * .05, -u * .05, fx + u * .08, 0)); poly([[fx * .5 - u * .025, -u * .25], [fx * .5 + u * .055, -u * .24], [fx * .5 + u * .05, -u * .17], [fx * .5 - u * .02, -u * .17]], plate(0, -u * .25, u * .05, -u * .17)); ctx.globalAlpha = 1; } // legs, knee plates, boots
+    poly([[-u * .2, -u * .73], [-u * .09, -u * .75], [-u * .08, -u * .48], [-u * .19, -u * .46]], plate(-u * .2, -u * .75, -u * .08, -u * .46)); // the life-support pack
+    ctx.strokeStyle = "#202328"; ctx.lineWidth = Math.max(1.5, u * .022); ctx.beginPath(); ctx.moveTo(-u * .1, -u * .52); ctx.quadraticCurveTo(-u * .02, -u * .5, u * .06, -u * .6); ctx.stroke(); // a hose round to the chest
+    poly([[-u * .085, -u * .4], [u * .065, -u * .4], [u * .085, -u * .55], [u * .075, -u * .74], [-u * .09, -u * .75], [-u * .095, -u * .55]], suit(-u * .1, -u * .75, u * .09, -u * .4)); // torso
+    poly([[-u * .02, -u * .72], [u * .075, -u * .71], [u * .085, -u * .56], [u * .0, -u * .55]], plate(0, -u * .72, u * .09, -u * .55)); // chest plate
+    ctx.fillStyle = "#24272c"; ctx.fillRect(-u * .09, -u * .44, u * .17, u * .035); // belt
+    glowAt(u * .07, -u * .66, u * .03, amber, .6); ctx.fillStyle = amber; ctx.fillRect(u * .062, -u * .665, u * .014, u * .01);
+    const ex = attacking ? u * .1 : u * .015, ey = attacking ? -u * .62 : -u * .56, hx = attacking ? u * .21 : u * .035, hy = attacking ? -u * .62 : -u * .43;
+    seg(0, -u * .71, ex, ey, u * .035, u * .03); seg(ex, ey, hx, hy, u * .036, u * .032, plate(ex, ey, hx, hy)); ctx.fillStyle = "#16181b"; ctx.beginPath(); ctx.arc(hx, hy, u * .028, 0, Math.PI * 2); ctx.fill(); // arm, forearm plate, glove
+    poly([[-u * .075, -u * .78], [u * .035, -u * .79], [u * .045, -u * .7], [-u * .07, -u * .69]], plate(-u * .07, -u * .79, u * .04, -u * .69)); // shoulder plate
+    // Helmet: a smooth dome, the visor band wrapping forward, a small side module.
+    ctx.fillStyle = plate(-u * .1, -u * .98, u * .1, -u * .78); ctx.beginPath(); ctx.ellipse(-u * .005, -u * .875, u * .095, u * .1, 0, 0, Math.PI * 2); ctx.fill(); ctx.lineWidth = lw; ctx.strokeStyle = edge; ctx.stroke();
+    const vg = ctx.createLinearGradient(0, -u * .92, 0, -u * .84); vg.addColorStop(0, "#3c5560"); vg.addColorStop(.5, "#0c1216"); vg.addColorStop(1, "#1b2a30"); ctx.fillStyle = vg; ctx.beginPath(); ctx.moveTo(u * .0, -u * .915); ctx.quadraticCurveTo(u * .095, -u * .915, u * .093, -u * .865); ctx.quadraticCurveTo(u * .09, -u * .835, u * .0, -u * .84); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "#9cc6d455"; ctx.lineWidth = Math.max(.6, u * .007); ctx.beginPath(); ctx.moveTo(u * .02, -u * .905); ctx.lineTo(u * .07, -u * .9); ctx.stroke();
+    poly([[-u * .07, -u * .9], [-u * .035, -u * .9], [-u * .035, -u * .85], [-u * .07, -u * .85]], plate(-u * .07, -u * .9, -u * .03, -u * .85)); scuff(u * .02, -u * .7, u * .05, -u * .66);
   } else {
-    // Front or back: two long legs, a narrow waist, a broad, tapering chest, angular pauldrons, slim arms, the helmet.
-    for (const sx of [-1, 1]) { const lx = sx * u * .075, lo = (frame ? Math.sin(t * 9 + (sx > 0 ? Math.PI : 0)) : 0) * u * .02;
-      poly([[lx - u * .055, -u * .38], [lx + u * .055, -u * .38], [lx + u * .05, -u * .2 + lo], [lx + u * .06, -u * .03 + lo], [lx + u * .07, lo], [lx - u * .07, lo], [lx - u * .06, -u * .03 + lo], [lx - u * .05, -u * .2 + lo]], steel(lx - u * .07, -u * .4, lx + u * .07, 0));
-      poly([[lx - u * .04, -u * .23 + lo], [lx + u * .04, -u * .23 + lo], [lx + u * .03, -u * .17 + lo], [lx - u * .03, -u * .17 + lo]], back ? seam : gold); }
-    poly([[-u * .1, -u * .44], [u * .1, -u * .44], [u * .08, -u * .36], [-u * .08, -u * .36]], dark); // the waist
-    poly([[-u * .12, -u * .44], [u * .12, -u * .44], [u * .17, -u * .66], [u * .14, -u * .76], [-u * .14, -u * .76], [-u * .17, -u * .66]], steel(-u * .17, -u * .78, u * .17, -u * .42)); // the chest
-    if (back) { for (const sx of [-1, 1]) { poly([[sx * u * .05, -u * .74], [sx * u * .14, -u * .74], [sx * u * .13, -u * .5], [sx * u * .06, -u * .5]], steel(-u * .14, -u * .74, u * .14, -u * .5)); ctx.fillStyle = dark; ctx.beginPath(); ctx.ellipse(sx * u * .095, -u * .5, u * .035, u * .02, 0, 0, Math.PI * 2); ctx.fill(); } } // the backpack and its nozzles
-    else { ctx.strokeStyle = seam; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(0, -u * .74); ctx.lineTo(0, -u * .46); ctx.moveTo(-u * .13, -u * .62); ctx.lineTo(u * .13, -u * .62); ctx.stroke();
-      glowAt(0, -u * .63, u * .1, core, .75 + .2 * Math.sin(t * 6)); ctx.fillStyle = "#fff4e0"; ctx.beginPath(); ctx.arc(0, -u * .63, u * .028, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = core; ctx.lineWidth = lw; ctx.beginPath(); ctx.arc(0, -u * .63, u * .045, 0, Math.PI * 2); ctx.stroke(); // the arc core
-      for (const sx of [-1, 1]) poly([[sx * u * .02, -u * .54], [sx * u * .1, -u * .52], [sx * u * .09, -u * .47], [sx * u * .02, -u * .48]], steel(-u * .1, -u * .55, u * .1, -u * .46)); } // the abdominal plates
-    for (const sx of [-1, 1]) { const ax = sx * u * .19, raise = attacking && sx > 0 ? -u * .08 : 0;
-      poly([[ax - u * .035, -u * .7], [ax + u * .035, -u * .7], [ax + sx * u * .01 + u * .03, -u * .5 + raise], [ax + sx * u * .01 - u * .03, -u * .5 + raise]], steel(ax - u * .04, -u * .72, ax + u * .04, -u * .48)); // upper arm
-      poly([[ax + sx * u * .01 - u * .04, -u * .52 + raise], [ax + sx * u * .01 + u * .04, -u * .52 + raise], [ax + sx * u * .02 + u * .035, -u * .38 + raise], [ax + sx * u * .02 - u * .035, -u * .38 + raise]], steel(ax - u * .05, -u * .52, ax + u * .05, -u * .37)); // forearm guard
-      ctx.fillStyle = dark; ctx.beginPath(); ctx.arc(ax + sx * u * .02, -u * .36 + raise, u * .03, 0, Math.PI * 2); ctx.fill(); // the hand
-      if (!back) { glowAt(ax + sx * u * .02, -u * .36 + raise, u * .045, eye, .5); }
-      poly([[sx * u * .11, -u * .79], [sx * u * .26, -u * .77], [sx * u * .27, -u * .68], [sx * u * .2, -u * .64], [sx * u * .13, -u * .7]], steel(sx * u * .1, -u * .8, sx * u * .27, -u * .64)); // pauldron
-      poly([[sx * u * .2, -u * .76], [sx * u * .26, -u * .755], [sx * u * .262, -u * .73], [sx * u * .2, -u * .735]], back ? seam : gold); }
-    // The helmet: a faceplate, the glowing visor, cheek vents and a gold V-fin with a red sensor.
-    poly([[-u * .085, -u * .78], [u * .085, -u * .78], [u * .095, -u * .88], [u * .07, -u * .96], [-u * .07, -u * .96], [-u * .095, -u * .88]], steel(-u * .1, -u * .97, u * .1, -u * .78));
-    if (!back) { ctx.fillStyle = dark; ctx.beginPath(); ctx.moveTo(-u * .07, -u * .885); ctx.lineTo(u * .07, -u * .885); ctx.lineTo(u * .05, -u * .855); ctx.lineTo(-u * .05, -u * .855); ctx.closePath(); ctx.fill();
-      for (const sx of [-1, 1]) { ctx.fillStyle = eye; ctx.beginPath(); ctx.moveTo(sx * u * .015, -u * .878); ctx.lineTo(sx * u * .06, -u * .882); ctx.lineTo(sx * u * .045, -u * .864); ctx.lineTo(sx * u * .015, -u * .866); ctx.closePath(); ctx.fill(); glowAt(sx * u * .04, -u * .872, u * .05, eye, .55); }
-      ctx.strokeStyle = seam; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(0, -u * .85); ctx.lineTo(0, -u * .79); for (const sx of [-1, 1]) { ctx.moveTo(sx * u * .03, -u * .82); ctx.lineTo(sx * u * .06, -u * .8); } ctx.stroke(); }
-    for (const sx of [-1, 1]) poly([[sx * u * .01, -u * .935], [sx * u * .13, -u * 1.04], [sx * u * .1, -u * 1.05], [sx * u * .005, -u * .955]], gold, "#8a6418");
-    ctx.fillStyle = "#ff3a3a"; ctx.beginPath(); ctx.arc(0, -u * .935, u * .016, 0, Math.PI * 2); ctx.fill();
+    for (const sx of [-1, 1]) { const lx = sx * u * .07, lo = (frame ? Math.sin(t * 9 + (sx > 0 ? Math.PI : 0)) : 0) * u * .018;
+      seg(lx, -u * .38, lx + sx * u * .005, -u * .2 + lo, u * .055, u * .046); seg(lx + sx * u * .005, -u * .2 + lo, lx, -u * .035 + lo, u * .045, u * .04);
+      poly([[lx - u * .045, -u * .25 + lo], [lx + u * .045, -u * .25 + lo], [lx + u * .04, -u * .17 + lo], [lx - u * .04, -u * .17 + lo]], plate(lx - u * .05, -u * .26, lx + u * .05, -u * .17)); // knee plates
+      poly([[lx - u * .055, -u * .05 + lo], [lx + u * .055, -u * .05 + lo], [lx + u * .06, lo], [lx - u * .06, lo]], plate(lx - u * .06, -u * .05, lx + u * .06, 0)); } // boots
+    poly([[-u * .11, -u * .4], [u * .11, -u * .4], [u * .145, -u * .62], [u * .13, -u * .75], [-u * .13, -u * .75], [-u * .145, -u * .62]], suit(-u * .15, -u * .76, u * .15, -u * .4)); // the torso, a dark pressure suit
+    ctx.strokeStyle = "#0e1013"; ctx.lineWidth = Math.max(.8, u * .01); for (let r = 0; r < 4; r++) { ctx.beginPath(); ctx.moveTo(-u * .1, -u * (.46 + r * .025)); ctx.lineTo(u * .1, -u * (.46 + r * .025)); ctx.stroke(); } // ribbed waist
+    ctx.fillStyle = "#24272c"; ctx.fillRect(-u * .12, -u * .43, u * .24, u * .035); for (const sx of [-1, 1]) { ctx.fillStyle = "#2e3238"; ctx.fillRect(sx * u * .07 - u * .025, -u * .43, u * .05, u * .045); } // belt and pouches
+    if (back) { poly([[-u * .1, -u * .74], [u * .1, -u * .74], [u * .095, -u * .48], [-u * .095, -u * .48]], plate(-u * .1, -u * .74, u * .1, -u * .48)); for (const sx of [-1, 1]) { ctx.fillStyle = "#121418"; ctx.beginPath(); ctx.ellipse(sx * u * .055, -u * .5, u * .025, u * .014, 0, 0, Math.PI * 2); ctx.fill(); } ctx.strokeStyle = "#0e1013"; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(-u * .08, -u * .66); ctx.lineTo(u * .08, -u * .66); ctx.stroke(); glowAt(u * .06, -u * .7, u * .025, amber, .5); } // the life-support pack
+    else { poly([[-u * .1, -u * .73], [u * .1, -u * .73], [u * .11, -u * .6], [u * .05, -u * .55], [-u * .05, -u * .55], [-u * .11, -u * .6]], plate(-u * .1, -u * .74, u * .1, -u * .55)); // the chest plate
+      for (const sx of [-1, 1]) { ctx.strokeStyle = "#1c1f23"; ctx.lineWidth = Math.max(1.5, u * .02); ctx.beginPath(); ctx.moveTo(sx * u * .12, -u * .7); ctx.quadraticCurveTo(sx * u * .15, -u * .6, sx * u * .08, -u * .56); ctx.stroke(); } // hoses from the pack
+      ctx.fillStyle = "#121418"; ctx.fillRect(-u * .03, -u * .66, u * .06, u * .04); glowAt(u * .012, -u * .645, u * .03, amber, .55 + .15 * Math.sin(t * 2)); ctx.fillStyle = amber; ctx.fillRect(u * .005, -u * .65, u * .014, u * .01); // the status panel
+      scuff(-u * .08, -u * .7, -u * .04, -u * .66); scuff(u * .03, -u * .6, u * .07, -u * .63); }
+    for (const sx of [-1, 1]) { const ax = sx * u * .165, raise = attacking && sx > 0 ? -u * .08 : 0;
+      seg(ax, -u * .7, ax + sx * u * .012, -u * .53 + raise, u * .036, u * .032); seg(ax + sx * u * .012, -u * .53 + raise, ax + sx * u * .018, -u * .39 + raise, u * .036, u * .032, plate(ax - u * .04, -u * .53, ax + u * .04, -u * .39)); // arm, forearm plate
+      ctx.fillStyle = "#16181b"; ctx.beginPath(); ctx.arc(ax + sx * u * .018, -u * .37 + raise, u * .028, 0, Math.PI * 2); ctx.fill(); // glove
+      poly([[sx * u * .1, -u * .775], [sx * u * .21, -u * .76], [sx * u * .215, -u * .68], [sx * u * .14, -u * .67]], plate(sx * u * .1, -u * .78, sx * u * .22, -u * .67)); } // shoulder plates
+    // Helmet: a smooth dome, one smoked visor band, a small side module and its stub antenna.
+    ctx.fillStyle = plate(-u * .1, -u * .98, u * .1, -u * .78); ctx.beginPath(); ctx.ellipse(0, -u * .875, u * .095, u * .1, 0, 0, Math.PI * 2); ctx.fill(); ctx.lineWidth = lw; ctx.strokeStyle = edge; ctx.stroke();
+    ctx.fillStyle = "#1a1c20"; ctx.fillRect(-u * .05, -u * .79, u * .1, u * .025); // neck seal
+    if (!back) { const vg = ctx.createLinearGradient(0, -u * .92, 0, -u * .835); vg.addColorStop(0, "#3c5560"); vg.addColorStop(.45, "#0c1216"); vg.addColorStop(1, "#1b2a30"); ctx.fillStyle = vg; ctx.beginPath(); ctx.moveTo(-u * .082, -u * .9); ctx.quadraticCurveTo(0, -u * .925, u * .082, -u * .9); ctx.quadraticCurveTo(u * .085, -u * .855, u * .06, -u * .838); ctx.quadraticCurveTo(0, -u * .83, -u * .06, -u * .838); ctx.quadraticCurveTo(-u * .085, -u * .855, -u * .082, -u * .9); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = "#9cc6d455"; ctx.lineWidth = Math.max(.6, u * .007); ctx.beginPath(); ctx.moveTo(-u * .055, -u * .898); ctx.quadraticCurveTo(-u * .02, -u * .91, u * .01, -u * .905); ctx.stroke(); }
+    poly([[u * .088, -u * .9], [u * .112, -u * .9], [u * .112, -u * .85], [u * .088, -u * .85]], plate(u * .088, -u * .9, u * .112, -u * .85)); ctx.strokeStyle = "#2a2d32"; ctx.lineWidth = Math.max(.8, u * .008); ctx.beginPath(); ctx.moveTo(u * .1, -u * .9); ctx.lineTo(u * .1, -u * .97); ctx.stroke();
   }
   ctx.restore();
 }

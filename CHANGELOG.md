@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 391 — grit.
+  - **Robot plating:** re-forging plating that gives out now costs 3 cinder iron (it was 1).
+  - **The Morphling's head:** the horns are gone. Its skull is now caged in corroded, riveted iron, with a slatted breathing grille over the jaw, ribbed hoses running down into its shoulders, cables from the back of the skull, and mismatched optics: one big dull lens and a small cluster.
+  - **The empowered suit:** redrawn to fit the game's gritty feel. It is now a dark graphite pressure suit with low, scuffed plates, a smooth helmet with one smoked visor band, a life-support pack with hoses to the chest, a dim amber status light, and small cold thrusters that show only while you boost.
+
 - Release 389 — the Morphling's reach, and the empowered suit.
   - **Ranged patterns:** the Morphling now also casts four beams in a cross that turn around it, winds out a spiral of orbs, and throws fans of cable barbs that bend toward you.
   - **A new look for the Morphling:** a hulking, V-shaped, muscular titan on goat's legs, with heavy shoulders and arms, ridged and suckered tentacles whose ends keep changing (fist, claws, curl, cable, stone, dragon's head), a goat's head with ridged horns and a cluster of eyes, and the glowing chamber of teeth in its chest.
