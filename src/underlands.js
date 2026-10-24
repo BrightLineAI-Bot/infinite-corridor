@@ -3,11 +3,11 @@
 // technology: chasm canyons, lava bogs, underground rivers, frozen grottoes with falling snow, bone crypts and fungal
 // hollows. It returns the same map contract as generator 4 (entry/exit, chest, trap, guardian spawn), so encounters,
 // discovery, completion and the monster pack work unchanged. Histories pinned to generators 2-4 never see it.
-import { rng, hashSeed } from "./random.js?v=r375-5713421fb42c";
-import { annotateDungeon, DUNGEON_SIZE_PROFILES } from "./dungeon-framework.js?v=r375-5713421fb42c";
-import { DUNGEON_LAYOUT_VERSION } from "./dungeon-variation.js?v=r375-5713421fb42c";
-import { carvePattern, stitchPattern, PATTERN_CATALOG, ORGANIC_CATALOG } from "./pattern-dungeons.js?v=r375-5713421fb42c";
-import { LANDSCAPE_VERSION, ensureReturnable, trappedTiles, addRamps, valueNoise } from "./landscape.js?v=r375-5713421fb42c";
+import { rng, hashSeed } from "./random.js?v=r381-2e0c0ac5ef7c";
+import { annotateDungeon, DUNGEON_SIZE_PROFILES } from "./dungeon-framework.js?v=r381-2e0c0ac5ef7c";
+import { DUNGEON_LAYOUT_VERSION } from "./dungeon-variation.js?v=r381-2e0c0ac5ef7c";
+import { carvePattern, stitchPattern, PATTERN_CATALOG, ORGANIC_CATALOG } from "./pattern-dungeons.js?v=r381-2e0c0ac5ef7c";
+import { LANDSCAPE_VERSION, ensureReturnable, trappedTiles, addRamps, valueNoise } from "./landscape.js?v=r381-2e0c0ac5ef7c";
 
 export const DUNGEON_GENERATOR_V5 = 5;
 export const LAYOUTS = ["spine", "hub", "ring", "cavern", "crypt", "descent"];
@@ -217,7 +217,10 @@ export function generateExpeditionDungeon(seed, id, recipe = "hollow", options =
   if (g.automaton) { map.automaton = { rule: g.automaton.rule, name: g.automaton.name, pattern: g.automaton.id || null }; map.name = `${g.automaton.name} · ${map.name}`; map.diagnostic.automatonRule = g.automaton.rule; }
   const themeRoll = hashSeed(`${seed}:${id}:under-theme`);
   const themes = THEME_POOLS[options.themePool] || THEME_POOLS[1];
-  if (options.layoutPool >= 5 && !plain && !quiet && (!ladder || ladder.warp) && sizeProfile === "extended" && hashSeed(`${seed}:${id}:warp`) % 100 < WARP.chance) placeWarpDaises(map, dist);
+  // Release 377 (Tim, 2026-10-24: "daises should appear in all the large dungeons. It shouldn't be rare. It's just an easy way to
+  // help me navigate these super large dungeons"): with options.warpAlways (histories first generated from 377 on), every
+  // large crossing gets its pair; older histories keep the old chance.
+  if (options.warpAlways ? sizeProfile === "extended" && !plain : options.layoutPool >= 5 && !plain && !quiet && (!ladder || ladder.warp) && sizeProfile === "extended" && hashSeed(`${seed}:${id}:warp`) % 100 < WARP.chance) placeWarpDaises(map, dist, !!options.warpAlways);
   let theme = options.theme && UNDER_THEMES[options.theme] ? options.theme : options.theme === "none" || grammar === "rooms" || quiet ? null : themeRoll % 100 < themes.chance ? themes.ids[Math.floor(themeRoll / 100) % themes.ids.length] : null;
   if (ladder && !ladder.newThemes && theme && !options.theme && !THEME_POOLS[1].ids.includes(theme)) theme = THEME_POOLS[1].ids[(themeRoll >>> 8) % THEME_POOLS[1].ids.length]; // release 319: the newer environments come later
   if (theme) applyUnderTheme(map, theme, rand);
@@ -228,12 +231,14 @@ export function generateExpeditionDungeon(seed, id, recipe = "hollow", options =
 
 // Two Watcher's daises far apart on the floor the entry reaches: one about a third of the way in, one deep. Each must be
 // found (attuned) before either carries you to the other (Game.useWarpDais).
-function placeWarpDaises(map, dist) {
+function placeWarpDaises(map, dist, always = false) {
   const w = map.width, taken = new Set(map.objects.map((o) => o.y * w + o.x)), maxD = Math.max(...dist);
   const guard = map.enemySpawns.find((e) => e.dungeonRole === "gateWarden"), clear = (i) => { const x = i % w, y = Math.floor(i / w); if (taken.has(i) || dist[i] < 0 || map.tiles[i].blocked) return false; if (guard && Math.hypot(x - guard.x, y - guard.y) < 5) return false; for (const [dx, dy] of N4) if (map.tiles[i + dy * w + dx]?.blocked) return false; return true; };
   const near = (frac) => { let best = -1; for (let i = 0; i < dist.length; i++) if (clear(i) && (best < 0 || Math.abs(dist[i] - maxD * frac) < Math.abs(dist[best] - maxD * frac))) best = i; return best; };
-  const a = near(.3), b = near(.85);
-  if (a < 0 || b < 0 || Math.hypot(a % w - b % w, Math.floor(a / w) - Math.floor(b / w)) < WARP.minApart) return;
+  const apart = (a, b) => a >= 0 && b >= 0 && Math.hypot(a % w - b % w, Math.floor(a / w) - Math.floor(b / w)) >= WARP.minApart;
+  let a = near(.3), b = near(.85);
+  if (!apart(a, b) && always) for (const [fa, fb] of [[.2, .95], [.1, 1], [.05, .7]]) { a = near(fa); b = near(fb); if (apart(a, b)) break; } // release 377: try harder
+  if (!apart(a, b)) return;
   map.objects.push({ id: "warp-dais-a", kind: "warpDais", pair: "warp-dais-b", name: "Watcher's Dais", x: a % w, y: Math.floor(a / w), state: "dormant", actions: ["touch"] },
     { id: "warp-dais-b", kind: "warpDais", pair: "warp-dais-a", name: "Watcher's Dais", x: b % w, y: Math.floor(b / w), state: "dormant", actions: ["touch"] });
   map.warpDaises = true;

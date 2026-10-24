@@ -8,8 +8,8 @@
 // calls guardians in; from gate 3 it hides behind them until they fall. Felling it raises the Gate a tier (harder
 // guardians that borrow moves) and offers a choice of three boons; the first time, it also asks how the story ends,
 // though the climb goes on either way. State: save.farArray (additive). The lore stays open on purpose.
-import { hashSeed, rng } from "./random.js?v=r375-5713421fb42c";
-import { daisDue } from "./listener-arena.js?v=r375-5713421fb42c";
+import { hashSeed, rng } from "./random.js?v=r381-2e0c0ac5ef7c";
+import { daisDue } from "./listener-arena.js?v=r381-2e0c0ac5ef7c";
 
 export const FAR = {
   piecesBase: 2, // gate 1 needs 3 pieces, gate 2 needs 4, ...
@@ -83,7 +83,7 @@ export function beginArrayRun(save, returnPoint, { noListener = false } = {}) {
   f.activeRun = { id, gate: f.gate, listener, kind, returnPoint: { ...returnPoint } };
   return f.activeRun;
 }
-// Release r375-5713421fb42c (listener-arena.ts): from the second Listener on, it waits in its own hall, reached by the dais at the Mouth.
+// Release 375 (listener-arena.ts): from the second Listener on, it waits in its own hall, reached by the dais at the Mouth.
 export function beginListenerArena(save, returnPoint) {
   const f = ensureFarArray(save);
   if (!daisDue(f)) return null;

@@ -7,9 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r375-5713421fb42c";
-import { hashSeed } from "./random.js?v=r375-5713421fb42c";
-import { updateAstralActor } from "./astral-worm.js?v=r375-5713421fb42c";
+import { stageOneBeastReference } from "./stages.js?v=r381-2e0c0ac5ef7c";
+import { hashSeed } from "./random.js?v=r381-2e0c0ac5ef7c";
+import { updateAstralActor } from "./astral-worm.js?v=r381-2e0c0ac5ef7c";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -2146,7 +2146,7 @@ export function updatePackMonster(e, w) {
   const s = e.pack && e.pack.v === MONSTER_PACK_VERSION ? e.pack : (e.pack = freshPackState()), dt = w.dt;
   if (!s.orbitDir) s.orbitDir = hashSeed(`${e.id}:orbit`) % 2 ? 1 : -1;
   e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt); e.scattered = Math.max(0, (Number(e.scattered) || 0) - dt); // release 249: a scatter is brief
-  e.recoil = Math.max(0, (e.recoil || 0) - dt); e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
+  e.recoil = Math.max(0, (e.recoil || 0) - dt); e.hitStun = Math.max(0, (e.hitStun || 0) - dt); staggerGovernor(e, dt); // release 377
   for (const id of Object.keys(s.cd)) s.cd[id] = Math.max(0, s.cd[id] - dt);
   s.gap = Math.max(0, (s.gap || 0) - dt);
   if (e.kind === "voidWalker") {
@@ -2336,6 +2336,23 @@ function voidNovaEruption(f, owner, w) {
 }
 
 // Follow-on prototype: predator only. Final-boss Revenants retain their progression profile.
+// Release 377 (Tim, 2026-10-24: "the bosses with their poise... need to have more poise... so that they can't just get
+// stagger locked... being able to stagger [them] for a while... is fine... But... I just wiped out an entire Revenant
+// dungeon... just by stagger locking them"). The stagger governor: every second a boss-class foe (boss, elite, guardian,
+// Gate Revenant, world beast) spends hit-stunned fills its meter; the meter drains `decay` per second while it is free.
+// A full meter (`limit`, by class) clears the stun and grants `guard` seconds in which blows still land but no longer
+// stun. Knockdowns (BOSS_POISE poise breaks) are separate and unchanged. Ordinary creatures keep their old stagger.
+export const STAGGER_GOVERNOR = { limit: { revenant: .6, boss: .9, elite: 1.3 }, decay: .2, guard: 3 };
+export function staggerClass(e) { return e?.gatePredator ? "revenant" : e?.boss || e?.worldBeast || e?.questingBeast || e?.farArrayBoss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e?.dungeonRole) ? "boss" : e?.eliteId || e?.elite ? "elite" : null; }
+// Call after the frame's hit-stun countdown. Returns true while the foe is guarded (it shrugs stuns off).
+export function staggerGovernor(e, dt) {
+  const k = staggerClass(e); if (!k) return false;
+  const G = STAGGER_GOVERNOR;
+  if (e.staggerGuard > 0) { e.staggerGuard -= dt; e.hitStun = 0; if (e.staggerGuard <= 0) delete e.staggerGuard; return true; }
+  if (e.hitStun > 0) e.staggerMeter = (e.staggerMeter || 0) + dt; else if (e.staggerMeter) { e.staggerMeter -= G.decay * dt; if (e.staggerMeter <= 0) delete e.staggerMeter; } // no field until there is something to count
+  if (e.staggerMeter >= G.limit[k]) { delete e.staggerMeter; e.staggerGuard = G.guard; e.hitStun = 0; return true; }
+  return false;
+}
 export const GATE_REVENANT = {
   spawnPerThousand: 24, legacySpawnPerThousand: 12,
   baseWalk: 2.4, chaseRatio: 1.5, hpFloor: 320, damageFloor: 40, beastShare: 2 / 3,
@@ -2458,7 +2475,7 @@ export function updateGatePredator(e, w) {
   let remaining = Math.min(w.dt, .25);
   while (remaining > 1e-8) {
     const dt = Math.min(GATE_REVENANT.step, remaining); remaining -= dt;
-    e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt); e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
+    e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt); e.hitStun = Math.max(0, (e.hitStun || 0) - dt); staggerGovernor(e, dt); // release 377: never locked
     const inDungeon = !!w.walkable, G = GATE_REVENANT;
     if (gatePoiseBreak(e, w, dt)) continue; // release 271
     if (e.gateEvade) { const v = e.gateEvade; w.move(e, v.x * G.dodge.speed * dt, v.y * G.dodge.speed * dt, { phase: inDungeon }); v.t -= dt; if (v.t <= 0) { e.gateEvade = null; e.untargetable = false; } continue; }
