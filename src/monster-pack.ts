@@ -554,6 +554,10 @@ export const WORM = {
   lavaLength: 6.2, lavaArc: 44, lavaEvery: .09, lavaPerPour: 2, lavaFlight: .12, lavaRun: 1.8, lavaRunTime: .55, lavaGrow: [.35, 1.05], lavaGrowTime: .45, lavaLife: 1.8, lavaTick: .5,
 };
 // The Mountain Turtle (release 241). Balance as data.
+// Release 397 (Tim, 2026-10-24: "the hits... where they're gonna be going on the floor... right now it's like pale red. It
+// should be... pale hot pink... understated and not very bright... translucent... the uniform color for damage all across
+// the game"): every warning of where a blow will land uses these.
+export const DANGER = { fill: "rgba(255,80,190,.18)", fillStrong: "rgba(255,80,190,.32)", edge: "rgba(255,130,210,.72)", hex: "#ff7ccf" };
 export const TURTLE = {
   // Release 261 (Tim: "the turtle can appear in the water... he'll make like a temporary ice floor... walkable tiles... your
   // boat can slide across it... they'll persist for... 5, maybe 10 seconds, and then... unfreeze"): open sea within
@@ -580,7 +584,7 @@ export const GIANT = {
   swingReach: 1.8, swingArc: 150,
   slamReach: .9, slamRadius: 1.5, slamRing: 3.2, slamRingShare: .5,
   skyChance: .55, skyWarn: .95, skyRadius: 1.4, skyLife: .45,
-  coneChance: .55, coneBolts: 3, coneSpread: 22, boltSpeed: 12, boltLife: .9, boltRadius: .32,
+  coneChance: .55, coneBolts: 3, coneSpread: 22, boltSpeed: 12, boltLife: .9, boltRadius: .32, boltWarn: .45, // boltWarn (release 397): the slam's bolts hold, lane shown, before they fly
   chargeTime: 8, chargeSpeed: 1.5, stormEvery: .5, stormRing: [1.5, 4.5], stormWarn: .6, stormRadius: .8, stormLife: .35,
   strikeAt: .55,
   // Menacing slam: stalk with the club up for up to menaceHold s; when within reach, a dodgeable wind-up then the slam
@@ -918,7 +922,7 @@ function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
 
 // Each runner advances its attack; it reads/writes s.data and s.tele (the renderer draws s.tele).
 const START = {
-  giantArcs(e, s) { s.tele = { type: "brace" }; e.giantPose = "arcs"; },
+  giantArcs(e, s) { s.tele = { type: "ring", radius: GIANT.arcRange }; e.giantPose = "arcs"; }, // release 397: the arcs' reach, shown while it crackles
   giantShock(e, s) { const p = s.data.target; s.tele = { type: "circle", x: p.x, y: p.y, radius: GIANT.shockRadius }; e.giantPose = "point"; },
   giantSwing(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + GIANT.swingReach, arc: GIANT.swingArc }; e.giantPose = "swingReady"; },
   giantSlam(e, s) { const f = giantSlamPoint(e, s.data.aim); s.tele = { type: "circle", x: f.x, y: f.y, radius: GIANT.slamRadius }; e.giantPose = "slamRaise"; },
@@ -1112,7 +1116,7 @@ const RUN = {
     if (roll("cone") < GIANT.coneChance) {
       const a0 = Math.atan2(p.y - f.y, p.x - f.x), spread = GIANT.coneSpread * Math.PI / 180;
       for (let i = 0; i < GIANT.coneBolts; i++) { const a = a0 + (GIANT.coneBolts > 1 ? (i / (GIANT.coneBolts - 1) - .5) * spread : 0);
-        w.addEffect({ kind: "giantBolt", owner: e.id, x: f.x, y: f.y, vx: Math.cos(a) * GIANT.boltSpeed, vy: Math.sin(a) * GIANT.boltSpeed, radius: GIANT.boltRadius, arming: 0, life: GIANT.boltLife, damage: Math.ceil(dmg * .6) }); }
+        w.addEffect({ kind: "giantBolt", owner: e.id, x: f.x, y: f.y, vx: Math.cos(a) * GIANT.boltSpeed, vy: Math.sin(a) * GIANT.boltSpeed, radius: GIANT.boltRadius, arming: GIANT.boltWarn, armTotal: GIANT.boltWarn, life: GIANT.boltLife, damage: Math.ceil(dmg * .6) }); } // release 397: each bolt shows its lane before it flies
     }
     toPhase(s, "recover", ATTACK_MODULES.giantSlam.recover);
   },

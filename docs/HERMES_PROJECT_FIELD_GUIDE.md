@@ -2694,6 +2694,20 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 397: one warning colour; the Giant's and Turtle's unseen hits — 2026-10-24
+
+Tim, 2026-10-24: "we need to register the... wind ups... for the world bosses... the robot, I was getting hit by lightning that I didn't even see where it was coming from... similar to the turtle"; "the hits... on the floor... right now it's like pale red. It should be... pale hot pink... understated... translucent... the uniform color for damage all across the game".
+
+**CODE:**
+- `monster-pack.ts` `DANGER{fill, fillStrong, edge, hex}` is the one warning palette. It is imported by `monster-render.ts` (every `drawPackTelegraphs` shape, `drawWarningCircle`, the Morphling's warnings), `lightning-giant-render.ts` (sky marks, the bolt lanes, the arc reach) and `renderer.ts` (legacy enemy and elite windups).
+- `giantArcs` telegraphs a `ring` of `GIANT.arcRange`; the live `giantArc` effect draws the reach.
+- The slam's `giantBolt`s spawn with `arming: GIANT.boltWarn` (.45 s): `tickPackEffects` holds armed effects, and the renderer draws each bolt's lane while armed.
+- The Turtle's `comet` effect draws its landing ring at `f.to`.
+- `glyphs.ts` keeps 4 entries per gear layout.
+- Tests: `tests/danger-telegraphs-397.test.ts`.
+
+**BOUNDARY:** Live hazards (lava, gas, frost, ooze, the void art) keep their own looks; only the warnings of where a blow will land are pink. Damage, timings and AI are unchanged, except that the slam bolts leave .45 s later.
+
 ## Release 395: the town smith — 2026-10-24
 
 Tim, 2026-10-24: "the smithy can do all those things that you just described": salvage, reforge, add a socket, masterwork, each opening as Listeners fall.

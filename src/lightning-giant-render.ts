@@ -1,6 +1,7 @@
 // The Lightning Giant (release 257, Tim 2026-10-21): a big armoured, Armored Core-style robot that has lost one arm. It
 // fights with a Tesla mace in the other, and boosts around on an energy eruption from the empty shoulder socket. Also its
 // lightning effects and the knocked-down Wayfarer. Native Canvas 2D, drawn by code.
+import { DANGER } from "./monster-pack.ts"; // release 397
 const TAU = Math.PI * 2;
 
 // Body proportions in body units (u = tile size x actor scale); club poses as angles from straight ahead (0),
@@ -351,11 +352,15 @@ export function drawGiantEffect(ctx, f, s, now, { reduceMotion = false } = {}) {
   const P = (x, y) => ({ x: (x + .5) * s, y: (y + .62) * s }), at = P(f.x, f.y), r = (f.radius || 1) * s, life = Math.max(0, f.life ?? 0), total = f.total || .5;
   ctx.save();
   if (f.kind === "giantArc") {
+    { const rr = (f.range || 7.5) * s; ctx.fillStyle = DANGER.fill; ctx.strokeStyle = DANGER.edge; ctx.lineWidth = Math.max(1, s * .04); ctx.beginPath(); ctx.ellipse(at.x, at.y - .2 * s, rr, rr * .7, 0, 0, TAU); ctx.fill(); ctx.stroke(); } // release 397: the arcs' reach while they live
     const u = s * Math.max(.6, Number(f.scale) || 2), from = { x: at.x, y: at.y + .2 * s - u * .75 }, to = P(f.tx ?? f.x, f.ty ?? f.y);
     const n = 4, reach = f.connected ? 1 : .55;
     for (let i = 0; i < n; i++) { const ox = (i - (n - 1) / 2) * s * .12, end = { x: from.x + (to.x - from.x) * reach + ox, y: from.y + (to.y - .35 * s - from.y) * reach };
       lightningBolt(ctx, from.x + ox * .3, from.y, end.x, end.y, { now: reduceMotion ? 0 : now, seed: (f.seed || 0) * 10 + i, segments: 9, jitter: .16, width: Math.max(1.2, s * .05) }); }
     if (f.connected) { ctx.fillStyle = "rgba(234,250,255,.6)"; ctx.beginPath(); ctx.arc(to.x, to.y - .35 * s, s * .18, 0, TAU); ctx.fill(); }
+  } else if (f.kind === "giantBolt" && f.arming > 0) { // release 397: the lane it will fly, before it flies
+    const v = Math.hypot(f.vx || 0, f.vy || 1) || 1, len = v * (f.life || .9) * s, a = Math.atan2(f.vy, f.vx), w2 = ((f.radius || .3) + .3) * s;
+    ctx.translate(at.x, at.y - s * .2); ctx.rotate(a); ctx.fillStyle = DANGER.fill; ctx.strokeStyle = DANGER.edge; ctx.lineWidth = Math.max(1, s * .03); ctx.fillRect(0, -w2, len, w2 * 2); ctx.strokeRect(0, -w2, len, w2 * 2);
   } else if (f.kind === "giantBolt") {
     const v = Math.hypot(f.vx || 0, f.vy || 1) || 1, tail = { x: at.x - (f.vx / v) * s * .9, y: at.y - (f.vy / v) * s * .9 - s * .2 };
     lightningBolt(ctx, tail.x, tail.y, at.x, at.y - s * .2, { now: reduceMotion ? 0 : now, seed: Math.round(f.x * 13 + f.y * 7), segments: 5, jitter: .25, width: Math.max(1.2, s * .06), branch: false });
@@ -365,9 +370,9 @@ export function drawGiantEffect(ctx, f, s, now, { reduceMotion = false } = {}) {
     ctx.strokeStyle = "#eafaff"; ctx.lineWidth = Math.max(1, s * .05); ctx.beginPath(); ctx.ellipse(at.x, at.y, r * (.5 + k2), r * (.5 + k2) * .45, 0, 0, TAU); ctx.stroke();
   } else if (f.kind === "giantSky") {
     if (f.arming > 0) { // the mark: a crackling ring that tightens until the bolt falls
-      const prog = 1 - f.arming / (f.armTotal || 1); ctx.strokeStyle = "rgba(127,214,255,.85)"; ctx.lineWidth = Math.max(1, s * .04);
-      ctx.beginPath(); ctx.ellipse(at.x, at.y, r, r * .45, 0, 0, TAU); ctx.stroke();
-      ctx.fillStyle = `rgba(127,214,255,${.12 + .25 * prog})`; ctx.beginPath(); ctx.ellipse(at.x, at.y, r * prog, r * prog * .45, 0, 0, TAU); ctx.fill();
+      const prog = 1 - f.arming / (f.armTotal || 1); ctx.fillStyle = DANGER.fill; ctx.strokeStyle = DANGER.edge; ctx.lineWidth = Math.max(1, s * .04); // release 397: the uniform warning colour
+      ctx.beginPath(); ctx.ellipse(at.x, at.y, r, r * .45, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = `rgba(255,110,199,${.1 + .2 * prog})`; ctx.beginPath(); ctx.ellipse(at.x, at.y, r * prog, r * prog * .45, 0, 0, TAU); ctx.fill();
     } else {
       const k2 = 1 - life / total; ctx.globalAlpha = 1 - k2 * k2;
       lightningBolt(ctx, at.x + s * .3, at.y - s * (f.storm ? 6 : 8), at.x, at.y, { now, seed: Math.round(f.x * 31 + f.y * 17), segments: 11, jitter: .07, width: Math.max(2, s * (f.storm ? .07 : .12)) });
