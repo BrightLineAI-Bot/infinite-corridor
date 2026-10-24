@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 399: kills pay the regional experience multiplier — 2026-10-24
+
+Tim, 2026-10-24: "the further away we get from the Ember Refuge... the harder the monsters get. But we should also get more experience for fighting those harder monsters". He also asked to lower the Questing Beast's health by 25%. Its health is floored at `BEAST_BASELINE.questingDominance` (1.15×) of the toughest world beast, which existing tests enforce. Given that trade-off, Tim chose to leave its health as it is.
+
+**CODE:** `world.ts` `regionalThreat` has long returned `xpMultiplier` (1 + .06 per ring), and `game.ts` stamps it on each foe as `e.xpMultiplier`, but `defeatEnemy` awarded a flat 10 (35 for a boss). The award now multiplies by `e.xpMultiplier` (at least 1), which also pays Aperture-encounter multipliers. Tests: `tests/regional-xp-399.test.ts`.
+
+**BOUNDARY:** Marks, drops and creature stats are unchanged. The Questing Beast is unchanged.
+
 ## Release 397: one warning colour; the Giant's and Turtle's unseen hits — 2026-10-24
 
 Tim, 2026-10-24: "we need to register the... wind ups... for the world bosses... the robot, I was getting hit by lightning that I didn't even see where it was coming from... similar to the turtle"; "the hits... on the floor... right now it's like pale red. It should be... pale hot pink... understated... translucent... the uniform color for damage all across the game".
