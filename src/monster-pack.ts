@@ -666,7 +666,7 @@ export const CRYSTAL = {
   // break and fall through the floor and then you can get a bunch of hits in, and then it will... get up and dodge away").
   // `poiseHits` landed blows (forgotten after `poiseForget` s without one) break it: it drops to the floor for `breakTime`
   // s (falling over `fallTime`, rising over `riseTime`) and cannot dodge, attack or move; then it rises and springs away.
-  poiseHits: 14, poiseForget: 5, breakTime: 3.2, fallTime: .25, riseTime: .4, // poiseHits: Tim, "let's do like ten hits for a poise break"; 14 from release 285, with fewer dodges
+  poiseHits: 10, poiseForget: 5, breakTime: 3.2, fallTime: .25, riseTime: .4, // poiseHits: Tim, "let's do like ten hits for a poise break"; 14 from release 285, with fewer dodges
   // Engaged, it settles where the Wayfarer can reach it (release 259; Tim: "its end goal should be... a place the player can
   // walk to... it can spend some time between walls, that's fine"): after `wallLinger` s inside walls (or over ground the
   // Wayfarer cannot reach) it heads for the nearest reachable floor within `manifestSearch` tiles at `manifestSpeed`, and
@@ -674,13 +674,17 @@ export const CRYSTAL = {
   // `roamSight` for `forgetAfter` s, it drops its aggro and returns to its own patrol, which roams the whole dungeon.
   wallLinger: 1.5, manifestSearch: 10, manifestSpeed: 2.4, manifestBlink: 1.2, forgetAfter: 12, // wallLinger was 2.5 (release 285)
   // Release 285 (Tim, 2026-10-22: "he retreats to the wall constantly... for every 5 seconds he can only spend 1 second in
-  // the tile... so that I actually get to fight him"): a hidden wall budget. Engaged, each second off reachable floor spends
+  // the tile... so that I actually get to fight him"): a hidden wall budget. Release 401: in a dungeon it no longer drifts into
+  // walls at all (game.ts move), so the budget only governs ground the Wayfarer cannot reach (pits, deep water). Engaged, each second off reachable floor spends
   // a second of `wallBudget`; it refills over `wallWindow` s on reachable floor. Spent, it must come out, even mid-attack.
   wallBudget: 1, wallWindow: 5,
   // Release 285 (Tim: "reduce his dodging... so he should stay and fight for a little bit... increase the amount of hits it
   // takes to stagger him... maybe like 10 seconds where it can't be staggered again"): its own evade cooldown (the shared
   // one is QB_MOVES.evadeCooldown, 1.1 s), and after rising from a poise break it cannot break again for `poiseGuard` s.
-  evadeCooldown: 3, evadeCooldownEnraged: 2.2, poiseGuard: 10,
+  // Release 401 (Tim: "he dodges too much... a smaller stagger cooldown... he just runs too much, and I never get to actually
+  // fight him"): it dodges at most every 5 s (3.5 s enraged), breaks after 10 blows (was 14), and can break again 4 s after
+  // rising (was 10).
+  evadeCooldown: 5, evadeCooldownEnraged: 3.5, poiseGuard: 4,
   touchAggro: 1.1, // release 287: unprovoked, it notices the Wayfarer only this close (a touch) or when hurt
   // In a dungeon it may phase through an interior wall up to this many tiles thick (Game.roamerBounds), never beyond the edge.
   boundsSpan: 3,
@@ -2041,7 +2045,7 @@ function crystalPoise(e, s, w, p) {
   s.poiseGuard = Math.max(0, (s.poiseGuard || 0) - dt); // release 285: no new break for CRYSTAL.poiseGuard s after rising
   if (s.hpSeen != null && hp < s.hpSeen && !(s.poiseGuard > 0)) { s.poiseHits = (s.poiseHits || 0) + 1; s.poiseIdle = 0; } else s.poiseIdle = (s.poiseIdle || 0) + dt;
   s.hpSeen = hp; if (s.poiseIdle >= CRYSTAL.poiseForget) s.poiseHits = 0;
-  if (!(s.broken > 0) && (s.poiseHits || 0) >= CRYSTAL.poiseHits && !s.evade) {
+  if (!(s.broken > 0) && (s.poiseHits || 0) >= CRYSTAL.poiseHits) { // release 401: a dodge no longer saves it once its poise is spent
     s.broken = CRYSTAL.breakTime; s.poiseHits = 0; if (s.attack) endAttack(e, s); s.tele = null; s.vel = null; w.release?.(e); // a held Wayfarer is let go
   }
   if (!(s.broken > 0)) { e.crystalFall = 0; return false; }
