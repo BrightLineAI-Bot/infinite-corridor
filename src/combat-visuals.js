@@ -1,5 +1,5 @@
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r417-e82ec8d2169a";
-import { SHADOW_CLONE } from "./late-spells.js?v=r417-e82ec8d2169a";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r421-45929eb37a4e";
+import { SHADOW_CLONE } from "./late-spells.js?v=r421-45929eb37a4e";
 export function drawRangedEffects(ctx,game,width,height) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [

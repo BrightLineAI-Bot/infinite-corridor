@@ -7,9 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r417-e82ec8d2169a";
-import { hashSeed } from "./random.js?v=r417-e82ec8d2169a";
-import { updateAstralActor } from "./astral-worm.js?v=r417-e82ec8d2169a";
+import { stageOneBeastReference } from "./stages.js?v=r421-45929eb37a4e";
+import { hashSeed } from "./random.js?v=r421-45929eb37a4e";
+import { updateAstralActor } from "./astral-worm.js?v=r421-45929eb37a4e";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -498,7 +498,14 @@ const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 function unit(x, y) { const m = Math.hypot(x, y) || 1; return { x: x / m, y: y / m }; }
 function bodyRadius(e) { return Math.max(.28, Number(e?.bodyRadius) || .38); }
 function damageOf(e, attackId) { return Math.max(1, Math.ceil((Number(e.damage) || 1) * (ATTACK_MODULES[attackId]?.damage ?? 1))); }
-function cooldownScale(e) { const enraged = e.boss && e.hp <= e.maxHp * PACK_BOSS_TEMPLATE.enrage; return (Number(e.attackCooldownScale) || 1) * (enraged ? .8 : 1); }
+// Release r421-45929eb37a4e (Tim: "the bosses do too much damage... they need to have slightly more wind ups for their attacks... reduce their
+// damage by... 15%... more cool down between their attacks... they attack way too aggressively"): every boss and Revenant
+// (staggerClass) hits for `damage` of before, winds up `windup` times longer, waits `cooldown` times longer before an attack
+// comes round again and pauses `gap` times longer between attacks. Elites and ordinary creatures are unchanged. The game's
+// world turns it on (`w.bossPace`); a bare module world keeps the base timings the attack modules are written in.
+export const BOSS_PACE = { damage: .85, windup: 1.2, cooldown: 1.25, gap: 1.35 };
+export const bossPaced = (e) => { const k = staggerClass(e); return k === "boss" || k === "revenant"; };
+function cooldownScale(e) { const enraged = e.boss && e.hp <= e.maxHp * PACK_BOSS_TEMPLATE.enrage; return (Number(e.attackCooldownScale) || 1) * (enraged ? .8 : 1) * (e.pack?.paced ? BOSS_PACE.cooldown : 1); }
 function segmentDistance(p, a, b) { const vx = b.x - a.x, vy = b.y - a.y, l = vx * vx + vy * vy || 1, t = Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.y - a.y) * vy) / l)); return Math.hypot(p.x - (a.x + vx * t), p.y - (a.y + vy * t)); }
 function inArc(e, target, aim, radius, arcDegrees) {
   const dx = target.x - e.x, dy = target.y - e.y, d = Math.hypot(dx, dy);
@@ -609,7 +616,9 @@ export const KNIGHT = {
   cannonTrack: 1.8, cannonLength: 11, cannonTick: .3, cannonWidth: .5,
   swords: 6, swordRing: [1.2, 2.6], swordRadius: .75, swordFall: [.9, 1.6],
   orbs: 3, orbsEnraged: 6, orbEnrage: .5, orbOrbit: 1.6, orbSpin: 3, orbFloat: .6, orbSpeed: 5.5, orbHome: 2, orbTurn: 3.2, orbLife: 5, orbRadius: .3, orbEvery: .4,
-  missiles: 8, missileSpeed: 5, missileTurn: 2.4, missileFuel: 2.4, missileBlast: 1.1, missileRadius: .25,
+  // Release r421-45929eb37a4e (Tim: "they shouldn't home in on you forever... like 2 seconds. And then they should just fly straight... they
+  // should be blocked by walls and blocks"): missiles home for missileHome s, then fly straight until missileFuel runs out.
+  missiles: 8, missileSpeed: 5, missileTurn: 2.4, missileHome: 2, missileFuel: 4, missileBlast: 1.1, missileRadius: .25,
   mistTime: .55, mistLand: 1.6,
   // Tim: its swings sometimes throw energy off the sword, reaching about as far as the Wayfarer's own blades
   // (Verge Cleaver's 1.75, Cinder Pike's 2.45), so it can strike from where you strike it
@@ -909,7 +918,7 @@ function voidNovaRun(e, s, w) {
 
 function beginAttack(e, s, id, w) {
   const attack = ATTACK_MODULES[id];
-  s.attack = id; s.phase = "windup"; s.t = attack.windup || .5; s.seq++; s.data = {}; s.hitOnce = false;
+  s.attack = id; s.phase = "windup"; s.t = (attack.windup || .5) * (s.paced ? BOSS_PACE.windup : 1); s.seq++; s.data = {}; s.hitOnce = false; // release 421
   s.cd[id] = attack.cooldown * cooldownScale(e);
   const p = center(w.player);
   s.data.aim = unit(p.x - e.x, p.y - e.y);
@@ -919,7 +928,7 @@ function beginAttack(e, s, id, w) {
 function endAttack(e, s) {
   const attack = ATTACK_MODULES[s.attack];
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
-  s.gap = e.attackGap ?? (attack?.recover || .6) * .6 + .45; // the Questing Beast barely pauses (release 187)
+  s.gap = (e.attackGap ?? (attack?.recover || .6) * .6 + .45) * (s.paced ? BOSS_PACE.gap : 1); // the Questing Beast barely pauses (release 187); 421: bosses pause longer
   e.voidDashing = false; e.voidCharging = false;
   e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0; e.giantThrust = false;
 }
@@ -2149,6 +2158,7 @@ export function updatePackMonster(e, w) {
   if(e.kind === "voidWalker" && e.astralAllyOf && !w.astralAllyContext) { updateAstralWalkerAllyFixture(e,w.enemies.find(q=>q.id===e.astralAllyOf),w); return; }
   const def = packDefinition(e);
   if (!def) return;
+  if (e.pack && w.dt > 0) { if (w.bossPace && bossPaced(e)) e.pack.paced = true; else delete e.pack.paced; } // release 421 (a paused frame changes nothing)
   if (e.kind === "astralWorm" || e.kind === "astralMirage") { if (w.dt > 0) updateAstralActor(e, w); return; }
   if (e.kind === "voidWalker" && !(w.dt > 0)) return;
   if (e.dead) { if (e.kind === "voidWalker") { voidClear(e, w); if (e.pack?.attack) endAttack(e, e.pack); } return; }
@@ -2510,7 +2520,7 @@ export function updateGatePredator(e, w) {
       gateMove(e, w, dt);
       if (e.gateGap > 0 || distance > GATE_REVENANT.range || !w.los(e, w.player, true)) continue;
       const seq = e.gateSequence || 0, move = GATE_REVENANT.moves[seq % GATE_REVENANT.moves.length]; e.gateSequence = seq + 1;
-      const cfg = GATE_REVENANT[move], warn = move === "wraith" ? ATTACK_MODULES.voidWraiths.windup : cfg.warn;
+      const cfg = GATE_REVENANT[move], warn = (move === "wraith" ? ATTACK_MODULES.voidWraiths.windup : cfg.warn) * (w.bossPace ? BOSS_PACE.windup : 1); // release 421
       a = e.gateAttack = { move, seq, target: { x: w.player.x, y: w.player.y }, phase: "warn", left: warn, emitted: 0, emitIn: 0 };
       e.telegraph = warn; continue;
     }
@@ -2528,7 +2538,7 @@ export function updateGatePredator(e, w) {
       if (a.left <= 0) { a.phase = "recover"; a.left = GATE_REVENANT.recover; }
     } else if (a.phase === "recover") {
       gateMove(e, w, dt);
-      if (a.left <= 0) { resetGateAttack(e); e.gateGap = GATE_REVENANT.gap; }
+      if (a.left <= 0) { resetGateAttack(e); e.gateGap = GATE_REVENANT.gap * (w.bossPace ? BOSS_PACE.gap : 1); } // release 421
     }
   }
 }
@@ -2625,13 +2635,13 @@ export function tickPackEffects(effects, w) {
         if (f.homeFor > 0) { const turnTime = Math.min(f.homeFor, w.dt); f.homeFor = Math.max(0, f.homeFor - w.dt); const want = Math.atan2(p.y - f.y, p.x - f.x), cur = Math.atan2(f.vy, f.vx), diff = ((want - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-KNIGHT.orbTurn * turnTime, Math.min(KNIGHT.orbTurn * turnTime, diff)); f.vx = Math.cos(a) * KNIGHT.orbSpeed; f.vy = Math.sin(a) * KNIGHT.orbSpeed; }
         if (!(f.homeFor > 0)) f.state = "straight";
         f.x += f.vx * w.dt; f.y += f.vy * w.dt;
-        if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0;
+        if (w.shotBlocked ? w.shotBlocked(f.x + .5, f.y + .5) : w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0; // release 421: builds stop them too
         else if (distance(p, f) <= f.radius + .3) { f.life = 0; w.hurt(owner || null, f.damage, { jumpable: false, source: "knightOrb" }); }
       }
     } else if (f.kind === "missile") { // homing; bursts on whatever it meets, or by itself when its fuel runs out
-      const want = Math.atan2(p.y - f.y, p.x - f.x), cur = Math.atan2(f.vy, f.vx), diff = ((want - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-KNIGHT.missileTurn * w.dt, Math.min(KNIGHT.missileTurn * w.dt, diff));
-      f.vx = Math.cos(a) * KNIGHT.missileSpeed; f.vy = Math.sin(a) * KNIGHT.missileSpeed;
-      const nx = f.x + f.vx * w.dt, ny = f.y + f.vy * w.dt, wall = w.tileOpen && !w.tileOpen(nx + .5, ny + .5), hit = distance(p, f) <= f.radius + .35;
+      if (f.age <= KNIGHT.missileHome) { const want = Math.atan2(p.y - f.y, p.x - f.x), cur = Math.atan2(f.vy, f.vx), diff = ((want - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-KNIGHT.missileTurn * w.dt, Math.min(KNIGHT.missileTurn * w.dt, diff));
+      f.vx = Math.cos(a) * KNIGHT.missileSpeed; f.vy = Math.sin(a) * KNIGHT.missileSpeed; } // release 421: then straight
+      const nx = f.x + f.vx * w.dt, ny = f.y + f.vy * w.dt, wall = w.shotBlocked ? w.shotBlocked(nx + .5, ny + .5) : w.tileOpen && !w.tileOpen(nx + .5, ny + .5), hit = distance(p, f) <= f.radius + .35;
       if (!wall && !hit && f.life - w.dt > 0) { f.x = nx; f.y = ny; }
       else { if (distance(p, f) <= KNIGHT.missileBlast + .2) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "knightMissile" }); w.addEffect({ kind: "nanoBurst", owner: f.owner, x: f.x, y: f.y, radius: KNIGHT.missileBlast, arming: 0, life: .4, total: .4, damage: 0 }); f.life = 0; continue; }
     } else if (f.kind === "debris" && f.medium === "water") {

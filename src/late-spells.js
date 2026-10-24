@@ -17,7 +17,7 @@
 // it... if you're moving in a direction, it should be cast directly behind you... the normal distance is 5"): it falls
 // `distance` tiles behind a moving Wayfarer, a tap may set it up to `placeRange` away, and its swings and shots go for the
 // locked target (game.ts).
-// Release r417-e82ec8d2169a (Tim: "it should spawn within that circle around the character when you give it the default press. It can get
+// Release 417 (Tim: "it should spawn within that circle around the character when you give it the default press. It can get
 // positioned up to the max distance by holding the clone button... a shadow should travel over the floor... the clone should
 // spawn where the shadow is when you pick up your finger"): a press sets the shadow `near` you; holding the button carries it
 // outward at `grow` tiles a second (after `tapGrace` seconds, so a tap is the shortest hold) up to `distance`; letting go
