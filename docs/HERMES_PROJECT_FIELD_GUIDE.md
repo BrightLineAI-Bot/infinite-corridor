@@ -2694,6 +2694,24 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 417: the Shadow Clone, placed by holding — 2026-10-24
+
+Tim, 2026-10-24: "The shadow clone spawn too far away it should spawn within that circle around the character when you give it the default press. It can get positioned up to the max distance by holding the clone button. So a shadow should travel over the floor indicating the position of the clone and the clone should spawn where the shadow is when you pick up your finger... basically tapping the button counts like the shortest press and hold duration."
+
+**CODE:**
+- `late-spells.ts`: `SHADOW_CLONE` gains `near:1, grow:6, tapGrace:.12`; `distance` (5) is now the farthest a hold reaches. `chargeDistance(held)` gives how far the shadow has gone after `held` seconds.
+- `game.castSlot` records which button cast (`castAction`: "spell" for A, "spell2" for B).
+- `castShadowClone` sets the clone `near` you (`cloneOffset(..., SHADOW_CLONE.near)`) with `charging {action, start, dir}`, and no longer arms the tap placement (`cloneAim` stays false).
+- `tickCloneCharge(held, now)`, run each frame from `update` with `input.held(action)`:
+  - while the button is held, it moves the offset out along `dir` (re-aimed behind you while you move);
+  - on release, it clears `charging` and gives the lifetime back for the time held.
+- While charging, the clone neither swings nor shoots. Stepping in settles it first.
+- `combat-visuals.ts` draws a charging clone as a floor shadow with a tether, inside a dotted ring of `distance`.
+- The spell text says "Hold the button to send it farther"; `maxRange` is 5.
+- Tests: `tests/shadow-clone-417.test.ts`; `tests/late-spells-365.test.ts` no longer expects a tap to place it.
+
+**BOUNDARY:** A cast from a path without a button (`castKey`) settles at once beside you. Stepping into the clone, its lifetime, cooldown, half-damage copies and target lock are unchanged.
+
 ## Release 415: Ilse, the Lamplighter — 2026-10-24
 
 The daily narrative task, `docs/narrative-bible.md` section 7, step 6 (the first of Ilse, the Seven Bells and margins in crossings). Gilgamesh's recited voice (step 5) still waits for a public-domain source text.

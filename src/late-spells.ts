@@ -17,7 +17,12 @@
 // it... if you're moving in a direction, it should be cast directly behind you... the normal distance is 5"): it falls
 // `distance` tiles behind a moving Wayfarer, a tap may set it up to `placeRange` away, and its swings and shots go for the
 // locked target (game.ts).
-export const SHADOW_CLONE = { distance: 5, placeRange: 5, share: .5, blockedFor: 1 };
+// Release 417 (Tim: "it should spawn within that circle around the character when you give it the default press. It can get
+// positioned up to the max distance by holding the clone button... a shadow should travel over the floor... the clone should
+// spawn where the shadow is when you pick up your finger"): a press sets the shadow `near` you; holding the button carries it
+// outward at `grow` tiles a second (after `tapGrace` seconds, so a tap is the shortest hold) up to `distance`; letting go
+// settles the clone there. `placeRange` stays the farthest a placement may reach.
+export const SHADOW_CLONE = { distance: 5, placeRange: 5, share: .5, blockedFor: 1, near: 1, grow: 6, tapGrace: .12 };
 export const GRAVITY_WELL = { pull: 2.4, bossPull: .5, eye: .5, shotTurn: 9 }; // shotTurn (release 367): how hard it bends a hostile shot inside the swirl, per second
 export const STILLPOINT = { slow: .4 };
 
@@ -32,6 +37,8 @@ export function cloneOffset(move, facing, D = SHADOW_CLONE.distance) {
 export function clampPlacement(dx, dy, range = SHADOW_CLONE.placeRange) {
   const m = Math.hypot(dx, dy); return m <= range ? { x: dx, y: dy } : { x: dx / m * range, y: dy / m * range };
 }
+// How far a held shadow has travelled after `held` seconds.
+export const chargeDistance = (held) => Math.min(SHADOW_CLONE.distance, SHADOW_CLONE.near + SHADOW_CLONE.grow * Math.max(0, held - SHADOW_CLONE.tapGrace));
 export const clonePosition = (player, clone) => ({ x: player.x + clone.ox, y: player.y + clone.oy });
 
 // Per frame: the Gravity Well pulls and Stillpoint holds. `enemies` and `projectiles` are the Game's; `open(x, y)` says

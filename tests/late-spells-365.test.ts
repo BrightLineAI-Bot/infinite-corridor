@@ -32,9 +32,9 @@ test('the clone falls in behind a moving Wayfarer, beside a still one; a tap set
 
 test('cast, place, follow, copy blows, then step into it; a wall says Blocked', () => {
   const { s, g, w } = arena(); setSlot(s, 'a', 'spell:shadow-clone');
-  assert.equal(g.castSlot('a'), true); assert.ok(g.shadowCloneActive()); assert.equal(g.cloneAim, true);
-  assert.equal(g.placeShadowClone(15.5 + 2, 15.45), true); assert.equal(g.cloneAim, false); assert.ok(Math.abs(g.shadowClone.ox - 2) < 1e-9);
-  assert.equal(g.placeShadowClone(10, 10), false, 'only the first tap places it');
+  assert.equal(g.castSlot('a'), true); assert.ok(g.shadowCloneActive()); assert.equal(g.cloneAim, false, 'release 417: placed by holding, not a tap');
+  g.tickCloneCharge(false); assert.equal(g.shadowClone.charging, undefined); Object.assign(g.shadowClone, { ox: 2, oy: 0 });
+  assert.equal(g.placeShadowClone(10, 10), false, 'a tap does not move it');
   g.player.x = 10; assert.ok(Math.abs(g.player.x + g.shadowClone.ox - 12) < 1e-9, 'it keeps its offset as you move');
   const foe = g.createEnemyFromSpawn({ kind: 'ashling', x: 13, y: 15 }); foe.maxHp = foe.hp = 500; g.enemies = [foe]; s.lastAim = { x: 1, y: 0 }; g.player.meleeAim = { x: 1, y: 0 };
   const before = foe.hp; g.player.attackReadyAt = 0; const hits = g.primaryAttack(1000, { x: 1, y: 0 }); assert.equal(hits.length, 0, 'the Wayfarer is out of reach'); assert.ok(foe.hp < before, 'the clone struck');
