@@ -38,13 +38,13 @@ test('rock that rings hollow resists the standard shovel and yields to the iron 
   assert.equal(s.digging.iron, undefined, 'a spent iron shovel leaves no field');
 });
 
-test('the iron shovel tunnels deeper than the standard one, and never the map edge', () => {
+test('the iron shovel reaches no deeper than the standard one (release 381), and never the map edge', () => {
   const s = save(), m = sealedMap(), key = 'dungeon:IRON-TEST:g1:2:2:gate';
   m.tiles[1 * W + 8] = { x: 8, y: 1, kind: 'wall', blocked: true };
   s.digging.shovel = 6; s.digging.iron = 2;
   for (let x = 4; x < 7; x++) assert.equal(dig(s, m, planDig(m, x, 4, 'right', key), key).ok, true);
-  const plain = planDig(m, 7, 4, 'right', key); assert.equal(plain.ok, false); assert.equal(plain.resists, true); assert.match(plain.reason, /too deep/);
-  assert.equal(planDig(m, 7, 4, 'right', key, { iron: true }).ok, true);
+  const plain = planDig(m, 7, 4, 'right', key); assert.equal(plain.ok, false); assert.notEqual(plain.resists, true); assert.match(plain.reason, /too deep/);
+  assert.equal(planDig(m, 7, 4, 'right', key, { iron: true }).ok, false, 'three blocks, iron or not');
   assert.equal(planDig(m, 1, 4, 'left', key, { iron: true }).ok, false, 'the edge never');
   assert.equal(planDig(m, 4, 4, 'right', 'far-array:IRON-TEST:arena1', { iron: true }).ok, false, 'temporary places never');
 });
