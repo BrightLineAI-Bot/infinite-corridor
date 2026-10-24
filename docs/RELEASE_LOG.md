@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**387**
+**389**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 385 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's walled form becomes the Morphling: cables, jaw, sink, worms, spin, lunge | Building. |
+| 387 | Claude | `claude/dreamy-rubin-yn6q2p` | Your journey stats; digging finds scale with the Aperture tier; Shadow Clone range 5 and locked-target aim; dead playerAttack removed | Building. |
+| 385 | Claude | PR #175 | The Listener's walled form becomes the Morphling: cables, jaw, sink, worms, spin, lunge | Merged. Not published. |
 | 383 | Claude | PR #174 | Cinder iron smelts into spheres; the robot's Empowered mode and iron re-plating | Merged. Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 

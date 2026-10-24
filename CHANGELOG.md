@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 387 — your journey, and richer walls.
+  - **Your journey:** the Wayfarer tab now lists time played, sections explored, dungeons cleared, world bosses and Listeners felled, towns raised and blocks dug.
+  - **Digging scales with the Aperture:** every 4 Aperture tiers, walls are a little likelier to hold something (+2 points), and marks and materials come half again as plentiful (spheres stay one). Disturbed earth scales the same way.
+  - **Cleanup:** an old, unused combat helper is gone.
+  - **Shadow Clone:** it now falls 5 tiles behind you when you are moving (beside you when still), and a tap can set it up to 5 tiles away. Its swings and shots go for the creature you have tapped (locked). Tapping a creature while the shadow waits to be set locks that creature instead of moving the shadow.
+
 - Release 385 — the Morphling.
   - **The Listener's walled form** (when you have severed the line) is now the Morphling: a huge, horned, muscular body whose arms keep changing between fists, claws, tentacles, cables and stone. Every few seconds it takes one of six moves:
     - **Cables:** it shoots cables to the walls in every direction, and pulses ride back and forth along them. Jump the pulses.

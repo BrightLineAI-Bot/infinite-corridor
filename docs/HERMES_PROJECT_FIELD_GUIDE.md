@@ -1954,7 +1954,7 @@ Item generation is a pure function of seed and level (`items.ts:15`). Tier is de
 
 The live path is `Game.primaryAttack` (`game.ts:2293`), which reads `primaryProfile` from `items.ts:7`, builds geometry with `meleeAttackGeometry` (`game.ts:463`), and resolves hits with `primaryAttackHits` (`game.ts:477`), invoked at `game.ts:2298-2306` and previewed for the HUD at `game.ts:1040`. The player attack cooldown is set to `now + 360` at `game.ts:2358`.
 
-`playerAttack` in `combat.ts:7` is the older helper. It is imported at `game.ts:28` and never called. Its cooldown was 420 ms and its damage formula was `7 + Might * 2 + weaponLevel * 3`, which is not the live formula. It is dead code and should not be treated as documentation of current behaviour. Removing it is a candidate cleanup, not a fix, and must not be done silently because the import line is shared with live imports.
+`playerAttack` in `combat.ts:7` is the older helper. It is imported at `game.ts:28` and never called. Its cooldown was 420 ms and its damage formula was `7 + Might * 2 + weaponLevel * 3`, which is not the live formula. It was dead code. Release 387 removed it, taking only `playerAttack` out of the shared `game.ts` import line; the live imports on that line are unchanged.
 
 ### 9.3 Gate Revenant statistics
 
@@ -2246,9 +2246,9 @@ Each recipe is the short version: find the table, extend the table, check the wi
 
 **Confirmed by code (CODE):**
 
-1. `combat.ts:7 playerAttack` is dead: defined, imported at `game.ts:28`, zero call sites.
+1. ~~`combat.ts:7 playerAttack` is dead~~ — removed in release 387 (function and its `game.ts` import).
 2. The narrative record `relay-restored` targets a kind the narrative gate returns null for, so it cannot fire through its own path.
-3. The guidance branch at `main.ts:451` never selects `beacon` or `story` cues.
+3. The guidance branch never selects `beacon` cues. Release 387 review: this is by design. `wayfindingTargets` in `main.ts` skips `beacon` on purpose, because Wayglass beacons show on the Atlas, and `story` targets are routed through the contract branch. Not a defect.
 
 **Candidate reliability issues, source-evidenced but not reproduced on device:**
 
@@ -2693,6 +2693,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - Build mode uses the same 5-build limit and costs.
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
+
+## Release 387: your journey; digging scales with the Aperture — 2026-10-24
+
+Tim approved the suggestions list on 2026-10-24 ("I like the expansions that you described... go ahead and... implement them"). This release takes the journey page, the dig scaling and the field guide's dead-code item.
+
+**CODE:** `persistence.ts` `journeyStats(save)` returns [label, value] rows read only from existing save fields: `playSeconds`, `explored`, resolved or guardian-defeated `consequences.dungeons`, `worldBeasts[*].slain`, `farArray.listeners`, `hometowns.towns` and `digging.dug`. The Wayfarer tab shows them under "Your journey". `digging.ts` `DIG.tierScale{every:4,chance:.02,more:.5}`, `digStep(tier)`, `saveTier(save)`. `wallTreasure(seed, area, x, y, tier = 0)` raises the chance and scales marks and material counts (not spheres). `dig`, `wallGlints` and `digSpot` pass the save's tier. `combat.ts` `playerAttack` is removed, along with its `game.ts` import. Shadow Clone (Tim: "it should target... if you click on something... larger range... cast directly behind you... the normal distance is 5"): `late-spells.ts` `SHADOW_CLONE{distance:5,placeRange:5}`. `Game.cloneAimFrom(at)` aims the clone's shot copies and swings from its place at the locked target. In `main.ts`, a tap on a creature locks it before any clone placement is tried. Tests: `tests/journey-dig-387.test.ts`.
+
+**BOUNDARY:** At tier 0 the odds and amounts are exactly release 225's. A wall that held something at a lower tier still holds it at a higher one, so the threshold only rises. Dug tunnels and saves are unchanged; no new save fields.
 
 ## Release 385: the Morphling (the Listener's walled form) — 2026-10-24
 
