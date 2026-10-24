@@ -13,7 +13,11 @@
 //
 // The spells are ordinary SPELLS entries (items.ts, `unlockTier`), so slots, presets, glyphs and cooldowns treat them like
 // the others. This module holds their numbers and their per-frame behaviour; game.ts calls in, combat-visuals.ts draws.
-export const SHADOW_CLONE = { distance: 1.5, placeRange: 2, share: .5, blockedFor: 1 };
+// Release 387 (Tim: "it should target... if you click on something... I should have a larger range for where you can cast
+// it... if you're moving in a direction, it should be cast directly behind you... the normal distance is 5"): it falls
+// `distance` tiles behind a moving Wayfarer, a tap may set it up to `placeRange` away, and its swings and shots go for the
+// locked target (game.ts).
+export const SHADOW_CLONE = { distance: 5, placeRange: 5, share: .5, blockedFor: 1 };
 export const GRAVITY_WELL = { pull: 2.4, bossPull: .5, eye: .5, shotTurn: 9 }; // shotTurn (release 367): how hard it bends a hostile shot inside the swirl, per second
 export const STILLPOINT = { slow: .4 };
 
