@@ -32,6 +32,10 @@ export const DIG = {
   glintShare: .4,                // share of those whose glint shows on an exposed face
   spotChance: .03, spotMinDepth: 2,
   maxTunnelsPerArea: 60,         // bounds what a save may hold for one area
+  // Release 379 (Tim, 2026-10-24: "you should be able to make a shovel with cinder iron to break through the walls... it'll
+  // just cost one cinder iron and one wood"): the iron shovel digs the rock the standard one will not: rock that rings
+  // hollow and sealed, and a tunnel deeper than `reach`. It is lashed together the same way, only when such rock needs it.
+  iron: { recipe: { cinderIron: 1, wood: 1 }, uses: 2, reach: 6 },
 };
 // What a wall or a patch of earth can hold, by weight. `marks` is currency; others are materials.
 export const DIG_FINDS = [
@@ -44,12 +48,13 @@ export const DIG_FINDS = [
 const TEMPORARY = /^(hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:|far-array:|dive:)/;
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
-// save.digging: { shovel: uses left (0 = none), dug: { areaKey: ["x,y", …] }, spots: { "rx,ry": true } }; save.materials.stone.
+// save.digging: { shovel: uses left (0 = none), iron: iron-shovel uses left (release 379), dug: { areaKey: ["x,y", …] }, spots: { "rx,ry": true } }; save.materials.stone.
 export function ensureDigging(save) {
   const d = save.digging && typeof save.digging === "object" ? save.digging : {}, dug = {};
   for (const [k, list] of Object.entries(d.dug || {})) if (typeof k === "string" && Array.isArray(list)) dug[k] = [...new Set(list.filter((p) => typeof p === "string" && /^-?\d+,-?\d+$/.test(p)))].slice(0, DIG.maxTunnelsPerArea);
   const spots = {}; for (const [k, v] of Object.entries(d.spots || {})) if (v === true && /^-?\d+,-?\d+$/.test(k)) spots[k] = true;
-  save.digging = { ...d, shovel: Math.max(0, Math.min(DIG.heldUses, Math.floor(Number(d.shovel) || 0))), dug, spots };
+  save.digging = { ...d, shovel: Math.max(0, Math.min(DIG.heldUses, Math.floor(Number(d.shovel) || 0))), ...(Number(d.iron) > 0 ? { iron: Math.min(DIG.iron.uses, Math.floor(Number(d.iron))) } : {}), dug, spots };
+  if (!(save.digging.iron > 0)) delete save.digging.iron;
   save.materials ||= {}; save.materials.stone = Math.max(0, Math.floor(Number(save.materials.stone) || 0));
   return save;
 }
@@ -65,6 +70,16 @@ export function ensureShovel(save) {
   if ((m.wood || 0) < wood || (m.stone || 0) < stone) return { ok: false, crafted: false, message: `A shovel takes ${wood} wood and ${stone} stone (you have ${m.wood || 0} and ${m.stone || 0}). Fell trees for wood; chip or break rocks for stone.` };
   m.wood -= wood; m.stone -= stone; save.digging.shovel = DIG.shovelUses;
   return { ok: true, crafted: true, message: `You lash a shovel together from ${wood} wood and ${stone} stone.` };
+}
+
+// Crafts an iron shovel from its recipe if there is none. Returns { ok, crafted, message }.
+export function ensureIronShovel(save) {
+  ensureDigging(save);
+  if (save.digging.iron > 0) return { ok: true, crafted: false };
+  const { cinderIron, wood } = DIG.iron.recipe, m = save.materials;
+  if ((m.cinderIron || 0) < cinderIron || (m.wood || 0) < wood) return { ok: false, crafted: false, message: `The standard shovel will not bite this rock. An iron shovel would: it takes ${cinderIron} cinder iron and ${wood} wood (you have ${m.cinderIron || 0} and ${m.wood || 0}).` };
+  m.cinderIron -= cinderIron; m.wood -= wood; save.digging.iron = DIG.iron.uses;
+  return { ok: true, crafted: true, message: `You forge an iron shovel from ${cinderIron} cinder iron and ${wood} wood.` };
 }
 
 // --- dungeon walls ---------------------------------------------------------------------------------------------------
@@ -97,18 +112,20 @@ function tunnelDepth(map, x, y) {
   }
   return Infinity;
 }
-// Plans one dig from where you stand, facing `facing`. Returns { ok, x, y, through, reason }.
-export function planDig(map, px, py, facing, areaKey) {
+// Plans one dig from where you stand, facing `facing`. Returns { ok, x, y, through, reason, resists }; `resists` marks rock
+// that only the iron shovel digs (`iron`: plan for it).
+export function planDig(map, px, py, facing, areaKey, { iron = false } = {}) {
   if (!canDigArea(areaKey)) return { ok: false, reason: "The walls here are not stone a shovel can bite." };
   const [dx, dy] = DIRS[facing] || DIRS.down, x = px + dx, y = py + dy;
   if (!diggable(map, x, y)) return { ok: false, reason: null };
   const from = at(map, px, py), depth = (from?.tunnel ? tunnelDepth(map, px, py) : 0) + 1;
-  if (depth > DIG.reach) return { ok: false, reason: `The rock is too deep here: a tunnel reaches ${DIG.reach} blocks from open floor.` };
+  const reach = iron ? DIG.iron.reach : DIG.reach;
+  if (depth > reach) return { ok: false, resists: !iron, reason: `The rock is too deep here: a tunnel reaches ${reach} blocks from open floor.` };
   // Breaking through: any untouched floor next to the new block must be floor you can already reach.
   const mine = reachable(map, px, py), w = W(map);
-  for (const [ex, ey] of Object.values(DIRS)) { const nx = x + ex, ny = y + ey, n = at(map, nx, ny); if (walkable(n) && !n.tunnel && !mine.has(ny * w + nx)) return { ok: false, reason: "The rock beyond rings hollow and sealed. Something keeps that side; the shovel will not open it." }; }
+  if (!iron) for (const [ex, ey] of Object.values(DIRS)) { const nx = x + ex, ny = y + ey, n = at(map, nx, ny); if (walkable(n) && !n.tunnel && !mine.has(ny * w + nx)) return { ok: false, resists: true, reason: "The rock beyond rings hollow and sealed. Something keeps that side; the shovel will not open it." }; }
   const through = Object.values(DIRS).some(([ex, ey]) => { const n = at(map, x + ex, y + ey); return (x + ex !== px || y + ey !== py) && walkable(n) && !n.tunnel; });
-  return { ok: true, x, y, through, depth };
+  return { ok: true, x, y, through, depth, ...(iron ? { iron: true } : {}) };
 }
 // Turns a wall block into tunnel floor on this map.
 export function openTunnel(map, x, y) { const i = y * W(map) + x, t = map.tiles[i]; map.tiles[i] = { ...t, kind: "tunnel", wallKind: t.kind, blocked: false, tunnel: true }; return map.tiles[i]; }
@@ -149,13 +166,15 @@ export function creditFind(save, find) {
 // Returns { ok, message, broke, find }.
 export function dig(save, map, plan, areaKey) {
   ensureDigging(save);
-  if (save.digging.shovel <= 0) return { ok: false, message: "You have no shovel." };
+  const tool = plan.iron ? "iron" : "shovel", name = plan.iron ? "Iron shovel" : "Shovel";
+  if (!(save.digging[tool] > 0)) return { ok: false, message: plan.iron ? "You have no iron shovel." : "You have no shovel." };
   const list = (save.digging.dug[areaKey] ||= []);
   if (list.length >= DIG.maxTunnelsPerArea) return { ok: false, message: "This place has been dug enough; the rock is unsound." };
   openTunnel(map, plan.x, plan.y); list.push(`${plan.x},${plan.y}`);
-  save.digging.shovel -= 1; addStone(save, DIG.stone.wall);
-  const find = wallTreasure(save.seed, areaKey, plan.x, plan.y), got = find ? creditFind(save, find) : null, broke = save.digging.shovel === 0;
-  const parts = [plan.through ? "You break through into the passage beyond." : "You dig a block into the wall.", got ? `Something in the rock: ${got}.` : null, broke ? "The shovel snaps." : `Shovel: ${save.digging.shovel} dig${save.digging.shovel === 1 ? "" : "s"} left.`];
+  save.digging[tool] -= 1; addStone(save, DIG.stone.wall);
+  const left = save.digging[tool], find = wallTreasure(save.seed, areaKey, plan.x, plan.y), got = find ? creditFind(save, find) : null, broke = left === 0;
+  if (plan.iron && broke) delete save.digging.iron;
+  const parts = [plan.through ? "You break through into the passage beyond." : "You dig a block into the wall.", got ? `Something in the rock: ${got}.` : null, broke ? `The ${name.toLowerCase()} snaps.` : `${name}: ${left} dig${left === 1 ? "" : "s"} left.`];
   return { ok: true, message: parts.filter(Boolean).join(" "), broke, find };
 }
 

@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 379: the iron shovel; playtime — 2026-10-24
+
+Tim, 2026-10-24: "I'm running into walls that resist the shovel... you should be able to make a shovel with cinder iron to break through the walls. It'll just cost one cinder iron and one wood"; "it should show how long you've been playing... playtime in hours".
+
+**CODE:** `digging.ts` `DIG.iron` `{recipe:{cinderIron:1,wood:1},uses:2,reach:6}`. `planDig(map,px,py,facing,areaKey,{iron})` marks the two refusals the standard shovel gives (`too deep`, `rings hollow and sealed`) with `resists:true`. With `iron`, it allows `DIG.iron.reach` and skips the sealed check, and the plan carries `iron:true`. `ensureIronShovel` forges one when the recipe is carried. `dig` wears `save.digging.iron` for an iron plan; the field is additive, clamped in `ensureDigging` and removed at 0. `Game.digAhead` plans with the standard shovel first and falls back to the iron plan only when the rock resists. Supplies shows both shovels. Playtime: `save.playSeconds` (additive; `freshSave` 0, `migrateSave` clamps a number ≥ 0) grows by `dt` (at most 1 s a frame) in `Game.update` after the pause check. `persistence.ts` `journeyMetadata` carries `playSeconds`, and the journey card shows `N.N h played`. Tests: `tests/iron-shovel-379.test.ts`.
+
+**BOUNDARY:** The iron shovel is the one deliberate exception to "a shovel makes shortcuts, never keys": it can open a sealed pocket, including the far side of a sealed gate, by digging around it. It still never digs the map edge, doors, gates, structures, lethal tiles, occupied tiles or temporary areas (hunts, portals, the Far Array and its hall, dives, crossings), and the per-area tunnel cap holds. Playtime starts at 0 for existing journeys; earlier time was never recorded.
+
 ## Release 377: no more stagger-locking bosses — 2026-10-24
 
 Tim, 2026-10-24: "the bosses... need to have more poise... so that they can't just get stagger locked... being able to stagger [them] for a while... is fine... I just wiped out an entire Revenant dungeon... just by stagger locking them".

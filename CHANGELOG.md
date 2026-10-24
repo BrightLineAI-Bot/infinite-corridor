@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 379 — the iron shovel, and playtime.
+  - **The iron shovel:** rock that the standard shovel will not dig (it "rings hollow and sealed", or the tunnel is too deep) now yields to an iron shovel. It is forged on the spot from 1 cinder iron and 1 wood, only when such rock needs it. It digs two blocks, reaches 6 blocks from open floor and can break into sealed pockets. It still never digs the map's edge, doors, gates or temporary places.
+  - **Playtime:** each journey card shows the hours played, counted from this release on (paused time does not count).
+
 - Release 377 — no more stagger-locking bosses.
   - **Stagger, but not lock:** bosses, dungeon guardians, elites, Gate Revenants and the great beasts can still be staggered by a flurry of blows, but only for a while. Then they shrug stuns off for 3 seconds (your hits still land) and fight back.
   - **Unchanged:** knockdowns, and ordinary creatures.
