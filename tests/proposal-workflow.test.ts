@@ -18,11 +18,11 @@ function setup(){
  for(const dir of ['.change-control','dist/src','dist/assets','dist/proving-ground'])mkdirSync(join(root,dir),{recursive:true});
  writeFileSync(join(root,'.change-control/project.json'),JSON.stringify({projectId:POLICY.projectId}));
  writeFileSync(join(root,'package.json'),'{}');
- const files={ 'index.html':'<script type="module" src="./src/main.js?v=383"></script>', 'sw.js':'const CACHE_PREFIX="infinite-corridor-",CACHE=`${CACHE_PREFIX}v146`;', 'manifest.webmanifest':'{}',
- 'styles.css':'body{color:white}', 'icon.svg':'<svg/>', 'assets/test.png':'fake-pixels', 'src/main.js':'const release="383";',
- 'src/proving-ground-mobile.js':'import "./proving-ground.js?v=383";const storageNamespace="ic-proving-ground-scratch-v1";',
+ const files={ 'index.html':'<script type="module" src="./src/main.js?v=385"></script>', 'sw.js':'const CACHE_PREFIX="infinite-corridor-",CACHE=`${CACHE_PREFIX}v146`;', 'manifest.webmanifest':'{}',
+ 'styles.css':'body{color:white}', 'icon.svg':'<svg/>', 'assets/test.png':'fake-pixels', 'src/main.js':'const release="385";',
+ 'src/proving-ground-mobile.js':'import "./proving-ground.js?v=385";const storageNamespace="ic-proving-ground-scratch-v1";',
  'src/proving-ground.js':'export const scratch=true;', 'src/persistence.js':'throw new Error("never import preview persistence");',
- 'proving-ground/index.html':'<title>Infinite Corridor - Proving Ground</title><link rel="stylesheet" href="../styles.css?v=383"><strong>PROVING GROUND</strong><script>const release = "383"; const entry = "../src/proving-ground-mobile.js";</script>',
+ 'proving-ground/index.html':'<title>Infinite Corridor - Proving Ground</title><link rel="stylesheet" href="../styles.css?v=385"><strong>PROVING GROUND</strong><script>const release = "385"; const entry = "../src/proving-ground-mobile.js";</script>',
  'proving-ground/manifest.webmanifest':JSON.stringify({name:'Lab',icons:[{src:'../icon.svg'}]}), 'proving-ground/sw.js':'// old lab worker' };
  for(const [file,text] of Object.entries(files))writeFileSync(join(root,'dist',file),text);
  const runner={run(command:string,args:string[]){return {command:[command,...args],startedAt:'2026-10-03T01:00:00Z',finishedAt:'2026-10-03T01:00:01Z',exitCode:0,stdoutDigest:digest('ok'),stderrDigest:digest('')}}};

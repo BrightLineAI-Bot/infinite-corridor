@@ -85,6 +85,7 @@ import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.
 import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } from "./hometowns.ts";
 import { generateListenerArena, isArenaRun, daisDue } from "./listener-arena.ts";
 import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./listener-mirror.ts";
+import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, tickSpellFields } from "./late-spells.ts";
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
@@ -3687,6 +3688,12 @@ export class Game {
         ensureAI(c); this.enemies.push(c); return c;
       },
       hurt: (source, amount) => this.packHurt(source, amount, { source: "phalanx" }, now),
+      hurtAs: (source, amount, o = {}) => this.packHurt(source, amount, { source: "morph", ...o }, now), // release 385
+      spawnWorm: (owner, x, y, i, f) => { // release 385: a worm torn from the Morphling (listener-morph.ts)
+        const c = createCombatant("listener", x, y, false, []), hp = Math.max(1, Math.round(owner.maxHp * f.hpShare)), W = MORPH_FORM.worms;
+        Object.assign(c, { id: `${owner.id}:worm:${Math.round(now)}:${i}`, morphWorm: true, summonedBy: owner.id, noRewards: true, aggro: true, hp, maxHp: hp, damage: Math.max(1, Math.round(owner.damage * W.nip)), scale: W.scale, bodyRadius: .28, packAttacks: [], packBossAttacks: [], lifeUntil: f.lifeUntil, spread: f.spread, seed: 1 + i * 7919, foundryName: "A Worm of the Listener" });
+        ensureAI(c); this.enemies.push(c); return c;
+      },
       shock: (source, radius, damage) => addPackEffect(this.packEffects ||= [], { kind: "shock", owner: source.id, x: source.x, y: source.y, radius, arming: .35, life: .8, damage, jumpable: true }, now) });
   }
   // The Listener's turn (release 138): call guardians in at its health thresholds, hide behind them from gate 3, and
@@ -3699,7 +3706,7 @@ export class Game {
       if (listenerHides(gate)) { e.untargetable = true; this.message = "The Listener calls something through the line and slips behind it."; } else this.message = "The Listener calls something through the line.";
     }
     if (e.listenerForm === "both" && e.listenerPhase === "open" && ratio <= .5) { const w = LISTENER_FORMS.walled; Object.assign(e, { listenerPhase: "walled", packAttacks: [...w.attacks], packBossAttacks: [...w.boss], foundryName: w.name }); this.message = "The Listener's face falls away. Behind it, walls."; }
-    if (e.untargetable && !this.enemies.some((q) => q.farArraySummon && !q.dead)) { e.untargetable = false; this.message = "With its callers gone, the Listener steps back into the light."; }
+    if (e.untargetable && !e.morph?.sunk && !this.enemies.some((q) => q.farArraySummon && !q.dead)) { e.untargetable = false; this.message = "With its callers gone, the Listener steps back into the light."; }
     return !!e.untargetable;
   }
   // Release 239: a world beast runs out of patience and retreats home, invulnerable and through everything; it leaves
@@ -4655,7 +4662,8 @@ export class Game {
     const skirmishHooks={settled:(side,survivors)=>{const war=this.map.skirmish;if(!war)return;this.save.worldFlags[war.id]=side;const winner=war[side],loser=war[side==="a"?"b":"a"];this.message=`The fighting ends: the ${winner.label} hold the field against the ${loser.label}.`;journalOnce(this.save,war.id,`At ${this.rx},${this.ry}, ${war.a.label} and ${war.b.label} fought; the ${winner.label} held the field.`,"Skirmishes")}};
     for (const e of this.enemies) {
       if(!activeEnemySet.has(e)){this.performanceStats.dormantEnemies++;continue}
-      if(e.farArrayBoss==="listener"&&!e.dead){if(isMirror(e))tickMirrorListener(e,this.mirrorWorld(dt,now));if(this.updateListener(e,now))continue} // release 369: the mirror form
+      if(e.farArrayBoss==="listener"&&!e.dead){if(isMirror(e))tickMirrorListener(e,this.mirrorWorld(dt,now));const morphing=isMorph(e)&&tickMorphListener(e,this.mirrorWorld(dt,now));/* release 385: the Morphling */if(this.updateListener(e,now)||morphing)continue}
+      if(e.morphWorm&&!e.dead){this.performanceStats.activeEnemies++;if(tickWorm(e,this.mirrorWorld(dt,now)))continue} // release 369: the mirror form
       if(e.mirrorClone&&!e.dead){this.performanceStats.activeEnemies++;if(tickReflection(e,this.mirrorWorld(dt,now)))continue}
       if(e.skirmishId&&!e.skirmishProvoked){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&updateSkirmisher(e,this.enemies,this.map,dt,skirmishHooks))continue}
       // A retreating Walker is harmless and must traverse settlements normally. Sanctuary combat

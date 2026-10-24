@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Release 385 — the Morphling.
+  - **The Listener's walled form** (when you have severed the line) is now the Morphling: a huge, horned, muscular body whose arms keep changing between fists, claws, tentacles, cables and stone. Every few seconds it takes one of six moves:
+    - **Cables:** it shoots cables to the walls in every direction, and pulses ride back and forth along them. Jump the pulses.
+    - **Jaw:** an arm stretches to where you stand and opens into a dragon's mouth that clamps down. Step out of the ring.
+    - **Sink:** it sinks into the floor, untouchable, and rises near you in an eruption.
+    - **Worms:** it tears off worms that wriggle back to it. Each one that reaches it heals it, and they nip you when you're close. Kill them first.
+    - **Spin:** arms spread, it spins and bounces around the hall.
+    - **Lunge:** it rears, then dives along a line at you as a writhing mass of tentacles and teeth.
+
 - Release 383 — cinder iron at work.
   - **Smelting:** at the Forge, 5 cinder iron makes a weapon sphere or an armor sphere.
   - **Empowered robot:** press the frame's button again while in the robot for Empowered mode. It burns 1 cinder iron every 20 seconds for 25% more damage on blows, magic shots and spells, a stronger guard (25% instead of 10%) and twice the boost. A third press stows it. When the iron runs out it drops back to the plain robot.
