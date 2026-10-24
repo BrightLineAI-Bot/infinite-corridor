@@ -2694,6 +2694,33 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 377: no more stagger-locking bosses — 2026-10-24
+
+Tim, 2026-10-24: "the bosses... need to have more poise... so that they can't just get stagger locked... being able to stagger [them] for a while... is fine... I just wiped out an entire Revenant dungeon... just by stagger locking them".
+
+**The bug:** a Gate Revenant's poise counted stun only while hits came within 0.4 s of each other. A melee swing comes every 0.42 s, so its poise reset between swings, and every hit cancelled its attack: an endless lock. Other bosses, guardians and elites had no limit at all.
+
+**CODE (`monster-pack.ts`):**
+- `STAGGER_GOVERNOR = { limit: { revenant: .6, boss: .9, elite: 1.3 }, decay: .2, guard: 3 }`.
+- `staggerClass(e)` sorts foes into Revenant; boss (any boss, guardian role, world beast, Questing Beast, Array boss); elite; or none.
+- `staggerGovernor(e, dt)` runs after each frame's stun countdown:
+  - time spent hit-stunned fills `staggerMeter`, which drains `decay` per second while the foe is free;
+  - a full meter clears the stun and sets `staggerGuard` for `guard` seconds, during which blows still land but do not stun;
+  - fields exist only while counting.
+- It is called in the pack AI update, in `updateGatePredator` (in addition to the Revenant's own poise) and in `game.ts`'s legacy enemy update.
+
+**Tests:**
+- `tests/stagger-governor-377.test.ts`: under a swing every 0.42 s a Revenant is guarded within 6 s and stunned under 40% of the time; ordinary creatures are unaffected.
+
+**Daises in every large crossing (same release).** Tim: "daises should appear in all the large dungeons. It shouldn't be rare. It's just an easy way to help me navigate these super large dungeons". A sample showed only 35 of 81 large crossings had them: a 50% roll that could also fail to find room, and none below tier 3.
+- `game.ts` `generatePinnedDungeon` pins `history.warpVersion = 2` on fresh histories and passes `warpAlways`.
+- `underlands.ts` then places the pair in every extended, non-plain crossing, at any tier. `placeWarpDaises(map, dist, always)` tries wider spacings before giving up.
+- Histories pinned earlier keep the old chance.
+
+**BOUNDARY:**
+- Knockdowns (`BOSS_POISE` poise breaks), damage and ordinary creatures are unchanged.
+- Nothing is saved except the additive `warpVersion` on new dungeon histories.
+
 ## Release 375: the Listener's Hall — 2026-10-23
 
 Tim, 2026-10-23: "the listener should have his own specific arena, so that I have to... complete the tasks or trials. A teleportation dais... appears and you get into it and you go to the listener's arena... something unique... There should be no fog... we don't have to do it for this dungeon. [For] the next". Also: "go ahead and build the listener arena". The new Listener model waits for the notes Tim will send.

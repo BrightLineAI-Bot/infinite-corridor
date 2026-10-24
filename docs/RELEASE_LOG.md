@@ -13,19 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**377**
+**379**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 375 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's Hall: a dais at the whole Gate (from the second Listener) to a fog-free arena | Building. |
+| 377 | Claude | `claude/dreamy-rubin-yn6q2p` | Stagger governor: bosses, guardians, elites and Revenants can be staggered for a while, never locked; daises in every large dungeon | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 375 | `r375-5713421fb42c` | 2026-10-24 | The Listener's Hall: a dais at the whole Gate (from the second Listener) to a fog-free arena (PR #170). The pre-publish Fable review found no blockers. |
 | 373 | `r373-6fe1259fae38` | 2026-10-23 | The Mouth becomes a town: Listening Stone, Delvers' Exchange (PR #169). The pre-publish Fable review found no blockers. |
 | 371 | `r371-1dc5d8e75332` | 2026-10-23 | Published with 369 (which never went live alone): the Listener's mirror form fights with reflections (369, PR #167); Listener towns and choosing a hometown (371, PR #168). The pre-publish Fable review found no blockers. |
 | 367 | `r367-cff5c3a5b912` | 2026-10-23 | Published with 355–365 (none went live alone): map marks (355, PR #160); the Listener moves on (357, PR #161); secondary passives (359, PR #162); the Mouth stays open (361, PR #163); the Transit Lattice (363, PR #164); three Infinite III spells (365, PR #165); the Gravity Well swallows shots (367, PR #166). The pre-publish Fable review found no blockers. |
