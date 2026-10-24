@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**405**
+**407**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 403 | Claude | `claude/dreamy-rubin-yn6q2p` | Living bosses marked on the dungeon map | Building. |
+| 405 | Claude | `claude/dreamy-rubin-yn6q2p` | Psychic Crystal push, pull and grab show their reach with pink waves | Building. |
+| 403 | Claude | PR #184 | Living bosses marked on the dungeon map | Merged; preview `r403-7588ec35dda3`. Not published. |
 | 401 | Claude | PR #183 | The Psychic Crystal stays out of walls while fighting you in sight, dodges less, staggers sooner; found Watcher's Daises on the dungeon map | Merged; preview `r401-c00607abb98e`. Not published. |
 | 399 | Claude | PR #182 | Kills pay the regional experience multiplier (more experience farther from Ember Refuge) | Merged; preview `r399-741a8907ec63`. Not published. |
 | 397 | Claude | PR #181 | One pale hot pink for every hit warning; warnings for the Giant's arcs and slam bolts and the Turtle's comet; 4-slot gear glyph layouts | Merged; preview `r397-d8f28357e335`. Not published. |

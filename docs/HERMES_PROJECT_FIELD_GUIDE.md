@@ -2694,6 +2694,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 405: the Crystal's push, pull and grab show their reach — 2026-10-24
+
+Tim, 2026-10-24: "the pull move and the grab move should have a wave... where you're gonna get... when you're in the grab range or in the push range... a wave of where it's coming".
+
+**CODE:** `monster-render.ts` `drawPackTelegraphs`, for the `psychicCrystal`:
+- A `ring` tele (psyPush; psyPull with `inhale`) and a reaching `tether` (psyGrab windup) fill the reach (`tele.radius`, or `CRYSTAL.grabRange`) in `DANGER.fill`.
+- Three animated rings run outward for the push and inward for the pull and grab.
+- The grab adds a dashed line to the Wayfarer with pulses running along it.
+- Tests: `tests/crystal-waves-405.test.ts`.
+
+**BOUNDARY:** Drawing only: reaches, timings and damage are unchanged.
+
 ## Release 403: bosses on the dungeon map — 2026-10-24
 
 Tim, 2026-10-24: "the location of... the Psychic Crystal and the Void Walker... any bosses should be indicated on the map... I guess it's just for the dungeons... where they are... [bosses] are already shown on the overworld".
