@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**417**
+**419**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 415 | Claude | `claude/dreamy-rubin-yn6q2p` | Ilse the Lamplighter: five rare meetings, the last in the Far Sleep (narrative bible step 6) | Building. |
+| 417 | Claude | `claude/dreamy-rubin-yn6q2p` | Shadow Clone: a press sets it beside you; holding the button sends its shadow out to 5 tiles; letting go settles it | Building. |
+| 415 | Claude | PR #190 | Ilse the Lamplighter: five rare meetings, the last in the Far Sleep (narrative bible step 6) | Merged; preview `r415-90a8628435f3`. Not published. |
 | 413 | Claude | PR #189 | Digging gives no stone back; an obstacle takes a whole standard shovel | Merged; preview `r413-580567b8bd76`. Published. |
 | 411 | Claude | PR #188 | Iron shovel: 4 points (wall 1, obstacle or hard wall 2), digs plain walls without a standard shovel; forgiving dig aim | Merged; preview `r411-fbc2470d2ad8`. Not published. |
 | 409 | Claude | PR #187 | Creatures on Supernova-scarred ground and world beasts are always drawn in dungeons | Merged. Not published. |

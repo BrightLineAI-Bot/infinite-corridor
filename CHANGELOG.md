@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 417 — the Shadow Clone, placed by holding.
+  - **A press sets it beside you,** one tile away (to your side, or behind you while you move).
+  - **Hold the button** and its shadow travels over the floor, out to 5 tiles, inside a dotted ring that shows the reach; let go and the clone rises where the shadow is. A tap is simply the shortest hold. Screen taps no longer move it (a tap on a creature still locks it).
 - Release 415 — Ilse, the Lamplighter.
   - **Five meetings:** rarely, on a wild section well away from Ember Refuge, a lamplighter is tending a lamp: a girl with a taper, a young lamplighter, a woman carrying the last lamp that stays lit, an old woman who does not know you. The Corridor deals the meetings out of order; each is spoken once and goes into the Journal.
   - **The last meeting** waits in the Far Sleep, after three of the others: a lamp burning in the meadow with no post beneath it.

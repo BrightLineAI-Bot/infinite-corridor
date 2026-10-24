@@ -1,4 +1,5 @@
 import { dungeonPointDiscovered } from "./dungeon-framework.ts";
+import { SHADOW_CLONE } from "./late-spells.ts";
 export function drawRangedEffects(ctx,game,width,height) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [
@@ -61,6 +62,14 @@ export function drawRangedEffects(ctx,game,width,height) {
   if (sc) {
     const [x, y] = toScreen({ x: game.player.x + sc.ox + .5, y: game.player.y + sc.oy + .45 }), left = Math.max(0, (sc.until - (game.lastUpdateNow || 0)) / 1000), a = Math.min(1, left / 1.5) * (.62 + .08 * Math.sin(t * 6));
     ctx.save(); ctx.globalAlpha = a;
+    if (sc.charging) { // release 417: while the button is held, only a shadow travels the floor, inside the reach ring
+      const [px, py] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }), R = SHADOW_CLONE.distance * s, pulse = .5 + .5 * Math.sin(t * 10);
+      ctx.globalAlpha = .7; ctx.strokeStyle = "#b48cff"; ctx.lineWidth = 1.5; ctx.setLineDash([3, 6]); ctx.beginPath(); ctx.arc(px, py, R, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+      ctx.globalAlpha = .35; ctx.strokeStyle = "#7a5fc0"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px, py + s * .36); ctx.lineTo(x, y + s * .36); ctx.stroke();
+      ctx.globalAlpha = .78; ctx.fillStyle = "#140a24"; ctx.beginPath(); ctx.ellipse(x, y + s * .3, s * .42, s * .17, 0, 0, 7); ctx.fill();
+      ctx.globalAlpha = .5 + .3 * pulse; ctx.strokeStyle = "#b48cff"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x, y + s * .3, s * .48, s * .2, 0, 0, 7); ctx.stroke();
+      ctx.restore();
+    } else {
     ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(x, y + s * .36, s * .3, s * .1, 0, 0, 7); ctx.fill();
     ctx.fillStyle = "#1b1030"; ctx.beginPath(); ctx.moveTo(x - s * .24, y + s * .34); ctx.quadraticCurveTo(x - s * .28, y - s * .1, x - s * .12, y - s * .2); ctx.lineTo(x + s * .12, y - s * .2); ctx.quadraticCurveTo(x + s * .28, y - s * .1, x + s * .24, y + s * .34); ctx.closePath(); ctx.fill(); // cloak
     ctx.beginPath(); ctx.arc(x, y - s * .32, s * .15, 0, 7); ctx.fill(); // hood
@@ -69,7 +78,7 @@ export function drawRangedEffects(ctx,game,width,height) {
     if ((sc.swingUntil || 0) > (game.lastUpdateNow || 0) && sc.swingDir) { const ang = Math.atan2(sc.swingDir.y, sc.swingDir.x); ctx.strokeStyle = "#b48cffcc"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, s * .9, ang - .9, ang + .9); ctx.stroke(); }
     if (game.cloneAim) { ctx.globalAlpha = .5; ctx.strokeStyle = "#b48cff"; ctx.lineWidth = 1; ctx.setLineDash([2, 5]); const [px, py] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }); ctx.beginPath(); ctx.arc(px, py, 2 * s, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
     if ((sc.blockedUntil || 0) > (game.lastUpdateNow || 0)) { ctx.globalAlpha = 1; ctx.font = `bold ${Math.round(s * .36)}px monospace`; ctx.textAlign = "center"; ctx.lineWidth = 3; ctx.strokeStyle = "#091018"; ctx.strokeText("BLOCKED", x, y - s * .7); ctx.fillStyle = "#ff7a7a"; ctx.fillText("BLOCKED", x, y - s * .7); ctx.textAlign = "left"; }
-    ctx.restore();
+    ctx.restore();}
   }}
   const target = game.lockedTarget?.(); // release 309: brackets on the locked target
   if (target) {
