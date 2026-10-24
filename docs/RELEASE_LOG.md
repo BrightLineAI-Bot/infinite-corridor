@@ -13,15 +13,13 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**419**
+**421**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 417 | Claude | `claude/dreamy-rubin-yn6q2p` | Shadow Clone: a press sets it beside you; holding the button sends its shadow out to 5 tiles; letting go settles it | Building. |
-| 415 | Claude | PR #190 | Ilse the Lamplighter: five rare meetings, the last in the Far Sleep (narrative bible step 6) | Merged; preview `r415-90a8628435f3`. Not published. |
-| 413 | Claude | PR #189 | Digging gives no stone back; an obstacle takes a whole standard shovel | Merged; preview `r413-580567b8bd76`. Published. |
+| 419 | Claude | `claude/dreamy-rubin-yn6q2p` | Auto targeting reaches farther and favours foes ahead; a Shadow Clone cast from Build holds too; dungeon arrivals always land on the level's open floor, clear of guardians | Building. |
 | 411 | Claude | PR #188 | Iron shovel: 4 points (wall 1, obstacle or hard wall 2), digs plain walls without a standard shovel; forgiving dig aim | Merged; preview `r411-fbc2470d2ad8`. Not published. |
 | 409 | Claude | PR #187 | Creatures on Supernova-scarred ground and world beasts are always drawn in dungeons | Merged. Not published. |
 | 407 | Claude | PR #186 | Void Walker paced (longer cooldowns, a real gap between attacks); Supernova fog no longer hides creatures | Merged; preview `r407-fba627b84eee`. Not published. |
@@ -36,6 +34,7 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 417 | `r417-e82ec8d2169a` | 2026-10-24 | With 415: Ilse the Lamplighter (PR #190) and the Shadow Clone placed by holding (#191). The pre-publish Fable review found no blockers. |
 | 413 | `r413-580567b8bd76` | 2026-10-24 | With 397–411: one pink for every hit warning (PR #181), regional kill experience (#182), the Psychic Crystal and daises on the map (#183), bosses on the dungeon map (#184), Crystal reach waves (#185), Void Walker pacing (#186), creatures on the Supernova scar (#187), the iron shovel's points (#188), stone as a resource (#189). The pre-publish Fable review found no blockers. |
 | 395 | `r395-fc69302ceeff` | 2026-10-24 | With 383–393: smelting and the empowered robot (PR #174), the Morphling (#175, #177, #178), your journey, dig scaling and Shadow Clone (#176), whole-build presets (#179), the town smith (#180). The pre-publish Fable review found no blockers. |
 | 381 | `r381-2e0c0ac5ef7c` | 2026-10-24 | With 377 and 379: the stagger governor and daises in every large dungeon (PR #171), the iron shovel and playtime (PR #172), and the iron shovel's 3-block reach (PR #173). The pre-publish Fable review found no blockers. |

@@ -2694,6 +2694,28 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 419: sharper auto targeting; the Build button holds a Shadow Clone; safe dungeon arrivals — 2026-10-24
+
+Tim, 2026-10-24: "yes make the build button hold too. Also, the automatic targeting of enemies isn't working very well... It needs to be a little bit more sensitive and a little bit longer range."
+
+**CODE:**
+- `game.ts AUTO_AIM` is now `{meleeExtra:5, rangedScale:2.2, facingBias:.75}` (was 3 and 1.6).
+- `autoAimBody(e)` (bodyRadius, or half of scale above 1) is subtracted from the distance in `selectMeleeAim` and `selectRangedAim`.
+- `autoAimable(e)` skips dead, hidden, untargetable, ambient, astral allies and npc kinds in both. Melee previously skipped only the dead.
+- The melee pick scores distance minus edge minus alignment × `facingBias`, so a foe ahead beats one a little nearer behind.
+- `TARGET_LOCK.pick` is 1.35 (was 1.05).
+- The Build button's "cast" mode sets `castAction = "build"` around `castKey`, so `castShadowClone` charges against `input.held("build")`.
+- Tests: `tests/auto-aim-419.test.ts`.
+- **Arrivals** (Tim: "I keep getting spawned in... out of bound areas... the second level of a dungeon... will be just black... it spawns me right by The Guardian... a hard rule"):
+  - The cause: an arrival point in a wall fell back on `relocateIfStranded`'s nearest open tile, which can be inside a pocket walled off from the level, such as the sealed final chamber behind the `sealedGate`. `clearArrival` then counted only guardians on that pocket's floor.
+  - New `settleDungeonArrival(map,width,at,enemies,guardians)` flood-fills the floor from `map.entry` (or `hub`) and moves the arrival to the nearest floor tile at least `ARRIVAL.clear` (8) from every living guardian (`isDungeonGuardian` or `isCrossingGuardian`), whatever lies between. Failing that, it picks the floor tile farthest from them.
+  - `Game.settleArrival()` runs it and refreshes discovery. It is called after deep stairs, return lattices (`deepPortal`, `deepReturn`), dungeon and Mouth entrances, `recoverFromDeath` and the relaunch recovery (replacing their `relocateIfStranded` + `clearArrival` pair).
+  - `loadArea` applies the floor rule alone (no guardian rule) to a loaded dungeon, so a resumed Wayfarer is never left in a sealed pocket but is not pulled out of a fight.
+  - Wing anchors set on a multi-level floor now record `levelId`.
+  - Tests: `tests/dungeon-arrival-419.test.ts`.
+
+**BOUNDARY:** A locked target still wins, and the blow and the shot still travel only as far as before; only where they turn changes. Lock range (16) and lock behaviour are unchanged.
+
 ## Release 417: the Shadow Clone, placed by holding — 2026-10-24
 
 Tim, 2026-10-24: "The shadow clone spawn too far away it should spawn within that circle around the character when you give it the default press. It can get positioned up to the max distance by holding the clone button. So a shadow should travel over the floor indicating the position of the clone and the clone should spawn where the shadow is when you pick up your finger... basically tapping the button counts like the shortest press and hold duration."
