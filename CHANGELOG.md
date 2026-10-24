@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 405 — see the Crystal's reach.
+  - **Push, pull and grab** now fill their whole reach in pale pink while the Crystal winds up. Waves show which way the force moves: they ripple outward for the push and draw inward for the pull. For the grab, the reach is filled and pulses run along the line toward you. Step outside the pink to be safe.
+
 - Release 403 — bosses on the dungeon map.
   - **Where the bosses are:** the dungeon map marks every living boss on your level with a pink diamond, wherever it is: the Psychic Crystal, the Void Walker or any world beast in the dungeon, guardians, wardens and final bosses, the Listener and Gate Revenants. It updates as they move.
 
