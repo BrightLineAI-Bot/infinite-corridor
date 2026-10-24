@@ -602,13 +602,17 @@ export function elevationAt(map, width, x, y) { return map?.landscape ? (tileUnd
 // (starVoid, impassable, never lethal). Applied after applyLandscape, only to sections first seen from this release on
 // (the atlas pins dreamVersion, as it pins hamletVersion); explored sections keep what they were. In open sea only the
 // islands turn to meadow and marble; the water is left alone so boats and the sea's own rules are unchanged.
-export const DREAM_VERSION = 1;
+// Release 423 (Tim: "the dreamlands have too many obstacles in them. So I can't... burst around and run from the bosses...
+// It also just makes... traverse... harder"): version 2 opens the ground up: far fewer star-voids and sleeper-stones, and
+// lower, wider terraces. Sections first seen before keep version 1 (pinned in the atlas).
+export const DREAM_VERSION = 2;
 export const FAR_SLEEP_DEPTH = 35; // lore.ts READING_BANDS.far
 export const DREAM = { name: "The Far Sleep", voidScale: 5, voidAbove: .72, terraceScale: 7, terraces: [.5, .64], stoneScale: 1.6, stoneAbove: .88 };
+export const DREAM_BY_VERSION = { 1: {}, 2: { voidAbove: .82, terraces: [.62, .8], stoneAbove: .955 } };
 export function farSleepSection(rx, ry) { return Math.abs(rx) + Math.abs(ry) > FAR_SLEEP_DEPTH; }
 export function applyDream(map, seed, rx, ry, version = DREAM_VERSION) {
   if (!version || !map || map.settlement || !farSleepSection(rx, ry) || map.tiles?.length !== 1024) return map;
-  const mask = protectedMask(map, { border: true }), D = DREAM, sea = !!map.openSea; // at sea only the islands dream
+  const mask = protectedMask(map, { border: true }), D = { ...DREAM, ...(DREAM_BY_VERSION[version] || {}) }, sea = !!map.openSea; // at sea only the islands dream
   if (sea) {
     for (const t of map.tiles) if (t.x > 0 && t.y > 0 && t.x < 31 && t.y < 31 && !t.blocked && !t.structure && !t.buildingId && !t.environment && t.kind !== "bridge" && t.kind !== "dock" && t.kind !== "shallows" && !Number.isInteger(t.ruin))
       setTile(map, t.x, t.y, { kind: t.slope ? "dreamStair" : t.elev ? "dreamMarble" : "sleepMeadow", landscape: "dream", detail: hashSeed(`${seed}:dream:detail:${rx * 32 + t.x}:${ry * 32 + t.y}`) % 997 });

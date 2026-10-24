@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 423 — kept wounds, open dreams, open-world digging.
+  - **World bosses keep their wounds:** when a world beast or the Questing Beast kills you, the damage you did stays. It comes back as hurt as you left it, and only resets once it dies (or leaves).
+  - **The Far Sleep opens up:** dream sections you have not yet visited have about two-thirds fewer star-voids and sleeper-stones, and lower terraces, so there is room to run and dodge. Sections you have already explored keep their shape.
+  - **The shovel in the open world:** facing rock, a crag or a standing stone, Act digs it as in a dungeon (a standing stone takes a whole shovel, rock one dig). Water, chasms, the Far Sleep's sky-voids, castles, buildings and settlements are never dug. Tunnels are kept per section.
 - Release 421 — calmer bosses.
   - **Every boss and Revenant** hits for 15% less, winds up its attacks 20% longer, waits 25% longer before the same attack comes round again and pauses 35% longer between attacks. Elites and ordinary creatures are unchanged.
   - **The Nanobot Knight:** its seeker orbs and missiles stop at walls and at your wood walls and stone blocks. Its missiles home for 2 seconds, then fly straight.

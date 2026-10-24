@@ -2694,6 +2694,32 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 423: kept wounds, open dreams, open-world digging — 2026-10-24
+
+Tim, 2026-10-24: "The world bosses... keep their health when you die... it only resets after they die"; "the dreamlands have too many obstacles in them. So I can't... burst around and run from the bosses... It also just makes... traverse... harder"; "you should be able to use the shovel. In the overworld, also to dig through blocks and things... just like it works... in the dungeons."
+
+**CODE:**
+- **Kept wounds:**
+  - `game.resolveDeath` stores each living world beast's and Questing Beast's health share on its hunt record (`active.hpShare`, additive). `ensureWorldBeasts` keeps it by spread, and `ensureQuestingBeast` now keeps it explicitly.
+  - `createEnemyFromSpawn` gives a tuned beast back that share of its health.
+  - The record goes with `active` when the beast dies or escapes.
+- **Dream version 2:**
+  - `landscape.ts DREAM_VERSION = 2`, with `DREAM_BY_VERSION[2]` = `{voidAbove:.82, terraces:[.62,.8], stoneAbove:.955}` (v1: .72, [.5,.64], .88).
+  - The atlas pins `dreamVersion` on first visit, so explored sections keep v1.
+  - In a sample, blocked dream ground falls from about 10% to 3.6%, raised ground from 28% to 19%.
+- **Overworld digging:**
+  - `digging.ts` adds `OVERWORLD_DIG`, `overworldDiggable`, `overworldDigKey(rx,ry)` (`overworld:rx,ry`), and `planDig(..., {overworld})`. In the open world there is no sealed-hall check; a sleeper-stone, spire or crag is an "obstacle", other rock a "wall".
+  - `openTunnel(map,x,y,overworld)` levels a dug tile to the lowest open ground beside it.
+  - `applyTunnels(..., overworld)` reapplies tunnels on section load (`loadArea`, outside settlements).
+  - `game.digAhead` runs in the overworld when not aboard a boat.
+- Tests: `tests/beasts-dreams-digging-423.test.ts`.
+
+**BOUNDARY:**
+- No generator changes for explored sections.
+- The tries and patience rules are unchanged; only health carries over.
+- Water, chasms, starVoid, ice, castles, buildings, builds, environments and settlements are never dug.
+- The per-section tunnel cap (60) and the 3-block reach apply as in dungeons.
+
 ## Release 421: calmer bosses — 2026-10-24
 
 Tim, 2026-10-24: "the bosses do too much damage... reduce their damage... 15%... more wind up... the nanobot knight... his homing... orbs... should be blocked by walls and blocks... home in on you for like 2 seconds. And then they should just fly straight... more cool down between their attacks... they attack way too aggressively."

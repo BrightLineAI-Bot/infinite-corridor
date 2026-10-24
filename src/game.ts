@@ -75,7 +75,7 @@ import { applyLandscape, applyDream, DREAM_VERSION, farSleepSection, biomeFor, o
 import { BOSS_PACE, bossPaced, staggerGovernor, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
-import { DIG, planDig, ensureShovel, ensureIronShovel, dig, applyTunnels, wallGlints, addDigSpot, digSpot } from "./digging.ts";
+import { DIG, planDig, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, wallGlints, addDigSpot, digSpot } from "./digging.ts";
 import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
 import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.ts";
 import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
@@ -2003,6 +2003,7 @@ export class Game {
     if(area==="overworld")this.tyrantVisit=null; // release 233: entering a section (from anywhere, or after a death) starts a fresh Tyrant visit
     if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION,openSea:!seen?OPEN_SEA_VERSION:seen.seaVersion||0,buoy:!this.save.checkpoints?.[`${this.rx},${this.ry}`]||this.save.checkpoints[`${this.rx},${this.ry}`].name==="Lighthouse Buoy",hamlet:((!seen||!!seen.hamletVersion)&&(hamletSection(this.save.seed,this.rx,this.ry)||!!townAt(this.save,this.rx,this.ry)))||!!townAt(this.save,this.rx,this.ry)?.mouth});if(!seen||seen.dreamVersion)applyDream(this.map,this.save.seed,this.rx,this.ry,seen?.dreamVersion||DREAM_VERSION);if(!seen||seen.hamletVersion||townAt(this.save,this.rx,this.ry)?.mouth)applyHamlet(this.map,this.save.seed,this.rx,this.ry,seen?.hamletVersion||HAMLET_VERSION,!!townAt(this.save,this.rx,this.ry));/* release 371: a town where a Listener fell; 373: around its Mouth, explored or not */if(!seen||seen.travelVersion)applyTrails(this.map,this.save.seed,this.rx,this.ry);this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.storm=null;this._stormCheck=0;const b=ensureBoatState(this.save),m=b.moored;if(b.owned&&!b.aboard&&m&&m.rx===this.rx&&m.ry===this.ry)this.map.objects.push({id:"skiff-moored",kind:"skiff",name:"Your skiff",lore:"Your skiff rides at its mooring.",x:m.x,y:m.y,state:"moored",actions:["board"]});this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive)}
+    if(area==="overworld"&&!this.map.settlement)applyTunnels(this.map,this.save,overworldDigKey(this.rx,this.ry),true); // release 423: tunnels dug in the open world
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];if(!seen||seen.watcherVersion)placeWatcherOverworld(this.map,mapWidth(this.map,area),this.save.seed,this.rx,this.ry);} // release 289: sections first seen from now on
     if(area==="overworld"||area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="watcherTomb"&&this.save.worldFlags[`watcher-tomb:${o.id}`])o.state="opened";
     if(area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="warpDais"&&this.save.worldFlags[`warp-dais:${this.areaId()}:${o.id}`])o.state="attuned"; // release 301
@@ -3054,6 +3055,9 @@ export class Game {
   // Wayfarer wakes at the active checkpoint.
   resolveDeath(now, input, fellIntoHazard = false, terrainHazard = null) {
     const p = this.player;
+    // Release 423 (Tim: "the world bosses... keep their health when you die... it only resets after they die"): a living beast's
+    // wounds are kept, as a share of its health, on its hunt record; it comes back that hurt (BEAST_KEEPS_WOUNDS).
+    for (const e of this.enemies) if (!e.dead && e.maxHp > 0 && (e.worldBeast || e.questingBeast)) { const q = e.worldBeast ? this.save.worldBeasts?.[e.worldBeast]?.active : this.save.questingBeast?.active; if (q) q.hpShare = Math.max(.01, Math.min(1, e.hp / e.maxHp)); }
     const beastNote = this.area === "overworld" ? questingBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.some((e) => e.questingBeast && !e.dead)) : null;
     if (beastNote) journalOnce(this.save, `questing-beast-try:${this.save.questingBeast.cycle}:${this.save.questingBeast.active?.tries ?? "gone"}`, beastNote, "The Questing Beast");
     const worldNote = this.area === "overworld" || this.area === "dungeon" ? worldBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.filter((e) => e.worldBeast && !e.dead).map((e) => e.worldBeast), this.area === "dungeon" ? this.areaId() : null, this.beastTries === false) : null; // release 235
@@ -3147,12 +3151,13 @@ export class Game {
   // Release 225: the shovel. Facing a dungeon wall, Act digs one block (crafting a shovel first from wood and stone if
   // you carry none). Returns null when you are not facing diggable rock, so Act falls through to its other uses.
   digAhead() {
-    if (this.area !== "dungeon" || !this.map?.tiles) return null;
-    const p = this.player, w = mapWidth(this.map, this.area), px = Math.floor(p.x + .5), py = Math.floor(p.y + .75), key = this.areaStateId();
+    const overworld = this.area === "overworld" && !aboard(this.save); // release 423: the shovel works in the open world too
+    if ((this.area !== "dungeon" && !overworld) || !this.map?.tiles) return null;
+    const p = this.player, w = mapWidth(this.map, this.area), px = Math.floor(p.x + .5), py = Math.floor(p.y + .75), key = overworld ? overworldDigKey(this.rx, this.ry) : this.areaStateId(), o = { overworld };
     // Release 411: forgiving aim: the tile ahead of the feet, else of the body's middle (a stone just above or below the
     // feet row was missed, and Act said "Nothing nearby responds").
-    let plan = planDig(this.map, px, py, p.facing || "down", key);
-    for (const ty of [Math.round(p.y + .4), Math.floor(p.y + .4)]) if (!plan.ok && !plan.reason && ty !== py) { const alt = planDig(this.map, px, ty, p.facing || "down", key); if (alt.ok || alt.reason) plan = alt; }
+    let plan = planDig(this.map, px, py, p.facing || "down", key, o);
+    for (const ty of [Math.round(p.y + .4), Math.floor(p.y + .4)]) if (!plan.ok && !plan.reason && ty !== py) { const alt = planDig(this.map, px, ty, p.facing || "down", key, o); if (alt.ok || alt.reason) plan = alt; }
     if (!plan.ok && plan.resists) { const hard = planDig(this.map, px, py, p.facing || "down", key, { iron: true }); for (const ty of [py, Math.round(p.y + .4), Math.floor(p.y + .4)]) { const h2 = planDig(this.map, px, ty, p.facing || "down", key, { iron: true }); if (h2.ok) { plan = { ...h2, hard: true }; break; } } if (!plan.ok && hard.ok) plan = { ...hard, hard: true }; } // release 379: the iron shovel; 411: a hard wall costs it 2
     if (plan.ok && !plan.iron && !(this.save.digging?.shovel > 0) && (this.save.digging?.iron > 0) && ((this.save.materials?.wood || 0) < DIG.recipe.wood || (this.save.materials?.stone || 0) < DIG.recipe.stone)) plan = { ...plan, iron: true }; // release 411: no standard shovel to hand, the iron one digs
     if (!plan.ok) { if (!plan.reason) return null; this.message = plan.reason; return { ok: false, message: this.message }; }
@@ -3849,6 +3854,7 @@ export class Game {
       if (e.skirmishId) Object.assign(c, skirmishFields(e));
       if (e.questingBeast) tuneQuestingBeast(c, this.save, characterStats(this.save));
       if (e.worldBeast) tuneWorldBeast(c, this.save, e.worldBeast, characterStats(this.save));
+      if (e.worldBeast || e.questingBeast) { const share = Number((e.worldBeast ? this.save.worldBeasts?.[e.worldBeast]?.active : this.save.questingBeast?.active)?.hpShare); if (share > 0 && share < 1) c.hp = Math.max(1, Math.round(c.maxHp * share)); } // release 423: it keeps the wounds you gave it
       if(e.astralCompanionOf){if(e.astralRole==='ally'){tuneWorldBeast(c,this.save,'voidWalker',characterStats(this.save));delete c.worldBeast;}Object.assign(c,{astralCompanionOf:e.astralCompanionOf,astralRole:e.astralRole,astralAllyOf:e.astralAllyOf,noRewards:!!e.noRewards,astralMountWanted:!!e.astralMountWanted});} // release 235
       if (e.retreating) Object.assign(c, { retreating: true, aggro: true, untargetable: true }); // release 239: fleeing through
       if (area === "dungeon" && isArrayRun(this.save.session.activeDungeonId)) {
