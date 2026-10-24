@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 383 — cinder iron at work.
+  - **Smelting:** at the Forge, 5 cinder iron makes a weapon sphere or an armor sphere.
+  - **Empowered robot:** press the frame's button again while in the robot for Empowered mode. It burns 1 cinder iron every 20 seconds for 25% more damage on blows, magic shots and spells, a stronger guard (25% instead of 10%) and twice the boost. A third press stows it. When the iron runs out it drops back to the plain robot.
+  - **Iron plating:** when the robot's plating gives out, 1 cinder iron re-forges it on the spot, so the robot stays up. With no iron it folds away as before.
+
 - Release 381 — the iron shovel digs three deep.
   - **Same reach:** the iron shovel tunnels at most 3 blocks from open floor, like the standard shovel. It still opens rock that rings hollow and sealed.
 

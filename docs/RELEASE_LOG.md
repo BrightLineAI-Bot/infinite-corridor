@@ -13,21 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**383**
+**385**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 381 | Claude | `claude/dreamy-rubin-yn6q2p` | The iron shovel reaches 3 blocks, like the standard one | Building. |
-| 379 | Claude | PR #172 | The iron shovel (1 cinder iron + 1 wood) digs rock the standard shovel refuses; playtime in hours on journey cards | Merged; preview `r379-7c344d948ef7`. Not published. |
-| 377 | Claude | PR #171 | Stagger governor: bosses, guardians, elites and Revenants can be staggered for a while, never locked; daises in every large dungeon | Merged; preview `r377-ca8fd700fbc1`. Not published. |
+| 383 | Claude | `claude/dreamy-rubin-yn6q2p` | Cinder iron smelts into spheres; the robot's Empowered mode and iron re-plating | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 381 | `r381-2e0c0ac5ef7c` | 2026-10-24 | With 377 and 379: the stagger governor and daises in every large dungeon (PR #171), the iron shovel and playtime (PR #172), and the iron shovel's 3-block reach (PR #173). The pre-publish Fable review found no blockers. |
 | 375 | `r375-5713421fb42c` | 2026-10-24 | The Listener's Hall: a dais at the whole Gate (from the second Listener) to a fog-free arena (PR #170). The pre-publish Fable review found no blockers. |
 | 373 | `r373-6fe1259fae38` | 2026-10-23 | The Mouth becomes a town: Listening Stone, Delvers' Exchange (PR #169). The pre-publish Fable review found no blockers. |
 | 371 | `r371-1dc5d8e75332` | 2026-10-23 | Published with 369 (which never went live alone): the Listener's mirror form fights with reflections (369, PR #167); Listener towns and choosing a hometown (371, PR #168). The pre-publish Fable review found no blockers. |

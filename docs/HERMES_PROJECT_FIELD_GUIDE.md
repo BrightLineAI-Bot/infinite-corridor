@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 383: smelting spheres; the empowered robot — 2026-10-24
+
+Tim, 2026-10-24: "we can use cinder iron to build armor spheres... merge the iron into armor spheres or weapon spheres"; "you can just autocraft with cinder iron... stay in the robot suit until your cinder iron... runs out, or until you toggle... off... empowered mode... burns more cinder iron... damage boost and a defense boost... longer flight time".
+
+**CODE:** `items.ts` `SMELT{cost:5}` and `smeltSphere(save, kind)`, two Forge buttons in `main.ts` `openForge`. `vehicle-gates.ts` `MECH_POWER{burn:1,every:20,damage:.25,guard:.15,boost:2,replate:1}`, `mechEmpowered`, `setEmpowered`. `fuelMax(mode, empowered)`. `ensureMech` keeps `empowered`/`burnIn` only while built, active and in robot mode. `mechAbsorb` adds the guard and re-plates from iron (`replated`) before folding away. `tickMech` burns iron each `every` s and returns `"spent"` when it runs out. `Game.toggleMech` (robot, active, not empowered, iron ≥ 1) empowers; the next press stows. `game.ts` wraps `armorGlyphBonus` so `attackDamage` and `spellDamage` gain `MECH_POWER.damage` while empowered. That covers melee, the crescent, magic weapon shots and spells; physical weapon shots read only `spellDamage` for magic types, so they gain nothing. The renderer draws a furnace glow and an ember line under the bars. Tests: `tests/empowered-robot-383.test.ts`.
+
+**BOUNDARY:** The plain robot is unchanged and free to keep up, as since release 317 (no time limit). With iron, a broken plate no longer forces the 20 s rebuild. The drone has no empowered mode. Smelting does not change dig finds or any reward table.
+
 ## Release 381: the iron shovel digs three deep — 2026-10-24
 
 Tim, 2026-10-24: "even with the iron shovel... you can still only dig three from your position."
