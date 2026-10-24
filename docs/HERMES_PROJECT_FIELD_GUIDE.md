@@ -2694,6 +2694,25 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 395: the town smith — 2026-10-24
+
+Tim, 2026-10-24: "the smithy can do all those things that you just described": salvage, reforge, add a socket, masterwork, each opening as Listeners fall.
+
+**CODE:**
+- New module `src/smithy.ts`, registered in `scripts/build.mjs` and both `sw.js` lists.
+  - `SMITHY` holds unlocks by `farArray.listeners` (salvage 1, reforge 1, socket 2, masterwork 3) and the costs.
+  - `salvageItem(save, index)`: iron by tier and a seeded sphere chance; the item's glyphs return to the pouch.
+  - `reforgeAffix(save, slot, index)`: a seeded re-roll of kind and value from `items.ts` `AFFIX_POOLS` and `rollAffixValue`, never duplicating a kind.
+  - `addSocket`: sets `item.extraSockets = 1`.
+  - `masterwork`: sets `item.masterwork = true`.
+- `items.ts` adds `itemCap(item)` (the tier cap +1 for a masterwork), used by `normalizeItemUpgrade` and `upgradeCost`. `awakenCheck` still asks for the plain tier cap.
+- `glyphs.ts` `socketCount` adds `extraSockets`.
+- `game.ts` `raiseMouthTown` places a `townSmith` beside the Mouth; interacting returns `smithy: true`.
+- `main.ts` `openSmithy` is the smith's screen. `renderer.ts` draws the forge, anvil and smith.
+- Tests: `tests/smithy-395.test.ts`.
+
+**BOUNDARY:** Item fields are additive and kept by `normalizeItemUpgrade`. Existing Listener towns gain their smith on the next visit, because `raiseMouthTown` runs on every load of a Mouth town. Loot tables are unchanged.
+
 ## Release 393: whole-build presets; the suit's violet cosmos — 2026-10-24
 
 Tim, 2026-10-24: "all the spells that are equippable and the Transit Lattice... need presets in the Arcanum... for glyphs, and all the skills need presets"; "I'll take your recommendation on the presets"; "the suit should have the same... purple cosmic world as the lantern, rather than that... golden... emblem... all the gold [should] be that same color".

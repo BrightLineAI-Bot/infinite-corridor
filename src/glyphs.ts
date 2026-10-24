@@ -99,7 +99,7 @@ export const RESONANCES = {
 };
 
 // ---------------------------------------------------------------- save state
-export function socketCount(item) { return item && (item.slot === "primary" || item.slot === "secondary" || item.slot === "armor") ? SOCKETS_BY_TIER[item.tier] || 1 : 0; } // release 295: armor too
+export function socketCount(item) { return item && (item.slot === "primary" || item.slot === "secondary" || item.slot === "armor") ? (SOCKETS_BY_TIER[item.tier] || 1) + (item.extraSockets === 1 ? 1 : 0) : 0; } // release 395: the town smith may add one socket // release 295: armor too
 export function normalizeSockets(item) {
   if (!item) return item;
   const n = socketCount(item);

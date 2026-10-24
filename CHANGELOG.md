@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 395 — the town smith.
+  - **A smith in every Listener town,** at a forge beside the Mouth. Talk to the smith to:
+    - **Salvage** (from the first Listener): break down gear in your pack into cinder iron (1 to 4 by tier), with a 15% chance of a sphere. Its glyphs come back to your pouch.
+    - **Reforge** (from the first Listener): roll one affix on an equipped item again, for 3 cinder iron and 40 marks.
+    - **Add a socket** (from the second Listener): one extra glyph socket on a weapon, tool or armor, for 4 cinder iron and 6 lumen dust.
+    - **Masterwork** (from the third Listener): let an item be strengthened one rank past its tier's cap, for 12 cinder iron and 120 marks.
+
 - Release 393 — whole-build presets.
   - **Presets carry the whole build:** preset 1 and preset 2 now each remember the glyphs set in every spell and skill, which form (primary or secondary) each passive takes, and your Transit Lattice picks, as well as A, B and the Build button. Switching swaps all of it. A glyph that is no longer in your pouch (set in your gear, or spent) shows as an empty socket and is named. The first switch keeps the build you have, so set it up once on each preset. Weapon, tool and armor glyphs are not part of a preset.
   - **The suit's light:** the empowered suit's chest now holds a small orb of the lantern's violet cosmos, a spiral of pale light, in place of the amber light.
