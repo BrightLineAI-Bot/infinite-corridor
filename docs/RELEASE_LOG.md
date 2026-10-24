@@ -13,28 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**423**
+**425**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 421 | Claude | `claude/dreamy-rubin-yn6q2p` | Bosses: 15% less damage, longer wind-ups, longer cooldowns and pauses; the Nanobot Knight's seekers stop at builds and its missiles home for 2 s | Building. |
-| 419 | Claude | PR #192 | Auto targeting reaches farther and favours foes ahead; a Shadow Clone cast from Build holds too; dungeon arrivals always land on the level's open floor, clear of guardians | Merged. Not published. |
-| 411 | Claude | PR #188 | Iron shovel: 4 points (wall 1, obstacle or hard wall 2), digs plain walls without a standard shovel; forgiving dig aim | Merged; preview `r411-fbc2470d2ad8`. Not published. |
-| 409 | Claude | PR #187 | Creatures on Supernova-scarred ground and world beasts are always drawn in dungeons | Merged. Not published. |
-| 407 | Claude | PR #186 | Void Walker paced (longer cooldowns, a real gap between attacks); Supernova fog no longer hides creatures | Merged; preview `r407-fba627b84eee`. Not published. |
-| 405 | Claude | PR #185 | Psychic Crystal push, pull and grab show their reach with pink waves | Merged; preview `r405-a8f100addce9`. Not published. |
-| 403 | Claude | PR #184 | Living bosses marked on the dungeon map | Merged; preview `r403-7588ec35dda3`. Not published. |
-| 401 | Claude | PR #183 | The Psychic Crystal stays out of walls while fighting you in sight, dodges less, staggers sooner; found Watcher's Daises on the dungeon map | Merged; preview `r401-c00607abb98e`. Not published. |
-| 399 | Claude | PR #182 | Kills pay the regional experience multiplier (more experience farther from Ember Refuge) | Merged; preview `r399-741a8907ec63`. Not published. |
-| 397 | Claude | PR #181 | One pale hot pink for every hit warning; warnings for the Giant's arcs and slam bolts and the Turtle's comet; 4-slot gear glyph layouts | Merged; preview `r397-d8f28357e335`. Not published. |
+| 423 | Claude | `claude/dreamy-rubin-yn6q2p` | World beasts keep their wounds when you die; the Far Sleep dreams with fewer obstacles (dream v2, new sections); the shovel digs in the overworld | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 421 | `r421-45929eb37a4e` | 2026-10-24 | With 419: sharper auto targeting, the Build button holds a Shadow Clone, safe dungeon arrivals (PR #192); calmer bosses and the Knight's seekers (#193). The pre-publish Fable review found no blockers. |
 | 417 | `r417-e82ec8d2169a` | 2026-10-24 | With 415: Ilse the Lamplighter (PR #190) and the Shadow Clone placed by holding (#191). The pre-publish Fable review found no blockers. |
 | 413 | `r413-580567b8bd76` | 2026-10-24 | With 397–411: one pink for every hit warning (PR #181), regional kill experience (#182), the Psychic Crystal and daises on the map (#183), bosses on the dungeon map (#184), Crystal reach waves (#185), Void Walker pacing (#186), creatures on the Supernova scar (#187), the iron shovel's points (#188), stone as a resource (#189). The pre-publish Fable review found no blockers. |
 | 395 | `r395-fc69302ceeff` | 2026-10-24 | With 383–393: smelting and the empowered robot (PR #174), the Morphling (#175, #177, #178), your journey, dig scaling and Shadow Clone (#176), whole-build presets (#179), the town smith (#180). The pre-publish Fable review found no blockers. |
