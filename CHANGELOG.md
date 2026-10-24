@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 421 — calmer bosses.
+  - **Every boss and Revenant** hits for 15% less, winds up its attacks 20% longer, waits 25% longer before the same attack comes round again and pauses 35% longer between attacks. Elites and ordinary creatures are unchanged.
+  - **The Nanobot Knight:** its seeker orbs and missiles stop at walls and at your wood walls and stone blocks. Its missiles home for 2 seconds, then fly straight.
 - Release 419 — sharper auto targeting.
   - **Longer reach:** with no locked target, a swing turns to the nearest foe up to 5 tiles past its reach (was 3), and a tool shot to one up to 2.2 times its range (was 1.6). Big creatures are measured to their edge, so they are found sooner.
   - **More sensitive:** a foe roughly ahead of you wins over one a little nearer behind; hidden, untouchable and harmless things no longer pull the aim. Tapping a creature to lock it is more forgiving.
