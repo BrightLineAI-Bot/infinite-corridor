@@ -80,7 +80,7 @@ export const WORLD_BEASTS = {
   // Initial balance proposal; owner requirements and open design decisions are in docs/void-walker-design.md.
   voidWalker: {
     kind: "voidWalker", name: "The Void Walker", chance: .025, minDepth: 5, tries: 4, cooldownSlain: 20, cooldownEscaped: 26,
-    hitsToKill: 60, hpPerLevel: 28, damageShare: .2, speed: 1.1, attackGap: .3, staggerResistance: .9, rewardMarks: 180, rewardPerLevel: 18,
+    hitsToKill: 60, hpPerLevel: 28, damageShare: .2, speed: 1.1, attackGap: 1.1, /* release 407 (Tim: "the Void Walker should attack less frequently... it covers up the entire screen with attacks... a little bit more pacing"): was .3 */ staggerResistance: .9, rewardMarks: 180, rewardPerLevel: 18,
     patience: 180, home: "dungeon", retreatMoves: "walk", dungeonChance: .3, dungeonMinLevel: 1,
     flee: "The Void Walker folds its rends shut and leaves toward a dungeon entrance.",
     fleeDungeon: "The Void Walker closes its constellation and heads for the nearest reachable dungeon door.",

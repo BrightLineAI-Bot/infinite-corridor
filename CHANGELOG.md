@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 407 — the Void Walker, paced.
+  - **Fewer attacks:** the Void Walker waits about a second between attacks (it was .3 s), and every one of its attacks recovers about 40% more slowly. The Supernova now comes every 30 s instead of 23.
+  - **You can see through the Supernova's fog:** its mist is thinner and no longer closes in around you, so the Void Walker and every other creature stay visible.
+
 - Release 405 — see the Crystal's reach.
   - **Push, pull and grab** now fill their whole reach in pale pink while the Crystal winds up. Waves show which way the force moves: they ripple outward for the push and draw inward for the pull. For the grab, the reach is filled and pulses run along the line toward you. Step outside the pink to be safe.
 
