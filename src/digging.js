@@ -8,9 +8,9 @@
 // floor; and it may break through only into floor you could already walk to, so no sealed or guarded part is ever
 // opened early. Hunts, portals, dives and crossings are temporary places and are never dug.
 // Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r413-580567b8bd76";
-import { LETHAL_KINDS } from "./landscape.js?v=r413-580567b8bd76";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r413-580567b8bd76";
+import { hashSeed } from "./random.js?v=r417-e82ec8d2169a";
+import { LETHAL_KINDS } from "./landscape.js?v=r417-e82ec8d2169a";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r417-e82ec8d2169a";
 
 // Balance (data, not literals in the logic).
 export const DIG = {
@@ -45,7 +45,7 @@ export const DIG = {
   // two of them"): `uses` is 4 points; a dig spends `cost` by what it cuts. With an iron shovel in hand and no standard
   // shovel (nor wood and stone for one), it digs plain walls too.
   iron: { recipe: { cinderIron: 1, wood: 1 }, uses: 4, cost: { wall: 1, obstacle: 2, hard: 2 } },
-  // Release r413-580567b8bd76 (Tim: "to break those pillars, it should just take a full... shovel... we don't have to spend iron for that"):
+  // Release 413 (Tim: "to break those pillars, it should just take a full... shovel... we don't have to spend iron for that"):
   // an obstacle (isObstacle) takes the whole standard shovel, whatever digs it had left.
   obstacleTakesShovel: true,
 };
