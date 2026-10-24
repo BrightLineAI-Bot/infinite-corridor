@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 381: the iron shovel digs three deep — 2026-10-24
+
+Tim, 2026-10-24: "even with the iron shovel... you can still only dig three from your position."
+
+**CODE:** `digging.ts` `DIG.iron` drops `reach`; `planDig` checks `DIG.reach` for both shovels, and the "too deep" refusal no longer carries `resists`. Only "rings hollow and sealed" falls back to the iron plan. `tests/iron-shovel-379.test.ts` asserts the iron plan stops at three.
+
+**BOUNDARY:** Release 379's description of a 6-block iron reach is superseded. Everything else about the iron shovel is unchanged: its recipe, its 2 uses, opening sealed pockets, and the places it never digs.
+
 ## Release 379: the iron shovel; playtime — 2026-10-24
 
 Tim, 2026-10-24: "I'm running into walls that resist the shovel... you should be able to make a shovel with cinder iron to break through the walls. It'll just cost one cinder iron and one wood"; "it should show how long you've been playing... playtime in hours".

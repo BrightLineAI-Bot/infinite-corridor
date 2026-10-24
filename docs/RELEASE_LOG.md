@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**381**
+**383**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 379 | Claude | `claude/dreamy-rubin-yn6q2p` | The iron shovel (1 cinder iron + 1 wood) digs rock the standard shovel refuses; playtime in hours on journey cards | Building. |
+| 381 | Claude | `claude/dreamy-rubin-yn6q2p` | The iron shovel reaches 3 blocks, like the standard one | Building. |
+| 379 | Claude | PR #172 | The iron shovel (1 cinder iron + 1 wood) digs rock the standard shovel refuses; playtime in hours on journey cards | Merged; preview `r379-7c344d948ef7`. Not published. |
 | 377 | Claude | PR #171 | Stagger governor: bosses, guardians, elites and Revenants can be staggered for a while, never locked; daises in every large dungeon | Merged; preview `r377-ca8fd700fbc1`. Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 

@@ -34,8 +34,9 @@ export const DIG = {
   maxTunnelsPerArea: 60,         // bounds what a save may hold for one area
   // Release 379 (Tim, 2026-10-24: "you should be able to make a shovel with cinder iron to break through the walls... it'll
   // just cost one cinder iron and one wood"): the iron shovel digs the rock the standard one will not: rock that rings
-  // hollow and sealed, and a tunnel deeper than `reach`. It is lashed together the same way, only when such rock needs it.
-  iron: { recipe: { cinderIron: 1, wood: 1 }, uses: 2, reach: 6 },
+  // hollow and sealed. It is lashed together the same way, only when such rock needs it. Release 381 (Tim: "even with the
+  // iron shovel... you can still only dig three from your position"): it reaches no deeper than the standard shovel.
+  iron: { recipe: { cinderIron: 1, wood: 1 }, uses: 2 },
 };
 // What a wall or a patch of earth can hold, by weight. `marks` is currency; others are materials.
 export const DIG_FINDS = [
@@ -119,8 +120,7 @@ export function planDig(map, px, py, facing, areaKey, { iron = false } = {}) {
   const [dx, dy] = DIRS[facing] || DIRS.down, x = px + dx, y = py + dy;
   if (!diggable(map, x, y)) return { ok: false, reason: null };
   const from = at(map, px, py), depth = (from?.tunnel ? tunnelDepth(map, px, py) : 0) + 1;
-  const reach = iron ? DIG.iron.reach : DIG.reach;
-  if (depth > reach) return { ok: false, resists: !iron, reason: `The rock is too deep here: a tunnel reaches ${reach} blocks from open floor.` };
+  if (depth > DIG.reach) return { ok: false, reason: `The rock is too deep here: a tunnel reaches ${DIG.reach} blocks from open floor.` };
   // Breaking through: any untouched floor next to the new block must be floor you can already reach.
   const mine = reachable(map, px, py), w = W(map);
   if (!iron) for (const [ex, ey] of Object.values(DIRS)) { const nx = x + ex, ny = y + ey, n = at(map, nx, ny); if (walkable(n) && !n.tunnel && !mine.has(ny * w + nx)) return { ok: false, resists: true, reason: "The rock beyond rings hollow and sealed. Something keeps that side; the shovel will not open it." }; }
