@@ -1,4 +1,4 @@
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r381-2e0c0ac5ef7c";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r395-fc69302ceeff";
 export function drawRangedEffects(ctx,game,width,height) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [
@@ -11,7 +11,7 @@ export function drawRangedEffects(ctx,game,width,height) {
   const groups = new Map();
   for (const p of game.projectiles) {
     if(!dungeonPointDiscovered(game.map,p))continue;
-    const color = p.hostile ? (p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.damageType === "magic" ? "#9fe8db" : "#d6b276"; // release 321: the drone's rockets burn orange
+    const color = p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.damageType === "magic" ? "#9fe8db" : "#d6b276"; // release 321: the drone's rockets burn orange
     let list = groups.get(color); if (!list) groups.set(color, list = []); list.push(p);
   }
   for (const [color, list] of groups) {

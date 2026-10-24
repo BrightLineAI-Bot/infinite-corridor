@@ -1,20 +1,20 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r381-2e0c0ac5ef7c";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r381-2e0c0ac5ef7c";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r381-2e0c0ac5ef7c";
-import { enemyMeleeGeometry } from "./combat.js?v=r381-2e0c0ac5ef7c";
-import { ruleRows } from "./elders.js?v=r381-2e0c0ac5ef7c";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r381-2e0c0ac5ef7c";
-import { BOAT } from "./boats.js?v=r381-2e0c0ac5ef7c";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r381-2e0c0ac5ef7c";
-import { isMarineTile } from "./world-beasts.js?v=r381-2e0c0ac5ef7c";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r381-2e0c0ac5ef7c";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r381-2e0c0ac5ef7c";
-import { liftAt, tileUnder } from "./landscape.js?v=r381-2e0c0ac5ef7c";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r381-2e0c0ac5ef7c";
-import { GATE_REVENANT } from "./monster-pack.js?v=r381-2e0c0ac5ef7c";
-import { drawRelayNode } from "./relay-network.js?v=r381-2e0c0ac5ef7c";
-import { structureOccupancy } from "./world.js?v=r381-2e0c0ac5ef7c";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r381-2e0c0ac5ef7c";
+import { astralBeamAnchors } from "./astral-worm.js?v=r395-fc69302ceeff";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r395-fc69302ceeff";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r395-fc69302ceeff";
+import { enemyMeleeGeometry } from "./combat.js?v=r395-fc69302ceeff";
+import { ruleRows } from "./elders.js?v=r395-fc69302ceeff";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r395-fc69302ceeff";
+import { BOAT } from "./boats.js?v=r395-fc69302ceeff";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r395-fc69302ceeff";
+import { isMarineTile } from "./world-beasts.js?v=r395-fc69302ceeff";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r395-fc69302ceeff";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r395-fc69302ceeff";
+import { liftAt, tileUnder } from "./landscape.js?v=r395-fc69302ceeff";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r395-fc69302ceeff";
+import { GATE_REVENANT } from "./monster-pack.js?v=r395-fc69302ceeff";
+import { drawRelayNode } from "./relay-network.js?v=r395-fc69302ceeff";
+import { structureOccupancy } from "./world.js?v=r395-fc69302ceeff";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r395-fc69302ceeff";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -629,6 +629,76 @@ function drawDrone(ctx, x, y, s, facing, now, carrying = false, heal = 0) {
   if (heal > 0) { ctx.globalAlpha = Math.min(1, heal) * .7; ctx.strokeStyle = "#7dff9a"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); ctx.ellipse(cx, cy, u * 1.35, u * 1.1, 0, 0, 7); ctx.stroke(); }
   ctx.restore();
 }
+// The empowered robot (release 389; redrawn in release 391, Tim: "less... more understated... more like a spacesuit...
+// almost like a Black Panther suit, but still spacey, like Iron Man or War Machine... it looks too much like a Gundam or
+// Ultraman Tiga... we don't want to depart from the overall gritty, down-to-earth feel"). Drawn in place of the Wayfarer, at
+// their size: a dark graphite pressure suit, segmented and scuffed, with low plates at chest, shoulders, knees and forearms,
+// a smooth helmet with one smoked visor band, a compact life-support pack with hoses to the chest, a dim amber status
+// light (violet since release 393), and small, cold thrusters at the back and heels that only show while it boosts.
+export function drawPowerSuit(ctx, x, y, s, facing, now, frame = 0, attacking = false, boosting = false) {
+  const t = now / 1000, k = x * s + s / 2, base = y * s + s * .84, u = s * .9, side = facing === "left" || facing === "right", back = facing === "up", dir = facing === "left" ? -1 : 1;
+  const plate = (x0, y0, x1, y1) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, "#5d636b"); g.addColorStop(.4, "#363a41"); g.addColorStop(1, "#1a1c20"); return g; };
+  const suit = (x0, y0, x1, y1) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, "#2c3036"); g.addColorStop(1, "#121418"); return g; };
+  const edge = "#0a0b0d", worn = "#8a8f96", amber = "#9b6bff", lw = Math.max(1, u * .016); // release 393: violet, the lantern's cosmos, in place of the amber
+  // Release 393 (Tim: "the same purple cosmic world as the lantern, rather than that golden... emblem... all the gold [should]
+  // be that same color"): a small orb of night glass with a two-armed spiral of pale violet light and a bright core.
+  const cosmos = (cx, cy, r) => { glowAt(cx, cy, r * 2.4, "#9b6bff", .45 + .15 * Math.sin(t * 1.6)); ctx.fillStyle = "#120a26"; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.lineWidth = Math.max(.8, r * .18); ctx.strokeStyle = "#2a2d32"; ctx.stroke();
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r * .92, 0, Math.PI * 2); ctx.clip(); ctx.strokeStyle = "#d9c8ffdd"; ctx.lineWidth = Math.max(.6, r * .16); ctx.lineCap = "round"; const spin = t * .5;
+    for (const arm of [0, Math.PI]) { ctx.beginPath(); for (let q = 0; q <= 1.0001; q += .1) { const a = arm + spin + q * 4.2, rr = r * (.08 + q * .8); ctx[q ? "lineTo" : "moveTo"](cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * .85); } ctx.stroke(); }
+    ctx.fillStyle = "#b48cff55"; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(cx + Math.cos(i * 2.4 + spin) * r * .6, cy + Math.sin(i * 2.4 + spin) * r * .5, Math.max(.5, r * .07), 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore(); ctx.fillStyle = "#f4f0ff"; ctx.beginPath(); ctx.arc(cx, cy, Math.max(.7, r * .18), 0, Math.PI * 2); ctx.fill(); };
+  const poly = (pts, fill, stroke = edge) => { ctx.beginPath(); pts.forEach(([px, py], i) => ctx[i ? "lineTo" : "moveTo"](px, py)); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.stroke(); };
+  const seg = (x0, y0, x1, y1, w0, w1, fill) => { const a = Math.atan2(y1 - y0, x1 - x0), nx = -Math.sin(a), ny = Math.cos(a); poly([[x0 + nx * w0, y0 + ny * w0], [x1 + nx * w1, y1 + ny * w1], [x1 - nx * w1, y1 - ny * w1], [x0 - nx * w0, y0 - ny * w0]], fill || suit(x0 - w0, y0, x1 + w1, y1)); };
+  const glowAt = (gx, gy, r, c, a) => { const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r); g.addColorStop(0, c + Math.round(a * 255).toString(16).padStart(2, "0")); g.addColorStop(1, c + "00"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(gx, gy, r, 0, Math.PI * 2); ctx.fill(); };
+  const scuff = (x0, y0, x1, y1) => { ctx.strokeStyle = worn + "66"; ctx.lineWidth = Math.max(.6, u * .006); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); };
+  const jet = (jx, jy, len) => { const g = ctx.createLinearGradient(jx, jy, jx, jy + len); g.addColorStop(0, "#e8f6ff"); g.addColorStop(.35, "#7fb9d8aa"); g.addColorStop(1, "#4a7fa000"); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(jx - u * .025, jy); ctx.lineTo(jx + u * .025, jy); ctx.lineTo(jx, jy + len); ctx.closePath(); ctx.fill(); };
+  ctx.save(); ctx.translate(k, base); if (side) ctx.scale(dir, 1);
+  ctx.fillStyle = "rgba(4,6,10,.45)"; ctx.beginPath(); ctx.ellipse(0, 0, u * .26, u * .07, 0, 0, Math.PI * 2); ctx.fill();
+  const walk = frame ? Math.sin(t * 9) : 0, bob = Math.abs(walk) * u * .012; ctx.translate(0, -bob);
+  if (boosting) { const fl = u * (.22 + .06 * Math.sin(t * 38)); for (const jx of side ? [-u * .17] : [-u * .09, u * .09]) jet(jx, -u * .5, fl); for (const jx of side ? [0] : [-u * .07, u * .07]) jet(jx, 0, fl * .7); }
+  if (side) {
+    const st = walk * u * .09;
+    for (const [o, a] of [[-1, .65], [1, 1]]) { const fx = o * st; ctx.globalAlpha = a; seg(0, -u * .38, fx * .5 + u * .01, -u * .2, u * .05, u * .045); seg(fx * .5 + u * .01, -u * .2, fx, -u * .03, u * .042, u * .04); poly([[fx - u * .05, -u * .045], [fx + u * .08, -u * .03], [fx + u * .085, 0], [fx - u * .055, 0]], plate(fx - u * .05, -u * .05, fx + u * .08, 0)); poly([[fx * .5 - u * .025, -u * .25], [fx * .5 + u * .055, -u * .24], [fx * .5 + u * .05, -u * .17], [fx * .5 - u * .02, -u * .17]], plate(0, -u * .25, u * .05, -u * .17)); ctx.globalAlpha = 1; } // legs, knee plates, boots
+    poly([[-u * .2, -u * .73], [-u * .09, -u * .75], [-u * .08, -u * .48], [-u * .19, -u * .46]], plate(-u * .2, -u * .75, -u * .08, -u * .46)); // the life-support pack
+    ctx.strokeStyle = "#202328"; ctx.lineWidth = Math.max(1.5, u * .022); ctx.beginPath(); ctx.moveTo(-u * .1, -u * .52); ctx.quadraticCurveTo(-u * .02, -u * .5, u * .06, -u * .6); ctx.stroke(); // a hose round to the chest
+    poly([[-u * .085, -u * .4], [u * .065, -u * .4], [u * .085, -u * .55], [u * .075, -u * .74], [-u * .09, -u * .75], [-u * .095, -u * .55]], suit(-u * .1, -u * .75, u * .09, -u * .4)); // torso
+    poly([[-u * .02, -u * .72], [u * .075, -u * .71], [u * .085, -u * .56], [u * .0, -u * .55]], plate(0, -u * .72, u * .09, -u * .55)); // chest plate
+    ctx.fillStyle = "#24272c"; ctx.fillRect(-u * .09, -u * .44, u * .17, u * .035); // belt
+    cosmos(u * .062, -u * .645, u * .028);
+    const ex = attacking ? u * .1 : u * .015, ey = attacking ? -u * .62 : -u * .56, hx = attacking ? u * .21 : u * .035, hy = attacking ? -u * .62 : -u * .43;
+    seg(0, -u * .71, ex, ey, u * .035, u * .03); seg(ex, ey, hx, hy, u * .036, u * .032, plate(ex, ey, hx, hy)); ctx.fillStyle = "#16181b"; ctx.beginPath(); ctx.arc(hx, hy, u * .028, 0, Math.PI * 2); ctx.fill(); // arm, forearm plate, glove
+    poly([[-u * .075, -u * .78], [u * .035, -u * .79], [u * .045, -u * .7], [-u * .07, -u * .69]], plate(-u * .07, -u * .79, u * .04, -u * .69)); // shoulder plate
+    // Helmet: a smooth dome, the visor band wrapping forward, a small side module.
+    ctx.fillStyle = plate(-u * .1, -u * .98, u * .1, -u * .78); ctx.beginPath(); ctx.ellipse(-u * .005, -u * .875, u * .095, u * .1, 0, 0, Math.PI * 2); ctx.fill(); ctx.lineWidth = lw; ctx.strokeStyle = edge; ctx.stroke();
+    const vg = ctx.createLinearGradient(0, -u * .92, 0, -u * .84); vg.addColorStop(0, "#3c5560"); vg.addColorStop(.5, "#0c1216"); vg.addColorStop(1, "#1b2a30"); ctx.fillStyle = vg; ctx.beginPath(); ctx.moveTo(u * .0, -u * .915); ctx.quadraticCurveTo(u * .095, -u * .915, u * .093, -u * .865); ctx.quadraticCurveTo(u * .09, -u * .835, u * .0, -u * .84); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "#9cc6d455"; ctx.lineWidth = Math.max(.6, u * .007); ctx.beginPath(); ctx.moveTo(u * .02, -u * .905); ctx.lineTo(u * .07, -u * .9); ctx.stroke();
+    poly([[-u * .07, -u * .9], [-u * .035, -u * .9], [-u * .035, -u * .85], [-u * .07, -u * .85]], plate(-u * .07, -u * .9, -u * .03, -u * .85)); scuff(u * .02, -u * .7, u * .05, -u * .66);
+  } else {
+    for (const sx of [-1, 1]) { const lx = sx * u * .07, lo = (frame ? Math.sin(t * 9 + (sx > 0 ? Math.PI : 0)) : 0) * u * .018;
+      seg(lx, -u * .38, lx + sx * u * .005, -u * .2 + lo, u * .055, u * .046); seg(lx + sx * u * .005, -u * .2 + lo, lx, -u * .035 + lo, u * .045, u * .04);
+      poly([[lx - u * .045, -u * .25 + lo], [lx + u * .045, -u * .25 + lo], [lx + u * .04, -u * .17 + lo], [lx - u * .04, -u * .17 + lo]], plate(lx - u * .05, -u * .26, lx + u * .05, -u * .17)); // knee plates
+      poly([[lx - u * .055, -u * .05 + lo], [lx + u * .055, -u * .05 + lo], [lx + u * .06, lo], [lx - u * .06, lo]], plate(lx - u * .06, -u * .05, lx + u * .06, 0)); } // boots
+    poly([[-u * .11, -u * .4], [u * .11, -u * .4], [u * .145, -u * .62], [u * .13, -u * .75], [-u * .13, -u * .75], [-u * .145, -u * .62]], suit(-u * .15, -u * .76, u * .15, -u * .4)); // the torso, a dark pressure suit
+    ctx.strokeStyle = "#0e1013"; ctx.lineWidth = Math.max(.8, u * .01); for (let r = 0; r < 4; r++) { ctx.beginPath(); ctx.moveTo(-u * .1, -u * (.46 + r * .025)); ctx.lineTo(u * .1, -u * (.46 + r * .025)); ctx.stroke(); } // ribbed waist
+    ctx.fillStyle = "#24272c"; ctx.fillRect(-u * .12, -u * .43, u * .24, u * .035); for (const sx of [-1, 1]) { ctx.fillStyle = "#2e3238"; ctx.fillRect(sx * u * .07 - u * .025, -u * .43, u * .05, u * .045); } // belt and pouches
+    if (back) { poly([[-u * .1, -u * .74], [u * .1, -u * .74], [u * .095, -u * .48], [-u * .095, -u * .48]], plate(-u * .1, -u * .74, u * .1, -u * .48)); for (const sx of [-1, 1]) { ctx.fillStyle = "#121418"; ctx.beginPath(); ctx.ellipse(sx * u * .055, -u * .5, u * .025, u * .014, 0, 0, Math.PI * 2); ctx.fill(); } ctx.strokeStyle = "#0e1013"; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(-u * .08, -u * .66); ctx.lineTo(u * .08, -u * .66); ctx.stroke(); glowAt(u * .06, -u * .7, u * .025, amber, .5); } // the life-support pack
+    else { poly([[-u * .1, -u * .73], [u * .1, -u * .73], [u * .11, -u * .6], [u * .05, -u * .55], [-u * .05, -u * .55], [-u * .11, -u * .6]], plate(-u * .1, -u * .74, u * .1, -u * .55)); // the chest plate
+      for (const sx of [-1, 1]) { ctx.strokeStyle = "#1c1f23"; ctx.lineWidth = Math.max(1.5, u * .02); ctx.beginPath(); ctx.moveTo(sx * u * .12, -u * .7); ctx.quadraticCurveTo(sx * u * .15, -u * .6, sx * u * .08, -u * .56); ctx.stroke(); } // hoses from the pack
+      cosmos(0, -u * .64, u * .042); // the lantern's cosmos at the heart of the chest plate
+      scuff(-u * .08, -u * .7, -u * .04, -u * .66); scuff(u * .03, -u * .6, u * .07, -u * .63); }
+    for (const sx of [-1, 1]) { const ax = sx * u * .165, raise = attacking && sx > 0 ? -u * .08 : 0;
+      seg(ax, -u * .7, ax + sx * u * .012, -u * .53 + raise, u * .036, u * .032); seg(ax + sx * u * .012, -u * .53 + raise, ax + sx * u * .018, -u * .39 + raise, u * .036, u * .032, plate(ax - u * .04, -u * .53, ax + u * .04, -u * .39)); // arm, forearm plate
+      ctx.fillStyle = "#16181b"; ctx.beginPath(); ctx.arc(ax + sx * u * .018, -u * .37 + raise, u * .028, 0, Math.PI * 2); ctx.fill(); // glove
+      poly([[sx * u * .1, -u * .775], [sx * u * .21, -u * .76], [sx * u * .215, -u * .68], [sx * u * .14, -u * .67]], plate(sx * u * .1, -u * .78, sx * u * .22, -u * .67)); } // shoulder plates
+    // Helmet: a smooth dome, one smoked visor band, a small side module and its stub antenna.
+    ctx.fillStyle = plate(-u * .1, -u * .98, u * .1, -u * .78); ctx.beginPath(); ctx.ellipse(0, -u * .875, u * .095, u * .1, 0, 0, Math.PI * 2); ctx.fill(); ctx.lineWidth = lw; ctx.strokeStyle = edge; ctx.stroke();
+    ctx.fillStyle = "#1a1c20"; ctx.fillRect(-u * .05, -u * .79, u * .1, u * .025); // neck seal
+    if (!back) { const vg = ctx.createLinearGradient(0, -u * .92, 0, -u * .835); vg.addColorStop(0, "#3c5560"); vg.addColorStop(.45, "#0c1216"); vg.addColorStop(1, "#1b2a30"); ctx.fillStyle = vg; ctx.beginPath(); ctx.moveTo(-u * .082, -u * .9); ctx.quadraticCurveTo(0, -u * .925, u * .082, -u * .9); ctx.quadraticCurveTo(u * .085, -u * .855, u * .06, -u * .838); ctx.quadraticCurveTo(0, -u * .83, -u * .06, -u * .838); ctx.quadraticCurveTo(-u * .085, -u * .855, -u * .082, -u * .9); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = "#9cc6d455"; ctx.lineWidth = Math.max(.6, u * .007); ctx.beginPath(); ctx.moveTo(-u * .055, -u * .898); ctx.quadraticCurveTo(-u * .02, -u * .91, u * .01, -u * .905); ctx.stroke(); }
+    poly([[u * .088, -u * .9], [u * .112, -u * .9], [u * .112, -u * .85], [u * .088, -u * .85]], plate(u * .088, -u * .9, u * .112, -u * .85)); ctx.strokeStyle = "#2a2d32"; ctx.lineWidth = Math.max(.8, u * .008); ctx.beginPath(); ctx.moveTo(u * .1, -u * .9); ctx.lineTo(u * .1, -u * .97); ctx.stroke();
+  }
+  ctx.restore();
+}
 function drawSubmersible(ctx, x, y, s, facing, now, part = "back", diving = 0, water = true, boosting = false) {
   const cx = (x + .5) * s, base = (y + .98) * s + (water ? Math.sin(now / 420 + x) * s * .03 : 0), dir = facing === "left" ? -1 : 1, t = now / 1000, u = s * 1.2;
   const metal = (y0, y1) => { const g = ctx.createLinearGradient(-u * .5, y0, u * .5, y1); g.addColorStop(0, "#f2f5f8"); g.addColorStop(.5, "#b9c1ca"); g.addColorStop(1, "#6f7883"); return g; };
@@ -1056,6 +1126,13 @@ function actor(
       const pulse=.55+.45*Math.sin(performance.now()/420);ctx.strokeStyle=`rgba(201,166,255,${.5+.4*pulse})`;ctx.lineWidth=Math.max(1.5,s*.05);
       for(const [r,a0,a1] of [[.2,-.4,3.6],[.12,.4,4.6],[.05,0,6.3]]){ctx.beginPath();ctx.arc(k,base-s*.7,s*r,a0,a1);ctx.stroke()}
       ctx.fillStyle="#f3eaff";ctx.beginPath();ctx.arc(k,base-s*1.2,s*.04+pulse*s*.02,0,7);ctx.fill();
+    } else if (kind === "townSmith") { // release 395: the town smith: a stone forge with its coals, an anvil, the smith in a leather apron
+      const t=performance.now()/1000,heat=.6+.3*Math.sin(t*2.3)+.1*Math.sin(t*7.1);ctx.fillStyle="#00000055";ctx.beginPath();ctx.ellipse(k,base,s*.46,s*.11,0,0,7);ctx.fill();
+      rect("#3b3530",-0.46,-0.62,0.3,0.6);rect("#2a2420",-0.44,-0.72,0.26,0.12);ctx.fillStyle=`rgba(255,${Math.round(110+60*heat)},40,${.75*heat})`;ctx.fillRect(k-s*.4,base-s*.36,s*.22,s*.1);
+      const g=ctx.createRadialGradient(k-s*.29,base-s*.32,0,k-s*.29,base-s*.32,s*.45);g.addColorStop(0,`rgba(255,140,50,${.35*heat})`);g.addColorStop(1,"rgba(255,140,50,0)");ctx.fillStyle=g;ctx.beginPath();ctx.arc(k-s*.29,base-s*.32,s*.45,0,7);ctx.fill();
+      rect("#4a4d52",-0.02,-0.3,0.3,0.08);rect("#2e3034",0.06,-0.22,0.14,0.2);rect("#3a3d42",0.02,-0.04,0.22,0.05);
+      rect("#2c2622",0.3,-0.86,0.18,0.5);rect("#5a3f28",0.28,-0.62,0.22,0.3);ctx.fillStyle="#c79a76";ctx.beginPath();ctx.arc(k+s*.39,base-s*.92,s*.09,0,7);ctx.fill();rect("#1d1916",0.32,-0.36,0.06,0.36);rect("#1d1916",0.42,-0.36,0.06,0.36);
+      ctx.strokeStyle="#6b5136";ctx.lineWidth=Math.max(2,s*.04);ctx.beginPath();ctx.moveTo(k+s*.31,base-s*.7);ctx.lineTo(k+s*.14,base-s*.5+Math.sin(t*3)*s*.04);ctx.stroke();rect("#5c6067",0.08,-0.56,0.12,0.07);
     } else if (kind === "shrine") {
       rect("#806f91", -0.06, -0.62, 0.12, 0.5);rect("#4d665f", -0.3, -0.2, 0.6, 0.17);
       ctx.strokeStyle="#8ed1c1";ctx.lineWidth=Math.max(2,s*.055);ctx.beginPath();ctx.arc(k,base-s*.55,s*.25,0,Math.PI*1.45);ctx.stroke();ctx.beginPath();ctx.arc(k,base-s*.55,s*.13,Math.PI*.3,Math.PI*1.8);ctx.stroke();
@@ -1312,6 +1389,7 @@ export function render(ctx, g, w, h, now) {
   drawTraversalCues(ctx,g.map,mw,p,s,now,g.ledgeHint,seenTile);
   // Active combat effects, including Supernova, intentionally paint over fog. They never reveal tiles or actors.
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),g.presentation);
+  drawMorphEffects(ctx,g.enemies,s,now); // release 385: the Morphling's cables, jaw, lunge and rising
   drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) });
   for(const e of g.enemies)if(!e.dead&&discoveredInDungeon(g,e)&&e.eliteWindup>0&&visibleInCamera(e,l,t,r,b,e.kind==='gravitantBell'?6:3)){ctx.strokeStyle=e.kind==='gravitantBell'?"#8bb8bdcc":"#c6885ccc";ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
   for (const e of g.enemies)
@@ -1554,9 +1632,11 @@ export function render(ctx, g, w, h, now) {
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
       const drone = !!g.droneUp?.() && !!g.droneAt, mech = !!g.mechUp?.(), mechLift = (mech || drone) && g.mechBoosting ? s * (drone ? .35 : .22) : 0; // release 317: the robot ashore, lifted while it boosts; 321: the drone carries higher
-      if (mech) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "back", 0, false, g.mechBoosting);
+      if (mech && g.save.mech?.empowered) { const cx = (p.x + .5) * s, cy = (p.y + .55) * s - lift - mechLift, r = s * (.72 + .05 * Math.sin(now / 140)), glow = ctx.createRadialGradient(cx, cy, r * .2, cx, cy, r); glow.addColorStop(0, "#ffb05a55"); glow.addColorStop(1, "#ff5a1f00"); ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); } // release 383: the empowered robot's furnace glow
+      const suited = mech && g.save.mech?.empowered === true; // release 389: empowered, the robot is a svelte silver suit in the Wayfarer's place
+      if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "back", 0, false, g.mechBoosting);
       const subHidden = g.area === "overworld" && g.save.boat?.aboard && g._subDive > 0; if (subHidden) { ctx.save(); ctx.globalAlpha = .12; } // release 311: under the surface
-      actor(
+      if (suited) drawPowerSuit(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, Math.floor(p.walkPhase || 0), now < (p.attackUntil || 0), g.mechBoosting); else actor(
         ctx,
         p.x,
         p.y - lift / s,
@@ -1568,12 +1648,12 @@ export function render(ctx, g, w, h, now) {
       );
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
-      if (mech) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);
+      if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);
       if (drone) { const carry = !!g.mechBoosting; drawDrone(ctx, carry ? p.x : g.droneAt.x, carry ? p.y - (lift + mechLift) / s - .62 : g.droneAt.y - lift / s, s, p.facing, now, carry, g.droneHealFx || 0); // release 321
         const m = g.save.mech, bx = (p.x + .08) * s, by = (p.y + 1.1) * s - lift, bw = s * .84, bh = Math.max(3, s * .08); // carry (blue) and mend readiness (green)
         ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh * 2 + 3); ctx.fillStyle = "#5fc6e0"; ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, m.fuel / DRONE.carry)), bh); ctx.fillStyle = (m.healCd || 0) > 0 ? "#3f7f52" : "#7dff9a"; ctx.fillRect(bx, by + bh + 1, bw * Math.max(0, Math.min(1, 1 - (m.healCd || 0) / DRONE.healCooldown)), bh); }
       if (mech) { const m = g.save.mech, bx = (p.x + .08) * s, by = (p.y + 1.1) * s - lift, bw = s * .84, bh = Math.max(3, s * .08); // plating (silver) and boost (blue)
-        ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh * 2 + 3); ctx.fillStyle = "#d8dee5"; ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, m.plate / MECH.plate)), bh); ctx.fillStyle = "#5fc6e0"; ctx.fillRect(bx, by + bh + 1, bw * Math.max(0, Math.min(1, m.fuel / MECH.boost)), bh); }
+        ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh * 2 + 3); ctx.fillStyle = "#d8dee5"; ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, m.plate / MECH.plate)), bh); ctx.fillStyle = "#5fc6e0"; ctx.fillRect(bx, by + bh + 1, bw * Math.max(0, Math.min(1, m.fuel / (MECH.boost * (m.empowered ? 2 : 1)))), bh); if (m.empowered) { ctx.fillStyle = "#ff8a3d"; ctx.fillRect(bx, by + bh * 2 + 2, bw, Math.max(2, bh * .6)); } } // release 383: an ember line while empowered
       if (g.area === "overworld" && g.save.boat?.aboard && g.save.boat.sub && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "front", g._subDive); // release 311: the window's glass and the arms
       if (g._longboatFront && g.area === "overworld" && g.save.boat?.aboard) drawLongboat(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right", "front"); // release 269
       // Poisoned (release 165): the Wayfarer pulses green while poison lasts.

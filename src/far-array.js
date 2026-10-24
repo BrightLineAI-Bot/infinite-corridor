@@ -8,8 +8,8 @@
 // calls guardians in; from gate 3 it hides behind them until they fall. Felling it raises the Gate a tier (harder
 // guardians that borrow moves) and offers a choice of three boons; the first time, it also asks how the story ends,
 // though the climb goes on either way. State: save.farArray (additive). The lore stays open on purpose.
-import { hashSeed, rng } from "./random.js?v=r381-2e0c0ac5ef7c";
-import { daisDue } from "./listener-arena.js?v=r381-2e0c0ac5ef7c";
+import { hashSeed, rng } from "./random.js?v=r395-fc69302ceeff";
+import { daisDue } from "./listener-arena.js?v=r395-fc69302ceeff";
 
 export const FAR = {
   piecesBase: 2, // gate 1 needs 3 pieces, gate 2 needs 4, ...
@@ -25,7 +25,8 @@ export const GUARDIANS = {
 export const LISTENER_FORMS = {
   // Release 369: no more harmless reflections or place-swapping ("copy magic"); its reflections fight (listener-mirror.ts).
   open: { name: "The Listener, Wearing Your Face", attacks: ["blinkStrike", "clawSweep", "longStab"], boss: ["shockwave"] },
-  walled: { name: "The Listener, Starved Behind Its Walls", attacks: ["devourPull", "ramCharge", "bite", "groundRupture"], boss: ["shockwave", "fleshBloom"] },
+  // Release 385: the Morphling (listener-morph.ts) dives at you itself, so its plain kit drops the ram.
+  walled: { name: "The Listener, Starved Behind Its Walls", attacks: ["devourPull", "bite", "groundRupture"], boss: ["shockwave", "fleshBloom"] },
 };
 // Permanent boons, three offered after each Listener falls (Astral Ascent style). Effects read in game.ts characterStats.
 export const BOONS = {

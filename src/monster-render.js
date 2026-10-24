@@ -1,15 +1,16 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID } from "./monster-pack.js?v=r381-2e0c0ac5ef7c";
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID } from "./monster-pack.js?v=r395-fc69302ceeff";
+import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r395-fc69302ceeff";
 
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r381-2e0c0ac5ef7c";
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r395-fc69302ceeff";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r381-2e0c0ac5ef7c";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r381-2e0c0ac5ef7c";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r381-2e0c0ac5ef7c";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r395-fc69302ceeff";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r395-fc69302ceeff";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r395-fc69302ceeff";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r381-2e0c0ac5ef7c";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r395-fc69302ceeff";
 
 const TAU = Math.PI * 2;
 
@@ -260,6 +261,8 @@ const BODY = {
   },
   // The Listener (release 138): a cloaked figure shaped like the Wayfarer, its face a violet void; hidden it fades.
   listener(ctx, q) {
+    if (q.e.morphWorm) return drawMorphWorm(ctx, q); // release 385
+    if (q.e.listenerPhase === "walled" && q.e.morphScaled) return drawMorphling(ctx, q); // release 385: the Morphling
     const { k, b, u, t, p, flip, state, e } = q, sway = Math.sin(t * 3) * u * .03, walled = e.listenerPhase === "walled";
     if (e.untargetable) ctx.globalAlpha *= .25;
     glow(ctx, k, b - u * .55, u * .9, p[2], .22 + .08 * Math.sin(t * 5));
@@ -885,6 +888,194 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
 export function packSpriteCount() { return sprites.size; }
 
 // Draw one pack creature at its world position (s = tile size in pixels).
+// ---- the Morphling (release 385; listener-morph.ts) ----------------------------------------------------------------------
+// A huge, muscular, hunched body of dark violet flesh with ram horns and a cluster of eyes. Its arms never keep one shape:
+// each stretches like putty and its end cycles fist → claw → tentacle → cable → stone. Spinning, the arms fan out round it;
+// lunging, it becomes a writhing, toothed mass; sunk, only a bubbling pool and a few tips show.
+const MORPH_INK = { flesh: "#3a1d44", mid: "#2a1433", deep: "#110812", sheen: "#9a62b0", rim: "#e08cff", cool: "#5fb8d8", vein: "#c45cff", core: "#ff7be6", eye: "#ff4fd8", bone: "#e2d6c0", horn: "#b9a888", cable: "#262a33", spark: "#9fe8ff" };
+// A tapered limb along a quadratic spine from (x0,y0) through (cx,cy) to (x1,y1): filled body, a lit edge, ridges and suckers.
+function morphTendril(ctx, x0, y0, cx, cy, x1, y1, w0, w1, t, i, opt = {}) {
+  const C = MORPH_INK, N = 18, L = [], R = [], spine = [];
+  for (let k = 0; k <= N; k++) {
+    const f = k / N, wob = Math.sin(t * (opt.speed || 5) - f * 6 + i * 1.7) * (opt.wobble ?? .08) * f * Math.hypot(x1 - x0, y1 - y0);
+    const x = (1 - f) * (1 - f) * x0 + 2 * (1 - f) * f * cx + f * f * x1, y = (1 - f) * (1 - f) * y0 + 2 * (1 - f) * f * cy + f * f * y1;
+    const dx = 2 * (1 - f) * (cx - x0) + 2 * f * (x1 - cx), dy = 2 * (1 - f) * (cy - y0) + 2 * f * (y1 - cy), m = Math.hypot(dx, dy) || 1, nx = -dy / m, ny = dx / m;
+    const w = (w0 + (w1 - w0) * Math.pow(f, .8)) * (1 + .12 * Math.sin(f * 9 + t * 3 + i)) / 2;
+    spine.push([x + nx * wob, y + ny * wob, nx, ny, w]); L.push([x + nx * (wob + w), y + ny * (wob + w)]); R.push([x + nx * (wob - w), y + ny * (wob - w)]);
+  }
+  ctx.beginPath(); ctx.moveTo(L[0][0], L[0][1]); for (const p of L) ctx.lineTo(p[0], p[1]); for (let k = R.length - 1; k >= 0; k--) ctx.lineTo(R[k][0], R[k][1]); ctx.closePath();
+  const g = ctx.createLinearGradient(L[0][0], L[0][1], R[0][0], R[0][1]); g.addColorStop(0, opt.light || C.sheen); g.addColorStop(.45, opt.base || C.flesh); g.addColorStop(1, C.deep);
+  ctx.fillStyle = g; ctx.fill(); if (opt.outline !== false) { ctx.lineWidth = Math.max(1, w0 * .08); ctx.strokeStyle = "#07040acc"; ctx.stroke(); }
+  ctx.lineCap = "round"; ctx.strokeStyle = (opt.rim || C.rim) + "88"; ctx.lineWidth = Math.max(1, w0 * .1); ctx.beginPath(); for (let k = 1; k < N - 1; k++) { const [x, y, nx, ny, w] = spine[k]; ctx[k > 1 ? "lineTo" : "moveTo"](x + nx * w * .62, y + ny * w * .62); } ctx.stroke();
+  if (opt.ridges !== false) { ctx.strokeStyle = C.deep + "66"; ctx.lineWidth = Math.max(.8, w0 * .035); for (let k = 3; k < N - 1; k += 3) { const [x, y, nx, ny, w] = spine[k]; ctx.beginPath(); ctx.moveTo(x + nx * w * .85, y + ny * w * .85); ctx.quadraticCurveTo(x - ny * w * .3, y + nx * w * .3, x - nx * w * .85, y - ny * w * .85); ctx.stroke(); } }
+  if (opt.suckers) { for (let k = 4; k < N; k += 2) { const [x, y, nx, ny, w] = spine[k]; const r = Math.max(.8, w * .32); ctx.fillStyle = "#c98fd0"; ctx.beginPath(); ctx.ellipse(x - nx * w * .55, y - ny * w * .55, r, r * .8, 0, 0, TAU); ctx.fill(); ctx.fillStyle = C.deep; ctx.beginPath(); ctx.arc(x - nx * w * .55, y - ny * w * .55, r * .45, 0, TAU); ctx.fill(); } }
+  const end = spine[N], prev = spine[N - 2]; return { x: end[0], y: end[1], a: Math.atan2(end[1] - prev[1], end[0] - prev[0]), w: end[4] * 2 };
+}
+// What a limb's end becomes, cycling: fist, claw, tentacle curl, cable plug, stone, dragon jaw.
+function morphTip(ctx, tip, u, t, i, form) {
+  const C = MORPH_INK, { x, y, a } = tip, r = Math.max(u * .09, tip.w * .9);
+  ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+  if (form === 0) { // a knuckled fist
+    const g = ctx.createRadialGradient(-r * .3, -r * .4, r * .1, 0, 0, r * 1.3); g.addColorStop(0, C.sheen); g.addColorStop(1, C.deep); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(r * .35, 0, r * 1.15, r, 0, 0, TAU); ctx.fill(); outline(ctx, Math.max(1, u * .02));
+    ctx.strokeStyle = C.deep; ctx.lineWidth = Math.max(1, u * .015); for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(r * .9, k * r * .45); ctx.lineTo(r * 1.35, k * r * .45); ctx.stroke(); }
+  } else if (form === 1) { // hooked claws
+    ctx.fillStyle = C.flesh; ctx.beginPath(); ctx.ellipse(0, 0, r * .9, r * .75, 0, 0, TAU); ctx.fill();
+    for (let k = -1.5; k <= 1.5; k++) { ctx.fillStyle = C.bone; ctx.beginPath(); ctx.moveTo(r * .5, k * r * .4); ctx.quadraticCurveTo(r * 2, k * r * .7 - r * .2, r * 2.3, k * r * .9 + r * .5); ctx.quadraticCurveTo(r * 1.6, k * r * .5 + r * .1, r * .5, k * r * .4 + r * .28); ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#5b4d3a"; ctx.lineWidth = Math.max(.8, u * .01); ctx.stroke(); }
+  } else if (form === 2) { // a curling tentacle tip
+    ctx.strokeStyle = C.flesh; ctx.lineCap = "round"; for (let k = 0; k < 3; k++) { ctx.lineWidth = Math.max(1, r * (.7 - k * .2)); ctx.beginPath(); ctx.arc(r * (1 + k * .4), 0, r * (.9 - k * .2), Math.PI + Math.sin(t * 4 + i + k) * .4, Math.PI * (2.4 - k * .2)); ctx.stroke(); }
+  } else if (form === 3) { // a cable end, sparking
+    ctx.fillStyle = C.cable; ctx.fillRect(-r * .2, -r * .55, r * 1.4, r * 1.1); ctx.fillStyle = "#59606b"; ctx.fillRect(r * .9, -r * .35, r * .5, r * .7); ctx.fillStyle = "#a8b0bb"; for (const k of [-.18, .18]) ctx.fillRect(r * 1.4, k * r - r * .06, r * .45, r * .12);
+    glow(ctx, r * 1.9, 0, r * 1.4, C.spark, .6 + .3 * Math.sin(t * 24 + i)); ctx.fillStyle = "#eaffff"; ctx.beginPath(); ctx.arc(r * 1.9, 0, r * .18, 0, TAU); ctx.fill();
+  } else if (form === 4) { // a fist of stone
+    ctx.fillStyle = "#4d4552"; ctx.beginPath(); for (let k = 0; k < 7; k++) { const q = k * TAU / 7 + i, rr = r * (1.15 + .25 * Math.sin(k * 2.3 + i)); ctx[k ? "lineTo" : "moveTo"](r * .4 + Math.cos(q) * rr, Math.sin(q) * rr); } ctx.closePath(); ctx.fill(); outline(ctx, Math.max(1, u * .02)); ctx.strokeStyle = "#7a7180"; ctx.lineWidth = Math.max(.8, u * .012); ctx.beginPath(); ctx.moveTo(0, -r * .5); ctx.lineTo(r * .6, r * .1); ctx.lineTo(r * .3, r * .7); ctx.stroke();
+  } else { // a dragon's head, mouth working
+    const open = .25 + .2 * Math.sin(t * 6 + i), L = r * 2.6;
+    for (const sg of [-1, 1]) { ctx.save(); ctx.rotate(sg * open); ctx.fillStyle = C.flesh; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(L, sg * r * .15); ctx.lineTo(L * .85, sg * r * .7); ctx.lineTo(0, sg * r * .8); ctx.closePath(); ctx.fill(); outline(ctx, Math.max(1, u * .015)); ctx.fillStyle = C.bone; for (let k = 1; k < 5; k++) { ctx.beginPath(); ctx.moveTo(L * k / 5, sg * r * .12); ctx.lineTo(L * k / 5 + r * .12, -sg * r * .15); ctx.lineTo(L * k / 5 + r * .24, sg * r * .12); ctx.fill(); } ctx.restore(); }
+    eye(ctx, L * .25, -r * .55, Math.max(1, u * .02), C.eye);
+  }
+  ctx.restore();
+}
+// Release 389 (Tim: "it doesn't look very muscular... I like... the direction... like he has a chamber inside of him... increase
+// the fidelity of his tentacles and arms and the overall look"): a hulking, V-shaped titan on goat's legs. Massive traps and
+// deltoids, plated pectorals split by a glowing chamber of teeth, a ridged abdomen, two great arms that run out into tapered,
+// ridged, suckered tendrils whose ends keep changing, a crown of back tentacles, and a low horned head full of eyes.
+function drawMorphling(ctx, q) {
+  const { k, b, u, t, flip, state, e } = q, C = MORPH_INK, m = e.morph || {}, br = Math.sin(t * 2.2) * u * .02, wind = state === "windup";
+  if (m.sunk) { // under the floor: a bubbling pool and a few tips
+    shadowAt(ctx, k, b, u * .8, u * .22, .7); const pg = ctx.createRadialGradient(k, b, 0, k, b, u * .7); pg.addColorStop(0, C.vein + "88"); pg.addColorStop(.5, C.deep); pg.addColorStop(1, C.deep + "00"); ctx.fillStyle = pg; ctx.beginPath(); ctx.ellipse(k, b, u * .75, u * .2, 0, 0, TAU); ctx.fill();
+    for (let i = 0; i < 5; i++) { const x = k + Math.cos(t * 2 + i * 1.3) * u * .45, h = u * (.25 + .15 * Math.sin(t * 5 + i)); morphTendril(ctx, x, b, x + u * .1, b - h * .5, x - u * .06, b - h, u * .09, u * .015, t, i, { wobble: .2, ridges: false }); }
+    return;
+  }
+  const lunging = m.move === "lunge" && m.lunge && m.lunge.gone > 0, spinning = m.move === "spin";
+  shadowAt(ctx, k, b, u * .78, u * .2);
+  glow(ctx, k, b - u * .75, u * 1.3, C.vein, .14 + .05 * Math.sin(t * 3));
+  if (lunging) { // a writhing wave of tentacles with teeth
+    const d = m.lunge.dir, ang = Math.atan2(d.y, d.x), cx = k, cy = b - u * .5;
+    for (let i = 0; i < 11; i++) { const a = ang + Math.PI + (i - 5) * .2, len = u * (1.35 + .3 * Math.sin(t * 9 + i)); morphTendril(ctx, cx, cy, cx + Math.cos(a) * len * .5 + Math.sin(t * 8 + i) * u * .15, cy + Math.sin(a) * len * .5, cx + Math.cos(a + Math.sin(t * 6 + i) * .3) * len, cy + Math.sin(a) * len * .8, u * .22, u * .03, t * 1.5, i, { wobble: .14, suckers: i % 2 === 0 }); }
+    const g = ctx.createRadialGradient(cx - u * .2, cy - u * .25, u * .1, cx, cy, u * .75); g.addColorStop(0, C.sheen); g.addColorStop(.45, C.flesh); g.addColorStop(1, C.deep); ctx.fillStyle = g; ctx.beginPath();
+    for (let i = 0; i <= 28; i++) { const a2 = i / 28 * TAU, r = u * (.6 + .07 * Math.sin(a2 * 5 + t * 9) + .05 * Math.sin(a2 * 3 - t * 6)); ctx[i ? "lineTo" : "moveTo"](cx + Math.cos(a2 + ang) * r * 1.1, cy + Math.sin(a2 + ang) * r * .72); }
+    ctx.closePath(); ctx.fill(); outline(ctx, Math.max(1.5, u * .025), C.rim + "aa");
+    ctx.strokeStyle = C.vein + "99"; ctx.lineWidth = Math.max(1, u * .012); for (let i = 0; i < 6; i++) { const a2 = ang + Math.PI + (i - 2.5) * .35; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a2) * u * .55, cy + Math.sin(a2) * u * .35); ctx.quadraticCurveTo(cx + Math.cos(a2) * u * .2, cy + Math.sin(a2) * u * .3, cx + Math.cos(ang) * u * .1, cy); ctx.stroke(); }
+    for (let i = 0; i < 6; i++) eye(ctx, cx - Math.cos(ang) * u * .1 + Math.cos(i * 2.4) * u * .12, cy - u * .3 + Math.sin(i * 2.4) * u * .06, Math.max(1, u * .015), C.eye);
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang); ctx.fillStyle = "#070307"; ctx.beginPath(); ctx.ellipse(u * .35, 0, u * .38, u * .28, 0, 0, TAU); ctx.fill(); ctx.fillStyle = C.bone; for (let i = 0; i < 12; i++) { const a2 = i / 12 * TAU, x = u * .35 + Math.cos(a2) * u * .36, y = Math.sin(a2) * u * .26; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(u * .35 + Math.cos(a2) * u * .2, Math.sin(a2) * u * .14); ctx.lineTo(x + Math.cos(a2 + 1.6) * u * .05, y + Math.sin(a2 + 1.6) * u * .05); ctx.closePath(); ctx.fill(); } glow(ctx, u * .35, 0, u * .25, C.core, .5); ctx.restore();
+    return;
+  }
+  const S = { x: k, y: b - u * 1.18 + br }; // the shoulder line
+  const muscle = (x, y, rx, ry, rot, lit = .5) => { const g = ctx.createRadialGradient(x - rx * .35, y - ry * .45, rx * .1, x, y, Math.max(rx, ry) * 1.1); g.addColorStop(0, lit > .5 ? C.sheen : C.flesh); g.addColorStop(1, C.mid); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot, 0, TAU); ctx.fill(); ctx.strokeStyle = "#07040a99"; ctx.lineWidth = Math.max(1, u * .012); ctx.stroke(); };
+  // Back tentacles: a crown fanning from behind the shoulders.
+  for (let i = 0; i < 6; i++) {
+    const side = i < 3 ? -1 : 1, j = i % 3, base = spinning ? t * 9 + i * TAU / 6 : -Math.PI / 2 + side * (.55 + j * .42) + Math.sin(t * 1.4 + i) * .18, len = u * (spinning ? 1.45 : .95 + .2 * Math.sin(t * 1.9 + i * 2.1) + j * .12);
+    const x0 = S.x + side * u * (.25 + j * .1), y0 = S.y + u * .05, x1 = x0 + Math.cos(base) * len, y1 = y0 + Math.sin(base) * len;
+    const tip = morphTendril(ctx, x0, y0, x0 + Math.cos(base - side * .9) * len * .6, y0 + Math.sin(base - side * .9) * len * .6, x1, y1, u * (.27 - j * .03), u * .025, t, i, { suckers: j === 1, wobble: .16, light: C.flesh, base: C.mid });
+    if (j === 2) morphTip(ctx, tip, u, t, i, Math.floor(t * .6 + i * 1.37) % 6);
+  }
+  for (let i = 0; i < 7; i++) { const a2 = i / 7 * TAU + Math.sin(t + i) * .2, x0 = k + Math.cos(a2) * u * .32, y0 = b + Math.sin(a2) * u * .06, len = u * (.22 + .1 * Math.sin(t * 3 + i)); morphTendril(ctx, x0, y0, x0 + Math.cos(a2) * len * .6, y0 - u * .05, x0 + Math.cos(a2) * len, y0 + Math.sin(a2) * len * .25 - u * .02, u * .06, u * .01, t, i + 30, { ridges: false, outline: false, wobble: .3, light: C.flesh, base: C.mid }); } // spawn writhing at its feet
+  // Goat's legs: a heavy thigh, a backward-bent shank, a cloven hoof.
+  for (const sx of [-1, 1]) {
+    const hip = { x: k + sx * u * .2, y: b - u * .46 }, knee = { x: k + sx * u * .36, y: b - u * .25 }, hock = { x: k + sx * u * .22, y: b - u * .13 }, hoof = { x: k + sx * u * .3, y: b - u * .02 };
+    morphTendril(ctx, hip.x, hip.y, hip.x + sx * u * .2, hip.y + u * .02, knee.x, knee.y, u * .44, u * .22, t, sx + 20, { wobble: 0, ridges: false, outline: false, light: sx < 0 ? C.sheen : C.flesh });
+    morphTendril(ctx, knee.x, knee.y, knee.x - sx * u * .02, knee.y + u * .1, hock.x, hock.y, u * .2, u * .13, t, sx + 22, { wobble: 0, ridges: false, outline: false });
+    morphTendril(ctx, hock.x, hock.y, hock.x + sx * u * .02, hock.y + u * .06, hoof.x, hoof.y, u * .13, u * .1, t, sx + 24, { wobble: 0, ridges: false, outline: false });
+    muscle(hip.x + sx * u * .08, hip.y + u * .08, u * .2, u * .14, sx * .5, sx < 0 ? .8 : .35);
+    ctx.fillStyle = "#18121a"; for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(hoof.x + d * u * .015, hoof.y - u * .02); ctx.lineTo(hoof.x + d * u * .07, hoof.y - u * .015); ctx.lineTo(hoof.x + d * u * .06, b); ctx.lineTo(hoof.x + d * u * .005, b); ctx.closePath(); ctx.fill(); }
+  }
+  // The arms: deltoid, a swelling bicep, a heavy forearm, and from the wrist a tendril with a changing end.
+  for (const sx of [-1, 1]) {
+    const reach = spinning ? 1.35 : (.62 + .16 * Math.sin(t * 2.1 + sx)) * (wind ? 1.35 : 1), ang = spinning ? t * 9 + (sx > 0 ? 0 : Math.PI) : (sx > 0 ? .95 : Math.PI - .95) + Math.sin(t * 1.7 + sx * 2) * .12 - (wind ? sx * .5 : 0);
+    const ax = k + sx * u * .66, ay = S.y + u * .14, el = { x: ax + sx * u * .2 + Math.cos(ang) * u * .12, y: ay + u * .38 }, wr = { x: el.x + Math.cos(ang) * u * .34, y: el.y + Math.sin(ang) * u * .34 };
+    morphTendril(ctx, ax, ay, ax + sx * u * .2, ay + u * .16, el.x, el.y, u * .34, u * .24, t, sx + 5, { wobble: 0, ridges: false, outline: false, light: sx < 0 ? C.sheen : C.flesh }); // upper arm
+    muscle(ax + sx * u * .1, ay + u * .2, u * .13, u * .17, sx * .3, sx < 0 ? .9 : .4); // bicep
+    morphTendril(ctx, el.x, el.y, (el.x + wr.x) / 2 + sx * u * .06, (el.y + wr.y) / 2, wr.x, wr.y, u * .3, u * .2, t, sx + 7, { wobble: 0, ridges: false, outline: false, light: sx < 0 ? C.sheen : C.flesh }); // forearm
+    { const g2 = ctx.createRadialGradient(el.x - u * .03, el.y - u * .03, 0, el.x, el.y, u * .13); g2.addColorStop(0, sx < 0 ? C.sheen : C.flesh); g2.addColorStop(1, C.flesh + "00"); ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(el.x, el.y, u * .13, 0, TAU); ctx.fill(); } // the elbow, soft over the joint
+    ctx.strokeStyle = C.vein + "99"; ctx.lineWidth = Math.max(1, u * .01); ctx.beginPath(); ctx.moveTo(ax + sx * u * .05, ay + u * .1); ctx.quadraticCurveTo(el.x - sx * u * .05, el.y - u * .05, wr.x, wr.y); ctx.stroke();
+    { const g3 = ctx.createRadialGradient(wr.x - u * .03, wr.y - u * .03, 0, wr.x, wr.y, u * .15); g3.addColorStop(0, sx < 0 ? C.sheen : C.flesh); g3.addColorStop(.7, C.mid); g3.addColorStop(1, C.mid + "00"); ctx.fillStyle = g3; ctx.beginPath(); ctx.arc(wr.x, wr.y, u * .15, 0, TAU); ctx.fill(); } // the wrist swells into the tendril
+    const tx = wr.x + Math.cos(ang + sx * .25) * u * reach, ty = wr.y + Math.sin(ang + sx * .25) * u * reach * .8;
+    const tip = morphTendril(ctx, wr.x, wr.y, wr.x + Math.cos(ang - sx * .5) * u * reach * .55, wr.y + Math.sin(ang - sx * .5) * u * reach * .55, tx, ty, u * .19, u * .07, t, sx + 9, { suckers: true, wobble: .1 });
+    morphTip(ctx, tip, u, t, sx + 3, Math.floor(t * .7 + (sx > 0 ? 2.5 : 0)) % 6);
+  }
+  // The torso: a V from massive shoulders to a narrow waist.
+  const tg = ctx.createLinearGradient(k - u * .8, S.y, k + u * .8, b - u * .4); tg.addColorStop(0, C.sheen); tg.addColorStop(.35, C.flesh); tg.addColorStop(1, C.deep);
+  ctx.beginPath(); ctx.moveTo(k - u * .24, b - u * .44); ctx.bezierCurveTo(k - u * .36, b - u * .7, k - u * .78, S.y + u * .25, k - u * .7, S.y + u * .02); ctx.quadraticCurveTo(k - u * .52, S.y - u * .2, k - u * .16, S.y - u * .14); ctx.lineTo(k + u * .16, S.y - u * .14); ctx.quadraticCurveTo(k + u * .52, S.y - u * .2, k + u * .7, S.y + u * .02); ctx.bezierCurveTo(k + u * .78, S.y + u * .25, k + u * .36, b - u * .7, k + u * .24, b - u * .44); ctx.closePath(); ctx.fillStyle = tg; ctx.fill(); outline(ctx, Math.max(1.5, u * .025));
+  ctx.save(); ctx.clip(); { const lg = ctx.createLinearGradient(k - u * .75, 0, k + u * .75, 0); lg.addColorStop(0, C.rim + "40"); lg.addColorStop(.12, "#00000000"); lg.addColorStop(.75, "#00000000"); lg.addColorStop(1, "#000000aa"); ctx.fillStyle = lg; ctx.fillRect(k - u, S.y - u * .3, u * 2, u * 1.2); }
+  ctx.strokeStyle = C.deep + "aa"; ctx.lineWidth = Math.max(1, u * .012); for (let r = 0; r < 4; r++) for (const sx of [-1, 1]) { ctx.beginPath(); ctx.moveTo(k + sx * u * .48, S.y + u * (.22 + r * .09)); ctx.quadraticCurveTo(k + sx * u * .58, S.y + u * (.26 + r * .09), k + sx * u * .6, S.y + u * (.34 + r * .09)); ctx.stroke(); }
+  ctx.restore();
+  muscle(k - u * .32, S.y - u * .08, u * .26, u * .12, -.25, .8); muscle(k + u * .32, S.y - u * .08, u * .26, u * .12, .25, .3); // traps
+  muscle(k - u * .62, S.y + u * .1, u * .2, u * .2, 0, .9); muscle(k + u * .62, S.y + u * .1, u * .2, u * .2, 0, .4); // deltoids
+  muscle(k - u * .22, S.y + u * .2, u * .24, u * .16, .12, .8); muscle(k + u * .22, S.y + u * .2, u * .24, u * .16, -.12, .4); // pectorals
+  for (let r = 0; r < 3; r++) for (const sx of [-1, 1]) muscle(k + sx * u * .085, S.y + u * (.44 + r * .14), u * .075, u * .06, 0, sx < 0 ? .7 : .4); // the abdomen
+  for (const sx of [-1, 1]) for (let r = 0; r < 3; r++) { ctx.strokeStyle = C.deep + "cc"; ctx.lineWidth = Math.max(1, u * .014); ctx.beginPath(); ctx.moveTo(k + sx * u * .3, S.y + u * (.34 + r * .1)); ctx.lineTo(k + sx * u * .42, S.y + u * (.3 + r * .1)); ctx.stroke(); } // serratus
+  // The chamber: a split between the pectorals, glowing, rimmed with teeth.
+  const gape = wind ? .16 : .07 + .02 * Math.sin(t * 4), cy = S.y + u * .38;
+  glow(ctx, k, cy, u * .4, C.core, .35 + .15 * Math.sin(t * 5)); ctx.fillStyle = "#0a0309"; ctx.beginPath(); ctx.ellipse(k, cy, u * gape, u * .26, 0, 0, TAU); ctx.fill();
+  const cg = ctx.createRadialGradient(k, cy, 0, k, cy, u * .2); cg.addColorStop(0, "#fff0fb"); cg.addColorStop(.3, C.core); cg.addColorStop(1, C.core + "00"); ctx.fillStyle = cg; ctx.beginPath(); ctx.ellipse(k, cy, u * gape * .7, u * .18, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = C.bone; for (let i = 0; i < 7; i++) { const y = cy - u * .22 + i * u * .073; for (const sx of [-1, 1]) { ctx.beginPath(); ctx.moveTo(k + sx * u * gape, y - u * .025); ctx.lineTo(k + sx * u * gape * .25, y); ctx.lineTo(k + sx * u * gape, y + u * .025); ctx.closePath(); ctx.fill(); } }
+  for (let i = 0; i < 6; i++) { const f = ((t * .6 + i / 6) % 1), x = k + Math.sin(i * 2.1 + t * 2) * u * .05 * (1 + f), y = cy - f * u * .55; ctx.fillStyle = C.core + Math.round((1 - f) * 200).toString(16).padStart(2, "0"); ctx.beginPath(); ctx.arc(x, y, Math.max(.8, u * .014 * (1 - f * .5)), 0, TAU); ctx.fill(); } // motes rising from the chamber
+  ctx.strokeStyle = C.vein + "aa"; ctx.lineWidth = Math.max(1, u * .012); for (let i = 0; i < 5; i++) { const sx = i % 2 ? 1 : -1; ctx.beginPath(); ctx.moveTo(k + sx * u * .12, cy - u * .1 + i * u * .05); ctx.bezierCurveTo(k + sx * u * .3, cy - u * .2 + i * u * .06, k + sx * u * .45, cy + i * u * .03, k + sx * u * .58, cy - u * .3 + i * u * .02); ctx.stroke(); }
+  // The head (release 391; Tim: "remove his horns... make his head... more mechanical, electromechanical, like cyborg...
+  // tubes... Ghost in the Shell... but not so overly futuristic... more so like Remnant: From the Ashes"): a hunched skull of
+  // flesh caged in corroded, riveted iron, a slatted breathing grille over the jaw with ribbed hoses running down into the
+  // shoulders, cables from the back of the skull, and mismatched optics: one big dull lens and a small cluster.
+  const hx = k + flip * u * .03, hy = S.y - u * .13, iron = (x0, y0, x1, y1) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, "#8d877c"); g.addColorStop(.45, "#4e4a45"); g.addColorStop(1, "#1f1c1b"); return g; };
+  const hose = (x0, y0, cx, cy, x1, y1, w) => { ctx.lineCap = "round"; ctx.strokeStyle = "#141114"; ctx.lineWidth = w * 1.25; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cx, cy, x1, y1); ctx.stroke(); ctx.strokeStyle = "#3b3634"; ctx.lineWidth = w; ctx.stroke(); ctx.strokeStyle = "#6d665e"; ctx.lineWidth = Math.max(.8, w * .25); ctx.stroke();
+    ctx.strokeStyle = "#141114"; ctx.lineWidth = Math.max(.8, w * .14); for (let r = 1; r < 10; r++) { const f = r / 10, x = (1 - f) ** 2 * x0 + 2 * (1 - f) * f * cx + f * f * x1, y = (1 - f) ** 2 * y0 + 2 * (1 - f) * f * cy + f * f * y1, dx = 2 * (1 - f) * (cx - x0) + 2 * f * (x1 - cx), dy = 2 * (1 - f) * (cy - y0) + 2 * f * (y1 - cy), m = Math.hypot(dx, dy) || 1; ctx.beginPath(); ctx.moveTo(x - dy / m * w * .55, y + dx / m * w * .55); ctx.lineTo(x + dy / m * w * .55, y - dx / m * w * .55); ctx.stroke(); } };
+  for (const sx of [-1, 1]) { ctx.strokeStyle = "#1a1719"; ctx.lineWidth = Math.max(1, u * .016); ctx.beginPath(); ctx.moveTo(hx + sx * u * .1, hy - u * .12); ctx.bezierCurveTo(hx + sx * u * .25, hy - u * .3, hx + sx * u * .42, hy - u * .2, hx + sx * u * .48, S.y + u * .02); ctx.stroke(); ctx.strokeStyle = "#5b2a2a"; ctx.lineWidth = Math.max(.8, u * .007); ctx.stroke(); } // cables from the back of the skull
+  ctx.fillStyle = shade(ctx, hx, hy, u * .22, C.sheen, C.deep); ctx.beginPath(); ctx.moveTo(hx - u * .17, hy - u * .02); ctx.quadraticCurveTo(hx - u * .02, hy - u * .26, hx + u * .17, hy - u * .04); ctx.quadraticCurveTo(hx + u * .15, hy + u * .14, hx, hy + u * .2); ctx.quadraticCurveTo(hx - u * .15, hy + u * .14, hx - u * .17, hy - u * .02); ctx.fill(); outline(ctx, Math.max(1, u * .02)); // the skull of flesh
+  ctx.fillStyle = iron(hx - u * .18, hy - u * .25, hx + u * .1, hy + u * .05); ctx.beginPath(); ctx.moveTo(hx - u * .19, hy + u * .02); ctx.quadraticCurveTo(hx - u * .17, hy - u * .2, hx - u * .02, hy - u * .245); ctx.quadraticCurveTo(hx + u * .12, hy - u * .24, hx + u * .16, hy - u * .12); ctx.lineTo(hx + u * .05, hy - u * .1); ctx.lineTo(hx - u * .02, hy - u * .02); ctx.lineTo(hx - u * .1, hy + u * .05); ctx.closePath(); ctx.fill(); outline(ctx, Math.max(1, u * .016), "#0d0b0c"); // the iron cage over the crown
+  ctx.fillStyle = "#7a4a2c88"; for (const [rx, ry, rr] of [[-.12, -.15, .03], [.06, -.2, .022], [-.15, -.02, .02]]) { ctx.beginPath(); ctx.arc(hx + rx * u, hy + ry * u, rr * u, 0, TAU); ctx.fill(); } // rust
+  ctx.strokeStyle = "#1a1719"; ctx.lineWidth = Math.max(.8, u * .009); ctx.beginPath(); ctx.moveTo(hx - u * .17, hy - u * .08); ctx.lineTo(hx + u * .1, hy - u * .17); ctx.stroke(); // a plate seam
+  ctx.fillStyle = "#b9b1a3"; for (const [rx, ry] of [[-.16, -.06], [-.13, -.16], [-.04, -.22], [.07, -.21], [.13, -.13], [-.08, .02]]) { ctx.beginPath(); ctx.arc(hx + rx * u, hy + ry * u, Math.max(.8, u * .009), 0, TAU); ctx.fill(); } // rivets
+  // The jaw grille, and its hoses down into the shoulders.
+  for (const sx of [-1, 1]) hose(hx + sx * u * .07, hy + u * .14, hx + sx * u * .22, hy + u * .32, hx + sx * u * .36, S.y + u * .1, Math.max(2, u * .05));
+  ctx.fillStyle = iron(hx - u * .1, hy + u * .04, hx + u * .1, hy + u * .22); ctx.beginPath(); ctx.moveTo(hx - u * .11, hy + u * .05); ctx.lineTo(hx + u * .11, hy + u * .05); ctx.lineTo(hx + u * .08, hy + u * .19); ctx.lineTo(hx, hy + u * .22); ctx.lineTo(hx - u * .08, hy + u * .19); ctx.closePath(); ctx.fill(); outline(ctx, Math.max(1, u * .014), "#0d0b0c");
+  ctx.strokeStyle = "#0d0b0c"; ctx.lineWidth = Math.max(.8, u * .012); for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(hx + i * u * .03, hy + u * .08); ctx.lineTo(hx + i * u * .026, hy + u * .18); ctx.stroke(); }
+  glow(ctx, hx, hy + u * .14, u * .08, C.core, .25 + .15 * Math.sin(t * 3)); // breath glowing through the slats
+  // The optics: one big dull lens in an iron socket, a cluster of small ones on the other side.
+  const big = { x: hx + flip * u * .07, y: hy - u * .03 }, small = { x: hx - flip * u * .075, y: hy - u * .045 };
+  ctx.fillStyle = "#1a1719"; ctx.beginPath(); ctx.arc(big.x, big.y, u * .058, 0, TAU); ctx.fill(); ctx.strokeStyle = "#6d665e"; ctx.lineWidth = Math.max(1, u * .012); ctx.stroke();
+  const lens = ctx.createRadialGradient(big.x - u * .012, big.y - u * .012, 0, big.x, big.y, u * .042); lens.addColorStop(0, "#ffd2a0"); lens.addColorStop(.35, "#ff6a2a"); lens.addColorStop(1, "#3a0d06"); ctx.fillStyle = lens; ctx.beginPath(); ctx.arc(big.x, big.y, u * .04, 0, TAU); ctx.fill();
+  glow(ctx, big.x, big.y, u * .1, "#ff6a2a", .3 + .1 * Math.sin(t * 2.5));
+  for (const [dx, dy, r] of [[0, 0, .018], [-.025, .025, .012], [.02, .028, .01]]) { ctx.fillStyle = "#1a1719"; ctx.beginPath(); ctx.arc(small.x + dx * u, small.y + dy * u, (r + .007) * u, 0, TAU); ctx.fill(); ctx.fillStyle = "#ff5a3a"; ctx.beginPath(); ctx.arc(small.x + dx * u, small.y + dy * u, r * u * (.8 + .2 * Math.sin(t * 5 + dx * 50)), 0, TAU); ctx.fill(); }
+}
+function drawMorphWorm(ctx, q) {
+  const { k, b, u, t, e } = q, C = MORPH_INK, f = e.facing || { x: 1, y: 0 }, ang = Math.atan2(f.y, f.x), nip = (e.nipUntil || 0) > t * 1000 ? .35 : 0, segs = 7;
+  shadowAt(ctx, k, b, u * .5, u * .12);
+  for (let i = segs - 1; i >= 0; i--) { const back = i * u * .16, wig = Math.sin(t * 12 - i * .9 + (e.seed || 1)) * u * .1, x = k - Math.cos(ang) * back - Math.sin(ang) * wig, y = b - u * .18 - Math.sin(ang) * back * .6 + Math.cos(ang) * wig * .6 - (i === 0 ? nip * u : 0), r = u * (.17 - i * .012);
+    ctx.fillStyle = i % 2 ? C.flesh : C.sheen; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); outline(ctx, Math.max(1, u * .03)); if (i === 0) { ctx.fillStyle = "#080306"; ctx.beginPath(); ctx.arc(x + Math.cos(ang) * r * .5, y, r * .45, 0, TAU); ctx.fill(); ctx.fillStyle = C.bone; ctx.beginPath(); ctx.arc(x + Math.cos(ang) * r * .5, y, r * .45, 0, TAU); ctx.lineWidth = Math.max(1, u * .02); ctx.strokeStyle = C.bone; ctx.stroke(); } }
+}
+// The Morphling's reach in world space (drawn with the pack effects): cables and their pulses, the stretching jaw arm,
+// the lunge's warning band and where it will rise from the floor.
+export function drawMorphEffects(ctx, enemies, s, now) {
+  const C = MORPH_INK;
+  for (const e of enemies || []) {
+    const m = e.morph; if (!m || e.dead) continue;
+    ctx.save(); ctx.lineCap = "round";
+    for (const c of m.cables || []) {
+      if (now >= c.until) continue; const live = now >= c.liveAt, ax = c.a.x * s, ay = c.a.y * s, bx = c.b.x * s, by = c.b.y * s;
+      ctx.strokeStyle = live ? C.cable : C.vein + "55"; ctx.lineWidth = live ? Math.max(2, s * .1) : Math.max(1, s * .04); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      if (live) { ctx.strokeStyle = C.sheen + "77"; ctx.lineWidth = Math.max(1, s * .03); ctx.stroke(); const f = ((now - c.liveAt) / 1000) * 8 / Math.max(1, c.len), g = f - 2 * Math.floor(f / 2), u2 = g <= 1 ? g : 2 - g, px = ax + (bx - ax) * u2, py = ay + (by - ay) * u2; glow(ctx, px, py, s * .7, "#9fe8ff", .7); ctx.fillStyle = "#e9fbff"; ctx.beginPath(); ctx.arc(px, py, s * .16, 0, TAU); ctx.fill(); }
+      else { ctx.fillStyle = C.vein + "88"; ctx.beginPath(); ctx.arc(bx, by, s * .12, 0, TAU); ctx.fill(); }
+    }
+    if (m.move === "jaw" && m.jaw) { // the arm stretches out, and a dragon's head opens at its end
+      const j = m.jaw, reach = Math.min(1, (now - m.t0) / 650), fx = j.from.x * s, fy = (j.from.y - .3) * s, tx = (j.from.x + (j.to.x - j.from.x) * reach) * s, ty = (j.from.y - .3 + (j.to.y - j.from.y + .3) * reach) * s, ang = Math.atan2(ty - fy, tx - fx), open = j.bit ? 0 : Math.min(1, Math.max(0, (now - m.t0 - 650) / 450)) * .7;
+      ctx.strokeStyle = "#ff3a5a55"; ctx.lineWidth = Math.max(1, s * .04); ctx.beginPath(); ctx.arc(j.to.x * s, j.to.y * s, 1.15 * s, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = C.flesh; ctx.lineWidth = Math.max(3, s * .22); ctx.beginPath(); ctx.moveTo(fx, fy); ctx.quadraticCurveTo((fx + tx) / 2 + Math.sin(now / 80) * s * .3, (fy + ty) / 2 - s * .6, tx, ty); ctx.stroke(); ctx.strokeStyle = C.sheen + "88"; ctx.lineWidth = Math.max(1, s * .06); ctx.stroke();
+      ctx.translate(tx, ty); ctx.rotate(ang); const L = s * .9;
+      for (const sg of [-1, 1]) { ctx.save(); ctx.rotate(sg * open); ctx.fillStyle = C.flesh; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(L, sg * s * .08); ctx.lineTo(L * .85, sg * s * .3); ctx.lineTo(0, sg * s * .32); ctx.closePath(); ctx.fill(); outline(ctx, Math.max(1, s * .03)); ctx.fillStyle = C.bone; for (let i = 1; i < 6; i++) { ctx.beginPath(); ctx.moveTo(L * i / 6, sg * s * .06); ctx.lineTo(L * i / 6 + s * .05, -sg * s * .06); ctx.lineTo(L * i / 6 + s * .1, sg * s * .06); ctx.fill(); } if (sg < 0) eye(ctx, L * .35, -s * .2, Math.max(1, s * .05), C.eye); ctx.restore(); }
+      ctx.rotate(-ang); ctx.translate(-tx, -ty);
+    }
+    if (m.move === "beams" && m.beams) { // release 389: four beams in a cross, turning round it
+      const bm = m.beams, live = now >= bm.liveAt, cx = (e.x + .5) * s, cy = (e.y + .45) * s, L = MORPH_FORM.beams.length * s;
+      for (let i = 0; i < MORPH_FORM.beams.count; i++) { const a = beamAngle(bm, i, now), ex = cx + Math.cos(a) * L, ey = cy + Math.sin(a) * L;
+        if (!live) { ctx.strokeStyle = "#ff7be6" + (Math.floor(now / 90) % 2 ? "66" : "33"); ctx.lineWidth = Math.max(1, s * .05); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke(); continue; }
+        for (const [w, c] of [[s * .9, "#c45cff22"], [s * .5, "#e08cff55"], [s * .22, "#ff9bf0cc"], [s * .08, "#fff2fd"]]) { ctx.strokeStyle = c; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke(); }
+        glow(ctx, cx, cy, s * .8, "#ff7be6", .5); }
+    }
+    if (m.move === "lunge" && m.lunge && now < m.lunge.goAt) { const l = m.lunge, x = l.from.x * s, y = l.from.y * s, ang = Math.atan2(l.dir.y, l.dir.x); ctx.translate(x, y); ctx.rotate(ang); ctx.fillStyle = "#ff3a5a" + (Math.floor(now / 90) % 2 ? "33" : "22"); ctx.fillRect(0, -s * .75, s * 9, s * 1.5); ctx.rotate(-ang); ctx.translate(-x, -y); }
+    if (m.move === "sink" && m.sink) { const x = (m.sink.to.x + .5) * s, y = (m.sink.to.y + .82) * s, k2 = Math.min(1, (now - m.t0) / 1300); ctx.strokeStyle = C.vein + "aa"; ctx.lineWidth = Math.max(1, s * .05); ctx.beginPath(); ctx.ellipse(x, y, s * 2.3 * k2, s * .7 * k2, 0, 0, TAU); ctx.stroke(); ctx.fillStyle = C.deep + "aa"; ctx.beginPath(); ctx.ellipse(x, y, s * .5 * k2, s * .15 * k2, 0, 0, TAU); ctx.fill(); }
+    ctx.restore();
+  }
+}
+
 export function drawPackMonster(ctx, e, s, now, facing = "down") {
   const def = MONSTER_PACK[e.kind];
   if (!def) return false;

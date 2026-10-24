@@ -7,7 +7,7 @@
 //
 // Everything balance-related is data in GLYPHS and RESONANCES. The Game calls hostLoadout() when it attacks and
 // glyphHit() after each hit lands; world-side effects go through a small adapter so this file stays testable.
-import { hashSeed } from "./random.js?v=r381-2e0c0ac5ef7c";
+import { hashSeed } from "./random.js?v=r395-fc69302ceeff";
 
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];
@@ -99,7 +99,7 @@ export const RESONANCES = {
 };
 
 // ---------------------------------------------------------------- save state
-export function socketCount(item) { return item && (item.slot === "primary" || item.slot === "secondary" || item.slot === "armor") ? SOCKETS_BY_TIER[item.tier] || 1 : 0; } // release 295: armor too
+export function socketCount(item) { return item && (item.slot === "primary" || item.slot === "secondary" || item.slot === "armor") ? (SOCKETS_BY_TIER[item.tier] || 1) + (item.extraSockets === 1 ? 1 : 0) : 0; } // release 395: the town smith may add one socket // release 295: armor too
 export function normalizeSockets(item) {
   if (!item) return item;
   const n = socketCount(item);

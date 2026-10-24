@@ -8,8 +8,9 @@
 // floor; and it may break through only into floor you could already walk to, so no sealed or guarded part is ever
 // opened early. Hunts, portals, dives and crossings are temporary places and are never dug.
 // Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r381-2e0c0ac5ef7c";
-import { LETHAL_KINDS } from "./landscape.js?v=r381-2e0c0ac5ef7c";
+import { hashSeed } from "./random.js?v=r395-fc69302ceeff";
+import { LETHAL_KINDS } from "./landscape.js?v=r395-fc69302ceeff";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r395-fc69302ceeff";
 
 // Balance (data, not literals in the logic).
 export const DIG = {
@@ -32,9 +33,12 @@ export const DIG = {
   glintShare: .4,                // share of those whose glint shows on an exposed face
   spotChance: .03, spotMinDepth: 2,
   maxTunnelsPerArea: 60,         // bounds what a save may hold for one area
+  // Release 387 (Tim approved "glints and buried treasure could scale with Aperture tier"): every `every` Aperture tiers a
+  // wall is `chance` likelier to hold something, and marks and materials come `more` times as plentiful (spheres stay one).
+  tierScale: { every: 4, chance: .02, more: .5 },
   // Release 379 (Tim, 2026-10-24: "you should be able to make a shovel with cinder iron to break through the walls... it'll
   // just cost one cinder iron and one wood"): the iron shovel digs the rock the standard one will not: rock that rings
-  // hollow and sealed. It is lashed together the same way, only when such rock needs it. Release r381-2e0c0ac5ef7c (Tim: "even with the
+  // hollow and sealed. It is lashed together the same way, only when such rock needs it. Release 381 (Tim: "even with the
   // iron shovel... you can still only dig three from your position"): it reaches no deeper than the standard shovel.
   iron: { recipe: { cinderIron: 1, wood: 1 }, uses: 2 },
 };
@@ -135,11 +139,16 @@ export function applyTunnels(map, save, areaKey) {
   return map;
 }
 // What a wall block hides, decided by the seed and the block's place: null, or { id, n, label, glint }.
-export function wallTreasure(seed, areaKey, x, y) {
-  const h = hashSeed(`${seed}:wall-treasure:v${DIG.version}:${areaKey}:${x},${y}`);
-  if ((h % 10000) / 10000 >= DIG.treasureChance) return null;
-  return { ...pickFind(h >>> 7), glint: ((h >>> 3) % 1000) / 1000 < DIG.glintShare };
+// `tier` (release 387): the Wayfarer's Aperture tier; 0 keeps the release-225 odds and amounts.
+export const digStep = (tier) => Math.floor(Math.max(0, Number(tier) || 0) / DIG.tierScale.every);
+export const saveTier = (save) => Math.max(0, APERTURE_BANDS.indexOf(apertureBand(save?.perception?.aperture || 0)));
+export function wallTreasure(seed, areaKey, x, y, tier = 0) {
+  const h = hashSeed(`${seed}:wall-treasure:v${DIG.version}:${areaKey}:${x},${y}`), step = digStep(tier);
+  if ((h % 10000) / 10000 >= DIG.treasureChance + step * DIG.tierScale.chance) return null;
+  const f = pickFind(h >>> 7);
+  return { ...f, n: scaled(f, step), glint: ((h >>> 3) % 1000) / 1000 < DIG.glintShare };
 }
+const scaled = (f, step) => f.id === "weaponSphere" || f.id === "armorSphere" ? f.n : Math.round(f.n * (1 + step * DIG.tierScale.more));
 function pickFind(h) {
   const total = DIG_FINDS.reduce((a, f) => a + f.weight, 0); let roll = h % total;
   for (const f of DIG_FINDS) { if (roll < f.weight) return { id: f.id, label: f.label, n: f.min + ((h >>> 9) % (f.max - f.min + 1)) }; roll -= f.weight; }
@@ -152,7 +161,7 @@ export function wallGlints(map, seed, areaKey, save) {
   for (const t of map.tiles) {
     if (!t.blocked || dug.has(`${t.x},${t.y}`) || !diggable(map, t.x, t.y)) continue;
     if (!Object.values(DIRS).some(([dx, dy]) => walkable(at(map, t.x + dx, t.y + dy)))) continue;
-    const found = wallTreasure(seed, areaKey, t.x, t.y); if (found?.glint) out.push({ x: t.x, y: t.y });
+    const found = wallTreasure(seed, areaKey, t.x, t.y, saveTier(save)); if (found?.glint) out.push({ x: t.x, y: t.y });
   }
   return out;
 }
@@ -172,7 +181,7 @@ export function dig(save, map, plan, areaKey) {
   if (list.length >= DIG.maxTunnelsPerArea) return { ok: false, message: "This place has been dug enough; the rock is unsound." };
   openTunnel(map, plan.x, plan.y); list.push(`${plan.x},${plan.y}`);
   save.digging[tool] -= 1; addStone(save, DIG.stone.wall);
-  const left = save.digging[tool], find = wallTreasure(save.seed, areaKey, plan.x, plan.y), got = find ? creditFind(save, find) : null, broke = left === 0;
+  const left = save.digging[tool], find = wallTreasure(save.seed, areaKey, plan.x, plan.y, saveTier(save)), got = find ? creditFind(save, find) : null, broke = left === 0;
   if (plan.iron && broke) delete save.digging.iron;
   const parts = [plan.through ? "You break through into the passage beyond." : "You dig a block into the wall.", got ? `Something in the rock: ${got}.` : null, broke ? `The ${name.toLowerCase()} snaps.` : `${name}: ${left} dig${left === 1 ? "" : "s"} left.`];
   return { ok: true, message: parts.filter(Boolean).join(" "), broke, find };
@@ -200,7 +209,7 @@ export function digSpot(save, o, rx, ry) {
   if (save.digging.spots[key]) return { ok: false, message: "Only loose earth now." };
   if (save.digging.shovel <= 0) return { ok: false, message: "You have no shovel." };
   save.digging.spots[key] = true; save.digging.shovel -= 1; addStone(save, DIG.stone.spot);
-  const h = hashSeed(`${save.seed}:dig-spot-find:${rx}:${ry}`), got = creditFind(save, pickFind(h)), broke = save.digging.shovel === 0;
+  const h = hashSeed(`${save.seed}:dig-spot-find:${rx}:${ry}`), f = pickFind(h), got = creditFind(save, { ...f, n: scaled(f, digStep(saveTier(save))) }), broke = save.digging.shovel === 0;
   o.state = "dug"; o.actions = []; o.name = "Turned earth";
   return { ok: true, message: `You dig down and find ${got}, and some stone.${broke ? " The shovel snaps." : ` Shovel: ${save.digging.shovel} dig${save.digging.shovel === 1 ? "" : "s"} left.`}` };
 }
