@@ -3110,8 +3110,12 @@ export class Game {
   digAhead() {
     if (this.area !== "dungeon" || !this.map?.tiles) return null;
     const p = this.player, w = mapWidth(this.map, this.area), px = Math.floor(p.x + .5), py = Math.floor(p.y + .75), key = this.areaStateId();
+    // Release 411: forgiving aim: the tile ahead of the feet, else of the body's middle (a stone just above or below the
+    // feet row was missed, and Act said "Nothing nearby responds").
     let plan = planDig(this.map, px, py, p.facing || "down", key);
-    if (!plan.ok && plan.resists) { const hard = planDig(this.map, px, py, p.facing || "down", key, { iron: true }); if (hard.ok) plan = hard; } // release 379: the iron shovel
+    for (const ty of [Math.round(p.y + .4), Math.floor(p.y + .4)]) if (!plan.ok && !plan.reason && ty !== py) { const alt = planDig(this.map, px, ty, p.facing || "down", key); if (alt.ok || alt.reason) plan = alt; }
+    if (!plan.ok && plan.resists) { const hard = planDig(this.map, px, py, p.facing || "down", key, { iron: true }); for (const ty of [py, Math.round(p.y + .4), Math.floor(p.y + .4)]) { const h2 = planDig(this.map, px, ty, p.facing || "down", key, { iron: true }); if (h2.ok) { plan = { ...h2, hard: true }; break; } } if (!plan.ok && hard.ok) plan = { ...hard, hard: true }; } // release 379: the iron shovel; 411: a hard wall costs it 2
+    if (plan.ok && !plan.iron && !(this.save.digging?.shovel > 0) && (this.save.digging?.iron > 0) && ((this.save.materials?.wood || 0) < DIG.recipe.wood || (this.save.materials?.stone || 0) < DIG.recipe.stone)) plan = { ...plan, iron: true }; // release 411: no standard shovel to hand, the iron one digs
     if (!plan.ok) { if (!plan.reason) return null; this.message = plan.reason; return { ok: false, message: this.message }; }
     const c = plan.iron ? ensureIronShovel(this.save) : ensureShovel(this.save); if (!c.ok) { this.message = c.message; return { ok: false, message: this.message }; }
     const r = dig(this.save, this.map, plan, key);

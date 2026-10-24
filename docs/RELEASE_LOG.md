@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**411**
+**413**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 409 | Claude | `claude/dreamy-rubin-yn6q2p` | Creatures on Supernova-scarred ground and world beasts are always drawn in dungeons | Building. |
+| 411 | Claude | `claude/dreamy-rubin-yn6q2p` | Iron shovel: 4 points (wall 1, obstacle or hard wall 2), digs plain walls without a standard shovel; forgiving dig aim | Building. |
+| 409 | Claude | PR #187 | Creatures on Supernova-scarred ground and world beasts are always drawn in dungeons | Merged. Not published. |
 | 407 | Claude | PR #186 | Void Walker paced (longer cooldowns, a real gap between attacks); Supernova fog no longer hides creatures | Merged; preview `r407-fba627b84eee`. Not published. |
 | 405 | Claude | PR #185 | Psychic Crystal push, pull and grab show their reach with pink waves | Merged; preview `r405-a8f100addce9`. Not published. |
 | 403 | Claude | PR #184 | Living bosses marked on the dungeon map | Merged; preview `r403-7588ec35dda3`. Not published. |
