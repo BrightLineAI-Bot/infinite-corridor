@@ -1126,6 +1126,13 @@ function actor(
       const pulse=.55+.45*Math.sin(performance.now()/420);ctx.strokeStyle=`rgba(201,166,255,${.5+.4*pulse})`;ctx.lineWidth=Math.max(1.5,s*.05);
       for(const [r,a0,a1] of [[.2,-.4,3.6],[.12,.4,4.6],[.05,0,6.3]]){ctx.beginPath();ctx.arc(k,base-s*.7,s*r,a0,a1);ctx.stroke()}
       ctx.fillStyle="#f3eaff";ctx.beginPath();ctx.arc(k,base-s*1.2,s*.04+pulse*s*.02,0,7);ctx.fill();
+    } else if (kind === "townSmith") { // release 395: the town smith: a stone forge with its coals, an anvil, the smith in a leather apron
+      const t=performance.now()/1000,heat=.6+.3*Math.sin(t*2.3)+.1*Math.sin(t*7.1);ctx.fillStyle="#00000055";ctx.beginPath();ctx.ellipse(k,base,s*.46,s*.11,0,0,7);ctx.fill();
+      rect("#3b3530",-0.46,-0.62,0.3,0.6);rect("#2a2420",-0.44,-0.72,0.26,0.12);ctx.fillStyle=`rgba(255,${Math.round(110+60*heat)},40,${.75*heat})`;ctx.fillRect(k-s*.4,base-s*.36,s*.22,s*.1);
+      const g=ctx.createRadialGradient(k-s*.29,base-s*.32,0,k-s*.29,base-s*.32,s*.45);g.addColorStop(0,`rgba(255,140,50,${.35*heat})`);g.addColorStop(1,"rgba(255,140,50,0)");ctx.fillStyle=g;ctx.beginPath();ctx.arc(k-s*.29,base-s*.32,s*.45,0,7);ctx.fill();
+      rect("#4a4d52",-0.02,-0.3,0.3,0.08);rect("#2e3034",0.06,-0.22,0.14,0.2);rect("#3a3d42",0.02,-0.04,0.22,0.05);
+      rect("#2c2622",0.3,-0.86,0.18,0.5);rect("#5a3f28",0.28,-0.62,0.22,0.3);ctx.fillStyle="#c79a76";ctx.beginPath();ctx.arc(k+s*.39,base-s*.92,s*.09,0,7);ctx.fill();rect("#1d1916",0.32,-0.36,0.06,0.36);rect("#1d1916",0.42,-0.36,0.06,0.36);
+      ctx.strokeStyle="#6b5136";ctx.lineWidth=Math.max(2,s*.04);ctx.beginPath();ctx.moveTo(k+s*.31,base-s*.7);ctx.lineTo(k+s*.14,base-s*.5+Math.sin(t*3)*s*.04);ctx.stroke();rect("#5c6067",0.08,-0.56,0.12,0.07);
     } else if (kind === "shrine") {
       rect("#806f91", -0.06, -0.62, 0.12, 0.5);rect("#4d665f", -0.3, -0.2, 0.6, 0.17);
       ctx.strokeStyle="#8ed1c1";ctx.lineWidth=Math.max(2,s*.055);ctx.beginPath();ctx.arc(k,base-s*.55,s*.25,0,Math.PI*1.45);ctx.stroke();ctx.beginPath();ctx.arc(k,base-s*.55,s*.13,Math.PI*.3,Math.PI*1.8);ctx.stroke();
