@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 409: creatures visible on the Supernova's scar — 2026-10-24
+
+Tim, 2026-10-24: "the white cracked area that overlays the world... also overlays enemies and the Void Walker himself, so I can't see him... after the supernova, it should change the floor and remove the blocks of the dungeon walls, but... all enemies should still be visible".
+
+**CODE:** `renderer.ts` `discoveredInDungeon(g, point)` now also returns true for a world beast (`point.worldBeast`) and for a point on a `voidScar` tile (`scarredAt`). The scar overlay deliberately paints over undiscovered fog (release 257), but actors there were filtered out by discovery, so they vanished inside the white. Tests: `tests/void-scar-visible-409.test.ts`.
+
+**BOUNDARY:** Discovery itself (the dungeon map, objects and tiles) is unchanged. Only creature drawing (sprites, telegraphs and windups) treats scarred ground and world beasts as seen.
+
 ## Release 407: the Void Walker, paced; the Supernova fog thins — 2026-10-24
 
 Tim, 2026-10-24: "the Supernova... covers the entire world, so I can't see him... all the other creatures... become invisible... the Void Walker should attack less frequently... he covers up the entire screen with attacks... a little bit more pacing".

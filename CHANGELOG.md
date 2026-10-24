@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 409 — nothing hides in the white.
+  - **The Supernova's scar:** in a dungeon, the white cracked ground a Supernova leaves could spread over parts of the dungeon you had not explored yet. Creatures standing there, the Void Walker included, were not drawn. Creatures on scarred ground are now always drawn, and the Void Walker and the other world beasts are always drawn in dungeons.
+
 - Release 407 — the Void Walker, paced.
   - **Fewer attacks:** the Void Walker waits about a second between attacks (it was .3 s), and every one of its attacks recovers about 40% more slowly. The Supernova now comes every 30 s instead of 23.
   - **You can see through the Supernova's fog:** its mist is thinner and no longer closes in around you, so the Void Walker and every other creature stay visible.

@@ -51,7 +51,11 @@ export function visibleInCamera(o, left, top, right, bottom, padding = 2) {
   return Number(o.x) >= left - padding && Number(o.x) <= right + padding &&
     Number(o.y) >= top - padding && Number(o.y) <= bottom + padding;
 }
-const discoveredInDungeon=(g,point)=>g.area!=="dungeon"||dungeonPointDiscovered(g.map,point);
+// Release 409 (Tim: "the white cracked area [after the Supernova]... overlays enemies and the Void Walker himself, so I can't
+// see him... the characters and all enemies should still be visible"): ground the Supernova has scarred counts as seen, and
+// a world beast is always drawn, so nothing fights unseen inside the white.
+const scarredAt=(g,point)=>{const w=g.map?.width||32,t=g.map?.tiles?.[Math.floor(Number(point?.y)+.5)*w+Math.floor(Number(point?.x)+.5)];return !!t?.voidScar};
+const discoveredInDungeon=(g,point)=>g.area!=="dungeon"||!!point?.worldBeast||scarredAt(g,point)||dungeonPointDiscovered(g.map,point);
 
 const structureRenderCache = new WeakMap();
 const mapObjectCache = new WeakMap();
