@@ -634,12 +634,19 @@ function drawDrone(ctx, x, y, s, facing, now, carrying = false, heal = 0) {
 // Ultraman Tiga... we don't want to depart from the overall gritty, down-to-earth feel"). Drawn in place of the Wayfarer, at
 // their size: a dark graphite pressure suit, segmented and scuffed, with low plates at chest, shoulders, knees and forearms,
 // a smooth helmet with one smoked visor band, a compact life-support pack with hoses to the chest, a dim amber status
-// light, and small, cold thrusters at the back and heels that only show while it boosts.
+// light (violet since release 393), and small, cold thrusters at the back and heels that only show while it boosts.
 export function drawPowerSuit(ctx, x, y, s, facing, now, frame = 0, attacking = false, boosting = false) {
   const t = now / 1000, k = x * s + s / 2, base = y * s + s * .84, u = s * .9, side = facing === "left" || facing === "right", back = facing === "up", dir = facing === "left" ? -1 : 1;
   const plate = (x0, y0, x1, y1) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, "#5d636b"); g.addColorStop(.4, "#363a41"); g.addColorStop(1, "#1a1c20"); return g; };
   const suit = (x0, y0, x1, y1) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, "#2c3036"); g.addColorStop(1, "#121418"); return g; };
-  const edge = "#0a0b0d", worn = "#8a8f96", amber = "#ffb347", lw = Math.max(1, u * .016);
+  const edge = "#0a0b0d", worn = "#8a8f96", amber = "#9b6bff", lw = Math.max(1, u * .016); // release 393: violet, the lantern's cosmos, in place of the amber
+  // Release 393 (Tim: "the same purple cosmic world as the lantern, rather than that golden... emblem... all the gold [should]
+  // be that same color"): a small orb of night glass with a two-armed spiral of pale violet light and a bright core.
+  const cosmos = (cx, cy, r) => { glowAt(cx, cy, r * 2.4, "#9b6bff", .45 + .15 * Math.sin(t * 1.6)); ctx.fillStyle = "#120a26"; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.lineWidth = Math.max(.8, r * .18); ctx.strokeStyle = "#2a2d32"; ctx.stroke();
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r * .92, 0, Math.PI * 2); ctx.clip(); ctx.strokeStyle = "#d9c8ffdd"; ctx.lineWidth = Math.max(.6, r * .16); ctx.lineCap = "round"; const spin = t * .5;
+    for (const arm of [0, Math.PI]) { ctx.beginPath(); for (let q = 0; q <= 1.0001; q += .1) { const a = arm + spin + q * 4.2, rr = r * (.08 + q * .8); ctx[q ? "lineTo" : "moveTo"](cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * .85); } ctx.stroke(); }
+    ctx.fillStyle = "#b48cff55"; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(cx + Math.cos(i * 2.4 + spin) * r * .6, cy + Math.sin(i * 2.4 + spin) * r * .5, Math.max(.5, r * .07), 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore(); ctx.fillStyle = "#f4f0ff"; ctx.beginPath(); ctx.arc(cx, cy, Math.max(.7, r * .18), 0, Math.PI * 2); ctx.fill(); };
   const poly = (pts, fill, stroke = edge) => { ctx.beginPath(); pts.forEach(([px, py], i) => ctx[i ? "lineTo" : "moveTo"](px, py)); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.stroke(); };
   const seg = (x0, y0, x1, y1, w0, w1, fill) => { const a = Math.atan2(y1 - y0, x1 - x0), nx = -Math.sin(a), ny = Math.cos(a); poly([[x0 + nx * w0, y0 + ny * w0], [x1 + nx * w1, y1 + ny * w1], [x1 - nx * w1, y1 - ny * w1], [x0 - nx * w0, y0 - ny * w0]], fill || suit(x0 - w0, y0, x1 + w1, y1)); };
   const glowAt = (gx, gy, r, c, a) => { const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r); g.addColorStop(0, c + Math.round(a * 255).toString(16).padStart(2, "0")); g.addColorStop(1, c + "00"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(gx, gy, r, 0, Math.PI * 2); ctx.fill(); };
@@ -657,7 +664,7 @@ export function drawPowerSuit(ctx, x, y, s, facing, now, frame = 0, attacking = 
     poly([[-u * .085, -u * .4], [u * .065, -u * .4], [u * .085, -u * .55], [u * .075, -u * .74], [-u * .09, -u * .75], [-u * .095, -u * .55]], suit(-u * .1, -u * .75, u * .09, -u * .4)); // torso
     poly([[-u * .02, -u * .72], [u * .075, -u * .71], [u * .085, -u * .56], [u * .0, -u * .55]], plate(0, -u * .72, u * .09, -u * .55)); // chest plate
     ctx.fillStyle = "#24272c"; ctx.fillRect(-u * .09, -u * .44, u * .17, u * .035); // belt
-    glowAt(u * .07, -u * .66, u * .03, amber, .6); ctx.fillStyle = amber; ctx.fillRect(u * .062, -u * .665, u * .014, u * .01);
+    cosmos(u * .062, -u * .645, u * .028);
     const ex = attacking ? u * .1 : u * .015, ey = attacking ? -u * .62 : -u * .56, hx = attacking ? u * .21 : u * .035, hy = attacking ? -u * .62 : -u * .43;
     seg(0, -u * .71, ex, ey, u * .035, u * .03); seg(ex, ey, hx, hy, u * .036, u * .032, plate(ex, ey, hx, hy)); ctx.fillStyle = "#16181b"; ctx.beginPath(); ctx.arc(hx, hy, u * .028, 0, Math.PI * 2); ctx.fill(); // arm, forearm plate, glove
     poly([[-u * .075, -u * .78], [u * .035, -u * .79], [u * .045, -u * .7], [-u * .07, -u * .69]], plate(-u * .07, -u * .79, u * .04, -u * .69)); // shoulder plate
@@ -677,7 +684,7 @@ export function drawPowerSuit(ctx, x, y, s, facing, now, frame = 0, attacking = 
     if (back) { poly([[-u * .1, -u * .74], [u * .1, -u * .74], [u * .095, -u * .48], [-u * .095, -u * .48]], plate(-u * .1, -u * .74, u * .1, -u * .48)); for (const sx of [-1, 1]) { ctx.fillStyle = "#121418"; ctx.beginPath(); ctx.ellipse(sx * u * .055, -u * .5, u * .025, u * .014, 0, 0, Math.PI * 2); ctx.fill(); } ctx.strokeStyle = "#0e1013"; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(-u * .08, -u * .66); ctx.lineTo(u * .08, -u * .66); ctx.stroke(); glowAt(u * .06, -u * .7, u * .025, amber, .5); } // the life-support pack
     else { poly([[-u * .1, -u * .73], [u * .1, -u * .73], [u * .11, -u * .6], [u * .05, -u * .55], [-u * .05, -u * .55], [-u * .11, -u * .6]], plate(-u * .1, -u * .74, u * .1, -u * .55)); // the chest plate
       for (const sx of [-1, 1]) { ctx.strokeStyle = "#1c1f23"; ctx.lineWidth = Math.max(1.5, u * .02); ctx.beginPath(); ctx.moveTo(sx * u * .12, -u * .7); ctx.quadraticCurveTo(sx * u * .15, -u * .6, sx * u * .08, -u * .56); ctx.stroke(); } // hoses from the pack
-      ctx.fillStyle = "#121418"; ctx.fillRect(-u * .03, -u * .66, u * .06, u * .04); glowAt(u * .012, -u * .645, u * .03, amber, .55 + .15 * Math.sin(t * 2)); ctx.fillStyle = amber; ctx.fillRect(u * .005, -u * .65, u * .014, u * .01); // the status panel
+      cosmos(0, -u * .64, u * .042); // the lantern's cosmos at the heart of the chest plate
       scuff(-u * .08, -u * .7, -u * .04, -u * .66); scuff(u * .03, -u * .6, u * .07, -u * .63); }
     for (const sx of [-1, 1]) { const ax = sx * u * .165, raise = attacking && sx > 0 ? -u * .08 : 0;
       seg(ax, -u * .7, ax + sx * u * .012, -u * .53 + raise, u * .036, u * .032); seg(ax + sx * u * .012, -u * .53 + raise, ax + sx * u * .018, -u * .39 + raise, u * .036, u * .032, plate(ax - u * .04, -u * .53, ax + u * .04, -u * .39)); // arm, forearm plate
