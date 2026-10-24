@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 399 — farther, richer.
+  - **More experience the farther you go:** creatures far from Ember Refuge already had more health and hit harder. Now they also give more experience: +6% per ring of distance (1.6× at ring 10, 2.2× at ring 20). Dungeon and Aperture foes that carry a threat multiplier give theirs too.
+
 - Release 397 — see it coming.
   - **One warning colour:** every mark on the floor showing where a blow will land is now the same translucent, pale hot pink, everywhere in the game.
   - **The Lightning Giant:** when its coils crackle before the Tesla arcs, a ring shows how far the arcs reach (step outside it), and it stays while they live. The three bolts that can follow its club slam now hold for a moment with their lanes shown before they fly. The sky strikes and storm bolts are marked in the same pink.

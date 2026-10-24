@@ -3961,7 +3961,7 @@ export class Game {
     this.save.currency += marks;
     const oldHp = this.save.maxHp,
       oldStamina = this.save.maxStamina,
-      levels = awardExperience(this.save, e.seaKind ? SEA_CREATURES[e.seaKind].xp : e.boss ? 35 : 10);
+      levels = awardExperience(this.save, Math.round((e.seaKind ? SEA_CREATURES[e.seaKind].xp : e.boss ? 35 : 10) * Math.max(1, Number(e.xpMultiplier) || 1))); // release 399: harder (farther, deeper) foes give more
     if (levels) {
       this.player.hp = Math.min(
         this.save.maxHp,

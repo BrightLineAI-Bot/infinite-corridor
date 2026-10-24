@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**399**
+**401**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 397 | Claude | `claude/dreamy-rubin-yn6q2p` | One pale hot pink for every hit warning; warnings for the Giant's arcs and slam bolts and the Turtle's comet; 4-slot gear glyph layouts | Building. |
+| 399 | Claude | `claude/dreamy-rubin-yn6q2p` | Kills pay the regional experience multiplier (more experience farther from Ember Refuge) | Building. |
+| 397 | Claude | PR #181 | One pale hot pink for every hit warning; warnings for the Giant's arcs and slam bolts and the Turtle's comet; 4-slot gear glyph layouts | Merged; preview `r397-d8f28357e335`. Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
