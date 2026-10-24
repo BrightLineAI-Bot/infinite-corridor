@@ -38,7 +38,7 @@ test('digging goes up to three blocks deep, breaks through only into floor you c
   dig(s, m, p, key); assert.equal(m.tiles[3 * 12 + 5].tunnel, true);
   p = planDig(m, 5, 3, 'right', key); assert.equal(p.ok, true); assert.equal(p.through, true);
   dig(s, m, p, key); assert.equal(s.digging.shovel, 4); assert.deepEqual(s.digging.dug[key], ['5,3', '6,3']);
-  assert.equal(s.materials.stone, 2, 'each block gives a stone');
+  assert.equal(s.materials.stone, 0, 'release 413 (Tim): digging gives no stone back');
   // The map edge never.
   assert.equal(planDig(m, 1, 3, 'left', key).ok, false);
 });

@@ -20,7 +20,7 @@ export const DIG = {
   heldUses: 6,                   // the most uses a saved shovel may keep (a 6-use shovel from before 263 is not cut down)
   recipe: { wood: 1, stone: 1 }, // what a shovel costs (release 259, Tim: "one wood and one stone to make a shovel")
   carryStone: 99,                // the most stone the Wayfarer carries (release 259 set 2; release 261, Tim: "99 wood and 99 stone. You can dig as much as you want")
-  stone: { wall: 1, chip: 1, break: 0, spot: 2 }, // release 275 (Tim: "every rock gives one stone"): breaking a chipped rock now only clears it (it gave 2)
+  stone: { wall: 0, chip: 1, break: 0, spot: 0 }, // release 413 (Tim: "it shouldn't refund your stone... it's a resource you shouldn't get from digging"): dug walls and earth give none (they gave 1 and 2) // release 275 (Tim: "every rock gives one stone"): breaking a chipped rock now only clears it (it gave 2)
   // Release 277 (Tim, 2026-10-22: "the supply cache will just give you one of each of those, a stone... a draught, and a wood";
   // "the observatory can give you a random of... three wood or three stone or... one stone and one draught").
   cache: { stone: 1, wood: 1, restorativeDraught: 1 }, // on top of the cache's own supply (a draught cache gives just its one)
@@ -45,6 +45,9 @@ export const DIG = {
   // two of them"): `uses` is 4 points; a dig spends `cost` by what it cuts. With an iron shovel in hand and no standard
   // shovel (nor wood and stone for one), it digs plain walls too.
   iron: { recipe: { cinderIron: 1, wood: 1 }, uses: 4, cost: { wall: 1, obstacle: 2, hard: 2 } },
+  // Release 413 (Tim: "to break those pillars, it should just take a full... shovel... we don't have to spend iron for that"):
+  // an obstacle (isObstacle) takes the whole standard shovel, whatever digs it had left.
+  obstacleTakesShovel: true,
 };
 // What a wall or a patch of earth can hold, by weight. `marks` is currency; others are materials.
 export const DIG_FINDS = [
@@ -187,10 +190,10 @@ export function dig(save, map, plan, areaKey) {
   const list = (save.digging.dug[areaKey] ||= []);
   if (list.length >= DIG.maxTunnelsPerArea) return { ok: false, message: "This place has been dug enough; the rock is unsound." };
   openTunnel(map, plan.x, plan.y); list.push(`${plan.x},${plan.y}`);
-  save.digging[tool] = Math.max(0, save.digging[tool] - (plan.iron ? DIG.iron.cost[plan.hard ? "hard" : plan.cut] || 1 : 1)); addStone(save, DIG.stone.wall); // release 411: the iron shovel spends by what it cuts
+  save.digging[tool] = Math.max(0, save.digging[tool] - (plan.iron ? DIG.iron.cost[plan.hard ? "hard" : plan.cut] || 1 : plan.cut === "obstacle" && DIG.obstacleTakesShovel ? save.digging[tool] : 1)); if (DIG.stone.wall) addStone(save, DIG.stone.wall); // release 411: the iron shovel spends by what it cuts; 413: an obstacle takes a whole standard shovel, and no stone comes back
   const left = save.digging[tool], find = wallTreasure(save.seed, areaKey, plan.x, plan.y, saveTier(save)), got = find ? creditFind(save, find) : null, broke = left === 0;
   if (plan.iron && broke) delete save.digging.iron;
-  const parts = [plan.through ? "You break through into the passage beyond." : "You dig a block into the wall.", got ? `Something in the rock: ${got}.` : null, broke ? `The ${name.toLowerCase()} snaps.` : `${name}: ${left} dig${left === 1 ? "" : "s"} left.`];
+  const parts = [plan.cut === "obstacle" ? "You break it down." : plan.through ? "You break through into the passage beyond." : "You dig a block into the wall.", got ? `Something in the rock: ${got}.` : null, broke ? `The ${name.toLowerCase()} snaps.` : `${name}: ${left} dig${left === 1 ? "" : "s"} left.`];
   return { ok: true, message: parts.filter(Boolean).join(" "), broke, find };
 }
 
@@ -215,8 +218,8 @@ export function digSpot(save, o, rx, ry) {
   const key = `${rx},${ry}`;
   if (save.digging.spots[key]) return { ok: false, message: "Only loose earth now." };
   if (save.digging.shovel <= 0) return { ok: false, message: "You have no shovel." };
-  save.digging.spots[key] = true; save.digging.shovel -= 1; addStone(save, DIG.stone.spot);
+  save.digging.spots[key] = true; save.digging.shovel -= 1; if (DIG.stone.spot) addStone(save, DIG.stone.spot);
   const h = hashSeed(`${save.seed}:dig-spot-find:${rx}:${ry}`), f = pickFind(h), got = creditFind(save, { ...f, n: scaled(f, digStep(saveTier(save))) }), broke = save.digging.shovel === 0;
   o.state = "dug"; o.actions = []; o.name = "Turned earth";
-  return { ok: true, message: `You dig down and find ${got}, and some stone.${broke ? " The shovel snaps." : ` Shovel: ${save.digging.shovel} dig${save.digging.shovel === 1 ? "" : "s"} left.`}` };
+  return { ok: true, message: `You dig down and find ${got}.${broke ? " The shovel snaps." : ` Shovel: ${save.digging.shovel} dig${save.digging.shovel === 1 ? "" : "s"} left.`}` };
 }

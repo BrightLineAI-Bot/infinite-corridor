@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 413 — stone is a resource.
+  - **No stone from digging:** dug walls and disturbed earth no longer give stone back, so lashing a shovel really costs its stone. Stone still comes from rocks, caches and Broken Observatories in the world and in dungeons.
+  - **Pillars take a whole shovel:** breaking an obstacle (a sleeper-stone, a spire, a pillar) uses up the whole standard shovel, with no cinder iron needed. The iron shovel stays for the hard walls that resist the standard one.
+
 - Release 411 — the iron shovel, sturdier.
   - **Four digs' worth:** an iron shovel now lasts for 4 plain wall blocks, or 2 obstacles (sleeper-stones, spires and the like), or 2 of the hard walls that resist the standard shovel, before it breaks. It is still forged on the spot from 1 cinder iron and 1 wood when it is needed.
   - **No standard shovel? The iron one digs:** with an iron shovel in hand and no standard shovel (nor the wood and stone for one), it digs plain walls too.
