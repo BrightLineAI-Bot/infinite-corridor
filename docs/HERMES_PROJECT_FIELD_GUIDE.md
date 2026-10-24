@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 403: bosses on the dungeon map — 2026-10-24
+
+Tim, 2026-10-24: "the location of... the Psychic Crystal and the Void Walker... any bosses should be indicated on the map... I guess it's just for the dungeons... where they are... [bosses] are already shown on the overworld".
+
+**CODE:** `main.ts` `drawDungeonMap`, for the current level only, draws every living enemy whose `monster-pack.ts` `staggerClass` is `boss` or `revenant` as a pink diamond at its live position, fog or not. That covers `boss`, world beasts, the Questing Beast, Far Array bosses, guardian roles and Gate Revenants. Tests: `tests/dungeon-boss-map-403.test.ts`.
+
+**BOUNDARY:** Ordinary creatures, elites, reflections and worms are not marked. Levels viewed through the level picker show no live positions. The overworld Atlas is unchanged.
+
 ## Release 401: the Crystal fights in the open; daises on the dungeon map — 2026-10-24
 
 Tim, 2026-10-24: "the [Psychic] Crystal still isn't working right... he just spends too much time in the squares where you can't be hurt... he dodges too much... he can have a smaller stagger cooldown... he just runs too much, and I never get to actually fight him"; "the teleportation daises in dungeons should show on the map once you find them".
