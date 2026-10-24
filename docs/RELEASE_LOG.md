@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**425**
+**427**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 423 | Claude | `claude/dreamy-rubin-yn6q2p` | World beasts keep their wounds when you die; the Far Sleep dreams with fewer obstacles (dream v2, new sections); the shovel digs in the overworld | Building. |
+| 425 | Claude | `claude/dreamy-rubin-yn6q2p` | Open-world digging waits for Infinite II | Building. |
+| 423 | Claude | PR #194 | World beasts keep their wounds when you die; the Far Sleep dreams with fewer obstacles (dream v2, new sections); the shovel digs in the overworld | Merged; preview `r423-0b50e79bfe5e`. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)

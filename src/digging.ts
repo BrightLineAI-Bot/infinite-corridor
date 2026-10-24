@@ -128,7 +128,9 @@ function tunnelDepth(map, x, y) {
 // like it works... in the dungeons"): in the open world a shovel takes rock, crags, stones and spires, never water, chasms,
 // the night-sky voids of the Far Sleep, castle walls, buildings or anything in a settlement. A dug tile settles to the
 // lowest open ground beside it, so it joins the path you dug from. Tunnels are kept per section (`overworldDigKey`).
-export const OVERWORLD_DIG = { refuse: /water|Water|river|lake|ocean|Ocean|canyon|chasm|Chasm|pool|Pool|castle|lava|Lava|void|Void|ice|Ice/, obstacle: /sleeperStone|Spire|spire|crag|pillar|Pillar|monolith|statue/ };
+// Release 425 (Tim: "you can get the shovel whenever, but you can't change the world... you can't modify the overworld
+// until infinite two"): open-world digging opens at Aperture tier `tier` (Infinite II); dungeons are unchanged.
+export const OVERWORLD_DIG = { tier: 12, refuse: /water|Water|river|lake|ocean|Ocean|canyon|chasm|Chasm|pool|Pool|castle|lava|Lava|void|Void|ice|Ice/, obstacle: /sleeperStone|Spire|spire|crag|pillar|Pillar|monolith|statue/ };
 export const overworldDigKey = (rx, ry) => `overworld:${rx},${ry}`;
 export function overworldDiggable(map, x, y) {
   if (map?.settlement || !diggable(map, x, y)) return false;

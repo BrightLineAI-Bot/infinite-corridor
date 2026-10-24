@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 425 — the open world waits for Infinite II.
+  - **Open-world digging from Infinite II:** you can make and use a shovel at any time in dungeons, but the open world only gives way to it from Infinite II. Before that, Act facing rock says so and spends nothing.
 - Release 423 — kept wounds, open dreams, open-world digging.
   - **World bosses keep their wounds:** when a world beast or the Questing Beast kills you, the damage you did stays. It comes back as hurt as you left it, and only resets once it dies (or leaves).
   - **The Far Sleep opens up:** dream sections you have not yet visited have about two-thirds fewer star-voids and sleeper-stones, and lower terraces, so there is room to run and dodge. Sections you have already explored keep their shape.

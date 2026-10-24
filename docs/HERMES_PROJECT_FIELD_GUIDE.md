@@ -2694,6 +2694,17 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 425: the open world waits for Infinite II — 2026-10-24
+
+Tim, 2026-10-24: "you can get the shovel whenever, but you can't change the world overworld blocks, you can't modify the overworld until infinite two."
+
+**CODE:**
+- `digging.ts OVERWORLD_DIG.tier = 12` (`APERTURE_BANDS[12]` is Infinite II).
+- `game.digAhead`: in the overworld, a sound dig plan below that tier (`saveTier`) is refused with a message before any shovel is crafted or spent.
+- Tests: `tests/overworld-dig-tier-425.test.ts`.
+
+**BOUNDARY:** Dungeon digging, dig spots and the shovel recipe are unchanged. Tunnels dug earlier are kept.
+
 ## Release 423: kept wounds, open dreams, open-world digging — 2026-10-24
 
 Tim, 2026-10-24: "The world bosses... keep their health when you die... it only resets after they die"; "the dreamlands have too many obstacles in them. So I can't... burst around and run from the bosses... It also just makes... traverse... harder"; "you should be able to use the shovel. In the overworld, also to dig through blocks and things... just like it works... in the dungeons."
