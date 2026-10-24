@@ -2694,6 +2694,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 401: the Crystal fights in the open; daises on the dungeon map — 2026-10-24
+
+Tim, 2026-10-24: "the [Psychic] Crystal still isn't working right... he just spends too much time in the squares where you can't be hurt... he dodges too much... he can have a smaller stagger cooldown... he just runs too much, and I never get to actually fight him"; "the teleportation daises in dungeons should show on the map once you find them".
+
+**CODE:**
+- `game.ts` `packWorld().move`: a dungeon `psychicCrystal` that is aggro and has line of sight to the Wayfarer moves with `moveAxis` (flying, so pits and water are fine, walls are not) instead of the roamer's phase branch. Patrol and out-of-sight hunting still phase within `roamerBounds`.
+- `monster-pack.ts` `CRYSTAL`: `evadeCooldown` 5, `evadeCooldownEnraged` 3.5, `poiseHits` 10, `poiseGuard` 4. `crystalPoise` breaks a spent poise even mid-dodge.
+- `main.ts` `drawDungeonMap` marks discovered `warpDais` objects as a violet ring with a bright core.
+- Tests: `tests/crystal-401.test.ts`.
+
+**BOUNDARY:** The wall budget and manifest rules remain for ground the Wayfarer cannot reach. Release 249/259 phasing (patrol between rooms, never beyond the dungeon's edge) is unchanged when it is not fighting a Wayfarer in sight.
+
 ## Release 399: kills pay the regional experience multiplier — 2026-10-24
 
 Tim, 2026-10-24: "the further away we get from the Ember Refuge... the harder the monsters get. But we should also get more experience for fighting those harder monsters". He also asked to lower the Questing Beast's health by 25%. Its health is floored at `BEAST_BASELINE.questingDominance` (1.15×) of the toughest world beast, which existing tests enforce. Given that trade-off, Tim chose to leave its health as it is.

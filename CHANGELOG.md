@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 401 — a fair fight with the Crystal; daises on the map.
+  - **The Psychic Crystal** no longer drifts into walls while it fights you and can see you. It still floats over pits and water, and it still phases between rooms while patrolling or hunting you out of sight.
+  - **Fewer dodges:** it dodges at most every 5 seconds (3.5 when enraged; it was 3 and 2.2).
+  - **Easier to stagger:** it breaks after 10 blows (was 14), can break again 4 seconds after it rises (was 10), and a dodge no longer saves it once its poise is spent.
+  - **Watcher's Daises on the dungeon map:** once you have found a dais, it is marked on the dungeon map as a violet ring.
+
 - Release 399 — farther, richer.
   - **More experience the farther you go:** creatures far from Ember Refuge already had more health and hit harder. Now they also give more experience: +6% per ring of distance (1.6× at ring 10, 2.2× at ring 20). Dungeon and Aperture foes that carry a threat multiplier give theirs too.
 
