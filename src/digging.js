@@ -8,9 +8,9 @@
 // floor; and it may break through only into floor you could already walk to, so no sealed or guarded part is ever
 // opened early. Hunts, portals, dives and crossings are temporary places and are never dug.
 // Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r421-45929eb37a4e";
-import { LETHAL_KINDS } from "./landscape.js?v=r421-45929eb37a4e";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r421-45929eb37a4e";
+import { hashSeed } from "./random.js?v=r425-187b382f915e";
+import { LETHAL_KINDS } from "./landscape.js?v=r425-187b382f915e";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r425-187b382f915e";
 
 // Balance (data, not literals in the logic).
 export const DIG = {
@@ -124,14 +124,34 @@ function tunnelDepth(map, x, y) {
   }
   return Infinity;
 }
+// Release 423 (Tim: "you should be able to use the shovel in the overworld, also to dig through blocks and things... just
+// like it works... in the dungeons"): in the open world a shovel takes rock, crags, stones and spires, never water, chasms,
+// the night-sky voids of the Far Sleep, castle walls, buildings or anything in a settlement. A dug tile settles to the
+// lowest open ground beside it, so it joins the path you dug from. Tunnels are kept per section (`overworldDigKey`).
+// Release r425-187b382f915e (Tim: "you can get the shovel whenever, but you can't change the world... you can't modify the overworld
+// until infinite two"): open-world digging opens at Aperture tier `tier` (Infinite II); dungeons are unchanged.
+export const OVERWORLD_DIG = { tier: 12, refuse: /water|Water|river|lake|ocean|Ocean|canyon|chasm|Chasm|pool|Pool|castle|lava|Lava|void|Void|ice|Ice/, obstacle: /sleeperStone|Spire|spire|crag|pillar|Pillar|monolith|statue/ };
+export const overworldDigKey = (rx, ry) => `overworld:${rx},${ry}`;
+export function overworldDiggable(map, x, y) {
+  if (map?.settlement || !diggable(map, x, y)) return false;
+  const t = at(map, x, y); return !t.environment && !t.buildingId && !t.build && !OVERWORLD_DIG.refuse.test(String(t.kind || ""));
+}
+const settleElev = (map, x, y) => { let low = null; for (const [dx, dy] of Object.values(DIRS)) { const n = at(map, x + dx, y + dy); if (walkable(n)) low = low == null ? (n.elev || 0) : Math.min(low, n.elev || 0); } return low ?? 0; };
 // Release 411: what a blocked tile is, for the iron shovel's cost: a wall of the dungeon, or something standing in a hall
 // (a sleeper-stone, a pillar, a spire), named by its kind.
 export const isObstacle = (t) => !!t && t.blocked && !/wall|rim|Wall|Rim/.test(String(t.kind || "")) && t.kind !== "deepWall";
 // Plans one dig from where you stand, facing `facing`. Returns { ok, x, y, through, reason, resists }; `resists` marks rock
 // that only the iron shovel digs (`iron`: plan for it).
-export function planDig(map, px, py, facing, areaKey, { iron = false } = {}) {
+export function planDig(map, px, py, facing, areaKey, { iron = false, overworld = false } = {}) {
   if (!canDigArea(areaKey)) return { ok: false, reason: "The walls here are not stone a shovel can bite." };
   const [dx, dy] = DIRS[facing] || DIRS.down, x = px + dx, y = py + dy;
+  if (overworld) { // release 423: no sealed halls out here; walls of rock are one dig, a standing stone or crag a whole shovel
+    if (!overworldDiggable(map, x, y)) return { ok: false, reason: null };
+    const from = at(map, px, py), depth = (from?.tunnel ? tunnelDepth(map, px, py) : 0) + 1;
+    if (depth > DIG.reach) return { ok: false, reason: `The rock is too deep here: a tunnel reaches ${DIG.reach} blocks from open ground.` };
+    const through = Object.values(DIRS).some(([ex, ey]) => { const n = at(map, x + ex, y + ey); return (x + ex !== px || y + ey !== py) && walkable(n) && !n.tunnel; });
+    return { ok: true, x, y, through, depth, overworld: true, cut: OVERWORLD_DIG.obstacle.test(String(at(map, x, y).kind)) ? "obstacle" : "wall", ...(iron ? { iron: true } : {}) };
+  }
   if (!diggable(map, x, y)) return { ok: false, reason: null };
   const from = at(map, px, py), depth = (from?.tunnel ? tunnelDepth(map, px, py) : 0) + 1;
   if (depth > DIG.reach) return { ok: false, reason: `The rock is too deep here: a tunnel reaches ${DIG.reach} blocks from open floor.` };
@@ -142,10 +162,10 @@ export function planDig(map, px, py, facing, areaKey, { iron = false } = {}) {
   return { ok: true, x, y, through, depth, cut: isObstacle(at(map, x, y)) ? "obstacle" : "wall", ...(iron ? { iron: true } : {}) };
 }
 // Turns a wall block into tunnel floor on this map.
-export function openTunnel(map, x, y) { const i = y * W(map) + x, t = map.tiles[i]; map.tiles[i] = { ...t, kind: "tunnel", wallKind: t.kind, blocked: false, tunnel: true }; return map.tiles[i]; }
+export function openTunnel(map, x, y, overworld = false) { const i = y * W(map) + x, t = map.tiles[i], level = overworld ? { elev: settleElev(map, x, y), slope: false } : {}; map.tiles[i] = { ...t, kind: "tunnel", wallKind: t.kind, blocked: false, tunnel: true, ...level }; return map.tiles[i]; }
 // Re-applies an area's dug tunnels after it is generated (generation itself never changes).
-export function applyTunnels(map, save, areaKey) {
-  for (const p of save.digging?.dug?.[areaKey] || []) { const [x, y] = p.split(",").map(Number), t = at(map, x, y); if (t && t.blocked && !t.tunnel && t.kind !== "sealedGate" && t.kind !== "void") openTunnel(map, x, y); }
+export function applyTunnels(map, save, areaKey, overworld = false) {
+  for (const p of save.digging?.dug?.[areaKey] || []) { const [x, y] = p.split(",").map(Number), t = at(map, x, y); if (t && t.blocked && !t.tunnel && t.kind !== "sealedGate" && t.kind !== "void") openTunnel(map, x, y, overworld); }
   return map;
 }
 // What a wall block hides, decided by the seed and the block's place: null, or { id, n, label, glint }.
@@ -189,7 +209,7 @@ export function dig(save, map, plan, areaKey) {
   if (!(save.digging[tool] > 0)) return { ok: false, message: plan.iron ? "You have no iron shovel." : "You have no shovel." };
   const list = (save.digging.dug[areaKey] ||= []);
   if (list.length >= DIG.maxTunnelsPerArea) return { ok: false, message: "This place has been dug enough; the rock is unsound." };
-  openTunnel(map, plan.x, plan.y); list.push(`${plan.x},${plan.y}`);
+  openTunnel(map, plan.x, plan.y, !!plan.overworld); list.push(`${plan.x},${plan.y}`);
   save.digging[tool] = Math.max(0, save.digging[tool] - (plan.iron ? DIG.iron.cost[plan.hard ? "hard" : plan.cut] || 1 : plan.cut === "obstacle" && DIG.obstacleTakesShovel ? save.digging[tool] : 1)); if (DIG.stone.wall) addStone(save, DIG.stone.wall); // release 411: the iron shovel spends by what it cuts; 413: an obstacle takes a whole standard shovel, and no stone comes back
   const left = save.digging[tool], find = wallTreasure(save.seed, areaKey, plan.x, plan.y, saveTier(save)), got = find ? creditFind(save, find) : null, broke = left === 0;
   if (plan.iron && broke) delete save.digging.iron;

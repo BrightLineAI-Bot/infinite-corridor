@@ -7,9 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r421-45929eb37a4e";
-import { hashSeed } from "./random.js?v=r421-45929eb37a4e";
-import { updateAstralActor } from "./astral-worm.js?v=r421-45929eb37a4e";
+import { stageOneBeastReference } from "./stages.js?v=r425-187b382f915e";
+import { hashSeed } from "./random.js?v=r425-187b382f915e";
+import { updateAstralActor } from "./astral-worm.js?v=r425-187b382f915e";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -498,7 +498,7 @@ const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 function unit(x, y) { const m = Math.hypot(x, y) || 1; return { x: x / m, y: y / m }; }
 function bodyRadius(e) { return Math.max(.28, Number(e?.bodyRadius) || .38); }
 function damageOf(e, attackId) { return Math.max(1, Math.ceil((Number(e.damage) || 1) * (ATTACK_MODULES[attackId]?.damage ?? 1))); }
-// Release r421-45929eb37a4e (Tim: "the bosses do too much damage... they need to have slightly more wind ups for their attacks... reduce their
+// Release 421 (Tim: "the bosses do too much damage... they need to have slightly more wind ups for their attacks... reduce their
 // damage by... 15%... more cool down between their attacks... they attack way too aggressively"): every boss and Revenant
 // (staggerClass) hits for `damage` of before, winds up `windup` times longer, waits `cooldown` times longer before an attack
 // comes round again and pauses `gap` times longer between attacks. Elites and ordinary creatures are unchanged. The game's
@@ -616,7 +616,7 @@ export const KNIGHT = {
   cannonTrack: 1.8, cannonLength: 11, cannonTick: .3, cannonWidth: .5,
   swords: 6, swordRing: [1.2, 2.6], swordRadius: .75, swordFall: [.9, 1.6],
   orbs: 3, orbsEnraged: 6, orbEnrage: .5, orbOrbit: 1.6, orbSpin: 3, orbFloat: .6, orbSpeed: 5.5, orbHome: 2, orbTurn: 3.2, orbLife: 5, orbRadius: .3, orbEvery: .4,
-  // Release r421-45929eb37a4e (Tim: "they shouldn't home in on you forever... like 2 seconds. And then they should just fly straight... they
+  // Release 421 (Tim: "they shouldn't home in on you forever... like 2 seconds. And then they should just fly straight... they
   // should be blocked by walls and blocks"): missiles home for missileHome s, then fly straight until missileFuel runs out.
   missiles: 8, missileSpeed: 5, missileTurn: 2.4, missileHome: 2, missileFuel: 4, missileBlast: 1.1, missileRadius: .25,
   mistTime: .55, mistLand: 1.6,

@@ -2,9 +2,9 @@
 // Wayfarer's level and power. Now and then it claims a wild section. It stays there until it is killed or it has
 // killed the Wayfarer QUESTING_BEAST.tries times; then it is gone, and after a cooldown (counted in sections entered)
 // a new hunt can begin somewhere else.
-import { hashSeed } from "./random.js?v=r421-45929eb37a4e";
-import { WORLD_BEASTS, BEAST_BASELINE, BEAST_BALANCE, beastProfileVitals, ENCOUNTER, encounterReady, encounterMet, isMarineTile, beastUnlocked } from "./world-beasts.js?v=r421-45929eb37a4e";
-import { LETHAL_KINDS } from "./landscape.js?v=r421-45929eb37a4e";
+import { hashSeed } from "./random.js?v=r425-187b382f915e";
+import { WORLD_BEASTS, BEAST_BASELINE, BEAST_BALANCE, beastProfileVitals, ENCOUNTER, encounterReady, encounterMet, isMarineTile, beastUnlocked } from "./world-beasts.js?v=r425-187b382f915e";
+import { LETHAL_KINDS } from "./landscape.js?v=r425-187b382f915e";
 
 // Release 187 (Tim, 2026-10-18): far tougher and far more dangerous. About twice the health; each blow takes about
 // 27% of maximum health (four unhealed hits kill); it runs fast and barely pauses between attacks.
@@ -12,7 +12,7 @@ export const QUESTING_BEAST = { chance: 0.035, minDepth: 4, tries: 4, cooldownSl
 
 export function ensureQuestingBeast(s) {
   const q = s.questingBeast && typeof s.questingBeast === "object" ? s.questingBeast : {};
-  const a = q.active && typeof q.active === "object" && Number.isInteger(q.active.rx) && Number.isInteger(q.active.ry) ? { rx: q.active.rx, ry: q.active.ry, tries: Math.max(0, Number(q.active.tries) || 0) } : null;
+  const a = q.active && typeof q.active === "object" && Number.isInteger(q.active.rx) && Number.isInteger(q.active.ry) ? { rx: q.active.rx, ry: q.active.ry, tries: Math.max(0, Number(q.active.tries) || 0), ...(Number(q.active.hpShare) > 0 && Number(q.active.hpShare) <= 1 ? { hpShare: Number(q.active.hpShare) } : {}) } : null; // hpShare: release 423, its kept wounds
   s.questingBeast = { v: 1, cycle: Math.max(0, Number(q.cycle) || 0), cooldown: Math.max(0, Number(q.cooldown) || 0), active: a, slain: Math.max(0, Number(q.slain) || 0), escaped: Math.max(0, Number(q.escaped) || 0), ...(q.spoils === true ? { spoils: true } : {}) }; // spoils: release 263
   return s;
 }
