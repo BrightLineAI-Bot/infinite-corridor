@@ -2694,6 +2694,25 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 389: the Morphling's ranged patterns and new art; the empowered suit — 2026-10-24
+
+Tim, 2026-10-24: "it should be like a svelte Gundam... like Armored Core... almost like an Iron Man suit... silver... pretty much the same size as a character model"; "[the Listener] can also send out a bunch of beams... 4 beams, and then they'll rotate around him... several orbs... in a spiral pattern around him... come up with some convincing and unique ranged patterns"; "let's do 6 visual passes... it doesn't look very muscular... I like... the direction... like he has a chamber inside of him... increase the fidelity of his tentacles and arms".
+
+**CODE:** `listener-morph.ts` `MORPH_FORM.moves` adds three moves.
+- `beams`: four beams; telegraph, then live and turning at `turn` rad/s; `beamAngle` is shared with the renderer.
+- `orbs`: `arms` arms of hostile shots wound out in a spiral, tagged `morphOrb`.
+- `barbs`: `volleys` fans that home briefly through the existing `homingTurnRate`/`homingUntil`, tagged `morphBarb`.
+
+`monster-render.ts`:
+- `morphTendril` draws tapered, lit, ridged and suckered limbs on a quadratic spine.
+- `morphTip` cycles six limb ends.
+- `drawMorphling` is rewritten in six passes: a V torso with traps, deltoids, pectorals, abdomen and serratus; the chest chamber with teeth and rising motes; jointed arms running into tendrils; goat legs with hooves; the crown of back tentacles; the head, horns, eyes and tusks; spawn at its feet; the lunge mass and the sunk pool.
+- `drawMorphEffects` draws the beams.
+
+`combat-visuals.ts` colours orb and barb shots. `renderer.ts` `drawPowerSuit` draws the empowered robot in the Wayfarer's place, with front, back and side views, a walk, an attack arm and thrusters; the plain robot keeps `drawSubmersible`. Tests: `tests/listener-morph-385.test.ts` (ranged patterns).
+
+**BOUNDARY:** Rules for the six earlier moves, and the mirror form, are unchanged. Drawing only for the suit: empowered rules are as in release 383.
+
 ## Release 387: your journey; digging scales with the Aperture — 2026-10-24
 
 Tim approved the suggestions list on 2026-10-24 ("I like the expansions that you described... go ahead and... implement them"). This release takes the journey page, the dig scaling and the field guide's dead-code item.

@@ -65,3 +65,14 @@ test('the spin bounces off walls and stays in the hall; the lunge dives along it
   const f = boss(), v = world(); v.enemies.push(f); v.player.x = 12; v.player.y = 14;
   run(f, v, 'lunge', MORPH_FORM.lunge.telegraph + .9); assert.ok(f.y > 8 + 3, 'it dived toward you'); assert.equal(v.hits.length, 1, 'one hit as it passes');
 });
+
+test('release 389: the four beams turn round it and hurt what they sweep; orbs spiral out; barbs fan and bend', () => {
+  const e = boss(), w = world(); w.enemies.push(e); w.player.x = 12; w.player.y = 12.5;
+  run(e, w, 'beams', MORPH_FORM.beams.telegraph + MORPH_FORM.beams.live - .05);
+  assert.ok(w.hits.length >= 1, 'a beam swept through you');
+  const f = boss(), v = world(); v.enemies.push(f); run(f, v, 'orbs', MORPH_FORM.orbs.time);
+  const orbs = v.projectiles.filter((p) => p.morphOrb); assert.ok(orbs.length >= MORPH_FORM.orbs.arms * 10); assert.ok(orbs.every((p) => p.hostile));
+  const angles = new Set(orbs.slice(0, 6).map((p) => Math.round(Math.atan2(p.dy, p.dx) * 100))); assert.ok(angles.size >= 6, 'the rings turn: a spiral');
+  const g = boss(), u = world(); u.enemies.push(g); run(g, u, 'barbs', 1.2);
+  const barbs = u.projectiles.filter((p) => p.morphBarb); assert.equal(barbs.length, MORPH_FORM.barbs.volleys * MORPH_FORM.barbs.count); assert.ok(barbs.every((p) => p.homingTurnRate > 0));
+});
