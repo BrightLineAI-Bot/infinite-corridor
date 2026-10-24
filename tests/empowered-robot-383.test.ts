@@ -34,7 +34,7 @@ test('empowered: a stronger guard and twice the boost, kept across a reload', ()
 });
 
 test('plating that gives out is re-forged from iron; with none it folds away', () => {
-  const s = freshSave(); s.materials.cinderIron = 1; s.mech = { built: true, active: true, plate: 5 }; ensureMech(s);
+  const s = freshSave(); s.materials.cinderIron = MECH_POWER.replate; s.mech = { built: true, active: true, plate: 5 }; ensureMech(s); assert.equal(MECH_POWER.replate, 3, 'release 391: three cinder iron');
   const r = mechAbsorb(s, 20); assert.equal(r.replated, true); assert.equal(s.mech.active, true); assert.equal(s.mech.plate, MECH.plate); assert.equal(s.materials.cinderIron, 0);
   s.mech.plate = 5; const r2 = mechAbsorb(s, 20); assert.equal(r2.broke, true); assert.equal(s.mech.active, false); assert.equal(s.mech.cooldown, MECH.rebuild);
 });

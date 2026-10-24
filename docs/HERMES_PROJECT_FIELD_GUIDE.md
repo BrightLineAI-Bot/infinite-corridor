@@ -2694,6 +2694,17 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 391: re-plating cost; the Morphling's cyborg head; an understated suit — 2026-10-24
+
+Tim, 2026-10-24: "when the plating breaks... three cinder iron"; "remove his horns and... make his head... more mechanical, electromechanical, like cyborg... tubes... Ghost in the Shell... but not so overly futuristic... more so like Remnant: From the Ashes"; "[the suit] looks too much like a Gundam or Ultraman Tiga... more understated... more like a spacesuit... almost like a Black Panther suit, but still spacey, like Iron Man or War Machine... we don't want to depart from the overall gritty, down-to-earth feel".
+
+**CODE:**
+- `vehicle-gates.ts` sets `MECH_POWER.replate` to 3; the Supplies text reads it.
+- `monster-render.ts` `drawMorphling` redraws the head: an iron cage over a flesh skull, with rust and rivets; a slatted grille with breath glow; ribbed `hose`s into the traps; skull cables; one big lens and a three-lens cluster. The horns are gone.
+- `renderer.ts` `drawPowerSuit` is redrawn: a graphite suit, plates, a smoked visor band, a pack and hoses, an amber status light, scuffs, and small cold jets only while boosting.
+
+**BOUNDARY:** Drawing only, except the re-plating cost. Rules for empowered mode and for the Morphling are unchanged.
+
 ## Release 389: the Morphling's ranged patterns and new art; the empowered suit — 2026-10-24
 
 Tim, 2026-10-24: "it should be like a svelte Gundam... like Armored Core... almost like an Iron Man suit... silver... pretty much the same size as a character model"; "[the Listener] can also send out a bunch of beams... 4 beams, and then they'll rotate around him... several orbs... in a spiral pattern around him... come up with some convincing and unique ranged patterns"; "let's do 6 visual passes... it doesn't look very muscular... I like... the direction... like he has a chamber inside of him... increase the fidelity of his tentacles and arms".

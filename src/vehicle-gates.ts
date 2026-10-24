@@ -53,7 +53,7 @@ export const MECH = { plate: 60, guard: .1, boost: 1.6, boostRecharge: 1, plateR
 // off each hit, and `boost`× the thrust; with no iron left it drops back to the plain robot. In either mode, plating that
 // gives out is re-forged at once from `replate` cinder iron, so the robot stays up; with none, it folds away as before.
 // State: save.mech.empowered, save.mech.burnIn (additive).
-export const MECH_POWER = { burn: 1, every: 20, damage: .25, guard: .15, boost: 2, replate: 1 };
+export const MECH_POWER = { burn: 1, every: 20, damage: .25, guard: .15, boost: 2, replate: 3 }; // release 391 (Tim: "when the plating breaks... three cinder iron"): replate was 1
 const ironOf = (save) => Math.max(0, Number(save?.materials?.cinderIron) || 0);
 export const mechEmpowered = (save) => save?.mech?.active === true && save.mech.empowered === true && save.mech.mode !== "drone";
 // Switches empowered mode on (spending the first iron) or off. Returns { ok, message }.

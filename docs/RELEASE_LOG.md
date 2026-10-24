@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**391**
+**393**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 389 | Claude | `claude/dreamy-rubin-yn6q2p` | Morphling ranged patterns (beams, orb spiral, barbs) and six art passes; the empowered robot as a svelte silver suit | Building. |
+| 391 | Claude | `claude/dreamy-rubin-yn6q2p` | Robot re-plating costs 3 cinder iron; the Morphling's cyborg head; the empowered suit redrawn as an understated pressure suit | Building. |
+| 389 | Claude | PR #177 | Morphling ranged patterns (beams, orb spiral, barbs) and six art passes; the empowered robot as a svelte silver suit | Merged; preview `r389-7049a32777de`. Not published. |
 | 387 | Claude | PR #176 | Your journey stats; digging finds scale with the Aperture tier; Shadow Clone range 5 and locked-target aim; dead playerAttack removed | Merged; preview `r387-413445097461`. Not published. |
 | 385 | Claude | PR #175 | The Listener's walled form becomes the Morphling: cables, jaw, sink, worms, spin, lunge | Merged. Not published. |
 | 383 | Claude | PR #174 | Cinder iron smelts into spheres; the robot's Empowered mode and iron re-plating | Merged. Not published. |
