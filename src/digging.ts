@@ -40,7 +40,11 @@ export const DIG = {
   // just cost one cinder iron and one wood"): the iron shovel digs the rock the standard one will not: rock that rings
   // hollow and sealed. It is lashed together the same way, only when such rock needs it. Release 381 (Tim: "even with the
   // iron shovel... you can still only dig three from your position"): it reaches no deeper than the standard shovel.
-  iron: { recipe: { cinderIron: 1, wood: 1 }, uses: 2 },
+  // Release 411 (Tim: "the iron shovel... can dig through 2 of these immovable block type things or obstacles... it could dig
+  // through 4... regular dungeon walls before it breaks. If they're the hard dungeon walls that resist the shovel... just
+  // two of them"): `uses` is 4 points; a dig spends `cost` by what it cuts. With an iron shovel in hand and no standard
+  // shovel (nor wood and stone for one), it digs plain walls too.
+  iron: { recipe: { cinderIron: 1, wood: 1 }, uses: 4, cost: { wall: 1, obstacle: 2, hard: 2 } },
 };
 // What a wall or a patch of earth can hold, by weight. `marks` is currency; others are materials.
 export const DIG_FINDS = [
@@ -117,6 +121,9 @@ function tunnelDepth(map, x, y) {
   }
   return Infinity;
 }
+// Release 411: what a blocked tile is, for the iron shovel's cost: a wall of the dungeon, or something standing in a hall
+// (a sleeper-stone, a pillar, a spire), named by its kind.
+export const isObstacle = (t) => !!t && t.blocked && !/wall|rim|Wall|Rim/.test(String(t.kind || "")) && t.kind !== "deepWall";
 // Plans one dig from where you stand, facing `facing`. Returns { ok, x, y, through, reason, resists }; `resists` marks rock
 // that only the iron shovel digs (`iron`: plan for it).
 export function planDig(map, px, py, facing, areaKey, { iron = false } = {}) {
@@ -129,7 +136,7 @@ export function planDig(map, px, py, facing, areaKey, { iron = false } = {}) {
   const mine = reachable(map, px, py), w = W(map);
   if (!iron) for (const [ex, ey] of Object.values(DIRS)) { const nx = x + ex, ny = y + ey, n = at(map, nx, ny); if (walkable(n) && !n.tunnel && !mine.has(ny * w + nx)) return { ok: false, resists: true, reason: "The rock beyond rings hollow and sealed. Something keeps that side; the shovel will not open it." }; }
   const through = Object.values(DIRS).some(([ex, ey]) => { const n = at(map, x + ex, y + ey); return (x + ex !== px || y + ey !== py) && walkable(n) && !n.tunnel; });
-  return { ok: true, x, y, through, depth, ...(iron ? { iron: true } : {}) };
+  return { ok: true, x, y, through, depth, cut: isObstacle(at(map, x, y)) ? "obstacle" : "wall", ...(iron ? { iron: true } : {}) };
 }
 // Turns a wall block into tunnel floor on this map.
 export function openTunnel(map, x, y) { const i = y * W(map) + x, t = map.tiles[i]; map.tiles[i] = { ...t, kind: "tunnel", wallKind: t.kind, blocked: false, tunnel: true }; return map.tiles[i]; }
@@ -180,7 +187,7 @@ export function dig(save, map, plan, areaKey) {
   const list = (save.digging.dug[areaKey] ||= []);
   if (list.length >= DIG.maxTunnelsPerArea) return { ok: false, message: "This place has been dug enough; the rock is unsound." };
   openTunnel(map, plan.x, plan.y); list.push(`${plan.x},${plan.y}`);
-  save.digging[tool] -= 1; addStone(save, DIG.stone.wall);
+  save.digging[tool] = Math.max(0, save.digging[tool] - (plan.iron ? DIG.iron.cost[plan.hard ? "hard" : plan.cut] || 1 : 1)); addStone(save, DIG.stone.wall); // release 411: the iron shovel spends by what it cuts
   const left = save.digging[tool], find = wallTreasure(save.seed, areaKey, plan.x, plan.y, saveTier(save)), got = find ? creditFind(save, find) : null, broke = left === 0;
   if (plan.iron && broke) delete save.digging.iron;
   const parts = [plan.through ? "You break through into the passage beyond." : "You dig a block into the wall.", got ? `Something in the rock: ${got}.` : null, broke ? `The ${name.toLowerCase()} snaps.` : `${name}: ${left} dig${left === 1 ? "" : "s"} left.`];

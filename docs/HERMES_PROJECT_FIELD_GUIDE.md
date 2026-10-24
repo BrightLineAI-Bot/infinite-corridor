@@ -2694,6 +2694,20 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 411: the iron shovel's points; forgiving dig aim — 2026-10-24
+
+Tim, 2026-10-24 (with a Sleeper's Hall screenshot, Act answering "Nothing nearby responds" beside sleeper-stones): "these aren't really blocks, these are just impediments, so if you have cinder iron, you should just be able to cut through these... the iron shovel can dig through 2 of these... obstacles... 4 blocks [of] regular dungeon walls before it breaks... the hard dungeon walls that resist the shovel... just two of them".
+
+**CODE:**
+- `digging.ts`: `DIG.iron{uses:4, cost:{wall:1, obstacle:2, hard:2}}`. `isObstacle(t)` is a blocked tile whose kind is not a wall or rim, such as `sleeperStone` or `crystalSpire`. `planDig` returns `cut` ("wall" or "obstacle"), and `dig` spends the iron shovel by `DIG.iron.cost`, with `plan.hard` costing "hard".
+- `game.ts` `digAhead`:
+  - It tries the feet row first, then the body row (`round` and `floor` of `y+.4`), so a stone just above or below the feet is dug.
+  - A resisting plan becomes an iron plan with `hard: true`.
+  - With no standard shovel and no wood and stone for one, an iron shovel in hand digs plain walls.
+- Tests: `tests/iron-shovel-411.test.ts`.
+
+**BOUNDARY:** The standard shovel is unchanged: 2 digs, wood and stone. A stone is still given for every dug block, so lashing a standard shovel (1 stone) and digging (1 stone back) leaves the stone count where it was. Reach (3), temporary areas and the per-area cap are unchanged.
+
 ## Release 409: creatures visible on the Supernova's scar — 2026-10-24
 
 Tim, 2026-10-24: "the white cracked area that overlays the world... also overlays enemies and the Void Walker himself, so I can't see him... after the supernova, it should change the floor and remove the blocks of the dungeon walls, but... all enemies should still be visible".

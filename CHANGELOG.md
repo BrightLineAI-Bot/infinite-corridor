@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 411 — the iron shovel, sturdier.
+  - **Four digs' worth:** an iron shovel now lasts for 4 plain wall blocks, or 2 obstacles (sleeper-stones, spires and the like), or 2 of the hard walls that resist the standard shovel, before it breaks. It is still forged on the spot from 1 cinder iron and 1 wood when it is needed.
+  - **No standard shovel? The iron one digs:** with an iron shovel in hand and no standard shovel (nor the wood and stone for one), it digs plain walls too.
+  - **Easier aim:** Act digs the stone or wall you are facing even when it is a little above or below your feet. It used to say "Nothing nearby responds."
+
 - Release 409 — nothing hides in the white.
   - **The Supernova's scar:** in a dungeon, the white cracked ground a Supernova leaves could spread over parts of the dungeon you had not explored yet. Creatures standing there, the Void Walker included, were not drawn. Creatures on scarred ground are now always drawn, and the Void Walker and the other world beasts are always drawn in dungeons.
 
