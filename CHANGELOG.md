@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 415 — Ilse, the Lamplighter.
+  - **Five meetings:** rarely, on a wild section well away from Ember Refuge, a lamplighter is tending a lamp: a girl with a taper, a young lamplighter, a woman carrying the last lamp that stays lit, an old woman who does not know you. The Corridor deals the meetings out of order; each is spoken once and goes into the Journal.
+  - **The last meeting** waits in the Far Sleep, after three of the others: a lamp burning in the meadow with no post beneath it.
 - Release 413 — stone is a resource.
   - **No stone from digging:** dug walls and disturbed earth no longer give stone back, so lashing a shovel really costs its stone. Stone still comes from rocks, caches and Broken Observatories in the world and in dungeons.
   - **Pillars take a whole shovel:** breaking an obstacle (a sleeper-stone, a spire, a pillar) uses up the whole standard shovel, with no cinder iron needed. The iron shovel stays for the hard walls that resist the standard one.

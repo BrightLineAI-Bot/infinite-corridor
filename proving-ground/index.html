@@ -8,11 +8,11 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="../styles.css?v=413" />
+    <link rel="stylesheet" href="../styles.css?v=415" />
     <title>Infinite Corridor — Proving Ground</title>
   </head>
   <body>
-    <aside id="pgIdentity" class="pg-identity" role="status"><strong>PROVING GROUND</strong><span>Experimental · isolated scratch state · build PG-1 / Release 413</span><button id="pgDiagnosticsToggle" type="button">Diagnostics</button><button id="pgGlimpsesToggle" type="button">Glimpses</button></aside>
+    <aside id="pgIdentity" class="pg-identity" role="status"><strong>PROVING GROUND</strong><span>Experimental · isolated scratch state · build PG-1 / Release 415</span><button id="pgDiagnosticsToggle" type="button">Diagnostics</button><button id="pgGlimpsesToggle" type="button">Glimpses</button></aside>
     <dialog id="pgDiagnostics"><button id="pgDiagnosticsClose" class="close" aria-label="Close diagnostics">×</button><h2>Mobile diagnostics</h2><dl id="pgDiagnosticsBody"></dl><button id="pgReset" type="button">Reset Proving Ground data</button><p id="pgResetStatus" role="status"></p></dialog>
     <dialog id="pgGlimpses"><button id="pgGlimpsesClose" class="close" aria-label="Close Glimpses">×</button><h2>Glimpses</h2><p>First-person scenes. Tap a scene to let go of it.</p><div id="pgGlimpseList"></div></dialog>
     <section id="glimpse" class="glimpse" hidden aria-label="Glimpse"><canvas id="glimpseCanvas"></canvas><p id="glimpseHint" class="glimpse-hint">Tap to let go</p></section>
@@ -156,7 +156,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "413";
+      const release = "415";
       const params = new URLSearchParams(location.search);
       const entry = "../src/proving-ground-mobile.js";
       const updateServiceWorker = async () => {
