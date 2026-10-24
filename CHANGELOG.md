@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 397 — see it coming.
+  - **One warning colour:** every mark on the floor showing where a blow will land is now the same translucent, pale hot pink, everywhere in the game.
+  - **The Lightning Giant:** when its coils crackle before the Tesla arcs, a ring shows how far the arcs reach (step outside it), and it stays while they live. The three bolts that can follow its club slam now hold for a moment with their lanes shown before they fly. The sky strikes and storm bolts are marked in the same pink.
+  - **The Mountain Turtle:** while its ice comet is in the air, the place it will land is marked.
+  - **Glyph layouts:** a saved gear glyph layout keeps a 4th glyph (for a relic with the smith's extra socket).
+
 - Release 395 — the town smith.
   - **A smith in every Listener town,** at a forge beside the Mouth. Talk to the smith to:
     - **Salvage** (from the first Listener): break down gear in your pack into cinder iron (1 to 4 by tier), with a 15% chance of a sphere. Its glyphs come back to your pouch.

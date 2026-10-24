@@ -13,25 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**397**
+**399**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 395 | Claude | `claude/dreamy-rubin-yn6q2p` | The town smith: salvage, reforge, an extra socket, masterwork | Building. |
-| 393 | Claude | PR #179 | Presets carry the whole build (spell/skill glyphs, passive forms, Lattice); the suit wears the lantern's violet cosmos | Merged. Not published. |
-| 391 | Claude | PR #178 | Robot re-plating costs 3 cinder iron; the Morphling's cyborg head; the empowered suit redrawn as an understated pressure suit | Merged; preview `r391-7eba81dfad9e`. Not published. |
-| 389 | Claude | PR #177 | Morphling ranged patterns (beams, orb spiral, barbs) and six art passes; the empowered robot as a svelte silver suit | Merged; preview `r389-7049a32777de`. Not published. |
-| 387 | Claude | PR #176 | Your journey stats; digging finds scale with the Aperture tier; Shadow Clone range 5 and locked-target aim; dead playerAttack removed | Merged; preview `r387-413445097461`. Not published. |
-| 385 | Claude | PR #175 | The Listener's walled form becomes the Morphling: cables, jaw, sink, worms, spin, lunge | Merged. Not published. |
-| 383 | Claude | PR #174 | Cinder iron smelts into spheres; the robot's Empowered mode and iron re-plating | Merged. Not published. |
+| 397 | Claude | `claude/dreamy-rubin-yn6q2p` | One pale hot pink for every hit warning; warnings for the Giant's arcs and slam bolts and the Turtle's comet; 4-slot gear glyph layouts | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 395 | `r395-fc69302ceeff` | 2026-10-24 | With 383–393: smelting and the empowered robot (PR #174), the Morphling (#175, #177, #178), your journey, dig scaling and Shadow Clone (#176), whole-build presets (#179), the town smith (#180). The pre-publish Fable review found no blockers. |
 | 381 | `r381-2e0c0ac5ef7c` | 2026-10-24 | With 377 and 379: the stagger governor and daises in every large dungeon (PR #171), the iron shovel and playtime (PR #172), and the iron shovel's 3-block reach (PR #173). The pre-publish Fable review found no blockers. |
 | 375 | `r375-5713421fb42c` | 2026-10-24 | The Listener's Hall: a dais at the whole Gate (from the second Listener) to a fog-free arena (PR #170). The pre-publish Fable review found no blockers. |
 | 373 | `r373-6fe1259fae38` | 2026-10-23 | The Mouth becomes a town: Listening Stone, Delvers' Exchange (PR #169). The pre-publish Fable review found no blockers. |
