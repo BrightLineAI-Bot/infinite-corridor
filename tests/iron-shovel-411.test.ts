@@ -21,3 +21,11 @@ test('obstacles are the things standing in halls, not walls', () => {
   for (const k of ['wall', 'cisternWall', 'volcanicRim', 'deepWall', 'hiveWall']) assert.equal(isObstacle({ kind: k, blocked: true }), false, k);
   assert.equal(isObstacle({ kind: 'sleeperStone', blocked: false }), false);
 });
+
+// Release 413 (Tim: "it shouldn't refund your stone... to break those pillars, it should just take a full... shovel").
+test('digging gives no stone back, and an obstacle takes the whole standard shovel', () => {
+  const s = save(); delete s.digging.iron; s.digging.shovel = 2; s.materials.stone = 5;
+  dig(s, map(), { x: 3, y: 3, cut: 'wall' }, 'k'); assert.equal(s.materials.stone, 5, 'no stone from a wall'); assert.equal(s.digging.shovel, 1);
+  s.digging.shovel = 2; dig(s, map(), { x: 4, y: 3, cut: 'obstacle' }, 'k'); assert.equal(s.digging.shovel, 0, 'a pillar takes the whole shovel');
+  assert.equal(DIG.stone.wall, 0); assert.equal(DIG.stone.spot, 0);
+});

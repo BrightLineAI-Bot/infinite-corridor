@@ -2694,6 +2694,19 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 413: stone is a resource; pillars take a whole shovel — 2026-10-24
+
+Tim, 2026-10-24: "it shouldn't refund your wood or your stone. Your stone should go down... it's a resource that you shouldn't get from digging... you can't just have unlimited digs in the dungeon... there's some consequence"; "to break those pillars, it should just take a full... shovel... we don't have to spend iron for that... [cinder iron is] basically fuel for the robot suit".
+
+**CODE:**
+- `digging.ts` sets `DIG.stone.wall` and `.spot` to 0. `dig` and `digSpot` add no stone, and their messages no longer mention it.
+- `DIG.obstacleTakesShovel`: a standard-shovel dig whose `cut` is "obstacle" spends every dig the shovel has left.
+- The iron shovel's table is unchanged: it is for hard walls, and for any dig when no standard shovel can be had.
+- `tests/digging.test.ts` expects no stone back.
+- Tests: `tests/iron-shovel-411.test.ts` (release 413 case).
+
+**BOUNDARY:** Chipping and breaking rocks, supply caches and Observatories still give stone as before. Dig finds (marks, cinder iron, dust, spheres) are unchanged.
+
 ## Release 411: the iron shovel's points; forgiving dig aim — 2026-10-24
 
 Tim, 2026-10-24 (with a Sleeper's Hall screenshot, Act answering "Nothing nearby responds" beside sleeper-stones): "these aren't really blocks, these are just impediments, so if you have cinder iron, you should just be able to cut through these... the iron shovel can dig through 2 of these... obstacles... 4 blocks [of] regular dungeon walls before it breaks... the hard dungeon walls that resist the shovel... just two of them".
