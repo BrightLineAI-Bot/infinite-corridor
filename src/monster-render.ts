@@ -260,6 +260,8 @@ const BODY = {
   },
   // The Listener (release 138): a cloaked figure shaped like the Wayfarer, its face a violet void; hidden it fades.
   listener(ctx, q) {
+    if (q.e.morphWorm) return drawMorphWorm(ctx, q); // release 385
+    if (q.e.listenerPhase === "walled" && q.e.morphScaled) return drawMorphling(ctx, q); // release 385: the Morphling
     const { k, b, u, t, p, flip, state, e } = q, sway = Math.sin(t * 3) * u * .03, walled = e.listenerPhase === "walled";
     if (e.untargetable) ctx.globalAlpha *= .25;
     glow(ctx, k, b - u * .55, u * .9, p[2], .22 + .08 * Math.sin(t * 5));
@@ -885,6 +887,99 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
 export function packSpriteCount() { return sprites.size; }
 
 // Draw one pack creature at its world position (s = tile size in pixels).
+// ---- the Morphling (release 385; listener-morph.ts) ----------------------------------------------------------------------
+// A huge, muscular, hunched body of dark violet flesh with ram horns and a cluster of eyes. Its arms never keep one shape:
+// each stretches like putty and its end cycles fist → claw → tentacle → cable → stone. Spinning, the arms fan out round it;
+// lunging, it becomes a writhing, toothed mass; sunk, only a bubbling pool and a few tips show.
+const MORPH_INK = { flesh: "#3a1d44", deep: "#120914", sheen: "#7d4c8f", vein: "#c45cff", eye: "#ff4fd8", bone: "#d9cbb4", cable: "#2b2f38", spark: "#9fe8ff" };
+function morphLimb(ctx, x0, y0, ang, len, u, t, i, wide = 1) {
+  const C = MORPH_INK, form = Math.floor(t * .7 + i * 1.37) % 5, wob = Math.sin(t * 4 + i) * .35, x1 = x0 + Math.cos(ang + wob * .4) * len * .55, y1 = y0 + Math.sin(ang + wob * .4) * len * .55, x2 = x0 + Math.cos(ang) * len, y2 = y0 + Math.sin(ang) * len;
+  ctx.lineCap = "round"; ctx.strokeStyle = form === 3 ? C.cable : C.flesh; ctx.lineWidth = Math.max(2, u * (form === 3 ? .07 : .14) * wide);
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(x1 + Math.sin(t * 6 + i) * u * .12, y1, x2, y2); ctx.stroke();
+  if (form !== 3) { ctx.strokeStyle = C.sheen + "88"; ctx.lineWidth = Math.max(1, u * .035); ctx.stroke(); }
+  const r = u * .13, a = ang;
+  ctx.fillStyle = C.flesh;
+  if (form === 0) { ctx.beginPath(); ctx.arc(x2, y2, r * 1.15, 0, TAU); ctx.fill(); outline(ctx, Math.max(1, u * .025)); } // fist
+  else if (form === 1) { ctx.strokeStyle = C.bone; ctx.lineWidth = Math.max(1, u * .035); for (let k = -1; k <= 1; k++) { const b2 = a + k * .45; ctx.beginPath(); ctx.moveTo(x2, y2); ctx.quadraticCurveTo(x2 + Math.cos(b2) * r * 1.6, y2 + Math.sin(b2) * r * 1.6, x2 + Math.cos(b2 + .5) * r * 2.4, y2 + Math.sin(b2 + .5) * r * 2.4); ctx.stroke(); } } // claw
+  else if (form === 2) { ctx.strokeStyle = C.flesh; ctx.lineWidth = Math.max(1, u * .06); ctx.beginPath(); ctx.moveTo(x2, y2); for (let k = 1; k <= 6; k++) { const q2 = a + Math.sin(t * 5 + k) * .9 + k * .35; ctx.lineTo(x2 + Math.cos(q2) * r * k * .5, y2 + Math.sin(q2) * r * k * .5); } ctx.stroke(); } // tentacle
+  else if (form === 3) { ctx.fillStyle = C.cable; ctx.fillRect(x2 - r * .6, y2 - r * .6, r * 1.2, r * 1.2); ctx.fillStyle = C.spark; ctx.beginPath(); ctx.arc(x2, y2, r * .35 * (1 + .4 * Math.sin(t * 20 + i)), 0, TAU); ctx.fill(); } // cable plug
+  else { ctx.fillStyle = "#4a4250"; ctx.beginPath(); for (let k = 0; k < 6; k++) { const q2 = k * TAU / 6 + i, rr = r * (1.2 + .3 * Math.sin(k * 2.3 + i)); ctx[k ? "lineTo" : "moveTo"](x2 + Math.cos(q2) * rr, y2 + Math.sin(q2) * rr); } ctx.closePath(); ctx.fill(); outline(ctx, Math.max(1, u * .025)); } // stone
+}
+function drawMorphling(ctx, q) {
+  const { k, b, u, t, flip, state, e } = q, C = MORPH_INK, m = e.morph || {}, breathe = Math.sin(t * 2.2) * u * .025;
+  if (m.sunk) { // under the floor: a bubbling pool and a few tips
+    ctx.save(); ctx.globalAlpha = 1; shadowAt(ctx, k, b, u * .7, u * .2, .7); ctx.fillStyle = C.deep; ctx.beginPath(); ctx.ellipse(k, b, u * .62, u * .17, 0, 0, TAU); ctx.fill();
+    for (let i = 0; i < 4; i++) { const x = k + Math.cos(t * 3 + i * 1.6) * u * .4, h = u * (.18 + .12 * Math.sin(t * 7 + i)); ctx.strokeStyle = C.flesh; ctx.lineWidth = Math.max(2, u * .06); ctx.beginPath(); ctx.moveTo(x, b); ctx.quadraticCurveTo(x + u * .08, b - h * .6, x - u * .04, b - h); ctx.stroke(); }
+    ctx.restore(); return;
+  }
+  const lunging = m.move === "lunge" && m.lunge && t * 1000 >= 0 && e.morph?.lunge?.gone > 0, spinning = m.move === "spin";
+  shadowAt(ctx, k, b, u * .62, u * .16);
+  glow(ctx, k, b - u * .6, u * 1.1, C.vein, .16 + .06 * Math.sin(t * 3));
+  if (lunging) { // a writhing wave of tentacles with teeth
+    const d = m.lunge.dir, ang = Math.atan2(d.y, d.x);
+    for (let i = 0; i < 9; i++) morphLimb(ctx, k, b - u * .4, ang + Math.PI + (i - 4) * .22, u * (.9 + .25 * Math.sin(t * 9 + i)), u, t * 2, i + 2, .8);
+    ctx.fillStyle = C.deep; ctx.beginPath(); ctx.ellipse(k, b - u * .45, u * .72, u * .46, ang, 0, TAU); ctx.fill(); outline(ctx, Math.max(1.5, u * .03), C.vein + "aa");
+    ctx.fillStyle = C.bone; for (let i = 0; i < 7; i++) { const a = ang + (i - 3) * .28, x = k + Math.cos(a) * u * .6, y = b - u * .45 + Math.sin(a) * u * .4; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * u * .16, y + Math.sin(a) * u * .16); ctx.lineTo(x + Math.cos(a + .5) * u * .05, y + Math.sin(a + .5) * u * .05); ctx.closePath(); ctx.fill(); }
+    return;
+  }
+  // Back arms (behind the body).
+  const shoulder = { x: k, y: b - u * 1.02 + breathe }, arms = 6;
+  for (let i = 0; i < arms; i++) {
+    const base = spinning ? t * 12 + i * TAU / arms : (i < 3 ? Math.PI + .5 - i * .45 : -.5 + (i - 3) * .45) - Math.PI / 2 * .6 + Math.sin(t * 1.6 + i) * .25;
+    const reach = spinning ? u * 1.25 : u * (.65 + .25 * Math.sin(t * 2.4 + i * 1.9)) * (state === "windup" ? 1.25 : 1);
+    if (spinning || i % 2) morphLimb(ctx, shoulder.x + (i < 3 ? -1 : 1) * u * .38, shoulder.y + u * .1, base, reach, u, t, i);
+  }
+  // Legs: two thick, bowed stumps.
+  ctx.fillStyle = C.deep; for (const sx of [-1, 1]) { ctx.beginPath(); ctx.moveTo(k + sx * u * .18, b - u * .35); ctx.quadraticCurveTo(k + sx * u * .42, b - u * .15, k + sx * u * .32, b); ctx.lineTo(k + sx * u * .12, b); ctx.closePath(); ctx.fill(); }
+  // The torso: a hunched, muscular mass.
+  ctx.beginPath(); ctx.moveTo(k - u * .32, b - u * .3); ctx.bezierCurveTo(k - u * .78, b - u * .5, k - u * .7, b - u * 1.15 + breathe, k - u * .2, b - u * 1.22 + breathe); ctx.lineTo(k + u * .2, b - u * 1.22 + breathe); ctx.bezierCurveTo(k + u * .7, b - u * 1.15 + breathe, k + u * .78, b - u * .5, k + u * .32, b - u * .3); ctx.closePath();
+  ctx.fillStyle = shade(ctx, k, b - u * .8, u * .8, C.sheen, C.deep); ctx.fill(); outline(ctx, Math.max(1.5, u * .03));
+  for (const [x, y, rx, ry] of [[-.3, -.98, .24, .18], [.3, -.98, .24, .18], [-.16, -.7, .17, .14], [.16, -.7, .17, .14], [0, -.5, .2, .12]]) { ctx.fillStyle = C.flesh + "cc"; ctx.beginPath(); ctx.ellipse(k + x * u, b + y * u + breathe, rx * u, ry * u, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = C.sheen + "66"; ctx.lineWidth = Math.max(1, u * .02); ctx.stroke(); }
+  // Veins and a belly mouth that opens on the windup.
+  ctx.strokeStyle = C.vein + "aa"; ctx.lineWidth = Math.max(1, u * .02); for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(k + (i - 1.5) * u * .16, b - u * 1.1); ctx.quadraticCurveTo(k + (i - 1.5) * u * .3 + Math.sin(t * 2 + i) * u * .05, b - u * .75, k + (i - 1.5) * u * .12, b - u * .42); ctx.stroke(); }
+  const gape = state === "windup" ? .12 : .03 + .02 * Math.sin(t * 4); ctx.fillStyle = "#080306"; ctx.beginPath(); ctx.ellipse(k, b - u * .5, u * .2, u * gape, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = C.bone; for (let i = 0; i < 6; i++) { const x = k - u * .17 + i * u * .068; ctx.beginPath(); ctx.moveTo(x, b - u * .5 - u * gape); ctx.lineTo(x + u * .03, b - u * .5 - u * gape * .2); ctx.lineTo(x + u * .06, b - u * .5 - u * gape); ctx.fill(); }
+  // The head: sunk between the shoulders, ram horns, a cluster of eyes.
+  const hx = k + flip * u * .04, hy = b - u * 1.25 + breathe; ctx.fillStyle = C.flesh; ctx.beginPath(); ctx.ellipse(hx, hy, u * .2, u * .16, 0, 0, TAU); ctx.fill(); outline(ctx, Math.max(1, u * .025));
+  ctx.strokeStyle = C.bone; ctx.lineWidth = Math.max(2, u * .06); for (const sx of [-1, 1]) { ctx.beginPath(); ctx.arc(hx + sx * u * .2, hy - u * .02, u * .13, sx > 0 ? Math.PI : 0, sx > 0 ? Math.PI * 2.6 : -Math.PI * 1.6, sx < 0); ctx.stroke(); }
+  for (let i = 0; i < 7; i++) { const a = i * 2.4, r = u * (.03 + .06 * (i % 3) / 2); eye(ctx, hx + Math.cos(a) * u * .1, hy + Math.sin(a) * u * .07, Math.max(1, u * .022 * (1 + .3 * Math.sin(t * 6 + i))), C.eye); void r; }
+  // Front arms.
+  for (let i = 0; i < arms; i++) if (!spinning && !(i % 2)) { const base = (i < 3 ? Math.PI + .3 - i * .35 : -.3 + (i - 3) * .35) + Math.sin(t * 1.9 + i) * .3, reach = u * (.6 + .3 * Math.sin(t * 2.1 + i * 2.3)) * (state === "windup" ? 1.3 : 1); morphLimb(ctx, shoulder.x + (i < 3 ? -1 : 1) * u * .42, shoulder.y + u * .18, base, reach, u, t, i + 11); }
+}
+// A worm torn from it: a segmented, wriggling length of the same flesh, rearing to nip.
+function drawMorphWorm(ctx, q) {
+  const { k, b, u, t, e } = q, C = MORPH_INK, f = e.facing || { x: 1, y: 0 }, ang = Math.atan2(f.y, f.x), nip = (e.nipUntil || 0) > t * 1000 ? .35 : 0, segs = 7;
+  shadowAt(ctx, k, b, u * .5, u * .12);
+  for (let i = segs - 1; i >= 0; i--) { const back = i * u * .16, wig = Math.sin(t * 12 - i * .9 + (e.seed || 1)) * u * .1, x = k - Math.cos(ang) * back - Math.sin(ang) * wig, y = b - u * .18 - Math.sin(ang) * back * .6 + Math.cos(ang) * wig * .6 - (i === 0 ? nip * u : 0), r = u * (.17 - i * .012);
+    ctx.fillStyle = i % 2 ? C.flesh : C.sheen; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); outline(ctx, Math.max(1, u * .03)); if (i === 0) { ctx.fillStyle = "#080306"; ctx.beginPath(); ctx.arc(x + Math.cos(ang) * r * .5, y, r * .45, 0, TAU); ctx.fill(); ctx.fillStyle = C.bone; ctx.beginPath(); ctx.arc(x + Math.cos(ang) * r * .5, y, r * .45, 0, TAU); ctx.lineWidth = Math.max(1, u * .02); ctx.strokeStyle = C.bone; ctx.stroke(); } }
+}
+// The Morphling's reach in world space (drawn with the pack effects): cables and their pulses, the stretching jaw arm,
+// the lunge's warning band and where it will rise from the floor.
+export function drawMorphEffects(ctx, enemies, s, now) {
+  const C = MORPH_INK;
+  for (const e of enemies || []) {
+    const m = e.morph; if (!m || e.dead) continue;
+    ctx.save(); ctx.lineCap = "round";
+    for (const c of m.cables || []) {
+      if (now >= c.until) continue; const live = now >= c.liveAt, ax = c.a.x * s, ay = c.a.y * s, bx = c.b.x * s, by = c.b.y * s;
+      ctx.strokeStyle = live ? C.cable : C.vein + "55"; ctx.lineWidth = live ? Math.max(2, s * .1) : Math.max(1, s * .04); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      if (live) { ctx.strokeStyle = C.sheen + "77"; ctx.lineWidth = Math.max(1, s * .03); ctx.stroke(); const f = ((now - c.liveAt) / 1000) * 8 / Math.max(1, c.len), g = f - 2 * Math.floor(f / 2), u2 = g <= 1 ? g : 2 - g, px = ax + (bx - ax) * u2, py = ay + (by - ay) * u2; glow(ctx, px, py, s * .7, "#9fe8ff", .7); ctx.fillStyle = "#e9fbff"; ctx.beginPath(); ctx.arc(px, py, s * .16, 0, TAU); ctx.fill(); }
+      else { ctx.fillStyle = C.vein + "88"; ctx.beginPath(); ctx.arc(bx, by, s * .12, 0, TAU); ctx.fill(); }
+    }
+    if (m.move === "jaw" && m.jaw) { // the arm stretches out, and a dragon's head opens at its end
+      const j = m.jaw, reach = Math.min(1, (now - m.t0) / 650), fx = j.from.x * s, fy = (j.from.y - .3) * s, tx = (j.from.x + (j.to.x - j.from.x) * reach) * s, ty = (j.from.y - .3 + (j.to.y - j.from.y + .3) * reach) * s, ang = Math.atan2(ty - fy, tx - fx), open = j.bit ? 0 : Math.min(1, Math.max(0, (now - m.t0 - 650) / 450)) * .7;
+      ctx.strokeStyle = "#ff3a5a55"; ctx.lineWidth = Math.max(1, s * .04); ctx.beginPath(); ctx.arc(j.to.x * s, j.to.y * s, 1.15 * s, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = C.flesh; ctx.lineWidth = Math.max(3, s * .22); ctx.beginPath(); ctx.moveTo(fx, fy); ctx.quadraticCurveTo((fx + tx) / 2 + Math.sin(now / 80) * s * .3, (fy + ty) / 2 - s * .6, tx, ty); ctx.stroke(); ctx.strokeStyle = C.sheen + "88"; ctx.lineWidth = Math.max(1, s * .06); ctx.stroke();
+      ctx.translate(tx, ty); ctx.rotate(ang); const L = s * .9;
+      for (const sg of [-1, 1]) { ctx.save(); ctx.rotate(sg * open); ctx.fillStyle = C.flesh; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(L, sg * s * .08); ctx.lineTo(L * .85, sg * s * .3); ctx.lineTo(0, sg * s * .32); ctx.closePath(); ctx.fill(); outline(ctx, Math.max(1, s * .03)); ctx.fillStyle = C.bone; for (let i = 1; i < 6; i++) { ctx.beginPath(); ctx.moveTo(L * i / 6, sg * s * .06); ctx.lineTo(L * i / 6 + s * .05, -sg * s * .06); ctx.lineTo(L * i / 6 + s * .1, sg * s * .06); ctx.fill(); } if (sg < 0) eye(ctx, L * .35, -s * .2, Math.max(1, s * .05), C.eye); ctx.restore(); }
+      ctx.rotate(-ang); ctx.translate(-tx, -ty);
+    }
+    if (m.move === "lunge" && m.lunge && now < m.lunge.goAt) { const l = m.lunge, x = l.from.x * s, y = l.from.y * s, ang = Math.atan2(l.dir.y, l.dir.x); ctx.translate(x, y); ctx.rotate(ang); ctx.fillStyle = "#ff3a5a" + (Math.floor(now / 90) % 2 ? "33" : "22"); ctx.fillRect(0, -s * .75, s * 9, s * 1.5); ctx.rotate(-ang); ctx.translate(-x, -y); }
+    if (m.move === "sink" && m.sink) { const x = (m.sink.to.x + .5) * s, y = (m.sink.to.y + .82) * s, k2 = Math.min(1, (now - m.t0) / 1300); ctx.strokeStyle = C.vein + "aa"; ctx.lineWidth = Math.max(1, s * .05); ctx.beginPath(); ctx.ellipse(x, y, s * 2.3 * k2, s * .7 * k2, 0, 0, TAU); ctx.stroke(); ctx.fillStyle = C.deep + "aa"; ctx.beginPath(); ctx.ellipse(x, y, s * .5 * k2, s * .15 * k2, 0, 0, TAU); ctx.fill(); }
+    ctx.restore();
+  }
+}
+
 export function drawPackMonster(ctx, e, s, now, facing = "down") {
   const def = MONSTER_PACK[e.kind];
   if (!def) return false;

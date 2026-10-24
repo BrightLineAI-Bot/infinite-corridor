@@ -6,7 +6,7 @@
 // they'll be able to use... the tools or... attacks or spells that your character has unlocked... frequently spawning
 // these clones... one will just walk in a different direction... up to eight... they like rush towards you all swinging
 // their swords... like a phalanx... another where they... use the spells and... get bigger... the smart AI where they
-// try and avoid your attacks and... position themselves". The grotesque (walled) form is unchanged for now.
+// try and avoid your attacks and... position themselves". The grotesque (walled) form became the Morphling in release 385 (listener-morph.ts).
 //
 // The Listener in its open (mirror) form, every frame (tickMirrorListener):
 // - Reflections step out of it every `spawnEvery` seconds, up to `maxClones`, each walking off its own way for a moment
