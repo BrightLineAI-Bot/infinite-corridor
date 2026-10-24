@@ -2694,6 +2694,21 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 415: Ilse, the Lamplighter — 2026-10-24
+
+The daily narrative task, `docs/narrative-bible.md` section 7, step 6 (the first of Ilse, the Seven Bells and margins in crossings). Gilgamesh's recited voice (step 5) still waits for a public-domain source text.
+
+**CODE:**
+- `src/ilse.ts`: `ILSE{chance:.045,minDepth:3,finalAfter:3}` and `ILSE_MEETINGS` 1–5 (child, young, woman with the last lamp, old woman, a Far Sleep girl beside a lamp with no post), all original writing.
+- `ilseMeetingAt(save,rx,ry,far)` rolls by seed and section. In the waking world it picks a seeded meeting among 1–4 not yet had; in the Far Sleep it offers 5 once three are had. After 5, nothing.
+- `addIlse` places an object of kind "ilse" (action speak) on open ground in a wild overworld section. `game.ts` calls it after `addDigSpot`, with `farSleepSection`, and announces her when nothing louder is there.
+- `game.interact` handles kind "ilse" with `meetIlse`, which records the meeting in `save.lore.ilse` (a sorted string of digits, normalised by `ilseMet`; `ensureLore` keeps it through `...l`) and writes a Journal entry once.
+- `renderer.ts drawIlse` draws her at her age, with the lamp post lit, the lamp she holds, the dark lamp or the postless lamp.
+- Registered in `scripts/build.mjs` and both `sw.js` lists.
+- Tests: `tests/ilse-415.test.ts`.
+
+**BOUNDARY:** No reward, no quest, no fight: she is met and remembered. Settlements, skirmish sections and sections within 3 of Ember Refuge never hold her. No generator version changes; she is an object added on load, like the dig spot, and is not saved in the map.
+
 ## Release 413: stone is a resource; pillars take a whole shovel — 2026-10-24
 
 Tim, 2026-10-24: "it shouldn't refund your wood or your stone. Your stone should go down... it's a resource that you shouldn't get from digging... you can't just have unlimited digs in the dungeon... there's some consequence"; "to break those pillars, it should just take a full... shovel... we don't have to spend iron for that... [cinder iron is] basically fuel for the robot suit".

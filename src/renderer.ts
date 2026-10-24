@@ -860,6 +860,21 @@ export function drawWallGlint(ctx, q, s, now) {
   ctx.restore();
 }
 // Release 225: a patch of disturbed earth (or, once dug, turned earth): a low mound of darker soil ringed by a few stones.
+// Release 415: Ilse the Lamplighter, at the age the Corridor deals her. A child or young woman with a lit taper beside a lamp
+// post (lit), the woman holding the last lamp, the old woman beside a dark lamp, and in the Far Sleep a lamp with no post.
+export function drawIlse(ctx, o, s, now) {
+  const age = o.age, scale = age === "child" ? .74 : age === "young" ? .9 : 1, cx = (o.x + .5) * s, flick = .85 + .15 * Math.sin(now / 130 + o.x);
+  const glow = (x, y, r, a) => { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(255,214,140,${a})`); g.addColorStop(1, "rgba(255,214,140,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); };
+  const lamp = (x, y, lit) => { ctx.fillStyle = "#2b2420"; ctx.fillRect(x - s * .1, y - s * .14, s * .2, s * .26); ctx.fillStyle = lit ? `rgba(255,220,150,${.9 * flick})` : "#4a4440"; ctx.fillRect(x - s * .06, y - s * .1, s * .12, s * .16); if (lit) glow(x, y, s * 1.1, .35 * flick); };
+  const postX = cx + s * .7, top = (o.y - .9) * s;
+  if (o.stage !== 3 && o.stage !== 5) { ctx.strokeStyle = "#3a302a"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); ctx.moveTo(postX, (o.y + .85) * s); ctx.lineTo(postX, top); ctx.stroke(); lamp(postX, top, o.stage !== 4); }
+  if (o.stage === 5) { const fy = top - s * .2 + Math.sin(now / 700) * s * .08; lamp(postX, fy, true); }
+  actor(ctx, o.x, o.y, s, "villager", "down", 0, "idle", false, scale);
+  if (age === "old") { ctx.strokeStyle = "#6b5a48"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.moveTo(cx - s * .32, (o.y + .85) * s); ctx.lineTo(cx - s * .28, (o.y + .15) * s); ctx.stroke(); }
+  const hx = cx + s * .26, hy = (o.y + .38) * s;
+  if (o.stage === 3) lamp(hx, hy, true);
+  else if (o.stage === 1 || o.stage === 2) { ctx.strokeStyle = "#d9c39a"; ctx.lineWidth = Math.max(1.2, s * .04); ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + s * .1, hy - s * .5); ctx.stroke(); ctx.fillStyle = `rgba(255,200,110,${flick})`; ctx.beginPath(); ctx.ellipse(hx + s * .1, hy - s * .56, s * .04, s * .08, 0, 0, 7); ctx.fill(); glow(hx + s * .1, hy - s * .56, s * .45, .3 * flick); }
+}
 export function drawDigSpot(ctx, o, s, now) {
   const cx = (o.x + .5) * s, cy = (o.y + .72) * s, dug = o.state === "dug";
   ctx.save();
@@ -1528,6 +1543,7 @@ export function render(ctx, g, w, h, now) {
             ctx.restore();
             if (!spent) { ctx.fillStyle = "#e2d5ba"; ctx.font = "10px monospace"; ctx.textAlign = "center"; ctx.fillText("WRECK", bx, by - s * 1.4); ctx.textAlign = "start"; }
           } else if (o.kind === "digSpot") { drawDigSpot(ctx, o, s, now);
+          } else if (o.kind === "ilse") { drawIlse(ctx, o, s, now);
           } else if (o.kind === "skiff") {
             drawSkiff(ctx, o.x, o.y, s, "right", performance.now());
             if (o.id === "skiff-moored" && g.mendTarget?.() && !g.mendTarget().aboard) repairTag(ctx, o.x, o.y, s); // release 269
