@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**407**
+**409**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 405 | Claude | `claude/dreamy-rubin-yn6q2p` | Psychic Crystal push, pull and grab show their reach with pink waves | Building. |
+| 407 | Claude | `claude/dreamy-rubin-yn6q2p` | Void Walker paced (longer cooldowns, a real gap between attacks); Supernova fog no longer hides creatures | Building. |
+| 405 | Claude | PR #185 | Psychic Crystal push, pull and grab show their reach with pink waves | Merged; preview `r405-a8f100addce9`. Not published. |
 | 403 | Claude | PR #184 | Living bosses marked on the dungeon map | Merged; preview `r403-7588ec35dda3`. Not published. |
 | 401 | Claude | PR #183 | The Psychic Crystal stays out of walls while fighting you in sight, dodges less, staggers sooner; found Watcher's Daises on the dungeon map | Merged; preview `r401-c00607abb98e`. Not published. |
 | 399 | Claude | PR #182 | Kills pay the regional experience multiplier (more experience farther from Ember Refuge) | Merged; preview `r399-741a8907ec63`. Not published. |

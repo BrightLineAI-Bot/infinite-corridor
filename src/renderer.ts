@@ -1703,13 +1703,13 @@ export function render(ctx, g, w, h, now) {
     // Fog banks (release 156; release 158 smooths them): each bank is a cluster of soft puffs turning slowly about its
     // centre. Inside a bank the mist closes in around the Wayfarer gradually (fogLevel is eased in open-sea.ts).
     // Release 257: a Supernova's fog (g.novaFog) draws the same way, faded in and out by its alpha.
-    const level = Math.max(g.seaHazards?.fogLevel || 0, g.novaFog?.fogLevel || 0), time = now / 1000;
-    for (const [f, fade] of [...(g.seaHazards?.fog || []).map((f) => [f, 1]), ...(g.novaFog?.fog || []).map((f) => [f, g.novaFog.alpha ?? 1])]) {
+    const level = g.seaHazards?.fogLevel || 0, time = now / 1000; // release 407 (Tim: "the Supernova... covers the entire world, so I can't see him... the Supernova shouldn't cover the Void Walker or other creatures"): its fog no longer closes in around the Wayfarer, and its mist is thin
+    for (const [f, fade] of [...(g.seaHazards?.fog || []).map((f) => [f, 1]), ...(g.novaFog?.fog || []).map((f) => [{ ...f, nova: true }, g.novaFog.alpha ?? 1])]) {
       if (fade <= 0) continue;
       for (let i = 0; i < 7; i++) {
         const a = (f.swirl || 0) + i * 2.399 + Math.sin(time * .2 + i) * .15, d = f.radius * (.15 + .55 * ((i * 37) % 10) / 10), pr = f.radius * (.45 + .1 * Math.sin(time * .3 + i * 1.7));
         const x = (f.x + Math.cos(a) * d) * s, y = (f.y + Math.sin(a) * d) * s, gr = ctx.createRadialGradient(x, y, 0, x, y, pr * s);
-        gr.addColorStop(0, `rgba(222,231,236,${.22 * fade * (1 - level * .5)})`); gr.addColorStop(1, "rgba(222,231,236,0)");
+        gr.addColorStop(0, `rgba(222,231,236,${(f.nova ? .1 : .22) * fade * (1 - level * .5)})`); gr.addColorStop(1, "rgba(222,231,236,0)");
         ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, pr * s, 0, 7); ctx.fill();
       }
     }

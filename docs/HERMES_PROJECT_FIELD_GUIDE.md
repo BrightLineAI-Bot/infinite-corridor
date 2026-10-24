@@ -2694,6 +2694,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 407: the Void Walker, paced; the Supernova fog thins — 2026-10-24
+
+Tim, 2026-10-24: "the Supernova... covers the entire world, so I can't see him... all the other creatures... become invisible... the Void Walker should attack less frequently... he covers up the entire screen with attacks... a little bit more pacing".
+
+**CODE:**
+- `world-beasts.ts` raises `voidWalker.attackGap` from .3 to 1.1.
+- `monster-pack.ts` `ATTACK_MODULES` cooldowns go up for every Void Walker move: hand 3.8, claw 4.3, sword 4.8, slash 5, spikes 5.8, wraiths 8, rifts 13, constellation 15, horizons 13, supernova 30.
+- `renderer.ts`: the close-in fog vignette reads only `seaHazards.fogLevel` (sea fog banks), not the Supernova's. Nova fog puffs draw at .1 alpha instead of .22.
+- Tests: `tests/void-pacing-407.test.ts`.
+
+**BOUNDARY:** The Supernova's damage, its charge and its water fog timing are unchanged. Sea fog banks still close in as before.
+
 ## Release 405: the Crystal's push, pull and grab show their reach — 2026-10-24
 
 Tim, 2026-10-24: "the pull move and the grab move should have a wave... where you're gonna get... when you're in the grab range or in the push range... a wave of where it's coming".
