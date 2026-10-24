@@ -2694,6 +2694,24 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 421: calmer bosses — 2026-10-24
+
+Tim, 2026-10-24: "the bosses do too much damage... reduce their damage... 15%... more wind up... the nanobot knight... his homing... orbs... should be blocked by walls and blocks... home in on you for like 2 seconds. And then they should just fly straight... more cool down between their attacks... they attack way too aggressively."
+
+**CODE:**
+- `monster-pack.ts`: `BOSS_PACE{damage:.85, windup:1.2, cooldown:1.25, gap:1.35}` and `bossPaced(e)` (`staggerClass` boss or revenant).
+- `updatePackMonster` marks `e.pack.paced` when the world sets `bossPace` (never on a zero-dt frame).
+- The marked pack bosses get a scaled windup in `beginAttack`, a scaled cooldown in `cooldownScale` and a scaled pause in `endAttack`.
+- `updateGatePredator` scales the Revenant's warn and gap the same way.
+- `game.ts` `packWorld` sets `bossPace: true`; a bare module world (the attack-module tests) keeps base timings.
+- **Damage:** `packHurt` multiplies a boss source's damage by `BOSS_PACE.damage`, except the Astral Worm's drain, which is also its heal (release 307). The same cut applies to contact blows and boss shots in the older enemy AI.
+- **Older enemy AI:** boss telegraphs and cooldowns are scaled too.
+- **The Knight:** `KNIGHT.missileHome` 2 s of homing, then straight; `missileFuel` is 4 (was 2.4).
+- **Builds stop seekers:** `packWorld.shotBlocked` (a wall or any build tile) stops seeker orbs and missiles.
+- Tests: `tests/boss-pace-421.test.ts`.
+
+**BOUNDARY:** Elites and ordinary creatures, boss health, poise and the stagger governor are unchanged. Effects already in the air keep their own timers.
+
 ## Release 419: sharper auto targeting; the Build button holds a Shadow Clone; safe dungeon arrivals — 2026-10-24
 
 Tim, 2026-10-24: "yes make the build button hold too. Also, the automatic targeting of enemies isn't working very well... It needs to be a little bit more sensitive and a little bit longer range."

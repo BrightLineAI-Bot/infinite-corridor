@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**421**
+**423**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 419 | Claude | `claude/dreamy-rubin-yn6q2p` | Auto targeting reaches farther and favours foes ahead; a Shadow Clone cast from Build holds too; dungeon arrivals always land on the level's open floor, clear of guardians | Building. |
+| 421 | Claude | `claude/dreamy-rubin-yn6q2p` | Bosses: 15% less damage, longer wind-ups, longer cooldowns and pauses; the Nanobot Knight's seekers stop at builds and its missiles home for 2 s | Building. |
+| 419 | Claude | PR #192 | Auto targeting reaches farther and favours foes ahead; a Shadow Clone cast from Build holds too; dungeon arrivals always land on the level's open floor, clear of guardians | Merged. Not published. |
 | 411 | Claude | PR #188 | Iron shovel: 4 points (wall 1, obstacle or hard wall 2), digs plain walls without a standard shovel; forgiving dig aim | Merged; preview `r411-fbc2470d2ad8`. Not published. |
 | 409 | Claude | PR #187 | Creatures on Supernova-scarred ground and world beasts are always drawn in dungeons | Merged. Not published. |
 | 407 | Claude | PR #186 | Void Walker paced (longer cooldowns, a real gap between attacks); Supernova fog no longer hides creatures | Merged; preview `r407-fba627b84eee`. Not published. |
