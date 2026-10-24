@@ -8,9 +8,9 @@
 // chosen home ("rx,ry"; Ember Refuge, "0,0", when unset). Home is where the Atlas's Return button goes, and where the farm,
 // the quarry and the regrowth ring sit (refuge-lands.ts, by `homeCenter`). A town becomes home from the Atlas once its
 // Wayglass is lit.
-import { hashSeed } from "./random.js?v=r373-6fe1259fae38";
-import { hamletIdentity, hamletSection } from "./settlements.js?v=r373-6fe1259fae38";
-import { openSeaSection } from "./landscape.js?v=r373-6fe1259fae38";
+import { hashSeed } from "./random.js?v=r375-5713421fb42c";
+import { hamletIdentity, hamletSection } from "./settlements.js?v=r375-5713421fb42c";
+import { openSeaSection } from "./landscape.js?v=r375-5713421fb42c";
 
 export const HOMETOWNS = { search: 4 };
 const REFUGE = "0,0";
@@ -36,7 +36,7 @@ export function townSite(save, mouth) {
   }
   return null;
 }
-// Release r373-6fe1259fae38 (Tim: "a town should spring up around the [Listener's] dungeon... when you leave... [and] come back...
+// Release 373 (Tim: "a town should spring up around the [Listener's] dungeon... when you leave... [and] come back...
 // it becomes like a town now... [the Mouth] becomes a source of adventure and prosperity"): the town rises on the Mouth's
 // own section, around the Mouth (`mouth: true`), with the Listening Stone and a delver's exchange beside it (game.ts).
 // It replaces the 371 town on a nearby section; a journey that already has one keeps it as one more town.

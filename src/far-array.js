@@ -8,7 +8,8 @@
 // calls guardians in; from gate 3 it hides behind them until they fall. Felling it raises the Gate a tier (harder
 // guardians that borrow moves) and offers a choice of three boons; the first time, it also asks how the story ends,
 // though the climb goes on either way. State: save.farArray (additive). The lore stays open on purpose.
-import { hashSeed, rng } from "./random.js?v=r373-6fe1259fae38";
+import { hashSeed, rng } from "./random.js?v=r375-5713421fb42c";
+import { daisDue } from "./listener-arena.js?v=r375-5713421fb42c";
 
 export const FAR = {
   piecesBase: 2, // gate 1 needs 3 pieces, gate 2 needs 4, ...
@@ -76,15 +77,25 @@ export function beginArrayRun(save, returnPoint, { noListener = false } = {}) {
   for (const key of Object.keys(save.consequences?.dungeons || {})) if (key.startsWith("far-array:")) delete save.consequences.dungeons[key];
   f.runs++;
   // Each run is a different dungeon (release 140): an Underlands expedition or one of the five deep archetypes.
-  const listener = gateOpen(f) && !f.quiet && !noListener, kind = // release 357/361: never while quiet, nor at an old Mouth
+  const listener = gateOpen(f) && !f.quiet && !noListener && !daisDue(f), kind = // release 357/361: never while quiet, nor at an old Mouth; 375: nor when the dais calls
     RUN_KINDS[hashSeed(`${save.seed}:far-array:kind:${f.runs}`) % RUN_KINDS.length];
   const id = `far-array:${save.seed}:run${f.runs}${kind === "expedition" ? "" : `:deep-v2:${kind}`}`;
   f.activeRun = { id, gate: f.gate, listener, kind, returnPoint: { ...returnPoint } };
   return f.activeRun;
 }
+// Release r375-5713421fb42c (listener-arena.ts): from the second Listener on, it waits in its own hall, reached by the dais at the Mouth.
+export function beginListenerArena(save, returnPoint) {
+  const f = ensureFarArray(save);
+  if (!daisDue(f)) return null;
+  for (const key of Object.keys(save.session?.areas || {})) if (key.startsWith("far-array:")) delete save.session.areas[key];
+  for (const key of Object.keys(save.consequences?.dungeons || {})) if (key.startsWith("far-array:")) delete save.consequences.dungeons[key];
+  f.runs++;
+  f.activeRun = { id: `far-array:${save.seed}:arena${f.runs}`, gate: f.gate, listener: true, kind: "arena", returnPoint: { ...returnPoint } };
+  return f.activeRun;
+}
 export const RUN_KINDS = ["expedition", "threefold", "descent", "loop", "flooded", "fortress"];
 // What the run is called, by dungeon kind, so every run reads as part of the Array.
-export const RUN_NOUNS = { expedition: "Chamber", threefold: "Threefold Lair", descent: "Descent", loop: "Circuit", flooded: "Grotto", fortress: "Keep" };
+export const RUN_NOUNS = { arena: "Hall", expedition: "Chamber", threefold: "Threefold Lair", descent: "Descent", loop: "Circuit", flooded: "Grotto", fortress: "Keep" };
 export function runName(run, gate) { const noun = RUN_NOUNS[run?.kind] || "Chamber"; return run?.listener ? `The Listener's ${noun}` : `The Far Array · ${noun} · Gate ${gate}`; }
 // Relay pylons that mark a run as the Array; inspecting one replays a line of the far transmission.
 export const PYLON_LINES = ["…carrier found. The line runs under every section you have walked…", "…it learns a road for every line opened, a wall for every line closed…", "…signal steady. Something on the line is listening back…", "…the Gate remembers each piece you give it…", "…come alone, Wayfarer. It already knows your step…"];

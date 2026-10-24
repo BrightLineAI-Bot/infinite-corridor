@@ -1,20 +1,20 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r373-6fe1259fae38";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r373-6fe1259fae38";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r373-6fe1259fae38";
-import { enemyMeleeGeometry } from "./combat.js?v=r373-6fe1259fae38";
-import { ruleRows } from "./elders.js?v=r373-6fe1259fae38";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r373-6fe1259fae38";
-import { BOAT } from "./boats.js?v=r373-6fe1259fae38";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r373-6fe1259fae38";
-import { isMarineTile } from "./world-beasts.js?v=r373-6fe1259fae38";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r373-6fe1259fae38";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r373-6fe1259fae38";
-import { liftAt, tileUnder } from "./landscape.js?v=r373-6fe1259fae38";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r373-6fe1259fae38";
-import { GATE_REVENANT } from "./monster-pack.js?v=r373-6fe1259fae38";
-import { drawRelayNode } from "./relay-network.js?v=r373-6fe1259fae38";
-import { structureOccupancy } from "./world.js?v=r373-6fe1259fae38";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r373-6fe1259fae38";
+import { astralBeamAnchors } from "./astral-worm.js?v=r375-5713421fb42c";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r375-5713421fb42c";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r375-5713421fb42c";
+import { enemyMeleeGeometry } from "./combat.js?v=r375-5713421fb42c";
+import { ruleRows } from "./elders.js?v=r375-5713421fb42c";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r375-5713421fb42c";
+import { BOAT } from "./boats.js?v=r375-5713421fb42c";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r375-5713421fb42c";
+import { isMarineTile } from "./world-beasts.js?v=r375-5713421fb42c";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r375-5713421fb42c";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r375-5713421fb42c";
+import { liftAt, tileUnder } from "./landscape.js?v=r375-5713421fb42c";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift } from "./monster-render.js?v=r375-5713421fb42c";
+import { GATE_REVENANT } from "./monster-pack.js?v=r375-5713421fb42c";
+import { drawRelayNode } from "./relay-network.js?v=r375-5713421fb42c";
+import { structureOccupancy } from "./world.js?v=r375-5713421fb42c";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r375-5713421fb42c";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1047,6 +1047,9 @@ function actor(
     } else if (kind === "checkpoint") {
       rect("#b8f5f2", -0.08, -1.02, 0.16, 0.7);rect("#315c65", -0.32, -0.34, 0.64, 0.2);rect("#72d7df", -0.2, -0.92, 0.4, 0.12);
       ctx.strokeStyle="#d8ffff";ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.arc(k,base-s*.68,s*.25,Math.PI*.18,Math.PI*1.82);ctx.stroke();
+    } else if (kind === "listenerDais") { // release 375: a round dais of dark glass, its rim lit, a column of the line above it
+      const t=performance.now()/1000,pulse=.5+.5*Math.sin(t*3);ctx.fillStyle="#120f18";ctx.beginPath();ctx.ellipse(k,base-s*.2,s*.48,s*.2,0,0,7);ctx.fill();ctx.strokeStyle=`rgba(201,166,255,${.55+.4*pulse})`;ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.ellipse(k,base-s*.2,s*.42,s*.16,0,0,7);ctx.stroke();
+      ctx.lineWidth=Math.max(1,s*.03);ctx.beginPath();ctx.ellipse(k,base-s*.2,s*.24,s*.09,t%6.3,0,4.2);ctx.stroke();const g=ctx.createLinearGradient(0,base-s*1.6,0,base-s*.2);g.addColorStop(0,"rgba(201,166,255,0)");g.addColorStop(1,`rgba(201,166,255,${.25+.25*pulse})`);ctx.fillStyle=g;ctx.fillRect(k-s*.18,base-s*1.6,s*.36,s*1.4);
     } else if (kind === "listeningStone") { // release 373: a dark standing stone with the Listener's violet, ringed like an ear
       ctx.fillStyle="#00000055";ctx.beginPath();ctx.ellipse(k,base,s*.36,s*.1,0,0,7);ctx.fill();
       ctx.fillStyle="#1c1726";ctx.beginPath();ctx.moveTo(k-s*.26,base);ctx.lineTo(k-s*.18,base-s*1.15);ctx.lineTo(k,base-s*1.32);ctx.lineTo(k+s*.18,base-s*1.15);ctx.lineTo(k+s*.26,base);ctx.closePath();ctx.fill();ctx.strokeStyle="#3b3550";ctx.lineWidth=Math.max(1,s*.04);ctx.stroke();
