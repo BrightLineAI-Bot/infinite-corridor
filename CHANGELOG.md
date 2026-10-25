@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 427 — every boss hit shown in pink.
+  - **Footprints:** every damaging thing a boss leaves or throws (the Turtle's twisters, fire and frost trails, the Knight's missiles and seekers, debris, orbs, gas, lava, mortars, sky strikes, swords) has a pink footprint on the floor, the size of what it really hits.
+  - **Body attacks:** while a boss hits with its own body (the Turtle's spin, dash, cyclone and stomp, the Blob's engulf, the Worm's suction, charges and pounces), its reach is shown in pink beneath it: dashed while it winds up, solid while it hits.
+  - **The Knight's retreating slash** now shows its arc. The Void Walker's warnings and lanes and the Astral Worm's hazards now use the same pink.
 - Release 425 — the open world waits for Infinite II.
   - **Open-world digging from Infinite II:** you can make and use a shovel at any time in dungeons, but the open world only gives way to it from Infinite II. Before that, Act facing rock says so and spends nothing.
 - Release 423 — kept wounds, open dreams, open-world digging.
