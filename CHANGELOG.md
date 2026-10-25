@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 433 — shovels everywhere underground.
+  - **No more blanket ban:** "The walls here are not stone a shovel can bite" no longer blocks the shovel in Far Array runs, arenas, hunts, grottoes and crossings. The shovel and the iron shovel (lashed or forged automatically, as before) dig there like anywhere else.
+  - **Not kept:** those places' tunnels last only while you are in them, and their walls hide no treasure.
 - Release 431 — the Seven Bells.
   - **Cracked bells:** some ordinary crossings of the Smoke Meadows and the middle lands hold a cracked bell, one of seven the Bell-founder's Daughter cast to call home the people the war took. Ring it and, for a moment, you see one of them on a road, walking home.
   - **The seventh bell:** it brings all seven to her door at dusk.
