@@ -70,7 +70,11 @@ export const MIRE_CRYPT = { perThousand: 20, version: 1, lairRadius: 6, patch: .
   heartHp: .5, mergeHp: .06, seepEvery: 8, seepMax: 6, seepHp: 30, seepGrow: 40, seepGrowMax: 1, contact: 9, contactEvery: .8, poison: [4, 3] };
 // Sleeper's Hall (release 351; docs/narrative-bible.md section 7, step 4, the Far Sleep's dream dungeons): sleep-meadow floors,
 // walls worn through to the night sky, sleeper-stones standing in the halls and low marble terraces with stairs.
-export const DREAM_HALL = { version: 1, stoneAbove: .84, marbleAbove: .62 };
+// Release 435 (Tim: "a disproportionately large number of dungeons in the dreamland are just... dreamland dungeons...
+// You should still be just... mixed dungeons"): a crossing first found in the Far Sleep is a Sleeper's Hall only `share`
+// of the time (by seed); the rest keep the ordinary mix. Crossings already pinned keep what they were.
+export const DREAM_HALL = { version: 1, stoneAbove: .84, marbleAbove: .62, share: .3 };
+export const dreamHallRoll = (seed, id) => hashSeed(`${seed}:dream-hall:v1:${id}`) % 1000 < DREAM_HALL.share * 1000;
 export function plainCrossing(seed, id, layoutPool) { return layoutPool >= 5 && hashSeed(`${seed}:${id}:plain`) % 100 < PLAIN.chance; }
 export function rollMireCrypt(seed, id, layoutPool) { return layoutPool >= 5 && !plainCrossing(seed, id, layoutPool) && hashSeed(`${seed}:mire-crypt:v${MIRE_CRYPT.version}:${id}`) % 1000 < MIRE_CRYPT.perThousand; }
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];

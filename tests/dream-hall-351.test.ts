@@ -1,7 +1,7 @@
 // Release 351: Sleeper's Hall, the Far Sleep's dream crossings (docs/narrative-bible.md section 7, step 4).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateExpeditionDungeon, reachableInMap, DREAM_HALL } from '../src/underlands.ts';
+import { generateExpeditionDungeon, reachableInMap, DREAM_HALL, dreamHallRoll } from '../src/underlands.ts';
 import { generatePinnedDungeon } from '../src/game.ts';
 import { dungeonHistory } from '../src/interactions.ts';
 import { freshSave } from '../src/types.ts';
@@ -26,7 +26,8 @@ test('a Sleeper\'s Hall: meadow floors, night-sky walls, sleeping stones, terrac
 
 test('a crossing first found in the Far Sleep is pinned a Sleeper\'s Hall; nearer ones and older histories are not', () => {
   const s = freshSave(); s.seed = 'D';
-  const id = far(3), m = generatePinnedDungeon(s, id);
+  let i = 0; while (!dreamHallRoll(s.seed, far(i))) i++; // release 435: only a share of Far Sleep crossings dream
+  const id = far(i), m = generatePinnedDungeon(s, id);
   assert.equal(s.consequences.dungeons[id].dream, DREAM_HALL.version); assert.equal(m.theme, s.consequences.dungeons[id].mire ? 'poisonCrypt' : 'dream');
   assert.equal(generatePinnedDungeon(s, id).tiles.map((t) => t.kind).join(), m.tiles.map((t) => t.kind).join(), 'the same hall every time');
   const near = 'dungeon:D:g1:3:4:dungeon-g1-3-4-1'; generatePinnedDungeon(s, near); assert.equal(s.consequences.dungeons[near].dream, undefined);

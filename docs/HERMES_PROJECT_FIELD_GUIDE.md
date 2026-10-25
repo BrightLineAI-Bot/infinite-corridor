@@ -2694,6 +2694,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 435: mixed dungeons in the Far Sleep — 2026-10-25
+
+Tim, 2026-10-25: "a disproportionately large number of dungeons in the dreamland are just like dreamland dungeons... the first level seems to be just always a dreamlined dungeon, that's not how it should be... You should still be just like mixed dungeons."
+
+**CODE:**
+- `underlands.ts`: `DREAM_HALL.share = .3` and `dreamHallRoll(seed, id)`.
+- `generatePinnedDungeon` (game.ts): when an ordinary crossing in the Far Sleep is first pinned, `history.dream` becomes `DREAM_HALL.version` only on that roll; otherwise it is pinned `0` (ordinary), where every one used to be a Sleeper's Hall.
+- Multi-level deep dungeons were never Sleeper's Halls, which is why their second floors looked different.
+- Tests: `tests/dream-share-435.test.ts`. `tests/dream-hall-351.test.ts` picks a crossing that rolls a Sleeper's Hall.
+
+**BOUNDARY:** Histories already pinned keep their `dream` value, so the halls a journey has found stay halls. No change to the hall generator itself.
+
 ## Release 433: shovels everywhere underground — 2026-10-25
 
 Tim, 2026-10-25: "I'm in a dungeon that says the walls cannot be bitten by the shovel... I'm at a wall right now. And the shovel isn't working... we need to make sure that the shovels are actually working. Whatever we decided on."
