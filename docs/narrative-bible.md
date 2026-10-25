@@ -282,7 +282,7 @@ Each step is one release, built and previewed for Tim before publishing.
    - a new landscape generation version, used only for sections not yet explored;
    - existing journeys never regenerate.
 5. **Gilgamesh** (Tim confirmed this is the legend he meant, so the Yoga Vasistha is set aside). The Glimpse "The Plant at the Bottom" is built (release 219). Still to do: the recited voice, taken from R. Campbell Thompson (1928) or Jastrow and Clay (1920) once a public-domain source text is reachable.
-6. **Ilse, the Seven Bells, margins in crossings** (Ilse built in release 415), then ongoing: new Glimpses every pass, the Surveyor and the Torn Pages.
+6. **Ilse, the Seven Bells, margins in crossings** (Ilse built in release 415; the Seven Bells in release 431), then ongoing: new Glimpses every pass, the Surveyor and the Torn Pages.
 
 **Save:** one additive block, `save.lore`, holding:
 - the heard lines (compact ids);

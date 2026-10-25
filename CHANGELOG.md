@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 431 — the Seven Bells.
+  - **Cracked bells:** some ordinary crossings of the Smoke Meadows and the middle lands hold a cracked bell, one of seven the Bell-founder's Daughter cast to call home the people the war took. Ring it and, for a moment, you see one of them on a road, walking home.
+  - **The seventh bell:** it brings all seven to her door at dusk.
+  - **Tracking:** the thread is listed under Active quests and written in the Journal.
 - Release 429 — wounds that really stay.
   - **Bosses keep their wounds when you die, for real:** release 423 recorded a world beast's health when it killed you, but the death code then healed it straight back to full. It no longer does: the Void Walker, the Turtle and the rest come back as hurt as you left them, in dungeons and in the open, until they die. Tries are spent as before.
   - **No Void Walker in dungeons:** he no longer starts a hunt inside a dungeon. A hunt already under way in one finishes there.
