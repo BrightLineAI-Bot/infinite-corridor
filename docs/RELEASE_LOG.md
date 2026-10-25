@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**431**
+**433**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 429 | Claude | `claude/dreamy-rubin-yn6q2p` | A death no longer heals a world beast (the death code reset it after r423's record); no new Void Walker hunts in dungeons | Building. |
+| 431 | Claude | `claude/dreamy-rubin-yn6q2p` | The Seven Bells: cracked bells in middle-band crossings, a lost person walking home for each, the door at the end (narrative bible step 6) | Building. |
+| 429 | Claude | PR #197 | A death no longer heals a world beast (the death code reset it after r423's record); no new Void Walker hunts in dungeons | Merged; preview `r429-8918d9d44cd7`. Not published. |
 | 427 | Claude | PR #196 | Every world-boss hit shown in pink: footprints under damaging effects and body-contact attacks, the Knight's retreating slash, the Void Walker's and Astral Worm's warnings | Merged; preview `r427-91fdd230ff75`. Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 

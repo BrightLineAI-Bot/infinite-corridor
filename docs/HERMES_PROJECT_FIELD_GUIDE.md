@@ -2694,6 +2694,23 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 431: the Seven Bells — 2026-10-25
+
+The daily narrative task: `docs/narrative-bible.md` section 6, thread 1, and section 7, step 6 (after Ilse in release 415).
+
+**CODE:**
+- `src/bells.ts`: `BELLS{count:7, chance:.14, minDepth:3, maxDepth:READING_BANDS.middle}`, `BELL_GLIMPSES` 1–7 (seven lost people, each walking home) and `BELL_FINAL` (the door at dusk). All of it is original writing.
+- `bellIn(seed, dungeonId)`: which bell (by seed) hangs in an ordinary crossing (`dungeon:…:gN:rx:ry:…`) at depth 3–18, or 0.
+- `addBell` hangs it on open floor at least 6 tiles from the entry; a bell already rung hangs silent ("inspect").
+- `ringBell` records it in `save.lore.bells`, a sorted digit string normalised by `bellsRung`; `ensureLore` keeps it through its spread.
+- `game.ts`: `loadArea` calls `addBell` for dungeons. `interact` rings it, writes a Journal entry ("The Seven Bells") and, at the seventh, the door.
+- `renderer.ts drawCrackedBell`: a bronze bell with a crack on a frame; rung ones glow faintly.
+- `main.ts activeQuests` lists the thread while 1–6 bells are rung.
+- Registered in `scripts/build.mjs` and both `sw.js` lists.
+- Tests: `tests/seven-bells-431.test.ts`.
+
+**BOUNDARY:** No reward, no combat, no generator change: the bell is an object added on load, like the dig spot. The Glimpses are written scenes in the message and Journal; painted Glimpse scenes for them can follow in a later pass.
+
 ## Release 429: wounds that really stay; no Void Walker in dungeons — 2026-10-25
 
 Tim, 2026-10-25: "I just fought the void Walker in a dungeon, and he was just like floating off through space... through blocks and tiles... It's possible that I shouldn't be meeting him in the dungeons, because he makes kind of a big mess... his health reset. When I died... make sure that the health doesn't reset when you die for the world bosses."
