@@ -73,6 +73,11 @@ export function ensureDigging(save) {
 // Adds up to the carry limit; stone already held over it (an older save) is kept, never taken away.
 export function addStone(save, n) { save.materials ||= {}; const have = Math.max(0, Number(save.materials.stone) || 0); save.materials.stone = have >= DIG.carryStone ? have : Math.min(DIG.carryStone, have + n); return save.materials.stone; }
 export const canDigArea = (areaKey) => typeof areaKey === "string" && areaKey.length > 0 && !TEMPORARY.test(areaKey);
+// Release 433 (Tim: "I'm at a wall right now... it says the walls cannot be bitten by the shovel... we need to make sure
+// that the shovels are actually working"): the shovel works in temporary places too (Far Array runs, arenas, hunts,
+// grottoes, crossings). Their tunnels last only while you are there and are never written to the save, and their walls
+// hide no treasure (`canDigArea` still marks the places whose tunnels are kept).
+export const canDigHere = (areaKey) => typeof areaKey === "string" && areaKey.length > 0;
 
 // Crafts a shovel from the recipe if there is none. Returns { ok, crafted, message }.
 export function ensureShovel(save) {
@@ -143,7 +148,7 @@ export const isObstacle = (t) => !!t && t.blocked && !/wall|rim|Wall|Rim/.test(S
 // Plans one dig from where you stand, facing `facing`. Returns { ok, x, y, through, reason, resists }; `resists` marks rock
 // that only the iron shovel digs (`iron`: plan for it).
 export function planDig(map, px, py, facing, areaKey, { iron = false, overworld = false } = {}) {
-  if (!canDigArea(areaKey)) return { ok: false, reason: "The walls here are not stone a shovel can bite." };
+  if (!canDigHere(areaKey)) return { ok: false, reason: "The walls here are not stone a shovel can bite." };
   const [dx, dy] = DIRS[facing] || DIRS.down, x = px + dx, y = py + dy;
   if (overworld) { // release 423: no sealed halls out here; walls of rock are one dig, a standing stone or crag a whole shovel
     if (!overworldDiggable(map, x, y)) return { ok: false, reason: null };
@@ -207,11 +212,11 @@ export function dig(save, map, plan, areaKey) {
   ensureDigging(save);
   const tool = plan.iron ? "iron" : "shovel", name = plan.iron ? "Iron shovel" : "Shovel";
   if (!(save.digging[tool] > 0)) return { ok: false, message: plan.iron ? "You have no iron shovel." : "You have no shovel." };
-  const list = (save.digging.dug[areaKey] ||= []);
+  const kept = canDigArea(areaKey), list = kept ? (save.digging.dug[areaKey] ||= []) : []; // release 433: a temporary place's tunnels are not saved
   if (list.length >= DIG.maxTunnelsPerArea) return { ok: false, message: "This place has been dug enough; the rock is unsound." };
-  openTunnel(map, plan.x, plan.y, !!plan.overworld); list.push(`${plan.x},${plan.y}`);
+  openTunnel(map, plan.x, plan.y, !!plan.overworld); if (kept) list.push(`${plan.x},${plan.y}`);
   save.digging[tool] = Math.max(0, save.digging[tool] - (plan.iron ? DIG.iron.cost[plan.hard ? "hard" : plan.cut] || 1 : plan.cut === "obstacle" && DIG.obstacleTakesShovel ? save.digging[tool] : 1)); if (DIG.stone.wall) addStone(save, DIG.stone.wall); // release 411: the iron shovel spends by what it cuts; 413: an obstacle takes a whole standard shovel, and no stone comes back
-  const left = save.digging[tool], find = wallTreasure(save.seed, areaKey, plan.x, plan.y, saveTier(save)), got = find ? creditFind(save, find) : null, broke = left === 0;
+  const left = save.digging[tool], find = kept ? wallTreasure(save.seed, areaKey, plan.x, plan.y, saveTier(save)) : null, got = find ? creditFind(save, find) : null, broke = left === 0;
   if (plan.iron && broke) delete save.digging.iron;
   const parts = [plan.cut === "obstacle" ? "You break it down." : plan.through ? "You break through into the passage beyond." : "You dig a block into the wall.", got ? `Something in the rock: ${got}.` : null, broke ? `The ${name.toLowerCase()} snaps.` : `${name}: ${left} dig${left === 1 ? "" : "s"} left.`];
   return { ok: true, message: parts.filter(Boolean).join(" "), broke, find };

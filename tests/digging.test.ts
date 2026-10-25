@@ -85,7 +85,7 @@ test('walls hide treasure by seed and place; some glint; temporary places are ne
   for (let i = 0; i < 4000; i++) { const f = wallTreasure('SEED', 'dungeon:SEED:g1:0:0:x', i % 60, Math.floor(i / 60)); if (f) { n++; if (f.glint) glint++; assert.ok(f.n >= 1 && f.label); } }
   assert.ok(Math.abs(n / 4000 - DIG.treasureChance) < .025, String(n)); assert.ok(glint > 0 && glint < n);
   assert.deepEqual(wallTreasure('SEED', 'k', 3, 4), wallTreasure('SEED', 'k', 3, 4));
-  for (const id of ['hunt-instance:a', 'elite-portal:x', 'displacement:1', 'dive:1:2', 'far-array:run']) { assert.equal(canDigArea(id), false); assert.equal(planDig(map(), 4, 3, 'right', id).ok, false); }
+  for (const id of ['hunt-instance:a', 'elite-portal:x', 'displacement:1', 'dive:1:2', 'far-array:run']) { assert.equal(canDigArea(id), false, 'their tunnels are not kept'); assert.equal(planDig(map(), 4, 3, 'right', id).ok, true, 'release 433: but the shovel works there'); }
   assert.equal(canDigArea('dungeon:x:g1'), true);
   const s = save(); assert.ok(Array.isArray(wallGlints(map(), s.seed, 'dungeon:x', s)));
 });

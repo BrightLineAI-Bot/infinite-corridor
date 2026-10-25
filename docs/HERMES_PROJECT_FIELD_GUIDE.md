@@ -2694,6 +2694,19 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 433: shovels everywhere underground — 2026-10-25
+
+Tim, 2026-10-25: "I'm in a dungeon that says the walls cannot be bitten by the shovel... I'm at a wall right now. And the shovel isn't working... we need to make sure that the shovels are actually working. Whatever we decided on."
+
+**CODE:**
+- `digging.ts canDigHere(areaKey)`: any area.
+- `planDig` uses `canDigHere`, so the refusal "not stone a shovel can bite" no longer fires in the TEMPORARY areas (hunt-instance, hunt-arena, elite-portal, proving, displacement, arena, far-array, dive).
+- `canDigArea` still marks the areas whose tunnels are kept. In `dig`, a temporary area's tunnel is opened on the map but not pushed to `save.digging.dug`, and its walls give no `wallTreasure`.
+- The cost rules (standard shovel, a whole shovel for an obstacle, the iron shovel's points and its automatic forging) are unchanged.
+- Tests: `tests/temporary-dig-433.test.ts`. `tests/digging.test.ts` now expects the shovel to work there.
+
+**BOUNDARY:** No save change. Overworld digging still waits for Infinite II (release 425).
+
 ## Release 431: the Seven Bells — 2026-10-25
 
 The daily narrative task: `docs/narrative-bible.md` section 6, thread 1, and section 7, step 6 (after Ilse in release 415).
