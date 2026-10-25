@@ -11,10 +11,11 @@ function saveOf() { const s=freshSave();s.seed='VOID-INTEGRATION';s.level=12;s.p
 function fixture(map=mapOf(), x=20,y=18) { const e=createCombatant('voidWalker',x,y,true,[]);Object.assign(e,{id:'walker-integration',worldBeast:'voidWalker',aggro:false}); const save=saveOf();const g=Object.assign(Object.create(Game.prototype),{map,area:'dungeon',save,rx:5,ry:0,player:{x:3,y:3,hp:10000,invulnerableUntil:0},enemies:[e],projectiles:[],effects:[],packEffects:[],performanceStats:{pathfindingWork:0},areaId:()=> 'dungeon:VOID-INTEGRATION:g1:5:0:fixture',areaStateId:()=> 'dungeon:VOID-INTEGRATION:g1:5:0:fixture'});return {g,e}; }
 function frames(g,n,dt=.05) { for(let i=0;i<n;i++){const w=g.packWorld(dt,(g.now=(g.now||0)+dt*1000));for(const e of activeDungeonEnemies(g.enemies,g.player,g.map))updatePackMonster(e,w);g.packEffects=tickPackEffects(g.packEffects,w);} }
 
-test('Walker appears in ordinary dry dungeons for young players without weakening Crystal water or depth gates',()=>{
- let found=null;const map=mapOf();for(let i=0;i<100&&!found;i++){const s=saveOf();found=worldBeastForDungeon(s,map,`dungeon:VOID-INTEGRATION:g1:5:0:room-${i}`);if(found)assert.ok(walkerReachableTiles(map).has(found.y*map.width+found.x));}
- assert.equal(found?.kind,'voidWalker');assert.equal(found.worldBeast,'voidWalker');assert.equal(found.dungeonRole,undefined);assert.equal(found.packGuardian,undefined);
- for(let i=0;i<40;i++){for(const id of [`dungeon:VOID-INTEGRATION:g1:2:2:room-${i}`,'dungeon:VOID-INTEGRATION:g1',`hunt-instance:${i}`,`arena:${i}`])assert.equal(worldBeastForDungeon(saveOf(),map,id),null);const young=saveOf();young.level=1;assert.deepEqual(worldBeastForDungeon(young,map,`dungeon:VOID-INTEGRATION:g1:5:0:room-${i}`),worldBeastForDungeon(saveOf(),map,`dungeon:VOID-INTEGRATION:g1:5:0:room-${i}`));}
+test('release 429: the Walker no longer starts a hunt in a dungeon; one already under way there still loads',()=>{
+ const map=mapOf();for(let i=0;i<100;i++)assert.equal(worldBeastForDungeon(saveOf(),map,`dungeon:VOID-INTEGRATION:g1:5:0:room-${i}`),null);
+ const s=saveOf(),id='dungeon:VOID-INTEGRATION:g1:5:0:room-0';s.worldBeasts.voidWalker.active={dungeon:id,tries:1};const found=worldBeastForDungeon(s,map,id);
+ assert.equal(found?.kind,'voidWalker');assert.ok(walkerReachableTiles(map).has(found.y*map.width+found.x));
+ for(let i=0;i<40;i++)for(const id of [`dungeon:VOID-INTEGRATION:g1:2:2:room-${i}`,'dungeon:VOID-INTEGRATION:g1',`hunt-instance:${i}`,`arena:${i}`])assert.equal(worldBeastForDungeon(saveOf(),map,id),null);
 });
 test('Walker also participates in the normal overworld hunt and keeps its player-size boss model',()=>{
  const map=mapOf(32,32);for(const t of map.tiles)Object.assign(t,{kind:'floor',blocked:false}); // release 261: an overworld section has a way out (a walled box gives no retreat path)

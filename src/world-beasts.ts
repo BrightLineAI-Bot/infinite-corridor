@@ -81,7 +81,7 @@ export const WORLD_BEASTS = {
   voidWalker: {
     kind: "voidWalker", name: "The Void Walker", chance: .025, minDepth: 5, tries: 4, cooldownSlain: 20, cooldownEscaped: 26,
     hitsToKill: 60, hpPerLevel: 28, damageShare: .2, speed: 1.1, attackGap: 1.1, /* release 407 (Tim: "the Void Walker should attack less frequently... it covers up the entire screen with attacks... a little bit more pacing"): was .3 */ staggerResistance: .9, rewardMarks: 180, rewardPerLevel: 18,
-    patience: 180, home: "dungeon", retreatMoves: "walk", dungeonChance: .3, dungeonMinLevel: 1,
+    patience: 180, home: "dungeon", retreatMoves: "walk", dungeonChance: 0, dungeonMinLevel: 1, // release 429 (Tim: "I shouldn't be meeting him in the dungeons, because he makes kind of a big mess... floating... through blocks"): no new dungeon hunts (was .3); one already under way finishes where it is
     flee: "The Void Walker folds its rends shut and leaves toward a dungeon entrance.",
     fleeDungeon: "The Void Walker closes its constellation and heads for the nearest reachable dungeon door.",
     homeLine: "The Void Walker passes through the dungeon door and is gone.",
@@ -444,7 +444,7 @@ export function worldBeastPlayerFell(save, rx, ry, aliveIds, dungeonId = null, t
 export function worldBeastForDungeon(save, map, dungeonId) {
   ensureWorldBeasts(save, false);
   if (!map?.tiles || !dungeonId) return null;
-  const ids = WORLD_BEAST_IDS.filter((k) => WORLD_BEASTS[k].dungeonChance), water = map.tiles.filter((t) => t.kind === "dungeonWater");
+  const ids = WORLD_BEAST_IDS.filter((k) => WORLD_BEASTS[k].dungeonChance != null), water = map.tiles.filter((t) => t.kind === "dungeonWater");
   let here = ids.find((k) => !astralReservedCompanion(save,k) && save.worldBeasts[k].active?.dungeon === dungeonId);
   const coords = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/.exec(dungeonId), depth = coords ? Math.abs(Number(coords[1])) + Math.abs(Number(coords[2])) : -1; // ordinary dungeons only (not the story dungeon, arenas, hunts or runs)
   if (!here && depth >= 0) for (const k of ids) {

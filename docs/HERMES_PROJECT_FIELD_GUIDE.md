@@ -2694,6 +2694,27 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 429: wounds that really stay; no Void Walker in dungeons — 2026-10-25
+
+Tim, 2026-10-25: "I just fought the void Walker in a dungeon, and he was just like floating off through space... through blocks and tiles... It's possible that I shouldn't be meeting him in the dungeons, because he makes kind of a big mess... his health reset. When I died... make sure that the health doesn't reset when you die for the world bosses."
+
+**CODE:**
+- **The cause:** release 423 stored `active.hpShare` in `game.resolveDeath`, but the "fresh duel" loop just after it still set `e.hp = e.maxHp` and deleted `active.wounds` (the release-353 rule that a death heals a beast). The area snapshot then saved the healed beast, so the share never applied.
+- **The fix:**
+  - The loop now keeps `e.hp` and writes `active.wounds` from it. That covers tries on and tries off (release 345/353 branches).
+  - It still calms the beast, resets its pack runtime and starts a fresh patience clock.
+  - `applyBeastWounds` brings the wounds back however the beast is loaded.
+- **Void Walker in dungeons:**
+  - `WORLD_BEASTS.voidWalker.dungeonChance` is 0 (was .3).
+  - `worldBeastForDungeon` keeps beasts with a defined `dungeonChance` in its lookup, so a hunt already recorded in a dungeon still loads there.
+  - Investigation: in simulated dungeon fights (2400 frames) the Walker never stood in a wall on foot. The likely sight was the Walker riding the Astral Worm, whose dungeon pairing (2%) is unchanged.
+- **Tests:**
+  - New `tests/beast-wounds-429.test.ts`.
+  - Owner-rule updates to the full-health-rematch expectations in `tests/beast-wounds-353.test.ts`, `tests/beast-tries-345.test.ts`, `tests/beast-baseline-rematch.test.ts`, `tests/gate-revenant-integration.test.ts` and `tests/astral-natural-encounters.test.ts`.
+  - `tests/void-walker-integration.test.ts` now expects no new dungeon hunts.
+
+**BOUNDARY:** Tries, escapes, cooldowns, rewards and retreats are unchanged. A beast's health resets only when it dies or its hunt ends.
+
 ## Release 427: every boss hit shown in pink — 2026-10-25
 
 Tim, 2026-10-24: "the turtle's tornadoes... don't have pink boxes beneath... we need to go through all of the world bosses... make sure that all of their attacks register their hit boxes... fuchsia pink... beneath them. So that we can see where the... damage is coming from."

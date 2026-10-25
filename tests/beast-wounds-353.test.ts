@@ -24,11 +24,11 @@ test('its wounds are kept on the hunt and survive a lost section record and a sa
   assert.ok(c.hp <= Math.round(c.maxHp * .31), `still hurt (${c.hp}/${c.maxHp})`);
 });
 
-test('a death heals it, with tries on or off', () => {
+test('release 427: a death no longer heals it, with tries on or off', () => {
   for (const off of [false, true]) {
     const { s, g, b } = hunt(off); b.hp = Math.round(b.maxHp * .4); g.update(.05, idle, 1000);
     g.player.hp = 0; g.update(.05, idle, 1050);
-    assert.equal(b.hp, b.maxHp, `tries ${off ? 'off' : 'on'}`); assert.equal(s.worldBeasts.morphingBlob.active?.wounds, undefined);
+    assert.equal(b.hp, Math.round(b.maxHp * .4), `tries ${off ? 'off' : 'on'}`); assert.ok(Math.abs(s.worldBeasts.morphingBlob.active?.wounds - .4) < .01);
   }
 });
 
