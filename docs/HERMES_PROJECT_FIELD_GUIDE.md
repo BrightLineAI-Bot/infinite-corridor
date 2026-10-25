@@ -2694,6 +2694,25 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 427: every boss hit shown in pink — 2026-10-25
+
+Tim, 2026-10-24: "the turtle's tornadoes... don't have pink boxes beneath... we need to go through all of the world bosses... make sure that all of their attacks register their hit boxes... fuchsia pink... beneath them. So that we can see where the... damage is coming from."
+
+**CODE:**
+- `monster-pack.ts`:
+  - `HIT_FOOTPRINT.pad` (what each effect's hit test adds to its radius; `fallbackPad` .2).
+  - `effectFootprint(f)`: any live effect with damage. Lanes (length/to) and circling orbs are excluded; their own renderers draw them.
+  - `BODY_HIT` (body-contact attacks and their hit pad) and `bodyHitFootprint(e)`.
+- `knightBackslash` now telegraphs its arc (`bodyRadius + slideReach + arcReach`, `comboArc`); it had no warning.
+- `monster-render.ts`:
+  - `drawPackEffects` first draws every effect footprint in `DANGER` pink, dashed while arming.
+  - `drawPackTelegraphs` draws the body footprint under a boss using a body attack, dashed during windup.
+  - `drawVoidWarning` and `drawVoidLane` use `DANGER`.
+- `astral-worm-render.ts drawAstralHazards` uses the same pink.
+- Tests: `tests/hit-footprints-427.test.ts`. It includes a sweep that runs every world beast's every attack and fails on any damaging effect with no marking.
+
+**BOUNDARY:** Rendering only, plus one telegraph; no damage, timing or hit test changes. The Listener's moves already used `DANGER`.
+
 ## Release 425: the open world waits for Infinite II — 2026-10-24
 
 Tim, 2026-10-24: "you can get the shovel whenever, but you can't change the world overworld blocks, you can't modify the overworld until infinite two."
