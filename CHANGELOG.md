@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 435 — mixed dungeons in the Far Sleep.
+  - **A share of them:** about 30% of the crossings you first find in the Far Sleep are Sleeper's Halls (dream dungeons); the rest are the ordinary mix of themes and layouts. Before, every one was a Sleeper's Hall.
+  - **Already found:** crossings you have already found keep what they are.
 - Release 433 — shovels everywhere underground.
   - **No more blanket ban:** "The walls here are not stone a shovel can bite" no longer blocks the shovel in Far Array runs, arenas, hunts, grottoes and crossings. The shovel and the iron shovel (lashed or forged automatically, as before) dig there like anywhere else.
   - **Not kept:** those places' tunnels last only while you are in them, and their walls hide no treasure.
