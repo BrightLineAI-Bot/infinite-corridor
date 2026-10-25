@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 429 — wounds that really stay.
+  - **Bosses keep their wounds when you die, for real:** release 423 recorded a world beast's health when it killed you, but the death code then healed it straight back to full. It no longer does: the Void Walker, the Turtle and the rest come back as hurt as you left them, in dungeons and in the open, until they die. Tries are spent as before.
+  - **No Void Walker in dungeons:** he no longer starts a hunt inside a dungeon. A hunt already under way in one finishes there.
 - Release 427 — every boss hit shown in pink.
   - **Footprints:** every damaging thing a boss leaves or throws (the Turtle's twisters, fire and frost trails, the Knight's missiles and seekers, debris, orbs, gas, lava, mortars, sky strikes, swords) has a pink footprint on the floor, the size of what it really hits.
   - **Body attacks:** while a boss hits with its own body (the Turtle's spin, dash, cyclone and stomp, the Blob's engulf, the Worm's suction, charges and pounces), its reach is shown in pink beneath it: dashed while it winds up, solid while it hits.

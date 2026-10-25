@@ -15,19 +15,19 @@ test('Level-eight floor, Questing dominance, simultaneous attempts and productio
   for(let attempt=1;attempt<=4;attempt++){ // release 307: four tries
     g.rx=7;g.ry=2;save.questingBeast.active={rx:7,ry:2,tries:attempt-1};save.worldBeasts.morphingBlob.active={rx:7,ry:2,tries:attempt-1,patience:179.9};g.loadArea('overworld',false);
     const q=g.createEnemyFromSpawn({id:'questing-beast:0',kind:'questingBeast',questingBeast:true,boss:true,x:10,y:10},'overworld');const b=g.createEnemyFromSpawn({id:'world-beast:morphingBlob:0',kind:'morphingBlob',worldBeast:'morphingBlob',boss:true,x:12,y:10},'overworld');q.hp=30;b.hp=40;g.enemies=[q,b];g.player.hp=0;g.player.x=16;g.player.y=16;g.update(.001,idle,now+=1000);
-    assert.equal(g.player.hp,save.maxHp);const snapshot=save.session.areas['overworld:7:2:g1'];assert(snapshot);for(const e of snapshot.enemies){assert(attempt<4?e.hp===e.maxHp:e.dead&&e.noRewards)}
+    assert.equal(g.player.hp,save.maxHp);const snapshot=save.session.areas['overworld:7:2:g1'];assert(snapshot);for(const e of snapshot.enemies){assert(attempt<4?e.hp<e.maxHp:e.dead&&e.noRewards)} // release 427: it keeps its wounds
     if(attempt<4)assert.equal(save.worldBeasts.morphingBlob.active.patience||0,0);
     assert.equal(save.questingBeast.active?.tries??4,attempt);assert.equal(save.worldBeasts.morphingBlob.active?.tries??4,attempt);
     g.rx=7;g.ry=2;g.loadArea('overworld',false);
     const live=g.enemies.filter(e=>(e.questingBeast||e.worldBeast==='morphingBlob')&&!e.dead);
-    if(attempt<4){assert.equal(live.length,1);assert(live.every(e=>e.hp===e.maxHp));}else assert.equal(live.length,0);
+    if(attempt<4){assert.equal(live.length,1);assert(live.every(e=>e.hp<e.maxHp));}else assert.equal(live.length,0);
     const restored=migrateSave(JSON.parse(JSON.stringify(save)));assert.equal(restored.worldBeasts.morphingBlob.active?.tries??4,attempt);
   }
 
 
   // Test each natural spawning family independently for full-health return.
   for(const kind of ['questingBeast','morphingBlob']) { const save=freshSave();save.seed='GATE-BEAST-DEATH';const g=new Game(save,0);g.rx=7;g.ry=2;g.loadArea('overworld',false);if(kind==='questingBeast')save.questingBeast.active={rx:7,ry:2,tries:0};else {save.questingBeast.active=null;save.questingBeast.cooldown=999;save.worldBeasts[kind].active={rx:7,ry:2,tries:0}}
-  const e=g.createEnemyFromSpawn({id:kind==='questingBeast'?'questing-beast:0':'world-beast:morphingBlob:0',kind,questingBeast:kind==='questingBeast',worldBeast:kind==='questingBeast'?undefined:kind,boss:true,x:10,y:10},'overworld');e.hp=40;g.enemies=[e];g.player.hp=0;g.update(.001,idle,10000);g.rx=7;g.ry=2;g.loadArea('overworld',false);const r=g.enemies.find(q=>q.id===e.id);assert(r);assert.equal(r.hp,r.maxHp);r.hp=50;g.snapshotArea();g.loadArea('overworld',false);assert.equal(g.enemies.find(q=>q.id===e.id).hp,50); }
+  const e=g.createEnemyFromSpawn({id:kind==='questingBeast'?'questing-beast:0':'world-beast:morphingBlob:0',kind,questingBeast:kind==='questingBeast',worldBeast:kind==='questingBeast'?undefined:kind,boss:true,x:10,y:10},'overworld');e.hp=40;g.enemies=[e];g.player.hp=0;g.update(.001,idle,10000);g.rx=7;g.ry=2;g.loadArea('overworld',false);const r=g.enemies.find(q=>q.id===e.id);assert(r);assert.ok(Math.abs(r.hp-40)<=1&&r.hp<r.maxHp,'release 427: back as hurt as it was');r.hp=30;g.snapshotArea();g.loadArea('overworld',false);assert.equal(g.enemies.find(q=>q.id===e.id).hp,30); }
 
 });
 

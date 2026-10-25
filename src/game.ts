@@ -2637,7 +2637,7 @@ export class Game {
   // Release 353 (Tim: "it'll hunt you through different tiles, and you can run away and it can chase you. So it's health,
   // only resets when you die"): a world beast's wounds live on its hunt (save.worldBeasts[id].active.wounds, the share of
   // health it has left), so whichever way it is loaded again (left behind, followed, reloaded) it comes back as hurt as it
-  // was. Only a death (resolveDeath) or the end of the hunt clears them.
+  // was. Only the end of the hunt clears them (release 427: a death no longer heals it).
   applyBeastWounds() {
     for (const e of this.enemies) {
       const f = Number(this.save.worldBeasts?.[e.worldBeast]?.active?.wounds);
@@ -3064,15 +3064,16 @@ export class Game {
     if (worldNote) journalOnce(this.save, `world-beast-try:${this.rx},${this.ry}:${JSON.stringify(this.save.worldBeasts)}`.slice(0, 160), worldNote, "World beasts");
     // Gate predators have no rematches: a player death ends their hunt, without rewards.
     for (const e of this.enemies) if (e.gatePredator && !e.dead) { e.dead = true; e.noRewards = true; resetGateAttack(e, true); }
-    // A failed attempt is a fresh duel, not damage banked across deaths. Preserve tries and rewards.
+    // A failed attempt calms the beast and starts a fresh per-fight clock. Release 427 (Tim: "his health reset when I died...
+    // make sure that the health doesn't reset when you die for the world bosses"): it keeps every wound you gave it (the
+    // release-353 rule that a death heals it is retired); only its own death resets it. Tries and rewards are unchanged.
     for (const e of this.enemies) if (!e.dead && (e.questingBeast || e.worldBeast)) {
       const state = e.questingBeast ? this.save.questingBeast : this.save.worldBeasts?.[e.worldBeast];
       if (!state?.active) { e.dead = true; e.noRewards = true; continue; }
       if (e.retreating || e.fleeTo) continue;
-      if (e.worldBeast) delete state.active.wounds; // release 353: a death is the one thing that heals a world beast
-      if (e.worldBeast && this.beastTries === false) { e.hp = e.maxHp; e.aggro = false; resetPackRuntime(e); continue; } // release 345: tries off: no try is spent and the clock carries on; 353: its health resets
+      if (e.worldBeast) { const f = e.hp / (e.maxHp || 1); if (f > 0 && f < 1) state.active.wounds = Math.round(f * 1e4) / 1e4; else delete state.active.wounds; }
+      if (e.worldBeast && this.beastTries === false) { e.aggro = false; resetPackRuntime(e); continue; } // release 345: tries off: no try is spent and the clock carries on
       state.active.patience = 0; // A fresh duel gets a fresh per-fight clock, not fresh attempts.
-      e.hp = e.maxHp;
       if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed;
       delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow;
       e.hitStun = 0; e.recoil = 0; e.hitFlash = 0;
