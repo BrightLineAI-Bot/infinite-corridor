@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 455 — margins.
+  - **Writing in the stone:** about one ordinary crossing in five now holds a line of its region's book cut into the stone, with a reader's note beside it in a smaller hand. Reading it with Act finds one of that region's margin fragments for the Reciter's Tome and keeps the words in the Journal.
+  - **Every margin can be found:** a crossing whose margin you have read shows one of the region's unread margins instead, while any remain.
 - Release 453 — ways out, named on the map.
   - **Dungeon map labels:** the dungeon map now writes EXIT beside each exit, DOOR OUT beside a door a guardian left, WAY BACK beside an annex's return, and DAIS beside a teleport dais, so the way out is never just a small cyan block.
 - Release 451 — a way out of the Mislaid Threshold.
