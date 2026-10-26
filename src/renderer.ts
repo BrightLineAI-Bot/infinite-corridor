@@ -875,6 +875,21 @@ export function drawCrackedBell(ctx, o, s, now) {
   ctx.fillStyle = "#2a1d10"; ctx.beginPath(); ctx.arc(0, s * .74, s * .06, 0, 7); ctx.fill();
   ctx.restore();
 }
+// Release 455: writing in the stone. A low slab with a column of cut lines and, beside it, a smaller slanted hand; an
+// unread one holds a faint pale light in its letters.
+export function drawMarginNote(ctx, o, s, now) {
+  const x = o.x * s + s * .14, y = o.y * s + s * .18, w = s * .72, h = s * .7, read = o.state === "read";
+  ctx.save(); ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h + s * .04, w * .55, s * .1, 0, 0, 7); ctx.fill();
+  const g = ctx.createLinearGradient(x, y, x + w, y + h); g.addColorStop(0, "#6f6a62"); g.addColorStop(1, "#4a4640"); ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x, y + s * .1); ctx.quadraticCurveTo(x + w / 2, y - s * .06, x + w, y + s * .1); ctx.lineTo(x + w, y + h); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#2c2925"; ctx.lineWidth = Math.max(1, s * .03); ctx.stroke();
+  const glow = read ? 0 : .35 + .25 * Math.sin(now / 700 + o.x);
+  ctx.strokeStyle = read ? "#2e2b27" : `rgba(236,226,196,${.55 + glow * .4})`; ctx.lineWidth = Math.max(1, s * .035);
+  for (let i = 0; i < 4; i++) { const ly = y + s * (.2 + i * .12); ctx.beginPath(); ctx.moveTo(x + w * .12, ly); ctx.lineTo(x + w * (i === 3 ? .4 : .58), ly); ctx.stroke(); }
+  ctx.lineWidth = Math.max(.8, s * .022); ctx.strokeStyle = read ? "#3a3530" : `rgba(214,190,150,${.5 + glow * .4})`;
+  for (let i = 0; i < 3; i++) { const ly = y + s * (.22 + i * .14); ctx.beginPath(); ctx.moveTo(x + w * .68, ly + s * .03); ctx.lineTo(x + w * .88, ly - s * .02); ctx.stroke(); }
+  ctx.restore();
+}
 // Release 415: Ilse the Lamplighter, at the age the Corridor deals her. A child or young woman with a lit taper beside a lamp
 // post (lit), the woman holding the last lamp, the old woman beside a dark lamp, and in the Far Sleep a lamp with no post.
 export function drawIlse(ctx, o, s, now) {
@@ -1554,6 +1569,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "digSpot") { drawDigSpot(ctx, o, s, now);
           } else if (o.kind === "ilse") { drawIlse(ctx, o, s, now);
           } else if (o.kind === "crackedBell") { drawCrackedBell(ctx, o, s, now);
+          } else if (o.kind === "marginNote") { drawMarginNote(ctx, o, s, now);
           } else if (o.kind === "townKeeper") { actor(ctx, o.x, o.y, s, "npc", "down", 0, "idle"); ctx.strokeStyle = "#c9a6ff"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.arc((o.x + .5) * s, (o.y - .15) * s, s * .14, 0, 7); ctx.stroke(); // release 441: a keeper with an Aperture lens
           } else if (o.kind === "skiff") {
             drawSkiff(ctx, o.x, o.y, s, "right", performance.now());

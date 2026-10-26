@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**455**
+**457**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 453 | Claude | `claude/dreamy-rubin-yn6q2p` | Dungeon map: exits, doors out, the annex way back and daises labelled | Building. |
+| 455 | Claude | `claude/dreamy-rubin-yn6q2p` | Margins in crossings (narrative bible step 6): writing in the stone, each Reading's margin fragments | Building. |
+| 453 | Claude | PR #209 | Dungeon map: exits, doors out, the annex way back and daises labelled | Merged. Not published. |
 | 451 | Claude | PR #208 | The Mislaid Threshold: a door where its guardian falls, open for good | Merged. Not published. |
 | 449 | Claude | PR #207 | The Crossing Sigil: a Use button in Supplies, and it carries you on to the chosen Wayglass | Merged. Not published. |
 | 447 | Claude | PR #206 | Refuge meals: two-ingredient dishes from Hollis and the Listener-town cooks, 15-minute buffs eaten in town | Merged. Not published. |

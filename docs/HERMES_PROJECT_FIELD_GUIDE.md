@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 455: margins — 2026-10-26
+
+Daily narrative session, docs/narrative-bible.md section 7, step 6 ("Ilse, the Seven Bells, margins in crossings"), and section 2 ("Margins: inscriptions, objects or Glimpses inside the region's crossings", about 20% of each Reading).
+
+**CODE:** `src/margins.ts` (new; in the build and both sw.js lists). `MARGINS{chance:.2,minFromEntry:5,maxPassage:220}`. `MARGIN_NOTES[readingId]` holds, for each of the Reading's margin fragments (lore.ts `margin:i`, ids fixed since release 191), the words that find its line in the Reading's own book and the original note written beside it. `marginPassage` returns the first short line holding those words (a fixed-hash line should the library change). `marginIn(seed, dungeonId)` gives an ordinary crossing's margin by seed (the same regex as the Seven Bells, any distance; the Reading is `readingAt(rx, ry)`). `addMargin` places a `marginNote` on open floor away from the entry; if the crossing's own margin is read and another of the Reading's is not, it shows the first unread one, so every margin can be found. `readMargin` credits the fragment through `creditPiece` once. game.ts calls `addMargin` beside `addBell` in `loadArea`; Act at a `marginNote` reads it, writes the Journal ("Margins", or "Margins · <Reading>" once the Reading is known) and, the first time, tells how far through the Reading's fragments you are (or "a book you have not heard yet", so nothing names an unheard Reading). renderer.ts `drawMarginNote`: a low slab with cut lines and a smaller slanted hand, faintly lit until read.
+
+**BOUNDARY:** no generator change (the note is added at load, like the bells). The passages are public-domain lines already in the library; the notes are original. Save: lore pieces only, as before. Tests: `tests/margins-455.test.ts`.
+
 ## Release 453: ways out, named on the map — 2026-10-26
 
 Tim, in a Mislaid Threshold crossing: "There's no exit... I got to the second level. But there was no exit. So now I'm kind of just trapped." Simulation found no crossing or annex (80 annexes) whose exit could not be reached, and his screenshots showed the exit as a small cyan block; it was not recognisable as one.
