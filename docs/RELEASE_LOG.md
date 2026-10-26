@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**437**
+**439**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 435 | Claude | `claude/dreamy-rubin-yn6q2p` | Far Sleep crossings: only about 30% are Sleeper's Halls; the rest keep the ordinary mix | Building. |
+| 437 | Claude | `claude/dreamy-rubin-yn6q2p` | The Psychic Crystal never settles in rock while fighting: no attacks from inside rock, it heads out to you | Building. |
+| 435 | Claude | PR #200 | Far Sleep crossings: only about 30% are Sleeper's Halls; the rest keep the ordinary mix | Merged. Not published. |
 | 433 | Claude | PR #199 | The shovel works in temporary places too (Far Array runs, arenas, hunts, grottoes, crossings); their tunnels are not saved | Merged; preview `r433-dc84082fa393`. Not published. |
 | 431 | Claude | PR #198 | The Seven Bells: cracked bells in middle-band crossings, a lost person walking home for each, the door at the end (narrative bible step 6) | Merged; preview `r431-f60b79667627`. Not published. |
 | 429 | Claude | PR #197 | A death no longer heals a world beast (the death code reset it after r423's record); no new Void Walker hunts in dungeons | Merged; preview `r429-8918d9d44cd7`. Not published. |
