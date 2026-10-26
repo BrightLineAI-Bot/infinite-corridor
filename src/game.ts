@@ -1867,6 +1867,7 @@ export class Game {
         this.loadArea("dungeon", false);
         this.player.x = q.x;
         this.player.y = q.y;
+        this.settleArrival(); // release 439
         this.message =
           "You step back through the unseen crossing. The completed dungeon remains changed.";
         this.sync();
@@ -1897,8 +1898,9 @@ export class Game {
         this.save.session.activeDungeonId = parent + ":aperture-annex";
         dungeonHistory(this.save, this.save.session.activeDungeonId).visits++;
         this.loadArea("dungeon", false);
-        this.player.x = 4;
-        this.player.y = 5;
+        this.player.x = this.map.entry?.x ?? 4;
+        this.player.y = this.map.entry?.y ?? 5;
+        this.settleArrival(); // release 439 (Tim: "it's still starting me in random places"): the annex's fixed landing could lie outside its floor
         this.save.perception.discoveries.doors++;
         this.message = "The annex resolves around you in impossible clarity.";
       }
@@ -2765,7 +2767,7 @@ export class Game {
     const h=hashSeed(this.save.seed+":displacement:"+this.rx+":"+this.ry+":"+o.id),distance=8+h%7,sign=h&1?1:-1,destination={rx:this.rx+(h&2?distance:Math.floor(distance/2))*sign,ry:this.ry+(h&2?Math.floor(distance/2):distance)*(h&4?1:-1)};
     this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDisplacement={id:"displacement:"+this.rx+":"+this.ry+":"+o.id,source:{...this.save.session.dungeonReturn},destination,hidden};this.save.session.activeDungeonId=this.save.session.activeDisplacement.id;const history=dungeonHistory(this.save,this.save.session.activeDungeonId);history.visits++;history.visitOpen=true;
     if(hidden){recordRevelationLead(this.save,'displacement',o.id);journalOnce(this.save,`hidden-displacement:${o.id}`,'A concealed Folded Seam displaced you only after you crossed fully inside a shelter. Triggered seams keep a faint scar; untouched shelters reveal nothing.','Shelter hazards');this.defeatNotice={title:'HIDDEN SEAM TRIGGERED',detail:'the shelter folds into an unknown crossing',kind:'discovery'}}
-    this.loadArea("dungeon");this.player.x=4;this.player.y=5;this.message=hidden?'The floor opens without warning. Space folds around you.':'The threshold folds the room into somewhere else.';this.sync();return true;
+    this.loadArea("dungeon");this.player.x=this.map.entry?.x??4;this.player.y=this.map.entry?.y??5;this.settleArrival();/* release 439 */this.message=hidden?'The floor opens without warning. Space folds around you.':'The threshold folds the room into somewhere else.';this.sync();return true;
   }
   interact(action, objectId = null) {
     this.sync();
@@ -2805,7 +2807,7 @@ export class Game {
     if(o.kind==='listenerDais'){ // release 375: to the Listening Hall
       const run=beginListenerArena(this.save,{rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y});if(!run)return{ok:false,message:this.message='The dais is still.'};
       this.save.session.dungeonReturn={...run.returnPoint};this.save.session.activeDungeonId=run.id;this.save.session.activeDungeonLevelId=null;pinDungeonLayout(this.save,run.id);const history=dungeonHistory(this.save,run.id);history.visits++;history.visitOpen=true;history.relayNode=false;
-      this.loadArea('dungeon');this.player.x=this.map.entry.x;this.player.y=this.map.entry.y-1;this.message="The dais folds the line shut behind you. The Listener's Hall: it is waiting.";this.sync();return{ok:true,message:this.message};
+      this.loadArea('dungeon');this.player.x=this.map.entry.x;this.player.y=this.map.entry.y-1;this.settleArrival();/* release 439 */this.message="The dais folds the line shut behind you. The Listener's Hall: it is waiting.";this.sync();return{ok:true,message:this.message};
     }
     if(o.kind==='arrayMouth'||o.kind==='silentMouth'){
       const run=beginArrayRun(this.save,{rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y},{noListener:o.kind==='silentMouth'});
@@ -2815,7 +2817,7 @@ export class Game {
     if(o.kind==='huntInstance'){
       const instance=beginHuntInstance(this.save,o.huntId,{rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y});
       if(!instance)return{ok:false,message:this.message='The Held Aperture no longer admits a hunt.'};
-      this.save.session.dungeonReturn={...instance.returnPoint};this.save.session.activeDungeonId=instance.id;const history=dungeonHistory(this.save,instance.id);history.visits++;history.visitOpen=true;this.loadArea('dungeon');this.player.x=this.map.entry?.x??4;this.player.y=this.map.entry?.y??5;this.message='Viewport closes the Held Aperture around the hunt. The exit remains behind you.';this.sync();return{ok:true,message:this.message};
+      this.save.session.dungeonReturn={...instance.returnPoint};this.save.session.activeDungeonId=instance.id;const history=dungeonHistory(this.save,instance.id);history.visits++;history.visitOpen=true;this.loadArea('dungeon');this.player.x=this.map.entry?.x??4;this.player.y=this.map.entry?.y??5;this.settleArrival();/* release 439 */this.message='Viewport closes the Held Aperture around the hunt. The exit remains behind you.';this.sync();return{ok:true,message:this.message};
     }
     if (o.kind === "deepAnchor") {
       if (o.state !== "active") return { ok: false, message: (this.message = "The anchor has no path to remember yet.") };
@@ -2913,7 +2915,7 @@ export class Game {
     if (o.talkKey && chosen === "speak") { const n = (Number(this.save.worldFlags[o.talkKey]) || 0) + 1; this.save.worldFlags[o.talkKey] = n; o.line = talkLine(o, this.refugeLandsWhere(), n); } // release 265: the farmer and the quarry keeper have more to say each time
     if (o.kind === "tree" && chosen === "cut") { applyFallenTreeCrossings(this.map); const before = Number(this.save.materials?.wood) || 0, total = addWood(this.save, woodFor(o)), n = total - before; this.message = n > 0 ? `${this.message} +${n} wood (${total}${total >= WOOD.carry ? ", all you can carry" : ""}).` : `${this.message} You can carry no more wood (${WOOD.carry}).`; r.message = this.message; }
     if(r.transition==="elitePortal"){
-      this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=`elite-portal:${this.save.seed}:knife-choir`;const h=dungeonHistory(this.save,this.save.session.activeDungeonId);h.visits++;h.visitOpen=true;this.loadArea('dungeon');this.player.x=4;this.player.y=5;relocateIfStranded(this.player,this.map,mapWidth(this.map,'dungeon'));
+      this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=`elite-portal:${this.save.seed}:knife-choir`;const h=dungeonHistory(this.save,this.save.session.activeDungeonId);h.visits++;h.visitOpen=true;this.loadArea('dungeon');this.player.x=4;this.player.y=5;relocateIfStranded(this.player,this.map,mapWidth(this.map,'dungeon'));this.settleArrival();/* release 439 */
     } else if(r.transition==="displacement"){
       this.startDisplacement(o,false);
     } else if (r.transition === "dungeon") {

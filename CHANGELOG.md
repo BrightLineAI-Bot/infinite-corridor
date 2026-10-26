@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 439 — no more landing in the dark.
+  - **Every way into a dungeon now lands on its floor:** the Aperture annex (and the way back out), displacement thresholds, the Listener's Hall, Viewport hunt instances and the elite portal used fixed landing spots that skipped the safe-arrival rule from release 419. The annex's spot was off the floor in about a third of annexes, leaving you alone in the dark. They now land on the map's own entry and settle onto the open floor.
 - Release 437 — the Psychic Crystal stays where you can hit it.
   - **Out of the walls:** fighting you, the Crystal can no longer sit inside rock out of your reach: there it starts no attack and heads straight out to you. It may still pass through a wall to reach you from another room, but it does not stay in it. (It used to get stuck in the rock with you in sight, still attacking.)
 - Release 435 — mixed dungeons in the Far Sleep.
