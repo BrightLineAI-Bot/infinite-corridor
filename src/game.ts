@@ -56,6 +56,7 @@ import { generateItem } from "./items.ts";
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
 import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
+import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
 import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, armorGlyphBonus as armorGlyphBase, skillGlyphMods } from "./glyphs.ts";
 import { hashSeed, rng } from "./random.ts";
 import { placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt } from "./building.ts";
@@ -304,9 +305,10 @@ export function apertureResonance(save) { return Math.max(0, apertureTier(save?.
 export const ENEMY_DAMAGE_SCALE = 1.3;
 // Release 295: what a dodge costs (armor glyph Still lowers it).
 // Release 383: the empowered robot adds MECH_POWER.damage to every blow, magic shot and spell, by the same path as the armor glyphs.
-// Release 447 (meals.ts): a Refuge meal adds its bonus by the same path, while it lasts.
-const armorGlyphBonus = (save) => { const g = armorGlyphBase(save), b = mechEmpowered(save) ? { ...g, attackDamage: (g.attackDamage || 0) + MECH_POWER.damage, spellDamage: (g.spellDamage || 0) + MECH_POWER.damage } : g, meal = activeMealBonus(save); if (!save?.meal) return b; const out = { ...b }; for (const k of MEAL_STAT_FIELDS) if (meal[k]) out[k] = (out[k] || 0) + meal[k]; return out; };
-const MEAL_STAT_FIELDS = ["attackDamage", "spellDamage", "hp", "staminaRegen", "move", "attackSpeed", "spellCooldown"];
+// Release 447 (meals.ts): a Refuge meal adds its bonus by the same path, while it lasts; release 459 (marginalia.ts): so do
+// the marginalia of the crossing you are in.
+const armorGlyphBonus = (save) => { const g = armorGlyphBase(save), b = mechEmpowered(save) ? { ...g, attackDamage: (g.attackDamage || 0) + MECH_POWER.damage, spellDamage: (g.spellDamage || 0) + MECH_POWER.damage } : g, run = save?.session?.marginRun; if (!save?.meal && !run) return b; const out = { ...b }, add = (bonus) => { for (const k of MEAL_STAT_FIELDS) if (bonus[k]) out[k] = (out[k] || 0) + bonus[k]; }; add(activeMealBonus(save)); if (run) add(marginBonus(save, save.session.activeDungeonId)); return out; };
+const MEAL_STAT_FIELDS = ["attackDamage", "spellDamage", "hp", "staminaRegen", "move", "attackSpeed", "spellCooldown", "defense", "dodgeCost"];
 export const dodgeCost = (save) => Math.round(15 * (1 - armorGlyphBonus(save).dodgeCost) * 10) / 10;
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
@@ -2132,6 +2134,8 @@ export class Game {
     if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry,this.save),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);const beast=questingBeastFor(this.save,this.map,this.rx,this.ry),elder=addElder(this.map,this.save,this.rx,this.ry),worldBeastFound=worldBeastFor(this.save,this.map,this.rx,this.ry),worldBeast=beast&&!worldBeastFound?.retreating?null:worldBeastFound;if(worldBeast){this.map.enemySpawns.push(worldBeast);const companion=astralCompanionFor(this.save,worldBeast,{rx:this.rx,ry:this.ry},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[worldBeast.worldBeast];this.message=worldBeast.retreating?`${B.name} is fleeing through here toward ${BEAST_HOMES[B.home].name}. It cannot be hurt now.`:`${B.arrive} ${worldBeastTriesLeft(this.save,worldBeast.worldBeast)} of ${B.tries} tries remain.`}/* release 241: a fleeing beast says so, and passes through the Questing Beast's ground too *//* release 235: world beasts */addStrange(this.map,this.save,this.rx,this.ry);/* release 215: a rare strange tree or stone */addDigSpot(this.map,this.save,this.rx,this.ry);/* release 225: a rare patch of disturbed earth */const ilse=addIlse(this.map,this.save,this.rx,this.ry,!!farSleepSection(this.rx,this.ry));/* release 415: Ilse the Lamplighter */for(const id of mouthsIn(this.save,this.rx,this.ry))placeMouth(this.map,id);/* release 217: second mouths of linked dungeons */if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastTriesLeft(this.save)} of ${QUESTING_BEAST.tries} tries remain.`}if(beast||worldBeast){}else if(ilse)this.message=ilse.stage===5?"A lamp burns in the meadow with no post beneath it.":"Someone is tending a lamp nearby.";else if(elder)this.message="Something tall and silent walks the road.";else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, murmuring.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
     this.activatedEncounterGroups=new Set;
     if(area==="dungeon"){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const companion=astralCompanionFor(this.save,haunt,{dungeon:this.areaId(),level:this.map.levelId||"root"},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is retreating ${haunt.worldBeast === "voidWalker" ? "toward the nearest reachable dungeon door" : haunt.worldBeast === "astralWorm" ? "toward the nearest reachable Wayglass" : "toward the water"}. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastTriesLeft(this.save,haunt.worldBeast)} of ${B.tries} tries remain.`}} /* release 249: the Psychic Crystal haunts dungeons with water */
+    if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.marginWarden)) for (const w of wardenSpawns(this.save, this.map, this.areaId())) this.map.enemySpawns.push(w); // release 459: Margin Wardens
+    if (area === "overworld") endMarginRun(this.save); // release 459: marginalia hold only inside the crossing
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
     // Far Array bosses are tuned to the Wayfarer last, over the depth and boss-form scaling (release 138).
     if(area==="dungeon"&&isArrayRun(loadingId))for(const e of this.enemies)if(e.farArrayBoss)tuneArrayBoss(e,this.save,characterStats(this.save),e.farArrayBoss);
@@ -2967,6 +2971,7 @@ export class Game {
       this.player.x = this.map.entry?.x ?? 4;
       this.player.y = this.map.entry?.y ?? 5;
       relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); // release 419
+      if (marginaliaOpen(this.save) && marginCrossing(this.areaId())) { beginMarginRun(this.save, this.areaId()); if (ensureMarginalia(this.save).found.length) this.marginPasteRequested = true; } // release 459
     } else if (r.transition === "exit") {
       if(this.save.session.activeDisplacement){if(!this.thresholdOpen()){this.message="The Mislaid Threshold remains sealed while its guardian lives. Its guardian is marked on the dungeon map.";return{ok:false,message:this.message}}const d=this.save.session.activeDisplacement;this.snapshotArea();this.rx=d.destination.rx;this.ry=d.destination.ry;this.save.session.displacementJourney={source:d.source,destination:d.destination};this.save.session.activeDisplacement=null;this.save.session.activeDungeonId=null;this.loadArea("overworld",false);this.player.x=16;this.player.y=16;relocateIfStranded(this.player,this.map,mapWidth(this.map,'overworld'));this.message="The completed crossing releases you onto stable ground in a distant, uncharted Corridor. Find a physical Wayglass to restore travel."}else this.leaveDungeon("You emerge at the dungeon entrance.");
     } else if (r.transition === "checkpoint") {
@@ -3336,7 +3341,7 @@ export class Game {
           wasDungeon && this.save.session.dungeonReturn
             ? { ...this.save.session.dungeonReturn }
             : null,
-        deaths = this.save.worldFlags.deaths || 0;
+        deaths = this.save.worldFlags.deaths || 0, keptRun = wasDungeon ? this.save.session.marginRun : null; // release 459: a fall inside keeps the crossing's marginalia
       update(dt, input, now);
       // A drowned diver is hauled up the line to the buoy instead of restarting below (W5).
       if (wasDungeon && (this.save.worldFlags.deaths || 0) > deaths && this.area !== "dungeon" && String(id).startsWith("dive:") && q) {
@@ -3350,6 +3355,7 @@ export class Game {
       ) {
         this.save.session.activeDungeonId = id;
         this.save.session.dungeonReturn = q;
+        if (keptRun) this.save.session.marginRun = keptRun; // release 459
         const anchor = String(id).includes(":deep-v") ? deepDungeonProgress(this.save,id).activeAnchor:null;
         if(anchor?.levelId)this.save.session.activeDungeonLevelId=anchor.levelId;
         const stateId=this.save.session.activeDungeonLevelId?`${id}:level:${this.save.session.activeDungeonLevelId}`:id,claimed = this.save.session.areas[stateId]?.objects || {},
@@ -3969,6 +3975,7 @@ export class Game {
         const v = beastProfileVitals(WORLD_BEASTS.morphingBlob, this.save, characterStats(this.save)), merged = Math.max(0, Number(this.mireHere()?.state.merged) || 0), hp = Math.round(v.hp * MIRE_CRYPT.heartHp * (1 + merged * MIRE_CRYPT.mergeHp));
         Object.assign(c, { mireHeart: true, boss: true, hp, maxHp: hp, damage: v.damage, staggerResistance: WORLD_BEASTS.morphingBlob.staggerResistance, attackGap: WORLD_BEASTS.morphingBlob.attackGap });
       }
+      if (e.marginWarden) { const W = MARGIN_RULES.warden; Object.assign(c, { marginWarden: true, foundryName: "Margin Warden", aggro: false }); c.maxHp = c.hp = Math.round(c.maxHp * W.hp); c.damage = Math.max(1, Math.round(c.damage * W.damage)); c.baseDamage = c.damage; c.scale = (c.scale || 1) * W.scale; c.baseScale = c.scale; } // release 459
       ensureAI(c);
       refreshMarineBeast(c, this.map, mapWidth(this.map, area), area);
       return c;
@@ -3977,6 +3984,27 @@ export class Game {
   // guardian, he didn't spawn a door for me to leave... now I can't leave"): a Mislaid Threshold's crossing opened only its
   // entry exit, and only once every crossing guardian was dead, with no door and no word. Now felling its guardian (or the
   // crossing's boss) opens it for good (history.thresholdOpen) and raises a door where it fell; the entry exit opens too.
+  // Release 459 (marginalia.ts): what a fallen foe means for the crossing's marginalia.
+  marginaliaOnKill(e) {
+    const id = this.areaId(), run = marginRun(this.save, id), now = this.lastUpdateNow || 0;
+    if (run && !e.summonedBy && !e.noRewards && runHas(this.save, id, "redMargin")) this.player.hp = Math.min(this.save.maxHp, this.player.hp + Math.max(1, Math.round(this.save.maxHp * RED_MARGIN.share)));
+    if (run && (e.marginWarden || isDungeonGuardian(e)) && runHas(this.save, id, "quickInk")) { this.spellCooldownRemaining = 0; for (const k of Object.keys(this.save.magicSkills?.cooldowns || {})) this.save.magicSkills.cooldowns[k] = 0; }
+    if (!e.marginWarden) return;
+    const r = run || beginMarginRun(this.save, id); r.offer = wardenOffer(this.save, id, e.id); this.marginOfferRequested = true;
+    const n = this.callReinforcements(now);
+    this.defeatNotice = { title: "A MARGIN WARDEN FALLS", detail: `choose a marginalia${n ? ` · ${n} reinforcements stir` : ""}`, kind: "danger" };
+  }
+  // Release 459: the crossing answers a fallen warden with a few of its own kind, away from you, waking and hunting you.
+  callReinforcements(now) {
+    const R = MARGIN_RULES.reinforcements, live = this.enemies.filter((q) => !q.dead).length, n = Math.max(0, Math.min(R.count, R.liveCap - live)); if (!n) return 0;
+    const kinds = [...new Set(this.map.enemySpawns.filter((q) => !q.boss && !q.dungeonRole && !q.worldBeast && !q.questingBeast && !q.marginWarden && q.kind !== "hollowMarshal").map((q) => q.kind))]; if (!kinds.length) return 0;
+    const w = mapWidth(this.map, "dungeon"), p = this.player, spots = this.map.tiles.filter((t) => !t.blocked && !t.environment && Math.hypot(t.x - p.x, t.y - p.y) >= R.minFromPlayer && Math.hypot(t.x - p.x, t.y - p.y) <= R.minFromPlayer * 3 && footprintOpen(this.map, w, t.x, t.y) && !footprintHazard(this.map, w, t.x, t.y));
+    let made = 0;
+    for (let i = 0; i < n && spots.length; i++) { const h = hashSeed(`${this.areaId()}:reinforce:${Math.round(now)}:${i}`), t = spots.splice(h % spots.length, 1)[0], c = this.createEnemyFromSpawn({ kind: kinds[(h >>> 7) % kinds.length], x: t.x, y: t.y, id: `reinforcement-${Math.round(now)}-${i}` }, "dungeon"); c.aggro = true; c.reinforcement = true; this.enemies.push(c); made++; }
+    return made;
+  }
+  chooseMarginaliaPage(id) { const r = chooseMarginalia(this.save, this.areaId(), id); this.message = r.message; this.marginOfferRequested = false; this.sync(); return r; }
+  pasteMarginaliaPage(id) { const r = pasteMarginalia(this.save, this.areaId(), id); this.message = r.message; this.marginPasteRequested = false; this.sync(); return r; }
   thresholdOpen() { return !!dungeonHistory(this.save, this.areaId()).thresholdOpen || !this.enemies.some((e) => !e.dead && isCrossingGuardian(e)); }
   raiseThresholdDoor(at = null) {
     const h = dungeonHistory(this.save, this.areaId()); if (at) h.thresholdDoor = { x: Math.round(at.x), y: Math.round(at.y) };
@@ -4062,6 +4090,7 @@ export class Game {
       this.defeatNotice.detail += " · the buried network answered";
     if(['ashling','glassMite'].includes(e.kind))recordPortalPrey(this.save,e.kind);
     if(e.eliteId){const reward=completeElite(this.save,e.eliteId);if(reward){this.save.codex.elites||={};this.save.codex.elites[e.eliteId]={encountered:1,defeated:1,modules:[...(e.eliteModules||[])],variantId:e.variantId,habitat:this.areaId()};journalOnce(this.save,'elite-defeated:'+e.eliteId,`${e.eliteName} fell. Its observed aspects were ${(e.eliteModules||[]).join(', ')}. Reward: ${reward.marks} marks and one ${reward.material.replace('Sphere',' sphere')}.`,'Elite bestiary');}}
+    if (this.area === 'dungeon') this.marginaliaOnKill(e); // release 459
     if (this.area === 'dungeon' && this.save.session.activeDisplacement && !e.worldBeast && !e.questingBeast && (e.boss || isCrossingGuardian(e))) { // release 451
       const h = dungeonHistory(this.save, this.areaId());
       if (!h.thresholdOpen && (e.boss || !this.enemies.some((q) => q !== e && !q.dead && isCrossingGuardian(q)))) {
@@ -4572,7 +4601,7 @@ export class Game {
     if (input.consume("dodge")) {
       const r = dodge(p, now, x, y, dodgeCost(this.save));
       if (!r.ok) this.message = "Not enough stamina to dodge.";
-      else { echoEvent(this, "dodge", now); onConstellationDodge(this); if (this.area === "overworld" && aboard(this.save) && submersible(this.save)) { this.subDiveUntil = now + BOAT.sub.dive * 1000; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, this.subDiveUntil); } } // release 311: aboard a submersible a dodge is a dive
+      else { echoEvent(this, "dodge", now); onConstellationDodge(this); if (this.area === "dungeon" && runHas(this.save, this.areaId(), "emberWake")) this.glyphWorld(now).blast(p.x + .5, p.y + .45, EMBER_WAKE.radius, Math.round(EMBER_WAKE.base + EMBER_WAKE.perLevel * (Number(this.save.level) || 1))); /* release 459 */ if (this.area === "overworld" && aboard(this.save) && submersible(this.save)) { this.subDiveUntil = now + BOAT.sub.dive * 1000; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, this.subDiveUntil); } } // release 311: aboard a submersible a dodge is a dive
     }
     if (input.consume("jump")) {
       if (now < this.jumpUntil) this.message = "Already airborne.";
@@ -4925,6 +4954,7 @@ export class Game {
     const creditScale=creditSum>0?Math.min(1,astralRawLoss>0?actualLoss/astralRawLoss:0,actualLoss/creditSum):0;
     for(const {owner,amount} of drainCredits)if(!owner.dead&&owner.hp>0){owner.hp=Math.min(owner.maxHp,owner.hp+amount*creditScale);if(owner.astral)owner.astral.hp=owner.hp;}
     this._astralDrainCredits=[];
+    if (p.hp <= 0 && this.area === "dungeon" && !fellIntoHazard && runHas(this.save, this.areaId(), "secondWind") && !marginRun(this.save, this.areaId()).secondWind) { marginRun(this.save, this.areaId()).secondWind = true; p.hp = Math.max(1, Math.round(this.save.maxHp * SECOND_WIND.share)); p.invulnerableUntil = now + SECOND_WIND.guardMs; this.message = "Second Wind: the blow should have felled you. You are still standing."; this.defeatNotice = { title: "SECOND WIND", detail: "once in this crossing", kind: "discovery" }; } // release 459
     if (p.hp <= 0) {
       // Release 329 (Tim: "for world bosses... If they kill you, there should be like a... 4 second... pause... where you see
       // the boss just like moving around or milling around after you die. Just to give you like a second to like collect
