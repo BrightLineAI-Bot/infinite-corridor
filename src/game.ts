@@ -153,7 +153,7 @@ export function quietMouthNote(save) { const n = relaysUntilReturn(save); return
 export const DEATH_PAUSE = { seconds: 4, millSpeed: 1.1, millRadius: 3 }; // release 329: the pause after a world beast fells you
 export const DIVE_ONWARD = { radius: 8, tries: 6 }; // release 311: how far the deep current looks for the next buoy
 export const TOWN_AMENITY = { clear: 3, spacing: 2 }; // release 441: how far town services stand from the Wayglass and from each other
-export const TARGET_LOCK = { range: 16, pick: 1.35, meleeSlack: 1.2 }; // release 347: a wider tap (was .75); 419: wider again (was 1.05)
+export const TARGET_LOCK = { range: 16, pick: 1.35, meleeSlack: 1.2, meleeReach: 5 }; // release 471: meleeReach, how far past the weapon a tapped lock still takes a swing (as before release 469) // release 347: a wider tap (was .75); 419: wider again (was 1.05)
 // Release 343 (Tim: "the range for auto targeting, where it just targets the next closest enemy, needs to be increased"):
 // with no locked target, a swing turns toward the nearest foe within its reach + `meleeExtra` tiles, and a tool shot toward
 // the nearest within `rangedScale` × its range (the blow and the shot still travel only as far as before).
@@ -4490,15 +4490,14 @@ export class Game {
     if (!e || e.dead || e.noRewards && e.merged || Math.hypot(e.x - p.x, e.y - p.y) > TARGET_LOCK.range) { this.targetId = null; return null; }
     return e;
   }
-  // Release 469: where a swing goes. A locked target within reach (plus TARGET_LOCK.meleeSlack) wins; then any foe within
-  // reach; then the lock as far as auto aim looks; then the nearest foe auto aim can reach for. The foe chosen is marked
-  // briefly (aimMark) so you can see where the blow went.
+  // Release 469: where a swing goes. Release 471 (Tim: "I like the lock targets... we can keep them the way it is... just
+  // moving past targets, the auto lock... has been a little bit wonky"): a target you locked by tapping wins as far as it did
+  // before release 469 (TARGET_LOCK.meleeReach past the weapon); without one, auto aim takes a foe within reach first, then
+  // the nearest it can reach for. The foe chosen is marked briefly (aimMark) so you can see where the blow went.
   meleeAimAt(range, width) {
     const core = range + TARGET_LOCK.meleeSlack, now = this.lastUpdateNow || 0, mark = (e, d) => { if (e) this.aimMark = { id: e.id, until: now + AIM_MARK.ms }; return d; };
-    const near = this.lockedDirection(core); if (near) return mark(this.lockedTarget(), near);
+    const locked = this.lockedDirection(range + TARGET_LOCK.meleeReach); if (locked) return mark(this.lockedTarget(), locked);
     const pick = pickMeleeTarget(this.player, this.enemies, this.map, width, range + AUTO_AIM.meleeExtra, core);
-    if (pick && pick.e && Math.hypot(pick.e.x - this.player.x, pick.e.y - this.player.y) - autoAimBody(pick.e) <= core) return mark(pick.e, pick.d);
-    const far = this.lockedDirection(range + AUTO_AIM.meleeExtra); if (far) return mark(this.lockedTarget(), far);
     return pick ? mark(pick.e, pick.d) : null;
   }
   lockedDirection(within = Infinity) {

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 471 — your lock, as it was.
+  - **Tapped lock:** a target you lock by tapping leads your swings exactly as before release 469 (up to 5 tiles past your weapon). Only automatic aim, with no lock, changed: it strikes the foe already in reach first.
 - Release 469 — salvage in bulk, truer swings, smoother frames.
   - **Select and salvage:** the Gear tab has Select all. Every carried piece is highlighted; tap a piece to leave it out (tap again to put it back), then Salvage selected. The button shows how much cinder iron it gives.
   - **Swings go where they should:** a foe already within your swing's reach is always struck before a farther one, even one behind you as you run past. A locked target only takes the swing when it is within reach (or when nothing else is), and auto aim reaches 3 tiles past your weapon instead of 5. The foe each swing goes to is marked with brief corner brackets.
