@@ -7,6 +7,7 @@ import { SEA_CREATURES } from "./sea-creatures.ts";
 import { BOAT } from "./boats.ts";
 import { MECH, DRONE } from "./vehicle-gates.ts";
 import { isMarineTile } from "./world-beasts.ts";
+import { jumpLift } from "./game.ts";
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.ts";
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { liftAt, tileUnder } from "./landscape.ts";
@@ -1379,13 +1380,7 @@ export function render(ctx, g, w, h, now) {
     r = Math.min(mw, l + Math.ceil(w / s) + 5),
     b = Math.min(mh, t + Math.ceil(h / s) + 5),
     jumping = now < (g.jumpUntil || 0),
-    lift = jumping
-      ? Math.sin(
-          Math.max(0, Math.min(1, (g.jumpUntil - now) / 520)) * Math.PI,
-        ) *
-        s *
-        0.42
-      : 0,
+    lift = jumpLift(g, now) * s,
     dodging = now < (p.dodgeUntil || 0);
   const objectLists=mapObjectLists(g.map), scarSurface=voidScarSurface(g.map,g.area);
   renderCacheStats.visibleTiles=(r-l)*(b-t);

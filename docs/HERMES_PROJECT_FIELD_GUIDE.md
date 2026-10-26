@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 445: an instant jump — 2026-10-26
+
+Tim: "There's actually a significant delay between when you press the jump button and when the character actually jumps... the character needs to jump when you actually press the button, not like a second later."
+
+**CODE:** a jump lasted 520 ms plus 140 ms per Quickening rank, but the renderer drew a fixed 520 ms arc counted back from `jumpUntil`, so the extra time came first and the hero stood flat after the press (up to 420 ms at rank 3). `game.ts` now holds the numbers in `JUMP{base,quickening,arc}` and records `jumpStart`/`jumpDur` on the press (paused time shifts `jumpStart` like `jumpUntil`; an exact resume clears it). `jumpLift(g,now)` rises over the plain leap's first half from `jumpStart`, holds the top through any extra time and while the robot boosts, and falls over the plain leap's second half before `jumpUntil`; `renderer.ts` draws `lift = jumpLift(g, now) * s`. A resumed leap with no start falls back to `jumpUntil - jumpDur`.
+
+**BOUNDARY:** the visual arc changes; how long you are airborne, what a jump clears, and the input timing are unchanged. No save change (`jumpStart` is runtime only). Tests: `tests/jump-445.test.ts`.
+
 ## Release 443: easier travel — 2026-10-26
 
 Tim, 2026-10-26: "the Wayglass beacons... should just be arranged numerically, so I can just scroll down... when I'm in the Atlas and I select a section that has a Wayglass in it, it should just automatically populate the... travel to Wayglass"; "in the Far Gate section of the journal, whenever there's a new... location for the Listener... a button... make this your active compass... so I can just start navigating to it."
