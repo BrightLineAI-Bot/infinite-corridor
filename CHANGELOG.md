@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 445 — an instant jump.
+  - **Jump:** your character leaves the ground the moment you press Jump. With Quickening ranks the hero used to stand still for up to about half a second before rising; the extra time Quickening gives is now spent hanging at the top of the leap.
 - Release 443 — easier travel.
   - **Wayglass list:** the Atlas's Wayglass list is ordered by section, numerically, and each entry starts with its coordinates.
   - **Tap to choose:** tapping a section with a Wayglass (or right beside one) in the Atlas chooses it in the list and sets the Travel button to it.

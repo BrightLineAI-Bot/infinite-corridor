@@ -1492,6 +1492,18 @@ export function activeDungeonEnemies(enemies,player,map){
 }
 export function settlementSanctuary(map,rx,ry,save){if(!map||rx===0&&ry===0&&save?.consequences?.settlements?.['ember-refuge']?.status==='fallen')return null;if(map.settlement?.procedural)return{x:map.settlement.x,y:map.settlement.y,radius:map.settlement.radius};return map.settlement||rx===0&&ry===0?{x:16,y:16,radius:9}:null}
 export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y-z.y,d=Math.hypot(dx,dy);if(d>=z.radius)return false;const m=d||1;e.x=z.x+(d?dx/m:1)*(z.radius+.5);e.y=z.y+(d?dy/m:0)*(z.radius+.5);const ai=ensureAI(e);ai.homeX=e.x;ai.homeY=e.y;e.telegraph=0;return true}
+// Release 445 (Tim: "the character needs to jump when you actually press the button, not like a second later"): a jump
+// lasts JUMP.base ms plus JUMP.quickening per Quickening rank. The arc rises from the press itself, as fast as the
+// plain leap's rise; Quickening's extra time is hang time at the top, and the robot's boost holds it there too. jumpLift
+// gives the lift as a share of a tile (0..JUMP.arc).
+export const JUMP = { base: 520, quickening: 140, arc: .42 };
+export function jumpLift(g, now) {
+  const until = g?.jumpUntil || 0; if (!(now < until)) return 0;
+  if (g.mechBoosting) return JUMP.arc;
+  const dur = Math.max(1, g.jumpDur || JUMP.base), start = Number.isFinite(g.jumpStart) && g.jumpStart <= now ? g.jumpStart : until - dur;
+  const phase = Math.max(0, Math.min(.5, (now - start) / JUMP.base, (until - now) / JUMP.base));
+  return Math.sin(phase * Math.PI) * JUMP.arc;
+}
 export class Game {
   constructor(save, now = 0) {
     this.save = save;
@@ -1531,7 +1543,7 @@ export class Game {
     this.message = s.message;
     this.paused = !!s.paused;
     this.pauseStarted = this.paused ? now : null;
-    this.jumpUntil = now + s.playerRuntime.jump;
+    this.jumpUntil = now + s.playerRuntime.jump; this.jumpStart = undefined;
     this.guardRemaining = Math.max(0, Number(s.playerRuntime.guard || 0));
     this.magicBuffRemaining = Math.max(0, Number(save.magicBuff || 0));
     this.spellCooldownRemaining = Math.max(0, Number(save.spellCooldown || 0));
@@ -2377,6 +2389,7 @@ export class Game {
       ])
         if (this.player[k]) this.player[k] += d;
       if (this.jumpUntil) this.jumpUntil += d;
+      if (this.jumpStart) this.jumpStart += d;
       for (const patch of this.echoPatches || [])
         if (patch.voidEcho && patch.until) patch.until += d;
     }
@@ -4522,7 +4535,7 @@ export class Game {
     }
     if (input.consume("jump")) {
       if (now < this.jumpUntil) this.message = "Already airborne.";
-      else this.jumpUntil = now + 520 + skillRank(this.save,"quickening") * 140;
+      else { this.jumpDur = JUMP.base + skillRank(this.save,"quickening") * JUMP.quickening; this.jumpStart = now; this.jumpUntil = now + this.jumpDur; }
     }
     { const m = this.save.mech; this.mechBoosting = false; // release 317: in the robot, hold Jump in the air to boost
       if (!input.held?.("jump")) this.mechSpent = false; // release 319: an emptied boost needs Jump let go before it fires again
