@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 465: Watcher's shrines on the map — 2026-10-26
+
+Tim: "those teleportation shrines... in the symbol for the watcher... should be marked as a location on the map... one of the things that are identified on the map."
+
+**CODE:** game.ts records `watcherTomb` objects among a section's Atlas sites, named "Watcher's Shrine" (`where: "shrine"`) or "Watcher's Tomb". main.ts adds the `watcherTomb` Atlas symbol (legend: "Watcher's shrine"), maps it to the `watcher` signal, and draws an eye glyph in pale violet; it shows under the Places layer. atlas-view.ts `PLACE_KINDS` lists it in Go to….
+
+**BOUNDARY:** Atlas records are written when a section loads, so shrines seen before this release are marked on the next visit. Nothing about the shrine itself changes. Tests: `tests/watcher-atlas-465.test.ts`.
+
 ## Release 463: tougher dungeons — 2026-10-26
 
 Tim: "increase the enemies in the dungeons... 20% more health... 20% more damage... about twenty percent more monsters."

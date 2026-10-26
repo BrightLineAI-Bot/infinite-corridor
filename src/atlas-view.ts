@@ -30,7 +30,7 @@ export function frame(bounds, w, h) {
 // How far an arrow press moves the view: a third of what is on screen, at least one section.
 export function panStep(zoom, w) { return Math.max(1, Math.round(w / sectionPixels(zoom) / 3)); }
 
-const PLACE_KINDS = { checkpoint: "Wayglass", architecturalDistrict: "District" }; // shelters are no longer listed (release 213)
+const PLACE_KINDS = { checkpoint: "Wayglass", architecturalDistrict: "District", watcherTomb: "Watcher's Shrine" }; // release 465: Watcher's shrines in Go to… // shelters are no longer listed (release 213)
 // Everywhere worth jumping to, grouped by region. Regions not yet heard are grouped as "Elsewhere" and never named.
 export function atlasPlaces(save) {
   const groups = new Map(), all = exploredSections(save);
