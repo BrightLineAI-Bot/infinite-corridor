@@ -7,8 +7,8 @@
 // whole again, first on the farm and in the quarry, then in every section within `ringFor(epoch)` sections of the
 // Refuge (the ring widens by one each time, up to `maxRadius`). A section regrows when it is next loaded; trees felled
 // across a gap as a log crossing stay down. Data and rules; game.ts calls in.
-import { hashSeed } from "./random.js?v=r439-a6fb9615c252";
-import { LETHAL_KINDS } from "./landscape.js?v=r439-a6fb9615c252";
+import { hashSeed } from "./random.js?v=r455-04c11a0d3b73";
+import { LETHAL_KINDS } from "./landscape.js?v=r455-04c11a0d3b73";
 
 export const REGROW = { every: 20, maxRadius: 5 };
 export const REFUGE_LANDS = {
@@ -82,7 +82,7 @@ export function plantRefugeLands(map, rx, ry, where) {
     map.refugeQuarry = true;
   }
   if (rx === 0 && ry === 0 && !(map.objects || []).some((o) => o.id === "refuge-farmer")) {
-    map.objects.push({ id: "refuge-farmer", kind: "villager", name: "Hollis Dray", role: "Refuge Farmer", line: "", x: 12, y: 18, state: "calm", actions: ["speak"], settlement: "ember-refuge", refugeFarmer: true, talkKey: "farmer:talks" });
+    map.objects.push({ id: "refuge-farmer", kind: "villager", name: "Hollis Dray", role: "Refuge Farmer", line: "", x: 12, y: 18, state: "calm", actions: ["speak"], settlement: "ember-refuge", refugeFarmer: true, cook: true, talkKey: "farmer:talks" }); // release 447: he cooks too (meals.ts)
   }
 }
 // The farmer's lines (Tim: "you're turning the corridor into fuel... cryptic, enigmatic things like that"), and the two

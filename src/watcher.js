@@ -13,7 +13,7 @@
 //     Folded Seam's displacement), or to a far corner of the same dungeon from below.
 // Generation is pinned: overworld sections first seen from 289 on (atlas `watcherVersion`), and dungeons first entered from
 // 289 on (history `watcherVersion`); nothing changes in places already explored. Pure data and placement; game.ts calls in.
-import { hashSeed, rng } from "./random.js?v=r439-a6fb9615c252";
+import { hashSeed, rng } from "./random.js?v=r455-04c11a0d3b73";
 
 export const WATCHER = {
   version: 1,

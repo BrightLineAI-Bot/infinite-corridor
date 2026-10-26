@@ -2,9 +2,9 @@
 // Wayfarer's level and power. Now and then it claims a wild section. It stays there until it is killed or it has
 // killed the Wayfarer QUESTING_BEAST.tries times; then it is gone, and after a cooldown (counted in sections entered)
 // a new hunt can begin somewhere else.
-import { hashSeed } from "./random.js?v=r439-a6fb9615c252";
-import { WORLD_BEASTS, BEAST_BASELINE, BEAST_BALANCE, beastProfileVitals, ENCOUNTER, encounterReady, encounterMet, isMarineTile, beastUnlocked } from "./world-beasts.js?v=r439-a6fb9615c252";
-import { LETHAL_KINDS } from "./landscape.js?v=r439-a6fb9615c252";
+import { hashSeed } from "./random.js?v=r455-04c11a0d3b73";
+import { WORLD_BEASTS, BEAST_BASELINE, BEAST_BALANCE, beastProfileVitals, ENCOUNTER, encounterReady, encounterChance, encounterMet, isMarineTile, beastUnlocked } from "./world-beasts.js?v=r455-04c11a0d3b73";
+import { LETHAL_KINDS } from "./landscape.js?v=r455-04c11a0d3b73";
 
 // Release 187 (Tim, 2026-10-18): far tougher and far more dangerous. About twice the health; each blow takes about
 // 27% of maximum health (four unhealed hits kill); it runs fast and barely pauses between attacks.
@@ -29,7 +29,7 @@ export function questingBeastFor(save, map, rx, ry) {
     if (!beastUnlocked(save, "questingBeast") || !encounterReady(save)) return null; // release 261: the buffer between meetings (273: and Aperture tier 8)
     // Release 261 (Tim: "the questing beast can't be on totally ocean tiles... much, much more rare" on water).
     const sea = map.tiles.filter(isMarineTile).length / map.tiles.length; if (sea >= QB_SEA.none) return null;
-    if ((hashSeed(`${save.seed}:questing-beast:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= QUESTING_BEAST.chance * ENCOUNTER.chanceScale * (sea > QB_SEA.watery ? QB_SEA.wateryChance : 1)) return null;
+    if ((hashSeed(`${save.seed}:questing-beast:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= QUESTING_BEAST.chance * encounterChance(save) * (sea > QB_SEA.watery ? QB_SEA.wateryChance : 1)) return null;
     q.active = { rx, ry, tries: 0 }; encounterMet(save);
   }
   if (q.active.rx !== rx || q.active.ry !== ry) return null;
