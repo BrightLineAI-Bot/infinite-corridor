@@ -55,6 +55,7 @@ import { ensurePerception } from "./types.ts";
 import { generateItem } from "./items.ts";
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
 import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
+import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, armorGlyphBonus as armorGlyphBase, skillGlyphMods } from "./glyphs.ts";
 import { hashSeed, rng } from "./random.ts";
 import { placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt } from "./building.ts";
@@ -301,7 +302,9 @@ export function apertureResonance(save) { return Math.max(0, apertureTier(save?.
 export const ENEMY_DAMAGE_SCALE = 1.3;
 // Release 295: what a dodge costs (armor glyph Still lowers it).
 // Release 383: the empowered robot adds MECH_POWER.damage to every blow, magic shot and spell, by the same path as the armor glyphs.
-const armorGlyphBonus = (save) => { const b = armorGlyphBase(save); return mechEmpowered(save) ? { ...b, attackDamage: (b.attackDamage || 0) + MECH_POWER.damage, spellDamage: (b.spellDamage || 0) + MECH_POWER.damage } : b; };
+// Release 447 (meals.ts): a Refuge meal adds its bonus by the same path, while it lasts.
+const armorGlyphBonus = (save) => { const g = armorGlyphBase(save), b = mechEmpowered(save) ? { ...g, attackDamage: (g.attackDamage || 0) + MECH_POWER.damage, spellDamage: (g.spellDamage || 0) + MECH_POWER.damage } : g, meal = activeMealBonus(save); if (!save?.meal) return b; const out = { ...b }; for (const k of MEAL_STAT_FIELDS) if (meal[k]) out[k] = (out[k] || 0) + meal[k]; return out; };
+const MEAL_STAT_FIELDS = ["attackDamage", "spellDamage", "hp", "staminaRegen", "move", "attackSpeed", "spellCooldown"];
 export const dodgeCost = (save) => Math.round(15 * (1 - armorGlyphBonus(save).dodgeCost) * 10) / 10;
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
@@ -2818,6 +2821,7 @@ export class Game {
     // Release 361 (Tim: "I like the mouth being open as a random dungeon... it just gives you another dungeon each time"): a quiet
     // Mouth, and every old one, still opens a run; the Listener waits only at the current Mouth once it has moved.
     if(o.kind==='listeningStone')return{ok:true,message:this.message=o.lore}; // release 373
+    if (o.cook && (!action || action === "speak")) { if (o.talkKey) { const n = (Number(this.save.worldFlags[o.talkKey]) || 0) + 1; this.save.worldFlags[o.talkKey] = n; o.line = talkLine(o, this.refugeLandsWhere(), n); } this.kitchenRequested = o.id; return { ok: true, kitchen: true, message: (this.message = `${o.name}${o.role ? ` (${o.role})` : ""}: “${o.line || "Sit down and eat."}”`) }; } // release 447: Act at a cook opens the kitchen
     if(o.kind==='townSmith'){this.smithyRequested=o.id;/* release 441: Act opens the forge (main.ts polls this, as for shops) */}if(o.kind==='townSmith')return{ok:true,smithy:true,message:this.message=`${o.name}: “Bring me what you carry. I can break it down, reforge it, cut it a socket, or make it a masterwork, as the Listeners fall.”`}; // release 395
     if(o.kind==='listenerDais'){ // release 375: to the Listening Hall
       const run=beginListenerArena(this.save,{rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y});if(!run)return{ok:false,message:this.message='The dais is still.'};
@@ -3766,12 +3770,21 @@ export class Game {
     const best = this.map.tiles.filter(ok).sort((a, b) => Math.hypot(a.x - origin.x, a.y - origin.y) - Math.hypot(b.x - origin.x, b.y - origin.y) || a.y - b.y || a.x - b.x)[0];
     return best ? { x: best.x, y: best.y } : null;
   }
+  // Release 447: maximum health and stamina follow a meal as it starts and ends.
+  refreshDerivedStats() { syncCharacterStats(this.save); this.player.maxStamina = this.save.maxStamina; this.player.hp = Math.min(this.player.hp, this.save.maxHp); this.player.stamina = Math.min(this.player.stamina, this.save.maxStamina); this.sync(); }
+  // Release 447 (meals.ts): eat a meal of two ingredients at the cook `cookId`, who must stand near you.
+  eatAt(cookId, a, b) {
+    const o = this.map?.objects?.find((q) => q.id === cookId && q.cook); if (!o || Math.hypot(o.x - this.player.x, o.y - this.player.y) > 3) return { ok: false, message: (this.message = "Meals are eaten at a cook's table, in town.") };
+    const before = this.save.maxHp, r = eatMeal(this.save, a, b, o.name); this.message = r.message; if (!r.ok) return r;
+    this.refreshDerivedStats(); if (this.save.maxHp > before) this.player.hp = Math.min(this.save.maxHp, this.player.hp + this.save.maxHp - before); this.sync(); return r;
+  }
   raiseTownAmenities() {
     const t = townAt(this.save, this.rx, this.ry); if (!t) return;
     const glass = this.map.objects.find((o) => o.kind === "checkpoint") || this.map.objects.find((o) => o.kind === "arrayMouth" || o.kind === "silentMouth") || { x: 16, y: 16 };
     const add = (id, make) => { if (this.map.objects.some((o) => o.id === id)) return; const at = this.townSpot(glass); if (at) this.map.objects.push({ id, ...make(), ...at, settlement: `hamlet-${this.rx}-${this.ry}` }); };
     add(`viewport-${this.rx}-${this.ry}`, () => ({ kind: "viewport", name: "Viewport", state: "idle", actions: ["inspect"] }));
     add(`town-keeper-${this.rx}-${this.ry}`, () => ({ kind: "townKeeper", name: `The ${t.name} Keeper`, role: "Forge and Aperture", state: "calm", actions: ["upgrade", "attune", "retrain"] }));
+    add(`town-cook-${this.rx}-${this.ry}`, () => ({ kind: "villager", name: `The ${t.name} Cook`, role: "Cook", line: "Sit. Pick two things from the pantry and I'll make you a meal.", state: "calm", actions: ["speak"], cook: true })); // release 447
   }
   // Release 369 (listener-mirror.ts): what the Listener's mirror form and its reflections may touch, built once a frame.
   mirrorWorld(dt, now) {
@@ -4503,6 +4516,7 @@ export class Game {
     this._astralDrainCredits=[];
     this.guardRemaining = Math.max(0, this.guardRemaining - dt);
     this.magicBuffRemaining = Math.max(0, this.magicBuffRemaining - dt);
+    if (this.save.meal) { const name = mealName(this.save.meal.a, this.save.meal.b); if (tickMeal(this.save, dt)) { this.refreshDerivedStats(); this.message = `The ${name.toLowerCase()} has worn off. A cook in town can make you another.`; } } // release 447
     this.spellCooldownRemaining = Math.max(0, this.spellCooldownRemaining - dt);
     const skillState=this.save.magicSkills;if(skillState){if(skillState.riftInfuse>0)skillState.riftInfuse=Math.max(0,skillState.riftInfuse-dt);/* release 297 */for(const id of Object.keys(skillState.cooldowns||{}))skillState.cooldowns[id]=Math.max(0,skillState.cooldowns[id]-dt);tickRiftCharges(this.save);if(skillState.active){skillState.active.remaining=Math.max(0,skillState.active.remaining-dt);if(skillState.active.remaining===0){const ended=skillState.active.id;skillState.active=null;onSkillEnded(this,ended,now);if(ended==='aerial-step'&&footprintHazard(this.map,mapWidth(this.map,this.area),this.player.x,this.player.y)&&!swimsThrough(this.save,footprintHazard(this.map,mapWidth(this.map,this.area),this.player.x,this.player.y))){const safe=skillState.lastSafe;if(safe&&safe.area===this.area&&safe.areaId===this.areaId()){this.player.x=safe.x;this.player.y=safe.y}else relocateIfStranded(this.player,this.map,mapWidth(this.map,this.area));this.message='Aerial Step closes and returns you to stable ground.'}}}}
     if (this.reticle) this.reticle.life -= dt;
