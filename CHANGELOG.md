@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 459 — Marginalia.
+  - **Margin Wardens:** from Infinite IV, every ordinary crossing holds one to three Margin Wardens: big, tough foes marked on the dungeon map like bosses. They are optional; the crossing's own guardian still opens the way out.
+  - **Marginalia:** felling a warden offers three marginalia, rules that change how you fight for the rest of that crossing. The crossing then calls reinforcements, so you get to use the new rule. The nine: Glass Edge (+30% damage, +20% taken), Iron Spine (−20% damage taken, 10% slower), Fleet Hand (20% faster, dodges cost half), Quick Hand (20% faster attacks), Wide Focus (spells and skills recover 30% faster), Ember Wake (a dodge leaves a burning burst), Red Margin (each kill mends 4% health), Quick Ink (a fallen warden or guardian makes every spell ready) and Second Wind (once per crossing, a killing blow leaves you at a third of your health).
+  - **The Scrapbook:** every marginalia you take is kept in your Scrapbook (Pack, Supplies). Entering a crossing, you can paste one in from it at once.
+  - **For one crossing:** marginalia hold through a fall inside the crossing and end when you leave it. The HUD lists the ones in effect.
 - Release 457 — to +10.
   - **Higher upgrade limits:** from Infinite IV, once the second Gate is passed (two Listeners felled), every gear tier's upgrade limit rises by 3. A relic goes to +9, and a masterwork relic to +10. Each rank still costs one more sphere than the last. Below that point, the Forge says what raises the limit.
 - Release 455 — margins.

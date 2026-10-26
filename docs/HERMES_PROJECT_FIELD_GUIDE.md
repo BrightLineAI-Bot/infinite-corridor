@@ -2694,6 +2694,28 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 459: Marginalia — 2026-10-26
+
+Tim: "each time you go into a dungeon... you can find different marginalia, and they'll change how you play in the dungeon... after Infinite 4... more of a roguelite... a Scrapbook... you can paste them in when you get into the dungeon... several guardians in the dungeon... killing one is the one that you need to exit... as you kill a guardian, you get to select different marginalia... they call in reinforcements."
+
+**CODE:** `src/marginalia.ts` (new; in the build and both sw.js lists) holds `RULES` (tier 14, offer 3, one paste, wardens by reachable floor size, warden hp ×7, damage ×1.5, scale 1.3, reinforcements 5 with a live cap of 28), `MARGINALIA` (nine: five stat rules as `bonus`, four event rules) and pure rules. `wardenSpawns` walks the floor from the entry (so no warden stands in rock), keeps 9+ tiles from the entry and 7 between wardens, by seed, in ordinary crossings only (the Seven Bells regex). `wardenOffer` puts unfound marginalia first. `chooseMarginalia` adds to `save.marginalia.found` (the Scrapbook) and to the run. `pasteMarginalia` handles one paste per crossing. The run is `save.session.marginRun = {dungeon, perks, secondWind, offer, pasted}`; its annex counts as the same crossing.
+
+In game.ts:
+- `loadArea` pushes the wardens into `enemySpawns` (stable ids `margin-warden-i`, so the snapshot keeps them dead) and ends the run on any overworld load. The death wrapper restores the run when a fall re-enters the same crossing.
+- `createEnemyFromSpawn` scales a warden.
+- `armorGlyphBonus` folds `marginBonus` in beside meals (fields now include `defense` and `dodgeCost`).
+- `marginaliaOnKill` handles Red Margin and Quick Ink, and, for a warden, sets the offer and calls `callReinforcements`: kinds of the crossing's own spawns, 7–21 tiles from you, on open, safe floor, aggro, never saved.
+- Dodge triggers Ember Wake through `glyphWorld().blast`; Second Wind triggers before the death branch (not for hazard falls).
+- Entering a crossing at tier 14+ begins a run and asks for the Scrapbook paste when it holds pages.
+
+monster-pack `staggerClass` counts `marginWarden` as a boss (poise and the dungeon-map mark). main.ts:
+- `openMarginOffer` reopens until a page is taken, including after a reload;
+- `openScrapbookPaste`;
+- HUD `MARGINALIA ...`;
+- a Scrapbook row in Supplies.
+
+**BOUNDARY:** wardens are never `boss` and never crossing guardians, so completion, doors and the displacement seal are unchanged. No generator change (added at load). Save: `save.marginalia` (additive, normalised in `migrateSave`) and the session run (normalised). Tests: `tests/marginalia-459.test.ts`.
+
 ## Release 457: to +10 — 2026-10-26
 
 Tim: "after Infinite 4, after you've played the second gate, you should be able to upgrade your weapons to +10... +10 is the max upgrade."

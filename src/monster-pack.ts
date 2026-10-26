@@ -2378,7 +2378,7 @@ function voidNovaEruption(f, owner, w) {
 // A full meter (`limit`, by class) clears the stun and grants `guard` seconds in which blows still land but no longer
 // stun. Knockdowns (BOSS_POISE poise breaks) are separate and unchanged. Ordinary creatures keep their old stagger.
 export const STAGGER_GOVERNOR = { limit: { revenant: .6, boss: .9, elite: 1.3 }, decay: .2, guard: 3 };
-export function staggerClass(e) { return e?.gatePredator ? "revenant" : e?.boss || e?.worldBeast || e?.questingBeast || e?.farArrayBoss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e?.dungeonRole) ? "boss" : e?.eliteId || e?.elite ? "elite" : null; }
+export function staggerClass(e) { return e?.gatePredator ? "revenant" : e?.boss || e?.marginWarden /* release 459 */ || e?.worldBeast || e?.questingBeast || e?.farArrayBoss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e?.dungeonRole) ? "boss" : e?.eliteId || e?.elite ? "elite" : null; }
 // Call after the frame's hit-stun countdown. Returns true while the foe is guarded (it shrugs stuns off).
 export function staggerGovernor(e, dt) {
   const k = staggerClass(e); if (!k) return false;

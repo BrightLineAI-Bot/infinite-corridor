@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**459**
+**461**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 457 | Claude | `claude/dreamy-rubin-yn6q2p` | Upgrade caps +3 from Infinite IV with the second Gate passed (a masterwork relic reaches +10) | Building. |
+| 459 | Claude | `claude/dreamy-rubin-yn6q2p` | Marginalia: Margin Wardens, one-crossing rules, the Scrapbook, reinforcements (Infinite IV+) | Building. |
+| 457 | Claude | PR #211 | Upgrade caps +3 from Infinite IV with the second Gate passed (a masterwork relic reaches +10) | Merged. Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
