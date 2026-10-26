@@ -33,21 +33,17 @@ test('the marginalia; Margin Wardens stand only from Infinite IV, in ordinary cr
   assert.deepEqual(wardenSpawns(s, crossing().g.map, 'displacement:1:2:x'), []);
 });
 
-test('felling a warden: three marginalia offered, reinforcements called, the choice kept and working for the crossing', () => {
+test('felling a warden: a page applied at once (release 473: no choice), reinforcements called, kept for the crossing', () => {
   const { s, g, id } = crossing(), w = wardens(g)[0]; g.player.x = g.map.entry.x; g.player.y = g.map.entry.y;
-  const live = g.enemies.filter((e) => !e.dead).length, before = characterStats(s);
+  const live = g.enemies.filter((e) => !e.dead).length;
   w.hp = 0; w.dead = true; g.defeatEnemy(w);
-  const run = marginRun(s, id); assert.equal(run.offer.length, RULES.offer); assert.ok(g.marginOfferRequested); assert.equal(g.defeatNotice.title, 'A MARGIN WARDEN FALLS');
+  const run = marginRun(s, id); assert.equal(run.offer, null); assert.equal(run.perks.length, 1); assert.deepEqual(ensureMarginalia(s).found, run.perks); assert.equal(g.defeatNotice.title, 'A MARGIN WARDEN FALLS'); assert.ok(g.defeatNotice.detail.includes(MARGINALIA[run.perks[0]].name));
   const called = g.enemies.filter((e) => e.reinforcement); assert.ok(called.length > 0 && called.length <= RULES.reinforcements.count); assert.ok(called.every((e) => e.aggro && !e.dead));
   assert.ok(g.enemies.filter((e) => !e.dead).length <= Math.max(live, RULES.reinforcements.liveCap));
-  run.offer = ['ironSpine', 'glassEdge', 'redMargin']; const r = g.chooseMarginaliaPage('ironSpine');
-  assert.ok(r.ok && r.fresh); assert.deepEqual(ensureMarginalia(s).found, ['ironSpine']); assert.deepEqual(run.perks, ['ironSpine']);
-  assert.ok(characterStats(s).damageReduction > before.damageReduction); assert.ok(characterStats(s).moveSpeed < before.moveSpeed);
-  assert.equal(g.chooseMarginaliaPage('glassEdge').ok, false, 'one choice per warden');
-  g.player.hp = 0; g.update(.001, idle, 5000); assert.equal(g.area, 'dungeon', 'a fall restarts you at the entrance'); assert.deepEqual(marginRun(s, id).perks, ['ironSpine'], 'still inside: the run holds');
+  g.player.hp = 0; g.update(.001, idle, 5000); assert.equal(g.area, 'dungeon', 'a fall restarts you at the entrance'); assert.equal(marginRun(s, id).perks.length, 1, 'still inside: the run holds');
+  assert.equal(wardens(g).some((e) => e.id === w.id && !e.dead), false, 'release 473: the fallen warden does not stand again');
   g.leaveDungeon('out'); assert.equal(g.area, 'overworld'); assert.equal(s.session.marginRun, null, 'leaving ends the run');
-  assert.ok(characterStats(s).moveSpeed === before.moveSpeed, 'and its rules');
-  assert.deepEqual(ensureMarginalia(migrateSave(JSON.parse(JSON.stringify(s)))).found, ['ironSpine'], 'the Scrapbook keeps it');
+  assert.deepEqual(ensureMarginalia(migrateSave(JSON.parse(JSON.stringify(s)))).found, run.perks.length ? ensureMarginalia(s).found : [], 'the Scrapbook keeps it');
 });
 
 test('pasting in on entry; Red Margin mends, Quick Ink refreshes, Second Wind saves once, Ember Wake burns on a dodge', () => {

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 473 — real wardens.
+  - **Elite wardens:** Margin Wardens are now the elite monsters (Vesperwing, Gravitant Bell, Mire Apostle, Choir of Knives) with all their moves, at about half a Gate Revenant's health and damage. Felling one is not the elite's own hunt or reward.
+  - **Felled once:** a warden you fell stays down in that crossing, even after you die there, so its page can't be farmed.
+  - **No stopping to choose:** a fallen warden's page applies at once (one you don't have yet, when there is one) with a notice; there is no choice screen any more.
 - Release 471 — your lock, as it was.
   - **Tapped lock:** a target you lock by tapping leads your swings exactly as before release 469 (up to 5 tiles past your weapon). Only automatic aim, with no lock, changed: it strikes the foe already in reach first.
 - Release 469 — salvage in bulk, truer swings, smoother frames.

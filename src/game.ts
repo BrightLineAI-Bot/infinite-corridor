@@ -56,7 +56,7 @@ import { generateItem } from "./items.ts";
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
 import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
-import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
+import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
 import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, armorGlyphBonus as armorGlyphBase, skillGlyphMods } from "./glyphs.ts";
 import { hashSeed, rng } from "./random.ts";
 import { placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt } from "./building.ts";
@@ -2153,7 +2153,7 @@ export class Game {
     this.activatedEncounterGroups=new Set;
     if(area==="dungeon"){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const companion=astralCompanionFor(this.save,haunt,{dungeon:this.areaId(),level:this.map.levelId||"root"},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is retreating ${haunt.worldBeast === "voidWalker" ? "toward the nearest reachable dungeon door" : haunt.worldBeast === "astralWorm" ? "toward the nearest reachable Wayglass" : "toward the water"}. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastTriesLeft(this.save,haunt.worldBeast)} of ${B.tries} tries remain.`}} /* release 249: the Psychic Crystal haunts dungeons with water */
     if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.extraSpawn)) for (const q of this.extraDungeonSpawns()) this.map.enemySpawns.push(q); // release 463: more foes
-    if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.marginWarden)) for (const w of wardenSpawns(this.save, this.map, this.areaId())) this.map.enemySpawns.push(w); // release 459: Margin Wardens
+    if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.marginWarden)) for (const w of wardenSpawns(this.save, this.map, this.areaId(), dungeonHistory(this.save, this.areaId()).wardensSlain || [])) this.map.enemySpawns.push(w); // release 459: Margin Wardens; 473: the slain stay slain
     if (area === "overworld") endMarginRun(this.save); // release 459: marginalia hold only inside the crossing
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
     // Far Array bosses are tuned to the Wayfarer last, over the depth and boss-form scaling (release 138).
@@ -3995,7 +3995,7 @@ export class Game {
         const v = beastProfileVitals(WORLD_BEASTS.morphingBlob, this.save, characterStats(this.save)), merged = Math.max(0, Number(this.mireHere()?.state.merged) || 0), hp = Math.round(v.hp * MIRE_CRYPT.heartHp * (1 + merged * MIRE_CRYPT.mergeHp));
         Object.assign(c, { mireHeart: true, boss: true, hp, maxHp: hp, damage: v.damage, staggerResistance: WORLD_BEASTS.morphingBlob.staggerResistance, attackGap: WORLD_BEASTS.morphingBlob.attackGap });
       }
-      if (e.marginWarden) { const W = MARGIN_RULES.warden; Object.assign(c, { marginWarden: true, foundryName: "Margin Warden", aggro: false }); c.maxHp = c.hp = Math.round(c.maxHp * W.hp); c.damage = Math.max(1, Math.round(c.damage * W.damage)); c.baseDamage = c.damage; c.scale = (c.scale || 1) * W.scale; c.baseScale = c.scale; } // release 459
+      if (e.marginWarden) { const W = MARGIN_RULES.warden, rev = tuneGatePredator(Object.assign(createCombatant("gateRevenant", 0, 0, false, []), { gatePredator: true }), this.save, characterStats(this.save)); Object.assign(c, { marginWarden: true, boss: false, foundryName: `Margin Warden · ${c.eliteName || c.kind}`, aggro: false }); c.maxHp = c.hp = Math.max(1, Math.round(rev.maxHp * W.revenantShare)); c.damage = Math.max(1, Math.round(rev.damage * W.revenantShare)); c.baseDamage = c.damage; c.scale = (c.scale || 1) * W.scale; c.baseScale = c.scale; } // release 459; 473: an elite at half a Gate Revenant
       ensureAI(c);
       refreshMarineBeast(c, this.map, mapWidth(this.map, area), area);
       return c;
@@ -4062,9 +4062,10 @@ export class Game {
       if (e.marginWarden && runHas(this.save, id, "sigilPage")) { const c = (this.save.consumables ||= {}); c.crossingSigil = (Number(c.crossingSigil) || 0) + 1; }
     }
     if (!e.marginWarden) return;
-    const r = run || beginMarginRun(this.save, id); r.offer = wardenOffer(this.save, id, e.id); this.marginOfferRequested = true;
-    const n = this.callReinforcements(now);
-    this.defeatNotice = { title: "A MARGIN WARDEN FALLS", detail: `choose a marginalia${n ? ` · ${n} reinforcements stir` : ""}`, kind: "danger" };
+    const h = dungeonHistory(this.save, id); h.wardensSlain = [...new Set([...(h.wardensSlain || []), e.id])]; // release 473: once
+    if (!run) beginMarginRun(this.save, id); const page = wardenPage(this.save, id, e.id), n = this.callReinforcements(now);
+    this.defeatNotice = { title: "A MARGIN WARDEN FALLS", detail: `${page ? `${MARGINALIA[page].name}: ${MARGINALIA[page].text}` : "every page is already yours"}${n ? ` · ${n} reinforcements stir` : ""}`, kind: "danger" };
+    this.message = page ? `Marginalia: ${MARGINALIA[page].name}. ${MARGINALIA[page].text}` : this.message;
   }
   // Release 459: the crossing answers a fallen warden with a few of its own kind, away from you, waking and hunting you.
   callReinforcements(now) {
@@ -4161,7 +4162,7 @@ export class Game {
     if (isCrossingGuardian(e) && recordRelayChain(this.save, this.areaId()))
       this.defeatNotice.detail += " · the buried network answered";
     if(['ashling','glassMite'].includes(e.kind))recordPortalPrey(this.save,e.kind);
-    if(e.eliteId){const reward=completeElite(this.save,e.eliteId);if(reward){this.save.codex.elites||={};this.save.codex.elites[e.eliteId]={encountered:1,defeated:1,modules:[...(e.eliteModules||[])],variantId:e.variantId,habitat:this.areaId()};journalOnce(this.save,'elite-defeated:'+e.eliteId,`${e.eliteName} fell. Its observed aspects were ${(e.eliteModules||[]).join(', ')}. Reward: ${reward.marks} marks and one ${reward.material.replace('Sphere',' sphere')}.`,'Elite bestiary');}}
+    if(e.eliteId&&!e.marginWarden){const reward=completeElite(this.save,e.eliteId);/* release 473: a warden is not the elite's own hunt */if(reward){this.save.codex.elites||={};this.save.codex.elites[e.eliteId]={encountered:1,defeated:1,modules:[...(e.eliteModules||[])],variantId:e.variantId,habitat:this.areaId()};journalOnce(this.save,'elite-defeated:'+e.eliteId,`${e.eliteName} fell. Its observed aspects were ${(e.eliteModules||[]).join(', ')}. Reward: ${reward.marks} marks and one ${reward.material.replace('Sphere',' sphere')}.`,'Elite bestiary');}}
     if (this.area === 'dungeon') this.marginaliaOnKill(e); // release 459
     if (this.area === 'dungeon' && this.save.session.activeDisplacement && !e.worldBeast && !e.questingBeast && (e.boss || isCrossingGuardian(e))) { // release 451
       const h = dungeonHistory(this.save, this.areaId());

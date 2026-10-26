@@ -2694,6 +2694,21 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 473: real wardens — 2026-10-26
+
+Tim: "when you die in a dungeon, the wardens respawn and you get more pages... wardens can only die once... it's disruptive... you have to stop and select the page... just a random buff applies, and there's just a notification... the wardens need to be significantly stronger... about half the strength of the Gate Revenant... more compelling moves... put in some of the elite monsters as wardens... not the rift bosses or the world bosses."
+
+**CODE:**
+- **Elite wardens.** marginalia.ts `RULES.warden = {revenantShare:.5, scale:1.1, elites:[vesperwing, gravitantBell, mireApostle, knifeChoir]}`. `wardenSpawns` picks an elite kind by seed and filters out `slain` ids. game.ts `createEnemyFromSpawn` tunes a warden to half of a Gate Revenant probe (`tuneGatePredator` on a fresh `gateRevenant`) for health and damage. It sets `boss: false` (elite combatants are bosses by default) and names it `Margin Warden · <elite>`. `defeatEnemy` skips `completeElite` for wardens.
+- **Felled once.** `marginaliaOnKill` records the warden in `dungeonHistory(id).wardensSlain` (`loadArea` passes it to `wardenSpawns`), applies `wardenPage` (unfound first, by seed) to the Scrapbook and the run, and shows it in the defeat notice and message. The offer screen only appears for a page left on offer by an older release.
+
+**BOUNDARY:**
+- The elites' own hunts, contracts and rewards are unchanged.
+- Reinforcements still answer a fallen warden.
+- Additive history field `wardensSlain`.
+
+Tests: `tests/wardens-473.test.ts`; `tests/marginalia-459.test.ts` was updated for the automatic page.
+
 ## Release 471: your lock, as it was — 2026-10-26
 
 Tim: "I like the lock targets... we can keep them the way it is... if I tap on the target and it's locked on, I like the way that functions... just moving past targets, the auto lock... it's been a little bit wonky."
