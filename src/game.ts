@@ -2259,6 +2259,7 @@ export class Game {
       this.message =
         "The changed Corridor settles you onto the nearest stable ground. Your progress and carried items remain intact.";
     if (area === 'dungeon' && !this.map.arena && !this.save.session.activeDisplacement && !String(loadingId).startsWith('hunt-')) this.prepareDungeonCompletion();
+    if (area === 'dungeon' && this.save.session.activeDisplacement) { const h = dungeonHistory(this.save, this.areaId()); if (!h.thresholdOpen) { const fell = this.enemies.find((e) => e.dead && !e.worldBeast && !e.questingBeast && (e.boss || isCrossingGuardian(e)) && (e.boss || !this.enemies.some((q) => !q.dead && isCrossingGuardian(q)))); if (fell) { h.thresholdOpen = true; h.thresholdDoor = { x: Math.round(fell.x), y: Math.round(fell.y) }; } } this.raiseThresholdDoor(); } // release 451: also for a guardian felled before this release
     this.reconcileConsequences();
     const codex = (this.save.codex ||= { creatures: {}, places: {}, features: {} });
     codex.creatures ||= {};
@@ -2964,7 +2965,7 @@ export class Game {
       this.player.y = this.map.entry?.y ?? 5;
       relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); // release 419
     } else if (r.transition === "exit") {
-      if(this.save.session.activeDisplacement){if(this.enemies.some(e=>!e.dead&&isCrossingGuardian(e))){this.message="The Mislaid Threshold remains sealed while its guardian lives.";return{ok:false,message:this.message}}const d=this.save.session.activeDisplacement;this.snapshotArea();this.rx=d.destination.rx;this.ry=d.destination.ry;this.save.session.displacementJourney={source:d.source,destination:d.destination};this.save.session.activeDisplacement=null;this.save.session.activeDungeonId=null;this.loadArea("overworld",false);this.player.x=16;this.player.y=16;relocateIfStranded(this.player,this.map,mapWidth(this.map,'overworld'));this.message="The completed crossing releases you onto stable ground in a distant, uncharted Corridor. Find a physical Wayglass to restore travel."}else this.leaveDungeon("You emerge at the dungeon entrance.");
+      if(this.save.session.activeDisplacement){if(!this.thresholdOpen()){this.message="The Mislaid Threshold remains sealed while its guardian lives. Its guardian is marked on the dungeon map.";return{ok:false,message:this.message}}const d=this.save.session.activeDisplacement;this.snapshotArea();this.rx=d.destination.rx;this.ry=d.destination.ry;this.save.session.displacementJourney={source:d.source,destination:d.destination};this.save.session.activeDisplacement=null;this.save.session.activeDungeonId=null;this.loadArea("overworld",false);this.player.x=16;this.player.y=16;relocateIfStranded(this.player,this.map,mapWidth(this.map,'overworld'));this.message="The completed crossing releases you onto stable ground in a distant, uncharted Corridor. Find a physical Wayglass to restore travel."}else this.leaveDungeon("You emerge at the dungeon entrance.");
     } else if (r.transition === "checkpoint") {
       this.save.session.displacementJourney=null;
       if (clearRot(this.save)) this.message += " Resting here clears the blight rot.";
@@ -3969,6 +3970,17 @@ export class Game {
       refreshMarineBeast(c, this.map, mapWidth(this.map, area), area);
       return c;
   }
+  // Release 451 (Tim: "I saw a shrine on the overworld and I clicked it. And it took me to this dungeon... When I killed the
+  // guardian, he didn't spawn a door for me to leave... now I can't leave"): a Mislaid Threshold's crossing opened only its
+  // entry exit, and only once every crossing guardian was dead, with no door and no word. Now felling its guardian (or the
+  // crossing's boss) opens it for good (history.thresholdOpen) and raises a door where it fell; the entry exit opens too.
+  thresholdOpen() { return !!dungeonHistory(this.save, this.areaId()).thresholdOpen || !this.enemies.some((e) => !e.dead && isCrossingGuardian(e)); }
+  raiseThresholdDoor(at = null) {
+    const h = dungeonHistory(this.save, this.areaId()); if (at) h.thresholdDoor = { x: Math.round(at.x), y: Math.round(at.y) };
+    const p = h.thresholdOpen && h.thresholdDoor; if (!p || this.map.objects.some((o) => o.id === "threshold-door")) return null;
+    const spot = nearestOpenFootprint(this.map, mapWidth(this.map, "dungeon"), p) || p, door = { id: "threshold-door", kind: "exit", name: "The Threshold Door", x: Math.round(spot.x), y: Math.round(spot.y), state: "open", actions: ["exit"] };
+    this.map.objects.push(door); return door;
+  }
   prepareDungeonCompletion() {
     const history = dungeonHistory(this.save,this.areaId()), maps = [this.map];
     if (this.map.multiLevel) for (const level of this.map.levels || []) if (level.id !== this.map.levelId)
@@ -4047,6 +4059,14 @@ export class Game {
       this.defeatNotice.detail += " · the buried network answered";
     if(['ashling','glassMite'].includes(e.kind))recordPortalPrey(this.save,e.kind);
     if(e.eliteId){const reward=completeElite(this.save,e.eliteId);if(reward){this.save.codex.elites||={};this.save.codex.elites[e.eliteId]={encountered:1,defeated:1,modules:[...(e.eliteModules||[])],variantId:e.variantId,habitat:this.areaId()};journalOnce(this.save,'elite-defeated:'+e.eliteId,`${e.eliteName} fell. Its observed aspects were ${(e.eliteModules||[]).join(', ')}. Reward: ${reward.marks} marks and one ${reward.material.replace('Sphere',' sphere')}.`,'Elite bestiary');}}
+    if (this.area === 'dungeon' && this.save.session.activeDisplacement && !e.worldBeast && !e.questingBeast && (e.boss || isCrossingGuardian(e))) { // release 451
+      const h = dungeonHistory(this.save, this.areaId());
+      if (!h.thresholdOpen && (e.boss || !this.enemies.some((q) => q !== e && !q.dead && isCrossingGuardian(q)))) {
+        h.thresholdOpen = true; this.raiseThresholdDoor(e);
+        this.defeatNotice = { title: "THE THRESHOLD OPENS", detail: "a door stands where its guardian fell · the way you came in is open too", kind: "discovery" };
+        journalOnce(this.save, `threshold-door:${this.areaId()}`, "The Mislaid Threshold's guardian fell, and a door opened where it stood. Either it or the way in leads out, to stable ground far from where the seam took you.", "The Mislaid Threshold");
+      }
+    }
     if (this.area === 'dungeon' && !this.map.arena && !this.save.session.activeDisplacement && !String(this.areaId()).startsWith('hunt-')) {
       const history = dungeonHistory(this.save,this.areaId());
       if (e.boss && history.combatClear?.completed) {

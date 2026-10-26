@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 451: a way out of the Mislaid Threshold — 2026-10-26
+
+Tim: "I saw a shrine on the overworld and I clicked it. And it took me to this dungeon... When I killed the guardian, he didn't spawn a door for me to leave... now I can't leave."
+
+**CODE:** a Mislaid Threshold (`displacementDevice`) sets `session.activeDisplacement` and loads its crossing. Completion doors (`installCompletionExit`) skip displacement crossings, so the only way out was the entry `exit`, sealed while any crossing guardian (`isCrossingGuardian`) lived, with no door and no word when it opened; a crossing whose boss fell while its warden lived stayed sealed. `defeatEnemy` now, in a displacement crossing, when a boss falls or the last crossing guardian falls, sets `history.thresholdOpen` and `history.thresholdDoor`, raises `threshold-door` (an `exit`, so the existing displacement release handles it) with `Game.raiseThresholdDoor`, shows the THE THRESHOLD OPENS notice and writes a journal line. `Game.thresholdOpen()` (the flag, or no live crossing guardian) gates the entry exit. `loadArea` re-raises the door and opens it for a guardian or boss already found dead in the restored area (saves from before this release).
+
+**BOUNDARY:** other dungeons' completion doors are unchanged; the displacement destination and Wayglass rules after it are unchanged. Additive history fields only. Tests: `tests/threshold-door-451.test.ts`.
+
 ## Release 449: a Crossing Sigil you can use — 2026-10-26
 
 Tim, with a screenshot of Supplies: "Crossing sigil is still not something I can use."
