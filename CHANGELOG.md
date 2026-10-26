@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 453 — ways out, named on the map.
+  - **Dungeon map labels:** the dungeon map now writes EXIT beside each exit, DOOR OUT beside a door a guardian left, WAY BACK beside an annex's return, and DAIS beside a teleport dais, so the way out is never just a small cyan block.
 - Release 451 — a way out of the Mislaid Threshold.
   - **A door:** in the dungeon a Mislaid Threshold folds you into, felling its guardian (or the crossing's boss) now raises a door where it fell, with a notice and a journal line. Either the door or the way you came in leads out, to stable ground far from where you started. Before, no door appeared and nothing said the way in had opened.
   - **Already felled:** if you felled the guardian before this release, the door is standing when you next load the dungeon.
