@@ -2694,6 +2694,23 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 439: no more landing in the dark — 2026-10-26
+
+Tim, 2026-10-26 (screenshot: the Wayfarer alone in darkness after "The annex resolves around you in impossible clarity"): "It's still starting me in random places... it happens randomly, like intermittently."
+
+**CODE:**
+- **The cause:** release 419's `settleArrival` covered stairs, lattices, entrances, death recovery and loads, but six transitions still set a fixed position after `loadArea` and skipped it:
+  - the Aperture annex (4,5) and its return (`veilReturn`);
+  - displacement thresholds (4,5);
+  - the Listener's Hall (entry, one row up);
+  - Viewport hunt instances (entry);
+  - the elite portal (4,5).
+- **Measured:** in 11 of 40 generated annexes, (4,5) is off the floor.
+- **The fix:** the annex and displacement landings now use `map.entry` (falling back to 4,5). All six call `settleArrival()` afterwards: the floor reached from the entry, clear of guardians, with discovery refreshed.
+- Tests: `tests/arrivals-439.test.ts`.
+
+**BOUNDARY:** The underwater dive keeps its own entry landing (its floor rules differ). No save change.
+
 ## Release 437: the Psychic Crystal stays where you can hit it — 2026-10-25
 
 Tim, 2026-10-25: "the psychic crystal keeps staying in the squares where I can't attack him... He just stays there, attacks me, and then, you know, I'm dead."

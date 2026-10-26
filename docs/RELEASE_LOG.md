@@ -13,24 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**439**
+**441**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 437 | Claude | `claude/dreamy-rubin-yn6q2p` | The Psychic Crystal never settles in rock while fighting: no attacks from inside rock, it heads out to you | Building. |
-| 435 | Claude | PR #200 | Far Sleep crossings: only about 30% are Sleeper's Halls; the rest keep the ordinary mix | Merged. Not published. |
-| 433 | Claude | PR #199 | The shovel works in temporary places too (Far Array runs, arenas, hunts, grottoes, crossings); their tunnels are not saved | Merged; preview `r433-dc84082fa393`. Not published. |
-| 431 | Claude | PR #198 | The Seven Bells: cracked bells in middle-band crossings, a lost person walking home for each, the door at the end (narrative bible step 6) | Merged; preview `r431-f60b79667627`. Not published. |
-| 429 | Claude | PR #197 | A death no longer heals a world beast (the death code reset it after r423's record); no new Void Walker hunts in dungeons | Merged; preview `r429-8918d9d44cd7`. Not published. |
-| 427 | Claude | PR #196 | Every world-boss hit shown in pink: footprints under damaging effects and body-contact attacks, the Knight's retreating slash, the Void Walker's and Astral Worm's warnings | Merged; preview `r427-91fdd230ff75`. Not published. |
+| 439 | Claude | `claude/dreamy-rubin-yn6q2p` | The last fixed dungeon landings (Aperture annex and return, displacement, Listener's Hall, hunt instances, elite portal) land on the entry and settle | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 437 | `r437-415a6323864d` | 2026-10-26 | With 427–435: every boss hit in pink (PR #196), wounds that really stay and no Void Walker in dungeons (#197), the Seven Bells (#198), shovels everywhere underground (#199), mixed Far Sleep dungeons (#200), the Crystal out of the walls (#201). The pre-publish Fable review found no blockers. |
 | 425 | `r425-187b382f915e` | 2026-10-24 | With 423: kept wounds, open dreams, open-world digging (PR #194), from Infinite II (#195). The pre-publish Fable reviews found no blockers. |
 | 421 | `r421-45929eb37a4e` | 2026-10-24 | With 419: sharper auto targeting, the Build button holds a Shadow Clone, safe dungeon arrivals (PR #192); calmer bosses and the Knight's seekers (#193). The pre-publish Fable review found no blockers. |
 | 417 | `r417-e82ec8d2169a` | 2026-10-24 | With 415: Ilse the Lamplighter (PR #190) and the Shadow Clone placed by holding (#191). The pre-publish Fable review found no blockers. |
