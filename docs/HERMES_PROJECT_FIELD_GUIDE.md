@@ -2694,6 +2694,30 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 467: fixes from the Codex audit — 2026-10-26
+
+Codex audited release 455 read-only (docs/test-runs/2026-10-26-release-455 on branch claude/audit-test-runs-2026-10-26, draft PR #214): six findings (F001–F006) and three interaction findings (I001–I003). Each was reproduced on the current source before it was fixed.
+
+**CODE:**
+- **F001.** The cistern's runtime pool (four tiles at 11–12, 4–5) is not laid when it would cut a guardian spawn or an exit off from the entry (laid as before otherwise, so Psychic Crystal haunts that need its water are unchanged). THRESH451-82: the entry reached 29 tiles; now 417, guardian included.
+- **F002.** proving-ground-mobile clears `hidden` before `showModal`, and styles.css shows `#pgDiagnostics[open]` (the Proving Ground hides every dialog by default).
+- **F003.** meals.ts `isIngredient`, marginalia.ts `isMarginalia` and lore.ts `ensureLore` use own-key membership, so `constructor` or `__proto__` keys are dropped instead of crashing.
+- **F004 and F005.** types.ts `sanitizeSaveShape` runs first in `migrateSave`. It:
+  - clamps `SAVE_NUMBERS`, stats, materials and consumables to finite ranges;
+  - empties non-array `inventory` and `narrative.journal`;
+  - keeps only object entries in `session.areas` and `consequences.dungeons`.
+- **F006.** game.ts `openWayglassApproach()` (overworld load): a Wayglass not adjacent to the section's largest walkable component gets a two-tile straight path cleared to its nearest cell (tiles marked `wayglassPath`).
+- **I001.** The Bombard's `rift-blast` carries the shot's `glyphHost`, so tool glyphs apply once per foe hit.
+- **I002.** `castShadowClone` multiplies by the spell's glyph cooldown mods.
+- **I003.** `tickGlyphStatus` recomputes speed from the saved base whenever a slow is active.
+
+**BOUNDARY:**
+- No generator change. The pool and Wayglass edits are deterministic load-time map edits.
+- Saves with good data are unchanged; only malformed values are normalised.
+- Boss balance signals in the audit were not acted on: they are not correctness findings.
+
+Tests: `tests/audit-fixes-467.test.ts`.
+
 ## Release 465: Watcher's shrines on the map — 2026-10-26
 
 Tim: "those teleportation shrines... in the symbol for the watcher... should be marked as a location on the map... one of the things that are identified on the map."

@@ -199,7 +199,7 @@ export function tickGlyphStatus(enemies, dt, now, onBurnDeath = () => {}) {
   for (const e of enemies) {
     if (e.dead) continue;
     const slowed = (e.glyphSlow?.until || 0) > now;
-    if (slowed && e.glyphBaseSpeed === undefined) { e.glyphBaseSpeed = e.speedMultiplier || 1; e.speedMultiplier = e.glyphBaseSpeed * e.glyphSlow.factor; }
+    if (slowed) { if (e.glyphBaseSpeed === undefined) e.glyphBaseSpeed = e.speedMultiplier || 1; e.speedMultiplier = e.glyphBaseSpeed * e.glyphSlow.factor; } // release 467 (Codex audit I003): a stronger slow takes hold at once
     else if (!slowed && e.glyphBaseSpeed !== undefined) { e.speedMultiplier = e.glyphBaseSpeed; delete e.glyphBaseSpeed; delete e.glyphSlow; }
     const b = e.glyphBurn;
     if (!b) continue;

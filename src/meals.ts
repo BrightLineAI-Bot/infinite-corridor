@@ -25,10 +25,12 @@ export const INGREDIENTS = {
   bloodmoss: { name: "Bloodmoss", course: "roast", price: 14, text: "world bosses find you sooner", bonus: { lureGap: .5, lureChance: 1 } },
 };
 export const INGREDIENT_IDS = Object.keys(INGREDIENTS);
+// Release 467 (Codex audit F003): only the pantry's own ingredients, never inherited names like "constructor".
+const isIngredient = (id) => typeof id === "string" && Object.hasOwn(INGREDIENTS, id);
 
 export function ensureMeal(save) {
   const m = save?.meal;
-  if (!m || typeof m !== "object" || !INGREDIENTS[m.a] || !INGREDIENTS[m.b] || !(Number(m.remaining) > 0)) { if (save && "meal" in save) delete save.meal; return null; }
+  if (!m || typeof m !== "object" || !isIngredient(m.a) || !isIngredient(m.b) || !(Number(m.remaining) > 0)) { if (save && "meal" in save) delete save.meal; return null; }
   save.meal = { ...m, remaining: Math.min(MEAL.seconds, Number(m.remaining)) };
   return save.meal;
 }
@@ -38,10 +40,10 @@ export function mealName(a, b) {
   [a, b] = ordered(a, b); const A = INGREDIENTS[a], B = INGREDIENTS[b];
   return a === b ? `Hearty ${A.name.toLowerCase()} ${A.course}` : `${A.name} and ${B.name.toLowerCase()} ${A.course}`;
 }
-export const mealPrice = (a, b) => (INGREDIENTS[a]?.price || 0) + (INGREDIENTS[b]?.price || 0);
+export const mealPrice = (a, b) => (isIngredient(a) ? INGREDIENTS[a].price : 0) + (isIngredient(b) ? INGREDIENTS[b].price : 0);
 // What a pair gives: the summed bonus fields.
 export function mealBonus(a, b) {
-  const out = {}; if (!INGREDIENTS[a] || !INGREDIENTS[b]) return out;
+  const out = {}; if (!isIngredient(a) || !isIngredient(b)) return out;
   const parts = a === b ? [[a, MEAL.hearty]] : [[a, 1], [b, 1]];
   for (const [id, k] of parts) for (const [f, v] of Object.entries(INGREDIENTS[id].bonus)) out[f] = (out[f] || 0) + v * k;
   return out;
@@ -59,7 +61,7 @@ export function mealPercent(a, b) {
 }
 // Eating at a cook: pays, replaces any meal in effect. Returns { ok, message }.
 export function eatMeal(save, a, b, cook = "The cook") {
-  if (!INGREDIENTS[a] || !INGREDIENTS[b]) return { ok: false, message: "That isn't in the pantry." };
+  if (!isIngredient(a) || !isIngredient(b)) return { ok: false, message: "That isn't in the pantry." };
   const price = mealPrice(a, b); if ((Number(save.currency) || 0) < price) return { ok: false, message: `${mealName(a, b)} costs ${price} marks; you have ${save.currency || 0}.` };
   const replaced = ensureMeal(save); save.currency -= price; [a, b] = ordered(a, b); save.meal = { a, b, remaining: MEAL.seconds };
   return { ok: true, message: `${cook} sets down ${mealName(a, b).toLowerCase()}. You eat it all: ${mealPercent(a, b)} for ${MEAL.seconds / 60} minutes.${replaced ? " It takes the place of your last meal." : ""}` };

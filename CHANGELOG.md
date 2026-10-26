@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 467 — fixes from the Codex audit.
+  - **Mislaid Threshold:** the cistern's small pool no longer cuts off the crossing's guardian from the entry (it could leave the way out sealed).
+  - **Wayglasses:** a Wayglass that stood in a walled pocket you could not walk into now has a path cleared to it.
+  - **Glyphs:** the Rift Bombard's blast now triggers tool glyphs (Ignite, Leech, Tether) on the foes it hits; Swift and Heavy now change Shadow Clone's recovery; a stronger slow takes hold at once instead of keeping a weaker one.
+  - **Saves:** damaged or malformed saves are repaired on load instead of crashing: unknown meal ingredients and marginalia are dropped, impossible numbers are brought back into range, and broken lists are emptied.
+  - **Proving Ground:** its Diagnostics dialog shows again when opened.
 - Release 465 — Watcher's shrines on the map.
   - **Marked:** the ruins inlaid with the Watcher's sigil, whose pristine tomb folds you somewhere else, now show on the Atlas with an eye mark (under Places) and are listed in the Atlas's Go to… menu. A shrine seen before this release is marked the next time you pass through its section.
 - Release 463 — tougher dungeons.
