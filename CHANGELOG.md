@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 463 — tougher dungeons.
+  - **Stronger foes:** every dungeon foe, guardians included, has 20% more health and deals 20% more damage. World beasts, the Questing Beast, Far Array bosses and Gate Revenants keep their own tuning.
+  - **More foes:** each crossing holds about a fifth more of its ordinary foes, near the others. Crossings you have already cleared stay cleared.
 - Release 461 — damage numbers, and twenty marginalia.
   - **Damage numbers:** what you deal rises in gold over the foe; what you take rises in red over you. On by default; switch them off in Options → Accessibility.
   - **Eleven more marginalia (twenty in all):** Shadow Step (every dodge leaves your shadow behind you for 3 seconds, repeating your attacks at half strength), Hourglass (every kill takes a second off every cooldown), Lifeblood (+25% maximum health), Deep Lungs (stamina recovers 60% faster), Heavy Hand (blows +40%, 15% slower), Inkwell (spells and magic shots +40%, blows −15%), Long Arm (+30% reach), Ink Shield (every 10 seconds the next hit does no harm), Gilded Margin (+3 marks a kill), Smith's Note (a fallen warden or guardian leaves a sphere) and Sigil Page (a fallen warden leaves a Crossing Sigil).
