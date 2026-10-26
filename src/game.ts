@@ -56,7 +56,7 @@ import { generateItem } from "./items.ts";
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
 import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
-import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
+import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
 import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, armorGlyphBonus as armorGlyphBase, skillGlyphMods } from "./glyphs.ts";
 import { hashSeed, rng } from "./random.ts";
 import { placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt } from "./building.ts";
@@ -308,7 +308,8 @@ export const ENEMY_DAMAGE_SCALE = 1.3;
 // Release 447 (meals.ts): a Refuge meal adds its bonus by the same path, while it lasts; release 459 (marginalia.ts): so do
 // the marginalia of the crossing you are in.
 const armorGlyphBonus = (save) => { const g = armorGlyphBase(save), b = mechEmpowered(save) ? { ...g, attackDamage: (g.attackDamage || 0) + MECH_POWER.damage, spellDamage: (g.spellDamage || 0) + MECH_POWER.damage } : g, run = save?.session?.marginRun; if (!save?.meal && !run) return b; const out = { ...b }, add = (bonus) => { for (const k of MEAL_STAT_FIELDS) if (bonus[k]) out[k] = (out[k] || 0) + bonus[k]; }; add(activeMealBonus(save)); if (run) add(marginBonus(save, save.session.activeDungeonId)); return out; };
-const MEAL_STAT_FIELDS = ["attackDamage", "spellDamage", "hp", "staminaRegen", "move", "attackSpeed", "spellCooldown", "defense", "dodgeCost"];
+export const DAMAGE_NUMBERS = { life: 900, rise: .9, cap: 48 }; // release 461
+const MEAL_STAT_FIELDS = ["attackDamage", "spellDamage", "hp", "staminaRegen", "move", "attackSpeed", "spellCooldown", "defense", "dodgeCost", "reach"];
 export const dodgeCost = (save) => Math.round(15 * (1 - armorGlyphBonus(save).dodgeCost) * 10) / 10;
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
@@ -347,7 +348,7 @@ export function characterStats(save) {
       Math.floor((level - 1) * 0.45) +
       Math.floor((Number(secondary?.power) || 0) * 0.55) +
       affixValue(secondary, "attack")+(active?.id==='force-channel'?rank*3:0) + resonance * APERTURE_RESONANCE.magic + boons.magic)),
-    attackReach: affixValue(primary, "reach") + affixValue(secondary, "reach") + affixValue(charm, "reach")+(active?.id==='ember-form'?.12+.06*rank:0),
+    attackReach: affixValue(primary, "reach") + affixValue(secondary, "reach") + affixValue(charm, "reach")+(active?.id==='ember-form'?.12+.06*rank:0)+(ag.reach||0)/* release 461: Long Arm */,
     moveSpeed: affixValue(armor, "movement") + affixValue(charm, "movement")+(active?.id==='quickening'?.12+.08*rank:0)+pairingMods(save).speed+boons.speed+ag.move,
     armorPower,
     charmPower,
@@ -3984,11 +3985,32 @@ export class Game {
   // guardian, he didn't spawn a door for me to leave... now I can't leave"): a Mislaid Threshold's crossing opened only its
   // entry exit, and only once every crossing guardian was dead, with no door and no word. Now felling its guardian (or the
   // crossing's boss) opens it for good (history.thresholdOpen) and raises a door where it fell; the entry exit opens too.
+  // Release 461 (Tim: "a button in the options where we can toggle on or off damage numbers... how much they do to us and
+  // how much we do to them"): each frame, a drop in a foe's health or the Wayfarer's becomes a rising number. Measured from
+  // health itself, so every source counts; heals and new arrivals do not. Not saved; at most DAMAGE_NUMBERS.cap at once.
+  trackDamageNumbers(now) {
+    const D = DAMAGE_NUMBERS, list = (this.damageFloaters ||= []), add = (x, y, n, kind) => { if (n < 1) return; this._dnSeq = ((this._dnSeq || 0) + 1) % 5; list.push({ x, y: y - this._dnSeq * .12, text: String(Math.round(n)), kind, born: now, jitter: [0, .32, -.32, .16, -.16][this._dnSeq] }); };
+    for (const e of this.enemies) { const hp = Math.max(0, Number(e.hp) || 0); if (e._dnHp !== undefined && hp < e._dnHp && !e.illusion) add(e.x + .5, e.y - .1, e._dnHp - hp, "dealt"); e._dnHp = hp; }
+    const p = this.player, hp = Math.max(0, Number(p.hp) || 0); if (this._dnPlayer !== undefined && hp < this._dnPlayer && this._dnArea === this.areaId()) add(p.x + .5, p.y - .2, this._dnPlayer - hp, "taken"); this._dnPlayer = hp; this._dnArea = this.areaId();
+    while (list.length && (now - list[0].born > D.life || list.length > D.cap)) list.shift();
+  }
+  // Release 461: Ink Shield. Health lost this frame (from `hpStart`) comes back, once every INK_SHIELD.seconds. The clock is
+  // the run's own (not saved), so a reload finds the shield ready.
+  applyInkShield(hpStart, now) {
+    const p = this.player; if (!(p.hp < hpStart) || !(hpStart > 0) || this.area !== "dungeon" || now < (this._inkShieldAt || 0) || !runHas(this.save, this.areaId(), "inkShield")) return false;
+    p.hp = hpStart; this._inkShieldAt = now + INK_SHIELD.seconds * 1000; (this.glyphVisuals ||= []).push({ kind: "burst", x: p.x + .5, y: p.y + .45, radius: .9, life: .3, max: .3 }); return true;
+  }
   // Release 459 (marginalia.ts): what a fallen foe means for the crossing's marginalia.
   marginaliaOnKill(e) {
     const id = this.areaId(), run = marginRun(this.save, id), now = this.lastUpdateNow || 0;
     if (run && !e.summonedBy && !e.noRewards && runHas(this.save, id, "redMargin")) this.player.hp = Math.min(this.save.maxHp, this.player.hp + Math.max(1, Math.round(this.save.maxHp * RED_MARGIN.share)));
     if (run && (e.marginWarden || isDungeonGuardian(e)) && runHas(this.save, id, "quickInk")) { this.spellCooldownRemaining = 0; for (const k of Object.keys(this.save.magicSkills?.cooldowns || {})) this.save.magicSkills.cooldowns[k] = 0; }
+    if (run && !e.summonedBy && !e.noRewards) { // release 461
+      if (runHas(this.save, id, "hourglass")) { this.spellCooldownRemaining = Math.max(0, (this.spellCooldownRemaining || 0) - HOURGLASS.seconds); for (const k of Object.keys(this.save.magicSkills?.cooldowns || {})) this.save.magicSkills.cooldowns[k] = Math.max(0, this.save.magicSkills.cooldowns[k] - HOURGLASS.seconds); }
+      if (runHas(this.save, id, "gildedMargin")) this.save.currency = (Number(this.save.currency) || 0) + GILDED.marks;
+      if ((e.marginWarden || isDungeonGuardian(e)) && runHas(this.save, id, "smithsNote")) { const m = (this.save.materials ||= {}), k = hashSeed(`${id}:${e.id}:smith`) & 1 ? "armorSphere" : "weaponSphere"; m[k] = (Number(m[k]) || 0) + 1; this.glyphNotice = `Smith's Note: a ${k === "armorSphere" ? "armor" : "weapon"} sphere.`; }
+      if (e.marginWarden && runHas(this.save, id, "sigilPage")) { const c = (this.save.consumables ||= {}); c.crossingSigil = (Number(c.crossingSigil) || 0) + 1; }
+    }
     if (!e.marginWarden) return;
     const r = run || beginMarginRun(this.save, id); r.offer = wardenOffer(this.save, id, e.id); this.marginOfferRequested = true;
     const n = this.callReinforcements(now);
@@ -4601,7 +4623,7 @@ export class Game {
     if (input.consume("dodge")) {
       const r = dodge(p, now, x, y, dodgeCost(this.save));
       if (!r.ok) this.message = "Not enough stamina to dodge.";
-      else { echoEvent(this, "dodge", now); onConstellationDodge(this); if (this.area === "dungeon" && runHas(this.save, this.areaId(), "emberWake")) this.glyphWorld(now).blast(p.x + .5, p.y + .45, EMBER_WAKE.radius, Math.round(EMBER_WAKE.base + EMBER_WAKE.perLevel * (Number(this.save.level) || 1))); /* release 459 */ if (this.area === "overworld" && aboard(this.save) && submersible(this.save)) { this.subDiveUntil = now + BOAT.sub.dive * 1000; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, this.subDiveUntil); } } // release 311: aboard a submersible a dodge is a dive
+      else { echoEvent(this, "dodge", now); onConstellationDodge(this); if (this.area === "dungeon" && runHas(this.save, this.areaId(), "shadowStep") && !this.shadowCloneActive(now)) { const o = cloneOffset({ x: Number(x) || p.lastMoveVector?.x || 0, y: Number(y) || p.lastMoveVector?.y || 1 }, this.save.lastAim, SHADOW_STEP.behind); this.shadowClone = { ox: o.x, oy: o.y, until: now + SHADOW_STEP.seconds * 1000, marginalia: true }; } /* release 461: Shadow Step */ if (this.area === "dungeon" && runHas(this.save, this.areaId(), "emberWake")) this.glyphWorld(now).blast(p.x + .5, p.y + .45, EMBER_WAKE.radius, Math.round(EMBER_WAKE.base + EMBER_WAKE.perLevel * (Number(this.save.level) || 1))); /* release 459 */ if (this.area === "overworld" && aboard(this.save) && submersible(this.save)) { this.subDiveUntil = now + BOAT.sub.dive * 1000; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, this.subDiveUntil); } } // release 311: aboard a submersible a dodge is a dive
     }
     if (input.consume("jump")) {
       if (now < this.jumpUntil) this.message = "Already airborne.";
@@ -4954,6 +4976,8 @@ export class Game {
     const creditScale=creditSum>0?Math.min(1,astralRawLoss>0?actualLoss/astralRawLoss:0,actualLoss/creditSum):0;
     for(const {owner,amount} of drainCredits)if(!owner.dead&&owner.hp>0){owner.hp=Math.min(owner.maxHp,owner.hp+amount*creditScale);if(owner.astral)owner.astral.hp=owner.hp;}
     this._astralDrainCredits=[];
+    this.applyInkShield(hpStart, now); // release 461: Ink Shield
+    if (this.damageNumbers) this.trackDamageNumbers(now); // release 461
     if (p.hp <= 0 && this.area === "dungeon" && !fellIntoHazard && runHas(this.save, this.areaId(), "secondWind") && !marginRun(this.save, this.areaId()).secondWind) { marginRun(this.save, this.areaId()).secondWind = true; p.hp = Math.max(1, Math.round(this.save.maxHp * SECOND_WIND.share)); p.invulnerableUntil = now + SECOND_WIND.guardMs; this.message = "Second Wind: the blow should have felled you. You are still standing."; this.defeatNotice = { title: "SECOND WIND", detail: "once in this crossing", kind: "discovery" }; } // release 459
     if (p.hp <= 0) {
       // Release 329 (Tim: "for world bosses... If they kill you, there should be like a... 4 second... pause... where you see

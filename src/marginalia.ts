@@ -29,11 +29,28 @@ export const MARGINALIA = {
   redMargin: { name: "Red Margin", text: "Every foe you fell mends 4% of your health.", rule: "killMend" },
   quickInk: { name: "Quick Ink", text: "Felling a warden or a guardian makes every spell and skill ready again.", rule: "guardianRefresh" },
   secondWind: { name: "Second Wind", text: "Once in this crossing, a blow that would fell you leaves you standing at a third of your health.", rule: "secondWind" },
+  // Release 461 (Tim: "each dodge leaves behind a shadow clone for like 3 seconds... another one could be just cool down...
+  // come up with... more, so we have 20"): eleven more.
+  shadowStep: { name: "Shadow Step", text: "Every dodge leaves your shadow behind you for 3 seconds, repeating your attacks at half strength.", rule: "dodgeShadow" },
+  hourglass: { name: "Hourglass", text: "Every foe you fell takes a second off every spell and skill still recovering.", rule: "killCooldown" },
+  lifeblood: { name: "Lifeblood", text: "Your maximum health rises by a quarter.", bonus: { hp: .25 } },
+  deepLungs: { name: "Deep Lungs", text: "Stamina recovers 60% faster.", bonus: { staminaRegen: .6 } },
+  heavyHand: { name: "Heavy Hand", text: "Your blows deal 40% more, and come 15% slower.", bonus: { attackDamage: .4, attackSpeed: -.15 } },
+  inkwell: { name: "Inkwell", text: "Your spells and magic shots deal 40% more, and your blows 15% less.", bonus: { spellDamage: .4, attackDamage: -.15 } },
+  longArm: { name: "Long Arm", text: "Your reach grows by 30%.", bonus: { reach: .3 } },
+  inkShield: { name: "Ink Shield", text: "Every 10 seconds, the next hit you take does you no harm.", rule: "hitShield" },
+  gildedMargin: { name: "Gilded Margin", text: "Every foe you fell drops 3 more marks.", rule: "killMarks" },
+  smithsNote: { name: "Smith's Note", text: "A fallen warden or guardian leaves a weapon or armor sphere.", rule: "guardianSphere" },
+  sigilPage: { name: "Sigil Page", text: "A fallen warden leaves a Crossing Sigil.", rule: "wardenSigil" },
 };
 export const MARGINALIA_IDS = Object.keys(MARGINALIA);
 export const EMBER_WAKE = { radius: 1.8, base: 14, perLevel: 1.2 };
 export const RED_MARGIN = { share: .04 };
 export const SECOND_WIND = { share: 1 / 3, guardMs: 1500 };
+export const SHADOW_STEP = { seconds: 3, behind: 2 };
+export const HOURGLASS = { seconds: 1 };
+export const INK_SHIELD = { seconds: 10 };
+export const GILDED = { marks: 3 };
 
 export function ensureMarginalia(save) {
   const found = (Array.isArray(save?.marginalia?.found) ? save.marginalia.found : []).filter((id, i, a) => MARGINALIA[id] && a.indexOf(id) === i);
