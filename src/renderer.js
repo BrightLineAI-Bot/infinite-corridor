@@ -1,21 +1,21 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r455-04c11a0d3b73";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r455-04c11a0d3b73";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r455-04c11a0d3b73";
-import { enemyMeleeGeometry } from "./combat.js?v=r455-04c11a0d3b73";
-import { ruleRows } from "./elders.js?v=r455-04c11a0d3b73";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r455-04c11a0d3b73";
-import { BOAT } from "./boats.js?v=r455-04c11a0d3b73";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r455-04c11a0d3b73";
-import { isMarineTile } from "./world-beasts.js?v=r455-04c11a0d3b73";
-import { jumpLift } from "./game.js?v=r455-04c11a0d3b73";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r455-04c11a0d3b73";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r455-04c11a0d3b73";
-import { liftAt, tileUnder } from "./landscape.js?v=r455-04c11a0d3b73";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r455-04c11a0d3b73";
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r455-04c11a0d3b73";
-import { drawRelayNode } from "./relay-network.js?v=r455-04c11a0d3b73";
-import { structureOccupancy } from "./world.js?v=r455-04c11a0d3b73";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r455-04c11a0d3b73";
+import { astralBeamAnchors } from "./astral-worm.js?v=r467-8f36ab8aa5d6";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r467-8f36ab8aa5d6";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r467-8f36ab8aa5d6";
+import { enemyMeleeGeometry } from "./combat.js?v=r467-8f36ab8aa5d6";
+import { ruleRows } from "./elders.js?v=r467-8f36ab8aa5d6";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r467-8f36ab8aa5d6";
+import { BOAT } from "./boats.js?v=r467-8f36ab8aa5d6";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r467-8f36ab8aa5d6";
+import { isMarineTile } from "./world-beasts.js?v=r467-8f36ab8aa5d6";
+import { jumpLift } from "./game.js?v=r467-8f36ab8aa5d6";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r467-8f36ab8aa5d6";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r467-8f36ab8aa5d6";
+import { liftAt, tileUnder } from "./landscape.js?v=r467-8f36ab8aa5d6";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r467-8f36ab8aa5d6";
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r467-8f36ab8aa5d6";
+import { drawRelayNode } from "./relay-network.js?v=r467-8f36ab8aa5d6";
+import { structureOccupancy } from "./world.js?v=r467-8f36ab8aa5d6";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r467-8f36ab8aa5d6";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -875,7 +875,7 @@ export function drawCrackedBell(ctx, o, s, now) {
   ctx.fillStyle = "#2a1d10"; ctx.beginPath(); ctx.arc(0, s * .74, s * .06, 0, 7); ctx.fill();
   ctx.restore();
 }
-// Release r455-04c11a0d3b73: writing in the stone. A low slab with a column of cut lines and, beside it, a smaller slanted hand; an
+// Release 455: writing in the stone. A low slab with a column of cut lines and, beside it, a smaller slanted hand; an
 // unread one holds a faint pale light in its letters.
 export function drawMarginNote(ctx, o, s, now) {
   const x = o.x * s + s * .14, y = o.y * s + s * .18, w = s * .72, h = s * .7, read = o.state === "read";
@@ -1790,6 +1790,7 @@ export function render(ctx, g, w, h, now) {
     }
   drawEchoPatches(ctx,g,s,now);
   drawGlyphStatus(ctx,g,s,now,(e)=>discoveredInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2));
+  if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
   for(const o of objectLists.structures)if(renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)){const drawStructure=o.kind==="shack"?shack:architecturalBuilding;
     // Object records outlive consumed building tiles. Clip roofs/facades to their surviving footprint
     // so they cannot visually restore destroyed walls or expose unexplored building geometry.
@@ -1902,6 +1903,11 @@ function fogTile(ctx, x, y, s) {
 
 // Glyph statuses and strikes (release 98): flames on burning foes, a teal ring on slowed ones, frost on frozen ones,
 // plus chain arcs and burst rings from glyphVisuals.
+// Release 461: damage numbers, rising and fading: gold for what you deal, red for what you take.
+function drawDamageNumbers(ctx,g,s,now){const list=g.damageFloaters;if(!list?.length)return;ctx.save();ctx.textAlign="center";ctx.lineJoin="round";
+  for(const f of list){const k=Math.min(1,Math.max(0,(now-f.born)/900));if(k>=1)continue;const taken=f.kind==="taken",size=Math.max(11,Math.round(s*(taken?.36:.32))),x=(f.x+f.jitter)*s,y=(f.y-k*.9)*s;
+    ctx.globalAlpha=k<.7?1:1-(k-.7)/.3;ctx.font=`bold ${size}px system-ui,sans-serif`;ctx.lineWidth=3;ctx.strokeStyle="rgba(0,0,0,.85)";ctx.strokeText(taken?`-${f.text}`:f.text,x,y);ctx.fillStyle=taken?"#ff6b6b":"#ffd970";ctx.fillText(taken?`-${f.text}`:f.text,x,y)}
+  ctx.restore()}
 function drawGlyphStatus(ctx,g,s,now,visible){
   const t=now/1000;
   for(const e of g.enemies){if(e.dead||!visible(e))continue;const cx=(e.x+.5)*s,cy=(e.y+.45)*s;

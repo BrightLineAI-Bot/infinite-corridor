@@ -4,7 +4,7 @@
 // fragments (about 20, differing by Reading) listed in the Reciter's Tome; a Reading whose fragments are all found is
 // mastered. Lines a player has heard are remembered (one bitset per voice), so nobody repeats a line until
 // that voice is exhausted. Pure data and rules: no DOM, no randomness beyond the seeded `pick` passed in.
-import { RECITATIONS } from "./recitations.js?v=r455-04c11a0d3b73";
+import { RECITATIONS } from "./recitations.js?v=r467-8f36ab8aa5d6";
 
 export const LORE_VERSION = 1;
 // Distance bands, in sections from the origin (|rx| + |ry|).
@@ -78,9 +78,9 @@ export function bookPieces(readingId) {
 // are kept even if unknown to this build; elders since release 197).
 export function ensureLore(s) {
   const l = s.lore && typeof s.lore === "object" ? s.lore : {}, heard = {}, pieces = {}, entered = {}, glimpses = {};
-  for (const [id, hex] of Object.entries(l.heard || {})) if (RECITATIONS[id] && typeof hex === "string" && /^[0-9a-f]*$/.test(hex)) heard[id] = hex;
-  for (const [id, list] of Object.entries(l.pieces || {})) if (READINGS[id] && Array.isArray(list)) { const known = new Set(bookPieces(id).map((p) => p.id)); pieces[id] = [...new Set(list.filter((p) => known.has(p)))]; }
-  for (const id of Object.keys(l.entered || {})) if (READINGS[id] && l.entered[id]) entered[id] = true;
+  for (const [id, hex] of Object.entries(l.heard || {})) if (Object.hasOwn(RECITATIONS, id) && typeof hex === "string" && /^[0-9a-f]*$/.test(hex)) heard[id] = hex;
+  for (const [id, list] of Object.entries(l.pieces || {})) if (Object.hasOwn(READINGS, id) && Array.isArray(list)) { const known = new Set(bookPieces(id).map((p) => p.id)); pieces[id] = [...new Set(list.filter((p) => known.has(p)))]; }
+  for (const id of Object.keys(l.entered || {})) if (Object.hasOwn(READINGS, id) && l.entered[id]) entered[id] = true;
   for (const [id, n] of Object.entries(l.glimpses || {})) if (Number(n) > 0) glimpses[id] = Math.floor(Number(n));
   const elders = typeof l.elders === "string" && /^[0-9a-f]{0,64}$/.test(l.elders) ? l.elders : "";
   s.lore = { ...l, v: LORE_VERSION, heard, pieces, entered, glimpses, elders };

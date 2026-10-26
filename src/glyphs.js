@@ -7,7 +7,7 @@
 //
 // Everything balance-related is data in GLYPHS and RESONANCES. The Game calls hostLoadout() when it attacks and
 // glyphHit() after each hit lands; world-side effects go through a small adapter so this file stays testable.
-import { hashSeed } from "./random.js?v=r455-04c11a0d3b73";
+import { hashSeed } from "./random.js?v=r467-8f36ab8aa5d6";
 
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];
@@ -199,7 +199,7 @@ export function tickGlyphStatus(enemies, dt, now, onBurnDeath = () => {}) {
   for (const e of enemies) {
     if (e.dead) continue;
     const slowed = (e.glyphSlow?.until || 0) > now;
-    if (slowed && e.glyphBaseSpeed === undefined) { e.glyphBaseSpeed = e.speedMultiplier || 1; e.speedMultiplier = e.glyphBaseSpeed * e.glyphSlow.factor; }
+    if (slowed) { if (e.glyphBaseSpeed === undefined) e.glyphBaseSpeed = e.speedMultiplier || 1; e.speedMultiplier = e.glyphBaseSpeed * e.glyphSlow.factor; } // release 467 (Codex audit I003): a stronger slow takes hold at once
     else if (!slowed && e.glyphBaseSpeed !== undefined) { e.speedMultiplier = e.glyphBaseSpeed; delete e.glyphBaseSpeed; delete e.glyphSlow; }
     const b = e.glyphBurn;
     if (!b) continue;

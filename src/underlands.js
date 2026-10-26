@@ -3,11 +3,11 @@
 // technology: chasm canyons, lava bogs, underground rivers, frozen grottoes with falling snow, bone crypts and fungal
 // hollows. It returns the same map contract as generator 4 (entry/exit, chest, trap, guardian spawn), so encounters,
 // discovery, completion and the monster pack work unchanged. Histories pinned to generators 2-4 never see it.
-import { rng, hashSeed } from "./random.js?v=r455-04c11a0d3b73";
-import { annotateDungeon, DUNGEON_SIZE_PROFILES } from "./dungeon-framework.js?v=r455-04c11a0d3b73";
-import { DUNGEON_LAYOUT_VERSION } from "./dungeon-variation.js?v=r455-04c11a0d3b73";
-import { carvePattern, stitchPattern, PATTERN_CATALOG, ORGANIC_CATALOG } from "./pattern-dungeons.js?v=r455-04c11a0d3b73";
-import { LANDSCAPE_VERSION, ensureReturnable, trappedTiles, addRamps, valueNoise } from "./landscape.js?v=r455-04c11a0d3b73";
+import { rng, hashSeed } from "./random.js?v=r467-8f36ab8aa5d6";
+import { annotateDungeon, DUNGEON_SIZE_PROFILES } from "./dungeon-framework.js?v=r467-8f36ab8aa5d6";
+import { DUNGEON_LAYOUT_VERSION } from "./dungeon-variation.js?v=r467-8f36ab8aa5d6";
+import { carvePattern, stitchPattern, PATTERN_CATALOG, ORGANIC_CATALOG } from "./pattern-dungeons.js?v=r467-8f36ab8aa5d6";
+import { LANDSCAPE_VERSION, ensureReturnable, trappedTiles, addRamps, valueNoise } from "./landscape.js?v=r467-8f36ab8aa5d6";
 
 export const DUNGEON_GENERATOR_V5 = 5;
 export const LAYOUTS = ["spine", "hub", "ring", "cavern", "crypt", "descent"];
