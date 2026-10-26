@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 447: Refuge meals — 2026-10-26
+
+Tim: "food buffs... 15 minutes... you should have to go back to the town to get another buff, so it shouldn't be like you can carry food with you... similar to Monster Hunter... combinations of ingredients to make a food that gives you a desired buff... extra damage, life, stamina, movement speed, attack speed... It shouldn't be crazy... something that attracts... world bosses... make it easier for world bosses to find you."
+
+**CODE:** `src/meals.ts` (new; in the build and both sw.js lists) holds the balance in `MEAL{seconds:900,hearty:1.5}` and `INGREDIENTS` (price, course, bonus fields), and pure rules: `mealName`, `mealBonus`, `mealPercent`, `eatMeal` (pays, replaces), `tickMeal`, `ensureMeal` and `mealLure`. `save.meal = {a,b,remaining}` is additive, normalised in `migrateSave` (junk or spent meals dropped), and ticks with play time in `Game.update`. game.ts folds `activeMealBonus` into the gear bonus (`armorGlyphBonus`: attackDamage, spellDamage, hp, staminaRegen, move, attackSpeed, spellCooldown), so meals act through the same paths as armor glyphs. `refreshDerivedStats` re-syncs maximum health and stamina when a meal starts or ends. Cooks are objects with `cook: true`: Hollis (refuge-lands.ts) and `town-cook-rx-ry` raised by `raiseTownAmenities`. Act at a cook sets `kitchenRequested` (his talk lines still advance); main.ts `openKitchen` picks two ingredients and calls `Game.eatAt(cookId,a,b)`, which refuses unless that cook stands within 3 tiles. The HUD shows `MEAL m:ss`. Bloodmoss: `encounterReady` needs `ceil(newSections × mealLure.gap)` new sections and `encounterChance` (overworld beasts and the Questing Beast) multiplies by `mealLure.chance`, as does the dungeon chance.
+
+**BOUNDARY:** only one meal at a time; no carried food. Cooldowns after a beast is slain or escapes, Aperture unlocks and minimum depths are unchanged by Bloodmoss. No generator change; save change additive at schema 14. Tests: `tests/meals-447.test.ts`.
+
 ## Release 445: an instant jump — 2026-10-26
 
 Tim: "There's actually a significant delay between when you press the jump button and when the character actually jumps... the character needs to jump when you actually press the button, not like a second later."

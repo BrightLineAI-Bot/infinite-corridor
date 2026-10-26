@@ -1,3 +1,4 @@
+import { mealLure } from "./meals.ts";
 import { ASTRAL_PROFILE } from "./astral-worm.ts";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
@@ -178,7 +179,9 @@ export function noteSectionVisit(save, key) {
   g.recent.push(key); if (g.recent.length > ENCOUNTER.newSections) g.recent.shift();
   g.fresh = Math.min(ENCOUNTER.newSections, g.fresh + 1); return g.fresh;
 }
-export const encounterReady = (save) => ensureBeastGap(save).fresh >= ENCOUNTER.newSections;
+// Release 447: a Bloodmoss meal (meals.ts) shortens the buffer and raises every section chance while it lasts.
+export const encounterReady = (save) => ensureBeastGap(save).fresh >= Math.ceil(ENCOUNTER.newSections * mealLure(save).gap);
+export const encounterChance = (save) => ENCOUNTER.chanceScale * mealLure(save).chance;
 export function encounterMet(save) { ensureBeastGap(save).fresh = 0; }
 export const RETREAT = { search: 8, fallback: 6, speed: 2.1, inset: 1.5, fade: 1.4 };
 // Pursuit (release 259; Tim, 2026-10-21: "they should pursue you out of the tile that you meet them... The blob can just
@@ -375,7 +378,7 @@ export function worldBeastFor(save, map, rx, ry) {
     if (q.active) continue;
     if (q.cooldown > 0) { q.cooldown--; continue; }
     if (here || held || Math.abs(rx) + Math.abs(ry) < B.minDepth || !beastUnlocked(save, id) || !encounterReady(save)) continue; // release 261: the buffer between meetings (273: and the Aperture)
-    if ((hashSeed(`${save.seed}:world-beast:${id}:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= B.chance * ENCOUNTER.chanceScale) continue;
+    if ((hashSeed(`${save.seed}:world-beast:${id}:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= B.chance * encounterChance(save)) continue;
     q.active = { rx, ry, tries: 0 }; here = id; encounterMet(save); claimed = true;
   }
   if (!here) return null;
@@ -450,7 +453,7 @@ export function worldBeastForDungeon(save, map, dungeonId) {
   if (!here && depth >= 0) for (const k of ids) {
     const q = save.worldBeasts[k], B = WORLD_BEASTS[k];
     if (q.active || q.cooldown > 0 || depth < B.minDepth || !beastUnlocked(save, k) || (Number(save.level) || 1) < (B.dungeonMinLevel || 1) || (k === "psychicCrystal" && !water.length) || !encounterReady(save)) continue; // release 261: the buffer applies in dungeons too
-    if ((hashSeed(`${save.seed}:world-beast-dungeon:${k}:v1:${q.cycle}:${dungeonId}`) % 1000) / 1000 >= WORLD_BEASTS[k].dungeonChance) continue;
+    if ((hashSeed(`${save.seed}:world-beast-dungeon:${k}:v1:${q.cycle}:${dungeonId}`) % 1000) / 1000 >= WORLD_BEASTS[k].dungeonChance * mealLure(save).chance) continue;
     q.active = { dungeon: dungeonId, tries: 0 }; here = k; encounterMet(save); break;
   }
   if (!here) return null;

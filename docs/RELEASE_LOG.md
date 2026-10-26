@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**447**
+**449**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 445 | Claude | `claude/dreamy-rubin-yn6q2p` | The jump leaves the ground the moment you press it, at every Quickening rank | Building. |
+| 447 | Claude | `claude/dreamy-rubin-yn6q2p` | Refuge meals: two-ingredient dishes from Hollis and the Listener-town cooks, 15-minute buffs eaten in town | Building. |
+| 445 | Claude | PR #205 | The jump leaves the ground the moment you press it, at every Quickening rank | Merged. Not published. |
 | 443 | Claude | PR #204 | Atlas: Wayglasses listed by section; tapping a Wayglass section chooses it for travel; the Far Gate journal points the compass at the Array Mouth | Merged. Not published. |
 | 441 | Claude | PR #203 | Listener towns get a Viewport and a Town Keeper (forge, Aperture, retraining); Act opens the town smith's forge; services clear of the Wayglass | Merged. Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |

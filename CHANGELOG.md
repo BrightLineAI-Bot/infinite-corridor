@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 447 — Refuge meals.
+  - **Hollis cooks:** press Act at Hollis Dray in Ember Refuge, or at the new cook in every Listener town, to open the kitchen. Choose two things from the pantry; he makes a meal and you eat it there. Food is never carried, so for another meal you go back to town.
+  - **Fifteen minutes:** a meal lasts 15 minutes of play, shows on the HUD as MEAL with its time left, and a new meal replaces the last.
+  - **The pantry:** Ember pepper (+8% damage), Ironroot (+12% max health), Honeycomb (+35% stamina recovery), Windleaf (+8% speed), Quickgrain (+8% attack speed), Lumen cap (+12% spell recovery), 10 marks each, and Bloodmoss (14 marks), which helps world bosses find you: half the usual sections between meetings and twice the chance. Two different ingredients give both effects; the same one twice gives one effect at one and a half times.
 - Release 445 — an instant jump.
   - **Jump:** your character leaves the ground the moment you press Jump. With Quickening ranks the hero used to stand still for up to about half a second before rising; the extra time Quickening gives is now spent hanging at the top of the leap.
 - Release 443 — easier travel.

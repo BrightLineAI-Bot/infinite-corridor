@@ -82,7 +82,7 @@ export function plantRefugeLands(map, rx, ry, where) {
     map.refugeQuarry = true;
   }
   if (rx === 0 && ry === 0 && !(map.objects || []).some((o) => o.id === "refuge-farmer")) {
-    map.objects.push({ id: "refuge-farmer", kind: "villager", name: "Hollis Dray", role: "Refuge Farmer", line: "", x: 12, y: 18, state: "calm", actions: ["speak"], settlement: "ember-refuge", refugeFarmer: true, talkKey: "farmer:talks" });
+    map.objects.push({ id: "refuge-farmer", kind: "villager", name: "Hollis Dray", role: "Refuge Farmer", line: "", x: 12, y: 18, state: "calm", actions: ["speak"], settlement: "ember-refuge", refugeFarmer: true, cook: true, talkKey: "farmer:talks" }); // release 447: he cooks too (meals.ts)
   }
 }
 // The farmer's lines (Tim: "you're turning the corridor into fuel... cryptic, enigmatic things like that"), and the two
