@@ -2694,6 +2694,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 443: easier travel — 2026-10-26
+
+Tim, 2026-10-26: "the Wayglass beacons... should just be arranged numerically, so I can just scroll down... when I'm in the Atlas and I select a section that has a Wayglass in it, it should just automatically populate the... travel to Wayglass"; "in the Far Gate section of the journal, whenever there's a new... location for the Listener... a button... make this your active compass... so I can just start navigating to it."
+
+**CODE (main.ts):**
+- `refreshWayglassDestinations` sorts by `rx`, then `ry`, then name. Options read `rx, ry · Name`.
+- `atlasWayglassNear(rx, ry)` gives the tapped section's Wayglass, else the nearest within `ATLAS_WAYGLASS_REACH` (1) sections. The Atlas tap handler sets `#mapWayglassSelect` to it and calls `updateMapTravelButton()`, so Travel names it at once.
+- `renderFarGate`, while the Listener holds the Mouth, adds "Point compass to the Array Mouth": it sets `compassPin` (as Active quests do) and `rememberGuidance()`.
+- Tests: `tests/atlas-travel-443.test.ts`. A browser smoke load of the built game shows no errors.
+
+**BOUNDARY:** Travel rules (Wayglass activation, sigils in dungeons) are unchanged. No save change beyond the existing `save.guidance.pin`.
+
 ## Release 441: Listener towns with Ember Refuge's services — 2026-10-26
 
 Tim, 2026-10-26 (at Mosscross): "there's no viewpoint, and I can't talk to any of the people... the smith doesn't do anything. He should also be moved a little bit farther... away from the Wayglass... there should be... all the amenities of the Ember Refuge at the new towns that spring up around the Listener's... Mouth."
