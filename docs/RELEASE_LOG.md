@@ -13,24 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**469**
+**471**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 467 | Claude | `claude/dreamy-rubin-yn6q2p` | Fixes for the Codex audit of release 455 (F001–F006, I001–I003) | Building. |
-| 465 | Claude | PR #216 | Watcher's shrines marked on the Atlas and listed in Go to… | Merged. Not published. |
-| 463 | Claude | PR #215 | Dungeon foes: +20% health, +20% damage, about 20% more of them | Merged. Not published. |
-| 461 | Claude | PR #213 | Damage numbers (Options toggle) and eleven more marginalia (twenty in all) | Merged. Not published. |
-| 459 | Claude | PR #212 | Marginalia: Margin Wardens, one-crossing rules, the Scrapbook, reinforcements (Infinite IV+) | Merged. Not published. |
-| 457 | Claude | PR #211 | Upgrade caps +3 from Infinite IV with the second Gate passed (a masterwork relic reaches +10) | Merged. Not published. |
+| 469 | Claude | `claude/dreamy-rubin-yn6q2p` | Select-and-salvage in Gear, swings to the foe in reach (with a mark), glows without shadowBlur | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 467 | `r467-8f36ab8aa5d6` | 2026-10-26 | With 457–465: +10 upgrades (PR #211), Marginalia (#212), damage numbers and twenty marginalia (#213), tougher dungeons (#215), Watcher's shrines on the Atlas (#216), the Codex audit fixes (#217). The pre-publish Fable review found no blockers. |
 | 455 | `r455-04c11a0d3b73` | 2026-10-26 | With 441–453: Listener-town Viewports and Keepers (PR #203), Atlas Wayglass order and Far Gate compass (#204), the instant jump (#205), Refuge meals (#206), the usable Crossing Sigil (#207), the Mislaid Threshold door (#208), labelled ways out (#209), margins (#210). The pre-publish Fable review found no blockers. |
 | 439 | `r439-a6fb9615c252` | 2026-10-26 | No more landing in the dark: the last fixed dungeon landings settle onto the floor (PR #202). The pre-publish Fable review found no blockers. |
 | 437 | `r437-415a6323864d` | 2026-10-26 | With 427–435: every boss hit in pink (PR #196), wounds that really stay and no Void Walker in dungeons (#197), the Seven Bells (#198), shovels everywhere underground (#199), mixed Far Sleep dungeons (#200), the Crystal out of the walls (#201). The pre-publish Fable review found no blockers. |

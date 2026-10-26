@@ -8,9 +8,9 @@ import { selectMeleeAim, selectRangedAim, AUTO_AIM, TARGET_LOCK, autoAimBody, au
 const map = { tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: 'ash', blocked: false })) };
 const player = { x: 10, y: 10, facing: 'right' };
 
-test('longer reach: swings turn to foes 5 tiles past reach, shots to 2.2 times their range; taps pick wider', () => {
-  assert.equal(AUTO_AIM.meleeExtra, 5); assert.equal(AUTO_AIM.rangedScale, 2.2); assert.equal(TARGET_LOCK.pick, 1.35);
-  const foe = [{ id: 'f', x: 10, y: 16, dead: false }];
+test('longer reach: swings turn to foes 3 tiles past reach (5 until release 469: "the targeting seems a little bit long"), shots to 2.2 times their range; taps pick wider', () => {
+  assert.equal(AUTO_AIM.meleeExtra, 3); assert.equal(AUTO_AIM.rangedScale, 2.2); assert.equal(TARGET_LOCK.pick, 1.35);
+  const foe = [{ id: 'f', x: 10, y: 14, dead: false }];
   assert.ok(selectMeleeAim(player, foe, map, 32, 1.4 + AUTO_AIM.meleeExtra)?.y > .9);
   assert.ok(selectRangedAim(player, [{ id: 'g', x: 10, y: 24, dead: false }], map, 32, 7 * AUTO_AIM.rangedScale)?.y > .9);
 });
