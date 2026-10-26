@@ -7,9 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r437-415a6323864d";
-import { hashSeed } from "./random.js?v=r437-415a6323864d";
-import { updateAstralActor } from "./astral-worm.js?v=r437-415a6323864d";
+import { stageOneBeastReference } from "./stages.js?v=r439-a6fb9615c252";
+import { hashSeed } from "./random.js?v=r439-a6fb9615c252";
+import { updateAstralActor } from "./astral-worm.js?v=r439-a6fb9615c252";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
