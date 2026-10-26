@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**467**
+**469**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 465 | Claude | `claude/dreamy-rubin-yn6q2p` | Watcher's shrines marked on the Atlas and listed in Go to… | Building. |
+| 467 | Claude | `claude/dreamy-rubin-yn6q2p` | Fixes for the Codex audit of release 455 (F001–F006, I001–I003) | Building. |
+| 465 | Claude | PR #216 | Watcher's shrines marked on the Atlas and listed in Go to… | Merged. Not published. |
 | 463 | Claude | PR #215 | Dungeon foes: +20% health, +20% damage, about 20% more of them | Merged. Not published. |
 | 461 | Claude | PR #213 | Damage numbers (Options toggle) and eleven more marginalia (twenty in all) | Merged. Not published. |
 | 459 | Claude | PR #212 | Marginalia: Margin Wardens, one-crossing rules, the Scrapbook, reinforcements (Infinite IV+) | Merged. Not published. |

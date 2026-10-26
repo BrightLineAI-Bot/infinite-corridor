@@ -44,6 +44,7 @@ export const MARGINALIA = {
   sigilPage: { name: "Sigil Page", text: "A fallen warden leaves a Crossing Sigil.", rule: "wardenSigil" },
 };
 export const MARGINALIA_IDS = Object.keys(MARGINALIA);
+const isMarginalia = (id) => typeof id === "string" && Object.hasOwn(MARGINALIA, id); // release 467 (Codex audit F003)
 export const EMBER_WAKE = { radius: 1.8, base: 14, perLevel: 1.2 };
 export const RED_MARGIN = { share: .04 };
 export const SECOND_WIND = { share: 1 / 3, guardMs: 1500 };
@@ -53,7 +54,7 @@ export const INK_SHIELD = { seconds: 10 };
 export const GILDED = { marks: 3 };
 
 export function ensureMarginalia(save) {
-  const found = (Array.isArray(save?.marginalia?.found) ? save.marginalia.found : []).filter((id, i, a) => MARGINALIA[id] && a.indexOf(id) === i);
+  const found = (Array.isArray(save?.marginalia?.found) ? save.marginalia.found : []).filter((id, i, a) => isMarginalia(id) && a.indexOf(id) === i);
   if (!save.marginalia && !found.length) return { found };
   save.marginalia = { ...(save.marginalia || {}), found }; return save.marginalia;
 }
@@ -69,7 +70,7 @@ export function runHas(save, areaId, id) { return !!marginRun(save, areaId)?.per
 // The summed stat bonus of the run's marginalia ({} with none).
 export function marginBonus(save, areaId) {
   const out = {}, r = marginRun(save, areaId); if (!r) return out;
-  for (const id of r.perks) for (const [k, v] of Object.entries(MARGINALIA[id]?.bonus || {})) out[k] = (out[k] || 0) + v;
+  for (const id of r.perks) if (isMarginalia(id)) for (const [k, v] of Object.entries(MARGINALIA[id].bonus || {})) out[k] = (out[k] || 0) + v;
   return out;
 }
 
@@ -100,7 +101,7 @@ export function wardenOffer(save, dungeonId, wardenId) {
 }
 // Choosing from an offer: into the Scrapbook, and working for the rest of this run.
 export function chooseMarginalia(save, areaId, id) {
-  const run = marginRun(save, areaId); if (!run?.offer?.includes(id) || !MARGINALIA[id]) return { ok: false, message: "That marginalia is not on offer." };
+  const run = marginRun(save, areaId); if (!run?.offer?.includes(id) || !isMarginalia(id)) return { ok: false, message: "That marginalia is not on offer." };
   const book = (save.marginalia = ensureMarginalia(save)), fresh = !book.found.includes(id); if (fresh) book.found.push(id);
   if (!run.perks.includes(id)) run.perks.push(id); run.offer = null;
   return { ok: true, fresh, message: `${MARGINALIA[id].name}: ${MARGINALIA[id].text}${fresh ? " It goes into your Scrapbook." : ""} It holds until you leave this crossing.` };

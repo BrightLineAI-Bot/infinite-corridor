@@ -26,7 +26,25 @@ export const WAYSTATION_NPCS=[
  {id:'resident-esh',name:'Esh Nine',role:'Signal Cartographer',x:18,y:17,settlement:'coilmarket',actions:['speak','attack','standDown']}
 ];
 export function freshConsequences(){const all=[...REFUGE_NPCS,...WAYSTATION_NPCS];return{schema:1,npcs:Object.fromEntries(all.map(n=>[n.id,{hp:36,status:'alive',disposition:'neutral'}])),settlements:{'ember-refuge':{status:'standing',reputation:0},glasshaven:{status:'standing',reputation:0},coilmarket:{status:'standing',reputation:0}},choices:{},threads:{'ember-refuge':{status:'open',ending:null},'missing-crossing':{status:'open',ending:null}},dungeons:{}}}
+// Release 467 (Codex audit F004, F005): before migrating, damaged containers become empty ones of the right shape and save
+// numbers become finite and in range, so a malformed save is normalised instead of throwing or carrying Infinity/NaN.
+const SAVE_NUMBERS={currency:[0,1e9],level:[1,999],xp:[0,1e12],nextXp:[1,1e12],statPoints:[0,1e6],hp:[0,1e7],maxHp:[1,1e7],stamina:[0,1e7],maxStamina:[1,1e7],playSeconds:[0,1e10],weaponLevel:[0,1e4],dropCounter:[0,1e9]};
+const finiteIn=(v,[lo,hi],fallback)=>{const n=Number(v);return Number.isFinite(n)?Math.max(lo,Math.min(hi,n)):fallback};
+const plainObject=(v)=>!!v&&typeof v==='object'&&!Array.isArray(v);
+const objectsOnly=(o)=>plainObject(o)?Object.fromEntries(Object.entries(o).filter(([,v])=>plainObject(v))):{};
+const countsOnly=(o)=>plainObject(o)?Object.fromEntries(Object.entries(o).map(([k,v])=>[k,finiteIn(v,[0,1e9],0)])):o;
+export function sanitizeSaveShape(raw){
+ if(!plainObject(raw))return raw;const r={...raw};
+ for(const[k,range]of Object.entries(SAVE_NUMBERS))if(k in r)r[k]=finiteIn(r[k],range,range[0]);
+ if('inventory' in r&&!Array.isArray(r.inventory))r.inventory=[];
+ if(plainObject(r.stats))r.stats=Object.fromEntries(Object.entries(r.stats).map(([k,v])=>[k,finiteIn(v,[1,999],1)]));else if('stats' in r)delete r.stats;
+ if('materials' in r)r.materials=countsOnly(r.materials);if('consumables' in r)r.consumables=countsOnly(r.consumables);
+ if('narrative' in r){const n=plainObject(r.narrative)?{...r.narrative}:{};if('journal' in n&&!Array.isArray(n.journal))n.journal=[];if('facts' in n&&!plainObject(n.facts))n.facts={};r.narrative=n}
+ if('session' in r){const se=plainObject(r.session)?{...r.session}:{};if('areas' in se)se.areas=objectsOnly(se.areas);r.session=se}
+ if(plainObject(r.consequences)&&'dungeons' in r.consequences)r.consequences={...r.consequences,dungeons:objectsOnly(r.consequences.dungeons)};
+ return r}
 export function migrateSave(raw){
+ raw=sanitizeSaveShape(raw);
  const input=raw?.version>=10&&raw?.version<=14?{...raw,version:9}:raw,s=migrateLegacySave(input),base=freshConsequences(),old=s.consequences||{};
  s.codex={...codex(),...s.codex,creatures:{...s.codex?.creatures},places:{...s.codex?.places},features:{...s.codex?.features},variants:{...s.codex?.variants},peoplePlaces:{...s.codex?.peoplePlaces},...(s.codex?.foundry?{foundry:{...s.codex.foundry}}:{})};
  s.consequences={...base,...old,npcs:{...base.npcs,...old.npcs},settlements:{...base.settlements,...old.settlements},choices:{...old.choices},threads:{...base.threads,...old.threads},dungeons:{...old.dungeons}};

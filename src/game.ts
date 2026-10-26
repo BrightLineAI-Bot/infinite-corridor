@@ -2069,11 +2069,14 @@ export class Game {
     if(area==='dungeon'){const spots=this.map.tiles.filter(t=>!t.blocked&&t.x>3&&t.y>3),key=`${loadingId}:${this.map.levelStableId||this.map.levelId||''}`;if(spots.length){const wild=admittedFoundrySpawn(this.save,key,'dungeon',spots[hashSeed(`${key}:admitted-at`)%spots.length]);if(wild)this.map.enemySpawns.push(wild)}}
     if(area==='dungeon'&&this.save.session.viewportDungeonHuntId&&!String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:')){const hunt=this.save.viewport.contracts[this.save.session.viewportDungeonHuntId];if(hunt&&!['completed','archived'].includes(hunt.status)){const open=this.map.tiles.filter(t=>!t.blocked&&t.x>5&&t.y>5),at=open[hashSeed(`${hunt.id}:${this.areaId()}:boss`)%open.length]||this.map.objective||this.map.entry;this.map.enemySpawns.push({id:`viewport-dungeon-target:${hunt.id}`,kind:hunt.targetKind||'latticeHunter',x:at.x,y:at.y,boss:true,traits:['vital','keen'],viewportHuntId:hunt.id,worldBoss:false})}}
     if (area === "dungeon" && this.map.recipe === "cistern") {
-      for (const [x, y] of [[11, 4], [12, 4], [11, 5], [12, 5]]) {
-        const i = y * mapWidth(this.map, area) + x, t = this.map.tiles[i];
-        if (t && !t.blocked)
-          this.map.tiles[i] = { ...t, kind: "dungeonWater", blocked: true, waterDepth: "shallow" };
-      }
+      // Release 467 (Codex audit F001): the cistern's pool is not laid where it would cut a guardian or an exit off from the
+      // entry (it could seal a Mislaid Threshold's guardian away). Everywhere else it is laid as before.
+      const w = mapWidth(this.map, area), cells = [[11, 4], [12, 4], [11, 5], [12, 5]].map(([x, y]) => y * w + x).filter((i) => this.map.tiles[i] && !this.map.tiles[i].blocked);
+      const reach = (skip) => { const e = this.map.entry || { x: 4, y: 5 }, start = Math.round(e.y) * w + Math.round(e.x), seen = new Set([start]), q = [start], h = Math.floor(this.map.tiles.length / w); while (q.length) { const i = q.pop(), x = i % w, y = (i / w) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, j = ny * w + nx; if (nx < 0 || ny < 0 || nx >= w || ny >= h || seen.has(j) || skip.has(j) || this.map.tiles[j]?.blocked) continue; seen.add(j); q.push(j); } } return seen; };
+      const near = (seen, p) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (seen.has((Math.round(p.y) + dy) * w + Math.round(p.x) + dx)) return true; return false; };
+      const vital = [...(this.map.enemySpawns || []).filter((q) => q.boss || GUARDIAN_ROLES.includes(q.dungeonRole)), ...(this.map.objects || []).filter((o) => o.kind === "exit")];
+      const before = cells.length ? reach(new Set()) : null, after = cells.length ? reach(new Set(cells)) : null;
+      if (cells.length && !vital.some((p) => near(before, p) && !near(after, p))) for (const i of cells) this.map.tiles[i] = { ...this.map.tiles[i], kind: "dungeonWater", blocked: true, waterDepth: "shallow" };
     }
     const eliteState=ensureEliteState(this.save),eliteDefeated=eliteState.defeated;
     if(area==='overworld'&&this.rx===5&&this.ry===-2&&!eliteDefeated.vesperwing){const direct=this.save.viewport?.contracts?.['viewport-direct-vesperwing'];this.map.enemySpawns.push({kind:'vesperwing',x:23,y:16,boss:true,elite:true,viewportHuntId:direct&&['accepted','target-located'].includes(direct.status)?direct.id:null});}
@@ -2131,6 +2134,7 @@ export class Game {
         .filter((o) => ["diveSite","shipwright","checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho","watcherTomb"].includes(o.kind)) // release 465: the Watcher's shrines
         .map((o) => ({ kind: o.kind, name: o.kind === "watcherTomb" ? (o.where === "shrine" ? "Watcher's Shrine" : "Watcher's Tomb") : o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
+    if (area === "overworld") this.openWayglassApproach(); // release 467 (Codex audit F006)
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save)});
     if(area==="overworld"){const war=addSkirmish(this.map,this.save.seed,this.rx,this.ry,this.save);if(war)this.message=war.text;else if(this.map.settlement?.procedural)this.message=`${this.map.settlement.name} — a ${this.map.settlement.label.toLowerCase()} holds this ground.`}
     if(area==="overworld"&&arrayMouthAt(this.save,this.rx,this.ry)&&!this.map.objects.some(o=>o.kind==="arrayMouth")){const spots=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>10&&t.x<22&&t.y>10&&t.y<22).sort((a,b)=>Math.hypot(a.x-16,a.y-16)-Math.hypot(b.x-16,b.y-16));const at=spots[0]||{x:16,y:16};const quiet=ensureFarArray(this.save).quiet;this.map.objects.push({id:"array-mouth",kind:"arrayMouth",name:quiet?"The Quiet Mouth":"The Array Mouth",lore:quiet?"Nothing listens below it now, but the line still opens onto somewhere new each time.":"A ruined relay terminal, half sunk into ground no map has charted. Its line hums under your feet.",x:at.x,y:at.y,state:quiet?"quiet":"ready",actions:["enter"],landmark:true});this.message=quiet?`The Array Mouth is quiet: its runs go on, but the Listener is gone. ${quietMouthNote(this.save)}`:"The Array Mouth: the far end of the relay line."}
@@ -4016,6 +4020,23 @@ export class Game {
     }
     return out;
   }
+  // Release 467 (Codex audit F006: a Lattice Wayglass stood in a walled pocket no walk could reach). A Wayglass that cannot
+  // be walked to from the section's largest open ground gets a straight path cleared to the nearest of it, at load.
+  openWayglassApproach() {
+    const map = this.map, w = mapWidth(map, "overworld"), h = Math.floor(map.tiles.length / w), glasses = (map.objects || []).filter((o) => o.kind === "checkpoint"); if (!glasses.length) return 0;
+    const ok = (x, y) => x >= 0 && y >= 0 && x < w && y < h && footprintOpen(map, w, x, y, true) && !footprintHazard(map, w, x, y), label = new Int32Array(w * h).fill(-1), sizes = [];
+    for (let i = 0; i < w * h; i++) { if (label[i] >= 0 || !ok(i % w, (i / w) | 0)) continue; const c = sizes.length, q = [i]; label[i] = c; let n = 0; while (q.length) { const j = q.pop(); n++; const x = j % w, y = (j / w) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = (y + dy) * w + x + dx; if (x + dx < 0 || y + dy < 0 || x + dx >= w || y + dy >= h || label[k] >= 0 || !ok(x + dx, y + dy)) continue; label[k] = c; q.push(k); } } sizes.push(n); }
+    if (!sizes.length) return 0; const main = sizes.indexOf(Math.max(...sizes)); let opened = 0;
+    for (const o of glasses) {
+      const gx = Math.round(o.x), gy = Math.round(o.y); let near = false; for (let dy = -1; dy <= 1 && !near; dy++) for (let dx = -1; dx <= 1; dx++) { const x = gx + dx, y = gy + dy; if (x >= 0 && y >= 0 && x < w && y < h && label[y * w + x] === main) { near = true; break; } }
+      if (near) continue;
+      let best = -1, bd = Infinity; for (let i = 0; i < w * h; i++) if (label[i] === main) { const d = Math.hypot(i % w - gx, ((i / w) | 0) - gy); if (d < bd) { bd = d; best = i; } }
+      if (best < 0) continue; const tx = best % w, ty = (best / w) | 0, steps = Math.ceil(Math.max(Math.abs(tx - gx), Math.abs(ty - gy))), floor = map.tiles[gy * w + gx]?.kind || "ash";
+      for (let k = 0; k <= steps; k++) for (const [ox, oy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const x = Math.round(gx + (tx - gx) * k / steps) + ox, y = Math.round(gy + (ty - gy) * k / steps) + oy, t = map.tiles[y * w + x]; if (t && (t.blocked || t.environment) && x < w && y < h) map.tiles[y * w + x] = { ...t, kind: floor, blocked: false, environment: undefined, structure: undefined, wayglassPath: true }; }
+      opened++;
+    }
+    return opened;
+  }
   // Release 461: Ink Shield. Health lost this frame (from `hpStart`) comes back, once every INK_SHIELD.seconds. The clock is
   // the run's own (not saved), so a reload finds the shield ready.
   applyInkShield(hpStart, now) {
@@ -4408,7 +4429,7 @@ export class Game {
     const o = cloneOffset(this.movingNow ? this.player.lastMoveVector : null, this.save.lastAim, SHADOW_CLONE.near); // release 417: right next to you
     this.shadowClone = { ox: o.x, oy: o.y, until: now + spell.lifetime * 1000 }; this.cloneAim = false;
     if (this.castAction) this.shadowClone.charging = { action: this.castAction, start: now, dir: { x: o.x / SHADOW_CLONE.near, y: o.y / SHADOW_CLONE.near } };
-    cds[key] = spell.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
+    cds[key] = spell.cooldown * this.glyphLoadout("spell", spell.id).mods.cooldown /* release 467 (Codex audit I002): Heavy and Swift count */ * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
     echoEvent(this, "spell", now);
     this.message = this.shadowClone.charging ? "Hold to send your shadow farther; let go to set it." : "Your shadow stands beside you. Cast again to step into it.";
     return true;
@@ -4809,7 +4830,7 @@ export class Game {
       (e) => {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
-      (shot)=>this.effects.push({id:"blast-"+shot.id,kind:shot.hostile?"enemy-blast":"rift-blast",x:shot.x,y:shot.y,life:.32,radius:shot.blastRadius||2,untilPulse:0,pulse:99,damage:shot.damage,hostile:!!shot.hostile,hits:{}}),
+      (shot)=>this.effects.push({id:"blast-"+shot.id,kind:shot.hostile?"enemy-blast":"rift-blast",x:shot.x,y:shot.y,life:.32,radius:shot.blastRadius||2,untilPulse:0,pulse:99,damage:shot.damage,hostile:!!shot.hostile,hits:{},...(!shot.hostile&&shot.glyphHost?{glyphHost:shot.glyphHost}:{})/* release 467 (Codex audit I001): the Bombard's blast keeps its tool glyphs, once per foe */}),
       p,
       (shot)=>{
         const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;
