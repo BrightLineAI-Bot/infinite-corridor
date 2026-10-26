@@ -13,26 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**457**
+**459**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 455 | Claude | `claude/dreamy-rubin-yn6q2p` | Margins in crossings (narrative bible step 6): writing in the stone, each Reading's margin fragments | Building. |
-| 453 | Claude | PR #209 | Dungeon map: exits, doors out, the annex way back and daises labelled | Merged. Not published. |
-| 451 | Claude | PR #208 | The Mislaid Threshold: a door where its guardian falls, open for good | Merged. Not published. |
-| 449 | Claude | PR #207 | The Crossing Sigil: a Use button in Supplies, and it carries you on to the chosen Wayglass | Merged. Not published. |
-| 447 | Claude | PR #206 | Refuge meals: two-ingredient dishes from Hollis and the Listener-town cooks, 15-minute buffs eaten in town | Merged. Not published. |
-| 445 | Claude | PR #205 | The jump leaves the ground the moment you press it, at every Quickening rank | Merged. Not published. |
-| 443 | Claude | PR #204 | Atlas: Wayglasses listed by section; tapping a Wayglass section chooses it for travel; the Far Gate journal points the compass at the Array Mouth | Merged. Not published. |
-| 441 | Claude | PR #203 | Listener towns get a Viewport and a Town Keeper (forge, Aperture, retraining); Act opens the town smith's forge; services clear of the Wayglass | Merged. Not published. |
+| 457 | Claude | `claude/dreamy-rubin-yn6q2p` | Upgrade caps +3 from Infinite IV with the second Gate passed (a masterwork relic reaches +10) | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 455 | `r455-04c11a0d3b73` | 2026-10-26 | With 441–453: Listener-town Viewports and Keepers (PR #203), Atlas Wayglass order and Far Gate compass (#204), the instant jump (#205), Refuge meals (#206), the usable Crossing Sigil (#207), the Mislaid Threshold door (#208), labelled ways out (#209), margins (#210). The pre-publish Fable review found no blockers. |
 | 439 | `r439-a6fb9615c252` | 2026-10-26 | No more landing in the dark: the last fixed dungeon landings settle onto the floor (PR #202). The pre-publish Fable review found no blockers. |
 | 437 | `r437-415a6323864d` | 2026-10-26 | With 427–435: every boss hit in pink (PR #196), wounds that really stay and no Void Walker in dungeons (#197), the Seven Bells (#198), shovels everywhere underground (#199), mixed Far Sleep dungeons (#200), the Crystal out of the walls (#201). The pre-publish Fable review found no blockers. |
 | 425 | `r425-187b382f915e` | 2026-10-24 | With 423: kept wounds, open dreams, open-world digging (PR #194), from Infinite II (#195). The pre-publish Fable reviews found no blockers. |
