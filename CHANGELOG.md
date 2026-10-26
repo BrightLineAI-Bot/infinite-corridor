@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 451 — a way out of the Mislaid Threshold.
+  - **A door:** in the dungeon a Mislaid Threshold folds you into, felling its guardian (or the crossing's boss) now raises a door where it fell, with a notice and a journal line. Either the door or the way you came in leads out, to stable ground far from where you started. Before, no door appeared and nothing said the way in had opened.
+  - **Already felled:** if you felled the guardian before this release, the door is standing when you next load the dungeon.
 - Release 449 — a Crossing Sigil you can use.
   - **Use button:** Crossing Sigils in Supplies now have a Use button. Inside a dungeon it opens the Atlas so you can choose where to go.
   - **Across the corridor:** with a Wayglass chosen, the sigil carries you out of the dungeon and on to that Wayglass (it used to stop at the dungeon entrance). The Atlas button says where it takes you; with none chosen, it is the entrance.

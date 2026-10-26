@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**451**
+**453**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 449 | Claude | `claude/dreamy-rubin-yn6q2p` | The Crossing Sigil: a Use button in Supplies, and it carries you on to the chosen Wayglass | Building. |
+| 451 | Claude | `claude/dreamy-rubin-yn6q2p` | The Mislaid Threshold: a door where its guardian falls, open for good | Building. |
+| 449 | Claude | PR #207 | The Crossing Sigil: a Use button in Supplies, and it carries you on to the chosen Wayglass | Merged. Not published. |
 | 447 | Claude | PR #206 | Refuge meals: two-ingredient dishes from Hollis and the Listener-town cooks, 15-minute buffs eaten in town | Merged. Not published. |
 | 445 | Claude | PR #205 | The jump leaves the ground the moment you press it, at every Quickening rank | Merged. Not published. |
 | 443 | Claude | PR #204 | Atlas: Wayglasses listed by section; tapping a Wayglass section chooses it for travel; the Far Gate journal points the compass at the Array Mouth | Merged. Not published. |
