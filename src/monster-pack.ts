@@ -2235,12 +2235,12 @@ export function updatePackMonster(e, w) {
     if (e.watched) return;
   }
   // Move according to the brain, then start the best ready attack.
-  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && !w.los(e, w.player) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : brainVector(e, s, w, def), v = e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * dt;
+  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && (e.inRock || !w.los(e, w.player)) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : brainVector(e, s, w, def), v = e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * dt;
   const moved = w.move(e, v.x / m * speed, v.y / m * speed, { phase: !!move.phases });
   if (!moved && !move.phases) w.detour?.(e, speed);
   e.facingX = (p.x - e.x) >= 0 ? 1 : -1;
   if (s.gap > 0) return;
-  if (hunting && !w.los(e, w.player)) return; // move toward the player first; never begin a grab/sky attack from an unseen room
+  if (hunting && (e.inRock || !w.los(e, w.player))) return; // move toward the player first; never begin a grab/sky attack from an unseen room (release 437: nor from inside rock; it comes out to you first)
   const ready = availableAttacks(e).filter((id) => attackReady(e, s, w, id, d));
   if (!ready.length) return;
   const preferred = ready.filter((id) => id !== s.last), pool = preferred.length ? preferred : ready, id = pool[hashSeed(`${e.id}:pick:${s.seq}`) % pool.length];

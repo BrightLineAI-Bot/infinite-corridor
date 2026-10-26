@@ -472,6 +472,12 @@ export function placeGatePursuer(e, player, map, width) {
   for (const [dx,dy] of offsets) { const at={x:player.x+dx,y:player.y+dy}; if (footprintOpen(map,width,at.x,at.y) && hasLineOfSight(at,player,map,width)) { e.x=at.x; e.y=at.y; return; } }
   e.x=player.x; e.y=player.y; relocateIfStranded(e,map,width);
 }
+// Release 437: the nearest spot (tile corner, as entities stand) whose footprint is open, searching outward; null if none.
+export function nearestOpenFootprint(map, width, at, limit = 12) {
+  const sx = Math.round(at.x), sy = Math.round(at.y), height = Math.floor(map.tiles.length / width);
+  for (let r = 0; r <= limit; r++) { let best = null; for (let y = sy - r; y <= sy + r; y++) for (let x = sx - r; x <= sx + r; x++) { if (Math.max(Math.abs(x - sx), Math.abs(y - sy)) !== r || x < 0 || y < 0 || x >= width || y >= height || !footprintOpen(map, width, x, y, true)) continue; const d = Math.hypot(x - at.x, y - at.y); if (!best || d < best.d) best = { x, y, d }; } if (best) return { x: best.x, y: best.y }; }
+  return null;
+}
 export function relocateIfStranded(entity, map, width) {
   if (!entity || footprintOpen(map, width, entity.x, entity.y)) return false;
   const height = Math.floor(map.tiles.length / width),
@@ -3670,7 +3676,7 @@ export class Game {
         if (game.astralRiderHeld(e)) return false;
         const marine = refreshMarineBeast(e, map, width, game.area);
         if (e.kind === "voidWalker") { const moved = moveWalkerGround(e, dx, dy, map, width); refreshMarineBeast(e, map, width, game.area); return moved; }
-        if (e.kind === "psychicCrystal" && isDungeonRoamer(e, game.area) && !opts.phase && e.aggro && hasLineOfSight(e, p, map, width)) { const moved = moveAxis(e, dx, dy, map, width, true, null, marine); refreshMarineBeast(e, map, width, game.area); return moved; } // release 401 (Tim: "he spends too much time in the squares where he can't be hurt... he can't [go into] the walls"): fighting a Wayfarer it can see, it hovers over pits and water but no longer drifts through walls; patrolling, or hunting one out of sight, it still phases between rooms
+        if (e.kind === "psychicCrystal" && isDungeonRoamer(e, game.area) && !opts.phase && e.aggro) { /* release 437 (Tim: "the psychic crystal keeps staying in the squares where I can't attack him"): fighting you it never settles in rock. Out in the open with you in sight it walks (release 401); inside rock it keeps moving through (it cannot attack from there: monster-pack holds its attacks while e.inRock), and out of sight it still phases to reach you */ const inRock = !footprintOpen(map, width, e.x, e.y, true, marine); if (!inRock && hasLineOfSight(e, p, map, width)) { const moved = moveAxis(e, dx, dy, map, width, true, null, marine); e.inRock = false; refreshMarineBeast(e, map, width, game.area); return moved; } const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)); if (game.builds?.length && tallBuildAt(map, width, nx, ny) && !tallBuildAt(map, width, e.x, e.y)) return false; const moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; e.inRock = !footprintOpen(map, width, e.x, e.y, true, marine); if (e.inRock && !moved) { const out = nearestOpenFootprint(map, width, e); if (out) { const d = Math.hypot(out.x - e.x, out.y - e.y) || 1, st = Math.min(d, .08); e.x += (out.x - e.x) / d * st; e.y += (out.y - e.y) / d * st; } } return moved || e.inRock; }
         if (isDungeonRoamer(e, game.area) || opts.phase && !["psychicCrystal", "lightningGiant", "mountainTurtle"].includes(e.kind)) { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)); if (game.builds?.length && tallBuildAt(map, width, nx, ny) && !tallBuildAt(map, width, e.x, e.y)) return false; /* release 287: it drifts through stone, not through the Wayfarer's builds */ const moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
         const moved = moveAxis(e, dx, dy, map, width, !!e.flying, null, marine); refreshMarineBeast(e, map, width, game.area); return moved;
       },

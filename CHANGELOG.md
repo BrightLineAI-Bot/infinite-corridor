@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 437 — the Psychic Crystal stays where you can hit it.
+  - **Out of the walls:** fighting you, the Crystal can no longer sit inside rock out of your reach: there it starts no attack and heads straight out to you. It may still pass through a wall to reach you from another room, but it does not stay in it. (It used to get stuck in the rock with you in sight, still attacking.)
 - Release 435 — mixed dungeons in the Far Sleep.
   - **A share of them:** about 30% of the crossings you first find in the Far Sleep are Sleeper's Halls (dream dungeons); the rest are the ordinary mix of themes and layouts. Before, every one was a Sleeper's Hall.
   - **Already found:** crossings you have already found keep what they are.

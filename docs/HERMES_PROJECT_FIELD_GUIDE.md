@@ -2694,6 +2694,22 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 437: the Psychic Crystal stays where you can hit it — 2026-10-25
+
+Tim, 2026-10-25: "the psychic crystal keeps staying in the squares where I can't attack him... He just stays there, attacks me, and then, you know, I'm dead."
+
+**CODE:**
+- **The gap:** release 401's rule in `packWorld.move` (no wall drifting) applied only while the Crystal had line of sight. Once it slipped behind a wall, the dungeon-roamer branch let it phase into the rock and stay there.
+- **Movement now:**
+  - An aggro Crystal in a dungeon that is in the open with you in sight walks (`moveAxis`), as in release 401.
+  - Inside rock (`e.inRock`, set by the move), it keeps moving through. If a move stalls there, it is nudged toward the nearest open footprint (new `nearestOpenFootprint`).
+  - Out of sight, it may still phase through a wall to reach you; `tests/dungeon-roaming.test.ts` needs that so it is never trapped in its room.
+  - `monster-pack.ts updatePackMonster`: while `e.inRock`, a dungeon-roaming Crystal heads straight for you and begins no attack.
+- **Verification:** in two simulated real-dungeon fights of 2400 frames, the old code had it fighting from inside rock for 1902 and 707 frames. Now it is 109 and 63, in passes of at most about 2 s, with no attack begun inside rock.
+- Tests: `tests/crystal-437.test.ts`.
+
+**BOUNDARY:** Unaware (patrolling), it still roams through stone, as Tim asked in release 259. Attacks, poise and dodges are unchanged.
+
 ## Release 435: mixed dungeons in the Far Sleep — 2026-10-25
 
 Tim, 2026-10-25: "a disproportionately large number of dungeons in the dreamland are just like dreamland dungeons... the first level seems to be just always a dreamlined dungeon, that's not how it should be... You should still be just like mixed dungeons."
