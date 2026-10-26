@@ -3393,7 +3393,9 @@ export class Game {
       }
     };
   }
-  useCrossingSigil() {
+  // Release 449 (Tim: "Crossing sigil is still not something I can use"): it carries you out of the dungeon and, when a
+  // Wayglass is chosen (`key`), on across the corridor to it, as its description always said; with none, to the entrance.
+  useCrossingSigil(key = null) {
     const c = this.save.consumables;
     if (!(c?.crossingSigil > 0)) {
       this.message = "No Crossing Sigil remains.";
@@ -3404,9 +3406,11 @@ export class Game {
       return false;
     }
     c.crossingSigil--;
-    return this.leaveDungeon(
+    const left = this.leaveDungeon(
       "The Crossing Sigil tears a narrow path back to the dungeon entrance.",
-    );
+    ), to = key && this.save.checkpoints?.[key];
+    if (left && to && this.travelToCheckpoint(key)) this.message = `The Crossing Sigil tears a path out of the dungeon and across the corridor to ${to.name || "the Wayglass"}. ${c.crossingSigil} left.`;
+    return left;
   }
 
   packHurt(source, amount, options = {}, now = performance.now()) {
