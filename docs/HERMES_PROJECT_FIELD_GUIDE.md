@@ -2694,6 +2694,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 461: damage numbers, and twenty marginalia — 2026-10-26
+
+Tim: "a button in the options where we can toggle on or off damage numbers... how much they do to us and how much we do to them... each dodge leaves behind a shadow clone for like 3 seconds... another one could be just cool down... come up with... more, so we have 20."
+
+**CODE:**
+- **Damage numbers.** persistence.ts `damageNumbers` (default on); main.ts adds the toggle in Options → Accessibility and sets `game.damageNumbers`. game.ts `DAMAGE_NUMBERS{life,rise,cap}` and `trackDamageNumbers(now)`, called in `update` after the frame's damage: a drop in a foe's `hp` (from `e._dnHp`) is a gold "dealt" number, a drop in the Wayfarer's (in the same area) a red "taken" one. Heals, arrivals and illusions make none. They are not saved, and at most 48 show at once. renderer.ts `drawDamageNumbers` draws them rising and fading, offset in a five-step fan.
+- **Marginalia** (marginalia.ts): eleven more, twenty in all.
+  - Stat rules: Lifeblood, Deep Lungs, Heavy Hand, Inkwell and Long Arm. `reach` joins the gear-bonus fields, and characterStats `attackReach` adds it.
+  - Event rules: Shadow Step (on dodge, a `shadowClone` 2 tiles behind for 3 s when none is active, through the release-365 clone that repeats attacks at half strength), Hourglass, Gilded Margin, Smith's Note and Sigil Page (all in `marginaliaOnKill`), and Ink Shield (`applyInkShield(hpStart, now)` in `update`: health lost in the frame comes back, once per 10 s, on a runtime clock).
+
+**BOUNDARY:** damage numbers are drawing only. The shadow from Shadow Step is the existing clone (casting Shadow Clone while it stands steps into it, as always). No save change beyond the setting. Tests: `tests/damage-numbers-marginalia-461.test.ts`.
+
 ## Release 459: Marginalia — 2026-10-26
 
 Tim: "each time you go into a dungeon... you can find different marginalia, and they'll change how you play in the dungeon... after Infinite 4... more of a roguelite... a Scrapbook... you can paste them in when you get into the dungeon... several guardians in the dungeon... killing one is the one that you need to exit... as you kill a guardian, you get to select different marginalia... they call in reinforcements."

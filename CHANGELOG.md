@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 461 — damage numbers, and twenty marginalia.
+  - **Damage numbers:** what you deal rises in gold over the foe; what you take rises in red over you. On by default; switch them off in Options → Accessibility.
+  - **Eleven more marginalia (twenty in all):** Shadow Step (every dodge leaves your shadow behind you for 3 seconds, repeating your attacks at half strength), Hourglass (every kill takes a second off every cooldown), Lifeblood (+25% maximum health), Deep Lungs (stamina recovers 60% faster), Heavy Hand (blows +40%, 15% slower), Inkwell (spells and magic shots +40%, blows −15%), Long Arm (+30% reach), Ink Shield (every 10 seconds the next hit does no harm), Gilded Margin (+3 marks a kill), Smith's Note (a fallen warden or guardian leaves a sphere) and Sigil Page (a fallen warden leaves a Crossing Sigil).
 - Release 459 — Marginalia.
   - **Margin Wardens:** from Infinite IV, every ordinary crossing holds one to three Margin Wardens: big, tough foes marked on the dungeon map like bosses. They are optional; the crossing's own guardian still opens the way out.
   - **Marginalia:** felling a warden offers three marginalia, rules that change how you fight for the rest of that crossing. The crossing then calls reinforcements, so you get to use the new rule. The nine: Glass Edge (+30% damage, +20% taken), Iron Spine (−20% damage taken, 10% slower), Fleet Hand (20% faster, dodges cost half), Quick Hand (20% faster attacks), Wide Focus (spells and skills recover 30% faster), Ember Wake (a dodge leaves a burning burst), Red Margin (each kill mends 4% health), Quick Ink (a fallen warden or guardian makes every spell ready) and Second Wind (once per crossing, a killing blow leaves you at a third of your health).

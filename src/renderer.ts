@@ -1790,6 +1790,7 @@ export function render(ctx, g, w, h, now) {
     }
   drawEchoPatches(ctx,g,s,now);
   drawGlyphStatus(ctx,g,s,now,(e)=>discoveredInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2));
+  if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
   for(const o of objectLists.structures)if(renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)){const drawStructure=o.kind==="shack"?shack:architecturalBuilding;
     // Object records outlive consumed building tiles. Clip roofs/facades to their surviving footprint
     // so they cannot visually restore destroyed walls or expose unexplored building geometry.
@@ -1902,6 +1903,11 @@ function fogTile(ctx, x, y, s) {
 
 // Glyph statuses and strikes (release 98): flames on burning foes, a teal ring on slowed ones, frost on frozen ones,
 // plus chain arcs and burst rings from glyphVisuals.
+// Release 461: damage numbers, rising and fading: gold for what you deal, red for what you take.
+function drawDamageNumbers(ctx,g,s,now){const list=g.damageFloaters;if(!list?.length)return;ctx.save();ctx.textAlign="center";ctx.lineJoin="round";
+  for(const f of list){const k=Math.min(1,Math.max(0,(now-f.born)/900));if(k>=1)continue;const taken=f.kind==="taken",size=Math.max(11,Math.round(s*(taken?.36:.32))),x=(f.x+f.jitter)*s,y=(f.y-k*.9)*s;
+    ctx.globalAlpha=k<.7?1:1-(k-.7)/.3;ctx.font=`bold ${size}px system-ui,sans-serif`;ctx.lineWidth=3;ctx.strokeStyle="rgba(0,0,0,.85)";ctx.strokeText(taken?`-${f.text}`:f.text,x,y);ctx.fillStyle=taken?"#ff6b6b":"#ffd970";ctx.fillText(taken?`-${f.text}`:f.text,x,y)}
+  ctx.restore()}
 function drawGlyphStatus(ctx,g,s,now,visible){
   const t=now/1000;
   for(const e of g.enemies){if(e.dead||!visible(e))continue;const cx=(e.x+.5)*s,cy=(e.y+.45)*s;

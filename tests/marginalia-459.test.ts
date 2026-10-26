@@ -18,8 +18,8 @@ function crossing({ tier = RULES.tier, seed = 'MARGINALIA459', at = [7, 2] } = {
 }
 const wardens = (g) => g.enemies.filter((e) => e.marginWarden);
 
-test('nine marginalia; Margin Wardens stand only from Infinite IV, in ordinary crossings, on floor the entry reaches', () => {
-  assert.equal(MARGINALIA_IDS.length, 9); for (const id of MARGINALIA_IDS) assert.ok(MARGINALIA[id].name && MARGINALIA[id].text && (MARGINALIA[id].bonus || MARGINALIA[id].rule));
+test('the marginalia; Margin Wardens stand only from Infinite IV, in ordinary crossings, on floor the entry reaches', () => {
+  assert.ok(MARGINALIA_IDS.length >= 9); for (const id of MARGINALIA_IDS) assert.ok(MARGINALIA[id].name && MARGINALIA[id].text && (MARGINALIA[id].bonus || MARGINALIA[id].rule));
   assert.equal(wardens(crossing({ tier: RULES.tier - 1 }).g).length, 0, 'not before Infinite IV');
   let seen = 0;
   for (let k = 0; k < 12; k++) {
