@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 441 — Listener towns with Ember Refuge's services.
+  - **New in every Listener town:** a Viewport (the hunt board) and a Town Keeper who does what Sela and Oren do at Ember Refuge: upgrade your gear at the forge, attune your constellation and skills, and retrain your stats.
+  - **The town smith:** pressing Act on him now opens his forge (it only showed his greeting before), and he works a little farther from the Wayglass. Town services keep at least three tiles from it.
 - Release 439 — no more landing in the dark.
   - **Every way into a dungeon now lands on its floor:** the Aperture annex (and the way back out), displacement thresholds, the Listener's Hall, Viewport hunt instances and the elite portal used fixed landing spots that skipped the safe-arrival rule from release 419. The annex's spot was off the floor in about a third of annexes, leaving you alone in the dark. They now land on the map's own entry and settle onto the open floor.
 - Release 437 — the Psychic Crystal stays where you can hit it.

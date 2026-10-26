@@ -90,6 +90,7 @@ export function applyInteraction(o,a,s,context='global',place={}){
  if(o.kind==='apertureMemory'){o.state='used';gainAperture(s,3,'memory:'+context,'A buried memory resolves into language.');s.perception.discoveries.memories++;return{ok:true,message:'The inscription remembers a corridor that has not happened yet. Aperture +3.',transition:'aperture'};}
  if(o.kind==='apertureDoor')return{ok:true,message:'The unseen crossing opens into a sharper, stranger annex.',transition:'apertureDoor'};
  if(o.kind==='apertureRelic'){o.state='used';gainAperture(s,3,'relic:'+context,'The Deep Lattice accepts your attention.');s.perception.discoveries.relics++;return{ok:true,message:'Fine structures flare across stone and flesh. Aperture +3.',transition:'aperture'};}
+ if(o.kind==='townKeeper'){if(a==='upgrade')return{ok:true,message:`${o.name} lays out the equipped pieces beside their required spheres.`,transition:'forge'};if(a==='attune')return{ok:true,message:`${o.name} turns an Aperture lens until its branches become legible.`,transition:'skills'};if(a==='retrain'){const r=retrainStats(s);return{...r,message:r.message.replace(/^Oren/,o.name)}}} // release 441: Ember Refuge's forge, Aperture and retraining in every Listener town
  if(o.kind==='npc'){
  const n=npcState(s,o.id);
  if(a==='attack'){recordNpcDamage(s,o,18);return{ok:true,message:n.status==='dead'?(o.name||'Vela')+' falls. The refuge remembers.':(o.name||'Vela')+' is wounded. You can stand down.',transition:'npc'};}

@@ -13,19 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**441**
+**443**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 439 | Claude | `claude/dreamy-rubin-yn6q2p` | The last fixed dungeon landings (Aperture annex and return, displacement, Listener's Hall, hunt instances, elite portal) land on the entry and settle | Building. |
+| 441 | Claude | `claude/dreamy-rubin-yn6q2p` | Listener towns get a Viewport and a Town Keeper (forge, Aperture, retraining); Act opens the town smith's forge; services clear of the Wayglass | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 439 | `r439-a6fb9615c252` | 2026-10-26 | No more landing in the dark: the last fixed dungeon landings settle onto the floor (PR #202). The pre-publish Fable review found no blockers. |
 | 437 | `r437-415a6323864d` | 2026-10-26 | With 427–435: every boss hit in pink (PR #196), wounds that really stay and no Void Walker in dungeons (#197), the Seven Bells (#198), shovels everywhere underground (#199), mixed Far Sleep dungeons (#200), the Crystal out of the walls (#201). The pre-publish Fable review found no blockers. |
 | 425 | `r425-187b382f915e` | 2026-10-24 | With 423: kept wounds, open dreams, open-world digging (PR #194), from Infinite II (#195). The pre-publish Fable reviews found no blockers. |
 | 421 | `r421-45929eb37a4e` | 2026-10-24 | With 419: sharper auto targeting, the Build button holds a Shadow Clone, safe dungeon arrivals (PR #192); calmer bosses and the Knight's seekers (#193). The pre-publish Fable review found no blockers. |

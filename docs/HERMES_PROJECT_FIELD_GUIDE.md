@@ -2694,6 +2694,23 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 441: Listener towns with Ember Refuge's services — 2026-10-26
+
+Tim, 2026-10-26 (at Mosscross): "there's no viewpoint, and I can't talk to any of the people... the smith doesn't do anything. He should also be moved a little bit farther... away from the Wayglass... there should be... all the amenities of the Ember Refuge at the new towns that spring up around the Listener's... Mouth."
+
+**CODE:**
+- `game.ts raiseTownAmenities` runs for every section with a town record (`townAt`) and adds two services:
+  - a `viewport` (the hunt board, opened as at the Refuge);
+  - a `townKeeper` (actions upgrade, attune, retrain).
+- `townSpot(origin)` places them on open ground at least `TOWN_AMENITY.clear` (3) tiles from the Wayglass checkpoint and `TOWN_AMENITY.spacing` (2) from other objects, nearest the Wayglass. The Mouth town's smith now uses the same rule (it stood two tiles below the Mouth, beside the Wayglass).
+- `interactions.ts`: `townKeeper` upgrade → forge, attune → skills, retrain → `retrainStats` (Oren's rules, its own name).
+- `game.interact` opens its action menu.
+- **The smith:** Act on the `townSmith` sets `game.smithyRequested`, which `main.ts` polls to open the smithy, as shops are opened. Before, only a direct tap's result opened it; Act from the game loop showed the greeting and nothing else.
+- `renderer.ts` draws the keeper with an Aperture lens.
+- Tests: `tests/town-amenities-441.test.ts`.
+
+**BOUNDARY:** The townsfolk still say their line when spoken to; the Refuge's Aperture plinth and its people stay unique to it. No save change: the services are placed each time the town loads.
+
 ## Release 439: no more landing in the dark — 2026-10-26
 
 Tim, 2026-10-26 (screenshot: the Wayfarer alone in darkness after "The annex resolves around you in impossible clarity"): "It's still starting me in random places... it happens randomly, like intermittently."
