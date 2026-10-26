@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 453: ways out, named on the map — 2026-10-26
+
+Tim, in a Mislaid Threshold crossing: "There's no exit... I got to the second level. But there was no exit. So now I'm kind of just trapped." Simulation found no crossing or annex (80 annexes) whose exit could not be reached, and his screenshots showed the exit as a small cyan block; it was not recognisable as one.
+
+**CODE:** main.ts `dungeonMapTag(o)` names an `exit` ("WAY BACK" in an `:aperture-annex`, "DOOR OUT" for a completion exit or `threshold-door`, else "EXIT"), a `warpDais` ("DAIS") and a `deepReturn` ("EXIT"). `drawDungeonMap` writes the word beside each discovered marker in its own colour, flipped to the left near the right edge.
+
+**BOUNDARY:** drawing only; which markers show, and discovery, are unchanged. Tests: `tests/map-exit-label-453.test.ts`.
+
 ## Release 451: a way out of the Mislaid Threshold — 2026-10-26
 
 Tim: "I saw a shrine on the overworld and I clicked it. And it took me to this dungeon... When I killed the guardian, he didn't spawn a door for me to leave... now I can't leave."
