@@ -18,11 +18,11 @@ test('a foe in reach beats a farther one ahead, even when it is behind you', () 
   assert.equal(AUTO_AIM.meleeExtra, 3);
 });
 
-test('a lock far away does not steal a swing from the foe beside you; the struck foe is marked', () => {
+test('release 471: a tapped lock leads the swing as before (up to 5 past reach); without a lock, the foe beside you wins', () => {
   const s = freshSave(), g = new Game(s, 0); g.map = flat(); g.area = 'overworld';
   const near = foe('near', g.player.x - 1, g.player.y), far = foe('far', g.player.x + 4, g.player.y); g.enemies = [near, far]; g.targetId = 'far'; g.lastUpdateNow = 1000;
-  const d = g.meleeAimAt(1.4, 32); assert.ok(d.x < -.9, 'toward the near foe'); assert.equal(g.aimMark.id, 'near');
-  g.enemies = [far]; const d2 = g.meleeAimAt(1.4, 32); assert.ok(d2.x > .9, 'with nothing in reach, the lock still leads'); assert.equal(g.aimMark.id, 'far');
+  const d = g.meleeAimAt(1.4, 32); assert.ok(d.x > .9, 'the locked foe, as before'); assert.equal(g.aimMark.id, 'far'); assert.equal(TARGET_LOCK.meleeReach, 5);
+  g.targetId = null; const d2 = g.meleeAimAt(1.4, 32); assert.ok(d2.x < -.9, 'no lock: the foe in reach'); assert.equal(g.aimMark.id, 'near');
 });
 
 test('salvage several carried pieces at once', () => {

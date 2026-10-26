@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 471: your lock, as it was — 2026-10-26
+
+Tim: "I like the lock targets... we can keep them the way it is... if I tap on the target and it's locked on, I like the way that functions... just moving past targets, the auto lock... it's been a little bit wonky."
+
+**CODE:** `TARGET_LOCK.meleeReach` (5) is how far past the weapon a tapped lock takes a melee swing, the reach it had before release 469 (`profile.range + max(meleeSlack, the old meleeExtra 5)`). `Game.meleeAimAt` takes the lock first again; only without a lock does `pickMeleeTarget` choose, foes in reach first. `AUTO_AIM.meleeExtra` stays 3, so auto aim alone reaches less far.
+
+**BOUNDARY:** ranged aim, tapping to lock and the aim marks are unchanged. Tests: `tests/aim-salvage-perf-469.test.ts` (the lock case).
+
 ## Release 469: salvage in bulk, truer swings, smoother frames — 2026-10-26
 
 Tim: "a select all in the gear menu... everything will be highlighted... click something, it'll become deselected... then salvage"; "the targeting seems a little bit long... I'll be moving past enemies and the targeting won't hit them... I don't know where it's aiming"; and a 300-second probe (taken on r455) showing slow frames "in some sections".

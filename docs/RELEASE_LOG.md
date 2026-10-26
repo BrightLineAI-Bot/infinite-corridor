@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**471**
+**473**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 469 | Claude | `claude/dreamy-rubin-yn6q2p` | Select-and-salvage in Gear, swings to the foe in reach (with a mark), glows without shadowBlur | Building. |
+| 471 | Claude | `claude/dreamy-rubin-yn6q2p` | Tapped target lock leads swings as before; only auto aim prefers the foe in reach | Building. |
+| 469 | Claude | PR #218 | Select-and-salvage in Gear, swings to the foe in reach (with a mark), glows without shadowBlur | Merged. Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
