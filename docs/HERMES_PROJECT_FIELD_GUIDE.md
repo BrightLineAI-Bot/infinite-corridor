@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 463: tougher dungeons — 2026-10-26
+
+Tim: "increase the enemies in the dungeons... 20% more health... 20% more damage... about twenty percent more monsters."
+
+**CODE:** game.ts `DUNGEON_BOOST{hp:1.2,damage:1.2,count:.2,near:3}`. `createEnemyFromSpawn` scales a dungeon foe's health and damage after the threat and taste tuning, except passive, ambient, astral, world-beast, Questing Beast, Far Array boss and Gate Revenant (gatePredator) foes. Summoned brood and reinforcements are not spawns and keep their own numbers. `extraDungeonSpawns()` (from `loadArea`, before the Margin Wardens) adds round(count × the crossing's ordinary spawns): copies of non-guardian spawns (any non-guardian `dungeonRole`, no encounter group) on open, safe floor within 3 tiles of one, by seed, with stable ids `<crossing>:extra:i`. None are added in arenas, Far Array runs, hunt instances, or crossings already resolved or cleared. `tests/gate-revenant-integration.test.ts` now expects the boosted final-boss numbers (640 health, 52 damage).
+
+**BOUNDARY:** no generator change; saved foes keep their saved health. Tests: `tests/dungeon-boost-463.test.ts`.
+
 ## Release 461: damage numbers, and twenty marginalia — 2026-10-26
 
 Tim: "a button in the options where we can toggle on or off damage numbers... how much they do to us and how much we do to them... each dodge leaves behind a shadow clone for like 3 seconds... another one could be just cool down... come up with... more, so we have 20."

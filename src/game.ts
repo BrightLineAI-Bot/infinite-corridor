@@ -309,6 +309,12 @@ export const ENEMY_DAMAGE_SCALE = 1.3;
 // the marginalia of the crossing you are in.
 const armorGlyphBonus = (save) => { const g = armorGlyphBase(save), b = mechEmpowered(save) ? { ...g, attackDamage: (g.attackDamage || 0) + MECH_POWER.damage, spellDamage: (g.spellDamage || 0) + MECH_POWER.damage } : g, run = save?.session?.marginRun; if (!save?.meal && !run) return b; const out = { ...b }, add = (bonus) => { for (const k of MEAL_STAT_FIELDS) if (bonus[k]) out[k] = (out[k] || 0) + bonus[k]; }; add(activeMealBonus(save)); if (run) add(marginBonus(save, save.session.activeDungeonId)); return out; };
 export const DAMAGE_NUMBERS = { life: 900, rise: .9, cap: 48 }; // release 461
+// Release 463 (Tim: "increase the enemies in the dungeons... 20% more health... 20% more damage... about twenty percent more
+// monsters"): every dungeon foe built from a spawn (not world beasts, the Questing Beast, Far Array bosses or ambient
+// creatures) gets `hp` and `damage`; and `count` more of the crossing's ordinary foes stand near the others, by seed, with
+// stable ids (never added to a cleared crossing, an arena, a Far Array run or a hunt instance).
+export const DUNGEON_BOOST = { hp: 1.2, damage: 1.2, count: .2, near: 3 };
+const GUARDIAN_ROLES = ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"];
 const MEAL_STAT_FIELDS = ["attackDamage", "spellDamage", "hp", "staminaRegen", "move", "attackSpeed", "spellCooldown", "defense", "dodgeCost", "reach"];
 export const dodgeCost = (save) => Math.round(15 * (1 - armorGlyphBonus(save).dodgeCost) * 10) / 10;
 export function characterStats(save) {
@@ -2135,6 +2141,7 @@ export class Game {
     if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry,this.save),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);const beast=questingBeastFor(this.save,this.map,this.rx,this.ry),elder=addElder(this.map,this.save,this.rx,this.ry),worldBeastFound=worldBeastFor(this.save,this.map,this.rx,this.ry),worldBeast=beast&&!worldBeastFound?.retreating?null:worldBeastFound;if(worldBeast){this.map.enemySpawns.push(worldBeast);const companion=astralCompanionFor(this.save,worldBeast,{rx:this.rx,ry:this.ry},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[worldBeast.worldBeast];this.message=worldBeast.retreating?`${B.name} is fleeing through here toward ${BEAST_HOMES[B.home].name}. It cannot be hurt now.`:`${B.arrive} ${worldBeastTriesLeft(this.save,worldBeast.worldBeast)} of ${B.tries} tries remain.`}/* release 241: a fleeing beast says so, and passes through the Questing Beast's ground too *//* release 235: world beasts */addStrange(this.map,this.save,this.rx,this.ry);/* release 215: a rare strange tree or stone */addDigSpot(this.map,this.save,this.rx,this.ry);/* release 225: a rare patch of disturbed earth */const ilse=addIlse(this.map,this.save,this.rx,this.ry,!!farSleepSection(this.rx,this.ry));/* release 415: Ilse the Lamplighter */for(const id of mouthsIn(this.save,this.rx,this.ry))placeMouth(this.map,id);/* release 217: second mouths of linked dungeons */if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastTriesLeft(this.save)} of ${QUESTING_BEAST.tries} tries remain.`}if(beast||worldBeast){}else if(ilse)this.message=ilse.stage===5?"A lamp burns in the meadow with no post beneath it.":"Someone is tending a lamp nearby.";else if(elder)this.message="Something tall and silent walks the road.";else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, murmuring.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
     this.activatedEncounterGroups=new Set;
     if(area==="dungeon"){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const companion=astralCompanionFor(this.save,haunt,{dungeon:this.areaId(),level:this.map.levelId||"root"},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is retreating ${haunt.worldBeast === "voidWalker" ? "toward the nearest reachable dungeon door" : haunt.worldBeast === "astralWorm" ? "toward the nearest reachable Wayglass" : "toward the water"}. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastTriesLeft(this.save,haunt.worldBeast)} of ${B.tries} tries remain.`}} /* release 249: the Psychic Crystal haunts dungeons with water */
+    if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.extraSpawn)) for (const q of this.extraDungeonSpawns()) this.map.enemySpawns.push(q); // release 463: more foes
     if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.marginWarden)) for (const w of wardenSpawns(this.save, this.map, this.areaId())) this.map.enemySpawns.push(w); // release 459: Margin Wardens
     if (area === "overworld") endMarginRun(this.save); // release 459: marginalia hold only inside the crossing
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
@@ -3965,6 +3972,7 @@ export class Game {
       }
       if(area === "dungeon" && !c.passiveBehavior && !c.ambient && !c.astralCompanionOf && !c.worldBeast) tuneDungeonThreat(c);
       if(area === "dungeon" && !c.ambient && !c.astralCompanionOf && !c.worldBeast){const t=this.tasteThreat();if(t<1){c.maxHp=c.hp=Math.max(1,Math.round(c.maxHp*t));c.damage=Math.max(1,Math.round(c.damage*t));c.tasteScaled=t}} // release 325
+      if (area === "dungeon" && !c.passiveBehavior && !c.ambient && !c.astralCompanionOf && !c.worldBeast && !c.questingBeast && !c.farArrayBoss && !e.gatePredator) { c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * DUNGEON_BOOST.hp)); c.damage = Math.max(1, Math.round(c.damage * DUNGEON_BOOST.damage)); } // release 463
       // Every monster hits harder (Tim, 2026-10-16). Foes tuned to the Wayfarer (the Questing Beast, Far Array bosses) are exempt.
       if(c.damage>0&&!c.questingBeast&&!c.worldBeast&&!c.astralCompanionOf&&!c.farArrayBoss)c.damage=Math.max(1,Math.round(c.damage*ENEMY_DAMAGE_SCALE));
       if (c.gatePredator) tuneGatePredator(c, this.save, characterStats(this.save));
@@ -3993,6 +4001,20 @@ export class Game {
     for (const e of this.enemies) { const hp = Math.max(0, Number(e.hp) || 0); if (e._dnHp !== undefined && hp < e._dnHp && !e.illusion) add(e.x + .5, e.y - .1, e._dnHp - hp, "dealt"); e._dnHp = hp; }
     const p = this.player, hp = Math.max(0, Number(p.hp) || 0); if (this._dnPlayer !== undefined && hp < this._dnPlayer && this._dnArea === this.areaId()) add(p.x + .5, p.y - .2, this._dnPlayer - hp, "taken"); this._dnPlayer = hp; this._dnArea = this.areaId();
     while (list.length && (now - list[0].born > D.life || list.length > D.cap)) list.shift();
+  }
+  // Release 463: the extra foes of a crossing (DUNGEON_BOOST.count of its ordinary ones), each on open floor near one of them.
+  extraDungeonSpawns() {
+    const id = String(this.areaId()), h = dungeonHistory(this.save, id), map = this.map;
+    if (map.arena || isArrayRun(id) || id.startsWith("hunt-") || h.resolved || h.combatClear?.completed) return [];
+    const base = (map.enemySpawns || []).filter((q) => !q.boss && !GUARDIAN_ROLES.includes(q.dungeonRole) && !q.worldBeast && !q.questingBeast && !q.marginWarden && !q.gatePredator && !q.ambient && !q.passiveBehavior && !q.objectiveId && !q.astralCompanionOf && !q.retreating && !q.farArraySummon);
+    const n = Math.round(base.length * DUNGEON_BOOST.count), w = mapWidth(map, "dungeon"), out = [], taken = new Set(map.enemySpawns.map((q) => `${Math.round(q.x)},${Math.round(q.y)}`));
+    for (let i = 0; i < n * 3 && out.length < n; i++) {
+      const k = hashSeed(`${this.save.seed}:dungeon-boost:v1:${id}:${map.levelId || ""}:${i}`), b = base[k % base.length], r = DUNGEON_BOOST.near;
+      const x = Math.round(b.x) + ((k >>> 8) % (r * 2 + 1)) - r, y = Math.round(b.y) + ((k >>> 14) % (r * 2 + 1)) - r;
+      if (taken.has(`${x},${y}`) || !footprintOpen(map, w, x, y) || footprintHazard(map, w, x, y)) continue;
+      taken.add(`${x},${y}`); out.push({ kind: b.kind, x, y, traits: b.traits, dungeonRole: b.dungeonRole || null, id: `${id}:extra:${out.length}`, extraSpawn: true });
+    }
+    return out;
   }
   // Release 461: Ink Shield. Health lost this frame (from `hpStart`) comes back, once every INK_SHIELD.seconds. The clock is
   // the run's own (not saved), so a reload finds the shield ready.
