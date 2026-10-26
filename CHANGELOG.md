@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 443 — easier travel.
+  - **Wayglass list:** the Atlas's Wayglass list is ordered by section, numerically, and each entry starts with its coordinates.
+  - **Tap to choose:** tapping a section with a Wayglass (or right beside one) in the Atlas chooses it in the list and sets the Travel button to it.
+  - **Far Gate compass:** the Journal's Far Gate page has a "Point compass to the Array Mouth" button, so you can head straight for the Gate once the line names it.
 - Release 441 — Listener towns with Ember Refuge's services.
   - **New in every Listener town:** a Viewport (the hunt board) and a Town Keeper who does what Sela and Oren do at Ember Refuge: upgrade your gear at the forge, attune your constellation and skills, and retrain your stats.
   - **The town smith:** pressing Act on him now opens his forge (it only showed his greeting before), and he works a little farther from the Wayglass. Town services keep at least three tiles from it.
