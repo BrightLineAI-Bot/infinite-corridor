@@ -2694,6 +2694,27 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 469: salvage in bulk, truer swings, smoother frames — 2026-10-26
+
+Tim: "a select all in the gear menu... everything will be highlighted... click something, it'll become deselected... then salvage"; "the targeting seems a little bit long... I'll be moving past enemies and the targeting won't hit them... I don't know where it's aiming"; and a 300-second probe (taken on r455) showing slow frames "in some sections".
+
+**CODE:**
+- **Select and salvage.** game.ts `salvageInventoryItems(save, items)` salvages by identity. In main.ts, the Gear tab's carried list gets Select all, `Salvage selected (n) · iron`, Cancel, and tap-to-toggle cards (`gearPick`, a Set of item objects, cleared on `resume`).
+- **Truer swings.** `pickMeleeTarget(player, enemies, map, width, reach, core)` sorts foes within `core` (weapon range + `TARGET_LOCK.meleeSlack`) before any others; `selectMeleeAim` wraps it. `Game.meleeAimAt(range, width)` chooses, in order:
+  1. a lock within core;
+  2. any foe within core;
+  3. a lock within the auto-aim range;
+  4. the nearest reachable foe.
+
+  It sets `aimMark {id, until}` (`AIM_MARK.ms` 450), which the renderer draws as fading corner brackets. `AUTO_AIM.meleeExtra` is 3 (was 5); `tests/auto-aim-419.test.ts` was updated to match.
+- **Smoother frames.** The probe showed game code at about 1 ms per frame and its 40–50 ms frames as browser (GPU) time, clustered during attack spam. The melee swing arc (main.ts) drew a `shadowBlur` 9 stroke every swing; it is now a wide translucent stroke under the edge. The Watcher's tomb and the warp dais use a translucent disc instead of `shadowBlur`.
+
+**BOUNDARY:**
+- Damage, reach and lock range are unchanged.
+- The probe's other costs are not addressed here: section loads at 40–73 ms, and 20–37 ms saves every 8 s.
+
+Tests: `tests/aim-salvage-perf-469.test.ts`.
+
 ## Release 467: fixes from the Codex audit — 2026-10-26
 
 Codex audited release 455 read-only (docs/test-runs/2026-10-26-release-455 on branch claude/audit-test-runs-2026-10-26, draft PR #214): six findings (F001–F006) and three interaction findings (I001–I003). Each was reproduced on the current source before it was fixed.

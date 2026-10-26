@@ -161,7 +161,8 @@ export const TARGET_LOCK = { range: 16, pick: 1.35, meleeSlack: 1.2 }; // releas
 // longer range"): farther again (meleeExtra was 3, rangedScale 1.6); reach is measured to a creature's edge (`autoAimBody`)
 // so big ones are found sooner; foes roughly ahead of you win over ones a little nearer behind (`facingBias` tiles); and
 // nothing that cannot be hit (hidden, untargetable, ambient, allies, people) draws the aim.
-export const AUTO_AIM = { meleeExtra: 5, rangedScale: 2.2, facingBias: .75 };
+export const AUTO_AIM = { meleeExtra: 3, rangedScale: 2.2, facingBias: .75 }; // release 469: meleeExtra 3 (was 5): auto aim reaches less far for a swing
+export const AIM_MARK = { ms: 450 }; // release 469: how long the struck foe stays marked
 export const autoAimBody = (e) => Math.max(0, Number(e.bodyRadius) || 0, ((Number(e.scale) || 1) - 1) * .5);
 export const autoAimable = (e) => !e.dead && !e.hidden && !e.untargetable && !e.ambient && !e.astralAllyOf && e.kind !== "npc";
 export function mapWidth(map, area = "overworld") { return Math.max(1, Number(map?.width) || (area === "dungeon" ? 24 : 32)); }
@@ -278,6 +279,13 @@ export function salvageInventoryItem(save, index) {
   save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
   for (const g of item.glyphs || []) if (g) save.glyphs[g] = (save.glyphs[g] || 0) + 1; // socketed glyphs come back
   return { item, iron };
+}
+// Release 469 (Tim: "a select all in the gear menu... everything will be highlighted... click something, it'll become
+// deselected... then salvage"): salvages the given carried items (by identity) at once. Returns { count, iron }.
+export function salvageInventoryItems(save, items) {
+  const pick = new Set(items || []); let count = 0, iron = 0;
+  for (let i = (save.inventory || []).length - 1; i >= 0; i--) if (pick.has(save.inventory[i])) { const r = salvageInventoryItem(save, i); if (r) { count++; iron += r.iron; } }
+  return { count, iron };
 }
 export function storeInventoryItem(save, item) {
   save.inventory ||= [];
@@ -951,7 +959,10 @@ export function primaryAttackHits(
   }
   return hits;
 }
-export function selectMeleeAim(player, enemies, map, width, reach) {
+// Release 469 (Tim: "the targeting seems a little bit long... I'll be moving past enemies and the targeting won't hit them... I
+// don't know where it's aiming"): a foe already within the swing's reach (`core`) always comes before one auto aim would
+// have to reach for, whichever way you face; among those, the nearer and the one ahead first. Returns { e, d } or null.
+export function pickMeleeTarget(player, enemies, map, width, reach, core = reach) {
   const out = [];
   for (const e of enemies) {
     if (!autoAimable(e)) continue; // release 419
@@ -979,15 +990,17 @@ export function selectMeleeAim(player, enemies, map, width, reach) {
       out.push({ e, d, distance, alignment: d.x * f.x + d.y * f.y });
     }
   }
-  const score = (q) => q.distance - autoAimBody(q.e) - q.alignment * AUTO_AIM.facingBias; // release 419: ahead of you counts
+  const score = (q) => q.distance - autoAimBody(q.e) - q.alignment * AUTO_AIM.facingBias, inReach = (q) => q.distance - autoAimBody(q.e) <= core ? 0 : 1; // release 419: ahead of you counts; 469: in reach first
   out.sort(
     (a, b) =>
+      inReach(a) - inReach(b) ||
       score(a) - score(b) ||
       b.alignment - a.alignment ||
       String(a.e.id).localeCompare(String(b.e.id)),
   );
-  return out[0]?.d || null;
+  return out[0] ? { e: out[0].e, d: out[0].d } : null;
 }
+export function selectMeleeAim(player, enemies, map, width, reach, core = reach) { return pickMeleeTarget(player, enemies, map, width, reach, core)?.d || null; }
 export function selectRangedAim(player, enemies, map, width, range = Infinity) {
   return enemies
     .filter(autoAimable) // release 419 (was: not dead, not ambient)
@@ -1586,13 +1599,7 @@ export class Game {
               explicitDirection.y,
               this.player.facing,
             )
-          : this.lockedDirection(profile.range + Math.max(TARGET_LOCK.meleeSlack, AUTO_AIM.meleeExtra)) || selectMeleeAim( /* release 347: the lock wins as far as auto aim reaches */ // release 309: a locked target first
-              this.player,
-              this.enemies,
-              this.map,
-              width,
-              profile.range + AUTO_AIM.meleeExtra, // release 343
-            );
+          : this.meleeAimAt(profile.range, width); // release 469: a foe in reach first; the lock wins only within reach
       this.player.meleeAim =
         d ||
         projectileDirection(
@@ -4482,6 +4489,17 @@ export class Game {
     const e = this.enemies.find((q) => q.id === this.targetId), p = this.player;
     if (!e || e.dead || e.noRewards && e.merged || Math.hypot(e.x - p.x, e.y - p.y) > TARGET_LOCK.range) { this.targetId = null; return null; }
     return e;
+  }
+  // Release 469: where a swing goes. A locked target within reach (plus TARGET_LOCK.meleeSlack) wins; then any foe within
+  // reach; then the lock as far as auto aim looks; then the nearest foe auto aim can reach for. The foe chosen is marked
+  // briefly (aimMark) so you can see where the blow went.
+  meleeAimAt(range, width) {
+    const core = range + TARGET_LOCK.meleeSlack, now = this.lastUpdateNow || 0, mark = (e, d) => { if (e) this.aimMark = { id: e.id, until: now + AIM_MARK.ms }; return d; };
+    const near = this.lockedDirection(core); if (near) return mark(this.lockedTarget(), near);
+    const pick = pickMeleeTarget(this.player, this.enemies, this.map, width, range + AUTO_AIM.meleeExtra, core);
+    if (pick && pick.e && Math.hypot(pick.e.x - this.player.x, pick.e.y - this.player.y) - autoAimBody(pick.e) <= core) return mark(pick.e, pick.d);
+    const far = this.lockedDirection(range + AUTO_AIM.meleeExtra); if (far) return mark(this.lockedTarget(), far);
+    return pick ? mark(pick.e, pick.d) : null;
   }
   lockedDirection(within = Infinity) {
     const e = this.lockedTarget(); if (!e || e.untargetable || e.hidden) return null;

@@ -198,6 +198,7 @@ import {
   syncCharacterStats,
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
+  salvageInventoryItems,
 } from "./game.ts";
 import { createInput } from "./input.ts";
 import { render as baseRender, renderScaleForViewport } from "./renderer.ts";
@@ -940,14 +941,16 @@ function drawTruthfulCombatGeometry() {
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.globalAlpha = 1;
+    ctx.strokeStyle = "rgba(215,149,72,.38)"; // release 469: a wide soft stroke under the edge instead of shadowBlur (costly on phone GPUs)
+    ctx.lineWidth = 15;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.9, Math.max(a - half, sweep - 0.48), sweep);
+    ctx.stroke();
     ctx.strokeStyle = "#ffe0a0";
-    ctx.shadowColor = "#d79548";
-    ctx.shadowBlur = 9;
     ctx.lineWidth = 7;
     ctx.beginPath();
     ctx.arc(cx, cy, r * 0.9, Math.max(a - half, sweep - 0.48), sweep);
     ctx.stroke();
-    ctx.shadowBlur = 0;
     ctx.fillStyle = "#fff1c8";
     ctx.beginPath();
     ctx.arc(
@@ -1021,7 +1024,7 @@ function pauseForOverlay() {
   pause(false);
 }
 function resume() {
-  overlayPause = false;
+  overlayPause = false; gearPick = null; // release 469
   $("#pauseError")?.remove();
   for (const d of [pausePanel, atlas, panel, journal, optionsPanel]) if (d.open) d.close();
   game.setPaused(false, performance.now());
@@ -1157,7 +1160,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:467,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 467\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:469,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 469\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1169,7 +1172,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:467,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:469,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1524,6 +1527,7 @@ function packSectionFailed(name,error){noteError(error);console.error(`Pack sect
 // Arcanum, so everything is a tap apart. The Arcanum keeps its own sub-tabs (Spells & Constellation, Glyphs, Echoes).
 const PACK_TABS=[['wayfarer','Wayfarer'],['gear','Gear'],['forge','Forge'],['arcanum','Arcanum'],['supplies','Supplies']];
 let packTab='wayfarer';
+var gearPick=null; // release 469: the pieces chosen to salvage (null: not choosing)
 function packTabBar(current){const bar=document.createElement('nav');bar.className='codex-tabs pack-tabs';bar.setAttribute('aria-label','Pack');
  for(const[id,label]of PACK_TABS){const b=uiButton(label,()=>id==='arcanum'?openSkills():id==='forge'?openForge():openPack(id));if(id===current)b.setAttribute('aria-current','page');bar.append(b)}
  return bar}
@@ -1734,6 +1738,8 @@ function openPack(tab) {
   sortFilter.onchange = () => { inventoryView.sort = sortFilter.value; openPack(); };
   inventoryTools.append(slotFilter, tierFilter, sortFilter);
   body.append(inventoryTools);
+  // Release 469: Select all, tap a card to leave it out, then salvage the rest. The choice lasts while the Pack is open.
+  gearPick = gearPick ? new Set([...gearPick].filter((q) => save.inventory.includes(q))) : null;
   const visibleItems = save.inventory.map((item, index) => ({ item, index }))
     .filter(({item}) => item && typeof item === "object") // release 151: a damaged entry must not hide the rest
     .filter(({item}) => inventoryView.slot === "all" || item.slot === inventoryView.slot)
@@ -1741,11 +1747,18 @@ function openPack(tab) {
     .sort((a,b) => inventoryView.sort === "name" ? a.item.name.localeCompare(b.item.name)
       : inventoryView.sort === "slot" ? a.item.slot.localeCompare(b.item.slot) || itemScore(b.item)-itemScore(a.item)
       : inventoryView.sort === "power" ? b.item.power-a.item.power : itemScore(b.item)-itemScore(a.item));
+  { const bar = document.createElement("div"); bar.className = "inventory-tools";
+    if (!gearPick) bar.append(uiButton("Select all", () => { gearPick = new Set(visibleItems.map((q) => q.item)); openPack(); }));
+    else { const n = gearPick.size, iron = [...gearPick].reduce((t, q) => t + Math.max(1, ITEM_TIERS.indexOf(itemTier(q)) + 1), 0), go = uiButton(`Salvage selected (${n}) · ${iron} iron`, () => { const r = salvageInventoryItems(save, [...gearPick]); gearPick = null; game.message = `Salvaged ${r.count} piece${r.count === 1 ? "" : "s"} for ${r.iron} cinder iron.`; persist(); openPack(); }); go.disabled = !n;
+      const tip = document.createElement("span"); tip.className = "options-note"; tip.textContent = "Tap a piece to leave it out (or put it back).";
+      bar.append(go, uiButton("Select all", () => { gearPick = new Set(visibleItems.map((q) => q.item)); openPack(); }), uiButton("Cancel", () => { gearPick = null; openPack(); }), tip); }
+    body.append(bar); }
   for (const { item, index: i } of visibleItems) {
     if (!["primary", "secondary", "armor", "charm"].includes(item.slot))
       continue;
     const row = document.createElement("div"),title=document.createElement("strong"),comparison=document.createElement("div");
     row.className = "item inventory-card";comparison.className="item-comparison";
+    if (gearPick) { const on = gearPick.has(item); row.style.outline = on ? "2px solid #f0c070" : "1px dashed #4a4a44"; row.style.opacity = on ? "1" : ".6"; row.style.cursor = "pointer"; row.onclick = (ev) => { if (ev.target.closest("button")) return; if (gearPick.has(item)) gearPick.delete(item); else gearPick.add(item); openPack(); }; } // release 469
     title.textContent = `${itemTier(item).toUpperCase()} · ${item.name} · ${item.slot}`;
     for(const stat of compareItemStats(item,save.equipment[item.slot])){const value=document.createElement("span");value.className=`stat-${stat.direction}`;value.textContent=`${stat.direction==='up'?'↑ ':stat.direction==='down'?'↓ ':''}${stat.label} ${stat.formatted}`;value.title=stat.direction==='same'?`Matches equipped ${stat.label.toLowerCase()}`:`${Math.abs(stat.difference)} ${stat.direction==='up'?'more':'less'} than equipped`;comparison.append(value)}
     row.append(

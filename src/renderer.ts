@@ -236,7 +236,7 @@ function drawWatcherTomb(ctx, o, s, now) {
   const g = ctx.createLinearGradient(x0, 0, x0 + w, 0); g.addColorStop(0, "#d9d4e6"); g.addColorStop(1, "#9c96ac"); ctx.fillStyle = g; ctx.fillRect(x0, y0, w, hh);
   ctx.strokeStyle = "#2a2433"; ctx.lineWidth = 1.5; ctx.strokeRect(x0, y0, w, hh);
   const cx = (o.x + .5) * s, cy = (o.y + .4) * s, pulse = open ? 0 : .5 + .5 * Math.sin(now / 520);
-  if (!open) { ctx.shadowColor = "#cfc4ff"; ctx.shadowBlur = s * (.12 + pulse * .1); }
+  if (!open) { ctx.fillStyle = `rgba(207,196,255,${.16 + pulse * .12})`; ctx.beginPath(); ctx.arc(cx, cy, s * (.27 + pulse * .04), 0, Math.PI * 2); ctx.fill(); } // release 469: a soft disc, not shadowBlur (costly on phone GPUs)
   watcherSigil(ctx, cx, cy, s * .17, s, open ? .25 : .95, open ? "#6d6680" : "#f4f0ff");
   ctx.restore();
   if (!open) { ctx.strokeStyle = `rgba(236,230,255,${.45 + pulse * .35})`; ctx.lineWidth = Math.max(1.5, s * .035); ctx.beginPath(); ctx.ellipse(cx, (o.y - .32) * s - pulse * s * .04, s * .24, s * .07, 0, 0, Math.PI * 2); ctx.stroke(); }
@@ -246,7 +246,7 @@ function drawWarpDais(ctx, o, s, now) {
   const cx = (o.x + .5) * s, cy = (o.y + .55) * s, lit = o.state === "attuned", pulse = .5 + .5 * Math.sin(now / 480);
   ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(cx, cy + s * .14, s * .5, s * .2, 0, 0, Math.PI * 2); ctx.fill();
   for (const [r, top, c0, c1] of [[.5, .1, "#77708a", "#4a4458"], [.4, 0, "#a39cb6", "#6c6680"]]) { const g = ctx.createLinearGradient(cx - s * r, 0, cx + s * r, 0); g.addColorStop(0, c0); g.addColorStop(1, c1); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy - top * s, s * r, s * r * .42, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#2a2433"; ctx.lineWidth = 1; ctx.stroke(); }
-  ctx.save(); ctx.translate(cx, cy); ctx.scale(1, .45); if (lit) { ctx.shadowColor = "#d8c8ff"; ctx.shadowBlur = s * (.15 + pulse * .12); }
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(1, .45); if (lit) { ctx.fillStyle = `rgba(216,200,255,${.18 + pulse * .12})`; ctx.beginPath(); ctx.arc(0, 0, s * (.3 + pulse * .04), 0, Math.PI * 2); ctx.fill(); } /* release 469: no shadowBlur */
   watcherSigil(ctx, 0, 0, s * .2, s, lit ? .95 : .4, lit ? "#f4f0ff" : "#3a3448"); ctx.restore();
   if (lit) { ctx.strokeStyle = `rgba(216,200,255,${.35 + pulse * .35})`; ctx.lineWidth = Math.max(1.5, s * .03); ctx.beginPath(); ctx.ellipse(cx, cy - s * (.55 + pulse * .05), s * .22, s * .06, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = `rgba(216,200,255,${.08 + pulse * .06})`; ctx.beginPath(); ctx.moveTo(cx - s * .3, cy); ctx.lineTo(cx - s * .16, cy - s * .55); ctx.lineTo(cx + s * .16, cy - s * .55); ctx.lineTo(cx + s * .3, cy); ctx.closePath(); ctx.fill(); }
@@ -1791,6 +1791,7 @@ export function render(ctx, g, w, h, now) {
   drawEchoPatches(ctx,g,s,now);
   drawGlyphStatus(ctx,g,s,now,(e)=>discoveredInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2));
   if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
+  { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
   for(const o of objectLists.structures)if(renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)){const drawStructure=o.kind==="shack"?shack:architecturalBuilding;
     // Object records outlive consumed building tiles. Clip roofs/facades to their surviving footprint
     // so they cannot visually restore destroyed walls or expose unexplored building geometry.

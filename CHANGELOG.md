@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 469 — salvage in bulk, truer swings, smoother frames.
+  - **Select and salvage:** the Gear tab has Select all. Every carried piece is highlighted; tap a piece to leave it out (tap again to put it back), then Salvage selected. The button shows how much cinder iron it gives.
+  - **Swings go where they should:** a foe already within your swing's reach is always struck before a farther one, even one behind you as you run past. A locked target only takes the swing when it is within reach (or when nothing else is), and auto aim reaches 3 tiles past your weapon instead of 5. The foe each swing goes to is marked with brief corner brackets.
+  - **Smoother frames:** the melee swing's glow, the Watcher's tomb and the teleport daises no longer use a blur effect that phones draw slowly; the slow frames in your probe came during rapid attacks.
 - Release 467 — fixes from the Codex audit.
   - **Mislaid Threshold:** the cistern's small pool no longer cuts off the crossing's guardian from the entry (it could leave the way out sealed).
   - **Wayglasses:** a Wayglass that stood in a walled pocket you could not walk into now has a path cleared to it.
