@@ -1,16 +1,16 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER } from "./monster-pack.js?v=r425-187b382f915e";
-import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r425-187b382f915e";
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r437-415a6323864d";
+import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r437-415a6323864d";
 
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r425-187b382f915e";
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r437-415a6323864d";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r425-187b382f915e";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r425-187b382f915e";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r425-187b382f915e";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r437-415a6323864d";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r437-415a6323864d";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r437-415a6323864d";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r425-187b382f915e";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r437-415a6323864d";
 
 const TAU = Math.PI * 2;
 
@@ -1133,6 +1133,7 @@ export function drawPackTelegraphs(ctx, enemies, s, now, visible = () => true, h
       drawAstralHazards(ctx,e.astral.hazards,project,s);
       drawAstralInkBlobs(ctx,e.astral.blobs||[],project,s);
     }
+    { const b = !e.dead && visible(e) && bodyHitFootprint(e); if (b) { const by = (e.y + .6 - (heights.ground?.(e.x, e.y) || 0)) * s, R = b.radius * s; ctx.save(); ctx.fillStyle = b.armed ? DANGER.fillStrong : DANGER.fill; ctx.strokeStyle = DANGER.edge; ctx.lineWidth = 2; if (!b.armed) ctx.setLineDash([s * .15, s * .1]); ctx.beginPath(); ctx.ellipse((e.x + .5) * s, by, R, R * .6, 0, 0, TAU); ctx.fill(); ctx.stroke(); ctx.restore(); } } // release 427: the body's own reach while it hits with it
     const tele = e.pack?.tele;
     if (e.dead || !tele || !visible(e)) continue;
     const crystal = e.kind === "psychicCrystal", walker = e.kind === "voidWalker", ground = crystal || walker ? heights.ground?.(e.x, e.y) || 0 : 0;
@@ -1197,14 +1198,14 @@ function drawVoidGalaxy(ctx, x, y, rx, ry, angle, time, alpha = 1) {
   ctx.restore(); ctx.strokeStyle = VOID_COLORS.edge; ctx.lineWidth = Math.max(1, Math.min(rx, ry) * .045); ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, TAU); ctx.stroke();
   ctx.strokeStyle = "#f3dfffaa"; ctx.lineWidth = Math.max(.7, Math.min(rx, ry) * .015); ctx.beginPath(); ctx.ellipse(0, 0, rx * 1.035, ry * 1.035, 0, -.9, 1.4); ctx.stroke(); ctx.restore();
 }
-function drawVoidWarning(ctx, x, y, r, progress) {
-  ctx.fillStyle = "#9750ce20"; ctx.strokeStyle = VOID_COLORS.warn; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+function drawVoidWarning(ctx, x, y, r, progress) { // release 427: in the one damage pink, as every boss's warnings are
+  ctx.fillStyle = DANGER.fill; ctx.strokeStyle = DANGER.edge; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
   ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
   ctx.strokeStyle = "#f2dfff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0, Math.min(1, progress))); ctx.stroke();
 }
 function drawVoidLane(ctx, x, y, angle, length, half, arming, s) {
   const dx = Math.cos(angle), dy = Math.sin(angle), nx = -dy * half, ny = dx * half;
-  ctx.fillStyle = arming ? "#9855d320" : "#a46ae22b"; ctx.strokeStyle = arming ? VOID_COLORS.warn : "#cf98ff99"; ctx.lineWidth = arming ? 1.5 : 1;
+  ctx.fillStyle = arming ? DANGER.fill : DANGER.fillStrong; ctx.strokeStyle = DANGER.edge; ctx.lineWidth = arming ? 1.5 : 1; // release 427: pink lanes
   if (arming) ctx.setLineDash([s * .12, s * .1]);
   ctx.beginPath(); ctx.moveTo(x + nx, y + ny); ctx.lineTo(x + dx * length + nx, y + dy * length + ny); ctx.arc(x + dx * length, y + dy * length, half, angle + Math.PI / 2, angle - Math.PI / 2, true); ctx.lineTo(x - nx, y - ny); ctx.arc(x, y, half, angle - Math.PI / 2, angle + Math.PI / 2, true); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
 }
@@ -1336,6 +1337,13 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift
     if (f.kind !== "lava" || f.arming > 0 || !visible(f)) continue;
     const x = (f.x + .5) * s, y = (f.y + .62 - (Number(lift(f)) || 0)) * s, r = (f.radius || 1) * s, life = Math.max(0, f.life ?? 0), cool = lavaCool(f, life);
     ctx.save(); ctx.globalAlpha = Math.min(1, life * 2.5); glow(ctx, x, y, r * 1.7, "#ff5a1a", .35 * (1 - cool)); lavaShape(ctx, f, x, y, r, 1.08); ctx.fillStyle = cool > .6 ? "#2a1a14" : "#5a1408"; ctx.fill(); ctx.restore();
+  }
+  // Release 427: every damage-carrying effect's real hit footprint, in DANGER pink on the floor beneath it.
+  for (const f of effects || []) {
+    const R = visible(f) && effectFootprint(f); if (!R) continue;
+    const x = (f.x + .5) * s, y = (f.y + .62 - (Number(lift(f)) || 0)) * s, armed = !(f.arming > 0);
+    ctx.save(); ctx.fillStyle = armed ? DANGER.fill : "rgba(255,80,190,.1)"; ctx.strokeStyle = DANGER.edge; ctx.lineWidth = 1.5; if (!armed) ctx.setLineDash([s * .12, s * .1]);
+    ctx.beginPath(); ctx.ellipse(x, y, R * s, R * s * .6, 0, 0, TAU); ctx.fill(); ctx.stroke(); ctx.restore();
   }
   for (const f of effects || []) {
     if (!visible(f)) continue;

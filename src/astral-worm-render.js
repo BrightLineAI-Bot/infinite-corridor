@@ -189,7 +189,7 @@ export function drawAstralBeam(ctx, mouth, ground, unit, time = 0, reducedMotion
 
 // Geometry descriptors are the same objects consumed by the combat collision predicate.
 export function drawAstralHazards(ctx, hazards, project, unit = 24) {
-  for (const h of hazards) { const p = project(h.x, h.y); ctx.save(); ctx.translate(p.x, p.y); ctx.strokeStyle = h.active ? '#ee97b8' : '#9eafce'; ctx.fillStyle = h.active ? '#b46b9638' : '#8b9fc319'; ctx.lineWidth = Math.max(1, unit * .035);
+  for (const h of hazards) { const p = project(h.x, h.y); ctx.save(); ctx.translate(p.x, p.y); ctx.strokeStyle = 'rgba(255,130,210,.72)'; ctx.fillStyle = h.active ? 'rgba(255,80,190,.32)' : 'rgba(255,80,190,.14)'; /* release 427: DANGER pink (monster-pack), warning and live */ ctx.lineWidth = Math.max(1, unit * .035);
     ctx.beginPath(); ctx.arc(0, 0, h.outer * unit, 0, Math.PI * 2); ctx.closePath(); if (h.inner > 0) { ctx.moveTo(h.inner * unit, 0); ctx.arc(0, 0, h.inner * unit, 0, Math.PI * 2, true); ctx.closePath(); } ctx.fill('evenodd'); ctx.stroke(); ctx.restore(); }
 }
 

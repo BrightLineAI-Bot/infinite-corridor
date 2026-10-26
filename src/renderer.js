@@ -1,20 +1,20 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r425-187b382f915e";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r425-187b382f915e";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r425-187b382f915e";
-import { enemyMeleeGeometry } from "./combat.js?v=r425-187b382f915e";
-import { ruleRows } from "./elders.js?v=r425-187b382f915e";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r425-187b382f915e";
-import { BOAT } from "./boats.js?v=r425-187b382f915e";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r425-187b382f915e";
-import { isMarineTile } from "./world-beasts.js?v=r425-187b382f915e";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r425-187b382f915e";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r425-187b382f915e";
-import { liftAt, tileUnder } from "./landscape.js?v=r425-187b382f915e";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r425-187b382f915e";
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r425-187b382f915e";
-import { drawRelayNode } from "./relay-network.js?v=r425-187b382f915e";
-import { structureOccupancy } from "./world.js?v=r425-187b382f915e";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r425-187b382f915e";
+import { astralBeamAnchors } from "./astral-worm.js?v=r437-415a6323864d";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r437-415a6323864d";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r437-415a6323864d";
+import { enemyMeleeGeometry } from "./combat.js?v=r437-415a6323864d";
+import { ruleRows } from "./elders.js?v=r437-415a6323864d";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r437-415a6323864d";
+import { BOAT } from "./boats.js?v=r437-415a6323864d";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r437-415a6323864d";
+import { isMarineTile } from "./world-beasts.js?v=r437-415a6323864d";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r437-415a6323864d";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r437-415a6323864d";
+import { liftAt, tileUnder } from "./landscape.js?v=r437-415a6323864d";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r437-415a6323864d";
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r437-415a6323864d";
+import { drawRelayNode } from "./relay-network.js?v=r437-415a6323864d";
+import { structureOccupancy } from "./world.js?v=r437-415a6323864d";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r437-415a6323864d";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -860,6 +860,20 @@ export function drawWallGlint(ctx, q, s, now) {
   ctx.restore();
 }
 // Release 225: a patch of disturbed earth (or, once dug, turned earth): a low mound of darker soil ringed by a few stones.
+// Release 431: a cracked bronze bell on a weathered frame; a rung one hangs still with a faint warm glow.
+export function drawCrackedBell(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, base = (o.y + .9) * s, top = (o.y - .55) * s, rung = o.state === "rung", sway = rung ? 0 : Math.sin(now / 900 + o.x) * .05;
+  ctx.save(); ctx.strokeStyle = "#4a3a2a"; ctx.lineWidth = Math.max(2, s * .09); ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(cx - s * .55, base); ctx.lineTo(cx - s * .45, top); ctx.lineTo(cx + s * .45, top); ctx.lineTo(cx + s * .55, base); ctx.stroke();
+  ctx.translate(cx, top + s * .08); ctx.rotate(sway);
+  if (rung) { const g = ctx.createRadialGradient(0, s * .45, 0, 0, s * .45, s * .8); g.addColorStop(0, "rgba(255,210,140,.35)"); g.addColorStop(1, "rgba(255,210,140,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, s * .45, s * .8, 0, 7); ctx.fill(); }
+  ctx.strokeStyle = "#2a2018"; ctx.lineWidth = Math.max(1, s * .04); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, s * .1); ctx.stroke();
+  const bell = ctx.createLinearGradient(-s * .32, 0, s * .32, 0); bell.addColorStop(0, "#5c3f1c"); bell.addColorStop(.45, rung ? "#c8964f" : "#9c7136"); bell.addColorStop(1, "#4a3216");
+  ctx.fillStyle = bell; ctx.beginPath(); ctx.moveTo(-s * .14, s * .1); ctx.quadraticCurveTo(-s * .2, s * .45, -s * .34, s * .72); ctx.lineTo(s * .34, s * .72); ctx.quadraticCurveTo(s * .2, s * .45, s * .14, s * .1); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#1e150c"; ctx.lineWidth = Math.max(1, s * .03); ctx.beginPath(); ctx.moveTo(s * .04, s * .18); ctx.lineTo(-s * .03, s * .36); ctx.lineTo(s * .06, s * .5); ctx.lineTo(-s * .02, s * .68); ctx.stroke(); // the crack
+  ctx.fillStyle = "#2a1d10"; ctx.beginPath(); ctx.arc(0, s * .74, s * .06, 0, 7); ctx.fill();
+  ctx.restore();
+}
 // Release 415: Ilse the Lamplighter, at the age the Corridor deals her. A child or young woman with a lit taper beside a lamp
 // post (lit), the woman holding the last lamp, the old woman beside a dark lamp, and in the Far Sleep a lamp with no post.
 export function drawIlse(ctx, o, s, now) {
@@ -1544,6 +1558,7 @@ export function render(ctx, g, w, h, now) {
             if (!spent) { ctx.fillStyle = "#e2d5ba"; ctx.font = "10px monospace"; ctx.textAlign = "center"; ctx.fillText("WRECK", bx, by - s * 1.4); ctx.textAlign = "start"; }
           } else if (o.kind === "digSpot") { drawDigSpot(ctx, o, s, now);
           } else if (o.kind === "ilse") { drawIlse(ctx, o, s, now);
+          } else if (o.kind === "crackedBell") { drawCrackedBell(ctx, o, s, now);
           } else if (o.kind === "skiff") {
             drawSkiff(ctx, o.x, o.y, s, "right", performance.now());
             if (o.id === "skiff-moored" && g.mendTarget?.() && !g.mendTarget().aboard) repairTag(ctx, o.x, o.y, s); // release 269

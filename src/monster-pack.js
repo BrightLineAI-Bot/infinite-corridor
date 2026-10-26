@@ -7,9 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r425-187b382f915e";
-import { hashSeed } from "./random.js?v=r425-187b382f915e";
-import { updateAstralActor } from "./astral-worm.js?v=r425-187b382f915e";
+import { stageOneBeastReference } from "./stages.js?v=r437-415a6323864d";
+import { hashSeed } from "./random.js?v=r437-415a6323864d";
+import { updateAstralActor } from "./astral-worm.js?v=r437-415a6323864d";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -497,6 +497,22 @@ const center = (q) => ({ x: Number(q.x) || 0, y: Number(q.y) || 0 });
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 function unit(x, y) { const m = Math.hypot(x, y) || 1; return { x: x / m, y: y / m }; }
 function bodyRadius(e) { return Math.max(.28, Number(e?.bodyRadius) || .38); }
+// Release 427 (Tim: "the turtle's tornadoes... don't have pink boxes beneath... go through all of the world bosses... make
+// sure that all of their attacks register their hit boxes... fuchsia pink... beneath them, so that we can see where the
+// damage is coming from"): the floor footprint every damage-carrying effect and every body-contact attack really hits
+// with, drawn in DANGER pink beneath it (monster-render). `pad` is what each effect's hit test adds to its radius.
+export const HIT_FOOTPRINT = { pad: { twister: .2, missile: .35, nanoOrb: .3, comet: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0 }, fallbackPad: .2 };
+export function effectFootprint(f) {
+  if (!f || !(Number(f.damage) > 0) || !(f.life > 0) || f.length || f.to || f.state === "circle" || f.state === "splash") return 0;
+  const pad = HIT_FOOTPRINT.pad[f.kind] ?? HIT_FOOTPRINT.fallbackPad; return Math.max(.2, (Number(f.radius) || .3) + pad);
+}
+// Attacks that hurt with the body itself, and what their hit test adds to the body's radius.
+export const BODY_HIT = { blobEngulf: .5, turtleDash: .5, turtleSpin: "spin", turtleCyclone: .5, turtleStomp: "stomp", wormSuction: .8, devourPull: .9, phaseCharge: .55, ramCharge: .55, qbPounce: .6, qbBarrage: .6 };
+export function bodyHitFootprint(e) {
+  const s = e?.pack, pad = s?.attack && BODY_HIT[s.attack]; if (pad == null || e.dead || e.hidden) return null;
+  const extra = pad === "spin" ? TURTLE.spinRadius : pad === "stomp" ? TURTLE.stompRadius : pad;
+  return { radius: bodyRadius(e) + extra, armed: s.phase !== "windup" };
+}
 function damageOf(e, attackId) { return Math.max(1, Math.ceil((Number(e.damage) || 1) * (ATTACK_MODULES[attackId]?.damage ?? 1))); }
 // Release 421 (Tim: "the bosses do too much damage... they need to have slightly more wind ups for their attacks... reduce their
 // damage by... 15%... more cool down between their attacks... they attack way too aggressively"): every boss and Revenant
@@ -1012,7 +1028,7 @@ const START = {
     s.data.plan = KNIGHT.comboPlan.slice(0, cuts / 2 * 3 - 1); // 2 cuts; 2, dash, 2; or the full six
     s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach, arc: KNIGHT.comboArc }; s.data.step = 0; s.data.cuts = 0; s.data.sub = 0;
   },
-  knightBackslash(e, s) { s.tele = null; s.data.cut = false; },
+  knightBackslash(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach + KNIGHT.arcReach, arc: KNIGHT.comboArc }; s.data.cut = false; }, // release 427: its reach shown (it had none)
   psyPush(e, s) { s.tele = { type: "ring", radius: CRYSTAL.pushRadius }; },
   psyPull(e, s) { s.tele = { type: "ring", radius: CRYSTAL.pullRadius, inhale: true }; },
   psyGrab(e, s, w) { s.tele = { type: "tether", x: w.player.x, y: w.player.y }; },
@@ -1409,8 +1425,8 @@ const RUN = {
   },
   knightBackslash(e, s, w) { // it leaps back away from you, slashing as it goes; the energy arc covers its retreat
     const attack = ATTACK_MODULES.knightBackslash, p = center(w.player);
-    if (s.phase === "windup") { if (s.t <= 0) { s.data.away = unit(e.x - p.x, e.y - p.y); s.data.aim = unit(p.x - e.x, p.y - e.y); toPhase(s, "active", attack.active); } return; }
-    if (s.phase !== "active") return;
+    if (s.phase === "windup") { if (s.t <= 0) { s.data.away = unit(e.x - p.x, e.y - p.y); s.data.aim = unit(p.x - e.x, p.y - e.y); if (s.tele) s.tele.aim = s.data.aim; toPhase(s, "active", attack.active); } return; }
+    if (s.phase !== "active") { s.tele = null; return; }
     const step = KNIGHT.backHop / attack.active * w.dt; w.move(e, s.data.away.x * step, s.data.away.y * step);
     e.hopLift = Math.sin(Math.max(0, 1 - s.t / attack.active) * Math.PI) * .6; e.swing = "back";
     if (!s.data.cut && s.t <= attack.active - .08) { s.data.cut = true; knightCut(e, s, w, "knightBackslash", s.data.aim, true, KNIGHT.comboArc); }
@@ -2219,12 +2235,12 @@ export function updatePackMonster(e, w) {
     if (e.watched) return;
   }
   // Move according to the brain, then start the best ready attack.
-  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && !w.los(e, w.player) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : brainVector(e, s, w, def), v = e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * dt;
+  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && (e.inRock || !w.los(e, w.player)) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : brainVector(e, s, w, def), v = e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * dt;
   const moved = w.move(e, v.x / m * speed, v.y / m * speed, { phase: !!move.phases });
   if (!moved && !move.phases) w.detour?.(e, speed);
   e.facingX = (p.x - e.x) >= 0 ? 1 : -1;
   if (s.gap > 0) return;
-  if (hunting && !w.los(e, w.player)) return; // move toward the player first; never begin a grab/sky attack from an unseen room
+  if (hunting && (e.inRock || !w.los(e, w.player))) return; // move toward the player first; never begin a grab/sky attack from an unseen room (release 437: nor from inside rock; it comes out to you first)
   const ready = availableAttacks(e).filter((id) => attackReady(e, s, w, id, d));
   if (!ready.length) return;
   const preferred = ready.filter((id) => id !== s.last), pool = preferred.length ? preferred : ready, id = pool[hashSeed(`${e.id}:pick:${s.seq}`) % pool.length];
