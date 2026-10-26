@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 457 — to +10.
+  - **Higher upgrade limits:** from Infinite IV, once the second Gate is passed (two Listeners felled), every gear tier's upgrade limit rises by 3. A relic goes to +9, and a masterwork relic to +10. Each rank still costs one more sphere than the last. Below that point, the Forge says what raises the limit.
 - Release 455 — margins.
   - **Writing in the stone:** about one ordinary crossing in five now holds a line of its region's book cut into the stone, with a reader's note beside it in a smaller hand. Reading it with Act finds one of that region's margin fragments for the Reciter's Tome and keeps the words in the Journal.
   - **Every margin can be found:** a crossing whose margin you have read shows one of the region's unread margins instead, while any remain.

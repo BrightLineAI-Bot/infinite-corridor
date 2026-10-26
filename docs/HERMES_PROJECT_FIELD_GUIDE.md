@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 457: to +10 — 2026-10-26
+
+Tim: "after Infinite 4, after you've played the second gate, you should be able to upgrade your weapons to +10... +10 is the max upgrade."
+
+**CODE:** items.ts `LATE_UPGRADE{ranks:3,tier:14,listeners:2}` and `lateUpgradeOpen(save)` (Aperture band 14, Infinite IV, and `farArray.listeners >= 2`). `itemCap(item, save)` adds the ranks when it is open; `upgradeCost(item, save)` and `upgradeEquipment` pass the save. `normalizeItemUpgrade` (no save) now clamps to the widest legal cap (base + masterwork + 3), so ranks earned past the base cap survive every save and migration. The Forge button passes the save and, at the base limit, names what raises it.
+
+**BOUNDARY:** sphere costs per rank are unchanged (rank + 1). Without a save, callers see the old caps. No save change. Tests: `tests/upgrade-cap-457.test.ts`.
+
 ## Release 455: margins — 2026-10-26
 
 Daily narrative session, docs/narrative-bible.md section 7, step 6 ("Ilse, the Seven Bells, margins in crossings"), and section 2 ("Margins: inscriptions, objects or Glimpses inside the region's crossings", about 20% of each Reading).
