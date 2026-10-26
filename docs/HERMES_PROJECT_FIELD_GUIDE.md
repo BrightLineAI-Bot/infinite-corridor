@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 449: a Crossing Sigil you can use — 2026-10-26
+
+Tim, with a screenshot of Supplies: "Crossing sigil is still not something I can use."
+
+**CODE:** Supplies listed the sigil with no button (release 291), and the Atlas's travel button in a dungeon only called `useCrossingSigil()`, which left the dungeon at its entrance although the text promised "across the corridor". `Game.useCrossingSigil(key)` now leaves the dungeon and, when `key` names a lit Wayglass, goes on with `travelToCheckpoint(key)`. main.ts passes the Atlas's chosen Wayglass, labels the button `Use Crossing Sigil ×N → <Wayglass | dungeon entrance>`, and gives the Supplies row a Use button that (inside a dungeon, with a sigil) closes the Pack and calls `openSigilAtlas()`: the corridor Atlas with a prompt to choose a Wayglass.
+
+**BOUNDARY:** one sigil per use, as before; outside a dungeon it is not spent, and the button reads "Use (inside a dungeon)", disabled. No save change. Tests: `tests/crossing-sigil-449.test.ts`.
+
 ## Release 447: Refuge meals — 2026-10-26
 
 Tim: "food buffs... 15 minutes... you should have to go back to the town to get another buff, so it shouldn't be like you can carry food with you... similar to Monster Hunter... combinations of ingredients to make a food that gives you a desired buff... extra damage, life, stamina, movement speed, attack speed... It shouldn't be crazy... something that attracts... world bosses... make it easier for world bosses to find you."

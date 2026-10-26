@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 449 — a Crossing Sigil you can use.
+  - **Use button:** Crossing Sigils in Supplies now have a Use button. Inside a dungeon it opens the Atlas so you can choose where to go.
+  - **Across the corridor:** with a Wayglass chosen, the sigil carries you out of the dungeon and on to that Wayglass (it used to stop at the dungeon entrance). The Atlas button says where it takes you; with none chosen, it is the entrance.
 - Release 447 — Refuge meals.
   - **Hollis cooks:** press Act at Hollis Dray in Ember Refuge, or at the new cook in every Listener town, to open the kitchen. Choose two things from the pantry; he makes a meal and you eat it there. Food is never carried, so for another meal you go back to town.
   - **Fifteen minutes:** a meal lasts 15 minutes of play, shows on the HUD as MEAL with its time left, and a new meal replaces the last.
