@@ -2128,8 +2128,8 @@ export class Game {
         // The Watcher's shrines and tombs (release 289) likewise.
         ...(prior ? (prior.watcherVersion ? { watcherVersion: prior.watcherVersion } : {}) : { watcherVersion: WATCHER.version }),
         ...(this.map.landscape?.biome ? { landscape: this.map.landscape.biome } : {}), sites: this.map.objects
-        .filter((o) => ["diveSite","shipwright","checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho"].includes(o.kind))
-        .map((o) => ({ kind: o.kind, name: o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
+        .filter((o) => ["diveSite","shipwright","checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho","watcherTomb"].includes(o.kind)) // release 465: the Watcher's shrines
+        .map((o) => ({ kind: o.kind, name: o.kind === "watcherTomb" ? (o.where === "shrine" ? "Watcher's Shrine" : "Watcher's Tomb") : o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save)});
     if(area==="overworld"){const war=addSkirmish(this.map,this.save.seed,this.rx,this.ry,this.save);if(war)this.message=war.text;else if(this.map.settlement?.procedural)this.message=`${this.map.settlement.name} — a ${this.map.settlement.label.toLowerCase()} holds this ground.`}

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 465 — Watcher's shrines on the map.
+  - **Marked:** the ruins inlaid with the Watcher's sigil, whose pristine tomb folds you somewhere else, now show on the Atlas with an eye mark (under Places) and are listed in the Atlas's Go to… menu. A shrine seen before this release is marked the next time you pass through its section.
 - Release 463 — tougher dungeons.
   - **Stronger foes:** every dungeon foe, guardians included, has 20% more health and deals 20% more damage. World beasts, the Questing Beast, Far Array bosses and Gate Revenants keep their own tuning.
   - **More foes:** each crossing holds about a fifth more of its ordinary foes, near the others. Crossings you have already cleared stay cleared.
