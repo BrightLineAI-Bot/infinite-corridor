@@ -1,5 +1,5 @@
-import{normalizeSockets}from'./glyphs.js?v=r479-311e59963952';
-import{rng,pick}from'./random.js?v=r479-311e59963952';
+import{normalizeSockets}from'./glyphs.js?v=r487-99f7bac84927';
+import{rng,pick}from'./random.js?v=r487-99f7bac84927';
 export const ITEM_TABLE={primary:[['Cinder Pike','reach'],['Verge Cleaver','impact']],secondary:[['Lumen Spindle','focus'],['Needle Caster','quick'],['Rift Bombard','blast']],armor:[['Kiln Mantle','guard'],['Glassweave Coat','stamina']],charm:[['Quiet Compass','discovery']]};
 export const ITEM_TIERS=['common','rare','epic','relic'];
 export const RANGED_WEAPONS={'spark-coil':{name:'Spark Coil',damage:8,speed:12,lifetime:1.6,damageType:'magic',path:'straight'},'secondary-lumen-spindle':{name:'Lumen Spindle',damage:11,speed:10,lifetime:1.8,turnAfter:.8,damageType:'magic',path:'boomerang'},'secondary-needle-caster':{name:'Needle Caster',damage:10,speed:15,lifetime:1.25,damageType:'physical',path:'straight'},'secondary-rift-bombard':{name:'Rift Bombard',damage:16,speed:8,lifetime:1.4,radius:2.15,damageType:'magic',path:'grenade'}};
@@ -8,7 +8,13 @@ export const SPELLS={'cinder-dart':{id:'cinder-dart',name:'Cinder Dart',cooldown
  // Release 365: three spells from Infinite III (late-spells.ts). The Shadow Clone is not a field: `lifetime` is how long it lasts.
  'shadow-clone':{id:'shadow-clone',name:'Shadow Clone',cooldown:16,lifetime:12,radius:0,pulse:99,damage:0,maxRange:5,unlockTier:13,text:'Cast a shadow beside you that copies your swings and shots at half damage. Hold the button to send it farther, up to 5 tiles; cast again to step into it.'},
  'gravity-well':{id:'gravity-well',name:'Gravity Well',cooldown:14,lifetime:3.5,radius:3,pulse:.7,damage:6,maxRange:5,unlockTier:13,text:'A vortex that drags foes toward its eye while it pulses.'},
- 'stillpoint':{id:'stillpoint',name:'Stillpoint',cooldown:18,lifetime:5,radius:2.8,pulse:1,damage:4,maxRange:4,unlockTier:13,text:'A pocket of held time: foes inside move at 40% speed, and hostile shots that enter it stop and fall apart.'}};
+ 'stillpoint':{id:'stillpoint',name:'Stillpoint',cooldown:18,lifetime:5,radius:2.8,pulse:1,damage:4,maxRange:4,unlockTier:13,text:'A pocket of held time: foes inside move at 40% speed, and hostile shots that enter it stop and fall apart.'},
+ 'hammerfall':{id:'hammerfall',name:'Hammerfall',cooldown:7,lifetime:.25,radius:1.5,pulse:99,damage:0,maxRange:2.6,unlockTier:13,brawler:true,text:'A hammer of light falls on your target and staggers it: 220% of a swing, scaled by melee damage.'},
+ 'great-sweep':{id:'great-sweep',name:'Great Sweep',cooldown:6,lifetime:.3,radius:2.4,pulse:99,damage:0,maxRange:0,unlockTier:13,brawler:true,text:'A blade sweeps all the way round you: 150% of a swing to every foe close by, scaled by melee damage.'},
+ 'iron-fist':{id:'iron-fist',name:'Iron Fist',cooldown:8,lifetime:.25,radius:1.3,pulse:99,damage:0,maxRange:5,unlockTier:13,brawler:true,text:'Hold to charge, let go to dash forward and punch: 140% of a swing, up to 360% fully charged, scaled by melee damage.'},
+ 'aegis':{id:'aegis',name:'Aegis',cooldown:9,lifetime:1,radius:0,pulse:99,damage:0,maxRange:0,unlockTier:13,brawler:true,text:'A shield of light for one second: every blow is turned aside (falls are not blows).'},
+ 'shadow-boxing':{id:'shadow-boxing',name:'Shadow Boxing',cooldown:16,lifetime:8,radius:0,pulse:99,damage:0,maxRange:4,unlockTier:13,brawler:true,text:'For 8 s your swings carry you to your foe; they deal 10% more and heal 6% of what they deal, and you take 15% less damage.'},
+ 'orbit-volley':{id:'orbit-volley',name:'Orbit Volley',cooldown:9,lifetime:.3,radius:1.1,pulse:99,damage:14,maxRange:7,unlockTier:13,text:'Press to gather orbs round you; press again to launch them as one ball at your target, stronger the longer they gathered. Launch while they glow gold for a perfect volley (240%) that leaves a vortex. Left alone, they go by themselves.'}};
 // Release 365: whether a spell is open to the Wayfarer (the Infinite III spells need that band of the Aperture).
 export function spellOpen(save,id){const sp=SPELLS[id];return !!sp&&(!sp.unlockTier||APERTURE_BANDS.indexOf(apertureBand(save?.perception?.aperture||0))>=sp.unlockTier)}
 export const UPGRADE_CAPS={common:3,rare:4,epic:5,relic:6};

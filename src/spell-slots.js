@@ -4,7 +4,7 @@
 // always-on bonus while both are in place, discovered the first time the pair is slotted. Spells now keep their own
 // cooldowns (`magicSkills.cooldowns["spell:<id>"]`), so two spells can share the buttons.
 // Data and pure rules; game.ts casts, main.ts draws the buttons and the Arcanum.
-import { SPELLS, APERTURE_SKILLS, skillRank, spellOpen } from "./items.js?v=r479-311e59963952";
+import { SPELLS, APERTURE_SKILLS, skillRank, spellOpen } from "./items.js?v=r487-99f7bac84927";
 
 export const ATTRIBUTES = {
   // icon (release 157): the element's mark beside every spell and discipline in the Arcanum.
@@ -22,6 +22,12 @@ export const CASTABLES = {
   "spell:shadow-clone": { kind: "spell", id: "shadow-clone", symbol: "◐", attr: "dusk" }, // release 365: from Infinite III
   "spell:gravity-well": { kind: "spell", id: "gravity-well", symbol: "⊛", attr: "rift" },
   "spell:stillpoint": { kind: "spell", id: "stillpoint", symbol: "⧗", attr: "ward" },
+  "spell:hammerfall": { kind: "spell", id: "hammerfall", symbol: "⚒", attr: "force" }, // release 483: brawler spells
+  "spell:great-sweep": { kind: "spell", id: "great-sweep", symbol: "◠", attr: "force" },
+  "spell:iron-fist": { kind: "spell", id: "iron-fist", symbol: "✊", attr: "force" },
+  "spell:aegis": { kind: "spell", id: "aegis", symbol: "⛉", attr: "ward" }, // release 485
+  "spell:shadow-boxing": { kind: "spell", id: "shadow-boxing", symbol: "⚔", attr: "dusk" },
+  "spell:orbit-volley": { kind: "spell", id: "orbit-volley", symbol: "❂", attr: "rift" }, // release 487
   "skill:ember-form": { kind: "skill", id: "ember-form", symbol: "✶", attr: "fire" },
   "skill:quickening": { kind: "skill", id: "quickening", symbol: "≫", attr: "wind" },
   "skill:aerial-step": { kind: "skill", id: "aerial-step", symbol: "⇡", attr: "wind" },

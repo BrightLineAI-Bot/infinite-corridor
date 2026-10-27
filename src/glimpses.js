@@ -2,7 +2,7 @@
 // for a few seconds through someone's, or something's, eyes. This module holds the catalogue and the rules (where a
 // Glimpse may surface, how rarely it repeats, which fragment it gives); the drawing lives in glimpse-render.ts.
 // Pure data and rules: no DOM.
-import { readingAt, bookPieces, ensureLore, creditPiece } from "./lore.js?v=r479-311e59963952";
+import { readingAt, bookPieces, ensureLore, creditPiece } from "./lore.js?v=r487-99f7bac84927";
 
 // `human` places a Glimpse on the drift from human residue (1) to the wholly unhuman (0). Near Ember Refuge the
 // Corridor offers mostly human Glimpses, far out mostly unhuman ones, but every region keeps some of the other end.
@@ -31,7 +31,7 @@ export const GLIMPSE_ORDER = Object.keys(GLIMPSES);
 // How often each kind of moment surfaces a Glimpse, and how many times one Glimpse may ever be seen in a journey.
 // Release 215 (Tim): story beats come from strange things (always), not from felling trees; ruins and crossings rarely.
 export const GLIMPSE_CHANCE = { strange: 1, touch: .15, crossing: .2 };
-export const GLIMPSE_MAX_SEEN = 3;
+export const GLIMPSE_MAX_SEEN = 1; // release 481 (Tim: "I shouldn't be [seeing] the same glimpses multiple times... just see them once, and then if I wanna see them again... look in the book"): was 3
 // Depth (sections from the Refuge) at which the Corridor has wholly forgotten it was human.
 export const GLIMPSE_DRIFT_DEPTH = 40;
 export const GLIMPSE_FLOOR = .15; // the least weight any Glimpse keeps anywhere

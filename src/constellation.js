@@ -8,10 +8,10 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand } from "./items.js?v=r479-311e59963952";
-import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r479-311e59963952";
-import { pairingMods } from "./spell-slots.js?v=r479-311e59963952";
-import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r479-311e59963952";
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand } from "./items.js?v=r487-99f7bac84927";
+import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r487-99f7bac84927";
+import { pairingMods } from "./spell-slots.js?v=r487-99f7bac84927";
+import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r487-99f7bac84927";
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 
@@ -191,7 +191,7 @@ export function onConstellationDodge(game) {
   if (nodeOn(s, "light-feet")) p.stamina = Math.min(s.maxStamina, p.stamina + 3);
   if (altOn(s, "light-feet") && p.hp > 0) p.hp = Math.min(s.maxHp, p.hp + ALT_PASSIVES["light-feet"].heal); // release 359: Second Wind
   if (activeIs(s, "quickening") && nodeOn(s, "slipstream")) p.stamina = Math.min(s.maxStamina, p.stamina + 15);
-  if (activeIs(s, "quickening") && altOn(s, "slipstream")) { const A = ALT_PASSIVES.slipstream; game.glyphWorld(game.lastUpdateNow || 0).blast(p.x + .5, p.y + .45, A.radius, A.damage + A.perLevel * (s.level || 1)); } // Afterimage
+  if (activeIs(s, "quickening") && altOn(s, "slipstream")) { const A = ALT_PASSIVES.slipstream; game.dodgeBurst(p.x + .5, p.y + .45, A.radius, A.damage + A.perLevel * (s.level || 1)); } // Afterimage (release 481: dodgeBurst, scaled by spell damage)
 }
 export function onConstellationMelee(game, e, now) {
   if (activeIs(game.save, "ember-form") && nodeOn(game.save, "ember-skin")) e.glyphBurn = { until: Math.max(e.glyphBurn?.until || 0, now + 2500), dps: Math.max(e.glyphBurn?.dps || 0, 3 + Math.round((game.save.level || 1) * .5)), tick: e.glyphBurn?.tick || 0 };

@@ -1,5 +1,7 @@
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r479-311e59963952";
-import { SHADOW_CLONE } from "./late-spells.js?v=r479-311e59963952";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r487-99f7bac84927";
+import { SHADOW_CLONE } from "./late-spells.js?v=r487-99f7bac84927";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r487-99f7bac84927";
+import { drawOrbit } from "./orbit-volley.js?v=r487-99f7bac84927";
 export function drawRangedEffects(ctx,game,width,height) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [
@@ -35,6 +37,7 @@ export function drawRangedEffects(ctx,game,width,height) {
   }
   ctx.shadowBlur = 0;
   for (const fx of game.effects) {
+    if (fx.brawler) continue; // release 483: drawn by drawBrawler
     const [x, y] = toScreen(fx);
     ctx.strokeStyle = fx.hostile ? "#e35248cc" : "#b75235aa";
     ctx.lineWidth = 4;
@@ -49,6 +52,9 @@ export function drawRangedEffects(ctx,game,width,height) {
   }
   // Release 365: Gravity Well (a turning spiral) and Stillpoint (still clock rings) over their circles; the Shadow Clone.
   {const t = performance.now() / 1000;
+  drawBrawler(ctx, game, toScreen, s, t); // release 483: Hammerfall, Great Sweep, Iron Fist
+  drawBrawlerAuras(ctx, game, toScreen, s, t); // release 485: Aegis, Shadow Boxing
+  drawOrbit(ctx, game, toScreen, s, t); // release 487: Orbit Volley
   for (const fx of game.effects) {
     if (fx.kind !== "gravity-well" && fx.kind !== "stillpoint") continue;
     const [x, y] = toScreen(fx), R = fx.radius * s;
