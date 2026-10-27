@@ -1,0 +1,57 @@
+// Brawler spells (release 483; Tim, 2026-10-27: "we can even have like spell sword spells... like a giant hammer that comes
+// down and attacks... another one that does a large sweep with a sword. And these can be buffed by melee damage... these are
+// brawler type [spells]... another one can be like a charge punch fist... you [dash] forward and you punch... you can like
+// charge it up if you hold the spell button... the hammer... in whatever direction he's facing, or... the regular, like,
+// targeting... that applies for attacking").
+//
+// Three spells that hit like weapons: their damage is a share of a swing's (Game.meleePower: the weapon, the melee bonus and
+// every melee-damage multiplier), not of the magic stats. They aim like a swing: the locked target, else the foe auto aim
+// picks, else the way you face.
+//   Hammerfall: a hammer of light falls on the foe (or `reach` tiles ahead) after `delay` s; a heavy blow in `radius` that
+//     staggers (`stun` s; a quarter of that for bosses and elites).
+//   Great Sweep: a blade sweeps all the way round you: every foe within `radius`.
+//   Iron Fist: press and hold to charge (up to `chargeTime` s past `tapGrace`); let go to dash `dash` tiles plus `chargeDash`
+//     at full charge toward the aim and punch in `radius`. Damage goes from `share` to `share + chargeShare` with the charge.
+//     The dash stops at walls and lethal ground, and you cannot be hurt during it.
+// The spells are ordinary SPELLS entries (items.ts, `brawler: true`), so slots, presets, glyph sockets and cooldowns treat them
+// like the others. game.ts casts them (castBrawler, releaseFist); drawBrawler below draws them.
+export const BRAWLER = {
+  hammerfall: { share: 2.2, radius: 1.5, reach: 2.6, delay: .32, stun: .6 },
+  "great-sweep": { share: 1.5, radius: 2.4 },
+  "iron-fist": { share: 1.4, chargeShare: 2.2, radius: 1.3, dash: 2, chargeDash: 3, chargeTime: 1.2, tapGrace: .12, guardMs: 220 },
+};
+// How charged a fist is after `held` seconds of holding (0..1).
+export const fistCharge = (held) => Math.max(0, Math.min(1, (held - BRAWLER["iron-fist"].tapGrace) / BRAWLER["iron-fist"].chargeTime));
+
+// Drawing (called from combat-visuals.ts with its screen transform). `t` is seconds.
+export function drawBrawler(ctx, game, toScreen, s, t) {
+  for (const fx of game.effects) {
+    if (!fx.brawler) continue;
+    const [x, y] = toScreen(fx), R = fx.radius * s;
+    if (fx.kind === "hammerfall") {
+      const fall = fx.delay > 0 ? 1 - fx.delay / BRAWLER.hammerfall.delay : 1;
+      ctx.strokeStyle = "#ffd58a99"; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.stroke(); ctx.setLineDash([]); // where it lands
+      if (fx.delay > 0) { // the hammer head comes down
+        const hy = y - s * 2.2 * (1 - fall), w = s * .9, h = s * .5;
+        ctx.fillStyle = "#e8d3a2"; ctx.strokeStyle = "#5a4628"; ctx.lineWidth = 2; ctx.fillRect(x - w / 2, hy - h, w, h); ctx.strokeRect(x - w / 2, hy - h, w, h);
+        ctx.fillStyle = "#8a6a3e"; ctx.fillRect(x - s * .06, hy - h - s * .8, s * .12, s * .8);
+      } else { // the shock ring
+        const k = Math.max(0, fx.life / .25); ctx.globalAlpha = k; ctx.strokeStyle = "#ffe2a8"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, R * (1.15 - .4 * k), 0, 7); ctx.stroke();
+        ctx.fillStyle = "#ffcf7a44"; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+      }
+    } else if (fx.kind === "great-sweep") {
+      const k = Math.max(0, fx.life / .3), a0 = (1 - k) * Math.PI * 2;
+      ctx.strokeStyle = "#dfe8f0"; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.globalAlpha = .85 * k + .15; ctx.beginPath(); ctx.arc(x, y, R * .85, a0 - 1.6, a0); ctx.stroke();
+      ctx.strokeStyle = "#9fc4e0"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, R, a0 - 2.4, a0); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineCap = "butt";
+    } else if (fx.kind === "iron-fist") {
+      const k = Math.max(0, fx.life / .25); ctx.globalAlpha = k; ctx.fillStyle = "#ffb05a55"; ctx.beginPath(); ctx.arc(x, y, R * (1.1 - .3 * k), 0, 7); ctx.fill();
+      ctx.strokeStyle = "#ffe0b0"; ctx.lineWidth = 3; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * .4, y + Math.sin(a) * R * .4); ctx.lineTo(x + Math.cos(a) * R, y + Math.sin(a) * R); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    }
+  }
+  const c = game.fistCharge;
+  if (c) { // charging: a ring tightening round the Wayfarer, brighter as it fills
+    const [x, y] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }), k = fistCharge(((game.lastUpdateNow || 0) - c.start) / 1000);
+    ctx.strokeStyle = k >= 1 ? "#ffe9b0" : "#ffb05a"; ctx.lineWidth = 2 + 3 * k; ctx.globalAlpha = .5 + .4 * k; ctx.beginPath(); ctx.arc(x, y, s * (1.2 - .5 * k), -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(.05, k)); ctx.stroke(); ctx.globalAlpha = 1;
+  }
+}

@@ -90,6 +90,7 @@ import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./lis
 import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.ts";
 import { swapPreset } from "./build-presets.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.ts";
+import { BRAWLER, fistCharge } from "./brawler-spells.ts"; // release 483
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
 import { addIlse, meetIlse } from "./ilse.ts";
@@ -1087,6 +1088,7 @@ export function updateEffects(effects, enemies, dt, onDefeat = () => {}, damageF
         const actual = Math.max(0, hpBefore - Math.max(0, e.hp));
         e.hitFlash = 0.18;
         e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.1 : 0.18);
+        if (fx.stun) e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? fx.stun * .25 : fx.stun); // release 483: Hammerfall and a charged Iron Fist stagger
         if (e.hp <= 0 && !e.dead) {
           e.dead = true;
           onDefeat(e);
@@ -4400,6 +4402,7 @@ export class Game {
     if (spellId && SPELLS[spellId]) this.save.equippedSpell = spellId; // the readied spell is the glyph host
     const spell = SPELLS[this.save.equippedSpell] || SPELLS["ember-ring"], cds = (this.save.magicSkills ||= {}).cooldowns ||= {}, key = `spell:${spell.id}`, remaining = spellId ? cds[key] || 0 : this.spellCooldownRemaining; // slots use per-spell cooldowns; the legacy call keeps its single one
     if (spell.id === "shadow-clone") return this.castShadowClone(spell, cds, key); // release 365
+    if (spell.brawler) return this.castBrawler(spell, cds, key); // release 483
     if (remaining > 0) {
       this.message = `${spell.name} recovers in ${Math.ceil(remaining)}s.`;
       return false;
@@ -4447,6 +4450,46 @@ export class Game {
     cds[key] = cooldown; if (!spellId) this.spellCooldownRemaining = cooldown;
     echoEvent(this, "spell", this.lastUpdateNow || 0);
     this.message = `${spell.name} answers.`;
+    return true;
+  }
+  // Release 483 (brawler-spells.ts): a swing's damage before the target's own defences: the weapon, the melee bonus, the
+  // melee glyph mods and every melee-damage multiplier (armor glyphs, meals, pages, the empowered robot).
+  meleePower() { const glyphs = hostLoadout(this.save, "melee"); return (primaryProfile(this.save.equipment.primary).damage * glyphs.mods.damage + characterStats(this.save).meleeBonus) * (1 + armorGlyphBonus(this.save).attackDamage); }
+  // Where a brawler spell goes: the swing's own aim (the lock, else auto aim within `reach`, else the way you face). Returns
+  // { d: unit direction, foe }.
+  brawlerAim(reach) {
+    const w = mapWidth(this.map, this.area), t = this.lockedTarget(), locked = t && !t.untargetable && !t.hidden ? t : null, pick = locked ? null : pickMeleeTarget(this.player, this.enemies, this.map, w, reach), foe = locked || pick?.e || null;
+    const d = foe ? projectileDirection(foe.x - this.player.x, foe.y - this.player.y, this.player.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, this.player.facing);
+    if (foe) this.aimMark = { id: foe.id, until: (this.lastUpdateNow || 0) + AIM_MARK.ms };
+    return { d, foe };
+  }
+  brawlerEffect(spell, x, y, damage, extra = {}) {
+    const fx = { id: `spell-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: spell.id, brawler: true, x, y, life: spell.lifetime, radius: spell.radius, pulse: spell.pulse, untilPulse: 0, damage: Math.max(1, Math.round(damage)), pulseIndex: 0, hits: {}, glyphHost: "spell", glyphSpell: spell.id, ...extra };
+    this.effects.push(fx); return fx;
+  }
+  castBrawler(spell, cds, key, now = this.lastUpdateNow || 0) {
+    if ((cds[key] || 0) > 0) { this.message = `${spell.name} recovers in ${Math.ceil(cds[key])}s.`; return false; }
+    const B = BRAWLER[spell.id], p = this.player, cx = p.x + .5, cy = p.y + .45;
+    cds[key] = spell.cooldown * this.glyphLoadout("spell", spell.id).mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
+    if (spell.id === "iron-fist") {
+      if (this.castAction) { this.fistCharge = { action: this.castAction, start: now }; this.message = "Hold to charge the fist; let go to strike."; return true; }
+      return this.releaseFist(0, now);
+    }
+    if (spell.id === "hammerfall") {
+      const { d, foe } = this.brawlerAim(B.reach + 1), fd = foe ? Math.hypot(foe.x + .5 - cx, foe.y + .45 - cy) : Infinity, at = fd <= B.reach + .5 ? { x: foe.x + .5, y: foe.y + .45 } : { x: cx + d.x * B.reach, y: cy + d.y * B.reach };
+      this.brawlerEffect(spell, at.x, at.y, this.meleePower() * B.share, { delay: B.delay, stun: B.stun });
+    } else this.brawlerEffect(spell, cx, cy, this.meleePower() * B.share); // Great Sweep: all round you
+    p.attackUntil = now + 240; echoEvent(this, "spell", now); this.message = `${spell.name}!`;
+    return true;
+  }
+  // Iron Fist: dash toward the aim (farther with charge), then punch. The dash stops before walls and lethal ground.
+  releaseFist(charge = 0, now = this.lastUpdateNow || 0) {
+    this.fistCharge = null;
+    const spell = SPELLS["iron-fist"], B = BRAWLER["iron-fist"], p = this.player, w = this.glyphWorld(now), { d } = this.brawlerAim(B.dash + B.chargeDash + 1), dist = B.dash + B.chargeDash * charge;
+    p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + B.guardMs);
+    for (let k = .25; k <= dist + 1e-6; k += .25) { const nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny)) break; p.x = nx; p.y = ny; }
+    this.brawlerEffect(spell, p.x + .5 + d.x * .7, p.y + .45 + d.y * .7, this.meleePower() * (B.share + B.chargeShare * charge), { stun: .3 * charge });
+    p.attackUntil = now + 240; echoEvent(this, "spell", now); this.message = charge >= 1 ? "Iron Fist, fully charged!" : "Iron Fist!";
     return true;
   }
   // Release 365 (late-spells.ts): the Shadow Clone. A press deploys it; a press while it lasts carries you to it.
@@ -4706,6 +4749,7 @@ export class Game {
       this.fireSecondary(now, aim || this.save.lastAim);
     }
     if (this.shadowClone?.charging) this.tickCloneCharge(!!input.held?.(this.shadowClone.charging.action), now); // release 417
+    if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > BRAWLER["iron-fist"].tapGrace + BRAWLER["iron-fist"].chargeTime + 1) this.releaseFist(fistCharge(held), now); } // release 483: Iron Fist strikes when the button is let go
     if (input.consume("spell")) this.castSlot("a");
     if (input.consume("spell2")) this.castSlot("b");
     if (input.consume("dodge")) {

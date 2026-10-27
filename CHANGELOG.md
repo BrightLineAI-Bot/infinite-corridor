@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 483 — brawler spells.
+  - **Three new spells from Infinite III that hit like weapons.** Their damage follows your melee damage (weapon, Might, melee bonuses), and they aim like a swing: your lock, else the nearest foe, else the way you face.
+  - **Hammerfall:** a hammer of light falls on your target a moment later for 220% of a swing and staggers it.
+  - **Great Sweep:** a blade sweeps all the way round you for 150% of a swing to every foe close by.
+  - **Iron Fist:** hold the button to charge, let go to dash forward and punch. A tap dashes 2 tiles for 140% of a swing; fully charged (about a second) it dashes 5 tiles for 360% and staggers. You can't be hurt during the dash, and it stops at walls and lethal ground.
 - Release 481 — lock, foe, tap; stronger echoes and bursts; bigger buttons.
   - **Spell aim order:** a spell goes to the foe you've locked; else the nearest foe in reach (auto aim); else where you just tapped; else where you stand.
   - **Two Echo glyphs:** with two Echo glyphs on one spell, its echo strikes for 75% instead of 50%.

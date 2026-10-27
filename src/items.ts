@@ -8,7 +8,10 @@ export const SPELLS={'cinder-dart':{id:'cinder-dart',name:'Cinder Dart',cooldown
  // Release 365: three spells from Infinite III (late-spells.ts). The Shadow Clone is not a field: `lifetime` is how long it lasts.
  'shadow-clone':{id:'shadow-clone',name:'Shadow Clone',cooldown:16,lifetime:12,radius:0,pulse:99,damage:0,maxRange:5,unlockTier:13,text:'Cast a shadow beside you that copies your swings and shots at half damage. Hold the button to send it farther, up to 5 tiles; cast again to step into it.'},
  'gravity-well':{id:'gravity-well',name:'Gravity Well',cooldown:14,lifetime:3.5,radius:3,pulse:.7,damage:6,maxRange:5,unlockTier:13,text:'A vortex that drags foes toward its eye while it pulses.'},
- 'stillpoint':{id:'stillpoint',name:'Stillpoint',cooldown:18,lifetime:5,radius:2.8,pulse:1,damage:4,maxRange:4,unlockTier:13,text:'A pocket of held time: foes inside move at 40% speed, and hostile shots that enter it stop and fall apart.'}};
+ 'stillpoint':{id:'stillpoint',name:'Stillpoint',cooldown:18,lifetime:5,radius:2.8,pulse:1,damage:4,maxRange:4,unlockTier:13,text:'A pocket of held time: foes inside move at 40% speed, and hostile shots that enter it stop and fall apart.'},
+ 'hammerfall':{id:'hammerfall',name:'Hammerfall',cooldown:7,lifetime:.25,radius:1.5,pulse:99,damage:0,maxRange:2.6,unlockTier:13,brawler:true,text:'A hammer of light falls on your target and staggers it: 220% of a swing, scaled by melee damage.'},
+ 'great-sweep':{id:'great-sweep',name:'Great Sweep',cooldown:6,lifetime:.3,radius:2.4,pulse:99,damage:0,maxRange:0,unlockTier:13,brawler:true,text:'A blade sweeps all the way round you: 150% of a swing to every foe close by, scaled by melee damage.'},
+ 'iron-fist':{id:'iron-fist',name:'Iron Fist',cooldown:8,lifetime:.25,radius:1.3,pulse:99,damage:0,maxRange:5,unlockTier:13,brawler:true,text:'Hold to charge, let go to dash forward and punch: 140% of a swing, up to 360% fully charged, scaled by melee damage.'}};
 // Release 365: whether a spell is open to the Wayfarer (the Infinite III spells need that band of the Aperture).
 export function spellOpen(save,id){const sp=SPELLS[id];return !!sp&&(!sp.unlockTier||APERTURE_BANDS.indexOf(apertureBand(save?.perception?.aperture||0))>=sp.unlockTier)}
 export const UPGRADE_CAPS={common:3,rare:4,epic:5,relic:6};
