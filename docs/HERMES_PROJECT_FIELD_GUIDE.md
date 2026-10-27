@@ -2694,6 +2694,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 511: Sleeper's Hall walls stay walls — 2026-10-27
+
+The pre-publish Fable review (505→509) found a blocker in 509. A Sleeper's Hall (underlands.ts, the dream theme) uses `starVoid` as its wall tile, with landscape "underlands". So in the robot, any hall wall could be walked into, and 4 s against it destroyed the robot and killed the Wayfarer.
+
+**CODE:**
+- game.ts `isDreamVoid(tile)`: `starVoid` with landscape "dream", meaning the Far Sleep's overworld voids and the Listener arena's surrounding night.
+- `footprintOpen`'s `allowVoid` and `footprintVoid` both use `isDreamVoid`.
+- `p.voidSuit` is also false in dungeons.
+- tests/robot-void-509.test.ts adds two cases: a hall wall stops the robot, and an underlands starVoid is not a dream void.
+
+**BOUNDARY:** Only the 509 rule is narrowed. Dungeon layouts, the Far Sleep's terrain and the robot are otherwise unchanged.
+
 ## Release 509: the robot in the star-voids — 2026-10-27
 
 Tim: "in the dream world... these areas which are like dream holes... I was able to go into them with my suit. And I started taking damage, but then I didn't die... when you go through them, you should take damage as well similar to the lava, and you should die. If you stay in them for too long... it'll destroy your suit... beyond the corridor you don't have the necessary power or... permissions... to actually exist there. The suit gives you some protection from the... yawning void, but it's very little protection".

@@ -490,7 +490,7 @@ export function footprintOpen(map, width, x, y, allowLethalTerrain=false, allowM
   for(let ty=Math.floor(top);ty<=Math.floor(bottom-1e-6);ty++)for(let tx=Math.floor(left);tx<=Math.floor(right-1e-6);tx++){
     if(tx<0||ty<0||tx>=width||ty>=height)return false;
     const tile=map.tiles[ty*width+tx],marine=allowMarineTerrain&&isMarineTile(tile),lethal=allowLethalTerrain&&["canyon","river","dungeonWater",...DEEP_WATER].includes(tile?.kind);
-    if(!tile||marine&&!marineTileOpen(tile)||tile.blocked&&!lethal&&!marine&&!(allowVoid&&tile.kind==="starVoid"))return false;
+    if(!tile||marine&&!marineTileOpen(tile)||tile.blocked&&!lethal&&!marine&&!(allowVoid&&isDreamVoid(tile)))return false;
     if(tile.perch&&!allowLethalTerrain)return false; // release 265: a stone block is a perch only the Wayfarer (and fliers) may step onto
     if(!["shackWall","districtWall"].includes(tile.structure)||!tile.wallSides?.length)continue;
     const thickness=.22;
@@ -565,10 +565,13 @@ export function relocateIfStranded(entity, map, width) {
   }
   return false;
 }
+// Release 511: only the Far Sleep's own star-voids (landscape "dream"). A Sleeper's Hall uses starVoid as its walls
+// (underlands.ts, landscape "underlands"): those stay walls, even to the robot.
+const isDreamVoid = (tile) => tile?.kind === "starVoid" && tile.landscape === "dream";
 // Release 509: whether any of the footprint is over a star-void (MECH_VOID).
 export function footprintVoid(map, width, x, y) {
   const left = x + .24, right = x + .76, top = y + .5, bottom = y + .88;
-  for (let ty = Math.floor(top); ty <= Math.floor(bottom - 1e-6); ty++) for (let tx = Math.floor(left); tx <= Math.floor(right - 1e-6); tx++) if (map?.tiles?.[ty * width + tx]?.kind === "starVoid" && tx >= 0 && tx < width) return true;
+  for (let ty = Math.floor(top); ty <= Math.floor(bottom - 1e-6); ty++) for (let tx = Math.floor(left); tx <= Math.floor(right - 1e-6); tx++) if (tx >= 0 && tx < width && isDreamVoid(map?.tiles?.[ty * width + tx])) return true;
   return false;
 }
 export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false, onStep=null, allowMarineTerrain=false) {
@@ -4989,7 +4992,7 @@ export class Game {
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":DEEP_WATER.includes(terrainHazard)?"The deep water drags the Wayfarer under.":terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
     else if (sailing) this.sail(p, dx, dy, width, now);
     else {
-      p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0); p.voidSuit = this.mechUp(); // release 509: only the robot steps into a star-void
+      p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0); p.voidSuit = this.mechUp() && this.area !== "dungeon"; /* 511: never through dungeon walls */ // release 509: only the robot steps into a star-void
       const before = elevationAt(this.map, width, p.x, p.y), fromX = p.x, fromY = p.y;
       let fallStart = before, drop = 0, hurt = 0;
       const finishFall = (height) => {

@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**511**
+**513**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 509 | Claude | `claude/dreamy-rubin-yn6q2p` | The robot can enter the Far Sleep's star-voids, which tear it apart and kill the Wayfarer if they stay | Building. |
+| 511 | Claude | `claude/dreamy-rubin-yn6q2p` | Pre-publish review fix: a Sleeper's Hall's starVoid walls stay walls to the robot; only the Far Sleep's own voids can be entered | Building. |
+| 509 | Claude | PR #238 | The robot can enter the Far Sleep's star-voids, which tear it apart and kill the Wayfarer if they stay | Merged (`r509-f07e2830300b`). Not published (the pre-publish review found the Sleeper's Hall blocker fixed in 511). |
 | 507 | Claude | PR #237 | The submersible item button works once the robot is built; the robot wades water without stamina and crosses water edges anywhere; Echo adds hammers and a third tool shot | Merged (`r507-2d5bd4f609ac`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
