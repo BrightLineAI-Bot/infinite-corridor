@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**501**
+**503**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 499 | Claude | `claude/dreamy-rubin-yn6q2p` | Dungeon entrances sometimes inside a building (sections first seen from now on) | Building. |
+| 501 | Claude | `claude/dreamy-rubin-yn6q2p` | A smaller Jump button that yields gap presses to its neighbours | Building. |
+| 499 | Claude | PR #233 | Dungeon entrances sometimes inside a building (sections first seen from now on) | Merged (`r499-447e78b533ff`). Not published. |
 | 497 | Claude | PR #232 | The Arcanum's spell row scrolls sideways with full-width cards | Merged (`r497-4707834de012`). Not published. |
 | 495 | Claude | PR #231 | Shadow Boxing works with the Hammerfall and Great Sweep tools | Merged (`r495-27a316be8aa7`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |

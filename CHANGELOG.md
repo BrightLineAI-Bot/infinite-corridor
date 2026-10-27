@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 501 — a smaller Jump button.
+  - **Jump gives way:** the Jump button in the middle of the cluster is about two-thirds its old size, centred where it was, so presses meant for Tool, Act, Dodge or Attack land on them. A press in the gap between buttons now goes to Jump only when it is clearly the nearest.
 - Release 499 — crossings indoors.
   - **Dungeon entrances inside buildings:** in a section you haven't explored yet, if it holds both a dungeon entrance and a building, about half the time the entrance stands on the floor inside the building (through its door, the same every visit). Sections you've already explored keep their entrances where they were.
 - Release 497 — a spell row that scrolls.
