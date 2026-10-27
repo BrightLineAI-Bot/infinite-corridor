@@ -7,7 +7,7 @@
 //
 // Everything balance-related is data in GLYPHS and RESONANCES. The Game calls hostLoadout() when it attacks and
 // glyphHit() after each hit lands; world-side effects go through a small adapter so this file stays testable.
-import { hashSeed } from "./random.js?v=r505-ca3263066d7d";
+import { hashSeed } from "./random.js?v=r511-87890decf80f";
 
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];
@@ -20,7 +20,7 @@ export const GLYPHS = {
   ignite: { name: "Ignite", sigil: "🜂", color: "#ff8a3d", text: { melee: "Hits set foes burning for 3 s.", tool: "Shots set foes burning for 2 s.", spell: "Each pulse sets foes burning for 1.5 s." }, hit: { melee: 3, tool: 2, spell: 1.5 } },
   chain: { name: "Chain", sigil: "ϟ", color: "#8fd8ff", text: { melee: "A swing arcs to one more foe for 50%.", tool: "Hits arc on through two more foes for 45%.", spell: "Each pulse zaps one foe outside it for 40%." }, hit: { melee: [1, .5], tool: [2, .45], spell: [1, .4] } },
   pierce: { name: "Pierce", sigil: "➶", color: "#e8e2c8", text: { melee: "+30% reach.", tool: "Shots pass through up to three foes.", spell: "+30% radius." }, mods: { melee: { range: 1.3 }, tool: { pierce: 3 }, spell: { radius: 1.3 } } },
-  echo: { name: "Echo", sigil: "◎", color: "#c9a7ff", text: { melee: "Every swing repeats a moment later for 50%.", tool: "A second shot follows for 60%.", spell: "The spell recasts where it ended for 50% (75% with two Echo glyphs)." }, echo: { melee: [250, .5], tool: [150, .6], spell: [0, .5] }, double: { spell: .75 } }, // release 481: `double`, the echo's share with two Echo glyphs on one host
+  echo: { name: "Echo", sigil: "◎", color: "#c9a7ff", text: { melee: "Every swing repeats a moment later for 50%.", tool: "A second shot (or hammer, or sweep) follows for 60%; with two Echo glyphs a third follows for 25%.", spell: "The spell recasts where it ended for 50% (75% with two Echo glyphs)." }, echo: { melee: [250, .5], tool: [150, .6], spell: [0, .5] }, double: { spell: .75 }, third: { tool: .25 } }, // release 507: `third`, a second Echo glyph on the tool adds another copy at this share // release 481: `double`, the echo's share with two Echo glyphs on one host
   leech: { name: "Leech", sigil: "♁", color: "#d4495a", text: { melee: "Heal 12% of damage dealt (at least 2% of max health a hit).", tool: "Heal 8% of damage dealt (at least 1.2% of max health a hit).", spell: "Heal 5% of damage dealt (at least 0.8% of max health a hit)." }, hit: { melee: .12, tool: .08, spell: .05 }, floor: { melee: .02, tool: .012, spell: .008 } }, // release 281: floor = share of max health per hit (Tim: "I'm not getting health")
   heavy: { name: "Heavy", sigil: "▼", color: "#b9a37a", text: { melee: "+35% damage, 25% slower, staggers.", tool: "+35% damage, 25% slower, staggers.", spell: "+35% damage, 25% longer recovery." }, mods: { melee: { damage: 1.35, cooldown: 1.25 }, tool: { damage: 1.35, cooldown: 1.25 }, spell: { damage: 1.35, cooldown: 1.25 } } },
   swift: { name: "Swift", sigil: "»", color: "#7fe0a8", text: { melee: "25% faster, -15% damage.", tool: "25% faster, -15% damage.", spell: "30% faster recovery, -15% damage." }, mods: { melee: { damage: .85, cooldown: .75 }, tool: { damage: .85, cooldown: .75 }, spell: { damage: .85, cooldown: .7 } } },
@@ -150,7 +150,11 @@ export function discoverResonances(save, loadout) {
 export function echoPlan(loadout) {
   if (!loadout.has("echo")) return null;
   const [delay, share] = GLYPHS.echo.echo[loadout.host], double = loadout.count("echo") >= 2 ? GLYPHS.echo.double[loadout.host] || 0 : 0; // release 481 (Tim: "if you have two... echo gliffs on a [spell]... the echo shot does seventy five percent damage, instead of fifty percent")
-  return { delay, share: loadout.resonant("afterimage") ? 1 : Math.max(share, double) };
+  const full = loadout.resonant("afterimage"), plan = { delay, share: full ? 1 : Math.max(share, double) }, third = loadout.count("echo") >= 2 ? GLYPHS.echo.third[loadout.host] || 0 : 0;
+  // Release 507 (Tim: "each time you do an echo, it should do another hammer... The second echo should just make another shot
+  // that does twenty five percent damage"): `copies`, each echo in order ({ delay, share }); a third on the tool host.
+  plan.copies = [{ delay, share: plan.share }, ...(third ? [{ delay: delay * 2, share: full ? 1 : third }] : [])];
+  return plan;
 }
 
 // ---------------------------------------------------------------- hits

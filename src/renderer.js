@@ -1,21 +1,21 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r505-ca3263066d7d";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r505-ca3263066d7d";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r505-ca3263066d7d";
-import { enemyMeleeGeometry } from "./combat.js?v=r505-ca3263066d7d";
-import { ruleRows } from "./elders.js?v=r505-ca3263066d7d";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r505-ca3263066d7d";
-import { BOAT } from "./boats.js?v=r505-ca3263066d7d";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r505-ca3263066d7d";
-import { isMarineTile } from "./world-beasts.js?v=r505-ca3263066d7d";
-import { jumpLift } from "./game.js?v=r505-ca3263066d7d";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r505-ca3263066d7d";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r505-ca3263066d7d";
-import { liftAt, tileUnder } from "./landscape.js?v=r505-ca3263066d7d";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r505-ca3263066d7d";
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r505-ca3263066d7d";
-import { drawRelayNode } from "./relay-network.js?v=r505-ca3263066d7d";
-import { structureOccupancy } from "./world.js?v=r505-ca3263066d7d";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r505-ca3263066d7d";
+import { astralBeamAnchors } from "./astral-worm.js?v=r511-87890decf80f";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r511-87890decf80f";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r511-87890decf80f";
+import { enemyMeleeGeometry } from "./combat.js?v=r511-87890decf80f";
+import { ruleRows } from "./elders.js?v=r511-87890decf80f";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r511-87890decf80f";
+import { BOAT } from "./boats.js?v=r511-87890decf80f";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r511-87890decf80f";
+import { isMarineTile } from "./world-beasts.js?v=r511-87890decf80f";
+import { jumpLift } from "./game.js?v=r511-87890decf80f";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r511-87890decf80f";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r511-87890decf80f";
+import { liftAt, tileUnder } from "./landscape.js?v=r511-87890decf80f";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r511-87890decf80f";
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r511-87890decf80f";
+import { drawRelayNode } from "./relay-network.js?v=r511-87890decf80f";
+import { structureOccupancy } from "./world.js?v=r511-87890decf80f";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r511-87890decf80f";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -879,7 +879,7 @@ export function drawCrackedBell(ctx, o, s, now) {
 }
 // Release 455: writing in the stone. A low slab with a column of cut lines and, beside it, a smaller slanted hand; an
 // unread one holds a faint pale light in its letters.
-// Release r505-ca3263066d7d: a brass chain-link lying in the dust, glinting until it is taken; then only its print remains.
+// Release 505: a brass chain-link lying in the dust, glinting until it is taken; then only its print remains.
 export function drawSurveyorLink(ctx, o, s, now) {
   const cx = (o.x + .5) * s, cy = (o.y + .62) * s, taken = o.state === "taken";
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(-.5);

@@ -6,8 +6,8 @@
 // "infinite tier 3 and beyond... after you've unlocked the second gate with the listener... take the submersible on land";
 // "whenever you have unlocked the... fourth or fifth gate... a drone". Gates are the Listener kills (far-array.ts): the
 // second gate is unlocked by the second kill. Pure rules; boats.ts, diving.ts and game.ts ask these.
-import { apertureTier } from "./world.js?v=r505-ca3263066d7d";
-import { listenerKills } from "./stages.js?v=r505-ca3263066d7d";
+import { apertureTier } from "./world.js?v=r511-87890decf80f";
+import { listenerKills } from "./stages.js?v=r511-87890decf80f";
 
 export const VEHICLE_GATES = { diveTier: 12, subTier: 12, underwaterTier: 13, mechTier: 13, mechListeners: 2, droneListeners: 4 };
 const TIER_NAMES = { 12: "Infinite II", 13: "Infinite III" };
@@ -59,6 +59,25 @@ export const MECH_POWER = { burn: 1, every: 20, damage: .25, guard: .15, boost: 
 // consequence"). While the robot is up (either mode), lava no longer swallows the Wayfarer: they walk on through it, and the
 // heat takes `heat` of their maximum health every second, past the plating and every guard. Boosting over it costs nothing.
 export const MECH_LAVA = { heat: .1 };
+// The robot in water (release 507; Tim: "when I go into the water, I lose stamina, and I can't go between tiles... make sure
+// that the submersible suit works very well"). The robot is the submersible frame walking: while it is up (either mode) it
+// wades rivers, flooded halls and the sea, with or without the Tidemantle, at `speed`× the walking pace, costs no stamina,
+// takes no bite from dungeon water, and crosses a section's edge anywhere the water runs on (like a skiff).
+export const MECH_WATER = { speed: .9 };
+// The robot in the Far Sleep's star-voids (release 509; Tim: "when you go through them, you should take damage as well
+// similar to the lava, and you should die. If you stay in them for too long... it'll destroy your suit... beyond the corridor
+// you don't have the necessary power or... permissions... to actually exist there. The suit gives you some protection from
+// the... yawning void, but it's very little protection"). Only the robot can step into a star-void. There it loses `plate`
+// plating a second (never re-forged from iron there) and the Wayfarer `heat` of their maximum health a second, past every
+// guard. When the plating runs out in the void the robot is destroyed (a new frame must be forged) and the Wayfarer is lost.
+export const MECH_VOID = { plate: 15, heat: .06 };
+// One frame in a star-void. Returns { gone, torn }: gone when the robot is destroyed.
+export function voidTick(save, dt) {
+  const m = save.mech; if (!m?.active) return { gone: true, torn: false };
+  m.plate = Math.max(0, (Number(m.plate) || 0) - MECH_VOID.plate * dt);
+  if (m.plate > 0) return { gone: false, torn: false };
+  m.active = false; m.built = false; m.plate = MECH.plate; delete m.empowered; delete m.burnIn; return { gone: true, torn: true };
+}
 const ironOf = (save) => Math.max(0, Number(save?.materials?.cinderIron) || 0);
 export const mechEmpowered = (save) => save?.mech?.active === true && save.mech.empowered === true && save.mech.mode !== "drone";
 // Switches empowered mode on (spending the first iron) or off. Returns { ok, message }.

@@ -1,15 +1,15 @@
-import { mealLure } from "./meals.js?v=r505-ca3263066d7d";
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r505-ca3263066d7d";
+import { mealLure } from "./meals.js?v=r511-87890decf80f";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r511-87890decf80f";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.js?v=r505-ca3263066d7d";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r505-ca3263066d7d";
-import { sectionExits, apertureTier } from "./world.js?v=r505-ca3263066d7d";
-import { stageOneBeastReference } from "./stages.js?v=r505-ca3263066d7d";
+import { hashSeed } from "./random.js?v=r511-87890decf80f";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r511-87890decf80f";
+import { sectionExits, apertureTier } from "./world.js?v=r511-87890decf80f";
+import { stageOneBeastReference } from "./stages.js?v=r511-87890decf80f";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
