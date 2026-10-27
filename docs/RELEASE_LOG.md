@@ -13,21 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**513**
+**515**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 511 | Claude | `claude/dreamy-rubin-yn6q2p` | Pre-publish review fix: a Sleeper's Hall's starVoid walls stay walls to the robot; only the Far Sleep's own voids can be entered | Building. |
-| 509 | Claude | PR #238 | The robot can enter the Far Sleep's star-voids, which tear it apart and kill the Wayfarer if they stay | Merged (`r509-f07e2830300b`). Not published (the pre-publish review found the Sleeper's Hall blocker fixed in 511). |
-| 507 | Claude | PR #237 | The submersible item button works once the robot is built; the robot wades water without stamina and crosses water edges anywhere; Echo adds hammers and a third tool shot | Merged (`r507-2d5bd4f609ac`). Not published. |
+| 513 | Claude | `claude/dreamy-rubin-yn6q2p` | Brawler gear drops twice as often; a full Pack keeps brawler gear you do not have | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 511 | `r511-87890decf80f` | 2026-10-27 | With 507–509: the submersible button, the robot in water, Echo hammers and a third tool shot (PR #237); the robot in the Far Sleep's star-voids (#238); Sleeper's Hall walls stay walls (#239). The pre-publish Fable review (505→509) found that hall-wall blocker, fixed in 511; the re-review (509→511) found no blockers. |
 | 505 | `r505-ca3263066d7d` | 2026-10-27 | With 503: the new gear with Echo and the Shadow Clone, brawler gear in loot (PR #235); the Surveyor's Chain, part one (#236). The pre-publish Fable review (501→505) found no blockers. |
 | 501 | `r501-a4148de6a998` | 2026-10-27 | With 495–499: Shadow Boxing with the hammer and sweep (PR #231), the scrolling spell row (#232), crossings indoors (#233), the smaller Jump button (#234). The pre-publish Fable review (493→501) found no blockers. |
 | 493 | `r493-03686001c9f6` | 2026-10-27 | With 489–491: Iron Fists as a tool (PR #228), the rush to your target (#229), then fists as a weapon, Hammerfall and Great Sweep as tools and gear in presets (#230). The pre-publish Fable review (487→493) found no blockers. |

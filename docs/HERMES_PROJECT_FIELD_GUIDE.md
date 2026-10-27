@@ -2694,6 +2694,24 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 513: more brawler gear — 2026-10-27
+
+Tim: "monsters aren't dropping them... I accidentally destroyed my hammerfall, and so I want to get some instances of the hammerfall".
+
+Measured at release 511 with 4000 level-30 drops, Hammerfall was about 2.6% of item drops. Once the Pack held `EQUIPMENT_CAPACITY` (60) items, `storeInventoryItem` silently salvaged any drop scoring no better than the weakest item, so a late Pack almost never kept one.
+
+**CODE:**
+- items.ts: `BRAWLER_LOOT.share` goes from .18 to .35, in the same separate `brawler-loot:v1` stream, so other rolls are unchanged. Hammerfall becomes about 5% of drops.
+- game.ts:
+  - `isBrawlerGear(item)`.
+  - `storeInventoryItem`: with the Pack full, brawler gear whose name is not in the Pack or equipped is always kept. It replaces the weakest item that is not brawler gear (salvaged as before). A second copy follows the old rule.
+  - `obtainDrop`: says "<name> found: it is in your Pack." when brawler gear is kept.
+- tests/brawler-loot-513.test.ts.
+
+**BOUNDARY:**
+- Drop chance per kill, the other item kinds' names, tiers and powers, and the save shape (schema 14) are unchanged.
+- Shop stock cached for the current rotation is untouched. New rotations may show more brawler gear.
+
 ## Release 511: Sleeper's Hall walls stay walls — 2026-10-27
 
 The pre-publish Fable review (505→509) found a blocker in 509. A Sleeper's Hall (underlands.ts, the dream theme) uses `starVoid` as its wall tile, with landscape "underlands". So in the robot, any hall wall could be walked into, and 4 s against it destroyed the robot and killed the Wayfarer.

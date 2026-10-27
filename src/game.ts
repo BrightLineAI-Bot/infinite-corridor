@@ -52,7 +52,7 @@ import {
   progressLead,
 } from "./interactions.ts";
 import { ensurePerception } from "./types.ts";
-import { generateItem } from "./items.ts";
+import { generateItem, BRAWLER_LOOT } from "./items.ts";
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
 import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
@@ -328,16 +328,21 @@ export function salvageInventoryItems(save, items) {
   for (let i = (save.inventory || []).length - 1; i >= 0; i--) if (pick.has(save.inventory[i])) { const r = salvageInventoryItem(save, i); if (r) { count++; iron += r.iron; } }
   return { count, iron };
 }
+const isBrawlerGear = (item) => [...BRAWLER_LOOT.primary, ...BRAWLER_LOOT.secondary].some(([n, p]) => n === item?.name && p === item?.property);
 export function storeInventoryItem(save, item) {
   save.inventory ||= [];
   if (save.inventory.length < EQUIPMENT_CAPACITY) {
     save.inventory.push(item);
     return { stored: true, salvaged: null };
   }
-  let weakest = 0;
-  for (let i = 1; i < save.inventory.length; i++)
-    if (itemScore(save.inventory[i]) < itemScore(save.inventory[weakest])) weakest = i;
-  if (itemScore(item) <= itemScore(save.inventory[weakest])) {
+  // Release 513: a full pack never salvages brawler gear you do not have (Iron Fists, Hammerfall, Great Sweep): it takes the
+  // place of the weakest other piece instead.
+  const fresh = isBrawlerGear(item) && !save.inventory.some((q) => q?.name === item.name) && !Object.values(save.equipment || {}).some((q) => q?.name === item.name);
+  let weakest = -1;
+  for (let i = 0; i < save.inventory.length; i++)
+    if ((!fresh || !isBrawlerGear(save.inventory[i])) && (weakest < 0 || itemScore(save.inventory[i]) < itemScore(save.inventory[weakest]))) weakest = i;
+  if (weakest < 0) weakest = 0;
+  if (!fresh && itemScore(item) <= itemScore(save.inventory[weakest])) {
     const iron = Math.max(1, ITEM_TIERS.indexOf(itemTier(item)) + 1);
     save.materials.cinderIron = (save.materials.cinderIron || 0) + iron;
     save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
@@ -4747,7 +4752,8 @@ export class Game {
   obtainDrop(src) {
     const n = this.save.dropCounter++;
     const item = generateItem(`${this.save.seed}:${src}:${n}`, this.save.level);
-    storeInventoryItem(this.save, item);
+    const r = storeInventoryItem(this.save, item);
+    if (r.stored && item.property === "brawler") this.glyphNotice ||= `${item.name} found: it is in your Pack.`; // release 513: say so
     this.save.materials.cinderIron++;
   }
   upgrade() {
