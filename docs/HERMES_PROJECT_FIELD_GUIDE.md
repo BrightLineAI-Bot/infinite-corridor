@@ -2694,6 +2694,22 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 499: crossings indoors — 2026-10-27
+
+Tim: "if a dungeon will [spawn] in that tile, sometimes it can be spawned in a building. If there's a building in that tile, no other changes beyond that". A sample of 516 sections with an entrance found none placed in a building before this release.
+
+**CODE:**
+- game.ts `INDOOR_DUNGEON = {version: 1, chance: .5}` and `placeDungeonIndoors(map, seed, rx, ry)`. If the section's dungeon object passes a fixed hash (`indoor-dungeon:v1`) at `chance`, it moves to a free `shackInterior` or `districtInterior` tile with an open footprint (not holding another object), picked by the same hash, and is marked `indoors`.
+- loadArea (overworld) reads the atlas record first: a section with no record takes `INDOOR_DUNGEON.version`, an existing one keeps its own. It places the entrance indoors when the record carries the version, before the atlas `sites` are written, so the map marker matches.
+- The atlas record stores `indoorDungeonVersion` (additive), like the hamlet, trail and sea versions.
+
+**BOUNDARY:**
+- The generator itself is unchanged: `generateRegion` output and dungeon ids are the same.
+- Sections explored before this release never move their entrance.
+- No other building or dungeon change.
+
+Tests: `tests/indoor-dungeon-499.test.ts`.
+
 ## Release 497: a spell row that scrolls — 2026-10-27
 
 Tim (with a screenshot of the spell names broken into letters): "the spells have become... clumped together... they should just become a scrollable line where you can just scroll left or right on... just that portion of it".

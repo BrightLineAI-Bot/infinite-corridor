@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 499 — crossings indoors.
+  - **Dungeon entrances inside buildings:** in a section you haven't explored yet, if it holds both a dungeon entrance and a building, about half the time the entrance stands on the floor inside the building (through its door, the same every visit). Sections you've already explored keep their entrances where they were.
 - Release 497 — a spell row that scrolls.
   - **Scrolling spell row:** in the Arcanum, the Spells row no longer squeezes every spell into narrow columns with broken names. It's one line of full-width cards that you swipe left or right, and it stays where you left it when you tap a spell.
 - Release 495 — Shadow Boxing with the hammer and the sweep.
