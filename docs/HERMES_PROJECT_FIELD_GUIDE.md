@@ -2694,6 +2694,38 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 503: the new gear with Echo, the Shadow Clone and loot — 2026-10-27
+
+Tim: "we have to make sure that they work with all the existing architecture... the echoes"; for Shadow Boxing "it spawns a shadow clone for 3 seconds... that only does melee attacks"; "the shadow clone... doesn't do melee attacks, and it should... just... an arc melee attack"; Iron Fists with Echo "it'll let you power up your second swing... a second [Echo]... your third swing [can] be charged... as well"; "those... tools that we're new are showing up in the... [loot]".
+
+**CODE:**
+- brawler-spells.ts:
+  - The jab and uppercut get `chargeShare` (1.2 and 1.6) and `echoes` (1 and 2).
+  - `BRAWLER_ECHO = {echoClone: 3, cloneArc}`.
+- game.ts, Iron Fists: with enough Echo glyphs in the fists (`hostLoadout(melee).count("echo") >= echoes`), `fistPress` on a live combo starts a charge for that punch (`fistCharge.step`). The release calls `fistPunch(step, charge)`.
+- game.ts, Shadow Clone:
+  - `fistPunch` and `brawlerTool` call `cloneSwing` with a plain arc profile, so a Shadow Clone swings along.
+  - `castShadowClone` replaces a boxing clone instead of stepping into it.
+  - Tool shots are not copied by a boxing clone.
+- game.ts, Echo:
+  - `brawlerTool`: with `echoPlan(tool)`, a delayed echo copy of the blow at the plan's share.
+  - `tickOrbit`: with `echoPlan(spell, "orbit-volley")`, a second burst after .2 s.
+  - `castBrawler("shadow-boxing")`: with an Echo on the spell and no clone up, a `shadowClone` with `boxing: true` for `echoClone` s, beside you.
+- items.ts: `BRAWLER_LOOT = {share: .18, primary: Iron Fists, secondary: Hammerfall, Great Sweep}`. `generateItem` draws all the usual rolls first (unchanged), then a separate stream `seed:brawler-loot:v1` may rename a weapon or tool into brawler gear. `isValidItem` accepts them.
+- The comment `release 467 (Codex audit F002)` in proving-ground-mobile.ts is restored; the release bump had been renumbering it.
+
+**BOUNDARY:**
+- No save change.
+- Items already owned are untouched; only items generated from now on can be brawler gear.
+- Aegis with Echo does nothing extra.
+
+**Damage (Tim asked):**
+- Hammerfall and Great Sweep: (10 + the tool's power × 1.2 + your melee bonus) × the tool's glyph damage mods × (1 + armor, meal, page and empowered-robot melee damage) × the tool share (1.8 and 1.2; × 1.1 under Shadow Boxing).
+- Iron Fists: the same formula, using the weapon's power and melee glyphs.
+- These blows have no damage type. They are not magic, so spell-damage bonuses do not add, and the Nanobot Knight's "plain steel scatters" rule (physical shots) does not apply to them.
+
+Tests: `tests/brawler-echo-503.test.ts`.
+
 ## Release 501: a smaller Jump button — 2026-10-27
 
 Tim: "decrease the size or the response area of the jump button so that [it] doesn't encroach on the other buttons around it... those other buttons should take priority". (He also confirmed release 499's intent: "sometimes when you go inside of those buildings, there should be a dungeon door... it gives me a reason to search in the buildings".)
