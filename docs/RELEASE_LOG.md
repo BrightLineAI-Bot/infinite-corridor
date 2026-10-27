@@ -13,24 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**481**
+**483**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 479 | Claude | `claude/dreamy-rubin-yn6q2p` | Spells aim at the locked target, a fresh tap or the nearest foe; the Unseen Crossing as a teal starburst | Building. |
-| 477 | Claude | PR #222 | The suit's sigil: no glow, only the spiral in the Wayfarer's eye colour | Merged (`r477-f0ee5903f3ab`). Not published. |
-| 475 | Claude | PR #221 | Aperture objects never in lava or cut off; the robot wades through lava (the heat hurts the Wayfarer); the suit's sigil in amber | Merged (`r475-5393d99484f7`). Not published. |
-| 473 | Claude | PR #220 | Margin Wardens: elite monsters at half a Gate Revenant, felled once, pages applied without a choice | Merged (`r473-b1073b3cf672`). Not published. |
-| 471 | Claude | PR #219 | Tapped target lock leads swings as before; only auto aim prefers the foe in reach | Merged. Not published. |
-| 469 | Claude | PR #218 | Select-and-salvage in Gear, swings to the foe in reach (with a mark), glows without shadowBlur | Merged. Not published. |
+| 481 | Claude | `claude/dreamy-rubin-yn6q2p` | Spell aim lock → foe → tap; two Echo glyphs echo at 75%; Glimpses once; bigger see-through action buttons; dodge bursts scale with spell damage, Volatile and Chain armor burst effects | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 479 | `r479-311e59963952` | 2026-10-27 | With 469–477: select-and-salvage and the aim mark (PR #218), the tapped lock as before (#219), real Margin Wardens (#220), reachable aperture objects and lava wading in the robot (#221), the plain eye-coloured sigil (#222), spells at your target and the starburst rift (#223). The pre-publish Fable reviews (467→477 and 477→479) found no blockers. |
 | 467 | `r467-8f36ab8aa5d6` | 2026-10-26 | With 457–465: +10 upgrades (PR #211), Marginalia (#212), damage numbers and twenty marginalia (#213), tougher dungeons (#215), Watcher's shrines on the Atlas (#216), the Codex audit fixes (#217). The pre-publish Fable review found no blockers. |
 | 455 | `r455-04c11a0d3b73` | 2026-10-26 | With 441–453: Listener-town Viewports and Keepers (PR #203), Atlas Wayglass order and Far Gate compass (#204), the instant jump (#205), Refuge meals (#206), the usable Crossing Sigil (#207), the Mislaid Threshold door (#208), labelled ways out (#209), margins (#210). The pre-publish Fable review found no blockers. |
 | 439 | `r439-a6fb9615c252` | 2026-10-26 | No more landing in the dark: the last fixed dungeon landings settle onto the floor (PR #202). The pre-publish Fable review found no blockers. |

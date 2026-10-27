@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 481 — lock, foe, tap; stronger echoes and bursts; bigger buttons.
+  - **Spell aim order:** a spell goes to the foe you've locked; else the nearest foe in reach (auto aim); else where you just tapped; else where you stand.
+  - **Two Echo glyphs:** with two Echo glyphs on one spell, its echo strikes for 75% instead of 50%.
+  - **Glimpses once:** each Glimpse surfaces once in play. Seen ones stay in the book (Journal → Library) to watch again.
+  - **Bigger, see-through action buttons:** the Attack, Act, Jump, Dodge, Tool, Potion and Build cluster is about 12% larger, and the buttons let the world show through.
+  - **Dodge bursts grow with your magic:** Ember Wake and Afterimage add your magic attack and every spell-damage bonus (Pairing, armor glyphs, meals, pages, the empowered robot). In the armor, Volatile also makes them 30% wider and Chain also makes the first foe a burst hits erupt again for 60%.
 - Release 479 — spells at your target, a rift you can tell apart.
   - **Spells aim:** a spell goes to the foe you've locked (tab-targeted). With no lock, it goes where you've just tapped. Otherwise it goes to the nearest foe (ahead of you first) within about one and a half times its range; if that foe is out of range, it lands as far as it reaches toward them. An old tap no longer sends a spell off to where it was. With no foe around, a spell lands where you stand, as before.
   - **The guardian's rift looks different:** the Unseen Crossing, the rift that opens when a crossing's guardian falls, is now a slowly turning teal starburst instead of the same violet diamond as the Veiled Inscription and the Deep Lattice Relic.
