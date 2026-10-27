@@ -2694,6 +2694,22 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 475: wade the lava, reach every crystal — 2026-10-27
+
+Tim: "one of these aperture crystals... is in a wall or in an unreachable area... the lava just kills me immediately, which is fine... when I have power armor I can walk through the lava... the power armor doesn't take damage, but I take damage... I can still die from walking in the lava, so there's still consequence... the sigil on his armor should be yellow, not purple... the same sigil... golden or amber... the same as his eyes".
+
+**CODE:**
+- **Safe aperture picks.** world.ts `perceptionOverlay(seed, areaId, tiles, width, entry)` keeps its v1 random picks, then `settle`s each: a pick on lethal ground (`APERTURE_UNSAFE`: lava, abyss, canyon, river, dungeon water, deep water), on a perch, or (when the entry is given) outside `apertureReach(tiles, width, entry)` (a 4-way flood over safe floor, climbing at most one level) moves to a safe reachable tile chosen by `hashSeed(seed:aperture-safe:v1:areaId:id)`. game.ts passes `this.map.entry` at all three call sites. On 1,200 sampled crossings, 32 picks had been on lethal ground; none are now.
+- **Lava wading.** vehicle-gates.ts `MECH_LAVA = {heat:.1}`. In game.ts movement, lava is not a hazard while `mechUp()` (robot or empowered, not the drone). At the frame's end, after the plating (`mechAbsorb`) and Ink Shield, a Wayfarer standing in lava in the robot (and not boosting) loses `heat × maxHp × dt`, so it can kill them and the plating is untouched.
+- **Amber sigil.** renderer.ts `drawPowerSuit`: `amber` is `#ffb347` again (the pre-393 status light), and the `cosmos` sigil keeps its shape with an amber glow, dark amber glass, pale gold spiral and motes, and a warm core.
+
+**BOUNDARY:**
+- No save change.
+- Picks that were already safe and reachable stay exactly where they were. Objects already restored from a crossing's snapshot keep their saved place.
+- Without the robot, lava still kills at once. The drone, Aerial Step and the boost are unchanged.
+
+Tests: `tests/lava-wade-475.test.ts`.
+
 ## Release 473: real wardens — 2026-10-26
 
 Tim: "when you die in a dungeon, the wardens respawn and you get more pages... wardens can only die once... it's disruptive... you have to stop and select the page... just a random buff applies, and there's just a notification... the wardens need to be significantly stronger... about half the strength of the Gate Revenant... more compelling moves... put in some of the elite monsters as wardens... not the rift bosses or the world bosses."

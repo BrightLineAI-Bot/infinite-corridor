@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 475 — wade the lava, reach every crystal.
+  - **No crystals in lava:** the Aperture's hidden things (Veiled Inscription, Unseen Crossing, Deep Lattice Relic) no longer appear in lava, chasms or deep water, or cut off from the entrance. One that would have moves to floor you can walk to; every one that was already reachable stays where it was.
+  - **The robot wades through lava:** with the robot up (plain or empowered), lava no longer swallows you. You walk on through it, and the heat costs you 10% of your maximum health every second. The robot's plating takes none of it, so you can still die in there. Boosting over lava costs nothing, as before.
+  - **Amber sigil:** the sigil on the empowered suit's chest is amber again, the same sigil in the Wayfarer's gold instead of violet.
 - Release 473 — real wardens.
   - **Elite wardens:** Margin Wardens are now the elite monsters (Vesperwing, Gravitant Bell, Mire Apostle, Choir of Knives) with all their moves, at about half a Gate Revenant's health and damage. Felling one is not the elite's own hunt or reward.
   - **Felled once:** a warden you fell stays down in that crossing, even after you die there, so its page can't be farmed.
