@@ -14,7 +14,7 @@
 //     at full charge toward the aim and punch in `radius`. Damage goes from `share` to `share + chargeShare` with the charge.
 //     The dash stops at walls and lethal ground, and you cannot be hurt during it.
 // The spells are ordinary SPELLS entries (items.ts, `brawler: true`), so slots, presets, glyph sockets and cooldowns treat them
-// like the others. game.ts casts them (castBrawler, releaseFist); drawBrawler below draws them.
+// like the others. game.ts runs them (castBrawler for Aegis and Shadow Boxing; brawlerTool for Hammerfall and Great Sweep; fistPress and fistPunch for the Iron Fists); drawBrawler below draws them.
 export const BRAWLER = {
   // Release 493 (Tim: "the hammer fall and the great sweep are tools"): tools now, each press costs `cooldown` s; damage is a
   // share of the tool's power (Game.toolPower), not of a spell.
@@ -28,6 +28,8 @@ export const BRAWLER = {
   // passives"): for `seconds`, each swing first carries you to your foe (the lock, else the nearest within `stick` tiles past
   // your reach) if it is out of reach, stopping at walls; your blows deal `damage` more and heal `heal` of what they deal,
   // and you take `guard` less damage.
+  // Release 493/495: it works with the Iron Fists' punches and with the Hammerfall and Great Sweep tools as well (the hammer
+  // reaches `stick` tiles farther, the sweep carries you to the foe first; each deals `damage` more and heals `heal`).
   "shadow-boxing": { seconds: 8, stick: 4, damage: .1, heal: .06, guard: .15 },
 };
 // Aegis and Shadow Boxing, as the Wayfarer wears them (drawn round the player).

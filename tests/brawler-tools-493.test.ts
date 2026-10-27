@@ -60,3 +60,11 @@ test('presets keep a weapon and a tool, equipping them from the pack on a switch
   swapPreset(s); assert.equal(s.equipment.primary.name, 'Verge Cleaver'); assert.equal(s.equipment.secondary.name, 'Great Sweep');
   const back = migrateSave(JSON.parse(JSON.stringify(s))); assert.ok(back.equipment.primary.tag, 'tags survive a save');
 });
+
+test('release 495: Shadow Boxing works with Hammerfall and Great Sweep too', () => {
+  const far = (boxing) => { const { g } = arena([['foe', 16, 10]], (s) => { s.equipment.secondary = gear('Hammerfall'); }); let t = 1000; g.update(.05, idle, t); if (boxing) g.castSpell('shadow-boxing');
+    g.player.hp = 50; g.brawlerTool('hammerfall', t + 50); for (let i = 0; i < 10; i++) { t += 50; g.update(.05, idle, t); } return { hit: g.enemies[0].hp < 50000, hp: g.player.hp }; };
+  assert.equal(far(false).hit, false, 'six tiles off: the plain hammer falls short'); const b = far(true); assert.ok(b.hit, 'boxing reaches it'); assert.ok(b.hp > 50, 'and heals');
+  const { g } = arena([['foe', 14, 10]], (s) => { s.equipment.secondary = gear('Great Sweep'); }); let t = 1000; g.update(.05, idle, t); g.castSpell('shadow-boxing');
+  g.brawlerTool('great-sweep', t + 50); t += 50; g.update(.05, idle, t); assert.ok(g.player.x > 11, `carried to the foe (${g.player.x})`); assert.ok(g.enemies[0].hp < 50000);
+});

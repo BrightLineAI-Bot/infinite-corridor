@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 495 — Shadow Boxing with the hammer and the sweep.
+  - **Shadow Boxing works with Hammerfall and Great Sweep:** while it holds, Hammerfall reaches a target up to 4 tiles farther, Great Sweep carries you to your foe before it sweeps, and both deal 10% more and heal 6% of what they deal, as the Iron Fists' punches do.
 - Release 493 — fists as a weapon, hammer and sweep as tools, gear in presets.
   - **Iron Fists are a weapon:** equip them in the weapon slot; the Attack button throws the combo: the rush punch (hold Attack to charge in place), the jab, the uppercut. A pair carried as a tool from the last preview moves to your pack as a weapon.
   - **Shadow Boxing works with the Iron Fists:** while it holds, the rush punch reaches 4 tiles farther, the jab and uppercut step to your foe, and every punch deals 10% more and heals 6% of what it deals.
