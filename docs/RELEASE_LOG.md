@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**485**
+**487**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 483 | Claude | `claude/dreamy-rubin-yn6q2p` | Brawler spells: Hammerfall, Great Sweep, Iron Fist (melee-scaled) | Building. |
+| 485 | Claude | `claude/dreamy-rubin-yn6q2p` | Aegis (one-second shield) and Shadow Boxing (sticky swings with heal, guard, damage) | Building. |
+| 483 | Claude | PR #225 | Brawler spells: Hammerfall, Great Sweep, Iron Fist (melee-scaled) | Merged (`r483-86d3b13194dd`). Not published. |
 | 481 | Claude | PR #224 | Spell aim lock → foe → tap; two Echo glyphs echo at 75%; Glimpses once; bigger see-through action buttons; dodge bursts scale with spell damage, Volatile and Chain armor burst effects | Merged (`r481-9a45fb0d6fdc`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 

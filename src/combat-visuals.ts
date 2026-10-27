@@ -1,6 +1,6 @@
 import { dungeonPointDiscovered } from "./dungeon-framework.ts";
 import { SHADOW_CLONE } from "./late-spells.ts";
-import { drawBrawler } from "./brawler-spells.ts";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.ts";
 export function drawRangedEffects(ctx,game,width,height) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [
@@ -52,6 +52,7 @@ export function drawRangedEffects(ctx,game,width,height) {
   // Release 365: Gravity Well (a turning spiral) and Stillpoint (still clock rings) over their circles; the Shadow Clone.
   {const t = performance.now() / 1000;
   drawBrawler(ctx, game, toScreen, s, t); // release 483: Hammerfall, Great Sweep, Iron Fist
+  drawBrawlerAuras(ctx, game, toScreen, s, t); // release 485: Aegis, Shadow Boxing
   for (const fx of game.effects) {
     if (fx.kind !== "gravity-well" && fx.kind !== "stillpoint") continue;
     const [x, y] = toScreen(fx), R = fx.radius * s;

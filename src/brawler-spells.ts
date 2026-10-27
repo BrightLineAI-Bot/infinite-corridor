@@ -19,7 +19,23 @@ export const BRAWLER = {
   hammerfall: { share: 2.2, radius: 1.5, reach: 2.6, delay: .32, stun: .6 },
   "great-sweep": { share: 1.5, radius: 2.4 },
   "iron-fist": { share: 1.4, chargeShare: 2.2, radius: 1.3, dash: 2, chargeDash: 3, chargeTime: 1.2, tapGrace: .12, guardMs: 220 },
+  // Release 485 (Tim: "a shield where you can put up this shield for like a second... it'll just like block damage"): every
+  // blow is turned aside for `ms`. A fall into lava or a chasm is not a blow.
+  aegis: { ms: 1000 },
+  // Release 485 (Tim: "shadow boxing... if you [lock] on a target, you can hit the melee... moves and it will move with the
+  // target... stick to him... a bruiser... healing passives, or... damage reduction passives, or... damage increased
+  // passives"): for `seconds`, each swing first carries you to your foe (the lock, else the nearest within `stick` tiles past
+  // your reach) if it is out of reach, stopping at walls; your blows deal `damage` more and heal `heal` of what they deal,
+  // and you take `guard` less damage.
+  "shadow-boxing": { seconds: 8, stick: 4, damage: .1, heal: .06, guard: .15 },
 };
+// Aegis and Shadow Boxing, as the Wayfarer wears them (drawn round the player).
+export function drawBrawlerAuras(ctx, game, toScreen, s, t) {
+  const now = game.lastUpdateNow || 0, [x, y] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 });
+  if (now < (game.aegisUntil || 0)) { const k = (game.aegisUntil - now) / BRAWLER.aegis.ms; ctx.fillStyle = "#9fd0ff22"; ctx.strokeStyle = "#cfe8ff"; ctx.lineWidth = 2.5; ctx.globalAlpha = .4 + .6 * k; ctx.beginPath(); ctx.arc(x, y, s * .85, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.lineWidth = 1; for (let i = 0; i < 6; i++) { const a = t * 1.5 + i * Math.PI / 3; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * s * .85, y + Math.sin(a) * s * .85); ctx.lineTo(x + Math.cos(a + Math.PI / 3) * s * .85, y + Math.sin(a + Math.PI / 3) * s * .85); ctx.stroke(); } ctx.globalAlpha = 1; }
+  if (now < (game.boxingUntil || 0)) { ctx.strokeStyle = "#7a5fc0"; ctx.lineWidth = 2; ctx.globalAlpha = .55 + .2 * Math.sin(t * 8); ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.ellipse(x, y + s * .35, s * .55, s * .2, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
+}
 // How charged a fist is after `held` seconds of holding (0..1).
 export const fistCharge = (held) => Math.max(0, Math.min(1, (held - BRAWLER["iron-fist"].tapGrace) / BRAWLER["iron-fist"].chargeTime));
 
