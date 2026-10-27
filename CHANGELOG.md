@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 505 — the Surveyor's Chain, part one.
+  - **Abel Corwin's chain:** in crossings eight or more sections from the Refuge, you may find a brass link from a surveyor's chain lying on the floor, with a folded page of his field notes. He measures the same stretch of the Corridor again and again, and it keeps getting longer, in an orderly way.
+  - **Twelve links:** each crossing gives at most one; the notes always come in order; each page is kept in the Journal under "The Surveyor's Chain". Where the chain leads comes later.
 - Release 503 — the new gear works with Echo and the Shadow Clone, and drops as loot.
   - **Iron Fists and Echo:** one Echo glyph in the Iron Fists lets you hold and charge the jab (still a short step); a second Echo lets you charge the uppercut too.
   - **Hammerfall and Great Sweep with Echo:** an Echo glyph in the tool repeats the blow a moment later, as Echo does for other tools.
