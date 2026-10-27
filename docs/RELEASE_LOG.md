@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**509**
+**511**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 507 | Claude | `claude/dreamy-rubin-yn6q2p` | The submersible item button works once the robot is built; the robot wades water without stamina and crosses water edges anywhere; Echo adds hammers and a third tool shot | Building. |
+| 509 | Claude | `claude/dreamy-rubin-yn6q2p` | The robot can enter the Far Sleep's star-voids, which tear it apart and kill the Wayfarer if they stay | Building. |
+| 507 | Claude | PR #237 | The submersible item button works once the robot is built; the robot wades water without stamina and crosses water edges anywhere; Echo adds hammers and a third tool shot | Merged (`r507-2d5bd4f609ac`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)

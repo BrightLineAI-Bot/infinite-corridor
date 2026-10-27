@@ -2694,6 +2694,32 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 509: the robot in the star-voids — 2026-10-27
+
+Tim: "in the dream world... these areas which are like dream holes... I was able to go into them with my suit. And I started taking damage, but then I didn't die... when you go through them, you should take damage as well similar to the lava, and you should die. If you stay in them for too long... it'll destroy your suit... beyond the corridor you don't have the necessary power or... permissions... to actually exist there. The suit gives you some protection from the... yawning void, but it's very little protection".
+
+The star-voids (landscape.ts `starVoid`, release 305) were blocked to every mover. In tests, walking, boosting and dodging in the robot all stopped at the edge, so how Tim got in on r505 was not found. The behaviour he described is now a rule.
+
+**CODE:**
+- vehicle-gates.ts:
+  - `MECH_VOID = {plate: 15, heat: .06}`.
+  - `voidTick(save, dt)` takes `plate`/s of plating, never re-forged from iron. When the plating runs out it destroys the robot (`built: false`, fresh plate for the next frame) and returns `{gone, torn}`.
+- game.ts:
+  - `footprintOpen` takes `allowVoid`. `moveAxis` passes it for the player with `voidSuit`, which update sets to `mechUp()` each frame. Only the robot steps in; the drone and the bare Wayfarer do not.
+  - `footprintVoid(map, width, x, y)`: whether any part of the footprint is over a star-void.
+  - Each frame over a void: `voidTick` runs and the Wayfarer loses `heat` of maximum health per second, after every guard (like `MECH_LAVA`). A destroyed robot, or a void without the robot (stowed inside), sets health to 0, and the usual fall and recovery follow.
+- tests/robot-void-509.test.ts:
+  - The void is impassable without the robot.
+  - It can be entered in the robot, tears the plating without spending iron, and burns the Wayfarer.
+  - A quick crossing survives.
+  - Staying destroys the robot and the Wayfarer.
+
+**BOUNDARY:**
+- Star-voids stay impassable to creatures and to the Wayfarer outside the robot.
+- No terrain, generator or save shape changes (schema 14; `mech.built` already existed).
+- Lava, water and plating outside the voids are unchanged.
+- The Listener arena's surrounding night is `starVoid` too, so the robot can step off the hall's edge there, with the same cost.
+
 ## Release 507: the submersible suit, and more hammers with Echo — 2026-10-27
 
 Tim: "Something's broken with a submersible. I have it set on an item to have and it's not working. I'm pressing it and nothing's happening... make sure that the submersible suit works very well".

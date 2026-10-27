@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 509 — the robot in the star-voids.
+  - **Into the night:** in the robot you can step into the Far Sleep's star-voids, where the ground has worn through to the night sky. Without it they stay impassable.
+  - **Very little protection:** in a void the robot's plating comes apart fast (cinder iron cannot re-forge it there) and you burn through it, like wading lava. A quick crossing survives. Stay about four seconds and the robot is destroyed (a new frame must be forged) and the Wayfarer is lost. Stowing the robot inside a void loses the Wayfarer too.
+
 - Release 507 — the submersible suit works properly, and Echo adds more hammers.
   - **Item button:** once the robot is built, the submersible on an item button calls it, empowers it, stows it and calls it again, the same as Use in Supplies. Building the robot uses up the frame, and the button used to stop at zero frames and do nothing. It shows the robot's state (drone, EMP, on, off or its cooldown) instead of ×0.
   - **The robot in water:** in the robot you wade rivers, flooded halls and the sea without the Tidemantle, at nearly walking pace, with no stamina cost and no bite from dungeon water. A section's edge over water can be crossed anywhere, like in a skiff.

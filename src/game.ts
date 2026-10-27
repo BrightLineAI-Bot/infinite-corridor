@@ -33,7 +33,7 @@ import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { beastCatchUp } from "./stages.ts";
 import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.ts";
 import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.ts";
-import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, DRONE, ensureMech, mechAbsorb, tickMech, setEmpowered, mechEmpowered } from "./vehicle-gates.ts";
+import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
 import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP } from "./boats.ts";
@@ -485,12 +485,12 @@ export function tileOpen(map, width, x, y) {
   }
   return true;
 }
-export function footprintOpen(map, width, x, y, allowLethalTerrain=false, allowMarineTerrain=false) {
+export function footprintOpen(map, width, x, y, allowLethalTerrain=false, allowMarineTerrain=false, allowVoid=false) { /* release 509: allowVoid, the robot into the Far Sleep's star-voids (MECH_VOID) */
   const left=x+.24,right=x+.76,top=y+.5,bottom=y+.88,height=map.tiles.length/width,overlaps=(a,b,c,d)=>right>a&&left<b&&bottom>c&&top<d;
   for(let ty=Math.floor(top);ty<=Math.floor(bottom-1e-6);ty++)for(let tx=Math.floor(left);tx<=Math.floor(right-1e-6);tx++){
     if(tx<0||ty<0||tx>=width||ty>=height)return false;
     const tile=map.tiles[ty*width+tx],marine=allowMarineTerrain&&isMarineTile(tile),lethal=allowLethalTerrain&&["canyon","river","dungeonWater",...DEEP_WATER].includes(tile?.kind);
-    if(!tile||marine&&!marineTileOpen(tile)||tile.blocked&&!lethal&&!marine)return false;
+    if(!tile||marine&&!marineTileOpen(tile)||tile.blocked&&!lethal&&!marine&&!(allowVoid&&tile.kind==="starVoid"))return false;
     if(tile.perch&&!allowLethalTerrain)return false; // release 265: a stone block is a perch only the Wayfarer (and fliers) may step onto
     if(!["shackWall","districtWall"].includes(tile.structure)||!tile.wallSides?.length)continue;
     const thickness=.22;
@@ -565,6 +565,12 @@ export function relocateIfStranded(entity, map, width) {
   }
   return false;
 }
+// Release 509: whether any of the footprint is over a star-void (MECH_VOID).
+export function footprintVoid(map, width, x, y) {
+  const left = x + .24, right = x + .76, top = y + .5, bottom = y + .88;
+  for (let ty = Math.floor(top); ty <= Math.floor(bottom - 1e-6); ty++) for (let tx = Math.floor(left); tx <= Math.floor(right - 1e-6); tx++) if (map?.tiles?.[ty * width + tx]?.kind === "starVoid" && tx >= 0 && tx < width) return true;
+  return false;
+}
 export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false, onStep=null, allowMarineTerrain=false) {
   let moved = false,
     steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 0.16)),
@@ -573,13 +579,13 @@ export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false, o
   for (let i = 0; i < steps; i++) {
     // Release 287: a two-high stack of blocks (or a wall) stops fliers too; only the Wayfarer climbs builds.
     const tall = (x, y) => allowLethalTerrain && !entity.isPlayer && tallBuildAt(map, width, x, y);
-    if (sx && footprintOpen(map, width, entity.x + sx, entity.y, allowLethalTerrain, allowMarineTerrain) && !tall(entity.x + sx, entity.y) && canStep(entity, map, width, entity.x, entity.y, entity.x + sx, entity.y)) {
+    if (sx && footprintOpen(map, width, entity.x + sx, entity.y, allowLethalTerrain, allowMarineTerrain, entity.isPlayer === true && entity.voidSuit === true) && !tall(entity.x + sx, entity.y) && canStep(entity, map, width, entity.x, entity.y, entity.x + sx, entity.y)) {
       const fromX = entity.x;
       entity.x += sx;
       onStep?.(fromX, entity.y, entity.x, entity.y);
       moved = true;
     }
-    if (sy && footprintOpen(map, width, entity.x, entity.y + sy, allowLethalTerrain, allowMarineTerrain) && !tall(entity.x, entity.y + sy) && canStep(entity, map, width, entity.x, entity.y, entity.x, entity.y + sy)) {
+    if (sy && footprintOpen(map, width, entity.x, entity.y + sy, allowLethalTerrain, allowMarineTerrain, entity.isPlayer === true && entity.voidSuit === true) && !tall(entity.x, entity.y + sy) && canStep(entity, map, width, entity.x, entity.y, entity.x, entity.y + sy)) {
       const fromY = entity.y;
       entity.y += sy;
       onStep?.(entity.x, fromY, entity.x, entity.y);
@@ -4983,7 +4989,7 @@ export class Game {
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":DEEP_WATER.includes(terrainHazard)?"The deep water drags the Wayfarer under.":terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
     else if (sailing) this.sail(p, dx, dy, width, now);
     else {
-      p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0);
+      p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0); p.voidSuit = this.mechUp(); // release 509: only the robot steps into a star-void
       const before = elevationAt(this.map, width, p.x, p.y), fromX = p.x, fromY = p.y;
       let fallStart = before, drop = 0, hurt = 0;
       const finishFall = (height) => {
@@ -5257,6 +5263,11 @@ export class Game {
     if (p.hp < hpStart && !fellIntoHazard) { if (now < (this.aegisUntil || 0)) p.hp = hpStart; else if (now < (this.boxingUntil || 0)) p.hp = hpStart - (hpStart - p.hp) * (1 - BRAWLER["shadow-boxing"].guard); }
     // Release 475: wading through lava in the robot cooks the Wayfarer inside it, past the plating, every guard and Ink Shield.
     if (this.mechUp() && !this.mechBoosting && p.hp > 0 && footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y) === "lava") { p.hp = Math.max(0, p.hp - this.save.maxHp * MECH_LAVA.heat * dt); if (p.hp <= 0) this.message = "The lava's heat cooks the Wayfarer inside the robot."; else if (now > (this.lavaWadeMessageAt || 0)) { this.lavaWadeMessageAt = now + 6000; this.message = "The robot wades through the lava. The heat inside is unbearable: get out of it."; } }
+    // Release 509: the Far Sleep's star-voids tear the robot apart (MECH_VOID); out of it, the night takes the Wayfarer.
+    if (p.hp > 0 && footprintVoid(this.map, mapWidth(this.map, this.area), p.x, p.y)) { const r = this.mechUp() ? voidTick(this.save, dt) : { gone: true }; p.hp = Math.max(0, p.hp - this.save.maxHp * MECH_VOID.heat * dt);
+      if (r.gone) { p.hp = 0; this.message = r.torn ? "The robot comes apart in the void, and the night beneath the dream takes the Wayfarer." : "The night beneath the dream takes the Wayfarer."; }
+      else if (p.hp <= 0) this.message = "The void unmakes the Wayfarer inside the robot.";
+      else if (now > (this.voidMessageAt || 0)) { this.voidMessageAt = now + 5000; this.message = `The robot holds in the void, barely: its plating is coming apart (${Math.ceil(this.save.mech.plate)}). Get out.`; } }
     if (this.damageNumbers) this.trackDamageNumbers(now); // release 461
     if (p.hp <= 0 && this.area === "dungeon" && !fellIntoHazard && runHas(this.save, this.areaId(), "secondWind") && !marginRun(this.save, this.areaId()).secondWind) { marginRun(this.save, this.areaId()).secondWind = true; p.hp = Math.max(1, Math.round(this.save.maxHp * SECOND_WIND.share)); p.invulnerableUntil = now + SECOND_WIND.guardMs; this.message = "Second Wind: the blow should have felled you. You are still standing."; this.defeatNotice = { title: "SECOND WIND", detail: "once in this crossing", kind: "discovery" }; } // release 459
     if (p.hp <= 0) {
