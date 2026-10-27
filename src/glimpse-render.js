@@ -2,12 +2,12 @@
 // light, depth, particles and a slowly moving first-person viewpoint. No image files, nothing fetched. The catalogue and
 // rules are in glimpses.ts. `drawGlimpse(ctx, id, t, w, h, state)` paints one frame at time t (0..1); `startGlimpse`
 // runs one on a canvas until it ends or is stopped.
-import { GLIMPSES } from "./glimpses.js?v=r511-87890decf80f";
-import { TAU, clamp, lerp, smooth, seeded, hex, mix, rgba, makeCanvas, glow, vignette, fadeEdges, grain } from "./glimpse-paint.js?v=r511-87890decf80f";
-import { SCENES } from "./glimpse-scenes.js?v=r511-87890decf80f";
-import { HORROR } from "./glimpse-horror.js?v=r511-87890decf80f";
-import { LEGEND } from "./glimpse-legend.js?v=r511-87890decf80f";
-import { paintHand } from "./glimpse-hand.js?v=r511-87890decf80f";
+import { GLIMPSES } from "./glimpses.js?v=r513-e721fa71fa99";
+import { TAU, clamp, lerp, smooth, seeded, hex, mix, rgba, makeCanvas, glow, vignette, fadeEdges, grain } from "./glimpse-paint.js?v=r513-e721fa71fa99";
+import { SCENES } from "./glimpse-scenes.js?v=r513-e721fa71fa99";
+import { HORROR } from "./glimpse-horror.js?v=r513-e721fa71fa99";
+import { LEGEND } from "./glimpse-legend.js?v=r513-e721fa71fa99";
+import { paintHand } from "./glimpse-hand.js?v=r513-e721fa71fa99";
 
 // ------------------------------------------------------------------ The Wagon at Dusk
 // You sit on a wagon bench; your worn hands hold the reins. The road unrolls through birches toward a setting sun, a

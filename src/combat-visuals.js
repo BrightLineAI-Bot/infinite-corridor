@@ -1,7 +1,7 @@
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r511-87890decf80f";
-import { SHADOW_CLONE } from "./late-spells.js?v=r511-87890decf80f";
-import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r511-87890decf80f";
-import { drawOrbit } from "./orbit-volley.js?v=r511-87890decf80f";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r513-e721fa71fa99";
+import { SHADOW_CLONE } from "./late-spells.js?v=r513-e721fa71fa99";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r513-e721fa71fa99";
+import { drawOrbit } from "./orbit-volley.js?v=r513-e721fa71fa99";
 export function drawRangedEffects(ctx,game,width,height) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [
