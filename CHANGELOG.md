@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 477 — just the sigil.
+  - **Plain sigil:** the empowered suit's chest sigil has no glow or glass behind it any more: only the spiral, in the same tan-gold as the Wayfarer's eyes.
 - Release 475 — wade the lava, reach every crystal.
   - **No crystals in lava:** the Aperture's hidden things (Veiled Inscription, Unseen Crossing, Deep Lattice Relic) no longer appear in lava, chasms or deep water, or cut off from the entrance. One that would have moves to floor you can walk to; every one that was already reachable stays where it was.
   - **The robot wades through lava:** with the robot up (plain or empowered), lava no longer swallows you. You walk on through it, and the heat costs you 10% of your maximum health every second. The robot's plating takes none of it, so you can still die in there. Boosting over lava costs nothing, as before.
