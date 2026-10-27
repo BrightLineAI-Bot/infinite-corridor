@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 485 — Aegis and Shadow Boxing.
+  - **Aegis (Ward):** a shield of light for one second. Every blow is turned aside; falling into lava or a chasm still counts.
+  - **Shadow Boxing (Dusk):** for 8 seconds each swing carries you to your foe (your lock, else the nearest within a few tiles) if it's out of reach, stopping at walls. Your swings deal 10% more and heal 6% of what they deal, and you take 15% less damage.
 - Release 483 — brawler spells.
   - **Three new spells from Infinite III that hit like weapons.** Their damage follows your melee damage (weapon, Might, melee bonuses), and they aim like a swing: your lock, else the nearest foe, else the way you face.
   - **Hammerfall:** a hammer of light falls on your target a moment later for 220% of a swing and staggers it.

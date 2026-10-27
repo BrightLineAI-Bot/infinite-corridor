@@ -4259,6 +4259,7 @@ export class Game {
   primaryAttack(now = 0, _direction = null, echo = null) {
     const glyphs = this.glyphLoadout("melee");
     if (!echo && now < (this.player.attackReadyAt || 0)) return [];
+    if (!echo && now < (this.boxingUntil || 0)) this.shadowBoxStep(primaryProfile(this.save.equipment.primary).range * (1 + characterStats(this.save).attackReach) * glyphs.mods.range, now); // release 485
     if (!echo) this.player.attackReadyAt = now + 420 * glyphs.mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed);
     this.player.attackUntil = now + 240;
     this.player.meleeUntil = now + 240;
@@ -4291,9 +4292,10 @@ export class Game {
         continue;
       }
       alertEnemy(e);
-      const base = (profile.damage + characterStats(this.save).meleeBonus) * (1 + armorGlyphBonus(this.save).attackDamage) * (echo ? echo.share : 1) * pounce, /* release 335: armor Volatile */ scattered = this.scatterCheck(e, true, glyphsReachSwarm(glyphs), now), dealt = scattered ? 0 : glyphDamage(glyphs, e, base, { echo: !!echo }, now); // release 245: plain steel scatters the Nanobot Knight
+      const boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null, base = (profile.damage + characterStats(this.save).meleeBonus) * (1 + armorGlyphBonus(this.save).attackDamage) * (echo ? echo.share : 1) * pounce * (1 + (boxing?.damage || 0)), /* release 485: Shadow Boxing */ /* release 335: armor Volatile */ scattered = this.scatterCheck(e, true, glyphsReachSwarm(glyphs), now), dealt = scattered ? 0 : glyphDamage(glyphs, e, base, { echo: !!echo }, now); // release 245: plain steel scatters the Nanobot Knight
       const hpBefore = Math.max(0,e.hp);
       e.hp -= dealt;
+      if (boxing && dealt > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + dealt * boxing.heal); // release 485: Shadow Boxing heals
       this.astralPlayerHit(e,Math.max(0,hpBefore-Math.max(0,e.hp)));
       e.hitFlash = scattered ? 0 : 0.18;
       e.recoil = scattered ? 0 : 0.2;
@@ -4452,6 +4454,17 @@ export class Game {
     this.message = `${spell.name} answers.`;
     return true;
   }
+  // Release 485: Shadow Boxing carries the Wayfarer to the foe before a swing when it is out of reach (the lock, else the
+  // nearest within `stick` tiles past the reach), in quarter-tile steps that stop at walls and lethal ground.
+  shadowBoxStep(reach, now = this.lastUpdateNow || 0) {
+    const B = BRAWLER["shadow-boxing"], p = this.player, w = this.glyphWorld(now), t = this.lockedTarget(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), reach + B.stick)?.e;
+    if (!foe) return false;
+    const gap = () => Math.hypot(foe.x - p.x, foe.y - p.y), stop = Math.max(.8, reach * .7);
+    if (gap() <= reach * .9 || gap() > reach + B.stick + 1) return false;
+    for (let i = 0; i < 40 && gap() > stop; i++) { const d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing), nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny)) break; p.x = nx; p.y = ny; }
+    p.meleeAim = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing); this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
+    return true;
+  }
   // Release 483 (brawler-spells.ts): a swing's damage before the target's own defences: the weapon, the melee bonus, the
   // melee glyph mods and every melee-damage multiplier (armor glyphs, meals, pages, the empowered robot).
   meleePower() { const glyphs = hostLoadout(this.save, "melee"); return (primaryProfile(this.save.equipment.primary).damage * glyphs.mods.damage + characterStats(this.save).meleeBonus) * (1 + armorGlyphBonus(this.save).attackDamage); }
@@ -4471,6 +4484,8 @@ export class Game {
     if ((cds[key] || 0) > 0) { this.message = `${spell.name} recovers in ${Math.ceil(cds[key])}s.`; return false; }
     const B = BRAWLER[spell.id], p = this.player, cx = p.x + .5, cy = p.y + .45;
     cds[key] = spell.cooldown * this.glyphLoadout("spell", spell.id).mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
+    if (spell.id === "aegis") { this.aegisUntil = now + B.ms; echoEvent(this, "spell", now); this.message = "Aegis: every blow is turned aside."; return true; } // release 485
+    if (spell.id === "shadow-boxing") { this.boxingUntil = now + B.seconds * 1000; echoEvent(this, "spell", now); this.message = "Shadow Boxing: your swings follow your foe."; return true; } // release 485
     if (spell.id === "iron-fist") {
       if (this.castAction) { this.fistCharge = { action: this.castAction, start: now }; this.message = "Hold to charge the fist; let go to strike."; return true; }
       return this.releaseFist(0, now);
@@ -5110,6 +5125,8 @@ export class Game {
     for(const {owner,amount} of drainCredits)if(!owner.dead&&owner.hp>0){owner.hp=Math.min(owner.maxHp,owner.hp+amount*creditScale);if(owner.astral)owner.astral.hp=owner.hp;}
     this._astralDrainCredits=[];
     this.applyInkShield(hpStart, now); // release 461: Ink Shield
+    // Release 485: Aegis turns every blow aside; Shadow Boxing takes `guard` off what gets through. A fall is not a blow.
+    if (p.hp < hpStart && !fellIntoHazard) { if (now < (this.aegisUntil || 0)) p.hp = hpStart; else if (now < (this.boxingUntil || 0)) p.hp = hpStart - (hpStart - p.hp) * (1 - BRAWLER["shadow-boxing"].guard); }
     // Release 475: wading through lava in the robot cooks the Wayfarer inside it, past the plating, every guard and Ink Shield.
     if (this.mechUp() && !this.mechBoosting && p.hp > 0 && footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y) === "lava") { p.hp = Math.max(0, p.hp - this.save.maxHp * MECH_LAVA.heat * dt); if (p.hp <= 0) this.message = "The lava's heat cooks the Wayfarer inside the robot."; else if (now > (this.lavaWadeMessageAt || 0)) { this.lavaWadeMessageAt = now + 6000; this.message = "The robot wades through the lava. The heat inside is unbearable: get out of it."; } }
     if (this.damageNumbers) this.trackDamageNumbers(now); // release 461

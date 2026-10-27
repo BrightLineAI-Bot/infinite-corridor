@@ -2694,6 +2694,25 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 485: Aegis and Shadow Boxing — 2026-10-27
+
+Tim: "another one can be a shield... you can put up this shield for like a second... it'll just like block damage for a second... shadow boxing... if you [lock] on a target, you can hit the melee... moves and it will move with the target... stick to him... a bruiser... you'll want to... beef up your defense and your... leaching... this shadow step might have some like healing passives, or like damage reduction, passives, or... damage increased passives". This release is the second batch of his new-spells list. The orbiting charge orbs are still to come.
+
+**CODE:**
+- brawler-spells.ts `BRAWLER.aegis = {ms: 1000}` and `BRAWLER["shadow-boxing"] = {seconds: 8, stick: 4, damage: .1, heal: .06, guard: .15}`. `drawBrawlerAuras` draws a hexagon-ribbed dome while Aegis holds and a dashed shadow ring under you during Shadow Boxing (called from combat-visuals.ts).
+- items.ts `SPELLS.aegis` (Ward ⛉) and `SPELLS["shadow-boxing"]` (Dusk ⚔), each `brawler: true`, `unlockTier: 13`.
+- game.ts `castBrawler` sets the runtime timers `aegisUntil` and `boxingUntil`.
+- At the end of each frame, after Ink Shield and before the robot's lava heat: health lost this frame (not to a hazard fall) is refunded under Aegis, or reduced by `guard` under Shadow Boxing.
+- `primaryAttack` calls `shadowBoxStep(reach)` first while Shadow Boxing holds. The foe is the lock, else `pickMeleeTarget` within reach + `stick`. If that foe is out of reach, it steps you toward it in quarter tiles while `canStand`, to within about 70% of reach, then turns the swing to it.
+- While boxing, a swing's damage is × (1 + `damage`) and it heals `heal` × the damage dealt.
+
+**BOUNDARY:**
+- No save change: the timers are runtime and end on reload.
+- Lava heat in the robot still burns through Aegis.
+- Shadow Boxing never moves you through walls or onto lethal ground, and never moves you without a foe.
+
+Tests: `tests/brawler-485.test.ts`.
+
 ## Release 483: brawler spells — 2026-10-27
 
 Tim: "we can even have like spell sword spells... a giant hammer that comes down and attacks... another one that does a large sweep with a sword. And these can be buffed by melee damage... brawler type [spells]... another one can be like a charge punch fist... you [dash] forward and you punch... you can like charge it up if you hold the spell button... the hammer... in whatever direction he's facing, or... the regular, like, targeting... that applies for attacking". This release is the first batch of his new-spells list. The shield, Shadow Boxing and the orbiting charge orbs are still to come.

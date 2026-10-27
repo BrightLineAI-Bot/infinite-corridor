@@ -25,6 +25,8 @@ export const CASTABLES = {
   "spell:hammerfall": { kind: "spell", id: "hammerfall", symbol: "⚒", attr: "force" }, // release 483: brawler spells
   "spell:great-sweep": { kind: "spell", id: "great-sweep", symbol: "◠", attr: "force" },
   "spell:iron-fist": { kind: "spell", id: "iron-fist", symbol: "✊", attr: "force" },
+  "spell:aegis": { kind: "spell", id: "aegis", symbol: "⛉", attr: "ward" }, // release 485
+  "spell:shadow-boxing": { kind: "spell", id: "shadow-boxing", symbol: "⚔", attr: "dusk" },
   "skill:ember-form": { kind: "skill", id: "ember-form", symbol: "✶", attr: "fire" },
   "skill:quickening": { kind: "skill", id: "quickening", symbol: "≫", attr: "wind" },
   "skill:aerial-step": { kind: "skill", id: "aerial-step", symbol: "⇡", attr: "wind" },
