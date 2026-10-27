@@ -2021,6 +2021,12 @@ function updateMessage(text, force = false) {
 // last one written, and element lookups are cached.
 const hudEls=new Map(),hudLast=new WeakMap();
 function hudEl(sel){let e=hudEls.get(sel);if(!e||!e.isConnected){e=$(sel);hudEls.set(sel,e)}return e}
+// Release 507: once built, the submersible on a button calls the robot (the frame count reads 0), so the button shows the
+// robot's state instead: DRONE, EMP, ON, OFF or the seconds until it can be called. Null for anything else, or aboard.
+function robotTag(save, item) {
+  const m = save.mech; if (item !== "submersible" || !m?.built || (save.boat?.owned && save.boat?.aboard)) return null;
+  return m.active ? (m.mode === "drone" ? "DRONE" : m.empowered ? "EMP" : "ON") : m.cooldown > 0 ? `${Math.ceil(m.cooldown)}s` : "OFF";
+}
 function hudSet(el,key,value){if(!el)return;let m=hudLast.get(el);if(!m)hudLast.set(el,m={});if(m[key]===value)return;m[key]=value;
   if(key==="text")el.textContent=value;else if(key==="max"||key==="value")el[key]=value;else if(key.startsWith("--")||key==="transform")key==="transform"?el.style.transform=value:el.style.setProperty(key,value);else if(key.startsWith("class:"))el.classList.toggle(key.slice(6),value);else if(key.startsWith("data-"))el.dataset[key.slice(5)]=value;else el.setAttribute(key,value)}
 function updateHud(now) {
@@ -2066,7 +2072,7 @@ function updateHud(now) {
   // REPAIR beside a damaged skiff, and is barred (a red circle and slash over the hammer) when no build can be afforded.
   { const bb = hudEl('[data-action="build"]'), btn = activeButton(save); if (bb && btn.mode === "item") { setBuffFill(bb, 0); // release 291: a preset's item button
       const n = btn.item ? save.consumables?.[btn.item] || 0 : 0; let glyph = bb.querySelector(".item-glyph"); if (!glyph) { glyph = document.createElement("span"); glyph.className = "item-glyph"; glyph.setAttribute("aria-hidden", "true"); bb.append(glyph); }
-      if (glyph.dataset.item !== (btn.item || "")) { glyph.dataset.item = btn.item || ""; glyph.innerHTML = ITEM_ICONS[btn.item] || "?"; glyph.classList.remove("cast-glyph"); glyph.style.color = ""; } const robot = btn.item === "submersible" && !(save.boat?.owned && save.boat?.aboard) && save.mech?.built, mech = save.mech || {}; /* release 507: the built robot shows its state, not the spent frame count */ hudSet(bb, "class:item-mode", true); hudSet(bb, "class:spent", !n && !robot); hudSet(bb, "data-cooldown", robot ? (mech.active ? (mech.mode === "drone" ? "DRONE" : mech.empowered ? "EMP" : "ON") : mech.cooldown > 0 ? `${Math.ceil(mech.cooldown)}s` : "OFF") : btn.item ? `×${n}` : "ITEM"); hudSet(bb, "aria-label", btn.item ? `Use ${ITEM_NAMES[btn.item] || btn.item} (${n} left)` : "Item button: choose an item in Supplies");
+      if (glyph.dataset.item !== (btn.item || "")) { glyph.dataset.item = btn.item || ""; glyph.innerHTML = ITEM_ICONS[btn.item] || "?"; glyph.classList.remove("cast-glyph"); glyph.style.color = ""; } const robot = robotTag(save, btn.item); /* release 507: the built robot shows its state, not the spent frame count */ hudSet(bb, "class:item-mode", true); hudSet(bb, "class:spent", !n && !robot); hudSet(bb, "data-cooldown", robot || (btn.item ? `×${n}` : "ITEM")); hudSet(bb, "aria-label", btn.item ? `Use ${ITEM_NAMES[btn.item] || btn.item} (${n} left)` : "Item button: choose an item in Supplies");
     } else if (bb && btn.mode === "cast") { // release 309: a spell or discipline on the Build button
       const c = CASTABLES[btn.key], cd = save.magicSkills?.cooldowns || {}, left = c ? Math.ceil(c.kind === "spell" ? cd[`spell:${c.id}`] || 0 : cd[c.id] || 0) : 0; let glyph = bb.querySelector(".item-glyph"); if (!glyph) { glyph = document.createElement("span"); glyph.className = "item-glyph"; glyph.setAttribute("aria-hidden", "true"); bb.append(glyph); }
       if (glyph.dataset.item !== btn.key) { glyph.dataset.item = btn.key; glyph.textContent = c?.symbol || "?"; glyph.style.color = c ? ATTRIBUTES[c.attr].color : ""; glyph.classList.add("cast-glyph"); }
@@ -2078,7 +2084,7 @@ function updateHud(now) {
     if (!button) continue;
     const key = c ? c.key : t ? `tool:${t.tool}:${t.item || ""}` : "empty";
     if (button.dataset.slotKey !== key) { button.dataset.slotKey = key; const sym = Object.assign(document.createElement("span"), { className: "slot-sym", textContent: c ? c.symbol : t?.tool === "build" ? "⚒" : t ? "" : "+" }); if (t?.tool === "item") sym.innerHTML = ITEM_ICONS[t.item] || "?"; button.replaceChildren(sym, Object.assign(document.createElement("span"), { className: "slot-letter", textContent: slot.toUpperCase() })); button.style.setProperty("--slot", c ? c.color : t?.tool === "build" ? "#c08a52" : t ? "#d8c49a" : "#76684e"); }
-    if (t?.tool === "item") hudSet(button, "data-cooldown", t.item ? `×${save.consumables?.[t.item] || 0}` : "ITEM");
+    if (t?.tool === "item") hudSet(button, "data-cooldown", robotTag(save, t.item) || (t.item ? `×${save.consumables?.[t.item] || 0}` : "ITEM")); // release 507
     setBuffFill(button, c ? buffLeft(save, c.key) : 0); // release 313
     hudSet(button,"aria-label",`Slot ${slot.toUpperCase()}: ${c ? c.name : t ? (t.tool === "build" ? "Build" : t.item ? ITEM_NAMES[t.item] || t.item : "item (none chosen)") : "empty"} ${button.dataset.cooldown || ""}`);
   }

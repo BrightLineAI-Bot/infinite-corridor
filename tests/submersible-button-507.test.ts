@@ -30,3 +30,9 @@ test('with no robot built and no frame, the button still says so', () => {
   const s = ready(); s.consumables.submersible = 0; const g = new Game(s, 0); g.rx = 3; g.ry = 3; g.loadArea('overworld');
   assert.equal(g.useButtonItem('submersible', 100), false); assert.equal(g.message, 'None left.');
 });
+
+test('in a dungeon the item button calls the built robot up too', () => {
+  const s = ready(); const g = new Game(s, 0); g.rx = 3; g.ry = 3; g.loadArea('overworld'); g.enemies = [];
+  g.useConsumable('submersible', 0); g.useConsumable('submersible', 0); assert.equal(s.consumables.submersible, 0);
+  g.area = 'dungeon'; assert.equal(g.useButtonItem('submersible', 500), true, g.message); assert.ok(g.mechUp());
+});

@@ -2,8 +2,10 @@
 
 ## Unreleased
 
-- Release 507 — the submersible button works again.
+- Release 507 — the submersible suit works properly, and Echo adds more hammers.
   - **Item button:** once the robot is built, the submersible on an item button calls it, empowers it, stows it and calls it again, the same as Use in Supplies. Building the robot uses up the frame, and the button used to stop at zero frames and do nothing. It shows the robot's state (drone, EMP, on, off or its cooldown) instead of ×0.
+  - **The robot in water:** in the robot you wade rivers, flooded halls and the sea without the Tidemantle, at nearly walking pace, with no stamina cost and no bite from dungeon water. A section's edge over water can be crossed anywhere, like in a skiff.
+  - **Echo on the tools:** each Echo glyph on Hammerfall or Great Sweep adds another blow, a moment after the last (bang, bang, boom). A second Echo glyph on a shooting tool adds a third shot at 25%.
 
 - Release 505 — the Surveyor's Chain, part one.
   - **Abel Corwin's chain:** in crossings eight or more sections from the Refuge, you may find a brass link from a surveyor's chain lying on the floor, with a folded page of his field notes. He measures the same stretch of the Corridor again and again, and it keeps getting longer, in an orderly way.

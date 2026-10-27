@@ -71,7 +71,9 @@ export const IRON_FISTS = {
 // in the Iron Fists' sockets, that punch can be held and charged too (`chargeShare` more at full charge). Without them it is
 // thrown at once, as before.
 // Release 503 (Tim: Echo on Shadow Boxing "spawns a shadow clone for 3 seconds... that only does melee attacks"): `echoClone`.
-export const BRAWLER_ECHO = { echoClone: 3, cloneArc: { shape: "arc", range: 1.75, arc: 160 } };
+// Release 507 (Tim: "the first echo should be a second hammer. The second echo should be a third hammer... Bang bang boom...
+// slightly after each other"): each Echo copy of Hammerfall or Great Sweep lands `toolGap` s after the one before.
+export const BRAWLER_ECHO = { echoClone: 3, cloneArc: { shape: "arc", range: 1.75, arc: 160 }, toolGap: .22 };
 // How charged the dash punch is after `held` seconds of holding (0..1).
 export const fistCharge = (held) => Math.max(0, Math.min(1, (held - IRON_FISTS.tapGrace) / IRON_FISTS.chargeTime));
 
