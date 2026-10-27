@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**475**
+**477**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 473 | Claude | `claude/dreamy-rubin-yn6q2p` | Margin Wardens: elite monsters at half a Gate Revenant, felled once, pages applied without a choice | Building. |
+| 475 | Claude | `claude/dreamy-rubin-yn6q2p` | Aperture objects never in lava or cut off; the robot wades through lava (the heat hurts the Wayfarer); the suit's sigil in amber | Building. |
+| 473 | Claude | PR #220 | Margin Wardens: elite monsters at half a Gate Revenant, felled once, pages applied without a choice | Merged (`r473-b1073b3cf672`). Not published. |
 | 471 | Claude | PR #219 | Tapped target lock leads swings as before; only auto aim prefers the foe in reach | Merged. Not published. |
 | 469 | Claude | PR #218 | Select-and-salvage in Gear, swings to the foe in reach (with a mark), glows without shadowBlur | Merged. Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
