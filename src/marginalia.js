@@ -11,12 +11,15 @@
 // when you leave the crossing (by any way, including a fall). State: save.marginalia = { found: [ids] } (additive,
 // normalised); the run, save.session.marginRun = { dungeon, perks, secondWind, offer } (session; exact resume).
 // Balance lives in the tables below. Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r467-8f36ab8aa5d6";
-import { apertureTier } from "./world.js?v=r467-8f36ab8aa5d6";
-import { LETHAL_KINDS } from "./landscape.js?v=r467-8f36ab8aa5d6";
+import { hashSeed } from "./random.js?v=r479-311e59963952";
+import { apertureTier } from "./world.js?v=r479-311e59963952";
+import { LETHAL_KINDS } from "./landscape.js?v=r479-311e59963952";
 
 export const RULES = { tier: 14, offer: 3, pasteSlots: 1, wardensBySize: [[1100, 3], [500, 2], [0, 1]], wardenMinFromEntry: 9, wardenApart: 7,
-  warden: { hp: 7, damage: 1.5, scale: 1.3 }, reinforcements: { count: 5, minFromPlayer: 7, liveCap: 28 } };
+  // Release 473 (Tim: "the wardens need to be... significantly stronger... about half the strength of the Gate Revenant...
+  // more compelling moves... put in some of the elite monsters as wardens"): a warden is one of the elite monsters, tuned
+  // to `revenantShare` of the Gate Revenant's health and damage for this Wayfarer.
+  warden: { revenantShare: .5, scale: 1.1, elites: ["vesperwing", "gravitantBell", "mireApostle", "knifeChoir"] }, reinforcements: { count: 5, minFromPlayer: 7, liveCap: 28 } };
 // Each marginalia: what it says, and either `bonus` (fields of the gear bonus, game.ts armorGlyphBonus) or an event rule
 // handled where it happens (`rule`).
 export const MARGINALIA = {
@@ -76,7 +79,7 @@ export function marginBonus(save, areaId) {
 
 // Wardens for a crossing: reachable floor (walked from the entry, so none stands sealed in rock), far from the entry and
 // from each other, by seed. Returns spawn records for map.enemySpawns.
-export function wardenSpawns(save, map, dungeonId) {
+export function wardenSpawns(save, map, dungeonId, slain = []) {
   if (!marginaliaOpen(save) || !marginCrossing(dungeonId) || !map?.tiles?.length || map.multiLevel || map.arena || map.underwater) return [];
   const w = map.width || 24, h = Math.floor(map.tiles.length / w), e = map.entry || { x: 4, y: 5 }, start = Math.round(e.y) * w + Math.round(e.x), seen = new Uint8Array(map.tiles.length), q = [start];
   const ok = (i) => { const t = map.tiles[i]; return t && !t.blocked && !t.environment && !LETHAL_KINDS.has(t.kind) && !/water|pit|void/i.test(String(t.kind)); };
@@ -84,20 +87,31 @@ export function wardenSpawns(save, map, dungeonId) {
   while (q.length) { const i = q.pop(), x = i % w, y = (i / w) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, j = ny * w + nx; if (nx < 1 || ny < 1 || nx >= w - 1 || ny >= h - 1 || seen[j] || !ok(j)) continue; seen[j] = 1; q.push(j); } }
   const taken = new Set((map.enemySpawns || []).map((s) => `${Math.round(s.x)},${Math.round(s.y)}`));
   const open = []; for (let i = 0; i < seen.length; i++) if (seen[i]) { const x = i % w, y = (i / w) | 0; if (Math.hypot(x - e.x, y - e.y) >= RULES.wardenMinFromEntry && !taken.has(`${x},${y}`)) open.push({ x, y }); }
-  const n = RULES.wardensBySize.find(([size]) => open.length >= size)?.[1] || 0, kinds = [...new Set((map.enemySpawns || []).filter((s) => !s.boss && !s.dungeonRole && !s.worldBeast && !s.questingBeast).map((s) => s.kind))];
+  const n = RULES.wardensBySize.find(([size]) => open.length >= size)?.[1] || 0;
   const out = []; let h0 = hashSeed(`${save.seed}:margin-wardens:v1:${dungeonId}`);
   for (let k = 0; k < n * 12 && out.length < n && open.length; k++) {
     h0 = hashSeed(`${h0}:${k}`); const at = open[h0 % open.length];
     if (out.some((o) => Math.hypot(o.x - at.x, o.y - at.y) < RULES.wardenApart)) continue;
-    out.push({ id: `margin-warden-${out.length}`, kind: kinds.length ? kinds[(h0 >>> 8) % kinds.length] : "rootBrute", x: at.x, y: at.y, marginWarden: true });
+    const E = RULES.warden.elites; out.push({ id: `margin-warden-${out.length}`, kind: E[(h0 >>> 8) % E.length], x: at.x, y: at.y, marginWarden: true });
   }
-  return out;
+  // Release 473 (Tim: "when you die in a dungeon, the wardens respawn and you get more pages... wardens can only die once"):
+  // a warden felled in this crossing never stands again.
+  return out.filter((w) => !slain.includes(w.id));
 }
 // The offer when a warden falls: RULES.offer marginalia, those not yet in the Scrapbook first, by seed.
 export function wardenOffer(save, dungeonId, wardenId) {
   const found = new Set(ensureMarginalia(save).found), order = MARGINALIA_IDS.map((id) => [id, hashSeed(`${save.seed}:margin-offer:v1:${dungeonId}:${wardenId}:${id}`)]).sort((a, b) => a[1] - b[1]).map(([id]) => id);
   const run = marginRun(save, dungeonId), held = new Set(run?.perks || []);
   return [...order.filter((id) => !found.has(id) && !held.has(id)), ...order.filter((id) => found.has(id) && !held.has(id))].slice(0, RULES.offer);
+}
+// Release 473 (Tim: "it's disruptive... you have to stop and select the page... just a random buff applies, and there's
+// just a notification"): a fallen warden's page is chosen for you, by seed, one not yet in the Scrapbook when there is one.
+// It goes into the Scrapbook and works for the rest of this run. Returns the id, or null when every page is already held.
+export function wardenPage(save, areaId, wardenId) {
+  const run = marginRun(save, areaId); if (!run) return null;
+  const id = wardenOffer(save, areaId, wardenId)[0]; if (!id) return null;
+  const book = (save.marginalia = ensureMarginalia(save)); if (!book.found.includes(id)) book.found.push(id);
+  if (!run.perks.includes(id)) run.perks.push(id); run.offer = null; return id;
 }
 // Choosing from an offer: into the Scrapbook, and working for the rest of this run.
 export function chooseMarginalia(save, areaId, id) {

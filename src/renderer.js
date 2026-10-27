@@ -1,21 +1,21 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r467-8f36ab8aa5d6";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r467-8f36ab8aa5d6";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r467-8f36ab8aa5d6";
-import { enemyMeleeGeometry } from "./combat.js?v=r467-8f36ab8aa5d6";
-import { ruleRows } from "./elders.js?v=r467-8f36ab8aa5d6";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r467-8f36ab8aa5d6";
-import { BOAT } from "./boats.js?v=r467-8f36ab8aa5d6";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r467-8f36ab8aa5d6";
-import { isMarineTile } from "./world-beasts.js?v=r467-8f36ab8aa5d6";
-import { jumpLift } from "./game.js?v=r467-8f36ab8aa5d6";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r467-8f36ab8aa5d6";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r467-8f36ab8aa5d6";
-import { liftAt, tileUnder } from "./landscape.js?v=r467-8f36ab8aa5d6";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r467-8f36ab8aa5d6";
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r467-8f36ab8aa5d6";
-import { drawRelayNode } from "./relay-network.js?v=r467-8f36ab8aa5d6";
-import { structureOccupancy } from "./world.js?v=r467-8f36ab8aa5d6";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r467-8f36ab8aa5d6";
+import { astralBeamAnchors } from "./astral-worm.js?v=r479-311e59963952";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r479-311e59963952";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r479-311e59963952";
+import { enemyMeleeGeometry } from "./combat.js?v=r479-311e59963952";
+import { ruleRows } from "./elders.js?v=r479-311e59963952";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r479-311e59963952";
+import { BOAT } from "./boats.js?v=r479-311e59963952";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r479-311e59963952";
+import { isMarineTile } from "./world-beasts.js?v=r479-311e59963952";
+import { jumpLift } from "./game.js?v=r479-311e59963952";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r479-311e59963952";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r479-311e59963952";
+import { liftAt, tileUnder } from "./landscape.js?v=r479-311e59963952";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r479-311e59963952";
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r479-311e59963952";
+import { drawRelayNode } from "./relay-network.js?v=r479-311e59963952";
+import { structureOccupancy } from "./world.js?v=r479-311e59963952";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r479-311e59963952";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -236,7 +236,7 @@ function drawWatcherTomb(ctx, o, s, now) {
   const g = ctx.createLinearGradient(x0, 0, x0 + w, 0); g.addColorStop(0, "#d9d4e6"); g.addColorStop(1, "#9c96ac"); ctx.fillStyle = g; ctx.fillRect(x0, y0, w, hh);
   ctx.strokeStyle = "#2a2433"; ctx.lineWidth = 1.5; ctx.strokeRect(x0, y0, w, hh);
   const cx = (o.x + .5) * s, cy = (o.y + .4) * s, pulse = open ? 0 : .5 + .5 * Math.sin(now / 520);
-  if (!open) { ctx.shadowColor = "#cfc4ff"; ctx.shadowBlur = s * (.12 + pulse * .1); }
+  if (!open) { ctx.fillStyle = `rgba(207,196,255,${.16 + pulse * .12})`; ctx.beginPath(); ctx.arc(cx, cy, s * (.27 + pulse * .04), 0, Math.PI * 2); ctx.fill(); } // release 469: a soft disc, not shadowBlur (costly on phone GPUs)
   watcherSigil(ctx, cx, cy, s * .17, s, open ? .25 : .95, open ? "#6d6680" : "#f4f0ff");
   ctx.restore();
   if (!open) { ctx.strokeStyle = `rgba(236,230,255,${.45 + pulse * .35})`; ctx.lineWidth = Math.max(1.5, s * .035); ctx.beginPath(); ctx.ellipse(cx, (o.y - .32) * s - pulse * s * .04, s * .24, s * .07, 0, 0, Math.PI * 2); ctx.stroke(); }
@@ -246,7 +246,7 @@ function drawWarpDais(ctx, o, s, now) {
   const cx = (o.x + .5) * s, cy = (o.y + .55) * s, lit = o.state === "attuned", pulse = .5 + .5 * Math.sin(now / 480);
   ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(cx, cy + s * .14, s * .5, s * .2, 0, 0, Math.PI * 2); ctx.fill();
   for (const [r, top, c0, c1] of [[.5, .1, "#77708a", "#4a4458"], [.4, 0, "#a39cb6", "#6c6680"]]) { const g = ctx.createLinearGradient(cx - s * r, 0, cx + s * r, 0); g.addColorStop(0, c0); g.addColorStop(1, c1); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy - top * s, s * r, s * r * .42, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#2a2433"; ctx.lineWidth = 1; ctx.stroke(); }
-  ctx.save(); ctx.translate(cx, cy); ctx.scale(1, .45); if (lit) { ctx.shadowColor = "#d8c8ff"; ctx.shadowBlur = s * (.15 + pulse * .12); }
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(1, .45); if (lit) { ctx.fillStyle = `rgba(216,200,255,${.18 + pulse * .12})`; ctx.beginPath(); ctx.arc(0, 0, s * (.3 + pulse * .04), 0, Math.PI * 2); ctx.fill(); } /* release 469: no shadowBlur */
   watcherSigil(ctx, 0, 0, s * .2, s, lit ? .95 : .4, lit ? "#f4f0ff" : "#3a3448"); ctx.restore();
   if (lit) { ctx.strokeStyle = `rgba(216,200,255,${.35 + pulse * .35})`; ctx.lineWidth = Math.max(1.5, s * .03); ctx.beginPath(); ctx.ellipse(cx, cy - s * (.55 + pulse * .05), s * .22, s * .06, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = `rgba(216,200,255,${.08 + pulse * .06})`; ctx.beginPath(); ctx.moveTo(cx - s * .3, cy); ctx.lineTo(cx - s * .16, cy - s * .55); ctx.lineTo(cx + s * .16, cy - s * .55); ctx.lineTo(cx + s * .3, cy); ctx.closePath(); ctx.fill(); }
@@ -639,19 +639,21 @@ function drawDrone(ctx, x, y, s, facing, now, carrying = false, heal = 0) {
 // Ultraman Tiga... we don't want to depart from the overall gritty, down-to-earth feel"). Drawn in place of the Wayfarer, at
 // their size: a dark graphite pressure suit, segmented and scuffed, with low plates at chest, shoulders, knees and forearms,
 // a smooth helmet with one smoked visor band, a compact life-support pack with hoses to the chest, a dim amber status
-// light (violet since release 393), and small, cold thrusters at the back and heels that only show while it boosts.
+// light (violet in releases 393 to 473, amber in 475, the Wayfarer's eye colour from 477), and small, cold thrusters at the back and heels that only show while it boosts.
 export function drawPowerSuit(ctx, x, y, s, facing, now, frame = 0, attacking = false, boosting = false) {
   const t = now / 1000, k = x * s + s / 2, base = y * s + s * .84, u = s * .9, side = facing === "left" || facing === "right", back = facing === "up", dir = facing === "left" ? -1 : 1;
   const plate = (x0, y0, x1, y1) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, "#5d636b"); g.addColorStop(.4, "#363a41"); g.addColorStop(1, "#1a1c20"); return g; };
   const suit = (x0, y0, x1, y1) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, "#2c3036"); g.addColorStop(1, "#121418"); return g; };
-  const edge = "#0a0b0d", worn = "#8a8f96", amber = "#9b6bff", lw = Math.max(1, u * .016); // release 393: violet, the lantern's cosmos, in place of the amber
+  const edge = "#0a0b0d", worn = "#8a8f96", amber = COLORS.player[2], lw = Math.max(1, u * .016); // release 393 made it violet; 475 amber; 477 the Wayfarer's eye colour
   // Release 393 (Tim: "the same purple cosmic world as the lantern, rather than that golden... emblem... all the gold [should]
-  // be that same color"): a small orb of night glass with a two-armed spiral of pale violet light and a bright core.
-  const cosmos = (cx, cy, r) => { glowAt(cx, cy, r * 2.4, "#9b6bff", .45 + .15 * Math.sin(t * 1.6)); ctx.fillStyle = "#120a26"; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.lineWidth = Math.max(.8, r * .18); ctx.strokeStyle = "#2a2d32"; ctx.stroke();
-    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r * .92, 0, Math.PI * 2); ctx.clip(); ctx.strokeStyle = "#d9c8ffdd"; ctx.lineWidth = Math.max(.6, r * .16); ctx.lineCap = "round"; const spin = t * .5;
+  // be that same color"): a small orb of night glass with a two-armed spiral of light and a bright core. Release 475 (Tim:
+  // "the sigil on his armor should be yellow, not purple... the same sigil, but the golden or amber... the same as his eyes"):
+  // the same sigil, in amber.
+  // Release 477 (Tim: "take out the penumbra or the glow around it... just have the sigil... the color that his eyes are, and
+  // that's it"): no halo, no glass orb, no motes; only the two-armed spiral and its core, in the Wayfarer's eye colour.
+  const cosmos = (cx, cy, r) => { const eye = COLORS.player[2]; ctx.strokeStyle = eye; ctx.lineWidth = Math.max(.6, r * .18); ctx.lineCap = "round"; const spin = t * .5;
     for (const arm of [0, Math.PI]) { ctx.beginPath(); for (let q = 0; q <= 1.0001; q += .1) { const a = arm + spin + q * 4.2, rr = r * (.08 + q * .8); ctx[q ? "lineTo" : "moveTo"](cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * .85); } ctx.stroke(); }
-    ctx.fillStyle = "#b48cff55"; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(cx + Math.cos(i * 2.4 + spin) * r * .6, cy + Math.sin(i * 2.4 + spin) * r * .5, Math.max(.5, r * .07), 0, Math.PI * 2); ctx.fill(); }
-    ctx.restore(); ctx.fillStyle = "#f4f0ff"; ctx.beginPath(); ctx.arc(cx, cy, Math.max(.7, r * .18), 0, Math.PI * 2); ctx.fill(); };
+    ctx.fillStyle = eye; ctx.beginPath(); ctx.arc(cx, cy, Math.max(.7, r * .2), 0, Math.PI * 2); ctx.fill(); ctx.lineCap = "butt"; };
   const poly = (pts, fill, stroke = edge) => { ctx.beginPath(); pts.forEach(([px, py], i) => ctx[i ? "lineTo" : "moveTo"](px, py)); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.stroke(); };
   const seg = (x0, y0, x1, y1, w0, w1, fill) => { const a = Math.atan2(y1 - y0, x1 - x0), nx = -Math.sin(a), ny = Math.cos(a); poly([[x0 + nx * w0, y0 + ny * w0], [x1 + nx * w1, y1 + ny * w1], [x1 - nx * w1, y1 - ny * w1], [x0 - nx * w0, y0 - ny * w0]], fill || suit(x0 - w0, y0, x1 + w1, y1)); };
   const glowAt = (gx, gy, r, c, a) => { const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r); g.addColorStop(0, c + Math.round(a * 255).toString(16).padStart(2, "0")); g.addColorStop(1, c + "00"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(gx, gy, r, 0, Math.PI * 2); ctx.fill(); };
@@ -1791,6 +1793,7 @@ export function render(ctx, g, w, h, now) {
   drawEchoPatches(ctx,g,s,now);
   drawGlyphStatus(ctx,g,s,now,(e)=>discoveredInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2));
   if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
+  { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
   for(const o of objectLists.structures)if(renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)){const drawStructure=o.kind==="shack"?shack:architecturalBuilding;
     // Object records outlive consumed building tiles. Clip roofs/facades to their surviving footprint
     // so they cannot visually restore destroyed walls or expose unexplored building geometry.

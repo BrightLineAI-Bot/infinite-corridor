@@ -25,7 +25,7 @@ export const INGREDIENTS = {
   bloodmoss: { name: "Bloodmoss", course: "roast", price: 14, text: "world bosses find you sooner", bonus: { lureGap: .5, lureChance: 1 } },
 };
 export const INGREDIENT_IDS = Object.keys(INGREDIENTS);
-// Release r467-8f36ab8aa5d6 (Codex audit F003): only the pantry's own ingredients, never inherited names like "constructor".
+// Release 467 (Codex audit F003): only the pantry's own ingredients, never inherited names like "constructor".
 const isIngredient = (id) => typeof id === "string" && Object.hasOwn(INGREDIENTS, id);
 
 export function ensureMeal(save) {

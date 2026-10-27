@@ -6,8 +6,8 @@
 // "infinite tier 3 and beyond... after you've unlocked the second gate with the listener... take the submersible on land";
 // "whenever you have unlocked the... fourth or fifth gate... a drone". Gates are the Listener kills (far-array.ts): the
 // second gate is unlocked by the second kill. Pure rules; boats.ts, diving.ts and game.ts ask these.
-import { apertureTier } from "./world.js?v=r467-8f36ab8aa5d6";
-import { listenerKills } from "./stages.js?v=r467-8f36ab8aa5d6";
+import { apertureTier } from "./world.js?v=r479-311e59963952";
+import { listenerKills } from "./stages.js?v=r479-311e59963952";
 
 export const VEHICLE_GATES = { diveTier: 12, subTier: 12, underwaterTier: 13, mechTier: 13, mechListeners: 2, droneListeners: 4 };
 const TIER_NAMES = { 12: "Infinite II", 13: "Infinite III" };
@@ -54,6 +54,11 @@ export const MECH = { plate: 60, guard: .1, boost: 1.6, boostRecharge: 1, plateR
 // gives out is re-forged at once from `replate` cinder iron, so the robot stays up; with none, it folds away as before.
 // State: save.mech.empowered, save.mech.burnIn (additive).
 export const MECH_POWER = { burn: 1, every: 20, damage: .25, guard: .15, boost: 2, replate: 3 }; // release 391 (Tim: "when the plating breaks... three cinder iron"): replate was 1
+// Wading through lava in the robot (release 475; Tim: "when I have power armor I can walk through the lava... the power armor
+// doesn't take damage, but I take damage... I overheat... I can still die from walking in the lava, so there's still
+// consequence"). While the robot is up (either mode), lava no longer swallows the Wayfarer: they walk on through it, and the
+// heat takes `heat` of their maximum health every second, past the plating and every guard. Boosting over it costs nothing.
+export const MECH_LAVA = { heat: .1 };
 const ironOf = (save) => Math.max(0, Number(save?.materials?.cinderIron) || 0);
 export const mechEmpowered = (save) => save?.mech?.active === true && save.mech.empowered === true && save.mech.mode !== "drone";
 // Switches empowered mode on (spending the first iron) or off. Returns { ok, message }.

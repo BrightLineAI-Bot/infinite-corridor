@@ -8,10 +8,10 @@
 // glyph goes back to the pouch first, then the preset's glyphs are set from the pouch where you still have them (a glyph
 // now in your gear or spent shows as an empty socket, named in the message). A preset with no build yet takes the build you
 // have, so the first switch changes nothing but the spells. Gear glyphs (weapon, tool, armor) are not part of a preset.
-import { socketGlyph, GLYPHS } from "./glyphs.js?v=r467-8f36ab8aa5d6";
-import { ALT_PASSIVES } from "./constellation.js?v=r467-8f36ab8aa5d6";
-import { ensureLattice } from "./transit-lattice.js?v=r467-8f36ab8aa5d6";
-import { togglePreset } from "./spell-slots.js?v=r467-8f36ab8aa5d6";
+import { socketGlyph, GLYPHS } from "./glyphs.js?v=r479-311e59963952";
+import { ALT_PASSIVES } from "./constellation.js?v=r479-311e59963952";
+import { ensureLattice } from "./transit-lattice.js?v=r479-311e59963952";
+import { togglePreset } from "./spell-slots.js?v=r479-311e59963952";
 
 const ids = (list) => (Array.isArray(list) ? list.filter((q) => typeof q === "string" && q) : []);
 export function normalizeBuild(b) {
