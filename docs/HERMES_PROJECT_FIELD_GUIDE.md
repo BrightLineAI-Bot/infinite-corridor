@@ -2694,6 +2694,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 501: a smaller Jump button — 2026-10-27
+
+Tim: "decrease the size or the response area of the jump button so that [it] doesn't encroach on the other buttons around it... those other buttons should take priority". (He also confirmed release 499's intent: "sometimes when you go inside of those buildings, there should be a dungeon door... it gives me a reason to search in the buildings".)
+
+**CODE:**
+- styles.css: `.action-diamond button.core.jump` is 0.68 × `--button` (38px at 56px), offset by 0.16 so it stays centred in its old cell. It was a full button, about 6px from Tool, Act, Dodge and Attack.
+- input.ts: `GAP_PRIORITY.jump = -18`. A press on the cluster between buttons goes to Jump only when its edge is clearly nearer than the others'.
+
+**BOUNDARY:**
+- No other button moves or changes size; checked at 390×844 and 844×390.
+- Rules and saves are unchanged.
+
 ## Release 499: crossings indoors — 2026-10-27
 
 Tim: "if a dungeon will [spawn] in that tile, sometimes it can be spawned in a building. If there's a building in that tile, no other changes beyond that". A sample of 516 sections with an entrance found none placed in a building before this release.
