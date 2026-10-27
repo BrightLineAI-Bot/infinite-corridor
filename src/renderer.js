@@ -1,21 +1,21 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r501-a4148de6a998";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r501-a4148de6a998";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r501-a4148de6a998";
-import { enemyMeleeGeometry } from "./combat.js?v=r501-a4148de6a998";
-import { ruleRows } from "./elders.js?v=r501-a4148de6a998";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r501-a4148de6a998";
-import { BOAT } from "./boats.js?v=r501-a4148de6a998";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r501-a4148de6a998";
-import { isMarineTile } from "./world-beasts.js?v=r501-a4148de6a998";
-import { jumpLift } from "./game.js?v=r501-a4148de6a998";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r501-a4148de6a998";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r501-a4148de6a998";
-import { liftAt, tileUnder } from "./landscape.js?v=r501-a4148de6a998";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r501-a4148de6a998";
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r501-a4148de6a998";
-import { drawRelayNode } from "./relay-network.js?v=r501-a4148de6a998";
-import { structureOccupancy } from "./world.js?v=r501-a4148de6a998";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r501-a4148de6a998";
+import { astralBeamAnchors } from "./astral-worm.js?v=r505-ca3263066d7d";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r505-ca3263066d7d";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r505-ca3263066d7d";
+import { enemyMeleeGeometry } from "./combat.js?v=r505-ca3263066d7d";
+import { ruleRows } from "./elders.js?v=r505-ca3263066d7d";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r505-ca3263066d7d";
+import { BOAT } from "./boats.js?v=r505-ca3263066d7d";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r505-ca3263066d7d";
+import { isMarineTile } from "./world-beasts.js?v=r505-ca3263066d7d";
+import { jumpLift } from "./game.js?v=r505-ca3263066d7d";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r505-ca3263066d7d";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r505-ca3263066d7d";
+import { liftAt, tileUnder } from "./landscape.js?v=r505-ca3263066d7d";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r505-ca3263066d7d";
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r505-ca3263066d7d";
+import { drawRelayNode } from "./relay-network.js?v=r505-ca3263066d7d";
+import { structureOccupancy } from "./world.js?v=r505-ca3263066d7d";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r505-ca3263066d7d";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -879,6 +879,17 @@ export function drawCrackedBell(ctx, o, s, now) {
 }
 // Release 455: writing in the stone. A low slab with a column of cut lines and, beside it, a smaller slanted hand; an
 // unread one holds a faint pale light in its letters.
+// Release r505-ca3263066d7d: a brass chain-link lying in the dust, glinting until it is taken; then only its print remains.
+export function drawSurveyorLink(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .62) * s, taken = o.state === "taken";
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(-.5);
+  if (taken) { ctx.strokeStyle = "rgba(40,36,30,.5)"; ctx.lineWidth = Math.max(1, s * .05); ctx.beginPath(); ctx.ellipse(0, 0, s * .24, s * .1, 0, 0, 7); ctx.stroke(); ctx.restore(); return; }
+  ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(s * .03, s * .06, s * .28, s * .12, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#8a6a2e"; ctx.lineWidth = Math.max(2, s * .09); ctx.beginPath(); ctx.ellipse(0, 0, s * .24, s * .1, 0, 0, 7); ctx.stroke();
+  ctx.strokeStyle = "#e6c46a"; ctx.lineWidth = Math.max(1, s * .04); ctx.beginPath(); ctx.ellipse(0, -s * .01, s * .22, s * .085, 0, Math.PI * 1.05, Math.PI * 1.9); ctx.stroke();
+  const glint = .5 + .5 * Math.sin(now / 500 + o.x * 3); ctx.fillStyle = `rgba(255,240,190,${.25 + .5 * glint})`; ctx.beginPath(); ctx.arc(-s * .12, -s * .06, Math.max(1, s * .035), 0, 7); ctx.fill();
+  ctx.restore();
+}
 export function drawMarginNote(ctx, o, s, now) {
   const x = o.x * s + s * .14, y = o.y * s + s * .18, w = s * .72, h = s * .7, read = o.state === "read";
   ctx.save(); ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h + s * .04, w * .55, s * .1, 0, 0, 7); ctx.fill();
@@ -1571,6 +1582,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "digSpot") { drawDigSpot(ctx, o, s, now);
           } else if (o.kind === "ilse") { drawIlse(ctx, o, s, now);
           } else if (o.kind === "crackedBell") { drawCrackedBell(ctx, o, s, now);
+          } else if (o.kind === "surveyorLink") { drawSurveyorLink(ctx, o, s, now); // release 505
           } else if (o.kind === "marginNote") { drawMarginNote(ctx, o, s, now);
           } else if (o.kind === "townKeeper") { actor(ctx, o.x, o.y, s, "npc", "down", 0, "idle"); ctx.strokeStyle = "#c9a6ff"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.arc((o.x + .5) * s, (o.y - .15) * s, s * .14, 0, 7); ctx.stroke(); // release 441: a keeper with an Aperture lens
           } else if (o.kind === "skiff") {

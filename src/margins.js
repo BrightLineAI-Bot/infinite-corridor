@@ -6,9 +6,9 @@
 // holds the same one until it is read (after that, an unread one of the same Reading). Reading it credits that Reading's margin fragment (lore.ts `margin:i`, ids fixed since
 // release 191) and keeps it in the Journal. The passage is a public-domain line already in the library (recitations.ts),
 // chosen per margin, never per crossing; the notes are original writing for the game. Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r501-a4148de6a998";
-import { READINGS, readingAt, readingLines, bookPieces, creditPiece, ensureLore } from "./lore.js?v=r501-a4148de6a998";
-import { RECITATIONS } from "./recitations.js?v=r501-a4148de6a998";
+import { hashSeed } from "./random.js?v=r505-ca3263066d7d";
+import { READINGS, readingAt, readingLines, bookPieces, creditPiece, ensureLore } from "./lore.js?v=r505-ca3263066d7d";
+import { RECITATIONS } from "./recitations.js?v=r505-ca3263066d7d";
 
 export const MARGINS = { chance: .2, minFromEntry: 5, maxPassage: 220 };
 // The notes, one per margin fragment of each Reading (counts match READINGS[id].pieces.margin). Each is [the words that
