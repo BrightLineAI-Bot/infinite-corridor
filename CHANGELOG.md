@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 513 — more brawler gear. Iron Fists, Hammerfall and Great Sweep now drop about twice as often (Hammerfall from about one item in twenty). A full Pack no longer salvages one you don't have: it replaces your weakest other piece, and you're told when you find one.
+
 - Release 511 — the robot no longer walks into a Sleeper's Hall's walls. Those halls build their walls from the same night-sky voids. Only the Far Sleep's open voids can be entered in the robot, and never in a dungeon.
 
 - Release 509 — the robot in the star-voids.
