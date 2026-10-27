@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 491 — the dash punch goes to your target.
+  - **Rush to your target:** the Iron Fists' first punch rushes to the foe you target (your tapped lock, else auto aim) when it's within 4 tiles, and stops right beside it. No foe in range: it punches in place.
+  - **Charge in place:** holding Tool keeps you where you stand while it charges; let go to rush and land the stronger punch.
 - Release 489 — Iron Fists.
   - **Iron Fist is a tool now.** The Iron Fist spell is gone. In its place are the Iron Fists, gauntlets you equip in the Tool slot. Everyone at Infinite III gets a pair once. Glyphs set in the old spell come back to you.
   - **Three-punch combo on Tool:**

@@ -55,14 +55,23 @@ test('the combo resets when the window closes; the jab cannot be charged', () =>
   t += 50; tick(g, pressHold('tool'), t); assert.equal(g.fistCharge, null, 'the jab is thrown at once, even held'); assert.equal(g.fistCombo?.step, 2);
 });
 
-test('holding Tool charges the dash punch: it goes farther', () => {
-  const tap = arena([['foe', 22, 10]]); let t = 1000; tick(tap.g, idle, t); t += 50; tick(tap.g, press('tool'), t); t += 50; tick(tap.g, idle, t);
-  const full = arena([['foe', 22, 10]]); let u = 1000; tick(full.g, idle, u); u += 50; tick(full.g, pressHold('tool'), u);
-  for (let i = 0; i < 30; i++) { u += 50; tick(full.g, holding, u); } u += 50; tick(full.g, idle, u);
-  assert.ok(full.g.player.x > tap.g.player.x + 2, `${tap.g.player.x} -> ${full.g.player.x}`); assert.equal(fistCharge(10), 1);
+test('release 491: the dash punch rushes to a foe in range and stops beside it; charging keeps you in place and hits harder', () => {
+  const near = arena([['foe', 13, 10]]); let t = 1000; tick(near.g, idle, t); t += 50; tick(near.g, press('tool'), t);
+  const gap = Math.hypot(near.g.enemies[0].x - near.g.player.x, near.g.enemies[0].y - near.g.player.y);
+  assert.ok(gap <= IRON_FISTS.punches[0].stop + .3 && gap > .4, `rushed up beside it (gap ${gap.toFixed(2)})`); const tapDmg = 50000 - near.g.enemies[0].hp;
+  t += 50; tick(near.g, idle, t); const tapDealt = 50000 - near.g.enemies[0].hp;
+  const full = arena([['foe', 13, 10]]); let u = 1000; tick(full.g, idle, u); u += 50; tick(full.g, pressHold('tool'), u);
+  for (let i = 0; i < 30; i++) { u += 50; tick(full.g, holding, u); assert.equal(full.g.player.x, 10, 'stays in place while charging'); }
+  u += 50; tick(full.g, idle, u); u += 50; tick(full.g, idle, u);
+  assert.ok(50000 - full.g.enemies[0].hp > tapDealt * 1.8, `charged hits harder (${tapDealt} -> ${50000 - full.g.enemies[0].hp})`); assert.equal(fistCharge(10), 1);
 });
 
-test('the dash stops at a wall', () => {
-  const { g } = arena([]); for (const t of g.map.tiles) if (t.x === 12) t.blocked = true; let t = 1000; tick(g, idle, t); t += 50; tick(g, press('tool'), t); t += 50; tick(g, idle, t);
+test('release 491: no foe within range, the dash punch lands in place', () => {
+  const { g } = arena([['far', 20, 10]]); let t = 1000; tick(g, idle, t); t += 50; tick(g, press('tool'), t);
+  assert.equal(g.player.x, 10); assert.equal(g.enemies[0].hp, 50000);
+});
+
+test('the rush stops at a wall', () => {
+  const { g } = arena([['foe', 13.5, 10]]); for (const t of g.map.tiles) if (t.x === 12) t.blocked = true; let t = 1000; tick(g, idle, t); t += 50; tick(g, press('tool'), t); t += 50; tick(g, idle, t);
   assert.ok(g.player.x < 11.3, `${g.player.x}`);
 });

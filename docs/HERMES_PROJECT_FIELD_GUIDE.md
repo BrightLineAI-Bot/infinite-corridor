@@ -2694,6 +2694,23 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 491: the dash punch goes to your target — 2026-10-27
+
+Tim: "the iron fists, initial punch should [dash] you towards the enemy that you're targeting, either the one that you have tapped to target or the one that is just auto... if it's beyond range, then it should just do a punch in place... a reasonable range for the character to [dash] to him... if you try to hold it, you'll stay in place and then you can charge it up... and do a more powerful punch... on release".
+
+**CODE:**
+- brawler-spells.ts `IRON_FISTS.punches[0]` is now `{dash: 0, rush: 4, stop: .9}`; `chargeDash` is gone, so the charge raises damage only.
+- game.ts `fistPunch`, for a punch with `rush`: the foe is the lock (if within `rush` + 1), else `pickMeleeTarget` within `rush`. With a foe, the punch steps toward it until `stop` short (through `canStand`) and marks it. With none, it lands in place, facing your last aim.
+- Charging never moves you; the rush happens on release.
+- The jab and uppercut are unchanged.
+
+**BOUNDARY:**
+- No save change.
+- The rush never crosses walls or lethal ground.
+- Auto aim needs a clear line, so a foe behind a wall is not rushed.
+
+Tests: `tests/iron-fists-489.test.ts` updated.
+
 ## Release 489: Iron Fists — 2026-10-27
 
 Tim: "let's make the iron fist a tool that you can use instead of a spell... a three button combo... the first punch is... your standard dash. You can charge it and then dash... you can hold it and dash farther... Second [punch] will be like a quick follow up. You can't hold it. And the third punch would be like an uppercut that does more damage. If you can land the third, if you land all three".
