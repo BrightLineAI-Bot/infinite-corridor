@@ -4441,7 +4441,10 @@ export class Game {
   }
   useButtonItem(item, now = this.lastUpdateNow || 0) {
     if (!item) { this.message = `Preset ${(this.save.magicSkills.preset || 0) + 1}: choose its item in Pack → Supplies.`; return false; }
-    if (!((this.save.consumables?.[item] || 0) > 0)) { this.message = "None left."; return false; }
+    // Release 507 (Tim: "something's broken with a submersible. I have it set on an item... I'm pressing it and nothing's
+    // happening"): building the robot spends the frame, so the count reads 0 while the frame still calls the robot up. Ashore,
+    // a built robot (or drone) answers the button whatever the count; toggleMech gives its own reasons when it cannot.
+    if (!(item === "submersible" && !aboard(this.save) && this.save.mech?.built) && !((this.save.consumables?.[item] || 0) > 0)) { this.message = "None left."; return false; }
     return this.useConsumable(item, now);
   }
   castSpell(spellId = null) {

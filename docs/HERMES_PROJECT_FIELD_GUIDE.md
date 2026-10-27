@@ -2694,6 +2694,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 507: the submersible button works again — 2026-10-27
+
+Tim: "Something's broken with a submersible. I have it set on an item to have and it's not working. I'm pressing it and nothing's happening... make sure that the submersible suit works very well".
+
+**CODE:**
+- Cause: building the robot (the Build button or Use) consumes the submersible frame, so its count drops to 0. `Game.useButtonItem` refused any item at count 0 ("None left.") before `useConsumable` was reached. So did the HUD, which greyed the button out.
+- game.ts `useButtonItem`: the submersible passes through to `useConsumable` when `save.mech.built` and the Wayfarer is not aboard the boat. `useConsumable` already handles every state: call, empower, stow and call again.
+- main.ts HUD item button: with the robot built, the submersible is not `spent`. Its label shows the robot's state (DRONE, EMP, ON, OFF or the cooldown seconds) instead of ×0.
+- tests/submersible-button-507.test.ts covers three cases: the full button cycle with 0 frames, calling again after stowing, and "None left." with no robot and no frame.
+
+**BOUNDARY:** Input only. The robot's rules, cooldowns, frames and save shape are unchanged (schema 14). Other items still stop at 0. Aboard the boat, the button keeps its old behaviour.
+
 ## Release 505: the Surveyor's Chain, part one — 2026-10-27
 
 The daily narrative session (Tim's routine): the next step of docs/narrative-bible.md section 7, step 6 ("the Surveyor and the Torn Pages"), from section 6, thread 2: "Abel Corwin's lost chain-links lie in dungeons; each comes with a page of his notes... the measurements grow wrong in an orderly way".

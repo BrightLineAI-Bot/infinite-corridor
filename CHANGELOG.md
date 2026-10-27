@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 507 — the submersible button works again.
+  - **Item button:** once the robot is built, the submersible on an item button calls it, empowers it, stows it and calls it again, the same as Use in Supplies. Building the robot uses up the frame, and the button used to stop at zero frames and do nothing. It shows the robot's state (drone, EMP, on, off or its cooldown) instead of ×0.
+
 - Release 505 — the Surveyor's Chain, part one.
   - **Abel Corwin's chain:** in crossings eight or more sections from the Refuge, you may find a brass link from a surveyor's chain lying on the floor, with a folded page of his field notes. He measures the same stretch of the Corridor again and again, and it keeps getting longer, in an orderly way.
   - **Twelve links:** each crossing gives at most one; the notes always come in order; each page is kept in the Journal under "The Surveyor's Chain". Where the chain leads comes later.
