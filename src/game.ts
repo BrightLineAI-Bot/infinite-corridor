@@ -91,6 +91,7 @@ import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-mor
 import { swapPreset } from "./build-presets.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.ts";
 import { BRAWLER, fistCharge } from "./brawler-spells.ts"; // release 483
+import { ORBIT, orbitLaunch } from "./orbit-volley.ts"; // release 487
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
 import { addIlse, meetIlse } from "./ilse.ts";
@@ -4405,6 +4406,7 @@ export class Game {
     const spell = SPELLS[this.save.equippedSpell] || SPELLS["ember-ring"], cds = (this.save.magicSkills ||= {}).cooldowns ||= {}, key = `spell:${spell.id}`, remaining = spellId ? cds[key] || 0 : this.spellCooldownRemaining; // slots use per-spell cooldowns; the legacy call keeps its single one
     if (spell.id === "shadow-clone") return this.castShadowClone(spell, cds, key); // release 365
     if (spell.brawler) return this.castBrawler(spell, cds, key); // release 483
+    if (spell.id === "orbit-volley") return this.castOrbitVolley(spell, cds, key); // release 487
     if (remaining > 0) {
       this.message = `${spell.name} recovers in ${Math.ceil(remaining)}s.`;
       return false;
@@ -4453,6 +4455,43 @@ export class Game {
     echoEvent(this, "spell", this.lastUpdateNow || 0);
     this.message = `${spell.name} answers.`;
     return true;
+  }
+  // Release 487 (orbit-volley.ts): the first press gathers the orbs, the second launches them; left alone they go by
+  // themselves when the window closes. `this.orbit` is runtime only: { start, where, flight? }.
+  castOrbitVolley(spell, cds, key, now = this.lastUpdateNow || 0) {
+    const o = this.orbit;
+    if (o && !o.flight) return this.launchOrbit(false, now);
+    if (o?.flight) { this.message = "The volley is still in flight."; return false; }
+    if ((cds[key] || 0) > 0) { this.message = `${spell.name} recovers in ${Math.ceil(cds[key])}s.`; return false; }
+    this.orbit = { start: now, where: `${this.area}:${this.areaId()}` }; echoEvent(this, "spell", now);
+    this.message = "Orbs gather round you. Press again to launch them: launch while they glow gold for a perfect volley.";
+    return true;
+  }
+  launchOrbit(timedOut = false, now = this.lastUpdateNow || 0) {
+    const o = this.orbit, spell = SPELLS["orbit-volley"]; if (!o || o.flight) return false;
+    const held = (now - o.start) / 1000, L = orbitLaunch(held, timedOut), glyphs = this.glyphLoadout("spell", spell.id), p = this.player, cx = p.x + .5, cy = p.y + .45, cds = this.save.magicSkills.cooldowns;
+    const power = (spell.damage + characterStats(this.save).magicBonus) * glyphs.mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage);
+    const t = this.lockedTarget(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), ORBIT.reach)?.e, d = foe ? projectileDirection(foe.x - p.x, foe.y - p.y, p.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
+    const at = foe ? { x: foe.x + .5, y: foe.y + .45 } : { x: cx + d.x * ORBIT.reach, y: cy + d.y * ORBIT.reach };
+    if (foe) this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
+    o.flight = { x: cx, y: cy, tx: at.x, ty: at.y, radius: L.radius, perfect: L.perfect, damage: Math.max(1, Math.round(power * L.share)) };
+    cds["spell:orbit-volley"] = spell.cooldown * glyphs.mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
+    this.message = timedOut ? "The orbs go on their own." : L.perfect ? "A perfect volley!" : "The volley flies.";
+    return true;
+  }
+  tickOrbit(dt, now = this.lastUpdateNow || 0) {
+    const o = this.orbit; if (!o) return;
+    if (o.where !== `${this.area}:${this.areaId()}`) { this.orbit = null; return; } // a new area: the orbs scatter
+    if (!o.flight) { if ((now - o.start) / 1000 >= ORBIT.window) this.launchOrbit(true, now); return; }
+    const f = o.flight, w = mapWidth(this.map, this.area), blocked = (x, y) => { const tile = this.map.tiles[Math.floor(y) * w + Math.floor(x)]; return !tile || tile.blocked; };
+    const near = () => this.enemies.find((e) => !e.dead && !e.untargetable && !e.hidden && Math.hypot(e.x + .5 - f.x, e.y + .45 - f.y) <= .6 + Math.max(0, enemyBodyRadius(e) - .38));
+    const dist = Math.hypot(f.tx - f.x, f.ty - f.y), stepLen = ORBIT.speed * dt;
+    if (!near() && dist > stepLen) { const nx = f.x + (f.tx - f.x) / dist * stepLen, ny = f.y + (f.ty - f.y) / dist * stepLen; if (!blocked(nx, ny)) { f.x = nx; f.y = ny; if (!near()) return; } }
+    else if (!near()) { f.x = f.tx; f.y = f.ty; }
+    const burst = { id: `spell-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: "orbit-volley", x: f.x, y: f.y, life: .3, radius: f.radius, pulse: 99, untilPulse: 0, damage: f.damage, pulseIndex: 0, hits: {}, glyphHost: "spell", glyphSpell: "orbit-volley" };
+    this.effects.push(burst);
+    if (f.perfect) { const V = ORBIT.vortex; this.effects.push({ ...burst, id: burst.id + "-vortex", kind: "gravity-well", radius: V.radius, life: V.life, pulse: V.pulse, untilPulse: V.pulse, damage: Math.max(1, Math.round(f.damage * V.share)), hits: {} }); }
+    this.orbit = null;
   }
   // Release 485: Shadow Boxing carries the Wayfarer to the foe before a swing when it is out of reach (the lock, else the
   // nearest within `stick` tiles past the reach), in quarter-tile steps that stop at walls and lethal ground.
@@ -4764,6 +4803,7 @@ export class Game {
       this.fireSecondary(now, aim || this.save.lastAim);
     }
     if (this.shadowClone?.charging) this.tickCloneCharge(!!input.held?.(this.shadowClone.charging.action), now); // release 417
+    if (this.orbit) this.tickOrbit(dt, now); // release 487: Orbit Volley
     if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > BRAWLER["iron-fist"].tapGrace + BRAWLER["iron-fist"].chargeTime + 1) this.releaseFist(fistCharge(held), now); } // release 483: Iron Fist strikes when the button is let go
     if (input.consume("spell")) this.castSlot("a");
     if (input.consume("spell2")) this.castSlot("b");

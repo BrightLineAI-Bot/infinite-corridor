@@ -2694,6 +2694,27 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 487: Orbit Volley — 2026-10-27
+
+Tim: "a spell that like rotates around the character. And then you hit it again, and it sends like a group of balls... at... whatever enemy... you charge it up, and then if you press it again, before... the timer runs out, it sends like a larger ball. If you just let it run out, it'll just send a regular ball... if you perfect time it... it does more damage... it makes like a vortex swirl in front of you". This is the last item of his new-spells list (with the brawler spells of 483 and 485).
+
+**CODE:**
+- New module orbit-volley.ts (in scripts/build.mjs and both sw.js lists):
+  - `ORBIT` holds the numbers: 3→7 orbs over `charge` 2.4 s; the perfect window from `perfectFrom` 2.0 to 2.4 s; `window` 3.2 s before it fires by itself; share 1→2 with the charge, or `perfect` 2.4; radius 1.1, or 1.6 at half charge; `speed` 12; `reach` 7; and the `vortex`.
+  - `orbitCharge`, `orbitPerfect`, `orbitCount` and `orbitLaunch` are the rules; `drawOrbit` draws the orbs, the time-left ring (gold in the perfect window) and the ball in flight. It is called from combat-visuals.ts.
+- items.ts `SPELLS["orbit-volley"]` (damage 14, cooldown 9, `unlockTier` 13); spell-slots.ts Rift ❂.
+- game.ts:
+  - `castSpell` sends it to `castOrbitVolley`. The first press sets the runtime `this.orbit`; a press while gathering calls `launchOrbit`.
+  - `launchOrbit` works out the spell power the way `castSpell` does (spell damage + magic bonus, × glyph mods, Pairing and armor spell damage), times the launch share. It aims at the lock, else `pickMeleeTarget` within `reach`, else `lastAim`; marks the foe; and starts the cooldown.
+  - `tickOrbit` fires the plain ball when `window` passes, then flies the ball and bursts it on the first foe, at the aim or at a wall. The burst is an `orbit-volley` effect with the spell's glyphs. A perfect volley adds a `gravity-well` effect, which `tickSpellFields` pulls and combat-visuals draws.
+  - The orbs scatter if the area changes.
+
+**BOUNDARY:**
+- No save change: `this.orbit` is runtime only.
+- The other spells and the Gravity Well spell are unchanged.
+
+Tests: `tests/orbit-volley-487.test.ts`.
+
 ## Release 485: Aegis and Shadow Boxing — 2026-10-27
 
 Tim: "another one can be a shield... you can put up this shield for like a second... it'll just like block damage for a second... shadow boxing... if you [lock] on a target, you can hit the melee... moves and it will move with the target... stick to him... a bruiser... you'll want to... beef up your defense and your... leaching... this shadow step might have some like healing passives, or like damage reduction, passives, or... damage increased passives". This release is the second batch of his new-spells list. The orbiting charge orbs are still to come.
