@@ -14,7 +14,7 @@
 //     at full charge toward the aim and punch in `radius`. Damage goes from `share` to `share + chargeShare` with the charge.
 //     The dash stops at walls and lethal ground, and you cannot be hurt during it.
 // The spells are ordinary SPELLS entries (items.ts, `brawler: true`), so slots, presets, glyph sockets and cooldowns treat them
-// like the others. game.ts casts them (castBrawler, releaseFist); drawBrawler below draws them.
+// like the others. game.ts runs them (castBrawler for Aegis and Shadow Boxing; brawlerTool for Hammerfall and Great Sweep; fistPress and fistPunch for the Iron Fists); drawBrawler below draws them.
 export const BRAWLER = {
   // Release 493 (Tim: "the hammer fall and the great sweep are tools"): tools now, each press costs `cooldown` s; damage is a
   // share of the tool's power (Game.toolPower), not of a spell.
