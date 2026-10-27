@@ -2694,6 +2694,28 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 483: brawler spells — 2026-10-27
+
+Tim: "we can even have like spell sword spells... a giant hammer that comes down and attacks... another one that does a large sweep with a sword. And these can be buffed by melee damage... brawler type [spells]... another one can be like a charge punch fist... you [dash] forward and you punch... you can like charge it up if you hold the spell button... the hammer... in whatever direction he's facing, or... the regular, like, targeting... that applies for attacking". This release is the first batch of his new-spells list. The shield, Shadow Boxing and the orbiting charge orbs are still to come.
+
+**CODE:**
+- New module brawler-spells.ts (in scripts/build.mjs and both sw.js lists): `BRAWLER` holds each spell's numbers, `fistCharge(held)` the charge, and `drawBrawler` the visuals (called from combat-visuals.ts; the generic effect ring skips `fx.brawler`).
+- items.ts `SPELLS`: `hammerfall`, `great-sweep` and `iron-fist`, each `brawler: true`, `unlockTier: 13`, `damage: 0`. spell-slots.ts `CASTABLES` adds them as Force spells (⚒ ◠ ✊).
+- game.ts `meleePower()` is a swing's damage: `(primaryProfile.damage × melee glyph mods + meleeBonus) × (1 + attackDamage)`. `brawlerAim(reach)` aims at the lock, else `pickMeleeTarget`, else `lastAim`, and marks the foe.
+- `castSpell` sends brawler spells to `castBrawler`, which sets the cooldown with the usual glyph, Pairing and armor reductions.
+- Hammerfall is an effect on the foe (if within `reach` + .5) or `reach` ahead, with `delay` and `stun`. Great Sweep is an effect centred on you.
+- Iron Fist with a button (`castAction`) sets `fistCharge`. The update loop calls `releaseFist(fistCharge(held))` when that button is let go, or after `tapGrace + chargeTime + 1` s. `releaseFist` guards for `guardMs`, steps the dash in .25-tile steps while `canStand`, then places the punch effect .7 ahead.
+- `updateEffects` applies `fx.stun` (a quarter for bosses and elites).
+- The effects carry `glyphHost: "spell"`, so the spell's own glyph sockets apply.
+- The Arcanum describes brawler spells as melee-scaled.
+
+**BOUNDARY:**
+- No save change: `fistCharge` is runtime only.
+- Swings, the other spells and the aim order are unchanged.
+- The dash never crosses walls or lethal ground.
+
+Tests: `tests/brawler-483.test.ts`.
+
 ## Release 481: lock, foe, tap; stronger echoes and bursts; bigger buttons — 2026-10-27
 
 Tim: "first lock then enemy then tap"; "if you have two... echo gliffs on a [spell]... the echo shot does seventy five percent damage, instead of fifty percent"; "I shouldn't be [seeing] the same glimpses multiple times... just see them once, and then if I wanna see them again I can... look in the book"; "make the [action buttons] a little bit larger and more like translucent... I find myself pressing the wrong buttons"; "the passive that leaves... an explosion every time I Dodge... does that get increased by... spell damage... increase the radius... if it hits one enemy, it explodes around that enemy". He chose the action buttons, and spell scaling plus armor-glyph effects for the bursts.

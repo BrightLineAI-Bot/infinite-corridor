@@ -22,6 +22,9 @@ export const CASTABLES = {
   "spell:shadow-clone": { kind: "spell", id: "shadow-clone", symbol: "◐", attr: "dusk" }, // release 365: from Infinite III
   "spell:gravity-well": { kind: "spell", id: "gravity-well", symbol: "⊛", attr: "rift" },
   "spell:stillpoint": { kind: "spell", id: "stillpoint", symbol: "⧗", attr: "ward" },
+  "spell:hammerfall": { kind: "spell", id: "hammerfall", symbol: "⚒", attr: "force" }, // release 483: brawler spells
+  "spell:great-sweep": { kind: "spell", id: "great-sweep", symbol: "◠", attr: "force" },
+  "spell:iron-fist": { kind: "spell", id: "iron-fist", symbol: "✊", attr: "force" },
   "skill:ember-form": { kind: "skill", id: "ember-form", symbol: "✶", attr: "fire" },
   "skill:quickening": { kind: "skill", id: "quickening", symbol: "≫", attr: "wind" },
   "skill:aerial-step": { kind: "skill", id: "aerial-step", symbol: "⇡", attr: "wind" },
