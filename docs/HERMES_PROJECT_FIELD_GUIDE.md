@@ -2694,6 +2694,33 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 493: fists as a weapon, hammer and sweep as tools, gear in presets — 2026-10-27
+
+Tim: "shadow Boxing should work with iron fist as well... the iron fist is an attack. The hammer fall and the great sweep are tools. And the [aegis] and shadow boxing are spells... the presets should be able to preset... your weapon and your tool for... preset one and preset two".
+
+**CODE:**
+- items.ts:
+  - `PRIMARY_PROFILES["primary-iron-fists"]` (`fist: true`), also matched by name in `primaryProfile`.
+  - `RANGED_WEAPONS["secondary-hammerfall"]` and `["secondary-great-sweep"]` (`brawlerTool`) replace `secondary-iron-fists`.
+  - `SPELLS.hammerfall` and `SPELLS["great-sweep"]` are removed; `itemMechanicalStats` shows only damage for brawler tools.
+- spell-slots.ts: the two `CASTABLES` are removed and `RETIRED_SPELLS` adds both, so their socketed glyphs return.
+- brawler-spells.ts `BRAWLER.hammerfall` and `["great-sweep"]` get tool numbers (`share` 1.8 and 1.2, `cooldown` 1.2 and 1 s, `lifetime`).
+- game.ts:
+  - `BRAWLER_GEAR` and `grantBrawlerGear` replace `grantIronFists`. They give Iron Fists, Hammerfall and Great Sweep once each at Infinite III (flags `gear:iron-fists`, `gear:hammerfall`, `gear:great-sweep`), and move a release-489 secondary Iron Fists into the pack as a primary.
+  - `primaryAttack` with fists equipped (`fistsEquipped`) calls `fistPress(now, direction, this.attackAction)`; echoes are skipped. The Attack input sets `attackAction = "attack"` for the call, so a held Attack charges the rush punch.
+  - `fistPower` reads the primary item and the melee glyphs, and punch effects carry `glyphHost: "melee"`.
+  - With Shadow Boxing, `fistPunch` extends the rush by `stick`, steps the jab and uppercut to the foe (`shadowBoxStep`), multiplies damage by 1 + `damage`, and sets `healShare`. The effects' onHit heals `healShare` of the damage actually dealt.
+  - The Tool button and `fireSecondary` (taps) call `brawlerTool(kind)`: `toolPower()` × share, the hammer delayed on the foe or ahead, the sweep round you, gated by `toolReadyAt` (cooldown × tool glyph cooldown × attack speed).
+  - `castBrawler` keeps only Aegis and Shadow Boxing.
+- build-presets.ts: builds carry `gear: { primary, secondary }`, item tags given by `gearTag` (`save.gearTagCounter`, additive `item.tag`). `swapPreset` calls `applyGear` to equip tagged pieces from the pack, naming any that are gone. The existing message wording is kept; "So do its weapon and tool." is added.
+
+**BOUNDARY:**
+- Additive save state only: item tags, the counter, `gear` in preset builds, and the grant flags.
+- Armor and charm are not part of a preset.
+- Other weapons and tools behave as before.
+
+Tests: `tests/brawler-tools-493.test.ts`; `tests/iron-fists-489.test.ts` updated for the weapon; the Hammerfall and Great Sweep spell tests in `tests/brawler-483.test.ts` are retired.
+
 ## Release 491: the dash punch goes to your target — 2026-10-27
 
 Tim: "the iron fists, initial punch should [dash] you towards the enemy that you're targeting, either the one that you have tapped to target or the one that is just auto... if it's beyond range, then it should just do a punch in place... a reasonable range for the character to [dash] to him... if you try to hold it, you'll stay in place and then you can charge it up... and do a more powerful punch... on release".

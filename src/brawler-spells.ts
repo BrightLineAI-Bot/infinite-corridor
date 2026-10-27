@@ -16,8 +16,10 @@
 // The spells are ordinary SPELLS entries (items.ts, `brawler: true`), so slots, presets, glyph sockets and cooldowns treat them
 // like the others. game.ts casts them (castBrawler, releaseFist); drawBrawler below draws them.
 export const BRAWLER = {
-  hammerfall: { share: 2.2, radius: 1.5, reach: 2.6, delay: .32, stun: .6 },
-  "great-sweep": { share: 1.5, radius: 2.4 },
+  // Release 493 (Tim: "the hammer fall and the great sweep are tools"): tools now, each press costs `cooldown` s; damage is a
+  // share of the tool's power (Game.toolPower), not of a spell.
+  hammerfall: { share: 1.8, radius: 1.5, reach: 2.6, delay: .32, stun: .6, cooldown: 1.2, lifetime: .25 },
+  "great-sweep": { share: 1.2, radius: 2.4, cooldown: 1, lifetime: .3 },
   // Release 485 (Tim: "a shield where you can put up this shield for like a second... it'll just like block damage"): every
   // blow is turned aside for `ms`. A fall into lava or a chasm is not a blow.
   aegis: { ms: 1000 },
@@ -51,6 +53,9 @@ export function drawBrawlerAuras(ctx, game, toScreen, s, t) {
 //      and a longer stagger. After it, `recover` s before the next combo.
 // Damage: (`base` + the gauntlets' power × `perPower` + the melee bonus) × the tool glyph mods × every melee-damage multiplier.
 // The dashes stop at walls and lethal ground. game.ts runs it (fistPress, fistPunch); drawBrawler draws the blows.
+// Release 493 (Tim: "the iron fist is an attack... shadow boxing should work with iron fist"): the Iron Fists are a weapon
+// on the Attack button now (the same combo); while Shadow Boxing holds, the dash punch rushes `stick` tiles farther, the jab
+// and uppercut step to the foe, and every punch deals and heals as a boxing swing does.
 export const IRON_FISTS = {
   base: 10, perPower: 1.2, window: .9, recover: .45, finisher: 1.5, finisherStun: .8, tapGrace: .12, chargeTime: 1.2, guardMs: 220,
   punches: [
