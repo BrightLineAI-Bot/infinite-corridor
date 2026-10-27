@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 487 — Orbit Volley.
+  - **Orbit Volley (Rift, from Infinite III):** press to gather orbs circling you (three at first, up to seven as it charges). Press again to launch them as one ball at your target (your lock, else the nearest foe, else the way you face); it hits harder the longer they gathered.
+  - **Perfect timing:** launch while the orbs glow gold for a perfect volley at 240% that also leaves a swirling vortex pulling foes in.
+  - **Left alone:** if you don't press again before the ring runs out, the orbs go on their own as a plain ball. Walls stop the ball.
 - Release 485 — Aegis and Shadow Boxing.
   - **Aegis (Ward):** a shield of light for one second. Every blow is turned aside; falling into lava or a chasm still counts.
   - **Shadow Boxing (Dusk):** for 8 seconds each swing carries you to your foe (your lock, else the nearest within a few tiles) if it's out of reach, stopping at walls. Your swings deal 10% more and heal 6% of what they deal, and you take 15% less damage.

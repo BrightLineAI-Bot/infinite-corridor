@@ -27,6 +27,7 @@ export const CASTABLES = {
   "spell:iron-fist": { kind: "spell", id: "iron-fist", symbol: "✊", attr: "force" },
   "spell:aegis": { kind: "spell", id: "aegis", symbol: "⛉", attr: "ward" }, // release 485
   "spell:shadow-boxing": { kind: "spell", id: "shadow-boxing", symbol: "⚔", attr: "dusk" },
+  "spell:orbit-volley": { kind: "spell", id: "orbit-volley", symbol: "❂", attr: "rift" }, // release 487
   "skill:ember-form": { kind: "skill", id: "ember-form", symbol: "✶", attr: "fire" },
   "skill:quickening": { kind: "skill", id: "quickening", symbol: "≫", attr: "wind" },
   "skill:aerial-step": { kind: "skill", id: "aerial-step", symbol: "⇡", attr: "wind" },
