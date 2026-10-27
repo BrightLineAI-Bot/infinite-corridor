@@ -10,15 +10,16 @@
 //   Hammerfall: a hammer of light falls on the foe (or `reach` tiles ahead) after `delay` s; a heavy blow in `radius` that
 //     staggers (`stun` s; a quarter of that for bosses and elites).
 //   Great Sweep: a blade sweeps all the way round you: every foe within `radius`.
-//   Iron Fist: press and hold to charge (up to `chargeTime` s past `tapGrace`); let go to dash `dash` tiles plus `chargeDash`
+//   Iron Fist (a spell in 483 and 485; the Iron Fists tool from release 489, see IRON_FISTS): press and hold to charge (up to `chargeTime` s past `tapGrace`); let go to dash `dash` tiles plus `chargeDash`
 //     at full charge toward the aim and punch in `radius`. Damage goes from `share` to `share + chargeShare` with the charge.
 //     The dash stops at walls and lethal ground, and you cannot be hurt during it.
 // The spells are ordinary SPELLS entries (items.ts, `brawler: true`), so slots, presets, glyph sockets and cooldowns treat them
 // like the others. game.ts casts them (castBrawler, releaseFist); drawBrawler below draws them.
 export const BRAWLER = {
-  hammerfall: { share: 2.2, radius: 1.5, reach: 2.6, delay: .32, stun: .6 },
-  "great-sweep": { share: 1.5, radius: 2.4 },
-  "iron-fist": { share: 1.4, chargeShare: 2.2, radius: 1.3, dash: 2, chargeDash: 3, chargeTime: 1.2, tapGrace: .12, guardMs: 220 },
+  // Release r493-03686001c9f6 (Tim: "the hammer fall and the great sweep are tools"): tools now, each press costs `cooldown` s; damage is a
+  // share of the tool's power (Game.toolPower), not of a spell.
+  hammerfall: { share: 1.8, radius: 1.5, reach: 2.6, delay: .32, stun: .6, cooldown: 1.2, lifetime: .25 },
+  "great-sweep": { share: 1.2, radius: 2.4, cooldown: 1, lifetime: .3 },
   // Release 485 (Tim: "a shield where you can put up this shield for like a second... it'll just like block damage"): every
   // blow is turned aside for `ms`. A fall into lava or a chasm is not a blow.
   aegis: { ms: 1000 },
@@ -36,8 +37,35 @@ export function drawBrawlerAuras(ctx, game, toScreen, s, t) {
     ctx.lineWidth = 1; for (let i = 0; i < 6; i++) { const a = t * 1.5 + i * Math.PI / 3; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * s * .85, y + Math.sin(a) * s * .85); ctx.lineTo(x + Math.cos(a + Math.PI / 3) * s * .85, y + Math.sin(a + Math.PI / 3) * s * .85); ctx.stroke(); } ctx.globalAlpha = 1; }
   if (now < (game.boxingUntil || 0)) { ctx.strokeStyle = "#7a5fc0"; ctx.lineWidth = 2; ctx.globalAlpha = .55 + .2 * Math.sin(t * 8); ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.ellipse(x, y + s * .35, s * .55, s * .2, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
 }
-// How charged a fist is after `held` seconds of holding (0..1).
-export const fistCharge = (held) => Math.max(0, Math.min(1, (held - BRAWLER["iron-fist"].tapGrace) / BRAWLER["iron-fist"].chargeTime));
+// Iron Fists (release 489; Tim: "let's make the iron fist a tool that you can use instead of a spell... a three button combo...
+// the first punch is... your standard dash. You can charge it and then dash... you can hold it and dash farther... Second
+// [punch] will be like a quick follow up. You can't hold it. And the third punch would be like an uppercut that does more
+// damage. If... you land all three"). The Iron Fist spell of release 483 became a tool: gauntlets in the Tool slot. Each press
+// of Tool throws the next punch of the combo while the last one's `window` s are open; past it, the combo starts again.
+//   1. Dash punch: hold Tool to charge in place (up to `chargeTime` s past `tapGrace`); on release (a tap is a release at
+//      once) it rushes to the foe you target (the lock, else auto aim) when it is within `rush` tiles, stopping `stop` short,
+//      and punches for `share` plus `chargeShare` with the charge; with no foe in range it punches in place. Release 491 (Tim:
+//      "the initial punch should [dash] you towards the enemy that you're targeting... if it's beyond range, then it should
+//      just do a punch in place... a reasonable range... if you try to hold it, you'll stay in place and... charge it"). You
+//      cannot be hurt during the rush.
+//   2. Jab: a short step and a quick blow; it cannot be held.
+//   3. Uppercut: the heavy blow, with a stagger. If both earlier punches landed, it is a finisher: `finisher` × the damage
+//      and a longer stagger. After it, `recover` s before the next combo.
+// Damage: (`base` + the gauntlets' power × `perPower` + the melee bonus) × the tool glyph mods × every melee-damage multiplier.
+// The dashes stop at walls and lethal ground. game.ts runs it (fistPress, fistPunch); drawBrawler draws the blows.
+// Release r493-03686001c9f6 (Tim: "the iron fist is an attack... shadow boxing should work with iron fist"): the Iron Fists are a weapon
+// on the Attack button now (the same combo); while Shadow Boxing holds, the dash punch rushes `stick` tiles farther, the jab
+// and uppercut step to the foe, and every punch deals and heals as a boxing swing does.
+export const IRON_FISTS = {
+  base: 10, perPower: 1.2, window: .9, recover: .45, finisher: 1.5, finisherStun: .8, tapGrace: .12, chargeTime: 1.2, guardMs: 220,
+  punches: [
+    { name: "Dash punch", share: 1.4, chargeShare: 2.2, dash: 0, radius: 1.3, rush: 4, stop: .9 }, // release 491: rushes to a foe within `rush` tiles (to `stop` from it); none in range, it lands in place
+    { name: "Jab", share: .9, dash: .6, radius: 1.1 },
+    { name: "Uppercut", share: 2.4, dash: .3, radius: 1.4, stun: .5 },
+  ],
+};
+// How charged the dash punch is after `held` seconds of holding (0..1).
+export const fistCharge = (held) => Math.max(0, Math.min(1, (held - IRON_FISTS.tapGrace) / IRON_FISTS.chargeTime));
 
 // Drawing (called from combat-visuals.ts with its screen transform). `t` is seconds.
 export function drawBrawler(ctx, game, toScreen, s, t) {
@@ -59,6 +87,11 @@ export function drawBrawler(ctx, game, toScreen, s, t) {
       const k = Math.max(0, fx.life / .3), a0 = (1 - k) * Math.PI * 2;
       ctx.strokeStyle = "#dfe8f0"; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.globalAlpha = .85 * k + .15; ctx.beginPath(); ctx.arc(x, y, R * .85, a0 - 1.6, a0); ctx.stroke();
       ctx.strokeStyle = "#9fc4e0"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, R, a0 - 2.4, a0); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineCap = "butt";
+    } else if (fx.kind === "fist-uppercut") { // release 489: a blow that rises
+      const k = Math.max(0, fx.life / .3); ctx.globalAlpha = k; ctx.strokeStyle = fx.finisher ? "#fff0b8" : "#ffd08a"; ctx.lineWidth = fx.finisher ? 6 : 4; ctx.lineCap = "round";
+      for (const o of [-.35, 0, .35]) { ctx.beginPath(); ctx.moveTo(x + o * R, y + R * .4); ctx.lineTo(x + o * R * .5, y - R * (1.1 - .5 * k)); ctx.stroke(); }
+      if (fx.finisher) { ctx.fillStyle = "#ffcf7a44"; ctx.beginPath(); ctx.arc(x, y, R * 1.1, 0, 7); ctx.fill(); }
+      ctx.globalAlpha = 1; ctx.lineCap = "butt";
     } else if (fx.kind === "iron-fist") {
       const k = Math.max(0, fx.life / .25); ctx.globalAlpha = k; ctx.fillStyle = "#ffb05a55"; ctx.beginPath(); ctx.arc(x, y, R * (1.1 - .3 * k), 0, 7); ctx.fill();
       ctx.strokeStyle = "#ffe0b0"; ctx.lineWidth = 3; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * .4, y + Math.sin(a) * R * .4); ctx.lineTo(x + Math.cos(a) * R, y + Math.sin(a) * R); ctx.stroke(); }
