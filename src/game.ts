@@ -165,6 +165,19 @@ export const TARGET_LOCK = { range: 16, pick: 1.35, meleeSlack: 1.2, meleeReach:
 // nothing that cannot be hit (hidden, untargetable, ambient, allies, people) draws the aim.
 export const AUTO_AIM = { meleeExtra: 3, rangedScale: 2.2, facingBias: .75, spellScale: 1.6 }; // release 479: spellScale, how far past a spell's range auto target looks for a foe (the spell still lands within its range, toward it)
 // release 469: meleeExtra 3 (was 5): auto aim reaches less far for a swing
+// Release 499 (Tim: "if a dungeon will [spawn] in that tile, sometimes it can be spawned in a building. If there's a building
+// in that tile, no other changes beyond that"): in a section first seen from this release on (atlas `indoorDungeonVersion`),
+// when it holds both a dungeon entrance and a building, the entrance stands on the floor inside a building with `chance`,
+// chosen by a fixed hash (the same every visit). Sections explored earlier keep their entrances where they were.
+export const INDOOR_DUNGEON = { version: 1, chance: .5 };
+export function placeDungeonIndoors(map, seed, rx, ry) {
+  const d = map?.objects?.find((o) => o.kind === "dungeon"); if (!d || d.indoors) return d?.indoors ? d : null;
+  const h = hashSeed(`${seed}:indoor-dungeon:v1:${rx}:${ry}`); if ((h % 1000) / 1000 >= INDOOR_DUNGEON.chance) return null;
+  const taken = new Set(map.objects.filter((o) => o !== d).map((o) => `${Math.round(o.x)},${Math.round(o.y)}`));
+  const spots = map.tiles.filter((t) => (t.structure === "shackInterior" || t.structure === "districtInterior") && !t.blocked && !taken.has(`${t.x},${t.y}`) && footprintOpen(map, 32, t.x, t.y));
+  if (!spots.length) return null;
+  const t = spots[(h >>> 10) % spots.length]; Object.assign(d, { x: t.x, y: t.y, indoors: true }); return d;
+}
 export const DODGE_BURST = { chainRadius: .8 }; // release 481: a Chain armor glyph's second burst, as a share of the first burst's radius
 export const AIM_MARK = { ms: 450 }; // release 469: how long the struck foe stays marked
 export const autoAimBody = (e) => Math.max(0, Number(e.bodyRadius) || 0, ((Number(e.scale) || 1) - 1) * .5);
@@ -2155,6 +2168,7 @@ export class Game {
     }
     if (area === "overworld") {
       const atlas = (this.save.atlas ||= {}), key = `${this.rx},${this.ry}`, prior = atlas[key];
+      const indoor = prior ? prior.indoorDungeonVersion : INDOOR_DUNGEON.version; if (indoor) placeDungeonIndoors(this.map, this.save.seed, this.rx, this.ry); // release 499: only sections first seen from now on
       if (this.map.dream && this.save.narrative?.facts && !this.save.narrative.facts["farSleep.entered"]) { this.save.narrative.facts["farSleep.entered"] = true; this.message = "The ground thins underfoot, and the night shows through. Somewhere, someone is dreaming this. Perhaps you."; } // release 305
       noteSectionVisit(this.save, key); // release 263: a section not among the last 8 different ones counts toward the buffer
       if (!prior) { atlas[key] = atlas[key] || {}; if (noteDiscovery(this.save)) this.message = "Word comes on the wind: around Ember Refuge, the groves and the quarry have grown back."; } // release 265: regrowth every 20 new sections
@@ -2170,6 +2184,7 @@ export class Game {
         ...(prior ? (prior.dreamVersion ? { dreamVersion: prior.dreamVersion } : {}) : { dreamVersion: DREAM_VERSION }),
         // The Watcher's shrines and tombs (release 289) likewise.
         ...(prior ? (prior.watcherVersion ? { watcherVersion: prior.watcherVersion } : {}) : { watcherVersion: WATCHER.version }),
+        ...(indoor ? { indoorDungeonVersion: indoor } : {}), // release 499: the dungeon entrance may stand inside a building
         ...(this.map.landscape?.biome ? { landscape: this.map.landscape.biome } : {}), sites: this.map.objects
         .filter((o) => ["diveSite","shipwright","checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho","watcherTomb"].includes(o.kind)) // release 465: the Watcher's shrines
         .map((o) => ({ kind: o.kind, name: o.kind === "watcherTomb" ? (o.where === "shrine" ? "Watcher's Shrine" : "Watcher's Tomb") : o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
