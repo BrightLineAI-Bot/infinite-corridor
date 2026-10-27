@@ -161,7 +161,8 @@ export const TARGET_LOCK = { range: 16, pick: 1.35, meleeSlack: 1.2, meleeReach:
 // longer range"): farther again (meleeExtra was 3, rangedScale 1.6); reach is measured to a creature's edge (`autoAimBody`)
 // so big ones are found sooner; foes roughly ahead of you win over ones a little nearer behind (`facingBias` tiles); and
 // nothing that cannot be hit (hidden, untargetable, ambient, allies, people) draws the aim.
-export const AUTO_AIM = { meleeExtra: 3, rangedScale: 2.2, facingBias: .75 }; // release 469: meleeExtra 3 (was 5): auto aim reaches less far for a swing
+export const AUTO_AIM = { meleeExtra: 3, rangedScale: 2.2, facingBias: .75, spellScale: 1.6 }; // release 479: spellScale, how far past a spell's range auto target looks for a foe (the spell still lands within its range, toward it)
+// release 469: meleeExtra 3 (was 5): auto aim reaches less far for a swing
 export const AIM_MARK = { ms: 450 }; // release 469: how long the struck foe stays marked
 export const autoAimBody = (e) => Math.max(0, Number(e.bodyRadius) || 0, ((Number(e.scale) || 1) - 1) * .5);
 export const autoAimable = (e) => !e.dead && !e.hidden && !e.untargetable && !e.ambient && !e.astralAllyOf && e.kind !== "npc";
@@ -4391,7 +4392,16 @@ export class Game {
     }
     let x = this.player.x + 0.5,
       y = this.player.y + 0.45;
-    { const t = !this.save.pendingAim && this.lockedTarget(); if (t && !t.untargetable && !t.hidden) this.save.pendingAim = { x: t.x + .5, y: t.y + .45 }; } // release 347: spells land on a locked target
+    // Release 347: spells land on a locked target. Release 479 (Tim: "the spells... just get cast in some random direction, they
+    // should just get cast at whatever enemy... I'm targeting... either it's auto target or... the enemy that I have... tab
+    // targeted"): a target you locked first; then a spot you tapped just now (while its reticle shows); then auto target, the
+    // foe nearest you (and ahead) within AUTO_AIM.spellScale × the spell's range. A tap left over from earlier no longer
+    // sends a spell off to where it was. With no foe and no fresh tap, the spell lands where you stand, as before.
+    { const now = this.lastUpdateNow || 0, t = this.lockedTarget(); let foe = t && !t.untargetable && !t.hidden ? t : null;
+      if (this.reticle && !(this.reticle.life > 0)) this.save.pendingAim = null; // the tap's reticle has faded: the aim is stale
+      if (foe) this.save.pendingAim = null;
+      else if (!this.save.pendingAim) foe = pickMeleeTarget(this.player, this.enemies, this.map, mapWidth(this.map, this.area), spell.maxRange * AUTO_AIM.spellScale)?.e || null;
+      if (foe) { this.save.pendingAim = { x: foe.x + .5, y: foe.y + .45 }; this.aimMark = { id: foe.id, until: now + AIM_MARK.ms }; } }
     if (this.save.pendingAim) {
       const dx = this.save.pendingAim.x - x,
         dy = this.save.pendingAim.y - y,

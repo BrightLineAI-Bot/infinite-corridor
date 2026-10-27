@@ -2694,6 +2694,21 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 479: spells at your target, a rift you can tell apart — 2026-10-27
+
+Tim: "the spells, when I cast them right now, they just get cast in some random direction, they should just get cast at whatever enemy... I'm targeting... either it's auto target or... the enemy that I have... tab targeted"; and "the crystals that the rift... the guardians spawn... they're the same... it's kind of confusing... a starburst... or a different color... or a different outline... So they look different".
+
+**CODE:**
+- **Spell aim.** game.ts `castSpell` picks the aim in this order: the locked target (`lockedTarget`), then a `pendingAim` whose tap reticle still shows, then auto target (`pickMeleeTarget` within `AUTO_AIM.spellScale` (1.6) × `spell.maxRange`). A `pendingAim` whose reticle has faded is dropped. Before this release, a lock was used only when no `pendingAim` was waiting, and a leftover tap (kept across swings) sent the spell wherever it was. Without a lock it never auto-targeted. The chosen foe gets the `aimMark`. The spell still lands at most `maxRange` toward the aim.
+- **Starburst rift.** main.ts `drawApertureVisuals` draws the `apertureDoor` (the Unseen Crossing, perceived once the crossing's guardian has fallen) as a turning teal eight-pointed star (`#8ff0e0` outline, `#1f8a7a55` fill, pale core). `apertureMemory` and `apertureRelic` keep the violet diamond.
+
+**BOUNDARY:**
+- No save change; `pendingAim` keeps its shape.
+- The Shadow Clone, tool shots and swings are unchanged.
+- With no foe in reach and no tap, a spell lands where you stand, as before.
+
+Tests: `tests/spell-aim-479.test.ts`.
+
 ## Release 477: just the sigil — 2026-10-27
 
 Tim: "Let's take out the penumbra or the glow around it. Let's just have the sigil, just be the color that his eyes are, and just that's it".

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 479 — spells at your target, a rift you can tell apart.
+  - **Spells aim:** a spell goes to the foe you've locked (tab-targeted). With no lock, it goes where you've just tapped. Otherwise it goes to the nearest foe (ahead of you first) within about one and a half times its range; if that foe is out of range, it lands as far as it reaches toward them. An old tap no longer sends a spell off to where it was. With no foe around, a spell lands where you stand, as before.
+  - **The guardian's rift looks different:** the Unseen Crossing, the rift that opens when a crossing's guardian falls, is now a slowly turning teal starburst instead of the same violet diamond as the Veiled Inscription and the Deep Lattice Relic.
 - Release 477 — just the sigil.
   - **Plain sigil:** the empowered suit's chest sigil has no glow or glass behind it any more: only the spiral, in the same tan-gold as the Wayfarer's eyes.
 - Release 475 — wade the lava, reach every crystal.
