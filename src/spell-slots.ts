@@ -24,7 +24,6 @@ export const CASTABLES = {
   "spell:stillpoint": { kind: "spell", id: "stillpoint", symbol: "⧗", attr: "ward" },
   "spell:hammerfall": { kind: "spell", id: "hammerfall", symbol: "⚒", attr: "force" }, // release 483: brawler spells
   "spell:great-sweep": { kind: "spell", id: "great-sweep", symbol: "◠", attr: "force" },
-  "spell:iron-fist": { kind: "spell", id: "iron-fist", symbol: "✊", attr: "force" },
   "spell:aegis": { kind: "spell", id: "aegis", symbol: "⛉", attr: "ward" }, // release 485
   "spell:shadow-boxing": { kind: "spell", id: "shadow-boxing", symbol: "⚔", attr: "dusk" },
   "spell:orbit-volley": { kind: "spell", id: "orbit-volley", symbol: "❂", attr: "rift" }, // release 487
@@ -71,6 +70,7 @@ export function availableCastables(save) {
   return Object.keys(CASTABLES).filter((k) => { const c = CASTABLES[k]; return c.kind === "spell" ? spellOpen(save, c.id) : skillRank(save, c.id) > 0 && !!APERTURE_SKILLS[c.id]; });
 }
 // Additive at schema 14: seeds A from the equipped spell and B from the discipline bound to the old Spell button.
+export const RETIRED_SPELLS = ["iron-fist"]; // release 489
 export function ensureSlots(save) {
   const ms = (save.magicSkills ||= { schema: 1, learned: {}, selected: null, active: null, cooldowns: {}, lastSafe: null });
   ms.cooldowns ||= {};
@@ -78,6 +78,8 @@ export function ensureSlots(save) {
   ms.slots = raw ? { a: valid(raw.a), b: valid(raw.b) } : { a: `spell:${SPELLS[save.equippedSpell] ? save.equippedSpell : "ember-ring"}`, b: ms.selected && CASTABLES[`skill:${ms.selected}`] ? `skill:${ms.selected}` : null };
   if (ms.slots.a && ms.slots.a === ms.slots.b) ms.slots.b = null;
   ms.pairingsSeen = { ...(ms.pairingsSeen || {}) };
+  // Release 489: a retired spell's glyph sockets give their glyphs back (Iron Fist became the Iron Fists tool).
+  for (const id of RETIRED_SPELLS) { const g = save.spellGlyphs?.[id]; if (!Array.isArray(g)) continue; save.glyphs ||= {}; for (const q of g) if (q) save.glyphs[q] = (Number(save.glyphs[q]) || 0) + 1; delete save.spellGlyphs[id]; if (save.equippedSpell === id) save.equippedSpell = "ember-ring"; }
   // Release 261 spell presets (Tim: "two different presets for the spells... I'll just toggle it"): two saved A/B pairs;
   // the slots always hold the active one. Additive at schema 14: a save without presets starts with both as its slots.
   // Release 291: each preset also says what the Build button does: "build", or "item" with the item it uses (additive).

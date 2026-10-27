@@ -2694,6 +2694,30 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 489: Iron Fists — 2026-10-27
+
+Tim: "let's make the iron fist a tool that you can use instead of a spell... a three button combo... the first punch is... your standard dash. You can charge it and then dash... you can hold it and dash farther... Second [punch] will be like a quick follow up. You can't hold it. And the third punch would be like an uppercut that does more damage. If you can land the third, if you land all three".
+
+**CODE:**
+- brawler-spells.ts `IRON_FISTS` holds the numbers: `base` 10 + power × `perPower` 1.2; `window` .9 s between punches; `recover` .45 s after the uppercut; `finisher` ×1.5 with `finisherStun` .8; `tapGrace` and `chargeTime` for the dash punch; and the three `punches` (dash punch: share 1.4 + 2.2 with charge, dash 2 + 3; jab: share .9, dash .6; uppercut: share 2.4, stun .5). `fistCharge(held)` now reads `IRON_FISTS`. drawBrawler adds the `fist-uppercut` streaks, brighter for a finisher. `BRAWLER["iron-fist"]` is removed.
+- items.ts: `RANGED_WEAPONS["secondary-iron-fists"]` has `fist: true` and `path: "fist"`, also matched by name in `rangedWeapon`. `itemMechanicalStats` shows only damage for it. `SPELLS["iron-fist"]` is removed.
+- spell-slots.ts: `CASTABLES["spell:iron-fist"]` is removed. `RETIRED_SPELLS` is checked in `ensureSlots`, which returns a retired spell's socketed glyphs to the pouch, drops its glyph host and resets `equippedSpell`. Slots and presets already drop unknown castables.
+- game.ts:
+  - `IRON_FISTS_ITEM` and `grantIronFists(save)` give the gauntlets once at Infinite III (flag `worldFlags["gear:iron-fists"]`). It runs on level-up and when a Game starts, which shows a message.
+  - The Tool button with fists calls `fistPress(now, null, "tool")`. `fireSecondary` (a world tap) calls `fistPress(now, direction)`.
+  - `fistPress` throws the next punch while `fistCombo.until` holds; otherwise it starts a dash punch, charging while the button is held. The update loop releases it as `fistPunch(1, fistCharge(held))`.
+  - `fistPunch` aims like the brawler spells (a tap's direction when not locked), steps the dash while `canStand`, and checks whether the blow lands. It places a `brawler` effect with `glyphHost: "tool"` and records `fistCombo.landed`; the uppercut is a finisher when the first two both landed.
+  - `fistPower()` = (base + power × perPower + meleeBonus) × tool glyph mods × (1 + attackDamage).
+  - `releaseFist` and the spell's charge path are removed.
+
+**BOUNDARY:**
+- Additive save state only: the flag, plus an inventory item when granted. The combo is runtime only.
+- Other tools fire as before.
+- The Shadow Clone copies tool shots, not punches.
+- Loot tables are unchanged, so the gauntlets come only from the grant.
+
+Tests: `tests/iron-fists-489.test.ts`; the Iron Fist spell tests in `tests/brawler-483.test.ts` were retired.
+
 ## Release 487: Orbit Volley — 2026-10-27
 
 Tim: "a spell that like rotates around the character. And then you hit it again, and it sends like a group of balls... at... whatever enemy... you charge it up, and then if you press it again, before... the timer runs out, it sends like a larger ball. If you just let it run out, it'll just send a regular ball... if you perfect time it... it does more damage... it makes like a vortex swirl in front of you". This is the last item of his new-spells list (with the brawler spells of 483 and 485).
