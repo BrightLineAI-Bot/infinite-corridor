@@ -40,8 +40,12 @@ export function drawBrawlerAuras(ctx, game, toScreen, s, t) {
 // [punch] will be like a quick follow up. You can't hold it. And the third punch would be like an uppercut that does more
 // damage. If... you land all three"). The Iron Fist spell of release 483 became a tool: gauntlets in the Tool slot. Each press
 // of Tool throws the next punch of the combo while the last one's `window` s are open; past it, the combo starts again.
-//   1. Dash punch: hold Tool to charge (up to `chargeTime` s past `tapGrace`), let go to dash `dash` tiles plus `chargeDash`
-//      at full charge and punch: `share` plus `chargeShare` with the charge. You cannot be hurt during the dash.
+//   1. Dash punch: hold Tool to charge in place (up to `chargeTime` s past `tapGrace`); on release (a tap is a release at
+//      once) it rushes to the foe you target (the lock, else auto aim) when it is within `rush` tiles, stopping `stop` short,
+//      and punches for `share` plus `chargeShare` with the charge; with no foe in range it punches in place. Release 491 (Tim:
+//      "the initial punch should [dash] you towards the enemy that you're targeting... if it's beyond range, then it should
+//      just do a punch in place... a reasonable range... if you try to hold it, you'll stay in place and... charge it"). You
+//      cannot be hurt during the rush.
 //   2. Jab: a short step and a quick blow; it cannot be held.
 //   3. Uppercut: the heavy blow, with a stagger. If both earlier punches landed, it is a finisher: `finisher` × the damage
 //      and a longer stagger. After it, `recover` s before the next combo.
@@ -50,7 +54,7 @@ export function drawBrawlerAuras(ctx, game, toScreen, s, t) {
 export const IRON_FISTS = {
   base: 10, perPower: 1.2, window: .9, recover: .45, finisher: 1.5, finisherStun: .8, tapGrace: .12, chargeTime: 1.2, guardMs: 220,
   punches: [
-    { name: "Dash punch", share: 1.4, chargeShare: 2.2, dash: 2, chargeDash: 3, radius: 1.3 },
+    { name: "Dash punch", share: 1.4, chargeShare: 2.2, dash: 0, radius: 1.3, rush: 4, stop: .9 }, // release 491: rushes to a foe within `rush` tiles (to `stop` from it); none in range, it lands in place
     { name: "Jab", share: .9, dash: .6, radius: 1.1 },
     { name: "Uppercut", share: 2.4, dash: .3, radius: 1.4, stun: .5 },
   ],

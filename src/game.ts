@@ -4558,7 +4558,12 @@ export class Game {
   }
   fistPunch(step, charge = 0, now = this.lastUpdateNow || 0, direction = null) {
     const F = IRON_FISTS, P = F.punches[step - 1], p = this.player, w = this.glyphWorld(now), reach = P.dash + (P.chargeDash || 0) + 1;
-    const d = direction && Math.hypot(direction.x, direction.y) > .01 && !this.lockedTarget() ? projectileDirection(direction.x, direction.y, p.facing) : this.brawlerAim(reach).d, dist = P.dash + (P.chargeDash || 0) * charge;
+    let d = direction && Math.hypot(direction.x, direction.y) > .01 && !this.lockedTarget() ? projectileDirection(direction.x, direction.y, p.facing) : null, dist = P.dash;
+    if (P.rush) { // release 491: the dash punch rushes to the targeted foe in range, else lands in place
+      const t = this.lockedTarget(), locked = t && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= P.rush + 1 ? t : null, foe = locked || pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), P.rush)?.e;
+      if (foe) { d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing); dist = Math.max(0, Math.hypot(foe.x - p.x, foe.y - p.y) - P.stop); this.aimMark = { id: foe.id, until: now + AIM_MARK.ms }; }
+      else d ||= projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
+    } else d ||= this.brawlerAim(reach).d;
     if (step === 1) p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + F.guardMs);
     for (let k = .25; k <= dist + 1e-6; k += .25) { const nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny)) break; p.x = nx; p.y = ny; }
     const at = { x: p.x + .5 + d.x * .7, y: p.y + .45 + d.y * .7 }, landed = this.enemies.some((e) => !e.dead && !e.untargetable && !e.hidden && Math.hypot(e.x + .5 - at.x, e.y + .45 - at.y) <= P.radius + Math.max(0, enemyBodyRadius(e) - .38));
