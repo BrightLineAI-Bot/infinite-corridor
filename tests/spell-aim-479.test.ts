@@ -30,12 +30,14 @@ test('a tab-locked target wins over a nearer foe', () => {
   assert.ok(near(spellAt(g), { x: 14.5, y: 10.45 }), JSON.stringify(spellAt(g)));
 });
 
-test('a stale tap (its reticle faded) no longer sends the spell off; a fresh tap still aims it', () => {
+test('a stale tap (its reticle faded) no longer sends the spell off; a fresh tap aims it when no foe is in reach', () => {
   const { s, g } = arena([['foe', 13, 10]]);
   g.aimAt(6, 14); g.reticle.life = 0; g.castSpell('cinder-dart');
   assert.ok(near(spellAt(g), { x: 13.5, y: 10.45 }), `stale tap ignored: ${JSON.stringify(spellAt(g))}`);
   const b = arena([['foe', 13, 10]]); b.g.aimAt(8, 12); b.g.castSpell('cinder-dart');
-  assert.ok(near(spellAt(b.g), { x: 8, y: 12 }), `fresh tap used: ${JSON.stringify(spellAt(b.g))}`); assert.equal(s.pendingAim, null);
+  assert.ok(near(spellAt(b.g), { x: 13.5, y: 10.45 }), `release 481: a foe in reach comes before a fresh tap: ${JSON.stringify(spellAt(b.g))}`); assert.equal(s.pendingAim, null);
+  const c = arena([['foe', 28, 28]]); c.g.aimAt(8, 12); c.g.castSpell('cinder-dart');
+  assert.ok(near(spellAt(c.g), { x: 8, y: 12 }), `no foe in reach: the fresh tap is used: ${JSON.stringify(spellAt(c.g))}`);
 });
 
 test('a foe beyond the spell\'s range is still the aim: the spell lands toward it at full range', () => {

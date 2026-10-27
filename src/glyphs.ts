@@ -20,7 +20,7 @@ export const GLYPHS = {
   ignite: { name: "Ignite", sigil: "🜂", color: "#ff8a3d", text: { melee: "Hits set foes burning for 3 s.", tool: "Shots set foes burning for 2 s.", spell: "Each pulse sets foes burning for 1.5 s." }, hit: { melee: 3, tool: 2, spell: 1.5 } },
   chain: { name: "Chain", sigil: "ϟ", color: "#8fd8ff", text: { melee: "A swing arcs to one more foe for 50%.", tool: "Hits arc on through two more foes for 45%.", spell: "Each pulse zaps one foe outside it for 40%." }, hit: { melee: [1, .5], tool: [2, .45], spell: [1, .4] } },
   pierce: { name: "Pierce", sigil: "➶", color: "#e8e2c8", text: { melee: "+30% reach.", tool: "Shots pass through up to three foes.", spell: "+30% radius." }, mods: { melee: { range: 1.3 }, tool: { pierce: 3 }, spell: { radius: 1.3 } } },
-  echo: { name: "Echo", sigil: "◎", color: "#c9a7ff", text: { melee: "Every swing repeats a moment later for 50%.", tool: "A second shot follows for 60%.", spell: "The spell recasts where it ended for 50%." }, echo: { melee: [250, .5], tool: [150, .6], spell: [0, .5] } },
+  echo: { name: "Echo", sigil: "◎", color: "#c9a7ff", text: { melee: "Every swing repeats a moment later for 50%.", tool: "A second shot follows for 60%.", spell: "The spell recasts where it ended for 50% (75% with two Echo glyphs)." }, echo: { melee: [250, .5], tool: [150, .6], spell: [0, .5] }, double: { spell: .75 } }, // release 481: `double`, the echo's share with two Echo glyphs on one host
   leech: { name: "Leech", sigil: "♁", color: "#d4495a", text: { melee: "Heal 12% of damage dealt (at least 2% of max health a hit).", tool: "Heal 8% of damage dealt (at least 1.2% of max health a hit).", spell: "Heal 5% of damage dealt (at least 0.8% of max health a hit)." }, hit: { melee: .12, tool: .08, spell: .05 }, floor: { melee: .02, tool: .012, spell: .008 } }, // release 281: floor = share of max health per hit (Tim: "I'm not getting health")
   heavy: { name: "Heavy", sigil: "▼", color: "#b9a37a", text: { melee: "+35% damage, 25% slower, staggers.", tool: "+35% damage, 25% slower, staggers.", spell: "+35% damage, 25% longer recovery." }, mods: { melee: { damage: 1.35, cooldown: 1.25 }, tool: { damage: 1.35, cooldown: 1.25 }, spell: { damage: 1.35, cooldown: 1.25 } } },
   swift: { name: "Swift", sigil: "»", color: "#7fe0a8", text: { melee: "25% faster, -15% damage.", tool: "25% faster, -15% damage.", spell: "30% faster recovery, -15% damage." }, mods: { melee: { damage: .85, cooldown: .75 }, tool: { damage: .85, cooldown: .75 }, spell: { damage: .85, cooldown: .7 } } },
@@ -38,12 +38,12 @@ export const ARMOR_GLYPHS = {
   heavy: { defense: .05, text: "+5% damage reduction." },
   leech: { hp: .1, text: "+10% maximum health." },
   echo: { spellDuration: .2, text: "Aperture skills last 20% longer." },
-  chain: { spellCooldown: .12, text: "Spells and skills recover 12% faster." },
+  chain: { spellCooldown: .12, burstChain: .6, text: "Spells and skills recover 12% faster; a dodge burst erupts again around the first foe it hits, for 60%." }, // release 481: burstChain
   pierce: { attackSpeed: .12, text: "Attacks and shots ready 12% sooner." },
   tether: { staminaRegen: .25, text: "Stamina returns 25% faster." },
   still: { dodgeCost: .2, text: "Dodges cost 20% less stamina." },
   ignite: { spellDamage: .12, text: "+12% magic damage." },
-  volatile: { attackDamage: .1, text: "+10% melee damage." },
+  volatile: { attackDamage: .1, burstRadius: .3, text: "+10% melee damage; dodge bursts 30% wider." }, // release 481: burstRadius
 };
 // Release 297 (Tim, 2026-10-22: "a lot of times I'm using the rift step or some other constellation in my spell slot instead of
 // a spell... the glyphs should modify the constellation you have active"). An Aperture skill slotted in A or B has two glyph
@@ -77,7 +77,7 @@ export function skillInfusion(save) {
   const id = ms.active?.remaining > 0 ? ms.active.id : (ms.riftInfuse > 0 ? "rift-step" : null);
   return id ? skillGlyphs(save, id).filter((g) => SKILL_GLYPHS[g]?.infuse) : [];
 }
-export const ARMOR_GLYPH_CAP = { move: .24, defense: .15, hp: .3, spellDuration: .6, spellCooldown: .36, attackSpeed: .36, staminaRegen: .75, dodgeCost: .6, spellDamage: .36, attackDamage: .3 };
+export const ARMOR_GLYPH_CAP = { move: .24, defense: .15, hp: .3, spellDuration: .6, spellCooldown: .36, attackSpeed: .36, staminaRegen: .75, dodgeCost: .6, spellDamage: .36, attackDamage: .3, burstRadius: .6, burstChain: .6 }; // release 481: dodge-burst radius and chain (Tim: "increase the radius... if it hits one enemy... a burst explodes around... that enemy")
 for (const [id, a] of Object.entries(ARMOR_GLYPHS)) GLYPHS[id].text.armor = a.text;
 // The bonuses from the glyphs set in the equipped armor: { move, defense, hp, ... } (each 0 when absent).
 export function armorGlyphBonus(save) {
@@ -149,8 +149,8 @@ export function discoverResonances(save, loadout) {
 }
 export function echoPlan(loadout) {
   if (!loadout.has("echo")) return null;
-  const [delay, share] = GLYPHS.echo.echo[loadout.host];
-  return { delay, share: loadout.resonant("afterimage") ? 1 : share };
+  const [delay, share] = GLYPHS.echo.echo[loadout.host], double = loadout.count("echo") >= 2 ? GLYPHS.echo.double[loadout.host] || 0 : 0; // release 481 (Tim: "if you have two... echo gliffs on a [spell]... the echo shot does seventy five percent damage, instead of fifty percent")
+  return { delay, share: loadout.resonant("afterimage") ? 1 : Math.max(share, double) };
 }
 
 // ---------------------------------------------------------------- hits

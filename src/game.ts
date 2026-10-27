@@ -163,6 +163,7 @@ export const TARGET_LOCK = { range: 16, pick: 1.35, meleeSlack: 1.2, meleeReach:
 // nothing that cannot be hit (hidden, untargetable, ambient, allies, people) draws the aim.
 export const AUTO_AIM = { meleeExtra: 3, rangedScale: 2.2, facingBias: .75, spellScale: 1.6 }; // release 479: spellScale, how far past a spell's range auto target looks for a foe (the spell still lands within its range, toward it)
 // release 469: meleeExtra 3 (was 5): auto aim reaches less far for a swing
+export const DODGE_BURST = { chainRadius: .8 }; // release 481: a Chain armor glyph's second burst, as a share of the first burst's radius
 export const AIM_MARK = { ms: 450 }; // release 469: how long the struck foe stays marked
 export const autoAimBody = (e) => Math.max(0, Number(e.bodyRadius) || 0, ((Number(e.scale) || 1) - 1) * .5);
 export const autoAimable = (e) => !e.dead && !e.hidden && !e.untargetable && !e.ambient && !e.astralAllyOf && e.kind !== "npc";
@@ -2500,6 +2501,19 @@ export class Game {
     if (fresh.length) this.glyphNotice = `Resonance discovered: ${RESONANCES[fresh[0]].name}. ${RESONANCES[fresh[0]].text}`;
     return l;
   }
+  // Release 481 (Tim: "the passive that leaves... an explosion every time I Dodge... does that get increased by... spell damage
+  // increase... I would like to... increase the radius... if it hits one enemy, it explodes around that enemy"): the dodge
+  // bursts (Ember Wake, Afterimage) now grow with spell damage: the flat magic bonus is added and the spell damage
+  // multipliers (Pairing, armor glyphs, meals, marginalia, empowered robot) applied. Volatile in the armor widens them
+  // (burstRadius); Chain in the armor makes the first foe a burst hits erupt again (burstChain of the damage,
+  // DODGE_BURST.chainRadius of the radius). Returns the damage dealt per foe.
+  dodgeBurst(x, y, radius, base, now = this.lastUpdateNow || 0) {
+    const ag = armorGlyphBonus(this.save), amount = Math.max(1, Math.round((base + (Number(characterStats(this.save).magicBonus) || 0)) * (1 + pairingMods(this.save).spellDamage) * (1 + (ag.spellDamage || 0)))), r = radius * (1 + (ag.burstRadius || 0)), w = this.glyphWorld(now);
+    const first = this.enemies.filter((e) => !e.dead && !e.untargetable && Math.hypot(e.x + .5 - x, e.y + .45 - y) <= r + .2).sort((a, b) => Math.hypot(a.x + .5 - x, a.y + .45 - y) - Math.hypot(b.x + .5 - x, b.y + .45 - y))[0];
+    w.blast(x, y, r, amount);
+    if (first && ag.burstChain > 0) w.blast(first.x + .5, first.y + .45, r * DODGE_BURST.chainRadius, Math.max(1, Math.round(amount * ag.burstChain)));
+    return amount;
+  }
   elevationHere(x, y) { return elevationAt(this.map, mapWidth(this.map, this.area), x, y); }
   glyphWorld(now) {
     const game = this, p = this.player;
@@ -4394,13 +4408,13 @@ export class Game {
       y = this.player.y + 0.45;
     // Release 347: spells land on a locked target. Release 479 (Tim: "the spells... just get cast in some random direction, they
     // should just get cast at whatever enemy... I'm targeting... either it's auto target or... the enemy that I have... tab
-    // targeted"): a target you locked first; then a spot you tapped just now (while its reticle shows); then auto target, the
-    // foe nearest you (and ahead) within AUTO_AIM.spellScale × the spell's range. A tap left over from earlier no longer
-    // sends a spell off to where it was. With no foe and no fresh tap, the spell lands where you stand, as before.
+    // targeted"): a tap left over from earlier no longer sends a spell off to where it was. Release 481 (Tim: "first lock then
+    // enemy then tap"): a target you locked first; then auto target, the foe nearest you (and ahead) within
+    // AUTO_AIM.spellScale × the spell's range; then a spot you tapped just now (while its reticle shows). With none of them,
+    // the spell lands where you stand, as before.
     { const now = this.lastUpdateNow || 0, t = this.lockedTarget(); let foe = t && !t.untargetable && !t.hidden ? t : null;
       if (this.reticle && !(this.reticle.life > 0)) this.save.pendingAim = null; // the tap's reticle has faded: the aim is stale
-      if (foe) this.save.pendingAim = null;
-      else if (!this.save.pendingAim) foe = pickMeleeTarget(this.player, this.enemies, this.map, mapWidth(this.map, this.area), spell.maxRange * AUTO_AIM.spellScale)?.e || null;
+      if (!foe) foe = pickMeleeTarget(this.player, this.enemies, this.map, mapWidth(this.map, this.area), spell.maxRange * AUTO_AIM.spellScale)?.e || null;
       if (foe) { this.save.pendingAim = { x: foe.x + .5, y: foe.y + .45 }; this.aimMark = { id: foe.id, until: now + AIM_MARK.ms }; } }
     if (this.save.pendingAim) {
       const dx = this.save.pendingAim.x - x,
@@ -4697,7 +4711,7 @@ export class Game {
     if (input.consume("dodge")) {
       const r = dodge(p, now, x, y, dodgeCost(this.save));
       if (!r.ok) this.message = "Not enough stamina to dodge.";
-      else { echoEvent(this, "dodge", now); onConstellationDodge(this); if (this.area === "dungeon" && runHas(this.save, this.areaId(), "shadowStep") && !this.shadowCloneActive(now)) { const o = cloneOffset({ x: Number(x) || p.lastMoveVector?.x || 0, y: Number(y) || p.lastMoveVector?.y || 1 }, this.save.lastAim, SHADOW_STEP.behind); this.shadowClone = { ox: o.x, oy: o.y, until: now + SHADOW_STEP.seconds * 1000, marginalia: true }; } /* release 461: Shadow Step */ if (this.area === "dungeon" && runHas(this.save, this.areaId(), "emberWake")) this.glyphWorld(now).blast(p.x + .5, p.y + .45, EMBER_WAKE.radius, Math.round(EMBER_WAKE.base + EMBER_WAKE.perLevel * (Number(this.save.level) || 1))); /* release 459 */ if (this.area === "overworld" && aboard(this.save) && submersible(this.save)) { this.subDiveUntil = now + BOAT.sub.dive * 1000; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, this.subDiveUntil); } } // release 311: aboard a submersible a dodge is a dive
+      else { echoEvent(this, "dodge", now); onConstellationDodge(this); if (this.area === "dungeon" && runHas(this.save, this.areaId(), "shadowStep") && !this.shadowCloneActive(now)) { const o = cloneOffset({ x: Number(x) || p.lastMoveVector?.x || 0, y: Number(y) || p.lastMoveVector?.y || 1 }, this.save.lastAim, SHADOW_STEP.behind); this.shadowClone = { ox: o.x, oy: o.y, until: now + SHADOW_STEP.seconds * 1000, marginalia: true }; } /* release 461: Shadow Step */ if (this.area === "dungeon" && runHas(this.save, this.areaId(), "emberWake")) this.dodgeBurst(p.x + .5, p.y + .45, EMBER_WAKE.radius, EMBER_WAKE.base + EMBER_WAKE.perLevel * (Number(this.save.level) || 1), now); /* release 459; 481: dodgeBurst */ if (this.area === "overworld" && aboard(this.save) && submersible(this.save)) { this.subDiveUntil = now + BOAT.sub.dive * 1000; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, this.subDiveUntil); } } // release 311: aboard a submersible a dodge is a dive
     }
     if (input.consume("jump")) {
       if (now < this.jumpUntil) this.message = "Already airborne.";

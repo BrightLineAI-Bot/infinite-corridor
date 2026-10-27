@@ -2694,6 +2694,26 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 481: lock, foe, tap; stronger echoes and bursts; bigger buttons — 2026-10-27
+
+Tim: "first lock then enemy then tap"; "if you have two... echo gliffs on a [spell]... the echo shot does seventy five percent damage, instead of fifty percent"; "I shouldn't be [seeing] the same glimpses multiple times... just see them once, and then if I wanna see them again I can... look in the book"; "make the [action buttons] a little bit larger and more like translucent... I find myself pressing the wrong buttons"; "the passive that leaves... an explosion every time I Dodge... does that get increased by... spell damage... increase the radius... if it hits one enemy, it explodes around that enemy". He chose the action buttons, and spell scaling plus armor-glyph effects for the bursts.
+
+**CODE:**
+- **Aim order.** game.ts `castSpell`: the locked target, then auto target (`pickMeleeTarget` within `AUTO_AIM.spellScale` × range), then a `pendingAim` whose reticle still shows. In 479 a fresh tap came before auto target.
+- **Double Echo.** glyphs.ts `GLYPHS.echo.double = {spell: .75}`; `echoPlan` uses it when the host has two or more Echo glyphs. Afterimage still makes it 1.
+- **Glimpses once.** glimpses.ts `GLIMPSE_MAX_SEEN` 1 (was 3). The Library's Glimpses list replays any seen one.
+- **Action buttons.** styles.css: `--button` 64px (56px in portrait and short landscape; was 58/50). Every position in the cluster is in `--button` units. `.action-diamond button` gets a translucent gradient and lighter shadow.
+- **Dodge bursts.** game.ts `dodgeBurst(x, y, radius, base)`: `(base + magicBonus) × (1 + Pairing spellDamage) × (1 + armor spellDamage)`; the armor bonus includes meals, pages and the empowered robot. Ember Wake (game.ts) and Afterimage (constellation.ts `onConstellationDodge`) call it. glyphs.ts `ARMOR_GLYPHS.volatile.burstRadius .3` and `ARMOR_GLYPHS.chain.burstChain .6`, capped in `ARMOR_GLYPH_CAP` at .6 each. With Chain, the nearest foe in the burst gets a second blast of `burstChain` × the damage within `DODGE_BURST.chainRadius` (.8) × the radius.
+- The `tests/prototype.test.ts` comment "release 327: the louder mix" is restored (each release bump had renumbered it).
+
+**BOUNDARY:**
+- No save change.
+- The other armor glyph effects are unchanged.
+- Bursts still hit only foes, never the Wayfarer.
+- Glimpse chances per moment are unchanged; only repeats stop.
+
+Tests: `tests/dodge-burst-481.test.ts`; `tests/spell-aim-479.test.ts` updated for the order.
+
 ## Release 479: spells at your target, a rift you can tell apart — 2026-10-27
 
 Tim: "the spells, when I cast them right now, they just get cast in some random direction, they should just get cast at whatever enemy... I'm targeting... either it's auto target or... the enemy that I have... tab targeted"; and "the crystals that the rift... the guardians spawn... they're the same... it's kind of confusing... a starburst... or a different color... or a different outline... So they look different".
