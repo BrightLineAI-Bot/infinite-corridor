@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 511 — the robot no longer walks into a Sleeper's Hall's walls. Those halls build their walls from the same night-sky voids. Only the Far Sleep's open voids can be entered in the robot, and never in a dungeon.
+
 - Release 509 — the robot in the star-voids.
   - **Into the night:** in the robot you can step into the Far Sleep's star-voids, where the ground has worn through to the night sky. Without it they stay impassable.
   - **Very little protection:** in a void the robot's plating comes apart fast (cinder iron cannot re-forge it there) and you burn through it, like wading lava. A quick crossing survives. Stay about four seconds and the robot is destroyed (a new frame must be forged) and the Wayfarer is lost. Stowing the robot inside a void loses the Wayfarer too.
