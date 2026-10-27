@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Release 489 — Iron Fists.
+  - **Iron Fist is a tool now.** The Iron Fist spell is gone. In its place are the Iron Fists, gauntlets you equip in the Tool slot. Everyone at Infinite III gets a pair once. Glyphs set in the old spell come back to you.
+  - **Three-punch combo on Tool:**
+    - Punch 1, dash punch: hold to charge, let go to dash up to 5 tiles. You can't be hurt during the dash.
+    - Punch 2, jab: press again for a quick follow-up. It can't be held.
+    - Punch 3, uppercut: press a third time for the heavy blow, which staggers. If the first two both landed, the uppercut is a finisher: half again as much damage and a longer stagger.
+    - The combo stays open for about a second between presses.
+  - **Damage:** follows the gauntlets' power and your melee damage. The tool's glyph sockets apply.
 - Release 487 — Orbit Volley.
   - **Orbit Volley (Rift, from Infinite III):** press to gather orbs circling you (three at first, up to seven as it charges). Press again to launch them as one ball at your target (your lock, else the nearest foe, else the way you face); it hits harder the longer they gathered.
   - **Perfect timing:** launch while the orbs glow gold for a perfect volley at 240% that also leaves a swirling vortex pulling foes in.

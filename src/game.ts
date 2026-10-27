@@ -57,7 +57,7 @@ import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.t
 import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
-import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, armorGlyphBonus as armorGlyphBase, skillGlyphMods } from "./glyphs.ts";
+import { hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng } from "./random.ts";
 import { placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt } from "./building.ts";
 import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.ts";
@@ -90,7 +90,7 @@ import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./lis
 import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.ts";
 import { swapPreset } from "./build-presets.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.ts";
-import { BRAWLER, fistCharge } from "./brawler-spells.ts"; // release 483
+import { BRAWLER, IRON_FISTS, fistCharge } from "./brawler-spells.ts"; // release 483; 489: Iron Fists
 import { ORBIT, orbitLaunch } from "./orbit-volley.ts"; // release 487
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
@@ -274,6 +274,15 @@ export function grantMilestoneGear(save) {
   }
   return awarded;
 }
+// Release 489: the Iron Fists, given once when the Wayfarer reaches Infinite III (where the Iron Fist spell opened).
+export const IRON_FISTS_ITEM = { id: "secondary-iron-fists", name: "Iron Fists", slot: "secondary", power: 12, tier: "rare", property: "brawler" };
+export function grantIronFists(save) {
+  save.worldFlags ||= {}; save.inventory ||= [];
+  if (save.worldFlags["gear:iron-fists"] || APERTURE_BANDS.indexOf(apertureBand(save.perception?.aperture || 0)) < 13) return false;
+  const owned = save.equipment?.secondary?.name === IRON_FISTS_ITEM.name || save.inventory.some((q) => q?.name === IRON_FISTS_ITEM.name);
+  if (!owned) { if (save.inventory.length >= EQUIPMENT_CAPACITY) return false; save.inventory.push(normalizeSockets({ ...IRON_FISTS_ITEM })); }
+  save.worldFlags["gear:iron-fists"] = true; return !owned;
+}
 export function salvageInventoryItem(save, index) {
   const item = save.inventory?.[index];
   if (!item) return null;
@@ -416,6 +425,7 @@ export function settleProgression(save) {
     levels++;
   }
   grantMilestoneGear(save);
+  grantIronFists(save); // release 489
   syncCharacterStats(save);
   return levels;
 }
@@ -1542,6 +1552,7 @@ export class Game {
     this.performanceStats={totalDungeonEncounterRecords:0,activeEnemies:0,dormantEnemies:0,activeProjectiles:0,activeHazardsAndEffects:0,pathfindingWork:0,encounterActivations:0,peakActiveEnemies:0,updateBudgetViolations:0,ambientTicks:0};
     ensureEliteState(save);
     ensureCorridorSystems(save);
+    if (grantIronFists(save)) this.message = "Iron Fists are in your pack: equip them as your tool for a three-punch combo."; // release 489
     if (!["attack", "tool", "act", "build"].includes(save.aimMode))
       save.aimMode = save.toolMode ? "tool" : "attack";
     save.toolMode = save.aimMode === "tool";
@@ -4319,6 +4330,7 @@ export class Game {
     return hits;
   }
   fireSecondary(now = 0, direction = null) {
+    if (rangedWeapon(this.save.equipment.secondary)?.fist) return this.fistPress(now, direction); // release 489: a tap throws the next punch
     if (this.projectiles.filter(p=>!p.dead).length >= (this.area==='dungeon'?32:64)) return false;
     const weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool");
     if (!weapon || now < (this.player.attackReadyAt || 0)) return false;
@@ -4525,10 +4537,6 @@ export class Game {
     cds[key] = spell.cooldown * this.glyphLoadout("spell", spell.id).mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
     if (spell.id === "aegis") { this.aegisUntil = now + B.ms; echoEvent(this, "spell", now); this.message = "Aegis: every blow is turned aside."; return true; } // release 485
     if (spell.id === "shadow-boxing") { this.boxingUntil = now + B.seconds * 1000; echoEvent(this, "spell", now); this.message = "Shadow Boxing: your swings follow your foe."; return true; } // release 485
-    if (spell.id === "iron-fist") {
-      if (this.castAction) { this.fistCharge = { action: this.castAction, start: now }; this.message = "Hold to charge the fist; let go to strike."; return true; }
-      return this.releaseFist(0, now);
-    }
     if (spell.id === "hammerfall") {
       const { d, foe } = this.brawlerAim(B.reach + 1), fd = foe ? Math.hypot(foe.x + .5 - cx, foe.y + .45 - cy) : Infinity, at = fd <= B.reach + .5 ? { x: foe.x + .5, y: foe.y + .45 } : { x: cx + d.x * B.reach, y: cy + d.y * B.reach };
       this.brawlerEffect(spell, at.x, at.y, this.meleePower() * B.share, { delay: B.delay, stun: B.stun });
@@ -4536,14 +4544,30 @@ export class Game {
     p.attackUntil = now + 240; echoEvent(this, "spell", now); this.message = `${spell.name}!`;
     return true;
   }
-  // Iron Fist: dash toward the aim (farther with charge), then punch. The dash stops before walls and lethal ground.
-  releaseFist(charge = 0, now = this.lastUpdateNow || 0) {
-    this.fistCharge = null;
-    const spell = SPELLS["iron-fist"], B = BRAWLER["iron-fist"], p = this.player, w = this.glyphWorld(now), { d } = this.brawlerAim(B.dash + B.chargeDash + 1), dist = B.dash + B.chargeDash * charge;
-    p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + B.guardMs);
+  // Release 489 (brawler-spells.ts IRON_FISTS): the Iron Fists tool. A press of Tool throws the next punch of the combo while
+  // its window is open; the dash punch starts a combo and charges while the button (`action`) is held. A world tap (no
+  // button to hold) throws it at once. `fistCombo` and `fistCharge` are runtime only.
+  fistPower() { const item = this.save.equipment.secondary, glyphs = hostLoadout(this.save, "tool"); return (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + characterStats(this.save).meleeBonus) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
+  fistPress(now = this.lastUpdateNow || 0, direction = null, action = null) {
+    if (this.fistCharge || now < (this.fistRecoverUntil || 0)) return false;
+    const c = this.fistCombo, live = c && now <= c.until && c.step < IRON_FISTS.punches.length;
+    if (live) return this.fistPunch(c.step + 1, 0, now, direction);
+    this.fistCombo = null;
+    if (action) { this.fistCharge = { action, start: now, direction }; return true; }
+    return this.fistPunch(1, 0, now, direction);
+  }
+  fistPunch(step, charge = 0, now = this.lastUpdateNow || 0, direction = null) {
+    const F = IRON_FISTS, P = F.punches[step - 1], p = this.player, w = this.glyphWorld(now), reach = P.dash + (P.chargeDash || 0) + 1;
+    const d = direction && Math.hypot(direction.x, direction.y) > .01 && !this.lockedTarget() ? projectileDirection(direction.x, direction.y, p.facing) : this.brawlerAim(reach).d, dist = P.dash + (P.chargeDash || 0) * charge;
+    if (step === 1) p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + F.guardMs);
     for (let k = .25; k <= dist + 1e-6; k += .25) { const nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny)) break; p.x = nx; p.y = ny; }
-    this.brawlerEffect(spell, p.x + .5 + d.x * .7, p.y + .45 + d.y * .7, this.meleePower() * (B.share + B.chargeShare * charge), { stun: .3 * charge });
-    p.attackUntil = now + 240; echoEvent(this, "spell", now); this.message = charge >= 1 ? "Iron Fist, fully charged!" : "Iron Fist!";
+    const at = { x: p.x + .5 + d.x * .7, y: p.y + .45 + d.y * .7 }, landed = this.enemies.some((e) => !e.dead && !e.untargetable && !e.hidden && Math.hypot(e.x + .5 - at.x, e.y + .45 - at.y) <= P.radius + Math.max(0, enemyBodyRadius(e) - .38));
+    const before = step === 1 ? [] : this.fistCombo?.landed || [], finisher = step === 3 && before[0] && before[1];
+    this.effects.push({ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: step === 3 ? "fist-uppercut" : "iron-fist", brawler: true, x: at.x, y: at.y, life: step === 3 ? .3 : .25, radius: P.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.fistPower() * (P.share + (P.chargeShare || 0) * charge) * (finisher ? F.finisher : 1))), pulseIndex: 0, hits: {}, glyphHost: "tool", stun: finisher ? F.finisherStun : P.stun || .3 * charge, finisher: !!finisher });
+    this.fistCombo = step >= F.punches.length ? null : { step, until: now + F.window * 1000, landed: [...before, landed] };
+    if (step >= F.punches.length) this.fistRecoverUntil = now + F.recover * 1000;
+    p.attackUntil = now + 240; p.meleeUntil = now + 240;
+    this.message = finisher ? "Uppercut! All three landed." : step === 1 ? (charge >= 1 ? "Dash punch, fully charged!" : "Dash punch.") : step === 2 ? "Jab." : "Uppercut.";
     return true;
   }
   // Release 365 (late-spells.ts): the Shadow Clone. A press deploys it; a press while it lasts carries you to it.
@@ -4798,13 +4822,14 @@ export class Game {
     if (input.consume("tool")) {
       this.save.aimMode = "tool";
       this.save.toolMode = true;
+      if (rangedWeapon(this.save.equipment.secondary)?.fist) this.fistPress(now, null, "tool"); else { // release 489: Iron Fists
       const weapon=rangedWeapon(this.save.equipment.secondary),width=mapWidth(this.map,this.area),
         aim=weapon&&(this.lockedDirection()||selectRangedAim(this.player,this.enemies,this.map,width,weapon.speed*weapon.lifetime*(1+characterStats(this.save).attackReach)*AUTO_AIM.rangedScale)); // release 343; 347: a locked target first
       this.fireSecondary(now, aim || this.save.lastAim);
-    }
+    } }
     if (this.shadowClone?.charging) this.tickCloneCharge(!!input.held?.(this.shadowClone.charging.action), now); // release 417
     if (this.orbit) this.tickOrbit(dt, now); // release 487: Orbit Volley
-    if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > BRAWLER["iron-fist"].tapGrace + BRAWLER["iron-fist"].chargeTime + 1) this.releaseFist(fistCharge(held), now); } // release 483: Iron Fist strikes when the button is let go
+    if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge; this.fistCharge = null; this.fistPunch(1, fistCharge(held), now, c.direction); } } // release 483; 489: the Iron Fists dash punch strikes when Tool is let go
     if (input.consume("spell")) this.castSlot("a");
     if (input.consume("spell2")) this.castSlot("b");
     if (input.consume("dodge")) {

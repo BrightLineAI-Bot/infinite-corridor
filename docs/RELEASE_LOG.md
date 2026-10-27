@@ -13,22 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**489**
+**491**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 487 | Claude | `claude/dreamy-rubin-yn6q2p` | Orbit Volley: orbs that gather, launch on a second press, perfect timing with a vortex | Building. |
-| 485 | Claude | PR #226 | Aegis (one-second shield) and Shadow Boxing (sticky swings with heal, guard, damage) | Merged (`r485-a21a2ac41b13`). Not published. |
-| 483 | Claude | PR #225 | Brawler spells: Hammerfall, Great Sweep, Iron Fist (melee-scaled) | Merged (`r483-86d3b13194dd`). Not published. |
-| 481 | Claude | PR #224 | Spell aim lock → foe → tap; two Echo glyphs echo at 75%; Glimpses once; bigger see-through action buttons; dodge bursts scale with spell damage, Volatile and Chain armor burst effects | Merged (`r481-9a45fb0d6fdc`). Not published. |
+| 489 | Claude | `claude/dreamy-rubin-yn6q2p` | Iron Fists: the Iron Fist spell becomes a tool with a three-punch combo (dash punch, jab, uppercut) | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 487 | `r487-99f7bac84927` | 2026-10-27 | With 481–485: lock → foe → tap aim, double Echo, Glimpses once, bigger buttons, scaling dodge bursts (PR #224); Hammerfall, Great Sweep, Iron Fist (#225); Aegis and Shadow Boxing (#226); Orbit Volley (#227). The pre-publish Fable review (479→487) found no blockers. |
 | 479 | `r479-311e59963952` | 2026-10-27 | With 469–477: select-and-salvage and the aim mark (PR #218), the tapped lock as before (#219), real Margin Wardens (#220), reachable aperture objects and lava wading in the robot (#221), the plain eye-coloured sigil (#222), spells at your target and the starburst rift (#223). The pre-publish Fable reviews (467→477 and 477→479) found no blockers. |
 | 467 | `r467-8f36ab8aa5d6` | 2026-10-26 | With 457–465: +10 upgrades (PR #211), Marginalia (#212), damage numbers and twenty marginalia (#213), tougher dungeons (#215), Watcher's shrines on the Atlas (#216), the Codex audit fixes (#217). The pre-publish Fable review found no blockers. |
 | 455 | `r455-04c11a0d3b73` | 2026-10-26 | With 441–453: Listener-town Viewports and Keepers (PR #203), Atlas Wayglass order and Far Gate compass (#204), the instant jump (#205), Refuge meals (#206), the usable Crossing Sigil (#207), the Mislaid Threshold door (#208), labelled ways out (#209), margins (#210). The pre-publish Fable review found no blockers. |
