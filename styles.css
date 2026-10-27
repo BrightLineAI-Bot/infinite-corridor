@@ -953,3 +953,9 @@ button[aria-current], button[aria-selected="true"], .arc-kind.active, .options-t
 @media (orientation: portrait) { :root { --button: 56px; } }
 @media (orientation: landscape) and (max-height: 540px) { :root { --button: 56px; } }
 .action-diamond button { background: radial-gradient(circle at 45% 35%, #403b318c, #1c1b1873 72%); box-shadow: inset 0 0 0 2px #15141166, 0 3px 9px #0006; }
+/* Release 497 (Tim: "the spells have become... clumped together... they should just become a scrollable line where you can
+   just scroll left or right on... just that portion of it"): the Arcanum's spell row keeps each card at full width and
+   scrolls sideways instead of squeezing the names into letters. */
+.arc-path.spell-path { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; padding-bottom: 8px; scrollbar-width: thin; }
+.arc-path.spell-path .arc-node { flex: 0 0 auto; width: 136px; min-width: 136px; scroll-snap-align: start; }
+.arc-path.spell-path .arc-node-name { overflow-wrap: normal; word-break: normal; }

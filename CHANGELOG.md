@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 497 — a spell row that scrolls.
+  - **Scrolling spell row:** in the Arcanum, the Spells row no longer squeezes every spell into narrow columns with broken names. It's one line of full-width cards that you swipe left or right, and it stays where you left it when you tap a spell.
 - Release 495 — Shadow Boxing with the hammer and the sweep.
   - **Shadow Boxing works with Hammerfall and Great Sweep:** while it holds, Hammerfall reaches a target up to 4 tiles farther, Great Sweep carries you to your foe before it sweeps, and both deal 10% more and heal 6% of what they deal, as the Iron Fists' punches do.
 - Release 493 — fists as a weapon, hammer and sweep as tools, gear in presets.

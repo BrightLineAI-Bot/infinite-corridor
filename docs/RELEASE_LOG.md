@@ -13,22 +13,21 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**497**
+**499**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 495 | Claude | `claude/dreamy-rubin-yn6q2p` | Shadow Boxing works with the Hammerfall and Great Sweep tools | Building. |
-| 493 | Claude | PR #230 | Iron Fists become a weapon (with Shadow Boxing); Hammerfall and Great Sweep become tools; presets keep weapon and tool | Merged (`r493-03686001c9f6`). Not published. |
-| 491 | Claude | PR #229 | Iron Fists dash punch rushes to the targeted foe in range, else lands in place; charges in place | Merged (`r491-0e51b7c821f3`). Not published. |
-| 489 | Claude | PR #228 | Iron Fists: the Iron Fist spell becomes a tool with a three-punch combo (dash punch, jab, uppercut) | Merged (`r489-64d3b11fc36d`). Not published. |
+| 497 | Claude | `claude/dreamy-rubin-yn6q2p` | The Arcanum's spell row scrolls sideways with full-width cards | Building. |
+| 495 | Claude | PR #231 | Shadow Boxing works with the Hammerfall and Great Sweep tools | Merged (`r495-27a316be8aa7`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 493 | `r493-03686001c9f6` | 2026-10-27 | With 489–491: Iron Fists as a tool (PR #228), the rush to your target (#229), then fists as a weapon, Hammerfall and Great Sweep as tools and gear in presets (#230). The pre-publish Fable review (487→493) found no blockers. |
 | 487 | `r487-99f7bac84927` | 2026-10-27 | With 481–485: lock → foe → tap aim, double Echo, Glimpses once, bigger buttons, scaling dodge bursts (PR #224); Hammerfall, Great Sweep, Iron Fist (#225); Aegis and Shadow Boxing (#226); Orbit Volley (#227). The pre-publish Fable review (479→487) found no blockers. |
 | 479 | `r479-311e59963952` | 2026-10-27 | With 469–477: select-and-salvage and the aim mark (PR #218), the tapped lock as before (#219), real Margin Wardens (#220), reachable aperture objects and lava wading in the robot (#221), the plain eye-coloured sigil (#222), spells at your target and the starburst rift (#223). The pre-publish Fable reviews (467→477 and 477→479) found no blockers. |
 | 467 | `r467-8f36ab8aa5d6` | 2026-10-26 | With 457–465: +10 upgrades (PR #211), Marginalia (#212), damage numbers and twenty marginalia (#213), tougher dungeons (#215), Watcher's shrines on the Atlas (#216), the Codex audit fixes (#217). The pre-publish Fable review found no blockers. |
