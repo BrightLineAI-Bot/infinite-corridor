@@ -62,10 +62,16 @@ export const IRON_FISTS = {
   base: 10, perPower: 1.2, window: .9, recover: .45, finisher: 1.5, finisherStun: .8, tapGrace: .12, chargeTime: 1.2, guardMs: 220,
   punches: [
     { name: "Dash punch", share: 1.4, chargeShare: 2.2, dash: 0, radius: 1.3, rush: 4, stop: .9 }, // release 491: rushes to a foe within `rush` tiles (to `stop` from it); none in range, it lands in place
-    { name: "Jab", share: .9, dash: .6, radius: 1.1 },
-    { name: "Uppercut", share: 2.4, dash: .3, radius: 1.4, stun: .5 },
+    { name: "Jab", share: .9, chargeShare: 1.2, echoes: 1, dash: .6, radius: 1.1 },
+    { name: "Uppercut", share: 2.4, chargeShare: 1.6, echoes: 2, dash: .3, radius: 1.4, stun: .5 },
   ],
 };
+// Release 503 (Tim: "if you have echo... it'll let you power up your second swing... it'll still... do the small... forward
+// motion step... If you put a second [echo] in there your third swing [can] be charged... as well"): with `echoes` Echo glyphs
+// in the Iron Fists' sockets, that punch can be held and charged too (`chargeShare` more at full charge). Without them it is
+// thrown at once, as before.
+// Release 503 (Tim: Echo on Shadow Boxing "spawns a shadow clone for 3 seconds... that only does melee attacks"): `echoClone`.
+export const BRAWLER_ECHO = { echoClone: 3, cloneArc: { shape: "arc", range: 1.75, arc: 160 } };
 // How charged the dash punch is after `held` seconds of holding (0..1).
 export const fistCharge = (held) => Math.max(0, Math.min(1, (held - IRON_FISTS.tapGrace) / IRON_FISTS.chargeTime));
 

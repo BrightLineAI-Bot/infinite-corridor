@@ -90,7 +90,7 @@ import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./lis
 import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.ts";
 import { swapPreset } from "./build-presets.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.ts";
-import { BRAWLER, IRON_FISTS, fistCharge } from "./brawler-spells.ts"; // release 483; 489: Iron Fists
+import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge } from "./brawler-spells.ts"; // release 483; 489: Iron Fists
 import { ORBIT, orbitLaunch } from "./orbit-volley.ts"; // release 487
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
@@ -4411,7 +4411,7 @@ export class Game {
     });
     const shot = this.projectiles[this.projectiles.length - 1];
     shot.damage = Math.max(1, Math.round(shot.damage * glyphs.mods.damage));
-    if (this.shadowCloneActive(now) && !this.shadowClone.charging) { const at = clonePosition(this.player, this.shadowClone), cd = this.cloneAimFrom(at) || d; this.projectiles.push({ ...shot, id: `${shot.id}-shadow`, x: at.x + .5 + cd.x * .35, y: at.y + .45 + cd.y * .35, dx: cd.x, dy: cd.y, hits: {}, damage: Math.max(1, Math.round(shot.damage * SHADOW_CLONE.share)), glyphHost: null, shadow: true }); } // release 365; 387: at the locked target
+    if (this.shadowCloneActive(now) && !this.shadowClone.charging && !this.shadowClone.boxing /* release 503: the Shadow Boxing echo only swings */) { const at = clonePosition(this.player, this.shadowClone), cd = this.cloneAimFrom(at) || d; this.projectiles.push({ ...shot, id: `${shot.id}-shadow`, x: at.x + .5 + cd.x * .35, y: at.y + .45 + cd.y * .35, dx: cd.x, dy: cd.y, hits: {}, damage: Math.max(1, Math.round(shot.damage * SHADOW_CLONE.share)), glyphHost: null, shadow: true }); } // release 365; 387: at the locked target
     const plan = echoPlan(glyphs);
     echoEvent(this, "shot", now, { shot });
     if (this.save.equipment.secondary?.awakened) for (const a of [-.21, .21]) { const c = Math.cos(a), sn = Math.sin(a); this.projectiles.push({ ...shot, id: `${shot.id}-fan${a}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {}, damage: Math.max(1, Math.round(shot.damage * .5)) }); } // awakened tool: a three-shot fan
@@ -4532,6 +4532,7 @@ export class Game {
     else if (!near()) { f.x = f.tx; f.y = f.ty; }
     const burst = { id: `spell-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: "orbit-volley", x: f.x, y: f.y, life: .3, radius: f.radius, pulse: 99, untilPulse: 0, damage: f.damage, pulseIndex: 0, hits: {}, glyphHost: "spell", glyphSpell: "orbit-volley" };
     this.effects.push(burst);
+    { const plan = echoPlan(this.glyphLoadout("spell", "orbit-volley")); if (plan) this.effects.push({ ...burst, id: burst.id + "-echo", hits: {}, delay: .2, damage: Math.max(1, Math.round(burst.damage * plan.share)), echo: true }); } // release 503: Echo bursts the ball again
     if (f.perfect) { const V = ORBIT.vortex; this.effects.push({ ...burst, id: burst.id + "-vortex", kind: "gravity-well", radius: V.radius, life: V.life, pulse: V.pulse, untilPulse: V.pulse, damage: Math.max(1, Math.round(f.damage * V.share)), hits: {} }); }
     this.orbit = null;
   }
@@ -4566,7 +4567,7 @@ export class Game {
     const B = BRAWLER[spell.id], p = this.player, cx = p.x + .5, cy = p.y + .45;
     cds[key] = spell.cooldown * this.glyphLoadout("spell", spell.id).mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
     if (spell.id === "aegis") { this.aegisUntil = now + B.ms; echoEvent(this, "spell", now); this.message = "Aegis: every blow is turned aside."; return true; } // release 485
-    if (spell.id === "shadow-boxing") { this.boxingUntil = now + B.seconds * 1000; echoEvent(this, "spell", now); this.message = "Shadow Boxing: your swings follow your foe."; return true; } // release 485
+    if (spell.id === "shadow-boxing") { this.boxingUntil = now + B.seconds * 1000; echoEvent(this, "spell", now); this.message = "Shadow Boxing: your swings follow your foe."; if (echoPlan(this.glyphLoadout("spell", spell.id)) && !this.shadowCloneActive(now)) { const o = cloneOffset(null, this.save.lastAim, SHADOW_CLONE.near); this.shadowClone = { ox: o.x, oy: o.y, until: now + BRAWLER_ECHO.echoClone * 1000, boxing: true }; this.message += " An echo of you boxes beside you."; } return true; } // release 485; 503: Echo spawns a short melee clone
     return false;
   }
   // Release 493: Hammerfall and Great Sweep as tools (BRAWLER numbers). A tool's power: (Iron-Fists-style base + its power
@@ -4584,6 +4585,8 @@ export class Game {
       const fd = foe ? Math.hypot(foe.x + .5 - cx, foe.y + .45 - cy) : Infinity, at = fd <= reach + .5 ? { x: foe.x + .5, y: foe.y + .45 } : { x: cx + d.x * B.reach, y: cy + d.y * B.reach };
       fx(at.x, at.y, { delay: B.delay, stun: B.stun });
     } else fx(cx, cy); // Great Sweep: all round you
+    { const main = this.effects[this.effects.length - 1], plan = echoPlan(this.glyphLoadout("tool")); if (plan && main) this.effects.push({ ...main, id: main.id + "-echo", hits: {}, delay: (main.delay || 0) + Math.max(.15, plan.delay / 1000), damage: Math.max(1, Math.round(main.damage * plan.share)), echo: true }); } // release 503: Echo in the tool repeats the blow
+    this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now); // release 503: the Shadow Clone swings along
     p.attackUntil = now + 240; this.message = kind === "hammerfall" ? "Hammerfall!" : "Great Sweep!";
     return true;
   }
@@ -4595,7 +4598,7 @@ export class Game {
   fistPress(now = this.lastUpdateNow || 0, direction = null, action = null) {
     if (this.fistCharge || now < (this.fistRecoverUntil || 0)) return false;
     const c = this.fistCombo, live = c && now <= c.until && c.step < IRON_FISTS.punches.length;
-    if (live) return this.fistPunch(c.step + 1, 0, now, direction);
+    if (live) { const next = c.step + 1, P = IRON_FISTS.punches[next - 1]; if (action && P.echoes && hostLoadout(this.save, "melee").count("echo") >= P.echoes) { this.fistCharge = { action, start: now, direction, step: next }; return true; } return this.fistPunch(next, 0, now, direction); } // release 503: Echo glyphs let the jab and uppercut charge
     this.fistCombo = null;
     if (action) { this.fistCharge = { action, start: now, direction }; return true; }
     return this.fistPunch(1, 0, now, direction);
@@ -4615,6 +4618,7 @@ export class Game {
     this.effects.push({ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: step === 3 ? "fist-uppercut" : "iron-fist", brawler: true, x: at.x, y: at.y, life: step === 3 ? .3 : .25, radius: P.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.fistPower() * (P.share + (P.chargeShare || 0) * charge) * (finisher ? F.finisher : 1) * (1 + (boxing?.damage || 0)))), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare: boxing?.heal || 0, stun: finisher ? F.finisherStun : P.stun || .3 * charge, finisher: !!finisher });
     this.fistCombo = step >= F.punches.length ? null : { step, until: now + F.window * 1000, landed: [...before, landed] };
     if (step >= F.punches.length) this.fistRecoverUntil = now + F.recover * 1000;
+    this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, d, now); // release 503: the Shadow Clone throws a plain arc swing with each punch
     p.attackUntil = now + 240; p.meleeUntil = now + 240;
     this.message = finisher ? "Uppercut! All three landed." : step === 1 ? (charge >= 1 ? "Dash punch, fully charged!" : "Dash punch.") : step === 2 ? "Jab." : "Uppercut.";
     return true;
@@ -4622,7 +4626,7 @@ export class Game {
   // Release 365 (late-spells.ts): the Shadow Clone. A press deploys it; a press while it lasts carries you to it.
   shadowCloneActive(now = this.lastUpdateNow || 0) { return !!this.shadowClone && now < this.shadowClone.until; }
   castShadowClone(spell, cds, key, now = this.lastUpdateNow || 0) {
-    if (this.shadowCloneActive(now)) {
+    if (this.shadowCloneActive(now) && !this.shadowClone.boxing) { // release 503: a Shadow Boxing echo is replaced, not stepped into
       if (this.shadowClone.charging) this.tickCloneCharge(false, now); // release 417
       const at = clonePosition(this.player, this.shadowClone), w = this.glyphWorld(now);
       if (!w.canStand(at.x, at.y)) { this.shadowClone.blockedUntil = now + SHADOW_CLONE.blockedFor * 1000; this.message = "Blocked: you cannot stand where your shadow is."; return false; }
@@ -4878,7 +4882,7 @@ export class Game {
     } }
     if (this.shadowClone?.charging) this.tickCloneCharge(!!input.held?.(this.shadowClone.charging.action), now); // release 417
     if (this.orbit) this.tickOrbit(dt, now); // release 487: Orbit Volley
-    if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge; this.fistCharge = null; this.fistPunch(1, fistCharge(held), now, c.direction); } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
+    if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge; this.fistCharge = null; this.fistPunch(c.step || 1, fistCharge(held), now, c.direction); } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (input.consume("spell")) this.castSlot("a");
     if (input.consume("spell2")) this.castSlot("b");
     if (input.consume("dodge")) {

@@ -13,22 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**503**
+**505**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 501 | Claude | `claude/dreamy-rubin-yn6q2p` | A smaller Jump button that yields gap presses to its neighbours | Building. |
-| 499 | Claude | PR #233 | Dungeon entrances sometimes inside a building (sections first seen from now on) | Merged (`r499-447e78b533ff`). Not published. |
-| 497 | Claude | PR #232 | The Arcanum's spell row scrolls sideways with full-width cards | Merged (`r497-4707834de012`). Not published. |
-| 495 | Claude | PR #231 | Shadow Boxing works with the Hammerfall and Great Sweep tools | Merged (`r495-27a316be8aa7`). Not published. |
+| 503 | Claude | `claude/dreamy-rubin-yn6q2p` | The new gear with Echo and the Shadow Clone; the brawler gear in loot | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 501 | `r501-a4148de6a998` | 2026-10-27 | With 495–499: Shadow Boxing with the hammer and sweep (PR #231), the scrolling spell row (#232), crossings indoors (#233), the smaller Jump button (#234). The pre-publish Fable review (493→501) found no blockers. |
 | 493 | `r493-03686001c9f6` | 2026-10-27 | With 489–491: Iron Fists as a tool (PR #228), the rush to your target (#229), then fists as a weapon, Hammerfall and Great Sweep as tools and gear in presets (#230). The pre-publish Fable review (487→493) found no blockers. |
 | 487 | `r487-99f7bac84927` | 2026-10-27 | With 481–485: lock → foe → tap aim, double Echo, Glimpses once, bigger buttons, scaling dodge bursts (PR #224); Hammerfall, Great Sweep, Iron Fist (#225); Aegis and Shadow Boxing (#226); Orbit Volley (#227). The pre-publish Fable review (479→487) found no blockers. |
 | 479 | `r479-311e59963952` | 2026-10-27 | With 469–477: select-and-salvage and the aim mark (PR #218), the tapped lock as before (#219), real Margin Wardens (#220), reachable aperture objects and lava wading in the robot (#221), the plain eye-coloured sigil (#222), spells at your target and the starburst rift (#223). The pre-publish Fable reviews (467→477 and 477→479) found no blockers. |

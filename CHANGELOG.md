@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 503 — the new gear works with Echo and the Shadow Clone, and drops as loot.
+  - **Iron Fists and Echo:** one Echo glyph in the Iron Fists lets you hold and charge the jab (still a short step); a second Echo lets you charge the uppercut too.
+  - **Hammerfall and Great Sweep with Echo:** an Echo glyph in the tool repeats the blow a moment later, as Echo does for other tools.
+  - **Orbit Volley with Echo:** the ball bursts a second time where it lands.
+  - **Shadow Boxing with Echo:** casting it also raises a shadow beside you for 3 seconds that swings when you do (melee only, no shots).
+  - **The Shadow Clone swings with the new gear:** when you punch with the Iron Fists or use Hammerfall or Great Sweep, your Shadow Clone throws a plain sweeping swing beside you.
+  - **New gear in loot:** weapons that drop can now be Iron Fists, and tools can be Hammerfall or Great Sweep (about one drop in five of each kind).
 - Release 501 — a smaller Jump button.
   - **Jump gives way:** the Jump button in the middle of the cluster is about two-thirds its old size, centred where it was, so presses meant for Tool, Act, Dodge or Attack land on them. A press in the gap between buttons now goes to Jump only when it is clearly the nearest.
 - Release 499 — crossings indoors.
