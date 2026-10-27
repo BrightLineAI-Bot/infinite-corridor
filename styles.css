@@ -953,3 +953,13 @@ button[aria-current], button[aria-selected="true"], .arc-kind.active, .options-t
 @media (orientation: portrait) { :root { --button: 56px; } }
 @media (orientation: landscape) and (max-height: 540px) { :root { --button: 56px; } }
 .action-diamond button { background: radial-gradient(circle at 45% 35%, #403b318c, #1c1b1873 72%); box-shadow: inset 0 0 0 2px #15141166, 0 3px 9px #0006; }
+/* Release 497 (Tim: "the spells have become... clumped together... they should just become a scrollable line where you can
+   just scroll left or right on... just that portion of it"): the Arcanum's spell row keeps each card at full width and
+   scrolls sideways instead of squeezing the names into letters. */
+.arc-path.spell-path { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; padding-bottom: 8px; scrollbar-width: thin; }
+.arc-path.spell-path .arc-node { flex: 0 0 auto; width: 136px; min-width: 136px; scroll-snap-align: start; }
+.arc-path.spell-path .arc-node-name { overflow-wrap: normal; word-break: normal; }
+/* Release r501-a4148de6a998 (Tim: "decrease the size or the response area of the jump button so that [it] doesn't encroach on the other
+   buttons around it... those other buttons should take priority"): Jump shrinks to about two thirds, centred where it was,
+   so a thumb meant for Tool, Act, Dodge or Attack lands on them (input.ts also gives gap presses away from Jump). */
+.action-diamond button.core.jump { width: calc(var(--button) * 0.68); height: calc(var(--button) * 0.68); left: calc(var(--button) * 1.44); top: calc(var(--button) * 1.28); font-size: 8px; padding-bottom: 0; }
