@@ -13,20 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**507**
+**509**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 505 | Claude | `claude/dreamy-rubin-yn6q2p` | Narrative: the Surveyor's Chain, part one (twelve links with Abel Corwin's notes) | Building. |
-| 503 | Claude | PR #235 | The new gear with Echo and the Shadow Clone; the brawler gear in loot | Merged (`r503-92f29269fd60`). Not published. |
+| 507 | Claude | `claude/dreamy-rubin-yn6q2p` | The submersible item button works once the robot is built; the robot wades water without stamina and crosses water edges anywhere; Echo adds hammers and a third tool shot | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 505 | `r505-ca3263066d7d` | 2026-10-27 | With 503: the new gear with Echo and the Shadow Clone, brawler gear in loot (PR #235); the Surveyor's Chain, part one (#236). The pre-publish Fable review (501→505) found no blockers. |
 | 501 | `r501-a4148de6a998` | 2026-10-27 | With 495–499: Shadow Boxing with the hammer and sweep (PR #231), the scrolling spell row (#232), crossings indoors (#233), the smaller Jump button (#234). The pre-publish Fable review (493→501) found no blockers. |
 | 493 | `r493-03686001c9f6` | 2026-10-27 | With 489–491: Iron Fists as a tool (PR #228), the rush to your target (#229), then fists as a weapon, Hammerfall and Great Sweep as tools and gear in presets (#230). The pre-publish Fable review (487→493) found no blockers. |
 | 487 | `r487-99f7bac84927` | 2026-10-27 | With 481–485: lock → foe → tap aim, double Echo, Glimpses once, bigger buttons, scaling dodge bursts (PR #224); Hammerfall, Great Sweep, Iron Fist (#225); Aegis and Shadow Boxing (#226); Orbit Volley (#227). The pre-publish Fable review (479→487) found no blockers. |

@@ -59,6 +59,11 @@ export const MECH_POWER = { burn: 1, every: 20, damage: .25, guard: .15, boost: 
 // consequence"). While the robot is up (either mode), lava no longer swallows the Wayfarer: they walk on through it, and the
 // heat takes `heat` of their maximum health every second, past the plating and every guard. Boosting over it costs nothing.
 export const MECH_LAVA = { heat: .1 };
+// The robot in water (release 507; Tim: "when I go into the water, I lose stamina, and I can't go between tiles... make sure
+// that the submersible suit works very well"). The robot is the submersible frame walking: while it is up (either mode) it
+// wades rivers, flooded halls and the sea, with or without the Tidemantle, at `speed`× the walking pace, costs no stamina,
+// takes no bite from dungeon water, and crosses a section's edge anywhere the water runs on (like a skiff).
+export const MECH_WATER = { speed: .9 };
 const ironOf = (save) => Math.max(0, Number(save?.materials?.cinderIron) || 0);
 export const mechEmpowered = (save) => save?.mech?.active === true && save.mech.empowered === true && save.mech.mode !== "drone";
 // Switches empowered mode on (spending the first iron) or off. Returns { ok, message }.

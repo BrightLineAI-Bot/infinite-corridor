@@ -2694,6 +2694,28 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 507: the submersible suit, and more hammers with Echo — 2026-10-27
+
+Tim: "Something's broken with a submersible. I have it set on an item to have and it's not working. I'm pressing it and nothing's happening... make sure that the submersible suit works very well".
+
+**CODE:**
+- Cause: building the robot (the Build button or Use) consumes the submersible frame, so its count drops to 0. `Game.useButtonItem` refused any item at count 0 ("None left.") before `useConsumable` was reached. So did the HUD, which greyed the button out.
+- game.ts `useButtonItem`: the submersible passes through to `useConsumable` when `save.mech.built` and the Wayfarer is not aboard the boat. `useConsumable` already handles every state: call, empower, stow and call again.
+- main.ts HUD item button: with the robot built, the submersible is not `spent`. Its label shows the robot's state (DRONE, EMP, ON, OFF or the cooldown seconds) instead of ×0.
+- tests/submersible-button-507.test.ts covers the full button cycle with 0 frames, calling again after stowing, the button in a dungeon, and "None left." with no robot and no frame.
+- The robot in water (Tim: "when I go into the water, I lose stamina, and I can't go between tiles"):
+  - vehicle-gates.ts adds `MECH_WATER = {speed: .9}`.
+  - `Game.swimsHere(hazard)`: the Tidemantle swimmer, or the robot up on any swimmable kind. It replaces `swimsThrough` in movement, the swim state and the Aerial Step landing.
+  - `Game.wading()`: swimming in the robot. It skips `swimUpkeep` and `dungeonWaterToll`, so stamina regenerates normally.
+  - Overworld edges are crossed anywhere while wading, as when sailing. `transitionSection` keeps the cross-edge coordinate when water or open ground meets it, otherwise it uses the exit. The open-sea refusal no longer applies in the robot.
+- Echo on the tools (Tim: "each time you do an echo, it should do another hammer... Bang bang boom... The second echo should just make another shot that does twenty five percent damage"):
+  - glyphs.ts `echoPlan` returns `copies`, one `{delay, share}` per echo. A second Echo on the tool host adds `GLYPHS.echo.third.tool` (.25) at twice the delay. Spells keep their single 75% echo.
+  - `fireSecondary` queues every copy.
+  - `brawlerTool` adds one Hammerfall or Great Sweep effect per copy, each `BRAWLER_ECHO.toolGap` (.22 s) after the last.
+- tests/robot-water-507.test.ts.
+
+**BOUNDARY:** The robot's plating, cooldowns, frames, lava rules and save shape are unchanged (schema 14). Other items still stop at 0. Aboard the boat, the button and sailing keep their old behaviour. Without the robot, swimming still needs the Tidemantle and drains stamina, and dungeon water still bites. Melee and spell echoes are unchanged.
+
 ## Release 505: the Surveyor's Chain, part one — 2026-10-27
 
 The daily narrative session (Tim's routine): the next step of docs/narrative-bible.md section 7, step 6 ("the Surveyor and the Torn Pages"), from section 6, thread 2: "Abel Corwin's lost chain-links lie in dungeons; each comes with a page of his notes... the measurements grow wrong in an orderly way".
