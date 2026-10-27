@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 477: just the sigil — 2026-10-27
+
+Tim: "Let's take out the penumbra or the glow around it. Let's just have the sigil, just be the color that his eyes are, and just that's it".
+
+**CODE:** renderer.ts `drawPowerSuit` `cosmos` draws only the two-armed spiral and its core, both in `COLORS.player[2]` (the Wayfarer's eye colour, `#b9925f`). There is no `glowAt` halo, glass orb, rim or motes. `amber` (the back pack's status light) uses the same colour.
+
+**BOUNDARY:** Drawing only. The sigil keeps its shape and its place on the chest in every facing. No rules, save or other sprite change.
+
 ## Release 475: wade the lava, reach every crystal — 2026-10-27
 
 Tim: "one of these aperture crystals... is in a wall or in an unreachable area... the lava just kills me immediately, which is fine... when I have power armor I can walk through the lava... the power armor doesn't take damage, but I take damage... I can still die from walking in the lava, so there's still consequence... the sigil on his armor should be yellow, not purple... the same sigil... golden or amber... the same as his eyes".

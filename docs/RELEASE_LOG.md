@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**477**
+**479**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 475 | Claude | `claude/dreamy-rubin-yn6q2p` | Aperture objects never in lava or cut off; the robot wades through lava (the heat hurts the Wayfarer); the suit's sigil in amber | Building. |
+| 477 | Claude | `claude/dreamy-rubin-yn6q2p` | The suit's sigil: no glow, only the spiral in the Wayfarer's eye colour | Building. |
+| 475 | Claude | PR #221 | Aperture objects never in lava or cut off; the robot wades through lava (the heat hurts the Wayfarer); the suit's sigil in amber | Merged (`r475-5393d99484f7`). Not published. |
 | 473 | Claude | PR #220 | Margin Wardens: elite monsters at half a Gate Revenant, felled once, pages applied without a choice | Merged (`r473-b1073b3cf672`). Not published. |
 | 471 | Claude | PR #219 | Tapped target lock leads swings as before; only auto aim prefers the foe in reach | Merged. Not published. |
 | 469 | Claude | PR #218 | Select-and-salvage in Gear, swings to the foe in reach (with a mark), glows without shadowBlur | Merged. Not published. |

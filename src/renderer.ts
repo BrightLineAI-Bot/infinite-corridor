@@ -639,21 +639,21 @@ function drawDrone(ctx, x, y, s, facing, now, carrying = false, heal = 0) {
 // Ultraman Tiga... we don't want to depart from the overall gritty, down-to-earth feel"). Drawn in place of the Wayfarer, at
 // their size: a dark graphite pressure suit, segmented and scuffed, with low plates at chest, shoulders, knees and forearms,
 // a smooth helmet with one smoked visor band, a compact life-support pack with hoses to the chest, a dim amber status
-// light (violet in releases 393 to 473, amber again from 475), and small, cold thrusters at the back and heels that only show while it boosts.
+// light (violet in releases 393 to 473, amber in 475, the Wayfarer's eye colour from 477), and small, cold thrusters at the back and heels that only show while it boosts.
 export function drawPowerSuit(ctx, x, y, s, facing, now, frame = 0, attacking = false, boosting = false) {
   const t = now / 1000, k = x * s + s / 2, base = y * s + s * .84, u = s * .9, side = facing === "left" || facing === "right", back = facing === "up", dir = facing === "left" ? -1 : 1;
   const plate = (x0, y0, x1, y1) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, "#5d636b"); g.addColorStop(.4, "#363a41"); g.addColorStop(1, "#1a1c20"); return g; };
   const suit = (x0, y0, x1, y1) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, "#2c3036"); g.addColorStop(1, "#121418"); return g; };
-  const edge = "#0a0b0d", worn = "#8a8f96", amber = "#ffb347", lw = Math.max(1, u * .016); // release 393 made it violet; release 475 brings the amber back
+  const edge = "#0a0b0d", worn = "#8a8f96", amber = COLORS.player[2], lw = Math.max(1, u * .016); // release 393 made it violet; 475 amber; 477 the Wayfarer's eye colour
   // Release 393 (Tim: "the same purple cosmic world as the lantern, rather than that golden... emblem... all the gold [should]
   // be that same color"): a small orb of night glass with a two-armed spiral of light and a bright core. Release 475 (Tim:
   // "the sigil on his armor should be yellow, not purple... the same sigil, but the golden or amber... the same as his eyes"):
   // the same sigil, in amber.
-  const cosmos = (cx, cy, r) => { glowAt(cx, cy, r * 2.4, amber, .45 + .15 * Math.sin(t * 1.6)); ctx.fillStyle = "#24160a"; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.lineWidth = Math.max(.8, r * .18); ctx.strokeStyle = "#2a2d32"; ctx.stroke();
-    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r * .92, 0, Math.PI * 2); ctx.clip(); ctx.strokeStyle = "#ffe2a8dd"; ctx.lineWidth = Math.max(.6, r * .16); ctx.lineCap = "round"; const spin = t * .5;
+  // Release 477 (Tim: "take out the penumbra or the glow around it... just have the sigil... the color that his eyes are, and
+  // that's it"): no halo, no glass orb, no motes; only the two-armed spiral and its core, in the Wayfarer's eye colour.
+  const cosmos = (cx, cy, r) => { const eye = COLORS.player[2]; ctx.strokeStyle = eye; ctx.lineWidth = Math.max(.6, r * .18); ctx.lineCap = "round"; const spin = t * .5;
     for (const arm of [0, Math.PI]) { ctx.beginPath(); for (let q = 0; q <= 1.0001; q += .1) { const a = arm + spin + q * 4.2, rr = r * (.08 + q * .8); ctx[q ? "lineTo" : "moveTo"](cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * .85); } ctx.stroke(); }
-    ctx.fillStyle = "#ffc66d55"; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(cx + Math.cos(i * 2.4 + spin) * r * .6, cy + Math.sin(i * 2.4 + spin) * r * .5, Math.max(.5, r * .07), 0, Math.PI * 2); ctx.fill(); }
-    ctx.restore(); ctx.fillStyle = "#fff6e0"; ctx.beginPath(); ctx.arc(cx, cy, Math.max(.7, r * .18), 0, Math.PI * 2); ctx.fill(); };
+    ctx.fillStyle = eye; ctx.beginPath(); ctx.arc(cx, cy, Math.max(.7, r * .2), 0, Math.PI * 2); ctx.fill(); ctx.lineCap = "butt"; };
   const poly = (pts, fill, stroke = edge) => { ctx.beginPath(); pts.forEach(([px, py], i) => ctx[i ? "lineTo" : "moveTo"](px, py)); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.stroke(); };
   const seg = (x0, y0, x1, y1, w0, w1, fill) => { const a = Math.atan2(y1 - y0, x1 - x0), nx = -Math.sin(a), ny = Math.cos(a); poly([[x0 + nx * w0, y0 + ny * w0], [x1 + nx * w1, y1 + ny * w1], [x1 - nx * w1, y1 - ny * w1], [x0 - nx * w0, y0 - ny * w0]], fill || suit(x0 - w0, y0, x1 + w1, y1)); };
   const glowAt = (gx, gy, r, c, a) => { const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r); g.addColorStop(0, c + Math.round(a * 255).toString(16).padStart(2, "0")); g.addColorStop(1, c + "00"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(gx, gy, r, 0, Math.PI * 2); ctx.fill(); };
