@@ -2694,6 +2694,23 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 495: Shadow Boxing with the hammer and the sweep — 2026-10-27
+
+Tim: "Shadow boxing should work with the hammer fall and the sword sweep as well".
+
+**CODE:**
+- game.ts `brawlerTool` reads `boxing` (Shadow Boxing active) at the start.
+- Great Sweep: with boxing, it first runs `shadowBoxStep(radius × .6)`, so the sweep happens beside the foe; the centre is taken after the step.
+- Hammerfall: with boxing, its reach grows by `stick`, both for aiming and for landing on the foe.
+- Both tools' effects deal × (1 + `damage`) and carry `healShare` = `heal`, which the effects' onHit (release 493) turns into healing.
+
+**BOUNDARY:**
+- No save change.
+- Without Shadow Boxing, the tools are unchanged.
+- The step never crosses walls or lethal ground.
+
+Tests: `tests/brawler-tools-493.test.ts` (release 495 case).
+
 ## Release 493: fists as a weapon, hammer and sweep as tools, gear in presets — 2026-10-27
 
 Tim: "shadow Boxing should work with iron fist as well... the iron fist is an attack. The hammer fall and the great sweep are tools. And the [aegis] and shadow boxing are spells... the presets should be able to preset... your weapon and your tool for... preset one and preset two".
