@@ -2701,6 +2701,7 @@ Tim: "decrease the size or the response area of the jump button so that [it] doe
 **CODE:**
 - styles.css: `.action-diamond button.core.jump` is 0.68 × `--button` (38px at 56px), offset by 0.16 so it stays centred in its old cell. It was a full button, about 6px from Tool, Act, Dodge and Attack.
 - input.ts: `GAP_PRIORITY.jump = -18`. A press on the cluster between buttons goes to Jump only when its edge is clearly nearer than the others'.
+- The release bump's text replace caught two values in `tests/prototype.test.ts` that are not release numbers: the gate predator's 499 health and a test currency of 499. Both are restored. Check for such collisions when the new release number matches a test value.
 
 **BOUNDARY:**
 - No other button moves or changes size; checked at 390×844 and 844×390.
