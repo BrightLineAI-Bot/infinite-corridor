@@ -2694,6 +2694,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 497: a spell row that scrolls — 2026-10-27
+
+Tim (with a screenshot of the spell names broken into letters): "the spells have become... clumped together... they should just become a scrollable line where you can just scroll left or right on... just that portion of it".
+
+**CODE:**
+- styles.css: `.arc-path.spell-path` does not wrap; it scrolls on x (`overflow-x: auto`, touch scrolling, `overscroll-behavior-x: contain`, proximity snap). Its `.arc-node` cards are fixed at 136px (`flex: 0 0 auto`), with names wrapping by word.
+- main.ts keeps the row's `scrollLeft` in `spellPathScroll` (`onscroll`) and restores it after each redraw (`requestAnimationFrame`), so tapping a spell does not jump the row back.
+
+**BOUNDARY:**
+- Layout only; no save or rules change.
+- The other Arcanum branches lay out as before.
+
 ## Release 495: Shadow Boxing with the hammer and the sweep — 2026-10-27
 
 Tim: "Shadow boxing should work with the hammer fall and the sword sweep as well".
