@@ -2694,6 +2694,29 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 505: the Surveyor's Chain, part one — 2026-10-27
+
+The daily narrative session (Tim's routine): the next step of docs/narrative-bible.md section 7, step 6 ("the Surveyor and the Torn Pages"), from section 6, thread 2: "Abel Corwin's lost chain-links lie in dungeons; each comes with a page of his notes... the measurements grow wrong in an orderly way".
+
+**CODE:**
+- New module surveyor.ts (in scripts/build.mjs and both sw.js lists):
+  - `SURVEYOR = {links: 12, chance: .14, minRing: 8, minFromEntry: 6}`.
+  - `SURVEYOR_NOTES`: twelve original field notes. `SURVEYOR_LENGTHS` are the lengths in them: 32, 33, 35, 38, 42, 47, 53, 60, 68, 77, 87, 98, each step one more than the last.
+  - `ensureSurveyor`: `save.lore.surveyor = {links, where}`, additive and normalised.
+  - `surveyorCrossing(seed, dungeonId)`: ordinary crossings, ring ≥ `minRing`, hash < `chance`.
+  - `addSurveyorLink`: one per crossing, on open floor away from the entry. Not placed in multi-level, arena or underwater maps, or once the crossing has given its link.
+  - `takeSurveyorLink`: gives the lowest unfound link, so the notes read in order, and records where it came from.
+- game.ts calls `addSurveyorLink` beside `addMargin` in dungeon loads. The `surveyorLink` interaction takes it and writes `journalOnce(surveyor:i, ..., "The Surveyor's Chain")`.
+- renderer.ts `drawSurveyorLink` draws a glinting brass link, then only its print once taken.
+- docs/narrative-bible.md step 6 now records this.
+
+**BOUNDARY:**
+- Additive `save.lore.surveyor`; crossings, their generation and their ids are unchanged.
+- No link within 8 sections of the Refuge.
+- Part two is not built: the last map revealed as the overworld, and his statue at the edge of the Far Sleep.
+
+Tests: `tests/surveyor-505.test.ts`.
+
 ## Release 503: the new gear with Echo, the Shadow Clone and loot — 2026-10-27
 
 Tim: "we have to make sure that they work with all the existing architecture... the echoes"; for Shadow Boxing "it spawns a shadow clone for 3 seconds... that only does melee attacks"; "the shadow clone... doesn't do melee attacks, and it should... just... an arc melee attack"; Iron Fists with Echo "it'll let you power up your second swing... a second [Echo]... your third swing [can] be charged... as well"; "those... tools that we're new are showing up in the... [loot]".

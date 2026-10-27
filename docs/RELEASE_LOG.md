@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**505**
+**507**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 503 | Claude | `claude/dreamy-rubin-yn6q2p` | The new gear with Echo and the Shadow Clone; the brawler gear in loot | Building. |
+| 505 | Claude | `claude/dreamy-rubin-yn6q2p` | Narrative: the Surveyor's Chain, part one (twelve links with Abel Corwin's notes) | Building. |
+| 503 | Claude | PR #235 | The new gear with Echo and the Shadow Clone; the brawler gear in loot | Merged (`r503-92f29269fd60`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
