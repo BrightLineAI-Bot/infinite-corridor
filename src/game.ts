@@ -274,14 +274,28 @@ export function grantMilestoneGear(save) {
   }
   return awarded;
 }
-// Release 489: the Iron Fists, given once when the Wayfarer reaches Infinite III (where the Iron Fist spell opened).
-export const IRON_FISTS_ITEM = { id: "secondary-iron-fists", name: "Iron Fists", slot: "secondary", power: 12, tier: "rare", property: "brawler" };
-export function grantIronFists(save) {
-  save.worldFlags ||= {}; save.inventory ||= [];
-  if (save.worldFlags["gear:iron-fists"] || APERTURE_BANDS.indexOf(apertureBand(save.perception?.aperture || 0)) < 13) return false;
-  const owned = save.equipment?.secondary?.name === IRON_FISTS_ITEM.name || save.inventory.some((q) => q?.name === IRON_FISTS_ITEM.name);
-  if (!owned) { if (save.inventory.length >= EQUIPMENT_CAPACITY) return false; save.inventory.push(normalizeSockets({ ...IRON_FISTS_ITEM })); }
-  save.worldFlags["gear:iron-fists"] = true; return !owned;
+// Release 489/493: the brawler gear, given once each when the Wayfarer reaches Infinite III (where the brawler spells opened):
+// the Iron Fists (a weapon), Hammerfall and Great Sweep (tools). An Iron Fists pair from release 489 (then a tool) becomes
+// the weapon it is now: moved out of the Tool slot into the pack.
+export const BRAWLER_GEAR = [
+  { flag: "gear:iron-fists", item: { id: "primary-iron-fists", name: "Iron Fists", slot: "primary", power: 12, tier: "rare", property: "brawler" } },
+  { flag: "gear:hammerfall", item: { id: "secondary-hammerfall", name: "Hammerfall", slot: "secondary", power: 12, tier: "rare", property: "brawler" } },
+  { flag: "gear:great-sweep", item: { id: "secondary-great-sweep", name: "Great Sweep", slot: "secondary", power: 12, tier: "rare", property: "brawler" } },
+];
+export function grantBrawlerGear(save) {
+  save.worldFlags ||= {}; save.inventory ||= []; save.equipment ||= {};
+  const fixFists = (q) => { if (q?.name === "Iron Fists" && q.slot === "secondary") Object.assign(q, { slot: "primary", id: "primary-iron-fists" }); return q; };
+  if (save.equipment.secondary?.name === "Iron Fists") { const q = fixFists(save.equipment.secondary); save.equipment.secondary = null; save.inventory.push(q); }
+  save.inventory.forEach(fixFists);
+  if (APERTURE_BANDS.indexOf(apertureBand(save.perception?.aperture || 0)) < 13) return [];
+  const given = [];
+  for (const { flag, item } of BRAWLER_GEAR) {
+    if (save.worldFlags[flag]) continue;
+    const owned = save.equipment[item.slot]?.name === item.name || save.inventory.some((q) => q?.name === item.name);
+    if (!owned) { if (save.inventory.length >= EQUIPMENT_CAPACITY) continue; save.inventory.push(normalizeSockets({ ...item })); given.push(item.name); }
+    save.worldFlags[flag] = true;
+  }
+  return given;
 }
 export function salvageInventoryItem(save, index) {
   const item = save.inventory?.[index];
@@ -425,7 +439,7 @@ export function settleProgression(save) {
     levels++;
   }
   grantMilestoneGear(save);
-  grantIronFists(save); // release 489
+  grantBrawlerGear(save); // release 489; 493
   syncCharacterStats(save);
   return levels;
 }
@@ -1552,7 +1566,7 @@ export class Game {
     this.performanceStats={totalDungeonEncounterRecords:0,activeEnemies:0,dormantEnemies:0,activeProjectiles:0,activeHazardsAndEffects:0,pathfindingWork:0,encounterActivations:0,peakActiveEnemies:0,updateBudgetViolations:0,ambientTicks:0};
     ensureEliteState(save);
     ensureCorridorSystems(save);
-    if (grantIronFists(save)) this.message = "Iron Fists are in your pack: equip them as your tool for a three-punch combo."; // release 489
+    { const given = grantBrawlerGear(save); if (given.length) this.message = `In your pack: ${given.join(", ")}. The Iron Fists are a weapon (Attack); Hammerfall and Great Sweep are tools.`; } // release 489; 493
     if (!["attack", "tool", "act", "build"].includes(save.aimMode))
       save.aimMode = save.toolMode ? "tool" : "attack";
     save.toolMode = save.aimMode === "tool";
@@ -4269,6 +4283,7 @@ export class Game {
     }
   }
   primaryAttack(now = 0, _direction = null, echo = null) {
+    if (this.fistsEquipped()) { if (!echo) this.fistPress(now, _direction, this.attackAction || null); return []; } // release 493: the Iron Fists punch instead of swinging
     const glyphs = this.glyphLoadout("melee");
     if (!echo && now < (this.player.attackReadyAt || 0)) return [];
     if (!echo && now < (this.boxingUntil || 0)) this.shadowBoxStep(primaryProfile(this.save.equipment.primary).range * (1 + characterStats(this.save).attackReach) * glyphs.mods.range, now); // release 485
@@ -4330,7 +4345,7 @@ export class Game {
     return hits;
   }
   fireSecondary(now = 0, direction = null) {
-    if (rangedWeapon(this.save.equipment.secondary)?.fist) return this.fistPress(now, direction); // release 489: a tap throws the next punch
+    { const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) return this.brawlerTool(bt, now, direction); } // release 493: a tap uses Hammerfall or Great Sweep
     if (this.projectiles.filter(p=>!p.dead).length >= (this.area==='dungeon'?32:64)) return false;
     const weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool");
     if (!weapon || now < (this.player.attackReadyAt || 0)) return false;
@@ -4537,17 +4552,28 @@ export class Game {
     cds[key] = spell.cooldown * this.glyphLoadout("spell", spell.id).mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
     if (spell.id === "aegis") { this.aegisUntil = now + B.ms; echoEvent(this, "spell", now); this.message = "Aegis: every blow is turned aside."; return true; } // release 485
     if (spell.id === "shadow-boxing") { this.boxingUntil = now + B.seconds * 1000; echoEvent(this, "spell", now); this.message = "Shadow Boxing: your swings follow your foe."; return true; } // release 485
-    if (spell.id === "hammerfall") {
-      const { d, foe } = this.brawlerAim(B.reach + 1), fd = foe ? Math.hypot(foe.x + .5 - cx, foe.y + .45 - cy) : Infinity, at = fd <= B.reach + .5 ? { x: foe.x + .5, y: foe.y + .45 } : { x: cx + d.x * B.reach, y: cy + d.y * B.reach };
-      this.brawlerEffect(spell, at.x, at.y, this.meleePower() * B.share, { delay: B.delay, stun: B.stun });
-    } else this.brawlerEffect(spell, cx, cy, this.meleePower() * B.share); // Great Sweep: all round you
-    p.attackUntil = now + 240; echoEvent(this, "spell", now); this.message = `${spell.name}!`;
+    return false;
+  }
+  // Release 493: Hammerfall and Great Sweep as tools (BRAWLER numbers). A tool's power: (Iron-Fists-style base + its power
+  // × perPower + the melee bonus) × the tool glyph mods × every melee-damage multiplier.
+  toolPower() { const item = this.save.equipment.secondary, glyphs = hostLoadout(this.save, "tool"); return (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + characterStats(this.save).meleeBonus) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
+  brawlerTool(kind, now = this.lastUpdateNow || 0, direction = null) {
+    const B = BRAWLER[kind], p = this.player, cx = p.x + .5, cy = p.y + .45; if (!B || now < (this.toolReadyAt || 0)) return false;
+    this.toolReadyAt = now + B.cooldown * 1000 * this.glyphLoadout("tool").mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed);
+    const fx = (x, y, extra = {}) => { const e = { id: `tool-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind, brawler: true, x, y, life: B.lifetime, radius: B.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.toolPower() * B.share)), pulseIndex: 0, hits: {}, glyphHost: "tool", ...extra }; this.effects.push(e); return e; };
+    if (kind === "hammerfall") {
+      let { d, foe } = this.brawlerAim(B.reach + 1); if (!foe && direction && Math.hypot(direction.x, direction.y) > .01) d = projectileDirection(direction.x, direction.y, p.facing);
+      const fd = foe ? Math.hypot(foe.x + .5 - cx, foe.y + .45 - cy) : Infinity, at = fd <= B.reach + .5 ? { x: foe.x + .5, y: foe.y + .45 } : { x: cx + d.x * B.reach, y: cy + d.y * B.reach };
+      fx(at.x, at.y, { delay: B.delay, stun: B.stun });
+    } else fx(cx, cy); // Great Sweep: all round you
+    p.attackUntil = now + 240; this.message = kind === "hammerfall" ? "Hammerfall!" : "Great Sweep!";
     return true;
   }
   // Release 489 (brawler-spells.ts IRON_FISTS): the Iron Fists tool. A press of Tool throws the next punch of the combo while
   // its window is open; the dash punch starts a combo and charges while the button (`action`) is held. A world tap (no
   // button to hold) throws it at once. `fistCombo` and `fistCharge` are runtime only.
-  fistPower() { const item = this.save.equipment.secondary, glyphs = hostLoadout(this.save, "tool"); return (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + characterStats(this.save).meleeBonus) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
+  fistsEquipped() { return !!primaryProfile(this.save.equipment.primary)?.fist; } // release 493: the Iron Fists are a weapon
+  fistPower() { const item = this.save.equipment.primary, glyphs = hostLoadout(this.save, "melee"); return (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + characterStats(this.save).meleeBonus) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
   fistPress(now = this.lastUpdateNow || 0, direction = null, action = null) {
     if (this.fistCharge || now < (this.fistRecoverUntil || 0)) return false;
     const c = this.fistCombo, live = c && now <= c.until && c.step < IRON_FISTS.punches.length;
@@ -4557,18 +4583,18 @@ export class Game {
     return this.fistPunch(1, 0, now, direction);
   }
   fistPunch(step, charge = 0, now = this.lastUpdateNow || 0, direction = null) {
-    const F = IRON_FISTS, P = F.punches[step - 1], p = this.player, w = this.glyphWorld(now), reach = P.dash + (P.chargeDash || 0) + 1;
+    const F = IRON_FISTS, P = F.punches[step - 1], p = this.player, w = this.glyphWorld(now), reach = P.dash + (P.chargeDash || 0) + 1, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null;
     let d = direction && Math.hypot(direction.x, direction.y) > .01 && !this.lockedTarget() ? projectileDirection(direction.x, direction.y, p.facing) : null, dist = P.dash;
     if (P.rush) { // release 491: the dash punch rushes to the targeted foe in range, else lands in place
-      const t = this.lockedTarget(), locked = t && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= P.rush + 1 ? t : null, foe = locked || pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), P.rush)?.e;
+      const rush = P.rush + (boxing ? boxing.stick : 0), t = this.lockedTarget(), locked = t && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= rush + 1 ? t : null, foe = locked || pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), rush)?.e;
       if (foe) { d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing); dist = Math.max(0, Math.hypot(foe.x - p.x, foe.y - p.y) - P.stop); this.aimMark = { id: foe.id, until: now + AIM_MARK.ms }; }
       else d ||= projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
-    } else d ||= this.brawlerAim(reach).d;
+    } else { if (boxing && !d) this.shadowBoxStep(P.radius + .4, now); d ||= this.brawlerAim(reach).d; } // release 493: boxing carries the jab and uppercut to the foe
     if (step === 1) p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + F.guardMs);
     for (let k = .25; k <= dist + 1e-6; k += .25) { const nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny)) break; p.x = nx; p.y = ny; }
     const at = { x: p.x + .5 + d.x * .7, y: p.y + .45 + d.y * .7 }, landed = this.enemies.some((e) => !e.dead && !e.untargetable && !e.hidden && Math.hypot(e.x + .5 - at.x, e.y + .45 - at.y) <= P.radius + Math.max(0, enemyBodyRadius(e) - .38));
     const before = step === 1 ? [] : this.fistCombo?.landed || [], finisher = step === 3 && before[0] && before[1];
-    this.effects.push({ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: step === 3 ? "fist-uppercut" : "iron-fist", brawler: true, x: at.x, y: at.y, life: step === 3 ? .3 : .25, radius: P.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.fistPower() * (P.share + (P.chargeShare || 0) * charge) * (finisher ? F.finisher : 1))), pulseIndex: 0, hits: {}, glyphHost: "tool", stun: finisher ? F.finisherStun : P.stun || .3 * charge, finisher: !!finisher });
+    this.effects.push({ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: step === 3 ? "fist-uppercut" : "iron-fist", brawler: true, x: at.x, y: at.y, life: step === 3 ? .3 : .25, radius: P.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.fistPower() * (P.share + (P.chargeShare || 0) * charge) * (finisher ? F.finisher : 1) * (1 + (boxing?.damage || 0)))), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare: boxing?.heal || 0, stun: finisher ? F.finisherStun : P.stun || .3 * charge, finisher: !!finisher });
     this.fistCombo = step >= F.punches.length ? null : { step, until: now + F.window * 1000, landed: [...before, landed] };
     if (step >= F.punches.length) this.fistRecoverUntil = now + F.recover * 1000;
     p.attackUntil = now + 240; p.meleeUntil = now + 240;
@@ -4827,14 +4853,14 @@ export class Game {
     if (input.consume("tool")) {
       this.save.aimMode = "tool";
       this.save.toolMode = true;
-      if (rangedWeapon(this.save.equipment.secondary)?.fist) this.fistPress(now, null, "tool"); else { // release 489: Iron Fists
+      const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) this.brawlerTool(bt, now); else { // release 493: Hammerfall and Great Sweep
       const weapon=rangedWeapon(this.save.equipment.secondary),width=mapWidth(this.map,this.area),
         aim=weapon&&(this.lockedDirection()||selectRangedAim(this.player,this.enemies,this.map,width,weapon.speed*weapon.lifetime*(1+characterStats(this.save).attackReach)*AUTO_AIM.rangedScale)); // release 343; 347: a locked target first
       this.fireSecondary(now, aim || this.save.lastAim);
     } }
     if (this.shadowClone?.charging) this.tickCloneCharge(!!input.held?.(this.shadowClone.charging.action), now); // release 417
     if (this.orbit) this.tickOrbit(dt, now); // release 487: Orbit Volley
-    if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge; this.fistCharge = null; this.fistPunch(1, fistCharge(held), now, c.direction); } } // release 483; 489: the Iron Fists dash punch strikes when Tool is let go
+    if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge; this.fistCharge = null; this.fistPunch(1, fistCharge(held), now, c.direction); } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (input.consume("spell")) this.castSlot("a");
     if (input.consume("spell2")) this.castSlot("b");
     if (input.consume("dodge")) {
@@ -4972,7 +4998,7 @@ export class Game {
     if (!fellIntoHazard&&input.consume("attack")) {
       this.save.aimMode = "attack";
       this.save.toolMode = false;
-      this.primaryAttack(now);
+      this.attackAction = "attack"; try { this.primaryAttack(now); } finally { this.attackAction = null; } // release 493: the Iron Fists charge while Attack is held
     }
     // Hold Act for BOAT.leaveHold seconds while aboard to leave the skiff (release 158): step ashore if ground is beside
     // the hull, otherwise go over the side into the water, and the skiff stays moored where it floats.
@@ -5030,7 +5056,7 @@ export class Game {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
       (fx, e) => fx.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, fx.damage, { echo: !!fx.echo }, now) : fx.damage, // release 335: a spell's pulses keep the glyphs it was cast with
-      (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (fx.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); },
+      (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (fx.healShare && actual > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + actual * fx.healShare); /* release 493: Shadow Boxing heals from punches */ if (fx.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); },
     );
     for(const e of this.enemies)if(e.kind==="astralWorm"&&e.dead&&!e.rewarded)this.defeatEnemy(e);
     this.tickGlyphs(dt, now);

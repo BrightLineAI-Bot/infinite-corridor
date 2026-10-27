@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**493**
+**495**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 491 | Claude | `claude/dreamy-rubin-yn6q2p` | Iron Fists dash punch rushes to the targeted foe in range, else lands in place; charges in place | Building. |
+| 493 | Claude | `claude/dreamy-rubin-yn6q2p` | Iron Fists become a weapon (with Shadow Boxing); Hammerfall and Great Sweep become tools; presets keep weapon and tool | Building. |
+| 491 | Claude | PR #229 | Iron Fists dash punch rushes to the targeted foe in range, else lands in place; charges in place | Merged (`r491-0e51b7c821f3`). Not published. |
 | 489 | Claude | PR #228 | Iron Fists: the Iron Fist spell becomes a tool with a three-punch combo (dash punch, jab, uppercut) | Merged (`r489-64d3b11fc36d`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 

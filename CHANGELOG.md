@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 493 — fists as a weapon, hammer and sweep as tools, gear in presets.
+  - **Iron Fists are a weapon:** equip them in the weapon slot; the Attack button throws the combo: the rush punch (hold Attack to charge in place), the jab, the uppercut. A pair carried as a tool from the last preview moves to your pack as a weapon.
+  - **Shadow Boxing works with the Iron Fists:** while it holds, the rush punch reaches 4 tiles farther, the jab and uppercut step to your foe, and every punch deals 10% more and heals 6% of what it deals.
+  - **Hammerfall and Great Sweep are tools:** equip them in the Tool slot. Tool drops the hammer on your target (or ahead), or sweeps a blade all round you. Each press recovers in about a second. Both come with Infinite III, and any glyphs set in the old spells come back to you.
+  - **Aegis and Shadow Boxing stay spells.**
+  - **Presets keep your weapon and tool:** switching presets also equips the weapon and tool that preset was left with, from your pack. If one was salvaged or sold, the message says so.
 - Release 491 — the dash punch goes to your target.
   - **Rush to your target:** the Iron Fists' first punch rushes to the foe you target (your tapped lock, else auto aim) when it's within 4 tiles, and stops right beside it. No foe in range: it punches in place.
   - **Charge in place:** holding Tool keeps you where you stand while it charges; let go to rush and land the stronger punch.
