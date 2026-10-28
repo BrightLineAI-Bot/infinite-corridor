@@ -59,7 +59,7 @@ import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.t
 import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
-import { giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
+import { giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng } from "./random.ts";
 import { placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt } from "./building.ts";
 import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.ts";
@@ -2561,7 +2561,7 @@ export class Game {
   // ---------------------------------------------------------------- glyphs (release 98)
   glyphLoadout(host, spellId = null) {
     const l = hostLoadout(this.save, host, spellId), fresh = discoverResonances(this.save, l);
-    if (fresh.length) this.glyphNotice = `Resonance discovered: ${RESONANCES[fresh[0]].name}. ${RESONANCES[fresh[0]].text}`;
+    if (fresh.length) { const r = resonanceInfo(fresh[0]); this.glyphNotice = `${r.pair.length === 3 ? "Triad" : "Resonance"} discovered: ${r.name}. ${r.text}`; } // release 529: triads too
     return l;
   }
   // Release 481 (Tim: "the passive that leaves... an explosion every time I Dodge... does that get increased by... spell damage
@@ -4420,7 +4420,9 @@ export class Game {
       speed: weapon.speed,
       life: weapon.path==="grenade"&&aimedDistance!==null?Math.max(.08,Math.min(projectileLifetime,aimedDistance/weapon.speed)):projectileLifetime,
       damage: Math.round(
-        (weapon.damage + derived.magicBonus) * (weapon.damageType === "magic" ? 1 + armorGlyphBonus(this.save).spellDamage : 1) * // release 335: armor Ignite on magic shots only
+        // Release 529 (Tim: "make the needle caster scale with your might... a projectile that scales with [might]"): a physical
+        // shot (the Needle Caster) adds the melee bonus (Might) and armor's blow bonus; magic shots keep Focus and spell damage.
+        (weapon.damage + (weapon.damageType === "physical" ? derived.meleeBonus : derived.magicBonus)) * (weapon.damageType === "magic" ? 1 + armorGlyphBonus(this.save).spellDamage : 1 + armorGlyphBonus(this.save).attackDamage) * // release 335: armor Ignite on magic shots only
           (weapon.damageType === "magic" && this.magicBuffRemaining > 0
             ? 1.4
             : 1),

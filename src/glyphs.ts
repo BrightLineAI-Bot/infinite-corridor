@@ -12,7 +12,7 @@ import { hashSeed } from "./random.ts";
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];
 export const SOCKETS_BY_TIER = { common: 1, rare: 2, epic: 2, relic: 3 };
-export const SPELL_SOCKETS = 2;
+export const SPELL_SOCKETS = 3; // release 529: a third, so spells and skills can hold a triad (was 2; saves pad with an empty socket)
 export const DUST_PER_GLYPH = 6;
 
 // mods: multipliers applied when the host fires. hit: per-host numbers used by glyphHit.
@@ -84,6 +84,7 @@ export function armorGlyphBonus(save) {
   const out = Object.fromEntries(Object.keys(ARMOR_GLYPH_CAP).map((k) => [k, 0]));
   for (const id of save?.equipment?.armor?.glyphs || []) { const a = ARMOR_GLYPHS[id]; if (a) for (const k of Object.keys(ARMOR_GLYPH_CAP)) if (a[k]) out[k] += a[k]; }
   for (const k of Object.keys(out)) out[k] = Math.min(out[k], ARMOR_GLYPH_CAP[k]);
+  for (const id of triadsOf(save?.equipment?.armor?.glyphs || [])) for (const [k, v] of Object.entries(TRIADS[id].armor)) out[k] = (out[k] || 0) + v; // release 529: armor triads, past the caps
   return out;
 }
 
@@ -97,6 +98,30 @@ export const RESONANCES = {
   "blood-tide": { name: "Blood Tide", pair: ["leech", "heavy"], text: "Leech heals twice as much." },
   quickstep: { name: "Quickstep", pair: ["swift", "leech"], text: "Kills restore 8 stamina." },
 };
+
+// Triads (release 529; Tim, 2026-10-28: "three part resonances, where if you have three different glyphs, you can get
+// resonances for those as well... spells and skills... armor can resonate with three slot resonances, so if you want your
+// armor to resonate, you have to resonate with three glyphs"). Three different glyphs in one host. In a weapon, tool, spell
+// or skill (a skill passes on only its infusing glyphs, so Inferno and Undertow) a triad changes hits (glyphHit); in armor
+// it adds `armor`, on top of the usual armor caps. Pairs still never resonate in armor. Discovered like pairs; armor triads
+// when socketed. Kept apart from RESONANCES so the pair rules and counts stay as they were.
+export const TRIADS = {
+  inferno: { name: "Inferno", pair: ["ignite", "chain", "volatile"], text: "A burning foe that dies erupts in a wide blaze.", armor: { burstRadius: .3, spellDamage: .1 }, armorText: "Dodge bursts 30% wider; spells deal 10% more." },
+  maelstrom: { name: "Maelstrom", pair: ["tether", "chain", "pierce"], text: "Every arc drags the foe it reaches toward the one you struck.", armor: { move: .1, burstChain: .3 }, armorText: "+10% move speed; dodge bursts arc on 30% further." },
+  requiem: { name: "Requiem", pair: ["echo", "still", "heavy"], text: "Echo strikes freeze foes for a second.", armor: { defense: .1 }, armorText: "Take 10% less damage." },
+  "sanguine-storm": { name: "Sanguine Storm", pair: ["leech", "swift", "chain"], text: "Every arc heals you for 6% of what it deals.", armor: { hp: .15, staminaRegen: .25 }, armorText: "+15% maximum health; stamina returns 25% faster." },
+  starfall: { name: "Starfall", pair: ["volatile", "pierce", "echo"], text: "Echo strikes burst where they land.", armor: { spellDamage: .15, attackDamage: .1 }, armorText: "Spells deal 15% more; blows 10% more." },
+  undertow: { name: "Undertow", pair: ["tether", "still", "leech"], text: "Killing a foe heals 5% of your maximum health.", armor: { defense: .06, hp: .1 }, armorText: "Take 6% less damage; +10% maximum health." },
+};
+// A pair or a triad by id (messages and the codex).
+export const resonanceInfo = (id) => RESONANCES[id] || TRIADS[id] || null;
+const triadsOf = (glyphs) => { const set = new Set(glyphs.filter(Boolean)); return Object.entries(TRIADS).filter(([, r]) => r.pair.every((g) => set.has(g))).map(([id]) => id); };
+// The triads lit in the equipped armor, and any new ones written into the codex. Returns { ids, fresh }.
+export function armorTriads(save) {
+  const ids = triadsOf(save?.equipment?.armor?.glyphs || []), fresh = save?.glyphCodex ? ids.filter((id) => !save.glyphCodex.resonances[id]) : [];
+  for (const id of fresh) save.glyphCodex.resonances[id] = true;
+  return { ids, fresh };
+}
 
 // ---------------------------------------------------------------- save state
 export function socketCount(item) { return item && (item.slot === "primary" || item.slot === "secondary" || item.slot === "armor") ? (SOCKETS_BY_TIER[item.tier] || 1) + (item.extraSockets === 1 ? 1 : 0) : 0; } // release 395: the town smith may add one socket // release 295: armor too
@@ -133,7 +158,7 @@ function socketsFor(save, host, spellId = null) {
 }
 export function resonancesOf(glyphs) {
   const set = new Set(glyphs.filter(Boolean));
-  return Object.entries(RESONANCES).filter(([, r]) => r.pair.every((g) => set.has(g))).map(([id]) => id);
+  return [...Object.entries(RESONANCES).filter(([, r]) => r.pair.every((g) => set.has(g))).map(([id]) => id), ...triadsOf(glyphs)]; // release 529: and triads
 }
 export function hostLoadout(save, host, spellId = null) {
   // Release 297: a weapon or tool also carries the glyphs infused by an active Aperture skill (skillInfusion).
@@ -200,6 +225,8 @@ export function glyphHit(world, loadout, e, dealt, ctx = {}) {
       const amount = Math.max(1, Math.round(dealt * share));
       world.damage(next, amount, { chained: true });
       if (loadout.resonant("wildfire")) burn(next, GLYPHS.ignite.hit[host] || 2);
+      if (loadout.resonant("maelstrom")) { const dx = e.x - next.x, dy = e.y - next.y, m = Math.hypot(dx, dy) || 1, pull = Math.max(0, Math.min(1.2, m - .8)); if (pull > 0) world.nudge?.(next, dx / m * pull, dy / m * pull); } // release 529
+      if (loadout.resonant("sanguine-storm")) world.heal(amount * .06); // release 529
       if (loadout.resonant("storm-lattice")) world.blast(next.x + .5, next.y + .45, 1, Math.max(1, Math.round(dealt * .4)), { chained: true });
       from = next;
     }
@@ -210,6 +237,11 @@ export function glyphHit(world, loadout, e, dealt, ctx = {}) {
     world.blast(e.x + .5, e.y + .45, radius * (comet ? 1.6 : 1), Math.max(1, amount), { burst: true, chained: true });
   }
   if (e.dead && loadout.resonant("quickstep")) world.stamina(8);
+  // Release 529: triads.
+  if (e.dead && !ctx.burst && loadout.resonant("inferno") && (e.glyphBurn?.until || 0) > now) world.blast(e.x + .5, e.y + .45, 1.9, Math.max(1, Math.round(6 + dealt * .8)), { burst: true, chained: true });
+  if (ctx.echo && loadout.resonant("requiem")) e.hitStun = Math.max(e.hitStun || 0, 1 * boss);
+  if (ctx.echo && !ctx.burst && loadout.resonant("starfall")) world.blast(e.x + .5, e.y + .45, 1, Math.max(1, Math.round(dealt * .5)), { burst: true, chained: true });
+  if (e.dead && loadout.resonant("undertow")) world.heal((world.maxHp || 0) * .05);
 }
 // Burn and slow, ticked by the Game every frame. Returns enemies killed by burning.
 export function tickGlyphStatus(enemies, dt, now, onBurnDeath = () => {}) {
@@ -237,7 +269,8 @@ export function socketGlyph(save, host, index, glyphId) {
   if (prior) save.glyphs[prior] += 1; // glyphs always come back out intact
   if (glyphId) save.glyphs[glyphId] -= 1;
   list[index] = glyphId || null;
-  return { ok: true, message: glyphId ? `${GLYPHS[glyphId].name} set.` : prior ? `${GLYPHS[prior].name} returned to your pack.` : "Socket already empty." };
+  const lit = host === "armor" ? armorTriads(save).fresh : []; // release 529: an armor triad is discovered as it is set
+  return { ok: true, message: (glyphId ? `${GLYPHS[glyphId].name} set.` : prior ? `${GLYPHS[prior].name} returned to your pack.` : "Socket already empty.") + (lit.length ? ` Triad discovered: ${TRIADS[lit[0]].name}. ${TRIADS[lit[0]].armorText}` : "") };
 }
 // Release 295 (Tim: "a preset... so that you can save the glyphs that you have on your current... equipment. And then when
 // you get a new piece of gear, you can just apply the preset"): remember a gear host's layout, and set it on whatever is

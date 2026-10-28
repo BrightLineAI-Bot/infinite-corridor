@@ -2694,6 +2694,34 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 529: triads — 2026-10-28
+
+Tim: "three part resonances, where if you have three different glyphs, you can get resonances for those as well... spells and skills... armor can resonate with three slot resonances, so if you want your armor to resonate, you have to resonate with three glyphs".
+
+**CODE:**
+- glyphs.ts:
+  - `TRIADS` (six entries) is kept apart from `RESONANCES`, so the pair rules and counts are unchanged. Each entry has `pair` (three glyphs), a hit `text`, and `armor` bonuses with `armorText`.
+  - `resonancesOf` also returns triads, so `hostLoadout(...).resonant(id)` and `discoverResonances` cover them. `resonanceInfo(id)` looks up either kind.
+  - `glyphHit` effects:
+    - inferno: a burning foe that dies → a 1.9-tile blast of 6 + 80%;
+    - maelstrom: chained foes nudged toward the struck one;
+    - sanguine-storm: arcs heal 6%;
+    - requiem: echo hits stun 1 s (halved on bosses);
+    - starfall: echo hits blast 1 tile for 50%;
+    - undertow: kills heal 5% of maximum health.
+  - `armorGlyphBonus` adds a lit armor triad's `armor` after the caps. `armorTriads(save)` discovers them, and `socketGlyph` reports "Triad discovered".
+  - `SPELL_SOCKETS` goes from 2 to 3. Saves pad with an empty socket in `ensureGlyphState`. tests/skill-glyphs-297.test.ts now expects the padded third socket; the change follows from Tim's request.
+- game.ts: the discovery notice says "Triad" or "Resonance".
+- main.ts: the Glyphs screen lists triads under the resonances.
+- Needle Caster (Tim: "make the needle caster scale with your might"): in `fireSecondary`, a physical shot adds `meleeBonus` (Might) and armor `attackDamage` instead of `magicBonus`. Magic shots are unchanged.
+- tests/triads-529.test.ts.
+- A skill passes on only its infusing glyphs, so of the triads only Inferno and Undertow can come from a skill's sockets alone.
+
+**BOUNDARY:**
+- Pairs and their effects are unchanged.
+- Armor pairs still never resonate.
+- Save changes are additive.
+
 ## Release 527: resonance gift, presets keep gear, quiet crossings, the vortex trap — 2026-10-28
 
 Tim's requests:

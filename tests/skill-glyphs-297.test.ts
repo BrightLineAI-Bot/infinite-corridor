@@ -10,7 +10,7 @@ test('every glyph says what it does in a skill; skill sockets are kept in the sa
   const s = freshSave(); s.glyphs.echo = 1; s.glyphs.pierce = 1;
   assert.equal(socketGlyph(s, 'skill:rift-step', 0, 'echo').ok, true); assert.equal(socketGlyph(s, 'skill:rift-step', 1, 'pierce').ok, true);
   assert.deepEqual(skillGlyphMods(s, 'rift-step'), { cooldown: .9, duration: 1.25, reach: 2, charges: 1 });
-  assert.deepEqual(migrateSave(JSON.parse(JSON.stringify(s))).spellGlyphs['skill:rift-step'], ['echo', 'pierce']);
+  assert.deepEqual(migrateSave(JSON.parse(JSON.stringify(s))).spellGlyphs['skill:rift-step'], ['echo', 'pierce', null]); // release 529: a third socket for triads
 });
 
 test('a timed skill lasts longer and recovers faster with its glyphs; infusing glyphs ride on weapon hits while it is active', () => {
