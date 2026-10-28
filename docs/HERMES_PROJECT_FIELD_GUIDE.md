@@ -2694,6 +2694,37 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 515: field passives in the Transit Lattice — 2026-10-28
+
+Tim: "passives... that don't purely depend on... a skill active... while your spell's going... if you stand inside of it... extra healing, extra damage reduction... increased cooldown... your tool shots are larger... passives that modify the Dodge". Tim chose the Transit Lattice as their home (there is no Astral Cloak) and all five proposals.
+
+**CODE:**
+- New module lattice-fields.ts, registered in scripts/build.mjs and both sw.js lists:
+  - `FIELD = {minLife: 1}`.
+  - `FIELD_PASSIVES`, with `sanctum` (guard .2, mend .02/s), `wellspring` (rate .3), `charged-air` (scale 1.5, damage .25, blast 1.3, grow .18), `spellblade` (damage .2, reach .4) and `drift-field` (reach 6).
+  - `FIELD_KEYS` (`field:<id>`), `fieldForm` and `fieldOn(save, id)`.
+- constellation.ts:
+  - `passiveForm` answers `field:` keys.
+  - `toggleLatticePassive` sets them with no learning check.
+- main.ts: the Lattice lists them as "only in the Lattice" cards.
+- game.ts:
+  - New methods:
+    - `ownSpellFx(lingering)`: your own spell effects, not hostile and not delayed. Lingering means a spell lifetime of at least `minLife`, or the `-vortex`.
+    - `spellRunning()`: Aegis, Shadow Boxing, the Orbit orbs, your spell's Shadow Clone (not the Shadow Step or boxing clones), or any own spell effect.
+    - `inOwnField()` and `spellbladeOn()`.
+  - Sanctum runs after the Aegis/boxing guard.
+  - Wellspring adds `rate`×dt to every cooldown tick: spells, skills, `attackReadyAt` and `toolReadyAt`.
+  - Charged Air applies in `fireSecondary`. Projectiles carry `scale` (drawn by combat-visuals) and `grow` (added to the hit radius in `updateProjectiles`).
+  - Spellblade raises `primaryStrike` damage and range, and `fistPower`.
+  - Drift Field acts on a dodge and moves the field at `dodgeUntil` (`this.driftField`).
+- tests/lattice-fields-515.test.ts.
+
+**BOUNDARY:**
+- No save shape change (schema 14). Keys live in `save.lattice.passives` and presets carry them as strings.
+- The Lattice's slot counts and costs are unchanged.
+- Nothing changes until a field passive is set.
+- Enemy effects never count as your field.
+
 ## Release 513: more brawler gear — 2026-10-27
 
 Tim: "monsters aren't dropping them... I accidentally destroyed my hammerfall, and so I want to get some instances of the hammerfall".
