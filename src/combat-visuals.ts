@@ -21,7 +21,7 @@ export function drawRangedEffects(ctx,game,width,height) {
     ctx.fillStyle = color;
     // A translucent halo instead of shadowBlur (release 159), which Firefox renders as a separate blur per projectile.
     ctx.globalAlpha = .28; ctx.beginPath();
-    for (const p of list) { const [x, y] = toScreen(p), r = p.damageType === "magic" ? 10 : 8; ctx.moveTo(x + r, y); ctx.ellipse(x, y, r, r, 0, 0, 7); }
+    for (const p of list) { const [x, y] = toScreen(p), r = (p.damageType === "magic" ? 10 : 8) * (p.scale || 1); /* release 515: Charged Air */ ctx.moveTo(x + r, y); ctx.ellipse(x, y, r, r, 0, 0, 7); }
     ctx.fill(); ctx.globalAlpha = 1; ctx.beginPath();
     for (const p of list) {
       const [x, y] = toScreen(p);
@@ -31,7 +31,7 @@ export function drawRangedEffects(ctx,game,width,height) {
         ctx.lineTo(x + Math.cos(a + 2.35) * 7, y + Math.sin(a + 2.35) * 7);
         ctx.lineTo(x + Math.cos(a - 2.35) * 7, y + Math.sin(a - 2.35) * 7);
         ctx.closePath();
-      } else if(p.path==="grenade"){ctx.moveTo(x+7,y);ctx.arc(x,y,7,0,7);ctx.moveTo(x,y-7);ctx.lineTo(x+4,y-11)}else if(p.path==="arc"){const a=Math.atan2(p.dy,p.dx);ctx.moveTo(x+Math.cos(a)*8,y+Math.sin(a)*8);ctx.ellipse(x,y,8,3,a,0,7)}else{const r=p.damageType === "magic" ? 5 : 3;ctx.moveTo(x+r,y);ctx.arc(x, y, r, 0, 7)}
+      } else if(p.path==="grenade"){ctx.moveTo(x+7,y);ctx.arc(x,y,7,0,7);ctx.moveTo(x,y-7);ctx.lineTo(x+4,y-11)}else if(p.path==="arc"){const a=Math.atan2(p.dy,p.dx);ctx.moveTo(x+Math.cos(a)*8,y+Math.sin(a)*8);ctx.ellipse(x,y,8,3,a,0,7)}else{const r=(p.damageType === "magic" ? 5 : 3)*(p.scale||1);ctx.moveTo(x+r,y);ctx.arc(x, y, r, 0, 7)}
     }
     ctx.fill();
   }

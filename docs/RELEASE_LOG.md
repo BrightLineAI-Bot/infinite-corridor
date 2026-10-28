@@ -13,19 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**515**
+**517**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 513 | Claude | `claude/dreamy-rubin-yn6q2p` | Brawler gear drops twice as often; a full Pack keeps brawler gear you do not have | Building. |
+| 515 | Claude | `claude/dreamy-rubin-yn6q2p` | Five Lattice field passives: Sanctum, Wellspring Ground, Charged Air, Spellblade, Drift Field | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 513 | `r513-e721fa71fa99` | 2026-10-27 | More brawler gear in drops; a full Pack keeps brawler gear you do not have (PR #240). The pre-publish Fable review (511→513) found no blockers. |
 | 511 | `r511-87890decf80f` | 2026-10-27 | With 507–509: the submersible button, the robot in water, Echo hammers and a third tool shot (PR #237); the robot in the Far Sleep's star-voids (#238); Sleeper's Hall walls stay walls (#239). The pre-publish Fable review (505→509) found that hall-wall blocker, fixed in 511; the re-review (509→511) found no blockers. |
 | 505 | `r505-ca3263066d7d` | 2026-10-27 | With 503: the new gear with Echo and the Shadow Clone, brawler gear in loot (PR #235); the Surveyor's Chain, part one (#236). The pre-publish Fable review (501→505) found no blockers. |
 | 501 | `r501-a4148de6a998` | 2026-10-27 | With 495–499: Shadow Boxing with the hammer and sweep (PR #231), the scrolling spell row (#232), crossings indoors (#233), the smaller Jump button (#234). The pre-publish Fable review (493→501) found no blockers. |

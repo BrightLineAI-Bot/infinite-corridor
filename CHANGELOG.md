@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 515 — five new Transit Lattice passives, found only in the Lattice and needing nothing learned first.
+  - **Sanctum:** standing inside one of your lingering spells (Ember Ring, Grave Sun, Gravity Well, Stillpoint, the Orbit vortex), you take 20% less damage and mend 2% of your health each second.
+  - **Wellspring Ground:** standing inside one of them, your spells, Aperture skills and tools recover 30% faster.
+  - **Charged Air:** while any of your spells is running, tool shots fly 50% bigger, deal 25% more and burst 30% wider.
+  - **Spellblade:** while any of your spells is running, melee strikes, the Iron Fists too, deal 20% more and reach a little farther.
+  - **Drift Field:** a dodge drags your nearest lingering spell along, and it settles where you land.
+
 - Release 513 — more brawler gear. Iron Fists, Hammerfall and Great Sweep now drop about twice as often (Hammerfall from about one item in twenty). A full Pack no longer salvages one you don't have: it replaces your weakest other piece, and you're told when you find one.
 
 - Release 511 — the robot no longer walks into a Sleeper's Hall's walls. Those halls build their walls from the same night-sky voids. Only the Far Sleep's open voids can be entered in the robot, and never in a dungeon.
