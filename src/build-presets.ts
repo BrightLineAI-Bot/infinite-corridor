@@ -66,9 +66,13 @@ export function applyBuild(save, build) {
 // (what you had goes into the held slot of the preset you leave); a slot it does not hold stays as it is. Once presets are
 // in use (a switch has happened), equipping a new piece over a shared one puts the old piece in the other preset's held slot
 // rather than the pack, so it stays that preset's (stashForOtherPreset). Additive at schema 14.
-export const PRESET_GEAR_SLOTS = ["primary", "secondary", "armor"];
+// Release 553 (Tim: "armor shouldn't swap with the preset and should just be tools... spells, skills and weapons; armor stays
+// the same, like the... Quiet Compass"): weapon and tool only. Armor a preset was holding (release 541) goes back to the pack,
+// never lost.
+export const PRESET_GEAR_SLOTS = ["primary", "secondary"];
 export function ensurePresetGear(save) {
   const held = Array.isArray(save.presetGear) ? save.presetGear : [];
+  for (const set of held) { const q = set?.armor; if (q && typeof q === "object" && q.slot === "armor") (save.inventory ||= []).push(normalizeItemUpgrade(q)); }
   save.presetGear = [0, 1].map((i) => Object.fromEntries(PRESET_GEAR_SLOTS.map((slot) => { const q = held[i]?.[slot]; return [slot, q && typeof q === "object" && q.slot === slot ? normalizeItemUpgrade(q) : null]; })));
   return save;
 }
@@ -83,7 +87,7 @@ export function stashForOtherPreset(save, slot, prior) {
 // Swaps in the held gear of preset `to`; what was equipped goes to preset `from`'s held slot. Returns the slots swapped.
 function swapPresetGear(save, from, to) {
   ensurePresetGear(save); const swapped = [];
-  for (const slot of PRESET_GEAR_SLOTS) { const coming = save.presetGear[to][slot]; if (!coming) continue; save.presetGear[from][slot] = save.equipment[slot] || null; save.equipment[slot] = coming; save.presetGear[to][slot] = null; swapped.push(slot === "primary" ? "weapon" : slot === "secondary" ? "tool" : "armor"); }
+  for (const slot of PRESET_GEAR_SLOTS) { const coming = save.presetGear[to][slot]; if (!coming) continue; save.presetGear[from][slot] = save.equipment[slot] || null; save.equipment[slot] = coming; save.presetGear[to][slot] = null; swapped.push(slot === "primary" ? "weapon" : "tool"); }
   return swapped;
 }
 // Switches preset with its whole build. Returns togglePreset's result with the message extended.
