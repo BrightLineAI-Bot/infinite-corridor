@@ -2694,6 +2694,30 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 523: sigil, lava and dart traps — 2026-10-28
+
+Tim: "lanterns... shoot out like a bunch of different balls, and then they land on the floor and... spin for a second, and they shoot out in pentagram patterns, let's have some traps that launch things like that... Lava traps... when you... step on them, they... explode, or... launch lava in the air... dart traps that shoot darts from across the wall... 3 projectiles".
+
+**CODE:**
+- New module dungeon-traps.ts, registered in scripts/build.mjs and both sw.js lists. `DUNGEON_TRAPS` holds the data, with damage `base + perLevel × level`.
+  - `addNewTraps(map, seed, id)` places 2–4 traps (`kind: "trap"`, `newTrap: 1`) once per map, deterministically, on floor away from the entry and from objects. A dart trap takes the first free tile against a wall and faces away from it.
+  - `tickNewTraps(objects, world, dt)` runs armed → warning → fire → rest.
+    - sigil: `seeds` orbs fly out to a ring, spin, then each fires `points` hostile star shots (jumpable).
+    - lava: a hostile `enemy-blast` at the vent plus `blobs` hostile lava grenades that detonate where they land.
+    - dart: `darts` jumpable shots along its line, `gap` s apart.
+- game.ts:
+  - `generatePinnedDungeon` stamps `history.trapsVersion` only for fresh crossings.
+  - loadArea calls `addNewTraps` after `populateDungeonEncounters` when the active crossing has `trapsVersion` (`this.trapSeeds` resets per area).
+  - The dungeon frame calls `tickNewTraps` after `updateTraps`. `updateTraps` skips `newTrap` objects.
+  - Shots and blasts reuse the existing hostile projectile and blast paths: guard, invulnerability, Sanctuary, jumping and builds all apply.
+- main.ts `drawNewTrap` draws the pentagram, the vent and the wall slit (glowing while warning). `drawDungeonSystems` draws the flying and spinning orbs.
+- tests/dungeon-traps-523.test.ts.
+
+**BOUNDARY:**
+- Crossings generated before keep exactly their traps.
+- The old fire, spike and gas traps are unchanged.
+- No save shape change beyond the additive `trapsVersion` on new histories.
+
 ## Release 521: fewer save stutters — 2026-10-28
 
 Tim: "there might have been some slowdowns. Some stutters, you can test that, check that", with a 3-minute probe on r515 (Android, 120 Hz).

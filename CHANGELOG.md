@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 523 — three new dungeon traps, in crossings found from now on.
+  - **Sigil trap:** a pentagram etched in the floor. Step near it and it flares, then lobs five orbs that land in a ring, spin for a second and each fire a five-pointed star of shots.
+  - **Lava vent:** a cracked vent. Step on it and it glows, then bursts and flings gobbets of lava that splash where they land.
+  - **Dart slit:** a slit in a wall. Cross its line and it fires three darts across the room.
+  - Each one warns before it fires and rests after. Jumping clears the star shots and darts, not the lava. Damage grows with your level.
+
 - Release 521 — fewer stutters. The slow backup copy of your journey, written in one go on the main thread, is now written at most once a minute instead of with every 8-second autosave. The main save still happens every 8 s and at every pause, area change and menu action.
 
 - Release 519 — every spell and skill button shows its gold drain. Cinder Dart drains while it burns. Orbit Volley's drains through the gathering window and stays full while the volley flies. An instant Rift Step flashes gold for a moment.

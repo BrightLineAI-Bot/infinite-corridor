@@ -53,6 +53,7 @@ import {
 } from "./interactions.ts";
 import { ensurePerception } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
+import { DUNGEON_TRAPS, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { generateItem, BRAWLER_LOOT } from "./items.ts";
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
 import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
@@ -125,6 +126,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   // Release 146: dungeons first generated from now on may use the automaton layout (pool 2) and threefold layout 2.
   if (fresh && history.layoutPool === undefined) history.layoutPool = 5; // release 301: plain short crossings and warp daises (4: release 148's organic patterns; 3: release 147's)
   if (fresh && history.themePool === undefined) history.themePool = THEME_POOL_VERSION;
+  if (fresh && history.trapsVersion === undefined) history.trapsVersion = DUNGEON_TRAPS.version; // release 523: the sigil, lava and dart traps
   if (fresh && history.warpVersion === undefined) history.warpVersion = 2; // release 377: every large crossing has its daises // release 299: the new dungeon environments
   // Release 319 (dungeon-ladder.ts): a crossing first generated from now on records the Aperture tier it was found at, and
   // that tier decides its size, daises, environments, Poison Crypt, guardian, horde and Gate Revenant for good.
@@ -1071,7 +1073,7 @@ export function selectRangedAim(player, enemies, map, width, range = Infinity) {
     .map((q) => projectileDirection(q.e.x - player.x, q.e.y - player.y, player.facing))[0] || null;
 }
 export function updateTraps(objects, player, dt, jumping = false) {
-  for (const trap of objects.filter((o) => o.kind === "trap")) {
+  for (const trap of objects.filter((o) => o.kind === "trap" && !o.newTrap /* release 523: tickNewTraps runs those */)) {
     trap.hits = trap.hits || {};
     trap.timer = Math.max(0, Number(trap.timer) || 0);
     trap.loadGrace =
@@ -1722,6 +1724,7 @@ export class Game {
       }
       update(dt, input, now);
       updateTraps(this.map.objects, this.player, dt, now < this.jumpUntil);
+      if (this.area === "dungeon") tickNewTraps(this.map.objects, { player: this.player, level: this.save.level, now, projectiles: this.projectiles, effects: this.effects, seeds: (this.trapSeeds ||= []), open: (x, y) => { const w = mapWidth(this.map, this.area), q = this.map.tiles[Math.floor(y) * w + Math.floor(x)]; return !!q && !q.blocked && !(this.map.tiles.length && Math.floor(x) >= w); } }, dt); // release 523
       if (this.player.hp <= 0 || this.area !== "dungeon") this.traversal = null;
     };
   }
@@ -2173,7 +2176,7 @@ export class Game {
     if(packAdopted&&this.map.encounterVersion&&this.map.monsterPack!==MONSTER_PACK_VERSION){this.map.enemySpawns=this.map.enemySpawns.filter(e=>!e.encounterSpawn);this.map.encounterVersion=0;this.map.encounterGroups=[]}
     if (area === "dungeon" && !this.map.deepDungeon && this.map.recipe !== "deep-v1" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < (history.gatePredatorSpawnThreshold || GATE_REVENANT.legacySpawnPerThousand))
       this.map.enemySpawns.push({ kind: "gateRevenant", x: 18, y: 6, gatePredator: true });
-    if(area==="dungeon"&&!this.map.arena&&!String(this.areaId()).startsWith("hunt-instance:")&&!String(this.areaId()).startsWith("elite-portal:")&&!String(this.areaId()).includes("aperture-annex"))populateDungeonEncounters(this.map,{deep:!!this.map.deepDungeon||this.map.recipe==="deep-v1",monsterPack:packAdopted});
+    if(area==="dungeon"&&!this.map.arena&&!String(this.areaId()).startsWith("hunt-instance:")&&!String(this.areaId()).startsWith("elite-portal:")&&!String(this.areaId()).includes("aperture-annex"))populateDungeonEncounters(this.map,{deep:!!this.map.deepDungeon||this.map.recipe==="deep-v1",monsterPack:packAdopted});this.trapSeeds=[];if(area==="dungeon"&&!this.map.arena&&this.save.consequences?.dungeons?.[this.save.session.activeDungeonId]?.trapsVersion&&!this.map.objects?.some(o=>o.newTrap))addNewTraps(this.map,this.save.seed,this.areaId());/* release 523: only crossings first generated from now on */
     if (area === "overworld" && (this.rx !== 0 || this.ry !== 0)) {
       const remembered = this.save.checkpoints?.[`${this.rx},${this.ry}`];
       if (remembered && !this.map.objects.some((o) => o.kind === "checkpoint")) {

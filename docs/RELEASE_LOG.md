@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**523**
+**525**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 521 | Claude | `claude/dreamy-rubin-yn6q2p` | Fewer save stutters: the localStorage mirror written at most once a minute | Building. |
+| 523 | Claude | `claude/dreamy-rubin-yn6q2p` | New dungeon traps: sigil (orbs that fire pentagram stars), lava vent, dart slit | Building. |
+| 521 | Claude | PR #244 | Fewer save stutters: the localStorage mirror written at most once a minute | Merged (`r521-6e1f2ceeb0b6`). Not published. |
 | 519 | Claude | PR #243 | Every spell and skill button drains gold: quick spells, Orbit Volley's gathering, a flash for an instant Rift Step | Merged (`r519-fb1e7561568b`). Not published. |
 | 517 | Claude | PR #242 | Spell buttons show a lasting spell's time left (Shadow Boxing, Aegis, Shadow Clone, fields) | Merged (`r517-e3899fbd72e2`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
