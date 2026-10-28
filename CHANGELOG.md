@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 531 — spells and skills keep two glyph sockets (Tim): the third socket from 529 is gone, so a triad needs a three-socket weapon, tool or armor (relic tier, or the smith's added socket).
 - Release 529 — triads: resonances of three different glyphs.
   - **Six triads:** Inferno (ignite, chain, volatile), Maelstrom (tether, chain, pierce), Requiem (echo, still, heavy), Sanguine Storm (leech, swift, chain), Starfall (volatile, pierce, echo) and Undertow (tether, still, leech). Each changes hits when all three sit in one weapon, tool, spell or skill.
   - **Spells and skills hold three glyphs:** every spell and skill gains a third socket.

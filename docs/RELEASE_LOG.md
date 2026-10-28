@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**531**
+**533**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 529 | Claude | `claude/dreamy-rubin-yn6q2p` | Triads: six three-glyph resonances; armor resonates only through triads; spells and skills get a third socket; the Needle Caster scales with Might | Building. |
+| 531 | Claude | `claude/dreamy-rubin-yn6q2p` | Spells and skills back to two glyph sockets (Tim): triads come from three-socket items | Building. |
+| 529 | Claude | PR #248 | Triads: six three-glyph resonances; armor resonates only through triads; spells and skills get a third socket; the Needle Caster scales with Might | Merged (`r529-754c79acb8d9`). Not published. |
 | 527 | Claude | PR #247 | Resonance gift for journeys under way; presets keep gear equipped; only world beasts announced in crossings; red crumbling floor; the vortex trap | Merged (`r527-47bdbf2d56cd`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 

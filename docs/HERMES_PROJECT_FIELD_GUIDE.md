@@ -2694,6 +2694,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 531: spells and skills keep two sockets — 2026-10-28
+
+Tim: "don't add a third socket for spells, only some, you know, items. I get three sockets, get the three socket resonance".
+
+**CODE:**
+- glyphs.ts: `SPELL_SOCKETS` goes back to 2. `ensureGlyphState` trims a spell or skill to two sockets. Release 529 was never published, so no live save holds a third spell socket.
+- Triads now come from three-socket items: relic tier (`SOCKETS_BY_TIER`) or the smith's added socket. A weapon or tool can also reach three glyphs with an Aperture skill's infusing glyphs.
+- main.ts: the undiscovered-triad hint names three-socket weapons, tools and armor.
+- tests/skill-glyphs-297.test.ts is back to its pre-529 form. tests/triads-529.test.ts checks triads on relic weapons and tools.
+
+**BOUNDARY:** Socket count only. The triads, armor triads and the Needle Caster's Might scaling from 529 are unchanged. Save schema 14 is unchanged.
+
 ## Release 529: triads — 2026-10-28
 
 Tim: "three part resonances, where if you have three different glyphs, you can get resonances for those as well... spells and skills... armor can resonate with three slot resonances, so if you want your armor to resonate, you have to resonate with three glyphs".

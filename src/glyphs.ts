@@ -12,7 +12,7 @@ import { hashSeed } from "./random.ts";
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];
 export const SOCKETS_BY_TIER = { common: 1, rare: 2, epic: 2, relic: 3 };
-export const SPELL_SOCKETS = 3; // release 529: a third, so spells and skills can hold a triad (was 2; saves pad with an empty socket)
+export const SPELL_SOCKETS = 2; // release 531: back to two (Tim); triads come from three-socket items (relic tier or a smith socket)
 export const DUST_PER_GLYPH = 6;
 
 // mods: multipliers applied when the host fires. hit: per-host numbers used by glyphHit.
@@ -101,8 +101,10 @@ export const RESONANCES = {
 
 // Triads (release 529; Tim, 2026-10-28: "three part resonances, where if you have three different glyphs, you can get
 // resonances for those as well... spells and skills... armor can resonate with three slot resonances, so if you want your
-// armor to resonate, you have to resonate with three glyphs"). Three different glyphs in one host. In a weapon, tool, spell
-// or skill (a skill passes on only its infusing glyphs, so Inferno and Undertow) a triad changes hits (glyphHit); in armor
+// armor to resonate, you have to resonate with three glyphs"). Three different glyphs in one host. Release 531 (Tim: "don't
+// add a third socket for spells, only some items... three sockets, get the three socket resonance"): spells and skills keep
+// two sockets, so triads come from three-socket items (relic tier or a smith socket). In a weapon or tool (with a skill's
+// infusing glyphs) a triad changes hits (glyphHit); in armor
 // it adds `armor`, on top of the usual armor caps. Pairs still never resonate in armor. Discovered like pairs; armor triads
 // when socketed. Kept apart from RESONANCES so the pair rules and counts stay as they were.
 export const TRIADS = {
