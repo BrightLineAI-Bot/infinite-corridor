@@ -2694,6 +2694,23 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 521: fewer save stutters — 2026-10-28
+
+Tim: "there might have been some slowdowns. Some stutters, you can test that, check that", with a 3-minute probe on r515 (Android, 120 Hz).
+
+The probe ran at 97 fps in dungeons, with game code at about 1.6 ms a frame. The hitches came in an 8 s rhythm:
+- a `persist` frame of 30–44 ms, the timed autosave's `snapshotSave` clone;
+- about 50 ms frames with almost no game time, the queued write's synchronous localStorage mirror (`JSON.stringify` of the whole journey) and the IndexedDB put.
+
+Two single long frames came from area loads: 112 ms entering an open-sea section (a ground build) and 57 ms entering a dungeon.
+
+**CODE:**
+- persistence.ts: the coordinator writes the localStorage mirror at most every `MIRROR_EVERY_MS` (60 s) per slot, and always when the IndexedDB write throws. `loadSave` already takes the newer of IndexedDB and the mirror, so a stale mirror never wins over a good IndexedDB save.
+
+**BOUNDARY:**
+- The save format, slots, recovery copies, export and import are unchanged.
+- The timed autosave stays at 8 s, pinned by tests/prototype.test.ts. Its 30–44 ms clone frame remains; spacing it out needs that assertion changed, which is Tim's call.
+
 ## Release 519: every spell and skill shows its drain — 2026-10-28
 
 Tim: "all spells and skills should show their duration... in the button... a similar golden infill that winds down or drains out".
