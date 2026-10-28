@@ -1,5 +1,5 @@
-import{normalizeSockets}from'./glyphs.js?v=r525-5ba50cb08225';
-import{rng,pick}from'./random.js?v=r525-5ba50cb08225';
+import{normalizeSockets}from'./glyphs.js?v=r531-a8429f5bfd33';
+import{rng,pick}from'./random.js?v=r531-a8429f5bfd33';
 export const ITEM_TABLE={primary:[['Cinder Pike','reach'],['Verge Cleaver','impact']],secondary:[['Lumen Spindle','focus'],['Needle Caster','quick'],['Rift Bombard','blast']],armor:[['Kiln Mantle','guard'],['Glassweave Coat','stamina']],charm:[['Quiet Compass','discovery']]};
 export const ITEM_TIERS=['common','rare','epic','relic'];
 export const RANGED_WEAPONS={'spark-coil':{name:'Spark Coil',damage:8,speed:12,lifetime:1.6,damageType:'magic',path:'straight'},'secondary-lumen-spindle':{name:'Lumen Spindle',damage:11,speed:10,lifetime:1.8,turnAfter:.8,damageType:'magic',path:'boomerang'},'secondary-needle-caster':{name:'Needle Caster',damage:10,speed:15,lifetime:1.25,damageType:'physical',path:'straight'},'secondary-hammerfall':{name:'Hammerfall',damage:12,speed:0,lifetime:0,damageType:'physical',path:'hammer',brawlerTool:'hammerfall'},'secondary-great-sweep':{name:'Great Sweep',damage:10,speed:0,lifetime:0,damageType:'physical',path:'sweep',brawlerTool:'great-sweep'},'secondary-rift-bombard':{name:'Rift Bombard',damage:16,speed:8,lifetime:1.4,radius:2.15,damageType:'magic',path:'grenade'}};

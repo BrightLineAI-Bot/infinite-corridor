@@ -12,10 +12,10 @@
 // build also keeps `gear: { primary, secondary }`, the tags of the weapon and tool it was left with. Switching to it equips
 // them from the pack when they are there (a piece that was salvaged or sold is named in the message instead). Gear gets a
 // tag (`item.tag`, additive) the first time a preset records it; the tag rides with the item wherever it goes.
-import { socketGlyph, GLYPHS } from "./glyphs.js?v=r525-5ba50cb08225";
-import { ALT_PASSIVES } from "./constellation.js?v=r525-5ba50cb08225";
-import { ensureLattice } from "./transit-lattice.js?v=r525-5ba50cb08225";
-import { togglePreset } from "./spell-slots.js?v=r525-5ba50cb08225";
+import { socketGlyph, GLYPHS } from "./glyphs.js?v=r531-a8429f5bfd33";
+import { ALT_PASSIVES } from "./constellation.js?v=r531-a8429f5bfd33";
+import { ensureLattice } from "./transit-lattice.js?v=r531-a8429f5bfd33";
+import { togglePreset } from "./spell-slots.js?v=r531-a8429f5bfd33";
 
 const ids = (list) => (Array.isArray(list) ? list.filter((q) => typeof q === "string" && q) : []);
 export function normalizeBuild(b) {
@@ -63,6 +63,9 @@ export function swapPreset(save) {
   save.magicSkills.presets[from].build = leaving;
   const coming = normalizeBuild(save.magicSkills.presets[to].build);
   if (!coming) { save.magicSkills.presets[to].build = leaving; return r; }
-  const missing = applyBuild(save, coming), gone = applyGear(save, coming.gear);
-  return { ...r, message: `${r.message} Glyphs, passive forms and the Lattice follow.${coming.gear ? " So do its weapon and tool." : ""}${missing.length ? ` Not in your pouch: ${missing.join(", ")}.` : ""}${gone.length ? ` Not in your pack: the preset's ${gone.join(" and ")}.` : ""}` };
+  // Release 527 (Tim: "when you switch presets... your armor or weapons... they shouldn't become unequipped, because I just...
+  // salvaged an amazing Lumen Spindle, because it became unequipped"): a switch no longer touches what you have equipped.
+  // Presets still remember gear tags (snapshotBuild), and applyGear is kept for saves and tests, but it is not called here.
+  const missing = applyBuild(save, coming);
+  return { ...r, message: `${r.message} Glyphs, passive forms and the Lattice follow; your weapon, tool and armor stay equipped.${missing.length ? ` Not in your pouch: ${missing.join(", ")}.` : ""}` };
 }
