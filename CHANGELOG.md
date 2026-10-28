@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 527 — fixes and a new trap.
+  - **Every resonance unlocked:** a journey already under way has all eight resonances written in its codex, once.
+  - **Presets keep your gear:** switching presets no longer unequips your weapon, tool or armor, so nothing lands in your pack to be salvaged by mistake. Glyphs, passive forms and the Lattice still follow the preset.
+  - **Quieter crossings:** entering a dungeon no longer announces its guardians; only a world beast gets the MAJOR THREAT banner there.
+  - **Crumbling floor:** the pitfall now glows red as it crumbles. Being in the air saves you: a jump, the robot's boost, or Aerial Step.
+  - **Vortex trap:** in crossings found from now on, a rune ring that, if you stay in it, drags you to its eye and bursts, spraying fragments. Step out in time and it fades.
+
 - Release 525 — traps hit harder, and the pitfall.
   - **Harder traps:** every trap now hits for at least a share of your maximum health, the old fire, spike and gas traps included (12% a hit; a dart 7%, a star shot 5%, the lava burst 14%), so they matter at any level.
   - **Pitfall:** in crossings found from now on, a square of floor cracks when you step on it. Two seconds later it falls away: stay on it and you fall to your death, step off (or be in the air) and you are safe. It closes again after a few seconds.

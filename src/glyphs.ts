@@ -142,6 +142,19 @@ export function hostLoadout(save, host, spellId = null) {
   return { host, glyphs, has: (id) => glyphs.includes(id), count: (id) => glyphs.filter((q) => q === id).length, resonances, resonant: (id) => resonances.includes(id), mods };
 }
 // First time a resonance lights in play, the codex records it (the Game shows a message).
+// Release 527 (Tim: "just unlock all those resonances... I've already tried all the combinations... do it one time"): a
+// journey already under way (past level 1) when it is first opened in this release has every resonance written into its
+// codex, once. A new journey is only marked (its first Game is made at level 1) and discovers them in play as before. Run
+// by the Game constructor, not the save normalisers, so a missing mark is never filled in from fresh-save defaults.
+// State: save.resonanceGift (additive). Returns the ids it wrote.
+export function giftResonances(save) {
+  if (!save?.glyphCodex || save.resonanceGift) return [];
+  save.resonanceGift = 1;
+  if (!((Number(save.level) || 1) > 1)) return [];
+  const added = Object.keys(RESONANCES).filter((id) => !save.glyphCodex.resonances[id]);
+  for (const id of added) save.glyphCodex.resonances[id] = true;
+  return added;
+}
 export function discoverResonances(save, loadout) {
   const fresh = loadout.resonances.filter((id) => !save.glyphCodex.resonances[id]);
   for (const id of fresh) save.glyphCodex.resonances[id] = true;

@@ -2694,6 +2694,31 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 527: resonance gift, presets keep gear, quiet crossings, the vortex trap — 2026-10-28
+
+Tim's requests:
+- "just unlock all those resonances... do it one time";
+- "when you switch presets... they shouldn't become unequipped, because I just... salvaged an amazing Lumen Spindle";
+- "when you're in a dungeon, [it] should only say major threat when there's a world boss";
+- "traps... [that] pull you into... an explosion... if you trigger the trap [and] stay in it for too long";
+- "the floor starts crumbling... glowing red... two seconds to get off... if you have aerial step... jump out".
+
+**CODE:**
+- glyphs.ts `giftResonances(save)`: once (`save.resonanceGift`), a journey past level 1 gets every resonance in its codex. The Game constructor calls it (not the normalisers), so fresh-save defaults never fill the mark in for an old save.
+- build-presets.ts `swapPreset` no longer calls `applyGear`; the message says the gear stays equipped. Presets still record gear tags. tests/brawler-tools-493.test.ts's preset test was rewritten for the new behaviour, which Tim asked for.
+- main.ts `updateWorldNotices`: in a dungeon, the threat banner is shown only for `worldBeast`/`worldBoss` enemies.
+- dungeon-traps.ts:
+  - `DUNGEON_TRAPS.version` 3, with kinds `+ vortex`. Crossings stamped 1 and 2 keep theirs.
+  - The vortex runs armed → warning (`hold` s inside) → pulling (`pull`/s toward its eye via `world.pull`, game.ts `moveAxis`, so walls stop it) → `enemy-blast` (`share` .18 of maximum health) plus `frags` hostile grenades. Leaving during warning puts it to rest.
+  - `airborne` includes an active Aerial Step.
+- main.ts: the pit fills red and pulses while warning, and the vortex draws a rune ring with three swirl arms (blue while warning, orange while pulling).
+- tests/release-527.test.ts.
+
+**BOUNDARY:**
+- Saves stay additive (`resonanceGift`).
+- Existing crossings' traps are unchanged.
+- Banners outside dungeons are unchanged.
+
 ## Release 525: harder traps and the pitfall — 2026-10-28
 
 Tim: "the trap should do more damage. All across the board... the pitfall trap... you trigger it. And... two seconds before the ground falls out. And you die if you stay on the ground. But you can just move".

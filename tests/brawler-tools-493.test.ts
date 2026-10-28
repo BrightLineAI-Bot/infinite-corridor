@@ -48,17 +48,15 @@ test('Shadow Boxing works with the Iron Fists: a longer rush, harder punches tha
   assert.ok(box.g.player.x > 14, `boxing rushes farther (${box.g.player.x})`); assert.ok(box.g.enemies[0].hp < 50000); assert.ok(box.g.player.hp > 50, 'and heals');
 });
 
-test('presets keep a weapon and a tool, equipping them from the pack on a switch', () => {
+test('release 527: switching presets leaves the equipped weapon, tool and armor equipped (was: release 493 swapped them)', () => {
   const s = migrateSave(freshSave()); s.perception.aperture = 3255;
   s.equipment.primary = gear('Iron Fists'); s.equipment.secondary = gear('Hammerfall'); s.inventory = [gear('Great Sweep'), { id: 'primary-verge-cleaver', name: 'Verge Cleaver', slot: 'primary', power: 5 }];
-  swapPreset(s); // to preset 2: it takes this build (and gear)
-  // preset 2: change gear
+  swapPreset(s); // to preset 2
   const i = s.inventory.findIndex((q) => q.name === 'Verge Cleaver'); const prior = s.equipment.primary; s.equipment.primary = s.inventory.splice(i, 1)[0]; s.inventory.push(prior);
-  const j = s.inventory.findIndex((q) => q.name === 'Great Sweep'); const pt = s.equipment.secondary; s.equipment.secondary = s.inventory.splice(j, 1)[0]; s.inventory.push(pt);
-  const r = swapPreset(s); // back to preset 1
-  assert.equal(s.equipment.primary.name, 'Iron Fists'); assert.equal(s.equipment.secondary.name, 'Hammerfall'); assert.match(r.message, /weapon and tool/);
-  swapPreset(s); assert.equal(s.equipment.primary.name, 'Verge Cleaver'); assert.equal(s.equipment.secondary.name, 'Great Sweep');
-  const back = migrateSave(JSON.parse(JSON.stringify(s))); assert.ok(back.equipment.primary.tag, 'tags survive a save');
+  const r = swapPreset(s); // back to preset 1: the gear stays as it is
+  assert.equal(s.equipment.primary.name, 'Verge Cleaver'); assert.equal(s.equipment.secondary.name, 'Hammerfall'); assert.match(r.message, /stay equipped/);
+  swapPreset(s); assert.equal(s.equipment.primary.name, 'Verge Cleaver');
+  const back = migrateSave(JSON.parse(JSON.stringify(s))); assert.ok(back.equipment.primary);
 });
 
 test('release 495: Shadow Boxing works with Hammerfall and Great Sweep too', () => {
