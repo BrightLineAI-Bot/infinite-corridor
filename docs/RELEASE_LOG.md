@@ -13,22 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**547**
+**549**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 545 | Claude | `claude/dreamy-rubin-yn6q2p` | A full pack salvages by tier, then oldest first; purchases into a full pack are kept | Building. |
-| 543 | Claude | PR #255 | In the big robot the Wayfarer rises with it when it boosts (no legs hanging below it); the sling: ten pieces kept out of the pack | Merged (`r543-bf7392de2693`). Not published. |
-| 541 | Claude | PR #254 | Each preset keeps its own weapon, tool and armor, held out of the pack; every Listener town has its smith, indoors; the Atlas offers "make home" for the town you tapped or stand in | Merged (`r541-82c474a09bbb`). Not published. |
-| 539 | Claude | PR #253 | The Corridor Golem's cooldown shortens with the tool's cooldown; Nanoknives fire on their own at a near foe; Cluster Shell bomblets fly to opposite ends of a turning line, to the edge of the first burst | Merged (`r539-c71ad83084fc`). Not published. |
+| 547 | Claude | `claude/dreamy-rubin-yn6q2p` | Fire Burst: a fire spell throwing a fan of cinder shells that burst in flame | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 545 | `r545-06aeebad5e78` | 2026-10-28 | With 539 to 543: the golem cooldown follows the tool's, Nanoknives fire on their own, Cluster Shells at opposite poles (PR #253); per-preset gear, a smith indoors in every Listener town, the Atlas home fix (#254); the Wayfarer rises with the big robot, the sling (#255); the full pack by tier then oldest, purchases kept (#256). The pre-publish Fable review of 537→545 found no blockers. |
 | 537 | `r537-da8aeff88eba` | 2026-10-28 | With 533 and 535: the physical Rift Bombard, the Blunderbuss, and the Lattice tool forms Arc Wave and Nanoknives (PR #250); the Corridor Golem (#251); Cluster Shell, plus the golem drawn without `roundRect` (#252). The pre-publish Fable review of 531→535 found one blocker (`roundRect`), fixed in 537. The review of 531→537 found none. |
 | 531 | `r531-a8429f5bfd33` | 2026-10-28 | With 527 and 529: the resonance gift, presets keep gear, world-beast-only crossing banners, the red crumbling floor and the vortex trap (PR #247); glyph triads and armor triads, the Needle Caster scaling with Might (#248); spells and skills back to two sockets (#249). The pre-publish Fable review (525→531) found no blockers. |
 | 525 | `r525-5ba50cb08225` | 2026-10-28 | With 517–523: spell buttons drain gold (PR #242, #243), the save mirror once a minute (#244), sigil, lava and dart traps (#245), harder traps and the pitfall (#246). The pre-publish Fable review (515→525) found no blockers. |

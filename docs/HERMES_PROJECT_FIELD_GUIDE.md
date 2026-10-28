@@ -2694,6 +2694,29 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 547: Fire Burst — 2026-10-28
+
+Tim: "a spell... fire burst or something, which just launches out a series of fireballs that fly a short distance and explode... look exactly like those [cracked ember shells]" (with a screenshot of a dark shell with a glowing crack).
+
+**CODE:**
+- items.ts: `SPELLS["fire-burst"]` (cooldown 5, radius 1.1, damage 9, maxRange 6). It has no unlock tier.
+- spell-slots.ts: `CASTABLES["spell:fire-burst"]` (fire, ✺).
+- tool-forms.ts:
+  - `FIRE_BURST` (count 5, spread 1.4 rad, reach 2.6 tiles, speed 9).
+  - `drawToolForms` draws the shells (`fireBomb`: a dark shell, a turning three-armed glowing crack, a halo) and the flame (`fireBurst` effects: a radial burst that swells and fades).
+- game.ts:
+  - `castFireBurst` aims at the lock, else the nearest foe in reach, else the way you face, and throws `count` grenade-path magic projectiles in a fan.
+  - Each shell lives `reach × glyph range / speed`, carries spell damage (Focus, glyph damage, pairing and armor spell bonuses) and blast radius (glyph radius), with `glyphHost: "spell"` and `glyphSpell`.
+  - The projectile detonation now carries `glyphSpell` and a `fireBurst` flag onto its blast, so the blast uses the spell's own glyphs.
+  - The cooldown is reduced like other spells'.
+- combat-visuals.ts skips `fireBomb` in the batched pass.
+- tests/fire-burst-547.test.ts.
+
+**BOUNDARY:**
+- No save change.
+- At most five shells per cast; they are bounded runtime projectiles.
+- Echo glyphs do not repeat the fan.
+
 ## Release 545: the full pack, first in first out by tier — 2026-10-28
 
 Tim: "the pack... salvages... first in first out... ranks it by power first. So the most powerful ones don't get salvaged... leave the relic and higher quality weapons at the top... if they're all the same tier... salvage the first one that you got... when you... buy something and your pack is full, the item disappears... It should... salvage the oldest least priority item".

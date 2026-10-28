@@ -15,7 +15,7 @@ export function drawRangedEffects(ctx,game,width,height) {
   const groups = new Map();
   for (const p of game.projectiles) {
     if(!dungeonPointDiscovered(game.map,p))continue;
-    if(p.knife||p.arcWave)continue; // release 533: drawn by drawToolForms
+    if(p.knife||p.arcWave||p.fireBomb)continue; // release 533: drawn by drawToolForms; 547: Fire Burst shells
     const color = p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.damageType === "magic" ? "#9fe8db" : "#d6b276"; // release 321: the drone's rockets burn orange
     let list = groups.get(color); if (!list) groups.set(color, list = []); list.push(p);
   }

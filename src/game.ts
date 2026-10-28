@@ -53,7 +53,7 @@ import {
 } from "./interactions.ts";
 import { ensurePerception } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
-import { ARC_WAVE, NANOKNIVES, GOLEM, CLUSTER, knifeOffset } from "./tool-forms.ts";
+import { ARC_WAVE, NANOKNIVES, GOLEM, CLUSTER, FIRE_BURST, knifeOffset } from "./tool-forms.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { generateItem, BRAWLER_LOOT } from "./items.ts";
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
@@ -4501,6 +4501,7 @@ export class Game {
     if (spell.id === "shadow-clone") return this.castShadowClone(spell, cds, key); // release 365
     if (spell.brawler) return this.castBrawler(spell, cds, key); // release 483
     if (spell.id === "orbit-volley") return this.castOrbitVolley(spell, cds, key); // release 487
+    if (spell.id === "fire-burst") return this.castFireBurst(spell, cds, key); // release 547
     if (remaining > 0) {
       this.message = `${spell.name} recovers in ${Math.ceil(remaining)}s.`;
       return false;
@@ -4548,6 +4549,20 @@ export class Game {
     cds[key] = cooldown; if (!spellId) this.spellCooldownRemaining = cooldown;
     echoEvent(this, "spell", this.lastUpdateNow || 0);
     this.message = `${spell.name} answers.`;
+    return true;
+  }
+  // Release 547 (tool-forms.ts FIRE_BURST): a fan of cinder shells toward the lock, else the nearest foe in reach, else the way
+  // you face; each bursts (the projectile detonation) where it lands or on the first foe it meets.
+  castFireBurst(spell, cds, key, now = this.lastUpdateNow || 0) {
+    if ((cds[key] || 0) > 0) { this.message = `${spell.name} recovers in ${Math.ceil(cds[key])}s.`; return false; }
+    const p = this.player, cx = p.x + .5, cy = p.y + .45, t = this.lockedTarget(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), spell.maxRange * AUTO_AIM.spellScale)?.e || null;
+    const d = foe ? projectileDirection(foe.x + .5 - cx, foe.y + .45 - cy, p.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), glyphs = this.glyphLoadout("spell", spell.id), F = FIRE_BURST;
+    if (foe) this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
+    const damage = Math.max(1, Math.round((spell.damage + characterStats(this.save).magicBonus) * glyphs.mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage)));
+    for (let i = 0; i < F.count; i++) { const a = (F.count > 1 ? i / (F.count - 1) - .5 : 0) * F.spread, c = Math.cos(a), sn = Math.sin(a);
+      this.projectiles.push({ id: `fire-burst-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, x: cx + d.x * .3, y: cy + d.y * .3, dx: d.x * c - d.y * sn, dy: d.x * sn + d.y * c, speed: F.speed, life: F.reach * glyphs.mods.range / F.speed, damage, damageType: "magic", path: "grenade", age: 0, hits: {}, blastRadius: spell.radius * glyphs.mods.radius, glyphHost: "spell", glyphSpell: spell.id, fireBomb: true }); }
+    cds[key] = spell.cooldown * glyphs.mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
+    echoEvent(this, "spell", now); this.message = `${spell.name}!`;
     return true;
   }
   // Release 487 (orbit-volley.ts): the first press gathers the orbs, the second launches them; left alone they go by
@@ -5188,7 +5203,7 @@ export class Game {
       (e) => {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
-      (shot)=>{this.clusterShell(shot);return this.effects.push({id:"blast-"+shot.id,kind:shot.hostile?"enemy-blast":"rift-blast",x:shot.x,y:shot.y,life:.32,radius:shot.blastRadius||2,untilPulse:0,pulse:99,damage:shot.damage,hostile:!!shot.hostile,hits:{},...(!shot.hostile&&shot.glyphHost?{glyphHost:shot.glyphHost}:{})/* release 467 (Codex audit I001): the Bombard's blast keeps its tool glyphs, once per foe */})},
+      (shot)=>{this.clusterShell(shot);return this.effects.push({id:"blast-"+shot.id,kind:shot.hostile?"enemy-blast":"rift-blast",x:shot.x,y:shot.y,life:.32,radius:shot.blastRadius||2,untilPulse:0,pulse:99,damage:shot.damage,hostile:!!shot.hostile,hits:{},...(!shot.hostile&&shot.glyphHost?{glyphHost:shot.glyphHost}:{})/* release 467 (Codex audit I001): the Bombard's blast keeps its tool glyphs, once per foe */,...(shot.glyphSpell?{glyphSpell:shot.glyphSpell}:{}),...(shot.fireBomb?{fireBurst:true}:{})/* release 547: Fire Burst's own glyphs and its flame */})},
       p,
       (shot)=>{
         const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;
