@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 551 — **The Surveyor's Chain, part two.**
+  - With all twelve of Abel Corwin's links, the crossings where they lay join into one brass chain on the Atlas. The chain runs on to the edge of the Far Sleep.
+  - There Corwin stands as a statue, measuring himself. His last words close the thread in the Journal.
 - Release 549 — **Arc Wave** now turns each of the Blunderbuss's three shots into a crescent wave along the same cone. Before, it fired one wave.
 - Release 547 — **Fire Burst**, a new fire spell: it throws a fan of five cracked cinder shells a short way toward your target. Each bursts into flame where it lands, or on the first foe it meets. It grows with Focus and takes spell glyphs.
 - Release 545 — **a full pack keeps what matters.**

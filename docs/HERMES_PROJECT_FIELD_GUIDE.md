@@ -2694,6 +2694,32 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 551: the Surveyor's Chain, part two — 2026-10-28
+
+The daily narrative session (Tim's routine), docs/narrative-bible.md section 7, step 6. Section 6, thread 2 reads: "With all twelve links, the last dungeon's map turns out to be the overworld. The thread ends at his statue". Section 4 reads: "At the end he is found as a statue at the edge of the Far Sleep, measuring himself".
+
+**CODE:**
+- surveyor.ts:
+  - `surveyorComplete`.
+  - `surveyorStatueSection` records `save.lore.surveyor.statue` once: the first Far Sleep section (|rx|+|ry| = `FAR_SLEEP_DEPTH` + 1) along the line from the Refuge through the twelfth link's crossing. It has a seeded fallback.
+  - `surveyorChainPath` gives the crossings in link order, then the statue.
+  - `addSurveyorStatue` places it on open ground nearest the middle of its overworld section, once.
+  - `visitSurveyorStatue` sets `statueSeen`.
+  - `SURVEYOR_STATUE_LINES`: original writing.
+- game.ts:
+  - The overworld load calls `addSurveyorStatue`.
+  - Taking the twelfth link adds the Atlas line to the message and writes `journalOnce(surveyor:map)`.
+  - The `surveyorStatue` interaction writes `journalOnce(surveyor:statue)`.
+- renderer.ts: `drawSurveyorStatue` draws a kneeling figure in pale stone on a numbered plinth, with a brass chain from boot to hand that glints until visited.
+- main.ts, the Atlas (`drawAtlasPins`): a dashed brass line through `surveyorChainPath`, a bead at each crossing, and a pale "Abel Corwin's statue" flag at its end.
+- docs/narrative-bible.md step 6 updated.
+- tests/surveyor-551.test.ts.
+
+**BOUNDARY:**
+- Additive fields in `save.lore.surveyor` (`statue`, `statueSeen`).
+- No generation change: the statue is an object placed on load, the way town amenities are.
+- The Torn Pages remain.
+
 ## Release 549: three Arc Waves — 2026-10-28
 
 Tim: "for the blunderbuss, instead of shooting a single crescent, it'll shoot three crescent waves... in a cone... they would follow the same path of the blunderbuss's original shots, but they'll just replace the shots with crescents".
