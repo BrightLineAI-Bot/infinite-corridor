@@ -1,5 +1,5 @@
-import{normalizeSockets}from'./glyphs.js?v=r513-e721fa71fa99';
-import{rng,pick}from'./random.js?v=r513-e721fa71fa99';
+import{normalizeSockets}from'./glyphs.js?v=r515-bf3734f5bbc0';
+import{rng,pick}from'./random.js?v=r515-bf3734f5bbc0';
 export const ITEM_TABLE={primary:[['Cinder Pike','reach'],['Verge Cleaver','impact']],secondary:[['Lumen Spindle','focus'],['Needle Caster','quick'],['Rift Bombard','blast']],armor:[['Kiln Mantle','guard'],['Glassweave Coat','stamina']],charm:[['Quiet Compass','discovery']]};
 export const ITEM_TIERS=['common','rare','epic','relic'];
 export const RANGED_WEAPONS={'spark-coil':{name:'Spark Coil',damage:8,speed:12,lifetime:1.6,damageType:'magic',path:'straight'},'secondary-lumen-spindle':{name:'Lumen Spindle',damage:11,speed:10,lifetime:1.8,turnAfter:.8,damageType:'magic',path:'boomerang'},'secondary-needle-caster':{name:'Needle Caster',damage:10,speed:15,lifetime:1.25,damageType:'physical',path:'straight'},'secondary-hammerfall':{name:'Hammerfall',damage:12,speed:0,lifetime:0,damageType:'physical',path:'hammer',brawlerTool:'hammerfall'},'secondary-great-sweep':{name:'Great Sweep',damage:10,speed:0,lifetime:0,damageType:'physical',path:'sweep',brawlerTool:'great-sweep'},'secondary-rift-bombard':{name:'Rift Bombard',damage:16,speed:8,lifetime:1.4,radius:2.15,damageType:'magic',path:'grenade'}};
@@ -70,7 +70,7 @@ function rollAffixes(r,slot,tier){const pools={primary:['attack','reach'],second
 // we're not just stuck with the... 3 ones that we got initially"): a generated weapon is Iron Fists, and a generated tool
 // Hammerfall or Great Sweep, with `share` chance, rolled from a separate seeded stream so every other roll of the item (slot,
 // power, tier, affixes) is unchanged.
-// Release r513-e721fa71fa99 (Tim: "monsters aren't dropping them... I want to get some instances of the hammerfall"): share .18 → .35.
+// Release 513 (Tim: "monsters aren't dropping them... I want to get some instances of the hammerfall"): share .18 → .35.
 export const BRAWLER_LOOT={share:.35,primary:[['Iron Fists','brawler']],secondary:[['Hammerfall','brawler'],['Great Sweep','brawler']]};
 export function generateItem(seed,level=1){const r=rng(seed),slot=pick(r,Object.keys(ITEM_TABLE)),pair=pick(r,ITEM_TABLE[slot]);let name=pair[0],property=pair[1];const tier=Math.min(3,Math.floor((Math.max(1,level)+r()*5)/5)),id=slot+'-'+Math.floor(r()*1e8),power=Math.max(1,level+Math.floor(r()*3)),affixes=rollAffixes(r,slot,tier);const b=rng(`${seed}:brawler-loot:v1`),list=BRAWLER_LOOT[slot];if(list&&b()<BRAWLER_LOOT.share)[name,property]=list[Math.floor(b()*list.length)];return normalizeSockets({id,name,slot,power,property,tier:ITEM_TIERS[tier],affixes})}
 export function isValidItem(item){return !![...Object.values(ITEM_TABLE).flat(),...BRAWLER_LOOT.primary,...BRAWLER_LOOT.secondary].find(([n,p])=>n===item.name&&p===item.property)&&['primary','secondary','armor','charm'].includes(item.slot)&&Number.isInteger(item.power)&&item.power>0&&ITEM_TIERS.includes(itemTier(item))}

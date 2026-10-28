@@ -8,10 +8,11 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand } from "./items.js?v=r513-e721fa71fa99";
-import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r513-e721fa71fa99";
-import { pairingMods } from "./spell-slots.js?v=r513-e721fa71fa99";
-import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r513-e721fa71fa99";
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand } from "./items.js?v=r515-bf3734f5bbc0";
+import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r515-bf3734f5bbc0";
+import { pairingMods } from "./spell-slots.js?v=r515-bf3734f5bbc0";
+import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r515-bf3734f5bbc0";
+import { fieldForm } from "./lattice-fields.js?v=r515-bf3734f5bbc0";
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 
@@ -83,6 +84,7 @@ export const nodeOn = (save, id) => hasNode(save, id) && (!altChosen(save, id) |
 export const altOn = (save, id) => hasNode(save, id) && (altChosen(save, id) || latticePassives(save).includes(`${id}:alt`));
 // Release 363: a passive form for the Transit Lattice. `key` is a node id (its primary form) or `id:alt` (its secondary).
 export function passiveForm(key) {
+  if (String(key).startsWith("field:")) return fieldForm(key); // release 515: Lattice-only field passives
   const [id, alt] = String(key).split(":"), node = Object.values(BRANCHES).flatMap((b) => [b.mod, ...b.caps]).find((q) => q.id === id);
   if (!node || (alt && alt !== "alt")) return null;
   return alt ? { id, alt: true, name: ALT_PASSIVES[id].name, text: ALT_PASSIVES[id].text } : { id, alt: false, name: node.name, text: node.text };
@@ -90,6 +92,7 @@ export function passiveForm(key) {
 export const PASSIVE_KEYS = Object.values(BRANCHES).flatMap((b) => [b.mod, ...b.caps]).flatMap((n) => [n.id, `${n.id}:alt`]);
 export function toggleLatticePassive(save, key) {
   const f = passiveForm(key); if (!f) return { ok: false, message: "That is not a passive." };
+  if (f.field) return toggleLatticeSlot(save, "passive", key, f.name); // release 515: nothing to learn first
   return toggleLatticeSlot(save, "passive", key, f.name, () => !hasNode(save, f.id) ? `Learn ${passiveForm(f.id).name} first: the Lattice draws in a form of a passive you know.` : f.alt === altChosen(save, f.id) ? `${f.name} already works: it is the form you have chosen.` : "");
 }
 export function toggleAlt(save, id) {
