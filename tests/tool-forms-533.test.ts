@@ -60,8 +60,10 @@ test('Nanoknives: the Great Sweep raises three daggers; the next press throws th
   const knives = g.projectiles.filter((p) => p.knife);
   assert.equal(knives.length, 3); assert.ok(knives.every((p) => p.seekId === 'foe' && p.damageType === 'physical' && p.glyphHost === 'tool'));
   assert.ok(g.knives, 'a fresh set rises');
-  g.tickKnives(1000 + NANOKNIVES.cooldown * 1000 + 1 + NANOKNIVES.hold * 1000 + 1);
-  assert.equal(g.projectiles.filter((p) => p.knife).length, 6, 'left alone, they throw themselves');
+  const t0 = 1000 + NANOKNIVES.cooldown * 1000 + 1;
+  g.tickKnives(t0 + 100); assert.equal(g.projectiles.filter((p) => p.knife).length, 3, 'arming');
+  g.tickKnives(t0 + NANOKNIVES.arm * 1000 + 1);
+  assert.equal(g.projectiles.filter((p) => p.knife).length, 6, 'a foe near: they throw themselves');
 });
 
 test('without Nanoknives the Great Sweep still sweeps', () => {
@@ -102,4 +104,34 @@ test('the tool forms draw without ctx.roundRect (older Safari and Chrome)', asyn
   const game = { lastUpdateNow: 5000, player: { x: 0, y: 0 }, effects: [], projectiles: [], knives: null, golem: { x: 1, y: 1, start: 4000, face: 1, sinkAt: null } };
   drawToolForms(ctx, game, (q) => [q.x * 40, q.y * 40], 40, 0);
   assert.equal(calls.filter((k) => k === 'save').length, calls.filter((k) => k === 'restore').length); assert.ok(calls.includes('arcTo'));
+});
+
+// Release 539 (Tim: "the golem cooldown should be... your tool cooldown... should be able to be reduced").
+test('the golem cooldown shortens with the tool cooldown (Swift glyphs in the hammer)', () => {
+  const plain = arena({ name: 'Hammerfall', property: 'impact' }, ['corridor-golem']).g; plain.fireSecondary(1000, { x: 1, y: 0 });
+  const fast = arena({ name: 'Hammerfall', property: 'impact', glyphs: ['swift', 'swift', null] }, ['corridor-golem']).g; fast.fireSecondary(1000, { x: 1, y: 0 });
+  assert.ok(fast.toolCooldownScale() < 1); assert.ok(fast.golemReadyAt < plain.golemReadyAt, `${fast.golemReadyAt} < ${plain.golemReadyAt}`);
+  assert.equal(plain.golemReadyAt, 1000 + 320 + GOLEM.cooldown * 1000);
+});
+
+// Release 539 (Tim: "if there's no enemy nearby, then they should wait until I launch them").
+test('Nanoknives wait while no foe is near, then throw themselves when one comes within reach', () => {
+  const { g } = arena({ name: 'Great Sweep', property: 'impact' }, ['nanoknives']);
+  g.enemies[0].x = 10 + NANOKNIVES.autoRange + 3; // out of reach
+  g.fireSecondary(1000, { x: 1, y: 0 }); g.tickKnives(1000 + 60000); assert.ok(g.knives, 'still circling a minute later'); assert.equal(g.projectiles.length, 0);
+  g.enemies[0].x = 13; g.tickKnives(1000 + 60001); assert.equal(g.knives, null); assert.equal(g.projectiles.filter((p) => p.knife && p.seekId === 'foe').length, 3);
+});
+
+test('Cluster Shell bomblets fly to opposite ends of a line that turns from shell to shell, each its own blast radius out', async () => {
+  const { g } = arena({ name: 'Rift Bombard', property: 'blast' }, ['cluster-shell']);
+  const angles = [];
+  for (const id of ['shot-a', 'shot-b', 'shot-c', 'shot-d']) {
+    const shot = { id, x: 10, y: 10, dx: 1, dy: 0, blastRadius: 2.15, damage: 40, damageType: 'physical', glyphHost: 'tool', path: 'grenade' };
+    g.projectiles = []; g.clusterShell(shot);
+    const [p, q] = g.projectiles; assert.equal(g.projectiles.length, 2);
+    assert.ok(Math.abs(p.dx + q.dx) < 1e-9 && Math.abs(p.dy + q.dy) < 1e-9, 'opposite ends');
+    for (const b of [p, q]) assert.ok(Math.abs(b.speed * b.life - b.blastRadius) < 1e-9, 'edge meets the centre');
+    angles.push(Math.atan2(p.dy, p.dx).toFixed(2));
+  }
+  assert.ok(new Set(angles).size >= 3, `the line turns: ${angles}`);
 });

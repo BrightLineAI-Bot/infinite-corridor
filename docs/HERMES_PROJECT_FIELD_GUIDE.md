@@ -2694,6 +2694,34 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 539: the golem's cooldown, Nanoknives that fire themselves, wider Cluster Shells — 2026-10-28
+
+Tim:
+- "the golem cooldown should be... your tool cooldown... should be able to be reduced".
+- "the Nano knives should automatically fire... if there's an enemy nearby... if there's no enemy nearby, then they should wait until I launch them".
+- "the cluster shells should have a wider horizontal distance... the edges of the secondary explosion... [at] the center of that... initial explosion".
+- Then: "random positions around the center... always... along the same... center line... at different opposite poles of the circle".
+
+**CODE:**
+- game.ts:
+  - `toolCooldownScale()` returns the tool glyphs' `mods.cooldown` × (1 − armor `attackSpeed`), the factor the tool's own cooldown uses.
+  - `raiseGolem` sets `golemReadyAt` to `GOLEM.cooldown` × that factor.
+  - Wellspring Ground runs `golemReadyAt` down at the same rate as `toolReadyAt`.
+  - Nanoknives:
+    - `NANOKNIVES.hold` is gone; it is replaced by `arm` (.3 s) and `autoRange` (6 tiles).
+    - `tickKnives` throws the daggers once they are armed and `knifeFoe(autoRange)` finds a foe: the lock if it is that near, else the nearest. Otherwise they keep circling and never fade.
+    - A press still throws them early and raises a fresh set.
+  - Cluster Shell:
+    - `CLUSTER.angle` and `life` are gone.
+    - `clusterShell` turns a line through the burst by `hashSeed(shot.id)`, so each shell gets a different angle while replays stay the same. The bomblets go to its opposite ends, evenly spaced around the burst.
+    - Each bomblet gets the life `r / speed`, so it flies exactly its own blast radius `r`.
+- tests/tool-forms-533.test.ts.
+
+**BOUNDARY:**
+- Runtime only.
+- The base 6 s and the other golem numbers are unchanged.
+- Circling daggers stay bounded at three.
+
 ## Release 537: Cluster Shell — 2026-10-28
 
 Tim: "a passive... for the rift bombard, where its first initial explosion... two smaller balls just fly off... a very short distance... and then they explode".
