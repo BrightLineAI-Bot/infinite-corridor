@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**519**
+**521**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 517 | Claude | `claude/dreamy-rubin-yn6q2p` | Spell buttons show a lasting spell's time left (Shadow Boxing, Aegis, Shadow Clone, fields) | Building. |
+| 519 | Claude | `claude/dreamy-rubin-yn6q2p` | Every spell and skill button drains gold: quick spells, Orbit Volley's gathering, a flash for an instant Rift Step | Building. |
+| 517 | Claude | PR #242 | Spell buttons show a lasting spell's time left (Shadow Boxing, Aegis, Shadow Clone, fields) | Merged (`r517-e3899fbd72e2`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)

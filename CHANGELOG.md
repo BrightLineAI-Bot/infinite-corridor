@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 519 — every spell and skill button shows its gold drain. Cinder Dart drains while it burns. Orbit Volley's drains through the gathering window and stays full while the volley flies. An instant Rift Step flashes gold for a moment.
+
 - Release 517 — spell buttons show how long a cast lasts. While Shadow Boxing, Aegis, your Shadow Clone, or a lingering spell (Ember Ring, Grave Sun, Gravity Well, Stillpoint) is running, its button lights up and the light drains away as the time runs out, the same as an Aperture skill's. The ring around you stays as it is.
 
 - Release 515 — five new Transit Lattice passives, found only in the Lattice and needing nothing learned first.
