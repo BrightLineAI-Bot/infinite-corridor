@@ -1,29 +1,31 @@
-// Release 529 (Tim, 2026-10-28): three-glyph resonances (triads) in weapons, tools, spells and skills; armor resonates only
-// through triads; spells and skills get a third socket.
+// Release 529 (Tim, 2026-10-28): three-glyph resonances (triads); armor resonates only through triads.
+// Release 531 (Tim): spells and skills keep two sockets, so triads come from three-socket items.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { TRIADS, RESONANCES, SPELL_SOCKETS, hostLoadout, glyphHit, armorGlyphBonus, socketGlyph, resonancesOf } from '../src/glyphs.ts';
 
-test('six triads of three different glyphs, apart from the eight pairs; spells and skills hold three', () => {
+test('six triads of three different glyphs, apart from the eight pairs; spells and skills keep two sockets', () => {
   assert.equal(Object.keys(TRIADS).length, 6); assert.equal(Object.keys(RESONANCES).length, 8);
   for (const r of Object.values(TRIADS)) assert.equal(new Set(r.pair).size, 3);
-  assert.equal(SPELL_SOCKETS, 3);
-  const old = freshSave(); old.spellGlyphs = { 'ember-ring': ['ignite', 'chain'] }; assert.deepEqual(migrateSave(JSON.parse(JSON.stringify(old))).spellGlyphs['ember-ring'], ['ignite', 'chain', null], 'old saves gain an empty third socket');
+  assert.equal(SPELL_SOCKETS, 2);
+  const old = freshSave(); old.spellGlyphs = { 'ember-ring': ['ignite', 'chain'] }; assert.deepEqual(migrateSave(JSON.parse(JSON.stringify(old))).spellGlyphs['ember-ring'], ['ignite', 'chain'], 'spells keep two sockets');
 });
 
-test('a spell with ignite, chain and volatile lights Inferno: a burning foe that dies erupts', () => {
-  const s = freshSave(); s.spellGlyphs = { 'ember-ring': ['ignite', 'chain', 'volatile'] };
-  const l = hostLoadout(s, 'spell', 'ember-ring'); assert.ok(l.resonant('inferno'));
+const relic = (slot, name, glyphs) => ({ id: slot, name, slot, property: 'impact', power: 5, tier: 'relic', affixes: [], glyphs });
+
+test('a relic weapon with ignite, chain and volatile lights Inferno: a burning foe that dies erupts', () => {
+  const s = freshSave(); s.equipment.primary = relic('primary', 'Verge Cleaver', ['ignite', 'chain', 'volatile']);
+  const l = hostLoadout(s, 'melee'); assert.ok(l.resonant('inferno'));
   const blasts = []; const e = { id: 'a', x: 5, y: 5, hp: 0, dead: true, glyphBurn: { until: 9999, dps: 2 } };
   glyphHit({ now: 1000, enemies: [], maxHp: 100, heal() {}, stamina() {}, damage() {}, blast: (x, y, r, n) => blasts.push(r), arc() {} }, l, e, 20, {});
   assert.ok(blasts.some((r) => r >= 1.9), 'the wide blaze');
 });
 
 test('Requiem freezes on echo strikes; Undertow heals on kills', () => {
-  const s = freshSave(); s.spellGlyphs = { a: ['echo', 'still', 'heavy'], b: ['tether', 'still', 'leech'] };
-  const e = { id: 'x', x: 1, y: 1, hp: 10 }; glyphHit({ now: 0, enemies: [], heal() {}, stamina() {}, damage() {}, blast() {}, arc() {} }, hostLoadout(s, 'spell', 'a'), e, 5, { echo: true }); assert.ok(e.hitStun >= 1);
-  let healed = 0; glyphHit({ now: 0, enemies: [], maxHp: 200, heal: (n) => { healed += n; }, stamina() {}, damage() {}, blast() {}, arc() {}, nudge() {} }, hostLoadout(s, 'spell', 'b'), { id: 'y', x: 1, y: 1, hp: 0, dead: true }, 5, {});
+  const s = freshSave(); s.equipment.primary = relic('primary', 'Verge Cleaver', ['echo', 'still', 'heavy']); s.equipment.secondary = relic('secondary', 'Needle Caster', ['tether', 'still', 'leech']);
+  const e = { id: 'x', x: 1, y: 1, hp: 10 }; glyphHit({ now: 0, enemies: [], heal() {}, stamina() {}, damage() {}, blast() {}, arc() {} }, hostLoadout(s, 'melee'), e, 5, { echo: true }); assert.ok(e.hitStun >= 1);
+  let healed = 0; glyphHit({ now: 0, enemies: [], maxHp: 200, heal: (n) => { healed += n; }, stamina() {}, damage() {}, blast() {}, arc() {}, nudge() {} }, hostLoadout(s, 'tool'), { id: 'y', x: 1, y: 1, hp: 0, dead: true }, 5, {});
   assert.ok(healed >= 10, `healed ${healed}`);
 });
 
