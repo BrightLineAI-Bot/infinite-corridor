@@ -1,21 +1,21 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r549-393038eb248c";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r549-393038eb248c";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r549-393038eb248c";
-import { enemyMeleeGeometry } from "./combat.js?v=r549-393038eb248c";
-import { ruleRows } from "./elders.js?v=r549-393038eb248c";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r549-393038eb248c";
-import { BOAT } from "./boats.js?v=r549-393038eb248c";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r549-393038eb248c";
-import { isMarineTile } from "./world-beasts.js?v=r549-393038eb248c";
-import { jumpLift } from "./game.js?v=r549-393038eb248c";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r549-393038eb248c";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r549-393038eb248c";
-import { liftAt, tileUnder } from "./landscape.js?v=r549-393038eb248c";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r549-393038eb248c";
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r549-393038eb248c";
-import { drawRelayNode } from "./relay-network.js?v=r549-393038eb248c";
-import { structureOccupancy } from "./world.js?v=r549-393038eb248c";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r549-393038eb248c";
+import { astralBeamAnchors } from "./astral-worm.js?v=r553-6f1c9b293b39";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r553-6f1c9b293b39";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r553-6f1c9b293b39";
+import { enemyMeleeGeometry } from "./combat.js?v=r553-6f1c9b293b39";
+import { ruleRows } from "./elders.js?v=r553-6f1c9b293b39";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r553-6f1c9b293b39";
+import { BOAT } from "./boats.js?v=r553-6f1c9b293b39";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r553-6f1c9b293b39";
+import { isMarineTile } from "./world-beasts.js?v=r553-6f1c9b293b39";
+import { jumpLift } from "./game.js?v=r553-6f1c9b293b39";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r553-6f1c9b293b39";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r553-6f1c9b293b39";
+import { liftAt, tileUnder } from "./landscape.js?v=r553-6f1c9b293b39";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r553-6f1c9b293b39";
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r553-6f1c9b293b39";
+import { drawRelayNode } from "./relay-network.js?v=r553-6f1c9b293b39";
+import { structureOccupancy } from "./world.js?v=r553-6f1c9b293b39";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r553-6f1c9b293b39";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -890,6 +890,23 @@ export function drawSurveyorLink(ctx, o, s, now) {
   const glint = .5 + .5 * Math.sin(now / 500 + o.x * 3); ctx.fillStyle = `rgba(255,240,190,${.25 + .5 * glint})`; ctx.beginPath(); ctx.arc(-s * .12, -s * .06, Math.max(1, s * .035), 0, 7); ctx.fill();
   ctx.restore();
 }
+// Release 551: Abel Corwin's statue, kneeling on a low plinth in pale Far Sleep stone, a brass chain from his boot to his hand.
+export function drawSurveyorStatue(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, base = (o.y + .92) * s, stone = "#d9d4c6", shade = "#a8a294", edge = "#5f5a50";
+  ctx.save(); ctx.lineJoin = "round";
+  ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(cx, base, s * .5, s * .14, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = shade; ctx.strokeStyle = edge; ctx.lineWidth = Math.max(1, s * .03); ctx.fillRect(cx - s * .42, base - s * .2, s * .84, s * .2); ctx.strokeRect(cx - s * .42, base - s * .2, s * .84, s * .2); // the plinth
+  ctx.fillStyle = edge; for (let i = 0; i < 7; i++) ctx.fillRect(cx - s * .36 + i * s * .1, base - s * .12, s * .05, s * .025); // the column of numbers
+  const g = ctx.createLinearGradient(cx - s * .3, 0, cx + s * .3, 0); g.addColorStop(0, stone); g.addColorStop(1, shade); ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(cx - s * .3, base - s * .2); ctx.lineTo(cx - s * .28, base - s * .42); ctx.lineTo(cx - s * .02, base - s * .44); ctx.lineTo(cx + s * .04, base - s * .2); ctx.closePath(); ctx.fill(); ctx.stroke(); // the kneeling leg
+  ctx.beginPath(); ctx.moveTo(cx + s * .04, base - s * .2); ctx.lineTo(cx + s * .22, base - s * .2); ctx.lineTo(cx + s * .2, base - s * .36); ctx.lineTo(cx + s * .06, base - s * .38); ctx.closePath(); ctx.fill(); ctx.stroke(); // the planted boot
+  ctx.beginPath(); ctx.moveTo(cx - s * .22, base - s * .4); ctx.lineTo(cx - s * .16, base - s * .9); ctx.lineTo(cx + s * .1, base - s * .92); ctx.lineTo(cx + s * .12, base - s * .4); ctx.closePath(); ctx.fill(); ctx.stroke(); // the coat
+  ctx.beginPath(); ctx.arc(cx - s * .02, base - s * 1.02, s * .11, 0, 7); ctx.fill(); ctx.stroke(); // the bowed head
+  ctx.beginPath(); ctx.moveTo(cx + s * .08, base - s * .82); ctx.lineTo(cx + s * .3, base - s * .62); ctx.lineTo(cx + s * .26, base - s * .55); ctx.lineTo(cx + s * .05, base - s * .7); ctx.closePath(); ctx.fill(); ctx.stroke(); // the arm held out
+  ctx.strokeStyle = "#c79a3e"; ctx.lineWidth = Math.max(1.2, s * .035); ctx.setLineDash([Math.max(2, s * .05), Math.max(1, s * .025)]); ctx.beginPath(); ctx.moveTo(cx + s * .14, base - s * .22); ctx.quadraticCurveTo(cx + s * .34, base - s * .34, cx + s * .29, base - s * .6); ctx.stroke(); ctx.setLineDash([]); // brass chain, boot to hand
+  if (o.state !== "seen") { const glint = .5 + .5 * Math.sin(now / 600); ctx.fillStyle = `rgba(255,236,170,${.3 + .5 * glint})`; ctx.beginPath(); ctx.arc(cx + s * .29, base - s * .6, Math.max(1, s * .04), 0, 7); ctx.fill(); }
+  ctx.restore();
+}
 export function drawMarginNote(ctx, o, s, now) {
   const x = o.x * s + s * .14, y = o.y * s + s * .18, w = s * .72, h = s * .7, read = o.state === "read";
   ctx.save(); ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h + s * .04, w * .55, s * .1, 0, 0, 7); ctx.fill();
@@ -1583,6 +1600,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "ilse") { drawIlse(ctx, o, s, now);
           } else if (o.kind === "crackedBell") { drawCrackedBell(ctx, o, s, now);
           } else if (o.kind === "surveyorLink") { drawSurveyorLink(ctx, o, s, now); // release 505
+          } else if (o.kind === "surveyorStatue") { drawSurveyorStatue(ctx, o, s, now); // release 551
           } else if (o.kind === "marginNote") { drawMarginNote(ctx, o, s, now);
           } else if (o.kind === "townKeeper") { actor(ctx, o.x, o.y, s, "npc", "down", 0, "idle"); ctx.strokeStyle = "#c9a6ff"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.arc((o.x + .5) * s, (o.y - .15) * s, s * .14, 0, 7); ctx.stroke(); // release 441: a keeper with an Aperture lens
           } else if (o.kind === "skiff") {
