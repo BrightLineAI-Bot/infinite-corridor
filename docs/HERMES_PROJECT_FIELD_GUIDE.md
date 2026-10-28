@@ -2694,6 +2694,28 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 545: the full pack, first in first out by tier — 2026-10-28
+
+Tim: "the pack... salvages... first in first out... ranks it by power first. So the most powerful ones don't get salvaged... leave the relic and higher quality weapons at the top... if they're all the same tier... salvage the first one that you got... when you... buy something and your pack is full, the item disappears... It should... salvage the oldest least priority item".
+
+**CODE:**
+- game.ts:
+  - `packKeep(item)` is `ITEM_TIERS` index × 2, plus 1 if the piece has been worked on (`upgradeRank`, `masterwork`, `extraSockets`).
+  - `packVictim(save, spareBrawler)` returns the pack's lowest-keep piece; ties go to the lowest index, the oldest, since the pack only appends.
+  - `storeInventoryItem(save, item, keep)`:
+    - A drop whose keep is below the victim's is salvaged on arrival. Otherwise the victim is salvaged and the drop is kept.
+    - At equal keep the oldest piece goes. Before, the decision used `itemScore`, and an equal-scoring drop was salvaged.
+    - `keep` (purchases) always stores the item.
+  - The two shop purchase paths no longer refuse "Pack is full". They store with `keep` and name what was salvaged.
+- Release 513's rule, never letting new brawler gear push out other brawler gear, stands.
+- Tests:
+  - tests/pack-order-545.test.ts (new).
+  - tests/brawler-loot-513.test.ts: a same-tier second Hammerfall now replaces the older copy (was: salvaged on arrival). One copy stays either way, as Tim's FIFO rule asks.
+
+**BOUNDARY:**
+- No save change.
+- A purchase is always kept, even when that means salvaging a higher-tier piece from a pack full of better gear.
+
 ## Release 543: the Wayfarer rises with the big robot — 2026-10-28
 
 Tim: "when the robot jumps you see the character's legs just hanging out beneath the suit". Then: "the way the robot functions right now is great... the character's head moves up-and-down as the robot walks... just that when you jumped his legs hang out the bottom. That's the only real problem."

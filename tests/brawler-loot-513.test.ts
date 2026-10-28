@@ -18,7 +18,9 @@ test('Hammerfall drops from roughly one item in twenty or more', () => {
 test('a full Pack keeps a Hammerfall you do not have, and salvages a weak one you already have', () => {
   const s = fullPack(); const r = storeInventoryItem(s, gear('Hammerfall'));
   assert.equal(r.stored, true); assert.ok(s.inventory.some((q) => q.name === 'Hammerfall')); assert.equal(s.inventory.length, EQUIPMENT_CAPACITY);
-  const again = storeInventoryItem(s, { ...gear('Hammerfall'), id: 'second' }); assert.equal(again.stored, false, 'a weak second copy is salvaged as before');
+  // Release 545 (Tim: "first in first out... if they're all the same tier... salvage the first one that you got"): a second
+  // copy of the same tier now takes the older copy's place (was: the new copy was salvaged). Either way one Hammerfall stays.
+  const again = storeInventoryItem(s, { ...gear('Hammerfall'), id: 'second' }); assert.equal(again.salvaged.id, 'x-Hammerfall', 'the older copy goes'); assert.equal(s.inventory.filter((q) => q.name === 'Hammerfall').length, 1);
   const g = fullPack(); g.equipment.secondary = gear('Great Sweep'); assert.equal(storeInventoryItem(g, { ...gear('Great Sweep'), id: 'y' }).stored, false, 'already equipped');
 });
 
