@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 521 — fewer stutters. The slow backup copy of your journey, written in one go on the main thread, is now written at most once a minute instead of with every 8-second autosave. The main save still happens every 8 s and at every pause, area change and menu action.
+
 - Release 519 — every spell and skill button shows its gold drain. Cinder Dart drains while it burns. Orbit Volley's drains through the gathering window and stays full while the volley flies. An instant Rift Step flashes gold for a moment.
 
 - Release 517 — spell buttons show how long a cast lasts. While Shadow Boxing, Aegis, your Shadow Clone, or a lingering spell (Ember Ring, Grave Sun, Gravity Well, Stillpoint) is running, its button lights up and the light drains away as the time runs out, the same as an Aperture skill's. The ring around you stays as it is.
