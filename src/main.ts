@@ -228,6 +228,7 @@ const ITEM_ICONS = {
 import { buffLeft, slotTool, CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS, BUTTON_ITEMS, presetButton, setPresetButton, assignPresetItem, activeButton } from "./spell-slots.ts";
 import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive } from "./constellation.ts";
 import { homeName, homeKey, homeCandidate, setHome, townAt } from "./hometowns.ts";
+import { DUNGEON_TRAPS } from "./dungeon-traps.ts";
 import { FIELD_KEYS, fieldForm } from "./lattice-fields.ts";
 import { ensureLattice, latticeOpen, latticeWhy, latticeSlots, nextSlotCost, unlockSlot, latticePassives, latticeEchoes, TRANSIT_LATTICE, LATTICE_LORE, KINDS as LATTICE_KINDS } from "./transit-lattice.ts";
 import { currentObjective, validActions, dungeonHistory, journalOnce, STAT_RESPEC } from "./interactions.ts";
@@ -745,12 +746,32 @@ setInterval(() => {
     unlock = tier === 0 ? "inscriptions" : tier === 1 ? "annexes" : tier === 2 ? "deep relics" : `${apertureBand(value).name} · Resonance ${tier - 3}`;
   objective.textContent = `${currentObjective(save)} · Aperture ${value}${next ? "/" + next : ""}: ${unlock}`;
 }, 250);
+// Release 523 (dungeon-traps.ts): a pentagram etched in the floor, a cracked lava vent, a dart slit in a wall. Each glows
+// while it warns.
+function drawNewTrap(o, x, y, s, t) {
+  const warn = o.phase === "warning", rest = o.phase === "rest", pulse = .5 + .5 * Math.sin(t * 14);
+  ctx.save(); ctx.lineWidth = 2;
+  if (o.trapType === "sigil") {
+    const r = s * .38; ctx.strokeStyle = warn ? `rgba(230,160,255,${.6 + .4 * pulse})` : rest ? "#5d4a6a" : "#8a6aa8"; ctx.fillStyle = warn ? "#b35cff33" : "#1a12228a";
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke(); ctx.beginPath();
+    for (let i = 0; i <= 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 4 / 5, px = x + Math.cos(a) * r * .9, py = y + Math.sin(a) * r * .9; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); } ctx.stroke();
+  } else if (o.trapType === "lava") {
+    const r = s * .34; ctx.fillStyle = warn ? `rgba(255,${120 + 80 * pulse},40,.75)` : rest ? "#3a1e1488" : "#5a2a1499"; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    ctx.strokeStyle = warn ? "#ffd27a" : "#c4582a"; ctx.beginPath(); ctx.moveTo(x - r * .8, y - r * .2); ctx.lineTo(x - r * .1, y + r * .2); ctx.lineTo(x + r * .3, y - r * .3); ctx.lineTo(x + r * .8, y + r * .1); ctx.moveTo(x - r * .1, y + r * .2); ctx.lineTo(x, y + r * .8); ctx.stroke();
+  } else if (o.trapType === "dart") {
+    const bx = x - (o.dirX || 0) * s * .45, by = y - (o.dirY || 0) * s * .45, along = Math.atan2(o.dirY || 0, o.dirX || 1) + Math.PI / 2;
+    ctx.strokeStyle = warn ? `rgba(255,220,120,${.6 + .4 * pulse})` : "#8c7a5a"; ctx.lineWidth = 3;
+    for (const k of [-1, 0, 1]) { const ox = Math.cos(along) * k * s * .18, oy = Math.sin(along) * k * s * .18; ctx.beginPath(); ctx.moveTo(bx + ox, by + oy); ctx.lineTo(bx + ox + (o.dirX || 0) * s * .12, by + oy + (o.dirY || 0) * s * .12); ctx.stroke(); }
+  }
+  ctx.restore();
+}
 function drawDungeonSystems() {
   const s = Math.round(Math.max(28, Math.min(44, innerWidth / 12))),
     sx = (x) => innerWidth / 2 + (x - game.player.x) * s,
     sy = (y) => innerHeight / 2 + (y - game.player.y) * s;
   ctx.save();
   for (const o of game.map.objects) {
+    if (o.kind === "trap" && o.newTrap) continue; // release 523: drawNewTraps
     if (o.kind === "trap") {
       const active = o.phase === "active",
         warning = o.phase === "warning";
@@ -784,6 +805,7 @@ function drawDungeonSystems() {
       ctx.stroke();
     }
   }
+
   if (
     performance.now() < (game.player.attackUntil || 0) &&
     game.player.meleeAim
@@ -868,7 +890,7 @@ export function combatIndicatorGeometry(game, now = performance.now()) {
         large: (Number(e.scale) || 1) > 1.25,
       });
   for (const o of game.map.objects)
-    if (o.kind === "trap" && dungeonPointDiscovered(game.map,o))
+    if (o.kind === "trap" && !o.newTrap && dungeonPointDiscovered(game.map,o)) // release 523: drawNewTraps draws the new ones
       out.traps.push(
         o.trapType === "fire"
           ? {
@@ -893,12 +915,24 @@ export function combatIndicatorGeometry(game, now = performance.now()) {
     if(dungeonPointDiscovered(game.map,fx))out.effects.push({ kind: "circle", x: fx.x, y: fx.y, radius: fx.radius });
   return out;
 }
+// Release 523: the new traps and the sigil orbs, on the live combat layer.
+function drawNewTraps(s, sx, sy) {
+  if (game.area !== "dungeon") return;
+  const t = performance.now() / 1000;
+  for (const o of game.map.objects) if (o.kind === "trap" && o.newTrap && dungeonPointDiscovered(game.map, o)) drawNewTrap(o, sx(o.x + .5), sy(o.y + .5), s, t);
+  for (const q of game.trapSeeds || []) { // the sigil orbs, landing and spinning
+    const x = sx(q.x), y = sy(q.y), landed = q.t >= DUNGEON_TRAPS.sigil.flight, r = s * (landed ? .22 : .16);
+    ctx.fillStyle = "#c46bff44"; ctx.beginPath(); ctx.arc(x, y, r * 2, 0, 7); ctx.fill();
+    ctx.fillStyle = "#f2d9ff"; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    if (landed) { ctx.strokeStyle = "#d58bff"; ctx.lineWidth = 2; ctx.beginPath(); for (let i = 0; i <= 5; i++) { const a = q.spin + t * 9 + i * Math.PI * 4 / 5, px = x + Math.cos(a) * r * 2.4, py = y + Math.sin(a) * r * 2.4; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); } ctx.stroke(); }
+  }}
 function drawTruthfulCombatGeometry() {
   const s = Math.round(Math.max(28, Math.min(44, innerWidth / 12))),
     sx = (x) => innerWidth / 2 + (x - game.player.x) * s,
     sy = (y) => innerHeight / 2 + (y - game.player.y) * s,
     g = combatIndicatorGeometry(game);
   ctx.save();
+  drawNewTraps(s, sx, sy); // release 523
   for (const q of g.traps) {
     ctx.fillStyle = q.active ? "#a43c2638" : "#17151288";
     ctx.strokeStyle = q.active ? "#ef8158" : "#8c806d";
@@ -1172,7 +1206,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:521,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 521\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:523,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 523\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1184,7 +1218,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:521,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:523,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
