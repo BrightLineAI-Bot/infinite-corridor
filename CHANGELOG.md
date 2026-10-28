@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 549 — **Arc Wave** now turns each of the Blunderbuss's three shots into a crescent wave along the same cone. Before, it fired one wave.
 - Release 547 — **Fire Burst**, a new fire spell: it throws a fan of five cracked cinder shells a short way toward your target. Each bursts into flame where it lands, or on the first foe it meets. It grows with Focus and takes spell glyphs.
 - Release 545 — **a full pack keeps what matters.**
   - When a new piece arrives and the pack is full, the lowest tier goes first, and within a tier the oldest piece goes first. Relic and other high-tier pieces stay, and so do pieces you have upgraded, masterworked or given a socket.

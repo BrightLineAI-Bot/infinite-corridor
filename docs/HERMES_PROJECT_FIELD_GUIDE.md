@@ -2694,6 +2694,17 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 549: three Arc Waves — 2026-10-28
+
+Tim: "for the blunderbuss, instead of shooting a single crescent, it'll shoot three crescent waves... in a cone... they would follow the same path of the blunderbuss's original shots, but they'll just replace the shots with crescents".
+
+**CODE:**
+- game.ts fireSecondary: with Arc Wave held, the main shot becomes a wave first, and then the pellet loop runs as always. Each pellet copies the wave, so all three shots are crescents along the cone.
+- tool-forms.ts: `ARC_WAVE` is per wave now: share 1 (was 2.2 for the single wave) and grow .5 (was .75). Pierce and speed are unchanged.
+- tests/tool-forms-533.test.ts expects three waves; this follows Tim's request.
+
+**BOUNDARY:** Runtime only. Three projectiles per shot, as without the passive.
+
 ## Release 547: Fire Burst — 2026-10-28
 
 Tim: "a spell... fire burst or something, which just launches out a series of fireballs that fly a short distance and explode... look exactly like those [cracked ember shells]" (with a screenshot of a dark shell with a glowing crack).
