@@ -39,7 +39,7 @@ export function drawRangedEffects(ctx,game,width,height) {
   }
   ctx.shadowBlur = 0;
   for (const fx of game.effects) {
-    if (fx.brawler) continue; // release 483: drawn by drawBrawler
+    if (fx.brawler || fx.kind === "golem-punch") continue; // release 483: drawn by drawBrawler; 535: the golem by drawToolForms
     const [x, y] = toScreen(fx);
     ctx.strokeStyle = fx.hostile ? "#e35248cc" : "#b75235aa";
     ctx.lineWidth = 4;
