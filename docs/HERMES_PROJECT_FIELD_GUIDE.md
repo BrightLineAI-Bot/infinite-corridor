@@ -2694,6 +2694,25 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 537: Cluster Shell — 2026-10-28
+
+Tim: "a passive... for the rift bombard, where its first initial explosion... two smaller balls just fly off... a very short distance... and then they explode".
+
+**CODE:**
+- tool-forms.ts: `CLUSTER` (count, angle, speed, life, share, radius).
+- lattice-fields.ts: `TOOL_FORMS["cluster-shell"]`.
+- game.ts:
+  - The projectile `onDetonate` callback calls `clusterShell(shot)` before pushing the blast.
+  - `clusterShell` throws `count` bomblets (`path: "grenade"`, `bomblet: true`) to either side of the shell's path. It only acts on the player's own tool shells, never on hostile shells or on bomblets themselves.
+  - A bomblet bursts when its short life ends, or on the first foe it touches, through the same detonation.
+- combat-visuals.ts draws bomblets as smaller grenades.
+- Fix from the 535 pre-publish review: `drawGolem` used `ctx.roundRect`, which older Safari and Chrome lack. A throw there left the golem's floor clip on the canvas. It now draws with arcs (`rounded`) and restores the context in a `finally`.
+- tests/tool-forms-533.test.ts.
+
+**BOUNDARY:**
+- Runtime projectiles only, with no save state.
+- Each shell adds at most two bomblets, and bomblets never split again, so the projectile count stays bounded.
+
 ## Release 535: the Corridor Golem — 2026-10-28
 
 Tim: "the hammer... summon a golem... dash to the nearest enemy and deliver like 3 blows... if the enemy dies on the first blow... to the next enemy... rises up out of the ground... melts back into the tiles". Of three proposals he chose "the quick golem".

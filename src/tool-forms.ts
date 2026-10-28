@@ -16,8 +16,14 @@
 //   `cooldown` s ago. After `rise` s it dashes to the nearest foe within `range` of it and punches (`share` of the tool's
 //   power, `radius`, a `stun`), up to `punches` blows `gap` s apart, choosing the nearest again whenever its foe falls.
 //   With no foe in reach, or its blows spent, it sinks back into the floor over `sink` s.
-// Pure numbers and drawing; game.ts runs them (fireSecondary, nanoknivesPress, launchKnives, tickKnives, raiseGolem, tickGolem).
+// - Cluster Shell (release 537; Tim: "for the rift bombard... its first initial explosion, two smaller explosions fly off of
+//   it... a very short distance... and then they explode"): when a Bombard shell bursts, `count` bomblets fly off `angle`
+//   radians to either side of its path at `speed` for `life` s (about two tiles), then burst for `share` of the shell's
+//   damage in `radius` × its blast. Bomblets do not split again.
+// Pure numbers and drawing; game.ts runs them (fireSecondary, nanoknivesPress, launchKnives, tickKnives, raiseGolem, tickGolem,
+// clusterShell).
 export const GOLEM = { share: .9, punches: 3, gap: .38, rise: .35, sink: .4, range: 4, radius: .9, stun: .25, cooldown: 6, reach: .7 };
+export const CLUSTER = { count: 2, angle: .9, speed: 7, life: .28, share: .45, radius: .55 };
 export const ARC_WAVE = { share: 2.2, grow: .75, pierce: 12, speed: 11 };
 export const NANOKNIVES = { count: 3, share: .5, hold: 4, cooldown: .8, range: 9, speed: 13, life: 1.4, seekTurn: 9, orbitRadius: .95, spin: 2.6 };
 
@@ -33,18 +39,20 @@ function dagger(ctx, x, y, a, s) {
   ctx.fillStyle = "#ffd23f"; ctx.beginPath(); ctx.arc(x - c * L * .45, y - n * L * .45, s * .05, 0, 7); ctx.fill();
 }
 
+// A rounded rectangle drawn with arcs, so it works where ctx.roundRect is missing (older Safari and Chrome).
+function rounded(ctx, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
 // The golem: a squat stone figure with yellow sigil eyes, rising out of the floor and sinking back.
 function drawGolem(ctx, game, toScreen, s) {
   const g = game.golem, now = game.lastUpdateNow || 0; if (!g || now < g.start) return;
   const up = g.sinkAt ? Math.max(0, 1 - (now - g.sinkAt) / (GOLEM.sink * 1000)) : Math.min(1, (now - g.start) / (GOLEM.rise * 1000)), [x, y] = toScreen(g), H = s * 1.05 * up, W = s * .75, f = g.face || 1;
   ctx.fillStyle = "#00000033"; ctx.beginPath(); ctx.ellipse(x, y + s * .3, W * .7, s * .16, 0, 0, 7); ctx.fill();
-  ctx.save(); ctx.beginPath(); ctx.rect(x - s, y + s * .32 - s * 1.6, s * 2, s * 1.6); ctx.clip(); // below the floor line it is still in the ground
+  ctx.save(); try { ctx.beginPath(); ctx.rect(x - s, y + s * .32 - s * 1.6, s * 2, s * 1.6); ctx.clip(); // below the floor line it is still in the ground
   const top = y + s * .32 - H; ctx.fillStyle = "#857a68"; ctx.strokeStyle = "#3f382e"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(x - W / 2, top + s * .22, W, H, s * .12); ctx.fill(); ctx.stroke(); // body
-  ctx.beginPath(); ctx.roundRect(x - W * .3, top, W * .6, s * .3, s * .08); ctx.fill(); ctx.stroke(); // head
+  ctx.beginPath(); rounded(ctx, x - W / 2, top + s * .22, W, H, s * .12); ctx.fill(); ctx.stroke(); // body
+  ctx.beginPath(); rounded(ctx, x - W * .3, top, W * .6, s * .3, s * .08); ctx.fill(); ctx.stroke(); // head
   const punching = now - (g.punchAt || -1e9) < 160, fx = x + f * (W / 2 + (punching ? s * .32 : s * .08)); ctx.beginPath(); ctx.arc(fx, top + s * .5, s * .17, 0, 7); ctx.fill(); ctx.stroke(); // the fist
   ctx.fillStyle = "#ffd23f"; ctx.fillRect(x - W * .18, top + s * .1, s * .07, s * .06); ctx.fillRect(x + W * .18 - s * .07, top + s * .1, s * .07, s * .06); // sigil eyes
-  ctx.restore();
+  } finally { ctx.restore(); } // the clip never outlives the golem, whatever happens while drawing it
 }
 
 export function drawToolForms(ctx, game, toScreen, s, t) {
