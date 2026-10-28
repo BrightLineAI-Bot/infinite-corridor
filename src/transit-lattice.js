@@ -10,8 +10,8 @@
 // per kind, and what is set: `passives` (a constellation node id for its primary form, `id:alt` for its secondary) and
 // `echoes` (Echo ids). What a passive or Echo set here does is read by constellation.ts (nodeOn/altOn) and echoes.ts
 // (activeEchoes); setting one is done there, so this module stays free of both. Balance as data.
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r531-a8429f5bfd33";
-import { piecesNeeded } from "./far-array.js?v=r531-a8429f5bfd33";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r537-da8aeff88eba";
+import { piecesNeeded } from "./far-array.js?v=r537-da8aeff88eba";
 
 export const TRANSIT_LATTICE = { openTier: 13, openListeners: 1, base: { passive: 2, echo: 1 }, extra: { passive: 3, echo: 3 }, costs: [4, 4, 5, 5, 6, 6] };
 export const LATTICE_LORE = "The Transit Lattice bends the air between eventualities. Each Transit Coordinate is the place of another Lattice somewhere in the Corridor, in a history where a different passive was learned; drawn in, it merges with yours, though it was always the same Lattice. So passives from other possibilities can hold in you at once.";

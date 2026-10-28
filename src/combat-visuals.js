@@ -1,7 +1,8 @@
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r531-a8429f5bfd33";
-import { SHADOW_CLONE } from "./late-spells.js?v=r531-a8429f5bfd33";
-import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r531-a8429f5bfd33";
-import { drawOrbit } from "./orbit-volley.js?v=r531-a8429f5bfd33";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r537-da8aeff88eba";
+import { SHADOW_CLONE } from "./late-spells.js?v=r537-da8aeff88eba";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r537-da8aeff88eba";
+import { drawOrbit } from "./orbit-volley.js?v=r537-da8aeff88eba";
+import { drawToolForms } from "./tool-forms.js?v=r537-da8aeff88eba";
 export function drawRangedEffects(ctx,game,width,height) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [
@@ -14,6 +15,7 @@ export function drawRangedEffects(ctx,game,width,height) {
   const groups = new Map();
   for (const p of game.projectiles) {
     if(!dungeonPointDiscovered(game.map,p))continue;
+    if(p.knife||p.arcWave)continue; // release 533: drawn by drawToolForms
     const color = p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.damageType === "magic" ? "#9fe8db" : "#d6b276"; // release 321: the drone's rockets burn orange
     let list = groups.get(color); if (!list) groups.set(color, list = []); list.push(p);
   }
@@ -31,13 +33,13 @@ export function drawRangedEffects(ctx,game,width,height) {
         ctx.lineTo(x + Math.cos(a + 2.35) * 7, y + Math.sin(a + 2.35) * 7);
         ctx.lineTo(x + Math.cos(a - 2.35) * 7, y + Math.sin(a - 2.35) * 7);
         ctx.closePath();
-      } else if(p.path==="grenade"){ctx.moveTo(x+7,y);ctx.arc(x,y,7,0,7);ctx.moveTo(x,y-7);ctx.lineTo(x+4,y-11)}else if(p.path==="arc"){const a=Math.atan2(p.dy,p.dx);ctx.moveTo(x+Math.cos(a)*8,y+Math.sin(a)*8);ctx.ellipse(x,y,8,3,a,0,7)}else{const r=(p.damageType === "magic" ? 5 : 3)*(p.scale||1);ctx.moveTo(x+r,y);ctx.arc(x, y, r, 0, 7)}
+      } else if(p.path==="grenade"){const gr=p.bomblet?4:7;/* release 537: Cluster Shell bomblets */ctx.moveTo(x+gr,y);ctx.arc(x,y,gr,0,7);ctx.moveTo(x,y-gr);ctx.lineTo(x+gr*.57,y-gr*1.57)}else if(p.path==="arc"){const a=Math.atan2(p.dy,p.dx);ctx.moveTo(x+Math.cos(a)*8,y+Math.sin(a)*8);ctx.ellipse(x,y,8,3,a,0,7)}else{const r=(p.damageType === "magic" ? 5 : 3)*(p.scale||1);ctx.moveTo(x+r,y);ctx.arc(x, y, r, 0, 7)}
     }
     ctx.fill();
   }
   ctx.shadowBlur = 0;
   for (const fx of game.effects) {
-    if (fx.brawler) continue; // release 483: drawn by drawBrawler
+    if (fx.brawler || fx.kind === "golem-punch") continue; // release 483: drawn by drawBrawler; 535: the golem by drawToolForms
     const [x, y] = toScreen(fx);
     ctx.strokeStyle = fx.hostile ? "#e35248cc" : "#b75235aa";
     ctx.lineWidth = 4;
@@ -55,6 +57,7 @@ export function drawRangedEffects(ctx,game,width,height) {
   drawBrawler(ctx, game, toScreen, s, t); // release 483: Hammerfall, Great Sweep, Iron Fist
   drawBrawlerAuras(ctx, game, toScreen, s, t); // release 485: Aegis, Shadow Boxing
   drawOrbit(ctx, game, toScreen, s, t); // release 487: Orbit Volley
+  drawToolForms(ctx, game, toScreen, s, t); // release 533: Nanoknives and the Arc Wave
   for (const fx of game.effects) {
     if (fx.kind !== "gravity-well" && fx.kind !== "stillpoint") continue;
     const [x, y] = toScreen(fx), R = fx.radius * s;

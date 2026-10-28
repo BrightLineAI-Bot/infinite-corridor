@@ -7,7 +7,7 @@
 //
 // Everything balance-related is data in GLYPHS and RESONANCES. The Game calls hostLoadout() when it attacks and
 // glyphHit() after each hit lands; world-side effects go through a small adapter so this file stays testable.
-import { hashSeed } from "./random.js?v=r531-a8429f5bfd33";
+import { hashSeed } from "./random.js?v=r537-da8aeff88eba";
 
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];
@@ -101,7 +101,7 @@ export const RESONANCES = {
 
 // Triads (release 529; Tim, 2026-10-28: "three part resonances, where if you have three different glyphs, you can get
 // resonances for those as well... spells and skills... armor can resonate with three slot resonances, so if you want your
-// armor to resonate, you have to resonate with three glyphs"). Three different glyphs in one host. Release r531-a8429f5bfd33 (Tim: "don't
+// armor to resonate, you have to resonate with three glyphs"). Three different glyphs in one host. Release 531 (Tim: "don't
 // add a third socket for spells, only some items... three sockets, get the three socket resonance"): spells and skills keep
 // two sockets, so triads come from three-socket items (relic tier or a smith socket). In a weapon or tool (with a skill's
 // infusing glyphs) a triad changes hits (glyphHit); in armor

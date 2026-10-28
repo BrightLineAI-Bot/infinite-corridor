@@ -7,7 +7,7 @@
 // least FIELD.minLife s: Ember Ring, Grave Sun, Gravity Well, Stillpoint, the perfect Orbit Volley's vortex) and you are in
 // it while your centre is inside its radius. "A spell running" is any of your spells still in play: a field or a burst,
 // Aegis, Shadow Boxing, your Shadow Clone, or Orbit Volley's gathering orbs. Pure data and rules; game.ts applies them.
-import { latticePassives } from "./transit-lattice.js?v=r531-a8429f5bfd33";
+import { latticePassives } from "./transit-lattice.js?v=r537-da8aeff88eba";
 
 export const FIELD = { minLife: 1 };
 export const FIELD_PASSIVES = {
@@ -17,9 +17,18 @@ export const FIELD_PASSIVES = {
   spellblade: { name: "Spellblade", text: "While one of your spells is running, melee strikes (the Iron Fists too) deal 20% more and reach 0.4 tiles farther.", damage: .2, reach: .4 },
   "drift-field": { name: "Drift Field", text: "A dodge drags your nearest lingering spell (within 6 tiles) along: it settles where you land.", reach: 6 },
 };
+// Release 533 (tool-forms.ts): tool forms, Lattice-only passives that change how a tool works. Held like the field passives
+// (keys `field:<id>`), listed apart from them.
+export const TOOL_FORMS = {
+  "arc-wave": { name: "Arc Wave", text: "The Blunderbuss fires one wide wave instead of its three-shot cone: it sweeps through every foe in its path. Still physical (Might)." },
+  "cluster-shell": { name: "Cluster Shell", text: "When a Rift Bombard shell bursts, two bomblets fly off a short way and burst again. Still physical (Might)." }, // release 537
+  "corridor-golem": { name: "Corridor Golem", text: "A Hammerfall blow raises a stone golem where it lands: it dashes to the nearest foe and punches up to three times, turning to the next when one falls, then sinks back into the floor. One at a time, at most every 6 s. Still physical (Might)." }, // release 535
+  nanoknives: { name: "Nanoknives", text: "The Great Sweep raises three nanobot daggers that circle you. Press the tool again to throw them at your foe (they home in) and raise a fresh set. Still physical (Might)." },
+};
 export const FIELD_KEYS = Object.keys(FIELD_PASSIVES).map((id) => `field:${id}`);
+export const TOOL_FORM_KEYS = Object.keys(TOOL_FORMS).map((id) => `field:${id}`);
 export function fieldForm(key) {
-  const [kind, id] = String(key).split(":"), f = kind === "field" && FIELD_PASSIVES[id];
+  const [kind, id] = String(key).split(":"), f = kind === "field" && (FIELD_PASSIVES[id] || TOOL_FORMS[id]);
   return f ? { id: key, field: true, alt: false, name: f.name, text: f.text } : null;
 }
 export const fieldOn = (save, id) => latticePassives(save).includes(`field:${id}`);
