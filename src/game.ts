@@ -334,20 +334,28 @@ export function salvageInventoryItems(save, items) {
   return { count, iron };
 }
 const isBrawlerGear = (item) => [...BRAWLER_LOOT.primary, ...BRAWLER_LOOT.secondary].some(([n, p]) => n === item?.name && p === item?.property);
-export function storeInventoryItem(save, item) {
+// Release 545 (Tim: "first in first out... ranks it by [tier] first. So the most powerful ones don't get salvaged... leave the
+// relic and higher quality... if they're all the same tier... salvage the first one that you got"): how much a full pack
+// wants to keep a piece: its tier, then whether you have worked on it (upgraded, masterworked, an added socket). Within the
+// same keep, the oldest (lowest index: the pack only appends) goes first.
+const packKeep = (q) => ITEM_TIERS.indexOf(itemTier(q)) * 2 + ((Number(q?.upgradeRank) || 0) > 0 || q?.masterwork || q?.extraSockets ? 1 : 0);
+export function packVictim(save, spareBrawler = false) {
+  let at = -1;
+  for (let i = 0; i < save.inventory.length; i++) if ((!spareBrawler || !isBrawlerGear(save.inventory[i])) && (at < 0 || packKeep(save.inventory[i]) < packKeep(save.inventory[at]))) at = i;
+  return at < 0 ? 0 : at;
+}
+// `keep` (release 545): the piece is kept whatever it is (a purchase), and the pack's least-kept, oldest piece makes room.
+export function storeInventoryItem(save, item, keep = false) {
   save.inventory ||= [];
   if (save.inventory.length < EQUIPMENT_CAPACITY) {
     save.inventory.push(item);
     return { stored: true, salvaged: null };
   }
   // Release 513: a full pack never salvages brawler gear you do not have (Iron Fists, Hammerfall, Great Sweep): it takes the
-  // place of the weakest other piece instead.
+  // place of another piece instead.
   const fresh = isBrawlerGear(item) && !save.inventory.some((q) => q?.name === item.name) && !Object.values(save.equipment || {}).some((q) => q?.name === item.name);
-  let weakest = -1;
-  for (let i = 0; i < save.inventory.length; i++)
-    if ((!fresh || !isBrawlerGear(save.inventory[i])) && (weakest < 0 || itemScore(save.inventory[i]) < itemScore(save.inventory[weakest]))) weakest = i;
-  if (weakest < 0) weakest = 0;
-  if (!fresh && itemScore(item) <= itemScore(save.inventory[weakest])) {
+  const weakest = packVictim(save, fresh);
+  if (!fresh && !keep && packKeep(item) < packKeep(save.inventory[weakest])) { // release 545: a drop below everything you keep is salvaged; at the same keep the oldest goes instead
     const iron = Math.max(1, ITEM_TIERS.indexOf(itemTier(item)) + 1);
     save.materials.cinderIron = (save.materials.cinderIron || 0) + iron;
     save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
@@ -1243,12 +1251,10 @@ export function buyFromVela(save, id, quantity = 1) {
   const item = shop.equipment[index],
     price = 12 + item.power * 4;
   if (save.currency < price) return { ok: false, message: "Not enough marks." };
-  if (save.inventory.length >= EQUIPMENT_CAPACITY)
-    return { ok: false, message: "Pack is full." };
   save.currency -= price;
-  save.inventory.push({ ...item });
+  const kept = storeInventoryItem(save, { ...item }, true); // release 545: a full pack makes room (its least-kept, oldest piece) rather than refusing
   shop.purchased[id] = true;
-  return { ok: true, quantity: 1, message: `Purchased ${item.name}.` };
+  return { ok: true, quantity: 1, message: `Purchased ${item.name}.${kept.salvaged ? ` Your pack was full: ${kept.salvaged.name} was salvaged for ${kept.iron} cinder iron.` : ""}` };
 }
 export function vendorShop(save, vendorId = "vendor-vela") {
   if (vendorId === "vendor-vela") return velaShop(save);
@@ -1316,12 +1322,10 @@ export function buyFromVendor(save, vendorId, id, quantity = 1) {
     return { ok: false, message: "Out of stock." };
   const price = 12 + item.power * 4;
   if (save.currency < price) return { ok: false, message: "Not enough marks." };
-  if (save.inventory.length >= EQUIPMENT_CAPACITY)
-    return { ok: false, message: "Pack is full." };
   save.currency -= price;
-  save.inventory.push({ ...item });
+  const kept = storeInventoryItem(save, { ...item }, true); // release 545: a full pack makes room (its least-kept, oldest piece) rather than refusing
   shop.purchased[id] = true;
-  return { ok: true, quantity: 1, message: `Purchased ${item.name}.` };
+  return { ok: true, quantity: 1, message: `Purchased ${item.name}.${kept.salvaged ? ` Your pack was full: ${kept.salvaged.name} was salvaged for ${kept.iron} cinder iron.` : ""}` };
 }
 export function actionReadiness(game, now = 0) {
   const attack = Math.max(0, (game.player.attackReadyAt || 0) - now),

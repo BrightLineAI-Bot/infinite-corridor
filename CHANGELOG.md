@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 545 — **a full pack keeps what matters.**
+  - When a new piece arrives and the pack is full, the lowest tier goes first, and within a tier the oldest piece goes first. Relic and other high-tier pieces stay, and so do pieces you have upgraded, masterworked or given a socket.
+  - Buying from a trader with a full pack now keeps the purchase and salvages the least-kept, oldest piece. Before, the purchase was refused.
 - Release 543:
   - **In the big robot**, the Wayfarer now rises with it when it boosts, so their legs no longer hang below it.
   - **The sling** (Pack → Gear) holds up to ten pieces of gear kept out of the pack. They take no pack space, Select all and salvage never reach them, and they can't be sold. Use “To sling” on a piece, then “Equip” or “To pack” from the sling.
