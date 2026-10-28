@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 553 — **presets swap your weapon and tool only.** Armor and your charm stay on when you switch. Any armor a preset was holding for you comes back to your pack.
 - Release 551 — **The Surveyor's Chain, part two.**
   - With all twelve of Abel Corwin's links, the crossings where they lay join into one brass chain on the Atlas. The chain runs on to the edge of the Far Sleep.
   - There Corwin stands as a statue, measuring himself. His last words close the thread in the Journal.

@@ -2694,6 +2694,22 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 553: presets keep weapon and tool only — 2026-10-28
+
+Tim: "armor shouldn't swap with the preset and should just be tools. Spells, skills and weapons... armor stays the same, like... the Quiet Compass".
+
+**CODE:**
+- build-presets.ts:
+  - `PRESET_GEAR_SLOTS` is `primary` and `secondary` (541 also had armor).
+  - `ensurePresetGear` moves any held armor into the pack before normalizing, in `freshSave` and `migrateSave`, so release 545 saves lose nothing.
+  - The swap message names only weapon and tool.
+- main.ts: the Gear tab's note lists only weapon and tool.
+- tests/preset-gear-541.test.ts: its armor test is replaced by this behaviour, at Tim's word, and a test covers the returning armor.
+
+**BOUNDARY:**
+- `presetGear` loses its armor key; the piece moves to `inventory`.
+- The pack can briefly sit above its capacity if it was full. Nothing is salvaged for it.
+
 ## Release 551: the Surveyor's Chain, part two — 2026-10-28
 
 The daily narrative session (Tim's routine), docs/narrative-bible.md section 7, step 6. Section 6, thread 2 reads: "With all twelve links, the last dungeon's map turns out to be the overworld. The thread ends at his statue". Section 4 reads: "At the end he is found as a statue at the edge of the Far Sleep, measuring himself".

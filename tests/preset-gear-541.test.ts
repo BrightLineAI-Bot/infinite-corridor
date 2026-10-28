@@ -11,17 +11,25 @@ const piece = (slot, name) => ({ id: `${slot}-${name}`, name, slot, power: 5, pr
 const journey = () => { const s = migrateSave(freshSave()); s.perception.aperture = 3255; s.equipment.primary = piece('primary', 'Verge Cleaver'); s.equipment.secondary = piece('secondary', 'Lumen Spindle'); s.equipment.armor = piece('armor', 'Kiln Mantle'); s.inventory = [piece('secondary', 'Rift Bombard'), piece('armor', 'Glassweave Coat')]; return s; };
 
 test('fresh and old saves gain two empty preset gear sets', () => {
-  assert.deepEqual(freshSave().presetGear, [{ primary: null, secondary: null, armor: null }, { primary: null, secondary: null, armor: null }]);
+  assert.deepEqual(freshSave().presetGear, [{ primary: null, secondary: null }, { primary: null, secondary: null }]); // release 553: no armor
   const old = freshSave(); delete old.presetGear; assert.equal(migrateSave(JSON.parse(JSON.stringify(old))).presetGear.length, 2);
   const odd = { presetGear: [{ primary: 'junk', secondary: { slot: 'armor', name: 'x' } }] }; ensurePresetGear(odd); assert.equal(odd.presetGear[0].primary, null); assert.equal(odd.presetGear[0].secondary, null);
 });
 
-test('tool and armor per preset: switching swaps them, and nothing goes to the pack', () => {
+// Release 553 (Tim: "armor shouldn't swap with the preset and should just be tools"): was "tool and armor per preset".
+test('the tool is per preset; armor stays with you and is not kept for the other preset', () => {
   const s = journey(); swapPreset(s); // preset 2
   equipInventoryItem(s, s.inventory.findIndex((q) => q.name === 'Rift Bombard')); equipInventoryItem(s, s.inventory.findIndex((q) => q.name === 'Glassweave Coat'));
-  assert.equal(s.inventory.length, 0, 'the Spindle and the Mantle are kept for preset 1, not left in the pack to sell or salvage');
-  swapPreset(s); assert.equal(s.equipment.secondary.name, 'Lumen Spindle'); assert.equal(s.equipment.armor.name, 'Kiln Mantle'); assert.equal(s.equipment.primary.name, 'Verge Cleaver');
-  swapPreset(s); assert.equal(s.equipment.secondary.name, 'Rift Bombard'); assert.equal(s.equipment.armor.name, 'Glassweave Coat'); assert.equal(s.inventory.length, 0);
+  assert.deepEqual(s.inventory.map((q) => q.name), ['Kiln Mantle'], 'the Spindle is kept for preset 1; the Mantle goes to the pack as usual');
+  swapPreset(s); assert.equal(s.equipment.secondary.name, 'Lumen Spindle'); assert.equal(s.equipment.armor.name, 'Glassweave Coat', 'armor stays'); assert.equal(s.equipment.primary.name, 'Verge Cleaver');
+  swapPreset(s); assert.equal(s.equipment.secondary.name, 'Rift Bombard'); assert.equal(s.equipment.armor.name, 'Glassweave Coat');
+});
+
+test('armor a preset was holding (release 541) comes back to the pack, never lost', () => {
+  const s = freshSave(); s.inventory = []; s.presetGear = [{ primary: null, secondary: null, armor: piece('armor', 'Kiln Mantle') }, { primary: piece('primary', 'Verge Cleaver'), secondary: null, armor: null }];
+  const back = migrateSave(JSON.parse(JSON.stringify(s)));
+  assert.ok(back.inventory.some((q) => q.name === 'Kiln Mantle')); assert.equal(back.presetGear[1].primary.name, 'Verge Cleaver'); assert.equal('armor' in back.presetGear[0], false);
+  ensurePresetGear(back); assert.equal(back.inventory.filter((q) => q.name === 'Kiln Mantle').length, 1, 'only once');
 });
 
 test('a preset that already holds its own piece: swapping in another sends the replaced one to the pack as usual', () => {

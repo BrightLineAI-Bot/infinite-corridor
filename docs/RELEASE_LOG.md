@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**553**
+**555**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 551 | Claude | `claude/dreamy-rubin-yn6q2p` | Daily narrative: the Surveyor's Chain, part two (the chain on the Atlas, Corwin's statue) | Building. |
+| 553 | Claude | `claude/dreamy-rubin-yn6q2p` | Presets swap weapon and tool only; armor stays (held armor returns to the pack) | Building. |
+| 551 | Claude | PR #259 | Daily narrative: the Surveyor's Chain, part two (the chain on the Atlas, Corwin's statue) | Merged (`r551-b7d63e350ada`). Not published. |
 | 549 | Claude | PR #258 | Arc Wave: each of the Blunderbuss's three shots becomes a crescent wave | Merged (`r549-393038eb248c`). Not published. |
 | 547 | Claude | PR #257 | Fire Burst: a fire spell throwing a fan of cinder shells that burst in flame | Merged (`r547-1d4b1bbef48e`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
