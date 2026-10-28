@@ -2694,6 +2694,46 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 541: each preset keeps its own gear — 2026-10-28
+
+Tim: "when you set an item or a tool... in your preset, it does not become deselected or unequipped... It's like your character just has a second item slot... a second weapon slot or a second tool slot... you don't have the ability to sell or lose or salvage the other items that are in your other preset".
+
+**CODE:**
+- build-presets.ts:
+  - `PRESET_GEAR_SLOTS` (primary, secondary, armor).
+  - `ensurePresetGear` normalizes `save.presetGear` to two `{ primary, secondary, armor }` sets of items or null. It is called in `freshSave` and `migrateSave`. Pieces go through `normalizeItemUpgrade`, and a junk or wrong-slot entry becomes null.
+  - `stashForOtherPreset`: once presets are in use (any preset has a `build`, which happens on the first switch), equipping over a piece the other preset shares (its held slot is null) puts the old piece in that held slot instead of the pack.
+  - `swapPreset` swaps in each slot the target preset holds. What was equipped goes into the leaving preset's held slot, and the message names what changed.
+- game.ts and main.ts: `equipInventoryItem` and `equipFromInventory` call `stashForOtherPreset`. Both preset switches (the HUD button and the Arcanum) call `refreshDerivedStats`, because armor changes the maxima.
+- main.ts: the Gear tab names what the other preset keeps.
+- Tests:
+  - tests/preset-gear-541.test.ts (new).
+  - tests/brawler-tools-493.test.ts: its 527 test, "the gear stays as it is", is replaced by the 541 behaviour Tim asked for.
+
+**BOUNDARY:**
+- `presetGear` is additive at schema 14, and held pieces round-trip through saves.
+- Gear tags and `applyGear` are left as they were.
+- Before the first preset switch, equipping works exactly as before.
+- The charm is not per preset.
+
+Also in 541. Tim: "I'm not seeing the option to set a listener town as my home... in the atlas"; "I don't see a forge master in this town... a pretty small island... put the smithy inside one of those buildings".
+
+**CODE:**
+- game.ts:
+  - `townIndoorSpot()` returns a floor tile inside the town's own huts (`hamlet-rx-ry-*` buildings, `*Interior` tiles). It skips tiles next to a door and tiles within 1.5 of anyone, and picks in building order.
+  - `raiseMouthTown` places the smith there first, with `townSpot` as the fallback.
+  - `raiseTownAmenities` adds the smith to every Listener town that lacks one, Mouth or not, indoors first. Its Viewport, Keeper and Cook fall back indoors when `townSpot` finds no open ground.
+- main.ts:
+  - The Atlas home button now targets the first of three that is a home candidate other than the current home: the tapped section, the selected Wayglass, then the section you stand in. Before, a selected Wayglass always won, so a tapped town never showed the button.
+  - A disabled button says "light its Wayglass first" in its label, not only in a tooltip.
+  - `#mapTowns` lists the Listener towns with coordinates, which one is home, and which have an unlit Wayglass.
+- tests/preset-gear-541.test.ts: the island smith.
+
+**BOUNDARY:**
+- No save change: amenities are map objects.
+- A smith already standing outdoors stays where it is.
+- Listener towns rise on the Mouth's section, and Mouths lie within 62 sections of the origin on each axis. A hamlet beyond that is an ordinary hamlet and cannot be home.
+
 ## Release 539: the golem's cooldown, Nanoknives that fire themselves, wider Cluster Shells — 2026-10-28
 
 Tim:

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 541 — **each preset keeps its own gear.**
+  - Preset 1 and preset 2 each have their own weapon, tool and armor, like a second set of slots. Switching presets swaps them in and out.
+  - The other preset's pieces are kept out of your pack, so they can't be sold, salvaged or lost.
+  - A preset shares your gear until you equip something different in it. The piece you replace then stays with the other preset.
+  - The Gear tab shows what the other preset is keeping.
+  - **Every Listener town has its smith**, inside one of the town's buildings, so a town on a small island no longer goes without. The Viewport, Keeper and Cook move indoors too when there is no open ground.
+  - **Atlas:** "Make … my home" now follows the town you tapped on the map, or the one you stand in; before, the Wayglass picked in the list hid it. An unlit town says "light its Wayglass first" on the button, and the Atlas lists your Listener towns with their coordinates.
 - Release 539 — the **Corridor Golem**'s 6-second cooldown now shortens with your tool cooldown: Swift and other glyphs in the hammer, armor attack speed, and Wellspring Ground.
   - **Nanoknives** throw themselves at any foe within 6 tiles a moment after rising, and with no foe near they circle until you throw them. Pressing the tool throws them early; pressing it after they have flown raises a fresh set.
   - **Cluster Shell** bomblets fly to opposite ends of a line through the first burst, at a different angle each shell, so each small blast's edge meets the centre of the first burst.

@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { Game, BRAWLER_GEAR } from '../src/game.ts';
+import { Game, BRAWLER_GEAR, equipInventoryItem } from '../src/game.ts';
 import { createCombatant } from '../src/combat.ts';
 import { SPELLS, rangedWeapon } from '../src/items.ts';
 import { CASTABLES, ensureSlots } from '../src/spell-slots.ts';
@@ -48,15 +48,20 @@ test('Shadow Boxing works with the Iron Fists: a longer rush, harder punches tha
   assert.ok(box.g.player.x > 14, `boxing rushes farther (${box.g.player.x})`); assert.ok(box.g.enemies[0].hp < 50000); assert.ok(box.g.player.hp > 50, 'and heals');
 });
 
-test('release 527: switching presets leaves the equipped weapon, tool and armor equipped (was: release 493 swapped them)', () => {
+// Release 541 (Tim: "it's like your character just has a second weapon slot... you don't have the ability to sell or lose
+// or salvage the other items that are in your other preset"): replaces release 527's "the gear stays as it is" (which had
+// replaced release 493's swap through the pack). Each preset keeps its own pieces, out of the pack.
+test('release 541: each preset keeps its own weapon; the other preset\'s piece is held out of the pack', () => {
   const s = migrateSave(freshSave()); s.perception.aperture = 3255;
   s.equipment.primary = gear('Iron Fists'); s.equipment.secondary = gear('Hammerfall'); s.inventory = [gear('Great Sweep'), { id: 'primary-verge-cleaver', name: 'Verge Cleaver', slot: 'primary', power: 5 }];
-  swapPreset(s); // to preset 2
-  const i = s.inventory.findIndex((q) => q.name === 'Verge Cleaver'); const prior = s.equipment.primary; s.equipment.primary = s.inventory.splice(i, 1)[0]; s.inventory.push(prior);
-  const r = swapPreset(s); // back to preset 1: the gear stays as it is
-  assert.equal(s.equipment.primary.name, 'Verge Cleaver'); assert.equal(s.equipment.secondary.name, 'Hammerfall'); assert.match(r.message, /stay equipped/);
-  swapPreset(s); assert.equal(s.equipment.primary.name, 'Verge Cleaver');
-  const back = migrateSave(JSON.parse(JSON.stringify(s))); assert.ok(back.equipment.primary);
+  swapPreset(s); // to preset 2: it shares the gear until you change it
+  assert.equal(s.equipment.primary.name, 'Iron Fists');
+  equipInventoryItem(s, s.inventory.findIndex((q) => q.name === 'Verge Cleaver')); // preset 2 takes the Cleaver
+  assert.equal(s.presetGear[0].primary.name, 'Iron Fists', 'kept for preset 1'); assert.ok(!s.inventory.some((q) => q.name === 'Iron Fists'), 'not in the pack');
+  const r = swapPreset(s); // back to preset 1
+  assert.equal(s.equipment.primary.name, 'Iron Fists'); assert.equal(s.equipment.secondary.name, 'Hammerfall'); assert.equal(s.presetGear[1].primary.name, 'Verge Cleaver'); assert.match(r.message, /weapon/);
+  swapPreset(s); assert.equal(s.equipment.primary.name, 'Verge Cleaver'); assert.equal(s.presetGear[0].primary.name, 'Iron Fists');
+  const back = migrateSave(JSON.parse(JSON.stringify(s))); assert.equal(back.presetGear[0].primary.name, 'Iron Fists'); assert.equal(back.equipment.primary.name, 'Verge Cleaver');
 });
 
 test('release 495: Shadow Boxing works with Hammerfall and Great Sweep too', () => {
