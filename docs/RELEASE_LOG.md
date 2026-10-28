@@ -13,23 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**527**
+**529**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 525 | Claude | `claude/dreamy-rubin-yn6q2p` | Traps hit for a share of maximum health; the pitfall trap (trap version 2) | Building. |
-| 523 | Claude | PR #245 | New dungeon traps: sigil (orbs that fire pentagram stars), lava vent, dart slit | Merged (`r523-dc070ec1147a`). Not published. |
-| 521 | Claude | PR #244 | Fewer save stutters: the localStorage mirror written at most once a minute | Merged (`r521-6e1f2ceeb0b6`). Not published. |
-| 519 | Claude | PR #243 | Every spell and skill button drains gold: quick spells, Orbit Volley's gathering, a flash for an instant Rift Step | Merged (`r519-fb1e7561568b`). Not published. |
-| 517 | Claude | PR #242 | Spell buttons show a lasting spell's time left (Shadow Boxing, Aegis, Shadow Clone, fields) | Merged (`r517-e3899fbd72e2`). Not published. |
+| 527 | Claude | `claude/dreamy-rubin-yn6q2p` | Resonance gift for journeys under way; presets keep gear equipped; only world beasts announced in crossings; red crumbling floor; the vortex trap | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 525 | `r525-5ba50cb08225` | 2026-10-28 | With 517–523: spell buttons drain gold (PR #242, #243), the save mirror once a minute (#244), sigil, lava and dart traps (#245), harder traps and the pitfall (#246). The pre-publish Fable review (515→525) found no blockers. |
 | 515 | `r515-bf3734f5bbc0` | 2026-10-28 | Five Lattice field passives: Sanctum, Wellspring Ground, Charged Air, Spellblade, Drift Field (PR #241). The pre-publish Fable review (513→515) found no blockers. |
 | 513 | `r513-e721fa71fa99` | 2026-10-27 | More brawler gear in drops; a full Pack keeps brawler gear you do not have (PR #240). The pre-publish Fable review (511→513) found no blockers. |
 | 511 | `r511-87890decf80f` | 2026-10-27 | With 507–509: the submersible button, the robot in water, Echo hammers and a third tool shot (PR #237); the robot in the Far Sleep's star-voids (#238); Sleeper's Hall walls stay walls (#239). The pre-publish Fable review (505→509) found that hall-wall blocker, fixed in 511; the re-review (509→511) found no blockers. |

@@ -20,14 +20,20 @@ import { hashSeed } from "./random.ts";
 // at least `share` of the Wayfarer's maximum health (the old fire, spike and gas traps too: TRAP_DAMAGE_SHARE), and version
 // 2 adds the pit. Crossings stamped with version 1 keep their three kinds and placement.
 export const DUNGEON_TRAPS = {
-  version: 2, count: [2, 4], minFromEntry: 6, spacing: 4,
+  version: 3, count: [2, 4], minFromEntry: 6, spacing: 4,
   sigil: { radius: .8, warn: .6, rest: 4.5, seeds: 5, ring: 2.4, flight: .45, spin: 1, points: 5, speed: 4.6, life: 1.7, base: 5, perLevel: .35, share: .05 },
   lava: { radius: .7, warn: .55, rest: 3.5, blast: 1.35, blobs: 4, reach: 3.2, speed: 6, base: 8, perLevel: .6, blobShare: .7, share: .14 },
   dart: { range: 8, side: .6, warn: .35, rest: 2.6, darts: 3, gap: .16, speed: 10, life: 1.1, base: 5, perLevel: .4, share: .07 },
   pit: { radius: .7, warn: 2, open: 3, rest: 3, size: .85 },
+  // Release 527 (Tim: "traps that... pull you... if you trigger the trap [and] stay in it for too long... it'll pull you
+  // into... an explosion... one of those grenade kind of... explosion things where it explodes all over"): a rune ring of
+  // `radius`. Stand in it for `hold` s and it drags you to its eye (`pull` tiles/s, for `pullTime` s, walls stop you), then
+  // bursts (`blast`, `share` of maximum health) and sprays `frags` grenade fragments (`fragShare` each). Step out in time
+  // and it fades back to sleep.
+  vortex: { radius: 1.5, hold: 1.1, pull: 5, pullTime: .7, blast: 1.6, frags: 6, fragReach: 3, speed: 6.5, rest: 4, base: 10, perLevel: .7, share: .18, fragShare: .35 },
 };
 export const TRAP_DAMAGE_SHARE = .12; // the old fire, spike and gas traps: at least this share of maximum health per hit
-export const TRAP_KINDS_BY_VERSION = { 1: ["sigil", "lava", "dart"], 2: ["sigil", "lava", "dart", "pit"] };
+export const TRAP_KINDS_BY_VERSION = { 1: ["sigil", "lava", "dart"], 2: ["sigil", "lava", "dart", "pit"], 3: ["sigil", "lava", "dart", "pit", "vortex"] };
 export const NEW_TRAP_KINDS = TRAP_KINDS_BY_VERSION[DUNGEON_TRAPS.version];
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
@@ -62,7 +68,8 @@ const damageOf = (kind, level, maxHp = 0) => { const K = DUNGEON_TRAPS[kind]; re
 const shot = (id, x, y, a, speed, life, damage, extra = {}) => ({ id, x, y, dx: Math.cos(a), dy: Math.sin(a), speed, life, damage, hostile: true, hits: {}, path: "straight", trapShot: true, ...extra });
 
 // One frame of the new traps. `world`: { player, level, maxHp, now, projectiles, effects, seeds, open?, airborne?, fall? }
-// (airborne: jumping or boosting, so an open pit is passed over; fall(): the Wayfarer drops into a pit). Seeds: the sigil orbs,
+// (airborne: jumping, boosting or in Aerial Step, so an open pit is passed over; fall(): the Wayfarer drops into a pit;
+// pull(dx, dy): the vortex drags the Wayfarer, stopped by walls). Seeds: the sigil orbs,
 // kept by the game; open(x, y): whether a point is open floor, so orbs land short of walls). Returns nothing; it pushes hostile projectiles and effects the game already resolves against the
 // Wayfarer.
 export function tickNewTraps(objects, world, dt) {
@@ -76,7 +83,21 @@ export function tickNewTraps(objects, world, dt) {
       if (trap.trapType === "dart") { const ox = px - trap.x, oy = py - trap.y, f = ox * trap.dirX + oy * trap.dirY, side = Math.abs(ox * -trap.dirY + oy * trap.dirX); near = f > .3 && f <= K.range && side < K.side; }
       else near = Math.hypot(px - trap.x, py - trap.y) < K.radius;
       if (near && trap.trapType === "pit") { trap.phase = "warning"; trap.timer = K.warn; continue; } // the floor cracks: two seconds to step off
-      if (near) { trap.phase = "warning"; trap.timer = K.warn; }
+      if (near) { trap.phase = "warning"; trap.timer = K.warn ?? K.hold; }
+    } else if (trap.trapType === "vortex") {
+      const cx = trap.x + .5, cy = trap.y + .5, dx = cx - (px + .5), dy = cy - (py + .75), d = Math.hypot(dx, dy);
+      if (trap.phase === "warning" && d > K.radius) { trap.phase = "rest"; trap.timer = .8; } // stepped out in time
+      else if (trap.phase === "warning" && trap.timer <= 0) { trap.phase = "pulling"; trap.timer = K.pullTime; }
+      else if (trap.phase === "pulling") {
+        if (d > .15) { const step = Math.min(d, K.pull * dt); world.pull?.(dx / d * step, dy / d * step); }
+        if (trap.timer <= 0) {
+          trap.phase = "rest"; trap.timer = K.rest; trap.fired = (trap.fired || 0) + 1;
+          const dmg = damageOf("vortex", level, maxHp), tag = `${trap.id}:${trap.fired}`;
+          world.effects.push({ id: `${tag}:burst`, kind: "enemy-blast", x: cx, y: cy, life: .35, radius: K.blast, untilPulse: 0, pulse: 99, damage: dmg, hostile: true, hits: {} });
+          for (let i = 0; i < K.frags; i++) { const a = i * Math.PI * 2 / K.frags + (hashSeed(`${tag}:a`) % 100) / 100; world.projectiles.push(shot(`${tag}:frag:${i}`, cx, cy, a, K.speed, K.fragReach / K.speed, Math.round(dmg * K.fragShare), { path: "grenade", blastRadius: .9 })); }
+        }
+      } else if (trap.phase === "rest" && trap.timer <= 0) trap.phase = "armed";
+      continue;
     } else if (trap.trapType === "pit") {
       if (trap.phase === "warning" && trap.timer <= 0) { trap.phase = "open"; trap.timer = K.open; }
       else if (trap.phase === "open") { if (Math.abs(px - trap.x) < K.size * .75 && Math.abs(py - trap.y) < K.size * .75 && !world.airborne) world.fall?.(trap); if (trap.timer <= 0) { trap.phase = "rest"; trap.timer = K.rest; } }
