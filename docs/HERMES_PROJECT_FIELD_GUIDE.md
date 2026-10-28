@@ -2694,6 +2694,27 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 525: harder traps and the pitfall — 2026-10-28
+
+Tim: "the trap should do more damage. All across the board... the pitfall trap... you trigger it. And... two seconds before the ground falls out. And you die if you stay on the ground. But you can just move".
+
+**CODE:**
+- dungeon-traps.ts:
+  - Each new kind has a `share`: sigil .05, lava .14 (blobs 70% of it), dart .07. `damageOf` takes the larger of `base + perLevel × level` and `share × maxHp`.
+  - `TRAP_DAMAGE_SHARE` (.12) applies to the old traps.
+  - `DUNGEON_TRAPS.version` is now 2. `TRAP_KINDS_BY_VERSION` is `{1: sigil/lava/dart, 2: + pit}`. `addNewTraps(map, seed, id, version)` hashes `v1`/`v2` by version, so crossings stamped 1 keep their traps.
+  - The pit: armed → warning (`warn` 2 s, floor cracks) → open (`open` 3 s). Standing on it and not airborne (jumping or boosting) calls `world.fall()`. Then it rests and rearms.
+- game.ts:
+  - `updateTraps` takes `maxHp`; a hit is `max(trap damage, maxHp × TRAP_DAMAGE_SHARE)`.
+  - `tickNewTraps` gets `maxHp`, `airborne` and `fall`, which sets health to 0 with "The floor gives way...". Invulnerability still applies.
+  - `addNewTraps` gets the history's `trapsVersion`.
+- main.ts `drawNewTrap` draws the pit: a plain square, then glowing cracks, then a black hole.
+- tests/dungeon-traps-523.test.ts adds three tests.
+
+**BOUNDARY:**
+- Trap placement in crossings stamped before is unchanged.
+- No new save fields.
+
 ## Release 523: sigil, lava and dart traps — 2026-10-28
 
 Tim: "lanterns... shoot out like a bunch of different balls, and then they land on the floor and... spin for a second, and they shoot out in pentagram patterns, let's have some traps that launch things like that... Lava traps... when you... step on them, they... explode, or... launch lava in the air... dart traps that shoot darts from across the wall... 3 projectiles".

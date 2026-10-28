@@ -59,7 +59,7 @@ test('actual npm fixture builds then serves fixed loopback production assets, no
     assert.match(page.type, /text\/html/);
     assert.match(page.body, /PROVING GROUND/);
     assert.equal(page.body, readFileSync(new URL('../dist/proving-ground/index.html', import.meta.url), 'utf8'));
-    for (const path of ['/styles.css?v=523', '/src/proving-ground-mobile.js?v=523', '/src/proving-ground.js?v=523', '/proving-ground/manifest.webmanifest', '/proving-ground/sw.js', '/icon.svg']) {
+    for (const path of ['/styles.css?v=525', '/src/proving-ground-mobile.js?v=525', '/src/proving-ground.js?v=525', '/proving-ground/manifest.webmanifest', '/proving-ground/sw.js', '/icon.svg']) {
       const result = await request(path);
       assert.equal(result.status, 200, path);
       assert.ok(result.body.length > 0, path);
@@ -67,7 +67,7 @@ test('actual npm fixture builds then serves fixed loopback production assets, no
     }
     const worker = await request('/proving-ground/sw.js');
     assert.match(worker.body, /ic-proving-ground-/);
-    const module = await request('/src/proving-ground-mobile.js?v=523');
+    const module = await request('/src/proving-ground-mobile.js?v=525');
     assert.equal(module.body, readFileSync(new URL('../dist/src/proving-ground-mobile.js', import.meta.url), 'utf8'));
     for (const path of ['/package.json', '/AGENTS.md', '/scripts/dev.mjs', '/src/proving-ground-mobile.ts', '/%2e%2e/package.json', '/%2e%2e%2finfinite-corridor/package.json', '/%ZZ']) {
       assert.equal((await request(path)).status, 404, path);
