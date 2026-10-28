@@ -4638,7 +4638,7 @@ export class Game {
     this.player.attackUntil = now + 200; this.message = thrown ? "Nanoknives away!" : "Nanoknives rise.";
     return true;
   }
-  knifeFoe() { const t = this.lockedTarget(); return t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(this.player, this.enemies, this.map, mapWidth(this.map, this.area), NANOKNIVES.range)?.e || null; }
+  knifeFoe(range = NANOKNIVES.range) { const t = this.lockedTarget(), p = this.player; return t && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= range ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), range)?.e || null; }
   launchKnives(now = this.lastUpdateNow || 0) {
     const k = this.knives; if (!k) return false; this.knives = null;
     const p = this.player, cx = p.x + .5, cy = p.y + .45, foe = this.knifeFoe(), K = NANOKNIVES, damage = Math.max(1, Math.round(this.toolPower() * K.share)), pierce = this.glyphLoadout("tool").mods.pierce;
@@ -4652,19 +4652,22 @@ export class Game {
   tickKnives(now = this.lastUpdateNow || 0) {
     const k = this.knives; if (!k) return;
     if (k.where !== `${this.area}:${this.areaId()}` || !fieldOn(this.save, "nanoknives") || rangedWeapon(this.save.equipment.secondary)?.brawlerTool !== "great-sweep") { this.knives = null; return; } // a new area or another tool: they scatter
-    if (now - k.start >= NANOKNIVES.hold * 1000) { if (this.knifeFoe()) this.launchKnives(now); else this.knives = null; } // left alone: they go on their own, or fade
+    if (now - k.start >= NANOKNIVES.arm * 1000 && this.knifeFoe(NANOKNIVES.autoRange)) this.launchKnives(now); // release 539: a foe near: they go on their own; none: they wait
   }
   // Release 537 (tool-forms.ts CLUSTER): a bursting Bombard shell throws its bomblets (not hostile shells, not bomblets).
   clusterShell(shot) {
     if (shot.hostile || shot.bomblet || shot.glyphHost !== "tool" || !fieldOn(this.save, "cluster-shell")) return;
     for (let i = 0; i < CLUSTER.count; i++) { const a = (i % 2 ? 1 : -1) * CLUSTER.angle, c = Math.cos(a), sn = Math.sin(a);
-      this.projectiles.push({ id: `${shot.id}-cluster${i}`, x: shot.x, y: shot.y, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, speed: CLUSTER.speed, life: CLUSTER.life, damage: Math.max(1, Math.round(shot.damage * CLUSTER.share)), damageType: shot.damageType, path: "grenade", age: 0, hits: {}, blastRadius: (shot.blastRadius || 2) * CLUSTER.radius, glyphHost: "tool", bomblet: true }); }
+      const r = (shot.blastRadius || 2) * CLUSTER.radius; // release 539: it flies its own blast radius, so that blast's edge meets the first burst's centre
+      this.projectiles.push({ id: `${shot.id}-cluster${i}`, x: shot.x, y: shot.y, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, speed: CLUSTER.speed, life: r / CLUSTER.speed, damage: Math.max(1, Math.round(shot.damage * CLUSTER.share)), damageType: shot.damageType, path: "grenade", age: 0, hits: {}, blastRadius: r, glyphHost: "tool", bomblet: true }); }
   }
+  // Release 539: what shortens a tool's cooldown (its glyphs, armor's attack speed); Wellspring Ground also runs it down faster.
+  toolCooldownScale() { return this.glyphLoadout("tool").mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed); }
   // Release 535 (tool-forms.ts GOLEM): the Hammerfall's Corridor Golem. `golem` and `golemReadyAt` are runtime only.
   raiseGolem(at, start) {
     if (this.golem || start < (this.golemReadyAt || 0)) return false;
     this.golem = { x: at.x, y: at.y, start, nextAt: start + GOLEM.rise * 1000, punches: GOLEM.punches, targetId: null, sinkAt: null, face: 1, where: `${this.area}:${this.areaId()}` };
-    this.golemReadyAt = start + GOLEM.cooldown * 1000; return true;
+    this.golemReadyAt = start + GOLEM.cooldown * 1000 * this.toolCooldownScale(); return true; // release 539: shortened like the tool's own cooldown
   }
   golemFoe(g) {
     const live = (e) => e && !e.dead && !e.untargetable && !e.hidden && e.kind !== "npc" && Math.hypot(e.x + .5 - g.x, e.y + .45 - g.y) <= GOLEM.range;
@@ -4971,7 +4974,7 @@ export class Game {
     if (this.save.meal) { const name = mealName(this.save.meal.a, this.save.meal.b); if (tickMeal(this.save, dt)) { this.refreshDerivedStats(); this.message = `The ${name.toLowerCase()} has worn off. A cook in town can make you another.`; } } // release 447
     this.spellCooldownRemaining = Math.max(0, this.spellCooldownRemaining - dt);
     if (this.driftField && now >= this.driftField.at) { const f = this.effects.find((e) => e.id === this.driftField.id && e.life > 0); if (f) { f.x = this.player.x + .5; f.y = this.player.y + .45; } this.driftField = null; } // release 515: Drift Field settles where you land
-    if (fieldOn(this.save, "wellspring") && this.inOwnField()) { const x = dt * FIELD_PASSIVES.wellspring.rate, cds = this.save.magicSkills?.cooldowns || {}; this.spellCooldownRemaining = Math.max(0, this.spellCooldownRemaining - x); for (const id of Object.keys(cds)) cds[id] = Math.max(0, cds[id] - x); if (this.player.attackReadyAt) this.player.attackReadyAt -= x * 1000; if (this.toolReadyAt) this.toolReadyAt -= x * 1000; } // release 515: Wellspring Ground
+    if (fieldOn(this.save, "wellspring") && this.inOwnField()) { const x = dt * FIELD_PASSIVES.wellspring.rate, cds = this.save.magicSkills?.cooldowns || {}; this.spellCooldownRemaining = Math.max(0, this.spellCooldownRemaining - x); for (const id of Object.keys(cds)) cds[id] = Math.max(0, cds[id] - x); if (this.player.attackReadyAt) this.player.attackReadyAt -= x * 1000; if (this.toolReadyAt) this.toolReadyAt -= x * 1000; if (this.golemReadyAt) this.golemReadyAt -= x * 1000; /* release 539: the golem's too */ } // release 515: Wellspring Ground
     const skillState=this.save.magicSkills;if(skillState){if(skillState.riftInfuse>0)skillState.riftInfuse=Math.max(0,skillState.riftInfuse-dt);/* release 297 */for(const id of Object.keys(skillState.cooldowns||{}))skillState.cooldowns[id]=Math.max(0,skillState.cooldowns[id]-dt);tickRiftCharges(this.save);if(skillState.active){skillState.active.remaining=Math.max(0,skillState.active.remaining-dt);if(skillState.active.remaining===0){const ended=skillState.active.id;skillState.active=null;onSkillEnded(this,ended,now);if(ended==='aerial-step'&&footprintHazard(this.map,mapWidth(this.map,this.area),this.player.x,this.player.y)&&!this.swimsHere(footprintHazard(this.map,mapWidth(this.map,this.area),this.player.x,this.player.y))){const safe=skillState.lastSafe;if(safe&&safe.area===this.area&&safe.areaId===this.areaId()){this.player.x=safe.x;this.player.y=safe.y}else relocateIfStranded(this.player,this.map,mapWidth(this.map,this.area));this.message='Aerial Step closes and returns you to stable ground.'}}}}
     if (this.reticle) this.reticle.life -= dt;
     let rawX = Number(input.state.x) || 0,

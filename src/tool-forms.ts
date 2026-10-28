@@ -6,26 +6,31 @@
 // a tool works. Both stay physical: they scale with Might like the tool they change.
 // - Arc Wave: the Blunderbuss fires one wide wave instead of its three-pellet cone. The wave is `share` × one pellet, catches
 //   foes `grow` tiles to either side of its path and passes through `pierce` of them.
-// - Nanoknives: the Great Sweep raises `count` nanobot daggers that circle you for `hold` s. Pressing the tool again throws
-//   the circling daggers at your foe (the lock, else the nearest within `range`) and raises a fresh set; daggers left alone
-//   throw themselves when `hold` runs out, or fade if no foe is near. Each dagger homes (`seekTurn`) and deals `share` of the
-//   tool's power. A press costs `cooldown` s, a little faster than the sweep.
+// - Nanoknives: the Great Sweep raises `count` nanobot daggers that circle you. Pressing the tool again throws the circling
+//   daggers at your foe (the lock, else the nearest within `range`) and raises a fresh set. Release 539 (Tim: "they should
+//   fire if there's an enemy nearby... if there's no enemy nearby... wait until I launch them"): `arm` s after rising, the
+//   daggers throw themselves at the first foe within `autoRange` of you; with no foe that near they circle until you throw
+//   them or one comes. Each dagger homes (`seekTurn`) and deals `share` of the tool's power. A press costs `cooldown` s,
+//   a little faster than the sweep.
 // - Corridor Golem (release 535; Tim: "when you hit the hammer, it'll summon a golem... dash to the nearest enemy and deliver
 //   like 3 blows... if the enemy dies... to the next enemy... rises up out of the ground... melts back into the tiles"; the
 //   quick golem): a Hammerfall blow raises a golem where it lands, unless one is already up or the last rose under
-//   `cooldown` s ago. After `rise` s it dashes to the nearest foe within `range` of it and punches (`share` of the tool's
+//   `cooldown` s ago (release 539: shortened by whatever shortens the tool's cooldown: its glyphs, armor's attack speed,
+//   Wellspring Ground). After `rise` s it dashes to the nearest foe within `range` of it and punches (`share` of the tool's
 //   power, `radius`, a `stun`), up to `punches` blows `gap` s apart, choosing the nearest again whenever its foe falls.
 //   With no foe in reach, or its blows spent, it sinks back into the floor over `sink` s.
 // - Cluster Shell (release 537; Tim: "for the rift bombard... its first initial explosion, two smaller explosions fly off of
 //   it... a very short distance... and then they explode"): when a Bombard shell bursts, `count` bomblets fly off `angle`
-//   radians to either side of its path at `speed` for `life` s (about two tiles), then burst for `share` of the shell's
-//   damage in `radius` × its blast. Bomblets do not split again.
+//   radians to either side of its path at `speed`, then burst for `share` of the shell's damage in `radius` × its blast.
+//   Release 539 (Tim: "a wider horizontal distance... the edges of their circles should touch... where the initial shell...
+//   exploded"): they fly straight out sideways, each exactly its own blast radius, so its blast's edge meets the first
+//   burst's centre. Bomblets do not split again.
 // Pure numbers and drawing; game.ts runs them (fireSecondary, nanoknivesPress, launchKnives, tickKnives, raiseGolem, tickGolem,
 // clusterShell).
 export const GOLEM = { share: .9, punches: 3, gap: .38, rise: .35, sink: .4, range: 4, radius: .9, stun: .25, cooldown: 6, reach: .7 };
-export const CLUSTER = { count: 2, angle: .9, speed: 7, life: .28, share: .45, radius: .55 };
+export const CLUSTER = { count: 2, angle: Math.PI / 2, speed: 7, share: .45, radius: .55 };
 export const ARC_WAVE = { share: 2.2, grow: .75, pierce: 12, speed: 11 };
-export const NANOKNIVES = { count: 3, share: .5, hold: 4, cooldown: .8, range: 9, speed: 13, life: 1.4, seekTurn: 9, orbitRadius: .95, spin: 2.6 };
+export const NANOKNIVES = { count: 3, share: .5, arm: .3, autoRange: 6, cooldown: .8, range: 9, speed: 13, life: 1.4, seekTurn: 9, orbitRadius: .95, spin: 2.6 };
 
 // Where dagger `i` of `n` circles at time `t` (seconds), as an offset in tiles.
 export function knifeOffset(i, n, t) { const a = t * NANOKNIVES.spin + i * Math.PI * 2 / n; return { x: Math.cos(a) * NANOKNIVES.orbitRadius, y: Math.sin(a) * NANOKNIVES.orbitRadius * .7, a }; }
