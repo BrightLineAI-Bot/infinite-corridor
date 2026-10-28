@@ -20,7 +20,7 @@ export const FIELD_PASSIVES = {
 // Release 533 (tool-forms.ts): tool forms, Lattice-only passives that change how a tool works. Held like the field passives
 // (keys `field:<id>`), listed apart from them.
 export const TOOL_FORMS = {
-  "arc-wave": { name: "Arc Wave", text: "The Blunderbuss fires one wide wave instead of its three-shot cone: it sweeps through every foe in its path. Still physical (Might)." },
+  "arc-wave": { name: "Arc Wave", text: "The Blunderbuss's three shots become crescent waves along the same cone: each sweeps through every foe in its path. Still physical (Might)." },
   "cluster-shell": { name: "Cluster Shell", text: "When a Rift Bombard shell bursts, two bomblets fly off a short way and burst again. Still physical (Might)." }, // release 537
   "corridor-golem": { name: "Corridor Golem", text: "A Hammerfall blow raises a stone golem where it lands: it dashes to the nearest foe and punches up to three times, turning to the next when one falls, then sinks back into the floor. One at a time, at most every 6 s (less with faster tool recovery). Still physical (Might)." }, // release 535
   nanoknives: { name: "Nanoknives", text: "The Great Sweep raises three nanobot daggers that circle you. They throw themselves at any foe within 6 tiles and home in; with none near they wait. Press the tool to throw them early and raise a fresh set. Still physical (Might)." },

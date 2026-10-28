@@ -4,8 +4,10 @@
 //
 // Two Lattice-only passives (lattice-fields.ts TOOL_FORMS, keys `field:arc-wave` and `field:nanoknives`) that change how
 // a tool works. Both stay physical: they scale with Might like the tool they change.
-// - Arc Wave: the Blunderbuss fires one wide wave instead of its three-pellet cone. The wave is `share` × one pellet, catches
-//   foes `grow` tiles to either side of its path and passes through `pierce` of them.
+// - Arc Wave: the Blunderbuss's three pellets become crescent waves along the same cone (release 549, Tim: "three larger
+//   crescents that shoot out in... an arc... they would follow the same path of the blunderbuss's original shots"; 533 fired
+//   one wave). Each wave is `share` × one pellet, catches foes `grow` tiles to either side of its path and passes through
+//   `pierce` of them.
 // - Nanoknives: the Great Sweep raises `count` nanobot daggers that circle you. Pressing the tool again throws the circling
 //   daggers at your foe (the lock, else the nearest within `range`) and raises a fresh set. Release 539 (Tim: "they should
 //   fire if there's an enemy nearby... if there's no enemy nearby... wait until I launch them"): `arm` s after rising, the
@@ -35,7 +37,7 @@ export const GOLEM = { share: .9, punches: 3, gap: .38, rise: .35, sink: .4, ran
 // damage. Magic: they grow with Focus, like the other spells. Drawn as dark shells with a glowing crack.
 export const FIRE_BURST = { count: 5, spread: 1.4, reach: 2.6, speed: 9 };
 export const CLUSTER = { count: 2, speed: 7, share: .45, radius: .55 };
-export const ARC_WAVE = { share: 2.2, grow: .75, pierce: 12, speed: 11 };
+export const ARC_WAVE = { share: 1, grow: .5, pierce: 12, speed: 11 }; // release 549: per wave, three waves (was one wave at 2.2, grow .75)
 export const NANOKNIVES = { count: 3, share: .5, arm: .3, autoRange: 6, cooldown: .8, range: 9, speed: 13, life: 1.4, seekTurn: 9, orbitRadius: .95, spin: 2.6 };
 
 // Where dagger `i` of `n` circles at time `t` (seconds), as an offset in tiles.

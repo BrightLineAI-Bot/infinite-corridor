@@ -41,14 +41,16 @@ test('a Needle Caster at +6 becomes a Blunderbuss: three pellets in a cone; it s
   assert.ok(new Set(shots.map((p) => p.dy.toFixed(3))).size === 3, 'three directions');
 });
 
-test('Arc Wave turns the cone into one wide, piercing wave', () => {
+test('Arc Wave turns each shot of the cone into a piercing wave', () => {
   assert.equal(TOOL_FORM_KEYS.length, 4); // release 535: the Corridor Golem; 537: Cluster Shell assert.equal(FIELD_KEYS.length, 5);
   for (const k of TOOL_FORM_KEYS) assert.ok(fieldForm(k));
   const { s, g } = arena({ name: 'Blunderbuss', basePower: 5, power: 11, upgradeRank: 6 }, ['arc-wave']);
   assert.equal(toggleLatticePassive(s, 'field:arc-wave').ok, true); assert.equal(toggleLatticePassive(s, 'field:arc-wave').ok, true); // clear and set again
   g.fireSecondary(1000, { x: 1, y: 0 });
   const shots = g.projectiles.filter((p) => String(p.id).startsWith('shot-'));
-  assert.equal(shots.length, 1); assert.ok(shots[0].arcWave); assert.ok(shots[0].grow >= ARC_WAVE.grow); assert.ok(shots[0].pierce >= ARC_WAVE.pierce);
+  // Release 549 (Tim: "three larger crescents... follow the same path of the blunderbuss's original shots"; was one wave).
+  assert.equal(shots.length, 3); assert.ok(shots.every((q) => q.arcWave && q.grow >= ARC_WAVE.grow && q.pierce >= ARC_WAVE.pierce));
+  assert.equal(new Set(shots.map((q) => q.dy.toFixed(3))).size, 3, 'along the cone');
 });
 
 test('Nanoknives: the Great Sweep raises three daggers; the next press throws them, homing and physical', () => {
