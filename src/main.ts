@@ -1,6 +1,6 @@
 import { BOAT, forgeSubmersible } from "./boats.ts"; // release 311
 import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.ts";
-import { swapPreset } from "./build-presets.ts"; // release 393
+import { swapPreset, stashForOtherPreset } from "./build-presets.ts"; // release 393; 541: preset gear
 import { SMITHY, smithOpen, salvageItem, reforgeAffix, addSocket, masterwork } from "./smithy.ts";
 import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } from "./meals.ts"; // release 447
 import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.ts"; // release 459 // release 395 // release 315; 321: the drone
@@ -62,7 +62,7 @@ export function equipFromInventory(save, index) {
   const prior = save.equipment[item.slot] || null;
   save.equipment[item.slot] = { ...item };
   save.inventory.splice(index, 1);
-  if (prior) save.inventory.push(prior);
+  if (prior && !stashForOtherPreset(save, item.slot, prior)) save.inventory.push(prior); // release 541: or it stays the other preset's
   return true;
 }
 function drawRangedEffects() { drawCombatEffects(ctx,game,innerWidth,innerHeight); }
@@ -1216,7 +1216,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:539,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 539\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:541,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 541\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1228,7 +1228,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:539,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:541,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1518,9 +1518,15 @@ function updateMapTravelButton() {
   travel.disabled = game.area === "dungeon" && !(save.consumables.crossingSigil > 0);
   $("#mapHome").disabled = game.area === "dungeon";
   $("#mapHome").textContent = `Return to ${homeName(save)}`; // release 371
-  { let b = $("#mapSetHome"); if (!b) { b = document.createElement("button"); b.id = "mapSetHome"; b.type = "button"; $("#mapHome").after(b); b.onclick = () => { const k = selectedWayglassKey() || (mapView.selected && `${mapView.selected.rx},${mapView.selected.ry}`), r = setHome(save, k); game.message = r.message; const d = $("#mapDetail"); if (d) d.textContent = r.message; persist(); updateMapTravelButton(); drawMap(); }; }
-    const k = selectedWayglassKey() || (mapView.selected && `${mapView.selected.rx},${mapView.selected.ry}`), can = !!k && homeCandidate(save, k) && k !== homeKey(save);
-    b.hidden = !can; if (can) { const [x, y] = k.split(",").map(Number), t = townAt(save, x, y); b.textContent = `Make ${t ? t.name : "Ember Refuge"} my home`; b.disabled = !save.checkpoints?.[k]; b.title = b.disabled ? "Light its Wayglass first." : ""; } }
+  // Release 541 (Tim: "I'm not seeing the option to set a listener town as my home... in the atlas"): the section you tapped,
+  // the Wayglass picked in the list, or where you stand, whichever is a town that can be home; the Wayglass list used to win
+  // even when you had tapped the town. A town whose Wayglass is unlit says so on the button.
+  const homeTarget = () => [mapView.selected && `${mapView.selected.rx},${mapView.selected.ry}`, selectedWayglassKey(), `${game.rx},${game.ry}`].find((k) => k && homeCandidate(save, k) && k !== homeKey(save)) || null;
+  { let b = $("#mapSetHome"); if (!b) { b = document.createElement("button"); b.id = "mapSetHome"; b.type = "button"; $("#mapHome").after(b); b.onclick = () => { const k = homeTarget(), r = setHome(save, k); game.message = r.message; const d = $("#mapDetail"); if (d) d.textContent = r.message; persist(); updateMapTravelButton(); drawMap(); }; }
+    const k = homeTarget(), can = !!k;
+    b.hidden = !can; if (can) { const [x, y] = k.split(",").map(Number), t = townAt(save, x, y); b.disabled = !save.checkpoints?.[k]; b.textContent = `Make ${t ? t.name : "Ember Refuge"} my home${b.disabled ? " (light its Wayglass first)" : ""}`; b.title = b.disabled ? "Light its Wayglass first." : ""; } }
+  { let n = $("#mapTowns"); if (!n) { n = document.createElement("p"); n.id = "mapTowns"; n.className = "arc-hint"; $("#mapSetHome").after(n); } // release 541: where your Listener towns are
+    const towns = save.hometowns?.towns || []; n.hidden = !towns.length; n.textContent = towns.length ? `Listener towns: ${towns.map((t) => `${t.name} (${t.rx}, ${t.ry})${homeKey(save) === `${t.rx},${t.ry}` ? " · home" : save.checkpoints?.[`${t.rx},${t.ry}`] ? "" : " · Wayglass unlit"}`).join("; ")}. Tap one on the map to make it home.` : ""; }
 }
 function updateMapModeUI(){
   const dungeon=game.area==="dungeon",local=dungeon&&mapMode==="dungeon";
@@ -1698,6 +1704,10 @@ function openPack(tab) {
     gear.append(card);
   }
   body.append(gearHeading, gear);
+  { // Release 541: the other preset's own pieces, kept out of the pack (no selling or salvage) until you switch to it.
+    const other=1-(save.magicSkills?.preset||0),held=save.presetGear?.[other]||{},names=[["primary","Weapon"],["secondary","Tool"],["armor","Armor"]].map(([k,l])=>`${l}: ${held[k]?`${held[k].name} +${held[k].upgradeRank||0}`:"shares this preset's"}`);
+    const note=document.createElement("p");note.className="arc-hint";note.textContent=`Preset ${other+1} keeps — ${names.join(" · ")}. Switch presets to use or change them; they cannot be sold or salvaged while kept.`;body.append(note);
+  }
   }catch(error){packSectionFailed("Equipped gear",error)}
   if (packTab === "wayfarer") try{
   // Spells, disciplines and capstones live in one place: the Arcanum tab (release 109; tabbed in release 259).
@@ -2503,7 +2513,7 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
  // Slots A and B, and the Pairing their two attributes make.
  {const box=el('section','arc-branch arc-slots');box.append(el('h3','','Spell slots'));
   // Release 261: two spell presets; the slots below belong to the active one (the HUD's preset button switches them too).
-  {const row=el('div','codex-tabs arc-presets');for(let i=0;i<PRESETS;i++){const b=uiButton(`Preset ${i+1}`,()=>{if((save.magicSkills.preset||0)!==i){const r=swapPreset(save);game.message=r.message;persist()}openSkills(atShrine)});if((save.magicSkills.preset||0)===i)b.setAttribute('aria-current','page');row.append(b)}box.append(row)
+  {const row=el('div','codex-tabs arc-presets');for(let i=0;i<PRESETS;i++){const b=uiButton(`Preset ${i+1}`,()=>{if((save.magicSkills.preset||0)!==i){const r=swapPreset(save);game.message=r.message;game.refreshDerivedStats?.();/* release 541 */persist()}openSkills(atShrine)});if((save.magicSkills.preset||0)===i)b.setAttribute('aria-current','page');row.append(b)}box.append(row)
    // Release 291: each preset also sets the Build button: Build, or Item (its item is chosen in Pack → Supplies).
    for(let i=0;i<PRESETS;i++){const cur=presetButton(save,i),line=el('div','codex-tabs arc-preset-button');line.append(el('small','',`Preset ${i+1} · Build button:`));for(const mode of ['build','item']){const b=uiButton(mode==='build'?'Build':`Item${mode===cur.button&&cur.item?` (${ITEM_NAMES[cur.item]||cur.item})`:''}`,()=>{setPresetButton(save,i,mode);persist();openSkills(atShrine)});if(cur.button===mode)b.setAttribute('aria-current','true');line.append(b)}if(CASTABLES[cur.button]){const c=CASTABLES[cur.button],b=uiButton(`${c.symbol} ${c.kind==='spell'?SPELLS[c.id]?.name:APERTURE_SKILLS[c.id]?.name}`,()=>{});b.setAttribute('aria-current','true');line.append(b)}box.append(line)}}
   for(const q of ['a','b']){const c=slotted(save,q),t=!c&&slotTool(save,q),row=el('div','arc-slot');const sym=el('span','slot-sym',c?c.symbol:t?.tool==='build'?'⚒':t?'◇':'+');sym.style.color=c?c.color:'';row.append(el('strong','',q.toUpperCase()),sym,el('span','',c?c.name:t?(t.tool==='build'?'Build':`Item${t.item?` (${ITEM_NAMES[t.item]||t.item})`:' (choose it in Supplies)'}`):'Empty — choose below'));if(c)row.append(elemBadge(c.attr));

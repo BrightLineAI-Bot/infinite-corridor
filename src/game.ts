@@ -91,7 +91,7 @@ import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } fr
 import { generateListenerArena, isArenaRun, daisDue } from "./listener-arena.ts";
 import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./listener-mirror.ts";
 import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.ts";
-import { swapPreset } from "./build-presets.ts";
+import { swapPreset, stashForOtherPreset } from "./build-presets.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.ts";
 import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge } from "./brawler-spells.ts"; // release 483; 489: Iron Fists
 import { ORBIT, orbitLaunch } from "./orbit-volley.ts"; // release 487
@@ -1196,7 +1196,7 @@ export function equipInventoryItem(save, index) {
   const prior = save.equipment[item.slot] || null;
   save.equipment[item.slot] = { ...item };
   save.inventory.splice(index, 1);
-  if (prior) save.inventory.push(prior);
+  if (prior && !stashForOtherPreset(save, item.slot, prior)) save.inventory.push(prior); // release 541: or it stays the other preset's
   return true;
 }
 export function buyFromVela(save, id, quantity = 1) {
@@ -3878,7 +3878,7 @@ export class Game {
     if (stone) this.map.objects.push({ id: `listening-stone-${this.rx}-${this.ry}`, kind: "listeningStone", name: "The Listening Stone", lore: `Raised by the people of ${t.name} where the Listener fell. They say the line still hums in it, and that it listens back for whoever goes down into the Mouth.`, ...stone, state: "humming", actions: ["inspect"], landmark: true });
     const delver = !this.map.objects.some((o) => o.id === `mouth-delver-${this.rx}-${this.ry}`) && near(2, 0);
     if (delver) this.map.objects.push({ id: `mouth-delver-${this.rx}-${this.ry}`, kind: "shelterMerchant", name: "The Delvers' Exchange", role: `${t.name} delvers`, ...delver, state: "calm", actions: ["speak", "trade"], settlement: `hamlet-${this.rx}-${this.ry}` });
-    const smith = !this.map.objects.some((o) => o.id === `town-smith-${this.rx}-${this.ry}`) && this.townSpot(mouth); // release 395: the town smith (smithy.ts); 441: clear of the Wayglass
+    const smith = !this.map.objects.some((o) => o.id === `town-smith-${this.rx}-${this.ry}`) && (this.townIndoorSpot() || this.townSpot(mouth)); // release 395: the town smith (smithy.ts); 441: clear of the Wayglass; 541: inside one of the town's buildings
     if (smith) this.map.objects.push({ id: `town-smith-${this.rx}-${this.ry}`, kind: "townSmith", name: `The ${t.name} Smith`, ...smith, state: "working", actions: ["smith"], settlement: `hamlet-${this.rx}-${this.ry}` });
   }
   // Release 441 (Tim: "there's no viewport, and I can't talk to any of the people... there should be... all the amenities of
@@ -3889,6 +3889,16 @@ export class Game {
     const w = mapWidth(this.map, "overworld"), glass = this.map.objects.filter((o) => o.kind === "checkpoint"), objs = this.map.objects;
     const ok = (t) => !t.blocked && !t.structure && !t.environment && !t.buildingId && t.x > 2 && t.y > 2 && t.x < w - 3 && t.y < w - 3 && glass.every((g) => Math.hypot(g.x - t.x, g.y - t.y) >= TOWN_AMENITY.clear) && objs.every((o) => Math.hypot(o.x - t.x, o.y - t.y) >= TOWN_AMENITY.spacing);
     const best = this.map.tiles.filter(ok).sort((a, b) => Math.hypot(a.x - origin.x, a.y - origin.y) - Math.hypot(b.x - origin.x, b.y - origin.y) || a.y - b.y || a.x - b.x)[0];
+    return best ? { x: best.x, y: best.y } : null;
+  }
+  // Release 541 (Tim: "each... listener town should have... the forge master... Since each town spawns with a building, we
+  // should just put the smithy inside one of those buildings"): a free floor tile inside the town's own buildings (the
+  // hamlet's huts, in order), away from the door and a tile clear of anyone else. Null when there is none.
+  townIndoorSpot() {
+    const prefix = `hamlet-${this.rx}-${this.ry}-`, objs = this.map.objects;
+    const tiles = this.map.tiles.filter((t) => String(t.buildingId || "").startsWith(prefix) && /Interior$/.test(t.structure || "") && !t.blocked && !t.environment);
+    const ok = (t) => !this.map.tiles.some((q) => q.buildingId === t.buildingId && /Door$/.test(q.structure || "") && Math.abs(q.x - t.x) + Math.abs(q.y - t.y) <= 1) && objs.every((o) => Math.hypot(o.x - t.x, o.y - t.y) >= 1.5);
+    const best = tiles.filter(ok).sort((a, b) => String(a.buildingId).localeCompare(String(b.buildingId)) || a.y - b.y || a.x - b.x)[0];
     return best ? { x: best.x, y: best.y } : null;
   }
   // Release 447: maximum health and stamina follow a meal as it starts and ends.
@@ -3902,9 +3912,10 @@ export class Game {
   raiseTownAmenities() {
     const t = townAt(this.save, this.rx, this.ry); if (!t) return;
     const glass = this.map.objects.find((o) => o.kind === "checkpoint") || this.map.objects.find((o) => o.kind === "arrayMouth" || o.kind === "silentMouth") || { x: 16, y: 16 };
-    const add = (id, make) => { if (this.map.objects.some((o) => o.id === id)) return; const at = this.townSpot(glass); if (at) this.map.objects.push({ id, ...make(), ...at, settlement: `hamlet-${this.rx}-${this.ry}` }); };
+    const add = (id, make) => { if (this.map.objects.some((o) => o.id === id)) return; const at = this.townSpot(glass) || this.townIndoorSpot(); /* release 541: a small island leaves no open ground: indoors then */ if (at) this.map.objects.push({ id, ...make(), ...at, settlement: `hamlet-${this.rx}-${this.ry}` }); };
     add(`viewport-${this.rx}-${this.ry}`, () => ({ kind: "viewport", name: "Viewport", state: "idle", actions: ["inspect"] }));
     add(`town-keeper-${this.rx}-${this.ry}`, () => ({ kind: "townKeeper", name: `The ${t.name} Keeper`, role: "Forge and Aperture", state: "calm", actions: ["upgrade", "attune", "retrain"] }));
+    if (!this.map.objects.some((o) => o.id === `town-smith-${this.rx}-${this.ry}`)) { const at = this.townIndoorSpot() || this.townSpot(glass); if (at) this.map.objects.push({ id: `town-smith-${this.rx}-${this.ry}`, kind: "townSmith", name: `The ${t.name} Smith`, ...at, state: "working", actions: ["smith"], settlement: `hamlet-${this.rx}-${this.ry}` }); } // release 541: every Listener town, Mouth or not, has its smith, indoors
     add(`town-cook-${this.rx}-${this.ry}`, () => ({ kind: "villager", name: `The ${t.name} Cook`, role: "Cook", line: "Sit. Pick two things from the pantry and I'll make you a meal.", state: "calm", actions: ["speak"], cook: true })); // release 447
   }
   // Release 369 (listener-mirror.ts): what the Listener's mirror form and its reflections may touch, built once a frame.
@@ -5019,7 +5030,7 @@ export class Game {
       if ((this.mechUp() || this.droneUp()) && !this.mechSpent && input.held?.("jump") && now < (this.jumpUntil || 0) + 60 && m.fuel > 0) { /* release 321: the drone carries the same way */ m.fuel = Math.max(0, m.fuel - dt); this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.mechBoosting = true; if (m.fuel <= 0) this.mechSpent = true; }
       if (m?.built && tickMech(this.save, dt, !(now < (this.jumpUntil || 0))) === "spent") this.message = "Out of cinder iron: the robot drops back to its plain stride."; /* release 383 */ if (this.droneUp()) this.tickDrone(dt, now); }
     if (input.consume("potion")) this.drinkPotion(now); // release 339: the chosen potion tier; 341: brewed when needed
-    if (input.consume("preset")) this.message = swapPreset(this.save).message; // release 261: swap spell presets 1 and 2; 393: with the whole build
+    if (input.consume("preset")) { this.message = swapPreset(this.save).message; this.refreshDerivedStats(); } /* release 541: preset armor changes the maxima */ // release 261: swap spell presets 1 and 2; 393: with the whole build
     if (input.consume("build")) { // release 269: beside (or aboard) a damaged skiff, Build patches the hull instead
       const btn = activeButton(this.save); // release 291: a preset may make it an item button; release 309: or a spell
       if (btn.mode === "item") this.useButtonItem(btn.item, now);
