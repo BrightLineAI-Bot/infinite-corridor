@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**537**
+**539**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 535 | Claude | `claude/dreamy-rubin-yn6q2p` | Corridor Golem: a Lattice tool form for the Hammerfall (the quick golem) | Building. |
+| 537 | Claude | `claude/dreamy-rubin-yn6q2p` | Cluster Shell: a Lattice tool form for the Rift Bombard | Building. |
+| 535 | Claude | PR #251 | Corridor Golem: a Lattice tool form for the Hammerfall (the quick golem) | Merged (`r535-bd49bf78914b`). |
 | 533 | Claude | PR #250 | The Rift Bombard is physical; a Needle Caster at +6 becomes a Blunderbuss; Lattice tool forms Arc Wave and Nanoknives | Merged (`r533-2df96192afb9`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 

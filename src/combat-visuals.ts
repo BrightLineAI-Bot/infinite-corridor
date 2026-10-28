@@ -33,7 +33,7 @@ export function drawRangedEffects(ctx,game,width,height) {
         ctx.lineTo(x + Math.cos(a + 2.35) * 7, y + Math.sin(a + 2.35) * 7);
         ctx.lineTo(x + Math.cos(a - 2.35) * 7, y + Math.sin(a - 2.35) * 7);
         ctx.closePath();
-      } else if(p.path==="grenade"){ctx.moveTo(x+7,y);ctx.arc(x,y,7,0,7);ctx.moveTo(x,y-7);ctx.lineTo(x+4,y-11)}else if(p.path==="arc"){const a=Math.atan2(p.dy,p.dx);ctx.moveTo(x+Math.cos(a)*8,y+Math.sin(a)*8);ctx.ellipse(x,y,8,3,a,0,7)}else{const r=(p.damageType === "magic" ? 5 : 3)*(p.scale||1);ctx.moveTo(x+r,y);ctx.arc(x, y, r, 0, 7)}
+      } else if(p.path==="grenade"){const gr=p.bomblet?4:7;/* release 537: Cluster Shell bomblets */ctx.moveTo(x+gr,y);ctx.arc(x,y,gr,0,7);ctx.moveTo(x,y-gr);ctx.lineTo(x+gr*.57,y-gr*1.57)}else if(p.path==="arc"){const a=Math.atan2(p.dy,p.dx);ctx.moveTo(x+Math.cos(a)*8,y+Math.sin(a)*8);ctx.ellipse(x,y,8,3,a,0,7)}else{const r=(p.damageType === "magic" ? 5 : 3)*(p.scale||1);ctx.moveTo(x+r,y);ctx.arc(x, y, r, 0, 7)}
     }
     ctx.fill();
   }

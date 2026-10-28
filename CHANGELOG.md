@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 537 — **Cluster Shell** (Transit Lattice): when a Rift Bombard shell bursts, two bomblets fly off a short way and burst again, for less damage in a smaller blast. Physical (Might).
+  - The Corridor Golem is drawn without `roundRect`, so it shows on older Safari and Chrome (pre-publish review of 535).
 - Release 535 — **Corridor Golem** (Transit Lattice): a Hammerfall blow raises a stone golem where it lands. It dashes to the nearest foe and punches up to three times, turning to the next when one falls, then sinks back into the floor. One at a time, at most every 6 seconds; physical (Might).
 - Release 533 — tools.
   - **Rift Bombard is physical:** a cobbled-together bazooka. Its shells now grow with Might, not Focus.

@@ -9,7 +9,7 @@ import { rangedWeapon, normalizeItemUpgrade, BLUNDERBUSS_RANK } from '../src/ite
 import { TOOL_FORM_KEYS, FIELD_KEYS, fieldForm } from '../src/lattice-fields.ts';
 import { toggleLatticePassive } from '../src/constellation.ts';
 import { ensureLattice } from '../src/transit-lattice.ts';
-import { NANOKNIVES, ARC_WAVE, GOLEM } from '../src/tool-forms.ts';
+import { NANOKNIVES, ARC_WAVE, GOLEM, CLUSTER } from '../src/tool-forms.ts';
 
 function arena(tool, passives = [], stats = {}) {
   const s = freshSave(); s.seed = 'TOOLS'; s.perception.aperture = 3255; s.farArray = { listeners: 1 }; s.stats = { ...s.stats, ...stats }; ensureLattice(s); s.lattice.passives = passives.map((id) => `field:${id}`);
@@ -42,7 +42,7 @@ test('a Needle Caster at +6 becomes a Blunderbuss: three pellets in a cone; it s
 });
 
 test('Arc Wave turns the cone into one wide, piercing wave', () => {
-  assert.equal(TOOL_FORM_KEYS.length, 3); // release 535: the Corridor Golem assert.equal(FIELD_KEYS.length, 5);
+  assert.equal(TOOL_FORM_KEYS.length, 4); // release 535: the Corridor Golem; 537: Cluster Shell assert.equal(FIELD_KEYS.length, 5);
   for (const k of TOOL_FORM_KEYS) assert.ok(fieldForm(k));
   const { s, g } = arena({ name: 'Blunderbuss', basePower: 5, power: 11, upgradeRank: 6 }, ['arc-wave']);
   assert.equal(toggleLatticePassive(s, 'field:arc-wave').ok, true); assert.equal(toggleLatticePassive(s, 'field:arc-wave').ok, true); // clear and set again
@@ -83,4 +83,23 @@ test('Corridor Golem: a Hammerfall blow raises one golem that punches up to thre
 
 test('without the Corridor Golem the hammer raises nothing', () => {
   const { g } = arena({ name: 'Hammerfall', property: 'impact' }); g.fireSecondary(1000, { x: 1, y: 0 }); assert.equal(g.golem || null, null);
+});
+
+// Release 537 (Tim: "two smaller explosions fly off... a very short distance... and then they explode").
+test('Cluster Shell: a bursting Bombard shell throws two bomblets that burst in turn, and they do not split again', () => {
+  const run = (passives) => { const { g } = arena({ name: 'Rift Bombard', property: 'blast' }, passives); g.enemies = []; g.fireSecondary(1000, { x: 1, y: 0 });
+    const idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false };
+    const seen = new Set(); for (let i = 0; i < 60; i++) { g.update(.05, idle, 1000 + i * 50); for (const p of g.projectiles) seen.add(p.id); for (const e of g.effects) seen.add(e.id); } return [...seen]; };
+  const plain = run([]), cluster = run(['cluster-shell']);
+  assert.equal(plain.filter((id) => id.includes('-cluster')).length, 0);
+  const bomblets = cluster.filter((id) => /^shot-.*-cluster\d$/.test(id)), blasts = cluster.filter((id) => id.startsWith('blast-'));
+  assert.equal(bomblets.length, CLUSTER.count); assert.equal(blasts.length, 1 + CLUSTER.count, 'the shell and each bomblet burst once');
+});
+
+test('the tool forms draw without ctx.roundRect (older Safari and Chrome)', async () => {
+  const { drawToolForms } = await import('../src/tool-forms.ts');
+  const calls = []; const ctx = new Proxy({}, { get: (t, k) => k === 'roundRect' ? undefined : (k in t ? t[k] : (...a) => calls.push(k)), set: (t, k, v) => { t[k] = v; return true; } });
+  const game = { lastUpdateNow: 5000, player: { x: 0, y: 0 }, effects: [], projectiles: [], knives: null, golem: { x: 1, y: 1, start: 4000, face: 1, sinkAt: null } };
+  drawToolForms(ctx, game, (q) => [q.x * 40, q.y * 40], 40, 0);
+  assert.equal(calls.filter((k) => k === 'save').length, calls.filter((k) => k === 'restore').length); assert.ok(calls.includes('arcTo'));
 });
