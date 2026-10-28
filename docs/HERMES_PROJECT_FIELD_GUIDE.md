@@ -2694,6 +2694,32 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 543: the Wayfarer rises with the big robot — 2026-10-28
+
+Tim: "when the robot jumps you see the character's legs just hanging out beneath the suit". Then: "the way the robot functions right now is great... the character's head moves up-and-down as the robot walks... just that when you jumped his legs hang out the bottom. That's the only real problem."
+
+**CODE:**
+- renderer.ts, the player draw: with the robot up and not empowered, `actor` is drawn at `lift + mechLift`, the same height as the robot's back and front layers. Before, it was drawn at `lift` only, so a boost raised the robot by `mechLift` and left the Wayfarer's legs below it.
+- Otherwise the robot is unchanged. An eyes-only pilot was tried and dropped at Tim's word.
+
+**BOUNDARY:** Drawing only.
+
+Also in 543, the sling. Tim: "a pack that can have... ten items... a sling... they don't count to what your inventory space... you don't have to see them when [you] select... items that you want to save... weapons or tools that you've masterworked".
+
+**CODE:**
+- sling.ts (new module; registered in scripts/build.mjs and both sw.js lists):
+  - `SLING.size` is 10.
+  - `ensureSling` keeps gear only, normalized, and never drops a piece. It is called in `freshSave` and `migrateSave`.
+  - `toSling` moves a piece in from the pack. `fromSling` moves it back when the pack has room.
+  - `equipFromSling` equips straight from the sling; the replaced piece takes the slung piece's place there.
+- main.ts, Pack → Gear:
+  - A Sling section above the carried equipment, with Equip and To pack buttons.
+  - Each pack card gets a “To sling” button.
+  - Slung pieces are not in `save.inventory`, so Select all, salvage, selling and the pack's space never see them.
+- tests/sling-543.test.ts.
+
+**BOUNDARY:** `save.sling` is additive at schema 14.
+
 ## Release 541: each preset keeps its own gear — 2026-10-28
 
 Tim: "when you set an item or a tool... in your preset, it does not become deselected or unequipped... It's like your character just has a second item slot... a second weapon slot or a second tool slot... you don't have the ability to sell or lose or salvage the other items that are in your other preset".
