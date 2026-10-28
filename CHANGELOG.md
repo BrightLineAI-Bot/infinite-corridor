@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 525 — traps hit harder, and the pitfall.
+  - **Harder traps:** every trap now hits for at least a share of your maximum health, the old fire, spike and gas traps included (12% a hit; a dart 7%, a star shot 5%, the lava burst 14%), so they matter at any level.
+  - **Pitfall:** in crossings found from now on, a square of floor cracks when you step on it. Two seconds later it falls away: stay on it and you fall to your death, step off (or be in the air) and you are safe. It closes again after a few seconds.
+
 - Release 523 — three new dungeon traps, in crossings found from now on.
   - **Sigil trap:** a pentagram etched in the floor. Step near it and it flares, then lobs five orbs that land in a ring, spin for a second and each fire a five-pointed star of shots.
   - **Lava vent:** a cracked vent. Step on it and it glows, then bursts and flings gobbets of lava that splash where they land.
