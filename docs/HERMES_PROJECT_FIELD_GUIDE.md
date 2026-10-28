@@ -2694,6 +2694,30 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 533: tool forms — 2026-10-28
+
+Tim: "Rift bombard should be physical... like a goblin bazooka"; "the needle caster... after +6 it gets upgraded to a blunderbuss... 3 shots at once"; "passives... can turn the blunderbuss's 3 shot cone spread into an arc... the great sweep... 3 swords that float... shoot at the nearest enemy... nanobot daggers... yellow sigils... still physical".
+
+**CODE:**
+- items.ts:
+  - The Rift Bombard's `damageType` is `physical`, so fireSecondary adds the Might melee bonus and armor's attack bonus (release 529), not Focus.
+  - `BLUNDERBUSS_RANK` (6) and a `secondary-blunderbuss` profile with `pellets` 3 and `spread` .26.
+  - `normalizeItemUpgrade` renames a Needle Caster at +6 or more to "Blunderbuss" (equipment and pack). `rangedWeapon` returns the Blunderbuss profile for that name, or for a Needle Caster at rank 6+.
+  - `upgradeEquipment` says when the item changes.
+- tool-forms.ts (new module, in build.mjs and both sw.js lists): `ARC_WAVE`, `NANOKNIVES`, `knifeOffset`, and `drawToolForms`, which draws the circling and thrown daggers (steel blade, yellow sigil) and the wave.
+- lattice-fields.ts: `TOOL_FORMS` (`arc-wave`, `nanoknives`), held under `field:<id>` keys like the field passives but listed apart (`TOOL_FORM_KEYS`), so `FIELD_KEYS` stays five. `fieldForm` reads both.
+- game.ts:
+  - fireSecondary adds the extra pellets, or turns the shot into one wave (`arcWave`, wider `grow`, more `pierce`, `share` × damage) when Arc Wave is held.
+  - `brawlerTool("great-sweep")` hands off to `nanoknivesPress` when Nanoknives is held. `launchKnives` throws homing (`seekId`) physical tool projectiles from where the daggers circle. `tickKnives` throws them when `hold` runs out, or drops them in a new area or with another tool.
+- combat-visuals.ts skips `knife` and `arcWave` projectiles in the batched pass and calls `drawToolForms`.
+- tests/tool-forms-533.test.ts.
+
+**BOUNDARY:**
+- Renaming a +6 Needle Caster is the only change to stored data. It is a value change in an existing field at schema 14 and carries no new state.
+- `knives` is runtime only.
+- Both forms stay physical: plain steel still scatters the Nanobot Knight unless the tool's glyphs reach the swarm.
+- The hammer's golem form is not built yet. Tim asked for recommendations first.
+
 ## Release 531: spells and skills keep two sockets — 2026-10-28
 
 Tim: "don't add a third socket for spells, only some, you know, items. I get three sockets, get the three socket resonance".

@@ -17,9 +17,16 @@ export const FIELD_PASSIVES = {
   spellblade: { name: "Spellblade", text: "While one of your spells is running, melee strikes (the Iron Fists too) deal 20% more and reach 0.4 tiles farther.", damage: .2, reach: .4 },
   "drift-field": { name: "Drift Field", text: "A dodge drags your nearest lingering spell (within 6 tiles) along: it settles where you land.", reach: 6 },
 };
+// Release 533 (tool-forms.ts): tool forms, Lattice-only passives that change how a tool works. Held like the field passives
+// (keys `field:<id>`), listed apart from them.
+export const TOOL_FORMS = {
+  "arc-wave": { name: "Arc Wave", text: "The Blunderbuss fires one wide wave instead of its three-shot cone: it sweeps through every foe in its path. Still physical (Might)." },
+  nanoknives: { name: "Nanoknives", text: "The Great Sweep raises three nanobot daggers that circle you. Press the tool again to throw them at your foe (they home in) and raise a fresh set. Still physical (Might)." },
+};
 export const FIELD_KEYS = Object.keys(FIELD_PASSIVES).map((id) => `field:${id}`);
+export const TOOL_FORM_KEYS = Object.keys(TOOL_FORMS).map((id) => `field:${id}`);
 export function fieldForm(key) {
-  const [kind, id] = String(key).split(":"), f = kind === "field" && FIELD_PASSIVES[id];
+  const [kind, id] = String(key).split(":"), f = kind === "field" && (FIELD_PASSIVES[id] || TOOL_FORMS[id]);
   return f ? { id: key, field: true, alt: false, name: f.name, text: f.text } : null;
 }
 export const fieldOn = (save, id) => latticePassives(save).includes(`field:${id}`);
