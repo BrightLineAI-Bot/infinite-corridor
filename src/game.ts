@@ -4657,9 +4657,10 @@ export class Game {
   // Release 537 (tool-forms.ts CLUSTER): a bursting Bombard shell throws its bomblets (not hostile shells, not bomblets).
   clusterShell(shot) {
     if (shot.hostile || shot.bomblet || shot.glyphHost !== "tool" || !fieldOn(this.save, "cluster-shell")) return;
-    for (let i = 0; i < CLUSTER.count; i++) { const a = (i % 2 ? 1 : -1) * CLUSTER.angle, c = Math.cos(a), sn = Math.sin(a);
+    const turn = (hashSeed(shot.id) / 4294967296) * Math.PI * 2; // release 539: a fresh line through the burst for every shell (from its id, so a replay matches)
+    for (let i = 0; i < CLUSTER.count; i++) { const a = turn + i * Math.PI * 2 / CLUSTER.count, c = Math.cos(a), sn = Math.sin(a); // evenly round it: two at opposite ends
       const r = (shot.blastRadius || 2) * CLUSTER.radius; // release 539: it flies its own blast radius, so that blast's edge meets the first burst's centre
-      this.projectiles.push({ id: `${shot.id}-cluster${i}`, x: shot.x, y: shot.y, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, speed: CLUSTER.speed, life: r / CLUSTER.speed, damage: Math.max(1, Math.round(shot.damage * CLUSTER.share)), damageType: shot.damageType, path: "grenade", age: 0, hits: {}, blastRadius: r, glyphHost: "tool", bomblet: true }); }
+      this.projectiles.push({ id: `${shot.id}-cluster${i}`, x: shot.x, y: shot.y, dx: c, dy: sn, speed: CLUSTER.speed, life: r / CLUSTER.speed, damage: Math.max(1, Math.round(shot.damage * CLUSTER.share)), damageType: shot.damageType, path: "grenade", age: 0, hits: {}, blastRadius: r, glyphHost: "tool", bomblet: true }); }
   }
   // Release 539: what shortens a tool's cooldown (its glyphs, armor's attack speed); Wellspring Ground also runs it down faster.
   toolCooldownScale() { return this.glyphLoadout("tool").mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed); }

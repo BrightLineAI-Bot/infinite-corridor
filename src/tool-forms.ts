@@ -23,12 +23,13 @@
 //   it... a very short distance... and then they explode"): when a Bombard shell bursts, `count` bomblets fly off `angle`
 //   radians to either side of its path at `speed`, then burst for `share` of the shell's damage in `radius` × its blast.
 //   Release 539 (Tim: "a wider horizontal distance... the edges of their circles should touch... where the initial shell...
-//   exploded"): they fly straight out sideways, each exactly its own blast radius, so its blast's edge meets the first
-//   burst's centre. Bomblets do not split again.
+//   exploded"; then "random positions around the center... opposite poles of the circle"): they fly out at opposite ends
+//   of a line through the burst whose angle changes from shell to shell, each exactly its own blast radius, so its blast's
+//   edge meets the first burst's centre. Bomblets do not split again.
 // Pure numbers and drawing; game.ts runs them (fireSecondary, nanoknivesPress, launchKnives, tickKnives, raiseGolem, tickGolem,
 // clusterShell).
 export const GOLEM = { share: .9, punches: 3, gap: .38, rise: .35, sink: .4, range: 4, radius: .9, stun: .25, cooldown: 6, reach: .7 };
-export const CLUSTER = { count: 2, angle: Math.PI / 2, speed: 7, share: .45, radius: .55 };
+export const CLUSTER = { count: 2, speed: 7, share: .45, radius: .55 };
 export const ARC_WAVE = { share: 2.2, grow: .75, pierce: 12, speed: 11 };
 export const NANOKNIVES = { count: 3, share: .5, arm: .3, autoRange: 6, cooldown: .8, range: 9, speed: 13, life: 1.4, seekTurn: 9, orbitRadius: .95, spin: 2.6 };
 

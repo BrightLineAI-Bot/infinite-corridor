@@ -2700,6 +2700,7 @@ Tim:
 - "the golem cooldown should be... your tool cooldown... should be able to be reduced".
 - "the Nano knives should automatically fire... if there's an enemy nearby... if there's no enemy nearby, then they should wait until I launch them".
 - "the cluster shells should have a wider horizontal distance... the edges of the secondary explosion... [at] the center of that... initial explosion".
+- Then: "random positions around the center... always... along the same... center line... at different opposite poles of the circle".
 
 **CODE:**
 - game.ts:
@@ -2711,8 +2712,9 @@ Tim:
     - `tickKnives` throws the daggers once they are armed and `knifeFoe(autoRange)` finds a foe: the lock if it is that near, else the nearest. Otherwise they keep circling and never fade.
     - A press still throws them early and raises a fresh set.
   - Cluster Shell:
-    - `CLUSTER.angle` is now π/2 and `life` is gone.
-    - `clusterShell` gives each bomblet the life `r / speed`, so it flies exactly its own blast radius `r` sideways.
+    - `CLUSTER.angle` and `life` are gone.
+    - `clusterShell` turns a line through the burst by `hashSeed(shot.id)`, so each shell gets a different angle while replays stay the same. The bomblets go to its opposite ends, evenly spaced around the burst.
+    - Each bomblet gets the life `r / speed`, so it flies exactly its own blast radius `r`.
 - tests/tool-forms-533.test.ts.
 
 **BOUNDARY:**

@@ -122,10 +122,16 @@ test('Nanoknives wait while no foe is near, then throw themselves when one comes
   g.enemies[0].x = 13; g.tickKnives(1000 + 60001); assert.equal(g.knives, null); assert.equal(g.projectiles.filter((p) => p.knife && p.seekId === 'foe').length, 3);
 });
 
-test('Cluster Shell bomblets fly straight out sideways, each its own blast radius from the first burst', async () => {
+test('Cluster Shell bomblets fly to opposite ends of a line that turns from shell to shell, each its own blast radius out', async () => {
   const { g } = arena({ name: 'Rift Bombard', property: 'blast' }, ['cluster-shell']);
-  const shot = { id: 'shot-x', x: 10, y: 10, dx: 1, dy: 0, blastRadius: 2.15, damage: 40, damageType: 'physical', glyphHost: 'tool', path: 'grenade' };
-  g.projectiles = []; g.clusterShell(shot);
-  const b = g.projectiles; assert.equal(b.length, 2);
-  for (const p of b) { assert.ok(Math.abs(p.dx) < 1e-9 && Math.abs(Math.abs(p.dy) - 1) < 1e-9, 'sideways'); assert.ok(Math.abs(p.speed * p.life - p.blastRadius) < 1e-9, 'edge meets the centre'); }
+  const angles = [];
+  for (const id of ['shot-a', 'shot-b', 'shot-c', 'shot-d']) {
+    const shot = { id, x: 10, y: 10, dx: 1, dy: 0, blastRadius: 2.15, damage: 40, damageType: 'physical', glyphHost: 'tool', path: 'grenade' };
+    g.projectiles = []; g.clusterShell(shot);
+    const [p, q] = g.projectiles; assert.equal(g.projectiles.length, 2);
+    assert.ok(Math.abs(p.dx + q.dx) < 1e-9 && Math.abs(p.dy + q.dy) < 1e-9, 'opposite ends');
+    for (const b of [p, q]) assert.ok(Math.abs(b.speed * b.life - b.blastRadius) < 1e-9, 'edge meets the centre');
+    angles.push(Math.atan2(p.dy, p.dx).toFixed(2));
+  }
+  assert.ok(new Set(angles).size >= 3, `the line turns: ${angles}`);
 });
