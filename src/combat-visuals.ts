@@ -2,6 +2,7 @@ import { dungeonPointDiscovered } from "./dungeon-framework.ts";
 import { SHADOW_CLONE } from "./late-spells.ts";
 import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.ts";
 import { drawOrbit } from "./orbit-volley.ts";
+import { drawToolForms } from "./tool-forms.ts";
 export function drawRangedEffects(ctx,game,width,height) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [
@@ -14,6 +15,7 @@ export function drawRangedEffects(ctx,game,width,height) {
   const groups = new Map();
   for (const p of game.projectiles) {
     if(!dungeonPointDiscovered(game.map,p))continue;
+    if(p.knife||p.arcWave)continue; // release 533: drawn by drawToolForms
     const color = p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.damageType === "magic" ? "#9fe8db" : "#d6b276"; // release 321: the drone's rockets burn orange
     let list = groups.get(color); if (!list) groups.set(color, list = []); list.push(p);
   }
@@ -55,6 +57,7 @@ export function drawRangedEffects(ctx,game,width,height) {
   drawBrawler(ctx, game, toScreen, s, t); // release 483: Hammerfall, Great Sweep, Iron Fist
   drawBrawlerAuras(ctx, game, toScreen, s, t); // release 485: Aegis, Shadow Boxing
   drawOrbit(ctx, game, toScreen, s, t); // release 487: Orbit Volley
+  drawToolForms(ctx, game, toScreen, s, t); // release 533: Nanoknives and the Arc Wave
   for (const fx of game.effects) {
     if (fx.kind !== "gravity-well" && fx.kind !== "stillpoint") continue;
     const [x, y] = toScreen(fx), R = fx.radius * s;

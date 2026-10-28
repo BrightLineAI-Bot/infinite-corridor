@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 533 — tools.
+  - **Rift Bombard is physical:** a cobbled-together bazooka. Its shells now grow with Might, not Focus.
+  - **Blunderbuss:** a Needle Caster that reaches +6 becomes a Blunderbuss and fires three shots at once in a cone.
+  - **Arc Wave** (Transit Lattice): the Blunderbuss fires one wide wave that sweeps through every foe in its path.
+  - **Nanoknives** (Transit Lattice): the Great Sweep raises three nanobot daggers with yellow sigils that circle you. Press the tool again to throw them; they home in on your foe and a fresh set rises. Left alone, they throw themselves after four seconds.
 - Release 531 — spells and skills keep two glyph sockets (Tim): the third socket from 529 is gone, so a triad needs a three-socket weapon, tool or armor (relic tier, or the smith's added socket).
 - Release 529 — triads: resonances of three different glyphs.
   - **Six triads:** Inferno (ignite, chain, volatile), Maelstrom (tether, chain, pierce), Requiem (echo, still, heavy), Sanguine Storm (leech, swift, chain), Starfall (volatile, pierce, echo) and Undertow (tether, still, leech). Each changes hits when all three sit in one weapon, tool, spell or skill.

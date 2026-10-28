@@ -13,21 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**533**
+**535**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 531 | Claude | `claude/dreamy-rubin-yn6q2p` | Spells and skills back to two glyph sockets (Tim): triads come from three-socket items | Building. |
-| 529 | Claude | PR #248 | Triads: six three-glyph resonances; armor resonates only through triads; spells and skills get a third socket; the Needle Caster scales with Might | Merged (`r529-754c79acb8d9`). Not published. |
-| 527 | Claude | PR #247 | Resonance gift for journeys under way; presets keep gear equipped; only world beasts announced in crossings; red crumbling floor; the vortex trap | Merged (`r527-47bdbf2d56cd`). Not published. |
+| 533 | Claude | `claude/dreamy-rubin-yn6q2p` | The Rift Bombard is physical; a Needle Caster at +6 becomes a Blunderbuss; Lattice tool forms Arc Wave and Nanoknives | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 531 | `r531-a8429f5bfd33` | 2026-10-28 | With 527 and 529: the resonance gift, presets keep gear, world-beast-only crossing banners, the red crumbling floor and the vortex trap (PR #247); glyph triads and armor triads, the Needle Caster scaling with Might (#248); spells and skills back to two sockets (#249). The pre-publish Fable review (525→531) found no blockers. |
 | 525 | `r525-5ba50cb08225` | 2026-10-28 | With 517–523: spell buttons drain gold (PR #242, #243), the save mirror once a minute (#244), sigil, lava and dart traps (#245), harder traps and the pitfall (#246). The pre-publish Fable review (515→525) found no blockers. |
 | 515 | `r515-bf3734f5bbc0` | 2026-10-28 | Five Lattice field passives: Sanctum, Wellspring Ground, Charged Air, Spellblade, Drift Field (PR #241). The pre-publish Fable review (513→515) found no blockers. |
 | 513 | `r513-e721fa71fa99` | 2026-10-27 | More brawler gear in drops; a full Pack keeps brawler gear you do not have (PR #240). The pre-publish Fable review (511→513) found no blockers. |
