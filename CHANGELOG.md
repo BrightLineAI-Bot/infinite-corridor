@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Release 529 — triads: resonances of three different glyphs.
+  - **Six triads:** Inferno (ignite, chain, volatile), Maelstrom (tether, chain, pierce), Requiem (echo, still, heavy), Sanguine Storm (leech, swift, chain), Starfall (volatile, pierce, echo) and Undertow (tether, still, leech). Each changes hits when all three sit in one weapon, tool, spell or skill.
+  - **Spells and skills hold three glyphs:** every spell and skill gains a third socket.
+  - **Armor triads:** armor resonates only through triads. Set three that form one and the armor gains a steady bonus on top of its usual limits; you learn it the moment you set it.
+  - The Glyphs screen lists the triads under the resonances.
+  - **Needle Caster scales with Might:** its shots now grow with your Might (the melee bonus) and armor's blow bonus, instead of Focus. Magic shots like the Lumen Spindle keep Focus.
+
 - Release 527 — fixes and a new trap.
   - **Every resonance unlocked:** a journey already under way has all eight resonances written in its codex, once.
   - **Presets keep your gear:** switching presets no longer unequips your weapon, tool or armor, so nothing lands in your pack to be salvaged by mistake. Glyphs, passive forms and the Lattice still follow the preset.
