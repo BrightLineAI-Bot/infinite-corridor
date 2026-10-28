@@ -1,4 +1,4 @@
-import { freshSave, migrateSave } from "./types.js?v=r515-bf3734f5bbc0";
+import { freshSave, migrateSave } from "./types.js?v=r525-5ba50cb08225";
 
 const DB = "infinite-corridor", STORE = "saves", SLOT_COUNT = 3;
 const LEGACY_MIRROR = "infinite-corridor:active-v2", ACTIVE_SLOT = "infinite-corridor:active-slot-v1", SETTINGS = "infinite-corridor:settings-v1";
@@ -29,7 +29,11 @@ export function setActiveSlot(slot){activeSlot=Math.max(1,Math.min(SLOT_COUNT,Nu
 async function migrateLegacy(){if(await read(slotKey(1)))return;let legacy=await read("active");if(!legacy)try{const text=localStorage.getItem(LEGACY_MIRROR);legacy=text?JSON.parse(text):null}catch{}if(validateJourney(legacy).health==="healthy"){await write(slotKey(1),legacy);mirrorWrite(1,migrateSave(legacy))}}
 export async function loadSave(){activeSlot=getActiveSlot();try{await migrateLegacy()}catch(error){console.warn("Legacy save migration failed",error)}let stored=null;try{stored=await read(slotKey(activeSlot))}catch(error){console.warn("IndexedDB load failed",error)}const choices=[stored,mirrorRead(activeSlot)].map(validateJourney).filter(q=>q.health==="healthy").map(q=>q.save);return choices.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0]||freshSave()}
 export function createSlotWriteCoordinator(writer){let chain=Promise.resolve(),queued=new Map();return{enqueue(slot,snapshot){queued.set(slot,snapshot);chain=chain.catch(()=>{}).then(async()=>{const batch=[...queued];queued=new Map();for(const[key,value]of batch)await writer(key,value)});return chain},flush(){return chain}}}
-const coordinator=createSlotWriteCoordinator(async(slot,snapshot)=>{await write(slotKey(slot),snapshot);mirrorWrite(slot,snapshot)});
+// Release 519: the localStorage mirror (a fallback the loader uses only when it is newer than IndexedDB, or IndexedDB fails)
+// is a synchronous stringify of the whole journey, the ~50 ms frame in Tim's probe. It is written at most every
+// MIRROR_EVERY_MS per slot, and always when the IndexedDB write fails.
+export const MIRROR_EVERY_MS=60000;const mirroredAt=new Map();
+const coordinator=createSlotWriteCoordinator(async(slot,snapshot)=>{try{await write(slotKey(slot),snapshot)}catch(error){mirrorWrite(slot,snapshot);mirroredAt.set(slot,Date.now());throw error}const now=Date.now();if(!(now-(mirroredAt.get(slot)??-Infinity)<MIRROR_EVERY_MS)){mirrorWrite(slot,snapshot);mirroredAt.set(slot,now)}});
 let lastWriteError=null;
 // Release 167: the autosave (every 8 s) deep-copied every area the journey had ever visited, so it grew into a 30-70 ms
 // stall on a phone. An area's stored state is replaced, never edited, when the Wayfarer leaves or saves in it, so the copy
