@@ -21,6 +21,7 @@ export const FIELD_PASSIVES = {
 // (keys `field:<id>`), listed apart from them.
 export const TOOL_FORMS = {
   "arc-wave": { name: "Arc Wave", text: "The Blunderbuss fires one wide wave instead of its three-shot cone: it sweeps through every foe in its path. Still physical (Might)." },
+  "corridor-golem": { name: "Corridor Golem", text: "A Hammerfall blow raises a stone golem where it lands: it dashes to the nearest foe and punches up to three times, turning to the next when one falls, then sinks back into the floor. One at a time, at most every 6 s. Still physical (Might)." }, // release 535
   nanoknives: { name: "Nanoknives", text: "The Great Sweep raises three nanobot daggers that circle you. Press the tool again to throw them at your foe (they home in) and raise a fresh set. Still physical (Might)." },
 };
 export const FIELD_KEYS = Object.keys(FIELD_PASSIVES).map((id) => `field:${id}`);

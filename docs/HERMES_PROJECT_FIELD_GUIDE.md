@@ -2694,6 +2694,28 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 535: the Corridor Golem — 2026-10-28
+
+Tim: "the hammer... summon a golem... dash to the nearest enemy and deliver like 3 blows... if the enemy dies on the first blow... to the next enemy... rises up out of the ground... melts back into the tiles". Of three proposals he chose "the quick golem".
+
+**CODE:**
+- tool-forms.ts:
+  - `GOLEM`: share, punches, gap, rise, sink, range, radius, stun, cooldown and reach.
+  - `drawGolem` draws a squat stone figure with yellow sigil eyes. It is clipped at the floor line, so it rises out of the ground and sinks back.
+  - `drawToolForms` also draws the `golem-punch` rings.
+- lattice-fields.ts: `TOOL_FORMS["corridor-golem"]`.
+- game.ts:
+  - `brawlerTool("hammerfall")` calls `raiseGolem(at, now + delay)` when the form is held. It does nothing while a golem is up or before `golemReadyAt`.
+  - `tickGolem` dashes the golem to `reach` short of the nearest live foe within `range` of itself, keeping its foe while that foe lives. Each punch is a `golem-punch` tool effect (`share` × `toolPower`, a `stun`) and runs through `updateEffects` like the hammer's own blow.
+  - The golem sinks when its punches are spent or no foe is near, and drops on an area change.
+- combat-visuals.ts skips `golem-punch` in the generic effect pass.
+- tests/tool-forms-533.test.ts.
+
+**BOUNDARY:**
+- `golem` and `golemReadyAt` are runtime only.
+- At most one golem exists, and it needs no pathfinding: it dashes in a straight line. This respects the bounded-actor rule.
+- Physical, like the hammer.
+
 ## Release 533: tool forms — 2026-10-28
 
 Tim: "Rift bombard should be physical... like a goblin bazooka"; "the needle caster... after +6 it gets upgraded to a blunderbuss... 3 shots at once"; "passives... can turn the blunderbuss's 3 shot cone spread into an arc... the great sweep... 3 swords that float... shoot at the nearest enemy... nanobot daggers... yellow sigils... still physical".

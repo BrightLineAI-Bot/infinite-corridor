@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 535 — **Corridor Golem** (Transit Lattice): a Hammerfall blow raises a stone golem where it lands. It dashes to the nearest foe and punches up to three times, turning to the next when one falls, then sinks back into the floor. One at a time, at most every 6 seconds; physical (Might).
 - Release 533 — tools.
   - **Rift Bombard is physical:** a cobbled-together bazooka. Its shells now grow with Might, not Focus.
   - **Blunderbuss:** a Needle Caster that reaches +6 becomes a Blunderbuss and fires three shots at once in a cone.

@@ -9,7 +9,7 @@ import { rangedWeapon, normalizeItemUpgrade, BLUNDERBUSS_RANK } from '../src/ite
 import { TOOL_FORM_KEYS, FIELD_KEYS, fieldForm } from '../src/lattice-fields.ts';
 import { toggleLatticePassive } from '../src/constellation.ts';
 import { ensureLattice } from '../src/transit-lattice.ts';
-import { NANOKNIVES, ARC_WAVE } from '../src/tool-forms.ts';
+import { NANOKNIVES, ARC_WAVE, GOLEM } from '../src/tool-forms.ts';
 
 function arena(tool, passives = [], stats = {}) {
   const s = freshSave(); s.seed = 'TOOLS'; s.perception.aperture = 3255; s.farArray = { listeners: 1 }; s.stats = { ...s.stats, ...stats }; ensureLattice(s); s.lattice.passives = passives.map((id) => `field:${id}`);
@@ -42,7 +42,7 @@ test('a Needle Caster at +6 becomes a Blunderbuss: three pellets in a cone; it s
 });
 
 test('Arc Wave turns the cone into one wide, piercing wave', () => {
-  assert.equal(TOOL_FORM_KEYS.length, 2); assert.equal(FIELD_KEYS.length, 5);
+  assert.equal(TOOL_FORM_KEYS.length, 3); // release 535: the Corridor Golem assert.equal(FIELD_KEYS.length, 5);
   for (const k of TOOL_FORM_KEYS) assert.ok(fieldForm(k));
   const { s, g } = arena({ name: 'Blunderbuss', basePower: 5, power: 11, upgradeRank: 6 }, ['arc-wave']);
   assert.equal(toggleLatticePassive(s, 'field:arc-wave').ok, true); assert.equal(toggleLatticePassive(s, 'field:arc-wave').ok, true); // clear and set again
@@ -67,4 +67,20 @@ test('Nanoknives: the Great Sweep raises three daggers; the next press throws th
 test('without Nanoknives the Great Sweep still sweeps', () => {
   const { g } = arena({ name: 'Great Sweep', property: 'impact' });
   g.fireSecondary(1000, { x: 1, y: 0 }); assert.ok(g.effects.some((e) => e.brawler)); assert.equal(g.knives || null, null);
+});
+
+// Release 535 (Tim: "go with the quick golem").
+test('Corridor Golem: a Hammerfall blow raises one golem that punches up to three times, retargets, then sinks', () => {
+  const { g } = arena({ name: 'Hammerfall', property: 'impact' }, ['corridor-golem']);
+  g.enemies.push(Object.assign(createCombatant('rootBrute', 12, 12), { id: 'foe2', hp: 1, maxHp: 1, damage: 0, cooldown: 99 }));
+  assert.equal(g.fireSecondary(1000, { x: 1, y: 0 }), true); assert.ok(g.golem, 'it rises');
+  assert.equal(g.fireSecondary(1000 + 1300, { x: 1, y: 0 }), true); assert.equal(g.golemReadyAt, 1000 + 320 + GOLEM.cooldown * 1000, 'one at a time');
+  let t = 1000; const punches = () => g.effects.filter((e) => e.kind === 'golem-punch');
+  for (let i = 0; i < 40 && g.golem && !g.golem.sinkAt; i++) { t += 100; g.tickGolem(t); for (const e of punches()) if (!e.done) { e.done = true; const f = g.enemies.find((q) => Math.hypot(q.x + .5 - e.x, q.y + .45 - e.y) < .1); if (f) { f.hp -= e.damage; if (f.hp <= 0) f.dead = true; } } }
+  assert.equal(punches().length, GOLEM.punches); assert.ok(punches().every((e) => e.glyphHost === 'tool' && e.damage > 0));
+  assert.ok(g.golem.sinkAt, 'blows spent: it sinks'); g.tickGolem(t + GOLEM.sink * 1000 + 1); assert.equal(g.golem, null);
+});
+
+test('without the Corridor Golem the hammer raises nothing', () => {
+  const { g } = arena({ name: 'Hammerfall', property: 'impact' }); g.fireSecondary(1000, { x: 1, y: 0 }); assert.equal(g.golem || null, null);
 });
