@@ -2694,6 +2694,19 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 519: every spell and skill shows its drain — 2026-10-28
+
+Tim: "all spells and skills should show their duration... in the button... a similar golden infill that winds down or drains out".
+
+**CODE:**
+- game.ts `spellBuffLeft` covers every spell. Any own effect of the spell counts, so quick spells such as Cinder Dart do too (the 517 `FIELD.minLife` floor is gone there).
+- Orbit Volley shows `1 - held/ORBIT.window` while the orbs gather, and full in flight.
+- A successful Rift Step stamps `riftFlashAt`; `riftFlashLeft` gives a `RIFT_FLASH` (.6 s) flash.
+- main.ts `spellOrSkillLeft` takes the larger of the Rift Step infusion and the flash.
+- Every timed Aperture skill already drained through `buffLeft` (release 313).
+
+**BOUNDARY:** Display only.
+
 ## Release 517: spell buttons show their duration — 2026-10-28
 
 Tim: "shadow Boxing... when you activate it... The spell button doesn't show the duration. I know you have a ring around you and that's fine... let's not change that. But the spell should show the duration. In the button, similar to every other spell and [skill]".
