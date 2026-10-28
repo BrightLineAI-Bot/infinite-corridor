@@ -8,7 +8,7 @@
 // not found (so the notes read in order however the crossings fall) and its page of notes, kept in the Journal. A crossing
 // gives at most one link. Part two (his statue at the edge of the Far Sleep, and the last map) is still to come.
 // State: save.lore.surveyor = { links: [index...], where: { index: dungeonId } } (additive; ensureSurveyor). Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r537-da8aeff88eba";
+import { hashSeed } from "./random.js?v=r545-06aeebad5e78";
 
 export const SURVEYOR = { links: 12, chance: .14, minRing: 8, minFromEntry: 6 };
 // His field notes, one per link, in the order they are found. Original writing for the game. The lengths of the same
