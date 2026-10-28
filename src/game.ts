@@ -4655,6 +4655,18 @@ export class Game {
   ownSpellFx(lingering = false) { return (this.effects || []).filter((e) => e.glyphHost === "spell" && !e.hostile && !(e.delay > 0) && e.life > 0 && (!lingering || (e.radius > 0 && ((SPELLS[e.glyphSpell]?.lifetime || 0) >= FIELD.minLife || String(e.id).endsWith("-vortex"))))); }
   spellRunning(now = this.lastUpdateNow || 0) { return now < (this.aegisUntil || 0) || now < (this.boxingUntil || 0) || !!this.orbit || (this.shadowCloneActive(now) && !this.shadowClone.marginalia && !this.shadowClone.boxing) || this.ownSpellFx().length > 0; }
   inOwnField() { const p = this.player, x = p.x + .5, y = p.y + .45; return this.ownSpellFx(true).some((e) => Math.hypot(e.x - x, e.y - y) <= e.radius); }
+  // Release 517 (Tim: "shadow Boxing... The spell button doesn't show the duration... similar to every other spell"): how
+  // much of a cast spell's effect is left, 0..1, for the button's draining fill (as Aperture skills show theirs).
+  spellBuffLeft(id, now = this.lastUpdateNow || 0) {
+    const S = SPELLS[id]; if (!S) return 0;
+    const left = (until, ms) => until > now && ms > 0 ? Math.min(1, (until - now) / ms) : 0;
+    if (id === "shadow-boxing") return left(this.boxingUntil || 0, BRAWLER["shadow-boxing"].seconds * 1000);
+    if (id === "aegis") return left(this.aegisUntil || 0, BRAWLER.aegis.ms);
+    if (id === "shadow-clone") return this.shadowCloneActive(now) && !this.shadowClone.marginalia && !this.shadowClone.boxing ? left(this.shadowClone.until, S.lifetime * 1000) : 0;
+    if (!(S.lifetime >= FIELD.minLife)) return 0;
+    const fx = this.ownSpellFx().filter((e) => e.glyphSpell === id && !e.echo && !String(e.id).endsWith("-vortex"));
+    return fx.length ? Math.min(1, Math.max(...fx.map((e) => e.life)) / S.lifetime) : 0;
+  }
   spellbladeOn(now = this.lastUpdateNow || 0) { return fieldOn(this.save, "spellblade") && this.spellRunning(now); }
   castShadowClone(spell, cds, key, now = this.lastUpdateNow || 0) {
     if (this.shadowCloneActive(now) && !this.shadowClone.boxing) { // release 503: a Shadow Boxing echo is replaced, not stepped into

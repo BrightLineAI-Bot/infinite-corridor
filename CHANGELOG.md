@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 517 — spell buttons show how long a cast lasts. While Shadow Boxing, Aegis, your Shadow Clone, or a lingering spell (Ember Ring, Grave Sun, Gravity Well, Stillpoint) is running, its button lights up and the light drains away as the time runs out, the same as an Aperture skill's. The ring around you stays as it is.
+
 - Release 515 — five new Transit Lattice passives, found only in the Lattice and needing nothing learned first.
   - **Sanctum:** standing inside one of your lingering spells (Ember Ring, Grave Sun, Gravity Well, Stillpoint, the Orbit vortex), you take 20% less damage and mend 2% of your health each second.
   - **Wellspring Ground:** standing inside one of them, your spells, Aperture skills and tools recover 30% faster.
