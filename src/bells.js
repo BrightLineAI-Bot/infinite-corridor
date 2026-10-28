@@ -8,8 +8,8 @@
 // Ember Refuge, a seeded `chance` per crossing). Which of the seven it is comes from the crossing's seed, so a crossing
 // always holds the same bell; one already rung hangs silent. Rung bells are remembered in save.lore.bells (the bells rung,
 // as a string of digits; additive, normalised here). All writing is original to the game. Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r545-06aeebad5e78";
-import { READING_BANDS } from "./lore.js?v=r545-06aeebad5e78";
+import { hashSeed } from "./random.js?v=r549-393038eb248c";
+import { READING_BANDS } from "./lore.js?v=r549-393038eb248c";
 
 export const BELLS = { count: 7, chance: .14, minDepth: 3, maxDepth: READING_BANDS.middle };
 export const BELL_GLIMPSES = {

@@ -13,7 +13,7 @@
 // Every trap warns before it fires (`warn` s) and rests after (`rest` s). Jumping clears star shots and darts, as it clears
 // the old traps; lava blobs must be dodged. Damage is `base` + `perLevel` × the Wayfarer's level. Pure rules and data;
 // game.ts calls tickNewTraps, main.ts draws them.
-import { hashSeed } from "./random.js?v=r545-06aeebad5e78";
+import { hashSeed } from "./random.js?v=r549-393038eb248c";
 
 // Release 525 (Tim: "the trap should do more damage. All across the board... the pitfall trap... you trigger it. And... two
 // seconds before the ground falls out. And you die if you stay on the ground. But you can just move"): every trap hits for

@@ -1,8 +1,8 @@
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r545-06aeebad5e78";
-import { SHADOW_CLONE } from "./late-spells.js?v=r545-06aeebad5e78";
-import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r545-06aeebad5e78";
-import { drawOrbit } from "./orbit-volley.js?v=r545-06aeebad5e78";
-import { drawToolForms } from "./tool-forms.js?v=r545-06aeebad5e78";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r549-393038eb248c";
+import { SHADOW_CLONE } from "./late-spells.js?v=r549-393038eb248c";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r549-393038eb248c";
+import { drawOrbit } from "./orbit-volley.js?v=r549-393038eb248c";
+import { drawToolForms } from "./tool-forms.js?v=r549-393038eb248c";
 export function drawRangedEffects(ctx,game,width,height) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [
@@ -15,7 +15,7 @@ export function drawRangedEffects(ctx,game,width,height) {
   const groups = new Map();
   for (const p of game.projectiles) {
     if(!dungeonPointDiscovered(game.map,p))continue;
-    if(p.knife||p.arcWave)continue; // release 533: drawn by drawToolForms
+    if(p.knife||p.arcWave||p.fireBomb)continue; // release 533: drawn by drawToolForms; 547: Fire Burst shells
     const color = p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.damageType === "magic" ? "#9fe8db" : "#d6b276"; // release 321: the drone's rockets burn orange
     let list = groups.get(color); if (!list) groups.set(color, list = []); list.push(p);
   }

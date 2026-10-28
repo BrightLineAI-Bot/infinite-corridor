@@ -4,8 +4,10 @@
 //
 // Two Lattice-only passives (lattice-fields.ts TOOL_FORMS, keys `field:arc-wave` and `field:nanoknives`) that change how
 // a tool works. Both stay physical: they scale with Might like the tool they change.
-// - Arc Wave: the Blunderbuss fires one wide wave instead of its three-pellet cone. The wave is `share` × one pellet, catches
-//   foes `grow` tiles to either side of its path and passes through `pierce` of them.
+// - Arc Wave: the Blunderbuss's three pellets become crescent waves along the same cone (release 549, Tim: "three larger
+//   crescents that shoot out in... an arc... they would follow the same path of the blunderbuss's original shots"; 533 fired
+//   one wave). Each wave is `share` × one pellet, catches foes `grow` tiles to either side of its path and passes through
+//   `pierce` of them.
 // - Nanoknives: the Great Sweep raises `count` nanobot daggers that circle you. Pressing the tool again throws the circling
 //   daggers at your foe (the lock, else the nearest within `range`) and raises a fresh set. Release 539 (Tim: "they should
 //   fire if there's an enemy nearby... if there's no enemy nearby... wait until I launch them"): `arm` s after rising, the
@@ -29,8 +31,13 @@
 // Pure numbers and drawing; game.ts runs them (fireSecondary, nanoknivesPress, launchKnives, tickKnives, raiseGolem, tickGolem,
 // clusterShell).
 export const GOLEM = { share: .9, punches: 3, gap: .38, rise: .35, sink: .4, range: 4, radius: .9, stun: .25, cooldown: 6, reach: .7 };
+// Fire Burst (release 547; Tim: "a spell... fire burst... launches out a series of fireballs that fly a short distance and
+// explode... look exactly like those [cracked ember shells]"): `count` cinder shells in a fan `spread` radians wide toward the
+// target, each flying `reach` tiles at `speed` (or to the first foe it meets) and bursting in the spell's radius for its
+// damage. Magic: they grow with Focus, like the other spells. Drawn as dark shells with a glowing crack.
+export const FIRE_BURST = { count: 5, spread: 1.4, reach: 2.6, speed: 9 };
 export const CLUSTER = { count: 2, speed: 7, share: .45, radius: .55 };
-export const ARC_WAVE = { share: 2.2, grow: .75, pierce: 12, speed: 11 };
+export const ARC_WAVE = { share: 1, grow: .5, pierce: 12, speed: 11 }; // release 549: per wave, three waves (was one wave at 2.2, grow .75)
 export const NANOKNIVES = { count: 3, share: .5, arm: .3, autoRange: 6, cooldown: .8, range: 9, speed: 13, life: 1.4, seekTurn: 9, orbitRadius: .95, spin: 2.6 };
 
 // Where dagger `i` of `n` circles at time `t` (seconds), as an offset in tiles.
@@ -63,12 +70,17 @@ function drawGolem(ctx, game, toScreen, s) {
 
 export function drawToolForms(ctx, game, toScreen, s, t) {
   drawGolem(ctx, game, toScreen, s);
+  for (const fx of game.effects) if (fx.fireBurst && fx.life > 0) { const [x, y] = toScreen(fx), k = 1 - fx.life / .32, R = fx.radius * s * (.5 + .6 * k); const g = ctx.createRadialGradient(x, y, 0, x, y, R); g.addColorStop(0, `rgba(255,236,160,${.9 * (1 - k)})`); g.addColorStop(.5, `rgba(255,128,40,${.7 * (1 - k)})`); g.addColorStop(1, "rgba(160,40,10,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill(); } // release 547: Fire Burst's flame
   for (const fx of game.effects) if (fx.kind === "golem-punch" && fx.life > 0) { const [x, y] = toScreen(fx); ctx.strokeStyle = "#e8d3a2"; ctx.lineWidth = 3; ctx.globalAlpha = Math.min(1, fx.life * 5); ctx.beginPath(); ctx.arc(x, y, fx.radius * s * (1.1 - fx.life * 2), 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
   const k = game.knives;
   if (k) { const n = k.count, [cx, cy] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }); for (let i = 0; i < n; i++) { const o = knifeOffset(i, n, (game.lastUpdateNow || 0) / 1000); dagger(ctx, cx + o.x * s, cy + o.y * s, o.a + Math.PI / 2, s); } }
   for (const p of game.projectiles) {
     if (p.dead) continue;
     if (p.knife) { const [x, y] = toScreen(p); dagger(ctx, x, y, Math.atan2(p.dy, p.dx), s); }
+    else if (p.fireBomb) { const [x, y] = toScreen(p), r = s * .2, spin = (p.age || 0) * 9; // release 547: a cinder shell, cracked and glowing
+      ctx.fillStyle = "#ff7a2a33"; ctx.beginPath(); ctx.arc(x, y, r * 1.7, 0, 7); ctx.fill();
+      ctx.fillStyle = "#5a2416"; ctx.strokeStyle = "#2a0e08"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = "#ff8a2a"; ctx.lineWidth = Math.max(1.5, s * .045); ctx.beginPath(); for (const a of [spin - 1.6, spin + .5, spin + 2.6]) { ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * r * .8, y + Math.sin(a) * r * .8); } ctx.stroke(); }
     else if (p.arcWave) { const [x, y] = toScreen(p), a = Math.atan2(p.dy, p.dx), R = (p.grow || ARC_WAVE.grow) * s; ctx.strokeStyle = "#e8c27a"; ctx.lineWidth = s * .14; ctx.globalAlpha = .85; ctx.beginPath(); ctx.arc(x - Math.cos(a) * R * .6, y - Math.sin(a) * R * .6, R, a - 1.1, a + 1.1); ctx.stroke(); ctx.globalAlpha = 1; }
   }
 }

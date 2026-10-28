@@ -2,8 +2,8 @@
 // t ∈ [0, 1] in first person. Tim, 2026-10-19: figures and places should be painterly (impressionist, pointillist,
 // hatched) rather than hard-edged, so these scenes are laid down as brushstrokes: each backdrop is painted once from
 // thousands of short tilted dabs, and the moving things are drawn as clusters of dabs over it. Canvas 2D only.
-import { TAU, clamp, lerp, smooth, seeded, mix, hex, rgba, glow, vignette, makeCanvas } from "./glimpse-paint.js?v=r545-06aeebad5e78";
-import { paintHand } from "./glimpse-hand.js?v=r545-06aeebad5e78";
+import { TAU, clamp, lerp, smooth, seeded, mix, hex, rgba, glow, vignette, makeCanvas } from "./glimpse-paint.js?v=r549-393038eb248c";
+import { paintHand } from "./glimpse-hand.js?v=r549-393038eb248c";
 
 // A canvas covered in brushwork: `color(x, y, r)` gives the [r, g, b] under a dab (x, y in [0, 1]), `angle(x, y)` its
 // tilt. A flat wash under the strokes keeps the gaps from showing black. Painted once per size and cached by the caller.
