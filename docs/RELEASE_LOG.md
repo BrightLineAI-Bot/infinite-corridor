@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**543**
+**545**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 541 | Claude | `claude/dreamy-rubin-yn6q2p` | Each preset keeps its own weapon, tool and armor, held out of the pack; every Listener town has its smith, indoors; the Atlas offers "make home" for the town you tapped or stand in | Building. |
+| 543 | Claude | `claude/dreamy-rubin-yn6q2p` | In the big robot the Wayfarer rises with it when it boosts (no legs hanging below it); the sling: ten pieces kept out of the pack | Building. |
+| 541 | Claude | PR #254 | Each preset keeps its own weapon, tool and armor, held out of the pack; every Listener town has its smith, indoors; the Atlas offers "make home" for the town you tapped or stand in | Merged (`r541-82c474a09bbb`). Not published. |
 | 539 | Claude | PR #253 | The Corridor Golem's cooldown shortens with the tool's cooldown; Nanoknives fire on their own at a near foe; Cluster Shell bomblets fly to opposite ends of a turning line, to the edge of the first burst | Merged (`r539-c71ad83084fc`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 

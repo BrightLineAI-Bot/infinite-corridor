@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Release 543:
+  - **In the big robot**, the Wayfarer now rises with it when it boosts, so their legs no longer hang below it.
+  - **The sling** (Pack → Gear) holds up to ten pieces of gear kept out of the pack. They take no pack space, Select all and salvage never reach them, and they can't be sold. Use “To sling” on a piece, then “Equip” or “To pack” from the sling.
 - Release 541 — **each preset keeps its own gear.**
   - Preset 1 and preset 2 each have their own weapon, tool and armor, like a second set of slots. Switching presets swaps them in and out.
   - The other preset's pieces are kept out of your pack, so they can't be sold, salvaged or lost.

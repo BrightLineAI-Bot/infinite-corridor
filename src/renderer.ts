@@ -1700,7 +1700,7 @@ export function render(ctx, g, w, h, now) {
       if (suited) drawPowerSuit(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, Math.floor(p.walkPhase || 0), now < (p.attackUntil || 0), g.mechBoosting); else actor(
         ctx,
         p.x,
-        p.y - lift / s,
+        p.y - (lift + (mech ? mechLift : 0)) / s, // release 543: in the robot, the Wayfarer rises with it (a boost left their legs below it)
         s,
         "player",
         p.facing,
