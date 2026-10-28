@@ -2694,6 +2694,29 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 517: spell buttons show their duration — 2026-10-28
+
+Tim: "shadow Boxing... when you activate it... The spell button doesn't show the duration. I know you have a ring around you and that's fine... let's not change that. But the spell should show the duration. In the button, similar to every other spell and [skill]".
+
+Before this, the draining button fill (`setBuffFill`, release 313) came only from `buffLeft`, which answers Aperture skills alone.
+
+**CODE:**
+- game.ts `Game.spellBuffLeft(id, now)` returns 0..1:
+  - Shadow Boxing: `boxingUntil` over `BRAWLER["shadow-boxing"].seconds`.
+  - Aegis: `aegisUntil` over `BRAWLER.aegis.ms`.
+  - Shadow Clone: `shadowClone.until` over the spell's lifetime. The Shadow Step and boxing clones do not count.
+  - Any spell lasting at least `FIELD.minLife`: the longest-lived of your own effects of it (not echoes or the Orbit vortex) over its lifetime.
+  - Quick spells: 0.
+- main.ts `spellOrSkillLeft(key)` picks `spellBuffLeft` for spells and `buffLeft` for skills. Both the Spell A/B buttons and a preset's spell on the Build button use it.
+- tests/spell-duration-517.test.ts.
+- Resonance check (Tim: "assess whether... the glyphs are actually showing the resonances in the spells, or the skills... I've only discovered four"):
+  - All eight resonances light and are discovered (`glyphLoadout` → `discoverResonances`) with their pair in a weapon, the Iron Fists, a tool, Hammerfall, a cast spell or Shadow Boxing.
+  - In an Aperture skill only infusing glyphs (ignite, chain, leech, volatile, tether, still) ride onto weapon and tool hits, so only Wildfire, Storm Lattice and Grave Tether can come from a skill's sockets alone.
+  - Armor glyphs never resonate (`armorGlyphBonus`).
+  - tests/resonance-hosts-517.test.ts pins all of this. No code change was needed.
+
+**BOUNDARY:** Display only. The Shadow Boxing ring, every spell's rules and the save are unchanged.
+
 ## Release 515: field passives in the Transit Lattice — 2026-10-28
 
 Tim: "passives... that don't purely depend on... a skill active... while your spell's going... if you stand inside of it... extra healing, extra damage reduction... increased cooldown... your tool shots are larger... passives that modify the Dodge". Tim chose the Transit Lattice as their home (there is no Astral Cloak) and all five proposals.
