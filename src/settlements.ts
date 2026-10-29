@@ -39,11 +39,15 @@ function weighted(r, table) { const total = table.reduce((a, [, w]) => a + w, 0)
 const floorDiv = (a, b) => Math.floor(a / b);
 
 // Which section of its block (if any) hosts a hamlet. Pure in (seed, rx, ry).
-export function hamletSection(seed, rx, ry) {
+// Release 557: the Mouth's section stays open land until the Listener falls (release 373 raises its town then); with the
+// Far Sleep in pockets the rule is said here. Release 563 (pre-publish review): before 557 the seed's hamlet roll could still
+// put a hamlet on the Mouth's section (about 3% of journeys); a Mouth section first seen before 557 keeps it
+// (legacyMouthHamlet: its atlas record pins a dreamVersion below 3).
+const isMouth = (seed, rx, ry) => { const m = relayCoordinate({ seed }); return m.rx === rx && m.ry === ry; };
+export function legacyMouthHamlet(save, rx, ry) { const seen = save?.atlas?.[`${rx},${ry}`]; return !!seen && !!seen.hamletVersion && (Number(seen.dreamVersion) || 0) < 3 && isMouth(save.seed, rx, ry) && hamletRoll(save.seed, rx, ry); }
+export function hamletSection(seed, rx, ry) { return !isMouth(seed, rx, ry) && hamletRoll(seed, rx, ry); }
+function hamletRoll(seed, rx, ry) {
   if (Math.abs(rx) + Math.abs(ry) < HAMLET.minDepth) return false;
-  // Release 557: the Mouth's section stays open land until the Listener falls (release 373 raises its town then). The Far
-  // Sleep used to cover it; with the Far Sleep in pockets the rule is said here.
-  { const mouth = relayCoordinate({ seed }); if (mouth.rx === rx && mouth.ry === ry) return false; }
   const bx = floorDiv(rx, HAMLET.cell), by = floorDiv(ry, HAMLET.cell), r = rng(`${seed}:hamlet:v1:block:${bx}:${by}`);
   if (r() >= HAMLET.chance) return false;
   const n = Math.floor(r() * HAMLET.cell * HAMLET.cell), hx = bx * HAMLET.cell + (n % HAMLET.cell), hy = by * HAMLET.cell + Math.floor(n / HAMLET.cell);

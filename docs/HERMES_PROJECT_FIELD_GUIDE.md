@@ -2707,6 +2707,14 @@ to six places. Vitality ×3.8 at 60, ×10 at 100, ×16 at 160, ×20 at 200; dama
 saved in an area keep their health and damage. Rings up to 60 are unchanged (the 399 and prototype tests at rings 10 and 20 still
 hold). Aperture does not enter regional threat; it adds Aperture encounters and Resonance instead.
 
+**FIX (pre-publish Fable review of 555→561):** 557's `hamletSection` exclusion of the Mouth's section dropped a hamlet that
+about 3% of seeds had built there (the Far Sleep did not always prevent it), for journeys that explored the Mouth before 557.
+`settlements.ts` now splits the seed's roll (`hamletRoll`) from `hamletSection` (which still excludes the Mouth) and adds
+`legacyMouthHamlet(save, rx, ry)`: true for the Mouth's section when its atlas record pins `hamletVersion` and a `dreamVersion`
+below 3 (first seen before 557) and the roll falls there. The landscape `hamlet` flag and `applyHamlet` (as `force`) in
+`game.ts` (loadArea and `walkerCrossingMap`) and `astral-world-retreat.ts`, and the Atlas town labels (`main.ts`,
+`atlas-view.ts`), honour it, so that ground is as it was.
+
 ## Release 561: windups held, never cancelled; no ordinary stun-lock; deep wardens — 2026-10-29
 
 Tim (2026-10-29, a new journey): "the guardians for the threefold deep are comically easy to kill... they can get stunlocked...
