@@ -4,7 +4,7 @@
 // always-on bonus while both are in place, discovered the first time the pair is slotted. Spells now keep their own
 // cooldowns (`magicSkills.cooldowns["spell:<id>"]`), so two spells can share the buttons.
 // Data and pure rules; game.ts casts, main.ts draws the buttons and the Arcanum.
-import { SPELLS, APERTURE_SKILLS, skillRank, spellOpen } from "./items.js?v=r553-6f1c9b293b39";
+import { SPELLS, APERTURE_SKILLS, skillRank, spellOpen } from "./items.js?v=r555-7b284880b307";
 
 export const ATTRIBUTES = {
   // icon (release 157): the element's mark beside every spell and discipline in the Arcanum.

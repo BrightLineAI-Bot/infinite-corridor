@@ -12,11 +12,11 @@
 // build also keeps `gear: { primary, secondary }`, the tags of the weapon and tool it was left with. Switching to it equips
 // them from the pack when they are there (a piece that was salvaged or sold is named in the message instead). Gear gets a
 // tag (`item.tag`, additive) the first time a preset records it; the tag rides with the item wherever it goes.
-import { socketGlyph, GLYPHS } from "./glyphs.js?v=r553-6f1c9b293b39";
-import { ALT_PASSIVES } from "./constellation.js?v=r553-6f1c9b293b39";
-import { ensureLattice } from "./transit-lattice.js?v=r553-6f1c9b293b39";
-import { togglePreset } from "./spell-slots.js?v=r553-6f1c9b293b39";
-import { normalizeItemUpgrade } from "./items.js?v=r553-6f1c9b293b39";
+import { socketGlyph, GLYPHS } from "./glyphs.js?v=r555-7b284880b307";
+import { ALT_PASSIVES } from "./constellation.js?v=r555-7b284880b307";
+import { ensureLattice } from "./transit-lattice.js?v=r555-7b284880b307";
+import { togglePreset } from "./spell-slots.js?v=r555-7b284880b307";
+import { normalizeItemUpgrade } from "./items.js?v=r555-7b284880b307";
 
 const ids = (list) => (Array.isArray(list) ? list.filter((q) => typeof q === "string" && q) : []);
 export function normalizeBuild(b) {
@@ -66,7 +66,7 @@ export function applyBuild(save, build) {
 // (what you had goes into the held slot of the preset you leave); a slot it does not hold stays as it is. Once presets are
 // in use (a switch has happened), equipping a new piece over a shared one puts the old piece in the other preset's held slot
 // rather than the pack, so it stays that preset's (stashForOtherPreset). Additive at schema 14.
-// Release r553-6f1c9b293b39 (Tim: "armor shouldn't swap with the preset and should just be tools... spells, skills and weapons; armor stays
+// Release 553 (Tim: "armor shouldn't swap with the preset and should just be tools... spells, skills and weapons; armor stays
 // the same, like the... Quiet Compass"): weapon and tool only. Armor a preset was holding (release 541) goes back to the pack,
 // never lost.
 export const PRESET_GEAR_SLOTS = ["primary", "secondary"];
