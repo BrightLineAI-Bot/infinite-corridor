@@ -8,11 +8,11 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand } from "./items.js?v=r555-7b284880b307";
-import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r555-7b284880b307";
-import { pairingMods } from "./spell-slots.js?v=r555-7b284880b307";
-import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r555-7b284880b307";
-import { fieldForm } from "./lattice-fields.js?v=r555-7b284880b307";
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand } from "./items.js?v=r565-5fc233965fde";
+import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r565-5fc233965fde";
+import { pairingMods } from "./spell-slots.js?v=r565-5fc233965fde";
+import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r565-5fc233965fde";
+import { fieldForm } from "./lattice-fields.js?v=r565-5fc233965fde";
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 

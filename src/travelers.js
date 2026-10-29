@@ -4,12 +4,12 @@
 // Travellers: groups of people (some mounted) walk the trails or wander a section, stop when the Wayfarer comes near,
 // and talk. Peddlers trade. Old Quillon, a wandering cartographer, gives one errand at a time; finish it and the next
 // time you meet him he pays and hands you the next.
-import { hashSeed, rng, pick } from "./random.js?v=r555-7b284880b307";
-import { LETHAL_KINDS } from "./landscape.js?v=r555-7b284880b307";
-import { hamletSection } from "./settlements.js?v=r555-7b284880b307";
-import { RECITERS, RECITATIONS } from "./recitations.js?v=r555-7b284880b307";
-import { ELDERS, ELDER_NAME, elderPlan } from "./elders.js?v=r555-7b284880b307";
-import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading, readingKnown } from "./lore.js?v=r555-7b284880b307";
+import { hashSeed, rng, pick } from "./random.js?v=r565-5fc233965fde";
+import { LETHAL_KINDS } from "./landscape.js?v=r565-5fc233965fde";
+import { hamletRoll } from "./settlements.js?v=r565-5fc233965fde";
+import { RECITERS, RECITATIONS } from "./recitations.js?v=r565-5fc233965fde";
+import { ELDERS, ELDER_NAME, elderPlan } from "./elders.js?v=r565-5fc233965fde";
+import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading, readingKnown } from "./lore.js?v=r565-5fc233965fde";
 
 export const TRAVEL_VERSION = 1;
 export const TRAVEL = { reciterChance: 0.12, trailChance: 0.08, trailNearTown: 0.6, groupChance: 0.2, groupChanceOnTrail: 0.42, minDepth: 1, speed: 1.15, pauseRadius: 2.4, spacing: 0.9, wandererChance: 0.07, wandererChanceReady: 0.22 };
@@ -21,7 +21,9 @@ function passage(seed, axis, a, b) { const r = rng(`${seed}:edge:${axis}:${a}:${
 function edgeTrail(seed, axis, a, b, nearTown) { return (hashSeed(`${seed}:trail:v${TRAVEL_VERSION}:${axis}:${a}:${b}`) % 1000) / 1000 < (nearTown ? TRAVEL.trailNearTown : TRAVEL.trailChance); }
 // Which of a section's four exits carry a trail. Both sections sharing an edge agree, so trails continue across them.
 export function sectionTrails(seed, rx, ry) {
-  const town = (x, y) => hamletSection(seed, x, y), here = town(rx, ry);
+  // Release r565-5fc233965fde: the seed's hamlet roll, as before 557 (which left the Mouth's section out of hamletSection), so trails on
+  // ground already explored stay where they were; a trail may lead on to the Mouth, a town in waiting.
+  const town = (x, y) => hamletRoll(seed, x, y), here = town(rx, ry);
   return {
     north: edgeTrail(seed, "h", rx, ry, here || town(rx, ry - 1)),
     south: edgeTrail(seed, "h", rx, ry + 1, here || town(rx, ry + 1)),

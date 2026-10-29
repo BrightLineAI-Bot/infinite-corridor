@@ -1,4 +1,4 @@
-import { freshSave, migrateSave } from "./types.js?v=r555-7b284880b307";
+import { freshSave, migrateSave } from "./types.js?v=r565-5fc233965fde";
 
 const DB = "infinite-corridor", STORE = "saves", SLOT_COUNT = 3;
 const LEGACY_MIRROR = "infinite-corridor:active-v2", ACTIVE_SLOT = "infinite-corridor:active-slot-v1", SETTINGS = "infinite-corridor:settings-v1";
@@ -21,7 +21,7 @@ export function journeyStats(save){const n=(v)=>Math.max(0,Math.floor(Number(v)|
 function openDb(){return new Promise((resolve,reject)=>{const q=indexedDB.open(DB,1);q.onupgradeneeded=()=>{if(!q.result.objectStoreNames.contains(STORE))q.result.createObjectStore(STORE)};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}
 async function read(key){const db=await openDb();return new Promise((resolve,reject)=>{const q=db.transaction(STORE).objectStore(STORE).get(key);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}
 async function write(key,value){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(value,key);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)})}
-// Release r555-7b284880b307 (Tim's probe: a ~80-100 ms freeze every 8 s, outside the game's own frame work): IndexedDB copies whatever it
+// Release 555 (Tim's probe: a ~80-100 ms freeze every 8 s, outside the game's own frame work): IndexedDB copies whatever it
 // is given, on the main thread, when the write is queued. The autosave handed it the whole journey, every area ever visited
 // included, so the copy grew with the journey. A journey is now stored as its main record (session.areas left out, the
 // area keys listed under session[AREA_SPLIT]) plus one record per area (`${key}::area::${areaKey}`), all in one
@@ -87,7 +87,7 @@ export function getActiveSlot(){try{activeSlot=Math.max(1,Math.min(SLOT_COUNT,Nu
 export function setActiveSlot(slot){activeSlot=Math.max(1,Math.min(SLOT_COUNT,Number(slot)||1));try{localStorage.setItem(ACTIVE_SLOT,String(activeSlot))}catch{}return activeSlot}
 async function migrateLegacy(){if(await readJourney(slotKey(1)))return;let legacy=await read("active");if(!legacy)try{const text=localStorage.getItem(LEGACY_MIRROR);legacy=text?JSON.parse(text):null}catch{}if(validateJourney(legacy).health==="healthy"){await writeJourney(slotKey(1),legacy);mirrorWrite(1,migrateSave(legacy))}}
 export async function loadSave(){activeSlot=getActiveSlot();try{await migrateLegacy()}catch(error){console.warn("Legacy save migration failed",error)}let stored=null;try{stored=await readJourney(slotKey(activeSlot))}catch(error){console.warn("IndexedDB load failed",error)}const fromDb=validateJourney(stored),choices=[fromDb,validateJourney(mirrorRead(activeSlot))].filter(q=>q.health==="healthy").map(q=>q.save),chosen=choices.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0]||freshSave();
-  // Release r555-7b284880b307: a journey read from the database already has its areas stored there, so the first autosave need not write
+  // Release 555: a journey read from the database already has its areas stored there, so the first autosave need not write
   // them all again: each loaded area is its own stored copy until the game replaces it.
   if(chosen===fromDb.save&&assembled.has(stored))primeStoredAreas(slotKey(activeSlot),chosen);
   return chosen}

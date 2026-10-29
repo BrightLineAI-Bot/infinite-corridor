@@ -7,8 +7,8 @@
 //
 // DRAFT NARRATIVE: the fragment texts below are placeholders written to fit the existing lore. The operator owns the
 // relay story; rewrite FRAGMENTS freely. The mechanics never depend on their wording.
-import { hashSeed } from "./random.js?v=r555-7b284880b307";
-import { listenerReturns } from "./far-array.js?v=r555-7b284880b307";
+import { hashSeed } from "./random.js?v=r565-5fc233965fde";
+import { listenerReturns } from "./far-array.js?v=r565-5fc233965fde";
 
 export const RELAY_VERSION = 1;
 // Relay placement v2 (release 142): Wolfram's Rule 110, a class IV ("complex") cellular automaton. Each row of sections
@@ -69,6 +69,12 @@ export function relayRuleAt(seed, rx, ry) { if (inCore(rx, ry)) return RULE_NAME
 // Relays sit on the pattern's edges: alive cells whose northern neighbour is dead (about a fifth of sections), which
 // trace the leading edges of Rule 110's triangles and gliders as long diagonal streaks.
 export function relayEdge(seed, rx, ry) { return relayCell(seed, rx, ry) && !relayCell(seed, rx, ry - 1); }
+// Release 559 (Tim: "the relays seemed to be too rare... I haven't seen a relay in a very long time... I wanna find the
+// listener"): a crossing first entered from 559 holds a relay wherever its section is alive in the pattern (about half of
+// sections), not only on the pattern's edges (about a fifth). Crossings decided before keep their answer
+// (history.relayPattern 2 = edges, 3 = alive cells).
+export const RELAY_PLACEMENT = { version: 3 };
+export function relayHeld(seed, rx, ry, pattern = RELAY_PLACEMENT.version) { return pattern >= 3 ? relayCell(seed, rx, ry) : relayEdge(seed, rx, ry); }
 // Section coordinates of an ordinary crossing id (dungeon:<seed>:g<n>:<rx>:<ry>:<object>), or null.
 export function crossingSection(areaId) { const m = /^dungeon:[^:]+:g\d+:(-?\d+):(-?\d+):/.exec(String(areaId)); return m ? { rx: Number(m[1]), ry: Number(m[2]) } : null; }
 export const RELAY_TARGET = 5;
@@ -105,11 +111,30 @@ export function relayNodeDecision(save, areaId, history, storyId) {
   if (history.relayNode !== undefined) return history.relayNode;
   const visited = history.visits > 0 || Object.keys(save.session?.areas || {}).some((k) => k === areaId || k.startsWith(areaId + ":level:"));
   const at = crossingSection(areaId);
-  history.relayNode = !visited && areaId !== storyId && ELIGIBLE(areaId) && (at ? relayEdge(save.seed, at.rx, at.ry) : hashSeed(`${save.seed}:relay-node:v${RELAY_VERSION}:${areaId}`) % 100 < RELAY_SHARE);
-  if (at) history.relayPattern = 2;
+  history.relayNode = !visited && areaId !== storyId && ELIGIBLE(areaId) && (at ? relayHeld(save.seed, at.rx, at.ry) : hashSeed(`${save.seed}:relay-node:v${RELAY_VERSION}:${areaId}`) % 100 < RELAY_SHARE);
+  if (at) history.relayPattern = RELAY_PLACEMENT.version;
   return history.relayNode;
 }
 
+// Release 559 (Tim: "if there's no relays in the area, then it shouldn't show up on the map as a relay, because it's
+// confusing"): the explored sections that really hold a relay, for the Atlas: "answered" (restored or severed), or
+// "dormant" (a crossing there holds one, or will when first entered). A section whose crossings were all decided without one,
+// or entered before relays existed, holds none. Unexplored sections are never listed. Map of "rx,ry" -> state.
+export function knownRelaySections(save) {
+  const out = new Map(), decided = new Map();
+  for (const [id, h] of Object.entries(save.consequences?.dungeons || {})) {
+    const at = crossingSection(id); if (!at || !h) continue;
+    const held = h.relayNode === true ? true : h.relayNode === false || h.visits > 0 ? false : null; if (held === null) continue;
+    const k = `${at.rx},${at.ry}`; decided.set(k, decided.get(k) === true || held);
+  }
+  for (const id of Object.keys(save.relayNetwork?.nodes || {})) { const at = crossingSection(id); if (at) out.set(`${at.rx},${at.ry}`, "answered"); }
+  for (const [k, rec] of Object.entries(save.atlas || {})) {
+    if (out.has(k) || !save.explored?.[k] || !(rec?.sites || []).some((q) => q.kind === "dungeon")) continue;
+    const [rx, ry] = k.split(",").map(Number); if (!Number.isFinite(rx) || !Number.isFinite(ry)) continue;
+    if (decided.has(k) ? decided.get(k) : relayHeld(save.seed, rx, ry)) out.set(k, "dormant");
+  }
+  return out;
+}
 // Place the relay in the guardian's chamber: an open tile 2-5 tiles from the guardian, off the chest.
 export function placeRelayNode(map, areaId, save) {
   if (map.objects.some((o) => o.kind === "relayNode")) return null;

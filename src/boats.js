@@ -3,7 +3,7 @@
 // and shallows), never the blight's toxic water or rivers. It has its own hull: hits taken aboard are shared with it,
 // and a hull at zero sinks the skiff, which the Shipwright's crew returns to its home dock.
 // Data and pure rules; game.ts calls in from movement, interaction, damage and section loading.
-import { hashSeed } from "./random.js?v=r555-7b284880b307";
+import { hashSeed } from "./random.js?v=r565-5fc233965fde";
 
 export const BOAT = {
   price: { currency: 120, cinderIron: 2 },
@@ -79,7 +79,7 @@ export function ensureBoatState(save) {
   // Release 269: the guard's extra hull (additive; only while the guard holds).
   save.boat.guardHull = save.boat.shield > 0 ? Math.max(0, Math.min(BOAT.shield.bonus, Number(b.guardHull) || 0)) : 0;
   // Release 311: the submersible (additive): `sub` true while the skiff in use is fitted; `subHull` its own bar.
-  save.boat.sub = b.owned === true && b.sub === true; save.boat.subHull = save.boat.sub ? Math.max(0, Math.min(BOAT.sub.hull, Number(b.subHull) || 0)) : 0;
+  save.boat.sub = b.owned === true && b.sub === true; save.boat.mechSub = save.boat.aboard && b.mechSub === true; /* release 557 */ save.boat.subHull = save.boat.sub ? Math.max(0, Math.min(BOAT.sub.hull, Number(b.subHull) || 0)) : 0;
   const spare = b.owned === true && place(b.spare); save.boat.spare = spare ? { ...spare, hull: Math.max(0, Math.min(BOAT.maxHull, Number.isFinite(b.spare.hull) ? b.spare.hull : BOAT.maxHull)), ...(b.spare.sub === true ? { sub: true, subHull: Math.max(0, Math.min(BOAT.sub.hull, Number(b.spare.subHull) || 0)) } : {}) } : null;
   return save.boat;
 }
@@ -99,7 +99,9 @@ export function mendSkiff(save) {
   return { ok: true, message: b.hull >= BOAT.maxHull ? "The hull is whole again." : `Hull patched: ${Math.round(b.hull)}/${BOAT.maxHull}.` };
 }
 export const subsCarried = (save) => Math.max(0, Math.floor(Number(save?.consumables?.submersible) || 0));
-export const submersible = (save) => save?.boat?.owned === true && save.boat.sub === true;
+// Release 557: the robot is the submersible frame ashore, so a robot that walks out to sea takes the skiff as a
+// submersible for the voyage (save.boat.mechSub, cleared on stepping ashore) even when no frame is fitted to it.
+export const submersible = (save) => save?.boat?.owned === true && (save.boat.sub === true || (save.boat.aboard === true && save.boat.mechSub === true));
 export function forgeSubmersible(save) {
   const iron = Number(save.materials?.cinderIron) || 0;
   if (iron < BOAT.sub.cinderIron) return { ok: false, message: `A submersible frame takes ${BOAT.sub.cinderIron} cinder iron (you have ${iron}).` };
@@ -176,7 +178,7 @@ export function board(save, at) {
   return at;
 }
 // Stepping ashore moors the skiff where it floats.
-export function disembark(save, where) { const b = ensureBoatState(save); b.aboard = false; b.moored = where; }
+export function disembark(save, where) { const b = ensureBoatState(save); b.aboard = false; b.moored = where; b.mechSub = false; }
 
 // Damage taken aboard: the hull absorbs its share. Returns the share the Wayfarer keeps; sinks at zero hull.
 export function hullAbsorb(save, damage) {

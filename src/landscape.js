@@ -10,8 +10,8 @@
 //
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
-import { hashSeed } from "./random.js?v=r555-7b284880b307";
-import { placeDock } from "./boats.js?v=r555-7b284880b307";
+import { hashSeed } from "./random.js?v=r565-5fc233965fde";
+import { placeDock } from "./boats.js?v=r565-5fc233965fde";
 
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
@@ -605,13 +605,25 @@ export function elevationAt(map, width, x, y) { return map?.landscape ? (tileUnd
 // Release 423 (Tim: "the dreamlands have too many obstacles in them. So I can't... burst around and run from the bosses...
 // It also just makes... traverse... harder"): version 2 opens the ground up: far fewer star-voids and sleeper-stones, and
 // lower, wider terraces. Sections first seen before keep version 1 (pinned in the atlas).
-export const DREAM_VERSION = 2;
+// Release 557 (Tim: "when you go far out... everything just is mostly just the dreamlands... I like the far sleep motif...
+// more varied tiles... there could be some dreamland spaces... as you get farther out, it becomes less... coherent... pockets
+// of... extended... tile types... I like variation where you never know what you're gonna get"): version 3 dreams only in
+// pockets (dreamPocket); every other far section keeps the ordinary land its biome gives it. The pockets follow a broad noise
+// near the edge of the Far Sleep and scatter more the farther out you go (a per-section roll weighs in up to `scatterMax`,
+// reached `scatterOver` sections past the edge): roughly a quarter of far sections dream. Ground is drawn as in version 2.
+export const DREAM_VERSION = 3;
+export const DREAM_POCKETS = { scale: 4, above: .62, scatterMax: .5, scatterOver: 120 };
 export const FAR_SLEEP_DEPTH = 35; // lore.ts READING_BANDS.far
 export const DREAM = { name: "The Far Sleep", voidScale: 5, voidAbove: .72, terraceScale: 7, terraces: [.5, .64], stoneScale: 1.6, stoneAbove: .88 };
-export const DREAM_BY_VERSION = { 1: {}, 2: { voidAbove: .82, terraces: [.62, .8], stoneAbove: .955 } };
+export const DREAM_BY_VERSION = { 1: {}, 2: { voidAbove: .82, terraces: [.62, .8], stoneAbove: .955 }, 3: { voidAbove: .82, terraces: [.62, .8], stoneAbove: .955 } };
+export function dreamPocket(seed, rx, ry) {
+  const depth = Math.abs(rx) + Math.abs(ry), P = DREAM_POCKETS; if (depth <= FAR_SLEEP_DEPTH) return false;
+  const w = Math.min(P.scatterMax, (depth - FAR_SLEEP_DEPTH) / P.scatterOver), roll = (hashSeed(`${seed}:dream:pocket:${rx}:${ry}`) % 10007) / 10007;
+  return (1 - w) * valueNoise(`${seed}:dream:pocket`, rx / P.scale, ry / P.scale) + w * roll > P.above;
+}
 export function farSleepSection(rx, ry) { return Math.abs(rx) + Math.abs(ry) > FAR_SLEEP_DEPTH; }
 export function applyDream(map, seed, rx, ry, version = DREAM_VERSION) {
-  if (!version || !map || map.settlement || !farSleepSection(rx, ry) || map.tiles?.length !== 1024) return map;
+  if (!version || !map || map.settlement || !farSleepSection(rx, ry) || map.tiles?.length !== 1024 || (version >= 3 && !dreamPocket(seed, rx, ry))) return map;
   const mask = protectedMask(map, { border: true }), D = { ...DREAM, ...(DREAM_BY_VERSION[version] || {}) }, sea = !!map.openSea; // at sea only the islands dream
   if (sea) {
     for (const t of map.tiles) if (t.x > 0 && t.y > 0 && t.x < 31 && t.y < 31 && !t.blocked && !t.structure && !t.buildingId && !t.environment && t.kind !== "bridge" && t.kind !== "dock" && t.kind !== "shallows" && !Number.isInteger(t.ruin))

@@ -2,8 +2,9 @@
 // The world is split into HAMLET.cell × HAMLET.cell blocks of sections; each block nominates one section, and most
 // nominated sections that have a flat, dry patch of ground grow a hamlet there. A section explored before release 109
 // keeps no hamlet (its atlas entry carries no hamletVersion), so existing journeys only find hamlets in new ground.
-import { hashSeed, rng, pick } from "./random.js?v=r555-7b284880b307";
-import { LETHAL_KINDS } from "./landscape.js?v=r555-7b284880b307";
+import { hashSeed, rng, pick } from "./random.js?v=r565-5fc233965fde";
+import { LETHAL_KINDS } from "./landscape.js?v=r565-5fc233965fde";
+import { relayCoordinate } from "./relay-network.js?v=r565-5fc233965fde";
 
 // Version 1 (release 111) built plain huts; version 2 (release 112) builds from the world's own shelter families and
 // ruin-district styles. A section keeps the version its atlas entry was pinned to; placement and names are shared.
@@ -38,7 +39,14 @@ function weighted(r, table) { const total = table.reduce((a, [, w]) => a + w, 0)
 const floorDiv = (a, b) => Math.floor(a / b);
 
 // Which section of its block (if any) hosts a hamlet. Pure in (seed, rx, ry).
-export function hamletSection(seed, rx, ry) {
+// Release 557: the Mouth's section stays open land until the Listener falls (release 373 raises its town then); with the
+// Far Sleep in pockets the rule is said here. Release 563 (pre-publish review): before 557 the seed's hamlet roll could still
+// put a hamlet on the Mouth's section (about 3% of journeys); a Mouth section first seen before 557 keeps it
+// (legacyMouthHamlet: its atlas record pins a dreamVersion below 3).
+const isMouth = (seed, rx, ry) => { const m = relayCoordinate({ seed }); return m.rx === rx && m.ry === ry; };
+export function legacyMouthHamlet(save, rx, ry) { const seen = save?.atlas?.[`${rx},${ry}`]; return !!seen && !!seen.hamletVersion && (Number(seen.dreamVersion) || 0) < 3 && isMouth(save.seed, rx, ry) && hamletRoll(save.seed, rx, ry); }
+export function hamletSection(seed, rx, ry) { return !isMouth(seed, rx, ry) && hamletRoll(seed, rx, ry); }
+export function hamletRoll(seed, rx, ry) {
   if (Math.abs(rx) + Math.abs(ry) < HAMLET.minDepth) return false;
   const bx = floorDiv(rx, HAMLET.cell), by = floorDiv(ry, HAMLET.cell), r = rng(`${seed}:hamlet:v1:block:${bx}:${by}`);
   if (r() >= HAMLET.chance) return false;
@@ -135,8 +143,10 @@ function buildMixed(map, r, id, x0, y0, kind, name) {
 // Mutates an overworld section map (after the landscape pass). Returns the settlement record or null.
 // Release 371: `force` raises a hamlet on a section the seed did not choose (a town where a Listener fell, hometowns.ts);
 // with no flat patch it clears one at the centre.
-export function applyHamlet(map, seed, rx, ry, version = HAMLET_VERSION, force = false) {
-  if (!map || map.settlement || map.hamlet || map.tiles?.length !== 1024 || !(force || hamletSection(seed, rx, ry))) return null;
+// `allowed` (release 565): the section may hold a hamlet though hamletSection says no (legacyMouthHamlet), built exactly as the
+// roll would have built it: only on a flat site, never the centre-clearing fallback that `force` uses.
+export function applyHamlet(map, seed, rx, ry, version = HAMLET_VERSION, force = false, allowed = false) {
+  if (!map || map.settlement || map.hamlet || map.tiles?.length !== 1024 || !(force || allowed || hamletSection(seed, rx, ry))) return null;
   let site = hamletSite(map);
   if (!site && force) {
     site = { x: 16, y: 16 };

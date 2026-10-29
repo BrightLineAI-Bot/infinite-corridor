@@ -7,7 +7,7 @@
 // report; nothing here touches the save. Release 167: main.ts pairs each interval with the frame it measures (the one
 // before it) and adds the render split.
 export const PROBE = { durationSeconds: 300, longFrames: 40, pointerLog: 600, eventLog: 300, hitchMs: 100, loafs: 40, loafMs: 50, saves: 120, heapDropMb: 2 };
-// Release r555-7b284880b307 (Tim's probe: 80-108 ms frames where the game's own work was ~1.5 ms): three more things, so a report says
+// Release 555 (Tim's probe: 80-108 ms frames where the game's own work was ~1.5 ms): three more things, so a report says
 // where the rest went.
 // - The browser's own account of each long frame (Long Animation Frames, Chrome 123+; else "longtask" entries): how long it
 //   blocked, how much was rendering and style, and the scripts that ran in it.
@@ -70,7 +70,7 @@ export function createProbe(clock = () => performance.now()) {
       }
       if (now >= state.endsAt) probe.stop();
     },
-    // Release r555-7b284880b307: one Long Animation Frame (or long task) from the browser; the `loafs` longest are kept.
+    // Release 555: one Long Animation Frame (or long task) from the browser; the `loafs` longest are kept.
     loaf(e, type = "long-animation-frame", st = state) {
       if (!st || st !== state || !(e?.duration >= PROBE.loafMs)) return;
       const end = e.startTime + e.duration, entry = { t: r1((e.startTime - st.startedAt) / 1000), type, ms: r1(e.duration),
@@ -79,7 +79,7 @@ export function createProbe(clock = () => performance.now()) {
         ...(Array.isArray(e.scripts) ? { scripts: e.scripts.slice().sort((a, b) => b.duration - a.duration).slice(0, 3).map((q) => ({ ms: r1(q.duration), invoker: String(q.invoker || "").slice(0, 60), type: q.invokerType || "", fn: q.sourceFunctionName || "", src: shortSource(q.sourceURL), ...(q.forcedStyleAndLayoutDuration ? { forcedLayout: r1(q.forcedStyleAndLayoutDuration) } : {}) })) } : {}) };
       const list = st.loafs; list.push(entry); list.sort((a, b) => b.ms - a.ms); if (list.length > PROBE.loafs) list.length = PROBE.loafs;
     },
-    // Release r555-7b284880b307: one save write (persistence.ts setWriteTimingListener): { ms, areas, of }.
+    // Release 555: one save write (persistence.ts setWriteTimingListener): { ms, areas, of }.
     save(detail = {}) { if (!state || state.saves.length >= PROBE.saves) return; state.saves.push({ t: r1((clock() - state.startedAt) / 1000), ...detail }); },
     event(type, detail = {}) {
       if (!state) return;

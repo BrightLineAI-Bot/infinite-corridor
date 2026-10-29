@@ -1,9 +1,9 @@
-import{worldBeastsHeld}from'./world-beasts.js?v=r555-7b284880b307';import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.js?v=r555-7b284880b307';
-import{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=r555-7b284880b307';export{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=r555-7b284880b307';
-export{generateVariedDungeon,generateBespokeArena}from'./arenas.js?v=r555-7b284880b307';
-import{arenaEligible}from'./arenas.js?v=r555-7b284880b307';
-import{annotateDungeon}from'./dungeon-framework.js?v=r555-7b284880b307';
-import{APERTURE_BANDS}from'./items.js?v=r555-7b284880b307';import{hashSeed,rng,pick}from'./random.js?v=r555-7b284880b307';import{storySiteFor}from'./story.js?v=r555-7b284880b307';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
+import{worldBeastsHeld}from'./world-beasts.js?v=r565-5fc233965fde';import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.js?v=r565-5fc233965fde';
+import{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=r565-5fc233965fde';export{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=r565-5fc233965fde';
+export{generateVariedDungeon,generateBespokeArena}from'./arenas.js?v=r565-5fc233965fde';
+import{arenaEligible}from'./arenas.js?v=r565-5fc233965fde';
+import{annotateDungeon}from'./dungeon-framework.js?v=r565-5fc233965fde';
+import{APERTURE_BANDS}from'./items.js?v=r565-5fc233965fde';import{hashSeed,rng,pick}from'./random.js?v=r565-5fc233965fde';import{storySiteFor}from'./story.js?v=r565-5fc233965fde';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
 function passage(seed,axis,a,b){const r=rng(`${seed}:edge:${axis}:${a}:${b}`);return 5+Math.floor(r()*22)}export function sectionExits(seed,rx,ry){return{north:passage(seed,'h',rx,ry),south:passage(seed,'h',rx,ry+1),west:passage(seed,'v',rx,ry),east:passage(seed,'v',rx+1,ry)}}
 function carve(tiles,x,y,kind='ash'){if(kind==='refuge'&&x===12&&y===17)return;if(x>=0&&x<32&&y>=0&&y<32)tiles[y*32+x]={...tiles[y*32+x],x,y,kind,blocked:false}}
 function supply(seed,rx,ry,tiles,w=32){const r=rng(`${seed}:supplies:v2:${rx}:${ry}`),rare=w===32&&r()<.06,types=['restorativeDraught','ironbarkTonic','lumenPhial','secondary'],spots=w===24?[[6,6],[7,6],[6,7]]:[[15,17],[17,17],[15,18],[17,18]],[x,y]=spots[Math.floor(r()*spots.length)],supplyType=rare?'crossingSigil':types[Math.floor(r()*types.length)];return{id:`supply-${rx}-${ry}`,kind:supplyType==='secondary'?'weaponCache':'supplyCache',supplyType,x,y,state:'ready',actions:['collect']}}
@@ -183,7 +183,13 @@ export const APERTURE_THRESHOLDS=APERTURE_BANDS.slice(1).map(b=>b.threshold);
 export function apertureTier(value){const n=Math.max(0,Number(value)||0);let t=0;while(t<APERTURE_THRESHOLDS.length&&n>=APERTURE_THRESHOLDS[t])t++;return t}
 export const APERTURE_DEEP={chancePerTier:.012,maxChance:.42,threatPerTier:.15};
 export function apertureEncounterSpawns(seed,areaId,value,tiles,width=32){const deep=apertureTier(value),tier=Math.min(3,deep),beyond=Math.max(0,deep-3);if(!tier)return[];const r=rng(`${seed}:aperture-encounter:v2:band${tier}:${areaId}`),chance=Math.min(APERTURE_DEEP.maxChance,[0,.12,.2,.3][tier]+APERTURE_DEEP.chancePerTier*beyond);if(r()>=chance)return[];const open=tiles.filter(t=>!t.blocked&&t.x>3&&t.y>3&&t.x<width-3&&t.y<width-3),spot=open[Math.floor(r()*open.length)];if(!spot)return[];const kinds=[['ashenHound','coilStalker','glassMite'],['rootBrute','sparkWarden','coilStalker','voidSentinel'],['rootBrute','hollowMarshal','sparkWarden','voidSentinel']][tier-1],traits=[['keen','swift'],['vital','feral','farcasting'],['vital','plated','orbital','swift']][tier-1];return[{kind:pick(r,kinds),x:spot.x,y:spot.y,traits:traits.slice(0,Math.min(3,tier+1)),apertureEncounter:true,apertureTier:deep,apertureBand:APERTURE_BANDS[deep]?.id||'resonant',threatMultiplier:1+.4*tier+APERTURE_DEEP.threatPerTier*beyond}]}
-export function regionalThreat(rx=0,ry=0){const ring=Math.floor(Math.hypot(Number(rx)||0,Number(ry)||0)),near=Math.min(10,ring),far=Math.max(0,ring-10);return{ring,hpMultiplier:1+.08*near+.04*far,damageMultiplier:1+.05*near+.025*far,xpMultiplier:1+.06*ring}}
+// Regional threat by straight-line distance (rings) from Ember Refuge; Aperture does not enter it. Release 563 (Tim,
+// 2026-10-29: "if the distance between you and the Ember Refuge [is] 100 or over, then it should be like... 10... over 200...
+// 20... make the distance of exploration more weighty"): past ring 60 each ring adds more, so vitality reaches ×10 at ring 100
+// and ×20 at ring 200; damage climbs a little faster than before out there too. Up to ring 60 nothing changed.
+// Each row: from that ring on, [vitality, damage] added per ring.
+export const REGIONAL_THREAT=[[0,.08,.05],[10,.04,.025],[60,.155,.035],[100,.1,.035]];
+export function regionalThreat(rx=0,ry=0){const ring=Math.floor(Math.hypot(Number(rx)||0,Number(ry)||0));let hp=1,damage=1;for(let i=0;i<REGIONAL_THREAT.length;i++){const[from,h,d]=REGIONAL_THREAT[i],to=REGIONAL_THREAT[i+1]?.[0]??Infinity,n=Math.max(0,Math.min(ring,to)-from);hp+=h*n;damage+=d*n}return{ring,hpMultiplier:Math.round(hp*1e6)/1e6,damageMultiplier:Math.round(damage*1e6)/1e6,xpMultiplier:1+.06*ring}}
 export function perceived(entity,save){if(entity?.kind==='apertureDoor'&&!save?.consequences?.dungeons?.[save?.session?.activeDungeonId]?.resolved)return false;return!entity?.apertureRequired||(save?.perception?.aperture||0)>=entity.apertureRequired}
 // Release 475 (Tim: an aperture crystal "is in a wall or in an unreachable area... lava"): the overlay's picks only ever
 // skipped walls, so one could sit in lava or in a pocket the entry cannot reach. A pick on lethal ground, or (given the
