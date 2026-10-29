@@ -2694,6 +2694,31 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 571: the Skylands — 2026-10-29
+
+Tim (2026-10-29): "the skylands... divine challenges... make the monster stronger... set the difficulty to be higher... bigger
+rewards... if you complete any Skyland on base, it'll give you one of the items required to... increase the difficulty... each
+Skyland gives you... enough to do another Skyland on that tier... tier 2... 2 rewards... farm harder and harder challenges... it
+should be repeatable... boss rush". The Skylands did not exist; asked, Tim chose to build them new.
+
+**CODE:**
+- New `src/skylands.ts`: `SKYLANDS` (placement, tier scaling, waves, rewards), `ensureSkylands` (save.skylands = { sigils, best,
+  runs, clears }, normalised in place in `freshSave`/`migrateSave`), `skylandSection` (one candidate per `macro`×`macro` block past
+  `minDepth`, kept with `chance`), `skylandTiers`/`skylandActions` (0 to best+1, each affordable), `beginSkyland` (spends N sigils,
+  names the run `skyland:<seed>:<rx>,<ry>:t<N>:r<runs>`), `skylandWave`, `skylandScale` and `completeSkyland` (max(1, N) sigils,
+  marks, N spheres). Registered in `scripts/build.mjs` and both `sw.js` lists.
+- `src/game.ts`: a Sky Stair object (`skyStair`, actions `ascend:N`) in qualifying sections whose atlas record pins `skyVersion`
+  (new sections only), also listed in the record's sites. `generatePinnedDungeon` builds a Skyland as a temporary bespoke arena and
+  `dressSkyland` keeps its boss for the last wave and places the first. The `skyland` transition starts a run (no Gate Revenant).
+  `scaleSkyFoe` applies the tier once per foe; `tickSkyland` sends the next wave `waveGap` s after a wave falls and, after the
+  keeper, completes the run (QUEST-style banner "SKYLAND CLEARED", journal). Skyland foes carry `dungeonRole: "skyland"`, so no
+  crossing-guardian rule ends a run early. Back in the open world every `skyland:` area and history record is dropped.
+- `src/interactions.ts` (actions and transition), `src/main.ts` (tier labels; the Atlas glyph and legend), `src/renderer.ts`
+  (the stair), `src/digging.ts` and `src/relay-network.ts` (a Skyland is temporary and never holds a relay).
+
+**BOUNDARY:** Schema 14, additive (`save.skylands`, atlas `skyVersion`). Sections explored before 571 never gain a stair. A run
+left or lost costs its sigils; no record of it stays in the save.
+
 ## Release 569: world regions and dream seams; passing beasts; brawler tools and field passives — 2026-10-29
 
 Tim (2026-10-29): the Atlas "just kind of just looks muddied... no clear direction... larger regions... a random region size and
