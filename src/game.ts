@@ -2769,7 +2769,7 @@ export class Game {
       pursued(this.save, h.id, dx, dy);
       const e = this.createEnemyFromSpawn(spawn, "overworld"); if (h.maxHp > 0) { e.maxHp = h.maxHp; e.damage = h.damage; } e.hp = Math.max(1, Math.min(e.maxHp, Number(h.hp) || e.maxHp)); e.aggro = true; ensureAI(e).mode = "chase"; // the same creature, with its own vitals
       this.enemies.push(e);
-      const left = this.save.session.areas[fromArea]; if (left?.enemies) left.enemies = left.enemies.filter(q => q.id !== h.actorId); // it is no longer back there
+      const left = this.save.session.areas[fromArea]; if (left?.enemies) this.save.session.areas[fromArea] = { ...left, enemies: left.enemies.filter(q => q.id !== h.actorId) }; // it is no longer back there (release 555: replaced, not edited, so the save sees the change)
       const B = WORLD_BEASTS[h.id], q = this.save.worldBeasts[h.id].active, more = (PURSUIT.limits[h.id] ?? PURSUIT.sections) - (q.chase || 0);
       this.message = `${B.name} follows you across.${more > 0 ? "" : " It will go no further."}`;
     }

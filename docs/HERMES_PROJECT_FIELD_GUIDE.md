@@ -2694,6 +2694,30 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 555: areas saved separately; the probe sees long frames, heap and saves — 2026-10-29
+
+Tim's probe (2026-10-29) showed 83–108 ms frames every ~8 s with ~1.5 ms of game work in them: the autosave. IndexedDB `put`
+structured-clones its whole value on the main thread, and a journey's `session.areas` holds every area ever visited.
+
+**CODE:** `src/persistence.ts` stores a journey as a main record (`journey:N`, its `session.areas` replaced by `null` and
+`session.areasSplit`, the list of area keys) plus one record per area at `journey:N::area::<areaKey>`. `splitSnapshot(snapshot,
+known)` returns that main record and the areas to put: those whose snapshot copy is not the one already stored (`storedAreas`,
+by identity; release 167's `snapshotSave` already reuses the copy of an unchanged area). `writeJourney` puts them and the main
+record in one transaction and deletes area records no longer listed; `readJourney` reads the main record and, when it is split,
+the area records, and `assembleSave` puts them back. `loadSave` primes `storedAreas` from a journey it read split, so the first
+autosave after launch writes only what changed. `removeJourney` deletes both. Every slot read, write and removal (rename,
+duplicate, import, recover, delete) goes through these. `setWriteTimingListener` reports each write's main-thread put time and
+area count to `main.ts`, which passes it to the probe. `src/game.ts`: the one place an area's stored state was edited in place
+(a crossing hunter leaving its old area) now replaces it, so the save sees the change. `src/diagnostic-probe.ts` adds `loafs`
+(the 40 longest Long Animation Frames, or long tasks where that API is missing: blocking, render and style/layout time and the
+top three scripts), `heap` (start, min, max and drops over 2 MB, from `performance.memory` where available; long frames also
+carry the heap at that moment) and `saves` (each write's put time and areas written).
+
+**BOUNDARY:** Schema stays 14. A journey stored before 555 (areas inside the main record) loads unchanged and is split on its
+next save; `migrateSave` turns a split main record read without its area records into empty areas rather than failing. The
+localStorage mirror and exported journeys still hold the whole journey. The probe's new fields are empty in browsers without
+the APIs (Safari has no Long Animation Frames or `performance.memory`).
+
 ## Release 553: presets keep weapon and tool only — 2026-10-28
 
 Tim: "armor shouldn't swap with the preset and should just be tools. Spells, skills and weapons... armor stays the same, like... the Quiet Compass".
