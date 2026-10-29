@@ -2694,6 +2694,35 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 559: the Atlas in real colours, honest relay markers, QUEST COMPLETE — 2026-10-29
+
+Tim (2026-10-29): "the colors on the atlas... don't correspond to the tiles that you actually visited... I want to see the world
+that I actually am exploring"; "when you complete a hunt or... whatever quest... just get a banner... quest complete"; "the
+relays seemed to be too rare... it says that there are relays in these areas... the purple triangles... if there's no relays in
+the area, then it shouldn't show up on the map". He also set down what the Corridor is made of (narrative bible, section 1).
+
+**CODE:**
+- New `src/atlas-colors.ts`: `ATLAS_TILE_COLORS` (each tile kind's base colour, from the two ends of its PAINT gradient or PAL
+  pair) and `sectionAtlasColor(map)`, the mean over the section's tiles. `game.ts` writes it into the atlas record (`color`) on
+  every entry. `main.ts` draws `record.color` first, zoomed in and out; a heard Reading tints a coloured section at
+  `ATLAS_READING_TINT.coloured` (.14). `atlasBackfill()` colours records without one while the Atlas is open, nearest the view
+  first, one `walkerCrossingMap` per frame, redrawing every `ATLAS_BACKFILL.redrawEvery`. Registered in `scripts/build.mjs` and
+  both `sw.js` lists.
+- `src/relay-network.ts`: `RELAY_PLACEMENT` 3 and `relayHeld(seed, rx, ry, pattern)`: a crossing decided from 559 holds a relay
+  where its section's cell is alive (`relayCell`), recorded as `history.relayPattern = 3`; version 2 kept edges only.
+  `knownRelaySections(save)`: explored sections with a crossing site whose crossings hold a relay ("dormant", by decision, or by
+  `relayHeld` when never entered), plus answered relays. `main.ts` draws triangles and the zoomed-out violet pixels from it only.
+- QUEST COMPLETE: the Viewport hunt's completion pushes onto `game.questNotices` (it was a `defeatNotice` that a world beast's
+  banner in the same frame could overwrite). `main.ts watchQuests` drains it, and every 500 ms notices Old Quillon's errand
+  done, the seventh bell and the Surveyor's Chain complete, comparing with what it saw last (the first look at a journey
+  announces nothing); banners show `QUEST_BANNER.gap` apart. `styles.css` `#eventBanner.quest` is gold.
+- `docs/narrative-bible.md` section 1: "What the Corridor is made of".
+
+**BOUNDARY:** Schema stays 14; `atlas[...].color` and `relayPattern` 3 are additive. Ground, generation and relay decisions
+already made are unchanged; only crossings first entered from 559 use the alive-cell rule. The fill-in is read-only
+(`walkerCrossingMap` never advances a visit) and runs only while the Atlas is open; a section whose map cannot be built gets the
+old ash colour. The first look at a journey never raises a banner.
+
 ## Release 557: Far Sleep pockets, hunts off explored ground, traps by level, the robot to sea — 2026-10-29
 
 Tim (2026-10-29): far out "everything just is mostly just the dreamlands... I like variation where you never know what you're

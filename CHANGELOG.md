@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 559 — **the Atlas shows the world as it is, relays you can trust, and a banner for finished quests.**
+  - Every section on the Atlas, zoomed in or out, is drawn in the colours of its own ground: sea blue, desert gold, dream-meadow violet, and so on. The Far Sleep and the other Readings still tint their regions lightly. Sections you explored earlier fill in with their true colours while the Atlas is open.
+  - The relay overlay marks only explored crossings that really hold a relay still waiting for you, and relays you have answered. It no longer shows every cell of the pattern.
+  - Crossings you enter for the first time from now on hold a relay wherever the pattern is alive, about half of them, instead of only on its edges (about a fifth). Crossings you have entered keep what they had.
+  - A gold QUEST COMPLETE banner when you finish a Viewport hunt, an errand for Old Quillon, the Seven Bells or the Surveyor's Chain. Banners that arrive at the same moment show one after another.
 - Release 557 — **the far lands vary again, hunts lead to new ground, traps bite, and the robot goes to sea.**
   - Past the edge of the Far Sleep, only pockets of land dream now, about one far section in four, more scattered the farther out you go. Every other far section is its own land again: mountains, deserts, swamps, alien ground, lakes and the rest. Sections you have already explored keep what they were.
   - A Viewport hunt you take up whose ground you have already explored moves to the nearest unexplored section, and the hunt card says where.

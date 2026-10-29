@@ -407,7 +407,8 @@ dialog {
 dialog::backdrop {
   background: #030302e8;
 }
-#eventBanner{position:fixed;z-index:7;left:50%;top:24%;width:min(82vw,560px);transform:translate(-50%,-14px);display:grid;gap:4px;padding:13px 20px;border-block:1px solid #c89a59aa;background:linear-gradient(90deg,transparent,#181713ee 14%,#181713ee 86%,transparent);color:#ead9b8;text-align:center;letter-spacing:.08em;opacity:0;pointer-events:none;transition:opacity .24s,transform .24s}#eventBanner strong{font:700 clamp(16px,4vw,25px) serif;text-transform:uppercase;text-shadow:0 2px 10px #000}#eventBanner span{font:11px monospace;color:#c8bda8;letter-spacing:.04em}#eventBanner.visible{opacity:1;transform:translate(-50%,0)}#eventBanner.danger{border-color:#d45f51;background:linear-gradient(90deg,transparent,#301817ee 14%,#301817ee 86%,transparent);color:#ffd0bd}
+#eventBanner{position:fixed;z-index:7;left:50%;top:24%;width:min(82vw,560px);transform:translate(-50%,-14px);display:grid;gap:4px;padding:13px 20px;border-block:1px solid #c89a59aa;background:linear-gradient(90deg,transparent,#181713ee 14%,#181713ee 86%,transparent);color:#ead9b8;text-align:center;letter-spacing:.08em;opacity:0;pointer-events:none;transition:opacity .24s,transform .24s}#eventBanner strong{font:700 clamp(16px,4vw,25px) serif;text-transform:uppercase;text-shadow:0 2px 10px #000}#eventBanner span{font:11px monospace;color:#c8bda8;letter-spacing:.04em}#eventBanner.visible{opacity:1;transform:translate(-50%,0)}
+#eventBanner.quest{border-color:#e8c45a;background:linear-gradient(90deg,transparent,#2e2610ee 14%,#2e2610ee 86%,transparent);color:#ffe9a8} /* release 559: QUEST COMPLETE */#eventBanner.danger{border-color:#d45f51;background:linear-gradient(90deg,transparent,#301817ee 14%,#301817ee 86%,transparent);color:#ffd0bd}
 .close {
   float: right;
   font-size: 22px;
