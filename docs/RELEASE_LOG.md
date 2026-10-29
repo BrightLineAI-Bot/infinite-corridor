@@ -13,23 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**567**
+**569**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 565 | Claude | `claude/dreamy-rubin-yn6q2p` | Mouth hamlet fix done right (never forced; trails as before 557), from the second pre-publish review | Building. |
-| 563 | Claude | PR #265 | Regional threat weighs more past ring 60 (vitality ×10 at 100, ×20 at 200); first fix for the Mouth hamlet | Merged (`r563-404782cd3a8a`). Superseded by 565 for publishing. |
-| 561 | Claude | PR #264 | Blows hold a windup briefly but never cancel it; no ordinary stun-lock; deep dungeon wardens sturdier | Merged (`r561-04ea37b22b5e`). |
-| 559 | Claude | PR #263 | Atlas in each section's real colours, relay markers only where relays are and more relays, QUEST COMPLETE banner, lore recorded | Merged (`r559-18f34853d2d7`). Not published. |
-| 557 | Claude | PR #262 | Far Sleep in pockets, hunts move off explored ground, trap damage grows with level, the robot puts to sea, Wayglass first | Merged (`r557-39c631cc89f9`). Not published. |
+| 567 | Claude | `claude/dreamy-rubin-yn6q2p` | An unfought world beast lets its section go after 16 sections elsewhere | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 565 | `r565-5fc233965fde` | 2026-10-29 | With 557 to 563: Far Sleep pockets, hunts off explored ground, traps by level, the robot to sea, Wayglass first (PR #262); Atlas real colours, honest relays, QUEST COMPLETE (#263); windups held not cancelled, sturdier deep wardens (#264); regional threat ×10 at ring 100 (#265); the Mouth hamlet kept exactly as before 557 (#266). The pre-publish Fable review of 555→561 found the Mouth hamlet blocker; the review of 561→563 found 563's fix forced hamlets; the review of 563→565 found no blockers. |
 | 555 | `r555-7b284880b307` | 2026-10-29 | Each visited area saved as its own record, only changed ones written; the probe records long animation frames, heap and save writes (PR #261). The pre-publish Fable review of 553→555 found no blockers. |
 | 553 | `r553-6f1c9b293b39` | 2026-10-28 | With 547 to 551: Fire Burst (PR #257), Arc Wave as three crescents (#258), the Surveyor's Chain part two (#259), presets swap weapon and tool only (#260). r549 (`r549-393038eb248c`, with 547) was published first, the same day, after its Fable review found no blockers; the review of 549→553 found none either. |
 | 545 | `r545-06aeebad5e78` | 2026-10-28 | With 539 to 543: the golem cooldown follows the tool's, Nanoknives fire on their own, Cluster Shells at opposite poles (PR #253); per-preset gear, a smith indoors in every Listener town, the Atlas home fix (#254); the Wayfarer rises with the big robot, the sling (#255); the full pack by tier then oldest, purchases kept (#256). The pre-publish Fable review of 537→545 found no blockers. |

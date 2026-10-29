@@ -2694,6 +2694,21 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 567: unfought world beasts move on — 2026-10-29
+
+Tim (2026-10-29, Aperture tier 16): "I have never... seen the tremor worm yet". The worm is unlocked from tier 7 and, simulated
+over 3,600 new far sections, appears as often as the others (about one meeting per hundred). But `worldBeastFor` let a beast hold
+its claimed section until it was killed or had beaten the Wayfarer `tries` times, so one that claimed a section the Wayfarer only
+crossed (or never saw) waited there for good, marked only as a danger signal on the Atlas, and that beast never claimed again.
+
+**CODE:** `src/world-beasts.ts` `BEAST_WANDER.after` (16) and `wanderUnmet(save, rx, ry)`, run at the top of `worldBeastFor` on
+every overworld section entered (towns too): each active beast never fought (no `tries`, `wounds`, `chase` or `retreat`, not in a
+dungeon, not the Astral Worm's reserved companion) counts `active.away` while the Wayfarer is elsewhere and resets it in its own
+section; at `after` it lets the section go and its `cycle` advances, so its next claim is a fresh roll.
+
+**BOUNDARY:** Additive (`active.away`, kept by `ensureWorldBeasts`). Beasts already fought, chasing, wounded or retreating keep
+their ground exactly as before; the encounter buffer, Aperture gates and chances are unchanged.
+
 ## Release 565: the Mouth hamlet kept exactly as before 557 — 2026-10-29
 
 The second pre-publish Fable review (561→563) found 563's fix passed `legacyMouthHamlet` as `applyHamlet`'s `force`, the 371

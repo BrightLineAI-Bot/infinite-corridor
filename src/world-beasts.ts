@@ -367,9 +367,24 @@ function fleeSpawn(save, here, rx, ry) {
 // already met (active, retreating or tracked) is never withdrawn by this.
 export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 };
 export const beastUnlocked = (save, id) => apertureTier(save?.perception?.aperture || 0) >= (BEAST_APERTURE[id] ?? 0);
+// Release 567 (Tim: "I have never... seen the tremor worm yet"): a beast held its section until it was killed or had beaten
+// the Wayfarer, so one that claimed a section the Wayfarer only passed through waited there for good, and never met them
+// again. A beast never fought (no tries, wounds, chase or retreat) now lets its section go once the Wayfarer has entered
+// `after` sections elsewhere, and can claim another (a new cycle, so a new roll).
+export const BEAST_WANDER = { after: 16 };
+function wanderUnmet(save, rx, ry) {
+  for (const id of WORLD_BEAST_IDS) {
+    const q = save.worldBeasts[id], a = q?.active;
+    if (!a || a.dungeon || a.retreat || a.tries || a.wounds || a.chase || !Number.isInteger(a.rx) || astralReservedCompanion(save, id)) continue;
+    if (a.rx === rx && a.ry === ry) { delete a.away; continue; }
+    a.away = (Number(a.away) || 0) + 1;
+    if (a.away >= BEAST_WANDER.after) { q.active = null; q.cycle = (q.cycle || 0) + 1; }
+  }
+}
 export function worldBeastFor(save, map, rx, ry) {
   ensureWorldBeasts(save, false);
   if (!map) return null;
+  wanderUnmet(save, rx, ry); // release 567: counted on every section entered, towns too
   if (map.settlement || map.tiles?.length !== 1024) { const id = WORLD_BEAST_IDS.find((k) => { const a = save.worldBeasts[k].active; return a?.retreat && !a.dungeon && a.rx === rx && a.ry === ry; }); return id ? fleeSpawn(save, id, rx, ry) : null; } // release 241: fleeing, it passes through a settlement too
   const qb = save.questingBeast?.active, held = qb && qb.rx === rx && qb.ry === ry;
   let here = WORLD_BEAST_IDS.find((id) => { const a = save.worldBeasts[id].active; return a && !a.dungeon && !astralReservedCompanion(save,id) && a.rx === rx && a.ry === ry; }), claimed = false;
