@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 567 — **world beasts move on.** A world beast that claims a section you only pass through no longer waits there forever: once you have entered 16 other sections without fighting it, it lets the section go and can find you somewhere else. A beast you have fought still waits for you.
 - Release 565 — the fix for the Mouth's town (563) now restores exactly what was there before 557: a town where one stood, open land where none did, and trails as they ran.
 - Release 563 — **distance weighs more.** Creatures far from Ember Refuge grow tougher faster: past 60 sections out, their vitality climbs to ×10 at 100 sections and ×20 at 200 (it was ×5.4 and ×9.4), and their damage climbs a little faster too (×7.65 at 200, was ×6.25). Nothing changes nearer than 60 sections. This is distance only; your Aperture does not change it.
   - Fix (found in the pre-publish review of 557): in the few journeys where a small town stood on the Listener's Mouth section before 557, that town stays. Only Mouth sections first seen from 557 on are kept as open land.
