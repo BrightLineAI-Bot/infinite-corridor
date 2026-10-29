@@ -2211,7 +2211,7 @@ export function updatePackMonster(e, w) {
   // Release 259: a dungeon Crystal that has lost the Wayfarer for a while goes back to its patrol.
   if (roaming && !e.retreating) { const seen = d <= CRYSTAL.roamSight || w.los(e, w.player); s.lostFor = seen ? 0 : (s.lostFor || 0) + dt; if (s.lostFor >= CRYSTAL.forgetAfter && !s.attack) { e.aggro = false; s.lostFor = 0; s.manifest = null; s.wallTime = 0; s.roam = null; patrolDungeon(e, s, w); return; } }
   if (e.hitStun > 0 && s.state === "move") return;
-  if (e.hitStun > 0 && s.attack && !e.boss && s.phase === "windup" && !e.untargetable) { endAttack(e, s); return; }
+  if (e.hitStun > 0 && s.attack && s.phase === "windup" && !e.untargetable && windupHeld(e, s.data ||= {}, dt)) return; // release 561: held, never cancelled
   if (!e.illusion) passiveStillness(e, s, w);
   if (e.kind === "morphingBlob") blobPassive(e, s, w, p, d);
   if (e.kind === "lightningGiant") { giantPassive(e, w); if (giantTraverse(e, s, w)) return; }
@@ -2377,15 +2377,24 @@ function voidNovaEruption(f, owner, w) {
 // Gate Revenant, world beast) spends hit-stunned fills its meter; the meter drains `decay` per second while it is free.
 // A full meter (`limit`, by class) clears the stun and grants `guard` seconds in which blows still land but no longer
 // stun. Knockdowns (BOSS_POISE poise breaks) are separate and unchanged. Ordinary creatures keep their old stagger.
-export const STAGGER_GOVERNOR = { limit: { revenant: .6, boss: .9, elite: 1.3 }, decay: .2, guard: 3 };
+export const STAGGER_GOVERNOR = { limit: { revenant: .6, boss: .9, elite: 1.3, ordinary: .6 }, decay: .2, guard: 3, guardBy: { ordinary: 1.5 } };
+// Release 561 (Tim, 2026-10-29: "they can get stunlocked... when monsters are winding up to attack. If I just shoot them,
+// they won't attack... They should... finish their attack... they can get stunned for a second. But after the stun... they
+// should finish their attack... only monsters that we've... specified have poise... everything gets hitstun, that's fine...
+// But it's way too easy to stun lock everything"): a blow during an attack's windup only holds the windup, for at most `max`
+// seconds of each attack in all; then the foe shrugs the stun off and the attack lands. Ordinary creatures join the stagger
+// governor too (class "ordinary": `limit` s of stun, then `guardBy.ordinary` s in which blows land but do not stun).
+export const WINDUP_STAGGER = { max: .35 };
+// Call while hit-stunned during a windup; `held` is the attack's own record. True while the windup may still be held.
+export function windupHeld(e, held, dt) { held.windupStagger = (held.windupStagger || 0) + dt; if (held.windupStagger < WINDUP_STAGGER.max) return true; e.hitStun = 0; return false; }
 export function staggerClass(e) { return e?.gatePredator ? "revenant" : e?.boss || e?.marginWarden /* release 459 */ || e?.worldBeast || e?.questingBeast || e?.farArrayBoss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e?.dungeonRole) ? "boss" : e?.eliteId || e?.elite ? "elite" : null; }
 // Call after the frame's hit-stun countdown. Returns true while the foe is guarded (it shrugs stuns off).
 export function staggerGovernor(e, dt) {
-  const k = staggerClass(e); if (!k) return false;
+  const k = staggerClass(e) || "ordinary"; // release 561: ordinary creatures cannot be stun-locked either
   const G = STAGGER_GOVERNOR;
   if (e.staggerGuard > 0) { e.staggerGuard -= dt; e.hitStun = 0; if (e.staggerGuard <= 0) delete e.staggerGuard; return true; }
   if (e.hitStun > 0) e.staggerMeter = (e.staggerMeter || 0) + dt; else if (e.staggerMeter) { e.staggerMeter -= G.decay * dt; if (e.staggerMeter <= 0) delete e.staggerMeter; } // no field until there is something to count
-  if (e.staggerMeter >= G.limit[k]) { delete e.staggerMeter; e.staggerGuard = G.guard; e.hitStun = 0; return true; }
+  if (e.staggerMeter >= G.limit[k]) { delete e.staggerMeter; e.staggerGuard = G.guardBy[k] ?? G.guard; e.hitStun = 0; return true; }
   return false;
 }
 export const GATE_REVENANT = {

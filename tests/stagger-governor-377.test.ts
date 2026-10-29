@@ -18,7 +18,7 @@ test('who it covers: bosses, guardians, elites, Revenants and great beasts; not 
   assert.equal(staggerClass({ gatePredator: true }), 'revenant'); assert.equal(staggerClass({ boss: true }), 'boss');
   assert.equal(staggerClass({ dungeonRole: 'gateWarden' }), 'boss'); assert.equal(staggerClass({ worldBeast: 'x' }), 'boss');
   assert.equal(staggerClass({ eliteId: 'e' }), 'elite'); assert.equal(staggerClass({ kind: 'ashling' }), null);
-  const pawn = { kind: 'ashling' }; assert.ok(hammer(pawn, 20).share > .45, 'a common foe can still be kept staggered');
+  const pawn = { kind: 'ashling' }, out = hammer(pawn, 20); assert.ok(out.share > .1 && out.share < .45, `release 561: a common foe is staggered, but never locked (${out.share.toFixed(2)})`);
 });
 
 test('a Revenant under constant swings is stunned for a while, then shrugs the stuns off', () => {

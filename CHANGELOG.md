@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 561 — **no more stun-locking.** A hit during a creature's windup holds it for a moment (at most about a third of a second per attack), and then the attack lands anyway. Ordinary creatures can be staggered but not kept stunned: after a short spell of stuns they shrug them off for a second and a half. Bosses keep their poise and stagger rules. The wardens of the deep dungeons (the Threefold Deep's three among them) now have a boss's health and hit harder.
 - Release 559 — **the Atlas shows the world as it is, relays you can trust, and a banner for finished quests.**
   - Every section on the Atlas, zoomed in or out, is drawn in the colours of its own ground: sea blue, desert gold, dream-meadow violet, and so on. The Far Sleep and the other Readings still tint their regions lightly. Sections you explored earlier fill in with their true colours while the Atlas is open.
   - The relay overlay marks only explored crossings that really hold a relay still waiting for you, and relays you have answered. It no longer shows every cell of the pattern.
