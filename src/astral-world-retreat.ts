@@ -3,7 +3,7 @@
 import { generateRegion, dungeonId } from './world.ts';
 import { applyLandscape, applyDream, DREAM_VERSION, LANDSCAPE_VERSION } from './landscape.ts';
 import { OPEN_SEA_VERSION } from './open-sea.ts';
-import { applyHamlet, hamletSection, HAMLET_VERSION } from './settlements.ts';
+import { applyHamlet, hamletSection, legacyMouthHamlet, HAMLET_VERSION } from './settlements.ts';
 import { applyTrails, addTravelers, addReciter, addWanderer, wandererArrive, addElder } from './travelers.ts';
 import { addSkirmish } from './skirmishes.ts';
 import { ensureBoatState } from './boats.ts';
@@ -115,8 +115,8 @@ export function previewAstralScene(game,scene,options={}) {
   if(scene.area==='overworld'){
     const {rx,ry}=scene,seen=save.atlas?.[`${rx},${ry}`],remembered=save.checkpoints?.[`${rx},${ry}`];
     map=generateRegion(save.seed,rx,ry,save.worldGeneration);
-    applyLandscape(map,save.seed,rx,ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION,openSea:!seen?OPEN_SEA_VERSION:seen.seaVersion||0,buoy:!remembered||remembered.name==='Lighthouse Buoy',hamlet:(!seen||!!seen.hamletVersion)&&hamletSection(save.seed,rx,ry)});
-    if(!seen||seen.dreamVersion)applyDream(map,save.seed,rx,ry,seen?.dreamVersion||DREAM_VERSION);if(!seen||seen.hamletVersion)applyHamlet(map,save.seed,rx,ry,seen?.hamletVersion||HAMLET_VERSION);
+    applyLandscape(map,save.seed,rx,ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION,openSea:!seen?OPEN_SEA_VERSION:seen.seaVersion||0,buoy:!remembered||remembered.name==='Lighthouse Buoy',hamlet:(!seen||!!seen.hamletVersion)&&(hamletSection(save.seed,rx,ry)||legacyMouthHamlet(save,rx,ry))});
+    if(!seen||seen.dreamVersion)applyDream(map,save.seed,rx,ry,seen?.dreamVersion||DREAM_VERSION);if(!seen||seen.hamletVersion)applyHamlet(map,save.seed,rx,ry,seen?.hamletVersion||HAMLET_VERSION,legacyMouthHamlet(save,rx,ry));
     if(!seen||seen.travelVersion)applyTrails(map,save.seed,rx,ry);
     previewSurfaceSites(map,save,rx,ry,options);
     if(remembered&&(rx||ry)&&!map.objects.some(o=>o.kind==='checkpoint')){
