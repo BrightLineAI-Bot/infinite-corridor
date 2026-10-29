@@ -56,6 +56,7 @@ import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { ARC_WAVE, NANOKNIVES, GOLEM, CLUSTER, FIRE_BURST, knifeOffset } from "./tool-forms.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
+import { SKYLANDS, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland } from "./skylands.ts";
 import { generateItem, BRAWLER_LOOT } from "./items.ts";
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
 import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
@@ -107,6 +108,12 @@ import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDu
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const RIFT_FLASH = .6; // release 519: seconds an instant Rift Step lights its button
 export const EQUIPMENT_CAPACITY = 60;
+// Release 571 (skylands.ts): the arena becomes a Skyland: its own boss waits for the last wave, the first wave is placed.
+function dressSkyland(map, id) {
+  const boss = map.enemySpawns?.[0]?.kind || "hollowMarshal", tier = skylandTierOf(id), width = map.width || 36, open = map.tiles.filter((t) => !t.blocked && !t.environment && Math.hypot(t.x - map.entry.x, t.y - map.entry.y) > 5);
+  Object.assign(map, { skyland: true, skyTier: tier, skyBoss: boss, skyOpen: open.map((t) => ({ x: t.x, y: t.y })), name: `Skyland · Ascension ${tier}`, weather: "petals" });
+  map.enemySpawns = skylandWave(id, 0, map.skyOpen, map.objective || { x: width / 2, y: 11 }, boss);
+}
 export function pinDungeonLayout(save, id) {
   const history = dungeonHistory(save, id);
   const visited = () => history.visits > 0 || Object.keys(save.session.areas || {}).some(key => key === id || key.startsWith(id + ':level:'));
@@ -144,7 +151,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   // Dive generator pinned per history: 1 = the release-107 Sunken Reach, 2 = themed grottoes (release 108).
   if (isArenaRun(id)) map = generateListenerArena(save.seed, id); // release 375: the Listening Hall
   else if (id.startsWith('dive:')) map = (history.diveGenerator ?? 1) >= 2 ? generateGrotto(save.seed, id) : generateDiveSite(save.seed, id);
-  else if (/^(arena:|hunt-arena:|hunt-instance:)/.test(id)) map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved});
+  else if (/^(arena:|hunt-arena:|hunt-instance:|skyland:)/.test(id)) { map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved}); if (isSkyland(id)) dressSkyland(map, id); } // release 571: a Skyland is a temporary arena run in waves
   else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1,...(history.mire?{theme:'poisonCrypt'}:history.dream?{theme:'dream'}:{}),...(history.mire?.taste?{sizeProfile:'compact'}:{}),...(history.ladder?{ladder:crossingLadder(save.seed,id,history.ladder.tier)}:{}),...(history.warpVersion>=2?{warpAlways:true}:{})});
   else if (!id.includes(':deep-v') && history.generatorVersion === 4) map = generateUnifiedDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options});
   else if (!id.includes(':deep-v') && history.generatorVersion === 3) map = generateVariedDungeon(save.seed,id,dungeonDescriptor(id).recipe);
@@ -2221,10 +2228,11 @@ export class Game {
         ...(prior ? (prior.dreamVersion ? { dreamVersion: prior.dreamVersion } : {}) : { dreamVersion: DREAM_VERSION }),
         // The Watcher's shrines and tombs (release 289) likewise.
         ...(prior ? (prior.watcherVersion ? { watcherVersion: prior.watcherVersion } : {}) : { watcherVersion: WATCHER.version }),
+        ...(prior ? (prior.skyVersion ? { skyVersion: prior.skyVersion } : {}) : { skyVersion: SKYLANDS.version }), // release 571: Sky Stairs only in sections first seen from now on
         ...(indoor ? { indoorDungeonVersion: indoor } : {}), // release 499: the dungeon entrance may stand inside a building
         color: sectionAtlasColor(this.map), // release 559: the Atlas shows the section as it really looks (atlas-colors.ts)
         ...(this.map.landscape?.biome ? { landscape: this.map.landscape.biome } : {}), sites: this.map.objects
-        .filter((o) => ["diveSite","shipwright","checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho","watcherTomb"].includes(o.kind)) // release 465: the Watcher's shrines
+        .filter((o) => ["diveSite","shipwright","checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho","watcherTomb","skyStair"].includes(o.kind)) // release 465: the Watcher's shrines
         .map((o) => ({ kind: o.kind, name: o.kind === "watcherTomb" ? (o.where === "shrine" ? "Watcher's Shrine" : "Watcher's Tomb") : o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
     if (area === "overworld") this.openWayglassApproach(); // release 467 (Codex audit F006)
@@ -2236,13 +2244,15 @@ export class Game {
     if(area==="overworld"&&townAt(this.save,this.rx,this.ry)?.mouth)this.raiseMouthTown(); // release 373 (after every Mouth, old ones too)
     if(area==="overworld"&&townAt(this.save,this.rx,this.ry))this.raiseTownAmenities(); // release 441
     if(area==="overworld")addSurveyorStatue(this.map,this.save,this.rx,this.ry); // release 551: Corwin's statue, once the chain is whole
-    if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry,this.save),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);const beast=questingBeastFor(this.save,this.map,this.rx,this.ry),elder=addElder(this.map,this.save,this.rx,this.ry),worldBeastFound=worldBeastFor(this.save,this.map,this.rx,this.ry),worldBeast=beast&&!worldBeastFound?.retreating?null:worldBeastFound;if(worldBeast){this.map.enemySpawns.push(worldBeast);const companion=astralCompanionFor(this.save,worldBeast,{rx:this.rx,ry:this.ry},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[worldBeast.worldBeast];this.message=worldBeast.retreating?`${B.name} is fleeing through here toward ${BEAST_HOMES[B.home].name}. It cannot be hurt now.`:`${B.arrive} ${worldBeastTriesLeft(this.save,worldBeast.worldBeast)} of ${B.tries} tries remain.`}/* release 241: a fleeing beast says so, and passes through the Questing Beast's ground too *//* release 235: world beasts */addStrange(this.map,this.save,this.rx,this.ry);/* release 215: a rare strange tree or stone */addDigSpot(this.map,this.save,this.rx,this.ry);/* release 225: a rare patch of disturbed earth */const ilse=addIlse(this.map,this.save,this.rx,this.ry,!!farSleepSection(this.rx,this.ry));/* release 415: Ilse the Lamplighter */for(const id of mouthsIn(this.save,this.rx,this.ry))placeMouth(this.map,id);/* release 217: second mouths of linked dungeons */if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastTriesLeft(this.save)} of ${QUESTING_BEAST.tries} tries remain.`}if(!beast&&!worldBeast){const passing=passingBeastFor(this.save,this.map,this.rx,this.ry,Object.keys(this.save.explored||{}).length);if(passing){this.map.enemySpawns.push(passing);this.passingNote=`Far off, ${WORLD_BEASTS[passing.passingBeast].name} moves through, bound for ${BEAST_HOMES[WORLD_BEASTS[passing.passingBeast].home].name}. It pays you no mind.`}}/* release 569 */if(beast||worldBeast){}else if(ilse)this.message=ilse.stage===5?"A lamp burns in the meadow with no post beneath it.":"Someone is tending a lamp nearby.";else if(elder)this.message="Something tall and silent walks the road.";else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, murmuring.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
+    if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry,this.save),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);const beast=questingBeastFor(this.save,this.map,this.rx,this.ry),elder=addElder(this.map,this.save,this.rx,this.ry),worldBeastFound=worldBeastFor(this.save,this.map,this.rx,this.ry),worldBeast=beast&&!worldBeastFound?.retreating?null:worldBeastFound;if(worldBeast){this.map.enemySpawns.push(worldBeast);const companion=astralCompanionFor(this.save,worldBeast,{rx:this.rx,ry:this.ry},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[worldBeast.worldBeast];this.message=worldBeast.retreating?`${B.name} is fleeing through here toward ${BEAST_HOMES[B.home].name}. It cannot be hurt now.`:`${B.arrive} ${worldBeastTriesLeft(this.save,worldBeast.worldBeast)} of ${B.tries} tries remain.`}/* release 241: a fleeing beast says so, and passes through the Questing Beast's ground too *//* release 235: world beasts */addStrange(this.map,this.save,this.rx,this.ry);/* release 215: a rare strange tree or stone */addDigSpot(this.map,this.save,this.rx,this.ry);/* release 225: a rare patch of disturbed earth */const ilse=addIlse(this.map,this.save,this.rx,this.ry,!!farSleepSection(this.rx,this.ry));/* release 415: Ilse the Lamplighter */for(const id of mouthsIn(this.save,this.rx,this.ry))placeMouth(this.map,id);/* release 217: second mouths of linked dungeons */if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastTriesLeft(this.save)} of ${QUESTING_BEAST.tries} tries remain.`}{const seenSky=this.save.atlas?.[`${this.rx},${this.ry}`];if((!seenSky||seenSky.skyVersion)&&!this.map.settlement&&skylandSection(this.save.seed,this.rx,this.ry)&&!this.map.objects.some(o=>o.kind==='skyStair')){const spot=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&!t.buildingId&&t.x>8&&t.x<24&&t.y>8&&t.y<24&&!this.map.objects.some(o=>Math.hypot(o.x-t.x,o.y-t.y)<2)).sort((a,b)=>Math.hypot(a.x-16,a.y-15)-Math.hypot(b.x-16,b.y-15))[0];if(spot)this.map.objects.push({id:`sky-stair-${this.rx}-${this.ry}`,kind:'skyStair',name:'Sky Stair',lore:'A stair of pale stone climbs into the open air and stops. Above it, islands drift. The divine challenge is offered to anyone who climbs.',x:spot.x,y:spot.y,state:'open',actions:['ascend:0']});const rec=spot&&this.save.atlas?.[`${this.rx},${this.ry}`];if(rec&&Array.isArray(rec.sites)&&!rec.sites.some(q=>q.kind==='skyStair'))rec.sites.push({kind:'skyStair',name:'Sky Stair',x:spot.x,y:spot.y})}}/* release 571: the Skylands */if(!beast&&!worldBeast){const passing=passingBeastFor(this.save,this.map,this.rx,this.ry,Object.keys(this.save.explored||{}).length);if(passing){this.map.enemySpawns.push(passing);this.passingNote=`Far off, ${WORLD_BEASTS[passing.passingBeast].name} moves through, bound for ${BEAST_HOMES[WORLD_BEASTS[passing.passingBeast].home].name}. It pays you no mind.`}}/* release 569 */if(beast||worldBeast){}else if(ilse)this.message=ilse.stage===5?"A lamp burns in the meadow with no post beneath it.":"Someone is tending a lamp nearby.";else if(elder)this.message="Something tall and silent walks the road.";else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, murmuring.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
     this.activatedEncounterGroups=new Set;
     if(area==="dungeon"){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const companion=astralCompanionFor(this.save,haunt,{dungeon:this.areaId(),level:this.map.levelId||"root"},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is retreating ${haunt.worldBeast === "voidWalker" ? "toward the nearest reachable dungeon door" : haunt.worldBeast === "astralWorm" ? "toward the nearest reachable Wayglass" : "toward the water"}. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastTriesLeft(this.save,haunt.worldBeast)} of ${B.tries} tries remain.`}} /* release 249: the Psychic Crystal haunts dungeons with water */
     if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.extraSpawn)) for (const q of this.extraDungeonSpawns()) this.map.enemySpawns.push(q); // release 463: more foes
     if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.marginWarden)) for (const w of wardenSpawns(this.save, this.map, this.areaId(), dungeonHistory(this.save, this.areaId()).wardensSlain || [])) this.map.enemySpawns.push(w); // release 459: Margin Wardens; 473: the slain stay slain
     if (area === "overworld") endMarginRun(this.save); // release 459: marginalia hold only inside the crossing
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
+    if (area === 'dungeon' && this.map.skyland) for (const e of this.enemies) this.scaleSkyFoe(e); // release 571
+    if (area === 'overworld') { const areas = this.save.session?.areas || {}, hist = this.save.consequences?.dungeons || {}; for (const k of Object.keys(areas)) if (isSkyland(k)) delete areas[k]; for (const k of Object.keys(hist)) if (isSkyland(k)) delete hist[k]; } // release 571: a finished or abandoned Skyland run leaves nothing behind
     // Far Array bosses are tuned to the Wayfarer last, over the depth and boss-form scaling (release 138).
     if(area==="dungeon"&&isArrayRun(loadingId))for(const e of this.enemies)if(e.farArrayBoss)tuneArrayBoss(e,this.save,characterStats(this.save),e.farArrayBoss);
     // Surface sea creatures (water world W3): deterministic per section, only in landscape version 2+ water.
@@ -2873,6 +2883,25 @@ export class Game {
     this.rx = from.rx; this.ry = from.ry; this.loadArea("overworld", false);
     Object.assign(this.player, { x: from.x, y: from.y, sailVx: 0, sailVy: 0 }); this.message = message; this.sync();
   }
+  // Release 571 (skylands.ts): a Skyland foe is made stronger by the run's Ascension, once.
+  scaleSkyFoe(e) { if (e.skyScaled || e.ambient || e.passiveBehavior) return; const k = skylandScale(this.map.skyTier || 0); e.maxHp = Math.max(1, Math.round(e.maxHp * k.hp)); e.hp = e.maxHp; e.damage = Math.max(1, Math.round(e.damage * k.damage)); e.skyScaled = true; }
+  // Each frame in a Skyland: when every foe is down, the next wave comes after a breath; after the boss, the run is cleared.
+  tickSkyland(dt) {
+    const id = this.areaId(), h = dungeonHistory(this.save, id); if (h.resolved) return;
+    if (this.enemies.some((e) => !e.dead && !e.ambient && !e.passiveBehavior && !e.summonedBy && e.kind !== "npc")) { this.skyGap = SKYLANDS.waveGap; return; }
+    if ((this.skyGap = (this.skyGap ?? SKYLANDS.waveGap) - dt) > 0) return;
+    h.skyWave = (h.skyWave || 0) + 1; this.skyGap = SKYLANDS.waveGap;
+    if (h.skyWave < SKYLANDS.waves.length) {
+      const spawns = skylandWave(id, h.skyWave, this.map.skyOpen || [], this.map.objective || { x: 18, y: 11 }, this.map.skyBoss);
+      for (const sp of spawns) { const c = this.createEnemyFromSpawn(sp, "dungeon"); this.scaleSkyFoe(c); c.aggro = true; this.enemies.push(c); }
+      this.message = h.skyWave === SKYLANDS.waves.length - 1 ? "The sky darkens over the last island. Its keeper comes." : "More of them drop out of the open sky.";
+      return;
+    }
+    h.resolved = true; h.visitOpen = false; const tier = this.map.skyTier || 0, won = completeSkyland(this.save, tier);
+    (this.questNotices ||= []).push({ title: "SKYLAND CLEARED", detail: `Ascension ${tier} · +${won.sigils} Ascension Sigil${won.sigils > 1 ? "s" : ""}, +${won.marks} marks${won.weaponSphere || won.armorSphere ? `, ${won.weaponSphere + won.armorSphere} spheres` : ""}`, kind: "quest" });
+    this.message = `The islands fall quiet. You hold ${this.save.skylands.sigils} Ascension Sigil${this.save.skylands.sigils === 1 ? "" : "s"}. Take the way back down at the stair's foot.`;
+    journalOnce(this.save, `skyland-best:${this.save.skylands.best}`, `You cleared a Skyland at Ascension ${tier}. Each climb repays its sigils; the higher stairs ask for more.`, "The Skylands"); this.sync();
+  }
   // The nearest Wayglass or relay within WAYGLASS_ZONE.reach that can be used, or null.
   // `usable` false (the no-boat zone, release 569): any Wayglass or relay counts, activated or not.
   wayglassNear(usable = true) {
@@ -3076,6 +3105,11 @@ export class Game {
     if (o.kind === "tree" && chosen === "cut") { applyFallenTreeCrossings(this.map); const before = Number(this.save.materials?.wood) || 0, total = addWood(this.save, woodFor(o)), n = total - before; this.message = n > 0 ? `${this.message} +${n} wood (${total}${total >= WOOD.carry ? ", all you can carry" : ""}).` : `${this.message} You can carry no more wood (${WOOD.carry}).`; r.message = this.message; }
     if(r.transition==="elitePortal"){
       this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=`elite-portal:${this.save.seed}:knife-choir`;const h=dungeonHistory(this.save,this.save.session.activeDungeonId);h.visits++;h.visitOpen=true;this.loadArea('dungeon');this.player.x=4;this.player.y=5;relocateIfStranded(this.player,this.map,mapWidth(this.map,'dungeon'));this.settleArrival();/* release 439 */
+    } else if(r.transition==="skyland"){ // release 571: climb a Sky Stair
+      const b=beginSkyland(this.save,{rx:this.rx,ry:this.ry},r.tier);if(!b.ok){this.message=b.message;return{ok:false,message:b.message}}
+      this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=b.id;this.save.session.activeDungeonLevelId=null;
+      const h=dungeonHistory(this.save,b.id);h.gatePredatorSpawnThreshold=0;h.skyWave=0;h.visits++;h.visitOpen=true;
+      this.loadArea('dungeon');this.player.x=this.map.entry?.x??18;this.player.y=(this.map.entry?.y??27)-1;relocateIfStranded(this.player,this.map,mapWidth(this.map,'dungeon'));this.settleArrival();this.message=b.message;this.sync();return{ok:true,message:b.message};
     } else if(r.transition==="displacement"){
       this.startDisplacement(o,false);
     } else if (r.transition === "dungeon") {
@@ -5040,6 +5074,7 @@ export class Game {
 
   update(dt, input, now) {
     if (this.passingNote) { this.message = this.passingNote; this.passingNote = null; } // release 569: said after the section's other notes
+    if (this.area === "dungeon" && this.map?.skyland) this.tickSkyland(dt); // release 571
     this.lastUpdateNow = now;
     if (this.paused) return;
     this.save.playSeconds = (Number(this.save.playSeconds) || 0) + Math.max(0, Math.min(1, Number(dt) || 0)); // release 379: playtime (paused time is not counted)

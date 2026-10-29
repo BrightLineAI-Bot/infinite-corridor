@@ -57,7 +57,7 @@ export const DIG_FINDS = [
   { id: "weaponSphere", weight: 6, min: 1, max: 1, label: "a Weapon Sphere" },
   { id: "armorSphere", weight: 6, min: 1, max: 1, label: "an Armor Sphere" },
 ];
-const TEMPORARY = /^(hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:|far-array:|dive:)/;
+const TEMPORARY = /^(hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:|far-array:|dive:|skyland:)/;
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
 // save.digging: { shovel: uses left (0 = none), iron: iron-shovel uses left (release 379), dug: { areaKey: ["x,y", …] }, spots: { "rx,ry": true } }; save.materials.stone.

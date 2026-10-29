@@ -1199,6 +1199,10 @@ function actor(
     } else if (kind === "listenerDais") { // release 375: a round dais of dark glass, its rim lit, a column of the line above it
       const t=performance.now()/1000,pulse=.5+.5*Math.sin(t*3);ctx.fillStyle="#120f18";ctx.beginPath();ctx.ellipse(k,base-s*.2,s*.48,s*.2,0,0,7);ctx.fill();ctx.strokeStyle=`rgba(201,166,255,${.55+.4*pulse})`;ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.ellipse(k,base-s*.2,s*.42,s*.16,0,0,7);ctx.stroke();
       ctx.lineWidth=Math.max(1,s*.03);ctx.beginPath();ctx.ellipse(k,base-s*.2,s*.24,s*.09,t%6.3,0,4.2);ctx.stroke();const g=ctx.createLinearGradient(0,base-s*1.6,0,base-s*.2);g.addColorStop(0,"rgba(201,166,255,0)");g.addColorStop(1,`rgba(201,166,255,${.25+.25*pulse})`);ctx.fillStyle=g;ctx.fillRect(k-s*.18,base-s*1.6,s*.36,s*1.4);
+    } else if (kind === "skyStair") { // release 571: pale steps climbing into the air, a glow where they end
+      const t=performance.now()/1000,pulse=.5+.5*Math.sin(t*2);ctx.fillStyle="#00000044";ctx.beginPath();ctx.ellipse(k,base,s*.42,s*.12,0,0,7);ctx.fill();
+      for(let i=0;i<5;i++){const w=s*(.5-i*.07),y=base-s*(.12+i*.22);ctx.fillStyle=i%2?"#e8e2f4":"#d4cce6";ctx.fillRect(k-w/2,y-s*.12,w,s*.14);ctx.fillStyle="#9c93b866";ctx.fillRect(k-w/2,y,w,s*.03)}
+      const g=ctx.createRadialGradient(k,base-s*1.35,0,k,base-s*1.35,s*.5);g.addColorStop(0,`rgba(255,244,214,${.55+.35*pulse})`);g.addColorStop(1,"rgba(255,244,214,0)");ctx.fillStyle=g;ctx.beginPath();ctx.arc(k,base-s*1.35,s*.5,0,7);ctx.fill();
     } else if (kind === "listeningStone") { // release 373: a dark standing stone with the Listener's violet, ringed like an ear
       ctx.fillStyle="#00000055";ctx.beginPath();ctx.ellipse(k,base,s*.36,s*.1,0,0,7);ctx.fill();
       ctx.fillStyle="#1c1726";ctx.beginPath();ctx.moveTo(k-s*.26,base);ctx.lineTo(k-s*.18,base-s*1.15);ctx.lineTo(k,base-s*1.32);ctx.lineTo(k+s*.18,base-s*1.15);ctx.lineTo(k+s*.26,base);ctx.closePath();ctx.fill();ctx.strokeStyle="#3b3550";ctx.lineWidth=Math.max(1,s*.04);ctx.stroke();

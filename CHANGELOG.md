@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 571 — **the Skylands.** Here and there in newly explored wild land, a Sky Stair climbs into the open air. Climb it for a divine challenge: three waves on the floating islands (a pack, then hardened elites, then a keeper), with no way down but through them. Choose the Ascension as you climb: Ascension N makes every foe there much stronger, costs N Ascension Sigils, and can be chosen up to one above the highest you have cleared. Clearing Ascension 0 earns your first sigil; clearing Ascension N gives N back, plus more marks and N spheres the higher you go, so the climb is farmed from the tiers below. Any stair can be climbed again, as often as you like. Sky Stairs show on the Atlas under Places.
 - Release 569 — **the world in regions, beasts on the move, and brawler tools that feel your spells.**
   - Past the heartland round Ember Refuge, new ground now falls into large regions, each its own land: open sea, scattered isles, lakes, fens, dune seas, mountain ranges, the alien Lumen Wilds, the dream, and plains of ash, glass or ember. They come in all sizes and wander-edged shapes, and some regions are wild, where anything goes. Ground you have already explored keeps what it was.
   - The dream runs along the seams between regions in broken veins, like rivers between realms, as well as in a few dream regions and the wild ones' pockets.
