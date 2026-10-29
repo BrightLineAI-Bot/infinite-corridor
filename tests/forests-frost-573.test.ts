@@ -14,7 +14,7 @@ function find(type, ok = () => true) { for (let x = 14; x < 120; x++) for (let y
 const wooded = (x, y) => { const m = generateRegion(SEED, x, y); applyLandscape(m, SEED, x, y, { version: 5 }); return m.objects.filter((o) => o.forest).length >= 60; };
 
 test('version 5 turns some wild regions into forests and frostlands; every other region keeps its version 4 type', () => {
-  assert.equal(LANDSCAPE_VERSION, 5);
+  assert.equal(LANDSCAPE_VERSION, 6); // release 579: moonlands (forests and frostlands unchanged)
   const types = new Set();
   for (let x = 14; x < 110; x += 2) for (let y = 14; y < 110; y += 2) {
     const a = sectionRegion(SEED, x, y), b = sectionRegion(SEED, x, y, 5); types.add(b.type);
@@ -61,7 +61,7 @@ test('walking into a named region shows its name once; standing trees are not sa
   g.snapshotArea(); const saved = s.session.areas[g.areaStateId()].objects;
   assert.equal(saved[tree.id].state, 'fallen'); assert.ok(!Object.keys(saved).some((id) => id.startsWith('wood-') && id !== tree.id), 'standing trees are left out');
   g.loadArea('overworld'); assert.equal(g.map.objects.find((o) => o.id === tree.id).state, 'fallen', 'the felled tree stays felled');
-  assert.equal(s.atlas[`${rx},${ry}`].landscapeVersion, 5);
+  assert.equal(s.atlas[`${rx},${ry}`].landscapeVersion, LANDSCAPE_VERSION);
 });
 
 test('behind a giant tree the Wayfarer shows through; in front of it, not', () => {

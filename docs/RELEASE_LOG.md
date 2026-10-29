@@ -13,24 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**579**
+**581**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 577 | Claude | `claude/dreamy-rubin-yn6q2p` | Bells offered by any bell crossing until rung, at any depth; Journal points to bells and links left behind | Building. |
-| 575 | Claude | PR #271 | The Transit Lattice in views: passives folded by skill, spells, tools and general; Echoes; All | Merged (`r575-b21cc7fdb959`). Not published. |
-| 573 | Claude | PR #270 | Forests (thick woods, giant trees), frostlands, region names (landscape 5) | Merged (`r573-04a36c5d5231`). Not published. |
-| 571 | Claude | PR #269 | The Skylands: Sky Stairs, three-wave divine challenges, Ascension tiers and sigils | Merged (`r571-8dbd44d5d7fb`). Not published. |
-| 569 | Claude | PR #268 | World regions (landscape 4, dream 4 with seams), passing world beasts, Spellblade/Charged Air for brawler tools | Merged (`r569-31150f83e773`). Not published. |
-| 567 | Claude | PR #267 | An unfought world beast lets its section go after 16 sections elsewhere | Merged (`r567-480ef82e6278`). Not published. |
+| 579 | Claude | `claude/dreamy-rubin-yn6q2p` | Moonlands: a lunar region type (landscape 6), grey dust and craters | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 577 | `r577-1b61c41bd892` | 2026-10-29 | With 567 to 575: world beasts move on (PR #267); world regions, dream seams, passing beasts, Spellblade and Charged Air on brawler tools (#268); the Skylands (#269); forests, frostlands and region names (#270); the Transit Lattice in views (#271); no bell left stranded (#272). The pre-publish Fable review of 565→577 found no blockers; its note that Skyland waves run while paused does not hold (the update wrapper returns while paused). |
 | 565 | `r565-5fc233965fde` | 2026-10-29 | With 557 to 563: Far Sleep pockets, hunts off explored ground, traps by level, the robot to sea, Wayglass first (PR #262); Atlas real colours, honest relays, QUEST COMPLETE (#263); windups held not cancelled, sturdier deep wardens (#264); regional threat ×10 at ring 100 (#265); the Mouth hamlet kept exactly as before 557 (#266). The pre-publish Fable review of 555→561 found the Mouth hamlet blocker; the review of 561→563 found 563's fix forced hamlets; the review of 563→565 found no blockers. |
 | 555 | `r555-7b284880b307` | 2026-10-29 | Each visited area saved as its own record, only changed ones written; the probe records long animation frames, heap and save writes (PR #261). The pre-publish Fable review of 553→555 found no blockers. |
 | 553 | `r553-6f1c9b293b39` | 2026-10-28 | With 547 to 551: Fire Burst (PR #257), Arc Wave as three crescents (#258), the Surveyor's Chain part two (#259), presets swap weapon and tool only (#260). r549 (`r549-393038eb248c`, with 547) was published first, the same day, after its Fable review found no blockers; the review of 549→553 found none either. |

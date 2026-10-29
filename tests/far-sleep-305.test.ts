@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateRegion } from '../src/world.ts';
-import { applyLandscape, applyDream, farSleepSection, reachableFromPlaza, trappedTiles, DREAM_VERSION, dreamPocket } from '../src/landscape.ts';
+import { applyLandscape, applyDream, farSleepSection, reachableFromPlaza, trappedTiles, DREAM_VERSION, dreamPocket, dreamsHere, LANDSCAPE_VERSION } from '../src/landscape.ts';
 import { drawLandscapeTile } from '../src/landscape-render.ts';
 import { readingAt } from '../src/lore.ts';
 import { Game } from '../src/game.ts';
@@ -39,7 +39,7 @@ test('dream sections are dream terrain, fully reachable and never traps', () => 
 test('only sections first seen now dream; an explored one keeps its ground; at sea only the islands dream', () => {
   const s = freshSave(SEED); s.seed = SEED; const g = new Game(s, 0);
   let land = null, sea = null;
-  for (let rx = 36; rx < 200 && !(land && sea); rx++) { if (!dreamPocket(SEED, rx, 0)) continue; /* release 557: only pockets dream */ g.rx = rx; g.ry = 0; g.loadArea('overworld'); if (g.map.settlement) continue; if (g.map.openSea) sea ||= rx; else land ||= rx; }
+  for (let rx = 36; rx < 200 && !(land && sea); rx++) { if (!dreamsHere(SEED, rx, 0, DREAM_VERSION, LANDSCAPE_VERSION)) continue; /* release 557: only pockets dream; 579: and not in moonlands */ g.rx = rx; g.ry = 0; g.loadArea('overworld'); if (g.map.settlement) continue; if (g.map.openSea) sea ||= rx; else land ||= rx; }
   assert.ok(land && sea, `found a land (${land}) and a sea (${sea}) section`);
   g.rx = sea; g.loadArea('overworld'); assert.equal(g.map.dream, DREAM_VERSION); assert.equal(g.map.weather, 'petals');
   assert.ok(g.map.tiles.some((t) => ['ocean', 'deepOcean'].includes(t.kind)), 'the sea stays sea'); assert.ok(!g.map.tiles.some((t) => t.kind === 'starVoid'), 'no void at sea');

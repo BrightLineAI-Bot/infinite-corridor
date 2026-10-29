@@ -2694,6 +2694,25 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 579: moonlands — 2026-10-29
+
+The daily world-regions routine (Tim, 2026-10-29: "find ways to make the map have interesting features... rich and vibrant...
+without decreasing performance"; among his ideas "a lunar / alien-planet surface"): one new region type.
+
+**CODE:**
+- `src/landscape.ts`: `LANDSCAPE_VERSION` 6. `REGIONS_V6.wildTo` (lunar): `wildRegionType(seed, id, version)` rolls it with its own
+  hash only for a region still wild after the version 5 roll, so forests, frostlands and every other region keep their type.
+  `regionTile` caches by version 4/5/6. `REGIONS.lean.lunar`, `REGION_GROUNDS.lunar`, `REGION_NAMES.nouns.lunar`.
+  `applyMoonlands` (version 6, not in full open sea): bare, unblocked ground in a lunar tile-region becomes `moonDust`; `MOON`
+  craters (2–4 per section) turn dust to `craterFloor` inside a `craterRim`. All walkable; nothing else changes.
+- `src/landscape-render.ts` textures, `src/atlas-colors.ts` colours, `src/game.ts` `REGION_BANNER.kinds.lunar`.
+
+**BOUNDARY:**
+- Sections pinned to versions 2–5 generate byte for byte as before (1440 sections compared with r577). Forest and frost
+  sections first seen at version 6 are as at version 5.
+- Moonlands have no wild dream pockets (dreamsHere reads the type at the section's landscape version); seams still cross them.
+- Tests: `tests/moonlands-579.test.ts`; version asserts in boats, 569 and 573 tests updated to 6; the Far Sleep test (305) now finds dream sections through `dreamsHere`.
+
 ## Release 577: no bell left stranded — 2026-10-29
 
 Tim (2026-10-29): "those narratives... we should be able to track them in the journal... they shouldn't just be trapped in
