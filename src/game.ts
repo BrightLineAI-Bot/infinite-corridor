@@ -54,7 +54,7 @@ import {
 import { ensurePerception } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { ARC_WAVE, NANOKNIVES, GOLEM, CLUSTER, FIRE_BURST, knifeOffset } from "./tool-forms.ts";
-import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
+import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { generateItem, BRAWLER_LOOT } from "./items.ts";
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
 import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
@@ -1081,7 +1081,7 @@ export function selectRangedAim(player, enemies, map, width, range = Infinity) {
     .sort((a, b) => a.distance - b.distance || String(a.e.id).localeCompare(String(b.e.id)))
     .map((q) => projectileDirection(q.e.x - player.x, q.e.y - player.y, player.facing))[0] || null;
 }
-export function updateTraps(objects, player, dt, jumping = false, maxHp = 0) {
+export function updateTraps(objects, player, dt, jumping = false, maxHp = 0, level = 1) {
   for (const trap of objects.filter((o) => o.kind === "trap" && !o.newTrap /* release 523: tickNewTraps runs those */)) {
     trap.hits = trap.hits || {};
     trap.timer = Math.max(0, Number(trap.timer) || 0);
@@ -1113,7 +1113,7 @@ export function updateTraps(objects, player, dt, jumping = false, maxHp = 0) {
         (inFire || inSpikes)
       ) {
         trap.hits.player = true;
-        player.hp -= Math.max(Number(trap.damage)||14, Math.round((Number(maxHp) || 0) * TRAP_DAMAGE_SHARE)); // release 525: at least a share of maximum health
+        player.hp -= Math.max(Number(trap.damage)||14, Math.round((Number(maxHp) || 0) * TRAP_DAMAGE_SHARE * trapShareScale(level))); // release 525: at least a share of maximum health; 557: growing with level
       }
       if (trap.timer <= 0) {
         trap.phase = "recovery";
@@ -1385,6 +1385,12 @@ export function hasLineOfSight(enemy, player, map, width, projectile=false, allo
 }
 // Objects that do not keep Act from building a skiff at the water's edge (release 263).
 export const SHORE_PASSIVE = ["tree", "rock"];
+// Release 557 (Tim: "a lot of these weight glasses are on small little... areas... it activates the boat... or if there's
+// someone nearby, it'll talk to them... prioritize the weight glass... a hard rule... there's like an area... around the
+// way glass where... you can't make a boat"): within `reach` tiles of a Wayglass (any checkpoint, the Lighthouse Buoy too)
+// or a relay, Act always answers the Wayglass first, and no skiff is built or boarded there by the shore rules, the robot's
+// walk out to sea included. A skiff already moored there is still boarded by choosing it on the panel.
+export const WAYGLASS_ZONE = { kinds: ["checkpoint", "relayNode", "relayTerminal"], reach: 2.5 }; // a person tapped in Act aim still answers (interactAt names them)
 // Crossing Sigils (release 263; Tim, 2026-10-21: "it's great that they're rare... but they're too rare... when you kill
 // these world bosses, and then when you also kill the [Gate Revenants], those will drop crossing sigils... the first
 // guardian in a dungeon won't ever drop a crossing sigil. Only the second guardian... has a chance... ultra rare").
@@ -1728,7 +1734,7 @@ export class Game {
         return;
       }
       update(dt, input, now);
-      updateTraps(this.map.objects, this.player, dt, now < this.jumpUntil, this.save.maxHp);
+      updateTraps(this.map.objects, this.player, dt, now < this.jumpUntil, this.save.maxHp, this.save.level);
       if (this.area === "dungeon") tickNewTraps(this.map.objects, { player: this.player, level: this.save.level, maxHp: this.save.maxHp, airborne: now < (this.jumpUntil || 0) || this.mechBoosting === true || (this.save.magicSkills?.active?.id === 'aerial-step' && this.save.magicSkills.active.remaining > 0) /* release 527 */, pull: (dx, dy) => moveAxis(this.player, dx, dy, this.map, mapWidth(this.map, this.area)), fall: () => { if (this.player.hp > 0 && now > (this.player.invulnerableUntil || 0)) { this.player.hp = 0; this.message = "The floor gives way, and the Wayfarer falls into the dark."; } }, now, projectiles: this.projectiles, effects: this.effects, seeds: (this.trapSeeds ||= []), open: (x, y) => { const w = mapWidth(this.map, this.area), q = this.map.tiles[Math.floor(y) * w + Math.floor(x)]; return !!q && !q.blocked && !(this.map.tiles.length && Math.floor(x) >= w); } }, dt); // release 523
       if (this.player.hp <= 0 || this.area !== "dungeon") this.traversal = null;
     };
@@ -2130,7 +2136,7 @@ export class Game {
     if(area==='overworld'){
       const site=storySiteFor(this.save,this.rx,this.ry);if(site&&!this.map.objects.some(o=>o.id===site.id)){const open=this.map.tiles[site.y*32+site.x];if(!open?.blocked&&!open?.structure)this.map.objects.push(site)}
       const candidate=foundryEncounter(this.save.seed,this.rx,this.ry,this.save.worldGeneration);if(candidate&&validateFoundryCandidate(candidate).ok&&!this.save.worldFlags[`foundry-retired:${candidate.foundryId}`]){const open=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>4&&t.x<28&&t.y>4&&t.y<28);if(open.length){const at=open[hashSeed(candidate.foundryId)%open.length];candidate.x=at.x;candidate.y=at.y;this.map.enemySpawns.push(candidate)}}
-      {const posted=refreshViewportBoard(this.save,this.rx,this.ry,{level:this.save.level,packKinds:PACK_KINDS.filter(k=>!MONSTER_PACK[k].unique&&!MONSTER_PACK[k].dungeonOnly).map(k=>({id:k,name:MONSTER_PACK[k].name})),avoid:(x,y)=>(x===0&&y===0)||hamletSection(this.save.seed,x,y)||this.seaBound(x,y)||(x===4&&y===-2)||(x===-5&&y===3)});if(posted.length)this.message=`Viewport: a new hunt is posted. ${posted[0].title}.`}
+      {const posted=refreshViewportBoard(this.save,this.rx,this.ry,{level:this.save.level,packKinds:PACK_KINDS.filter(k=>!MONSTER_PACK[k].unique&&!MONSTER_PACK[k].dungeonOnly).map(k=>({id:k,name:MONSTER_PACK[k].name})),avoid:(x,y)=>this.huntSiteAvoided(x,y)});if(posted.length)this.message=`Viewport: a new hunt is posted. ${posted[0].title}.`}
       {const spots=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>5&&t.x<27&&t.y>5&&t.y<27);if(spots.length&&!this.map.settlement&&Math.abs(this.rx)+Math.abs(this.ry)>=3){const wild=admittedFoundrySpawn(this.save,`${this.rx},${this.ry}`,'overworld',spots[hashSeed(`${this.save.seed}:admitted-at:${this.rx},${this.ry}`)%spots.length]);if(wild)this.map.enemySpawns.push(wild)}}
       // A hunt can still point into open sea (boards posted before release 162): raise a Hunter's Raft so the quarry and its marks
       // stand on one platform rather than scattered islets.
@@ -2848,6 +2854,8 @@ export class Game {
     else this.message = "You slip over the side. The skiff bobs beside you. The open sea tires a swimmer fast.";
   }
   // Release 160: new hunts are not posted into open sea (sections already explored keep whatever they were).
+  // Where the Viewport may not send a hunt (release 557: shared by new postings and hunts moved off explored ground).
+  huntSiteAvoided(x, y) { return (x === 0 && y === 0) || hamletSection(this.save.seed, x, y) || this.seaBound(x, y) || (x === 4 && y === -2) || (x === -5 && y === 3); }
   seaBound(rx, ry) {
     // A hunt's target and the sections a territory spreads into (up to 3 east, 1 north and 2 south of it) stay ashore.
     const sea = (x, y) => { const seen = this.save.atlas?.[`${x},${y}`]; return (!seen || seen.seaVersion) && openSeaSection(this.save.seed, x, y); };
@@ -2857,6 +2865,13 @@ export class Game {
   returnFrom(from, message) {
     this.rx = from.rx; this.ry = from.ry; this.loadArea("overworld", false);
     Object.assign(this.player, { x: from.x, y: from.y, sailVx: 0, sailVy: 0 }); this.message = message; this.sync();
+  }
+  // The nearest Wayglass or relay within WAYGLASS_ZONE.reach that can be used, or null.
+  wayglassNear() {
+    if (this.area !== "overworld") return null;
+    let f = null, d = WAYGLASS_ZONE.reach;
+    for (const o of this.map.objects || []) { if (!WAYGLASS_ZONE.kinds.includes(o.kind)) continue; const n = Math.hypot(o.x - this.player.x, o.y - this.player.y); if (n < d && validActions(o, this.save).length) { f = o; d = n; } }
+    return f;
   }
   nearestObject() {
     let f = null,
@@ -2910,7 +2925,7 @@ export class Game {
             q.id === objectId &&
             Math.hypot(q.x - this.player.x, q.y - this.player.y) < 1.5,
         )
-      : this.nearestObject();
+      : (this.wayglassNear() || this.nearestObject()); // release 557: the Wayglass first
     // Wood (release 119): with nothing else to act on, Act at deep water's edge builds a skiff from wood.
     if (!o && !objectId) { const d = this.digAhead(); if (d) return d; } // release 225: Act facing a dungeon wall digs
     if (!o && !objectId && this.shoreWater()) return this.buildSkiffHere();
@@ -3284,6 +3299,19 @@ export class Game {
   // Release 507: surface water carries the Wayfarer with the Tidemantle, or inside the robot (MECH_WATER).
   swimsHere(hazard) { return swimsThrough(this.save, hazard) || (!!hazard && this.mechUp() && isSwimmableKind(hazard)); }
   wading() { return this.swimming === true && this.mechUp(); }
+  // Release 557 (Tim: "you have to leave the robot and then hit A to get the boat, and then... hit the robot button, then go
+  // into the water version... we just need to have better like seamless transition from ground to water when you're in the
+  // robot"): the robot is the submersible frame ashore, so walking it out onto open-world water the skiff sails takes the
+  // skiff there as a submersible (boats.ts mechSub) and Dodge dives. Sailing onto land stands the robot up again (its
+  // `active` never changed). Without a sound skiff it wades as before; dungeon water is not open-world water.
+  robotPutsToSea(x, y, width, hazard) {
+    const b = this.save.boat;
+    if (this.area !== "overworld" || !this.mechUp() || !this.swimsHere(hazard) || !b?.owned || !(b.hull > 0) || !footprintSailable(this.map, width, x, y) || this.wayglassNear() || !board(this.save, { x, y })) return false;
+    b.mechSub = true; this.map.objects = this.map.objects.filter((q) => q.kind !== "skiff"); this.placeSpareSkiff();
+    Object.assign(this.player, { sailVx: 0, sailVy: 0 }); this.swimming = false;
+    this.message = "The robot folds round the skiff and seals: a submersible. Dodge to dive; sail onto land and it stands up again.";
+    return true;
+  }
   // Release 311 (Tim: "these buoys... are connected... go to one buoy, and then go to another buoy... if you traverse the
   // dungeon"): the dive buoy the grotto's deep current carries you to — the nearest other buoy section, rings outward from
   // the one you dove at (dive:<seed>:<rx>:<ry>), found with the same rule diveSite uses. Returns a dungeonReturn place.
@@ -3366,6 +3394,7 @@ export class Game {
     if (this.area === "overworld" && sp && sp.rx === this.rx && sp.ry === this.ry) this.map.objects.push({ id: "skiff-spare", kind: "skiff", name: "Your spare skiff", lore: "Your other skiff rides at its mooring.", x: sp.x, y: sp.y, state: "moored", actions: ["board"] });
   }
   buildSkiffHere() {
+    if (this.wayglassNear()) { this.message = "Too near the Wayglass: no skiff is built here."; return { ok: false, message: this.message }; } // release 557
     const at = this.shoreWater();
     if (!at) { this.message = "Find deep water's edge to build a skiff."; return { ok: false, message: this.message }; }
     const r = buildSkiff(this.save, { rx: this.rx, ry: this.ry, x: at.x, y: at.y - .2 });
@@ -5120,7 +5149,7 @@ export class Game {
     // fog hatching and level marks keep them readable instead).
     // Release 102: the Tidemantle lets the Wayfarer swim on surface water (stage one of the water traversal plan).
     if(terrainHazard==="lava"&&this.mechUp())terrainHazard=null;/* release 475: the robot wades through lava; the heat is settled at the frame's end */
-    if(sailing){terrainHazard=null;this.swimming=false}else if(this.swimsHere(terrainHazard)){this.swimKind=terrainHazard;if(!this.swimming){this.swimming=true;if(now>(this.swimMessageAt||0)){this.swimMessageAt=now+8000;this.message=this.mechUp()?"The robot seals and wades on through the water.":"The Tidemantle holds you up. Swimming drains stamina.";}}terrainHazard=null}else this.swimming=false;
+    if(sailing){terrainHazard=null;this.swimming=false}else if(this.robotPutsToSea(nx,ny,width,terrainHazard))terrainHazard=null;else if(this.swimsHere(terrainHazard)){this.swimKind=terrainHazard;if(!this.swimming){this.swimming=true;if(now>(this.swimMessageAt||0)){this.swimMessageAt=now+8000;this.message=this.mechUp()?"The robot seals and wades on through the water.":"The Tidemantle holds you up. Swimming drains stamina.";}}terrainHazard=null}else this.swimming=false;
     const fellIntoHazard=!!terrainHazard&&!aerial;
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":DEEP_WATER.includes(terrainHazard)?"The deep water drags the Wayfarer under.":terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
     else if (sailing) this.sail(p, dx, dy, width, now);
@@ -5268,7 +5297,7 @@ export class Game {
     // Actor death decisions wait for the existing end-of-frame hull mitigation.
     this._astralDamagePending=true;
     if (this.area === "overworld" || this.area === "dungeon") this.tickWorldBeasts(dt); // release 239 (release 249: in dungeons too)
-    if (this.area === "overworld" && (this._shoreCheck = (this._shoreCheck || 0) - dt) <= 0) { this._shoreCheck = .5; if ((this.save.materials?.wood || 0) >= WOOD.skiffCost && this.save.capabilities?.swim && !this.nearestObject() && this.shoreWater() && now > (this.woodHintAt || 0)) { this.woodHintAt = now + 15000; this.message = `Act: build a skiff here (${WOOD.skiffCost} wood).`; } }
+    if (this.area === "overworld" && (this._shoreCheck = (this._shoreCheck || 0) - dt) <= 0) { this._shoreCheck = .5; if ((this.save.materials?.wood || 0) >= WOOD.skiffCost && this.save.capabilities?.swim && !this.nearestObject() && !this.wayglassNear() && this.shoreWater() && now > (this.woodHintAt || 0)) { this.woodHintAt = now + 15000; this.message = `Act: build a skiff here (${WOOD.skiffCost} wood).`; } }
     // Release 283: dungeon water is deadly. Entered (or still swum) without stamina it drowns; otherwise it wounds quickly.
     if (this.swimming && !this.mechUp() && this.area === "dungeon" && !this.map.underwater) { /* release 507: not in the robot */ const toll = dungeonWaterToll(p, dt, this.save.maxHp); if (toll === Infinity) { p.hp = 0; this.message = "Out of stamina in the dark water: it drags you under."; } else if (toll > 0) { p.hp = Math.max(0, p.hp - toll); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "The dungeon water bites: get out before your stamina gives."; } } }
     if (this.swimming && !this.mechUp() && p.hp > 0) { /* release 507: the robot costs no stamina in water */ const hurt = swimUpkeep(p, dt, this.swimKind, this.area === "overworld" && !!this.map.openSea); if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "Exhausted in the water — reach the shore."; } } }

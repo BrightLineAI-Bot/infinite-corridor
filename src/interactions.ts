@@ -50,7 +50,7 @@ export function validActions(o,s){
  if(o.kind==='apertureRitual')return apertureRitualState(s).ready?['perform','inspect']:['inspect'];
  if(o.kind==='arenaEntrance')return['enter'];
  if(o.kind==='shipwright')return shipwrightActions(s).filter(a=>a!=='buyRig'||diveGate(s).ok);/* release 315: the rig from Infinite II */
- if(o.kind==='diveSite')return diveGate(s).ok||underwaterGate(s).ok?diveSiteActions(s).concat(s.boat?.sub&&s.boat?.aboard&&!diveSiteActions(s).includes('dive')?['dive']:[]):['inspect'];/* release 315 */
+ if(o.kind==='diveSite')return diveGate(s).ok||underwaterGate(s).ok?diveSiteActions(s).concat((s.boat?.sub||s.boat?.mechSub)&&s.boat?.aboard&&!diveSiteActions(s).includes('dive')?['dive']:[]):['inspect'];/* release 315 */
  if(o.kind==='diveExit')return['surface'];if(o.kind==='diveOnward')return['follow'];
  if(o.kind==='airPocket')return[];
  if(o.kind==='shipwreck')return s.worldFlags[o.id]?[]:['salvage'];

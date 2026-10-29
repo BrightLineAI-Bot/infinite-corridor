@@ -2694,6 +2694,40 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 557: Far Sleep pockets, hunts off explored ground, traps by level, the robot to sea — 2026-10-29
+
+Tim (2026-10-29): far out "everything just is mostly just the dreamlands... I like variation where you never know what you're
+gonna get"; old hunts "set in the viewport before I... explored the tile... sets it to another unexplored tile"; "the dungeon
+traps... should scale with your level... you can mitigate the trap damage with your build, but they should still be
+impactful"; "if you're in the robot and you go into the water, it doesn't smoothly transition to... the water version".
+
+**CODE:**
+- `src/landscape.ts`: `DREAM_VERSION` 3 and `DREAM_POCKETS`. `dreamPocket(seed, rx, ry)` mixes a broad value noise over sections
+  with a per-section roll whose weight grows past the Far Sleep's edge (`scatterMax`, `scatterOver`); `applyDream` at version 3
+  leaves a section that is not a pocket untouched, so it keeps its biome. Pocket ground is version 2's (`DREAM_BY_VERSION[3]`).
+- `src/foundry.ts`: `HUNT_RETARGET`, `retargetExploredHunt(save, id, opts)`. `acceptViewportHunt(save, id, opts)` calls it first:
+  an available or deferred hunt whose target (a tracking hunt's final target) is explored, with no trace followed and no territory
+  section entered, moves to an unexplored section on the nearest ring round it (seeded order, `opts.avoid` respected). A tracking
+  hunt's traces are laid again from the Wayfarer's section. The summary's "near x,y" follows. `Game.huntSiteAvoided` is the rule
+  new postings already used, now shared with `main.ts`'s Accept button.
+- `src/dungeon-traps.ts`: higher shares (sigil .07, lava .18, dart .09, vortex .22, `TRAP_DAMAGE_SHARE` .15) scaled by
+  `trapShareScale(level)` = min(`TRAP_LEVEL_GROWTH.max`, 1 + `perLevel` × (level − 1)). `updateTraps` (the old fire and spike
+  traps) takes the level. Mitigation is unchanged.
+- `src/game.ts` `robotPutsToSea`: in the open world, the robot stepping onto water the skiff can sail boards the owned, sound
+  skiff there and sets `save.boat.mechSub`; `boats.ts submersible()` counts it while aboard, `disembark` clears it, and the
+  renderer and dive-site actions read it. `save.mech.active` is untouched, so landing stands the robot up again.
+- `src/game.ts` `WAYGLASS_ZONE` and `Game.wayglassNear()` (Tim, mid-task: "if there's a weight glass and near water... it's gonna
+  be prioritized... you won't be able to make a boat there"): with no object named, `interact()` takes the nearest usable
+  checkpoint or relay within `reach` before `nearestObject()`; `buildSkiffHere`, `robotPutsToSea` and the shore hint refuse inside
+  the zone. `interactAt` (a tap in Act aim) still names its object, so a person tapped by a Wayglass answers.
+- `src/settlements.ts` `hamletSection`: never the Mouth's section (`relayCoordinate`). The Far Sleep used to keep a hamlet off it;
+  with pockets the 373 rule (open land until the Listener falls) is stated directly.
+
+**BOUNDARY:** Schema stays 14; `boat.mechSub` is additive and normalised in `ensureBoatState`. Explored sections keep their
+pinned `dreamVersion` (1 or 2), so Tim's current far ground does not change; only sections first seen from 557 use pockets.
+Dream halls (dungeons) and Readings still follow depth. A hunt already accepted, or under way, is never moved. Without a skiff the
+robot wades as in 507; dungeon water is unchanged. No frame is spent or fitted by the robot's voyage.
+
 ## Release 555: areas saved separately; the probe sees long frames, heap and saves — 2026-10-29
 
 Tim's probe (2026-10-29) showed 83–108 ms frames every ~8 s with ~1.5 ms of game work in them: the autosave. IndexedDB `put`

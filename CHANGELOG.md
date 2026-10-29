@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Release 557 — **the far lands vary again, hunts lead to new ground, traps bite, and the robot goes to sea.**
+  - Past the edge of the Far Sleep, only pockets of land dream now, about one far section in four, more scattered the farther out you go. Every other far section is its own land again: mountains, deserts, swamps, alien ground, lakes and the rest. Sections you have already explored keep what they were.
+  - A Viewport hunt you take up whose ground you have already explored moves to the nearest unexplored section, and the hunt card says where.
+  - Dungeon traps hit harder, and their damage grows with your level (about 1.6× at level 50, up to 2.2×). Armor, wards and the robot's plating still soften them.
+  - Walk the robot out onto open water and, if you own a skiff, it folds round it into the submersible: Dodge dives. Sail onto land and the robot stands up again.
+  - Near a Wayglass, the Lighthouse Buoy or a relay, Act always uses it first, not the boat and not a person standing by (tap a person to talk to them). No skiff is built or boarded within a couple of tiles of it.
 - Release 555 — **no more autosave hitch.** Each area you have visited is now stored as its own record, and an autosave writes only the areas that changed, not your whole journey. Older saves load as before and switch over on their next save. The diagnostic probe now also records the browser's long-frame breakdown (which script ran, and for how long), the memory before and after each long frame, and how long each save write took.
 - Release 553 — **presets swap your weapon and tool only.** Armor and your charm stay on when you switch. Any armor a preset was holding for you comes back to your pack.
 - Release 551 — **The Surveyor's Chain, part two.**
