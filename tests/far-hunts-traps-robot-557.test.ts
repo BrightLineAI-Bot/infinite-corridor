@@ -11,7 +11,7 @@ import { DUNGEON_TRAPS, TRAP_LEVEL_GROWTH, trapShareScale, tickNewTraps } from '
 import { BOAT, aboard, submersible, ensureBoatState } from '../src/boats.ts';
 
 test('the Far Sleep dreams in pockets: about a quarter of far sections, none nearer, the rest keep their own land', () => {
-  assert.equal(DREAM_VERSION, 3);
+  assert.equal(DREAM_VERSION, 4); // release 569: pockets now stand in wild regions (dreamsHere); the pocket rule itself is unchanged
   let far = 0, dreams = 0;
   for (const seed of ['A', 'B']) for (let rx = -120; rx <= 120; rx += 2) for (let ry = -120; ry <= 120; ry += 2) {
     const depth = Math.abs(rx) + Math.abs(ry);

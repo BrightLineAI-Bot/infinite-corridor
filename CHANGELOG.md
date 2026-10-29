@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release 569 — **the world in regions, beasts on the move, and brawler tools that feel your spells.**
+  - Past the heartland round Ember Refuge, new ground now falls into large regions, each its own land: open sea, scattered isles, lakes, fens, dune seas, mountain ranges, the alien Lumen Wilds, the dream, and plains of ash, glass or ember. They come in all sizes and wander-edged shapes, and some regions are wild, where anything goes. Ground you have already explored keeps what it was.
+  - The dream runs along the seams between regions in broken veins, like rivers between realms, as well as in a few dream regions and the wild ones' pockets.
+  - Now and then, a world beast you have unlocked crosses the section you are in, bound for home. It pays you no mind and cannot be hurt; it walks off the far edge and is gone.
+  - While a spell runs, Spellblade strengthens Hammerfall and the Great Sweep too (20% more damage; the hammer reaches and the sweep spreads farther), and Charged Air strengthens the Great Sweep (25% more damage, 30% wider).
 - Release 567 — **world beasts move on.** A world beast that claims a section you only pass through no longer waits there forever: once you have entered 16 other sections without fighting it, it lets the section go and can find you somewhere else. A beast you have fought still waits for you.
 - Release 565 — the fix for the Mouth's town (563) now restores exactly what was there before 557: a town where one stood, open land where none did, and trails as they ran.
 - Release 563 — **distance weighs more.** Creatures far from Ember Refuge grow tougher faster: past 60 sections out, their vitality climbs to ×10 at 100 sections and ×20 at 200 (it was ×5.4 and ×9.4), and their damage climbs a little faster too (×7.65 at 200, was ×6.25). Nothing changes nearer than 60 sections. This is distance only; your Aperture does not change it.

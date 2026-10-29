@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**569**
+**571**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 567 | Claude | `claude/dreamy-rubin-yn6q2p` | An unfought world beast lets its section go after 16 sections elsewhere | Building. |
+| 569 | Claude | `claude/dreamy-rubin-yn6q2p` | World regions (landscape 4, dream 4 with seams), passing world beasts, Spellblade/Charged Air for brawler tools | Building. |
+| 567 | Claude | PR #267 | An unfought world beast lets its section go after 16 sections elsewhere | Merged (`r567-480ef82e6278`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)

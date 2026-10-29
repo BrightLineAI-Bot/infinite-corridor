@@ -406,6 +406,24 @@ export function worldBeastFor(save, map, rx, ry) {
   if (!at) { if (!q.active.tries) { q.active = null; if (claimed) ensureBeastGap(save).fresh = ENCOUNTER.newSections; } return null; } // no valid terrain for this beast: it does not hold the section (and was never met)
   return { id: `world-beast:${here}:${q.cycle}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, traits: [] };
 }
+// Passing beasts (release 569; Tim, 2026-10-29: "it would be great to be able to just be wandering through the world and see
+// a world beast retreating... just moving along to where it wants to go. And it's not engaging you, and you can't kill
+// it"). Now and then (`chance` of the sections entered with no beast of their own) a world beast the Wayfarer's Aperture
+// has unlocked crosses the section from one edge to the opposite one, bound for its home ground: untargetable, harmless,
+// never saved with the section, gone at the far edge. Which beast, which way and whether one passes are fixed by the seed,
+// the section and how many sections have been explored. The Atlas is not told; it is just something seen.
+export const PASSING = { chance: .045, minDepth: 6, speed: 1.7 };
+export function passingBeastFor(save, map, rx, ry, explored = 0) {
+  if (!map || map.settlement || map.tiles?.length !== 1024 || Math.abs(rx) + Math.abs(ry) < PASSING.minDepth) return null;
+  const h = hashSeed(`${save.seed}:passing-beast:v1:${rx}:${ry}:${explored}`); if ((h % 1000) / 1000 >= PASSING.chance) return null;
+  const ids = WORLD_BEAST_IDS.filter((id) => id !== "astralWorm" && id !== "voidWalker" && beastUnlocked(save, id) && !(save.worldBeasts?.[id]?.active?.rx === rx && save.worldBeasts?.[id]?.active?.ry === ry));
+  if (!ids.length) return null;
+  const id = ids[(h >>> 10) % ids.length], B = WORLD_BEASTS[id], ex = sectionExits(save.seed, rx, ry), across = (h >>> 4) & 1;
+  const [from, to] = across ? [{ x: .6, y: ex.west, side: "west" }, { x: 30.4, y: ex.east, side: "east" }] : [{ x: ex.north, y: .6, side: "north" }, { x: ex.south, y: 30.4, side: "south" }];
+  const [a, b] = (h >>> 6) & 1 ? [to, from] : [from, to], mode = B.retreatMoves === "walk" ? "walk" : "through";
+  const path = retreatPath(map, a, b, mode) || [{ x: b.x, y: b.y }];
+  return { id: `passing-beast:${id}:${rx}:${ry}:${explored}`, kind: B.kind, x: a.x, y: a.y, passingBeast: id, fleeTo: { x: b.x, y: b.y, side: b.side }, fleePath: path, fleeSpeed: PASSING.speed, traits: [] };
+}
 export function worldBeastTriesLeft(save, id) { return WORLD_BEASTS[id].tries - (save.worldBeasts?.[id]?.active?.tries || 0); }
 
 // Provisional follow-on balance: level is a strength floor, never a spawn gate.
