@@ -15,10 +15,9 @@ import { READING_BANDS } from "./lore.ts";
 // just go to another dungeon... randomly... until I get them... unless there's a way to... note in this square... where the
 // missing piece is... I just want to keep exploring"): a bell crossing (`chance`, by seed) may lie at any depth from `minDepth`
 // out (`maxDepth` was the old limit), and it offers one of the bells not yet rung, chosen by its seed among them, so no bell
-// can be stranded in one crossing. A crossing entered with a bell (or a Surveyor's link) left in it is noted in
-// save.lore.leftBehind ({ "<kind>|<dungeonId>": { kind, rx, ry } }, kind "bell" or "link"; additive; ensureLeftBehind) and the Journal points to the nearest. A
-// crossing where a bell was rung keeps that bell, rung (save.lore.bellAt: { bell: dungeonId }), so one crossing gives one bell.
-export const BELLS = { count: 7, chance: .14, minDepth: 3, maxDepth: READING_BANDS.middle, leftBehind: 24 };
+// can be stranded in one crossing. A crossing where a bell was rung keeps that bell, rung (save.lore.bellAt: { bell: dungeonId }),
+// so one crossing gives one bell.
+export const BELLS = { count: 7, chance: .14, minDepth: 3, maxDepth: READING_BANDS.middle };
 export const BELL_GLIMPSES = {
   1: { who: "a farrier", lines: ["A man in a leather apron walks a road through wet grass, a coat over one shoulder. He stops at every milestone to read it, as if the numbers might have changed while he was away."] },
   2: { who: "a girl with a drum", lines: ["A girl carries a drum with no sticks. She taps the skin with two fingers as she walks, keeping time for a column of people who are no longer behind her."] },
@@ -42,24 +41,13 @@ export function bellIn(seed, dungeonId, rung = "") {
   const left = Array.from({ length: BELLS.count }, (_, i) => i + 1).filter((n) => !rung.includes(String(n)));
   return left.length ? left[(h >>> 9) % left.length] : 1 + ((h >>> 9) % BELLS.count);
 }
-// The crossing of an ordinary dungeon id as { rx, ry }, or null.
-export function crossingAt(dungeonId) { const m = ORDINARY.exec(String(dungeonId || "")); return m ? { rx: Number(m[1]), ry: Number(m[2]) } : null; }
-export function ensureLeftBehind(save, create = false) { // created when first needed, so a fresh lore block stays as it was
-  const lore = (save.lore ||= {}), raw = lore.leftBehind && typeof lore.leftBehind === "object" && !Array.isArray(lore.leftBehind) ? lore.leftBehind : null, out = {};
-  for (const [id, q] of Object.entries(raw || {})) if ((q?.kind === "bell" || q?.kind === "link") && Number.isInteger(q.rx) && Number.isInteger(q.ry)) out[id] = { kind: q.kind, rx: q.rx, ry: q.ry };
-  if (raw || create) lore.leftBehind = out; else delete lore.leftBehind;
+// Normalises lore.bellAt (bell: crossing where it was rung). Release 581 (Tim: "the journal doesn't have to track them... you
+// just gotta keep track of 'em"): the 577 left-behind notes (lore.leftBehind) are no longer written; any already saved are
+// left as they are, unread.
+export function ensureBellState(save) {
+  const lore = (save.lore ||= {});
   if (lore.bellAt !== undefined) { const at = {}; for (const [n, id] of Object.entries(lore.bellAt && typeof lore.bellAt === "object" ? lore.bellAt : {})) if (BELL_GLIMPSES[n] && typeof id === "string") at[n] = id; lore.bellAt = at; }
-  return out;
-}
-// Notes (`waiting`) or clears a `kind` ("bell" or "link") left in a crossing; keeps the latest `BELLS.leftBehind`.
-export function noteLeftBehind(save, dungeonId, kind, waiting) {
-  const list = ensureLeftBehind(save, true), at = crossingAt(dungeonId), key = `${kind}|${dungeonId}`; delete list[key];
-  if (waiting && at) { list[key] = { kind, ...at }; const keys = Object.keys(list); for (const k of keys.slice(0, Math.max(0, keys.length - BELLS.leftBehind))) delete list[k]; }
-}
-// The nearest crossing to (rx, ry) where a `kind` was left behind, or null.
-export function nearestLeftBehind(save, kind, rx, ry) {
-  let best = null; for (const q of Object.values(save?.lore?.leftBehind || {})) if (q.kind === kind && (!best || Math.max(Math.abs(q.rx - rx), Math.abs(q.ry - ry)) < Math.max(Math.abs(best.rx - rx), Math.abs(best.ry - ry)))) best = q;
-  return best;
+  return save;
 }
 // Hangs the crossing's bell on open floor away from the entry. Returns the object or null.
 export function addBell(map, save, dungeonId) {
