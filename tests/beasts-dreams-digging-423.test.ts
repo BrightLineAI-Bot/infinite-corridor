@@ -25,7 +25,7 @@ test('a world beast that kills you keeps its wounds; the record survives a reloa
 });
 
 test('the Far Sleep: new sections dream with far fewer obstacles; explored ones keep theirs', () => {
-  assert.equal(DREAM_VERSION, 3); /* release 557: pockets */ assert.deepEqual(DREAM_BY_VERSION[1], {});
+  assert.equal(DREAM_VERSION, 4); /* release 557: pockets; 569: regions and seams */ assert.deepEqual(DREAM_BY_VERSION[1], {});
   const blocked = (v) => { let b = 0, n = 0; for (let i = 0; i < 6; i++) { const s = freshSave(); s.seed = `DRM${i}`; const rx = 36 + i; s.atlas = { [`${rx},0`]: { dreamVersion: v } }; const g = new Game(s, 0); g.rx = rx; g.ry = 0; g.loadArea('overworld', false); const d = g.map.tiles.filter((t) => t.landscape === 'dream'); b += d.filter((t) => t.blocked).length; n += d.length; } return b / n; };
   const v1 = blocked(1), v2 = blocked(2); assert.ok(v2 < v1 * .5, `obstacles ${v1.toFixed(3)} → ${v2.toFixed(3)}`);
 });

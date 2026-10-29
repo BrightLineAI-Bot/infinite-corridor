@@ -2694,6 +2694,40 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 569: world regions and dream seams; passing beasts; brawler tools and field passives — 2026-10-29
+
+Tim (2026-10-29): the Atlas "just kind of just looks muddied... no clear direction... larger regions... a random region size and
+type... not... uniform... there can also be... sections where they're just like random tiles"; "the dreaming can be like a
+boundary between many regions... a connective glue... like a river"; "see a world beast retreating... just moving along to where it
+wants to go... not engaging you, and you can't kill it"; "spell blade works for both. But charged air only works for the great
+sweep".
+
+**CODE:**
+- `src/landscape.ts`: `LANDSCAPE_VERSION` 4 and `REGIONS`. `regionSite` places one jittered site per `cell`×`cell` block of
+  sections with a type (weighted `types`) and a weight (power diagram: sizes vary); `regionAt(seed, sx, sy)` warps the point by
+  noise and returns the nearest site's type, `hold` (1 inside, falling to 0 over `blend` sections at a border) and `gap` (distance
+  to the next region). Within `heartland` sections of the Refuge (straight-line) every region is wild, fading in over `fadeIn`.
+  `lean` adds `REGIONS.lean[type] × hold` to the ocean, mountain, desert, alien, lake and wet fields (`fieldAt`, `seaLevel`) in
+  version 4 only, looked up once per 4×4 tiles (`regionTile`, bounded cache), so generation costs what version 3 did. Plains
+  regions (ash, glass, ember) recolour unlandscaped ground to one kind and set `map.dominant`.
+- `DREAM_VERSION` 4 and `dreamsHere`: a dream region dreams whole (far only), `dreamSeam` (past `DREAM_SEAMS.minDepth`, within
+  `width` of a region border, where a broad noise allows) dreams, and wild regions keep version 3's pockets. `applyDream` version 4
+  no longer requires the Far Sleep's depth.
+- `src/world-beasts.ts` `PASSING` and `passingBeastFor`: on a section entered with no beast of its own, `chance` (seeded by
+  section and explored count) that an unlocked world beast (not the Void Walker or Astral Worm) crosses edge to edge along
+  `retreatPath`, using the flee machinery (`fleeTo`, `fleePath`, `fleeStep`): untargetable, no rewards, never saved with the
+  area, removed at the far edge; a passing Tremor Worm stays above ground. `game.ts` adds it at load and says so on the first
+  frame (`passingNote`).
+- `src/game.ts` `brawlerTool`: Spellblade (`spellbladeOn`) multiplies Hammerfall and the Great Sweep and lengthens the hammer's
+  reach / widens the sweep; Charged Air multiplies and widens the Great Sweep only. Field texts updated. `wayglassNear(false)` (any
+  Wayglass, activated or not) now guards the no-boat zone.
+
+**BOUNDARY:** Sections already explored keep their pinned `landscapeVersion` and `dreamVersion`: compared with the live 565 code,
+500 explored sections are identical. Landscape versions 1–3 are byte for byte as before (tests pin 1 and 2). Unexplored sections
+and their previews (`walkerCrossingMap`, `openSeaSection`) use version 4. Seams appear between explored and new ground, as with
+every earlier version. Tests that searched a fresh world for terrain at fixed coordinates still pass because the heartland keeps
+the old mix.
+
 ## Release 567: unfought world beasts move on — 2026-10-29
 
 Tim (2026-10-29, Aperture tier 16): "I have never... seen the tremor worm yet". The worm is unlocked from tier 7 and, simulated

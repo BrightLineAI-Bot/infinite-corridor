@@ -85,7 +85,7 @@ import { DIG, planDig, ensureShovel, ensureIronShovel, dig, applyTunnels, overwo
 import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
 import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.ts";
 import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
-import { beastProfileVitals, liveBeastReference, WORLD_BEASTS, BEAST_HOMES, RETREAT, PURSUIT, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
+import { beastProfileVitals, liveBeastReference, WORLD_BEASTS, BEAST_HOMES, RETREAT, PURSUIT, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.ts";
 import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.ts";
 import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } from "./hometowns.ts";
@@ -2094,7 +2094,7 @@ export class Game {
       };
     this.save.session.areas[this.areaStateId()] = {
       encounterVersion:this.map.encounterVersion||0,
-      enemies: this.enemies.filter((e) => !e.blobRemnant).map((e) => ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } })), // release 259: the Blob's remnant is never saved
+      enemies: this.enemies.filter((e) => !e.blobRemnant && !e.passingBeast).map((e) => ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } })), // release 259: the Blob's remnant is never saved
       objects,
       projectiles: this.projectiles.map((p) => ({ ...p })),
       effects: this.effects.map((f) => ({ ...f, hits: { ...f.hits } })),
@@ -2236,7 +2236,7 @@ export class Game {
     if(area==="overworld"&&townAt(this.save,this.rx,this.ry)?.mouth)this.raiseMouthTown(); // release 373 (after every Mouth, old ones too)
     if(area==="overworld"&&townAt(this.save,this.rx,this.ry))this.raiseTownAmenities(); // release 441
     if(area==="overworld")addSurveyorStatue(this.map,this.save,this.rx,this.ry); // release 551: Corwin's statue, once the chain is whole
-    if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry,this.save),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);const beast=questingBeastFor(this.save,this.map,this.rx,this.ry),elder=addElder(this.map,this.save,this.rx,this.ry),worldBeastFound=worldBeastFor(this.save,this.map,this.rx,this.ry),worldBeast=beast&&!worldBeastFound?.retreating?null:worldBeastFound;if(worldBeast){this.map.enemySpawns.push(worldBeast);const companion=astralCompanionFor(this.save,worldBeast,{rx:this.rx,ry:this.ry},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[worldBeast.worldBeast];this.message=worldBeast.retreating?`${B.name} is fleeing through here toward ${BEAST_HOMES[B.home].name}. It cannot be hurt now.`:`${B.arrive} ${worldBeastTriesLeft(this.save,worldBeast.worldBeast)} of ${B.tries} tries remain.`}/* release 241: a fleeing beast says so, and passes through the Questing Beast's ground too *//* release 235: world beasts */addStrange(this.map,this.save,this.rx,this.ry);/* release 215: a rare strange tree or stone */addDigSpot(this.map,this.save,this.rx,this.ry);/* release 225: a rare patch of disturbed earth */const ilse=addIlse(this.map,this.save,this.rx,this.ry,!!farSleepSection(this.rx,this.ry));/* release 415: Ilse the Lamplighter */for(const id of mouthsIn(this.save,this.rx,this.ry))placeMouth(this.map,id);/* release 217: second mouths of linked dungeons */if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastTriesLeft(this.save)} of ${QUESTING_BEAST.tries} tries remain.`}if(beast||worldBeast){}else if(ilse)this.message=ilse.stage===5?"A lamp burns in the meadow with no post beneath it.":"Someone is tending a lamp nearby.";else if(elder)this.message="Something tall and silent walks the road.";else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, murmuring.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
+    if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry,this.save),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);const beast=questingBeastFor(this.save,this.map,this.rx,this.ry),elder=addElder(this.map,this.save,this.rx,this.ry),worldBeastFound=worldBeastFor(this.save,this.map,this.rx,this.ry),worldBeast=beast&&!worldBeastFound?.retreating?null:worldBeastFound;if(worldBeast){this.map.enemySpawns.push(worldBeast);const companion=astralCompanionFor(this.save,worldBeast,{rx:this.rx,ry:this.ry},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[worldBeast.worldBeast];this.message=worldBeast.retreating?`${B.name} is fleeing through here toward ${BEAST_HOMES[B.home].name}. It cannot be hurt now.`:`${B.arrive} ${worldBeastTriesLeft(this.save,worldBeast.worldBeast)} of ${B.tries} tries remain.`}/* release 241: a fleeing beast says so, and passes through the Questing Beast's ground too *//* release 235: world beasts */addStrange(this.map,this.save,this.rx,this.ry);/* release 215: a rare strange tree or stone */addDigSpot(this.map,this.save,this.rx,this.ry);/* release 225: a rare patch of disturbed earth */const ilse=addIlse(this.map,this.save,this.rx,this.ry,!!farSleepSection(this.rx,this.ry));/* release 415: Ilse the Lamplighter */for(const id of mouthsIn(this.save,this.rx,this.ry))placeMouth(this.map,id);/* release 217: second mouths of linked dungeons */if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastTriesLeft(this.save)} of ${QUESTING_BEAST.tries} tries remain.`}if(!beast&&!worldBeast){const passing=passingBeastFor(this.save,this.map,this.rx,this.ry,Object.keys(this.save.explored||{}).length);if(passing){this.map.enemySpawns.push(passing);this.passingNote=`Far off, ${WORLD_BEASTS[passing.passingBeast].name} moves through, bound for ${BEAST_HOMES[WORLD_BEASTS[passing.passingBeast].home].name}. It pays you no mind.`}}/* release 569 */if(beast||worldBeast){}else if(ilse)this.message=ilse.stage===5?"A lamp burns in the meadow with no post beneath it.":"Someone is tending a lamp nearby.";else if(elder)this.message="Something tall and silent walks the road.";else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, murmuring.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
     this.activatedEncounterGroups=new Set;
     if(area==="dungeon"){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const companion=astralCompanionFor(this.save,haunt,{dungeon:this.areaId(),level:this.map.levelId||"root"},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is retreating ${haunt.worldBeast === "voidWalker" ? "toward the nearest reachable dungeon door" : haunt.worldBeast === "astralWorm" ? "toward the nearest reachable Wayglass" : "toward the water"}. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastTriesLeft(this.save,haunt.worldBeast)} of ${B.tries} tries remain.`}} /* release 249: the Psychic Crystal haunts dungeons with water */
     if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.extraSpawn)) for (const q of this.extraDungeonSpawns()) this.map.enemySpawns.push(q); // release 463: more foes
@@ -2874,10 +2874,11 @@ export class Game {
     Object.assign(this.player, { x: from.x, y: from.y, sailVx: 0, sailVy: 0 }); this.message = message; this.sync();
   }
   // The nearest Wayglass or relay within WAYGLASS_ZONE.reach that can be used, or null.
-  wayglassNear() {
+  // `usable` false (the no-boat zone, release 569): any Wayglass or relay counts, activated or not.
+  wayglassNear(usable = true) {
     if (this.area !== "overworld") return null;
     let f = null, d = WAYGLASS_ZONE.reach;
-    for (const o of this.map.objects || []) { if (!WAYGLASS_ZONE.kinds.includes(o.kind)) continue; const n = Math.hypot(o.x - this.player.x, o.y - this.player.y); if (n < d && validActions(o, this.save).length) { f = o; d = n; } }
+    for (const o of this.map.objects || []) { if (!WAYGLASS_ZONE.kinds.includes(o.kind)) continue; const n = Math.hypot(o.x - this.player.x, o.y - this.player.y); if (n < d && (!usable || validActions(o, this.save).length)) { f = o; d = n; } }
     return f;
   }
   nearestObject() {
@@ -3313,7 +3314,7 @@ export class Game {
   // `active` never changed). Without a sound skiff it wades as before; dungeon water is not open-world water.
   robotPutsToSea(x, y, width, hazard) {
     const b = this.save.boat;
-    if (this.area !== "overworld" || !this.mechUp() || !this.swimsHere(hazard) || !b?.owned || !(b.hull > 0) || !footprintSailable(this.map, width, x, y) || this.wayglassNear() || !board(this.save, { x, y })) return false;
+    if (this.area !== "overworld" || !this.mechUp() || !this.swimsHere(hazard) || !b?.owned || !(b.hull > 0) || !footprintSailable(this.map, width, x, y) || this.wayglassNear(false) || !board(this.save, { x, y })) return false;
     b.mechSub = true; this.map.objects = this.map.objects.filter((q) => q.kind !== "skiff"); this.placeSpareSkiff();
     Object.assign(this.player, { sailVx: 0, sailVy: 0 }); this.swimming = false;
     this.message = "The robot folds round the skiff and seals: a submersible. Dodge to dive; sail onto land and it stands up again.";
@@ -3401,7 +3402,7 @@ export class Game {
     if (this.area === "overworld" && sp && sp.rx === this.rx && sp.ry === this.ry) this.map.objects.push({ id: "skiff-spare", kind: "skiff", name: "Your spare skiff", lore: "Your other skiff rides at its mooring.", x: sp.x, y: sp.y, state: "moored", actions: ["board"] });
   }
   buildSkiffHere() {
-    if (this.wayglassNear()) { this.message = "Too near the Wayglass: no skiff is built here."; return { ok: false, message: this.message }; } // release 557
+    if (this.wayglassNear(false)) { this.message = "Too near the Wayglass: no skiff is built here."; return { ok: false, message: this.message }; } // release 557
     const at = this.shoreWater();
     if (!at) { this.message = "Find deep water's edge to build a skiff."; return { ok: false, message: this.message }; }
     const r = buildSkiff(this.save, { rx: this.rx, ry: this.ry, x: at.x, y: at.y - .2 });
@@ -4068,6 +4069,7 @@ export class Game {
       else { retreatCrossed(this.save, id, e.fleeTo.side, id === "voidWalker" ? e.fleeTo.crossingEntry : null, e); this.message = `${B.name} flees ${e.fleeTo.side}, out of this section.${id === "voidWalker" ? " Its retreat continues there when you follow." : " Follow it, or it is gone."}`; }
     }
     if (gone) this.enemies = this.enemies.filter((e) => !gone.includes(e));
+    if (this.enemies.some((e) => e.passingBeast && e.fleeDone)) this.enemies = this.enemies.filter((e) => !(e.passingBeast && e.fleeDone)); // release 569: across and gone
   }
   // Release 245: a plain physical blow scatters the Nanobot Knight into its swarm (no damage); elements, spells and a
   // weapon carrying the Echo glyph reach it. Returns true when the blow scatters.
@@ -4099,6 +4101,7 @@ export class Game {
       if(e.domainManifestation){const mechanics=manifestationMechanics(e.domainFamily,e.domainManifestation);c.foundryAttack=mechanics.attack==='sweepingBeam'?'sweepingBeam':null;c.speedMultiplier*=mechanics.mobility;c.domainMechanics=mechanics}
       if(c.eliteId){const v=eliteVariant(this.save.seed,c.eliteId,this.areaId());c.variantId=v.variantId;c.eliteModules=[...v.modules];c.eliteVariantModules=[...v.variantModules];c.visualSeed=v.visualSeed;}
       Object.assign(c,{passiveBehavior:e.passiveBehavior||null,ambient:!!e.ambient,pursuesOutdoors:!!(e.shelterAmbush||e.districtResident),shelterAmbush:!!e.shelterAmbush});
+      if (e.passingBeast) Object.assign(c, { passingBeast: e.passingBeast, retreating: true, aggro: true, untargetable: true, ambient: true, noRewards: true, fleeTo: { ...e.fleeTo }, fleePath: (e.fleePath || []).map((q) => ({ ...q })), fleeSpeed: e.fleeSpeed }); // release 569: a world beast passing through
       if(e.foundryId){const boss=e.foundryRole==='boss',melee=e.attack==='meleeSwipe';Object.assign(c,{id:e.foundryId,foundryId:e.foundryId,foundryName:e.foundryName,foundryRole:e.foundryRole,foundryModules:[...(e.foundryModules||[])],foundryAttack:e.attack,foundryMovement:e.movement,foundryWeakness:e.weakness,foundryBody:e.body,visualSeed:e.visualSeed,kind:e.kind,maxHp:boss?210:e.foundryRole==='passive'?22:52,hp:boss?210:e.foundryRole==='passive'?22:52,damage:boss?17:e.foundryRole==='passive'?0:10,range:e.foundryRole==='passive'?0:melee?1.25:boss?5.5:5,boss,ambient:e.foundryRole==='passive',scale:boss?1.95:e.foundryRole==='passive'?.92:1.18,bodyRadius:boss?.72:.46,segments:e.body==='segmented'?3:e.foundryRole==='passive'?2:1,tentacles:e.body==='tentacled'||e.body==='biomechanical'?(boss?6:3):0,speedMultiplier:e.movement==='hopping'?1.18:e.movement==='retreating'?.88:e.movement==='hovering'?1.08:1,foundryValidated:true})}
       // Release 132: a Viewport-posted Foundry lifeform is a hunt, not a stray: it scales with the Wayfarer's level.
       if((e.viewportHuntId||e.foundryAdmitted)&&e.foundryId&&e.foundryRole==='hostile'){const lv=Math.max(1,this.save.level||1);c.maxHp=c.hp=HUNT_FOUNDRY.hp+HUNT_FOUNDRY.hpPerLevel*lv;c.damage=Math.max(c.damage||0,HUNT_FOUNDRY.damage+Math.round(lv*HUNT_FOUNDRY.damagePerLevel))}
@@ -4685,9 +4688,14 @@ export class Game {
     if (boxing && kind === "great-sweep") this.shadowBoxStep(B.radius * .6, now); // release 495: Shadow Boxing carries the sweep to the foe
     const cx = p.x + .5, cy = p.y + .45;
     this.toolReadyAt = now + B.cooldown * 1000 * this.glyphLoadout("tool").mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed);
-    const fx = (x, y, extra = {}) => { const e = { id: `tool-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind, brawler: true, x, y, life: B.lifetime, radius: B.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.toolPower() * B.share * (1 + (boxing?.damage || 0)))), pulseIndex: 0, hits: {}, glyphHost: "tool", healShare: boxing?.heal || 0, ...extra }; /* release 495: boxing damage and heal */ this.effects.push(e); return e; };
+    // Release 569 (Tim: "spell blade works for both. But charged air only works for the great sweep"): while a spell runs,
+    // Spellblade strengthens Hammerfall and the Great Sweep (more damage; the hammer reaches and the sweep spreads farther),
+    // and Charged Air the Great Sweep alone (more damage, a wider sweep).
+    const blade = this.spellbladeOn(now), air = kind === "great-sweep" && fieldOn(this.save, "charged-air") && this.spellRunning(now), SB = FIELD_PASSIVES.spellblade, CA = FIELD_PASSIVES["charged-air"];
+    const fieldMult = (blade ? 1 + SB.damage : 1) * (air ? 1 + CA.damage : 1), fieldGrow = (kind === "great-sweep" && blade ? 1 + SB.reach / B.radius : 1) * (air ? CA.blast : 1);
+    const fx = (x, y, extra = {}) => { const e = { id: `tool-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind, brawler: true, x, y, life: B.lifetime, radius: B.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.toolPower() * B.share * (1 + (boxing?.damage || 0)) * fieldMult)), pulseIndex: 0, hits: {}, glyphHost: "tool", healShare: boxing?.heal || 0, ...extra }; if (fieldGrow !== 1) e.radius *= fieldGrow; /* release 495: boxing damage and heal; 569: Spellblade and Charged Air */ this.effects.push(e); return e; };
     if (kind === "hammerfall") {
-      const reach = B.reach + (boxing ? boxing.stick : 0); // release 495: with Shadow Boxing the hammer reaches farther
+      const reach = B.reach + (boxing ? boxing.stick : 0) + (blade ? SB.reach : 0); // release 495: with Shadow Boxing the hammer reaches farther; 569: Spellblade too
       let { d, foe } = this.brawlerAim(reach + 1); if (!foe && direction && Math.hypot(direction.x, direction.y) > .01) d = projectileDirection(direction.x, direction.y, p.facing);
       const fd = foe ? Math.hypot(foe.x + .5 - cx, foe.y + .45 - cy) : Infinity, at = fd <= reach + .5 ? { x: foe.x + .5, y: foe.y + .45 } : { x: cx + d.x * B.reach, y: cy + d.y * B.reach };
       fx(at.x, at.y, { delay: B.delay, stun: B.stun });
@@ -5031,6 +5039,7 @@ export class Game {
   }
 
   update(dt, input, now) {
+    if (this.passingNote) { this.message = this.passingNote; this.passingNote = null; } // release 569: said after the section's other notes
     this.lastUpdateNow = now;
     if (this.paused) return;
     this.save.playSeconds = (Number(this.save.playSeconds) || 0) + Math.max(0, Math.min(1, Number(dt) || 0)); // release 379: playtime (paused time is not counted)
@@ -5305,7 +5314,7 @@ export class Game {
     // Actor death decisions wait for the existing end-of-frame hull mitigation.
     this._astralDamagePending=true;
     if (this.area === "overworld" || this.area === "dungeon") this.tickWorldBeasts(dt); // release 239 (release 249: in dungeons too)
-    if (this.area === "overworld" && (this._shoreCheck = (this._shoreCheck || 0) - dt) <= 0) { this._shoreCheck = .5; if ((this.save.materials?.wood || 0) >= WOOD.skiffCost && this.save.capabilities?.swim && !this.nearestObject() && !this.wayglassNear() && this.shoreWater() && now > (this.woodHintAt || 0)) { this.woodHintAt = now + 15000; this.message = `Act: build a skiff here (${WOOD.skiffCost} wood).`; } }
+    if (this.area === "overworld" && (this._shoreCheck = (this._shoreCheck || 0) - dt) <= 0) { this._shoreCheck = .5; if ((this.save.materials?.wood || 0) >= WOOD.skiffCost && this.save.capabilities?.swim && !this.nearestObject() && !this.wayglassNear(false) && this.shoreWater() && now > (this.woodHintAt || 0)) { this.woodHintAt = now + 15000; this.message = `Act: build a skiff here (${WOOD.skiffCost} wood).`; } }
     // Release 283: dungeon water is deadly. Entered (or still swum) without stamina it drowns; otherwise it wounds quickly.
     if (this.swimming && !this.mechUp() && this.area === "dungeon" && !this.map.underwater) { /* release 507: not in the robot */ const toll = dungeonWaterToll(p, dt, this.save.maxHp); if (toll === Infinity) { p.hp = 0; this.message = "Out of stamina in the dark water: it drags you under."; } else if (toll > 0) { p.hp = Math.max(0, p.hp - toll); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "The dungeon water bites: get out before your stamina gives."; } } }
     if (this.swimming && !this.mechUp() && p.hp > 0) { /* release 507: the robot costs no stamina in water */ const hurt = swimUpkeep(p, dt, this.swimKind, this.area === "overworld" && !!this.map.openSea); if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "Exhausted in the water — reach the shore."; } } }

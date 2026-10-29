@@ -13,8 +13,8 @@ export const FIELD = { minLife: 1 };
 export const FIELD_PASSIVES = {
   sanctum: { name: "Sanctum", text: "Standing inside one of your lingering spells, you take 20% less damage and mend 2% of your health each second.", guard: .2, mend: .02 },
   wellspring: { name: "Wellspring Ground", text: "Standing inside one of your lingering spells, your spells, Aperture skills and tools recover 30% faster.", rate: .3 },
-  "charged-air": { name: "Charged Air", text: "While one of your spells is running, tool shots fly 50% bigger, deal 25% more and burst 30% wider.", scale: 1.5, damage: .25, blast: 1.3, grow: .18 },
-  spellblade: { name: "Spellblade", text: "While one of your spells is running, melee strikes (the Iron Fists too) deal 20% more and reach 0.4 tiles farther.", damage: .2, reach: .4 },
+  "charged-air": { name: "Charged Air", text: "While one of your spells is running, tool shots fly 50% bigger, deal 25% more and burst 30% wider; the Great Sweep deals 25% more and spreads 30% wider.", scale: 1.5, damage: .25, blast: 1.3, grow: .18 },
+  spellblade: { name: "Spellblade", text: "While one of your spells is running, melee strikes (the Iron Fists, Hammerfall and the Great Sweep too) deal 20% more and reach 0.4 tiles farther.", damage: .2, reach: .4 },
   "drift-field": { name: "Drift Field", text: "A dodge drags your nearest lingering spell (within 6 tiles) along: it settles where you land.", reach: 6 },
 };
 // Release 533 (tool-forms.ts): tool forms, Lattice-only passives that change how a tool works. Held like the field passives
