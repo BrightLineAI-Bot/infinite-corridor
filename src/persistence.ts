@@ -21,19 +21,83 @@ export function journeyStats(save){const n=(v)=>Math.max(0,Math.floor(Number(v)|
 function openDb(){return new Promise((resolve,reject)=>{const q=indexedDB.open(DB,1);q.onupgradeneeded=()=>{if(!q.result.objectStoreNames.contains(STORE))q.result.createObjectStore(STORE)};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}
 async function read(key){const db=await openDb();return new Promise((resolve,reject)=>{const q=db.transaction(STORE).objectStore(STORE).get(key);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}
 async function write(key,value){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(value,key);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)})}
+// Release 555 (Tim's probe: a ~80-100 ms freeze every 8 s, outside the game's own frame work): IndexedDB copies whatever it
+// is given, on the main thread, when the write is queued. The autosave handed it the whole journey, every area ever visited
+// included, so the copy grew with the journey. A journey is now stored as its main record (session.areas left out, the
+// area keys listed under session[AREA_SPLIT]) plus one record per area (`${key}::area::${areaKey}`), all in one
+// transaction. An autosave writes the main record and only the areas whose stored copy changed since the last write (by
+// identity: snapshotSave reuses an unchanged area's copy), and deletes the records of areas that are gone. Reading puts the
+// journey back together; a record written before 555 (areas inside) still reads as it is and is split on its next write.
+export const AREA_SPLIT = "areasSplit";
+const areaPrefix = (key) => `${key}::area::`;
+const areaRange = (key) => IDBKeyRange.bound(areaPrefix(key), areaPrefix(key) + "\uffff");
+// splitSnapshot(snapshot, known): { main, puts: [[areaKey, area]], keys }. `known` maps areaKey to the copy last stored.
+export function splitSnapshot(snapshot, known = null) {
+  const areas = snapshot?.session?.areas;
+  if (!areas || typeof areas !== "object" || Array.isArray(areas)) return { main: snapshot, puts: [], keys: [] };
+  const keys = Object.keys(areas);
+  return { main: { ...snapshot, session: { ...snapshot.session, areas: null, [AREA_SPLIT]: keys } }, puts: keys.filter((k) => !known || known.get(k) !== areas[k]).map((k) => [k, areas[k]]), keys };
+}
+// assembleSave(main, records): the journey with its areas back in place (records: Map areaKey -> area). A main record
+// from before 555 is returned unchanged.
+export function assembleSave(main, records = new Map()) {
+  const listed = main?.session?.[AREA_SPLIT]; if (!Array.isArray(listed)) return main;
+  const areas = {}; for (const k of listed) if (records.has(k)) areas[k] = records.get(k);
+  const { [AREA_SPLIT]: _listed, ...session } = main.session;
+  return { ...main, session: { ...session, areas } };
+}
+// What each journey key holds in the database now (areaKey -> the copy written), so an autosave knows what changed.
+const storedAreas = new Map();
+const assembled = new WeakSet(); // journeys readJourney put back together from split records
+let onWriteTiming = null; // release 555: the probe hears how long the database's copy took on the main thread
+export function setWriteTimingListener(fn) { onWriteTiming = typeof fn === "function" ? fn : null; }
+async function writeJourney(key, value) {
+  const db = await openDb(), { main, puts, keys } = splitSnapshot(value, storedAreas.get(key)), prefix = areaPrefix(key);
+  let queuedMs = 0;
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite"), store = tx.objectStore(STORE), t0 = performance.now();
+    for (const [k, area] of puts) store.put(area, prefix + k);
+    store.put(main, key);
+    queuedMs = performance.now() - t0;
+    const live = new Set(keys), stale = store.getAllKeys(areaRange(key));
+    stale.onsuccess = () => { for (const k of stale.result) if (!live.has(String(k).slice(prefix.length))) store.delete(k); };
+    tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
+  });
+  storedAreas.set(key, new Map(keys.map((k) => [k, value.session.areas[k]])));
+  try { onWriteTiming?.({ ms: Math.round(queuedMs * 10) / 10, areas: puts.length, of: keys.length }); } catch {}
+}
+async function readJourney(key) {
+  const main = await read(key); if (!Array.isArray(main?.session?.[AREA_SPLIT])) return main;
+  const db = await openDb(), prefix = areaPrefix(key);
+  const records = await new Promise((resolve, reject) => {
+    const store = db.transaction(STORE).objectStore(STORE), ks = store.getAllKeys(areaRange(key)), vs = store.getAll(areaRange(key));
+    vs.onsuccess = () => resolve(new Map((ks.result || []).map((k, i) => [String(k).slice(prefix.length), vs.result[i]]))); vs.onerror = () => reject(vs.error); ks.onerror = () => reject(ks.error);
+  });
+  const save = assembleSave(main, records); assembled.add(save); return save;
+}
+async function removeJourney(key) {
+  const db = await openDb();
+  await new Promise((resolve, reject) => { const tx = db.transaction(STORE, "readwrite"), store = tx.objectStore(STORE); store.delete(key); store.delete(areaRange(key)); tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); });
+  storedAreas.delete(key);
+}
 async function remove(key){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).delete(key);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}
 function mirrorRead(slot){try{const text=localStorage.getItem(mirrorKey(slot));return text?deserializeSave(text):null}catch{return null}}
 function mirrorWrite(slot,snapshot){try{localStorage.setItem(mirrorKey(slot),JSON.stringify(snapshot))}catch(error){console.warn("Save mirror failed",error)}}
 export function getActiveSlot(){try{activeSlot=Math.max(1,Math.min(SLOT_COUNT,Number(localStorage.getItem(ACTIVE_SLOT))||activeSlot))}catch{}return activeSlot}
 export function setActiveSlot(slot){activeSlot=Math.max(1,Math.min(SLOT_COUNT,Number(slot)||1));try{localStorage.setItem(ACTIVE_SLOT,String(activeSlot))}catch{}return activeSlot}
-async function migrateLegacy(){if(await read(slotKey(1)))return;let legacy=await read("active");if(!legacy)try{const text=localStorage.getItem(LEGACY_MIRROR);legacy=text?JSON.parse(text):null}catch{}if(validateJourney(legacy).health==="healthy"){await write(slotKey(1),legacy);mirrorWrite(1,migrateSave(legacy))}}
-export async function loadSave(){activeSlot=getActiveSlot();try{await migrateLegacy()}catch(error){console.warn("Legacy save migration failed",error)}let stored=null;try{stored=await read(slotKey(activeSlot))}catch(error){console.warn("IndexedDB load failed",error)}const choices=[stored,mirrorRead(activeSlot)].map(validateJourney).filter(q=>q.health==="healthy").map(q=>q.save);return choices.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0]||freshSave()}
+async function migrateLegacy(){if(await readJourney(slotKey(1)))return;let legacy=await read("active");if(!legacy)try{const text=localStorage.getItem(LEGACY_MIRROR);legacy=text?JSON.parse(text):null}catch{}if(validateJourney(legacy).health==="healthy"){await writeJourney(slotKey(1),legacy);mirrorWrite(1,migrateSave(legacy))}}
+export async function loadSave(){activeSlot=getActiveSlot();try{await migrateLegacy()}catch(error){console.warn("Legacy save migration failed",error)}let stored=null;try{stored=await readJourney(slotKey(activeSlot))}catch(error){console.warn("IndexedDB load failed",error)}const fromDb=validateJourney(stored),choices=[fromDb,validateJourney(mirrorRead(activeSlot))].filter(q=>q.health==="healthy").map(q=>q.save),chosen=choices.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0]||freshSave();
+  // Release 555: a journey read from the database already has its areas stored there, so the first autosave need not write
+  // them all again: each loaded area is its own stored copy until the game replaces it.
+  if(chosen===fromDb.save&&assembled.has(stored))primeStoredAreas(slotKey(activeSlot),chosen);
+  return chosen}
+function primeStoredAreas(key,save){const areas=save?.session?.areas;if(!areas||typeof areas!=="object")return;const known=new Map();for(const[k,area]of Object.entries(areas)){if(!area||typeof area!=="object")continue;areaCopies.set(area,area);known.set(k,area)}storedAreas.set(key,known)}
 export function createSlotWriteCoordinator(writer){let chain=Promise.resolve(),queued=new Map();return{enqueue(slot,snapshot){queued.set(slot,snapshot);chain=chain.catch(()=>{}).then(async()=>{const batch=[...queued];queued=new Map();for(const[key,value]of batch)await writer(key,value)});return chain},flush(){return chain}}}
 // Release 519: the localStorage mirror (a fallback the loader uses only when it is newer than IndexedDB, or IndexedDB fails)
 // is a synchronous stringify of the whole journey, the ~50 ms frame in Tim's probe. It is written at most every
 // MIRROR_EVERY_MS per slot, and always when the IndexedDB write fails.
 export const MIRROR_EVERY_MS=60000;const mirroredAt=new Map();
-const coordinator=createSlotWriteCoordinator(async(slot,snapshot)=>{try{await write(slotKey(slot),snapshot)}catch(error){mirrorWrite(slot,snapshot);mirroredAt.set(slot,Date.now());throw error}const now=Date.now();if(!(now-(mirroredAt.get(slot)??-Infinity)<MIRROR_EVERY_MS)){mirrorWrite(slot,snapshot);mirroredAt.set(slot,now)}});
+const coordinator=createSlotWriteCoordinator(async(slot,snapshot)=>{try{await writeJourney(slotKey(slot),snapshot)}catch(error){mirrorWrite(slot,snapshot);mirroredAt.set(slot,Date.now());throw error}const now=Date.now();if(!(now-(mirroredAt.get(slot)??-Infinity)<MIRROR_EVERY_MS)){mirrorWrite(slot,snapshot);mirroredAt.set(slot,now)}});
 let lastWriteError=null;
 // Release 167: the autosave (every 8 s) deep-copied every area the journey had ever visited, so it grew into a 30-70 ms
 // stall on a phone. An area's stored state is replaced, never edited, when the Wayfarer leaves or saves in it, so the copy
@@ -44,14 +108,14 @@ export function saveGame(save){const slot=getActiveSlot(),snapshot=snapshotSave(
 export async function flushSaves(){await Promise.all([writeQueue,coordinator.flush()]);if(lastWriteError){const error=lastWriteError;lastWriteError=null;throw error}}
 export function createExclusiveOperation(){let busy=false;return{get busy(){return busy},async run(operation){if(busy)return{ok:false,busy:true};busy=true;try{return{ok:true,value:await operation()}}finally{busy=false}}}}
 export async function commitNewJourneyTransition({activeSlot,targetSlot,targetEmpty,options,saveCurrent,flush=flushSaves,create=createJourney,activate=setActiveSlot}){if(activeSlot!==targetSlot||!targetEmpty)await saveCurrent();await flush();const created=await create(targetSlot,options);activate(targetSlot);return created}
-export async function listJourneySlots(){try{await migrateLegacy()}catch{}const out=[];for(let slot=1;slot<=SLOT_COUNT;slot++){let raw=null;try{raw=await read(slotKey(slot))}catch{}if(!raw)raw=mirrorRead(slot);out.push(journeyMetadata(raw,slot))}return out}
+export async function listJourneySlots(){try{await migrateLegacy()}catch{}const out=[];for(let slot=1;slot<=SLOT_COUNT;slot++){let raw=null;try{raw=await readJourney(slotKey(slot))}catch{}if(!raw)raw=mirrorRead(slot);out.push(journeyMetadata(raw,slot))}return out}
 function namedFresh(name,seed){const save=freshSave();save.name=String(name||"Wayfarer").slice(0,40);save.seed=String(seed||`CORRIDOR-${Date.now().toString(36).toUpperCase()}`).slice(0,64);return save}
 async function snapshotRecovery(slot,raw){if(!raw||validateJourney(raw).health!=="healthy")return;const previous=await read(`recovery:${slot}:1`);if(previous)await write(`recovery:${slot}:2`,previous);await write(`recovery:${slot}:1`,raw)}
-export async function createJourney(slot,options={}){const current=await read(slotKey(slot))||mirrorRead(slot);if(current&&!options.replace)throw new Error("That journey slot is occupied.");if(current)await snapshotRecovery(slot,current);const save=namedFresh(options.name,options.seed);await write(slotKey(slot),save);mirrorWrite(slot,save);return journeyMetadata(save,slot)}
-export async function renameJourney(slot,name){const raw=await read(slotKey(slot)),valid=validateJourney(raw);if(valid.health!=="healthy")throw new Error("Only a healthy journey can be renamed.");valid.save.name=String(name||valid.save.name).slice(0,40);valid.save.updatedAt=Date.now();await write(slotKey(slot),valid.save);mirrorWrite(slot,valid.save);return journeyMetadata(valid.save,slot)}
-export async function duplicateJourney(from,to){const source=await read(slotKey(from)),target=await read(slotKey(to)),valid=validateJourney(source);if(valid.health!=="healthy")throw new Error("Source journey is not healthy.");if(target)throw new Error("Destination slot is occupied.");const copy=structuredClone(valid.save);copy.name=`${copy.name} Copy`.slice(0,40);copy.updatedAt=Date.now();await write(slotKey(to),copy);mirrorWrite(to,copy);return journeyMetadata(copy,to)}
-export async function deleteJourney(slot){const raw=await read(slotKey(slot));await snapshotRecovery(slot,raw);await remove(slotKey(slot));try{localStorage.removeItem(mirrorKey(slot))}catch{}}
-export async function exportJourney(slot){const raw=await read(slotKey(slot));if(!raw)throw new Error("Journey slot is empty.");return JSON.stringify({format:"infinite-corridor-journey",formatVersion:1,slot,exportedAt:Date.now(),save:raw},null,2)}
-export async function importJourney(slot,text,replace=false){const bundle=JSON.parse(text),raw=bundle?.format==="infinite-corridor-journey"?bundle.save:bundle,valid=validateJourney(raw);if(valid.health!=="healthy")throw new Error(valid.error||"Import is damaged.");const current=await read(slotKey(slot));if(current&&!replace)throw new Error("Choose an empty slot or explicitly replace this journey.");if(current)await snapshotRecovery(slot,current);valid.save.updatedAt=Date.now();await write(slotKey(slot),valid.save);mirrorWrite(slot,valid.save);return journeyMetadata(valid.save,slot)}
-export async function recoverJourney(slot){for(const index of[1,2]){const raw=await read(`recovery:${slot}:${index}`),valid=validateJourney(raw);if(valid.health==="healthy"){const damaged=await read(slotKey(slot));if(damaged)await write(`damaged:${slot}:${Date.now()}`,damaged);valid.save.updatedAt=Date.now();await write(slotKey(slot),valid.save);mirrorWrite(slot,valid.save);return journeyMetadata(valid.save,slot)}}throw new Error("No healthy recovery snapshot is available.")}
+export async function createJourney(slot,options={}){const current=await readJourney(slotKey(slot))||mirrorRead(slot);if(current&&!options.replace)throw new Error("That journey slot is occupied.");if(current)await snapshotRecovery(slot,current);const save=namedFresh(options.name,options.seed);await writeJourney(slotKey(slot),save);mirrorWrite(slot,save);return journeyMetadata(save,slot)}
+export async function renameJourney(slot,name){const raw=await readJourney(slotKey(slot)),valid=validateJourney(raw);if(valid.health!=="healthy")throw new Error("Only a healthy journey can be renamed.");valid.save.name=String(name||valid.save.name).slice(0,40);valid.save.updatedAt=Date.now();await writeJourney(slotKey(slot),valid.save);mirrorWrite(slot,valid.save);return journeyMetadata(valid.save,slot)}
+export async function duplicateJourney(from,to){const source=await readJourney(slotKey(from)),target=await readJourney(slotKey(to)),valid=validateJourney(source);if(valid.health!=="healthy")throw new Error("Source journey is not healthy.");if(target)throw new Error("Destination slot is occupied.");const copy=structuredClone(valid.save);copy.name=`${copy.name} Copy`.slice(0,40);copy.updatedAt=Date.now();await writeJourney(slotKey(to),copy);mirrorWrite(to,copy);return journeyMetadata(copy,to)}
+export async function deleteJourney(slot){const raw=await readJourney(slotKey(slot));await snapshotRecovery(slot,raw);await removeJourney(slotKey(slot));try{localStorage.removeItem(mirrorKey(slot))}catch{}}
+export async function exportJourney(slot){const raw=await readJourney(slotKey(slot));if(!raw)throw new Error("Journey slot is empty.");return JSON.stringify({format:"infinite-corridor-journey",formatVersion:1,slot,exportedAt:Date.now(),save:raw},null,2)}
+export async function importJourney(slot,text,replace=false){const bundle=JSON.parse(text),raw=bundle?.format==="infinite-corridor-journey"?bundle.save:bundle,valid=validateJourney(raw);if(valid.health!=="healthy")throw new Error(valid.error||"Import is damaged.");const current=await readJourney(slotKey(slot));if(current&&!replace)throw new Error("Choose an empty slot or explicitly replace this journey.");if(current)await snapshotRecovery(slot,current);valid.save.updatedAt=Date.now();await writeJourney(slotKey(slot),valid.save);mirrorWrite(slot,valid.save);return journeyMetadata(valid.save,slot)}
+export async function recoverJourney(slot){for(const index of[1,2]){const raw=await read(`recovery:${slot}:${index}`),valid=validateJourney(raw);if(valid.health==="healthy"){const damaged=await readJourney(slotKey(slot));if(damaged)await write(`damaged:${slot}:${Date.now()}`,damaged);valid.save.updatedAt=Date.now();await writeJourney(slotKey(slot),valid.save);mirrorWrite(slot,valid.save);return journeyMetadata(valid.save,slot)}}throw new Error("No healthy recovery snapshot is available.")}
 export async function storageReport(){const slots=await listJourneySlots();let estimate=null;try{estimate=await navigator.storage?.estimate?.()}catch{}return{slots,totalJourneyBytes:slots.reduce((n,q)=>n+q.bytes,0),usage:estimate?.usage||null,quota:estimate?.quota||null}}

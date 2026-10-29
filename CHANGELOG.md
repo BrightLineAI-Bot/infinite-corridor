@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 555 — **no more autosave hitch.** Each area you have visited is now stored as its own record, and an autosave writes only the areas that changed, not your whole journey. Older saves load as before and switch over on their next save. The diagnostic probe now also records the browser's long-frame breakdown (which script ran, and for how long), the memory before and after each long frame, and how long each save write took.
 - Release 553 — **presets swap your weapon and tool only.** Armor and your charm stay on when you switch. Any armor a preset was holding for you comes back to your pack.
 - Release 551 — **The Surveyor's Chain, part two.**
   - With all twelve of Abel Corwin's links, the crossings where they lay join into one brass chain on the Atlas. The chain runs on to the edge of the Far Sleep.
