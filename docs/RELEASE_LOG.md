@@ -13,19 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**557**
+**559**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 555 | Claude | `claude/dreamy-rubin-yn6q2p` | Each visited area saved as its own database record, only changed ones written; the probe records long animation frames, heap and save writes | Building. |
+| 557 | Claude | `claude/dreamy-rubin-yn6q2p` | Far Sleep in pockets, hunts move off explored ground, trap damage grows with level, the robot puts to sea as a submersible | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 555 | `r555-7b284880b307` | 2026-10-29 | Each visited area saved as its own record, only changed ones written; the probe records long animation frames, heap and save writes (PR #261). The pre-publish Fable review of 553→555 found no blockers. |
 | 553 | `r553-6f1c9b293b39` | 2026-10-28 | With 547 to 551: Fire Burst (PR #257), Arc Wave as three crescents (#258), the Surveyor's Chain part two (#259), presets swap weapon and tool only (#260). r549 (`r549-393038eb248c`, with 547) was published first, the same day, after its Fable review found no blockers; the review of 549→553 found none either. |
 | 545 | `r545-06aeebad5e78` | 2026-10-28 | With 539 to 543: the golem cooldown follows the tool's, Nanoknives fire on their own, Cluster Shells at opposite poles (PR #253); per-preset gear, a smith indoors in every Listener town, the Atlas home fix (#254); the Wayfarer rises with the big robot, the sling (#255); the full pack by tier then oldest, purchases kept (#256). The pre-publish Fable review of 537→545 found no blockers. |
 | 537 | `r537-da8aeff88eba` | 2026-10-28 | With 533 and 535: the physical Rift Bombard, the Blunderbuss, and the Lattice tool forms Arc Wave and Nanoknives (PR #250); the Corridor Golem (#251); Cluster Shell, plus the golem drawn without `roundRect` (#252). The pre-publish Fable review of 531→535 found one blocker (`roundRect`), fixed in 537. The review of 531→537 found none. |

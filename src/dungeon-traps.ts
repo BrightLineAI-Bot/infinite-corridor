@@ -21,18 +21,24 @@ import { hashSeed } from "./random.ts";
 // 2 adds the pit. Crossings stamped with version 1 keep their three kinds and placement.
 export const DUNGEON_TRAPS = {
   version: 3, count: [2, 4], minFromEntry: 6, spacing: 4,
-  sigil: { radius: .8, warn: .6, rest: 4.5, seeds: 5, ring: 2.4, flight: .45, spin: 1, points: 5, speed: 4.6, life: 1.7, base: 5, perLevel: .35, share: .05 },
-  lava: { radius: .7, warn: .55, rest: 3.5, blast: 1.35, blobs: 4, reach: 3.2, speed: 6, base: 8, perLevel: .6, blobShare: .7, share: .14 },
-  dart: { range: 8, side: .6, warn: .35, rest: 2.6, darts: 3, gap: .16, speed: 10, life: 1.1, base: 5, perLevel: .4, share: .07 },
+  sigil: { radius: .8, warn: .6, rest: 4.5, seeds: 5, ring: 2.4, flight: .45, spin: 1, points: 5, speed: 4.6, life: 1.7, base: 5, perLevel: .35, share: .07 },
+  lava: { radius: .7, warn: .55, rest: 3.5, blast: 1.35, blobs: 4, reach: 3.2, speed: 6, base: 8, perLevel: .6, blobShare: .7, share: .18 },
+  dart: { range: 8, side: .6, warn: .35, rest: 2.6, darts: 3, gap: .16, speed: 10, life: 1.1, base: 5, perLevel: .4, share: .09 },
   pit: { radius: .7, warn: 2, open: 3, rest: 3, size: .85 },
   // Release 527 (Tim: "traps that... pull you... if you trigger the trap [and] stay in it for too long... it'll pull you
   // into... an explosion... one of those grenade kind of... explosion things where it explodes all over"): a rune ring of
   // `radius`. Stand in it for `hold` s and it drags you to its eye (`pull` tiles/s, for `pullTime` s, walls stop you), then
   // bursts (`blast`, `share` of maximum health) and sprays `frags` grenade fragments (`fragShare` each). Step out in time
   // and it fades back to sleep.
-  vortex: { radius: 1.5, hold: 1.1, pull: 5, pullTime: .7, blast: 1.6, frags: 6, fragReach: 3, speed: 6.5, rest: 4, base: 10, perLevel: .7, share: .18, fragShare: .35 },
+  vortex: { radius: 1.5, hold: 1.1, pull: 5, pullTime: .7, blast: 1.6, frags: 6, fragReach: 3, speed: 6.5, rest: 4, base: 10, perLevel: .7, share: .22, fragShare: .35 },
 };
-export const TRAP_DAMAGE_SHARE = .12; // the old fire, spike and gas traps: at least this share of maximum health per hit
+export const TRAP_DAMAGE_SHARE = .15; // the old fire, spike and gas traps: at least this share of maximum health per hit
+// Release 557 (Tim: "the dungeon traps... damage should scale with your level... you can mitigate the trap damage with your
+// build, but they should still be impactful"): the shares above rose (sigil .05→.07, lava .14→.18, dart .07→.09, vortex
+// .18→.22, the old traps .12→.15) and every share grows with the Wayfarer's level: × (1 + `perLevel` × (level − 1)), at most
+// × `max`. Armor, wards and the robot's plating still take their part afterwards, as they do from any blow.
+export const TRAP_LEVEL_GROWTH = { perLevel: .012, max: 2.2 };
+export const trapShareScale = (level) => Math.min(TRAP_LEVEL_GROWTH.max, 1 + TRAP_LEVEL_GROWTH.perLevel * (Math.max(1, Number(level) || 1) - 1));
 export const TRAP_KINDS_BY_VERSION = { 1: ["sigil", "lava", "dart"], 2: ["sigil", "lava", "dart", "pit"], 3: ["sigil", "lava", "dart", "pit", "vortex"] };
 export const NEW_TRAP_KINDS = TRAP_KINDS_BY_VERSION[DUNGEON_TRAPS.version];
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -64,7 +70,7 @@ export function addNewTraps(map, seed, id, version = DUNGEON_TRAPS.version) {
   return placed;
 }
 
-const damageOf = (kind, level, maxHp = 0) => { const K = DUNGEON_TRAPS[kind]; return Math.max(1, Math.round(Math.max(K.base + K.perLevel * Math.max(1, Number(level) || 1), (K.share || 0) * (Number(maxHp) || 0)))); };
+const damageOf = (kind, level, maxHp = 0) => { const K = DUNGEON_TRAPS[kind]; return Math.max(1, Math.round(Math.max(K.base + K.perLevel * Math.max(1, Number(level) || 1), (K.share || 0) * trapShareScale(level) * (Number(maxHp) || 0)))); };
 const shot = (id, x, y, a, speed, life, damage, extra = {}) => ({ id, x, y, dx: Math.cos(a), dy: Math.sin(a), speed, life, damage, hostile: true, hits: {}, path: "straight", trapShot: true, ...extra });
 
 // One frame of the new traps. `world`: { player, level, maxHp, now, projectiles, effects, seeds, open?, airborne?, fall? }

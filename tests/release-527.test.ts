@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { RESONANCES } from '../src/glyphs.ts';
-import { DUNGEON_TRAPS, addNewTraps, tickNewTraps } from '../src/dungeon-traps.ts';
+import { DUNGEON_TRAPS, trapShareScale, addNewTraps, tickNewTraps } from '../src/dungeon-traps.ts';
 
 test('a journey under way gets every resonance once; a new one does not', async () => {
   const { Game } = await import('../src/game.ts');
@@ -31,7 +31,7 @@ test('the vortex drags whoever stays into its eye, then bursts and sprays fragme
   assert.ok(Math.hypot(player.x + .5 - 10.5, player.y + .75 - 10.5) < .3, `dragged to the eye (${player.x.toFixed(2)},${player.y.toFixed(2)})`);
   assert.equal(w.effects.filter((e) => e.hostile && e.kind === 'enemy-blast').length, 1);
   assert.equal(w.projectiles.filter((p) => p.hostile && p.path === 'grenade').length, V.frags);
-  assert.equal(w.effects[0].damage, Math.round(400 * V.share));
+  assert.equal(w.effects[0].damage, Math.round(400 * V.share * trapShareScale(10))); // release 557: the share grows with level
 });
 test('stepping out of the vortex in time lets it fade', () => {
   const trap = { id: 'v2', kind: 'trap', trapType: 'vortex', newTrap: 3, x: 10, y: 10, phase: 'armed', timer: 0 }, player = { x: 9.6, y: 9.6 }; let pulled = 0;

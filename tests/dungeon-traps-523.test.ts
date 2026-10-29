@@ -76,12 +76,12 @@ test('a pit cracks, gives two seconds, then drops whoever stays; stepping off or
   assert.ok(run(false).fell > 0, 'stayed: falls'); assert.equal(run(true).fell, 0, 'stepped off'); assert.equal(run(false, true).fell, 0, 'in the air');
 });
 test('every trap hits for at least a share of maximum health', async () => {
-  const { TRAP_DAMAGE_SHARE } = await import('../src/dungeon-traps.ts'); const { updateTraps } = await import('../src/game.ts');
+  const { TRAP_DAMAGE_SHARE, trapShareScale } = await import('../src/dungeon-traps.ts'); const { updateTraps } = await import('../src/game.ts');
   const trap = { id: 'o', kind: 'trap', trapType: 'spikes', x: 5, y: 5, phase: 'armed', timer: 0, damage: 14, loadGrace: 0, hits: {} }, player = { x: 5, y: 5, hp: 400 };
   for (let i = 0; i < 40 && player.hp === 400; i++) updateTraps([trap], player, .05, false, 400);
   assert.equal(400 - player.hp, Math.round(400 * TRAP_DAMAGE_SHARE));
   const dart = { id: 'd', kind: 'trap', trapType: 'dart', newTrap: 2, x: 1, y: 8, dirX: 1, dirY: 0, phase: 'armed', timer: 0 }, w = { ...world({ x: 6, y: 8.2 }, 5), maxHp: 400 };
-  for (let i = 0; i < 30; i++) tickNewTraps([dart], w, .05); assert.equal(w.projectiles[0].damage, Math.round(400 * DUNGEON_TRAPS.dart.share));
+  for (let i = 0; i < 30; i++) tickNewTraps([dart], w, .05); assert.equal(w.projectiles[0].damage, Math.round(400 * DUNGEON_TRAPS.dart.share * trapShareScale(5))); // release 557: the share grows with level
 });
 test('crossings stamped with version 1 keep their three kinds and placement', () => {
   const a = addNewTraps(room(), 'S', 'dungeon:S:g1:9:9:hollow', 1); assert.ok(a.every((t) => t.trapType !== 'pit' && t.newTrap === 1));

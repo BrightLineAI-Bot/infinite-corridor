@@ -4,6 +4,7 @@
 // keeps no hamlet (its atlas entry carries no hamletVersion), so existing journeys only find hamlets in new ground.
 import { hashSeed, rng, pick } from "./random.ts";
 import { LETHAL_KINDS } from "./landscape.ts";
+import { relayCoordinate } from "./relay-network.ts";
 
 // Version 1 (release 111) built plain huts; version 2 (release 112) builds from the world's own shelter families and
 // ruin-district styles. A section keeps the version its atlas entry was pinned to; placement and names are shared.
@@ -40,6 +41,9 @@ const floorDiv = (a, b) => Math.floor(a / b);
 // Which section of its block (if any) hosts a hamlet. Pure in (seed, rx, ry).
 export function hamletSection(seed, rx, ry) {
   if (Math.abs(rx) + Math.abs(ry) < HAMLET.minDepth) return false;
+  // Release 557: the Mouth's section stays open land until the Listener falls (release 373 raises its town then). The Far
+  // Sleep used to cover it; with the Far Sleep in pockets the rule is said here.
+  { const mouth = relayCoordinate({ seed }); if (mouth.rx === rx && mouth.ry === ry) return false; }
   const bx = floorDiv(rx, HAMLET.cell), by = floorDiv(ry, HAMLET.cell), r = rng(`${seed}:hamlet:v1:block:${bx}:${by}`);
   if (r() >= HAMLET.chance) return false;
   const n = Math.floor(r() * HAMLET.cell * HAMLET.cell), hx = bx * HAMLET.cell + (n % HAMLET.cell), hy = by * HAMLET.cell + Math.floor(n / HAMLET.cell);

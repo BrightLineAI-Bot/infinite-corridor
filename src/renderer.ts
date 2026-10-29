@@ -1692,8 +1692,8 @@ export function render(ctx, g, w, h, now) {
         const shieldLeft = Number(g.save.boat.shield) || 0; // release 269: under the hull guard, the skiff is a longboat (flickering back in its last 10 s)
         if (p.facing === "left" || p.facing === "right") g.longboatSide = p.facing;
         g._longboatFront = shieldLeft > 0 && (shieldLeft > 10 || Math.floor(now / 200) % 2 === 1); // the near hull goes over the Wayfarer, below
-        g._subDive = g.save.boat.sub ? Math.max(0, ((g.subDiveUntil || 0) - now) / 1000) : 0; // release 311
-        if (g.save.boat.sub && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "back", g._subDive);
+        g._subDive = (g.save.boat.sub || g.save.boat.mechSub) ? Math.max(0, ((g.subDiveUntil || 0) - now) / 1000) : 0; // release 311
+        if ((g.save.boat.sub || g.save.boat.mechSub) && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "back", g._subDive);
         else (g._longboatFront ? drawLongboat : drawSkiff)(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right");
         if (g.mendTarget?.()) repairTag(ctx, p.x, p.y - .9 - lift / s, s);
         // Hull gauge under the skiff: green to amber to red as the hull takes damage.
@@ -1733,7 +1733,7 @@ export function render(ctx, g, w, h, now) {
         ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh * 2 + 3); ctx.fillStyle = "#5fc6e0"; ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, m.fuel / DRONE.carry)), bh); ctx.fillStyle = (m.healCd || 0) > 0 ? "#3f7f52" : "#7dff9a"; ctx.fillRect(bx, by + bh + 1, bw * Math.max(0, Math.min(1, 1 - (m.healCd || 0) / DRONE.healCooldown)), bh); }
       if (mech) { const m = g.save.mech, bx = (p.x + .08) * s, by = (p.y + 1.1) * s - lift, bw = s * .84, bh = Math.max(3, s * .08); // plating (silver) and boost (blue)
         ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh * 2 + 3); ctx.fillStyle = "#d8dee5"; ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, m.plate / MECH.plate)), bh); ctx.fillStyle = "#5fc6e0"; ctx.fillRect(bx, by + bh + 1, bw * Math.max(0, Math.min(1, m.fuel / (MECH.boost * (m.empowered ? 2 : 1)))), bh); if (m.empowered) { ctx.fillStyle = "#ff8a3d"; ctx.fillRect(bx, by + bh * 2 + 2, bw, Math.max(2, bh * .6)); } } // release 383: an ember line while empowered
-      if (g.area === "overworld" && g.save.boat?.aboard && g.save.boat.sub && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "front", g._subDive); // release 311: the window's glass and the arms
+      if (g.area === "overworld" && g.save.boat?.aboard && (g.save.boat.sub || g.save.boat.mechSub) && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "front", g._subDive); // release 311: the window's glass and the arms
       if (g._longboatFront && g.area === "overworld" && g.save.boat?.aboard) drawLongboat(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right", "front"); // release 269
       // Poisoned (release 165): the Wayfarer pulses green while poison lasts.
       if (g.save.elites?.status?.poison > 0) { const pulse = .5 + .5 * Math.sin(now / 160); ctx.fillStyle = `rgba(120,230,90,${.12 + pulse * .22})`; ctx.strokeStyle = `rgba(150,255,110,${.35 + pulse * .45})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y - lift / s + .35) * s, s * (.42 + pulse * .08), s * (.55 + pulse * .08), 0, 0, 7); ctx.fill(); ctx.stroke(); }
