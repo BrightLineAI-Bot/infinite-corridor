@@ -2694,6 +2694,19 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 563: regional threat weighs more far out — 2026-10-29
+
+Tim (2026-10-29, at ring ~160 where the Wayfarer card read "enemy vitality ×7.80"): "if the distance between you and the Ember
+Refuge [is] 100 or over, then it should be like... 10... [over] 200... 20... make the distance of exploration more weighty".
+
+**CODE:** `src/world.ts` `REGIONAL_THREAT`, rows of [from ring, vitality per ring, damage per ring]: 0 (.08, .05), 10 (.04, .025),
+60 (.155, .035), 100 (.1, .035). `regionalThreat` sums them up to the section's ring (straight-line distance from 0,0) and rounds
+to six places. Vitality ×3.8 at 60, ×10 at 100, ×16 at 160, ×20 at 200; damage ×2.75, ×4.15, ×6.25, ×7.65. XP unchanged.
+
+**BOUNDARY:** Balance only. Applied as before, to creatures spawned fresh in a section (game.ts `scaleFresh`); creatures already
+saved in an area keep their health and damage. Rings up to 60 are unchanged (the 399 and prototype tests at rings 10 and 20 still
+hold). Aperture does not enter regional threat; it adds Aperture encounters and Resonance instead.
+
 ## Release 561: windups held, never cancelled; no ordinary stun-lock; deep wardens — 2026-10-29
 
 Tim (2026-10-29, a new journey): "the guardians for the threefold deep are comically easy to kill... they can get stunlocked...

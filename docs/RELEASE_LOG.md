@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**563**
+**565**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 561 | Claude | `claude/dreamy-rubin-yn6q2p` | Blows hold a windup briefly but never cancel it; no ordinary stun-lock; deep dungeon wardens sturdier | Building. |
+| 563 | Claude | `claude/dreamy-rubin-yn6q2p` | Regional threat weighs more past ring 60 (vitality ×10 at 100, ×20 at 200) | Building. |
+| 561 | Claude | PR #264 | Blows hold a windup briefly but never cancel it; no ordinary stun-lock; deep dungeon wardens sturdier | Merged (`r561-04ea37b22b5e`). |
 | 559 | Claude | PR #263 | Atlas in each section's real colours, relay markers only where relays are and more relays, QUEST COMPLETE banner, lore recorded | Merged (`r559-18f34853d2d7`). Not published. |
 | 557 | Claude | PR #262 | Far Sleep in pockets, hunts move off explored ground, trap damage grows with level, the robot puts to sea, Wayglass first | Merged (`r557-39c631cc89f9`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
