@@ -2694,6 +2694,23 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 581: the bells untracked — 2026-10-29
+
+Tim (2026-10-29): "the journal doesn't have to track them... there's a lot of quests in Elden Ring that aren't really tracked.
+You just gotta keep track of 'em... if we are journeying long enough... come into contact with the different components, it'll
+be interesting... at the end of it... it can be like a quest... I don't want... the journal... overly bloated".
+
+**CODE:**
+- `src/main.ts`: Active quests no longer list the Seven Bells (since 431) or the Surveyor's Chain (577).
+- `src/bells.ts`: `noteLeftBehind`, `nearestLeftBehind`, `crossingAt` and `BELLS.leftBehind` removed; `ensureLeftBehind` becomes
+  `ensureBellState` (normalises `lore.bellAt` only). `src/game.ts` no longer notes pieces left behind. Bells offered among the
+  unrung, at any depth, and one bell per crossing (577) stay.
+
+**BOUNDARY:**
+- `lore.leftBehind` written by 577 is left in saves as it was, unread. Journal entries written when a bell rings or a link is
+  found, and the QUEST COMPLETE banners, are unchanged.
+- Tests: `tests/narrative-pieces-577.test.ts` and `tests/seven-bells-431.test.ts` updated.
+
 ## Release 579: moonlands — 2026-10-29
 
 The daily world-regions routine (Tim, 2026-10-29: "find ways to make the map have interesting features... rich and vibrant...

@@ -43,12 +43,12 @@ test('ringing a bell: once, remembered, the seventh ends the thread; the record 
   assert.equal(bellsRung({ lore: { bells: '9x31' } }), '13', 'junk is dropped');
 });
 
-test('found in a real crossing, rung through Act, journalled, listed among Active quests, and built', () => {
+test('found in a real crossing, rung through Act, journalled (not among Active quests), and built', () => {
   const s = freshSave(); s.seed = seed; const c = crossings()[0]; s.session.activeDungeonId = c.id; s.session.dungeonReturn = { rx: c.rx, ry: c.ry, x: 16, y: 16 };
   const g = new Game(s, 0); g.loadArea('dungeon', false); const o = g.map.objects.find((q) => q.kind === 'crackedBell');
   assert.ok(o, 'the bell hangs there'); g.enemies = []; Object.assign(g.player, { x: o.x, y: o.y + .2 });
   const r = g.interact('ring', o.id); assert.ok(r.ok && r.first, g.message); assert.ok(s.narrative.journal.some((j) => j.title === 'The Seven Bells'));
-  const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8'); assert.match(main, /add\("The Seven Bells"/);
+  const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8'); assert.doesNotMatch(main, /add\("The Seven Bells"/, 'release 581: not tracked among Active quests');
   assert.match(readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8'), /o\.kind === "crackedBell"\) \{ drawCrackedBell/);
   assert.match(readFileSync(new URL('../scripts/build.mjs', import.meta.url), 'utf8'), /'bells'/);
   for (const sw of ['../sw.js', '../proving-ground/sw.js']) assert.match(readFileSync(new URL(sw, import.meta.url), 'utf8'), /src\/bells\.js\?v=/);
