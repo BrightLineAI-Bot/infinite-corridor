@@ -46,7 +46,7 @@ const floorDiv = (a, b) => Math.floor(a / b);
 const isMouth = (seed, rx, ry) => { const m = relayCoordinate({ seed }); return m.rx === rx && m.ry === ry; };
 export function legacyMouthHamlet(save, rx, ry) { const seen = save?.atlas?.[`${rx},${ry}`]; return !!seen && !!seen.hamletVersion && (Number(seen.dreamVersion) || 0) < 3 && isMouth(save.seed, rx, ry) && hamletRoll(save.seed, rx, ry); }
 export function hamletSection(seed, rx, ry) { return !isMouth(seed, rx, ry) && hamletRoll(seed, rx, ry); }
-function hamletRoll(seed, rx, ry) {
+export function hamletRoll(seed, rx, ry) {
   if (Math.abs(rx) + Math.abs(ry) < HAMLET.minDepth) return false;
   const bx = floorDiv(rx, HAMLET.cell), by = floorDiv(ry, HAMLET.cell), r = rng(`${seed}:hamlet:v1:block:${bx}:${by}`);
   if (r() >= HAMLET.chance) return false;
@@ -143,8 +143,10 @@ function buildMixed(map, r, id, x0, y0, kind, name) {
 // Mutates an overworld section map (after the landscape pass). Returns the settlement record or null.
 // Release 371: `force` raises a hamlet on a section the seed did not choose (a town where a Listener fell, hometowns.ts);
 // with no flat patch it clears one at the centre.
-export function applyHamlet(map, seed, rx, ry, version = HAMLET_VERSION, force = false) {
-  if (!map || map.settlement || map.hamlet || map.tiles?.length !== 1024 || !(force || hamletSection(seed, rx, ry))) return null;
+// `allowed` (release 565): the section may hold a hamlet though hamletSection says no (legacyMouthHamlet), built exactly as the
+// roll would have built it: only on a flat site, never the centre-clearing fallback that `force` uses.
+export function applyHamlet(map, seed, rx, ry, version = HAMLET_VERSION, force = false, allowed = false) {
+  if (!map || map.settlement || map.hamlet || map.tiles?.length !== 1024 || !(force || allowed || hamletSection(seed, rx, ry))) return null;
   let site = hamletSite(map);
   if (!site && force) {
     site = { x: 16, y: 16 };

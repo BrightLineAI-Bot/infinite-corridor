@@ -28,4 +28,9 @@ test('a Mouth section seen before 557 keeps the hamlet it had; one first seen fr
   const before = walkerCrossingMap(old, at.rx, at.ry), after = walkerCrossingMap(fresh, at.rx, at.ry);
   assert.equal(!!after.hamlet, false, 'first seen from 557: open land');
   assert.ok(before.hamlet || !before.tiles, `seen before 557: keeps its hamlet (${before.hamlet})`);
+  // Release 565 (second pre-publish review): the old answer is kept, never forced. Before 557 a Mouth roll only became a hamlet
+  // where the ground had a flat site; the rest stayed open land, and must still.
+  let legacy = 0, built = 0;
+  for (let i = 0; i < 400; i++) { const s = `MOUTHHAM${i}`, m = relayCoordinate({ seed: s }), k = `${m.rx},${m.ry}`, sv = freshSave(); sv.seed = s; sv.atlas = { [k]: { terrain: 'ash', hamletVersion: 2, dreamVersion: 2, landscapeVersion: 3, seaVersion: 1, travelVersion: 1 } }; if (!legacyMouthHamlet(sv, m.rx, m.ry)) continue; legacy++; if (walkerCrossingMap(sv, m.rx, m.ry).hamlet) built++; }
+  assert.ok(legacy > 5 && built > 0 && built < legacy, `${built} of ${legacy} legacy Mouth rolls hold a hamlet, not all`);
 });

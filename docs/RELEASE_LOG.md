@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**565**
+**567**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 563 | Claude | `claude/dreamy-rubin-yn6q2p` | Regional threat weighs more past ring 60 (vitality ×10 at 100, ×20 at 200) | Building. |
+| 565 | Claude | `claude/dreamy-rubin-yn6q2p` | Mouth hamlet fix done right (never forced; trails as before 557), from the second pre-publish review | Building. |
+| 563 | Claude | PR #265 | Regional threat weighs more past ring 60 (vitality ×10 at 100, ×20 at 200); first fix for the Mouth hamlet | Merged (`r563-404782cd3a8a`). Superseded by 565 for publishing. |
 | 561 | Claude | PR #264 | Blows hold a windup briefly but never cancel it; no ordinary stun-lock; deep dungeon wardens sturdier | Merged (`r561-04ea37b22b5e`). |
 | 559 | Claude | PR #263 | Atlas in each section's real colours, relay markers only where relays are and more relays, QUEST COMPLETE banner, lore recorded | Merged (`r559-18f34853d2d7`). Not published. |
 | 557 | Claude | PR #262 | Far Sleep in pockets, hunts move off explored ground, trap damage grows with level, the robot puts to sea, Wayglass first | Merged (`r557-39c631cc89f9`). Not published. |
