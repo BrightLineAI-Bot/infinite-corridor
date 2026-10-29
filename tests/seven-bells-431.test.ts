@@ -17,9 +17,9 @@ test('seven bells, each a different lost person, and the door at the end; all or
   assert.match(BELL_FINAL, /none of them have faces/i); assert.match(BELL_FINAL, /lets them in anyway/);
 });
 
-test('bells hang only in ordinary crossings at a middling distance, by seed; every one of the seven can be found', () => {
+test('bells hang only in ordinary crossings away from the Refuge, by seed; every one of the seven can be found', () => {
   const list = crossings(); assert.ok(list.length > 10 && list.length < 625 * .3, `${list.length} crossings`);
-  for (const c of list) { const d = Math.abs(c.rx) + Math.abs(c.ry); assert.ok(d >= BELLS.minDepth && d <= BELLS.maxDepth); }
+  for (const c of list) { const d = Math.abs(c.rx) + Math.abs(c.ry); assert.ok(d >= BELLS.minDepth); } // release 577: no farthest band
   assert.deepEqual([...new Set(list.map((c) => c.n))].sort(), [1, 2, 3, 4, 5, 6, 7]);
   assert.deepEqual(crossings(), list, 'deterministic');
   for (const id of ['dungeon:BELLS431:g1', 'hunt-instance:1', 'arena:2', 'far-array:3', 'dungeon:BELLS431:g1:0:1:room']) assert.equal(bellIn(seed, id), 0);
@@ -28,13 +28,14 @@ test('bells hang only in ordinary crossings at a middling distance, by seed; eve
 test('ringing a bell: once, remembered, the seventh ends the thread; the record survives migration', () => {
   const s = freshSave(); s.seed = seed; const byBell = {}; for (const c of crossings()) byBell[c.n] ||= c;
   const map = () => ({ width: 24, height: 24, entry: { x: 4, y: 5 }, objects: [], tiles: Array.from({ length: 576 }, (_, i) => ({ x: i % 24, y: Math.floor(i / 24), kind: 'floor', blocked: false })) });
-  let last;
+  let last; const used = crossings().slice(0, 7); // release 577: each crossing offers a bell not yet rung
   for (let n = 1; n <= 7; n++) {
-    const m = map(), o = addBell(m, s, byBell[n].id); assert.equal(o.kind, 'crackedBell'); assert.equal(o.bell, n); assert.deepEqual(o.actions, ['ring']);
+    const m = map(), o = addBell(m, s, used[n - 1].id); assert.equal(o.kind, 'crackedBell'); assert.ok(!bellsRung(s).includes(String(o.bell)), 'a bell not yet rung'); assert.deepEqual(o.actions, ['ring']);
     assert.ok(Math.hypot(o.x - 4, o.y - 5) >= 6, 'away from the entry');
     last = ringBell(s, o); assert.ok(last.first); assert.equal(o.state, 'rung');
     assert.equal(ringBell(s, o).first, false, 'a bell rings once');
     if (n < 7) assert.match(last.message, new RegExp(`${n} of 7 bells`));
+    byBell[o.bell] = used[n - 1];
   }
   assert.ok(last.done); assert.match(last.message, /Seven figures/); assert.equal(bellsRung(s), '1234567');
   const again = addBell(map(), s, byBell[3].id); assert.equal(again.state, 'rung'); assert.deepEqual(again.actions, ['inspect']);
