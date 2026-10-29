@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**577**
+**579**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 575 | Claude | `claude/dreamy-rubin-yn6q2p` | The Transit Lattice in views: passives folded by skill, spells, tools and general; Echoes; All | Building. |
+| 577 | Claude | `claude/dreamy-rubin-yn6q2p` | Bells offered by any bell crossing until rung, at any depth; Journal points to bells and links left behind | Building. |
+| 575 | Claude | PR #271 | The Transit Lattice in views: passives folded by skill, spells, tools and general; Echoes; All | Merged (`r575-b21cc7fdb959`). Not published. |
 | 573 | Claude | PR #270 | Forests (thick woods, giant trees), frostlands, region names (landscape 5) | Merged (`r573-04a36c5d5231`). Not published. |
 | 571 | Claude | PR #269 | The Skylands: Sky Stairs, three-wave divine challenges, Ascension tiers and sigils | Merged (`r571-8dbd44d5d7fb`). Not published. |
 | 569 | Claude | PR #268 | World regions (landscape 4, dream 4 with seams), passing world beasts, Spellblade/Charged Air for brawler tools | Merged (`r569-31150f83e773`). Not published. |

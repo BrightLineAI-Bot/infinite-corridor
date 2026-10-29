@@ -2694,6 +2694,27 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 577: no bell left stranded — 2026-10-29
+
+Tim (2026-10-29): "those narratives... we should be able to track them in the journal... they shouldn't just be trapped in
+specific dungeons... if I don't get the bell in one dungeon... it should just go to another dungeon... randomly... until I
+get them... unless there's a way to... note in this square... where the missing piece is... I just want to keep exploring".
+
+**CODE:**
+- `src/bells.ts`: `bellIn(seed, id, rung)` drops the `maxDepth` limit and, given the bells rung, picks among the unrung ones by
+  the crossing's hash (all rung: its own bell). `addBell` passes `bellsRung(save)` and gives a crossing that already rang a bell
+  that bell, rung (`save.lore.bellAt`, set by `ringBell` from the object's `dungeonId`). `crossingAt`, `ensureLeftBehind`
+  (normalises `lore.leftBehind` and `lore.bellAt`; called in `freshSave`/`migrateSave`), `noteLeftBehind` (keyed
+  `<kind>|<dungeonId>`, latest `BELLS.leftBehind` kept) and `nearestLeftBehind`.
+- `src/game.ts`: entering a dungeon notes or clears a waiting bell and a Surveyor's link; ringing or taking clears it.
+- `src/main.ts`: Active quests list the Seven Bells and the Surveyor's Chain (progress, compass to the nearest left behind).
+
+**BOUNDARY:**
+- Additive save fields `lore.leftBehind` and `lore.bellAt`. Bells already rung stay rung; a crossing that rang one before this
+  release (no `bellAt` entry) may offer another unrung bell once.
+- Surveyor links were already the next unfound link wherever found; only the Journal tracking is new for them.
+- Tests: `tests/narrative-pieces-577.test.ts`; `tests/seven-bells-431.test.ts` updated for the new rule.
+
 ## Release 575: the Transit Lattice in views — 2026-10-29
 
 Tim (2026-10-29): "passives based on the skill that they benefit... force channel... quickening... all the passives that are
