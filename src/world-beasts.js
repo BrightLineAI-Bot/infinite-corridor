@@ -1,15 +1,15 @@
-import { mealLure } from "./meals.js?v=r565-5fc233965fde";
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r565-5fc233965fde";
+import { mealLure } from "./meals.js?v=r577-1b61c41bd892";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r577-1b61c41bd892";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.js?v=r565-5fc233965fde";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r565-5fc233965fde";
-import { sectionExits, apertureTier } from "./world.js?v=r565-5fc233965fde";
-import { stageOneBeastReference } from "./stages.js?v=r565-5fc233965fde";
+import { hashSeed } from "./random.js?v=r577-1b61c41bd892";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r577-1b61c41bd892";
+import { sectionExits, apertureTier } from "./world.js?v=r577-1b61c41bd892";
+import { stageOneBeastReference } from "./stages.js?v=r577-1b61c41bd892";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -367,9 +367,24 @@ function fleeSpawn(save, here, rx, ry) {
 // already met (active, retreating or tracked) is never withdrawn by this.
 export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 };
 export const beastUnlocked = (save, id) => apertureTier(save?.perception?.aperture || 0) >= (BEAST_APERTURE[id] ?? 0);
+// Release 567 (Tim: "I have never... seen the tremor worm yet"): a beast held its section until it was killed or had beaten
+// the Wayfarer, so one that claimed a section the Wayfarer only passed through waited there for good, and never met them
+// again. A beast never fought (no tries, wounds, chase or retreat) now lets its section go once the Wayfarer has entered
+// `after` sections elsewhere, and can claim another (a new cycle, so a new roll).
+export const BEAST_WANDER = { after: 16 };
+function wanderUnmet(save, rx, ry) {
+  for (const id of WORLD_BEAST_IDS) {
+    const q = save.worldBeasts[id], a = q?.active;
+    if (!a || a.dungeon || a.retreat || a.tries || a.wounds || a.chase || !Number.isInteger(a.rx) || astralReservedCompanion(save, id)) continue;
+    if (a.rx === rx && a.ry === ry) { delete a.away; continue; }
+    a.away = (Number(a.away) || 0) + 1;
+    if (a.away >= BEAST_WANDER.after) { q.active = null; q.cycle = (q.cycle || 0) + 1; }
+  }
+}
 export function worldBeastFor(save, map, rx, ry) {
   ensureWorldBeasts(save, false);
   if (!map) return null;
+  wanderUnmet(save, rx, ry); // release 567: counted on every section entered, towns too
   if (map.settlement || map.tiles?.length !== 1024) { const id = WORLD_BEAST_IDS.find((k) => { const a = save.worldBeasts[k].active; return a?.retreat && !a.dungeon && a.rx === rx && a.ry === ry; }); return id ? fleeSpawn(save, id, rx, ry) : null; } // release 241: fleeing, it passes through a settlement too
   const qb = save.questingBeast?.active, held = qb && qb.rx === rx && qb.ry === ry;
   let here = WORLD_BEAST_IDS.find((id) => { const a = save.worldBeasts[id].active; return a && !a.dungeon && !astralReservedCompanion(save,id) && a.rx === rx && a.ry === ry; }), claimed = false;
@@ -390,6 +405,24 @@ export function worldBeastFor(save, map, rx, ry) {
   const at = pool.sort((a, b) => hashSeed(`wb:${here}:${q.cycle}:${a.x},${a.y}`) - hashSeed(`wb:${here}:${q.cycle}:${b.x},${b.y}`))[0];
   if (!at) { if (!q.active.tries) { q.active = null; if (claimed) ensureBeastGap(save).fresh = ENCOUNTER.newSections; } return null; } // no valid terrain for this beast: it does not hold the section (and was never met)
   return { id: `world-beast:${here}:${q.cycle}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, traits: [] };
+}
+// Passing beasts (release 569; Tim, 2026-10-29: "it would be great to be able to just be wandering through the world and see
+// a world beast retreating... just moving along to where it wants to go. And it's not engaging you, and you can't kill
+// it"). Now and then (`chance` of the sections entered with no beast of their own) a world beast the Wayfarer's Aperture
+// has unlocked crosses the section from one edge to the opposite one, bound for its home ground: untargetable, harmless,
+// never saved with the section, gone at the far edge. Which beast, which way and whether one passes are fixed by the seed,
+// the section and how many sections have been explored. The Atlas is not told; it is just something seen.
+export const PASSING = { chance: .045, minDepth: 6, speed: 1.7 };
+export function passingBeastFor(save, map, rx, ry, explored = 0) {
+  if (!map || map.settlement || map.tiles?.length !== 1024 || Math.abs(rx) + Math.abs(ry) < PASSING.minDepth) return null;
+  const h = hashSeed(`${save.seed}:passing-beast:v1:${rx}:${ry}:${explored}`); if ((h % 1000) / 1000 >= PASSING.chance) return null;
+  const ids = WORLD_BEAST_IDS.filter((id) => id !== "astralWorm" && id !== "voidWalker" && beastUnlocked(save, id) && !(save.worldBeasts?.[id]?.active?.rx === rx && save.worldBeasts?.[id]?.active?.ry === ry));
+  if (!ids.length) return null;
+  const id = ids[(h >>> 10) % ids.length], B = WORLD_BEASTS[id], ex = sectionExits(save.seed, rx, ry), across = (h >>> 4) & 1;
+  const [from, to] = across ? [{ x: .6, y: ex.west, side: "west" }, { x: 30.4, y: ex.east, side: "east" }] : [{ x: ex.north, y: .6, side: "north" }, { x: ex.south, y: 30.4, side: "south" }];
+  const [a, b] = (h >>> 6) & 1 ? [to, from] : [from, to], mode = B.retreatMoves === "walk" ? "walk" : "through";
+  const path = retreatPath(map, a, b, mode) || [{ x: b.x, y: b.y }];
+  return { id: `passing-beast:${id}:${rx}:${ry}:${explored}`, kind: B.kind, x: a.x, y: a.y, passingBeast: id, fleeTo: { x: b.x, y: b.y, side: b.side }, fleePath: path, fleeSpeed: PASSING.speed, traits: [] };
 }
 export function worldBeastTriesLeft(save, id) { return WORLD_BEASTS[id].tries - (save.worldBeasts?.[id]?.active?.tries || 0); }
 

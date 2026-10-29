@@ -10,13 +10,13 @@
 //
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
-import { hashSeed } from "./random.js?v=r565-5fc233965fde";
-import { placeDock } from "./boats.js?v=r565-5fc233965fde";
+import { hashSeed } from "./random.js?v=r577-1b61c41bd892";
+import { placeDock } from "./boats.js?v=r577-1b61c41bd892";
 
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
 // Each section keeps the version it was first seen with.
-export const LANDSCAPE_VERSION = 3;
+export const LANDSCAPE_VERSION = 5; // release 569: world regions (REGIONS); 573: forest and frost regions, region names; earlier versions are kept for the sections pinned to them
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles
 export const MAX_LEVEL = 5;
 // Fraction of max health lost when dropping this many levels; null = fatal.
@@ -34,6 +34,8 @@ export const BIOMES = {
   swamp: { id: "swamp", name: "Sunken Fen", atlas: "#5d6b3c" },
   blight: { id: "blight", name: "Blight Mire", atlas: "#7cbf3a" },
 };
+// Release 573: ground laid by a region rather than by the landscape fields (biomeFor never reports these).
+export const REGION_GROUNDS = { forest: { id: "forest", name: "Deepwood", atlas: "#2f5a34" }, frost: { id: "frost", name: "Frostlands", atlas: "#dce9f2" } };
 // Waterbodies (version 2) balance table. `continent` bends the ocean field so whole seas form; `island` lifts land back
 // out of open water; `deep` is how far above the ocean threshold deep water starts.
 export const WATERBODIES = {
@@ -50,7 +52,7 @@ export const DEEP_WATER = ["ocean", "deepOcean", "lakeWater", "swampWater", "tox
 const T = { ocean: 0.70, beach: 0.675, mountain: 0.68, alien: 0.75, desert: 0.67 };
 const SHALLOWS_FROM = T.ocean - .012; // sea level above which water is shallows (below it, beach)
 const WALKABLE_LANDSCAPE = new Set(["snowRock", "snowPeak", "mountainRock", "alpineGrass", "mountainTrail", "sand", "duneCrest", "duneFace",
-  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope"]);
+  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope", "forestFloor", "snowField", "lakeIce"]); // release 573: the last three
 
 // ---------------------------------------------------------------- noise
 function lattice(key, ix, iy) { return (hashSeed(`${key}:${ix}:${iy}`) % 10007) / 10007; }
@@ -78,9 +80,87 @@ const field = {
   lake: (seed, gx, gy) => fbm(`${seed}:land:lake`, gx / WATERBODIES.lake.scale, gy / WATERBODIES.lake.scale, 2),
   wet: (seed, gx, gy) => fbm(`${seed}:land:wet`, gx / WATERBODIES.swamp.scale, gy / WATERBODIES.swamp.scale),
 };
+// ---------------------------------------------------------------- world regions (release 569)
+// Tim, 2026-10-29: "when I look at the Atlas... with random tiles... it just kind of just looks muddied. And there's no clear
+// direction... we can have larger... regions... a random region size and type... I don't want all the sections to be like...
+// circles or squares or any kind of... uniform shape... there can also be... sections where they're just like random tiles. So
+// you never know what you're gonna get". Version 4 lays a deterministic map of regions over the world: one site per
+// `cell`×`cell` block of sections, jittered inside it, each with a type (weighted, `types`) and a weight that grows or shrinks
+// its share (a power diagram, so sizes vary from a handful of sections to dozens). Section coordinates are warped by noise
+// (`warp`, `warpScale`) before the nearest site is found, so borders wander. A region does not paint tiles: it leans the
+// landscape fields its way (`lean`), so the land inside it is that land and its edges blend over `blend` sections. "wild"
+// regions leave the fields alone (the old mix). Dream regions only stand past the Far Sleep's edge (elsewhere they are wild),
+// and the three plains (ash, glass, ember) also give their region one ground colour where no landscape lies. Within
+// `heartland` sections of Ember Refuge (straight-line) the old mix stands, and regions take hold over the next `fadeIn`.
+// Pure; cached per site cell.
+export const REGIONS = { heartland: 12, fadeIn: 4, cell: 9, jitter: .8, weightSpread: 3.5, warp: 3.2, warpScale: 7, blend: 1.4,
+  types: [["wild", 2.2], ["sea", 1.1], ["mountains", 1], ["desert", 1], ["alien", .8], ["swamp", .7], ["lakes", .6], ["isles", .6], ["dream", .45], ["ashfields", .7], ["glasslands", .6], ["emberlands", .6]],
+  lean: { sea: { ocean: .32 }, isles: { ocean: .2 }, mountains: { mountain: .3, ocean: -.25 }, desert: { desert: .3, ocean: -.25, wet: -.3, lake: -.2 },
+    alien: { alien: .3, ocean: -.2 }, swamp: { wet: .11, ocean: -.2, desert: -.3 }, lakes: { lake: .2, ocean: -.15 }, dream: { ocean: -.2, mountain: -.2 },
+    ashfields: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 }, glasslands: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 },
+    emberlands: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 },
+    forest: { ocean: -.15, desert: -.35, alien: -.3, wet: -.12, mountain: -.1, lake: -.05 }, frost: { desert: -.4, wet: -.3, alien: -.3, ocean: -.1, lake: .05 } }, // release 573 (version 5)
+  plains: { ashfields: "ash", glasslands: "glass", emberlands: "ember" } };
+const REGION_TOTAL = REGIONS.types.reduce((n, [, w]) => n + w, 0), siteCache = new Map();
+function regionSite(seed, cx, cy) {
+  const key = `${seed}:${cx}:${cy}`; let q = siteCache.get(key); if (q) return q;
+  const h = (k) => (hashSeed(`${seed}:region-site:v1:${cx}:${cy}:${k}`) % 10007) / 10007, C = REGIONS.cell, J = REGIONS.jitter;
+  let pick = h("type") * REGION_TOTAL, type = "wild"; for (const [t, w] of REGIONS.types) { if ((pick -= w) < 0) { type = t; break; } }
+  q = { x: (cx + .5 + (h("x") - .5) * J) * C, y: (cy + .5 + (h("y") - .5) * J) * C, w: (h("w") - .5) * REGIONS.weightSpread, type, id: `${cx},${cy}` };
+  siteCache.set(key, q); if (siteCache.size > 4096) siteCache.delete(siteCache.keys().next().value);
+  return q;
+}
+// The region at a point given in section units (tile / 32), with how firmly it holds there (1 inside, toward 0 at its edge).
+// Release 573 (Tim: "we should have some actual forest sections... there should be some ice regions... when you generate a
+// region, you can generate a name as well"): from version 5 some wild regions become forests or frostlands (`wildTo`, decided
+// per region by its own hash, so every other region keeps the type it had in version 4 and borders with older ground still
+// meet), and every region has a name (regionName).
+export const REGIONS_V5 = { wildTo: [["forest", .3], ["frost", .2]] };
+function wildRegionType(seed, id) {
+  let roll = (hashSeed(`${seed}:region-site:v5:${id}`) % 10007) / 10007;
+  for (const [t, p] of REGIONS_V5.wildTo) { if ((roll -= p) < 0) return t; }
+  return "wild";
+}
+export function regionAt(seed, sx, sy, version = 4) {
+  const W = REGIONS.warp, S = REGIONS.warpScale, wx = sx + (valueNoise(`${seed}:region:warp:x`, sx / S, sy / S) - .5) * 2 * W, wy = sy + (valueNoise(`${seed}:region:warp:y`, sx / S, sy / S) - .5) * 2 * W;
+  const C = REGIONS.cell, cx = Math.floor(wx / C), cy = Math.floor(wy / C); let best = null, bd = Infinity, second = Infinity;
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const q = regionSite(seed, cx + i, cy + j), d = Math.hypot(wx - q.x, wy - q.y) - q.w; if (d < bd) { second = bd; bd = d; best = q; } else if (d < second) second = d; }
+  let type = best.type; if (type === "dream" && Math.abs(sx) + Math.abs(sy) <= FAR_SLEEP_DEPTH + 1) type = "wild";
+  if (version >= 5 && type === "wild") type = wildRegionType(seed, best.id);
+  const ring = Math.hypot(sx, sy), fade = Math.max(0, Math.min(1, (ring - REGIONS.heartland) / REGIONS.fadeIn)); // the heartland round Ember Refuge keeps the old mix
+  return { id: best.id, type: fade > 0 ? type : "wild", hold: Math.min(1, (second - bd) / REGIONS.blend) * fade, gap: fade > 0 ? second - bd : Infinity };
+}
+// The region of a whole section (sampled at its centre).
+export const sectionRegion = (seed, rx, ry, version = 4) => regionAt(seed, rx + .5, ry + .5, version);
+// A region's name ("the Hollow Weald"), from its id and type: the same region always has the same name.
+export const REGION_NAMES = {
+  words: ["Hollow", "Long", "Quiet", "Ashen", "Pale", "Bitter", "Drowned", "Silver", "Lantern", "Broken", "Wandering", "Sleepless", "Rusted",
+    "Thorn", "Grey", "Ember", "Whispering", "Low", "High", "Far", "Old", "Salt", "Glass", "Weeping", "Iron", "Kindled", "Lost", "Endless",
+    "Hermit's", "Weaver's", "Cartographer's", "Saint's", "Antler", "Moth", "Bell", "Cinder", "Lonely", "Crooked", "Golden", "Hushed"],
+  nouns: { wild: ["Marches", "Reaches", "Tangle", "Wilds", "Borderlands", "Shifting Lands"], sea: ["Sea", "Deep", "Gulf", "Expanse", "Water"],
+    mountains: ["Peaks", "Spine", "Heights", "Teeth", "Range"], desert: ["Waste", "Dunes", "Barrens", "Sands", "Erg"], alien: ["Garden", "Bloom", "Lattice", "Strangeland", "Reef"],
+    swamp: ["Fen", "Mire", "Bog", "Sump", "Marsh"], lakes: ["Meres", "Lakes", "Tarns", "Waters"], isles: ["Isles", "Archipelago", "Scatter", "Keys"],
+    dream: ["Sleep", "Reverie", "Dreaming", "Slumber"], ashfields: ["Ashfields", "Cinderplain", "Greys"], glasslands: ["Glasslands", "Shards", "Mirrorfields"],
+    emberlands: ["Emberlands", "Kilnlands", "Smoulder"], forest: ["Wood", "Weald", "Forest", "Pines", "Greenwood"], frost: ["Frost", "Snows", "Rime", "Icefields", "Tundra"] },
+};
+export function regionName(seed, region) {
+  const h = hashSeed(`${seed}:region-name:v1:${region.id}`), N = REGION_NAMES, nouns = N.nouns[region.type] || N.nouns.wild;
+  return `the ${N.words[h % N.words.length]} ${nouns[Math.floor(h / N.words.length) % nouns.length]}`;
+}
+// The region under a tile, looked up once per 4×4 tiles (borders blend over ~45 tiles, so this is invisible) and kept in a
+// bounded cache, so generating a section costs a few hundred lookups, not thousands.
+const leanCache = new Map();
+function regionTile(seed, gx, gy, version = 4) {
+  const v = version >= 5 ? 5 : 4, cx = gx >> 2, cy = gy >> 2, key = `${seed}:${v}:${cx}:${cy}`; let r = leanCache.get(key);
+  if (!r) { r = regionAt(seed, (cx * 4 + 2) / 32, (cy * 4 + 2) / 32, v); leanCache.set(key, r); if (leanCache.size > 30000) leanCache.delete(leanCache.keys().next().value); }
+  return r;
+}
+function lean(seed, gx, gy, name, version) { if (version < 4) return 0; const r = regionTile(seed, gx, gy, version), d = REGIONS.lean[r.type]?.[name]; return d ? d * r.hold : 0; }
+const fieldAt = (name, seed, gx, gy, version) => field[name](seed, gx, gy) + lean(seed, gx, gy, name, version);
 // Version 2 sea level: the version 1 field bent by the continent field (seas), minus island lift. `open` is before islands.
+// Version 4 adds the region's lean.
 function seaLevel(seed, gx, gy, version) {
-  const base = field.ocean(seed, gx, gy);
+  const base = field.ocean(seed, gx, gy) + lean(seed, gx, gy, "ocean", version);
   if (version < 2) return { o: base, open: base };
   const open = base + (field.continent(seed, gx, gy) - .5) * WATERBODIES.continent.weight, isl = field.island(seed, gx, gy);
   return { o: open > T.beach && isl > WATERBODIES.island.threshold ? open - (isl - WATERBODIES.island.threshold) * WATERBODIES.island.lift : open, open };
@@ -96,20 +176,20 @@ export function biomeFor(seed, rx, ry, version = LANDSCAPE_VERSION) {
     if (open > T.ocean && o <= T.beach) return "isles";
     if (o > T.ocean) return "coast";
   } else if (field.ocean(seed, gx, gy) > T.ocean) return "coast";
-  if (field.mountain(seed, gx, gy) > T.mountain) return "mountains";
+  if (fieldAt("mountain", seed, gx, gy, version) > T.mountain) return "mountains";
   if (castleSection(seed, rx, ry)) return "castle";
-  if (field.alien(seed, gx, gy) > T.alien) return "alien";
-  if (field.desert(seed, gx, gy) > T.desert) return "desert";
+  if (fieldAt("alien", seed, gx, gy, version) > T.alien) return "alien";
+  if (fieldAt("desert", seed, gx, gy, version) > T.desert) return "desert";
   if (version >= 2) {
-    if (field.lake(seed, gx, gy) > WATERBODIES.lake.rim) return "lake";
-    const wet = field.wet(seed, gx, gy);
+    if (fieldAt("lake", seed, gx, gy, version) > WATERBODIES.lake.rim) return "lake";
+    const wet = fieldAt("wet", seed, gx, gy, version);
     if (wet > WATERBODIES.swamp.blight) return "blight";
     if (wet > WATERBODIES.swamp.threshold) return "swamp";
   }
   // A section can still touch a neighbouring biome's edge (coastline, foothills); report that for the atlas.
   for (const [dx, dy] of [[-12, 0], [12, 0], [0, -12], [0, 12]]) {
     if (seaLevel(seed, gx + dx, gy + dy, version).o > T.beach) return "coast";
-    if (field.mountain(seed, gx + dx, gy + dy) > T.mountain) return "mountains";
+    if (fieldAt("mountain", seed, gx + dx, gy + dy, version) > T.mountain) return "mountains";
   }
   return null;
 }
@@ -211,7 +291,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   const edgeMask = !openEdges || openSea || full ? mask : protectedMask(map, { border: false });
   for (let y = lo; y < hi; y++) for (let x = lo; x < hi; x++) {
     const i = idx(x, y), t = map.tiles[i], gx = rx * 32 + x, gy = ry * 32 + y, d = hashSeed(`${seed}:land:detail:${gx}:${gy}`) % 997;
-    const prot = mask[i] === 1, o = seaLevel(seed, gx, gy, version).o, m = field.mountain(seed, gx, gy), a = field.alien(seed, gx, gy), s = field.desert(seed, gx, gy);
+    const prot = mask[i] === 1, o = seaLevel(seed, gx, gy, version).o, m = fieldAt("mountain", seed, gx, gy, version), a = fieldAt("alien", seed, gx, gy, version), s = fieldAt("desert", seed, gx, gy, version);
     // Borders open only to water (release 211, Tim 2026-10-19). Before, only deep sea reached a border, and only in sea
     // sections; a shallow channel or a lake reaching the edge kept the section wall there and stopped skiffs. In version
     // 3 (the current landscape, explored sections included, at Tim's request: it only removes walls where water runs on
@@ -220,7 +300,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
     if ((x === 0 || y === 0 || x === 31 || y === 31) && openEdges) {
       if (edgeMask[i] === 1) continue;
       if (o <= SHALLOWS_FROM) {
-        const lk = v2 ? field.lake(seed, gx, gy) : 0;
+        const lk = v2 ? fieldAt("lake", seed, gx, gy, version) : 0;
         if (lk > W.lake.rim) { setTile(map, x, y, lk > W.lake.water ? { kind: "lakeWater", blocked: true, elev: 0, landscape: "lake", detail: d } : { kind: "shallows", blocked: false, elev: 0, landscape: "lake", detail: d }); touched++; }
         continue;
       }
@@ -254,12 +334,12 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
       touched++; continue;
     }
     if (!v2) continue;
-    const lk = field.lake(seed, gx, gy);
+    const lk = fieldAt("lake", seed, gx, gy, version);
     if (lk > W.lake.rim) {
       setTile(map, x, y, lk > W.lake.water && !prot ? { kind: "lakeWater", blocked: true, elev: 0, landscape: "lake", detail: d } : { kind: "shallows", blocked: false, elev: 0, landscape: "lake", detail: d });
       touched++; continue;
     }
-    const wet = field.wet(seed, gx, gy);
+    const wet = fieldAt("wet", seed, gx, gy, version);
     if (wet > W.swamp.threshold) {
       const blight = wet > W.swamp.blight, pool = valueNoise(`${seed}:land:mire`, gx / W.swamp.poolScale, gy / W.swamp.poolScale);
       const kind = pool > W.swamp.pool && !prot ? (blight ? "toxicWater" : "swampWater") : pool > W.swamp.mire ? (blight ? "toxicMire" : "mireWater") : (blight ? "toxicBog" : "bogGround");
@@ -267,6 +347,11 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
       touched++;
     }
   }
+  if (version >= 4) { // release 569: a plains region keeps one ground colour where no landscape lies
+    const plain = REGIONS.plains[sectionRegion(seed, rx, ry).type];
+    if (plain) { for (const t of map.tiles) if (!t.landscape && !t.structure && !t.buildingId && (t.kind === "ash" || t.kind === "glass" || t.kind === "ember")) t.kind = plain; map.dominant = plain; }
+  }
+  if (version >= 5 && !full) touched += applyWoodsAndFrost(map, seed, rx, ry, mask, hamlet); // release 573
   if (biome === "castle") touched += buildCastle(map, seed, rx, ry, protectedMask(map, { spawns: false, ruins: false, decor: false }));
   if (!touched) return map;
   if (biome === "mountains" && hashSeed(`${seed}:land:volcano:${rx}:${ry}`) % 3 === 0) buildVolcano(map, seed, rx, ry, mask);
@@ -287,7 +372,8 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   if (v2) placeIslandLandmark(map, seed, rx, ry);
   if (version >= 3) placeDock(map, seed, rx, ry, reachableFromPlaza(map));
   if (biome === "mountains") map.weather = "snow";
-  map.landscape = { version, biome: biome || dominantLandscape(map), name: BIOMES[biome || dominantLandscape(map)]?.name || null, ...(openSea ? { openSea: full ? "open" : "coast" } : {}) };
+  if (version >= 5) for (const t of map.tiles) if (t.landscape === "mountains" && (t.kind === "alpineGrass" || t.kind === "mountainRock") && regionTile(seed, rx * 32 + t.x, ry * 32 + t.y, 5).type === "frost") t.kind = "snowRock"; // release 573: frost mountains are snowbound
+  map.landscape = { version, biome: biome || dominantLandscape(map), name: (BIOMES[biome || dominantLandscape(map)] || REGION_GROUNDS[biome || dominantLandscape(map)])?.name || null, ...(openSea ? { openSea: full ? "open" : "coast" } : {}) };
   return map;
 }
 
@@ -312,6 +398,47 @@ export function placeIslandLandmark(map, seed, rx, ry) {
   return o;
 }
 
+// ---------------------------------------------------------------- forests and frostlands (release 573, version 5)
+// Tim: "we should have some actual forest sections where there's just... a bunch of trees... that you can chop down. It can
+// be passed through... some taller trees... that reach beyond the frame... you can walk behind them... maybe you can see
+// like a silhouette" and "there should be some ice regions". Inside a forest region the bare ground turns to forest floor and
+// trees stand thick (`density`, opened into clearings by noise, at most `max`), each one a tree you can cut for wood or walk
+// between; about one in `giantEvery` is a giant whose crown rises out of view (no two within `giantGap` tiles). A section
+// with a hamlet keeps its ground clear. Inside a frost region the bare ground is snow, lakes are frozen over and walkable,
+// low mountain slopes are snowbound and ice spires stand here and there. Trees also grow on the firm ground of a fen in a forest. Regions are read per tile, so their edges wander
+// through a section.
+export const WOODS = { density: .46, clearing: { scale: 5, below: .3 }, max: 140, giantEvery: 8, giantGap: 4, giantWood: 5, forms: ["canopy", "canopy", "spindle", "shrub"] };
+export const FROST = { spire: { scale: 1.9, above: .86 } };
+const BARE_GROUND = new Set(["ash", "glass", "ember"]);
+function applyWoodsAndFrost(map, seed, rx, ry, mask, hamlet) {
+  let touched = 0; const grove = [];
+  for (const t of map.tiles) {
+    if (t.structure || t.buildingId || t.blocked && !t.landscape) continue;
+    const gx = rx * 32 + t.x, gy = ry * 32 + t.y, type = regionTile(seed, gx, gy, 5).type;
+    if (type === "forest" && !t.landscape && BARE_GROUND.has(t.kind)) { t.kind = "forestFloor"; t.landscape = "forest"; touched++; if (!mask[idx(t.x, t.y)]) grove.push(t); }
+    else if (type === "forest" && t.kind === "bogGround" && !mask[idx(t.x, t.y)]) grove.push(t); // swamp woods
+    else if (type === "frost") {
+      if (!t.landscape && BARE_GROUND.has(t.kind)) {
+        const spire = !mask[idx(t.x, t.y)] && valueNoise(`${seed}:frost:spire`, gx / FROST.spire.scale, gy / FROST.spire.scale) > FROST.spire.above;
+        Object.assign(t, spire ? { kind: "iceSpire", blocked: true, landscape: "frost" } : { kind: "snowField", landscape: "frost" }); touched++;
+      } else if (t.landscape === "lake" && (t.kind === "lakeWater" || t.kind === "shallows")) { Object.assign(t, { kind: "lakeIce", blocked: false, landscape: "frost" }); touched++; }
+    }
+  }
+  if (hamlet || !grove.length) return touched;
+  const W = WOODS, giants = [], made = [];
+  for (const t of grove) {
+    const gx = rx * 32 + t.x, gy = ry * 32 + t.y, h = hashSeed(`${seed}:woods:v1:${gx}:${gy}`);
+    if (valueNoise(`${seed}:woods:clearing`, gx / W.clearing.scale, gy / W.clearing.scale) < W.clearing.below || (h % 1000) / 1000 >= W.density) continue;
+    made.push([t, h]);
+  }
+  made.sort((a, b) => (a[1] >>> 7) % 9973 - (b[1] >>> 7) % 9973);
+  for (const [t, h] of made.slice(0, W.max)) {
+    const giant = (h >>> 11) % W.giantEvery === 0 && !giants.some((q) => Math.hypot(q.x - t.x, q.y - t.y) < W.giantGap), form = giant ? "giant" : W.forms[(h >>> 4) % W.forms.length];
+    if (giant) giants.push(t);
+    map.objects.push({ id: `wood-${rx}-${ry}-${t.x}-${t.y}`, kind: "tree", x: t.x, y: t.y, state: "standing", actions: ["cut", "ignite"], environmental: true, forest: true, vegetationForm: form, ...(giant ? { wood: W.giantWood } : {}), scale: giant ? 1 : form === "canopy" ? 1.25 : form === "shrub" ? .72 : 1.05 });
+  }
+  return touched;
+}
 function dominantLandscape(map) {
   const count = {};
   for (const t of map.tiles) if (t.landscape) count[t.landscape] = (count[t.landscape] || 0) + 1;
@@ -592,7 +719,7 @@ export function canStep(entity, map, width, fromX, fromY, toX, toY) {
   if (diff === 1) return !!entity.jumping;
   return diff < 0; // dropping off a ledge: the game applies fall damage by height
 }
-export function isLandscapeKind(kind) { return WALKABLE_LANDSCAPE.has(kind) || [...DEEP_WATER, "crag", "crystalSpire", "alienPool", "castleWall", "castleTower", "castleKeep", "lava"].includes(kind); }
+export function isLandscapeKind(kind) { return WALKABLE_LANDSCAPE.has(kind) || [...DEEP_WATER, "crag", "crystalSpire", "alienPool", "castleWall", "castleTower", "castleKeep", "lava", "iceSpire"].includes(kind); }
 export function elevationAt(map, width, x, y) { return map?.landscape ? (tileUnder(map, width, x, y)?.elev || 0) : 0; }
 
 // ---------------------------------------------------------------- the Far Sleep (release 305)
@@ -611,11 +738,24 @@ export function elevationAt(map, width, x, y) { return map?.landscape ? (tileUnd
 // pockets (dreamPocket); every other far section keeps the ordinary land its biome gives it. The pockets follow a broad noise
 // near the edge of the Far Sleep and scatter more the farther out you go (a per-section roll weighs in up to `scatterMax`,
 // reached `scatterOver` sections past the edge): roughly a quarter of far sections dream. Ground is drawn as in version 2.
-export const DREAM_VERSION = 3;
+// Release 569: version 4 follows the world regions: a dream region dreams whole, a wild region keeps version 3's scattered
+// pockets, and every other region stays its own land.
+export const DREAM_VERSION = 4;
 export const DREAM_POCKETS = { scale: 4, above: .62, scatterMax: .5, scatterOver: 120 };
 export const FAR_SLEEP_DEPTH = 35; // lore.ts READING_BANDS.far
 export const DREAM = { name: "The Far Sleep", voidScale: 5, voidAbove: .72, terraceScale: 7, terraces: [.5, .64], stoneScale: 1.6, stoneAbove: .88 };
-export const DREAM_BY_VERSION = { 1: {}, 2: { voidAbove: .82, terraces: [.62, .8], stoneAbove: .955 }, 3: { voidAbove: .82, terraces: [.62, .8], stoneAbove: .955 } };
+export const DREAM_BY_VERSION = { 1: {}, 2: { voidAbove: .82, terraces: [.62, .8], stoneAbove: .955 }, 3: { voidAbove: .82, terraces: [.62, .8], stoneAbove: .955 }, 4: { voidAbove: .82, terraces: [.62, .8], stoneAbove: .955 } };
+// Dream seams (release 569; Tim: "the dreaming can be like a boundary between many regions... a connective glue... it isn't as
+// rigidly fixed to the... laws of that reality... like a river... not always thick layers of dreaming... interspersed between
+// the sections"): past `minDepth`, a section on the border between two regions (within `width` sections of it) dreams where a
+// broad noise lets it (`broken`), so the dream runs along the seams of the world in broken veins.
+export const DREAM_SEAMS = { minDepth: 24, width: .6, scale: 4, broken: .42 };
+export function dreamSeam(seed, rx, ry) {
+  if (Math.abs(rx) + Math.abs(ry) <= DREAM_SEAMS.minDepth) return false;
+  return sectionRegion(seed, rx, ry).gap < DREAM_SEAMS.width && valueNoise(`${seed}:dream:seam`, rx / DREAM_SEAMS.scale, ry / DREAM_SEAMS.scale) > DREAM_SEAMS.broken;
+}
+// Release 573: on ground laid out at landscape version 5 (`land`), a forest or frostland keeps its own ground: only a seam dreams there.
+export function dreamsHere(seed, rx, ry, version, land = 4) { if (version < 3) return true; if (version < 4) return dreamPocket(seed, rx, ry); const t = sectionRegion(seed, rx, ry, land).type; return t === "dream" || dreamSeam(seed, rx, ry) || (t === "wild" && dreamPocket(seed, rx, ry)); }
 export function dreamPocket(seed, rx, ry) {
   const depth = Math.abs(rx) + Math.abs(ry), P = DREAM_POCKETS; if (depth <= FAR_SLEEP_DEPTH) return false;
   const w = Math.min(P.scatterMax, (depth - FAR_SLEEP_DEPTH) / P.scatterOver), roll = (hashSeed(`${seed}:dream:pocket:${rx}:${ry}`) % 10007) / 10007;
@@ -623,7 +763,7 @@ export function dreamPocket(seed, rx, ry) {
 }
 export function farSleepSection(rx, ry) { return Math.abs(rx) + Math.abs(ry) > FAR_SLEEP_DEPTH; }
 export function applyDream(map, seed, rx, ry, version = DREAM_VERSION) {
-  if (!version || !map || map.settlement || !farSleepSection(rx, ry) || map.tiles?.length !== 1024 || (version >= 3 && !dreamPocket(seed, rx, ry))) return map;
+  if (!version || !map || map.settlement || (version < 4 && !farSleepSection(rx, ry)) || map.tiles?.length !== 1024 || !dreamsHere(seed, rx, ry, version, map.landscape?.version || 4)) return map; // 569: seams may dream a little nearer (DREAM_SEAMS.minDepth)
   const mask = protectedMask(map, { border: true }), D = { ...DREAM, ...(DREAM_BY_VERSION[version] || {}) }, sea = !!map.openSea; // at sea only the islands dream
   if (sea) {
     for (const t of map.tiles) if (t.x > 0 && t.y > 0 && t.x < 31 && t.y < 31 && !t.blocked && !t.structure && !t.buildingId && !t.environment && t.kind !== "bridge" && t.kind !== "dock" && t.kind !== "shallows" && !Number.isInteger(t.ruin))

@@ -8,11 +8,11 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand } from "./items.js?v=r565-5fc233965fde";
-import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r565-5fc233965fde";
-import { pairingMods } from "./spell-slots.js?v=r565-5fc233965fde";
-import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r565-5fc233965fde";
-import { fieldForm } from "./lattice-fields.js?v=r565-5fc233965fde";
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand } from "./items.js?v=r577-1b61c41bd892";
+import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r577-1b61c41bd892";
+import { pairingMods } from "./spell-slots.js?v=r577-1b61c41bd892";
+import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r577-1b61c41bd892";
+import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r577-1b61c41bd892";
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 
@@ -90,6 +90,15 @@ export function passiveForm(key) {
   return alt ? { id, alt: true, name: ALT_PASSIVES[id].name, text: ALT_PASSIVES[id].text } : { id, alt: false, name: node.name, text: node.text };
 }
 export const PASSIVE_KEYS = Object.values(BRANCHES).flatMap((b) => [b.mod, ...b.caps]).flatMap((n) => [n.id, `${n.id}:alt`]);
+// Release 575 (Tim: the Lattice's passives "based on the skill that they benefit... underneath it... the passives for spells...
+// for skills... the general passives"): every Lattice passive key in one group. Each skill holds its discipline's modifier and
+// capstones (both forms); Spells holds the field passives, Tools the tool forms, General whatever is always on.
+export function latticePassiveGroups() {
+  const general = [], groups = BRANCH_IDS.map((bid) => { const b = BRANCHES[bid], keys = [];
+    for (const n of [b.mod, ...b.caps]) for (const key of [n.id, `${n.id}:alt`]) ((key.endsWith(":alt") ? ALT_PASSIVES[n.id]?.kind : NODE_EFFECTS[n.id]?.kind) === "always" ? general : keys).push(key);
+    return { id: bid, skill: true, title: APERTURE_SKILLS[b.active].name, sub: "", keys }; });
+  return [...groups, { id: "spells", title: "Spells", sub: "While your spells run or linger", keys: FIELD_KEYS }, { id: "tools", title: "Tools", sub: "Tool forms", keys: TOOL_FORM_KEYS }, { id: "general", title: "General", sub: "Always on", keys: general }];
+}
 export function toggleLatticePassive(save, key) {
   const f = passiveForm(key); if (!f) return { ok: false, message: "That is not a passive." };
   if (f.field) return toggleLatticeSlot(save, "passive", key, f.name); // release 515: nothing to learn first

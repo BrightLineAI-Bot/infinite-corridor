@@ -1,21 +1,21 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r565-5fc233965fde";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r565-5fc233965fde";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r565-5fc233965fde";
-import { enemyMeleeGeometry } from "./combat.js?v=r565-5fc233965fde";
-import { ruleRows } from "./elders.js?v=r565-5fc233965fde";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r565-5fc233965fde";
-import { BOAT } from "./boats.js?v=r565-5fc233965fde";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r565-5fc233965fde";
-import { isMarineTile } from "./world-beasts.js?v=r565-5fc233965fde";
-import { jumpLift } from "./game.js?v=r565-5fc233965fde";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r565-5fc233965fde";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r565-5fc233965fde";
-import { liftAt, tileUnder } from "./landscape.js?v=r565-5fc233965fde";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r565-5fc233965fde";
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r565-5fc233965fde";
-import { drawRelayNode } from "./relay-network.js?v=r565-5fc233965fde";
-import { structureOccupancy } from "./world.js?v=r565-5fc233965fde";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r565-5fc233965fde";
+import { astralBeamAnchors } from "./astral-worm.js?v=r577-1b61c41bd892";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r577-1b61c41bd892";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r577-1b61c41bd892";
+import { enemyMeleeGeometry } from "./combat.js?v=r577-1b61c41bd892";
+import { ruleRows } from "./elders.js?v=r577-1b61c41bd892";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r577-1b61c41bd892";
+import { BOAT } from "./boats.js?v=r577-1b61c41bd892";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r577-1b61c41bd892";
+import { isMarineTile } from "./world-beasts.js?v=r577-1b61c41bd892";
+import { jumpLift } from "./game.js?v=r577-1b61c41bd892";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r577-1b61c41bd892";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r577-1b61c41bd892";
+import { liftAt, tileUnder } from "./landscape.js?v=r577-1b61c41bd892";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r577-1b61c41bd892";
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r577-1b61c41bd892";
+import { drawRelayNode } from "./relay-network.js?v=r577-1b61c41bd892";
+import { structureOccupancy } from "./world.js?v=r577-1b61c41bd892";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r577-1b61c41bd892";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -945,6 +945,25 @@ export function drawDigSpot(ctx, o, s, now) {
   for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + .4; ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * s * .5, cy + Math.sin(a) * s * .25, s * .07, s * .05, a, 0, 7); ctx.fill(); }
   ctx.restore();
 }
+// Release 573 (Tim: "taller trees... that reach beyond the frame... you can't see the tops of some of them... you can walk
+// behind them... maybe you can see like a silhouette"): a giant forest tree, its trunk `height` tiles tall and its crown above.
+// The Wayfarer behind one is drawn again, faint (`ghost`), over it (giantTreeHides).
+export const GIANT_TREE = { height: 9, trunk: .36, crown: 2.3, sway: .06, ghost: .45 };
+export function drawGiantTree(ctx, o, s, now) {
+  const G = GIANT_TREE, k = (o.x + .5) * s, base = (o.y + .82) * s, top = base - G.height * s, w = G.trunk * s, sway = Math.sin(now / 1900 + o.x * 1.7 + o.y) * G.sway * s;
+  ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(k, base, s * .9, s * .26, 0, 0, 7); ctx.fill();
+  const bark = ctx.createLinearGradient(k - w, 0, k + w, 0); bark.addColorStop(0, "#2a1e15"); bark.addColorStop(.45, "#5a4330"); bark.addColorStop(1, "#22180f");
+  ctx.fillStyle = bark; ctx.beginPath(); ctx.moveTo(k - w * 1.6, base); ctx.quadraticCurveTo(k - w, base - s * .5, k - w * .8, base - s); ctx.lineTo(k - w * .55 + sway, top + s); ctx.lineTo(k + w * .55 + sway, top + s); ctx.lineTo(k + w * .8, base - s); ctx.quadraticCurveTo(k + w, base - s * .5, k + w * 1.6, base); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#1a120c99"; ctx.lineWidth = Math.max(1, s * .03); for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(k + i * w * .4, base - s * .2); ctx.lineTo(k + i * w * .3 + sway * .8, top + s * 1.5); ctx.stroke(); }
+  ctx.strokeStyle = "#3d2c1f"; ctx.lineWidth = Math.max(2, s * .1); for (const [h, d] of [[.42, -1], [.58, 1], [.72, -1]]) { const y = base - G.height * s * h, x = k + sway * h; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + d * s * .8, y - s * .3, x + d * s * 1.5, y - s * .9); ctx.stroke(); ctx.fillStyle = "#24402a"; ctx.beginPath(); ctx.arc(x + d * s * 1.5, y - s * .95, s * .55, 0, 7); ctx.fill(); }
+  const cx = k + sway, cy = top, R = G.crown * s;
+  for (const [dx, dy, r, c] of [[-.55, .35, .75, "#1e3a24"], [.6, .4, .7, "#1e3a24"], [0, 0, 1, "#26482b"], [-.35, -.35, .7, "#2f5733"], [.4, -.3, .62, "#2f5733"], [0, -.62, .5, "#3a6a3c"]]) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx + dx * R, cy + dy * R, r * R, 0, 7); ctx.fill(); }
+}
+// Does a giant tree at `o` stand in front of the Wayfarer at `p` (drawn over them)?
+export function giantTreeHides(o, p) {
+  if (!(o.y > p.y)) return false; const G = GIANT_TREE, px = p.x + .5, py = p.y + .35, tx = o.x + .5, base = o.y + .82;
+  return (Math.abs(px - tx) < G.trunk + .3 && py < base && py > base - G.height) || Math.hypot(px - tx, py - (base - G.height)) < G.crown * 1.05;
+}
 export function drawStrange(ctx, o, s, kind, now) {
   const T = now / 1000 + (o.x * 7 + o.y * 13) % 10, drift = Math.sin(T * .7) * .09, flick = Math.sin(T * 9) * Math.sin(T * 2.3) > .9 ? .35 : 1;
   ctx.save(); ctx.globalAlpha = flick; actor(ctx, o.x, o.y, s, kind, "down", 0, o.state || "idle", false, o.scale || 1); ctx.restore();
@@ -1199,6 +1218,10 @@ function actor(
     } else if (kind === "listenerDais") { // release 375: a round dais of dark glass, its rim lit, a column of the line above it
       const t=performance.now()/1000,pulse=.5+.5*Math.sin(t*3);ctx.fillStyle="#120f18";ctx.beginPath();ctx.ellipse(k,base-s*.2,s*.48,s*.2,0,0,7);ctx.fill();ctx.strokeStyle=`rgba(201,166,255,${.55+.4*pulse})`;ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.ellipse(k,base-s*.2,s*.42,s*.16,0,0,7);ctx.stroke();
       ctx.lineWidth=Math.max(1,s*.03);ctx.beginPath();ctx.ellipse(k,base-s*.2,s*.24,s*.09,t%6.3,0,4.2);ctx.stroke();const g=ctx.createLinearGradient(0,base-s*1.6,0,base-s*.2);g.addColorStop(0,"rgba(201,166,255,0)");g.addColorStop(1,`rgba(201,166,255,${.25+.25*pulse})`);ctx.fillStyle=g;ctx.fillRect(k-s*.18,base-s*1.6,s*.36,s*1.4);
+    } else if (kind === "skyStair") { // release 571: pale steps climbing into the air, a glow where they end
+      const t=performance.now()/1000,pulse=.5+.5*Math.sin(t*2);ctx.fillStyle="#00000044";ctx.beginPath();ctx.ellipse(k,base,s*.42,s*.12,0,0,7);ctx.fill();
+      for(let i=0;i<5;i++){const w=s*(.5-i*.07),y=base-s*(.12+i*.22);ctx.fillStyle=i%2?"#e8e2f4":"#d4cce6";ctx.fillRect(k-w/2,y-s*.12,w,s*.14);ctx.fillStyle="#9c93b866";ctx.fillRect(k-w/2,y,w,s*.03)}
+      const g=ctx.createRadialGradient(k,base-s*1.35,0,k,base-s*1.35,s*.5);g.addColorStop(0,`rgba(255,244,214,${.55+.35*pulse})`);g.addColorStop(1,"rgba(255,244,214,0)");ctx.fillStyle=g;ctx.beginPath();ctx.arc(k,base-s*1.35,s*.5,0,7);ctx.fill();
     } else if (kind === "listeningStone") { // release 373: a dark standing stone with the Listener's violet, ringed like an ear
       ctx.fillStyle="#00000055";ctx.beginPath();ctx.ellipse(k,base,s*.36,s*.1,0,0,7);ctx.fill();
       ctx.fillStyle="#1c1726";ctx.beginPath();ctx.moveTo(k-s*.26,base);ctx.lineTo(k-s*.18,base-s*1.15);ctx.lineTo(k,base-s*1.32);ctx.lineTo(k+s*.18,base-s*1.15);ctx.lineTo(k+s*.26,base);ctx.closePath();ctx.fill();ctx.strokeStyle="#3b3550";ctx.lineWidth=Math.max(1,s*.04);ctx.stroke();
@@ -1518,7 +1541,7 @@ export function render(ctx, g, w, h, now) {
   if (g.area === "dungeon" && g.map.wallGlints?.length) for (const q of g.map.wallGlints) if (visibleInCamera(q, l, t, r, b) && discoveredInDungeon(g, q)) drawWallGlint(ctx, q, s, now); // release 225
   const draws = [];
   for (const o of g.map.objects)
-    if (renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden")&&(renderCacheStats.visibleObjects++,true))
+    if (renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.vegetationForm==="giant"?GIANT_TREE.height+3:2)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden")&&(renderCacheStats.visibleObjects++,true))
       draws.push({
         y: o.y, x: o.x,
         fn: () => {
@@ -1617,6 +1640,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillStyle = "#d2c090";
             ctx.font = "10px monospace";
             ctx.fillText("RELAY", o.x * s, (o.y - 0.3) * s);
+          } else if (o.kind === "tree" && o.vegetationForm === "giant" && o.state === "standing" && !o.strange) { drawGiantTree(ctx, o, s, now); // release 573
           } else {const kind=o.kind==="tree"&&o.vegetationForm==="shrub"?"treeShrub":o.kind==="tree"&&o.vegetationForm==="spindle"?"treeSpindle":o.kind;if(o.strange&&!o.strangeUsed)drawStrange(ctx,o,s,kind,now);else actor(ctx,o.x,o.y,s,kind,"down",0,o.state||"idle",false,o.scale||1);}
         },
       });
@@ -1670,7 +1694,7 @@ export function render(ctx, g, w, h, now) {
           }
         },
       });
-  draws.push({
+  const playerDraw = {
     y: p.y, x: p.x,
     fn: () => {
       if (jumping) {
@@ -1766,11 +1790,16 @@ export function render(ctx, g, w, h, now) {
         ctx.stroke();
       }
     },
-  });
+  };
+  draws.push(playerDraw);
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) {
     const raise = Number.isFinite(d.x) ? groundLift(d.x, d.y) : 0;
     if (raise) { ctx.save(); ctx.translate(0, -raise * s); d.fn(); ctx.restore(); } else d.fn();
+  }
+  // Release 573: behind a giant tree the Wayfarer shows through, faint.
+  if (g.area === "overworld" && g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p))) {
+    const raise = groundLift(p.x, p.y); ctx.save(); ctx.globalAlpha = GIANT_TREE.ghost; if (raise) ctx.translate(0, -raise * s); playerDraw.fn(); ctx.restore();
   }
   // Under water (W5): a blue-green wash with slow light shafts.
   if (g.map?.underwater) {

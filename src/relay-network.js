@@ -7,8 +7,8 @@
 //
 // DRAFT NARRATIVE: the fragment texts below are placeholders written to fit the existing lore. The operator owns the
 // relay story; rewrite FRAGMENTS freely. The mechanics never depend on their wording.
-import { hashSeed } from "./random.js?v=r565-5fc233965fde";
-import { listenerReturns } from "./far-array.js?v=r565-5fc233965fde";
+import { hashSeed } from "./random.js?v=r577-1b61c41bd892";
+import { listenerReturns } from "./far-array.js?v=r577-1b61c41bd892";
 
 export const RELAY_VERSION = 1;
 // Relay placement v2 (release 142): Wolfram's Rule 110, a class IV ("complex") cellular automaton. Each row of sections
@@ -90,7 +90,7 @@ export const FRAGMENTS = [
   "…signal steady. Coordinate holding. Come alone, Wayfarer. Come before it learns your name…",
 ];
 
-const ELIGIBLE = (areaId) => !/^(far-array:|hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:)/.test(areaId) && !areaId.includes(":deep-v") && !areaId.includes("aperture-annex");
+const ELIGIBLE = (areaId) => !/^(far-array:|hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:|skyland:)/.test(areaId) && !areaId.includes(":deep-v") && !areaId.includes("aperture-annex");
 
 export function relayCoordinate(save) { const c = hashSeed(`${save.seed}:relay-coordinate`); return { rx: (c % 2 ? 1 : -1) * (40 + c % 23), ry: ((c >>> 3) % 2 ? 1 : -1) * (40 + (c >>> 5) % 23) }; }
 export function ensureRelayNetwork(save) {

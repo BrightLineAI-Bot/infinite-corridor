@@ -7,9 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r565-5fc233965fde";
-import { hashSeed } from "./random.js?v=r565-5fc233965fde";
-import { updateAstralActor } from "./astral-worm.js?v=r565-5fc233965fde";
+import { stageOneBeastReference } from "./stages.js?v=r577-1b61c41bd892";
+import { hashSeed } from "./random.js?v=r577-1b61c41bd892";
+import { updateAstralActor } from "./astral-worm.js?v=r577-1b61c41bd892";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -2051,7 +2051,7 @@ function tentacleTurret(e, s, w, p) {
 // Tremor Worm swims there under the ground, leaving a wake of churned earth. The game reads `fleeDone`.
 function fleeStep(e, s, w) {
   if (s.attack) endAttack(e, s);
-  s.evade = null; s.tele = null; e.untargetable = true; e.hidden = e.kind === "tremorWorm"; e.tucked = false; e.mist = e.kind === "nanobotKnight"; // the Knight goes home as a swarm
+  s.evade = null; s.tele = null; e.untargetable = true; e.hidden = e.kind === "tremorWorm" && !e.passingBeast; /* release 569: a passing worm stays in sight */ e.tucked = false; e.mist = e.kind === "nanobotKnight"; // the Knight goes home as a swarm
   if (e.fleeFade != null) { e.hopLift = 0; e.fleeFade = Math.max(0, e.fleeFade - w.dt / (e.fleeFadeTime || 1.4)); if (e.fleeFade <= 0) e.fleeDone = true; return; }
   const next = e.fleePath?.[0] || e.fleeTo, dx = next.x - e.x, dy = next.y - e.y, d = Math.hypot(dx, dy), step = (e.fleeSpeed || 2) * w.dt;
   e.hopLift = next.leap ? Math.min(1, (Number(e.hopLift) || 0) + w.dt * 4) : Math.max(0, (Number(e.hopLift) || 0) - w.dt * 4); // a bound over the chasm

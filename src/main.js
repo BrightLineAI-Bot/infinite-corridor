@@ -1,38 +1,40 @@
-import { BOAT, forgeSubmersible } from "./boats.js?v=r565-5fc233965fde"; // release 311
-import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.js?v=r565-5fc233965fde";
-import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r565-5fc233965fde"; // release 393; 541: preset gear
-import { SLING, ensureSling, toSling, fromSling, equipFromSling } from "./sling.js?v=r565-5fc233965fde"; // release 543
-import { surveyorChainPath, surveyorComplete } from "./surveyor.js?v=r565-5fc233965fde"; // release 551; 559
-import { SMITHY, smithOpen, salvageItem, reforgeAffix, addSocket, masterwork } from "./smithy.js?v=r565-5fc233965fde";
-import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } from "./meals.js?v=r565-5fc233965fde"; // release 447
-import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.js?v=r565-5fc233965fde"; // release 459 // release 395 // release 315; 321: the drone
-import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.js?v=r565-5fc233965fde"; // release 339; 341
-import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind } from "./building.js?v=r565-5fc233965fde";
-import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.js?v=r565-5fc233965fde";
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r565-5fc233965fde";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r565-5fc233965fde";
-import { renderTimings } from "./renderer.js?v=r565-5fc233965fde";
-import { createProbe, PROBE } from "./diagnostic-probe.js?v=r565-5fc233965fde";
-import { vendorShop, buyFromVendor, walkerCrossingMap } from "./game.js?v=r565-5fc233965fde";
-import { sectionAtlasColor } from "./atlas-colors.js?v=r565-5fc233965fde";
-import { CREATURE_TRAITS } from "./combat.js?v=r565-5fc233965fde";
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass } from "./monster-pack.js?v=r565-5fc233965fde"; // release 403: staggerClass marks bosses on the dungeon map
-import { drawPackPortrait } from "./monster-render.js?v=r565-5fc233965fde";
-import { landscapeAtlasColor } from "./landscape-render.js?v=r565-5fc233965fde";
-import { hashSeed } from "./random.js?v=r565-5fc233965fde";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r565-5fc233965fde";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r565-5fc233965fde";
-import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r565-5fc233965fde";
-import { linksKnown } from "./linked-dungeons.js?v=r565-5fc233965fde";
-import { DIG } from "./digging.js?v=r565-5fc233965fde";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark } from "./atlas-view.js?v=r565-5fc233965fde";
-import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.js?v=r565-5fc233965fde";
-import { startGlimpse, paintRule } from "./glimpse-render.js?v=r565-5fc233965fde";
-import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r565-5fc233965fde";
-import { relayRuleAt, crossingSection, knownRelaySections } from "./relay-network.js?v=r565-5fc233965fde";
-import { questingBeastTriesLeft } from "./questing-beast.js?v=r565-5fc233965fde";
-import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding, relaysUntilReturn } from "./far-array.js?v=r565-5fc233965fde";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r565-5fc233965fde";
+import { BOAT, forgeSubmersible } from "./boats.js?v=r577-1b61c41bd892"; // release 311
+import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.js?v=r577-1b61c41bd892";
+import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r577-1b61c41bd892"; // release 393; 541: preset gear
+import { SLING, ensureSling, toSling, fromSling, equipFromSling } from "./sling.js?v=r577-1b61c41bd892"; // release 543
+import { surveyorChainPath, surveyorComplete, surveyorFound, SURVEYOR } from "./surveyor.js?v=r577-1b61c41bd892"; // release 551; 559; 577
+import { SMITHY, smithOpen, salvageItem, reforgeAffix, addSocket, masterwork } from "./smithy.js?v=r577-1b61c41bd892";
+import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } from "./meals.js?v=r577-1b61c41bd892"; // release 447
+import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.js?v=r577-1b61c41bd892"; // release 459 // release 395 // release 315; 321: the drone
+import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.js?v=r577-1b61c41bd892"; // release 339; 341
+import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind } from "./building.js?v=r577-1b61c41bd892";
+import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.js?v=r577-1b61c41bd892";
+import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r577-1b61c41bd892";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r577-1b61c41bd892";
+import { renderTimings } from "./renderer.js?v=r577-1b61c41bd892";
+import { createProbe, PROBE } from "./diagnostic-probe.js?v=r577-1b61c41bd892";
+import { vendorShop, buyFromVendor, walkerCrossingMap } from "./game.js?v=r577-1b61c41bd892";
+import { sectionAtlasColor } from "./atlas-colors.js?v=r577-1b61c41bd892";
+import { sectionRegion, regionName, REGIONS } from "./landscape.js?v=r577-1b61c41bd892"; // release 573
+import { skylandLabel } from "./skylands.js?v=r577-1b61c41bd892";
+import { CREATURE_TRAITS } from "./combat.js?v=r577-1b61c41bd892";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass } from "./monster-pack.js?v=r577-1b61c41bd892"; // release 403: staggerClass marks bosses on the dungeon map
+import { drawPackPortrait } from "./monster-render.js?v=r577-1b61c41bd892";
+import { landscapeAtlasColor } from "./landscape-render.js?v=r577-1b61c41bd892";
+import { hashSeed } from "./random.js?v=r577-1b61c41bd892";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r577-1b61c41bd892";
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r577-1b61c41bd892";
+import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r577-1b61c41bd892";
+import { linksKnown } from "./linked-dungeons.js?v=r577-1b61c41bd892";
+import { DIG } from "./digging.js?v=r577-1b61c41bd892";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark } from "./atlas-view.js?v=r577-1b61c41bd892";
+import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.js?v=r577-1b61c41bd892";
+import { startGlimpse, paintRule } from "./glimpse-render.js?v=r577-1b61c41bd892";
+import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r577-1b61c41bd892";
+import { relayRuleAt, crossingSection, knownRelaySections } from "./relay-network.js?v=r577-1b61c41bd892";
+import { questingBeastTriesLeft } from "./questing-beast.js?v=r577-1b61c41bd892";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding, relaysUntilReturn } from "./far-array.js?v=r577-1b61c41bd892";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r577-1b61c41bd892";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -192,7 +194,7 @@ setTimeout(() => {
     document.querySelector('[data-action="build"]')?.classList.toggle("selected", save.aimMode === "build");
   }, 100);
 }, 0);
-import { loadSave, saveGame, setWriteTimingListener, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, journeyStats, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r565-5fc233965fde";
+import { loadSave, saveGame, setWriteTimingListener, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, journeyStats, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r577-1b61c41bd892";
 import {
   Game,
   actionReadiness,
@@ -202,13 +204,13 @@ import {
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
   salvageInventoryItems,
-} from "./game.js?v=r565-5fc233965fde";
-import { createInput } from "./input.js?v=r565-5fc233965fde";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r565-5fc233965fde";
-import { STATS } from "./types.js?v=r565-5fc233965fde";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen } from "./items.js?v=r565-5fc233965fde";
-import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.js?v=r565-5fc233965fde";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho, toggleLatticeEcho } from "./echoes.js?v=r565-5fc233965fde";
+} from "./game.js?v=r577-1b61c41bd892";
+import { createInput } from "./input.js?v=r577-1b61c41bd892";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r577-1b61c41bd892";
+import { STATS } from "./types.js?v=r577-1b61c41bd892";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen } from "./items.js?v=r577-1b61c41bd892";
+import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.js?v=r577-1b61c41bd892";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho, toggleLatticeEcho } from "./echoes.js?v=r577-1b61c41bd892";
 // Release 291: names and HUD glyphs for items on a preset's Build button.
 // Release 293 (Tim: "convincing symbols... relevant and easy to discern"): solid, filled item icons (spells stay line drawings).
 const ITEM_NAMES = { restorativeDraught: "Restorative Draught", highPotion: "High Potion", maxPotion: "Max Potion", ironbarkTonic: "Ironbark Tonic", lumenPhial: "Lumen Phial", clearrootAmpoule: "Clearroot Ampoule", hullShield: "Hull Shield", submersible: "Submersible Frame" };
@@ -228,16 +230,16 @@ const ITEM_ICONS = {
   submersible: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.6" width="2.6" height="7" rx=".8" fill="#8f979f"/><rect x="16.4" y="2.6" width="2.6" height="7" rx=".8" fill="#8f979f"/><circle cx="12" cy="10" r="7" fill="#c9cfd6" stroke="#3a4048" stroke-width="1"/><circle cx="12" cy="9.4" r="4.2" fill="#2a6f86" stroke="#3a4048" stroke-width="1"/><path d="M10 7.8a2.6 2.6 0 0 1 3-1" stroke="#ffffff" stroke-width="1" fill="none"/><path d="M5.6 11.6 2.8 14.4l.6 2.6M18.4 11.6l2.8 2.8-.6 2.6" stroke="#7d858e" stroke-width="1.6" fill="none" stroke-linecap="round"/><rect x="8.4" y="16.4" width="2.4" height="3.4" fill="#7d858e"/><rect x="13.2" y="16.4" width="2.4" height="3.4" fill="#7d858e"/><path d="M7.8 20.4h3.6M12.6 20.4h3.6" stroke="#4b525a" stroke-width="1.6" stroke-linecap="round"/></svg>',  // release 315: the robot
   hullShield: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.6 14.4h18.8l-2.8 5.6H5.4z" fill="#8a5a32" stroke="#3e2614" stroke-width="1"/><path d="M12 2.4 17.4 4.4v4.3c0 3.3-2.3 5.4-5.4 6.6-3.1-1.2-5.4-3.3-5.4-6.6V4.4z" fill="#3fb6c8" stroke="#d8f6fb" stroke-width="1.2"/><path d="M12 5.4v6.4M9.4 7.8h5.2" stroke="#0f3a42" stroke-width="1.4" stroke-linecap="round"/><path d="M1.6 21.4c2-1 4-1 6 0s4 1 6 0 4-1 6 0 2.6.5 3 .3" stroke="#7fc6e6" stroke-width="1.2" fill="none"/></svg>',
 };
-import { buffLeft, slotTool, CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS, BUTTON_ITEMS, presetButton, setPresetButton, assignPresetItem, activeButton } from "./spell-slots.js?v=r565-5fc233965fde";
-import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive } from "./constellation.js?v=r565-5fc233965fde";
-import { homeName, homeKey, homeCandidate, setHome, townAt } from "./hometowns.js?v=r565-5fc233965fde";
-import { DUNGEON_TRAPS } from "./dungeon-traps.js?v=r565-5fc233965fde";
-import { FIELD_KEYS, TOOL_FORM_KEYS, fieldForm } from "./lattice-fields.js?v=r565-5fc233965fde";
-import { ensureLattice, latticeOpen, latticeWhy, latticeSlots, nextSlotCost, unlockSlot, latticePassives, latticeEchoes, TRANSIT_LATTICE, LATTICE_LORE, KINDS as LATTICE_KINDS } from "./transit-lattice.js?v=r565-5fc233965fde";
-import { currentObjective, validActions, dungeonHistory, journalOnce, STAT_RESPEC } from "./interactions.js?v=r565-5fc233965fde";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r565-5fc233965fde";
-import { worldStewardReport } from "./story.js?v=r565-5fc233965fde";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r565-5fc233965fde";
+import { buffLeft, slotTool, CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS, BUTTON_ITEMS, presetButton, setPresetButton, assignPresetItem, activeButton } from "./spell-slots.js?v=r577-1b61c41bd892";
+import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups } from "./constellation.js?v=r577-1b61c41bd892";
+import { homeName, homeKey, homeCandidate, setHome, townAt } from "./hometowns.js?v=r577-1b61c41bd892";
+import { DUNGEON_TRAPS } from "./dungeon-traps.js?v=r577-1b61c41bd892";
+import { FIELD_KEYS, TOOL_FORM_KEYS, fieldForm } from "./lattice-fields.js?v=r577-1b61c41bd892";
+import { ensureLattice, latticeOpen, latticeWhy, latticeSlots, nextSlotCost, unlockSlot, latticePassives, latticeEchoes, TRANSIT_LATTICE, LATTICE_LORE, KINDS as LATTICE_KINDS } from "./transit-lattice.js?v=r577-1b61c41bd892";
+import { currentObjective, validActions, dungeonHistory, journalOnce, STAT_RESPEC } from "./interactions.js?v=r577-1b61c41bd892";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r577-1b61c41bd892";
+import { worldStewardReport } from "./story.js?v=r577-1b61c41bd892";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r577-1b61c41bd892";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -249,9 +251,9 @@ import {
   perceived,
   wayfindingTargets,
   wayfindingCues,
-} from "./world.js?v=r565-5fc233965fde";
-import { warmWayfindingSignals } from "./world.js?v=r565-5fc233965fde";
-import { bellsRung, BELLS } from "./bells.js?v=r565-5fc233965fde"; // release 431
+} from "./world.js?v=r577-1b61c41bd892";
+import { warmWayfindingSignals } from "./world.js?v=r577-1b61c41bd892";
+import { bellsRung, BELLS, nearestLeftBehind } from "./bells.js?v=r577-1b61c41bd892"; // release 431; 577
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
@@ -596,7 +598,9 @@ function activeQuests(){
   const far=save.relayNetwork?.coordinate;if(far){const f=ensureFarArray(save);if(!f.quiet)add("The Far Array",`Gate ${f.gate}: ${f.pieces}/${piecesNeeded(f.gate)} pieces. Enter at the Array Mouth.`,far)}
   const echo=save.story?.arcs?.cartographersEcho;if(echo?.site&&!echo.completed)add("The Unwritten Meridian","The cartographer's echo waits here.",echo.site);
   if(save.narrative?.facts?.["leads.active"]&&!save.narrative.facts["leads.complete"])add("Relay leads","Follow the wayfinding marks toward the buried crossings.",null);
-  {const rung=bellsRung(save).length;if(rung&&rung<BELLS.count)add("The Seven Bells",`${rung} of ${BELLS.count} bells rung. The rest hang cracked in crossings of the Smoke Meadows and the middle lands.`,null);} // release 431
+  // Release 431; 577: any bell crossing offers a bell not yet rung, and the nearest crossing where one was left is pointed to.
+  {const rung=bellsRung(save).length,left=nearestLeftBehind(save,"bell",game.rx,game.ry);if((rung||left)&&rung<BELLS.count)add("The Seven Bells",`${rung} of ${BELLS.count} bells rung. Any crossing may hold one you have not rung.${left?" A cracked bell still hangs in a crossing you entered:":""}`,left);}
+  {const found=surveyorFound(save),left=nearestLeftBehind(save,"link",game.rx,game.ry);if((found||left)&&!surveyorComplete(save))add("The Surveyor's Chain",`${found} of ${SURVEYOR.links} links found. Crossings far from the Refuge may hold the next.${left?" A link still lies in a crossing you entered:":""}`,left);} // release 577
   if(!save.worldFlags?.worldBossDead)add("A great enemy","Something vast waits at the heart of the Corridor.",{rx:0,ry:0});
   return out;
 }
@@ -1239,7 +1243,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r565-5fc233965fde",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r565-5fc233965fde\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r577-1b61c41bd892",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r577-1b61c41bd892\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1251,7 +1255,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r565-5fc233965fde",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r577-1b61c41bd892",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1422,18 +1426,21 @@ function atlasBackfill(){
   requestAnimationFrame(step);
 }
 function atlasRgb(c){const h=String(c||"#51464a").replace("#",""),f=h.length===3?h.split("").map(x=>x+x).join(""):h,n=parseInt(f,16);return[(n>>16)&255,(n>>8)&255,n&255]}
+// Release 573: a named land region is labelled once `min` of its sections are explored; readings outrank it (`weight`).
+const ATLAS_REGION_NAMES={min:3,weight:.5};
 function atlasWorldImage(){
   const list=exploredSections(save),key=`${save.seed}:${list.length}:${atlasColoured}:${Object.keys(save.consequences?.dungeons||{}).length}:${Object.keys(save.relayNetwork?.nodes||{}).length}:${Object.keys(save.lore?.entered||{}).join()}:${atlasLayers.regions}:${relayOverlay}`; // seed: another journey never reuses this image
   if(atlasWorldCache?.key===key)return atlasWorldCache;
   const b=boundsOf(list);if(!b)return null;
   const W=b.maxX-b.minX+1,H=b.maxY-b.minY+1,c=document.createElement("canvas");c.width=W;c.height=H;
-  const g=c.getContext("2d"),img=g.createImageData(W,H),groups=new Map(),crossings=[];
+  const g=c.getContext("2d"),img=g.createImageData(W,H),groups=new Map(),lands=new Map(),crossings=[];
   for(const[rx,ry]of list){const rec=save.atlas?.[`${rx},${ry}`],base=atlasRgb(rec?.color||landscapeAtlasColor(rec?.landscape)||{ash:"#51464a",glass:"#315b62",ember:"#794735"}[rec?.terrain||"ash"]),id=readingAt(rx,ry),known=atlasLayers.regions&&readingKnown(save,id),tint=known?atlasRgb(READING_TINT[id]):null,i=((ry-b.minY)*W+(rx-b.minX))*4;
     const tw=rec?.color?ATLAS_READING_TINT.coloured:ATLAS_READING_TINT.plain;for(let k=0;k<3;k++)img.data[i+k]=tint?Math.round(base[k]*(1-tw)+tint[k]*tw):base[k];img.data[i+3]=255;
     if(known){const q=groups.get(id)||{x:0,y:0,n:0};q.x+=rx;q.y+=ry;q.n++;groups.set(id,q)}
+    if(atlasLayers.regions&&rec?.landscapeVersion>=4&&Math.hypot(rx+.5,ry+.5)>=REGIONS.heartland){const r=sectionRegion(save.seed,rx,ry,rec.landscapeVersion),q=lands.get(r.id)||{x:0,y:0,n:0,r};q.x+=rx;q.y+=ry;q.n++;lands.set(r.id,q)} // release 573: the land's own regions, named
     for(const s of rec?.sites||[])if(CROSSING_KINDS.has(s.kind)){crossings.push([rx,ry]);break}}
   g.putImageData(img,0,0);
-  atlasWorldCache={key,canvas:c,bounds:b,places:atlasPlaces(save),crossings,relays:relayOverlay?atlasRelayImage(list,b):null,labels:[...groups.entries()].map(([id,q])=>({name:READINGS[id].name,rx:q.x/q.n,ry:q.y/q.n,n:q.n}))};
+  atlasWorldCache={key,canvas:c,bounds:b,places:atlasPlaces(save),crossings,relays:relayOverlay?atlasRelayImage(list,b):null,labels:[...groups.entries()].map(([id,q])=>({name:READINGS[id].name,rx:q.x/q.n,ry:q.y/q.n,n:q.n})).concat([...lands.values()].filter(q=>q.n>=ATLAS_REGION_NAMES.min).map(q=>({name:regionName(save.seed,q.r).replace(/^the /,"The "),rx:q.x/q.n,ry:q.y/q.n,n:q.n*ATLAS_REGION_NAMES.weight,land:true})))};
   return atlasWorldCache;
 }
 // Release 209 (Tim): the relay pattern stays visible zoomed out. Release 559 (Tim: "if there's no relays in the area, then
@@ -1510,7 +1517,7 @@ function drawAtlasWorld(w,h,cell,signals){
   if(world&&atlasLayers.regions){mctx.textAlign="center";mctx.font=`bold ${Math.max(11,Math.min(18,cell*4))}px system-ui, sans-serif`;mctx.lineWidth=4;
     const placed=[];for(const l of [...world.labels].sort((a,b)=>b.n-a.n)){const[x,y]=at(l.rx,l.ry),tw=mctx.measureText(l.name).width,box={l:x-tw/2-4,r:x+tw/2+4,t:y-14,b:y+4};if(x<0||x>w||y<0||y>h)continue;
       const clash=(q)=>q.l<box.r&&q.r>box.l&&q.t<box.b&&q.b>box.t;for(let k=0;k<6&&placed.some(clash);k++){box.t+=16;box.b+=16}if(placed.some(clash))continue;placed.push(box); // larger regions first; others step down or are left out
-      const ly=box.b-4;mctx.strokeStyle="rgba(9,16,24,.85)";mctx.strokeText(l.name,x,ly);mctx.fillStyle="#f0d58a";mctx.fillText(l.name,x,ly)}mctx.textAlign="left"}
+      const ly=box.b-4;mctx.strokeStyle="rgba(9,16,24,.85)";mctx.strokeText(l.name,x,ly);mctx.fillStyle=l.land?"#cfe3f0":"#f0d58a";mctx.fillText(l.name,x,ly)}mctx.textAlign="left"}
   drawAtlasPins(w,h,cell);
   mctx.font="11px monospace";mctx.fillStyle="#dce7e2";
   mctx.fillText(`World view · ${Object.keys(save.explored).length} sections explored · pinch or + to look closer`,10,h-10);
@@ -1526,13 +1533,14 @@ const ATLAS_SYMBOLS=[
   {kind:"town",label:"Town",description:"Ember Refuge and the hamlets: people, trade and rest. Marked under Places."},
   {kind:"architecturalDistrict",label:"District / Ruin",description:"A larger enterable group of buildings, streets, residents, enemies, and architectural lore."},
   {kind:"bossCue",label:"Major Danger",description:"A boss-scale or exceptional threat is associated with this section."},
+  {kind:"skyStair",label:"Sky Stair",description:"A stair into the Skylands: three waves and a keeper, as hard as the Ascension you choose. Ascension Sigils open the higher tiers. Marked under Places."}, // release 571
   {kind:"watcherTomb",label:"Watcher's shrine",description:"A pristine tomb with the Watcher's sigil. Touched, it folds the Corridor and carries you somewhere else, once. Marked under Places."}, // release 465
   {kind:"ruinMarker",label:"Unusual Site",description:"An inspectable ruin or signal site that may reveal lore, objectives, or a distant lead."},
   {kind:"lastDeath",label:"Last death",description:"The latest place the Wayfarer fell. Dungeon deaths mark their entrance section here and their exact discovered floor locally; the mark is never a waypoint or travel target."},
 ];
-function atlasSignal(kind){return kind==="town"?"town":kind==="checkpoint"?"beacon":kind==="shrine"?"array":kind==="dungeon"?"crossing":kind==="bossCue"?"danger":kind==="shack"?"shack":kind==="architecturalDistrict"?"district":kind==="supplyCache"?"cache":kind==="watcherTomb"?"watcher":"event"}
+function atlasSignal(kind){return kind==="town"?"town":kind==="checkpoint"?"beacon":kind==="shrine"?"array":kind==="dungeon"?"crossing":kind==="bossCue"?"danger":kind==="shack"?"shack":kind==="architecturalDistrict"?"district":kind==="supplyCache"?"cache":kind==="watcherTomb"?"watcher":kind==="skyStair"?"sky":"event"}
 function drawAtlasGlyph(context,kind,x,y,size){
-  const signal=atlasSignal(kind),colors={beacon:"#72d7df",array:"#8ed1c1",crossing:"#d5a464",danger:"#d16b62",event:"#a68ad2",shack:"#d8bd83",district:"#c9a58b",cache:"#d7b96f",town:"#f0c070",watcher:"#c9b8ff"};context.save();context.translate(x,y);context.lineWidth=Math.max(1.4,size*.22);context.strokeStyle=colors[signal];context.fillStyle=context.strokeStyle;context.beginPath();
+  const signal=atlasSignal(kind),colors={beacon:"#72d7df",array:"#8ed1c1",crossing:"#d5a464",danger:"#d16b62",event:"#a68ad2",shack:"#d8bd83",district:"#c9a58b",cache:"#d7b96f",town:"#f0c070",watcher:"#c9b8ff",sky:"#fff1c8"};context.save();context.translate(x,y);context.lineWidth=Math.max(1.4,size*.22);context.strokeStyle=colors[signal];context.fillStyle=context.strokeStyle;context.beginPath();
   if(signal==="beacon")context.arc(0,0,size*.7,0,Math.PI*1.65);else if(signal==="array"){context.arc(0,0,size*.62,0,Math.PI*2);context.moveTo(-size*.7,0);context.lineTo(size*.7,0);context.moveTo(0,-size*.7);context.lineTo(0,size*.7)}else if(signal==="cache"){context.rect(-size*.65,-size*.45,size*1.3,size*.9);context.moveTo(-size*.65,-size*.12);context.lineTo(size*.65,-size*.12)}else if(signal==="crossing"){context.moveTo(-size*.7,-size*.55);context.lineTo(size*.55,0);context.lineTo(-size*.7,size*.55)}else if(signal==="danger"){context.moveTo(-size*.65,size*.6);context.lineTo(0,-size*.75);context.lineTo(size*.65,size*.6);context.closePath()}else if(signal==="shack"||signal==="town"){context.moveTo(-size*.75,0);context.lineTo(0,-size*.7);context.lineTo(size*.75,0);context.lineTo(size*.55,0);context.lineTo(size*.55,size*.7);context.lineTo(-size*.55,size*.7);context.lineTo(-size*.55,0);context.closePath()}else if(signal==="watcher"){context.moveTo(-size*.85,0);context.quadraticCurveTo(0,-size*.8,size*.85,0);context.quadraticCurveTo(0,size*.8,-size*.85,0);context.moveTo(size*.3,0);context.arc(0,0,size*.3,0,Math.PI*2)}else if(signal==="district"){context.rect(-size*.65,-size*.65,size*1.3,size*1.3);context.moveTo(-size*.65,0);context.lineTo(size*.65,0);context.moveTo(0,-size*.65);context.lineTo(0,size*.65)}else{context.arc(0,0,size*.65,0,Math.PI*1.5);context.lineTo(size*.75,0)}context.stroke();if(signal==="danger"){context.beginPath();context.moveTo(0,-size*.75);context.lineTo(-size*.18,-size*.42);context.lineTo(size*.18,-size*.42);context.closePath();context.fill()}else if(["beacon","crossing","event"].includes(signal)){context.beginPath();context.moveTo(size*.72,0);context.lineTo(size*1.05,-size*.3);context.lineTo(size*1.05,size*.3);context.closePath();context.fill()}context.restore();
 }
 function drawAtlasSite(kind,x,y,size){drawAtlasGlyph(mctx,kind,x,y,size)}
@@ -2677,21 +2685,35 @@ function openEchoes(){const used=notchesUsed(save.echoes.equipped);
   grid.append(c)}
  body.append(grid);arcanumFooter()}
 // Release 363: the Transit Lattice. Passive forms and Echoes drawn in from other histories hold here beyond the usual rules.
-function openLattice(){const L=ensureLattice(save),open=latticeOpen(save),cost=nextSlotCost(save);
+// Release 575 (Tim: "split it up a little bit... passives based on the skill that they benefit... force channel... quickening...
+// all the passives that are associated with that specific skill can just be underneath it... click on it... expand... the all
+// view... the passive tab... echoes could be a separate subtab... these are just the passes for spells... skills... general"):
+// three views. Passives: the passive slots, then the choices folded by what they serve (each skill's modifier and capstones in
+// both forms, then Spells, Tools and General: what is always on), each fold saying how many of its passives are set. Echoes:
+// the Echo slots and Echoes. All: everything in one list, as before.
+const LATTICE_VIEWS=[['passives','Passives'],['echoes','Echoes'],['all','All']],latticeFolds=new Set();let latticeView='passives';
+function openLattice(view=latticeView){latticeView=view;const L=ensureLattice(save),open=latticeOpen(save),cost=nextSlotCost(save);
  arcanumShell('lattice','Transit Lattice',`${L.coordinates} Transit Coordinate${L.coordinates===1?'':'s'} held. A fallen Listener pays its Gate: one coordinate for each piece it needed, and one for the Listener.`);
  body.append(el('p','arc-lore',LATTICE_LORE));
  if(!open){body.append(el('p','arc-why',latticeWhy(save)));arcanumFooter();return}
+ const views=el('div','codex-tabs arc-subtabs lattice-views');for(const[id,label]of LATTICE_VIEWS){const b=uiButton(label,()=>openLattice(id));if(id===view)b.setAttribute('aria-current','page');views.append(b)}body.append(views);
  const held=latticePassives(save),echoes=latticeEchoes(save),rerun=(r)=>{game.message=r.message;syncCharacterStats(save);persist();openLattice()};
- for(const kind of LATTICE_KINDS){const slots=latticeSlots(save,kind),set=kind==='echo'?echoes:held,box=el('section','arc-branch arc-lattice');box.append(el('h3','',kind==='echo'?`Echo slots · ${set.length}/${slots}`:`Passive slots · ${set.length}/${slots}`));
+ const passiveCard=(key,showUnknown)=>{const field=String(key).startsWith('field:'),f=field?fieldForm(key):passiveForm(key),on=held.includes(key);if(!f)return null;const known=field||hasNode(save,f.id);if(!known&&!showUnknown)return null;
+  const working=!field&&f.alt===altChosen(save,f.id),c=el('button','arc-card'+(on?' on':'')+(known?'':' unknown'));c.type='button';
+  c.append(el('strong','',field?`${f.name} · only in the Lattice`:`${f.name}${f.alt?' · secondary':' · primary'}`),el('small','',f.text),el('em','arc-state',!known?'Learn it in the constellation first':on?'In the Lattice — tap to clear':working?'Already working (your chosen form)':'Tap to draw it in'));
+  if(!known||(working&&!on))c.disabled=true;c.onclick=()=>rerun(toggleLatticePassive(save,key));return c};
+ const echoCard=(id)=>{const e=ECHOES[id],on=echoes.includes(id),notched=save.echoes.equipped.includes(id),c=el('button','arc-card echo-card'+(on?' on':''));c.type='button';c.append(el('strong','',e.name),el('small','',e.text),el('em','arc-state',on?'In the Lattice — tap to clear':notched?'Already set in your notches':'Tap to draw it in (no notches used)'));if(notched&&!on)c.disabled=true;c.onclick=()=>rerun(toggleLatticeEcho(save,id));return c};
+ const slotsBox=(kind)=>{const slots=latticeSlots(save,kind),set=kind==='echo'?echoes:held,box=el('section','arc-branch arc-lattice');box.append(el('h3','',kind==='echo'?`Echo slots · ${set.length}/${slots}`:`Passive slots · ${set.length}/${slots}`));
   for(let i=0;i<slots;i++){const key=set[i],row=el('div','arc-slot');if(key){const f=kind==='echo'?{name:ECHOES[key]?.name,text:ECHOES[key]?.text}:passiveForm(key);row.append(el('strong','',`◈ ${f?.name||key}${kind==='passive'&&f?.alt?' (secondary)':''}`),el('small','',` ${f?.text||''} `),uiButton('Clear',()=>rerun(kind==='echo'?toggleLatticeEcho(save,key):toggleLatticePassive(save,key))))}else row.append(el('span','','◇ Empty'));box.append(row)}
   if(L.extra[kind]<TRANSIT_LATTICE.extra[kind]){const b=uiButton(cost===null?'No more slots':`Unlock another ${kind==='echo'?'Echo':'passive'} slot · ${cost} coordinates`,()=>rerun(unlockSlot(save,kind)));if(cost===null||L.coordinates<cost){b.disabled=true;b.title=`${L.coordinates} held`}box.append(b)}
-  const choices=el('div','arc-grid');
-  if(kind==='passive'){for(const key of PASSIVE_KEYS){const f=passiveForm(key);if(!hasNode(save,f.id))continue;const on=held.includes(key),working=f.alt===altChosen(save,f.id),c=el('button','arc-card'+(on?' on':''));c.type='button';c.append(el('strong','',`${f.name}${f.alt?' · secondary':' · primary'}`),el('small','',f.text),el('em','arc-state',on?'In the Lattice — tap to clear':working?'Already working (your chosen form)':'Tap to draw it in'));if(working&&!on)c.disabled=true;c.onclick=()=>rerun(toggleLatticePassive(save,key));choices.append(c)}
-   for(const key of [...FIELD_KEYS,...TOOL_FORM_KEYS]/* release 533: tool forms */){const f=fieldForm(key),on=held.includes(key),c=el('button','arc-card'+(on?' on':''));c.type='button';c.append(el('strong','',`${f.name} · only in the Lattice`),el('small','',f.text),el('em','arc-state',on?'In the Lattice — tap to clear':'Tap to draw it in'));c.onclick=()=>rerun(toggleLatticePassive(save,key));choices.append(c)} // release 515: field passives
-   if(!choices.children.length)box.append(el('small','arc-why','Learn constellation passives first (Spells & Constellation); either form of a passive you know can be drawn in.'))}
-  else{for(const id of ECHO_IDS){if(!save.echoes.owned[id])continue;const e=ECHOES[id],on=echoes.includes(id),notched=save.echoes.equipped.includes(id),c=el('button','arc-card echo-card'+(on?' on':''));c.type='button';c.append(el('strong','',e.name),el('small','',e.text),el('em','arc-state',on?'In the Lattice — tap to clear':notched?'Already set in your notches':'Tap to draw it in (no notches used)'));if(notched&&!on)c.disabled=true;c.onclick=()=>rerun(toggleLatticeEcho(save,id));choices.append(c)}
-   if(!choices.children.length)box.append(el('small','arc-why','Take an Echo first: guardians and great beasts leave theirs.'))}
-  box.append(choices);body.append(box)}
+  return box};
+ const echoChoices=(box)=>{const choices=el('div','arc-grid');for(const id of ECHO_IDS)if(save.echoes.owned[id])choices.append(echoCard(id));if(!choices.children.length)box.append(el('small','arc-why','Take an Echo first: guardians and great beasts leave theirs.'));box.append(choices)};
+ if(view==='passives'){body.append(slotsBox('passive'));
+  body.append(el('h3','lattice-head','Skills'));for(const g of latticePassiveGroups()){if(!g.skill&&!body.querySelector('.lattice-head.more'))body.append(el('h3','lattice-head more','Spells, tools and the rest'));const cards=g.keys.map((k)=>passiveCard(k,true)).filter(Boolean),set=g.keys.filter((k)=>held.includes(k)).length,known=cards.filter((c)=>!c.classList.contains('unknown')).length,d=el('details','arc-branch lattice-group'+(set?' on':''));d.dataset.group=g.id;if(latticeFolds.has(g.id))d.open=true;d.ontoggle=()=>{d.open?latticeFolds.add(g.id):latticeFolds.delete(g.id)};
+   const sum=el('summary','',`${set?'◈':'◇'} ${g.title}`);sum.append(el('small','',`${g.sub?` · ${g.sub}`:''} · ${known}/${cards.length} known${set?` · ${set} set`:''}`));const grid=el('div','arc-grid');grid.append(...cards);d.append(sum,grid);body.append(d)}}
+ else if(view==='echoes'){const box=slotsBox('echo');echoChoices(box);body.append(box)}
+ else for(const kind of LATTICE_KINDS){const box=slotsBox(kind);if(kind==='passive'){const choices=el('div','arc-grid');for(const key of[...PASSIVE_KEYS,...FIELD_KEYS,...TOOL_FORM_KEYS]){const c=passiveCard(key,false);if(c)choices.append(c)}
+   if(!choices.children.length)box.append(el('small','arc-why','Learn constellation passives first (Spells & Constellation); either form of a passive you know can be drawn in.'));box.append(choices)}else echoChoices(box);body.append(box)}
  arcanumFooter()}
 // Release 395: the town smith (smithy.ts): salvage from the pack, reforge an affix, cut a socket, make a masterwork.
 function openSmithy(note=''){pauseForOverlay();if(pausePanel.open)pausePanel.close();body.replaceChildren();const h=document.createElement('h2'),intro=document.createElement('p');h.textContent='The Smith';intro.textContent=`${note?note+' ':''}Cinder Iron ${save.materials.cinderIron||0} · Lumen Dust ${save.materials.lumenDust||0} · ${save.currency||0} marks.`;body.append(h,intro);
@@ -2802,7 +2824,7 @@ function openInteraction(id, confirmAttack = false) {
         repair:"Repair the hull",
       };
       body.append(
-        uiButton(labels[action] || action, () =>
+        uiButton(labels[action] || skylandLabel(action, save) || action, () =>
           action === "attack"
             ? openInteraction(id, true)
             : performInteraction(id, action),

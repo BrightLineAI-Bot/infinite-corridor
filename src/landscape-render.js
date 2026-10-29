@@ -1,7 +1,7 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { LIFT_PER_LEVEL, safeVoidScarTransition } from "./landscape.js?v=r565-5fc233965fde";
+import { LIFT_PER_LEVEL, safeVoidScarTransition } from "./landscape.js?v=r577-1b61c41bd892";
 
 const TAU = Math.PI * 2;
 const cache = new Map();
@@ -125,6 +125,10 @@ const PAINT = {
   abyss(c, s, r) { c.fillStyle = grad(c, 0, 0, 0, s, [[0, "#1d1636"], [1, "#05030c"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 6; i++) { c.fillStyle = i % 2 ? "#5b4a9a" : "#2e2654"; c.fillRect(r() * s, r() * s, 1.5, 1.5); } },
   riverStone(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3c4648"], [1, "#2b3335"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 6; i++) { c.fillStyle = r() < .5 ? "#56676a" : "#1f2729"; c.beginPath(); c.ellipse(r() * s, r() * s, 2 + r() * 3, 1.5 + r() * 2, r() * 3, 0, TAU); c.fill(); } },
   riverWall(c, s, r) { c.fillStyle = "#1c2426"; c.fillRect(0, 0, s, s); bricks(c, s, r); c.fillStyle = "#3e6a5f44"; c.fillRect(0, s * .7, s, s * .3); },
+  // Release 573: forest floor (moss, needles, a fallen leaf or two), snowfields and frozen lakes.
+  forestFloor(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#2f4a2c"], [1, "#253b24"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 16; i++) { c.fillStyle = r() < .5 ? "#3d5c35" : "#1d301c"; c.fillRect(r() * s, r() * s, 1 + r() * 2, 1 + r() * 2); } for (let i = 0; i < 2; i++) { c.fillStyle = r() < .5 ? "#7a5a2e" : "#8c6f37"; c.beginPath(); c.ellipse(r() * s, r() * s, s * .06, s * .03, r() * 3, 0, TAU); c.fill(); } },
+  snowField(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#eef4f8"], [1, "#d5e2ec"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 3; i++) { const x = r() * s, y = r() * s, w = s * (.2 + r() * .3); c.fillStyle = "#c3d3e0aa"; c.beginPath(); c.ellipse(x, y, w, w * .3, 0, 0, TAU); c.fill(); } for (let i = 0; i < 6; i++) { c.fillStyle = "#ffffff"; c.fillRect(r() * s, r() * s, 1, 1); } },
+  lakeIce(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#b9dcef"], [1, "#8fbfd9"]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#ffffffaa"; c.lineWidth = 1; for (let i = 0; i < 2; i++) { const x = r() * s, y = r() * s; c.beginPath(); c.moveTo(x, y); c.lineTo(x + (r() - .5) * s * .8, y + (r() - .5) * s * .5); c.stroke(); } c.fillStyle = "#ffffff55"; c.fillRect(s * .1, s * .15, s * .3, 1); },
   frostFloor(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#cfdde8"], [1, "#9fb4c6"]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#ffffff99"; c.lineWidth = 1; for (let i = 0; i < 3; i++) { const x = r() * s, y = r() * s; c.beginPath(); c.moveTo(x, y); c.lineTo(x + (r() - .5) * s * .6, y + (r() - .5) * s * .6); c.stroke(); } },
   iceWall(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#8fb6cf"], [1, "#3e6680"]]); c.fillRect(0, 0, s, s); c.fillStyle = "#e9f6ff66"; c.beginPath(); c.moveTo(0, 0); c.lineTo(s * .4, 0); c.lineTo(0, s * .5); c.fill(); },
   iceSpire(c, s, r) { PAINT.frostFloor(c, s, r); for (let i = 0; i < 2; i++) { const x = s * (.35 + i * .3), hh = s * (.7 + r() * .25); c.fillStyle = grad(c, x - 4, 0, x + 4, 0, [[0, "#ffffff"], [1, "#6fa5c8"]]); c.beginPath(); c.moveTo(x - s * .12, s); c.lineTo(x, s - hh); c.lineTo(x + s * .12, s); c.fill(); } },
@@ -298,7 +302,7 @@ function animate(ctx, t, px, py, s) {
 }
 
 // Atlas colour for a section's landscape (null when plain).
-export function landscapeAtlasColor(biome) { return ({ mountains: "#d9e3ea", desert: "#d6b26e", coast: "#3f7fa3", alien: "#9a6fe0", dream: "#b9a8e8", castle: "#8a7f73", sea: "#1d4f7a", isles: "#4f9fb0", lake: "#4a90c8", swamp: "#5d6b3c", blight: "#7cbf3a" })[biome] || null; }
+export function landscapeAtlasColor(biome) { return ({ mountains: "#d9e3ea", desert: "#d6b26e", coast: "#3f7fa3", alien: "#9a6fe0", dream: "#b9a8e8", castle: "#8a7f73", sea: "#1d4f7a", isles: "#4f9fb0", lake: "#4a90c8", swamp: "#5d6b3c", blight: "#7cbf3a", forest: "#2f5a34", frost: "#dce9f2" })[biome] || null; }
 
 // Pit edges: every walkable tile beside lava, a chasm, a canyon or deep water gets a crumbling, lit lip on that side
 // and a shadow falling into the hazard, so a drop is never a surprise. Runs for every map, landscape or not.

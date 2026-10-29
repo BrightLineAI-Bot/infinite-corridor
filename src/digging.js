@@ -8,9 +8,9 @@
 // floor; and it may break through only into floor you could already walk to, so no sealed or guarded part is ever
 // opened early. Hunts, portals, dives and crossings are temporary places and are never dug.
 // Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r565-5fc233965fde";
-import { LETHAL_KINDS } from "./landscape.js?v=r565-5fc233965fde";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r565-5fc233965fde";
+import { hashSeed } from "./random.js?v=r577-1b61c41bd892";
+import { LETHAL_KINDS } from "./landscape.js?v=r577-1b61c41bd892";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r577-1b61c41bd892";
 
 // Balance (data, not literals in the logic).
 export const DIG = {
@@ -57,7 +57,7 @@ export const DIG_FINDS = [
   { id: "weaponSphere", weight: 6, min: 1, max: 1, label: "a Weapon Sphere" },
   { id: "armorSphere", weight: 6, min: 1, max: 1, label: "an Armor Sphere" },
 ];
-const TEMPORARY = /^(hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:|far-array:|dive:)/;
+const TEMPORARY = /^(hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:|far-array:|dive:|skyland:)/;
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
 // save.digging: { shovel: uses left (0 = none), iron: iron-shovel uses left (release 379), dug: { areaKey: ["x,y", …] }, spots: { "rx,ry": true } }; save.materials.stone.
