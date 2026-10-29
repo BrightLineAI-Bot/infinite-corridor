@@ -2694,6 +2694,39 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 573: forests, frostlands and region names — 2026-10-29
+
+Tim (2026-10-29): "we should have some actual forest sections where there's just actual, like bunch of trees... that you can chop
+down. It can be passed through the forest... some taller trees... that reach beyond the frame... you can walk behind them... maybe
+you can see like a silhouette"; "when you generate a region, you can generate a name as well... I also don't see any ice regions".
+Climbing the trees, skyways and floating platforms (what Tim calls Stage 3, vertical traversal) are not built here.
+
+**CODE:**
+- `src/landscape.ts`: `LANDSCAPE_VERSION` 5. `regionAt(seed, sx, sy, version = 4)`: from version 5 a wild region may become
+  `forest` or `frost` (`REGIONS_V5.wildTo`, by its own hash), every other region keeps its version 4 type, so ids, borders and
+  gaps are unchanged. `sectionRegion` and the per-tile `regionTile` take the version (the lean cache is keyed by it).
+  `REGIONS.lean` gains forest and frost; `REGION_GROUNDS` names their ground (biomeFor never reports them).
+  `regionName(seed, region)` from `REGION_NAMES` (word + noun by type).
+- `applyWoodsAndFrost` (version 5, not in full open sea): per tile, forest bare ground becomes `forestFloor`, frost bare ground
+  `snowField` or a blocked `iceSpire`, frost lakes `lakeIce` (walkable); forest trees (`WOODS`: density, clearings, at most `max`,
+  giants one in `giantEvery` at least `giantGap` apart, `giantWood`) stand on unprotected forest floor and bog, never in a hamlet
+  section. Ids are `wood-<rx>-<ry>-<x>-<y>`, flagged `forest`. Frost mountains turn to `snowRock` after the mountain passes.
+  `dreamsHere` takes the section's landscape version: a version 5 forest or frostland has no wild dream pockets (seams still run).
+- `src/landscape-render.ts`: `forestFloor`, `snowField`, `lakeIce` textures; `src/atlas-colors.ts` their Atlas colours.
+- `src/renderer.ts`: `GIANT_TREE`, `drawGiantTree` (trunk `height` tiles, crown above, culled with that much padding) and
+  `giantTreeHides`; the player draw is repeated at `ghost` alpha when a giant tree in front covers them.
+- `src/boats.ts`: `woodFor` reads a tree's own `wood` first (a giant gives `giantWood`).
+- `src/game.ts`: `snapshotArea` leaves standing forest trees out (felled and burnt ones are kept); `noteRegion` queues a
+  discovery banner (name, `REGION_BANNER.kinds`) when the Wayfarer enters another region outside the heartland, at most once per
+  region per `REGION_BANNER.again` seconds. `src/main.ts` labels explored land regions (`ATLAS_REGION_NAMES`) on the Regions layer.
+
+**BOUNDARY:**
+- Sections pinned to landscape versions 1–4 generate byte for byte as before, dream included (1080 sections compared with r571;
+  only the dream's `landscape.version` label follows the current constant, as it did before).
+- Trees do not block movement; giant trees are cut like any other. No climbing yet.
+- Region names are derived, never saved. The banner is in memory only, so a reload may show the current region's name again.
+- Tests: `tests/forests-frost-573.test.ts`.
+
 ## Release 571: the Skylands — 2026-10-29
 
 Tim (2026-10-29): "the skylands... divine challenges... make the monster stronger... set the difficulty to be higher... bigger

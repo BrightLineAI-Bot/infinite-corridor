@@ -45,7 +45,7 @@ export const SAILABLE_DEEP = ["ocean", "deepOcean", "lakeWater", "swampWater"];
 // carry: the most wood the Wayfarer carries (release 259 set 6; release 261, Tim: "we should do 99 wood... you can build as
 // many boats as you want... the limit... is how much you want to farm").
 export const WOOD = { byForm: { shrub: 1, spindle: 2, canopy: 3 }, skiffCost: 3, reach: 1.6, carry: 99 };
-export const woodFor = (tree) => WOOD.byForm[tree?.vegetationForm] ?? WOOD.byForm.spindle;
+export const woodFor = (tree) => tree?.wood ?? WOOD.byForm[tree?.vegetationForm] ?? WOOD.byForm.spindle; // release 573: a giant forest tree carries its own (`wood`)
 // Normalised in freshSave/migrateSave (additive at schema 14).
 export function ensureWood(save) { save.materials ||= {}; save.materials.wood = Math.max(0, Math.floor(Number(save.materials.wood) || 0)); return save; }
 // Death drops the wood you carry (Tim, 2026-10-16). Returns how much was lost.
