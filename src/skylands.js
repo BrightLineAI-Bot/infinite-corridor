@@ -12,7 +12,7 @@
 // farmed from the tiers below), marks (`marks` + `marksPerTier`·N) and N spheres. Any Sky Stair can be climbed again, as
 // often as you like. save.skylands = { sigils, best, runs, clears } (additive at schema 14; normalised here and in types.ts).
 // Pure rules: game.ts runs the waves and main.ts labels the tiers.
-import { hashSeed } from "./random.js?v=r577-1b61c41bd892";
+import { hashSeed } from "./random.js?v=r581-c265662f6b96";
 
 export const SKYLANDS = {
   version: 1, macro: 8, chance: .65, minDepth: 14, maxTier: 20, hpPerTier: .6, damagePerTier: .25,

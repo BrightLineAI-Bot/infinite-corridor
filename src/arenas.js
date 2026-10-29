@@ -1,6 +1,6 @@
-import { rng, pick, hashSeed } from "./random.js?v=r577-1b61c41bd892";
-import { annotateDungeon, DUNGEON_SIZE_PROFILES, ORDINARY_GENERATOR_VERSION } from "./dungeon-framework.js?v=r577-1b61c41bd892";
-import { PACK_ECOLOGY_ADDITIONS, PACK_DENSITY, MONSTER_PACK_VERSION } from "./monster-pack.js?v=r577-1b61c41bd892";
+import { rng, pick, hashSeed } from "./random.js?v=r581-c265662f6b96";
+import { annotateDungeon, DUNGEON_SIZE_PROFILES, ORDINARY_GENERATOR_VERSION } from "./dungeon-framework.js?v=r581-c265662f6b96";
+import { PACK_ECOLOGY_ADDITIONS, PACK_DENSITY, MONSTER_PACK_VERSION } from "./monster-pack.js?v=r581-c265662f6b96";
 
 export const ARENA_FAMILIES=["sentinel-manufactory","rootbound-crown","shattered-observatory","drowned-relay-rim","biomechanical-aperture","ruined-fortress-court","ash-amphitheater","alien-vault"];
 const FAMILY_RULES={

@@ -1,7 +1,7 @@
-import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.js?v=r577-1b61c41bd892";
-import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.js?v=r577-1b61c41bd892";
-import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage, beginAstralBoarding, tickAstralBoarding, tickAstralRiderChoice, tickAstralFighterChoice } from "./astral-worm-mount.js?v=r577-1b61c41bd892";
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=r577-1b61c41bd892";
+import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.js?v=r581-c265662f6b96";
+import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.js?v=r581-c265662f6b96";
+import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage, beginAstralBoarding, tickAstralBoarding, tickAstralRiderChoice, tickAstralFighterChoice } from "./astral-worm-mount.js?v=r581-c265662f6b96";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=r581-c265662f6b96";
 import {
   generateRegion,
   generateDungeon,
@@ -17,7 +17,7 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
-} from "./world.js?v=r577-1b61c41bd892";
+} from "./world.js?v=r581-c265662f6b96";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -28,19 +28,19 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness, activeButton, slotTool, CASTABLES, availableCastables } from "./spell-slots.js?v=r577-1b61c41bd892";
-import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=r577-1b61c41bd892";
-import { beastCatchUp } from "./stages.js?v=r577-1b61c41bd892";
-import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.js?v=r577-1b61c41bd892";
-import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.js?v=r577-1b61c41bd892";
-import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered } from "./vehicle-gates.js?v=r577-1b61c41bd892";
-import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=r577-1b61c41bd892";
-import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=r577-1b61c41bd892";
-import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP } from "./boats.js?v=r577-1b61c41bd892";
-import { submersible, fitSubmersible, aboard, sailable, BOAT, canBuildSkiff, mendSkiff, buyHullShield, deployHullShield, tickHullShield, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.js?v=r577-1b61c41bd892";
-import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.js?v=r577-1b61c41bd892";
-import { canSwim, swimsThrough, isSwimmableKind, tidemantleTrial, grantTidemantle, swimUpkeep, dungeonWaterToll, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=r577-1b61c41bd892";
-import { createCombatant, dodge, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=r577-1b61c41bd892";
+import { ensureSlots, slotted, pairingMods, slotReadiness, activeButton, slotTool, CASTABLES, availableCastables } from "./spell-slots.js?v=r581-c265662f6b96";
+import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=r581-c265662f6b96";
+import { beastCatchUp } from "./stages.js?v=r581-c265662f6b96";
+import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.js?v=r581-c265662f6b96";
+import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.js?v=r581-c265662f6b96";
+import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered } from "./vehicle-gates.js?v=r581-c265662f6b96";
+import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=r581-c265662f6b96";
+import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.js?v=r581-c265662f6b96";
+import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP } from "./boats.js?v=r581-c265662f6b96";
+import { submersible, fitSubmersible, aboard, sailable, BOAT, canBuildSkiff, mendSkiff, buyHullShield, deployHullShield, tickHullShield, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.js?v=r581-c265662f6b96";
+import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.js?v=r581-c265662f6b96";
+import { canSwim, swimsThrough, isSwimmableKind, tidemantleTrial, grantTidemantle, swimUpkeep, dungeonWaterToll, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=r581-c265662f6b96";
+import { createCombatant, dodge, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.js?v=r581-c265662f6b96";
 import {
   applyInteraction,
   validActions,
@@ -50,61 +50,61 @@ import {
   journalOnce,
   gainAperture,
   progressLead,
-} from "./interactions.js?v=r577-1b61c41bd892";
-import { ensurePerception } from "./types.js?v=r577-1b61c41bd892";
-import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.js?v=r577-1b61c41bd892";
-import { ARC_WAVE, NANOKNIVES, GOLEM, CLUSTER, FIRE_BURST, knifeOffset } from "./tool-forms.js?v=r577-1b61c41bd892";
-import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.js?v=r577-1b61c41bd892";
-import { sectionAtlasColor } from "./atlas-colors.js?v=r577-1b61c41bd892";
-import { SKYLANDS, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland } from "./skylands.js?v=r577-1b61c41bd892";
-import { generateItem, BRAWLER_LOOT } from "./items.js?v=r577-1b61c41bd892";
-import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=r577-1b61c41bd892";
-import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.js?v=r577-1b61c41bd892";
-import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.js?v=r577-1b61c41bd892";
-import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.js?v=r577-1b61c41bd892";
-import { giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.js?v=r577-1b61c41bd892";
-import { hashSeed, rng } from "./random.js?v=r577-1b61c41bd892";
-import { placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt } from "./building.js?v=r577-1b61c41bd892";
-import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.js?v=r577-1b61c41bd892";
-import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.js?v=r577-1b61c41bd892";
-import { HORDE, rollHorde, ensureHorde, hordeKill, hordeSpawnPoints } from "./revenant-horde.js?v=r577-1b61c41bd892";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.js?v=r577-1b61c41bd892';
-import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=r577-1b61c41bd892';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=r577-1b61c41bd892';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=r577-1b61c41bd892';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=r577-1b61c41bd892';
-import{ensureSceneState,queueScene}from'./scenes.js?v=r577-1b61c41bd892';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=r577-1b61c41bd892";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r577-1b61c41bd892";
-import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt, DREAM_HALL, dreamHallRoll } from "./underlands.js?v=r577-1b61c41bd892";
-import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r577-1b61c41bd892";
-import { applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.js?v=r577-1b61c41bd892";
-import { BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.js?v=r577-1b61c41bd892";
-import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.js?v=r577-1b61c41bd892";
-import { addStrange, touchStrange } from "./strange.js?v=r577-1b61c41bd892";
-import { DIG, planDig, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, addDigSpot, digSpot } from "./digging.js?v=r577-1b61c41bd892";
-import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.js?v=r577-1b61c41bd892";
-import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.js?v=r577-1b61c41bd892";
-import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=r577-1b61c41bd892";
-import { beastProfileVitals, liveBeastReference, WORLD_BEASTS, BEAST_HOMES, RETREAT, PURSUIT, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.js?v=r577-1b61c41bd892";
-import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.js?v=r577-1b61c41bd892";
-import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.js?v=r577-1b61c41bd892";
-import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } from "./hometowns.js?v=r577-1b61c41bd892";
-import { generateListenerArena, isArenaRun, daisDue } from "./listener-arena.js?v=r577-1b61c41bd892";
-import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./listener-mirror.js?v=r577-1b61c41bd892";
-import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.js?v=r577-1b61c41bd892";
-import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r577-1b61c41bd892";
-import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.js?v=r577-1b61c41bd892";
-import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge } from "./brawler-spells.js?v=r577-1b61c41bd892"; // release 483; 489: Iron Fists
-import { ORBIT, orbitLaunch } from "./orbit-volley.js?v=r577-1b61c41bd892"; // release 487
-import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn } from "./far-array.js?v=r577-1b61c41bd892";
-import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=r577-1b61c41bd892";
-import { addIlse, meetIlse } from "./ilse.js?v=r577-1b61c41bd892";
-import { addBell, ringBell, BELL_GLIMPSES, noteLeftBehind } from "./bells.js?v=r577-1b61c41bd892";
-import { addMargin, readMargin } from "./margins.js?v=r577-1b61c41bd892";
-import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection } from "./surveyor.js?v=r577-1b61c41bd892"; // release 505; 551: part two
-import { READINGS, readingKnown, bookProgress } from "./lore.js?v=r577-1b61c41bd892";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=r577-1b61c41bd892";
+} from "./interactions.js?v=r581-c265662f6b96";
+import { ensurePerception } from "./types.js?v=r581-c265662f6b96";
+import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.js?v=r581-c265662f6b96";
+import { ARC_WAVE, NANOKNIVES, GOLEM, CLUSTER, FIRE_BURST, knifeOffset } from "./tool-forms.js?v=r581-c265662f6b96";
+import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.js?v=r581-c265662f6b96";
+import { sectionAtlasColor } from "./atlas-colors.js?v=r581-c265662f6b96";
+import { SKYLANDS, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland } from "./skylands.js?v=r581-c265662f6b96";
+import { generateItem, BRAWLER_LOOT } from "./items.js?v=r581-c265662f6b96";
+import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.js?v=r581-c265662f6b96";
+import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.js?v=r581-c265662f6b96";
+import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.js?v=r581-c265662f6b96";
+import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.js?v=r581-c265662f6b96";
+import { giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.js?v=r581-c265662f6b96";
+import { hashSeed, rng } from "./random.js?v=r581-c265662f6b96";
+import { placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt } from "./building.js?v=r581-c265662f6b96";
+import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.js?v=r581-c265662f6b96";
+import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.js?v=r581-c265662f6b96";
+import { HORDE, rollHorde, ensureHorde, hordeKill, hordeSpawnPoints } from "./revenant-horde.js?v=r581-c265662f6b96";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.js?v=r581-c265662f6b96';
+import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=r581-c265662f6b96';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=r581-c265662f6b96';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=r581-c265662f6b96';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=r581-c265662f6b96';
+import{ensureSceneState,queueScene}from'./scenes.js?v=r581-c265662f6b96';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=r581-c265662f6b96";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r581-c265662f6b96";
+import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt, DREAM_HALL, dreamHallRoll } from "./underlands.js?v=r581-c265662f6b96";
+import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r581-c265662f6b96";
+import { applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.js?v=r581-c265662f6b96";
+import { BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.js?v=r581-c265662f6b96";
+import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.js?v=r581-c265662f6b96";
+import { addStrange, touchStrange } from "./strange.js?v=r581-c265662f6b96";
+import { DIG, planDig, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, addDigSpot, digSpot } from "./digging.js?v=r581-c265662f6b96";
+import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.js?v=r581-c265662f6b96";
+import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.js?v=r581-c265662f6b96";
+import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=r581-c265662f6b96";
+import { beastProfileVitals, liveBeastReference, WORLD_BEASTS, BEAST_HOMES, RETREAT, PURSUIT, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.js?v=r581-c265662f6b96";
+import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.js?v=r581-c265662f6b96";
+import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.js?v=r581-c265662f6b96";
+import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } from "./hometowns.js?v=r581-c265662f6b96";
+import { generateListenerArena, isArenaRun, daisDue } from "./listener-arena.js?v=r581-c265662f6b96";
+import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./listener-mirror.js?v=r581-c265662f6b96";
+import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.js?v=r581-c265662f6b96";
+import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r581-c265662f6b96";
+import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.js?v=r581-c265662f6b96";
+import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge } from "./brawler-spells.js?v=r581-c265662f6b96"; // release 483; 489: Iron Fists
+import { ORBIT, orbitLaunch } from "./orbit-volley.js?v=r581-c265662f6b96"; // release 487
+import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn } from "./far-array.js?v=r581-c265662f6b96";
+import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=r581-c265662f6b96";
+import { addIlse, meetIlse } from "./ilse.js?v=r581-c265662f6b96";
+import { addBell, ringBell, BELL_GLIMPSES } from "./bells.js?v=r581-c265662f6b96";
+import { addMargin, readMargin } from "./margins.js?v=r581-c265662f6b96";
+import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection } from "./surveyor.js?v=r581-c265662f6b96"; // release 505; 551: part two
+import { READINGS, readingKnown, bookProgress } from "./lore.js?v=r581-c265662f6b96";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=r581-c265662f6b96";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const RIFT_FLASH = .6; // release 519: seconds an instant Rift Step lights its button
 export const EQUIPMENT_CAPACITY = 60;
@@ -1393,7 +1393,7 @@ export function hasLineOfSight(enemy, player, map, width, projectile=false, allo
 }
 // Objects that do not keep Act from building a skiff at the water's edge (release 263).
 export const SHORE_PASSIVE = ["tree", "rock"];
-export const REGION_BANNER = { again: 300, kinds: { wild: "Wild country", sea: "Open sea", mountains: "Mountains", desert: "Desert", alien: "Strange growth", swamp: "Fenland", lakes: "Lake country", isles: "Islands", dream: "The Far Sleep", ashfields: "Ashfields", glasslands: "Glasslands", emberlands: "Emberlands", forest: "Forest", frost: "Frostlands" } }; // release 573
+export const REGION_BANNER = { again: 300, kinds: { wild: "Wild country", sea: "Open sea", mountains: "Mountains", desert: "Desert", alien: "Strange growth", swamp: "Fenland", lakes: "Lake country", isles: "Islands", dream: "The Far Sleep", ashfields: "Ashfields", glasslands: "Glasslands", emberlands: "Emberlands", forest: "Forest", frost: "Frostlands", lunar: "Moonlands" } }; // release 573; 579
 // Release 557 (Tim: "a lot of these weight glasses are on small little... areas... it activates the boat... or if there's
 // someone nearby, it'll talk to them... prioritize the weight glass... a hard rule... there's like an area... around the
 // way glass where... you can't make a boat"): within `reach` tiles of a Wayglass (any checkpoint, the Lighthouse Buoy too)
@@ -2143,7 +2143,7 @@ export class Game {
             this.save.worldGeneration,
           );
     if(area==="overworld")this.tyrantVisit=null; // release 233: entering a section (from anywhere, or after a death) starts a fresh Tyrant visit
-    if(area==="dungeon"){const b=addBell(this.map,this.save,this.areaId());noteLeftBehind(this.save,this.areaId(),"bell",!!b&&b.state!=="rung")}/* release 431: the Seven Bells; 577: noted while it waits */if(area==="dungeon")addMargin(this.map,this.save,this.areaId());/* release 455: margins */if(area==="dungeon")noteLeftBehind(this.save,this.areaId(),"link",!!addSurveyorLink(this.map,this.save,this.areaId()));/* release 505: the Surveyor's Chain; 577 */if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
+    if(area==="dungeon")addBell(this.map,this.save,this.areaId());/* release 431: the Seven Bells */if(area==="dungeon")addMargin(this.map,this.save,this.areaId());/* release 455: margins */if(area==="dungeon")addSurveyorLink(this.map,this.save,this.areaId());/* release 505: the Surveyor's Chain */if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION,openSea:!seen?OPEN_SEA_VERSION:seen.seaVersion||0,buoy:!this.save.checkpoints?.[`${this.rx},${this.ry}`]||this.save.checkpoints[`${this.rx},${this.ry}`].name==="Lighthouse Buoy",hamlet:((!seen||!!seen.hamletVersion)&&(hamletSection(this.save.seed,this.rx,this.ry)||legacyMouthHamlet(this.save,this.rx,this.ry)||!!townAt(this.save,this.rx,this.ry)))||!!townAt(this.save,this.rx,this.ry)?.mouth});if(!seen||seen.dreamVersion)applyDream(this.map,this.save.seed,this.rx,this.ry,seen?.dreamVersion||DREAM_VERSION);if(!seen||seen.hamletVersion||townAt(this.save,this.rx,this.ry)?.mouth)applyHamlet(this.map,this.save.seed,this.rx,this.ry,seen?.hamletVersion||HAMLET_VERSION,!!townAt(this.save,this.rx,this.ry),legacyMouthHamlet(this.save,this.rx,this.ry));/* release 371: a town where a Listener fell; 373: around its Mouth, explored or not */if(!seen||seen.travelVersion)applyTrails(this.map,this.save.seed,this.rx,this.ry);this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.storm=null;this._stormCheck=0;const b=ensureBoatState(this.save),m=b.moored;if(b.owned&&!b.aboard&&m&&m.rx===this.rx&&m.ry===this.ry)this.map.objects.push({id:"skiff-moored",kind:"skiff",name:"Your skiff",lore:"Your skiff rides at its mooring.",x:m.x,y:m.y,state:"moored",actions:["board"]});this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive)}
     if(area==="overworld"&&!this.map.settlement)applyTunnels(this.map,this.save,overworldDigKey(this.rx,this.ry),true); // release 423: tunnels dug in the open world
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];if(!seen||seen.watcherVersion)placeWatcherOverworld(this.map,mapWidth(this.map,area),this.save.seed,this.rx,this.ry);} // release 289: sections first seen from now on
@@ -3084,10 +3084,10 @@ export class Game {
     // Release 215: touching a strange thing opens a Glimpse.
     if (o.kind === "digSpot" && (action || validActions(o, this.save)[0]) === "dig") { const c = ensureShovel(this.save); if (!c.ok) { this.message = c.message; return { ok: false, message: this.message }; } const r = digSpot(this.save, o, this.rx, this.ry); this.message = (c.crafted ? c.message + " " : "") + r.message; this.sync(); return r; }
     if (o.kind === "watcherTomb") return this.touchWatcherTomb(o); // release 289
-    if (o.kind === "surveyorLink") { const r = takeSurveyorLink(this.save, o, this.areaId()); this.message = r.message; if (r.ok) noteLeftBehind(this.save, this.areaId(), "link", false); if (r.ok) journalOnce(this.save, `surveyor:${r.index}`, `Link ${r.total} of ${SURVEYOR.links}. "${r.note}"`, "The Surveyor's Chain"); if (r.ok && r.total >= SURVEYOR.links) { const at = surveyorStatueSection(this.save); this.message += ` On your Atlas the twelve crossings join into one chain, and it runs on to the edge of the Far Sleep, at ${at.rx}, ${at.ry}.`; journalOnce(this.save, "surveyor:map", `Laid end to end, the crossings where the links lay draw a chain across the Atlas. It runs on past the last of them to the edge of the Far Sleep, at ${at.rx}, ${at.ry}.`, "The Surveyor's Chain"); } this.sync(); return r; } // release 505; 551: the last map
+    if (o.kind === "surveyorLink") { const r = takeSurveyorLink(this.save, o, this.areaId()); this.message = r.message; if (r.ok) journalOnce(this.save, `surveyor:${r.index}`, `Link ${r.total} of ${SURVEYOR.links}. "${r.note}"`, "The Surveyor's Chain"); if (r.ok && r.total >= SURVEYOR.links) { const at = surveyorStatueSection(this.save); this.message += ` On your Atlas the twelve crossings join into one chain, and it runs on to the edge of the Far Sleep, at ${at.rx}, ${at.ry}.`; journalOnce(this.save, "surveyor:map", `Laid end to end, the crossings where the links lay draw a chain across the Atlas. It runs on past the last of them to the edge of the Far Sleep, at ${at.rx}, ${at.ry}.`, "The Surveyor's Chain"); } this.sync(); return r; } // release 505; 551: the last map
     if (o.kind === "surveyorStatue") { const r = visitSurveyorStatue(this.save, o); this.message = r.message; if (r.first) journalOnce(this.save, "surveyor:statue", r.message, "The Surveyor's Chain"); this.sync(); return r; } // release 551
     if (o.kind === "marginNote") { const r = readMargin(this.save, o); this.message = r.message; if (r.ok) { const reading = READINGS[o.readingId], known = readingKnown(this.save, o.readingId), prog = bookProgress(this.save, o.readingId); if (r.first) { journalOnce(this.save, `margin:${o.readingId}:${o.margin}`, r.message, known ? `Margins · ${reading.name}` : "Margins"); this.message += known ? ` (A margin of ${reading.name}: ${prog.found} of ${prog.total} fragments.)` : " (A fragment of a book you have not heard yet.)"; } } this.sync(); return r; } // release 455
-    if (o.kind === "crackedBell") { if (o.state === "rung") { this.message = `A rung bell. It hangs quiet, and a little warm.`; return { ok: true, message: this.message }; } const r = ringBell(this.save, o); this.message = r.message; if (r.first) { noteLeftBehind(this.save, this.areaId(), "bell", false); journalOnce(this.save, `bell:${o.bell}`, `A cracked bell rang for ${BELL_GLIMPSES[o.bell].who}. ${BELL_GLIMPSES[o.bell].lines.join(" ")}`, "The Seven Bells"); if (r.done) journalOnce(this.save, "bell:door", r.message.slice(r.message.indexOf("Seven figures")), "The Seven Bells"); } this.sync(); return r; } // release 431
+    if (o.kind === "crackedBell") { if (o.state === "rung") { this.message = `A rung bell. It hangs quiet, and a little warm.`; return { ok: true, message: this.message }; } const r = ringBell(this.save, o); this.message = r.message; if (r.first) { journalOnce(this.save, `bell:${o.bell}`, `A cracked bell rang for ${BELL_GLIMPSES[o.bell].who}. ${BELL_GLIMPSES[o.bell].lines.join(" ")}`, "The Seven Bells"); if (r.done) journalOnce(this.save, "bell:door", r.message.slice(r.message.indexOf("Seven figures")), "The Seven Bells"); } this.sync(); return r; } // release 431
     if (o.kind === "ilse") { const r = meetIlse(this.save, o); this.message = r.message; if (r.first) journalOnce(this.save, `ilse:${o.stage}`, `${o.name}: ${r.message}`, "Ilse, the Lamplighter"); return r; } // release 415
     if (o.kind === "warpDais") return this.useWarpDais(o); // release 301
     if (o.strange && (action || validActions(o, this.save)[0]) === "touch") { const r = touchStrange(this.save, o, this.rx, this.ry); this.message = r.message; if (r.ok) this.glimpseCue = "strange"; return r; }
