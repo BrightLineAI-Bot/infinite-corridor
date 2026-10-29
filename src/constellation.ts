@@ -12,7 +12,7 @@ import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrad
 import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.ts";
 import { pairingMods } from "./spell-slots.ts";
 import { latticePassives, toggleLatticeSlot } from "./transit-lattice.ts";
-import { fieldForm } from "./lattice-fields.ts";
+import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.ts";
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 
@@ -90,6 +90,15 @@ export function passiveForm(key) {
   return alt ? { id, alt: true, name: ALT_PASSIVES[id].name, text: ALT_PASSIVES[id].text } : { id, alt: false, name: node.name, text: node.text };
 }
 export const PASSIVE_KEYS = Object.values(BRANCHES).flatMap((b) => [b.mod, ...b.caps]).flatMap((n) => [n.id, `${n.id}:alt`]);
+// Release 575 (Tim: the Lattice's passives "based on the skill that they benefit... underneath it... the passives for spells...
+// for skills... the general passives"): every Lattice passive key in one group. Each skill holds its discipline's modifier and
+// capstones (both forms); Spells holds the field passives, Tools the tool forms, General whatever is always on.
+export function latticePassiveGroups() {
+  const general = [], groups = BRANCH_IDS.map((bid) => { const b = BRANCHES[bid], keys = [];
+    for (const n of [b.mod, ...b.caps]) for (const key of [n.id, `${n.id}:alt`]) ((key.endsWith(":alt") ? ALT_PASSIVES[n.id]?.kind : NODE_EFFECTS[n.id]?.kind) === "always" ? general : keys).push(key);
+    return { id: bid, skill: true, title: APERTURE_SKILLS[b.active].name, sub: "", keys }; });
+  return [...groups, { id: "spells", title: "Spells", sub: "While your spells run or linger", keys: FIELD_KEYS }, { id: "tools", title: "Tools", sub: "Tool forms", keys: TOOL_FORM_KEYS }, { id: "general", title: "General", sub: "Always on", keys: general }];
+}
 export function toggleLatticePassive(save, key) {
   const f = passiveForm(key); if (!f) return { ok: false, message: "That is not a passive." };
   if (f.field) return toggleLatticeSlot(save, "passive", key, f.name); // release 515: nothing to learn first

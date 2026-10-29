@@ -964,3 +964,6 @@ button[aria-current], button[aria-selected="true"], .arc-kind.active, .options-t
    buttons around it... those other buttons should take priority"): Jump shrinks to about two thirds, centred where it was,
    so a thumb meant for Tool, Act, Dodge or Attack lands on them (input.ts also gives gap presses away from Jump). */
 .action-diamond button.core.jump { width: calc(var(--button) * 0.68); height: calc(var(--button) * 0.68); left: calc(var(--button) * 1.44); top: calc(var(--button) * 1.28); font-size: 8px; padding-bottom: 0; }
+
+/* Release 575: the Transit Lattice's folds */
+.lattice-group>summary{cursor:pointer;color:#e7d7b7;font:bold 1rem serif;padding:4px 0}.lattice-group>summary small{font:400 .8rem system-ui;color:#a39a88}.lattice-group.on>summary{color:#e8c483}.lattice-group[open]>summary{margin-bottom:6px}.lattice-views{margin:6px 0 8px}.lattice-head{margin:10px 0 0;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;color:#a39a88}

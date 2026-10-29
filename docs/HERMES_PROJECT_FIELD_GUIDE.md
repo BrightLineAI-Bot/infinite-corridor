@@ -2694,6 +2694,24 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 575: the Transit Lattice in views — 2026-10-29
+
+Tim (2026-10-29): "passives based on the skill that they benefit... force channel... quickening... all the passives that are
+associated with that specific skill can just be underneath it... click on it... expand... the all view... the passive tab...
+echoes could be a separate subtab... these are just the passes for spells... skills... the general passives".
+
+**CODE:**
+- `src/constellation.ts`: `latticePassiveGroups()` puts every Lattice passive key in one group: a group per branch (its
+  discipline's name; the modifier and capstones in both forms), then `spells` (FIELD_KEYS), `tools` (TOOL_FORM_KEYS) and
+  `general` (forms whose kind is "always", taken out of their branch).
+- `src/main.ts`: `openLattice(view)` with `LATTICE_VIEWS` (passives, echoes, all; the last view is remembered). Passives: the
+  passive slots, a "Skills" heading, a `<details>` fold per group (open folds kept in `latticeFolds`), unlearned constellation
+  forms shown dimmed. Echoes: Echo slots and choices. All: the release 363 list. `styles.css`: `.lattice-group`, `.lattice-head`.
+
+**BOUNDARY:**
+- No save change: views and folds are page state only. What a card does when tapped is unchanged.
+- Tests: `tests/lattice-views-575.test.ts`.
+
 ## Release 573: forests, frostlands and region names — 2026-10-29
 
 Tim (2026-10-29): "we should have some actual forest sections where there's just actual, like bunch of trees... that you can chop
