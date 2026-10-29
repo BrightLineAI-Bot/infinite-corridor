@@ -2,7 +2,7 @@ import { BOAT, forgeSubmersible } from "./boats.ts"; // release 311
 import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.ts";
 import { swapPreset, stashForOtherPreset } from "./build-presets.ts"; // release 393; 541: preset gear
 import { SLING, ensureSling, toSling, fromSling, equipFromSling } from "./sling.ts"; // release 543
-import { surveyorChainPath } from "./surveyor.ts"; // release 551
+import { surveyorChainPath, surveyorComplete } from "./surveyor.ts"; // release 551; 559
 import { SMITHY, smithOpen, salvageItem, reforgeAffix, addSocket, masterwork } from "./smithy.ts";
 import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } from "./meals.ts"; // release 447
 import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.ts"; // release 459 // release 395 // release 315; 321: the drone
@@ -13,7 +13,8 @@ import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
-import { vendorShop, buyFromVendor } from "./game.ts";
+import { vendorShop, buyFromVendor, walkerCrossingMap } from "./game.ts";
+import { sectionAtlasColor } from "./atlas-colors.ts";
 import { CREATURE_TRAITS } from "./combat.ts";
 import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass } from "./monster-pack.ts"; // release 403: staggerClass marks bosses on the dungeon map
 import { drawPackPortrait } from "./monster-render.ts";
@@ -28,7 +29,7 @@ import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boun
 import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.ts";
 import { startGlimpse, paintRule } from "./glimpse-render.ts";
 import { eldersHeard, elderProgress, ruleRows } from "./elders.ts";
-import { relayCell, relayEdge, relayRuleAt, crossingSection } from "./relay-network.ts";
+import { relayRuleAt, crossingSection, knownRelaySections } from "./relay-network.ts";
 import { questingBeastTriesLeft } from "./questing-beast.ts";
 import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding, relaysUntilReturn } from "./far-array.ts";
 import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.ts";
@@ -356,8 +357,27 @@ function showEventBanner(title, detail = "", kind = "discovery") {
   clearTimeout(bannerTimer);
   bannerTimer = setTimeout(() => banner.classList.remove("visible"), 3200);
 }
+// Release 559 (Tim: "when you complete a hunt or... whatever quest you active quest you have, it's a quest complete... just
+// get a banner"): QUEST COMPLETE banners wait in a queue and show one at a time, after any other banner of that moment.
+// Hunts queue theirs (game.questNotices); the rest are noticed here: Old Quillon's errand done, the seventh bell rung, the
+// Surveyor's Chain whole. The first look at a journey only notes where things stand.
+const QUEST_BANNER={gap:3400,checkEvery:500},questQueue=[],questWatch={ready:false};let questBannerFreeAt=0,questCheckedAt=-1e9;
+function watchQuests(now){
+  if(game.questNotices?.length){questQueue.push(...game.questNotices);game.questNotices.length=0}
+  if(now-questCheckedAt>=QUEST_BANNER.checkEvery){questCheckedAt=now;
+  if(questWatch.save!==save)questWatch.ready=false; // another journey: look first, announce nothing
+  const w=save.wanderer?.quest,sig={errand:w?.done?`${save.wanderer.stage}:${w.type}`:null,bells:bellsRung(save).length,surveyor:surveyorComplete(save)};
+  if(questWatch.ready){
+    if(sig.errand&&sig.errand!==questWatch.errand)questQueue.push({title:"QUEST COMPLETE",detail:"Old Quillon's errand · find him on the road for your reward",kind:"quest"});
+    if(sig.bells>=BELLS.count&&questWatch.bells<BELLS.count)questQueue.push({title:"QUEST COMPLETE",detail:"The Seven Bells · all seven have rung",kind:"quest"});
+    if(sig.surveyor&&!questWatch.surveyor)questQueue.push({title:"QUEST COMPLETE",detail:"The Surveyor's Chain · all its links recovered",kind:"quest"});
+  }
+  Object.assign(questWatch,sig,{ready:true,save});}
+  if(questQueue.length&&now>=questBannerFreeAt){const q=questQueue.shift();showEventBanner(q.title,q.detail,q.kind);questBannerFreeAt=now+QUEST_BANNER.gap}
+}
 function updateWorldNotices() {
-  if(game.defeatNotice){const notice=game.defeatNotice;game.defeatNotice=null;showEventBanner(notice.title,notice.detail,notice.kind);}
+  if(game.defeatNotice){const notice=game.defeatNotice;game.defeatNotice=null;showEventBanner(notice.title,notice.detail,notice.kind);questBannerFreeAt=performance.now()+QUEST_BANNER.gap;}
+  watchQuests(performance.now());
   {const done=takeCompletedReading();if(done)showEventBanner("RECITATION COMPLETE",`${done==="elders"?"The Elder Wanderers":READINGS[done].name} · Mastered`,"discovery");} // release 191 (Tim)
   if(game.glimpseCue){const cue=game.glimpseCue;game.glimpseCue=null;const id=glimpseRun?null:glimpseFor(save,cue,game.rx,game.ry,Math.random,{family:settings.familySafe});if(id)playGlimpse(id)} // release 193
   for (const e of game.enemies) if (!e.dead && (e.boss || e.apertureEncounter) && !announcedThreats.has(e.id)) {
@@ -1219,7 +1239,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:557,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 557\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:559,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 559\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1231,7 +1251,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:557,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:559,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1257,8 +1277,9 @@ function drawAtlasLabels(labels,bounds,fontSize){const placed=[],overlap=(a,b)=>
 // Release 175 (Tim, 2026-10-17): the map also shrinks to leave its tools and layer buttons on screen, measured from the
 // open Atlas, so any screen shows the whole working area without scrolling (the details below still scroll).
 function atlasMapHeight(){const base=Math.max(140,Math.min(innerHeight*.65,innerHeight-(innerHeight<560?205:260),520));if(!atlas.open)return base;const A=atlas.getBoundingClientRect(),C=mapCanvas.getBoundingClientRect(),L=$("#mapLayers")?.getBoundingClientRect();if(!A.height||!C.height)return base;const above=C.top-A.top+atlas.scrollTop,below=Math.max(0,(L&&L.height?L.bottom:C.bottom)-C.bottom);return Math.max(140,Math.min(base,Math.floor(atlas.clientHeight-above-below-6)))}
-// Relay overlay (release 142, Atlas button): the Rule 110 relay pattern as a faint lattice over explored sections and
-// their neighbours, and the relays you have answered as bright nodes joined to answered neighbours within two sections.
+// Relay overlay (release 142, Atlas button): the relays you have answered as bright nodes joined to answered neighbours
+// within two sections. Release 559: violet triangles mark only explored crossings that really hold a relay still waiting
+// (no longer every cell of the pattern, which read as relays that were not there).
 let relayOverlay=false;
 // Atlas layers (release 155): the buttons under the Atlas switch each kind of marking on or off. The choice is a
 // per-device convenience kept in localStorage.
@@ -1279,13 +1300,14 @@ function drawRelayOverlay(w,h,cell,cols,rows){
   const at=(rx,ry)=>({x:w/2+(rx-mapView.x)*cell+mapView.panX,y:h/2+(ry-mapView.y)*cell+mapView.panY}),answered=[];
   for(const[id,n]of Object.entries(save.relayNetwork?.nodes||{})){const c=crossingSection(id);if(c)answered.push({...c,choice:n.choice})}
   mctx.save();
-  for(let j=-rows;j<=rows;j++)for(let i=-cols;i<=cols;i++){const rx=mapView.x+i,ry=mapView.y+j,near=[[0,0],[1,0],[-1,0],[0,1],[0,-1]].some(([a,b])=>save.explored[`${rx+a},${ry+b}`]);if(!near||!relayEdge(save.seed,rx,ry))continue;const p=at(rx,ry),r=Math.max(1.5,cell*.06);mctx.fillStyle="#b48cff44";mctx.beginPath();mctx.moveTo(p.x,p.y-r*1.6);mctx.lineTo(p.x+r*1.3,p.y+r*.9);mctx.lineTo(p.x-r*1.3,p.y+r*.9);mctx.closePath();mctx.fill()}
+  const known=knownRelaySections(save); // release 559: only explored crossings that really hold a relay
+  for(let j=-rows;j<=rows;j++)for(let i=-cols;i<=cols;i++){const rx=mapView.x+i,ry=mapView.y+j;if(known.get(`${rx},${ry}`)!=="dormant")continue;const p=at(rx,ry),r=Math.max(2.5,cell*.09);mctx.fillStyle="#c9a6ffdd";mctx.beginPath();mctx.moveTo(p.x,p.y-r*1.6);mctx.lineTo(p.x+r*1.3,p.y+r*.9);mctx.lineTo(p.x-r*1.3,p.y+r*.9);mctx.closePath();mctx.fill()}
   mctx.lineWidth=Math.max(1.5,cell*.04);
   // Each answered relay links to its (at most) two nearest answered neighbours within two sections: chains, not webs.
   const links=new Set();for(const p of answered){const near2=answered.filter(q=>q!==p&&Math.max(Math.abs(p.rx-q.rx),Math.abs(p.ry-q.ry))<=2).sort((a,b)=>Math.hypot(a.rx-p.rx,a.ry-p.ry)-Math.hypot(b.rx-p.rx,b.ry-p.ry)).slice(0,2);for(const q of near2)links.add([p,q].sort((a,b)=>a.rx-b.rx||a.ry-b.ry).map(n=>`${n.rx},${n.ry},${n.choice}`).join("|"))}
   for(const l of links){const[p,q]=l.split("|").map(t=>{const[rx,ry,choice]=t.split(",");return{rx:+rx,ry:+ry,choice}}),A=at(p.rx,p.ry),B=at(q.rx,q.ry);mctx.strokeStyle=p.choice==="sever"&&q.choice==="sever"?"#6a5a7a99":"#7fe7ffaa";mctx.beginPath();mctx.moveTo(A.x,A.y);mctx.lineTo(B.x,B.y);mctx.stroke()}
   for(const n of answered){const p=at(n.rx,n.ry),r=Math.max(3,cell*.1);mctx.fillStyle=n.choice==="restore"?"#7fe7ff":"#2a2236";mctx.strokeStyle=n.choice==="restore"?"#e8fbff":"#9b86c4";mctx.beginPath();mctx.arc(p.x,p.y,r,0,7);mctx.fill();mctx.stroke();if(n.choice==="restore"){mctx.fillStyle="#7fe7ff33";mctx.beginPath();mctx.arc(p.x,p.y,r*2.4,0,7);mctx.fill()}}
-  mctx.fillStyle="#cdb8ff";mctx.font="11px monospace";mctx.fillText(`Relay overlay · ${relayRuleAt(save.seed,mapView.x,mapView.y)} · ${answered.length} answered`,10,16);
+  mctx.fillStyle="#cdb8ff";mctx.font="11px monospace";mctx.fillText(`Relays · ${[...known.values()].filter(v=>v==="dormant").length} waiting · ${answered.length} answered · ${relayRuleAt(save.seed,mapView.x,mapView.y)}`,10,16);
   mctx.restore();
 }
 function drawMap() {
@@ -1329,7 +1351,7 @@ function drawMap() {
       const record = save.atlas?.[key], terrain = record?.terrain || (rx===game.rx&&ry===game.ry?game.map.dominant:"ash");
       const landscape = record?.landscape || (rx===game.rx&&ry===game.ry?game.map.landscape?.biome:null);
       mctx.fillStyle = seen
-        ? landscapeAtlasColor(landscape) || { ash: "#51464a", glass: "#315b62", ember: "#794735" }[
+        ? record?.color || landscapeAtlasColor(landscape) || { ash: "#51464a", glass: "#315b62", ember: "#794735" }[
             terrain
           ]
         : signal ? "#241f31" : "#202833";
@@ -1382,29 +1404,46 @@ function drawMap() {
 // explored or a region is heard), drawn scaled; regions you have heard are tinted and named; markers keep a fixed size.
 const READING_TINT={longCampaign:"#c8743a",riverThatRemembers:"#3aa0c8",transparentEye:"#8ad06a",yellowCity:"#e0c040",pathAlone:"#a0a0b8",threeBrothers:"#c05a8a",bookOfImages:"#d8a060",underTheFloor:"#6a5ac0",secondCampaign:"#b05a3a",dreamlands:"#9a6fe0"};
 let atlasWorldCache=null;
+// Release 559 (Tim: "I want to see the world that I actually am exploring not like some fake picture"): a section's own
+// colour (atlas-colors.ts, recorded on each visit) is what the Atlas draws; a heard Reading only tints it lightly. Sections
+// explored before 559 have none yet: while the Atlas is open they are coloured from their pinned map, nearest the view
+// first, one per frame (about 40 ms each on a desktop), and the world image is redrawn as they come in.
+const ATLAS_READING_TINT={coloured:.14,plain:.38},ATLAS_BACKFILL={redrawEvery:8};
+let atlasColoured=0,atlasBackfilling=false;
+function atlasBackfill(){
+  if(atlasBackfilling)return;atlasBackfilling=true;let done=0;
+  const step=()=>{
+    if(!atlas.open){atlasBackfilling=false;if(done)drawMap();return}
+    let best=null,bd=Infinity;for(const key of Object.keys(save.explored||{})){const rec=save.atlas?.[key];if(!rec||rec.color)continue;const[rx,ry]=key.split(",").map(Number);if(!Number.isFinite(rx)||!Number.isFinite(ry))continue;const d=Math.abs(rx-mapView.x)+Math.abs(ry-mapView.y);if(d<bd){bd=d;best=[rx,ry,rec]}}
+    if(!best){atlasBackfilling=false;if(done)drawMap();return}
+    try{best[2].color=sectionAtlasColor(walkerCrossingMap(save,best[0],best[1]))||"#51464a"}catch(error){best[2].color="#51464a";console.warn("Atlas colour failed",error)}
+    atlasColoured++;done++;if(done%ATLAS_BACKFILL.redrawEvery===0)drawMap();requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
 function atlasRgb(c){const h=String(c||"#51464a").replace("#",""),f=h.length===3?h.split("").map(x=>x+x).join(""):h,n=parseInt(f,16);return[(n>>16)&255,(n>>8)&255,n&255]}
 function atlasWorldImage(){
-  const list=exploredSections(save),key=`${save.seed}:${list.length}:${Object.keys(save.lore?.entered||{}).join()}:${atlasLayers.regions}:${relayOverlay}`; // seed: another journey never reuses this image
+  const list=exploredSections(save),key=`${save.seed}:${list.length}:${atlasColoured}:${Object.keys(save.consequences?.dungeons||{}).length}:${Object.keys(save.relayNetwork?.nodes||{}).length}:${Object.keys(save.lore?.entered||{}).join()}:${atlasLayers.regions}:${relayOverlay}`; // seed: another journey never reuses this image
   if(atlasWorldCache?.key===key)return atlasWorldCache;
   const b=boundsOf(list);if(!b)return null;
   const W=b.maxX-b.minX+1,H=b.maxY-b.minY+1,c=document.createElement("canvas");c.width=W;c.height=H;
   const g=c.getContext("2d"),img=g.createImageData(W,H),groups=new Map(),crossings=[];
-  for(const[rx,ry]of list){const rec=save.atlas?.[`${rx},${ry}`],base=atlasRgb(landscapeAtlasColor(rec?.landscape)||{ash:"#51464a",glass:"#315b62",ember:"#794735"}[rec?.terrain||"ash"]),id=readingAt(rx,ry),known=atlasLayers.regions&&readingKnown(save,id),tint=known?atlasRgb(READING_TINT[id]):null,i=((ry-b.minY)*W+(rx-b.minX))*4;
-    for(let k=0;k<3;k++)img.data[i+k]=tint?Math.round(base[k]*.62+tint[k]*.38):base[k];img.data[i+3]=255;
+  for(const[rx,ry]of list){const rec=save.atlas?.[`${rx},${ry}`],base=atlasRgb(rec?.color||landscapeAtlasColor(rec?.landscape)||{ash:"#51464a",glass:"#315b62",ember:"#794735"}[rec?.terrain||"ash"]),id=readingAt(rx,ry),known=atlasLayers.regions&&readingKnown(save,id),tint=known?atlasRgb(READING_TINT[id]):null,i=((ry-b.minY)*W+(rx-b.minX))*4;
+    const tw=rec?.color?ATLAS_READING_TINT.coloured:ATLAS_READING_TINT.plain;for(let k=0;k<3;k++)img.data[i+k]=tint?Math.round(base[k]*(1-tw)+tint[k]*tw):base[k];img.data[i+3]=255;
     if(known){const q=groups.get(id)||{x:0,y:0,n:0};q.x+=rx;q.y+=ry;q.n++;groups.set(id,q)}
     for(const s of rec?.sites||[])if(CROSSING_KINDS.has(s.kind)){crossings.push([rx,ry]);break}}
   g.putImageData(img,0,0);
   atlasWorldCache={key,canvas:c,bounds:b,places:atlasPlaces(save),crossings,relays:relayOverlay?atlasRelayImage(list,b):null,labels:[...groups.entries()].map(([id,q])=>({name:READINGS[id].name,rx:q.x/q.n,ry:q.y/q.n,n:q.n}))};
   return atlasWorldCache;
 }
-// Release 209 (Tim): the relay pattern stays visible zoomed out. Every live cell of the relay pattern next to explored
-// land is one violet pixel: the whole "chunky" pattern, which Tim preferred to its edges alone, so the fractal the
-// relays make reads as one shape at world scale. Like the close view, nothing is shown far from where you have been.
+// Release 209 (Tim): the relay pattern stays visible zoomed out. Release 559 (Tim: "if there's no relays in the area, then
+// it shouldn't show up on the map as a relay, because it's confusing"): only explored sections whose crossing really holds
+// an unanswered relay are violet (relay-network.ts knownRelaySections); answered relays are drawn on top as before.
 function atlasRelayImage(list,b){
   const M=1,W=b.maxX-b.minX+1+2*M,H=b.maxY-b.minY+1+2*M,c=document.createElement("canvas");c.width=W;c.height=H;
   const g=c.getContext("2d"),img=g.createImageData(W,H),done=new Set();
-  for(const[x0,y0]of list)for(const[a,bb]of[[0,0],[1,0],[-1,0],[0,1],[0,-1]]){const rx=x0+a,ry=y0+bb,k=`${rx},${ry}`;if(done.has(k))continue;done.add(k);if(!relayCell(save.seed,rx,ry))continue;const i=((ry-b.minY+M)*W+(rx-b.minX+M))*4;img.data[i]=190;img.data[i+1]=150;img.data[i+2]=255;img.data[i+3]=235}
-  g.putImageData(img,0,0);return{canvas:c,minX:b.minX-M,minY:b.minY-M};
+  for(const[k,state]of knownRelaySections(save)){if(state!=="dormant"||done.has(k))continue;done.add(k);const[rx,ry]=k.split(",").map(Number);if(rx<b.minX||rx>b.maxX||ry<b.minY||ry>b.maxY)continue;const i=((ry-b.minY+M)*W+(rx-b.minX+M))*4;img.data[i]=190;img.data[i+1]=150;img.data[i+2]=255;img.data[i+3]=235}
+  g.putImageData(img,0,0);return{canvas:c,minX:b.minX-M,minY:b.minY-M,count:done.size};
 }
 // Release 217 (Tim): the two mouths of a linked dungeon, joined by a dashed green line with green rings, so they read
 // as one crossing and never as a relay (violet) or an ordinary crossing (orange). Shown under Places.
@@ -1457,7 +1496,7 @@ function drawAtlasWorld(w,h,cell,signals){
     const answered=[];for(const[id,n]of Object.entries(save.relayNetwork?.nodes||{})){const s=crossingSection(id);if(s)answered.push({...s,choice:n.choice})}
     mctx.lineWidth=2;for(const p of answered)for(const q of answered.filter(q=>q!==p&&Math.max(Math.abs(p.rx-q.rx),Math.abs(p.ry-q.ry))<=2).sort((a,b)=>Math.hypot(a.rx-p.rx,a.ry-p.ry)-Math.hypot(b.rx-p.rx,b.ry-p.ry)).slice(0,2)){const[ax,ay]=at(p.rx,p.ry),[bx,by]=at(q.rx,q.ry);mctx.strokeStyle=p.choice==="sever"&&q.choice==="sever"?"#6a5a7a99":"#7fe7ffcc";mctx.beginPath();mctx.moveTo(ax,ay);mctx.lineTo(bx,by);mctx.stroke()}
     for(const n of answered){const[px,py]=at(n.rx,n.ry);mctx.fillStyle=n.choice==="restore"?"#7fe7ff":"#2a2236";mctx.strokeStyle=n.choice==="restore"?"#e8fbff":"#9b86c4";mctx.beginPath();mctx.arc(px,py,3.5,0,7);mctx.fill();mctx.stroke()}
-    mctx.fillStyle="#cdb8ff";mctx.font="11px monospace";mctx.fillText(`Relays · ${relayRuleAt(save.seed,mapView.x,mapView.y)} · ${answered.length} answered`,10,16)}
+    mctx.fillStyle="#cdb8ff";mctx.font="11px monospace";mctx.fillText(`Relays · ${world.relays?.count||0} waiting · ${answered.length} answered`,10,16)}
   // Fixed-size markers: Wayglasses and towns once there is room, signals, the waypoint, the compass target, the last death, you.
   const dot=(rx,ry,r,fill,stroke)=>{const[x,y]=at(rx,ry);if(x<-20||y<-20||x>w+20||y>h+20)return;mctx.beginPath();mctx.arc(x,y,r,0,7);if(fill){mctx.fillStyle=fill;mctx.fill();mctx.strokeStyle="#091018";mctx.lineWidth=1.5;mctx.stroke()}if(stroke){mctx.strokeStyle=stroke;mctx.lineWidth=2;mctx.stroke()}};
   if(world&&cell>=3)for(const g of world.places)for(const p of g.places){if(p.kind==="checkpoint"){if(atlasLayers.wayglasses)dot(p.rx,p.ry,4,"#5fe7ee")}else if((p.kind==="hamlet"||p.kind==="refuge")&&atlasLayers.sites)dot(p.rx,p.ry,4,"#f0c070");else if(p.kind==="architecturalDistrict"&&atlasLayers.sites)dot(p.rx,p.ry,4,"#c9a58b")}
@@ -1584,6 +1623,7 @@ function openMap() {
   updateMapModeUI();
   mapView.chosen=false;if(mapMode==="atlas")showMapDetail(game.rx, game.ry);
   drawMap();
+  atlasBackfill(); // release 559
 }
 // Release 151: each part of the Pack is built separately, so a fault in one (seen on a player's save, cause still
 // unknown) shows a note naming the part and its error instead of stopping the whole Pack from opening.

@@ -45,6 +45,17 @@ This is a drift, not a border. A human Glimpse can surface at the edge of the ma
 
 Tone: quiet, grave, sometimes beautiful, sometimes horrifying, sometimes simply incomprehensible. Never jokey.
 
+### What the Corridor is made of (Tim, 2026-10-29)
+
+Tim's words, lightly edited for reading: "The dungeon water is not water... it's the classic trope of: this is what your mind can perceive them as. The dungeon water is just a very different state of... the composition of the corridor in those places, that we perceive as water... it's more fluid and less concrete than the surrounding sections of the corridor. Some sections of the corridor are more concrete than others. The shovel is just a mental tool... a manifestation of the idea of burrowing and tunneling... into the density of the corridor. All these creatures and all these things are just manifestations in the Wayfarer's viewport. He's jacked in in some way... it doesn't necessarily even matter if he's experiencing it like us, through a game, or if his consciousness is inhabiting the Wayfarer, because that's essentially the same thing: you are dictating motion through consciousness and interacting with literally ones and zeros, or electrical signals, that have been configured in a way to indicate water and land and monsters."
+
+What this settles, for us:
+- **The Corridor has density, not matter.** Ground, wall, water and void are degrees of how concrete the Corridor is in a place. Water (above all the dungeons' dark water) is where it runs thin and fluid; walls and rock are where it is dense. Lethal water is not drowning: it is the Wayfarer's form failing to hold in a place too fluid to hold it.
+- **Tools are ideas given a handle.** The shovel is the idea of burrowing, made usable. The skiff, the robot frame and the Wayglass are the same kind of thing: a mind's way of acting on the Corridor's density.
+- **Everything met is a rendering.** Creatures, people and places are how the Wayfarer's viewport resolves what is there. The Viewport board in Ember Refuge is named for this.
+- **The Wayfarer is jacked in, and it does not matter how.** Whether a consciousness inhabits the Wayfarer, or someone plays them through a screen, is the same act: intent moving through signals that are configured to read as water, land and monsters. The player is not outside the fiction; the fiction is about the player.
+- **How the game says it:** never directly. It is implied in fragments, Glimpses and half-said lines, in the same way as the rest of section 1. Possible seams: a reciter who calls water "the thin places"; a Glimpse through something for which a wall is a liquid; the shovel's flavour text ("the idea of a way through"); Aperture bands that describe ground as "denser" or "thinner".
+
 ---
 
 ## 2. Regions ("Readings") and their books
