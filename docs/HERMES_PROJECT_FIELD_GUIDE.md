@@ -2694,6 +2694,21 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 565: the Mouth hamlet kept exactly as before 557 — 2026-10-29
+
+The second pre-publish Fable review (561→563) found 563's fix passed `legacyMouthHamlet` as `applyHamlet`'s `force`, the 371
+"town where a Listener fell" mode that clears the section centre when no flat site exists, so about 79% of legacy Mouth rolls
+(open land before 557) would have gained a new, flattened hamlet.
+
+**CODE:** `src/settlements.ts` `applyHamlet(map, seed, rx, ry, version, force, allowed)`: `allowed` only waives the
+`hamletSection` gate; the centre-clearing fallback stays `force`-only. `game.ts` (loadArea, `walkerCrossingMap`) and
+`astral-world-retreat.ts` pass `legacyMouthHamlet` as `allowed`; loadArea's `force` is `townAt` alone, as before. `travelers.ts`
+`sectionTrails` uses `hamletRoll` (exported), the seed's roll as before 557, so trails beside and through the Mouth on explored
+ground are where they were (on new ground a trail may lead on to the Mouth, a town in waiting).
+
+**BOUNDARY:** Checked against the live 555 code: for 237 seeds whose Mouth roll is legacy, and for 500 explored sections across 25
+seeds, `walkerCrossingMap` gives identical tiles and objects. Test: of the legacy Mouth rolls, some, not all, hold a hamlet.
+
 ## Release 563: regional threat weighs more far out — 2026-10-29
 
 Tim (2026-10-29, at ring ~160 where the Wayfarer card read "enemy vitality ×7.80"): "if the distance between you and the Ember

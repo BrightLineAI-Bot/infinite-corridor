@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 565 — the fix for the Mouth's town (563) now restores exactly what was there before 557: a town where one stood, open land where none did, and trails as they ran.
 - Release 563 — **distance weighs more.** Creatures far from Ember Refuge grow tougher faster: past 60 sections out, their vitality climbs to ×10 at 100 sections and ×20 at 200 (it was ×5.4 and ×9.4), and their damage climbs a little faster too (×7.65 at 200, was ×6.25). Nothing changes nearer than 60 sections. This is distance only; your Aperture does not change it.
   - Fix (found in the pre-publish review of 557): in the few journeys where a small town stood on the Listener's Mouth section before 557, that town stays. Only Mouth sections first seen from 557 on are kept as open land.
 - Release 561 — **no more stun-locking.** A hit during a creature's windup holds it for a moment (at most about a third of a second per attack), and then the attack lands anyway. Ordinary creatures can be staggered but not kept stunned: after a short spell of stuns they shrug them off for a second and a half. Bosses keep their poise and stagger rules. The wardens of the deep dungeons (the Threefold Deep's three among them) now have a boss's health and hit harder.

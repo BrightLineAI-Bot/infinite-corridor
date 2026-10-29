@@ -6,7 +6,7 @@
 // time you meet him he pays and hands you the next.
 import { hashSeed, rng, pick } from "./random.ts";
 import { LETHAL_KINDS } from "./landscape.ts";
-import { hamletSection } from "./settlements.ts";
+import { hamletRoll } from "./settlements.ts";
 import { RECITERS, RECITATIONS } from "./recitations.ts";
 import { ELDERS, ELDER_NAME, elderPlan } from "./elders.ts";
 import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading, readingKnown } from "./lore.ts";
@@ -21,7 +21,9 @@ function passage(seed, axis, a, b) { const r = rng(`${seed}:edge:${axis}:${a}:${
 function edgeTrail(seed, axis, a, b, nearTown) { return (hashSeed(`${seed}:trail:v${TRAVEL_VERSION}:${axis}:${a}:${b}`) % 1000) / 1000 < (nearTown ? TRAVEL.trailNearTown : TRAVEL.trailChance); }
 // Which of a section's four exits carry a trail. Both sections sharing an edge agree, so trails continue across them.
 export function sectionTrails(seed, rx, ry) {
-  const town = (x, y) => hamletSection(seed, x, y), here = town(rx, ry);
+  // Release 565: the seed's hamlet roll, as before 557 (which left the Mouth's section out of hamletSection), so trails on
+  // ground already explored stay where they were; a trail may lead on to the Mouth, a town in waiting.
+  const town = (x, y) => hamletRoll(seed, x, y), here = town(rx, ry);
   return {
     north: edgeTrail(seed, "h", rx, ry, here || town(rx, ry - 1)),
     south: edgeTrail(seed, "h", rx, ry + 1, here || town(rx, ry + 1)),
