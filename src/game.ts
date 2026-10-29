@@ -78,7 +78,7 @@ import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt, DREAM_HALL, dreamHallRoll } from "./underlands.ts";
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
 import { applyLandscape, applyDream, DREAM_VERSION, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.ts";
-import { BOSS_PACE, bossPaced, staggerGovernor, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
+import { BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
 import { DIG, planDig, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, addDigSpot, digSpot } from "./digging.ts";
@@ -1408,6 +1408,10 @@ export function takeFirstSpoils(save, e) {
   q.spoils = true; return true;
 }
 // A dungeon's own guardian (a world beast or Questing Beast haunting it is not one; they roam and have their own rules).
+// Release 561 (Tim, 2026-10-29: "the guardians for the threefold deep are comically easy to kill"): the deep dungeons' wardens
+// (objective guardians: the Threefold Deep's three, and the like) are ordinary creatures made bosses, and had a crossing
+// guardian's ×1.35 health. Now they stand up as the bosses they are.
+export const DEEP_WARDEN = { hp: 2.4, damage: 1.25, speed: 1.12, attackCooldownScale: .72, telegraphScale: .9 };
 export const isDungeonGuardian = (e) => !!e && !e.worldBeast && !e.questingBeast && (!!e.boss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e.dungeonRole));
 export function sigilDrop(save, e, map, n, first = false) {
   if (!e || e.summonedBy || e.noRewards) return 0;
@@ -1506,10 +1510,10 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   e.recoil = Math.max(0, (e.recoil || 0) - dt);
   e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
   staggerGovernor(e, dt); // release 377: bosses and elites cannot be stagger-locked
-  if (e.hitStun > 0) {
-    e.telegraph = 0;
-    e.meleePhase = null;
-    e.threatRange = null;
+  // Release 561: a blow during a windup holds it (WINDUP_STAGGER.max s per attack at most); then the attack lands.
+  if (e.hitStun > 0 && e.telegraph > 0 && !windupHeld(e, e.windupStagger ||= {}, dt)) { /* shrugged off: the windup runs on */ }
+  else if (e.hitStun > 0) {
+    if (!(e.telegraph > 0)) { e.meleePhase = null; e.threatRange = null; }
     ensureAI(e).mode = "stagger";
     return false;
   }
@@ -1522,6 +1526,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   if (e.telegraph > 0) {
     e.telegraph = Math.max(0, e.telegraph - dt);
     if (e.telegraph === 0) {
+      e.windupStagger = null; // release 561: the next windup may be held again
       const pattern=e.meleePhase&&MELEE_PATTERNS[e.meleePhase.id], geometry=pattern?enemyMeleeGeometry(e):null;
       e.strikeGeometry = geometry;
       if(pattern?.dash){const aim=e.meleePhase.aim||projectileDirection(player.x-e.x,player.y-e.y),lateral=e.meleePhase.stage===1?{x:-aim.y,y:aim.x}:{x:0,y:0},distance=pattern.dash,dx=(aim.x+lateral.x*.65)*distance,dy=(aim.y+lateral.y*.65)*distance,steps=Math.ceil(Math.hypot(dx,dy)*5);for(let i=0;i<steps;i++)if(!moveAxis(e,dx/steps,dy/steps,map,width))break;if(pattern.stages===2&&e.meleePhase.stage===0){e.meleePhase.stage=1;e.telegraph=.42;e.threatRange=1.9;return false}}
@@ -4112,6 +4117,7 @@ export class Game {
         if(c.dungeonRole==="hunter"){speed=1.16;attackCooldownScale=.88}
         else if(c.dungeonRole==="ranged"){speed=1.05;attackCooldownScale=.84}
         else if(c.dungeonRole==="blocker"){hp=1.22;speed=.94}
+        else if(c.dungeonRole==="objectiveGuardian"&&c.deepDungeon){({hp,damage,speed,attackCooldownScale,telegraphScale}=DEEP_WARDEN);c.staggerResistance=.5}/* release 561 */
         else if(c.dungeonRole==="gateWarden"||c.dungeonRole==="objectiveGuardian"){hp=1.35;damage=1.14;speed=1.1;attackCooldownScale=.78;telegraphScale=.92;c.staggerResistance=.5}
         else if(c.dungeonRole==="finalBoss"){hp=1.48;damage=1.2;speed=1.12;attackCooldownScale=.72;telegraphScale=.88;c.staggerResistance=.65}
         if(c.kind==="gateRevenant"){c.maxHp=360;c.hp=360;c.damage=22;c.range=5.5}

@@ -23,9 +23,8 @@ test('tentacled ranged creatures switch to a committed close stab and keep shots
   const ranged=createCombatant('voidSentinel',5,5);updateEnemyAI(ranged,{x:10,y:5},map,16,0,0);
   assert.equal(ranged.meleePhase,null);updateEnemyAI(ranged,{x:10,y:5},map,16,2,2000,null,()=>shots++);assert.equal(shots,1);
   const staggered=createCombatant('voidSentinel',5,5);updateEnemyAI(staggered,target,map,16,0,0);staggered.hitStun=.1;
-  updateEnemyAI(staggered,target,map,16,0,100);assert.equal(staggered.meleePhase,null);
-  updateEnemyAI(staggered,{x:10,y:5},map,16,.2,300);assert.equal(staggered.meleePhase,null);
-  updateEnemyAI(staggered,{x:10,y:5},map,16,2,2300,null,()=>shots++);assert.equal(shots,2);
+  updateEnemyAI(staggered,target,map,16,0,100);assert.equal(staggered.meleePhase?.id,'longReach','release 561: a blow holds the stab, never cancels it');
+  assert.equal(updateEnemyAI(staggered,target,map,16,2,2300,null,()=>shots++),true,'after the stagger the stab lands');
 });
 test('projectile motion collides with walls instead of hitting through cover',()=>{
   const map=floor();map.tiles[5*16+7].blocked=true;

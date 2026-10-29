@@ -2694,6 +2694,29 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 561: windups held, never cancelled; no ordinary stun-lock; deep wardens — 2026-10-29
+
+Tim (2026-10-29, a new journey): "the guardians for the threefold deep are comically easy to kill... they can get stunlocked...
+when monsters are winding up to attack. If I just shoot them, they won't attack... they should still finish their attack... only
+monsters that we've... specified have poise... everything gets hitstun, that's fine... But it's way too easy to stun lock
+everything".
+
+**CODE:**
+- `src/monster-pack.ts`: `WINDUP_STAGGER.max` and `windupHeld(e, held, dt)`: while hit-stunned in a windup the foe is held, up to
+  `max` seconds per attack in all (`held` is the attack's own record: the pack brain's `s.data`, the classic brain's
+  `e.windupStagger`, cleared when the blow resolves); then its stun is cleared and the windup runs on. The pack brain's line that
+  ended a non-boss's attack on a stun now holds it instead, bosses included. `STAGGER_GOVERNOR` gains the class "ordinary"
+  (`limit .6`, guard `guardBy.ordinary` 1.5 s) for every foe `staggerClass` does not name.
+- `src/game.ts` `updateEnemyAI` (the classic brain): a stun no longer zeroes `telegraph` or drops `meleePhase` mid-windup; it holds
+  them under the same rule. `DEEP_WARDEN` (hp ×2.4, damage ×1.25, faster and readier) for a deep dungeon's objective guardians,
+  which had a crossing guardian's ×1.35.
+- Tests that encoded the old rule were updated at Tim's word: a staggered Void Sentinel's committed stab (gameplay-integration) and
+  the 377 governor's "a common foe can still be kept staggered".
+
+**BOUNDARY:** Balance only, at spawn and in the brains; no generator or save change. Poise breaks (BOSS_POISE, the Crystal's, the
+Gate Revenant's) are unchanged. The Aperture encounter Tim saw (the ring and rotating star is the `orbital` trait, given to every
+tier-3 Aperture encounter: Aperture 36 and up) is already gated by Aperture and was not changed.
+
 ## Release 559: the Atlas in real colours, honest relay markers, QUEST COMPLETE — 2026-10-29
 
 Tim (2026-10-29): "the colors on the atlas... don't correspond to the tiles that you actually visited... I want to see the world
