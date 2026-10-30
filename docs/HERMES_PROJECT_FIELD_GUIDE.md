@@ -2694,6 +2694,28 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 587: skyways float — 2026-10-30
+
+Tim (2026-10-30): "rather than raised stone platforms. Those raised stone platforms are fine. We should keep those in the game...
+but the skyline platforms should be round discs that you can jump on that are floating in the air".
+
+**CODE:**
+- `src/skylands.ts`: `SKYLANDS.version` 3. `SKY_DISCS` and `buildSkyDiscs(map, seed, rx, ry)`: a chain of five (else four or three)
+  discs, `spacing` apart centre to centre in one of eight directions, over open ground clear of objects, spawns, causeways and the
+  plaza; the tiles are not changed. Sets `map.skyDiscs` ({ x, y, r, level }, foot coordinates). `discAt` finds the disc under a
+  foot point. Sections pinned to skyVersion 2 keep the stone ascent, version 1 the Sky Stair.
+- `src/game.ts`: the Wayfarer's `skyLevel` (0 on the ground). A jump started on a disc lasts `JUMP.sky`; when any jump ends,
+  the Wayfarer lands on the highest disc under their feet no more than one level above where the jump began, else the ground;
+  out of a jump, leaving the disc they stand on drops them to a lower disc under them or the ground. A drop takes fall damage by
+  levels (four or more fatal). The door (`skyway`, `disc`, `elev`) opens only at that `skyLevel`. `skyLevel` resets on loading a
+  section. Creatures ignore the discs.
+- `src/renderer.ts`: `drawSkyDisc` (shadow, underside, lit top, gold rim, a slow bob), each sorted at its front edge; the
+  Wayfarer on a disc and the door are drawn lifted by `discLift(level)` just after their disc.
+
+**BOUNDARY:**
+- No tile, save or generation change for ground already seen; `skyLevel` is not saved (a reload stands you on the ground).
+- Tests: `tests/sky-discs-587.test.ts`; the 585 tests generate as skyVersion 2; the 571 tests stand on the top disc.
+
 ## Release 585: the skyway climb — 2026-10-30
 
 Tim (2026-10-30): "vertical... platforms... floating in the air. And you can jump... from platform to platform... to get to the
