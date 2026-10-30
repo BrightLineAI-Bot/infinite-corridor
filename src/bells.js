@@ -8,8 +8,8 @@
 // Ember Refuge, a seeded `chance` per crossing). Which of the seven it is comes from the crossing's seed, so a crossing
 // always holds the same bell; one already rung hangs silent. Rung bells are remembered in save.lore.bells (the bells rung,
 // as a string of digits; additive, normalised here). All writing is original to the game. Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r581-c265662f6b96";
-import { READING_BANDS } from "./lore.js?v=r581-c265662f6b96";
+import { hashSeed } from "./random.js?v=r597-fb99c6531765";
+import { READING_BANDS } from "./lore.js?v=r597-fb99c6531765";
 
 // Release 577 (Tim: "they shouldn't just be trapped in specific dungeons... if I don't get the bell in one dungeon... it should
 // just go to another dungeon... randomly... until I get them... unless there's a way to... note in this square... where the
@@ -41,7 +41,7 @@ export function bellIn(seed, dungeonId, rung = "") {
   const left = Array.from({ length: BELLS.count }, (_, i) => i + 1).filter((n) => !rung.includes(String(n)));
   return left.length ? left[(h >>> 9) % left.length] : 1 + ((h >>> 9) % BELLS.count);
 }
-// Normalises lore.bellAt (bell: crossing where it was rung). Release r581-c265662f6b96 (Tim: "the journal doesn't have to track them... you
+// Normalises lore.bellAt (bell: crossing where it was rung). Release 581 (Tim: "the journal doesn't have to track them... you
 // just gotta keep track of 'em"): the 577 left-behind notes (lore.leftBehind) are no longer written; any already saved are
 // left as they are, unread.
 export function ensureBellState(save) {

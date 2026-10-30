@@ -8,9 +8,9 @@
 // floor; and it may break through only into floor you could already walk to, so no sealed or guarded part is ever
 // opened early. Hunts, portals, dives and crossings are temporary places and are never dug.
 // Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r581-c265662f6b96";
-import { LETHAL_KINDS } from "./landscape.js?v=r581-c265662f6b96";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r581-c265662f6b96";
+import { hashSeed } from "./random.js?v=r597-fb99c6531765";
+import { LETHAL_KINDS } from "./landscape.js?v=r597-fb99c6531765";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r597-fb99c6531765";
 
 // Balance (data, not literals in the logic).
 export const DIG = {

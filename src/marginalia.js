@@ -11,9 +11,9 @@
 // when you leave the crossing (by any way, including a fall). State: save.marginalia = { found: [ids] } (additive,
 // normalised); the run, save.session.marginRun = { dungeon, perks, secondWind, offer } (session; exact resume).
 // Balance lives in the tables below. Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r581-c265662f6b96";
-import { apertureTier } from "./world.js?v=r581-c265662f6b96";
-import { LETHAL_KINDS } from "./landscape.js?v=r581-c265662f6b96";
+import { hashSeed } from "./random.js?v=r597-fb99c6531765";
+import { apertureTier } from "./world.js?v=r597-fb99c6531765";
+import { LETHAL_KINDS } from "./landscape.js?v=r597-fb99c6531765";
 
 export const RULES = { tier: 14, offer: 3, pasteSlots: 1, wardensBySize: [[1100, 3], [500, 2], [0, 1]], wardenMinFromEntry: 9, wardenApart: 7,
   // Release 473 (Tim: "the wardens need to be... significantly stronger... about half the strength of the Gate Revenant...

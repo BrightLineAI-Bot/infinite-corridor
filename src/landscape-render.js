@@ -1,7 +1,7 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { LIFT_PER_LEVEL, safeVoidScarTransition } from "./landscape.js?v=r581-c265662f6b96";
+import { LIFT_PER_LEVEL, safeVoidScarTransition } from "./landscape.js?v=r597-fb99c6531765";
 
 const TAU = Math.PI * 2;
 const cache = new Map();
@@ -129,7 +129,14 @@ const PAINT = {
   forestFloor(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#2f4a2c"], [1, "#253b24"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 16; i++) { c.fillStyle = r() < .5 ? "#3d5c35" : "#1d301c"; c.fillRect(r() * s, r() * s, 1 + r() * 2, 1 + r() * 2); } for (let i = 0; i < 2; i++) { c.fillStyle = r() < .5 ? "#7a5a2e" : "#8c6f37"; c.beginPath(); c.ellipse(r() * s, r() * s, s * .06, s * .03, r() * 3, 0, TAU); c.fill(); } },
   snowField(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#eef4f8"], [1, "#d5e2ec"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 3; i++) { const x = r() * s, y = r() * s, w = s * (.2 + r() * .3); c.fillStyle = "#c3d3e0aa"; c.beginPath(); c.ellipse(x, y, w, w * .3, 0, 0, TAU); c.fill(); } for (let i = 0; i < 6; i++) { c.fillStyle = "#ffffff"; c.fillRect(r() * s, r() * s, 1, 1); } },
   lakeIce(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#b9dcef"], [1, "#8fbfd9"]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#ffffffaa"; c.lineWidth = 1; for (let i = 0; i < 2; i++) { const x = r() * s, y = r() * s; c.beginPath(); c.moveTo(x, y); c.lineTo(x + (r() - .5) * s * .8, y + (r() - .5) * s * .5); c.stroke(); } c.fillStyle = "#ffffff55"; c.fillRect(s * .1, s * .15, s * .3, 1); },
+  // Release 585: a sky platform: pale cloud-stone, a gold seam round its edge.
+  skyPlatform(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#f4f1ea"], [1, "#d9d3c6"]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#c9a85a"; c.lineWidth = Math.max(1, s * .05); c.strokeRect(1, 1, s - 2, s - 2); for (let i = 0; i < 5; i++) { c.fillStyle = "#ffffff"; c.fillRect(r() * s, r() * s, 1 + r() * 2, 1); } },
+  // Release 583: black basalt, and basalt split by a glowing fissure.
+  basalt(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#2c2523"], [1, "#1c1716"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 10; i++) { c.fillStyle = r() < .5 ? "#3a312e" : "#151110"; c.fillRect(r() * s, r() * s, 1 + r() * 2, 1 + r() * 2); } c.strokeStyle = "#0d0a09"; c.lineWidth = 1; c.beginPath(); c.moveTo(r() * s, 0); c.lineTo(r() * s, s); c.stroke(); },
+  basaltFissure(c, s, r) { PAINT.basalt(c, s, r); const x0 = r() * s * .4, x1 = s * .6 + r() * s * .4; c.strokeStyle = "#ff8a2a"; c.lineWidth = Math.max(1.5, s * .08); c.beginPath(); c.moveTo(x0, 0); c.quadraticCurveTo(s * (.3 + r() * .4), s * .5, x1, s); c.stroke(); c.strokeStyle = "#ffd36a88"; c.lineWidth = 1; c.stroke(); },
   // Release 579: moon dust, a crater's bowl and its pale rim.
+  pillarGround(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#c98a5c"], [1, "#b57750"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 12; i++) { c.fillStyle = r() < .5 ? "#a3663f" : "#dba279"; c.fillRect(r() * s, r() * s, 1 + r() * 2, 1 + r() * 1.5); } if (r() < .4) { c.strokeStyle = "#9a5d3a88"; c.lineWidth = 1; c.beginPath(); const y = r() * s; c.moveTo(0, y); c.lineTo(s, y + (r() - .5) * s * .3); c.stroke(); } }, // release 591
+  hoodoo(c, s, r) { PAINT.pillarGround(c, s, r); const x = s * (.38 + r() * .24); c.fillStyle = "#00000033"; c.beginPath(); c.ellipse(x + s * .08, s * .9, s * .22, s * .08, 0, 0, TAU); c.fill(); for (let k = 0; k < 4; k++) { const w = s * (.2 - k * .015 + (k % 2) * .05), y = s * (.88 - k * .2); c.fillStyle = k % 2 ? "#a65f3a" : "#c47a4c"; c.fillRect(x - w, y - s * .2, w * 2, s * .2); c.fillStyle = "#7d4428"; c.fillRect(x - w, y - s * .03, w * 2, s * .03); } c.fillStyle = "#6f5a4c"; c.beginPath(); c.ellipse(x, s * .1, s * .2, s * .07, 0, 0, TAU); c.fill(); }, // release 591: a rock spire with a cap stone
   moonDust(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#b9bcc3"], [1, "#a3a6ae"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 14; i++) { c.fillStyle = r() < .5 ? "#8f929a" : "#cfd1d6"; c.fillRect(r() * s, r() * s, 1 + r() * 1.5, 1 + r() * 1.5); } if (r() < .35) { c.strokeStyle = "#8a8d95aa"; c.lineWidth = 1; c.beginPath(); c.arc(r() * s, r() * s, s * (.06 + r() * .08), 0, TAU); c.stroke(); } },
   craterFloor(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#7c7f87"], [1, "#6b6e76"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 8; i++) { c.fillStyle = r() < .5 ? "#5f626a" : "#8b8e96"; c.fillRect(r() * s, r() * s, 1 + r() * 2, 1 + r() * 2); } },
   craterRim(c, s, r) { c.fillStyle = grad(c, 0, 0, 0, s, [[0, "#d8dade"], [1, "#a9acb3"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 6; i++) { c.fillStyle = "#e9eaee"; c.fillRect(r() * s, r() * s * .5, 1 + r() * 2, 1); } },
@@ -211,7 +218,7 @@ function hexagon(c, x, y, rad) { c.beginPath(); for (let i = 0; i < 6; i++) { co
 function flagstones(c, s, r, a, b) { c.fillStyle = b; c.fillRect(0, 0, s, s); for (let y = 0; y < s; y += s / 2) for (let x = 0; x < s; x += s / 2) { c.fillStyle = r() < .5 ? a : "#827a71"; c.fillRect(x + 1, y + 1, s / 2 - 2, s / 2 - 2); } }
 function bricks(c, s, r) { c.strokeStyle = "#2c2926"; c.lineWidth = 1; for (let row = 0, y = 0; y < s; y += s / 4, row++) { c.beginPath(); c.moveTo(0, y); c.lineTo(s, y); c.stroke(); for (let x = (row % 2) * s / 4; x < s; x += s / 2) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + s / 4); c.stroke(); } } }
 
-const FACE = { underlands: ["#2e2a33", "#0d0b10"], volcanic: ["#3a2b25", "#140d0b"], mountains: ["#4f4a45", "#26231f"], desert: ["#a8743d", "#6b4422"], alien: ["#4a3878", "#1d1533"], dream: ["#c9c2dc", "#7d7698"], castle: ["#57504a", "#2a2623"], coast: ["#a68b56", "#6d5933"] };
+const FACE = { underlands: ["#2e2a33", "#0d0b10"], volcanic: ["#3a2b25", "#140d0b"], mountains: ["#4f4a45", "#26231f"], desert: ["#a8743d", "#6b4422"], alien: ["#4a3878", "#1d1533"], dream: ["#c9c2dc", "#7d7698"], castle: ["#57504a", "#2a2623"], coast: ["#a68b56", "#6d5933"], pillars: ["#b8744a", "#6e3b22"] }; // 591: sandstone mesa walls
 
 function makeCanvas(size) {
   if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(size, size);
@@ -306,7 +313,7 @@ function animate(ctx, t, px, py, s) {
 }
 
 // Atlas colour for a section's landscape (null when plain).
-export function landscapeAtlasColor(biome) { return ({ mountains: "#d9e3ea", desert: "#d6b26e", coast: "#3f7fa3", alien: "#9a6fe0", dream: "#b9a8e8", castle: "#8a7f73", sea: "#1d4f7a", isles: "#4f9fb0", lake: "#4a90c8", swamp: "#5d6b3c", blight: "#7cbf3a", forest: "#2f5a34", frost: "#dce9f2", lunar: "#b4b7bf" })[biome] || null; }
+export function landscapeAtlasColor(biome) { return ({ mountains: "#d9e3ea", desert: "#d6b26e", coast: "#3f7fa3", alien: "#9a6fe0", dream: "#b9a8e8", castle: "#8a7f73", sea: "#1d4f7a", isles: "#4f9fb0", lake: "#4a90c8", swamp: "#5d6b3c", blight: "#7cbf3a", forest: "#2f5a34", frost: "#dce9f2", lunar: "#b4b7bf", volcanic: "#3a2420" })[biome] || null; }
 
 // Pit edges: every walkable tile beside lava, a chasm, a canyon or deep water gets a crumbling, lit lip on that side
 // and a shadow falling into the hazard, so a drop is never a surprise. Runs for every map, landscape or not.

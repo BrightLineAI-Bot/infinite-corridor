@@ -1,21 +1,22 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r581-c265662f6b96";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r581-c265662f6b96";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r581-c265662f6b96";
-import { enemyMeleeGeometry } from "./combat.js?v=r581-c265662f6b96";
-import { ruleRows } from "./elders.js?v=r581-c265662f6b96";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r581-c265662f6b96";
-import { BOAT } from "./boats.js?v=r581-c265662f6b96";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r581-c265662f6b96";
-import { isMarineTile } from "./world-beasts.js?v=r581-c265662f6b96";
-import { jumpLift } from "./game.js?v=r581-c265662f6b96";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r581-c265662f6b96";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r581-c265662f6b96";
-import { liftAt, tileUnder } from "./landscape.js?v=r581-c265662f6b96";
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r581-c265662f6b96";
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r581-c265662f6b96";
-import { drawRelayNode } from "./relay-network.js?v=r581-c265662f6b96";
-import { structureOccupancy } from "./world.js?v=r581-c265662f6b96";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r581-c265662f6b96";
+import { astralBeamAnchors } from "./astral-worm.js?v=r597-fb99c6531765";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r597-fb99c6531765";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r597-fb99c6531765";
+import { enemyMeleeGeometry } from "./combat.js?v=r597-fb99c6531765";
+import { ruleRows } from "./elders.js?v=r597-fb99c6531765";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r597-fb99c6531765";
+import { BOAT } from "./boats.js?v=r597-fb99c6531765";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r597-fb99c6531765";
+import { isMarineTile } from "./world-beasts.js?v=r597-fb99c6531765";
+import { jumpLift } from "./game.js?v=r597-fb99c6531765";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r597-fb99c6531765";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r597-fb99c6531765";
+import { liftAt, tileUnder, LIFT_PER_LEVEL } from "./landscape.js?v=r597-fb99c6531765";
+import { SKY_DISCS } from "./skylands.js?v=r597-fb99c6531765"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r597-fb99c6531765";
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r597-fb99c6531765";
+import { drawRelayNode } from "./relay-network.js?v=r597-fb99c6531765";
+import { structureOccupancy } from "./world.js?v=r597-fb99c6531765";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r597-fb99c6531765";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -318,9 +319,46 @@ function drawVoidScarSurface(ctx,g,s,mw,mh,surface){
   for(const c of surface.shapes)for(const crack of c.cracks){ctx.moveTo(crack[0][0]*s,crack[0][1]*s);for(let i=1;i<crack.length;i++)ctx.lineTo(crack[i][0]*s,crack[i][1]*s)}
   ctx.stroke();ctx.restore();
 }
+// Release 589: a Skyland with a mode stands on cloud: open sky where the arena has void, soft cloud underfoot, and a darker
+// underside where cloud meets sky. Other tiles (hazards, bridges) draw as they always do.
+// Release 593 (Tim: "stars in the background... a penumbra around the character as he moves, and the background is kind of like
+// glittering stars"): a chasm crossing's drop is open night sky. The tile holds a few fixed stars (cached with the ground); each
+// frame a bounded handful glitter (CHASM_STARS.twinkle of the tiles in view), and a penumbra of light follows the Wayfarer.
+export const CHASM_STARS = { sky: "#08071a", stars: 4, twinkleEvery: 3, penumbra: { inner: 2.6, outer: 7.5, dark: .78 } };
+function drawStarChasm(ctx, t, x, y, s) {
+  const px = x * s, py = y * s;
+  ctx.fillStyle = CHASM_STARS.sky; ctx.fillRect(px, py, s + 1, s + 1);
+  for (let i = 0; i < CHASM_STARS.stars; i++) { const q = h(x * 13 + i * 31, y * 17 + i * 7); if (q % 3 === 0) continue; ctx.fillStyle = q % 5 ? "#dfe2ffd9" : "#fff0c4ee"; const r = q % 11 === 0 ? 2 : 1.3; ctx.fillRect(px + (q % 97) / 97 * s, py + ((q >> 8) % 97) / 97 * s, r, r); }
+}
+// Per frame: the glittering stars over the chasm tiles in view (`list` is tile, x, y triples).
+function glitterChasm(ctx, list, s, now) {
+  for (let i = 0; i < list.length; i += 3) {
+    const x = list[i + 1], y = list[i + 2], q = h(x * 5 + 1, y * 3 + 2), a = Math.sin(now / (520 + q % 600) + q) ; if (a < .55) continue;
+    const px = x * s + (q % 89) / 89 * s, py = y * s + ((q >> 7) % 89) / 89 * s, r = 1 + (a - .55) * 4.5;
+    ctx.fillStyle = `rgba(255,248,225,${(a - .55) * 2})`; ctx.fillRect(px - r, py - .5, r * 2, 1); ctx.fillRect(px - .5, py - r, 1, r * 2);
+  }
+}
+let cloudSky = false; // set each frame from g.map.skyCloud (tile painters are handed the tile array, not the map)
+export const CLOUD_PAINT = { sky: ["#6f9cc9", "#77a3cf"], puff: "#ffffff22", floor: ["#dfe6ef", "#d6dfeb"], shade: "#b4c3d666", rim: "#8ea4bf", gleam: "#ffffff44" };
+function drawCloudTile(ctx, t, x, y, s, tiles, w) {
+  const C = CLOUD_PAINT, d = Number.isFinite(t.detail) ? t.detail : h(x, y), px = x * s, py = y * s, below = tiles?.[(y + 1) * w + x];
+  if (t.kind === "void") {
+    ctx.fillStyle = C.sky[d & 1]; ctx.fillRect(px, py, s + 1, s + 1);
+    if (d % 5 === 0) { ctx.fillStyle = C.puff; ctx.beginPath(); ctx.ellipse(px + s * .5, py + s * .55, s * .55, s * .22, 0, 0, Math.PI * 2); ctx.fill(); }
+    return true;
+  }
+  if (t.blocked || t.environment || /bridge|canyon|water|river|gate/i.test(String(t.kind))) return false;
+  ctx.fillStyle = C.floor[d & 1]; ctx.fillRect(px, py, s + 1, s + 1);
+  ctx.fillStyle = C.shade; ctx.beginPath(); ctx.arc(px + s * (.25 + (d % 3) * .2), py + s * .7, s * .18, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = C.gleam; ctx.beginPath(); ctx.arc(px + s * (.3 + (d % 4) * .12), py + s * .3, s * .14, 0, Math.PI * 2); ctx.fill();
+  if (below?.kind === "void") { ctx.fillStyle = C.rim; ctx.fillRect(px, py + s * .78, s + 1, s * .22 + 1); }
+  return true;
+}
 function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=null) {
   if (t?.kind === "voidScar") { drawVoidScarTile(ctx,t,x,y,s,map,w,activeBuildingId,scarSurface); return; }
   if (t?.landscape && drawLandscapeTile(ctx, t, x, y, s, map, w)) return;
+  if (cloudSky && drawCloudTile(ctx, t, x, y, s, map, w)) return; // release 589
+  if (t?.chasm) { drawStarChasm(ctx, t, x, y, s); return; } // release 593
   const p = PAL[t.kind] || PAL.ash,
     d = Number.isFinite(t.detail) ? t.detail : h(x, y),
     px = x * s,
@@ -864,6 +902,18 @@ export function drawWallGlint(ctx, q, s, now) {
 }
 // Release 225: a patch of disturbed earth (or, once dug, turned earth): a low mound of darker soil ringed by a few stones.
 // Release 431: a cracked bronze bell on a weathered frame; a rung one hangs still with a faint warm glow.
+// Release 595: a torn page lying on the floor, its corner lifting; an unread one gives off a faint light.
+export function drawTornPage(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .6) * s, read = o.state === "read", lift = read ? 0 : Math.sin(now / 700 + o.x) * .06;
+  ctx.save();
+  if (!read) { const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * .7); g.addColorStop(0, "rgba(255,236,190,.32)"); g.addColorStop(1, "rgba(255,236,190,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, s * .7, 0, 7); ctx.fill(); }
+  ctx.translate(cx, cy); ctx.rotate(-.18);
+  ctx.fillStyle = "#00000033"; ctx.fillRect(-s * .26, -s * .3 + s * .05, s * .52, s * .62);
+  ctx.fillStyle = read ? "#cbbf9f" : "#ece2c4"; ctx.beginPath(); ctx.moveTo(-s * .26, -s * .32); ctx.lineTo(s * .2, -s * .32); ctx.lineTo(s * .26, -s * .2 - lift * s); ctx.lineTo(s * .24, s * .3);
+  for (let i = 0; i < 5; i++) ctx.lineTo(s * (.14 - i * .1), s * (.26 + (i % 2) * .06)); ctx.closePath(); ctx.fill(); // the torn edge along the foot
+  ctx.strokeStyle = "#6b5a3f88"; ctx.lineWidth = Math.max(1, s * .02); for (let i = 0; i < 5; i++) { const y = -s * .2 + i * s * .1; ctx.beginPath(); ctx.moveTo(-s * .19, y); ctx.lineTo(s * (.12 - (i === 4 ? .14 : 0)), y); ctx.stroke(); }
+  ctx.restore();
+}
 export function drawCrackedBell(ctx, o, s, now) {
   const cx = (o.x + .5) * s, base = (o.y + .9) * s, top = (o.y - .55) * s, rung = o.state === "rung", sway = rung ? 0 : Math.sin(now / 900 + o.x) * .05;
   ctx.save(); ctx.strokeStyle = "#4a3a2a"; ctx.lineWidth = Math.max(2, s * .09); ctx.lineCap = "round";
@@ -958,6 +1008,18 @@ export function drawGiantTree(ctx, o, s, now) {
   ctx.strokeStyle = "#3d2c1f"; ctx.lineWidth = Math.max(2, s * .1); for (const [h, d] of [[.42, -1], [.58, 1], [.72, -1]]) { const y = base - G.height * s * h, x = k + sway * h; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + d * s * .8, y - s * .3, x + d * s * 1.5, y - s * .9); ctx.stroke(); ctx.fillStyle = "#24402a"; ctx.beginPath(); ctx.arc(x + d * s * 1.5, y - s * .95, s * .55, 0, 7); ctx.fill(); }
   const cx = k + sway, cy = top, R = G.crown * s;
   for (const [dx, dy, r, c] of [[-.55, .35, .75, "#1e3a24"], [.6, .4, .7, "#1e3a24"], [0, 0, 1, "#26482b"], [-.35, -.35, .7, "#2f5733"], [.4, -.3, .62, "#2f5733"], [0, -.62, .5, "#3a6a3c"]]) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx + dx * R, cy + dy * R, r * R, 0, 7); ctx.fill(); }
+}
+// Release 587: a floating disc of a skyway (skylands.ts SKY_DISCS): its shadow on the ground, the disc `level` lifts above it, a
+// gentle bob. `d` is in foot coordinates (the Wayfarer's x + .5, y + .75).
+export function discLift(level) { return level * LIFT_PER_LEVEL; }
+export function drawSkyDisc(ctx, d, s, now) {
+  const bob = Math.sin(now / 900 + d.x + d.y) * .05 * s, cx = d.x * s, gy = d.y * s, cy = gy - discLift(d.level) * s + bob, rx = d.r * s, ry = d.r * s * .55;
+  ctx.fillStyle = "#00000033"; ctx.beginPath(); ctx.ellipse(cx, gy, rx * .9, ry * .8, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#8f8aa0"; ctx.beginPath(); ctx.ellipse(cx, cy + s * .16, rx * .96, ry * .9, 0, 0, 7); ctx.fill();
+  const top = ctx.createRadialGradient(cx - rx * .3, cy - ry * .35, 0, cx, cy, rx); top.addColorStop(0, "#ffffff"); top.addColorStop(.7, "#e9e4f2"); top.addColorStop(1, "#cfc7de");
+  ctx.fillStyle = top; ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#d9b866"; ctx.lineWidth = Math.max(1, s * .05); ctx.stroke();
+  ctx.strokeStyle = "#ffffffaa"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(cx, cy, rx * .62, ry * .62, 0, 0, 7); ctx.stroke();
 }
 // Does a giant tree at `o` stand in front of the Wayfarer at `p` (drawn over them)?
 export function giantTreeHides(o, p) {
@@ -1460,16 +1522,19 @@ export function render(ctx, g, w, h, now) {
   const marineAt = e => g.area === "overworld" && isMarineTile(tileUnder(g.map, mw, e.x, e.y));
   ctx.save();
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - groundLift(p.x, p.y)) * s));
+  cloudSky = !!g.map?.skyCloud; // release 589
   const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
   if (groundCached) {
-    const animated = render.animatedTiles || (render.animatedTiles = []); animated.length = 0;
+    const animated = render.animatedTiles || (render.animatedTiles = []), glitter = render.chasmGlitter || (render.chasmGlitter = []); animated.length = 0; glitter.length = 0;
     for (let y = t; y < b; y++) for (let x = l; x < r; x++) {
       const q = g.map.tiles[y * mw + x];
+      if (q?.chasm && (x + y * 3) % CHASM_STARS.twinkleEvery === 0 && dungeonTileVisibility(g.map, x, y) !== "unseen") glitter.push(q, x, y); // release 593
       // In a dungeon, a lethal tile right beside the Wayfarer shows through the fog (as the per-tile path always did).
       if (g.area === "dungeon" && LETHAL_KINDS.has(q?.kind) && Math.hypot(x - p.x, y - p.y) < 2.6 && dungeonTileVisibility(g.map, x, y) === "unseen") tile(ctx, q, x, y, s, g.map.tiles, mw, activeBuildingId, scarSurface);
       else if (landscapeTileAnimated(q) && (g.area !== "dungeon" || dungeonTileVisibility(g.map, x, y) !== "unseen")) animated.push(q, x, y);
     }
     animateLandscapeTiles(ctx, animated, s); // release 185: one stroke per water kind, not one per tile
+    if (glitter.length) glitterChasm(ctx, glitter, s, now);
   }
   else for (let y = t; y < b; y++)
     for (let x = l; x < r; x++) {
@@ -1543,7 +1608,7 @@ export function render(ctx, g, w, h, now) {
   for (const o of g.map.objects)
     if (renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.vegetationForm==="giant"?GIANT_TREE.height+3:2)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden")&&(renderCacheStats.visibleObjects++,true))
       draws.push({
-        y: o.y, x: o.x,
+        y: o.disc ? o.y + SKY_DISCS.radius + .002 : o.y, x: o.x, lift: o.disc ? discLift(o.elev || 0) : 0, // release 587: a skyway door stands on its disc
         fn: () => {
           if (o.kind === "wayfindingCue") waymark(ctx,o,s);
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
@@ -1622,6 +1687,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "digSpot") { drawDigSpot(ctx, o, s, now);
           } else if (o.kind === "ilse") { drawIlse(ctx, o, s, now);
           } else if (o.kind === "crackedBell") { drawCrackedBell(ctx, o, s, now);
+          } else if (o.kind === "tornPage") { drawTornPage(ctx, o, s, now); // release 595
           } else if (o.kind === "surveyorLink") { drawSurveyorLink(ctx, o, s, now); // release 505
           } else if (o.kind === "surveyorStatue") { drawSurveyorStatue(ctx, o, s, now); // release 551
           } else if (o.kind === "marginNote") { drawMarginNote(ctx, o, s, now);
@@ -1694,8 +1760,11 @@ export function render(ctx, g, w, h, now) {
           }
         },
       });
+  // Release 587: the skyway's floating discs, each sorted at its front edge; the Wayfarer standing on one is drawn just after it, lifted.
+  const onDisc = g.skyLevel > 0 && g.map?.skyDiscs ? g.map.skyDiscs.find((d) => d.level === g.skyLevel && Math.hypot(p.x + .5 - d.x, p.y + .75 - d.y) <= d.r + .05) : null;
+  for (const d of g.map?.skyDiscs || []) if (visibleInCamera({ x: d.x, y: d.y }, l, t, r, b, 3)) draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
   const playerDraw = {
-    y: p.y, x: p.x,
+    y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.skyLevel > 0 ? discLift(g.skyLevel) : 0,
     fn: () => {
       if (jumping) {
         ctx.fillStyle = "#05050477";
@@ -1794,12 +1863,12 @@ export function render(ctx, g, w, h, now) {
   draws.push(playerDraw);
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) {
-    const raise = Number.isFinite(d.x) ? groundLift(d.x, d.y) : 0;
+    const raise = (Number.isFinite(d.x) ? groundLift(d.x, d === playerDraw ? p.y : d.y) : 0) + (d.lift || 0);
     if (raise) { ctx.save(); ctx.translate(0, -raise * s); d.fn(); ctx.restore(); } else d.fn();
   }
   // Release 573: behind a giant tree the Wayfarer shows through, faint.
   if (g.area === "overworld" && g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p))) {
-    const raise = groundLift(p.x, p.y); ctx.save(); ctx.globalAlpha = GIANT_TREE.ghost; if (raise) ctx.translate(0, -raise * s); playerDraw.fn(); ctx.restore();
+    const raise = groundLift(p.x, p.y) + (playerDraw.lift || 0); ctx.save(); ctx.globalAlpha = GIANT_TREE.ghost; if (raise) ctx.translate(0, -raise * s); playerDraw.fn(); ctx.restore();
   }
   // Under water (W5): a blue-green wash with slow light shafts.
   if (g.map?.underwater) {
@@ -1889,6 +1958,7 @@ export function render(ctx, g, w, h, now) {
       ctx.fill();
     }
   ctx.restore();
+  if (g.area === "dungeon" && g.map?.chasm) { const P = CHASM_STARS.penumbra, cx = w / 2, cy = h / 2, gr = ctx.createRadialGradient(cx, cy, s * P.inner, cx, cy, s * P.outer); gr.addColorStop(0, "rgba(4,3,14,0)"); gr.addColorStop(1, `rgba(4,3,14,${P.dark})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, w, h); } // release 593: the penumbra
   const t2 = timed ? performance.now() : 0;
   // Dungeons with their own weather (Underlands themes) show it too: snow in a cave, sparks rising from a lava bog.
   if(!budget.weather&&g.area==="dungeon"&&g.map.weather&&budget.quality!=="low"&&g.presentation?.weather!==false)budget.weather=true;
