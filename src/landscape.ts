@@ -16,7 +16,7 @@ import { placeDock } from "./boats.ts";
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
 // Each section keeps the version it was first seen with.
-export const LANDSCAPE_VERSION = 7; // release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; earlier versions are kept for the sections pinned to them
+export const LANDSCAPE_VERSION = 8; // release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles
 export const MAX_LEVEL = 5;
 // Fraction of max health lost when dropping this many levels; null = fatal.
@@ -35,7 +35,7 @@ export const BIOMES = {
   blight: { id: "blight", name: "Blight Mire", atlas: "#7cbf3a" },
 };
 // Release 573: ground laid by a region rather than by the landscape fields (biomeFor never reports these).
-export const REGION_GROUNDS = { forest: { id: "forest", name: "Deepwood", atlas: "#2f5a34" }, frost: { id: "frost", name: "Frostlands", atlas: "#dce9f2" }, lunar: { id: "lunar", name: "Moonlands", atlas: "#b4b7bf" }, volcanic: { id: "volcanic", name: "Firelands", atlas: "#3a2420" } };
+export const REGION_GROUNDS = { forest: { id: "forest", name: "Deepwood", atlas: "#2f5a34" }, frost: { id: "frost", name: "Frostlands", atlas: "#dce9f2" }, lunar: { id: "lunar", name: "Moonlands", atlas: "#b4b7bf" }, volcanic: { id: "volcanic", name: "Firelands", atlas: "#3a2420" }, pillars: { id: "pillars", name: "Pillar Lands", atlas: "#b9784c" } };
 // Waterbodies (version 2) balance table. `continent` bends the ocean field so whole seas form; `island` lifts land back
 // out of open water; `deep` is how far above the ocean threshold deep water starts.
 export const WATERBODIES = {
@@ -52,7 +52,7 @@ export const DEEP_WATER = ["ocean", "deepOcean", "lakeWater", "swampWater", "tox
 const T = { ocean: 0.70, beach: 0.675, mountain: 0.68, alien: 0.75, desert: 0.67 };
 const SHALLOWS_FROM = T.ocean - .012; // sea level above which water is shallows (below it, beach)
 const WALKABLE_LANDSCAPE = new Set(["snowRock", "snowPeak", "mountainRock", "alpineGrass", "mountainTrail", "sand", "duneCrest", "duneFace",
-  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope", "forestFloor", "snowField", "lakeIce", "moonDust", "craterFloor", "craterRim", "basalt", "basaltFissure"]); // release 573: forestFloor..lakeIce; 579: the moon; 583: basalt
+  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope", "forestFloor", "snowField", "lakeIce", "moonDust", "craterFloor", "craterRim", "basalt", "basaltFissure", "pillarGround", "skyPlatform"]); // release 573: forestFloor..lakeIce; 579: the moon; 583: basalt; 591: pillar lands
 
 // ---------------------------------------------------------------- noise
 function lattice(key, ix, iy) { return (hashSeed(`${key}:${ix}:${iy}`) % 10007) / 10007; }
@@ -99,7 +99,7 @@ export const REGIONS = { heartland: 12, fadeIn: 4, cell: 9, jitter: .8, weightSp
     alien: { alien: .3, ocean: -.2 }, swamp: { wet: .11, ocean: -.2, desert: -.3 }, lakes: { lake: .2, ocean: -.15 }, dream: { ocean: -.2, mountain: -.2 },
     ashfields: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 }, glasslands: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 },
     emberlands: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 },
-    forest: { ocean: -.15, desert: -.35, alien: -.3, wet: -.12, mountain: -.1, lake: -.05 }, lunar: { ocean: -.3, wet: -.4, lake: -.3, desert: -.25, mountain: -.15, alien: -.15 }, /* 579 */ volcanic: { ocean: -.3, wet: -.45, lake: -.35, desert: -.2, alien: -.2, mountain: .05 }, /* 583 */ frost: { desert: -.4, wet: -.3, alien: -.3, ocean: -.1, lake: .05 } }, // release 573 (version 5)
+    forest: { ocean: -.15, desert: -.35, alien: -.3, wet: -.12, mountain: -.1, lake: -.05 }, lunar: { ocean: -.3, wet: -.4, lake: -.3, desert: -.25, mountain: -.15, alien: -.15 }, /* 579 */ pillars: { ocean: -.3, wet: -.4, lake: -.3, desert: -.15, mountain: -.2, alien: -.2 }, /* 591 */ volcanic: { ocean: -.3, wet: -.45, lake: -.35, desert: -.2, alien: -.2, mountain: .05 }, /* 583 */ frost: { desert: -.4, wet: -.3, alien: -.3, ocean: -.1, lake: .05 } }, // release 573 (version 5)
   plains: { ashfields: "ash", glasslands: "glass", emberlands: "ember" } };
 const REGION_TOTAL = REGIONS.types.reduce((n, [, w]) => n + w, 0), siteCache = new Map();
 function regionSite(seed, cx, cy) {
@@ -122,11 +122,15 @@ export const REGIONS_V6 = { wildTo: [["lunar", .3]] };
 // Release 583 (Tim: "let's do the volcanic region next"): from version 7 a region still wild after the version 6 roll may become
 // a volcanic one (`REGIONS_V7.wildTo`, its own hash), so moonlands, forests and frostlands stay where they were.
 export const REGIONS_V7 = { wildTo: [["volcanic", .3]] };
+// Release 591 (Tim, 2026-10-30: "make those platforms a part of the world... sections of the world that have those tall platforms
+// ... dungeons on top of them"): from version 8 a region still wild after the version 7 roll may become pillar lands.
+export const REGIONS_V8 = { wildTo: [["pillars", .3]] };
 function wildRegionType(seed, id, version = 5) {
   let roll = (hashSeed(`${seed}:region-site:v5:${id}`) % 10007) / 10007;
   for (const [t, p] of REGIONS_V5.wildTo) { if ((roll -= p) < 0) return t; }
   if (version >= 6) { let r6 = (hashSeed(`${seed}:region-site:v6:${id}`) % 10007) / 10007; for (const [t, p] of REGIONS_V6.wildTo) { if ((r6 -= p) < 0) return t; } }
   if (version >= 7) { let r7 = (hashSeed(`${seed}:region-site:v7:${id}`) % 10007) / 10007; for (const [t, p] of REGIONS_V7.wildTo) { if ((r7 -= p) < 0) return t; } }
+  if (version >= 8) { let r8 = (hashSeed(`${seed}:region-site:v8:${id}`) % 10007) / 10007; for (const [t, p] of REGIONS_V8.wildTo) { if ((r8 -= p) < 0) return t; } }
   return "wild";
 }
 export function regionAt(seed, sx, sy, version = 4) {
@@ -149,7 +153,7 @@ export const REGION_NAMES = {
     mountains: ["Peaks", "Spine", "Heights", "Teeth", "Range"], desert: ["Waste", "Dunes", "Barrens", "Sands", "Erg"], alien: ["Garden", "Bloom", "Lattice", "Strangeland", "Reef"],
     swamp: ["Fen", "Mire", "Bog", "Sump", "Marsh"], lakes: ["Meres", "Lakes", "Tarns", "Waters"], isles: ["Isles", "Archipelago", "Scatter", "Keys"],
     dream: ["Sleep", "Reverie", "Dreaming", "Slumber"], ashfields: ["Ashfields", "Cinderplain", "Greys"], glasslands: ["Glasslands", "Shards", "Mirrorfields"],
-    emberlands: ["Emberlands", "Kilnlands", "Smoulder"], lunar: ["Mare", "Moonfields", "Craters", "Highlands", "Dust"], volcanic: ["Firelands", "Caldera", "Cinders", "Furnace", "Burning Lands"], forest: ["Wood", "Weald", "Forest", "Pines", "Greenwood"], frost: ["Frost", "Snows", "Rime", "Icefields", "Tundra"] },
+    emberlands: ["Emberlands", "Kilnlands", "Smoulder"], lunar: ["Mare", "Moonfields", "Craters", "Highlands", "Dust"], volcanic: ["Firelands", "Caldera", "Cinders", "Furnace", "Burning Lands"], pillars: ["Pillars", "Mesas", "Tablelands", "Hoodoos", "Stone Forest", "Tepuis"], forest: ["Wood", "Weald", "Forest", "Pines", "Greenwood"], frost: ["Frost", "Snows", "Rime", "Icefields", "Tundra"] },
 };
 export function regionName(seed, region) {
   const h = hashSeed(`${seed}:region-name:v1:${region.id}`), N = REGION_NAMES, nouns = N.nouns[region.type] || N.nouns.wild;
@@ -159,7 +163,7 @@ export function regionName(seed, region) {
 // bounded cache, so generating a section costs a few hundred lookups, not thousands.
 const leanCache = new Map();
 function regionTile(seed, gx, gy, version = 4) {
-  const v = version >= 7 ? 7 : version >= 6 ? 6 : version >= 5 ? 5 : 4, cx = gx >> 2, cy = gy >> 2, key = `${seed}:${v}:${cx}:${cy}`; let r = leanCache.get(key);
+  const v = version >= 8 ? 8 : version >= 7 ? 7 : version >= 6 ? 6 : version >= 5 ? 5 : 4, cx = gx >> 2, cy = gy >> 2, key = `${seed}:${v}:${cx}:${cy}`; let r = leanCache.get(key);
   if (!r) { r = regionAt(seed, (cx * 4 + 2) / 32, (cy * 4 + 2) / 32, v); leanCache.set(key, r); if (leanCache.size > 30000) leanCache.delete(leanCache.keys().next().value); }
   return r;
 }
@@ -362,6 +366,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   if (version >= 5 && !full) touched += applyWoodsAndFrost(map, seed, rx, ry, mask, hamlet); // release 573
   if (version >= 6 && !full) touched += applyMoonlands(map, seed, rx, ry); // release 579
   if (version >= 7 && !full) touched += applyFirelands(map, seed, rx, ry, mask); // release 583
+  if (version >= 8 && !full) touched += applyPillarGround(map, seed, rx, ry, mask); // release 591
   if (biome === "castle") touched += buildCastle(map, seed, rx, ry, protectedMask(map, { spawns: false, ruins: false, decor: false }));
   if (!touched) return map;
   if (biome === "mountains" && hashSeed(`${seed}:land:volcano:${rx}:${ry}`) % 3 === 0) buildVolcano(map, seed, rx, ry, mask);
@@ -385,6 +390,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   if (biome === "mountains") map.weather = "snow";
   else if (map.firelands) map.weather = "embers"; // release 583
   if (version >= 5) for (const t of map.tiles) if (t.landscape === "mountains" && (t.kind === "alpineGrass" || t.kind === "mountainRock") && regionTile(seed, rx * 32 + t.x, ry * 32 + t.y, 5).type === "frost") t.kind = "snowRock"; // release 573: frost mountains are snowbound
+  if (map.pillarlands) buildMesas(map, seed, rx, ry); // release 591: last, so nothing after it ramps or lowers them
   map.landscape = { version, biome: biome || dominantLandscape(map), name: (BIOMES[biome || dominantLandscape(map)] || REGION_GROUNDS[biome || dominantLandscape(map)])?.name || null, ...(openSea ? { openSea: full ? "open" : "coast" } : {}) };
   return map;
 }
@@ -456,6 +462,64 @@ function applyFirelands(map, seed, rx, ry, mask) {
     if (cut) for (const [t, was] of changed) { t.kind = was.kind; if (was.environment === undefined) delete t.environment; else t.environment = was.environment; }
   }
   return touched;
+}
+// Pillar lands (release 591, version 8): bare ground in a pillar region turns to red sandstone dust, with hoodoos (thin rock
+// spires, impassable) standing where noise rises (`PILLARS.hoodoo`), never on protected ground. Then, last of all (buildMesas),
+// up to `mesas` tablelands rise `height` levels: square tops of the skyway's pale stone (`size` tiles), each climbed by a stair
+// of stone pillars, each `step` tiles square, one level lower than the last and a `gap` of open ground apart, so every jump goes up
+// one level, as on the 585 skyway (the tiles are skyPlatform: a jump from one keeps its height over the gap). The first mesa
+// rises under the section's dungeon (else a shrine or cache) when it has one, so it stands on top; a later one anywhere that fits.
+// Mesas and stairs keep off the plaza and the exit causeways, and creatures cannot climb them; nothing spawns on them. Coming down
+// is a drop of one level a step, or the whole height at once (fall damage; the height is below the fatal four).
+export const PILLARS = { hoodoo: { scale: 1.6, above: .86 }, mesas: [1, 2], size: [4, 6], height: 3, step: 2, gap: 1, tries: 40, holdTries: 16, gapBetween: 2, prefer: ["dungeon", "shrine", "weaponCache", "supplyCache", "ruinMarker"] };
+function applyPillarGround(map, seed, rx, ry, mask) {
+  let touched = 0; const P = PILLARS;
+  for (const t of map.tiles) {
+    if (t.structure || t.buildingId || t.blocked || t.landscape || !BARE_GROUND.has(t.kind)) continue;
+    const gx = rx * 32 + t.x, gy = ry * 32 + t.y; if (regionTile(seed, gx, gy, 8).type !== "pillars") continue;
+    const spire = !mask[idx(t.x, t.y)] && valueNoise(`${seed}:pillars:hoodoo`, gx / P.hoodoo.scale, gy / P.hoodoo.scale) > P.hoodoo.above;
+    Object.assign(t, spire ? { kind: "hoodoo", blocked: true, landscape: "pillars" } : { kind: "pillarGround", landscape: "pillars" }); touched++;
+  }
+  if (touched) map.pillarlands = true;
+  return touched;
+}
+function buildMesas(map, seed, rx, ry) {
+  const P = PILLARS, h = (k) => hashSeed(`${seed}:pillars:v1:${rx}:${ry}:${k}`), at = (x, y) => map.tiles[idx(x, y)], ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1;
+  const exitLine = (x, y) => (near(ex.north, x) && y <= 16) || (near(ex.south, x) && y >= 16) || (near(ex.west, y) && x <= 16) || (near(ex.east, y) && x >= 16);
+  const taken = new Set(), ground = (x, y, spire = false) => { const t = x >= 1 && y >= 1 && x <= 30 && y <= 30 && at(x, y); return !!t && t.landscape === "pillars" && (t.kind === "pillarGround" ? !t.blocked : spire && t.kind === "hoodoo") && !t.structure && !t.buildingId && !t.environment && !t.slope && !(t.elev > 0) && !exitLine(x, y) && !(x >= 12 && x <= 20 && y >= 12 && y <= 20) && !taken.has(`${x},${y}`); };
+  const square = (x0, y0, n) => Array.from({ length: n * n }, (_, i) => [x0 + i % n, y0 + Math.floor(i / n)]);
+  const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]], out = [], count = P.mesas[0] + h("n") % (P.mesas[1] - P.mesas[0] + 1);
+  const holds = (map.objects || []).filter((o) => P.prefer.includes(o.kind)).sort((a, b) => P.prefer.indexOf(a.kind) - P.prefer.indexOf(b.kind));
+  const tryHold = Math.min(holds.length, 2) * P.holdTries; // a held thing is tried at several sizes and places on the top
+  for (let t = 0; t < tryHold + P.tries && out.length < count; t++) {
+    const o = t < tryHold ? holds[Math.floor(t / P.holdTries)] : null; if (o && out.some((q) => q.holds === o)) continue;
+    const n = P.size[0] + h(`s${t}`) % (P.size[1] - P.size[0] + 1), cx = o ? Math.round(o.x) : 3 + h(`x${t}`) % 26, cy = o ? Math.round(o.y) : 3 + h(`y${t}`) % 26;
+    const x0 = o ? cx - h(`ox${t}`) % n : cx - Math.floor(n / 2), y0 = o ? cy - h(`oy${t}`) % n : cy - Math.floor(n / 2), top = square(x0, y0, n);
+    if (!top.every(([x, y]) => ground(x, y, true))) continue;
+    let stair = null;
+    for (let k = 0; k < 4 && !stair; k++) {
+      const [dx, dy] = DIRS[(h(`d${t}`) + k) % 4], steps = [], gaps = []; let edge = dx > 0 ? x0 + n - 1 : dx < 0 ? x0 : dy > 0 ? y0 + n - 1 : y0;
+      const along = dx ? Math.max(y0, Math.min(y0 + n - P.step, cy - Math.floor(P.step / 2))) : Math.max(x0, Math.min(x0 + n - P.step, cx - Math.floor(P.step / 2)));
+      for (let lv = P.height - 1; lv >= 1; lv--) {
+        const g0 = edge + (dx || dy) * 1, s0 = g0 + (dx || dy) * P.gap; // the gap's first line, then the pillar's first line
+        for (let g = 0; g < P.gap; g++) for (let i = 0; i < P.step; i++) gaps.push(dx ? [g0 + (dx || dy) * g, along + i] : [along + i, g0 + (dx || dy) * g]);
+        const near0 = s0, far0 = s0 + (dx || dy) * (P.step - 1), lo = Math.min(near0, far0);
+        for (let a = 0; a < P.step; a++) for (let i = 0; i < P.step; i++) steps.push(dx ? [lo + a, along + i, lv] : [along + i, lo + a, lv]);
+        edge = far0;
+      }
+      if (gaps.every(([x, y]) => ground(x, y)) && steps.every(([x, y]) => ground(x, y, true))) stair = { steps, gaps };
+    }
+    if (!stair) continue;
+    const raise = (x, y, elev) => { const t = at(x, y); Object.assign(t, { kind: "skyPlatform", elev, slope: false, blocked: false, skyPlatform: true, mesa: true }); }; // a hoodoo in the way is part of it
+    for (const [x, y] of top) raise(x, y, P.height); for (const [x, y, lv] of stair.steps) raise(x, y, lv);
+    for (const [x, y] of [...top, ...stair.steps, ...stair.gaps]) taken.add(`${x},${y}`);
+    for (let y = y0 - P.gapBetween; y < y0 + n + P.gapBetween; y++) for (let x = x0 - P.gapBetween; x < x0 + n + P.gapBetween; x++) taken.add(`${x},${y}`);
+    out.push({ x0, y0, size: n, height: P.height, holds: o || null, steps: stair.steps.length / (P.step * P.step) });
+  }
+  if (!out.length) return null;
+  map.mesas = out.map((q) => ({ ...q, holds: q.holds ? q.holds.kind : null })); const raised = (q) => at(Math.round(q.x), Math.round(q.y))?.mesa;
+  map.enemySpawns = (map.enemySpawns || []).filter((q) => !raised(q));
+  return out;
 }
 // Moonlands (release 579, version 6): bare ground in a lunar region turns to grey dust, pocked with craters (`MOON.craters`
 // per section, radius `radius`): a darker bowl inside a pale rim. Both are walkable, so nothing is ever cut off; read per tile,
@@ -789,7 +853,7 @@ export function canStep(entity, map, width, fromX, fromY, toX, toY) {
   if (diff === 1) return !!entity.jumping;
   return diff < 0; // dropping off a ledge: the game applies fall damage by height
 }
-export function isLandscapeKind(kind) { return WALKABLE_LANDSCAPE.has(kind) || [...DEEP_WATER, "crag", "crystalSpire", "alienPool", "castleWall", "castleTower", "castleKeep", "lava", "iceSpire"].includes(kind); }
+export function isLandscapeKind(kind) { return WALKABLE_LANDSCAPE.has(kind) || [...DEEP_WATER, "crag", "crystalSpire", "alienPool", "castleWall", "castleTower", "castleKeep", "lava", "iceSpire", "hoodoo"].includes(kind); }
 export function elevationAt(map, width, x, y) { return map?.landscape ? (tileUnder(map, width, x, y)?.elev || 0) : 0; }
 
 // ---------------------------------------------------------------- the Far Sleep (release 305)

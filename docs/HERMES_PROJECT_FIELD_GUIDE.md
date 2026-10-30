@@ -2694,6 +2694,33 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 591: pillar lands — 2026-10-30
+
+Tim (2026-10-30): "I like the platforms that you built. You can make those platforms a part of the world... sections of the
+world that have those tall platforms... so that we can do it like dungeons on top of them"; the raised stone platforms "are
+fine. We should keep those in the game".
+
+**CODE:**
+- `src/landscape.ts`: `LANDSCAPE_VERSION` 8. `REGIONS_V8.wildTo` (pillars .3, rolled on its own hash only for regions still wild
+  after the version 7 roll); `regionTile` caches version 8 apart; `REGIONS.lean.pillars`, `REGION_GROUNDS.pillars` ("Pillar
+  Lands"), `REGION_NAMES.nouns.pillars`. `applyPillarGround`: bare ground in a pillar region becomes `pillarGround`, with
+  `hoodoo` spires (blocked) where `PILLARS.hoodoo` noise rises, never on protected ground; sets `map.pillarlands`.
+  `buildMesas` runs last in applyLandscape (after ensureClimbable, slopes, ramps and docks, so none of them lowers or ramps a
+  mesa): up to `PILLARS.mesas` square tops (`size`) at `height` 3 and a stair of `step`-square pillars at levels 2 and 1, each a
+  `gap` of open ground out from the last, all `skyPlatform` tiles with `mesa: true` (a hoodoo in the way becomes part of it). The
+  section's dungeon (else a shrine, cache or ruin marker, `prefer`) is tried first, at several sizes and offsets, so it stands on
+  top; the rest go anywhere they fit, `gapBetween` apart. They keep off the plaza (12..20) and the exit causeways. Enemy spawns
+  on a mesa are dropped. `map.mesas` records them. `pillarGround` and `skyPlatform` are walkable landscape kinds; `hoodoo` is a
+  landscape kind.
+- `src/landscape-render.ts`: `pillarGround` (red sandstone dust), `hoodoo` (a stacked spire with a cap stone), `FACE.pillars`
+  (sandstone walls under the pale stone tops). `src/atlas-colors.ts`: their Atlas colours. `src/game.ts`: the region banner
+  "Pillar lands".
+
+**BOUNDARY:** Ground pinned to versions 1 to 7 is byte-identical (2160 sections compared against main). Movement is the 585
+skyway's: a jump goes up one level, a jump from a skyPlatform keeps its height over a gap, a fall takes damage by height (three
+levels hurts, never kills), and creatures do not climb. Dungeon ids and positions are unchanged: the ground rises under them.
+A pillar section whose dungeon cannot be fitted keeps it on the ground. No save changes.
+
 ## Release 589: you never know what the Skylands hold — 2026-10-30
 
 Tim (2026-10-30): "sometimes it'll be a skyline that is... a divine challenge. And sometimes it'll just be a random teleportation
