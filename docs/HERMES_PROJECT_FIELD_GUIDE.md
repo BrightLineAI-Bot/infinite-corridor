@@ -2694,6 +2694,25 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 593: chasm crossings — 2026-10-30
+
+Tim (2026-10-30): "the whole dungeon should just be made pretty much a chasm with just bridges... walkways and some larger
+platforms... if you step off, you die... maybe there's some walls".
+
+**CODE:**
+- `src/game.ts`: `CHASM` (version, `chance` .12, `keepWalls` .12, the name suffix) and `chasmRoll(seed, id)`. In
+  `generatePinnedDungeon`, an ordinary crossing first generated from now on pins `history.chasm` (the version, or 0; never with
+  a Poison Crypt or a Sleeper's Hall). `carveChasm(map, seed, levelKey)` runs last on each of its maps (every level): each
+  inner wall tile (a `...Wall` kind, not a door, gate or structure, not on the map's edge) becomes `canyon` (unblocked,
+  `environment: "canyon"`, `chasm: true`), except `keepWalls` of those beside a walkway. Sets `map.chasm` and adds " · Chasm"
+  to the name.
+
+**BOUNDARY:** No floor tile, object, spawn or entry moves, so a chasm crossing is as reachable and completable as the crossing
+it was carved from; all its systems (guardians, objectives, traps, daises, levels) are untouched. The drop is the existing
+canyon: lethal, avoided by creatures, guarded by the brink guard (the Wayfarer stops at the edge; a dodge-roll over it is a
+fall). Without the walls, creatures can see and shoot across the gaps. Crossings entered before 593 keep their walls (the
+pin is set only for fresh ordinary crossings). No save schema change (one more field on a crossing's history).
+
 ## Release 591: pillar lands — 2026-10-30
 
 Tim (2026-10-30): "I like the platforms that you built. You can make those platforms a part of the world... sections of the
