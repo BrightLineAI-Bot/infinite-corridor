@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**585**
+**587**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 583 | Claude | `claude/dreamy-rubin-yn6q2p` | Firelands: a volcanic region type (landscape 7), basalt, fissures, lava pools, calderas, embers | Building. |
+| 585 | Claude | `claude/dreamy-rubin-yn6q2p` | The skyway ascent: floating platforms climbed jump by jump to the Skylands door | Building. |
+| 583 | Claude | PR #275 | Firelands: a volcanic region type (landscape 7), basalt, fissures, lava pools, calderas, embers | Merged (`r583-3d55d3375c64`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)

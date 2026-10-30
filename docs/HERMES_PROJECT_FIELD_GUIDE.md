@@ -2694,6 +2694,32 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 585: the skyway climb — 2026-10-30
+
+Tim (2026-10-30): "vertical... platforms... floating in the air. And you can jump... from platform to platform... to get to the
+skyway... each one is just a jump... pretty easily... things can walk under them, and you can't really get to the top platform
+unless you complete all the... steps... if you don't make it. You might die". Part one of the Skylands rework; what lies beyond
+the door (boss rush of beaten world beasts, cloud dungeons, teleports) is the next release.
+
+**CODE:**
+- `src/skylands.ts`: `SKYLANDS.version` 2. `SKYWAY` and `buildSkyway(map, seed, rx, ry)`: in an atlas record pinned to skyVersion 2
+  the section gets a winding chain of `size`×`size` platforms (five, else four or three: `platforms`) a `gap` apart, each one level
+  higher (tile kind `skyPlatform`, `skyPlatform: true`, elev 1..n), on open flat ground clear of objects, spawns, the exit causeways
+  and the plaza. Deterministic by seed and section; sets `map.skyway.pads` and, if the section had none, a version 1 `map.landscape`
+  so elevation counts there.
+- `src/game.ts`: the Sky Stair placement builds the skyway for skyVersion 2 (the door is a `skyStair` object named Skyway with
+  `skyway` and `elev`, also in the atlas sites); skyVersion 1 sections keep the old stair. `interact` refuses the door from below
+  its height. A jump started on a sky platform lasts `JUMP.sky`; while it lasts the player keeps `skyAir` (the platform's height)
+  as `airElev`, so `canStep` (landscape.ts) lets them over the gap and one level up onto the next platform, and no fall is
+  counted until the jump ends: ending over the gap falls from that height (4+ levels fatal, as everywhere). `skyAir` clears on
+  landing and on loading a section.
+- `src/landscape-render.ts` `skyPlatform` texture; `src/atlas-colors.ts`.
+
+**BOUNDARY:**
+- Only the player is affected; creatures cannot climb onto platforms (no slopes) and walk the ground between them.
+- Not every candidate section has room; those without simply have no skyway (about half do).
+- Tests: `tests/skyway-ascent-585.test.ts`.
+
 ## Release 583: firelands — 2026-10-30
 
 Tim (2026-10-30): "let's do the volcanic region next" (from the daily world-regions list: "a severe volcanic region").
