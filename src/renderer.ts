@@ -884,6 +884,18 @@ export function drawWallGlint(ctx, q, s, now) {
 }
 // Release 225: a patch of disturbed earth (or, once dug, turned earth): a low mound of darker soil ringed by a few stones.
 // Release 431: a cracked bronze bell on a weathered frame; a rung one hangs still with a faint warm glow.
+// Release 595: a torn page lying on the floor, its corner lifting; an unread one gives off a faint light.
+export function drawTornPage(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .6) * s, read = o.state === "read", lift = read ? 0 : Math.sin(now / 700 + o.x) * .06;
+  ctx.save();
+  if (!read) { const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * .7); g.addColorStop(0, "rgba(255,236,190,.32)"); g.addColorStop(1, "rgba(255,236,190,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, s * .7, 0, 7); ctx.fill(); }
+  ctx.translate(cx, cy); ctx.rotate(-.18);
+  ctx.fillStyle = "#00000033"; ctx.fillRect(-s * .26, -s * .3 + s * .05, s * .52, s * .62);
+  ctx.fillStyle = read ? "#cbbf9f" : "#ece2c4"; ctx.beginPath(); ctx.moveTo(-s * .26, -s * .32); ctx.lineTo(s * .2, -s * .32); ctx.lineTo(s * .26, -s * .2 - lift * s); ctx.lineTo(s * .24, s * .3);
+  for (let i = 0; i < 5; i++) ctx.lineTo(s * (.14 - i * .1), s * (.26 + (i % 2) * .06)); ctx.closePath(); ctx.fill(); // the torn edge along the foot
+  ctx.strokeStyle = "#6b5a3f88"; ctx.lineWidth = Math.max(1, s * .02); for (let i = 0; i < 5; i++) { const y = -s * .2 + i * s * .1; ctx.beginPath(); ctx.moveTo(-s * .19, y); ctx.lineTo(s * (.12 - (i === 4 ? .14 : 0)), y); ctx.stroke(); }
+  ctx.restore();
+}
 export function drawCrackedBell(ctx, o, s, now) {
   const cx = (o.x + .5) * s, base = (o.y + .9) * s, top = (o.y - .55) * s, rung = o.state === "rung", sway = rung ? 0 : Math.sin(now / 900 + o.x) * .05;
   ctx.save(); ctx.strokeStyle = "#4a3a2a"; ctx.lineWidth = Math.max(2, s * .09); ctx.lineCap = "round";
@@ -1655,6 +1667,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "digSpot") { drawDigSpot(ctx, o, s, now);
           } else if (o.kind === "ilse") { drawIlse(ctx, o, s, now);
           } else if (o.kind === "crackedBell") { drawCrackedBell(ctx, o, s, now);
+          } else if (o.kind === "tornPage") { drawTornPage(ctx, o, s, now); // release 595
           } else if (o.kind === "surveyorLink") { drawSurveyorLink(ctx, o, s, now); // release 505
           } else if (o.kind === "surveyorStatue") { drawSurveyorStatue(ctx, o, s, now); // release 551
           } else if (o.kind === "marginNote") { drawMarginNote(ctx, o, s, now);
