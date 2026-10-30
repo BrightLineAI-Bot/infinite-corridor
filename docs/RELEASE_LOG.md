@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**597**
+**599**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 595 | Claude | `claude/dreamy-rubin-yn6q2p` | The Torn Pages: one page per Reading in crossings of that Reading; the book with no title in the Tome | Building. |
+| 597 | Claude | `claude/dreamy-rubin-yn6q2p` | Chasm crossings drawn as starry night sky with a penumbra round the Wayfarer; the fall into the stars | Building. |
+| 595 | Claude | PR #281 | The Torn Pages: one page per Reading in crossings of that Reading; the book with no title in the Tome | Merged (`r595-465c58d4573b`). Not published. |
 | 593 | Claude | PR #280 | Chasm crossings: one new crossing in eight has its walls fall away into a lethal drop | Merged (`r593-3faf6efad5c8`). Not published. |
 | 591 | Claude | PR #279 | Pillar lands (landscape 8): red sandstone, hoodoos, mesas climbed by pillar stairs, dungeons on top | Merged (`r591-f9aa2fb1709b`). Not published. |
 | 589 | Claude | PR #278 | Skyland modes: divine challenge of slain-beast echoes, cloud hold with a far gate, both, or a sky gate; next tier always shown | Merged (`r589-6f83d3833200`). Not published. |
