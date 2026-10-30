@@ -2694,6 +2694,39 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 589: you never know what the Skylands hold — 2026-10-30
+
+Tim (2026-10-30): "sometimes it'll be a skyline that is... a divine challenge. And sometimes it'll just be a random teleportation
+device... or... a sky dungeon... cloud based... some winged creatures... when you complete that dungeon... it'll take you to some
+random place... could be just the boss rush, or it could be like a dungeon with a boss rush at the end"; the boss rush is of world
+bosses "you have to kill... first"; and "there's no way to increase the difficulty".
+
+**CODE:**
+- `src/skylands.ts`: `SKY_MODES` (weights, names, the winged kinds, cloud waves, rush round sizes, the beasts that can be echoed,
+  the keepers, `echoShare`, `hop`, `gauntletHop`). `beginSkyland` rolls a mode per run (`rollSkylandMode`, on the stair and the
+  run count) and writes it into the run id (`skyland:<seed>:<rx>,<ry>:m<mode>:t<N>:r<runs>`); a run id without `:m` is a 571 run
+  and keeps its three waves. A `gate` run spends no sigils and returns `gate: true`. `skylandPlan(id, save, boss)` gives a run's
+  rounds; a rush round of size n is up to n distinct slain beasts (`slainBeasts`: `save.worldBeasts[id].slain > 0`), filled with
+  keepers. `skylandWave` takes the plan and spaces echoes four tiles apart; an echo spawn carries `skyEcho`, `skyEchoes` and
+  `noRewards`. `skylandHops(id)` (cloud and gate always, gauntlet by hash) and `skylandHop(id, rx, ry)` (10 to 30 sections in a
+  direction of the run's own). `skylandActions` also offers the next tier, locked, and `skylandLabel` says what it takes.
+- `src/game.ts`: `dressSkyland` stores `map.skyPlan` and, for a run with a mode, `skyMode`, `skyCloud` and sunbreak weather;
+  `tickSkyland` runs the plan, names the echoes as they come, and marks `skyHop` on the run's history when its way down is a gate.
+  The exit of a resolved `skyHop` run leaves the Skyland and then `skyHop`s; a `gate` climb `skyHop`s from the stair.
+  `skyHop(id, message)` loads the far section, puts the Wayfarer at its centre (moved off blocked ground) and tries another
+  direction, up to six, while the spot is open sea. `createEnemyFromSpawn` tunes an echo with `tuneWorldBeast` and then deletes
+  `worldBeast` (as the astral ally does), and shares its health and damage out by `echoShare`.
+- `src/renderer.ts`: `drawCloudTile` (`CLOUD_PAINT`): on a `skyCloud` map the void is open sky with drifting puffs, open floor
+  is cloud, and a darker underside shows where cloud meets sky. Tile kinds are unchanged.
+- `src/main.ts`: the Sky Stair's Places description names the four modes.
+
+**BOUNDARY:** Saves are unchanged (schema 14): the mode lives in the run id and `skyHop` on the run's own history, both removed
+when you come back down as before. Echoes are not world beasts: no hunt, try, wound, cooldown, slain count or sigil drop changes,
+and they give no kill rewards; the Skyland's clear gives completeSkyland's rewards as before. A 571 run in progress keeps its
+waves and its stair. A sky gate does not lock Wayglass travel (the Mislaid Threshold's displacement still does). The cloud hold
+is the Skyland arena, re-dressed, not a multi-room dungeon. Waves after the first are still not restored if the game is closed
+mid-run (as in 571).
+
 ## Release 587: skyways float — 2026-10-30
 
 Tim (2026-10-30): "rather than raised stone platforms. Those raised stone platforms are fine. We should keep those in the game...

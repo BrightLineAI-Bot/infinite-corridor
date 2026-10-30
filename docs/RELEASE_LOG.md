@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**589**
+**591**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 587 | Claude | `claude/dreamy-rubin-yn6q2p` | Skyways as floating discs (a sky layer creatures walk beneath) | Building. |
+| 589 | Claude | `claude/dreamy-rubin-yn6q2p` | Skyland modes: divine challenge of slain-beast echoes, cloud hold with a far gate, both, or a sky gate; next tier always shown | Building. |
+| 587 | Claude | PR #277 | Skyways as floating discs (a sky layer creatures walk beneath) | Merged (`r587-28006ec97a80`). Not published. |
 | 585 | Claude | PR #276 | The skyway ascent: raised stone platforms climbed jump by jump to the Skylands door | Merged (`r585-a9f09cf984ab`). Not published. |
 | 583 | Claude | PR #275 | Firelands: a volcanic region type (landscape 7), basalt, fissures, lava pools, calderas, embers | Merged (`r583-3d55d3375c64`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |

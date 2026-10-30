@@ -56,7 +56,7 @@ import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { ARC_WAVE, NANOKNIVES, GOLEM, CLUSTER, FIRE_BURST, knifeOffset } from "./tool-forms.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
-import { SKYLANDS, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland , buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
+import { SKYLANDS, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { generateItem, BRAWLER_LOOT } from "./items.ts";
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
 import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
@@ -109,10 +109,12 @@ const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const RIFT_FLASH = .6; // release 519: seconds an instant Rift Step lights its button
 export const EQUIPMENT_CAPACITY = 60;
 // Release 571 (skylands.ts): the arena becomes a Skyland: its own boss waits for the last wave, the first wave is placed.
-function dressSkyland(map, id) {
-  const boss = map.enemySpawns?.[0]?.kind || "hollowMarshal", tier = skylandTierOf(id), width = map.width || 36, open = map.tiles.filter((t) => !t.blocked && !t.environment && Math.hypot(t.x - map.entry.x, t.y - map.entry.y) > 5);
-  Object.assign(map, { skyland: true, skyTier: tier, skyBoss: boss, skyOpen: open.map((t) => ({ x: t.x, y: t.y })), name: `Skyland · Ascension ${tier}`, weather: "petals" });
-  map.enemySpawns = skylandWave(id, 0, map.skyOpen, map.objective || { x: width / 2, y: 11 }, boss);
+// Release 589: a run with a mode (skylands.ts SKY_MODES) follows its own plan, on a cloud island (map.skyCloud, renderer.ts).
+function dressSkyland(map, id, save = null) {
+  const boss = map.enemySpawns?.[0]?.kind || "hollowMarshal", tier = skylandTierOf(id), width = map.width || 36, open = map.tiles.filter((t) => !t.blocked && !t.environment && Math.hypot(t.x - map.entry.x, t.y - map.entry.y) > 5), mode = skylandModeOf(id);
+  Object.assign(map, { skyland: true, skyTier: tier, skyBoss: boss, skyOpen: open.map((t) => ({ x: t.x, y: t.y })), name: mode ? `Skyland · ${SKY_MODES.names[mode]} · Ascension ${tier}` : `Skyland · Ascension ${tier}`, weather: "petals" });
+  map.skyPlan = skylandPlan(id, save, boss); if (mode) Object.assign(map, { skyMode: mode, skyCloud: true, weather: "sunbreak" });
+  map.enemySpawns = skylandWave(id, 0, map.skyOpen, map.objective || { x: width / 2, y: 11 }, boss, map.skyPlan);
 }
 export function pinDungeonLayout(save, id) {
   const history = dungeonHistory(save, id);
@@ -151,7 +153,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   // Dive generator pinned per history: 1 = the release-107 Sunken Reach, 2 = themed grottoes (release 108).
   if (isArenaRun(id)) map = generateListenerArena(save.seed, id); // release 375: the Listening Hall
   else if (id.startsWith('dive:')) map = (history.diveGenerator ?? 1) >= 2 ? generateGrotto(save.seed, id) : generateDiveSite(save.seed, id);
-  else if (/^(arena:|hunt-arena:|hunt-instance:|skyland:)/.test(id)) { map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved}); if (isSkyland(id)) dressSkyland(map, id); } // release 571: a Skyland is a temporary arena run in waves
+  else if (/^(arena:|hunt-arena:|hunt-instance:|skyland:)/.test(id)) { map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved}); if (isSkyland(id)) dressSkyland(map, id, save); } // release 571: a Skyland is a temporary arena run in waves
   else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1,...(history.mire?{theme:'poisonCrypt'}:history.dream?{theme:'dream'}:{}),...(history.mire?.taste?{sizeProfile:'compact'}:{}),...(history.ladder?{ladder:crossingLadder(save.seed,id,history.ladder.tier)}:{}),...(history.warpVersion>=2?{warpAlways:true}:{})});
   else if (!id.includes(':deep-v') && history.generatorVersion === 4) map = generateUnifiedDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options});
   else if (!id.includes(':deep-v') && history.generatorVersion === 3) map = generateVariedDungeon(save.seed,id,dungeonDescriptor(id).recipe);
@@ -2900,16 +2902,18 @@ export class Game {
     const id = this.areaId(), h = dungeonHistory(this.save, id); if (h.resolved) return;
     if (this.enemies.some((e) => !e.dead && !e.ambient && !e.passiveBehavior && !e.summonedBy && e.kind !== "npc")) { this.skyGap = SKYLANDS.waveGap; return; }
     if ((this.skyGap = (this.skyGap ?? SKYLANDS.waveGap) - dt) > 0) return;
-    h.skyWave = (h.skyWave || 0) + 1; this.skyGap = SKYLANDS.waveGap;
-    if (h.skyWave < SKYLANDS.waves.length) {
-      const spawns = skylandWave(id, h.skyWave, this.map.skyOpen || [], this.map.objective || { x: 18, y: 11 }, this.map.skyBoss);
+    h.skyWave = (h.skyWave || 0) + 1; this.skyGap = SKYLANDS.waveGap; const plan = this.map.skyPlan || SKYLANDS.waves; // release 589: the run's own plan
+    if (h.skyWave < plan.length) {
+      const spawns = skylandWave(id, h.skyWave, this.map.skyOpen || [], this.map.objective || { x: 18, y: 11 }, this.map.skyBoss, this.map.skyPlan);
       for (const sp of spawns) { const c = this.createEnemyFromSpawn(sp, "dungeon"); this.scaleSkyFoe(c); c.aggro = true; this.enemies.push(c); }
-      this.message = h.skyWave === SKYLANDS.waves.length - 1 ? "The sky darkens over the last island. Its keeper comes." : "More of them drop out of the open sky.";
+      const echoes = [...new Set(spawns.filter((q) => q.skyEcho).map((q) => WORLD_BEASTS[q.skyEcho].name))];
+      this.message = echoes.length ? `The sky gathers itself into ${echoes.join(" and ")}${spawns.length > echoes.length ? ", and keepers beside" : ""}.` : plan[h.skyWave].boss ? (h.skyWave === plan.length - 1 ? "The sky darkens over the last island. Its keeper comes." : "Keepers step down out of the light.") : "More of them drop out of the open sky.";
       return;
     }
     h.resolved = true; h.visitOpen = false; const tier = this.map.skyTier || 0, won = completeSkyland(this.save, tier);
+    if (skylandHops(id)) h.skyHop = true; // release 589: this run's way down is a cloud gate
     (this.questNotices ||= []).push({ title: "SKYLAND CLEARED", detail: `Ascension ${tier} · +${won.sigils} Ascension Sigil${won.sigils > 1 ? "s" : ""}, +${won.marks} marks${won.weaponSphere || won.armorSphere ? `, ${won.weaponSphere + won.armorSphere} spheres` : ""}`, kind: "quest" });
-    this.message = `The islands fall quiet. You hold ${this.save.skylands.sigils} Ascension Sigil${this.save.skylands.sigils === 1 ? "" : "s"}. Take the way back down at the stair's foot.`;
+    this.message = `The islands fall quiet. You hold ${this.save.skylands.sigils} Ascension Sigil${this.save.skylands.sigils === 1 ? "" : "s"}. ${h.skyHop ? "The way down has become a gate of cloud: it drops you far from where you climbed." : "Take the way back down at the stair's foot."}`;
     journalOnce(this.save, `skyland-best:${this.save.skylands.best}`, `You cleared a Skyland at Ascension ${tier}. Each climb repays its sigils; the higher stairs ask for more.`, "The Skylands"); this.sync();
   }
   // The nearest Wayglass or relay within WAYGLASS_ZONE.reach that can be used, or null.
@@ -2956,6 +2960,16 @@ export class Game {
     this.player.x=spot.x;this.player.y=spot.y-.2;this.player.invulnerableUntil=Math.max(this.player.invulnerableUntil||0,(this.lastUpdateNow||0)+800);
     (this.glyphVisuals||=[]).push({kind:"arc",x:o.x+.5,y:o.y+.45,tx:other.x+.5,ty:other.y+.45,color:"#d8c8ff",life:.4,max:.4});
     this.message="The eye opens. The halls fold, and you step off the other dais.";this.sync();return{ok:true,message:this.message};
+  }
+  // Release 589 (skylands.ts skylandHop): a sky gate drops the Wayfarer onto ground far off. A section all sea is passed over.
+  skyHop(id, message) {
+    this.snapshotArea(); const from = { rx: this.rx, ry: this.ry };
+    for (let k = 0; k < 6; k++) {
+      const to = skylandHop(k ? `${id}:${k}` : id, from.rx, from.ry); this.rx = to.rx; this.ry = to.ry; this.loadArea("overworld", false);
+      this.player.x = 16; this.player.y = 16; relocateIfStranded(this.player, this.map, mapWidth(this.map, "overworld"));
+      if (!isMarineTile(this.map.tiles?.[Math.floor(this.player.y) * 32 + Math.floor(this.player.x)])) break;
+    }
+    Object.assign(this, { skyAir: null, skyLevel: 0, discAir: null, projectiles: [], effects: [], traversal: null }); this.message = message; this.sync(); return true;
   }
   startDisplacement(o,hidden=false){
     const key=`displacement-trigger:${this.rx},${this.ry}:${o.id}`;if(this.save.worldFlags[key])return false;this.save.worldFlags[key]=true;o.state='used';o.consumed=true;
@@ -3118,6 +3132,7 @@ export class Game {
       this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=`elite-portal:${this.save.seed}:knife-choir`;const h=dungeonHistory(this.save,this.save.session.activeDungeonId);h.visits++;h.visitOpen=true;this.loadArea('dungeon');this.player.x=4;this.player.y=5;relocateIfStranded(this.player,this.map,mapWidth(this.map,'dungeon'));this.settleArrival();/* release 439 */
     } else if(r.transition==="skyland"){ // release 571: climb a Sky Stair
       const b=beginSkyland(this.save,{rx:this.rx,ry:this.ry},r.tier);if(!b.ok){this.message=b.message;return{ok:false,message:b.message}}
+      if(b.gate){this.skyHop(b.id,b.message);return{ok:true,message:this.message}}/* release 589: a sky gate */
       this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=b.id;this.save.session.activeDungeonLevelId=null;
       const h=dungeonHistory(this.save,b.id);h.gatePredatorSpawnThreshold=0;h.skyWave=0;h.visits++;h.visitOpen=true;
       this.loadArea('dungeon');this.player.x=this.map.entry?.x??18;this.player.y=(this.map.entry?.y??27)-1;relocateIfStranded(this.player,this.map,mapWidth(this.map,'dungeon'));this.settleArrival();this.message=b.message;this.sync();return{ok:true,message:b.message};
@@ -3151,7 +3166,7 @@ export class Game {
       relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); // release 419
       if (marginaliaOpen(this.save) && marginCrossing(this.areaId())) { beginMarginRun(this.save, this.areaId()); if (ensureMarginalia(this.save).found.length) this.marginPasteRequested = true; } // release 459
     } else if (r.transition === "exit") {
-      if(this.save.session.activeDisplacement){if(!this.thresholdOpen()){this.message="The Mislaid Threshold remains sealed while its guardian lives. Its guardian is marked on the dungeon map.";return{ok:false,message:this.message}}const d=this.save.session.activeDisplacement;this.snapshotArea();this.rx=d.destination.rx;this.ry=d.destination.ry;this.save.session.displacementJourney={source:d.source,destination:d.destination};this.save.session.activeDisplacement=null;this.save.session.activeDungeonId=null;this.loadArea("overworld",false);this.player.x=16;this.player.y=16;relocateIfStranded(this.player,this.map,mapWidth(this.map,'overworld'));this.message="The completed crossing releases you onto stable ground in a distant, uncharted Corridor. Find a physical Wayglass to restore travel."}else this.leaveDungeon("You emerge at the dungeon entrance.");
+      if(this.save.session.activeDisplacement){if(!this.thresholdOpen()){this.message="The Mislaid Threshold remains sealed while its guardian lives. Its guardian is marked on the dungeon map.";return{ok:false,message:this.message}}const d=this.save.session.activeDisplacement;this.snapshotArea();this.rx=d.destination.rx;this.ry=d.destination.ry;this.save.session.displacementJourney={source:d.source,destination:d.destination};this.save.session.activeDisplacement=null;this.save.session.activeDungeonId=null;this.loadArea("overworld",false);this.player.x=16;this.player.y=16;relocateIfStranded(this.player,this.map,mapWidth(this.map,'overworld'));this.message="The completed crossing releases you onto stable ground in a distant, uncharted Corridor. Find a physical Wayglass to restore travel."}else if(this.map?.skyland&&dungeonHistory(this.save,this.areaId()).skyHop){const id=this.areaId();this.leaveDungeon("");this.skyHop(id,"The cloud gate lets go of you. You fall a long way, and land far off.")}/* release 589 */else this.leaveDungeon("You emerge at the dungeon entrance.");
     } else if (r.transition === "checkpoint") {
       this.save.session.displacementJourney=null;
       if (clearRot(this.save)) this.message += " Resting here clears the blight rot.";
@@ -4132,6 +4147,7 @@ export class Game {
       if (e.skirmishId) Object.assign(c, skirmishFields(e));
       if (e.questingBeast) tuneQuestingBeast(c, this.save, characterStats(this.save));
       if (e.worldBeast) tuneWorldBeast(c, this.save, e.worldBeast, characterStats(this.save));
+      if (e.skyEcho && WORLD_BEASTS[e.skyEcho]) { tuneWorldBeast(c, this.save, e.skyEcho, characterStats(this.save)); delete c.worldBeast; const n = Math.max(1, Math.min(3, e.skyEchoes || 1)) - 1, S = SKY_MODES.echoShare; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * S.hp[n])); c.damage = Math.max(1, Math.round(c.damage * S.damage[n])); c.skyEcho = e.skyEcho; } // release 589: an echo, not the beast
       if (e.worldBeast || e.questingBeast) { const share = Number((e.worldBeast ? this.save.worldBeasts?.[e.worldBeast]?.active : this.save.questingBeast?.active)?.hpShare); if (share > 0 && share < 1) c.hp = Math.max(1, Math.round(c.maxHp * share)); } // release 423: it keeps the wounds you gave it
       if(e.astralCompanionOf){if(e.astralRole==='ally'){tuneWorldBeast(c,this.save,'voidWalker',characterStats(this.save));delete c.worldBeast;}Object.assign(c,{astralCompanionOf:e.astralCompanionOf,astralRole:e.astralRole,astralAllyOf:e.astralAllyOf,noRewards:!!e.noRewards,astralMountWanted:!!e.astralMountWanted});} // release 235
       if (e.retreating) Object.assign(c, { retreating: true, aggro: true, untargetable: true }); // release 239: fleeing through
