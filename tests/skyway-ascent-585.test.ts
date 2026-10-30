@@ -9,12 +9,15 @@ import { SKYWAY, SKYLANDS, skylandSection, buildSkyway } from '../src/skylands.t
 import { tileUnder, canStep } from '../src/landscape.ts';
 
 const SEED = 'SKY';
-function skywaySection() { const s = freshSave(); s.seed = SEED; const g = new Game(s, 0);
+// Release 587: new sections get floating discs (skyVersion 3); the stone ascent is kept for sections pinned to version 2, tested
+// here by generating as version 2.
+function skywaySection() { SKYLANDS.version = 2; try { return findStone(); } finally { SKYLANDS.version = 3; } }
+function findStone() { const s = freshSave(); s.seed = SEED; const g = new Game(s, 0);
   for (let r = 14; r < 80; r++) for (let x = -r; x <= r; x++) { const y = r - Math.abs(x); if (!skylandSection(SEED, x, y)) continue; s.atlas = {}; g.rx = x; g.ry = y; g.loadArea('overworld'); if (g.map.skyway) { g.enemies = []; g.map.enemySpawns = []; return { s, g }; } } }
 const inp = (x, y, jump) => { let j = jump; return { state: { x, y }, consume: (k) => k === 'jump' && j ? (j = false, true) : false, held: () => false }; };
 
 test('the ascent: platforms one level apart over open ground, the door on the top one; pinned old sections keep the stair', () => {
-  assert.equal(SKYLANDS.version, 2); const { s, g } = skywaySection(), pads = g.map.skyway.pads;
+  assert.equal(SKYLANDS.version, 3); const { s, g } = skywaySection(), pads = g.map.skyway.pads;
   assert.ok(pads.length >= 3 && pads.length <= 5); pads.forEach((p, k) => { assert.equal(p.elev, k + 1);
     for (let dy = 0; dy < SKYWAY.size; dy++) for (let dx = 0; dx < SKYWAY.size; dx++) { const t = g.map.tiles[(p.y + dy) * 32 + p.x + dx]; assert.equal(t.elev, k + 1); assert.ok(t.skyPlatform && !t.blocked); } });
   const door = g.map.objects.find((o) => o.skyway); assert.equal(door.elev, pads.length); assert.equal(door.x, pads.at(-1).x);

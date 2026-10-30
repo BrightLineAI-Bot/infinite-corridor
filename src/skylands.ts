@@ -24,7 +24,7 @@
 import { hashSeed } from "./random.ts";
 
 export const SKYLANDS = {
-  version: 2, /* release 585: 2 = the skyway ascent */ macro: 8, chance: .65, minDepth: 14, maxTier: 20, hpPerTier: .6, damagePerTier: .25,
+  version: 3, /* release 585: 2 = the stone skyway ascent; 587: 3 = floating discs */ macro: 8, chance: .65, minDepth: 14, maxTier: 20, hpPerTier: .6, damagePerTier: .25,
   marks: 120, marksPerTier: 120, waveGap: 1.6,
   waves: [
     { count: 5, kinds: ["rootBrute", "sparkWarden", "coilStalker", "ashenHound", "glassMite", "veilMoth"], traits: [] },
@@ -64,6 +64,38 @@ export function buildSkyway(map, seed, rx, ry) {
     const [tx, ty] = pads[pads.length - 1]; return { x: tx, y: ty, elev: count };
   }
   return null;
+}
+// Release 587 (Tim: "the skyline platforms should be round discs that you can jump on that are floating in the air"; the raised
+// stone platforms stay for sections pinned to skyVersion 2): from skyVersion 3 the ascent is a chain of `SKY_DISCS.count` round
+// discs floating over open ground, each one level higher, `spacing` tiles apart centre to centre. The ground under them is left as
+// it is, so creatures walk beneath. The discs are a layer of their own: game.ts keeps the Wayfarer's `skyLevel`; a jump that
+// ends over a disc no more than one level above where it began lands on it, walking off a disc falls (four levels: fatal).
+export const SKY_DISCS = { count: [5, 4, 3], radius: 1.15, spacing: 2.6, area: [4, 27], clear: 1, tries: 120, bob: .06 };
+export function buildSkyDiscs(map, seed, rx, ry) {
+  const D = SKY_DISCS, [lo, hi] = D.area, W = 32, at = (x, y) => map.tiles?.[y * W + x], h = (k) => hashSeed(`${seed}:sky-discs:v1:${rx}:${ry}:${k}`);
+  const ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1;
+  const exitLine = (x, y) => (near(ex.north, x) && y <= 16) || (near(ex.south, x) && y >= 16) || (near(ex.west, y) && x <= 16) || (near(ex.east, y) && x >= 16);
+  const free = (x, y) => x >= lo && y >= lo && x <= hi && y <= hi && OPEN_GROUND(at(x, y)) && !exitLine(x, y) && !(x >= 13 && x <= 19 && y >= 13 && y <= 19)
+    && !(map.objects || []).some((o) => Math.hypot(o.x - x, o.y - y) < D.clear) && !(map.enemySpawns || []).some((o) => Math.hypot(o.x - x, o.y - y) < D.clear);
+  const under = (cx, cy) => { const out = []; for (let y = Math.floor(cy - D.radius); y <= Math.floor(cy + D.radius); y++) for (let x = Math.floor(cx - D.radius); x <= Math.floor(cx + D.radius); x++) if (Math.hypot(x + .5 - cx, y + .5 - cy) <= D.radius + .2) out.push([x, y]); return out; };
+  const DIRS = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+  for (const count of D.count) for (let t = 0; t < D.tries; t++) {
+    let cx = lo + 1.5 + h(`x${count}:${t}`) % (hi - lo - 2), cy = lo + 1.5 + h(`y${count}:${t}`) % (hi - lo - 2), dir = h(`d${count}:${t}`) % 8; const discs = [];
+    for (let k = 0; k < count; k++) {
+      if (k) { dir = (dir + [0, 1, 7, 2, 6][h(`turn${count}:${t}:${k}`) % 5]) % 8; const [dx, dy] = DIRS[dir], n = Math.hypot(dx, dy); cx += dx / n * D.spacing; cy += dy / n * D.spacing; }
+      discs.push({ x: cx, y: cy, r: D.radius, level: k + 1 });
+    }
+    if (discs.some((a, i) => discs.some((b, j) => j > i + 1 && Math.hypot(a.x - b.x, a.y - b.y) < D.spacing))) continue; // the chain must not fold back on itself
+    if (!discs.every((d) => under(d.x, d.y).every(([x, y]) => free(x, y)))) continue;
+    map.skyDiscs = discs.map((d) => ({ ...d, x: Math.round(d.x * 100) / 100, y: Math.round(d.y * 100) / 100 }));
+    return map.skyDiscs.at(-1);
+  }
+  return null;
+}
+// The disc under a foot point, at `level` (or the highest one of at most `maxLevel`).
+export function discAt(map, fx, fy, { level = null, maxLevel = Infinity, below = Infinity } = {}) {
+  let best = null; for (const d of map?.skyDiscs || []) if (Math.hypot(fx - d.x, fy - d.y) <= d.r && (level === null ? d.level <= maxLevel && d.level < below : d.level === level) && (!best || d.level > best.level)) best = d;
+  return best;
 }
 // Is there a Sky Stair in this section? One candidate per macro block, kept with `chance`.
 export function skylandSection(seed, rx, ry) {

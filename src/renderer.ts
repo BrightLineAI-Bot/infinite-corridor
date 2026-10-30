@@ -10,7 +10,8 @@ import { isMarineTile } from "./world-beasts.ts";
 import { jumpLift } from "./game.ts";
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.ts";
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
-import { liftAt, tileUnder } from "./landscape.ts";
+import { liftAt, tileUnder, LIFT_PER_LEVEL } from "./landscape.ts";
+import { SKY_DISCS } from "./skylands.ts"; // release 587
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.ts";
 import { GATE_REVENANT, DANGER } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
@@ -959,6 +960,18 @@ export function drawGiantTree(ctx, o, s, now) {
   const cx = k + sway, cy = top, R = G.crown * s;
   for (const [dx, dy, r, c] of [[-.55, .35, .75, "#1e3a24"], [.6, .4, .7, "#1e3a24"], [0, 0, 1, "#26482b"], [-.35, -.35, .7, "#2f5733"], [.4, -.3, .62, "#2f5733"], [0, -.62, .5, "#3a6a3c"]]) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx + dx * R, cy + dy * R, r * R, 0, 7); ctx.fill(); }
 }
+// Release 587: a floating disc of a skyway (skylands.ts SKY_DISCS): its shadow on the ground, the disc `level` lifts above it, a
+// gentle bob. `d` is in foot coordinates (the Wayfarer's x + .5, y + .75).
+export function discLift(level) { return level * LIFT_PER_LEVEL; }
+export function drawSkyDisc(ctx, d, s, now) {
+  const bob = Math.sin(now / 900 + d.x + d.y) * .05 * s, cx = d.x * s, gy = d.y * s, cy = gy - discLift(d.level) * s + bob, rx = d.r * s, ry = d.r * s * .55;
+  ctx.fillStyle = "#00000033"; ctx.beginPath(); ctx.ellipse(cx, gy, rx * .9, ry * .8, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#8f8aa0"; ctx.beginPath(); ctx.ellipse(cx, cy + s * .16, rx * .96, ry * .9, 0, 0, 7); ctx.fill();
+  const top = ctx.createRadialGradient(cx - rx * .3, cy - ry * .35, 0, cx, cy, rx); top.addColorStop(0, "#ffffff"); top.addColorStop(.7, "#e9e4f2"); top.addColorStop(1, "#cfc7de");
+  ctx.fillStyle = top; ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#d9b866"; ctx.lineWidth = Math.max(1, s * .05); ctx.stroke();
+  ctx.strokeStyle = "#ffffffaa"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(cx, cy, rx * .62, ry * .62, 0, 0, 7); ctx.stroke();
+}
 // Does a giant tree at `o` stand in front of the Wayfarer at `p` (drawn over them)?
 export function giantTreeHides(o, p) {
   if (!(o.y > p.y)) return false; const G = GIANT_TREE, px = p.x + .5, py = p.y + .35, tx = o.x + .5, base = o.y + .82;
@@ -1543,7 +1556,7 @@ export function render(ctx, g, w, h, now) {
   for (const o of g.map.objects)
     if (renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.vegetationForm==="giant"?GIANT_TREE.height+3:2)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden")&&(renderCacheStats.visibleObjects++,true))
       draws.push({
-        y: o.y, x: o.x,
+        y: o.disc ? o.y + SKY_DISCS.radius + .002 : o.y, x: o.x, lift: o.disc ? discLift(o.elev || 0) : 0, // release 587: a skyway door stands on its disc
         fn: () => {
           if (o.kind === "wayfindingCue") waymark(ctx,o,s);
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
@@ -1694,8 +1707,11 @@ export function render(ctx, g, w, h, now) {
           }
         },
       });
+  // Release 587: the skyway's floating discs, each sorted at its front edge; the Wayfarer standing on one is drawn just after it, lifted.
+  const onDisc = g.skyLevel > 0 && g.map?.skyDiscs ? g.map.skyDiscs.find((d) => d.level === g.skyLevel && Math.hypot(p.x + .5 - d.x, p.y + .75 - d.y) <= d.r + .05) : null;
+  for (const d of g.map?.skyDiscs || []) if (visibleInCamera({ x: d.x, y: d.y }, l, t, r, b, 3)) draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
   const playerDraw = {
-    y: p.y, x: p.x,
+    y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.skyLevel > 0 ? discLift(g.skyLevel) : 0,
     fn: () => {
       if (jumping) {
         ctx.fillStyle = "#05050477";
@@ -1794,12 +1810,12 @@ export function render(ctx, g, w, h, now) {
   draws.push(playerDraw);
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) {
-    const raise = Number.isFinite(d.x) ? groundLift(d.x, d.y) : 0;
+    const raise = (Number.isFinite(d.x) ? groundLift(d.x, d === playerDraw ? p.y : d.y) : 0) + (d.lift || 0);
     if (raise) { ctx.save(); ctx.translate(0, -raise * s); d.fn(); ctx.restore(); } else d.fn();
   }
   // Release 573: behind a giant tree the Wayfarer shows through, faint.
   if (g.area === "overworld" && g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p))) {
-    const raise = groundLift(p.x, p.y); ctx.save(); ctx.globalAlpha = GIANT_TREE.ghost; if (raise) ctx.translate(0, -raise * s); playerDraw.fn(); ctx.restore();
+    const raise = groundLift(p.x, p.y) + (playerDraw.lift || 0); ctx.save(); ctx.globalAlpha = GIANT_TREE.ghost; if (raise) ctx.translate(0, -raise * s); playerDraw.fn(); ctx.restore();
   }
   // Under water (W5): a blue-green wash with slow light shafts.
   if (g.map?.underwater) {

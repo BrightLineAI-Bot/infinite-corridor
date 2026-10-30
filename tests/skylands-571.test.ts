@@ -4,6 +4,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
+// Release 587: the skyway door is climbed to (its top disc); these tests stand the Wayfarer there.
+const hasStair = (x, y) => { const s = freshSave(); s.seed = 'SKY'; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld'); return g.map.objects.some((o) => o.kind === 'skyStair'); };
+const onTop = (g, st) => { if (st.disc) g.skyLevel = st.elev; };
 import { validActions } from '../src/interactions.ts';
 import { SKYLANDS, ensureSkylands, skylandSection, skylandTiers, beginSkyland, completeSkyland, skylandScale, skylandLabel } from '../src/skylands.ts';
 
@@ -29,11 +32,11 @@ test('the Ascension economy: tier N costs N, repays max(1, N); one tier above th
 
 test('in the game: climb, clear three waves, earn a sigil, come down, and leave nothing behind', () => {
   const s = freshSave(); s.seed = 'SKY'; let at = null;
-  for (let r = 14; r < 60 && !at; r++) for (let x = -r; x <= r && !at; x++) { const y = r - Math.abs(x); if (skylandSection('SKY', x, y)) at = [x, y]; }
+  for (let r = 14; r < 60 && !at; r++) for (let x = -r; x <= r && !at; x++) { const y = r - Math.abs(x); if (skylandSection('SKY', x, y) && hasStair(x, y)) at = [x, y]; } /* release 587: a section with room for its skyway */
   const g = new Game(s, 0); g.rx = at[0]; g.ry = at[1]; g.loadArea('overworld');
   const stair = g.map.objects.find((o) => o.kind === 'skyStair'); assert.ok(stair, 'a Sky Stair stands there'); assert.deepEqual(validActions(stair, s), ['ascend:0']);
   assert.ok(s.atlas[`${at[0]},${at[1]}`].sites.some((q) => q.kind === 'skyStair'), 'on the Atlas');
-  g.player.x = stair.x; g.player.y = stair.y; assert.equal(g.interact('ascend:0', stair.id).ok, true);
+  g.player.x = stair.x; g.player.y = stair.y; onTop(g, stair); assert.equal(g.interact('ascend:0', stair.id).ok, true);
   assert.equal(g.area, 'dungeon'); assert.ok(g.map.skyland); const first = g.enemies.filter((e) => !e.dead).length; assert.equal(first, SKYLANDS.waves[0].count);
   const move = { state: { x: 0, y: 0 }, consume: () => false, held: () => false }; let t = 1000; g.player.invulnerableUntil = 1e12; const id = g.areaId();
   for (let k = 0; k < 6 && !s.consequences.dungeons[id]?.resolved; k++) { for (const e of g.enemies) { e.hp = 0; e.dead = true; g.defeatEnemy(e); } for (let i = 0; i < 60; i++) { t += 50; g.update(.05, move, t); } }
@@ -46,8 +49,8 @@ test('in the game: climb, clear three waves, earn a sigil, come down, and leave 
 
 test('Ascension makes the foes stronger', () => {
   const run = (tier) => { const s = freshSave(); s.seed = 'SKY'; s.skylands = { sigils: 10, best: 9, runs: 0, clears: 0 }; let at = null;
-    for (let r = 14; r < 60 && !at; r++) for (let x = -r; x <= r && !at; x++) { const y = r - Math.abs(x); if (skylandSection('SKY', x, y)) at = [x, y]; }
-    const g = new Game(s, 0); g.rx = at[0]; g.ry = at[1]; g.loadArea('overworld'); const st = g.map.objects.find((o) => o.kind === 'skyStair'); g.player.x = st.x; g.player.y = st.y; g.interact(`ascend:${tier}`, st.id);
+    for (let r = 14; r < 60 && !at; r++) for (let x = -r; x <= r && !at; x++) { const y = r - Math.abs(x); if (skylandSection('SKY', x, y) && hasStair(x, y)) at = [x, y]; } /* release 587: a section with room for its skyway */
+    const g = new Game(s, 0); g.rx = at[0]; g.ry = at[1]; g.loadArea('overworld'); const st = g.map.objects.find((o) => o.kind === 'skyStair'); g.player.x = st.x; g.player.y = st.y; onTop(g, st); g.interact(`ascend:${tier}`, st.id);
     return g.enemies.reduce((n, e) => n + e.maxHp, 0); };
   assert.ok(run(5) > run(0) * 3, 'Ascension 5 foes have far more health');
 });
