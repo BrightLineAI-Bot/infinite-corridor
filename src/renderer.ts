@@ -319,9 +319,28 @@ function drawVoidScarSurface(ctx,g,s,mw,mh,surface){
   for(const c of surface.shapes)for(const crack of c.cracks){ctx.moveTo(crack[0][0]*s,crack[0][1]*s);for(let i=1;i<crack.length;i++)ctx.lineTo(crack[i][0]*s,crack[i][1]*s)}
   ctx.stroke();ctx.restore();
 }
+// Release 589: a Skyland with a mode stands on cloud: open sky where the arena has void, soft cloud underfoot, and a darker
+// underside where cloud meets sky. Other tiles (hazards, bridges) draw as they always do.
+let cloudSky = false; // set each frame from g.map.skyCloud (tile painters are handed the tile array, not the map)
+export const CLOUD_PAINT = { sky: ["#6f9cc9", "#77a3cf"], puff: "#ffffff22", floor: ["#dfe6ef", "#d6dfeb"], shade: "#b4c3d666", rim: "#8ea4bf", gleam: "#ffffff44" };
+function drawCloudTile(ctx, t, x, y, s, tiles, w) {
+  const C = CLOUD_PAINT, d = Number.isFinite(t.detail) ? t.detail : h(x, y), px = x * s, py = y * s, below = tiles?.[(y + 1) * w + x];
+  if (t.kind === "void") {
+    ctx.fillStyle = C.sky[d & 1]; ctx.fillRect(px, py, s + 1, s + 1);
+    if (d % 5 === 0) { ctx.fillStyle = C.puff; ctx.beginPath(); ctx.ellipse(px + s * .5, py + s * .55, s * .55, s * .22, 0, 0, Math.PI * 2); ctx.fill(); }
+    return true;
+  }
+  if (t.blocked || t.environment || /bridge|canyon|water|river|gate/i.test(String(t.kind))) return false;
+  ctx.fillStyle = C.floor[d & 1]; ctx.fillRect(px, py, s + 1, s + 1);
+  ctx.fillStyle = C.shade; ctx.beginPath(); ctx.arc(px + s * (.25 + (d % 3) * .2), py + s * .7, s * .18, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = C.gleam; ctx.beginPath(); ctx.arc(px + s * (.3 + (d % 4) * .12), py + s * .3, s * .14, 0, Math.PI * 2); ctx.fill();
+  if (below?.kind === "void") { ctx.fillStyle = C.rim; ctx.fillRect(px, py + s * .78, s + 1, s * .22 + 1); }
+  return true;
+}
 function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=null) {
   if (t?.kind === "voidScar") { drawVoidScarTile(ctx,t,x,y,s,map,w,activeBuildingId,scarSurface); return; }
   if (t?.landscape && drawLandscapeTile(ctx, t, x, y, s, map, w)) return;
+  if (cloudSky && drawCloudTile(ctx, t, x, y, s, map, w)) return; // release 589
   const p = PAL[t.kind] || PAL.ash,
     d = Number.isFinite(t.detail) ? t.detail : h(x, y),
     px = x * s,
@@ -1473,6 +1492,7 @@ export function render(ctx, g, w, h, now) {
   const marineAt = e => g.area === "overworld" && isMarineTile(tileUnder(g.map, mw, e.x, e.y));
   ctx.save();
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - groundLift(p.x, p.y)) * s));
+  cloudSky = !!g.map?.skyCloud; // release 589
   const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
   if (groundCached) {
     const animated = render.animatedTiles || (render.animatedTiles = []); animated.length = 0;
