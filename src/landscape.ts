@@ -782,7 +782,7 @@ export function canStep(entity, map, width, fromX, fromY, toX, toY) {
   if (!map?.landscape || entity?.flying || entity?.phases) return true;
   const a = tileUnder(map, width, fromX, fromY), b = tileUnder(map, width, toX, toY);
   if (!a || !b || a === b) return true;
-  const ea = a.elev || 0, eb = b.elev || 0, diff = eb - ea;
+  const ea = Math.max(a.elev || 0, entity?.airElev ?? -Infinity), eb = b.elev || 0, diff = eb - ea; // release 585: in the air over a skyway gap
   if (diff === 0 || safeVoidScarTransition(a, b)) return true;
   if ((a.slope || b.slope) && Math.abs(diff) <= 1) return true;
   if (!entity?.isPlayer) return false;
