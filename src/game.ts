@@ -5185,7 +5185,7 @@ export class Game {
     { const m = this.save.mech; this.mechBoosting = false; // release 317: in the robot, hold Jump in the air to boost
       if (!input.held?.("jump")) this.mechSpent = false; // release 319: an emptied boost needs Jump let go before it fires again
       if ((this.mechUp() || this.droneUp()) && !this.mechSpent && input.held?.("jump") && now < (this.jumpUntil || 0) + 60 && m.fuel > 0) { /* release 321: the drone carries the same way */ m.fuel = Math.max(0, m.fuel - dt); this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.mechBoosting = true; if (m.fuel <= 0) this.mechSpent = true; }
-      if (m?.built && tickMech(this.save, dt, !(now < (this.jumpUntil || 0))) === "spent") this.message = "Out of cinder iron: the robot drops back to its plain stride."; /* release 383 */ if (this.droneUp()) this.tickDrone(dt, now); }
+      const ticked = m?.built ? tickMech(this.save, dt, !(now < (this.jumpUntil || 0))) : null; if (ticked === "spent") this.message = "Out of cinder iron: the robot drops back to its plain stride."; else if (ticked === "replated") this.message = "The robot's plating is whole again."; /* release 383 */ if (this.droneUp()) this.tickDrone(dt, now); }
     if (input.consume("potion")) this.drinkPotion(now); // release 339: the chosen potion tier; 341: brewed when needed
     if (input.consume("preset")) { this.message = swapPreset(this.save).message; this.refreshDerivedStats(); } /* release 541: preset armor changes the maxima */ // release 261: swap spell presets 1 and 2; 393: with the whole build
     if (input.consume("build")) { // release 269: beside (or aboard) a damaged skiff, Build patches the hull instead
@@ -5541,7 +5541,7 @@ export class Game {
       p.hp = hpStart - kept;
       if (sunk) { p.sailVx = p.sailVy = 0; this.message = "The skiff founders and sinks! Swim for shore; the Shipwright will raise it at the dock."; }
     }
-    if (this.mechUp() && p.hp < hpStart) { const r = mechAbsorb(this.save, hpStart - p.hp); p.hp = hpStart - r.kept; if (r.broke) this.message = `The robot's plating gives out and it folds away. It can be called again in ${MECH.rebuild}s.`; else if (r.replated) this.message = `The plating gives out; you re-forge it from ${MECH_POWER.replate} cinder iron.`; } // release 317; 383: re-forged from iron
+    if (this.mechUp() && p.hp < hpStart) { const r = mechAbsorb(this.save, hpStart - p.hp); p.hp = hpStart - r.kept; if (r.broke) this.message = `The robot's plating gives out and it folds away. It can be called again in ${MECH.rebuild}s.`; else if (r.stripped) this.message = `The plating gives out. Re-forging it from ${MECH_POWER.replate} cinder iron takes ${MECH_POWER.replateDelay}s: until then, blows reach you.`; } // release 599: re-forging takes time // release 317; 383: re-forged from iron
     this._astralDamagePending=false;
     // Drain healing is settled only after the existing hull mitigation, never from intercepted damage.
     const drainCredits=this._astralDrainCredits||[],creditSum=drainCredits.reduce((n,c)=>n+c.amount,0),actualLoss=Math.max(0,hpStart-Math.max(0,p.hp));

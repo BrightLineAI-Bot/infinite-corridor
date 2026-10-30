@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 599 — **the robot's plating takes time to re-forge.** When the robot's plating gives out it still re-forges from 3 cinder iron, but now that takes 20 seconds, and until it is done blows reach you, softened only a little by the robot. A big stock of iron no longer makes you untouchable.
 - Release 597 — **chasms of stars.** In a chasm crossing the drop is no longer dark rock but open night sky, full of stars that glitter as you pass, and a penumbra of light moves with you while the rest fades into the dark. Step off a walkway and you fall away into the stars, and die.
 - Release 595 — **the Torn Pages.** Some crossings now hold a page torn from a book with no title, one for each region of the Corridor, always the page of the region the crossing lies in, so if you miss it in one crossing another in that region will offer it. Each page is someone's writing that breaks off mid-sentence. Pages read are kept in the Reciter's Tome; find all ten and the book finally makes sense, and a new, blank book appears at the back of the Tome, slowly filling with your own Journal.
 - Release 593 — **chasm crossings.** About one new crossing in eight is now a chasm: its walls have fallen away into a sheer drop, leaving the rooms as platforms and the corridors as narrow walkways over the dark, with a few walls still standing. Step off and you fall to your death (the edge still stops you unless you dodge-roll over it). Creatures keep to the walkways, but they can see, and shoot, across the gaps.

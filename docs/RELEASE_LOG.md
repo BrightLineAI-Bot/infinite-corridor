@@ -13,26 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**599**
+**601**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 597 | Claude | `claude/dreamy-rubin-yn6q2p` | Chasm crossings drawn as starry night sky with a penumbra round the Wayfarer; the fall into the stars | Building. |
-| 595 | Claude | PR #281 | The Torn Pages: one page per Reading in crossings of that Reading; the book with no title in the Tome | Merged (`r595-465c58d4573b`). Not published. |
-| 593 | Claude | PR #280 | Chasm crossings: one new crossing in eight has its walls fall away into a lethal drop | Merged (`r593-3faf6efad5c8`). Not published. |
-| 591 | Claude | PR #279 | Pillar lands (landscape 8): red sandstone, hoodoos, mesas climbed by pillar stairs, dungeons on top | Merged (`r591-f9aa2fb1709b`). Not published. |
-| 589 | Claude | PR #278 | Skyland modes: divine challenge of slain-beast echoes, cloud hold with a far gate, both, or a sky gate; next tier always shown | Merged (`r589-6f83d3833200`). Not published. |
-| 587 | Claude | PR #277 | Skyways as floating discs (a sky layer creatures walk beneath) | Merged (`r587-28006ec97a80`). Not published. |
-| 585 | Claude | PR #276 | The skyway ascent: raised stone platforms climbed jump by jump to the Skylands door | Merged (`r585-a9f09cf984ab`). Not published. |
-| 583 | Claude | PR #275 | Firelands: a volcanic region type (landscape 7), basalt, fissures, lava pools, calderas, embers | Merged (`r583-3d55d3375c64`). Not published. |
+| 599 | Claude | `claude/dreamy-rubin-yn6q2p` | Robot plating re-forges after 20 s (blows land meanwhile), not instantly | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 597 | `r597-fb99c6531765` | 2026-10-30 | With 583 to 595: firelands (PR #275); the stone skyway (#276); floating sky discs (#277); Skyland modes (#278); pillar lands (#279); chasm crossings (#280); the Torn Pages (#281); chasms of stars (#282). The pre-publish Fable review of 581→597 found no blockers. |
 | 581 | `r581-c265662f6b96` | 2026-10-29 | With 579: moonlands (PR #273); the Seven Bells and the Surveyor's Chain untracked in the Journal (#274). The pre-publish Fable review of 577→581 found no blockers. |
 | 577 | `r577-1b61c41bd892` | 2026-10-29 | With 567 to 575: world beasts move on (PR #267); world regions, dream seams, passing beasts, Spellblade and Charged Air on brawler tools (#268); the Skylands (#269); forests, frostlands and region names (#270); the Transit Lattice in views (#271); no bell left stranded (#272). The pre-publish Fable review of 565→577 found no blockers; its note that Skyland waves run while paused does not hold (the update wrapper returns while paused). |
 | 565 | `r565-5fc233965fde` | 2026-10-29 | With 557 to 563: Far Sleep pockets, hunts off explored ground, traps by level, the robot to sea, Wayglass first (PR #262); Atlas real colours, honest relays, QUEST COMPLETE (#263); windups held not cancelled, sturdier deep wardens (#264); regional threat ×10 at ring 100 (#265); the Mouth hamlet kept exactly as before 557 (#266). The pre-publish Fable review of 555→561 found the Mouth hamlet blocker; the review of 561→563 found 563's fix forced hamlets; the review of 563→565 found no blockers. |
