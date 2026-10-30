@@ -16,7 +16,7 @@ import { placeDock } from "./boats.ts";
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
 // Each section keeps the version it was first seen with.
-export const LANDSCAPE_VERSION = 6; // release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; earlier versions are kept for the sections pinned to them
+export const LANDSCAPE_VERSION = 7; // release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; earlier versions are kept for the sections pinned to them
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles
 export const MAX_LEVEL = 5;
 // Fraction of max health lost when dropping this many levels; null = fatal.
@@ -35,7 +35,7 @@ export const BIOMES = {
   blight: { id: "blight", name: "Blight Mire", atlas: "#7cbf3a" },
 };
 // Release 573: ground laid by a region rather than by the landscape fields (biomeFor never reports these).
-export const REGION_GROUNDS = { forest: { id: "forest", name: "Deepwood", atlas: "#2f5a34" }, frost: { id: "frost", name: "Frostlands", atlas: "#dce9f2" }, lunar: { id: "lunar", name: "Moonlands", atlas: "#b4b7bf" } };
+export const REGION_GROUNDS = { forest: { id: "forest", name: "Deepwood", atlas: "#2f5a34" }, frost: { id: "frost", name: "Frostlands", atlas: "#dce9f2" }, lunar: { id: "lunar", name: "Moonlands", atlas: "#b4b7bf" }, volcanic: { id: "volcanic", name: "Firelands", atlas: "#3a2420" } };
 // Waterbodies (version 2) balance table. `continent` bends the ocean field so whole seas form; `island` lifts land back
 // out of open water; `deep` is how far above the ocean threshold deep water starts.
 export const WATERBODIES = {
@@ -52,7 +52,7 @@ export const DEEP_WATER = ["ocean", "deepOcean", "lakeWater", "swampWater", "tox
 const T = { ocean: 0.70, beach: 0.675, mountain: 0.68, alien: 0.75, desert: 0.67 };
 const SHALLOWS_FROM = T.ocean - .012; // sea level above which water is shallows (below it, beach)
 const WALKABLE_LANDSCAPE = new Set(["snowRock", "snowPeak", "mountainRock", "alpineGrass", "mountainTrail", "sand", "duneCrest", "duneFace",
-  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope", "forestFloor", "snowField", "lakeIce", "moonDust", "craterFloor", "craterRim"]); // release 573: forestFloor..lakeIce; 579: the moon
+  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope", "forestFloor", "snowField", "lakeIce", "moonDust", "craterFloor", "craterRim", "basalt", "basaltFissure"]); // release 573: forestFloor..lakeIce; 579: the moon; 583: basalt
 
 // ---------------------------------------------------------------- noise
 function lattice(key, ix, iy) { return (hashSeed(`${key}:${ix}:${iy}`) % 10007) / 10007; }
@@ -99,7 +99,7 @@ export const REGIONS = { heartland: 12, fadeIn: 4, cell: 9, jitter: .8, weightSp
     alien: { alien: .3, ocean: -.2 }, swamp: { wet: .11, ocean: -.2, desert: -.3 }, lakes: { lake: .2, ocean: -.15 }, dream: { ocean: -.2, mountain: -.2 },
     ashfields: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 }, glasslands: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 },
     emberlands: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 },
-    forest: { ocean: -.15, desert: -.35, alien: -.3, wet: -.12, mountain: -.1, lake: -.05 }, lunar: { ocean: -.3, wet: -.4, lake: -.3, desert: -.25, mountain: -.15, alien: -.15 }, /* 579 */ frost: { desert: -.4, wet: -.3, alien: -.3, ocean: -.1, lake: .05 } }, // release 573 (version 5)
+    forest: { ocean: -.15, desert: -.35, alien: -.3, wet: -.12, mountain: -.1, lake: -.05 }, lunar: { ocean: -.3, wet: -.4, lake: -.3, desert: -.25, mountain: -.15, alien: -.15 }, /* 579 */ volcanic: { ocean: -.3, wet: -.45, lake: -.35, desert: -.2, alien: -.2, mountain: .05 }, /* 583 */ frost: { desert: -.4, wet: -.3, alien: -.3, ocean: -.1, lake: .05 } }, // release 573 (version 5)
   plains: { ashfields: "ash", glasslands: "glass", emberlands: "ember" } };
 const REGION_TOTAL = REGIONS.types.reduce((n, [, w]) => n + w, 0), siteCache = new Map();
 function regionSite(seed, cx, cy) {
@@ -119,10 +119,14 @@ export const REGIONS_V5 = { wildTo: [["forest", .3], ["frost", .2]] };
 // Release 579 (the daily world-regions work; Tim: "a lunar / alien-planet surface"): from version 6 a region still wild after
 // the version 5 roll may become moonlands (`REGIONS_V6.wildTo`, its own hash), so forests and frostlands stay where they were.
 export const REGIONS_V6 = { wildTo: [["lunar", .3]] };
+// Release 583 (Tim: "let's do the volcanic region next"): from version 7 a region still wild after the version 6 roll may become
+// a volcanic one (`REGIONS_V7.wildTo`, its own hash), so moonlands, forests and frostlands stay where they were.
+export const REGIONS_V7 = { wildTo: [["volcanic", .3]] };
 function wildRegionType(seed, id, version = 5) {
   let roll = (hashSeed(`${seed}:region-site:v5:${id}`) % 10007) / 10007;
   for (const [t, p] of REGIONS_V5.wildTo) { if ((roll -= p) < 0) return t; }
   if (version >= 6) { let r6 = (hashSeed(`${seed}:region-site:v6:${id}`) % 10007) / 10007; for (const [t, p] of REGIONS_V6.wildTo) { if ((r6 -= p) < 0) return t; } }
+  if (version >= 7) { let r7 = (hashSeed(`${seed}:region-site:v7:${id}`) % 10007) / 10007; for (const [t, p] of REGIONS_V7.wildTo) { if ((r7 -= p) < 0) return t; } }
   return "wild";
 }
 export function regionAt(seed, sx, sy, version = 4) {
@@ -145,7 +149,7 @@ export const REGION_NAMES = {
     mountains: ["Peaks", "Spine", "Heights", "Teeth", "Range"], desert: ["Waste", "Dunes", "Barrens", "Sands", "Erg"], alien: ["Garden", "Bloom", "Lattice", "Strangeland", "Reef"],
     swamp: ["Fen", "Mire", "Bog", "Sump", "Marsh"], lakes: ["Meres", "Lakes", "Tarns", "Waters"], isles: ["Isles", "Archipelago", "Scatter", "Keys"],
     dream: ["Sleep", "Reverie", "Dreaming", "Slumber"], ashfields: ["Ashfields", "Cinderplain", "Greys"], glasslands: ["Glasslands", "Shards", "Mirrorfields"],
-    emberlands: ["Emberlands", "Kilnlands", "Smoulder"], lunar: ["Mare", "Moonfields", "Craters", "Highlands", "Dust"], forest: ["Wood", "Weald", "Forest", "Pines", "Greenwood"], frost: ["Frost", "Snows", "Rime", "Icefields", "Tundra"] },
+    emberlands: ["Emberlands", "Kilnlands", "Smoulder"], lunar: ["Mare", "Moonfields", "Craters", "Highlands", "Dust"], volcanic: ["Firelands", "Caldera", "Cinders", "Furnace", "Burning Lands"], forest: ["Wood", "Weald", "Forest", "Pines", "Greenwood"], frost: ["Frost", "Snows", "Rime", "Icefields", "Tundra"] },
 };
 export function regionName(seed, region) {
   const h = hashSeed(`${seed}:region-name:v1:${region.id}`), N = REGION_NAMES, nouns = N.nouns[region.type] || N.nouns.wild;
@@ -155,7 +159,7 @@ export function regionName(seed, region) {
 // bounded cache, so generating a section costs a few hundred lookups, not thousands.
 const leanCache = new Map();
 function regionTile(seed, gx, gy, version = 4) {
-  const v = version >= 6 ? 6 : version >= 5 ? 5 : 4, cx = gx >> 2, cy = gy >> 2, key = `${seed}:${v}:${cx}:${cy}`; let r = leanCache.get(key);
+  const v = version >= 7 ? 7 : version >= 6 ? 6 : version >= 5 ? 5 : 4, cx = gx >> 2, cy = gy >> 2, key = `${seed}:${v}:${cx}:${cy}`; let r = leanCache.get(key);
   if (!r) { r = regionAt(seed, (cx * 4 + 2) / 32, (cy * 4 + 2) / 32, v); leanCache.set(key, r); if (leanCache.size > 30000) leanCache.delete(leanCache.keys().next().value); }
   return r;
 }
@@ -357,9 +361,11 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   }
   if (version >= 5 && !full) touched += applyWoodsAndFrost(map, seed, rx, ry, mask, hamlet); // release 573
   if (version >= 6 && !full) touched += applyMoonlands(map, seed, rx, ry); // release 579
+  if (version >= 7 && !full) touched += applyFirelands(map, seed, rx, ry, mask); // release 583
   if (biome === "castle") touched += buildCastle(map, seed, rx, ry, protectedMask(map, { spawns: false, ruins: false, decor: false }));
   if (!touched) return map;
   if (biome === "mountains" && hashSeed(`${seed}:land:volcano:${rx}:${ry}`) % 3 === 0) buildVolcano(map, seed, rx, ry, mask);
+  else if (map.firelands && hashSeed(`${seed}:land:fire-caldera:${rx}:${ry}`) % FIRE.calderaEvery === 0) buildVolcano(map, seed, rx, ry, mask); // release 583
   ensureClimbable(map, mask);
   if (biome === "mountains") buildSkyBridges(map, seed, rx, ry, mask);
   markSlopes(map, seed, rx, ry);
@@ -377,6 +383,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   if (v2) placeIslandLandmark(map, seed, rx, ry);
   if (version >= 3) placeDock(map, seed, rx, ry, reachableFromPlaza(map));
   if (biome === "mountains") map.weather = "snow";
+  else if (map.firelands) map.weather = "embers"; // release 583
   if (version >= 5) for (const t of map.tiles) if (t.landscape === "mountains" && (t.kind === "alpineGrass" || t.kind === "mountainRock") && regionTile(seed, rx * 32 + t.x, ry * 32 + t.y, 5).type === "frost") t.kind = "snowRock"; // release 573: frost mountains are snowbound
   map.landscape = { version, biome: biome || dominantLandscape(map), name: (BIOMES[biome || dominantLandscape(map)] || REGION_GROUNDS[biome || dominantLandscape(map)])?.name || null, ...(openSea ? { openSea: full ? "open" : "coast" } : {}) };
   return map;
@@ -415,6 +422,41 @@ export function placeIslandLandmark(map, seed, rx, ry) {
 export const WOODS = { density: .46, clearing: { scale: 5, below: .3 }, max: 140, giantEvery: 8, giantGap: 4, giantWood: 5, forms: ["canopy", "canopy", "spindle", "shrub"] };
 export const FROST = { spire: { scale: 1.9, above: .86 } };
 const BARE_GROUND = new Set(["ash", "glass", "ember"]);
+// Firelands (release 583, version 7): bare ground in a volcanic region becomes black basalt, split by glowing fissures (noise,
+// walkable, harmless) with drifts of ash, and `FIRE.pools` lava pools (lethal, as all lava) on unprotected basalt. A pool that
+// would cut any walkable ground off from the plaza is not made, so everything stays reachable. One section in
+// `calderaEvery` also holds a smouldering caldera (buildVolcano: lava bombs). Embers fall. Bounded per section.
+export const FIRE = { pools: [3, 6], radius: [1.1, 2.3], fissure: { scale: 3.2, band: .035 }, ash: { scale: 5, above: .64 }, calderaEvery: 2 };
+function lavaBlocked(map) { // walkable ground cut off from the plaza when lava counts as a wall
+  const seen = new Uint8Array(1024), q = [idx(16, 16)]; seen[q[0]] = 1;
+  for (let h = 0; h < q.length; h++) { const i = q[h], x = i % 32, y = Math.floor(i / 32); for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy, j = idx(nx, ny), b = map.tiles[j]; if (nx < 0 || ny < 0 || nx > 31 || ny > 31 || seen[j] || !b || b.blocked || b.kind === "lava") continue; seen[j] = 1; q.push(j); } }
+  return seen;
+}
+function applyFirelands(map, seed, rx, ry, mask) {
+  let touched = 0; const F = FIRE, basalt = [];
+  for (const t of map.tiles) {
+    if (t.structure || t.buildingId || t.blocked || t.landscape || !BARE_GROUND.has(t.kind)) continue;
+    const gx = rx * 32 + t.x, gy = ry * 32 + t.y; if (regionTile(seed, gx, gy, 7).type !== "volcanic") continue;
+    const crack = Math.abs(valueNoise(`${seed}:fire:fissure`, gx / F.fissure.scale, gy / F.fissure.scale) - .5) < F.fissure.band, ash = valueNoise(`${seed}:fire:ash`, gx / F.ash.scale, gy / F.ash.scale) > F.ash.above;
+    t.kind = crack ? "basaltFissure" : ash ? "ashSlope" : "basalt"; t.landscape = "volcanic"; touched++;
+    if (t.kind === "basalt" && !mask[idx(t.x, t.y)]) basalt.push(t);
+  }
+  if (!touched) return 0;
+  map.firelands = true;
+  const h = (k) => hashSeed(`${seed}:fire:v1:${rx}:${ry}:${k}`), n = F.pools[0] + h("n") % (F.pools[1] - F.pools[0] + 1);
+  for (let k = 0; k < n && basalt.length; k++) {
+    const c = basalt[h(`at${k}`) % basalt.length], r = F.radius[0] + (h(`r${k}`) % 1000) / 1000 * (F.radius[1] - F.radius[0]), before = lavaBlocked(map), changed = [];
+    for (let y = Math.floor(c.y - r); y <= c.y + r; y++) for (let x = Math.floor(c.x - r); x <= c.x + r; x++) {
+      if (x < 1 || y < 1 || x > 30 || y > 30 || Math.hypot(x - c.x, y - c.y) > r || mask[idx(x, y)]) continue;
+      const t = map.tiles[idx(x, y)]; if (t.landscape !== "volcanic" || t.blocked) continue;
+      changed.push([t, { kind: t.kind, environment: t.environment }]); t.kind = "lava"; t.environment = "lava";
+    }
+    const after = lavaBlocked(map); let cut = false;
+    for (let i = 0; i < 1024 && !cut; i++) if (before[i] && !after[i] && map.tiles[i].kind !== "lava") cut = true;
+    if (cut) for (const [t, was] of changed) { t.kind = was.kind; if (was.environment === undefined) delete t.environment; else t.environment = was.environment; }
+  }
+  return touched;
+}
 // Moonlands (release 579, version 6): bare ground in a lunar region turns to grey dust, pocked with craters (`MOON.craters`
 // per section, radius `radius`): a darker bowl inside a pale rim. Both are walkable, so nothing is ever cut off; read per tile,
 // so the region's edge wanders. Bounded per section: no per-frame cost beyond the ground texture.

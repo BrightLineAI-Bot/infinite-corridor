@@ -129,6 +129,9 @@ const PAINT = {
   forestFloor(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#2f4a2c"], [1, "#253b24"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 16; i++) { c.fillStyle = r() < .5 ? "#3d5c35" : "#1d301c"; c.fillRect(r() * s, r() * s, 1 + r() * 2, 1 + r() * 2); } for (let i = 0; i < 2; i++) { c.fillStyle = r() < .5 ? "#7a5a2e" : "#8c6f37"; c.beginPath(); c.ellipse(r() * s, r() * s, s * .06, s * .03, r() * 3, 0, TAU); c.fill(); } },
   snowField(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#eef4f8"], [1, "#d5e2ec"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 3; i++) { const x = r() * s, y = r() * s, w = s * (.2 + r() * .3); c.fillStyle = "#c3d3e0aa"; c.beginPath(); c.ellipse(x, y, w, w * .3, 0, 0, TAU); c.fill(); } for (let i = 0; i < 6; i++) { c.fillStyle = "#ffffff"; c.fillRect(r() * s, r() * s, 1, 1); } },
   lakeIce(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#b9dcef"], [1, "#8fbfd9"]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#ffffffaa"; c.lineWidth = 1; for (let i = 0; i < 2; i++) { const x = r() * s, y = r() * s; c.beginPath(); c.moveTo(x, y); c.lineTo(x + (r() - .5) * s * .8, y + (r() - .5) * s * .5); c.stroke(); } c.fillStyle = "#ffffff55"; c.fillRect(s * .1, s * .15, s * .3, 1); },
+  // Release 583: black basalt, and basalt split by a glowing fissure.
+  basalt(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#2c2523"], [1, "#1c1716"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 10; i++) { c.fillStyle = r() < .5 ? "#3a312e" : "#151110"; c.fillRect(r() * s, r() * s, 1 + r() * 2, 1 + r() * 2); } c.strokeStyle = "#0d0a09"; c.lineWidth = 1; c.beginPath(); c.moveTo(r() * s, 0); c.lineTo(r() * s, s); c.stroke(); },
+  basaltFissure(c, s, r) { PAINT.basalt(c, s, r); const x0 = r() * s * .4, x1 = s * .6 + r() * s * .4; c.strokeStyle = "#ff8a2a"; c.lineWidth = Math.max(1.5, s * .08); c.beginPath(); c.moveTo(x0, 0); c.quadraticCurveTo(s * (.3 + r() * .4), s * .5, x1, s); c.stroke(); c.strokeStyle = "#ffd36a88"; c.lineWidth = 1; c.stroke(); },
   // Release 579: moon dust, a crater's bowl and its pale rim.
   moonDust(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#b9bcc3"], [1, "#a3a6ae"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 14; i++) { c.fillStyle = r() < .5 ? "#8f929a" : "#cfd1d6"; c.fillRect(r() * s, r() * s, 1 + r() * 1.5, 1 + r() * 1.5); } if (r() < .35) { c.strokeStyle = "#8a8d95aa"; c.lineWidth = 1; c.beginPath(); c.arc(r() * s, r() * s, s * (.06 + r() * .08), 0, TAU); c.stroke(); } },
   craterFloor(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#7c7f87"], [1, "#6b6e76"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 8; i++) { c.fillStyle = r() < .5 ? "#5f626a" : "#8b8e96"; c.fillRect(r() * s, r() * s, 1 + r() * 2, 1 + r() * 2); } },
@@ -306,7 +309,7 @@ function animate(ctx, t, px, py, s) {
 }
 
 // Atlas colour for a section's landscape (null when plain).
-export function landscapeAtlasColor(biome) { return ({ mountains: "#d9e3ea", desert: "#d6b26e", coast: "#3f7fa3", alien: "#9a6fe0", dream: "#b9a8e8", castle: "#8a7f73", sea: "#1d4f7a", isles: "#4f9fb0", lake: "#4a90c8", swamp: "#5d6b3c", blight: "#7cbf3a", forest: "#2f5a34", frost: "#dce9f2", lunar: "#b4b7bf" })[biome] || null; }
+export function landscapeAtlasColor(biome) { return ({ mountains: "#d9e3ea", desert: "#d6b26e", coast: "#3f7fa3", alien: "#9a6fe0", dream: "#b9a8e8", castle: "#8a7f73", sea: "#1d4f7a", isles: "#4f9fb0", lake: "#4a90c8", swamp: "#5d6b3c", blight: "#7cbf3a", forest: "#2f5a34", frost: "#dce9f2", lunar: "#b4b7bf", volcanic: "#3a2420" })[biome] || null; }
 
 // Pit edges: every walkable tile beside lava, a chasm, a canyon or deep water gets a crumbling, lit lip on that side
 // and a shadow falling into the hazard, so a drop is never a surprise. Runs for every map, landscape or not.
