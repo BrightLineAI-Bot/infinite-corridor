@@ -2694,6 +2694,31 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 595: the Torn Pages — 2026-10-30
+
+The daily narrative step: docs/narrative-bible.md section 6, thread 3 ("Each region's deepest crossing holds a page torn from the
+Reciter's Tome. The pages belong to a book with no title. When all are found, the Tome gains a last book: blank, except that it
+slowly fills with the Wayfarer's own Journal."), built under Tim's later rules for threads: no piece stranded in one crossing
+(577), and nothing listed among the Journal's Active quests (581).
+
+**CODE:**
+- `src/torn-pages.ts` (new module; in scripts/build.mjs and both precache lists): `TORN_PAGES` (`chance` .06 plus `deepBonus`
+  .02 per band out, `minDepth` 2), `PAGE_TEXT` (one original page per Reading, each breaking off mid-sentence), `PAGES_FINAL`.
+  `pageIn(seed, dungeonId)`: an ordinary crossing holds a page by its seed, and the page is always its own Reading's
+  (lore.ts `readingAt`), so any page crossing of a Reading offers that page until it is found. `addTornPage` lays it on open
+  floor away from the entry (not on water, lava, canyon or a chasm; not in multi-level, arena or underwater maps); a crossing
+  whose Reading's page was found elsewhere holds none, and the crossing where it was found keeps it, read. `readTornPage`
+  records `save.lore.pages[readingId] = dungeonId` and returns the text, the count, and the ending with the tenth.
+  `ensurePageState` normalises `lore.pages` (absent stays absent) in freshSave and migrateSave.
+- `src/game.ts`: lays the page on entering a crossing (after the bell); reading it writes the page, and the ending, in the
+  Journal under "The Torn Pages". `src/renderer.ts`: `drawTornPage` (a torn sheet, its corner lifting, faintly lit until read).
+- `src/main.ts`: the Reciter's Tome shows "A book with no title" once a page is found, with every page read; with all ten, the
+  ending and the latest Journal entries, the book filling with your own record.
+
+**BOUNDARY:** Additive at schema 14 (`lore.pages`). Pages appear in crossings entered from now on and in old ones revisited
+(the page is laid when the crossing loads, as the bells are); nothing else in a crossing moves. No Active quests entry. All
+writing is original to the game.
+
 ## Release 593: chasm crossings — 2026-10-30
 
 Tim (2026-10-30): "the whole dungeon should just be made pretty much a chasm with just bridges... walkways and some larger
