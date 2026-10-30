@@ -116,6 +116,28 @@ function dressSkyland(map, id, save = null) {
   map.skyPlan = skylandPlan(id, save, boss); if (mode) Object.assign(map, { skyMode: mode, skyCloud: true, weather: "sunbreak" });
   map.enemySpawns = skylandWave(id, 0, map.skyOpen, map.objective || { x: width / 2, y: 11 }, boss, map.skyPlan);
 }
+// Release 593 (Tim, 2026-10-30: "the whole dungeon should just be made pretty much a chasm with just bridges... walkways and
+// some larger platforms... if you step off, you die... maybe there's some walls"): a share (`CHASM.chance`) of ordinary
+// crossings first generated from now on are chasm crossings (history.chasm pins it; never Poison Crypts or Sleeper's Halls).
+// The generator's walls fall away into a sheer drop (canyon: lethal, as everywhere): its rooms are left as platforms and its
+// corridors as walkways over the dark. A few walls stand (`keepWalls`, only ones beside a walkway) and the outer edge stays. No
+// floor tile changes, so everything placed in the crossing stays where it was and as reachable as it was. Creatures do not
+// step into the drop; the brink guard stops the Wayfarer at the edge, and a dodge-roll over it is a fall.
+export const CHASM = { version: 1, chance: .12, keepWalls: .12, name: "Chasm" };
+export const chasmRoll = (seed, id) => (hashSeed(`${seed}:chasm-crossing:v1:${id}`) % 1000) / 1000 < CHASM.chance;
+function carveChasm(map, seed, id) {
+  const w = map.width || Math.round(Math.sqrt(map.tiles.length)), h = map.height || Math.ceil(map.tiles.length / w), at = (x, y) => x >= 0 && y >= 0 && x < w && y < h ? map.tiles[y * w + x] : null;
+  const walkway = (t) => t && !t.blocked && !t.chasm;
+  let n = 0;
+  for (const t of map.tiles) {
+    if (!t.blocked || t.door || t.structure || t.buildingId || t.kind === "sealedGate" || !/wall$/i.test(String(t.kind)) || t.x <= 0 || t.y <= 0 || t.x >= w - 1 || t.y >= h - 1) continue;
+    const beside = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => walkway(at(t.x + dx, t.y + dy)));
+    if (beside && (hashSeed(`${seed}:chasm-wall:v1:${id}:${t.x},${t.y}`) % 1000) / 1000 < CHASM.keepWalls) continue;
+    Object.assign(t, { kind: "canyon", blocked: false, environment: "canyon", chasm: true }); n++;
+  }
+  Object.assign(map, { chasm: CHASM.version, name: map.name ? `${map.name} · ${CHASM.name}` : CHASM.name });
+  return n;
+}
 export function pinDungeonLayout(save, id) {
   const history = dungeonHistory(save, id);
   const visited = () => history.visits > 0 || Object.keys(save.session.areas || {}).some(key => key === id || key.startsWith(id + ':level:'));
@@ -149,6 +171,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (fresh && history.threefoldLayout === undefined && id.endsWith(':deep-v2:threefold')) history.threefoldLayout = 2;
   // Release 351 (docs/narrative-bible.md section 7, step 4): a crossing first found in the Far Sleep is a Sleeper's Hall.
   if (ordinary && history.dream === undefined) { const at = id.match(/:g\d+:(-?\d+):(-?\d+):/); if (at && farSleepSection(Number(at[1]), Number(at[2]))) history.dream = dreamHallRoll(save.seed, id) ? DREAM_HALL.version : 0; } // release 435: a share of them, not every one (0 pins "ordinary")
+  if (ordinary && history.chasm === undefined) history.chasm = !history.mire && !history.dream && chasmRoll(save.seed, id) ? CHASM.version : 0; // release 593
   let map;
   // Dive generator pinned per history: 1 = the release-107 Sunken Reach, 2 = themed grottoes (release 108).
   if (isArenaRun(id)) map = generateListenerArena(save.seed, id); // release 375: the Listening Hall
@@ -160,6 +183,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   else map = generateDungeon(save.seed,id,{...options,threefoldLayout:history.threefoldLayout||1});
   if (history.layoutVersion === 1 && !map.arena && !id.startsWith('displacement:') && !id.startsWith('elite-portal:') && !id.includes('aperture-annex')) varyDungeonLayout(map,save.seed,id);
   if (history.watcherVersion && !id.startsWith('displacement:') && !id.startsWith('dive:') && !map.multiLevel) placeWatcherDungeon(map, map.width || Math.round(Math.sqrt(map.tiles.length)), save.seed, id); // release 289
+  if (history.chasm && !map.arena) carveChasm(map, save.seed, `${id}:${options.levelId || "root"}`); // release 593
   return map;
 }
 // Release 363: a fallen Listener pays its Gate in Transit Coordinates (its pieces + 1).

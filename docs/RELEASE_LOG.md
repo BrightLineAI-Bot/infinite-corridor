@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**593**
+**595**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 591 | Claude | `claude/dreamy-rubin-yn6q2p` | Pillar lands (landscape 8): red sandstone, hoodoos, mesas climbed by pillar stairs, dungeons on top | Building. |
+| 593 | Claude | `claude/dreamy-rubin-yn6q2p` | Chasm crossings: one new crossing in eight has its walls fall away into a lethal drop | Building. |
+| 591 | Claude | PR #279 | Pillar lands (landscape 8): red sandstone, hoodoos, mesas climbed by pillar stairs, dungeons on top | Merged (`r591-f9aa2fb1709b`). Not published. |
 | 589 | Claude | PR #278 | Skyland modes: divine challenge of slain-beast echoes, cloud hold with a far gate, both, or a sky gate; next tier always shown | Merged (`r589-6f83d3833200`). Not published. |
 | 587 | Claude | PR #277 | Skyways as floating discs (a sky layer creatures walk beneath) | Merged (`r587-28006ec97a80`). Not published. |
 | 585 | Claude | PR #276 | The skyway ascent: raised stone platforms climbed jump by jump to the Skylands door | Merged (`r585-a9f09cf984ab`). Not published. |
