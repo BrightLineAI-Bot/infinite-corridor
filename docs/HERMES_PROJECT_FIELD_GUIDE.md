@@ -2694,6 +2694,26 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 583: firelands — 2026-10-30
+
+Tim (2026-10-30): "let's do the volcanic region next" (from the daily world-regions list: "a severe volcanic region").
+
+**CODE:**
+- `src/landscape.ts`: `LANDSCAPE_VERSION` 7. `REGIONS_V7.wildTo` (volcanic) rolled in `wildRegionType` only for a region still
+  wild after the version 6 roll; `regionTile` caches by 4/5/6/7. `REGIONS.lean.volcanic`, `REGION_GROUNDS.volcanic` ("Firelands"),
+  `REGION_NAMES.nouns.volcanic`. `applyFirelands` (version 7, not in full open sea): bare unblocked ground in a volcanic tile-region
+  becomes `basalt`, `basaltFissure` (a noise band) or `ashSlope` (noise), all walkable; then `FIRE.pools` lava pools (kind
+  `lava`, environment `lava`, lethal as all lava) on unprotected basalt, each undone if `lavaBlocked` shows it would cut any
+  walkable ground off from the plaza. Sets `map.firelands`; one such section in `FIRE.calderaEvery` gets `buildVolcano`
+  (lava bombs) and every one has `weather: "embers"`.
+- `src/landscape-render.ts` `basalt`/`basaltFissure` textures and the Atlas colour; `src/atlas-colors.ts`; `src/game.ts`
+  `REGION_BANNER.kinds.volcanic`.
+
+**BOUNDARY:**
+- Sections pinned to versions 2–6 generate byte for byte as before (1800 sections compared with r581).
+- A caldera (`buildVolcano`) keeps its existing rules; pools are checked before it is placed.
+- Tests: `tests/firelands-583.test.ts`; version asserts in boats, 569, 573 and 579 tests updated to 7.
+
 ## Release 581: the bells untracked — 2026-10-29
 
 Tim (2026-10-29): "the journal doesn't have to track them... there's a lot of quests in Elden Ring that aren't really tracked.

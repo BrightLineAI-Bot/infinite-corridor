@@ -13,20 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**583**
+**585**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 581 | Claude | `claude/dreamy-rubin-yn6q2p` | The Journal no longer tracks the Seven Bells or the Surveyor's Chain; no left-behind notes | Building. |
-| 579 | Claude | PR #273 | Moonlands: a lunar region type (landscape 6), grey dust and craters | Merged (`r579-4138040e12c8`). Not published. |
+| 583 | Claude | `claude/dreamy-rubin-yn6q2p` | Firelands: a volcanic region type (landscape 7), basalt, fissures, lava pools, calderas, embers | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 581 | `r581-c265662f6b96` | 2026-10-29 | With 579: moonlands (PR #273); the Seven Bells and the Surveyor's Chain untracked in the Journal (#274). The pre-publish Fable review of 577→581 found no blockers. |
 | 577 | `r577-1b61c41bd892` | 2026-10-29 | With 567 to 575: world beasts move on (PR #267); world regions, dream seams, passing beasts, Spellblade and Charged Air on brawler tools (#268); the Skylands (#269); forests, frostlands and region names (#270); the Transit Lattice in views (#271); no bell left stranded (#272). The pre-publish Fable review of 565→577 found no blockers; its note that Skyland waves run while paused does not hold (the update wrapper returns while paused). |
 | 565 | `r565-5fc233965fde` | 2026-10-29 | With 557 to 563: Far Sleep pockets, hunts off explored ground, traps by level, the robot to sea, Wayglass first (PR #262); Atlas real colours, honest relays, QUEST COMPLETE (#263); windups held not cancelled, sturdier deep wardens (#264); regional threat ×10 at ring 100 (#265); the Mouth hamlet kept exactly as before 557 (#266). The pre-publish Fable review of 555→561 found the Mouth hamlet blocker; the review of 561→563 found 563's fix forced hamlets; the review of 563→565 found no blockers. |
 | 555 | `r555-7b284880b307` | 2026-10-29 | Each visited area saved as its own record, only changed ones written; the probe records long animation frames, heap and save writes (PR #261). The pre-publish Fable review of 553→555 found no blockers. |
