@@ -2694,6 +2694,24 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 597: chasms of stars — 2026-10-30
+
+Tim (2026-10-30): "for the chasm dungeons, if you fall off them, you die, but let's not make it so that the chasm looks like
+the normal chasm... there's like stars in the background... a penumbra around the character as he moves, and the background is
+kind of like glittering stars".
+
+**CODE:**
+- `src/renderer.ts`: `CHASM_STARS`. `drawStarChasm`: a chasm tile (`t.chasm`, release 593) is night sky with a few fixed stars,
+  drawn into the ground cache like any tile. `glitterChasm`: each frame, one chasm tile in `twinkleEvery` of those in view (and not
+  unseen) may flash a small cross of light, so the cost is bounded by the view. After the world is drawn, a chasm crossing gets a
+  radial penumbra centred on the Wayfarer (`penumbra`: clear to `inner` tiles, `dark` by `outer`).
+- `src/game.ts`: walking off a walkway was already a fatal fall (the canyon is lethal; the brink guard went in release 101). The
+  fall now reads "The Wayfarer steps off the edge and falls away into the stars", and the recovery message in the crossing says
+  so too (`fellStars`).
+
+**BOUNDARY:** Rendering and messages only: the chasm's tiles, lethality and generation are those of release 593. Other canyons
+look as before.
+
 ## Release 595: the Torn Pages — 2026-10-30
 
 The daily narrative step: docs/narrative-bible.md section 6, thread 3 ("Each region's deepest crossing holds a page torn from the

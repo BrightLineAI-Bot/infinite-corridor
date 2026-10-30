@@ -2781,7 +2781,8 @@ export class Game {
       p.y = deep ? (anchor?.y ?? this.map.hub?.y ?? this.map.entry?.y ?? 5) : (this.map.entry?.y ?? 5);
       this.settleArrival(); // release 263: clear of guardians; 419: on the level's own floor
       p.invulnerableUntil = now + 2000;
-      this.message = deep ? `Felled — recovered at the central anchor of ${this.map.name}. Cleared wings, shortcuts, carried items, XP, and map progress remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}` : `Felled — returned to the entrance of ${this.map.name}. The run begins again; your map and everything carried remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
+      const stars = this.fellStars ? "You stepped off the edge and fell away into the stars. " : ""; this.fellStars = false; // release 597
+      this.message = stars + (deep ? `Felled — recovered at the central anchor of ${this.map.name}. Cleared wings, shortcuts, carried items, XP, and map progress remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}` : `Felled — returned to the entrance of ${this.map.name}. The run begins again; your map and everything carried remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}`);
     } else {
       const c = this.save.activeCheckpoint;
       this.rx = c.rx;
@@ -3614,7 +3615,8 @@ export class Game {
         this.projectiles = [];
         this.effects = [];
         this.traversal = null;
-        this.message = deep ? `Felled — recovered at the central anchor of ${this.map.name}. Cleared wings, shortcuts, carried items, XP, and map progress remain.` : `Felled — returned to the entrance of ${this.map.name}. The run begins again; your map and everything carried remain.`;
+        const stars = this.fellStars ? "You stepped off the edge and fell away into the stars. " : ""; this.fellStars = false; // release 597
+        this.message = stars + (deep ? `Felled — recovered at the central anchor of ${this.map.name}. Cleared wings, shortcuts, carried items, XP, and map progress remain.` : `Felled — returned to the entrance of ${this.map.name}. The run begins again; your map and everything carried remain.`);
         this.sync();
       }
     };
@@ -5256,7 +5258,7 @@ export class Game {
     if(terrainHazard==="lava"&&this.mechUp())terrainHazard=null;/* release 475: the robot wades through lava; the heat is settled at the frame's end */
     if(sailing){terrainHazard=null;this.swimming=false}else if(this.robotPutsToSea(nx,ny,width,terrainHazard))terrainHazard=null;else if(this.swimsHere(terrainHazard)){this.swimKind=terrainHazard;if(!this.swimming){this.swimming=true;if(now>(this.swimMessageAt||0)){this.swimMessageAt=now+8000;this.message=this.mechUp()?"The robot seals and wades on through the water.":"The Tidemantle holds you up. Swimming drains stamina.";}}terrainHazard=null}else this.swimming=false;
     const fellIntoHazard=!!terrainHazard&&!aerial;
-    if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":DEEP_WATER.includes(terrainHazard)?"The deep water drags the Wayfarer under.":terrainHazard==="canyon"?"The ledge gives way beneath the Wayfarer.":"The water closes over the Wayfarer."}
+    if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":DEEP_WATER.includes(terrainHazard)?"The deep water drags the Wayfarer under.":terrainHazard==="canyon"?(tileUnder(this.map,width,nx,ny)?.chasm?(this.fellStars=true,"The Wayfarer steps off the edge and falls away into the stars."):"The ledge gives way beneath the Wayfarer."):"The water closes over the Wayfarer."}
     else if (sailing) this.sail(p, dx, dy, width, now);
     else {
       p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0); p.voidSuit = this.mechUp() && this.area !== "dungeon"; /* 511: never through dungeon walls */ // release 509: only the robot steps into a star-void
