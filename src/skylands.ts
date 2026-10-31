@@ -167,10 +167,10 @@ export function skylandHop(id, rx, ry) {
 export const isSkyland = (id) => String(id || "").startsWith("skyland:");
 export const skylandTierOf = (id) => { const m = /:t(\d+):r\d+$/.exec(String(id)); return m ? Number(m[1]) : 0; };
 // Spend the sigils and name the run. Returns { ok, id, tier, message }.
-export function beginSkyland(save, at, tier) {
+export function beginSkyland(save, at, tier, forceMode = null) { // release 631: `forceMode` (the canopy's cloud hold)
   const s = ensureSkylands(save), t = n0(tier);
   if (!skylandTiers(save).includes(t)) return { ok: false, message: t > s.best + 1 ? `Ascension ${t} opens once Ascension ${t - 1} is cleared.` : `Ascension ${t} needs ${t} Ascension Sigils; you hold ${s.sigils}.` };
-  s.runs++; const mode = rollSkylandMode(save.seed, at, s.runs), id = `skyland:${save.seed}:${at.rx},${at.ry}:m${mode}:t${t}:r${s.runs}`; // release 589: a mode of its own
+  s.runs++; const mode = SKY_MODES.names[forceMode] ? forceMode : rollSkylandMode(save.seed, at, s.runs), id = `skyland:${save.seed}:${at.rx},${at.ry}:m${mode}:t${t}:r${s.runs}`; // release 589: a mode of its own
   if (mode === "gate") return { ok: true, id, tier: t, mode, gate: true, message: "The door opens on nothing but sky, and the sky takes you. You fall a long way, and land far off." };
   s.sigils -= t; const echoes = slainBeasts(save), name = SKY_MODES.names[mode];
   const what = mode === "cloud" ? "Wings stir in the clouds." : echoes.length ? "Echoes of the beasts you have felled wait above." : "No beast you have felled answers yet; the keepers of the islands stand in for them.";
