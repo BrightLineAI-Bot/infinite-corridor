@@ -2694,6 +2694,20 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 619: wading — 2026-10-31
+
+Tim (2026-10-31): "for the fog moors, it would be interesting if the water could come up around the character's legs, usually when
+we're at shoals, we kind of just walk about the water... I don't really want to slow it down".
+
+**CODE:**
+- `src/renderer.ts`: `WADE` (per-kind water and foam colours for `shallows`, `mistPool`, `mireWater`, `toxicMire`; depth, width,
+  ring size and period) and `wadeAt(g, p, jumping)`: the tile under the Wayfarer's feet, or null aboard the skiff, mid-jump, in
+  the robot or drone, on a raft or up a sky level. `drawWade` draws, just after the Wayfarer, a band of the water's colour over
+  the lower legs with a wavy foam line and a ring spreading out every `period` ms.
+
+**BOUNDARY:** The Wayfarer only (creatures still walk over the water): one tile lookup and a few path calls a frame. Drawing only;
+no rule or save change.
+
 ## Release 617: fog moors — 2026-10-31
 
 The daily world-regions work (Tim's list of region ideas: "fog regions").
