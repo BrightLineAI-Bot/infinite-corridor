@@ -2694,6 +2694,28 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 623: rafts only carry riders over the drop — 2026-10-31
+
+From the pre-publish review of 611→621: `platformUnder` took anyone whose feet were inside a raft's 1.7-tile box, so a Wayfarer
+standing on the walkway beside a passing raft was carried along, and walking on while that raft was sunk (z < -0.5) was ruled a
+step off a sunk raft: death.
+
+**CODE:**
+- `src/game.ts`: `platformUnder` returns a raft only when the tile under the feet is drop (`tile.chasm`); on a walkway it is null.
+  `useConsumable("submersible")` on a robot voyage whose robot has folded away (plating spent) says so instead of "That supply is
+  exhausted".
+- From the system audit (Tim, 2026-10-31: "review the system... vulnerabilities... errors... malformed code"):
+  `src/types.ts` `sanitizeSaveShape` coerces `session.rx/ry` (integers) and `x/y` to finite numbers (a string `rx` threw in
+  `regionAt` at start-up, before Options could be reached) and drops a `playerRuntime.traversal` without finite fields (it threw
+  every frame, or set the Wayfarer's position to NaN). `src/persistence.ts` `importJourney` refuses a file without a string
+  `seed` and a numeric `version`, and takes the journey out of a diagnostics bundle (`{ release, save }`). `sw.js` caches only
+  `ok` same-origin responses, leaves `proving-ground/` and `previews/` to their own workers, and falls back to `index.html`
+  only for page loads. `src/proving-ground-fixtures.ts` loses its TypeScript `as const` (the shipped module failed `node --check`).
+  Found but not changed: `GIANT.chargeTime` is defined twice in `src/monster-pack.ts` (8, then .9), so the Lightning Giant's
+  electrified spell lasts .9 s; restoring 8 s changes the fight, so it waits for Tim.
+
+**BOUNDARY:** Raft tracks, timing and heights are unchanged; no save change (the save fixes only coerce malformed values).
+
 ## Release 621: the robot at sea — 2026-10-31
 
 Tim (2026-10-31), on 619's wading: "that looks terrible. Let's go back to the way it was"; and "When you [leave] the water with the

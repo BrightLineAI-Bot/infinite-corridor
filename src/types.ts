@@ -40,7 +40,7 @@ export function sanitizeSaveShape(raw){
  if(plainObject(r.stats))r.stats=Object.fromEntries(Object.entries(r.stats).map(([k,v])=>[k,finiteIn(v,[1,999],1)]));else if('stats' in r)delete r.stats;
  if('materials' in r)r.materials=countsOnly(r.materials);if('consumables' in r)r.consumables=countsOnly(r.consumables);
  if('narrative' in r){const n=plainObject(r.narrative)?{...r.narrative}:{};if('journal' in n&&!Array.isArray(n.journal))n.journal=[];if('facts' in n&&!plainObject(n.facts))n.facts={};r.narrative=n}
- if('session' in r){const se=plainObject(r.session)?{...r.session}:{};if('areas' in se)se.areas=objectsOnly(se.areas);r.session=se}
+ if('session' in r){const se=plainObject(r.session)?{...r.session}:{};if('areas' in se)se.areas=objectsOnly(se.areas);/* release 623 (system audit): a section or position that is not a finite number ("3" from a hand-edited save) crashed the start-up */for(const k of['rx','ry'])if(k in se)se[k]=Math.round(finiteIn(se[k],[-1e6,1e6],0));for(const k of['x','y'])if(k in se&&se[k]!==null&&se[k]!==undefined)se[k]=finiteIn(se[k],[-1e4,1e4],16);if(plainObject(se.playerRuntime)){const pr={...se.playerRuntime},q=pr.traversal;if(q!==undefined&&q!==null&&!(plainObject(q)&&['startX','startY','endX','endY','t'].every((f)=>Number.isFinite(Number(q[f])))))pr.traversal=null;se.playerRuntime=pr}r.session=se}
  if(plainObject(r.consequences)&&'dungeons' in r.consequences)r.consequences={...r.consequences,dungeons:objectsOnly(r.consequences.dungeons)};
  return r}
 export function migrateSave(raw){

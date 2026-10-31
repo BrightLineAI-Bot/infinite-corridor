@@ -10,7 +10,7 @@ export const SHELTER_FIXTURES = [
   { id: "cyber", label: "Cyber relay", rx: 1, ry: -4, family: "cyberRelay" },
   { id: "alien", label: "Alien geometric shelter", rx: 3, ry: 2, family: "alienGeometric" },
   { id: "biomechanical", label: "Biomechanical shelter", rx: 2, ry: -3, family: "biomechanical" },
-] as const;
+];
 
 export function createShelterFixture(id = "timber", now = 0) {
   const spec = SHELTER_FIXTURES.find((entry) => entry.id === id) || SHELTER_FIXTURES[0];

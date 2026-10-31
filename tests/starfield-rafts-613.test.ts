@@ -36,3 +36,15 @@ test('in the game: standing on a raft over the drop you ride it and do not fall;
   for (let i = 0; i < 40 && (s.worldFlags.deaths || 0) === deaths; i++) { t += 50; g.update(.05, side, t); }
   assert.equal((s.worldFlags.deaths || 0) - deaths, 1, 'off the raft: into the stars');
 });
+
+// Release 623 (the pre-publish review): a Wayfarer on a walkway beside a passing raft stands on the walkway: not carried, and no
+// fall when they walk on, even when that raft is sunk below the level.
+test('standing on a walkway beside a raft, you are not on the raft', () => {
+  const { id } = starfield(), s = freshSave(); s.seed = seed; s.session.activeDungeonId = id; s.session.dungeonReturn = { rx: 1, ry: 1, x: 16, y: 16 };
+  const g = new Game(s, 0); g.loadArea('dungeon', false); g.enemies = []; const w = g.map.width, r = g.map.movers[0]; s.playSeconds = 0;
+  const c = platformPos(r, 0), cell = { x: Math.floor(c.x), y: Math.floor(c.y) };
+  const walk = [[0, -1], [0, 1], [-1, 0], [1, 0]].map(([dx, dy]) => g.map.tiles[(cell.y + dy) * w + cell.x + dx]).find((t) => t && !t.blocked && !t.chasm);
+  assert.ok(walk, 'a raft starts beside a walkway'); const feet = { x: walk.x + .5 + (c.x - walk.x - .5) * .3, y: walk.y + .5 + (c.y - walk.y - .5) * .3 };
+  assert.ok(Math.abs(feet.x - c.x) <= STARFIELD_PLATFORMS.half && Math.abs(feet.y - c.y) <= STARFIELD_PLATFORMS.half, 'inside the raft\'s reach');
+  assert.equal(platformUnder(g.map, feet.x - .5, feet.y - .72, 0), null, 'on the walkway');
+});

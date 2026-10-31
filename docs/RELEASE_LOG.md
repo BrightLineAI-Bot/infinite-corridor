@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**623**
+**625**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 621 | Claude | `claude/dreamy-rubin-yn6q2p` | The robot at sea: no skiff left behind, the power armor hovers and switches on at sea; 619's wading removed | Building. |
+| 623 | Claude | `claude/dreamy-rubin-yn6q2p` | Rafts carry only riders over the drop (the blocker from the pre-publish review of 611→621); system-audit fixes | Building. |
+| 621 | Claude | PR #294 | The robot at sea: no skiff left behind, the power armor hovers and switches on at sea; 619's wading removed | Merged (`r621-d4083ffe80a4`). Not published: the pre-publish review found the raft blocker fixed in 623. |
 | 619 | Claude | PR #293 | Wading: water round the Wayfarer's legs in shoals, mist-pools and mires (removed again in 621) | Merged (`r619-4c02ee89d5df`). Not published. |
 | 617 | Claude | PR #292 | Fog moors: a new world region in landscape version 9 (daily world-regions work) | Merged (`r617-fd2723a0d5d2`). Not published. |
 | 615 | Claude | PR #291 | Raft tracks (winding, long), rising and sinking rafts, a darker Starfield | Merged (`r615-692e22b65866`). Not published. |
