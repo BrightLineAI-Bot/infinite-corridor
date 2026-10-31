@@ -14,8 +14,8 @@ const make = (x, y, version = 9) => { const m = generateRegion(SEED, x, y); appl
 const moor = (x, y) => make(x, y).tiles.filter((t) => t.kind === 'fogMoor').length > 300;
 const sections = (n, ok = moor) => { const out = []; for (let x = 14; x < 200 && out.length < n; x++) for (let y = 14; y < 200 && out.length < n; y += 3) { const r = sectionRegion(SEED, x, y, 9); if (r.type === 'fog' && r.hold >= 1 && ok(x, y)) out.push([x, y]); } return out; };
 
-test('version 9 turns some still-wild regions into fog moors; every other region keeps its version 8 type', () => {
-  assert.equal(LANDSCAPE_VERSION, 9); const types = new Set();
+test('version 9 turns some still-wild regions into fog moors; every other region keeps its version 8 type (625: version 10 is checked in palette-regions-625)', () => {
+  assert.equal(LANDSCAPE_VERSION, 10); const types = new Set();
   for (let x = 14; x < 120; x += 2) for (let y = 14; y < 120; y += 2) { const a = sectionRegion(SEED, x, y, 8), b = sectionRegion(SEED, x, y, 9); types.add(b.type); assert.equal(a.id, b.id); if (a.type !== 'wild') assert.equal(b.type, a.type); else assert.ok(['wild', 'fog'].includes(b.type)); }
   assert.ok(types.has('fog') && types.has('wild'), [...types].join());
   const r = sectionRegion(SEED, ...sections(1, () => true)[0], 9); assert.ok(REGION_NAMES.nouns.fog.some((n) => regionName(SEED, r).endsWith(` ${n}`)));
@@ -35,5 +35,5 @@ test('a fog moor: heath, wadeable mist-pools, impassable stones, fog weather; de
 
 test('in the game: the banner names the fog moors and the atlas pins version 9', () => {
   const [x, y] = sections(1)[0], s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld');
-  assert.equal(s.atlas[`${x},${y}`].landscapeVersion, 9); const b = (g.questNotices || []).find((q) => q.kind === 'discovery' && q.detail === 'Fog moors'); assert.ok(b || g.map.landscape.biome !== 'fog');
+  assert.equal(s.atlas[`${x},${y}`].landscapeVersion, LANDSCAPE_VERSION); const b = (g.questNotices || []).find((q) => q.kind === 'discovery' && q.detail === 'Fog moors'); assert.ok(b || g.map.landscape.biome !== 'fog');
 });

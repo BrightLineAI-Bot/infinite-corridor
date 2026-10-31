@@ -2694,6 +2694,26 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 625: five palette regions — 2026-10-31
+
+Tim (2026-10-31): "go ahead and do a sprint of your narrative runs and region runs... 10 sets of daily region passes... condense
+them into today". His list included jungle and an H. R. Giger-like biomechanical region; the others are new.
+
+**CODE:**
+- `src/landscape.ts`: `LANDSCAPE_VERSION` 10. By version 9 only about 2% of regions were still wild, so `REGIONS_V10` rolls
+  (own hash, `region-site:v10`) regions that are wild or bare plains (ashfields, glasslands, emberlands: about 15% of regions):
+  jungle .12, biomech .08, salt .1, crystal .08, fungal .1. `regionTile` caches version 10 apart. `PALETTE_REGIONS` (one row per
+  type: `ground`, `pool` {kind, noise scale, threshold}, `block` {kind, scale, threshold}, jungle `trees`) and
+  `applyPaletteRegions`: bare ground in such a region becomes its ground, wadeable pools where one noise rises, impassable blocks
+  (never on protected ground) where another peaks; a jungle grows tree objects (`jungle: true`, choppable, at most `max` per
+  section). `REGION_GROUNDS`, `REGIONS.lean`, `REGION_NAMES.nouns` for each. `applyDream` drops jungle trees on ground the dream
+  lies over (a dream seam over a jungle left a tree on a sleeper stone).
+- `src/landscape-render.ts`: `PALETTE_PAINT` (colours and marks per type) and `paletteGround`/`palettePool`/`paletteBlock`
+  register the fifteen tile kinds into `PAINT`; mesa-face colours per type. `src/atlas-colors.ts`, `src/game.ts` REGION_BANNER.
+
+**BOUNDARY:** Sections already seen keep their version (1 to 9) and never change; checked over 2880 sections of versions 2 to 9
+against `main`, none differ. No new weather (no per-frame cost); ground is painted once into the ground cache. No save change.
+
 ## Release 623: rafts only carry riders over the drop — 2026-10-31
 
 From the pre-publish review of 611→621: `platformUnder` took anyone whose feet were inside a raft's 1.7-tile box, so a Wayfarer

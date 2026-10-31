@@ -14,7 +14,7 @@ function find(type, ok = () => true) { for (let x = 14; x < 120; x++) for (let y
 const wooded = (x, y) => { const m = generateRegion(SEED, x, y); applyLandscape(m, SEED, x, y, { version: 5 }); return m.objects.filter((o) => o.forest).length >= 60; };
 
 test('version 5 turns some wild regions into forests and frostlands; every other region keeps its version 4 type', () => {
-  assert.equal(LANDSCAPE_VERSION, 9); // release 579: moonlands (forests and frostlands unchanged)
+  assert.equal(LANDSCAPE_VERSION, 10); // release 579: moonlands (forests and frostlands unchanged)
   const types = new Set();
   for (let x = 14; x < 110; x += 2) for (let y = 14; y < 110; y += 2) {
     const a = sectionRegion(SEED, x, y), b = sectionRegion(SEED, x, y, 5); types.add(b.type);
