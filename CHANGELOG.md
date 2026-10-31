@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 613 — **Starfield dungeons and their rafts.** The chasm crossings are now Starfield dungeons, and over their longer straight drops, slabs of pale stone glide back and forth from one walkway to another. Step on and ride across; step off midway and you fall into the stars. The drop is now as black as the fog, with only faint specks of light: you can hardly tell depth from darkness, and the edge lines are your only warning.
 - Release 611 — wading lava in the robot no longer jumps you to solid ground when you pause, cross into the next section or come back to the game. Monsters are still kept off lava and drops.
 - Release 609 — **fixes from the Codex play-test.** Walking off a Starfield drop or falling four levels now kills you even in the robot. Monsters no longer wander out onto lethal ground. A retreating world boss that reaches a "home" without its ground (no pond, no glass) looks further instead of vanishing there, and it walks through towns instead of getting stuck at their edge. A retreating boss out of sight now really does keep walking home (it stood still before). Reloading no longer re-arms an emptied robot boost.
 - Release 607 — **an economy with consequence.** Salvaging now pays 1 cinder iron for common and rare pieces and 2 for epic and relic ones, and a piece salvaged only because your pack was full pays no iron at all (just glyph dust). Kills pay about half the marks they did, and so do crossing clears. What things cost is unchanged.

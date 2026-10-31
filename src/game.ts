@@ -125,7 +125,36 @@ function dressSkyland(map, id, save = null) {
 // corridors as walkways over the dark. A few walls stand (`keepWalls`, only ones beside a walkway) and the outer edge stays. No
 // floor tile changes, so everything placed in the crossing stays where it was and as reachable as it was. Creatures do not
 // step into the drop; the brink guard stops the Wayfarer at the edge, and a dodge-roll over it is a fall.
-export const CHASM = { version: 1, chance: .12, keepWalls: .12, name: "Chasm" };
+export const CHASM = { version: 1, chance: .12, keepWalls: .12, name: "Starfield" }; // release 613 (Tim: "the chasm dungeons... those are now called Starfield dungeons"): was "Chasm"
+// Release 613 (Tim, 2026-10-31: "moving platforms... you can jump on them... take a ride like a conveyance... across a larger
+// [chasm]... those moving platforms can be in the... Starfield dungeons"): rafts of stone glide to and fro over straight runs of
+// the drop between two walkways (`span` tiles of drop), up to `count` per map at least `apart` tiles from each other, at `speed`
+// tiles/s with a `rest` at each end. Their place is a function of save.playSeconds, so a reload finds them where they were. The
+// Wayfarer standing on one rides it (carried with it) and does not fall; creatures do not ride. Pure data on map.movers.
+export const STARFIELD_PLATFORMS = { count: 4, span: [3, 12], apart: 6, speed: 1.6, rest: 1.2, half: .85 };
+function findPlatformSpans(map, seed, id) {
+  const P = STARFIELD_PLATFORMS, w = map.width, h = map.height || Math.ceil(map.tiles.length / w), at = (x, y) => x >= 0 && y >= 0 && x < w && y < h ? map.tiles[y * w + x] : null;
+  const floor = (t) => t && !t.blocked && !t.chasm, out = [];
+  for (const t of map.tiles) { if (!floor(t)) continue;
+    for (const [dx, dy] of [[1, 0], [0, 1]]) { if (!at(t.x + dx, t.y + dy)?.chasm) continue; let n = 0; while (at(t.x + dx * (n + 1), t.y + dy * (n + 1))?.chasm) n++;
+      const end = at(t.x + dx * (n + 1), t.y + dy * (n + 1)); if (!floor(end) || n < P.span[0] || n > P.span[1]) continue;
+      out.push({ ax: t.x + dx, ay: t.y + dy, bx: t.x + dx * n, by: t.y + dy * n, n, key: hashSeed(`${seed}:starfield-raft:v1:${id}:${t.x},${t.y}:${dx}`) }); } }
+  out.sort((a, b) => b.n - a.n || a.key - b.key); const pick = [];
+  for (const q of out) { if (pick.length >= P.count) break; const mx = (q.ax + q.bx) / 2, my = (q.ay + q.by) / 2; if (pick.every((o) => Math.hypot((o.ax + o.bx) / 2 - mx, (o.ay + o.by) / 2 - my) >= P.apart)) pick.push(q); }
+  return pick.map((q, i) => ({ id: `raft-${i}`, ax: q.ax, ay: q.ay, bx: q.bx, by: q.by, phase: (q.key % 1000) / 1000 }));
+}
+// Where raft `m` is at play time `t` (its centre, tile units): out, rest, back, rest.
+export function platformPos(m, t) {
+  const P = STARFIELD_PLATFORMS, len = Math.hypot(m.bx - m.ax, m.by - m.ay), go = len / P.speed, cycle = 2 * (go + P.rest), u = (((t / cycle) + m.phase) % 1) * cycle;
+  const f = u < go ? u / go : u < go + P.rest ? 1 : u < 2 * go + P.rest ? 1 - (u - go - P.rest) / go : 0;
+  return { x: m.ax + (m.bx - m.ax) * f + .5, y: m.ay + (m.by - m.ay) * f + .5 };
+}
+// The raft under a Wayfarer at (x, y) at time t, or null.
+export function platformUnder(map, x, y, t) {
+  const fx = x + .5, fy = y + .72, H = STARFIELD_PLATFORMS.half;
+  for (const m of map?.movers || []) { const c = platformPos(m, t); if (Math.abs(fx - c.x) <= H && Math.abs(fy - c.y) <= H) return m; }
+  return null;
+}
 export const chasmRoll = (seed, id) => (hashSeed(`${seed}:chasm-crossing:v1:${id}`) % 1000) / 1000 < CHASM.chance;
 function carveChasm(map, seed, id) {
   const w = map.width || Math.round(Math.sqrt(map.tiles.length)), h = map.height || Math.ceil(map.tiles.length / w), at = (x, y) => x >= 0 && y >= 0 && x < w && y < h ? map.tiles[y * w + x] : null;
@@ -138,6 +167,7 @@ function carveChasm(map, seed, id) {
     Object.assign(t, { kind: "canyon", blocked: false, environment: "canyon", chasm: true }); n++;
   }
   Object.assign(map, { chasm: CHASM.version, name: map.name ? `${map.name} · ${CHASM.name}` : CHASM.name });
+  map.movers = findPlatformSpans(map, seed, id); // release 613
   return n;
 }
 export function pinDungeonLayout(save, id) {
@@ -5223,6 +5253,8 @@ export class Game {
       dy = y * speed * dt;
     // Sailing has momentum: velocity eases toward the stick; a dodge is an oar burst.
     if (sailing) { p.sailVx = dodging ? x * speed : steer(p.sailVx || 0, x * speed, dt); p.sailVy = dodging ? y * speed : steer(p.sailVy || 0, y * speed, dt); dx = p.sailVx * dt; dy = p.sailVy * dt; }
+    const ps = Number(this.save.playSeconds) || 0, raft = this.map?.movers?.length ? platformUnder(this.map, p.x, p.y, ps - dt) : null, carried = raft ? (() => { const a = platformPos(raft, ps - dt), b = platformPos(raft, ps); return { x: b.x - a.x, y: b.y - a.y }; })() : { x: 0, y: 0 }; // release 613: a raft carries whoever stands on it
+    dx += carried.x; dy += carried.y;
     let
       nx = p.x + dx,
       ny = p.y + dy;
@@ -5265,7 +5297,7 @@ export class Game {
       return;
     }
     const width = mapWidth(this.map, this.area);
-    let terrainHazard=footprintHazard(this.map,width,nx,ny);const aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0||this.mechBoosting===true;/* release 317: the robot's boost carries over hazards */
+    let terrainHazard=footprintHazard(this.map,width,nx,ny);if(terrainHazard&&this.map?.movers?.length&&platformUnder(this.map,nx,ny,ps))terrainHazard=null;/* release 613: on a raft over the drop */const aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0||this.mechBoosting===true;/* release 317: the robot's boost carries over hazards */
     // Pits, lava and deep water are lethal to walk into (operator, release 101: the r97 brink guard is removed; rims,
     // fog hatching and level marks keep them readable instead).
     // Release 102: the Tidemantle lets the Wayfarer swim on surface water (stage one of the water traversal plan).

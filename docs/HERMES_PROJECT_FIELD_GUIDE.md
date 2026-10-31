@@ -2694,6 +2694,26 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 613: Starfield dungeons and their rafts — 2026-10-31
+
+Tim (2026-10-31): the chasm crossings "are now called Starfield dungeons... just a series of... bridges... over... the cosmos";
+and "moving platforms... you can jump on them... take a ride like a conveyance... across a larger [chasm]... in the... Starfield
+dungeons".
+
+**CODE:**
+- `src/game.ts`: `CHASM.name` "Starfield" (the crossing's name suffix). `STARFIELD_PLATFORMS` and `findPlatformSpans` (run by
+  carveChasm): straight runs of drop `span` tiles long with a walkway at each end, the longest first, up to `count`, `apart` tiles
+  from each other; `map.movers` [{ id, ax, ay, bx, by, phase }]. `platformPos(m, t)` (out, rest, back, rest at `speed`) and
+  `platformUnder(map, x, y, t)`, both on `save.playSeconds`. In the update, a raft under the Wayfarer carries them (its movement
+  added to theirs) and the drop under a raft is no hazard.
+- `src/renderer.ts`: `drawRafts` (a pale slab edged with faint light), not over unseen dungeon ground.
+  The drop itself now wears the fog's own black (`CHASM_STARS.sky` #0b0e11) with faint specks (`star`, `glint`): Tim, "the
+  background to be like the fog... faint, faint specks of light... you won't be able to really discern... depth vs blackness"; the
+  edge lines remain the only warning.
+
+**BOUNDARY:** Existing Starfield crossings gain rafts too (map.movers is derived each load; no tile changes). Creatures do not ride
+rafts. No save change.
+
 ## Release 611: the Wayfarer may stand where creatures may not — 2026-10-31
 
 The pre-publish Fable review of 603→609 found that 609's rule (open lethal ground is no footing) also made the Wayfarer standing

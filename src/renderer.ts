@@ -7,7 +7,7 @@ import { SEA_CREATURES } from "./sea-creatures.ts";
 import { BOAT } from "./boats.ts";
 import { MECH, DRONE } from "./vehicle-gates.ts";
 import { isMarineTile } from "./world-beasts.ts";
-import { jumpLift } from "./game.ts";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.ts"; // 613: Starfield rafts
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.ts";
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { liftAt, tileUnder, LIFT_PER_LEVEL } from "./landscape.ts";
@@ -324,19 +324,29 @@ function drawVoidScarSurface(ctx,g,s,mw,mh,surface){
 // Release 593 (Tim: "stars in the background... a penumbra around the character as he moves, and the background is kind of like
 // glittering stars"): a chasm crossing's drop is open night sky. The tile holds a few fixed stars (cached with the ground); each
 // frame a bounded handful glitter (CHASM_STARS.twinkle of the tiles in view), and a penumbra of light follows the Wayfarer.
-export const CHASM_STARS = { sky: "#08071a", stars: 4, twinkleEvery: 3, penumbra: { inner: 2.6, outer: 7.5, dark: .78 } };
+export const CHASM_STARS = { sky: "#0b0e11", stars: 3, star: ["#ffffff2e", "#fff0c444"], glint: .4, // release 613 (Tim: "the background to be like the fog... dark... faint, faint specks of light... you won't be able to really discern... depth vs blackness"): the fog's own black, faint stars
+  twinkleEvery: 3, penumbra: { inner: 2.6, outer: 7.5, dark: .78 } };
 function drawStarChasm(ctx, t, x, y, s) {
   const px = x * s, py = y * s;
   ctx.fillStyle = CHASM_STARS.sky; ctx.fillRect(px, py, s + 1, s + 1);
-  for (let i = 0; i < CHASM_STARS.stars; i++) { const q = h(x * 13 + i * 31, y * 17 + i * 7); if (q % 3 === 0) continue; ctx.fillStyle = q % 5 ? "#dfe2ffd9" : "#fff0c4ee"; const r = q % 11 === 0 ? 2 : 1.3; ctx.fillRect(px + (q % 97) / 97 * s, py + ((q >> 8) % 97) / 97 * s, r, r); }
+  for (let i = 0; i < CHASM_STARS.stars; i++) { const q = h(x * 13 + i * 31, y * 17 + i * 7); if (q % 3 === 0) continue; ctx.fillStyle = CHASM_STARS.star[q % 5 ? 0 : 1]; const r = q % 11 === 0 ? 1.4 : 1; ctx.fillRect(px + (q % 97) / 97 * s, py + ((q >> 8) % 97) / 97 * s, r, r); }
 }
 // Per frame: the glittering stars over the chasm tiles in view (`list` is tile, x, y triples).
 function glitterChasm(ctx, list, s, now) {
   for (let i = 0; i < list.length; i += 3) {
     const x = list[i + 1], y = list[i + 2], q = h(x * 5 + 1, y * 3 + 2), a = Math.sin(now / (520 + q % 600) + q) ; if (a < .55) continue;
     const px = x * s + (q % 89) / 89 * s, py = y * s + ((q >> 7) % 89) / 89 * s, r = 1 + (a - .55) * 4.5;
-    ctx.fillStyle = `rgba(255,248,225,${(a - .55) * 2})`; ctx.fillRect(px - r, py - .5, r * 2, 1); ctx.fillRect(px - .5, py - r, 1, r * 2);
+    ctx.fillStyle = `rgba(255,248,225,${(a - .55) * 2 * CHASM_STARS.glint})`; ctx.fillRect(px - r, py - .5, r * 2, 1); ctx.fillRect(px - .5, py - r, 1, r * 2);
   }
+}
+// Release 613: a Starfield raft: a slab of pale stone edged with faint light, its shadow lost in the stars below.
+function drawRafts(ctx, g, s, now) {
+  const t = Number(g.save?.playSeconds) || 0, H = STARFIELD_PLATFORMS.half;
+  for (const m of g.map.movers) { const c = platformPos(m, t); if (g.area === "dungeon" && dungeonTileVisibility(g.map, Math.floor(c.x), Math.floor(c.y)) === "unseen") continue; const x = (c.x - H) * s, y = (c.y - H) * s, w = H * 2 * s, glow = .45 + .25 * Math.sin(now / 500 + m.phase * 6);
+    ctx.fillStyle = "#00000066"; ctx.fillRect(x + s * .12, y + s * .22, w, w);
+    ctx.fillStyle = "#cfc6b4"; ctx.fillRect(x, y, w, w); ctx.fillStyle = "#b3aa97"; ctx.fillRect(x, y + w * .78, w, w * .22);
+    ctx.strokeStyle = `rgba(170,200,255,${glow})`; ctx.lineWidth = Math.max(1.5, s * .06); ctx.strokeRect(x + 1, y + 1, w - 2, w - 2);
+    ctx.fillStyle = `rgba(200,220,255,${glow * .8})`; for (const [u, v] of [[.2, .2], [.8, .2], [.2, .8], [.8, .8]]) ctx.fillRect(x + w * u - 1.5, y + w * v - 1.5, 3, 3); }
 }
 let cloudSky = false; // set each frame from g.map.skyCloud (tile painters are handed the tile array, not the map)
 export const CLOUD_PAINT = { sky: ["#6f9cc9", "#77a3cf"], puff: "#ffffff22", floor: ["#dfe6ef", "#d6dfeb"], shade: "#b4c3d666", rim: "#8ea4bf", gleam: "#ffffff44" };
@@ -1535,6 +1545,7 @@ export function render(ctx, g, w, h, now) {
     }
     animateLandscapeTiles(ctx, animated, s); // release 185: one stroke per water kind, not one per tile
     if (glitter.length) glitterChasm(ctx, glitter, s, now);
+    if (g.map.movers?.length) drawRafts(ctx, g, s, now); // release 613
   }
   else for (let y = t; y < b; y++)
     for (let x = l; x < r; x++) {
