@@ -37,7 +37,7 @@ import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWE
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
 import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP } from "./boats.ts";
-import { submersible, fitSubmersible, aboard, sailable, BOAT, canBuildSkiff, mendSkiff, buyHullShield, deployHullShield, tickHullShield, buySkiff, repairSkiff, repairCost, board, disembark, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.ts";
+import { submersible, fitSubmersible, aboard, sailable, BOAT, canBuildSkiff, mendSkiff, buyHullShield, deployHullShield, tickHullShield, buySkiff, repairSkiff, repairCost, board, disembark, skiffMooring, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.ts";
 import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.ts";
 import { canSwim, swimsThrough, isSwimmableKind, tidemantleTrial, grantTidemantle, swimUpkeep, dungeonWaterToll, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.ts";
 import { createCombatant, dodge, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.ts";
@@ -2230,7 +2230,7 @@ export class Game {
           );
     if(area==="overworld")this.tyrantVisit=null; // release 233: entering a section (from anywhere, or after a death) starts a fresh Tyrant visit
     if(area==="dungeon")addBell(this.map,this.save,this.areaId());/* release 431: the Seven Bells */if(area==="dungeon")addTornPage(this.map,this.save,this.areaId());/* release 595: the Torn Pages */if(area==="dungeon")addMargin(this.map,this.save,this.areaId());/* release 455: margins */if(area==="dungeon")addSurveyorLink(this.map,this.save,this.areaId());/* release 505: the Surveyor's Chain */if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
-    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION,openSea:!seen?OPEN_SEA_VERSION:seen.seaVersion||0,buoy:!this.save.checkpoints?.[`${this.rx},${this.ry}`]||this.save.checkpoints[`${this.rx},${this.ry}`].name==="Lighthouse Buoy",hamlet:((!seen||!!seen.hamletVersion)&&(hamletSection(this.save.seed,this.rx,this.ry)||legacyMouthHamlet(this.save,this.rx,this.ry)||!!townAt(this.save,this.rx,this.ry)))||!!townAt(this.save,this.rx,this.ry)?.mouth});if(!seen||seen.dreamVersion)applyDream(this.map,this.save.seed,this.rx,this.ry,seen?.dreamVersion||DREAM_VERSION);if(!seen||seen.hamletVersion||townAt(this.save,this.rx,this.ry)?.mouth)applyHamlet(this.map,this.save.seed,this.rx,this.ry,seen?.hamletVersion||HAMLET_VERSION,!!townAt(this.save,this.rx,this.ry),legacyMouthHamlet(this.save,this.rx,this.ry));/* release 371: a town where a Listener fell; 373: around its Mouth, explored or not */if(!seen||seen.travelVersion)applyTrails(this.map,this.save.seed,this.rx,this.ry);this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.skyLevel=0;this.discAir=null;/* 585; 587 */this.storm=null;this._stormCheck=0;const b=ensureBoatState(this.save),m=b.moored;if(b.owned&&!b.aboard&&m&&m.rx===this.rx&&m.ry===this.ry)this.map.objects.push({id:"skiff-moored",kind:"skiff",name:"Your skiff",lore:"Your skiff rides at its mooring.",x:m.x,y:m.y,state:"moored",actions:["board"]});this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive)}
+    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];applyLandscape(this.map,this.save.seed,this.rx,this.ry,{explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION,openSea:!seen?OPEN_SEA_VERSION:seen.seaVersion||0,buoy:!this.save.checkpoints?.[`${this.rx},${this.ry}`]||this.save.checkpoints[`${this.rx},${this.ry}`].name==="Lighthouse Buoy",hamlet:((!seen||!!seen.hamletVersion)&&(hamletSection(this.save.seed,this.rx,this.ry)||legacyMouthHamlet(this.save,this.rx,this.ry)||!!townAt(this.save,this.rx,this.ry)))||!!townAt(this.save,this.rx,this.ry)?.mouth});if(!seen||seen.dreamVersion)applyDream(this.map,this.save.seed,this.rx,this.ry,seen?.dreamVersion||DREAM_VERSION);if(!seen||seen.hamletVersion||townAt(this.save,this.rx,this.ry)?.mouth)applyHamlet(this.map,this.save.seed,this.rx,this.ry,seen?.hamletVersion||HAMLET_VERSION,!!townAt(this.save,this.rx,this.ry),legacyMouthHamlet(this.save,this.rx,this.ry));/* release 371: a town where a Listener fell; 373: around its Mouth, explored or not */if(!seen||seen.travelVersion)applyTrails(this.map,this.save.seed,this.rx,this.ry);this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.skyLevel=0;this.discAir=null;/* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive)}
     if(area==="overworld"&&!this.map.settlement)applyTunnels(this.map,this.save,overworldDigKey(this.rx,this.ry),true); // release 423: tunnels dug in the open world
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];if(!seen||seen.watcherVersion)placeWatcherOverworld(this.map,mapWidth(this.map,area),this.save.seed,this.rx,this.ry);} // release 289: sections first seen from now on
     if(area==="overworld"||area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="watcherTomb"&&this.save.worldFlags[`watcher-tomb:${o.id}`])o.state="opened";
@@ -2951,8 +2951,8 @@ export class Game {
     const offsets = [0, .5, -.5, 1, -1, 1.5, -1.5, 2, -2, 3, -3, 4, -4], at = (k) => ({ x: x0 + (dy ? k : 0), y: y0 + (dx ? k : 0) });
     for (const k of offsets) { const q = at(k); if (footprintSailable(map, 32, q.x, q.y) && !bergAt(this.seaHazards, q.x, q.y)) { p.x = q.x; p.y = q.y; return true; } }
     for (const k of offsets) { const q = at(k); if (footprintOpen(map, 32, q.x, q.y) && !footprintHazard(map, 32, q.x, q.y)) {
-      disembark(this.save, { rx: from.rx, ry: from.ry, x: Math.max(0, Math.min(31, Math.floor(from.x + .5))), y: Math.max(0, Math.min(31, Math.floor(from.y + .7))) });
-      p.x = q.x; p.y = q.y; p.sailVx = p.sailVy = 0; this.message = "You run the skiff aground and wade ashore. It waits at the edge of the last section."; return true; } }
+      const robot = !!ensureBoatState(this.save).mechSubFrom; disembark(this.save, { rx: from.rx, ry: from.ry, x: Math.max(0, Math.min(31, Math.floor(from.x + .5))), y: Math.max(0, Math.min(31, Math.floor(from.y + .7))) }); this.placeMooredSkiff();
+      p.x = q.x; p.y = q.y; p.sailVx = p.sailVy = 0; this.message = robot ? "The robot unseals and stands up on the shore." : "You run the skiff aground and wade ashore. It waits at the edge of the last section."; return true; } }
     this.returnFrom(from, "Rock and wall bar the way across. The skiff turns back.");
     return false;
   }
@@ -2962,9 +2962,8 @@ export class Game {
     let shore = null;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) { const q = { x: p.x + dx, y: p.y + dy }; if (footprintOpen(this.map, width, q.x, q.y) && !footprintHazard(this.map, width, q.x, q.y)) { shore = q; break; } }
     if (!shore && !canSwim(this.save)) { this.message = "Nowhere to stand, and you cannot swim. Find a shore first."; return false; }
-    disembark(this.save, moor); p.sailVx = p.sailVy = 0;
-    this.map.objects = this.map.objects.filter((o) => o.id !== "skiff-moored");
-    this.map.objects.push({ id: "skiff-moored", kind: "skiff", name: "Your skiff", lore: "Your skiff rides at its mooring.", x: moor.x, y: moor.y, state: "moored", actions: ["board"] });
+    const robot = !!ensureBoatState(this.save).mechSubFrom; disembark(this.save, moor); p.sailVx = p.sailVy = 0; this.placeMooredSkiff();
+    if (robot) { if (shore) Object.assign(p, shore); this.message = shore ? "The robot unseals and steps ashore." : "The robot unseals and wades in the water."; return; } // release 621
     if (shore) { Object.assign(p, shore); this.message = "You step off the skiff. It waits at its mooring."; }
     else this.message = "You slip over the side. The skiff bobs beside you. The open sea tires a swimmer fast.";
   }
@@ -3286,6 +3285,7 @@ export class Game {
     else if (action === "buyRig") r = buyRig(s);
     else if (action === "buyShield") r = buyHullShield(s); // release 263
     else if (action === "board") {
+      if (b.mechSub && b.mechSubFrom) { Object.assign(b, { moored: b.mechSubFrom, aboard: false, mechSub: false }); delete b.mechSubFrom; } // release 621: the robot at sea boards a skiff: its voyage ends
       if (o.id === "skiff-spare") takeSpare(s); // release 261: the spare becomes the skiff in use
       const at = o.kind === "skiff" ? { x: o.x, y: o.y } : o.berth;
       if (!board(s, at)) r = { ok: false, message: b.owned ? "The skiff needs repair before it can sail." : "You own no skiff." };
@@ -3331,6 +3331,13 @@ export class Game {
     if (m.active) { if (m.empowered) setEmpowered(this.save, false); m.active = false; this.message = drone ? "The drone docks into its frame." : "The robot folds away."; this.sync(); return true; }
     if (!drone && m.cooldown > 0) { this.message = `The robot's plating is still knitting: ${Math.ceil(m.cooldown)}s.`; return false; }
     m.active = true; this.droneAt = null; this.message = drone ? "The drone lifts off beside you. It fires on what comes near; hold Jump in the air and it carries you." : "The robot unfolds around you. Hold Jump in the air to boost."; this.sync(); return true;
+  }
+  // Release 621 (Tim: "you should be able to switch to the power armor version while you're on the water"): at sea the robot
+  // button toggles Empowered mode (the power armor) and back; the robot is never stowed at sea (that would drop you in).
+  toggleSeaPower() {
+    const m = this.save.mech;
+    const r = m.empowered ? setEmpowered(this.save, false) : setEmpowered(this.save, true);
+    this.message = r.ok ? (m.empowered ? "The power armor lifts clear of the water on its thrusters. Dodge to dive." : "The power armor settles back into the plain submersible.") : r.message; this.sync(); return r.ok;
   }
   droneUp() { const m = this.save.mech; return m?.active === true && m.mode === "drone" && !aboard(this.save); }
   droneHeal(message) {
@@ -3463,10 +3470,11 @@ export class Game {
   // `active` never changed). Without a sound skiff it wades as before; dungeon water is not open-world water.
   robotPutsToSea(x, y, width, hazard) {
     const b = this.save.boat;
+    const from = b?.moored || b?.home || null; // release 621: where the skiff was, before board() clears it
     if (this.area !== "overworld" || !this.mechUp() || !this.swimsHere(hazard) || !b?.owned || !(b.hull > 0) || !footprintSailable(this.map, width, x, y) || this.wayglassNear(false) || !board(this.save, { x, y })) return false;
-    b.mechSub = true; this.map.objects = this.map.objects.filter((q) => q.kind !== "skiff"); this.placeSpareSkiff();
+    b.mechSub = true; b.mechSubFrom = from; this.placeMooredSkiff(); this.placeSpareSkiff(); // release 621: the skiff stays where it was
     Object.assign(this.player, { sailVx: 0, sailVy: 0 }); this.swimming = false;
-    this.message = "The robot folds round the skiff and seals: a submersible. Dodge to dive; sail onto land and it stands up again.";
+    this.message = `The robot seals itself: a submersible. Dodge to dive; ${this.save.mech?.empowered ? "" : "the robot button empowers it; "}sail onto land and it stands up again.`;
     return true;
   }
   // Release 311 (Tim: "these buoys... are connected... go to one buoy, and then go to another buoy... if you traverse the
@@ -3544,6 +3552,11 @@ export class Game {
       const d = Math.hypot(x + .5 - cx, y + .5 - cy); if (d <= WOOD.reach + .5 && (!best || d < best.d)) best = { x, y, d };
     }
     return best;
+  }
+  // The skiff at its mooring, when that is in this section (release 621: also while the robot is at sea on its own).
+  placeMooredSkiff(lore = "Your skiff rides at its mooring.") {
+    const m = skiffMooring(this.save); this.map.objects = this.map.objects.filter((o) => o.id !== "skiff-moored");
+    if (this.area === "overworld" && m && m.rx === this.rx && m.ry === this.ry) this.map.objects.push({ id: "skiff-moored", kind: "skiff", name: "Your skiff", lore, x: m.x, y: m.y, state: "moored", actions: ["board"] });
   }
   // Release 261: the spare skiff, when it is moored in this section.
   placeSpareSkiff() {
@@ -5132,6 +5145,7 @@ export class Game {
         lumenPhial: 0,
       });
     if (type === "submersible" && !aboard(this.save)) return this.toggleMech(); // release 317: ashore, the frame calls up the robot
+    if (type === "submersible" && this.save.boat?.mechSub && this.save.mech?.active) return this.toggleSeaPower(); // release 621
     if (!(c[type] > 0)) {
       this.message = "That supply is exhausted.";
       return false;
@@ -5181,10 +5195,10 @@ export class Game {
       if (step === "sail") { p.x += ax; p.y += ay; }
       else if (step === "ashore") {
         const here = tileUnder(this.map, width, p.x, p.y), shore = ashoreAt(ax, ay);
-        disembark(this.save, { rx: this.rx, ry: this.ry, x: here.x, y: here.y });
-        this.map.objects.push({ id: "skiff-moored", kind: "skiff", name: "Your skiff", lore: "Your skiff rides at its mooring.", x: here.x, y: here.y, state: "moored", actions: ["board"] });
+        const robot = !!ensureBoatState(this.save).mechSubFrom; disembark(this.save, { rx: this.rx, ry: this.ry, x: here.x, y: here.y }); this.placeMooredSkiff();
         Object.assign(p, shore); p.sailVx = p.sailVy = 0;
-        if (now > (this.sailMessageAt || 0)) { this.sailMessageAt = now + 6000; this.message = "Ashore. The skiff waits at its mooring."; }
+        if (robot) this.message = "The robot unseals and stands up on the shore."; // release 621: no skiff left behind
+        else if (now > (this.sailMessageAt || 0)) { this.sailMessageAt = now + 6000; this.message = "Ashore. The skiff waits at its mooring."; }
         return;
       } else { if (ax) p.sailVx = 0; if (ay) p.sailVy = 0; }
     }
@@ -5572,7 +5586,7 @@ export class Game {
       const buoy = this.map.objects.find((o) => o.seaBuoy), bs = ensureBoatState(this.save);
       if (buoy && bs.owned && !bs.aboard && Math.hypot(p.x - buoy.x, p.y - buoy.y) < 2.5 && !(bs.moored?.rx === this.rx && bs.moored?.ry === this.ry)) {
         const spot = [[2, 0], [-1, 0], [0, 2], [0, -1], [2, 1], [1, 2]].map(([dx, dy]) => ({ x: buoy.x + dx, y: buoy.y + dy })).find((q) => sailable(this.map.tiles[q.y * 32 + q.x]?.kind));
-        if (spot) { disembark(this.save, { rx: this.rx, ry: this.ry, ...spot }); this.map.objects = this.map.objects.filter((o) => o.id !== "skiff-moored"); this.map.objects.push({ id: "skiff-moored", kind: "skiff", name: "Your skiff", lore: "Tied alongside the buoy.", x: spot.x, y: spot.y, state: "moored", actions: ["board"] }); this.message = "The buoy keeper's line holds your skiff alongside."; }
+        if (spot) { const robot = !!ensureBoatState(this.save).mechSubFrom; disembark(this.save, { rx: this.rx, ry: this.ry, ...spot }); this.placeMooredSkiff(robot ? undefined : "Tied alongside the buoy."); if (!robot) this.message = "The buoy keeper's line holds your skiff alongside."; }
       }
     }
     if (this.novaFog) this.novaFog = this.area === "overworld" ? tickNovaFog(this.novaFog, dt, p) : null; // release 257: a Supernova's fog clears

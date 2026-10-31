@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Release 619 — **wading.** Walking through shoals, mist-pools and mires, the water now comes up around the Wayfarer's legs, with a ripple spreading round them.
+- Release 621 — **the robot at sea.** Walking the robot back ashore no longer leaves a skiff on the beach: your skiff stays wherever you last moored it. At sea, the robot button now switches the power armor on and off. The power armor hovers above the water on its thrusters, pressing a glowing hollow into the surface with spray spreading round it, and Dodge still takes it under. The wading effect from release 619 is gone; shoals look the way they did.
 - Release 617 — **fog moors.** A new kind of world region, found only on ground you haven't explored yet: grey heath under drifting fog, shallow mist-pools you can wade through, and leaning standing stones you have to walk around. The Atlas shows them in grey-green.
 - Release 615 — **raft tracks, heights and the dark.** Starfield rafts now ride winding tracks across the drop, turning corners and running a long way, so you can't always tell where one will take you. Some lift you above the level (step off and you fall), some sink beneath it where you show only as a dim shape (step off and you're gone). The darkness around the Wayfarer closes in further: you are the only real light.
 - Release 613 — **Starfield dungeons and their rafts.** The chasm crossings are now Starfield dungeons, and over their longer straight drops, slabs of pale stone glide back and forth from one walkway to another. Step on and ride across; step off midway and you fall into the stars. The drop is now as black as the fog, with only faint specks of light: you can hardly tell depth from darkness, and the edge lines are your only warning.

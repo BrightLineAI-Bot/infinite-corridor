@@ -2694,6 +2694,31 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 621: the robot at sea — 2026-10-31
+
+Tim (2026-10-31), on 619's wading: "that looks terrible. Let's go back to the way it was"; and "When you [leave] the water with the
+robot... it leaves a boat behind... why is there a boat behind?... the power armor version of the robot... should also still be a
+submersible... you should be able to switch to it while it's on the water... it kind of like floats above the water... a slight
+crater around it... where the water is depressed due to the thrusters... it can also... go down underneath the water".
+
+**CODE:**
+- `src/renderer.ts`: 619's `WADE`, `wadeAt` and `drawWade` removed. `SEA_SUIT` and `drawThrustDip`: on a robot voyage
+  (`boat.mechSub`) with Empowered on, the power suit is drawn (not the submersible) hovering `SEA_SUIT.hover` tiles, bobbing, over
+  a hollow lit by the jets with a bright lip and a spreading spray ring; while it dives (`subDiveUntil`) it draws dim beneath
+  with no hollow (the existing under-the-surface alpha).
+- `src/boats.ts`: `boat.mechSubFrom` (additive, normalised in `ensureBoatState`: kept only on a robot voyage) is where the skiff
+  was moored when the robot put to sea. `disembark` returns the skiff to it (a voyage begun before 621 has none and moors where
+  it lands, as before) and returns the mooring. `skiffMooring` says where to draw the moored skiff, at sea or ashore. Sinking
+  clears the voyage.
+- `src/game.ts`: `robotPutsToSea` records `mechSubFrom` and leaves the skiff in place; `placeMooredSkiff` draws the moored skiff
+  (loadArea, leaving the skiff, sailing ashore, running aground, the buoy line). `toggleSeaPower`: at sea the robot button
+  (`useConsumable("submersible")`) toggles Empowered (cinder iron as ashore); it never stows the robot at sea. Boarding a skiff
+  from a robot voyage ends the voyage (that skiff sails with you and moors where you land).
+- `src/main.ts`: the robot button's tag (ON / EMP) shows on a robot voyage too.
+
+**BOUNDARY:** The robot voyage still draws on the skiff's hull (a robot voyage needs a sound skiff, as since 557). Save change is
+additive (`mechSubFrom`). No change to sailing, diving or Empowered rules.
+
 ## Release 619: wading — 2026-10-31
 
 Tim (2026-10-31): "for the fog moors, it would be interesting if the water could come up around the character's legs, usually when
@@ -2705,7 +2730,7 @@ we're at shoals, we kind of just walk about the water... I don't really want to 
   the robot or drone, on a raft or up a sky level. `drawWade` draws, just after the Wayfarer, a band of the water's colour over
   the lower legs with a wavy foam line and a ring spreading out every `period` ms.
 
-**BOUNDARY:** The Wayfarer only (creatures still walk over the water): one tile lookup and a few path calls a frame. Drawing only;
+**BOUNDARY:** Removed in release 621 (Tim did not like it). The Wayfarer only (creatures still walk over the water): one tile lookup and a few path calls a frame. Drawing only;
 no rule or save change.
 
 ## Release 617: fog moors — 2026-10-31

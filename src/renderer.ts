@@ -319,22 +319,22 @@ function drawVoidScarSurface(ctx,g,s,mw,mh,surface){
   for(const c of surface.shapes)for(const crack of c.cracks){ctx.moveTo(crack[0][0]*s,crack[0][1]*s);for(let i=1;i<crack.length;i++)ctx.lineTo(crack[i][0]*s,crack[i][1]*s)}
   ctx.stroke();ctx.restore();
 }
-// Release 619 (Tim: "it would be interesting if the water could come up around the character's legs... at shoals, we kind of just
-// walk about the water... I don't really want to slow it down"): standing in shallow water the Wayfarer wades: a band of the water's
-// colour over the lower legs, a wavy surface line and a ring spreading round them. The Wayfarer only, a few path calls a frame.
-export const WADE = { kinds: { shallows: ["#4fb0aecc", "#e8fbfa99"], mistPool: ["#a8b6b3d0", "#e6eeec99"], mireWater: ["#55603cd0", "#a3b07a88"], toxicMire: ["#5e8f2ad0", "#d4ff8a88"] },
-  depth: .2, below: .07, half: .3, ring: [.24, .4], period: 1400 };
-export function wadeAt(g, p, jumping = false) {
-  if (g.area !== "overworld" && g.area !== "dungeon") return null; if (!g.map?.tiles || g.save?.boat?.aboard || g.skyLevel > 0 || g.raftZ || g.mechUp?.() || g.droneUp?.()) return null;
-  if (jumping) return null;
-  const t = g.map.tiles[Math.floor(p.y + .75) * (g.map.width || 32) + Math.floor(p.x + .5)]; return (t && !t.blocked && WADE.kinds[t.kind]) || null;
-}
-function drawWade(ctx, p, s, now, colours) {
-  const [water, foam] = colours, k = (p.x + .5) * s, base = (p.y + .82) * s, top = base - WADE.depth * s, bot = base + WADE.below * s, w = WADE.half * s, wave = Math.sin(now / 260) * s * .015;
-  ctx.fillStyle = water; ctx.beginPath(); ctx.moveTo(k - w, top + wave); ctx.quadraticCurveTo(k, top - wave * 2, k + w, top - wave); ctx.lineTo(k + w, bot); ctx.ellipse(k, bot, w, s * .06, 0, 0, Math.PI); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = foam; ctx.lineWidth = Math.max(1, s * .03); ctx.beginPath(); ctx.moveTo(k - w, top + wave); ctx.quadraticCurveTo(k, top - wave * 2, k + w, top - wave); ctx.stroke();
-  const f = (now % WADE.period) / WADE.period, r = WADE.ring[0] + (WADE.ring[1] - WADE.ring[0]) * f; ctx.globalAlpha *= 1 - f; ctx.lineWidth = Math.max(1, s * .02);
-  ctx.beginPath(); ctx.ellipse(k, top + s * .02, r * s, r * s * .32, 0, 0, Math.PI * 2); ctx.stroke();
+// Release 621 (Tim: "the power armor floats above the surface... a slight crater around it... where the water is depressed due
+// to the thrusters"): at sea the empowered robot hovers (SEA_SUIT.hover tiles, bobbing) over a dip in the water: a darker
+// hollow under it with a bright rim, and a ring of spray spreading out every `ringMs`. Diving, it sinks beneath, dim.
+export const SEA_SUIT = { hover: .3, bob: .04, bobMs: 320, at: .74, dip: [.42, .15], ringMs: 900, ring: [.42, .78] };
+function drawThrustDip(ctx, x, y, s, now) {
+  const cx = (x + .5) * s, cy = (y + SEA_SUIT.at) * s, [rx, ry] = SEA_SUIT.dip, f = (now % SEA_SUIT.ringMs) / SEA_SUIT.ringMs, r = SEA_SUIT.ring[0] + (SEA_SUIT.ring[1] - SEA_SUIT.ring[0]) * f, flick = .85 + .15 * Math.sin(now / 45);
+  ctx.save();
+  // the hollow the thrust presses into the water: dark at its heart, lit by the jets
+  const hollow = ctx.createRadialGradient(cx, cy, 0, cx, cy, rx * s); hollow.addColorStop(0, `rgba(150,230,255,${(.45 * flick).toFixed(3)})`); hollow.addColorStop(.35, "rgba(10,40,60,.55)"); hollow.addColorStop(1, "rgba(10,40,60,0)");
+  ctx.fillStyle = hollow; ctx.beginPath(); ctx.ellipse(cx, cy, rx * s, ry * s, 0, 0, Math.PI * 2); ctx.fill();
+  // the raised lip of churned water round it: bright in front, softer behind
+  ctx.lineWidth = Math.max(1.5, s * .045); ctx.strokeStyle = "#eaf9ffcc"; ctx.beginPath(); ctx.ellipse(cx, cy, rx * s, ry * s, 0, 0, Math.PI); ctx.stroke();
+  ctx.lineWidth = Math.max(1, s * .025); ctx.strokeStyle = "#cdeefa77"; ctx.beginPath(); ctx.ellipse(cx, cy, rx * s, ry * s, 0, Math.PI, Math.PI * 2); ctx.stroke();
+  // spray spreading out
+  ctx.globalAlpha = .6 * (1 - f); ctx.lineWidth = Math.max(1, s * .02); ctx.strokeStyle = "#dff6ff"; ctx.beginPath(); ctx.ellipse(cx, cy, r * s, r * s * .36, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
 }
 // Release 589: a Skyland with a mode stands on cloud: open sky where the arena has void, soft cloud underfoot, and a darker
 // underside where cloud meets sky. Other tiles (hazards, bridges) draw as they always do.
@@ -1817,7 +1817,9 @@ export function render(ctx, g, w, h, now) {
         if (p.facing === "left" || p.facing === "right") g.longboatSide = p.facing;
         g._longboatFront = shieldLeft > 0 && (shieldLeft > 10 || Math.floor(now / 200) % 2 === 1); // the near hull goes over the Wayfarer, below
         g._subDive = (g.save.boat.sub || g.save.boat.mechSub) ? Math.max(0, ((g.subDiveUntil || 0) - now) / 1000) : 0; // release 311
-        if ((g.save.boat.sub || g.save.boat.mechSub) && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "back", g._subDive);
+        g._seaSuit = !!(g.save.boat.mechSub && g.save.mech?.active && g.save.mech.empowered); // release 621: the power armor hovers instead
+        if (g._seaSuit) { if (!(g._subDive > 0)) drawThrustDip(ctx, p.x, p.y - lift / s, s, now); }
+        else if ((g.save.boat.sub || g.save.boat.mechSub) && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "back", g._subDive);
         else (g._longboatFront ? drawLongboat : drawSkiff)(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right");
         if (g.mendTarget?.()) repairTag(ctx, p.x, p.y - .9 - lift / s, s);
         // Hull gauge under the skiff: green to amber to red as the hull takes damage.
@@ -1836,10 +1838,11 @@ export function render(ctx, g, w, h, now) {
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
       const drone = !!g.droneUp?.() && !!g.droneAt, mech = !!g.mechUp?.(), mechLift = (mech || drone) && g.mechBoosting ? s * (drone ? .35 : .22) : 0; // release 317: the robot ashore, lifted while it boosts; 321: the drone carries higher
       if (mech && g.save.mech?.empowered) { const cx = (p.x + .5) * s, cy = (p.y + .55) * s - lift - mechLift, r = s * (.72 + .05 * Math.sin(now / 140)), glow = ctx.createRadialGradient(cx, cy, r * .2, cx, cy, r); glow.addColorStop(0, "#ffb05a55"); glow.addColorStop(1, "#ff5a1f00"); ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); } // release 383: the empowered robot's furnace glow
-      const suited = mech && g.save.mech?.empowered === true; // release 389: empowered, the robot is a svelte silver suit in the Wayfarer's place
+      const seaSuit = g.area === "overworld" && !!g.save.boat?.aboard && g._seaSuit, hover = seaSuit && !(g._subDive > 0) ? s * (SEA_SUIT.hover + SEA_SUIT.bob * Math.sin(now / SEA_SUIT.bobMs)) : 0; // release 621
+      const suited = (mech && g.save.mech?.empowered === true) || seaSuit; // release 389: empowered, the robot is a svelte silver suit in the Wayfarer's place
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "back", 0, false, g.mechBoosting);
       const subHidden = g.area === "overworld" && g.save.boat?.aboard && g._subDive > 0; if (subHidden) { ctx.save(); ctx.globalAlpha = .12; } // release 311: under the surface
-      if (suited) drawPowerSuit(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, Math.floor(p.walkPhase || 0), now < (p.attackUntil || 0), g.mechBoosting); else actor(
+      if (suited) drawPowerSuit(ctx, p.x, p.y - (lift + mechLift + hover) / s, s, p.facing, now, Math.floor(p.walkPhase || 0), now < (p.attackUntil || 0), g.mechBoosting || seaSuit); else actor(
         ctx,
         p.x,
         p.y - (lift + (mech ? mechLift : 0)) / s, // release 543: in the robot, the Wayfarer rises with it (a boost left their legs below it)
@@ -1849,7 +1852,6 @@ export function render(ctx, g, w, h, now) {
         Math.floor(p.walkPhase || 0),
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
-      { const wade = !kd && !suited && wadeAt(g, p, jumping); if (wade) { ctx.save(); drawWade(ctx, p, s, now, wade); ctx.restore(); } } // release 619
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);
@@ -1858,7 +1860,7 @@ export function render(ctx, g, w, h, now) {
         ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh * 2 + 3); ctx.fillStyle = "#5fc6e0"; ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, m.fuel / DRONE.carry)), bh); ctx.fillStyle = (m.healCd || 0) > 0 ? "#3f7f52" : "#7dff9a"; ctx.fillRect(bx, by + bh + 1, bw * Math.max(0, Math.min(1, 1 - (m.healCd || 0) / DRONE.healCooldown)), bh); }
       if (mech) { const m = g.save.mech, bx = (p.x + .08) * s, by = (p.y + 1.1) * s - lift, bw = s * .84, bh = Math.max(3, s * .08); // plating (silver) and boost (blue)
         ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh * 2 + 3); ctx.fillStyle = "#d8dee5"; ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, m.plate / MECH.plate)), bh); ctx.fillStyle = "#5fc6e0"; ctx.fillRect(bx, by + bh + 1, bw * Math.max(0, Math.min(1, m.fuel / (MECH.boost * (m.empowered ? 2 : 1)))), bh); if (m.empowered) { ctx.fillStyle = "#ff8a3d"; ctx.fillRect(bx, by + bh * 2 + 2, bw, Math.max(2, bh * .6)); } } // release 383: an ember line while empowered
-      if (g.area === "overworld" && g.save.boat?.aboard && (g.save.boat.sub || g.save.boat.mechSub) && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "front", g._subDive); // release 311: the window's glass and the arms
+      if (g.area === "overworld" && g.save.boat?.aboard && !g._seaSuit && (g.save.boat.sub || g.save.boat.mechSub) && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "front", g._subDive); // release 311: the window's glass and the arms
       if (g._longboatFront && g.area === "overworld" && g.save.boat?.aboard) drawLongboat(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right", "front"); // release 269
       // Poisoned (release 165): the Wayfarer pulses green while poison lasts.
       if (g.save.elites?.status?.poison > 0) { const pulse = .5 + .5 * Math.sin(now / 160); ctx.fillStyle = `rgba(120,230,90,${.12 + pulse * .22})`; ctx.strokeStyle = `rgba(150,255,110,${.35 + pulse * .45})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y - lift / s + .35) * s, s * (.42 + pulse * .08), s * (.55 + pulse * .08), 0, 0, 7); ctx.fill(); ctx.stroke(); }
