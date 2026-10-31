@@ -2694,6 +2694,22 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 607: an economy with consequence — 2026-10-31
+
+Tim (2026-10-31): "I have like 43000 marks... maybe 100000 cinder iron... as you get so many items... you just salvage them
+and you get so much cinder iron... the economy of the game... is almost without consequence"; he took the recommendation.
+Most of the iron came from the full pack: every drop salvaged the oldest piece for up to 4 iron.
+
+**CODE:**
+- `src/smithy.ts`: `SMITHY.salvage.iron` 1/1/2/2 by tier (was 1/2/3/4); the Smith's salvage and the pack's own salvage both use it.
+- `src/game.ts`: `ECONOMY` (`autoSalvageIron` 0; `marks` boss 6, aperture 3, common 1: was 12, 6, 1 to 3). `salvageInventoryItem(save,
+  index, auto)`: `auto` (the full pack making room) pays no iron, only glyph dust; `storeInventoryItem` passes it and pays no iron
+  for a drop it salvages outright.
+- `src/dungeon-completion.ts`: `CLEAR_MARKS` 5 / 9 (was 10 / 18).
+
+**BOUNDARY:** Costs are unchanged (the robot's iron, the Smith's prices), so the change is felt. World-beast bounties, Skylands
+and other one-off rewards are unchanged. Saves untouched.
+
 ## Release 605: a retreat you can follow — 2026-10-31
 
 Tim (2026-10-31): "when the world bosses are in retreat [you] should be able to follow them across multiple tiles. Right now, you

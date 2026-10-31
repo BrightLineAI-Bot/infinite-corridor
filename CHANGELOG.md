@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 607 — **an economy with consequence.** Salvaging now pays 1 cinder iron for common and rare pieces and 2 for epic and relic ones, and a piece salvaged only because your pack was full pays no iron at all (just glyph dust). Kills pay about half the marks they did, and so do crossing clears. What things cost is unchanged.
 - Release 605 — **a retreat you can follow.** A world boss that gives up and retreats no longer vanishes the moment you step into another section. It keeps walking home, a section at a time, and waits there a while before it goes in. Within three sections of it you see FRESH TRACKS telling you which way it went, and the Atlas pins where it is now, so you can follow it all the way to its pond, its dunes or its canyon.
 - Release 603 — **reforge results in colour.** After you reforge a piece at the Smith, the screen shows what the affix was and what it became: the new number in green if it went up, red if it went down.
 - Release 601 — **weapon spheres again.** Clearing a crossing used to pay an armor sphere every time (weapon spheres only came from the oldest crossings), so weapon spheres had all but stopped. Clears now alternate: a weapon sphere, then an armor sphere, and so on.
