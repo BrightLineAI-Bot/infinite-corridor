@@ -13,21 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**605**
+**607**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 603 | Claude | `claude/dreamy-rubin-yn6q2p` | Reforge results shown was → now, green when higher, red when lower | Building. |
-| 601 | Claude | PR #284 | Crossing clears alternate weapon and armor spheres (weapon spheres had stopped) | Merged (`r601-28ac2db9affd`). Not published. |
-| 599 | Claude | PR #283 | Robot plating re-forges after 20 s (blows land meanwhile), not instantly | Merged (`r599-434b42115ec9`). Not published. |
+| 605 | Claude | `claude/dreamy-rubin-yn6q2p` | Retreating world bosses keep walking home out of sight, tracks and an Atlas pin; lost only beyond 3 sections | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 603 | `r603-4a30ef332f21` | 2026-10-31 | With 599 and 601: robot plating re-forges after 20 s (PR #283); clears alternate weapon and armor spheres (#284); reforge results in colour (#285). The pre-publish Fable review of 597→603 found no blockers. |
 | 597 | `r597-fb99c6531765` | 2026-10-30 | With 583 to 595: firelands (PR #275); the stone skyway (#276); floating sky discs (#277); Skyland modes (#278); pillar lands (#279); chasm crossings (#280); the Torn Pages (#281); chasms of stars (#282). The pre-publish Fable review of 581→597 found no blockers. |
 | 581 | `r581-c265662f6b96` | 2026-10-29 | With 579: moonlands (PR #273); the Seven Bells and the Surveyor's Chain untracked in the Journal (#274). The pre-publish Fable review of 577→581 found no blockers. |
 | 577 | `r577-1b61c41bd892` | 2026-10-29 | With 567 to 575: world beasts move on (PR #267); world regions, dream seams, passing beasts, Spellblade and Charged Air on brawler tools (#268); the Skylands (#269); forests, frostlands and region names (#270); the Transit Lattice in views (#271); no bell left stranded (#272). The pre-publish Fable review of 565→577 found no blockers; its note that Skyland waves run while paused does not hold (the update wrapper returns while paused). |

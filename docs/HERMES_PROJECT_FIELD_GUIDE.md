@@ -2694,6 +2694,26 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 605: a retreat you can follow — 2026-10-31
+
+Tim (2026-10-31): "when the world bosses are in retreat [you] should be able to follow them across multiple tiles. Right now, you
+can only see them in one tile. So they disappear... They should be going to a place where they can retreat... the blob goes
+to... a poison pond". The retreat already walked section by section to a home (release 239), but loading any section other
+than the beast's own ended it, so a Wayfarer who fell behind or took another edge lost it at once.
+
+**CODE:**
+- `src/world-beasts.ts`: `RETREAT.lose` (3), `legSeconds` (14), `homeLinger` (120). `worldBeastsLost` first lets an
+  overworld retreat catch up (`advanceRetreat`), then ends it only when the Wayfarer is more than `lose` sections from the beast
+  (Chebyshev) or goes into a dungeon. `advanceRetreat(save, id, rx, ry)`: out of sight, one section toward home per
+  `legSeconds` of `save.playSeconds` (`retreat.movedAt`, set in beginRetreat and retreatCrossed), never stepping into the
+  Wayfarer's section unseen; in its home section it waits `homeLinger` s, then goes in (retreatEnded). `retreatsUnderWay(save)`.
+  The Void Walker and the Astral Worm keep their own retreat rules.
+- `src/game.ts`: entering a section within reach of a retreat shows FRESH TRACKS (the beast, how far, which way, and its home).
+  `src/main.ts`: the Atlas pins each retreat at the beast's current section ("<name>, retreating").
+
+**BOUNDARY:** Saves gain `retreat.movedAt` (additive; a missing one starts the clock on load). A beast seen in its section still
+walks there as before and goes into its home ground in view.
+
 ## Release 603: reforge results in colour — 2026-10-31
 
 Tim (2026-10-31): "in the gear reforge, when you reforge it... the number should be green... if it's higher than your current
