@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 603 — **reforge results in colour.** After you reforge a piece at the Smith, the screen shows what the affix was and what it became: the new number in green if it went up, red if it went down.
 - Release 601 — **weapon spheres again.** Clearing a crossing used to pay an armor sphere every time (weapon spheres only came from the oldest crossings), so weapon spheres had all but stopped. Clears now alternate: a weapon sphere, then an armor sphere, and so on.
 - Release 599 — **the robot's plating takes time to re-forge.** When the robot's plating gives out it still re-forges from 3 cinder iron, but now that takes 20 seconds, and until it is done blows reach you, softened only a little by the robot. A big stock of iron no longer makes you untouchable.
 - Release 597 — **chasms of stars.** In a chasm crossing the drop is no longer dark rock but open night sky, full of stars that glitter as you pass, and a penumbra of light moves with you while the rest fades into the dark. Step off a walkway and you fall away into the stars, and die.
