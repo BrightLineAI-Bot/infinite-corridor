@@ -22,7 +22,10 @@ export function claimDungeonPayoff(save, history, deep = false) {
     (history.deep ||= {}).rewardClaimed = true;
     for (const material of ['weaponSphere','armorSphere']) save.materials[material] = (save.materials[material] || 0) + 1;
   } else if (!deep) {
-    const material = history.generatorVersion === 2 ? 'weaponSphere' : 'armorSphere';
+    // Release 601 (Tim, 2026-10-31: "the [weapon] sphere isn't dropping"): every crossing since generator 2 paid an armor sphere,
+    // so weapon spheres all but stopped. Clears now alternate, weapon first (save.worldFlags.sphereClears counts them; additive).
+    const flags = (save.worldFlags ||= {}), n = Number(flags.sphereClears) || 0, material = history.generatorVersion === 2 || n % 2 === 0 ? 'weaponSphere' : 'armorSphere';
+    if (history.generatorVersion !== 2) flags.sphereClears = n + 1;
     save.materials[material] = (save.materials[material] || 0) + 1;
   }
   save.currency += deep ? 18 : 10;
