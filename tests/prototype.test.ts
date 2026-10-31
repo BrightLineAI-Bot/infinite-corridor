@@ -2229,7 +2229,7 @@ test("Pack spell cards do not reference an undefined inventory item", () => {
 
 test("combat grants repeatable marks with larger exceptional rewards", () => {
   const ordinary=freshSave(),g=new Game(ordinary,0),before=ordinary.currency,e=g.enemies[0];g.defeatEnemy(e);assert.ok(ordinary.currency>before);
-  const bossSave=freshSave(),bossGame=new Game(bossSave,0),boss={...bossGame.enemies[0],id:"reward-boss",boss:true,rewarded:false},bossBefore=bossSave.currency;bossGame.defeatEnemy(boss);assert.equal(bossSave.currency-bossBefore,6);/* release 613: boss marks halved (was 12) */
+  const bossSave=freshSave(),bossGame=new Game(bossSave,0),boss={...bossGame.enemies[0],id:"reward-boss",boss:true,rewarded:false},bossBefore=bossSave.currency;bossGame.defeatEnemy(boss);assert.equal(bossSave.currency-bossBefore,6);/* release 615: boss marks halved (was 12) */
 });
 
 test("weather and open-world shacks are deterministic bounded environment features", () => {
@@ -2404,12 +2404,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 613 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 615 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "613"/);assert.match(html,/styles\.css\?v=613/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v613`/);assert.match(sw,/styles\.css\?v=613/);assert.match(sw,/proving-ground-labs\.js\?v=613/);assert.match(sw,/dungeon-framework\.js\?v=613/);assert.match(sw,/renderer\.js\?v=613/);
-  assert.match(build,/release='613'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "615"/);assert.match(html,/styles\.css\?v=615/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v615`/);assert.match(sw,/styles\.css\?v=615/);assert.match(sw,/proving-ground-labs\.js\?v=615/);assert.match(sw,/dungeon-framework\.js\?v=615/);assert.match(sw,/renderer\.js\?v=615/);
+  assert.match(build,/release='615'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
   assert.doesNotThrow(()=>new Script(sw),"normal-play service worker parses");
   assert.doesNotThrow(()=>new Script(readFileSync(new URL("../proving-ground/sw.js",import.meta.url),"utf8")),"Proving Ground service worker parses");
 });
@@ -2530,7 +2530,7 @@ test("tiered inventory affixes are visible mechanical sortable and auto-salvage 
   assert.ok(epic);assert.ok(["rare","epic","relic"].includes(itemTier(epic)));assert.ok(affixValue(epic,"reach")>0);assert.ok(itemScore(epic)>epic.power*10);
   const s=freshSave();s.inventory=Array.from({length:EQUIPMENT_CAPACITY},(_,i)=>({...generateItem("full:"+i,1),power:1,tier:"common",affixes:[]}));
   const strong={...generateItem("strong",15),power:20,tier:"relic",affixes:[{id:"attack",value:7}]},iron=s.materials.cinderIron;
-  const stored=storeInventoryItem(s,strong);assert.equal(stored.stored,true);assert.equal(s.inventory.length,EQUIPMENT_CAPACITY);assert.ok(s.inventory.some(q=>q.id===strong.id));assert.equal(s.materials.cinderIron,iron);/* release 613: a full pack's salvage pays no iron */
+  const stored=storeInventoryItem(s,strong);assert.equal(stored.stored,true);assert.equal(s.inventory.length,EQUIPMENT_CAPACITY);assert.ok(s.inventory.some(q=>q.id===strong.id));assert.equal(s.materials.cinderIron,iron);/* release 615: a full pack's salvage pays no iron */
   const n=s.inventory.length,manual=salvageInventoryItem(s,0);assert.ok(manual.iron>=1);assert.equal(s.inventory.length,n-1);
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(main,/inventoryView[\s\S]*slotFilter[\s\S]*tierFilter[\s\S]*sortFilter/);assert.match(main,/describeAffixes/);
 });
