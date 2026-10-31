@@ -1477,7 +1477,7 @@ export function hasLineOfSight(enemy, player, map, width, projectile=false, allo
 }
 // Objects that do not keep Act from building a skiff at the water's edge (release 263).
 export const SHORE_PASSIVE = ["tree", "rock"];
-export const REGION_BANNER = { again: 300, kinds: { wild: "Wild country", sea: "Open sea", mountains: "Mountains", desert: "Desert", alien: "Strange growth", swamp: "Fenland", lakes: "Lake country", isles: "Islands", dream: "The Far Sleep", ashfields: "Ashfields", glasslands: "Glasslands", emberlands: "Emberlands", forest: "Forest", frost: "Frostlands", lunar: "Moonlands", volcanic: "Firelands", pillars: "Pillar lands" } }; // release 573; 579; 583
+export const REGION_BANNER = { again: 300, kinds: { wild: "Wild country", sea: "Open sea", mountains: "Mountains", desert: "Desert", alien: "Strange growth", swamp: "Fenland", lakes: "Lake country", isles: "Islands", dream: "The Far Sleep", ashfields: "Ashfields", glasslands: "Glasslands", emberlands: "Emberlands", forest: "Forest", frost: "Frostlands", lunar: "Moonlands", volcanic: "Firelands", pillars: "Pillar lands", fog: "Fog moors" } }; // release 573; 579; 583
 // Release 557 (Tim: "a lot of these weight glasses are on small little... areas... it activates the boat... or if there's
 // someone nearby, it'll talk to them... prioritize the weight glass... a hard rule... there's like an area... around the
 // way glass where... you can't make a boat"): within `reach` tiles of a Wayglass (any checkpoint, the Lighthouse Buoy too)
