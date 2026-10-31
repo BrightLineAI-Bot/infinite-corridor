@@ -171,6 +171,9 @@ export function platformPos(m, t) {
 // The raft under a Wayfarer at (x, y) at time t, or null.
 export function platformUnder(map, x, y, t) {
   const fx = x + .5, fy = y + .72, H = STARFIELD_PLATFORMS.half;
+  // Release 623 (the pre-publish review): only feet over the drop ride a raft; standing on a walkway beside a passing raft is
+  // standing on the walkway (before, the raft dragged them along and stepping away from a sunk one was a fall into nothing).
+  const w = map?.width || 32, under = map?.tiles?.[Math.floor(fy) * w + Math.floor(fx)]; if (!under?.chasm) return null;
   for (const m of map?.movers || []) { const c = platformPos(m, t); if (Math.abs(fx - c.x) <= H && Math.abs(fy - c.y) <= H) return m; }
   return null;
 }
@@ -5146,6 +5149,7 @@ export class Game {
       });
     if (type === "submersible" && !aboard(this.save)) return this.toggleMech(); // release 317: ashore, the frame calls up the robot
     if (type === "submersible" && this.save.boat?.mechSub && this.save.mech?.active) return this.toggleSeaPower(); // release 621
+    if (type === "submersible" && this.save.boat?.mechSub) { this.message = "The robot's plating gave out: it carries you as a plain submersible until you reach land."; return false; } // release 623
     if (!(c[type] > 0)) {
       this.message = "That supply is exhausted.";
       return false;
