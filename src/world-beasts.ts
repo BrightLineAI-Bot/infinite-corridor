@@ -183,7 +183,12 @@ export function noteSectionVisit(save, key) {
 export const encounterReady = (save) => ensureBeastGap(save).fresh >= Math.ceil(ENCOUNTER.newSections * mealLure(save).gap);
 export const encounterChance = (save) => ENCOUNTER.chanceScale * mealLure(save).chance;
 export function encounterMet(save) { ensureBeastGap(save).fresh = 0; }
-export const RETREAT = { search: 8, fallback: 6, speed: 2.1, inset: 1.5, fade: 1.4 };
+export const RETREAT = { search: 8, fallback: 6, speed: 2.1, inset: 1.5, fade: 1.4, lose: 3, legSeconds: 14, homeLinger: 120 };
+// Release 605 (Tim, 2026-10-31: "when the world bosses are in retreat [you] should be able to follow them across multiple tiles.
+// Right now, you can only see them in one tile... They should be going to a place where they can retreat"): a retreat is no
+// longer lost the moment the Wayfarer loads another section. Out of sight, the beast keeps walking home, one section every
+// `legSeconds` of play (save.playSeconds), and waits in its home section `homeLinger` s before going in. It escapes only when
+// the Wayfarer is more than `lose` sections from it (or goes into a dungeon). game.ts pins it on the Atlas and leaves tracks.
 // Pursuit (release 259; Tim, 2026-10-21: "they should pursue you out of the tile that you meet them... The blob can just
 // take one", then "three tiles max... it'll chase you 2 tiles, and then it'll stop there and then it'll chase you 1 more...
 // If you don't wanna fight it within three tiles, you're obviously running away"). A fighting world beast follows the
@@ -227,7 +232,7 @@ export function beginRetreat(save, id, rx, ry, probe) {
     home = ring.find((c) => !(c.rx === 0 && c.ry === 0) && H.section(probe(c.rx, c.ry))) || null;
   }
   const away = Object.values(SIDES)[hashSeed(`${save.seed}:beast-away:${id}:${q.cycle}`) % 4];
-  q.active.retreat = { home: home ? { ...home, found: true } : { rx: rx + away[0] * RETREAT.fallback, ry: ry + away[1] * RETREAT.fallback, found: false }, side: null, legs: 0 };
+  q.active.retreat = { home: home ? { ...home, found: true } : { rx: rx + away[0] * RETREAT.fallback, ry: ry + away[1] * RETREAT.fallback, found: false }, side: null, legs: 0, movedAt: Number(save.playSeconds) || 0 };
   return { message: home ? B.flee : B.flee.replace(/toward [^.]*\./, "into the distance."), home: q.active.retreat.home };
 }
 // The way out of a section toward its home: the side it leaves by, or null when this is the home section.
@@ -261,7 +266,7 @@ export function retreatTarget(r, id, map, rx, ry, exits, from) {
 // The beast crossed out of a section: it is now in the next one, coming in from the opposite side.
 export function retreatCrossed(save, id, side, entry = null, actor = null) {
   const q = save.worldBeasts[id].active, [dx, dy] = SIDES[side];
-  q.rx += dx; q.ry += dy; q.retreat.side = OPPOSITE[side]; q.retreat.legs++;
+  q.rx += dx; q.ry += dy; q.retreat.side = OPPOSITE[side]; q.retreat.legs++; q.retreat.movedAt = Number(save.playSeconds) || 0;
   if (id === "voidWalker" && validRetreatEntry(entry, q.retreat.side)) q.retreat.entry = { x: entry.x, y: entry.y };
   else delete q.retreat.entry;
   if (id === "voidWalker" && validRetreatVitals(actor)) q.retreat.vitals = { hp: actor.hp, maxHp: actor.maxHp, damage: actor.damage };
@@ -276,8 +281,31 @@ export function retreatEnded(save, id) {
 // in its saved source area/leg until actually reaching its door; unloaded areas are not simulated.
 export function worldBeastsLost(save, area, rx, ry, dungeonId = null) {
   ensureWorldBeasts(save, false); const lost = [];
-  for (const id of WORLD_BEAST_IDS) { const a = save.worldBeasts[id].active; if (a?.retreat && id !== "voidWalker" && id !== "astralWorm" && (a.dungeon ? area !== "dungeon" || dungeonId !== a.dungeon : area !== "overworld" || a.rx !== rx || a.ry !== ry)) { retreatEnded(save, id); lost.push(id); } }
+  for (const id of WORLD_BEAST_IDS) { const a = save.worldBeasts[id].active; if (!a?.retreat || id === "voidWalker" || id === "astralWorm") continue;
+    if (!a.dungeon && area === "overworld") { advanceRetreat(save, id, rx, ry); if (!save.worldBeasts[id].active) { lost.push(id); continue; } } // release 605
+    const b = save.worldBeasts[id].active, far = Math.max(Math.abs(b.rx - rx), Math.abs(b.ry - ry));
+    if (b.dungeon ? area !== "dungeon" || dungeonId !== b.dungeon : area !== "overworld" || far > RETREAT.lose) { retreatEnded(save, id); lost.push(id); } }
   return lost;
+}
+// Release 605: an unseen retreat catches up with the time that passed: one section per RETREAT.legSeconds toward home, then
+// RETREAT.homeLinger s waiting there before it goes in (retreatEnded). It never walks into the section the Wayfarer is in:
+// it waits at the edge, so arriving there shows it.
+export function advanceRetreat(save, id, rx, ry) {
+  const q = save.worldBeasts?.[id]?.active, r = q?.retreat; if (!r || q.dungeon) return null;
+  const now = Number(save.playSeconds) || 0; if (!Number.isFinite(r.movedAt)) r.movedAt = now;
+  let moved = 0;
+  for (let i = 0; i < 64; i++) {
+    const side = retreatSide(r, q.rx, q.ry);
+    if (!side) { if (now - r.movedAt >= RETREAT.homeLinger && (q.rx !== rx || q.ry !== ry)) { retreatEnded(save, id); return { gone: true, moved }; } break; }
+    if (now - r.movedAt < RETREAT.legSeconds) break;
+    const [dx, dy] = SIDES[side]; if (q.rx + dx === rx && q.ry + dy === ry) break; // it does not step into the Wayfarer's section unseen
+    const at = r.movedAt; retreatCrossed(save, id, side); r.movedAt = at + RETREAT.legSeconds; moved++;
+  }
+  return { gone: false, moved };
+}
+// Release 605: the retreats under way (for the Atlas and for tracks): [{ id, rx, ry, home }].
+export function retreatsUnderWay(save) {
+  return WORLD_BEAST_IDS.filter((id) => id !== "voidWalker" && id !== "astralWorm").map((id) => ({ id, q: save.worldBeasts?.[id]?.active })).filter(({ q }) => q?.retreat && !q.dungeon && Number.isInteger(q.rx)).map(({ id, q }) => ({ id, rx: q.rx, ry: q.ry, home: q.retreat.home }));
 }
 // Release 259 pursuit. `canPursue` says whether beast `id` may follow the Wayfarer out of (rx, ry) by (dx, dy) now.
 export function canPursue(save, id, rx, ry, dx, dy) {

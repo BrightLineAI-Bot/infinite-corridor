@@ -200,7 +200,8 @@ test('out of patience, a beast picks the nearest home section and heads for it; 
   retreatCrossed(s, 'morphingBlob', 'east'); const q2 = s.worldBeasts.morphingBlob.active; assert.deepEqual([q2.rx, q2.ry, q2.retreat.side], [6, 5, 'west']);
   assert.deepEqual(worldBeastsLost(s, 'overworld', 6, 5), [], 'followed: still there');
   const spawn = worldBeastFor(s, generateRegion(s.seed, 6, 5), 6, 5); assert.ok(spawn.retreating); assert.ok(spawn.x < 3, 'it comes in by the west gate');
-  assert.deepEqual(worldBeastsLost(s, 'overworld', 6, 6), ['morphingBlob'], 'not followed: gone');
+  assert.deepEqual(worldBeastsLost(s, 'overworld', 6, 6), [], 'release 605: a neighbouring section keeps the trail'); assert.ok(s.worldBeasts.morphingBlob.active);
+  assert.deepEqual(worldBeastsLost(s, 'overworld', 6, 6 + RETREAT.lose + 1), ['morphingBlob'], 'too far from it: gone');
   assert.equal(s.worldBeasts.morphingBlob.active, null); assert.equal(s.worldBeasts.morphingBlob.escaped, 1); assert.equal(s.worldBeasts.morphingBlob.cycle, 5);
   const t = freshSave(); t.worldBeasts = { tremorWorm: { active: { rx: 0, ry: 9, tries: 0 } } }; ensureWorldBeasts(t);
   const far = beginRetreat(t, 'tremorWorm', 0, 9, () => ({ biome: 'ash' })); assert.equal(far.home.found, false); assert.equal(Math.abs(far.home.rx) + Math.abs(far.home.ry - 9), RETREAT.fallback, 'no home in reach: it flees into the distance');
@@ -236,7 +237,7 @@ test('in a real game: the Blob runs out of patience, flees through the gate, and
     const side = b.fleeTo.side; assert.ok(side); const [dx, dy] = { east: [1, 0], west: [-1, 0], south: [0, 1], north: [0, -1] }[side];
     g.transitionSection(dx, dy);
     const again = g.enemies.find((e) => e.worldBeast === 'morphingBlob' && !e.dead); assert.ok(again && again.retreating, 'followed: there it is, still fleeing');
-    g.transitionSection(-dx, -dy); assert.equal(s.worldBeasts.morphingBlob.active, null, 'turn back and it is gone');
+    g.transitionSection(-dx, -dy); assert.ok(s.worldBeasts.morphingBlob.active, 'release 605: turn back and the trail is still there');
   }
   assert.ok(before >= 0);
 });
