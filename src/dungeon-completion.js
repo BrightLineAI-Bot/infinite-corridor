@@ -14,6 +14,7 @@ export function recordDungeonBossDefeat(history, enemy) {
   clear.completed = clear.required.length > 0 && clear.required.every(id => clear.defeated.includes(id));
   return clear.completed;
 }
+export const CLEAR_MARKS = { plain: 5, deep: 9 };
 export function claimDungeonPayoff(save, history, deep = false) {
   const clear = history.combatClear;
   if (!clear?.completed || clear.rewardClaimed) return false;
@@ -28,7 +29,7 @@ export function claimDungeonPayoff(save, history, deep = false) {
     if (history.generatorVersion !== 2) flags.sphereClears = n + 1;
     save.materials[material] = (save.materials[material] || 0) + 1;
   }
-  save.currency += deep ? 18 : 10;
+  save.currency += deep ? CLEAR_MARKS.deep : CLEAR_MARKS.plain; // release 607: was 18 / 10
   save.consumables.restorativeDraught = (save.consumables.restorativeDraught || 0) + 1;
   return true;
 }

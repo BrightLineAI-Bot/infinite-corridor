@@ -8,13 +8,13 @@
 // - Socket: one extra glyph socket on a weapon, tool or armor (item.extraSockets, once per item).
 // - Masterwork: one rank past the tier's upgrade cap (item.masterwork, once per item; items.ts itemCap).
 // The item fields are additive and kept by normalizeItemUpgrade. Pure rules: no DOM.
-import { hashSeed, rng } from "./random.js?v=r603-4a30ef332f21";
-import { AFFIX_POOLS, rollAffixValue, itemTier, ITEM_TIERS, normalizeItemUpgrade } from "./items.js?v=r603-4a30ef332f21";
-import { normalizeSockets, socketCount, GLYPHS } from "./glyphs.js?v=r603-4a30ef332f21";
+import { hashSeed, rng } from "./random.js?v=r611-b1bdde7eef1f";
+import { AFFIX_POOLS, rollAffixValue, itemTier, ITEM_TIERS, normalizeItemUpgrade } from "./items.js?v=r611-b1bdde7eef1f";
+import { normalizeSockets, socketCount, GLYPHS } from "./glyphs.js?v=r611-b1bdde7eef1f";
 
 export const SMITHY = {
   unlock: { salvage: 1, reforge: 1, socket: 2, masterwork: 3 },
-  salvage: { iron: { common: 1, rare: 2, epic: 3, relic: 4 }, sphereChance: .15 },
+  salvage: { iron: { common: 1, rare: 1, epic: 2, relic: 2 }, sphereChance: .15 }, // release 607 (Tim: the economy is "almost without consequence"): was 1/2/3/4
   reforge: { iron: 3, marks: 40 },
   socket: { iron: 4, lumenDust: 6 },
   masterwork: { iron: 12, marks: 120 },
