@@ -13,22 +13,20 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**613**
+**615**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 611 | Claude | `claude/dreamy-rubin-yn6q2p` | The Wayfarer wading lava is not relocated on pause/crossing/resume (review of 609) | Building. |
-| 609 | Claude | PR #288 | Codex play-test fixes (fatal falls in the robot, monsters on lethal ground, retreat homes and sanctuaries, boost resume) and the 605 retreat clock | Merged (`r609-c98c4e102e7f`). Not published: its review found the lava-wading relocation; fixed in 611. |
-| 607 | Claude | PR #287 | Economy: salvage 1/1/2/2 iron, no iron from a full pack, kill and clear marks halved | Merged. Not published. |
-| 605 | Claude | PR #286 | Retreating world bosses keep walking home out of sight, tracks and an Atlas pin; lost only beyond 3 sections | Merged (`r605-2ea06a6bca4f`). Not published: its pre-publish review found the retreat clock lost on every load; fixed in 609. |
+| 613 | Claude | `claude/dreamy-rubin-yn6q2p` | Starfield dungeons (renamed chasm crossings) and moving stone rafts over their drops | Building. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 611 | `r611-b1bdde7eef1f` | 2026-10-31 | With 605 to 609: followable retreats (PR #286); the economy (#287); the Codex play-test fixes and the 605 retreat clock (#288); the Wayfarer may stand on open lava (#289). The pre-publish Fable reviews found the 605 clock bug (fixed in 609) and the lava relocation (fixed in 611); the review of 603→611 found no blockers. |
 | 603 | `r603-4a30ef332f21` | 2026-10-31 | With 599 and 601: robot plating re-forges after 20 s (PR #283); clears alternate weapon and armor spheres (#284); reforge results in colour (#285). The pre-publish Fable review of 597→603 found no blockers. |
 | 597 | `r597-fb99c6531765` | 2026-10-30 | With 583 to 595: firelands (PR #275); the stone skyway (#276); floating sky discs (#277); Skyland modes (#278); pillar lands (#279); chasm crossings (#280); the Torn Pages (#281); chasms of stars (#282). The pre-publish Fable review of 581→597 found no blockers. |
 | 581 | `r581-c265662f6b96` | 2026-10-29 | With 579: moonlands (PR #273); the Seven Bells and the Surveyor's Chain untracked in the Journal (#274). The pre-publish Fable review of 577→581 found no blockers. |

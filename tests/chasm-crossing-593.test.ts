@@ -19,7 +19,7 @@ test('about one crossing in eight is a chasm, decided once per crossing', () => 
 
 test('a chasm crossing: walls become a lethal drop, every floor tile and everything placed is where it was', () => {
   for (const id of ids(true, 4)) {
-    const s = save(), m = generatePinnedDungeon(s, id); assert.equal(s.consequences.dungeons[id].chasm, CHASM.version); assert.equal(m.chasm, CHASM.version); assert.match(m.name, / · Chasm$/);
+    const s = save(), m = generatePinnedDungeon(s, id); assert.equal(s.consequences.dungeons[id].chasm, CHASM.version); assert.equal(m.chasm, CHASM.version); assert.match(m.name, /(?: · Chasm| · Starfield)$/ /* release 613: renamed Starfield */);
     const plain = save(); plain.consequences.dungeons[id] = { chasm: 0 }; const p = generatePinnedDungeon(plain, id);
     assert.equal(m.tiles.length, p.tiles.length); let drop = 0, kept = 0;
     m.tiles.forEach((t, i) => { const q = p.tiles[i]; if (!q.blocked) assert.deepEqual(t, q, 'floors are untouched'); else if (t.chasm) { drop++; assert.ok(LETHAL_KINDS.has(t.kind) && !t.blocked); } else kept++; });
