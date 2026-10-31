@@ -2694,6 +2694,20 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 601: weapon spheres again — 2026-10-31
+
+Tim (2026-10-31): the weapon sphere "isn't dropping... I'm getting all the other items". His save held 8 weapon spheres to 159
+armor spheres. The cause: a crossing's clear payoff (dungeon-completion.ts) paid a weapon sphere only for generator 2 crossings,
+and every crossing generated since (generators 3 to 5) paid an armor sphere.
+
+**CODE:**
+- `src/dungeon-completion.ts` `claimDungeonPayoff`: an ordinary clear now alternates weapon and armor spheres, weapon first,
+  counted in `save.worldFlags.sphereClears` (additive). A generator 2 crossing still pays a weapon sphere and does not move the
+  count. Deep clears still pay one of each.
+
+**BOUNDARY:** The other sphere sources (digging, Skylands, salvage, smelting, the Smith's Note, hunts, deep stories) are unchanged.
+No save schema change beyond the one counter.
+
 ## Release 599: re-forging the robot's plating takes time — 2026-10-30
 
 Tim (2026-10-30) found nothing in a dungeon could hurt him. His save showed the cause: he was in the robot with 37,667 cinder

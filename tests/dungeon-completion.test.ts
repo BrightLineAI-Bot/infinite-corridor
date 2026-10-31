@@ -15,7 +15,7 @@ test('completion requires all bosses across levels and awards existing progressi
   const before=save.currency;
   assert.equal(claimDungeonPayoff(save,history),true);
   assert.equal(save.currency,before+10);
-  assert.equal(save.materials.armorSphere,1);
+  assert.equal(save.materials.weaponSphere,1); // release 601: clears alternate, weapon first
   const restored=JSON.parse(JSON.stringify(history));
   assert.equal(claimDungeonPayoff(save,restored),false);
   assert.equal(installCompletionExit(map,restored,a).completionExit,true);
