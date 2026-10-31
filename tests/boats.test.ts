@@ -35,7 +35,7 @@ function atDock() {
 const drive = (g, frames, x, y = 0, dt = 1 / 30) => { const input = { state: { x, y }, consume: () => false }; for (let i = 0; i < frames; i++) g.update(dt, input, 10000 + i * dt * 1000); };
 
 test('landscape versions 1 and 2 stay byte-identical now that version 3 adds docks', () => {
-  assert.equal(LANDSCAPE_VERSION, 10); // release 569: world regions; 573: forests and frostlands; 579: moonlands; versions 1 and 2 still byte for byte
+  assert.equal(LANDSCAPE_VERSION, 11); // release 569: world regions; 573: forests and frostlands; 579: moonlands; versions 1 and 2 still byte for byte
   for (const [v, want] of [[1, '3b65d401100ea1a45f854b20f5b6d806a91c9053740f85bc72776c62f0da8dc2'], [2, '67471e143190befe0e70e2d75a99975acccfeaadfb68a685bfb9c49aecce542b']]) {
     const h = createHash('sha256');
     for (const seed of ['LANDTEST', 'CINDER-VERGE-47']) for (let ry = -6; ry <= 6; ry++) for (let rx = -6; rx <= 6; rx++) {

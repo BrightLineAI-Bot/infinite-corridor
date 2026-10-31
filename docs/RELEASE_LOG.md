@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**629**
+**631**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 627 | Claude | `claude/dreamy-rubin-yn6q2p` | Ten narrative threads (the Lamplighter's Round … What the Sleeper Dreams) | Building. |
+| 629 | Claude | `claude/dreamy-rubin-yn6q2p` | Five more palette regions in landscape version 11: petrified woods, savanna, reef flats, amberwood, obsidian fields | Building. |
+| 627 | Claude | PR #297 | Ten narrative threads (the Lamplighter's Round … What the Sleeper Dreams) | Merged (`r627-d3bc705285e1`). Not published. |
 | 625 | Claude | PR #296 | Five palette regions in landscape version 10: jungle, carapace wastes, salt marsh, crystal fields, sporewood | Merged (`r625-146356a68991`). Not published. |
 | 623 | Claude | PR #295 | Rafts carry only riders over the drop (the blocker from the pre-publish review of 611→621); system-audit fixes | Merged (`r623-2501e60705f7`). Published in r623. |
 | 621 | Claude | PR #294 | The robot at sea: no skiff left behind, the power armor hovers and switches on at sea; 619's wading removed | Merged (`r621-d4083ffe80a4`). Published in r623. |

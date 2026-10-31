@@ -2694,6 +2694,23 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 629: five more palette regions — 2026-10-31
+
+The second batch of Tim's region blitz (passes 6 to 10).
+
+**CODE:**
+- `src/landscape.ts`: `LANDSCAPE_VERSION` 11. `REGIONS_V11` rolls again (own hash, `region-site:v11`) over regions still wild or
+  bare plains after version 10: petrified .1, savanna .12, reef .08, amber .1, obsidian .08. `regionTile` caches version 11 apart.
+  `PALETTE_REGIONS` gains five rows marked `version: 11`; `applyPaletteRegions` now takes the section's version (rows newer than
+  it are skipped; version 10 output is unchanged). From version 11 no palette block stands beside a usable object, and while open
+  ground the plaza cannot reach touches a block, the shortest run of blocks to it (a breadth-first search over block tiles, a few
+  rounds of 1024 tiles) turns back to ground. Names, leans, `REGION_GROUNDS` for each.
+- `src/landscape-render.ts`: five `PALETTE_PAINT` rows, a "leaves" ground mark and block shapes trunk, acacia, coral, autumn and
+  shard. `src/atlas-colors.ts`, `src/game.ts` REGION_BANNER.
+
+**BOUNDARY:** Sections already seen keep their version (1 to 10); 3240 sections of versions 2 to 10 compared with `main`, none
+differ. No weather, no per-frame cost, no save change.
+
 ## Release 627: ten threads — 2026-10-31
 
 Tim (2026-10-31): "do your narrative passes, but maybe do 10 sets of narrative... condense them into today"; and from the daily

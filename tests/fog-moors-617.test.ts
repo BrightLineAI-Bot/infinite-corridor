@@ -15,7 +15,7 @@ const moor = (x, y) => make(x, y).tiles.filter((t) => t.kind === 'fogMoor').leng
 const sections = (n, ok = moor) => { const out = []; for (let x = 14; x < 200 && out.length < n; x++) for (let y = 14; y < 200 && out.length < n; y += 3) { const r = sectionRegion(SEED, x, y, 9); if (r.type === 'fog' && r.hold >= 1 && ok(x, y)) out.push([x, y]); } return out; };
 
 test('version 9 turns some still-wild regions into fog moors; every other region keeps its version 8 type (625: version 10 is checked in palette-regions-625)', () => {
-  assert.equal(LANDSCAPE_VERSION, 10); const types = new Set();
+  assert.equal(LANDSCAPE_VERSION, 11); const types = new Set();
   for (let x = 14; x < 120; x += 2) for (let y = 14; y < 120; y += 2) { const a = sectionRegion(SEED, x, y, 8), b = sectionRegion(SEED, x, y, 9); types.add(b.type); assert.equal(a.id, b.id); if (a.type !== 'wild') assert.equal(b.type, a.type); else assert.ok(['wild', 'fog'].includes(b.type)); }
   assert.ok(types.has('fog') && types.has('wild'), [...types].join());
   const r = sectionRegion(SEED, ...sections(1, () => true)[0], 9); assert.ok(REGION_NAMES.nouns.fog.some((n) => regionName(SEED, r).endsWith(` ${n}`)));
