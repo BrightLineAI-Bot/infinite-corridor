@@ -2694,6 +2694,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 611: the Wayfarer may stand where creatures may not — 2026-10-31
+
+The pre-publish Fable review of 603→609 found that 609's rule (open lethal ground is no footing) also made the Wayfarer standing
+on it "stranded": the robot wading lava was moved to firm ground on every pause, section crossing and resume, against the exact
+resume invariant.
+
+**CODE:** `src/game.ts`: `footprintOpen(..., standOnLethal)` skips the 609 rule. `relocateIfStranded` passes it for the Wayfarer
+(`player.isPlayer`, now set from the first frame), and `settleDungeonArrival` for its arrival floor, so both behave as before
+609. Creatures are still kept off open lethal ground.
+
+**BOUNDARY:** Placement only; no save change.
+
 ## Release 609: the Codex play-test fixes — 2026-10-31
 
 Codex's play-test of r603 (Tim asked for it; report and failing tests in tests/playtest-2026-10-31-*.test.ts, now part of the

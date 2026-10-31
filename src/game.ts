@@ -545,13 +545,13 @@ export function tileOpen(map, width, x, y) {
   }
   return true;
 }
-export function footprintOpen(map, width, x, y, allowLethalTerrain=false, allowMarineTerrain=false, allowVoid=false) { /* release 509: allowVoid, the robot into the Far Sleep's star-voids (MECH_VOID) */
+export function footprintOpen(map, width, x, y, allowLethalTerrain=false, allowMarineTerrain=false, allowVoid=false, standOnLethal=false) { /* release 609: standOnLethal, where the Wayfarer may already stand (wading lava in the robot, over a drop mid-boost) */ /* release 509: allowVoid, the robot into the Far Sleep's star-voids (MECH_VOID) */
   const left=x+.24,right=x+.76,top=y+.5,bottom=y+.88,height=map.tiles.length/width,overlaps=(a,b,c,d)=>right>a&&left<b&&bottom>c&&top<d;
   for(let ty=Math.floor(top);ty<=Math.floor(bottom-1e-6);ty++)for(let tx=Math.floor(left);tx<=Math.floor(right-1e-6);tx++){
     if(tx<0||ty<0||tx>=width||ty>=height)return false;
     const tile=map.tiles[ty*width+tx],marine=allowMarineTerrain&&isMarineTile(tile),lethal=allowLethalTerrain&&["canyon","river","dungeonWater",...DEEP_WATER].includes(tile?.kind);
     if(!tile||marine&&!marineTileOpen(tile)||tile.blocked&&!lethal&&!marine&&!(allowVoid&&isDreamVoid(tile)))return false;
-    if(!allowLethalTerrain&&!tile.blocked&&!marine&&LETHAL_KINDS.has(tile.kind))return false; // release 609 (Codex play-test, issue 2): open lethal ground (a Starfield drop, lava, deep water) is no footing for anything that does not fall in on purpose
+    if(!allowLethalTerrain&&!standOnLethal&&!tile.blocked&&!marine&&LETHAL_KINDS.has(tile.kind))return false; // release 609 (Codex play-test, issue 2): open lethal ground (a Starfield drop, lava, deep water) is no footing for anything that does not fall in on purpose
     if(tile.perch&&!allowLethalTerrain)return false; // release 265: a stone block is a perch only the Wayfarer (and fliers) may step onto
     if(!["shackWall","districtWall"].includes(tile.structure)||!tile.wallSides?.length)continue;
     const thickness=.22;
@@ -605,7 +605,7 @@ export function nearestOpenFootprint(map, width, at, limit = 12) {
   return null;
 }
 export function relocateIfStranded(entity, map, width) {
-  if (!entity || footprintOpen(map, width, entity.x, entity.y)) return false;
+  if (!entity || footprintOpen(map, width, entity.x, entity.y, false, false, false, entity.isPlayer === true)) return false; // release 609: the Wayfarer on open lethal ground (wading lava in the robot) is not stranded; only creatures are kept off it
   const height = Math.floor(map.tiles.length / width),
     sx = Math.floor(entity.x),
     sy = Math.floor(entity.y),
@@ -1498,17 +1498,17 @@ export function settleDungeonArrival(map, width, at, enemies, guardians = true) 
   const height = Math.floor((map?.tiles?.length || 0) / width); if (!height) return null;
   const clampX = (x) => Math.max(0, Math.min(width - 1, Math.round(Number.isFinite(x) ? x : 0))), clampY = (y) => Math.max(0, Math.min(height - 1, Math.round(Number.isFinite(y) ? y : 0)));
   const ref = map.entry || map.hub || at, start = { x: clampX(ref.x), y: clampY(ref.y) };
-  if (!footprintOpen(map, width, start.x, start.y)) relocateIfStranded(start, map, width);
+  if (!footprintOpen(map, width, start.x, start.y, false, false, false, true)) relocateIfStranded(start, map, width); // release 609: the Wayfarer's arrival floor as before 609
   const seen = new Set([start.y * width + start.x]), queue = [[start.x, start.y]], floor = [];
   for (let k = 0; k < queue.length; k++) {
-    const [x, y] = queue[k]; if (!footprintOpen(map, width, x, y)) continue; floor.push([x, y]);
+    const [x, y] = queue[k]; if (!footprintOpen(map, width, x, y, false, false, false, true)) continue; floor.push([x, y]);
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, i = ny * width + nx; if (nx < 0 || ny < 0 || nx >= width || ny >= height || seen.has(i)) continue; seen.add(i); queue.push([nx, ny]); }
   }
   if (!floor.length) return null;
   const onFloor = new Set(floor.map(([x, y]) => y * width + x)), guards = guardians ? (enemies || []).filter((e) => !e.dead && (isDungeonGuardian(e) || isCrossingGuardian(e))) : [];
   const clear = (x, y) => guards.every((e) => Math.hypot(e.x - x, e.y - y) >= ARRIVAL.clear);
   const inside = Number.isFinite(at.x) && Number.isFinite(at.y) && at.x >= 0 && at.y >= 0 && at.x <= width - 1 && at.y <= height - 1;
-  if (inside && footprintOpen(map, width, at.x, at.y) && onFloor.has(Math.round(at.y) * width + Math.round(at.x)) && clear(at.x, at.y)) return null;
+  if (inside && footprintOpen(map, width, at.x, at.y, false, false, false, true) && onFloor.has(Math.round(at.y) * width + Math.round(at.x)) && clear(at.x, at.y)) return null;
   let best = null, wide = null;
   for (const [x, y] of floor) {
     const d = Math.hypot(x - (Number.isFinite(at.x) ? at.x : start.x), y - (Number.isFinite(at.y) ? at.y : start.y));
@@ -1668,6 +1668,7 @@ export class Game {
     this.rx = s.rx || 0;
     this.ry = s.ry || 0;
     this.player = {
+      isPlayer: true, // release 609: known as the Wayfarer from the first frame (relocateIfStranded)
       x: s.x,
       y: s.y,
       hp: s.playerRuntime.hp,
