@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 609 — **fixes from the Codex play-test.** Walking off a Starfield drop or falling four levels now kills you even in the robot. Monsters no longer wander out onto lethal ground. A retreating world boss that reaches a "home" without its ground (no pond, no glass) looks further instead of vanishing there, and it walks through towns instead of getting stuck at their edge. A retreating boss out of sight now really does keep walking home (it stood still before). Reloading no longer re-arms an emptied robot boost.
 - Release 607 — **an economy with consequence.** Salvaging now pays 1 cinder iron for common and rare pieces and 2 for epic and relic ones, and a piece salvaged only because your pack was full pays no iron at all (just glyph dust). Kills pay about half the marks they did, and so do crossing clears. What things cost is unchanged.
 - Release 605 — **a retreat you can follow.** A world boss that gives up and retreats no longer vanishes the moment you step into another section. It keeps walking home, a section at a time, and waits there a while before it goes in. Within three sections of it you see FRESH TRACKS telling you which way it went, and the Atlas pins where it is now, so you can follow it all the way to its pond, its dunes or its canyon.
 - Release 603 — **reforge results in colour.** After you reforge a piece at the Smith, the screen shows what the affix was and what it became: the new number in green if it went up, red if it went down.

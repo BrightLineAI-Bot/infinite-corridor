@@ -261,7 +261,24 @@ export function retreatTarget(r, id, map, rx, ry, exits, from) {
   }
   const H = BEAST_HOMES[WORLD_BEASTS[id]?.home] || null, spots = !r.home.found || !H ? [] : H.object ? (map.objects || []).filter(H.object) : (map.tiles || []).filter(H.tile);
   const best = spots.sort((a, b) => Math.hypot(a.x - from.x, a.y - from.y) - Math.hypot(b.x - from.x, b.y - from.y))[0];
-  return { x: best ? best.x : (Number(map?.width) || 32) / 2 - .5, y: best ? best.y : Math.floor((map?.tiles?.length || 1024) / (Number(map?.width) || 32)) / 2 - .5, side: null, home: true };
+  return { x: best ? best.x : (Number(map?.width) || 32) / 2 - .5, y: best ? best.y : Math.floor((map?.tiles?.length || 1024) / (Number(map?.width) || 32)) / 2 - .5, side: null, home: true, ...(r.home.found && H && !best ? { noGround: true } : {}) }; // release 609: a claimed home with none of its ground
+}
+// Release 609 (Codex play-test, issue 3): the home it chose turned out to hold none of its ground (the section's landscape is laid
+// over the bare region the choice looked at). It looks again from here, never at a section already tried, up to `replans` times;
+// after that it heads off into the distance (home not found), and says so.
+export const RETREAT_REPLAN = { replans: 3 };
+export function replanRetreat(save, id, rx, ry, probe) {
+  const q = save.worldBeasts?.[id]?.active, r = q?.retreat, B = WORLD_BEASTS[id], H = BEAST_HOMES[B?.home]; if (!r || !H) return { message: "" };
+  r.tried = [...new Set([...(r.tried || []), `${rx},${ry}`])]; r.replans = (r.replans || 0) + 1;
+  let home = null;
+  if (r.replans <= RETREAT_REPLAN.replans) for (let d = 1; d <= RETREAT.search && !home; d++) {
+    const ring = []; for (let dx = -d; dx <= d; dx++) for (const dy of new Set([d - Math.abs(dx), -(d - Math.abs(dx))])) ring.push({ rx: rx + dx, ry: ry + dy });
+    ring.sort((a, b) => hashSeed(`${save.seed}:beast-home:${id}:${a.rx},${a.ry}`) - hashSeed(`${save.seed}:beast-home:${id}:${b.rx},${b.ry}`));
+    home = ring.find((c) => !(c.rx === 0 && c.ry === 0) && !r.tried.includes(`${c.rx},${c.ry}`) && H.section(probe(c.rx, c.ry))) || null;
+  }
+  const away = Object.values(SIDES)[hashSeed(`${save.seed}:beast-away:${id}:${q.cycle}:${r.replans}`) % 4];
+  r.home = home ? { ...home, found: true } : { rx: rx + away[0] * RETREAT.fallback, ry: ry + away[1] * RETREAT.fallback, found: false };
+  return { message: home ? `${B.name} finds no ${H.name} here, and turns to look further.` : `${B.name} finds no ${H.name} here, and heads off into the distance.`, home: r.home };
 }
 // The beast crossed out of a section: it is now in the next one, coming in from the opposite side.
 export function retreatCrossed(save, id, side, entry = null, actor = null) {
@@ -377,7 +394,10 @@ function cleanRetreat(r) {
   if (!r || typeof r !== "object" || !r.home) return null;
   if (typeof r.home.dungeon === "string") return { home: { dungeon: r.home.dungeon, found: !!r.home.found }, side: null, legs: 0 }; // release 249: a retreat inside a dungeon
   if (!Number.isInteger(r.home.rx) || !Number.isInteger(r.home.ry)) return null;
-  return { home: { rx: r.home.rx, ry: r.home.ry, found: !!r.home.found }, side: Object.hasOwn(OPPOSITE, r.side) ? r.side : null, legs: Math.max(0, Math.floor(Number(r.legs) || 0)), ...(validRetreatEntry(r.entry, r.side) ? { entry: { x: r.entry.x, y: r.entry.y } } : {}), ...(validRetreatVitals(r.vitals) ? { vitals: { hp: r.vitals.hp, maxHp: r.vitals.maxHp, damage: r.vitals.damage } } : {}) };
+  return { home: { rx: r.home.rx, ry: r.home.ry, found: !!r.home.found }, side: Object.hasOwn(OPPOSITE, r.side) ? r.side : null, legs: Math.max(0, Math.floor(Number(r.legs) || 0)), ...(validRetreatEntry(r.entry, r.side) ? { entry: { x: r.entry.x, y: r.entry.y } } : {}), ...(validRetreatVitals(r.vitals) ? { vitals: { hp: r.vitals.hp, maxHp: r.vitals.maxHp, damage: r.vitals.damage } } : {}),
+    // Release 609: the out-of-sight clock (605) and the homes already tried (609) survive every load; 605 dropped `movedAt` here, so
+    // an unseen retreat never moved (the pre-publish review of 605 found it).
+    ...(Number.isFinite(r.movedAt) ? { movedAt: Number(r.movedAt) } : {}), ...(Array.isArray(r.tried) ? { tried: r.tried.filter((k) => typeof k === "string" && /^-?\d+,-?\d+$/.test(k)).slice(-16) } : {}), ...(Number(r.replans) > 0 ? { replans: Math.floor(Number(r.replans)) } : {}) };
 }
 // A retreating beast's spawn: it comes in by the gate on its entry side (or stands mid-section, where it fled from).
 function fleeSpawn(save, here, rx, ry) {
