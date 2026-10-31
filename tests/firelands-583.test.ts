@@ -13,7 +13,7 @@ const sections = (n) => { const out = []; for (let x = 14; x < 160 && out.length
 const make = (x, y, version = 7) => { const m = generateRegion(SEED, x, y); applyLandscape(m, SEED, x, y, { version }); return m; };
 
 test('version 7 turns some still-wild regions volcanic; every other region keeps its version 6 type', () => {
-  assert.equal(LANDSCAPE_VERSION, 9); const types = new Set();
+  assert.equal(LANDSCAPE_VERSION, 10); const types = new Set();
   for (let x = 14; x < 120; x += 2) for (let y = 14; y < 120; y += 2) {
     const a = sectionRegion(SEED, x, y, 6), b = sectionRegion(SEED, x, y, 7); types.add(b.type);
     assert.equal(a.id, b.id); if (a.type !== 'wild') assert.equal(b.type, a.type); else assert.ok(['wild', 'volcanic'].includes(b.type));
