@@ -13,25 +13,27 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**627**
+**629**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 625 | Claude | `claude/dreamy-rubin-yn6q2p` | Five palette regions in landscape version 10: jungle, carapace wastes, salt marsh, crystal fields, sporewood | Building. |
-| 623 | Claude | PR #295 | Rafts carry only riders over the drop (the blocker from the pre-publish review of 611→621); system-audit fixes | Merged (`r623-2501e60705f7`). Not published. |
-| 621 | Claude | PR #294 | The robot at sea: no skiff left behind, the power armor hovers and switches on at sea; 619's wading removed | Merged (`r621-d4083ffe80a4`). Not published: the pre-publish review found the raft blocker fixed in 623. |
-| 619 | Claude | PR #293 | Wading: water round the Wayfarer's legs in shoals, mist-pools and mires (removed again in 621) | Merged (`r619-4c02ee89d5df`). Not published. |
-| 617 | Claude | PR #292 | Fog moors: a new world region in landscape version 9 (daily world-regions work) | Merged (`r617-fd2723a0d5d2`). Not published. |
-| 615 | Claude | PR #291 | Raft tracks (winding, long), rising and sinking rafts, a darker Starfield | Merged (`r615-692e22b65866`). Not published. |
-| 613 | Claude | PR #290 | Starfield dungeons (renamed chasm crossings) and moving stone rafts over their drops | Merged (`r613-927404a43539`). Not published. |
+| 627 | Claude | `claude/dreamy-rubin-yn6q2p` | Ten narrative threads (the Lamplighter's Round … What the Sleeper Dreams) | Building. |
+| 625 | Claude | PR #296 | Five palette regions in landscape version 10: jungle, carapace wastes, salt marsh, crystal fields, sporewood | Merged (`r625-146356a68991`). Not published. |
+| 623 | Claude | PR #295 | Rafts carry only riders over the drop (the blocker from the pre-publish review of 611→621); system-audit fixes | Merged (`r623-2501e60705f7`). Published in r623. |
+| 621 | Claude | PR #294 | The robot at sea: no skiff left behind, the power armor hovers and switches on at sea; 619's wading removed | Merged (`r621-d4083ffe80a4`). Published in r623. |
+| 619 | Claude | PR #293 | Wading: water round the Wayfarer's legs in shoals, mist-pools and mires (removed again in 621) | Merged (`r619-4c02ee89d5df`). Published in r623. |
+| 617 | Claude | PR #292 | Fog moors: a new world region in landscape version 9 (daily world-regions work) | Merged (`r617-fd2723a0d5d2`). Published in r623. |
+| 615 | Claude | PR #291 | Raft tracks (winding, long), rising and sinking rafts, a darker Starfield | Merged (`r615-692e22b65866`). Published in r623. |
+| 613 | Claude | PR #290 | Starfield dungeons (renamed chasm crossings) and moving stone rafts over their drops | Merged (`r613-927404a43539`). Published in r623. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 623 | `r623-2501e60705f7` | 2026-10-31 | With 613 to 621: Starfield dungeons and rafts (PR #290); raft tracks, heights and the dark (#291); fog moors (#292); wading, removed again in 621 (#293); the robot at sea (#294); rafts carry only riders over the drop and the system-audit fixes (#295). The pre-publish Fable review of 611→621 found the raft blocker (fixed in 623); the review of 621→623 found no blockers. |
 | 611 | `r611-b1bdde7eef1f` | 2026-10-31 | With 605 to 609: followable retreats (PR #286); the economy (#287); the Codex play-test fixes and the 605 retreat clock (#288); the Wayfarer may stand on open lava (#289). The pre-publish Fable reviews found the 605 clock bug (fixed in 609) and the lava relocation (fixed in 611); the review of 603→611 found no blockers. |
 | 603 | `r603-4a30ef332f21` | 2026-10-31 | With 599 and 601: robot plating re-forges after 20 s (PR #283); clears alternate weapon and armor spheres (#284); reforge results in colour (#285). The pre-publish Fable review of 597→603 found no blockers. |
 | 597 | `r597-fb99c6531765` | 2026-10-30 | With 583 to 595: firelands (PR #275); the stone skyway (#276); floating sky discs (#277); Skyland modes (#278); pillar lands (#279); chasm crossings (#280); the Torn Pages (#281); chasms of stars (#282). The pre-publish Fable review of 581→597 found no blockers. |

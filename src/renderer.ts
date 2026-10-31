@@ -933,6 +933,28 @@ export function drawWallGlint(ctx, q, s, now) {
 // Release 225: a patch of disturbed earth (or, once dug, turned earth): a low mound of darker soil ringed by a few stones.
 // Release 431: a cracked bronze bell on a weathered frame; a rung one hangs still with a faint warm glow.
 // Release 595: a torn page lying on the floor, its corner lifting; an unread one gives off a faint light.
+// Release 627: a thread's piece (threads.ts): a small object in the thread's colour, by its `relic` shape, glowing until read.
+export function drawThreadRelic(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .62) * s, read = o.state === "read", c = o.colour || "#e8dcc0", bob = read ? 0 : Math.sin(now / 650 + o.x) * s * .03;
+  ctx.save();
+  if (!read) { const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * .7); g.addColorStop(0, c + "55"); g.addColorStop(1, c + "00"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, s * .7, 0, 7); ctx.fill(); }
+  ctx.fillStyle = "#00000040"; ctx.beginPath(); ctx.ellipse(cx, cy + s * .28, s * .22, s * .06, 0, 0, 7); ctx.fill();
+  ctx.translate(cx, cy + bob); ctx.globalAlpha = read ? .6 : 1; ctx.fillStyle = c; ctx.strokeStyle = "#2a241c"; ctx.lineWidth = Math.max(1, s * .03);
+  const R = (x, y, w, h) => { ctx.fillRect(x * s, y * s, w * s, h * s); ctx.strokeRect(x * s, y * s, w * s, h * s); };
+  switch (o.relic) {
+    case "lamp": ctx.beginPath(); ctx.moveTo(-s * .12, -s * .1); ctx.lineTo(s * .12, -s * .1); ctx.lineTo(s * .09, s * .2); ctx.lineTo(-s * .09, s * .2); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = read ? "#fff2c0" : "#ffb347"; ctx.beginPath(); ctx.arc(0, s * .05, s * .05, 0, 7); ctx.fill(); ctx.strokeStyle = "#2a241c"; ctx.beginPath(); ctx.arc(0, -s * .16, s * .06, Math.PI, 0); ctx.stroke(); break;
+    case "letter": ctx.rotate(-.15); R(-.2, -.13, .4, .26); ctx.beginPath(); ctx.moveTo(-s * .2, -s * .13); ctx.lineTo(0, s * .02); ctx.lineTo(s * .2, -s * .13); ctx.stroke(); break;
+    case "stone": ctx.beginPath(); ctx.ellipse(0, 0, s * .17, s * .25, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#1b1a20"; ctx.beginPath(); ctx.arc(0, -s * .06, s * .045, 0, 7); ctx.fill(); break;
+    case "clock": ctx.beginPath(); ctx.arc(0, 0, s * .17, 0, 7); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -s * .11); ctx.moveTo(0, 0); ctx.lineTo(s * .07, s * .03); ctx.stroke(); ctx.beginPath(); ctx.arc(0, -s * .2, s * .04, 0, 7); ctx.stroke(); break;
+    case "coin": ctx.beginPath(); ctx.ellipse(0, s * .08, s * .16, s * .08, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.ellipse(0, s * .02, s * .16, s * .08, 0, 0, 7); ctx.fill(); ctx.stroke(); break;
+    case "moth": for (const k of [-1, 1]) { ctx.beginPath(); ctx.ellipse(k * s * .11, 0, s * .12, s * .16, k * .5, 0, 7); ctx.fill(); ctx.stroke(); } ctx.fillStyle = "#3a3040"; ctx.fillRect(-s * .025, -s * .14, s * .05, s * .28); break;
+    case "book": R(-.18, -.14, .36, .28); ctx.fillStyle = "#2a241c55"; ctx.fillRect(-s * .02, -s * .14, s * .04, s * .28); break;
+    case "seed": ctx.rotate(.2); ctx.beginPath(); ctx.moveTo(0, -s * .2); ctx.quadraticCurveTo(s * .16, 0, 0, s * .16); ctx.quadraticCurveTo(-s * .16, 0, 0, -s * .2); ctx.fill(); ctx.stroke(); break;
+    case "compass": ctx.beginPath(); ctx.arc(0, 0, s * .16, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#b03a2e"; ctx.beginPath(); ctx.moveTo(0, -s * .12); ctx.lineTo(s * .04, 0); ctx.lineTo(-s * .04, 0); ctx.fill(); break;
+    default: ctx.beginPath(); ctx.moveTo(-s * .18, s * .14); ctx.quadraticCurveTo(-s * .2, -s * .16, s * .02, -s * .18); ctx.quadraticCurveTo(s * .22, -s * .1, s * .12, s * .1); ctx.quadraticCurveTo(0, s * .2, -s * .18, s * .14); ctx.fill(); ctx.stroke(); // a shell
+  }
+  ctx.restore();
+}
 export function drawTornPage(ctx, o, s, now) {
   const cx = (o.x + .5) * s, cy = (o.y + .6) * s, read = o.state === "read", lift = read ? 0 : Math.sin(now / 700 + o.x) * .06;
   ctx.save();
@@ -1718,6 +1740,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "digSpot") { drawDigSpot(ctx, o, s, now);
           } else if (o.kind === "ilse") { drawIlse(ctx, o, s, now);
           } else if (o.kind === "crackedBell") { drawCrackedBell(ctx, o, s, now);
+          } else if (o.kind === "threadRelic") { drawThreadRelic(ctx, o, s, now); // release 627
           } else if (o.kind === "tornPage") { drawTornPage(ctx, o, s, now); // release 595
           } else if (o.kind === "surveyorLink") { drawSurveyorLink(ctx, o, s, now); // release 505
           } else if (o.kind === "surveyorStatue") { drawSurveyorStatue(ctx, o, s, now); // release 551

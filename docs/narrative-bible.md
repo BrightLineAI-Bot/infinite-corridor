@@ -272,6 +272,18 @@ A thread runs like a hunt, but carries narrative. Each one is tracked in the Jou
 2. **The Surveyor's Chain** (across the middle and far bands). Abel Corwin's lost chain-links lie in dungeons; each comes with a page of his notes. With all twelve links, the last dungeon's map turns out to be the overworld. The thread ends at his statue.
 3. **The Torn Pages** (one per region). Each region's deepest crossing holds a page torn from the Reciter's Tome. The pages belong to a book with no title. When all are found, the Tome gains a last book: blank, except that it slowly fills with the Wayfarer's own Journal. The Corridor has begun to read you. This is the closest the game ever comes to explaining itself.
 
+4. **Ten more threads** (release 627, written in one sitting at Tim's request: "do your narrative passes... 10 sets... condense them into today"). Each is five or six pieces lying in crossings of its stretch of the map (src/threads.ts `THREAD_BANDS`, which overlap), read in order, never stranded; the last piece writes the ending in the Journal and the Reciter's Tome keeps the thread as a book.
+   - *The Lamplighter's Round* (near): an old woman keeps a low road lit for twenty years for someone who came by the high road.
+   - *Letters Not Sent* (near): a wife's letters into the Corridor; the last is addressed to "the one who keeps finding these".
+   - *The Choir of Stones* (middle): six singing stones whose chord is a lullaby that outlived everyone who sang it.
+   - *The Clockmaker's Hours* (middle): watches stopped at the hours of a lost child's life; the last still runs, set to yours.
+   - *The Ferryman's Fares* (middle; the River That Remembers): fares never taken, because everyone has crossed before.
+   - *The Moth Saint* (far): a shrine-keeper's face wearing into light on the cloths of a moth's relics.
+   - *The Drowned Library* (far; the thin places): the water reads; the librarian is "shelved".
+   - *Seeds for an Orchard* (far; the Second Campaign): seed papers for an orchard on a battlefield.
+   - *The Second Surveyor* (deep; Abel Corwin's daughter): compasses that point down, out, nowhere, then at the Wayfarer.
+   - *What the Sleeper Dreams* (deep; the Far Sleep): shells that carry the breathing of the thing that dreams the Corridor.
+
 The existing deep-dungeon story packages (the scorched echoes and memorials) get Glimpses instead of ticker lines. The summit stones' and grotto ruins' lore text, which is written but never shown, becomes touch-to-read.
 
 ---

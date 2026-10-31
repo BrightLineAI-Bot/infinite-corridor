@@ -2694,6 +2694,28 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 627: ten threads — 2026-10-31
+
+Tim (2026-10-31): "do your narrative passes, but maybe do 10 sets of narrative... condense them into today"; and from the daily
+brief: "keep weaving multi-crossing quests like the Seven Bells and the Surveyor's Chain through the world; Tim loves them".
+docs/narrative-bible.md section 6 lists the ten.
+
+**CODE:**
+- `src/threads.ts` (new module; in scripts/build.mjs and both sw.js precache lists): `THREADS` (title, band, relic shape, colour,
+  five or six `pieces`, an `ending`; all original writing), `THREAD_BANDS` (distance ranges from the Refuge that overlap, so even
+  the nearest band has crossings enough), `THREAD_RULES` (`chance` .07 a crossing, `minDepth` 3). `threadIn` decides once per
+  ordinary crossing whether it holds a thread and which of the threads whose band covers it. `addThreadRelic` lays the piece:
+  the one found here (read) or the next one not yet found (waiting), so no piece is stranded; nothing once the thread is whole.
+  `readThreadRelic` records the crossing in `save.lore.threads[threadId]` (an ordered list of crossing ids). `ensureThreadState`
+  normalises it (only when present) from `freshSave`/`migrateSave` via `src/types.ts`.
+- `src/game.ts`: lays a thread relic on dungeon load (after the Torn Pages); reading it writes the piece in the Journal, and the
+  last piece writes the ending and queues QUEST COMPLETE. `src/renderer.ts` `drawThreadRelic` (lamp, letter, stone, clock,
+  coins, moth, book, seed, compass, shell; glowing until read). `src/main.ts`: the Reciter's Tome shows every thread begun, its
+  pieces read and, when whole, its ending.
+
+**BOUNDARY:** Save change is additive at schema 14 (`lore.threads`, absent until a piece is read). Crossings already entered get
+a relic only if their id rolls one; no generator changes. Not tracked under Active quests (as with the Torn Pages and the Bells).
+
 ## Release 625: five palette regions — 2026-10-31
 
 Tim (2026-10-31): "go ahead and do a sprint of your narrative runs and region runs... 10 sets of daily region passes... condense
