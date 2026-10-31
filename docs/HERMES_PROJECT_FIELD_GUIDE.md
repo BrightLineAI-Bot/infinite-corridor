@@ -2694,6 +2694,24 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 599: re-forging the robot's plating takes time — 2026-10-30
+
+Tim (2026-10-30) found nothing in a dungeon could hurt him. His save showed the cause: he was in the robot with 37,667 cinder
+iron, and the robot re-forged its plating the instant it gave out (3 iron each), so no blow ever reached him. He took the
+recommendation: re-forging takes time, and blows land in the meantime.
+
+**CODE:**
+- `src/vehicle-gates.ts`: `MECH_POWER.replateDelay` (20 s). `mechAbsorb`: plating that gives out with iron to spare spends the
+  iron at once and leaves the robot bare (`replateIn`, returned as `stripped`); while bare, a blow is softened only by the
+  robot's guard (`bare`), and no second re-forge starts. `tickMech` counts `replateIn` down while the robot is up and restores
+  full plating at zero (returns "replated"); a robot that folds away forgets it. `ensureMech` keeps `replateIn` for an active
+  robot (additive at schema 14).
+- `src/game.ts`: the messages ("Re-forging it from 3 cinder iron takes 20s: until then, blows reach you." and "The robot's
+  plating is whole again.").
+
+**BOUNDARY:** With no iron the robot still folds away as before. Plating regeneration while folded away is unchanged. Saves
+gain one optional field on save.mech.
+
 ## Release 597: chasms of stars — 2026-10-30
 
 Tim (2026-10-30): "for the chasm dungeons, if you fall off them, you die, but let's not make it so that the chasm looks like

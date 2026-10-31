@@ -53,7 +53,7 @@ export const MECH = { plate: 60, guard: .1, boost: 1.6, boostRecharge: 1, plateR
 // off each hit, and `boost`× the thrust; with no iron left it drops back to the plain robot. In either mode, plating that
 // gives out is re-forged at once from `replate` cinder iron, so the robot stays up; with none, it folds away as before.
 // State: save.mech.empowered, save.mech.burnIn (additive).
-export const MECH_POWER = { burn: 1, every: 20, damage: .25, guard: .15, boost: 2, replate: 3 }; // release 391 (Tim: "when the plating breaks... three cinder iron"): replate was 1
+export const MECH_POWER = { burn: 1, every: 20, damage: .25, guard: .15, boost: 2, replate: 3, replateDelay: 20 }; // release 391 (Tim: "when the plating breaks... three cinder iron"): replate was 1; 599: re-forging takes `replateDelay` seconds
 // Wading through lava in the robot (release 475; Tim: "when I have power armor I can walk through the lava... the power armor
 // doesn't take damage, but I take damage... I overheat... I can still die from walking in the lava, so there's still
 // consequence"). While the robot is up (either mode), lava no longer swallows the Wayfarer: they walk on through it, and the
@@ -93,7 +93,8 @@ export function ensureMech(save) {
   save.mech = { built: m.built === true, active: m.built === true && m.active === true, plate: Math.max(0, Math.min(MECH.plate, Number.isFinite(Number(m.plate)) ? Number(m.plate) : MECH.plate)),
     fuel: Math.max(0, Math.min(max, Number.isFinite(Number(m.fuel)) ? Number(m.fuel) : max)), cooldown: Math.max(0, Number(m.cooldown) || 0),
     ...(m.mode !== undefined ? { mode, healCd: Math.max(0, Number(m.healCd) || 0), rocketCd: Math.max(0, Number(m.rocketCd) || 0) } : {}),
-    ...(m.empowered === true && m.built === true && m.active === true && mode === "robot" ? { empowered: true, burnIn: Math.max(0, Math.min(MECH_POWER.every, Number(m.burnIn) || 0)) } : {}) };
+    ...(m.empowered === true && m.built === true && m.active === true && mode === "robot" ? { empowered: true, burnIn: Math.max(0, Math.min(MECH_POWER.every, Number(m.burnIn) || 0)) } : {}),
+    ...(m.built === true && m.active === true && Number(m.replateIn) > 0 ? { replateIn: Math.min(MECH_POWER.replateDelay, Number(m.replateIn)) } : {}) }; // release 599
   if (save.mech.empowered) save.mech.fuel = Math.min(fuelMax(mode, true), Math.max(0, Number.isFinite(Number(m.fuel)) ? Number(m.fuel) : max));
   return save.mech;
 }
@@ -115,11 +116,16 @@ export function setMechMode(save, mode) {
 }
 // A blow of `loss` to the Wayfarer in the robot: returns what they keep; the plating takes the rest. Plating that gives out is
 // re-forged from cinder iron when there is some (release 383: `replated`); otherwise the robot folds away (`broke`).
+// Release 599 (Tim, 2026-10-30: the robot re-plated at once from a large stock of iron, so nothing could hurt him): re-forging
+// takes `MECH_POWER.replateDelay` seconds (`replateIn`; the iron is spent when the plating gives out). Until it is done the
+// robot stands bare: its guard still softens a blow, but no plating takes any of it. The plating returns in tickMech.
 export function mechAbsorb(save, loss) {
   const m = ensureMech(save); if (!m.active || !(loss > 0)) return { kept: loss, broke: false };
-  let kept = loss * (1 - MECH.guard - (m.empowered ? MECH_POWER.guard : 0)); const take = Math.min(m.plate, kept); m.plate -= take; kept -= take;
+  let kept = loss * (1 - MECH.guard - (m.empowered ? MECH_POWER.guard : 0));
+  if (m.replateIn > 0) return { kept, broke: false, bare: true };
+  const take = Math.min(m.plate, kept); m.plate -= take; kept -= take;
   if (m.plate <= 0) {
-    if (ironOf(save) >= MECH_POWER.replate) { save.materials.cinderIron -= MECH_POWER.replate; m.plate = MECH.plate; return { kept, broke: false, replated: true }; }
+    if (ironOf(save) >= MECH_POWER.replate) { save.materials.cinderIron -= MECH_POWER.replate; m.plate = 0; m.replateIn = MECH_POWER.replateDelay; return { kept, broke: false, stripped: true }; }
     m.plate = 0; m.active = false; delete m.empowered; delete m.burnIn; m.cooldown = MECH.rebuild; return { kept, broke: true };
   }
   return { kept, broke: false };
@@ -130,6 +136,7 @@ export function tickMech(save, dt, grounded) {
   let out;
   if (m.empowered && m.active) { m.burnIn = (Number(m.burnIn) || 0) - dt; if (m.burnIn <= 0) { if (ironOf(save) >= MECH_POWER.burn) { save.materials.cinderIron -= MECH_POWER.burn; m.burnIn += MECH_POWER.every; } else { delete m.empowered; delete m.burnIn; m.fuel = Math.min(m.fuel, fuelMax(m.mode)); out = "spent"; } } }
   m.cooldown = Math.max(0, (m.cooldown || 0) - dt);
+  if (m.replateIn > 0 && m.active) { m.replateIn -= dt; if (m.replateIn <= 0) { delete m.replateIn; m.plate = MECH.plate; out ||= "replated"; } } else if (!m.active) delete m.replateIn; // release 599
   if (!m.active) m.plate = Math.min(MECH.plate, m.plate + MECH.plateRegen * dt);
   if (m.mode === "drone") { m.healCd = Math.max(0, (m.healCd || 0) - dt); m.rocketCd = Math.max(0, (m.rocketCd || 0) - dt); }
   if (grounded) m.fuel = Math.min(fuelMax(m.mode, m.empowered === true), m.fuel + (m.mode === "drone" ? DRONE.carryRecharge : MECH.boostRecharge) * dt);
