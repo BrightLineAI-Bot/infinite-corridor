@@ -12,14 +12,14 @@ import { applyLandscape, sectionRegion, regionName, REGION_NAMES, REGION_GROUNDS
 import { ATLAS_TILE_COLORS } from '../src/atlas-colors.ts';
 import { REGION_BANNER } from '../src/game.ts';
 
-const SEED = 'PAL625', TYPES = Object.keys(PALETTE_REGIONS);
+const SEED = 'PAL625', TYPES = Object.keys(PALETTE_REGIONS).filter((t) => !PALETTE_REGIONS[t].version); // release 629 adds a second batch (version 11)
 const make = (x, y, version = 10) => { const m = generateRegion(SEED, x, y); applyLandscape(m, SEED, x, y, { version }); return m; };
 const found = {}; const find = (type, n = 3) => { const out = (found[type] ||= []);
   for (let x = 14; x < 220 && out.length < n; x++) for (let y = 14; y < 220 && out.length < n; y += 3) { if (out.some(([a, b]) => a === x && b === y)) continue; const r = sectionRegion(SEED, x, y, 10); if (r.type === type && r.hold >= 1 && make(x, y).tiles.filter((t) => t.landscape === type).length > 300) out.push([x, y]); }
   return out; };
 
 test('version 10 turns some wild and plains regions into the five palette types; every other region keeps its version 9 type', () => {
-  assert.equal(LANDSCAPE_VERSION, 10); const seen = new Set();
+  assert.equal(LANDSCAPE_VERSION, 11); const seen = new Set();
   for (let x = 14; x < 140; x += 2) for (let y = 14; y < 140; y += 2) {
     const a = sectionRegion(SEED, x, y, 9), b = sectionRegion(SEED, x, y, 10); seen.add(b.type); assert.equal(a.id, b.id);
     if (!REGIONS_V10.from.includes(a.type)) assert.equal(b.type, a.type); else assert.ok([a.type, ...TYPES].includes(b.type), `${a.type} -> ${b.type}`);
@@ -44,8 +44,8 @@ test('each palette region: its ground, wadeable pools, impassable blocks, Atlas 
   assert.ok(jungle.every((m) => m.objects.filter((o) => o.jungle).length <= PALETTE_REGIONS.jungle.trees.max), 'bounded');
 });
 
-test('in the game: the banner names the region and the atlas pins version 10; the ground is painted', () => {
+test('in the game: the banner names the region and the atlas pins the current version; the ground is painted', () => {
   const [x, y] = find('crystal', 1)[0], s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld');
-  assert.equal(s.atlas[`${x},${y}`].landscapeVersion, 10); const b = (g.questNotices || []).find((q) => q.kind === 'discovery'); if (b) assert.equal(b.detail, 'Crystal fields');
+  assert.equal(s.atlas[`${x},${y}`].landscapeVersion, LANDSCAPE_VERSION); const b = (g.questNotices || []).find((q) => q.kind === 'discovery'); if (b) assert.equal(b.detail, 'Crystal fields');
   const src = readFileSync(new URL('../src/landscape-render.ts', import.meta.url), 'utf8'); assert.match(src, /export const PALETTE_PAINT/); for (const t of TYPES) assert.match(src, new RegExp(`\\b${t}: \\{ ground:`));
 });

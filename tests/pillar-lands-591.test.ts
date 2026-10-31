@@ -14,7 +14,7 @@ const make = (x, y, version = 8) => { const m = generateRegion(SEED, x, y); appl
 const at = (m, x, y) => m.tiles[y * 32 + x];
 
 test('version 8 turns some still-wild regions into pillar lands; every other region keeps its version 7 type', () => {
-  assert.equal(LANDSCAPE_VERSION, 10); const types = new Set();
+  assert.equal(LANDSCAPE_VERSION, 11); const types = new Set();
   for (let x = 14; x < 120; x += 2) for (let y = 14; y < 120; y += 2) {
     const a = sectionRegion(SEED, x, y, 7), b = sectionRegion(SEED, x, y, 8); types.add(b.type);
     assert.equal(a.id, b.id); if (a.type !== 'wild') assert.equal(b.type, a.type); else assert.ok(['wild', 'pillars'].includes(b.type));
