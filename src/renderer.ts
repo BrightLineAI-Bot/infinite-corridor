@@ -933,19 +933,25 @@ export function drawWallGlint(ctx, q, s, now) {
 // Release 225: a patch of disturbed earth (or, once dug, turned earth): a low mound of darker soil ringed by a few stones.
 // Release 431: a cracked bronze bell on a weathered frame; a rung one hangs still with a faint warm glow.
 // Release 595: a torn page lying on the floor, its corner lifting; an unread one gives off a faint light.
-export const CANOPY_LOOK = { leaf: ["#2c6326", "#3f8a35", "#1f4a1a", "#4f9a3f"], bark: ["#5a3d22", "#3e2916"], vine: "#3f8a35", blobs: 22, vines: 6 };
+// Release 633: the great tree above its own tiles. The trunk's tiles (a column `top` levels high, drawn in the ground cache with
+// the branches round it, so branches in front cover it and those behind are hidden) end there; from that top the trunk goes on up,
+// `rise` tiles past it (far beyond the top of the screen), boughs and masses of leaf on alternating sides, a crown at the very top.
+// Sorted with the actors at the trunk's top row. A few dozen shapes, only while in view.
+export const CANOPY_LOOK = { leaf: ["#2c6326", "#3f8a35", "#1f4a1a", "#4f9a3f"], bark: ["#6b4a2c", "#3e2916"], rise: 30, boughEvery: 3.2, vines: 5 };
 function drawCanopyDressing(ctx, c, s, now) {
-  const L = discLift(c.height) * s, x0 = c.x0 * s, y0 = c.y0 * s - L, w = c.size * s, cx = x0 + w / 2, foot = (c.y0 + c.size) * s, sway = Math.sin(now / 1600) * s * .03, C = CANOPY_LOOK;
+  const C = CANOPY_LOOK, x0 = c.x0 * s, w = c.size * s, cx = x0 + w / 2, topY = c.y0 * s - discLift(c.top) * s, sway = Math.sin(now / 1700) * s * .05, end = topY - C.rise * s;
   ctx.save();
-  // the trunk: from the ground up to the crown's underside, wider than the crown's face so it reads as one great stem
-  ctx.fillStyle = C.bark[1]; ctx.beginPath(); ctx.moveTo(cx - w * .32, foot + s * .25); ctx.quadraticCurveTo(cx - w * .2, foot - L * .5, cx - w * .42, y0 + w); ctx.lineTo(cx + w * .42, y0 + w); ctx.quadraticCurveTo(cx + w * .2, foot - L * .5, cx + w * .32, foot + s * .25); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = C.bark[0]; ctx.lineWidth = Math.max(1, s * .05); for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(cx + k * w * .1, foot + s * .2); ctx.quadraticCurveTo(cx + k * w * .14, foot - L * .4, cx + k * w * .16, y0 + w); ctx.stroke(); }
-  // vines from the crown's rim
-  ctx.strokeStyle = C.vine; ctx.lineWidth = Math.max(1, s * .04);
-  for (let i = 0; i < C.vines; i++) { const vx = x0 + (i + .5) / C.vines * w, len = L * (.45 + ((i * 37) % 10) / 20); ctx.beginPath(); ctx.moveTo(vx, y0 + w); ctx.quadraticCurveTo(vx + sway * (i % 2 ? 1 : -1) * 3, y0 + w + len * .5, vx + sway, y0 + w + len); ctx.stroke(); }
-  // a fringe of leaves round the crown, outside its square
-  for (let i = 0; i < C.blobs; i++) { const a = i / C.blobs * Math.PI * 2, ring = w * (.62 + ((i * 53) % 10) / 60), bx = cx + Math.cos(a) * ring + sway, by = y0 + w / 2 + Math.sin(a) * ring * .8, rr = s * (.32 + ((i * 29) % 10) / 40);
-    if (bx > x0 && bx < x0 + w && by > y0 && by < y0 + w) continue; ctx.fillStyle = C.leaf[i % C.leaf.length]; ctx.beginPath(); ctx.arc(bx, by, rr, 0, Math.PI * 2); ctx.fill(); }
+  const g = ctx.createLinearGradient(x0, 0, x0 + w, 0); g.addColorStop(0, C.bark[0]); g.addColorStop(.6, C.bark[1]); g.addColorStop(1, "#1d1209"); ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(x0, topY + s * .5); ctx.lineTo(x0 + w * .12, end); ctx.lineTo(x0 + w * .88, end); ctx.lineTo(x0 + w, topY + s * .5); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#00000033"; ctx.lineWidth = Math.max(1, s * .05); for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x0 + w * k / 4, topY + s * .5); ctx.lineTo(x0 + w * (.12 + .76 * k / 4), end); ctx.stroke(); }
+  for (let y = topY - s * 1.2, i = 0; y > end; y -= C.boughEvery * s, i++) { // boughs and leaf masses on alternating sides
+    const side = i % 2 ? 1 : -1, bx = side > 0 ? x0 + w * .9 : x0 + w * .1, reach = s * (2.4 + (i * 37 % 10) / 6), ey = y - s * .9;
+    ctx.strokeStyle = C.bark[1]; ctx.lineWidth = Math.max(3, s * .28); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(bx, y); ctx.quadraticCurveTo(bx + side * reach * .5, y - s * .2, bx + side * reach + sway, ey); ctx.stroke();
+    for (let k = 0; k < 4; k++) { ctx.fillStyle = C.leaf[(i + k) % C.leaf.length]; ctx.beginPath(); ctx.arc(bx + side * reach + sway + (k - 1.5) * s * .55, ey - s * (.2 + (k % 2) * .4), s * (.75 - k * .08), 0, Math.PI * 2); ctx.fill(); }
+  }
+  for (let k = 0; k < 7; k++) { ctx.fillStyle = C.leaf[k % C.leaf.length]; ctx.beginPath(); ctx.arc(cx + (k - 3) * s * .9 + sway, end + s * (k % 2 ? .3 : -.4), s * 1.5, 0, Math.PI * 2); ctx.fill(); } // the crown, far above
+  ctx.strokeStyle = "#3f8a35"; ctx.lineWidth = Math.max(1, s * .05); // vines down the trunk to the landing
+  for (let i = 0; i < C.vines; i++) { const vx = x0 + (i + .5) / C.vines * w, len = s * (2 + (i * 29 % 10) / 3); ctx.beginPath(); ctx.moveTo(vx, topY); ctx.quadraticCurveTo(vx + sway * 4, topY + len * .5, vx + sway, topY + len); ctx.stroke(); }
   ctx.restore();
 }
 // Release 631: the door in the giant tree's crown: an arch of woven branches and vine, filled with stars (to a Starfield
@@ -1585,9 +1591,10 @@ export function render(ctx, g, w, h, now) {
     mw = Math.max(1,Number(g.map?.width)||(g.area === "dungeon" ? 24 : 32)),
     mh = Math.max(1,Number(g.map?.height)||Math.floor(g.map.tiles.length/mw)),
     l = Math.max(0, Math.floor(p.x - w / s / 2) - 2),
-    t = Math.max(0, Math.floor(p.y - h / s / 2) - 2),
+    up = g.map?.canopy?.top ? Math.ceil(liftAt(g.map, mw, p.x, p.y)) : 0, // release 633: high in a great tree the view looks down on rows far to the south
+    t = Math.max(0, Math.floor(p.y - up - h / s / 2) - 2),
     r = Math.min(mw, l + Math.ceil(w / s) + 5),
-    b = Math.min(mh, t + Math.ceil(h / s) + 5),
+    b = Math.min(mh, t + Math.ceil(h / s) + 5 + (g.map?.canopy?.top ? Math.ceil(g.map.canopy.top * LIFT_PER_LEVEL) + up : 0)),
     jumping = now < (g.jumpUntil || 0),
     lift = jumpLift(g, now) * s,
     dodging = now < (p.dodgeUntil || 0);
@@ -1948,8 +1955,8 @@ export function render(ctx, g, w, h, now) {
   // Release 631: the giant tree's dressing, sorted with the actors at the crown's foot: a broad trunk under the crown, vines
   // hanging from its rim, and a fringe of leaves overhanging the crown's edges (never over the crown itself, so whoever stands
   // there stays in view). A few dozen shapes, only while the tree is in view.
-  const cn = g.area === "overworld" ? g.map?.canopy : null;
-  if (cn && visibleInCamera({ x: cn.x0 + cn.size / 2, y: cn.y0 + cn.size / 2 }, l, t, r, b, 6)) draws.push({ y: cn.y0 + cn.size - .2, fn: () => drawCanopyDressing(ctx, cn, s, now) });
+  const cn = g.area === "overworld" && g.map?.canopy?.top ? g.map.canopy : null; // release 633: only trees built tall
+  if (cn && Math.abs(cn.x0 + 1.5 - p.x) < w / s + 4) draws.push({ y: cn.y0 - .5, fn: () => drawCanopyDressing(ctx, cn, s, now) });
   draws.push(playerDraw);
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) {
@@ -1957,7 +1964,7 @@ export function render(ctx, g, w, h, now) {
     if (raise || (d.alpha ?? 1) < 1) { ctx.save(); if (raise) ctx.translate(0, -raise * s); if ((d.alpha ?? 1) < 1) ctx.globalAlpha = d.alpha; d.fn(); ctx.restore(); } else d.fn(); // release 615: a beneath-the-level rider is a dim shape
   }
   // Release 573: behind a giant tree the Wayfarer shows through, faint.
-  if (g.area === "overworld" && g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p))) {
+  if (g.area === "overworld" && (g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p)) || (cn && p.y < cn.y0 && Math.abs(p.x + .5 - (cn.x0 + cn.size / 2)) < cn.size / 2 + 1.2))) { // 633: or behind the great tree's trunk
     const raise = groundLift(p.x, p.y) + (playerDraw.lift || 0); ctx.save(); ctx.globalAlpha = GIANT_TREE.ghost; if (raise) ctx.translate(0, -raise * s); playerDraw.fn(); ctx.restore();
   }
   // Under water (W5): a blue-green wash with slow light shafts.
