@@ -2694,6 +2694,26 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 615: raft tracks, heights and the dark — 2026-10-31
+
+Tim (2026-10-31): "the platforms don't have to move all in straight lines... 2 paces forward... 2 paces to the left... it could be
+non obvious where... the platform's going to take you... across a large section of dungeon... they can pick you up and take you
+above the level... some... beneath the level... nonlinear paths"; and of the Starfield: "that darker penumbra... the wayfarer is
+really the only real point of light".
+
+**CODE:**
+- `src/game.ts`: `findPlatformSpans` now lays tracks: from beside a walkway, the shortest way over the drop (drop tiles only) to
+  beside another walkway at least `minHop` tiles off, `length` 6 to 34 tiles, tracks never sharing drop; kept as corner points
+  (`pts`). A share rise (`amp` = `rise` 2) or sink (`dip` -1.6), as a sine over the run, level at both ends. `platformPos` walks
+  the polyline (out, rest, back, rest) and returns `z`; a raft with no run hovers at its height. The update keeps `raftZ`;
+  stepping off a raft sunk below the level (z < -0.5) is death ("abyss"), off a risen one over a walkway a fall of its rounded
+  height (fallDamage; four levels fatal).
+- `src/renderer.ts`: rafts draw lifted by their height (shadow on the level); sunken ones dim and grey. The rider draws lifted the
+  same, dim when beneath. The Starfield penumbra closes in (2.2 to 6.5 tiles, 88% dark).
+
+**BOUNDARY:** Rafts are derived on each load, so every Starfield crossing gets new tracks (no saved state). Rafts in the overworld
+are not built yet. No save change.
+
 ## Release 613: Starfield dungeons and their rafts — 2026-10-31
 
 Tim (2026-10-31): the chasm crossings "are now called Starfield dungeons... just a series of... bridges... over... the cosmos";

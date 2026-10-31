@@ -131,23 +131,42 @@ export const CHASM = { version: 1, chance: .12, keepWalls: .12, name: "Starfield
 // the drop between two walkways (`span` tiles of drop), up to `count` per map at least `apart` tiles from each other, at `speed`
 // tiles/s with a `rest` at each end. Their place is a function of save.playSeconds, so a reload finds them where they were. The
 // Wayfarer standing on one rides it (carried with it) and does not fall; creatures do not ride. Pure data on map.movers.
-export const STARFIELD_PLATFORMS = { count: 4, span: [3, 12], apart: 6, speed: 1.6, rest: 1.2, half: .85 };
+export const STARFIELD_PLATFORMS = { count: 4, length: [6, 34], minHop: 8, tries: 40, speed: 1.6, rest: 1.2, half: .85, rise: 2, dip: -1.6, shares: { rise: .35, dip: .25 } };
+// Release 615 (Tim, 2026-10-31: "the platforms don't have to move all in straight lines... 2 paces forward, then 2 paces to the left
+// ... it could be non obvious where... the platform's going to take you... across a large section of dungeon... you could step
+// off the platform at some point... they can pick you up and take you above the level... some... beneath the level... nonlinear
+// paths"): a raft rides a track: the shortest way over the drop (4-neighbour, drop tiles only) from beside one walkway to beside
+// another at least `minHop` tiles off, `length` tiles long, turning where the drop turns; tracks do not share drop tiles. Some
+// tracks rise above the level (`rise` levels at their middle) and some sink beneath it (`dip`), back to the level at both ends.
 function findPlatformSpans(map, seed, id) {
   const P = STARFIELD_PLATFORMS, w = map.width, h = map.height || Math.ceil(map.tiles.length / w), at = (x, y) => x >= 0 && y >= 0 && x < w && y < h ? map.tiles[y * w + x] : null;
-  const floor = (t) => t && !t.blocked && !t.chasm, out = [];
-  for (const t of map.tiles) { if (!floor(t)) continue;
-    for (const [dx, dy] of [[1, 0], [0, 1]]) { if (!at(t.x + dx, t.y + dy)?.chasm) continue; let n = 0; while (at(t.x + dx * (n + 1), t.y + dy * (n + 1))?.chasm) n++;
-      const end = at(t.x + dx * (n + 1), t.y + dy * (n + 1)); if (!floor(end) || n < P.span[0] || n > P.span[1]) continue;
-      out.push({ ax: t.x + dx, ay: t.y + dy, bx: t.x + dx * n, by: t.y + dy * n, n, key: hashSeed(`${seed}:starfield-raft:v1:${id}:${t.x},${t.y}:${dx}`) }); } }
-  out.sort((a, b) => b.n - a.n || a.key - b.key); const pick = [];
-  for (const q of out) { if (pick.length >= P.count) break; const mx = (q.ax + q.bx) / 2, my = (q.ay + q.by) / 2; if (pick.every((o) => Math.hypot((o.ax + o.bx) / 2 - mx, (o.ay + o.by) / 2 - my) >= P.apart)) pick.push(q); }
-  return pick.map((q, i) => ({ id: `raft-${i}`, ax: q.ax, ay: q.ay, bx: q.bx, by: q.by, phase: (q.key % 1000) / 1000 }));
+  const floor = (t) => t && !t.blocked && !t.chasm, N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]], used = new Set(), out = [];
+  const landings = map.tiles.filter((t) => floor(t) && N4.some(([dx, dy]) => at(t.x + dx, t.y + dy)?.chasm)).sort((a, b) => hashSeed(`${seed}:raft-landing:v2:${id}:${a.x},${a.y}`) - hashSeed(`${seed}:raft-landing:v2:${id}:${b.x},${b.y}`));
+  for (let k = 0; k < Math.min(P.tries, landings.length) && out.length < P.count; k++) {
+    const a = landings[k], start = N4.map(([dx, dy]) => at(a.x + dx, a.y + dy)).find((t) => t?.chasm && !used.has(t.y * w + t.x)); if (!start) continue;
+    const prev = new Map([[start.y * w + start.x, -1]]), dist = new Map([[start.y * w + start.x, 1]]), q = [start]; let best = null;
+    for (let i = 0; i < q.length; i++) { const t = q[i], d = dist.get(t.y * w + t.x); if (d > P.length[1]) continue;
+      if (d >= P.length[0]) for (const [dx, dy] of N4) { const b = at(t.x + dx, t.y + dy); if (floor(b) && Math.abs(b.x - a.x) + Math.abs(b.y - a.y) >= P.minHop && (!best || d > best.d)) best = { t, d }; }
+      for (const [dx, dy] of N4) { const n = at(t.x + dx, t.y + dy), key = n ? n.y * w + n.x : -1; if (!n?.chasm || used.has(key) || prev.has(key)) continue; prev.set(key, t.y * w + t.x); dist.set(key, d + 1); q.push(n); } }
+    if (!best) continue;
+    const cells = []; for (let key = best.t.y * w + best.t.x; key !== -1; key = prev.get(key)) cells.unshift({ x: key % w, y: Math.floor(key / w) });
+    for (const c of cells) for (const [dx, dy] of [[0, 0], ...N4]) used.add((c.y + dy) * w + c.x + dx);
+    const pts = cells.filter((c, i) => i === 0 || i === cells.length - 1 || (cells[i - 1].x !== cells[i + 1].x && cells[i - 1].y !== cells[i + 1].y)); // corners only
+    const r = (hashSeed(`${seed}:raft-rise:v2:${id}:${k}`) % 1000) / 1000, amp = r < P.shares.rise ? P.rise : r < P.shares.rise + P.shares.dip ? P.dip : 0;
+    out.push({ id: `raft-${out.length}`, pts, amp, phase: (hashSeed(`${seed}:raft-phase:v2:${id}:${k}`) % 1000) / 1000 });
+  }
+  return out;
 }
-// Where raft `m` is at play time `t` (its centre, tile units): out, rest, back, rest.
+// Where raft `m` is at play time `t`: its centre (tile units) and height `z` in levels (0 at the level): out along its track, rest,
+// back, rest.
 export function platformPos(m, t) {
-  const P = STARFIELD_PLATFORMS, len = Math.hypot(m.bx - m.ax, m.by - m.ay), go = len / P.speed, cycle = 2 * (go + P.rest), u = (((t / cycle) + m.phase) % 1) * cycle;
-  const f = u < go ? u / go : u < go + P.rest ? 1 : u < 2 * go + P.rest ? 1 - (u - go - P.rest) / go : 0;
-  return { x: m.ax + (m.bx - m.ax) * f + .5, y: m.ay + (m.by - m.ay) * f + .5 };
+  const P = STARFIELD_PLATFORMS, pts = m.pts || [{ x: m.ax, y: m.ay }, { x: m.bx, y: m.by }], seg = [], N = pts.length; let len = 0;
+  for (let i = 1; i < N; i++) { const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); seg.push(d); len += d; }
+  const go = Math.max(.001, len / P.speed), cycle = 2 * (go + P.rest), u = (((t / cycle) + (m.phase || 0)) % 1) * cycle;
+  const f = len < .001 ? .5 : u < go ? u / go : u < go + P.rest ? 1 : u < 2 * go + P.rest ? 1 - (u - go - P.rest) / go : 0; // a raft with no run hovers at its height
+  let d = f * len, i = 0; while (i < seg.length - 1 && d > seg[i]) { d -= seg[i]; i++; }
+  const a = pts[i], b = pts[Math.min(N - 1, i + 1)], k = seg[i] ? Math.min(1, d / seg[i]) : 0;
+  return { x: a.x + (b.x - a.x) * k + .5, y: a.y + (b.y - a.y) * k + .5, z: (m.amp || 0) * Math.sin(Math.PI * f) };
 }
 // The raft under a Wayfarer at (x, y) at time t, or null.
 export function platformUnder(map, x, y, t) {
@@ -5297,13 +5316,16 @@ export class Game {
       return;
     }
     const width = mapWidth(this.map, this.area);
-    let terrainHazard=footprintHazard(this.map,width,nx,ny);if(terrainHazard&&this.map?.movers?.length&&platformUnder(this.map,nx,ny,ps))terrainHazard=null;/* release 613: on a raft over the drop */const aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0||this.mechBoosting===true;/* release 317: the robot's boost carries over hazards */
+    let terrainHazard=footprintHazard(this.map,width,nx,ny);const raftNow=this.map?.movers?.length?platformUnder(this.map,nx,ny,ps):null,raftWasZ=raft?platformPos(raft,ps-dt).z:0;this.raftZ=raftNow?platformPos(raftNow,ps).z:0;if(terrainHazard&&raftNow)terrainHazard=null;/* release 613: on a raft over the drop */
+    // Release 615: stepping off a raft below the level is a step into nothing; off one above it, a fall by its height.
+    if(raft&&!raftNow&&raftWasZ< -.5){terrainHazard=terrainHazard||"abyss";this.message="Below the level there is nothing to step onto.";}
+    else if(raft&&!raftNow&&raftWasZ>.5&&!terrainHazard){const hurt=fallDamage(Math.round(raftWasZ),this.save.maxHp);if(hurt===Infinity){p.hp=0;this._fatalFallPending=true;}else if(hurt>0){p.hp=Math.max(0,p.hp-hurt);this.message=`You drop ${Math.round(raftWasZ)} level${Math.round(raftWasZ)>1?"s":""} off the raft.`;}}const aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0||this.mechBoosting===true;/* release 317: the robot's boost carries over hazards */
     // Pits, lava and deep water are lethal to walk into (operator, release 101: the r97 brink guard is removed; rims,
     // fog hatching and level marks keep them readable instead).
     // Release 102: the Tidemantle lets the Wayfarer swim on surface water (stage one of the water traversal plan).
     if(terrainHazard==="lava"&&this.mechUp())terrainHazard=null;/* release 475: the robot wades through lava; the heat is settled at the frame's end */
     if(sailing){terrainHazard=null;this.swimming=false}else if(this.robotPutsToSea(nx,ny,width,terrainHazard))terrainHazard=null;else if(this.swimsHere(terrainHazard)){this.swimKind=terrainHazard;if(!this.swimming){this.swimming=true;if(now>(this.swimMessageAt||0)){this.swimMessageAt=now+8000;this.message=this.mechUp()?"The robot seals and wades on through the water.":"The Tidemantle holds you up. Swimming drains stamina.";}}terrainHazard=null}else this.swimming=false;
-    const fellIntoHazard=!!terrainHazard&&!aerial;this._fatalFall=false;/* release 609 */
+    const fellIntoHazard=!!terrainHazard&&!aerial;this._fatalFall=!!this._fatalFallPending;this._fatalFallPending=false;/* release 609; 615: a raft drop */
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":DEEP_WATER.includes(terrainHazard)?"The deep water drags the Wayfarer under.":terrainHazard==="canyon"?(tileUnder(this.map,width,nx,ny)?.chasm?(this.fellStars=true,"The Wayfarer steps off the edge and falls away into the stars."):"The ledge gives way beneath the Wayfarer."):"The water closes over the Wayfarer."}
     else if (sailing) this.sail(p, dx, dy, width, now);
     else {

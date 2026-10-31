@@ -325,7 +325,7 @@ function drawVoidScarSurface(ctx,g,s,mw,mh,surface){
 // glittering stars"): a chasm crossing's drop is open night sky. The tile holds a few fixed stars (cached with the ground); each
 // frame a bounded handful glitter (CHASM_STARS.twinkle of the tiles in view), and a penumbra of light follows the Wayfarer.
 export const CHASM_STARS = { sky: "#0b0e11", stars: 3, star: ["#ffffff2e", "#fff0c444"], glint: .4, // release 613 (Tim: "the background to be like the fog... dark... faint, faint specks of light... you won't be able to really discern... depth vs blackness"): the fog's own black, faint stars
-  twinkleEvery: 3, penumbra: { inner: 2.6, outer: 7.5, dark: .78 } };
+  twinkleEvery: 3, penumbra: { inner: 2.2, outer: 6.5, dark: .88 } }; // release 615 (Tim: "the wayfarer is really the only real point of light"): was 2.6 / 7.5 / .78
 function drawStarChasm(ctx, t, x, y, s) {
   const px = x * s, py = y * s;
   ctx.fillStyle = CHASM_STARS.sky; ctx.fillRect(px, py, s + 1, s + 1);
@@ -340,13 +340,16 @@ function glitterChasm(ctx, list, s, now) {
   }
 }
 // Release 613: a Starfield raft: a slab of pale stone edged with faint light, its shadow lost in the stars below.
-function drawRafts(ctx, g, s, now) {
+function drawRafts(ctx, g, s, now) { // release 615: risen rafts lift, sunken ones show as dim shapes beneath the level
   const t = Number(g.save?.playSeconds) || 0, H = STARFIELD_PLATFORMS.half;
-  for (const m of g.map.movers) { const c = platformPos(m, t); if (g.area === "dungeon" && dungeonTileVisibility(g.map, Math.floor(c.x), Math.floor(c.y)) === "unseen") continue; const x = (c.x - H) * s, y = (c.y - H) * s, w = H * 2 * s, glow = .45 + .25 * Math.sin(now / 500 + m.phase * 6);
-    ctx.fillStyle = "#00000066"; ctx.fillRect(x + s * .12, y + s * .22, w, w);
-    ctx.fillStyle = "#cfc6b4"; ctx.fillRect(x, y, w, w); ctx.fillStyle = "#b3aa97"; ctx.fillRect(x, y + w * .78, w, w * .22);
+  for (const m of g.map.movers) { const c = platformPos(m, t); if (g.area === "dungeon" && dungeonTileVisibility(g.map, Math.floor(c.x), Math.floor(c.y)) === "unseen") continue;
+    const lift = discLift(c.z) * s, under = c.z < -.3, x = (c.x - H) * s, y = (c.y - H) * s - lift, w = H * 2 * s, glow = .45 + .25 * Math.sin(now / 500 + (m.phase || 0) * 6);
+    ctx.save(); if (under) ctx.globalAlpha = Math.max(.18, .6 + c.z * .25);
+    ctx.fillStyle = "#00000066"; ctx.fillRect(x + s * .12, y + lift + s * .22, w, w); // its shadow stays on the level
+    ctx.fillStyle = under ? "#4d4a52" : "#cfc6b4"; ctx.fillRect(x, y, w, w); ctx.fillStyle = under ? "#36343b" : "#b3aa97"; ctx.fillRect(x, y + w * .78, w, w * .22);
     ctx.strokeStyle = `rgba(170,200,255,${glow})`; ctx.lineWidth = Math.max(1.5, s * .06); ctx.strokeRect(x + 1, y + 1, w - 2, w - 2);
-    ctx.fillStyle = `rgba(200,220,255,${glow * .8})`; for (const [u, v] of [[.2, .2], [.8, .2], [.2, .8], [.8, .8]]) ctx.fillRect(x + w * u - 1.5, y + w * v - 1.5, 3, 3); }
+    ctx.fillStyle = `rgba(200,220,255,${glow * .8})`; for (const [u, v] of [[.2, .2], [.8, .2], [.2, .8], [.8, .8]]) ctx.fillRect(x + w * u - 1.5, y + w * v - 1.5, 3, 3);
+    ctx.restore(); }
 }
 let cloudSky = false; // set each frame from g.map.skyCloud (tile painters are handed the tile array, not the map)
 export const CLOUD_PAINT = { sky: ["#6f9cc9", "#77a3cf"], puff: "#ffffff22", floor: ["#dfe6ef", "#d6dfeb"], shade: "#b4c3d666", rim: "#8ea4bf", gleam: "#ffffff44" };
@@ -1775,7 +1778,7 @@ export function render(ctx, g, w, h, now) {
   const onDisc = g.skyLevel > 0 && g.map?.skyDiscs ? g.map.skyDiscs.find((d) => d.level === g.skyLevel && Math.hypot(p.x + .5 - d.x, p.y + .75 - d.y) <= d.r + .05) : null;
   for (const d of g.map?.skyDiscs || []) if (visibleInCamera({ x: d.x, y: d.y }, l, t, r, b, 3)) draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
   const playerDraw = {
-    y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.skyLevel > 0 ? discLift(g.skyLevel) : 0,
+    y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.skyLevel > 0 ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
     fn: () => {
       if (jumping) {
         ctx.fillStyle = "#05050477";
@@ -1875,7 +1878,7 @@ export function render(ctx, g, w, h, now) {
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) {
     const raise = (Number.isFinite(d.x) ? groundLift(d.x, d === playerDraw ? p.y : d.y) : 0) + (d.lift || 0);
-    if (raise) { ctx.save(); ctx.translate(0, -raise * s); d.fn(); ctx.restore(); } else d.fn();
+    if (raise || (d.alpha ?? 1) < 1) { ctx.save(); if (raise) ctx.translate(0, -raise * s); if ((d.alpha ?? 1) < 1) ctx.globalAlpha = d.alpha; d.fn(); ctx.restore(); } else d.fn(); // release 615: a beneath-the-level rider is a dim shape
   }
   // Release 573: behind a giant tree the Wayfarer shows through, faint.
   if (g.area === "overworld" && g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p))) {
