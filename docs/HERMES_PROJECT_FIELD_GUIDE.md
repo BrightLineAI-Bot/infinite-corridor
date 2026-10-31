@@ -2694,6 +2694,22 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 617: fog moors — 2026-10-31
+
+The daily world-regions work (Tim's list of region ideas: "fog regions").
+
+**CODE:**
+- `src/landscape.ts`: `LANDSCAPE_VERSION` 9. `REGIONS_V9.wildTo` [["fog", .3]], rolled on its own hash (`region-site:v9`) only for
+  a region still wild after the version 8 roll; `regionTile` caches version 9 apart. `REGION_GROUNDS.fog` (Fog Moors),
+  `REGIONS.lean.fog`, `REGION_NAMES.nouns.fog`. `applyFogMoor` (version 9, not full-ocean sections): bare ground in a fog region
+  becomes `fogMoor` heath, `mistPool` (wadeable) where `FOG.pool` noise rises, and `moorStone` (blocked; never on protected
+  ground) where `FOG.stone` noise peaks; `map.fogMoor` sets `map.weather` "fog".
+- `src/landscape-render.ts`, `src/atlas-colors.ts`: paint and Atlas colours for the three kinds. `src/renderer.ts`: the "fog"
+  weather draws drifting grey banks (7 at full quality, 4 otherwise). `src/game.ts`: the region banner "Fog moors".
+
+**BOUNDARY:** Sections already seen keep the version they were pinned to (1 to 8) and never change; checked over 2520 sections
+of versions 2 to 8 against `main`, none differ. No save change (the Atlas pins `landscapeVersion` 9 for newly seen sections).
+
 ## Release 615: raft tracks, heights and the dark — 2026-10-31
 
 Tim (2026-10-31): "the platforms don't have to move all in straight lines... 2 paces forward... 2 paces to the left... it could be

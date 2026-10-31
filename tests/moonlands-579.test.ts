@@ -11,7 +11,7 @@ const SEED = 'MOON579';
 function find(type, version = 6) { for (let x = 14; x < 140; x++) for (let y = 14; y < 140; y += 2) { const r = sectionRegion(SEED, x, y, version); if (r.type === type && r.hold >= 1) return [x, y]; } }
 
 test('version 6 turns some still-wild regions into moonlands; forests, frostlands and every other region stay as in version 5', () => {
-  assert.equal(LANDSCAPE_VERSION, 8); const types = new Set();
+  assert.equal(LANDSCAPE_VERSION, 9); const types = new Set();
   for (let x = 14; x < 120; x += 2) for (let y = 14; y < 120; y += 2) {
     const a = sectionRegion(SEED, x, y, 5), b = sectionRegion(SEED, x, y, 6); types.add(b.type);
     assert.equal(a.id, b.id); if (a.type !== 'wild') assert.equal(b.type, a.type); else assert.ok(['wild', 'lunar'].includes(b.type));

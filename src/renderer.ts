@@ -1992,6 +1992,8 @@ export function render(ctx, g, w, h, now) {
     const count=budget.quality==="full"?22:10;for(let i=0;i<count;i++){const p=Math.sin(motion*1.7+i*2.3);if(p<.55)continue;const x=(i*113+g.rx*29)%w,y=((i*71+motion*4)%h+h)%h,k=(p-.55)*9;ctx.fillStyle=i%2?"#f2e8ffcc":"#c7a8ffcc";ctx.fillRect(x-k,y-.6,k*2,1.2);ctx.fillRect(x-.6,y-k,1.2,k*2)}ctx.fillStyle="#2a1a4414";ctx.fillRect(0,0,w,h);
   }else if(budget.weather&&g.map.weather==="steam"){ // release 299: Brass Engine, steam rising from the pipes
     const count=budget.quality==="full"?12:6;for(let i=0;i<count;i++){const f=(motion*.18+i*.37)%1,x=(i*149+g.rx*31)%w+Math.sin(motion+i)*12,y=h*(1-f)-(i*53)%(h*.3);ctx.fillStyle=`rgba(220,214,200,${.16*(1-f)})`;ctx.beginPath();ctx.arc(x,y,10+f*26,0,7);ctx.fill()}ctx.fillStyle="#3a2a1210";ctx.fillRect(0,0,w,h);
+  }else if(budget.weather&&g.map.weather==="fog"){ // release 617: fog moors, slow grey banks drifting across
+    const count=budget.quality==="full"?7:4;for(let i=0;i<count;i++){const x=((i*211+motion*(9+i*3))%(w+400))-200,y=((i*137+g.ry*53)%(h+120))-60+Math.sin(motion*.3+i)*20,r=160+(i%3)*70,f=ctx.createRadialGradient(x,y,0,x,y,r);f.addColorStop(0,"rgba(205,214,212,.22)");f.addColorStop(1,"rgba(205,214,212,0)");ctx.fillStyle=f;ctx.fillRect(x-r,y-r,r*2,r*2)}
   }else if(budget.weather&&g.map.weather==="sunbreak"){
     const glow=ctx.createLinearGradient(0,0,w*.8,h);glow.addColorStop(0,"#e7c87324");glow.addColorStop(.45,"#d8ad5220");glow.addColorStop(.7,"#0000");ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
   }

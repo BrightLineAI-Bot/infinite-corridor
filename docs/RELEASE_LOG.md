@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**617**
+**619**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 615 | Claude | `claude/dreamy-rubin-yn6q2p` | Raft tracks (winding, long), rising and sinking rafts, a darker Starfield | Building. |
+| 617 | Claude | `claude/dreamy-rubin-yn6q2p` | Fog moors: a new world region in landscape version 9 (daily world-regions work) | Building. |
+| 615 | Claude | PR #291 | Raft tracks (winding, long), rising and sinking rafts, a darker Starfield | Merged (`r615-692e22b65866`). Not published. |
 | 613 | Claude | PR #290 | Starfield dungeons (renamed chasm crossings) and moving stone rafts over their drops | Merged (`r613-927404a43539`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
