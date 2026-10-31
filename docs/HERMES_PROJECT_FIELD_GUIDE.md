@@ -2694,6 +2694,30 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 631: giant jungle trees — 2026-10-31
+
+Tim (2026-10-31): "The pale vines looks good, but I'm not seeing any giant trees you can climb by jumping between platforms. This
+should take you to a platform or dungeon. It could be a skyland dungeon without the divine challenge or a vine dungeon, or a
+starfield dungeon".
+
+**CODE:**
+- `src/landscape.ts`: `LANDSCAPE_VERSION` 12. `CANOPY` and `buildCanopyTree` (run last, like the mesas, for version 12 palette
+  sections): a share (`chance`) of jungle sections place a `size` crown of `canopyCrown` at `height`, and below it a stair of
+  `step`-square `canopyBranch` platforms, each one level lower and `gap` tiles further, that may turn a quarter round at each level
+  so the climb winds. Only on jungle ground off the plaza, the exit lines and anything placed; the foot must touch ground the plaza
+  reaches. Jungle trees on its tiles are cleared, gap tiles are opened, nothing spawns up there, creatures cannot climb (canStep).
+  The crown holds a `canopyGate` whose `dest` ("starfield" or "cloud", `starfield` share, its own hash) is fixed per tree.
+- `src/interactions.ts`: the gate's "enter" is a `dungeon` transition (starfield) or a `skyland` transition at tier 0 with mode
+  "cloud". `src/skylands.ts` `beginSkyland` takes a `forceMode`. `src/game.ts`: the starfield door's crossing is
+  `dungeon:<seed>:g<gen>:<rx>:<ry>:canopy`, always a Starfield (`history.chasm`), never a Poison Crypt or a Sleeper's Hall.
+- `src/landscape-render.ts`: paint for `canopyBranch` (bark, a few leaves) and `canopyCrown` (leaves). `src/renderer.ts`
+  `drawCanopyGate` (a woven arch full of stars or of drifting cloud) and `drawCanopyDressing` (trunk, hanging vines, a fringe of
+  leaves round the crown, sorted with the actors; only while in view). `src/atlas-colors.ts`.
+
+**BOUNDARY:** Sections already seen keep their version (1 to 11); 3600 sections of versions 2 to 11 compared with `main`, none differ. The cloud hold keeps its own rules (its gate drops you far off).
+A "vine dungeon" is not built; the two doors are the Starfield crossing and the cloud hold. No save change beyond the crossing's
+and the Skyland run's usual history.
+
 ## Release 629: five more palette regions — 2026-10-31
 
 The second batch of Tim's region blitz (passes 6 to 10).

@@ -933,6 +933,33 @@ export function drawWallGlint(ctx, q, s, now) {
 // Release 225: a patch of disturbed earth (or, once dug, turned earth): a low mound of darker soil ringed by a few stones.
 // Release 431: a cracked bronze bell on a weathered frame; a rung one hangs still with a faint warm glow.
 // Release 595: a torn page lying on the floor, its corner lifting; an unread one gives off a faint light.
+export const CANOPY_LOOK = { leaf: ["#2c6326", "#3f8a35", "#1f4a1a", "#4f9a3f"], bark: ["#5a3d22", "#3e2916"], vine: "#3f8a35", blobs: 22, vines: 6 };
+function drawCanopyDressing(ctx, c, s, now) {
+  const L = discLift(c.height) * s, x0 = c.x0 * s, y0 = c.y0 * s - L, w = c.size * s, cx = x0 + w / 2, foot = (c.y0 + c.size) * s, sway = Math.sin(now / 1600) * s * .03, C = CANOPY_LOOK;
+  ctx.save();
+  // the trunk: from the ground up to the crown's underside, wider than the crown's face so it reads as one great stem
+  ctx.fillStyle = C.bark[1]; ctx.beginPath(); ctx.moveTo(cx - w * .32, foot + s * .25); ctx.quadraticCurveTo(cx - w * .2, foot - L * .5, cx - w * .42, y0 + w); ctx.lineTo(cx + w * .42, y0 + w); ctx.quadraticCurveTo(cx + w * .2, foot - L * .5, cx + w * .32, foot + s * .25); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = C.bark[0]; ctx.lineWidth = Math.max(1, s * .05); for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(cx + k * w * .1, foot + s * .2); ctx.quadraticCurveTo(cx + k * w * .14, foot - L * .4, cx + k * w * .16, y0 + w); ctx.stroke(); }
+  // vines from the crown's rim
+  ctx.strokeStyle = C.vine; ctx.lineWidth = Math.max(1, s * .04);
+  for (let i = 0; i < C.vines; i++) { const vx = x0 + (i + .5) / C.vines * w, len = L * (.45 + ((i * 37) % 10) / 20); ctx.beginPath(); ctx.moveTo(vx, y0 + w); ctx.quadraticCurveTo(vx + sway * (i % 2 ? 1 : -1) * 3, y0 + w + len * .5, vx + sway, y0 + w + len); ctx.stroke(); }
+  // a fringe of leaves round the crown, outside its square
+  for (let i = 0; i < C.blobs; i++) { const a = i / C.blobs * Math.PI * 2, ring = w * (.62 + ((i * 53) % 10) / 60), bx = cx + Math.cos(a) * ring + sway, by = y0 + w / 2 + Math.sin(a) * ring * .8, rr = s * (.32 + ((i * 29) % 10) / 40);
+    if (bx > x0 && bx < x0 + w && by > y0 && by < y0 + w) continue; ctx.fillStyle = C.leaf[i % C.leaf.length]; ctx.beginPath(); ctx.arc(bx, by, rr, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+}
+// Release 631: the door in the giant tree's crown: an arch of woven branches and vine, filled with stars (to a Starfield
+// crossing) or with drifting cloud (to a cloud hold).
+export function drawCanopyGate(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, base = (o.y + .9) * s, w = s * .42, hgt = s * 1.15, stars = o.dest === "starfield";
+  ctx.save();
+  ctx.beginPath(); ctx.moveTo(cx - w, base); ctx.lineTo(cx - w, base - hgt * .6); ctx.quadraticCurveTo(cx, base - hgt * 1.15, cx + w, base - hgt * .6); ctx.lineTo(cx + w, base); ctx.closePath();
+  if (stars) { ctx.fillStyle = "#0b0e11"; ctx.fill(); ctx.save(); ctx.clip(); for (let i = 0; i < 9; i++) { const a = (i * 2.399 + now / 4000) % 6.283, rr = (i % 4 + 1) * s * .08; ctx.fillStyle = i % 3 ? "#ffffffaa" : "#fff0c4"; ctx.fillRect(cx + Math.cos(a) * rr, base - hgt * .45 + Math.sin(a) * rr, Math.max(1, s * .03), Math.max(1, s * .03)); } ctx.restore(); }
+  else { const g = ctx.createLinearGradient(0, base - hgt, 0, base); g.addColorStop(0, "#f4f8ff"); g.addColorStop(1, "#b9d4ef"); ctx.fillStyle = g; ctx.fill(); ctx.save(); ctx.clip(); ctx.fillStyle = "#ffffffcc"; for (let i = 0; i < 3; i++) { const x = cx - w + ((now / 1800 + i * .4) % 1.2) * w * 2; ctx.beginPath(); ctx.ellipse(x, base - hgt * (.25 + i * .18), s * .2, s * .07, 0, 0, Math.PI * 2); ctx.fill(); } ctx.restore(); }
+  ctx.strokeStyle = "#5a3d22"; ctx.lineWidth = Math.max(2, s * .1); ctx.lineJoin = "round"; ctx.stroke();
+  ctx.strokeStyle = "#3f8a35"; ctx.lineWidth = Math.max(1, s * .04); ctx.beginPath(); for (let k = 0; k <= 12; k++) { const t = k / 12, x = cx - w + t * 2 * w, y = base - hgt * (.6 + .5 * Math.sin(t * Math.PI)) + Math.sin(k * 1.7) * s * .04; if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.stroke();
+  ctx.restore();
+}
 // Release 627: a thread's piece (threads.ts): a small object in the thread's colour, by its `relic` shape, glowing until read.
 export function drawThreadRelic(ctx, o, s, now) {
   const cx = (o.x + .5) * s, cy = (o.y + .62) * s, read = o.state === "read", c = o.colour || "#e8dcc0", bob = read ? 0 : Math.sin(now / 650 + o.x) * s * .03;
@@ -1740,6 +1767,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "digSpot") { drawDigSpot(ctx, o, s, now);
           } else if (o.kind === "ilse") { drawIlse(ctx, o, s, now);
           } else if (o.kind === "crackedBell") { drawCrackedBell(ctx, o, s, now);
+          } else if (o.kind === "canopyGate") { drawCanopyGate(ctx, o, s, now); // release 631
           } else if (o.kind === "threadRelic") { drawThreadRelic(ctx, o, s, now); // release 627
           } else if (o.kind === "tornPage") { drawTornPage(ctx, o, s, now); // release 595
           } else if (o.kind === "surveyorLink") { drawSurveyorLink(ctx, o, s, now); // release 505
@@ -1917,6 +1945,11 @@ export function render(ctx, g, w, h, now) {
       }
     },
   };
+  // Release 631: the giant tree's dressing, sorted with the actors at the crown's foot: a broad trunk under the crown, vines
+  // hanging from its rim, and a fringe of leaves overhanging the crown's edges (never over the crown itself, so whoever stands
+  // there stays in view). A few dozen shapes, only while the tree is in view.
+  const cn = g.area === "overworld" ? g.map?.canopy : null;
+  if (cn && visibleInCamera({ x: cn.x0 + cn.size / 2, y: cn.y0 + cn.size / 2 }, l, t, r, b, 6)) draws.push({ y: cn.y0 + cn.size - .2, fn: () => drawCanopyDressing(ctx, cn, s, now) });
   draws.push(playerDraw);
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) {

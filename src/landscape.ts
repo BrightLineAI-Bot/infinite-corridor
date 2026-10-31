@@ -16,7 +16,7 @@ import { placeDock } from "./boats.ts";
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
 // Each section keeps the version it was first seen with.
-export const LANDSCAPE_VERSION = 11; // 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
+export const LANDSCAPE_VERSION = 12; // 631: giant canopy trees in the jungle; 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles
 export const MAX_LEVEL = 5;
 // Fraction of max health lost when dropping this many levels; null = fatal.
@@ -52,7 +52,7 @@ export const DEEP_WATER = ["ocean", "deepOcean", "lakeWater", "swampWater", "tox
 const T = { ocean: 0.70, beach: 0.675, mountain: 0.68, alien: 0.75, desert: 0.67 };
 const SHALLOWS_FROM = T.ocean - .012; // sea level above which water is shallows (below it, beach)
 const WALKABLE_LANDSCAPE = new Set(["snowRock", "snowPeak", "mountainRock", "alpineGrass", "mountainTrail", "sand", "duneCrest", "duneFace",
-  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope", "forestFloor", "snowField", "lakeIce", "moonDust", "craterFloor", "craterRim", "basalt", "basaltFissure", "pillarGround", "skyPlatform", "fogMoor", "mistPool", "jungleFloor", "jungleMire", "ribPlate", "oilSlick", "saltCrust", "brinePool", "crystalShale", "prismPool", "sporeLoam", "sporeBed", "stoneLitter", "silicaPool", "savannaGrass", "wateringHole", "reefFlat", "tidePool", "amberLitter", "amberPool", "obsidianFloor", "quicksilverPool"]); // 629: the second palette // 617: fog moors; 625: the palette regions // release 573: forestFloor..lakeIce; 579: the moon; 583: basalt; 591: pillar lands
+  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope", "forestFloor", "snowField", "lakeIce", "moonDust", "craterFloor", "craterRim", "basalt", "basaltFissure", "pillarGround", "skyPlatform", "fogMoor", "mistPool", "jungleFloor", "jungleMire", "ribPlate", "oilSlick", "saltCrust", "brinePool", "crystalShale", "prismPool", "sporeLoam", "sporeBed", "stoneLitter", "silicaPool", "savannaGrass", "wateringHole", "reefFlat", "tidePool", "amberLitter", "amberPool", "obsidianFloor", "quicksilverPool", "canopyBranch", "canopyCrown"]); // 631: canopy trees // 629: the second palette // 617: fog moors; 625: the palette regions // release 573: forestFloor..lakeIce; 579: the moon; 583: basalt; 591: pillar lands
 
 // ---------------------------------------------------------------- noise
 function lattice(key, ix, iy) { return (hashSeed(`${key}:${ix}:${iy}`) % 10007) / 10007; }
@@ -416,6 +416,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   else if (map.fogMoor) map.weather = "fog"; // release 617
   if (version >= 5) for (const t of map.tiles) if (t.landscape === "mountains" && (t.kind === "alpineGrass" || t.kind === "mountainRock") && regionTile(seed, rx * 32 + t.x, ry * 32 + t.y, 5).type === "frost") t.kind = "snowRock"; // release 573: frost mountains are snowbound
   if (map.pillarlands) buildMesas(map, seed, rx, ry); // release 591: last, so nothing after it ramps or lowers them
+  if (version >= 12 && !full && map.paletteRegion) buildCanopyTree(map, seed, rx, ry); // release 631: likewise last
   map.landscape = { version, biome: biome || dominantLandscape(map), name: (BIOMES[biome || dominantLandscape(map)] || REGION_GROUNDS[biome || dominantLandscape(map)])?.name || null, ...(openSea ? { openSea: full ? "open" : "coast" } : {}) };
   return map;
 }
@@ -576,6 +577,55 @@ function applyPillarGround(map, seed, rx, ry, mask) {
   }
   if (touched) map.pillarlands = true;
   return touched;
+}
+// Release 631 (Tim, 2026-10-31: "The pale vines looks good, but I'm not seeing any giant trees you can climb by jumping between
+// platforms. This should take you to a platform or dungeon. It could be a skyland dungeon without the divine challenge or a vine
+// dungeon, or a starfield dungeon"): from version 12 a share (`chance`) of jungle sections grow one giant tree: its crown is a
+// platform `height` levels up (a `size` square of canopyCrown), reached by a stair of branches (`step` square, each one level
+// lower, `gap` tiles apart, so every one is a jump up), laid round the trunk in up to `turns` changes of direction so the climb
+// winds. The crown holds a gate (`canopyGate`): to a Starfield crossing high in the canopy, or to a cloud hold of the Skylands
+// (its waves without the divine challenge), decided once per tree (`starfield` share). Creatures cannot climb; nothing spawns up
+// there; jungle trees on the tree's ground are cleared. Bounded: one tree, a few hundred tile checks, once per section.
+export const CANOPY = { chance: .55, size: 3, height: 3, step: 2, gap: 1, tries: 60, starfield: .5 };
+function buildCanopyTree(map, seed, rx, ry) {
+  const C = CANOPY, h = (k) => hashSeed(`${seed}:canopy:v1:${rx}:${ry}:${k}`), at = (x, y) => map.tiles[idx(x, y)];
+  if ((h("grow") % 1000) / 1000 >= C.chance) return null;
+  const ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1, objAt = new Set((map.objects || []).filter((o) => !o.jungle).map((o) => idx(Math.round(o.x), Math.round(o.y))));
+  const exitLine = (x, y) => (near(ex.north, x) && y <= 16) || (near(ex.south, x) && y >= 16) || (near(ex.west, y) && x <= 16) || (near(ex.east, y) && x >= 16);
+  const ground = (x, y) => { const t = x >= 1 && y >= 1 && x <= 30 && y <= 30 && at(x, y); return !!t && t.landscape === "jungle" && !t.structure && !t.buildingId && !t.environment && !t.slope && !(t.elev > 0) && !exitLine(x, y) && !(x >= 12 && x <= 20 && y >= 12 && y <= 20) && !objAt.has(idx(x, y)) && (t.kind === "jungleFloor" || t.kind === "jungleMire" || t.kind === "buttressRoot"); };
+  const square = (x0, y0, n) => Array.from({ length: n * n }, (_, i) => [x0 + i % n, y0 + Math.floor(i / n)]), DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]], walked = reachableFromPlaza(map);
+  for (let t = 0; t < C.tries; t++) {
+    const n = C.size, x0 = 2 + h(`x${t}`) % 26, y0 = 2 + h(`y${t}`) % 26, top = square(x0, y0, n);
+    if (!top.every(([x, y]) => ground(x, y))) continue;
+    // From the crown's edge, each branch one level lower and one gap further; a branch may turn the climb a quarter round.
+    let ok = false, steps = [], gaps = [];
+    for (let k = 0; k < 4 && !ok; k++) {
+      steps = []; gaps = []; let [dx, dy] = DIRS[(h(`d${t}`) + k) % 4], box = { x0, y0, n }, fine = true;
+      for (let lv = C.height - 1; lv >= 1 && fine; lv--) {
+        if (lv < C.height - 1 && h(`turn${t}:${lv}`) % 2) [dx, dy] = DIRS[(DIRS.findIndex(([a, b]) => a === dx && b === dy) + (h(`tw${t}:${lv}`) % 2 ? 1 : 3)) % 4];
+        const S = C.step, mid = (a0, an) => a0 + Math.floor((an - S) / 2), gx = dx > 0 ? box.x0 + box.n : dx < 0 ? box.x0 - C.gap : mid(box.x0, box.n), gy = dy > 0 ? box.y0 + box.n : dy < 0 ? box.y0 - C.gap : mid(box.y0, box.n);
+        const sx = dx > 0 ? gx + C.gap : dx < 0 ? gx - S : gx, sy = dy > 0 ? gy + C.gap : dy < 0 ? gy - S : gy;
+        for (let g = 0; g < C.gap; g++) for (let i = 0; i < S; i++) gaps.push(dx ? [gx + g, gy + i] : [gx + i, gy + g]);
+        const sq = square(sx, sy, S); for (const [x, y] of sq) steps.push([x, y, lv]); box = { x0: sx, y0: sy, n: S };
+        fine = gaps.every(([x, y]) => ground(x, y)) && sq.every(([x, y]) => ground(x, y));
+      }
+      // the foot of the stair must open onto ground the plaza reaches
+      const foot = steps.filter(([, , lv]) => lv === 1), mine = new Set([...top, ...steps, ...gaps].map(([x, y]) => idx(x, y)));
+      ok = fine && foot.some(([x, y]) => [[1, 0], [0, 1], [-1, 0], [0, -1]].some(([dx, dy]) => { const j = idx(x + dx, y + dy); return x + dx >= 0 && y + dy >= 0 && x + dx <= 31 && y + dy <= 31 && !mine.has(j) && walked[j]; }));
+    }
+    if (!ok) continue;
+    const all = new Set([...top, ...steps, ...gaps].map(([x, y]) => idx(x, y)));
+    for (const [x, y] of top) Object.assign(at(x, y), { kind: "canopyCrown", elev: C.height, slope: false, blocked: false, canopy: true });
+    for (const [x, y, lv] of steps) Object.assign(at(x, y), { kind: "canopyBranch", elev: lv, slope: false, blocked: false, canopy: true });
+    for (const [x, y] of gaps) { const g = at(x, y); if (g.blocked) Object.assign(g, { kind: "jungleFloor", blocked: false }); }
+    map.objects = (map.objects || []).filter((o) => !(o.jungle && all.has(idx(Math.round(o.x), Math.round(o.y)))));
+    const dest = (hashSeed(`${seed}:canopy-door:v1:${ry * 7919 + rx}`) % 1000) / 1000 < C.starfield ? "starfield" : "cloud", cx = x0 + Math.floor(n / 2), cy = y0 + Math.floor(n / 2);
+    map.objects.push({ id: `canopy-gate-${rx}-${ry}`, kind: "canopyGate", name: dest === "starfield" ? "A door in the canopy, full of stars" : "A door in the canopy, full of cloud", x: cx, y: cy, dest, actions: ["enter"], state: "open" });
+    map.canopy = { x0, y0, size: n, height: C.height, dest };
+    map.enemySpawns = (map.enemySpawns || []).filter((q) => !at(Math.round(q.x), Math.round(q.y))?.canopy);
+    return map.canopy;
+  }
+  return null;
 }
 function buildMesas(map, seed, rx, ry) {
   const P = PILLARS, h = (k) => hashSeed(`${seed}:pillars:v1:${rx}:${ry}:${k}`), at = (x, y) => map.tiles[idx(x, y)], ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1;

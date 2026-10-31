@@ -19,7 +19,7 @@ const found = {}; const find = (type, n = 3) => { const out = (found[type] ||= [
   return out; };
 
 test('version 11 turns some remaining wild and plains regions into five more types; every other region keeps its version 10 type', () => {
-  assert.equal(LANDSCAPE_VERSION, 11); const seen = new Set();
+  assert.equal(LANDSCAPE_VERSION, 12); const seen = new Set();
   for (let x = 14; x < 140; x += 2) for (let y = 14; y < 140; y += 2) {
     const a = sectionRegion(SEED, x, y, 10), b = sectionRegion(SEED, x, y, 11); seen.add(b.type); assert.equal(a.id, b.id);
     if (!REGIONS_V11.from.includes(a.type)) assert.equal(b.type, a.type); else assert.ok([a.type, ...TYPES].includes(b.type), `${a.type} -> ${b.type}`);
@@ -44,6 +44,6 @@ test('each palette region: its ground, wadeable pools, impassable blocks, Atlas 
 
 test('in the game: the banner names the region and the atlas pins the current version; the ground is painted', () => {
   const [x, y] = find('amber', 1)[0], s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld');
-  assert.equal(s.atlas[`${x},${y}`].landscapeVersion, 11); const b = (g.questNotices || []).find((q) => q.kind === 'discovery'); if (b) assert.equal(b.detail, 'Amberwood');
+  assert.equal(s.atlas[`${x},${y}`].landscapeVersion, LANDSCAPE_VERSION); const b = (g.questNotices || []).find((q) => q.kind === 'discovery'); if (b) assert.equal(b.detail, 'Amberwood');
   const src = readFileSync(new URL('../src/landscape-render.ts', import.meta.url), 'utf8'); assert.match(src, /export const PALETTE_PAINT/); for (const t of TYPES) assert.match(src, new RegExp(`\\b${t}: \\{ ground:`));
 });
