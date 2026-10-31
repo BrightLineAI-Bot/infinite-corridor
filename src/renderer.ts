@@ -319,6 +319,23 @@ function drawVoidScarSurface(ctx,g,s,mw,mh,surface){
   for(const c of surface.shapes)for(const crack of c.cracks){ctx.moveTo(crack[0][0]*s,crack[0][1]*s);for(let i=1;i<crack.length;i++)ctx.lineTo(crack[i][0]*s,crack[i][1]*s)}
   ctx.stroke();ctx.restore();
 }
+// Release 619 (Tim: "it would be interesting if the water could come up around the character's legs... at shoals, we kind of just
+// walk about the water... I don't really want to slow it down"): standing in shallow water the Wayfarer wades: a band of the water's
+// colour over the lower legs, a wavy surface line and a ring spreading round them. The Wayfarer only, a few path calls a frame.
+export const WADE = { kinds: { shallows: ["#4fb0aecc", "#e8fbfa99"], mistPool: ["#a8b6b3d0", "#e6eeec99"], mireWater: ["#55603cd0", "#a3b07a88"], toxicMire: ["#5e8f2ad0", "#d4ff8a88"] },
+  depth: .2, below: .07, half: .3, ring: [.24, .4], period: 1400 };
+export function wadeAt(g, p, jumping = false) {
+  if (g.area !== "overworld" && g.area !== "dungeon") return null; if (!g.map?.tiles || g.save?.boat?.aboard || g.skyLevel > 0 || g.raftZ || g.mechUp?.() || g.droneUp?.()) return null;
+  if (jumping) return null;
+  const t = g.map.tiles[Math.floor(p.y + .75) * (g.map.width || 32) + Math.floor(p.x + .5)]; return (t && !t.blocked && WADE.kinds[t.kind]) || null;
+}
+function drawWade(ctx, p, s, now, colours) {
+  const [water, foam] = colours, k = (p.x + .5) * s, base = (p.y + .82) * s, top = base - WADE.depth * s, bot = base + WADE.below * s, w = WADE.half * s, wave = Math.sin(now / 260) * s * .015;
+  ctx.fillStyle = water; ctx.beginPath(); ctx.moveTo(k - w, top + wave); ctx.quadraticCurveTo(k, top - wave * 2, k + w, top - wave); ctx.lineTo(k + w, bot); ctx.ellipse(k, bot, w, s * .06, 0, 0, Math.PI); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = foam; ctx.lineWidth = Math.max(1, s * .03); ctx.beginPath(); ctx.moveTo(k - w, top + wave); ctx.quadraticCurveTo(k, top - wave * 2, k + w, top - wave); ctx.stroke();
+  const f = (now % WADE.period) / WADE.period, r = WADE.ring[0] + (WADE.ring[1] - WADE.ring[0]) * f; ctx.globalAlpha *= 1 - f; ctx.lineWidth = Math.max(1, s * .02);
+  ctx.beginPath(); ctx.ellipse(k, top + s * .02, r * s, r * s * .32, 0, 0, Math.PI * 2); ctx.stroke();
+}
 // Release 589: a Skyland with a mode stands on cloud: open sky where the arena has void, soft cloud underfoot, and a darker
 // underside where cloud meets sky. Other tiles (hazards, bridges) draw as they always do.
 // Release 593 (Tim: "stars in the background... a penumbra around the character as he moves, and the background is kind of like
@@ -1832,6 +1849,7 @@ export function render(ctx, g, w, h, now) {
         Math.floor(p.walkPhase || 0),
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
+      { const wade = !kd && !suited && wadeAt(g, p, jumping); if (wade) { ctx.save(); drawWade(ctx, p, s, now, wade); ctx.restore(); } } // release 619
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);
