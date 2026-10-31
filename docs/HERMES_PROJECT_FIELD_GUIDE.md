@@ -2694,6 +2694,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 603: reforge results in colour — 2026-10-31
+
+Tim (2026-10-31): "in the gear reforge, when you reforge it... the number should be green... if it's higher than your current
+value or red if it's lower than the current value".
+
+**CODE:**
+- `src/main.ts`: `REFORGE_COLORS` and `reforgeOutcome(r)`: after a reforge the Smith screen opens with a line "Reforged: was →
+  now". The same affix: the new value green when it rose, red when it fell, plain when equal. A different affix: the lost one
+  red, the new one green. `openSmithy(note, last)` takes the reforge result (smithy.ts already returned `before` and `after`).
+
+**BOUNDARY:** Display only; reforging rules and costs are unchanged.
+
 ## Release 601: weapon spheres again — 2026-10-31
 
 Tim (2026-10-31): the weapon sphere "isn't dropping... I'm getting all the other items". His save held 8 weapon spheres to 159

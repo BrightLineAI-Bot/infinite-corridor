@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**603**
+**605**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 601 | Claude | `claude/dreamy-rubin-yn6q2p` | Crossing clears alternate weapon and armor spheres (weapon spheres had stopped) | Building. |
+| 603 | Claude | `claude/dreamy-rubin-yn6q2p` | Reforge results shown was → now, green when higher, red when lower | Building. |
+| 601 | Claude | PR #284 | Crossing clears alternate weapon and armor spheres (weapon spheres had stopped) | Merged (`r601-28ac2db9affd`). Not published. |
 | 599 | Claude | PR #283 | Robot plating re-forges after 20 s (blows land meanwhile), not instantly | Merged (`r599-434b42115ec9`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
