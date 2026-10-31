@@ -79,7 +79,7 @@ export function ensureBoatState(save) {
   // Release 269: the guard's extra hull (additive; only while the guard holds).
   save.boat.guardHull = save.boat.shield > 0 ? Math.max(0, Math.min(BOAT.shield.bonus, Number(b.guardHull) || 0)) : 0;
   // Release 311: the submersible (additive): `sub` true while the skiff in use is fitted; `subHull` its own bar.
-  save.boat.sub = b.owned === true && b.sub === true; save.boat.mechSub = save.boat.aboard && b.mechSub === true; /* release 557 */ save.boat.subHull = save.boat.sub ? Math.max(0, Math.min(BOAT.sub.hull, Number(b.subHull) || 0)) : 0;
+  save.boat.sub = b.owned === true && b.sub === true; save.boat.mechSub = save.boat.aboard && b.mechSub === true; /* release 557 */ if (save.boat.mechSub && place(b.mechSubFrom)) save.boat.mechSubFrom = place(b.mechSubFrom); else delete save.boat.mechSubFrom; /* release 621 */ save.boat.subHull = save.boat.sub ? Math.max(0, Math.min(BOAT.sub.hull, Number(b.subHull) || 0)) : 0;
   const spare = b.owned === true && place(b.spare); save.boat.spare = spare ? { ...spare, hull: Math.max(0, Math.min(BOAT.maxHull, Number.isFinite(b.spare.hull) ? b.spare.hull : BOAT.maxHull)), ...(b.spare.sub === true ? { sub: true, subHull: Math.max(0, Math.min(BOAT.sub.hull, Number(b.spare.subHull) || 0)) } : {}) } : null;
   return save.boat;
 }
@@ -177,8 +177,12 @@ export function board(save, at) {
   b.aboard = true; b.moored = null;
   return at;
 }
-// Stepping ashore moors the skiff where it floats.
-export function disembark(save, where) { const b = ensureBoatState(save); b.aboard = false; b.moored = where; b.mechSub = false; }
+// Stepping ashore moors the skiff where it floats. Release 621 (Tim: "it leaves a boat behind... why is there a boat behind?"):
+// the robot's own voyage (mechSub) never moved the skiff, which stays where it was moored (`mechSubFrom`); a voyage begun
+// before 621 has no `mechSubFrom` and moors where it lands, as before. Returns where the skiff now is.
+export function disembark(save, where) { const b = ensureBoatState(save), from = b.mechSub ? b.mechSubFrom : null; b.aboard = false; b.moored = from || where; b.mechSub = false; delete b.mechSubFrom; return b.moored; }
+// Where the skiff lies moored to be drawn: at its mooring ashore, or, while the robot is at sea on its own, where it was left.
+export function skiffMooring(save) { const b = save?.boat; if (!b?.owned) return null; return b.aboard ? (b.mechSub && b.mechSubFrom) || null : b.moored || null; }
 
 // Damage taken aboard: the hull absorbs its share. Returns the share the Wayfarer keeps; sinks at zero hull.
 export function hullAbsorb(save, damage) {
@@ -186,7 +190,7 @@ export function hullAbsorb(save, damage) {
   if (!b.aboard || !(damage > 0)) return { kept: damage, sunk: false };
   const guarded = shielded(save), take = Math.min(b.hull + (b.sub ? b.subHull || 0 : 0) + (guarded ? (b.guardHull || 0) / BOAT.shield.hullTaken : 0), damage * BOAT.hullShare), kept = (damage - take) * (guarded ? 1 - BOAT.shield.guard : 1) * (b.sub ? 1 - BOAT.sub.guard : 1); // release 311: the submersible guards 5% too
   if (!wearHull(save, take)) return { kept, sunk: false }; // release 269: the guard halves the hull's wear and keeps 5% off the Wayfarer's share
-  b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home; b.shield = 0; b.guardHull = 0; b.sub = false; b.subHull = 0; // a sunk submersible comes back a plain skiff
+  b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home; b.shield = 0; b.guardHull = 0; b.sub = false; b.subHull = 0; b.mechSub = false; delete b.mechSubFrom; // a sunk submersible comes back a plain skiff
   return { kept, sunk: true };
 }
 
@@ -195,7 +199,7 @@ export function hullStrike(save, n) {
   const b = ensureBoatState(save);
   if (!b.aboard || !(n > 0)) return false;
   if (!wearHull(save, n)) return false;
-  b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home; b.shield = 0; b.guardHull = 0; b.sub = false; b.subHull = 0;
+  b.aboard = false; b.hull = Math.round(BOAT.maxHull * BOAT.sunkHull); b.moored = b.home; b.shield = 0; b.guardHull = 0; b.sub = false; b.subHull = 0; b.mechSub = false; delete b.mechSubFrom;
   return true;
 }
 
