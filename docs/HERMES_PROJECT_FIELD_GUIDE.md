@@ -2694,6 +2694,30 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 633: the great trees rebuilt tall — 2026-10-31
+
+Tim (2026-10-31): "The huge trees should have 1-2 tile wide tiles that you can hop between to ascend; the trees should be super
+tall and extend beyond the top of the frame, really unreasonably tall." Version 12 was not yet published, so the tree is rebuilt
+in place (a version-12 section seen only in the 631 preview regenerates).
+
+**CODE:**
+- `src/landscape.ts` `CANOPY`/`buildCanopyTree` (rewritten): a 9 by 9 box of jungle ground; a 3 by 3 `canopyTrunk` column (blocked,
+  `elev` = landing + `trunkAbove`); the three rings round it walked as one spiral (outermost first, each tile touching the next);
+  along it, branches of 1 or 2 tiles (`lengths`), each a level higher, separated by a `gap` tile that is a `canopyLeaf` one level
+  below the branch before (a missed hop drops one level, never into a pit), leftover path joining the landing (`canopyCrown`,
+  about level 29) with the door. Branch, leaf and landing tiles are `skyPlatform` (a hop keeps its height over the gap). The foot
+  must touch ground the plaza reaches. `isLandscapeKind` knows `canopyTrunk`.
+- `src/game.ts`: `CANOPY_FALL_MS`: a fall begun on the tree within that time is counted at most `CANOPY.fallCap` (3) levels:
+  a hard landing, never death.
+- `src/landscape-render.ts`: canopy tiles above the ground draw a branch's underside and a shadow below, not a cliff face;
+  the trunk's face is bark (`FACE.trunk`); paint for `canopyLeaf` and `canopyTrunk`.
+- `src/renderer.ts`: `drawCanopyDressing` carries the trunk on `rise` (30) tiles past its top with boughs and leaf masses on
+  alternating sides and a crown far above; the view's tile rows grow with the Wayfarer's height on a tree map; the Wayfarer behind
+  the trunk shows through faintly.
+
+**BOUNDARY:** Versions 1 to 11 unchanged (checked against `main`). The ground cache is taller on a tree section (the trunk's
+height), which may lower its scale a little there. No save change.
+
 ## Release 631: giant jungle trees — 2026-10-31
 
 Tim (2026-10-31): "The pale vines looks good, but I'm not seeing any giant trees you can climb by jumping between platforms. This

@@ -259,6 +259,8 @@ function paletteBlock(c, s, r, P) {
 }
 // Release 631: the giant jungle tree's branches (bark, a few leaves) and its crown (a mat of leaves).
 PAINT.canopyBranch = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#6b4a2c"], [1, "#4f3520"]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#3a2616"; c.lineWidth = 1; for (let y = 3 + r() * 3; y < s; y += 5) { c.beginPath(); c.moveTo(0, y); c.quadraticCurveTo(s * .5, y + (r() - .5) * 3, s, y); c.stroke(); } for (let i = 0; i < 4; i++) { c.fillStyle = r() < .5 ? "#3f8a35cc" : "#2c6326cc"; c.beginPath(); c.ellipse(r() * s, r() * s, 2 + r() * 2, 1.5 + r(), r() * 3, 0, TAU); c.fill(); } };
+PAINT.canopyLeaf = (c, s, r) => { c.fillStyle = "#2f6a28"; c.fillRect(0, 0, s, s); for (let i = 0; i < 10; i++) { c.fillStyle = ["#4f9a3f", "#2c6326", "#6fb85a"][Math.floor(r() * 3)] + "bb"; c.beginPath(); c.ellipse(r() * s, r() * s, 2 + r() * 2, 1 + r(), r() * 3, 0, TAU); c.fill(); } c.fillStyle = "#00000022"; c.fillRect(0, 0, s, s); };
+PAINT.canopyTrunk = (c, s, r) => { PAINT.canopyCrown(c, s, r); c.fillStyle = "#00000018"; c.fillRect(0, 0, s, s); };
 PAINT.canopyCrown = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3c7a30"], [1, "#2a5a22"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 16; i++) { c.fillStyle = ["#4f9a3f", "#2c6326", "#6fb85a", "#1f4a1a"][Math.floor(r() * 4)] + "dd"; c.beginPath(); c.ellipse(r() * s, r() * s, 2 + r() * 3, 1.5 + r() * 2, r() * 3, 0, TAU); c.fill(); } };
 for (const [type, P] of Object.entries(PALETTE_PAINT)) { const R = PALETTE_REGIONS[type]; PAINT[R.ground] = (c, s, r) => paletteGround(c, s, r, P); PAINT[R.pool.kind] = (c, s, r) => palettePool(c, s, r, P); PAINT[R.block.kind] = (c, s, r) => paletteBlock(c, s, r, P); }
 function granite(c, s, r, color = "#2d2f3155") { c.strokeStyle = color; c.lineWidth = 1; for (let i = 0; i < 3; i++) { let x = r() * s, y = r() * s; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 3; k++) { x += (r() - .5) * s * .4; y += r() * s * .25; c.lineTo(x, y); } c.stroke(); } for (let i = 0; i < 10; i++) { c.fillStyle = r() < .5 ? "#a3a6a855" : "#3b3e4155"; c.fillRect(r() * s, r() * s, 1.5, 1.5); } }
@@ -267,7 +269,7 @@ function hexagon(c, x, y, rad) { c.beginPath(); for (let i = 0; i < 6; i++) { co
 function flagstones(c, s, r, a, b) { c.fillStyle = b; c.fillRect(0, 0, s, s); for (let y = 0; y < s; y += s / 2) for (let x = 0; x < s; x += s / 2) { c.fillStyle = r() < .5 ? a : "#827a71"; c.fillRect(x + 1, y + 1, s / 2 - 2, s / 2 - 2); } }
 function bricks(c, s, r) { c.strokeStyle = "#2c2926"; c.lineWidth = 1; for (let row = 0, y = 0; y < s; y += s / 4, row++) { c.beginPath(); c.moveTo(0, y); c.lineTo(s, y); c.stroke(); for (let x = (row % 2) * s / 4; x < s; x += s / 2) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + s / 4); c.stroke(); } } }
 
-const FACE = { underlands: ["#2e2a33", "#0d0b10"], volcanic: ["#3a2b25", "#140d0b"], mountains: ["#4f4a45", "#26231f"], desert: ["#a8743d", "#6b4422"], alien: ["#4a3878", "#1d1533"], dream: ["#c9c2dc", "#7d7698"], castle: ["#57504a", "#2a2623"], coast: ["#a68b56", "#6d5933"], pillars: ["#b8744a", "#6e3b22"], fog: ["#5d6762", "#323836"], jungle: ["#2c4a24", "#14240f"], biomech: ["#3f434b", "#1b1c20"], salt: ["#cfc8b6", "#8f8877"], crystal: ["#5a7a8a", "#2a3d48"], fungal: ["#4f3d52", "#241b26"], petrified: ["#6f6c66", "#3a3834"], savanna: ["#a8873a", "#5e4a1c"], reef: ["#c9a888", "#7a5c44"], amber: ["#8f4c22", "#4a2410"], obsidian: ["#2a2830", "#0c0b0e"] }; // 591: sandstone mesa walls
+const FACE = { underlands: ["#2e2a33", "#0d0b10"], volcanic: ["#3a2b25", "#140d0b"], mountains: ["#4f4a45", "#26231f"], desert: ["#a8743d", "#6b4422"], alien: ["#4a3878", "#1d1533"], dream: ["#c9c2dc", "#7d7698"], castle: ["#57504a", "#2a2623"], coast: ["#a68b56", "#6d5933"], pillars: ["#b8744a", "#6e3b22"], fog: ["#5d6762", "#323836"], jungle: ["#2c4a24", "#14240f"], trunk: ["#6b4a2c", "#2e1d10"], biomech: ["#3f434b", "#1b1c20"], salt: ["#cfc8b6", "#8f8877"], crystal: ["#5a7a8a", "#2a3d48"], fungal: ["#4f3d52", "#241b26"], petrified: ["#6f6c66", "#3a3834"], savanna: ["#a8873a", "#5e4a1c"], reef: ["#c9a888", "#7a5c44"], amber: ["#8f4c22", "#4a2410"], obsidian: ["#2a2830", "#0c0b0e"] }; // 591: sandstone mesa walls
 
 function makeCanvas(size) {
   if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(size, size);
@@ -317,8 +319,12 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
     if (tex) { ctx.save(); ctx.translate(px + s / 2, py + s / 2); if (t.bridgeAxis === "y") ctx.rotate(Math.PI / 2); ctx.drawImage(tex, -s / 2, -s / 2, s + .5, s + .5); ctx.restore(); }
     return true;
   }
-  if (lift > 0) { // cliff face down to the tile's ground line, lit from the upper left
-    const face = (t.volcanic ? FACE.volcanic : FACE[t.landscape]) || FACE.mountains, south = tiles?.[(y + 1) * w + x];
+  if (lift > 0 && t.canopy && t.kind !== "canopyTrunk") { // release 633: a branch of the great tree hangs in the air: its underside, and its shadow far below
+    ctx.fillStyle = "#00000030"; ctx.beginPath(); ctx.ellipse(px + s / 2, y * s + s * .6, s * .42, s * .16, 0, 0, TAU); ctx.fill();
+    const leaf = t.kind === "canopyLeaf", under = leaf ? s * .14 : s * .26; ctx.fillStyle = leaf ? "#2c5a24" : "#4a3220"; ctx.fillRect(px, py + s, s + 1, under);
+    if (leaf) { ctx.fillStyle = "#3f8a35aa"; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.arc(px + s * (.2 + k * .3), py + s + under, s * .1, 0, TAU); ctx.fill(); } }
+  } else if (lift > 0) { // cliff face down to the tile's ground line, lit from the upper left
+    const face = (t.kind === "canopyTrunk" ? FACE.trunk : t.volcanic ? FACE.volcanic : FACE[t.landscape]) || FACE.mountains, south = tiles?.[(y + 1) * w + x];
     ctx.fillStyle = grad(ctx, 0, py + s, 0, y * s + s, [[0, face[0]], [1, face[1]]]);
     ctx.fillRect(px, py + s, s + 1, lift + 1);
     ctx.fillStyle = "#00000033"; for (let k = 1; k < Math.ceil(level); k++) ctx.fillRect(px, py + s + k * LIFT_PER_LEVEL * s - 1, s + 1, 1.5);
