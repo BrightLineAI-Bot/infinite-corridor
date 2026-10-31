@@ -87,7 +87,7 @@ import { DIG, planDig, ensureShovel, ensureIronShovel, dig, applyTunnels, overwo
 import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
 import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.ts";
 import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
-import { beastProfileVitals, liveBeastReference, WORLD_BEASTS, BEAST_HOMES, RETREAT, PURSUIT, retreatsUnderWay, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
+import { beastProfileVitals, liveBeastReference, WORLD_BEASTS, BEAST_HOMES, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.ts";
 import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.ts";
 import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } from "./hometowns.ts";
@@ -551,6 +551,7 @@ export function footprintOpen(map, width, x, y, allowLethalTerrain=false, allowM
     if(tx<0||ty<0||tx>=width||ty>=height)return false;
     const tile=map.tiles[ty*width+tx],marine=allowMarineTerrain&&isMarineTile(tile),lethal=allowLethalTerrain&&["canyon","river","dungeonWater",...DEEP_WATER].includes(tile?.kind);
     if(!tile||marine&&!marineTileOpen(tile)||tile.blocked&&!lethal&&!marine&&!(allowVoid&&isDreamVoid(tile)))return false;
+    if(!allowLethalTerrain&&!tile.blocked&&!marine&&LETHAL_KINDS.has(tile.kind))return false; // release 609 (Codex play-test, issue 2): open lethal ground (a Starfield drop, lava, deep water) is no footing for anything that does not fall in on purpose
     if(tile.perch&&!allowLethalTerrain)return false; // release 265: a stone block is a perch only the Wayfarer (and fliers) may step onto
     if(!["shackWall","districtWall"].includes(tile.structure)||!tile.wallSides?.length)continue;
     const thickness=.22;
@@ -1691,7 +1692,7 @@ export class Game {
     this.message = s.message;
     this.paused = !!s.paused;
     this.pauseStarted = this.paused ? now : null;
-    this.jumpUntil = now + s.playerRuntime.jump; this.jumpStart = undefined;
+    this.jumpUntil = Number(s.playerRuntime.jump) > 0 ? now + s.playerRuntime.jump : -1e9; this.jumpStart = undefined; this.mechSpent = s.playerRuntime.mechSpent === true; // release 609 (Codex play-test, issue 5): a landed jump is not a jump that just ended, and an emptied boost stays emptied
     this.guardRemaining = Math.max(0, Number(s.playerRuntime.guard || 0));
     this.magicBuffRemaining = Math.max(0, Number(save.magicBuff || 0));
     this.spellCooldownRemaining = Math.max(0, Number(save.spellCooldown || 0));
@@ -2601,6 +2602,7 @@ export class Game {
         dodgeX: this.player.dodgeX,
         dodgeY: this.player.dodgeY,
         jump: remaining(this.jumpUntil, clock),
+        mechSpent: this.mechSpent === true, // release 609
         guard: this.guardRemaining,
         traversal: this.traversal ? { ...this.traversal } : null,
       },
@@ -3005,6 +3007,8 @@ export class Game {
     }
     Object.assign(this, { skyAir: null, skyLevel: 0, discAir: null, projectiles: [], effects: [], traversal: null }); this.message = message; this.sync(); return true;
   }
+  // A section description for choosing a retreat's home (world-beasts.ts beginRetreat): generated only when a home needs it.
+  retreatProbe() { const seed = this.save.seed, gen = this.save.worldGeneration; return (x, y) => { let g = null; const region = () => (g ||= generateRegion(seed, x, y, gen)); return { get biome() { return biomeFor(seed, x, y); }, get dominant() { return region().dominant; }, get canyon() { return region().environment?.kind === "canyon"; }, get dungeon() { return (region().objects || []).some((o) => o.kind === "dungeon"); } }; }; } // release 241; 609: shared with replanRetreat
   startDisplacement(o,hidden=false){
     const key=`displacement-trigger:${this.rx},${this.ry}:${o.id}`;if(this.save.worldFlags[key])return false;this.save.worldFlags[key]=true;o.state='used';o.consumed=true;
     const h=hashSeed(this.save.seed+":displacement:"+this.rx+":"+this.ry+":"+o.id),distance=8+h%7,sign=h&1?1:-1,destination={rx:this.rx+(h&2?distance:Math.floor(distance/2))*sign,ry:this.ry+(h&2?Math.floor(distance/2):distance)*(h&4?1:-1)};
@@ -4152,12 +4156,13 @@ export class Game {
       }
       if (!e.retreating && e.aggro && q.dungeon && worldBeastPatience(this.save, id, dt, e, this.beastTries === false)) { const r = beginDungeonRetreat(this.save, id, this.map); e.retreating = true; this.message = r.message; for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; } journalOnce(this.save, `world-beast-flees:${id}:${this.save.worldBeasts[id].cycle}`, r.message, "World beasts"); }
       if (!e.retreating && e.aggro && !q.dungeon && this.area === "overworld" && worldBeastPatience(this.save, id, dt, e, this.beastTries === false)) {
-        const seed = this.save.seed, gen = this.save.worldGeneration, r = beginRetreat(this.save, id, this.rx, this.ry, (x, y) => { let g = null; const region = () => (g ||= generateRegion(seed, x, y, gen)); return { get biome() { return biomeFor(seed, x, y); }, get dominant() { return region().dominant; }, get canyon() { return region().environment?.kind === "canyon"; }, get dungeon() { return (region().objects || []).some((o) => o.kind === "dungeon"); } }; }); // release 241: a section is generated only for homes that need it
+        const seed = this.save.seed, gen = this.save.worldGeneration, r = beginRetreat(this.save, id, this.rx, this.ry, this.retreatProbe()); // release 241: a section is generated only for homes that need it
         e.retreating = true; this.message = r.message;
         for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; }
         if (id === "morphingBlob") this.splitBlob(e);
         journalOnce(this.save, `world-beast-flees:${id}:${this.save.worldBeasts[id].cycle}`, r.message, "World beasts");
       }
+      if (e.retreating && !e.fleeTo && q.retreat && !q.dungeon) { const t0 = retreatTarget(q.retreat, id, this.map, this.rx, this.ry, sectionExits(this.save.seed, this.rx, this.ry), e); if (t0.noGround) { const r = replanRetreat(this.save, id, this.rx, this.ry, this.retreatProbe()); this.message = r.message; } } // release 609 (Codex play-test, issue 3): a home with none of its ground is no home: it looks further
       if (e.retreating && !e.fleeTo && q.retreat) { const to = retreatTarget(q.retreat, id, this.map, this.rx, this.ry, q.dungeon ? {} : sectionExits(this.save.seed, this.rx, this.ry), e); Object.assign(e, { fleeTo: to, fleePath: id === "voidWalker" ? [] : retreatPath(this.map, e, to, B.retreatMoves, Number(this.map.width) || 32), fleeSpeed: RETREAT.speed, fleeFadeTime: RETREAT.fade, untargetable: true }); } // release 239: it finds its way round walls, over chasms, by bridges
       if (!e.fleeDone) continue;
       (gone ||= []).push(e);
@@ -5265,7 +5270,7 @@ export class Game {
     // Release 102: the Tidemantle lets the Wayfarer swim on surface water (stage one of the water traversal plan).
     if(terrainHazard==="lava"&&this.mechUp())terrainHazard=null;/* release 475: the robot wades through lava; the heat is settled at the frame's end */
     if(sailing){terrainHazard=null;this.swimming=false}else if(this.robotPutsToSea(nx,ny,width,terrainHazard))terrainHazard=null;else if(this.swimsHere(terrainHazard)){this.swimKind=terrainHazard;if(!this.swimming){this.swimming=true;if(now>(this.swimMessageAt||0)){this.swimMessageAt=now+8000;this.message=this.mechUp()?"The robot seals and wades on through the water.":"The Tidemantle holds you up. Swimming drains stamina.";}}terrainHazard=null}else this.swimming=false;
-    const fellIntoHazard=!!terrainHazard&&!aerial;
+    const fellIntoHazard=!!terrainHazard&&!aerial;this._fatalFall=false;/* release 609 */
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":DEEP_WATER.includes(terrainHazard)?"The deep water drags the Wayfarer under.":terrainHazard==="canyon"?(tileUnder(this.map,width,nx,ny)?.chasm?(this.fellStars=true,"The Wayfarer steps off the edge and falls away into the stars."):"The ledge gives way beneath the Wayfarer."):"The water closes over the Wayfarer."}
     else if (sailing) this.sail(p, dx, dy, width, now);
     else {
@@ -5312,7 +5317,7 @@ export class Game {
           if (fell > 0) { const damage = fallDamage(fell, this.save.maxHp); if (damage > 0) { hurt = hurt === Infinity ? hurt : hurt + damage; drop = Math.max(drop, fell); } }
         }
       }
-      if (hurt === Infinity) { p.hp = 0; this.message = `The Wayfarer falls ${drop} levels.`; }
+      if (hurt === Infinity) { p.hp = 0; this._fatalFall = true; this.message = `The Wayfarer falls ${drop} levels.`; }
       else if (hurt > 0) { p.hp = Math.max(1, p.hp - hurt); p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + 400); this.message = `A hard landing: ${drop} levels down.`; }
     }
     if(!fellIntoHazard&&!terrainHazard&&aerial)this.save.magicSkills.lastSafe={x:p.x,y:p.y,area:this.area,areaId:this.areaId()};
@@ -5472,7 +5477,7 @@ export class Game {
       }
       if(e.blobRemnant){e.remnantLeft-=dt;e.fleeFade=Math.max(0,Math.min(1,e.remnantLeft/BLOB_SPLIT.fade));if(e.remnantLeft<=0)e.remnantGone=true;continue} // release 259: the Blob's left-behind mass fades
       if(e.packKind&&e.astralMount?.status==="boarding"){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)tickAstralBoarding(e,dt,this.astralMountHost());continue}
-      if(e.packKind){refreshMarineBeast(e,this.map,width,this.area);this.performanceStats.activeEnemies++;const zone=this.astralRiderHeld(e)||e.kind==="voidWalker"&&(e.retreating||e.fleeTo)?null:packWorld.sanctuary;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}const roam=isDungeonRoamer(e,this.area)&&!e.retreating,ox=e.x,oy=e.y;if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(roam&&!this.roamerInBounds(e)){e.x=ox;e.y=oy}if(zone)enforceSanctuary(e,zone);continue}
+      if(e.packKind){refreshMarineBeast(e,this.map,width,this.area);this.performanceStats.activeEnemies++;const zone=this.astralRiderHeld(e)||e.retreating||e.fleeTo||e.passingBeast?null:packWorld.sanctuary/* release 609 (Codex play-test, issue 4): any harmless retreating or passing beast walks through a sanctuary, not only the Walker */;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}const roam=isDungeonRoamer(e,this.area)&&!e.retreating,ox=e.x,oy=e.y;if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(roam&&!this.roamerInBounds(e)){e.x=ox;e.y=oy}if(zone)enforceSanctuary(e,zone);continue}
       if(e.seaKind){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateSeaCreature(e,seaWorld,dt);continue}
       if(e.encounterGroup&&!this.activatedEncounterGroups.has(e.encounterGroup)){this.activatedEncounterGroups.add(e.encounterGroup);this.performanceStats.encounterActivations++}
       let simulationDt=dt;
@@ -5568,6 +5573,9 @@ export class Game {
       if (r.gone) { p.hp = 0; this.message = r.torn ? "The robot comes apart in the void, and the night beneath the dream takes the Wayfarer." : "The night beneath the dream takes the Wayfarer."; }
       else if (p.hp <= 0) this.message = "The void unmakes the Wayfarer inside the robot.";
       else if (now > (this.voidMessageAt || 0)) { this.voidMessageAt = now + 5000; this.message = `The robot holds in the void, barely: its plating is coming apart (${Math.ceil(this.save.mech.plate)}). Get out.`; } }
+    // Release 609 (Codex play-test, issue 1): a fatal fall or a step into a lethal drop stays fatal; the robot's plating, a hull,
+    // Ink Shield or any guard settled above must not turn it back into an ordinary blow.
+    if (fellIntoHazard || this._fatalFall) p.hp = 0;
     if (this.damageNumbers) this.trackDamageNumbers(now); // release 461
     if (p.hp <= 0 && this.area === "dungeon" && !fellIntoHazard && runHas(this.save, this.areaId(), "secondWind") && !marginRun(this.save, this.areaId()).secondWind) { marginRun(this.save, this.areaId()).secondWind = true; p.hp = Math.max(1, Math.round(this.save.maxHp * SECOND_WIND.share)); p.invulnerableUntil = now + SECOND_WIND.guardMs; this.message = "Second Wind: the blow should have felled you. You are still standing."; this.defeatNotice = { title: "SECOND WIND", detail: "once in this crossing", kind: "discovery" }; } // release 459
     if (p.hp <= 0) {

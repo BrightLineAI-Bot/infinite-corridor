@@ -24,7 +24,7 @@ test('it never walks into the Wayfarer\'s section unseen; nearby sections keep t
   const s = fleeing(), q = () => s.worldBeasts.morphingBlob.active;
   s.playSeconds += RETREAT.legSeconds * 5; assert.deepEqual(worldBeastsLost(s, 'overworld', 6, 5), []); assert.deepEqual([q().rx, q().ry], [5, 5], 'it waits at the edge of yours');
   assert.deepEqual(retreatsUnderWay(s).map((r) => [r.id, r.rx, r.ry]), [['morphingBlob', 5, 5]], 'on the Atlas');
-  assert.deepEqual(worldBeastsLost(s, 'overworld', 5, 5 + RETREAT.lose), [], 'three sections away: still trackable');
+  const v = fleeing(); assert.deepEqual(worldBeastsLost(v, 'overworld', 5, 5 + RETREAT.lose), [], 'three sections away: still trackable');
   const t = fleeing(); assert.deepEqual(worldBeastsLost(t, 'overworld', 5, 5 + RETREAT.lose + 1), ['morphingBlob'], 'four away: gone');
   const u = fleeing(); assert.deepEqual(worldBeastsLost(u, 'dungeon', 5, 5, 'dungeon:x'), ['morphingBlob'], 'into a dungeon: gone');
 });
@@ -32,4 +32,15 @@ test('it never walks into the Wayfarer\'s section unseen; nearby sections keep t
 test('the Atlas pins a retreat and entering a nearby section shows fresh tracks', () => {
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8'), game = readFileSync(new URL('../src/game.ts', import.meta.url), 'utf8');
   assert.match(main, /retreatsUnderWay\(save\)\)pins\.push/); assert.match(game, /title: "FRESH TRACKS"/);
+});
+
+// Release 609 (the pre-publish review of 605): ensureWorldBeasts ran on every load and dropped `movedAt`, so through the real
+// entry point an unseen retreat never moved. This goes through worldBeastsLost and migrateSave, as the game does.
+test('through the real loads, an unseen retreat walks home and goes in', async () => {
+  const { migrateSave } = await import('../src/types.ts');
+  let s = fleeing(); const q = () => s.worldBeasts.morphingBlob.active;
+  s.playSeconds += RETREAT.legSeconds * 2 + 1; worldBeastsLost(s, 'overworld', 5, 8); assert.deepEqual([q().rx, q().ry], [7, 5], 'two legs on');
+  s = migrateSave(JSON.parse(JSON.stringify(s))); assert.ok(Number.isFinite(q().retreat.movedAt), 'the clock survives a save');
+  s.playSeconds += RETREAT.legSeconds * 3; worldBeastsLost(s, 'overworld', 7, 8); assert.deepEqual([q().rx, q().ry], [9, 5], 'home');
+  s.playSeconds += RETREAT.homeLinger + 1; assert.deepEqual(worldBeastsLost(s, 'overworld', 8, 8), ['morphingBlob'], 'it went in'); assert.equal(s.worldBeasts.morphingBlob.escaped, 1);
 });

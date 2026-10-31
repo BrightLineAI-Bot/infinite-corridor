@@ -2694,6 +2694,31 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 609: the Codex play-test fixes — 2026-10-31
+
+Codex's play-test of r603 (Tim asked for it; report and failing tests in tests/playtest-2026-10-31-*.test.ts, now part of the
+suite) found five defects, and the pre-publish Fable review of 605 found a sixth.
+
+**CODE:**
+- Fatal falls stay fatal (Codex 1, high): `src/game.ts` update. A step into a lethal drop (`fellIntoHazard`) or a fall of four or
+  more levels (`_fatalFall`) sets HP to 0 after every mitigation (robot plating, hull, Ink Shield, guards), so the robot can no
+  longer turn a death into an ordinary blow. Boosting over a drop is unchanged (`aerial`).
+- Creatures keep off lethal ground (Codex 2, high): `footprintOpen` rejects an unblocked lethal tile (LETHAL_KINDS, not marine)
+  unless the caller allows lethal terrain (the Wayfarer, who falls in on purpose). A Starfield drop, lava or open deep water is
+  no footing for monsters.
+- Homes that hold their ground (Codex 3, high): `retreatTarget` marks a claimed home with none of its ground (`noGround`), and
+  `replanRetreat` (`src/world-beasts.ts`, `RETREAT_REPLAN.replans` 3) looks again from there, never at a section already tried
+  (`retreat.tried`); after that it heads off into the distance and says so. `Game.retreatProbe` is the shared section probe.
+- Retreats walk through sanctuaries (Codex 4, medium): any retreating or passing beast ignores a settlement's sanctuary push, not
+  only the Void Walker.
+- An emptied boost stays emptied over a reload (Codex 5, low): the snapshot keeps `mechSpent`, and a landed jump restores as
+  long over (`jumpUntil` far past) instead of "just ended".
+- The 605 clock survives loads (review of 605): `cleanRetreat` (run by ensureWorldBeasts on every load) now keeps `movedAt`,
+  `tried` and `replans`; before, an unseen retreat never moved.
+
+**BOUNDARY:** Saves gain only optional retreat fields and `playerRuntime.mechSpent`. The robot still wades lava and water and
+boosts over drops. Flying, phasing and marine creatures keep their own movement rules.
+
 ## Release 607: an economy with consequence — 2026-10-31
 
 Tim (2026-10-31): "I have like 43000 marks... maybe 100000 cinder iron... as you get so many items... you just salvage them
