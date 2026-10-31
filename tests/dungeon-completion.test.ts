@@ -14,7 +14,7 @@ test('completion requires all bosses across levels and awards existing progressi
   assert.equal(recordDungeonBossDefeat(history,a),true);
   const before=save.currency;
   assert.equal(claimDungeonPayoff(save,history),true);
-  assert.equal(save.currency,before+10);
+  assert.equal(save.currency,before+5); // release 607: clear marks halved (was 10)
   assert.equal(save.materials.weaponSphere,1); // release 601: clears alternate, weapon first
   const restored=JSON.parse(JSON.stringify(history));
   assert.equal(claimDungeonPayoff(save,restored),false);

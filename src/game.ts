@@ -58,6 +58,7 @@ import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewT
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { SKYLANDS, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { generateItem, BRAWLER_LOOT } from "./items.ts";
+import { SMITHY } from "./smithy.ts"; // release 607: one salvage table
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
 import { riftStep, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
@@ -351,11 +352,17 @@ export function grantBrawlerGear(save) {
   }
   return given;
 }
-export function salvageInventoryItem(save, index) {
+// Release 607 (Tim, 2026-10-31: "I have like 43000 marks... maybe 100000 cinder iron... the economy of the game... is almost
+// without consequence"; he took the recommendation): salvage pays SMITHY.salvage.iron by tier (1/1/2/2, was 1/2/3/4), and a
+// piece salvaged only because the pack was full (`auto`) pays no iron at all, just its glyph dust. Kill and clear marks halve
+// (ECONOMY.marks; dungeon-completion.ts CLEAR_MARKS).
+export const ECONOMY = { autoSalvageIron: 0, marks: { boss: 6, aperture: 3, common: 1 } };
+const salvageIron = (item) => SMITHY.salvage.iron[itemTier(item)] ?? 1;
+export function salvageInventoryItem(save, index, auto = false) {
   const item = save.inventory?.[index];
   if (!item) return null;
   save.inventory.splice(index, 1);
-  const iron = Math.max(1, ITEM_TIERS.indexOf(itemTier(item)) + 1);
+  const iron = auto ? ECONOMY.autoSalvageIron : salvageIron(item);
   save.materials.cinderIron = (save.materials.cinderIron || 0) + iron;
   save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
   for (const g of item.glyphs || []) if (g) save.glyphs[g] = (save.glyphs[g] || 0) + 1; // socketed glyphs come back
@@ -391,12 +398,12 @@ export function storeInventoryItem(save, item, keep = false) {
   const fresh = isBrawlerGear(item) && !save.inventory.some((q) => q?.name === item.name) && !Object.values(save.equipment || {}).some((q) => q?.name === item.name);
   const weakest = packVictim(save, fresh);
   if (!fresh && !keep && packKeep(item) < packKeep(save.inventory[weakest])) { // release 545: a drop below everything you keep is salvaged; at the same keep the oldest goes instead
-    const iron = Math.max(1, ITEM_TIERS.indexOf(itemTier(item)) + 1);
+    const iron = ECONOMY.autoSalvageIron; // release 607: a full pack's salvage pays no iron
     save.materials.cinderIron = (save.materials.cinderIron || 0) + iron;
     save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
     return { stored: false, salvaged: item, iron };
   }
-  const salvaged = salvageInventoryItem(save, weakest);
+  const salvaged = salvageInventoryItem(save, weakest, true); // release 607: automatic
   save.inventory.push(item);
   return { stored: true, salvaged: salvaged.item, iron: salvaged.iron };
 }
@@ -4429,7 +4436,7 @@ export class Game {
       this.defeatNotice = { title: "LEVIATHAN FELLED", detail: `${e.name} · first trophy: ${LEVIATHAN_TROPHY.currency} marks and a weapon sphere`, kind: "danger" };
     }
     e.rewarded = true;
-    const marks = e.boss ? 12 : e.apertureEncounter ? 6 : 1 + hashSeed(`${this.save.seed}:marks:${this.areaId()}:${e.id}`) % 3;
+    const marks = e.boss ? ECONOMY.marks.boss : e.apertureEncounter ? ECONOMY.marks.aperture : ECONOMY.marks.common; // release 607: was 12 / 6 / 1-3
     this.save.currency += marks;
     const oldHp = this.save.maxHp,
       oldStamina = this.save.maxStamina,

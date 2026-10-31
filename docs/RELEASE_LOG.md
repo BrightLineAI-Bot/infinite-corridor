@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**607**
+**609**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 605 | Claude | `claude/dreamy-rubin-yn6q2p` | Retreating world bosses keep walking home out of sight, tracks and an Atlas pin; lost only beyond 3 sections | Building. |
+| 607 | Claude | `claude/dreamy-rubin-yn6q2p` | Economy: salvage 1/1/2/2 iron, no iron from a full pack, kill and clear marks halved | Building. |
+| 605 | Claude | PR #286 | Retreating world bosses keep walking home out of sight, tracks and an Atlas pin; lost only beyond 3 sections | Merged (`r605-2ea06a6bca4f`). Not published. |
 | 255 | Codex | `codex/narrative-253` → rename to 255 | Daily narrative work: Codex's vision, with ten artistic passes per scene | Reserved. Codex was first told 253, but 253 went to Claude below, so Codex uses **255**. |
 
 ## Published (live)
