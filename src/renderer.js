@@ -1,22 +1,22 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r611-b1bdde7eef1f";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r611-b1bdde7eef1f";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r611-b1bdde7eef1f";
-import { enemyMeleeGeometry } from "./combat.js?v=r611-b1bdde7eef1f";
-import { ruleRows } from "./elders.js?v=r611-b1bdde7eef1f";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r611-b1bdde7eef1f";
-import { BOAT } from "./boats.js?v=r611-b1bdde7eef1f";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r611-b1bdde7eef1f";
-import { isMarineTile } from "./world-beasts.js?v=r611-b1bdde7eef1f";
-import { jumpLift } from "./game.js?v=r611-b1bdde7eef1f";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r611-b1bdde7eef1f";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r611-b1bdde7eef1f";
-import { liftAt, tileUnder, LIFT_PER_LEVEL } from "./landscape.js?v=r611-b1bdde7eef1f";
-import { SKY_DISCS } from "./skylands.js?v=r611-b1bdde7eef1f"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r611-b1bdde7eef1f";
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r611-b1bdde7eef1f";
-import { drawRelayNode } from "./relay-network.js?v=r611-b1bdde7eef1f";
-import { structureOccupancy } from "./world.js?v=r611-b1bdde7eef1f";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r611-b1bdde7eef1f";
+import { astralBeamAnchors } from "./astral-worm.js?v=r623-2501e60705f7";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r623-2501e60705f7";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r623-2501e60705f7";
+import { enemyMeleeGeometry } from "./combat.js?v=r623-2501e60705f7";
+import { ruleRows } from "./elders.js?v=r623-2501e60705f7";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r623-2501e60705f7";
+import { BOAT } from "./boats.js?v=r623-2501e60705f7";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r623-2501e60705f7";
+import { isMarineTile } from "./world-beasts.js?v=r623-2501e60705f7";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r623-2501e60705f7"; // 613: Starfield rafts
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r623-2501e60705f7";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r623-2501e60705f7";
+import { liftAt, tileUnder, LIFT_PER_LEVEL } from "./landscape.js?v=r623-2501e60705f7";
+import { SKY_DISCS } from "./skylands.js?v=r623-2501e60705f7"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r623-2501e60705f7";
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r623-2501e60705f7";
+import { drawRelayNode } from "./relay-network.js?v=r623-2501e60705f7";
+import { structureOccupancy } from "./world.js?v=r623-2501e60705f7";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r623-2501e60705f7";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -319,24 +319,54 @@ function drawVoidScarSurface(ctx,g,s,mw,mh,surface){
   for(const c of surface.shapes)for(const crack of c.cracks){ctx.moveTo(crack[0][0]*s,crack[0][1]*s);for(let i=1;i<crack.length;i++)ctx.lineTo(crack[i][0]*s,crack[i][1]*s)}
   ctx.stroke();ctx.restore();
 }
+// Release 621 (Tim: "the power armor floats above the surface... a slight crater around it... where the water is depressed due
+// to the thrusters"): at sea the empowered robot hovers (SEA_SUIT.hover tiles, bobbing) over a dip in the water: a darker
+// hollow under it with a bright rim, and a ring of spray spreading out every `ringMs`. Diving, it sinks beneath, dim.
+export const SEA_SUIT = { hover: .3, bob: .04, bobMs: 320, at: .74, dip: [.42, .15], ringMs: 900, ring: [.42, .78] };
+function drawThrustDip(ctx, x, y, s, now) {
+  const cx = (x + .5) * s, cy = (y + SEA_SUIT.at) * s, [rx, ry] = SEA_SUIT.dip, f = (now % SEA_SUIT.ringMs) / SEA_SUIT.ringMs, r = SEA_SUIT.ring[0] + (SEA_SUIT.ring[1] - SEA_SUIT.ring[0]) * f, flick = .85 + .15 * Math.sin(now / 45);
+  ctx.save();
+  // the hollow the thrust presses into the water: dark at its heart, lit by the jets
+  const hollow = ctx.createRadialGradient(cx, cy, 0, cx, cy, rx * s); hollow.addColorStop(0, `rgba(150,230,255,${(.45 * flick).toFixed(3)})`); hollow.addColorStop(.35, "rgba(10,40,60,.55)"); hollow.addColorStop(1, "rgba(10,40,60,0)");
+  ctx.fillStyle = hollow; ctx.beginPath(); ctx.ellipse(cx, cy, rx * s, ry * s, 0, 0, Math.PI * 2); ctx.fill();
+  // the raised lip of churned water round it: bright in front, softer behind
+  ctx.lineWidth = Math.max(1.5, s * .045); ctx.strokeStyle = "#eaf9ffcc"; ctx.beginPath(); ctx.ellipse(cx, cy, rx * s, ry * s, 0, 0, Math.PI); ctx.stroke();
+  ctx.lineWidth = Math.max(1, s * .025); ctx.strokeStyle = "#cdeefa77"; ctx.beginPath(); ctx.ellipse(cx, cy, rx * s, ry * s, 0, Math.PI, Math.PI * 2); ctx.stroke();
+  // spray spreading out
+  ctx.globalAlpha = .6 * (1 - f); ctx.lineWidth = Math.max(1, s * .02); ctx.strokeStyle = "#dff6ff"; ctx.beginPath(); ctx.ellipse(cx, cy, r * s, r * s * .36, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
 // Release 589: a Skyland with a mode stands on cloud: open sky where the arena has void, soft cloud underfoot, and a darker
 // underside where cloud meets sky. Other tiles (hazards, bridges) draw as they always do.
 // Release 593 (Tim: "stars in the background... a penumbra around the character as he moves, and the background is kind of like
 // glittering stars"): a chasm crossing's drop is open night sky. The tile holds a few fixed stars (cached with the ground); each
 // frame a bounded handful glitter (CHASM_STARS.twinkle of the tiles in view), and a penumbra of light follows the Wayfarer.
-export const CHASM_STARS = { sky: "#08071a", stars: 4, twinkleEvery: 3, penumbra: { inner: 2.6, outer: 7.5, dark: .78 } };
+export const CHASM_STARS = { sky: "#0b0e11", stars: 3, star: ["#ffffff2e", "#fff0c444"], glint: .4, // release 613 (Tim: "the background to be like the fog... dark... faint, faint specks of light... you won't be able to really discern... depth vs blackness"): the fog's own black, faint stars
+  twinkleEvery: 3, penumbra: { inner: 2.2, outer: 6.5, dark: .88 } }; // release 615 (Tim: "the wayfarer is really the only real point of light"): was 2.6 / 7.5 / .78
 function drawStarChasm(ctx, t, x, y, s) {
   const px = x * s, py = y * s;
   ctx.fillStyle = CHASM_STARS.sky; ctx.fillRect(px, py, s + 1, s + 1);
-  for (let i = 0; i < CHASM_STARS.stars; i++) { const q = h(x * 13 + i * 31, y * 17 + i * 7); if (q % 3 === 0) continue; ctx.fillStyle = q % 5 ? "#dfe2ffd9" : "#fff0c4ee"; const r = q % 11 === 0 ? 2 : 1.3; ctx.fillRect(px + (q % 97) / 97 * s, py + ((q >> 8) % 97) / 97 * s, r, r); }
+  for (let i = 0; i < CHASM_STARS.stars; i++) { const q = h(x * 13 + i * 31, y * 17 + i * 7); if (q % 3 === 0) continue; ctx.fillStyle = CHASM_STARS.star[q % 5 ? 0 : 1]; const r = q % 11 === 0 ? 1.4 : 1; ctx.fillRect(px + (q % 97) / 97 * s, py + ((q >> 8) % 97) / 97 * s, r, r); }
 }
 // Per frame: the glittering stars over the chasm tiles in view (`list` is tile, x, y triples).
 function glitterChasm(ctx, list, s, now) {
   for (let i = 0; i < list.length; i += 3) {
     const x = list[i + 1], y = list[i + 2], q = h(x * 5 + 1, y * 3 + 2), a = Math.sin(now / (520 + q % 600) + q) ; if (a < .55) continue;
     const px = x * s + (q % 89) / 89 * s, py = y * s + ((q >> 7) % 89) / 89 * s, r = 1 + (a - .55) * 4.5;
-    ctx.fillStyle = `rgba(255,248,225,${(a - .55) * 2})`; ctx.fillRect(px - r, py - .5, r * 2, 1); ctx.fillRect(px - .5, py - r, 1, r * 2);
+    ctx.fillStyle = `rgba(255,248,225,${(a - .55) * 2 * CHASM_STARS.glint})`; ctx.fillRect(px - r, py - .5, r * 2, 1); ctx.fillRect(px - .5, py - r, 1, r * 2);
   }
+}
+// Release 613: a Starfield raft: a slab of pale stone edged with faint light, its shadow lost in the stars below.
+function drawRafts(ctx, g, s, now) { // release 615: risen rafts lift, sunken ones show as dim shapes beneath the level
+  const t = Number(g.save?.playSeconds) || 0, H = STARFIELD_PLATFORMS.half;
+  for (const m of g.map.movers) { const c = platformPos(m, t); if (g.area === "dungeon" && dungeonTileVisibility(g.map, Math.floor(c.x), Math.floor(c.y)) === "unseen") continue;
+    const lift = discLift(c.z) * s, under = c.z < -.3, x = (c.x - H) * s, y = (c.y - H) * s - lift, w = H * 2 * s, glow = .45 + .25 * Math.sin(now / 500 + (m.phase || 0) * 6);
+    ctx.save(); if (under) ctx.globalAlpha = Math.max(.18, .6 + c.z * .25);
+    ctx.fillStyle = "#00000066"; ctx.fillRect(x + s * .12, y + lift + s * .22, w, w); // its shadow stays on the level
+    ctx.fillStyle = under ? "#4d4a52" : "#cfc6b4"; ctx.fillRect(x, y, w, w); ctx.fillStyle = under ? "#36343b" : "#b3aa97"; ctx.fillRect(x, y + w * .78, w, w * .22);
+    ctx.strokeStyle = `rgba(170,200,255,${glow})`; ctx.lineWidth = Math.max(1.5, s * .06); ctx.strokeRect(x + 1, y + 1, w - 2, w - 2);
+    ctx.fillStyle = `rgba(200,220,255,${glow * .8})`; for (const [u, v] of [[.2, .2], [.8, .2], [.2, .8], [.8, .8]]) ctx.fillRect(x + w * u - 1.5, y + w * v - 1.5, 3, 3);
+    ctx.restore(); }
 }
 let cloudSky = false; // set each frame from g.map.skyCloud (tile painters are handed the tile array, not the map)
 export const CLOUD_PAINT = { sky: ["#6f9cc9", "#77a3cf"], puff: "#ffffff22", floor: ["#dfe6ef", "#d6dfeb"], shade: "#b4c3d666", rim: "#8ea4bf", gleam: "#ffffff44" };
@@ -1535,6 +1565,7 @@ export function render(ctx, g, w, h, now) {
     }
     animateLandscapeTiles(ctx, animated, s); // release 185: one stroke per water kind, not one per tile
     if (glitter.length) glitterChasm(ctx, glitter, s, now);
+    if (g.map.movers?.length) drawRafts(ctx, g, s, now); // release 613
   }
   else for (let y = t; y < b; y++)
     for (let x = l; x < r; x++) {
@@ -1764,7 +1795,7 @@ export function render(ctx, g, w, h, now) {
   const onDisc = g.skyLevel > 0 && g.map?.skyDiscs ? g.map.skyDiscs.find((d) => d.level === g.skyLevel && Math.hypot(p.x + .5 - d.x, p.y + .75 - d.y) <= d.r + .05) : null;
   for (const d of g.map?.skyDiscs || []) if (visibleInCamera({ x: d.x, y: d.y }, l, t, r, b, 3)) draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
   const playerDraw = {
-    y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.skyLevel > 0 ? discLift(g.skyLevel) : 0,
+    y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.skyLevel > 0 ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
     fn: () => {
       if (jumping) {
         ctx.fillStyle = "#05050477";
@@ -1786,7 +1817,9 @@ export function render(ctx, g, w, h, now) {
         if (p.facing === "left" || p.facing === "right") g.longboatSide = p.facing;
         g._longboatFront = shieldLeft > 0 && (shieldLeft > 10 || Math.floor(now / 200) % 2 === 1); // the near hull goes over the Wayfarer, below
         g._subDive = (g.save.boat.sub || g.save.boat.mechSub) ? Math.max(0, ((g.subDiveUntil || 0) - now) / 1000) : 0; // release 311
-        if ((g.save.boat.sub || g.save.boat.mechSub) && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "back", g._subDive);
+        g._seaSuit = !!(g.save.boat.mechSub && g.save.mech?.active && g.save.mech.empowered); // release 621: the power armor hovers instead
+        if (g._seaSuit) { if (!(g._subDive > 0)) drawThrustDip(ctx, p.x, p.y - lift / s, s, now); }
+        else if ((g.save.boat.sub || g.save.boat.mechSub) && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "back", g._subDive);
         else (g._longboatFront ? drawLongboat : drawSkiff)(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right");
         if (g.mendTarget?.()) repairTag(ctx, p.x, p.y - .9 - lift / s, s);
         // Hull gauge under the skiff: green to amber to red as the hull takes damage.
@@ -1805,10 +1838,11 @@ export function render(ctx, g, w, h, now) {
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
       const drone = !!g.droneUp?.() && !!g.droneAt, mech = !!g.mechUp?.(), mechLift = (mech || drone) && g.mechBoosting ? s * (drone ? .35 : .22) : 0; // release 317: the robot ashore, lifted while it boosts; 321: the drone carries higher
       if (mech && g.save.mech?.empowered) { const cx = (p.x + .5) * s, cy = (p.y + .55) * s - lift - mechLift, r = s * (.72 + .05 * Math.sin(now / 140)), glow = ctx.createRadialGradient(cx, cy, r * .2, cx, cy, r); glow.addColorStop(0, "#ffb05a55"); glow.addColorStop(1, "#ff5a1f00"); ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); } // release 383: the empowered robot's furnace glow
-      const suited = mech && g.save.mech?.empowered === true; // release 389: empowered, the robot is a svelte silver suit in the Wayfarer's place
+      const seaSuit = g.area === "overworld" && !!g.save.boat?.aboard && g._seaSuit, hover = seaSuit && !(g._subDive > 0) ? s * (SEA_SUIT.hover + SEA_SUIT.bob * Math.sin(now / SEA_SUIT.bobMs)) : 0; // release 621
+      const suited = (mech && g.save.mech?.empowered === true) || seaSuit; // release 389: empowered, the robot is a svelte silver suit in the Wayfarer's place
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "back", 0, false, g.mechBoosting);
       const subHidden = g.area === "overworld" && g.save.boat?.aboard && g._subDive > 0; if (subHidden) { ctx.save(); ctx.globalAlpha = .12; } // release 311: under the surface
-      if (suited) drawPowerSuit(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, Math.floor(p.walkPhase || 0), now < (p.attackUntil || 0), g.mechBoosting); else actor(
+      if (suited) drawPowerSuit(ctx, p.x, p.y - (lift + mechLift + hover) / s, s, p.facing, now, Math.floor(p.walkPhase || 0), now < (p.attackUntil || 0), g.mechBoosting || seaSuit); else actor(
         ctx,
         p.x,
         p.y - (lift + (mech ? mechLift : 0)) / s, // release 543: in the robot, the Wayfarer rises with it (a boost left their legs below it)
@@ -1826,7 +1860,7 @@ export function render(ctx, g, w, h, now) {
         ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh * 2 + 3); ctx.fillStyle = "#5fc6e0"; ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, m.fuel / DRONE.carry)), bh); ctx.fillStyle = (m.healCd || 0) > 0 ? "#3f7f52" : "#7dff9a"; ctx.fillRect(bx, by + bh + 1, bw * Math.max(0, Math.min(1, 1 - (m.healCd || 0) / DRONE.healCooldown)), bh); }
       if (mech) { const m = g.save.mech, bx = (p.x + .08) * s, by = (p.y + 1.1) * s - lift, bw = s * .84, bh = Math.max(3, s * .08); // plating (silver) and boost (blue)
         ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh * 2 + 3); ctx.fillStyle = "#d8dee5"; ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, m.plate / MECH.plate)), bh); ctx.fillStyle = "#5fc6e0"; ctx.fillRect(bx, by + bh + 1, bw * Math.max(0, Math.min(1, m.fuel / (MECH.boost * (m.empowered ? 2 : 1)))), bh); if (m.empowered) { ctx.fillStyle = "#ff8a3d"; ctx.fillRect(bx, by + bh * 2 + 2, bw, Math.max(2, bh * .6)); } } // release 383: an ember line while empowered
-      if (g.area === "overworld" && g.save.boat?.aboard && (g.save.boat.sub || g.save.boat.mechSub) && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "front", g._subDive); // release 311: the window's glass and the arms
+      if (g.area === "overworld" && g.save.boat?.aboard && !g._seaSuit && (g.save.boat.sub || g.save.boat.mechSub) && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "front", g._subDive); // release 311: the window's glass and the arms
       if (g._longboatFront && g.area === "overworld" && g.save.boat?.aboard) drawLongboat(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right", "front"); // release 269
       // Poisoned (release 165): the Wayfarer pulses green while poison lasts.
       if (g.save.elites?.status?.poison > 0) { const pulse = .5 + .5 * Math.sin(now / 160); ctx.fillStyle = `rgba(120,230,90,${.12 + pulse * .22})`; ctx.strokeStyle = `rgba(150,255,110,${.35 + pulse * .45})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y - lift / s + .35) * s, s * (.42 + pulse * .08), s * (.55 + pulse * .08), 0, 0, 7); ctx.fill(); ctx.stroke(); }
@@ -1864,7 +1898,7 @@ export function render(ctx, g, w, h, now) {
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) {
     const raise = (Number.isFinite(d.x) ? groundLift(d.x, d === playerDraw ? p.y : d.y) : 0) + (d.lift || 0);
-    if (raise) { ctx.save(); ctx.translate(0, -raise * s); d.fn(); ctx.restore(); } else d.fn();
+    if (raise || (d.alpha ?? 1) < 1) { ctx.save(); if (raise) ctx.translate(0, -raise * s); if ((d.alpha ?? 1) < 1) ctx.globalAlpha = d.alpha; d.fn(); ctx.restore(); } else d.fn(); // release 615: a beneath-the-level rider is a dim shape
   }
   // Release 573: behind a giant tree the Wayfarer shows through, faint.
   if (g.area === "overworld" && g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p))) {
@@ -1978,6 +2012,8 @@ export function render(ctx, g, w, h, now) {
     const count=budget.quality==="full"?22:10;for(let i=0;i<count;i++){const p=Math.sin(motion*1.7+i*2.3);if(p<.55)continue;const x=(i*113+g.rx*29)%w,y=((i*71+motion*4)%h+h)%h,k=(p-.55)*9;ctx.fillStyle=i%2?"#f2e8ffcc":"#c7a8ffcc";ctx.fillRect(x-k,y-.6,k*2,1.2);ctx.fillRect(x-.6,y-k,1.2,k*2)}ctx.fillStyle="#2a1a4414";ctx.fillRect(0,0,w,h);
   }else if(budget.weather&&g.map.weather==="steam"){ // release 299: Brass Engine, steam rising from the pipes
     const count=budget.quality==="full"?12:6;for(let i=0;i<count;i++){const f=(motion*.18+i*.37)%1,x=(i*149+g.rx*31)%w+Math.sin(motion+i)*12,y=h*(1-f)-(i*53)%(h*.3);ctx.fillStyle=`rgba(220,214,200,${.16*(1-f)})`;ctx.beginPath();ctx.arc(x,y,10+f*26,0,7);ctx.fill()}ctx.fillStyle="#3a2a1210";ctx.fillRect(0,0,w,h);
+  }else if(budget.weather&&g.map.weather==="fog"){ // release 617: fog moors, slow grey banks drifting across
+    const count=budget.quality==="full"?7:4;for(let i=0;i<count;i++){const x=((i*211+motion*(9+i*3))%(w+400))-200,y=((i*137+g.ry*53)%(h+120))-60+Math.sin(motion*.3+i)*20,r=160+(i%3)*70,f=ctx.createRadialGradient(x,y,0,x,y,r);f.addColorStop(0,"rgba(205,214,212,.22)");f.addColorStop(1,"rgba(205,214,212,0)");ctx.fillStyle=f;ctx.fillRect(x-r,y-r,r*2,r*2)}
   }else if(budget.weather&&g.map.weather==="sunbreak"){
     const glow=ctx.createLinearGradient(0,0,w*.8,h);glow.addColorStop(0,"#e7c87324");glow.addColorStop(.45,"#d8ad5220");glow.addColorStop(.7,"#0000");ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
   }
