@@ -1,23 +1,9 @@
-// Tim (2026-11-01): world beasts tuned to the Wayfarer's level, but "I wanna be able to... test my gear... see how fast I can
-// beat them... speed run them": their health is counted in a standard Wayfarer's blows at that level (not your own gear), their
-// damage still follows your health and guard, and each kill from full health is timed against your best.
+// Tim (2026-11-01): "see how fast I can beat them... speed run them". Boss tuning is unchanged (Tim: "The way it's scaled is
+// fine... don't change them"); each kill from full health is timed against your best.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { Game, characterStats } from '../src/game.ts';
-import { WORLD_BEAST_IDS, tuneWorldBeast, standardHit, STANDARD_HIT, BEAST_BASELINE } from '../src/world-beasts.ts';
-import { createCombatant } from '../src/combat.ts';
-
-test("a beast's health follows your level, not your weapon; its damage still follows your health and guard", () => {
-  assert.equal(standardHit(8), BEAST_BASELINE.starterHit); assert.equal(standardHit(60), BEAST_BASELINE.starterHit + 52 * STANDARD_HIT.perLevel);
-  for (const id of WORLD_BEAST_IDS) {
-    const tune = (power, level, maxHp) => { const s = freshSave(); s.level = level; s.maxHp = maxHp; s.equipment.primary.power = power; const e = createCombatant(id, 0, 0, true); return tuneWorldBeast(e, s, id, characterStats(s)); };
-    const weak = tune(10, 40, 300), strong = tune(90, 40, 300);
-    assert.equal(strong.maxHp, weak.maxHp, `${id}: the same health whatever your weapon`);
-    assert.ok(tune(10, 70, 300).maxHp > weak.maxHp, `${id}: more at a higher level`);
-    assert.ok(tune(10, 40, 900).damage > weak.damage, `${id}: it still hits as hard as your health`);
-  }
-});
+import { Game } from '../src/game.ts';
 
 test('a kill from full health is timed and your best kept; a wounded beast is not timed', () => {
   const s = freshSave(); s.seed = 'SPEEDRUN'; const g = new Game(s, 0); g.rx = 7; g.ry = 2; g.loadArea('overworld', false);

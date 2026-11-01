@@ -2694,31 +2694,25 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release NNN: world beasts you can speedrun; waves that keep pace — 2026-11-01
+## Release NNN: beast kill times; waves that keep pace — 2026-11-01
 
-Tim (2026-11-01): "I don't like if every fight takes a fixed number of hits. I want them to be tuned to me with my gear and
-stuff in mind... I wanna be able to... test my gear... see how fast I can beat them... based on their health at that level...
-That's not a real fight... I wanna be able to... speed run [them]", and "waves that keep pace with you is fine. We don't have
-to stay in a spot... we're just gonna keep moving."
+Tim (2026-11-01): "I wanna be able to... test my gear... see how fast I can beat them... speed run [them]" and, on how they
+are tuned, "The way it's scaled is fine... don't change them"; and "waves that keep pace with you is fine. We don't have to
+stay in a spot... we're just gonna keep moving."
 
-**CODE:** world-beasts.ts: `liveBeastReference` no longer reads the weapon's power and the melee bonus: its `perHit` is
-`standardHit(level)` (`STANDARD_HIT.perLevel` 3 a level past `BEAST_BASELINE.level`, from the starter's 16 there), so a
-beast's health (its `hitsToKill` of those blows plus `hpPerLevel`, as before) follows your level, not your gear: a stronger
-build fells it faster. Damage is unchanged (a share of your max health past your guard). The Questing Beast and the Mire Heart
-derive from the same vitals; the Stage 1 hold (stages.ts) still holds the measure. The kill clock: game.ts `beastClock` (each
-frame) starts a world beast's or the Questing Beast's clock at the first blow that lands on it if it was met at full health
-(a beast that kept your earlier wounds is not timed); `beastClockStop` at its fall records the time (`recordBeastTime`,
-`save.beastTimes[id]`, the best kept) and the beast's own notice says "felled in N s · your best / a new best (was …) / best
-…". That notice is no longer overwritten by the generic "RIFT BOSS BROKEN". fractured.ts `FRACTURED.pace` and game.ts
-`tickFractured`: a wave broken within `fast` 25 s raises `fracPace` a step (to `max` 5), one taking `slow` 55 s or more
-lowers it; each step shortens the rest (`rest` share 1 → .18) and the press (`press` 1 → .42), adds `packs` 1 pack and
-`size` .5 a pack, and `cap` 6 more wave creatures (never past the mode's `hardCap`). The pace is runtime only and goes with
-the Wayfarer from section to section.
+**CODE:** Beast tuning is unchanged (world-beasts.ts `liveBeastReference` still counts health in your own blows). The kill
+clock: game.ts `beastClock` (each frame) starts a world beast's or the Questing Beast's clock at the first blow that lands on
+it if it was met at full health (a beast that kept your earlier wounds is not timed); `beastClockStop` at its fall records the
+time (world-beasts.ts `recordBeastTime`, `save.beastTimes[id]`, the best kept) and the beast's own notice says "felled in N s
+· your best / a new best (was …) / best …". That notice is no longer overwritten by the generic "RIFT BOSS BROKEN".
+fractured.ts `FRACTURED.pace` and game.ts `tickFractured`: a wave broken within `fast` 25 s raises `fracPace` a step (to `max`
+5), one taking `slow` 55 s or more lowers it; each step shortens the rest (`rest` share 1 → .18) and the press (`press` 1 →
+.42), adds `packs` 1 pack and `size` .5 a pack, and `cap` 6 more wave creatures (never past the mode's `hardCap`). The pace is
+runtime only and goes with the Wayfarer from section to section.
 
-**BOUNDARY:** No generator change. Save: `save.beastTimes` (additive at schema 14, normalised in `freshSave`/`migrateSave`
-by `ensureBeastTimes`). Bounded: the wave hard caps are unchanged. Gate Revenants and Far Array bosses keep their own tuning
-(still from your blow). Tests: `tests/beast-speedrun.test.ts`, `tests/fracture-waves-671.test.ts`,
-`tests/beast-baseline-rematch.test.ts`.
+**BOUNDARY:** No generator or tuning change. Save: `save.beastTimes` (additive at schema 14, normalised in
+`freshSave`/`migrateSave` by `ensureBeastTimes`). Bounded: the wave hard caps are unchanged. Tests:
+`tests/beast-speedrun.test.ts`, `tests/fracture-waves-671.test.ts`.
 
 ## Release 691: the Stalker lies in wait; flurry, tide, mouth, chompers — 2026-11-01
 
