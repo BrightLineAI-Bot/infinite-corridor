@@ -5048,29 +5048,34 @@ export class Game {
     return mode;
   }
   fracturedOpen(x, y, w = mapWidth(this.map, this.area)) { const p = this.player; return footprintOpen(this.map, w, x, y) && !footprintHazard(this.map, w, x, y) && !(this.map.tiles[y * w + x]?.canopy) && Math.hypot(x - p.x, y - p.y) >= 4; }
-  // One frame of Fractured mode: after a doorway's grace, a pack comes in from just out of sight every few seconds, never past
-  // the live cap; clearing everything in sight buys a lull. Runtime only (`fracState`), reset with the area.
+  // One frame of Fractured mode (release 671): after a doorway's grace a wave of several packs comes in from just out of sight
+  // on different sides; once it is all down the next waits `rest` s, and one left standing is joined by the next after `press`
+  // s; never past `cap` wave creatures alive nor `hardCap` in all. Runtime only (`fracState`), reset with the area.
   tickFractured(now) {
     if (this.enemies.some((e) => e.fracReinforcement && e.dead)) { for (const e of this.enemies) if (e.fracReinforcement && e.dead) e.fracGoneAt ??= now; this.enemies = this.enemies.filter((e) => !(e.fracReinforcement && e.dead && now - e.fracGoneAt > FRACTURED.corpse * 1000)); } // the 659 review: fallen reinforcements are cleared away
     const mode = this.fracturedHere(); if (!mode) { this.fracState = null; return; }
     const key = `${this.area}:${this.areaStateId()}`, F = FRACTURED, p = this.player;
-    let st = this.fracState; if (!st || st.key !== key) st = this.fracState = { key, nextAt: now + F.grace * 1000, quiet: true, n: 0 };
+    let st = this.fracState; if (!st || st.key !== key) st = this.fracState = { key, nextAt: now + F.grace * 1000, n: 0, wave: false };
     const hostile = this.enemies.filter((e) => !e.dead && !e.ambient && !e.passiveBehavior && !e.retreating && !e.astralAllyOf && e.kind !== "npc");
-    const near = hostile.some((e) => Math.hypot(e.x - p.x, e.y - p.y) <= F.sight);
-    if (!near && !st.quiet) { st.quiet = true; st.nextAt = Math.max(st.nextAt, now + mode.lull * 1000); this.message = F.messages.lull; } // everything in sight cleared: a lull
-    if (near) st.quiet = false;
+    const brought = hostile.filter((e) => e.fracReinforcement && !e.fracWardenAdd).length;
+    if (st.wave && brought === 0) { st.wave = false; st.nextAt = now + mode.rest * 1000; this.message = F.messages.lull; } // the wave is broken: a rest
     if (this.tickFractureWarden(now, mode, key, st, hostile)) return; // release 666: the meter's Warden and its calls
-    if (now < st.nextAt || hostile.length >= mode.cap) return;
-    st.n++; const surge = st.n % mode.surgeEvery === 0, h = hashSeed(`${this.save.seed}:frac-wave:${key}:${st.n}`);
-    st.nextAt = now + (mode.every[0] + h % (mode.every[1] - mode.every[0] + 1)) * 1000;
+    if (now < st.nextAt) return;
+    const room = Math.min(mode.cap - brought, mode.hardCap - hostile.length); if (room < mode.pack[0]) { st.nextAt = now + 2000; return; }
+    st.n++; const elite = st.n % mode.surgeEvery === 0, h = hashSeed(`${this.save.seed}:frac-wave:${key}:${st.n}`);
     const w = mapWidth(this.map, this.area), [d0, d1] = F.spawnDistance, kinds = [...new Set(this.enemies.filter((e) => e.fractured || fracturedOrdinary(e)).map((e) => e.kind))].filter((k) => k !== "npc");
-    let at = null; for (let i = 0; i < 24 && !at; i++) { const a = ((h >>> 4) + i * 2.399) % 6.283, r = d0 + ((h >>> 12) + i * 7) % (d1 - d0 + 1), x = Math.round(p.x + Math.cos(a) * r), y = Math.round(p.y + Math.sin(a) * r); if (x > 0 && y > 0 && x < w - 1 && y < (this.map.height || w) - 1 && this.fracturedOpen(x, y, w)) at = { x, y }; }
-    if (!at) return;
-    const size = Math.min(mode.cap - hostile.length, mode.pack[0] + h % (mode.pack[1] - mode.pack[0] + 1) + (surge ? mode.surge : 0)), roll = ((h >>> 9) % 1000) / 1000;
-    const rank = surge ? (roll < .35 ? "rare" : "champion") : roll < mode.rare * .5 ? "rare" : roll < mode.champion ? "champion" : null;
-    const pack = packSpawns(`${this.save.seed}:frac-wave:${key}:${st.n}`, kinds.length ? kinds : F.fallback, at.x, at.y, size, rank, (x, y) => this.fracturedOpen(x, y, w), `frac-r-${(this.fracSeq = (this.fracSeq || 0) + 1)}`, { fracReinforcement: true });
-    for (const q of pack.slice(0, Math.max(0, mode.cap - hostile.length))) { const c = this.createEnemyFromSpawn(q); c.aggro = true; this.enemies.push(c); } // never past the cap (657: a shaman counts)
-    if (pack.length) this.message = surge ? F.messages.surge : rank === "rare" ? F.messages.rare : F.messages.arrive;
+    const packs = mode.packs[0] + h % (mode.packs[1] - mode.packs[0] + 1); let left = room, came = 0, rare = false;
+    for (let k = 0; k < packs && left >= 2; k++) {
+      const hk = hashSeed(`${this.save.seed}:frac-wave:${key}:${st.n}:p${k}`), base = (h >>> 4) % 628 / 100 + k * 6.283 / packs; // packs spread round the Wayfarer
+      let at = null; for (let i = 0; i < 24 && !at; i++) { const a = base + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * .3, r = d0 + ((hk >>> 12) + i * 7) % (d1 - d0 + 1), x = Math.round(p.x + Math.cos(a) * r), y = Math.round(p.y + Math.sin(a) * r); if (x > 0 && y > 0 && x < w - 1 && y < (this.map.height || w) - 1 && this.fracturedOpen(x, y, w)) at = { x, y }; }
+      if (!at) continue;
+      const size = Math.min(left, mode.pack[0] + hk % (mode.pack[1] - mode.pack[0] + 1) + (elite ? mode.surge : 0)), roll = ((hk >>> 9) % 1000) / 1000;
+      const rank = elite ? (roll < .35 ? "rare" : "champion") : roll < mode.rare * .5 ? "rare" : roll < mode.champion ? "champion" : null; rare ||= rank === "rare";
+      const pack = packSpawns(`${this.save.seed}:frac-wave:${key}:${st.n}:p${k}`, kinds.length ? kinds : F.fallback, at.x, at.y, size, rank, (x, y) => this.fracturedOpen(x, y, w), `frac-r-${(this.fracSeq = (this.fracSeq || 0) + 1)}`, { fracReinforcement: true });
+      for (const q of pack.slice(0, left)) { const c = this.createEnemyFromSpawn(q); c.aggro = true; this.enemies.push(c); left--; came++; } // never past the room (657: a shaman counts)
+    }
+    st.nextAt = now + (came ? mode.press : 2) * 1000; // a wave left standing is joined by the next
+    if (came) { st.wave = true; this.message = elite ? F.messages.elite : rare ? F.messages.rare : F.messages.wave; }
   }
   // Release 666 (fractured.ts FRACTURE_WARDEN): with the meter full and no Warden up, one steps through just off the Wayfarer
   // (after the doorway's grace); while it lives, ordinary waves wait and it calls packs of the area's creatures round itself
