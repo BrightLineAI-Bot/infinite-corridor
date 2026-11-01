@@ -2694,6 +2694,26 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 671: Fractured waves — 2026-11-01
+
+Tim (2026-11-01, playing Frenzied): "the waves aren't coming in quickly enough... I was in a square for like 90 seconds, and then
+only one... pack of mobs came in... the wave frequency is too slow... each wave... come in a little bit quicker and... with more
+force... several packs coming in... I have to kill them all, and then you have to wait [about a minute]. And then... several more
+packs come in, or I can go to the next square."
+
+**CODE:** `FRACTURED.modes` (src/fractured.ts) replaces `every`/`lull` with `packs` (packs per wave: Fractured 2–3, Frenzied 3–5),
+`rest` (s after a wave is cleared: 60 / 45), `press` (s before the next wave joins one left standing: 45 / 25) and `hardCap`
+(everything alive: 54 / 64); `cap` (24 / 32) now counts only creatures the waves brought, and `grace` after a doorway is 6 s (was
+20). `Game.tickFractured` (src/game.ts) lays each wave's packs round the Wayfarer at spread angles, `spawnDistance` out, each from
+its own hash; every `surgeEvery`th (3rd) wave ranks every pack champion or rare. When no wave creature is left alive the wave is
+broken: the rest begins and the lull message shows. The old "nothing in sight starts a lull" rule is gone (it started a lull on
+arrival, which is what held Tim's waves back, together with the cap counting the section's own dense creatures). The Fracture
+Warden (666) still owns the pace while it is up.
+
+**BOUNDARY:** Runtime only (`fracState`, never saved); reinforcements are still never saved and their corpses still clear after
+`corpse` s. Bounded: at most `packs` × 24 tile checks per wave, never past `cap` wave creatures or `hardCap` alive. No generator,
+save or loot change. Tests: `tests/fracture-waves-671.test.ts`, `tests/fractured-651.test.ts`.
+
 ## Release 669: Crown Rests; the drone and the glider — 2026-11-01
 
 Tim (2026-11-01): "there's rest points at the top of great trees... touch it to activate it... if you die... you come back to the

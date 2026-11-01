@@ -31,14 +31,14 @@ test('towns, home and the start are safe', () => {
   const { g } = at('frenzied', 0, 0); assert.equal(g.fracturedHere(), null); assert.ok(!g.enemies.some((e) => e.fractured));
 });
 
-test('after a doorway\'s grace a pack comes in from out of sight, never past the cap; clearing all in sight buys a lull', () => {
+test('after a doorway\'s grace a wave comes in from out of sight, never past the cap (671: several packs, see fracture-waves-671)', () => {
   const [x, y] = wildSection(), { g } = at('frenzied', x, y), M = FRACTURED.modes.frenzied;
   for (const e of g.enemies) if (!e.ambient) e.dead = true; // a cleared place
   g.update(.05, idle, 1000); const before = g.enemies.length; g.update(.05, idle, 1000 + (FRACTURED.grace - 1) * 1000); assert.equal(g.enemies.length, before, 'grace');
-  g.update(.05, idle, 1000 + (FRACTURED.grace + M.lull + 1) * 1000);
-  const come = g.enemies.filter((e) => e.fracReinforcement && !e.dead); assert.ok(come.length >= M.pack[0], `${come.length} arrived`);
+  g.update(.05, idle, 1000 + (FRACTURED.grace + 1) * 1000);
+  const come = g.enemies.filter((e) => e.fracReinforcement && !e.dead); assert.ok(come.length >= M.pack[0] * 2, `${come.length} arrived`);
   assert.ok(come.filter((e) => !e.fracShaman).every((e) => Math.hypot(e.x - g.player.x, e.y - g.player.y) >= FRACTURED.spawnDistance[0] - FRACTURED.near - 1 && e.aggro), 'from out of sight, hunting (657: a shaman stands apart from its pack)');
-  for (let t = 0; t < 40; t++) g.tickFractured(1e6 + t * 60000); assert.ok(hostile(g).length <= M.cap, `${hostile(g).length} ≤ ${M.cap}`);
+  for (let t = 0; t < 40; t++) g.tickFractured(1e6 + t * 60000); assert.ok(g.enemies.filter((e) => e.fracReinforcement && !e.dead).length <= M.cap && hostile(g).length <= M.hardCap, `${hostile(g).length} ≤ ${M.hardCap}`);
 });
 
 test('a reinforcement seldom drops and leaves no lasting flag; a champion is tougher and drops more', () => {
