@@ -2694,6 +2694,31 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 677: the Deep — 2026-11-01
+
+Tim (2026-11-01), on the endless-descent plan: floors harder each time, checkpoints every five floors, loot that improves only
+near your deepest floor, the record of your greatest depth in the journal and on the Wayfarer's page; "let's not get crossing
+sigils... We'll just do the embers." (The Listener's Mouth as an endless descent after its Listener falls is not in this
+release.)
+
+**CODE:** `src/the-deep.ts` (new; in the build and both sw.js lists): `THE_DEEP` (shaft `chance` .012 past `minRing` 8,
+`perFloor` hp .1 / damage .06, `affixEvery` 5 at `affixShare` .12 up to .6, `guardianTwo` 20, `checkpointEvery` 5,
+`emberPerClear` 1, `loot` +1 per 5 floors up to 10 within `near` 2 of the shaft's best, `payoffOnce`), `ensureTheDeep`
+(`save.theDeep`: embers, record, shafts by section, at most 64), `shaftHere`, `startFloors`, `floorPlan` (the floor's own
+generation id `${id}:f${floor}`, recipe and environment), `floorScale`, `floorAffixShare`, `guardianAffixes`, `lootBonus`.
+game.ts: `generatePinnedDungeon` builds a `the-deep:` id's current floor with `generateExpeditionDungeon` and `dressDeepFloor`
+(the Ember Door by the arrival; the free exit only on floor 1); `Game.placeDeepShaft` (sections first seen from now on:
+`atlas.deepVersion`; the Atlas lists the shaft); `enterDeep` (`descend:N`, floor 1 or a checkpoint), `descendDeep`,
+`resetDeepFloor` (only the current floor's history and snapshot are kept), `deepFloorCleared` (ember, record, journal at
+1 and every 5th, the Deep Stair), `placeDeepStair`, `burnEmber` (the Ember Door and a cleared floor's return). Creatures are
+scaled once in `createEnemyFromSpawn` (`deepScaled`); `obtainDrop` adds `lootBonus`. renderer.ts shows THE DEEP · FLOOR N
+and the embers at the right edge; main.ts labels the shaft's choices and the map tags; persistence.ts `journeyStats` adds
+"Deepest floor of the Deep".
+
+**BOUNDARY:** Shafts only in sections first seen from this release; nothing generated before changes. Save additive at
+schema 14 (`save.theDeep`, `atlas.deepVersion`), normalised in `freshSave` and `migrateSave`. Bounded: one floor kept, 64
+shafts recorded, one stair and one door a floor. Tests: `tests/the-deep-677.test.ts`.
+
 ## Release 675: the Starfield Deep Annex — 2026-11-01
 
 Tim (2026-11-01): ordinary crossings stay one or two floors deep; "deep annexes" are rare, "a specific dungeon type" announced so
