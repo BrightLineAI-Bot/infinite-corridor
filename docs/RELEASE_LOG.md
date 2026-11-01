@@ -71,7 +71,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 685, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
-| 684 | `r684-436ff24739ec` | 2026-11-01 | Published by the Stalker session. With 680 to 683: the Skylands Deep Annex (#327), the Stalker's arsenal (#328), Divine Viscera (#329), Great Keeps (#330); and 684, the Stalker refined (#331). Pre-publish review: no blockers. Published in r684. |
+| 684 | `r684-436ff24739ec` | 2026-11-01 | Published by the Stalker session. With 680 to 683: the Skylands Deep Annex (#327), the Stalker's arsenal (#328), Divine Viscera (#329), Great Keeps (#330); and 684, the Stalker refined (#331). Pre-publish review: no blockers. |
 | 679 | `r679-4d93bc15f0b3` | 2026-11-01 | With 671 to 678: Fractured waves (#320), easier-to-find wonders (#321) and their Atlas pins (#323), the Starfield Deep Annex (#322), the Deep (#325), the Stalker (#324); and 679, seasons (#326). Pre-publish review: no blockers. |
 | 669 | `r669-637cc97f06cd` | 2026-11-01 | With 664 to 668 from the second session: the Tremor Worm reworked (#316), the fracture meter and Fracture Warden (#318), guardians and elites fight back (#319); and 669, Crown Rests and the drone/glider freefall (#317). Pre-publish review: no blockers. |
 | 663 | `r663-56d3cf7b0025` | 2026-11-01 | With 651 to 661: Fractured mode (#309), follow it home (#310), Upheaval stacks (#311), elite affixes, auras and shamans (#312), the Far Array explains itself (#313), floor dots (#314), sky gate to a treetop and the 659 review fix (#315). Two pre-publish reviews; the first's blocker fixed in 663, the second clean. |
