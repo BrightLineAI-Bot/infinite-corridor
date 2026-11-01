@@ -2511,7 +2511,7 @@ export const STAGGER_GOVERNOR = { limit: { revenant: .6, boss: .9, elite: 1.3, o
 export const WINDUP_STAGGER = { max: .35 };
 // Call while hit-stunned during a windup; `held` is the attack's own record. True while the windup may still be held.
 export function windupHeld(e, held, dt) { held.windupStagger = (held.windupStagger || 0) + dt; if (held.windupStagger < WINDUP_STAGGER.max) return true; e.hitStun = 0; return false; }
-export function staggerClass(e) { return e?.gatePredator ? "revenant" : e?.boss || e?.marginWarden /* release 459 */ || e?.worldBeast || e?.questingBeast || e?.farArrayBoss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e?.dungeonRole) ? "boss" : e?.eliteId || e?.elite ? "elite" : null; }
+export function staggerClass(e) { return e?.gatePredator ? "revenant" : e?.boss || e?.marginWarden /* release 459 */ || e?.fracWarden /* release 666 */ || e?.worldBeast || e?.questingBeast || e?.farArrayBoss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e?.dungeonRole) ? "boss" : e?.eliteId || e?.elite ? "elite" : null; }
 // Call after the frame's hit-stun countdown. Returns true while the foe is guarded (it shrugs stuns off).
 export function staggerGovernor(e, dt) {
   const k = staggerClass(e) || "ordinary"; // release 561: ordinary creatures cannot be stun-locked either

@@ -2694,6 +2694,36 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 666: the fracture meter and the Fracture Warden — 2026-11-01
+
+Tim (2026-11-01, via the session brief): in a Fractured area kills fill a meter shown on the HUD; full, a Fracture Warden spawns
+with a real moveset, aggressive AI and adds during the fight, at about half a Gate Revenant's strength and scaling with the
+player; killing it seals the area (safe, reinforcements stop, a cache drops; loot auto-picked up and salvaged as now).
+
+**CODE:**
+- `src/fractured.ts`: `FRACTURE_WARDEN` (meter sizes per mode, kill `worth`, `revenantShare` .5, scale, pacing, `attacks` pool,
+  `adds`, `cache`, `maxRecords`), `fractureKey`, `ensureFractureSeals` (called from `normalizeFractured`, so from `freshSave` and
+  `migrateSave`), `fractureRecord`, `fractureSealed`, `fractureNeed`, `fractureWorth`, `fractureKill`, `wardenBody` (one of the
+  area's own pack kinds, else `bodies`), `wardenAttacks` (seven of the pool, hashed from the area).
+- `src/game.ts`:
+  - `fracturedHere` returns null for a sealed area, so density packs, reinforcements and the lull all stop.
+  - `defeatEnemy` calls `fractureOnKill`: an ordinary kill adds to the meter (adds, summons and kills while a Warden lives do
+    not). The Warden's fall seals the record, kills its called packs, and gives `cache.items` `obtainDrop`s, marks and a draught.
+  - `tickFractured` hands the pace to `tickFractureWarden` once the meter is full. It spawns the Warden 5–7 tiles off; while the
+    Warden lives, ordinary waves wait and it calls `adds.size` creatures every `adds.every` s (a champion every third call),
+    never past `adds.cap`.
+  - `createEnemyFromSpawn` tunes a `fracWarden` spawn from a tuned Gate Revenant (like the Margin Warden): hp and damage
+    × `revenantShare`, scale, speed, `attackGap`, `attackCooldownScale`, poise, the duelist brain, dodging, two affixes and the
+    hashed attack list.
+  - `fractureMeter()` feeds the HUD.
+- `src/monster-pack.ts` `staggerClass`: a Fracture Warden has boss poise.
+- `src/renderer.ts`: the meter at the top centre (kills, "THE FRACTURE TEARS", then the Warden's health), and the Warden's
+  jagged crimson ring and name.
+
+**BOUNDARY:** `save.fractureSeals` is additive at schema 14: absent until the first Fractured kill, nonsense cleaned, unknown
+fields kept, at most `maxRecords` records. The Warden itself is runtime: leave with the meter full and it steps through again on
+your return. A sealed dungeon is not marked cleared; its guardian still waits. Tests: `tests/fracture-warden-666.test.ts`.
+
 ## Release 664: the Tremor Worm reworked — 2026-11-01
 
 Tim (2026-11-01): "he should spend a lot of time with half of his model outside the ground and only come out every once in a
