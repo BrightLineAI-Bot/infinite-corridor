@@ -2694,6 +2694,27 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release NNN: ruined arcologies — 2026-11-01
+
+Tim (2026-11-01): "large apartment buildings that are kind of like dilapidated or destroyed... formerly cyberpunk utopias...
+you can go inside them... floors... jump ups... or stairs... stagger the floors above... so that there's good visibility
+amongst all the floors... holes in the floor".
+
+**CODE:** `src/keeps.ts` gains `ARCOLOGY` (`chance` .1 in `regions` glasslands, biomech, emberlands, ashfields, crystal, obsidian,
+alien, past `minRing` 6; `sizes` 15/13/11; `rise` 2 levels a floor; `broken` from the 3rd ring, .12 of a ring; `rubble` 1 a ring;
+guard rings), `arcologyHere`, `buildArcology` (a spot clear of the exit lanes, their stretches to the middle and the plaza, over
+natural ground; laid, the section's ways out checked as for keeps, undone if one is cut) and `layArcology`: a square tower,
+ring r at level 2(r−1); one `arcStair` (a slope a level under its ring) a ring, on a hashed side, the last one facing the door;
+broken floor (the ring below's level) and rubble on the upper rings, never on or beside a stair; `climbable` walks it from the
+door and mends damage, outermost first, until the crown is reached. The crown has an Arcology Rest (a `crownRest`) and the
+Arcology Cache. New landscape kinds `arcFloor`, `arcStair` (walkable) and `arcWall` (landscape.ts), painted in
+landscape-render.ts (concrete and dead neon, worn stairs, dark glass) with an `arcology` cliff face; atlas-colors.ts has their
+Atlas colours. game.ts places it for sections first seen from now on (`atlas.arcVersion`), before the Great Keep roll.
+
+**BOUNDARY:** New ground only (`atlas.arcVersion`); sections first seen in 683 keep their keeps and get no arcology. Movement is
+the landscape's `canStep`. Bounded as the keeps: one building a section, built once, ≤300 spots, ≤6 undone layouts.
+Tests: `tests/arcologies.test.ts`.
+
 ## Release 683: Great Keeps — 2026-11-01
 
 Tim (2026-11-01): "buildings to explore like castles and keeps... reuse the platforming structure from the great trees...

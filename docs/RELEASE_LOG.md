@@ -21,6 +21,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 683, the next is **
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| (at merge) | Claude | `claude/dreamy-rubin-yn6q2p` | Ruined arcologies: terraced towers of dark glass in the machine-touched regions, a stair a floor, broken floor to fall through, the crown's rest and cache | Building. |
 | 683 | Claude | `claude/dreamy-rubin-yn6q2p` | Great Keeps: walled keeps on new ground, climbed by stair and jump-up from the gate to the wall walk, corner towers, a gatehouse tower, a bridge over the courtyard and the keep's crown (Keep Rest, Keep Cache); guards on every level | Renumbered 682 → 683: the Tremor Worm session merged 682 first. PR #330. |
 | 682 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Divine Viscera: earned from every Divine Challenge cleared; an Altar of Viscera where one is cleared (and before the annex's last island) takes them to strengthen the next one, add rounds, reroll its echoes or lighten it; harder pacts pay back more | Merging (baton taken). |
 | 681 | Claude (Stalker session) | PR #328 | The Stalker's arsenal: back turret (homing orbs, laser cone, orbiting ring, X blade beam), energized sphere, liquid shield, the cat climbing trees, hopping ledges and breaking out of pens | Building. |

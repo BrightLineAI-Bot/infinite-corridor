@@ -84,7 +84,7 @@ import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatt
 import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt, DREAM_HALL, dreamHallRoll } from "./underlands.ts";
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
-import { KEEPS, keepHere, buildKeep } from "./keeps.ts";
+import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology } from "./keeps.ts";
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
@@ -2369,6 +2369,7 @@ export class Game {
       if (!prior) stalkerNewSection(this.save); // release 678: new sections count toward the Stalker's return
       this.markDeepAnnexes(); // release 675
       if ((prior ? prior.deepVersion : THE_DEEP.version) && !this.map.settlement && !this.map.hamlet && shaftHere(this.save.seed, this.rx, this.ry)) this.placeDeepShaft(); // release 677
+      if ((prior ? prior.arcVersion : ARCOLOGY.version) && !this.map.settlement && !this.map.hamlet) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION; if (v >= 5 && arcologyHere(this.save.seed, this.rx, this.ry, sectionRegion(this.save.seed, this.rx, this.ry, v)) && buildArcology(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = ARCOLOGY.messages.arrive; } // ruined arcologies: only in sections first seen from now on
       if ((prior ? prior.keepVersion : KEEPS.version) && !this.map.settlement && !this.map.hamlet && keepHere(this.save.seed, this.rx, this.ry) && buildKeep(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = KEEPS.messages.arrive; // great keeps: only in sections first seen from now on
       { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, r = v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null; if (!prior) noteSeasonDiscovery(this.save, r?.id); this.season = trackSeason(this.save, r); } // release 679: the woods' season
       if (!prior) { atlas[key] = atlas[key] || {}; if (noteDiscovery(this.save)) this.message = "Word comes on the wind: around Ember Refuge, the groves and the quarry have grown back."; } // release 265: regrowth every 20 new sections
@@ -2387,7 +2388,8 @@ export class Game {
         ...(prior ? (prior.skyVersion ? { skyVersion: prior.skyVersion } : {}) : { skyVersion: SKYLANDS.version }), // release 571: Sky Stairs only in sections first seen from now on
         ...(prior ? (prior.skyPlace ? { skyPlace: prior.skyPlace } : {}) : { skyPlace: SKY_PLACE.version }), // release 672: where Sky Stairs stand, pinned per section
         ...(prior ? (prior.deepVersion ? { deepVersion: prior.deepVersion } : {}) : { deepVersion: THE_DEEP.version }),
-        ...(prior ? (prior.keepVersion ? { keepVersion: prior.keepVersion } : {}) : { keepVersion: KEEPS.version }), // great keeps likewise // release 677: Deep Shafts likewise
+        ...(prior ? (prior.keepVersion ? { keepVersion: prior.keepVersion } : {}) : { keepVersion: KEEPS.version }), // great keeps likewise
+        ...(prior ? (prior.arcVersion ? { arcVersion: prior.arcVersion } : {}) : { arcVersion: ARCOLOGY.version }), // and the ruined arcologies // release 677: Deep Shafts likewise
         ...(indoor ? { indoorDungeonVersion: indoor } : {}), // release 499: the dungeon entrance may stand inside a building
         color: sectionAtlasColor(this.map), // release 559: the Atlas shows the section as it really looks (atlas-colors.ts)
         ...(this.map.landscape?.biome ? { landscape: this.map.landscape.biome } : {}), sites: this.map.objects
