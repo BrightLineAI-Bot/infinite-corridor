@@ -2731,6 +2731,10 @@ face"; "a few visual passes on the gorilla... good animations... when we work on
     and a ground mark for every new move.
   - The cat's head is redrawn as a big cat's profile: short deep muzzle, whisker pad, chin, hooded almond eye, brow ridge,
     ears laid back.
+  - Tim: "there's like some stray lines around its body... a little misty... penumbra around it... not a full form". `drawCat`
+    drops the flank chevrons, the spine seam strokes and the shoulder/haunch arcs, softens its outline, and draws a drifting
+    penumbra first: six radial-gradient puffs round the body, four wisps trailing off the back and tail, a pool at the feet
+    (eleven gradients a frame).
 
 **BOUNDARY:** Runtime only: no save field, no generator change. Bounded: shots still capped at 12, eruptions at 6, two fists,
 segment tests only, no pathfinding. Tests: `tests/stalker-arsenal.test.ts`.

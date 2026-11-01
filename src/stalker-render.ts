@@ -18,9 +18,16 @@ function drawCat(ctx, x, y, u, face, t, moving, pose = null) {
   const sway = Math.sin(t * (pose === "crouch" ? 9 : 2.3)) * (pose === "crouch" ? .09 : .05) * u;
   ctx.save(); if (pose === "crouch") { ctx.translate(x, y); ctx.scale(1.04, .8); ctx.translate(-x, -y); } else if (pose === "leap") { ctx.translate(x, y - .1 * u); ctx.rotate(-face * .08); ctx.scale(1.16, .9); ctx.translate(-x, -y); }
   ctx.lineCap = "round"; ctx.lineJoin = "round";
+  // A penumbra of mist round it, drifting: it is not wholly here. Wisps trail off its back and tail and pool at its feet.
+  ctx.save();
+  const puff = (px, py, r, alpha, sy = .75) => { const g = ctx.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, `rgba(236,242,248,${alpha})`); g.addColorStop(1, "rgba(236,242,248,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(px, py, r, r * sy, 0, 0, Math.PI * 2); ctx.fill(); };
+  for (let i = 0; i < 6; i++) { const ph = t * .9 + i * 1.7; puff(F(-.55 + i * .22 + Math.sin(ph) * .04), by - (.36 + Math.cos(ph * 1.3) * .05) * u, (.38 + .06 * Math.sin(ph)) * u, .2 + .06 * Math.sin(ph * 1.7)); }
+  for (let i = 0; i < 4; i++) { const k = ((t * .35 + i * .25) % 1); puff(F(-.5 - k * .5 + (i % 2) * .2), by - (.45 + k * .28 - (i % 2) * .15) * u, (.14 + k * .2) * u, .3 * (1 - k)); }
+  puff(x, y - .04 * u, .7 * u, .22, .16);
+  ctx.restore();
   // The tail: from the haunch, low, then an S up to a curled silver tip.
   const tp = [[F(-.5), by - .4 * u], [F(-.78), by - .2 * u + sway], [F(-1.0), by - .32 * u], [F(-1.12), by - .62 * u - sway]];
-  for (const [wd, col] of [[.105, "#8c96a6"], [.08, FUR]]) { ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, wd * u); ctx.beginPath(); ctx.moveTo(tp[0][0], tp[0][1]); ctx.bezierCurveTo(tp[1][0], tp[1][1], tp[2][0], tp[2][1], tp[3][0], tp[3][1]); ctx.stroke(); }
+  for (const [wd, col] of [[.105, "rgba(140,150,166,.55)"], [.08, FUR]]) { ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, wd * u); ctx.beginPath(); ctx.moveTo(tp[0][0], tp[0][1]); ctx.bezierCurveTo(tp[1][0], tp[1][1], tp[2][0], tp[2][1], tp[3][0], tp[3][1]); ctx.stroke(); }
   ctx.fillStyle = SILVER; ellipse(ctx, tp[3][0], tp[3][1], .04 * u, .04 * u); ctx.fill();
   // Six jointed legs, spread along the body so all six read (the far three set back and a shade darker): a muscled upper leg,
   // a slim lower leg and a broad paw; the hind pair with the cat's backward hock.
@@ -31,7 +38,7 @@ function drawCat(ctx, x, y, u, face, t, moving, pose = null) {
     if (pose === "leap") { const reach = i === 0 ? .32 : i === 1 ? .08 : -.34; footX = hipX + face * reach * u; footY = by - (.12 + (i === 1 ? .04 : 0)) * u; lift = 0; }
     if (pose === "swipe" && i === 0 && !side) { footX = hipX + face * .28 * u; footY = by - .42 * u; }
     const kneeX = (hipX + footX) / 2 - face * L.knee * u, kneeY = pose === "leap" || (pose === "swipe" && i === 0 && !side) ? (hipY + footY) / 2 + .03 * u : by - .16 * u - lift * .5;
-    const col = side ? "#a8b1bf" : "#eef1f5", edge = side ? "#7b8494" : "#8c96a6";
+    const col = side ? "#a8b1bf" : "#eef1f5", edge = side ? "#7b8494" : "rgba(140,150,166,.55)";
     // the upper leg: a tapered wedge of muscle
     const ux = kneeX - hipX, uy = kneeY - hipY, ul = Math.hypot(ux, uy) || 1, nx = -uy / ul, ny = ux / ul, th = L.thick * u;
     ctx.fillStyle = col; ctx.strokeStyle = edge; ctx.lineWidth = Math.max(1, .012 * u);
@@ -49,21 +56,18 @@ function drawCat(ctx, x, y, u, face, t, moving, pose = null) {
   ctx.bezierCurveTo(F(.5), by - .5 * u, F(.52), by - .34 * u, F(.42), by - .24 * u);
   ctx.bezierCurveTo(F(.3), by - .17 * u, F(.15), by - .2 * u, F(.02), by - .26 * u);
   ctx.bezierCurveTo(F(-.15), by - .3 * u, F(-.3), by - .24 * u, F(-.44), by - .25 * u);
-  ctx.bezierCurveTo(F(-.54), by - .26 * u, F(-.55), by - .31 * u, F(-.52), by - .36 * u); ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#8c96a6"; ctx.lineWidth = Math.max(1, .014 * u); ctx.stroke();
+  ctx.bezierCurveTo(F(-.54), by - .26 * u, F(-.55), by - .31 * u, F(-.52), by - .36 * u); ctx.closePath(); ctx.fill(); ctx.strokeStyle = "rgba(140,150,166,.55)"; ctx.lineWidth = Math.max(1, .014 * u); ctx.stroke();
   ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.beginPath(); ctx.moveTo(F(-.45), by - .47 * u); ctx.bezierCurveTo(F(-.3), by - .51 * u, F(-.15), by - .45 * u, F(-.05), by - .43 * u); ctx.bezierCurveTo(F(.1), by - .42 * u, F(.25), by - .48 * u, F(.4), by - .47 * u); ctx.bezierCurveTo(F(.25), by - .44 * u, F(.05), by - .38 * u, F(-.45), by - .43 * u); ctx.fill(); // the sheen along the back
-  ctx.strokeStyle = "rgba(205,226,245,.95)"; ctx.lineWidth = Math.max(1, .022 * u); ctx.beginPath(); ctx.moveTo(F(-.48), by - .5 * u); ctx.bezierCurveTo(F(-.3), by - .53 * u, F(-.12), by - .46 * u, F(.05), by - .45 * u); ctx.bezierCurveTo(F(.15), by - .47 * u, F(.22), by - .52 * u, F(.28), by - .55 * u); ctx.stroke();
-  ctx.strokeStyle = `rgba(160,235,255,${.35 + .25 * Math.sin(t * 3)})`; ctx.lineWidth = Math.max(1, .01 * u); ctx.stroke(); // the liquid-silver seam down its spine
   // The near haunch and shoulder over the body: the muscle the near legs hang from.
   ctx.fillStyle = "#f3f5f8"; ctx.strokeStyle = "rgba(140,150,166,.7)"; ctx.lineWidth = Math.max(1, .012 * u);
-  ellipse(ctx, F(-.36), by - .34 * u, .15 * u, .12 * u, face * .35); ctx.fill(); ctx.beginPath(); ctx.ellipse(F(-.36), by - .34 * u, .15 * u, .12 * u, face * .35, Math.PI * .1, Math.PI * 1.05); ctx.stroke();
-  ellipse(ctx, F(.33), by - .36 * u, .11 * u, .12 * u, -face * .3); ctx.fill(); ctx.beginPath(); ctx.ellipse(F(.33), by - .36 * u, .11 * u, .12 * u, -face * .3, Math.PI * .15, Math.PI * .95); ctx.stroke();
+  ellipse(ctx, F(-.36), by - .34 * u, .15 * u, .12 * u, face * .35); ctx.fill();
+  ellipse(ctx, F(.33), by - .36 * u, .11 * u, .12 * u, -face * .3); ctx.fill();
   ellipse(ctx, F(0), by - .31 * u, .09 * u, .08 * u); ctx.fill();
   ctx.fillStyle = "rgba(150,164,184,.3)"; ctx.beginPath(); ctx.moveTo(F(.4), by - .26 * u); ctx.bezierCurveTo(F(.3), by - .2 * u, F(.15), by - .22 * u, F(.02), by - .27 * u); ctx.bezierCurveTo(F(-.15), by - .31 * u, F(-.3), by - .26 * u, F(-.44), by - .26 * u); ctx.bezierCurveTo(F(-.2), by - .33 * u, F(.15), by - .3 * u, F(.4), by - .26 * u); ctx.fill(); // belly shade
-  ctx.strokeStyle = "rgba(170,225,255,.4)"; ctx.lineWidth = Math.max(1, .018 * u); for (const d of [-.3, -.1, .12]) { ctx.beginPath(); ctx.moveTo(F(d), by - .47 * u + (d > -.2 && d < 0 ? .04 * u : 0)); ctx.lineTo(F(d + .04), by - .39 * u); ctx.lineTo(F(d), by - .32 * u); ctx.stroke(); } // faint silver chevrons
   // The head: a lean wedge carried low and level, a flat brow sloping into a long muzzle, a hard jaw, narrowed slanted eyes under a
   // brow ridge, ears angled back. A predator's face.
   const hx = F(.56), hy = by - .5 * u, E = (dx, dy) => ({ x: hx + face * dx * u, y: hy + dy * u }), path = (pts) => { ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i += 2) ctx.quadraticCurveTo(pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y); ctx.closePath(); };
-  ctx.fillStyle = FUR; ctx.strokeStyle = "#8c96a6"; ctx.lineWidth = Math.max(1, .012 * u); ctx.beginPath(); ctx.moveTo(F(.22), by - .5 * u);
+  ctx.fillStyle = FUR; ctx.strokeStyle = "rgba(140,150,166,.55)"; ctx.lineWidth = Math.max(1, .012 * u); ctx.beginPath(); ctx.moveTo(F(.22), by - .5 * u);
   ctx.bezierCurveTo(F(.34), by - .6 * u, F(.44), by - .6 * u, hx - face * .06 * u, hy - .08 * u); ctx.lineTo(hx + face * .02 * u, hy + .09 * u);
   ctx.bezierCurveTo(F(.5), by - .36 * u, F(.46), by - .3 * u, F(.4), by - .26 * u); ctx.lineTo(F(.3), by - .4 * u); ctx.closePath(); ctx.fill(); // the neck
   ctx.beginPath(); ctx.moveTo(F(.22), by - .5 * u); ctx.bezierCurveTo(F(.34), by - .6 * u, F(.44), by - .6 * u, hx - face * .06 * u, hy - .08 * u); ctx.stroke();
