@@ -43,15 +43,18 @@ export const NANOKNIVES = { count: 3, share: .5, arm: .3, autoRange: 6, cooldown
 // Where dagger `i` of `n` circles at time `t` (seconds), as an offset in tiles.
 export function knifeOffset(i, n, t) { const a = t * NANOKNIVES.spin + i * Math.PI * 2 / n; return { x: Math.cos(a) * NANOKNIVES.orbitRadius, y: Math.sin(a) * NANOKNIVES.orbitRadius * .7, a }; }
 
-// A nanobot dagger: a steel blade with a yellow sigil at the hilt, pointing along `a`.
-function dagger(ctx, x, y, a, s) {
-  const L = s * .34, W = s * .07, c = Math.cos(a), n = Math.sin(a);
-  ctx.fillStyle = "#ffd23f33"; ctx.beginPath(); ctx.arc(x, y, s * .2, 0, 7); ctx.fill();
-  ctx.fillStyle = "#d9e0e6"; ctx.strokeStyle = "#5d6670"; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(x + c * L, y + n * L); ctx.lineTo(x - n * W, y + c * W); ctx.lineTo(x - c * L * .35, y - n * L * .35); ctx.lineTo(x + n * W, y - c * W); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#ffd23f"; ctx.beginPath(); ctx.arc(x - c * L * .45, y - n * L * .45, s * .05, 0, 7); ctx.fill();
+// Release 643 (Tim: "it could be fine for them to just be knives, but I like the great sword, the shuriken and the great axe
+// better"): the three blades are a great sword, a shuriken and a great axe, one each, by their place in the set (`blade`).
+export const SWEEP_BLADES = ["greatsword", "shuriken", "greataxe"];
+function sweepBlade(ctx, x, y, a, s, i, spinAt) {
+  const kind = SWEEP_BLADES[i % SWEEP_BLADES.length];
+  ctx.save(); ctx.translate(x, y); ctx.fillStyle = "#ffd23f2e"; ctx.beginPath(); ctx.arc(0, 0, s * .24, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#4d555e"; ctx.lineWidth = Math.max(1, s * .025);
+  if (kind === "shuriken") { ctx.rotate(spinAt * 14); ctx.fillStyle = "#c9d1d8"; ctx.beginPath(); for (let k = 0; k < 4; k++) { const r = k * Math.PI / 2; ctx.lineTo(Math.cos(r) * s * .26, Math.sin(r) * s * .26); ctx.lineTo(Math.cos(r + Math.PI / 4) * s * .07, Math.sin(r + Math.PI / 4) * s * .07); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#ffd23f"; ctx.beginPath(); ctx.arc(0, 0, s * .045, 0, 7); ctx.fill(); }
+  else if (kind === "greataxe") { ctx.rotate(a); ctx.fillStyle = "#5a3d22"; ctx.fillRect(-s * .3, -s * .025, s * .52, s * .05); ctx.fillStyle = "#d9e0e6"; ctx.beginPath(); ctx.moveTo(s * .14, -s * .02); ctx.quadraticCurveTo(s * .32, -s * .2, s * .2, -s * .24); ctx.lineTo(s * .22, s * .24); ctx.quadraticCurveTo(s * .32, s * .2, s * .14, s * .02); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#ffd23f"; ctx.fillRect(s * .1, -s * .03, s * .04, s * .06); }
+  else { ctx.rotate(a); ctx.fillStyle = "#e3e8ec"; ctx.beginPath(); ctx.moveTo(s * .42, 0); ctx.lineTo(s * .06, -s * .06); ctx.lineTo(-s * .12, -s * .05); ctx.lineTo(-s * .12, s * .05); ctx.lineTo(s * .06, s * .06); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#8a6a3a"; ctx.fillRect(-s * .16, -s * .12, s * .04, s * .24); ctx.fillRect(-s * .28, -s * .025, s * .12, s * .05); ctx.fillStyle = "#ffd23f"; ctx.beginPath(); ctx.arc(-s * .3, 0, s * .03, 0, 7); ctx.fill(); }
+  ctx.restore();
 }
-
 // A rounded rectangle drawn with arcs, so it works where ctx.roundRect is missing (older Safari and Chrome).
 function rounded(ctx, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
 // The golem: a squat stone figure with yellow sigil eyes, rising out of the floor and sinking back.
@@ -73,10 +76,10 @@ export function drawToolForms(ctx, game, toScreen, s, t) {
   for (const fx of game.effects) if (fx.fireBurst && fx.life > 0) { const [x, y] = toScreen(fx), k = 1 - fx.life / .32, R = fx.radius * s * (.5 + .6 * k); const g = ctx.createRadialGradient(x, y, 0, x, y, R); g.addColorStop(0, `rgba(255,236,160,${.9 * (1 - k)})`); g.addColorStop(.5, `rgba(255,128,40,${.7 * (1 - k)})`); g.addColorStop(1, "rgba(160,40,10,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill(); } // release 547: Fire Burst's flame
   for (const fx of game.effects) if (fx.kind === "golem-punch" && fx.life > 0) { const [x, y] = toScreen(fx); ctx.strokeStyle = "#e8d3a2"; ctx.lineWidth = 3; ctx.globalAlpha = Math.min(1, fx.life * 5); ctx.beginPath(); ctx.arc(x, y, fx.radius * s * (1.1 - fx.life * 2), 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
   const k = game.knives;
-  if (k) { const n = k.count, [cx, cy] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }); for (let i = 0; i < n; i++) { const o = knifeOffset(i, n, (game.lastUpdateNow || 0) / 1000); dagger(ctx, cx + o.x * s, cy + o.y * s, o.a + Math.PI / 2, s); } }
+  if (k) { const n = k.count, [cx, cy] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }); for (let i = 0; i < n; i++) { const o = knifeOffset(i, n, (game.lastUpdateNow || 0) / 1000); sweepBlade(ctx, cx + o.x * s, cy + o.y * s, o.a + Math.PI / 2, s, i, (game.lastUpdateNow || 0) / 1000); } }
   for (const p of game.projectiles) {
     if (p.dead) continue;
-    if (p.knife) { const [x, y] = toScreen(p); dagger(ctx, x, y, Math.atan2(p.dy, p.dx), s); }
+    if (p.knife) { const [x, y] = toScreen(p); sweepBlade(ctx, x, y, Math.atan2(p.dy, p.dx), s, p.blade || 0, p.age || 0); }
     else if (p.fireBomb) { const [x, y] = toScreen(p), r = s * .2, spin = (p.age || 0) * 9; // release 547: a cinder shell, cracked and glowing
       ctx.fillStyle = "#ff7a2a33"; ctx.beginPath(); ctx.arc(x, y, r * 1.7, 0, 7); ctx.fill();
       ctx.fillStyle = "#5a2416"; ctx.strokeStyle = "#2a0e08"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke();

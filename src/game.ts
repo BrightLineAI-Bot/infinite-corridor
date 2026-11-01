@@ -4950,7 +4950,7 @@ export class Game {
     if (foe) this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
     for (let i = 0; i < k.count; i++) {
       const o = knifeOffset(i, k.count, now / 1000), x = cx + o.x, y = cy + o.y, d = foe ? projectileDirection(foe.x + .5 - x, foe.y + .45 - y, p.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
-      this.projectiles.push({ id: `knife-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, x, y, dx: d.x, dy: d.y, speed: K.speed, life: K.life, damage, damageType: "physical", path: "straight", age: 0, hits: {}, glyphHost: "tool", pierce, seekId: foe?.id || null, seekTurn: K.seekTurn, knife: true });
+      this.projectiles.push({ id: `knife-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, x, y, dx: d.x, dy: d.y, speed: K.speed, life: K.life, damage, damageType: "physical", path: "straight", age: 0, hits: {}, glyphHost: "tool", pierce, seekId: foe?.id || null, seekTurn: K.seekTurn, knife: true, blade: i });
     }
     return true;
   }

@@ -19,16 +19,16 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 643 | Claude | `claude/dreamy-rubin-yn6q2p` | Every pass through a body is a hit; Nanoknives fly on through and curl back | Building. |
-| 641 | Claude | PR #304 | Glider opened and folded with Jump, freefall, sea landings, Act at sea; Giant 8 s charge; the review's glide-indoors blocker | Merged (`r641-1de709e6ab17`). Not published. |
-| 639 | Claude | PR #303 | Out of the robot at sea: the robot button goes power armor → out into your skiff | Merged (`r639-13350fc9c822`). Not published: its review found the glide-indoors blocker, fixed in 641. |
-| 637 | Claude | PR #302 | The great trees as towers: branches out of the trunk, rising, hops tip to tip, the crown on the trunk, 30–42 levels | Merged (`r637-496b09468bbf`). Not published. |
-| 635 | Claude | PR #301 | Sky above the great trees; the leaf glider (found on a tree, opens only from one, glides across sections) | Merged (`r635-f74d1dcad910`). Not published. |
-| 633 | Claude | PR #300 | The great trees rebuilt unreasonably tall: 1–2-tile branches spiralling round a trunk past the top of the screen | Merged (`r633-abd4f175d91b`). Not published. |
-| 631 | Claude | PR #299 | Giant jungle trees climbed branch by branch to a door: a Starfield crossing or a cloud hold | Merged (`r631-6b514ad11022`). Not published. |
-| 629 | Claude | PR #298 | Five more palette regions in landscape version 11: petrified woods, savanna, reef flats, amberwood, obsidian fields | Merged (`r629-abf201d59b52`). Not published. |
-| 627 | Claude | PR #297 | Ten narrative threads (the Lamplighter's Round … What the Sleeper Dreams) | Merged (`r627-d3bc705285e1`). Not published. |
-| 625 | Claude | PR #296 | Five palette regions in landscape version 10: jungle, carapace wastes, salt marsh, crystal fields, sporewood | Merged (`r625-146356a68991`). Not published. |
+| 643 | Claude | `claude/dreamy-rubin-yn6q2p` | Every pass through a body is a hit; the Great Sweep's blades (great sword, shuriken, great axe) fly on through and curl back | Building. |
+| 641 | Claude | PR #304 | Glider opened and folded with Jump, freefall, sea landings, Act at sea; Giant 8 s charge; the review's glide-indoors blocker | Merged (`r641-1de709e6ab17`). Published in r641. |
+| 639 | Claude | PR #303 | Out of the robot at sea: the robot button goes power armor → out into your skiff | Merged (`r639-13350fc9c822`). Published in r641. |
+| 637 | Claude | PR #302 | The great trees as towers: branches out of the trunk, rising, hops tip to tip, the crown on the trunk, 30–42 levels | Merged (`r637-496b09468bbf`). Published in r641. |
+| 635 | Claude | PR #301 | Sky above the great trees; the leaf glider (found on a tree, opens only from one, glides across sections) | Merged (`r635-f74d1dcad910`). Published in r641. |
+| 633 | Claude | PR #300 | The great trees rebuilt unreasonably tall: 1–2-tile branches spiralling round a trunk past the top of the screen | Merged (`r633-abd4f175d91b`). Published in r641. |
+| 631 | Claude | PR #299 | Giant jungle trees climbed branch by branch to a door: a Starfield crossing or a cloud hold | Merged (`r631-6b514ad11022`). Published in r641. |
+| 629 | Claude | PR #298 | Five more palette regions in landscape version 11: petrified woods, savanna, reef flats, amberwood, obsidian fields | Merged (`r629-abf201d59b52`). Published in r641. |
+| 627 | Claude | PR #297 | Ten narrative threads (the Lamplighter's Round … What the Sleeper Dreams) | Merged (`r627-d3bc705285e1`). Published in r641. |
+| 625 | Claude | PR #296 | Five palette regions in landscape version 10: jungle, carapace wastes, salt marsh, crystal fields, sporewood | Merged (`r625-146356a68991`). Published in r641. |
 | 623 | Claude | PR #295 | Rafts carry only riders over the drop (the blocker from the pre-publish review of 611→621); system-audit fixes | Merged (`r623-2501e60705f7`). Published in r623. |
 | 621 | Claude | PR #294 | The robot at sea: no skiff left behind, the power armor hovers and switches on at sea; 619's wading removed | Merged (`r621-d4083ffe80a4`). Published in r623. |
 | 619 | Claude | PR #293 | Wading: water round the Wayfarer's legs in shoals, mist-pools and mires (removed again in 621) | Merged (`r619-4c02ee89d5df`). Published in r623. |
@@ -41,6 +41,7 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 641 | `r641-1de709e6ab17` | 2026-11-01 | With 625 to 639: palette regions (PRs #296, #298); ten narrative threads (#297); great trees, the sky and the leaf glider (#299–#302); out of the robot at sea (#303); the glider in hand and the Giant's 8 s charge (#304). The pre-publish Fable review of 623→639 found the glide-indoors blocker (fixed in 641); the review of 639→641 found no blockers. |
 | 623 | `r623-2501e60705f7` | 2026-10-31 | With 613 to 621: Starfield dungeons and rafts (PR #290); raft tracks, heights and the dark (#291); fog moors (#292); wading, removed again in 621 (#293); the robot at sea (#294); rafts carry only riders over the drop and the system-audit fixes (#295). The pre-publish Fable review of 611→621 found the raft blocker (fixed in 623); the review of 621→623 found no blockers. |
 | 611 | `r611-b1bdde7eef1f` | 2026-10-31 | With 605 to 609: followable retreats (PR #286); the economy (#287); the Codex play-test fixes and the 605 retreat clock (#288); the Wayfarer may stand on open lava (#289). The pre-publish Fable reviews found the 605 clock bug (fixed in 609) and the lava relocation (fixed in 611); the review of 603→611 found no blockers. |
 | 603 | `r603-4a30ef332f21` | 2026-10-31 | With 599 and 601: robot plating re-forges after 20 s (PR #283); clears alternate weapon and armor spheres (#284); reforge results in colour (#285). The pre-publish Fable review of 597→603 found no blockers. |

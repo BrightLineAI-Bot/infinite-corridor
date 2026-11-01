@@ -2704,7 +2704,9 @@ of damage".
 - `src/game.ts` projectile update: before a projectile's hit test, every body in its `hits` it has left by `PASS_CLEAR` (.25 tiles
   past contact) is forgotten, so the next pass through it is a new hit; staying inside a body is still one hit. Nanoknives
   (`knife`) no longer break on a hit or spend pierce: they fly on and curl back.
-- `src/tool-forms.ts` `NANOKNIVES.life` 1.4 → 2.2 s.
+- `src/tool-forms.ts` `NANOKNIVES.life` 1.4 → 2.2 s. Tim: "it could be fine for them to just be knives, but I like the great
+  sword, the shuriken and the great axe better": `SWEEP_BLADES` and `sweepBlade` draw the three as a great sword, a spinning
+  shuriken and a great axe (each projectile carries its `blade` index); the dagger drawing is gone.
 
 **BOUNDARY:** Applies to every player projectile that survives a hit (pierce, boomerang, knives). Hostile shots unchanged.
 
