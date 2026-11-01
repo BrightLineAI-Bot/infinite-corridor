@@ -449,12 +449,18 @@ new MutationObserver(() => {
 function render(ctx, game, w, h, now) {
   const attackUntil = game.player.attackUntil,
     telegraphs = game.enemies.map((e) => e.telegraph);
+  const frameTransform = ctx.getTransform(); // release 694
   try {
     game.renderObjectPredicate ||= (o) => perceived(o, game.save);
     game.player.attackUntil = 0;
     for (const e of game.enemies) e.telegraph = 0;
     baseRender(ctx, game, w, h, now);
     drawApertureVisuals();
+  } catch (error) {
+    // Release 694 (Tim's diagnostic: one draw threw mid-frame, the camera's ctx.restore() never ran, and every later frame was drawn
+    // through the leaked translate, clip and alpha, the screen broken into shifted pieces): a frame that throws is noted and the
+    // canvas is reset to the transform it began with, so one bad draw can never spoil the frames after it.
+    noteError(error); resetCanvasState(ctx, frameTransform);
   } finally {
     game.player.attackUntil = attackUntil;
     for (let i = 0; i < game.enemies.length; i++)
@@ -1131,6 +1137,10 @@ pausePanel.addEventListener("close",()=>{if(!pausePanel.open&&game.paused&&!over
 // menu with the error, so play can continue and the cause can be reported.
 // Release 149: the last few errors, newest last, for Copy diagnostics (repeats of the same message are counted, not stored).
 const recentErrors=[];
+function resetCanvasState(c,transform){ // release 694: undo whatever a throwing draw left behind (saved states, clip, transform, alpha, dashes)
+  if(typeof c.reset==="function")c.reset();else{for(let i=0;i<64;i++)c.restore();c.globalAlpha=1;c.globalCompositeOperation="source-over";c.setLineDash?.([]);c.shadowBlur=0;c.filter="none"}
+  c.setTransform(transform);c.imageSmoothingEnabled=false;
+}
 function noteError(error){
   const message=String(error?.message||error||"unknown error"),last=recentErrors[recentErrors.length-1];
   if(last?.message===message){last.count++;return}

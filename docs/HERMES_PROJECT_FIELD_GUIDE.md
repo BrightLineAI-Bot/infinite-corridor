@@ -2694,6 +2694,30 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 694: the broken screen — 2026-11-01
+
+Tim (2026-11-01, live r688, with a diagnostic and a screenshot): "my game is broken... the screen is all messed up". The screen
+showed the world in shifted, overlapping, clipped pieces under dozens of orange ring outlines, in a Frenzied Fractured fight.
+`recentErrors`: `ellipse` "The major-axis radius provided (-6.10623e-13) is negative" at the affix-hazard draw. A Fable review
+confirmed the cause and found a second one on main.
+
+**CODE:**
+- `src/renderer.ts`, the affix and boss-kit hazard draw:
+  - `k` (the arming fill) is clamped to 0–1. On the frame a mark is laid, `game.update` and `render` share `now`, and
+    `1 - (armAt - now) / (arm * 1000)` can round to about -1e-14 (arm values whose `arm * 1000` is inexact).
+  - `ellipse` with that radius threw inside the camera's `ctx.save()`. That `restore()` never ran, and the leaked translate,
+    clip and alpha corrupted every later frame until a reload or resize. One throw (count 1 in the diagnostic) was enough.
+  - Present since 657; Frenzied mode's many affixed elites and 668's boss-kit moves made it likely.
+- `src/renderer.ts`, the affix/ward/shaman block: release 691 had put its comment mid-line, commenting out
+  `ctx.save(); const cx …, cy …, tt …`. On main (not live) every affixed, warded or shaman enemy on screen threw or popped the camera
+  save each frame. The code is restored and the comment moved to the end.
+- `src/main.ts` `render` wrapper: a render that throws is noted (`noteError`) and `resetCanvasState(ctx, frameTransform)` resets
+  the context (`ctx.reset()`, or a restore loop and defaults) and puts back the frame's starting transform. A bad draw can no
+  longer spoil the frames after it.
+
+**BOUNDARY:** Drawing only. Tests: `tests/canvas-safety-694.test.ts`, with a canvas that throws on negative radii as Chrome does and
+counts saves. It reproduces the live error without the clamp, and the 691 break without the line fix.
+
 ## Release 692: the Stalker's fog — 2026-11-01
 
 Tim (2026-11-01): "it could be coming toward you, and then it can go invisible and attack... you might still see... the hitbox...
