@@ -7,7 +7,7 @@
 // least FIELD.minLife s: Ember Ring, Grave Sun, Gravity Well, Stillpoint, the perfect Orbit Volley's vortex) and you are in
 // it while your centre is inside its radius. "A spell running" is any of your spells still in play: a field or a burst,
 // Aegis, Shadow Boxing, your Shadow Clone, or Orbit Volley's gathering orbs. Pure data and rules; game.ts applies them.
-import { latticePassives } from "./transit-lattice.js?v=r641-1de709e6ab17";
+import { latticePassives } from "./transit-lattice.js?v=r649-75bd8abf2c15";
 
 export const FIELD = { minLife: 1 };
 export const FIELD_PASSIVES = {
@@ -23,7 +23,7 @@ export const TOOL_FORMS = {
   "arc-wave": { name: "Arc Wave", text: "The Blunderbuss's three shots become crescent waves along the same cone: each sweeps through every foe in its path. Still physical (Might)." },
   "cluster-shell": { name: "Cluster Shell", text: "When a Rift Bombard shell bursts, two bomblets fly off a short way and burst again. Still physical (Might)." }, // release 537
   "corridor-golem": { name: "Corridor Golem", text: "A Hammerfall blow raises a stone golem where it lands: it dashes to the nearest foe and punches up to three times, turning to the next when one falls, then sinks back into the floor. One at a time, at most every 6 s (less with faster tool recovery). Still physical (Might)." }, // release 535
-  nanoknives: { name: "Nanoknives", text: "The Great Sweep raises three nanobot daggers that circle you. They throw themselves at any foe within 6 tiles and home in; with none near they wait. Press the tool to throw them early and raise a fresh set. Still physical (Might)." },
+  nanoknives: { name: "Mirage of Blades", text: "Each Great Sweep throws a great spinning blade (a great sword, then a great axe, then a great shuriken) that cuts through every foe out to 5 tiles, then homes back to you, cutting again, for up to 2.5 s. Up to 3 at once; Echo in the tool throws more. Bursts with Volatile, grows with Charged Air. Still physical (Might)." }, // release 649: was Nanoknives (the key stays for saves)
 };
 export const FIELD_KEYS = Object.keys(FIELD_PASSIVES).map((id) => `field:${id}`);
 export const TOOL_FORM_KEYS = Object.keys(TOOL_FORMS).map((id) => `field:${id}`);

@@ -1,7 +1,8 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r641-1de709e6ab17";
+import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r649-75bd8abf2c15";
+import { TREES } from "./trees.js?v=r649-75bd8abf2c15";
 
 const TAU = Math.PI * 2;
 const cache = new Map();
@@ -335,6 +336,7 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
   if (tex) ctx.drawImage(tex, px, py, s + .5, s + .5);
   else { ctx.save(); ctx.translate(px, py); PAINT[t.kind](ctx, s, rand(variant + 1)); ctx.restore(); } // no offscreen canvas (tests, old browsers)
   if (!staticPass) animate(ctx, t, px, py, s);
+  if (t.canopy && t.look != null) drawTreeWear(ctx, t, px, py, s); // release 645: the tree package's bark tints and leaves
   if (!t.canopy) drawLevelMarks(ctx, t, x, y, px, py, s, tiles, w); // release 637: the great tree's wood is not notched with level marks
   if (lift > 0) { // rim light on edges that drop away, shade on lower sides
     const at = (dx, dy) => tiles?.[(y + dy) * w + x + dx], lower = (n) => !n || (n.elev || 0) < (t.elev || 0);
@@ -345,6 +347,15 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
   }
   if (t.slope && t.kind !== "mountainTrail" && t.kind !== "castleStair") { ctx.fillStyle = "#ffffff18"; ctx.fillRect(px, py, s, s * .2); }
   return true;
+}
+
+// Release 645: each great tree's own look over its tiles (a tint), and leaves on its branches: tufts along a leafy branch,
+// a full spray at a tip, hanging below the wood. A handful of ellipses per tile, no state.
+function drawTreeWear(ctx, t, px, py, s) {
+  const L = TREES.looks[t.look] || TREES.looks[0], n = t.leaves || 0, d = (t.x * 7 + t.y * 13) % 17;
+  if (L.tint && t.kind !== "canopyLeaf") { ctx.fillStyle = L.tint; ctx.fillRect(px, py, s + .5, s + .5); }
+  if (!n) return;
+  for (let k = 0; k < n * 3; k++) { const a = (d + k * 5) % 17 / 17, b = (d * 3 + k * 7) % 11 / 11; ctx.fillStyle = L.leaf[(d + k) % L.leaf.length] + "dd"; ctx.beginPath(); ctx.ellipse(px + s * (.1 + a * .8), py + s * (k % 2 ? .95 + b * .3 : .05 + b * .25), s * (.13 + .05 * (k % 3)), s * (.08 + .03 * (k % 2)), a * 3, 0, TAU); ctx.fill(); }
 }
 
 function animate(ctx, t, px, py, s) {
