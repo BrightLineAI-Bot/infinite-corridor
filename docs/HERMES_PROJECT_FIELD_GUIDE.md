@@ -2700,8 +2700,8 @@ Tim (2026-10-30, and 2026-11-01: "the chasm dungeons... have those blocks that I
 blocks... dirt clods that you can dig through... the longer you press, the more [it] drills... green... yellow... red... the
 block can change from yellow to red depending on how you interact with it... a red block can be a local cave-in... 2, maybe 3
 red blocks, then the chasm collapses and you can't go to that dungeon anymore", with caverns, lava, an underground pool and
-bridges over ravines; the prize at the deepest point is Divine Viscera (decided 2026-10-30). Earth golems, crystal crabs and
-finds in clods are the next release.
+bridges over ravines; the prize at the deepest point is Divine Viscera (decided 2026-10-30); and the crater's own creatures,
+earth golems that tunnel and burst out of the ground, and crystal hermit crabs, with finds in some clods.
 
 **CODE:** `src/canyon.ts` (new; in the build and both sw.js lists): `CANYON` (`chance` .025 past `minRing` 6, `size` 44,
 `tempers` plain .52 / green .3 / yellow .12 / red the rest, `clod` hp (plain 1.2, unstable 1.6), the robot's auger 2.2 hp/s
@@ -2716,6 +2716,14 @@ way in); `drillAhead` after the Wayfarer's move (the clod pushed into; in the ro
 puts you out), `caveIn` (damage, shake, count; the third kills you and seals the crater), `pullViscera` (the wreck, once: `save.skylands.viscera` += 2, the crossing resolved).
 landscape-render.ts paints `clodPlain`, and `clodGreen`, `clodYellow`, `clodRed` ringed by their state, `craterWall`, `craterFloor`;
 renderer.ts draws the auger's cracks, the strain bar and dust on the clod being drilled.
+Creatures: monster-pack.ts adds `earthGolem` (burrow, ambush brain, `burrowAmbush` and the new `golemPunch` module: a slow,
+narrow, heavy punch) and `crystalCrab` (skitter, flank brain, `clawSweep` and `leapSlam`), both `dungeonOnly` (never in other
+pools, never lent to hybrids); monster-render.ts draws them (the golem as packed clods with yellow sigil eyes, a mound of
+churned clods while it tunnels; the hermit under a cracked geode). Their Echoes (echoes.ts): Golem's Landfall (land: staggers
+foes within 2.5 tiles for .6 s) and Geode Shell (hurt: a 1.5-tile shard blast). `CANYON.creatures`: 1–2 a dry cavern, and the
+Golem Warden (an earth golem in its boss form, so it leaves its Echo) beside the wreck. `clodSecret` hashes each clod: `secrets`
+golem .035 (game.ts `clodOpened`: drilled open, a golem bursts out at you) or find .07 (`finds`: stone 1–3, lumen dust 1–2,
+cinder iron 1, weighted 5/3/1). A clod is drilled once, so each secret pays once; a red clod's cave-in gives nothing.
 
 **BOUNDARY:** New ground only (`atlas.canyonVersion`). Save additive at schema 14 (`history.canyon`; the viscera count is the
 Skylands' own field). Bounded: one drill target a frame, at most 2000 drilled tiles kept per crater. Tests:

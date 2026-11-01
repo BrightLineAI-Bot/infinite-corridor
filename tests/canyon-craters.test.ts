@@ -5,7 +5,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
-import { CANYON, canyonHere, generateCanyon, isClod } from '../src/canyon.ts';
+import { CANYON, canyonHere, generateCanyon, isClod, clodSecret } from '../src/canyon.ts';
+import { createCombatant } from '../src/combat.ts';
+import { drawPackMonster } from '../src/monster-render.ts';
+import { MONSTER_PACK, validateMonster } from '../src/monster-pack.ts';
+import { ECHOES } from '../src/echoes.ts';
 
 const SEED = 'CANYON1';
 let spot = null; const findCrater = () => { if (spot) return spot; for (let x = 6; x < 90 && !spot; x++) for (let y = -40; y < 40 && !spot; y++) if (canyonHere(SEED, x, y)) { const s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld', false); if (g.map.objects.some((o) => o.dungeonType === 'canyon')) spot = [x, y]; } return spot; };
@@ -50,4 +54,34 @@ test('the wreck gives its Divine Viscera once', () => {
   const { s, g } = enter(), w = g.map.objects.find((o) => o.kind === 'divineWreck'), before = Number(s.skylands?.viscera) || 0;
   g.player.x = w.x; g.player.y = w.y; assert.ok(g.interact('pull', w.id).ok); assert.equal(s.skylands.viscera, before + CANYON.viscera);
   assert.ok(!g.interact('pull', w.id).ok); assert.equal(s.skylands.viscera, before + CANYON.viscera);
+});
+
+// Part 2 (Tim: "earth golems... crystal hermit crabs... finds"): the crater's own creatures, a Golem Warden by the wreck, and clods
+// that hide a golem or a find.
+test('the craters hold earth golems and crystal hermits, and a Golem Warden beside the wreck; both are sound and drawn', () => {
+  const m = generateCanyon(SEED, 'canyon:X:1:2'), kinds = new Set(m.enemySpawns.map((e) => e.kind)), wreck = m.objects.find((o) => o.kind === 'divineWreck');
+  assert.ok([...kinds].every((k) => ['earthGolem', 'crystalCrab'].includes(k)), [...kinds].join());
+  const warden = m.enemySpawns.find((e) => e.boss); assert.equal(warden.kind, 'earthGolem'); assert.ok(Math.hypot(warden.x - wreck.x, warden.y - wreck.y) <= 2.5, 'by the wreck');
+  for (const e of m.enemySpawns) assert.equal(m.tiles[e.y * m.width + e.x].blocked, false, `${e.id} stands on open ground`);
+  for (const id of ['earthGolem', 'crystalCrab']) { assert.deepEqual(validateMonster(MONSTER_PACK[id]), []); assert.ok(MONSTER_PACK[id].dungeonOnly && ECHOES[id], id);
+    const calls = []; const ctx = new Proxy({ getTransform: undefined, createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }) }, { get: (o, k) => k in o ? o[k] : () => calls.push(k), set: () => true });
+    for (const hidden of [false, true]) { const e = createCombatant(id, 3, 4, false, []); e.hidden = hidden; assert.ok(drawPackMonster(ctx, e, 40, 1000, 'left')); } assert.ok(calls.length > 20, `${id} is drawn`); }
+});
+
+test('a clod may hide a golem that bursts out when drilled open, or a find; each pays once', () => {
+  const { s, g } = enter(), W = g.map.width, id = g.areaId();
+  const golemClod = g.map.tiles.find((q) => q.kind === CANYON.kinds.plain && clodSecret(SEED, id, q.x, q.y) === 'golem'), findClod = g.map.tiles.find((q) => q.kind === CANYON.kinds.plain && typeof clodSecret(SEED, id, q.x, q.y) === 'object' && clodSecret(SEED, id, q.x, q.y));
+  assert.ok(golemClod && findClod, 'both kinds of secret exist');
+  for (const t of [golemClod, findClod]) { g.map.tiles[t.y * W + t.x - 1].blocked = false; } // open a way to stand beside each
+  const n = g.enemies.length; standBy(g, golemClod, 1); drill(g, 1, 1.2); assert.equal(golemClod.blocked, false);
+  const golem = g.enemies.find((e) => e.kind === 'earthGolem' && e.id.includes(':clod:')); assert.ok(golem && golem.aggro, 'a golem bursts out'); assert.equal(g.enemies.length, n + 1); assert.match(g.message, /Golem/);
+  const f = clodSecret(SEED, id, findClod.x, findClod.y), before = Number(s.materials?.[f.id]) || 0; standBy(g, findClod, 1); drill(g, 1, 1.2);
+  assert.equal(s.materials[f.id], f.id === 'stone' ? Math.min(99, before + f.n) : before + f.n, `+${f.n} ${f.id}`);
+  g.loadArea('dungeon', false); assert.equal(g.map.tiles[findClod.y * W + findClod.x].blocked, false, 'drilled for good: nothing to find again');
+  assert.equal(clodSecret(SEED, id, findClod.x, findClod.y)?.n, f.n, 'hashed, the same each time');
+});
+
+test('the Golem Warden is a boss that leaves its Echo; the golem punches and the hermit sidles', () => {
+  const w = createCombatant('earthGolem', 5, 5, true, []); assert.ok(w.boss && w.burrows && w.packAttacks.includes('golemPunch'));
+  const c = createCombatant('crystalCrab', 5, 5, false, []); assert.ok(c.packAttacks.includes('clawSweep'));
 });

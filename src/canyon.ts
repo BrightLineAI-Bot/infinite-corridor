@@ -29,7 +29,10 @@ export const CANYON = {
   caverns: [6, 9], cavernRadius: [2, 4],
   viscera: 2,
   maxDrilled: 2000,
-  creatures: ["rootBrute", "glassMite", "ashenHound", "coilStalker"],
+  creatures: { cavern: ["earthGolem", "crystalCrab", "crystalCrab"], perCavern: [1, 2], warden: "earthGolem" }, // the warden, a golem in its boss form, guards the wreck
+  // Some clods hide something (hashed per clod): a golem asleep in it that bursts out when you drill it open, or a find.
+  secrets: { golem: .035, find: .07 },
+  finds: [{ id: "stone", name: "stone", n: [1, 3], weight: 5 }, { id: "lumenDust", name: "lumen dust", n: [1, 2], weight: 3 }, { id: "cinderIron", name: "cinder iron", n: [1, 1], weight: 1 }],
   name: "Canyon Crater",
   kinds: { plain: "clodPlain", green: "clodGreen", yellow: "clodYellow", red: "clodRed", wall: "craterWall", floor: "craterFloor" },
   messages: {
@@ -42,6 +45,8 @@ export const CANYON = {
     collapse: "The crater collapses on you. The Canyon seals itself for good.",
     wreck: "Deep in the crater lies the wreck of something that fell from the sky: a vast fossil, not of any living thing. Its viscera still glow.",
     pulled: (n) => `You pull ${n} Divine Viscera from the wreck. In the Skylands it can shape the Divine Challenge.`,
+    golem: "The clod heaves: an Earth Golem bursts out of it!",
+    find: (n, name) => `Something glints in the broken clod: +${n} ${name}.`,
   },
 };
 
@@ -50,6 +55,15 @@ export const isCanyonId = (id) => String(id || "").startsWith("canyon:");
 export const canyonHere = (seed, rx, ry) => Math.abs(rx) + Math.abs(ry) >= CANYON.minRing && (hashSeed(`${seed}:canyon-crater:v1:${rx}:${ry}`) % 10000) / 10000 < CANYON.chance;
 export const isClod = (t) => !!t && (t.kind === CANYON.kinds.plain || t.kind === CANYON.kinds.green || t.kind === CANYON.kinds.yellow || t.kind === CANYON.kinds.red);
 const UP = { clodGreen: "clodYellow", clodYellow: "clodRed" };
+// What a clod hides, hashed from the seed, the crater and the tile: "golem", a find { id, name, n }, or null.
+export function clodSecret(seed, id, x, y) {
+  const S = CANYON.secrets, h = hashSeed(`${seed}:${id}:clod-secret:v1:${x}:${y}`), v = (h % 10000) / 10000;
+  if (v < S.golem) return "golem";
+  if (v >= S.golem + S.find) return null;
+  const F = CANYON.finds, total = F.reduce((a, f) => a + f.weight, 0); let pick = (h >>> 14) % total, f = F[0];
+  for (const q of F) { if (pick < q.weight) { f = q; break; } pick -= q.weight; }
+  return { id: f.id, name: f.name, n: f.n[0] + (h >>> 7) % (f.n[1] - f.n[0] + 1) };
+}
 export function ensureCanyonHistory(h) { const c = h.canyon && typeof h.canyon === "object" ? h.canyon : {}; if (Number.isInteger(c.caveIns) && c.caveIns >= 0 && Array.isArray(c.drilled) && Array.isArray(c.strained) && typeof c.sealed === "boolean" && typeof c.pulled === "boolean") return c; // already sound: keep it (drilled every frame)
   const list = (v) => Array.isArray(v) ? v.filter(Number.isInteger).slice(-CANYON.maxDrilled) : []; h.canyon = { caveIns: Math.max(0, Math.floor(Number(c.caveIns) || 0)), sealed: c.sealed === true, pulled: c.pulled === true, drilled: list(c.drilled), strained: list(c.strained) }; return h.canyon; }
 
@@ -82,7 +96,9 @@ export function generateCanyon(seed, id, drilled = [], strained = []) {
   for (const i of drilled) { const t = tiles[i]; if (t && isClod(t)) Object.assign(t, { kind: K.floor, blocked: false, clod: false, drilledOut: true }); }
   const objects = [{ id: "dungeon-exit", kind: "exit", x: entry.x, y: entry.y - 1, state: "open", actions: ["exit"] },
     { id: "canyon-wreck", kind: "divineWreck", name: "Wreck of the Fallen", x: deep.x, y: deep.y, state: "intact", actions: ["pull"], lore: C.messages.wreck }];
-  const enemySpawns = []; caverns.forEach((c, i) => { if (c === lavaC || c === poolC) return; const kind = C.creatures[hashSeed(`${seed}:${id}:cav${i}`) % C.creatures.length]; enemySpawns.push({ id: `${id}:cav${i}`, kind, x: c.x + 1, y: c.y }); });
+  const enemySpawns = [], M = C.creatures; caverns.forEach((c, i) => { if (c === lavaC || c === poolC || c === deep) return; const h = hashSeed(`${seed}:${id}:cav${i}`), n = M.perCavern[0] + (h >>> 9) % (M.perCavern[1] - M.perCavern[0] + 1);
+    for (let j = 0; j < n; j++) { const x = c.x + (j ? -1 : 1), y = c.y + (j ? 1 : 0); if (at(x, y)?.blocked) continue; enemySpawns.push({ id: `${id}:cav${i}:${j}`, kind: M.cavern[(h >>> (j * 3)) % M.cavern.length], x, y }); } });
+  { const x = deep.x + (deep.x + 2 < W - 2 ? 2 : -2), y = deep.y; if (!at(x, y).blocked) enemySpawns.push({ id: `${id}:warden`, kind: M.warden, x, y, boss: true, dungeonRole: "canyonWarden" }); else enemySpawns.push({ id: `${id}:warden`, kind: M.warden, x: deep.x, y: deep.y + 1, boss: true, dungeonRole: "canyonWarden" }); }
   return { seed, id, recipe: "canyon", name: C.name, identity: "a crater where something divine fell", danger: "cave-ins", width: W, height: H, tiles, entry, exit: { x: entry.x, y: entry.y - 1 }, objects, enemySpawns, canyon: { version: C.version, deep: { x: deep.x, y: deep.y } }, landscape: { biome: "underlands" }, theme: "canyon", generatorVersion: 1, sizeProfile: "canyon" };
 }
 

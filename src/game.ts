@@ -85,7 +85,7 @@ import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatt
 import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt, DREAM_HALL, dreamHallRoll } from "./underlands.ts";
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
-import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods } from "./canyon.ts";
+import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.ts";
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology } from "./keeps.ts";
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
@@ -94,7 +94,7 @@ import { applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, R
 import { BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
-import { DIG, planDig, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, addDigSpot, digSpot } from "./digging.ts";
+import { DIG, planDig, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, addDigSpot, digSpot, addStone } from "./digging.ts";
 import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
 import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.ts";
 import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
@@ -5318,8 +5318,19 @@ export class Game {
     if (!this.mechUp()) { this.drillTile = null; if (now >= (this.drillHintAt || 0)) { this.drillHintAt = now + 4000; this.message = CANYON.messages.needRobot; } return null; } // the robot's auger only
     const h = ensureCanyonHistory(dungeonHistory(this.save, this.areaId())), r = drillClod(t, st, dt); this.drillTile = { x: t.x, y: t.y, progress: st[`${t.x},${t.y}`]?.progress || 0, strain: st[`${t.x},${t.y}`]?.strain || 0, need: CANYON.clod.hp[t.kind] || 1 };
     if (r.climbed) { h.strained.push(t.y * w + t.x); this.message = r.climbed === CANYON.kinds.red ? CANYON.messages.yellowToRed : CANYON.messages.toYellow; }
-    if (r.broke) { h.drilled.push(t.y * w + t.x); if (h.drilled.length > CANYON.maxDrilled) h.drilled.shift(); this.drillTile = null; if (r.caveIn) this.caveIn(t, h, now); }
+    if (r.broke) { h.drilled.push(t.y * w + t.x); if (h.drilled.length > CANYON.maxDrilled) h.drilled.shift(); this.drillTile = null; if (r.caveIn) this.caveIn(t, h, now); else this.clodOpened(t); }
     return r;
+  }
+  // A drilled-open clod may hide a golem (it bursts out at you) or a find. Each clod is drilled once, so each pays once.
+  clodOpened(t) {
+    const secret = clodSecret(this.save.seed, this.areaId(), t.x, t.y); if (!secret) return null;
+    if (secret === "golem") {
+      const c = this.createEnemyFromSpawn({ id: `${this.areaId()}:clod:${t.x}:${t.y}`, kind: "earthGolem", x: t.x, y: t.y }, "dungeon");
+      c.aggro = true; ensureAI(c); this.enemies.push(c); this.cameraShake = Math.max(this.cameraShake || 0, .35); this.message = CANYON.messages.golem; return c;
+    }
+    const m = (this.save.materials ||= {});
+    if (secret.id === "stone") addStone(this.save, secret.n); else m[secret.id] = (Number(m[secret.id]) || 0) + secret.n;
+    this.message = CANYON.messages.find(secret.n, secret.name); this.sync?.(); return secret;
   }
   // Each frame in a crater: strain settles; a collapsed crater lets nobody back in (after the death it caused, you are put out).
   canyonTick(dt, now) {
