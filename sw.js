@@ -78,6 +78,7 @@ const CACHE_PREFIX = "infinite-corridor-",
     "./src/stalker.js?v=678",
     "./src/stalker-render.js?v=678",
     "./src/deep-annex.js?v=678",
+    "./src/the-deep.js?v=678",
     "./src/wonders.js?v=678",
     "./src/sling.js?v=678",
     "./src/atlas-colors.js?v=678",
@@ -141,7 +142,7 @@ self.addEventListener("activate", (e) =>
       .then(() => self.clients.claim()),
   ),
 );
-// Release 675 (system audit): only good same-origin responses are cached (no 404s, no opaque cross-origin ones), the Proving
+// Release 677 (system audit): only good same-origin responses are cached (no 404s, no opaque cross-origin ones), the Proving
 // Ground and the previews are left to their own workers, and only a page load falls back to the cached index.html.
 const LAB_PATHS = /^(proving-ground|previews)\//;
 self.addEventListener("fetch", (e) => {

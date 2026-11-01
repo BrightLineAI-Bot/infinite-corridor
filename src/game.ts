@@ -84,6 +84,7 @@ import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatt
 import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt, DREAM_HALL, dreamHallRoll } from "./underlands.ts";
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
+import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
 import { applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.ts";
 import { BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
@@ -225,6 +226,14 @@ export function pinDungeonLayout(save, id) {
   relayNodeDecision(save, id, history, `dungeon:${save.seed}:g${save.worldGeneration}`);
   return history;
 }
+// Release 677 (the-deep.ts): every floor of the Deep has an Ember Door where you arrive; only floor 1 keeps its free way out.
+function dressDeepFloor(map, floor) {
+  const w = map.width || Math.round(Math.sqrt(map.tiles.length)), exit = map.objects.find((o) => o.kind === "exit") || map.entry; if (!exit) return map;
+  if (floor > 1) map.objects = map.objects.filter((o) => o.kind !== "exit");
+  for (let r = 1; r <= 4; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const x = Math.round(exit.x) + dx, y = Math.round(exit.y) + dy, t = map.tiles[y * w + x];
+    if ((dx || dy) && t && !t.blocked && !t.environment && !map.objects.some((o) => o.x === x && o.y === y) && !map.objects.some((o) => o.kind === "emberDoor")) map.objects.push({ id: "ember-door", kind: "emberDoor", name: "Ember Door", x, y, state: "open", actions: ["burn"] }); }
+  return map;
+}
 export function generatePinnedDungeon(save, id, options = {}) {
   const history = pinDungeonLayout(save, id), canonical = `dungeon:${save.seed}:g${save.worldGeneration}`;
   // Generator 5 (Underlands) only for histories never generated before; pinned histories keep their generator.
@@ -252,6 +261,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (isArenaRun(id)) map = generateListenerArena(save.seed, id); // release 375: the Listening Hall
   else if (id.startsWith('dive:')) map = (history.diveGenerator ?? 1) >= 2 ? generateGrotto(save.seed, id) : generateDiveSite(save.seed, id);
   else if (/^(arena:|hunt-arena:|hunt-instance:|skyland:)/.test(id)) { map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved}); if (isSkyland(id)) dressSkyland(map, id, save); } // release 571: a Skyland is a temporary arena run in waves
+  else if (isDeepId(id)) { const floor = deepShaft(save, id).floor, plan = floorPlan(save.seed, id, floor); map = generateExpeditionDungeon(save.seed, plan.genId, plan.recipe, { layoutPool: 5, themePool: THEME_POOL_VERSION, theme: plan.theme || 'none', sizeProfile: 'standard' }); map.deepFloor = floor; map.name = `The Deep · Floor ${floor}`; dressDeepFloor(map, floor); } // release 677: a floor of the Deep
   else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1,...(history.mire?{theme:'poisonCrypt'}:history.dream?{theme:'dream'}:{}),...(history.mire?.taste?{sizeProfile:'compact'}:{}),...(history.ladder?{ladder:crossingLadder(save.seed,id,history.ladder.tier)}:{}),...(history.warpVersion>=2?{warpAlways:true}:{})});
   else if (!id.includes(':deep-v') && history.generatorVersion === 4) map = generateUnifiedDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options});
   else if (!id.includes(':deep-v') && history.generatorVersion === 3) map = generateVariedDungeon(save.seed,id,dungeonDescriptor(id).recipe);
@@ -2354,6 +2364,7 @@ export class Game {
       this.noteRegion(prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION); // release 573
       if (!prior) stalkerNewSection(this.save); // release 678: new sections count toward the Stalker's return
       this.markDeepAnnexes(); // release 675
+      if ((prior ? prior.deepVersion : THE_DEEP.version) && !this.map.settlement && !this.map.hamlet && shaftHere(this.save.seed, this.rx, this.ry)) this.placeDeepShaft(); // release 677
       if (!prior) { atlas[key] = atlas[key] || {}; if (noteDiscovery(this.save)) this.message = "Word comes on the wind: around Ember Refuge, the groves and the quarry have grown back."; } // release 265: regrowth every 20 new sections
       // A section first seen now is pinned to the current landscape version; one explored earlier keeps none.
       atlas[key] = { terrain: this.map.dominant, ...(prior ? (prior.landscapeVersion ? { landscapeVersion: prior.landscapeVersion } : {}) : { landscapeVersion: LANDSCAPE_VERSION }),
@@ -2369,10 +2380,11 @@ export class Game {
         ...(prior ? (prior.watcherVersion ? { watcherVersion: prior.watcherVersion } : {}) : { watcherVersion: WATCHER.version }),
         ...(prior ? (prior.skyVersion ? { skyVersion: prior.skyVersion } : {}) : { skyVersion: SKYLANDS.version }), // release 571: Sky Stairs only in sections first seen from now on
         ...(prior ? (prior.skyPlace ? { skyPlace: prior.skyPlace } : {}) : { skyPlace: SKY_PLACE.version }), // release 672: where Sky Stairs stand, pinned per section
+        ...(prior ? (prior.deepVersion ? { deepVersion: prior.deepVersion } : {}) : { deepVersion: THE_DEEP.version }), // release 677: Deep Shafts likewise
         ...(indoor ? { indoorDungeonVersion: indoor } : {}), // release 499: the dungeon entrance may stand inside a building
         color: sectionAtlasColor(this.map), // release 559: the Atlas shows the section as it really looks (atlas-colors.ts)
         ...(this.map.landscape?.biome ? { landscape: this.map.landscape.biome } : {}), sites: this.map.objects
-        .filter((o) => ["diveSite","shipwright","checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho","watcherTomb","skyStair"].includes(o.kind)) // release 465: the Watcher's shrines
+        .filter((o) => ["diveSite","shipwright","checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho","watcherTomb","skyStair","deepShaft"].includes(o.kind)) // release 465: the Watcher's shrines
         .map((o) => ({ kind: o.kind, name: o.kind === "watcherTomb" ? (o.where === "shrine" ? "Watcher's Shrine" : "Watcher's Tomb") : o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
     if (area === "overworld") this.openWayglassApproach(); // release 467 (Codex audit F006)
@@ -3170,6 +3182,7 @@ export class Game {
     if (o.completionExit) {
       if (!dungeonHistory(this.save,this.areaId()).combatClear?.completed) return {ok:false,message:this.message='The return remains sealed while a required guardian lives.'};
       // Release 217: a linked dungeon's guardian's door (past its second level) opens at its other mouth.
+      if (isDeepId(this.areaId())) return this.burnEmber(); // release 677: the Deep lets you go only for an ember
       const annexOut = this.annexOutward(); // release 675: the third floor lets you out somewhere else
       const linkId = this.save.session.activeDungeonId, link = this.map?.multiLevel ? linkedExit(this.save, linkId, this.save.session.dungeonReturn) : null;
       if (link) this.save.session.dungeonReturn = { rx: link.rx, ry: link.ry, x: link.x ?? 16, y: link.y ?? 16 };
@@ -3209,6 +3222,9 @@ export class Game {
     // Release 151: a level's fixed landing point (toX/toY) can sit in a wall on some generated floors; every move to a
     // landing point now steps onto the nearest open ground, as loading an area and recovering after a fall already do.
     if (o.kind === "annexStair") return this.descendAnnex(o); // release 675
+    if (o.kind === "deepShaft") return this.enterDeep(o, action); // release 677
+    if (o.kind === "deepStair") return this.descendDeep(o);
+    if (o.kind === "emberDoor") return this.burnEmber();
     if(o.kind==="deepTransition"){
       const progress=deepDungeonProgress(this.save,this.areaId());this.snapshotArea();this.save.session.activeDungeonLevelId=o.toLevelId;progress.currentLevelId=o.toLevelId;if(!progress.discoveredLevelIds.includes(o.toLevelId))progress.discoveredLevelIds.push(o.toLevelId);this.loadArea("dungeon",false);this.player.x=o.toX;this.player.y=o.toY;this.settleArrival();/* release 419 */this.projectiles=[];this.effects=[];this.message=`${this.map.levelName||o.toLevelId} reached.${this.levelWays()}`;this.sync();return{ok:true,message:this.message};
     }
@@ -4543,6 +4559,8 @@ export class Game {
       }
       if (GUARDIAN_ROLES.includes(c.dungeonRole) && !c.affixes && !c.farArrayBoss && !String(this.save.session?.activeDungeonId || '').startsWith('far-array:')) c.affixes = rollAffixes(`${this.save.seed}:guardian:${c.id}`, 1); // release 657: every crossing guardian carries an affix
       if (!e.fracWardenAdd && !e.fracReinforcement && !e.kitAddOf) applyBossKit(c, this.save.seed, (k) => !!MONSTER_PACK[k]); // release 668: guardians and elites fight like boss moments
+      if (area === "dungeon" && this.map?.deepFloor && !c.deepScaled) { const f = this.map.deepFloor, k = floorScale(f); c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.deepScaled = true; // release 677: harder each floor
+        if (GUARDIAN_ROLES.includes(c.dungeonRole)) c.affixes = rollAffixes(`${this.save.seed}:deep:${f}:${c.id}`, guardianAffixes(f)); else if (!c.affixes && !c.ambient && (hashSeed(`${this.save.seed}:deep-affix:${f}:${c.id}`) % 1000) / 1000 < floorAffixShare(f)) c.affixes = rollAffixes(`${this.save.seed}:deep:${f}:${c.id}`, 1); }
       if (area === "dungeon" && this.map?.annexFloor?.floor > 1 && !c.annexScaled) { const k = annexScale(this.map.annexFloor.floor); c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.annexScaled = true; } // release 675: each annex floor is harder
       ensureAI(c);
       refreshMarineBeast(c, this.map, mapWidth(this.map, area), area);
@@ -4646,7 +4664,7 @@ export class Game {
     for (const map of maps) for (const e of map.enemySpawns || []) if (e.objectiveId && progress?.completedObjectiveIds?.includes(e.objectiveId) && !clear.defeated.includes(requiredBossId(e))) clear.defeated.push(requiredBossId(e));
     clear.completed = clear.required.length > 0 && clear.required.every(id=>clear.defeated.includes(id));
     this.enemies = this.enemies.filter(e => !clear.required.includes(e.id) || !clear.defeated.includes(e.id));
-    installCompletionExit(this.map,history); this.placeAnnexStair(history); // release 675
+    installCompletionExit(this.map,history); this.placeAnnexStair(history); this.placeDeepStair(history); // release 675; 677
     return clear;
   }
   defeatEnemy(e) {
@@ -4732,7 +4750,8 @@ export class Game {
           Object.assign(history,{resolved:true,guardianDefeated:true,visitOpen:false});
           applyDeepDungeonProgress(this.save,this.areaId(),this.map);
         }
-        claimDungeonPayoff(this.save,history,!!this.map.deepDungeon || this.map.recipe === 'deep-v1');
+        const deepFirst = this.map.deepFloor ? this.deepFloorCleared() : true; // release 677: the Deep pays its cache only the first time a floor is cleared
+        if (deepFirst || !THE_DEEP.payoffOnce) claimDungeonPayoff(this.save,history,!!this.map.deepDungeon || this.map.recipe === 'deep-v1');
         journalOnce(this.save,`expedition-cleared:${this.areaId()}`,`${this.map.name} is cleared. Every required guardian fell; the expedition cache yielded upgrade material, marks and a draught. The return lattice leads to the entrance.`,this.map.name);
         installCompletionExit(this.map,history,e); if (this.placeAnnexStair(history)) this.annexStairNote = true; // release 675
         this.message = 'EXPEDITION CLEARED — reward secured. Interact with the Cleared Expedition Return to leave safely.';
@@ -5183,6 +5202,57 @@ export class Game {
     journalOnce(this.save, `deep-annex:${A.base}`, `You went three floors down a Starfield Deep Annex, and its far door let you out at ${this.save.session.dungeonReturn.rx}, ${this.save.session.dungeonReturn.ry}.`, "Crossings");
     return true;
   }
+  // Release 677 (the-deep.ts): a Deep Shaft in a section first seen from now on; it offers floor 1 and each checkpoint reached.
+  placeDeepShaft() {
+    if (this.map.objects.some((o) => o.kind === "deepShaft")) return null;
+    const w = mapWidth(this.map, "overworld"), rec = deepShaft(this.save, deepIdFor(this.save.seed, this.rx, this.ry)); let at = null;
+    for (let r = 3; r <= 10 && !at; r++) for (let k = 0; k < 16 && !at; k++) { const a = k / 16 * Math.PI * 2, x = Math.round(16 + Math.cos(a) * r), y = Math.round(16 + Math.sin(a) * r), t = this.map.tiles[y * w + x];
+      if (t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.landscape?.startsWith?.("sea") && footprintOpen(this.map, w, x, y) && !this.map.objects.some((o) => Math.hypot(o.x - x, o.y - y) < 2)) at = { x, y }; }
+    if (!at) return null;
+    const o = { id: `deep-shaft-${this.rx}-${this.ry}`, kind: "deepShaft", name: THE_DEEP.name, x: at.x, y: at.y, state: "open", actions: startFloors(rec).map((f) => `descend:${f}`), lore: THE_DEEP.messages.shaft, landmark: true };
+    this.map.objects.push(o); if (!this.message) this.message = THE_DEEP.messages.shaft; return o;
+  }
+  resetDeepFloor(id) { delete this.save.consequences.dungeons[id]; for (const k of Object.keys(this.save.session.areas || {})) if (k === id || k.startsWith(`${id}:`)) delete this.save.session.areas[k]; }
+  enterDeep(o, chosen) {
+    const id = deepIdFor(this.save.seed, this.rx, this.ry), rec = deepShaft(this.save, id), want = Number(String(chosen || "").split(":")[1]) || 1, floor = startFloors(rec).includes(want) ? want : 1;
+    rec.floor = floor; this.resetDeepFloor(id);
+    this.save.session.dungeonReturn = { rx: this.rx, ry: this.ry, x: o.x, y: o.y + 1 }; this.save.session.activeDungeonId = id; this.save.session.activeDungeonLevelId = null;
+    pinDungeonLayout(this.save, id); const h = dungeonHistory(this.save, id); h.visits++; h.visitOpen = true; h.gatePredatorSpawnThreshold = 0;
+    this.loadArea("dungeon"); this.settleArrival();
+    this.defeatNotice = { title: `THE DEEP · FLOOR ${floor}`, detail: floor > 1 ? "no way back up but a Return Ember · fell the guardian to go deeper" : "fell the guardian to go deeper · burn a Return Ember to come back up", kind: "danger" };
+    this.message = `You climb down into the Deep${floor > 1 ? ` and on to floor ${floor}` : ""}.`; this.sync(); return { ok: true, message: this.message };
+  }
+  descendDeep(o) {
+    const id = this.areaId(), rec = deepShaft(this.save, id); rec.floor = (this.map.deepFloor || rec.floor) + 1; this.resetDeepFloor(id);
+    pinDungeonLayout(this.save, id); const h = dungeonHistory(this.save, id); h.visits++; h.visitOpen = true; h.gatePredatorSpawnThreshold = 0;
+    this.loadArea("dungeon", false); this.settleArrival(); this.projectiles = [];
+    this.defeatNotice = { title: `THE DEEP · FLOOR ${rec.floor}`, detail: rec.floor % THE_DEEP.checkpointEvery === 0 ? "a checkpoint: you may start here next time" : `deepest ${Math.max(rec.best, rec.floor - 1)} · ${this.save.theDeep.embers} Return Ember${this.save.theDeep.embers === 1 ? "" : "s"}`, kind: "danger" };
+    this.message = `You go down the Deep Stair to floor ${rec.floor}.`; this.sync(); return { ok: true, message: this.message };
+  }
+  // A floor of the Deep cleared: the record, an ember, the stair. Returns whether this floor was cleared for the first time.
+  deepFloorCleared() {
+    const id = this.areaId(), rec = deepShaft(this.save, id), f = this.map.deepFloor, first = f > rec.best, D = this.save.theDeep;
+    rec.best = Math.max(rec.best, f); D.embers += THE_DEEP.emberPerClear;
+    if (f > D.record) { D.record = f; if (f === 1 || f % THE_DEEP.checkpointEvery === 0) journalOnce(this.save, `the-deep-record:${f}`, `You reached floor ${f} of the Deep, the deepest you have been.${f % THE_DEEP.checkpointEvery === 0 ? " A checkpoint: its shaft will let you start there." : ""}`, "The Deep"); }
+    this.placeDeepStair(dungeonHistory(this.save, id));
+    this.defeatNotice = { title: `FLOOR ${f} CLEARED`, detail: `a Return Ember (${D.embers} held) · the Deep Stair opens${first ? " · a new deepest floor" : ""}`, kind: "discovery" };
+    return first;
+  }
+  placeDeepStair(history) {
+    if (this.area !== "dungeon" || !this.map?.deepFloor || !history?.combatClear?.completed || this.map.objects.some((o) => o.kind === "deepStair")) return null;
+    const exit = this.map.objects.find((o) => o.id === "expedition-fast-exit") || this.map.entry; if (!exit) return null;
+    const w = mapWidth(this.map, this.area); let at = null;
+    for (let r = 1; r <= 5 && !at; r++) for (let dy = -r; dy <= r && !at; dy++) for (let dx = -r; dx <= r && !at; dx++) { const x = Math.round(exit.x) + dx, y = Math.round(exit.y) + dy; if ((dx || dy) && footprintOpen(this.map, w, x, y) && !this.map.objects.some((o) => Math.round(o.x) === x && Math.round(o.y) === y)) at = { x, y }; }
+    if (!at) return null;
+    const stair = { id: "deep-stair", kind: "deepStair", name: `Deep Stair · down to floor ${this.map.deepFloor + 1}`, x: at.x, y: at.y, state: "open", actions: ["descend"] };
+    this.map.objects.push(stair); return stair;
+  }
+  burnEmber() {
+    const D = ensureTheDeep(this.save).theDeep; if (D.embers < 1) return { ok: false, message: (this.message = THE_DEEP.messages.noEmber) };
+    D.embers--; const result = this.leaveDungeon(THE_DEEP.messages.ember);
+    if (result) { relocateIfStranded(this.player, this.map, mapWidth(this.map, "overworld")); this.player.invulnerableUntil = (this.lastUpdateNow || 0) + 2000; this.sync(); }
+    return { ok: !!result, message: this.message };
+  }
   // One frame of Fractured mode (release 671): after a doorway's grace a wave of several packs comes in from just out of sight
   // on different sides; once it is all down the next waits `rest` s, and one left standing is joined by the next after `press`
   // s; never past `cap` wave creatures alive nor `hardCap` in all. Runtime only (`fracState`), reset with the area.
@@ -5500,7 +5570,8 @@ export class Game {
   }
   obtainDrop(src) {
     const n = this.save.dropCounter++;
-    const item = generateItem(`${this.save.seed}:${src}:${n}`, this.save.level);
+    const deep = this.area === "dungeon" && this.map?.deepFloor ? lootBonus(this.map.deepFloor, deepShaft(this.save, this.areaId()).best) : 0; // release 677: deeper loot, only near your deepest floor
+    const item = generateItem(`${this.save.seed}:${src}:${n}`, this.save.level + deep);
     const r = storeInventoryItem(this.save, item);
     if (r.stored && item.property === "brawler") this.glyphNotice ||= `${item.name} found: it is in your Pack.`; // release 513: say so
     this.save.materials.cinderIron++;

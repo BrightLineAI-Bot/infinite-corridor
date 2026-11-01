@@ -15,15 +15,16 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-**677** (odd, first session) · **680** (even, second session; 676 reserved below)
+**679** (odd, first session) · **680** (even, second session; 676 reserved below)
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
 | 678 | Claude (second session) | `claude/stalker-overworld-boss-fldd02` | The Stalker: a silver overworld hunter (cat, winged ape, pool) that closes in by ground covered, waits by doors, afterimages, swarm, affixes; returns 30–40 new sections after a kill | Building. First numbered 672; renumbered 678 because main reached 674 and 676 is reserved. |
+| 677 | Claude | `claude/dreamy-rubin-yn6q2p` | The Deep: rare Deep Shafts on new ground; endless floors, each harder (+10% health, +6% damage), more affixes every 5 floors, two on guardians from 20; a Return Ember per cleared floor (the only way up below floor 1); checkpoints every 5; loot +1 level per 5 floors only near your deepest; the record on the Wayfarer page | Building. |
 | 676 | Claude (second session) | reserved | Skylands Deep Annex: a rare, announced Skylands variant whose far gate lands you on the crown of a different, undiscovered great tree (663's treeCrownHop / SKY_TREE). Built on the first session's deep-annex framework (673, `src/deep-annex.ts`) once it merges; it will add a Skylands kind next to the Starfield one, not change the Starfield annex. Note for 673: release 672 raised `CHASM.chance` to .2, so `DEEP_ANNEX.chance` .25 now gives about 5% of new crossings, not 3%. | Reserved; waits for 673. |
-| 675 | Claude | `claude/dreamy-rubin-yn6q2p` | Starfield Deep Annex: a rare named crossing of three floors, each harder, the third another environment, its far door to a random place in the world | Renumbered from 673 (main was at 674). PR #322. |
+| 675 | Claude | PR #322 | Starfield Deep Annex: a rare named crossing of three floors, each harder, the third another environment, its far door to a random place in the world | Renumbered from 673 (main was at 674). Merged. |
 | 674 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Atlas pins and travellers' rumours of the nearest unexplored skyway, great tree and Starfield crossing (`src/wonders.ts`) | Merged (PR #323). |
 | 672 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Great trees, skyways and Starfield crossings easier to find on new ground (landscape 14, Sky Stair placement 2, Starfield .2); the findability survey; Crown Rest and coastal-glide fixes. 670 skipped: main was at 671 | Merged (PR #321). |
 | 671 | Claude | PR #320 | Fractured waves: several packs per wave from different sides, elite-led every third, a rest after a wave is cleared, more join one left standing; the cap counts only wave creatures | Merged. |
