@@ -38,7 +38,7 @@ export const GOLEM = { share: .9, punches: 3, gap: .38, rise: .35, sink: .4, ran
 export const FIRE_BURST = { count: 5, spread: 1.4, reach: 2.6, speed: 9 };
 export const CLUSTER = { count: 2, speed: 7, share: .45, radius: .55 };
 export const ARC_WAVE = { share: 1, grow: .5, pierce: 12, speed: 11 }; // release 549: per wave, three waves (was one wave at 2.2, grow .75)
-export const NANOKNIVES = { count: 3, share: .5, arm: .3, autoRange: 6, cooldown: .8, range: 9, speed: 13, life: 1.4, seekTurn: 9, orbitRadius: .95, spin: 2.6 };
+export const NANOKNIVES = { count: 3, share: .5, arm: .3, autoRange: 6, cooldown: .8, range: 9, speed: 13, life: 2.2, seekTurn: 9, orbitRadius: .95, spin: 2.6 }; // release 643: they fly on through a foe and curl back (life 1.4 → 2.2)
 
 // Where dagger `i` of `n` circles at time `t` (seconds), as an offset in tiles.
 export function knifeOffset(i, n, t) { const a = t * NANOKNIVES.spin + i * Math.PI * 2 / n; return { x: Math.cos(a) * NANOKNIVES.orbitRadius, y: Math.sin(a) * NANOKNIVES.orbitRadius * .7, a }; }
