@@ -2694,6 +2694,22 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 659: the Far Array explains itself — 2026-11-01
+
+Tim (2026-11-01, with a diagnostic): "I don't know how to access the listener once I get to the dungeon... I don't know when I'm
+gonna meet the listener... I'm trapped in the listener's dungeon. There's no exit". His save, a Gate 4 descent run on its middle
+floor, was not trapped. The passage up stood beside him and the Mouth floor's exit worked. But nothing said where they were, and
+nothing said that after the first Listener the Listener waits only through the Dais (`daisDue`: the Gate whole at the current Mouth).
+He had 3 of 6 pieces.
+
+**CODE:**
+- `src/game.ts`: the Array run's entry message names the run's guardian on its deepest floor, the Gate pieces, and where the
+  Listener is (the Dais beside the Mouth after the first Listener, else the next run). New `levelWays()` (compass words to the exit
+  or up passage, and to the down passage) ends that message and every deep-floor arrival message.
+- `src/far-array.ts` `guardianFelled`: says how many pieces remain and what follows (the Dais, or the next run's Listener).
+
+**BOUNDARY:** Messages only; no save or generation change. Tests: `tests/listener-way-659.test.ts`.
+
 ## Release 657: elite affixes, auras and shamans — 2026-11-01
 
 Tim (2026-11-01): "champions or elites that buff the monsters around them in their pack... a shaman... invulnerable to damage until

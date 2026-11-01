@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**659**
+**661**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 657 | Claude | `claude/dreamy-rubin-yn6q2p` | Elite affixes (Volcanic, Sky Assault, Spiked, Venomous, Drone Swarm, Enraged), champion auras, warding shamans; every crossing guardian carries an affix | Building. |
+| 659 | Claude | `claude/dreamy-rubin-yn6q2p` | The Far Array explains itself: what a run holds, Gate pieces left, where the Listener waits; each deep floor names the way up/out and down | Building. |
+| 657 | Claude | PR #312 | Elite affixes (Volcanic, Sky Assault, Spiked, Venomous, Drone Swarm, Enraged), champion auras, warding shamans; every crossing guardian carries an affix | Merged (`r657-669db132ed16`). |
 | 655 | Claude | PR #311 | Worm's Upheaval stacks: each dodge while its ring pulses adds another burst | Merged (`r655-c8fd359ccde7`). |
 | 653 | Claude | PR #310 | Following a retreating world beast: it waits where it fled, turns at bay on its home ground; an unfollowed Worm retreat ends | Merged (`r653-ffa884b886d4`). |
 | 651 | Claude | PR #309 | Fractured mode (Options → Challenge): Fractured / Frenzied packs with champions and rares, reinforcements, safe places, lulls, return refills | Merged (`r651-7395b635da37`). |
