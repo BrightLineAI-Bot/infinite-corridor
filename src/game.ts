@@ -238,7 +238,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   const ordinary = fresh && id.startsWith('dungeon:') && !id.includes(':deep-v');
   if (ordinary && history.ladder === undefined) history.ladder = { version: DUNGEON_LADDER.version, tier: ladderTier(save) };
   const rungOf = (kind) => history.ladder ? ladderRoll(save.seed, id, kind, history.ladder.tier) : 'full';
-  if (fresh && history.deepAnnex === undefined) { history.deepAnnex = ordinary || /:annex[23]$/.test(id) ? annexRecord(save.seed, id) : false; if (history.deepAnnex?.floor === 3) history.generationOptions = { ...history.generationOptions, theme: annexThird(save.seed, history.deepAnnex.base) }; } // release 673: a Starfield Deep Annex floor
+  if (fresh && history.deepAnnex === undefined) { history.deepAnnex = ordinary || /:annex[23]$/.test(id) ? annexRecord(save.seed, id, chasmRoll(save.seed, id)) : false; if (history.deepAnnex) history.dream = 0; if (history.deepAnnex?.floor === 3) history.generationOptions = { ...history.generationOptions, theme: annexThird(save.seed, history.deepAnnex.base) }; } // release 673: a Starfield Deep Annex floor
   if (fresh && history.mire === undefined) { const rung = !/:canopy$/.test(id) && !history.deepAnnex && rollMireCrypt(save.seed, id, history.layoutPool) ? rungOf('poisonCrypt') : null; history.mire = rung ? { version: MIRE_CRYPT.version, merged: 0, found: false, ...(rung === 'taste' ? { taste: true } : {}) } : false; } // release 303: the Poison Crypt; 319: a taste is a small one
   if (ordinary && history.ladder && !rungOf('gatePredator')) history.gatePredatorSpawnThreshold = 0; // release 319
   if (fresh && history.threefoldLayout === undefined && id.endsWith(':deep-v2:threefold')) history.threefoldLayout = 2;
@@ -257,7 +257,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (history.layoutVersion === 1 && !map.arena && !id.startsWith('displacement:') && !id.startsWith('elite-portal:') && !id.includes('aperture-annex')) varyDungeonLayout(map,save.seed,id);
   if (history.watcherVersion && !id.startsWith('displacement:') && !id.startsWith('dive:') && !map.multiLevel) placeWatcherDungeon(map, map.width || Math.round(Math.sqrt(map.tiles.length)), save.seed, id); // release 289
   if (history.chasm && !map.arena) carveChasm(map, save.seed, `${id}:${options.levelId || "root"}`); // release 593
-  if (history.deepAnnex) { const f = history.deepAnnex.floor; map.annexFloor = { floor: f, of: DEEP_ANNEX.floors }; map.name = `${DEEP_ANNEX.name} · Floor ${f}`; } // release 673
+  if (history.deepAnnex) { const f = history.deepAnnex.floor; map.annexFloor = { floor: f, of: DEEP_ANNEX.floors }; map.annexName = `${DEEP_ANNEX.name} · Floor ${f}`; } // release 673
   return map;
 }
 // Release 363: a fallen Listener pays its Gate in Transit Coordinates (its pieces + 1).
@@ -5061,7 +5061,7 @@ export class Game {
     let found = false;
     for (const o of this.map?.objects || []) { if (o.kind !== "dungeon" || o.dungeonType) continue;
       const id = o.dungeonId || dungeonId(this.save.seed, this.save.worldGeneration, this.rx, this.ry, o.id), h = this.save.consequences?.dungeons?.[id];
-      const annex = h && h.generatorVersion !== undefined ? h.deepAnnex?.floor === 1 : !this.save.session.areas?.[id] && !!annexRecord(this.save.seed, id);
+      const annex = h && h.generatorVersion !== undefined ? h.deepAnnex?.floor === 1 : !this.save.session.areas?.[id] && !!annexRecord(this.save.seed, id, chasmRoll(this.save.seed, id));
       if (annex) { o.deepAnnex = true; o.name = DEEP_ANNEX.name; o.identity = "three floors down; its far door lets you out elsewhere"; found = true; } }
     if (found && !this.message) this.message = DEEP_ANNEX.messages.entrance;
     return found;

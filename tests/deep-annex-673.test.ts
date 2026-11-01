@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
-import { Game } from '../src/game.ts';
+import { Game, chasmRoll } from '../src/game.ts';
 import { dungeonId } from '../src/world.ts';
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexScale, annexExit, annexEligible } from '../src/deep-annex.ts';
 
@@ -18,7 +18,8 @@ let found; const annex = () => (found ||= findAnnex());
 
 test('rare, eligible only for ordinary overworld crossings, and the same for the same seed', () => {
   const ids = []; for (let i = 0; i < 4000; i++) ids.push(dungeonId(SEED, 1, i % 70, Math.floor(i / 70), 'dungeon-gate-' + (i % 3)));
-  const n = ids.filter((id) => annexRecord(SEED, id)).length; assert.ok(n > 40 && n < 240, `${n} of 4000`);
+  const n = ids.filter((id) => annexRecord(SEED, id, chasmRoll(SEED, id))).length; assert.ok(n > 40 && n < 240, `${n} of 4000`);
+  assert.ok(ids.every((id) => !annexRecord(SEED, id, false)), 'only Starfield crossings');
   assert.ok(!annexEligible(dungeonId(SEED, 1, 0, 0)) && !annexEligible(`${ids[0]}:canopy`) && !annexEligible('dungeon:X:g1:deep-v2:descent'));
   assert.deepEqual(annexRecord(SEED, annexFloorId(ids[0], 3)), { version: 1, floor: 3, base: ids[0] });
 });
@@ -26,7 +27,7 @@ test('rare, eligible only for ordinary overworld crossings, and the same for the
 test('its entrance names it before you go in; inside, the first floor is a Starfield floor with floor dots', () => {
   const { g, o } = annex(); assert.equal(o.name, DEEP_ANNEX.name);
   g.player.x = o.x; g.player.y = o.y; const r = g.interact('enter', o.id); assert.ok(r.ok, r.message);
-  assert.equal(g.area, 'dungeon'); assert.deepEqual(g.map.annexFloor, { floor: 1, of: 3 }); assert.match(g.map.name, /Starfield Deep Annex · Floor 1/);
+  assert.equal(g.area, 'dungeon'); assert.deepEqual(g.map.annexFloor, { floor: 1, of: 3 }); assert.match(g.map.annexName, /Starfield Deep Annex · Floor 1/);
   const h = g.save.consequences.dungeons[g.areaId()]; assert.equal(h.deepAnnex.floor, 1); assert.ok(h.chasm, 'a Starfield floor'); assert.ok(!h.mire && !h.dream);
 });
 

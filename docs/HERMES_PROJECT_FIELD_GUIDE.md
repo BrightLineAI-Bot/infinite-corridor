@@ -2700,13 +2700,13 @@ Tim (2026-11-01): ordinary crossings stay one or two floors deep; "deep annexes"
 they can be skipped, mostly Skylands and Starfield variants. "Starfield... the third level [is] a different biome... [and its
 exit] teleports [you] to a random place in the world." (The Skylands variant is the second session's.)
 
-**CODE:** `src/deep-annex.ts` (new; in the build and both sw.js lists): `DEEP_ANNEX` (chance .03 of crossings never entered,
+**CODE:** `src/deep-annex.ts` (new; in the build and both sw.js lists): `DEEP_ANNEX` (chance .25 of the Starfield crossings never entered, about 3% of all crossings;
 3 floors, per-floor `scale` hp 1/1.3/1.6 and damage 1/1.15/1.3, the `third` floor environments, `exit` 10–24 sections, 48
 tries), `annexEligible` (ordinary overworld crossing ids only: not the Refuge's, a canopy door, a deep dungeon or an annex
-floor), `annexRecord`, `annexFloorId` (`${base}:annex2`, `:annex3`), `annexThird`, `annexScale`, `annexExit` (never open sea,
+floor), `annexRecord` (only a crossing that rolls a Starfield, `chasmRoll`), `annexFloorId` (`${base}:annex2`, `:annex3`), `annexThird`, `annexScale`, `annexExit` (never open sea,
 unexplored first). `generatePinnedDungeon` (game.ts) records `history.deepAnnex` for a fresh crossing before the Poison
 Crypt and Sleeper's Hall rolls (an annex is neither), forces the starfield (`history.chasm`) on floors 1–2 and the hashed
-`third` environment (`generationOptions.theme`) on floor 3, and tags the map `annexFloor` and its name. `Game.markDeepAnnexes`
+`third` environment (`generationOptions.theme`) on floor 3, and tags the map `annexFloor` and `annexName` (its own name is kept). `Game.markDeepAnnexes`
 names an annex's entrance on the overworld (only while never generated, or when it is one). `placeAnnexStair` (after either
 `installCompletionExit`) puts the Annex Stair beside a cleared floor's return; `descendAnnex` goes down (a crossing of its
 own: pinned, visited, settled arrival); `annexOutward` points the last floor's Cleared Return at `annexExit`. Creatures on
