@@ -484,12 +484,19 @@ export function worldBeastTriesLeft(save, id) { return WORLD_BEASTS[id].tries - 
 
 // Provisional follow-on balance: level is a strength floor, never a spawn gate.
 export const BEAST_BASELINE = { level: 8, starterHit: 16, starterHp: 102, starterGuard: .025, damageFloor: 60, questingDominance: 1.15 };
+// Tim (2026-11-01): "I want them to be tuned to me with my gear and stuff in mind... but I wanna be able to... test my gear... see
+// how fast I can beat them... based on their health at that level... I wanna be able to speed run them". A beast's health is
+// counted in the blows of a standard Wayfarer of your level (`STANDARD_HIT`: the starter's blow at the baseline level, the
+// level-eight reference a real Wayfarer reaches with starter equipment, and `perLevel` more for each level past it, about what
+// a weapon of that level and its stats add), not your own: a stronger build fells it faster, a weaker one slower. Its damage
+// is still a share of your own health past your own guard, so it hits as hard as ever.
+export const STANDARD_HIT = { perLevel: 3 };
+export function standardHit(level) { return BEAST_BASELINE.starterHit + Math.max(0, Math.floor(Number(level) || 1) - BEAST_BASELINE.level) * STANDARD_HIT.perLevel; }
 export function beastTuningReference(save, stats = {}) { return stageOneBeastReference(save, liveBeastReference(save, stats)); }
 // The Wayfarer as they stand, before any Stage 1 hold (release 331: also what a Listener kill catches the beasts up to).
 export function liveBeastReference(save, stats = {}) {
   const actualLevel = Math.max(1, Number(save.level) || 1), level = Math.max(BEAST_BASELINE.level, actualLevel);
-  const weapon = save.equipment?.[save.activeWeaponSlot], levelBonus = Math.floor((level - 1) * .6) - Math.floor((actualLevel - 1) * .6);
-  return ({ level, perHit: Math.max(BEAST_BASELINE.starterHit, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0) + levelBonus),
+  return ({ level, perHit: standardHit(level),
     maxHp: Math.max(BEAST_BASELINE.starterHp, (Number(save.maxHp) || 60) + (level - actualLevel) * 6),
     guard: Math.max(BEAST_BASELINE.starterGuard, Math.min(.75, Number(stats.damageReduction) || 0)) }); // release 275: Stage 1 beasts are held from tier 13 until three Listeners
 }
@@ -509,6 +516,19 @@ export function tuneWorldBeast(c, save, id, stats = {}) {
   Object.assign(c, { worldBeast: id, boss: true, hp, maxHp: hp, damage, beastTuningVersion: 1, staggerResistance: B.staggerResistance, speedMultiplier: B.speed, attackGap: B.attackGap, evasive: true });
   return c;
 }
+// The time to fell a beast, fought from full health (Tim: "see how fast I can beat them... speed run them"): the clock starts at
+// the first blow that lands on it (game.ts beastClock) and stops when it falls. Each beast keeps its best (`save.beastTimes`,
+// seconds, additive at schema 14; the Questing Beast under "questingBeast").
+export function ensureBeastTimes(save) {
+  const raw = save?.beastTimes, out = {};
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) for (const [id, v] of Object.entries(raw)) { const n = Number(v); if (Number.isFinite(n) && n > 0) out[id] = Math.round(n * 10) / 10; }
+  if (save) save.beastTimes = out; return save;
+}
+export function recordBeastTime(save, id, seconds) {
+  const t = Math.round(Math.max(.1, Number(seconds) || 0) * 10) / 10, T = (save.beastTimes ||= {}), prev = Number(T[id]) || 0, best = !prev || t < prev;
+  if (best) T[id] = t; return { time: t, best, previous: prev || null };
+}
+export const beastTimeText = (r) => `felled in ${r.time.toFixed(1)} s${r.best ? (r.previous ? ` · a new best (was ${r.previous.toFixed(1)} s)` : " · your best") : ` · best ${Number(r.previous).toFixed(1)} s`}`;
 // The beast falls: pay its bounty and start its cooldown.
 export function worldBeastSlain(save, id) {
   ensureWorldBeasts(save, false); const B = WORLD_BEASTS[id], q = save.worldBeasts[id], marks = B.rewardMarks + B.rewardPerLevel * (Number(save.level) || 1);
