@@ -2709,6 +2709,8 @@ falling".
   `!liftDrop`, which `endDroneLift` sets so a booster drop stays a fall, and which clears with the jump.
 - Mid-jump, Jump still goes to the drone (the glider's mid-jump branch keeps `!droneUp()`).
 - `src/renderer.ts` draws the Crown Rest: a ring of leaves, lit while it is your rest point.
+- `src/renderer.ts` `giantTreeHides` (Tim: "towards the edges... your character disappears"): it now tests every crown leaf mass
+  (`GIANT_CROWN`, shared with `drawGiantTree`), the boughs and the trunk, at the head, middle and feet, instead of one crown circle.
 
 **BOUNDARY:** The rest point is placed at load, not generated: every generator version is untouched. Additive save only (the
 checkpoint record). Tests: `tests/crown-rest-665.test.ts`.

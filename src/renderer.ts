@@ -1118,6 +1118,8 @@ export function drawDigSpot(ctx, o, s, now) {
 // behind them... maybe you can see like a silhouette"): a giant forest tree, its trunk `height` tiles tall and its crown above.
 // The Wayfarer behind one is drawn again, faint (`ghost`), over it (giantTreeHides).
 export const GIANT_TREE = { height: 9, trunk: .36, crown: 2.3, sway: .06, ghost: .45 };
+// The crown's leaf masses [dx, dy, r (× crown), colour]: drawn by drawGiantTree and tested by giantTreeHides (release 667).
+const GIANT_CROWN = [[-.55, .35, .75, "#1e3a24"], [.6, .4, .7, "#1e3a24"], [0, 0, 1, "#26482b"], [-.35, -.35, .7, "#2f5733"], [.4, -.3, .62, "#2f5733"], [0, -.62, .5, "#3a6a3c"]];
 export function drawGiantTree(ctx, o, s, now) {
   const G = GIANT_TREE, k = (o.x + .5) * s, base = (o.y + .82) * s, top = base - G.height * s, w = G.trunk * s, sway = Math.sin(now / 1900 + o.x * 1.7 + o.y) * G.sway * s;
   ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(k, base, s * .9, s * .26, 0, 0, 7); ctx.fill();
@@ -1126,7 +1128,7 @@ export function drawGiantTree(ctx, o, s, now) {
   ctx.strokeStyle = "#1a120c99"; ctx.lineWidth = Math.max(1, s * .03); for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(k + i * w * .4, base - s * .2); ctx.lineTo(k + i * w * .3 + sway * .8, top + s * 1.5); ctx.stroke(); }
   ctx.strokeStyle = "#3d2c1f"; ctx.lineWidth = Math.max(2, s * .1); for (const [h, d] of [[.42, -1], [.58, 1], [.72, -1]]) { const y = base - G.height * s * h, x = k + sway * h; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + d * s * .8, y - s * .3, x + d * s * 1.5, y - s * .9); ctx.stroke(); ctx.fillStyle = "#24402a"; ctx.beginPath(); ctx.arc(x + d * s * 1.5, y - s * .95, s * .55, 0, 7); ctx.fill(); }
   const cx = k + sway, cy = top, R = G.crown * s;
-  for (const [dx, dy, r, c] of [[-.55, .35, .75, "#1e3a24"], [.6, .4, .7, "#1e3a24"], [0, 0, 1, "#26482b"], [-.35, -.35, .7, "#2f5733"], [.4, -.3, .62, "#2f5733"], [0, -.62, .5, "#3a6a3c"]]) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx + dx * R, cy + dy * R, r * R, 0, 7); ctx.fill(); }
+  for (const [dx, dy, r, c] of GIANT_CROWN) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx + dx * R, cy + dy * R, r * R, 0, 7); ctx.fill(); }
 }
 // Release 587: a floating disc of a skyway (skylands.ts SKY_DISCS): its shadow on the ground, the disc `level` lifts above it, a
 // gentle bob. `d` is in foot coordinates (the Wayfarer's x + .5, y + .75).
@@ -1141,9 +1143,16 @@ export function drawSkyDisc(ctx, d, s, now) {
   ctx.strokeStyle = "#ffffffaa"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(cx, cy, rx * .62, ry * .62, 0, 0, 7); ctx.stroke();
 }
 // Does a giant tree at `o` stand in front of the Wayfarer at `p` (drawn over them)?
+// Release 667 (Tim: "towards the edges... your character disappears"): the test covers every leaf mass of the crown, the boughs
+// and the trunk, at the Wayfarer's head, middle and feet, with a little margin, instead of one circle at the crown's middle.
 export function giantTreeHides(o, p) {
-  if (!(o.y > p.y)) return false; const G = GIANT_TREE, px = p.x + .5, py = p.y + .35, tx = o.x + .5, base = o.y + .82;
-  return (Math.abs(px - tx) < G.trunk + .3 && py < base && py > base - G.height) || Math.hypot(px - tx, py - (base - G.height)) < G.crown * 1.05;
+  if (!(o.y > p.y)) return false; const G = GIANT_TREE, tx = o.x + .5, base = o.y + .82, top = base - G.height, R = G.crown, px = p.x + .5;
+  for (const py of [p.y - .25, p.y + .35, p.y + .8]) {
+    if (Math.abs(px - tx) < G.trunk * 1.6 + .3 && py < base && py > top) return true; // the trunk
+    if (py > top + G.height * .2 && py < base - G.height * .35 && Math.abs(px - tx) < 1.8 && py < base) return true; // the boughs
+    for (const [dx, dy, r] of GIANT_CROWN) if (Math.hypot(px - (tx + dx * R), py - (top + dy * R)) < r * R + .3) return true;
+  }
+  return false;
 }
 export function drawStrange(ctx, o, s, kind, now) {
   const T = now / 1000 + (o.x * 7 + o.y * 13) % 10, drift = Math.sin(T * .7) * .09, flick = Math.sin(T * 9) * Math.sin(T * 2.3) > .9 ? .35 : 1;
