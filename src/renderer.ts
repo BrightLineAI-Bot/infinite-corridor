@@ -1844,6 +1844,7 @@ export function render(ctx, g, w, h, now) {
         y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
         fn: () => {
           if (e.seaKind) { drawSeaCreature(ctx, e, s, now, SEA_CREATURES[e.seaKind].colors, g); return; }
+          if (e.fracRank) { const rare = e.fracRank === "rare", pulse = .55 + .45 * Math.sin(now / 260), R = s * (.42 + (e.bodyRadius || .4) * .6); ctx.save(); ctx.strokeStyle = rare ? `rgba(255,196,70,${.5 + .4 * pulse})` : `rgba(110,170,255,${.45 + .35 * pulse})`; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.ellipse((e.x + .5) * s, (e.y + .82) * s, R, R * .42, 0, 0, Math.PI * 2); ctx.stroke(); if (rare && e.packName) { ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffd77a"; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = (e.y - (e.scale || 1) * .55) * s; ctx.strokeText(e.packName, (e.x + .5) * s, ty); ctx.fillText(e.packName, (e.x + .5) * s, ty); } ctx.restore(); } // release 651: Fractured mode's champions (blue) and rares (gold, named)
           const f = e.ai?.facing || "down",
             q = e.recoil > 0 && !["astralWorm","astralMirage"].includes(e.kind) ? 0.12 : 0,
             ox = f === "left" ? q : f === "right" ? -q : 0,

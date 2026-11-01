@@ -2694,6 +2694,37 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 651: Fractured mode — 2026-11-01
+
+Tim (2026-11-01): "a fractured mode that you can toggle on and off... more like Diablo... 2 or 3 times as many monsters... like a
+horde mechanic... you're not gonna really feel safe until you get to town, or until you've defeated The Guardian"; then, after
+research into Diablo II and III, Path of Exile 1 and 2 and Remnant: build both a Diablo II pace and a Diablo III pace, with loot
+auto-picked up and salvaged as now.
+
+**CODE:**
+- New `src/fractured.ts` (in `scripts/build.mjs` and both `sw.js` lists): `FRACTURED` (modes `fractured` and `frenzied`: density,
+  reinforcement `every`, `pack` size, `surgeEvery`/`surge`, live `cap`, `lull`, champion and rare shares; `grace`, `repopulate`,
+  `sight`, `spawnDistance`, `near`, `trashDrop`, `fallback` kinds, `traits`, messages), `CHAMPION`, `RARE`, `fracturedMode`,
+  `normalizeFractured`, `packSpawns`, `densityPacks`, `applyFracturedRank`, `rankXp`, `rareName`.
+- `save.fractured` (null | "fractured" | "frenzied"), additive at schema 14, normalised in `freshSave`/`migrateSave`
+  (`src/types.ts`); chosen in Options → Challenge (`src/main.ts`).
+- `src/game.ts`: `fracturedHere(area)` (null in towns, hamlets, home, the Refuge farm and quarry, 0,0, Skylands, arenas, Array runs,
+  hunts, elite portals, horde dungeons and resolved or guardian-cleared dungeons); `loadArea` adds `densityPacks` round the area's
+  `fracturedOrdinary` spawns before creatures are made; `createEnemyFromSpawn` applies `applyFracturedRank`; `snapshotArea` saves
+  `leftAt` (playSeconds) and a restore after `repopulate` s brings dead ordinary creatures back; `tickFractured(now)` (runtime
+  `fracState`) holds `grace` s after arrival, starts a `lull` when nothing hostile is within `sight`, and otherwise brings a
+  hashed pack (surge every `surgeEvery`th) to an open tile `spawnDistance` from the Wayfarer, hunting, under the live `cap`.
+  `defeatEnemy`: a reinforcement drops an item `trashDrop` of the time and writes no `drop:v1` flag; champions and rares drop 1 / 2
+  more and give `rankXp` × experience.
+- `src/renderer.ts`: a pulsing ring under champions (blue) and rares (gold, with the rare's name).
+
+**BOUNDARY:**
+- Off by default; with it off nothing changes.
+- Sea creatures are not multiplied. Reinforcements are land creatures, so open sea stays as it is.
+- Generation untouched (packs are placed at load, hashed from the area).
+- Coming in 653: the Fracture meter, its Warden and sealed areas, and stronger guardians and elites.
+- Tests: `tests/fractured-651.test.ts`.
+
 ## Release 649: Mirage of Blades; LISTENER REVEALED — 2026-11-01
 
 Tim (2026-11-01): "the passive nano knives is going to be replaced with mirage of blades... a large sword that... moves out and

@@ -54,6 +54,7 @@ import {
 import { ensurePerception } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST } from "./tool-forms.ts";
+import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp } from "./fractured.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { SKYLANDS, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
@@ -490,6 +491,9 @@ export const DAMAGE_NUMBERS = { life: 900, rise: .9, cap: 48 }; // release 461
 // stable ids (never added to a cleared crossing, an arena, a Far Array run or a hunt instance).
 export const DUNGEON_BOOST = { hp: 1.2, damage: 1.2, count: .2, near: 3 };
 const GUARDIAN_ROLES = ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"];
+// Release 651: an ordinary creature, which Fractured mode copies into packs and brings back (never a guardian, boss, hunt,
+// world beast or any one-time foe).
+function fracturedOrdinary(q) { return !!q && !q.boss && !GUARDIAN_ROLES.includes(q.dungeonRole) && !q.worldBeast && !q.questingBeast && !q.eliteId && !q.objectiveId && !q.foundryId && !q.domainBoss && !q.domainManifestation && !q.wingId && !q.marginWarden && !q.gatePredator && !q.viewportHuntId && !q.huntInstanceId && !q.ambient && !q.passiveBehavior && !q.astralCompanionOf && !q.retreating && !q.passingBeast && !q.skirmishId && !q.farArrayBoss && !q.farArraySummon && !q.packGuardian && !q.apertureEncounter && !q.hordeOf && !q.skyEcho && !q.arenaId && q.kind !== "npc" && !q.mireHeart && !q.mireSeep; }
 const MEAL_STAT_FIELDS = ["attackDamage", "spellDamage", "hp", "staminaRegen", "move", "attackSpeed", "spellCooldown", "defense", "dodgeCost", "reach"];
 export const dodgeCost = (save) => Math.round(15 * (1 - armorGlyphBonus(save).dodgeCost) * 10) / 10;
 export function characterStats(save) {
@@ -2219,6 +2223,7 @@ export class Game {
       };
     this.save.session.areas[this.areaStateId()] = {
       encounterVersion:this.map.encounterVersion||0,
+      leftAt: Number(this.save.playSeconds) || 0, // release 651: when it was last held, for Fractured mode's return
       enemies: this.enemies.filter((e) => !e.blobRemnant && !e.passingBeast).map((e) => ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } })), // release 259: the Blob's remnant is never saved
       objects,
       projectiles: this.projectiles.map((p) => ({ ...p })),
@@ -2372,6 +2377,9 @@ export class Game {
     if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.extraSpawn)) for (const q of this.extraDungeonSpawns()) this.map.enemySpawns.push(q); // release 463: more foes
     if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.marginWarden)) for (const w of wardenSpawns(this.save, this.map, this.areaId(), dungeonHistory(this.save, this.areaId()).wardensSlain || [])) this.map.enemySpawns.push(w); // release 459: Margin Wardens; 473: the slain stay slain
     if (area === "overworld") endMarginRun(this.save); // release 459: marginalia hold only inside the crossing
+    { const here = this.fracturedHere(area); if (here && !this.map.enemySpawns.some((q) => q.fractured)) { const w = mapWidth(this.map, area), open = (x, y) => this.fracturedOpen(x, y, w); /* release 651: Fractured mode's packs */
+      const base = this.map.enemySpawns.filter((q) => fracturedOrdinary(q)), tiles = base.length ? [] : this.map.tiles.filter((t, i) => i % 7 === 0 && open(t.x, t.y));
+      this.map.enemySpawns.push(...densityPacks(this.save.seed, this.areaStateId(), here, base, tiles, open, this.map.enemySpawns.filter((q) => !q.ambient && !q.passiveBehavior && !q.retreating && !q.passingBeast && q.kind !== 'npc').length)); } }
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
     if (area === 'dungeon' && this.map.skyland) for (const e of this.enemies) this.scaleSkyFoe(e); // release 571
     if (area === 'overworld') { const areas = this.save.session?.areas || {}, hist = this.save.consequences?.dungeons || {}; for (const k of Object.keys(areas)) if (isSkyland(k)) delete areas[k]; for (const k of Object.keys(hist)) if (isSkyland(k)) delete hist[k]; } // release 571: a finished or abandoned Skyland run leaves nothing behind
@@ -2415,9 +2423,11 @@ export class Game {
     const s = this.save.session.areas[this.areaStateId()];
     if (s) {
       const by = new Map((s.enemies || []).map((e) => [e.id, e]));
+      const refill = !!this.fracturedHere(area) && Number.isFinite(Number(s.leftAt)) && (Number(this.save.playSeconds) || 0) - Number(s.leftAt) >= FRACTURED.repopulate; // release 651: away long enough, it fills up again
       this.enemies = this.enemies.map((e) => {
         const restored = by.get(e.id);
         if (!restored) return e;
+        if (refill && restored.dead && fracturedOrdinary(restored)) return e;
         const merged = {
           ...e,
           ...restored,
@@ -4392,6 +4402,7 @@ export class Game {
         Object.assign(c, { mireHeart: true, boss: true, hp, maxHp: hp, damage: v.damage, staggerResistance: WORLD_BEASTS.morphingBlob.staggerResistance, attackGap: WORLD_BEASTS.morphingBlob.attackGap });
       }
       if (e.marginWarden) { const W = MARGIN_RULES.warden, rev = tuneGatePredator(Object.assign(createCombatant("gateRevenant", 0, 0, false, []), { gatePredator: true }), this.save, characterStats(this.save)); Object.assign(c, { marginWarden: true, boss: false, foundryName: `Margin Warden · ${c.eliteName || c.kind}`, aggro: false }); c.maxHp = c.hp = Math.max(1, Math.round(rev.maxHp * W.revenantShare)); c.damage = Math.max(1, Math.round(rev.damage * W.revenantShare)); c.baseDamage = c.damage; c.scale = (c.scale || 1) * W.scale; c.baseScale = c.scale; } // release 459; 473: an elite at half a Gate Revenant
+      if (e.fractured) applyFracturedRank(c, e, this.save.seed); // release 651
       ensureAI(c);
       refreshMarineBeast(c, this.map, mapWidth(this.map, area), area);
       return c;
@@ -4594,7 +4605,7 @@ export class Game {
     this.save.currency += marks;
     const oldHp = this.save.maxHp,
       oldStamina = this.save.maxStamina,
-      levels = awardExperience(this.save, Math.round((e.seaKind ? SEA_CREATURES[e.seaKind].xp : e.boss ? 35 : 10) * Math.max(1, Number(e.xpMultiplier) || 1))); // release 399: harder (farther, deeper) foes give more
+      levels = awardExperience(this.save, Math.round((e.seaKind ? SEA_CREATURES[e.seaKind].xp : e.boss ? 35 : 10) * Math.max(1, Number(e.xpMultiplier) || 1) * rankXp(e))); // 651: champions and rares give more // release 399: harder (farther, deeper) foes give more
     if (levels) {
       this.player.hp = Math.min(
         this.save.maxHp,
@@ -4607,7 +4618,8 @@ export class Game {
       this.player.maxStamina = this.save.maxStamina;
       this.message = `Level ${this.save.level} reached — health and stamina increased. ${this.save.statPoints} stat point${this.save.statPoints === 1 ? "" : "s"} available in Pack.`;
     }
-    this.obtainDrop(e.kind);
+    if (!e.fracReinforcement || hashSeed(`${this.save.seed}:frac-drop:${this.save.dropCounter}:${e.id}`) % 100 < FRACTURED.trashDrop * 100) this.obtainDrop(e.kind); // release 651: a reinforcement seldom drops
+    if (e.fracRank) for (let i = 0; i < (e.fracRank === "rare" ? 2 : 1); i++) this.obtainDrop(e.kind); // champions and rares drop more
     if (!e.summonedBy && !e.noRewards) { const g = glyphDrop(this.save, `${this.areaId()}:${e.id}`, this.save.dropCounter, e.boss || isCrossingGuardian(e)); if (g) this.glyphNotice = `${GLYPHS[g].name} glyph recovered.`; }
     echoEvent(this, "kill", this.lastUpdateNow || 0, { enemy: e });
     onConstellationKill(this);
@@ -4619,7 +4631,7 @@ export class Game {
     if (!levels) this.message = `Recovered ${marks} mark${marks === 1 ? "" : "s"} from the fallen creature.`;
     if(this.save.narrative.facts['leads.active']){this.save.worldFlags['lead.hunt.count']=(this.save.worldFlags['lead.hunt.count']||0)+1;if(this.save.worldFlags['lead.hunt.count']>=5)progressLead(this.save,'hunt');if(isCrossingGuardian(e))progressLead(this.save,'guardian')}
     const key = `drop:v1:${this.areaId()}:${e.id}`;
-    if (!this.save.worldFlags[key]) {
+    if (!e.fracReinforcement && !this.save.worldFlags[key]) { // release 651: reinforcements leave no lasting flag
       this.save.worldFlags[key] = true;
       const roll = hashSeed(`${this.save.seed}:${key}`) % 100 < 40;
       if (e.boss || roll || (this.save.worldFlags.flaskPity || 0) >= 2) {
@@ -4956,6 +4968,43 @@ export class Game {
     this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now); // release 503: the Shadow Clone swings along
     p.attackUntil = now + 240; this.message = kind === "hammerfall" ? "Hammerfall!" : "Great Sweep!";
     return true;
+  }
+  // Release 651 (fractured.ts): Fractured mode. The mode, if it holds here: not in towns, hamlets, home, the Refuge lands, the
+  // starting section, Skylands, arenas, Array runs, hunts, horde or elite-portal dungeons, or a dungeon already cleared.
+  fracturedHere(area = this.area) {
+    const mode = fracturedMode(this.save); if (!mode || !this.map) return null;
+    if (area === "overworld") {
+      const home = homeCenter(this.save), lands = this.refugeLandsWhere() || {}, at = (q) => q && q.rx === this.rx && q.ry === this.ry;
+      if (this.map.settlement || this.map.hamlet || (this.rx === 0 && this.ry === 0) || at(home) || at(lands.farm) || at(lands.quarry) || townAt(this.save, this.rx, this.ry)) return null;
+      return mode;
+    }
+    if (area !== "dungeon") return null;
+    const id = String(this.areaId() || ""), h = this.save.consequences?.dungeons?.[id];
+    if (this.map.arena || isArrayRun(id) || isSkyland(id) || id.startsWith("hunt-") || id.startsWith("elite-portal:") || h?.horde || h?.resolved || h?.guardianDefeated || h?.combatClear?.completed) return null;
+    return mode;
+  }
+  fracturedOpen(x, y, w = mapWidth(this.map, this.area)) { const p = this.player; return footprintOpen(this.map, w, x, y) && !footprintHazard(this.map, w, x, y) && !(this.map.tiles[y * w + x]?.canopy) && Math.hypot(x - p.x, y - p.y) >= 4; }
+  // One frame of Fractured mode: after a doorway's grace, a pack comes in from just out of sight every few seconds, never past
+  // the live cap; clearing everything in sight buys a lull. Runtime only (`fracState`), reset with the area.
+  tickFractured(now) {
+    const mode = this.fracturedHere(); if (!mode) { this.fracState = null; return; }
+    const key = `${this.area}:${this.areaStateId()}`, F = FRACTURED, p = this.player;
+    let st = this.fracState; if (!st || st.key !== key) st = this.fracState = { key, nextAt: now + F.grace * 1000, quiet: true, n: 0 };
+    const hostile = this.enemies.filter((e) => !e.dead && !e.ambient && !e.passiveBehavior && !e.retreating && !e.astralAllyOf && e.kind !== "npc");
+    const near = hostile.some((e) => Math.hypot(e.x - p.x, e.y - p.y) <= F.sight);
+    if (!near && !st.quiet) { st.quiet = true; st.nextAt = Math.max(st.nextAt, now + mode.lull * 1000); this.message = F.messages.lull; } // everything in sight cleared: a lull
+    if (near) st.quiet = false;
+    if (now < st.nextAt || hostile.length >= mode.cap) return;
+    st.n++; const surge = st.n % mode.surgeEvery === 0, h = hashSeed(`${this.save.seed}:frac-wave:${key}:${st.n}`);
+    st.nextAt = now + (mode.every[0] + h % (mode.every[1] - mode.every[0] + 1)) * 1000;
+    const w = mapWidth(this.map, this.area), [d0, d1] = F.spawnDistance, kinds = [...new Set(this.enemies.filter((e) => e.fractured || fracturedOrdinary(e)).map((e) => e.kind))].filter((k) => k !== "npc");
+    let at = null; for (let i = 0; i < 24 && !at; i++) { const a = ((h >>> 4) + i * 2.399) % 6.283, r = d0 + ((h >>> 12) + i * 7) % (d1 - d0 + 1), x = Math.round(p.x + Math.cos(a) * r), y = Math.round(p.y + Math.sin(a) * r); if (x > 0 && y > 0 && x < w - 1 && y < (this.map.height || w) - 1 && this.fracturedOpen(x, y, w)) at = { x, y }; }
+    if (!at) return;
+    const size = Math.min(mode.cap - hostile.length, mode.pack[0] + h % (mode.pack[1] - mode.pack[0] + 1) + (surge ? mode.surge : 0)), roll = ((h >>> 9) % 1000) / 1000;
+    const rank = surge ? (roll < .35 ? "rare" : "champion") : roll < mode.rare * .5 ? "rare" : roll < mode.champion ? "champion" : null;
+    const pack = packSpawns(`${this.save.seed}:frac-wave:${key}:${st.n}`, kinds.length ? kinds : F.fallback, at.x, at.y, size, rank, (x, y) => this.fracturedOpen(x, y, w), `frac-r-${(this.fracSeq = (this.fracSeq || 0) + 1)}`, { fracReinforcement: true });
+    for (const q of pack) { const c = this.createEnemyFromSpawn(q); c.aggro = true; this.enemies.push(c); }
+    if (pack.length) this.message = surge ? F.messages.surge : rank === "rare" ? F.messages.rare : F.messages.arrive;
   }
   // Release 649 (tool-forms.ts MIRAGE): the Great Sweep with Mirage of Blades throws a spinning great blade (more with Echo),
   // out to its reach and home again to the Wayfarer. Runtime only: the blades are projectiles.
@@ -5341,6 +5390,7 @@ export class Game {
     if (this.shadowClone?.charging) this.tickCloneCharge(!!input.held?.(this.shadowClone.charging.action), now); // release 417
     if (this.orbit) this.tickOrbit(dt, now); // release 487: Orbit Volley
     this.tickMirage(dt); // release 649: Mirage of Blades
+    this.tickFractured(now); // release 651: Fractured mode
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
     if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge; this.fistCharge = null; this.fistPunch(c.step || 1, fistCharge(held), now, c.direction); } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (input.consume("spell")) this.castSlot("a");
