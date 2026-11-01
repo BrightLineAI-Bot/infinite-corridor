@@ -8,6 +8,8 @@ import { BOAT } from "./boats.ts";
 import { MECH, DRONE } from "./vehicle-gates.ts";
 import { isMarineTile } from "./world-beasts.ts";
 import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.ts"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.ts";
+import { setTreeSeason } from "./landscape-render.ts";
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.ts";
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.ts";
@@ -959,7 +961,7 @@ function drawLeafGlider(ctx, p, s, now) {
 }
 export const CANOPY_LOOK = { leaf: ["#2c6326", "#3f8a35", "#1f4a1a", "#4f9a3f"], bark: ["#6b4a2c", "#3e2916"], rise: 30, boughEvery: 3.2, vines: 5 };
 function drawCanopyDressing(ctx, c, s, now) {
-  const look = c.look != null ? TREES.looks[c.look] : null, C = look ? { ...CANOPY_LOOK, bark: look.bark, leaf: look.leaf, rise: c.low ? 0 : CANOPY_LOOK.rise } : CANOPY_LOOK, x0 = c.x0 * s, w = c.size * s, cx = x0 + w / 2, topY = c.y0 * s - discLift(c.top) * CANOPY_LIFT * s, sway = Math.sin(now / 1700) * s * .05, end = topY - C.rise * s;
+  const look = c.look != null ? TREES.looks[c.look] : null, C0 = look ? { ...CANOPY_LOOK, bark: look.bark, leaf: look.leaf, rise: c.low ? 0 : CANOPY_LOOK.rise } : CANOPY_LOOK, C = SEASON && SEASONS.canopy[SEASON] ? { ...C0, leaf: SEASONS.canopy[SEASON] } : C0 /* release 679 */, x0 = c.x0 * s, w = c.size * s, cx = x0 + w / 2, topY = c.y0 * s - discLift(c.top) * CANOPY_LIFT * s, sway = Math.sin(now / 1700) * s * .05, end = topY - C.rise * s;
   ctx.save();
   if (c.boughs) drawTreeBoughs(ctx, c, C, s, sway); // release 645: the decorative boughs down the trunk
   if (c.low) { // release 645: a grove's lesser tree: its crown is a level of the canopy, ringed with leaves, with vines below
@@ -1123,15 +1125,34 @@ export function drawDigSpot(ctx, o, s, now) {
 export const GIANT_TREE = { height: 9, trunk: .36, crown: 2.3, sway: .06, ghost: .45 };
 // The crown's leaf masses [dx, dy, r (× crown), colour]: drawn by drawGiantTree and tested by giantTreeHides (release 667).
 const GIANT_CROWN = [[-.55, .35, .75, "#1e3a24"], [.6, .4, .7, "#1e3a24"], [0, 0, 1, "#26482b"], [-.35, -.35, .7, "#2f5733"], [.4, -.3, .62, "#2f5733"], [0, -.62, .5, "#3a6a3c"]];
+// Release 679 (seasons.ts): the season of the woods this section belongs to, set each frame; null outside them.
+let SEASON = null;
+// An ordinary tree in its season: bare branches (some snow-capped in winter), or its crown in the season's colours, with blossom.
+function drawSeasonTree(ctx, o, s, kind) {
+  const T = treeSeason(SEASON, o.x, o.y), sc = Math.max(.6, Number(o.scale) || 1), k = o.x * s + s / 2, base = o.y * s + s * .82;
+  if (!T) return actor(ctx, o.x, o.y, s, kind, "down", 0, "idle", false, sc);
+  if (T.bare) {
+    ctx.save(); ctx.strokeStyle = "#4a3a2c"; ctx.lineCap = "round"; ctx.lineWidth = Math.max(2, s * .12 * sc); const top = base - s * .95 * sc;
+    ctx.beginPath(); ctx.moveTo(k, base); ctx.lineTo(k, top); ctx.stroke(); ctx.lineWidth = Math.max(1, s * .05 * sc);
+    const arms = [[-.32, -.55, -.42], [.3, -.62, -.5], [-.18, -.82, -.28], [.2, -.86, -.3]]; ctx.beginPath(); for (const [dx, y0, dy] of arms) { ctx.moveTo(k, base + y0 * s * sc); ctx.lineTo(k + dx * s * sc, base + (y0 + dy) * s * sc * .6); } ctx.stroke();
+    if (T.snow) { ctx.fillStyle = SEASONS.snowCap; for (const [dx, y0, dy] of arms) { ctx.beginPath(); ctx.ellipse(k + dx * s * sc, base + (y0 + dy) * s * sc * .6 - 1, s * .09 * sc, s * .035 * sc, 0, 0, 7); ctx.fill(); } }
+    ctx.restore(); return;
+  }
+  actor(ctx, o.x, o.y, s, kind, "down", 0, "idle", false, sc, 1, 0, [T.leaves[0], T.leaves[1], T.leaves[2], T.leaves[2]]);
+  if (T.bloom) { ctx.fillStyle = T.bloom; for (let i = 0; i < 6; i++) { const a = i * 2.4 + o.x, r = (.12 + (i % 3) * .08) * s * sc; ctx.fillRect(k + Math.cos(a) * r * 1.6 - 1, base - s * .72 * sc + Math.sin(a) * r - 1, Math.max(2, s * .06), Math.max(2, s * .06)); } }
+  if (T.snow) { ctx.fillStyle = SEASONS.snowCap; ctx.fillRect(k - s * .3 * sc, base - s * .96 * sc, s * .6 * sc, s * .08 * sc); }
+}
 export function drawGiantTree(ctx, o, s, now) {
   const G = GIANT_TREE, k = (o.x + .5) * s, base = (o.y + .82) * s, top = base - G.height * s, w = G.trunk * s, sway = Math.sin(now / 1900 + o.x * 1.7 + o.y) * G.sway * s;
   ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(k, base, s * .9, s * .26, 0, 0, 7); ctx.fill();
   const bark = ctx.createLinearGradient(k - w, 0, k + w, 0); bark.addColorStop(0, "#2a1e15"); bark.addColorStop(.45, "#5a4330"); bark.addColorStop(1, "#22180f");
   ctx.fillStyle = bark; ctx.beginPath(); ctx.moveTo(k - w * 1.6, base); ctx.quadraticCurveTo(k - w, base - s * .5, k - w * .8, base - s); ctx.lineTo(k - w * .55 + sway, top + s); ctx.lineTo(k + w * .55 + sway, top + s); ctx.lineTo(k + w * .8, base - s); ctx.quadraticCurveTo(k + w, base - s * .5, k + w * 1.6, base); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = "#1a120c99"; ctx.lineWidth = Math.max(1, s * .03); for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(k + i * w * .4, base - s * .2); ctx.lineTo(k + i * w * .3 + sway * .8, top + s * 1.5); ctx.stroke(); }
-  ctx.strokeStyle = "#3d2c1f"; ctx.lineWidth = Math.max(2, s * .1); for (const [h, d] of [[.42, -1], [.58, 1], [.72, -1]]) { const y = base - G.height * s * h, x = k + sway * h; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + d * s * .8, y - s * .3, x + d * s * 1.5, y - s * .9); ctx.stroke(); ctx.fillStyle = "#24402a"; ctx.beginPath(); ctx.arc(x + d * s * 1.5, y - s * .95, s * .55, 0, 7); ctx.fill(); }
+  const SC = SEASON && SEASONS.crown[SEASON], bareGiant = SEASON === "fall" && treeSeason(SEASON, o.x, o.y)?.bare; // release 679: the season's crown
+  ctx.strokeStyle = "#3d2c1f"; ctx.lineWidth = Math.max(2, s * .1); for (const [h, d] of [[.42, -1], [.58, 1], [.72, -1]]) { const y = base - G.height * s * h, x = k + sway * h; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + d * s * .8, y - s * .3, x + d * s * 1.5, y - s * .9); ctx.stroke(); if (bareGiant) continue; ctx.fillStyle = SC ? SC[0] : "#24402a"; ctx.beginPath(); ctx.arc(x + d * s * 1.5, y - s * .95, s * .55, 0, 7); ctx.fill(); if (SEASON === "winter") { ctx.fillStyle = SEASONS.snowCap; ctx.beginPath(); ctx.ellipse(x + d * s * 1.5, y - s * 1.3, s * .42, s * .16, 0, 0, 7); ctx.fill(); } }
   const cx = k + sway, cy = top, R = G.crown * s;
-  for (const [dx, dy, r, c] of GIANT_CROWN) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx + dx * R, cy + dy * R, r * R, 0, 7); ctx.fill(); }
+  GIANT_CROWN.forEach(([dx, dy, r, c], i) => { if (bareGiant && i % 2) return; ctx.fillStyle = SC ? (SEASON === "spring" && i === 5 ? SC[2] : SC[i < 2 ? 0 : i < 5 ? 1 : 2]) : c; ctx.beginPath(); ctx.arc(cx + dx * R, cy + dy * R, r * R, 0, 7); ctx.fill();
+    if (SEASON === "winter" && dy <= 0) { ctx.fillStyle = SEASONS.snowCap; ctx.beginPath(); ctx.ellipse(cx + dx * R, cy + dy * R - r * R * .62, r * R * .72, r * R * .3, 0, 0, 7); ctx.fill(); } });
 }
 // Release 587: a floating disc of a skyway (skylands.ts SKY_DISCS): its shadow on the ground, the disc `level` lifts above it, a
 // gentle bob. `d` is in foot coordinates (the Wayfarer's x + .5, y + .75).
@@ -1275,8 +1296,9 @@ function actor(
   scale = 1,
   segments = 1,
   segmentSpacing = 0,
+  palette = null, // release 679: a tree's seasonal colours
 ) {
-  const p = COLORS[kind] || COLORS.ashling,
+  const p = palette || COLORS[kind] || COLORS.ashling,
     k = x * s + s / 2,
     base = y * s + s * 0.82,
     bob = frame % 2,
@@ -1402,7 +1424,7 @@ function actor(
       else if(state === "charred") { rect("#29231f", -.09, -.75, .18, .72); rect("#3b2d25", -.3, -.78, .25, .16); }
       else if(kind === "treeShrub") { rect(p[1],-.07,-.35,.14,.31);rect(p[0],-.38,-.48,.34,.31);rect(p[0],.03,-.52,.38,.35);rect(p[2],-.18,-.65,.38,.25); }
       else if(kind === "treeSpindle") { rect(p[1],-.07,-.91,.14,.87);rect(p[0],-.31,-.73,.28,.1);rect(p[0],.03,-.55,.33,.09);rect(p[2],-.22,-1.03,.18,.25); }
-      else { rect(p[1], -0.1, -0.82, 0.2, 0.8); rect(p[0], -0.38, -0.86, 0.76, 0.32); rect("#71845b", -.27, -1.02, .54, .22); }
+      else { rect(p[1], -0.1, -0.82, 0.2, 0.8); rect(p[0], -0.38, -0.86, 0.76, 0.32); rect(p[3] || "#71845b", -.27, -1.02, .54, .22); }
     } else if (kind === "rock" && (state === "moved" || state === "broken")) {
       rect("#4f514d", -.32, -.2, .2, .12); rect("#73766f", -.04, -.16, .24, .1); rect("#3c3f3b", .2, -.12, .13, .08);
     } else if (kind === "checkpoint") {
@@ -1628,6 +1650,7 @@ function drawScreenOverlay(ctx, w, h) {
 }
 export function render(ctx, g, w, h, now) {
   const timed = renderTimings.on, t0 = timed ? performance.now() : 0;
+  SEASON = g.area === "overworld" ? g.season || null : null; setTreeSeason(SEASON); // release 679
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = "#141816";
   ctx.fillRect(0, 0, w, h);
@@ -1854,7 +1877,7 @@ export function render(ctx, g, w, h, now) {
             ctx.font = "10px monospace";
             ctx.fillText("RELAY", o.x * s, (o.y - 0.3) * s);
           } else if (o.kind === "tree" && o.vegetationForm === "giant" && o.state === "standing" && !o.strange) { drawGiantTree(ctx, o, s, now); // release 573
-          } else {const kind=o.kind==="tree"&&o.vegetationForm==="shrub"?"treeShrub":o.kind==="tree"&&o.vegetationForm==="spindle"?"treeSpindle":o.kind;if(o.strange&&!o.strangeUsed)drawStrange(ctx,o,s,kind,now);else actor(ctx,o.x,o.y,s,kind,"down",0,o.state||"idle",false,o.scale||1);}
+          } else {const kind=o.kind==="tree"&&o.vegetationForm==="shrub"?"treeShrub":o.kind==="tree"&&o.vegetationForm==="spindle"?"treeSpindle":o.kind;if(o.strange&&!o.strangeUsed)drawStrange(ctx,o,s,kind,now);else if(SEASON&&o.kind==="tree"&&o.state==="standing")drawSeasonTree(ctx,o,s,kind);else actor(ctx,o.x,o.y,s,kind,"down",0,o.state||"idle",false,o.scale||1);}
         },
       });
   for (const e of g.enemies)
@@ -2145,6 +2168,13 @@ export function render(ctx, g, w, h, now) {
     ctx.strokeStyle = "#ffffff40"; ctx.lineWidth = 1; ctx.strokeRect(bx - .5, by - .5, bw + 1, 7); ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "#f2e6ff"; ctx.strokeStyle = "#000c"; ctx.lineWidth = 3;
     const label = warden ? "FRACTURE WARDEN" : m.kills >= m.need ? "THE FRACTURE TEARS" : `FRACTURE ${m.kills}/${m.need}`; ctx.strokeText(label, w / 2, by + 19); ctx.fillText(label, w / 2, by + 19); ctx.restore(); } }
   if (g.area === "dungeon" && g.map?.chasm) { const P = CHASM_STARS.penumbra, cx = w / 2, cy = h / 2, gr = ctx.createRadialGradient(cx, cy, s * P.inner, cx, cy, s * P.outer); gr.addColorStop(0, "rgba(4,3,14,0)"); gr.addColorStop(1, `rgba(4,3,14,${P.dark})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, w, h); } // release 593: the penumbra
+  if (budget.weather && SEASON && !g.map.weather && SEASONS.weather[SEASON]) { // release 679: the season's weather in the woods (light: a few motes)
+    const kind = SEASONS.weather[SEASON], count = budget.quality === "full" ? 18 : 9;
+    for (let i = 0; i < count; i++) { const f = (motion * (.05 + (i % 4) * .012) + i * .29) % 1, x = ((i * 127 + g.rx * 37 + Math.sin(motion * .7 + i) * 26) % w + w) % w, y = f * (h + 20) - 10;
+      if (kind === "snow") { ctx.fillStyle = "#f4f8fbcc"; ctx.beginPath(); ctx.arc(x, y, 1 + (i % 3) * .55, 0, 7); ctx.fill(); }
+      else { ctx.fillStyle = kind === "leaves" ? ["#c4562acc", "#d68a2acc", "#8a4a24cc", "#efb54acc"][i % 4] : ["#f6c8dccc", "#fff2f6cc", "#f0a8c8cc"][i % 3]; ctx.beginPath(); ctx.ellipse(x, y, kind === "leaves" ? 3.2 : 2.6, 1.4, motion * 1.4 + i, 0, 7); ctx.fill(); } }
+    if (SEASON === "winter") { ctx.fillStyle = "#dfe8f014"; ctx.fillRect(0, 0, w, h); }
+  }
   const t2 = timed ? performance.now() : 0;
   // Dungeons with their own weather (Underlands themes) show it too: snow in a cave, sparks rising from a lava bog.
   if(!budget.weather&&g.area==="dungeon"&&g.map.weather&&budget.quality!=="low"&&g.presentation?.weather!==false)budget.weather=true;
