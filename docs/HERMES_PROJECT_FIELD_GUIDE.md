@@ -2694,6 +2694,22 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 643: every pass is a hit — 2026-11-01
+
+Tim (2026-11-01): "if it passes through their body, and then it arcs back on its homing track, and it passes through their body
+again... and then I somehow maneuver to get it to pass through their body a third time, that should be three separate instances
+of damage".
+
+**CODE:**
+- `src/game.ts` projectile update: before a projectile's hit test, every body in its `hits` it has left by `PASS_CLEAR` (.25 tiles
+  past contact) is forgotten, so the next pass through it is a new hit; staying inside a body is still one hit. Nanoknives
+  (`knife`) no longer break on a hit or spend pierce: they fly on and curl back.
+- `src/tool-forms.ts` `NANOKNIVES.life` 1.4 → 2.2 s. Tim: "it could be fine for them to just be knives, but I like the great
+  sword, the shuriken and the great axe better": `SWEEP_BLADES` and `sweepBlade` draw the three as a great sword, a spinning
+  shuriken and a great axe (each projectile carries its `blade` index); the dagger drawing is gone.
+
+**BOUNDARY:** Applies to every player projectile that survives a hit (pierce, boomerang, knives). Hostile shots unchanged.
+
 ## Release 641: the glider in hand; the Giant's charge — 2026-11-01
 
 Tim (2026-11-01): "you should be able to deploy, and I guess stow, the glider in the air by hitting the jump button... if you glide

@@ -137,6 +137,7 @@ function dressSkyland(map, id, save = null) {
 export const GLIDE = { minDrop: 4, sink: 1.5, speed: 4.6, steer: 3.2, skim: .35, safe: 1.5, drop: 9, dropSpeed: 1.8, // 641: closed, a freefall: `drop` levels a second, `dropSpeed` of drift
   found: "Caught in the crown's highest fork: a glider of leaf and vine, light as a held breath. Leave the crown of a great tree and it will carry you down.",
   open: "The leaf glider opens. Steer where you will; Jump folds it again.", shut: "You fold the glider and drop like a stone.", falling: "Falling! Jump to open the glider.", skimming: "Nothing to land on below: the glider holds above it.", land: "You come down out of the sky." };
+export const PASS_CLEAR = .25; // release 643: how far past a body a projectile must be before its next pass counts as a new hit
 export const CANOPY_FALL_MS = 2500; // release 633: how long after leaving the great tree's crown a fall still opens the glider (637)
 export const CHASM = { version: 1, chance: .12, keepWalls: .12, name: "Starfield" }; // release 613 (Tim: "the chasm dungeons... those are now called Starfield dungeons"): was "Chasm"
 // Release 613 (Tim, 2026-10-31: "moving platforms... you can jump on them... take a ride like a conveyance... across a larger
@@ -1040,6 +1041,10 @@ export function updateProjectiles(
         p.dead=true;p.impact={x:p.x,y:p.y};onPlayerHit(p);break;
       }
       if(p.hostile)continue;
+      // Release 643 (Tim: "if it passes through their body, and then it arcs back on its homing track, and it passes through their
+      // body again... that should be three separate instances of damage"): a projectile that survives a hit forgets a body once it
+      // has left it, so every separate pass through it is a new hit.
+      if (p.hits) for (const id in p.hits) { const q = enemies.find((e) => e.id === id); if (!q || q.dead || Math.hypot(q.x + .5 - p.x, q.y + .45 - p.y) >= 0.1 + (p.grow || 0) + enemyBodyRadius(q) + PASS_CLEAR) delete p.hits[id]; }
       let mountedPeerId = null;
       for (const e of enemies)
         if (
@@ -1069,9 +1074,9 @@ export function updateProjectiles(
             e.hitFlash = 0.18;
             e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.1 : 0.18);
           }
-          if (p.path === "boomerang" || p.pierce > 0) {
+          if (p.path === "boomerang" || p.pierce > 0 || p.knife) { // 643: Nanoknives fly on through
             (p.hits ||= {})[e.id] = true;
-            if (p.path !== "boomerang") p.pierce -= 1;
+            if (p.path !== "boomerang" && !p.knife) p.pierce -= 1;
           } else p.dead = true;
           p.impact = { x: p.x, y: p.y };
           if (e.hp <= 0 && !e.dead) {
@@ -4945,7 +4950,7 @@ export class Game {
     if (foe) this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
     for (let i = 0; i < k.count; i++) {
       const o = knifeOffset(i, k.count, now / 1000), x = cx + o.x, y = cy + o.y, d = foe ? projectileDirection(foe.x + .5 - x, foe.y + .45 - y, p.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
-      this.projectiles.push({ id: `knife-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, x, y, dx: d.x, dy: d.y, speed: K.speed, life: K.life, damage, damageType: "physical", path: "straight", age: 0, hits: {}, glyphHost: "tool", pierce, seekId: foe?.id || null, seekTurn: K.seekTurn, knife: true });
+      this.projectiles.push({ id: `knife-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, x, y, dx: d.x, dy: d.y, speed: K.speed, life: K.life, damage, damageType: "physical", path: "straight", age: 0, hits: {}, glyphHost: "tool", pierce, seekId: foe?.id || null, seekTurn: K.seekTurn, knife: true, blade: i });
     }
     return true;
   }
