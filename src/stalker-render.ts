@@ -468,13 +468,3 @@ export function drawStalkerMarker(ctx, m, w, h, now) {
   }
 }
 
-// The Stalker's fog over the section (release 692): blue-grey, thickening as it rolls in, thinning round the Wayfarer, lifting at
-// the end. Drawn in world space, over the camera's view (l, t, r, b in tiles), centred on the Wayfarer at (px, py) px.
-export function drawStalkerFog(ctx, fog, px, py, s, l, t, r, b, now) {
-  if (!fog) return; const k = Math.max(0, Math.min(1, (now - fog.from) / 900, (fog.until - now) / 1200)); if (!(k > 0)) return;
-  const g = ctx.createRadialGradient(px, py, s * 1.6, px, py, s * 6); g.addColorStop(0, `rgba(150,170,200,${.12 * k})`); g.addColorStop(1, `rgba(150,170,200,${.55 * k})`);
-  ctx.save(); ctx.fillStyle = g; ctx.fillRect(l * s, t * s, (r - l) * s, (b - t) * s);
-  for (let i = 0; i < 8; i++) { const a = now / 6000 + i * .8, rx = px + Math.cos(a) * s * (3 + i % 3), ry = py + Math.sin(a * 1.3) * s * (2 + i % 2), bank = ctx.createRadialGradient(rx, ry, 0, rx, ry, s * 2.4);
-    bank.addColorStop(0, `rgba(198,212,234,${.22 * k})`); bank.addColorStop(1, "rgba(198,212,234,0)"); ctx.fillStyle = bank; ellipse(ctx, rx, ry, s * 2.4, s * 1.2); ctx.fill(); } // drifting banks
-  ctx.restore();
-}

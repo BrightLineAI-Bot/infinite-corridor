@@ -4449,7 +4449,9 @@ export class Game {
       elev: (x, y) => Number(map.tiles[Math.floor(y + .72) * width + Math.floor(x + .5)]?.elev) || 0,
       hurt: (e, amount) => game.packHurt(e, amount, {}, now),
       revealed: () => { game.message = "THE STALKER — it was waiting for you."; },
-      fogged: (e, time) => { game.stalkFog = { from: now, until: now + time * 1000 }; game.message = "A fog rolls in, and the Stalker is gone into it."; }, // release 692
+      fogged: (e, time) => { // release 692: the sea's fog (Tim: "just use the fog from the sea fog"), banks round the Wayfarer, drawn by renderer.ts's sea-fog code
+        game.stalkFog = { until: now + time * 1000, level: game.stalkFog?.level || 0, fog: [0, 1, 2, 3, 4].map((i) => ({ x: p.x + Math.cos(i * 1.257) * (i ? 4.5 : 0), y: p.y + Math.sin(i * 1.257) * (i ? 3.5 : 0), radius: i ? 5 : 6, swirl: i * 1.1 })) };
+        game.message = "A fog rolls in, and the Stalker is gone into it."; },
       // The mist's rot: a share of maximum health gone until the Wayfarer rests (a dodge passes through; rot past it all kills).
       rot: (e, share) => { if (now <= (p.invulnerableUntil || 0)) return false; ensureRot(game.save); game.save.rot += Math.max(1, Math.round((game.save.maxHp || 1) * share)); p.invulnerableUntil = now + 700;
         if (game.save.rot >= game.save.maxHp) p.hp = 0; else p.hp = Math.min(p.hp, healthCeiling(game.save));
@@ -4503,7 +4505,7 @@ export class Game {
     this._stalkPrev = { key, x: p.x, y: p.y };
     if (!sheltered) this._stalkOver = { rx: this.rx, ry: this.ry, x: p.x, y: p.y };
     const actor = this.enemies.find((e) => e.stalker && !e.dead);
-    if (this.stalkFog && (!actor || now > this.stalkFog.until)) this.stalkFog = null; // release 692: the fog lifts with it
+    if (this.stalkFog) { const f = this.stalkFog, want = actor && now < f.until ? 1 : 0; f.level += (want - f.level) * Math.min(1, dt * 1.5); for (const b of f.fog) b.swirl += dt * .12; if (!want && f.level < .02) this.stalkFog = null; } // release 692: it closes in as the sea fog does, and lifts
     if (actor) { if (st.active) st.active.hp = actor.hp; return; }
     if (st.active?.door) {
       if (stalkerDoorHere(this.save, this.rx, this.ry) && p.hp > 0 && this.spawnStalker(st.active.door, true, now)) { this.message = "The Stalker was waiting by the door."; return; }

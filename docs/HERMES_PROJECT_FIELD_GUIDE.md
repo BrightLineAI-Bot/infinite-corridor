@@ -2709,17 +2709,18 @@ be slightly blue... I like blue and gray".
 - `Game.spawnStalker`:
   - When (`seq` + `kills`) is odd, the hunt comes in the open from behind with `stalkFogPlan` ("it is coming for you").
   - Otherwise it lurks, as in release 691.
-- `stalkerWorld.fogged` sets `game.stalkFog` { from, until } and says so. `tickStalker` lifts it when the Stalker is gone, the time
-  is up, or the Wayfarer leaves the overworld.
+- `stalkerWorld.fogged` sets `game.stalkFog` { until, level, fog }: five sea-fog banks round the Wayfarer (Tim: "just use the fog
+  from the sea fog"). `tickStalker` eases `level` toward 1 while it lasts and the Stalker lives, turns the banks, and lifts it as
+  `level` falls (or when the Wayfarer leaves the overworld).
+- `src/renderer.ts` draws it with the sea-fog code itself: the banks join the sea's and the Supernova's (faded by `level`), and
+  the mist closes in round the Wayfarer at `level` × .85.
 - `stalkerMarker` returns nothing while it lurks or is veiled.
 - `src/stalker-render.ts`:
-  - `drawStalkerFog`: a radial blue-grey wash, thinner round the Wayfarer, with soft drifting banks; it fades in and out.
-  - `src/renderer.ts` calls it before the storm layer.
   - Veiled, the Stalker is drawn at `fog.alpha` with a faint pulsing blue glow and a near-invisible shadow, with no name label.
   - `catMist` is blue-grey for both forms.
 
-**BOUNDARY:** Runtime only: `game.stalkFog` is never saved; no save, generator or reward change. One overlay, nine gradients a
-frame while fogged. Tests: `tests/stalker-arsenal.test.ts`.
+**BOUNDARY:** Runtime only: `game.stalkFog` is never saved; no save, generator or reward change. The sea fog's cost: seven
+gradients per bank (five banks) plus the closing-in wash while fogged. Tests: `tests/stalker-arsenal.test.ts`.
 
 ## Release 691: the Stalker lies in wait; flurry, tide, mouth, chompers — 2026-11-01
 
