@@ -15,13 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 690, the next is **691**.
+Taken at merge time: `main`'s release + 1 (see above). After 691, the next is **692**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| (at merge) | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Stalker lies in wait unseen and springs; the cat's flurry and tide; the puddle's mouth and six chompers; the sit and perch redrawn | Building. |
+| 691 | Claude (Stalker session) | PR #338 | The Stalker lies in wait unseen and springs; the cat's flurry and tide; the puddle's mouth and six chompers; the sit and perch redrawn | Building. |
 | 690 | Claude (Stalker session) | PR #337 | The Stalker consolidated: stalking creep, hiding in its mist, sitting in wait, perched (cat at the edge, gorilla as a gargoyle), climbing; chevrons back; one look for both forms | Building. |
 | 689 | Claude (second session) | PR #335 | The Skylands start from the Wayfarer: every Skyland foe's health and damage from the Wayfarer's level, weapon, health and armour by role (winged ~4 hits, keeper ~10, echo ~18; 8–15% of health a blow), then Ascension, the viscera pact and the annex on top; no regional threat in the sky, so the first round matches the rest | Merging (baton taken). |
 | 688 | Claude | `claude/dreamy-rubin-yn6q2p` | Canyon craters: clod-packed dungeons you drill through (green/yellow/red stability, cave-ins, collapse), caverns, lava, a pool, a bridged ravine; earth golems, crystal hermits, a Golem Warden, finds in clods; the divine wreck pays Divine Viscera; the Listener's Descent (the Deep beside a fallen Listener's Mouth) | Merging. |

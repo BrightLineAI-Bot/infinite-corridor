@@ -4476,7 +4476,7 @@ export class Game {
     const st = ensureStalker(this.save), p = this.player, width = mapWidth(this.map, this.area);
     let spot = null;
     if (at) { for (const [dx, dy] of [[0, 0], [1.2, 0], [-1.2, 0], [0, 1.2], [0, -1.2], [1.2, 1.2], [-1.2, 1.2], [1.2, -1.2], [-1.2, -1.2]]) if (this.stalkerOpen(at.x + dx, at.y + dy)) { spot = { x: at.x + dx, y: at.y + dy }; break; } }
-    else { // release NNN: it lies in wait ahead of the Wayfarer, on the highest open ground it can find (a tree, a ledge), and springs when they come close.
+    else { // release 691: it lies in wait ahead of the Wayfarer, on the highest open ground it can find (a tree, a ledge), and springs when they come close.
       const b = this._stalkBearing ?? Math.PI / 2, elev = (q) => Number(this.map.tiles[Math.floor(q.y + .72) * width + Math.floor(q.x + .5)]?.elev) || 0;
       const open = ambushSpots(this.save.seed, `${st.seq}:${st.kills}:${Math.floor(now / 500)}`, p, { x: Math.cos(b), y: Math.sin(b) }).filter((q) => this.stalkerOpen(q.x, q.y));
       spot = open.sort((q, r) => elev(r) - elev(q))[0] || null; }
@@ -4487,7 +4487,7 @@ export class Game {
     Object.assign(c, { id: `stalker-${st.seq}-${st.kills}`, kind: "stalker", stalker: true, boss: true, aggro: true, eliteName: "The Stalker", defeatTitle: "THE STALKER FALLS", maxHp: v.hp, hp: Math.min(v.hp, st.active?.hp || v.hp), damage: v.damage, baseDamage: v.damage,
       range: 0, meleePatterns: [], scale: STALKER.size, baseScale: STALKER.size, bodyRadius: .5, threatRing: q.ring, xpMultiplier: q.xpMultiplier * 2, staggerImmune: true,
       affixes: rollAffixes(key, STALKER.affixes[0] + (hashSeed(`${key}:affix-count`) % (STALKER.affixes[1] - STALKER.affixes[0] + 1))), stalkForm: at ? "cat" : hashSeed(`${key}:first`) % 2 ? "ape" : "cat" });
-    if (!at) Object.assign(c, { stalkLurk: { t: 0 }, hidden: true, untargetable: true, stalkHide: 1 }); // release NNN: hidden until it springs
+    if (!at) Object.assign(c, { stalkLurk: { t: 0 }, hidden: true, untargetable: true, stalkHide: 1 }); // release 691: hidden until it springs
     ensureAI(c); this.enemies.push(c); stalkerEngaged(this.save, c.hp);
     if (!fromDoor) this.message = "The air goes very still. Something is watching you.";
     return c;

@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release NNN: the Stalker lies in wait; flurry, tide, mouth, chompers — 2026-11-01
+## Release 691: the Stalker lies in wait; flurry, tide, mouth, chompers — 2026-11-01
 
 Tim (2026-11-01):
 - "when it's perched, it looks like a big fat sack... it should look like it's perched";
