@@ -2694,6 +2694,32 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 686: the Ascension Dais — 2026-11-01
+
+Tim (2026-11-01): "put the viscera altar at the start of the divine challenge too... call it the ascension dais".
+
+**CODE:**
+- `src/skylands.ts`:
+  - `DAIS` (`name` "Ascension Dais", `leave` 3.2 tiles).
+  - The altar's name everywhere is now the Ascension Dais. The object kind stays `visceraAltar`, so a run saved mid-way still
+    opens.
+  - `skylandLabel` labels `begin`.
+- `src/interactions.ts`: a start dais (`o.start`) also offers `begin`.
+- `src/game.ts`:
+  - On climbing into a Divine Challenge holding viscera (the stair, or `climbAnnex` onto annexc), the history gets `skyHold`
+    instead of taking up the pact.
+  - `tickSkyland` holds while `skyHold`. `holdSkyChallenge()` (idempotent; a reload holds again) drops the first round (spawn ids
+    `<run>:w0:`) and raises the start dais by the entry.
+  - Stepping more than `DAIS.leave` from it, or Begin (`interact` → `beginSkyChallenge()`), takes up the pact. That rebuilds
+    `map.skyPlan` and `map.skyPact` and spawns round one scaled by it. The start dais then serves the next challenge.
+
+**BOUNDARY:**
+- Runtime only (`history.skyHold`, like every Skyland run). Without viscera nothing changes.
+- A start from the dais spawns round one inside the Skyland, as every later round is spawned. An ordinary start spawns it while
+  loading from the overworld, which makes round one a little stronger (pre-existing; reported to Tim, unchanged).
+- Tests: `tests/ascension-dais-686.test.ts`. `tests/divine-viscera-682.test.ts` now begins from the dais and compares like with
+  like.
+
 ## Release 685: ruined arcologies — 2026-11-01
 
 Tim (2026-11-01): "large apartment buildings that are kind of like dilapidated or destroyed... formerly cyberpunk utopias...

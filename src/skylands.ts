@@ -124,7 +124,8 @@ export function skylandTiers(save) {
 export function skylandNextTier(save) { const s = ensureSkylands(save), open = skylandTiers(save), next = open.length ? open[open.length - 1] + 1 : 0; return next <= SKYLANDS.maxTier ? next : null; }
 export const skylandActions = (save) => { const open = skylandTiers(save), next = skylandNextTier(save); return [...open, ...(next == null ? [] : [next])].map((t) => `ascend:${t}`); };
 export function skylandLabel(action, save) {
-  if (/^offer:/.test(String(action))) return altarLabel(action, save); // release 682: the Altar of Viscera
+  if (/^offer:/.test(String(action))) return altarLabel(action, save); // release 682: the Ascension Dais
+  if (action === "begin") return "Begin the Divine Challenge"; // release 686: the dais at the start
   const m = /^ascend:(\d+)$/.exec(String(action)); if (!m) return null; const t = Number(m[1]), s = ensureSkylands(save);
   if (!skylandTiers(save).includes(t)) return t > s.best + 1 ? `Ascension ${t} · locked (clear Ascension ${t - 1})` : `Ascension ${t} · locked (${t} sigils; you hold ${s.sigils})`;
   return t === 0 ? "Climb the stair (Ascension 0)" : `Ascension ${t} · ${t} sigil${t > 1 ? "s" : ""} (you hold ${s.sigils})`;
@@ -163,7 +164,7 @@ export const SKY_MODES = {
 // divine challenge more powerful... a pedestal... we'll consume divine viscera to make the fight more or less challenging... add more
 // rounds... increase the strength of the monsters... spend more divine viscera to reroll the monsters in the pool"). Clearing a
 // Divine Challenge (a rush, a gauntlet's, or the annex's last island) gives `earn` Divine Viscera, plus one for every level of might
-// and every added round of the pact it was fought under. An Altar of Viscera stands where a Divine Challenge was cleared and at the
+// and every added round of the pact it was fought under. An Ascension Dais stands where a Divine Challenge was cleared and at the
 // top of the annex's second skyway; there each offering consumes `cost` viscera and shapes the pact for the next Divine Challenge
 // you enter: `might` (its foes `hp`/`damage` stronger per level), `round` (another round of `size` echoes at once), `reroll` (a new
 // draw of which beasts' echoes come), `lighten` (one round fewer, never under one; it earns one viscera less). The pact is taken up
@@ -175,6 +176,11 @@ export const VISCERA = {
 };
 export const VISCERA_OFFERS = Object.keys(VISCERA.offers);
 function normalPact(p) { if (!p || typeof p !== "object") return null; const out = {}; for (const k of VISCERA_OFFERS) { const v = Math.min(VISCERA.offers[k].max, n0(p[k])); if (v) out[k] = v; } return Object.keys(out).length ? out : null; }
+// Release 686 (Tim, 2026-11-01: "put the viscera altar at the start of the divine challenge too... call it the ascension dais"): the
+// altar is now the Ascension Dais. Climb into a Divine Challenge holding viscera and one stands at its start: the first round waits
+// while you offer, and what you offer there shapes this challenge; step off the dais (`DAIS.leave` tiles) or Begin and it comes.
+// The dais where a challenge is cleared still shapes the next one.
+export const DAIS = { name: "Ascension Dais", leave: 3.2 };
 export const visceraOf = (save) => n0(save?.skylands?.viscera);
 export const pactOf = (save) => normalPact(save?.skylands?.pact) || {};
 export const pactWords = (p) => [p.might ? `might ${p.might}` : "", p.round ? `+${p.round} round${p.round > 1 ? "s" : ""}` : "", p.lighten ? "a round fewer" : "", p.reroll ? `echoes redrawn ×${p.reroll}` : ""].filter(Boolean).join(", ") || "as it comes";
