@@ -4,7 +4,7 @@ The shared record of which release numbers are live, in flight or reserved, kept
 **Read this before you start a release. Update it in the same PR that bumps the number, and again when the release
 merges, publishes or is dropped.** Newest first. Each release number is used exactly once.
 
-**From 2026-11-01 (Tim): two Claude sessions pipeline.** The first session (branch `claude/dreamy-rubin-yn6q2p`) takes **odd** numbers; the second takes **even** numbers. Each keeps its own Next free number below. A release number on `main` must only go up: if `main` is already past your number when you merge, renumber to the next free number of your parity above `main`'s and say so in the PR.
+**From 2026-11-01, later (Tim: "you guys are working over each other... coordinate this better"): three Claude sessions share `main`, so the odd/even split is retired.** A release number is taken at **merge time**, not when work starts: N = `main`'s current release + 1. While building, list your work under In flight by branch with no number. To merge, take the **merge baton**: send the other sessions "TAKING N for <branch>" (send_message), bump to N, run the suite, merge, then send "N MERGED, main at N". Only one session holds the baton at a time; if another TAKING arrived first, wait for its MERGED, fetch `main` and take the next number. Only one session publishes at a time, and it tells the others before and after. Areas: the first session (`claude/dreamy-rubin-yn6q2p`) has deep annexes, the Deep, seasons and explorable buildings; the Tremor Worm session (`claude/tremor-worm-rework-dqd8an`) has Skylands, skyways and wonders; the Stalker session has the Stalker.
 
 ## How to claim a number
 
@@ -15,16 +15,17 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-**679** (odd, first session) · **680** (even, second session; 676 reserved below)
+Taken at merge time: `main`'s release + 1 (see above). After 679, the next is **680**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 678 | Claude (second session) | `claude/stalker-overworld-boss-fldd02` | The Stalker: a silver overworld hunter (cat, winged ape, pool) that closes in by ground covered, waits by doors, afterimages, swarm, affixes; returns 30–40 new sections after a kill | Building. First numbered 672; renumbered 678 because main reached 674 and 676 is reserved. |
-| 677 | Claude | `claude/dreamy-rubin-yn6q2p` | The Deep: rare Deep Shafts on new ground; endless floors, each harder (+10% health, +6% damage), more affixes every 5 floors, two on guardians from 20; a Return Ember per cleared floor (the only way up below floor 1); checkpoints every 5; loot +1 level per 5 floors only near your deepest; the record on the Wayfarer page | Building. |
+| 679 | Claude | `claude/dreamy-rubin-yn6q2p` | Seasons in the forest and jungle woods: one season per region, turning after 30–40 sections explored outside it; blossom, lush, red and bare, snow-capped trees; petals, leaves and snow | Building. |
+| 678 | Claude (second session) | `claude/stalker-overworld-boss-fldd02` | The Stalker: a silver overworld hunter (cat, winged ape, pool) that closes in by ground covered, waits by doors, afterimages, swarm, affixes; returns 30–40 new sections after a kill | First numbered 672; renumbered 678 because main reached 674 and 676 is reserved. Merged (PR #324). |
+| 677 | Claude | PR #325 | The Deep: rare Deep Shafts on new ground; endless floors, each harder (+10% health, +6% damage), more affixes every 5 floors, two on guardians from 20; a Return Ember per cleared floor (the only way up below floor 1); checkpoints every 5; loot +1 level per 5 floors only near your deepest; the record on the Wayfarer page | Merged. |
 | 676 | Claude (second session) | reserved | Skylands Deep Annex: a rare, announced Skylands variant whose far gate lands you on the crown of a different, undiscovered great tree (663's treeCrownHop / SKY_TREE). Built on the first session's deep-annex framework (673, `src/deep-annex.ts`) once it merges; it will add a Skylands kind next to the Starfield one, not change the Starfield annex. Note for 673: release 672 raised `CHASM.chance` to .2, so `DEEP_ANNEX.chance` .25 now gives about 5% of new crossings, not 3%. | Reserved; waits for 673. |
-| 675 | Claude | PR #322 | Starfield Deep Annex: a rare named crossing of three floors, each harder, the third another environment, its far door to a random place in the world | Renumbered from 673 (main was at 674). Merged. |
+| 675 | Claude | PR #322 | Starfield Deep Annex: a rare named crossing of three floors, each harder, the third another environment, its far door to a random place in the world | Renumbered from 673 (main was at 674). Merged (`r675-e4dd73387fa9`). |
 | 674 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Atlas pins and travellers' rumours of the nearest unexplored skyway, great tree and Starfield crossing (`src/wonders.ts`) | Merged (PR #323). |
 | 672 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Great trees, skyways and Starfield crossings easier to find on new ground (landscape 14, Sky Stair placement 2, Starfield .2); the findability survey; Crown Rest and coastal-glide fixes. 670 skipped: main was at 671 | Merged (PR #321). |
 | 671 | Claude | PR #320 | Fractured waves: several packs per wave from different sides, elite-led every third, a rest after a wave is cleared, more join one left standing; the cap counts only wave creatures | Merged. |
