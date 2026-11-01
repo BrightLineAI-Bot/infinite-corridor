@@ -1,22 +1,22 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r623-2501e60705f7";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r623-2501e60705f7";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r623-2501e60705f7";
-import { enemyMeleeGeometry } from "./combat.js?v=r623-2501e60705f7";
-import { ruleRows } from "./elders.js?v=r623-2501e60705f7";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r623-2501e60705f7";
-import { BOAT } from "./boats.js?v=r623-2501e60705f7";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r623-2501e60705f7";
-import { isMarineTile } from "./world-beasts.js?v=r623-2501e60705f7";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r623-2501e60705f7"; // 613: Starfield rafts
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r623-2501e60705f7";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r623-2501e60705f7";
-import { liftAt, tileUnder, LIFT_PER_LEVEL } from "./landscape.js?v=r623-2501e60705f7";
-import { SKY_DISCS } from "./skylands.js?v=r623-2501e60705f7"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r623-2501e60705f7";
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r623-2501e60705f7";
-import { drawRelayNode } from "./relay-network.js?v=r623-2501e60705f7";
-import { structureOccupancy } from "./world.js?v=r623-2501e60705f7";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r623-2501e60705f7";
+import { astralBeamAnchors } from "./astral-worm.js?v=r641-1de709e6ab17";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r641-1de709e6ab17";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r641-1de709e6ab17";
+import { enemyMeleeGeometry } from "./combat.js?v=r641-1de709e6ab17";
+import { ruleRows } from "./elders.js?v=r641-1de709e6ab17";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r641-1de709e6ab17";
+import { BOAT } from "./boats.js?v=r641-1de709e6ab17";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r641-1de709e6ab17";
+import { isMarineTile } from "./world-beasts.js?v=r641-1de709e6ab17";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r641-1de709e6ab17"; // 613: Starfield rafts
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r641-1de709e6ab17";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r641-1de709e6ab17";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT } from "./landscape.js?v=r641-1de709e6ab17";
+import { SKY_DISCS } from "./skylands.js?v=r641-1de709e6ab17"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r641-1de709e6ab17";
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r641-1de709e6ab17";
+import { drawRelayNode } from "./relay-network.js?v=r641-1de709e6ab17";
+import { structureOccupancy } from "./world.js?v=r641-1de709e6ab17";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r641-1de709e6ab17";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -933,6 +933,76 @@ export function drawWallGlint(ctx, q, s, now) {
 // Release 225: a patch of disturbed earth (or, once dug, turned earth): a low mound of darker soil ringed by a few stones.
 // Release 431: a cracked bronze bell on a weathered frame; a rung one hangs still with a faint warm glow.
 // Release 595: a torn page lying on the floor, its corner lifting; an unread one gives off a faint light.
+// Release 633: the great tree above its own tiles. The trunk's tiles (a column `top` levels high, drawn in the ground cache with
+// the branches round it, so branches in front cover it and those behind are hidden) end there; from that top the trunk goes on up,
+// `rise` tiles past it (far beyond the top of the screen), boughs and masses of leaf on alternating sides, a crown at the very top.
+// Sorted with the actors at the trunk's top row. A few dozen shapes, only while in view.
+// Release 635: the sky above the great trees (from `from` levels it fades in, solid by `full`) and the leaf glider.
+export const SKY = { from: 9, full: 20, top: "#5fa8e8", bottom: "#cfe8fb", clouds: 7 };
+function drawSkyAbove(ctx, x0, y0, w, h, a, now, s) {
+  ctx.save(); ctx.globalAlpha = a; const g = ctx.createLinearGradient(0, y0, 0, y0 + h); g.addColorStop(0, SKY.top); g.addColorStop(1, SKY.bottom); ctx.fillStyle = g; ctx.fillRect(x0 - 2, y0 - 2, w + 4, h + 4);
+  ctx.fillStyle = "#ffffffd0"; for (let i = 0; i < SKY.clouds; i++) { const cx = x0 + ((i * 173 + now / (60 + i * 9)) % (w + 240)) - 120, cy = y0 + h * ((i * 0.37) % 1), r = s * (1 + (i % 3) * .5);
+    ctx.beginPath(); ctx.ellipse(cx, cy, r * 1.8, r * .6, 0, 0, Math.PI * 2); ctx.ellipse(cx + r, cy - r * .3, r, r * .55, 0, 0, Math.PI * 2); ctx.ellipse(cx - r, cy - r * .2, r * .9, r * .5, 0, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+}
+function drawLeafGlider(ctx, p, s, now) {
+  const cx = (p.x + .5) * s, cy = (p.y - .45) * s, sway = Math.sin(now / 260) * s * .04, span = s * .95;
+  ctx.save(); ctx.strokeStyle = "#5a3d22"; ctx.lineWidth = Math.max(1, s * .03); ctx.beginPath(); ctx.moveTo(cx - s * .12, cy + s * .55); ctx.lineTo(cx - span * .7, cy + sway); ctx.moveTo(cx + s * .12, cy + s * .55); ctx.lineTo(cx + span * .7, cy - sway); ctx.stroke(); // the vine lines
+  ctx.fillStyle = "#3f8a35"; ctx.strokeStyle = "#1f4a1a"; ctx.beginPath(); ctx.moveTo(cx - span, cy + s * .12 + sway); ctx.quadraticCurveTo(cx, cy - s * .42, cx + span, cy + s * .12 - sway); ctx.quadraticCurveTo(cx, cy - s * .12, cx - span, cy + s * .12 + sway); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = "#6fb85a"; ctx.beginPath(); for (let k = -3; k <= 3; k++) { ctx.moveTo(cx, cy - s * .2); ctx.lineTo(cx + k * span * .3, cy + s * .02); } ctx.stroke();
+  ctx.restore();
+}
+export const CANOPY_LOOK = { leaf: ["#2c6326", "#3f8a35", "#1f4a1a", "#4f9a3f"], bark: ["#6b4a2c", "#3e2916"], rise: 30, boughEvery: 3.2, vines: 5 };
+function drawCanopyDressing(ctx, c, s, now) {
+  const C = CANOPY_LOOK, x0 = c.x0 * s, w = c.size * s, cx = x0 + w / 2, topY = c.y0 * s - discLift(c.top) * CANOPY_LIFT * s, sway = Math.sin(now / 1700) * s * .05, end = topY - C.rise * s;
+  ctx.save();
+  const g = ctx.createLinearGradient(x0, 0, x0 + w, 0); g.addColorStop(0, C.bark[0]); g.addColorStop(.6, C.bark[1]); g.addColorStop(1, "#1d1209"); ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(x0, topY + s * .5); ctx.lineTo(x0 + w * .12, end); ctx.lineTo(x0 + w * .88, end); ctx.lineTo(x0 + w, topY + s * .5); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#00000033"; ctx.lineWidth = Math.max(1, s * .05); for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x0 + w * k / 4, topY + s * .5); ctx.lineTo(x0 + w * (.12 + .76 * k / 4), end); ctx.stroke(); }
+  for (let y = topY - s * 1.2, i = 0; y > end; y -= C.boughEvery * s, i++) { // boughs and leaf masses on alternating sides
+    const side = i % 2 ? 1 : -1, bx = side > 0 ? x0 + w * .9 : x0 + w * .1, reach = s * (2.4 + (i * 37 % 10) / 6), ey = y - s * .9;
+    ctx.strokeStyle = C.bark[1]; ctx.lineWidth = Math.max(3, s * .28); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(bx, y); ctx.quadraticCurveTo(bx + side * reach * .5, y - s * .2, bx + side * reach + sway, ey); ctx.stroke();
+    for (let k = 0; k < 4; k++) { ctx.fillStyle = C.leaf[(i + k) % C.leaf.length]; ctx.beginPath(); ctx.arc(bx + side * reach + sway + (k - 1.5) * s * .55, ey - s * (.2 + (k % 2) * .4), s * (.75 - k * .08), 0, Math.PI * 2); ctx.fill(); }
+  }
+  for (let k = 0; k < 7; k++) { ctx.fillStyle = C.leaf[k % C.leaf.length]; ctx.beginPath(); ctx.arc(cx + (k - 3) * s * .9 + sway, end + s * (k % 2 ? .3 : -.4), s * 1.5, 0, Math.PI * 2); ctx.fill(); } // the crown, far above
+  ctx.strokeStyle = "#3f8a35"; ctx.lineWidth = Math.max(1, s * .05); // vines down the trunk to the landing
+  for (let i = 0; i < C.vines; i++) { const vx = x0 + (i + .5) / C.vines * w, len = s * (2 + (i * 29 % 10) / 3); ctx.beginPath(); ctx.moveTo(vx, topY); ctx.quadraticCurveTo(vx + sway * 4, topY + len * .5, vx + sway, topY + len); ctx.stroke(); }
+  ctx.restore();
+}
+// Release 631: the door in the giant tree's crown: an arch of woven branches and vine, filled with stars (to a Starfield
+// crossing) or with drifting cloud (to a cloud hold).
+export function drawCanopyGate(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, base = (o.y + .9) * s, w = s * .42, hgt = s * 1.15, stars = o.dest === "starfield";
+  ctx.save();
+  ctx.beginPath(); ctx.moveTo(cx - w, base); ctx.lineTo(cx - w, base - hgt * .6); ctx.quadraticCurveTo(cx, base - hgt * 1.15, cx + w, base - hgt * .6); ctx.lineTo(cx + w, base); ctx.closePath();
+  if (stars) { ctx.fillStyle = "#0b0e11"; ctx.fill(); ctx.save(); ctx.clip(); for (let i = 0; i < 9; i++) { const a = (i * 2.399 + now / 4000) % 6.283, rr = (i % 4 + 1) * s * .08; ctx.fillStyle = i % 3 ? "#ffffffaa" : "#fff0c4"; ctx.fillRect(cx + Math.cos(a) * rr, base - hgt * .45 + Math.sin(a) * rr, Math.max(1, s * .03), Math.max(1, s * .03)); } ctx.restore(); }
+  else { const g = ctx.createLinearGradient(0, base - hgt, 0, base); g.addColorStop(0, "#f4f8ff"); g.addColorStop(1, "#b9d4ef"); ctx.fillStyle = g; ctx.fill(); ctx.save(); ctx.clip(); ctx.fillStyle = "#ffffffcc"; for (let i = 0; i < 3; i++) { const x = cx - w + ((now / 1800 + i * .4) % 1.2) * w * 2; ctx.beginPath(); ctx.ellipse(x, base - hgt * (.25 + i * .18), s * .2, s * .07, 0, 0, Math.PI * 2); ctx.fill(); } ctx.restore(); }
+  ctx.strokeStyle = "#5a3d22"; ctx.lineWidth = Math.max(2, s * .1); ctx.lineJoin = "round"; ctx.stroke();
+  ctx.strokeStyle = "#3f8a35"; ctx.lineWidth = Math.max(1, s * .04); ctx.beginPath(); for (let k = 0; k <= 12; k++) { const t = k / 12, x = cx - w + t * 2 * w, y = base - hgt * (.6 + .5 * Math.sin(t * Math.PI)) + Math.sin(k * 1.7) * s * .04; if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.stroke();
+  ctx.restore();
+}
+// Release 627: a thread's piece (threads.ts): a small object in the thread's colour, by its `relic` shape, glowing until read.
+export function drawThreadRelic(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .62) * s, read = o.state === "read", c = o.colour || "#e8dcc0", bob = read ? 0 : Math.sin(now / 650 + o.x) * s * .03;
+  ctx.save();
+  if (!read) { const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * .7); g.addColorStop(0, c + "55"); g.addColorStop(1, c + "00"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, s * .7, 0, 7); ctx.fill(); }
+  ctx.fillStyle = "#00000040"; ctx.beginPath(); ctx.ellipse(cx, cy + s * .28, s * .22, s * .06, 0, 0, 7); ctx.fill();
+  ctx.translate(cx, cy + bob); ctx.globalAlpha = read ? .6 : 1; ctx.fillStyle = c; ctx.strokeStyle = "#2a241c"; ctx.lineWidth = Math.max(1, s * .03);
+  const R = (x, y, w, h) => { ctx.fillRect(x * s, y * s, w * s, h * s); ctx.strokeRect(x * s, y * s, w * s, h * s); };
+  switch (o.relic) {
+    case "lamp": ctx.beginPath(); ctx.moveTo(-s * .12, -s * .1); ctx.lineTo(s * .12, -s * .1); ctx.lineTo(s * .09, s * .2); ctx.lineTo(-s * .09, s * .2); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = read ? "#fff2c0" : "#ffb347"; ctx.beginPath(); ctx.arc(0, s * .05, s * .05, 0, 7); ctx.fill(); ctx.strokeStyle = "#2a241c"; ctx.beginPath(); ctx.arc(0, -s * .16, s * .06, Math.PI, 0); ctx.stroke(); break;
+    case "letter": ctx.rotate(-.15); R(-.2, -.13, .4, .26); ctx.beginPath(); ctx.moveTo(-s * .2, -s * .13); ctx.lineTo(0, s * .02); ctx.lineTo(s * .2, -s * .13); ctx.stroke(); break;
+    case "stone": ctx.beginPath(); ctx.ellipse(0, 0, s * .17, s * .25, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#1b1a20"; ctx.beginPath(); ctx.arc(0, -s * .06, s * .045, 0, 7); ctx.fill(); break;
+    case "clock": ctx.beginPath(); ctx.arc(0, 0, s * .17, 0, 7); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -s * .11); ctx.moveTo(0, 0); ctx.lineTo(s * .07, s * .03); ctx.stroke(); ctx.beginPath(); ctx.arc(0, -s * .2, s * .04, 0, 7); ctx.stroke(); break;
+    case "coin": ctx.beginPath(); ctx.ellipse(0, s * .08, s * .16, s * .08, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.ellipse(0, s * .02, s * .16, s * .08, 0, 0, 7); ctx.fill(); ctx.stroke(); break;
+    case "moth": for (const k of [-1, 1]) { ctx.beginPath(); ctx.ellipse(k * s * .11, 0, s * .12, s * .16, k * .5, 0, 7); ctx.fill(); ctx.stroke(); } ctx.fillStyle = "#3a3040"; ctx.fillRect(-s * .025, -s * .14, s * .05, s * .28); break;
+    case "book": R(-.18, -.14, .36, .28); ctx.fillStyle = "#2a241c55"; ctx.fillRect(-s * .02, -s * .14, s * .04, s * .28); break;
+    case "seed": ctx.rotate(.2); ctx.beginPath(); ctx.moveTo(0, -s * .2); ctx.quadraticCurveTo(s * .16, 0, 0, s * .16); ctx.quadraticCurveTo(-s * .16, 0, 0, -s * .2); ctx.fill(); ctx.stroke(); break;
+    case "compass": ctx.beginPath(); ctx.arc(0, 0, s * .16, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#b03a2e"; ctx.beginPath(); ctx.moveTo(0, -s * .12); ctx.lineTo(s * .04, 0); ctx.lineTo(-s * .04, 0); ctx.fill(); break;
+    default: ctx.beginPath(); ctx.moveTo(-s * .18, s * .14); ctx.quadraticCurveTo(-s * .2, -s * .16, s * .02, -s * .18); ctx.quadraticCurveTo(s * .22, -s * .1, s * .12, s * .1); ctx.quadraticCurveTo(0, s * .2, -s * .18, s * .14); ctx.fill(); ctx.stroke(); // a shell
+  }
+  ctx.restore();
+}
 export function drawTornPage(ctx, o, s, now) {
   const cx = (o.x + .5) * s, cy = (o.y + .6) * s, read = o.state === "read", lift = read ? 0 : Math.sin(now / 700 + o.x) * .06;
   ctx.save();
@@ -1536,9 +1606,10 @@ export function render(ctx, g, w, h, now) {
     mw = Math.max(1,Number(g.map?.width)||(g.area === "dungeon" ? 24 : 32)),
     mh = Math.max(1,Number(g.map?.height)||Math.floor(g.map.tiles.length/mw)),
     l = Math.max(0, Math.floor(p.x - w / s / 2) - 2),
-    t = Math.max(0, Math.floor(p.y - h / s / 2) - 2),
+    up = g.glide && g.area === "overworld" ? Math.ceil(discLift(g.glide.z) * CANOPY_LIFT) : g.map?.canopy?.top ? Math.ceil(liftAt(g.map, mw, p.x, p.y)) : 0, // 635: or gliding // release 633: high in a great tree the view looks down on rows far to the south
+    t = Math.max(0, Math.floor(p.y - up - h / s / 2) - 2),
     r = Math.min(mw, l + Math.ceil(w / s) + 5),
-    b = Math.min(mh, t + Math.ceil(h / s) + 5),
+    b = Math.min(mh, t + Math.ceil(h / s) + 5 + (g.map?.canopy?.top ? Math.ceil(g.map.canopy.top * LIFT_PER_LEVEL * CANOPY_LIFT) : 0) + up),
     jumping = now < (g.jumpUntil || 0),
     lift = jumpLift(g, now) * s,
     dodging = now < (p.dodgeUntil || 0);
@@ -1551,7 +1622,8 @@ export function render(ctx, g, w, h, now) {
   const crystalLift = e => crystalFlightLift(g.map, mw, e.x, e.y);
   const marineAt = e => g.area === "overworld" && isMarineTile(tileUnder(g.map, mw, e.x, e.y));
   ctx.save();
-  ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - groundLift(p.x, p.y)) * s));
+  const viewLift = g.glide && g.area === "overworld" ? discLift(g.glide.z) * CANOPY_LIFT : groundLift(p.x, p.y); // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
+  ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - viewLift) * s));
   cloudSky = !!g.map?.skyCloud; // release 589
   const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
   if (groundCached) {
@@ -1573,6 +1645,11 @@ export function render(ctx, g, w, h, now) {
       tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId, scarSurface);
     }
   drawVoidScarOverlay(ctx,g,s,mw,mh,{l,t,r,b},scarSurface);
+  // Release 635: high up, the ground gives way to sky: blue fading in with height, drifting cloud, the great tree drawn again
+  // over it so its branches stay in sight. Height in levels: a glide's, or the tile underfoot's on a great tree's section.
+  let skyA = 0;
+  if (g.area === "overworld") { const H = g.glide ? g.glide.z : g.map?.canopy?.top ? (tileUnder(g.map, mw, p.x, p.y)?.elev || 0) : 0, a = Math.max(0, Math.min(1, (H - SKY.from) / (SKY.full - SKY.from))); skyA = a;
+    if (a > 0) { drawSkyAbove(ctx, p.x * s - w / 2, (p.y - viewLift) * s - h / 2, w, h, a, now, s); const c = g.map?.canopy?.box; if (c) for (let y = Math.max(0, c.y); y < Math.min(mh, c.y + c.n); y++) for (let x = Math.max(0, c.x); x < Math.min(mw, c.x + c.n); x++) { const q = g.map.tiles[y * mw + x]; if (q?.canopy) tile(ctx, q, x, y, s, g.map.tiles, mw); } } }
   const t1 = timed ? performance.now() : 0;
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
   if(g.area==="overworld"&&g.seaHazards)drawSeaHazards(ctx,g.seaHazards,s,now,l,t,r,b,g.map);
@@ -1718,6 +1795,8 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "digSpot") { drawDigSpot(ctx, o, s, now);
           } else if (o.kind === "ilse") { drawIlse(ctx, o, s, now);
           } else if (o.kind === "crackedBell") { drawCrackedBell(ctx, o, s, now);
+          } else if (o.kind === "canopyGate") { drawCanopyGate(ctx, o, s, now); // release 631
+          } else if (o.kind === "threadRelic") { drawThreadRelic(ctx, o, s, now); // release 627
           } else if (o.kind === "tornPage") { drawTornPage(ctx, o, s, now); // release 595
           } else if (o.kind === "surveyorLink") { drawSurveyorLink(ctx, o, s, now); // release 505
           } else if (o.kind === "surveyorStatue") { drawSurveyorStatue(ctx, o, s, now); // release 551
@@ -1795,8 +1874,9 @@ export function render(ctx, g, w, h, now) {
   const onDisc = g.skyLevel > 0 && g.map?.skyDiscs ? g.map.skyDiscs.find((d) => d.level === g.skyLevel && Math.hypot(p.x + .5 - d.x, p.y + .75 - d.y) <= d.r + .05) : null;
   for (const d of g.map?.skyDiscs || []) if (visibleInCamera({ x: d.x, y: d.y }, l, t, r, b, 3)) draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
   const playerDraw = {
-    y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.skyLevel > 0 ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
+    y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.glide && g.area === "overworld" ? Math.max(0, discLift(g.glide.z) * CANOPY_LIFT - groundLift(p.x, p.y)) : g.skyLevel > 0 ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, // 635: a glide's height alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
     fn: () => {
+      if (g.glide && g.area === "overworld" && g.glide.open !== false) drawLeafGlider(ctx, p, s, now); // release 635; 641: only while open
       if (jumping) {
         ctx.fillStyle = "#05050477";
         ctx.beginPath();
@@ -1894,14 +1974,22 @@ export function render(ctx, g, w, h, now) {
       }
     },
   };
+  // Release 631: the giant tree's dressing, sorted with the actors at the crown's foot: a broad trunk under the crown, vines
+  // hanging from its rim, and a fringe of leaves overhanging the crown's edges (never over the crown itself, so whoever stands
+  // there stays in view). A few dozen shapes, only while the tree is in view.
+  const cn = g.area === "overworld" && g.map?.canopy?.top ? g.map.canopy : null; // release 633: only trees built tall
+  if (cn && Math.abs(cn.x0 + 1.5 - p.x) < w / s + 4) draws.push({ y: cn.y0 - .5, inSky: true, fn: () => drawCanopyDressing(ctx, cn, s, now) });
+  if (g.glide && g.area === "overworld") { const gl = groundLift(p.x, p.y) * s, sz = Math.max(.25, 1 - g.glide.z / 40); ctx.fillStyle = "#00000040"; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y + .82) * s - gl, s * .45 * sz, s * .14 * sz, 0, 0, Math.PI * 2); ctx.fill(); } // release 635: the glide's shadow far below
   draws.push(playerDraw);
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) {
     const raise = (Number.isFinite(d.x) ? groundLift(d.x, d === playerDraw ? p.y : d.y) : 0) + (d.lift || 0);
+    // Release 635: high above, what stands on the ground fades with it into the sky; the Wayfarer, the great tree and what is on it stay.
+    if (skyA > 0 && d !== playerDraw && !d.inSky && !(Number.isFinite(d.x) && tileUnder(g.map, mw, d.x, d.y)?.canopy)) { if (skyA >= .98) continue; ctx.save(); if (raise) ctx.translate(0, -raise * s); ctx.globalAlpha = (d.alpha ?? 1) * (1 - skyA); d.fn(); ctx.restore(); continue; }
     if (raise || (d.alpha ?? 1) < 1) { ctx.save(); if (raise) ctx.translate(0, -raise * s); if ((d.alpha ?? 1) < 1) ctx.globalAlpha = d.alpha; d.fn(); ctx.restore(); } else d.fn(); // release 615: a beneath-the-level rider is a dim shape
   }
   // Release 573: behind a giant tree the Wayfarer shows through, faint.
-  if (g.area === "overworld" && g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p))) {
+  if (g.area === "overworld" && (g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p)) || (cn && p.y < cn.y0 && Math.abs(p.x + .5 - (cn.x0 + cn.size / 2)) < cn.size / 2 + 1.2))) { // 633: or behind the great tree's trunk
     const raise = groundLift(p.x, p.y) + (playerDraw.lift || 0); ctx.save(); ctx.globalAlpha = GIANT_TREE.ghost; if (raise) ctx.translate(0, -raise * s); playerDraw.fn(); ctx.restore();
   }
   // Under water (W5): a blue-green wash with slow light shafts.
@@ -1956,6 +2044,7 @@ export function render(ctx, g, w, h, now) {
   drawGlyphStatus(ctx,g,s,now,(e)=>discoveredInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2));
   if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
   { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
+  if(skyA<.98){if(skyA>0){ctx.save();ctx.globalAlpha=1-skyA} // release 635: roofs far below fade into the sky
   for(const o of objectLists.structures)if(renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)){const drawStructure=o.kind==="shack"?shack:architecturalBuilding;
     // Object records outlive consumed building tiles. Clip roofs/facades to their surviving footprint
     // so they cannot visually restore destroyed walls or expose unexplored building geometry.
@@ -1973,6 +2062,7 @@ export function render(ctx, g, w, h, now) {
     drawStructure(ctx,o,s,p,g.map.tiles);
     ctx.restore();
   }
+  if(skyA>0)ctx.restore()}
   const frontShelter=objectLists.shelters.find(o=>renderableObject(g,o)&&discoveredInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
   if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1);
   const motion = now / 1000;

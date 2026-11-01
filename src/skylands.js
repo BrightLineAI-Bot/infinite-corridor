@@ -21,7 +21,7 @@
 // the section. The first stands one level up, so a jump reaches it; from a platform a jump keeps its height over the gap
 // (game.ts, skyAir) and lands on the next. Creatures walk the ground beneath and cannot climb. A jump that ends over a gap
 // falls (from four levels, fatally). The skyway door stands on the top platform and opens only from there.
-import { hashSeed } from "./random.js?v=r623-2501e60705f7";
+import { hashSeed } from "./random.js?v=r641-1de709e6ab17";
 
 export const SKYLANDS = {
   version: 3, /* release 585: 2 = the stone skyway ascent; 587: 3 = floating discs */ macro: 8, chance: .65, minDepth: 14, maxTier: 20, hpPerTier: .6, damagePerTier: .25,
@@ -167,10 +167,10 @@ export function skylandHop(id, rx, ry) {
 export const isSkyland = (id) => String(id || "").startsWith("skyland:");
 export const skylandTierOf = (id) => { const m = /:t(\d+):r\d+$/.exec(String(id)); return m ? Number(m[1]) : 0; };
 // Spend the sigils and name the run. Returns { ok, id, tier, message }.
-export function beginSkyland(save, at, tier) {
+export function beginSkyland(save, at, tier, forceMode = null) { // release 631: `forceMode` (the canopy's cloud hold)
   const s = ensureSkylands(save), t = n0(tier);
   if (!skylandTiers(save).includes(t)) return { ok: false, message: t > s.best + 1 ? `Ascension ${t} opens once Ascension ${t - 1} is cleared.` : `Ascension ${t} needs ${t} Ascension Sigils; you hold ${s.sigils}.` };
-  s.runs++; const mode = rollSkylandMode(save.seed, at, s.runs), id = `skyland:${save.seed}:${at.rx},${at.ry}:m${mode}:t${t}:r${s.runs}`; // release 589: a mode of its own
+  s.runs++; const mode = SKY_MODES.names[forceMode] ? forceMode : rollSkylandMode(save.seed, at, s.runs), id = `skyland:${save.seed}:${at.rx},${at.ry}:m${mode}:t${t}:r${s.runs}`; // release 589: a mode of its own
   if (mode === "gate") return { ok: true, id, tier: t, mode, gate: true, message: "The door opens on nothing but sky, and the sky takes you. You fall a long way, and land far off." };
   s.sigils -= t; const echoes = slainBeasts(save), name = SKY_MODES.names[mode];
   const what = mode === "cloud" ? "Wings stir in the clouds." : echoes.length ? "Echoes of the beasts you have felled wait above." : "No beast you have felled answers yet; the keepers of the islands stand in for them.";

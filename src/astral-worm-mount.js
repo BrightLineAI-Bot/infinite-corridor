@@ -1,4 +1,4 @@
-import { astralActorScale } from "./astral-worm.js?v=r623-2501e60705f7";
+import { astralActorScale } from "./astral-worm.js?v=r641-1de709e6ab17";
 // Isolated Astral Worm riding adapter. Numbers are provisional, not owner-specified balance.
 // No merged HP, damage interception, immunity, reward writes, timers or terrain assumptions.
 export const ASTRAL_MOUNT = Object.freeze({ version: 1, mountReach: 2.25, knockoffHpShare: .2, renderLift: .3, griffinLift: .45, poolLift: .18, flightLift: .8 });

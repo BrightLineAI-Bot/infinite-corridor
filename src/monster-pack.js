@@ -7,9 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r623-2501e60705f7";
-import { hashSeed } from "./random.js?v=r623-2501e60705f7";
-import { updateAstralActor } from "./astral-worm.js?v=r623-2501e60705f7";
+import { stageOneBeastReference } from "./stages.js?v=r641-1de709e6ab17";
+import { hashSeed } from "./random.js?v=r641-1de709e6ab17";
+import { updateAstralActor } from "./astral-worm.js?v=r641-1de709e6ab17";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -624,7 +624,7 @@ export const GIANT = {
   dashRange: 4.5, dashSpeed: 11, dashTime: .3, dashGap: .18, dashMax: 2, dashCooldown: 2.4, hopChance: .3, hopHeight: .9,
   // Charge plans: how a charge attack strings its dashes and upswings together.
   chargePlans: [["dash", "swing"], ["dash", "dash"], ["dash", "swing", "dash", "swing"], ["dash", "dash", "swing"]],
-  chargeRun: 6.5, chargeTime: .9, upswingReach: 1.8, upswingArc: 130, upswingTime: .3, jumpChance: .55, jumpHeight: 2, jumpRise: .35,
+  chargeRun: 6.5, upswingCharge: .9 /* release 641: was a second chargeTime that overrode the 8 s electrified spell above */, upswingReach: 1.8, upswingArc: 130, upswingTime: .3, jumpChance: .55, jumpHeight: 2, jumpRise: .35,
   barrageBolts: 5, barrageEvery: .1, barrageSpread: 40, airDashSpeed: 9, airDashTime: .35, airArcReach: 2.6, slamLandChance: .5, landWarn: .45, landRadius: 1.6, landFall: .25,
 };
 export const KNIGHT = {
