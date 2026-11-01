@@ -2719,7 +2719,9 @@ not bring it closer (Tim: leave the hunt as it is and see how quickly it catches
   never into a building, shelter or town) and lands on open ground. A pounce blocked by a ledge becomes a hop.
 - `src/game.ts` `stalkerWorld` adds `free` and `shotBlocked`. `src/stalker-render.ts` draws the turret rising and aiming, the
   cone's mark and flash, the shots (orbs, the spinning X, the sphere), the energy sphere, the shield arc, the cat upright and
-  scrabbling as it climbs, and the hop's landing mark.
+  scrabbling as it climbs, and the hop's landing mark. `drawCat` is redrawn as a snow leopard (Tim: "less like a house cat... more
+  like a snow leopard"): long low body, deep chest, thick legs on big paws, open rosettes, a broad head with small rounded ears, the
+  long thick dark-tipped tail.
 
 **BOUNDARY:** Runtime only: no save field, no generator change. Bounded: at most 12 shots per Stalker, one turret move at a time,
 no pathfinding (the climb is a straight line). Tests: `tests/stalker-arsenal.test.ts`.
