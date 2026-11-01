@@ -15,14 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-**679** (odd, first session) · **680** (even, second session)
+**679** (odd, first session) · **682** (even; 678 went to the Stalker session, so the Skylands Deep Annex is 680)
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 680 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Skylands Deep Annex (reserved as 676; renumbered past 677, then past the Stalker's 678): rare named annex stairs on new ground; three skyways up (two cloud holds, then the Divine Challenge), each harder, the reward at the top; its last gate lands you on an unseen great tree's crown. Sky gates read version 14 trees. Tim, 2026-11-01, on Starfield: ordinary Starfield crossings stay one level (some several) and let you out where you came in; only the Deep Annex (675) chains floors to another type and lets you out elsewhere, as built. | Building. |
+| 678 | Claude (second session) | `claude/stalker-overworld-boss-fldd02` | The Stalker: a silver overworld hunter (cat, winged ape, pool) that closes in by ground covered, waits by doors, afterimages, swarm, affixes; returns 30–40 new sections after a kill | Building. First numbered 672; renumbered 678 because main reached 674 and 676 is reserved. |
 | 677 | Claude | `claude/dreamy-rubin-yn6q2p` | The Deep: rare Deep Shafts on new ground; endless floors, each harder (+10% health, +6% damage), more affixes every 5 floors, two on guardians from 20; a Return Ember per cleared floor (the only way up below floor 1); checkpoints every 5; loot +1 level per 5 floors only near your deepest; the record on the Wayfarer page | Building. |
-| 678 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Skylands Deep Annex (was reserved as 676; main was at 677): rare named annex stairs on new ground; three skyways up (two cloud holds, then the Divine Challenge), each harder, the reward at the top; its last gate lands you on an unseen great tree's crown. Sky gates read version 14 trees. Tim, 2026-11-01, on Starfield: ordinary Starfield crossings stay one level (some several) and let you out where you came in; only the Deep Annex (675) chains floors to another type and lets you out elsewhere, as built. | Building. |
 | 675 | Claude | PR #322 | Starfield Deep Annex: a rare named crossing of three floors, each harder, the third another environment, its far door to a random place in the world | Renumbered from 673 (main was at 674). Merged. |
 | 674 | Claude (second session) | PR #323 | The Atlas pins and travellers' rumours of the nearest unexplored skyway, great tree and Starfield crossing (`src/wonders.ts`) | Merged (`r674-bd46fb57220e`). |
 | 672 | Claude (second session) | PR #321 | Great trees, skyways and Starfield crossings easier to find on new ground (landscape 14, Sky Stair placement 2, Starfield .2); the findability survey; Crown Rest and coastal-glide fixes. 670 skipped: main was at 671 | Merged (`r672-2e666a91bc19`). |
