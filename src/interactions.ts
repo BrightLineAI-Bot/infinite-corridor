@@ -1,5 +1,5 @@
 import{followHuntTrace}from'./foundry.ts';import{APERTURE_BANDS}from'./items.ts';import{reciterTalk,travelerTalk,wandererTalk,collectWandererCache}from'./travelers.ts';import{hearElder}from'./elders.ts';import{REFUGE_NPCS,ensurePerception}from'./types.ts';import{dungeonId,apertureTier,perceived}from'./world.ts';
-import { skylandActions } from './skylands.ts';
+import { skylandActions, altarActions, offerViscera } from './skylands.ts';
 import{DIG,addStone}from'./digging.ts';import{shipwrightActions,ensureBoatState,addWood}from'./boats.ts';import{diveSiteActions}from'./diving.ts';import{diveGate,underwaterGate}from'./vehicle-gates.ts';
 import{hashSeed}from'./random.ts';import{cappedAperture}from'./stages.ts';import{relayNodeActions,inspectRelayNode,commitRelayNode,relayObjectiveSuffix}from'./relay-network.ts';import{ensureEliteState,acceptContract}from'./elites.ts';// Release 277: adds { stone, wood, restorativeDraught } to the pack and returns " +1 stone, +1 wood..." (empty when nothing).
 function grantSpoils(s,g){const out=[];if(g.stone>0){addStone(s,g.stone);out.push(`+${g.stone} stone`)}if(g.wood>0){addWood(s,g.wood);out.push(`+${g.wood} wood`)}if(g.restorativeDraught>0){s.consumables.restorativeDraught=(Number(s.consumables.restorativeDraught)||0)+g.restorativeDraught;out.push(`+${g.restorativeDraught} restorative draught${g.restorativeDraught>1?'s':''}`)}return out.length?' '+out.join(', ')+'.':''}
@@ -50,7 +50,7 @@ export function validActions(o,s){
  if(o.kind==='relayTerminal')return s.consequences.choices.relay?[]:s.narrative.facts['crossing.marshal']?['restore','sever']:['inspect'];
  if(o.kind==='apertureRitual')return apertureRitualState(s).ready?['perform','inspect']:['inspect'];
  if(o.kind==='arenaEntrance')return['enter'];
- if(o.kind==='skyStair')return skylandActions(s);/* release 571 */
+ if(o.kind==='skyStair')return skylandActions(s);/* release 571 */if(o.kind==='visceraAltar')return altarActions();/* release 682 */
  if(o.kind==='shipwright')return shipwrightActions(s).filter(a=>a!=='buyRig'||diveGate(s).ok);/* release 315: the rig from Infinite II */
  if(o.kind==='diveSite')return diveGate(s).ok||underwaterGate(s).ok?diveSiteActions(s).concat((s.boat?.sub||s.boat?.mechSub)&&s.boat?.aboard&&!diveSiteActions(s).includes('dive')?['dive']:[]):['inspect'];/* release 315 */
  if(o.kind==='diveExit')return['surface'];if(o.kind==='diveOnward')return['follow'];
@@ -71,7 +71,7 @@ export function dungeonCacheMaterials(s,context,o,depth){const C=DIG.dungeonCach
 export function applyInteraction(o,a,s,context='global',place={}){
  if(o.kind==='apertureRitual'){if(a==='perform')return{...requestApertureRitual(s),transition:'scene'};const state=apertureRitualState(s);return{ok:true,message:state.completed?'The completed rite persists as a faint double shadow around the plinth.':state.ready?'The plinth is ready. Perform the rite when you are prepared.':requestApertureRitual(s).message,transition:'ritual'};}
  if(o.kind==='shrine'&&a==='attune')return{ok:true,message:'The shrine hums with your constellation. Here it can be rewritten.',transition:'skills',shrine:true};
- if(o.kind==='skyStair'&&/^ascend:\d+$/.test(String(a)))return{ok:true,message:'',transition:'skyland',tier:Number(String(a).slice(7)),...(o.skyAnnex?{mode:'annexa'}:{})};/* release 571; 678: an annex stair starts the annex */
+ if(o.kind==='visceraAltar'&&/^offer:[a-z]+$/.test(String(a))){const r=offerViscera(s,String(a).slice(6));return{ok:r.ok,message:r.message}}/* release 682 */if(o.kind==='skyStair'&&/^ascend:\d+$/.test(String(a)))return{ok:true,message:'',transition:'skyland',tier:Number(String(a).slice(7)),...(o.skyAnnex?{mode:'annexa'}:{})};/* release 571; 678: an annex stair starts the annex */
  if(o.kind==='canopyGate'&&a==='enter')return o.dest==='cloud'?{ok:true,message:'',transition:'skyland',tier:0,mode:'cloud',canopy:true}:{ok:true,message:'The door in the canopy opens on a dark full of stars.',transition:'dungeon'};/* release 631 */
  if(o.kind==='arenaEntrance'&&a==='enter')return{ok:true,message:'The sparse threshold opens onto a world-threat arena.',transition:'dungeon'};
  if(o.kind==='storyEcho'&&a==='inspect')return completeRevelationArc(s);
