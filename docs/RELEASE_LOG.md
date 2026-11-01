@@ -4,7 +4,7 @@ The shared record of which release numbers are live, in flight or reserved, kept
 **Read this before you start a release. Update it in the same PR that bumps the number, and again when the release
 merges, publishes or is dropped.** Newest first. Each release number is used exactly once.
 
-**From 2026-11-01 (Tim): two Claude sessions pipeline.** The first session (branch `claude/dreamy-rubin-yn6q2p`) takes **odd** numbers; the second takes **even** numbers. Each keeps its own Next free number below. A release number on `main` must only go up: if `main` is already past your number when you merge, renumber to the next free number of your parity above `main`'s and say so in the PR.
+**From 2026-11-01, later (Tim: "you guys are working over each other... coordinate this better"): three Claude sessions share `main`, so the odd/even split is retired.** A release number is taken at **merge time**, not when work starts: N = `main`'s current release + 1. While building, list your work under In flight by branch with no number. To merge, take the **merge baton**: send the other sessions "TAKING N for <branch>" (send_message), bump to N, run the suite, merge, then send "N MERGED, main at N". Only one session holds the baton at a time; if another TAKING arrived first, wait for its MERGED, fetch `main` and take the next number. Only one session publishes at a time, and it tells the others before and after. Areas: the first session (`claude/dreamy-rubin-yn6q2p`) has deep annexes, the Deep, seasons and explorable buildings; the Tremor Worm session (`claude/tremor-worm-rework-dqd8an`) has Skylands, skyways and wonders; the Stalker session has the Stalker.
 
 ## How to claim a number
 
@@ -15,7 +15,7 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-**681** (odd, first session) · **680** (even, second session; 676 reserved below)
+Taken at merge time: `main`'s release + 1 (see above). After 679, the next is **680**.
 
 ## In flight
 
