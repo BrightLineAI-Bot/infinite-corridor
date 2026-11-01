@@ -18,8 +18,8 @@
 // - Loot: reinforcements drop an item only `trashDrop` of the time (auto-picked up and salvaged as always); champions and
 //   rares drop more and give more experience.
 // Bounded: one reinforcement roll a frame at most, a fixed number of tile checks per spawn, the live cap.
-import { hashSeed } from "./random.js?v=r679-4d93bc15f0b3";
-import { rollAffixes, SHAMAN } from "./affixes.js?v=r679-4d93bc15f0b3";
+import { hashSeed } from "./random.js?v=r684-436ff24739ec";
+import { rollAffixes, SHAMAN } from "./affixes.js?v=r684-436ff24739ec";
 
 export const FRACTURED = {
   modes: {

@@ -1,9 +1,9 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { SEASONS } from "./seasons.js?v=r679-4d93bc15f0b3";
-import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r679-4d93bc15f0b3";
-import { TREES } from "./trees.js?v=r679-4d93bc15f0b3";
+import { SEASONS } from "./seasons.js?v=r684-436ff24739ec";
+import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r684-436ff24739ec";
+import { TREES } from "./trees.js?v=r684-436ff24739ec";
 
 const TAU = Math.PI * 2;
 const cache = new Map();
@@ -352,7 +352,7 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
 
 // Release 645: each great tree's own look over its tiles (a tint), and leaves on its branches: tufts along a leafy branch,
 // a full spray at a tip, hanging below the wood. A handful of ellipses per tile, no state.
-// Release r679-4d93bc15f0b3 (seasons.ts): the season of the woods the section belongs to (renderer.ts sets it each frame).
+// Release 679 (seasons.ts): the season of the woods the section belongs to (renderer.ts sets it each frame).
 let treeSeasonNow = null;
 export function setTreeSeason(season) { treeSeasonNow = season || null; }
 function drawTreeWear(ctx, t, px, py, s) {

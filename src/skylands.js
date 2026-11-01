@@ -21,7 +21,7 @@
 // the section. The first stands one level up, so a jump reaches it; from a platform a jump keeps its height over the gap
 // (game.ts, skyAir) and lands on the next. Creatures walk the ground beneath and cannot climb. A jump that ends over a gap
 // falls (from four levels, fatally). The skyway door stands on the top platform and opens only from there.
-import { hashSeed } from "./random.js?v=r679-4d93bc15f0b3";
+import { hashSeed } from "./random.js?v=r684-436ff24739ec";
 
 export const SKYLANDS = {
   version: 3, /* release 585: 2 = the stone skyway ascent; 587: 3 = floating discs */ macro: 8, chance: .65, minDepth: 14, maxTier: 20, hpPerTier: .6, damagePerTier: .25,
@@ -35,7 +35,10 @@ export const SKYLANDS = {
 const n0 = (v) => Math.max(0, Math.floor(Number(v) || 0));
 export function ensureSkylands(save) {
   const q = save.skylands && typeof save.skylands === "object" && !Array.isArray(save.skylands) ? save.skylands : (save.skylands = {});
-  return Object.assign(q, { sigils: n0(q.sigils), best: Number.isInteger(q.best) && q.best >= 0 ? Math.min(SKYLANDS.maxTier, q.best) : -1, runs: n0(q.runs), clears: n0(q.clears) }); // in place: holders of it stay current
+  Object.assign(q, { sigils: n0(q.sigils), best: Number.isInteger(q.best) && q.best >= 0 ? Math.min(SKYLANDS.maxTier, q.best) : -1, runs: n0(q.runs), clears: n0(q.clears) }); // in place: holders of it stay current
+  if ("viscera" in q) q.viscera = n0(q.viscera); // release 682: Divine Viscera, and the pact made with them (both only once there are any)
+  if ("pact" in q) { const p = normalPact(q.pact); if (p) q.pact = p; else delete q.pact; }
+  return q;
 }
 export const SKYWAY = { version: 2, platforms: [5, 4, 3], size: 2, gap: 1, area: [4, 27], clear: 1, tries: 120 }; // the most platforms that fit
 const OPEN_GROUND = (t) => t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.slope && !(t.elev > 0) && !/water|ocean|shallows|lava|void|abyss|canyon|river|mire|bog|pool/i.test(String(t.kind));
@@ -121,6 +124,7 @@ export function skylandTiers(save) {
 export function skylandNextTier(save) { const s = ensureSkylands(save), open = skylandTiers(save), next = open.length ? open[open.length - 1] + 1 : 0; return next <= SKYLANDS.maxTier ? next : null; }
 export const skylandActions = (save) => { const open = skylandTiers(save), next = skylandNextTier(save); return [...open, ...(next == null ? [] : [next])].map((t) => `ascend:${t}`); };
 export function skylandLabel(action, save) {
+  if (/^offer:/.test(String(action))) return altarLabel(action, save); // release 682: the Altar of Viscera
   const m = /^ascend:(\d+)$/.exec(String(action)); if (!m) return null; const t = Number(m[1]), s = ensureSkylands(save);
   if (!skylandTiers(save).includes(t)) return t > s.best + 1 ? `Ascension ${t} · locked (clear Ascension ${t - 1})` : `Ascension ${t} · locked (${t} sigils; you hold ${s.sigils})`;
   return t === 0 ? "Climb the stair (Ascension 0)" : `Ascension ${t} · ${t} sigil${t > 1 ? "s" : ""} (you hold ${s.sigils})`;
@@ -138,7 +142,7 @@ export function skylandLabel(action, save) {
 // tries, cooldowns or drops; game.ts).
 export const SKY_MODES = {
   version: 1, weights: [["rush", 35], ["cloud", 25], ["gauntlet", 25], ["gate", 15]],
-  names: { rush: "Divine Challenge", cloud: "Cloud Hold", gauntlet: "Cloud Hold · Divine Challenge", gate: "Sky Gate" },
+  names: { rush: "Divine Challenge", cloud: "Cloud Hold", gauntlet: "Cloud Hold · Divine Challenge", gate: "Sky Gate", annexa: "Skylands Deep Annex · Skyway 1 of 3", annexb: "Skylands Deep Annex · Skyway 2 of 3", annexc: "Skylands Deep Annex · Divine Challenge, 3 of 3" }, // release 678: the annex's floors (never rolled; only its stair starts them)
   winged: ["veilMoth", "cinderWisp"],
   cloudWaves: [{ count: 6, traits: [] }, { count: 5, traits: ["swift"] }, { count: 3, traits: ["vital", "plated", "swift"] }],
   rushRounds: [1, 2, 3], gauntletCloud: 2, gauntletRounds: [2, 3],
@@ -147,23 +151,87 @@ export const SKY_MODES = {
   echoShare: { hp: [1, .7, .55], damage: [1, .85, .75] },
   hop: [10, 30], gauntletHop: .5,
 };
+// Release 678 (Tim, 2026-11-01: "in the skylands or the skyways... you only stay in skyways until you get to... the end dungeon,
+// which is... a different world or a different tree top... until you get to the divine challenge"; his answers: three in the
+// chain, rare named stairs so they can be skipped, a death loses the chain): the Skylands Deep Annex. A Sky Stair on ground first
+// seen from release 672 (placement 2) is an annex stair with `chance`, named so on the stair and the Atlas. Climbing it starts
+// floor 1 (mode annexa), a skyway run of winged waves; clearing a floor turns its way down into the way up to the next, the same
+// Ascension, no sigils spent again; each floor's foes are `scale` stronger again. Floor 3 (annexc) is the Divine Challenge, and its
+// gate drops you onto the crown of a great tree you have never seen (game.ts treeCrownHop, unseen only), else far off as any sky
+// gate. The Skyland's rewards (completeSkyland) come once, at the top. Runtime only, like any Skyland run (dying ends it).
+// Release 682 (Tim, 2026-11-01: "we get divine viscera from completing the divine challenge... we can pay divine viscera to make the
+// divine challenge more powerful... a pedestal... we'll consume divine viscera to make the fight more or less challenging... add more
+// rounds... increase the strength of the monsters... spend more divine viscera to reroll the monsters in the pool"). Clearing a
+// Divine Challenge (a rush, a gauntlet's, or the annex's last island) gives `earn` Divine Viscera, plus one for every level of might
+// and every added round of the pact it was fought under. An Altar of Viscera stands where a Divine Challenge was cleared and at the
+// top of the annex's second skyway; there each offering consumes `cost` viscera and shapes the pact for the next Divine Challenge
+// you enter: `might` (its foes `hp`/`damage` stronger per level), `round` (another round of `size` echoes at once), `reroll` (a new
+// draw of which beasts' echoes come), `lighten` (one round fewer, never under one; it earns one viscera less). The pact is taken up
+// by that challenge (history.skyPact) and kept in save.skylands.pact until then; both are additive at schema 14.
+export const VISCERA = {
+  name: "Divine Viscera", earn: 1,
+  offers: { might: { cost: 1, max: 5, hp: .25, damage: .12 }, round: { cost: 1, max: 3, size: 3 }, reroll: { cost: 1, max: 9 }, lighten: { cost: 1, max: 1 } },
+  labels: { might: "Strengthen the challenge", round: "Add a round", reroll: "Reroll the echoes", lighten: "Lighten it by a round" },
+};
+export const VISCERA_OFFERS = Object.keys(VISCERA.offers);
+function normalPact(p) { if (!p || typeof p !== "object") return null; const out = {}; for (const k of VISCERA_OFFERS) { const v = Math.min(VISCERA.offers[k].max, n0(p[k])); if (v) out[k] = v; } return Object.keys(out).length ? out : null; }
+export const visceraOf = (save) => n0(save?.skylands?.viscera);
+export const pactOf = (save) => normalPact(save?.skylands?.pact) || {};
+export const pactWords = (p) => [p.might ? `might ${p.might}` : "", p.round ? `+${p.round} round${p.round > 1 ? "s" : ""}` : "", p.lighten ? "a round fewer" : "", p.reroll ? `echoes redrawn ×${p.reroll}` : ""].filter(Boolean).join(", ") || "as it comes";
+export const isDivineRun = (id) => ["rush", "gauntlet", "annexc"].includes(skylandModeOf(id));
+export const visceraEarned = (p = {}) => Math.max(1, VISCERA.earn + n0(p.might) + n0(p.round) - (p.lighten ? 1 : 0));
+export const visceraScale = (p = {}) => ({ hp: 1 + VISCERA.offers.might.hp * n0(p.might), damage: 1 + VISCERA.offers.might.damage * n0(p.might) });
+export const altarActions = () => VISCERA_OFFERS.map((k) => `offer:${k}`);
+export function altarLabel(action, save) {
+  const m = /^offer:([a-z]+)$/.exec(String(action)); if (!m || !VISCERA.offers[m[1]]) return null; const k = m[1], O = VISCERA.offers[k], p = pactOf(save), have = visceraOf(save);
+  const full = n0(p[k]) >= O.max || (k === "lighten" && p.round) || (k === "round" && p.lighten);
+  return `${VISCERA.labels[k]} · ${O.cost} viscera${full ? " (as far as it goes)" : ` (you hold ${have})`}`;
+}
+// Consume viscera for one offering. Returns { ok, message }.
+export function offerViscera(save, kind) {
+  const s = ensureSkylands(save), O = VISCERA.offers[kind]; if (!O) return { ok: false, message: "The altar does not answer that." };
+  const p = pactOf(save), have = n0(s.viscera);
+  if (n0(p[kind]) >= O.max || (kind === "lighten" && p.round) || (kind === "round" && p.lighten)) return { ok: false, message: `The pact will take no more of that. It stands: ${pactWords(p)}.` };
+  if (have < O.cost) return { ok: false, message: `The altar asks for ${O.cost} ${VISCERA.name}; you hold ${have}. Clear a Divine Challenge to earn them.` };
+  s.viscera = have - O.cost; p[kind] = n0(p[kind]) + 1; s.pact = normalPact(p);
+  return { ok: true, message: `The viscera smoke away on the altar. Your next Divine Challenge: ${pactWords(s.pact)}. ${s.viscera} ${VISCERA.name} left. It pays back ${visceraEarned(s.pact)}.` };
+}
+// The pact the next Divine Challenge takes up (and clears from the save).
+export function takePact(save) { const s = ensureSkylands(save), p = normalPact(s.pact) || {}; delete s.pact; return p; }
+export const SKY_ANNEX = {
+  version: 1, chance: .125, floors: ["annexa", "annexb", "annexc"], name: "Skylands Deep Annex",
+  scale: { hp: [1, 1.3, 1.6], damage: [1, 1.15, 1.3] },
+  traits: [[], ["swift"], []], // laid over the floor's cloud waves
+  messages: {
+    stair: "A Skylands Deep Annex: three skyways up, the last a Divine Challenge, and its gate lets you down on the crown of a great tree you have never found. Climb another stair to skip it.",
+    next: "The way down has become a stair of cloud, up to the next island of the annex.",
+    top: "The annex's last gate opens on cloud and lets you go, far from where you climbed.",
+  },
+};
+export const skyAnnexStair = (seed, rx, ry, place = 1) => place >= 2 && (hashSeed(`${seed}:sky-annex:v1:${rx},${ry}`) % 1000) / 1000 < SKY_ANNEX.chance;
+export const skyAnnexFloor = (id) => { const i = SKY_ANNEX.floors.indexOf(skylandModeOf(id)); return i + 1; }; // 0: not an annex run
+export const skyAnnexNext = (id) => { const f = skyAnnexFloor(id); return f && f < SKY_ANNEX.floors.length ? String(id).replace(`:m${SKY_ANNEX.floors[f - 1]}:`, `:m${SKY_ANNEX.floors[f]}:`) : null; };
 export function rollSkylandMode(seed, at, run) {
   const W = SKY_MODES.weights, total = W.reduce((n, [, w]) => n + w, 0); let r = hashSeed(`${seed}:skyland-mode:v1:${at.rx},${at.ry}:${run}`) % total;
   for (const [m, w] of W) { if (r < w) return m; r -= w; } return W[0][0];
 }
 export const skylandModeOf = (id) => { const m = /^skyland:.*:m([a-z]+):t\d+:r\d+$/.exec(String(id || "")); return m && SKY_MODES.names[m[1]] ? m[1] : null; };
-export const skylandHops = (id) => { const m = skylandModeOf(id); return m === "cloud" || m === "gate" || (m === "gauntlet" && (hashSeed(`${id}:hop`) % 1000) / 1000 < SKY_MODES.gauntletHop); };
+export const skylandHops = (id) => { const m = skylandModeOf(id); return m === "cloud" || m === "gate" || m === "annexc" || (m === "gauntlet" && (hashSeed(`${id}:hop`) % 1000) / 1000 < SKY_MODES.gauntletHop); };
 // The world beasts that have fallen to you, in a fixed order.
 export const slainBeasts = (save) => SKY_MODES.echoes.filter((k) => Number(save?.worldBeasts?.[k]?.slain) > 0);
 // The rounds of run `id`: [{ count, kinds, traits, boss, echoes }]; for a 571 run, SKYLANDS.waves with its own keeper.
-export function skylandPlan(id, save, bossKind = "hollowMarshal") {
-  const mode = skylandModeOf(id), M = SKY_MODES;
+export function skylandPlan(id, save, bossKind = "hollowMarshal", pact = null) { // release 682: `pact`, the Divine Viscera offered
+  const mode = skylandModeOf(id), M = SKY_MODES, P = pact || {};
   if (!mode) return SKYLANDS.waves.map((w) => ({ count: w.count, kinds: w.boss ? [bossKind] : w.kinds, traits: w.traits, boss: !!w.boss }));
-  const slain = slainBeasts(save), rush = (sizes) => sizes.map((n, i) => {
-    const picks = slain.length ? Array.from({ length: Math.min(n, slain.length) }, (_, k) => slain[(hashSeed(`${id}:rush:${i}`) + k) % slain.length]) : [];
+  const slain = slainBeasts(save), salt = P.reroll ? `:reroll${P.reroll}` : "", shaped = (sizes) => { const out = [...sizes, ...Array(n0(P.round)).fill(VISCERA.offers.round.size)]; return P.lighten && out.length > 1 ? out.slice(0, -1) : out; };
+  const rush = (sizes0) => shaped(sizes0).map((n, i) => {
+    const picks = slain.length ? Array.from({ length: Math.min(n, slain.length) }, (_, k) => slain[(hashSeed(`${id}:rush:${i}${salt}`) + k) % slain.length]) : [];
     return { count: n, kinds: M.keepers, traits: ["vital"], boss: true, echoes: picks };
   });
   const cloud = (k) => M.cloudWaves.slice(0, k).map((w) => ({ count: w.count, kinds: M.winged, traits: w.traits, boss: false }));
+  const floor = SKY_ANNEX.floors.indexOf(mode); // release 678
+  if (floor === 2) return rush(M.rushRounds);
+  if (floor >= 0) return cloud(M.cloudWaves.length).map((w) => ({ ...w, traits: [...new Set([...w.traits, ...SKY_ANNEX.traits[floor]])] }));
   return mode === "rush" ? rush(M.rushRounds) : mode === "cloud" ? cloud(M.cloudWaves.length) : mode === "gauntlet" ? [...cloud(M.gauntletCloud), ...rush(M.gauntletRounds)] : [];
 }
 // Where a sky gate drops you: `hop` sections off in a direction of the run's own.
@@ -180,6 +248,7 @@ export function beginSkyland(save, at, tier, forceMode = null) { // release 631:
   s.runs++; const mode = SKY_MODES.names[forceMode] ? forceMode : rollSkylandMode(save.seed, at, s.runs), id = `skyland:${save.seed}:${at.rx},${at.ry}:m${mode}:t${t}:r${s.runs}`; // release 589: a mode of its own
   if (mode === "gate") return { ok: true, id, tier: t, mode, gate: true, message: "The door opens on nothing but sky, and the sky takes you. You fall a long way, and land far off." };
   s.sigils -= t; const echoes = slainBeasts(save), name = SKY_MODES.names[mode];
+  if (mode === "annexa") return { ok: true, id, tier: t, mode, annex: true, message: `${SKY_ANNEX.name.toUpperCase()}${t ? `, Ascension ${t}` : ""}: the first of three skyways. Wings stir in the clouds.` }; // release 678
   const what = mode === "cloud" ? "Wings stir in the clouds." : echoes.length ? "Echoes of the beasts you have felled wait above." : "No beast you have felled answers yet; the keepers of the islands stand in for them.";
   return { ok: true, id, tier: t, mode, message: `${name}${t ? `, Ascension ${t}: everything here is stronger` : ""}. ${what}` };
 }
