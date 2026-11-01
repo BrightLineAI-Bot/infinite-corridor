@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release NNN: the Stalker refined; the mist — 2026-11-01
+## Release 684: the Stalker refined; the mist — 2026-11-01
 
 Tim (2026-11-01): "several visual passes... maybe like 6... not necessarily a leopard... just a white cat-like feline type creature
 with 6 legs"; the crossblade "should look like two nice blades... come out and swing, and do a cross... in front of him... the
