@@ -138,7 +138,7 @@ export function skylandLabel(action, save) {
 // tries, cooldowns or drops; game.ts).
 export const SKY_MODES = {
   version: 1, weights: [["rush", 35], ["cloud", 25], ["gauntlet", 25], ["gate", 15]],
-  names: { rush: "Divine Challenge", cloud: "Cloud Hold", gauntlet: "Cloud Hold · Divine Challenge", gate: "Sky Gate" },
+  names: { rush: "Divine Challenge", cloud: "Cloud Hold", gauntlet: "Cloud Hold · Divine Challenge", gate: "Sky Gate", annexa: "Skylands Deep Annex · Skyway 1 of 3", annexb: "Skylands Deep Annex · Skyway 2 of 3", annexc: "Skylands Deep Annex · Divine Challenge, 3 of 3" }, // release 678: the annex's floors (never rolled; only its stair starts them)
   winged: ["veilMoth", "cinderWisp"],
   cloudWaves: [{ count: 6, traits: [] }, { count: 5, traits: ["swift"] }, { count: 3, traits: ["vital", "plated", "swift"] }],
   rushRounds: [1, 2, 3], gauntletCloud: 2, gauntletRounds: [2, 3],
@@ -147,12 +147,33 @@ export const SKY_MODES = {
   echoShare: { hp: [1, .7, .55], damage: [1, .85, .75] },
   hop: [10, 30], gauntletHop: .5,
 };
+// Release 678 (Tim, 2026-11-01: "in the skylands or the skyways... you only stay in skyways until you get to... the end dungeon,
+// which is... a different world or a different tree top... until you get to the divine challenge"; his answers: three in the
+// chain, rare named stairs so they can be skipped, a death loses the chain): the Skylands Deep Annex. A Sky Stair on ground first
+// seen from release 672 (placement 2) is an annex stair with `chance`, named so on the stair and the Atlas. Climbing it starts
+// floor 1 (mode annexa), a skyway run of winged waves; clearing a floor turns its way down into the way up to the next, the same
+// Ascension, no sigils spent again; each floor's foes are `scale` stronger again. Floor 3 (annexc) is the Divine Challenge, and its
+// gate drops you onto the crown of a great tree you have never seen (game.ts treeCrownHop, unseen only), else far off as any sky
+// gate. The Skyland's rewards (completeSkyland) come once, at the top. Runtime only, like any Skyland run (dying ends it).
+export const SKY_ANNEX = {
+  version: 1, chance: .125, floors: ["annexa", "annexb", "annexc"], name: "Skylands Deep Annex",
+  scale: { hp: [1, 1.3, 1.6], damage: [1, 1.15, 1.3] },
+  traits: [[], ["swift"], []], // laid over the floor's cloud waves
+  messages: {
+    stair: "A Skylands Deep Annex: three skyways up, the last a Divine Challenge, and its gate lets you down on the crown of a great tree you have never found. Climb another stair to skip it.",
+    next: "The way down has become a stair of cloud, up to the next island of the annex.",
+    top: "The annex's last gate opens on cloud and lets you go, far from where you climbed.",
+  },
+};
+export const skyAnnexStair = (seed, rx, ry, place = 1) => place >= 2 && (hashSeed(`${seed}:sky-annex:v1:${rx},${ry}`) % 1000) / 1000 < SKY_ANNEX.chance;
+export const skyAnnexFloor = (id) => { const i = SKY_ANNEX.floors.indexOf(skylandModeOf(id)); return i + 1; }; // 0: not an annex run
+export const skyAnnexNext = (id) => { const f = skyAnnexFloor(id); return f && f < SKY_ANNEX.floors.length ? String(id).replace(`:m${SKY_ANNEX.floors[f - 1]}:`, `:m${SKY_ANNEX.floors[f]}:`) : null; };
 export function rollSkylandMode(seed, at, run) {
   const W = SKY_MODES.weights, total = W.reduce((n, [, w]) => n + w, 0); let r = hashSeed(`${seed}:skyland-mode:v1:${at.rx},${at.ry}:${run}`) % total;
   for (const [m, w] of W) { if (r < w) return m; r -= w; } return W[0][0];
 }
 export const skylandModeOf = (id) => { const m = /^skyland:.*:m([a-z]+):t\d+:r\d+$/.exec(String(id || "")); return m && SKY_MODES.names[m[1]] ? m[1] : null; };
-export const skylandHops = (id) => { const m = skylandModeOf(id); return m === "cloud" || m === "gate" || (m === "gauntlet" && (hashSeed(`${id}:hop`) % 1000) / 1000 < SKY_MODES.gauntletHop); };
+export const skylandHops = (id) => { const m = skylandModeOf(id); return m === "cloud" || m === "gate" || m === "annexc" || (m === "gauntlet" && (hashSeed(`${id}:hop`) % 1000) / 1000 < SKY_MODES.gauntletHop); };
 // The world beasts that have fallen to you, in a fixed order.
 export const slainBeasts = (save) => SKY_MODES.echoes.filter((k) => Number(save?.worldBeasts?.[k]?.slain) > 0);
 // The rounds of run `id`: [{ count, kinds, traits, boss, echoes }]; for a 571 run, SKYLANDS.waves with its own keeper.
@@ -164,6 +185,9 @@ export function skylandPlan(id, save, bossKind = "hollowMarshal") {
     return { count: n, kinds: M.keepers, traits: ["vital"], boss: true, echoes: picks };
   });
   const cloud = (k) => M.cloudWaves.slice(0, k).map((w) => ({ count: w.count, kinds: M.winged, traits: w.traits, boss: false }));
+  const floor = SKY_ANNEX.floors.indexOf(mode); // release 678
+  if (floor === 2) return rush(M.rushRounds);
+  if (floor >= 0) return cloud(M.cloudWaves.length).map((w) => ({ ...w, traits: [...new Set([...w.traits, ...SKY_ANNEX.traits[floor]])] }));
   return mode === "rush" ? rush(M.rushRounds) : mode === "cloud" ? cloud(M.cloudWaves.length) : mode === "gauntlet" ? [...cloud(M.gauntletCloud), ...rush(M.gauntletRounds)] : [];
 }
 // Where a sky gate drops you: `hop` sections off in a direction of the run's own.
@@ -180,6 +204,7 @@ export function beginSkyland(save, at, tier, forceMode = null) { // release 631:
   s.runs++; const mode = SKY_MODES.names[forceMode] ? forceMode : rollSkylandMode(save.seed, at, s.runs), id = `skyland:${save.seed}:${at.rx},${at.ry}:m${mode}:t${t}:r${s.runs}`; // release 589: a mode of its own
   if (mode === "gate") return { ok: true, id, tier: t, mode, gate: true, message: "The door opens on nothing but sky, and the sky takes you. You fall a long way, and land far off." };
   s.sigils -= t; const echoes = slainBeasts(save), name = SKY_MODES.names[mode];
+  if (mode === "annexa") return { ok: true, id, tier: t, mode, annex: true, message: `${SKY_ANNEX.name.toUpperCase()}${t ? `, Ascension ${t}` : ""}: the first of three skyways. Wings stir in the clouds.` }; // release 678
   const what = mode === "cloud" ? "Wings stir in the clouds." : echoes.length ? "Echoes of the beasts you have felled wait above." : "No beast you have felled answers yet; the keepers of the islands stand in for them.";
   return { ok: true, id, tier: t, mode, message: `${name}${t ? `, Ascension ${t}: everything here is stronger` : ""}. ${what}` };
 }

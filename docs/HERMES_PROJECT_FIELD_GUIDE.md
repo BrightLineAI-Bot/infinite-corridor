@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release NNN: the Stalker's arsenal — 2026-11-01
+## Release 681: the Stalker's arsenal — 2026-11-01
 
 Tim (2026-11-01): a turret that "pops out of its back" (both forms) shooting homing orbs "like the nanobot knight's", a laser
 cone, orbs that "rotate around it... and then launch off at the player at different times", "two large blades that cross... an X
@@ -2726,6 +2726,36 @@ not bring it closer (Tim: leave the hunt as it is and see how quickly it catches
 **BOUNDARY:** Runtime only: no save field, no generator change. Bounded: at most 12 shots per Stalker, one turret move at a time,
 no pathfinding (the climb is a straight line). Tests: `tests/stalker-arsenal.test.ts`.
 
+
+## Release 680: the Skylands Deep Annex — 2026-11-01
+
+Tim (2026-11-01): "in the skylands or the skyways... you only stay in skyways until you get to... the end dungeon, which is... a
+different world or a different tree top... until you get to the divine challenge". He confirmed three in the chain, rare named
+stairs and a lost chain on death. On Starfield he confirmed the 675 shape: ordinary Starfield crossings let you out where you came
+in, and only the Deep Annex chains floors and lets you out elsewhere.
+
+**CODE:**
+- `src/skylands.ts`:
+  - `SKY_ANNEX`: `chance` .125 of stairs at placement 2, three `floors` (modes annexa, annexb, annexc), per-floor `scale` and
+    `traits`, and `messages`.
+  - `skyAnnexStair(seed, rx, ry, place)` (placement 2 only), `skyAnnexFloor(id)`, `skyAnnexNext(id)`.
+  - `SKY_MODES.names` gains the three floors. They are never in `weights`, so ordinary climbs roll as before.
+  - `skylandPlan`: annexa and annexb are the cloud hold's waves (annexb `swift`); annexc is the Divine Challenge (`rushRounds`).
+  - `skylandHops`: annexc. `beginSkyland` with `forceMode` annexa names the annex.
+- `src/interactions.ts`: ascending a `skyAnnex` stair passes mode annexa.
+- `src/game.ts`:
+  - The stair gets `skyAnnex`, its name and lore (the announcement), also on the Atlas site.
+  - `scaleSkyFoe` × the floor's scale.
+  - `tickSkyland`: a cleared floor 1 or 2 gives no reward and sets `history.annexNext`. The exit then calls `climbAnnex(next)`:
+    the same stair return, the same Ascension, no sigils.
+  - Floor 3 clears with `completeSkyland` and drops through `skyHop`.
+  - `treeCrownHop` reads version 14 ground by `wonderAt(…, "tree")`. For an annex run it looks `SKY_TREE.annexSearch` round the
+    drop, unseen sections only, at most `annexLoads` built.
+
+**BOUNDARY:**
+- Runtime only, like every Skyland run: histories are dropped on the overworld, so a death or leaving ends the chain.
+- New stair fields are additive. Stairs at placement 1 never become annexes.
+- Tests: `tests/sky-annex-678.test.ts`.
 ## Release 679: seasons in the woods — 2026-11-01
 
 Tim (2026-11-01): seasons for the forest and great-tree sections ("summer... lush green; spring... some green trees, some
