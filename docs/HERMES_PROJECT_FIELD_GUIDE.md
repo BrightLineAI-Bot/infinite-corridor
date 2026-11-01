@@ -2694,6 +2694,31 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 657: elite affixes, auras and shamans — 2026-11-01
+
+Tim (2026-11-01): "champions or elites that buff the monsters around them in their pack... a shaman... invulnerable to damage until
+you kill the shaman... a ring around him when he's casting"; "the monster elites should have affixes... enraged... volcanic... sky
+assault... orbital lasers... drone assault... drones around it... spikes [that] track the character every 1 or 2 seconds... you can
+dodge it". (Gear affixes were raised and left for later; the wardens' and guardians' wider rework continues in 659.)
+
+**CODE:**
+- New `src/affixes.ts` (in `scripts/build.mjs` and both `sw.js` lists): `AFFIXES` (volcanic, skyAssault, spiked, venomous,
+  droneSwarm, enraged: clocks, telegraph `arm`, radius, damage shares of the creature's own damage), `AFFIX_TUNING` (reach 11,
+  maxHazards 30), `AURA` (radius 5, reduce .3, damage 1.2), `SHAMAN` (chance .2, sparkWarden, 5–7 tiles apart, ward radius 11, hp
+  ×1.6, speed ×.3), `rollAffixes`, `affixNames`, `dronePos`, `tickAffixes(game, dt, now, hurt, poison)`.
+  - Hazards (`game.affixHazards`, runtime) strike once after `arm` or, for Volcanic and Venomous, every second while stood in.
+  - Auras refund `reduce` of each hp loss and scale damage while in range.
+  - A ward sets `untargetable` while the shaman lives within range.
+- `src/fractured.ts` `packSpawns`: a champion pack's leader rolls one affix, a rare leader two, and the rest get `auraBy`. With
+  `SHAMAN.chance` a shaman spawns apart and every packmate gets `wardBy`. `applyFracturedRank` carries them and tunes the shaman.
+- `src/game.ts`:
+  - `update` calls `tickAffixes`. The Wayfarer is hurt through dodge, invulnerability and armour; poison goes through `applyPoison`.
+  - `createEnemyFromSpawn` gives every `GUARDIAN_ROLES` creature one hashed affix.
+  - `loadArea` clears the hazards.
+- `src/renderer.ts`: telegraphs and strikes, drones, wards, the shaman's pulsing ring and threads, and affix names under elites.
+
+**BOUNDARY:** Runtime only; enemy records carry `affixes`/`auraBy`/`wardBy` additively. Tests: `tests/affixes-657.test.ts`.
+
 ## Release 655: Worm's Upheaval stacks — 2026-11-01
 
 Tim (2026-11-01): "if you dodge multiple times before the ring bursts... it should just stack... the ring gets more powerful

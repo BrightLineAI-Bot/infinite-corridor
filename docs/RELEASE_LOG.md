@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**657**
+**659**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 655 | Claude | `claude/dreamy-rubin-yn6q2p` | Worm's Upheaval stacks: each dodge while its ring pulses adds another burst | Building. |
+| 657 | Claude | `claude/dreamy-rubin-yn6q2p` | Elite affixes (Volcanic, Sky Assault, Spiked, Venomous, Drone Swarm, Enraged), champion auras, warding shamans; every crossing guardian carries an affix | Building. |
+| 655 | Claude | PR #311 | Worm's Upheaval stacks: each dodge while its ring pulses adds another burst | Merged (`r655-c8fd359ccde7`). |
 | 653 | Claude | PR #310 | Following a retreating world beast: it waits where it fled, turns at bay on its home ground; an unfollowed Worm retreat ends | Merged (`r653-ffa884b886d4`). |
 | 651 | Claude | PR #309 | Fractured mode (Options → Challenge): Fractured / Frenzied packs with champions and rares, reinforcements, safe places, lulls, return refills | Merged (`r651-7395b635da37`). |
 | 649 | Claude | PR #308 | Mirage of Blades replaces Nanoknives (thrown spinning great blades that home back to you); LISTENER REVEALED heading | Merged (`r649-75bd8abf2c15`). Published in r649. |
