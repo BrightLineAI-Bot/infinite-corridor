@@ -2694,6 +2694,33 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 668: guardians and elites fight back — 2026-11-01
+
+Tim (2026-11-01): the crossing guardians "just stand there and take the hits"; they hit hard and have big health, but their fights
+aren't impactful. Give guardians and elites varied movesets, more aggression and adds during the fight, below world-boss difficulty.
+World bosses are tuned well and are left alone (Tim notes they may be stunned a little easily; unchanged here).
+
+**CODE:**
+- New `src/boss-kit.ts` (in `scripts/build.mjs` and both `sw.js` lists):
+  - `BOSS_KIT` holds, per role: extra `modules`, signature `moves`, `attackGap` (never lengthened), `cooldown` and `speed`
+    multipliers, and `adds` (health thresholds `at`, `size`, `cap`). It also holds the module `pool` and `reach`.
+  - `KIT_MOVES` (quake, barrage, crossfire, meteor) are shaped like `AFFIXES`.
+  - `kitRole` returns "guardian" for `GUARDIAN_ROLES` or `packGuardian`, and "elite" for `eliteId`, `marginWarden`, or a
+    Fractured champion/rare leader (one that carries affixes and is not a reinforcement). It returns null for world beasts, the
+    Questing Beast, Far Array bosses, Gate Revenants, Fracture Wardens and summons.
+  - `applyBossKit`: hashed extra modules for pack kinds, hashed signature moves, and aggression.
+  - `tickBossKit`: signature moves go into `game.affixHazards` (armed, then strike once through `tickAffixes`). Adds come at
+    each threshold through `spawnAdds`, and its adds die with it.
+- `src/game.ts`:
+  - `createEnemyFromSpawn` applies the kit after the 657 affix (not to Fracture Warden adds, reinforcements or kit adds).
+  - `update` calls `tickBossKit` beside `tickAffixes`.
+  - `spawnKitAdds` creates the area's ordinary kinds round the creature as summons (`summonedBy`, `kitAddOf`, `noRewards`), tuned
+    like any spawn.
+- `src/renderer.ts`: affix hazards fall back to `KIT_MOVES` for colour and timing.
+
+**BOUNDARY:** Runtime only: `kitRole`, `kitMoves`, `kitClock`, `kitCalls`, `kitAddOf` are additive creature fields. No generation
+change. Tests: `tests/boss-kit-668.test.ts`.
+
 ## Release 666: the fracture meter and the Fracture Warden — 2026-11-01
 
 Tim (2026-11-01, via the session brief): in a Fractured area kills fill a meter shown on the HUD; full, a Fracture Warden spawns

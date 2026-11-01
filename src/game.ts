@@ -56,6 +56,7 @@ import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST } from "./tool-forms.ts";
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks } from "./fractured.ts";
 import { tickAffixes, rollAffixes } from "./affixes.ts";
+import { applyBossKit, tickBossKit } from "./boss-kit.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { SKYLANDS, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
@@ -4441,6 +4442,7 @@ export class Game {
         c.affixes = rollAffixes(`${this.save.seed}:fracture-warden:${c.id}`, W.affixes);
       }
       if (GUARDIAN_ROLES.includes(c.dungeonRole) && !c.affixes && !c.farArrayBoss && !String(this.save.session?.activeDungeonId || '').startsWith('far-array:')) c.affixes = rollAffixes(`${this.save.seed}:guardian:${c.id}`, 1); // release 657: every crossing guardian carries an affix
+      if (!e.fracWardenAdd && !e.fracReinforcement && !e.kitAddOf) applyBossKit(c, this.save.seed, (k) => !!MONSTER_PACK[k]); // release 668: guardians and elites fight like boss moments
       ensureAI(c);
       refreshMarineBeast(c, this.map, mapWidth(this.map, area), area);
       return c;
@@ -5086,6 +5088,20 @@ export class Game {
     }
     return true;
   }
+  // Release 668 (boss-kit.ts): a guardian or elite calls `n` of the area's ordinary creatures round itself. They are summons
+  // (no rewards; they go when it falls), tuned for the area like any spawn. Returns how many came.
+  spawnKitAdds(e, n, now) {
+    const w = mapWidth(this.map, this.area), kinds = [...new Set(this.enemies.filter((q) => fracturedOrdinary(q) && !q.summonedBy && !q.ambient && !q.passiveBehavior && q.kind !== "npc").map((q) => q.kind))], pool = kinds.length ? kinds : FRACTURED.fallback;
+    let made = 0; const h = hashSeed(`${this.save.seed}:kit-adds:${e.id}:${e.kitCalls || 0}`);
+    for (let i = 0; i < 16 && made < n; i++) {
+      const a = ((h >>> 3) % 628) / 100 + i * 2.399, r = 1.5 + ((h >>> 9) + i) % 2, x = Math.round(e.x + Math.cos(a) * r), y = Math.round(e.y + Math.sin(a) * r);
+      if (x < 1 || y < 1 || x >= w - 1 || y >= (this.map.height || w) - 1 || !footprintOpen(this.map, w, x, y) || footprintHazard(this.map, w, x, y) || this.enemies.some((q) => !q.dead && Math.round(q.x) === x && Math.round(q.y) === y)) continue;
+      const c = this.createEnemyFromSpawn({ id: `kit-${e.id}-${e.kitCalls || 0}-${made}`, kind: pool[(h >>> (made * 3 % 24)) % pool.length], x, y, traits: [], kitAddOf: e.id });
+      Object.assign(c, { summonedBy: e.id, kitAddOf: e.id, noRewards: true, aggro: true }); this.enemies.push(c); made++;
+    }
+    if (made) this.message = `${e.packName || e.foundryName || "The guardian"} calls for help.`;
+    return made;
+  }
   // Release 666: the HUD's fracture meter, while Fractured mode holds here: kills of need, and the Warden when it is up.
   fractureMeter() {
     const mode = this.fracturedHere(); if (!mode) return null;
@@ -5496,6 +5512,7 @@ export class Game {
     this.tickFractured(now); // release 651: Fractured mode
     if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = ensureEliteState(this.save).status; // release 657: affixes, auras, shamans
       tickAffixes(this, dt, now, (n) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)))); p.invulnerableUntil = now + 350; }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
+    if (this.enemies.some((e) => e.kitRole && !e.dead) || this.enemies.some((e) => e.kitAddOf && !e.dead)) tickBossKit(this, dt, now, (e, n) => this.spawnKitAdds(e, n, now)); // release 668
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
     if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge; this.fistCharge = null; this.fistPunch(c.step || 1, fistCharge(held), now, c.direction); } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (input.consume("spell")) this.castSlot("a");

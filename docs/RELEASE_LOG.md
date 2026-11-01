@@ -15,14 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-**665** (odd, first session) · **668** (even, second session)
+**665** (odd, first session) · **670** (even, second session)
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 666 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Fracture meter and Fracture Warden: kills fill a HUD meter; the Warden (half a Gate Revenant, adds) seals the area and drops a cache | Building. |
-| 664 | Claude (second session) | PR #316 | Tremor Worm rework: half-buried by default, full-height sweep/slam/maw, tentacles scaled off the worm with ground cracks, burrowing, repositioning and six modes | Merged. |
+| 668 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Guardians and elites fight back: extra modules, signature moves (quake, barrage, crossfire, meteor), aggression, adds at health thresholds | Building. |
+| 666 | Claude (second session) | PR #318 | Fracture meter and Fracture Warden: kills fill a HUD meter; the Warden (half a Gate Revenant, adds) seals the area and drops a cache | Merged. |
+| 664 | Claude (second session) | PR #316 | Tremor Worm rework: half-buried by default, full-height sweep/slam/maw, tentacles scaled off the worm with ground cracks, burrowing, repositioning and six modes | Merged (`r664-b4bdc960a2b8`). |
 | 663 | Claude | `claude/dreamy-rubin-yn6q2p` | A sky gate lands you on a great tree's crown (one not yet seen first), to glide or hop down | Building. |
 | 661 | Claude | PR #314 | Floor dots at the right edge in multi-floor dungeons | Merged (`r661-1160639f42b2`). |
 | 659 | Claude | PR #313 | The Far Array explains itself: what a run holds, Gate pieces left, where the Listener waits; each deep floor names the way up/out and down | Merged (`r659-e5124f5561df`). |
