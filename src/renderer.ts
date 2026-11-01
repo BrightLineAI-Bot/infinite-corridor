@@ -2076,7 +2076,8 @@ export function render(ctx, g, w, h, now) {
     // Fog banks (release 156; release 158 smooths them): each bank is a cluster of soft puffs turning slowly about its
     // centre. Inside a bank the mist closes in around the Wayfarer gradually (fogLevel is eased in open-sea.ts).
     // Release 257: a Supernova's fog (g.novaFog) draws the same way, faded in and out by its alpha.
-    const level = Math.max(g.seaHazards?.fogLevel || 0, (g.stalkFog?.level || 0) * .85), time = now / 1000; // release 407 (Tim: "the Supernova... covers the entire world, so I can't see him... the Supernova shouldn't cover the Void Walker or other creatures"): its fog no longer closes in around the Wayfarer, and its mist is thin
+    const level = g.seaHazards?.fogLevel || 0, time = now / 1000; // release 407 (Tim: "the Supernova... covers the entire world, so I can't see him... the Supernova shouldn't cover the Void Walker or other creatures"): its fog no longer closes in around the Wayfarer, and its mist is thin
+    const closeIn = Math.max(level, (g.stalkFog?.level || 0) * .85); // release 692: the Stalker's fog closes in as the sea's does (the Supernova's still never does)
     for (const [f, fade] of [...(g.seaHazards?.fog || []).map((f) => [f, 1]), ...(g.novaFog?.fog || []).map((f) => [{ ...f, nova: true }, g.novaFog.alpha ?? 1]), ...(g.stalkFog?.fog || []).map((f) => [f, g.stalkFog.level])]) {
       if (fade <= 0) continue;
       for (let i = 0; i < 7; i++) {
@@ -2086,9 +2087,9 @@ export function render(ctx, g, w, h, now) {
         ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, pr * s, 0, 7); ctx.fill();
       }
     }
-    if (level > .01) {
-      const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - level) * 3), px, py, s * (3.6 + (1 - level) * 7));
-      gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.92 * level})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
+    if (closeIn > .01) {
+      const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - closeIn) * 3), px, py, s * (3.6 + (1 - closeIn) * 7));
+      gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.92 * closeIn})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
     }
     // Release 269 (Tim: "in fog it should cast a... violet glow"): the longboat's lantern lights the mist around it,
     // more strongly the deeper the fog.
