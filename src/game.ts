@@ -61,6 +61,7 @@ import { applyBossKit, tickBossKit } from "./boss-kit.ts";
 import { wonderRumour, wonderAt } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
+import { ensureSkylands } from "./skylands.ts";
 import { SKYLANDS, SKY_PLACE, SKY_ANNEX, VISCERA, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { generateItem, BRAWLER_LOOT } from "./items.ts";
 import { SMITHY } from "./smithy.ts"; // release 607: one salvage table
@@ -84,6 +85,7 @@ import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatt
 import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt, DREAM_HALL, dreamHallRoll } from "./underlands.ts";
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
+import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods } from "./canyon.ts";
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology } from "./keeps.ts";
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
@@ -264,6 +266,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (isArenaRun(id)) map = generateListenerArena(save.seed, id); // release 375: the Listening Hall
   else if (id.startsWith('dive:')) map = (history.diveGenerator ?? 1) >= 2 ? generateGrotto(save.seed, id) : generateDiveSite(save.seed, id);
   else if (/^(arena:|hunt-arena:|hunt-instance:|skyland:)/.test(id)) { map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved}); if (isSkyland(id)) dressSkyland(map, id, save); } // release 571: a Skyland is a temporary arena run in waves
+  else if (isCanyonId(id)) { const c = ensureCanyonHistory(history); map = generateCanyon(save.seed, id, c.drilled, c.reddened); } // Canyon craters
   else if (isDeepId(id)) { const floor = deepShaft(save, id).floor, plan = floorPlan(save.seed, id, floor); map = generateExpeditionDungeon(save.seed, plan.genId, plan.recipe, { layoutPool: 5, themePool: THEME_POOL_VERSION, theme: plan.theme || 'none', sizeProfile: 'standard' }); map.deepFloor = floor; map.name = `The Deep · Floor ${floor}`; dressDeepFloor(map, floor); } // release 677: a floor of the Deep
   else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1,...(history.mire?{theme:'poisonCrypt'}:history.dream?{theme:'dream'}:{}),...(history.mire?.taste?{sizeProfile:'compact'}:{}),...(history.ladder?{ladder:crossingLadder(save.seed,id,history.ladder.tier)}:{}),...(history.warpVersion>=2?{warpAlways:true}:{})});
   else if (!id.includes(':deep-v') && history.generatorVersion === 4) map = generateUnifiedDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options});
@@ -2369,6 +2372,7 @@ export class Game {
       if (!prior) stalkerNewSection(this.save); // release 678: new sections count toward the Stalker's return
       this.markDeepAnnexes(); // release 675
       if ((prior ? prior.deepVersion : THE_DEEP.version) && !this.map.settlement && !this.map.hamlet && shaftHere(this.save.seed, this.rx, this.ry)) this.placeDeepShaft(); // release 677
+      if ((prior ? prior.canyonVersion : CANYON.version) && !this.map.settlement && !this.map.hamlet && canyonHere(this.save.seed, this.rx, this.ry)) this.placeCrater(); // Canyon craters: only in sections first seen from now on
       if ((prior ? prior.arcVersion : ARCOLOGY.version) && !this.map.settlement && !this.map.hamlet) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION; if (v >= 5 && arcologyHere(this.save.seed, this.rx, this.ry, sectionRegion(this.save.seed, this.rx, this.ry, v)) && buildArcology(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = ARCOLOGY.messages.arrive; } // ruined arcologies: only in sections first seen from now on
       if ((prior ? prior.keepVersion : KEEPS.version) && !this.map.settlement && !this.map.hamlet && keepHere(this.save.seed, this.rx, this.ry) && buildKeep(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = KEEPS.messages.arrive; // great keeps: only in sections first seen from now on
       { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, r = v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null; if (!prior) noteSeasonDiscovery(this.save, r?.id); this.season = trackSeason(this.save, r); } // release 679: the woods' season
@@ -2389,7 +2393,8 @@ export class Game {
         ...(prior ? (prior.skyPlace ? { skyPlace: prior.skyPlace } : {}) : { skyPlace: SKY_PLACE.version }), // release 672: where Sky Stairs stand, pinned per section
         ...(prior ? (prior.deepVersion ? { deepVersion: prior.deepVersion } : {}) : { deepVersion: THE_DEEP.version }),
         ...(prior ? (prior.keepVersion ? { keepVersion: prior.keepVersion } : {}) : { keepVersion: KEEPS.version }), // great keeps likewise
-        ...(prior ? (prior.arcVersion ? { arcVersion: prior.arcVersion } : {}) : { arcVersion: ARCOLOGY.version }), // and the ruined arcologies // release 677: Deep Shafts likewise
+        ...(prior ? (prior.arcVersion ? { arcVersion: prior.arcVersion } : {}) : { arcVersion: ARCOLOGY.version }), // and the ruined arcologies
+        ...(prior ? (prior.canyonVersion ? { canyonVersion: prior.canyonVersion } : {}) : { canyonVersion: CANYON.version }), // and the Canyon craters // release 677: Deep Shafts likewise
         ...(indoor ? { indoorDungeonVersion: indoor } : {}), // release 499: the dungeon entrance may stand inside a building
         color: sectionAtlasColor(this.map), // release 559: the Atlas shows the section as it really looks (atlas-colors.ts)
         ...(this.map.landscape?.biome ? { landscape: this.map.landscape.biome } : {}), sites: this.map.objects
@@ -3255,6 +3260,7 @@ export class Game {
     }
     // Release 151: a level's fixed landing point (toX/toY) can sit in a wall on some generated floors; every move to a
     // landing point now steps onto the nearest open ground, as loading an area and recovering after a fall already do.
+    if (o.kind === "divineWreck") return this.pullViscera(o); // Canyon craters
     if (o.kind === "annexStair") return this.descendAnnex(o); // release 675
     if (o.kind === "deepShaft") return this.enterDeep(o, action); // release 677
     if (o.kind === "deepStair") return this.descendDeep(o);
@@ -5293,6 +5299,42 @@ export class Game {
     if (result) { relocateIfStranded(this.player, this.map, mapWidth(this.map, "overworld")); this.player.invulnerableUntil = (this.lastUpdateNow || 0) + 2000; this.sync(); }
     return { ok: !!result, message: this.message };
   }
+  // Canyon craters (canyon.ts). The entrance on the overworld; sealed for good once it collapsed (no shine, no way in).
+  placeCrater() {
+    const id = canyonIdFor(this.save.seed, this.rx, this.ry), h = this.save.consequences?.dungeons?.[id], sealed = !!h?.canyon?.sealed, w = mapWidth(this.map, "overworld"); let at = null;
+    for (let r = 4; r <= 11 && !at; r++) for (let k = 0; k < 16 && !at; k++) { const a = k / 16 * Math.PI * 2 + 1, x = Math.round(16 + Math.cos(a) * r), y = Math.round(16 + Math.sin(a) * r), t = this.map.tiles[y * w + x];
+      if (t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.keep && footprintOpen(this.map, w, x, y) && !this.map.objects.some((o) => Math.hypot(o.x - x, o.y - y) < 2)) at = { x, y }; }
+    if (!at) return null;
+    const o = sealed ? { id: `canyon-crater-${this.rx}-${this.ry}`, kind: "ruinMarker", name: "Collapsed Crater", lore: "The crater has fallen in on itself. Whatever lay at its bottom is buried for good.", x: at.x, y: at.y, state: "quiet", actions: ["inspect"] }
+      : { id: `canyon-crater-${this.rx}-${this.ry}`, kind: "dungeon", dungeonId: id, dungeonType: "canyon", name: CANYON.name, identity: "a crater where something divine fell", x: at.x, y: at.y, state: "open", actions: ["enter", "bypass"], landmark: true, lore: CANYON.messages.entrance };
+    this.map.objects.push(o); if (!sealed && !this.message) this.message = CANYON.messages.entrance; return o;
+  }
+  // Pushing into a clod drills it; strain settles on the rest. Breaking a red clod caves in.
+  drillAhead(x, y, dt, now) {
+    const st = (this.canyonDrill ||= {}); settleClods(st, dt);
+    if (Math.hypot(x, y) < .4) return null;
+    const p = this.player, w = mapWidth(this.map, this.area), cx = p.x + .5 + Math.sign(Math.round(x * 1.4)) * .7, cy = p.y + .6 + Math.sign(Math.round(y * 1.4)) * .7, t = this.map.tiles[Math.floor(cy) * w + Math.floor(cx)];
+    if (!isClod(t) || Math.hypot(t.x + .5 - (p.x + .5), t.y + .5 - (p.y + .6)) > 1.6) { this.drillTile = null; return null; }
+    const h = ensureCanyonHistory(dungeonHistory(this.save, this.areaId())), r = drillClod(t, st, dt, this.mechUp?.()); this.drillTile = { x: t.x, y: t.y, progress: st[`${t.x},${t.y}`]?.progress || 0, strain: st[`${t.x},${t.y}`]?.strain || 0, need: CANYON.clod.hp[t.kind] || 1 };
+    if (r.turnedRed) { h.reddened.push(t.y * w + t.x); this.message = CANYON.messages.yellowToRed; }
+    if (r.broke) { h.drilled.push(t.y * w + t.x); if (h.drilled.length > CANYON.maxDrilled) h.drilled.shift(); this.drillTile = null; if (r.caveIn) this.caveIn(t, h, now); }
+    return r;
+  }
+  caveIn(t, h, now) {
+    const p = this.player, C = CANYON.caveIn; h.caveIns++;
+    if (now >= (p.invulnerableUntil || 0)) p.hp -= Math.max(1, Math.round(this.save.maxHp * C.damage));
+    this.cameraShake = Math.max(this.cameraShake || 0, .6); (this.fx ||= []).push?.({ kind: "caveIn", x: t.x + .5, y: t.y + .5, life: .8, maxLife: .8 });
+    if (h.caveIns >= C.limit) { h.sealed = true; this.defeatNotice = { title: "THE CRATER COLLAPSES", detail: "sealed for good", kind: "danger" }; this.leaveDungeon(CANYON.messages.collapse); journalOnce(this.save, `canyon-collapse:${this.areaId?.()}`, CANYON.messages.collapse, "Canyon Craters"); return true; }
+    this.defeatNotice = { title: "CAVE-IN", detail: `${h.caveIns} of ${C.limit} · one more and the crater may collapse`, kind: "danger" }; this.message = CANYON.messages.caveIn(h.caveIns, C.limit); return false;
+  }
+  pullViscera(o) {
+    const h = ensureCanyonHistory(dungeonHistory(this.save, this.areaId())); if (h.pulled || o.state === "pulled") return { ok: false, message: (this.message = "The wreck is empty now: only fossil and dust.") };
+    h.pulled = true; o.state = "pulled"; o.actions = []; const hist = dungeonHistory(this.save, this.areaId()); hist.resolved = true; hist.guardianDefeated = true;
+    ensureSkylands(this.save); this.save.skylands.viscera = (Number(this.save.skylands.viscera) || 0) + CANYON.viscera;
+    this.defeatNotice = { title: "DIVINE VISCERA", detail: `+${CANYON.viscera} · spend it in the Skylands' Divine Challenge`, kind: "discovery" };
+    journalOnce(this.save, `canyon-wreck:${this.areaId()}`, CANYON.messages.pulled(CANYON.viscera), "Canyon Craters");
+    this.message = CANYON.messages.pulled(CANYON.viscera); this.sync(); return { ok: true, message: this.message };
+  }
   // One frame of Fractured mode (release 671): after a doorway's grace a wave of several packs comes in from just out of sight
   // on different sides; once it is all down the next waits `rest` s, and one left standing is joined by the next after `press`
   // s; never past `cap` wave creatures alive nor `hardCap` in all. Runtime only (`fracState`), reset with the area.
@@ -5910,6 +5952,7 @@ export class Game {
           fallStart = elevationAt(this.map, width, bx, by);
         }
       });
+      if (this.area === "dungeon" && this.map.canyon) this.drillAhead(x, y, dt, now); // Canyon craters: push into a clod to drill it
       const landed = elevationAt(this.map, width, p.x, p.y);
       if (p.jumping && this.skyAir != null && landed < this.skyAir) hurt = 0; // still in the air over a skyway gap
       else finishFall(landed);
