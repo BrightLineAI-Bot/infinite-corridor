@@ -2694,6 +2694,34 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 690: the Stalker consolidated — 2026-11-01
+
+Tim (2026-11-01): "a whole visual... normalization or consolidation for the stalker... good animations... climbing and flying and
+stalking... when it's perched up on something, it has a unique look... it should hide... since it's stalking you and climbing"; "I
+did like those blue chevrons... we can keep them on".
+
+**CODE:**
+- `src/stalker.ts` `stalkerLook` (each fight frame, and while it waits outside):
+  - `stalkHide` eases (`LOOK.ease`) toward 0–1 when it prowls beyond `hideFrom` tiles (full over `hideOver`), and to `hideWait`
+    while it waits by a door; 0 during attacks.
+  - `stalkPerch` when it prowls or waits on ground `perchRise`+ levels above the Wayfarer's (`w.elev`), facing them.
+  - `stalkCreep` when it prowls beyond three quarters of its range.
+  - Drawing only: no fight logic reads them.
+- `src/stalker-render.ts`:
+  - The cat's head and mist are now `catHead` / `catMist`, shared by every pose.
+  - New `drawCatSit` (lying in wait: upright, tail round its feet; `perch`: leaning out over the edge, head lowered, tail hanging
+    over the drop) and `drawCatClimb` (upright, six legs gripping by turns, head up, tail hanging, claw marks, chevrons up its
+    back).
+  - `drawCat` gains a `stalk` pose (low, slow gait), and its blue flank chevrons are back.
+  - `drawApe` gains a `perch` pose, the gargoyle: open wings skipped; wings wrapped as a cloak, wrist claws risen above the
+    shoulders, finger bones down its sides, eyes over the top. It also gets chevrons on the saddle and the cat's mist.
+  - `drawStalker` picks the pose (climb, sit/perch, creep, and for the gorilla perch), fades the body by `stalkHide` and lays a
+    veil of mist over it. One `OUTLINE` colour for every part.
+
+**BOUNDARY:** Drawing only: no save, generator or fight change. Cost: the mist is radial-gradient puffs (about eleven a frame per
+form, eleven more while hidden). Tests: `tests/stalker-arsenal.test.ts`.
+
+
 ## Release 689: the Skylands start from you — 2026-11-01
 
 Tim (2026-11-01): "the base level skyland should be a lower level... they should all be pretty basic... scales based on your

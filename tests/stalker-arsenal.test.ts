@@ -152,3 +152,17 @@ test('the charge knocks the Wayfarer back, the grab pulls them in', () => {
   g.stalkAct = { kind: 'grabWarn', t: .01, total: .45, aim: 0 }; for (let i = 0; i < 40; i++) updateStalker(g, w2);
   assert.ok(pulls.length && pulls.every((dx) => dx < 0), 'hauled toward it'); assert.ok(w2.player.x < 15);
 });
+
+// ---- How it looks: hiding, perching, creeping (drawing only) ----
+import { stalkerLook, LOOK } from '../src/stalker.ts';
+test('it hides in its mist at a distance, perches on high ground, creeps as it closes in', () => {
+  const e = actor(0, 10), w = { player: { x: 14, y: 10 }, elev: () => 0 };
+  for (let i = 0; i < 60; i++) stalkerLook(e, w, .05, 'prowl'); assert.ok(e.stalkHide > .8, `far off it hides (${e.stalkHide.toFixed(2)})`); assert.equal(e.stalkCreep, true);
+  e.x = 12; for (let i = 0; i < 60; i++) stalkerLook(e, w, .05, 'prowl'); assert.ok(e.stalkHide < .1, 'close by, it shows itself'); assert.equal(e.stalkCreep, false);
+  for (let i = 0; i < 60; i++) stalkerLook(e, w, .05, 'pounce'); assert.ok(e.stalkHide < .05, 'never hidden while it attacks');
+  for (let i = 0; i < 60; i++) stalkerLook(e, w, .05, 'wait'); assert.ok(Math.abs(e.stalkHide - LOOK.hideWait) < .05, 'half-hidden while it waits by the door');
+  const high = { player: { x: 14, y: 10 }, elev: (x) => x < 13 ? 3 : 0 }; stalkerLook(e, high, .05, 'prowl'); assert.equal(e.stalkPerch, true); assert.equal(e.facingX, 1, 'it looks down at the Wayfarer');
+  stalkerLook(e, high, .05, 'pounce'); assert.equal(e.stalkPerch, false, 'not perched mid-attack');
+  // In the fight loop, the look is kept up to date.
+  const { w: fw } = field({ x: 30, y: 10 }), f = actor(5, 10); for (let i = 0; i < 40; i++) updateStalker(f, fw); assert.ok(f.stalkHide > 0, 'set while it fights');
+});
