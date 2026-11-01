@@ -37,7 +37,7 @@ test('after a doorway\'s grace a pack comes in from out of sight, never past the
   g.update(.05, idle, 1000); const before = g.enemies.length; g.update(.05, idle, 1000 + (FRACTURED.grace - 1) * 1000); assert.equal(g.enemies.length, before, 'grace');
   g.update(.05, idle, 1000 + (FRACTURED.grace + M.lull + 1) * 1000);
   const come = g.enemies.filter((e) => e.fracReinforcement && !e.dead); assert.ok(come.length >= M.pack[0], `${come.length} arrived`);
-  assert.ok(come.every((e) => Math.hypot(e.x - g.player.x, e.y - g.player.y) >= FRACTURED.spawnDistance[0] - FRACTURED.near - 1 && e.aggro), 'from out of sight, hunting');
+  assert.ok(come.filter((e) => !e.fracShaman).every((e) => Math.hypot(e.x - g.player.x, e.y - g.player.y) >= FRACTURED.spawnDistance[0] - FRACTURED.near - 1 && e.aggro), 'from out of sight, hunting (657: a shaman stands apart from its pack)');
   for (let t = 0; t < 40; t++) g.tickFractured(1e6 + t * 60000); assert.ok(hostile(g).length <= M.cap, `${hostile(g).length} ≤ ${M.cap}`);
 });
 

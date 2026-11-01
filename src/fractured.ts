@@ -18,6 +18,7 @@
 //   rares drop more and give more experience.
 // Bounded: one reinforcement roll a frame at most, a fixed number of tile checks per spawn, the live cap.
 import { hashSeed } from "./random.ts";
+import { rollAffixes, SHAMAN } from "./affixes.ts";
 
 export const FRACTURED = {
   modes: {
@@ -55,6 +56,13 @@ export function packSpawns(key, kinds, ax, ay, size, rank, open, prefix, extra =
     const lead = rank === "rare" && out.length === 0, traits = lead ? [...T].sort((a, b) => h(`t${a}`) - h(`t${b}`)).slice(0, pick(h("n"), RARE.traits)) : shared;
     out.push({ id: `${prefix}-${out.length}`, kind, x, y, traits, fractured: true, ...(rank === "champion" ? { fracRank: "champion" } : lead ? { fracRank: "rare" } : {}), ...extra });
   }
+  // Release 657 (affixes.ts): the pack's leader carries affixes (a champion one, a rare two) and an aura over the rest; now and
+  // then a shaman stands apart, warding them.
+  if (out.length && rank) { const lead = out[0]; lead.affixes = rollAffixes(key, rank === "rare" ? 2 : 1); for (const q of out.slice(1)) q.auraBy = lead.id; }
+  if (out.length && (h("shaman") % 1000) / 1000 < SHAMAN.chance) {
+    for (let i = 0; i < 16; i++) { const a = (h(`sa${i}`) % 628) / 100, r = SHAMAN.distance[0] + h(`sr${i}`) % (SHAMAN.distance[1] - SHAMAN.distance[0] + 1), x = Math.round(ax + Math.cos(a) * r), y = Math.round(ay + Math.sin(a) * r);
+      if (taken.has(`${x},${y}`) || !open(x, y)) continue; const id = `${prefix}-shaman`; out.push({ id, kind: SHAMAN.kind, x, y, traits: [], fractured: true, fracShaman: true, ...extra }); for (const q of out) if (q.id !== id) q.wardBy = id; break; }
+  }
   return out;
 }
 
@@ -75,6 +83,8 @@ export function densityPacks(seed, areaId, mode, base, openTiles, open, count = 
 export const rankXp = (e) => e?.fracRank === "rare" ? RARE.xp : e?.fracRank === "champion" ? CHAMPION.xp : 1; // on top of the section's own multiplier
 export function applyFracturedRank(c, spawn, seed) {
   const R = spawn.fracRank === "rare" ? RARE : spawn.fracRank === "champion" ? CHAMPION : null; c.fractured = true; if (spawn.fracReinforcement) c.fracReinforcement = true;
+  for (const k of ["affixes", "auraBy", "wardBy"]) if (spawn[k]) c[k] = Array.isArray(spawn[k]) ? [...spawn[k]] : spawn[k];
+  if (spawn.fracShaman) { c.fracShaman = true; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * SHAMAN.hp)); c.speedMultiplier = (c.speedMultiplier || 1) * SHAMAN.speed; c.packName = "Shaman"; }
   if (!R) return c;
   c.fracRank = spawn.fracRank; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * R.hp)); c.damage = Math.max(1, Math.round(c.damage * R.damage)); c.scale = (c.scale || 1) * R.scale; c.bodyRadius = (c.bodyRadius || .38) * R.scale; c.staggerResistance = Math.max(c.staggerResistance || 0, spawn.fracRank === "rare" ? .5 : .25);
   if (spawn.fracRank === "rare") c.packName = rareName(seed, c.id);

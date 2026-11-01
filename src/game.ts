@@ -55,6 +55,7 @@ import { ensurePerception } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST } from "./tool-forms.ts";
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp } from "./fractured.ts";
+import { tickAffixes, rollAffixes } from "./affixes.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { SKYLANDS, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
@@ -2243,6 +2244,7 @@ export class Game {
   loadArea(area, capture = true) {
     if (capture) this.snapshotArea();
     if (area !== "overworld") this.glide = null; // release 641 (the pre-publish review of 623→639): a glide never follows you indoors
+    this.affixHazards = []; // release 657
     this.droneLift = null; // release 647: a booster lift never carries over a change of area or section
     this.shadowClone = null; this.cloneAim = false; // release 365: a shadow stays in the place it was cast
     this.builds = []; // release 265: builds belong to the map they stand on
@@ -4407,6 +4409,7 @@ export class Game {
       }
       if (e.marginWarden) { const W = MARGIN_RULES.warden, rev = tuneGatePredator(Object.assign(createCombatant("gateRevenant", 0, 0, false, []), { gatePredator: true }), this.save, characterStats(this.save)); Object.assign(c, { marginWarden: true, boss: false, foundryName: `Margin Warden · ${c.eliteName || c.kind}`, aggro: false }); c.maxHp = c.hp = Math.max(1, Math.round(rev.maxHp * W.revenantShare)); c.damage = Math.max(1, Math.round(rev.damage * W.revenantShare)); c.baseDamage = c.damage; c.scale = (c.scale || 1) * W.scale; c.baseScale = c.scale; } // release 459; 473: an elite at half a Gate Revenant
       if (e.fractured) applyFracturedRank(c, e, this.save.seed); // release 651
+      if (GUARDIAN_ROLES.includes(c.dungeonRole) && !c.affixes) c.affixes = rollAffixes(`${this.save.seed}:guardian:${c.id}`, 1); // release 657: every crossing guardian carries an affix
       ensureAI(c);
       refreshMarineBeast(c, this.map, mapWidth(this.map, area), area);
       return c;
@@ -5007,7 +5010,7 @@ export class Game {
     const size = Math.min(mode.cap - hostile.length, mode.pack[0] + h % (mode.pack[1] - mode.pack[0] + 1) + (surge ? mode.surge : 0)), roll = ((h >>> 9) % 1000) / 1000;
     const rank = surge ? (roll < .35 ? "rare" : "champion") : roll < mode.rare * .5 ? "rare" : roll < mode.champion ? "champion" : null;
     const pack = packSpawns(`${this.save.seed}:frac-wave:${key}:${st.n}`, kinds.length ? kinds : F.fallback, at.x, at.y, size, rank, (x, y) => this.fracturedOpen(x, y, w), `frac-r-${(this.fracSeq = (this.fracSeq || 0) + 1)}`, { fracReinforcement: true });
-    for (const q of pack) { const c = this.createEnemyFromSpawn(q); c.aggro = true; this.enemies.push(c); }
+    for (const q of pack.slice(0, Math.max(0, mode.cap - hostile.length))) { const c = this.createEnemyFromSpawn(q); c.aggro = true; this.enemies.push(c); } // never past the cap (657: a shaman counts)
     if (pack.length) this.message = surge ? F.messages.surge : rank === "rare" ? F.messages.rare : F.messages.arrive;
   }
   // Release 649 (tool-forms.ts MIRAGE): the Great Sweep with Mirage of Blades throws a spinning great blade (more with Echo),
@@ -5395,6 +5398,8 @@ export class Game {
     if (this.orbit) this.tickOrbit(dt, now); // release 487: Orbit Volley
     this.tickMirage(dt); // release 649: Mirage of Blades
     this.tickFractured(now); // release 651: Fractured mode
+    if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = ensureEliteState(this.save).status; // release 657: affixes, auras, shamans
+      tickAffixes(this, dt, now, (n) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)))); p.invulnerableUntil = now + 350; }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
     if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge; this.fistCharge = null; this.fistPunch(c.step || 1, fistCharge(held), now, c.direction); } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (input.consume("spell")) this.castSlot("a");
