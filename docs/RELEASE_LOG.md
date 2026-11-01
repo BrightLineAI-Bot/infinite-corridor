@@ -21,6 +21,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 692, the next is **
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| (at merge) | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Stalker's mirage, the gorilla's lasers, five ways in, low ground fog, walks on water; fixes 691's affix-drawing crash | Building. |
 | 692 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Stalker's fog: alternate hunts come in the open, then fog the section and veil it; veils again in the fight; blue-grey mist | Building. |
 | 691 | Claude (Stalker session) | PR #338 | The Stalker lies in wait unseen and springs; the cat's flurry and tide; the puddle's mouth and six chompers; the sit and perch redrawn | Building. |
 | 690 | Claude (Stalker session) | PR #337 | The Stalker consolidated: stalking creep, hiding in its mist, sitting in wait, perched (cat at the edge, gorilla as a gargoyle), climbing; chevrons back; one look for both forms | Building. |

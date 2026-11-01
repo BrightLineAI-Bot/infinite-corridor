@@ -224,7 +224,7 @@ test('the fog: within range it fogs the section and veils itself; it veils again
   // In the game: alternate hunts come in the open; the fog shows over the section; the edge marker says nothing while it hides.
   const { freshSave } = await import('../src/types.ts'), { Game } = await import('../src/game.ts'), { ensureStalker } = await import('../src/stalker.ts');
   const s = freshSave(); s.seed = 'FOG'; s.perception.aperture = 80; const g = new Game(s, 0); g.rx = 4; g.ry = 3; g.loadArea('overworld', false);
-  const q = ensureStalker(s); q.seq = 1; q.ground = q.need - .5; let now = 0, st = null;
+  const q = ensureStalker(s); q.seq = K.approach.styles.indexOf('fog'); q.ground = q.need - .5; let now = 0, st = null;
   for (let i = 0; i < 400 && !st; i++) { now += 50; g.player.x += i % 40 < 20 ? .05 : -.05; g.tickStalker(.05, now); st = g.enemies.find((x) => x.stalker); }
   assert.ok(st && st.stalkFogPlan && !st.stalkLurk && !st.hidden, 'this hunt it comes in the open'); assert.match(g.message, /coming for you/);
   g.player.x = st.x + 2; g.player.y = st.y; updateStalker(st, g.stalkerWorld(.05, now += 50));
@@ -232,4 +232,64 @@ test('the fog: within range it fogs the section and veils itself; it veils again
   const lurkHunt = freshSave(); lurkHunt.seed = 'FOG'; lurkHunt.perception.aperture = 80; const h = new Game(lurkHunt, 0); h.rx = 4; h.ry = 3; h.loadArea('overworld', false); const lq = ensureStalker(lurkHunt); lq.ground = lq.need - .5;
   let l = null; for (let i = 0; i < 400 && !l; i++) { now += 50; h.player.x += i % 40 < 20 ? .05 : -.05; h.tickStalker(.05, now); l = h.enemies.find((x) => x.stalker); }
   assert.ok(l && l.stalkLurk, 'the other hunts lie in wait'); assert.equal(h.stalkerMarker(), null);
+});
+
+// ---- The mirage; the gorilla's lasers; how it comes; water ----
+import { stalkerMirage } from '../src/stalker.ts';
+test('the mirage: all but invisible, it darts in for one or two blows and springs out; it may hide and heal, a little', () => {
+  const fogs = [], { w, hurts } = field({ x: 14, y: 10 }, { fogged: (e, t) => fogs.push(t) }), e = actor(10, 10); e.stalkTurretClock = 999; e.stalkEnergyClock = 999; e.stalkCharges = 0;
+  e.stalkAct = { kind: 'prowl', t: 9, total: 9 }; e.stalkMirageClock = 0; assert.equal(stalkerMirage(e, w, .05), true); assert.ok(e.stalkMirage && e.hidden, 'into the mirage');
+  const phases = new Set(); let blowsInARow = 0, most = 0, last = 0; e.hp = 500;
+  for (let i = 0; i < K.mirage.time / .05 + 4; i++) { const before = hurts.length; updateStalker(e, w); w.player.invulnerableUntil = 0; if (e.stalkMirage) phases.add(e.stalkMirage.phase); if (hurts.length > before) { blowsInARow = e.stalkMirage?.phase === 'strike' || e.stalkMirage?.phase === 'out' ? blowsInARow + 1 : 1; most = Math.max(most, blowsInARow); } if (e.stalkMirage?.phase === 'orbit') blowsInARow = 0; last = i; }
+  for (const k of ['orbit', 'in', 'strike', 'out']) assert.ok(phases.has(k), k);
+  assert.ok(hurts.length >= 1, 'it lands blows'); assert.ok(most <= K.mirage.strikes[1], `never more than ${K.mirage.strikes[1]} in a row (${most})`);
+  assert.equal(e.stalkMirage, null, 'it ends'); assert.equal(e.hidden, false); void last;
+  // Hiding heals, a little, and glows red.
+  const g = actor(10, 10); g.hp = 400; g.stalkAct = { kind: 'prowl', t: 9, total: 9 }; g.stalkMirage = { t: 20, phase: 'hide', pt: K.mirage.hide.time, ang: 0, dir: 1, n: 1, healed: 0, hid: false };
+  const { w: w2 } = field({ x: 12, y: 10 }); let red = false; for (let i = 0; i < 400; i++) { stalkerMirage(g, w2, .05); red ||= !!g.stalkRegen; }
+  assert.ok(red, 'red while it heals'); assert.ok(g.hp > 400 && g.hp <= 400 + K.mirage.hide.cap * g.maxHp + 1e-6, 'healed, no more than the cap');
+});
+
+test('the gorilla’s lasers: a fan without the sweep, and bolts along its arms in the spin, flying straight on', () => {
+  const { w, hurts } = field({ x: 16, y: 10 }, { move: () => false }), e = actor(10, 10, { stalkForm: 'ape' }); e.stalkTurretClock = 999; e.stalkEnergyClock = 999; e.stalkCharges = 0;
+  e.stalkAct = { kind: 'lasersWarn', t: .01, total: .5, aim: 0 }; for (let i = 0; i < 10; i++) updateStalker(e, w);
+  const bolts = e.stalkShots.filter((q) => q.kind === 'laser'); assert.equal(bolts.length, K.arms.lasers.fan.length, 'one per angle of the fan');
+  const v0 = bolts.map((q) => [q.vx, q.vy]); updateStalker(e, w); assert.deepEqual(e.stalkShots.filter((q) => q.kind === 'laser').map((q) => [q.vx, q.vy]), v0, 'straight on, not homing');
+  for (let i = 0; i < 30; i++) updateStalker(e, w); assert.ok(hurts.length <= 1, 'the bolt aimed at it hits once at most');
+  // The spin: both arms, a bolt every 30 degrees of each arm's half circle.
+  const f = actor(10, 10, { stalkForm: 'ape' }); f.stalkTurretClock = 999; f.stalkEnergyClock = 999; f.stalkCharges = 0; f.stalkSpinSeq = 2; const { w: w2 } = field({ x: 30, y: 30 }, { move: () => false });
+  f.stalkAct = { kind: 'spinWarn', t: .01, total: .55, aim: 0 }; let made = 0; for (let i = 0; i < 20; i++) { updateStalker(f, w2); made = Math.max(made, (f.stalkShots || []).filter((q) => q.kind === 'laser').length); }
+  assert.ok(made >= 12, `bolts from both arms (${made})`); assert.ok((f.stalkShots || []).length <= K.turret.cap);
+});
+
+test('how it comes for you, by turns: lying in wait, running, fog, creeping then running, flying in', async () => {
+  const { freshSave } = await import('../src/types.ts'), { Game } = await import('../src/game.ts'), { ensureStalker } = await import('../src/stalker.ts');
+  const seen = {};
+  for (const [i, style] of K.approach.styles.entries()) {
+    const s = freshSave(); s.seed = 'COME'; s.perception.aperture = 80; const g = new Game(s, 0); g.rx = 4; g.ry = 3; g.loadArea('overworld', false); const q = ensureStalker(s); q.seq = i; q.ground = q.need - .5;
+    let e = null, now = 0; for (let k = 0; k < 400 && !e; k++) { now += 50; g.player.x += k % 40 < 20 ? .05 : -.05; g.tickStalker(.05, now); e = g.enemies.find((x) => x.stalker); }
+    assert.ok(e, style); seen[style] = e.stalkStyle; const d = Math.hypot(e.x - g.player.x, e.y - g.player.y);
+    if (style === 'lurk') assert.ok(e.stalkLurk && e.hidden); if (style === 'fog') assert.ok(e.stalkFogPlan);
+    if (style === 'run' || style === 'creep') assert.ok(d >= K.approach.far[0] - 1 && !e.hidden, `${style}: seen from afar (${d.toFixed(1)})`);
+    if (style === 'creep') assert.ok(e.stalkCreepIn); if (style === 'fly') assert.ok(e.stalkForm === 'ape' && e.stalkAct.kind === 'leapWarn' && e.stalkAct.flyTime);
+  }
+  assert.deepEqual(Object.values(seen), K.approach.styles);
+  // Creeping, it moves slowly until it is close, then breaks into a run.
+  const { w } = field({ x: 20, y: 10 }), c = actor(5, 10, { stalkCreepIn: true }); c.stalkTurretClock = 999; c.stalkEnergyClock = 999; c.stalkMirageClock = 999; updateStalker(c, w); const x0 = c.x; updateStalker(c, w); assert.ok(c.x - x0 < K.forms.cat.speed * .05 * .5, 'slowly');
+  for (let i = 0; i < 400 && c.stalkCreepIn; i++) updateStalker(c, w); assert.equal(c.stalkCreepIn, false, 'then it runs');
+});
+
+test('water is nothing to it: it walks on rivers, lakes and the sea', async () => {
+  const { freshSave } = await import('../src/types.ts'), { Game } = await import('../src/game.ts');
+  const s = freshSave(); s.seed = 'WET'; const g = new Game(s, 0); g.rx = 4; g.ry = 3; g.loadArea('overworld', false); const W = 32;
+  for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) Object.assign(g.map.tiles[y * W + x], { kind: x >= 10 && x <= 14 ? 'lakeWater' : 'grass', blocked: false, structure: null, buildingId: null, perch: false, elev: 0 });
+  assert.equal(g.stalkerOpen(12, 6), true, 'it can stand on the lake'); assert.equal(g.stalkerOpen(9.8, 6), true, 'and on the shore between');
+  const e = { id: 'stalker-w', stalker: true, x: 7, y: 6 }, w = g.stalkerWorld(.05, 0); for (let i = 0; i < 80; i++) w.move(e, .1, 0); assert.ok(e.x > 14.76, `it walked across the lake to the far shore (${e.x.toFixed(1)})`);
+  const dry = { id: 'x', x: 7, y: 6 }; assert.equal(g.stalkerWaterFooting(dry.x, dry.y), false, 'dry ground is not water footing');
+});
+
+test('the affix drawing is code, not swallowed by a comment (the release 691 slip that broke drawing affixed creatures)', async () => {
+  const { readFileSync } = await import('node:fs'); const src = readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8');
+  const line = src.split('\n').find((l) => l.includes('affixes, wards, shamans')); assert.ok(line);
+  const code = line.slice(0, line.indexOf('//')); assert.match(code, /ctx\.save\(\); const cx = /, 'ctx.save and cx come before any comment on that line');
 });

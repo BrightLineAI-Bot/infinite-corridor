@@ -1715,6 +1715,16 @@ export function render(ctx, g, w, h, now) {
     ctx.save(); ctx.strokeStyle = `rgba(20,12,6,${.4 + .5 * k})`; ctx.lineWidth = Math.max(1, s * .06); ctx.beginPath(); for (let i = 0; i < 2 + Math.floor(k * 5); i++) { const a = i * 2.1 + d.x, r = s * (.15 + .35 * k); ctx.moveTo(x + s / 2, y + s / 2); ctx.lineTo(x + s / 2 + Math.cos(a) * r, y + s / 2 + Math.sin(a) * r); } ctx.stroke();
     if (d.strain > 0) { const f = Math.min(1, d.strain / 1); ctx.fillStyle = "#0008"; ctx.fillRect(x + s * .1, y - s * .22, s * .8, s * .12); ctx.fillStyle = f > .75 ? "#ff4a3a" : f > .45 ? "#ffd24a" : "#7ddf6a"; ctx.fillRect(x + s * .1, y - s * .22, s * .8 * f, s * .12); }
     ctx.fillStyle = `rgba(150,120,80,${.25 + .3 * Math.sin(now / 60)})`; for (let i = 0; i < 3; i++) ctx.fillRect(x + s * (.2 + ((now / 90 + i * 7) % 6) / 10), y + s * (.75 - i * .15), 2, 2); ctx.restore(); }
+  // Release NNN (Tim: "make it low to the ground... the tops of buildings and trees are visible through it... every other creature
+  // is pretty visible"): the Stalker's fog is the sea fog's banks and closing-in wash, painted over the ground only, before the
+  // marks, the objects and the creatures, so treetops, roofs and other creatures stand out of it (and the marks still show).
+  if (g.area === "overworld" && g.stalkFog?.fog) { const F = g.stalkFog, fade = F.level || 0, time = now / 1000;
+    if (fade > .01) { for (const f of F.fog) for (let i = 0; i < 7; i++) {
+        const a = (f.swirl || 0) + i * 2.399 + Math.sin(time * .2 + i) * .15, d = f.radius * (.15 + .55 * ((i * 37) % 10) / 10), pr = f.radius * (.45 + .1 * Math.sin(time * .3 + i * 1.7));
+        const x = (f.x + Math.cos(a) * d) * s, y = (f.y + Math.sin(a) * d) * s, gr = ctx.createRadialGradient(x, y, 0, x, y, pr * s);
+        gr.addColorStop(0, `rgba(222,231,236,${.3 * fade})`); gr.addColorStop(1, "rgba(222,231,236,0)"); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, pr * s, 0, 7); ctx.fill(); }
+      const px = (p.x + .5) * s, py = (p.y + .6) * s, lv = fade * .9, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - lv) * 3), px, py, s * (3.6 + (1 - lv) * 7));
+      gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.9 * lv})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2); } }
   // Active combat effects, including Supernova, intentionally paint over fog. They never reveal tiles or actors.
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),g.presentation);
   drawMorphEffects(ctx,g.enemies,s,now); // release 385: the Morphling's cables, jaw, lunge and rising
@@ -1893,7 +1903,7 @@ export function render(ctx, g, w, h, now) {
           if (e.seaKind) { drawSeaCreature(ctx, e, s, now, SEA_CREATURES[e.seaKind].colors, g); return; }
           if (e.fracRank) { const rare = e.fracRank === "rare", pulse = .55 + .45 * Math.sin(now / 260), R = s * (.42 + (e.bodyRadius || .4) * .6); ctx.save(); ctx.strokeStyle = rare ? `rgba(255,196,70,${.5 + .4 * pulse})` : `rgba(110,170,255,${.45 + .35 * pulse})`; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.ellipse((e.x + .5) * s, (e.y + .82) * s, R, R * .42, 0, 0, Math.PI * 2); ctx.stroke(); if (rare && e.packName) { ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffd77a"; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = (e.y - (e.scale || 1) * .55) * s; ctx.strokeText(e.packName, (e.x + .5) * s, ty); ctx.fillText(e.packName, (e.x + .5) * s, ty); } ctx.restore(); } // release 651: Fractured mode's champions (blue) and rares (gold, named)
           if (e.fracWarden) { const cx = (e.x + .5) * s, cy = (e.y + .82) * s, R = s * (.5 + (e.bodyRadius || .5) * .7), tt = now / 1000; ctx.save(); ctx.strokeStyle = `rgba(255,70,120,${.55 + .35 * Math.sin(now / 200)})`; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); for (let i = 0; i <= 14; i++) { const a = i / 14 * Math.PI * 2 + tt * .4, rr = R * (i % 2 ? .82 : 1.08); ctx[i ? "lineTo" : "moveTo"](cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * .42); } ctx.stroke(); ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ff8fb0"; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = (e.y - (e.scale || 1) * .6) * s; ctx.strokeText("Fracture Warden", cx, ty); ctx.fillText("Fracture Warden", cx, ty); ctx.restore(); } // release 666: a jagged crimson ring and its name
-          if ((e.affixes?.length || e.warded || e.fracShaman) && !e.stalkLurk) { // release 691: a lurking Stalker gives nothing away ctx.save(); const cx = (e.x + .5) * s, cy = (e.y + .45) * s, tt = now / 1000; // release 657: affixes, wards, shamans
+          if ((e.affixes?.length || e.warded || e.fracShaman) && !(e.stalker && e.hidden)) { ctx.save(); const cx = (e.x + .5) * s, cy = (e.y + .45) * s, tt = now / 1000; // release 657: affixes, wards, shamans (release 691: a hidden Stalker, lurking, veiled or in its mirage, gives nothing away)
             if (e.affixes?.includes("droneSwarm")) for (let i = 0; i < AFFIXES.droneSwarm.count; i++) { const d = dronePos(e, i, tt), dx = d.x * s, dy = d.y * s; ctx.fillStyle = "#2b3a1e"; ctx.strokeStyle = AFFIXES.droneSwarm.color; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(dx, dy - s * .12); ctx.lineTo(dx + s * .12, dy); ctx.lineTo(dx, dy + s * .12); ctx.lineTo(dx - s * .12, dy); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#e9ffb0"; ctx.fillRect(dx - 1.5, dy - 1.5, 3, 3); }
             if (e.warded) { ctx.strokeStyle = `rgba(180,140,255,${.5 + .3 * Math.sin(now / 180)})`; ctx.lineWidth = Math.max(2, s * .05); ctx.beginPath(); ctx.arc(cx, cy, s * (.55 + (e.bodyRadius || .4) * .5), 0, 7); ctx.stroke(); }
             if (e.fracShaman) { ctx.strokeStyle = `rgba(190,120,255,${.55 + .35 * Math.sin(now / 140)})`; ctx.lineWidth = Math.max(2, s * .07); for (const k of [0, 1]) { const rr = s * (.8 + ((tt * .8 + k * .5) % 1) * .9); ctx.globalAlpha = 1 - ((tt * .8 + k * .5) % 1); ctx.beginPath(); ctx.ellipse(cx, (e.y + .82) * s, rr, rr * .45, 0, 0, 7); ctx.stroke(); } ctx.globalAlpha = .35; for (const m of g.enemies) if (!m.dead && m.wardBy === e.id && m.warded) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo((m.x + .5) * s, (m.y + .45) * s); ctx.stroke(); } ctx.globalAlpha = 1; }
@@ -2072,13 +2082,12 @@ export function render(ctx, g, w, h, now) {
     for (let i = 0; i < 4; i++) { const x0 = (l + ((i * 7 + now / 900) % (r - l + 6)) - 3) * s; ctx.fillStyle = "rgba(200,240,255,.06)"; ctx.beginPath(); ctx.moveTo(x0, t * s); ctx.lineTo(x0 + s * 1.5, t * s); ctx.lineTo(x0 + s * 4, b * s); ctx.lineTo(x0 + s * 2, b * s); ctx.fill(); }
   }
   // Stormkraken ink (W4): the sea goes dark beyond a small circle around the Wayfarer.
-  if (g.area === "overworld" && (g.seaHazards?.fog?.length || g.novaFog || g.stalkFog)) { // release 692: the Stalker's fog is the sea's
+  if (g.area === "overworld" && (g.seaHazards?.fog?.length || g.novaFog)) {
     // Fog banks (release 156; release 158 smooths them): each bank is a cluster of soft puffs turning slowly about its
     // centre. Inside a bank the mist closes in around the Wayfarer gradually (fogLevel is eased in open-sea.ts).
     // Release 257: a Supernova's fog (g.novaFog) draws the same way, faded in and out by its alpha.
     const level = g.seaHazards?.fogLevel || 0, time = now / 1000; // release 407 (Tim: "the Supernova... covers the entire world, so I can't see him... the Supernova shouldn't cover the Void Walker or other creatures"): its fog no longer closes in around the Wayfarer, and its mist is thin
-    const closeIn = Math.max(level, (g.stalkFog?.level || 0) * .85); // release 692: the Stalker's fog closes in as the sea's does (the Supernova's still never does)
-    for (const [f, fade] of [...(g.seaHazards?.fog || []).map((f) => [f, 1]), ...(g.novaFog?.fog || []).map((f) => [{ ...f, nova: true }, g.novaFog.alpha ?? 1]), ...(g.stalkFog?.fog || []).map((f) => [f, g.stalkFog.level])]) {
+    for (const [f, fade] of [...(g.seaHazards?.fog || []).map((f) => [f, 1]), ...(g.novaFog?.fog || []).map((f) => [{ ...f, nova: true }, g.novaFog.alpha ?? 1])]) {
       if (fade <= 0) continue;
       for (let i = 0; i < 7; i++) {
         const a = (f.swirl || 0) + i * 2.399 + Math.sin(time * .2 + i) * .15, d = f.radius * (.15 + .55 * ((i * 37) % 10) / 10), pr = f.radius * (.45 + .1 * Math.sin(time * .3 + i * 1.7));
@@ -2087,9 +2096,9 @@ export function render(ctx, g, w, h, now) {
         ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, pr * s, 0, 7); ctx.fill();
       }
     }
-    if (closeIn > .01) {
-      const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - closeIn) * 3), px, py, s * (3.6 + (1 - closeIn) * 7));
-      gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.92 * closeIn})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
+    if (level > .01) {
+      const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - level) * 3), px, py, s * (3.6 + (1 - level) * 7));
+      gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.92 * level})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
     }
     // Release 269 (Tim: "in fog it should cast a... violet glow"): the longboat's lantern lights the mist around it,
     // more strongly the deeper the fog.

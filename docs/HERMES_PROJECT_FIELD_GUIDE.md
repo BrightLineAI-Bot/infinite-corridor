@@ -2694,6 +2694,53 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release NNN: the Stalker's mirage, the gorilla's lasers, five ways in, low fog, water — 2026-11-01
+
+Tim (2026-11-01):
+- "a transparent mode... semi-invisible... he can move around more quickly... quick attacks... the cat... up to two slashes...
+  the gorilla... up to two punches, and then it'll dodge out... the after image... and the retreating slash can still take
+  place";
+- "he could even create a fog... he might just hide... regaining health... a red glow around him";
+- "the gorilla... when it's waving its arms in that 180° sweep... shoot long laser beams... at 7 o'clock, 8 o'clock... or it could
+  do lasers without sweeping its arms";
+- "the stalker is just not affected by water";
+- "it doesn't always have to be lying in wait... running at you from across the section... slowly stalking towards you and then
+  start running... flying in";
+- "make it low to the ground... the tops of buildings and trees are visible... every other creature is pretty visible... the
+  stalker... needs to be even less visible".
+
+**CODE:** `src/stalker.ts`.
+- `STALKER.mirage` / `stalkerMirage` (before the turret each fight frame; it replaces the act machine while it lasts):
+  - Every `every` s, from a prowl, as cat or gorilla, for `time` s; `hidden`.
+  - Phases: `orbit` (fast, at `orbit` tiles), `in` (a dash), `strike` (`strikes` 1–2, `gap` apart: the cat's slash marks, the
+    gorilla's punch pose), `out` (a spring-back).
+  - With `fogChance` it fogs the section; with `hideChance` one `hide` (away to `hide.dist`, healing `hide.regen` of its health
+    a second, at most `hide.cap`; `stalkRegen` for the red glow).
+  - Afterimages and the shield still act (they run earlier in the frame).
+- `STALKER.arms.laser`, `lasers` and `armLasers`:
+  - The spin takes `armLasers` by turns (none, one arm, both) and fires a bolt every `step` along each arm's half circle.
+  - New move `lasers` (in `pick`): a marked fan (`fan` degrees), fired `gap` s apart.
+  - Bolts are `laser` shots (segment hit, `len`, straight, stopped by walls); the shot cap is now 18.
+- `STALKER.approach.styles` (lurk, run, fog, creep, fly) by (`seq` + `kills`):
+  - `Game.spawnStalker` sets each. Run, creep and fly come from `far` tiles away.
+  - creep: `stalkCreepIn` slows the prowl to `creepSpeed` until `creepUntil`.
+  - fly: the gorilla starts with a `leapWarn` that has a `flyTime`.
+  - Each style has its own message.
+- `STALKER.lurk.alpha` is .045 and `fog.alpha` .06: even fainter.
+- `src/game.ts` `stalkerWaterFooting`: river and `DEEP_WATER` count as footing, never a building or perch. `stalkerOpen` accepts
+  it, and `stalkerWorld.move` walks the Stalker on water directly.
+- `src/renderer.ts`:
+  - The Stalker's fog (sea-fog banks and closing wash) is now painted over the ground layer, before the marks, objects and
+    creatures, so treetops, roofs and other creatures stand out of it. The sea-fog overlay is as it was.
+  - Fixed: release 691's comment had swallowed the affix block's `ctx.save(); const cx …`, so drawing any creature with an
+    affix, ward or shaman threw. Live r688 never had it; a test now guards the line.
+  - Affix drawing skips a hidden Stalker.
+- `src/stalker-render.ts`: the mirage alpha with a shimmer and the red regen glow; laser bolts; the laser fan's marks; mirage
+  poses (cat leaping and swiping, gorilla walking and punching); no shadow, label or mist veil while hidden.
+
+**BOUNDARY:** Runtime only: no save, generator or reward change. Bounded: 18 shots, regen capped per mirage, no pathfinding.
+Tests: `tests/stalker-arsenal.test.ts`.
+
 ## Release 692: the Stalker's fog — 2026-11-01
 
 Tim (2026-11-01): "it could be coming toward you, and then it can go invisible and attack... you might still see... the hitbox...

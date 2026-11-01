@@ -4433,7 +4433,18 @@ export class Game {
   }
   stalkerOpen(x, y) {
     const width = mapWidth(this.map, this.area), height = mapHeight(this.map, this.area);
-    return [x, y].every(Number.isFinite) && x >= .5 && y >= .5 && x <= width - 1.5 && y <= height - 1.5 && footprintOpen(this.map, width, x, y) && !footprintHazard(this.map, width, x, y) && !this.stalkerBarred(x, y);
+    return [x, y].every(Number.isFinite) && x >= .5 && y >= .5 && x <= width - 1.5 && y <= height - 1.5 && (footprintOpen(this.map, width, x, y) && !footprintHazard(this.map, width, x, y) || this.stalkerWaterFooting(x, y)) && !this.stalkerBarred(x, y);
+  }
+  // Release NNN (Tim: "the stalker is just not affected by water... walks on water as if it's just land"): footing where every tile
+  // under it is either water (river, lake, sea, swamp; never part of a building) or plain open ground.
+  stalkerWaterFooting(x, y) {
+    const width = mapWidth(this.map, this.area), map = this.map, height = map.tiles.length / width; let wet = false;
+    for (let ty = Math.floor(y + .5); ty <= Math.floor(y + .88 - 1e-6); ty++) for (let tx = Math.floor(x + .24); tx <= Math.floor(x + .76 - 1e-6); tx++) {
+      if (tx < 0 || ty < 0 || tx >= width || ty >= height) return false; const t = map.tiles[ty * width + tx]; if (!t || t.structure || t.buildingId || t.perch) return false;
+      if (t.kind === "river" || DEEP_WATER.includes(t.kind)) { wet = true; continue; }
+      if (t.blocked || LETHAL_KINDS.has(t.kind)) return false;
+    }
+    return wet;
   }
   stalkerWorld(dt, now) {
     if (this._stalkW?.now === now && this._stalkW.dt === dt) return this._stalkW;
@@ -4445,7 +4456,8 @@ export class Game {
       free: (x, y) => [x, y].every(Number.isFinite) && x >= .5 && y >= .5 && x <= width - 1.5 && y <= mapHeight(map, game.area) - 1.5 && !game.stalkerBarred(x, y), // the cat climbs over walls and up trees, never into a building, shelter or town
       shotBlocked: (x, y) => !projectileTileOpen(map, width, x, y),
       displace: (dx, dy) => [dx, dy].every(Number.isFinite) && moveAxis(p, dx, dy, map, width, true), // the gorilla's pull and knockback (a knock can carry the Wayfarer off a ledge)
-      move(e, dx, dy) { const ox = e.x, oy = e.y, moved = moveAxis(e, dx, dy, map, width); if (moved && game.stalkerBarred(e.x, e.y)) { e.x = ox; e.y = oy; return false; } return moved; },
+      move(e, dx, dy) { if (!e.stalkerKin && !e.stalkerDecoy && (game.stalkerWaterFooting(e.x, e.y) || game.stalkerWaterFooting(e.x + dx, e.y + dy))) { /* on water it simply walks */ let moved = false; if (dx && game.stalkerOpen(e.x + dx, e.y)) { e.x += dx; moved = true; } if (dy && game.stalkerOpen(e.x, e.y + dy)) { e.y += dy; moved = true; } return moved; }
+        const ox = e.x, oy = e.y, moved = moveAxis(e, dx, dy, map, width); if (moved && game.stalkerBarred(e.x, e.y)) { e.x = ox; e.y = oy; return false; } return moved; },
       elev: (x, y) => Number(map.tiles[Math.floor(y + .72) * width + Math.floor(x + .5)]?.elev) || 0,
       hurt: (e, amount) => game.packHurt(e, amount, {}, now),
       revealed: () => { game.message = "THE STALKER — it was waiting for you."; },
@@ -4490,11 +4502,18 @@ export class Game {
     Object.assign(c, { id: `stalker-${st.seq}-${st.kills}`, kind: "stalker", stalker: true, boss: true, aggro: true, eliteName: "The Stalker", defeatTitle: "THE STALKER FALLS", maxHp: v.hp, hp: Math.min(v.hp, st.active?.hp || v.hp), damage: v.damage, baseDamage: v.damage,
       range: 0, meleePatterns: [], scale: STALKER.size, baseScale: STALKER.size, bodyRadius: .5, threatRing: q.ring, xpMultiplier: q.xpMultiplier * 2, staggerImmune: true,
       affixes: rollAffixes(key, STALKER.affixes[0] + (hashSeed(`${key}:affix-count`) % (STALKER.affixes[1] - STALKER.affixes[0] + 1))), stalkForm: at ? "cat" : hashSeed(`${key}:first`) % 2 ? "ape" : "cat" });
-    const fogHunt = !at && (st.seq + st.kills) % 2 === 1; // release 692: on alternate hunts it comes in the open, then fogs the section and veils itself
-    if (fogHunt) { const b = this._stalkBearing ?? Math.PI / 2, back = ambushSpots(this.save.seed, `${st.seq}:${st.kills}:fog`, p, { x: -Math.cos(b), y: -Math.sin(b) }).find((q) => this.stalkerOpen(q.x, q.y)); if (back) { c.x = back.x; c.y = back.y; } c.stalkFogPlan = true; }
-    else if (!at) Object.assign(c, { stalkLurk: { t: 0 }, hidden: true, untargetable: true, stalkHide: 1 }); // release 691: hidden until it springs
+    // Release NNN: how it comes for you, by turns: lying in wait ahead (lurk), running at you from across the section (run), in
+    // the open then fogging (fog), stalking slowly then breaking into a run (creep), or flying in as the gorilla (fly).
+    const style = at ? "door" : STALKER.approach.styles[(st.seq + st.kills) % STALKER.approach.styles.length], b = this._stalkBearing ?? Math.PI / 2;
+    const far = (key, heading) => ambushSpots(this.save.seed, `${st.seq}:${st.kills}:${key}`, p, heading, STALKER.approach.far).find((q) => this.stalkerOpen(q.x, q.y));
+    if (style === "lurk") Object.assign(c, { stalkLurk: { t: 0 }, hidden: true, untargetable: true, stalkHide: 1 }); // release 691: hidden until it springs
+    else if (style === "fog") { const back = ambushSpots(this.save.seed, `${st.seq}:${st.kills}:fog`, p, { x: -Math.cos(b), y: -Math.sin(b) }).find((q) => this.stalkerOpen(q.x, q.y)); if (back) { c.x = back.x; c.y = back.y; } c.stalkFogPlan = true; }
+    else if (style === "run" || style === "creep" || style === "fly") { const q = far(style, { x: Math.cos(b), y: Math.sin(b) }) || far(`${style}:b`, { x: -Math.cos(b), y: -Math.sin(b) }); if (q) { c.x = q.x; c.y = q.y; }
+      if (style === "creep") c.stalkCreepIn = true;
+      if (style === "fly") Object.assign(c, { stalkForm: "ape", stalkAct: { kind: "leapWarn", t: .3, total: .3, to: { x: p.x, y: p.y }, flyTime: STALKER.approach.flyTime } }); }
+    c.stalkStyle = style;
     ensureAI(c); this.enemies.push(c); stalkerEngaged(this.save, c.hp);
-    if (!fromDoor) this.message = c.stalkFogPlan ? "THE STALKER — it is coming for you." : "The air goes very still. Something is watching you.";
+    if (!fromDoor) this.message = ({ lurk: "The air goes very still. Something is watching you.", fog: "THE STALKER — it is coming for you.", run: "THE STALKER — it is running at you!", creep: "Something silver is stalking toward you.", fly: "THE STALKER — it comes flying in!" })[c.stalkStyle] || "THE STALKER.";
     return c;
   }
   tickStalker(dt, now) {
