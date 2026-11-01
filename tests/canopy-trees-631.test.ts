@@ -23,7 +23,7 @@ function climbTo(m) {
 }
 
 test('jungle sections grow great trees: a trunk whose top is the crown, branches sticking out of it, a climb of thirty levels and more', () => {
-  assert.equal(LANDSCAPE_VERSION, 13); const found = find(8); assert.ok(found.length >= 6, `${found.length} trees`); const dests = new Set();
+  assert.equal(LANDSCAPE_VERSION, 14); const found = find(8); assert.ok(found.length >= 6, `${found.length} trees`); const dests = new Set();
   for (const [x, y, m] of found) {
     const c = m.canopy, crown = m.tiles.filter((t) => t.kind === 'canopyTrunk'), branch = m.tiles.filter((t) => t.kind === 'canopyBranch');
     assert.equal(crown.length, CANOPY.trunk ** 2); assert.ok(crown.every((t) => !t.blocked && t.elev === c.top && t.skyPlatform), 'the crown is the trunk\'s top');
