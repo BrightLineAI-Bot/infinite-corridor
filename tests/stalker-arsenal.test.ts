@@ -108,3 +108,47 @@ test('in the game the mist rot lowers maximum health by a tenth each touch, a do
   g.save.rot = max * .9; rotTick(g.save, 'toxicMire', 1); assert.ok(g.save.rot >= max * .9, 'the bog never lowers it past its own cap');
   g.save.rot = max - 1; g.player.invulnerableUntil = 0; w = g.stalkerWorld(.05, 30000); w.rot(e, .1); assert.equal(g.player.hp, 0, 'rotted past its whole health, the Wayfarer falls');
 });
+
+// ---- The appendage and the gorilla's arms ----
+import { STALKER as K, apeMoveNext, spikeLines } from '../src/stalker.ts';
+const backMove = (move, player = { x: 12, y: 10 }, extra = {}) => { const { w, hurts } = field(player, { move: () => false, ...extra }), e = actor(10, 10); e.stalkEnergyClock = 99; e.stalkCharges = 0; e.stalkAct = { kind: 'prowl', t: 99, total: 99 }; e.stalkTurret = { move, t: .01, total: .6, aim: Math.atan2(player.y - 10, player.x - 10) }; return { w, hurts, e }; };
+
+test('the appendage: a sword sweep hits inside its arc; three spikes strike and fire three blasts that bounce off blocks', () => {
+  let { w, hurts, e } = backMove('sword'); for (let i = 0; i < 12; i++) updateStalker(e, w); assert.equal(hurts.length, 1, 'the sweep, once');
+  ({ w, hurts, e } = backMove('sword', { x: 7, y: 10 })); for (let i = 0; i < 12; i++) updateStalker(e, w); assert.equal(hurts.length, 0, 'behind it, the sweep misses');
+  ({ w, hurts, e } = backMove('spikes', { x: 12.5, y: 10 })); updateStalker(e, w);
+  assert.equal(hurts.length, 1, 'a spike'); assert.equal(e.stalkShots.filter((q) => q.kind === 'blast').length, 3, 'three blasts');
+  assert.equal(spikeLines(e, 0).length, 3);
+  // A blast into a wall comes back.
+  const wall = (x) => x > 15; const { w: w2 } = field({ x: 10, y: 30 }, { move: () => false, shotBlocked: (x) => wall(x) }), g = actor(10, 10); g.stalkTurretClock = 99; g.stalkEnergyClock = 99; g.stalkAct = { kind: 'prowl', t: 99, total: 99 };
+  g.stalkShots = [{ kind: 'blast', x: 14, y: 10, vx: 7, vy: 0, life: 2, radius: .3, damage: .4, bounces: 2 }];
+  for (let i = 0; i < 10; i++) updateStalker(g, w2); assert.ok(g.stalkShots[0].vx < 0 && g.stalkShots[0].bounces === 1, 'bounced once');
+});
+
+test('the tendril: eruptions follow the Wayfarer, each marked first, at most a few; the boomerang blade goes out and comes back', () => {
+  const { w, hurts, e } = backMove('tendril', { x: 13, y: 10 }); let most = 0, spots = [];
+  for (let i = 0; i < 80; i++) { w.player.x = 13 + i * .05; updateStalker(e, w); most = Math.max(most, e.stalkErupts?.length || 0); for (const q of e.stalkErupts || []) if (!spots.includes(q.x)) spots.push(q.x); }
+  assert.equal(spots.length, K.limb.tendril.count, 'one eruption per beat'); assert.ok(spots.every((x, i) => i === 0 || x > spots[i - 1]), 'each where the Wayfarer had moved to');
+  assert.ok(most <= K.limb.tendril.cap); assert.ok(hurts.length >= 1, 'standing in them hurts');
+  const b = backMove('boomerang', { x: 16, y: 10 }); updateStalker(b.e, b.w); assert.ok(b.e.stalkShots.some((q) => q.kind === 'boomer'));
+  let far = 0; for (let i = 0; i < 80 && b.e.stalkShots.some((q) => q.kind === 'boomer'); i++) { updateStalker(b.e, b.w); const q = b.e.stalkShots.find((s) => s.kind === 'boomer'); if (q) far = Math.max(far, q.x - 10); }
+  assert.ok(far > 3, 'it flew out'); assert.ok(!b.e.stalkShots.some((q) => q.kind === 'boomer'), 'and came home'); assert.ok(b.hurts.length >= 1 && b.hurts.length <= 2, 'at most a hit going and a hit coming back');
+});
+
+test('the gorilla runs through its arm moves: grab and pull, combo, slam, charge with knockback, sweep, spin', () => {
+  const order = []; const e0 = {}; for (let i = 0; i < K.arms.pick.length; i++) order.push(apeMoveNext(e0)); assert.deepEqual(order, K.arms.pick);
+  const shoves = [], { w, hurts } = field({ x: 13, y: 10 }, { displace: (dx, dy) => { shoves.push([dx, dy]); w.player.x += dx; w.player.y += dy; return true; } }), e = actor(9, 10, { stalkForm: 'ape' });
+  e.stalkTurretClock = 999; e.stalkEnergyClock = 999; e.stalkCharges = 0; e.stalkCycle = 1; const seen = new Set();
+  for (let i = 0; i < 4000; i++) { updateStalker(e, w); seen.add(e.stalkAct.kind); if (e.stalkForm !== 'ape') { e.stalkForm = 'ape'; e.untargetable = false; e.stalkAct = { kind: 'prowl', t: .2, total: .2 }; } if (Math.hypot(w.player.x - e.x, w.player.y - e.y) > 9) { w.player.x = e.x + 3; w.player.y = e.y; } }
+  for (const k of ['grabWarn', 'grab', 'comboWarn', 'slamWarn', 'slam', 'chargeWarn', 'charge', 'sweepWarn', 'sweep', 'spinWarn', 'spin', 'retract']) assert.ok(seen.has(k), k);
+  assert.ok(hurts.length > 5, 'its blows land'); assert.ok(shoves.length > 0, 'pulled in or knocked back');
+});
+
+test('the charge knocks the Wayfarer back, the grab pulls them in', () => {
+  const shoves = [], { w } = field({ x: 13, y: 10 }, { displace: (dx, dy) => { shoves.push([dx, dy]); w.player.x += dx; return true; } }), e = actor(10, 10, { stalkForm: 'ape' }); e.stalkTurretClock = 999; e.stalkEnergyClock = 999;
+  e.stalkAct = { kind: 'chargeWarn', t: .01, total: .5, aim: 0 }; for (let i = 0; i < 20 && !shoves.length; i++) updateStalker(e, w);
+  assert.ok(shoves.length && shoves[0][0] > 0, 'knocked away from it'); assert.ok(Math.hypot(...shoves[0]) >= K.arms.charge.knock - .01);
+  const pulls = [], { w: w2 } = field({ x: 15, y: 10 }, { displace: (dx, dy) => { pulls.push(dx); w2.player.x += dx; return true; } }), g = actor(10, 10, { stalkForm: 'ape' }); g.stalkTurretClock = 999; g.stalkEnergyClock = 999;
+  g.stalkAct = { kind: 'grabWarn', t: .01, total: .45, aim: 0 }; for (let i = 0; i < 40; i++) updateStalker(g, w2);
+  assert.ok(pulls.length && pulls.every((dx) => dx < 0), 'hauled toward it'); assert.ok(w2.player.x < 15);
+});

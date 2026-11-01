@@ -2,7 +2,8 @@
 // floors, loot that only improves near your deepest floor, the record of your greatest depth in the journal and the Wayfarer's
 // page; "let's not get crossing sigils... We'll just do the embers."
 //
-// - Deep Shafts: a few sections first seen from this release hold one (`chance`, past `minRing`), named on the Atlas.
+// - Deep Shafts: a few sections first seen from this release hold one (`chance`, past `minRing`), named on the Atlas. A Listener's
+//   Mouth whose Listener has fallen opens one too (the Listener's Descent, beside the Mouth; any explored ground, old or new).
 // - A floor is a crossing generated afresh from the seed, the shaft and the floor number (`${id}:f${floor}`); only the floor you
 //   are on is kept. Fell its guardian and the Deep Stair opens beside it (down to the next floor), and you are given a Return
 //   Ember (`emberPerClear`). An Ember Door stands where you arrive on every floor: burning an ember there (or at the cleared
@@ -30,11 +31,13 @@ export const THE_DEEP = {
   themes: ["chasm", "lavaBog", "river", "frozen", "boneCrypt", "fungal", "starHive", "geode", "mosaic", "rootwood", "brass", null],
   maxShafts: 64,
   name: "Deep Shaft",
+  mouthName: "The Listener's Descent", // beside a Mouth whose Listener fell (game.ts raiseMouthTown)
   messages: {
     shaft: "A Deep Shaft drops away here into the dark: an endless descent. Each floor is harder; fell a floor's guardian to go deeper, or burn a Return Ember to come back up.",
     noEmber: "The Ember Door is cold. You have no Return Ember: fell this floor's guardian for one.",
     ember: "You burn a Return Ember. The Deep lets you go, back up to the shaft.",
     stair: "The Deep Stair opens where the guardian fell. A Return Ember warms in your hand.",
+    mouth: "With its Listener gone, the Mouth goes on down: the Listener's Descent, the Array's own endless Deep. Each floor is harder; fell a floor's guardian to go deeper, or burn a Return Ember to come back up.",
   },
 };
 

@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release {N}: the Skylands start from you — 2026-11-01
+## Release 689: the Skylands start from you — 2026-11-01
 
 Tim (2026-11-01): "the base level skyland should be a lower level... they should all be pretty basic... scales based on your
 character... starting [at] the level that your character is... every addition or modification increases the difficulty... over and
@@ -2716,6 +2716,98 @@ above your character's current level".
 
 **BOUNDARY:** Runtime only (Skyland foes are made per run). Traits on a wave (swift, plated…) still change speed and armour as
 before; health and damage come from the Wayfarer. Tests: `tests/sky-base-688.test.ts`.
+## Release 688: Canyon craters — 2026-11-01
+
+Tim (2026-10-30, and 2026-11-01: "the chasm dungeons... have those blocks that I can destroy"): Canyon dungeons, "mostly
+blocks... dirt clods that you can dig through... the longer you press, the more [it] drills... green... yellow... red... the
+block can change from yellow to red depending on how you interact with it... a red block can be a local cave-in... 2, maybe 3
+red blocks, then the chasm collapses and you can't go to that dungeon anymore", with caverns, lava, an underground pool and
+bridges over ravines; the prize at the deepest point is Divine Viscera (decided 2026-10-30); and the crater's own creatures,
+earth golems that tunnel and burst out of the ground, and crystal hermit crabs, with finds in some clods.
+
+**CODE:** `src/canyon.ts` (new; in the build and both sw.js lists): `CANYON` (`chance` .025 past `minRing` 6, `size` 44,
+`tempers` plain .52 / green .3 / yellow .12 / red the rest, `clod` hp (plain 1.2, unstable 1.6), the robot's auger 2.2 hp/s
+(robot only: Tim, "the robot was supposed to have an auger attachment that you could hold to drill longer"), strain rise 2.2 /
+settle 2.4 / limit .6 a colour (green → yellow → red), `caveIn` damage .22 of max health and `limit` 3, caverns 6–9, `viscera` 2, `maxDrilled` 2000),
+`canyonHere`, `canyonIdFor`, `ensureCanyonHistory` (`history.canyon`: caveIns, sealed, pulled, drilled and strained tile indexes),
+`generateCanyon` (clods everywhere inside undrillable rock; the shaft, caverns, the ravine of abyss with one `skyBridge` and
+landings, lava and a pool in caverns clear of it, the wreck in the cavern farthest from the way in, a creature a dry cavern;
+drilled and strained clods replayed over it), `drillClod`, `settleClods`. game.ts: `generatePinnedDungeon` builds `canyon:`
+ids; `placeCrater` (sections first seen from now on, `atlas.canyonVersion`; a sealed crater shows as a Collapsed Crater with no
+way in); `drillAhead` after the Wayfarer's move (the clod pushed into; in the robot only), `canyonTick` (strain settles; a sealed crater
+puts you out), `caveIn` (damage, shake, count; the third kills you and seals the crater), `pullViscera` (the wreck, once: `save.skylands.viscera` += 2, the crossing resolved).
+landscape-render.ts paints `clodPlain`, and `clodGreen`, `clodYellow`, `clodRed` ringed by their state, `craterWall`, `craterFloor`;
+renderer.ts draws the auger's cracks, the strain bar and dust on the clod being drilled.
+Creatures: monster-pack.ts adds `earthGolem` (burrow, ambush brain, `burrowAmbush` and the new `golemPunch` module: a slow,
+narrow, heavy punch) and `crystalCrab` (skitter, flank brain, `clawSweep` and `leapSlam`), both `dungeonOnly` (never in other
+pools, never lent to hybrids); monster-render.ts draws them (the golem as packed clods with yellow sigil eyes, a mound of
+churned clods while it tunnels; the hermit under a cracked geode). Their Echoes (echoes.ts): Golem's Landfall (land: staggers
+foes within 2.5 tiles for .6 s) and Geode Shell (hurt: a 1.5-tile shard blast). `CANYON.creatures`: 1–2 a dry cavern, and the
+Golem Warden (an earth golem in its boss form, so it leaves its Echo) beside the wreck. `clodSecret` hashes each clod: `secrets`
+golem .035 (game.ts `clodOpened`: drilled open, a golem bursts out at you) or find .07 (`finds`: stone 1–3, lumen dust 1–2,
+cinder iron 1, weighted 5/3/1). A clod is drilled once, so each secret pays once; a red clod's cave-in gives nothing.
+
+**BOUNDARY:** New ground only (`atlas.canyonVersion`). Save additive at schema 14 (`history.canyon`; the viscera count is the
+Skylands' own field). Bounded: one drill target a frame, at most 2000 drilled tiles kept per crater. Tests:
+`tests/canyon-craters.test.ts`.
+
+## Release 688: the Listener's Descent — 2026-11-01
+
+Tim approved the Deep's plan (2026-11-01), which included: "The Listener's Mouth, once you've beaten that Mouth's Listener: its
+runs become the Array's own endless descent." Release 677 built the Deep's shafts; this is the Mouth's part.
+
+**CODE:** game.ts `raiseMouthTown` (run on each load of a Mouth town's section, that is a Mouth whose Listener fell) places a
+`deepShaft` object `mouth-deep-<rx>-<ry>` (`mouthDeep: true`, `THE_DEEP.mouthName` "The Listener's Descent",
+`THE_DEEP.messages.mouth`) on open ground just south of the Mouth, offering floor 1 and every checkpoint reached, unless the
+section already has a shaft. It is an ordinary Deep shaft: `enterDeep` keys it by the section (`deepIdFor(seed, rx, ry)`), so
+floors, checkpoints, embers, loot and the record all work as release 677's. The Mouth itself still opens Array runs.
+
+**BOUNDARY:** No generator change; added at load beside every Mouth town, old journeys too. Save: the shaft's record in
+`save.theDeep.shafts` (additive, release 677's). Tests: `tests/mouth-town-373.test.ts`.
+## Release 687: the Stalker's appendage and the gorilla's arms — 2026-11-01
+
+Tim (2026-11-01): a shapeshifting appendage from its back — a sword sweep, three spikes forward with three blasts from the tips
+that "bounce off blocks", a tendril into the ground with "a series of eruptions... staggered... tracking you... pretty large", the
+appendage thrown "like a helicopter blade... and like a boomerang... comes back to him"; the gorilla launching its fists ("grab you
+and pull you in", "remote slam", "a rapid sweep", both arms "a 180° sweep around it"), "a charge... knock you off the tree... some
+knockback" (not a knock-up), "punch and kick... similar to the iron fist"; then "the stalker kind of looks a little goofy in the
+face"; "a few visual passes on the gorilla... good animations... when we work on all his moves".
+
+**CODE:** `src/stalker.ts`.
+- `STALKER.limb` (sword, spikes with their bouncing `blast`, tendril, boomerang). The moves join `turret.moves` (orbs, sword,
+  cone, spikes, ring, tendril, xblade, boomerang), so one back move at a time, each marked during the turret's `warn`.
+  - `startLimb`/`tickLimb`: sword hits once mid-sweep inside `arc`; spikes hit along `spikeLines` and shoot three `blast`s
+    (`bounces` 2: `tickShots` reflects them off `w.shotBlocked`).
+  - Tendril: `count` eruptions every `every` s at the Wayfarer's spot then, each striking `arm` s later within `radius`
+    (`tickErupts`, at most `cap`).
+  - Boomerang: a `boomer` shot (flies over walls) that turns home after `out` s and can hit once each way.
+- `STALKER.arms`:
+  - `pick` is the gorilla's order (leap, grab, combo, slam, charge, sweep, spin; `apeMoveNext`). Prowl closes to that move's
+    `range`; `startApeMove`/`tickApeAct` run it.
+  - grab: a fist out at `speed`; caught, it pulls through `w.displace`, then a fist blow.
+  - slam: the fist rises over the marked spot and drops.
+  - sweep: one arm, two passes, `arc`; spin: both arms half a circle. Hits are segment tests, once per pass.
+  - charge: straight along the aim; a touch hurts and knocks `knock` tiles.
+  - combo: jab, cross, kick with knockback.
+  - `retract` brings the fists home; `e.stalkFists`/`e.stalkStrike` are for drawing.
+- `src/game.ts` `stalkerWorld.displace`: `moveAxis(player, …, allowLethalTerrain)`, so a knock can carry the Wayfarer off a
+  ledge.
+- `src/stalker-render.ts`:
+  - `drawApe` is rebuilt over passes: a hunched, massive silverback (hump, silver saddle and seam, chest skin, crested head,
+    heavy brow, dark face) with bat wings (arm bone, wrist, three fingers, scalloped membrane).
+  - Ape poses: walk (knuckle gait, body bob), fly (wings beating), charge (head down, wings swept), raise, punch, kick.
+  - `drawApeArm` draws the stretching arms to launched fists.
+  - `drawLimb`/`limbCurve` draw the appendage, `drawErupts` the eruption rings and bursts, plus the blast and boomerang shots,
+    and a ground mark for every new move.
+  - The cat's head is redrawn as a big cat's profile: short deep muzzle, whisker pad, chin, hooded almond eye, brow ridge,
+    ears laid back.
+  - Tim: "there's like some stray lines around its body... a little misty... penumbra around it... not a full form". `drawCat`
+    drops the flank chevrons, the spine seam strokes and the shoulder/haunch arcs, softens its outline, and draws a drifting
+    penumbra first: six radial-gradient puffs round the body, four wisps trailing off the back and tail, a pool at the feet
+    (eleven gradients a frame).
+
+**BOUNDARY:** Runtime only: no save field, no generator change. Bounded: shots still capped at 12, eruptions at 6, two fists,
+segment tests only, no pathfinding. Tests: `tests/stalker-arsenal.test.ts`.
 
 ## Release 686: the Ascension Dais — 2026-11-01
 
