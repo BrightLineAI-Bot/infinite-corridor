@@ -57,6 +57,7 @@ import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST } from "./tool-forms.ts";
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks } from "./fractured.ts";
 import { tickAffixes, rollAffixes } from "./affixes.ts";
 import { applyBossKit, tickBossKit } from "./boss-kit.ts";
+import { wonderRumour } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { SKYLANDS, SKY_PLACE, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
@@ -3274,6 +3275,7 @@ export class Game {
       r = applyInteraction(o, chosen, this.save, this.areaId(), this.area === "dungeon" ? { dungeonDepth: Math.max(0, (this.map?.multiLevel ? this.map.levels || [] : []).findIndex((q) => q.id === this.map.levelId)) } : {}); // release 287
     this.message = r.message;
     if (!r.ok) return r;
+    if (r.ok && o.kind === "traveler" && chosen === "speak" && !o.reciter && !o.wanderer && !o.rumourTold && this.area === "overworld") { const heard = wonderRumour(this.save, this.rx, this.ry, o.id || o.name); if (heard) { o.rumourTold = true; this.message = `${r.message} ${heard}`; } } // release 674: a traveller who has heard of a wonder says which way it lies (once)
     if ((o.kind === "npc"||o.kind==="shelterMerchant"||o.kind==="traveler") && chosen === "trade") this.shopRequested = o.id;
     if (this.save.hp !== before)
       this.player.hp = Math.min(

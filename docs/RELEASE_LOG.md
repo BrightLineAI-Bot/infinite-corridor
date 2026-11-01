@@ -15,7 +15,7 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-**673** (odd, first session) · **674** (even, second session)
+**673** (odd, first session) · **678** (even, second session; 676 reserved below)
 
 ## In flight
 
@@ -23,7 +23,9 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 |---|---|---|---|---|
 | 671 | Claude | `claude/dreamy-rubin-yn6q2p` | Fractured waves: several packs per wave from different sides, elite-led every third, a rest after a wave is cleared, more join one left standing; the cap counts only wave creatures | Building. |
 | 669 | Claude | PR #317 | Crown Rest on every great tree (touch it; wake there); the glider in a freefall with the drone out; the Wayfarer's ghost behind giant trees covers the whole crown | Renumbered from 665 (main was at 668). Merged. Tim said publish. |
-| 672 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Great trees, skyways and Starfield crossings easier to find on new ground (landscape 14, Sky Stair placement 2, Starfield .2); the findability survey; Crown Rest and coastal-glide fixes. 670 skipped: main was at 671 | Building. |
+| 676 | Claude (second session) | reserved | Skylands Deep Annex: a rare, announced Skylands variant whose far gate lands you on the crown of a different, undiscovered great tree (663's treeCrownHop / SKY_TREE). Built on the first session's deep-annex framework (673, `src/deep-annex.ts`) once it merges; it will add a Skylands kind next to the Starfield one, not change the Starfield annex. Note for 673: release 672 raised `CHASM.chance` to .2, so `DEEP_ANNEX.chance` .25 now gives about 5% of new crossings, not 3%. | Reserved; waits for 673. |
+| 674 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Atlas pins and travellers' rumours of the nearest unexplored skyway, great tree and Starfield crossing (`src/wonders.ts`) | Building. |
+| 672 | Claude (second session) | PR #321 | Great trees, skyways and Starfield crossings easier to find on new ground (landscape 14, Sky Stair placement 2, Starfield .2); the findability survey; Crown Rest and coastal-glide fixes. 670 skipped: main was at 671 | Merged. |
 | 668 | Claude (second session) | PR #319 | Guardians and elites fight back: extra modules, signature moves (quake, barrage, crossfire, meteor), aggression, adds at health thresholds | Merged (`r668-469ed0280358`). |
 | 666 | Claude (second session) | PR #318 | Fracture meter and Fracture Warden: kills fill a HUD meter; the Warden (half a Gate Revenant, adds) seals the area and drops a cache | Merged (`r666-364d65e9cbbd`). |
 | 664 | Claude (second session) | PR #316 | Tremor Worm rework: half-buried by default, full-height sweep/slam/maw, tentacles scaled off the worm with ground cracks, burrowing, repositioning and six modes | Merged (`r664-b4bdc960a2b8`). |

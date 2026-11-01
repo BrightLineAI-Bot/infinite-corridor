@@ -2734,6 +2734,30 @@ falling".
 
 **BOUNDARY:** The rest point is placed at load, not generated: every generator version is untouched. Additive save only (the
 checkpoint record). Tests: `tests/crown-rest-669.test.ts`.
+## Release 674: wonders worth the walk — 2026-11-01
+
+Tim (2026-11-01, step two of the findability task): the Atlas or a wayfarer rumour pointing toward the nearest unexplored skyway,
+great tree or Starfield crossing.
+
+**CODE:**
+- New `src/wonders.ts` (in `scripts/build.mjs` and both `sw.js` lists):
+  - `WONDERS` (`radius` 24; `chasmChance`, kept equal to `CHASM.chance` by a test so the module never imports the game;
+    per-kind names, Atlas labels, colours).
+  - `wonderAt(seed, rx, ry, kind, generation)` reads hashes only, never building a section:
+    - skyway: `skylandSection` at placement 2;
+    - tree: the section centre's region is a `TREES_V14` region and its version 14 roll passes;
+    - starfield: world.ts `addDungeonLandmark`'s roll and id, replayed, then the Starfield roll. Far Sleep sections are left out,
+      since their crossings may be Sleeper's Halls.
+  - `nearestWonders(save, rx, ry)`: ring by ring to `radius`, skipping sections with an Atlas entry. It stops when every kind is
+    found and is memoised per section and Atlas size.
+  - `wonderRumour(save, rx, ry, who)`: one wonder, chosen by the traveller's id, with compass words and distance.
+- `src/main.ts` `drawAtlasPins`: one pin per wonder (an edge arrow when off the map).
+- `src/game.ts` `interact`: speaking to an ordinary traveller on the overworld appends the rumour once (`o.rumourTold`,
+  runtime). Reciters, Quillon and the plain speech in `interactions.ts` are unchanged.
+
+**BOUNDARY:** Reading only; no save or generation change. A tree prediction can miss when no spot fits (most grow). Tests:
+`tests/wonders-674.test.ts` (predictions checked against generated sections).
+
 ## Release 672: great trees, skyways and Starfield crossings, easier to find — 2026-11-01
 
 Tim (2026-11-01): "I haven't seen any tall trees or skyways, or chasm (Starfield) explorations... run tests to see if those are
