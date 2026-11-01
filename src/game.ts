@@ -33,7 +33,7 @@ import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { beastCatchUp } from "./stages.ts";
 import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.ts";
 import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.ts";
-import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered } from "./vehicle-gates.ts";
+import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY } from "./sea-creatures.ts";
 import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP } from "./boats.ts";
@@ -1774,6 +1774,7 @@ export class Game {
     this.packEffects=[];
     this.reticle = null;
     this.loadArea(this.area, false);
+    { const q = s.playerRuntime.droneLift; this.droneLift = q && s.area === "overworld" && ["base", "z", "vz"].every((k) => Number.isFinite(Number(q[k]))) ? { base: Number(q.base), z: Number(q.z), vz: Number(q.vz) } : null; } // release 647: after loading the area, which clears a lift
   }
   installSystems() {
     if (this._systemsInstalled) return;
@@ -2236,6 +2237,7 @@ export class Game {
   loadArea(area, capture = true) {
     if (capture) this.snapshotArea();
     if (area !== "overworld") this.glide = null; // release 641 (the pre-publish review of 623→639): a glide never follows you indoors
+    this.droneLift = null; // release 647: a booster lift never carries over a change of area or section
     this.shadowClone = null; this.cloneAim = false; // release 365: a shadow stays in the place it was cast
     this.builds = []; // release 265: builds belong to the map they stand on
     this.area = area;
@@ -2657,6 +2659,7 @@ export class Game {
       paused: this.paused,
       savedAt: Date.now(),
       playerRuntime: {
+        droneLift: this.droneLift && this.area === "overworld" ? { base: this.droneLift.base, z: this.droneLift.z, vz: this.droneLift.vz } : null, // release 647: a lift resumes in the air
         glide: this.glide && this.area === "overworld" ? { z: this.glide.z, vx: this.glide.vx, vy: this.glide.vy, open: this.glide.open !== false, fallFrom: this.glide.fallFrom ?? null } : null, // release 635: a glide resumes in the air
         hp: this.player.hp,
         stamina: this.player.stamina,
@@ -3401,6 +3404,25 @@ export class Game {
     const fell = g.open === false ? Math.max(0, (g.fallFrom ?? g.z) - ground) : 0; this.glide = null; this.skyAir = null;
     if (fell > 1) { const hurt = fallDamage(Math.round(fell), this.save.maxHp); if (hurt === Infinity) { p.hp = 0; this._fatalFallPending = true; this.message = `The Wayfarer falls ${Math.round(fell)} levels.`; } else if (hurt > 0) { p.hp = Math.max(1, p.hp - hurt); this.message = `A hard landing: ${Math.round(fell)} levels down.`; } }
     else this.message = G.land; return "landed";
+  }
+  // Release 647: one frame of the drone's booster (DRONE_LIFT). `droneLift` is { base, z, vz } in levels. While it lasts the jump
+  // lasts, and `skyAir` is its height, so the move rules carry the Wayfarer over lower ground and onto ground no more than a level
+  // above them. It ends on landing (or when the drone is stowed): the jump ends at once and the landing is settled by the ordinary
+  // fall rule as a drop of v²/2g levels (fallDamage).
+  droneLiftStep(dt, now, held) {
+    const L = this.droneLift, D = DRONE_LIFT, m = this.save.mech, p = this.player;
+    if (this.area !== "overworld" || !this.droneUp() || !m) { this.endDroneLift(now); return; }
+    const ground = elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y), top = L.base + D.max, thrust = held && !this.mechSpent && m.fuel > 0;
+    if (thrust) { m.fuel = Math.max(0, m.fuel - D.burn * dt); this.mechBoosting = true; if (m.fuel <= 0) { this.mechSpent = true; this.message = D.empty; } }
+    L.vz = Math.min(D.rise, L.vz + ((thrust ? D.thrust : 0) - D.gravity) * dt); L.z += L.vz * dt;
+    if (L.z >= top) { L.z = top; if (thrust) L.vz = Math.min(0, L.vz); } // the top: it hovers there while Jump is held
+    if (L.z <= ground) { if (L.vz < 0 && !thrust) { this.endDroneLift(now, ground); return; } L.z = ground; L.vz = Math.max(0, L.vz); }
+    this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.skyAir = Math.floor(L.z + 1e-6);
+  }
+  endDroneLift(now, ground = null) {
+    const L = this.droneLift; this.droneLift = null; if (!L) return;
+    const g = ground ?? elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y), v = Math.min(0, L.vz), drop = v * v / (2 * DRONE_LIFT.gravity) + Math.max(0, L.z - g);
+    this.skyAir = g + Math.floor(drop + 1e-6); this.jumpUntil = Math.min(this.jumpUntil || 0, now);
   }
   droneUp() { const m = this.save.mech; return m?.active === true && m.mode === "drone" && !aboard(this.save); }
   droneHeal(message) {
@@ -5325,12 +5347,14 @@ export class Game {
       const width0 = mapWidth(this.map, this.area), below = elevationAt(this.map, width0, this.player.x, this.player.y), high = Math.max(this.skyAir ?? 0, this.jumpFrom ?? 0);
       if (this.glide && this.area === "overworld") { const g = this.glide; g.open = !g.open; if (!g.open) g.fallFrom = g.z; this.message = g.open ? GLIDE.open : GLIDE.shut; }
       else if (now < this.jumpUntil && this.save.glider && this.area === "overworld" && !this.mechUp() && !this.droneUp() && high - below >= GLIDE.minDrop) { this.glide = { z: high, vx: 0, vy: 0, open: true, told: false }; this.skyAir = null; this.message = GLIDE.open; }
-      else if (now < this.jumpUntil) this.message = "Already airborne.";
+      else if (now < this.jumpUntil && this.area === "overworld" && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else { const z = Math.max(high, below); this.droneLift = { base: Math.max(this.jumpFrom ?? below, below), z, vz: 0 }; this.mechSpent = false; this.message = DRONE_LIFT.engage; } } // release 647: the drone's booster
+      else if (now < this.jumpUntil) { if (!this.droneLift) this.message = "Already airborne."; }
       else { this.jumpFrom = elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y); this.jumpDur = (this.area === "overworld" && (this.skyLevel > 0 || tileUnder(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)?.skyPlatform) ? JUMP.sky : JUMP.base) + skillRank(this.save,"quickening") * JUMP.quickening; this.jumpStart = now; this.jumpUntil = now + this.jumpDur; }
     }
     { const m = this.save.mech; this.mechBoosting = false; // release 317: in the robot, hold Jump in the air to boost
       if (!input.held?.("jump")) this.mechSpent = false; // release 319: an emptied boost needs Jump let go before it fires again
-      if ((this.mechUp() || this.droneUp()) && !this.mechSpent && input.held?.("jump") && now < (this.jumpUntil || 0) + 60 && m.fuel > 0) { /* release 321: the drone carries the same way */ m.fuel = Math.max(0, m.fuel - dt); this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.mechBoosting = true; if (m.fuel <= 0) this.mechSpent = true; }
+      if (this.droneLift) this.droneLiftStep(dt, now, input.held?.("jump") === true); // release 647
+      else if ((this.mechUp() || (this.droneUp() && this.area !== "overworld")) && !this.mechSpent && input.held?.("jump") && now < (this.jumpUntil || 0) + 60 && m.fuel > 0) { /* release 647: on the overworld the drone lifts instead (droneLiftStep) */ /* release 321: the drone carries the same way */ m.fuel = Math.max(0, m.fuel - dt); this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.mechBoosting = true; if (m.fuel <= 0) this.mechSpent = true; }
       const ticked = m?.built ? tickMech(this.save, dt, !(now < (this.jumpUntil || 0))) : null; if (ticked === "spent") this.message = "Out of cinder iron: the robot drops back to its plain stride."; else if (ticked === "replated") this.message = "The robot's plating is whole again."; /* release 383 */ if (this.droneUp()) this.tickDrone(dt, now); }
     if (input.consume("potion")) this.drinkPotion(now); // release 339: the chosen potion tier; 341: brewed when needed
     if (input.consume("preset")) { this.message = swapPreset(this.save).message; this.refreshDerivedStats(); } /* release 541: preset armor changes the maxima */ // release 261: swap spell presets 1 and 2; 393: with the whole build

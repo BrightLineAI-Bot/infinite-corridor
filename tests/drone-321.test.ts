@@ -39,11 +39,11 @@ test('it mends on command, and by itself when the Wayfarer is low; then rests', 
   assert.ok(g.player.hp >= 50, `mended by itself (${g.player.hp})`);
 });
 
-test('holding Jump in the air, it carries the Wayfarer over a chasm', () => {
+test('holding Jump in the air, it carries the Wayfarer over a chasm (release 647: on the overworld, Jump again in the air fires the booster)', () => {
   const s = ready(), g = ashore(s); setMechMode(s, 'drone'); g.useConsumable('submersible', 0);
   const w = g.map.width || 32, row = 16; for (let x = 0; x < w; x++) Object.assign(g.map.tiles[row * w + x], { kind: x >= 12 && x <= 14 ? 'canyon' : 'ash', blocked: false, elev: 0, landscape: null, environment: x >= 12 && x <= 14 ? 'canyon' : null });
   Object.assign(g.player, { x: 10.2, y: row - .3, hp: 100 }); s.maxHp = 100;
-  let t = 1000; const press = { state: { x: 1, y: 0 }, consume: (k) => k === 'jump' && t === 1000, held: (k) => k === 'jump' };
+  let t = 1000; const press = { state: { x: 1, y: 0 }, consume: (k) => k === 'jump' && (t === 1000 || t === 1100), held: (k) => k === 'jump' };
   for (let i = 0; i < 50; i++) { g.update(.05, press, t); t += 50; }
   assert.ok(g.player.hp > 0, 'did not fall'); assert.ok(g.player.x > 14.5, `carried across (x=${g.player.x.toFixed(2)})`); assert.ok(s.mech.fuel < DRONE.carry);
 });
