@@ -549,6 +549,7 @@ const COLORS = {
   deepShortcut: ["#596d62", "#202923", "#9fd0ae"],
   deepPortal: ["#535384", "#20203a", "#bbb4ef"],
   deepTransition: ["#675c49", "#28241d", "#dbc18a"],
+  annexStair: ["#3a3f7a", "#15172e", "#f2e6a8"], // release 675: a deep annex's stair down
   storyRelic: ["#8c7650", "#382f24", "#f0cf83"],
   storyTone: ["#557d82", "#26383b", "#9fe6dd"],
 };
@@ -2128,6 +2129,10 @@ export function render(ctx, g, w, h, now) {
   // Release 661 (Tim: "something on the heads up display that just shows the different levels... on the right side... little
   // dots... pretty unobtrusive"): in a dungeon of several floors, a column of dots at the right edge, the top one the first floor:
   // the floor you stand on lit and ringed, floors you have found dim, the rest faint.
+  if (g.area === "dungeon" && g.map?.annexFloor && !g.map.multiLevel) { const A = g.map.annexFloor, gap = 14, x = w - 12, y0 = h / 2 - (A.of - 1) * gap / 2; // release 675: a deep annex's floors
+    ctx.save(); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + (A.of - 1) * gap); ctx.stroke();
+    for (let i = 0; i < A.of; i++) { const y = y0 + i * gap, here = i + 1 === A.floor; ctx.fillStyle = here ? "#ffe7a6" : i + 1 < A.floor ? "#c9c2b0aa" : "#ffffff30"; ctx.beginPath(); ctx.arc(x, y, here ? 4 : 3, 0, Math.PI * 2); ctx.fill(); if (here) { ctx.strokeStyle = "#ffe7a6aa"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke(); } }
+    ctx.restore(); }
   if (g.area === "dungeon" && g.map?.multiLevel && (g.map.levels?.length || 0) > 1) { const L = g.map.levels, found = g.save?.consequences?.dungeons?.[g.areaId?.()]?.deep?.discoveredLevelIds || [], gap = 14, x = w - 12, y0 = h / 2 - (L.length - 1) * gap / 2;
     ctx.save(); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + (L.length - 1) * gap); ctx.stroke();
     L.forEach((lv, i) => { const y = y0 + i * gap, here = lv.id === g.map.levelId, seen = here || i === 0 || found.includes(lv.id); ctx.fillStyle = here ? "#ffe7a6" : seen ? "#c9c2b0aa" : "#ffffff30"; ctx.beginPath(); ctx.arc(x, y, here ? 4 : 3, 0, Math.PI * 2); ctx.fill(); if (here) { ctx.strokeStyle = "#ffe7a6aa"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke(); } });
