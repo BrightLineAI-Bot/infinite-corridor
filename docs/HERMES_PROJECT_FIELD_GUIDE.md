@@ -2694,6 +2694,28 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 689: the Skylands start from you — 2026-11-01
+
+Tim (2026-11-01): "the base level skyland should be a lower level... they should all be pretty basic... scales based on your
+character... starting [at] the level that your character is... every addition or modification increases the difficulty... over and
+above your character's current level".
+
+**CODE:**
+- `src/skylands.ts`:
+  - `SKY_BASE` per role: winged (4 hits, +2 a level, 8% of your health a blow), keeper (10, +5, 12%), echo (18, +8, 15%).
+  - `skyRoleOf(spawn)`: an echo, else the boss rounds' keepers, else the winged.
+  - `skyVitals(role, save, stats)`: health is hits of the Wayfarer's weapon (power + melee bonus) plus per level; damage is a share
+    of the Wayfarer's health through their armour, at least 2. It uses the Wayfarer as they stand, not the world beasts'
+    floors or Stage 1 hold.
+- `src/game.ts`:
+  - `createEnemyFromSpawn` marks Skyland spawns `skyRole` and `skyEchoes`.
+  - `scaleSkyFoe` sets health and damage from `skyVitals` (echoes × `SKY_MODES.echoShare` by how many share the round), then ×
+    the Ascension tier, the pact's might and the annex island.
+  - Both regional-threat passes in the load wrapper skip Skyland maps. Before, they multiplied only the round created on arrival:
+    the first round came out about 1.5× its later rounds at ring 7.
+
+**BOUNDARY:** Runtime only (Skyland foes are made per run). Traits on a wave (swift, plated…) still change speed and armour as
+before; health and damage come from the Wayfarer. Tests: `tests/sky-base-688.test.ts`.
 ## Release 688: Canyon craters — 2026-11-01
 
 Tim (2026-10-30, and 2026-11-01: "the chasm dungeons... have those blocks that I can destroy"): Canyon dungeons, "mostly
