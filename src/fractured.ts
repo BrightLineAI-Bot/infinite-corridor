@@ -31,6 +31,8 @@ export const FRACTURED = {
   spawnDistance: [10, 15], // tiles from the Wayfarer: just off the screen
   near: 2, // tiles: how far a pack spreads round its anchor
   trashDrop: .25, // a reinforcement's chance of an item
+  corpse: 2, // s a fallen reinforcement lies before it is cleared away (never saved)
+  maxAdded: 30, // at most this many creatures added to an area on arrival, however crowded
   fallback: ["ashling", "glassMite", "ashenHound", "coilStalker", "rootBrute"], // when an area has no creatures of its own to copy
   traits: ["plated", "feral", "swift", "farcasting", "vital", "keen"],
   messages: { arrive: "Something tears through the fracture nearby.", surge: "The fracture splits wide: a surge is coming.", lull: "The fracture quiets for a while.", rare: "A rare creature leads this pack." },
@@ -69,7 +71,7 @@ export function packSpawns(key, kinds, ax, ay, size, rank, open, prefix, extra =
 // The packs an area gains on arrival: (density − 1) × its creatures (`count`), round its ordinary creatures' places (or, with none, round open
 // floor), each pack plain, champion or with a rare leader by a hash of the area.
 export function densityPacks(seed, areaId, mode, base, openTiles, open, count = base.length) {
-  const want = Math.round(Math.max(count, 4) * (mode.density - 1)), out = [], kinds = base.length ? [...new Set(base.map((q) => q.kind))] : FRACTURED.fallback;
+  const want = Math.min(FRACTURED.maxAdded, Math.round(Math.max(count, 4) * (mode.density - 1))), out = [], kinds = base.length ? [...new Set(base.map((q) => q.kind))] : FRACTURED.fallback;
   const anchors = base.length ? base : openTiles;
   for (let p = 0; out.length < want && p < want * 2; p++) {
     const key = `${seed}:fractured:v1:${areaId}:pack${p}`, h = hashSeed(key), a = anchors[h % anchors.length]; if (!a) break;

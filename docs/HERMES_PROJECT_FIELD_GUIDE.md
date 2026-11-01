@@ -2694,6 +2694,29 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 663: the sky gate drops you in a treetop — 2026-11-01
+
+Tim (2026-11-01): "if you go up in the tree, you get in a skylands... and you get the teleportation... it'll take you to the top of
+another tree that you haven't discovered... so you can either parachute down or you can hop down".
+
+**CODE:** `src/game.ts` `skyHop` first tries `treeCrownHop(id, from)`.
+- It searches `SKY_TREE.search` (6) sections round `skylandHop`'s drop point.
+- Candidates must be jungle regions in landscape version 12+ whose `canopy-grow` roll passes `SKY_TREE.chance` (.55). Explored
+  sections without a pinned version are skipped.
+- Candidates are sorted unexplored first, then nearest. It builds at most `SKY_TREE.loads` (4) of them, until one has a great tree.
+- The Wayfarer is placed on the crown's middle tile with `lastCrownAt` set, so the glider opens from there.
+- If none is found, the old drop to ground runs.
+
+Also in 663, from the pre-publish review of 649→659:
+- **The blocker:** fallen Fractured reinforcements piled up in `game.enemies` and the saved area state, so a long Fractured session
+  grew the save without bound. They are now cleared `FRACTURED.corpse` (2) s after falling, and `snapshotArea` never saves a
+  reinforcement.
+- **A cap on arrival:** `densityPacks` adds at most `FRACTURED.maxAdded` (30) creatures to an area.
+- **No affixes on the Array's bosses:** they skip the Listener, the Array's guardians and anything in a `far-array:` run.
+
+**BOUNDARY:** No save or generation change. Tests: `tests/sky-tree-hop-663.test.ts`; `tests/fractured-651.test.ts` gains the
+review's case.
+
 ## Release 661: floor dots — 2026-11-01
 
 Tim (2026-11-01): "something on the heads up display that just shows the different levels... on the right side of the screen...
