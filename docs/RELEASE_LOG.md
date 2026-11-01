@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**639**
+**641**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 637 | Claude | `claude/dreamy-rubin-yn6q2p` | The great trees as towers: branches out of the trunk, rising, hops tip to tip, the crown on the trunk, 30–42 levels | Building. |
+| 639 | Claude | `claude/dreamy-rubin-yn6q2p` | Out of the robot at sea: the robot button goes power armor → out into your skiff | Building. |
+| 637 | Claude | PR #302 | The great trees as towers: branches out of the trunk, rising, hops tip to tip, the crown on the trunk, 30–42 levels | Merged (`r637-496b09468bbf`). Not published. |
 | 635 | Claude | PR #301 | Sky above the great trees; the leaf glider (found on a tree, opens only from one, glides across sections) | Merged (`r635-f74d1dcad910`). Not published. |
 | 633 | Claude | PR #300 | The great trees rebuilt unreasonably tall: 1–2-tile branches spiralling round a trunk past the top of the screen | Merged (`r633-abd4f175d91b`). Not published. |
 | 631 | Claude | PR #299 | Giant jungle trees climbed branch by branch to a door: a Starfield crossing or a cloud hold | Merged (`r631-6b514ad11022`). Not published. |

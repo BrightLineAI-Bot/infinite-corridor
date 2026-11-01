@@ -3348,16 +3348,22 @@ export class Game {
     if (drone && m.active) { const p = this.player, max = p.maxHp || this.save.maxHp; if (p.hp < max && !(m.healCd > 0)) return this.droneHeal("You call the drone down; it mends you."); } // release 321: on command
     if (!m.built) { if (!(c.submersible > 0)) { this.message = "Forge a submersible frame first (Pack → Supplies): ashore it becomes your robot."; return false; } c.submersible -= 1; m.built = true; m.plate = MECH.plate; }
     if (!drone && m.active && !m.empowered && (Number(this.save.materials?.cinderIron) || 0) >= MECH_POWER.burn) { this.message = setEmpowered(this.save, true).message; this.sync(); return true; } // release 383: robot → empowered → stowed
+    if (m.active && !drone && this.wading() && !canSwim(this.save)) { this.message = "No footing here: wade the robot ashore before folding it away."; return false; } // release 639
     if (m.active) { if (m.empowered) setEmpowered(this.save, false); m.active = false; this.message = drone ? "The drone docks into its frame." : "The robot folds away."; this.sync(); return true; }
     if (!drone && m.cooldown > 0) { this.message = `The robot's plating is still knitting: ${Math.ceil(m.cooldown)}s.`; return false; }
     m.active = true; this.droneAt = null; this.message = drone ? "The drone lifts off beside you. It fires on what comes near; hold Jump in the air and it carries you." : "The robot unfolds around you. Hold Jump in the air to boost."; this.sync(); return true;
   }
   // Release 621 (Tim: "you should be able to switch to the power armor version while you're on the water"): at sea the robot
   // button toggles Empowered mode (the power armor) and back; the robot is never stowed at sea (that would drop you in).
+  // Release 639 (Tim: "I can't exit the robot or I'm not sure how... I hit the robot button and it doesn't take me out"): at sea
+  // the button goes round as it does ashore: robot → power armor (with cinder iron) → folded away, leaving you in your skiff,
+  // which then sails with you (it is no longer moored where it was).
   toggleSeaPower() {
-    const m = this.save.mech;
-    const r = m.empowered ? setEmpowered(this.save, false) : setEmpowered(this.save, true);
-    this.message = r.ok ? (m.empowered ? "The power armor lifts clear of the water on its thrusters. Dodge to dive." : "The power armor settles back into the plain submersible.") : r.message; this.sync(); return r.ok;
+    const m = this.save.mech, b = this.save.boat;
+    if (!m.empowered && (Number(this.save.materials?.cinderIron) || 0) >= MECH_POWER.burn) { setEmpowered(this.save, true); this.message = "The power armor lifts clear of the water on its thrusters. Dodge to dive; the robot button again folds it away."; this.sync(); return true; }
+    if (m.empowered) setEmpowered(this.save, false);
+    m.active = false; b.mechSub = false; delete b.mechSubFrom; this.placeMooredSkiff(); this.subDiveUntil = 0;
+    this.message = "The robot folds away and you are sitting in your skiff. Sail it ashore, or hold Act to step off."; this.sync(); return true;
   }
   // Release 635: one frame of the glide. Returns "crossed" when it carried the Wayfarer into the next section.
   glideStep(x, y, dt, now) {
@@ -3512,7 +3518,7 @@ export class Game {
     if (this.area !== "overworld" || !this.mechUp() || !this.swimsHere(hazard) || !b?.owned || !(b.hull > 0) || !footprintSailable(this.map, width, x, y) || this.wayglassNear(false) || !board(this.save, { x, y })) return false;
     b.mechSub = true; b.mechSubFrom = from; this.placeMooredSkiff(); this.placeSpareSkiff(); // release 621: the skiff stays where it was
     Object.assign(this.player, { sailVx: 0, sailVy: 0 }); this.swimming = false;
-    this.message = `The robot seals itself: a submersible. Dodge to dive; ${this.save.mech?.empowered ? "" : "the robot button empowers it; "}sail onto land and it stands up again.`;
+    this.message = "The robot seals itself: a submersible. Dodge to dive. The robot button: power armor, then out into your skiff. Sail onto land and it stands up again."; // release 639
     return true;
   }
   // Release 311 (Tim: "these buoys... are connected... go to one buoy, and then go to another buoy... if you traverse the
