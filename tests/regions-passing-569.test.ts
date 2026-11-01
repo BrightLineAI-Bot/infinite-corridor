@@ -9,7 +9,7 @@ import { passingBeastFor, PASSING } from '../src/world-beasts.ts';
 import { FIELD_PASSIVES } from '../src/lattice-fields.ts';
 
 test('regions are deterministic, large and varied, with a heartland of the old mix round Ember Refuge', () => {
-  assert.equal(LANDSCAPE_VERSION, 12); assert.equal(DREAM_VERSION, 4); // release 573: forests and frostlands; 579: moonlands
+  assert.equal(LANDSCAPE_VERSION, 13); assert.equal(DREAM_VERSION, 4); // release 573: forests and frostlands; 579: moonlands
   assert.deepEqual(sectionRegion('R', 40, -33), sectionRegion('R', 40, -33));
   for (let x = -8; x <= 8; x++) for (let y = -8; y <= 8; y++) if (Math.hypot(x + .5, y + .5) < REGIONS.heartland) assert.equal(sectionRegion('R', x, y).type, 'wild', 'the heartland is wild');
   const sizes = new Map(), types = new Set();

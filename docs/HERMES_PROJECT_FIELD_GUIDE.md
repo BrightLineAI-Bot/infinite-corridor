@@ -2694,6 +2694,35 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 645: the tree package — 2026-11-01
+
+Tim (2026-11-01): "make a tree package, so we can have different branches and different configurations... deterministically...
+not all trees are the same... like every dungeon is kind of different... multiple trees... canopy level... branches don't really
+have any leaves... not all branches need to be blocks... platforms you could land on if you were to fall from above".
+
+**CODE:**
+- New `src/trees.ts` (in `scripts/build.mjs` and both `sw.js` lists): `growTrees` and the `TREES` table (form weights, tries,
+  trunk/sides/reach per tree kind, the canopy walk, perches, leaves, boughs, four `looks`). `LANDSCAPE_VERSION` 12 → 13; version
+  13 calls `growTrees`, version 12 keeps `buildCanopyTree` (its ground test is now the shared `canopyGround`, unchanged in effect:
+  versions 2–12 compared byte for byte against main).
+- A tree is planned in a local frame (`SIDES`) and placed through one of eight turns/mirrorings (`turn`), with 3 or 4 sides and
+  per-side reach. Forms: `spire` (one tree, 4 sides) and `grove` (a lesser tree, 3 sides, then a `canopyLeaf` walk found by
+  `walkPath` from its crown edge to the greater tree's first branch; a hop gap raises the walk one level every few platforms; the
+  greater tree's climb starts one level above the walk's end and its crown holds the door).
+- Perches (`pad`): single `canopyLeaf` tiles beside a tree's branches, level with the lowest neighbour and 2–3 under every higher
+  one (`TREES.pads.fall`), never on a hop gap. Tiles carry `look` and `leaves` (1, or 2 at tips); `map.canopy.trees` lists each
+  tree with its `boughs` (`low` for a grove's lesser tree).
+- A layout (and each perch) is undone and retried if it cuts the climb's foot off, walls off any ground reachable before, or makes
+  a new pit (`trappedTiles`).
+- Drawing: `landscape-render.ts` `drawTreeWear` (tint and leaf tufts per tile); `renderer.ts` `drawCanopyDressing` per tree, in
+  its look, with `drawTreeBoughs`; a lesser tree gets a ring of leaves instead of the upper trunk.
+
+**BOUNDARY:**
+- Generation only, version-gated: explored sections keep version 12 trees (or none). Save untouched.
+- Monsters on the trees are not built (nothing spawns on wood, as before).
+- Tests: `tests/tree-package-645.test.ts`; `tests/canopy-trees-631.test.ts` pins its in-game tests to a version-12 section;
+  `tests/glider-635.test.ts` uses the current version.
+
 ## Release 643: every pass is a hit — 2026-11-01
 
 Tim (2026-11-01): "if it passes through their body, and then it arcs back on its homing track, and it passes through their body

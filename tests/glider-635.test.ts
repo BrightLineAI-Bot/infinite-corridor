@@ -7,10 +7,10 @@ import { readFileSync } from 'node:fs';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, GLIDE } from '../src/game.ts';
 import { generateRegion } from '../src/world.ts';
-import { applyLandscape, sectionRegion } from '../src/landscape.ts';
+import { applyLandscape, sectionRegion, LANDSCAPE_VERSION } from '../src/landscape.ts';
 
 const SEED = 'CANOPY631';
-const treeAt = (() => { let hit = null; return () => { for (let x = 14; x < 260 && !hit; x++) for (let y = 14; y < 260 && !hit; y += 3) { if (sectionRegion(SEED, x, y, 12).type !== 'jungle') continue; const m = generateRegion(SEED, x, y); applyLandscape(m, SEED, x, y, { version: 12 }); if (m.canopy) hit = [x, y]; } return hit; }; })();
+const treeAt = (() => { let hit = null; return () => { for (let x = 14; x < 260 && !hit; x++) for (let y = 14; y < 260 && !hit; y += 3) { if (sectionRegion(SEED, x, y, LANDSCAPE_VERSION).type !== 'jungle') continue; const m = generateRegion(SEED, x, y); applyLandscape(m, SEED, x, y, { version: LANDSCAPE_VERSION }); /* release 645: the trees a new journey grows */ if (m.canopy) hit = [x, y]; } return hit; }; })();
 const stick = (x, y, press = null) => ({ state: { x, y }, consume: (k) => (k === press ? (press = null, true) : false), held: () => false });
 const atTree = (glider = true) => { const [x, y] = treeAt(), s = freshSave(); s.seed = SEED; s.maxHp = 100; if (glider) s.glider = true; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld'); g.enemies = []; g.player.hp = 100; return { s, g }; };
 const tileAt = (g, x, y) => g.map.tiles[y * 32 + x];
