@@ -7,9 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r663-56d3cf7b0025";
-import { hashSeed } from "./random.js?v=r663-56d3cf7b0025";
-import { updateAstralActor } from "./astral-worm.js?v=r663-56d3cf7b0025";
+import { stageOneBeastReference } from "./stages.js?v=r669-637cc97f06cd";
+import { hashSeed } from "./random.js?v=r669-637cc97f06cd";
+import { updateAstralActor } from "./astral-worm.js?v=r669-637cc97f06cd";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -85,12 +85,18 @@ export const ATTACK_MODULES = {
   // The Tremor Worm's kit (release 237, Tim 2026-10-19): it burrows and pops its head out to fight; tentacles lash from its
   // maw; it inhales; it raises tentacles out of the ground around you that spit fire or hold burning lasers until they are
   // cut down; it rises under you; it lobs rocks that burst. Between attacks it sinks and surfaces somewhere else (wormCycle).
-  wormMaw: { id: "wormMaw", name: "Maw Tentacles", range: [0, 5.6], cooldown: 2.6, windup: .5, recover: .35, damage: .9, tags: ["melee"], text: "Tentacles lash out of its maw along four lanes." },
-  wormSuction: { id: "wormSuction", name: "Suction", range: [2, 8.5], cooldown: 7, windup: .7, active: 1.6, recover: .5, damage: 1.3, tags: ["control"], text: "It inhales: you are dragged toward the maw. Dodge or run against it." },
-  wormTentacles: { id: "wormTentacles", name: "Rising Tentacles", range: [0, 12], cooldown: 7.5, windup: .6, recover: .35, damage: .35, tags: ["summon", "ranged"], text: "Tentacles burst out of the ground around you. Some spit fire; some hold a laser on you until they are cut down." },
-  wormRise: { id: "wormRise", name: "Rise Beneath", range: [2.5, 12], cooldown: 6.5, windup: .45, recover: .7, damage: 1.45, tags: ["ground", "burrow"], text: "It dives, tunnels under you and bursts up where the ground cracks. Get off the cracks." },
-  wormLavaSpew: { id: "wormLavaSpew", name: "Lava Spew", range: [0, 7], cooldown: 5.5, windup: .6, active: 1.1, recover: .45, damage: .5, tags: ["ground", "fire"], text: "Throws its head forward and spews lava that spills across the ground like poured water. It cools in a couple of seconds; until then, stay off it." },
-  wormRocks: { id: "wormRocks", name: "Rock Lob", range: [2.5, 10], cooldown: 5, windup: .55, recover: .45, damage: .9, jumpable: true, tags: ["ground", "ranged"], text: "Hurls rocks that burst where they land: one at you, one ahead of you, the rest around." },
+  // Release 664 (Tim, 2026-11-01: "he should spend a lot of time with half of his model outside the ground and only come out
+  // every once in a while… when he's fully out he should be doing melee attacks where he swings, uses his length to attack,
+  // or slams down"): each worm move has a `posture`. "half" moves are thrown from half out of the ground; "full" moves (the
+  // maw, the body sweep and the slam) bring it all the way up, at most once every WORM.fullGap seconds.
+  wormMaw: { id: "wormMaw", name: "Maw Tentacles", range: [0, 5.6], cooldown: 2.6, windup: .5, recover: .35, damage: .9, posture: "full", tags: ["melee"], text: "It rears all the way out and tentacles lash out of its maw along four lanes." },
+  wormSweep: { id: "wormSweep", name: "Body Sweep", range: [0, 5.4], cooldown: 8, windup: .85, active: .45, recover: .7, damage: 1.15, posture: "full", tags: ["melee"], text: "It rears all the way out and swings its whole length round in a wide arc. Get out of the arc or under it with a dodge." },
+  wormSlam: { id: "wormSlam", name: "Slam", range: [0, 7], cooldown: 9, windup: .95, recover: .9, damage: 1.5, posture: "full", tags: ["melee", "ground"], text: "It rears up high and slams its body down along a line; the ground bursts where its head lands." },
+  wormSuction: { id: "wormSuction", name: "Suction", range: [2, 8.5], cooldown: 7, windup: .7, active: 1.6, recover: .5, damage: 1.3, posture: "half", tags: ["control"], text: "It inhales: you are dragged toward the maw. Dodge or run against it." },
+  wormTentacles: { id: "wormTentacles", name: "Rising Tentacles", range: [0, 12], cooldown: 7.5, windup: .9, recover: .35, damage: .35, posture: "half", tags: ["summon", "ranged"], text: "The ground cracks where tentacles will burst out around you. They spit fire, hold a laser on you, loose homing orbs or fans of shots, grab and drag you, or swipe at you, and burrow to come up around you again between volleys. At its limit, a cast moves the ones it has." },
+  wormRise: { id: "wormRise", name: "Rise Beneath", range: [2.5, 12], cooldown: 6.5, windup: .45, recover: .7, damage: 1.45, posture: "half", tags: ["ground", "burrow"], text: "It dives, tunnels under you and bursts up where the ground cracks. Get off the cracks." },
+  wormLavaSpew: { id: "wormLavaSpew", name: "Lava Spew", range: [0, 7], cooldown: 5.5, windup: .6, active: 1.1, recover: .45, damage: .5, posture: "half", tags: ["ground", "fire"], text: "Throws its head forward and spews lava that spills across the ground like poured water. It cools in a couple of seconds; until then, stay off it." },
+  wormRocks: { id: "wormRocks", name: "Rock Lob", range: [2.5, 10], cooldown: 5, windup: .55, recover: .45, damage: .9, posture: "half", jumpable: true, tags: ["ground", "ranged"], text: "Hurls rocks that burst where they land: one at you, one ahead of you, the rest around." },
   // The Mountain Turtle's kit (release 241, Tim 2026-10-19: "a walking mausoleum … about twice the size of the Questing
   // Beast … slow … stomps … a burst dash that leaves a trail of fire or ice … spins with an ice tornado that throws off
   // small tornadoes … a comet of ice from its mouth … now and then an ice shield it cannot be hurt through").
@@ -283,7 +289,7 @@ export const MONSTER_PACK = {
   tremorWorm: {
     id: "tremorWorm", name: "The Tremor Worm", epithet: "The Ground That Opens Its Mouth", unique: true,
     stats: [300, 16, 0], form: { scale: 1.7 }, sizeClass: "large", movement: "burrow", brain: "duelist",
-    attacks: ["wormMaw", "wormSuction", "wormTentacles", "wormRise", "wormRocks", "wormLavaSpew"], bossAttacks: ["shockwave"],
+    attacks: ["wormMaw", "wormSuction", "wormTentacles", "wormRise", "wormRocks", "wormLavaSpew", "wormSweep", "wormSlam"], bossAttacks: ["shockwave"],
     palette: ["#b08a5a", "#2a1c12", "#ff7a2a", "#f3e2c0"], render: "tremorWorm", tags: ["beast", "elder", "earth", "burrow"],
     lore: "A worm as wide as a cart, armoured in sand-coloured rings. It swims under the ground and comes up to feed: tentacles boil out of its round maw, it drinks the air, and the ground around it sprouts lesser tentacles that spit fire and burn lines of light until they are cut down.",
   },
@@ -562,7 +568,7 @@ export const BLOB = {
 };
 // The Tremor Worm (release 237). Balance as data.
 export const WORM = {
-  surfaceTime: 3.4, emergeTime: .7, travelTime: 2.6, travelSpeed: 4.4, surfaceRange: [3, 5.5], // it fights surfaced, then sinks and comes up elsewhere
+  surfaceTime: 5, emergeTime: .7, travelTime: 2.6, travelSpeed: 4.4, surfaceRange: [3, 5.5], // it fights surfaced, then sinks and comes up elsewhere
   emergeBite: .8,                                              // coming up under you: this share of its damage
   mawTentacles: 4, mawSpread: .3, mawLength: 5.2, mawWidth: .42,
   suctionRadius: 9, suctionPull: 3.3,
@@ -576,6 +582,21 @@ export const WORM = {
   // Lava spew (Tim: "spill out … as if water were getting spilled"): a stream poured along a cone; each gout lands and
   // runs outward, slowing as it spreads, then lies hot for lavaLife seconds and crusts over.
   lavaLength: 6.2, lavaArc: 44, lavaEvery: .09, lavaPerPour: 2, lavaFlight: .12, lavaRun: 1.8, lavaRunTime: .55, lavaGrow: [.35, 1.05], lavaGrowTime: .45, lavaLife: 1.8, lavaTick: .5,
+  // Release 664: the rework. The body is drawn at `halfHeight` of its length while half-buried and all the way up only for
+  // "full" moves (it rises or sinks at `postureRate` of its length a second); "full" moves come at most every `fullGap` s.
+  halfHeight: .5, postureRate: 2.6, fullGap: 7,
+  sweepRadius: 5.4, sweepArc: 220, slamLength: 6.6, slamWidth: 1, slamBurst: 1.8,
+  // Tentacles take their health from the worm (`tentacleHp` of its maximum, never under `tentacleHpMin`), and their damage
+  // from its damage times `tentacleDamage[mode]`. The ground cracks `tentacleWarn` s before one rises.
+  tentacleHp: .06, tentacleHpMin: 34, tentacleWarn: .9,
+  tentacleModes: ["laser", "fire", "orbs", "grab", "spread", "swipe"], // the order casts deal them out in, two a cast
+  tentacleDamage: { fire: .35, laser: .35, orbs: .45, spread: .3, grab: .55, swipe: .7 },
+  tentacleVolleys: { fire: 2, spread: 2, orbs: 3, grab: 2, swipe: 2 }, laserHold: 6, // after this many volleys (a laser: seconds of burning) it burrows and comes up around you
+  repositionUnder: [.4, 1.1],                                                     // a cast at the limit sends the field under for this long
+  orbEvery: 1.6, orbSpeed: 3.8, orbTurn: 1.7, orbHome: 2.2, orbLife: 4.2, orbRadius: .32,
+  spreadEvery: 2.1, spreadWarn: .45, spreadShots: 5, spreadArc: 64,
+  grabEvery: 3, grabWarn: .8, grabReach: 6.5, grabWidth: .5, grabPull: 8, grabHold: .75,
+  swipeEvery: 1.6, swipeWarn: .55, swipeReach: 2.5, swipeArc: 170, swipeChase: 1.4, // out of reach this long, a swipe tentacle burrows after you
 };
 // The Mountain Turtle (release 241). Balance as data.
 // Release 397 (Tim, 2026-10-24: "the hits... where they're gonna be going on the floor... right now it's like pale red. It
@@ -1042,7 +1063,21 @@ const START = {
   turtleShield(e, s) { s.tele = { type: "shimmer" }; },
   wormMaw(e, s) { const a = Math.atan2(s.data.aim.y, s.data.aim.x); s.data.dirs = Array.from({ length: WORM.mawTentacles }, (_, i) => { const b = a + (i - (WORM.mawTentacles - 1) / 2) * WORM.mawSpread; return { x: Math.cos(b), y: Math.sin(b) }; }); s.tele = { type: "tendrils", dirs: s.data.dirs, length: WORM.mawLength, width: WORM.mawWidth, flesh: true }; },
   wormSuction(e, s) { s.tele = { type: "ring", radius: WORM.suctionRadius, inhale: true }; },
-  wormTentacles(e, s) { s.tele = { type: "shimmer" }; },
+  // Release 664: the cracks show where each new tentacle will rise for the whole windup (and its rise after); at the limit
+  // there are no new ones, and the cast sends the field it has under to come up around the Wayfarer instead.
+  wormTentacles(e, s, w) {
+    s.tele = { type: "shimmer" }; s.data.spots = [];
+    const mine = w.enemies.filter((q) => !q.dead && q.wormOf === e.id), room = Math.min(WORM.fieldTentacles, WORM.tentaclesMax - mine.length), p = s.data.target, turn = (hashSeed(`${e.id}:${s.seq}:field`) % 628) / 100;
+    for (let i = 0; i < room; i++) {
+      const [lo, hi] = WORM.tentacleRing, r = lo + (hashSeed(`${e.id}:${s.seq}:ring:${i}`) % 100) / 100 * (hi - lo), a = turn + i * TAU / WORM.fieldTentacles;
+      const spot = nearestOpen(w, p.x + Math.cos(a) * r, p.y + Math.sin(a) * r, 2);
+      if (!spot || distance(spot, e) < bodyRadius(e) + 1) continue;
+      s.data.spots.push({ x: spot.x, y: spot.y, i });
+      wormCracks(w, e, spot, s.t + WORM.tentacleRise);
+    }
+  },
+  wormSweep(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: WORM.sweepRadius, arc: WORM.sweepArc }; },
+  wormSlam(e, s) { const a = s.data.aim; s.tele = { type: "rect", aim: a, length: WORM.slamLength, width: WORM.slamWidth }; s.data.head = { x: e.x + a.x * WORM.slamLength, y: e.y + a.y * WORM.slamLength }; },
   wormRise(e, s) { s.tele = { type: "submerge" }; },
   wormLavaSpew(e, s) { s.tele = { type: "cone", aim: s.data.aim, length: WORM.lavaLength, arc: WORM.lavaArc, lava: true }; s.data.next = 0; s.data.pours = 0; s.data.front = 0; },
   wormRocks(e, s, w) {
@@ -1578,16 +1613,39 @@ const RUN = {
   },
   wormTentacles(e, s, w) {
     if (s.phase !== "windup" || s.t > 0) return;
-    const mine = w.enemies.filter((q) => !q.dead && q.wormOf === e.id), lasers = mine.filter((q) => q.tentacleMode === "laser").length, p = s.data.target, turn = (hashSeed(`${e.id}:${s.seq}:field`) % 628) / 100;
-    for (let i = 0, made = 0, lit = lasers; i < WORM.fieldTentacles && mine.length + made < WORM.tentaclesMax; i++) {
-      const [lo, hi] = WORM.tentacleRing, r = lo + (hashSeed(`${e.id}:${s.seq}:ring:${i}`) % 100) / 100 * (hi - lo), a = turn + i * TAU / WORM.fieldTentacles;
-      const spot = nearestOpen(w, p.x + Math.cos(a) * r, p.y + Math.sin(a) * r, 2);
-      if (!spot || distance(spot, e) < bodyRadius(e) + 1) continue;
-      const mode = (s.seq + i) % 2 && lit < WORM.lasersMax ? "laser" : "fire";
-      const c = w.spawnMinion?.(e, "wormTentacle", spot.x, spot.y, i);
-      if (c) { Object.assign(c, { wormOf: e.id, bornAt: w.now, tentacleMode: mode }); made++; if (mode === "laser") lit++; }
+    const mine = w.enemies.filter((q) => !q.dead && q.wormOf === e.id);
+    if (!s.data.spots.length && mine.length >= WORM.tentaclesMax) { // release 664: at the limit, the cast moves the field it has
+      for (const q of mine) if (!q.tentPhase) { const [lo, hi] = WORM.repositionUnder; q.tentPhase = "sinking"; q.underFor = lo + (hashSeed(`${q.id}:moved:${s.seq}`) % 100) / 100 * (hi - lo); if (q.pack) q.pack.tele = null; }
     }
+    let lit = mine.filter((q) => q.tentacleMode === "laser").length;
+    for (const spot of s.data.spots) {
+      if (mine.length + 1 > WORM.tentaclesMax) break;
+      let mode = WORM.tentacleModes[((Number(e.wormCasts) || 0) * WORM.fieldTentacles + spot.i) % WORM.tentacleModes.length];
+      if (mode === "laser" && lit >= WORM.lasersMax) mode = "fire";
+      const c = w.spawnMinion?.(e, "wormTentacle", spot.x, spot.y, spot.i);
+      if (c) { Object.assign(c, { wormOf: e.id, bornAt: w.now, tentacleMode: mode }, tentacleStats(e)); mine.push(c); if (mode === "laser") lit++; }
+    }
+    e.wormCasts = (Number(e.wormCasts) || 0) + 1;
     s.tele = null; toPhase(s, "recover", ATTACK_MODULES.wormTentacles.recover);
+  },
+  // Release 664: fully out of the ground, it swings its whole length round in a wide arc (the arc's sweep drawn as it goes).
+  wormSweep(e, s, w) {
+    const attack = ATTACK_MODULES.wormSweep;
+    if (s.phase === "windup") { if (s.t <= 0) { s.data.swing = 0; toPhase(s, "active", attack.active); } return; }
+    if (s.phase !== "active") return;
+    s.data.swing = 1 - Math.max(0, s.t) / attack.active;
+    const p = center(w.player), a0 = Math.atan2(s.data.aim.y, s.data.aim.x), half = WORM.sweepArc * Math.PI / 360, at = a0 - half + 2 * half * s.data.swing;
+    const pa = Math.atan2(p.y - e.y, p.x - e.x), diff = Math.abs(((pa - at) % TAU + TAU * 1.5) % TAU - Math.PI);
+    if (!s.hitOnce && distance(p, e) <= WORM.sweepRadius + .3 && (diff <= .45 || distance(p, e) < bodyRadius(e) + .6) && inArc(e, p, s.data.aim, WORM.sweepRadius + .3, WORM.sweepArc + 10)) { s.hitOnce = true; w.hurt(e, damageOf(e, "wormSweep"), { jumpable: false, source: "wormSweep" }); }
+    if (s.t <= 0) { s.tele = null; toPhase(s, "recover", attack.recover); }
+  },
+  // Release 664: it rears up and slams its body down the line; the head bursts the ground where it lands.
+  wormSlam(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const p = center(w.player), a = s.data.aim, end = s.data.head, inLane = segmentDistance(p, e, end) <= WORM.slamWidth + .3 && (p.x - e.x) * a.x + (p.y - e.y) * a.y >= -.3;
+    if (inLane || distance(p, end) <= WORM.slamBurst + .3) w.hurt(e, damageOf(e, "wormSlam"), { jumpable: false, source: "wormSlam" });
+    for (let i = 1; i <= 4; i++) w.addEffect({ kind: "dust", owner: e.id, x: e.x + a.x * WORM.slamLength * i / 4, y: e.y + a.y * WORM.slamLength * i / 4, radius: i === 4 ? WORM.slamBurst : 1, arming: 0, life: .6, damage: 0 });
+    s.data.slammed = true; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.wormSlam.recover);
   },
   wormRise(e, s, w) {
     const attack = ATTACK_MODULES.wormRise, p = center(w.player);
@@ -1863,6 +1921,7 @@ function attackReady(e, s, w, id, d) {
   if (e.phases && !w.open(e.x, e.y)) return false;
   if (attack.los && !w.los(e, w.player, attack.tags.includes("ranged"))) return false;
   if (id === "voidSupernova" && voidEffects(w).some((f) => f.owner === e.id && f.kind === "voidRift" && f.tracking && !f.activated)) return false;
+  if (e.kind === "tremorWorm" && attack.posture === "full" && Number.isFinite(s.worm?.fullAt) && (w.now - s.worm.fullAt) / 1000 < WORM.fullGap) return false; // release 664: it comes all the way out only now and then
   if (id === "mirrorSwap" && !w.enemies.some((q) => !q.dead && q.illusion && q.summonedBy === e.id)) return false;
   if (id === "mirrorClones" && w.enemies.filter((q) => !q.dead && q.illusion && q.summonedBy === e.id).length >= 2) return false;
   return true;
@@ -1973,9 +2032,14 @@ function blobletHome(e, s, w) {
 // The Tremor Worm between attacks (release 237): it stays up for WORM.surfaceTime, then sinks and swims under the ground
 // (hidden, untargetable) to a spot near the Wayfarer, and comes up there (a short, cracking emergence that bites whoever
 // stands on it). Returns true while it is under or emerging (no attack or dodge then).
+// Release 664: up means half out of the ground (`e.wormLift`, the share of its length above ground, which the renderer
+// draws); only a "full" move brings it all the way up. Its time up now runs during its attacks too, so it moves about.
 function wormCycle(e, s, w, p) {
   const W = s.worm ||= { mode: "surfaced", t: WORM.surfaceTime, trips: 0 };
-  if (s.attack) return false;
+  const full = !!s.attack && ATTACK_MODULES[s.attack]?.posture === "full", want = full ? 1 : WORM.halfHeight, lift = Number.isFinite(e.wormLift) ? e.wormLift : WORM.halfHeight;
+  e.wormLift = lift + Math.max(-WORM.postureRate * w.dt, Math.min(WORM.postureRate * w.dt, want - lift)); e.wormPosture = full ? "full" : "half";
+  if (full) W.fullAt = w.now;
+  if (s.attack) { if (W.mode === "surfaced") W.t -= w.dt; return false; }
   if (W.mode === "surfaced") {
     W.t -= w.dt;
     if (W.t > 0 || s.evade) return false;
@@ -1983,7 +2047,7 @@ function wormCycle(e, s, w, p) {
     W.trips++; W.dest = { x: Math.max(1, Math.min(w.width - 2, p.x + Math.cos(a) * r)), y: Math.max(1, Math.min(w.height - 2, p.y + Math.sin(a) * r)) }; W.mode = "under"; W.t = WORM.travelTime;
   }
   if (W.mode === "under") {
-    e.hidden = true; e.untargetable = true; W.t -= w.dt;
+    e.hidden = true; e.untargetable = true; W.t -= w.dt; e.wormLift = 0;
     const d = distance(W.dest, e), u = unit(W.dest.x - e.x, W.dest.y - e.y), step = Math.min(d, WORM.travelSpeed * w.dt * (e.speedMultiplier || 1));
     e.x = Math.max(0, Math.min(w.width - 1, e.x + u.x * step)); e.y = Math.max(0, Math.min(w.height - 1, e.y + u.y * step));
     if (d < .3 || W.t <= 0) { const land = w.open(e.x, e.y) ? { x: e.x, y: e.y } : nearestOpen(w, e.x, e.y, 4); if (land) { e.x = land.x; e.y = land.y; W.mode = "emerge"; W.t = WORM.emergeTime; } else { W.dest = { x: p.x, y: p.y }; W.t = WORM.travelTime; } } // no open ground there (a lake, a cliff): it swims back toward the Wayfarer, who stands on open ground
@@ -1998,49 +2062,108 @@ function wormCycle(e, s, w, p) {
   }
   return true;
 }
-// A tentacle the worm raised: it never moves. It rises, then spits bursts of fire at the Wayfarer or (laser) holds a
-// burning line that turns slowly after them, until it is cut down. It sinks when the worm dies. Left far behind, it sinks
-// and comes up again around the Wayfarer a little later, so running never leaves the tentacles behind.
+// Release 664: the cracks where a tentacle will rise (harmless; drawn on the ground).
+function wormCracks(w, e, at, life) { w.addEffect({ kind: "wormCracks", owner: e.id, x: at.x, y: at.y, radius: .85, arming: 0, life, total: life, damage: 0 }); }
+// Release 664: a tentacle's health from the worm's (its damage is read from the worm's each time it strikes).
+function tentacleStats(owner) { const hp = Math.max(WORM.tentacleHpMin, Math.round((Number(owner.maxHp) || 0) * WORM.tentacleHp)); return { hp, maxHp: hp }; }
+function tentacleDamage(owner, mode) { return Math.max(1, Math.ceil((Number(owner.damage) || 1) * (WORM.tentacleDamage[mode] ?? ATTACK_MODULES.wormTentacles.damage))); }
+// One volley done: after its mode's count it burrows and comes up around the Wayfarer (release 664).
+function tentacleVolley(e, s) { e.volleys = (Number(e.volleys) || 0) + 1; if (e.volleys >= (WORM.tentacleVolleys[e.tentacleMode] || 2)) { e.tentPhase = "sinking"; s.tele = null; } }
+function tentacleSpot(e, w, p) {
+  const [lo, hi] = WORM.tentacleRing, a = (hashSeed(`${e.id}:follow:${e.moves || 0}`) % 628) / 100, r = lo + (hashSeed(`${e.id}:follow-r:${e.moves || 0}`) % 100) / 100 * (hi - lo);
+  return nearestOpen(w, p.x + Math.cos(a) * r, p.y + Math.sin(a) * r, 2);
+}
+// A tentacle the worm raised: it never walks. It rises, then spits bursts of fire at the Wayfarer or (laser) holds a
+// burning line that turns slowly after them. It sinks when the worm dies. Left far behind, it sinks and comes up again
+// around the Wayfarer a little later, so running never leaves the tentacles behind.
+// Release 664: it also burrows between volleys and comes up around the Wayfarer, the ground cracking where it will rise;
+// and it has six ways to fight (WORM.tentacleModes): fire bursts, a laser, homing orbs, a fan of shots, a grab that drags
+// you to it, and a swipe at whoever is close.
 function tentacleTurret(e, s, w, p) {
   const owner = w.enemies.find((q) => q.id === e.wormOf && !q.dead);
   if (!owner) { e.dead = true; e.noRewards = true; return true; }
   if (e.tentPhase === "sinking") { // going back into the ground
-    e.untargetable = true; s.tele = null; e.rising = Math.min(1, (Number(e.rising) || 0) + w.dt / WORM.tentacleSink);
-    if (e.rising >= 1) { const [lo, hi] = WORM.tentacleUnder; e.tentPhase = "under"; e.surfaceAt = w.now + (lo + (hashSeed(`${e.id}:under:${e.moves || 0}`) % 100) / 100 * (hi - lo)) * 1000; }
+    e.untargetable = true; s.tele = null; e.grabbing = null; e.rising = Math.min(1, (Number(e.rising) || 0) + w.dt / WORM.tentacleSink);
+    if (e.rising >= 1) { const [lo, hi] = WORM.tentacleUnder, under = Number.isFinite(e.underFor) ? e.underFor : lo + (hashSeed(`${e.id}:under:${e.moves || 0}`) % 100) / 100 * (hi - lo); e.tentPhase = "under"; e.underFor = null; e.surfaceAt = w.now + Math.max(under, WORM.tentacleWarn) * 1000; e.surfaceSpot = null; }
     return true;
   }
   if (e.tentPhase === "under") { // travelling under the ground; then it comes up somewhere around the Wayfarer
     e.hidden = true; e.untargetable = true; s.tele = null;
+    if (!e.surfaceSpot && w.now >= e.surfaceAt - WORM.tentacleWarn * 1000) { const spot = tentacleSpot(e, w, p); if (spot) { e.surfaceSpot = spot; wormCracks(w, owner, spot, (e.surfaceAt - w.now) / 1000 + WORM.tentacleRise); } }
     if (w.now < e.surfaceAt) return true;
-    e.moves = (e.moves || 0) + 1;
-    const [lo, hi] = WORM.tentacleRing, a = (hashSeed(`${e.id}:follow:${e.moves}`) % 628) / 100, r = lo + (hashSeed(`${e.id}:follow-r:${e.moves}`) % 100) / 100 * (hi - lo);
-    const spot = nearestOpen(w, p.x + Math.cos(a) * r, p.y + Math.sin(a) * r, 2);
+    const spot = e.surfaceSpot || tentacleSpot(e, w, p);
     if (!spot) { e.surfaceAt = w.now + 400; return true; }
-    e.x = spot.x; e.y = spot.y; e.tentPhase = null; e.hidden = false; e.bornAt = w.now; s.laser = null; s.fire = null; e.farFor = 0;
+    e.moves = (e.moves || 0) + 1;
+    e.x = spot.x; e.y = spot.y; e.tentPhase = null; e.surfaceSpot = null; e.hidden = false; e.bornAt = w.now; s.laser = null; s.fire = null; s.tent = null; e.farFor = 0; e.volleys = 0;
   }
   const age = (w.now - (e.bornAt || 0)) / 1000;
   if (age < WORM.tentacleRise) { e.untargetable = true; e.rising = 1 - age / WORM.tentacleRise; s.tele = { type: "circle", x: e.x, y: e.y, radius: .8, erupt: true, total: WORM.tentacleRise, left: WORM.tentacleRise - age }; return true; }
   if (e.rising) { e.rising = 0; e.untargetable = false; s.tele = null; if (distance(p, e) <= 1.1) w.hurt(owner, Math.max(1, Math.ceil((Number(owner.damage) || 1) * .4)), { jumpable: false, source: "wormTentacle" }); }
-  if (distance(p, e) > WORM.tentacleFollow) { e.farFor = (Number(e.farFor) || 0) + w.dt; if (e.farFor >= WORM.tentacleFollowDelay) { e.tentPhase = "sinking"; e.farFor = 0; s.tele = null; return true; } }
+  if (distance(p, e) > WORM.tentacleFollow && !e.grabbing) { e.farFor = (Number(e.farFor) || 0) + w.dt; if (e.farFor >= WORM.tentacleFollowDelay) { e.tentPhase = "sinking"; e.farFor = 0; s.tele = null; return true; } }
   else e.farFor = 0;
-  e.facingX = (p.x - e.x) >= 0 ? 1 : -1;
-  const dmg = Math.max(1, Math.ceil((Number(owner.damage) || 1) * ATTACK_MODULES.wormTentacles.damage));
-  if (e.tentacleMode === "laser") {
-    const want = Math.atan2(p.y - e.y, p.x - e.x), L = s.laser ||= { angle: want, charge: WORM.laserCharge, tick: 0 };
+  e.facingX = (p.x - e.x) >= 0 ? 1 : -1; e.tentSwing = Math.max(0, (Number(e.tentSwing) || 0) - w.dt);
+  const mode = e.tentacleMode, dmg = tentacleDamage(owner, mode);
+  if (mode === "laser") {
+    const want = Math.atan2(p.y - e.y, p.x - e.x), L = s.laser ||= { angle: want, charge: WORM.laserCharge, tick: 0, held: 0 };
     let diff = ((want - L.angle) % TAU + TAU * 1.5) % TAU - Math.PI;
     L.angle += Math.max(-WORM.laserTurn * w.dt, Math.min(WORM.laserTurn * w.dt, diff));
     const dir = { x: Math.cos(L.angle), y: Math.sin(L.angle) }, len = rayLength(w, e, dir, WORM.laserLength);
     if (L.charge > 0) { L.charge -= w.dt; s.tele = { type: "beam", angle: L.angle, length: len, charging: true, laser: true }; return true; }
     s.tele = { type: "beam", angle: L.angle, length: len, charging: false, laser: true };
-    L.tick -= w.dt;
+    L.tick -= w.dt; L.held = (Number(L.held) || 0) + w.dt;
     if (L.tick <= 0 && segmentDistance(p, e, { x: e.x + dir.x * len, y: e.y + dir.y * len }) <= WORM.laserWidth) { L.tick = WORM.laserTick; w.hurt(owner, dmg, { jumpable: false, source: "wormLaser", beam: true }); }
+    if (L.held >= WORM.laserHold) { e.tentPhase = "sinking"; s.tele = null; } // release 664: it burns a while, then burrows to a new angle on you
     return true;
   }
-  const F = s.fire ||= { next: .4, shots: 0 };
-  F.next -= w.dt;
-  if (F.next <= 0) {
-    if (w.los(e, w.player, true)) { const a = Math.atan2(p.y - e.y, p.x - e.x); w.addEffect({ kind: "orb", fire: true, owner: owner.id, x: e.x, y: e.y, vx: Math.cos(a) * WORM.fireSpeed, vy: Math.sin(a) * WORM.fireSpeed, radius: WORM.fireRadius, arming: 0, life: WORM.fireLife, damage: dmg }); }
-    F.shots++; F.next = F.shots % WORM.fireBurst ? WORM.fireEvery : WORM.fireRest;
+  if (mode === "fire") {
+    const F = s.fire ||= { next: .4, shots: 0 };
+    F.next -= w.dt;
+    if (F.next <= 0) {
+      if (w.los(e, w.player, true)) { const a = Math.atan2(p.y - e.y, p.x - e.x); w.addEffect({ kind: "orb", fire: true, owner: owner.id, x: e.x, y: e.y, vx: Math.cos(a) * WORM.fireSpeed, vy: Math.sin(a) * WORM.fireSpeed, radius: WORM.fireRadius, arming: 0, life: WORM.fireLife, damage: dmg }); }
+      F.shots++; F.next = F.shots % WORM.fireBurst ? WORM.fireEvery : WORM.fireRest;
+      if (!(F.shots % WORM.fireBurst)) tentacleVolley(e, s);
+    }
+    return true;
+  }
+  const T = s.tent ||= { next: .5, stage: "rest", t: 0 };
+  T.next -= w.dt;
+  if (mode === "orbs") { // a slow orb that turns after you for a while, then flies straight
+    if (T.next <= 0) { T.next = WORM.orbEvery; if (w.los(e, w.player, true)) { const a = Math.atan2(p.y - e.y, p.x - e.x); w.addEffect({ kind: "orb", homing: WORM.orbHome, turn: WORM.orbTurn, owner: owner.id, x: e.x, y: e.y, vx: Math.cos(a) * WORM.orbSpeed, vy: Math.sin(a) * WORM.orbSpeed, radius: WORM.orbRadius, arming: 0, life: WORM.orbLife, damage: dmg }); } tentacleVolley(e, s); }
+    return true;
+  }
+  if (mode === "spread") { // it rears back (the fan shown), then looses a fan of shots
+    if (T.stage === "rest" && T.next <= 0) { T.stage = "warn"; T.t = WORM.spreadWarn; T.aim = unit(p.x - e.x, p.y - e.y); s.tele = { type: "cone", aim: T.aim, length: 4, arc: WORM.spreadArc }; }
+    else if (T.stage === "warn" && (T.t -= w.dt) <= 0) {
+      const a0 = Math.atan2(T.aim.y, T.aim.x), n = WORM.spreadShots, arc = WORM.spreadArc * Math.PI / 180;
+      for (let i = 0; i < n; i++) { const a = a0 - arc / 2 + arc * i / Math.max(1, n - 1); w.addEffect({ kind: "orb", fire: true, owner: owner.id, x: e.x, y: e.y, vx: Math.cos(a) * WORM.fireSpeed, vy: Math.sin(a) * WORM.fireSpeed, radius: WORM.fireRadius, arming: 0, life: WORM.fireLife, damage: dmg }); }
+      T.stage = "rest"; T.next = WORM.spreadEvery; s.tele = null; tentacleVolley(e, s);
+    }
+    return true;
+  }
+  if (mode === "grab") { // it reaches along a lane; caught, you are dragged to it (w.pull) and squeezed
+    if (T.stage === "rest" && T.next <= 0 && distance(p, e) <= WORM.grabReach + .5) { T.stage = "warn"; T.t = WORM.grabWarn; T.aim = unit(p.x - e.x, p.y - e.y); s.tele = { type: "lane", aim: T.aim, length: WORM.grabReach, width: WORM.grabWidth }; }
+    else if (T.stage === "warn" && (T.t -= w.dt) <= 0) {
+      const end = { x: e.x + T.aim.x * WORM.grabReach, y: e.y + T.aim.y * WORM.grabReach }, caught = segmentDistance(p, e, end) <= WORM.grabWidth + .3 && w.pull?.(e, 0, WORM.grabReach + 1) !== false && !w.held?.(owner);
+      s.tele = null;
+      if (caught) { T.stage = "hold"; T.t = WORM.grabHold; e.grabbing = { x: p.x - e.x, y: p.y - e.y }; }
+      else { T.stage = "rest"; T.next = WORM.grabEvery; tentacleVolley(e, s); }
+    } else if (T.stage === "hold") {
+      w.pull?.(e, WORM.grabPull * w.dt, WORM.grabReach + 1.5); e.grabbing = { x: p.x - e.x, y: p.y - e.y };
+      if ((T.t -= w.dt) <= 0) { if (distance(p, e) <= 1.6) w.hurt(owner, dmg, { jumpable: false, source: "wormGrab" }); e.grabbing = null; T.stage = "rest"; T.next = WORM.grabEvery; tentacleVolley(e, s); }
+    }
+    return true;
+  }
+  if (mode === "swipe") { // a melee arc at whoever comes close; kept out of reach, it burrows after you
+    const near = distance(p, e) <= WORM.swipeReach + .8;
+    if (T.stage === "rest") {
+      T.far = near ? 0 : (Number(T.far) || 0) + w.dt;
+      if (T.far >= WORM.swipeChase) { T.far = 0; e.tentPhase = "sinking"; s.tele = null; return true; }
+      if (near && T.next <= 0) { T.stage = "warn"; T.t = WORM.swipeWarn; T.aim = unit(p.x - e.x, p.y - e.y); s.tele = { type: "arc", aim: T.aim, radius: WORM.swipeReach, arc: WORM.swipeArc }; }
+    } else if (T.stage === "warn" && (T.t -= w.dt) <= 0) {
+      if (inArc(e, p, T.aim, WORM.swipeReach + .3, WORM.swipeArc)) w.hurt(owner, dmg, { jumpable: false, source: "wormSwipe" });
+      e.tentSwing = .3; T.stage = "rest"; T.next = WORM.swipeEvery; s.tele = null; tentacleVolley(e, s);
+    }
+    return true;
   }
   return true;
 }
@@ -2388,7 +2511,7 @@ export const STAGGER_GOVERNOR = { limit: { revenant: .6, boss: .9, elite: 1.3, o
 export const WINDUP_STAGGER = { max: .35 };
 // Call while hit-stunned during a windup; `held` is the attack's own record. True while the windup may still be held.
 export function windupHeld(e, held, dt) { held.windupStagger = (held.windupStagger || 0) + dt; if (held.windupStagger < WINDUP_STAGGER.max) return true; e.hitStun = 0; return false; }
-export function staggerClass(e) { return e?.gatePredator ? "revenant" : e?.boss || e?.marginWarden /* release 459 */ || e?.worldBeast || e?.questingBeast || e?.farArrayBoss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e?.dungeonRole) ? "boss" : e?.eliteId || e?.elite ? "elite" : null; }
+export function staggerClass(e) { return e?.gatePredator ? "revenant" : e?.boss || e?.marginWarden /* release 459 */ || e?.fracWarden /* release 666 */ || e?.worldBeast || e?.questingBeast || e?.farArrayBoss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e?.dungeonRole) ? "boss" : e?.eliteId || e?.elite ? "elite" : null; }
 // Call after the frame's hit-stun countdown. Returns true while the foe is guarded (it shrugs stuns off).
 export function staggerGovernor(e, dt) {
   const k = staggerClass(e) || "ordinary"; // release 561: ordinary creatures cannot be stun-locked either
@@ -2679,6 +2802,7 @@ export function tickPackEffects(effects, w) {
     } else if (f.kind === "psyWall") { if (!w.enemies.some((q) => q.id === f.owner && !q.dead) && f.life > .3) f.life = .3;
     } else if (f.kind === "nanoBurst" || f.kind === "swordArc" || f.kind === "swordBeam" || f.kind === "psyRing") { /* drawn only */
     } else if (f.kind === "iceBurst") { /* the shatter, drawn only */ }
+    else if (f.kind === "wormCracks") { /* release 664: where a tentacle will rise; harmless, drawn only */ }
     else if (f.kind === "furrow") { /* release 239: the fleeing worm's wake; harmless, it only fades */ }
     else if (f.kind === "flesh") { if (distance(p, f) <= f.radius) { w.slow(f.slow || .55, .25); if (!(f.nextBite > f.age)) { f.nextBite = f.age + .8; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "fleshBloom", beam: true }); } } }
     else if (f.kind === "giantArc") { // Tesla arcs: linked to the Giant, they hurt while you stay within reach and sight
@@ -2698,7 +2822,7 @@ export function tickPackEffects(effects, w) {
       if (!f.detonated) { f.detonated = true; if (distance(p, f) <= f.radius + .3) giantZap(w, w.enemies.find((q) => q.id === f.owner), f.damage, "giantShock"); }
     }
     else if (f.kind === "giantSky") { if (!f.detonated) { f.detonated = true; if (f.damage > 0 && distance(p, f) <= f.radius + .3) giantZap(w, w.enemies.find((q) => q.id === f.owner), f.damage, "giantSky"); } }
-    else if (f.kind === "orb") { f.x += f.vx * w.dt; f.y += f.vy * w.dt; if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0; else if (!f.hit && distance(p, f) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "orb" }); } }
+    else if (f.kind === "orb") { if (f.homing > 0 && f.age <= f.homing) { const sp = Math.hypot(f.vx, f.vy) || 1, cur = Math.atan2(f.vy, f.vx), diff = ((Math.atan2(p.y - f.y, p.x - f.x) - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-(f.turn || 1.5) * w.dt, Math.min((f.turn || 1.5) * w.dt, diff)); f.vx = Math.cos(a) * sp; f.vy = Math.sin(a) * sp; } /* release 664: a worm tentacle's homing orb */ f.x += f.vx * w.dt; f.y += f.vy * w.dt; if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0; else if (!f.hit && distance(p, f) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "orb" }); } }
     else if (f.kind === "shock") { const total = f.total ??= f.life ?? .8, r = f.radius * (1 - Math.max(0, f.life ?? total) / total); f.ring = r; if (!f.hit && f.damage > 0 && Math.abs(distance(p, f) - r) < .5) { f.hit = true; if (w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "shockwave" }) && f.lightning) w.shockHit?.(); } }
     else if (!f.detonated) { f.detonated = true; f.life ??= .4; if (f.damage > 0 && distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: !!f.jumpable, source: f.kind }); }
     f.life = (f.life ?? .4) - w.dt;

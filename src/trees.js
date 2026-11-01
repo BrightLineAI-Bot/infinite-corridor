@@ -14,7 +14,7 @@
 //   levels under the branch above, so a fall off the higher branch lands on one (it hurts) and the climb goes on from there;
 // - leaves on its branches (the tips always), and decorative boughs drawn off its trunk, which nothing walks on.
 // Bounded: at most two trees, a few thousand tile checks, once per section; nothing spawns up there.
-import { hashSeed } from "./random.js?v=r663-56d3cf7b0025";
+import { hashSeed } from "./random.js?v=r669-637cc97f06cd";
 
 export const TREE_VERSION = 13;
 export const TREES = {

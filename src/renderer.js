@@ -1,24 +1,25 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r663-56d3cf7b0025";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r663-56d3cf7b0025";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r663-56d3cf7b0025";
-import { enemyMeleeGeometry } from "./combat.js?v=r663-56d3cf7b0025";
-import { ruleRows } from "./elders.js?v=r663-56d3cf7b0025";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r663-56d3cf7b0025";
-import { BOAT } from "./boats.js?v=r663-56d3cf7b0025";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r663-56d3cf7b0025";
-import { isMarineTile } from "./world-beasts.js?v=r663-56d3cf7b0025";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r663-56d3cf7b0025"; // 613: Starfield rafts
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r663-56d3cf7b0025";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r663-56d3cf7b0025";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r663-56d3cf7b0025";
-import { TREES } from "./trees.js?v=r663-56d3cf7b0025";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r663-56d3cf7b0025";
-import { SKY_DISCS } from "./skylands.js?v=r663-56d3cf7b0025"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r663-56d3cf7b0025";
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r663-56d3cf7b0025";
-import { drawRelayNode } from "./relay-network.js?v=r663-56d3cf7b0025";
-import { structureOccupancy } from "./world.js?v=r663-56d3cf7b0025";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r663-56d3cf7b0025";
+import { astralBeamAnchors } from "./astral-worm.js?v=r669-637cc97f06cd";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r669-637cc97f06cd";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r669-637cc97f06cd";
+import { enemyMeleeGeometry } from "./combat.js?v=r669-637cc97f06cd";
+import { ruleRows } from "./elders.js?v=r669-637cc97f06cd";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r669-637cc97f06cd";
+import { BOAT } from "./boats.js?v=r669-637cc97f06cd";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r669-637cc97f06cd";
+import { isMarineTile } from "./world-beasts.js?v=r669-637cc97f06cd";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r669-637cc97f06cd"; // 613: Starfield rafts
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r669-637cc97f06cd";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r669-637cc97f06cd";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r669-637cc97f06cd";
+import { TREES } from "./trees.js?v=r669-637cc97f06cd";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r669-637cc97f06cd";
+import { KIT_MOVES } from "./boss-kit.js?v=r669-637cc97f06cd";
+import { SKY_DISCS } from "./skylands.js?v=r669-637cc97f06cd"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r669-637cc97f06cd";
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r669-637cc97f06cd";
+import { drawRelayNode } from "./relay-network.js?v=r669-637cc97f06cd";
+import { structureOccupancy } from "./world.js?v=r669-637cc97f06cd";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r669-637cc97f06cd";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1118,6 +1119,8 @@ export function drawDigSpot(ctx, o, s, now) {
 // behind them... maybe you can see like a silhouette"): a giant forest tree, its trunk `height` tiles tall and its crown above.
 // The Wayfarer behind one is drawn again, faint (`ghost`), over it (giantTreeHides).
 export const GIANT_TREE = { height: 9, trunk: .36, crown: 2.3, sway: .06, ghost: .45 };
+// The crown's leaf masses [dx, dy, r (× crown), colour]: drawn by drawGiantTree and tested by giantTreeHides (release 667).
+const GIANT_CROWN = [[-.55, .35, .75, "#1e3a24"], [.6, .4, .7, "#1e3a24"], [0, 0, 1, "#26482b"], [-.35, -.35, .7, "#2f5733"], [.4, -.3, .62, "#2f5733"], [0, -.62, .5, "#3a6a3c"]];
 export function drawGiantTree(ctx, o, s, now) {
   const G = GIANT_TREE, k = (o.x + .5) * s, base = (o.y + .82) * s, top = base - G.height * s, w = G.trunk * s, sway = Math.sin(now / 1900 + o.x * 1.7 + o.y) * G.sway * s;
   ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(k, base, s * .9, s * .26, 0, 0, 7); ctx.fill();
@@ -1126,7 +1129,7 @@ export function drawGiantTree(ctx, o, s, now) {
   ctx.strokeStyle = "#1a120c99"; ctx.lineWidth = Math.max(1, s * .03); for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(k + i * w * .4, base - s * .2); ctx.lineTo(k + i * w * .3 + sway * .8, top + s * 1.5); ctx.stroke(); }
   ctx.strokeStyle = "#3d2c1f"; ctx.lineWidth = Math.max(2, s * .1); for (const [h, d] of [[.42, -1], [.58, 1], [.72, -1]]) { const y = base - G.height * s * h, x = k + sway * h; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + d * s * .8, y - s * .3, x + d * s * 1.5, y - s * .9); ctx.stroke(); ctx.fillStyle = "#24402a"; ctx.beginPath(); ctx.arc(x + d * s * 1.5, y - s * .95, s * .55, 0, 7); ctx.fill(); }
   const cx = k + sway, cy = top, R = G.crown * s;
-  for (const [dx, dy, r, c] of [[-.55, .35, .75, "#1e3a24"], [.6, .4, .7, "#1e3a24"], [0, 0, 1, "#26482b"], [-.35, -.35, .7, "#2f5733"], [.4, -.3, .62, "#2f5733"], [0, -.62, .5, "#3a6a3c"]]) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx + dx * R, cy + dy * R, r * R, 0, 7); ctx.fill(); }
+  for (const [dx, dy, r, c] of GIANT_CROWN) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx + dx * R, cy + dy * R, r * R, 0, 7); ctx.fill(); }
 }
 // Release 587: a floating disc of a skyway (skylands.ts SKY_DISCS): its shadow on the ground, the disc `level` lifts above it, a
 // gentle bob. `d` is in foot coordinates (the Wayfarer's x + .5, y + .75).
@@ -1141,9 +1144,16 @@ export function drawSkyDisc(ctx, d, s, now) {
   ctx.strokeStyle = "#ffffffaa"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(cx, cy, rx * .62, ry * .62, 0, 0, 7); ctx.stroke();
 }
 // Does a giant tree at `o` stand in front of the Wayfarer at `p` (drawn over them)?
+// Release 667 (Tim: "towards the edges... your character disappears"): the test covers every leaf mass of the crown, the boughs
+// and the trunk, at the Wayfarer's head, middle and feet, with a little margin, instead of one circle at the crown's middle.
 export function giantTreeHides(o, p) {
-  if (!(o.y > p.y)) return false; const G = GIANT_TREE, px = p.x + .5, py = p.y + .35, tx = o.x + .5, base = o.y + .82;
-  return (Math.abs(px - tx) < G.trunk + .3 && py < base && py > base - G.height) || Math.hypot(px - tx, py - (base - G.height)) < G.crown * 1.05;
+  if (!(o.y > p.y)) return false; const G = GIANT_TREE, tx = o.x + .5, base = o.y + .82, top = base - G.height, R = G.crown, px = p.x + .5;
+  for (const py of [p.y - .25, p.y + .35, p.y + .8]) {
+    if (Math.abs(px - tx) < G.trunk * 1.6 + .3 && py < base && py > top) return true; // the trunk
+    if (py > top + G.height * .2 && py < base - G.height * .35 && Math.abs(px - tx) < 1.8 && py < base) return true; // the boughs
+    for (const [dx, dy, r] of GIANT_CROWN) if (Math.hypot(px - (tx + dx * R), py - (top + dy * R)) < r * R + .3) return true;
+  }
+  return false;
 }
 export function drawStrange(ctx, o, s, kind, now) {
   const T = now / 1000 + (o.x * 7 + o.y * 13) % 10, drift = Math.sin(T * .7) * .09, flick = Math.sin(T * 9) * Math.sin(T * 2.3) > .9 ? .35 : 1;
@@ -1679,7 +1689,7 @@ export function render(ctx, g, w, h, now) {
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),g.presentation);
   drawMorphEffects(ctx,g.enemies,s,now); // release 385: the Morphling's cables, jaw, lunge and rising
   drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) });
-  for (const h of g.affixHazards || []) { const A = AFFIXES[h.kind], x = h.x * s, y = h.y * s, R = h.radius * s, arming = now < h.armAt, k = arming ? 1 - (h.armAt - now) / ((A?.arm || .5) * 1000) : 1; if (!A) continue; ctx.save(); // release 657: affix telegraphs and strikes
+  for (const h of g.affixHazards || []) { const A = AFFIXES[h.kind] || KIT_MOVES[h.kind] /* release 668 */, x = h.x * s, y = h.y * s, R = h.radius * s, arming = now < h.armAt, k = arming ? 1 - (h.armAt - now) / ((A?.arm || .5) * 1000) : 1; if (!A) continue; ctx.save(); // release 657: affix telegraphs and strikes
     if (arming) { ctx.strokeStyle = A.color; ctx.globalAlpha = .45 + .45 * k; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.stroke(); ctx.fillStyle = A.color + "40"; ctx.beginPath(); ctx.ellipse(x, y, R * k, R * .6 * k, 0, 0, 7); ctx.fill(); }
     else if (h.kind === "volcanic" || h.kind === "venomous") { ctx.globalAlpha = Math.min(1, (h.until - now) / 600) * .75; const gr = ctx.createRadialGradient(x, y, 0, x, y, R); gr.addColorStop(0, h.kind === "volcanic" ? "#ffd27a" : "#d8ff9a"); gr.addColorStop(.5, A.color); gr.addColorStop(1, A.color + "00"); ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.fill(); }
     else { const f = Math.max(0, (h.until - now) / 250); ctx.globalAlpha = f; if (h.kind === "skyAssault") { ctx.fillStyle = "#e9f8ff"; ctx.fillRect(x - R * .35, y - s * 6, R * .7, s * 6); } ctx.fillStyle = A.color; if (h.kind === "spiked") { ctx.beginPath(); for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * .35; ctx.moveTo(x + (i - 2) * R * .3, y); ctx.lineTo(x + Math.cos(a) * R * .2 + (i - 2) * R * .3, y - R * (1.1 - Math.abs(i - 2) * .25)); ctx.lineTo(x + (i - 2) * R * .3 + R * .12, y); } ctx.fill(); } else { ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.fill(); } }
@@ -1819,6 +1829,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "digSpot") { drawDigSpot(ctx, o, s, now);
           } else if (o.kind === "ilse") { drawIlse(ctx, o, s, now);
           } else if (o.kind === "crackedBell") { drawCrackedBell(ctx, o, s, now);
+          } else if (o.kind === "crownRest") { const cx = (o.x + .5) * s, cy = (o.y + .6) * s, lit = g.save?.activeCheckpoint?.crown && g.save.activeCheckpoint.rx === g.rx && g.save.activeCheckpoint.ry === g.ry, pulse = .55 + .45 * Math.sin(now / 420); ctx.save(); ctx.strokeStyle = lit ? `rgba(160,255,170,${.5 + .4 * pulse})` : "rgba(200,230,190,.45)"; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(cx, cy, s * .42, s * .2, 0, 0, 7); ctx.stroke(); for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + now / 2000; ctx.fillStyle = lit ? "#9dffae" : "#cfe8c4"; ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * s * .42, cy + Math.sin(a) * s * .2, s * .07, s * .035, a, 0, 7); ctx.fill(); } ctx.restore(); // release 669: the Crown Rest
           } else if (o.kind === "canopyGate") { drawCanopyGate(ctx, o, s, now); // release 631
           } else if (o.kind === "threadRelic") { drawThreadRelic(ctx, o, s, now); // release 627
           } else if (o.kind === "tornPage") { drawTornPage(ctx, o, s, now); // release 595
@@ -1851,11 +1862,12 @@ export function render(ctx, g, w, h, now) {
         fn: () => {
           if (e.seaKind) { drawSeaCreature(ctx, e, s, now, SEA_CREATURES[e.seaKind].colors, g); return; }
           if (e.fracRank) { const rare = e.fracRank === "rare", pulse = .55 + .45 * Math.sin(now / 260), R = s * (.42 + (e.bodyRadius || .4) * .6); ctx.save(); ctx.strokeStyle = rare ? `rgba(255,196,70,${.5 + .4 * pulse})` : `rgba(110,170,255,${.45 + .35 * pulse})`; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.ellipse((e.x + .5) * s, (e.y + .82) * s, R, R * .42, 0, 0, Math.PI * 2); ctx.stroke(); if (rare && e.packName) { ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffd77a"; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = (e.y - (e.scale || 1) * .55) * s; ctx.strokeText(e.packName, (e.x + .5) * s, ty); ctx.fillText(e.packName, (e.x + .5) * s, ty); } ctx.restore(); } // release 651: Fractured mode's champions (blue) and rares (gold, named)
+          if (e.fracWarden) { const cx = (e.x + .5) * s, cy = (e.y + .82) * s, R = s * (.5 + (e.bodyRadius || .5) * .7), tt = now / 1000; ctx.save(); ctx.strokeStyle = `rgba(255,70,120,${.55 + .35 * Math.sin(now / 200)})`; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); for (let i = 0; i <= 14; i++) { const a = i / 14 * Math.PI * 2 + tt * .4, rr = R * (i % 2 ? .82 : 1.08); ctx[i ? "lineTo" : "moveTo"](cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * .42); } ctx.stroke(); ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ff8fb0"; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = (e.y - (e.scale || 1) * .6) * s; ctx.strokeText("Fracture Warden", cx, ty); ctx.fillText("Fracture Warden", cx, ty); ctx.restore(); } // release 666: a jagged crimson ring and its name
           if (e.affixes?.length || e.warded || e.fracShaman) { ctx.save(); const cx = (e.x + .5) * s, cy = (e.y + .45) * s, tt = now / 1000; // release 657: affixes, wards, shamans
             if (e.affixes?.includes("droneSwarm")) for (let i = 0; i < AFFIXES.droneSwarm.count; i++) { const d = dronePos(e, i, tt), dx = d.x * s, dy = d.y * s; ctx.fillStyle = "#2b3a1e"; ctx.strokeStyle = AFFIXES.droneSwarm.color; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(dx, dy - s * .12); ctx.lineTo(dx + s * .12, dy); ctx.lineTo(dx, dy + s * .12); ctx.lineTo(dx - s * .12, dy); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#e9ffb0"; ctx.fillRect(dx - 1.5, dy - 1.5, 3, 3); }
             if (e.warded) { ctx.strokeStyle = `rgba(180,140,255,${.5 + .3 * Math.sin(now / 180)})`; ctx.lineWidth = Math.max(2, s * .05); ctx.beginPath(); ctx.arc(cx, cy, s * (.55 + (e.bodyRadius || .4) * .5), 0, 7); ctx.stroke(); }
             if (e.fracShaman) { ctx.strokeStyle = `rgba(190,120,255,${.55 + .35 * Math.sin(now / 140)})`; ctx.lineWidth = Math.max(2, s * .07); for (const k of [0, 1]) { const rr = s * (.8 + ((tt * .8 + k * .5) % 1) * .9); ctx.globalAlpha = 1 - ((tt * .8 + k * .5) % 1); ctx.beginPath(); ctx.ellipse(cx, (e.y + .82) * s, rr, rr * .45, 0, 0, 7); ctx.stroke(); } ctx.globalAlpha = .35; for (const m of g.enemies) if (!m.dead && m.wardBy === e.id && m.warded) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo((m.x + .5) * s, (m.y + .45) * s); ctx.stroke(); } ctx.globalAlpha = 1; }
-            const names = affixNames(e); if (names.length) { ctx.font = `${Math.max(9, s * .24)}px sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffe2b0"; ctx.strokeStyle = "#000b"; ctx.lineWidth = 3; const ty = (e.y - (e.scale || 1) * .55) * s + (e.packName && e.fracRank === "rare" ? s * .32 : 0); ctx.strokeText(names.join(" · "), cx, ty); ctx.fillText(names.join(" · "), cx, ty); }
+            const names = affixNames(e); if (names.length) { ctx.font = `${Math.max(9, s * .24)}px sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffe2b0"; ctx.strokeStyle = "#000b"; ctx.lineWidth = 3; const ty = (e.y - (e.scale || 1) * .55) * s + ((e.packName && e.fracRank === "rare") || e.fracWarden ? s * .32 : 0); ctx.strokeText(names.join(" · "), cx, ty); ctx.fillText(names.join(" · "), cx, ty); }
             ctx.restore(); }
           const f = e.ai?.facing || "down",
             q = e.recoil > 0 && !["astralWorm","astralMirage"].includes(e.kind) ? 0.12 : 0,
@@ -2120,6 +2132,11 @@ export function render(ctx, g, w, h, now) {
     ctx.save(); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + (L.length - 1) * gap); ctx.stroke();
     L.forEach((lv, i) => { const y = y0 + i * gap, here = lv.id === g.map.levelId, seen = here || i === 0 || found.includes(lv.id); ctx.fillStyle = here ? "#ffe7a6" : seen ? "#c9c2b0aa" : "#ffffff30"; ctx.beginPath(); ctx.arc(x, y, here ? 4 : 3, 0, Math.PI * 2); ctx.fill(); if (here) { ctx.strokeStyle = "#ffe7a6aa"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke(); } });
     ctx.restore(); }
+  // Release 666: the fracture meter, top centre while Fractured mode holds here: kills toward the Fracture Warden, then its health.
+  { const m = g.fractureMeter?.(); if (m) { const bw = Math.min(180, w * .4), bx = (w - bw) / 2, by = 8, warden = m.warden, k = warden ? Math.max(0, warden.hp) / Math.max(1, warden.maxHp) : m.kills / Math.max(1, m.need);
+    ctx.save(); ctx.fillStyle = "#0a0610b0"; ctx.fillRect(bx - 2, by - 2, bw + 4, 10); ctx.fillStyle = warden ? "#ff4a7a" : m.kills >= m.need ? `rgba(255,120,170,${.6 + .4 * Math.sin(now / 120)})` : "#c06aff"; ctx.fillRect(bx, by, bw * Math.min(1, k), 6);
+    ctx.strokeStyle = "#ffffff40"; ctx.lineWidth = 1; ctx.strokeRect(bx - .5, by - .5, bw + 1, 7); ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "#f2e6ff"; ctx.strokeStyle = "#000c"; ctx.lineWidth = 3;
+    const label = warden ? "FRACTURE WARDEN" : m.kills >= m.need ? "THE FRACTURE TEARS" : `FRACTURE ${m.kills}/${m.need}`; ctx.strokeText(label, w / 2, by + 19); ctx.fillText(label, w / 2, by + 19); ctx.restore(); } }
   if (g.area === "dungeon" && g.map?.chasm) { const P = CHASM_STARS.penumbra, cx = w / 2, cy = h / 2, gr = ctx.createRadialGradient(cx, cy, s * P.inner, cx, cy, s * P.outer); gr.addColorStop(0, "rgba(4,3,14,0)"); gr.addColorStop(1, `rgba(4,3,14,${P.dark})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, w, h); } // release 593: the penumbra
   const t2 = timed ? performance.now() : 0;
   // Dungeons with their own weather (Underlands themes) show it too: snow in a cave, sparks rising from a lava bog.
