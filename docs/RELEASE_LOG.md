@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**653**
+**655**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 651 | Claude | `claude/dreamy-rubin-yn6q2p` | Fractured mode (Options → Challenge): Fractured / Frenzied packs with champions and rares, reinforcements, safe places, lulls, return refills | Building. |
+| 653 | Claude | `claude/dreamy-rubin-yn6q2p` | Following a retreating world beast: it waits where it fled, turns at bay on its home ground; an unfollowed Worm retreat ends | Building. |
+| 651 | Claude | PR #309 | Fractured mode (Options → Challenge): Fractured / Frenzied packs with champions and rares, reinforcements, safe places, lulls, return refills | Merged (`r651-7395b635da37`). |
 | 649 | Claude | PR #308 | Mirage of Blades replaces Nanoknives (thrown spinning great blades that home back to you); LISTENER REVEALED heading | Merged (`r649-75bd8abf2c15`). Published in r649. |
 | 647 | Claude | PR #307 | The drone's booster on the overworld: Jump again in the air, hold to climb up to 5 levels, feather to hold or come down, a drop can kill | Merged (`r647-53545ce96be8`). Published in r649. |
 | 645 | Claude | PR #306 | The tree package (landscape version 13): spires and groves, a canopy walk, perches, leaves, boughs, four tree looks | Merged (`r645-0f3405778aef`). Published in r649. |

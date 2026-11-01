@@ -2694,6 +2694,36 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 653: follow it home — 2026-11-01
+
+Tim (2026-11-01): "I have never been able to follow a retreating creature to its home... I still haven't seen the worm to fight.
+I've seen him retreating a bunch of times". An investigation found four causes; this release fixes them.
+
+**CODE:**
+- `src/world-beasts.ts`:
+  - `RETREAT.legSeconds` 14 → 30.
+  - `advanceRetreat` never moves a beast out of the section the Wayfarer is loading. It used to step on whenever 14 s had passed
+    since it left, so a Wayfarer crossing a 32-tile section (about 13 s) always arrived too late.
+  - `worldBeastsLost` gives the Astral Worm an out-of-sight life: its overworld retreat ends after `wormLinger` (240 s of play)
+    out of sight (`active.retreatSeenAt`; a retreat through a dungeon keeps its own route). Before, it froze in the section it
+    fled to and blocked every later Worm hunt.
+  - `retreatsUnderWay` now includes the Worm (tracks and Atlas pin).
+  - `canPursue` and `BEAST_WANDER` leave a `cornered` beast where it is.
+- `src/game.ts` `tickWorldBeasts`:
+  - An overworld retreat (not the Void Walker's) bound for its home ground carries `standsAtHome`.
+  - On reaching home in view, the beast turns at bay (`cornered`: targetable, aggressive, wounds kept). `active.retreat` is
+    cleared and `active.cornered` set.
+  - Patience no longer starts a new retreat for a cornered beast.
+  - The crossing message now says "Follow it home and it will have to fight".
+  - A passing beast's line says it is only passing through.
+- `src/monster-pack.ts` `fleeStep`: a `standsAtHome` beast ends its flight at home without fading.
+
+**BOUNDARY:**
+- Additive save fields only (`active.cornered`, `active.retreatSeenAt`). Generation untouched.
+- The Worm still ends its retreat at a Wayglass (its own astral retreat route), so following it does not yet bring it to bay.
+- Tests: `tests/retreat-follow-653.test.ts`. `tests/playtest-2026-10-31-world-beasts.test.ts` now expects a followed retreat to end at
+  bay at home rather than escaping.
+
 ## Release 651: Fractured mode — 2026-11-01
 
 Tim (2026-11-01): "a fractured mode that you can toggle on and off... more like Diablo... 2 or 3 times as many monsters... like a

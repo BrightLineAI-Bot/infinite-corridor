@@ -2060,6 +2060,7 @@ function fleeStep(e, s, w) {
   if (d > step + .05) { e.x += dx / d * step; e.y += dy / d * step; return; }
   e.x = next.x; e.y = next.y;
   if (e.fleePath?.length) { e.fleePath.shift(); if (e.fleePath.length) return; }
+  if (e.fleeTo.home && e.standsAtHome) { e.fleeDone = true; return; } // release 653: home, it turns at bay instead of fading away
   if (e.fleeTo.home) { e.fleeFade = 1; if (e.kind === "lightningGiant") e.giantCloud = true; } else e.fleeDone = true;
 }
 
