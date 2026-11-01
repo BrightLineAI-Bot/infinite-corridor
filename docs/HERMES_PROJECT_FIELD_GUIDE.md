@@ -2694,6 +2694,21 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 693: waves that keep pace; Archfiend Slain — 2026-11-01
+
+Tim (2026-11-01): "waves that keep pace with you is fine. We don't have to stay in a spot... we're just gonna keep moving";
+"instead of it saying rift boss slain, when we kill a world boss, it should say archfiend slain". Beast tuning stays as it is
+(Tim: "The way it's scaled is fine... don't change them").
+
+**CODE:** fractured.ts `FRACTURED.pace` and game.ts `tickFractured`: a wave broken within `fast` 25 s raises `fracPace` a step
+(to `max` 5), one taking `slow` 55 s or more lowers it; each step shortens the rest (`rest` share 1 → .18) and the press
+(`press` 1 → .42), adds `packs` 1 pack and `size` .5 a pack, and `cap` 6 more wave creatures (never past the mode's
+`hardCap`). The pace is runtime only and goes with the Wayfarer from section to section. game.ts `defeatEnemy`: a world beast
+or the Questing Beast sets its own notice, "ARCHFIEND SLAIN" with its name and marks, and the generic `enemyDefeatNotice`
+("RIFT BOSS BROKEN") no longer overwrites it.
+
+**BOUNDARY:** No generator, tuning or save change. Bounded: the wave hard caps are unchanged. Tests:
+`tests/fracture-waves-671.test.ts`, `tests/archfiend-slain.test.ts`.
 ## Release 692: the Stalker's fog — 2026-11-01
 
 Tim (2026-11-01): "it could be coming toward you, and then it can go invisible and attack... you might still see... the hitbox...

@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 692, the next is **693**.
+Taken at merge time: `main`'s release + 1 (see above). After 693, the next is **694**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 693 | Claude | `claude/dreamy-rubin-yn6q2p` | Fractured waves keep pace with your clears; world bosses say ARCHFIEND SLAIN | Merging. |
 | 692 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Stalker's fog: alternate hunts come in the open, then fog the section and veil it; veils again in the fight; blue-grey mist | Building. |
 | 691 | Claude (Stalker session) | PR #338 | The Stalker lies in wait unseen and springs; the cat's flurry and tide; the puddle's mouth and six chompers; the sit and perch redrawn | Building. |
 | 690 | Claude (Stalker session) | PR #337 | The Stalker consolidated: stalking creep, hiding in its mist, sitting in wait, perched (cat at the edge, gorilla as a gargoyle), climbing; chevrons back; one look for both forms | Building. |
@@ -78,6 +79,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 692, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 688 | `r688-8d2e46ab31ec` | 2026-11-01 | Published by the Stalker session (Fable review: no blockers). With 685 to 687: ruined arcologies (#332), the Ascension Dais (#333), the Stalker's appendage (#334), Canyon craters and the Listener's Descent (#336). |
 | 684 | `r684-436ff24739ec` | 2026-11-01 | Published by the Stalker session. With 680 to 683: the Skylands Deep Annex (#327), the Stalker's arsenal (#328), Divine Viscera (#329), Great Keeps (#330); and 684, the Stalker refined (#331). Pre-publish review: no blockers. |
 | 679 | `r679-4d93bc15f0b3` | 2026-11-01 | With 671 to 678: Fractured waves (#320), easier-to-find wonders (#321) and their Atlas pins (#323), the Starfield Deep Annex (#322), the Deep (#325), the Stalker (#324); and 679, seasons (#326). Pre-publish review: no blockers. |
 | 669 | `r669-637cc97f06cd` | 2026-11-01 | With 664 to 668 from the second session: the Tremor Worm reworked (#316), the fracture meter and Fracture Warden (#318), guardians and elites fight back (#319); and 669, Crown Rests and the drone/glider freefall (#317). Pre-publish review: no blockers. |

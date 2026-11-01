@@ -32,6 +32,11 @@ export const FRACTURED = {
     fractured: { name: "Fractured", text: "Diablo II pace: twice the creatures; waves of several packs, with champions and rares. Clear a wave and the next comes in about a minute.", density: 2, packs: [2, 3], pack: [3, 5], rest: 60, press: 45, surgeEvery: 3, surge: 1, cap: 24, hardCap: 54, champion: .28, rare: .12 },
     frenzied: { name: "Frenzied", text: "Diablo III pace: two and a half times the creatures; big waves of three to five packs. Clear a wave and the next comes in under a minute; stand your ground and they keep coming.", density: 2.5, packs: [3, 5], pack: [4, 6], rest: 45, press: 25, surgeEvery: 3, surge: 2, cap: 32, hardCap: 64, champion: .32, rare: .15 },
   },
+  // Waves keep pace with the Wayfarer (Tim, 2026-11-01: "waves that keep pace with you"): a wave broken within `fast` s raises
+  // the pace a step (at most `max`), one that takes longer than `slow` s lowers it. Each step shortens the rest before the next
+  // wave (`rest`, a share of the mode's), adds `packs` packs and `size` creatures a pack, and lets `cap` more wave creatures
+  // live (never past the mode's `hardCap`). The pace goes with the Wayfarer from section to section; it is never saved.
+  pace: { fast: 25, slow: 55, max: 5, rest: [1, .7, .5, .36, .26, .18], press: [1, .85, .7, .6, .5, .42], packs: 1, size: .5, cap: 6 },
   grace: 6, // s after any doorway before the first wave (release 671: was 20)
   repopulate: 90, // s away before an area fills up again
   sight: 11, // tiles: "clear what is in sight"
@@ -42,7 +47,7 @@ export const FRACTURED = {
   maxAdded: 30, // at most this many creatures added to an area on arrival, however crowded
   fallback: ["ashling", "glassMite", "ashenHound", "coilStalker", "rootBrute"], // when an area has no creatures of its own to copy
   traits: ["plated", "feral", "swift", "farcasting", "vital", "keen"],
-  messages: { arrive: "Something tears through the fracture nearby.", surge: "The fracture splits wide: a surge is coming.", lull: "The wave is broken. The fracture quiets for a while.", wave: "The fracture tears open: a wave is coming.", elite: "The fracture splits wide: elites lead this wave.", rare: "A rare creature leads this pack." },
+  messages: { arrive: "Something tears through the fracture nearby.", surge: "The fracture splits wide: a surge is coming.", lull: "The wave is broken. The fracture quiets for a while.", quicken: (n) => `The wave is broken fast: the fracture quickens (pace ${n}).`, ease: (n) => `The fracture eases (pace ${n}).`, wave: "The fracture tears open: a wave is coming.", elite: "The fracture splits wide: elites lead this wave.", rare: "A rare creature leads this pack." },
 };
 export const CHAMPION = { hp: 1.8, damage: 1.2, scale: 1.12, xp: 2, drops: 1 }; // one shared trait for the whole pack
 export const RARE = { hp: 3.2, damage: 1.35, scale: 1.3, xp: 4, drops: 2, traits: [2, 3] }; // the leader; its escort is plain
