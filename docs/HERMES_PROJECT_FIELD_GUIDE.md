@@ -2694,6 +2694,18 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 655: Worm's Upheaval stacks — 2026-11-01
+
+Tim (2026-11-01): "if you dodge multiple times before the ring bursts... it should just stack... the ring gets more powerful
+depending on the number of times you dodge... when it bursts... it'll count however many times you dodged".
+
+**CODE:** `src/echoes.ts` `UPHEAVAL` (damage 1.3 × echo damage per stack, `window` 1.6 s, `extend` .45 s per stack, `longest` 4 s,
+radius 1.4 growing .12 a stack to 2.4). On a dodge with the Tremor Worm's echo, a still-pulsing Upheaval ring (`upheaval`, `stacks`,
+`born`) gains a stack instead of a new ring being placed; its `detonate` grows by one burst. `src/renderer.ts` draws ×N over a
+stacked ring.
+
+**BOUNDARY:** Runtime only. Other dodge echoes are unchanged. Tests: `tests/upheaval-stack-655.test.ts`.
+
 ## Release 653: follow it home — 2026-11-01
 
 Tim (2026-11-01): "I have never been able to follow a retreating creature to its home... I still haven't seen the worm to fight.
