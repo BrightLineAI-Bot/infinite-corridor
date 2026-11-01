@@ -1876,7 +1876,7 @@ export function render(ctx, g, w, h, now) {
   const playerDraw = {
     y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.glide ? Math.max(0, discLift(g.glide.z) * CANOPY_LIFT - groundLift(p.x, p.y)) : g.skyLevel > 0 ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, // 635: a glide's height alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
     fn: () => {
-      if (g.glide) drawLeafGlider(ctx, p, s, now); // release 635
+      if (g.glide && g.glide.open !== false) drawLeafGlider(ctx, p, s, now); // release 635; 641: only while open
       if (jumping) {
         ctx.fillStyle = "#05050477";
         ctx.beginPath();
