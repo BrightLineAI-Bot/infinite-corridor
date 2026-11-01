@@ -2694,25 +2694,21 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release NNN: beast kill times; waves that keep pace — 2026-11-01
+## Release NNN: waves that keep pace; Archfiend Slain — 2026-11-01
 
-Tim (2026-11-01): "I wanna be able to... test my gear... see how fast I can beat them... speed run [them]" and, on how they
-are tuned, "The way it's scaled is fine... don't change them"; and "waves that keep pace with you is fine. We don't have to
-stay in a spot... we're just gonna keep moving."
+Tim (2026-11-01): "waves that keep pace with you is fine. We don't have to stay in a spot... we're just gonna keep moving";
+"instead of it saying rift boss slain, when we kill a world boss, it should say archfiend slain". Beast tuning stays as it is
+(Tim: "The way it's scaled is fine... don't change them").
 
-**CODE:** Beast tuning is unchanged (world-beasts.ts `liveBeastReference` still counts health in your own blows). The kill
-clock: game.ts `beastClock` (each frame) starts a world beast's or the Questing Beast's clock at the first blow that lands on
-it if it was met at full health (a beast that kept your earlier wounds is not timed); `beastClockStop` at its fall records the
-time (world-beasts.ts `recordBeastTime`, `save.beastTimes[id]`, the best kept) and the beast's own notice says "felled in N s
-· your best / a new best (was …) / best …". That notice is no longer overwritten by the generic "RIFT BOSS BROKEN".
-fractured.ts `FRACTURED.pace` and game.ts `tickFractured`: a wave broken within `fast` 25 s raises `fracPace` a step (to `max`
-5), one taking `slow` 55 s or more lowers it; each step shortens the rest (`rest` share 1 → .18) and the press (`press` 1 →
-.42), adds `packs` 1 pack and `size` .5 a pack, and `cap` 6 more wave creatures (never past the mode's `hardCap`). The pace is
-runtime only and goes with the Wayfarer from section to section.
+**CODE:** fractured.ts `FRACTURED.pace` and game.ts `tickFractured`: a wave broken within `fast` 25 s raises `fracPace` a step
+(to `max` 5), one taking `slow` 55 s or more lowers it; each step shortens the rest (`rest` share 1 → .18) and the press
+(`press` 1 → .42), adds `packs` 1 pack and `size` .5 a pack, and `cap` 6 more wave creatures (never past the mode's
+`hardCap`). The pace is runtime only and goes with the Wayfarer from section to section. game.ts `defeatEnemy`: a world beast
+or the Questing Beast sets its own notice, "ARCHFIEND SLAIN" with its name and marks, and the generic `enemyDefeatNotice`
+("RIFT BOSS BROKEN") no longer overwrites it.
 
-**BOUNDARY:** No generator or tuning change. Save: `save.beastTimes` (additive at schema 14, normalised in
-`freshSave`/`migrateSave` by `ensureBeastTimes`). Bounded: the wave hard caps are unchanged. Tests:
-`tests/beast-speedrun.test.ts`, `tests/fracture-waves-671.test.ts`.
+**BOUNDARY:** No generator, tuning or save change. Bounded: the wave hard caps are unchanged. Tests:
+`tests/fracture-waves-671.test.ts`, `tests/archfiend-slain.test.ts`.
 
 ## Release 691: the Stalker lies in wait; flurry, tide, mouth, chompers — 2026-11-01
 

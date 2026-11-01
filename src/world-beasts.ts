@@ -509,19 +509,6 @@ export function tuneWorldBeast(c, save, id, stats = {}) {
   Object.assign(c, { worldBeast: id, boss: true, hp, maxHp: hp, damage, beastTuningVersion: 1, staggerResistance: B.staggerResistance, speedMultiplier: B.speed, attackGap: B.attackGap, evasive: true });
   return c;
 }
-// The time to fell a beast, fought from full health (Tim: "see how fast I can beat them... speed run them"): the clock starts at
-// the first blow that lands on it (game.ts beastClock) and stops when it falls. Each beast keeps its best (`save.beastTimes`,
-// seconds, additive at schema 14; the Questing Beast under "questingBeast").
-export function ensureBeastTimes(save) {
-  const raw = save?.beastTimes, out = {};
-  if (raw && typeof raw === "object" && !Array.isArray(raw)) for (const [id, v] of Object.entries(raw)) { const n = Number(v); if (Number.isFinite(n) && n > 0) out[id] = Math.round(n * 10) / 10; }
-  if (save) save.beastTimes = out; return save;
-}
-export function recordBeastTime(save, id, seconds) {
-  const t = Math.round(Math.max(.1, Number(seconds) || 0) * 10) / 10, T = (save.beastTimes ||= {}), prev = Number(T[id]) || 0, best = !prev || t < prev;
-  if (best) T[id] = t; return { time: t, best, previous: prev || null };
-}
-export const beastTimeText = (r) => `felled in ${r.time.toFixed(1)} s${r.best ? (r.previous ? ` · a new best (was ${r.previous.toFixed(1)} s)` : " · your best") : ` · best ${Number(r.previous).toFixed(1)} s`}`;
 // The beast falls: pay its bounty and start its cooldown.
 export function worldBeastSlain(save, id) {
   ensureWorldBeasts(save, false); const B = WORLD_BEASTS[id], q = save.worldBeasts[id], marks = B.rewardMarks + B.rewardPerLevel * (Number(save.level) || 1);
