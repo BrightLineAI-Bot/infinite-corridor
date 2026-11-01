@@ -2694,6 +2694,47 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 691: the Stalker lies in wait; flurry, tide, mouth, chompers — 2026-11-01
+
+Tim (2026-11-01):
+- "when it's perched, it looks like a big fat sack... it should look like it's perched";
+- the puddle "can go under you... a silver liquid mouth will come up... chomp down on you", and "break out into six different
+  little puddles that move around the floor and chomp... while it turns back into itself... pretty frequently";
+- "you might not see it... it hops out of the shadows... goes from transparent to opaque... a jump scare... or it could be sitting
+  in a tree, just waiting... it won't attack until it's close enough";
+- the cat should "borrow some of the questing beast's quick attack moves... several consecutive forward swipes";
+- "a charge attack where it turns into a wave... a series of waves... of increasing size".
+
+**CODE:** `src/stalker.ts`.
+- `STALKER.lurk`: `stalkerLurk` runs first each frame while `e.stalkLurk`.
+  - Hidden, untargetable and still; no turret or affix.
+  - It reveals at `trigger` tiles, on a hit, or after `max` s: `stalkReveal` fade, `w.revealed`, then a pounce or leap with only
+    `spring` s of warning.
+  - Beyond `lose` it creeps after the Wayfarer unseen.
+- `Game.spawnStalker` (no door) now places it ahead of the Wayfarer, on the highest open spot of `ambushSpots`, lurking, with
+  "Something is watching you"; the reveal says "it was waiting for you".
+- `STALKER.cat`:
+  - `pick` (pounce, flurry, pounce, tide; `catMoveNext`).
+  - `flurryWarn` → `flurry`: `strikes` swipes `every` s, each lunging and striking.
+  - `tideWarn` → `tide`: `e.stalkWaves`, three waves of `widths`, `gap` s apart, at `speed` over `length`. Each hits once
+    within its band (`depth` along, `width`/2 across). The Stalker rides the first, untargetable, and lands at its end.
+- `STALKER.pool`. The pool now comes every 2nd cycle; after its slide it alternates:
+  - `under` → `mouthWarn` → `mouth`: it goes under the Wayfarer, marks the spot and bites within `radius`.
+  - `split`: `spawnChompers`, at most `cap`. `tickChompers` roams them round the Wayfarer, marks a bite (`warn`) and bites
+    (`radius`), with a `gap` between bites, for `life` s. They outlast the rise and go with the Stalker.
+- Shields skip the flurry and the tide; going inside clears waves.
+- `src/stalker-render.ts`:
+  - `drawCatSit` redrawn lean and upright.
+  - `drawCat` gains a `perch` pose: a low coiled crouch, legs folded, front paws at the edge, head lowered and tilted, tail
+    hanging over the drop.
+  - Lurking: alpha `lurk.alpha` with a slow shimmer, a near-invisible shadow, no name label (and renderer.ts skips its affix
+    drawing); revealing: a fade-in.
+  - `drawMouth`, `drawChompers`, `drawWaves` (crescents with a foam lip and wake), the flurry's claw arcs, and marks for the
+    flurry, the tide's lanes and the mouth.
+
+**BOUNDARY:** Runtime only: no save, generator or reward change. Bounded: at most 6 chompers, 3 waves, segment/band tests only.
+Tests: `tests/stalker-arsenal.test.ts`; `tests/stalker-678.test.ts`'s ambush assertion now expects the hidden spawn.
+
 ## Release 690: the Stalker consolidated — 2026-11-01
 
 Tim (2026-11-01): "a whole visual... normalization or consolidation for the stalker... good animations... climbing and flying and

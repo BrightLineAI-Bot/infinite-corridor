@@ -166,3 +166,47 @@ test('it hides in its mist at a distance, perches on high ground, creeps as it c
   // In the fight loop, the look is kept up to date.
   const { w: fw } = field({ x: 30, y: 10 }), f = actor(5, 10); for (let i = 0; i < 40; i++) updateStalker(f, fw); assert.ok(f.stalkHide > 0, 'set while it fights');
 });
+
+// ---- Lying in wait; the flurry and the tide; the puddle's mouth and its chompers ----
+import { stalkerLurk, catMoveNext } from '../src/stalker.ts';
+test('lying in wait: unseen and still until the Wayfarer comes close, then it fades in and springs', () => {
+  const reveals = [], { w } = field({ x: 20, y: 10 }, { revealed: () => reveals.push(1) }), e = actor(10, 10, { stalkLurk: { t: 0 }, hidden: true, untargetable: true });
+  const start = { x: e.x, y: e.y }; for (let i = 0; i < 40; i++) updateStalker(e, w);
+  assert.ok(e.stalkLurk && e.hidden && e.untargetable, 'still hidden'); assert.deepEqual({ x: e.x, y: e.y }, start, 'and still: it does not move'); assert.equal(e.stalkAct.kind, 'lurk');
+  w.player.x = 10 + K.lurk.trigger - .2; updateStalker(e, w);
+  assert.equal(e.stalkLurk, null); assert.equal(e.hidden, false); assert.equal(e.untargetable, false); assert.ok(e.stalkReveal > 0, 'it fades in'); assert.equal(reveals.length, 1);
+  assert.ok(['pounceWarn', 'leapWarn'].includes(e.stalkAct.kind), 'and springs'); assert.ok(e.stalkAct.total <= K.lurk.spring + 1e-9, 'with almost no warning');
+  // A blow reveals it too; left far behind, it creeps after the Wayfarer unseen.
+  const g = actor(10, 10, { stalkLurk: { t: 0 }, hidden: true }); const { w: w2 } = field({ x: 30, y: 10 }); updateStalker(g, w2); const x0 = g.x; for (let i = 0; i < 20; i++) updateStalker(g, w2); assert.ok(g.x > x0 && g.stalkLurk, 'creeping, still hidden');
+  g.hp -= 20; updateStalker(g, w2); assert.equal(g.stalkLurk, null, 'struck, it shows itself');
+});
+
+test('the cat flurry: swipe after swipe, pressing forward', () => {
+  const seq = {}; assert.deepEqual([0, 1, 2, 3].map(() => catMoveNext(seq)), K.cat.pick);
+  const { w, hurts } = field({ x: 11.2, y: 10 }, { move: () => true }), e = actor(10, 10); e.stalkTurretClock = 999; e.stalkEnergyClock = 999; e.stalkCharges = 0;
+  e.stalkAct = { kind: 'flurryWarn', t: .01, total: .35, aim: 0 }; for (let i = 0; i < 30; i++) updateStalker(e, w);
+  assert.equal(hurts.length, K.cat.flurry.strikes, 'every swipe lands on a Wayfarer who stands there');
+});
+
+test('the tide: three waves, each wider, each hitting once; it rides the first and cannot be hit meanwhile', () => {
+  const { w, hurts } = field({ x: 14, y: 10 }, { free: () => true }), e = actor(10, 10); e.stalkTurretClock = 999; e.stalkEnergyClock = 999; e.stalkCharges = 0;
+  e.stalkAct = { kind: 'tideWarn', t: .01, total: .55, aim: 0 }; updateStalker(e, w);
+  assert.equal(e.stalkWaves.length, 3); assert.ok(e.stalkWaves.every((q, i) => i === 0 || q.width > e.stalkWaves[i - 1].width), 'each wider'); assert.equal(e.untargetable, true);
+  for (let i = 0; i < 60 && e.stalkAct.kind === 'tide'; i++) { updateStalker(e, w); w.player.invulnerableUntil = 0; }
+  assert.equal(hurts.length, 3, 'one hit per wave'); assert.equal(e.untargetable, false, 'it re-forms to be fought'); assert.ok(e.x > 12, 'where the wave carried it');
+  // Off to the side of the narrow first wave but inside the wide last one: only the wider waves catch them.
+  const { w: w2, hurts: h2 } = field({ x: 14, y: 11.3 }, { free: () => true }), f = actor(10, 10); f.stalkTurretClock = 999; f.stalkEnergyClock = 999; f.stalkCharges = 0; f.stalkAct = { kind: 'tideWarn', t: .01, total: .55, aim: 0 };
+  for (let i = 0; i < 70; i++) updateStalker(f, w2); assert.equal(h2.length, 1, 'only the widest');
+});
+
+test('the puddle: under the Wayfarer, a mouth of blades rises and bites the marked spot; or six chompers that outlast it', () => {
+  const { w, hurts } = field({ x: 13, y: 10 }, { free: () => true }), e = actor(10, 10, { stalkForm: 'pool', untargetable: true }); e.stalkTurretClock = 999; e.stalkEnergyClock = 999;
+  e.stalkAct = { kind: 'under', t: 1, total: 1 }; const kinds = new Set(); for (let i = 0; i < 40 && e.stalkForm === 'pool'; i++) { updateStalker(e, w); kinds.add(e.stalkAct.kind); }
+  for (const k of ['under', 'mouthWarn', 'mouth']) assert.ok(kinds.has(k), k); assert.equal(hurts.length, 1, 'the bite');
+  const { w: w2, hurts: h2 } = field({ x: 13, y: 10 }, { free: () => true }), g = actor(10, 10, { stalkForm: 'pool', untargetable: true }); g.stalkTurretClock = 999; g.stalkEnergyClock = 999; g.stalkCharges = 0;
+  g.stalkAct = { kind: 'split', t: .01, total: .35 }; updateStalker(g, w2); assert.equal(g.stalkChompers.length, K.pool.split.count);
+  g.stalkAct = { kind: 'split', t: .01, total: .35 }; g.stalkForm = 'pool'; updateStalker(g, w2); assert.ok(g.stalkChompers.length <= K.pool.split.cap, 'capped');
+  let rose = false; for (let i = 0; i < 120; i++) { updateStalker(g, w2); rose ||= g.stalkForm !== 'pool'; w2.player.invulnerableUntil = 0; }
+  assert.ok(rose, 'it rose again'); assert.ok(g.stalkChompers.length > 0, 'the chompers go on after'); assert.ok(h2.length >= 2, 'and bite');
+  for (let i = 0; i < 240; i++) updateStalker(g, w2); assert.equal(g.stalkChompers.length, 0, 'until they dry up');
+});

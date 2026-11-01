@@ -49,11 +49,11 @@ function drawCat(ctx, x, y, u, face, t, moving, pose = null) {
   // Poses: a crouch before the pounce (low, haunch high, tail lashing), the leap (stretched long, legs flung out), a raised paw
   // before the swipe.
   const sway = Math.sin(t * (pose === "crouch" ? 9 : 2.3)) * (pose === "crouch" ? .09 : .05) * u;
-  ctx.save(); if (pose === "crouch") { ctx.translate(x, y); ctx.scale(1.04, .8); ctx.translate(-x, -y); } else if (pose === "stalk") { ctx.translate(x, y); ctx.scale(1.06, .84); ctx.translate(-x, -y); } else if (pose === "leap") { ctx.translate(x, y - .1 * u); ctx.rotate(-face * .08); ctx.scale(1.16, .9); ctx.translate(-x, -y); }
+  ctx.save(); if (pose === "crouch") { ctx.translate(x, y); ctx.scale(1.04, .8); ctx.translate(-x, -y); } else if (pose === "stalk") { ctx.translate(x, y); ctx.scale(1.06, .84); ctx.translate(-x, -y); } else if (pose === "perch") { ctx.translate(x, y); ctx.scale(1.02, .74); ctx.translate(-x, -y); } else if (pose === "leap") { ctx.translate(x, y - .1 * u); ctx.rotate(-face * .08); ctx.scale(1.16, .9); ctx.translate(-x, -y); }
   ctx.lineCap = "round"; ctx.lineJoin = "round";
   if (pose !== "climb") catMist(ctx, F, by, x, y, u, t);
   // The tail: from the haunch, low, then an S up to a curled silver tip.
-  const tp = [[F(-.5), by - .4 * u], [F(-.78), by - .2 * u + sway], [F(-1.0), by - .32 * u], [F(-1.12), by - .62 * u - sway]];
+  const tp = pose === "perch" ? [[F(-.5), by - .4 * u], [F(-.66), by + .05 * u], [F(-.5) + sway, by + .55 * u], [F(-.6) + sway, by + .95 * u]] : [[F(-.5), by - .4 * u], [F(-.78), by - .2 * u + sway], [F(-1.0), by - .32 * u], [F(-1.12), by - .62 * u - sway]];
   for (const [wd, col] of [[.105, "rgba(140,150,166,.55)"], [.08, FUR]]) { ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, wd * u); ctx.beginPath(); ctx.moveTo(tp[0][0], tp[0][1]); ctx.bezierCurveTo(tp[1][0], tp[1][1], tp[2][0], tp[2][1], tp[3][0], tp[3][1]); ctx.stroke(); }
   ctx.fillStyle = SILVER; ellipse(ctx, tp[3][0], tp[3][1], .04 * u, .04 * u); ctx.fill();
   // Six jointed legs, spread along the body so all six read (the far three set back and a shade darker): a muscled upper leg,
@@ -62,6 +62,7 @@ function drawCat(ctx, x, y, u, face, t, moving, pose = null) {
   for (const side of [1, 0]) legs.forEach((L, i) => {
     const ph = Math.sin(gait + i * 2.1 + side * Math.PI), hipX = F(L.at + (side ? .07 : 0)), hipY = by - L.hipY * u - (side ? .025 * u : 0);
     let footX = hipX + face * ph * .1 * u, lift = Math.max(0, ph) * .04 * u, footY = y - .02 * u - lift;
+    if (pose === "perch") { footX = hipX + face * (i === 0 ? .22 : .1) * u; footY = y - .02 * u; lift = 0; } // folded under, the front paws at the edge
     if (pose === "leap") { const reach = i === 0 ? .32 : i === 1 ? .08 : -.34; footX = hipX + face * reach * u; footY = by - (.12 + (i === 1 ? .04 : 0)) * u; lift = 0; }
     if (pose === "swipe" && i === 0 && !side) { footX = hipX + face * .28 * u; footY = by - .42 * u; }
     const kneeX = (hipX + footX) / 2 - face * L.knee * u, kneeY = pose === "leap" || (pose === "swipe" && i === 0 && !side) ? (hipY + footY) / 2 + .03 * u : by - .16 * u - lift * .5;
@@ -100,42 +101,38 @@ function drawCat(ctx, x, y, u, face, t, moving, pose = null) {
   ctx.bezierCurveTo(F(.5), by - .36 * u, F(.46), by - .3 * u, F(.4), by - .26 * u); ctx.lineTo(F(.3), by - .4 * u); ctx.closePath(); ctx.fill(); // the neck
   ctx.beginPath(); ctx.moveTo(F(.22), by - .5 * u); ctx.bezierCurveTo(F(.34), by - .6 * u, F(.44), by - .6 * u, hx - face * .06 * u, hy - .08 * u); ctx.stroke();
   ctx.fillStyle = FUR; ellipse(ctx, F(.27), by - .52 * u, .07 * u, .04 * u, -face * .4); ctx.fill(); // the shoulder blade
-  catHead(ctx, hx, hy, u, face);
+  if (pose === "perch") { ctx.save(); ctx.translate(hx, hy); ctx.rotate(face * .35); ctx.translate(-hx, -hy + .06 * u); catHead(ctx, hx, hy, u, face); ctx.restore(); } else catHead(ctx, hx, hy, u, face);
   ctx.restore();
 }
 
-// The cat sitting, lying in wait by a door (`perch` false: upright, tail curled round its front feet, head up), or perched on high
-// ground (`perch` true: crouched at the edge, leaning out, head lowered to watch the Wayfarer below, the tail hanging down over
-// the drop and swaying). Six legs: the front pair straight, the middle pair tucked, the hind pair folded under the haunch.
-function drawCatSit(ctx, x, y, u, face, t, perch = false) {
-  const F = (dx) => x + face * dx * u, sway = Math.sin(t * 1.6) * .06 * u, breathe = Math.sin(t * 2) * .008 * u, by = y - breathe;
+// The cat sitting, lying in wait by a door: lean and upright like a watching cat. The haunch small and set back, the back rising
+// steeply to the shoulders, a narrow chest, the two near front legs straight and slim in front (the far pair a shade behind), the
+// tail laid round its front feet, the head high on its neck. (Perched on high ground it crouches instead: drawCat's "perch".)
+function drawCatSit(ctx, x, y, u, face, t) {
+  const F = (dx) => x + face * dx * u, breathe = Math.sin(t * 2) * .006 * u, by = y - breathe, flick = Math.sin(t * 3.1) * .03 * u;
   ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
-  catMist(ctx, F, by + .1 * u, x, y, u, t, .8);
-  const tail = perch ? [[F(-.3), y - .14 * u], [F(-.42), y + .2 * u], [F(-.34 + sway / u * .5), y + .55 * u], [F(-.4) + sway, y + .82 * u]]
-                     : [[F(-.32), y - .1 * u], [F(-.3), y + .02 * u], [F(.1), y + .02 * u], [F(.3), y - .08 * u + sway * .3]];
-  for (const [wd, col] of [[.105, OUTLINE], [.08, FUR]]) { ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, wd * u); ctx.beginPath(); ctx.moveTo(tail[0][0], tail[0][1]); ctx.bezierCurveTo(tail[1][0], tail[1][1], tail[2][0], tail[2][1], tail[3][0], tail[3][1]); ctx.stroke(); }
-  ctx.fillStyle = SILVER; ellipse(ctx, tail[3][0], tail[3][1], .04 * u, .04 * u); ctx.fill();
-  const lean = perch ? .14 : 0, sh = { x: F(.12 + lean), y: by - (perch ? .5 : .62) * u };
-  // Far legs (darker): a front leg and a tucked middle paw.
-  const leg = (from, to, col, w = .07) => { ctx.strokeStyle = OUTLINE; ctx.lineWidth = (w + .02) * u; ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke(); ctx.strokeStyle = col; ctx.lineWidth = w * u; ctx.stroke(); ctx.fillStyle = col; ellipse(ctx, to.x + face * .03 * u, to.y, .065 * u, .03 * u); ctx.fill(); };
-  leg({ x: sh.x - face * .05 * u, y: sh.y + .1 * u }, { x: F(.12 + lean * 1.4), y: y - .02 * u }, "#aab3c0");
-  ctx.fillStyle = "#b6becb"; ellipse(ctx, F(-.02), y - .03 * u, .07 * u, .03 * u); ctx.fill();
-  // The haunch, folded, and the hind paw in front of it.
-  ctx.fillStyle = FUR; ctx.strokeStyle = OUTLINE; ctx.lineWidth = Math.max(1, .014 * u); ellipse(ctx, F(-.2), by - .2 * u, .24 * u, .19 * u); ctx.fill(); ctx.stroke();
-  // The body: upright from the haunch to the shoulders (leaning out over the edge when perched).
-  ctx.beginPath(); ctx.moveTo(F(-.38), by - .18 * u); ctx.bezierCurveTo(F(-.36), by - .5 * u, sh.x - face * .3 * u, sh.y - .12 * u, sh.x, sh.y - .06 * u);
-  ctx.bezierCurveTo(sh.x + face * .16 * u, sh.y, sh.x + face * .18 * u, sh.y + .25 * u, sh.x + face * .08 * u, by - .12 * u); ctx.bezierCurveTo(F(0), by - .05 * u, F(-.25), by - .04 * u, F(-.38), by - .18 * u); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "rgba(150,164,184,.28)"; ellipse(ctx, F(-.05), by - .1 * u, .25 * u, .05 * u); ctx.fill();
-  ctx.strokeStyle = "rgba(150,220,255,.55)"; ctx.lineWidth = Math.max(1, .02 * u); for (const d of [-.2, -.05]) { ctx.beginPath(); ctx.moveTo(F(d), by - .42 * u); ctx.lineTo(F(d + .045), by - .35 * u); ctx.lineTo(F(d), by - .28 * u); ctx.stroke(); } // the blue chevrons
-  ctx.fillStyle = "#f3f5f8"; ellipse(ctx, F(-.18), by - .22 * u, .17 * u, .14 * u); ctx.fill(); // the near haunch
-  ctx.fillStyle = "#f3f5f8"; ellipse(ctx, F(-.02), y - .03 * u, .08 * u, .032 * u); ctx.fill(); ctx.strokeStyle = OUTLINE; ctx.stroke(); // the hind paw
-  ctx.fillStyle = "#e9edf2"; ellipse(ctx, F(.1), y - .04 * u, .06 * u, .026 * u); ctx.fill(); // the tucked middle paw
-  // The near front leg, straight down (over the edge when perched).
-  leg({ x: sh.x, y: sh.y + .1 * u }, { x: F(.2 + lean * 1.7), y: y - (perch ? -.04 : .02) * u }, "#eef1f5", .075);
-  // Neck and head: up and watchful, or lowered to look down from the perch.
-  const hx = F(.24 + lean * 1.6), hy = perch ? by - .52 * u : by - .84 * u;
-  ctx.fillStyle = FUR; ctx.beginPath(); ctx.moveTo(sh.x - face * .1 * u, sh.y); ctx.quadraticCurveTo(hx - face * .1 * u, hy - .02 * u, hx - face * .05 * u, hy - .06 * u); ctx.lineTo(hx + face * .02 * u, hy + .09 * u); ctx.quadraticCurveTo(sh.x + face * .1 * u, sh.y + .1 * u, sh.x + face * .08 * u, sh.y + .15 * u); ctx.closePath(); ctx.fill();
-  if (perch) { ctx.save(); ctx.translate(hx, hy); ctx.rotate(face * .32); ctx.translate(-hx, -hy); catHead(ctx, hx, hy, u, face); ctx.restore(); } else catHead(ctx, hx, hy, u, face);
+  catMist(ctx, F, by + .12 * u, x, y, u * .85, t, .7);
+  // The tail round its feet, the tip flicking.
+  for (const [wd, col] of [[.09, OUTLINE], [.07, FUR]]) { ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, wd * u); ctx.beginPath(); ctx.moveTo(F(-.22), y - .06 * u); ctx.bezierCurveTo(F(-.3), y + .02 * u, F(.05), y + .03 * u, F(.26), y - .02 * u + flick); ctx.stroke(); }
+  ctx.fillStyle = SILVER; ellipse(ctx, F(.26), y - .02 * u + flick, .035 * u, .035 * u); ctx.fill();
+  const leg = (fx, top, col) => { ctx.strokeStyle = OUTLINE; ctx.lineWidth = .075 * u; ctx.beginPath(); ctx.moveTo(F(fx - .02), top); ctx.lineTo(F(fx), y - .03 * u); ctx.stroke(); ctx.strokeStyle = col; ctx.lineWidth = .057 * u; ctx.stroke(); ctx.fillStyle = col; ellipse(ctx, F(fx + .025), y - .025 * u, .05 * u, .024 * u); ctx.fill(); };
+  // Far front legs and the far middle paw, behind.
+  leg(.05, by - .42 * u, "#aab3c0"); leg(.15, by - .42 * u, "#aab3c0");
+  // The body: from a small haunch, the back rising steeply to the shoulders, a narrow chest down to the front legs.
+  ctx.fillStyle = FUR; ctx.strokeStyle = OUTLINE; ctx.lineWidth = Math.max(1, .013 * u); ctx.beginPath();
+  ctx.moveTo(F(-.3), by - .05 * u); ctx.bezierCurveTo(F(-.36), by - .2 * u, F(-.24), by - .34 * u, F(-.1), by - .5 * u);
+  ctx.bezierCurveTo(F(-.02), by - .6 * u, F(.08), by - .66 * u, F(.14), by - .66 * u); ctx.bezierCurveTo(F(.22), by - .6 * u, F(.24), by - .44 * u, F(.2), by - .3 * u);
+  ctx.bezierCurveTo(F(.18), by - .18 * u, F(.12), by - .08 * u, F(.06), by - .05 * u); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#f3f5f8"; ellipse(ctx, F(-.17), by - .13 * u, .14 * u, .11 * u, face * .2); ctx.fill(); // the haunch
+  ctx.fillStyle = "#eef1f5"; ellipse(ctx, F(-.04), y - .03 * u, .07 * u, .026 * u); ctx.fill(); ctx.strokeStyle = OUTLINE; ctx.stroke(); // the hind paw
+  ctx.fillStyle = "rgba(150,164,184,.25)"; ellipse(ctx, F(.12), by - .32 * u, .05 * u, .18 * u); ctx.fill(); // the chest's shade
+  ctx.strokeStyle = "rgba(150,220,255,.55)"; ctx.lineWidth = Math.max(1, .018 * u); for (const d of [-.16, -.04]) { ctx.beginPath(); ctx.moveTo(F(d - .03), by - (.38 + d * .7) * u); ctx.lineTo(F(d + .02), by - (.32 + d * .7) * u); ctx.lineTo(F(d - .02), by - (.25 + d * .7) * u); ctx.stroke(); } // the chevrons
+  // Near front legs, straight and slim, in front.
+  leg(.09, by - .45 * u, "#eef1f5"); leg(.19, by - .45 * u, "#eef1f5");
+  // Neck and head, high and watchful.
+  const hx = F(.2), hy = by - .86 * u;
+  ctx.fillStyle = FUR; ctx.beginPath(); ctx.moveTo(F(.02), by - .6 * u); ctx.quadraticCurveTo(F(.06), hy + .02 * u, hx - face * .06 * u, hy - .05 * u); ctx.lineTo(hx + face * .03 * u, hy + .09 * u); ctx.quadraticCurveTo(F(.22), by - .62 * u, F(.2), by - .5 * u); ctx.closePath(); ctx.fill();
+  catHead(ctx, hx, hy, u, face);
   ctx.restore();
 }
 // The cat climbing: upright against the bark or the stone, head up, the forelegs reaching by turns and the hind legs pushing, the
@@ -324,6 +321,46 @@ function drawErupts(ctx, e, s, now) {
   }
 }
 
+// The puddle's mouth: two jaws of liquid silver rising out of the floor round the marked spot, lined with blade teeth, opening as
+// they rise and snapping shut on the bite.
+function drawMouth(ctx, at, s, open, now) {
+  const cx = (at.x + .5) * s, cy = (at.y + .82) * s, R = STALKER.pool.under.radius * s, gap = open * R * .9;
+  ctx.save(); ctx.fillStyle = "rgba(200,214,232,.55)"; ellipse(ctx, cx, cy, R * 1.05, R * .45); ctx.fill();
+  for (const side of [-1, 1]) {
+    const jy = cy - R * .2 + side * gap * .6, h = R * (.25 + open * .55);
+    ctx.fillStyle = "#cfd9e6"; ctx.strokeStyle = "#7e8898"; ctx.lineWidth = Math.max(1, s * .03);
+    ctx.beginPath(); ctx.ellipse(cx, jy, R, h, 0, side < 0 ? Math.PI : 0, side < 0 ? Math.PI * 2 : Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#ffffff"; for (let i = -3; i <= 3; i++) { const tx = cx + i * R * .26, ty = jy; ctx.beginPath(); ctx.moveTo(tx - R * .08, ty); ctx.lineTo(tx, ty - side * R * (.18 + open * .1)); ctx.lineTo(tx + R * .08, ty); ctx.fill(); } // the blade teeth
+  }
+  ctx.restore();
+}
+// The little chomping puddles.
+function drawChompers(ctx, e, s, now) {
+  for (const q of e.stalkChompers || []) { const cx = (q.x + .5) * s, cy = (q.y + .82) * s, r = .32 * s, fade = Math.min(1, q.life / .6), bite = q.state === "bite" ? 1 : q.state === "warn" ? .4 + .4 * Math.sin(now / 50) : .15;
+    ctx.save(); ctx.globalAlpha = fade;
+    if (q.state === "warn" && q.at) { ctx.fillStyle = MARK_FILL; ctx.strokeStyle = MARK_EDGE; ctx.lineWidth = Math.max(1.5, s * .04); ellipse(ctx, (q.at.x + .5) * s, (q.at.y + .82) * s, STALKER.pool.split.radius * s, STALKER.pool.split.radius * s * .55); ctx.fill(); ctx.stroke(); }
+    ctx.fillStyle = "rgba(196,210,226,.92)"; ellipse(ctx, cx, cy, r, r * .4); ctx.fill(); ctx.fillStyle = "#ffffff"; ellipse(ctx, cx - r * .3, cy - r * .1, r * .25, r * .08); ctx.fill();
+    ctx.fillStyle = "#2a3140"; ctx.beginPath(); ctx.ellipse(cx, cy - r * .05, r * .45, r * .3 * bite + 1, 0, 0, Math.PI * 2); ctx.fill(); // the little mouth
+    ctx.fillStyle = "#eef4fb"; for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(cx + i * r * .18 - r * .06, cy - r * .05 - r * .3 * bite); ctx.lineTo(cx + i * r * .18, cy - r * .05); ctx.lineTo(cx + i * r * .18 + r * .06, cy - r * .05 - r * .3 * bite); ctx.fill(); }
+    ctx.restore(); }
+}
+// The tide: each wave a crescent of liquid silver bulging toward its course, a bright foam lip at the front, a fading wake behind.
+function drawWaves(ctx, e, s, now) {
+  for (const q of e.stalkWaves || []) { if (q.delay > 0 || q.d >= STALKER.cat.tide.length) continue;
+    const fx = Math.cos(q.aim), fy = Math.sin(q.aim), px = -fy, py = fx, half = q.width / 2 * s, cx = (q.ox + .5 + fx * q.d) * s, cy = (q.oy + .75 + fy * q.d) * s, bulge = (.35 + q.n * .1) * s, depth = (.5 + q.n * .12) * s;
+    const P = (o, f) => ({ x: cx + px * o + fx * f, y: cy + py * o + fy * f });
+    ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
+    // the wake
+    const w0 = P(-half, -depth * 2.2), w1 = P(half, -depth * 2.2), wm = P(0, -depth * 1.4); ctx.fillStyle = "rgba(200,214,232,.18)"; ctx.beginPath(); ctx.moveTo(w0.x, w0.y); ctx.quadraticCurveTo(wm.x, wm.y, w1.x, w1.y); const f1 = P(half, 0), fm = P(0, bulge), f0 = P(-half, 0); ctx.lineTo(f1.x, f1.y); ctx.quadraticCurveTo(fm.x, fm.y, f0.x, f0.y); ctx.closePath(); ctx.fill();
+    // the body of the wave
+    const b0 = P(-half * .92, -depth), b1 = P(half * .92, -depth), bm = P(0, -depth + bulge * .5); ctx.fillStyle = "rgba(196,210,228,.82)"; ctx.beginPath(); ctx.moveTo(f0.x, f0.y); ctx.quadraticCurveTo(fm.x, fm.y, f1.x, f1.y); ctx.lineTo(b1.x, b1.y); ctx.quadraticCurveTo(bm.x, bm.y, b0.x, b0.y); ctx.closePath(); ctx.fill();
+    // the foam lip and the curl
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); ctx.moveTo(f0.x, f0.y); ctx.quadraticCurveTo(fm.x, fm.y, f1.x, f1.y); ctx.stroke();
+    ctx.strokeStyle = "rgba(160,235,255,.6)"; ctx.lineWidth = Math.max(1, s * .035); const c0 = P(-half * .8, -depth * .45), c1 = P(half * .8, -depth * .45), cm = P(0, -depth * .45 + bulge * .7); ctx.beginPath(); ctx.moveTo(c0.x, c0.y); ctx.quadraticCurveTo(cm.x, cm.y, c1.x, c1.y); ctx.stroke();
+    ctx.fillStyle = "#ffffff"; for (let k = 0; k < 7; k++) { const o = -half + 2 * half * (k + .5) / 7, f = bulge * (1 - (o / half) ** 2) + Math.sin(now / 90 + k * 1.7) * .06 * s, d = P(o, f + .05 * s); ellipse(ctx, d.x, d.y, .05 * s, .05 * s); ctx.fill(); } // foam
+    ctx.restore(); }
+}
+
 // One Stalker, copy or decoy. Returns true (it drew itself).
 export function drawStalker(ctx, e, s, now, reduceMotion = false) {
   const t = reduceMotion ? 0 : now / 1000, u = s * Math.max(.3, Number(e.scale) || STALKER.size), a = e.stalkAct || {};
@@ -332,26 +369,34 @@ export function drawStalker(ctx, e, s, now, reduceMotion = false) {
   // Its afterimages fade where the blow fell.
   for (const g of e.stalkGhosts || []) { ctx.globalAlpha = Math.max(0, g.t / .6) * .45; const gx = (g.x + .5) * s, gy = (g.y + .9) * s; if (g.form === "ape") drawApe(ctx, gx, gy, u, face, t, false); else drawCat(ctx, gx, gy, u, face, t, false); }
   ctx.globalAlpha = 1;
-  ctx.fillStyle = "rgba(0,0,0,.28)"; ellipse(ctx, x, ground, .42 * u * (1 - Math.min(.5, lift / (3 * s))), .13 * u); ctx.fill();
+  ctx.fillStyle = `rgba(0,0,0,${e.stalkLurk ? .03 : .28})`; ellipse(ctx, x, ground, .42 * u * (1 - Math.min(.5, lift / (3 * s))), .13 * u); ctx.fill(); // no shadow to give it away while it lurks
   if (e.stalkerDecoy) ctx.globalAlpha = Math.max(.15, Math.min(.7, (Number(e.stalkLife) || 0) / 1.5)) * (.75 + .25 * Math.sin(now / 70));
   else if (e.stalkerKin) ctx.globalAlpha = .92;
   // Hiding: at a distance, stalking, it all but fades into its own mist.
   const hide = e.stalkerKin || e.stalkerDecoy ? 0 : Math.max(0, Math.min(1, Number(e.stalkHide) || 0));
   if (hide > 0) ctx.globalAlpha *= 1 - .6 * hide;
+  // Lying in wait it is all but invisible: a faint shimmer, still, if you look; springing, it fades in.
+  if (e.stalkLurk) ctx.globalAlpha = STALKER.lurk.alpha * (1 + .5 * Math.sin(now / 400));
+  else if (e.stalkReveal > 0) ctx.globalAlpha *= 1 - .9 * (e.stalkReveal / STALKER.lurk.reveal);
   const form = e.stalkForm || "cat";
   if (form === "mist") { const g = a.kind === "mistGather" ? 1 - Math.max(0, a.t) / (a.total || 1) : 1; if (g < 1) { ctx.globalAlpha = 1 - g; drawCat(ctx, x, y, u, face, t, false); ctx.globalAlpha = 1; } drawMist(ctx, x, y, u, t, g); }
-  else if (form === "pool") drawPool(ctx, x, y, u, t, a.kind === "rise" ? 1 - Math.max(0, a.t) / (a.total || 1) : 0);
+  else if (form === "pool") { if (a.kind === "mouthWarn" || a.kind === "mouth") drawMouth(ctx, a.at, s, a.kind === "mouth" ? Math.max(0, a.t) / (a.total || 1) * .6 : 1 - Math.max(0, a.t) / (a.total || 1) * .7, now); else drawPool(ctx, x, y, u * (a.kind === "under" ? .8 : 1), t, a.kind === "rise" ? 1 - Math.max(0, a.t) / (a.total || 1) : 0); }
   else if (form === "ape") {
     const fists = e.stalkFists || [], k = a.kind, strike = e.stalkStrike;
-    const pose = lift > 1 * s * .5 ? "fly" : (k === "wait" || e.stalkPerch && k === "prowl") && !fists.length ? "perch" : k === "charge" || k === "chargeWarn" ? "charge" : k === "fistWarn" || k === "slamWarn" && !fists.length ? "raise" : strike ? (strike.n === 2 ? "kick" : "punch") : ["prowl", "spring", "comboWarn", "retract"].includes(k) ? "walk" : "stand";
+    const pose = lift > 1 * s * .5 ? "fly" : (k === "wait" || k === "lurk" || e.stalkPerch && k === "prowl") && !fists.length ? "perch" : k === "charge" || k === "chargeWarn" ? "charge" : k === "fistWarn" || k === "slamWarn" && !fists.length ? "raise" : strike ? (strike.n === 2 ? "kick" : "punch") : ["prowl", "spring", "comboWarn", "retract"].includes(k) ? "walk" : "stand";
     drawApe(ctx, x, y, u, face, t, pose, fists.length);
     fists.forEach((f, i) => drawApeArm(ctx, { x: x + face * (APE_SHOULDER.x - (fists.length > 1 && i ? .06 : 0)) * u, y: y - APE_SHOULDER.y * u }, { x: (f.x + .5) * s, y: (f.y + .9) * s - (f.lift || 0) * s - .3 * u }, u));
   }
   else if (e.stalkClimb) drawCatClimb(ctx, x, y, u, face, t);
-  else if (a.kind === "wait" || e.stalkPerch && a.kind === "prowl") drawCatSit(ctx, x, y, u, face, t, !!e.stalkPerch);
+  else if (a.kind === "tide") { /* it is the first wave (drawWaves) */ }
+  else if ((a.kind === "prowl" || a.kind === "lurk" || a.kind === "wait") && e.stalkPerch) drawCat(ctx, x, y, u, face, t, false, "perch");
+  else if (a.kind === "wait" || a.kind === "lurk") drawCatSit(ctx, x, y, u, face, t);
+  else if (a.kind === "flurry") drawCat(ctx, x, y, u, face, t, false, (e.stalkSlash?.n || 0) % 2 ? "swipe" : "crouch");
   else if (e.stalkCreep && a.kind === "prowl") drawCat(ctx, x, y, u, face, t * .55, true, "stalk");
   else drawCat(ctx, x, y, u, face, t, !["wait", "swipeWarn", "pounceWarn"].includes(a.kind), a.kind === "pounceWarn" ? "crouch" : a.kind === "pounce" || a.kind === "hop" ? "leap" : a.kind === "swipeWarn" ? "swipe" : null);
-  if (!e.stalkerKin && !e.stalkerDecoy) { drawBlades(ctx, e, s, x, y, u, face); drawLimb(ctx, e, s, x, y, u, face, now); drawErupts(ctx, e, s, now); }
+  if (!e.stalkerKin && !e.stalkerDecoy) { drawBlades(ctx, e, s, x, y, u, face); drawLimb(ctx, e, s, x, y, u, face, now); drawErupts(ctx, e, s, now); ctx.save(); ctx.globalAlpha = 1; drawChompers(ctx, e, s, now); drawWaves(ctx, e, s, now); ctx.restore(); }
+  if (e.stalkSlash) { const k = e.stalkSlash.t / .14, ag = e.stalkSlash.aim, r = STALKER.cat.flurry.reach * s, cx = x + Math.cos(ag) * .3 * s, cy = y - .35 * u + Math.sin(ag) * .3 * s, tilt = e.stalkSlash.n % 2 ? .6 : -.6; // the flurry's claw marks in the air
+    ctx.save(); ctx.globalAlpha = k; ctx.strokeStyle = "#eef6ff"; ctx.lineCap = "round"; for (let i = -1; i <= 1; i++) { ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.arc(cx + i * .08 * s * Math.cos(ag + tilt), cy + i * .08 * s * Math.sin(ag + tilt), r * .6, ag - .7 + tilt * .3, ag + .7 + tilt * .3); ctx.stroke(); } ctx.restore(); }
   if (!e.stalkerKin && !e.stalkerDecoy && form !== "pool" && (e.stalkTurretUp || 0) > 0) { // the turret popping out of its back
     const up = e.stalkTurretUp, bx = x - face * .08 * u, by = y - (form === "ape" ? .82 : .5) * u - up * .12 * u, aim = e.stalkTurret?.aim ?? (face > 0 ? 0 : Math.PI);
     ctx.fillStyle = "#8e98a8"; ellipse(ctx, bx, by, .1 * u * up, .06 * u * up); ctx.fill();
@@ -369,7 +414,7 @@ export function drawStalker(ctx, e, s, now, reduceMotion = false) {
   if (hide > .05 && form !== "mist" && form !== "pool") { ctx.save(); ctx.globalAlpha = 1; catMist(ctx, (dx) => x + face * dx * u, y - .3 * u, x, y, u * 1.15, t, hide * 1.4); ctx.restore(); }
   if (e.hitFlash > 0) { ctx.globalAlpha = .5; ctx.fillStyle = "#ffffff"; ellipse(ctx, x, y - .4 * u, .45 * u, .35 * u); ctx.fill(); }
   ctx.restore();
-  if (e.stalker && !e.stalkerKin) { ctx.save(); ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = SILVER; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = y - 1.15 * u; ctx.strokeText("The Stalker", x, ty); ctx.fillText("The Stalker", x, ty); ctx.restore(); }
+  if (e.stalker && !e.stalkerKin && !e.stalkLurk) { ctx.save(); ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = SILVER; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = y - 1.15 * u; ctx.strokeText("The Stalker", x, ty); ctx.fillText("The Stalker", x, ty); ctx.restore(); }
   return true;
 }
 
@@ -392,6 +437,9 @@ export function drawStalkerMarks(ctx, e, s, now) {
   if (a.kind === "sweepWarn") { ctx.beginPath(); ctx.moveTo(ex, ey); ctx.arc(ex, ey, A.sweep.reach * s, a.aim - A.sweep.arc, a.aim + A.sweep.arc); ctx.closePath(); ctx.fill(); ctx.stroke(); }
   if (a.kind === "spinWarn") { ellipse(ctx, ex, ey + .3 * s, A.spin.reach * s, A.spin.reach * s * .6); ctx.fill(); ctx.stroke(); }
   if (a.kind === "comboWarn") { const r = (a.n === 2 ? A.combo.kick : A.combo.reach) * s; ellipse(ctx, ex, ey + .3 * s, r, r * .55); ctx.fill(); ctx.stroke(); }
+  if (a.kind === "flurryWarn") { const R = STALKER.cat.flurry; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.arc(ex, ey, (R.reach + R.lunge * 2) * s, a.aim - .8, a.aim + .8); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  if (a.kind === "tideWarn") { const T = STALKER.cat.tide; ctx.save(); for (const wd of T.widths) { ctx.lineWidth = wd * s; ctx.strokeStyle = "rgba(255,80,190,.1)"; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(a.aim) * T.length * s, ey + Math.sin(a.aim) * T.length * s); ctx.stroke(); } ctx.restore(); }
+  if (a.kind === "mouthWarn" && a.at) { const R = STALKER.pool.under.radius; ellipse(ctx, (a.at.x + .5) * s, (a.at.y + .82) * s, R * s, R * s * .55); ctx.fill(); ctx.stroke(); }
   if (a.kind === "hop" && a.to) { ellipse(ctx, (a.to.x + .5) * s, (a.to.y + .82) * s, .7 * s, .38 * s); ctx.fill(); }
   else if (a.kind === "swipeWarn" || a.kind === "fistWarn") { const r = (e.stalkerKin || e.stalkerDecoy ? STALKER.kin.reach + .3 : a.kind === "fistWarn" ? F.ape.fist.reach : F.cat.swipe.reach) * s; ellipse(ctx, cx, cy, r, r * .55); ctx.fill(); ctx.stroke(); }
   ctx.restore();
