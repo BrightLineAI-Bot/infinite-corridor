@@ -396,6 +396,18 @@ function tickEnergy(e, w, dt) {
   if (e.stalkEnergyClock <= 0 && e.stalkForm !== "pool" && e.stalkForm !== "mist") { e.stalkCharged = E.time; e.stalkAuraTick = 0; e.stalkEnergyClock = roll(`${e.id}:energy:${e.stalkCycle || 0}`, E.every) + E.time; }
 }
 
+// How it looks this frame (drawing only, stalker-render.ts): hiding in its own mist while it stalks at a distance (`stalkHide`
+// 0–1, eased), perched on ground higher than the Wayfarer's (`stalkPerch`), creeping low as it closes in (`stalkCreep`).
+export const LOOK = { hideFrom: 6, hideOver: 5, hideWait: .55, ease: 3, perchRise: 1 };
+export function stalkerLook(e, w, dt, kind) {
+  const p = w.player, d = dist(e, p), L = LOOK, elev = w.elev ? (w.elev(e.x, e.y) || 0) - (w.elev(p.x, p.y) || 0) : 0;
+  const target = kind === "wait" ? L.hideWait : kind === "prowl" && d > L.hideFrom ? Math.min(1, (d - L.hideFrom) / L.hideOver) : 0;
+  e.stalkHide = (e.stalkHide || 0) + (target - (e.stalkHide || 0)) * Math.min(1, dt * L.ease);
+  e.stalkPerch = (kind === "prowl" || kind === "wait") && elev >= L.perchRise;
+  e.stalkCreep = kind === "prowl" && d > (STALKER.forms[e.stalkForm]?.range || 5) * .75;
+  if (e.stalkPerch || kind === "wait") e.facingX = p.x >= e.x ? 1 : -1;
+}
+
 // One frame of the Stalker (or of one of its copies or decoys). `w` is the game's adapter: player, dt, now, open(x, y) (ground
 // it may stand on: never a building, shelter, town or lethal ground), move(e, dx, dy), fly(e, dx, dy) (the ape: over walls and
 // up trees), elev(x, y), hurt(e, amount), sheltered (the Wayfarer is inside a building, shelter or town), door (the last open
@@ -424,6 +436,7 @@ export function updateStalker(e, w) {
     if (e.stalkForm === "pool" || e.stalkForm === "mist") { e.stalkForm = "cat"; e.untargetable = false; e.stalkBlades = null; }
     e.stalkLift = 0; e.telegraph = 0; e.stalkAct = { kind: "wait", t: 0, total: 0 };
     if (w.door && dist(e, w.door) > 1.4) step(e, w, w.door, S.forms.cat.speed * .6, dt);
+    stalkerLook(e, w, dt, "wait");
     return;
   }
   if (e.stalkAct?.kind === "wait") beginForm(e, w, e.stalkForm);
@@ -434,6 +447,7 @@ export function updateStalker(e, w) {
   const a = e.stalkAct, F = S.forms[e.stalkForm] || S.forms.cat, d = dist(e, p);
   a.t -= dt; e.telegraph = /Warn$/.test(a.kind) ? Math.max(0, a.t) : 0;
   if (e.stalkStrike) { e.stalkStrike.t -= dt; if (e.stalkStrike.t <= 0) e.stalkStrike = null; }
+  stalkerLook(e, w, dt, a.kind);
   if (e.stalkForm === "ape" && tickApeAct(e, w, a, dt)) return;
   if (!["grab", "grabPull", "retract", "slamWarn", "slam", "sweep", "spin"].includes(a.kind)) e.stalkFists = null;
   switch (a.kind) {

@@ -21,6 +21,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 687, the next is **
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| (at merge) | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Stalker consolidated: stalking creep, hiding in its mist, sitting in wait, perched (cat at the edge, gorilla as a gargoyle), climbing; chevrons back; one look for both forms | Building. |
 | 687 | Claude (Stalker session) | PR #334 | The Stalker's appendage (sword, spikes and bouncing blasts, tendril eruptions, boomerang blade) and the gorilla's arms (grab, slam, sweep, spin, charge, Iron Fist combo); the gorilla redrawn with poses; the cat's face | Building. |
 | 686 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Ascension Dais: the viscera altar renamed; a dais at the start of every Divine Challenge entered holding viscera holds its first round while you offer, shaping that fight; step off or Begin | Merging (baton taken). |
 | 685 | Claude | `claude/dreamy-rubin-yn6q2p` | Ruined arcologies: terraced towers of dark glass in the machine-touched regions, a stair a floor, broken floor to fall through, the crown's rest and cache | PR #332. |
