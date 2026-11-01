@@ -127,11 +127,12 @@ test('the Tremor Worm\'s attacks: maw tentacles, suction, rising tentacles that 
   assert.ok(field.some((q) => q.tentacleMode === 'laser') && field.some((q) => q.tentacleMode === 'fire'), 'one of each');
   for (let i = 0; i < 4; i++) { m.pack = freshPackState(); m.pack.worm = { mode: 'surfaced', t: 99, trips: 0 }; m.pack.gap = 0; m.pack.seq = i + 1; step(w, 1); }
   field = w.enemies.filter((q) => q.wormOf === m.id && !q.dead); assert.ok(field.length <= WORM.tentaclesMax); assert.ok(field.filter((q) => q.tentacleMode === 'laser').length <= WORM.lasersMax);
-  m.packAttacks = []; m.pack.worm = { mode: 'surfaced', t: 99, trips: 0 }; w.hurts = []; w.fx = [];
+  // Release 664: a cast at the limit sends the field under to come up around you; let it settle first.
+  m.packAttacks = []; m.pack.worm = { mode: 'surfaced', t: 99, trips: 0 }; step(w, 4, () => { m.pack.worm.t = 99; }); w.hurts = []; w.fx = [];
   const laser = field.find((q) => q.tentacleMode === 'laser'), xy = [laser.x, laser.y];
-  w.player.x = laser.x + 3; w.player.y = laser.y; step(w, 4);
-  assert.ok(w.hurts.filter((h) => h.source === 'wormLaser').length >= 3, 'the laser stays on you'); assert.deepEqual([laser.x, laser.y], xy, 'tentacles never move');
-  assert.ok(w.fx.some((f) => f.kind === 'orb' && f.fire), 'fire tentacles spit fireballs');
+  const beam = laser.pack.laser?.angle ?? 0; w.player.x = laser.x + Math.cos(beam) * 3; w.player.y = laser.y + Math.sin(beam) * 3; let fired = false; step(w, 4, () => { m.pack.worm.t = 99; fired ||= w.fx.some((f) => f.kind === 'orb' && f.fire); });
+  assert.ok(w.hurts.filter((h) => h.source === 'wormLaser').length >= 3, 'the laser stays on you'); assert.deepEqual([laser.x, laser.y], xy, 'a burning laser holds its ground');
+  assert.ok(fired, 'fire tentacles spit fireballs');
   laser.dead = true; w.hurts = []; for (const q of field) if (q !== laser && q.tentacleMode === 'laser') q.dead = true; step(w, 2);
   assert.ok(!w.hurts.some((h) => h.source === 'wormLaser'), 'cut down, the lasers stop');
   m.dead = true; step(w, .2); assert.ok(field.every((q) => q.dead), 'the tentacles sink when the worm dies');
