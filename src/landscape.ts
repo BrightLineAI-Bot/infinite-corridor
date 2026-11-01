@@ -12,11 +12,12 @@
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
 import { hashSeed } from "./random.ts";
 import { placeDock } from "./boats.ts";
+import { growTrees } from "./trees.ts";
 
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
 // Each section keeps the version it was first seen with.
-export const LANDSCAPE_VERSION = 12; // 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
+export const LANDSCAPE_VERSION = 13; // 645: the tree package (trees.ts: spires and groves, perches, leaves); 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles
 export const CANOPY_LIFT = 2; // release 637: a great tree's levels are drawn this many times taller (the climb is unchanged)
 export const tileLiftScale = (t) => (t?.canopy ? CANOPY_LIFT : 1);
@@ -418,7 +419,8 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   else if (map.fogMoor) map.weather = "fog"; // release 617
   if (version >= 5) for (const t of map.tiles) if (t.landscape === "mountains" && (t.kind === "alpineGrass" || t.kind === "mountainRock") && regionTile(seed, rx * 32 + t.x, ry * 32 + t.y, 5).type === "frost") t.kind = "snowRock"; // release 573: frost mountains are snowbound
   if (map.pillarlands) buildMesas(map, seed, rx, ry); // release 591: last, so nothing after it ramps or lowers them
-  if (version >= 12 && !full && map.paletteRegion) buildCanopyTree(map, seed, rx, ry); // release 631: likewise last
+  if (version >= 13 && !full && map.paletteRegion) growTrees(map, seed, rx, ry, { ground: canopyGround(map), reachable: reachableFromPlaza, trapped: (m) => trappedTiles(m, 32, 32, { x: 16, y: 16 }) }); // release 645: the tree package
+  else if (version >= 12 && !full && map.paletteRegion) buildCanopyTree(map, seed, rx, ry); // release 631: likewise last
   map.landscape = { version, biome: biome || dominantLandscape(map), name: (BIOMES[biome || dominantLandscape(map)] || REGION_GROUNDS[biome || dominantLandscape(map)])?.name || null, ...(openSea ? { openSea: full ? "open" : "coast" } : {}) };
   return map;
 }
@@ -595,12 +597,17 @@ function applyPillarGround(map, seed, rx, ry, mask) {
 // cannot step on; nothing spawns up there; jungle trees on its ground are cleared. A fall is a fall: the leaf glider opens only from
 // the crown. Bounded: one tree, a few hundred tile checks, once per section.
 export const CANOPY = { chance: .55, trunk: 3, reach: [3, 7], tries: 80, starfield: .5 };
+// The jungle ground a great tree may grow on (versions 12 and 13): flat jungle floor, mire or root, clear of the plaza, the exit
+// lines, structures and anything standing there but the jungle's own trees.
+function canopyGround(map) {
+  const at = (x, y) => map.tiles[idx(x, y)], ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1, objAt = new Set((map.objects || []).filter((o) => !o.jungle).map((o) => idx(Math.round(o.x), Math.round(o.y))));
+  const exitLine = (x, y) => (near(ex.north, x) && y <= 16) || (near(ex.south, x) && y >= 16) || (near(ex.west, y) && x <= 16) || (near(ex.east, y) && x >= 16);
+  return (x, y) => { const t = x >= 1 && y >= 1 && x <= 30 && y <= 30 && at(x, y); return !!t && t.landscape === "jungle" && !t.structure && !t.buildingId && !t.environment && !t.slope && !(t.elev > 0) && !exitLine(x, y) && !(x >= 12 && x <= 20 && y >= 12 && y <= 20) && !objAt.has(idx(x, y)) && (t.kind === "jungleFloor" || t.kind === "jungleMire" || t.kind === "buttressRoot"); };
+}
 function buildCanopyTree(map, seed, rx, ry) {
   const C = CANOPY, h = (k) => hashSeed(`${seed}:canopy:v3:${rx}:${ry}:${k}`), at = (x, y) => map.tiles[idx(x, y)];
   if ((hashSeed(`${seed}:canopy-grow:v1:${ry * 7919 + rx}`) % 1000) / 1000 >= C.chance) return null;
-  const ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1, objAt = new Set((map.objects || []).filter((o) => !o.jungle).map((o) => idx(Math.round(o.x), Math.round(o.y))));
-  const exitLine = (x, y) => (near(ex.north, x) && y <= 16) || (near(ex.south, x) && y >= 16) || (near(ex.west, y) && x <= 16) || (near(ex.east, y) && x >= 16);
-  const ground = (x, y) => { const t = x >= 1 && y >= 1 && x <= 30 && y <= 30 && at(x, y); return !!t && t.landscape === "jungle" && !t.structure && !t.buildingId && !t.environment && !t.slope && !(t.elev > 0) && !exitLine(x, y) && !(x >= 12 && x <= 20 && y >= 12 && y <= 20) && !objAt.has(idx(x, y)) && (t.kind === "jungleFloor" || t.kind === "jungleMire" || t.kind === "buttressRoot"); };
+  const ground = canopyGround(map);
   const walked = reachableFromPlaza(map), N = C.trunk;
   // The four sides in climbing order, each as: outward direction, the side's first and last column (from the previous corner
   // round to the next), and the corner knot that follows it.

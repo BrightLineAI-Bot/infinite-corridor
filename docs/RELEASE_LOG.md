@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**645**
+**647**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 643 | Claude | `claude/dreamy-rubin-yn6q2p` | Every pass through a body is a hit; the Great Sweep's blades (great sword, shuriken, great axe) fly on through and curl back | Building. |
+| 645 | Claude | `claude/dreamy-rubin-yn6q2p` | The tree package (landscape version 13): spires and groves, a canopy walk, perches, leaves, boughs, four tree looks | Building. |
+| 643 | Claude | PR #305 | Every pass through a body is a hit; the Great Sweep's blades (great sword, shuriken, great axe) fly on through and curl back | Merged (`r643-c53163bd6ab2`). |
 | 641 | Claude | PR #304 | Glider opened and folded with Jump, freefall, sea landings, Act at sea; Giant 8 s charge; the review's glide-indoors blocker | Merged (`r641-1de709e6ab17`). Published in r641. |
 | 639 | Claude | PR #303 | Out of the robot at sea: the robot button goes power armor → out into your skiff | Merged (`r639-13350fc9c822`). Published in r641. |
 | 637 | Claude | PR #302 | The great trees as towers: branches out of the trunk, rising, hops tip to tip, the crown on the trunk, 30–42 levels | Merged (`r637-496b09468bbf`). Published in r641. |

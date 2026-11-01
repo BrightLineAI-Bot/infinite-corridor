@@ -11,6 +11,7 @@ import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.ts"; // 613: 
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.ts";
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT } from "./landscape.ts";
+import { TREES } from "./trees.ts";
 import { SKY_DISCS } from "./skylands.ts"; // release 587
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.ts";
 import { GATE_REVENANT, DANGER } from "./monster-pack.ts";
@@ -954,8 +955,13 @@ function drawLeafGlider(ctx, p, s, now) {
 }
 export const CANOPY_LOOK = { leaf: ["#2c6326", "#3f8a35", "#1f4a1a", "#4f9a3f"], bark: ["#6b4a2c", "#3e2916"], rise: 30, boughEvery: 3.2, vines: 5 };
 function drawCanopyDressing(ctx, c, s, now) {
-  const C = CANOPY_LOOK, x0 = c.x0 * s, w = c.size * s, cx = x0 + w / 2, topY = c.y0 * s - discLift(c.top) * CANOPY_LIFT * s, sway = Math.sin(now / 1700) * s * .05, end = topY - C.rise * s;
+  const look = c.look != null ? TREES.looks[c.look] : null, C = look ? { ...CANOPY_LOOK, bark: look.bark, leaf: look.leaf, rise: c.low ? 0 : CANOPY_LOOK.rise } : CANOPY_LOOK, x0 = c.x0 * s, w = c.size * s, cx = x0 + w / 2, topY = c.y0 * s - discLift(c.top) * CANOPY_LIFT * s, sway = Math.sin(now / 1700) * s * .05, end = topY - C.rise * s;
   ctx.save();
+  if (c.boughs) drawTreeBoughs(ctx, c, C, s, sway); // release 645: the decorative boughs down the trunk
+  if (c.low) { // release 645: a grove's lesser tree: its crown is a level of the canopy, ringed with leaves, with vines below
+    for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2, r = w * .62; ctx.fillStyle = C.leaf[k % C.leaf.length]; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * r + sway, topY + s * .5 + Math.sin(a) * r * .6 + (Math.sin(a) < 0 ? 0 : s * .4), s * (.55 + (k % 3) * .12), 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore(); return;
+  }
   const g = ctx.createLinearGradient(x0, 0, x0 + w, 0); g.addColorStop(0, C.bark[0]); g.addColorStop(.6, C.bark[1]); g.addColorStop(1, "#1d1209"); ctx.fillStyle = g;
   ctx.beginPath(); ctx.moveTo(x0, topY + s * .5); ctx.lineTo(x0 + w * .12, end); ctx.lineTo(x0 + w * .88, end); ctx.lineTo(x0 + w, topY + s * .5); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = "#00000033"; ctx.lineWidth = Math.max(1, s * .05); for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x0 + w * k / 4, topY + s * .5); ctx.lineTo(x0 + w * (.12 + .76 * k / 4), end); ctx.stroke(); }
@@ -968,6 +974,18 @@ function drawCanopyDressing(ctx, c, s, now) {
   ctx.strokeStyle = "#3f8a35"; ctx.lineWidth = Math.max(1, s * .05); // vines down the trunk to the landing
   for (let i = 0; i < C.vines; i++) { const vx = x0 + (i + .5) / C.vines * w, len = s * (2 + (i * 29 % 10) / 3); ctx.beginPath(); ctx.moveTo(vx, topY); ctx.quadraticCurveTo(vx + sway * 4, topY + len * .5, vx + sway, topY + len); ctx.stroke(); }
   ctx.restore();
+}
+// Release 645: boughs off a great tree's trunk that nothing walks on: a curved limb out to one side at a hashed height,
+// tipped with a spray of leaves. They hang from the trunk's sides, so the climb on the branches stays in sight.
+function drawTreeBoughs(ctx, c, C, s, sway) {
+  const x0 = c.x0 * s, w = c.size * s, foot = (c.y0 + c.size) * s;
+  ctx.lineCap = "round";
+  for (const b of c.boughs) {
+    const y = foot - discLift(Math.max(2, b.at * c.top)) * CANOPY_LIFT * s, bx = b.side > 0 ? x0 + w : x0, len = b.len * s, ex = bx + b.side * len + sway, ey = y - s * (.4 + b.lift);
+    ctx.strokeStyle = C.bark[1]; ctx.lineWidth = Math.max(2, s * .22); ctx.beginPath(); ctx.moveTo(bx, y); ctx.quadraticCurveTo(bx + b.side * len * .55, y + s * .15, ex, ey); ctx.stroke();
+    ctx.strokeStyle = C.bark[0]; ctx.lineWidth = Math.max(1, s * .08); ctx.beginPath(); ctx.moveTo(bx + b.side * len * .45, y + s * .05); ctx.lineTo(bx + b.side * len * .7, y - s * .45); ctx.stroke(); // a twig
+    for (let k = 0; k < b.leaves + 2; k++) { ctx.fillStyle = C.leaf[k % C.leaf.length]; ctx.beginPath(); ctx.arc(ex + (k - (b.leaves + 1) / 2) * s * .32, ey - s * (.1 + (k % 2) * .28), s * (.42 - k * .03), 0, Math.PI * 2); ctx.fill(); }
+  }
 }
 // Release 631: the door in the giant tree's crown: an arch of woven branches and vine, filled with stars (to a Starfield
 // crossing) or with drifting cloud (to a cloud hold).
@@ -1978,7 +1996,7 @@ export function render(ctx, g, w, h, now) {
   // hanging from its rim, and a fringe of leaves overhanging the crown's edges (never over the crown itself, so whoever stands
   // there stays in view). A few dozen shapes, only while the tree is in view.
   const cn = g.area === "overworld" && g.map?.canopy?.top ? g.map.canopy : null; // release 633: only trees built tall
-  if (cn && Math.abs(cn.x0 + 1.5 - p.x) < w / s + 4) draws.push({ y: cn.y0 - .5, inSky: true, fn: () => drawCanopyDressing(ctx, cn, s, now) });
+  if (cn) for (const tr of cn.trees || [cn]) if (Math.abs(tr.x0 + 1.5 - p.x) < w / s + 4) draws.push({ y: tr.y0 - .5, inSky: true, fn: () => drawCanopyDressing(ctx, tr, s, now) }); // release 645: every tree of a grove
   if (g.glide && g.area === "overworld") { const gl = groundLift(p.x, p.y) * s, sz = Math.max(.25, 1 - g.glide.z / 40); ctx.fillStyle = "#00000040"; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y + .82) * s - gl, s * .45 * sz, s * .14 * sz, 0, 0, Math.PI * 2); ctx.fill(); } // release 635: the glide's shadow far below
   draws.push(playerDraw);
   draws.sort((a, b) => a.y - b.y);
@@ -1989,7 +2007,7 @@ export function render(ctx, g, w, h, now) {
     if (raise || (d.alpha ?? 1) < 1) { ctx.save(); if (raise) ctx.translate(0, -raise * s); if ((d.alpha ?? 1) < 1) ctx.globalAlpha = d.alpha; d.fn(); ctx.restore(); } else d.fn(); // release 615: a beneath-the-level rider is a dim shape
   }
   // Release 573: behind a giant tree the Wayfarer shows through, faint.
-  if (g.area === "overworld" && (g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p)) || (cn && p.y < cn.y0 && Math.abs(p.x + .5 - (cn.x0 + cn.size / 2)) < cn.size / 2 + 1.2))) { // 633: or behind the great tree's trunk
+  if (g.area === "overworld" && (g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p)) || (cn && (cn.trees || [cn]).some((tr) => p.y < tr.y0 && Math.abs(p.x + .5 - (tr.x0 + tr.size / 2)) < tr.size / 2 + 1.2)))) { // 633: or behind the great tree's trunk
     const raise = groundLift(p.x, p.y) + (playerDraw.lift || 0); ctx.save(); ctx.globalAlpha = GIANT_TREE.ghost; if (raise) ctx.translate(0, -raise * s); playerDraw.fn(); ctx.restore();
   }
   // Under water (W5): a blue-green wash with slow light shafts.

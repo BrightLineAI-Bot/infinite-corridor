@@ -23,7 +23,7 @@ function climbTo(m) {
 }
 
 test('jungle sections grow great trees: a trunk whose top is the crown, branches sticking out of it, a climb of thirty levels and more', () => {
-  assert.equal(LANDSCAPE_VERSION, 12); const found = find(8); assert.ok(found.length >= 6, `${found.length} trees`); const dests = new Set();
+  assert.equal(LANDSCAPE_VERSION, 13); const found = find(8); assert.ok(found.length >= 6, `${found.length} trees`); const dests = new Set();
   for (const [x, y, m] of found) {
     const c = m.canopy, crown = m.tiles.filter((t) => t.kind === 'canopyTrunk'), branch = m.tiles.filter((t) => t.kind === 'canopyBranch');
     assert.equal(crown.length, CANOPY.trunk ** 2); assert.ok(crown.every((t) => !t.blocked && t.elev === c.top && t.skyPlatform), 'the crown is the trunk\'s top');
@@ -42,7 +42,7 @@ test('jungle sections grow great trees: a trunk whose top is the crown, branches
 });
 
 test('a fall off the great tree is a fall: high enough, it kills', () => {
-  const [x, y] = find(8)[0], s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld'); g.enemies = [];
+  const [x, y] = find(8)[0], s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; s.atlas = { ...(s.atlas || {}), [`${x},${y}`]: { landscapeVersion: 12 } }; /* release 645: a journey that first saw it at version 12 */ g.loadArea('overworld'); g.enemies = [];
   const hi = g.map.tiles.filter((t) => t.kind === 'canopyBranch' && t.elev >= 8).find((t) => [[0, -1], [-1, 0], [1, 0], [0, 1]].some(([a, b]) => { const n = at(g.map, t.x + a, t.y + b); return n && !n.blocked && !n.canopy; }));
   const [dx, dy] = [[0, -1], [-1, 0], [1, 0], [0, 1]].find(([a, b]) => { const n = at(g.map, hi.x + a, hi.y + b); return n && !n.blocked && !n.canopy; });
   Object.assign(g.player, { x: hi.x, y: hi.y - .25 }); const before = s.worldFlags.deaths || 0; let t = 1000;
@@ -50,7 +50,7 @@ test('a fall off the great tree is a fall: high enough, it kills', () => {
   assert.equal((s.worldFlags.deaths || 0) - before, 1, 'a long fall');
 });
 
-const climbIn = (dest) => { const [x, y] = find(12).find(([, , m]) => m.canopy.dest === dest), s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld');
+const climbIn = (dest) => { const [x, y] = find(12).find(([, , m]) => m.canopy.dest === dest), s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; s.atlas = { ...(s.atlas || {}), [`${x},${y}`]: { landscapeVersion: 12 } }; /* release 645: a journey that first saw it at version 12 */ g.loadArea('overworld');
   const gate = g.map.objects.find((o) => o.kind === 'canopyGate'); g.player.x = gate.x; g.player.y = gate.y; return { s, g, r: g.interact('enter', gate.id), x, y }; };
 
 test('the starfield door: a Starfield crossing high in the tree, and back out onto the crown', () => {
