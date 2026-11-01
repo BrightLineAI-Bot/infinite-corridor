@@ -624,7 +624,7 @@ export const GIANT = {
   dashRange: 4.5, dashSpeed: 11, dashTime: .3, dashGap: .18, dashMax: 2, dashCooldown: 2.4, hopChance: .3, hopHeight: .9,
   // Charge plans: how a charge attack strings its dashes and upswings together.
   chargePlans: [["dash", "swing"], ["dash", "dash"], ["dash", "swing", "dash", "swing"], ["dash", "dash", "swing"]],
-  chargeRun: 6.5, chargeTime: .9, upswingReach: 1.8, upswingArc: 130, upswingTime: .3, jumpChance: .55, jumpHeight: 2, jumpRise: .35,
+  chargeRun: 6.5, upswingCharge: .9 /* release 641: was a second chargeTime that overrode the 8 s electrified spell above */, upswingReach: 1.8, upswingArc: 130, upswingTime: .3, jumpChance: .55, jumpHeight: 2, jumpRise: .35,
   barrageBolts: 5, barrageEvery: .1, barrageSpread: 40, airDashSpeed: 9, airDashTime: .35, airArcReach: 2.6, slamLandChance: .5, landWarn: .45, landRadius: 1.6, landFall: .25,
 };
 export const KNIGHT = {

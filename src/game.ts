@@ -134,9 +134,9 @@ function dressSkyland(map, id, save = null) {
 // `sink` levels a second and steers freely at up to `speed` tiles a second (eased by `steer`), over walls, trees and water, and on
 // over the section's edge into the next. It ends only over open ground it can stand on; over water, walls or anything else it
 // holds at `skim` levels until there is. Tall blocked things (a trunk) still stop it. Out of reach of blows while above `safe`.
-export const GLIDE = { minDrop: 4, sink: 1.5, speed: 4.6, steer: 3.2, skim: .35, safe: 1.5,
+export const GLIDE = { minDrop: 4, sink: 1.5, speed: 4.6, steer: 3.2, skim: .35, safe: 1.5, drop: 9, dropSpeed: 1.8, // 641: closed, a freefall: `drop` levels a second, `dropSpeed` of drift
   found: "Caught in the crown's highest fork: a glider of leaf and vine, light as a held breath. Leave the crown of a great tree and it will carry you down.",
-  open: "The leaf glider opens. Steer where you will; it comes down slowly.", skimming: "Nothing to land on below: the glider holds above it.", land: "You come down out of the sky." };
+  open: "The leaf glider opens. Steer where you will; Jump folds it again.", shut: "You fold the glider and drop like a stone.", falling: "Falling! Jump to open the glider.", skimming: "Nothing to land on below: the glider holds above it.", land: "You come down out of the sky." };
 export const CANOPY_FALL_MS = 2500; // release 633: how long after leaving the great tree's crown a fall still opens the glider (637)
 export const CHASM = { version: 1, chance: .12, keepWalls: .12, name: "Starfield" }; // release 613 (Tim: "the chasm dungeons... those are now called Starfield dungeons"): was "Chasm"
 // Release 613 (Tim, 2026-10-31: "moving platforms... you can jump on them... take a ride like a conveyance... across a larger
@@ -1760,7 +1760,7 @@ export class Game {
     this.pauseStarted = this.paused ? now : null;
     this.jumpUntil = Number(s.playerRuntime.jump) > 0 ? now + s.playerRuntime.jump : -1e9; this.jumpStart = undefined; this.mechSpent = s.playerRuntime.mechSpent === true; // release 609 (Codex play-test, issue 5): a landed jump is not a jump that just ended, and an emptied boost stays emptied
     this.guardRemaining = Math.max(0, Number(s.playerRuntime.guard || 0));
-    { const q = s.playerRuntime.glide; this.glide = q && s.area === "overworld" && [q.z, q.vx, q.vy].every((v) => Number.isFinite(Number(v))) ? { z: Math.max(GLIDE.skim, Number(q.z)), vx: Number(q.vx), vy: Number(q.vy), told: false } : null; } // release 635
+    { const q = s.playerRuntime.glide; this.glide = q && s.area === "overworld" && [q.z, q.vx, q.vy].every((v) => Number.isFinite(Number(v))) ? { z: Math.max(GLIDE.skim, Number(q.z)), vx: Number(q.vx), vy: Number(q.vy), open: q.open !== false, ...(q.open === false && Number.isFinite(Number(q.fallFrom)) ? { fallFrom: Number(q.fallFrom) } : {}), told: false } : null; } // release 635
     this.magicBuffRemaining = Math.max(0, Number(save.magicBuff || 0));
     this.spellCooldownRemaining = Math.max(0, Number(save.spellCooldown || 0));
     this.projectiles = [];
@@ -2230,6 +2230,7 @@ export class Game {
   }
   loadArea(area, capture = true) {
     if (capture) this.snapshotArea();
+    if (area !== "overworld") this.glide = null; // release 641 (the pre-publish review of 623→639): a glide never follows you indoors
     this.shadowClone = null; this.cloneAim = false; // release 365: a shadow stays in the place it was cast
     this.builds = []; // release 265: builds belong to the map they stand on
     this.area = area;
@@ -2651,7 +2652,7 @@ export class Game {
       paused: this.paused,
       savedAt: Date.now(),
       playerRuntime: {
-        glide: this.glide && this.area === "overworld" ? { z: this.glide.z, vx: this.glide.vx, vy: this.glide.vy } : null, // release 635: a glide resumes in the air
+        glide: this.glide && this.area === "overworld" ? { z: this.glide.z, vx: this.glide.vx, vy: this.glide.vy, open: this.glide.open !== false, fallFrom: this.glide.fallFrom ?? null } : null, // release 635: a glide resumes in the air
         hp: this.player.hp,
         stamina: this.player.stamina,
         facing: this.player.facing,
@@ -3085,6 +3086,9 @@ export class Game {
   }
   interact(action, objectId = null) {
     this.sync();
+    // Release 641 (Tim: "if you're in open sea, you're swimming, I think you should be able to hit action and get the boat or deploy
+    // the robot"): swimming in the open world with nothing nearby to use, Act brings your skiff to you, or else calls up the robot.
+    if (!action && !objectId && this.area === "overworld" && this.swimming && !aboard(this.save)) { const r = this.callHelpAtSea(); if (r) return r; }
     const o = objectId
       ? this.map.objects.find(
           (q) =>
@@ -3365,23 +3369,33 @@ export class Game {
     m.active = false; b.mechSub = false; delete b.mechSubFrom; this.placeMooredSkiff(); this.subDiveUntil = 0;
     this.message = "The robot folds away and you are sitting in your skiff. Sail it ashore, or hold Act to step off."; this.sync(); return true;
   }
+  callHelpAtSea() {
+    const b = this.save.boat, p = this.player;
+    if (b?.owned && b.hull > 0 && board(this.save, { x: p.x, y: p.y })) { b.mechSub = false; delete b.mechSubFrom; this.placeMooredSkiff(); this.map.objects = this.map.objects.filter((o) => o.id !== "skiff-moored"); Object.assign(p, { sailVx: 0, sailVy: 0 }); this.swimming = false; this.message = "You haul yourself into your skiff; it was never far."; this.sync(); return { ok: true, message: this.message }; }
+    if (this.save.mech?.built && !this.save.mech.active && this.save.mech.mode !== "drone") { const ok = this.toggleMech(); return { ok, message: this.message }; }
+    return null;
+  }
   // Release 635: one frame of the glide. Returns "crossed" when it carried the Wayfarer into the next section.
   glideStep(x, y, dt, now) {
     const G = GLIDE, p = this.player, g = this.glide, width = mapWidth(this.map, this.area);
-    g.vx += (x * G.speed - g.vx) * Math.min(1, G.steer * dt); g.vy += (y * G.speed - g.vy) * Math.min(1, G.steer * dt);
+    const sp = g.open === false ? G.dropSpeed : G.speed; g.vx += (x * sp - g.vx) * Math.min(1, G.steer * dt); g.vy += (y * sp - g.vy) * Math.min(1, G.steer * dt);
     if (Math.abs(x) > .15 || Math.abs(y) > .15) p.facing = Math.abs(x) > Math.abs(y) ? (x < 0 ? "left" : "right") : (y < 0 ? "up" : "down");
     const tall = (px, py) => { const t = tileUnder(this.map, width, px, py); return !!t && t.blocked && (t.elev || 0) >= g.z - .5; };
     let nx = p.x + g.vx * dt, ny = p.y + g.vy * dt;
     if (tall(nx, p.y)) { nx = p.x; g.vx = 0; } if (tall(nx, ny)) { ny = p.y; g.vy = 0; }
-    g.z -= G.sink * dt; p.invulnerableUntil = g.z > G.safe ? Math.max(p.invulnerableUntil || 0, now + 120) : p.invulnerableUntil;
+    g.z -= (g.open === false ? G.drop : G.sink) * dt; p.invulnerableUntil = g.z > G.safe ? Math.max(p.invulnerableUntil || 0, now + 120) : p.invulnerableUntil;
     const out = nx < -.2 ? [-1, 0] : nx > SECTION_SIZE - .8 ? [1, 0] : ny < -.2 ? [0, -1] : ny > SECTION_SIZE - .9 ? [0, 1] : null;
     if (out) { const keep = out[0] ? ny : nx, was = `${this.rx},${this.ry}`; this.transitionSection(out[0], out[1]); if (this.area === "overworld" && `${this.rx},${this.ry}` !== was) { if (out[0]) { p.y = Math.max(.3, Math.min(30.7, keep)); p.x = out[0] < 0 ? 30.6 : .3; } else { p.x = Math.max(.3, Math.min(30.7, keep)); p.y = out[1] < 0 ? 30.6 : .3; } } return "crossed"; }
     p.x = nx; p.y = ny; p.walkPhase = 0;
     const ground = elevationAt(this.map, width, p.x, p.y), here = tileUnder(this.map, width, p.x, p.y);
     if (g.z > ground + .05) return "flying";
-    const hazard = footprintHazard(this.map, width, p.x, p.y), fit = footprintOpen(this.map, width, p.x, p.y) && (!hazard || this.swimsHere(hazard)) && !here?.blocked;
+    // Release 641 (Tim: "if you glide out over open sea... if you don't have the Tidemantle, you're just going to die"): it comes down
+    // on water, lava or ground alike (the ordinary hazards then apply); only a wall or anything blocked holds it up.
+    const hazard = footprintHazard(this.map, width, p.x, p.y), fit = !here?.blocked && (footprintOpen(this.map, width, p.x, p.y) || !!hazard);
     if (!fit) { g.z = Math.max(g.z, ground + G.skim); if (!g.told) { g.told = true; this.message = G.skimming; } return "flying"; }
-    this.glide = null; this.skyAir = null; this.message = G.land; return "landed";
+    const fell = g.open === false ? Math.max(0, (g.fallFrom ?? g.z) - ground) : 0; this.glide = null; this.skyAir = null;
+    if (fell > 1) { const hurt = fallDamage(Math.round(fell), this.save.maxHp); if (hurt === Infinity) { p.hp = 0; this._fatalFallPending = true; this.message = `The Wayfarer falls ${Math.round(fell)} levels.`; } else if (hurt > 0) { p.hp = Math.max(1, p.hp - hurt); this.message = `A hard landing: ${Math.round(fell)} levels down.`; } }
+    else this.message = G.land; return "landed";
   }
   droneUp() { const m = this.save.mech; return m?.active === true && m.mode === "drone" && !aboard(this.save); }
   droneHeal(message) {
@@ -5301,8 +5315,13 @@ export class Game {
       else { echoEvent(this, "dodge", now); onConstellationDodge(this); if (fieldOn(this.save, "drift-field")) { const q = this.player, cx = q.x + .5, cy = q.y + .45, f = this.ownSpellFx(true).filter((e) => Math.hypot(e.x - cx, e.y - cy) <= FIELD_PASSIVES["drift-field"].reach).sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0]; if (f) this.driftField = { id: f.id, at: q.dodgeUntil || now }; } /* release 515: Drift Field */ if (this.area === "dungeon" && runHas(this.save, this.areaId(), "shadowStep") && !this.shadowCloneActive(now)) { const o = cloneOffset({ x: Number(x) || p.lastMoveVector?.x || 0, y: Number(y) || p.lastMoveVector?.y || 1 }, this.save.lastAim, SHADOW_STEP.behind); this.shadowClone = { ox: o.x, oy: o.y, until: now + SHADOW_STEP.seconds * 1000, marginalia: true }; } /* release 461: Shadow Step */ if (this.area === "dungeon" && runHas(this.save, this.areaId(), "emberWake")) this.dodgeBurst(p.x + .5, p.y + .45, EMBER_WAKE.radius, EMBER_WAKE.base + EMBER_WAKE.perLevel * (Number(this.save.level) || 1), now); /* release 459; 481: dodgeBurst */ if (this.area === "overworld" && aboard(this.save) && submersible(this.save)) { this.subDiveUntil = now + BOAT.sub.dive * 1000; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, this.subDiveUntil); } } // release 311: aboard a submersible a dodge is a dive
     }
     if (input.consume("jump")) {
-      if (now < this.jumpUntil) this.message = "Already airborne.";
-      else { this.jumpDur = (this.area === "overworld" && (this.skyLevel > 0 || tileUnder(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)?.skyPlatform) ? JUMP.sky : JUMP.base) + skillRank(this.save,"quickening") * JUMP.quickening; this.jumpStart = now; this.jumpUntil = now + this.jumpDur; }
+      // Release 641 (Tim: "you should be able to deploy, and I guess stow, the glider in the air by hitting the jump button"):
+      // falling or gliding, Jump opens or folds the glider; mid-jump, high enough over what is below, it opens one.
+      const width0 = mapWidth(this.map, this.area), below = elevationAt(this.map, width0, this.player.x, this.player.y), high = Math.max(this.skyAir ?? 0, this.jumpFrom ?? 0);
+      if (this.glide && this.area === "overworld") { const g = this.glide; g.open = !g.open; if (!g.open) g.fallFrom = g.z; this.message = g.open ? GLIDE.open : GLIDE.shut; }
+      else if (now < this.jumpUntil && this.save.glider && this.area === "overworld" && !this.mechUp() && !this.droneUp() && high - below >= GLIDE.minDrop) { this.glide = { z: high, vx: 0, vy: 0, open: true, told: false }; this.skyAir = null; this.message = GLIDE.open; }
+      else if (now < this.jumpUntil) this.message = "Already airborne.";
+      else { this.jumpFrom = elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y); this.jumpDur = (this.area === "overworld" && (this.skyLevel > 0 || tileUnder(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)?.skyPlatform) ? JUMP.sky : JUMP.base) + skillRank(this.save,"quickening") * JUMP.quickening; this.jumpStart = now; this.jumpUntil = now + this.jumpDur; }
     }
     { const m = this.save.mech; this.mechBoosting = false; // release 317: in the robot, hold Jump in the air to boost
       if (!input.held?.("jump")) this.mechSpent = false; // release 319: an emptied boost needs Jump let go before it fires again
@@ -5402,7 +5421,7 @@ export class Game {
       p.airElev = p.jumping && this.skyAir != null ? this.skyAir : undefined;
       let fallStart = this.skyAir != null ? Math.max(before, this.skyAir) : before, drop = 0, hurt = 0;
       const finishFall = (height) => {
-        const raw0 = fallStart - height; if (this.save.glider && !this.glide && raw0 >= GLIDE.minDrop && now - (this.lastCrownAt ?? -1e9) < CANOPY_FALL_MS) { this.glide = { z: fallStart, vx: 0, vy: 0, told: false }; this.message = GLIDE.open; return; } // release 635: the glider opens
+        const raw0 = fallStart - height; if (this.save.glider && !this.glide && raw0 >= GLIDE.minDrop && this.area === "overworld" && !this.mechUp() && !this.droneUp()) { this.glide = { z: fallStart, vx: 0, vy: 0, open: false, fallFrom: fallStart, told: false }; this.message = GLIDE.falling; return; } // release 641: a long fall is a freefall: Jump opens the glider // release 635: the glider opens
         const distance = raw0, damage = fallDamage(distance, this.save.maxHp); // release 637: off the great tree a fall is a fall
         if (damage > 0) { hurt += damage; drop = Math.max(drop, distance); }
       };
