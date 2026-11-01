@@ -97,11 +97,18 @@ export function discAt(map, fx, fy, { level = null, maxLevel = Infinity, below =
   let best = null; for (const d of map?.skyDiscs || []) if (Math.hypot(fx - d.x, fy - d.y) <= d.r && (level === null ? d.level <= maxLevel && d.level < below : d.level === level) && (!best || d.level > best.level)) best = d;
   return best;
 }
+// Release 672 (Tim, 2026-11-01: "I haven't seen any... skyways"): where Sky Stairs stand, by placement version, pinned per section
+// in the Atlas (`skyPlace`, given to sections first seen from this release; sections seen before keep version 1). Version 1 is
+// one candidate per 8×8 block past 14 sections out (about one section in a hundred); version 2 adds one per 6×6 block past 6 (its own
+// hash) as well as every version 1 stair: about two and a half to three times as many, and nearer the start. The ascent itself (skyVersion) is unchanged.
+export const SKY_PLACE = { version: 2, 1: { macro: 8, chance: .65, minDepth: 14, key: "skyland:v1" }, 2: { macro: 6, chance: .65, minDepth: 6, key: "skyland:v2", also: 1 } }; // version 2 keeps every version 1 stair (`also`)
 // Is there a Sky Stair in this section? One candidate per macro block, kept with `chance`.
-export function skylandSection(seed, rx, ry) {
-  if (Math.abs(rx) + Math.abs(ry) < SKYLANDS.minDepth) return false;
-  const M = SKYLANDS.macro, mx = Math.floor(rx / M), my = Math.floor(ry / M), h = hashSeed(`${seed}:skyland:v1:${mx}:${my}`);
-  if ((h % 1000) / 1000 >= SKYLANDS.chance) return false;
+export function skylandSection(seed, rx, ry, place = 1) {
+  const P = SKY_PLACE[place] || SKY_PLACE[1];
+  if (P.also && skylandSection(seed, rx, ry, P.also)) return true;
+  if (Math.abs(rx) + Math.abs(ry) < P.minDepth) return false;
+  const M = P.macro, mx = Math.floor(rx / M), my = Math.floor(ry / M), h = hashSeed(`${seed}:${P.key}:${mx}:${my}`);
+  if ((h % 1000) / 1000 >= P.chance) return false;
   return mx * M + ((h >>> 10) % M) === rx && my * M + ((h >>> 16) % M) === ry;
 }
 // The tiers a Sky Stair offers now: 0 up to one above the best cleared, each affordable with the sigils held.

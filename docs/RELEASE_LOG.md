@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-**675** (odd, first session) · **670** (even, second session)
+**675** (odd, first session) · **674** (even, second session)
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
 | 673 | Claude | `claude/dreamy-rubin-yn6q2p` | Starfield Deep Annex: a rare named crossing of three floors, each harder, the third another environment, its far door to a random place in the world | Building. |
+| 672 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Great trees, skyways and Starfield crossings easier to find on new ground (landscape 14, Sky Stair placement 2, Starfield .2); the findability survey; Crown Rest and coastal-glide fixes. 670 skipped: main was at 671 | Merged (PR #321). |
 | 671 | Claude | PR #320 | Fractured waves: several packs per wave from different sides, elite-led every third, a rest after a wave is cleared, more join one left standing; the cap counts only wave creatures | Merged. |
 | 669 | Claude | PR #317 | Crown Rest on every great tree (touch it; wake there); the glider in a freefall with the drone out; the Wayfarer's ghost behind giant trees covers the whole crown | Merged (`r669-637cc97f06cd`). Published in r669. |
 | 668 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Guardians and elites fight back: extra modules, signature moves (quake, barrage, crossfire, meteor), aggression, adds at health thresholds | Merged (PR #319). Published in r669. |

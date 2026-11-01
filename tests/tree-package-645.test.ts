@@ -19,7 +19,7 @@ function climbable(m) {
 }
 
 test('version 13 grows the tree package: spires and groves, every one climbed to its door, as deterministic as the ground', () => {
-  assert.equal(LANDSCAPE_VERSION, 13); assert.equal(TREE_VERSION, 13);
+  assert.equal(LANDSCAPE_VERSION, 14); assert.equal(TREE_VERSION, 13);
   const spires = find((m) => m.canopy.form === 'spire', 6), groves = find((m) => m.canopy.form === 'grove', 4);
   assert.ok(spires.length >= 6 && groves.length >= 4, `${spires.length} spires, ${groves.length} groves`);
   const looks = new Set(), shapes = new Set();

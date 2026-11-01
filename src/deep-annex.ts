@@ -14,7 +14,7 @@ import { hashSeed } from "./random.ts";
 
 export const DEEP_ANNEX = {
   version: 1,
-  chance: .25, // of the Starfield crossings never entered before (CHASM.chance .12: about 3% of crossings)
+  chance: .25, // of the Starfield crossings never entered before (CHASM.chance .2 since release 672: about 5% of crossings)
   floors: 3,
   name: "Starfield Deep Annex",
   scale: { hp: [1, 1.3, 1.6], damage: [1, 1.15, 1.3] }, // per floor
