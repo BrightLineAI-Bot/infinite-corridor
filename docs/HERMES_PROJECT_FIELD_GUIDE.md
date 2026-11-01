@@ -2694,6 +2694,17 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 661: floor dots — 2026-11-01
+
+Tim (2026-11-01): "something on the heads up display that just shows the different levels... on the right side of the screen...
+little dots, pretty unobtrusive... depending on which level you are".
+
+**CODE:** `src/renderer.ts` `render`, in screen space after the world pass: for a `multiLevel` dungeon map with more than one level,
+a column of dots at `w - 12`, centred vertically, one per `map.levels` entry. The current `levelId` is lit and ringed; levels in the
+dungeon history's `deep.discoveredLevelIds` (and the first) are dim; the rest are faint.
+
+**BOUNDARY:** Drawing only. Deeper dungeons (more floors) need a new generator version and are planned separately.
+
 ## Release 659: the Far Array explains itself — 2026-11-01
 
 Tim (2026-11-01, with a diagnostic): "I don't know how to access the listener once I get to the dungeon... I don't know when I'm

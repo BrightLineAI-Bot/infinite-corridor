@@ -2113,6 +2113,13 @@ export function render(ctx, g, w, h, now) {
       ctx.fill();
     }
   ctx.restore();
+  // Release 661 (Tim: "something on the heads up display that just shows the different levels... on the right side... little
+  // dots... pretty unobtrusive"): in a dungeon of several floors, a column of dots at the right edge, the top one the first floor:
+  // the floor you stand on lit and ringed, floors you have found dim, the rest faint.
+  if (g.area === "dungeon" && g.map?.multiLevel && (g.map.levels?.length || 0) > 1) { const L = g.map.levels, found = g.save?.consequences?.dungeons?.[g.areaId?.()]?.deep?.discoveredLevelIds || [], gap = 14, x = w - 12, y0 = h / 2 - (L.length - 1) * gap / 2;
+    ctx.save(); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + (L.length - 1) * gap); ctx.stroke();
+    L.forEach((lv, i) => { const y = y0 + i * gap, here = lv.id === g.map.levelId, seen = here || i === 0 || found.includes(lv.id); ctx.fillStyle = here ? "#ffe7a6" : seen ? "#c9c2b0aa" : "#ffffff30"; ctx.beginPath(); ctx.arc(x, y, here ? 4 : 3, 0, Math.PI * 2); ctx.fill(); if (here) { ctx.strokeStyle = "#ffe7a6aa"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke(); } });
+    ctx.restore(); }
   if (g.area === "dungeon" && g.map?.chasm) { const P = CHASM_STARS.penumbra, cx = w / 2, cy = h / 2, gr = ctx.createRadialGradient(cx, cy, s * P.inner, cx, cy, s * P.outer); gr.addColorStop(0, "rgba(4,3,14,0)"); gr.addColorStop(1, `rgba(4,3,14,${P.dark})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, w, h); } // release 593: the penumbra
   const t2 = timed ? performance.now() : 0;
   // Dungeons with their own weather (Underlands themes) show it too: snow in a cave, sparks rising from a lava bog.
