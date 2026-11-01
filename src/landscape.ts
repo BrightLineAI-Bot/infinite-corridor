@@ -18,6 +18,8 @@ import { placeDock } from "./boats.ts";
 // Each section keeps the version it was first seen with.
 export const LANDSCAPE_VERSION = 12; // 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles
+export const CANOPY_LIFT = 2; // release 637: a great tree's levels are drawn this many times taller (the climb is unchanged)
+export const tileLiftScale = (t) => (t?.canopy ? CANOPY_LIFT : 1);
 export const MAX_LEVEL = 5;
 // Fraction of max health lost when dropping this many levels; null = fatal.
 export const FALL_DAMAGE = { 1: 0, 2: .15, 3: .4 };
@@ -578,53 +580,66 @@ function applyPillarGround(map, seed, rx, ry, mask) {
   if (touched) map.pillarlands = true;
   return touched;
 }
-// Release 631 (Tim, 2026-10-31: "The pale vines looks good, but I'm not seeing any giant trees you can climb by jumping between
-// platforms. This should take you to a platform or dungeon. It could be a skyland dungeon without the divine challenge or a vine
-// dungeon, or a starfield dungeon"); release 633 (Tim: "The huge trees should have 1-2 tile wide tiles that you can hop between
-// to ascend; the trees should be super tall and extend beyond the top of the frame, really unreasonably tall"): from version 12 a
-// share (`chance`) of jungle sections grow one giant tree. Its trunk is a `trunk`-square column of blocked `canopyTrunk` tiles
-// standing `trunkAbove` levels over the landing (the renderer carries it on far past the top of the screen). Round it, a single
-// path spirals inward through `rings` square rings (a spiral walk of the box, so each tile touches the next): branches of 1 or 2
-// tiles (`lengths`), each one level above the last, with a one-tile gap between them, so every branch is a hop up; the last
-// branch, by the trunk, is the landing, and holds the door (`canopyGate`): to a Starfield crossing high in the canopy, or to a
-// cloud hold of the Skylands (no divine challenge), decided once per tree (`starfield` share). Branch tiles are sky platforms
-// (a hop keeps its height over the gap). Creatures cannot climb; nothing spawns up there; jungle trees on its ground are cleared.
-// Bounded: one tree, a 9 by 9 box, once per section.
-export const CANOPY = { chance: .55, trunk: 3, rings: 3, lengths: [1, 2], gap: 1, trunkAbove: 3, tries: 60, starfield: .5, fallCap: 3 };
+// Release 631 (Tim, 2026-10-31: "giant trees you can climb by jumping between platforms... to a platform or dungeon"); 633 ("1-2
+// tile wide tiles that you can hop between... super tall"); release 637 (Tim, 2026-11-01: "The tree is just a little too busy...
+// they just look like platforms around the tree, when they could just be branches that are poking off... extending from the tree
+// that you can hop onto, and then hop up to get to higher heights... something like the divine towers in Elden Ring... mostly
+// traversal... constantly being scared of dying... super tall... the real goal is to get to the top"). From version 12 a share
+// (`chance`) of jungle sections grow one great tree:
+// - its trunk, a `trunk`-square column of `canopyTrunk`, and its top is the crown: a platform you stand on, with the door;
+// - from each side of the trunk two branches stick straight out (in the side's first and last column, a gap column between), each
+//   rising one level a tile as it goes (slope tiles: walked, not hopped), `reach` tiles long as the ground allows;
+// - the climb: out along one branch to its tip, a hop across the gap to the tip of its twin, back up the twin to the trunk, over a
+//   knot of wood at the corner to the next side, and so round the four sides; the last branch ends one hop below the crown.
+// Every branch tile is a sky platform (a hop keeps its height over the gap). The first tile is level 1 and flat, so creatures
+// cannot step on; nothing spawns up there; jungle trees on its ground are cleared. A fall is a fall: the leaf glider opens only from
+// the crown. Bounded: one tree, a few hundred tile checks, once per section.
+export const CANOPY = { chance: .55, trunk: 3, reach: [3, 7], tries: 80, starfield: .5 };
 function buildCanopyTree(map, seed, rx, ry) {
-  const C = CANOPY, h = (k) => hashSeed(`${seed}:canopy:v2:${rx}:${ry}:${k}`), at = (x, y) => map.tiles[idx(x, y)];
+  const C = CANOPY, h = (k) => hashSeed(`${seed}:canopy:v3:${rx}:${ry}:${k}`), at = (x, y) => map.tiles[idx(x, y)];
   if ((hashSeed(`${seed}:canopy-grow:v1:${ry * 7919 + rx}`) % 1000) / 1000 >= C.chance) return null;
   const ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1, objAt = new Set((map.objects || []).filter((o) => !o.jungle).map((o) => idx(Math.round(o.x), Math.round(o.y))));
   const exitLine = (x, y) => (near(ex.north, x) && y <= 16) || (near(ex.south, x) && y >= 16) || (near(ex.west, y) && x <= 16) || (near(ex.east, y) && x >= 16);
   const ground = (x, y) => { const t = x >= 1 && y >= 1 && x <= 30 && y <= 30 && at(x, y); return !!t && t.landscape === "jungle" && !t.structure && !t.buildingId && !t.environment && !t.slope && !(t.elev > 0) && !exitLine(x, y) && !(x >= 12 && x <= 20 && y >= 12 && y <= 20) && !objAt.has(idx(x, y)) && (t.kind === "jungleFloor" || t.kind === "jungleMire" || t.kind === "buttressRoot"); };
-  const box = C.trunk + 2 * C.rings, walked = reachableFromPlaza(map);
+  const walked = reachableFromPlaza(map), N = C.trunk;
+  // The four sides in climbing order, each as: outward direction, the side's first and last column (from the previous corner
+  // round to the next), and the corner knot that follows it.
+  const sides = (tx, ty) => [
+    { d: [1, 0], a: [tx + N, ty], b: [tx + N, ty + N - 1], knot: [tx + N, ty + N] },
+    { d: [0, 1], a: [tx + N - 1, ty + N], b: [tx, ty + N], knot: [tx - 1, ty + N] },
+    { d: [-1, 0], a: [tx - 1, ty + N - 1], b: [tx - 1, ty], knot: [tx - 1, ty - 1] },
+    { d: [0, -1], a: [tx, ty - 1], b: [tx + N - 1, ty - 1], knot: null }];
   for (let t = 0; t < C.tries; t++) {
-    const bx = 1 + h(`x${t}`) % (31 - box), by = 1 + h(`y${t}`) % (31 - box); let fine = true;
-    for (let j = 0; j < box && fine; j++) for (let i = 0; i < box && fine; i++) fine = ground(bx + i, by + j);
+    const tx = 2 + h(`x${t}`) % 26, ty = 2 + h(`y${t}`) % 26; let fine = true;
+    for (let j = 0; j < N && fine; j++) for (let i = 0; i < N && fine; i++) fine = ground(tx + i, ty + j);
     if (!fine) continue;
-    // The spiral: walk each ring clockwise from its top-left corner, outermost first; ring k's last tile touches ring k+1's first.
-    const path = [];
-    for (let k = 0; k < C.rings; k++) { const x0 = bx + k, y0 = by + k, n = box - 2 * k;
-      for (let i = 0; i < n; i++) path.push([x0 + i, y0]); for (let j = 1; j < n; j++) path.push([x0 + n - 1, y0 + j]);
-      for (let i = n - 2; i >= 0; i--) path.push([x0 + i, y0 + n - 1]); for (let j = n - 2; j >= 1; j--) path.push([x0, y0 + j]); }
-    // Branches along it: a 1- or 2-tile branch, a gap, the next branch one level up, and so on; the landing is the last branch.
-    // The gap between two branches is a sag of leaves one level below the lower branch (`canopyLeaf`): a missed hop drops you a
-    // single level onto it, and you climb back; any path left over at the end joins the landing.
-    const branches = [], gaps = []; let i = 0, lv = 0, b = 0;
-    while (i < path.length) { const len = C.lengths[h(`len${t}:${b++}`) % C.lengths.length]; if (i + len > path.length) break; lv++; branches.push({ tiles: path.slice(i, i + len), lv }); i += len;
-      if (i + C.gap + 1 > path.length) { branches[branches.length - 1].tiles.push(...path.slice(i)); break; } for (let g = 0; g < C.gap; g++) gaps.push([...path[i + g], Math.max(0, lv - 1)]); i += C.gap; }
-    const foot = branches[0], landing = branches[branches.length - 1];
-    if (!foot.tiles.some(([x, y]) => [[-1, 0], [0, -1]].some(([dx, dy]) => walked[idx(x + dx, y + dy)]))) continue; // the climb starts from ground you can walk to
-    const tx = bx + C.rings, ty = by + C.rings, top = landing.lv + C.trunkAbove, all = new Set();
-    for (let j = 0; j < box; j++) for (let k = 0; k < box; k++) all.add(idx(bx + k, by + j));
-    for (let j = 0; j < C.trunk; j++) for (let k = 0; k < C.trunk; k++) Object.assign(at(tx + k, ty + j), { kind: "canopyTrunk", elev: top, slope: false, blocked: true, canopy: true });
-    for (const [x, y, gl] of gaps) Object.assign(at(x, y), gl > 0 ? { kind: "canopyLeaf", elev: gl, slope: false, blocked: false, canopy: true, skyPlatform: true } : { kind: "jungleFloor", elev: 0, slope: false, blocked: false });
-    for (const { tiles, lv } of branches) for (const [x, y] of tiles) Object.assign(at(x, y), { kind: "canopyBranch", elev: lv, slope: false, blocked: false, canopy: true, skyPlatform: true });
-    for (const [x, y] of landing.tiles) at(x, y).kind = "canopyCrown";
+    const S = sides(tx, ty), plan = [];
+    for (const sd of S) { // the longest reach the ground allows for both branches of the side, at most the hashed reach
+      const want = C.reach[0] + h(`r${t}:${plan.length}`) % (C.reach[1] - C.reach[0] + 1); let L = 0;
+      for (let r = 0; r < want; r++) { if (![sd.a, sd.b].every(([x, y]) => ground(x + sd.d[0] * r, y + sd.d[1] * r))) break; L = r + 1; }
+      if (L < C.reach[0] || (sd.knot && !ground(...sd.knot))) { fine = false; break; }
+      plan.push({ ...sd, L });
+    }
+    if (!fine) continue;
+    const foot = S[0].a, step = [foot[0], foot[1] - 1]; if (!walked[idx(step[0], step[1])] || !ground(step[0], step[1])) continue; // the climb starts from ground you can walk to: the tile beside the first branch, outside every bough
+    // Lay the climb.
+    const laid = [], saved = new Map(), keep = (x, y) => { if (!saved.has(idx(x, y))) saved.set(idx(x, y), { ...at(x, y) }); };
+    const put = (x, y, elev, slope, kind = "canopyBranch") => { keep(x, y); Object.assign(at(x, y), { kind, elev, slope, blocked: false, canopy: true, skyPlatform: true }); laid.push([x, y]); };
+    let lv = 0;
+    for (const sd of plan) {
+      for (let r = 0; r < sd.L; r++) { lv++; put(sd.a[0] + sd.d[0] * r, sd.a[1] + sd.d[1] * r, lv, !(lv === 1)); } // out, rising (the very first tile flat)
+      lv++; // the hop across the gap at the tips
+      for (let r = sd.L - 1; r >= 0; r--) { put(sd.b[0] + sd.d[0] * r, sd.b[1] + sd.d[1] * r, lv, true); if (r) lv++; } // back in, rising
+      if (sd.knot) { lv++; put(sd.knot[0], sd.knot[1], lv, false); }
+    }
+    const top = lv + 1; // one hop up from the last branch onto the crown
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { keep(tx + i, ty + j); Object.assign(at(tx + i, ty + j), { kind: "canopyTrunk", elev: top, slope: false, blocked: false, canopy: true, skyPlatform: true }); laid.push([tx + i, ty + j]); }
+    if (!reachableFromPlaza(map)[idx(step[0], step[1])]) { for (const [i, t0] of saved) { const t = map.tiles[i]; for (const k of Object.keys(t)) delete t[k]; Object.assign(t, t0); } continue; } // the boughs cut the foot off: try elsewhere
+    const all = new Set(laid.map(([x, y]) => idx(x, y)));
     map.objects = (map.objects || []).filter((o) => !(o.jungle && all.has(idx(Math.round(o.x), Math.round(o.y)))));
-    const dest = (hashSeed(`${seed}:canopy-door:v1:${ry * 7919 + rx}`) % 1000) / 1000 < C.starfield ? "starfield" : "cloud", [dx, dy] = landing.tiles[landing.tiles.length - 1];
-    map.objects.push({ id: `canopy-gate-${rx}-${ry}`, kind: "canopyGate", name: dest === "starfield" ? "A door in the great tree, full of stars" : "A door in the great tree, full of cloud", x: dx, y: dy, dest, actions: ["enter"], state: "open" });
-    map.canopy = { x0: tx, y0: ty, size: C.trunk, box: { x: bx, y: by, n: box }, height: landing.lv, top, branches: branches.length, dest };
+    const dest = (hashSeed(`${seed}:canopy-door:v1:${ry * 7919 + rx}`) % 1000) / 1000 < C.starfield ? "starfield" : "cloud";
+    map.objects.push({ id: `canopy-gate-${rx}-${ry}`, kind: "canopyGate", name: dest === "starfield" ? "A door in the great tree, full of stars" : "A door in the great tree, full of cloud", x: tx + 1, y: ty + 1, dest, actions: ["enter"], state: "open" });
+    map.canopy = { x0: tx, y0: ty, size: N, height: top, top, branches: plan.length * 2, reach: plan.map((q) => q.L), dest, box: { x: tx - C.reach[1], y: ty - C.reach[1], n: N + 2 * C.reach[1] } };
     map.enemySpawns = (map.enemySpawns || []).filter((q) => !all.has(idx(Math.round(q.x), Math.round(q.y))));
     return map.canopy;
   }
@@ -986,7 +1001,7 @@ export function tileUnder(map, width, x, y) {
 export function liftAt(map, width, x, y) {
   if (!map?.landscape) return 0;
   const t = tileUnder(map, width, x, y);
-  return t ? ((t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL : 0;
+  return t ? ((t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * tileLiftScale(t) : 0;
 }
 // Elevation rule for one movement step (see header). `entity.isPlayer` and `entity.jumping` are set by the game.
 export function canStep(entity, map, width, fromX, fromY, toX, toY) {

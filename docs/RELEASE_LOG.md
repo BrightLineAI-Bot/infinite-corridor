@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**637**
+**639**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 635 | Claude | `claude/dreamy-rubin-yn6q2p` | Sky above the great trees; the leaf glider (found on a tree, opens only from one, glides across sections) | Building. |
+| 637 | Claude | `claude/dreamy-rubin-yn6q2p` | The great trees as towers: branches out of the trunk, rising, hops tip to tip, the crown on the trunk, 30–42 levels | Building. |
+| 635 | Claude | PR #301 | Sky above the great trees; the leaf glider (found on a tree, opens only from one, glides across sections) | Merged (`r635-f74d1dcad910`). Not published. |
 | 633 | Claude | PR #300 | The great trees rebuilt unreasonably tall: 1–2-tile branches spiralling round a trunk past the top of the screen | Merged (`r633-abd4f175d91b`). Not published. |
 | 631 | Claude | PR #299 | Giant jungle trees climbed branch by branch to a door: a Starfield crossing or a cloud hold | Merged (`r631-6b514ad11022`). Not published. |
 | 629 | Claude | PR #298 | Five more palette regions in landscape version 11: petrified woods, savanna, reef flats, amberwood, obsidian fields | Merged (`r629-abf201d59b52`). Not published. |
