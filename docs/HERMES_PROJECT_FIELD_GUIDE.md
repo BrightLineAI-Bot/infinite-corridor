@@ -2694,6 +2694,47 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release NNN: the Stalker's appendage and the gorilla's arms — 2026-11-01
+
+Tim (2026-11-01): a shapeshifting appendage from its back — a sword sweep, three spikes forward with three blasts from the tips
+that "bounce off blocks", a tendril into the ground with "a series of eruptions... staggered... tracking you... pretty large", the
+appendage thrown "like a helicopter blade... and like a boomerang... comes back to him"; the gorilla launching its fists ("grab you
+and pull you in", "remote slam", "a rapid sweep", both arms "a 180° sweep around it"), "a charge... knock you off the tree... some
+knockback" (not a knock-up), "punch and kick... similar to the iron fist"; then "the stalker kind of looks a little goofy in the
+face"; "a few visual passes on the gorilla... good animations... when we work on all his moves".
+
+**CODE:** `src/stalker.ts`.
+- `STALKER.limb` (sword, spikes with their bouncing `blast`, tendril, boomerang). The moves join `turret.moves` (orbs, sword,
+  cone, spikes, ring, tendril, xblade, boomerang), so one back move at a time, each marked during the turret's `warn`.
+  - `startLimb`/`tickLimb`: sword hits once mid-sweep inside `arc`; spikes hit along `spikeLines` and shoot three `blast`s
+    (`bounces` 2: `tickShots` reflects them off `w.shotBlocked`).
+  - Tendril: `count` eruptions every `every` s at the Wayfarer's spot then, each striking `arm` s later within `radius`
+    (`tickErupts`, at most `cap`).
+  - Boomerang: a `boomer` shot (flies over walls) that turns home after `out` s and can hit once each way.
+- `STALKER.arms`:
+  - `pick` is the gorilla's order (leap, grab, combo, slam, charge, sweep, spin; `apeMoveNext`). Prowl closes to that move's
+    `range`; `startApeMove`/`tickApeAct` run it.
+  - grab: a fist out at `speed`; caught, it pulls through `w.displace`, then a fist blow.
+  - slam: the fist rises over the marked spot and drops.
+  - sweep: one arm, two passes, `arc`; spin: both arms half a circle. Hits are segment tests, once per pass.
+  - charge: straight along the aim; a touch hurts and knocks `knock` tiles.
+  - combo: jab, cross, kick with knockback.
+  - `retract` brings the fists home; `e.stalkFists`/`e.stalkStrike` are for drawing.
+- `src/game.ts` `stalkerWorld.displace`: `moveAxis(player, …, allowLethalTerrain)`, so a knock can carry the Wayfarer off a
+  ledge.
+- `src/stalker-render.ts`:
+  - `drawApe` is rebuilt over passes: a hunched, massive silverback (hump, silver saddle and seam, chest skin, crested head,
+    heavy brow, dark face) with bat wings (arm bone, wrist, three fingers, scalloped membrane).
+  - Ape poses: walk (knuckle gait, body bob), fly (wings beating), charge (head down, wings swept), raise, punch, kick.
+  - `drawApeArm` draws the stretching arms to launched fists.
+  - `drawLimb`/`limbCurve` draw the appendage, `drawErupts` the eruption rings and bursts, plus the blast and boomerang shots,
+    and a ground mark for every new move.
+  - The cat's head is redrawn as a big cat's profile: short deep muzzle, whisker pad, chin, hooded almond eye, brow ridge,
+    ears laid back.
+
+**BOUNDARY:** Runtime only: no save field, no generator change. Bounded: shots still capped at 12, eruptions at 6, two fists,
+segment tests only, no pathfinding. Tests: `tests/stalker-arsenal.test.ts`.
+
 ## Release 685: ruined arcologies — 2026-11-01
 
 Tim (2026-11-01): "large apartment buildings that are kind of like dilapidated or destroyed... formerly cyberpunk utopias...
