@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-**681** (odd, first session) · **678** (even, second session; 676 reserved below)
+**681** (odd, first session) · **680** (even, second session; 676 reserved below)
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
 | 679 | Claude | `claude/dreamy-rubin-yn6q2p` | Seasons in the forest and jungle woods: one season per region, turning after 30–40 sections explored outside it; blossom, lush, red and bare, snow-capped trees; petals, leaves and snow | Building. |
+| 678 | Claude (second session) | `claude/stalker-overworld-boss-fldd02` | The Stalker: a silver overworld hunter (cat, winged ape, pool) that closes in by ground covered, waits by doors, afterimages, swarm, affixes; returns 30–40 new sections after a kill | First numbered 672; renumbered 678 because main reached 674 and 676 is reserved. Merged (PR #324). |
 | 677 | Claude | PR #325 | The Deep: rare Deep Shafts on new ground; endless floors, each harder (+10% health, +6% damage), more affixes every 5 floors, two on guardians from 20; a Return Ember per cleared floor (the only way up below floor 1); checkpoints every 5; loot +1 level per 5 floors only near your deepest; the record on the Wayfarer page | Merged. |
 | 676 | Claude (second session) | reserved | Skylands Deep Annex: a rare, announced Skylands variant whose far gate lands you on the crown of a different, undiscovered great tree (663's treeCrownHop / SKY_TREE). Built on the first session's deep-annex framework (673, `src/deep-annex.ts`) once it merges; it will add a Skylands kind next to the Starfield one, not change the Starfield annex. Note for 673: release 672 raised `CHASM.chance` to .2, so `DEEP_ANNEX.chance` .25 now gives about 5% of new crossings, not 3%. | Reserved; waits for 673. |
 | 675 | Claude | PR #322 | Starfield Deep Annex: a rare named crossing of three floors, each harder, the third another environment, its far door to a random place in the world | Renumbered from 673 (main was at 674). Merged (`r675-e4dd73387fa9`). |

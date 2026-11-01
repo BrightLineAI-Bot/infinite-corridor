@@ -2713,6 +2713,50 @@ landscape-render.ts `setTreeSeason` recolours the tree package's leaves and wash
 **BOUNDARY:** Drawing only: no generator, tile, collision or tree object changes. Save additive at schema 14
 (`save.seasons`, normalised in `freshSave` and `migrateSave`). Bounded: at most 48 regions counted, a dozen motes of weather.
 Tests: `tests/seasons-679.test.ts`.
+## Release 678: the Stalker — 2026-11-01
+
+Tim (2026-11-01): "the world is too peaceful". A silver creature of the Corridor that hunts the Wayfarer on the overworld only,
+one at a time, never entering dungeons, buildings, shelters or towns, waiting by the door like a Gate Revenant; three forms (a
+six-legged white snow leopard, a winged white silverback, a silver puddle); never staggered; an afterimage dodge with decoys;
+hit-and-retreat; a swarm of small copies; 1–2 affixes; regional-threat scaling; about 1.4× the Wayfarer; elite-tier rewards; after
+a kill it hunts again only after 30–40 new sections.
+
+**CODE:**
+- New `src/stalker.ts` (in `scripts/build.mjs` and both `sw.js` lists). `STALKER` holds every number: `unlockTier` (3, Resonant,
+  as the roaming Gate Revenant), `hunt` (`need` 300–440 tiles, `warn` fractions .5/.75/.9, `follow` 70 tiles, `step` 1.5 — a
+  frame's movement above it is a jump between places and is not counted, `spawn` 7–10 tiles), `reset` (30–40), `vitals`, `size`
+  1.4, the `forms` (cat, ape, pool), `prowl`, `afterimage` (3 charges, 3.5 s gap, 14 s recharge, 45%, 1–2 decoys), `decoy`,
+  `swarm` (at 70% and 40%, 3 each, cap 5), `affixes` [1, 2] and `reward` (40 marks + 1 per level, 3 drops).
+- Saved state `save.stalker` (`ensureStalker`, in `freshSave` and `migrateSave`, additive at schema 14): `ground`, `need`,
+  `warned`, `quiet` (new sections left before it hunts again; null while it hunts), `kills`, `seq`, `active` ({ `engaged`, `hp`,
+  `door` }). Pure helpers: `stalkerTrack`, `stalkerWarning`, `stalkerNewSection`, `stalkerEngaged`, `stalkerLost`,
+  `stalkerWaitAtDoor`, `stalkerDoorHere`, `stalkerPlayerFell`, `stalkerSlain`, `stalkerVitals`, `ambushSpots`.
+- `updateStalker(e, w)` runs the fight: it zeroes `hitStun`/`recoil` every frame (never staggered); `stalkerAfterimage` turns a
+  non-lethal blow (restores the health, moves it `away` tiles, leaves a ghost and asks for decoys); the swarm at each threshold
+  once; then the act machine — cat `prowl → pounceWarn → pounce → swipeWarn → spring`, ape `prowl → leapWarn → leap (arc over
+  walls, `stalkLift`) → fistWarn → spring`, pool `slide → rise` (untargetable) — and `nextForm` (ape when the cat is stuck or the
+  Wayfarer stands 2+ levels away, the pool every third cycle, else hashed). While `w.sheltered` it sits by `w.door` and never
+  attacks. Copies and decoys (`stalkerKin`, `stalkerDecoy`) run in, swipe, back off; decoys fade after `decoy.life` s, and all go
+  when their owner dies.
+- New `src/stalker-render.ts`: `drawStalker` (the three forms, ghosts, decoys, the name), `drawStalkerMarks` (pounce line, leap
+  ring, swipe/fist reach), `drawStalkerMarker` (the pulsing silver arrow at the screen edge with the warning text).
+- `src/game.ts`: `tickStalker` (each frame after `tickWorldBeasts`) counts ground on foot in the same overworld section (not
+  aboard or swimming), turns a smoothed bearing (where the Wayfarer came from: the marker and the ambush side), warns, and
+  spawns the ambush when ready (never inside a building/shelter/town, at sea or swimming). In a dungeon it only records the door
+  (`_stalkOver`, the last open overworld ground). Back on the overworld: the door section spawns it there ("waiting by the
+  door"); otherwise a vanished fight is `stalkerLost`. `spawnStalker` tunes it: health a tuned Gate Revenant's, damage
+  `beastProfileVitals` at `damageShare` × .85, both × `regionalThreat`, `boss: true`, affixes rolled from the hunt.
+  `stalkerWorld` is its adapter (`stalkerOpen` refuses lethal ground, structures and town sanctuaries; `move` never steps in).
+  `spawnStalkerKin` makes the capped copies and the decoys (summons, `noRewards`). The enemy loop runs `updateStalker` for all
+  three. `loadArea` counts each first-seen section (`stalkerNewSection`); `defeatEnemy` pays `stalkerSlain` and 3 drops, kills its
+  copies and shows THE STALKER FALLS; `recoverFromDeath` on the overworld calls `stalkerPlayerFell`. `stalkerMarker` feeds the
+  renderer.
+- `src/renderer.ts` draws it through `drawStalker`, lifts its health bar with its size and leap, and draws the marker.
+
+**BOUNDARY:** No generator change (it is placed at runtime and never generated). Only `save.stalker` is saved, additively; the
+creature itself is runtime (a reload or a lost fight brings it back after `follow` tiles with its saved health). Bounded: one
+Stalker, at most 5 copies, decoys only per afterimage charge, no pathfinding (straight steps with collision, the ape's leap), 12
+spot checks per ambush. Tests: `tests/stalker-678.test.ts`.
 
 ## Release 677: the Deep — 2026-11-01
 
