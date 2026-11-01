@@ -44,7 +44,12 @@ export const STALKER = {
     orbs: { count: 3, speed: 4.2, turn: 2.4, life: 3.2, radius: .3, damage: .45, spread: .45 },
     cone: { range: 6.5, half: .42, damage: .9 },
     ring: { count: 4, orbit: 1.3, spin: 3, gap: .5, speed: 6.5, life: 2.4, radius: .3, damage: .4 },
-    xblade: { speed: 7.5, life: 2.4, radius: .75, damage: 1 } },
+    // Two great liquid blades rise from its back, swing and cross in an X in front of it (`reach` tiles out, each blade `length`
+    // tiles: longer than its body), then a larger X flies straight at where the Wayfarer stood (no homing).
+    xblade: { rise: .5, swing: .3, hold: .15, reach: 1.7, length: 2.3, cross: 1.25, damage: 1, speed: 6.5, life: 2.6, radius: 1.5, shot: 1.1 } },
+  // The mist (Tim, 2026-11-01): it turns to mist, surrounds the Wayfarer and rushes through them; each pass that touches them rots
+  // a tenth of their maximum health away until they rest (rot past their whole health kills).
+  mist: { every: 5, gather: .55, ring: 1, radius: 2.6, spin: 4.2, passes: 3, pass: .38, between: .3, touch: .8, rot: .1 },
   energized: { every: [14, 20], time: 6, aura: 1.15, tick: .8, damage: .35, reduce: .5, sphere: { speed: 4.6, life: 3, radius: .8, damage: 1.1 } },
   shield: { burst: .12, window: 2, time: 3, cooldown: 14, reduce: .75, speed: 2.4 },
   climb: { stuck: .5, hop: 3.4, hopTime: .45, hopLift: 1.1, speed: 2.6, time: 4 },
@@ -159,11 +164,13 @@ function landing(w, to, from) {
 export function nextForm(e, w) {
   const n = (e.stalkCycle = (e.stalkCycle || 0) + 1), high = w.elev ? Math.abs((w.elev(w.player.x, w.player.y) || 0) - (w.elev(e.x, e.y) || 0)) >= 2 : false;
   if (high || (e.stalkStuck || 0) >= STALKER.forms.ape.stuck) return "ape";
+  if (n % STALKER.mist.every === STALKER.mist.every - 1 && e.stalkForm !== "mist") return "mist";
   if (n % 3 === 0 && e.stalkForm !== "pool") return "pool";
   return hashSeed(`${e.id}:form:${n}`) % 2 ? "ape" : "cat";
 }
 function beginForm(e, w, form) {
-  e.stalkForm = form; e.stalkStuck = 0; e.untargetable = form === "pool"; e.stalkLift = 0;
+  e.stalkForm = form; e.stalkStuck = 0; e.untargetable = form === "pool" || form === "mist"; e.stalkLift = 0;
+  if (form === "mist") { setAct(e, "mistGather", STALKER.mist.gather); return; }
   if (form === "pool") {
     const p = w.player, side = hashSeed(`${e.id}:flank:${e.stalkCycle}`) % 2 ? 1 : -1, base = Math.atan2(e.y - p.y, e.x - p.x) + side * Math.PI / 2;
     let to = null; for (let i = 0; i < 6 && !to; i++) { const a = base + side * i * .5, r = roll(`${e.id}:flankr:${e.stalkCycle}:${i}`, STALKER.forms.pool.flank), q = { x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r }; if (w.open(q.x, q.y)) to = q; }
@@ -208,7 +215,7 @@ export function stalkerSoften(e, before, dt) {
   const reduce = Math.max(e.stalkShield > 0 ? H.reduce : 0, (e.stalkCharged || 0) > 0 ? E.reduce : 0);
   if (lost > 0 && reduce > 0) { const back = lost * reduce; e.hp = Math.min(e.maxHp, e.hp + back); lost -= back; }
   e.stalkRecent = (e.stalkRecent || 0) * Math.exp(-dt / H.window) + lost;
-  if (e.stalkShield <= 0 && e.stalkShieldCd <= 0 && e.stalkRecent >= e.maxHp * H.burst && e.stalkForm !== "pool") { e.stalkShield = H.time; e.stalkShieldCd = H.cooldown; e.stalkRecent = 0; }
+  if (e.stalkShield <= 0 && e.stalkShieldCd <= 0 && e.stalkRecent >= e.maxHp * H.burst && e.stalkForm !== "pool" && e.stalkForm !== "mist") { e.stalkShield = H.time; e.stalkShieldCd = H.cooldown; e.stalkRecent = 0; }
 }
 // Its own shots (bounded): homing orbs, the ring's orbs, the X beam and the thrown sphere.
 function shoot(e, shot) { const list = (e.stalkShots ||= []); if (list.length < STALKER.turret.cap) list.push(shot); }
@@ -231,8 +238,10 @@ function tickShots(e, w, dt) {
 // The turret on its back: it rises, aims for `warn` s, and fires the next of its moves.
 function tickTurret(e, w, dt) {
   const T = STALKER.turret, p = w.player;
-  if (e.stalkForm === "pool") { e.stalkTurret = null; e.stalkTurretUp = Math.max(0, (e.stalkTurretUp || 0) - dt * 3); return; }
+  if (e.stalkForm === "pool" || e.stalkForm === "mist") { e.stalkTurret = null; e.stalkBlades = null; e.stalkTurretUp = Math.max(0, (e.stalkTurretUp || 0) - dt * 3); return; }
+  if (e.stalkBlades) tickBlades(e, w, dt);
   const t = e.stalkTurret;
+  if (!t && e.stalkBlades) return; // one back move at a time
   e.stalkTurretUp = Math.max(0, Math.min(1, (e.stalkTurretUp || 0) + (t ? dt * 4 : -dt * 1.5)));
   if (!t) { e.stalkTurretClock = (e.stalkTurretClock ?? roll(`${e.id}:turret:first`, T.every)) - dt; if (e.stalkTurretClock > 0) return;
     const n = (e.stalkTurretSeq = (e.stalkTurretSeq || 0) + 1), move = T.moves[(n - 1) % T.moves.length];
@@ -243,8 +252,20 @@ function tickTurret(e, w, dt) {
   if (t.move === "orbs") { const O = T.orbs; for (let i = 0; i < O.count; i++) { const b = a + (i - (O.count - 1) / 2) * O.spread; shoot(e, { kind: "orb", x: from.x, y: from.y, vx: Math.cos(b) * O.speed, vy: Math.sin(b) * O.speed, home: O.turn, life: O.life, radius: O.radius, damage: O.damage }); } }
   else if (t.move === "cone") { const C = T.cone, d = Math.hypot(p.x - e.x, p.y - e.y), off = Math.abs(Math.atan2(Math.sin(Math.atan2(p.y - e.y, p.x - e.x) - a), Math.cos(Math.atan2(p.y - e.y, p.x - e.x) - a))); if (d <= C.range && off <= C.half) w.hurt(e, Math.max(1, Math.ceil((e.damage || 1) * C.damage))); e.stalkConeFlash = { aim: a, t: .25 }; }
   else if (t.move === "ring") { const R = T.ring; for (let i = 0; i < R.count; i++) shoot(e, { kind: "ring", orbit: true, a: i / R.count * Math.PI * 2, delay: .3 + i * R.gap, x: e.x, y: e.y, vx: 0, vy: 0, life: 9, radius: R.radius, damage: R.damage }); }
-  else if (t.move === "xblade") { const X = T.xblade; shoot(e, { kind: "xblade", x: from.x, y: from.y, vx: Math.cos(a) * X.speed, vy: Math.sin(a) * X.speed, life: X.life, radius: X.radius, damage: X.damage }); }
+  else if (t.move === "xblade") e.stalkBlades = { phase: "rise", t: T.xblade.rise, total: T.xblade.rise, aim: a };
   e.stalkTurret = null; e.stalkTurretClock = roll(`${e.id}:turret:${e.stalkTurretSeq}`, T.every);
+}
+// The crossed blades: they rise from its back (aiming at the Wayfarer), swing and cross in front of it (a blow there), hold the X,
+// then a larger X flies off in a straight line toward where the Wayfarer stood.
+function tickBlades(e, w, dt) {
+  const b = e.stalkBlades, X = STALKER.turret.xblade, p = w.player; b.t -= dt;
+  if (b.phase === "rise") { b.aim = Math.atan2(p.y - e.y, p.x - e.x); if (b.t <= 0) Object.assign(b, { phase: "swing", t: X.swing, total: X.swing }); return; }
+  if (b.phase === "swing") { if (b.t <= 0) { const at = { x: e.x + Math.cos(b.aim) * X.reach, y: e.y + Math.sin(b.aim) * X.reach }; if (Math.hypot(p.x - at.x, p.y - at.y) <= X.cross) w.hurt(e, Math.max(1, Math.ceil((e.damage || 1) * X.damage))); Object.assign(b, { phase: "hold", t: X.hold, total: X.hold }); } return; }
+  if (b.phase === "hold" && b.t <= 0) {
+    const at = { x: e.x + Math.cos(b.aim) * X.reach, y: e.y + Math.sin(b.aim) * X.reach }, a = Math.atan2(p.y - at.y, p.x - at.x);
+    shoot(e, { kind: "xblade", x: at.x, y: at.y, vx: Math.cos(a) * X.speed, vy: Math.sin(a) * X.speed, aim: a, life: X.life, radius: X.radius, damage: X.shot });
+    e.stalkBlades = null;
+  }
 }
 // The energized form: a sphere of energy round it that hurts to touch and softens blows, thrown at the Wayfarer as it ends.
 function tickEnergy(e, w, dt) {
@@ -256,7 +277,7 @@ function tickEnergy(e, w, dt) {
     return;
   }
   e.stalkEnergyClock = (e.stalkEnergyClock ?? roll(`${e.id}:energy:first`, E.every)) - dt;
-  if (e.stalkEnergyClock <= 0 && e.stalkForm !== "pool") { e.stalkCharged = E.time; e.stalkAuraTick = 0; e.stalkEnergyClock = roll(`${e.id}:energy:${e.stalkCycle || 0}`, E.every) + E.time; }
+  if (e.stalkEnergyClock <= 0 && e.stalkForm !== "pool" && e.stalkForm !== "mist") { e.stalkCharged = E.time; e.stalkAuraTick = 0; e.stalkEnergyClock = roll(`${e.id}:energy:${e.stalkCycle || 0}`, E.every) + E.time; }
 }
 
 // One frame of the Stalker (or of one of its copies or decoys). `w` is the game's adapter: player, dt, now, open(x, y) (ground
@@ -284,7 +305,7 @@ export function updateStalker(e, w) {
   if (!e.stalkAct) beginForm(e, w, e.stalkForm || "cat");
   // The Wayfarer is inside: wait by the door, as a cat sitting still.
   if (w.sheltered) {
-    if (e.stalkForm === "pool") { e.stalkForm = "cat"; e.untargetable = false; }
+    if (e.stalkForm === "pool" || e.stalkForm === "mist") { e.stalkForm = "cat"; e.untargetable = false; e.stalkBlades = null; }
     e.stalkLift = 0; e.telegraph = 0; e.stalkAct = { kind: "wait", t: 0, total: 0 };
     if (w.door && dist(e, w.door) > 1.4) step(e, w, w.door, S.forms.cat.speed * .6, dt);
     return;
@@ -293,7 +314,7 @@ export function updateStalker(e, w) {
   tickEnergy(e, w, dt); tickTurret(e, w, dt); tickShots(e, w, dt);
   if (e.stalkConeFlash) { e.stalkConeFlash.t -= dt; if (e.stalkConeFlash.t <= 0) e.stalkConeFlash = null; }
   e.stalkShieldAim = Math.atan2(p.y - e.y, p.x - e.x);
-  if ((e.stalkShield || 0) > 0 && e.stalkAct?.kind !== "guard" && e.stalkForm !== "pool" && !["leap", "hop", "climb", "pounce"].includes(e.stalkAct?.kind)) setAct(e, "guard", e.stalkShield);
+  if ((e.stalkShield || 0) > 0 && e.stalkAct?.kind !== "guard" && e.stalkForm !== "pool" && e.stalkForm !== "mist" && !["leap", "hop", "climb", "pounce"].includes(e.stalkAct?.kind)) setAct(e, "guard", e.stalkShield);
   const a = e.stalkAct, F = S.forms[e.stalkForm] || S.forms.cat, d = dist(e, p);
   a.t -= dt; e.telegraph = /Warn$/.test(a.kind) ? Math.max(0, a.t) : 0;
   switch (a.kind) {
@@ -364,6 +385,27 @@ export function updateStalker(e, w) {
       const side = hashSeed(`${e.id}:guard:${e.stalkCycle}`) % 2 ? 1 : -1, v = unit(e.x - p.x, e.y - p.y);
       w.move(e, (-v.y * side + v.x * .4) * S.shield.speed * dt, (v.x * side + v.y * .4) * S.shield.speed * dt);
       if (a.t <= 0) beginForm(e, w, nextForm(e, w));
+      break;
+    }
+    case "mistGather": {
+      // It thins into silver mist where it stands.
+      if (a.t <= 0) setAct(e, "mistRing", STALKER.mist.ring, { ang: Math.atan2(e.y - p.y, e.x - p.x), passes: 0 });
+      break;
+    }
+    case "mistRing": {
+      // The mist surrounds the Wayfarer, wheeling round them.
+      const M = STALKER.mist; a.ang += M.spin * dt; const nx = p.x + Math.cos(a.ang) * M.radius, ny = p.y + Math.sin(a.ang) * M.radius * .8;
+      if ((w.free || w.open)(nx, ny)) { e.x = nx; e.y = ny; }
+      if (a.t <= 0) { if (a.passes >= M.passes) { const q = landing(w, e, null) || landing(w, p, null); if (q) { e.x = q.x; e.y = q.y; } e.stalkForm = "cat"; beginForm(e, w, "cat"); break; }
+        setAct(e, "mistPass", M.pass, { ang: a.ang, passes: a.passes, from: { x: e.x, y: e.y }, to: { x: 2 * p.x - e.x, y: 2 * p.y - e.y }, struck: false }); }
+      break;
+    }
+    case "mistPass": {
+      // It rushes through the Wayfarer: a touch rots them.
+      const M = STALKER.mist, k = 1 - Math.max(0, a.t) / a.total, nx = a.from.x + (a.to.x - a.from.x) * k, ny = a.from.y + (a.to.y - a.from.y) * k;
+      if ((w.free || w.open)(nx, ny)) { e.x = nx; e.y = ny; }
+      if (!a.struck && dist(e, p) <= M.touch) { a.struck = true; w.rot?.(e, M.rot); }
+      if (a.t <= 0) setAct(e, "mistRing", M.between, { ang: Math.atan2(e.y - p.y, e.x - p.x) + .9, passes: a.passes + 1 });
       break;
     }
     case "slide": {

@@ -4412,6 +4412,10 @@ export class Game {
       move(e, dx, dy) { const ox = e.x, oy = e.y, moved = moveAxis(e, dx, dy, map, width); if (moved && game.stalkerBarred(e.x, e.y)) { e.x = ox; e.y = oy; return false; } return moved; },
       elev: (x, y) => Number(map.tiles[Math.floor(y + .72) * width + Math.floor(x + .5)]?.elev) || 0,
       hurt: (e, amount) => game.packHurt(e, amount, {}, now),
+      // The mist's rot: a share of maximum health gone until the Wayfarer rests (a dodge passes through; rot past it all kills).
+      rot: (e, share) => { if (now <= (p.invulnerableUntil || 0)) return false; ensureRot(game.save); game.save.rot += Math.max(1, Math.round((game.save.maxHp || 1) * share)); p.invulnerableUntil = now + 700;
+        if (game.save.rot >= game.save.maxHp) p.hp = 0; else p.hp = Math.min(p.hp, healthCeiling(game.save));
+        game.message = `The Stalker's mist rots you: maximum health ${Math.max(0, game.save.maxHp - Math.floor(game.save.rot))}/${game.save.maxHp} until you rest.`; return true; },
       ownerAlive: (q) => game.enemies.some((o) => o.id === q.stalkerOf && !o.dead),
       summon: (e, n) => game.spawnStalkerKin(e, n, false, e),
       decoys: (e, n, at) => game.spawnStalkerKin(e, n, true, at || e),

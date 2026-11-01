@@ -93,7 +93,7 @@ export function healthCeiling(save) { return Math.max(1, (Number(save?.maxHp) ||
 export function rotTick(save, kind, dt) {
   if (!MIRE.rotKinds.includes(kind)) return false;
   const before = ensureRot(save);
-  save.rot = Math.min(rotCap(save), before + MIRE.rotPerSecond * dt);
+  save.rot = Math.max(before, Math.min(rotCap(save), before + MIRE.rotPerSecond * dt)); // the Stalker's mist may rot past the bog's cap; the bog never lowers it
   return save.rot > before;
 }
 // Resting clears the rot; returns how much was cleared.
