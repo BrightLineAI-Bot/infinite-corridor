@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**647**
+**649**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 645 | Claude | `claude/dreamy-rubin-yn6q2p` | The tree package (landscape version 13): spires and groves, a canopy walk, perches, leaves, boughs, four tree looks | Building. |
+| 647 | Claude | `claude/dreamy-rubin-yn6q2p` | The drone's booster on the overworld: Jump again in the air, hold to climb up to 5 levels, feather to hold or come down, a drop can kill | Building. |
+| 645 | Claude | PR #306 | The tree package (landscape version 13): spires and groves, a canopy walk, perches, leaves, boughs, four tree looks | Merged (`r645-0f3405778aef`). |
 | 643 | Claude | PR #305 | Every pass through a body is a hit; the Great Sweep's blades (great sword, shuriken, great axe) fly on through and curl back | Merged (`r643-c53163bd6ab2`). |
 | 641 | Claude | PR #304 | Glider opened and folded with Jump, freefall, sea landings, Act at sea; Giant 8 s charge; the review's glide-indoors blocker | Merged (`r641-1de709e6ab17`). Published in r641. |
 | 639 | Claude | PR #303 | Out of the robot at sea: the robot button goes power armor → out into your skiff | Merged (`r639-13350fc9c822`). Published in r641. |

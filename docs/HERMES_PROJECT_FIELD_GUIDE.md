@@ -2694,6 +2694,28 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 647: the drone's booster — 2026-11-01
+
+Tim (2026-11-01): "a drone... you jump, and then you hit the jump button again, and you hold it... you boost all the way up to...
+5... you'd have to feather it... fuel... if it drops you... from 5... you're gonna die... vertical traversal on the trees... don't
+need to change anything about how the drone works in the dungeon".
+
+**CODE:**
+- `src/vehicle-gates.ts` `DRONE_LIFT` (thrust 30 and gravity 14 levels/s², climb at most `rise` 4 levels/s, `max` 5 levels over
+  the jump's start, `burn` 1 carry/s, messages).
+- `src/game.ts`: Jump pressed mid-jump on the overworld with the drone up starts `droneLift` { base, z, vz }; `droneLiftStep`
+  (in the drone/robot block, in place of the old hold-to-carry there) integrates it, keeps the jump alive and sets `skyAir` to
+  floor(z) so the move rules (`canStep` airElev) apply; at the top it hovers while Jump is held. Landing (or the drone stowed)
+  calls `endDroneLift`: the jump ends and `skyAir` is set to the ground plus floor(v²/2g + height left), so the ordinary landing
+  applies `fallDamage` (4+ fatal). Saved in `playerRuntime.droneLift` and restored after `loadArea` (which clears it on every
+  change of area or section).
+- `src/renderer.ts`: the Wayfarer drawn at the lift's height over the tile underfoot; the drone draws carrying while it thrusts.
+
+**BOUNDARY:**
+- Dungeons and the robot keep their hold-Jump carry/boost.
+- No new save fields beyond the optional runtime `droneLift`.
+- Tests: `tests/drone-lift-647.test.ts`; `tests/drone-321.test.ts`'s chasm crossing now presses Jump twice.
+
 ## Release 645: the tree package — 2026-11-01
 
 Tim (2026-11-01): "make a tree package, so we can have different branches and different configurations... deterministically...

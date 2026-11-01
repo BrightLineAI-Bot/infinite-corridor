@@ -107,6 +107,15 @@ export function ensureMech(save) {
 // carry them for up to `carry` s (refilled at `carryRecharge`/s on the ground). It takes no hits. State on save.mech:
 // mode ("robot" | "drone"), healCd, rocketCd (additive).
 export const DRONE = { range: 8, rocketEvery: 1.6, rocketDamage: 10, rocketSpeed: 7.5, rocketLife: 1.8, rocketTurn: 7, heal: .3, healCooldown: 30, autoHealBelow: .3, carry: 3, carryRecharge: 1 };
+// Release 647 (Tim, 2026-11-01: "you jump, and then you hit the jump button again, and you hold it... you boost all the way up to...
+// 5... you'd have to feather it... fuel... if it drops you... you're gonna die... vertical traversal on the trees... don't need to
+// change anything about how the drone works in the dungeon"): on the overworld the drone is a booster. Jump, then press Jump again
+// in the air: while Jump is held its thrust (`thrust` levels/s², against `gravity`) lifts the Wayfarer, climbing at most `rise`
+// levels a second and no higher than `max` levels above where the jump began (holding at the top hovers there, and the Wayfarer can
+// move across), burning `burn` of its carry a second. Let go and they fall, gathering speed. A landing hurts by its speed, as a
+// fall from the height that speed is worth (v²/2g): feathered down it is gentle; dropped from the top, or by a booster run dry,
+// it is a fall of four levels or more, and death.
+export const DRONE_LIFT = { thrust: 30, rise: 4, max: 5, gravity: 14, burn: 1, engage: "The drone grips your shoulders and its booster roars. Hold Jump to climb, feather it to hold, let go to fall.", empty: "The booster sputters out of lift!", none: "The drone has no lift left: land and let it recharge." };
 export function fuelMax(mode, empowered = false) { return mode === "drone" ? DRONE.carry : MECH.boost * (empowered ? MECH_POWER.boost : 1); }
 export function setMechMode(save, mode) {
   const m = ensureMech(save), next = mode === "drone" ? "drone" : "robot";
