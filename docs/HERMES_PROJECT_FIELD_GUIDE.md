@@ -2694,6 +2694,28 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 641: the glider in hand; the Giant's charge — 2026-11-01
+
+Tim (2026-11-01): "you should be able to deploy, and I guess stow, the glider in the air by hitting the jump button... if you glide
+out over open sea... if you don't have the Tidemantle, you're just going to die... if you're in open sea, you're swimming, you
+should be able to hit action and get the boat or deploy the robot"; and "the lightning giant should go back to his 8 second
+electrification".
+
+**CODE:**
+- `src/game.ts` `GLIDE` (`drop`, `dropSpeed`, messages): with `save.glider`, a fall of `minDrop` levels or more in the open world
+  (not in the robot or drone) becomes a freefall: `this.glide` with `open: false` and `fallFrom`, sinking `drop` levels a second.
+  Jump while falling or gliding opens or folds the glider (folding sets `fallFrom`); mid-jump (`jumpFrom`/`skyAir` at least
+  `minDrop` over the ground below) Jump opens one. A closed landing hurts by `fallFrom` minus the ground (fatal from four).
+  `glideStep` lands on water, lava or ground alike (ordinary hazards follow); only blocked tiles hold it up. `loadArea` clears the
+  glide for any area but the open world (the pre-publish review of 623→639 found a glide carried into a dungeon). The saved
+  glide keeps `open` and `fallFrom`. `callHelpAtSea`: swimming in the open world, Act boards your skiff where you are, or calls
+  up the robot. The 635 "opens only from the crown" rule is gone: the glider is yours to open.
+- `src/monster-pack.ts` `GIANT`: the second `chargeTime` (.9, the upswing's) renamed `upswingCharge`, so the electrified spell
+  lasts its intended 8 s again (it had been .9 s since release 257).
+- `src/renderer.ts`: the glider drawn only while open; every glide use gated on the open world.
+
+**BOUNDARY:** Save additions: `playerRuntime.glide.open`, `.fallFrom`. Dungeons unchanged.
+
 ## Release 639: out of the robot at sea — 2026-11-01
 
 Tim (2026-11-01): "if I'm in the robot and I go into water... I can't exit the robot... I hit the robot button and it doesn't take

@@ -2230,6 +2230,7 @@ export class Game {
   }
   loadArea(area, capture = true) {
     if (capture) this.snapshotArea();
+    if (area !== "overworld") this.glide = null; // release 641 (the pre-publish review of 623→639): a glide never follows you indoors
     this.shadowClone = null; this.cloneAim = false; // release 365: a shadow stays in the place it was cast
     this.builds = []; // release 265: builds belong to the map they stand on
     this.area = area;

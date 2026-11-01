@@ -68,3 +68,8 @@ test('swimming in the open world, Act brings your skiff to you (641)', () => {
   const { s, g } = atTree(); s.capabilities = { ...(s.capabilities || {}), swim: true }; s.boat = { owned: true, hull: 10, aboard: false, moored: { rx: 0, ry: 0, x: 5, y: 5 }, home: { rx: 0, ry: 0, x: 5, y: 5 } };
   g.swimming = true; Object.assign(g.player, { x: 10, y: 10 }); const r = g.interact(); assert.ok(r?.ok, g.message); assert.equal(s.boat.aboard, true); assert.match(g.message, /skiff/);
 });
+
+test('a glide never follows you indoors (641, from the pre-publish review)', () => {
+  const { g } = atTree(); g.glide = { z: 20, vx: 0, vy: 0, open: true, told: false }; g.save.session.activeDungeonId = `dungeon:${SEED}:g1:3:3:room`; g.save.session.dungeonReturn = { rx: 3, ry: 3, x: 16, y: 16 };
+  g.loadArea('dungeon', false); assert.equal(g.glide, null);
+});

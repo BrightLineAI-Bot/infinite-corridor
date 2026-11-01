@@ -1606,7 +1606,7 @@ export function render(ctx, g, w, h, now) {
     mw = Math.max(1,Number(g.map?.width)||(g.area === "dungeon" ? 24 : 32)),
     mh = Math.max(1,Number(g.map?.height)||Math.floor(g.map.tiles.length/mw)),
     l = Math.max(0, Math.floor(p.x - w / s / 2) - 2),
-    up = g.glide ? Math.ceil(discLift(g.glide.z) * CANOPY_LIFT) : g.map?.canopy?.top ? Math.ceil(liftAt(g.map, mw, p.x, p.y)) : 0, // 635: or gliding // release 633: high in a great tree the view looks down on rows far to the south
+    up = g.glide && g.area === "overworld" ? Math.ceil(discLift(g.glide.z) * CANOPY_LIFT) : g.map?.canopy?.top ? Math.ceil(liftAt(g.map, mw, p.x, p.y)) : 0, // 635: or gliding // release 633: high in a great tree the view looks down on rows far to the south
     t = Math.max(0, Math.floor(p.y - up - h / s / 2) - 2),
     r = Math.min(mw, l + Math.ceil(w / s) + 5),
     b = Math.min(mh, t + Math.ceil(h / s) + 5 + (g.map?.canopy?.top ? Math.ceil(g.map.canopy.top * LIFT_PER_LEVEL * CANOPY_LIFT) : 0) + up),
@@ -1622,7 +1622,7 @@ export function render(ctx, g, w, h, now) {
   const crystalLift = e => crystalFlightLift(g.map, mw, e.x, e.y);
   const marineAt = e => g.area === "overworld" && isMarineTile(tileUnder(g.map, mw, e.x, e.y));
   ctx.save();
-  const viewLift = g.glide ? discLift(g.glide.z) * CANOPY_LIFT : groundLift(p.x, p.y); // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
+  const viewLift = g.glide && g.area === "overworld" ? discLift(g.glide.z) * CANOPY_LIFT : groundLift(p.x, p.y); // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - viewLift) * s));
   cloudSky = !!g.map?.skyCloud; // release 589
   const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
@@ -1874,9 +1874,9 @@ export function render(ctx, g, w, h, now) {
   const onDisc = g.skyLevel > 0 && g.map?.skyDiscs ? g.map.skyDiscs.find((d) => d.level === g.skyLevel && Math.hypot(p.x + .5 - d.x, p.y + .75 - d.y) <= d.r + .05) : null;
   for (const d of g.map?.skyDiscs || []) if (visibleInCamera({ x: d.x, y: d.y }, l, t, r, b, 3)) draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
   const playerDraw = {
-    y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.glide ? Math.max(0, discLift(g.glide.z) * CANOPY_LIFT - groundLift(p.x, p.y)) : g.skyLevel > 0 ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, // 635: a glide's height alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
+    y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.glide && g.area === "overworld" ? Math.max(0, discLift(g.glide.z) * CANOPY_LIFT - groundLift(p.x, p.y)) : g.skyLevel > 0 ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, // 635: a glide's height alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
     fn: () => {
-      if (g.glide && g.glide.open !== false) drawLeafGlider(ctx, p, s, now); // release 635; 641: only while open
+      if (g.glide && g.area === "overworld" && g.glide.open !== false) drawLeafGlider(ctx, p, s, now); // release 635; 641: only while open
       if (jumping) {
         ctx.fillStyle = "#05050477";
         ctx.beginPath();
@@ -1979,7 +1979,7 @@ export function render(ctx, g, w, h, now) {
   // there stays in view). A few dozen shapes, only while the tree is in view.
   const cn = g.area === "overworld" && g.map?.canopy?.top ? g.map.canopy : null; // release 633: only trees built tall
   if (cn && Math.abs(cn.x0 + 1.5 - p.x) < w / s + 4) draws.push({ y: cn.y0 - .5, inSky: true, fn: () => drawCanopyDressing(ctx, cn, s, now) });
-  if (g.glide) { const gl = groundLift(p.x, p.y) * s, sz = Math.max(.25, 1 - g.glide.z / 40); ctx.fillStyle = "#00000040"; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y + .82) * s - gl, s * .45 * sz, s * .14 * sz, 0, 0, Math.PI * 2); ctx.fill(); } // release 635: the glide's shadow far below
+  if (g.glide && g.area === "overworld") { const gl = groundLift(p.x, p.y) * s, sz = Math.max(.25, 1 - g.glide.z / 40); ctx.fillStyle = "#00000040"; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y + .82) * s - gl, s * .45 * sz, s * .14 * sz, 0, 0, Math.PI * 2); ctx.fill(); } // release 635: the glide's shadow far below
   draws.push(playerDraw);
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) {

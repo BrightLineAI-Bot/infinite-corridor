@@ -13,13 +13,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**641**
+**643**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 639 | Claude | `claude/dreamy-rubin-yn6q2p` | Out of the robot at sea: the robot button goes power armor → out into your skiff | Building. |
+| 641 | Claude | `claude/dreamy-rubin-yn6q2p` | Glider opened and folded with Jump, freefall, sea landings, Act at sea; Giant 8 s charge; the review's glide-indoors blocker | Building. |
+| 639 | Claude | PR #303 | Out of the robot at sea: the robot button goes power armor → out into your skiff | Merged (`r639-13350fc9c822`). Not published: its review found the glide-indoors blocker, fixed in 641. |
 | 637 | Claude | PR #302 | The great trees as towers: branches out of the trunk, rising, hops tip to tip, the crown on the trunk, 30–42 levels | Merged (`r637-496b09468bbf`). Not published. |
 | 635 | Claude | PR #301 | Sky above the great trees; the leaf glider (found on a tree, opens only from one, glides across sections) | Merged (`r635-f74d1dcad910`). Not published. |
 | 633 | Claude | PR #300 | The great trees rebuilt unreasonably tall: 1–2-tile branches spiralling round a trunk past the top of the screen | Merged (`r633-abd4f175d91b`). Not published. |
