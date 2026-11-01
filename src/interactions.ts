@@ -50,7 +50,7 @@ export function validActions(o,s){
  if(o.kind==='relayTerminal')return s.consequences.choices.relay?[]:s.narrative.facts['crossing.marshal']?['restore','sever']:['inspect'];
  if(o.kind==='apertureRitual')return apertureRitualState(s).ready?['perform','inspect']:['inspect'];
  if(o.kind==='arenaEntrance')return['enter'];
- if(o.kind==='skyStair')return skylandActions(s);/* release 571 */if(o.kind==='visceraAltar')return altarActions();/* release 682 */
+ if(o.kind==='skyStair')return skylandActions(s);/* release 571 */if(o.kind==='visceraAltar')return o.start?[...altarActions(),'begin']:altarActions();/* release 682; 686: Begin at the start */
  if(o.kind==='shipwright')return shipwrightActions(s).filter(a=>a!=='buyRig'||diveGate(s).ok);/* release 315: the rig from Infinite II */
  if(o.kind==='diveSite')return diveGate(s).ok||underwaterGate(s).ok?diveSiteActions(s).concat((s.boat?.sub||s.boat?.mechSub)&&s.boat?.aboard&&!diveSiteActions(s).includes('dive')?['dive']:[]):['inspect'];/* release 315 */
  if(o.kind==='diveExit')return['surface'];if(o.kind==='diveOnward')return['follow'];
