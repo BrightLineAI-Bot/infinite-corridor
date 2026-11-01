@@ -53,7 +53,7 @@ import {
 } from "./interactions.ts";
 import { ensurePerception } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
-import { ARC_WAVE, NANOKNIVES, GOLEM, CLUSTER, FIRE_BURST, knifeOffset } from "./tool-forms.ts";
+import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST } from "./tool-forms.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { SKYLANDS, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
@@ -1022,7 +1022,8 @@ export function updateProjectiles(
       const nx = next.x, ny = next.y;
       // Release 265: a hostile shot entering a build (not the one the Wayfarer stands on) is absorbed by it.
       if (p.hostile && onBuildHit && map.tiles[Math.floor(ny) * width + Math.floor(nx)]?.build && !(player && Math.floor(nx) === Math.floor(player.x + .5) && Math.floor(ny) === Math.floor(player.y + .75))) { p.dead = true; p.impact = { x: p.x, y: p.y }; onBuildHit(Math.floor(nx), Math.floor(ny)); break; }
-      if (!projectileTileOpen(map, width, nx, ny)) {
+      if (!projectileTileOpen(map, width, nx, ny) && p.mirage) { if (!p.returning) { p.returning = true; p.backAt = p.age; p.hits = {}; } } // release 649: a mirage blade turns home at a wall and passes walls on its way back
+      else if (!projectileTileOpen(map, width, nx, ny)) {
         if(p.path==="grenade"){p.dead=true;onDetonate(p);break}
         if (p.path === "boomerang" && !p.returning) {
           p.returning = true;
@@ -1074,7 +1075,7 @@ export function updateProjectiles(
             e.hitFlash = 0.18;
             e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.1 : 0.18);
           }
-          if (p.path === "boomerang" || p.pierce > 0 || p.knife) { // 643: Nanoknives fly on through
+          if (p.path === "boomerang" || p.pierce > 0 || p.knife) { // 643: thrown blades fly on through (649: Mirage of Blades)
             (p.hits ||= {})[e.id] = true;
             if (p.path !== "boomerang" && !p.knife) p.pierce -= 1;
           } else p.dead = true;
@@ -4933,7 +4934,7 @@ export class Game {
   // × perPower + the melee bonus) × the tool glyph mods × every melee-damage multiplier.
   toolPower() { const item = this.save.equipment.secondary, glyphs = hostLoadout(this.save, "tool"); return (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + characterStats(this.save).meleeBonus) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
   brawlerTool(kind, now = this.lastUpdateNow || 0, direction = null) {
-    if (kind === "great-sweep" && fieldOn(this.save, "nanoknives")) return this.nanoknivesPress(now); // release 533
+    if (kind === "great-sweep" && fieldOn(this.save, "nanoknives")) return this.mirageThrow(now); // release 533; 649: Mirage of Blades
     const B = BRAWLER[kind], p = this.player, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null; if (!B || now < (this.toolReadyAt || 0)) return false;
     if (boxing && kind === "great-sweep") this.shadowBoxStep(B.radius * .6, now); // release 495: Shadow Boxing carries the sweep to the foe
     const cx = p.x + .5, cy = p.y + .45;
@@ -4956,30 +4957,38 @@ export class Game {
     p.attackUntil = now + 240; this.message = kind === "hammerfall" ? "Hammerfall!" : "Great Sweep!";
     return true;
   }
-  // Release 533 (tool-forms.ts NANOKNIVES): the Great Sweep with Nanoknives. `knives` is runtime only.
-  nanoknivesPress(now = this.lastUpdateNow || 0) {
+  // Release 649 (tool-forms.ts MIRAGE): the Great Sweep with Mirage of Blades throws a spinning great blade (more with Echo),
+  // out to its reach and home again to the Wayfarer. Runtime only: the blades are projectiles.
+  mirageThrow(now = this.lastUpdateNow || 0) {
     if (now < (this.toolReadyAt || 0)) return false;
-    this.toolReadyAt = now + NANOKNIVES.cooldown * 1000 * this.glyphLoadout("tool").mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed);
-    const thrown = this.launchKnives(now);
-    this.knives = { start: now, count: NANOKNIVES.count, where: `${this.area}:${this.areaId()}` };
-    this.player.attackUntil = now + 200; this.message = thrown ? "Nanoknives away!" : "Nanoknives rise.";
-    return true;
-  }
-  knifeFoe(range = NANOKNIVES.range) { const t = this.lockedTarget(), p = this.player; return t && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= range ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), range)?.e || null; }
-  launchKnives(now = this.lastUpdateNow || 0) {
-    const k = this.knives; if (!k) return false; this.knives = null;
-    const p = this.player, cx = p.x + .5, cy = p.y + .45, foe = this.knifeFoe(), K = NANOKNIVES, damage = Math.max(1, Math.round(this.toolPower() * K.share)), pierce = this.glyphLoadout("tool").mods.pierce;
+    const M = MIRAGE, p = this.player, glyphs = this.glyphLoadout("tool"), cx = p.x + .5, cy = p.y + .45, foe = this.mirageFoe();
+    this.toolReadyAt = now + M.cooldown * 1000 * glyphs.mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed);
+    const d = foe ? projectileDirection(foe.x + .5 - cx, foe.y + .45 - cy, p.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
     if (foe) this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
-    for (let i = 0; i < k.count; i++) {
-      const o = knifeOffset(i, k.count, now / 1000), x = cx + o.x, y = cy + o.y, d = foe ? projectileDirection(foe.x + .5 - x, foe.y + .45 - y, p.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
-      this.projectiles.push({ id: `knife-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, x, y, dx: d.x, dy: d.y, speed: K.speed, life: K.life, damage, damageType: "physical", path: "straight", age: 0, hits: {}, glyphHost: "tool", pierce, seekId: foe?.id || null, seekTurn: K.seekTurn, knife: true, blade: i });
-    }
+    const air = fieldOn(this.save, "charged-air") && this.spellRunning(now), CA = FIELD_PASSIVES["charged-air"], base = this.toolPower() * M.share * (air ? 1 + CA.damage : 1);
+    const plan = echoPlan(glyphs), shares = [1, ...(plan ? plan.copies.map((c) => c.share) : [])].slice(0, M.max);
+    shares.forEach((share, i) => {
+      const live = this.projectiles.filter((q) => q.mirage && !q.dead);
+      if (live.length >= M.max) live.sort((a, b) => (b.returning ? 1 : 0) - (a.returning ? 1 : 0) || a.born - b.born)[0].dead = true; // the oldest on its way home goes
+      const a = i ? (i % 2 ? 1 : -1) * M.spread * Math.ceil(i / 2) : 0, c = Math.cos(a), sn = Math.sin(a), blade = (this.mirageTurn = ((this.mirageTurn || 0) + 1) % 3);
+      this.projectiles.push({ id: `mirage-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, x: cx, y: cy, dx: d.x * c - d.y * sn, dy: d.x * sn + d.y * c, speed: M.speed, life: M.out / M.speed + M.back + 1, outFor: M.out / M.speed, damage: Math.max(1, Math.round(base * share * glyphs.mods.damage)), damageType: "physical", path: "straight", age: 0, hits: {}, glyphHost: "tool", pierce: 0, knife: true, mirage: true, blade: (blade + 2) % 3, born: now + i, grow: M.grow + (air ? CA.grow * 2 : 0), ...(air ? { scale: CA.scale } : {}), ...(i ? { echo: true } : {}) });
+    });
+    p.attackUntil = now + 200; this.message = "Mirage of Blades!";
     return true;
   }
-  tickKnives(now = this.lastUpdateNow || 0) {
-    const k = this.knives; if (!k) return;
-    if (k.where !== `${this.area}:${this.areaId()}` || !fieldOn(this.save, "nanoknives") || rangedWeapon(this.save.equipment.secondary)?.brawlerTool !== "great-sweep") { this.knives = null; return; } // a new area or another tool: they scatter
-    if (now - k.start >= NANOKNIVES.arm * 1000 && this.knifeFoe(NANOKNIVES.autoRange)) this.launchKnives(now); // release 539: a foe near: they go on their own; none: they wait
+  mirageFoe(range = MIRAGE.range) { const t = this.lockedTarget(), p = this.player; return t && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= range ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), range)?.e || null; }
+  // One frame of the mirage blades: out for `outFor` s, then home on the Wayfarer until caught or `back` s have passed.
+  tickMirage(dt) {
+    const M = MIRAGE, p = this.player, px = p.x + .5, py = p.y + .45;
+    for (const q of this.projectiles) {
+      if (!q.mirage || q.dead) continue;
+      if (!q.returning && q.age >= q.outFor) { q.returning = true; q.backAt = q.age; q.hits = {}; } // a fresh cut on the way in
+      if (!q.returning) continue;
+      const ax = px - q.x, ay = py - q.y, dist = Math.hypot(ax, ay);
+      if (dist < M.catch || q.age - (q.backAt ?? q.age) >= M.back) { q.dead = true; continue; }
+      let turn = Math.atan2(ay, ax) - Math.atan2(q.dy, q.dx); turn = Math.atan2(Math.sin(turn), Math.cos(turn)); // it turns (an arc), never snaps round
+      const a = Math.atan2(q.dy, q.dx) + Math.max(-M.seekTurn * dt, Math.min(M.seekTurn * dt, turn)); q.dx = Math.cos(a); q.dy = Math.sin(a); q.speed = M.backSpeed;
+    }
   }
   // Release 537 (tool-forms.ts CLUSTER): a bursting Bombard shell throws its bomblets (not hostile shells, not bomblets).
   clusterShell(shot) {
@@ -5331,7 +5340,7 @@ export class Game {
     } }
     if (this.shadowClone?.charging) this.tickCloneCharge(!!input.held?.(this.shadowClone.charging.action), now); // release 417
     if (this.orbit) this.tickOrbit(dt, now); // release 487: Orbit Volley
-    if (this.knives) this.tickKnives(now); // release 533: Nanoknives
+    this.tickMirage(dt); // release 649: Mirage of Blades
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
     if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge; this.fistCharge = null; this.fistPunch(c.step || 1, fistCharge(held), now, c.direction); } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (input.consume("spell")) this.castSlot("a");

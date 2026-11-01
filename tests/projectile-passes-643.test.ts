@@ -6,7 +6,6 @@ import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
 import { Game, PASS_CLEAR } from '../src/game.ts';
 import { createCombatant } from '../src/combat.ts';
-import { NANOKNIVES } from '../src/tool-forms.ts';
 
 const idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false };
 function arena() { const s = freshSave(); s.seed = 'PASS643'; const g = new Game(s, 0); g.rx = 0; g.ry = 0; g.loadArea('overworld'); g.enemies = [];
@@ -15,7 +14,7 @@ function arena() { const s = freshSave(); s.seed = 'PASS643'; const g = new Game
 
 test('a homing knife goes through, curls back and hits again: each pass is a hit', () => {
   const { g, e } = arena(); let t = 1000;
-  g.projectiles.push({ id: 'k1', x: 16.5, y: 13, dx: 0, dy: -1, speed: NANOKNIVES.speed, life: NANOKNIVES.life, damage: 10, damageType: 'physical', path: 'straight', age: 0, hits: {}, pierce: 0, seekId: e.id, seekTurn: NANOKNIVES.seekTurn, knife: true });
+  g.projectiles.push({ id: 'k1', x: 16.5, y: 13, dx: 0, dy: -1, speed: 13, life: 2.2, damage: 10, damageType: 'physical', path: 'straight', age: 0, hits: {}, pierce: 0, seekId: e.id, seekTurn: 9, knife: true });
   for (let i = 0; i < 60; i++) { t += 50; g.update(.05, idle, t); }
   const hits = Math.round((10000 - e.hp) / 10); assert.ok(hits >= 2, `${hits} passes`);
 });

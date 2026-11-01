@@ -2694,6 +2694,31 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 649: Mirage of Blades; LISTENER REVEALED — 2026-11-01
+
+Tim (2026-11-01): "the passive nano knives is going to be replaced with mirage of blades... a large sword that... moves out and
+swings, and then comes back to you... great sword... great axe... a huge shuriken... cycles through them... burst damage... Pierce
+through... home towards me... for like 3 seconds... I only have 3 maximum at a time... the ones that are following me... will
+disappear... hit on the way out and... on the way in... spinning... like the blades of a helicopter... grow with... charged air";
+"when you unlock the fifth relay for the listener... a special... heading on the screen... listener revealed".
+
+**CODE:**
+- `src/tool-forms.ts` `MIRAGE` (share .7 of tool power, out 5 tiles at 11, home at 13 turning 14 rad/s for up to `back` 2.5 s,
+  caught within .55, `max` 3, cooldown .55 s, echo spread, hit `grow` .38, drawn `size` 2.1 spinning at 15 rad/s). `NANOKNIVES`,
+  `knifeOffset` and the circling daggers are gone; `SWEEP_BLADES` is now sword, axe, shuriken; the projectile draw is a rotor.
+- `src/game.ts`: `mirageThrow` (from `brawlerTool` when `field:nanoknives` is held; the key is kept so saves keep the passive)
+  throws one blade plus one per Echo copy (`echoPlan`), ending the oldest homing blade past `max`. Charged Air (while a spell
+  runs) adds its damage, `scale` and twice its `grow`. `tickMirage` turns a blade home after `outFor` (fresh `hits`) and steers it
+  by angle toward the Wayfarer; caught or out of time, it is gone. In `updateProjectiles` a mirage blade turns home at a wall and
+  passes walls on its way back. Blades are `knife` projectiles: they never break on a hit (643's passes), and their `glyphHost`
+  "tool" gives Volatile's burst.
+- `src/lattice-fields.ts`: the passive's name and text. `src/main.ts` `watchQuests`: when `relay.networkAnswered` holds and the
+  relay network's coordinate is new (first answer, or the Listener moved), a `LISTENER REVEALED` banner (kind `listener`, styled
+  in `styles.css`) goes to the front of the queue.
+
+**BOUNDARY:** Runtime only; no save change. The plain Great Sweep is unchanged. Tests: `tests/mirage-blades-649.test.ts`;
+`tests/tool-forms-533.test.ts` and `tests/projectile-passes-643.test.ts` updated for the replaced passive.
+
 ## Release 647: the drone's booster — 2026-11-01
 
 Tim (2026-11-01): "a drone... you jump, and then you hit the jump button again, and you hold it... you boost all the way up to...

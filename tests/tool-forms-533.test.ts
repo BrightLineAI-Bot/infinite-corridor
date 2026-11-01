@@ -9,7 +9,7 @@ import { rangedWeapon, normalizeItemUpgrade, BLUNDERBUSS_RANK } from '../src/ite
 import { TOOL_FORM_KEYS, FIELD_KEYS, fieldForm } from '../src/lattice-fields.ts';
 import { toggleLatticePassive } from '../src/constellation.ts';
 import { ensureLattice } from '../src/transit-lattice.ts';
-import { NANOKNIVES, ARC_WAVE, GOLEM, CLUSTER } from '../src/tool-forms.ts';
+import { MIRAGE, ARC_WAVE, GOLEM, CLUSTER } from '../src/tool-forms.ts';
 
 function arena(tool, passives = [], stats = {}) {
   const s = freshSave(); s.seed = 'TOOLS'; s.perception.aperture = 3255; s.farArray = { listeners: 1 }; s.stats = { ...s.stats, ...stats }; ensureLattice(s); s.lattice.passives = passives.map((id) => `field:${id}`);
@@ -53,24 +53,18 @@ test('Arc Wave turns each shot of the cone into a piercing wave', () => {
   assert.equal(new Set(shots.map((q) => q.dy.toFixed(3))).size, 3, 'along the cone');
 });
 
-test('Nanoknives: the Great Sweep raises three daggers; the next press throws them, homing and physical', () => {
+// Release 649: the Nanoknives passive became Mirage of Blades (tests/mirage-blades-649.test.ts covers its flight).
+test('Mirage of Blades: a Great Sweep press throws one spinning blade instead of sweeping, physical and on the tool', () => {
   const { g } = arena({ name: 'Great Sweep', property: 'impact' }, ['nanoknives']);
   assert.equal(g.fireSecondary(1000, { x: 1, y: 0 }), true);
-  assert.equal(g.knives.count, NANOKNIVES.count); assert.equal(g.projectiles.length, 0); assert.equal(g.effects.filter((e) => e.brawler).length, 0, 'no sweep');
+  const blades = g.projectiles.filter((p) => p.mirage); assert.equal(blades.length, 1); assert.equal(g.effects.filter((e) => e.brawler).length, 0, 'no sweep');
+  assert.ok(blades.every((p) => p.damageType === 'physical' && p.glyphHost === 'tool'));
   assert.equal(g.fireSecondary(1100, { x: 1, y: 0 }), false, 'the press cooldown');
-  assert.equal(g.fireSecondary(1000 + NANOKNIVES.cooldown * 1000 + 1, { x: 1, y: 0 }), true);
-  const knives = g.projectiles.filter((p) => p.knife);
-  assert.equal(knives.length, 3); assert.ok(knives.every((p) => p.seekId === 'foe' && p.damageType === 'physical' && p.glyphHost === 'tool'));
-  assert.ok(g.knives, 'a fresh set rises');
-  const t0 = 1000 + NANOKNIVES.cooldown * 1000 + 1;
-  g.tickKnives(t0 + 100); assert.equal(g.projectiles.filter((p) => p.knife).length, 3, 'arming');
-  g.tickKnives(t0 + NANOKNIVES.arm * 1000 + 1);
-  assert.equal(g.projectiles.filter((p) => p.knife).length, 6, 'a foe near: they throw themselves');
 });
 
-test('without Nanoknives the Great Sweep still sweeps', () => {
+test('without Mirage of Blades the Great Sweep still sweeps', () => {
   const { g } = arena({ name: 'Great Sweep', property: 'impact' });
-  g.fireSecondary(1000, { x: 1, y: 0 }); assert.ok(g.effects.some((e) => e.brawler)); assert.equal(g.knives || null, null);
+  g.fireSecondary(1000, { x: 1, y: 0 }); assert.ok(g.effects.some((e) => e.brawler)); assert.equal(g.projectiles.filter((p) => p.mirage).length, 0);
 });
 
 // Release 535 (Tim: "go with the quick golem").
@@ -114,14 +108,6 @@ test('the golem cooldown shortens with the tool cooldown (Swift glyphs in the ha
   const fast = arena({ name: 'Hammerfall', property: 'impact', glyphs: ['swift', 'swift', null] }, ['corridor-golem']).g; fast.fireSecondary(1000, { x: 1, y: 0 });
   assert.ok(fast.toolCooldownScale() < 1); assert.ok(fast.golemReadyAt < plain.golemReadyAt, `${fast.golemReadyAt} < ${plain.golemReadyAt}`);
   assert.equal(plain.golemReadyAt, 1000 + 320 + GOLEM.cooldown * 1000);
-});
-
-// Release 539 (Tim: "if there's no enemy nearby, then they should wait until I launch them").
-test('Nanoknives wait while no foe is near, then throw themselves when one comes within reach', () => {
-  const { g } = arena({ name: 'Great Sweep', property: 'impact' }, ['nanoknives']);
-  g.enemies[0].x = 10 + NANOKNIVES.autoRange + 3; // out of reach
-  g.fireSecondary(1000, { x: 1, y: 0 }); g.tickKnives(1000 + 60000); assert.ok(g.knives, 'still circling a minute later'); assert.equal(g.projectiles.length, 0);
-  g.enemies[0].x = 13; g.tickKnives(1000 + 60001); assert.equal(g.knives, null); assert.equal(g.projectiles.filter((p) => p.knife && p.seekId === 'foe').length, 3);
 });
 
 test('Cluster Shell bomblets fly to opposite ends of a line that turns from shell to shell, each its own blast radius out', async () => {

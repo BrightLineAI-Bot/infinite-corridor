@@ -8,12 +8,13 @@
 //   crescents that shoot out in... an arc... they would follow the same path of the blunderbuss's original shots"; 533 fired
 //   one wave). Each wave is `share` × one pellet, catches foes `grow` tiles to either side of its path and passes through
 //   `pierce` of them.
-// - Nanoknives: the Great Sweep raises `count` nanobot daggers that circle you. Pressing the tool again throws the circling
-//   daggers at your foe (the lock, else the nearest within `range`) and raises a fresh set. Release 539 (Tim: "they should
-//   fire if there's an enemy nearby... if there's no enemy nearby... wait until I launch them"): `arm` s after rising, the
-//   daggers throw themselves at the first foe within `autoRange` of you; with no foe that near they circle until you throw
-//   them or one comes. Each dagger homes (`seekTurn`) and deals `share` of the tool's power. A press costs `cooldown` s,
-//   a little faster than the sweep.
+// - Mirage of Blades (release 649, in place of 533's Nanoknives; the Lattice key stays `field:nanoknives` so saves keep it):
+//   each press of the Great Sweep throws one great blade (`MIRAGE`), spinning like a rotor, at your foe (the lock, else the
+//   nearest within `range`, else where you aim). It flies `out` tiles, cutting through everything on the way, then turns and
+//   homes on you wherever you have moved (`seekTurn`), cutting again on the way back, until it reaches you (`catch`) or `back`
+//   s have passed. At most `max` fly at once: a press past that ends the oldest blade on its way home. Blades come in turn: a
+//   great sword, a great axe, a great shuriken; an Echo glyph in the tool throws one more blade per copy. Each deals `share`
+//   of the tool's power (Might), bursts with Volatile like any tool shot, and grows with Charged Air.
 // - Corridor Golem (release 535; Tim: "when you hit the hammer, it'll summon a golem... dash to the nearest enemy and deliver
 //   like 3 blows... if the enemy dies... to the next enemy... rises up out of the ground... melts back into the tiles"; the
 //   quick golem): a Hammerfall blow raises a golem where it lands, unless one is already up or the last rose under
@@ -28,7 +29,7 @@
 //   exploded"; then "random positions around the center... opposite poles of the circle"): they fly out at opposite ends
 //   of a line through the burst whose angle changes from shell to shell, each exactly its own blast radius, so its blast's
 //   edge meets the first burst's centre. Bomblets do not split again.
-// Pure numbers and drawing; game.ts runs them (fireSecondary, nanoknivesPress, launchKnives, tickKnives, raiseGolem, tickGolem,
+// Pure numbers and drawing; game.ts runs them (fireSecondary, mirageThrow, tickMirage, raiseGolem, tickGolem,
 // clusterShell).
 export const GOLEM = { share: .9, punches: 3, gap: .38, rise: .35, sink: .4, range: 4, radius: .9, stun: .25, cooldown: 6, reach: .7 };
 // Fire Burst (release 547; Tim: "a spell... fire burst... launches out a series of fireballs that fly a short distance and
@@ -38,14 +39,13 @@ export const GOLEM = { share: .9, punches: 3, gap: .38, rise: .35, sink: .4, ran
 export const FIRE_BURST = { count: 5, spread: 1.4, reach: 2.6, speed: 9 };
 export const CLUSTER = { count: 2, speed: 7, share: .45, radius: .55 };
 export const ARC_WAVE = { share: 1, grow: .5, pierce: 12, speed: 11 }; // release 549: per wave, three waves (was one wave at 2.2, grow .75)
-export const NANOKNIVES = { count: 3, share: .5, arm: .3, autoRange: 6, cooldown: .8, range: 9, speed: 13, life: 2.2, seekTurn: 9, orbitRadius: .95, spin: 2.6 }; // release 643: they fly on through a foe and curl back (life 1.4 → 2.2)
+// Release 649 (Tim, 2026-11-01: "a large sword that... moves out and swings, and then comes back to you... great sword... great
+// axe... a huge shuriken... they should Pierce through... home towards me... for like 3 seconds... I only have 3 maximum at a
+// time... hit on the way out and... on the way in... spinning... like the blades of a helicopter... grow with... charged air").
+export const MIRAGE = { share: .7, speed: 11, backSpeed: 13, out: 5, back: 2.5, seekTurn: 14, catch: .55, max: 3, cooldown: .55, range: 9, spread: .35, grow: .38, size: 2.1, spin: 15 };
 
-// Where dagger `i` of `n` circles at time `t` (seconds), as an offset in tiles.
-export function knifeOffset(i, n, t) { const a = t * NANOKNIVES.spin + i * Math.PI * 2 / n; return { x: Math.cos(a) * NANOKNIVES.orbitRadius, y: Math.sin(a) * NANOKNIVES.orbitRadius * .7, a }; }
-
-// Release 643 (Tim: "it could be fine for them to just be knives, but I like the great sword, the shuriken and the great axe
-// better"): the three blades are a great sword, a shuriken and a great axe, one each, by their place in the set (`blade`).
-export const SWEEP_BLADES = ["greatsword", "shuriken", "greataxe"];
+// Release 643 (Tim: "I like the great sword, the shuriken and the great axe better"): the blades, by `blade`; 649: in Tim's order.
+export const SWEEP_BLADES = ["greatsword", "greataxe", "shuriken"];
 function sweepBlade(ctx, x, y, a, s, i, spinAt) {
   const kind = SWEEP_BLADES[i % SWEEP_BLADES.length];
   ctx.save(); ctx.translate(x, y); ctx.fillStyle = "#ffd23f2e"; ctx.beginPath(); ctx.arc(0, 0, s * .24, 0, 7); ctx.fill();
@@ -75,11 +75,10 @@ export function drawToolForms(ctx, game, toScreen, s, t) {
   drawGolem(ctx, game, toScreen, s);
   for (const fx of game.effects) if (fx.fireBurst && fx.life > 0) { const [x, y] = toScreen(fx), k = 1 - fx.life / .32, R = fx.radius * s * (.5 + .6 * k); const g = ctx.createRadialGradient(x, y, 0, x, y, R); g.addColorStop(0, `rgba(255,236,160,${.9 * (1 - k)})`); g.addColorStop(.5, `rgba(255,128,40,${.7 * (1 - k)})`); g.addColorStop(1, "rgba(160,40,10,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill(); } // release 547: Fire Burst's flame
   for (const fx of game.effects) if (fx.kind === "golem-punch" && fx.life > 0) { const [x, y] = toScreen(fx); ctx.strokeStyle = "#e8d3a2"; ctx.lineWidth = 3; ctx.globalAlpha = Math.min(1, fx.life * 5); ctx.beginPath(); ctx.arc(x, y, fx.radius * s * (1.1 - fx.life * 2), 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
-  const k = game.knives;
-  if (k) { const n = k.count, [cx, cy] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }); for (let i = 0; i < n; i++) { const o = knifeOffset(i, n, (game.lastUpdateNow || 0) / 1000); sweepBlade(ctx, cx + o.x * s, cy + o.y * s, o.a + Math.PI / 2, s, i, (game.lastUpdateNow || 0) / 1000); } }
   for (const p of game.projectiles) {
     if (p.dead) continue;
-    if (p.knife) { const [x, y] = toScreen(p); sweepBlade(ctx, x, y, Math.atan2(p.dy, p.dx), s, p.blade || 0, p.age || 0); }
+    if (p.mirage) { const [x, y] = toScreen(p), k = MIRAGE.size * (p.scale || 1), spin = (p.age || 0) * MIRAGE.spin; // release 649: a rotor of steel
+      ctx.save(); ctx.translate(x, y); ctx.scale(k, k); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = Math.max(1, s * .05); ctx.beginPath(); ctx.arc(0, 0, s * .38, 0, 7); ctx.stroke(); sweepBlade(ctx, 0, 0, spin, s, p.blade || 0, p.age || 0); ctx.restore(); }
     else if (p.fireBomb) { const [x, y] = toScreen(p), r = s * .2, spin = (p.age || 0) * 9; // release 547: a cinder shell, cracked and glowing
       ctx.fillStyle = "#ff7a2a33"; ctx.beginPath(); ctx.arc(x, y, r * 1.7, 0, 7); ctx.fill();
       ctx.fillStyle = "#5a2416"; ctx.strokeStyle = "#2a0e08"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke();
