@@ -4448,6 +4448,7 @@ export class Game {
       move(e, dx, dy) { const ox = e.x, oy = e.y, moved = moveAxis(e, dx, dy, map, width); if (moved && game.stalkerBarred(e.x, e.y)) { e.x = ox; e.y = oy; return false; } return moved; },
       elev: (x, y) => Number(map.tiles[Math.floor(y + .72) * width + Math.floor(x + .5)]?.elev) || 0,
       hurt: (e, amount) => game.packHurt(e, amount, {}, now),
+      revealed: () => { game.message = "THE STALKER — it was waiting for you."; },
       // The mist's rot: a share of maximum health gone until the Wayfarer rests (a dodge passes through; rot past it all kills).
       rot: (e, share) => { if (now <= (p.invulnerableUntil || 0)) return false; ensureRot(game.save); game.save.rot += Math.max(1, Math.round((game.save.maxHp || 1) * share)); p.invulnerableUntil = now + 700;
         if (game.save.rot >= game.save.maxHp) p.hp = 0; else p.hp = Math.min(p.hp, healthCeiling(game.save));
@@ -4475,7 +4476,10 @@ export class Game {
     const st = ensureStalker(this.save), p = this.player, width = mapWidth(this.map, this.area);
     let spot = null;
     if (at) { for (const [dx, dy] of [[0, 0], [1.2, 0], [-1.2, 0], [0, 1.2], [0, -1.2], [1.2, 1.2], [-1.2, 1.2], [1.2, -1.2], [-1.2, -1.2]]) if (this.stalkerOpen(at.x + dx, at.y + dy)) { spot = { x: at.x + dx, y: at.y + dy }; break; } }
-    else { const b = this._stalkBearing ?? Math.PI / 2; spot = ambushSpots(this.save.seed, `${st.seq}:${st.kills}:${Math.floor(now / 500)}`, p, { x: -Math.cos(b), y: -Math.sin(b) }).find((q) => this.stalkerOpen(q.x, q.y)) || null; }
+    else { // release NNN: it lies in wait ahead of the Wayfarer, on the highest open ground it can find (a tree, a ledge), and springs when they come close.
+      const b = this._stalkBearing ?? Math.PI / 2, elev = (q) => Number(this.map.tiles[Math.floor(q.y + .72) * width + Math.floor(q.x + .5)]?.elev) || 0;
+      const open = ambushSpots(this.save.seed, `${st.seq}:${st.kills}:${Math.floor(now / 500)}`, p, { x: Math.cos(b), y: Math.sin(b) }).filter((q) => this.stalkerOpen(q.x, q.y));
+      spot = open.sort((q, r) => elev(r) - elev(q))[0] || null; }
     if (!spot) return null;
     const stats = characterStats(this.save), rev = tuneGatePredator(Object.assign(createCombatant("gateRevenant", 0, 0, false, []), { gatePredator: true }), this.save, stats);
     const beast = beastProfileVitals({ hitsToKill: 0, hpPerLevel: 0, damageShare: STALKER.vitals.damageShare }, this.save, stats), q = regionalThreat(this.rx, this.ry), v = stalkerVitals(rev.maxHp, beast.damage, q);
@@ -4483,8 +4487,9 @@ export class Game {
     Object.assign(c, { id: `stalker-${st.seq}-${st.kills}`, kind: "stalker", stalker: true, boss: true, aggro: true, eliteName: "The Stalker", defeatTitle: "THE STALKER FALLS", maxHp: v.hp, hp: Math.min(v.hp, st.active?.hp || v.hp), damage: v.damage, baseDamage: v.damage,
       range: 0, meleePatterns: [], scale: STALKER.size, baseScale: STALKER.size, bodyRadius: .5, threatRing: q.ring, xpMultiplier: q.xpMultiplier * 2, staggerImmune: true,
       affixes: rollAffixes(key, STALKER.affixes[0] + (hashSeed(`${key}:affix-count`) % (STALKER.affixes[1] - STALKER.affixes[0] + 1))), stalkForm: at ? "cat" : hashSeed(`${key}:first`) % 2 ? "ape" : "cat" });
+    if (!at) Object.assign(c, { stalkLurk: { t: 0 }, hidden: true, untargetable: true, stalkHide: 1 }); // release NNN: hidden until it springs
     ensureAI(c); this.enemies.push(c); stalkerEngaged(this.save, c.hp);
-    if (!fromDoor) this.message = "THE STALKER — it was behind you all along.";
+    if (!fromDoor) this.message = "The air goes very still. Something is watching you.";
     return c;
   }
   tickStalker(dt, now) {

@@ -47,7 +47,7 @@ test('in the game it closes in by walking and comes from behind; never in a dung
   const e = walkUntilAmbush(g);
   assert.ok(e, 'it ambushes'); assert.ok(Math.hypot(e.x - g.player.x, e.y - g.player.y) >= STALKER.hunt.spawn[0] - .5, 'from out of reach');
   assert.equal(e.boss, true); assert.equal(e.scale, STALKER.size); assert.ok(e.affixes.length >= 1 && e.affixes.length <= 2, 'one or two affixes');
-  assert.ok(g.save.stalker.active.engaged); assert.match(g.message, /STALKER/);
+  assert.ok(g.save.stalker.active.engaged); assert.match(g.message, /watching/, 'it comes out hidden, lying in wait (release NNN)'); assert.ok(e.stalkLurk && e.hidden, 'unseen until it springs');
   // Home (Ember Refuge) is a town: it never comes out there.
   const h = game('STALK', 0, 0), hq = ensureStalker(h.save); hq.ground = hq.need; h.player.x = 16; h.player.y = 16;
   for (let i = 0; i < 50; i++) { h.player.x += i % 2 ? .05 : -.05; h.tickStalker(.05, i * 50); }
