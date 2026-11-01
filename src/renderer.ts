@@ -13,6 +13,7 @@ import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.ts";
 import { TREES } from "./trees.ts";
 import { AFFIXES, dronePos, affixNames } from "./affixes.ts";
+import { KIT_MOVES } from "./boss-kit.ts";
 import { SKY_DISCS } from "./skylands.ts"; // release 587
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.ts";
 import { GATE_REVENANT, DANGER } from "./monster-pack.ts";
@@ -1679,7 +1680,7 @@ export function render(ctx, g, w, h, now) {
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),g.presentation);
   drawMorphEffects(ctx,g.enemies,s,now); // release 385: the Morphling's cables, jaw, lunge and rising
   drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) });
-  for (const h of g.affixHazards || []) { const A = AFFIXES[h.kind], x = h.x * s, y = h.y * s, R = h.radius * s, arming = now < h.armAt, k = arming ? 1 - (h.armAt - now) / ((A?.arm || .5) * 1000) : 1; if (!A) continue; ctx.save(); // release 657: affix telegraphs and strikes
+  for (const h of g.affixHazards || []) { const A = AFFIXES[h.kind] || KIT_MOVES[h.kind] /* release 668 */, x = h.x * s, y = h.y * s, R = h.radius * s, arming = now < h.armAt, k = arming ? 1 - (h.armAt - now) / ((A?.arm || .5) * 1000) : 1; if (!A) continue; ctx.save(); // release 657: affix telegraphs and strikes
     if (arming) { ctx.strokeStyle = A.color; ctx.globalAlpha = .45 + .45 * k; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.stroke(); ctx.fillStyle = A.color + "40"; ctx.beginPath(); ctx.ellipse(x, y, R * k, R * .6 * k, 0, 0, 7); ctx.fill(); }
     else if (h.kind === "volcanic" || h.kind === "venomous") { ctx.globalAlpha = Math.min(1, (h.until - now) / 600) * .75; const gr = ctx.createRadialGradient(x, y, 0, x, y, R); gr.addColorStop(0, h.kind === "volcanic" ? "#ffd27a" : "#d8ff9a"); gr.addColorStop(.5, A.color); gr.addColorStop(1, A.color + "00"); ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.fill(); }
     else { const f = Math.max(0, (h.until - now) / 250); ctx.globalAlpha = f; if (h.kind === "skyAssault") { ctx.fillStyle = "#e9f8ff"; ctx.fillRect(x - R * .35, y - s * 6, R * .7, s * 6); } ctx.fillStyle = A.color; if (h.kind === "spiked") { ctx.beginPath(); for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * .35; ctx.moveTo(x + (i - 2) * R * .3, y); ctx.lineTo(x + Math.cos(a) * R * .2 + (i - 2) * R * .3, y - R * (1.1 - Math.abs(i - 2) * .25)); ctx.lineTo(x + (i - 2) * R * .3 + R * .12, y); } ctx.fill(); } else { ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.fill(); } }
