@@ -25,3 +25,15 @@ test('a journey that already has a 371 town nearby keeps it, and gains the Mouth
   const s = atMouth(); s.farArray.listeners = 1; const c = s.relayNetwork.coordinate; s.hometowns = { towns: [{ rx: c.rx + 1, ry: c.ry, name: 'Mossmoor', listener: 1 }], home: null };
   const m = migrateSave(JSON.parse(JSON.stringify(s))); assert.equal(m.hometowns.towns.length, 2); assert.ok(m.hometowns.towns.some((t) => t.name === 'Mossmoor' && !t.mouth)); assert.ok(m.hometowns.towns.some((t) => t.mouth && t.rx === c.rx && t.ry === c.ry));
 });
+
+// The Deep's plan (Tim, 2026-11-01): "the Listener's Mouth, once you've beaten that Mouth's Listener: its runs become the Array's
+// own endless descent". The fallen Listener's Mouth also opens the Deep.
+test("a Mouth whose Listener fell opens the Listener's Descent into the Deep; before that it does not", () => {
+  const s = atMouth(), c = s.relayNetwork.coordinate, g = new Game(s, 0); g.rx = c.rx; g.ry = c.ry; g.loadArea('overworld');
+  assert.ok(!g.map.objects.some((o) => o.id.startsWith('mouth-deep')), 'not while the Listener lives'); s.atlas[`${c.rx},${c.ry}`] ||= { terrain: 'ash' };
+  listenerFelled(s); ensureHometowns(s); g.loadArea('overworld');
+  const mouth = g.map.objects.find((o) => o.kind === 'arrayMouth'), d = g.map.objects.find((o) => o.id.startsWith('mouth-deep'));
+  assert.ok(d && d.kind === 'deepShaft' && /Listener's Descent/.test(d.name), 'the Descent'); assert.ok(Math.hypot(d.x - mouth.x, d.y - mouth.y) < 6, 'beside the Mouth');
+  assert.deepEqual(d.actions, ['descend:1']);
+  g.player.x = d.x; g.player.y = d.y; const r = g.interact('descend:1', d.id); assert.ok(r.ok, r.message); assert.equal(g.area, 'dungeon'); assert.equal(g.map.deepFloor, 1, 'floor 1 of the Deep');
+});

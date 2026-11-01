@@ -2729,6 +2729,20 @@ cinder iron 1, weighted 5/3/1). A clod is drilled once, so each secret pays once
 Skylands' own field). Bounded: one drill target a frame, at most 2000 drilled tiles kept per crater. Tests:
 `tests/canyon-craters.test.ts`.
 
+## Release NNN: the Listener's Descent — 2026-11-01
+
+Tim approved the Deep's plan (2026-11-01), which included: "The Listener's Mouth, once you've beaten that Mouth's Listener: its
+runs become the Array's own endless descent." Release 677 built the Deep's shafts; this is the Mouth's part.
+
+**CODE:** game.ts `raiseMouthTown` (run on each load of a Mouth town's section, that is a Mouth whose Listener fell) places a
+`deepShaft` object `mouth-deep-<rx>-<ry>` (`mouthDeep: true`, `THE_DEEP.mouthName` "The Listener's Descent",
+`THE_DEEP.messages.mouth`) on open ground just south of the Mouth, offering floor 1 and every checkpoint reached, unless the
+section already has a shaft. It is an ordinary Deep shaft: `enterDeep` keys it by the section (`deepIdFor(seed, rx, ry)`), so
+floors, checkpoints, embers, loot and the record all work as release 677's. The Mouth itself still opens Array runs.
+
+**BOUNDARY:** No generator change; added at load beside every Mouth town, old journeys too. Save: the shaft's record in
+`save.theDeep.shafts` (additive, release 677's). Tests: `tests/mouth-town-373.test.ts`.
+
 ## Release 685: ruined arcologies — 2026-11-01
 
 Tim (2026-11-01): "large apartment buildings that are kind of like dilapidated or destroyed... formerly cyberpunk utopias...

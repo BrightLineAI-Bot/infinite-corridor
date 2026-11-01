@@ -4279,6 +4279,10 @@ export class Game {
     if (stone) this.map.objects.push({ id: `listening-stone-${this.rx}-${this.ry}`, kind: "listeningStone", name: "The Listening Stone", lore: `Raised by the people of ${t.name} where the Listener fell. They say the line still hums in it, and that it listens back for whoever goes down into the Mouth.`, ...stone, state: "humming", actions: ["inspect"], landmark: true });
     const delver = !this.map.objects.some((o) => o.id === `mouth-delver-${this.rx}-${this.ry}`) && near(2, 0);
     if (delver) this.map.objects.push({ id: `mouth-delver-${this.rx}-${this.ry}`, kind: "shelterMerchant", name: "The Delvers' Exchange", role: `${t.name} delvers`, ...delver, state: "calm", actions: ["speak", "trade"], settlement: `hamlet-${this.rx}-${this.ry}` });
+    // Tim (2026-11-01, the Deep's plan): "the Listener's Mouth, once you've beaten that Mouth's Listener: its runs become the Array's own
+    // endless descent". The Mouth where a Listener fell also opens the Deep (the-deep.ts), from floor 1 or any checkpoint reached.
+    const descent = !this.map.objects.some((o) => o.kind === "deepShaft") && near(0, 2);
+    if (descent) { const rec = deepShaft(this.save, deepIdFor(this.save.seed, this.rx, this.ry)); this.map.objects.push({ id: `mouth-deep-${this.rx}-${this.ry}`, kind: "deepShaft", name: THE_DEEP.mouthName, ...descent, state: "open", actions: startFloors(rec).map((f) => `descend:${f}`), lore: THE_DEEP.messages.mouth, landmark: true, mouthDeep: true }); }
     const smith = !this.map.objects.some((o) => o.id === `town-smith-${this.rx}-${this.ry}`) && (this.townIndoorSpot() || this.townSpot(mouth)); // release 395: the town smith (smithy.ts); 441: clear of the Wayglass; 541: inside one of the town's buildings
     if (smith) this.map.objects.push({ id: `town-smith-${this.rx}-${this.ry}`, kind: "townSmith", name: `The ${t.name} Smith`, ...smith, state: "working", actions: ["smith"], settlement: `hamlet-${this.rx}-${this.ry}` });
   }
