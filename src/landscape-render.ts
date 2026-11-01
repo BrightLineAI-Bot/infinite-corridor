@@ -1,6 +1,7 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
+import { SEASONS } from "./seasons.ts";
 import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.ts";
 import { TREES } from "./trees.ts";
 
@@ -336,7 +337,7 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
   if (tex) ctx.drawImage(tex, px, py, s + .5, s + .5);
   else { ctx.save(); ctx.translate(px, py); PAINT[t.kind](ctx, s, rand(variant + 1)); ctx.restore(); } // no offscreen canvas (tests, old browsers)
   if (!staticPass) animate(ctx, t, px, py, s);
-  if (t.canopy && t.look != null) drawTreeWear(ctx, t, px, py, s); // release 645: the tree package's bark tints and leaves
+  if (t.canopy && (t.look != null || treeSeasonNow)) drawTreeWear(ctx, t, px, py, s); // release 645: the tree package's bark tints and leaves
   if (!t.canopy) drawLevelMarks(ctx, t, x, y, px, py, s, tiles, w); // release 637: the great tree's wood is not notched with level marks
   if (lift > 0) { // rim light on edges that drop away, shade on lower sides
     const at = (dx, dy) => tiles?.[(y + dy) * w + x + dx], lower = (n) => !n || (n.elev || 0) < (t.elev || 0);
@@ -351,11 +352,15 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
 
 // Release 645: each great tree's own look over its tiles (a tint), and leaves on its branches: tufts along a leafy branch,
 // a full spray at a tip, hanging below the wood. A handful of ellipses per tile, no state.
+// Release 679 (seasons.ts): the season of the woods the section belongs to (renderer.ts sets it each frame).
+let treeSeasonNow = null;
+export function setTreeSeason(season) { treeSeasonNow = season || null; }
 function drawTreeWear(ctx, t, px, py, s) {
-  const L = TREES.looks[t.look] || TREES.looks[0], n = t.leaves || 0, d = (t.x * 7 + t.y * 13) % 17;
+  const L = TREES.looks[t.look] || TREES.looks[0], n = t.leaves || 0, d = (t.x * 7 + t.y * 13) % 17, leaf = (treeSeasonNow && SEASONS.canopy[treeSeasonNow]) || L.leaf;
   if (L.tint && t.kind !== "canopyLeaf") { ctx.fillStyle = L.tint; ctx.fillRect(px, py, s + .5, s + .5); }
+  if (treeSeasonNow && SEASONS.wash[treeSeasonNow] && (t.kind === "canopyLeaf" || t.kind === "canopyCrown")) { ctx.fillStyle = SEASONS.wash[treeSeasonNow]; ctx.fillRect(px, py, s + .5, s + .5); } // the leaf platforms take the season
   if (!n) return;
-  for (let k = 0; k < n * 3; k++) { const a = (d + k * 5) % 17 / 17, b = (d * 3 + k * 7) % 11 / 11; ctx.fillStyle = L.leaf[(d + k) % L.leaf.length] + "dd"; ctx.beginPath(); ctx.ellipse(px + s * (.1 + a * .8), py + s * (k % 2 ? .95 + b * .3 : .05 + b * .25), s * (.13 + .05 * (k % 3)), s * (.08 + .03 * (k % 2)), a * 3, 0, TAU); ctx.fill(); }
+  for (let k = 0; k < n * 3; k++) { const a = (d + k * 5) % 17 / 17, b = (d * 3 + k * 7) % 11 / 11; ctx.fillStyle = leaf[(d + k) % leaf.length] + "dd"; ctx.beginPath(); ctx.ellipse(px + s * (.1 + a * .8), py + s * (k % 2 ? .95 + b * .3 : .05 + b * .25), s * (.13 + .05 * (k % 3)), s * (.08 + .03 * (k % 2)), a * 3, 0, TAU); ctx.fill(); }
 }
 
 function animate(ctx, t, px, py, s) {

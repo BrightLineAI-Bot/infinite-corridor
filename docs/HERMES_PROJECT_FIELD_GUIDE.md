@@ -2723,6 +2723,25 @@ in, and only the Deep Annex chains floors and lets you out elsewhere.
 - Runtime only, like every Skyland run: histories are dropped on the overworld, so a death or leaving ends the chain.
 - New stair fields are additive. Stairs at placement 1 never become annexes.
 - Tests: `tests/sky-annex-678.test.ts`.
+## Release 679: seasons in the woods — 2026-11-01
+
+Tim (2026-11-01): seasons for the forest and great-tree sections ("summer... lush green; spring... some green trees, some
+flowering; fall... red, orange, brown... some bare... falling leaves; winter... bare branches, some snow-capped... snowfall"),
+turning not by time but by "30 to 40 tiles explored outside of the region... this attracts more of how I play the game".
+
+**CODE:** `src/seasons.ts` (new; in the build and both sw.js lists): `SEASONS` (`regions` forest and jungle, `order`,
+`turn` [30, 40], `maxTracked` 48, per-season `looks` (leaf palettes, bare/bloom/snow shares), `canopy` and `crown` palettes,
+the tile `wash`, `weather`), `ensureSeasons` (`save.seasons`: { [regionId]: { t, n } }), `seasonOf` (start hashed per
+region, plus turns), `trackSeason`, `noteSeasonDiscovery` (each first-explored section counts for every other tracked
+region), `treeSeason` (one tree's look, hashed by place). game.ts `loadArea` sets `this.season` for a forest or jungle
+section and counts a first visit. renderer.ts: `SEASON` each frame, `drawSeasonTree` (bare branches and snow caps, or the
+season's crown through `actor`'s new `palette` argument, with blossom), the forest giants' crowns, the great trees'
+`drawCanopyDressing` leaves, and a light seasonal weather pass (skipped where the section has its own weather);
+landscape-render.ts `setTreeSeason` recolours the tree package's leaves and washes its leaf platforms.
+
+**BOUNDARY:** Drawing only: no generator, tile, collision or tree object changes. Save additive at schema 14
+(`save.seasons`, normalised in `freshSave` and `migrateSave`). Bounded: at most 48 regions counted, a dozen motes of weather.
+Tests: `tests/seasons-679.test.ts`.
 ## Release 678: the Stalker — 2026-11-01
 
 Tim (2026-11-01): "the world is too peaceful". A silver creature of the Corridor that hunts the Wayfarer on the overworld only,
