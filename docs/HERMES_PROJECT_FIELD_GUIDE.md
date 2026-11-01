@@ -2704,16 +2704,17 @@ bridges over ravines; the prize at the deepest point is Divine Viscera (decided 
 finds in clods are the next release.
 
 **CODE:** `src/canyon.ts` (new; in the build and both sw.js lists): `CANYON` (`chance` .025 past `minRing` 6, `size` 44,
-`stability` green .62 / yellow .3 / red the rest, `clod` hp by stability (1 / 1.6 / 1), drill 1.25 hp/s, robot ×2, strain
-rise 1.6 / settle 1.6 / limit 1, `caveIn` damage .22 of max health and `limit` 3, caverns 6–9, `viscera` 2, `maxDrilled` 2000),
-`canyonHere`, `canyonIdFor`, `ensureCanyonHistory` (`history.canyon`: caveIns, sealed, pulled, drilled, reddened tile indexes),
+`tempers` plain .52 / green .3 / yellow .12 / red the rest, `clod` hp (plain 1.2, unstable 1.6), the robot's auger 2.2 hp/s
+(robot only: Tim, "the robot was supposed to have an auger attachment that you could hold to drill longer"), strain rise 2.2 /
+settle 2.4 / limit .6 a colour (green → yellow → red), `caveIn` damage .22 of max health and `limit` 3, caverns 6–9, `viscera` 2, `maxDrilled` 2000),
+`canyonHere`, `canyonIdFor`, `ensureCanyonHistory` (`history.canyon`: caveIns, sealed, pulled, drilled and strained tile indexes),
 `generateCanyon` (clods everywhere inside undrillable rock; the shaft, caverns, the ravine of abyss with one `skyBridge` and
 landings, lava and a pool in caverns clear of it, the wreck in the cavern farthest from the way in, a creature a dry cavern;
-drilled and reddened clods replayed over it), `drillClod`, `settleClods`. game.ts: `generatePinnedDungeon` builds `canyon:`
+drilled and strained clods replayed over it), `drillClod`, `settleClods`. game.ts: `generatePinnedDungeon` builds `canyon:`
 ids; `placeCrater` (sections first seen from now on, `atlas.canyonVersion`; a sealed crater shows as a Collapsed Crater with no
-way in); `drillAhead` after the Wayfarer's move (the clod pushed into), `caveIn` (damage, shake, count; at the limit the crater
-seals and throws you out), `pullViscera` (the wreck, once: `save.skylands.viscera` += 2, the crossing resolved).
-landscape-render.ts paints `clodGreen`, `clodYellow`, `clodRed` (ringed by stability), `craterWall`, `craterFloor`;
+way in); `drillAhead` after the Wayfarer's move (the clod pushed into; in the robot only), `canyonTick` (strain settles; a sealed crater
+puts you out), `caveIn` (damage, shake, count; the third kills you and seals the crater), `pullViscera` (the wreck, once: `save.skylands.viscera` += 2, the crossing resolved).
+landscape-render.ts paints `clodPlain`, and `clodGreen`, `clodYellow`, `clodRed` ringed by their state, `craterWall`, `craterFloor`;
 renderer.ts draws the auger's cracks, the strain bar and dust on the clod being drilled.
 
 **BOUNDARY:** New ground only (`atlas.canyonVersion`). Save additive at schema 14 (`history.canyon`; the viscera count is the

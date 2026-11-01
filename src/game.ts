@@ -266,7 +266,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (isArenaRun(id)) map = generateListenerArena(save.seed, id); // release 375: the Listening Hall
   else if (id.startsWith('dive:')) map = (history.diveGenerator ?? 1) >= 2 ? generateGrotto(save.seed, id) : generateDiveSite(save.seed, id);
   else if (/^(arena:|hunt-arena:|hunt-instance:|skyland:)/.test(id)) { map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved}); if (isSkyland(id)) dressSkyland(map, id, save); } // release 571: a Skyland is a temporary arena run in waves
-  else if (isCanyonId(id)) { const c = ensureCanyonHistory(history); map = generateCanyon(save.seed, id, c.drilled, c.reddened); } // Canyon craters
+  else if (isCanyonId(id)) { const c = ensureCanyonHistory(history); map = generateCanyon(save.seed, id, c.drilled, c.strained); } // Canyon craters
   else if (isDeepId(id)) { const floor = deepShaft(save, id).floor, plan = floorPlan(save.seed, id, floor); map = generateExpeditionDungeon(save.seed, plan.genId, plan.recipe, { layoutPool: 5, themePool: THEME_POOL_VERSION, theme: plan.theme || 'none', sizeProfile: 'standard' }); map.deepFloor = floor; map.name = `The Deep · Floor ${floor}`; dressDeepFloor(map, floor); } // release 677: a floor of the Deep
   else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1,...(history.mire?{theme:'poisonCrypt'}:history.dream?{theme:'dream'}:{}),...(history.mire?.taste?{sizeProfile:'compact'}:{}),...(history.ladder?{ladder:crossingLadder(save.seed,id,history.ladder.tier)}:{}),...(history.warpVersion>=2?{warpAlways:true}:{})});
   else if (!id.includes(':deep-v') && history.generatorVersion === 4) map = generateUnifiedDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options});
@@ -5311,20 +5311,26 @@ export class Game {
   }
   // Pushing into a clod drills it; strain settles on the rest. Breaking a red clod caves in.
   drillAhead(x, y, dt, now) {
-    const st = (this.canyonDrill ||= {}); settleClods(st, dt);
+    const st = (this.canyonDrill ||= {});
     if (Math.hypot(x, y) < .4) return null;
     const p = this.player, w = mapWidth(this.map, this.area), cx = p.x + .5 + Math.sign(Math.round(x * 1.4)) * .7, cy = p.y + .6 + Math.sign(Math.round(y * 1.4)) * .7, t = this.map.tiles[Math.floor(cy) * w + Math.floor(cx)];
     if (!isClod(t) || Math.hypot(t.x + .5 - (p.x + .5), t.y + .5 - (p.y + .6)) > 1.6) { this.drillTile = null; return null; }
-    const h = ensureCanyonHistory(dungeonHistory(this.save, this.areaId())), r = drillClod(t, st, dt, this.mechUp?.()); this.drillTile = { x: t.x, y: t.y, progress: st[`${t.x},${t.y}`]?.progress || 0, strain: st[`${t.x},${t.y}`]?.strain || 0, need: CANYON.clod.hp[t.kind] || 1 };
-    if (r.turnedRed) { h.reddened.push(t.y * w + t.x); this.message = CANYON.messages.yellowToRed; }
+    if (!this.mechUp()) { this.drillTile = null; if (now >= (this.drillHintAt || 0)) { this.drillHintAt = now + 4000; this.message = CANYON.messages.needRobot; } return null; } // the robot's auger only
+    const h = ensureCanyonHistory(dungeonHistory(this.save, this.areaId())), r = drillClod(t, st, dt); this.drillTile = { x: t.x, y: t.y, progress: st[`${t.x},${t.y}`]?.progress || 0, strain: st[`${t.x},${t.y}`]?.strain || 0, need: CANYON.clod.hp[t.kind] || 1 };
+    if (r.climbed) { h.strained.push(t.y * w + t.x); this.message = r.climbed === CANYON.kinds.red ? CANYON.messages.yellowToRed : CANYON.messages.toYellow; }
     if (r.broke) { h.drilled.push(t.y * w + t.x); if (h.drilled.length > CANYON.maxDrilled) h.drilled.shift(); this.drillTile = null; if (r.caveIn) this.caveIn(t, h, now); }
     return r;
+  }
+  // Each frame in a crater: strain settles; a collapsed crater lets nobody back in (after the death it caused, you are put out).
+  canyonTick(dt, now) {
+    settleClods(this.canyonDrill ||= {}, dt);
+    if (this.player.hp > 0 && dungeonHistory(this.save, this.areaId()).canyon?.sealed) { this.canyonDrill = {}; this.leaveDungeon(CANYON.messages.collapse); }
   }
   caveIn(t, h, now) {
     const p = this.player, C = CANYON.caveIn; h.caveIns++;
     if (now >= (p.invulnerableUntil || 0)) p.hp -= Math.max(1, Math.round(this.save.maxHp * C.damage));
     this.cameraShake = Math.max(this.cameraShake || 0, .6); (this.fx ||= []).push?.({ kind: "caveIn", x: t.x + .5, y: t.y + .5, life: .8, maxLife: .8 });
-    if (h.caveIns >= C.limit) { h.sealed = true; this.defeatNotice = { title: "THE CRATER COLLAPSES", detail: "sealed for good", kind: "danger" }; this.leaveDungeon(CANYON.messages.collapse); journalOnce(this.save, `canyon-collapse:${this.areaId?.()}`, CANYON.messages.collapse, "Canyon Craters"); return true; }
+    if (h.caveIns >= C.limit) { h.sealed = true; journalOnce(this.save, `canyon-collapse:${this.areaId?.()}`, CANYON.messages.collapse, "Canyon Craters"); p.hp = 0; this.message = CANYON.messages.collapse; this.defeatNotice = { title: "THE CRATER COLLAPSES", detail: "sealed for good", kind: "danger" }; return true; } // the third cave-in kills, and the crater is gone
     this.defeatNotice = { title: "CAVE-IN", detail: `${h.caveIns} of ${C.limit} · one more and the crater may collapse`, kind: "danger" }; this.message = CANYON.messages.caveIn(h.caveIns, C.limit); return false;
   }
   pullViscera(o) {
@@ -5817,6 +5823,7 @@ export class Game {
     if (this.orbit) this.tickOrbit(dt, now); // release 487: Orbit Volley
     this.tickMirage(dt); // release 649: Mirage of Blades
     if (this.area === "overworld" && (this.map?.canopy || this.map?.keep)) this.touchCrownRest(); // a great tree's crown, or a keep's
+    if (this.area === "dungeon" && this.map?.canyon) this.canyonTick(dt, now); // Canyon craters
     this.tickFractured(now); // release 651: Fractured mode
     if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = ensureEliteState(this.save).status; // release 657: affixes, auras, shamans
       tickAffixes(this, dt, now, (n) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)))); p.invulnerableUntil = now + 350; }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }

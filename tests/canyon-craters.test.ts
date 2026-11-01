@@ -9,9 +9,9 @@ import { CANYON, canyonHere, generateCanyon, isClod } from '../src/canyon.ts';
 
 const SEED = 'CANYON1';
 let spot = null; const findCrater = () => { if (spot) return spot; for (let x = 6; x < 90 && !spot; x++) for (let y = -40; y < 40 && !spot; y++) if (canyonHere(SEED, x, y)) { const s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld', false); if (g.map.objects.some((o) => o.dungeonType === 'canyon')) spot = [x, y]; } return spot; };
-const enter = () => { const [x, y] = findCrater(), s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld', false); const o = g.map.objects.find((q) => q.dungeonType === 'canyon'); g.player.x = o.x; g.player.y = o.y; const r = g.interact('enter', o.id); assert.ok(r.ok, r.message); return { s, g, o }; };
+const enter = (robot = true) => { const [x, y] = findCrater(), s = freshSave(); s.seed = SEED; if (robot) s.mech = { built: true, active: true, mode: 'robot', plate: 10 }; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld', false); const o = g.map.objects.find((q) => q.dungeonType === 'canyon'); g.player.x = o.x; g.player.y = o.y; const r = g.interact('enter', o.id); assert.ok(r.ok, r.message); return { s, g, o }; };
 const standBy = (g, t, dx) => { g.player.x = t.x - dx; g.player.y = t.y - .1; };
-const drill = (g, dx, seconds, step = .05) => { let r = null; for (let k = 0; k < seconds / step; k++) r = g.drillAhead(dx, 0, step, 1000 + k * 50) || r; return r; };
+const drill = (g, dx, seconds, step = .05) => { let r = null; for (let k = 0; k < seconds / step; k++) { r = g.drillAhead(dx, 0, step, 1000 + k * 50) || r; if (g.area === "dungeon") g.canyonTick(step, 1000 + k * 50); } return r; };
 const history = (g) => g.save.consequences.dungeons[g.areaId()].canyon;
 
 test('a crater is mostly clods, with caverns, lava, water, a bridged ravine and the wreck; the wreck can be dug to', () => {
@@ -24,24 +24,25 @@ test('a crater is mostly clods, with caverns, lava, water, a bridged ravine and 
   assert.deepEqual(generateCanyon(SEED, 'canyon:X:1:2').tiles.map((t) => t.kind), m.tiles.map((t) => t.kind), 'the same each time');
 });
 
-test('push into a green clod and it drills out, and stays out', () => {
+test('on foot the clods will not give; in the robot, push into a plain clod and the auger drills it out, and it stays out', () => {
+  const foot = enter(false).g, ft = foot.map.tiles.find((q) => q.kind === CANYON.kinds.plain && !foot.map.tiles[q.y * foot.map.width + q.x - 1].blocked); standBy(foot, ft, 1); drill(foot, 1, 2); assert.ok(ft.blocked, 'by hand: no'); assert.match(foot.message, /robot/);
   const { g } = enter(); assert.ok(g.map.canyon);
-  const t = g.map.tiles.find((q) => q.kind === CANYON.kinds.green && !g.map.tiles[q.y * g.map.width + q.x - 1].blocked); assert.ok(t, 'a green clod beside open ground');
+  const t = g.map.tiles.find((q) => q.kind === CANYON.kinds.plain && !g.map.tiles[q.y * g.map.width + q.x - 1].blocked); assert.ok(t, 'a plain clod beside open ground');
   standBy(g, t, 1); const r = drill(g, 1, 1.2); assert.ok(r?.broke, 'drilled out'); assert.equal(t.blocked, false);
   g.loadArea('dungeon', false); assert.equal(g.map.tiles[t.y * g.map.width + t.x].blocked, false, 'stays drilled');
 });
 
-test('a yellow clod drilled too long turns red; let it settle and it does not; breaking red caves in, and three collapse the crater', () => {
+test('an unstable clod held too long climbs green → yellow → red; drilled in bursts it holds; red caves in, and the third kills and seals', () => {
   const { s, g } = enter(), W = g.map.width, besideOpen = (q) => !g.map.tiles[q.y * W + q.x - 1].blocked;
-  const ys = g.map.tiles.filter((q) => q.kind === CANYON.kinds.yellow && besideOpen(q));
-  standBy(g, ys[0], 1); drill(g, 1, .7, .05); assert.equal(ys[0].kind, CANYON.kinds.red, 'strained red'); assert.ok(ys[0].blocked, 'not yet broken');
-  if (ys[1]) { standBy(g, ys[1], 1); for (let i = 0; i < 6; i++) { drill(g, 1, .2); drill(g, 0, .6); } assert.notEqual(ys[1].kind, CANYON.kinds.red, 'drilled in bursts, it holds'); }
-  const hp = g.player.hp; standBy(g, ys[0], 1); drill(g, 1, 1.2); assert.equal(history(g).caveIns, 1); assert.ok(g.player.hp < hp, 'the cave-in hurts');
-  const reds = g.map.tiles.filter((q) => q.kind === CANYON.kinds.red && besideOpen(q)); const h = history(g);
-  for (const r of reds) { if (g.area !== 'dungeon') break; g.player.hp = s.maxHp; g.player.invulnerableUntil = 0; standBy(g, r, 1); drill(g, 1, 1.2); }
-  if (g.area === 'dungeon') { h.caveIns = CANYON.caveIn.limit - 1; const any = g.map.tiles.find((q) => q.kind === CANYON.kinds.red && besideOpen(q)) || g.map.tiles.find((q) => isClod(q) && besideOpen(q)); any.kind = CANYON.kinds.red; standBy(g, any, 1); drill(g, 1, 1.2); }
-  assert.equal(g.area, 'overworld', 'thrown out'); assert.equal(h.sealed, true);
-  g.loadArea('overworld', false); assert.ok(g.map.objects.some((o) => o.name === 'Collapsed Crater') && !g.map.objects.some((o) => o.dungeonType === 'canyon'), 'sealed: no way in');
+  const gs = g.map.tiles.filter((q) => q.kind === CANYON.kinds.green && besideOpen(q));
+  standBy(g, gs[0], 1); drill(g, 1, .35); assert.equal(gs[0].kind, CANYON.kinds.yellow, 'strained yellow'); drill(g, 1, .3); assert.equal(gs[0].kind, CANYON.kinds.red, 'then red'); assert.ok(gs[0].blocked, 'not yet broken');
+  standBy(g, gs[1], 1); for (let i = 0; i < 8 && gs[1].blocked; i++) { drill(g, 1, .2); drill(g, 0, .3); } assert.ok(!gs[1].blocked, 'drilled in bursts it broke'); assert.equal(history(g).caveIns, 0, 'without a cave-in');
+  const hp = g.player.hp; standBy(g, gs[0], 1); drill(g, 1, 1); assert.equal(history(g).caveIns, 1); assert.ok(g.player.hp < hp, 'the cave-in hurts');
+  const h = history(g); h.caveIns = CANYON.caveIn.limit - 1; const r = g.map.tiles.find((q) => q.kind === CANYON.kinds.red && q.blocked && besideOpen(q)); g.player.hp = s.maxHp; g.player.invulnerableUntil = 0; standBy(g, r, 1); drill(g, 1, 1.2);
+  assert.equal(h.sealed, true); assert.ok(g.player.hp <= 0, 'the third cave-in kills');
+  const idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false }; for (let i = 0; i < 40 && g.area === 'dungeon'; i++) g.update(.05, idle, 5000 + i * 50);
+  assert.equal(g.area, 'overworld', 'ejected');
+  g.rx = findCrater()[0]; g.ry = findCrater()[1]; g.loadArea('overworld', false); assert.ok(g.map.objects.some((o) => o.name === 'Collapsed Crater') && !g.map.objects.some((o) => o.dungeonType === 'canyon'), 'sealed: no way in');
   assert.equal(migrateSave(JSON.parse(JSON.stringify(s))).consequences.dungeons[Object.keys(s.consequences.dungeons).find((k) => k.startsWith('canyon:'))].canyon.sealed, true);
 });
 

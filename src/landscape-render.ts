@@ -213,6 +213,7 @@ const PAINT = {
   castleCourt(c, s, r) { flagstones(c, s, r, "#77706a", "#5b5550"); },
   // Canyon craters (canyon.ts): dirt clods ringed by their stability (green safe, yellow strained, red about to cave in),
   // the crater's undrillable rock and its packed floor.
+  clodPlain(c, s, r) { PAINT.clodBase(c, s, r); c.strokeStyle = "#00000033"; c.lineWidth = 1; c.strokeRect(.5, .5, s - 1, s - 1); },
   clodGreen(c, s, r) { PAINT.clodBase(c, s, r); c.strokeStyle = "#5fd06a"; c.lineWidth = Math.max(1.5, s * .07); c.strokeRect(s * .08, s * .08, s * .84, s * .84); },
   clodYellow(c, s, r) { PAINT.clodBase(c, s, r); c.strokeStyle = "#f2c94c"; c.lineWidth = Math.max(1.5, s * .07); c.strokeRect(s * .08, s * .08, s * .84, s * .84); c.strokeStyle = "#5a3f1a"; c.lineWidth = 1; c.beginPath(); c.moveTo(s * .3, s * .2); c.lineTo(s * .45, s * .5); c.lineTo(s * .38, s * .78); c.stroke(); },
   clodRed(c, s, r) { PAINT.clodBase(c, s, r); c.strokeStyle = "#ff4a3a"; c.lineWidth = Math.max(2, s * .09); c.strokeRect(s * .08, s * .08, s * .84, s * .84); c.strokeStyle = "#2a1408"; c.lineWidth = 1.2; c.beginPath(); c.moveTo(s * .2, s * .25); c.lineTo(s * .5, s * .5); c.lineTo(s * .8, s * .3); c.moveTo(s * .5, s * .5); c.lineTo(s * .45, s * .85); c.stroke(); },
