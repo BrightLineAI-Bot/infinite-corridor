@@ -210,3 +210,26 @@ test('the puddle: under the Wayfarer, a mouth of blades rises and bites the mark
   assert.ok(rose, 'it rose again'); assert.ok(g.stalkChompers.length > 0, 'the chompers go on after'); assert.ok(h2.length >= 2, 'and bite');
   for (let i = 0; i < 240; i++) updateStalker(g, w2); assert.equal(g.stalkChompers.length, 0, 'until they dry up');
 });
+
+// ---- The fog: it comes in the open, then fogs the section and fights on veiled ----
+import { stalkerFog } from '../src/stalker.ts';
+test('the fog: within range it fogs the section and veils itself; it veils again in the fight; nothing points to it', async () => {
+  const fogs = [], { w } = field({ x: 20, y: 10 }, { fogged: (e, t) => fogs.push(t) }), e = actor(10, 10, { stalkFogPlan: true });
+  e.stalkTurretClock = 999; e.stalkEnergyClock = 999; e.stalkCharges = 0;
+  for (let i = 0; i < 5; i++) stalkerFog(e, w, .05); assert.equal(fogs.length, 0, 'out of range: it comes on in the open'); assert.ok(!e.hidden);
+  w.player.x = 10 + K.fog.range - .5; stalkerFog(e, w, .05);
+  assert.deepEqual(fogs, [K.fog.time]); assert.ok(e.stalkVeil > 0 && e.hidden, 'veiled'); assert.ok(!e.untargetable, 'a blow still lands');
+  for (let i = 0; i < K.fog.time / .05 + 2; i++) stalkerFog(e, w, .05); assert.equal(e.hidden, false, 'the veil lifts');
+  for (let i = 0; i < K.fog.again[1] / .05 + 2; i++) stalkerFog(e, w, .05); assert.equal(fogs.length, 2, 'and falls again in the fight'); assert.equal(fogs[1], K.fog.againTime);
+  // In the game: alternate hunts come in the open; the fog shows over the section; the edge marker says nothing while it hides.
+  const { freshSave } = await import('../src/types.ts'), { Game } = await import('../src/game.ts'), { ensureStalker } = await import('../src/stalker.ts');
+  const s = freshSave(); s.seed = 'FOG'; s.perception.aperture = 80; const g = new Game(s, 0); g.rx = 4; g.ry = 3; g.loadArea('overworld', false);
+  const q = ensureStalker(s); q.seq = 1; q.ground = q.need - .5; let now = 0, st = null;
+  for (let i = 0; i < 400 && !st; i++) { now += 50; g.player.x += i % 40 < 20 ? .05 : -.05; g.tickStalker(.05, now); st = g.enemies.find((x) => x.stalker); }
+  assert.ok(st && st.stalkFogPlan && !st.stalkLurk && !st.hidden, 'this hunt it comes in the open'); assert.match(g.message, /coming for you/);
+  g.player.x = st.x + 2; g.player.y = st.y; updateStalker(st, g.stalkerWorld(.05, now += 50));
+  assert.ok(g.stalkFog && st.stalkVeil > 0, 'the fog rolls in'); assert.equal(g.stalkerMarker(), null, 'no marker points to it');
+  const lurkHunt = freshSave(); lurkHunt.seed = 'FOG'; lurkHunt.perception.aperture = 80; const h = new Game(lurkHunt, 0); h.rx = 4; h.ry = 3; h.loadArea('overworld', false); const lq = ensureStalker(lurkHunt); lq.ground = lq.need - .5;
+  let l = null; for (let i = 0; i < 400 && !l; i++) { now += 50; h.player.x += i % 40 < 20 ? .05 : -.05; h.tickStalker(.05, now); l = h.enemies.find((x) => x.stalker); }
+  assert.ok(l && l.stalkLurk, 'the other hunts lie in wait'); assert.equal(h.stalkerMarker(), null);
+});

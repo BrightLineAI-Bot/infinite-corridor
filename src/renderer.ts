@@ -18,7 +18,7 @@ import { AFFIXES, dronePos, affixNames } from "./affixes.ts";
 import { KIT_MOVES } from "./boss-kit.ts";
 import { SKY_DISCS } from "./skylands.ts"; // release 587
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.ts";
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
+import { drawStalker, drawStalkerMarks, drawStalkerMarker, drawStalkerFog } from "./stalker-render.ts"; // release 678; 692: the fog
 import { GATE_REVENANT, DANGER } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
@@ -2100,6 +2100,7 @@ export function render(ctx, g, w, h, now) {
       ctx.globalCompositeOperation = "source-over"; const tint = ctx.createRadialGradient(lx, ly, 0, lx, ly, s * 2.4); tint.addColorStop(0, `rgba(150,40,230,${.28 * k})`); tint.addColorStop(1, "rgba(150,40,230,0)"); ctx.fillStyle = tint; ctx.beginPath(); ctx.arc(lx, ly, s * 2.4, 0, 7); ctx.fill(); ctx.restore(); // the mist itself takes the colour
     }
   }
+  if (g.area === "overworld" && g.stalkFog) drawStalkerFog(ctx, g.stalkFog, (p.x + .5) * s, (p.y + .6) * s, s, l, t, r, b, now); // release 692: the Stalker's fog
   if (g.area === "overworld" && g.storm) { ctx.fillStyle = `rgba(16,24,38,${.28 * g.storm.strength})`; ctx.fillRect((p.x + .5) * s - w, (p.y + .6) * s - h, w * 2, h * 2); }
   if (g.area === "overworld" && now < (g.inkUntil || 0)) {
     const fade = Math.min(1, (g.inkUntil - now) / 600), px = (p.x + .5) * s, py = (p.y + .6) * s, grad = ctx.createRadialGradient(px, py, s * 1.4, px, py, s * 4.5);

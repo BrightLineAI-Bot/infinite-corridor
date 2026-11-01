@@ -31,11 +31,12 @@ function catHead(ctx, hx, hy, u, face) {
   ctx.strokeStyle = "#9aa4b4"; ctx.lineWidth = Math.max(1, .016 * u); ctx.beginPath(); const h0 = E(.01, -.058), h1 = E(.05, -.072), h2 = E(.09, -.046); ctx.moveTo(h0.x, h0.y); ctx.quadraticCurveTo(h1.x, h1.y, h2.x, h2.y); ctx.stroke(); // the lid, hooding the eye
   ctx.fillStyle = "#f7f9fb"; const c0 = E(-.12, .03), c1 = E(-.15, .1), c2 = E(-.07, .08), c3 = E(-.05, .12), c4 = E(.0, .09); ctx.beginPath(); ctx.moveTo(c0.x, c0.y); ctx.lineTo(c1.x, c1.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(c3.x, c3.y); ctx.lineTo(c4.x, c4.y); ctx.closePath(); ctx.fill(); // the cheek ruff
 }
-// The penumbra of mist round the cat (shared by every cat pose): it is not wholly here. `F(dx)` maps along its facing.
+// The penumbra of mist round the cat (shared by every cat pose, and the gorilla): it is not wholly here. Blue-grey, its accent
+// colours (Tim: "the penumbra around the stalker should be slightly blue... I like blue and gray"). `F(dx)` maps along its facing.
 function catMist(ctx, F, by, x, y, u, t, k = 1) {
   // A penumbra of mist round it, drifting: it is not wholly here. Wisps trail off its back and tail and pool at its feet.
   ctx.save(); ctx.globalAlpha *= k;
-  const puff = (px, py, r, alpha, sy = .75) => { const g = ctx.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, `rgba(236,242,248,${alpha})`); g.addColorStop(1, "rgba(236,242,248,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(px, py, r, r * sy, 0, 0, Math.PI * 2); ctx.fill(); };
+  const puff = (px, py, r, alpha, sy = .75) => { const g = ctx.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, `rgba(196,214,240,${alpha})`); g.addColorStop(1, "rgba(196,214,240,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(px, py, r, r * sy, 0, 0, Math.PI * 2); ctx.fill(); };
   for (let i = 0; i < 6; i++) { const ph = t * .9 + i * 1.7; puff(F(-.55 + i * .22 + Math.sin(ph) * .04), by - (.36 + Math.cos(ph * 1.3) * .05) * u, (.38 + .06 * Math.sin(ph)) * u, .2 + .06 * Math.sin(ph * 1.7)); }
   for (let i = 0; i < 4; i++) { const k = ((t * .35 + i * .25) % 1); puff(F(-.5 - k * .5 + (i % 2) * .2), by - (.45 + k * .28 - (i % 2) * .15) * u, (.14 + k * .2) * u, .3 * (1 - k)); }
   puff(x, y - .04 * u, .7 * u, .22, .16);
@@ -369,7 +370,7 @@ export function drawStalker(ctx, e, s, now, reduceMotion = false) {
   // Its afterimages fade where the blow fell.
   for (const g of e.stalkGhosts || []) { ctx.globalAlpha = Math.max(0, g.t / .6) * .45; const gx = (g.x + .5) * s, gy = (g.y + .9) * s; if (g.form === "ape") drawApe(ctx, gx, gy, u, face, t, false); else drawCat(ctx, gx, gy, u, face, t, false); }
   ctx.globalAlpha = 1;
-  ctx.fillStyle = `rgba(0,0,0,${e.stalkLurk ? .03 : .28})`; ellipse(ctx, x, ground, .42 * u * (1 - Math.min(.5, lift / (3 * s))), .13 * u); ctx.fill(); // no shadow to give it away while it lurks
+  ctx.fillStyle = `rgba(0,0,0,${e.stalkLurk || e.stalkVeil > 0 ? .03 : .28})`; ellipse(ctx, x, ground, .42 * u * (1 - Math.min(.5, lift / (3 * s))), .13 * u); ctx.fill(); // no shadow to give it away while it lurks
   if (e.stalkerDecoy) ctx.globalAlpha = Math.max(.15, Math.min(.7, (Number(e.stalkLife) || 0) / 1.5)) * (.75 + .25 * Math.sin(now / 70));
   else if (e.stalkerKin) ctx.globalAlpha = .92;
   // Hiding: at a distance, stalking, it all but fades into its own mist.
@@ -378,6 +379,10 @@ export function drawStalker(ctx, e, s, now, reduceMotion = false) {
   // Lying in wait it is all but invisible: a faint shimmer, still, if you look; springing, it fades in.
   if (e.stalkLurk) ctx.globalAlpha = STALKER.lurk.alpha * (1 + .5 * Math.sin(now / 400));
   else if (e.stalkReveal > 0) ctx.globalAlpha *= 1 - .9 * (e.stalkReveal / STALKER.lurk.reveal);
+  // Veiled in its fog: nearly gone, a faint blue glow about it if you look (it fades out and back over a moment).
+  const veil = Math.max(0, Math.min(1, (Number(e.stalkVeil) || 0) / .4));
+  if (veil > 0) { ctx.save(); ctx.globalAlpha = .22 * veil * (.7 + .3 * Math.sin(now / 260)); const gl = ctx.createRadialGradient(x, y - .4 * u, 0, x, y - .4 * u, .9 * u); gl.addColorStop(0, "rgba(120,180,255,.6)"); gl.addColorStop(1, "rgba(120,180,255,0)"); ctx.fillStyle = gl; ellipse(ctx, x, y - .4 * u, .9 * u, .7 * u); ctx.fill(); ctx.restore();
+    ctx.globalAlpha *= 1 - (1 - STALKER.fog.alpha) * veil; }
   const form = e.stalkForm || "cat";
   if (form === "mist") { const g = a.kind === "mistGather" ? 1 - Math.max(0, a.t) / (a.total || 1) : 1; if (g < 1) { ctx.globalAlpha = 1 - g; drawCat(ctx, x, y, u, face, t, false); ctx.globalAlpha = 1; } drawMist(ctx, x, y, u, t, g); }
   else if (form === "pool") { if (a.kind === "mouthWarn" || a.kind === "mouth") drawMouth(ctx, a.at, s, a.kind === "mouth" ? Math.max(0, a.t) / (a.total || 1) * .6 : 1 - Math.max(0, a.t) / (a.total || 1) * .7, now); else drawPool(ctx, x, y, u * (a.kind === "under" ? .8 : 1), t, a.kind === "rise" ? 1 - Math.max(0, a.t) / (a.total || 1) : 0); }
@@ -414,7 +419,7 @@ export function drawStalker(ctx, e, s, now, reduceMotion = false) {
   if (hide > .05 && form !== "mist" && form !== "pool") { ctx.save(); ctx.globalAlpha = 1; catMist(ctx, (dx) => x + face * dx * u, y - .3 * u, x, y, u * 1.15, t, hide * 1.4); ctx.restore(); }
   if (e.hitFlash > 0) { ctx.globalAlpha = .5; ctx.fillStyle = "#ffffff"; ellipse(ctx, x, y - .4 * u, .45 * u, .35 * u); ctx.fill(); }
   ctx.restore();
-  if (e.stalker && !e.stalkerKin && !e.stalkLurk) { ctx.save(); ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = SILVER; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = y - 1.15 * u; ctx.strokeText("The Stalker", x, ty); ctx.fillText("The Stalker", x, ty); ctx.restore(); }
+  if (e.stalker && !e.stalkerKin && !e.stalkLurk && !(e.stalkVeil > 0)) { ctx.save(); ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = SILVER; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = y - 1.15 * u; ctx.strokeText("The Stalker", x, ty); ctx.fillText("The Stalker", x, ty); ctx.restore(); }
   return true;
 }
 
@@ -461,4 +466,15 @@ export function drawStalkerMarker(ctx, m, w, h, now) {
     const tx = Math.max(pad, Math.min(w - pad, x - c * 26)), ty = Math.max(pad + 6, Math.min(h - pad, y - sn * 26 + (Math.abs(sn) < .5 ? 18 : 0)));
     ctx.fillStyle = "#e9f0f8"; ctx.strokeStyle = "#000c"; ctx.lineWidth = 3; ctx.strokeText(m.text, tx, ty); ctx.fillText(m.text, tx, ty); ctx.restore();
   }
+}
+
+// The Stalker's fog over the section (release 692): blue-grey, thickening as it rolls in, thinning round the Wayfarer, lifting at
+// the end. Drawn in world space, over the camera's view (l, t, r, b in tiles), centred on the Wayfarer at (px, py) px.
+export function drawStalkerFog(ctx, fog, px, py, s, l, t, r, b, now) {
+  if (!fog) return; const k = Math.max(0, Math.min(1, (now - fog.from) / 900, (fog.until - now) / 1200)); if (!(k > 0)) return;
+  const g = ctx.createRadialGradient(px, py, s * 1.6, px, py, s * 6); g.addColorStop(0, `rgba(150,170,200,${.12 * k})`); g.addColorStop(1, `rgba(150,170,200,${.55 * k})`);
+  ctx.save(); ctx.fillStyle = g; ctx.fillRect(l * s, t * s, (r - l) * s, (b - t) * s);
+  for (let i = 0; i < 8; i++) { const a = now / 6000 + i * .8, rx = px + Math.cos(a) * s * (3 + i % 3), ry = py + Math.sin(a * 1.3) * s * (2 + i % 2), bank = ctx.createRadialGradient(rx, ry, 0, rx, ry, s * 2.4);
+    bank.addColorStop(0, `rgba(198,212,234,${.22 * k})`); bank.addColorStop(1, "rgba(198,212,234,0)"); ctx.fillStyle = bank; ellipse(ctx, rx, ry, s * 2.4, s * 1.2); ctx.fill(); } // drifting banks
+  ctx.restore();
 }

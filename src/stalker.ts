@@ -73,6 +73,11 @@ export const STALKER = {
   // finds, all but invisible and still; it springs when they come within `trigger` (or hit it, or after `max` s), fading in over
   // `reveal` s with a quick pounce or leap. Left far behind (`lose`), it creeps after them unseen.
   lurk: { trigger: 3.4, reveal: .35, spring: .22, max: 40, lose: 13, creep: 1.4, alpha: .07 },
+  // The fog (Tim, 2026-11-01: "it could be coming toward you, and then it can go invisible and attack... when it gets close enough
+  // it makes the fog, and then it goes invisible and strikes... the penumbra should be slightly blue"): on alternate hunts it comes
+  // in the open; within `range` it fills the section with fog (`time` s) and veils itself, all but invisible (a faint blue glow,
+  // its marks still shown) while it fights on. In the fight it veils again every `again` s for `again_time` s.
+  fog: { range: 6, time: 12, again: [24, 34], againTime: 7, alpha: .13 },
   // The cat's new moves: a flurry of forward swipes (like the Questing Beast's), and the tide: it melts into a wave and washes at
   // the Wayfarer, three waves each bigger than the last.
   cat: {
@@ -362,6 +367,17 @@ function tickChompers(e, w, dt) {
   }
   e.stalkChompers = e.stalkChompers.filter((q) => q.life > 0);
 }
+// The fog and the veil: it fogs the section and fights on all but unseen. `e.stalkFogPlan`: the hunt's open approach, fogging once
+// it is within range; then every `again` s in the fight. While veiled it cannot be auto-aimed (`hidden`) but a blow still lands.
+export function stalkerFog(e, w, dt) {
+  const G = STALKER.fog, p = w.player;
+  if (e.stalkVeil > 0) { e.stalkVeil = Math.max(0, e.stalkVeil - dt); e.hidden = e.stalkVeil > 0; if (!e.hidden) e.stalkFogClock = roll(`${e.id}:fogagain:${e.stalkCycle || 0}`, G.again); return; }
+  const veil = (time) => { e.stalkVeil = time; e.hidden = true; w.fogged?.(e, time); };
+  if (e.stalkFogPlan) { if (dist(e, p) <= G.range) { e.stalkFogPlan = false; veil(G.time); } return; }
+  if (e.stalkForm === "pool" || e.stalkForm === "mist") return;
+  e.stalkFogClock = (e.stalkFogClock ?? roll(`${e.id}:fogfirst`, G.again)) - dt;
+  if (e.stalkFogClock <= 0) veil(G.againTime);
+}
 // Lying in wait. Returns true while it still hides (the rest of the frame is skipped).
 export function stalkerLurk(e, w, dt) {
   if (!e.stalkLurk) return false;
@@ -474,6 +490,7 @@ export function updateStalker(e, w) {
   if (e.stalkerKin || e.stalkerDecoy) { updateKin(e, w, dt); return; }
   if (e.stalkReveal > 0) e.stalkReveal = Math.max(0, e.stalkReveal - dt);
   if (stalkerLurk(e, w, dt)) return;
+  stalkerFog(e, w, dt);
   if (e.stalkGhosts?.length) { for (const g of e.stalkGhosts) g.t -= dt; e.stalkGhosts = e.stalkGhosts.filter((g) => g.t > 0); }
   if (e.stalkCharges == null) e.stalkCharges = S.afterimage.charges;
   e.stalkDodgeGap = Math.max(0, (e.stalkDodgeGap || 0) - dt);

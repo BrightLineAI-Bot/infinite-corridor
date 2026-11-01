@@ -2694,6 +2694,33 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 692: the Stalker's fog — 2026-11-01
+
+Tim (2026-11-01): "it could be coming toward you, and then it can go invisible and attack... you might still see... the hitbox...
+when it gets to a close enough distance it makes the fog, and then it goes invisible and strikes... or you can be in a section and
+when the stalker enters it just makes the tile foggy... maybe there's a slight blue glow... the penumbra around the stalker should
+be slightly blue... I like blue and gray".
+
+**CODE:**
+- `STALKER.fog` and `stalkerFog` (`src/stalker.ts`, each fight frame after `stalkerLurk`):
+  - `e.stalkFogPlan` veils it for `time` s once within `range`, through `w.fogged`.
+  - In the fight it veils again every `again` s for `againTime` s (not as pool or mist).
+  - While `e.stalkVeil` lasts it is `hidden` (no auto-aim, no health bar), but it is not untargetable, so a blow still lands.
+- `Game.spawnStalker`:
+  - When (`seq` + `kills`) is odd, the hunt comes in the open from behind with `stalkFogPlan` ("it is coming for you").
+  - Otherwise it lurks, as in release 691.
+- `stalkerWorld.fogged` sets `game.stalkFog` { from, until } and says so. `tickStalker` lifts it when the Stalker is gone, the time
+  is up, or the Wayfarer leaves the overworld.
+- `stalkerMarker` returns nothing while it lurks or is veiled.
+- `src/stalker-render.ts`:
+  - `drawStalkerFog`: a radial blue-grey wash, thinner round the Wayfarer, with soft drifting banks; it fades in and out.
+  - `src/renderer.ts` calls it before the storm layer.
+  - Veiled, the Stalker is drawn at `fog.alpha` with a faint pulsing blue glow and a near-invisible shadow, with no name label.
+  - `catMist` is blue-grey for both forms.
+
+**BOUNDARY:** Runtime only: `game.stalkFog` is never saved; no save, generator or reward change. One overlay, nine gradients a
+frame while fogged. Tests: `tests/stalker-arsenal.test.ts`.
+
 ## Release 691: the Stalker lies in wait; flurry, tide, mouth, chompers — 2026-11-01
 
 Tim (2026-11-01):
