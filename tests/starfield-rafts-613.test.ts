@@ -3,10 +3,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
+import { hashSeed } from '../src/random.ts';
 import { Game, CHASM, chasmRoll, generatePinnedDungeon, STARFIELD_PLATFORMS, platformPos, platformUnder } from '../src/game.ts';
 
 const seed = 'RAFT613';
-const starfield = () => { for (let x = 1; x < 400; x++) { const id = `dungeon:${seed}:g1:${x}:${x % 5}:room`; if (!chasmRoll(seed, id)) continue; const m = generatePinnedDungeon((() => { const s = freshSave(); s.seed = seed; return s; })(), id); if (m.movers?.length) return { id, m }; } };
+const starfield = () => { for (let x = 1; x < 400; x++) { const id = `dungeon:${seed}:g1:${x}:${x % 5}:room`; if (!chasmRoll(seed, id) || hashSeed(`${seed}:chasm-crossing:v1:${id}`) % 1000 >= 120) continue; /* release 672: the same crossing as when CHASM.chance was .12 */ const m = generatePinnedDungeon((() => { const s = freshSave(); s.seed = seed; return s; })(), id); if (m.movers?.length) return { id, m }; } };
 
 test('Starfield crossings are named so, and carry rafts over runs of drop between walkways', () => {
   assert.equal(CHASM.name, 'Starfield'); const { m } = starfield(); assert.match(m.name, / · Starfield$/);
