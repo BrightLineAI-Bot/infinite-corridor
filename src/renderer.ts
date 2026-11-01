@@ -2072,12 +2072,13 @@ export function render(ctx, g, w, h, now) {
     for (let i = 0; i < 4; i++) { const x0 = (l + ((i * 7 + now / 900) % (r - l + 6)) - 3) * s; ctx.fillStyle = "rgba(200,240,255,.06)"; ctx.beginPath(); ctx.moveTo(x0, t * s); ctx.lineTo(x0 + s * 1.5, t * s); ctx.lineTo(x0 + s * 4, b * s); ctx.lineTo(x0 + s * 2, b * s); ctx.fill(); }
   }
   // Stormkraken ink (W4): the sea goes dark beyond a small circle around the Wayfarer.
-  if (g.area === "overworld" && (g.seaHazards?.fog?.length || g.novaFog)) {
+  if (g.area === "overworld" && (g.seaHazards?.fog?.length || g.novaFog || g.stalkFog)) { // release 692: the Stalker's fog is the sea's
     // Fog banks (release 156; release 158 smooths them): each bank is a cluster of soft puffs turning slowly about its
     // centre. Inside a bank the mist closes in around the Wayfarer gradually (fogLevel is eased in open-sea.ts).
     // Release 257: a Supernova's fog (g.novaFog) draws the same way, faded in and out by its alpha.
     const level = g.seaHazards?.fogLevel || 0, time = now / 1000; // release 407 (Tim: "the Supernova... covers the entire world, so I can't see him... the Supernova shouldn't cover the Void Walker or other creatures"): its fog no longer closes in around the Wayfarer, and its mist is thin
-    for (const [f, fade] of [...(g.seaHazards?.fog || []).map((f) => [f, 1]), ...(g.novaFog?.fog || []).map((f) => [{ ...f, nova: true }, g.novaFog.alpha ?? 1])]) {
+    const closeIn = Math.max(level, (g.stalkFog?.level || 0) * .85); // release 692: the Stalker's fog closes in as the sea's does (the Supernova's still never does)
+    for (const [f, fade] of [...(g.seaHazards?.fog || []).map((f) => [f, 1]), ...(g.novaFog?.fog || []).map((f) => [{ ...f, nova: true }, g.novaFog.alpha ?? 1]), ...(g.stalkFog?.fog || []).map((f) => [f, g.stalkFog.level])]) {
       if (fade <= 0) continue;
       for (let i = 0; i < 7; i++) {
         const a = (f.swirl || 0) + i * 2.399 + Math.sin(time * .2 + i) * .15, d = f.radius * (.15 + .55 * ((i * 37) % 10) / 10), pr = f.radius * (.45 + .1 * Math.sin(time * .3 + i * 1.7));
@@ -2086,9 +2087,9 @@ export function render(ctx, g, w, h, now) {
         ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, pr * s, 0, 7); ctx.fill();
       }
     }
-    if (level > .01) {
-      const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - level) * 3), px, py, s * (3.6 + (1 - level) * 7));
-      gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.92 * level})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
+    if (closeIn > .01) {
+      const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - closeIn) * 3), px, py, s * (3.6 + (1 - closeIn) * 7));
+      gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.92 * closeIn})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
     }
     // Release 269 (Tim: "in fog it should cast a... violet glow"): the longboat's lantern lights the mist around it,
     // more strongly the deeper the fog.
