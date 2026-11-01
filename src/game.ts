@@ -4449,6 +4449,9 @@ export class Game {
       elev: (x, y) => Number(map.tiles[Math.floor(y + .72) * width + Math.floor(x + .5)]?.elev) || 0,
       hurt: (e, amount) => game.packHurt(e, amount, {}, now),
       revealed: () => { game.message = "THE STALKER — it was waiting for you."; },
+      fogged: (e, time) => { // release 692: the sea's fog (Tim: "just use the fog from the sea fog"), banks round the Wayfarer, drawn by renderer.ts's sea-fog code
+        game.stalkFog = { until: now + time * 1000, level: game.stalkFog?.level || 0, fog: [0, 1, 2, 3, 4].map((i) => ({ x: p.x + Math.cos(i * 1.257) * (i ? 4.5 : 0), y: p.y + Math.sin(i * 1.257) * (i ? 3.5 : 0), radius: i ? 5 : 6, swirl: i * 1.1 })) };
+        game.message = "A fog rolls in, and the Stalker is gone into it."; },
       // The mist's rot: a share of maximum health gone until the Wayfarer rests (a dodge passes through; rot past it all kills).
       rot: (e, share) => { if (now <= (p.invulnerableUntil || 0)) return false; ensureRot(game.save); game.save.rot += Math.max(1, Math.round((game.save.maxHp || 1) * share)); p.invulnerableUntil = now + 700;
         if (game.save.rot >= game.save.maxHp) p.hp = 0; else p.hp = Math.min(p.hp, healthCeiling(game.save));
@@ -4487,19 +4490,22 @@ export class Game {
     Object.assign(c, { id: `stalker-${st.seq}-${st.kills}`, kind: "stalker", stalker: true, boss: true, aggro: true, eliteName: "The Stalker", defeatTitle: "THE STALKER FALLS", maxHp: v.hp, hp: Math.min(v.hp, st.active?.hp || v.hp), damage: v.damage, baseDamage: v.damage,
       range: 0, meleePatterns: [], scale: STALKER.size, baseScale: STALKER.size, bodyRadius: .5, threatRing: q.ring, xpMultiplier: q.xpMultiplier * 2, staggerImmune: true,
       affixes: rollAffixes(key, STALKER.affixes[0] + (hashSeed(`${key}:affix-count`) % (STALKER.affixes[1] - STALKER.affixes[0] + 1))), stalkForm: at ? "cat" : hashSeed(`${key}:first`) % 2 ? "ape" : "cat" });
-    if (!at) Object.assign(c, { stalkLurk: { t: 0 }, hidden: true, untargetable: true, stalkHide: 1 }); // release 691: hidden until it springs
+    const fogHunt = !at && (st.seq + st.kills) % 2 === 1; // release 692: on alternate hunts it comes in the open, then fogs the section and veils itself
+    if (fogHunt) { const b = this._stalkBearing ?? Math.PI / 2, back = ambushSpots(this.save.seed, `${st.seq}:${st.kills}:fog`, p, { x: -Math.cos(b), y: -Math.sin(b) }).find((q) => this.stalkerOpen(q.x, q.y)); if (back) { c.x = back.x; c.y = back.y; } c.stalkFogPlan = true; }
+    else if (!at) Object.assign(c, { stalkLurk: { t: 0 }, hidden: true, untargetable: true, stalkHide: 1 }); // release 691: hidden until it springs
     ensureAI(c); this.enemies.push(c); stalkerEngaged(this.save, c.hp);
-    if (!fromDoor) this.message = "The air goes very still. Something is watching you.";
+    if (!fromDoor) this.message = c.stalkFogPlan ? "THE STALKER — it is coming for you." : "The air goes very still. Something is watching you.";
     return c;
   }
   tickStalker(dt, now) {
     const st = ensureStalker(this.save), p = this.player;
     if (this.enemies.some((e) => e.dead && (e.stalkerKin || e.stalkerDecoy))) this.enemies = this.enemies.filter((e) => !(e.dead && (e.stalkerKin || e.stalkerDecoy)));
-    if (this.area !== "overworld") { this._stalkPrev = null; if (this.area === "dungeon" && st.active?.engaged && this._stalkOver) stalkerWaitAtDoor(this.save, this._stalkOver); return; }
+    if (this.area !== "overworld") { this._stalkPrev = null; this.stalkFog = null; if (this.area === "dungeon" && st.active?.engaged && this._stalkOver) stalkerWaitAtDoor(this.save, this._stalkOver); return; }
     const key = `${this.rx},${this.ry}`, prev = this._stalkPrev, sheltered = this.stalkerBarred(p.x, p.y);
     this._stalkPrev = { key, x: p.x, y: p.y };
     if (!sheltered) this._stalkOver = { rx: this.rx, ry: this.ry, x: p.x, y: p.y };
     const actor = this.enemies.find((e) => e.stalker && !e.dead);
+    if (this.stalkFog) { const f = this.stalkFog, want = actor && now < f.until ? 1 : 0; f.level += (want - f.level) * Math.min(1, dt * 1.5); for (const b of f.fog) b.swirl += dt * .12; if (!want && f.level < .02) this.stalkFog = null; } // release 692: it closes in as the sea fog does, and lifts
     if (actor) { if (st.active) st.active.hp = actor.hp; return; }
     if (st.active?.door) {
       if (stalkerDoorHere(this.save, this.rx, this.ry) && p.hp > 0 && this.spawnStalker(st.active.door, true, now)) { this.message = "The Stalker was waiting by the door."; return; }
@@ -4516,6 +4522,7 @@ export class Game {
   stalkerMarker() {
     if (this.area !== "overworld") return null;
     const p = this.player, actor = this.enemies.find((e) => e.stalker && !e.dead);
+    if (actor && (actor.stalkLurk || actor.stalkVeil > 0)) return null; // release 692: hidden or in its fog, nothing points to it
     if (actor) return Math.hypot(actor.x - p.x, actor.y - p.y) < 7 ? null : { angle: Math.atan2(actor.y - p.y, actor.x - p.x), strength: 1, stage: 3, text: "The Stalker" };
     const w = stalkerWarning(this.save); if (!w) return null;
     return { angle: this._stalkBearing ?? Math.PI / 2, strength: w.fraction, stage: w.stage, text: w.text };
