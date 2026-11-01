@@ -15,15 +15,16 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-**673** (odd, first session) · **670** (even, second session)
+**673** (odd, first session) · **674** (even, second session; 670 skipped because main was already at 671)
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 672 | Claude (second session) | `claude/stalker-overworld-boss-fldd02` | The Stalker: a silver overworld hunter (cat, winged ape, pool) that closes in by ground covered, waits by doors, afterimages, swarm, affixes; returns 30–40 new sections after a kill | Building. Took 672, not 670: main was at 671. |
 | 671 | Claude | `claude/dreamy-rubin-yn6q2p` | Fractured waves: several packs per wave from different sides, elite-led every third, a rest after a wave is cleared, more join one left standing; the cap counts only wave creatures | Building. |
 | 669 | Claude | PR #317 | Crown Rest on every great tree (touch it; wake there); the glider in a freefall with the drone out; the Wayfarer's ghost behind giant trees covers the whole crown | Renumbered from 665 (main was at 668). Merged. Tim said publish. |
-| 668 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Guardians and elites fight back: extra modules, signature moves (quake, barrage, crossfire, meteor), aggression, adds at health thresholds | Building. |
+| 668 | Claude (second session) | PR #319 | Guardians and elites fight back: extra modules, signature moves (quake, barrage, crossfire, meteor), aggression, adds at health thresholds | Merged. |
 | 666 | Claude (second session) | PR #318 | Fracture meter and Fracture Warden: kills fill a HUD meter; the Warden (half a Gate Revenant, adds) seals the area and drops a cache | Merged. |
 | 664 | Claude (second session) | PR #316 | Tremor Worm rework: half-buried by default, full-height sweep/slam/maw, tentacles scaled off the worm with ground cracks, burrowing, repositioning and six modes | Merged (`r664-b4bdc960a2b8`). |
 | 663 | Claude | PR #315 | A sky gate lands you on a great tree's crown (one not yet seen first), to glide or hop down; 659 review fix | Merged (`r663-56d3cf7b0025`). Published in r663. |
