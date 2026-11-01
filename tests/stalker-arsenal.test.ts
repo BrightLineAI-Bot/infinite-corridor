@@ -74,3 +74,37 @@ test('the cat breaks out of an enclosure and climbs a wall to reach the Wayfarer
   for (let i = 0; i < 200 && !hopped; i++) { updateStalker(f, w2); hopped = f.stalkAct.kind === 'hop'; }
   assert.ok(hopped, 'it hops the ledge'); void hurts;
 });
+
+test('the crossed blades rise, swing and cross in front of it (a blow there), then a larger X flies straight, not homing', () => {
+  const { w, hurts } = field({ x: 11.5, y: 10 }, { move: () => false }), e = actor(10, 10); e.stalkEnergyClock = 99; e.stalkCharges = 0; e.stalkAct = { kind: 'prowl', t: 99, total: 99 };
+  e.stalkTurret = { move: 'xblade', t: .01, total: .6, aim: 0 }; updateStalker(e, w);
+  assert.equal(e.stalkBlades.phase, 'rise'); assert.ok(!e.stalkTurret, 'one back move at a time');
+  const phases = new Set(); for (let i = 0; i < 40 && e.stalkBlades; i++) { phases.add(e.stalkBlades.phase); if (e.stalkBlades.phase === 'hold') { w.player.x = 11.5; w.player.y = 20; } updateStalker(e, w); }
+  assert.deepEqual([...phases], ['rise', 'swing', 'hold']); assert.ok(hurts.length >= 1, 'the cross strikes in front of it');
+  const X = e.stalkShots.find((q) => q.kind === 'xblade'); assert.ok(X, 'the X flies');
+  assert.ok(X.radius >= STALKER.turret.xblade.length / 2, 'larger than the blades on its back'); assert.ok(X.radius * 2 > STALKER.size, 'longer than its body');
+  w.player.x = 11.5; w.player.y = 20; const v0 = { x: X.vx, y: X.vy }; updateStalker(e, w); updateStalker(e, w);
+  const q = e.stalkShots.find((s) => s.kind === 'xblade'); assert.deepEqual({ x: q.vx, y: q.vy }, v0, 'a straight line where the Wayfarer was');
+});
+
+test('the mist: it cannot be hit, surrounds the Wayfarer and rushes through them, each touch rotting a tenth of their health', () => {
+  const rots = [], { w } = field({ x: 10, y: 10 }, { rot: (e, share) => { rots.push(share); return true; }, free: (x, y) => x > 0 && y > 0 && x < 40 && y < 40 }), e = actor(6, 10);
+  e.stalkTurretClock = 99; e.stalkEnergyClock = 99; e.stalkCharges = 0;
+  e.stalkCycle = STALKER.mist.every - 2; e.stalkAct = { kind: 'spring', t: .01, total: .3, from: { x: 10, y: 10 } }; updateStalker(e, w);
+  assert.equal(e.stalkForm, 'mist'); assert.equal(e.untargetable, true);
+  const kinds = new Set(); for (let i = 0; i < 400 && e.stalkForm === 'mist'; i++) { updateStalker(e, w); kinds.add(e.stalkAct.kind); if (e.stalkForm === 'mist') assert.equal(e.untargetable, true); }
+  for (const k of ['mistGather', 'mistRing', 'mistPass']) assert.ok(kinds.has(k), k);
+  assert.equal(rots.length, STALKER.mist.passes, 'one rot per pass through'); assert.ok(rots.every((r) => r === .1));
+  assert.equal(e.stalkForm, 'cat'); assert.equal(e.untargetable, false, 'it re-forms to be fought');
+});
+
+test('in the game the mist rot lowers maximum health by a tenth each touch, a dodge passes through, and rot past it all kills', async () => {
+  const { freshSave } = await import('../src/types.ts'), { Game } = await import('../src/game.ts'), { healthCeiling, rotTick } = await import('../src/water-traversal.ts');
+  const s = freshSave(); s.seed = 'MIST'; const g = new Game(s, 0); g.rx = 4; g.ry = 3; g.loadArea('overworld', false); const max = g.save.maxHp, tenth = Math.round(max * .1); g.player.hp = max; g.save.rot = 0;
+  const e = { id: 'stalker-m', x: g.player.x, y: g.player.y };
+  let w = g.stalkerWorld(.05, 10000); assert.equal(w.rot(e, .1), true); assert.equal(g.save.rot, tenth); assert.equal(healthCeiling(g.save), max - tenth); assert.ok(g.player.hp <= max - tenth);
+  w = g.stalkerWorld(.05, 10100); assert.equal(w.rot(e, .1), false, 'still recovering: no second rot at once');
+  g.player.invulnerableUntil = 20500; w = g.stalkerWorld(.05, 20000); assert.equal(w.rot(e, .1), false, 'a dodge passes through');
+  g.save.rot = max * .9; rotTick(g.save, 'toxicMire', 1); assert.ok(g.save.rot >= max * .9, 'the bog never lowers it past its own cap');
+  g.save.rot = max - 1; g.player.invulnerableUntil = 0; w = g.stalkerWorld(.05, 30000); w.rot(e, .1); assert.equal(g.player.hp, 0, 'rotted past its whole health, the Wayfarer falls');
+});
