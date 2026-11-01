@@ -1,4 +1,4 @@
-// Release 673 (Tim, 2026-11-01): deep annexes are a rare, named dungeon type (so they can be skipped); the Starfield Deep Annex
+// Release 675 (Tim, 2026-11-01): deep annexes are a rare, named dungeon type (so they can be skipped); the Starfield Deep Annex
 // is three floors, each harder, the third another country, and its far door lets you out at a random place in the world.
 import test from 'node:test';
 import assert from 'node:assert/strict';

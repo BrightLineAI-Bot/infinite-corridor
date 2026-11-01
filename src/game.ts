@@ -57,6 +57,7 @@ import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST } from "./tool-forms.ts";
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks } from "./fractured.ts";
 import { tickAffixes, rollAffixes } from "./affixes.ts";
 import { applyBossKit, tickBossKit } from "./boss-kit.ts";
+import { wonderRumour } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { SKYLANDS, SKY_PLACE, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
@@ -238,7 +239,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   const ordinary = fresh && id.startsWith('dungeon:') && !id.includes(':deep-v');
   if (ordinary && history.ladder === undefined) history.ladder = { version: DUNGEON_LADDER.version, tier: ladderTier(save) };
   const rungOf = (kind) => history.ladder ? ladderRoll(save.seed, id, kind, history.ladder.tier) : 'full';
-  if (fresh && history.deepAnnex === undefined) { history.deepAnnex = ordinary || /:annex[23]$/.test(id) ? annexRecord(save.seed, id, chasmRoll(save.seed, id)) : false; if (history.deepAnnex) history.dream = 0; if (history.deepAnnex?.floor === 3) history.generationOptions = { ...history.generationOptions, theme: annexThird(save.seed, history.deepAnnex.base) }; } // release 673: a Starfield Deep Annex floor
+  if (fresh && history.deepAnnex === undefined) { history.deepAnnex = ordinary || /:annex[23]$/.test(id) ? annexRecord(save.seed, id, chasmRoll(save.seed, id)) : false; if (history.deepAnnex) history.dream = 0; if (history.deepAnnex?.floor === 3) history.generationOptions = { ...history.generationOptions, theme: annexThird(save.seed, history.deepAnnex.base) }; } // release 675: a Starfield Deep Annex floor
   if (fresh && history.mire === undefined) { const rung = !/:canopy$/.test(id) && !history.deepAnnex && rollMireCrypt(save.seed, id, history.layoutPool) ? rungOf('poisonCrypt') : null; history.mire = rung ? { version: MIRE_CRYPT.version, merged: 0, found: false, ...(rung === 'taste' ? { taste: true } : {}) } : false; } // release 303: the Poison Crypt; 319: a taste is a small one
   if (ordinary && history.ladder && !rungOf('gatePredator')) history.gatePredatorSpawnThreshold = 0; // release 319
   if (fresh && history.threefoldLayout === undefined && id.endsWith(':deep-v2:threefold')) history.threefoldLayout = 2;
@@ -257,7 +258,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (history.layoutVersion === 1 && !map.arena && !id.startsWith('displacement:') && !id.startsWith('elite-portal:') && !id.includes('aperture-annex')) varyDungeonLayout(map,save.seed,id);
   if (history.watcherVersion && !id.startsWith('displacement:') && !id.startsWith('dive:') && !map.multiLevel) placeWatcherDungeon(map, map.width || Math.round(Math.sqrt(map.tiles.length)), save.seed, id); // release 289
   if (history.chasm && !map.arena) carveChasm(map, save.seed, `${id}:${options.levelId || "root"}`); // release 593
-  if (history.deepAnnex) { const f = history.deepAnnex.floor; map.annexFloor = { floor: f, of: DEEP_ANNEX.floors }; map.annexName = `${DEEP_ANNEX.name} · Floor ${f}`; } // release 673
+  if (history.deepAnnex) { const f = history.deepAnnex.floor; map.annexFloor = { floor: f, of: DEEP_ANNEX.floors }; map.annexName = `${DEEP_ANNEX.name} · Floor ${f}`; } // release 675
   return map;
 }
 // Release 363: a fallen Listener pays its Gate in Transit Coordinates (its pieces + 1).
@@ -2350,7 +2351,7 @@ export class Game {
       if (this.map.dream && this.save.narrative?.facts && !this.save.narrative.facts["farSleep.entered"]) { this.save.narrative.facts["farSleep.entered"] = true; this.message = "The ground thins underfoot, and the night shows through. Somewhere, someone is dreaming this. Perhaps you."; } // release 305
       noteSectionVisit(this.save, key); // release 263: a section not among the last 8 different ones counts toward the buffer
       this.noteRegion(prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION); // release 573
-      this.markDeepAnnexes(); // release 673
+      this.markDeepAnnexes(); // release 675
       if (!prior) { atlas[key] = atlas[key] || {}; if (noteDiscovery(this.save)) this.message = "Word comes on the wind: around Ember Refuge, the groves and the quarry have grown back."; } // release 265: regrowth every 20 new sections
       // A section first seen now is pinned to the current landscape version; one explored earlier keeps none.
       atlas[key] = { terrain: this.map.dominant, ...(prior ? (prior.landscapeVersion ? { landscapeVersion: prior.landscapeVersion } : {}) : { landscapeVersion: LANDSCAPE_VERSION }),
@@ -3166,7 +3167,7 @@ export class Game {
     if (o.completionExit) {
       if (!dungeonHistory(this.save,this.areaId()).combatClear?.completed) return {ok:false,message:this.message='The return remains sealed while a required guardian lives.'};
       // Release 217: a linked dungeon's guardian's door (past its second level) opens at its other mouth.
-      const annexOut = this.annexOutward(); // release 673: the third floor lets you out somewhere else
+      const annexOut = this.annexOutward(); // release 675: the third floor lets you out somewhere else
       const linkId = this.save.session.activeDungeonId, link = this.map?.multiLevel ? linkedExit(this.save, linkId, this.save.session.dungeonReturn) : null;
       if (link) this.save.session.dungeonReturn = { rx: link.rx, ry: link.ry, x: link.x ?? 16, y: link.y ?? 16 };
       const result = this.leaveDungeon(link ? (link.mouth === 'b' ? "The guardian's door opens somewhere else entirely: another mouth of the same crossing, far from where you went in." : "The guardian's door leads back to the crossing's first mouth.") : 'The cleared expedition returns you safely to its entrance.');
@@ -3204,7 +3205,7 @@ export class Game {
     }
     // Release 151: a level's fixed landing point (toX/toY) can sit in a wall on some generated floors; every move to a
     // landing point now steps onto the nearest open ground, as loading an area and recovering after a fall already do.
-    if (o.kind === "annexStair") return this.descendAnnex(o); // release 673
+    if (o.kind === "annexStair") return this.descendAnnex(o); // release 675
     if(o.kind==="deepTransition"){
       const progress=deepDungeonProgress(this.save,this.areaId());this.snapshotArea();this.save.session.activeDungeonLevelId=o.toLevelId;progress.currentLevelId=o.toLevelId;if(!progress.discoveredLevelIds.includes(o.toLevelId))progress.discoveredLevelIds.push(o.toLevelId);this.loadArea("dungeon",false);this.player.x=o.toX;this.player.y=o.toY;this.settleArrival();/* release 419 */this.projectiles=[];this.effects=[];this.message=`${this.map.levelName||o.toLevelId} reached.${this.levelWays()}`;this.sync();return{ok:true,message:this.message};
     }
@@ -3280,6 +3281,7 @@ export class Game {
       r = applyInteraction(o, chosen, this.save, this.areaId(), this.area === "dungeon" ? { dungeonDepth: Math.max(0, (this.map?.multiLevel ? this.map.levels || [] : []).findIndex((q) => q.id === this.map.levelId)) } : {}); // release 287
     this.message = r.message;
     if (!r.ok) return r;
+    if (r.ok && o.kind === "traveler" && chosen === "speak" && !o.reciter && !o.wanderer && !o.rumourTold && this.area === "overworld") { const heard = wonderRumour(this.save, this.rx, this.ry, o.id || o.name); if (heard) { o.rumourTold = true; this.message = `${r.message} ${heard}`; } } // release 674: a traveller who has heard of a wonder says which way it lies (once)
     if ((o.kind === "npc"||o.kind==="shelterMerchant"||o.kind==="traveler") && chosen === "trade") this.shopRequested = o.id;
     if (this.save.hp !== before)
       this.player.hp = Math.min(
@@ -4455,7 +4457,7 @@ export class Game {
       }
       if (GUARDIAN_ROLES.includes(c.dungeonRole) && !c.affixes && !c.farArrayBoss && !String(this.save.session?.activeDungeonId || '').startsWith('far-array:')) c.affixes = rollAffixes(`${this.save.seed}:guardian:${c.id}`, 1); // release 657: every crossing guardian carries an affix
       if (!e.fracWardenAdd && !e.fracReinforcement && !e.kitAddOf) applyBossKit(c, this.save.seed, (k) => !!MONSTER_PACK[k]); // release 668: guardians and elites fight like boss moments
-      if (area === "dungeon" && this.map?.annexFloor?.floor > 1 && !c.annexScaled) { const k = annexScale(this.map.annexFloor.floor); c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.annexScaled = true; } // release 673: each annex floor is harder
+      if (area === "dungeon" && this.map?.annexFloor?.floor > 1 && !c.annexScaled) { const k = annexScale(this.map.annexFloor.floor); c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.annexScaled = true; } // release 675: each annex floor is harder
       ensureAI(c);
       refreshMarineBeast(c, this.map, mapWidth(this.map, area), area);
       return c;
@@ -4558,7 +4560,7 @@ export class Game {
     for (const map of maps) for (const e of map.enemySpawns || []) if (e.objectiveId && progress?.completedObjectiveIds?.includes(e.objectiveId) && !clear.defeated.includes(requiredBossId(e))) clear.defeated.push(requiredBossId(e));
     clear.completed = clear.required.length > 0 && clear.required.every(id=>clear.defeated.includes(id));
     this.enemies = this.enemies.filter(e => !clear.required.includes(e.id) || !clear.defeated.includes(e.id));
-    installCompletionExit(this.map,history); this.placeAnnexStair(history); // release 673
+    installCompletionExit(this.map,history); this.placeAnnexStair(history); // release 675
     return clear;
   }
   defeatEnemy(e) {
@@ -4644,9 +4646,9 @@ export class Game {
         }
         claimDungeonPayoff(this.save,history,!!this.map.deepDungeon || this.map.recipe === 'deep-v1');
         journalOnce(this.save,`expedition-cleared:${this.areaId()}`,`${this.map.name} is cleared. Every required guardian fell; the expedition cache yielded upgrade material, marks and a draught. The return lattice leads to the entrance.`,this.map.name);
-        installCompletionExit(this.map,history,e); if (this.placeAnnexStair(history)) this.annexStairNote = true; // release 673
+        installCompletionExit(this.map,history,e); if (this.placeAnnexStair(history)) this.annexStairNote = true; // release 675
         this.message = 'EXPEDITION CLEARED — reward secured. Interact with the Cleared Expedition Return to leave safely.';
-        if (this.annexStairNote) { this.annexStairNote = false; const st = this.map.objects.find((o) => o.kind === 'annexStair'); if (st) { this.message = `${DEEP_ANNEX.messages.stair} ${st.floor} of ${DEEP_ANNEX.floors}. Or take the Cleared Return to leave; the annex waits.`; this.defeatNotice = { title: 'THE ANNEX STAIR OPENS', detail: `down to floor ${st.floor} of ${DEEP_ANNEX.floors} · or leave by the Cleared Return`, kind: 'discovery' }; } } // release 673
+        if (this.annexStairNote) { this.annexStairNote = false; const st = this.map.objects.find((o) => o.kind === 'annexStair'); if (st) { this.message = `${DEEP_ANNEX.messages.stair} ${st.floor} of ${DEEP_ANNEX.floors}. Or take the Cleared Return to leave; the annex waits.`; this.defeatNotice = { title: 'THE ANNEX STAIR OPENS', detail: `down to floor ${st.floor} of ${DEEP_ANNEX.floors} · or leave by the Cleared Return`, kind: 'discovery' }; } } // release 675
         this.defeatNotice.detail += ' · completion reward · entrance return opened';
       }
     }
@@ -5057,7 +5059,7 @@ export class Game {
     return mode;
   }
   fracturedOpen(x, y, w = mapWidth(this.map, this.area)) { const p = this.player; return footprintOpen(this.map, w, x, y) && !footprintHazard(this.map, w, x, y) && !(this.map.tiles[y * w + x]?.canopy) && Math.hypot(x - p.x, y - p.y) >= 4; }
-  // Release 673 (deep-annex.ts): a crossing never entered that is a Starfield Deep Annex says so on its entrance.
+  // Release 675 (deep-annex.ts): a crossing never entered that is a Starfield Deep Annex says so on its entrance.
   markDeepAnnexes() {
     let found = false;
     for (const o of this.map?.objects || []) { if (o.kind !== "dungeon" || o.dungeonType) continue;

@@ -1,4 +1,4 @@
-// Deep annexes (release 673). Tim, 2026-11-01: ordinary crossings stay one or two floors deep, but "deep annexes" are a rare,
+// Deep annexes (release 675). Tim, 2026-11-01: ordinary crossings stay one or two floors deep, but "deep annexes" are a rare,
 // named dungeon type ("so they can be skipped"), mostly Skylands and Starfield variants. "Starfield... the third level [is] a
 // different biome... [and its exit] teleports [you] to a random place in the world."
 //
