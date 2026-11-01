@@ -61,7 +61,7 @@ import { applyBossKit, tickBossKit } from "./boss-kit.ts";
 import { wonderRumour, wonderAt } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
-import { SKYLANDS, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
+import { SKYLANDS, SKY_BASE, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { generateItem, BRAWLER_LOOT } from "./items.ts";
 import { SMITHY } from "./smithy.ts"; // release 607: one salvage table
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
@@ -2031,7 +2031,7 @@ export class Game {
         this.area === "dungeon"
           ? this.save.session.activeDungeonId || ""
           : `overworld:${this.rx}:${this.ry}:g${this.save.worldGeneration}`;
-      if (!this.save.session.areas[currentId]) scaleFresh();
+      if (!this.save.session.areas[currentId] && !this.map?.skyland) scaleFresh(); // release 688: no regional threat in the sky (the Skylands scale from the Wayfarer)
     };
     decorate();
     const load = this.loadArea.bind(this);
@@ -2063,7 +2063,7 @@ export class Game {
             !this.map.objects.some((existing) => existing.id === o.id)),
         );
       }
-      if (!had) {
+      if (!had && !this.map?.skyland) { // release 688: no regional threat in the sky
         const q = regionalThreat(this.rx, this.ry);
         for (const e of this.enemies) {
           if (e.foundryValidated) continue;
@@ -3058,7 +3058,7 @@ export class Game {
     Object.assign(this.player, { x: from.x, y: from.y, sailVx: 0, sailVy: 0 }); this.message = message; this.sync();
   }
   // Release 571 (skylands.ts): a Skyland foe is made stronger by the run's Ascension, once.
-  scaleSkyFoe(e) { if (e.skyScaled || e.ambient || e.passiveBehavior) return; const k = skylandScale(this.map.skyTier || 0), f = skyAnnexFloor(this.areaId()), v = visceraScale(this.map.skyPact || {}), a = f ? { hp: SKY_ANNEX.scale.hp[f - 1] * v.hp, damage: SKY_ANNEX.scale.damage[f - 1] * v.damage } : v; /* release 678: each annex floor harder; 682: the pact's might */ e.maxHp = Math.max(1, Math.round(e.maxHp * k.hp * a.hp)); e.hp = e.maxHp; e.damage = Math.max(1, Math.round(e.damage * k.damage * a.damage)); e.skyScaled = true; }
+  scaleSkyFoe(e) { if (e.skyScaled || e.ambient || e.passiveBehavior) return; const k = skylandScale(this.map.skyTier || 0), f = skyAnnexFloor(this.areaId()), v = visceraScale(this.map.skyPact || {}), a = f ? { hp: SKY_ANNEX.scale.hp[f - 1] * v.hp, damage: SKY_ANNEX.scale.damage[f - 1] * v.damage } : v; /* release 678: each annex floor harder; 682: the pact's might */ const base = skyVitals(e.skyRole, this.save, characterStats(this.save)); if (base) { const n = (e.skyEchoes || 1) - 1, S = SKY_MODES.echoShare, echo = e.skyRole === "echo"; e.maxHp = Math.max(1, Math.round(base.hp * (echo ? S.hp[n] : 1))); e.damage = Math.max(1, Math.round(base.damage * (echo ? S.damage[n] : 1))); } /* release 688: from the Wayfarer's level, by role */ e.maxHp = Math.max(1, Math.round(e.maxHp * k.hp * a.hp)); e.hp = e.maxHp; e.damage = Math.max(1, Math.round(e.damage * k.damage * a.damage)); e.skyScaled = true; }
   // Each frame in a Skyland: when every foe is down, the next wave comes after a breath; after the boss, the run is cleared.
   tickSkyland(dt) {
     const id = this.areaId(), h = dungeonHistory(this.save, id); if (h.resolved) return;
@@ -4557,6 +4557,7 @@ export class Game {
       if (e.questingBeast) tuneQuestingBeast(c, this.save, characterStats(this.save));
       if (e.worldBeast) tuneWorldBeast(c, this.save, e.worldBeast, characterStats(this.save));
       if (e.skyEcho && WORLD_BEASTS[e.skyEcho]) { tuneWorldBeast(c, this.save, e.skyEcho, characterStats(this.save)); delete c.worldBeast; const n = Math.max(1, Math.min(3, e.skyEchoes || 1)) - 1, S = SKY_MODES.echoShare; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * S.hp[n])); c.damage = Math.max(1, Math.round(c.damage * S.damage[n])); c.skyEcho = e.skyEcho; } // release 589: an echo, not the beast
+      if (e.dungeonRole === "skyland") Object.assign(c, { skyRole: skyRoleOf(e), skyEchoes: Math.max(1, Math.min(3, e.skyEchoes || 1)) }); // release 688: set from the Wayfarer's level in scaleSkyFoe
       if (e.worldBeast || e.questingBeast) { const share = Number((e.worldBeast ? this.save.worldBeasts?.[e.worldBeast]?.active : this.save.questingBeast?.active)?.hpShare); if (share > 0 && share < 1) c.hp = Math.max(1, Math.round(c.maxHp * share)); } // release 423: it keeps the wounds you gave it
       if(e.astralCompanionOf){if(e.astralRole==='ally'){tuneWorldBeast(c,this.save,'voidWalker',characterStats(this.save));delete c.worldBeast;}Object.assign(c,{astralCompanionOf:e.astralCompanionOf,astralRole:e.astralRole,astralAllyOf:e.astralAllyOf,noRewards:!!e.noRewards,astralMountWanted:!!e.astralMountWanted});} // release 235
       if (e.retreating) Object.assign(c, { retreating: true, aggro: true, untargetable: true }); // release 239: fleeing through
