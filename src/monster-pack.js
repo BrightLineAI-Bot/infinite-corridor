@@ -7,9 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r649-75bd8abf2c15";
-import { hashSeed } from "./random.js?v=r649-75bd8abf2c15";
-import { updateAstralActor } from "./astral-worm.js?v=r649-75bd8abf2c15";
+import { stageOneBeastReference } from "./stages.js?v=r663-56d3cf7b0025";
+import { hashSeed } from "./random.js?v=r663-56d3cf7b0025";
+import { updateAstralActor } from "./astral-worm.js?v=r663-56d3cf7b0025";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -2060,6 +2060,7 @@ function fleeStep(e, s, w) {
   if (d > step + .05) { e.x += dx / d * step; e.y += dy / d * step; return; }
   e.x = next.x; e.y = next.y;
   if (e.fleePath?.length) { e.fleePath.shift(); if (e.fleePath.length) return; }
+  if (e.fleeTo.home && e.standsAtHome) { e.fleeDone = true; return; } // release 653: home, it turns at bay instead of fading away
   if (e.fleeTo.home) { e.fleeFade = 1; if (e.kind === "lightningGiant") e.giantCloud = true; } else e.fleeDone = true;
 }
 

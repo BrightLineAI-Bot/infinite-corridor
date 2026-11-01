@@ -6,7 +6,7 @@
 // they are not shown among the pack's pieces (so Select all and salvage never reach them), and nothing sells or salvages
 // them. Move a piece in from the pack, back out when the pack has room, or equip it straight from the sling (what it
 // replaces takes its place in the sling, so the pack is not touched).
-import { normalizeItemUpgrade } from "./items.js?v=r649-75bd8abf2c15";
+import { normalizeItemUpgrade } from "./items.js?v=r663-56d3cf7b0025";
 
 export const SLING = { size: 10 };
 const GEAR = ["primary", "secondary", "armor", "charm"];

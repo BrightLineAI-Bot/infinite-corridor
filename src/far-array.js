@@ -8,8 +8,8 @@
 // calls guardians in; from gate 3 it hides behind them until they fall. Felling it raises the Gate a tier (harder
 // guardians that borrow moves) and offers a choice of three boons; the first time, it also asks how the story ends,
 // though the climb goes on either way. State: save.farArray (additive). The lore stays open on purpose.
-import { hashSeed, rng } from "./random.js?v=r649-75bd8abf2c15";
-import { daisDue } from "./listener-arena.js?v=r649-75bd8abf2c15";
+import { hashSeed, rng } from "./random.js?v=r663-56d3cf7b0025";
+import { daisDue } from "./listener-arena.js?v=r663-56d3cf7b0025";
 
 export const FAR = {
   piecesBase: 2, // gate 1 needs 3 pieces, gate 2 needs 4, ...
@@ -150,7 +150,8 @@ export const listenerHides = (gate) => gate >= FAR.hideFromGate;
 // A guardian fell: one Gate piece. Returns a message.
 export function guardianFelled(save) {
   const f = ensureFarArray(save); f.pieces = Math.min(piecesNeeded(f.gate), f.pieces + 1); f.history.push({ run: f.runs, gate: f.gate, won: "guardian" }); f.activeRun = null;
-  return gateOpen(f) ? `The last piece locks into the Gate. It stands whole: something behind it is listening. Gate ${f.gate} is open.` : `A piece of the Gate locks into place (${f.pieces}/${piecesNeeded(f.gate)}).`;
+  const where = (f.listeners || 0) >= 1 ? "the Listener's Dais rises beside the Mouth" : "the next run holds the Listener"; // release 659: say what comes next
+  return gateOpen(f) ? `The last piece locks into the Gate. It stands whole: something behind it is listening. Gate ${f.gate} is open: ${where}.` : `A piece of the Gate locks into place (${f.pieces}/${piecesNeeded(f.gate)}). ${piecesNeeded(f.gate) - f.pieces} more and ${where}.`;
 }
 // The Listener fell: the Gate ascends and three boons are offered; the first time, the ending choice too.
 export function listenerFelled(save) {

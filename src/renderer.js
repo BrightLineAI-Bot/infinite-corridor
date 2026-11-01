@@ -1,23 +1,24 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r649-75bd8abf2c15";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r649-75bd8abf2c15";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r649-75bd8abf2c15";
-import { enemyMeleeGeometry } from "./combat.js?v=r649-75bd8abf2c15";
-import { ruleRows } from "./elders.js?v=r649-75bd8abf2c15";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r649-75bd8abf2c15";
-import { BOAT } from "./boats.js?v=r649-75bd8abf2c15";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r649-75bd8abf2c15";
-import { isMarineTile } from "./world-beasts.js?v=r649-75bd8abf2c15";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r649-75bd8abf2c15"; // 613: Starfield rafts
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r649-75bd8abf2c15";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r649-75bd8abf2c15";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r649-75bd8abf2c15";
-import { TREES } from "./trees.js?v=r649-75bd8abf2c15";
-import { SKY_DISCS } from "./skylands.js?v=r649-75bd8abf2c15"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r649-75bd8abf2c15";
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r649-75bd8abf2c15";
-import { drawRelayNode } from "./relay-network.js?v=r649-75bd8abf2c15";
-import { structureOccupancy } from "./world.js?v=r649-75bd8abf2c15";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r649-75bd8abf2c15";
+import { astralBeamAnchors } from "./astral-worm.js?v=r663-56d3cf7b0025";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r663-56d3cf7b0025";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r663-56d3cf7b0025";
+import { enemyMeleeGeometry } from "./combat.js?v=r663-56d3cf7b0025";
+import { ruleRows } from "./elders.js?v=r663-56d3cf7b0025";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r663-56d3cf7b0025";
+import { BOAT } from "./boats.js?v=r663-56d3cf7b0025";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r663-56d3cf7b0025";
+import { isMarineTile } from "./world-beasts.js?v=r663-56d3cf7b0025";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r663-56d3cf7b0025"; // 613: Starfield rafts
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r663-56d3cf7b0025";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r663-56d3cf7b0025";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r663-56d3cf7b0025";
+import { TREES } from "./trees.js?v=r663-56d3cf7b0025";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r663-56d3cf7b0025";
+import { SKY_DISCS } from "./skylands.js?v=r663-56d3cf7b0025"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r663-56d3cf7b0025";
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r663-56d3cf7b0025";
+import { drawRelayNode } from "./relay-network.js?v=r663-56d3cf7b0025";
+import { structureOccupancy } from "./world.js?v=r663-56d3cf7b0025";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r663-56d3cf7b0025";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1678,6 +1679,11 @@ export function render(ctx, g, w, h, now) {
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),g.presentation);
   drawMorphEffects(ctx,g.enemies,s,now); // release 385: the Morphling's cables, jaw, lunge and rising
   drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) });
+  for (const h of g.affixHazards || []) { const A = AFFIXES[h.kind], x = h.x * s, y = h.y * s, R = h.radius * s, arming = now < h.armAt, k = arming ? 1 - (h.armAt - now) / ((A?.arm || .5) * 1000) : 1; if (!A) continue; ctx.save(); // release 657: affix telegraphs and strikes
+    if (arming) { ctx.strokeStyle = A.color; ctx.globalAlpha = .45 + .45 * k; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.stroke(); ctx.fillStyle = A.color + "40"; ctx.beginPath(); ctx.ellipse(x, y, R * k, R * .6 * k, 0, 0, 7); ctx.fill(); }
+    else if (h.kind === "volcanic" || h.kind === "venomous") { ctx.globalAlpha = Math.min(1, (h.until - now) / 600) * .75; const gr = ctx.createRadialGradient(x, y, 0, x, y, R); gr.addColorStop(0, h.kind === "volcanic" ? "#ffd27a" : "#d8ff9a"); gr.addColorStop(.5, A.color); gr.addColorStop(1, A.color + "00"); ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.fill(); }
+    else { const f = Math.max(0, (h.until - now) / 250); ctx.globalAlpha = f; if (h.kind === "skyAssault") { ctx.fillStyle = "#e9f8ff"; ctx.fillRect(x - R * .35, y - s * 6, R * .7, s * 6); } ctx.fillStyle = A.color; if (h.kind === "spiked") { ctx.beginPath(); for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * .35; ctx.moveTo(x + (i - 2) * R * .3, y); ctx.lineTo(x + Math.cos(a) * R * .2 + (i - 2) * R * .3, y - R * (1.1 - Math.abs(i - 2) * .25)); ctx.lineTo(x + (i - 2) * R * .3 + R * .12, y); } ctx.fill(); } else { ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.fill(); } }
+    ctx.restore(); }
   for(const e of g.enemies)if(!e.dead&&discoveredInDungeon(g,e)&&e.eliteWindup>0&&visibleInCamera(e,l,t,r,b,e.kind==='gravitantBell'?6:3)){ctx.strokeStyle=DANGER.edge;ctx.lineWidth=3;/* release 397: the uniform warning colour */ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
   for (const e of g.enemies)
     if (!e.dead && discoveredInDungeon(g,e) && e.telegraph > 0 && visibleInCamera(e,l,t,r,b,e.threatRange||2)) {
@@ -1844,6 +1850,13 @@ export function render(ctx, g, w, h, now) {
         y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
         fn: () => {
           if (e.seaKind) { drawSeaCreature(ctx, e, s, now, SEA_CREATURES[e.seaKind].colors, g); return; }
+          if (e.fracRank) { const rare = e.fracRank === "rare", pulse = .55 + .45 * Math.sin(now / 260), R = s * (.42 + (e.bodyRadius || .4) * .6); ctx.save(); ctx.strokeStyle = rare ? `rgba(255,196,70,${.5 + .4 * pulse})` : `rgba(110,170,255,${.45 + .35 * pulse})`; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.ellipse((e.x + .5) * s, (e.y + .82) * s, R, R * .42, 0, 0, Math.PI * 2); ctx.stroke(); if (rare && e.packName) { ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffd77a"; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = (e.y - (e.scale || 1) * .55) * s; ctx.strokeText(e.packName, (e.x + .5) * s, ty); ctx.fillText(e.packName, (e.x + .5) * s, ty); } ctx.restore(); } // release 651: Fractured mode's champions (blue) and rares (gold, named)
+          if (e.affixes?.length || e.warded || e.fracShaman) { ctx.save(); const cx = (e.x + .5) * s, cy = (e.y + .45) * s, tt = now / 1000; // release 657: affixes, wards, shamans
+            if (e.affixes?.includes("droneSwarm")) for (let i = 0; i < AFFIXES.droneSwarm.count; i++) { const d = dronePos(e, i, tt), dx = d.x * s, dy = d.y * s; ctx.fillStyle = "#2b3a1e"; ctx.strokeStyle = AFFIXES.droneSwarm.color; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(dx, dy - s * .12); ctx.lineTo(dx + s * .12, dy); ctx.lineTo(dx, dy + s * .12); ctx.lineTo(dx - s * .12, dy); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#e9ffb0"; ctx.fillRect(dx - 1.5, dy - 1.5, 3, 3); }
+            if (e.warded) { ctx.strokeStyle = `rgba(180,140,255,${.5 + .3 * Math.sin(now / 180)})`; ctx.lineWidth = Math.max(2, s * .05); ctx.beginPath(); ctx.arc(cx, cy, s * (.55 + (e.bodyRadius || .4) * .5), 0, 7); ctx.stroke(); }
+            if (e.fracShaman) { ctx.strokeStyle = `rgba(190,120,255,${.55 + .35 * Math.sin(now / 140)})`; ctx.lineWidth = Math.max(2, s * .07); for (const k of [0, 1]) { const rr = s * (.8 + ((tt * .8 + k * .5) % 1) * .9); ctx.globalAlpha = 1 - ((tt * .8 + k * .5) % 1); ctx.beginPath(); ctx.ellipse(cx, (e.y + .82) * s, rr, rr * .45, 0, 0, 7); ctx.stroke(); } ctx.globalAlpha = .35; for (const m of g.enemies) if (!m.dead && m.wardBy === e.id && m.warded) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo((m.x + .5) * s, (m.y + .45) * s); ctx.stroke(); } ctx.globalAlpha = 1; }
+            const names = affixNames(e); if (names.length) { ctx.font = `${Math.max(9, s * .24)}px sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffe2b0"; ctx.strokeStyle = "#000b"; ctx.lineWidth = 3; const ty = (e.y - (e.scale || 1) * .55) * s + (e.packName && e.fracRank === "rare" ? s * .32 : 0); ctx.strokeText(names.join(" · "), cx, ty); ctx.fillText(names.join(" · "), cx, ty); }
+            ctx.restore(); }
           const f = e.ai?.facing || "down",
             q = e.recoil > 0 && !["astralWorm","astralMirage"].includes(e.kind) ? 0.12 : 0,
             ox = f === "left" ? q : f === "right" ? -q : 0,
@@ -2100,6 +2113,13 @@ export function render(ctx, g, w, h, now) {
       ctx.fill();
     }
   ctx.restore();
+  // Release 661 (Tim: "something on the heads up display that just shows the different levels... on the right side... little
+  // dots... pretty unobtrusive"): in a dungeon of several floors, a column of dots at the right edge, the top one the first floor:
+  // the floor you stand on lit and ringed, floors you have found dim, the rest faint.
+  if (g.area === "dungeon" && g.map?.multiLevel && (g.map.levels?.length || 0) > 1) { const L = g.map.levels, found = g.save?.consequences?.dungeons?.[g.areaId?.()]?.deep?.discoveredLevelIds || [], gap = 14, x = w - 12, y0 = h / 2 - (L.length - 1) * gap / 2;
+    ctx.save(); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + (L.length - 1) * gap); ctx.stroke();
+    L.forEach((lv, i) => { const y = y0 + i * gap, here = lv.id === g.map.levelId, seen = here || i === 0 || found.includes(lv.id); ctx.fillStyle = here ? "#ffe7a6" : seen ? "#c9c2b0aa" : "#ffffff30"; ctx.beginPath(); ctx.arc(x, y, here ? 4 : 3, 0, Math.PI * 2); ctx.fill(); if (here) { ctx.strokeStyle = "#ffe7a6aa"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke(); } });
+    ctx.restore(); }
   if (g.area === "dungeon" && g.map?.chasm) { const P = CHASM_STARS.penumbra, cx = w / 2, cy = h / 2, gr = ctx.createRadialGradient(cx, cy, s * P.inner, cx, cy, s * P.outer); gr.addColorStop(0, "rgba(4,3,14,0)"); gr.addColorStop(1, `rgba(4,3,14,${P.dark})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, w, h); } // release 593: the penumbra
   const t2 = timed ? performance.now() : 0;
   // Dungeons with their own weather (Underlands themes) show it too: snow in a cave, sparks rising from a lava bog.
@@ -2201,7 +2221,7 @@ function drawEchoPatches(ctx,g,s,now){
   for(const q of g.echoPatches||[]){const left=Math.max(0,(q.until-now)/1000),x=q.x*s,y=q.y*s,r=q.radius*s;
     if(q.kind==="web"){ctx.strokeStyle=`rgba(230,235,240,${Math.min(.7,left)})`;ctx.lineWidth=1;ctx.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.6)}ctx.stroke();for(const f of[.4,.75,1]){ctx.beginPath();ctx.ellipse(x,y,r*f,r*f*.6,0,0,7);ctx.stroke()}}
     else if(q.kind==="flesh"){ctx.fillStyle=`rgba(150,40,60,${Math.min(.45,left*.2)})`;ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.fill();ctx.fillStyle=`rgba(220,120,130,${Math.min(.5,left*.2)})`;for(let k=0;k<5;k++){ctx.beginPath();ctx.arc(x+Math.cos(k*1.3+now/700)*r*.6,y+Math.sin(k*1.7)*r*.35,s*.06,0,7);ctx.fill()}}
-    else if(q.kind==="mortar"){const t=1-Math.min(1,left/.65);ctx.strokeStyle=q.voidEcho?`rgba(206,150,255,${.4+t*.5})`:`rgba(255,200,90,${.4+t*.5})`;ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.stroke();ctx.fillStyle=q.voidEcho?`rgba(151,82,224,${t*.3})`:`rgba(255,170,60,${t*.3})`;ctx.fill()}}
+    else if(q.kind==="mortar"){const t=1-Math.min(1,left/.65);if(q.stacks>1){ctx.save();ctx.font=`bold ${Math.max(11,s*.34)}px serif`;ctx.textAlign="center";ctx.fillStyle="#ffd28a";ctx.strokeStyle="#000a";ctx.lineWidth=3;ctx.strokeText(`×${q.stacks}`,x,y-r*.7);ctx.fillText(`×${q.stacks}`,x,y-r*.7);ctx.restore();}/* release 655: a stacked Upheaval shows its count */ctx.strokeStyle=q.voidEcho?`rgba(206,150,255,${.4+t*.5})`:`rgba(255,200,90,${.4+t*.5})`;ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.stroke();ctx.fillStyle=q.voidEcho?`rgba(151,82,224,${t*.3})`:`rgba(255,170,60,${t*.3})`;ctx.fill()}}
 }
 
 const SEA_SURFACE = new Set(["ocean", "deepOcean", "shallows"]);

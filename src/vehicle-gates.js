@@ -6,8 +6,8 @@
 // "infinite tier 3 and beyond... after you've unlocked the second gate with the listener... take the submersible on land";
 // "whenever you have unlocked the... fourth or fifth gate... a drone". Gates are the Listener kills (far-array.ts): the
 // second gate is unlocked by the second kill. Pure rules; boats.ts, diving.ts and game.ts ask these.
-import { apertureTier } from "./world.js?v=r649-75bd8abf2c15";
-import { listenerKills } from "./stages.js?v=r649-75bd8abf2c15";
+import { apertureTier } from "./world.js?v=r663-56d3cf7b0025";
+import { listenerKills } from "./stages.js?v=r663-56d3cf7b0025";
 
 export const VEHICLE_GATES = { diveTier: 12, subTier: 12, underwaterTier: 13, mechTier: 13, mechListeners: 2, droneListeners: 4 };
 const TIER_NAMES = { 12: "Infinite II", 13: "Infinite III" };

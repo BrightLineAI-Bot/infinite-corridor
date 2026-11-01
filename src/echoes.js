@@ -6,8 +6,8 @@
 // Release 263: guardians and world beasts leave their creature's Echo by chance (ECHO_DROPS); ordinary kills do not.
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
-import { rng } from "./random.js?v=r649-75bd8abf2c15";
-import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r649-75bd8abf2c15";
+import { rng } from "./random.js?v=r663-56d3cf7b0025";
+import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r663-56d3cf7b0025";
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;
@@ -47,7 +47,7 @@ export const ECHOES = {
   questingBeast: { name: "Beast's Spines", cost: 3, trigger: "kill", module: "spikeVolley", text: "Kills fling spines into up to two nearby foes." },
   morphingBlob: { name: "Blob's Spatter", cost: 2, trigger: "hurt", module: "blobGasCloud", text: "Being hurt spatters ooze around you that slows foes by 40% for 3 s." },
   bloblet: { name: "Bloblet Mend", cost: 1, trigger: "kill", module: "blobBloblets", text: "Kills mend 3 health." },
-  tremorWorm: { name: "Worm's Upheaval", cost: 3, trigger: "dodge", module: "wormRise", text: "Dodging heaves the ground under the nearest foe within 5 tiles; it bursts a moment later." },
+  tremorWorm: { name: "Worm's Upheaval", cost: 3, trigger: "dodge", module: "wormRise", text: "Dodging heaves the ground under the nearest foe within 5 tiles; it bursts a moment later. Dodge again while it pulses and it stacks: each dodge adds another burst of damage." },
   wormTentacle: { name: "Tentacle Ember", cost: 1, trigger: "kill", module: "wormTentacles", text: "Kills set the nearest foe within 4 tiles burning." },
   mountainTurtle: { name: "Turtle's Ward", cost: 3, trigger: "hurt", module: "turtleShield", text: "Being hurt grows ice over you: no blow lands for a second (once every 8 s)." },
   nanobotKnight: { name: "Nanite Seekers", cost: 3, trigger: "kill", module: "knightOrbs", text: "Kills loose nanite seekers into up to two foes within 5 tiles." },
@@ -104,6 +104,10 @@ function nearest(game, x, y, radius, skip = null) {
   return game.enemies.filter((e) => !e.dead && !e.untargetable && e !== skip && Math.hypot(e.x + .5 - x, e.y + .45 - y) <= radius).sort((a, b) => Math.hypot(a.x + .5 - x, a.y + .45 - y) - Math.hypot(b.x + .5 - x, b.y + .45 - y));
 }
 const centre = (q) => ({ x: q.x + .5, y: q.y + .45 });
+// Release 655 (Tim, 2026-11-01: "if you dodge multiple times before the ring bursts... it should just stack... the ring gets more
+// powerful depending on the number of times you dodge"): Worm's Upheaval's ring pulses `window` s; each dodge while it pulses adds
+// another `damage` × echo damage to its burst, stretches it `extend` s (never past `longest` s from the first) and widens it.
+export const UPHEAVAL = { damage: 1.3, window: 1600, extend: 450, longest: 4000, radius: 1.4, grow: .12, maxRadius: 2.4 };
 
 export function echoEvent(game, event, now, data = {}) {
   const save = game.save, p = game.player, eq = activeEchoes(save), world = game.glyphWorld(now), dmg = echoDamage(save), me = centre(p);
@@ -113,7 +117,11 @@ export function echoEvent(game, event, now, data = {}) {
     if (eq.includes("riftLynx")) p.echoPounceUntil = now + 1200;
     if (eq.includes("pallidCrawler")) p.stamina = Math.min(save.maxStamina, p.stamina + 5);
     if (eq.includes("veilSpinner")) (game.echoPatches ||= []).push({ kind: "web", x: me.x, y: me.y, radius: 1.4, until: now + 3000, slow: .5 });
-    if (eq.includes("tremorWorm")) { const foe = nearest(game, me.x, me.y, 5)[0]; if (foe) { const c = centre(foe); (game.echoPatches ||= []).push({ kind: "mortar", x: c.x, y: c.y, radius: 1.4, until: now + 600, detonate: Math.round(dmg * 1.3) }); } } // release 237
+    if (eq.includes("tremorWorm")) { // release 237; 655: a dodge while the ring still pulses stacks onto it (UPHEAVAL)
+      const U = UPHEAVAL, base = Math.round(dmg * U.damage), ring = (game.echoPatches || []).find((q) => q.upheaval && now < q.until);
+      if (ring) { ring.stacks++; ring.detonate += base; ring.until = Math.min(ring.born + U.longest, ring.until + U.extend); ring.radius = Math.min(U.radius + U.grow * (ring.stacks - 1), U.maxRadius); }
+      else { const foe = nearest(game, me.x, me.y, 5)[0]; if (foe) { const c = centre(foe); (game.echoPatches ||= []).push({ kind: "mortar", upheaval: true, stacks: 1, born: now, x: c.x, y: c.y, radius: U.radius, until: now + U.window, detonate: base }); } }
+    }
     if (eq.includes("voidWalker") && now >= (p.echoVoidReadyAt || 0)) {
       const foe = nearest(game, me.x, me.y, VOID_ECHO.range)[0];
       if (foe) {

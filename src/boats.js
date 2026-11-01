@@ -3,7 +3,7 @@
 // and shallows), never the blight's toxic water or rivers. It has its own hull: hits taken aboard are shared with it,
 // and a hull at zero sinks the skiff, which the Shipwright's crew returns to its home dock.
 // Data and pure rules; game.ts calls in from movement, interaction, damage and section loading.
-import { hashSeed } from "./random.js?v=r649-75bd8abf2c15";
+import { hashSeed } from "./random.js?v=r663-56d3cf7b0025";
 
 export const BOAT = {
   price: { currency: 120, cinderIron: 2 },

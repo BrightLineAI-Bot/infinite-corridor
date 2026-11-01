@@ -8,8 +8,8 @@
 // Ember Refuge, a seeded `chance` per crossing). Which of the seven it is comes from the crossing's seed, so a crossing
 // always holds the same bell; one already rung hangs silent. Rung bells are remembered in save.lore.bells (the bells rung,
 // as a string of digits; additive, normalised here). All writing is original to the game. Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r649-75bd8abf2c15";
-import { READING_BANDS } from "./lore.js?v=r649-75bd8abf2c15";
+import { hashSeed } from "./random.js?v=r663-56d3cf7b0025";
+import { READING_BANDS } from "./lore.js?v=r663-56d3cf7b0025";
 
 // Release 577 (Tim: "they shouldn't just be trapped in specific dungeons... if I don't get the bell in one dungeon... it should
 // just go to another dungeon... randomly... until I get them... unless there's a way to... note in this square... where the

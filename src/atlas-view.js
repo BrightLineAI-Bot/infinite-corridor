@@ -2,8 +2,8 @@
 // a worldview … zoom to region … see more of the map at large"). Pure helpers for main.ts: the zoom range, framing a
 // set of sections, and the places a player can jump to (the explored world, each region they have heard, and the
 // towns, districts and Wayglasses inside it). No DOM.
-import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r649-75bd8abf2c15";
-import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r649-75bd8abf2c15";
+import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r663-56d3cf7b0025";
+import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r663-56d3cf7b0025";
 
 // A section is `base × zoom` pixels across. Below `detail` the Atlas switches to its world view: one coloured cell per
 // section from a cached image, with markers at a fixed size. `step` is the factor of one zoom press.

@@ -39,7 +39,7 @@ export const GOLEM = { share: .9, punches: 3, gap: .38, rise: .35, sink: .4, ran
 export const FIRE_BURST = { count: 5, spread: 1.4, reach: 2.6, speed: 9 };
 export const CLUSTER = { count: 2, speed: 7, share: .45, radius: .55 };
 export const ARC_WAVE = { share: 1, grow: .5, pierce: 12, speed: 11 }; // release 549: per wave, three waves (was one wave at 2.2, grow .75)
-// Release r649-75bd8abf2c15 (Tim, 2026-11-01: "a large sword that... moves out and swings, and then comes back to you... great sword... great
+// Release 649 (Tim, 2026-11-01: "a large sword that... moves out and swings, and then comes back to you... great sword... great
 // axe... a huge shuriken... they should Pierce through... home towards me... for like 3 seconds... I only have 3 maximum at a
 // time... hit on the way out and... on the way in... spinning... like the blades of a helicopter... grow with... charged air").
 export const MIRAGE = { share: .7, speed: 11, backSpeed: 13, out: 5, back: 2.5, seekTurn: 14, catch: .55, max: 3, cooldown: .55, range: 9, spread: .35, grow: .38, size: 2.1, spin: 15 };
