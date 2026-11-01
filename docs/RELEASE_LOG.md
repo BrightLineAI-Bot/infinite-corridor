@@ -15,13 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 685, the next is **686**.
+Taken at merge time: `main`'s release + 1 (see above). After 688, the next is **689**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| (at merge) | Claude | `claude/dreamy-rubin-yn6q2p` | Canyon craters: clod-packed dungeons you drill through (green/yellow/red stability, cave-ins, collapse), caverns, lava, a pool, a bridged ravine; earth golems, crystal hermits, a Golem Warden, finds in clods; the divine wreck pays Divine Viscera; the Listener's Descent (the Deep beside a fallen Listener's Mouth) | Building. |
+| 688 | Claude | `claude/dreamy-rubin-yn6q2p` | Canyon craters: clod-packed dungeons you drill through (green/yellow/red stability, cave-ins, collapse), caverns, lava, a pool, a bridged ravine; earth golems, crystal hermits, a Golem Warden, finds in clods; the divine wreck pays Divine Viscera; the Listener's Descent (the Deep beside a fallen Listener's Mouth) | Merging. |
+| 687 | Claude (Stalker session) | PR #334 | The Stalker's appendage (sword, spikes and bouncing blasts, tendril eruptions, boomerang blade) and the gorilla's arms (grab, slam, sweep, spin, charge, Iron Fist combo); the gorilla redrawn with poses; the cat's face | Building. |
+| 686 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Ascension Dais: the viscera altar renamed; a dais at the start of every Divine Challenge entered holding viscera holds its first round while you offer, shaping that fight; step off or Begin | Merging (baton taken). |
 | 685 | Claude | `claude/dreamy-rubin-yn6q2p` | Ruined arcologies: terraced towers of dark glass in the machine-touched regions, a stair a floor, broken floor to fall through, the crown's rest and cache | PR #332. |
 | 684 | Claude (Stalker session) | PR #331 | The Stalker refined: six visual passes on the cat (a white six-legged feline, poses), the crossed blades rebuilt (rise, swing, cross, a larger X flies straight), the mist (rots a tenth of max health per touch) | Merged (PR #331). Published in r684. |
 | 683 | Claude | PR #330 | Great Keeps: walled keeps on new ground, climbed by stair and jump-up from the gate to the wall walk, corner towers, a gatehouse tower, a bridge over the courtyard and the keep's crown (Keep Rest, Keep Cache); guards on every level | Renumbered 682 → 683: the Tremor Worm session merged 682 first. Merged (`r683-4f02e723b08a`). Published in r684. |

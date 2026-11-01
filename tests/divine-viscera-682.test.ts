@@ -37,9 +37,11 @@ test('a Divine Challenge pays viscera and leaves an altar; the next one is fough
   const { g, s } = rushClimb(); clear(g, s); assert.equal(s.skylands.viscera, VISCERA.earn);
   const altar = g.map.objects.find((o) => o.kind === 'visceraAltar'); assert.ok(altar, 'the altar by the way out'); assert.deepEqual(validActions(altar, s).sort(), ['offer:lighten', 'offer:might', 'offer:reroll', 'offer:round']);
   g.player.x = altar.x; g.player.y = altar.y; const r = g.interact('offer:might', altar.id); assert.ok(r.ok, r.message); assert.equal(s.skylands.viscera, 0); assert.deepEqual(s.skylands.pact, { might: 1 });
-  const base = rushClimb((q) => { q.skylands = { sigils: 0, best: 0, runs: 0, clears: 0 }; }), plainHp = clear(base.g, base.s)[0][0].hp;
+  const base = rushClimb((q) => { q.skylands = { sigils: 0, best: 0, runs: 0, clears: 0, viscera: 1 }; }); base.g.beginSkyChallenge(); const plainHp = clear(base.g, base.s)[0][0].hp; // 686: both begun from the dais, so like is compared with like
   const pact = rushClimb((q) => { q.skylands = { sigils: 0, best: 0, runs: 0, clears: 0, viscera: 2, pact: { might: 2, round: 1 } }; });
-  assert.equal('pact' in pact.s.skylands, false, 'the climb took the pact up'); const waves = clear(pact.g, pact.s);
+  // Release 686: holding viscera, the challenge waits on the Ascension Dais at its start until you begin.
+  assert.equal(pact.s.skylands.pact?.might, 2, 'the pact waits with you on the dais'); assert.ok(pact.g.beginSkyChallenge().ok);
+  assert.equal('pact' in pact.s.skylands, false, 'beginning took the pact up'); const waves = clear(pact.g, pact.s);
   assert.equal(waves.length, SKY_MODES.rushRounds.length + 1, 'a round more'); assert.ok(waves[0][0].hp > plainHp, `stronger: ${plainHp} → ${waves[0][0].hp}`);
   assert.equal(pact.s.skylands.viscera, 2 + visceraEarned({ might: 2, round: 1 }), 'and it pays back more');
 });

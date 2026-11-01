@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release NNN: Canyon craters — 2026-11-01
+## Release 688: Canyon craters — 2026-11-01
 
 Tim (2026-10-30, and 2026-11-01: "the chasm dungeons... have those blocks that I can destroy"): Canyon dungeons, "mostly
 blocks... dirt clods that you can dig through... the longer you press, the more [it] drills... green... yellow... red... the
@@ -2729,7 +2729,7 @@ cinder iron 1, weighted 5/3/1). A clod is drilled once, so each secret pays once
 Skylands' own field). Bounded: one drill target a frame, at most 2000 drilled tiles kept per crater. Tests:
 `tests/canyon-craters.test.ts`.
 
-## Release NNN: the Listener's Descent — 2026-11-01
+## Release 688: the Listener's Descent — 2026-11-01
 
 Tim approved the Deep's plan (2026-11-01), which included: "The Listener's Mouth, once you've beaten that Mouth's Listener: its
 runs become the Array's own endless descent." Release 677 built the Deep's shafts; this is the Mouth's part.
@@ -2742,6 +2742,76 @@ floors, checkpoints, embers, loot and the record all work as release 677's. The 
 
 **BOUNDARY:** No generator change; added at load beside every Mouth town, old journeys too. Save: the shaft's record in
 `save.theDeep.shafts` (additive, release 677's). Tests: `tests/mouth-town-373.test.ts`.
+## Release 687: the Stalker's appendage and the gorilla's arms — 2026-11-01
+
+Tim (2026-11-01): a shapeshifting appendage from its back — a sword sweep, three spikes forward with three blasts from the tips
+that "bounce off blocks", a tendril into the ground with "a series of eruptions... staggered... tracking you... pretty large", the
+appendage thrown "like a helicopter blade... and like a boomerang... comes back to him"; the gorilla launching its fists ("grab you
+and pull you in", "remote slam", "a rapid sweep", both arms "a 180° sweep around it"), "a charge... knock you off the tree... some
+knockback" (not a knock-up), "punch and kick... similar to the iron fist"; then "the stalker kind of looks a little goofy in the
+face"; "a few visual passes on the gorilla... good animations... when we work on all his moves".
+
+**CODE:** `src/stalker.ts`.
+- `STALKER.limb` (sword, spikes with their bouncing `blast`, tendril, boomerang). The moves join `turret.moves` (orbs, sword,
+  cone, spikes, ring, tendril, xblade, boomerang), so one back move at a time, each marked during the turret's `warn`.
+  - `startLimb`/`tickLimb`: sword hits once mid-sweep inside `arc`; spikes hit along `spikeLines` and shoot three `blast`s
+    (`bounces` 2: `tickShots` reflects them off `w.shotBlocked`).
+  - Tendril: `count` eruptions every `every` s at the Wayfarer's spot then, each striking `arm` s later within `radius`
+    (`tickErupts`, at most `cap`).
+  - Boomerang: a `boomer` shot (flies over walls) that turns home after `out` s and can hit once each way.
+- `STALKER.arms`:
+  - `pick` is the gorilla's order (leap, grab, combo, slam, charge, sweep, spin; `apeMoveNext`). Prowl closes to that move's
+    `range`; `startApeMove`/`tickApeAct` run it.
+  - grab: a fist out at `speed`; caught, it pulls through `w.displace`, then a fist blow.
+  - slam: the fist rises over the marked spot and drops.
+  - sweep: one arm, two passes, `arc`; spin: both arms half a circle. Hits are segment tests, once per pass.
+  - charge: straight along the aim; a touch hurts and knocks `knock` tiles.
+  - combo: jab, cross, kick with knockback.
+  - `retract` brings the fists home; `e.stalkFists`/`e.stalkStrike` are for drawing.
+- `src/game.ts` `stalkerWorld.displace`: `moveAxis(player, …, allowLethalTerrain)`, so a knock can carry the Wayfarer off a
+  ledge.
+- `src/stalker-render.ts`:
+  - `drawApe` is rebuilt over passes: a hunched, massive silverback (hump, silver saddle and seam, chest skin, crested head,
+    heavy brow, dark face) with bat wings (arm bone, wrist, three fingers, scalloped membrane).
+  - Ape poses: walk (knuckle gait, body bob), fly (wings beating), charge (head down, wings swept), raise, punch, kick.
+  - `drawApeArm` draws the stretching arms to launched fists.
+  - `drawLimb`/`limbCurve` draw the appendage, `drawErupts` the eruption rings and bursts, plus the blast and boomerang shots,
+    and a ground mark for every new move.
+  - The cat's head is redrawn as a big cat's profile: short deep muzzle, whisker pad, chin, hooded almond eye, brow ridge,
+    ears laid back.
+  - Tim: "there's like some stray lines around its body... a little misty... penumbra around it... not a full form". `drawCat`
+    drops the flank chevrons, the spine seam strokes and the shoulder/haunch arcs, softens its outline, and draws a drifting
+    penumbra first: six radial-gradient puffs round the body, four wisps trailing off the back and tail, a pool at the feet
+    (eleven gradients a frame).
+
+**BOUNDARY:** Runtime only: no save field, no generator change. Bounded: shots still capped at 12, eruptions at 6, two fists,
+segment tests only, no pathfinding. Tests: `tests/stalker-arsenal.test.ts`.
+
+## Release 686: the Ascension Dais — 2026-11-01
+
+Tim (2026-11-01): "put the viscera altar at the start of the divine challenge too... call it the ascension dais".
+
+**CODE:**
+- `src/skylands.ts`:
+  - `DAIS` (`name` "Ascension Dais", `leave` 3.2 tiles).
+  - The altar's name everywhere is now the Ascension Dais. The object kind stays `visceraAltar`, so a run saved mid-way still
+    opens.
+  - `skylandLabel` labels `begin`.
+- `src/interactions.ts`: a start dais (`o.start`) also offers `begin`.
+- `src/game.ts`:
+  - On climbing into a Divine Challenge holding viscera (the stair, or `climbAnnex` onto annexc), the history gets `skyHold`
+    instead of taking up the pact.
+  - `tickSkyland` holds while `skyHold`. `holdSkyChallenge()` (idempotent; a reload holds again) drops the first round (spawn ids
+    `<run>:w0:`) and raises the start dais by the entry.
+  - Stepping more than `DAIS.leave` from it, or Begin (`interact` → `beginSkyChallenge()`), takes up the pact. That rebuilds
+    `map.skyPlan` and `map.skyPact` and spawns round one scaled by it. The start dais then serves the next challenge.
+
+**BOUNDARY:**
+- Runtime only (`history.skyHold`, like every Skyland run). Without viscera nothing changes.
+- A start from the dais spawns round one inside the Skyland, as every later round is spawned. An ordinary start spawns it while
+  loading from the overworld, which makes round one a little stronger (pre-existing; reported to Tim, unchanged).
+- Tests: `tests/ascension-dais-686.test.ts`. `tests/divine-viscera-682.test.ts` now begins from the dais and compares like with
+  like.
 
 ## Release 685: ruined arcologies — 2026-11-01
 
