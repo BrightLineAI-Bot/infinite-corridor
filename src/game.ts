@@ -492,6 +492,7 @@ export const DAMAGE_NUMBERS = { life: 900, rise: .9, cap: 48 }; // release 461
 // stable ids (never added to a cleared crossing, an arena, a Far Array run or a hunt instance).
 export const DUNGEON_BOOST = { hp: 1.2, damage: 1.2, count: .2, near: 3 };
 const GUARDIAN_ROLES = ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"];
+export const SKY_TREE = { search: 6, loads: 4, chance: .55 }; // release 663: sky gates land on a great tree: rings searched round the drop, sections built at most, the trees' grow chance
 // Release 651: an ordinary creature, which Fractured mode copies into packs and brings back (never a guardian, boss, hunt,
 // world beast or any one-time foe).
 function fracturedOrdinary(q) { return !!q && !q.boss && !GUARDIAN_ROLES.includes(q.dungeonRole) && !q.worldBeast && !q.questingBeast && !q.eliteId && !q.objectiveId && !q.foundryId && !q.domainBoss && !q.domainManifestation && !q.wingId && !q.marginWarden && !q.gatePredator && !q.viewportHuntId && !q.huntInstanceId && !q.ambient && !q.passiveBehavior && !q.astralCompanionOf && !q.retreating && !q.passingBeast && !q.skirmishId && !q.farArrayBoss && !q.farArraySummon && !q.packGuardian && !q.apertureEncounter && !q.hordeOf && !q.skyEcho && !q.arenaId && q.kind !== "npc" && !q.mireHeart && !q.mireSeep; }
@@ -2225,7 +2226,7 @@ export class Game {
     this.save.session.areas[this.areaStateId()] = {
       encounterVersion:this.map.encounterVersion||0,
       leftAt: Number(this.save.playSeconds) || 0, // release 651: when it was last held, for Fractured mode's return
-      enemies: this.enemies.filter((e) => !e.blobRemnant && !e.passingBeast).map((e) => ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } })), // release 259: the Blob's remnant is never saved
+      enemies: this.enemies.filter((e) => !e.blobRemnant && !e.passingBeast && !e.fracReinforcement).map((e) => ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } })), // release 259: the Blob's remnant is never saved
       objects,
       projectiles: this.projectiles.map((p) => ({ ...p })),
       effects: this.effects.map((f) => ({ ...f, hits: { ...f.hits } })),
@@ -3086,9 +3087,31 @@ export class Game {
     (this.glyphVisuals||=[]).push({kind:"arc",x:o.x+.5,y:o.y+.45,tx:other.x+.5,ty:other.y+.45,color:"#d8c8ff",life:.4,max:.4});
     this.message="The eye opens. The halls fold, and you step off the other dais.";this.sync();return{ok:true,message:this.message};
   }
+  // Release 663 (Tim, 2026-11-01: "if you cross the skylands... it'll take you to the top of another tree that you haven't
+  // discovered... far off... so you can either parachute down or you can hop down"): a sky gate drops the Wayfarer on the crown
+  // of a great tree near where it would have dropped them, one never seen first, then the nearest. Cheap tests (the jungle region
+  // and the tree's own grow roll) pick the candidates; at most `SKY_TREE.loads` sections are built to find one. None: the old drop.
+  treeCrownHop(id, from) {
+    const seed = this.save.seed, target = skylandHop(id, from.rx, from.ry), cands = [];
+    const R = SKY_TREE.search; for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { const x = target.rx + dx, y = target.ry + dy;
+      if (x === from.rx && y === from.ry) continue;
+      const seen = this.save.atlas?.[`${x},${y}`], version = seen?.landscapeVersion || LANDSCAPE_VERSION; if (seen && !seen.landscapeVersion) continue;
+      if (version < 12 || sectionRegion(seed, x, y, version).type !== "jungle" || (hashSeed(`${seed}:canopy-grow:v1:${y * 7919 + x}`) % 1000) / 1000 >= SKY_TREE.chance) continue;
+      cands.push({ rx: x, ry: y, seen: !!seen, d: Math.hypot(x - target.rx, y - target.ry) });
+    }
+    cands.sort((a, b) => (a.seen - b.seen) || a.d - b.d);
+    for (const c of cands.slice(0, SKY_TREE.loads)) {
+      this.rx = c.rx; this.ry = c.ry; this.loadArea("overworld", false); const cn = this.map.canopy; if (!cn?.top) continue;
+      const crown = this.map.tiles.filter((t) => t.kind === "canopyTrunk" && t.elev === cn.top); if (!crown.length) continue;
+      const mid = crown.reduce((a, t) => a + t.x, 0) / crown.length, my = crown.reduce((a, t) => a + t.y, 0) / crown.length, spot = crown.sort((a, b) => Math.hypot(a.x - mid, a.y - my) - Math.hypot(b.x - mid, b.y - my))[0];
+      this.player.x = spot.x; this.player.y = spot.y - .2; this.lastCrownAt = this.lastUpdateNow || 0; return true;
+    }
+    this.rx = from.rx; this.ry = from.ry; return false;
+  }
   // Release 589 (skylands.ts skylandHop): a sky gate drops the Wayfarer onto ground far off. A section all sea is passed over.
   skyHop(id, message) {
     this.snapshotArea(); const from = { rx: this.rx, ry: this.ry };
+    if (this.treeCrownHop(id, from)) { Object.assign(this, { skyAir: null, skyLevel: 0, discAir: null, projectiles: [], effects: [], traversal: null }); this.message = `${message} You come down through the leaves onto the crown of a great tree.`; this.sync(); return true; }
     for (let k = 0; k < 6; k++) {
       const to = skylandHop(k ? `${id}:${k}` : id, from.rx, from.ry); this.rx = to.rx; this.ry = to.ry; this.loadArea("overworld", false);
       this.player.x = 16; this.player.y = 16; relocateIfStranded(this.player, this.map, mapWidth(this.map, "overworld"));
@@ -4409,7 +4432,7 @@ export class Game {
       }
       if (e.marginWarden) { const W = MARGIN_RULES.warden, rev = tuneGatePredator(Object.assign(createCombatant("gateRevenant", 0, 0, false, []), { gatePredator: true }), this.save, characterStats(this.save)); Object.assign(c, { marginWarden: true, boss: false, foundryName: `Margin Warden · ${c.eliteName || c.kind}`, aggro: false }); c.maxHp = c.hp = Math.max(1, Math.round(rev.maxHp * W.revenantShare)); c.damage = Math.max(1, Math.round(rev.damage * W.revenantShare)); c.baseDamage = c.damage; c.scale = (c.scale || 1) * W.scale; c.baseScale = c.scale; } // release 459; 473: an elite at half a Gate Revenant
       if (e.fractured) applyFracturedRank(c, e, this.save.seed); // release 651
-      if (GUARDIAN_ROLES.includes(c.dungeonRole) && !c.affixes) c.affixes = rollAffixes(`${this.save.seed}:guardian:${c.id}`, 1); // release 657: every crossing guardian carries an affix
+      if (GUARDIAN_ROLES.includes(c.dungeonRole) && !c.affixes && !c.farArrayBoss && !String(this.save.session?.activeDungeonId || '').startsWith('far-array:')) c.affixes = rollAffixes(`${this.save.seed}:guardian:${c.id}`, 1); // release 657: every crossing guardian carries an affix
       ensureAI(c);
       refreshMarineBeast(c, this.map, mapWidth(this.map, area), area);
       return c;
@@ -5001,6 +5024,7 @@ export class Game {
   // One frame of Fractured mode: after a doorway's grace, a pack comes in from just out of sight every few seconds, never past
   // the live cap; clearing everything in sight buys a lull. Runtime only (`fracState`), reset with the area.
   tickFractured(now) {
+    if (this.enemies.some((e) => e.fracReinforcement && e.dead)) { for (const e of this.enemies) if (e.fracReinforcement && e.dead) e.fracGoneAt ??= now; this.enemies = this.enemies.filter((e) => !(e.fracReinforcement && e.dead && now - e.fracGoneAt > FRACTURED.corpse * 1000)); } // the 659 review: fallen reinforcements are cleared away
     const mode = this.fracturedHere(); if (!mode) { this.fracState = null; return; }
     const key = `${this.area}:${this.areaStateId()}`, F = FRACTURED, p = this.player;
     let st = this.fracState; if (!st || st.key !== key) st = this.fracState = { key, nextAt: now + F.grace * 1000, quiet: true, n: 0 };
