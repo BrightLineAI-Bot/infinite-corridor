@@ -13,16 +13,17 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**651**
+**653**
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 649 | Claude | `claude/dreamy-rubin-yn6q2p` | Mirage of Blades replaces Nanoknives (thrown spinning great blades that home back to you); LISTENER REVEALED heading | Building. |
-| 647 | Claude | PR #307 | The drone's booster on the overworld: Jump again in the air, hold to climb up to 5 levels, feather to hold or come down, a drop can kill | Merged (`r647-53545ce96be8`). |
-| 645 | Claude | PR #306 | The tree package (landscape version 13): spires and groves, a canopy walk, perches, leaves, boughs, four tree looks | Merged (`r645-0f3405778aef`). |
-| 643 | Claude | PR #305 | Every pass through a body is a hit; the Great Sweep's blades (great sword, shuriken, great axe) fly on through and curl back | Merged (`r643-c53163bd6ab2`). |
+| 651 | Claude | `claude/dreamy-rubin-yn6q2p` | Fractured mode (Options → Challenge): Fractured / Frenzied packs with champions and rares, reinforcements, safe places, lulls, return refills | Building. |
+| 649 | Claude | PR #308 | Mirage of Blades replaces Nanoknives (thrown spinning great blades that home back to you); LISTENER REVEALED heading | Merged (`r649-75bd8abf2c15`). Published in r649. |
+| 647 | Claude | PR #307 | The drone's booster on the overworld: Jump again in the air, hold to climb up to 5 levels, feather to hold or come down, a drop can kill | Merged (`r647-53545ce96be8`). Published in r649. |
+| 645 | Claude | PR #306 | The tree package (landscape version 13): spires and groves, a canopy walk, perches, leaves, boughs, four tree looks | Merged (`r645-0f3405778aef`). Published in r649. |
+| 643 | Claude | PR #305 | Every pass through a body is a hit; the Great Sweep's blades (great sword, shuriken, great axe) fly on through and curl back | Merged (`r643-c53163bd6ab2`). Published in r649. |
 | 641 | Claude | PR #304 | Glider opened and folded with Jump, freefall, sea landings, Act at sea; Giant 8 s charge; the review's glide-indoors blocker | Merged (`r641-1de709e6ab17`). Published in r641. |
 | 639 | Claude | PR #303 | Out of the robot at sea: the robot button goes power armor → out into your skiff | Merged (`r639-13350fc9c822`). Published in r641. |
 | 637 | Claude | PR #302 | The great trees as towers: branches out of the trunk, rising, hops tip to tip, the crown on the trunk, 30–42 levels | Merged (`r637-496b09468bbf`). Published in r641. |
@@ -44,6 +45,7 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 649 | `r649-75bd8abf2c15` | 2026-11-01 | With 643 to 647: every pass is a hit (#305); the tree package, landscape v13 (#306); the drone's booster (#307); Mirage of Blades and LISTENER REVEALED (#308). Pre-publish review clean. |
 | 641 | `r641-1de709e6ab17` | 2026-11-01 | With 625 to 639: palette regions (PRs #296, #298); ten narrative threads (#297); great trees, the sky and the leaf glider (#299–#302); out of the robot at sea (#303); the glider in hand and the Giant's 8 s charge (#304). The pre-publish Fable review of 623→639 found the glide-indoors blocker (fixed in 641); the review of 639→641 found no blockers. |
 | 623 | `r623-2501e60705f7` | 2026-10-31 | With 613 to 621: Starfield dungeons and rafts (PR #290); raft tracks, heights and the dark (#291); fog moors (#292); wading, removed again in 621 (#293); the robot at sea (#294); rafts carry only riders over the drop and the system-audit fixes (#295). The pre-publish Fable review of 611→621 found the raft blocker (fixed in 623); the review of 621→623 found no blockers. |
 | 611 | `r611-b1bdde7eef1f` | 2026-10-31 | With 605 to 609: followable retreats (PR #286); the economy (#287); the Codex play-test fixes and the 605 retreat clock (#288); the Wayfarer may stand on open lava (#289). The pre-publish Fable reviews found the 605 clock bug (fixed in 609) and the lava relocation (fixed in 611); the review of 603→611 found no blockers. |
