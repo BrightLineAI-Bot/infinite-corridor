@@ -58,3 +58,12 @@ test('a place left a while fills up again; one left a moment ago does not', () =
   g.snapshotArea(); g.rx += 1; g.loadArea('overworld', false); s.playSeconds += FRACTURED.repopulate + 1; g.snapshotArea(); g.rx -= 1; g.loadArea('overworld', false); // away and back
   assert.ok(g.enemies.filter((e) => e.fractured).every((e) => !e.dead), 'back later: full again');
 });
+
+test('the 659 review: fallen reinforcements are cleared away and never saved; an area gains at most maxAdded', () => {
+  const [x, y] = wildSection(), { s, g } = at('frenzied', x, y);
+  for (const e of g.enemies) if (!e.ambient) e.dead = true;
+  let t = 1000; for (let k = 0; k < 30; k++) { g.tickFractured(t += 30000); for (const e of g.enemies) if (e.fracReinforcement) { e.dead = true; e.hp = 0; } }
+  g.tickFractured(t += 5000); g.tickFractured(t += 5000); assert.ok(!g.enemies.some((e) => e.fracReinforcement && e.dead), 'corpses cleared');
+  for (const e of g.enemies) if (e.fracReinforcement) e.dead = true; g.snapshotArea(); const saved = s.session.areas[g.areaStateId()].enemies;
+  assert.ok(!saved.some((e) => e.fracReinforcement), 'none saved'); assert.ok(FRACTURED.maxAdded <= 30);
+});

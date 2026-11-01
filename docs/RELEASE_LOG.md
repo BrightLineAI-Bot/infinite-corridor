@@ -2,7 +2,9 @@
 
 The shared record of which release numbers are live, in flight or reserved, kept so Claude and Codex never collide.
 **Read this before you start a release. Update it in the same PR that bumps the number, and again when the release
-merges, publishes or is dropped.** Newest first. Release numbers are odd, and each one is used exactly once.
+merges, publishes or is dropped.** Newest first. Each release number is used exactly once.
+
+**From 2026-11-01 (Tim): two Claude sessions pipeline.** The first session (branch `claude/dreamy-rubin-yn6q2p`) takes **odd** numbers; the second takes **even** numbers. Each keeps its own Next free number below. A release number on `main` must only go up: if `main` is already past your number when you merge, renumber to the next free number of your parity above `main`'s and say so in the PR.
 
 ## How to claim a number
 
@@ -13,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Release numbers are odd, and ea
 
 ## Next free number
 
-**663**
+**665** (odd, first session) · **664** (even, second session)
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 661 | Claude | `claude/dreamy-rubin-yn6q2p` | Floor dots at the right edge in multi-floor dungeons | Building. |
+| 663 | Claude | `claude/dreamy-rubin-yn6q2p` | A sky gate lands you on a great tree's crown (one not yet seen first), to glide or hop down | Building. |
+| 661 | Claude | PR #314 | Floor dots at the right edge in multi-floor dungeons | Merged (`r661-1160639f42b2`). |
 | 659 | Claude | PR #313 | The Far Array explains itself: what a run holds, Gate pieces left, where the Listener waits; each deep floor names the way up/out and down | Merged (`r659-e5124f5561df`). |
 | 657 | Claude | PR #312 | Elite affixes (Volcanic, Sky Assault, Spiked, Venomous, Drone Swarm, Enraged), champion auras, warding shamans; every crossing guardian carries an affix | Merged (`r657-669db132ed16`). |
 | 655 | Claude | PR #311 | Worm's Upheaval stacks: each dodge while its ring pulses adds another burst | Merged (`r655-c8fd359ccde7`). |
