@@ -2714,6 +2714,39 @@ falling".
 
 **BOUNDARY:** The rest point is placed at load, not generated: every generator version is untouched. Additive save only (the
 checkpoint record). Tests: `tests/crown-rest-665.test.ts`.
+## Release 664: the Tremor Worm reworked — 2026-11-01
+
+Tim (2026-11-01): "he should spend a lot of time with half of his model outside the ground and only come out every once in a
+while… when he's fully out he should be doing melee attacks where he swings, uses his length to attack, or slams down". An
+investigation found tentacles with a flat 34 HP (dead before they fired late on), a near-invisible cast, casts that did nothing
+at the cap of six, and the worm fully out about 80% of the time.
+
+**CODE:**
+- `src/monster-pack.ts`:
+  - Every worm attack module carries `posture` ("half" or "full"). New `wormSweep` (arc `WORM.sweepRadius`/`sweepArc`, the swing
+    angle `s.data.swing` checked against the Wayfarer each frame, one hit) and `wormSlam` (a rect lane `slamLength`×`slamWidth`
+    plus a burst `slamBurst` at the head) join `wormMaw` as the full moves. `attackReady` refuses a full move within
+    `WORM.fullGap` s of the last one (`s.worm.fullAt`).
+  - `wormCycle` keeps `e.wormLift` (share of its length above ground, moving at `postureRate`) at `halfHeight` except during a
+    full move, sets `e.wormPosture`, and now counts its surface time during attacks too (`surfaceTime` 5).
+  - `wormTentacles`: START picks the spots and lays a `wormCracks` effect on each for the windup plus the rise; RUN spawns there
+    with `tentacleStats` (hp `tentacleHp` of the worm's max, at least `tentacleHpMin`) and deals modes from `WORM.tentacleModes`
+    in order by `e.wormCasts` (two a cast, lasers capped by `lasersMax`). At the cap it sends every surfaced tentacle under
+    for `repositionUnder` s instead.
+  - `tentacleTurret`: damage from the owner's damage × `WORM.tentacleDamage[mode]`. After `tentacleVolleys[mode]` volleys (a
+    laser: `laserHold` s burning) it sinks; `tentacleWarn` s before it surfaces it picks its spot around the Wayfarer and lays
+    cracks there. Modes: fire, laser, orbs (generic `orb` effect with `homing` seconds and `turn`), spread (cone warning, a fan of
+    `spreadShots`), grab (lane warning, then `w.pull` for `grabHold` s and a squeeze; a dodge, which makes `w.pull` refuse,
+    slips it; `e.grabbing` for the renderer), swipe (arc warning; kept out of reach `swipeChase` s, it burrows after you;
+    `e.tentSwing` for the renderer).
+- `src/monster-render.ts`: the worm's column is drawn at `e.wormLift` of its height, swings across the arc in the sweep and
+  rears then lies along the line in the slam; tentacles get a tip per mode, stretch to the Wayfarer while grabbing, whip round
+  on a swipe, and are painted directly (not sprite-cached, so a grab's reach is never clipped); `wormCracks` and homing orbs.
+
+**BOUNDARY:** Runtime only; new enemy fields (`wormLift`, `wormPosture`, `wormCasts`, `volleys`, `grabbing`, `surfaceSpot`,
+`underFor`, `tentSwing`) are additive and absent fields read as defaults. A worm saved before 664 keeps its old attack list.
+World-beast tuning in `src/world-beasts.ts` is unchanged. Tests: `tests/worm-rework-664.test.ts`; two assertions in
+`tests/world-beasts.test.ts` that encoded "tentacles never move" now let the field settle first.
 
 ## Release 663: the sky gate drops you in a treetop — 2026-11-01
 

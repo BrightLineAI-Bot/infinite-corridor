@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-**667** (odd, first session) · **664** (even, second session)
+**667** (odd, first session) · **666** (even, second session)
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
 | 665 | Claude | `claude/dreamy-rubin-yn6q2p` | Crown Rest on every great tree (touch it; wake there); the glider in a freefall with the drone out; the Wayfarer's ghost behind giant trees covers the whole crown | Building. |
+| 664 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Tremor Worm rework: half-buried by default, full-height sweep/slam/maw, tentacles scaled off the worm with ground cracks, burrowing, repositioning and six modes | Merged (PR #316). |
 | 663 | Claude | PR #315 | A sky gate lands you on a great tree's crown (one not yet seen first), to glide or hop down; 659 review fix | Merged (`r663-56d3cf7b0025`). Published in r663. |
 | 661 | Claude | PR #314 | Floor dots at the right edge in multi-floor dungeons | Merged (`r661-1160639f42b2`). Published in r663. |
 | 659 | Claude | PR #313 | The Far Array explains itself: what a run holds, Gate pieces left, where the Listener waits; each deep floor names the way up/out and down | Merged (`r659-e5124f5561df`). Published in r663. |
