@@ -2694,6 +2694,29 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 635: the sky above the trees, and the leaf glider — 2026-11-01
+
+Tim (2026-11-01): "once he gets to a certain height... show blue sky and cloud... a skybox that he ascends into... you should have a
+parachute... control your flight left and right... descend more slowly... the only way you can glide is if you get up in a tall
+tree... float down... in any direction, as far as you want until you hit the ground... if you jump off a tree and you're high
+enough you can glide into the next undiscovered tile".
+
+**CODE:**
+- `src/game.ts` `GLIDE` and `glideStep`: `save.glider` (additive boolean, normalised in `freshSave`/`migrateSave`) is set, with a
+  Journal entry, on first standing on a great tree's landing (`canopyCrown`). With it, a fall of `minDrop` levels or more begun on
+  the tree (within `CANOPY_FALL_MS`) opens a glide instead of landing: `this.glide` { z, vx, vy }. Each frame the stick steers the
+  velocity (`speed`, eased by `steer`), z sinks `sink` levels a second, blocked tiles as tall as the glide stop it, and crossing a
+  section edge carries the Wayfarer into the next (`transitionSection`, keeping the place along the edge; the open-sea refusal
+  does not apply in the air). It ends on reaching ground it can stand on; over water it cannot swim, walls or anything else it
+  holds `skim` above them. Out of reach above `safe`. While gliding the ordinary step sees no movement and no hazard. The glide
+  is saved in `playerRuntime.glide` and resumes in the air.
+- `src/renderer.ts`: the camera and the view's rows follow a glide's height; `SKY` and `drawSkyAbove`: from `from` levels (a
+  glide's height, or the tile underfoot on a tree section) blue sky and cloud fade in over the ground, solid by `full`, the tree's
+  tiles drawn again over it; what stands on the ground (actors, objects, roofs) fades with it; `drawLeafGlider` and the glide's
+  shadow on the ground.
+
+**BOUNDARY:** The glider opens nowhere but a great tree. No generator change. Save additions: `glider`, `playerRuntime.glide`.
+
 ## Release 633: the great trees rebuilt tall — 2026-10-31
 
 Tim (2026-10-31): "The huge trees should have 1-2 tile wide tiles that you can hop between to ascend; the trees should be super

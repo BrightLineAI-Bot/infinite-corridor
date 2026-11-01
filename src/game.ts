@@ -126,6 +126,17 @@ function dressSkyland(map, id, save = null) {
 // corridors as walkways over the dark. A few walls stand (`keepWalls`, only ones beside a walkway) and the outer edge stays. No
 // floor tile changes, so everything placed in the crossing stays where it was and as reachable as it was. Creatures do not
 // step into the drop; the brink guard stops the Wayfarer at the edge, and a dodge-roll over it is a fall.
+// Release 635 (Tim, 2026-11-01: "you should have a parachute... so that when you fall, you can kind of control your flight left and
+// right better... descend more slowly... go to a high branch and then glide down... the only way you can glide is if you get up in
+// a tall tree... float down pretty much as much as you want in any direction... if you jump off a tree and you're high enough you
+// can glide into the next undiscovered tile"): the leaf glider, found on the landing of the first great tree climbed
+// (save.glider, additive). It opens only on a fall of `minDrop` levels or more from a great tree. Gliding, the Wayfarer sinks
+// `sink` levels a second and steers freely at up to `speed` tiles a second (eased by `steer`), over walls, trees and water, and on
+// over the section's edge into the next. It ends only over open ground it can stand on; over water, walls or anything else it
+// holds at `skim` levels until there is. Tall blocked things (a trunk) still stop it. Out of reach of blows while above `safe`.
+export const GLIDE = { minDrop: 4, sink: 1.5, speed: 4.6, steer: 3.2, skim: .35, safe: 1.5,
+  found: "Caught in the crown's highest fork: a glider of leaf and vine, light as a held breath. Leave the tree from up here and it will carry you down.",
+  open: "The leaf glider opens. Steer where you will; it comes down slowly.", skimming: "Nothing to land on below: the glider holds above it.", land: "You come down out of the sky." };
 export const CANOPY_FALL_MS = 2500; // release 633: how long after leaving the great tree a fall is still "off the tree"
 export const CHASM = { version: 1, chance: .12, keepWalls: .12, name: "Starfield" }; // release 613 (Tim: "the chasm dungeons... those are now called Starfield dungeons"): was "Chasm"
 // Release 613 (Tim, 2026-10-31: "moving platforms... you can jump on them... take a ride like a conveyance... across a larger
@@ -1749,6 +1760,7 @@ export class Game {
     this.pauseStarted = this.paused ? now : null;
     this.jumpUntil = Number(s.playerRuntime.jump) > 0 ? now + s.playerRuntime.jump : -1e9; this.jumpStart = undefined; this.mechSpent = s.playerRuntime.mechSpent === true; // release 609 (Codex play-test, issue 5): a landed jump is not a jump that just ended, and an emptied boost stays emptied
     this.guardRemaining = Math.max(0, Number(s.playerRuntime.guard || 0));
+    { const q = s.playerRuntime.glide; this.glide = q && s.area === "overworld" && [q.z, q.vx, q.vy].every((v) => Number.isFinite(Number(v))) ? { z: Math.max(GLIDE.skim, Number(q.z)), vx: Number(q.vx), vy: Number(q.vy), told: false } : null; } // release 635
     this.magicBuffRemaining = Math.max(0, Number(save.magicBuff || 0));
     this.spellCooldownRemaining = Math.max(0, Number(save.spellCooldown || 0));
     this.projectiles = [];
@@ -2639,6 +2651,7 @@ export class Game {
       paused: this.paused,
       savedAt: Date.now(),
       playerRuntime: {
+        glide: this.glide && this.area === "overworld" ? { z: this.glide.z, vx: this.glide.vx, vy: this.glide.vy } : null, // release 635: a glide resumes in the air
         hp: this.player.hp,
         stamina: this.player.stamina,
         facing: this.player.facing,
@@ -2943,7 +2956,7 @@ export class Game {
     if (wade) { const p = this.player, at = dx ? { x: p.x, y: Math.max(.25, Math.min(30.75, from.y)) } : { x: Math.max(.25, Math.min(30.75, from.x)), y: p.y }, h = footprintHazard(this.map, 32, at.x, at.y); if (h ? this.swimsHere(h) : footprintOpen(this.map, 32, at.x, at.y)) { p.x = at.x; p.y = at.y; } }
     // Open seas (release 152): a skiff crosses wherever the water runs on; a walker cannot step out into open sea.
     if (aboard(this.save)) { if (!this.sailAcross(dx, dy, from)) return false; }
-    else if (DEEP_WATER.includes(footprintHazard(this.map, 32, this.player.x, this.player.y)) && !canSwim(this.save) && !this.mechUp()) { this.returnFrom(from, "Open sea lies beyond. You need a boat to cross it."); return false; }
+    else if (DEEP_WATER.includes(footprintHazard(this.map, 32, this.player.x, this.player.y)) && !canSwim(this.save) && !this.mechUp() && !this.glide /* release 635: a glider is in the air */) { this.returnFrom(from, "Open sea lies beyond. You need a boat to cross it."); return false; }
     this.worldBeastsFollow(hunters, fromArea, dx, dy);
     for(const pursuer of pursuers){const e={...pursuer,id:`${pursuer.id}-pursuit-${this.rx}-${this.ry}`,dead:false,aggro:true,x:this.player.x-dx*1.4,y:this.player.y-dy*1.4,ai:{...pursuer.ai,homeX:this.player.x,homeY:this.player.y}};placeGatePursuer(e,this.player,this.map,mapWidth(this.map,this.area));resetGateAttack(e, true);this.enemies.push(e)}
     if(pursuers.length)this.message="The Gate Revenant tears through the crossing behind you.";
@@ -3345,6 +3358,24 @@ export class Game {
     const m = this.save.mech;
     const r = m.empowered ? setEmpowered(this.save, false) : setEmpowered(this.save, true);
     this.message = r.ok ? (m.empowered ? "The power armor lifts clear of the water on its thrusters. Dodge to dive." : "The power armor settles back into the plain submersible.") : r.message; this.sync(); return r.ok;
+  }
+  // Release 635: one frame of the glide. Returns "crossed" when it carried the Wayfarer into the next section.
+  glideStep(x, y, dt, now) {
+    const G = GLIDE, p = this.player, g = this.glide, width = mapWidth(this.map, this.area);
+    g.vx += (x * G.speed - g.vx) * Math.min(1, G.steer * dt); g.vy += (y * G.speed - g.vy) * Math.min(1, G.steer * dt);
+    if (Math.abs(x) > .15 || Math.abs(y) > .15) p.facing = Math.abs(x) > Math.abs(y) ? (x < 0 ? "left" : "right") : (y < 0 ? "up" : "down");
+    const tall = (px, py) => { const t = tileUnder(this.map, width, px, py); return !!t && t.blocked && (t.elev || 0) >= g.z - .5; };
+    let nx = p.x + g.vx * dt, ny = p.y + g.vy * dt;
+    if (tall(nx, p.y)) { nx = p.x; g.vx = 0; } if (tall(nx, ny)) { ny = p.y; g.vy = 0; }
+    g.z -= G.sink * dt; p.invulnerableUntil = g.z > G.safe ? Math.max(p.invulnerableUntil || 0, now + 120) : p.invulnerableUntil;
+    const out = nx < -.2 ? [-1, 0] : nx > SECTION_SIZE - .8 ? [1, 0] : ny < -.2 ? [0, -1] : ny > SECTION_SIZE - .9 ? [0, 1] : null;
+    if (out) { const keep = out[0] ? ny : nx, was = `${this.rx},${this.ry}`; this.transitionSection(out[0], out[1]); if (this.area === "overworld" && `${this.rx},${this.ry}` !== was) { if (out[0]) { p.y = Math.max(.3, Math.min(30.7, keep)); p.x = out[0] < 0 ? 30.6 : .3; } else { p.x = Math.max(.3, Math.min(30.7, keep)); p.y = out[1] < 0 ? 30.6 : .3; } } return "crossed"; }
+    p.x = nx; p.y = ny; p.walkPhase = 0;
+    const ground = elevationAt(this.map, width, p.x, p.y), here = tileUnder(this.map, width, p.x, p.y);
+    if (g.z > ground + .05) return "flying";
+    const hazard = footprintHazard(this.map, width, p.x, p.y), fit = footprintOpen(this.map, width, p.x, p.y) && (!hazard || this.swimsHere(hazard)) && !here?.blocked;
+    if (!fit) { g.z = Math.max(g.z, ground + G.skim); if (!g.told) { g.told = true; this.message = G.skimming; } return "flying"; }
+    this.glide = null; this.skyAir = null; this.message = G.land; return "landed";
   }
   droneUp() { const m = this.save.mech; return m?.active === true && m.mode === "drone" && !aboard(this.save); }
   droneHeal(message) {
@@ -5310,6 +5341,9 @@ export class Game {
             : "down";
       p.walkPhase = (p.walkPhase + Math.hypot(dx, dy) * 4) % 2;
     }
+    // Release 635: gliding down from a great tree moves the Wayfarer itself; the step below then sees no movement and no ground.
+    const gliding = !!this.glide && this.area === "overworld";
+    if (gliding) { if (this.glideStep(x, y, dt, now) === "crossed") return; nx = p.x; ny = p.y; dx = 0; dy = 0; }
     if ((sailing || (this.area === "overworld" && this.wading())) && (nx < 0 || ny < 0 || nx + .76 >= SECTION_SIZE - .02 || ny + .88 >= SECTION_SIZE - .02)) { /* release 507: the robot wading crosses anywhere, like a skiff */
       this.transitionSection(nx < 0 ? -1 : nx + .76 >= SECTION_SIZE - .02 ? 1 : 0, nx < 0 || nx + .76 >= SECTION_SIZE - .02 ? 0 : ny < 0 ? -1 : 1);
       return;
@@ -5338,7 +5372,7 @@ export class Game {
       return;
     }
     const width = mapWidth(this.map, this.area);
-    let terrainHazard=footprintHazard(this.map,width,nx,ny);const raftNow=this.map?.movers?.length?platformUnder(this.map,nx,ny,ps):null,raftWasZ=raft?platformPos(raft,ps-dt).z:0;this.raftZ=raftNow?platformPos(raftNow,ps).z:0;if(terrainHazard&&raftNow)terrainHazard=null;/* release 613: on a raft over the drop */
+    let terrainHazard=gliding?null:footprintHazard(this.map,width,nx,ny);const raftNow=this.map?.movers?.length?platformUnder(this.map,nx,ny,ps):null,raftWasZ=raft?platformPos(raft,ps-dt).z:0;this.raftZ=raftNow?platformPos(raftNow,ps).z:0;if(terrainHazard&&raftNow)terrainHazard=null;/* release 613: on a raft over the drop */
     // Release 615: stepping off a raft below the level is a step into nothing; off one above it, a fall by its height.
     if(raft&&!raftNow&&raftWasZ< -.5){terrainHazard=terrainHazard||"abyss";this.message="Below the level there is nothing to step onto.";}
     else if(raft&&!raftNow&&raftWasZ>.5&&!terrainHazard){const hurt=fallDamage(Math.round(raftWasZ),this.save.maxHp);if(hurt===Infinity){p.hp=0;this._fatalFallPending=true;}else if(hurt>0){p.hp=Math.max(0,p.hp-hurt);this.message=`You drop ${Math.round(raftWasZ)} level${Math.round(raftWasZ)>1?"s":""} off the raft.`;}}const aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0||this.mechBoosting===true;/* release 317: the robot's boost carries over hazards */
@@ -5357,11 +5391,13 @@ export class Game {
       // next platform (one level up at most) can be reached; a jump that ends over the gap falls from that height.
       const skyFrom = tileUnder(this.map, width, p.x, p.y);
       if (skyFrom?.canopy) this.lastCanopyAt = now; // release 633: a fall off the great tree is broken by its leaves
+      if (skyFrom?.kind === "canopyCrown" && !this.save.glider) { this.save.glider = true; this.message = GLIDE.found; journalOnce(this.save, "glider:found", GLIDE.found, "The Great Trees"); } // release 635
       if (p.jumping && skyFrom?.skyPlatform) this.skyAir = Math.max(this.skyAir ?? -1, skyFrom.elev || 0);
       p.airElev = p.jumping && this.skyAir != null ? this.skyAir : undefined;
       let fallStart = this.skyAir != null ? Math.max(before, this.skyAir) : before, drop = 0, hurt = 0;
       const finishFall = (height) => {
-        const raw = fallStart - height, distance = now - (this.lastCanopyAt ?? -1e9) < CANOPY_FALL_MS ? Math.min(raw, CANOPY.fallCap) : raw, damage = fallDamage(distance, this.save.maxHp);
+        const raw0 = fallStart - height; if (this.save.glider && !this.glide && raw0 >= GLIDE.minDrop && now - (this.lastCanopyAt ?? -1e9) < CANOPY_FALL_MS) { this.glide = { z: fallStart, vx: 0, vy: 0, told: false }; this.message = GLIDE.open; return; } // release 635: the glider opens
+        const raw = raw0, distance = now - (this.lastCanopyAt ?? -1e9) < CANOPY_FALL_MS ? Math.min(raw, CANOPY.fallCap) : raw, damage = fallDamage(distance, this.save.maxHp);
         if (damage > 0) { hurt += damage; drop = Math.max(drop, distance); }
       };
       // Evaluate the actual X-then-Y substeps, not just frame endpoints: a diagonal can enter and
@@ -5378,7 +5414,7 @@ export class Game {
       else finishFall(landed);
       if (!p.jumping) this.skyAir = null; p.airElev = undefined;
       // Traversal cue: pushing against a ledge explains what it takes (operator ask 2026-10-14: climbing was confusing).
-      if (this.map.landscape && Math.hypot(x, y) > .4 && Math.hypot(p.x - fromX, p.y - fromY) < Math.hypot(dx, dy) * .3) {
+      if (!gliding && this.map.landscape && Math.hypot(x, y) > .4 && Math.hypot(p.x - fromX, p.y - fromY) < Math.hypot(dx, dy) * .3) {
         const here = tileUnder(this.map, width, p.x, p.y), ahead = tileUnder(this.map, width, p.x + x * .6, p.y + y * .6), up = (ahead?.elev || 0) - (here?.elev || 0);
         if (ahead && here && !ahead.blocked && !ahead.slope && !here.slope && up >= 1) {
           this.ledgeHint = { x: ahead.x, y: ahead.y, kind: up === 1 ? "climb" : "tooHigh", until: now + 1500 };
