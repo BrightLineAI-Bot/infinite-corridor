@@ -4434,6 +4434,7 @@ export class Game {
       open: (x, y) => game.stalkerOpen(x, y),
       free: (x, y) => [x, y].every(Number.isFinite) && x >= .5 && y >= .5 && x <= width - 1.5 && y <= mapHeight(map, game.area) - 1.5 && !game.stalkerBarred(x, y), // the cat climbs over walls and up trees, never into a building, shelter or town
       shotBlocked: (x, y) => !projectileTileOpen(map, width, x, y),
+      displace: (dx, dy) => [dx, dy].every(Number.isFinite) && moveAxis(p, dx, dy, map, width, true), // the gorilla's pull and knockback (a knock can carry the Wayfarer off a ledge)
       move(e, dx, dy) { const ox = e.x, oy = e.y, moved = moveAxis(e, dx, dy, map, width); if (moved && game.stalkerBarred(e.x, e.y)) { e.x = ox; e.y = oy; return false; } return moved; },
       elev: (x, y) => Number(map.tiles[Math.floor(y + .72) * width + Math.floor(x + .5)]?.elev) || 0,
       hurt: (e, amount) => game.packHurt(e, amount, {}, now),
