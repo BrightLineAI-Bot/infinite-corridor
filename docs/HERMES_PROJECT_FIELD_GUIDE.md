@@ -2694,6 +2694,39 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 681: the Stalker's arsenal — 2026-11-01
+
+Tim (2026-11-01): a turret that "pops out of its back" (both forms) shooting homing orbs "like the nanobot knight's", a laser
+cone, orbs that "rotate around it... and then launch off at the player at different times", "two large blades that cross... an X
+pattern... launched in the direction of the player"; an "energized form... if it runs into you, you take damage, and it can shoot
+the sphere... as a projectile... it'll take reduced damage"; "a shield mode... intelligent... block some of the incoming damage for
+some time while it moves and repositions... kind of like a liquid"; "the cat stalker can climb up the trees too... good
+animations for climbing"; "jump up ledges... intelligent enough to not stay trapped in an enclosure". Time in a dungeon still does
+not bring it closer (Tim: leave the hunt as it is and see how quickly it catches him).
+
+**CODE:** `src/stalker.ts`.
+- New tables in `STALKER`:
+  - `turret`: `every` 3.2–4.6 s, `warn` .6, `cap` 12 shots, and the moves `orbs`, `cone`, `ring`, `xblade`;
+  - `energized`: every 14–20 s for 6 s, `aura` 1.15 tiles, `reduce` .5, the thrown `sphere`;
+  - `shield`: rises at `burst` 12% of max health lost within about `window` 2 s, lasts 3 s, `reduce` .75, `cooldown` 14 s;
+  - `climb`: `stuck` .5 s, `hop` reach 3.4, `speed` 2.6, `time` 4.
+- `updateStalker` softens blows (`stalkerSoften`, after the afterimage) and ticks `tickEnergy`, `tickTurret` and `tickShots`
+  (its own shots in `e.stalkShots`: orbs home at `turn` rad/s, ring orbs orbit until their staggered `delay`, walls stop shots
+  through `w.shotBlocked`). The cone hits only inside its marked wedge. While shielded it takes the `guard` act and gives ground
+  sideways.
+- Stuck is now measured by progress toward the Wayfarer, not by whether it moved, so sliding along a wall counts as stuck. A
+  stuck cat `hop`s when the Wayfarer is near, otherwise `climb`s straight at them through walls, trees and cliffs (`w.free`:
+  never into a building, shelter or town) and lands on open ground. A pounce blocked by a ledge becomes a hop.
+- `src/game.ts` `stalkerWorld` adds `free` and `shotBlocked`. `src/stalker-render.ts` draws the turret rising and aiming, the
+  cone's mark and flash, the shots (orbs, the spinning X, the sphere), the energy sphere, the shield arc, the cat upright and
+  scrabbling as it climbs, and the hop's landing mark. `drawCat` is redrawn as a snow leopard (Tim: "less like a house cat... more
+  like a snow leopard"): long low body, deep chest, thick legs on big paws, open rosettes, a broad head with small rounded ears, the
+  long thick dark-tipped tail.
+
+**BOUNDARY:** Runtime only: no save field, no generator change. Bounded: at most 12 shots per Stalker, one turret move at a time,
+no pathfinding (the climb is a straight line). Tests: `tests/stalker-arsenal.test.ts`.
+
+
 ## Release 680: the Skylands Deep Annex — 2026-11-01
 
 Tim (2026-11-01): "in the skylands or the skyways... you only stay in skyways until you get to... the end dungeon, which is... a

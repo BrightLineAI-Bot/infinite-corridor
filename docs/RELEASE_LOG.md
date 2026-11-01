@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 680, the next is **681**.
+Taken at merge time: `main`'s release + 1 (see above). After 681, the next is **682**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 681 | Claude (Stalker session) | PR #328 | The Stalker's arsenal: back turret (homing orbs, laser cone, orbiting ring, X blade beam), energized sphere, liquid shield, the cat climbing trees, hopping ledges and breaking out of pens | Building. |
 | 680 | Claude (second session) | PR #327 | Skylands Deep Annex: rare named annex stairs on new ground; three skyways up (two cloud holds, then the Divine Challenge), each harder, the reward once at the top; its last gate lands you on an unseen great tree's crown. Sky gates read version 14 trees. Tim, 2026-11-01, on Starfield: ordinary Starfield crossings stay one level (some several) and let you out where you came in; only the Deep Annex (675) chains floors to another type and lets you out elsewhere, as built. | Merging (baton taken). |
 | 679 | Claude | `claude/dreamy-rubin-yn6q2p` | Seasons in the forest and jungle woods: one season per region, turning after 30–40 sections explored outside it; blossom, lush, red and bare, snow-capped trees; petals, leaves and snow | Building. |
 | 678 | Claude (second session) | `claude/stalker-overworld-boss-fldd02` | The Stalker: a silver overworld hunter (cat, winged ape, pool) that closes in by ground covered, waits by doors, afterimages, swarm, affixes; returns 30–40 new sections after a kill | First numbered 672; renumbered 678 because main reached 674 and 676 is reserved. Merged (PR #324). |
