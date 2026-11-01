@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release 665: Crown Rests; the drone and the glider — 2026-11-01
+## Release 669: Crown Rests; the drone and the glider — 2026-11-01
 
 Tim (2026-11-01): "there's rest points at the top of great trees... touch it to activate it... if you die... you come back to the
 top of that great tree"; "the drone and the glider share the jump button... the drone should have priority... unless you're free
@@ -2713,7 +2713,64 @@ falling".
   (`GIANT_CROWN`, shared with `drawGiantTree`), the boughs and the trunk, at the head, middle and feet, instead of one crown circle.
 
 **BOUNDARY:** The rest point is placed at load, not generated: every generator version is untouched. Additive save only (the
-checkpoint record). Tests: `tests/crown-rest-665.test.ts`.
+checkpoint record). Tests: `tests/crown-rest-669.test.ts`.
+## Release 668: guardians and elites fight back — 2026-11-01
+
+Tim (2026-11-01): the crossing guardians "just stand there and take the hits"; they hit hard and have big health, but their fights
+aren't impactful. Give guardians and elites varied movesets, more aggression and adds during the fight, below world-boss difficulty.
+World bosses are tuned well and are left alone (Tim notes they may be stunned a little easily; unchanged here).
+
+**CODE:**
+- New `src/boss-kit.ts` (in `scripts/build.mjs` and both `sw.js` lists):
+  - `BOSS_KIT` holds, per role: extra `modules`, signature `moves`, `attackGap` (never lengthened), `cooldown` and `speed`
+    multipliers, and `adds` (health thresholds `at`, `size`, `cap`). It also holds the module `pool` and `reach`.
+  - `KIT_MOVES` (quake, barrage, crossfire, meteor) are shaped like `AFFIXES`.
+  - `kitRole` returns "guardian" for `GUARDIAN_ROLES` or `packGuardian`, and "elite" for `eliteId`, `marginWarden`, or a
+    Fractured champion/rare leader (one that carries affixes and is not a reinforcement). It returns null for world beasts, the
+    Questing Beast, Far Array bosses, Gate Revenants, Fracture Wardens and summons.
+  - `applyBossKit`: hashed extra modules for pack kinds, hashed signature moves, and aggression.
+  - `tickBossKit`: signature moves go into `game.affixHazards` (armed, then strike once through `tickAffixes`). Adds come at
+    each threshold through `spawnAdds`, and its adds die with it.
+- `src/game.ts`:
+  - `createEnemyFromSpawn` applies the kit after the 657 affix (not to Fracture Warden adds, reinforcements or kit adds).
+  - `update` calls `tickBossKit` beside `tickAffixes`.
+  - `spawnKitAdds` creates the area's ordinary kinds round the creature as summons (`summonedBy`, `kitAddOf`, `noRewards`), tuned
+    like any spawn.
+- `src/renderer.ts`: affix hazards fall back to `KIT_MOVES` for colour and timing.
+
+**BOUNDARY:** Runtime only: `kitRole`, `kitMoves`, `kitClock`, `kitCalls`, `kitAddOf` are additive creature fields. No generation
+change. Tests: `tests/boss-kit-668.test.ts`.
+
+## Release 666: the fracture meter and the Fracture Warden — 2026-11-01
+
+Tim (2026-11-01, via the session brief): in a Fractured area kills fill a meter shown on the HUD; full, a Fracture Warden spawns
+with a real moveset, aggressive AI and adds during the fight, at about half a Gate Revenant's strength and scaling with the
+player; killing it seals the area (safe, reinforcements stop, a cache drops; loot auto-picked up and salvaged as now).
+
+**CODE:**
+- `src/fractured.ts`: `FRACTURE_WARDEN` (meter sizes per mode, kill `worth`, `revenantShare` .5, scale, pacing, `attacks` pool,
+  `adds`, `cache`, `maxRecords`), `fractureKey`, `ensureFractureSeals` (called from `normalizeFractured`, so from `freshSave` and
+  `migrateSave`), `fractureRecord`, `fractureSealed`, `fractureNeed`, `fractureWorth`, `fractureKill`, `wardenBody` (one of the
+  area's own pack kinds, else `bodies`), `wardenAttacks` (seven of the pool, hashed from the area).
+- `src/game.ts`:
+  - `fracturedHere` returns null for a sealed area, so density packs, reinforcements and the lull all stop.
+  - `defeatEnemy` calls `fractureOnKill`: an ordinary kill adds to the meter (adds, summons and kills while a Warden lives do
+    not). The Warden's fall seals the record, kills its called packs, and gives `cache.items` `obtainDrop`s, marks and a draught.
+  - `tickFractured` hands the pace to `tickFractureWarden` once the meter is full. It spawns the Warden 5–7 tiles off; while the
+    Warden lives, ordinary waves wait and it calls `adds.size` creatures every `adds.every` s (a champion every third call),
+    never past `adds.cap`.
+  - `createEnemyFromSpawn` tunes a `fracWarden` spawn from a tuned Gate Revenant (like the Margin Warden): hp and damage
+    × `revenantShare`, scale, speed, `attackGap`, `attackCooldownScale`, poise, the duelist brain, dodging, two affixes and the
+    hashed attack list.
+  - `fractureMeter()` feeds the HUD.
+- `src/monster-pack.ts` `staggerClass`: a Fracture Warden has boss poise.
+- `src/renderer.ts`: the meter at the top centre (kills, "THE FRACTURE TEARS", then the Warden's health), and the Warden's
+  jagged crimson ring and name.
+
+**BOUNDARY:** `save.fractureSeals` is additive at schema 14: absent until the first Fractured kill, nonsense cleaned, unknown
+fields kept, at most `maxRecords` records. The Warden itself is runtime: leave with the meter full and it steps through again on
+your return. A sealed dungeon is not marked cleared; its guardian still waits. Tests: `tests/fracture-warden-666.test.ts`.
+
 ## Release 664: the Tremor Worm reworked — 2026-11-01
 
 Tim (2026-11-01): "he should spend a lot of time with half of his model outside the ground and only come out every once in a

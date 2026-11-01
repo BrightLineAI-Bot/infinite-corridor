@@ -43,7 +43,7 @@ const NAME_A = ["Gloom", "Ash", "Hollow", "Grim", "Pale", "Rot", "Shard", "Bligh
 const NAME_B = ["maw", "spine", "hide", "fang", "husk", "brand", "gut", "eye", "claw", "wretch", "skull", "veil"];
 
 export function fracturedMode(save) { const m = save?.fractured; return m && FRACTURED.modes[m] ? { id: m, ...FRACTURED.modes[m] } : null; }
-export function normalizeFractured(save) { if (save && !FRACTURED.modes[save.fractured]) save.fractured = null; return save; }
+export function normalizeFractured(save) { if (save && !FRACTURED.modes[save.fractured]) save.fractured = null; ensureFractureSeals(save); /* release 666 */ return save; }
 const pick = (n, [lo, hi]) => lo + n % (hi - lo + 1);
 export function rareName(seed, id) { const h = hashSeed(`${seed}:rare-name:${id}`); return `${NAME_A[h % NAME_A.length]}${NAME_B[(h >>> 8) % NAME_B.length]}`; }
 
@@ -92,3 +92,56 @@ export function applyFracturedRank(c, spawn, seed) {
   if (spawn.fracRank === "rare") c.packName = rareName(seed, c.id);
   return c;
 }
+
+// Release 666 (Tim, 2026-11-01): the fracture meter and the Fracture Warden. In a Fractured area every kill fills a meter
+// (champions, rares and shamans count for more). Full, it tears open and a Fracture Warden steps through: a creature of the
+// area's sort grown huge, with a mixed moveset, two affixes, aggressive pacing and packs it calls in during the fight, at
+// `revenantShare` of a Gate Revenant's strength for the Wayfarer (tuneGatePredator), so it scales as they do. Felling it
+// seals the area (`save.fractureSeals[key].sealed`): it is safe, reinforcements stop, and a cache drops (items through
+// obtainDrop, auto-picked up and salvaged as always, plus marks and a draught).
+export const FRACTURE_WARDEN = {
+  kills: { fractured: 36, frenzied: 54 }, // the meter's size per mode
+  worth: { champion: 2, rare: 3, shaman: 2 },
+  revenantShare: .5, scale: 1.6, speed: 1.2, attackGap: .3, cooldownScale: .7, staggerResistance: .6, affixes: 2,
+  spawnDistance: [5, 7], // tiles from the Wayfarer
+  bodies: ["thunderhorn", "riftLynx", "mirrorShade", "sunderjaw", "amalgam"], // when the area has no pack creature of its own
+  attacks: ["clawSweep", "ramCharge", "blinkStrike", "sigilScatter", "spikeVolley", "leapSlam", "sweepBeam", "groundRupture", "shockwave", "mortarVolley"],
+  adds: { first: 6, every: [10, 14], size: [2, 3], cap: 8, championEvery: 3 }, // packs it calls in during the fight
+  cache: { items: 3, marks: 40, draughts: 1 },
+  maxRecords: 200, // seal records kept (the oldest unsealed meters go first)
+  messages: {
+    tear: "The fracture tears wide open. A Fracture Warden steps through.",
+    call: "The Warden calls through the fracture.",
+    sealed: "The fracture seals. This ground is quiet now.",
+  },
+};
+export function fractureKey(area, stateId) { return `${area}:${stateId}`; }
+// save.fractureSeals: { [key]: { kills, sealed } }, kept additive (unknown fields and records are kept; nonsense cleaned).
+export function ensureFractureSeals(save) {
+  if (!save || save.fractureSeals === undefined) return save;
+  const raw = save.fractureSeals && typeof save.fractureSeals === "object" && !Array.isArray(save.fractureSeals) ? save.fractureSeals : {}, out = {};
+  for (const [k, v] of Object.entries(raw)) { if (!v || typeof v !== "object") continue; out[k] = { ...v, kills: Math.max(0, Math.floor(Number(v.kills) || 0)), sealed: v.sealed === true }; }
+  save.fractureSeals = out; return save;
+}
+export function fractureRecord(save, key) {
+  const all = (save.fractureSeals ||= {});
+  if (!all[key]) {
+    const keys = Object.keys(all); if (keys.length >= FRACTURE_WARDEN.maxRecords) { const drop = keys.find((k) => !all[k].sealed) || keys[0]; delete all[drop]; }
+    all[key] = { kills: 0, sealed: false };
+  }
+  return all[key];
+}
+export function fractureSealed(save, key) { return save?.fractureSeals?.[key]?.sealed === true; }
+export function fractureNeed(mode) { return FRACTURE_WARDEN.kills[mode?.id] || FRACTURE_WARDEN.kills.fractured; }
+export function fractureWorth(e) { const W = FRACTURE_WARDEN.worth; return e?.fracShaman ? W.shaman : e?.fracRank === "rare" ? W.rare : e?.fracRank === "champion" ? W.champion : 1; }
+// One kill toward the meter. Returns true when this kill filled it.
+export function fractureKill(save, key, mode, e) {
+  const r = fractureRecord(save, key); if (r.sealed) return false;
+  const need = fractureNeed(mode), was = r.kills; r.kills = Math.min(need, r.kills + fractureWorth(e));
+  return was < need && r.kills >= need;
+}
+export function wardenBody(seed, key, kinds, isPack) {
+  const own = kinds.filter((k) => isPack(k)), pool = own.length ? own : FRACTURE_WARDEN.bodies;
+  return pool[hashSeed(`${seed}:fracture-warden:${key}`) % pool.length];
+}
+export function wardenAttacks(seed, key) { const A = FRACTURE_WARDEN.attacks; return [...A].sort((a, b) => hashSeed(`${seed}:${key}:wa:${a}`) - hashSeed(`${seed}:${key}:wa:${b}`)).slice(0, 7); }

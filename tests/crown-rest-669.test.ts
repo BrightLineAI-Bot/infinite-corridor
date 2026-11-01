@@ -1,4 +1,4 @@
-// Release 665 (Tim, 2026-11-01): a rest point on the crown of every great tree (touch it; die and you wake there), and the drone
+// Release 669 (Tim, 2026-11-01): a rest point on the crown of every great tree (touch it; die and you wake there), and the drone
 // over the glider on Jump, the glider in a freefall.
 import test from 'node:test';
 import assert from 'node:assert/strict';
