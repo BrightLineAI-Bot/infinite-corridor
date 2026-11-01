@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-**665** (odd, first session) · **664** (even, second session)
+**667** (odd, first session) · **664** (even, second session)
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 663 | Claude | `claude/dreamy-rubin-yn6q2p` | A sky gate lands you on a great tree's crown (one not yet seen first), to glide or hop down | Building. |
+| 665 | Claude | `claude/dreamy-rubin-yn6q2p` | Crown Rest on every great tree (touch it; wake there); the glider in a freefall with the drone out, the drone in a jump | Building. |
+| 663 | Claude | PR #315 | A sky gate lands you on a great tree's crown (one not yet seen first), to glide or hop down; 659 review fix | Merged (`r663-56d3cf7b0025`). |
 | 661 | Claude | PR #314 | Floor dots at the right edge in multi-floor dungeons | Merged (`r661-1160639f42b2`). |
 | 659 | Claude | PR #313 | The Far Array explains itself: what a run holds, Gate pieces left, where the Listener waits; each deep floor names the way up/out and down | Merged (`r659-e5124f5561df`). |
 | 657 | Claude | PR #312 | Elite affixes (Volcanic, Sky Assault, Spiked, Venomous, Drone Swarm, Enraged), champion auras, warding shamans; every crossing guardian carries an affix | Merged (`r657-669db132ed16`). |

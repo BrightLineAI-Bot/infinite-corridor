@@ -2694,6 +2694,25 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 665: Crown Rests; the drone and the glider — 2026-11-01
+
+Tim (2026-11-01): "there's rest points at the top of great trees... touch it to activate it... if you die... you come back to the
+top of that great tree"; "the drone and the glider share the jump button... the drone should have priority... unless you're free
+falling".
+
+**CODE:** `src/game.ts`.
+- `loadArea`, after the creatures are made: an overworld section with a built great tree (`map.canopy.top`) gains a `crownRest`
+  object on a crown tile beside the door.
+- `touchCrownRest` (each overworld frame on such a section) makes it `activeCheckpoint` (`crown: true`) and keeps it in
+  `checkpoints`. Death returns the Wayfarer there as at any rest point.
+- `finishFall` turns a long fall into a freefall with the drone out too. It no longer requires `!droneUp()`; it now requires
+  `!liftDrop`, which `endDroneLift` sets so a booster drop stays a fall, and which clears with the jump.
+- Mid-jump, Jump still goes to the drone (the glider's mid-jump branch keeps `!droneUp()`).
+- `src/renderer.ts` draws the Crown Rest: a ring of leaves, lit while it is your rest point.
+
+**BOUNDARY:** The rest point is placed at load, not generated: every generator version is untouched. Additive save only (the
+checkpoint record). Tests: `tests/crown-rest-665.test.ts`.
+
 ## Release 663: the sky gate drops you in a treetop — 2026-11-01
 
 Tim (2026-11-01): "if you go up in the tree, you get in a skylands... and you get the teleportation... it'll take you to the top of
