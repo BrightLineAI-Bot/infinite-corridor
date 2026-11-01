@@ -1,9 +1,9 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { SEASONS } from "./seasons.js?v=r684-436ff24739ec";
-import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r684-436ff24739ec";
-import { TREES } from "./trees.js?v=r684-436ff24739ec";
+import { SEASONS } from "./seasons.js?v=r688-8d2e46ab31ec";
+import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r688-8d2e46ab31ec";
+import { TREES } from "./trees.js?v=r688-8d2e46ab31ec";
 
 const TAU = Math.PI * 2;
 const cache = new Map();
@@ -211,6 +211,19 @@ const PAINT = {
   starVoid(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#141033"], [1, "#05040f"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 9; i++) { c.fillStyle = r() < .2 ? "#ffe9b8" : r() < .5 ? "#cfd8ff" : "#8f88c8"; const k = r() < .15 ? 2 : 1.1; c.fillRect(r() * s, r() * s, k, k); } c.strokeStyle = "#b9a8e855"; c.lineWidth = 1; c.beginPath(); c.arc(s * (.2 + r() * .6), s * (.2 + r() * .6), s * .5, 0, .6); c.stroke(); },
   sleeperStone(c, s, r) { PAINT.sleepMeadow(c, s, r); c.fillStyle = "#00000044"; c.beginPath(); c.ellipse(s * .56, s * .86, s * .3, s * .1, 0, 0, TAU); c.fill(); c.fillStyle = grad(c, s * .3, 0, s * .7, 0, [[0, "#e8e4f2"], [1, "#9c96b4"]]); c.beginPath(); c.moveTo(s * .32, s * .88); c.lineTo(s * .36, s * .18); c.quadraticCurveTo(s * .5, s * .04, s * .64, s * .18); c.lineTo(s * .68, s * .88); c.closePath(); c.fill(); c.strokeStyle = "#6c6688"; c.lineWidth = 1; c.stroke(); c.strokeStyle = "#7f78a8"; c.lineWidth = Math.max(1, s * .03); c.beginPath(); c.moveTo(s * .42, s * .42); c.quadraticCurveTo(s * .5, s * .36, s * .58, s * .42); c.stroke(); c.beginPath(); c.moveTo(s * .5, s * .5); c.lineTo(s * .5, s * .66); c.stroke(); },
   castleCourt(c, s, r) { flagstones(c, s, r, "#77706a", "#5b5550"); },
+  // Canyon craters (canyon.ts): dirt clods ringed by their stability (green safe, yellow strained, red about to cave in),
+  // the crater's undrillable rock and its packed floor.
+  clodPlain(c, s, r) { PAINT.clodBase(c, s, r); c.strokeStyle = "#00000033"; c.lineWidth = 1; c.strokeRect(.5, .5, s - 1, s - 1); },
+  clodGreen(c, s, r) { PAINT.clodBase(c, s, r); c.strokeStyle = "#5fd06a"; c.lineWidth = Math.max(1.5, s * .07); c.strokeRect(s * .08, s * .08, s * .84, s * .84); },
+  clodYellow(c, s, r) { PAINT.clodBase(c, s, r); c.strokeStyle = "#f2c94c"; c.lineWidth = Math.max(1.5, s * .07); c.strokeRect(s * .08, s * .08, s * .84, s * .84); c.strokeStyle = "#5a3f1a"; c.lineWidth = 1; c.beginPath(); c.moveTo(s * .3, s * .2); c.lineTo(s * .45, s * .5); c.lineTo(s * .38, s * .78); c.stroke(); },
+  clodRed(c, s, r) { PAINT.clodBase(c, s, r); c.strokeStyle = "#ff4a3a"; c.lineWidth = Math.max(2, s * .09); c.strokeRect(s * .08, s * .08, s * .84, s * .84); c.strokeStyle = "#2a1408"; c.lineWidth = 1.2; c.beginPath(); c.moveTo(s * .2, s * .25); c.lineTo(s * .5, s * .5); c.lineTo(s * .8, s * .3); c.moveTo(s * .5, s * .5); c.lineTo(s * .45, s * .85); c.stroke(); },
+  clodBase(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#7a5a3a"], [1, "#4f3822"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 6; i++) { c.fillStyle = r() < .5 ? "#8e6c48" : "#3e2c1a"; c.beginPath(); c.ellipse(r() * s, r() * s, s * (.06 + r() * .08), s * (.04 + r() * .05), r() * 3, 0, TAU); c.fill(); } },
+  craterWall(c, s, r) { c.fillStyle = grad(c, 0, 0, 0, s, [[0, "#3a332e"], [1, "#1c1815"]]); c.fillRect(0, 0, s, s); c.fillStyle = "#00000044"; for (let i = 0; i < 4; i++) c.fillRect(r() * s, r() * s, s * .25, 2); },
+  craterFloor(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#5a4632"], [1, "#43341f"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 10; i++) { c.fillStyle = r() < .5 ? "#6b5640" : "#33281a"; c.fillRect(r() * s, r() * s, 1 + r() * 2, 1 + r() * 2); } },
+  // The ruined arcologies (keeps.ts): cracked concrete with dead neon, dark glass walls, worn stairs.
+  arcFloor(c, s, r) { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#5d6066"], [1, "#43464c"]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#2c2e33"; c.lineWidth = 1; c.strokeRect(.5, .5, s - 1, s - 1); c.beginPath(); c.moveTo(r() * s, 0); c.lineTo(r() * s, s * .6); c.lineTo(r() * s, s); c.stroke(); if (r() < .35) { c.fillStyle = r() < .5 ? "#38e0d088" : "#ff4fa888"; c.fillRect(s * .1, s * (.2 + r() * .6), s * .8, 1.5); } },
+  arcStair(c, s, r) { c.fillStyle = "#3a3c42"; c.fillRect(0, 0, s, s); for (let y = 0; y < s; y += s / 4) { c.fillStyle = grad(c, 0, y, 0, y + s / 4, [[0, "#8a8e96"], [1, "#55585f"]]); c.fillRect(1, y + 1, s - 2, s / 4 - 2); } c.fillStyle = "#38e0d0aa"; c.fillRect(1, s - 2, s - 2, 1.5); },
+  arcWall(c, s, r) { c.fillStyle = grad(c, 0, 0, 0, s, [[0, "#2b3038"], [1, "#15181d"]]); c.fillRect(0, 0, s, s); c.fillStyle = "#4fd6ff33"; for (let i = 0; i < 3; i++) c.fillRect(s * (.15 + i * .28), s * .2, s * .18, s * .5); c.fillStyle = "#00000066"; c.fillRect(0, s * .82, s, s * .18); },
   castleStair(c, s, r) { c.fillStyle = "#4d4844"; c.fillRect(0, 0, s, s); for (let y = 0; y < s; y += s / 3) { c.fillStyle = grad(c, 0, y, 0, y + s / 3, [[0, "#a59c92"], [1, "#6f6861"]]); c.fillRect(2, y + 1, s - 4, s / 3 - 3); } },
   battlement(c, s, r) { flagstones(c, s, r, "#8c847b", "#6c655f"); c.fillStyle = "#3d3936"; for (let x = 0; x < s; x += s / 2) c.fillRect(x + 1, 0, s / 4, s * .14); },
   castleWall(c, s, r) { c.fillStyle = "#5c5650"; c.fillRect(0, 0, s, s); bricks(c, s, r); c.fillStyle = "#3a3632"; for (let x = 0; x < s; x += s / 2) c.fillRect(x, 0, s / 4, s * .18); },
@@ -271,7 +284,7 @@ function hexagon(c, x, y, rad) { c.beginPath(); for (let i = 0; i < 6; i++) { co
 function flagstones(c, s, r, a, b) { c.fillStyle = b; c.fillRect(0, 0, s, s); for (let y = 0; y < s; y += s / 2) for (let x = 0; x < s; x += s / 2) { c.fillStyle = r() < .5 ? a : "#827a71"; c.fillRect(x + 1, y + 1, s / 2 - 2, s / 2 - 2); } }
 function bricks(c, s, r) { c.strokeStyle = "#2c2926"; c.lineWidth = 1; for (let row = 0, y = 0; y < s; y += s / 4, row++) { c.beginPath(); c.moveTo(0, y); c.lineTo(s, y); c.stroke(); for (let x = (row % 2) * s / 4; x < s; x += s / 2) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + s / 4); c.stroke(); } } }
 
-const FACE = { underlands: ["#2e2a33", "#0d0b10"], volcanic: ["#3a2b25", "#140d0b"], mountains: ["#4f4a45", "#26231f"], desert: ["#a8743d", "#6b4422"], alien: ["#4a3878", "#1d1533"], dream: ["#c9c2dc", "#7d7698"], castle: ["#57504a", "#2a2623"], coast: ["#a68b56", "#6d5933"], pillars: ["#b8744a", "#6e3b22"], fog: ["#5d6762", "#323836"], jungle: ["#2c4a24", "#14240f"], trunk: ["#6b4a2c", "#2e1d10"], biomech: ["#3f434b", "#1b1c20"], salt: ["#cfc8b6", "#8f8877"], crystal: ["#5a7a8a", "#2a3d48"], fungal: ["#4f3d52", "#241b26"], petrified: ["#6f6c66", "#3a3834"], savanna: ["#a8873a", "#5e4a1c"], reef: ["#c9a888", "#7a5c44"], amber: ["#8f4c22", "#4a2410"], obsidian: ["#2a2830", "#0c0b0e"] }; // 591: sandstone mesa walls
+const FACE = { arcology: ["#3a3e46", "#14161a"], underlands: ["#2e2a33", "#0d0b10"], volcanic: ["#3a2b25", "#140d0b"], mountains: ["#4f4a45", "#26231f"], desert: ["#a8743d", "#6b4422"], alien: ["#4a3878", "#1d1533"], dream: ["#c9c2dc", "#7d7698"], castle: ["#57504a", "#2a2623"], coast: ["#a68b56", "#6d5933"], pillars: ["#b8744a", "#6e3b22"], fog: ["#5d6762", "#323836"], jungle: ["#2c4a24", "#14240f"], trunk: ["#6b4a2c", "#2e1d10"], biomech: ["#3f434b", "#1b1c20"], salt: ["#cfc8b6", "#8f8877"], crystal: ["#5a7a8a", "#2a3d48"], fungal: ["#4f3d52", "#241b26"], petrified: ["#6f6c66", "#3a3834"], savanna: ["#a8873a", "#5e4a1c"], reef: ["#c9a888", "#7a5c44"], amber: ["#8f4c22", "#4a2410"], obsidian: ["#2a2830", "#0c0b0e"] }; // 591: sandstone mesa walls
 
 function makeCanvas(size) {
   if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(size, size);

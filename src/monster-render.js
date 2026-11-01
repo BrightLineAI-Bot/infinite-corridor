@@ -1,16 +1,16 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r684-436ff24739ec";
-import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r684-436ff24739ec";
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r688-8d2e46ab31ec";
+import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r688-8d2e46ab31ec";
 
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r684-436ff24739ec";
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r688-8d2e46ab31ec";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r684-436ff24739ec";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r684-436ff24739ec";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r684-436ff24739ec";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r688-8d2e46ab31ec";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r688-8d2e46ab31ec";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r688-8d2e46ab31ec";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r684-436ff24739ec";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r688-8d2e46ab31ec";
 
 const TAU = Math.PI * 2;
 
@@ -127,6 +127,57 @@ const BODY = {
     glow(ctx, mx, hy, u * .22, p[2], .3);
     for (const dy of [-.1, .02]) { ctx.fillStyle = p[2]; ctx.fillRect(hx + flip * u * .16 - u * .05, hy + dy * u, u * .1, Math.max(1.5, u * .025)); } // heat-sense slits
     void rear;
+  },
+  // Canyon craters: an earth golem, packed clods with yellow sigil eyes (the Corridor Golem's kin); tunnelling, only its mound shows.
+  earthGolem(ctx, q) {
+    const { k, b, u, t, p, flip, e, state } = q;
+    if (e.hidden) { // a travelling heave of clods
+      ctx.fillStyle = p[1] + "cc"; ctx.beginPath(); ctx.ellipse(k, b - u * .04, u * .5, u * .17, 0, 0, TAU); ctx.fill();
+      for (let i = 0; i < 7; i++) { const a = t * 2.4 + i * .9, r = u * (.18 + (i % 3) * .1); ctx.fillStyle = (i % 2 ? p[0] : p[3]) + "dd"; ctx.fillRect(k + Math.cos(a) * r - u * .05, b - u * .1 - Math.abs(Math.sin(a * 1.3)) * u * .14, u * .1, u * .08); }
+      return;
+    }
+    const lean = state === "windup" ? -.12 : state === "attack" ? .18 : 0, bob = Math.sin(t * 3) * u * .02;
+    shadowAt(ctx, k, b, u * .5, u * .15);
+    for (const side of [-1, 1]) { ctx.fillStyle = shade(ctx, k + side * u * .16, b - u * .16, u * .2, p[0], p[1]); ctx.beginPath(); ctx.ellipse(k + side * u * .17, b - u * .12, u * .13, u * .14, 0, 0, TAU); ctx.fill(); outline(ctx, Math.max(1, u * .03)); } // stumpy legs
+    const cx = k + flip * u * lean * .4, cy = b - u * .58 + bob;
+    ctx.beginPath(); ctx.ellipse(cx, cy, u * .4, u * .36, 0, 0, TAU); ctx.fillStyle = shade(ctx, cx, cy, u * .45, p[3], p[1]); ctx.fill(); outline(ctx, Math.max(1.5, u * .04)); // the clod body
+    for (let i = 0; i < 6; i++) { const a = i * 1.07 + 1, r = u * (.22 + (i % 2) * .08); ctx.fillStyle = (i % 2 ? p[0] : p[1]) + "88"; ctx.fillRect(cx + Math.cos(a) * r - u * .05, cy + Math.sin(a) * r * .8 - u * .04, u * .1, u * .07); } // embedded stones
+    ctx.strokeStyle = p[1] + "aa"; ctx.lineWidth = Math.max(1, u * .02); ctx.beginPath(); ctx.moveTo(cx - u * .2, cy - u * .1); ctx.lineTo(cx - u * .05, cy + u * .05); ctx.lineTo(cx + u * .12, cy - u * .02); ctx.stroke(); // a crack
+    const hx = cx + flip * u * .05, hy = cy - u * .38;
+    ctx.beginPath(); ctx.ellipse(hx, hy, u * .2, u * .15, 0, 0, TAU); ctx.fillStyle = shade(ctx, hx, hy, u * .22, p[3], p[0]); ctx.fill(); outline(ctx, Math.max(1, u * .03)); // squat head
+    const glowing = .75 + Math.sin(t * 5) * .25; glow(ctx, hx + flip * u * .04, hy, u * .22, p[2], .35 * glowing);
+    ctx.fillStyle = p[2]; for (const dx of [-.08, .08]) ctx.fillRect(hx + flip * u * .03 + dx * u - u * .035, hy - u * .03, u * .07, u * .05); // sigil eyes
+    const reach = state === "attack" ? .62 : state === "windup" ? .18 : .4;
+    for (const side of [-1, 1]) { // great fists, the leading one thrown forward on the punch
+      const lead = side === flip, fx = cx + side * u * (lead ? reach : .42), fy = cy + u * (lead && state === "windup" ? -.12 : .1), r = u * (lead ? .17 : .14);
+      ctx.strokeStyle = p[1]; ctx.lineWidth = Math.max(2, u * .1); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(cx + side * u * .28, cy - u * .06); ctx.lineTo(fx, fy); ctx.stroke();
+      ctx.beginPath(); ctx.arc(fx, fy, r, 0, TAU); ctx.fillStyle = shade(ctx, fx, fy, r, p[3], p[1]); ctx.fill(); outline(ctx, Math.max(1, u * .03));
+      if (lead && state === "attack") { ctx.strokeStyle = p[3] + "aa"; ctx.lineWidth = Math.max(1, u * .03); for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(fx - flip * u * (.2 + i * .08), fy - u * .1 + i * u * .1); ctx.lineTo(fx - flip * u * (.4 + i * .08), fy - u * .1 + i * u * .1); ctx.stroke(); } } // speed lines
+    }
+  },
+  // Canyon craters: a crystal hermit crab, its shell a cracked geode glowing cyan.
+  crystalCrab(ctx, q) {
+    const { k, b, u, t, p, flip, state, e } = q, step = t * 11 * ((e.ai?.step ? 1 : .3));
+    shadowAt(ctx, k, b, u * .42, u * .12);
+    for (let i = 0; i < 3; i++) for (const side of [-1, 1]) { // six spindly legs
+      const lx = k + side * u * (.14 + i * .07), ly = b - u * .18, kick = Math.sin(step + i * 2 + (side > 0 ? Math.PI : 0)) * u * .04;
+      ctx.strokeStyle = p[0]; ctx.lineWidth = Math.max(1.5, u * .045); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + side * u * .14, ly - u * .05 + kick); ctx.lineTo(lx + side * u * .2, b - u * .02); ctx.stroke();
+    }
+    const sx = k - flip * u * .06, sy = b - u * .36; // the geode shell
+    ctx.beginPath(); ctx.moveTo(sx - u * .3, sy + u * .16); ctx.lineTo(sx - u * .26, sy - u * .1); ctx.lineTo(sx - u * .1, sy - u * .28); ctx.lineTo(sx + u * .12, sy - u * .26); ctx.lineTo(sx + u * .28, sy - u * .06); ctx.lineTo(sx + u * .3, sy + u * .16); ctx.closePath();
+    ctx.fillStyle = shade(ctx, sx, sy, u * .34, "#8a8378", "#3a3530"); ctx.fill(); outline(ctx, Math.max(1, u * .03));
+    const pulse = .7 + Math.sin(t * 3) * .3; glow(ctx, sx + flip * u * .05, sy - u * .02, u * .34, p[2], .32 * pulse);
+    for (let i = 0; i < 5; i++) { const cx = sx + (i - 2) * u * .1, h = u * (.26 + (i % 2) * .12 + (i === 2 ? .12 : 0)), w = u * .06; // crystals bursting from the crack
+      ctx.beginPath(); ctx.moveTo(cx - w, sy + u * .02); ctx.lineTo(cx, sy - h); ctx.lineTo(cx + w, sy + u * .02); ctx.closePath(); ctx.fillStyle = i % 2 ? p[2] + "ee" : p[3] + "ee"; ctx.fill(); ctx.strokeStyle = p[1] + "88"; ctx.lineWidth = 1; ctx.stroke(); }
+    const bx = k + flip * u * .2, by = b - u * .28; // the soft body peeking out, eyes on stalks
+    ctx.beginPath(); ctx.ellipse(bx, by, u * .14, u * .1, 0, 0, TAU); ctx.fillStyle = shade(ctx, bx, by, u * .16, "#d88aa2", p[1]); ctx.fill(); outline(ctx, Math.max(1, u * .025));
+    for (const dx of [-.04, .05]) { ctx.strokeStyle = p[0]; ctx.lineWidth = Math.max(1, u * .02); ctx.beginPath(); ctx.moveTo(bx + flip * u * dx, by - u * .06); ctx.lineTo(bx + flip * u * (dx + .02), by - u * .18); ctx.stroke(); ctx.fillStyle = "#16080e"; ctx.beginPath(); ctx.arc(bx + flip * u * (dx + .02), by - u * .19, u * .025, 0, TAU); ctx.fill(); }
+    const open = state === "windup" ? .5 : state === "attack" ? .1 : .25;
+    for (const [dy, big] of [[-.02, 1], [.1, 0]]) { // the pincers, one big
+      const px = bx + flip * u * (.2 + big * .06), py = by + u * dy, r = u * (big ? .12 : .08);
+      ctx.fillStyle = shade(ctx, px, py, r, "#e2a0b6", p[1]); ctx.beginPath(); ctx.ellipse(px, py, r, r * .7, 0, 0, TAU); ctx.fill(); outline(ctx, Math.max(1, u * .02));
+      ctx.strokeStyle = p[1]; ctx.lineWidth = Math.max(1, u * .03); ctx.beginPath(); ctx.moveTo(px + flip * r * .6, py - r * open); ctx.lineTo(px + flip * r * 1.5, py - r * open * .4); ctx.moveTo(px + flip * r * .6, py + r * open * .5); ctx.lineTo(px + flip * r * 1.4, py + r * open * .2); ctx.stroke();
+    }
   },
   graveLantern(ctx, q) {
     const { k, b, u, t, p } = q, sway = Math.sin(t * 1.8) * .12, top = b - u * (1.05 + Math.sin(t * 2.2) * .05);

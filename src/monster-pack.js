@@ -7,9 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r684-436ff24739ec";
-import { hashSeed } from "./random.js?v=r684-436ff24739ec";
-import { updateAstralActor } from "./astral-worm.js?v=r684-436ff24739ec";
+import { stageOneBeastReference } from "./stages.js?v=r688-8d2e46ab31ec";
+import { hashSeed } from "./random.js?v=r688-8d2e46ab31ec";
+import { updateAstralActor } from "./astral-worm.js?v=r688-8d2e46ab31ec";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -151,6 +151,7 @@ export const ATTACK_MODULES = {
   voidConstellation: { id: "voidConstellation", name: "Rift Constellation", range: [0, 14], cooldown: 15, windup: .45, recover: .3, damage: .8, los: true, tags: ["void", "ranged", "teleport"], text: "Three to six rends follow you; each opens once, with wraiths, beams and the Walker arriving together or in rapid succession." },
   voidHorizons: { id: "voidHorizons", name: "Event Horizons", range: [0, 12], cooldown: 13, windup: .45, recover: .3, damage: .55, los: true, tags: ["void", "control", "beam"], text: "Dark cores draw you in and hurt on contact. Some pulse a fixed-direction beam two or three times." },
   voidSupernova: { id: "voidSupernova", name: "Supernova", range: [0, 14], cooldown: 30, windup: 1.1, active: 7.8, recover: .6, damage: 1.2, los: true, tags: ["void", "ground", "charge"], text: "A great void consumes dungeon terrain, draws you through local eruptions and two or three radial particle waves. The Walker teleports and dashes straight through sampled positions, leaving one-second damaging trails." },
+  golemPunch: { id: "golemPunch", name: "Golem Fist", range: [0, 1.9], cooldown: 2.1, windup: .62, recover: .75, damage: 1.45, los: true, tags: ["melee"], text: "Rears back a fist of packed earth and drives it forward. Slow to throw; step aside." }, // Canyon craters
   firefall: { id: "firefall", name: "Firefall", range: [1.5, 9], cooldown: 6.5, windup: .7, recover: .8, damage: .85, jumpable: true, tags: ["ground"], text: "Embers rain across the floor around you." },
 };
 
@@ -299,6 +300,21 @@ export const MONSTER_PACK = {
     attacks: ["bite"], bossAttacks: [],
     palette: ["#c27a5a", "#3a1a12", "#ff7a2a", "#ffe0b0"], render: "wormTentacle", tags: ["beast", "brood"],
     lore: "It does not move once it is up. It spits fire, or it holds a burning line on you, until you cut it down.",
+  },
+  // Canyon creatures (Canyon craters, Tim 2026-11-01: "earth golems... crystal hermit crabs"): only in the craters.
+  earthGolem: {
+    id: "earthGolem", name: "Earth Golem", epithet: "The Clod That Stood Up", dungeonOnly: true, canyon: true,
+    stats: [70, 12, 0], form: { scale: 1.3 }, sizeClass: "large", movement: "burrow", brain: "ambush",
+    attacks: ["burrowAmbush", "golemPunch"], bossAttacks: ["groundRupture", "shockwave"],
+    palette: ["#7a5a3c", "#2a1d12", "#ffd23a", "#b48a5c"], render: "earthGolem", tags: ["construct", "earth"],
+    lore: "Packed crater earth that learned to stand. It swims through the clods, bursts out of the ground you dug, and punches like a landslide.",
+  },
+  crystalCrab: {
+    id: "crystalCrab", name: "Crystal Hermit", epithet: "The Geode That Walks", dungeonOnly: true, canyon: true,
+    stats: [30, 8, 0], form: { scale: 1.05 }, sizeClass: "medium", movement: "skitter", brain: "flank",
+    attacks: ["clawSweep", "leapSlam"], bossAttacks: ["groundRupture"],
+    palette: ["#a8607a", "#2a1620", "#8ff2ff", "#e6fbff"], render: "crystalCrab", tags: ["beast", "crystal"],
+    lore: "A hermit crab that took a cracked geode for its shell. It sidles round you and springs, pincers first.",
   },
   mountainTurtle: {
     id: "mountainTurtle", name: "The Mountain Turtle", epithet: "The Walking Mausoleum", unique: true,
@@ -1025,6 +1041,7 @@ const START = {
   mirrorSwap(e, s, w) { const clones = w.enemies.filter((q) => !q.dead && q.illusion && q.summonedBy === e.id); s.data.clone = clones.length ? clones[s.seq % clones.length].id : null; s.tele = s.data.clone ? { type: "shimmer" } : null; },
   diveBomb(e, s) { e.aloft = true; e.untargetable = true; s.tele = { type: "rise" }; },
   firefall(e, s) { s.tele = { type: "brace" }; },
+  golemPunch(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + 1.2, arc: 70 }; },
   burrowAmbush(e, s) { s.tele = { type: "submerge" }; },
   devourPull(e, s) { s.tele = { type: "ring", radius: 6, inhale: true }; },
   broodBirth(e, s) { s.tele = { type: "shimmer" }; },
@@ -1713,6 +1730,7 @@ const RUN = {
     }
   },
   bite(e, s, w) { if (s.phase === "windup" && s.t <= 0) { resolveMelee(e, s, w, "bite", (p) => inArc(e, p, s.data.aim, bodyRadius(e) + 1.25 + .3, 100)); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.bite.recover); } },
+  golemPunch(e, s, w) { if (s.phase === "windup" && s.t <= 0) { resolveMelee(e, s, w, "golemPunch", (p) => inArc(e, p, s.data.aim, bodyRadius(e) + 1.2 + .3, 70)); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.golemPunch.recover); } },
   clawSweep(e, s, w) { if (s.phase === "windup" && s.t <= 0) { resolveMelee(e, s, w, "clawSweep", (p) => inArc(e, p, s.data.aim, bodyRadius(e) + 1.45 + .3, 140)); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.clawSweep.recover); } },
   longStab(e, s, w) {
     if (s.phase === "windup" && s.t <= 0) {

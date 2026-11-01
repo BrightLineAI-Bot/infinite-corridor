@@ -6,8 +6,8 @@
 // Release 263: guardians and world beasts leave their creature's Echo by chance (ECHO_DROPS); ordinary kills do not.
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
-import { rng } from "./random.js?v=r684-436ff24739ec";
-import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r684-436ff24739ec";
+import { rng } from "./random.js?v=r688-8d2e46ab31ec";
+import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r688-8d2e46ab31ec";
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;
@@ -54,6 +54,8 @@ export const ECHOES = {
   lightningGiant: { name: "Giant's Arc", cost: 3, trigger: "kill", module: "giantArcs", text: "Kills arc lightning into up to three foes within 5 tiles." },
   psychicCrystal: { name: "Mind Ward", cost: 2, trigger: "hurt", module: "psyPush", text: "Being hurt throws foes within 3 tiles back from you." },
   voidWalker: { name: "Rift Upheaval", cost: 2, trigger: "dodge", module: "voidSpikes", text: "Dodging marks the nearest foe within 5 tiles with a void spike; it erupts after half a second (once every 4 s)." },
+  earthGolem: { name: "Golem's Landfall", cost: 2, trigger: "land", module: "golemPunch", text: "Landing a jump staggers foes within 2.5 tiles for 0.6 s." }, // Canyon craters
+  crystalCrab: { name: "Geode Shell", cost: 1, trigger: "hurt", module: "clawSweep", text: "Being hurt cracks your shell into shards that strike foes within 1.5 tiles." },
   graveLantern: { name: "Lantern Stillness", cost: 1, trigger: "still", module: "stillnessCurse", text: "Standing still for a second mends 2 health each second." },
 };
 export const ECHO_IDS = Object.keys(ECHOES);
@@ -133,7 +135,10 @@ export function echoEvent(game, event, now, data = {}) {
       }
     }
     if (eq.includes("strataEel")) p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, (p.dodgeUntil || now) + 250);
-  } else if (event === "land" && eq.includes("sunderjaw")) world.blast(me.x, me.y, 1.8, dmg);
+  } else if (event === "land") {
+    if (eq.includes("sunderjaw")) world.blast(me.x, me.y, 1.8, dmg);
+    if (eq.includes("earthGolem")) for (const e of nearest(game, me.x, me.y, 2.5)) e.hitStun = Math.max(e.hitStun || 0, .6);
+  }
   else if (event === "kill") {
     const at = centre(data.enemy);
     if (eq.includes("gnawingMaw")) for (const e of nearest(game, at.x, at.y, 4, data.enemy)) { const c = centre(e), m = Math.hypot(at.x - c.x, at.y - c.y) || 1; world.nudge(e, (at.x - c.x) / m * Math.min(1, m - .4), (at.y - c.y) / m * Math.min(1, m - .4)); e.hitStun = Math.max(e.hitStun || 0, .3); }
@@ -146,6 +151,7 @@ export function echoEvent(game, event, now, data = {}) {
     if (eq.includes("cinderSeraph")) for (const e of nearest(game, at.x, at.y, 4).slice(0, 3)) { e.glyphBurn = { until: now + 2500, dps: Math.max(2, Math.round(dmg * .3)), tick: 0 }; world.arc(data.enemy, e, "#ff9a4a"); }
   } else if (event === "hurt") {
     if (eq.includes("hangedChoir")) world.blast(me.x, me.y, 2.2, Math.round(dmg * .8));
+    if (eq.includes("crystalCrab")) world.blast(me.x, me.y, 1.5, Math.round(dmg * .5));
     if (eq.includes("morphingBlob")) (game.echoPatches ||= []).push({ kind: "web", x: me.x, y: me.y, radius: 2, until: now + 3000, slow: .6 }); // release 235
     if (eq.includes("mountainTurtle") && now >= (p.echoWardReadyAt || 0)) { p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + 1000); p.echoWardReadyAt = now + 8000; } // release 241
     if (eq.includes("psychicCrystal")) for (const e of nearest(game, me.x, me.y, 3)) { const c = centre(e), m = Math.hypot(c.x - me.x, c.y - me.y) || 1; world.nudge(e, (c.x - me.x) / m * 1.5, (c.y - me.y) / m * 1.5); e.hitStun = Math.max(e.hitStun || 0, .25); } // release 249
