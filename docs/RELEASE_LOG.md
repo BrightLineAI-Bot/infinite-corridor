@@ -15,22 +15,23 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-**665** (odd, first session) · **670** (even, second session)
+**671** (odd, first session) · **670** (even, second session)
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 669 | Claude | `claude/dreamy-rubin-yn6q2p` | Crown Rest on every great tree (touch it; wake there); the glider in a freefall with the drone out; the Wayfarer's ghost behind giant trees covers the whole crown | Renumbered from 665 (main was at 668). Building. |
 | 668 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Guardians and elites fight back: extra modules, signature moves (quake, barrage, crossfire, meteor), aggression, adds at health thresholds | Building. |
 | 666 | Claude (second session) | PR #318 | Fracture meter and Fracture Warden: kills fill a HUD meter; the Warden (half a Gate Revenant, adds) seals the area and drops a cache | Merged. |
 | 664 | Claude (second session) | PR #316 | Tremor Worm rework: half-buried by default, full-height sweep/slam/maw, tentacles scaled off the worm with ground cracks, burrowing, repositioning and six modes | Merged (`r664-b4bdc960a2b8`). |
-| 663 | Claude | `claude/dreamy-rubin-yn6q2p` | A sky gate lands you on a great tree's crown (one not yet seen first), to glide or hop down | Building. |
-| 661 | Claude | PR #314 | Floor dots at the right edge in multi-floor dungeons | Merged (`r661-1160639f42b2`). |
-| 659 | Claude | PR #313 | The Far Array explains itself: what a run holds, Gate pieces left, where the Listener waits; each deep floor names the way up/out and down | Merged (`r659-e5124f5561df`). |
-| 657 | Claude | PR #312 | Elite affixes (Volcanic, Sky Assault, Spiked, Venomous, Drone Swarm, Enraged), champion auras, warding shamans; every crossing guardian carries an affix | Merged (`r657-669db132ed16`). |
-| 655 | Claude | PR #311 | Worm's Upheaval stacks: each dodge while its ring pulses adds another burst | Merged (`r655-c8fd359ccde7`). |
-| 653 | Claude | PR #310 | Following a retreating world beast: it waits where it fled, turns at bay on its home ground; an unfollowed Worm retreat ends | Merged (`r653-ffa884b886d4`). |
-| 651 | Claude | PR #309 | Fractured mode (Options → Challenge): Fractured / Frenzied packs with champions and rares, reinforcements, safe places, lulls, return refills | Merged (`r651-7395b635da37`). |
+| 663 | Claude | PR #315 | A sky gate lands you on a great tree's crown (one not yet seen first), to glide or hop down; 659 review fix | Merged (`r663-56d3cf7b0025`). Published in r663. |
+| 661 | Claude | PR #314 | Floor dots at the right edge in multi-floor dungeons | Merged (`r661-1160639f42b2`). Published in r663. |
+| 659 | Claude | PR #313 | The Far Array explains itself: what a run holds, Gate pieces left, where the Listener waits; each deep floor names the way up/out and down | Merged (`r659-e5124f5561df`). Published in r663. |
+| 657 | Claude | PR #312 | Elite affixes (Volcanic, Sky Assault, Spiked, Venomous, Drone Swarm, Enraged), champion auras, warding shamans; every crossing guardian carries an affix | Merged (`r657-669db132ed16`). Published in r663. |
+| 655 | Claude | PR #311 | Worm's Upheaval stacks: each dodge while its ring pulses adds another burst | Merged (`r655-c8fd359ccde7`). Published in r663. |
+| 653 | Claude | PR #310 | Following a retreating world beast: it waits where it fled, turns at bay on its home ground; an unfollowed Worm retreat ends | Merged (`r653-ffa884b886d4`). Published in r663. |
+| 651 | Claude | PR #309 | Fractured mode (Options → Challenge): Fractured / Frenzied packs with champions and rares, reinforcements, safe places, lulls, return refills | Merged (`r651-7395b635da37`). Published in r663. |
 | 649 | Claude | PR #308 | Mirage of Blades replaces Nanoknives (thrown spinning great blades that home back to you); LISTENER REVEALED heading | Merged (`r649-75bd8abf2c15`). Published in r649. |
 | 647 | Claude | PR #307 | The drone's booster on the overworld: Jump again in the air, hold to climb up to 5 levels, feather to hold or come down, a drop can kill | Merged (`r647-53545ce96be8`). Published in r649. |
 | 645 | Claude | PR #306 | The tree package (landscape version 13): spires and groves, a canopy walk, perches, leaves, boughs, four tree looks | Merged (`r645-0f3405778aef`). Published in r649. |
@@ -56,6 +57,7 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 663 | `r663-56d3cf7b0025` | 2026-11-01 | With 651 to 661: Fractured mode (#309), follow it home (#310), Upheaval stacks (#311), elite affixes, auras and shamans (#312), the Far Array explains itself (#313), floor dots (#314), sky gate to a treetop and the 659 review fix (#315). Two pre-publish reviews; the first's blocker fixed in 663, the second clean. |
 | 649 | `r649-75bd8abf2c15` | 2026-11-01 | With 643 to 647: every pass is a hit (#305); the tree package, landscape v13 (#306); the drone's booster (#307); Mirage of Blades and LISTENER REVEALED (#308). Pre-publish review clean. |
 | 641 | `r641-1de709e6ab17` | 2026-11-01 | With 625 to 639: palette regions (PRs #296, #298); ten narrative threads (#297); great trees, the sky and the leaf glider (#299–#302); out of the robot at sea (#303); the glider in hand and the Giant's 8 s charge (#304). The pre-publish Fable review of 623→639 found the glide-indoors blocker (fixed in 641); the review of 639→641 found no blockers. |
 | 623 | `r623-2501e60705f7` | 2026-10-31 | With 613 to 621: Starfield dungeons and rafts (PR #290); raft tracks, heights and the dark (#291); fog moors (#292); wading, removed again in 621 (#293); the robot at sea (#294); rafts carry only riders over the drop and the system-audit fixes (#295). The pre-publish Fable review of 611→621 found the raft blocker (fixed in 623); the review of 621→623 found no blockers. |
