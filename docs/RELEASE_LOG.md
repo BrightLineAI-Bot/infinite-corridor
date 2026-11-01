@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 687, the next is **688**.
+Taken at merge time: `main`'s release + 1 (see above). After 688, the next is **689**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 688 | Claude | `claude/dreamy-rubin-yn6q2p` | Canyon craters: clod-packed dungeons you drill through (green/yellow/red stability, cave-ins, collapse), caverns, lava, a pool, a bridged ravine; earth golems, crystal hermits, a Golem Warden, finds in clods; the divine wreck pays Divine Viscera; the Listener's Descent (the Deep beside a fallen Listener's Mouth) | Merging. |
 | 687 | Claude (Stalker session) | PR #334 | The Stalker's appendage (sword, spikes and bouncing blasts, tendril eruptions, boomerang blade) and the gorilla's arms (grab, slam, sweep, spin, charge, Iron Fist combo); the gorilla redrawn with poses; the cat's face | Building. |
 | 686 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Ascension Dais: the viscera altar renamed; a dais at the start of every Divine Challenge entered holding viscera holds its first round while you offer, shaping that fight; step off or Begin | Merging (baton taken). |
 | 685 | Claude | `claude/dreamy-rubin-yn6q2p` | Ruined arcologies: terraced towers of dark glass in the machine-touched regions, a stair a floor, broken floor to fall through, the crown's rest and cache | PR #332. |
