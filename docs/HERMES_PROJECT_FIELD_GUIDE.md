@@ -2694,6 +2694,33 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 682: Divine Viscera — 2026-11-01
+
+Tim (2026-11-01): "we get divine viscera from completing the divine challenge... we can pay divine viscera to make the divine
+challenge more powerful... a pedestal... we'll consume divine viscera to make the fight more or less challenging... add more rounds
+... increase the strength of the monsters... spend more divine viscera to reroll the monsters in the pool".
+
+**CODE:**
+- `src/skylands.ts`:
+  - `VISCERA` (`earn` 1; `offers` might / round / reroll / lighten, each `cost` 1 with a `max`; might +25% health and +12% damage a
+    level; a round is `size` 3 echoes).
+  - Helpers: `offerViscera`, `pactOf`, `pactWords`, `takePact`, `visceraEarned` (earn + might + rounds − lighten, at least 1),
+    `visceraScale`, `isDivineRun` (rush, gauntlet, annexc), `altarActions`, `altarLabel` (through `skylandLabel`).
+  - `ensureSkylands` normalises `viscera` and `pact` only when present.
+  - `skylandPlan(id, save, boss, pact)`: rounds are added (or one taken away, never below one), and a reroll salts the echo draw.
+- `src/game.ts`:
+  - `dressSkyland` reads `history.skyPact`. `scaleSkyFoe` × `visceraScale`.
+  - A Divine Challenge takes up the pact when it begins (the stair climb, or `climbAnnex` onto annexc).
+  - Its clear adds `visceraEarned` to `save.skylands.viscera` and calls `raiseVisceraAltar()` (by the exit). A cleared annex floor 2
+    raises one too.
+- `src/interactions.ts`: the altar's `offer:<kind>` actions.
+
+**BOUNDARY:**
+- `save.skylands.viscera` and `save.skylands.pact` are additive at schema 14, and absent until the first is earned.
+- The plan per run is pinned in its history, so a reload mid-run keeps its pact.
+- Ordinary Divine Challenges without a pact are as before.
+- Tests: `tests/divine-viscera-682.test.ts`.
+
 ## Release 681: the Stalker's arsenal — 2026-11-01
 
 Tim (2026-11-01): a turret that "pops out of its back" (both forms) shooting homing orbs "like the nanobot knight's", a laser
