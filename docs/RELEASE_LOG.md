@@ -15,13 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 685, the next is **686**.
+Taken at merge time: `main`'s release + 1 (see above). After 686, the next is **687**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| (at merge) | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Stalker's appendage (sword, spikes and bouncing blasts, tendril eruptions, boomerang blade) and the gorilla's arms (grab, slam, sweep, spin, charge, Iron Fist combo); the gorilla redrawn with poses; the cat's face | Building. |
+| 686 | Claude (Stalker session) | PR #334 | The Stalker's appendage (sword, spikes and bouncing blasts, tendril eruptions, boomerang blade) and the gorilla's arms (grab, slam, sweep, spin, charge, Iron Fist combo); the gorilla redrawn with poses; the cat's face | Building. |
 | 685 | Claude | `claude/dreamy-rubin-yn6q2p` | Ruined arcologies: terraced towers of dark glass in the machine-touched regions, a stair a floor, broken floor to fall through, the crown's rest and cache | PR #332. |
 | 684 | Claude (Stalker session) | PR #331 | The Stalker refined: six visual passes on the cat (a white six-legged feline, poses), the crossed blades rebuilt (rise, swing, cross, a larger X flies straight), the mist (rots a tenth of max health per touch) | Merged (PR #331). Published in r684. |
 | 683 | Claude | PR #330 | Great Keeps: walled keeps on new ground, climbed by stair and jump-up from the gate to the wall walk, corner towers, a gatehouse tower, a bridge over the courtyard and the keep's crown (Keep Rest, Keep Cache); guards on every level | Renumbered 682 → 683: the Tremor Worm session merged 682 first. Merged (`r683-4f02e723b08a`). Published in r684. |

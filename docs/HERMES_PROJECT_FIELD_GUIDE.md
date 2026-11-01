@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release NNN: the Stalker's appendage and the gorilla's arms — 2026-11-01
+## Release 686: the Stalker's appendage and the gorilla's arms — 2026-11-01
 
 Tim (2026-11-01): a shapeshifting appendage from its back — a sword sweep, three spikes forward with three blasts from the tips
 that "bounce off blocks", a tendril into the ground with "a series of eruptions... staggered... tracking you... pretty large", the
