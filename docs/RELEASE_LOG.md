@@ -15,17 +15,19 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 679, the next is **680**.
+Taken at merge time: `main`'s release + 1 (see above). After 682, the next is **683**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| (at merge) | Claude | `claude/dreamy-rubin-yn6q2p` | Great Keeps: walled keeps on new ground, climbed by stair and jump-up from the gate to the wall walk, corner towers, a gatehouse tower, a bridge over the courtyard and the keep's crown (Keep Rest, Keep Cache); guards on every level | Building. |
+| 682 | Claude | `claude/dreamy-rubin-yn6q2p` | Great Keeps: walled keeps on new ground, climbed by stair and jump-up from the gate to the wall walk, corner towers, a gatehouse tower, a bridge over the courtyard and the keep's crown (Keep Rest, Keep Cache); guards on every level | Building. |
+| 681 | Claude (Stalker session) | PR #328 | The Stalker's arsenal: back turret (homing orbs, laser cone, orbiting ring, X blade beam), energized sphere, liquid shield, the cat climbing trees, hopping ledges and breaking out of pens | Building. |
+| 680 | Claude (second session) | PR #327 | Skylands Deep Annex: rare named annex stairs on new ground; three skyways up (two cloud holds, then the Divine Challenge), each harder, the reward once at the top; its last gate lands you on an unseen great tree's crown. Sky gates read version 14 trees. Tim, 2026-11-01, on Starfield: ordinary Starfield crossings stay one level (some several) and let you out where you came in; only the Deep Annex (675) chains floors to another type and lets you out elsewhere, as built. | Merging (baton taken). |
 | 679 | Claude | PR #326 | Seasons in the forest and jungle woods: one season per region, turning after 30–40 sections explored outside it; blossom, lush, red and bare, snow-capped trees; petals, leaves and snow | Merged (`r679-4d93bc15f0b3`). Published in r679. |
 | 678 | Claude (second session) | `claude/stalker-overworld-boss-fldd02` | The Stalker: a silver overworld hunter (cat, winged ape, pool) that closes in by ground covered, waits by doors, afterimages, swarm, affixes; returns 30–40 new sections after a kill | First numbered 672; renumbered 678 because main reached 674 and 676 is reserved. Merged (PR #324). Published in r679. |
 | 677 | Claude | PR #325 | The Deep: rare Deep Shafts on new ground; endless floors, each harder (+10% health, +6% damage), more affixes every 5 floors, two on guardians from 20; a Return Ember per cleared floor (the only way up below floor 1); checkpoints every 5; loot +1 level per 5 floors only near your deepest; the record on the Wayfarer page | Merged. Published in r679. |
-| 676 | Claude (second session) | reserved | Skylands Deep Annex: a rare, announced Skylands variant whose far gate lands you on the crown of a different, undiscovered great tree (663's treeCrownHop / SKY_TREE). Built on the first session's deep-annex framework (673, `src/deep-annex.ts`) once it merges; it will add a Skylands kind next to the Starfield one, not change the Starfield annex. Note for 673: release 672 raised `CHASM.chance` to .2, so `DEEP_ANNEX.chance` .25 now gives about 5% of new crossings, not 3%. | Reserved; waits for 673. |
+| 676 | Claude (second session) | dropped | The reservation for the Skylands Deep Annex; built as 680 | Dropped (never used). |
 | 675 | Claude | PR #322 | Starfield Deep Annex: a rare named crossing of three floors, each harder, the third another environment, its far door to a random place in the world | Renumbered from 673 (main was at 674). Merged (`r675-e4dd73387fa9`). Published in r679. |
 | 674 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Atlas pins and travellers' rumours of the nearest unexplored skyway, great tree and Starfield crossing (`src/wonders.ts`) | Merged (PR #323). Published in r679. |
 | 672 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Great trees, skyways and Starfield crossings easier to find on new ground (landscape 14, Sky Stair placement 2, Starfield .2); the findability survey; Crown Rest and coastal-glide fixes. 670 skipped: main was at 671 | Merged (PR #321). Published in r679. |

@@ -71,7 +71,7 @@ export function dungeonCacheMaterials(s,context,o,depth){const C=DIG.dungeonCach
 export function applyInteraction(o,a,s,context='global',place={}){
  if(o.kind==='apertureRitual'){if(a==='perform')return{...requestApertureRitual(s),transition:'scene'};const state=apertureRitualState(s);return{ok:true,message:state.completed?'The completed rite persists as a faint double shadow around the plinth.':state.ready?'The plinth is ready. Perform the rite when you are prepared.':requestApertureRitual(s).message,transition:'ritual'};}
  if(o.kind==='shrine'&&a==='attune')return{ok:true,message:'The shrine hums with your constellation. Here it can be rewritten.',transition:'skills',shrine:true};
- if(o.kind==='skyStair'&&/^ascend:\d+$/.test(String(a)))return{ok:true,message:'',transition:'skyland',tier:Number(String(a).slice(7))};/* release 571 */
+ if(o.kind==='skyStair'&&/^ascend:\d+$/.test(String(a)))return{ok:true,message:'',transition:'skyland',tier:Number(String(a).slice(7)),...(o.skyAnnex?{mode:'annexa'}:{})};/* release 571; 678: an annex stair starts the annex */
  if(o.kind==='canopyGate'&&a==='enter')return o.dest==='cloud'?{ok:true,message:'',transition:'skyland',tier:0,mode:'cloud',canopy:true}:{ok:true,message:'The door in the canopy opens on a dark full of stars.',transition:'dungeon'};/* release 631 */
  if(o.kind==='arenaEntrance'&&a==='enter')return{ok:true,message:'The sparse threshold opens onto a world-threat arena.',transition:'dungeon'};
  if(o.kind==='storyEcho'&&a==='inspect')return completeRevelationArc(s);

@@ -2694,6 +2694,89 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 682: Great Keeps — 2026-11-01
+
+Tim (2026-11-01): "buildings to explore like castles and keeps... reuse the platforming structure from the great trees...
+larger buildings... castles that you can get up on top of that have bridges that go over courtyards... jump ups to different
+levels or stairs... you should be able to see... the ways up to the next floor". (Ruined arcologies, with floors you drop
+through, are the next step.)
+
+**CODE:** `src/keeps.ts` (new; in the build and both sw.js lists): `KEEPS` (`chance` .06 past `minRing` 6, `sizes` tried
+22×20 down to 14×13, `keep` 5, `levels` wall 2 / tower 4 / bridge 4 / keep 4–5 / crown 6, guard `spawns`, `undoTries` 6),
+`keepHere`, `buildKeep` (a hashed spot over natural ground, never water, lava, a building, a structure, a canopy or a placed
+object; the exit lanes, their stretches to the middle and the plaza's heart stay level ground: walls they cross become gates,
+wall-walk gaps get a stair down each side; `exitsOpen` walks the section from its middle before and after, and a keep that
+cuts a way out is undone), `planKeep` (each cell's part), `layKeep` (castle tiles by height, the Keep Rest — a `crownRest`
+with `keepRest` — and the Keep Cache at the crown, the Great Keep marker by the gate, guards of the section's own kinds).
+game.ts places it in `loadArea` for sections first seen from now on (`atlas.keepVersion`) and `touchCrownRest` serves a
+keep's crown as well as a great tree's.
+
+**BOUNDARY:** Only new ground (`atlas.keepVersion`); every section seen before keeps its tiles. Movement is the landscape's own
+`canStep` (no new rules); creatures cannot change level. No save fields beyond the atlas pin and the checkpoint record.
+Bounded: one keep a section, built once at load, at most 300 spots and 6 undone layouts. Tests: `tests/great-keeps.test.ts`.
+
+## Release 681: the Stalker's arsenal — 2026-11-01
+
+Tim (2026-11-01): a turret that "pops out of its back" (both forms) shooting homing orbs "like the nanobot knight's", a laser
+cone, orbs that "rotate around it... and then launch off at the player at different times", "two large blades that cross... an X
+pattern... launched in the direction of the player"; an "energized form... if it runs into you, you take damage, and it can shoot
+the sphere... as a projectile... it'll take reduced damage"; "a shield mode... intelligent... block some of the incoming damage for
+some time while it moves and repositions... kind of like a liquid"; "the cat stalker can climb up the trees too... good
+animations for climbing"; "jump up ledges... intelligent enough to not stay trapped in an enclosure". Time in a dungeon still does
+not bring it closer (Tim: leave the hunt as it is and see how quickly it catches him).
+
+**CODE:** `src/stalker.ts`.
+- New tables in `STALKER`:
+  - `turret`: `every` 3.2–4.6 s, `warn` .6, `cap` 12 shots, and the moves `orbs`, `cone`, `ring`, `xblade`;
+  - `energized`: every 14–20 s for 6 s, `aura` 1.15 tiles, `reduce` .5, the thrown `sphere`;
+  - `shield`: rises at `burst` 12% of max health lost within about `window` 2 s, lasts 3 s, `reduce` .75, `cooldown` 14 s;
+  - `climb`: `stuck` .5 s, `hop` reach 3.4, `speed` 2.6, `time` 4.
+- `updateStalker` softens blows (`stalkerSoften`, after the afterimage) and ticks `tickEnergy`, `tickTurret` and `tickShots`
+  (its own shots in `e.stalkShots`: orbs home at `turn` rad/s, ring orbs orbit until their staggered `delay`, walls stop shots
+  through `w.shotBlocked`). The cone hits only inside its marked wedge. While shielded it takes the `guard` act and gives ground
+  sideways.
+- Stuck is now measured by progress toward the Wayfarer, not by whether it moved, so sliding along a wall counts as stuck. A
+  stuck cat `hop`s when the Wayfarer is near, otherwise `climb`s straight at them through walls, trees and cliffs (`w.free`:
+  never into a building, shelter or town) and lands on open ground. A pounce blocked by a ledge becomes a hop.
+- `src/game.ts` `stalkerWorld` adds `free` and `shotBlocked`. `src/stalker-render.ts` draws the turret rising and aiming, the
+  cone's mark and flash, the shots (orbs, the spinning X, the sphere), the energy sphere, the shield arc, the cat upright and
+  scrabbling as it climbs, and the hop's landing mark. `drawCat` is redrawn as a snow leopard (Tim: "less like a house cat... more
+  like a snow leopard"): long low body, deep chest, thick legs on big paws, open rosettes, a broad head with small rounded ears, the
+  long thick dark-tipped tail.
+
+**BOUNDARY:** Runtime only: no save field, no generator change. Bounded: at most 12 shots per Stalker, one turret move at a time,
+no pathfinding (the climb is a straight line). Tests: `tests/stalker-arsenal.test.ts`.
+
+
+## Release 680: the Skylands Deep Annex — 2026-11-01
+
+Tim (2026-11-01): "in the skylands or the skyways... you only stay in skyways until you get to... the end dungeon, which is... a
+different world or a different tree top... until you get to the divine challenge". He confirmed three in the chain, rare named
+stairs and a lost chain on death. On Starfield he confirmed the 675 shape: ordinary Starfield crossings let you out where you came
+in, and only the Deep Annex chains floors and lets you out elsewhere.
+
+**CODE:**
+- `src/skylands.ts`:
+  - `SKY_ANNEX`: `chance` .125 of stairs at placement 2, three `floors` (modes annexa, annexb, annexc), per-floor `scale` and
+    `traits`, and `messages`.
+  - `skyAnnexStair(seed, rx, ry, place)` (placement 2 only), `skyAnnexFloor(id)`, `skyAnnexNext(id)`.
+  - `SKY_MODES.names` gains the three floors. They are never in `weights`, so ordinary climbs roll as before.
+  - `skylandPlan`: annexa and annexb are the cloud hold's waves (annexb `swift`); annexc is the Divine Challenge (`rushRounds`).
+  - `skylandHops`: annexc. `beginSkyland` with `forceMode` annexa names the annex.
+- `src/interactions.ts`: ascending a `skyAnnex` stair passes mode annexa.
+- `src/game.ts`:
+  - The stair gets `skyAnnex`, its name and lore (the announcement), also on the Atlas site.
+  - `scaleSkyFoe` × the floor's scale.
+  - `tickSkyland`: a cleared floor 1 or 2 gives no reward and sets `history.annexNext`. The exit then calls `climbAnnex(next)`:
+    the same stair return, the same Ascension, no sigils.
+  - Floor 3 clears with `completeSkyland` and drops through `skyHop`.
+  - `treeCrownHop` reads version 14 ground by `wonderAt(…, "tree")`. For an annex run it looks `SKY_TREE.annexSearch` round the
+    drop, unseen sections only, at most `annexLoads` built.
+
+**BOUNDARY:**
+- Runtime only, like every Skyland run: histories are dropped on the overworld, so a death or leaving ends the chain.
+- New stair fields are additive. Stairs at placement 1 never become annexes.
+- Tests: `tests/sky-annex-678.test.ts`.
 ## Release 679: seasons in the woods — 2026-11-01
 
 Tim (2026-11-01): seasons for the forest and great-tree sections ("summer... lush green; spring... some green trees, some
