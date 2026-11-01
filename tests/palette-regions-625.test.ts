@@ -19,7 +19,7 @@ const found = {}; const find = (type, n = 3) => { const out = (found[type] ||= [
   return out; };
 
 test('version 10 turns some wild and plains regions into the five palette types; every other region keeps its version 9 type', () => {
-  assert.equal(LANDSCAPE_VERSION, 13); const seen = new Set();
+  assert.equal(LANDSCAPE_VERSION, 14); const seen = new Set();
   for (let x = 14; x < 140; x += 2) for (let y = 14; y < 140; y += 2) {
     const a = sectionRegion(SEED, x, y, 9), b = sectionRegion(SEED, x, y, 10); seen.add(b.type); assert.equal(a.id, b.id);
     if (!REGIONS_V10.from.includes(a.type)) assert.equal(b.type, a.type); else assert.ok([a.type, ...TYPES].includes(b.type), `${a.type} -> ${b.type}`);

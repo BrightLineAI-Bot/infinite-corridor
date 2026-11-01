@@ -1,4 +1,4 @@
-// Release 672 (Tim, 2026-11-01: "the world is too peaceful"): the Stalker, a silver beast that hunts the Wayfarer on the
+// Release 678 (Tim, 2026-11-01: "the world is too peaceful"): the Stalker, a silver beast that hunts the Wayfarer on the
 // overworld only, waits by the door of anywhere it cannot follow, and once killed returns only after 30–40 new sections.
 import test from 'node:test';
 import assert from 'node:assert/strict';

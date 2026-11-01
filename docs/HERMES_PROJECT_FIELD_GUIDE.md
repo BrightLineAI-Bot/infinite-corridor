@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release 672: the Stalker — 2026-11-01
+## Release 678: the Stalker — 2026-11-01
 
 Tim (2026-11-01): "the world is too peaceful". A silver creature of the Corridor that hunts the Wayfarer on the overworld only,
 one at a time, never entering dungeons, buildings, shelters or towns, waiting by the door like a Gate Revenant; three forms (a
@@ -2737,7 +2737,7 @@ a kill it hunts again only after 30–40 new sections.
 **BOUNDARY:** No generator change (it is placed at runtime and never generated). Only `save.stalker` is saved, additively; the
 creature itself is runtime (a reload or a lost fight brings it back after `follow` tiles with its saved health). Bounded: one
 Stalker, at most 5 copies, decoys only per afterimage charge, no pathfinding (straight steps with collision, the ape's leap), 12
-spot checks per ambush. Tests: `tests/stalker-672.test.ts`.
+spot checks per ambush. Tests: `tests/stalker-678.test.ts`.
 
 ## Release 671: Fractured waves — 2026-11-01
 
@@ -2779,6 +2779,71 @@ falling".
 
 **BOUNDARY:** The rest point is placed at load, not generated: every generator version is untouched. Additive save only (the
 checkpoint record). Tests: `tests/crown-rest-669.test.ts`.
+## Release 674: wonders worth the walk — 2026-11-01
+
+Tim (2026-11-01, step two of the findability task): the Atlas or a wayfarer rumour pointing toward the nearest unexplored skyway,
+great tree or Starfield crossing.
+
+**CODE:**
+- New `src/wonders.ts` (in `scripts/build.mjs` and both `sw.js` lists):
+  - `WONDERS` (`radius` 24; `chasmChance`, kept equal to `CHASM.chance` by a test so the module never imports the game;
+    per-kind names, Atlas labels, colours).
+  - `wonderAt(seed, rx, ry, kind, generation)` reads hashes only, never building a section:
+    - skyway: `skylandSection` at placement 2;
+    - tree: the section centre's region is a `TREES_V14` region and its version 14 roll passes;
+    - starfield: world.ts `addDungeonLandmark`'s roll and id, replayed, then the Starfield roll. Far Sleep sections are left out,
+      since their crossings may be Sleeper's Halls.
+  - `nearestWonders(save, rx, ry)`: ring by ring to `radius`, skipping sections with an Atlas entry. It stops when every kind is
+    found and is memoised per section and Atlas size.
+  - `wonderRumour(save, rx, ry, who)`: one wonder, chosen by the traveller's id, with compass words and distance.
+- `src/main.ts` `drawAtlasPins`: one pin per wonder (an edge arrow when off the map).
+- `src/game.ts` `interact`: speaking to an ordinary traveller on the overworld appends the rumour once (`o.rumourTold`,
+  runtime). Reciters, Quillon and the plain speech in `interactions.ts` are unchanged.
+
+**BOUNDARY:** Reading only; no save or generation change. A tree prediction can miss when no spot fits (most grow). Tests:
+`tests/wonders-674.test.ts` (predictions checked against generated sections).
+
+## Release 672: great trees, skyways and Starfield crossings, easier to find — 2026-11-01
+
+Tim (2026-11-01): "I haven't seen any tall trees or skyways, or chasm (Starfield) explorations... run tests to see if those are
+working and how those are showing up." All three worked but were rare.
+- The survey (`tests/findability-672.test.ts`; `SURVEY=1` widens and prints it) found the version 13 tree search failing: of the
+  jungle sections that passed `TREES.chance` (.55), only about one in seven grew a tree. It tried 80 hashed spots and most fell on
+  the plaza or an exit line, and a spire needs a ~9×9 clear patch.
+- Over three seeds, 16–63 sections out, this release moves great trees from about 2 to about 26 per 1,000 sections and Sky
+  Stairs from about 1.0 to about 2.9 per 100 sections. The nearest skyway moves from 14–16 sections out to 6–7.
+- Neither trees nor (before) skyways appear inside 16 sections: the heartland round the Refuge has no jungle, forest or amberwood.
+
+**CODE:**
+- `src/trees.ts` `TREES_V14` (landscape version 14):
+  - every one of the 676 spots in a hashed order;
+  - at most `layouts` laid plans tested for walling ground off;
+  - a `compact` fallback (trunk 2–3, three sides, reach 2–5) where no spire fits;
+  - per-region chances: jungle .6, forest .3, amber .4, on that region's own ground (at least `minTiles` of it);
+  - forest decoration trees cleared from the wood;
+  - `map.canopy.version` 14 and `region`.
+  - `growTrees` takes `version` and `region`; version 13 keeps its search, key and region.
+- `src/landscape.ts`: `LANDSCAPE_VERSION` 14; `treeRegion(map)`; `canopyGround(map, region)`.
+- `src/skylands.ts` `SKY_PLACE`:
+  - Sky Stair placement versions. 1 is the old rule: 8×8 blocks, past 14 sections, key `skyland:v1`. 2 is every version 1 stair
+    plus one candidate per 6×6 block past 6, key `skyland:v2`.
+  - `skylandSection(seed, rx, ry, place)`. `src/game.ts` pins `skyPlace` in each new Atlas entry and reads
+    `seenSky?.skyPlace || 1`, so sections seen before keep placement 1.
+- `src/game.ts`:
+  - `CHASM.chance` .12 → .2. It is rolled once, at a crossing's first entry, and kept in its history, so every crossing that was a
+    Starfield still is and every entered crossing is unchanged.
+  - The remembered-Wayglass rebuild skips a Crown Rest checkpoint (`remembered.crown`). Since 669 it had flattened the crown
+    tile and stood a Wayglass on it.
+  - `glideStep`: deep water never walls a glide in, and a glide over blocked deep water comes down into it (the 641 rule).
+    Before, it skimmed for ever, unable to land or steer.
+
+**BOUNDARY:**
+- Additive at schema 14: `skyPlace` on Atlas entries; no other save change.
+- Sections first seen before 672 keep landscape 13 and placement 1.
+- Tests touched: the version assertions in several tests now read 14.
+- `tests/glider-635.test.ts` makes for land after crossing the edge, because its tree now stands by the sea.
+- `tests/starfield-rafts-613.test.ts` keeps its old crossing.
+
 ## Release 668: guardians and elites fight back — 2026-11-01
 
 Tim (2026-11-01): the crossing guardians "just stand there and take the hits"; they hit hard and have big health, but their fights

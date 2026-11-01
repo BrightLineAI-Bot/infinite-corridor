@@ -30,8 +30,11 @@ test('leaving the crown opens the glider: no harm, a slow descent, steered freel
   for (let i = 0; i < 20; i++) { t += 50; g.update(.05, stick(dx, dy), t); }
   assert.ok(g.glide && g.glide.z < z0 && z0 - g.glide.z <= GLIDE.sink * 1.1 + .01, 'sinking slowly');
   let sections = 0, last = `${g.rx},${g.ry}`;
-  for (let i = 0; i < 200 && g.glide; i++) { t += 50; g.enemies = []; g.update(.05, stick(dx, dy), t); if (`${g.rx},${g.ry}` !== last) { sections++; last = `${g.rx},${g.ry}`; } }
-  for (let i = 0; i < 3000 && g.glide; i++) { t += 50; g.enemies = []; const hx = 16 - g.player.x, hy = 16 - g.player.y, d = Math.hypot(hx, hy) || 1; g.update(.05, stick(hx / d, hy / d), t); } // then home to the plaza
+  for (let i = 0; i < 200 && g.glide && !sections; i++) { t += 50; g.enemies = []; g.update(.05, stick(dx, dy), t); if (`${g.rx},${g.ry}` !== last) { sections++; last = `${g.rx},${g.ry}`; } } // 672: over the edge, then make for land
+  // Then home to the nearest open ground (release 672: landscape version 14 grows more trees, so the tree found here may stand by the
+  // sea; a glide that comes down over deep water now lands in it, as 641 intends, so the test steers for dry ground).
+  const dry = () => g.map.tiles.filter((q) => !q.blocked && !q.canopy && !/water|ocean|shallows|lava|mire|pool|bog|river|void|abyss|chasm/i.test(q.kind)).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y))[0];
+  for (let i = 0, aim = dry(), at = `${g.rx},${g.ry}`; i < 3000 && g.glide; i++) { t += 50; g.enemies = []; if (`${g.rx},${g.ry}` !== at) { at = `${g.rx},${g.ry}`; aim = dry(); } const hx = aim.x - g.player.x, hy = aim.y - .25 - g.player.y, d = Math.hypot(hx, hy) || 1; g.update(.05, stick(d > .2 ? hx / d : 0, d > .2 ? hy / d : 0), t); }
   assert.equal(g.glide, null, 'it comes down in the end'); assert.equal(g.player.hp, hp0, 'no harm'); assert.equal(s.worldFlags.deaths || 0, 0);
   assert.ok(sections >= 1, `it carried the Wayfarer over the edge into the next section (${sections})`);
   const under = tileAt(g, Math.floor(g.player.x + .5), Math.floor(g.player.y + .75)); assert.ok(under && !under.blocked, 'landed on open ground');

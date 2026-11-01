@@ -1,4 +1,4 @@
-// Release 672: the Stalker (Tim, 2026-11-01: "the world is too peaceful"). A silver creature of the Corridor that hunts the
+// Release 678: the Stalker (Tim, 2026-11-01: "the world is too peaceful"). A silver creature of the Corridor that hunts the
 // Wayfarer on the overworld only, one at a time.
 //
 // - The hunt (`STALKER.hunt`): while it hunts, every tile of ground the Wayfarer covers on the overworld (walking, dodging, the

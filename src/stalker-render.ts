@@ -1,4 +1,4 @@
-// Release 672: drawing the Stalker (stalker.ts): the six-legged snow leopard, the winged silverback, the silver pool, its
+// Release 678: drawing the Stalker (stalker.ts): the six-legged snow leopard, the winged silverback, the silver pool, its
 // afterimages, its copies and decoys, the marks before each blow, and the silver marker at the screen edge while it hunts.
 // Plain canvas paths, no sprites or gradients per frame beyond one shadow, so it stays cheap on a phone.
 import { STALKER } from "./stalker.ts";

@@ -16,7 +16,7 @@ import { AFFIXES, dronePos, affixNames } from "./affixes.ts";
 import { KIT_MOVES } from "./boss-kit.ts";
 import { SKY_DISCS } from "./skylands.ts"; // release 587
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.ts";
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 672
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
 import { GATE_REVENANT, DANGER } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
@@ -1882,7 +1882,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillRect((e.x + .5 - .4*flashScale) * s, (e.y + .45 - .42*flashScale) * s, s * .8*flashScale, s * .75*flashScale);
             ctx.restore();
           }
-          if (e.kind === "stalker") { drawStalkerMarks(ctx, e, s, now); drawStalker(ctx, e, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); return; } // release 672
+          if (e.kind === "stalker") { drawStalkerMarks(ctx, e, s, now); drawStalker(ctx, e, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); return; } // release 678
           if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant"].includes(e.kind) ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
           if (e.kind === "gateRevenant") drawGateRevenant(ctx, e, s, now, ox, oy); // release 271
           else actor(
@@ -2134,7 +2134,7 @@ export function render(ctx, g, w, h, now) {
     ctx.save(); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + (L.length - 1) * gap); ctx.stroke();
     L.forEach((lv, i) => { const y = y0 + i * gap, here = lv.id === g.map.levelId, seen = here || i === 0 || found.includes(lv.id); ctx.fillStyle = here ? "#ffe7a6" : seen ? "#c9c2b0aa" : "#ffffff30"; ctx.beginPath(); ctx.arc(x, y, here ? 4 : 3, 0, Math.PI * 2); ctx.fill(); if (here) { ctx.strokeStyle = "#ffe7a6aa"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke(); } });
     ctx.restore(); }
-  drawStalkerMarker(ctx, g.stalkerMarker?.(), w, h, now); // release 672: the Stalker's silver marker at the screen edge
+  drawStalkerMarker(ctx, g.stalkerMarker?.(), w, h, now); // release 678: the Stalker's silver marker at the screen edge
   // Release 666: the fracture meter, top centre while Fractured mode holds here: kills toward the Fracture Warden, then its health.
   { const m = g.fractureMeter?.(); if (m) { const bw = Math.min(180, w * .4), bx = (w - bw) / 2, by = 8, warden = m.warden, k = warden ? Math.max(0, warden.hp) / Math.max(1, warden.maxHp) : m.kills / Math.max(1, m.need);
     ctx.save(); ctx.fillStyle = "#0a0610b0"; ctx.fillRect(bx - 2, by - 2, bw + 4, 10); ctx.fillStyle = warden ? "#ff4a7a" : m.kills >= m.need ? `rgba(255,120,170,${.6 + .4 * Math.sin(now / 120)})` : "#c06aff"; ctx.fillRect(bx, by, bw * Math.min(1, k), 6);
