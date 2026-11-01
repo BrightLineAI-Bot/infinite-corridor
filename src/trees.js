@@ -14,9 +14,20 @@
 //   levels under the branch above, so a fall off the higher branch lands on one (it hurts) and the climb goes on from there;
 // - leaves on its branches (the tips always), and decorative boughs drawn off its trunk, which nothing walks on.
 // Bounded: at most two trees, a few thousand tile checks, once per section; nothing spawns up there.
-import { hashSeed } from "./random.js?v=r669-637cc97f06cd";
+import { hashSeed } from "./random.js?v=r679-4d93bc15f0b3";
 
 export const TREE_VERSION = 13;
+// Release 672 (landscape version 14; Tim, 2026-11-01: "I haven't seen any tall trees"): a survey found the version 13 search
+// tried only `tries` hashed spots, most of them on the plaza or an exit line, so only about one jungle section in seven that
+// passed `chance` grew a tree. From version 14 every spot is tried in a hashed order (a spire's plan is a few dozen tile checks,
+// and at most `layouts` laid plans are tested for walling ground off), and great trees also grow in forests and amberwood,
+// each region with its own chance. Version 13 sections keep the old search and region.
+export const TREES_V14 = {
+  version: 14, layouts: 60,
+  regions: { jungle: { chance: .6, ground: ["jungleFloor", "jungleMire", "buttressRoot"] }, forest: { chance: .3, ground: ["forestFloor"] }, amber: { chance: .4, ground: ["amberLitter"] } },
+  minTiles: 120, // a section needs this much of one region's ground to try
+  compact: { trunk: [2, 3], sides: [3], reach: [2, 5] }, // where no spire fits: a smaller tree, climbed round three sides
+};
 export const TREES = {
   chance: .55, // of the jungle sections the great trees are seen in at all
   forms: [["spire", 4], ["grove", 6]], // weights (a grove needs room for two trees, so it is tried more often than it grows)
@@ -95,13 +106,19 @@ function walkPath(from, to, free) {
 
 // Grow this section's great tree(s). `ground` says whether a tile can take wood, `reachable` recomputes what can be walked
 // to from the plaza, `trapped` lists the tiles that can be dropped into but not climbed out of. Returns the tree record for map.canopy, or null (the tiles are left as they were).
-export function growTrees(map, seed, rx, ry, { ground, reachable, trapped }) {
-  const T = TREES, h = (k) => hashSeed(`${seed}:trees:v13:${rx}:${ry}:${k}`), at = (x, y) => map.tiles[idx(x, y)];
-  if ((hashSeed(`${seed}:canopy-grow:v1:${ry * 7919 + rx}`) % 1000) / 1000 >= T.chance) return null;
+export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, version = 13, region = "jungle" }) {
+  const T = TREES, h = (k) => hashSeed(`${seed}:trees:v13:${rx}:${ry}:${k}`), at = (x, y) => map.tiles[idx(x, y)], v14 = version >= TREES_V14.version;
+  if (!v14 && (hashSeed(`${seed}:canopy-grow:v1:${ry * 7919 + rx}`) % 1000) / 1000 >= T.chance) return null;
+  if (v14 && (hashSeed(`${seed}:canopy-grow:v2:${region}:${ry * 7919 + rx}`) % 1000) / 1000 >= (TREES_V14.regions[region]?.chance || 0)) return null;
+  // Version 14: every spot, in a hashed order (the same each time); version 13: `tries` hashed spots.
+  const spots = v14 ? Array.from({ length: 26 * 26 }, (_, i) => [2 + i % 26, 2 + Math.floor(i / 26)]).sort((p, q) => hashSeed(`${seed}:tree-spot:v14:${rx}:${ry}:${p}`) - hashSeed(`${seed}:tree-spot:v14:${rx}:${ry}:${q}`)) : null;
+  let layouts = 0;
   const before = reachable(map), stuck = new Set(trapped(map).map((t) => idx(t.x, t.y))); // wood never walls ground off, nor makes a pit you can drop into and not climb out of
   const cutsOff = (laid) => { const r = reachable(map); for (let i = 0; i < 1024; i++) if (before[i] && !r[i] && !laid.has(i)) return true; return trapped(map).some((t) => !stuck.has(idx(t.x, t.y))); };
-  const first = weighted(h("form"), T.forms), forms = first === "grove" ? ["grove", "spire"] : ["spire"];
-  for (const form of forms) for (let t = 0; t < T.tries[form]; t++) {
+  const first = weighted(h("form"), T.forms), forms = [...(first === "grove" ? ["grove", "spire"] : ["spire"]), ...(v14 ? ["compact"] : [])];
+  for (const form of forms) for (let t = 0; t < (v14 && form !== "grove" ? spots.length : T.tries[form]); t++) {
+    if (v14 && layouts >= TREES_V14.layouts) break;
+    const shape = form === "compact" ? "spire" : form, spec = form === "compact" ? TREES_V14.compact : T.spire;
     const saved = new Map(), laid = new Set(), keep = (x, y) => { if (!saved.has(idx(x, y))) saved.set(idx(x, y), { ...at(x, y) }); };
     const put = (x, y, props) => { keep(x, y); Object.assign(at(x, y), { blocked: false, canopy: true, skyPlatform: true, ...props }); laid.add(idx(x, y)); };
     const undo = () => { for (const [i, t0] of saved) { const tile = map.tiles[i]; for (const k of Object.keys(tile)) delete tile[k]; Object.assign(tile, t0); } };
@@ -112,12 +129,12 @@ export function growTrees(map, seed, rx, ry, { ground, reachable, trapped }) {
       for (let j = 0; j < plan.N; j++) for (let i = 0; i < plan.N; i++) { const [x, y] = turn(plan.op, plan.N, plan.tx, plan.ty)(i, j); put(x, y, { kind: "canopyTrunk", elev: c.top, slope: false, look: plan.look }); }
       plan.top = c.top; plan.hops = c.hops; plan.climb = c.tiles; return c;
     };
-    const tx = 2 + h(`${form}:x${t}`) % 26, ty = 2 + h(`${form}:y${t}`) % 26;
+    const [tx, ty] = v14 && form !== "grove" ? spots[t] : [2 + h(`${form}:x${t}`) % 26, 2 + h(`${form}:y${t}`) % 26];
     const fits = (plan) => plan && plan.sides.every((sd) => [sd.a, sd.b].every(([x, y]) => { for (let r = 0; r < sd.L; r++) if (!free(x + sd.d[0] * r, y + sd.d[1] * r)) return false; return true; }) && (!sd.knot || free(...sd.knot)));
     const trees = [], walk = [], hops = [];
-    if (form === "spire") {
-      const p = planTree(h, `spire:${t}`, T.spire, ground, tx, ty); if (!p || !free(...p.step)) continue;
-      layTree(p, 1, `spire:${t}`); trees.push(p);
+    if (shape === "spire") {
+      const p = planTree(h, `${form}:${t}`, spec, ground, tx, ty); if (!p || !free(...p.step)) continue;
+      layTree(p, 1, `${form}:${t}`); trees.push(p);
     } else {
       const a = planTree(h, `lesser:${t}`, T.lesser, ground, tx, ty); if (!a || !free(...a.step)) continue;
       layTree(a, 1, `lesser:${t}`);
@@ -142,7 +159,7 @@ export function growTrees(map, seed, rx, ry, { ground, reachable, trapped }) {
       }
       layTree(b, e + 1, `greater:${t}`); trees.push(a, b);
     }
-    const foot = trees[0].step;
+    const foot = trees[0].step; layouts++;
     if (!reachable(map)[idx(...foot)] || cutsOff(laid)) { undo(); continue; } // the wood cuts the foot, or any ground, off: try elsewhere
     // Perches in the gaps: level with the branch below, two or three under the branch above, never on a hop.
     const hopGap = new Set(); for (const p of [...trees.flatMap((q) => q.hops), ...hops]) hopGap.add(idx((p[0][0] + p[1][0]) / 2, (p[0][1] + p[1][1]) / 2));
@@ -169,14 +186,14 @@ export function growTrees(map, seed, rx, ry, { ground, reachable, trapped }) {
       const nb = pick(h(`boughs:${tr.tx}:${tr.ty}`), T.boughs.count); tr.boughs = [];
       for (let k = 0; k < nb; k++) { const r = h(`bough:${tr.tx}:${tr.ty}:${k}`); tr.boughs.push({ at: .12 + .8 * ((r % 1000) / 1000), side: (r >>> 10) % 2 ? 1 : -1, len: T.boughs.len[0] + (T.boughs.len[1] - T.boughs.len[0]) * (((r >>> 11) % 100) / 100), lift: ((r >>> 18) % 5) / 10, leaves: 2 + (r >>> 21) % 3 }); }
     }
-    map.objects = (map.objects || []).filter((o) => !(o.jungle && laid.has(idx(Math.round(o.x), Math.round(o.y)))));
+    map.objects = (map.objects || []).filter((o) => !((o.jungle || (v14 && o.forest)) && laid.has(idx(Math.round(o.x), Math.round(o.y))))); // 672: a forest's own trees too
     map.enemySpawns = (map.enemySpawns || []).filter((q) => !laid.has(idx(Math.round(q.x), Math.round(q.y))));
     const door = trees[trees.length - 1], gate = turn(door.op, door.N, door.tx, door.ty)(Math.floor(door.N / 2), Math.floor(door.N / 2));
     const dest = (hashSeed(`${seed}:canopy-door:v1:${ry * 7919 + rx}`) % 1000) / 1000 < T.starfield ? "starfield" : "cloud";
     map.objects.push({ id: `canopy-gate-${rx}-${ry}`, kind: "canopyGate", name: dest === "starfield" ? "A door in the great tree, full of stars" : "A door in the great tree, full of cloud", x: gate[0], y: gate[1], dest, actions: ["enter"], state: "open" });
     const xs = [...laid].map((i) => i % 32), ys = [...laid].map((i) => Math.floor(i / 32)), bx = Math.min(...xs) - 1, by = Math.min(...ys) - 1, n = Math.max(Math.max(...xs) - bx, Math.max(...ys) - by) + 2;
     const rec = (tr, low) => ({ x0: tr.tx, y0: tr.ty, size: tr.N, top: tr.top, look: tr.look, boughs: tr.boughs, ...(low ? { low: true } : {}) });
-    map.canopy = { version: TREE_VERSION, form, x0: door.tx, y0: door.ty, size: door.N, height: door.top, top: door.top, branches: door.sides.length * 2, reach: door.sides.map((q) => q.L), dest, pads, walk: walk.length, trees: trees.map((tr, i) => rec(tr, i < trees.length - 1)), box: { x: bx, y: by, n } };
+    map.canopy = { version: v14 ? TREES_V14.version : TREE_VERSION, ...(v14 ? { region } : {}), form, x0: door.tx, y0: door.ty, size: door.N, height: door.top, top: door.top, branches: door.sides.length * 2, reach: door.sides.map((q) => q.L), dest, pads, walk: walk.length, trees: trees.map((tr, i) => rec(tr, i < trees.length - 1)), box: { x: bx, y: by, n } };
     return map.canopy;
   }
   return null;

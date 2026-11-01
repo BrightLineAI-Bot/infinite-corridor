@@ -8,24 +8,31 @@
 //   out as packs round the creatures already there: plain packs, champion packs (one shared trait, `CHAMPION`) and now and
 //   then a rare leader (two or three traits, `RARE`) with an escort. Placement is hashed from the area, so it is the same each
 //   visit.
-// - Reinforcements (Diablo III rifts, Remnant spawners): every `every` s a pack comes in from just out of sight
-//   (`spawnDistance`), every `surgeEvery`th a bigger surge with a champion at its head, never past `cap` creatures alive.
+// - Waves (Diablo III rifts, Remnant spawners; release 671): several packs come in together from just out of sight
+//   (`spawnDistance`), every `surgeEvery`th wave all elite-led; clear a wave and the next waits `rest` s, or comes after `press`
+//   s if it still stands; never past `cap` creatures brought by waves, nor `hardCap` alive in all.
 // - Rest (Diablo II, Remnant): towns, hamlets, home, the Refuge lands, Skylands and sealed or cleared dungeons are safe; a
-//   doorway gives `grace` s; clear everything within `sight` and the next pack waits `lull` s.
+//   doorway gives `grace` s.
 // - Return (Remnant's checkpoint rest): an area left for `repopulate` s fills up again; its guardians, bosses, hunts and
 //   one-time foes stay dead.
 // - Loot: reinforcements drop an item only `trashDrop` of the time (auto-picked up and salvaged as always); champions and
 //   rares drop more and give more experience.
 // Bounded: one reinforcement roll a frame at most, a fixed number of tile checks per spawn, the live cap.
-import { hashSeed } from "./random.js?v=r669-637cc97f06cd";
-import { rollAffixes, SHAMAN } from "./affixes.js?v=r669-637cc97f06cd";
+import { hashSeed } from "./random.js?v=r679-4d93bc15f0b3";
+import { rollAffixes, SHAMAN } from "./affixes.js?v=r679-4d93bc15f0b3";
 
 export const FRACTURED = {
   modes: {
-    fractured: { name: "Fractured", text: "Diablo II pace: twice the creatures, in packs with champions and rares; a pack comes every 30–45 s.", density: 2, every: [30, 45], pack: [3, 5], surgeEvery: 4, surge: 2, cap: 18, lull: 90, champion: .28, rare: .12 },
-    frenzied: { name: "Frenzied", text: "Diablo III pace: two and a half times the creatures; packs every 12–20 s.", density: 2.5, every: [12, 20], pack: [4, 6], surgeEvery: 3, surge: 3, cap: 24, lull: 40, champion: .32, rare: .15 },
+    // Release 671 (Tim, 2026-11-01, playing Frenzied: "the wave frequency is too slow... each wave... come in a little bit
+    // quicker and... with more force... several packs coming in... I have to kill them all, and then you have to wait [about a
+    // minute]. And then... several more packs come in, or I can go to the next square"): a wave is several packs (`packs`) from
+    // different sides; clear it and the next waits `rest` s; leave it standing and another comes anyway after `press` s. Every
+    // `surgeEvery`th wave is an elite wave: every pack in it led by a champion or a rare. `cap` counts only the creatures the
+    // waves brought, so a crowded section still gets its waves; `hardCap` bounds everything alive (mobile).
+    fractured: { name: "Fractured", text: "Diablo II pace: twice the creatures; waves of several packs, with champions and rares. Clear a wave and the next comes in about a minute.", density: 2, packs: [2, 3], pack: [3, 5], rest: 60, press: 45, surgeEvery: 3, surge: 1, cap: 24, hardCap: 54, champion: .28, rare: .12 },
+    frenzied: { name: "Frenzied", text: "Diablo III pace: two and a half times the creatures; big waves of three to five packs. Clear a wave and the next comes in under a minute; stand your ground and they keep coming.", density: 2.5, packs: [3, 5], pack: [4, 6], rest: 45, press: 25, surgeEvery: 3, surge: 2, cap: 32, hardCap: 64, champion: .32, rare: .15 },
   },
-  grace: 20, // s of quiet after any doorway
+  grace: 6, // s after any doorway before the first wave (release 671: was 20)
   repopulate: 90, // s away before an area fills up again
   sight: 11, // tiles: "clear what is in sight"
   spawnDistance: [10, 15], // tiles from the Wayfarer: just off the screen
@@ -35,7 +42,7 @@ export const FRACTURED = {
   maxAdded: 30, // at most this many creatures added to an area on arrival, however crowded
   fallback: ["ashling", "glassMite", "ashenHound", "coilStalker", "rootBrute"], // when an area has no creatures of its own to copy
   traits: ["plated", "feral", "swift", "farcasting", "vital", "keen"],
-  messages: { arrive: "Something tears through the fracture nearby.", surge: "The fracture splits wide: a surge is coming.", lull: "The fracture quiets for a while.", rare: "A rare creature leads this pack." },
+  messages: { arrive: "Something tears through the fracture nearby.", surge: "The fracture splits wide: a surge is coming.", lull: "The wave is broken. The fracture quiets for a while.", wave: "The fracture tears open: a wave is coming.", elite: "The fracture splits wide: elites lead this wave.", rare: "A rare creature leads this pack." },
 };
 export const CHAMPION = { hp: 1.8, damage: 1.2, scale: 1.12, xp: 2, drops: 1 }; // one shared trait for the whole pack
 export const RARE = { hp: 3.2, damage: 1.35, scale: 1.3, xp: 4, drops: 2, traits: [2, 3] }; // the leader; its escort is plain

@@ -15,7 +15,7 @@
 //   storm    Stormkraken: a tentacle at a time, and an ink cloud that darkens the sea around the Wayfarer.
 // Every strike is telegraphed first; submerged creatures are hidden and untargetable. Data and pure rules: game.ts
 // supplies the world (water test, hurt, pull) and calls `updateSeaCreature` from its enemy loop.
-import { hashSeed } from "./random.js?v=r669-637cc97f06cd";
+import { hashSeed } from "./random.js?v=r679-4d93bc15f0b3";
 
 export const SEA_HABITATS = {
   open: ["ocean", "deepOcean", "lakeWater"],
