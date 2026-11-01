@@ -15,21 +15,22 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-**673** (odd, first session) · **680** (even, second session)
+**677** (odd, first session) · **680** (even, second session; 676 reserved below)
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
 | 678 | Claude (second session) | `claude/stalker-overworld-boss-fldd02` | The Stalker: a silver overworld hunter (cat, winged ape, pool) that closes in by ground covered, waits by doors, afterimages, swarm, affixes; returns 30–40 new sections after a kill | Building. First numbered 672; renumbered 678 because main reached 674 and 676 is reserved. |
-| 671 | Claude | `claude/dreamy-rubin-yn6q2p` | Fractured waves: several packs per wave from different sides, elite-led every third, a rest after a wave is cleared, more join one left standing; the cap counts only wave creatures | Building. |
-| 669 | Claude | PR #317 | Crown Rest on every great tree (touch it; wake there); the glider in a freefall with the drone out; the Wayfarer's ghost behind giant trees covers the whole crown | Renumbered from 665 (main was at 668). Merged. Tim said publish. |
 | 676 | Claude (second session) | reserved | Skylands Deep Annex: a rare, announced Skylands variant whose far gate lands you on the crown of a different, undiscovered great tree (663's treeCrownHop / SKY_TREE). Built on the first session's deep-annex framework (673, `src/deep-annex.ts`) once it merges; it will add a Skylands kind next to the Starfield one, not change the Starfield annex. Note for 673: release 672 raised `CHASM.chance` to .2, so `DEEP_ANNEX.chance` .25 now gives about 5% of new crossings, not 3%. | Reserved; waits for 673. |
-| 674 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Atlas pins and travellers' rumours of the nearest unexplored skyway, great tree and Starfield crossing (`src/wonders.ts`) | Building. |
-| 672 | Claude (second session) | PR #321 | Great trees, skyways and Starfield crossings easier to find on new ground (landscape 14, Sky Stair placement 2, Starfield .2); the findability survey; Crown Rest and coastal-glide fixes. 670 skipped: main was at 671 | Merged. |
-| 668 | Claude (second session) | PR #319 | Guardians and elites fight back: extra modules, signature moves (quake, barrage, crossfire, meteor), aggression, adds at health thresholds | Merged (`r668-469ed0280358`). |
-| 666 | Claude (second session) | PR #318 | Fracture meter and Fracture Warden: kills fill a HUD meter; the Warden (half a Gate Revenant, adds) seals the area and drops a cache | Merged (`r666-364d65e9cbbd`). |
-| 664 | Claude (second session) | PR #316 | Tremor Worm rework: half-buried by default, full-height sweep/slam/maw, tentacles scaled off the worm with ground cracks, burrowing, repositioning and six modes | Merged (`r664-b4bdc960a2b8`). |
+| 675 | Claude | `claude/dreamy-rubin-yn6q2p` | Starfield Deep Annex: a rare named crossing of three floors, each harder, the third another environment, its far door to a random place in the world | Renumbered from 673 (main was at 674). PR #322. |
+| 674 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Atlas pins and travellers' rumours of the nearest unexplored skyway, great tree and Starfield crossing (`src/wonders.ts`) | Merged (PR #323). |
+| 672 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Great trees, skyways and Starfield crossings easier to find on new ground (landscape 14, Sky Stair placement 2, Starfield .2); the findability survey; Crown Rest and coastal-glide fixes. 670 skipped: main was at 671 | Merged (PR #321). |
+| 671 | Claude | PR #320 | Fractured waves: several packs per wave from different sides, elite-led every third, a rest after a wave is cleared, more join one left standing; the cap counts only wave creatures | Merged. |
+| 669 | Claude | PR #317 | Crown Rest on every great tree (touch it; wake there); the glider in a freefall with the drone out; the Wayfarer's ghost behind giant trees covers the whole crown | Merged (`r669-637cc97f06cd`). Published in r669. |
+| 668 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Guardians and elites fight back: extra modules, signature moves (quake, barrage, crossfire, meteor), aggression, adds at health thresholds | Merged (PR #319). Published in r669. |
+| 666 | Claude (second session) | PR #318 | Fracture meter and Fracture Warden: kills fill a HUD meter; the Warden (half a Gate Revenant, adds) seals the area and drops a cache | Merged. Published in r669. |
+| 664 | Claude (second session) | PR #316 | Tremor Worm rework: half-buried by default, full-height sweep/slam/maw, tentacles scaled off the worm with ground cracks, burrowing, repositioning and six modes | Merged (`r664-b4bdc960a2b8`). Published in r669. |
 | 663 | Claude | PR #315 | A sky gate lands you on a great tree's crown (one not yet seen first), to glide or hop down; 659 review fix | Merged (`r663-56d3cf7b0025`). Published in r663. |
 | 661 | Claude | PR #314 | Floor dots at the right edge in multi-floor dungeons | Merged (`r661-1160639f42b2`). Published in r663. |
 | 659 | Claude | PR #313 | The Far Array explains itself: what a run holds, Gate pieces left, where the Listener waits; each deep floor names the way up/out and down | Merged (`r659-e5124f5561df`). Published in r663. |
@@ -62,6 +63,7 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 669 | `r669-637cc97f06cd` | 2026-11-01 | With 664 to 668 from the second session: the Tremor Worm reworked (#316), the fracture meter and Fracture Warden (#318), guardians and elites fight back (#319); and 669, Crown Rests and the drone/glider freefall (#317). Pre-publish review: no blockers. |
 | 663 | `r663-56d3cf7b0025` | 2026-11-01 | With 651 to 661: Fractured mode (#309), follow it home (#310), Upheaval stacks (#311), elite affixes, auras and shamans (#312), the Far Array explains itself (#313), floor dots (#314), sky gate to a treetop and the 659 review fix (#315). Two pre-publish reviews; the first's blocker fixed in 663, the second clean. |
 | 649 | `r649-75bd8abf2c15` | 2026-11-01 | With 643 to 647: every pass is a hit (#305); the tree package, landscape v13 (#306); the drone's booster (#307); Mirage of Blades and LISTENER REVEALED (#308). Pre-publish review clean. |
 | 641 | `r641-1de709e6ab17` | 2026-11-01 | With 625 to 639: palette regions (PRs #296, #298); ten narrative threads (#297); great trees, the sky and the leaf glider (#299–#302); out of the robot at sea (#303); the glider in hand and the Giant's 8 s charge (#304). The pre-publish Fable review of 623→639 found the glide-indoors blocker (fixed in 641); the review of 639→641 found no blockers. |
