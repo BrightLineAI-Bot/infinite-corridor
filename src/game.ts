@@ -61,7 +61,7 @@ import { applyBossKit, tickBossKit } from "./boss-kit.ts";
 import { wonderRumour, wonderAt } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
-import { SKYLANDS, SKY_PLACE, SKY_ANNEX, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
+import { SKYLANDS, SKY_PLACE, SKY_ANNEX, VISCERA, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { generateItem, BRAWLER_LOOT } from "./items.ts";
 import { SMITHY } from "./smithy.ts"; // release 607: one salvage table
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
@@ -125,7 +125,8 @@ export const EQUIPMENT_CAPACITY = 60;
 function dressSkyland(map, id, save = null) {
   const boss = map.enemySpawns?.[0]?.kind || "hollowMarshal", tier = skylandTierOf(id), width = map.width || 36, open = map.tiles.filter((t) => !t.blocked && !t.environment && Math.hypot(t.x - map.entry.x, t.y - map.entry.y) > 5), mode = skylandModeOf(id);
   Object.assign(map, { skyland: true, skyTier: tier, skyBoss: boss, skyOpen: open.map((t) => ({ x: t.x, y: t.y })), name: mode ? `Skyland · ${SKY_MODES.names[mode]} · Ascension ${tier}` : `Skyland · Ascension ${tier}`, weather: "petals" });
-  map.skyPlan = skylandPlan(id, save, boss); if (mode) Object.assign(map, { skyMode: mode, skyCloud: true, weather: "sunbreak" });
+  const pact = save ? dungeonHistory(save, id).skyPact || null : null; // release 682: the Divine Viscera offered for this challenge
+  map.skyPlan = skylandPlan(id, save, boss, pact); if (pact) map.skyPact = { ...pact }; if (mode) Object.assign(map, { skyMode: mode, skyCloud: true, weather: "sunbreak" });
   map.enemySpawns = skylandWave(id, 0, map.skyOpen, map.objective || { x: width / 2, y: 11 }, boss, map.skyPlan);
 }
 // Release 593 (Tim, 2026-10-30: "the whole dungeon should just be made pretty much a chasm with just bridges... walkways and
@@ -3055,7 +3056,7 @@ export class Game {
     Object.assign(this.player, { x: from.x, y: from.y, sailVx: 0, sailVy: 0 }); this.message = message; this.sync();
   }
   // Release 571 (skylands.ts): a Skyland foe is made stronger by the run's Ascension, once.
-  scaleSkyFoe(e) { if (e.skyScaled || e.ambient || e.passiveBehavior) return; const k = skylandScale(this.map.skyTier || 0), f = skyAnnexFloor(this.areaId()), a = f ? { hp: SKY_ANNEX.scale.hp[f - 1], damage: SKY_ANNEX.scale.damage[f - 1] } : { hp: 1, damage: 1 }; /* release 678: each annex floor harder */ e.maxHp = Math.max(1, Math.round(e.maxHp * k.hp * a.hp)); e.hp = e.maxHp; e.damage = Math.max(1, Math.round(e.damage * k.damage * a.damage)); e.skyScaled = true; }
+  scaleSkyFoe(e) { if (e.skyScaled || e.ambient || e.passiveBehavior) return; const k = skylandScale(this.map.skyTier || 0), f = skyAnnexFloor(this.areaId()), v = visceraScale(this.map.skyPact || {}), a = f ? { hp: SKY_ANNEX.scale.hp[f - 1] * v.hp, damage: SKY_ANNEX.scale.damage[f - 1] * v.damage } : v; /* release 678: each annex floor harder; 682: the pact's might */ e.maxHp = Math.max(1, Math.round(e.maxHp * k.hp * a.hp)); e.hp = e.maxHp; e.damage = Math.max(1, Math.round(e.damage * k.damage * a.damage)); e.skyScaled = true; }
   // Each frame in a Skyland: when every foe is down, the next wave comes after a breath; after the boss, the run is cleared.
   tickSkyland(dt) {
     const id = this.areaId(), h = dungeonHistory(this.save, id); if (h.resolved) return;
@@ -3070,10 +3071,12 @@ export class Game {
       return;
     }
     h.resolved = true; h.visitOpen = false; const tier = this.map.skyTier || 0;
+    if (skyAnnexNext(id) && isDivineRun(skyAnnexNext(id))) this.raiseVisceraAltar(); // release 682: before the annex's Divine Challenge
     if (skyAnnexNext(id)) { h.annexNext = skyAnnexNext(id); (this.questNotices ||= []).push({ title: `${SKY_ANNEX.name.toUpperCase()} · SKYWAY ${skyAnnexFloor(id)} OF 3 CLEARED`, detail: "the way down is now a stair of cloud to the next island · the reward waits at the top", kind: "quest" }); this.message = SKY_ANNEX.messages.next; this.sync(); return; } // release 678
     const won = completeSkyland(this.save, tier);
+    if (isDivineRun(id)) { const sk = this.save.skylands, got = visceraEarned(h.skyPact || {}); sk.viscera = (Number(sk.viscera) || 0) + got; won.viscera = got; this.raiseVisceraAltar(); } // release 682
     if (skylandHops(id)) h.skyHop = true; // release 589: this run's way down is a cloud gate
-    (this.questNotices ||= []).push({ title: "SKYLAND CLEARED", detail: `Ascension ${tier} · +${won.sigils} Ascension Sigil${won.sigils > 1 ? "s" : ""}, +${won.marks} marks${won.weaponSphere || won.armorSphere ? `, ${won.weaponSphere + won.armorSphere} spheres` : ""}`, kind: "quest" });
+    (this.questNotices ||= []).push({ title: "SKYLAND CLEARED", detail: `Ascension ${tier} · +${won.sigils} Ascension Sigil${won.sigils > 1 ? "s" : ""}, +${won.marks} marks${won.weaponSphere || won.armorSphere ? `, ${won.weaponSphere + won.armorSphere} spheres` : ""}${won.viscera ? `, +${won.viscera} ${VISCERA.name}` : ""}`, kind: "quest" });
     this.message = `The islands fall quiet. You hold ${this.save.skylands.sigils} Ascension Sigil${this.save.skylands.sigils === 1 ? "" : "s"}. ${h.skyHop ? "The way down has become a gate of cloud: it drops you far from where you climbed." : "Take the way back down at the stair's foot."}`;
     journalOnce(this.save, `skyland-best:${this.save.skylands.best}`, `You cleared a Skyland at Ascension ${tier}. Each climb repays its sigils; the higher stairs ask for more.`, "The Skylands"); this.sync();
   }
@@ -3122,12 +3125,22 @@ export class Game {
     (this.glyphVisuals||=[]).push({kind:"arc",x:o.x+.5,y:o.y+.45,tx:other.x+.5,ty:other.y+.45,color:"#d8c8ff",life:.4,max:.4});
     this.message="The eye opens. The halls fold, and you step off the other dais.";this.sync();return{ok:true,message:this.message};
   }
+  // Release 682 (skylands.ts VISCERA): the Altar of Viscera, raised beside the way out of a cleared Divine Challenge (and at the top
+  // of the annex's second skyway): offerings there shape the pact for the next Divine Challenge.
+  raiseVisceraAltar() {
+    if (!this.map || this.map.objects.some((o) => o.kind === "visceraAltar")) return null;
+    const exit = this.map.objects.find((o) => o.kind === "exit") || this.map.entry || { x: 18, y: 26 }, w = mapWidth(this.map, "dungeon");
+    const spot = this.map.tiles.filter((t) => !t.blocked && !t.environment && footprintOpen(this.map, w, t.x, t.y) && !this.map.objects.some((o) => Math.hypot(o.x - t.x, o.y - t.y) < 1.5)).sort((a, b) => Math.abs(Math.hypot(a.x - exit.x, a.y - exit.y) - 2.5) - Math.abs(Math.hypot(b.x - exit.x, b.y - exit.y) - 2.5) || a.y - b.y || a.x - b.x)[0];
+    if (!spot) return null;
+    const o = { id: `viscera-altar-${this.areaId()}`, kind: "visceraAltar", name: "Altar of Viscera", lore: `A pedestal of pale stone, warm to the touch. Offer ${VISCERA.name} here and your next Divine Challenge answers: stronger, longer, lighter, or with other echoes drawn. Pact: ${pactWords(this.save.skylands?.pact || {})}.`, x: spot.x, y: spot.y, state: "open", actions: ["offer:might", "offer:round", "offer:reroll", "offer:lighten"] };
+    this.map.objects.push(o); return o;
+  }
   // Release 678 (skylands.ts SKY_ANNEX): up from a cleared annex floor to the next. The stair's return is kept, so a death or the
   // way down still leads back to it; the Ascension carries on and no sigils are spent again.
   climbAnnex(id) {
     this.snapshotArea(); const was = this.areaId(); delete (this.save.session.areas || {})[was];
     this.save.session.activeDungeonId = id; this.save.session.activeDungeonLevelId = null;
-    const h = dungeonHistory(this.save, id); h.gatePredatorSpawnThreshold = 0; h.skyWave = 0; h.visits++; h.visitOpen = true;
+    const h = dungeonHistory(this.save, id); h.gatePredatorSpawnThreshold = 0; h.skyWave = 0; h.visits++; h.visitOpen = true; if (isDivineRun(id)) h.skyPact = takePact(this.save); // release 682
     this.loadArea("dungeon"); this.player.x = this.map.entry?.x ?? 18; this.player.y = (this.map.entry?.y ?? 27) - 1; relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival();
     const f = skyAnnexFloor(id); this.message = f === 3 ? `${SKY_ANNEX.name}, the last island: a Divine Challenge. Echoes of the beasts you have felled wait here.` : `${SKY_ANNEX.name}, skyway ${f} of 3. More wings in the clouds, and fiercer.`;
     (this.questNotices ||= []).push({ title: SKY_ANNEX.name.toUpperCase(), detail: f === 3 ? "3 of 3 · the Divine Challenge" : `skyway ${f} of 3`, kind: "quest" }); this.sync(); return { ok: true, message: this.message };
@@ -3342,7 +3355,7 @@ export class Game {
       const b=beginSkyland(this.save,{rx:this.rx,ry:this.ry},r.tier,r.mode);/* 631: the canopy's door is always a cloud hold */if(!b.ok){this.message=b.message;return{ok:false,message:b.message}}
       if(b.gate){this.skyHop(b.id,b.message);return{ok:true,message:this.message}}/* release 589: a sky gate */
       this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=b.id;this.save.session.activeDungeonLevelId=null;
-      const h=dungeonHistory(this.save,b.id);h.gatePredatorSpawnThreshold=0;h.skyWave=0;h.visits++;h.visitOpen=true;
+      const h=dungeonHistory(this.save,b.id);h.gatePredatorSpawnThreshold=0;h.skyWave=0;h.visits++;h.visitOpen=true;if(isDivineRun(b.id))h.skyPact=takePact(this.save);/* release 682: the pact goes with the Divine Challenge */
       this.loadArea('dungeon');this.player.x=this.map.entry?.x??18;this.player.y=(this.map.entry?.y??27)-1;relocateIfStranded(this.player,this.map,mapWidth(this.map,'dungeon'));this.settleArrival();this.message=b.message;this.sync();return{ok:true,message:b.message};
     } else if(r.transition==="displacement"){
       this.startDisplacement(o,false);
