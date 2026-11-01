@@ -21,6 +21,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 679, the next is **
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| (at merge) | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Stalker's arsenal: back turret (homing orbs, laser cone, orbiting ring, X blade beam), energized sphere, liquid shield, the cat climbing trees, hopping ledges and breaking out of pens | Building. |
 | 679 | Claude | `claude/dreamy-rubin-yn6q2p` | Seasons in the forest and jungle woods: one season per region, turning after 30–40 sections explored outside it; blossom, lush, red and bare, snow-capped trees; petals, leaves and snow | Building. |
 | 678 | Claude (second session) | `claude/stalker-overworld-boss-fldd02` | The Stalker: a silver overworld hunter (cat, winged ape, pool) that closes in by ground covered, waits by doors, afterimages, swarm, affixes; returns 30–40 new sections after a kill | First numbered 672; renumbered 678 because main reached 674 and 676 is reserved. Merged (PR #324). |
 | 677 | Claude | PR #325 | The Deep: rare Deep Shafts on new ground; endless floors, each harder (+10% health, +6% damage), more affixes every 5 floors, two on guardians from 20; a Return Ember per cleared floor (the only way up below floor 1); checkpoints every 5; loot +1 level per 5 floors only near your deepest; the record on the Wayfarer page | Merged. |

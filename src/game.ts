@@ -4378,6 +4378,8 @@ export class Game {
       now, dt, player: p, sheltered: this.stalkerBarred(p.x, p.y), door: this._stalkOver?.rx === this.rx && this._stalkOver?.ry === this.ry ? this._stalkOver : null,
       playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - last.y) / dt } : { x: 0, y: 0 },
       open: (x, y) => game.stalkerOpen(x, y),
+      free: (x, y) => [x, y].every(Number.isFinite) && x >= .5 && y >= .5 && x <= width - 1.5 && y <= mapHeight(map, game.area) - 1.5 && !game.stalkerBarred(x, y), // the cat climbs over walls and up trees, never into a building, shelter or town
+      shotBlocked: (x, y) => !projectileTileOpen(map, width, x, y),
       move(e, dx, dy) { const ox = e.x, oy = e.y, moved = moveAxis(e, dx, dy, map, width); if (moved && game.stalkerBarred(e.x, e.y)) { e.x = ox; e.y = oy; return false; } return moved; },
       elev: (x, y) => Number(map.tiles[Math.floor(y + .72) * width + Math.floor(x + .5)]?.elev) || 0,
       hurt: (e, amount) => game.packHurt(e, amount, {}, now),

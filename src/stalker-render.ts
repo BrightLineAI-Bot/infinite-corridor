@@ -63,7 +63,23 @@ export function drawStalker(ctx, e, s, now, reduceMotion = false) {
   const form = e.stalkForm || "cat";
   if (form === "pool") drawPool(ctx, x, y, u, t, a.kind === "rise" ? 1 - Math.max(0, a.t) / (a.total || 1) : 0);
   else if (form === "ape") drawApe(ctx, x, y, u, face, t, lift > 1);
+  else if (e.stalkClimb) { // claws in: the body upright against the bark or stone, legs scrabbling
+    ctx.save(); ctx.translate(x, y - .35 * u); ctx.rotate(-face * Math.PI * .42); drawCat(ctx, 0, .35 * u, u, face, t * 1.8, true); ctx.restore();
+    ctx.strokeStyle = "rgba(230,236,244,.55)"; ctx.lineWidth = Math.max(1, u * .02); for (let i = 0; i < 3; i++) { const cy = y - (.2 + i * .14) * u; ctx.beginPath(); ctx.moveTo(x - .08 * u + i * .05 * u, cy); ctx.lineTo(x - .02 * u + i * .05 * u, cy + .1 * u); ctx.stroke(); }
+  }
   else drawCat(ctx, x, y, u, face, t, a.kind !== "wait" && a.kind !== "swipeWarn");
+  if (!e.stalkerKin && !e.stalkerDecoy && form !== "pool" && (e.stalkTurretUp || 0) > 0) { // the turret popping out of its back
+    const up = e.stalkTurretUp, bx = x - face * .08 * u, by = y - (form === "ape" ? .82 : .5) * u - up * .12 * u, aim = e.stalkTurret?.aim ?? (face > 0 ? 0 : Math.PI);
+    ctx.fillStyle = "#8e98a8"; ellipse(ctx, bx, by, .1 * u * up, .06 * u * up); ctx.fill();
+    ctx.strokeStyle = "#dfe8f3"; ctx.lineWidth = Math.max(2, u * .06 * up); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + Math.cos(aim) * .28 * u * up, by + Math.sin(aim) * .2 * u * up); ctx.stroke();
+    if (e.stalkTurret) { ctx.fillStyle = `rgba(150,235,255,${.5 + .5 * Math.sin(now / 60)})`; ellipse(ctx, bx + Math.cos(aim) * .28 * u * up, by + Math.sin(aim) * .2 * u * up, .05 * u, .05 * u); ctx.fill(); }
+  }
+  if ((e.stalkCharged || 0) > 0) { const r = STALKER.energized.aura * s, k = .5 + .5 * Math.sin(now / 110); ctx.fillStyle = `rgba(120,220,255,${.12 + .08 * k})`; ellipse(ctx, x, y - .35 * u, r, r * .85); ctx.fill(); ctx.strokeStyle = `rgba(170,240,255,${.55 + .35 * k})`; ctx.lineWidth = Math.max(2, s * .05); ctx.stroke(); }
+  if ((e.stalkShield || 0) > 0) { const aim = e.stalkShieldAim ?? 0, r = .62 * u; ctx.strokeStyle = `rgba(226,234,244,${.6 + .3 * Math.sin(now / 90)})`; ctx.lineWidth = Math.max(4, u * .14); ctx.beginPath(); ctx.ellipse(x, y - .4 * u, r, r * .8, 0, aim - 1, aim + 1); ctx.stroke(); ctx.strokeStyle = "rgba(255,255,255,.8)"; ctx.lineWidth = Math.max(1, u * .03); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  for (const q of e.stalkShots || []) { const qx = (q.x + .5) * s, qy = (q.y + .5) * s; // its shots
+    if (q.kind === "xblade") { const r = q.radius * s, sp = q.spin || 0; ctx.strokeStyle = "#eef4fb"; ctx.lineWidth = Math.max(3, s * .1); ctx.lineCap = "round"; ctx.beginPath(); for (const k of [0, 1]) { const b = sp + k * Math.PI / 2 + Math.PI / 4; ctx.moveTo(qx - Math.cos(b) * r, qy - Math.sin(b) * r); ctx.lineTo(qx + Math.cos(b) * r, qy + Math.sin(b) * r); } ctx.stroke(); ctx.strokeStyle = "rgba(150,235,255,.6)"; ctx.lineWidth = Math.max(1, s * .03); ctx.stroke(); }
+    else { const r = q.radius * s; ctx.fillStyle = q.kind === "sphere" ? "rgba(120,220,255,.45)" : "rgba(190,240,255,.85)"; ellipse(ctx, qx, qy, r, r); ctx.fill(); ctx.fillStyle = "#ffffff"; ellipse(ctx, qx, qy, r * .45, r * .45); ctx.fill(); } }
   if (e.hitFlash > 0) { ctx.globalAlpha = .5; ctx.fillStyle = "#ffffff"; ellipse(ctx, x, y - .4 * u, .45 * u, .35 * u); ctx.fill(); }
   ctx.restore();
   if (e.stalker && !e.stalkerKin) { ctx.save(); ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = SILVER; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = y - 1.15 * u; ctx.strokeText("The Stalker", x, ty); ctx.fillText("The Stalker", x, ty); ctx.restore(); }
@@ -77,6 +93,9 @@ export function drawStalkerMarks(ctx, e, s, now) {
   ctx.save(); ctx.fillStyle = MARK_FILL; ctx.strokeStyle = MARK_EDGE; ctx.lineWidth = Math.max(2, s * .06); ctx.globalAlpha = pulse;
   if (a.kind === "pounceWarn" && a.to) { ctx.lineWidth = Math.max(4, s * .5); ctx.strokeStyle = MARK_FILL.replace(".18", ".3"); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo((a.to.x + .5) * s, (a.to.y + .82) * s); ctx.stroke(); }
   else if (a.kind === "leapWarn" && a.to) { ellipse(ctx, (a.to.x + .5) * s, (a.to.y + .82) * s, F.ape.leap.radius * s, F.ape.leap.radius * s * .55); ctx.fill(); ctx.stroke(); }
+  const T = e.stalkTurret, cone = T?.move === "cone" ? T : e.stalkConeFlash ? { aim: e.stalkConeFlash.aim, fire: true } : null;
+  if (cone) { const R = STALKER.turret.cone, ox = (e.x + .5) * s, oy = (e.y + .5) * s; ctx.save(); ctx.fillStyle = cone.fire ? "rgba(190,240,255,.45)" : MARK_FILL; ctx.strokeStyle = cone.fire ? "#e8fbff" : MARK_EDGE; ctx.beginPath(); ctx.moveTo(ox, oy); ctx.arc(ox, oy, R.range * s, cone.aim - R.half, cone.aim + R.half); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+  if (a.kind === "hop" && a.to) { ellipse(ctx, (a.to.x + .5) * s, (a.to.y + .82) * s, .7 * s, .38 * s); ctx.fill(); }
   else if (a.kind === "swipeWarn" || a.kind === "fistWarn") { const r = (e.stalkerKin || e.stalkerDecoy ? STALKER.kin.reach + .3 : a.kind === "fistWarn" ? F.ape.fist.reach : F.cat.swipe.reach) * s; ellipse(ctx, cx, cy, r, r * .55); ctx.fill(); ctx.stroke(); }
   ctx.restore();
 }
