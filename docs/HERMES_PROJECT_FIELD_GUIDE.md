@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release NNN: ruined arcologies — 2026-11-01
+## Release 685: ruined arcologies — 2026-11-01
 
 Tim (2026-11-01): "large apartment buildings that are kind of like dilapidated or destroyed... formerly cyberpunk utopias...
 you can go inside them... floors... jump ups... or stairs... stagger the floors above... so that there's good visibility
@@ -2714,6 +2714,33 @@ Atlas colours. game.ts places it for sections first seen from now on (`atlas.arc
 **BOUNDARY:** New ground only (`atlas.arcVersion`); sections first seen in 683 keep their keeps and get no arcology. Movement is
 the landscape's `canStep`. Bounded as the keeps: one building a section, built once, ≤300 spots, ≤6 undone layouts.
 Tests: `tests/arcologies.test.ts`.
+## Release 684: the Stalker refined; the mist — 2026-11-01
+
+Tim (2026-11-01): "several visual passes... maybe like 6... not necessarily a leopard... just a white cat-like feline type creature
+with 6 legs"; the crossblade "should look like two nice blades... come out and swing, and do a cross... in front of him... the
+blade should be larger than the stalker's body... then they fire off a larger X that moves in the direction of the player... where
+the player was when it was fired... in a straight line"; "a move where he turns into mist... surrounds the player... it gives you
+rot... ten percent off your maximum health... until you die".
+
+**CODE:**
+- `src/stalker-render.ts` `drawCat` redrawn over six passes: a white six-legged feline (no rosettes) with a dark outline so it
+  reads on snow, muscled near shoulder and haunch, six jointed legs (far side set back and shaded), a flowing neck into a round
+  skull with short muzzle, ruff, jaw, ears, whiskers and slit-pupilled glowing eyes, an S-curved tail, the silver spine seam.
+  Poses from the act: `crouch` (pounceWarn: squashed, tail lashing), `leap` (pounce/hop: stretched, legs flung), `swipe`
+  (swipeWarn: a raised paw).
+- The crossed blades: `STALKER.turret.xblade` is now `rise`/`swing`/`hold` times, `reach` 1.7, `length` 2.3 (each blade, past
+  the body's 1.4), `cross` 1.25 (the blow's radius where they cross) and the flying X (`radius` 1.5, `speed` 6.5, `shot`).
+  `tickTurret` starts `e.stalkBlades`; `tickBlades` aims during the rise, strikes at the crossing, then shoots the X from there
+  along a fixed line (no homing). `drawBlades` / `drawFlyingX` / `drawBlade` draw them; the crossing is marked first.
+- The mist (`STALKER.mist`): `nextForm` turns to "mist" every `every`th cycle; acts `mistGather` → `mistRing` (wheels round the
+  Wayfarer at `radius`) → `mistPass` × `passes` (straight through them; a touch within `touch` calls `w.rot(e, .1)`), then it
+  lands and re-forms as the cat. Untargetable throughout; no turret, energy or shield while mist. `drawMist` draws the wisps.
+- `src/game.ts` `stalkerWorld.rot`: unless the Wayfarer is invulnerable (a dodge), adds a tenth of `maxHp` to `save.rot` (the
+  bog's rot: lowers the health ceiling until a rest or a fall), 700 ms of invulnerability, clamps health to `healthCeiling`;
+  rot reaching `maxHp` sets health to 0. `src/water-traversal.ts` `rotTick` never lowers rot that is above the bog's own cap.
+
+**BOUNDARY:** Rot uses the existing `save.rot` (schema 14, already normalised); no new save field, no generator change. Bounded
+as before (12 shots, one back move at a time, no pathfinding). Tests: `tests/stalker-arsenal.test.ts`.
 
 ## Release 683: Great Keeps — 2026-11-01
 
