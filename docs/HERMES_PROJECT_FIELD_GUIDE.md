@@ -2694,6 +2694,19 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 639: out of the robot at sea — 2026-11-01
+
+Tim (2026-11-01): "if I'm in the robot and I go into water... I can't exit the robot... I hit the robot button and it doesn't take
+me out... can't enter buildings when I'm in this form... the only way... is to get onto land, then deactivate the robot".
+
+**CODE:**
+- `src/game.ts` `toggleSeaPower`: on a robot voyage the robot button goes robot → power armor (with cinder iron) → folded away
+  (`mech.active` false, `boat.mechSub` false, `mechSubFrom` dropped: the skiff is now the one you sit in, sailing with you).
+  `toggleMech`: the wading robot (no skiff) refuses to fold away where the Wayfarer cannot swim. The put-to-sea message explains
+  the button. Checked: the robot, on land or wading, walks into a building's door as before; only the boat form cannot.
+
+**BOUNDARY:** No save change (existing fields). The boat form still comes ashore by sailing onto land.
+
 ## Release 637: the great trees as towers — 2026-11-01
 
 Tim (2026-11-01): "The tree is just a little too busy. All the blocks... they just look like platforms around the tree, when they

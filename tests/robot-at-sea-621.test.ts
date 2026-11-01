@@ -38,12 +38,20 @@ test('a skiff moored in the same section stays in sight at its mooring, at sea a
   v.ashore(1); assert.deepEqual(at(), [[5, 5]], 'ashore, still the one skiff, where it was');
 });
 
-test('at sea the robot button switches the power armor on and off; it never stows the robot at sea; Dodge still dives', () => {
+test('at sea the robot button goes round: power armor (with cinder iron), then out into your skiff (release 639); Dodge still dives', () => {
   const { s, g } = robotAshore(); voyage(s, g); s.materials.cinderIron = 10;
   assert.equal(g.useConsumable('submersible', 0), true, g.message); assert.equal(s.mech.empowered, true); assert.match(g.message, /power armor lifts/);
   assert.ok(aboard(s) && submersible(s), 'still a submersible'); assert.equal(s.consumables.submersible, 0, 'no frame was fitted');
-  assert.equal(g.useConsumable('submersible', 0), true); assert.ok(!s.mech.empowered && s.mech.active && aboard(s), 'back to the plain submersible, still at sea');
-  s.materials.cinderIron = 0; assert.equal(g.useConsumable('submersible', 0), false, 'no iron, no armor'); assert.match(g.message, /cinder iron/);
+  assert.equal(g.useConsumable('submersible', 0), true); assert.ok(!s.mech.empowered && !s.mech.active, 'the robot folded away'); assert.ok(aboard(s) && !s.boat.mechSub, 'sitting in the skiff'); assert.equal(s.boat.mechSubFrom, undefined); assert.match(g.message, /sitting in your skiff/);
+  assert.ok(!g.map.objects.some((o) => o.id === 'skiff-moored'), 'the skiff is under you, not at its old mooring');
+  const again = robotAshore(); voyage(again.s, again.g); again.s.materials.cinderIron = 0;
+  assert.equal(again.g.useConsumable('submersible', 0), true, 'no iron: straight out'); assert.ok(!again.s.mech.active && aboard(again.s));
+});
+
+test('wading in the robot without a skiff, it will not fold away and drop you in water you cannot swim', () => {
+  const { s, g } = robotAshore(); s.boat = { owned: false }; ensureBoatState(s); let t = 1000;
+  for (let i = 0; i < 40; i++) { t += 50; g.update(.05, move(1, 0), t); }
+  assert.ok(g.wading()); s.materials.cinderIron = 0; assert.equal(g.useConsumable('submersible', 0), false); assert.ok(s.mech.active); assert.match(g.message, /wade the robot ashore/);
 });
 
 test('saves: mechSubFrom is kept only on a robot voyage; a voyage begun before 621 moors where it lands, as before', () => {
