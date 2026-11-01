@@ -2694,6 +2694,26 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 683: Great Keeps — 2026-11-01
+
+Tim (2026-11-01): "buildings to explore like castles and keeps... reuse the platforming structure from the great trees...
+larger buildings... castles that you can get up on top of that have bridges that go over courtyards... jump ups to different
+levels or stairs... you should be able to see... the ways up to the next floor". (Ruined arcologies, with floors you drop
+through, are the next step.)
+
+**CODE:** `src/keeps.ts` (new; in the build and both sw.js lists): `KEEPS` (`chance` .06 past `minRing` 6, `sizes` tried
+22×20 down to 14×13, `keep` 5, `levels` wall 2 / tower 4 / bridge 4 / keep 4–5 / crown 6, guard `spawns`, `undoTries` 6),
+`keepHere`, `buildKeep` (a hashed spot over natural ground, never water, lava, a building, a structure, a canopy or a placed
+object; the exit lanes, their stretches to the middle and the plaza's heart stay level ground: walls they cross become gates,
+wall-walk gaps get a stair down each side; `exitsOpen` walks the section from its middle before and after, and a keep that
+cuts a way out is undone), `planKeep` (each cell's part), `layKeep` (castle tiles by height, the Keep Rest — a `crownRest`
+with `keepRest` — and the Keep Cache at the crown, the Great Keep marker by the gate, guards of the section's own kinds).
+game.ts places it in `loadArea` for sections first seen from now on (`atlas.keepVersion`) and `touchCrownRest` serves a
+keep's crown as well as a great tree's.
+
+**BOUNDARY:** Only new ground (`atlas.keepVersion`); every section seen before keeps its tiles. Movement is the landscape's own
+`canStep` (no new rules); creatures cannot change level. No save fields beyond the atlas pin and the checkpoint record.
+Bounded: one keep a section, built once at load, at most 300 spots and 6 undone layouts. Tests: `tests/great-keeps.test.ts`.
 ## Release 682: Divine Viscera — 2026-11-01
 
 Tim (2026-11-01): "we get divine viscera from completing the divine challenge... we can pay divine viscera to make the divine
