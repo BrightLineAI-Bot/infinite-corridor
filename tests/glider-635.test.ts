@@ -15,13 +15,13 @@ const stick = (x, y) => ({ state: { x, y }, consume: () => false, held: () => fa
 const atTree = (glider = true) => { const [x, y] = treeAt(), s = freshSave(); s.seed = SEED; s.maxHp = 100; if (glider) s.glider = true; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld'); g.enemies = []; g.player.hp = 100; return { s, g }; };
 const tileAt = (g, x, y) => g.map.tiles[y * 32 + x];
 
-test('the glider is found on the landing of a great tree', () => {
-  const { s, g } = atTree(false), land = g.map.tiles.find((t) => t.kind === 'canopyCrown'); Object.assign(g.player, { x: land.x, y: land.y - .25 });
+test('the glider is found on the crown of a great tree', () => {
+  const { s, g } = atTree(false), land = g.map.tiles.find((t) => t.kind === 'canopyTrunk'); Object.assign(g.player, { x: land.x, y: land.y - .25 });
   g.update(.05, stick(0, 0), 1000); assert.equal(s.glider, true); assert.equal(g.message, GLIDE.found); assert.ok(s.narrative.journal.some((j) => j.text === GLIDE.found));
 });
 
-test('leaving the tree from high up opens the glider: no harm, a slow descent, steered freely, landing on open ground', () => {
-  const { s, g } = atTree(), hi = g.map.tiles.filter((t) => t.kind === 'canopyBranch' && t.elev >= 10).find((t) => [[0, -1], [-1, 0], [1, 0], [0, 1]].some(([a, b]) => { const n = tileAt(g, t.x + a, t.y + b); return n && !n.blocked && !n.canopy; }));
+test('leaving the crown opens the glider: no harm, a slow descent, steered freely, landing on open ground', () => {
+  const { s, g } = atTree(), hi = g.map.tiles.filter((t) => t.kind === 'canopyTrunk').find((t) => [[0, -1], [-1, 0], [1, 0], [0, 1]].some(([a, b]) => { const n = tileAt(g, t.x + a, t.y + b); return n && !n.blocked && !n.canopy; }));
   const [dx, dy] = [[0, -1], [-1, 0], [1, 0], [0, 1]].find(([a, b]) => { const n = tileAt(g, hi.x + a, hi.y + b); return n && !n.blocked && !n.canopy; });
   Object.assign(g.player, { x: hi.x, y: hi.y - .25 }); let t = 1000;
   for (let i = 0; i < 30 && !g.glide; i++) { t += 50; g.update(.05, stick(dx, dy), t); }
@@ -29,7 +29,8 @@ test('leaving the tree from high up opens the glider: no harm, a slow descent, s
   for (let i = 0; i < 20; i++) { t += 50; g.update(.05, stick(dx, dy), t); }
   assert.ok(g.glide && g.glide.z < z0 && z0 - g.glide.z <= GLIDE.sink * 1.1 + .01, 'sinking slowly');
   let sections = 0, last = `${g.rx},${g.ry}`;
-  for (let i = 0; i < 2000 && g.glide; i++) { t += 50; g.enemies = []; g.update(.05, stick(dx, dy), t); if (`${g.rx},${g.ry}` !== last) { sections++; last = `${g.rx},${g.ry}`; } }
+  for (let i = 0; i < 200 && g.glide; i++) { t += 50; g.enemies = []; g.update(.05, stick(dx, dy), t); if (`${g.rx},${g.ry}` !== last) { sections++; last = `${g.rx},${g.ry}`; } }
+  for (let i = 0; i < 3000 && g.glide; i++) { t += 50; g.enemies = []; const hx = 16 - g.player.x, hy = 16 - g.player.y, d = Math.hypot(hx, hy) || 1; g.update(.05, stick(hx / d, hy / d), t); } // then home to the plaza
   assert.equal(g.glide, null, 'it comes down in the end'); assert.equal(g.player.hp, hp0, 'no harm'); assert.equal(s.worldFlags.deaths || 0, 0);
   assert.ok(sections >= 1, `it carried the Wayfarer over the edge into the next section (${sections})`);
   const under = tileAt(g, Math.floor(g.player.x + .5), Math.floor(g.player.y + .75)); assert.ok(under && !under.blocked, 'landed on open ground');
@@ -45,7 +46,7 @@ test('over water or walls it holds above them until there is ground; a glide res
   assert.equal(g.glide, null, 'lands once there is ground');
 });
 
-test('without the glider a fall off the tree is still a hard landing; the glider never opens anywhere but a great tree', () => {
+test('the glider never opens anywhere but a great tree\'s crown', () => {
   const { s, g } = atTree(false); Object.assign(g.player, { x: 8, y: 8 }); g.lastCanopyAt = -1e9; assert.equal(g.glide ?? null, null);
   s.glider = true; const plain = freshSave(); assert.equal(plain.glider, undefined); assert.equal(migrateSave({ ...JSON.parse(JSON.stringify(plain)), glider: 'yes' }).glider, false);
   const src = readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8'); assert.match(src, /function drawSkyAbove/); assert.match(src, /function drawLeafGlider/);

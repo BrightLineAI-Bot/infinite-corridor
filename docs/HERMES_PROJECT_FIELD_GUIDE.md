@@ -2694,6 +2694,27 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 637: the great trees as towers — 2026-11-01
+
+Tim (2026-11-01): "The tree is just a little too busy. All the blocks... they just look like platforms around the tree, when they
+could just be branches that are poking off... extending from the tree that you can hop onto, and then hop up to get to higher
+heights... something like the divine towers in Elden Ring... mostly traversal... constantly being scared of dying... super tall...
+the real goal is to get to the top". Version 12 was still unpublished, so the tree is rebuilt in place again.
+
+**CODE:**
+- `src/landscape.ts` `CANOPY`/`buildCanopyTree` (rewritten): a 3 by 3 `canopyTrunk` whose top is the crown (walkable, sky
+  platform, the door on it). Each side of the trunk carries two branches straight out from its first and last column (`reach`
+  3 to 7 tiles as the ground allows), slope tiles rising one level a tile; the climb goes out along one branch, hops across the gap
+  to its twin's tip, back up the twin, over a corner knot to the next side, and after the fourth side hops onto the crown (about 30
+  to 42 levels). The first tile is flat level 1 (creatures cannot step on). The tree is laid, then undone and tried elsewhere if
+  its boughs cut the foot off from the plaza. `CANOPY_LIFT` (2) and `tileLiftScale`: great-tree tiles are drawn twice as tall per
+  level (`liftAt`, the ground cache, tile drawing, the camera, the glide), so the tree towers; the climb's rules are unchanged.
+- `src/game.ts`: the leaf glider is found on, and opens only when leaving, the crown (`lastCrownAt`); a fall off the tree is an
+  ordinary fall (the 633 cap is gone).
+- `src/landscape-render.ts`: no level marks or traversal markers on the tree; branches painted as boughs (grain, a leaf).
+
+**BOUNDARY:** Versions 1 to 11 unchanged. Monsters on the tree (Tim: "1 or 2 monsters") are not added yet.
+
 ## Release 635: the sky above the trees, and the leaf glider — 2026-11-01
 
 Tim (2026-11-01): "once he gets to a certain height... show blue sky and cloud... a skybox that he ascends into... you should have a

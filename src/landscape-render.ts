@@ -1,7 +1,7 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS } from "./landscape.ts";
+import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.ts";
 
 const TAU = Math.PI * 2;
 const cache = new Map();
@@ -13,7 +13,7 @@ let staticPass = false;
 export function setLandscapeStaticPass(on) { staticPass = !!on; }
 const ANIMATED_KINDS = new Set(["lava", "seaCurrent", "deepOcean", "lakeWater", "toxicWater", "toxicMire", "swampWater", "ocean", "shallows", "glowcap", "fungusFloor", "abyss", "alienMoss", "alienPool", "crystalSpire", "alienPlatform", "geodeCluster", "templePool", "starVoid"]);
 export function landscapeTileAnimated(t) { return !!t?.landscape && !!PAINT[t.kind] && ANIMATED_KINDS.has(t.kind); }
-export function landscapeTileLift(t, s) { return t?.landscape ? Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * s : 0; }
+export function landscapeTileLift(t, s) { return t?.landscape ? Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * tileLiftScale(t) * s : 0; }
 export function animateLandscapeTile(ctx, t, x, y, s) { if (landscapeTileAnimated(t) && t.kind !== "skyBridge") animate(ctx, t, x * s, y * s - landscapeTileLift(t, s), s); }
 export function landscapeCacheSize() { return cache.size; }
 // Release 185 (Tim's probe, 2026-10-18): the overworld drew ~16 ms of ground per frame and the open sea ~20 ms,
@@ -258,7 +258,7 @@ function paletteBlock(c, s, r, P) {
   else if (shape === "cap") { c.fillStyle = b; c.fillRect(x - s * .06, s * .45, s * .12, s * .45); c.fillStyle = a; c.beginPath(); c.ellipse(x, s * .42, s * .34, s * .2, 0, Math.PI, TAU); c.fill(); c.fillRect(x - s * .34, s * .4, s * .68, s * .05); c.fillStyle = b; for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(x + (r() - .5) * s * .45, s * (.3 + r() * .08), s * .03, 0, TAU); c.fill(); } }
 }
 // Release 631: the giant jungle tree's branches (bark, a few leaves) and its crown (a mat of leaves).
-PAINT.canopyBranch = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#6b4a2c"], [1, "#4f3520"]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#3a2616"; c.lineWidth = 1; for (let y = 3 + r() * 3; y < s; y += 5) { c.beginPath(); c.moveTo(0, y); c.quadraticCurveTo(s * .5, y + (r() - .5) * 3, s, y); c.stroke(); } for (let i = 0; i < 4; i++) { c.fillStyle = r() < .5 ? "#3f8a35cc" : "#2c6326cc"; c.beginPath(); c.ellipse(r() * s, r() * s, 2 + r() * 2, 1.5 + r(), r() * 3, 0, TAU); c.fill(); } };
+PAINT.canopyBranch = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#7a5636"], [1, "#4f3520"]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#3a261655"; c.lineWidth = 1; for (let k = 0; k < 5; k++) { const y = s * (.15 + k * .17) + (r() - .5) * 2; c.beginPath(); c.moveTo(0, y); c.bezierCurveTo(s * .3, y + (r() - .5) * 3, s * .7, y + (r() - .5) * 3, s, y); c.stroke(); } c.fillStyle = "#00000022"; c.fillRect(0, s * .82, s, s * .18); if (r() < .5) { c.fillStyle = "#3f8a35cc"; c.beginPath(); c.ellipse(s * (.2 + r() * .6), s * (.2 + r() * .5), s * .12, s * .06, r() * 3, 0, TAU); c.fill(); } }; // release 637: a bough's grain
 PAINT.canopyLeaf = (c, s, r) => { c.fillStyle = "#2f6a28"; c.fillRect(0, 0, s, s); for (let i = 0; i < 10; i++) { c.fillStyle = ["#4f9a3f", "#2c6326", "#6fb85a"][Math.floor(r() * 3)] + "bb"; c.beginPath(); c.ellipse(r() * s, r() * s, 2 + r() * 2, 1 + r(), r() * 3, 0, TAU); c.fill(); } c.fillStyle = "#00000022"; c.fillRect(0, 0, s, s); };
 PAINT.canopyTrunk = (c, s, r) => { PAINT.canopyCrown(c, s, r); c.fillStyle = "#00000018"; c.fillRect(0, 0, s, s); };
 PAINT.canopyCrown = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3c7a30"], [1, "#2a5a22"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 16; i++) { c.fillStyle = ["#4f9a3f", "#2c6326", "#6fb85a", "#1f4a1a"][Math.floor(r() * 4)] + "dd"; c.beginPath(); c.ellipse(r() * s, r() * s, 2 + r() * 3, 1.5 + r() * 2, r() * 3, 0, TAU); c.fill(); } };
@@ -311,7 +311,7 @@ const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
   if (!t?.landscape || !PAINT[t.kind]) return false;
-  const level = (t.elev || 0) - (t.slope ? .5 : 0), lift = Math.max(0, level) * LIFT_PER_LEVEL * s, px = x * s, py = y * s - lift, variant = (t.detail || 0) % (t.kind === "sarcophagus" ? 10 : 4); // release 287: ten coffin looks (clean, weathered, cracked, empty)
+  const level = (t.elev || 0) - (t.slope ? .5 : 0), lift = Math.max(0, level) * LIFT_PER_LEVEL * tileLiftScale(t) * s, px = x * s, py = y * s - lift, variant = (t.detail || 0) % (t.kind === "sarcophagus" ? 10 : 4); // release 287: ten coffin looks (clean, weathered, cracked, empty)
   if (t.kind === "skyBridge") {
     ctx.fillStyle = grad(ctx, 0, y * s, 0, y * s + s, [[0, "#0d0f12"], [1, "#25282c"]]); ctx.fillRect(px, y * s, s + 1, s + 1); // the ravine below
     ctx.fillStyle = "#00000055"; ctx.fillRect(px + s * .1, y * s + s * .55, s * .8, s * .2); // the bridge's shadow far below
@@ -335,7 +335,7 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
   if (tex) ctx.drawImage(tex, px, py, s + .5, s + .5);
   else { ctx.save(); ctx.translate(px, py); PAINT[t.kind](ctx, s, rand(variant + 1)); ctx.restore(); } // no offscreen canvas (tests, old browsers)
   if (!staticPass) animate(ctx, t, px, py, s);
-  drawLevelMarks(ctx, t, x, y, px, py, s, tiles, w);
+  if (!t.canopy) drawLevelMarks(ctx, t, x, y, px, py, s, tiles, w); // release 637: the great tree's wood is not notched with level marks
   if (lift > 0) { // rim light on edges that drop away, shade on lower sides
     const at = (dx, dy) => tiles?.[(y + dy) * w + x + dx], lower = (n) => !n || (n.elev || 0) < (t.elev || 0);
     if (lower(at(0, -1))) { ctx.fillStyle = "#ffffff55"; ctx.fillRect(px, py, s + 1, Math.max(1.5, s * .05)); }
@@ -375,7 +375,7 @@ export function landscapeAtlasColor(biome) { return ({ mountains: "#d9e3ea", des
 const BRINK = { abyss: "#e9dfc6", canyon: "#e9dfc6", lava: "#ffb35c", river: "#d6f1ff", dungeonWater: "#d6f1ff", ocean: "#f2fbff", deepOcean: "#f2fbff", lakeWater: "#e6f6ff", swampWater: "#c9d39a", toxicWater: "#d9ff9a" };
 export function drawHazardBrinks(ctx, map, w, l, t, r, b, s, visible = () => true) {
   const T = map?.tiles; if (!T) return;
-  const lift = (q) => (map.landscape ? Math.max(0, (q.elev || 0) - (q.slope ? .5 : 0)) * LIFT_PER_LEVEL * s : 0);
+  const lift = (q) => (map.landscape ? Math.max(0, (q.elev || 0) - (q.slope ? .5 : 0)) * LIFT_PER_LEVEL * tileLiftScale(q) * s : 0);
   for (let y = Math.max(0, t); y < b; y++) for (let x = Math.max(0, l); x < r; x++) {
     const a = T[y * w + x];
     if (!a || a.blocked || BRINK[a.kind] || !visible(x, y)) continue;
@@ -405,8 +405,8 @@ export function drawTraversalCues(ctx, map, w, player, s, now, hint, visible = (
   const px = Math.floor(player.x + .5), py = Math.floor(player.y + .75), at = (x, y) => map.tiles[y * w + x], h = Math.floor(map.tiles.length / w), pulse = .55 + .35 * Math.sin(now / 160);
   for (let y = Math.max(0, py - 5); y <= Math.min(h - 1, py + 5); y++) for (let x = Math.max(0, px - 6); x <= Math.min(w - 1, px + 6); x++) {
     const t = at(x, y);
-    if (!t || t.blocked || !visible(x, y)) continue;
-    const lift = Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * s, tx = x * s, ty = y * s - lift;
+    if (!t || t.blocked || t.canopy || !visible(x, y)) continue; // release 637: the great tree wears no markers: its edges are plain to see
+    const lift = Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * tileLiftScale(t) * s, tx = x * s, ty = y * s - lift;
     for (const [dx, dy, side] of [[0, 1, "s"], [0, -1, "n"], [1, 0, "e"], [-1, 0, "w"]]) {
       const n = at(x + dx, y + dy), drop = (t.elev || 0) - (n && !n.blocked ? (n.elev || 0) : (t.elev || 0));
       if (drop < 2 || safeVoidScarTransition(t,n) || Math.hypot(x - px, y - py) > 4.5) continue;
@@ -433,7 +433,7 @@ export function drawTraversalCues(ctx, map, w, player, s, now, hint, visible = (
     }
   }
   if (hint && now < hint.until && !hintSafe) {
-    const t = at(hint.x, hint.y), lift = t ? Math.max(0, (t.elev || 0)) * LIFT_PER_LEVEL * s : 0, cx = hint.x * s + s / 2, cy = hint.y * s - lift + s / 2;
+    const t = at(hint.x, hint.y), lift = t ? Math.max(0, (t.elev || 0)) * LIFT_PER_LEVEL * tileLiftScale(t) * s : 0, cx = hint.x * s + s / 2, cy = hint.y * s - lift + s / 2;
     if (hint.kind === "brink") return edgePrompt(ctx, hint, s, lift, pulse);
     ctx.fillStyle = hint.kind === "climb" ? `rgba(120,230,255,${pulse})` : `rgba(255,120,80,${pulse})`;
     ctx.beginPath(); ctx.moveTo(cx, cy - s * .38); ctx.lineTo(cx + s * .22, cy - s * .08); ctx.lineTo(cx + s * .08, cy - s * .08); ctx.lineTo(cx + s * .08, cy + s * .2); ctx.lineTo(cx - s * .08, cy + s * .2); ctx.lineTo(cx - s * .08, cy - s * .08); ctx.lineTo(cx - s * .22, cy - s * .08); ctx.closePath(); ctx.fill();
