@@ -15,24 +15,24 @@ function retreat(seed,id,physicalBoundary=false){
  let e=g.enemies.find(e=>e.worldBeast===id);assert.ok(e,'generated placement accepts hunt');e.aggro=true;
  let now=1000;g.player.invulnerableUntil=1e12;g.update(.05,idle,now+=50);
  const home=structuredClone(s.worldBeasts[id].active.retreat.home),trace=[];
- for(let leg=0;leg<30&&s.worldBeasts[id].active;leg++){ // release 609: a retreat that re-plans (no ground at its first home) may walk further
+ for(let leg=0;leg<30&&s.worldBeasts[id].active&&!s.worldBeasts[id].active.cornered;leg++){ // release 653: home, it turns at bay instead of escaping // release 609: a retreat that re-plans (no ground at its first home) may walk further
   // Keep observer alive and stationary on generated safe ground. This does not alter
   // beast movement, terrain, destination, routing or the hunt lifecycle.
   const safe=g.map.tiles.find(t=>t.x>2&&t.y>2&&t.x<28&&t.y<28&&footprintOpen(g.map,32,t.x,t.y)&&!footprintHazard(g.map,32,t.x,t.y));
   if(safe){g.player.x=safe.x;g.player.y=safe.y;}
   e=g.enemies.find(e=>e.worldBeast===id&&!e.dead);assert.ok(e,`visible in section ${g.rx},${g.ry}`);
-  const at=[g.rx,g.ry];let steps=0;while(steps++<2000&&g.enemies.includes(e)){g.player.invulnerableUntil=1e12;g.player.hp=1e6;g.player.stamina=1e6;g.update(.05,idle,now+=50);}
+  const at=[g.rx,g.ry];let steps=0;while(steps++<2000&&g.enemies.includes(e)&&!e.cornered){g.player.invulnerableUntil=1e12;g.player.hp=1e6;g.player.stamina=1e6;g.update(.05,idle,now+=50);}
   assert.ok(steps<2000,`retires or crosses within 100 seconds: ${JSON.stringify({at,pos:[e.x,e.y],to:e.fleeTo,path:e.fleePath,zone:settlementSanctuary(g.map,g.rx,g.ry,s),player:[g.player.x,g.player.y],active:s.worldBeasts[id].active})}`);
   const q=s.worldBeasts[id].active,H=BEAST_HOMES[WORLD_BEASTS[id].home];
-  trace.push({at,seconds:steps*.05,target:e.fleeTo,cloud:!!e.giantCloud,habitatTiles:g.map.tiles.filter(H.tile).length});
-  if(q){const dx=q.rx-g.rx,dy=q.ry-g.ry;assert.equal(Math.abs(dx)+Math.abs(dy),1,'one adjacent step');if(physicalBoundary){const old=[g.rx,g.ry];g.player.x=dx<0?.1:dx>0?30.8:e.fleeTo.x;g.player.y=dy<0?.1:dy>0?30.8:e.fleeTo.y;const move={...idle,state:{x:dx,y:dy}};for(let n=0;n<20&&g.rx===old[0]&&g.ry===old[1];n++){g.player.stamina=1e6;g.update(.05,move,now+=50);}}else g.transitionSection(dx,dy);assert.deepEqual([g.rx,g.ry],[q.rx,q.ry]);}
+  trace.push({at,seconds:steps*.05,target:e.fleeTo||(e.cornered?{home:true}:null),cloud:!!e.giantCloud,habitatTiles:g.map.tiles.filter(H.tile).length});
+  if(q&&!q.cornered){const dx=q.rx-g.rx,dy=q.ry-g.ry;assert.equal(Math.abs(dx)+Math.abs(dy),1,'one adjacent step');if(physicalBoundary){const old=[g.rx,g.ry];g.player.x=dx<0?.1:dx>0?30.8:e.fleeTo.x;g.player.y=dy<0?.1:dy>0?30.8:e.fleeTo.y;const move={...idle,state:{x:dx,y:dy}};for(let n=0;n<20&&g.rx===old[0]&&g.ry===old[1];n++){g.player.stamina=1e6;g.update(.05,move,now+=50);}}else g.transitionSection(dx,dy);assert.deepEqual([g.rx,g.ry],[q.rx,q.ry]);}
  }
- assert.equal(s.worldBeasts[id].active,null,'retreat reaches terminal escape');assert.equal(s.worldBeasts[id].escaped,1);
+ assert.ok(s.worldBeasts[id].active?.cornered&&!s.worldBeasts[id].active.retreat,'release 653: the retreat ends at bay on its home ground');assert.equal(s.worldBeasts[id].escaped,0);
  console.log('RETREAT',JSON.stringify({seed,id,home,trace}));return {s,g,home,trace};
 }
 for(const [id,crossings] of [['morphingBlob',4],['tremorWorm',3],['mountainTurtle',1],['nanobotKnight',0],['lightningGiant',1],['psychicCrystal',0]]){
  test(`playtest positive retreat: ${id} remains followable for ${crossings} crossings`,()=>{
-  const r=retreat('PLAYTEST-RETREAT',id);assert.equal(r.trace.length,crossings+1);assert.ok(r.trace.at(-1).habitatTiles>0);if(id==='lightningGiant')assert.ok(r.trace.at(-1).cloud);
+  const r=retreat('PLAYTEST-RETREAT',id);assert.equal(r.trace.length,crossings+1);assert.ok(r.trace.at(-1).habitatTiles>0);/* release 653: at home it turns at bay, no longer rising into its cloud */
  });
 }
 test('playtest BUG: nanobotKnight must reach actual glass terrain before escape',()=>{
@@ -40,7 +40,7 @@ test('playtest BUG: nanobotKnight must reach actual glass terrain before escape'
  assert.ok(r.trace.at(-1).habitatTiles>0,`Knight claimed home at ${r.home.rx},${r.home.ry}, then vanished at center without any glass tile`);
 });
 test('playtest BUG: retreating Blob must pass through sanctuary instead of being held at its rim',()=>{
- const r=retreat('PLAYTEST-HOME-10','morphingBlob');assert.equal(r.s.worldBeasts.morphingBlob.active,null);
+ const r=retreat('PLAYTEST-HOME-10','morphingBlob');assert.ok(r.s.worldBeasts.morphingBlob.active?.cornered,'through the sanctuary and home, at bay');
 });
 for(const mode of ['rush','cloud','gauntlet','gate'])test(`playtest Skylands ${mode} lifecycle completes`,()=>{
  const s=freshSave();s.seed='SKY';s.skylands={sigils:5,best:3,runs:0,clears:0};s.worldBeasts.lightningGiant.slain=1;

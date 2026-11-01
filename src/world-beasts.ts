@@ -183,7 +183,7 @@ export function noteSectionVisit(save, key) {
 export const encounterReady = (save) => ensureBeastGap(save).fresh >= Math.ceil(ENCOUNTER.newSections * mealLure(save).gap);
 export const encounterChance = (save) => ENCOUNTER.chanceScale * mealLure(save).chance;
 export function encounterMet(save) { ensureBeastGap(save).fresh = 0; }
-export const RETREAT = { search: 8, fallback: 6, speed: 2.1, inset: 1.5, fade: 1.4, lose: 3, legSeconds: 14, homeLinger: 120 };
+export const RETREAT = { search: 8, fallback: 6, speed: 2.1, inset: 1.5, fade: 1.4, lose: 3, legSeconds: 30, homeLinger: 120, wormLinger: 240 }; // release 653: legSeconds 14 → 30 (a section takes about 13 s to cross); wormLinger: an unfollowed Worm retreat ends
 // Release 605 (Tim, 2026-10-31: "when the world bosses are in retreat [you] should be able to follow them across multiple tiles.
 // Right now, you can only see them in one tile... They should be going to a place where they can retreat"): a retreat is no
 // longer lost the moment the Wayfarer loads another section. Out of sight, the beast keeps walking home, one section every
@@ -298,7 +298,14 @@ export function retreatEnded(save, id) {
 // in its saved source area/leg until actually reaching its door; unloaded areas are not simulated.
 export function worldBeastsLost(save, area, rx, ry, dungeonId = null) {
   ensureWorldBeasts(save, false); const lost = [];
-  for (const id of WORLD_BEAST_IDS) { const a = save.worldBeasts[id].active; if (!a?.retreat || id === "voidWalker" || id === "astralWorm") continue;
+  for (const id of WORLD_BEAST_IDS) { const a = save.worldBeasts[id].active; if (!a?.retreat || id === "voidWalker") continue;
+    if (id === "astralWorm") { // release 653: an unfollowed Worm retreat ends once it has been out of sight `wormLinger` s of play (it used to freeze where it was and block every later Worm hunt)
+      if (a.dungeon || area !== "overworld" || !Number.isInteger(a.rx) || !Number.isInteger(a.ry)) continue; // a Worm retreating through a dungeon keeps its own route
+      const now = Number(save.playSeconds) || 0, here = a.rx === rx && a.ry === ry;
+      // when it was last in sight (on the hunt, never inside its retreat record, which the Worm's own route owns)
+      if (here) { a.retreatSeenAt = now; continue; } if (!Number.isFinite(a.retreatSeenAt)) a.retreatSeenAt = now;
+      if (now - a.retreatSeenAt >= RETREAT.wormLinger) { retreatEnded(save, id); lost.push(id); }
+      continue; }
     if (!a.dungeon && area === "overworld") { advanceRetreat(save, id, rx, ry); if (!save.worldBeasts[id].active) { lost.push(id); continue; } } // release 605
     const b = save.worldBeasts[id].active, far = Math.max(Math.abs(b.rx - rx), Math.abs(b.ry - ry));
     if (b.dungeon ? area !== "dungeon" || dungeonId !== b.dungeon : area !== "overworld" || far > RETREAT.lose) { retreatEnded(save, id); lost.push(id); } }
@@ -315,6 +322,7 @@ export function advanceRetreat(save, id, rx, ry) {
     const side = retreatSide(r, q.rx, q.ry);
     if (!side) { if (now - r.movedAt >= RETREAT.homeLinger && (q.rx !== rx || q.ry !== ry)) { retreatEnded(save, id); return { gone: true, moved }; } break; }
     if (now - r.movedAt < RETREAT.legSeconds) break;
+    if (q.rx === rx && q.ry === ry) break; // release 653: nor out of the section the Wayfarer is just entering: arriving there shows it
     const [dx, dy] = SIDES[side]; if (q.rx + dx === rx && q.ry + dy === ry) break; // it does not step into the Wayfarer's section unseen
     const at = r.movedAt; retreatCrossed(save, id, side); r.movedAt = at + RETREAT.legSeconds; moved++;
   }
@@ -322,12 +330,12 @@ export function advanceRetreat(save, id, rx, ry) {
 }
 // Release 605: the retreats under way (for the Atlas and for tracks): [{ id, rx, ry, home }].
 export function retreatsUnderWay(save) {
-  return WORLD_BEAST_IDS.filter((id) => id !== "voidWalker" && id !== "astralWorm").map((id) => ({ id, q: save.worldBeasts?.[id]?.active })).filter(({ q }) => q?.retreat && !q.dungeon && Number.isInteger(q.rx)).map(({ id, q }) => ({ id, rx: q.rx, ry: q.ry, home: q.retreat.home }));
+  return WORLD_BEAST_IDS.filter((id) => id !== "voidWalker").map((id) => ({ id, q: save.worldBeasts?.[id]?.active })).filter(({ q }) => q?.retreat && !q.dungeon && Number.isInteger(q.rx)).map(({ id, q }) => ({ id, rx: q.rx, ry: q.ry, home: q.retreat.home }));
 }
 // Release 259 pursuit. `canPursue` says whether beast `id` may follow the Wayfarer out of (rx, ry) by (dx, dy) now.
 export function canPursue(save, id, rx, ry, dx, dy) {
   const q = save.worldBeasts?.[id]?.active, tx = rx + dx, ty = ry + dy;
-  if (!q || q.retreat || q.dungeon || q.astralJoined || PURSUIT.exclude.includes(id) || q.rx !== rx || q.ry !== ry) return false;
+  if (!q || q.retreat || q.cornered || q.dungeon || q.astralJoined || PURSUIT.exclude.includes(id) || q.rx !== rx || q.ry !== ry) return false; // 653: a beast at bay at home stays there
   if ((q.chase || 0) >= (PURSUIT.limits[id] ?? PURSUIT.sections)) return false;
   if (WORLD_BEAST_IDS.some((k) => k !== id && save.worldBeasts[k]?.active && !save.worldBeasts[k].active.dungeon && save.worldBeasts[k].active.rx === tx && save.worldBeasts[k].active.ry === ty)) return false; // one beast to a section
   const qb = save.questingBeast?.active; return !(qb && qb.rx === tx && qb.ry === ty);
@@ -423,7 +431,7 @@ export const BEAST_WANDER = { after: 16 };
 function wanderUnmet(save, rx, ry) {
   for (const id of WORLD_BEAST_IDS) {
     const q = save.worldBeasts[id], a = q?.active;
-    if (!a || a.dungeon || a.retreat || a.tries || a.wounds || a.chase || !Number.isInteger(a.rx) || astralReservedCompanion(save, id)) continue;
+    if (!a || a.dungeon || a.retreat || a.cornered || a.tries || a.wounds || a.chase || !Number.isInteger(a.rx) || astralReservedCompanion(save, id)) continue;
     if (a.rx === rx && a.ry === ry) { delete a.away; continue; }
     a.away = (Number(a.away) || 0) + 1;
     if (a.away >= BEAST_WANDER.after) { q.active = null; q.cycle = (q.cycle || 0) + 1; }
