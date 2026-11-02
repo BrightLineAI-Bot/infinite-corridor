@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release NNN: the Rite of Ascendancy, reworked — 2026-11-02
+## Release 701: the Rite of Ascendancy, reworked — 2026-11-02
 
 Tim (2026-11-02): "we can just reuse the asset of the weird tree... glowing... purple... as the [dais]... once you start... the
 [tree] should become on fire... and then it should burn down... at the end of it, there's just Ashes... you go over to the
