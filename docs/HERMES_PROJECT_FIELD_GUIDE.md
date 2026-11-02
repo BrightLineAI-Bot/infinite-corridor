@@ -2694,6 +2694,20 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 698: Worm's Upheaval back to puddles — 2026-11-02
+
+Tim (2026-11-02): "the tremor worm's [Echo]... was working better before... right now it like stacks up... beneath the person
+for like 4 seconds... each Dodge made a discrete like puddle underneath the creature, and then it would just like pop... it
+could go on different enemies... the puddles would pop like sequentially... that was better than having one just large
+burst. So let's go back to that."
+
+**CODE:** echoes.ts `UPHEAVAL` is `{ damage 1.3, delay 600 ms, radius 1.4, range 5 }` (release 655's window, extend, longest,
+grow and maxRadius are gone). On a dodge, `echoEvent` lays one `mortar` patch (`upheaval`, `foe`) under the nearest foe in
+`range` that has no unburst puddle, else the nearest; it bursts `delay` ms later (tickEchoes, as release 237's). renderer.ts
+no longer draws the ×N stack count.
+
+**BOUNDARY:** No save or generator change; echo patches stay runtime. Tests: `tests/upheaval-stack-655.test.ts`.
+
 ## Release 697: closing the pen — 2026-11-02
 
 Tim (2026-11-02): "you should be able to use items... the pens really shouldn't get used up until you try. The roll shouldn't happen
