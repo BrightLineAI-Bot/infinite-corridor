@@ -17,6 +17,7 @@
 //   regionalThreat.
 // Runtime fields on the creatures (`stalkForm`, `stalkAct`, …) are never saved; only `save.stalker` is.
 import { hashSeed } from "./random.ts";
+import { ENCLOSURE, trapChance } from "./building.ts"; // release NNN: the Enclosure trap
 
 export const STALKER = {
   version: 1,
@@ -392,6 +393,25 @@ export function stalkerFog(e, w, dt) {
   e.stalkFogClock = (e.stalkFogClock ?? roll(`${e.id}:fogfirst`, G.again)) - dt;
   if (e.stalkFogClock <= 0) veil(G.againTime);
 }
+// The Enclosure trap (release NNN; building.ts ENCLOSURE). Going into a pen while `need` or more stand, it may be trapped (once
+// per pen, `trapChance` of its health); trapped it struggles, harmless and untouchable, for `trap.time` s, then breaks the pen
+// and comes out. Returns true while it is held.
+export function stalkerPen(e, w, dt) {
+  if (e.stalkTrapped > 0) {
+    e.stalkTrapped = Math.max(0, e.stalkTrapped - dt); e.untargetable = true; e.hidden = false; e.telegraph = 0; e.stalkAct = { kind: "trapped", t: 0, total: 0 };
+    if (e.stalkTrapped <= 0) { e.untargetable = false; w.penBreak?.(e.stalkPenId); e.stalkPenId = null; setAct(e, "prowl", .2); w.penOut?.(e); }
+    return true;
+  }
+  if (!["cat", "ape"].includes(e.stalkForm) || e.stalkMirage || !w.pen) return false;
+  const b = w.pen(e.x + .5, e.y + .75); if (!b) return false;
+  const tried = (e.stalkPenTried ||= {}); if (tried[b.id]) return false; tried[b.id] = true;
+  if ((w.pens?.() || 0) < ENCLOSURE.need) return false;
+  if (chance(`${e.id}:pen:${b.id}`) < trapChance(e.hp / Math.max(1, e.maxHp))) {
+    e.stalkTrapped = ENCLOSURE.trap.time; e.stalkPenId = b.id; b.trapped = e.id; e.x = b.x + .5; e.y = b.y + .3; e.stalkLift = 0; e.stalkFists = null; e.stalkWaves = null; e.stalkBlades = null; e.stalkLimb = null; e.stalkTurret = null;
+    w.penTrap?.(e, b); return true;
+  }
+  w.penSlip?.(e, b); return false;
+}
 // Lying in wait. Returns true while it still hides (the rest of the frame is skipped).
 export function stalkerLurk(e, w, dt) {
   if (!e.stalkLurk) return false;
@@ -537,6 +557,7 @@ export function updateStalker(e, w) {
   if (e.stalkerKin || e.stalkerDecoy) { updateKin(e, w, dt); return; }
   if (e.stalkReveal > 0) e.stalkReveal = Math.max(0, e.stalkReveal - dt);
   if (stalkerLurk(e, w, dt)) return;
+  if (stalkerPen(e, w, dt)) return;
   stalkerFog(e, w, dt);
   if (e.stalkGhosts?.length) { for (const g of e.stalkGhosts) g.t -= dt; e.stalkGhosts = e.stalkGhosts.filter((g) => g.t > 0); }
   if (e.stalkCharges == null) e.stalkCharges = S.afterimage.charges;

@@ -1725,6 +1725,20 @@ export function render(ctx, g, w, h, now) {
         gr.addColorStop(0, `rgba(222,231,236,${.3 * fade})`); gr.addColorStop(1, "rgba(222,231,236,0)"); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, pr * s, 0, 7); ctx.fill(); }
       const px = (p.x + .5) * s, py = (p.y + .6) * s, lv = fade * .9, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - lv) * 3), px, py, s * (3.6 + (1 - lv) * 7));
       gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.9 * lv})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2); } }
+  // Release NNN: the Enclosure, a 2x2 pen of planks on a stone footing banded with cinder iron, walled on three sides; holding the
+  // Stalker, iron bars close its open side.
+  if (g.area === "overworld") for (const pen of g.builds || []) if (pen.kind === "enclosure" && visibleInCamera({ x: pen.x + 1, y: pen.y + 1 }, l, t, r, b, 3)) {
+    const X = pen.x * s, Y = pen.y * s, S2 = 2 * s, wallH = .55 * s, th = .16 * s;
+    ctx.save(); ctx.fillStyle = "rgba(120,112,100,.55)"; ctx.fillRect(X, Y, S2, S2); ctx.strokeStyle = "rgba(70,64,58,.5)"; ctx.lineWidth = 1; for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(X + i * S2 / 4, Y); ctx.lineTo(X + i * S2 / 4, Y + S2); ctx.stroke(); } // flagstones
+    const wall = (x1, y1, x2, y2) => { const horiz = y1 === y2; ctx.fillStyle = "#6d6a66"; if (horiz) ctx.fillRect(x1, y1 - th / 2, x2 - x1, th); else ctx.fillRect(x1 - th / 2, y1, th, y2 - y1); // the stone footing
+      ctx.fillStyle = "#8a6440"; ctx.strokeStyle = "#4a321e"; ctx.lineWidth = 1; if (horiz) { ctx.fillRect(x1, y1 - wallH, x2 - x1, wallH - th / 2); ctx.strokeRect(x1, y1 - wallH, x2 - x1, wallH - th / 2); for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x1 + (x2 - x1) * k / 4, y1 - wallH); ctx.lineTo(x1 + (x2 - x1) * k / 4, y1 - th / 2); ctx.stroke(); } }
+      else { ctx.fillRect(x1 - th, y1 - wallH * .6, th * 2, y2 - y1); ctx.strokeRect(x1 - th, y1 - wallH * .6, th * 2, y2 - y1); }
+      ctx.fillStyle = "#3c4048"; if (horiz) { ctx.fillRect(x1, y1 - wallH * .72, x2 - x1, s * .05); ctx.fillRect(x1, y1 - wallH * .3, x2 - x1, s * .05); } else { ctx.fillRect(x1 - th, y1 + (y2 - y1) * .3, th * 2, s * .05); ctx.fillRect(x1 - th, y1 + (y2 - y1) * .7, th * 2, s * .05); } }; // cinder-iron bands
+    const sides = { north: [X, Y, X + S2, Y], south: [X, Y + S2, X + S2, Y + S2], west: [X, Y, X, Y + S2], east: [X + S2, Y, X + S2, Y + S2] };
+    for (const [side, seg] of Object.entries(sides)) if (side !== pen.open) wall(...seg);
+    if (pen.trapped) { const [x1, y1, x2, y2] = sides[pen.open]; ctx.strokeStyle = "#2f333a"; ctx.lineWidth = Math.max(2, s * .07); for (let k = 0; k <= 6; k++) { const px = x1 + (x2 - x1) * k / 6, py = y1 + (y2 - y1) * k / 6; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - wallH); ctx.stroke(); } } // the bars, shut
+    for (const [cx, cy] of [[X, Y], [X + S2, Y], [X, Y + S2], [X + S2, Y + S2]]) { ctx.fillStyle = "#5b3d22"; ctx.fillRect(cx - th * .7, cy - wallH - 2, th * 1.4, wallH + th / 2); } // corner posts
+    ctx.restore(); }
   // Active combat effects, including Supernova, intentionally paint over fog. They never reveal tiles or actors.
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),g.presentation);
   drawMorphEffects(ctx,g.enemies,s,now); // release 385: the Morphling's cables, jaw, lunge and rising
