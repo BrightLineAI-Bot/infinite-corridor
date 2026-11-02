@@ -393,24 +393,23 @@ export function stalkerFog(e, w, dt) {
   e.stalkFogClock = (e.stalkFogClock ?? roll(`${e.id}:fogfirst`, G.again)) - dt;
   if (e.stalkFogClock <= 0) veil(G.againTime);
 }
-// The Enclosure trap (release 696; building.ts ENCLOSURE). Going into a pen while `need` or more stand, it may be trapped (once
-// per pen, `trapChance` of its health); trapped it struggles, harmless and untouchable, for `trap.time` s, then breaks the pen
-// and comes out. Returns true while it is held.
+// The Enclosure trap (release 696; release NNN: Tim, "the roll shouldn't happen until you... build a second enclosure to complete
+// the pen... you can leave the first pen down until the stalker is in [it]... then you trap him by putting down the second"). Held,
+// it struggles, harmless and untouchable, for `trap.time` s, then breaks the pen and comes out. Returns true while it is held.
 export function stalkerPen(e, w, dt) {
-  if (e.stalkTrapped > 0) {
-    e.stalkTrapped = Math.max(0, e.stalkTrapped - dt); e.untargetable = true; e.hidden = false; e.telegraph = 0; e.stalkAct = { kind: "trapped", t: 0, total: 0 };
-    if (e.stalkTrapped <= 0) { e.untargetable = false; w.penBreak?.(e.stalkPenId); e.stalkPenId = null; setAct(e, "prowl", .2); w.penOut?.(e); }
-    return true;
-  }
-  if (!["cat", "ape"].includes(e.stalkForm) || e.stalkMirage || !w.pen) return false;
-  const b = w.pen(e.x + .5, e.y + .75); if (!b) return false;
-  const tried = (e.stalkPenTried ||= {}); if (tried[b.id]) return false; tried[b.id] = true;
-  if ((w.pens?.() || 0) < ENCLOSURE.need) return false;
-  if (chance(`${e.id}:pen:${b.id}`) < trapChance(e.hp / Math.max(1, e.maxHp))) {
-    e.stalkTrapped = ENCLOSURE.trap.time; e.stalkPenId = b.id; b.trapped = e.id; e.x = b.x + .5; e.y = b.y + .3; e.stalkLift = 0; e.stalkFists = null; e.stalkWaves = null; e.stalkBlades = null; e.stalkLimb = null; e.stalkTurret = null;
-    w.penTrap?.(e, b); return true;
-  }
-  w.penSlip?.(e, b); return false;
+  if (!(e.stalkTrapped > 0)) return false;
+  e.stalkTrapped = Math.max(0, e.stalkTrapped - dt); e.untargetable = true; e.hidden = false; e.telegraph = 0; e.stalkAct = { kind: "trapped", t: 0, total: 0 };
+  if (e.stalkTrapped <= 0) { e.untargetable = false; w.penBreak?.(e.stalkPenId); e.stalkPenId = null; setAct(e, "prowl", .2); w.penOut?.(e); }
+  return true;
+}
+// The pen is closed on it (a second enclosure built across the opening while it is inside): one roll, `trapChance` of its health.
+// `salt` makes each closing its own try. Returns true when it is caught.
+export function stalkerTrapAttempt(e, pen, salt = "") {
+  if (e.dead || e.stalkTrapped > 0 || !["cat", "ape"].includes(e.stalkForm) || e.stalkMirage || e.stalkLurk) return false;
+  if (chance(`${e.id}:pen:${pen.id}:${salt}`) >= trapChance(e.hp / Math.max(1, e.maxHp))) return false;
+  e.stalkTrapped = ENCLOSURE.trap.time; e.stalkPenId = pen.id; pen.trapped = e.id; e.x = pen.x + .5; e.y = pen.y + .3; e.stalkLift = 0; e.stalkFists = null; e.stalkWaves = null; e.stalkBlades = null; e.stalkLimb = null; e.stalkTurret = null; e.untargetable = true;
+  e.stalkAct = { kind: "trapped", t: 0, total: 0 };
+  return true;
 }
 // Lying in wait. Returns true while it still hides (the rest of the frame is skipped).
 export function stalkerLurk(e, w, dt) {

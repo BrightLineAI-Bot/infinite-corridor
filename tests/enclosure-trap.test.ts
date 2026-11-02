@@ -3,8 +3,8 @@
 // trap the stalker... maybe you have to do 2 enclosures... like pokemon... the chance goes up".
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BUILD, ENCLOSURE, trapChance, canAffordBuild, placeBuild, enclosureAt, playerEnclosure, enclosureShields, tickBuilds, enclosuresStanding } from '../src/building.ts';
-import { stalkerPen, STALKER } from '../src/stalker.ts';
+import { BUILD, ENCLOSURE, trapChance, canAffordBuild, placeBuild, enclosureAt, playerEnclosure, enclosureShields, tickBuilds, enclosuresStanding, overlapsOpening } from '../src/building.ts';
+import { stalkerPen, stalkerTrapAttempt, STALKER } from '../src/stalker.ts';
 import { freshSave } from '../src/types.ts';
 import { Game, footprintOpen } from '../src/game.ts';
 
@@ -49,26 +49,47 @@ test('inside: blows from the walled sides do not land for a while, blows through
   assert.equal(enclosureShields(g, { x: 11, y: 15 }), true, 'and comes back after a while outside');
 });
 
-test('the trap: only with two pens standing; likelier the more it is hurt; held a while, then it breaks out', () => {
+test('the trap: walking into a pen tries nothing; the try is closing it with a second pen; likelier the more it is hurt', () => {
   assert.equal(trapChance(1), ENCLOSURE.trap.full); assert.equal(trapChance(.2), ENCLOSURE.trap.low); assert.ok(trapChance(.6) > trapChance(.9));
-  const mk = (pens, id = 'stalker-t') => { const pen = { id: 'pen-a', x: 5, y: 5, open: 'north' }, calls = []; const w = { pen: (x, y) => x >= 5 && x < 7 && y >= 5 && y < 7 ? pen : null, pens: () => pens, penTrap: () => calls.push('trap'), penSlip: () => calls.push('slip'), penBreak: (i) => calls.push('break:' + i), penOut: () => calls.push('out') }; return { pen, calls, w, e: { id, stalker: true, x: 5.2, y: 5.4, hp: 100, maxHp: 1000, stalkForm: 'cat' } }; };
-  const one = mk(1); assert.equal(stalkerPen(one.e, one.w, .05), false); assert.deepEqual(one.calls, [], 'one pen alone is not enough');
-  let trapped = 0; for (let i = 0; i < 60; i++) { const t = mk(2, `stalker-${i}`); if (stalkerPen(t.e, t.w, .05)) trapped++; }
-  assert.ok(trapped > 20 && trapped < 50, `about ${ENCLOSURE.trap.low * 100}% when badly hurt (${trapped}/60)`);
-  let full = 0; for (let i = 0; i < 60; i++) { const t = mk(2, `stalker-${i}`); t.e.hp = 1000; if (stalkerPen(t.e, t.w, .05)) full++; }
-  assert.ok(full < trapped, `less likely at full health (${full}/60)`);
+  // Being in a pen does nothing by itself.
+  const calls = [], w = { penBreak: (i) => calls.push('break:' + i), penOut: () => calls.push('out') }, free = { id: 'stalker-f', stalker: true, x: 5.2, y: 5.4, hp: 100, maxHp: 1000, stalkForm: 'cat' };
+  assert.equal(stalkerPen(free, w, .05), false); assert.ok(!free.stalkTrapped);
+  // The odds of a closing: higher when badly hurt.
+  const pen = (n) => ({ id: `pen-${n}`, x: 5, y: 5, open: 'north' });
+  let low = 0, full = 0; for (let i = 0; i < 60; i++) { if (stalkerTrapAttempt({ id: `stalker-${i}`, hp: 100, maxHp: 1000, stalkForm: 'cat' }, pen(i), 'b')) low++; if (stalkerTrapAttempt({ id: `stalker-${i}`, hp: 1000, maxHp: 1000, stalkForm: 'cat' }, pen(i), 'b')) full++; }
+  assert.ok(low > 20 && low < 50, `about ${ENCLOSURE.trap.low * 100}% when badly hurt (${low}/60)`); assert.ok(full < low, `less likely at full health (${full}/60)`);
+  // Not as pool, mist or mirage; each closing is its own try.
+  assert.equal(stalkerTrapAttempt({ id: 's', hp: 1, maxHp: 1000, stalkForm: 'pool' }, pen(0), 'b'), false);
   // Held: harmless and untouchable, then it breaks the pen and comes out.
-  let held = null; for (let i = 0; i < 60 && !held; i++) { const t = mk(2, `stalker-${i}`); if (stalkerPen(t.e, t.w, .05)) held = t; }
-  assert.ok(held.e.stalkTrapped > 0 && held.pen.trapped === held.e.id); assert.deepEqual(held.calls, ['trap']);
-  for (let i = 0; i < ENCLOSURE.trap.time / .05 - 2; i++) assert.equal(stalkerPen(held.e, held.w, .05), true); assert.equal(held.e.untargetable, true); assert.equal(held.e.stalkAct.kind, 'trapped');
-  for (let i = 0; i < 5; i++) stalkerPen(held.e, held.w, .05); assert.equal(held.e.untargetable, false); assert.ok(held.calls.includes('break:pen-a') && held.calls.includes('out'));
-  // One try per pen.
-  const again = mk(2, 'stalker-x'); again.e.hp = 1000; const first = stalkerPen(again.e, again.w, .05); if (!first) { assert.equal(stalkerPen(again.e, again.w, .05), false); assert.deepEqual(again.calls, ['slip'], 'it does not roll again in the same pen'); }
-  void STALKER;
+  let held = null; for (let i = 0; i < 60 && !held; i++) { const e = { id: `stalker-${i}`, hp: 100, maxHp: 1000, stalkForm: 'cat' }, p0 = pen(i); if (stalkerTrapAttempt(e, p0, 'b')) held = { e, p0 }; }
+  assert.ok(held.e.stalkTrapped > 0 && held.p0.trapped === held.e.id && held.e.untargetable);
+  for (let i = 0; i < ENCLOSURE.trap.time / .05 - 2; i++) assert.equal(stalkerPen(held.e, w, .05), true); assert.equal(held.e.stalkAct.kind, 'trapped');
+  for (let i = 0; i < 5; i++) stalkerPen(held.e, w, .05); assert.equal(held.e.untargetable, false); assert.ok(calls.includes(`break:${held.p0.id}`) && calls.includes('out'));
+});
+
+test('in the game: a second pen built across the first one\'s opening closes it, and that is when the trap is tried', () => {
+  const g = game(); g.player.x = 10; g.player.y = 10; g.player.facing = 'down'; placeBuild(g, 10, 11, 'enclosure'); const first = g.builds[0]; assert.equal(first.open, 'north');
+  const st = g.spawnStalker({ x: 10.5, y: 11.3 }, true, 0); st.x = 10.4; st.y = 11.3; st.hp = st.maxHp * .1; st.stalkForm = 'cat'; st.stalkAct = { kind: 'prowl', t: 1, total: 1 };
+  g.enemies = [st]; assert.equal(enclosureAt(g, st.x + .5, st.y + .75), first, 'the Stalker is in the first pen');
+  // Building elsewhere does nothing to it.
+  g.player.x = 20; g.player.y = 10; placeBuild(g, 20, 11, 'enclosure'); assert.ok(!st.stalkTrapped && !first.trapped);
+  // Built across the opening (standing north of it, facing down): the try.
+  g.player.x = 10; g.player.y = 8; g.player.facing = 'down'; const r = placeBuild(g, 10, 9, 'enclosure'); assert.ok(r.ok, r.message);
+  const closer = g.builds[g.builds.length - 1]; assert.ok(overlapsOpening(first, closer), 'it covers the opening');
+  assert.match(r.message, /closes on the Stalker|slips out/, 'the try happened as the pen closed');
+  if (st.stalkTrapped > 0) { assert.equal(first.trapped, st.id); tickBuilds(g, BUILD.kinds.enclosure.life + 5); assert.ok(g.builds.includes(first), 'held, it stands'); }
+  // A pen lets go if what it held is gone.
+  first.trapped = 'stalker-gone'; tickBuilds(g, .05); assert.equal(first.trapped, null);
+});
+
+test('inside a pen, items and the Build tool still work; spells and blows do not', () => {
+  const g = game(); placeBuild(g, 10, 11, 'enclosure'); g.player.x = 10.4; g.player.y = 11.6; assert.ok(playerEnclosure(g));
+  assert.equal(g.penned(5000), true); assert.deepEqual(g.primaryAttack(5000), []);
+  const msg = g.message; g.message = ''; const r = g.useButtonItem(null, 6000); void r; assert.doesNotMatch(g.message, /No room to fight/, 'an item press is not refused as fighting'); void msg;
 });
 
 test('in the game, a held pen stands until the Stalker breaks out', () => {
   const g = game(); placeBuild(g, 10, 11, 'enclosure'); g.player.x = 14; g.player.y = 10; g.player.facing = 'down'; placeBuild(g, 14, 11, 'enclosure');
-  assert.equal(enclosuresStanding(g), 2); const pen = g.builds[0]; pen.trapped = 'stalker-1';
+  assert.equal(enclosuresStanding(g), 2); const pen = g.builds[0]; pen.trapped = 'stalker-1'; g.enemies = [{ id: 'stalker-1', stalker: true, stalkTrapped: 30, dead: false }];
   tickBuilds(g, BUILD.kinds.enclosure.life + 5); assert.ok(g.builds.includes(pen), 'it does not crumble while it holds the Stalker'); assert.ok(!g.builds.includes(g.builds.find((b) => b !== pen && !b.trapped && false)));
 });

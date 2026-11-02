@@ -56,7 +56,7 @@ import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST } from "./tool-forms.ts";
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks } from "./fractured.ts";
 import { tickAffixes, rollAffixes } from "./affixes.ts";
-import { STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
+import { stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
 import { applyBossKit, tickBossKit } from "./boss-kit.ts";
 import { wonderRumour, wonderAt } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
@@ -625,15 +625,16 @@ export function tileOpen(map, width, x, y) {
     tile = map.tiles[iy * width + ix];
   if (ix < 0 || iy < 0 || ix >= width || iy >= height || !tile || tile.blocked)
     return false;
-  if (["shackWall", "districtWall"].includes(tile.structure) && tile.wallSides?.length) {
+  const sides = tile.encSides?.length ? tile.encSides : ["shackWall", "districtWall"].includes(tile.structure) ? tile.wallSides : null; // release NNN: an enclosure's walls too
+  if (sides?.length) {
     const lx = x - ix,
       ly = y - iy,
       thickness = 0.22;
     if (
-      (tile.wallSides.includes("west") && lx < thickness) ||
-      (tile.wallSides.includes("east") && lx > 1 - thickness) ||
-      (tile.wallSides.includes("north") && ly < thickness) ||
-      (tile.wallSides.includes("south") && ly > 1 - thickness)
+      (sides.includes("west") && lx < thickness) ||
+      (sides.includes("east") && lx > 1 - thickness) ||
+      (sides.includes("north") && ly < thickness) ||
+      (sides.includes("south") && ly > 1 - thickness)
     )
       return false;
   }
@@ -4427,6 +4428,12 @@ export class Game {
     this.enemies.push(mass);
     this.message = "Part of the Blob tears away and flees. The rest of the mass slumps where it stood.";
   }
+  // Release NNN: a second enclosure built across a pen's opening closes it; if the Stalker is inside, that is the try (stalker.ts).
+  penClosed(pen, by) {
+    const e = this.enemies.find((q) => q.stalker && !q.dead && enclosureAt(this, q.x + .5, q.y + .75) === pen); if (!e) return "The pen is closed. Nothing is inside it.";
+    if (stalkerTrapAttempt(e, pen, by.id)) return "The pen closes on the Stalker! It will be a while breaking out.";
+    return "The Stalker slips out before the pen can close on it.";
+  }
   // Release 678: the Stalker (stalker.ts). Ground it may stand on: open, not lethal, never inside a building, shelter or town.
   stalkerBarred(x, y) {
     if (this.area !== "overworld") return true;
@@ -4464,9 +4471,6 @@ export class Game {
       hurt: (e, amount) => game.packHurt(e, amount, {}, now),
       revealed: () => { game.message = "THE STALKER — it was waiting for you."; },
       // Release 696: the Enclosure trap.
-      pen: (x, y) => enclosureAt(game, x, y), pens: () => enclosuresStanding(game),
-      penTrap: () => { game.message = "The enclosure snaps shut on the Stalker! It will be a while breaking out."; },
-      penSlip: () => { game.message = "The Stalker slips out of the enclosure before it can close."; },
       penBreak: (id) => { const b = (game.builds || []).find((q) => q.id === id); if (b) breakBuild(game, b); },
       penOut: () => { game.message = "The Stalker tears the enclosure apart and is out!"; },
       fogged: (e, time) => { // release 692: the sea's fog (Tim: "just use the fog from the sea fog"), banks round the Wayfarer, drawn by renderer.ts's sea-fog code
@@ -4924,7 +4928,7 @@ export class Game {
     }
   }
   // Release 696: nothing is swung, shot or cast from inside an enclosure (Tim: "you can't attack out of it").
-  penned(now = 0) { if (this.area !== "overworld" || !playerEnclosure(this)) return false; if (now > (this.penNoticeAt || 0)) { this.penNoticeAt = now + 2500; this.message = "No room to fight in the enclosure: dodge out of its open side."; } return true; }
+  penned(now = 0) { if (this.area !== "overworld" || !playerEnclosure(this)) return false; if (now > (this.penNoticeAt || 0)) { this.penNoticeAt = now + 2500; this.message = "No room to fight in the enclosure: dodge out of its open side (items still work)."; } return true; }
   primaryAttack(now = 0, _direction = null, echo = null) {
     if (this.penned(now)) return [];
     if (this.fistsEquipped()) { if (!echo) this.fistPress(now, _direction, this.attackAction || null); return []; } // release 493: the Iron Fists punch instead of swinging
@@ -5057,15 +5061,16 @@ export class Game {
   }
   // Spell slots A and B (release 115): each button casts whatever its slot holds. Release 309: or builds, or uses the item.
   castSlot(slot, now = this.lastUpdateNow || 0) {
-    if (this.penned(this.lastUpdateNow || 0)) return false; // release 696
     const t = slotTool(this.save, slot);
     if (t) return t.tool === "build" ? this.pressBuild(false) : this.useButtonItem(t.item, now);
     const c = slotted(this.save, slot);
     if (!c) { this.message = `Slot ${slot.toUpperCase()} is empty — fill it in the Arcanum.`; return false; }
+    if (c.kind !== "skill" && this.penned(now)) return false; // release NNN (Tim: "you should be able to use items" in a pen): only spells are refused there
     this.castAction = slot === "b" ? "spell2" : "spell"; try { return c.kind === "skill" ? this.activateApertureSkill(c.id) : this.castSpell(c.id); } finally { this.castAction = null; } // release 417: the button a held Shadow Clone listens to
   }
   castKey(key) {
     const c = CASTABLES[key]; if (!c || !availableCastables(this.save).includes(key)) { this.message = "Not learned yet."; return false; }
+    if (c.kind !== "skill" && this.penned(this.lastUpdateNow || 0)) return false; // release NNN
     return c.kind === "skill" ? this.activateApertureSkill(c.id) : this.castSpell(c.id);
   }
   // The Build action, from whichever button holds it (release 269 mend, 267 build mode, 265 walls and blocks).

@@ -27,9 +27,10 @@ export const BUILD = {
 };
 export const BUILD_KINDS = Object.keys(BUILD.kinds);
 // The Enclosure: a 2x2 pen walled on three sides, open toward the Wayfarer who raised it. Inside, blows from the walled sides do not
-// land for `guard` s (again after `recharge` s outside); nothing is swung or shot out of it. With `need` or more standing, the
-// Stalker going into one may be trapped: `trap.full` chance at full health rising to `trap.low` at `trap.lowAt` of its health and
-// below, once per pen it enters; trapped, it struggles for `trap.time` s, then breaks the pen and comes out.
+// land for `guard` s (again after `recharge` s outside); no blow, shot or spell goes out of it (items still work). A second pen
+// built across a pen's opening closes it (release NNN): if the Stalker is inside, that is the try to trap it, `trap.full` chance at
+// full health rising to `trap.low` at `trap.lowAt` of its health and below; caught, it struggles for `trap.time` s, then breaks the
+// pen and comes out. (`need`: the pens it takes, the one it is in and the one that closes it.)
 export const ENCLOSURE = { size: 2, guard: 3, recharge: 3, need: 2, trap: { full: .15, low: .6, lowAt: .25, time: 45 } };
 export function trapChance(hpFrac) { const T = ENCLOSURE.trap, f = Math.max(0, Math.min(1, Number(hpFrac) || 0)); return f <= T.lowAt ? T.low : T.full + (T.low - T.full) * (1 - f) / (1 - T.lowAt); }
 
@@ -151,7 +152,7 @@ export function rushing(e, attackTags = []) { return !!(e.voidDashing || e.voidC
 // Each frame: builds crumble when their time is up, and a rushing world beast breaks any build it reaches.
 export function tickBuilds(game, dt, tagsOf = () => []) {
   if (!game.builds?.length) return;
-  for (const b of [...game.builds]) { b.life -= dt; if (b.trapped) b.life = Math.max(b.life, 1); if (b.life <= 0) breakBuild(game, b); } // a pen holding the Stalker stands until it breaks out
+  for (const b of [...game.builds]) { if (b.trapped && !(game.enemies || []).some((e) => e.id === b.trapped && !e.dead && e.stalkTrapped > 0)) b.trapped = null; /* release NNN: let go when what it held is gone */ b.life -= dt; if (b.trapped) b.life = Math.max(b.life, 1); if (b.life <= 0) breakBuild(game, b); } // a pen holding the Stalker stands until it breaks out
   tickEnclosureGuard(game, dt);
   for (const e of game.enemies || []) {
     if (e.dead || !(e.worldBeast || e.questingBeast) || !rushing(e, tagsOf(e))) continue;
@@ -193,9 +194,15 @@ export function placeEnclosure(game, x, y) {
   for (const [mat, need] of Object.entries(K.cost)) m[mat] = (Number(m[mat]) || 0) - need;
   const id = `enclosure-${(game.buildSeq = (game.buildSeq || 0) + 1)}`, orig = {};
   for (const q of tiles) { const i = q.ty * w + q.tx; orig[i] = game.map.tiles[i]; game.map.tiles[i] = { ...game.map.tiles[i], enclosure: id, encSides: q.sides }; }
-  builds.push({ id, kind: "enclosure", x: x0, y: y0, open, hits: K.hits, life: K.life, orig, trapped: null });
-  return { ok: true, message: `Enclosure raised, open to the ${open}. ${m.wood} wood, ${m.stone} stone, ${m.cinderIron} cinder iron left.` };
+  const pen = { id, kind: "enclosure", x: x0, y: y0, open, hits: K.hits, life: K.life, orig, trapped: null }; builds.push(pen);
+  // Release NNN: built across another pen's opening, it closes that pen: whatever is inside is shut in (game.penClosed rolls the trap).
+  let said = null;
+  for (const other of builds) if (other !== pen && other.kind === "enclosure" && !other.trapped && overlapsOpening(other, pen)) said = game.penClosed?.(other, pen) || said;
+  return { ok: true, message: said || `Enclosure raised, open to the ${open}. ${m.wood} wood, ${m.stone} stone, ${m.cinderIron} cinder iron left.` };
 }
+// The two tiles just outside a pen's opening, and whether another pen's 2x2 covers either.
+export function openingTiles(b) { return { north: [[b.x, b.y - 1], [b.x + 1, b.y - 1]], south: [[b.x, b.y + 2], [b.x + 1, b.y + 2]], west: [[b.x - 1, b.y], [b.x - 1, b.y + 1]], east: [[b.x + 2, b.y], [b.x + 2, b.y + 1]] }[b.open] || []; }
+export function overlapsOpening(b, other) { return openingTiles(b).some(([x, y]) => x >= other.x && x < other.x + 2 && y >= other.y && y < other.y + 2); }
 // The pen whose 2x2 holds the point (tile space), if any.
 export function enclosureAt(game, px, py) { return (game.builds || []).find((b) => b.kind === "enclosure" && px >= b.x && px < b.x + 2 && py >= b.y && py < b.y + 2) || null; }
 export const enclosuresStanding = (game) => (game.builds || []).filter((b) => b.kind === "enclosure").length;
