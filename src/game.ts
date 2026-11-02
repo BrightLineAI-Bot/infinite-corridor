@@ -647,7 +647,7 @@ export function footprintOpen(map, width, x, y, allowLethalTerrain=false, allowM
     if(!tile||marine&&!marineTileOpen(tile)||tile.blocked&&!lethal&&!marine&&!(allowVoid&&isDreamVoid(tile)))return false;
     if(!allowLethalTerrain&&!standOnLethal&&!tile.blocked&&!marine&&LETHAL_KINDS.has(tile.kind))return false; // release 609 (Codex play-test, issue 2): open lethal ground (a Starfield drop, lava, deep water) is no footing for anything that does not fall in on purpose
     if(tile.perch&&!allowLethalTerrain)return false; // release 265: a stone block is a perch only the Wayfarer (and fliers) may step onto
-    const sides=tile.encSides?.length?tile.encSides:["shackWall","districtWall"].includes(tile.structure)?tile.wallSides:null; // release NNN: an enclosure's walls, like a shack's
+    const sides=tile.encSides?.length?tile.encSides:["shackWall","districtWall"].includes(tile.structure)?tile.wallSides:null; // release 696: an enclosure's walls, like a shack's
     if(!sides?.length)continue;
     const thickness=.22;
     for(const side of sides){
@@ -3959,7 +3959,7 @@ export class Game {
     const p = this.player;
     if (source?.illusion || !(amount > 0) || now <= (p.invulnerableUntil || 0)) return false;
     if (options.jumpable && now < (this.jumpUntil || 0)) return false;
-    if (source && enclosureShields(this, { x: source.x + .5, y: source.y + .6 })) return false; // release NNN: the enclosure's walls turn it
+    if (source && enclosureShields(this, { x: source.x + .5, y: source.y + .6 })) return false; // release 696: the enclosure's walls turn it
     { const b = source && buildBetween(this, source); if (b) { const melee = (ATTACK_MODULES[source.pack?.attack]?.tags || []).includes("melee"); strikeBuild(this, b, melee && !!(source.worldBeast || source.questingBeast)); return false; } } // release 265: a build takes the blow
     const veil = this.save.magicSkills?.active?.id === 'veil-guard' ? .12 + .08 * skillRank(this.save, 'veil-guard') : 0;
     if (bossPaced(source) && options.source !== "astralDrain") amount *= BOSS_PACE.damage; // release 421 (the Astral Worm's drain keeps its release-307 size: it is also its heal)
@@ -4463,7 +4463,7 @@ export class Game {
       elev: (x, y) => Number(map.tiles[Math.floor(y + .72) * width + Math.floor(x + .5)]?.elev) || 0,
       hurt: (e, amount) => game.packHurt(e, amount, {}, now),
       revealed: () => { game.message = "THE STALKER — it was waiting for you."; },
-      // Release NNN: the Enclosure trap.
+      // Release 696: the Enclosure trap.
       pen: (x, y) => enclosureAt(game, x, y), pens: () => enclosuresStanding(game),
       penTrap: () => { game.message = "The enclosure snaps shut on the Stalker! It will be a while breaking out."; },
       penSlip: () => { game.message = "The Stalker slips out of the enclosure before it can close."; },
@@ -4923,7 +4923,7 @@ export class Game {
           (this.save.worldFlags.flaskPity || 0) + 1;
     }
   }
-  // Release NNN: nothing is swung, shot or cast from inside an enclosure (Tim: "you can't attack out of it").
+  // Release 696: nothing is swung, shot or cast from inside an enclosure (Tim: "you can't attack out of it").
   penned(now = 0) { if (this.area !== "overworld" || !playerEnclosure(this)) return false; if (now > (this.penNoticeAt || 0)) { this.penNoticeAt = now + 2500; this.message = "No room to fight in the enclosure: dodge out of its open side."; } return true; }
   primaryAttack(now = 0, _direction = null, echo = null) {
     if (this.penned(now)) return [];
@@ -5057,7 +5057,7 @@ export class Game {
   }
   // Spell slots A and B (release 115): each button casts whatever its slot holds. Release 309: or builds, or uses the item.
   castSlot(slot, now = this.lastUpdateNow || 0) {
-    if (this.penned(this.lastUpdateNow || 0)) return false; // release NNN
+    if (this.penned(this.lastUpdateNow || 0)) return false; // release 696
     const t = slotTool(this.save, slot);
     if (t) return t.tool === "build" ? this.pressBuild(false) : this.useButtonItem(t.item, now);
     const c = slotted(this.save, slot);
@@ -6131,7 +6131,7 @@ export class Game {
         const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;
         if(shot.jumpable&&now<this.jumpUntil)return;
         if(safe||now<=(p.invulnerableUntil||0))return;
-        if(enclosureShields(this,{x:shot.x-(Number(shot.dx)||0)*.8,y:shot.y-(Number(shot.dy)||0)*.8}))return; // release NNN: the enclosure's walls stop it
+        if(enclosureShields(this,{x:shot.x-(Number(shot.dx)||0)*.8,y:shot.y-(Number(shot.dy)||0)*.8}))return; // release 696: the enclosure's walls stop it
         p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))));
         p.invulnerableUntil=now+700;
       },
@@ -6247,7 +6247,7 @@ export class Game {
         now > (p.invulnerableUntil || 0) &&
         (!(now < this.jumpUntil) || e.kind === "sparkWarden") &&
         !((b) => b && strikeBuild(this, b))(buildBetween(this, e)) && // release 265: a build between takes the blow
-        !enclosureShields(this, { x: e.x + .5, y: e.y + .6 }) // release NNN: the enclosure's walls turn it
+        !enclosureShields(this, { x: e.x + .5, y: e.y + .6 }) // release 696: the enclosure's walls turn it
       ) {
         p.hp -= Math.max(
           1,

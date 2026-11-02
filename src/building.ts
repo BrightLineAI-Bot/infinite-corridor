@@ -15,7 +15,7 @@ export const BUILD = {
   kinds: {
     wood: { name: "Wood wall", cost: { wood: 4 }, hits: 1 }, // release 269 (Tim: "a wall takes 4 wood"; it was 5)
     stone: { name: "Stone block", cost: { stone: 5 }, hits: 2, stack: 2 }, // release 269 (Tim: "five stone... twenty blocks with the full inventory"; it was 10)
-    // Release NNN: the Enclosure (Tim: "you build with 2 wood, 2 stone and 2 cinder iron... a little shack that the player can walk
+    // Release 696: the Enclosure (Tim: "you build with 2 wood, 2 stone and 2 cinder iron... a little shack that the player can walk
     // into... a 2 by 2... you become impervious to damage on 3 sides... you can't attack out of it... you can dodge out of it from the
     // opening... you can trap the stalker... maybe you have to do 2 enclosures... like pokemon... the chance goes up").
     enclosure: { name: "Enclosure", cost: { wood: 2, stone: 2, cinderIron: 2 }, hits: 4, life: 60 },
@@ -174,7 +174,7 @@ export function tapTarget(p, wx, wy) {
   return { x: Math.floor(tx), y: Math.floor(ty), run };
 }
 
-// ---- The Enclosure (release NNN) ----
+// ---- The Enclosure (release 696) ----
 // Raises a 2x2 pen beginning at (x, y), extending away from the Wayfarer, open on the side facing them.
 export function placeEnclosure(game, x, y) {
   const K = BUILD.kinds.enclosure, m = (game.save.materials ||= {}), builds = (game.builds ||= []), p = game.player, w = W(game.map);

@@ -399,7 +399,7 @@ export function drawStalker(ctx, e, s, now, reduceMotion = false) {
   else if (a.kind === "tide") { /* it is the first wave (drawWaves) */ }
   else if ((a.kind === "prowl" || a.kind === "lurk" || a.kind === "wait") && e.stalkPerch) drawCat(ctx, x, y, u, face, t, false, "perch");
   else if (a.kind === "wait" || a.kind === "lurk") drawCatSit(ctx, x, y, u, face, t);
-  else if (a.kind === "trapped") { const shake = Math.sin(now / 45) * .04 * u; drawCat(ctx, x + shake, y, u, face, t * 2, false, "crouch"); } // release NNN: caught in the enclosure, it crouches and throws itself at the bars
+  else if (a.kind === "trapped") { const shake = Math.sin(now / 45) * .04 * u; drawCat(ctx, x + shake, y, u, face, t * 2, false, "crouch"); } // release 696: caught in the enclosure, it crouches and throws itself at the bars
   else if (a.kind === "mirage") drawCat(ctx, x, y, u, face, t * 1.6, true, e.stalkSlash ? "swipe" : "leap");
   else if (a.kind === "flurry") drawCat(ctx, x, y, u, face, t, false, (e.stalkSlash?.n || 0) % 2 ? "swipe" : "crouch");
   else if (e.stalkCreep && a.kind === "prowl") drawCat(ctx, x, y, u, face, t * .55, true, "stalk");

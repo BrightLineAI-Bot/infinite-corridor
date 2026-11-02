@@ -17,7 +17,7 @@
 //   regionalThreat.
 // Runtime fields on the creatures (`stalkForm`, `stalkAct`, …) are never saved; only `save.stalker` is.
 import { hashSeed } from "./random.ts";
-import { ENCLOSURE, trapChance } from "./building.ts"; // release NNN: the Enclosure trap
+import { ENCLOSURE, trapChance } from "./building.ts"; // release 696: the Enclosure trap
 
 export const STALKER = {
   version: 1,
@@ -393,7 +393,7 @@ export function stalkerFog(e, w, dt) {
   e.stalkFogClock = (e.stalkFogClock ?? roll(`${e.id}:fogfirst`, G.again)) - dt;
   if (e.stalkFogClock <= 0) veil(G.againTime);
 }
-// The Enclosure trap (release NNN; building.ts ENCLOSURE). Going into a pen while `need` or more stand, it may be trapped (once
+// The Enclosure trap (release 696; building.ts ENCLOSURE). Going into a pen while `need` or more stand, it may be trapped (once
 // per pen, `trapChance` of its health); trapped it struggles, harmless and untouchable, for `trap.time` s, then breaks the pen
 // and comes out. Returns true while it is held.
 export function stalkerPen(e, w, dt) {

@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release NNN: the Enclosure — 2026-11-02
+## Release 696: the Enclosure — 2026-11-02
 
 Tim (2026-11-01): "an enclosure... you build with 2 wood, 2 stone and 2 cinder iron... a little shack that the player can walk
 into... a 2 by 2... you become impervious to damage on 3 sides... you can't attack out of it... you can dodge out of it from the
