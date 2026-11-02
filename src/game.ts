@@ -625,7 +625,7 @@ export function tileOpen(map, width, x, y) {
     tile = map.tiles[iy * width + ix];
   if (ix < 0 || iy < 0 || ix >= width || iy >= height || !tile || tile.blocked)
     return false;
-  const sides = tile.encSides?.length ? tile.encSides : ["shackWall", "districtWall"].includes(tile.structure) ? tile.wallSides : null; // release NNN: an enclosure's walls too
+  const sides = tile.encSides?.length ? tile.encSides : ["shackWall", "districtWall"].includes(tile.structure) ? tile.wallSides : null; // release 697: an enclosure's walls too
   if (sides?.length) {
     const lx = x - ix,
       ly = y - iy,
@@ -4428,7 +4428,7 @@ export class Game {
     this.enemies.push(mass);
     this.message = "Part of the Blob tears away and flees. The rest of the mass slumps where it stood.";
   }
-  // Release NNN: a second enclosure built across a pen's opening closes it; if the Stalker is inside, that is the try (stalker.ts).
+  // Release 697: a second enclosure built across a pen's opening closes it; if the Stalker is inside, that is the try (stalker.ts).
   penClosed(pen, by) {
     const e = this.enemies.find((q) => q.stalker && !q.dead && enclosureAt(this, q.x + .5, q.y + .75) === pen); if (!e) return "The pen is closed. Nothing is inside it.";
     if (stalkerTrapAttempt(e, pen, by.id)) return "The pen closes on the Stalker! It will be a while breaking out.";
@@ -5065,12 +5065,12 @@ export class Game {
     if (t) return t.tool === "build" ? this.pressBuild(false) : this.useButtonItem(t.item, now);
     const c = slotted(this.save, slot);
     if (!c) { this.message = `Slot ${slot.toUpperCase()} is empty — fill it in the Arcanum.`; return false; }
-    if (c.kind !== "skill" && this.penned(now)) return false; // release NNN (Tim: "you should be able to use items" in a pen): only spells are refused there
+    if (c.kind !== "skill" && this.penned(now)) return false; // release 697 (Tim: "you should be able to use items" in a pen): only spells are refused there
     this.castAction = slot === "b" ? "spell2" : "spell"; try { return c.kind === "skill" ? this.activateApertureSkill(c.id) : this.castSpell(c.id); } finally { this.castAction = null; } // release 417: the button a held Shadow Clone listens to
   }
   castKey(key) {
     const c = CASTABLES[key]; if (!c || !availableCastables(this.save).includes(key)) { this.message = "Not learned yet."; return false; }
-    if (c.kind !== "skill" && this.penned(this.lastUpdateNow || 0)) return false; // release NNN
+    if (c.kind !== "skill" && this.penned(this.lastUpdateNow || 0)) return false; // release 697
     return c.kind === "skill" ? this.activateApertureSkill(c.id) : this.castSpell(c.id);
   }
   // The Build action, from whichever button holds it (release 269 mend, 267 build mode, 265 walls and blocks).

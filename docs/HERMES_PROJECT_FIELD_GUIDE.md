@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release NNN: closing the pen — 2026-11-02
+## Release 697: closing the pen — 2026-11-02
 
 Tim (2026-11-02): "you should be able to use items... the pens really shouldn't get used up until you try. The roll shouldn't happen
 until you... build a second enclosure to complete the pen... you can leave the first pen down until the stalker is in [it]... then

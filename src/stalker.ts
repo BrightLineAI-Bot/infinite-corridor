@@ -393,7 +393,7 @@ export function stalkerFog(e, w, dt) {
   e.stalkFogClock = (e.stalkFogClock ?? roll(`${e.id}:fogfirst`, G.again)) - dt;
   if (e.stalkFogClock <= 0) veil(G.againTime);
 }
-// The Enclosure trap (release 696; release NNN: Tim, "the roll shouldn't happen until you... build a second enclosure to complete
+// The Enclosure trap (release 696; release 697: Tim, "the roll shouldn't happen until you... build a second enclosure to complete
 // the pen... you can leave the first pen down until the stalker is in [it]... then you trap him by putting down the second"). Held,
 // it struggles, harmless and untouchable, for `trap.time` s, then breaks the pen and comes out. Returns true while it is held.
 export function stalkerPen(e, w, dt) {

@@ -28,7 +28,7 @@ export const BUILD = {
 export const BUILD_KINDS = Object.keys(BUILD.kinds);
 // The Enclosure: a 2x2 pen walled on three sides, open toward the Wayfarer who raised it. Inside, blows from the walled sides do not
 // land for `guard` s (again after `recharge` s outside); no blow, shot or spell goes out of it (items still work). A second pen
-// built across a pen's opening closes it (release NNN): if the Stalker is inside, that is the try to trap it, `trap.full` chance at
+// built across a pen's opening closes it (release 697): if the Stalker is inside, that is the try to trap it, `trap.full` chance at
 // full health rising to `trap.low` at `trap.lowAt` of its health and below; caught, it struggles for `trap.time` s, then breaks the
 // pen and comes out. (`need`: the pens it takes, the one it is in and the one that closes it.)
 export const ENCLOSURE = { size: 2, guard: 3, recharge: 3, need: 2, trap: { full: .15, low: .6, lowAt: .25, time: 45 } };
@@ -152,7 +152,7 @@ export function rushing(e, attackTags = []) { return !!(e.voidDashing || e.voidC
 // Each frame: builds crumble when their time is up, and a rushing world beast breaks any build it reaches.
 export function tickBuilds(game, dt, tagsOf = () => []) {
   if (!game.builds?.length) return;
-  for (const b of [...game.builds]) { if (b.trapped && !(game.enemies || []).some((e) => e.id === b.trapped && !e.dead && e.stalkTrapped > 0)) b.trapped = null; /* release NNN: let go when what it held is gone */ b.life -= dt; if (b.trapped) b.life = Math.max(b.life, 1); if (b.life <= 0) breakBuild(game, b); } // a pen holding the Stalker stands until it breaks out
+  for (const b of [...game.builds]) { if (b.trapped && !(game.enemies || []).some((e) => e.id === b.trapped && !e.dead && e.stalkTrapped > 0)) b.trapped = null; /* release 697: let go when what it held is gone */ b.life -= dt; if (b.trapped) b.life = Math.max(b.life, 1); if (b.life <= 0) breakBuild(game, b); } // a pen holding the Stalker stands until it breaks out
   tickEnclosureGuard(game, dt);
   for (const e of game.enemies || []) {
     if (e.dead || !(e.worldBeast || e.questingBeast) || !rushing(e, tagsOf(e))) continue;
@@ -195,7 +195,7 @@ export function placeEnclosure(game, x, y) {
   const id = `enclosure-${(game.buildSeq = (game.buildSeq || 0) + 1)}`, orig = {};
   for (const q of tiles) { const i = q.ty * w + q.tx; orig[i] = game.map.tiles[i]; game.map.tiles[i] = { ...game.map.tiles[i], enclosure: id, encSides: q.sides }; }
   const pen = { id, kind: "enclosure", x: x0, y: y0, open, hits: K.hits, life: K.life, orig, trapped: null }; builds.push(pen);
-  // Release NNN: built across another pen's opening, it closes that pen: whatever is inside is shut in (game.penClosed rolls the trap).
+  // Release 697: built across another pen's opening, it closes that pen: whatever is inside is shut in (game.penClosed rolls the trap).
   let said = null;
   for (const other of builds) if (other !== pen && other.kind === "enclosure" && !other.trapped && overlapsOpening(other, pen)) said = game.penClosed?.(other, pen) || said;
   return { ok: true, message: said || `Enclosure raised, open to the ${open}. ${m.wood} wood, ${m.stone} stone, ${m.cinderIron} cinder iron left.` };
