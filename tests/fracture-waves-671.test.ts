@@ -24,7 +24,8 @@ test('cleared: the next wave waits its rest; left standing: the next joins it af
   const [x, y] = wildSection(), M = FRACTURED.modes.frenzied;
   let g = at('frenzied', x, y), t = (FRACTURED.grace + .1) * 1000; g.tickFractured(0); g.tickFractured(t);
   for (const e of wave(g)) { e.dead = true; e.hp = 0; } g.tickFractured(t += 500); const msg = g.message;
-  g.tickFractured(t += (M.rest - 2) * 1000); assert.equal(wave(g).length, 0, `resting (${msg})`);
+  const rest = M.rest * FRACTURED.pace.rest[1]; // broken at once: the pace quickens a step (the rest shortens)
+  g.tickFractured(t += (rest - 2) * 1000); assert.equal(wave(g).length, 0, `resting (${msg})`);
   g.tickFractured(t += 3000); assert.ok(wave(g).length >= M.pack[0], 'the next wave after the rest');
   g = at('frenzied', x, y); t = (FRACTURED.grace + .1) * 1000; g.tickFractured(0); g.tickFractured(t); const first = wave(g).length;
   g.tickFractured(t += (M.press + .5) * 1000); assert.ok(wave(g).length > first, `${first} → ${wave(g).length}: more come while you stand`);
@@ -36,4 +37,18 @@ test('every third wave is elite-led: every pack has a champion or a rare at its 
   for (let n = 1; n <= M.surgeEvery; n++) { const before = new Set(g.enemies.map((e) => e.id)); g.tickFractured(t); const fresh = wave(g).filter((e) => !before.has(e.id));
     if (n === M.surgeEvery) { const leads = fresh.filter((e) => /-0$/.test(e.id)); assert.ok(leads.length >= 2 && leads.every((e) => e.fracRank), leads.map((e) => e.fracRank).join()); }
     for (const e of wave(g)) { e.dead = true; e.hp = 0; } g.tickFractured(t += 100); t += (M.rest + 1) * 1000; }
+});
+
+// Waves keep pace (Tim, 2026-11-01: "waves that keep pace with you"): break a wave fast and the pace quickens (a shorter rest,
+// more and bigger packs, a higher cap); take long and it eases; it goes with the Wayfarer to the next section.
+test('the pace: fast clears quicken it (shorter rests, bigger waves), slow ones ease it, and it carries on to the next section', () => {
+  const [x, y] = wildSection(), M = FRACTURED.modes.frenzied, P = FRACTURED.pace, g = at('frenzied', x, y); let t = (FRACTURED.grace + .1) * 1000; g.tickFractured(0);
+  const sizes = [];
+  for (let k = 0; k < P.max + 1; k++) { g.tickFractured(t); sizes.push(wave(g).length); for (const e of wave(g)) { e.dead = true; e.hp = 0; } g.tickFractured(t += 500); t += M.rest * P.rest[g.fracPace] * 1000 + 100; }
+  assert.equal(g.fracPace, P.max, 'quickened to the top'); assert.match(g.message, /pace|quiet/);
+  assert.ok(sizes[sizes.length - 1] > sizes[0], `waves grow with the pace: ${sizes.join(' → ')}`); assert.ok(sizes.every((n) => n <= M.hardCap));
+  g.tickFractured(t); assert.ok(wave(g).length > 0); t += (P.slow + 5) * 1000; for (const e of wave(g)) { e.dead = true; e.hp = 0; } g.tickFractured(t);
+  assert.equal(g.fracPace, P.max - 1, 'a slow wave eases it'); assert.match(g.message, /eases/);
+  assert.ok(M.rest * P.rest[P.max] < M.rest / 3, 'at the top the rest is short');
+  g.rx += 1; g.loadArea('overworld', false); assert.equal(g.fracPace, P.max - 1, 'the pace goes with you');
 });

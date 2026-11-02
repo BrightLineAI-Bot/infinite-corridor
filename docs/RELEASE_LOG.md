@@ -15,17 +15,19 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 692, the next is **693**.
+Taken at merge time: `main`'s release + 1 (see above). After 695, the next is **696**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| (at merge) | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Stalker's mirage, the gorilla's lasers, five ways in, low ground fog, walks on water; fixes 691's affix-drawing crash | Building. |
+| 695 | Claude (Stalker session) | PR #342 | The Stalker's mirage, the gorilla's lasers, five ways in, low ground fog, walks on water | Building. |
+| 694 | Claude (second session) | PR #341 | Hotfix, the broken screen (Tim's r688 diagnostic): the affix/boss-kit warning-mark fill clamped (a rounding-negative ellipse radius threw mid-frame and the leaked camera translate corrupted every later frame); 691's swallowed `ctx.save(); const cx…` restored; the canvas reset if a render throws | Merging (baton taken). Tim said publish once merged. |
+| 693 | Claude | `claude/dreamy-rubin-yn6q2p` | Fractured waves keep pace with your clears; world bosses say ARCHFIEND SLAIN | Merging. |
 | 692 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Stalker's fog: alternate hunts come in the open, then fog the section and veil it; veils again in the fight; blue-grey mist | Building. |
 | 691 | Claude (Stalker session) | PR #338 | The Stalker lies in wait unseen and springs; the cat's flurry and tide; the puddle's mouth and six chompers; the sit and perch redrawn | Building. |
 | 690 | Claude (Stalker session) | PR #337 | The Stalker consolidated: stalking creep, hiding in its mist, sitting in wait, perched (cat at the edge, gorilla as a gargoyle), climbing; chevrons back; one look for both forms | Building. |
-| 689 | Claude (second session) | PR #335 | The Skylands start from the Wayfarer: every Skyland foe's health and damage from the Wayfarer's level, weapon, health and armour by role (winged ~4 hits, keeper ~10, echo ~18; 8–15% of health a blow), then Ascension, the viscera pact and the annex on top; no regional threat in the sky, so the first round matches the rest | Merging (baton taken). |
+| 689 | Claude (second session) | PR #335 | The Skylands start from the Wayfarer: every Skyland foe's health and damage from the Wayfarer's level, weapon, health and armour by role (winged ~4 hits, keeper ~10, echo ~18; 8–15% of health a blow), then Ascension, the viscera pact and the annex on top; no regional threat in the sky, so the first round matches the rest | Merged (`r689-750a4b5dcbe8`). |
 | 688 | Claude | `claude/dreamy-rubin-yn6q2p` | Canyon craters: clod-packed dungeons you drill through (green/yellow/red stability, cave-ins, collapse), caverns, lava, a pool, a bridged ravine; earth golems, crystal hermits, a Golem Warden, finds in clods; the divine wreck pays Divine Viscera; the Listener's Descent (the Deep beside a fallen Listener's Mouth) | Merging. |
 | 687 | Claude (Stalker session) | PR #334 | The Stalker's appendage (sword, spikes and bouncing blasts, tendril eruptions, boomerang blade) and the gorilla's arms (grab, slam, sweep, spin, charge, Iron Fist combo); the gorilla redrawn with poses; the cat's face | Building. |
 | 686 | Claude (second session) | PR #333 | The Ascension Dais: the viscera altar renamed; a dais at the start of every Divine Challenge entered holding viscera holds its first round while you offer, shaping that fight; step off or Begin | Merged (`r686-71f56fc9e685`). |
@@ -79,6 +81,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 692, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 688 | `r688-8d2e46ab31ec` | 2026-11-01 | Published by the Stalker session (Fable review: no blockers). With 685 to 687: ruined arcologies (#332), the Ascension Dais (#333), the Stalker's appendage (#334), Canyon craters and the Listener's Descent (#336). |
 | 684 | `r684-436ff24739ec` | 2026-11-01 | Published by the Stalker session. With 680 to 683: the Skylands Deep Annex (#327), the Stalker's arsenal (#328), Divine Viscera (#329), Great Keeps (#330); and 684, the Stalker refined (#331). Pre-publish review: no blockers. |
 | 679 | `r679-4d93bc15f0b3` | 2026-11-01 | With 671 to 678: Fractured waves (#320), easier-to-find wonders (#321) and their Atlas pins (#323), the Starfield Deep Annex (#322), the Deep (#325), the Stalker (#324); and 679, seasons (#326). Pre-publish review: no blockers. |
 | 669 | `r669-637cc97f06cd` | 2026-11-01 | With 664 to 668 from the second session: the Tremor Worm reworked (#316), the fracture meter and Fracture Warden (#318), guardians and elites fight back (#319); and 669, Crown Rests and the drone/glider freefall (#317). Pre-publish review: no blockers. |

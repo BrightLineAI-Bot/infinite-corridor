@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release NNN: the Stalker's mirage, the gorilla's lasers, five ways in, low fog, water — 2026-11-01
+## Release 695: the Stalker's mirage, the gorilla's lasers, five ways in, low fog, water — 2026-11-01
 
 Tim (2026-11-01):
 - "a transparent mode... semi-invisible... he can move around more quickly... quick attacks... the cat... up to two slashes...
@@ -2732,15 +2732,54 @@ Tim (2026-11-01):
 - `src/renderer.ts`:
   - The Stalker's fog (sea-fog banks and closing wash) is now painted over the ground layer, before the marks, objects and
     creatures, so treetops, roofs and other creatures stand out of it. The sea-fog overlay is as it was.
-  - Fixed: release 691's comment had swallowed the affix block's `ctx.save(); const cx …`, so drawing any creature with an
-    affix, ward or shaman threw. Live r688 never had it; a test now guards the line.
-  - Affix drawing skips a hidden Stalker.
+  - The affix line (fixed in 694, where release 691's comment had swallowed its code) now skips any hidden Stalker, lurking,
+    veiled or in its mirage; a test guards that the line's code comes before its comment.
 - `src/stalker-render.ts`: the mirage alpha with a shimmer and the red regen glow; laser bolts; the laser fan's marks; mirage
   poses (cat leaping and swiping, gorilla walking and punching); no shadow, label or mist veil while hidden.
 
 **BOUNDARY:** Runtime only: no save, generator or reward change. Bounded: 18 shots, regen capped per mirage, no pathfinding.
 Tests: `tests/stalker-arsenal.test.ts`.
 
+
+## Release 694: the broken screen — 2026-11-01
+
+Tim (2026-11-01, live r688, with a diagnostic and a screenshot): "my game is broken... the screen is all messed up". The screen
+showed the world in shifted, overlapping, clipped pieces under dozens of orange ring outlines, in a Frenzied Fractured fight.
+`recentErrors`: `ellipse` "The major-axis radius provided (-6.10623e-13) is negative" at the affix-hazard draw. A Fable review
+confirmed the cause and found a second one on main.
+
+**CODE:**
+- `src/renderer.ts`, the affix and boss-kit hazard draw:
+  - `k` (the arming fill) is clamped to 0–1. On the frame a mark is laid, `game.update` and `render` share `now`, and
+    `1 - (armAt - now) / (arm * 1000)` can round to about -1e-14 (arm values whose `arm * 1000` is inexact).
+  - `ellipse` with that radius threw inside the camera's `ctx.save()`. That `restore()` never ran, and the leaked translate,
+    clip and alpha corrupted every later frame until a reload or resize. One throw (count 1 in the diagnostic) was enough.
+  - Present since 657; Frenzied mode's many affixed elites and 668's boss-kit moves made it likely.
+- `src/renderer.ts`, the affix/ward/shaman block: release 691 had put its comment mid-line, commenting out
+  `ctx.save(); const cx …, cy …, tt …`. On main (not live) every affixed, warded or shaman enemy on screen threw or popped the camera
+  save each frame. The code is restored and the comment moved to the end.
+- `src/main.ts` `render` wrapper: a render that throws is noted (`noteError`) and `resetCanvasState(ctx, frameTransform)` resets
+  the context (`ctx.reset()`, or a restore loop and defaults) and puts back the frame's starting transform. A bad draw can no
+  longer spoil the frames after it.
+
+**BOUNDARY:** Drawing only. Tests: `tests/canvas-safety-694.test.ts`, with a canvas that throws on negative radii as Chrome does and
+counts saves. It reproduces the live error without the clamp, and the 691 break without the line fix.
+
+## Release 693: waves that keep pace; Archfiend Slain — 2026-11-01
+
+Tim (2026-11-01): "waves that keep pace with you is fine. We don't have to stay in a spot... we're just gonna keep moving";
+"instead of it saying rift boss slain, when we kill a world boss, it should say archfiend slain". Beast tuning stays as it is
+(Tim: "The way it's scaled is fine... don't change them").
+
+**CODE:** fractured.ts `FRACTURED.pace` and game.ts `tickFractured`: a wave broken within `fast` 25 s raises `fracPace` a step
+(to `max` 5), one taking `slow` 55 s or more lowers it; each step shortens the rest (`rest` share 1 → .18) and the press
+(`press` 1 → .42), adds `packs` 1 pack and `size` .5 a pack, and `cap` 6 more wave creatures (never past the mode's
+`hardCap`). The pace is runtime only and goes with the Wayfarer from section to section. game.ts `defeatEnemy`: a world beast
+or the Questing Beast sets its own notice, "ARCHFIEND SLAIN" with its name and marks, and the generic `enemyDefeatNotice`
+("RIFT BOSS BROKEN") no longer overwrites it.
+
+**BOUNDARY:** No generator, tuning or save change. Bounded: the wave hard caps are unchanged. Tests:
+`tests/fracture-waves-671.test.ts`, `tests/archfiend-slain.test.ts`.
 ## Release 692: the Stalker's fog — 2026-11-01
 
 Tim (2026-11-01): "it could be coming toward you, and then it can go invisible and attack... you might still see... the hitbox...

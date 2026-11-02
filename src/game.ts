@@ -4435,7 +4435,7 @@ export class Game {
     const width = mapWidth(this.map, this.area), height = mapHeight(this.map, this.area);
     return [x, y].every(Number.isFinite) && x >= .5 && y >= .5 && x <= width - 1.5 && y <= height - 1.5 && (footprintOpen(this.map, width, x, y) && !footprintHazard(this.map, width, x, y) || this.stalkerWaterFooting(x, y)) && !this.stalkerBarred(x, y);
   }
-  // Release NNN (Tim: "the stalker is just not affected by water... walks on water as if it's just land"): footing where every tile
+  // Release 695 (Tim: "the stalker is just not affected by water... walks on water as if it's just land"): footing where every tile
   // under it is either water (river, lake, sea, swamp; never part of a building) or plain open ground.
   stalkerWaterFooting(x, y) {
     const width = mapWidth(this.map, this.area), map = this.map, height = map.tiles.length / width; let wet = false;
@@ -4502,7 +4502,7 @@ export class Game {
     Object.assign(c, { id: `stalker-${st.seq}-${st.kills}`, kind: "stalker", stalker: true, boss: true, aggro: true, eliteName: "The Stalker", defeatTitle: "THE STALKER FALLS", maxHp: v.hp, hp: Math.min(v.hp, st.active?.hp || v.hp), damage: v.damage, baseDamage: v.damage,
       range: 0, meleePatterns: [], scale: STALKER.size, baseScale: STALKER.size, bodyRadius: .5, threatRing: q.ring, xpMultiplier: q.xpMultiplier * 2, staggerImmune: true,
       affixes: rollAffixes(key, STALKER.affixes[0] + (hashSeed(`${key}:affix-count`) % (STALKER.affixes[1] - STALKER.affixes[0] + 1))), stalkForm: at ? "cat" : hashSeed(`${key}:first`) % 2 ? "ape" : "cat" });
-    // Release NNN: how it comes for you, by turns: lying in wait ahead (lurk), running at you from across the section (run), in
+    // Release 695: how it comes for you, by turns: lying in wait ahead (lurk), running at you from across the section (run), in
     // the open then fogging (fog), stalking slowly then breaking into a run (creep), or flying in as the gorilla (fly).
     const style = at ? "door" : STALKER.approach.styles[(st.seq + st.kills) % STALKER.approach.styles.length], b = this._stalkBearing ?? Math.PI / 2;
     const far = (key, heading) => ambushSpots(this.save.seed, `${st.seq}:${st.kills}:${key}`, p, heading, STALKER.approach.far).find((q) => this.stalkerOpen(q.x, q.y));
@@ -4789,9 +4789,9 @@ export class Game {
     if(e.huntInstanceId)completeHuntInstance(this.save,e.huntInstanceId);
     if(e.viewportHuntId&&completeViewportHunt(this.save,e.viewportHuntId)){const hunt=this.save.viewport.contracts[e.viewportHuntId];journalOnce(this.save,`viewport-complete:${e.viewportHuntId}`,`${hunt.title} is complete. Viewport records the victory and releases its promised reward.`,hunt.title);recordViewportArrival(this.save,{id:`hunt:${e.viewportHuntId}`,title:hunt.title,text:'A consequential threat was defeated and entered the Refuge record.',kind:'hunt'});(this.questNotices||=[]).push({title:'QUEST COMPLETE',detail:`${hunt.title}${e.worldBoss?' · world threat broken':''} · return to Viewport for the enduring record`,kind:'quest'});/* release 559: queued, so another banner in the same moment never hides it */if(hunt.domain)this.save.worldFlags[`domain-cleared:${hunt.domain}`]=true}
     if (e.farArrayBoss && this.area === "dungeon" && isArrayRun(this.areaId())) { const listener = e.farArrayBoss === "listener", text = (listener ? listenerFelled(this.save) : guardianFelled(this.save)) + (listener ? latticeNote(this.save) + townNote(this.save) : ""); if (listener && beastCatchUp(this.save, liveBeastReference(this.save, characterStats(this.save)))) journalOnce(this.save, `beast-catch-up:${this.save.farArray.listeners}`, "With the Listener fallen, the great beasts of the Corridor rise to meet your strength.", "World beasts"); /* release 331 */ journalOnce(this.save, `far-array:${this.save.farArray.runs}`, text, "The Far Gate"); this.defeatNotice = { title: listener ? "THE LISTENER FALLS" : "A GATE PIECE LOCKS", detail: text, kind: "danger" }; this.message = text; }
-    if (e.worldBeast && WORLD_BEASTS[e.worldBeast]) { const B = WORLD_BEASTS[e.worldBeast], won = worldBeastSlain(this.save, e.worldBeast); journalOnce(this.save, `world-beast-slain:${e.worldBeast}:${this.save.worldBeasts[e.worldBeast].slain}`, `You slew ${B.name} at ${this.rx},${this.ry}.`, B.name); this.defeatNotice = { title: `${B.name.toUpperCase()} FALLS`, detail: `+${won.marks} marks`, kind: "danger" }; this.message = won.message; } // release 235
+    if (e.worldBeast && WORLD_BEASTS[e.worldBeast]) { const B = WORLD_BEASTS[e.worldBeast], won = worldBeastSlain(this.save, e.worldBeast); journalOnce(this.save, `world-beast-slain:${e.worldBeast}:${this.save.worldBeasts[e.worldBeast].slain}`, `You slew ${B.name} at ${this.rx},${this.ry}.`, B.name); this.defeatNotice = { title: "ARCHFIEND SLAIN", detail: `${B.name} · +${won.marks} marks`, kind: "danger" }; this.message = won.message; } // release 235
     if (e.stalker) { const won = stalkerSlain(this.save); for (let i = 0; i < STALKER.reward.drops; i++) this.obtainDrop("stalker"); for (const q of this.enemies) if (q.stalkerOf === e.id && !q.dead) { q.dead = true; q.noRewards = true; } journalOnce(this.save, `stalker-slain:${this.save.stalker.kills}`, `You killed the Stalker at ${this.rx},${this.ry}. It will hunt again, in time.`, "The Stalker"); this._stalkerWon = won; } // release 678
-    if (e.questingBeast) { const won = questingBeastSlain(this.save); journalOnce(this.save, `questing-beast-slain:${this.save.questingBeast.slain}`, `You slew the Questing Beast at ${this.rx},${this.ry}.`, "The Questing Beast"); this.defeatNotice = { title: "THE QUESTING BEAST FALLS", detail: `+${won.marks} marks`, kind: "danger" }; this.message = won.message; }
+    if (e.questingBeast) { const won = questingBeastSlain(this.save); journalOnce(this.save, `questing-beast-slain:${this.save.questingBeast.slain}`, `You slew the Questing Beast at ${this.rx},${this.ry}.`, "The Questing Beast"); this.defeatNotice = { title: "ARCHFIEND SLAIN", detail: `The Questing Beast · +${won.marks} marks`, kind: "danger" }; this.message = won.message; }
     if (!e.ambient && !e.noRewards) { const done = wandererKill(this.save); if (done) { this.message = done; journalOnce(this.save, `wanderer-done:${this.save.wanderer.stage}`, done, "Old Quillon"); } }
     if (e.ambient) {
       e.rewarded = true;
@@ -4799,7 +4799,7 @@ export class Game {
       return;
     }
     if(this.area==='dungeon') recordDungeonBossDefeat(dungeonHistory(this.save,this.areaId()),e);
-    this.defeatNotice = enemyDefeatNotice(e, this.area);
+    if (!((e.worldBeast && WORLD_BEASTS[e.worldBeast]) || e.questingBeast)) this.defeatNotice = enemyDefeatNotice(e, this.area); // a world boss keeps its own notice (Tim: "it should say archfiend slain")
     if (e.stalker && this._stalkerWon) { const won = this._stalkerWon; this._stalkerWon = null; this.defeatNotice = { title: "THE STALKER FALLS", detail: `+${won.marks} marks · a ${won.sphere === "weaponSphere" ? "weapon" : "armor"} sphere · it will hunt again after ${won.quiet} new sections`, kind: "danger" }; } // release 678
     if (tidemantleTrial(this.area, this.map, e) && grantTidemantle(this.save, `${this.areaId()}:${e.id}`)) {
       this.defeatNotice = { ...this.defeatNotice, detail: `${this.defeatNotice?.detail || ""} · the Tidemantle is yours` };
@@ -5422,24 +5422,28 @@ export class Game {
     let st = this.fracState; if (!st || st.key !== key) st = this.fracState = { key, nextAt: now + F.grace * 1000, n: 0, wave: false };
     const hostile = this.enemies.filter((e) => !e.dead && !e.ambient && !e.passiveBehavior && !e.retreating && !e.astralAllyOf && e.kind !== "npc");
     const brought = hostile.filter((e) => e.fracReinforcement && !e.fracWardenAdd).length;
-    if (st.wave && brought === 0) { st.wave = false; st.nextAt = now + mode.rest * 1000; this.message = F.messages.lull; } // the wave is broken: a rest
+    const P = F.pace, pace = Math.max(0, Math.min(P.max, this.fracPace || 0));
+    if (st.wave && brought === 0) { // the wave is broken: a rest, shorter the faster you broke it (the pace)
+      const took = (now - (st.waveAt || now)) / 1000, next = took <= P.fast ? Math.min(P.max, pace + 1) : took >= P.slow ? Math.max(0, pace - 1) : pace; this.fracPace = next;
+      st.wave = false; st.nextAt = now + mode.rest * P.rest[next] * 1000; this.message = next > pace ? F.messages.quicken(next) : next < pace ? F.messages.ease(next) : F.messages.lull;
+    }
     if (this.tickFractureWarden(now, mode, key, st, hostile)) return; // release 666: the meter's Warden and its calls
     if (now < st.nextAt) return;
-    const room = Math.min(mode.cap - brought, mode.hardCap - hostile.length); if (room < mode.pack[0]) { st.nextAt = now + 2000; return; }
+    const room = Math.min(mode.cap + P.cap * pace - brought, mode.hardCap - hostile.length); if (room < mode.pack[0]) { st.nextAt = now + 2000; return; }
     st.n++; const elite = st.n % mode.surgeEvery === 0, h = hashSeed(`${this.save.seed}:frac-wave:${key}:${st.n}`);
     const w = mapWidth(this.map, this.area), [d0, d1] = F.spawnDistance, kinds = [...new Set(this.enemies.filter((e) => e.fractured || fracturedOrdinary(e)).map((e) => e.kind))].filter((k) => k !== "npc");
-    const packs = mode.packs[0] + h % (mode.packs[1] - mode.packs[0] + 1); let left = room, came = 0, rare = false;
+    const packs = mode.packs[0] + h % (mode.packs[1] - mode.packs[0] + 1) + P.packs * pace; let left = room, came = 0, rare = false;
     for (let k = 0; k < packs && left >= 2; k++) {
       const hk = hashSeed(`${this.save.seed}:frac-wave:${key}:${st.n}:p${k}`), base = (h >>> 4) % 628 / 100 + k * 6.283 / packs; // packs spread round the Wayfarer
       let at = null; for (let i = 0; i < 24 && !at; i++) { const a = base + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * .3, r = d0 + ((hk >>> 12) + i * 7) % (d1 - d0 + 1), x = Math.round(p.x + Math.cos(a) * r), y = Math.round(p.y + Math.sin(a) * r); if (x > 0 && y > 0 && x < w - 1 && y < (this.map.height || w) - 1 && this.fracturedOpen(x, y, w)) at = { x, y }; }
       if (!at) continue;
-      const size = Math.min(left, mode.pack[0] + hk % (mode.pack[1] - mode.pack[0] + 1) + (elite ? mode.surge : 0)), roll = ((hk >>> 9) % 1000) / 1000;
+      const size = Math.min(left, mode.pack[0] + hk % (mode.pack[1] - mode.pack[0] + 1) + (elite ? mode.surge : 0) + Math.floor(P.size * pace)), roll = ((hk >>> 9) % 1000) / 1000;
       const rank = elite ? (roll < .35 ? "rare" : "champion") : roll < mode.rare * .5 ? "rare" : roll < mode.champion ? "champion" : null; rare ||= rank === "rare";
       const pack = packSpawns(`${this.save.seed}:frac-wave:${key}:${st.n}:p${k}`, kinds.length ? kinds : F.fallback, at.x, at.y, size, rank, (x, y) => this.fracturedOpen(x, y, w), `frac-r-${(this.fracSeq = (this.fracSeq || 0) + 1)}`, { fracReinforcement: true });
       for (const q of pack.slice(0, left)) { const c = this.createEnemyFromSpawn(q); c.aggro = true; this.enemies.push(c); left--; came++; } // never past the room (657: a shaman counts)
     }
-    st.nextAt = now + (came ? mode.press : 2) * 1000; // a wave left standing is joined by the next
-    if (came) { st.wave = true; this.message = elite ? F.messages.elite : rare ? F.messages.rare : F.messages.wave; }
+    st.nextAt = now + (came ? mode.press * P.press[pace] : 2) * 1000; // a wave left standing is joined by the next
+    if (came) { if (!st.wave) st.waveAt = now; st.wave = true; this.message = elite ? F.messages.elite : rare ? F.messages.rare : F.messages.wave; }
   }
   // Release 666 (fractured.ts FRACTURE_WARDEN): with the meter full and no Warden up, one steps through just off the Wayfarer
   // (after the doorway's grace); while it lives, ordinary waves wait and it calls packs of the area's creatures round itself
