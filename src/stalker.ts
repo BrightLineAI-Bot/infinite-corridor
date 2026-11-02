@@ -22,8 +22,17 @@ import { ENCLOSURE, trapChance } from "./building.ts"; // release 696: the Enclo
 export const STALKER = {
   version: 1,
   unlockTier: 3, // Resonant, as the roaming Gate Revenant
-  hunt: { need: [300, 440], warn: [.5, .75, .9], follow: 70, step: 1.5, spawn: [7, 10] },
+  // Release 699 (Tim, 2026-11-02: "more frequent than the world bosses, but not so frequent that every 6 squares you're getting
+  // stalked"): `need` was 300–440 tiles (about 10–14 sections of walking); now 500–700 (about 15–20).
+  hunt: { need: [500, 700], warn: [.5, .75, .9], follow: 70, step: 1.5, spawn: [7, 10] },
   reset: [30, 40],
+  // Release 699 (Tim: "go to where his marker is on the map and go and find him... you should be able to hunt him if you want"):
+  // while it hunts it keeps a lair, a real section `start` sections from where the hunt began; the marker and the Atlas point to
+  // it. As the Wayfarer moves it trails them, never more than `start` × (1 − how close the hunt is) sections away (at least
+  // `near`), so it closes in as the clock fills. Walking into that section finds it. `escape`: ground the hunt drops back to when
+  // it breaks out of a held pen and leaves ("you can escape it for a little bit. But still stalking you").
+  lair: { start: 4, near: 1, escape: 0 },
+  lairSection: 32, // tiles across a section, for the marker's heading
   vitals: { hpShare: 1, damageShare: .22, damageScale: .85 },
   size: 1.4,
   forms: {
@@ -130,6 +139,8 @@ export function ensureStalker(save) {
     if (!(Number(a.hp) > 0)) a.hp = null;
     if (a.door && !(Number.isInteger(a.door.rx) && Number.isInteger(a.door.ry) && Number.isFinite(a.door.x) && Number.isFinite(a.door.y))) a.door = null;
   } else q.active = null;
+  // Release 699: the lair (a section), only while it hunts.
+  q.lair = q.quiet == null && q.lair && Number.isInteger(q.lair.rx) && Number.isInteger(q.lair.ry) ? { rx: q.lair.rx, ry: q.lair.ry } : null;
   return q;
 }
 export const stalkerUnlocked = (save, tier) => Number(tier) >= STALKER.unlockTier;
@@ -157,8 +168,25 @@ export function stalkerWarning(save) {
 export function stalkerNewSection(save) {
   const q = ensureStalker(save); if (q.quiet == null) return false;
   q.quiet -= 1; if (q.quiet > 0) return false;
-  q.quiet = null; q.ground = 0; q.warned = 0; q.seq += 1; q.need = Math.round(roll(`${save.seed}:stalker:need:${q.seq}`, STALKER.hunt.need));
+  q.quiet = null; q.ground = 0; q.warned = 0; q.lair = null; q.seq += 1; q.need = Math.round(roll(`${save.seed}:stalker:need:${q.seq}`, STALKER.hunt.need));
   return true;
+}
+// Release 699: the lair while it hunts, set (`start` sections off, a seeded heading) the first time it is asked from (rx, ry),
+// then stepped toward (rx, ry) until it is no more than the allowed distance away. Null while it rests or before it is unlocked.
+export function stalkerLair(save, rx, ry, unlocked = true) {
+  const q = ensureStalker(save), L = STALKER.lair;
+  if (!unlocked || q.quiet != null || !Number.isInteger(rx) || !Number.isInteger(ry)) return null;
+  if (!q.lair) { const a = (hashSeed(`${save.seed}:stalker:lair:${q.seq}:${q.kills}`) % 360) * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a), k = L.start / Math.max(Math.abs(c), Math.abs(sn)); q.lair = { rx: rx + Math.round(c * k), ry: ry + Math.round(sn * k) }; }
+  const allow = Math.max(L.near, Math.round(L.start * (1 - Math.min(1, q.ground / q.need))));
+  for (let i = 0; i < 64 && Math.max(Math.abs(q.lair.rx - rx), Math.abs(q.lair.ry - ry)) > allow; i++) { q.lair.rx -= Math.sign(q.lair.rx - rx); q.lair.ry -= Math.sign(q.lair.ry - ry); }
+  return q.lair;
+}
+// Release 699: it broke out of a held pen and left. Its wounds stay; the hunt drops back to `lair.escape` of the way and the lair
+// goes back out, so the Wayfarer gets a while before it finds them again.
+export function stalkerEscaped(save, hp) {
+  const q = ensureStalker(save);
+  q.active = { engaged: false, hp: Number(hp) > 0 ? hp : q.active?.hp ?? null, door: null };
+  q.ground = Math.round(q.need * STALKER.lair.escape); q.warned = warnStage(q.ground / q.need); q.lair = null;
 }
 // It came out to fight.
 export function stalkerEngaged(save, hp) { const q = ensureStalker(save); q.active = { ...(q.active || {}), engaged: true, hp: Number(hp) > 0 ? hp : null, door: null }; return q.active; }
@@ -175,10 +203,10 @@ export function stalkerWaitAtDoor(save, door) {
 // The door it waits by, if the Wayfarer has come out in that section.
 export function stalkerDoorHere(save, rx, ry) { const d = ensureStalker(save).active?.door; return d && d.rx === rx && d.ry === ry ? d : null; }
 // The Wayfarer fell: it lets them go and begins again.
-export function stalkerPlayerFell(save) { const q = ensureStalker(save); q.active = null; q.ground = 0; q.warned = 0; }
+export function stalkerPlayerFell(save) { const q = ensureStalker(save); q.active = null; q.ground = 0; q.warned = 0; q.lair = null; }
 // Killed: it hunts again after 30–40 new sections.
 export function stalkerSlain(save) {
-  const q = ensureStalker(save); q.kills += 1; q.active = null; q.ground = 0; q.warned = 0;
+  const q = ensureStalker(save); q.kills += 1; q.active = null; q.ground = 0; q.warned = 0; q.lair = null;
   q.quiet = between(`${save.seed}:stalker:reset:${q.kills}`, STALKER.reset);
   const marks = STALKER.reward.marks + STALKER.reward.perLevel * (Number(save.level) || 1);
   save.currency = (Number(save.currency) || 0) + marks;

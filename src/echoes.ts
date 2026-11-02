@@ -22,7 +22,7 @@ export const ECHO_DROPS = { guardian: 100, ordinary: 0 };
 // guaranteed first-kill Echo of release 263) grants it once, when the save loads. Returns the ids granted.
 export function grantSlainEchoes(save) {
   if (!save?.echoes?.owned) return [];
-  const slain = [["questingBeast", save.questingBeast?.slain], ...Object.entries(save.worldBeasts || {}).map(([id, q]) => [id, q?.slain])];
+  const slain = [["questingBeast", save.questingBeast?.slain], ["stalker", save.stalker?.kills], ...Object.entries(save.worldBeasts || {}).map(([id, q]) => [id, q?.slain])];
   const granted = slain.filter(([id, n]) => ECHOES[id] && Number(n) > 0 && !save.echoes.owned[id]).map(([id]) => id);
   for (const id of granted) save.echoes.owned[id] = true;
   return granted;
@@ -56,6 +56,11 @@ export const ECHOES = {
   voidWalker: { name: "Rift Upheaval", cost: 2, trigger: "dodge", module: "voidSpikes", text: "Dodging marks the nearest foe within 5 tiles with a void spike; it erupts after half a second (once every 4 s)." },
   earthGolem: { name: "Golem's Landfall", cost: 2, trigger: "land", module: "golemPunch", text: "Landing a jump staggers foes within 2.5 tiles for 0.6 s." }, // Canyon craters
   crystalCrab: { name: "Geode Shell", cost: 1, trigger: "hurt", module: "clawSweep", text: "Being hurt cracks your shell into shards that strike foes within 1.5 tiles." },
+  // Release 699 (Tim, 2026-11-02: "an echo for the stalker for killing him... a mist form... when you're dashed, you turn into
+  // mist... it hurts enemies or... chunks their health similar to the way his mist form does... reduces their overall health"):
+  // not a pack creature, so `creature` names it for the Echoes screen. Taken on the first Stalker kill (game.ts), or on load for
+  // a Wayfarer who has killed it already (grantSlainEchoes).
+  stalker: { name: "Stalker's Mist", cost: 3, trigger: "dodge", module: "mistForm", creature: "The Stalker", text: "Your dodge turns you to mist: each foe you pass through loses a share of its maximum health for good (never more than a third of it)." },
   graveLantern: { name: "Lantern Stillness", cost: 1, trigger: "still", module: "stillnessCurse", text: "Standing still for a second mends 2 health each second." },
 };
 export const ECHO_IDS = Object.keys(ECHOES);
@@ -106,6 +111,16 @@ function nearest(game, x, y, radius, skip = null) {
   return game.enemies.filter((e) => !e.dead && !e.untargetable && e !== skip && Math.hypot(e.x + .5 - x, e.y + .45 - y) <= radius).sort((a, b) => Math.hypot(a.x + .5 - x, a.y + .45 - y) - Math.hypot(b.x + .5 - x, b.y + .45 - y));
 }
 const centre = (q) => ({ x: q.x + .5, y: q.y + .45 });
+// Release 699: Stalker's Mist. While the dodge lasts the Wayfarer is mist; each foe within `reach` it passes through (once a
+// dodge) loses `share` of the maximum health it had before any mist, as maximum health and as health, until `cap` of it is gone.
+// The health part is a blow (it can kill, and counts as yours); the maximum part stays, so a boss cannot heal it back.
+export const STALKER_MIST = { reach: 1, share: .06, cap: 1 / 3, linger: 120 };
+export function mistRot(e, world) {
+  const M = STALKER_MIST, base = (e.mistBase ||= e.maxHp || e.hp || 1), left = Math.max(0, (e.maxHp || base) - Math.ceil(base * (1 - M.cap))), cut = Math.min(left, Math.max(1, Math.round(base * M.share)));
+  if (!(cut > 0)) return 0;
+  e.maxHp = Math.max(1, (e.maxHp || base) - cut); world.damage(e, cut); if (!e.dead && e.hp > e.maxHp) e.hp = e.maxHp;
+  return cut;
+}
 // Worm's Upheaval: each dodge lays its own puddle under the nearest foe within `range` tiles (one not already marked first, so
 // quick dodges spread over different foes), and each bursts `delay` ms later, one after another. Release 655 had stacked them
 // into one growing ring; Tim (2026-11-02): "It was working better before... each Dodge made a discrete like puddle underneath
@@ -135,6 +150,7 @@ export function echoEvent(game, event, now, data = {}) {
         p.echoVoidReadyAt = now + VOID_ECHO.cooldown;
       }
     }
+    if (eq.includes("stalker")) p.echoMist = { until: (p.dodgeUntil || now + 300) + STALKER_MIST.linger, hit: {} }; // release 699
     if (eq.includes("strataEel")) p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, (p.dodgeUntil || now) + 250);
   } else if (event === "land") {
     if (eq.includes("sunderjaw")) world.blast(me.x, me.y, 1.8, dmg);
@@ -182,6 +198,7 @@ export function tickEchoes(game, dt, now, moving) {
   if (hurt) echoEvent(game, "hurt", now);
   if (landed) echoEvent(game, "land", now);
   if (p.echoCharge && now < p.echoCharge.until) for (const e of nearest(game, me.x, me.y, .95)) if (!p.echoCharge.hit[e.id]) { p.echoCharge.hit[e.id] = true; world.damage(e, echoDamage(save)); e.hitStun = Math.max(e.hitStun || 0, .6); }
+  if (p.echoMist && now < p.echoMist.until) for (const e of nearest(game, me.x, me.y, STALKER_MIST.reach)) if (!p.echoMist.hit[e.id]) { p.echoMist.hit[e.id] = true; if (mistRot(e, world)) (game.glyphVisuals ||= []).push({ kind: "mist", x: e.x + .5, y: e.y + .45, life: .45, max: .45 }); } // release 699
   if (eq.includes("weepingSaint")) {
     const f = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[p.facing] || [0, 1];
     for (const e of nearest(game, me.x, me.y, 5)) { const c = centre(e), dx = c.x - me.x, dy = c.y - me.y, m = Math.hypot(dx, dy) || 1; if ((dx * f[0] + dy * f[1]) / m > .5) e.glyphSlow = { until: Math.max(e.glyphSlow?.until || 0, now + 150), factor: Math.min(e.glyphSlow?.factor || 1, .6) }; }

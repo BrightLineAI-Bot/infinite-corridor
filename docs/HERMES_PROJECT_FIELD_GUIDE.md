@@ -2694,6 +2694,39 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 699: hunt the Stalker; Stalker's Mist — 2026-11-02
+
+Tim (2026-11-02, through the first session, then here): "go to where his marker is on the map and go and find him... you should be
+able to hunt him if you want... more frequent than the world bosses, but not so frequent that every 6 squares you're getting
+stalked"; "after a kill, like 30 or 40 new sections is fine"; out of a pen "he breaks out... and then he starts tracking you
+again... you can escape it for a little bit. But still stalking you"; "an echo for the stalker for killing him... a mist form...
+when you're dashed, you turn into mist... reduces their overall health".
+
+**CODE:**
+- `src/stalker.ts`:
+  - `STALKER.hunt.need` is 500–700 tiles (was 300–440); `reset` stays 30–40 new sections.
+  - `STALKER.lair` and `stalkerLair(save, rx, ry, unlocked)`: while it hunts, `save.stalker.lair` is a section `start` (4)
+    sections off on a seeded heading, stepped toward the Wayfarer until it is within `start × (1 − ground/need)` (at least
+    `near`, 1). Null while it rests; cleared on a kill, a new hunt and a fall.
+  - `stalkerEscaped(save, hp)`: out of a held pen it keeps its health in `active`, the hunt drops to `lair.escape` (0) and the
+    lair is cleared.
+- `src/game.ts`:
+  - `tickStalker` asks for the lair each frame and spawns the Stalker when the Wayfarer stands in that section (where an ambush
+    could happen).
+  - `stalkerMarker` points to the lair's centre with "N sections off"; `stalkerLairPin` feeds the Atlas.
+  - The `penOut` hook is `stalkerBreaksOut`: the Stalker and its kin leave (`stalkerGone`, no rewards).
+  - The first kill sets `save.echoes.owned.stalker` and the defeat notice names the Echo.
+- `src/echoes.ts`: `ECHOES.stalker`, "Stalker's Mist" (3, dodge, `creature: "The Stalker"`).
+  - `STALKER_MIST` and `mistRot`: each foe within `reach` during the dodge (and `linger` ms after) loses `share` (6%) of
+    its pre-mist maximum health as maximum health and as a blow, once a dodge, until `cap` (a third) is gone.
+  - `grantSlainEchoes` also grants it for `save.stalker.kills`.
+- `src/renderer.ts`: the misted Wayfarer while dodging and a mist puff on each foe it rots. `src/main.ts`: the Atlas pin, and
+  the Echoes screen reads `creature`.
+- `tests/echoes.test.ts`: the one-Echo-per-pack-creature check leaves out `stalker` (a creature outside the pack).
+
+**BOUNDARY:** `save.stalker.lair` is additive at schema 14, normalised in `ensureStalker`; an existing `need` is kept until the
+next hunt. No generator change. Tests: `tests/stalker-699.test.ts`.
+
 ## Release 698: Worm's Upheaval back to puddles — 2026-11-02
 
 Tim (2026-11-02): "the tremor worm's [Echo]... was working better before... right now it like stacks up... beneath the person

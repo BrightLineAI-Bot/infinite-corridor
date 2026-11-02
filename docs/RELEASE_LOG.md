@@ -15,14 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 698, the next is **699**.
+Taken at merge time: `main`'s release + 1 (see above). After 699, the next is **700**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 699 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | Hunt the Stalker: a lair the marker and Atlas point to; hunts less often; out of a pen it leaves; Stalker's Mist Echo | Building. |
 | 698 | Claude | `claude/dreamy-rubin-yn6q2p` | Worm's Upheaval back to one puddle a dodge, bursting in turn (undoes release 655's stacking) | Merging. |
-| 697 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | Closing the pen: the trap is tried when a second enclosure closes the first's opening with the Stalker inside; items work in a pen | Building. |
+| 697 | Claude (Stalker session) | PR #344 | Closing the pen: the trap is tried when a second enclosure closes the first's opening with the Stalker inside; items work in a pen | Merged; published in r697. |
 | 696 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Enclosure: a 2x2 pen (2 wood, 2 stone, 2 cinder iron), walled on three sides; a trap for the Stalker with two standing | Merged; published in r696. |
 | 695 | Claude (Stalker session) | PR #342 | The Stalker's mirage, the gorilla's lasers, five ways in, low ground fog, walks on water | Merged; published in r695. |
 | 694 | Claude (second session) | PR #341 | Hotfix, the broken screen (Tim's r688 diagnostic): the affix/boss-kit warning-mark fill clamped (a rounding-negative ellipse radius threw mid-frame and the leaked camera translate corrupted every later frame); 691's swallowed `ctx.save(); const cx…` restored; the canvas reset if a render throws | Merging (baton taken). Tim said publish once merged. |
