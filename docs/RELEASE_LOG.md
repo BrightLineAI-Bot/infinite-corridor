@@ -21,6 +21,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 700, the next is **
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| (at merge) | Claude | `claude/dreamy-rubin-yn6q2p` | The Rite of Ascendancy reworked: a strange tree that burns down, ramping waves, ashes that raise the great tree (rising, rubble, flash), always its sky door | Building. |
 | 700 | Claude | `claude/dreamy-rubin-yn6q2p` | The Rite of Ascendancy: sapling daises, a fire-sealed five-minute survival (three tries), a great tree with Divine Viscera, sometimes a door to the sky | Merging. |
 | 699 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | Hunt the Stalker: a lair the marker and Atlas point to; hunts less often; out of a pen it leaves; Stalker's Mist Echo | Building. |
 | 698 | Claude | `claude/dreamy-rubin-yn6q2p` | Worm's Upheaval back to one puddle a dodge, bursting in turn (undoes release 655's stacking) | Merging. |

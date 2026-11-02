@@ -39,7 +39,7 @@ export function drawRangedEffects(ctx,game,width,height) {
   }
   ctx.shadowBlur = 0;
   for (const fx of game.effects) {
-    if (fx.brawler || fx.kind === "golem-punch") continue; // release 483: drawn by drawBrawler; 535: the golem by drawToolForms
+    if (fx.brawler || fx.kind === "golem-punch" || fx.kind === "riteRubble" || fx.kind === "riteFlash") continue; // the rite's rubble and flash are drawn below; release 483: drawn by drawBrawler; 535: the golem by drawToolForms
     const [x, y] = toScreen(fx);
     ctx.strokeStyle = fx.hostile ? "#e35248cc" : "#b75235aa";
     ctx.lineWidth = 4;
@@ -59,6 +59,8 @@ export function drawRangedEffects(ctx,game,width,height) {
   drawOrbit(ctx, game, toScreen, s, t); // release 487: Orbit Volley
   drawToolForms(ctx, game, toScreen, s, t); // release 533: Nanoknives and the Arc Wave
   if (game.rite && game.area === "overworld") drawRiteFire(ctx, toScreen, s, t); // the Rite of Ascendancy: fire round the section's edges
+  for (const fx of game.effects) if (fx.kind === "riteRubble" && fx.life > 0) { const [x, y] = toScreen(fx), k = 1 - fx.life / fx.maxLife, drop = (fx.h || 2) * (1 - k) * s; ctx.fillStyle = k > .85 ? "rgba(120,100,80,.5)" : "#7a6650"; ctx.fillRect(x - s * .07, y - drop - s * .07, s * .14, s * .12); if (k > .8) { ctx.fillStyle = "rgba(160,140,110,.35)"; ctx.beginPath(); ctx.ellipse(x, y, s * .3 * (k - .6) * 3, s * .1, 0, 0, 7); ctx.fill(); } } // the great tree rising: rubble falling off it
+  for (const fx of game.effects) if (fx.kind === "riteFlash" && fx.life > 0) { const a = Math.min(1, fx.life / fx.maxLife * 1.4); ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = `rgba(255,250,235,${a * .9})`; ctx.fillRect(0, 0, ctx.canvas?.width || 4000, ctx.canvas?.height || 4000); ctx.restore(); } // ... the flash as it begins
   for (const fx of game.effects) {
     if (fx.kind !== "gravity-well" && fx.kind !== "stillpoint") continue;
     const [x, y] = toScreen(fx), R = fx.radius * s;

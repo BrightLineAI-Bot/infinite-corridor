@@ -85,7 +85,7 @@ import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatt
 import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt, DREAM_HALL, dreamHallRoll } from "./underlands.ts";
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
-import { ASCENDANCY, saplingHere, riteRecord, triesLeft, riteSkyway, riteKey, waveGap } from "./ascendancy.ts";
+import { ASCENDANCY, saplingHere, riteRecord, triesLeft, riteSkyway, riteKey, waveGap, riteRamp } from "./ascendancy.ts";
 import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.ts";
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology } from "./keeps.ts";
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
@@ -3292,6 +3292,7 @@ export class Game {
     if (o.kind === "divineWreck") return this.pullViscera(o); // Canyon craters
     if (o.kind === "saplingDais") return this.beginRite(o); // the Rite of Ascendancy
     if (o.kind === "visceraBloom") return this.gatherBloom(o);
+    if (o.kind === "riteAshes") return this.riseFromAshes(o);
     if (o.kind === "annexStair") return this.descendAnnex(o); // release 675
     if (o.kind === "deepShaft") return this.enterDeep(o, action); // release 677
     if (o.kind === "deepStair") return this.descendDeep(o);
@@ -5362,10 +5363,11 @@ export class Game {
     for (let r = 3; r <= 10 && !at; r++) for (let k = 0; k < 16 && !at; k++) { const a = k / 16 * Math.PI * 2 + .5, x = Math.round(16 + Math.cos(a) * r), y = Math.round(16 + Math.sin(a) * r), t = this.map.tiles[y * w + x];
       if (t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.canopy && !(t.elev > 0) && !t.landscape?.startsWith?.("sea") && footprintOpen(this.map, w, x, y) && !this.map.objects.some((o) => Math.hypot(o.x - x, o.y - y) < 2)) at = { x, y }; }
     if (!at) return null;
-    if (rec?.done) return this.raiseRiteTree(at);
+    if (rec?.done && rec.risen) return this.raiseRiteTree(at);
+    if (rec?.done) { const a = { id: `rite-ashes-${this.rx}-${this.ry}`, kind: "riteAshes", name: "Ashes of the Rite", ...at, state: "warm", actions: ["touch"], landmark: true, lore: ASCENDANCY.messages.ashes }; this.map.objects.push(a); return a; }
     if (!rec && !riteTreeFits(this.map, this.save.seed, this.rx, this.ry)) return null; // only where its tree would have room
-    const o = triesLeft(rec) <= 0 ? { id, kind: "ruinMarker", name: "Withered Sapling", lore: ASCENDANCY.messages.withered, ...at, state: "quiet", actions: ["inspect"] }
-      : { id, kind: "saplingDais", name: ASCENDANCY.name, ...at, state: this.rite?.key === riteKey(this.rx, this.ry) ? "burning" : "open", actions: ["begin"], landmark: true, lore: ASCENDANCY.messages.dais };
+    const o = triesLeft(rec) <= 0 ? { id, kind: "ruinMarker", name: "Dead Strange Tree", lore: ASCENDANCY.messages.withered, ...at, state: "quiet", actions: ["inspect"] }
+      : { id, kind: "saplingDais", name: ASCENDANCY.name, ...at, scale: 1.5, state: this.rite?.key === riteKey(this.rx, this.ry) ? "burning" : "open", actions: ["begin"], landmark: true, lore: ASCENDANCY.messages.dais };
     this.map.objects.push(o); if (o.kind === "saplingDais" && !this.message) this.message = ASCENDANCY.messages.dais; return o;
   }
   beginRite(o) {
@@ -5379,35 +5381,40 @@ export class Game {
   }
   // One frame of the rite: waves come in from just off the screen, closer together as it goes on; at the end, the tree.
   riteTick(dt, now) {
-    const R = this.rite, A = ASCENDANCY, W = A.waves;
+    const R = this.rite, A = ASCENDANCY, W = A.waves; if (!R) return null;
     if (this.area !== "overworld" || riteKey(this.rx, this.ry) !== R.key) return this.riteFailed();
     if (now >= R.until) return this.riteDone();
+    const f = (now - R.started) / (ASCENDANCY.duration * 1000), dais = this.map.objects.find((o) => o.kind === "saplingDais"); if (dais) dais.burn = Math.min(1, f); // the strange tree burns down as the rite goes on
     if (now < R.nextAt) return;
     const alive = this.enemies.filter((e) => e.riteFoe && !e.dead).length, p = this.player, w = mapWidth(this.map, "overworld");
     R.n++; R.nextAt = now + waveGap((now - R.started) / 1000) * 1000;
     if (alive >= W.cap) return;
     const kinds = [...new Set(this.enemies.filter((e) => !e.dead && !e.ambient && !e.passiveBehavior && !e.worldBeast && !e.questingBeast && !e.stalker && e.kind !== "npc" && (e.fractured || fracturedOrdinary(e) || e.riteFoe)).map((e) => e.kind))];
-    const h = hashSeed(`${this.save.seed}:rite-wave:${R.key}:${R.n}`), packs = W.packs[0] + h % (W.packs[1] - W.packs[0] + 1); let left = W.cap - alive;
+    const h = hashSeed(`${this.save.seed}:rite-wave:${R.key}:${R.n}`), packs = W.packs[0] + h % (W.packs[1] - W.packs[0] + 1) + Math.round(W.packsUp * f); let left = W.cap - alive;
+    const ramp = riteRamp(f), stats = characterStats(this.save), guard = Math.max(0, Math.min(.75, Number(stats.damageReduction) || 0)), perHit = liveBeastReference(this.save, stats).perHit;
     for (let k = 0; k < packs && left >= 2; k++) {
       const hk = hashSeed(`${this.save.seed}:rite-wave:${R.key}:${R.n}:p${k}`), base = (h >>> 4) % 628 / 100 + k * 6.283 / packs; let at = null;
       for (let i = 0; i < 24 && !at; i++) { const a = base + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * .3, r = W.distance[0] + ((hk >>> 12) + i * 7) % (W.distance[1] - W.distance[0] + 1), x = Math.round(p.x + Math.cos(a) * r), y = Math.round(p.y + Math.sin(a) * r); if (x > 1 && y > 1 && x < w - 2 && y < w - 2 && this.fracturedOpen(x, y, w)) at = { x, y }; }
       if (!at) continue;
-      const roll = ((hk >>> 9) % 1000) / 1000, rank = roll < W.rare ? "rare" : roll < W.champion ? "champion" : null, size = Math.min(left, W.pack[0] + hk % (W.pack[1] - W.pack[0] + 1));
-      for (const q of packSpawns(`${this.save.seed}:rite-wave:${R.key}:${R.n}:p${k}`, kinds.length ? kinds : A.fallback, at.x, at.y, size, rank, (x, y) => this.fracturedOpen(x, y, w), `rite-${R.n}-${k}`, { riteFoe: true }).slice(0, left)) { const c = this.createEnemyFromSpawn(q, "overworld"); c.aggro = true; c.riteFoe = true; this.enemies.push(c); left--; }
+      const roll = ((hk >>> 9) % 1000) / 1000, rank = roll < W.rare ? "rare" : roll < W.champion ? "champion" : null, size = Math.min(left, W.pack[0] + hk % (W.pack[1] - W.pack[0] + 1) + Math.round(W.sizeUp * f));
+      for (const q of packSpawns(`${this.save.seed}:rite-wave:${R.key}:${R.n}:p${k}`, kinds.length ? kinds : A.fallback, at.x, at.y, size, rank, (x, y) => this.fracturedOpen(x, y, w), `rite-${R.n}-${k}`, { riteFoe: true }).slice(0, left)) {
+        const c = this.createEnemyFromSpawn(q, "overworld"); c.aggro = true; c.riteFoe = true;
+        if (ramp) { const hp = Math.round(perHit * ramp.hits * (A.ramp.rankHits[c.fracRank || q.fracRank] || 1)); c.maxHp = c.hp = Math.max(c.maxHp || 1, hp); c.damage = Math.max(Math.round((c.damage || 1) * (1 + A.ramp.nativeUp * ramp.k)), Math.round((Number(this.save.maxHp) || 60) * ramp.share / (1 - guard))); c.baseDamage = c.damage; } // the rite's ramp (ASCENDANCY.ramp)
+        this.enemies.push(c); left--; }
     }
     const t = Math.ceil((R.until - now) / 1000); this.message = `The rite's creatures come. ${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")} left.`;
   }
-  riteEnd() { const R = this.rite; this.rite = null; this.enemies = this.enemies.filter((e) => !e.riteFoe || e.dead); for (const o of this.map?.objects || []) if (o.kind === "saplingDais") o.state = "open"; return R; }
+  riteEnd() { const R = this.rite; this.rite = null; this.enemies = this.enemies.filter((e) => !e.riteFoe || e.dead); for (const o of this.map?.objects || []) if (o.kind === "saplingDais") { o.state = "open"; delete o.burn; } return R; }
   riteFailed() {
     const R = this.riteEnd(); if (!R) return null; const [rx, ry] = R.key.split(",").map(Number), left = triesLeft(riteRecord(this.save, rx, ry));
-    this.defeatNotice = { title: "THE RITE IS BROKEN", detail: left > 0 ? `${left} attempt${left === 1 ? "" : "s"} left at this sapling` : "the sapling withers", kind: "danger" };
+    this.defeatNotice = { title: "THE RITE IS BROKEN", detail: left > 0 ? `${left} attempt${left === 1 ? "" : "s"} left at this tree` : "the strange tree dies", kind: "danger" };
     this.message = ASCENDANCY.messages.failed(left); journalOnce(this.save, `rite-failed:${R.key}:${3 - left}`, ASCENDANCY.messages.failed(left), "The Rite of Ascendancy"); return R;
   }
   riteDone() {
     const R = this.riteEnd(); if (!R) return null; const rec = riteRecord(this.save, this.rx, this.ry); rec.done = true;
-    this.map.objects = this.map.objects.filter((o) => o.kind !== "saplingDais"); this.raiseRiteTree(R.at);
-    this.defeatNotice = { title: "ASCENDANCY", detail: "a great tree rises · Divine Viscera blooms on its crown", kind: "discovery" };
-    journalOnce(this.save, `rite-done:${R.key}`, `You survived the Rite of Ascendancy at ${R.key}. A great tree rose where the sapling stood.`, "The Rite of Ascendancy");
+    this.map.objects = this.map.objects.filter((o) => o.kind !== "saplingDais"); this.placeSapling(); // the ashes, where the strange tree stood
+    this.defeatNotice = { title: "ASCENDANCY", detail: "the strange tree has burned to ashes · touch them", kind: "discovery" };
+    journalOnce(this.save, `rite-done:${R.key}`, `You survived the Rite of Ascendancy at ${R.key}. The strange tree burned to ashes.`, "The Rite of Ascendancy");
     this.message = ASCENDANCY.messages.done; this.sync(); return R;
   }
   // The tree the rite raised (the same each time), its door to the sky kept only by a share of rites, and the bloom on its crown.
@@ -5419,6 +5426,32 @@ export class Game {
     if (tree) { const crown = this.map.tiles.filter((t) => t.kind === "canopyTrunk" && t.elev === tree.top && !this.map.objects.some((o) => Math.round(o.x) === t.x && Math.round(o.y) === t.y)).sort((a, b) => (a.y - b.y) || (a.x - b.x)); if (crown[0]) spot = { x: crown[0].x, y: crown[0].y }; }
     this.map.objects.push({ id: `viscera-bloom-${this.rx}-${this.ry}`, kind: "visceraBloom", name: "Bloom of Divine Viscera", x: spot.x, y: spot.y, state: "open", actions: ["gather"], lore: ASCENDANCY.messages.bloom });
     return tree;
+  }
+  // Touch the ashes: the screen flashes, the Wayfarer is set clear of where the tree will stand, and the great tree rises out of the
+  // ground over ASCENDANCY.rise s (its platforms climbing level by level, rubble falling) before it can be climbed.
+  riseFromAshes(o) {
+    const rec = riteRecord(this.save, this.rx, this.ry); if (!rec.done || rec.risen) return { ok: false, message: (this.message = ASCENDANCY.messages.ashes) };
+    rec.risen = true; this.map.objects = this.map.objects.filter((q) => q !== o);
+    const tree = this.raiseRiteTree({ x: o.x, y: o.y }), now = this.lastUpdateNow || 0, w = mapWidth(this.map, "overworld"), p = this.player;
+    if (tree) {
+      const tiles = []; this.map.tiles.forEach((t, i) => { if (t.canopy) { tiles.push([i, t.elev || 0]); t.elev = 0; } });
+      const trees = [this.map.canopy, ...(this.map.canopy.trees || [])].filter(Boolean), tops = trees.map((c) => c.top); for (const c of trees) c.top = 0;
+      this.treeRise = { start: now, end: now + ASCENDANCY.rise * 1000, tiles, trees, tops, nextRubble: now };
+      if (this.map.tiles[Math.floor(p.y + .6) * w + Math.floor(p.x + .4)]?.canopy) { let best = null; for (const t of this.map.tiles) { if (t.canopy || t.blocked || !footprintOpen(this.map, w, t.x, t.y)) continue; const d = Math.hypot(t.x - p.x, t.y - p.y); if (!best || d < best.d) best = { x: t.x, y: t.y, d }; } if (best) { p.x = best.x; p.y = best.y; } } // set clear of the rising wood
+    }
+    (this.effects ||= []).push({ id: `rite-flash-${now}`, kind: "riteFlash", x: p.x, y: p.y, life: 1.1, maxLife: 1.1, damage: 0, radius: 0, pulse: 99, untilPulse: 99 });
+    this.cameraShake = Math.max(this.cameraShake || 0, .8);
+    this.defeatNotice = { title: "A GREAT TREE RISES", detail: "Divine Viscera on its crown · a door to the sky", kind: "discovery" };
+    journalOnce(this.save, `rite-risen:${riteKey(this.rx, this.ry)}`, ASCENDANCY.messages.rise, "The Rite of Ascendancy");
+    this.message = ASCENDANCY.messages.rise; this.sync(); return { ok: true, message: this.message };
+  }
+  // One frame of the rising tree: every platform at its share of its height, rubble falling round the trunk.
+  tickTreeRise(now) {
+    const T = this.treeRise, k = Math.max(0, Math.min(1, (now - T.start) / (T.end - T.start))), ease = 1 - (1 - k) ** 3;
+    for (const [i, e] of T.tiles) { const t = this.map.tiles[i]; if (t) t.elev = k >= 1 ? e : Math.round(e * ease); }
+    T.trees.forEach((c, j) => { c.top = k >= 1 ? T.tops[j] : Math.round(T.tops[j] * ease); });
+    if (k < 1 && now >= T.nextRubble) { T.nextRubble = now + 70; const c = T.trees[0], h = hashSeed(`rite-rubble:${Math.round(now)}`); (this.effects ||= []).push({ id: `rite-rubble-${now}`, kind: "riteRubble", x: c.x0 + (h % 1000) / 1000 * (c.size + 4) - 2, y: c.y0 + ((h >>> 10) % 1000) / 1000 * (c.size + 4) - 2, h: 1.5 + ((h >>> 20) % 100) / 30, life: .7, maxLife: .7, damage: 0, radius: 0, pulse: 99, untilPulse: 99 }); this.cameraShake = Math.max(this.cameraShake || 0, .25); }
+    if (k >= 1) this.treeRise = null;
   }
   gatherBloom(o) {
     const rec = riteRecord(this.save, this.rx, this.ry); if (rec.bloom) return { ok: false, message: (this.message = "The bloom is spent.") };
@@ -6019,6 +6052,7 @@ export class Game {
     if (this.area === "overworld" && (this.map?.canopy || this.map?.keep)) this.touchCrownRest(); // a great tree's crown, or a keep's
     if (this.area === "dungeon" && this.map?.canyon) this.canyonTick(dt, now); // Canyon craters
     if (this.rite) this.riteTick(dt, now); // the Rite of Ascendancy
+    if (this.treeRise) { if (this.area === "overworld") this.tickTreeRise(now); else this.treeRise = null; }
     this.tickFractured(now); // release 651: Fractured mode
     if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = ensureEliteState(this.save).status; // release 657: affixes, auras, shamans
       tickAffixes(this, dt, now, (n) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)))); p.invulnerableUntil = now + 350; }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }

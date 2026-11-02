@@ -2694,6 +2694,29 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release NNN: the Rite of Ascendancy, reworked — 2026-11-02
+
+Tim (2026-11-02): "we can just reuse the asset of the weird tree... glowing... purple... as the [dais]... once you start... the
+[tree] should become on fire... and then it should burn down... at the end of it, there's just Ashes... you go over to the
+Ashes and it just says interact and then a tree grows... the screen can like flash and fade... I would like to see the tree
+rising from the ground... rubble... should fall"; the waves "start from the level of the tile... quickly ramp up to your gear
+level. And then quickly exceed... by the end... they hit... almost [like] world [bosses]... a reasonable amount of health...
+so you can still kill them pretty quickly if you have a strong build"; and "climb it and go to the skyway. And get divine
+viscera".
+
+**CODE:** ascendancy.ts: `ASCENDANCY.ramp` (`calm` .12 of the rite with the country's own creatures; then each rite creature's
+blow is the larger of its own × (1 + `nativeUp` 1.5 × k) and `share` .04 → .18 of the Wayfarer's max health past their guard,
+and its health `hits` 2 → 7 of the Wayfarer's own blow (world-beasts.ts `liveBeastReference`), × `rankHits` for champions and
+rares; never weaker than it came), `riteRamp(f)`; `waves` cap 30 and `packsUp`/`sizeUp` 2 more packs and 2 more a pack by the
+end; `skyway` 1 (every tree keeps its door); `rise` 3.5 s; records gain `risen`. game.ts: the dais is drawn as a strange tree
+(renderer.ts `drawRiteTree` → `drawStrange`, scale 1.5); `riteTick` sets its `burn` (drawn darker, lower, aflame); `riteDone`
+leaves `riteAshes` (kept across loads until touched); `riseFromAshes` grows the tree, sets every canopy tile and the canopy
+tops to 0, sets the Wayfarer clear of the wood, flashes (`riteFlash`) and shakes; `tickTreeRise` raises them over `rise` s
+(eased, whole levels, so the ground image redraws a few dozen times) with `riteRubble` falling (combat-visuals.ts).
+
+**BOUNDARY:** Additive at schema 14 (`risen` on the rite's record). Bounded: 30 rite creatures alive at most; the rise is one
+short animation. Tests: `tests/rite-of-ascendancy.test.ts` (including a strict-canvas render of every stage).
+
 ## Release 700: the Rite of Ascendancy — 2026-11-02
 
 Tim (2026-11-02): "a Dias that looks like a sprouting tree... you can touch it... begin rites of ascendency... all the wards and
