@@ -2694,6 +2694,20 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 703: Arcana in the Journal — 2026-11-02
+
+Tim (2026-11-02): "an arcana panel in the journal which has all these like threads. And all these little like story beats. I
+know, I told you not to do it, but we're doing so many of them, and I would like to see... where they're going." (Release 581
+had kept them out of Active quests; this is their own tab.)
+
+**CODE:** main.ts: the Journal's tabs gain "Arcana" (between Glossary and the Reciter's Tome); `renderArcana` lists, as
+`arcanaCard`s (a title, "n of N found · the rest lie in …" or "Complete", a row of dots, and a collapsible "What you have read"
+with the ending once complete): every thread in THREAD_ORDER (its band in words, ARCANA_BANDS), then the Seven Bells, the
+Surveyor's Chain (links and Corwin's notes), the Torn Pages (by Reading), Ilse's meetings, and a count of Glimpses seen (within
+the family-safe setting). Only what has been found is ever shown.
+
+**BOUNDARY:** UI only: reads save.lore, writes nothing. Tests: `tests/threads-later.test.ts`.
+
 ## Release 702: The Well-Digger's Rope — 2026-11-02
 
 The daily narrative pass (Tim's routine: "keep weaving multi-crossing quests like the Seven Bells and the Surveyor's Chain through
