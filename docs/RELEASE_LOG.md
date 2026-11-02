@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 694, the next is **695**.
+Taken at merge time: `main`'s release + 1 (see above). After 695, the next is **696**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 695 | Claude (Stalker session) | PR #342 | The Stalker's mirage, the gorilla's lasers, five ways in, low ground fog, walks on water | Building. |
 | 694 | Claude (second session) | PR #341 | Hotfix, the broken screen (Tim's r688 diagnostic): the affix/boss-kit warning-mark fill clamped (a rounding-negative ellipse radius threw mid-frame and the leaked camera translate corrupted every later frame); 691's swallowed `ctx.save(); const cx…` restored; the canvas reset if a render throws | Merging (baton taken). Tim said publish once merged. |
 | 693 | Claude | `claude/dreamy-rubin-yn6q2p` | Fractured waves keep pace with your clears; world bosses say ARCHFIEND SLAIN | Merging. |
 | 692 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Stalker's fog: alternate hunts come in the open, then fog the section and veil it; veils again in the fight; blue-grey mist | Building. |
