@@ -1,28 +1,28 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r696-e26c69802a93";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r696-e26c69802a93";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r696-e26c69802a93";
-import { enemyMeleeGeometry } from "./combat.js?v=r696-e26c69802a93";
-import { ruleRows } from "./elders.js?v=r696-e26c69802a93";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r696-e26c69802a93";
-import { BOAT } from "./boats.js?v=r696-e26c69802a93";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r696-e26c69802a93";
-import { isMarineTile } from "./world-beasts.js?v=r696-e26c69802a93";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r696-e26c69802a93"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r696-e26c69802a93";
-import { setTreeSeason } from "./landscape-render.js?v=r696-e26c69802a93";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r696-e26c69802a93";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r696-e26c69802a93";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r696-e26c69802a93";
-import { TREES } from "./trees.js?v=r696-e26c69802a93";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r696-e26c69802a93";
-import { KIT_MOVES } from "./boss-kit.js?v=r696-e26c69802a93";
-import { SKY_DISCS } from "./skylands.js?v=r696-e26c69802a93"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r696-e26c69802a93";
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r696-e26c69802a93"; // release 678
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r696-e26c69802a93";
-import { drawRelayNode } from "./relay-network.js?v=r696-e26c69802a93";
-import { structureOccupancy } from "./world.js?v=r696-e26c69802a93";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r696-e26c69802a93";
+import { astralBeamAnchors } from "./astral-worm.js?v=r697-e2e463537af2";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r697-e2e463537af2";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r697-e2e463537af2";
+import { enemyMeleeGeometry } from "./combat.js?v=r697-e2e463537af2";
+import { ruleRows } from "./elders.js?v=r697-e2e463537af2";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r697-e2e463537af2";
+import { BOAT } from "./boats.js?v=r697-e2e463537af2";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r697-e2e463537af2";
+import { isMarineTile } from "./world-beasts.js?v=r697-e2e463537af2";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r697-e2e463537af2"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r697-e2e463537af2";
+import { setTreeSeason } from "./landscape-render.js?v=r697-e2e463537af2";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r697-e2e463537af2";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r697-e2e463537af2";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r697-e2e463537af2";
+import { TREES } from "./trees.js?v=r697-e2e463537af2";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r697-e2e463537af2";
+import { KIT_MOVES } from "./boss-kit.js?v=r697-e2e463537af2";
+import { SKY_DISCS } from "./skylands.js?v=r697-e2e463537af2"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r697-e2e463537af2";
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r697-e2e463537af2"; // release 678
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r697-e2e463537af2";
+import { drawRelayNode } from "./relay-network.js?v=r697-e2e463537af2";
+import { structureOccupancy } from "./world.js?v=r697-e2e463537af2";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r697-e2e463537af2";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1725,7 +1725,7 @@ export function render(ctx, g, w, h, now) {
         gr.addColorStop(0, `rgba(222,231,236,${.3 * fade})`); gr.addColorStop(1, "rgba(222,231,236,0)"); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, pr * s, 0, 7); ctx.fill(); }
       const px = (p.x + .5) * s, py = (p.y + .6) * s, lv = fade * .9, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - lv) * 3), px, py, s * (3.6 + (1 - lv) * 7));
       gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.9 * lv})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2); } }
-  // Release r696-e26c69802a93: the Enclosure, a 2x2 pen of planks on a stone footing banded with cinder iron, walled on three sides; holding the
+  // Release 696: the Enclosure, a 2x2 pen of planks on a stone footing banded with cinder iron, walled on three sides; holding the
   // Stalker, iron bars close its open side.
   if (g.area === "overworld") for (const pen of g.builds || []) if (pen.kind === "enclosure" && visibleInCamera({ x: pen.x + 1, y: pen.y + 1 }, l, t, r, b, 3)) {
     const X = pen.x * s, Y = pen.y * s, S2 = 2 * s, wallH = .55 * s, th = .16 * s;
