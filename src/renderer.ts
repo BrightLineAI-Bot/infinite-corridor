@@ -1189,6 +1189,26 @@ export function drawStrange(ctx, o, s, kind, now) {
   ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = g; ctx.fillRect(cx - s * 1.3, cy - s * 1.3, s * 2.6, s * 2.6); ctx.restore();
   for (let k = 0; k < 9; k++) { const p = ((T * .18 + k / 9) % 1), x = cx + Math.sin(T * .9 + k * 2.1) * s * .45, y = cy + s * .35 - p * s * 1.7, m = Math.max(2, s * .07); ctx.fillStyle = k % 3 ? `rgba(230,240,255,${(1 - p) * .95})` : `rgba(200,160,255,${(1 - p) * .95})`; ctx.fillRect(x, y, m, m); }
 }
+// The Rite of Ascendancy (ascendancy.ts): its dais is one of the strange trees (drawStrange); while the rite burns the tree is
+// on fire and burns down (o.burn 0 → 1: darker, lower, the flames over it); done, a heap of grey ashes with embers in it.
+function drawRiteTree(ctx, o, s, now) {
+  const T = now / 1000, cx = (o.x + .5) * s, base = (o.y + .85) * s;
+  if (o.kind === "riteAshes") {
+    ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(cx, base, s * .55, s * .17, 0, 0, 7); ctx.fill();
+    for (const [dx, dy, r, c] of [[0, -.08, .42, "#5b5752"], [-.18, -.04, .24, "#6e6a64"], [.2, -.05, .22, "#4c4844"], [.02, -.18, .2, "#7c7770"]]) { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(cx + dx * s, base + dy * s, r * s, r * s * .45, 0, 0, 7); ctx.fill(); }
+    for (let k = 0; k < 6; k++) { const a = Math.max(0, Math.sin(T * 2 + k * 1.7)); if (a < .2) continue; ctx.fillStyle = `rgba(255,${120 + k * 15},40,${a * .9})`; ctx.fillRect(cx + Math.sin(k * 2.3) * s * .28 - 1.5, base - s * (.08 + (k % 3) * .05) - 1.5, 3, 3); }
+    for (let k = 0; k < 3; k++) { const p = (T * .25 + k / 3) % 1; ctx.fillStyle = `rgba(140,135,130,${(1 - p) * .35})`; ctx.beginPath(); ctx.arc(cx + Math.sin(T + k) * s * .12, base - s * (.2 + p * 1.1), s * (.08 + p * .14), 0, 7); ctx.fill(); }
+    return;
+  }
+  if (o.state !== "burning") { drawStrange(ctx, o, s, "tree", now); return; }
+  const b = Math.max(0, Math.min(1, o.burn || 0)), sc = (o.scale || 1) * (1 - b * .7);
+  ctx.save(); ctx.filter = `brightness(${Math.round(100 - b * 75)}%)`; ctx.translate(cx, base); ctx.scale(1, 1 - b * .55); ctx.translate(-cx, -base); actor(ctx, o.x, o.y, s, "tree", "down", 0, "standing", false, sc); ctx.restore(); ctx.filter = "none";
+  const top = base - s * (1.5 - b * 1.1);
+  for (let k = 0; k < 9; k++) { const x = cx + Math.sin(k * 1.9) * s * (.4 - b * .2), f = .7 + .3 * Math.sin(T * 10 + k * 1.3), h = s * (.55 + .35 * f) * (1 - b * .4), y = top + (k % 3) * s * .35;
+    const g = ctx.createLinearGradient(x, y, x, y - h); g.addColorStop(0, "rgba(255,110,30,.9)"); g.addColorStop(.6, "rgba(255,200,80,.6)"); g.addColorStop(1, "rgba(255,240,170,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - s * .16, y); ctx.quadraticCurveTo(x - s * .1, y - h * .5, x + Math.sin(T * 6 + k) * s * .06, y - h); ctx.quadraticCurveTo(x + s * .1, y - h * .5, x + s * .16, y); ctx.closePath(); ctx.fill(); }
+  const glow = ctx.createRadialGradient(cx, base - s * .5, 0, cx, base - s * .5, s * 1.4); glow.addColorStop(0, "rgba(255,150,60,.35)"); glow.addColorStop(1, "rgba(255,150,60,0)"); ctx.fillStyle = glow; ctx.fillRect(cx - s * 1.4, base - s * 1.9, s * 2.8, s * 2.8);
+}
 // Release 271 (Tim, 2026-10-21: "let's see if we can do a model rework on the gate revenant... increase its Fidelity,
 // without increasing... processing requirements"). A hooded, horned wraith in a tattered cloak with the Gate's arch burning
 // on its chest. Flat fills and batched paths only (no gradients or blur): about a dozen fills and strokes a frame, no more
@@ -1900,6 +1920,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "digSpot") { drawDigSpot(ctx, o, s, now);
           } else if (o.kind === "ilse") { drawIlse(ctx, o, s, now);
           } else if (o.kind === "crackedBell") { drawCrackedBell(ctx, o, s, now);
+          } else if (o.kind === "saplingDais" || o.kind === "riteAshes") { drawRiteTree(ctx, o, s, now); // the Rite of Ascendancy
           } else if (o.kind === "crownRest") { const cx = (o.x + .5) * s, cy = (o.y + .6) * s, lit = g.save?.activeCheckpoint?.crown && g.save.activeCheckpoint.rx === g.rx && g.save.activeCheckpoint.ry === g.ry, pulse = .55 + .45 * Math.sin(now / 420); ctx.save(); ctx.strokeStyle = lit ? `rgba(160,255,170,${.5 + .4 * pulse})` : "rgba(200,230,190,.45)"; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(cx, cy, s * .42, s * .2, 0, 0, 7); ctx.stroke(); for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + now / 2000; ctx.fillStyle = lit ? "#9dffae" : "#cfe8c4"; ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * s * .42, cy + Math.sin(a) * s * .2, s * .07, s * .035, a, 0, 7); ctx.fill(); } ctx.restore(); // release 669: the Crown Rest
           } else if (o.kind === "canopyGate") { drawCanopyGate(ctx, o, s, now); // release 631
           } else if (o.kind === "threadRelic") { drawThreadRelic(ctx, o, s, now); // release 627
