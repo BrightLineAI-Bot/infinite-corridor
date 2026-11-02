@@ -16,7 +16,7 @@
 //   At `swarm.at` health it calls small silver copies of itself (capped). It carries 1–2 elite affixes and scales with
 //   regionalThreat.
 // Runtime fields on the creatures (`stalkForm`, `stalkAct`, …) are never saved; only `save.stalker` is.
-import { hashSeed } from "./random.js?v=r694-3e3a13d70a9b";
+import { hashSeed } from "./random.js?v=r695-bbf3bb21143d";
 
 export const STALKER = {
   version: 1,
@@ -40,7 +40,7 @@ export const STALKER = {
   // The second kit (Tim, 2026-11-01): a turret that pops out of its back (homing orbs, a laser cone, a ring of orbs that launch
   // one by one, the crossed-blade X beam), an energized sphere (it hurts to touch, softens blows, and is thrown at the end), a
   // liquid shield when blows come thick and fast, and the cat climbing trees, hopping ledges and breaking out of enclosures.
-  turret: { every: [3.2, 4.6], warn: .6, cap: 12, moves: ["orbs", "sword", "cone", "spikes", "ring", "tendril", "xblade", "boomerang"],
+  turret: { every: [3.2, 4.6], warn: .6, cap: 18, moves: ["orbs", "sword", "cone", "spikes", "ring", "tendril", "xblade", "boomerang"],
     orbs: { count: 3, speed: 4.2, turn: 2.4, life: 3.2, radius: .3, damage: .45, spread: .45 },
     cone: { range: 6.5, half: .42, damage: .9 },
     ring: { count: 4, orbit: 1.3, spin: 3, gap: .5, speed: 6.5, life: 2.4, radius: .3, damage: .4 },
@@ -59,7 +59,12 @@ export const STALKER = {
   // The gorilla's arms (Tim, 2026-11-01): launched fists that grab and pull, slam from above, sweep back and forth, both arms
   // sweeping round it; a charge that knocks back (off a tree, even); punches and a kick like the Iron Fist. `pick` is the order.
   arms: {
-    pick: ["leap", "grab", "combo", "slam", "charge", "sweep", "spin"],
+    pick: ["leap", "grab", "combo", "slam", "lasers", "charge", "sweep", "spin"],
+    // Lasers (Tim, 2026-11-01): long laser bolts out along its arms as they sweep in the spin (one arm or both, by turns: `armLasers`),
+    // every `step` radians of the sweep; or a fan of them without the sweep (`lasers`). Each bolt flies straight on.
+    laser: { step: Math.PI / 6, speed: 14, len: 2.4, life: 1.1, width: .3, damage: .45 },
+    lasers: { range: 7, warn: .5, fan: [-75, -45, -15, 15, 45, 75], gap: .07 },
+    armLasers: [0, 1, 2],
     grab: { range: 6.5, warn: .45, speed: 13, reach: 6.5, catch: .75, pull: .45, damage: .6 },
     slam: { range: 7, warn: .75, radius: 1.3, lift: 2.4, fall: .14, damage: 1.1 },
     sweep: { range: 4.2, warn: .45, time: .9, reach: 4.2, arc: 1.1, width: .55, damage: .7 },
@@ -72,12 +77,20 @@ export const STALKER = {
   // scare... or it could be sitting in a tree, just waiting"): it comes out ahead of the Wayfarer, on the highest open ground it
   // finds, all but invisible and still; it springs when they come within `trigger` (or hit it, or after `max` s), fading in over
   // `reveal` s with a quick pounce or leap. Left far behind (`lose`), it creeps after them unseen.
-  lurk: { trigger: 3.4, reveal: .35, spring: .22, max: 40, lose: 13, creep: 1.4, alpha: .07 },
+  lurk: { trigger: 3.4, reveal: .35, spring: .22, max: 40, lose: 13, creep: 1.4, alpha: .045 },
   // The fog (Tim, 2026-11-01: "it could be coming toward you, and then it can go invisible and attack... when it gets close enough
   // it makes the fog, and then it goes invisible and strikes... the penumbra should be slightly blue"): on alternate hunts it comes
   // in the open; within `range` it fills the section with fog (`time` s) and veils itself, all but invisible (a faint blue glow,
   // its marks still shown) while it fights on. In the fight it veils again every `again` s for `again_time` s.
-  fog: { range: 6, time: 12, again: [24, 34], againTime: 7, alpha: .13 },
+  fog: { range: 6, time: 12, again: [24, 34], againTime: 7, alpha: .06 },
+  // The mirage (Tim, 2026-11-01): now and then it goes all but invisible for `time` s and fights by darting: it circles fast at
+  // `orbit` tiles, cuts in at `dash` speed for one or two blows (`strikes`; the cat slashes, the gorilla punches), and springs out
+  // again; the afterimage still turns blows. Some mirages bring the fog (`fogChance`); in one it may slip away to `hide.dist` and
+  // heal (`hide.regen` of its health a second, at most `hide.cap` a mirage), glowing red while it does.
+  mirage: { every: [20, 30], time: 11, alpha: .06, speed: 6, orbit: 4, dash: 10, reach: 1.3, strikes: [1, 2], gap: .2, damage: .5, out: { dist: 3.4, time: .24 }, rest: [.5, 1.1], reachTime: 1.3, fogChance: .5, hideChance: .35, hide: { time: 5, dist: 8, regen: .03, cap: .15 } },
+  // How it comes for you, by turns (Tim: "it doesn't always have to be lying in wait... running at you from across the section...
+  // slowly stalking towards you and then start running... flying in if it's in the gorilla form... or lying in wait invisible").
+  approach: { styles: ["lurk", "run", "fog", "creep", "fly"], far: [10, 13], creepSpeed: .35, creepUntil: 6, flyTime: 1.1 },
   // The cat's new moves: a flurry of forward swipes (like the Questing Beast's), and the tide: it melts into a wave and washes at
   // the Wayfarer, three waves each bigger than the last.
   cat: {
@@ -178,9 +191,9 @@ export function stalkerVitals(revenantHp, beastDamage, threat = { hpMultiplier: 
   return { hp, damage: Math.max(1, Math.round(beastDamage * V.damageScale * (threat.damageMultiplier || 1))) };
 }
 // Where the ambush comes from: behind the Wayfarer (against the way they are going), `spawn` tiles out.
-export function ambushSpots(seed, seq, player, heading) {
+export function ambushSpots(seed, seq, player, heading, range = STALKER.hunt.spawn) {
   const back = Math.atan2(-(heading?.y || 1), -(heading?.x || 0)), out = [];
-  for (let i = 0; i < 12; i++) { const a = back + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * .45, r = roll(`${seed}:stalker:spot:${seq}:${i}`, STALKER.hunt.spawn); out.push({ x: player.x + Math.cos(a) * r, y: player.y + Math.sin(a) * r }); }
+  for (let i = 0; i < 12; i++) { const a = back + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * .45, r = roll(`${seed}:stalker:spot:${seq}:${i}`, range); out.push({ x: player.x + Math.cos(a) * r, y: player.y + Math.sin(a) * r }); }
   return out;
 }
 
@@ -280,6 +293,7 @@ function tickShots(e, w, dt) {
       if ((q.bounces || 0) > 0) { q.bounces--; if (w.shotBlocked(q.x + .5, oy + .5)) q.vx = -q.vx; if (w.shotBlocked(ox + .5, q.y + .5)) q.vy = -q.vy; if (!w.shotBlocked(q.x + .5, oy + .5) && !w.shotBlocked(ox + .5, q.y + .5)) { q.vx = -q.vx; q.vy = -q.vy; } q.x = ox; q.y = oy; continue; }
       q.life = 0; continue;
     }
+    if (q.kind === "laser") { const tail = { x: q.x - Math.cos(q.aim) * q.len, y: q.y - Math.sin(q.aim) * q.len }; if (segDist(p, tail, q) < q.radius + .3) { w.hurt(e, Math.max(1, Math.ceil((e.damage || 1) * q.damage))); q.life = 0; } continue; }
     if (q.kind === "boomer") { const leg = q.age > q.out ? 1 : 0; if (!(q.hit || [])[leg] && Math.hypot(p.x - q.x, p.y - q.y) < q.radius + .3 && w.hurt(e, Math.max(1, Math.ceil((e.damage || 1) * q.damage)))) (q.hit ||= [])[leg] = true; continue; }
     if (Math.hypot(p.x - q.x, p.y - q.y) < q.radius + .3) { w.hurt(e, Math.max(1, Math.ceil((e.damage || 1) * q.damage))); q.life = 0; }
   }
@@ -394,6 +408,36 @@ export function stalkerLurk(e, w, dt) {
   e.stalkAct = { kind: "lurk", t: 0, total: 0 }; e.stalkLastHp = e.hp; return true;
 }
 
+// A long laser bolt flying straight on from `from` along `ang` (the gorilla's lasers).
+function fireLaser(e, ang, from) { const L = STALKER.arms.laser; shoot(e, { kind: "laser", x: from.x, y: from.y, vx: Math.cos(ang) * L.speed, vy: Math.sin(ang) * L.speed, life: L.life, radius: L.width / 2, len: L.len, damage: L.damage, aim: ang }); }
+
+// The mirage. Returns true while it lasts (it replaces the act machine; shots and eruptions still run).
+export function stalkerMirage(e, w, dt) {
+  const M = STALKER.mirage, p = w.player;
+  if (!e.stalkMirage) {
+    e.stalkMirageClock = (e.stalkMirageClock ?? roll(`${e.id}:mirage:first`, M.every)) - dt;
+    if (e.stalkMirageClock > 0 || e.stalkAct?.kind !== "prowl" || !["cat", "ape"].includes(e.stalkForm)) return false;
+    const n = (e.stalkMirageSeq = (e.stalkMirageSeq || 0) + 1);
+    e.stalkMirage = { t: M.time, phase: "orbit", pt: roll(`${e.id}:mrest:${n}`, M.rest), ang: Math.atan2(e.y - p.y, e.x - p.x), dir: n % 2 ? 1 : -1, n, healed: 0, hid: false };
+    if (chance(`${e.id}:mfog:${n}`) < M.fogChance) w.fogged?.(e, M.time);
+  }
+  const m = e.stalkMirage, d = dist(e, p); m.t -= dt; m.pt -= dt; e.hidden = true; e.stalkAct = { kind: "mirage", t: 0, total: 0 }; e.telegraph = 0;
+  if (m.t <= 0) { e.stalkMirage = null; e.hidden = (e.stalkVeil || 0) > 0; e.stalkRegen = false; e.stalkMirageClock = roll(`${e.id}:mirage:${m.n}`, M.every); setAct(e, "prowl", .3); return false; }
+  const strike = e.stalkForm === "ape" ? "punch" : "slash";
+  switch (m.phase) {
+    case "orbit": { m.ang += m.dir * 1.6 * dt; step(e, w, { x: p.x + Math.cos(m.ang) * M.orbit, y: p.y + Math.sin(m.ang) * M.orbit }, M.speed, dt);
+      if (m.pt <= 0) { if (!m.hid && chance(`${e.id}:mhide:${m.n}`) < M.hideChance) { m.phase = "hide"; m.pt = M.hide.time; } else { m.phase = "in"; m.pt = M.reachTime; } } break; }
+    case "in": step(e, w, p, M.dash, dt); if (d <= M.reach) { m.phase = "strike"; m.left = M.strikes[0] + hashSeed(`${e.id}:mstrikes:${m.n}:${m.t.toFixed(1)}`) % (M.strikes[1] - M.strikes[0] + 1); m.pt = 0; } else if (m.pt <= 0) { m.phase = "orbit"; m.pt = roll(`${e.id}:mrest2:${m.n}`, M.rest); } break;
+    case "strike": if (m.pt <= 0) { hit(e, w, M.reach + .15, M.damage); if (strike === "slash") e.stalkSlash = { t: .14, n: m.left, aim: Math.atan2(p.y - e.y, p.x - e.x) }; else e.stalkStrike = { n: 0, t: .14, aim: Math.atan2(p.y - e.y, p.x - e.x) }; m.left--; m.pt = M.gap; if (m.left <= 0) { m.phase = "out"; m.pt = M.out.time; m.from = { x: p.x, y: p.y }; } } break;
+    case "out": { const v = unit(e.x - m.from.x, e.y - m.from.y), sp = M.out.dist / M.out.time * dt; w.move(e, v.x * sp, v.y * sp); if (m.pt <= 0) { m.phase = "orbit"; m.pt = roll(`${e.id}:mrest3:${m.n}`, M.rest); } break; }
+    case "hide": { const v = unit(e.x - p.x, e.y - p.y); if (d < M.hide.dist) step(e, w, { x: p.x + v.x * M.hide.dist, y: p.y + v.y * M.hide.dist }, M.speed, dt);
+      const room = M.hide.cap * e.maxHp - m.healed, gain = Math.min(room, M.hide.regen * e.maxHp * dt); e.stalkRegen = gain > 0; if (gain > 0) { e.hp = Math.min(e.maxHp, e.hp + gain); m.healed += gain; e.stalkLastHp = e.hp; }
+      if (m.pt <= 0) { m.phase = "orbit"; m.hid = true; e.stalkRegen = false; m.pt = roll(`${e.id}:mrest4:${m.n}`, M.rest); } break; }
+  }
+  e.facingX = p.x >= e.x ? 1 : -1;
+  return true;
+}
+
 // The gorilla's arms. `e.stalkFists` (for drawing): where each launched fist is, and how high.
 export function apeMoveNext(e) { const P = STALKER.arms.pick; return P[((e.stalkApeSeq = (e.stalkApeSeq || 0) + 1) - 1) % P.length]; }
 const armRange = (move) => move === "leap" ? STALKER.forms.ape.range : STALKER.arms[move].range;
@@ -423,14 +467,17 @@ function tickApeAct(e, w, a, dt) {
     case "retract": { const k = Math.max(0, a.t) / A.retract; e.stalkFists = a.fists.map((f) => ({ x: e.x + (f.x - e.x) * k, y: e.y + (f.y - e.y) * k, lift: (f.lift || 0) * k })); if (a.t <= 0) back(); return true; }
     case "slamWarn": { const k = 1 - Math.max(0, a.t) / a.total; e.stalkFists = [{ x: e.x + (a.at.x - e.x) * Math.min(1, k * 2), y: e.y + (a.at.y - e.y) * Math.min(1, k * 2), lift: A.slam.lift * Math.min(1, k * 1.5) }]; if (a.t <= 0) setAct(e, "slam", A.slam.fall, { at: a.at }); return true; }
     case "slam": { const k = Math.max(0, a.t) / a.total; e.stalkFists = [{ ...a.at, lift: A.slam.lift * k }]; if (a.t <= 0) { if (dist(p, a.at) <= A.slam.radius) w.hurt(e, blow(e, A.slam.damage)); retract([{ ...a.at, lift: 0 }]); } return true; }
-    case "sweepWarn": case "spinWarn": a.aim = Math.atan2(p.y - e.y, p.x - e.x); e.stalkFists = null; if (a.t <= 0) setAct(e, a.kind === "sweepWarn" ? "sweep" : "spin", A[a.kind === "sweepWarn" ? "sweep" : "spin"].time, { aim: a.aim, hits: {} }); return true;
+    case "sweepWarn": case "spinWarn": a.aim = Math.atan2(p.y - e.y, p.x - e.x); e.stalkFists = null; if (a.t <= 0) setAct(e, a.kind === "sweepWarn" ? "sweep" : "spin", A[a.kind === "sweepWarn" ? "sweep" : "spin"].time, { aim: a.aim, hits: {}, lasers: a.kind === "spinWarn" ? A.armLasers[((e.stalkSpinSeq = (e.stalkSpinSeq || 0) + 1) - 1) % A.armLasers.length] : 0, emitted: [0, 0] }); return true;
     case "sweep": case "spin": {
       // One arm whips back and forth across the front twice; or both arms swing half a circle each, round it.
       const S2 = A[a.kind], k = 1 - Math.max(0, a.t) / a.total, angs = a.kind === "sweep" ? [a.aim + S2.arc * Math.sin(k * Math.PI * 2)] : [a.aim + Math.PI * k, a.aim + Math.PI + Math.PI * k];
       const pass = a.kind === "sweep" ? Math.floor(k * 4) : 0; e.stalkFists = angs.map((g) => ({ x: e.x + Math.cos(g) * S2.reach, y: e.y + Math.sin(g) * S2.reach, lift: .4 }));
       if (!a.hits[pass] && e.stalkFists.some((f) => segDist(p, e, f) <= S2.width) && w.hurt(e, blow(e, S2.damage))) a.hits[pass] = true;
+      if (a.lasers) angs.slice(0, a.lasers).forEach((g, i) => { while (a.emitted[i] <= Math.floor(Math.PI * k / A.laser.step)) { const ang = (i ? a.aim + Math.PI : a.aim) + a.emitted[i] * A.laser.step; a.emitted[i]++; fireLaser(e, ang, { x: e.x + Math.cos(ang) * S2.reach, y: e.y + Math.sin(ang) * S2.reach }); } });
       if (a.t <= 0) retract(e.stalkFists); return true;
     }
+    case "lasersWarn": a.aim = Math.atan2(p.y - e.y, p.x - e.x); if (a.t <= 0) setAct(e, "lasers", A.lasers.fan.length * A.lasers.gap + .25, { aim: a.aim, n: 0, next: 0 }); return true;
+    case "lasers": { a.next -= dt; while (a.next <= 0 && a.n < A.lasers.fan.length) { const ang = a.aim + A.lasers.fan[a.n] * Math.PI / 180; fireLaser(e, ang, { x: e.x + Math.cos(ang) * .6, y: e.y - .5 + Math.sin(ang) * .6 }); a.n++; a.next += A.lasers.gap; } e.stalkStrike = { n: 0, t: .1, aim: a.aim }; if (a.t <= 0) back(); return true; }
     case "chargeWarn": a.aim = Math.atan2(p.y - e.y, p.x - e.x); if (a.t <= 0) setAct(e, "charge", A.charge.time, { aim: a.aim }); return true;
     case "charge": {
       // Head down, straight at the Wayfarer: a hit knocks them flying (off a ledge or a branch, if there is one).
@@ -513,6 +560,7 @@ export function updateStalker(e, w) {
     return;
   }
   if (e.stalkAct?.kind === "wait") beginForm(e, w, e.stalkForm);
+  if (stalkerMirage(e, w, dt)) { tickShots(e, w, dt); tickErupts(e, w, dt); tickChompers(e, w, dt); if (e.stalkSlash) { e.stalkSlash.t -= dt; if (e.stalkSlash.t <= 0) e.stalkSlash = null; } if (e.stalkStrike) { e.stalkStrike.t -= dt; if (e.stalkStrike.t <= 0) e.stalkStrike = null; } return; }
   tickEnergy(e, w, dt); tickTurret(e, w, dt); tickShots(e, w, dt); tickErupts(e, w, dt); tickChompers(e, w, dt);
   if (e.stalkConeFlash) { e.stalkConeFlash.t -= dt; if (e.stalkConeFlash.t <= 0) e.stalkConeFlash = null; }
   e.stalkShieldAim = Math.atan2(p.y - e.y, p.x - e.x);
@@ -530,7 +578,8 @@ export function updateStalker(e, w) {
       if (e.stalkForm === "ape" && !e.stalkApeNext) e.stalkApeNext = apeMoveNext(e);
       if (e.stalkForm === "cat" && !e.stalkCatNext) e.stalkCatNext = catMoveNext(e);
       const keep = e.stalkForm === "ape" ? Math.min(F.range, armRange(e.stalkApeNext)) * .7 : Math.min(F.range, catRange(e.stalkCatNext)) * .7;
-      if (d > keep) { step(e, w, p, F.speed, dt); const nd = dist(e, p), gain = (e.stalkPrevD ?? nd + 1) - nd; e.stalkStuck = gain > F.speed * dt * .25 ? 0 : (e.stalkStuck || 0) + dt; e.stalkPrevD = nd; }
+      if (e.stalkCreepIn && d <= S.approach.creepUntil) e.stalkCreepIn = false; // close enough: it breaks into a run
+      if (d > keep) { step(e, w, p, F.speed * (e.stalkCreepIn ? S.approach.creepSpeed : 1), dt); const nd = dist(e, p), gain = (e.stalkPrevD ?? nd + 1) - nd; e.stalkStuck = gain > F.speed * dt * .25 ? 0 : (e.stalkStuck || 0) + dt; e.stalkPrevD = nd; }
       else { e.stalkPrevD = null; const ang = Math.atan2(e.y - p.y, e.x - p.x) + (hashSeed(`${e.id}:orbit`) % 2 ? 1 : -1) * .9 * dt; step(e, w, { x: p.x + Math.cos(ang) * keep, y: p.y + Math.sin(ang) * keep }, F.speed * .6, dt); }
       // Walled off (a cliff, a great tree, an enclosure): the cat hops a near ledge or climbs over to the Wayfarer.
       if (e.stalkForm === "cat" && (e.stalkStuck || 0) >= S.climb.stuck) { e.stalkStuck = 0; e.stalkPrevD = null;
@@ -560,7 +609,7 @@ export function updateStalker(e, w) {
       break;
     }
     case "swipeWarn": if (a.t <= 0) { hit(e, w, F.swipe.reach, F.swipe.damage); setAct(e, "spring", F.spring.time, { from: { x: p.x, y: p.y } }); } break;
-    case "leapWarn": if (a.t <= 0) { const to = landing(w, a.to, e); setAct(e, "leap", F.leap.time, { from: { x: e.x, y: e.y }, to }); } break;
+    case "leapWarn": if (a.t <= 0) { const to = landing(w, a.to, e); setAct(e, "leap", a.flyTime || F.leap.time, { from: { x: e.x, y: e.y }, to }); } break;
     case "leap": {
       // Over walls and up trees: an arc to the marked ground, the blow where it lands.
       const k = 1 - Math.max(0, a.t) / a.total; e.x = a.from.x + (a.to.x - a.from.x) * k; e.y = a.from.y + (a.to.y - a.from.y) * k; e.stalkLift = Math.sin(Math.PI * k) * F.leap.lift;

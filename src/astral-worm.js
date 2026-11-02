@@ -1,4 +1,4 @@
-import { hashSeed } from './random.js?v=r694-3e3a13d70a9b';
+import { hashSeed } from './random.js?v=r695-bbf3bb21143d';
 // Registered natural encounter source on the reviewed r251/Gate baseline; not yet released.
 // All numbers are provisional design proposals, not owner-specified balance.
 export const ASTRAL = Object.freeze({

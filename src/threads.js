@@ -7,8 +7,8 @@
 // Tome keeps the thread as a book. A crossing holds at most one thread piece (`chance`, by seed; `minDepth` from the Refuge).
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
-import { hashSeed } from "./random.js?v=r694-3e3a13d70a9b";
-import { READING_BANDS } from "./lore.js?v=r694-3e3a13d70a9b";
+import { hashSeed } from "./random.js?v=r695-bbf3bb21143d";
+import { READING_BANDS } from "./lore.js?v=r695-bbf3bb21143d";
 
 export const THREAD_RULES = { chance: .07, minDepth: 3 };
 // band: which stretch of the map holds the thread, as a distance from the Refuge (THREAD_BANDS; they overlap, so a crossing may

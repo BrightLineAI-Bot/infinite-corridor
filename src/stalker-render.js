@@ -1,7 +1,7 @@
 // Release 678: drawing the Stalker (stalker.ts): the six-legged snow leopard, the winged silverback, the silver pool, its
 // afterimages, its copies and decoys, the marks before each blow, and the silver marker at the screen edge while it hunts.
 // Plain canvas paths, no sprites or gradients per frame beyond one shadow, so it stays cheap on a phone.
-import { STALKER, spikeLines } from "./stalker.js?v=r694-3e3a13d70a9b";
+import { STALKER, spikeLines } from "./stalker.js?v=r695-bbf3bb21143d";
 
 const OUTLINE = "rgba(140,150,166,.55)", FUR = "#f1f3f6", SHADE = "#b9c0cc", SPOT = "#7d8594", SILVER = "#d8e2ee", WING = "#3a2f44", WING_EDGE = "#c9d4e4";
 const MARK_FILL = "rgba(255,80,190,.18)", MARK_EDGE = "rgba(255,130,210,.78)";
@@ -370,7 +370,7 @@ export function drawStalker(ctx, e, s, now, reduceMotion = false) {
   // Its afterimages fade where the blow fell.
   for (const g of e.stalkGhosts || []) { ctx.globalAlpha = Math.max(0, g.t / .6) * .45; const gx = (g.x + .5) * s, gy = (g.y + .9) * s; if (g.form === "ape") drawApe(ctx, gx, gy, u, face, t, false); else drawCat(ctx, gx, gy, u, face, t, false); }
   ctx.globalAlpha = 1;
-  ctx.fillStyle = `rgba(0,0,0,${e.stalkLurk || e.stalkVeil > 0 ? .03 : .28})`; ellipse(ctx, x, ground, .42 * u * (1 - Math.min(.5, lift / (3 * s))), .13 * u); ctx.fill(); // no shadow to give it away while it lurks
+  ctx.fillStyle = `rgba(0,0,0,${e.stalkLurk || e.stalkVeil > 0 || e.stalkMirage ? .03 : .28})`; ellipse(ctx, x, ground, .42 * u * (1 - Math.min(.5, lift / (3 * s))), .13 * u); ctx.fill(); // no shadow to give it away while it lurks
   if (e.stalkerDecoy) ctx.globalAlpha = Math.max(.15, Math.min(.7, (Number(e.stalkLife) || 0) / 1.5)) * (.75 + .25 * Math.sin(now / 70));
   else if (e.stalkerKin) ctx.globalAlpha = .92;
   // Hiding: at a distance, stalking, it all but fades into its own mist.
@@ -381,14 +381,17 @@ export function drawStalker(ctx, e, s, now, reduceMotion = false) {
   else if (e.stalkReveal > 0) ctx.globalAlpha *= 1 - .9 * (e.stalkReveal / STALKER.lurk.reveal);
   // Veiled in its fog: nearly gone, a faint blue glow about it if you look (it fades out and back over a moment).
   const veil = Math.max(0, Math.min(1, (Number(e.stalkVeil) || 0) / .4));
-  if (veil > 0) { ctx.save(); ctx.globalAlpha = .22 * veil * (.7 + .3 * Math.sin(now / 260)); const gl = ctx.createRadialGradient(x, y - .4 * u, 0, x, y - .4 * u, .9 * u); gl.addColorStop(0, "rgba(120,180,255,.6)"); gl.addColorStop(1, "rgba(120,180,255,0)"); ctx.fillStyle = gl; ellipse(ctx, x, y - .4 * u, .9 * u, .7 * u); ctx.fill(); ctx.restore();
+  if (veil > 0) { ctx.save(); ctx.globalAlpha = .12 * veil * (.7 + .3 * Math.sin(now / 260)); const gl = ctx.createRadialGradient(x, y - .4 * u, 0, x, y - .4 * u, .9 * u); gl.addColorStop(0, "rgba(120,180,255,.6)"); gl.addColorStop(1, "rgba(120,180,255,0)"); ctx.fillStyle = gl; ellipse(ctx, x, y - .4 * u, .9 * u, .7 * u); ctx.fill(); ctx.restore();
     ctx.globalAlpha *= 1 - (1 - STALKER.fog.alpha) * veil; }
+  // The mirage: all but invisible as it darts; healing in hiding, a red glow gives it away.
+  if (e.stalkMirage) { if (e.stalkRegen) { ctx.save(); ctx.globalAlpha = .55 + .2 * Math.sin(now / 150); const rg = ctx.createRadialGradient(x, y - .4 * u, 0, x, y - .4 * u, u); rg.addColorStop(0, "rgba(255,70,70,.7)"); rg.addColorStop(1, "rgba(255,70,70,0)"); ctx.fillStyle = rg; ellipse(ctx, x, y - .4 * u, u, .8 * u); ctx.fill(); ctx.restore(); }
+    ctx.globalAlpha = STALKER.mirage.alpha * (1 + .6 * Math.sin(now / 90)) * (e.stalkRegen ? 2 : 1); }
   const form = e.stalkForm || "cat";
   if (form === "mist") { const g = a.kind === "mistGather" ? 1 - Math.max(0, a.t) / (a.total || 1) : 1; if (g < 1) { ctx.globalAlpha = 1 - g; drawCat(ctx, x, y, u, face, t, false); ctx.globalAlpha = 1; } drawMist(ctx, x, y, u, t, g); }
   else if (form === "pool") { if (a.kind === "mouthWarn" || a.kind === "mouth") drawMouth(ctx, a.at, s, a.kind === "mouth" ? Math.max(0, a.t) / (a.total || 1) * .6 : 1 - Math.max(0, a.t) / (a.total || 1) * .7, now); else drawPool(ctx, x, y, u * (a.kind === "under" ? .8 : 1), t, a.kind === "rise" ? 1 - Math.max(0, a.t) / (a.total || 1) : 0); }
   else if (form === "ape") {
     const fists = e.stalkFists || [], k = a.kind, strike = e.stalkStrike;
-    const pose = lift > 1 * s * .5 ? "fly" : (k === "wait" || k === "lurk" || e.stalkPerch && k === "prowl") && !fists.length ? "perch" : k === "charge" || k === "chargeWarn" ? "charge" : k === "fistWarn" || k === "slamWarn" && !fists.length ? "raise" : strike ? (strike.n === 2 ? "kick" : "punch") : ["prowl", "spring", "comboWarn", "retract"].includes(k) ? "walk" : "stand";
+    const pose = lift > 1 * s * .5 ? "fly" : (k === "wait" || k === "lurk" || e.stalkPerch && k === "prowl") && !fists.length ? "perch" : k === "charge" || k === "chargeWarn" ? "charge" : k === "fistWarn" || k === "slamWarn" && !fists.length ? "raise" : strike ? (strike.n === 2 ? "kick" : "punch") : k === "lasersWarn" ? "raise" : k === "lasers" ? "punch" : ["prowl", "spring", "comboWarn", "retract", "mirage"].includes(k) ? "walk" : "stand";
     drawApe(ctx, x, y, u, face, t, pose, fists.length);
     fists.forEach((f, i) => drawApeArm(ctx, { x: x + face * (APE_SHOULDER.x - (fists.length > 1 && i ? .06 : 0)) * u, y: y - APE_SHOULDER.y * u }, { x: (f.x + .5) * s, y: (f.y + .9) * s - (f.lift || 0) * s - .3 * u }, u));
   }
@@ -396,6 +399,7 @@ export function drawStalker(ctx, e, s, now, reduceMotion = false) {
   else if (a.kind === "tide") { /* it is the first wave (drawWaves) */ }
   else if ((a.kind === "prowl" || a.kind === "lurk" || a.kind === "wait") && e.stalkPerch) drawCat(ctx, x, y, u, face, t, false, "perch");
   else if (a.kind === "wait" || a.kind === "lurk") drawCatSit(ctx, x, y, u, face, t);
+  else if (a.kind === "mirage") drawCat(ctx, x, y, u, face, t * 1.6, true, e.stalkSlash ? "swipe" : "leap");
   else if (a.kind === "flurry") drawCat(ctx, x, y, u, face, t, false, (e.stalkSlash?.n || 0) % 2 ? "swipe" : "crouch");
   else if (e.stalkCreep && a.kind === "prowl") drawCat(ctx, x, y, u, face, t * .55, true, "stalk");
   else drawCat(ctx, x, y, u, face, t, !["wait", "swipeWarn", "pounceWarn"].includes(a.kind), a.kind === "pounceWarn" ? "crouch" : a.kind === "pounce" || a.kind === "hop" ? "leap" : a.kind === "swipeWarn" ? "swipe" : null);
@@ -414,12 +418,13 @@ export function drawStalker(ctx, e, s, now, reduceMotion = false) {
   for (const q of e.stalkShots || []) { const qx = (q.x + .5) * s, qy = (q.y + .5) * s; // its shots
     if (q.kind === "xblade") { drawFlyingX(ctx, q, s, now); }
     else if (q.kind === "boomer") { const r = q.radius * s * 1.6, sp = q.spin || 0; for (const k of [0, 1]) { const b = sp + k * Math.PI; drawBlade(ctx, qx, qy, b, r, .12 * s); } ctx.fillStyle = "#8c96a6"; ellipse(ctx, qx, qy, .08 * s, .08 * s); ctx.fill(); }
+    else if (q.kind === "laser") { const tx = qx - Math.cos(q.aim) * q.len * s, ty = qy - Math.sin(q.aim) * q.len * s; ctx.save(); ctx.lineCap = "round"; ctx.strokeStyle = "rgba(120,200,255,.45)"; ctx.lineWidth = Math.max(4, s * .28); ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(qx, qy); ctx.stroke(); ctx.strokeStyle = "#e9f8ff"; ctx.lineWidth = Math.max(2, s * .1); ctx.stroke(); ctx.restore(); }
     else if (q.kind === "blast") { const r = q.radius * s; ctx.fillStyle = "rgba(140,230,255,.35)"; ellipse(ctx, qx - q.vx * .03 * s, qy - q.vy * .03 * s, r * 1.6, r * 1.6); ctx.fill(); ctx.fillStyle = "#c9f6ff"; ellipse(ctx, qx, qy, r, r); ctx.fill(); ctx.fillStyle = "#ffffff"; ellipse(ctx, qx, qy, r * .45, r * .45); ctx.fill(); }
     else { const r = q.radius * s; ctx.fillStyle = q.kind === "sphere" ? "rgba(120,220,255,.45)" : "rgba(190,240,255,.85)"; ellipse(ctx, qx, qy, r, r); ctx.fill(); ctx.fillStyle = "#ffffff"; ellipse(ctx, qx, qy, r * .45, r * .45); ctx.fill(); } }
-  if (hide > .05 && form !== "mist" && form !== "pool") { ctx.save(); ctx.globalAlpha = 1; catMist(ctx, (dx) => x + face * dx * u, y - .3 * u, x, y, u * 1.15, t, hide * 1.4); ctx.restore(); }
+  if (hide > .05 && form !== "mist" && form !== "pool" && !e.stalkLurk && !(e.stalkVeil > 0) && !e.stalkMirage) { ctx.save(); ctx.globalAlpha = 1; catMist(ctx, (dx) => x + face * dx * u, y - .3 * u, x, y, u * 1.15, t, hide * 1.4); ctx.restore(); }
   if (e.hitFlash > 0) { ctx.globalAlpha = .5; ctx.fillStyle = "#ffffff"; ellipse(ctx, x, y - .4 * u, .45 * u, .35 * u); ctx.fill(); }
   ctx.restore();
-  if (e.stalker && !e.stalkerKin && !e.stalkLurk && !(e.stalkVeil > 0)) { ctx.save(); ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = SILVER; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = y - 1.15 * u; ctx.strokeText("The Stalker", x, ty); ctx.fillText("The Stalker", x, ty); ctx.restore(); }
+  if (e.stalker && !e.stalkerKin && !e.stalkLurk && !(e.stalkVeil > 0) && !e.stalkMirage) { ctx.save(); ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = SILVER; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = y - 1.15 * u; ctx.strokeText("The Stalker", x, ty); ctx.fillText("The Stalker", x, ty); ctx.restore(); }
   return true;
 }
 
@@ -442,6 +447,7 @@ export function drawStalkerMarks(ctx, e, s, now) {
   if (a.kind === "sweepWarn") { ctx.beginPath(); ctx.moveTo(ex, ey); ctx.arc(ex, ey, A.sweep.reach * s, a.aim - A.sweep.arc, a.aim + A.sweep.arc); ctx.closePath(); ctx.fill(); ctx.stroke(); }
   if (a.kind === "spinWarn") { ellipse(ctx, ex, ey + .3 * s, A.spin.reach * s, A.spin.reach * s * .6); ctx.fill(); ctx.stroke(); }
   if (a.kind === "comboWarn") { const r = (a.n === 2 ? A.combo.kick : A.combo.reach) * s; ellipse(ctx, ex, ey + .3 * s, r, r * .55); ctx.fill(); ctx.stroke(); }
+  if (a.kind === "lasersWarn") { ctx.save(); ctx.strokeStyle = MARK_FILL.replace(".18", ".35"); ctx.lineWidth = Math.max(2, .3 * s); for (const deg of STALKER.arms.lasers.fan) { const g2 = a.aim + deg * Math.PI / 180; ctx.beginPath(); ctx.moveTo(ex, ey - .5 * s); ctx.lineTo(ex + Math.cos(g2) * 9 * s, ey - .5 * s + Math.sin(g2) * 9 * s); ctx.stroke(); } ctx.restore(); }
   if (a.kind === "flurryWarn") { const R = STALKER.cat.flurry; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.arc(ex, ey, (R.reach + R.lunge * 2) * s, a.aim - .8, a.aim + .8); ctx.closePath(); ctx.fill(); ctx.stroke(); }
   if (a.kind === "tideWarn") { const T = STALKER.cat.tide; ctx.save(); for (const wd of T.widths) { ctx.lineWidth = wd * s; ctx.strokeStyle = "rgba(255,80,190,.1)"; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(a.aim) * T.length * s, ey + Math.sin(a.aim) * T.length * s); ctx.stroke(); } ctx.restore(); }
   if (a.kind === "mouthWarn" && a.at) { const R = STALKER.pool.under.radius; ellipse(ctx, (a.at.x + .5) * s, (a.at.y + .82) * s, R * s, R * s * .55); ctx.fill(); ctx.stroke(); }

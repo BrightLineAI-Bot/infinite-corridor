@@ -1,9 +1,9 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { SEASONS } from "./seasons.js?v=r694-3e3a13d70a9b";
-import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r694-3e3a13d70a9b";
-import { TREES } from "./trees.js?v=r694-3e3a13d70a9b";
+import { SEASONS } from "./seasons.js?v=r695-bbf3bb21143d";
+import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r695-bbf3bb21143d";
+import { TREES } from "./trees.js?v=r695-bbf3bb21143d";
 
 const TAU = Math.PI * 2;
 const cache = new Map();

@@ -1,23 +1,23 @@
 // Astral Worm native Wayglass retreat. Previewing a route never loads the player's scene,
 // pins a real history, discovers fog, activates a checkpoint or changes any other beast.
-import { generateRegion, dungeonId } from './world.js?v=r694-3e3a13d70a9b';
-import { applyLandscape, applyDream, DREAM_VERSION, LANDSCAPE_VERSION } from './landscape.js?v=r694-3e3a13d70a9b';
-import { OPEN_SEA_VERSION } from './open-sea.js?v=r694-3e3a13d70a9b';
-import { applyHamlet, hamletSection, legacyMouthHamlet, HAMLET_VERSION } from './settlements.js?v=r694-3e3a13d70a9b';
-import { applyTrails, addTravelers, addReciter, addWanderer, wandererArrive, addElder } from './travelers.js?v=r694-3e3a13d70a9b';
-import { addSkirmish } from './skirmishes.js?v=r694-3e3a13d70a9b';
-import { ensureBoatState } from './boats.js?v=r694-3e3a13d70a9b';
-import { diveSite } from './diving.js?v=r694-3e3a13d70a9b';
-import { storySiteFor } from './story.js?v=r694-3e3a13d70a9b';
-import { arrayMouthAt } from './far-array.js?v=r694-3e3a13d70a9b';
-import { domainSectionAt, activeViewportHunt, huntTraceStage, resolveHuntDestination, ensureHuntInstance } from './foundry.js?v=r694-3e3a13d70a9b';
-import { hashSeed } from './random.js?v=r694-3e3a13d70a9b';
-import { populateDungeonTerrainHazards } from './arenas.js?v=r694-3e3a13d70a9b';
-import { applyTunnels, addDigSpot } from './digging.js?v=r694-3e3a13d70a9b';
-import { applyVoidScars } from './world-beasts.js?v=r694-3e3a13d70a9b';
-import { mouthsIn, placeMouth, linkedExit } from './linked-dungeons.js?v=r694-3e3a13d70a9b';
-import { installCompletionExit } from './dungeon-completion.js?v=r694-3e3a13d70a9b';
-import { createAstralWayglassSearch, stepAstralWayglassSearch, createAstralRetreatJourney, stepAstralRetreat, isAstralWayglass } from './astral-worm-retreat.js?v=r694-3e3a13d70a9b';
+import { generateRegion, dungeonId } from './world.js?v=r695-bbf3bb21143d';
+import { applyLandscape, applyDream, DREAM_VERSION, LANDSCAPE_VERSION } from './landscape.js?v=r695-bbf3bb21143d';
+import { OPEN_SEA_VERSION } from './open-sea.js?v=r695-bbf3bb21143d';
+import { applyHamlet, hamletSection, legacyMouthHamlet, HAMLET_VERSION } from './settlements.js?v=r695-bbf3bb21143d';
+import { applyTrails, addTravelers, addReciter, addWanderer, wandererArrive, addElder } from './travelers.js?v=r695-bbf3bb21143d';
+import { addSkirmish } from './skirmishes.js?v=r695-bbf3bb21143d';
+import { ensureBoatState } from './boats.js?v=r695-bbf3bb21143d';
+import { diveSite } from './diving.js?v=r695-bbf3bb21143d';
+import { storySiteFor } from './story.js?v=r695-bbf3bb21143d';
+import { arrayMouthAt } from './far-array.js?v=r695-bbf3bb21143d';
+import { domainSectionAt, activeViewportHunt, huntTraceStage, resolveHuntDestination, ensureHuntInstance } from './foundry.js?v=r695-bbf3bb21143d';
+import { hashSeed } from './random.js?v=r695-bbf3bb21143d';
+import { populateDungeonTerrainHazards } from './arenas.js?v=r695-bbf3bb21143d';
+import { applyTunnels, addDigSpot } from './digging.js?v=r695-bbf3bb21143d';
+import { applyVoidScars } from './world-beasts.js?v=r695-bbf3bb21143d';
+import { mouthsIn, placeMouth, linkedExit } from './linked-dungeons.js?v=r695-bbf3bb21143d';
+import { installCompletionExit } from './dungeon-completion.js?v=r695-bbf3bb21143d';
+import { createAstralWayglassSearch, stepAstralWayglassSearch, createAstralRetreatJourney, stepAstralRetreat, isAstralWayglass } from './astral-worm-retreat.js?v=r695-bbf3bb21143d';
 
 export const ASTRAL_WORLD_RETREAT = Object.freeze({ version:1, maps:64, mapCells:65536, sceneCells:131072, generatedPerStep:1, segment:.125, retry:1, remoteRetry:2, topologyCells:128 });
 const WATER = new Set(['ocean','deepOcean','lakeWater','river','dungeonWater','shallows','swampWater','mireWater','toxicWater']);
