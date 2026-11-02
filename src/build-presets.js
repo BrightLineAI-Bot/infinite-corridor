@@ -12,11 +12,11 @@
 // build also keeps `gear: { primary, secondary }`, the tags of the weapon and tool it was left with. Switching to it equips
 // them from the pack when they are there (a piece that was salvaged or sold is named in the message instead). Gear gets a
 // tag (`item.tag`, additive) the first time a preset records it; the tag rides with the item wherever it goes.
-import { socketGlyph, GLYPHS } from "./glyphs.js?v=r697-e2e463537af2";
-import { ALT_PASSIVES } from "./constellation.js?v=r697-e2e463537af2";
-import { ensureLattice } from "./transit-lattice.js?v=r697-e2e463537af2";
-import { togglePreset } from "./spell-slots.js?v=r697-e2e463537af2";
-import { normalizeItemUpgrade } from "./items.js?v=r697-e2e463537af2";
+import { socketGlyph, GLYPHS } from "./glyphs.js?v=r703-af870d78ba3b";
+import { ALT_PASSIVES } from "./constellation.js?v=r703-af870d78ba3b";
+import { ensureLattice } from "./transit-lattice.js?v=r703-af870d78ba3b";
+import { togglePreset } from "./spell-slots.js?v=r703-af870d78ba3b";
+import { normalizeItemUpgrade } from "./items.js?v=r703-af870d78ba3b";
 
 const ids = (list) => (Array.isArray(list) ? list.filter((q) => typeof q === "string" && q) : []);
 export function normalizeBuild(b) {

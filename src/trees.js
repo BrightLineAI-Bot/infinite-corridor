@@ -14,7 +14,7 @@
 //   levels under the branch above, so a fall off the higher branch lands on one (it hurts) and the climb goes on from there;
 // - leaves on its branches (the tips always), and decorative boughs drawn off its trunk, which nothing walks on.
 // Bounded: at most two trees, a few thousand tile checks, once per section; nothing spawns up there.
-import { hashSeed } from "./random.js?v=r697-e2e463537af2";
+import { hashSeed } from "./random.js?v=r703-af870d78ba3b";
 
 export const TREE_VERSION = 13;
 // Release 672 (landscape version 14; Tim, 2026-11-01: "I haven't seen any tall trees"): a survey found the version 13 search
@@ -106,10 +106,10 @@ function walkPath(from, to, free) {
 
 // Grow this section's great tree(s). `ground` says whether a tile can take wood, `reachable` recomputes what can be walked
 // to from the plaza, `trapped` lists the tiles that can be dropped into but not climbed out of. Returns the tree record for map.canopy, or null (the tiles are left as they were).
-export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, version = 13, region = "jungle" }) {
+export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, version = 13, region = "jungle", force = false }) {
   const T = TREES, h = (k) => hashSeed(`${seed}:trees:v13:${rx}:${ry}:${k}`), at = (x, y) => map.tiles[idx(x, y)], v14 = version >= TREES_V14.version;
-  if (!v14 && (hashSeed(`${seed}:canopy-grow:v1:${ry * 7919 + rx}`) % 1000) / 1000 >= T.chance) return null;
-  if (v14 && (hashSeed(`${seed}:canopy-grow:v2:${region}:${ry * 7919 + rx}`) % 1000) / 1000 >= (TREES_V14.regions[region]?.chance || 0)) return null;
+  if (!force && !v14 && (hashSeed(`${seed}:canopy-grow:v1:${ry * 7919 + rx}`) % 1000) / 1000 >= T.chance) return null;
+  if (!force && v14 && (hashSeed(`${seed}:canopy-grow:v2:${region}:${ry * 7919 + rx}`) % 1000) / 1000 >= (TREES_V14.regions[region]?.chance || 0)) return null; // force: the Rite of Ascendancy's tree (ascendancy.ts) always grows where it fits
   // Version 14: every spot, in a hashed order (the same each time); version 13: `tries` hashed spots.
   const spots = v14 ? Array.from({ length: 26 * 26 }, (_, i) => [2 + i % 26, 2 + Math.floor(i / 26)]).sort((p, q) => hashSeed(`${seed}:tree-spot:v14:${rx}:${ry}:${p}`) - hashSeed(`${seed}:tree-spot:v14:${rx}:${ry}:${q}`)) : null;
   let layouts = 0;

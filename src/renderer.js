@@ -1,28 +1,28 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r697-e2e463537af2";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r697-e2e463537af2";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r697-e2e463537af2";
-import { enemyMeleeGeometry } from "./combat.js?v=r697-e2e463537af2";
-import { ruleRows } from "./elders.js?v=r697-e2e463537af2";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r697-e2e463537af2";
-import { BOAT } from "./boats.js?v=r697-e2e463537af2";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r697-e2e463537af2";
-import { isMarineTile } from "./world-beasts.js?v=r697-e2e463537af2";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r697-e2e463537af2"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r697-e2e463537af2";
-import { setTreeSeason } from "./landscape-render.js?v=r697-e2e463537af2";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r697-e2e463537af2";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r697-e2e463537af2";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r697-e2e463537af2";
-import { TREES } from "./trees.js?v=r697-e2e463537af2";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r697-e2e463537af2";
-import { KIT_MOVES } from "./boss-kit.js?v=r697-e2e463537af2";
-import { SKY_DISCS } from "./skylands.js?v=r697-e2e463537af2"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r697-e2e463537af2";
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r697-e2e463537af2"; // release 678
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r697-e2e463537af2";
-import { drawRelayNode } from "./relay-network.js?v=r697-e2e463537af2";
-import { structureOccupancy } from "./world.js?v=r697-e2e463537af2";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r697-e2e463537af2";
+import { astralBeamAnchors } from "./astral-worm.js?v=r703-af870d78ba3b";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r703-af870d78ba3b";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r703-af870d78ba3b";
+import { enemyMeleeGeometry } from "./combat.js?v=r703-af870d78ba3b";
+import { ruleRows } from "./elders.js?v=r703-af870d78ba3b";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r703-af870d78ba3b";
+import { BOAT } from "./boats.js?v=r703-af870d78ba3b";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r703-af870d78ba3b";
+import { isMarineTile } from "./world-beasts.js?v=r703-af870d78ba3b";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r703-af870d78ba3b"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r703-af870d78ba3b";
+import { setTreeSeason } from "./landscape-render.js?v=r703-af870d78ba3b";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r703-af870d78ba3b";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r703-af870d78ba3b";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r703-af870d78ba3b";
+import { TREES } from "./trees.js?v=r703-af870d78ba3b";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r703-af870d78ba3b";
+import { KIT_MOVES } from "./boss-kit.js?v=r703-af870d78ba3b";
+import { SKY_DISCS } from "./skylands.js?v=r703-af870d78ba3b"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r703-af870d78ba3b";
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r703-af870d78ba3b"; // release 678
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r703-af870d78ba3b";
+import { drawRelayNode } from "./relay-network.js?v=r703-af870d78ba3b";
+import { structureOccupancy } from "./world.js?v=r703-af870d78ba3b";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r703-af870d78ba3b";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1023,6 +1023,7 @@ export function drawThreadRelic(ctx, o, s, now) {
     case "moth": for (const k of [-1, 1]) { ctx.beginPath(); ctx.ellipse(k * s * .11, 0, s * .12, s * .16, k * .5, 0, 7); ctx.fill(); ctx.stroke(); } ctx.fillStyle = "#3a3040"; ctx.fillRect(-s * .025, -s * .14, s * .05, s * .28); break;
     case "book": R(-.18, -.14, .36, .28); ctx.fillStyle = "#2a241c55"; ctx.fillRect(-s * .02, -s * .14, s * .04, s * .28); break;
     case "seed": ctx.rotate(.2); ctx.beginPath(); ctx.moveTo(0, -s * .2); ctx.quadraticCurveTo(s * .16, 0, 0, s * .16); ctx.quadraticCurveTo(-s * .16, 0, 0, -s * .2); ctx.fill(); ctx.stroke(); break;
+    case "rope": ctx.lineWidth = Math.max(2, s * .05); for (let r = .16; r > .04; r -= .045) { ctx.beginPath(); ctx.ellipse(0, s * .06, s * r, s * r * .55, 0, 0, 7); ctx.stroke(); } ctx.strokeStyle = c; ctx.lineWidth = Math.max(1.5, s * .035); for (let r = .16; r > .04; r -= .045) { ctx.beginPath(); ctx.ellipse(0, s * .06, s * r, s * r * .55, 0, 0, 7); ctx.stroke(); } ctx.strokeStyle = "#2a241c"; ctx.beginPath(); ctx.moveTo(s * .14, s * .06); ctx.quadraticCurveTo(s * .2, -s * .12, s * .08, -s * .2); ctx.stroke(); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(s * .08, -s * .2, s * .04, 0, 7); ctx.fill(); ctx.stroke(); break; // the Well-Digger's Rope
     case "compass": ctx.beginPath(); ctx.arc(0, 0, s * .16, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#b03a2e"; ctx.beginPath(); ctx.moveTo(0, -s * .12); ctx.lineTo(s * .04, 0); ctx.lineTo(-s * .04, 0); ctx.fill(); break;
     default: ctx.beginPath(); ctx.moveTo(-s * .18, s * .14); ctx.quadraticCurveTo(-s * .2, -s * .16, s * .02, -s * .18); ctx.quadraticCurveTo(s * .22, -s * .1, s * .12, s * .1); ctx.quadraticCurveTo(0, s * .2, -s * .18, s * .14); ctx.fill(); ctx.stroke(); // a shell
   }
@@ -1188,6 +1189,26 @@ export function drawStrange(ctx, o, s, kind, now) {
   const pulse = .3 + .12 * Math.sin(T * 1.9), g = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * 1.3); g.addColorStop(0, `rgba(190,170,255,${pulse})`); g.addColorStop(.5, `rgba(150,200,255,${pulse * .4})`); g.addColorStop(1, "rgba(200,190,255,0)");
   ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = g; ctx.fillRect(cx - s * 1.3, cy - s * 1.3, s * 2.6, s * 2.6); ctx.restore();
   for (let k = 0; k < 9; k++) { const p = ((T * .18 + k / 9) % 1), x = cx + Math.sin(T * .9 + k * 2.1) * s * .45, y = cy + s * .35 - p * s * 1.7, m = Math.max(2, s * .07); ctx.fillStyle = k % 3 ? `rgba(230,240,255,${(1 - p) * .95})` : `rgba(200,160,255,${(1 - p) * .95})`; ctx.fillRect(x, y, m, m); }
+}
+// The Rite of Ascendancy (ascendancy.ts): its dais is one of the strange trees (drawStrange); while the rite burns the tree is
+// on fire and burns down (o.burn 0 → 1: darker, lower, the flames over it); done, a heap of grey ashes with embers in it.
+function drawRiteTree(ctx, o, s, now) {
+  const T = now / 1000, cx = (o.x + .5) * s, base = (o.y + .85) * s;
+  if (o.kind === "riteAshes") {
+    ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(cx, base, s * .55, s * .17, 0, 0, 7); ctx.fill();
+    for (const [dx, dy, r, c] of [[0, -.08, .42, "#5b5752"], [-.18, -.04, .24, "#6e6a64"], [.2, -.05, .22, "#4c4844"], [.02, -.18, .2, "#7c7770"]]) { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(cx + dx * s, base + dy * s, r * s, r * s * .45, 0, 0, 7); ctx.fill(); }
+    for (let k = 0; k < 6; k++) { const a = Math.max(0, Math.sin(T * 2 + k * 1.7)); if (a < .2) continue; ctx.fillStyle = `rgba(255,${120 + k * 15},40,${a * .9})`; ctx.fillRect(cx + Math.sin(k * 2.3) * s * .28 - 1.5, base - s * (.08 + (k % 3) * .05) - 1.5, 3, 3); }
+    for (let k = 0; k < 3; k++) { const p = (T * .25 + k / 3) % 1; ctx.fillStyle = `rgba(140,135,130,${(1 - p) * .35})`; ctx.beginPath(); ctx.arc(cx + Math.sin(T + k) * s * .12, base - s * (.2 + p * 1.1), s * (.08 + p * .14), 0, 7); ctx.fill(); }
+    return;
+  }
+  if (o.state !== "burning") { drawStrange(ctx, o, s, "tree", now); return; }
+  const b = Math.max(0, Math.min(1, o.burn || 0)), sc = (o.scale || 1) * (1 - b * .7);
+  ctx.save(); ctx.filter = `brightness(${Math.round(100 - b * 75)}%)`; ctx.translate(cx, base); ctx.scale(1, 1 - b * .55); ctx.translate(-cx, -base); actor(ctx, o.x, o.y, s, "tree", "down", 0, "standing", false, sc); ctx.restore(); ctx.filter = "none";
+  const top = base - s * (1.5 - b * 1.1);
+  for (let k = 0; k < 9; k++) { const x = cx + Math.sin(k * 1.9) * s * (.4 - b * .2), f = .7 + .3 * Math.sin(T * 10 + k * 1.3), h = s * (.55 + .35 * f) * (1 - b * .4), y = top + (k % 3) * s * .35;
+    const g = ctx.createLinearGradient(x, y, x, y - h); g.addColorStop(0, "rgba(255,110,30,.9)"); g.addColorStop(.6, "rgba(255,200,80,.6)"); g.addColorStop(1, "rgba(255,240,170,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - s * .16, y); ctx.quadraticCurveTo(x - s * .1, y - h * .5, x + Math.sin(T * 6 + k) * s * .06, y - h); ctx.quadraticCurveTo(x + s * .1, y - h * .5, x + s * .16, y); ctx.closePath(); ctx.fill(); }
+  const glow = ctx.createRadialGradient(cx, base - s * .5, 0, cx, base - s * .5, s * 1.4); glow.addColorStop(0, "rgba(255,150,60,.35)"); glow.addColorStop(1, "rgba(255,150,60,0)"); ctx.fillStyle = glow; ctx.fillRect(cx - s * 1.4, base - s * 1.9, s * 2.8, s * 2.8);
 }
 // Release 271 (Tim, 2026-10-21: "let's see if we can do a model rework on the gate revenant... increase its Fidelity,
 // without increasing... processing requirements"). A hooded, horned wraith in a tattered cloak with the Gate's arch burning
@@ -1438,6 +1459,18 @@ function actor(
       const t=performance.now()/1000,pulse=.5+.5*Math.sin(t*2);ctx.fillStyle="#00000044";ctx.beginPath();ctx.ellipse(k,base,s*.42,s*.12,0,0,7);ctx.fill();
       for(let i=0;i<5;i++){const w=s*(.5-i*.07),y=base-s*(.12+i*.22);ctx.fillStyle=i%2?"#e8e2f4":"#d4cce6";ctx.fillRect(k-w/2,y-s*.12,w,s*.14);ctx.fillStyle="#9c93b866";ctx.fillRect(k-w/2,y,w,s*.03)}
       const g=ctx.createRadialGradient(k,base-s*1.35,0,k,base-s*1.35,s*.5);g.addColorStop(0,`rgba(255,244,214,${.55+.35*pulse})`);g.addColorStop(1,"rgba(255,244,214,0)");ctx.fillStyle=g;ctx.beginPath();ctx.arc(k,base-s*1.35,s*.5,0,7);ctx.fill();
+    } else if (kind === "saplingDais") { // the Rite of Ascendancy (ascendancy.ts): a gold-leaved sapling in a ring of old stone; burning while its rite runs
+      const t=performance.now()/1000,lit=state==="burning",pulse=.5+.5*Math.sin(t*(lit?6:2));ctx.fillStyle="#00000055";ctx.beginPath();ctx.ellipse(k,base,s*.5,s*.16,0,0,7);ctx.fill();
+      for(let i=0;i<8;i++){const a=i/8*6.283,x=k+Math.cos(a)*s*.42,y=base-s*.06+Math.sin(a)*s*.14;ctx.fillStyle=i%2?"#8a8270":"#a39a84";ctx.fillRect(x-s*.06,y-s*.08,s*.12,s*.09)}
+      ctx.strokeStyle="#5a3e22";ctx.lineWidth=Math.max(2,s*.07);ctx.lineCap="round";ctx.beginPath();ctx.moveTo(k,base-s*.06);ctx.quadraticCurveTo(k+s*.05,base-s*.5,k-s*.02,base-s*.82);ctx.stroke();
+      ctx.lineWidth=Math.max(1,s*.035);for(const [dx,dy] of [[-.2,-.62],[.2,-.55],[-.12,-.86],[.14,-.92]]){ctx.beginPath();ctx.moveTo(k,base-s*(-dy-.25));ctx.lineTo(k+s*dx,base+s*dy);ctx.stroke()}
+      const g=ctx.createRadialGradient(k,base-s*.8,0,k,base-s*.8,s*(lit?.75:.5));g.addColorStop(0,`rgba(255,226,120,${(lit?.55:.3)+.25*pulse})`);g.addColorStop(1,"rgba(255,226,120,0)");ctx.fillStyle=g;ctx.beginPath();ctx.arc(k,base-s*.8,s*(lit?.75:.5),0,7);ctx.fill();
+      for(const [dx,dy,r] of [[-.2,-.66,.1],[.2,-.6,.1],[-.12,-.9,.09],[.14,-.95,.09],[0,-1.02,.11]]){ctx.fillStyle=lit?"#ffd27a":"#e8c45a";ctx.beginPath();ctx.ellipse(k+s*dx,base+s*dy,s*r,s*r*.65,dx*2,0,7);ctx.fill();ctx.fillStyle="#7da84a";ctx.beginPath();ctx.ellipse(k+s*dx*.9,base+s*(dy+.03),s*r*.45,s*r*.3,dx*2,0,7);ctx.fill()}
+    } else if (kind === "visceraBloom") { // the Rite of Ascendancy's prize on its tree's crown: a slow-beating bloom of Divine Viscera
+      const t=performance.now()/1000,beat=.85+.15*Math.sin(t*3.4);ctx.fillStyle="#00000044";ctx.beginPath();ctx.ellipse(k,base,s*.3,s*.1,0,0,7);ctx.fill();
+      const g=ctx.createRadialGradient(k,base-s*.5,0,k,base-s*.5,s*.7);g.addColorStop(0,"rgba(255,120,110,.55)");g.addColorStop(1,"rgba(255,120,110,0)");ctx.fillStyle=g;ctx.beginPath();ctx.arc(k,base-s*.5,s*.7,0,7);ctx.fill();
+      for(let i=0;i<6;i++){const a=i/6*6.283+t*.4;ctx.fillStyle=i%2?"#c23a4a":"#e2667a";ctx.beginPath();ctx.ellipse(k+Math.cos(a)*s*.18,base-s*.5+Math.sin(a)*s*.12,s*.16*beat,s*.08*beat,a,0,7);ctx.fill()}
+      ctx.fillStyle="#ffe6a8";ctx.beginPath();ctx.arc(k,base-s*.5,s*.1*beat,0,7);ctx.fill();
     } else if (kind === "listeningStone") { // release 373: a dark standing stone with the Listener's violet, ringed like an ear
       ctx.fillStyle="#00000055";ctx.beginPath();ctx.ellipse(k,base,s*.36,s*.1,0,0,7);ctx.fill();
       ctx.fillStyle="#1c1726";ctx.beginPath();ctx.moveTo(k-s*.26,base);ctx.lineTo(k-s*.18,base-s*1.15);ctx.lineTo(k,base-s*1.32);ctx.lineTo(k+s*.18,base-s*1.15);ctx.lineTo(k+s*.26,base);ctx.closePath();ctx.fill();ctx.strokeStyle="#3b3550";ctx.lineWidth=Math.max(1,s*.04);ctx.stroke();
@@ -1776,6 +1809,11 @@ export function render(ctx, g, w, h, now) {
     else{const a=Math.atan2(q.dy,q.dx),half=q.arc*Math.PI/360;ctx.arc(q.x*s,q.y*s,q.range*s,a-half,a+half)}
     ctx.stroke();
   }
+  if (dodging && now < (p.echoMist?.until || 0)) { // release 699: Stalker's Mist, the Wayfarer drawn as blue-grey mist
+    const cx = (p.x + .5) * s, cy = (p.y + .45) * s, tm = now / 1000;
+    for (let k = 0; k < 4; k++) { const ox = Math.cos(tm * 3 + k * 1.6) * s * .22 - (p.dodgeX || 0) * s * .18 * k, oy = Math.sin(tm * 2.4 + k * 2.1) * s * .14 - (p.dodgeY || 0) * s * .18 * k, r = s * (.62 - k * .08), gr = ctx.createRadialGradient(cx + ox, cy + oy, 0, cx + ox, cy + oy, r);
+      gr.addColorStop(0, "rgba(218,230,244,.5)"); gr.addColorStop(.6, "rgba(160,182,210,.22)"); gr.addColorStop(1, "rgba(120,146,180,0)"); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx + ox, cy + oy, r, 0, 7); ctx.fill(); }
+  }
   if (dodging) {
     ctx.globalAlpha = 0.28;
     actor(
@@ -1883,6 +1921,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "digSpot") { drawDigSpot(ctx, o, s, now);
           } else if (o.kind === "ilse") { drawIlse(ctx, o, s, now);
           } else if (o.kind === "crackedBell") { drawCrackedBell(ctx, o, s, now);
+          } else if (o.kind === "saplingDais" || o.kind === "riteAshes") { drawRiteTree(ctx, o, s, now); // the Rite of Ascendancy
           } else if (o.kind === "crownRest") { const cx = (o.x + .5) * s, cy = (o.y + .6) * s, lit = g.save?.activeCheckpoint?.crown && g.save.activeCheckpoint.rx === g.rx && g.save.activeCheckpoint.ry === g.ry, pulse = .55 + .45 * Math.sin(now / 420); ctx.save(); ctx.strokeStyle = lit ? `rgba(160,255,170,${.5 + .4 * pulse})` : "rgba(200,230,190,.45)"; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(cx, cy, s * .42, s * .2, 0, 0, 7); ctx.stroke(); for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + now / 2000; ctx.fillStyle = lit ? "#9dffae" : "#cfe8c4"; ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * s * .42, cy + Math.sin(a) * s * .2, s * .07, s * .035, a, 0, 7); ctx.fill(); } ctx.restore(); // release 669: the Crown Rest
           } else if (o.kind === "canopyGate") { drawCanopyGate(ctx, o, s, now); // release 631
           } else if (o.kind === "threadRelic") { drawThreadRelic(ctx, o, s, now); // release 627
@@ -2298,6 +2337,7 @@ function drawGlyphStatus(ctx,g,s,now,visible){
   for(const v of g.glyphVisuals||[]){const a=Math.max(0,v.life/v.max);
     if(v.kind==="arc"){ctx.strokeStyle=v.color;ctx.globalAlpha=a;ctx.lineWidth=Math.max(1.5,s*.06);ctx.beginPath();ctx.moveTo(v.x*s,v.y*s);const mx=(v.x+v.tx)/2*s+Math.sin(t*40)*s*.15,my=(v.y+v.ty)/2*s+Math.cos(t*37)*s*.15;ctx.lineTo(mx,my);ctx.lineTo(v.tx*s,v.ty*s);ctx.stroke();ctx.globalAlpha=1}
     else if(v.kind==="heal"){const rise=(1-a)*s*.6;ctx.font=`bold ${Math.max(10,Math.round(s*.32))}px system-ui,sans-serif`;ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle=`rgba(0,0,0,${a*.8})`;ctx.fillStyle=`rgba(120,240,140,${a})`;ctx.strokeText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.fillText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.textAlign="start"}
+    else if(v.kind==="mist"){const r=s*(.35+(1-a)*.5),gr=ctx.createRadialGradient(v.x*s,v.y*s,0,v.x*s,v.y*s,r);gr.addColorStop(0,`rgba(214,226,240,${.55*a})`);gr.addColorStop(1,"rgba(150,172,200,0)");ctx.fillStyle=gr;ctx.beginPath();ctx.arc(v.x*s,v.y*s,r,0,7);ctx.fill()}/* release 699: Stalker's Mist rots a foe */
     else if(v.kind==="burst"){ctx.strokeStyle=`rgba(255,210,92,${a})`;ctx.lineWidth=Math.max(2,s*.08);ctx.beginPath();ctx.arc(v.x*s,v.y*s,v.radius*s*(1.1-a*.6),0,7);ctx.stroke();ctx.fillStyle=`rgba(255,180,70,${a*.25})`;ctx.fill()}}
 }
 
@@ -2306,7 +2346,7 @@ function drawEchoPatches(ctx,g,s,now){
   for(const q of g.echoPatches||[]){const left=Math.max(0,(q.until-now)/1000),x=q.x*s,y=q.y*s,r=q.radius*s;
     if(q.kind==="web"){ctx.strokeStyle=`rgba(230,235,240,${Math.min(.7,left)})`;ctx.lineWidth=1;ctx.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.6)}ctx.stroke();for(const f of[.4,.75,1]){ctx.beginPath();ctx.ellipse(x,y,r*f,r*f*.6,0,0,7);ctx.stroke()}}
     else if(q.kind==="flesh"){ctx.fillStyle=`rgba(150,40,60,${Math.min(.45,left*.2)})`;ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.fill();ctx.fillStyle=`rgba(220,120,130,${Math.min(.5,left*.2)})`;for(let k=0;k<5;k++){ctx.beginPath();ctx.arc(x+Math.cos(k*1.3+now/700)*r*.6,y+Math.sin(k*1.7)*r*.35,s*.06,0,7);ctx.fill()}}
-    else if(q.kind==="mortar"){const t=1-Math.min(1,left/.65);if(q.stacks>1){ctx.save();ctx.font=`bold ${Math.max(11,s*.34)}px serif`;ctx.textAlign="center";ctx.fillStyle="#ffd28a";ctx.strokeStyle="#000a";ctx.lineWidth=3;ctx.strokeText(`×${q.stacks}`,x,y-r*.7);ctx.fillText(`×${q.stacks}`,x,y-r*.7);ctx.restore();}/* release 655: a stacked Upheaval shows its count */ctx.strokeStyle=q.voidEcho?`rgba(206,150,255,${.4+t*.5})`:`rgba(255,200,90,${.4+t*.5})`;ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.stroke();ctx.fillStyle=q.voidEcho?`rgba(151,82,224,${t*.3})`:`rgba(255,170,60,${t*.3})`;ctx.fill()}}
+    else if(q.kind==="mortar"){const t=1-Math.min(1,left/.65);ctx.strokeStyle=q.voidEcho?`rgba(206,150,255,${.4+t*.5})`:`rgba(255,200,90,${.4+t*.5})`;ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.stroke();ctx.fillStyle=q.voidEcho?`rgba(151,82,224,${t*.3})`:`rgba(255,170,60,${t*.3})`;ctx.fill()}}
 }
 
 const SEA_SURFACE = new Set(["ocean", "deepOcean", "shallows"]);

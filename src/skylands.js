@@ -21,7 +21,7 @@
 // the section. The first stands one level up, so a jump reaches it; from a platform a jump keeps its height over the gap
 // (game.ts, skyAir) and lands on the next. Creatures walk the ground beneath and cannot climb. A jump that ends over a gap
 // falls (from four levels, fatally). The skyway door stands on the top platform and opens only from there.
-import { hashSeed } from "./random.js?v=r697-e2e463537af2";
+import { hashSeed } from "./random.js?v=r703-af870d78ba3b";
 
 export const SKYLANDS = {
   version: 3, /* release 585: 2 = the stone skyway ascent; 587: 3 = floating discs */ macro: 8, chance: .65, minDepth: 14, maxTier: 20, hpPerTier: .6, damagePerTier: .25,

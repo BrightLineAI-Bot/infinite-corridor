@@ -10,9 +10,9 @@
 //
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
-import { hashSeed } from "./random.js?v=r697-e2e463537af2";
-import { placeDock } from "./boats.js?v=r697-e2e463537af2";
-import { growTrees, TREES_V14 } from "./trees.js?v=r697-e2e463537af2";
+import { hashSeed } from "./random.js?v=r703-af870d78ba3b";
+import { placeDock } from "./boats.js?v=r703-af870d78ba3b";
+import { growTrees, TREES_V14 } from "./trees.js?v=r703-af870d78ba3b";
 
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
@@ -610,6 +610,23 @@ function canopyGround(map, region = null) {
   const at = (x, y) => map.tiles[idx(x, y)], ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1, objAt = new Set((map.objects || []).filter((o) => !o.jungle && !(region && o.forest)).map((o) => idx(Math.round(o.x), Math.round(o.y))));
   const exitLine = (x, y) => (near(ex.north, x) && y <= 16) || (near(ex.south, x) && y >= 16) || (near(ex.west, y) && x <= 16) || (near(ex.east, y) && x >= 16);
   return (x, y) => { const t = x >= 1 && y >= 1 && x <= 30 && y <= 30 && at(x, y); return !!t && (region ? t.landscape === region && TREES_V14.regions[region].ground.includes(t.kind) : t.landscape === "jungle") && !t.structure && !t.buildingId && !t.environment && !t.slope && !(t.elev > 0) && !exitLine(x, y) && !(x >= 12 && x <= 20 && y >= 12 && y <= 20) && !objAt.has(idx(x, y)) && (region ? true : t.kind === "jungleFloor" || t.kind === "jungleMire" || t.kind === "buttressRoot"); };
+}
+// Would the rite's tree fit here? Tried on a copy, so the section is left as it is.
+export function riteTreeFits(map, seed, rx, ry) {
+  if (map.canopy) return false;
+  const copy = { ...map, tiles: map.tiles.map((t) => ({ ...t })), objects: (map.objects || []).map((o) => ({ ...o })), enemySpawns: (map.enemySpawns || []).map((q) => ({ ...q })), canopy: null };
+  return !!growRiteTree(copy, seed, rx, ry);
+}
+// The Rite of Ascendancy (ascendancy.ts): its tree grows in any country, on open natural ground clear of the plaza, the exit lines
+// and what stands there; the same tree each load (growTrees' hashes). Returns map.canopy or null when there is no room.
+export function growRiteTree(map, seed, rx, ry, keepClear = []) {
+  if (map.canopy) return map.canopy;
+  const at = (x, y) => map.tiles[idx(x, y)], ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1;
+  const exitLine = (x, y) => (near(ex.north, x) && y <= 16) || (near(ex.south, x) && y >= 16) || (near(ex.west, y) && x <= 16) || (near(ex.east, y) && x >= 16);
+  const objAt = new Set((map.objects || []).filter((o) => !o.forest && !o.jungle && !o.environmental).map((o) => idx(Math.round(o.x), Math.round(o.y))));
+  const clear = new Set(keepClear.map(([x, y]) => idx(x, y)));
+  const ground = (x, y) => { const t = x >= 1 && y >= 1 && x <= 30 && y <= 30 && at(x, y); return !!t && !t.blocked && !t.structure && !t.buildingId && !t.environment && !t.slope && !(t.elev > 0) && !t.canopy && !DEEP_WATER.includes(t.kind) && !exitLine(x, y) && !(x >= 12 && x <= 20 && y >= 12 && y <= 20) && !objAt.has(idx(x, y)) && !clear.has(idx(x, y)); };
+  return growTrees(map, seed, rx, ry, { ground, reachable: reachableFromPlaza, trapped: (m) => trappedTiles(m, 32, 32, { x: 16, y: 16 }), version: 14, region: "rite", force: true });
 }
 function buildCanopyTree(map, seed, rx, ry) {
   const C = CANOPY, h = (k) => hashSeed(`${seed}:canopy:v3:${rx}:${ry}:${k}`), at = (x, y) => map.tiles[idx(x, y)];

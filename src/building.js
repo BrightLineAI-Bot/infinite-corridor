@@ -9,7 +9,7 @@
 // block is a `perch`, one landscape level higher per block stacked (only the Wayfarer may step onto a perch, jumping
 // as onto any ledge; in a dungeon, which has no levels, it is simply a block they can stand on). Builds are transient
 // like the Turtle's ice: a section load clears them and they are never saved. Data and rules; game.ts calls in.
-import { LETHAL_KINDS } from "./landscape.js?v=r697-e2e463537af2";
+import { LETHAL_KINDS } from "./landscape.js?v=r703-af870d78ba3b";
 
 export const BUILD = {
   kinds: {
@@ -195,7 +195,7 @@ export function placeEnclosure(game, x, y) {
   const id = `enclosure-${(game.buildSeq = (game.buildSeq || 0) + 1)}`, orig = {};
   for (const q of tiles) { const i = q.ty * w + q.tx; orig[i] = game.map.tiles[i]; game.map.tiles[i] = { ...game.map.tiles[i], enclosure: id, encSides: q.sides }; }
   const pen = { id, kind: "enclosure", x: x0, y: y0, open, hits: K.hits, life: K.life, orig, trapped: null }; builds.push(pen);
-  // Release r697-e2e463537af2: built across another pen's opening, it closes that pen: whatever is inside is shut in (game.penClosed rolls the trap).
+  // Release 697: built across another pen's opening, it closes that pen: whatever is inside is shut in (game.penClosed rolls the trap).
   let said = null;
   for (const other of builds) if (other !== pen && other.kind === "enclosure" && !other.trapped && overlapsOpening(other, pen)) said = game.penClosed?.(other, pen) || said;
   return { ok: true, message: said || `Enclosure raised, open to the ${open}. ${m.wood} wood, ${m.stone} stone, ${m.cinderIron} cinder iron left.` };
