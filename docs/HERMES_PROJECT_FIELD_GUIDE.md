@@ -2694,6 +2694,31 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release NNN: the Rite of Ascendancy — 2026-11-02
+
+Tim (2026-11-02): "a Dias that looks like a sprouting tree... you can touch it... begin rites of ascendency... all the wards and
+the enemies will start coming... the walls will be blocked off... you have to do the ascendancy the whole 5 minutes without
+dying... if [you] die, it resets and the fire from around the walls goes down and you can leave the tile... each [dais] only
+gives you 3 [tries]... if you complete the [rite], a great tree [rises] in that tile, and you get to climb up it and get some
+divine viscera, but there's no... trial up there... sometimes there's a skyway up there... [to] another tree top".
+
+**CODE:** `src/ascendancy.ts` (new; in the build and both sw.js lists): `ASCENDANCY` (`chance` .03 past `minRing` 4,
+`duration` 300 s, `tries` 3, `grace` 4 s, `waves` { every 24 → 11 s over the rite, packs 2–4 of 3–5, cap 24 alive, champion
+.25, rare .1, 9–13 tiles out }, `viscera` 3, `skyway` .4), `saplingHere`, `riteRecord`, `triesLeft`, `riteSkyway`, `waveGap`,
+`ensureAscendancy` (`save.ascendancy`, keyed "rx,ry": { tries, done, bloom }). landscape.ts `growRiteTree` grows a great tree
+in any country with trees.ts `growTrees` (new `force` option: no chance roll), the same tree each load; `riteTreeFits` tries it
+on a copy. game.ts: `placeSapling` in loadArea (sections first seen from now on, `atlas.ascendVersion`; only where the tree
+would fit): the Sapling Dais, a Withered Sapling ruin once its tries are spent, or, when done, the tree (`raiseRiteTree`, its
+canopy door kept only for `riteSkyway`) with the `visceraBloom` on a crown tile. `beginRite` (a try counted), `riteTick` (waves
+of the section's own creatures, else `fallback`, through fractured.ts `packSpawns`; tagged `riteFoe`), `riteFailed` (a death,
+or the Wayfarer gone from the section), `riteDone`, `gatherBloom` (`save.skylands.viscera` += 3, once). `transitionSection`
+refuses every edge while a rite burns (returns false, so the wrapper adds no section). renderer.ts draws the sapling (glowing
+while it burns) and the bloom; combat-visuals.ts `drawRiteFire` the flames along the four edges.
+
+**BOUNDARY:** New ground only (`atlas.ascendVersion`). Save additive at schema 14 (`save.ascendancy`, at most 128 records).
+The rite itself is runtime only (a reload ends it as a failure only if you are elsewhere). Bounded: at most 24 rite creatures
+alive. Tests: `tests/rite-of-ascendancy.test.ts`.
+
 ## Release 698: Worm's Upheaval back to puddles — 2026-11-02
 
 Tim (2026-11-02): "the tremor worm's [Echo]... was working better before... right now it like stacks up... beneath the person

@@ -106,10 +106,10 @@ function walkPath(from, to, free) {
 
 // Grow this section's great tree(s). `ground` says whether a tile can take wood, `reachable` recomputes what can be walked
 // to from the plaza, `trapped` lists the tiles that can be dropped into but not climbed out of. Returns the tree record for map.canopy, or null (the tiles are left as they were).
-export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, version = 13, region = "jungle" }) {
+export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, version = 13, region = "jungle", force = false }) {
   const T = TREES, h = (k) => hashSeed(`${seed}:trees:v13:${rx}:${ry}:${k}`), at = (x, y) => map.tiles[idx(x, y)], v14 = version >= TREES_V14.version;
-  if (!v14 && (hashSeed(`${seed}:canopy-grow:v1:${ry * 7919 + rx}`) % 1000) / 1000 >= T.chance) return null;
-  if (v14 && (hashSeed(`${seed}:canopy-grow:v2:${region}:${ry * 7919 + rx}`) % 1000) / 1000 >= (TREES_V14.regions[region]?.chance || 0)) return null;
+  if (!force && !v14 && (hashSeed(`${seed}:canopy-grow:v1:${ry * 7919 + rx}`) % 1000) / 1000 >= T.chance) return null;
+  if (!force && v14 && (hashSeed(`${seed}:canopy-grow:v2:${region}:${ry * 7919 + rx}`) % 1000) / 1000 >= (TREES_V14.regions[region]?.chance || 0)) return null; // force: the Rite of Ascendancy's tree (ascendancy.ts) always grows where it fits
   // Version 14: every spot, in a hashed order (the same each time); version 13: `tries` hashed spots.
   const spots = v14 ? Array.from({ length: 26 * 26 }, (_, i) => [2 + i % 26, 2 + Math.floor(i / 26)]).sort((p, q) => hashSeed(`${seed}:tree-spot:v14:${rx}:${ry}:${p}`) - hashSeed(`${seed}:tree-spot:v14:${rx}:${ry}:${q}`)) : null;
   let layouts = 0;

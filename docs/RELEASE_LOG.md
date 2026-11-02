@@ -21,6 +21,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 698, the next is **
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| (at merge) | Claude | `claude/dreamy-rubin-yn6q2p` | The Rite of Ascendancy: sapling daises, a fire-sealed five-minute survival (three tries), a great tree with Divine Viscera, sometimes a door to the sky | Building. |
 | 698 | Claude | `claude/dreamy-rubin-yn6q2p` | Worm's Upheaval back to one puddle a dodge, bursting in turn (undoes release 655's stacking) | Merging. |
 | 697 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | Closing the pen: the trap is tried when a second enclosure closes the first's opening with the Stalker inside; items work in a pen | Building. |
 | 696 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Enclosure: a 2x2 pen (2 wood, 2 stone, 2 cinder iron), walled on three sides; a trap for the Stalker with two standing | Merged; published in r696. |
