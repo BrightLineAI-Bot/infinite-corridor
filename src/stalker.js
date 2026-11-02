@@ -16,7 +16,7 @@
 //   At `swarm.at` health it calls small silver copies of itself (capped). It carries 1–2 elite affixes and scales with
 //   regionalThreat.
 // Runtime fields on the creatures (`stalkForm`, `stalkAct`, …) are never saved; only `save.stalker` is.
-import { hashSeed } from "./random.js?v=r688-8d2e46ab31ec";
+import { hashSeed } from "./random.js?v=r694-3e3a13d70a9b";
 
 export const STALKER = {
   version: 1,
@@ -67,6 +67,29 @@ export const STALKER = {
     charge: { range: 7.5, warn: .5, speed: 9, time: .75, touch: 1.05, knock: 2.6, damage: 1 },
     combo: { range: 1.6, warn: .22, reach: 1.45, kick: 1.8, knock: 1.4, damage: [.55, .6, .8] },
     retract: .3,
+  },
+  // Lying in wait (Tim, 2026-11-01: "you might not see it... it hops out of the shadows... goes from transparent to opaque... a jump
+  // scare... or it could be sitting in a tree, just waiting"): it comes out ahead of the Wayfarer, on the highest open ground it
+  // finds, all but invisible and still; it springs when they come within `trigger` (or hit it, or after `max` s), fading in over
+  // `reveal` s with a quick pounce or leap. Left far behind (`lose`), it creeps after them unseen.
+  lurk: { trigger: 3.4, reveal: .35, spring: .22, max: 40, lose: 13, creep: 1.4, alpha: .07 },
+  // The fog (Tim, 2026-11-01: "it could be coming toward you, and then it can go invisible and attack... when it gets close enough
+  // it makes the fog, and then it goes invisible and strikes... the penumbra should be slightly blue"): on alternate hunts it comes
+  // in the open; within `range` it fills the section with fog (`time` s) and veils itself, all but invisible (a faint blue glow,
+  // its marks still shown) while it fights on. In the fight it veils again every `again` s for `again_time` s.
+  fog: { range: 6, time: 12, again: [24, 34], againTime: 7, alpha: .13 },
+  // The cat's new moves: a flurry of forward swipes (like the Questing Beast's), and the tide: it melts into a wave and washes at
+  // the Wayfarer, three waves each bigger than the last.
+  cat: {
+    pick: ["pounce", "flurry", "pounce", "tide"],
+    flurry: { range: 2.6, warn: .35, strikes: 5, every: .17, lunge: .35, reach: 1.35, damage: .45 },
+    tide: { range: 7, warn: .55, widths: [1.6, 2.4, 3.4], gap: .4, speed: 6.5, length: 7.5, depth: .55, damage: [.6, .75, .9] },
+  },
+  // The puddle's moves: it slides under the Wayfarer and a mouth of silver blades rises from the floor and bites; or it splits into
+  // six little puddles that roam the floor biting, and go on doing so for a while after it has risen again.
+  pool: {
+    under: { speed: 7, time: 1, warn: .6, bite: .2, radius: 1.1, damage: 1.2 },
+    split: { count: 6, cap: 6, time: .35, life: 9, speed: 2.6, reach: 1.1, warn: .5, radius: .7, damage: .35, gap: [1.2, 2] },
   },
   // The mist (Tim, 2026-11-01): it turns to mist, surrounds the Wayfarer and rushes through them; each pass that touches them rots
   // a tenth of their maximum health away until they rest (rot past their whole health kills).
@@ -186,7 +209,7 @@ export function nextForm(e, w) {
   const n = (e.stalkCycle = (e.stalkCycle || 0) + 1), high = w.elev ? Math.abs((w.elev(w.player.x, w.player.y) || 0) - (w.elev(e.x, e.y) || 0)) >= 2 : false;
   if (high || (e.stalkStuck || 0) >= STALKER.forms.ape.stuck) return "ape";
   if (n % STALKER.mist.every === STALKER.mist.every - 1 && e.stalkForm !== "mist") return "mist";
-  if (n % 3 === 0 && e.stalkForm !== "pool") return "pool";
+  if (n % 2 === 0 && e.stalkForm !== "pool") return "pool";
   return hashSeed(`${e.id}:form:${n}`) % 2 ? "ape" : "cat";
 }
 function beginForm(e, w, form) {
@@ -325,6 +348,52 @@ function tickErupts(e, w, dt) {
   e.stalkErupts = e.stalkErupts.filter((q) => !q.done);
 }
 
+// The cat's moves in order; how close each wants to be.
+export function catMoveNext(e) { const P = STALKER.cat.pick; return P[((e.stalkCatSeq = (e.stalkCatSeq || 0) + 1) - 1) % P.length]; }
+const catRange = (move) => move === "flurry" ? STALKER.cat.flurry.range : move === "tide" ? STALKER.cat.tide.range : STALKER.forms.cat.range;
+// The little chomping puddles (at most `cap`): they roam toward the Wayfarer, mark a bite under them, and bite.
+function spawnChompers(e, w) {
+  const C = STALKER.pool.split, list = (e.stalkChompers ||= []), room = Math.max(0, C.cap - list.length);
+  for (let i = 0; i < Math.min(C.count, room); i++) { const a = i / C.count * Math.PI * 2; list.push({ x: e.x + Math.cos(a) * .6, y: e.y + Math.sin(a) * .6, life: C.life, state: "roam", t: roll(`${e.id}:chomp:${e.stalkPoolSeq}:${i}`, C.gap), orbit: a, at: null }); }
+}
+function tickChompers(e, w, dt) {
+  if (!e.stalkChompers?.length) return; const C = STALKER.pool.split, p = w.player;
+  for (const q of e.stalkChompers) {
+    q.life -= dt; q.t -= dt;
+    if (q.state === "roam") { q.orbit += dt * .9; const to = { x: p.x + Math.cos(q.orbit) * .9, y: p.y + Math.sin(q.orbit) * .6 }, v = unit(to.x - q.x, to.y - q.y), st = Math.min(Math.hypot(to.x - q.x, to.y - q.y), C.speed * dt), nx = q.x + v.x * st, ny = q.y + v.y * st; if ((w.free || w.open)(nx, ny)) { q.x = nx; q.y = ny; }
+      if (q.t <= 0 && Math.hypot(p.x - q.x, p.y - q.y) <= C.reach) { q.state = "warn"; q.t = C.warn; q.at = { x: p.x, y: p.y }; } }
+    else if (q.state === "warn" && q.t <= 0) { if (Math.hypot(p.x - q.at.x, p.y - q.at.y) <= C.radius) w.hurt(e, Math.max(1, Math.ceil((e.damage || 1) * C.damage))); q.state = "bite"; q.t = .18; }
+    else if (q.state === "bite" && q.t <= 0) { q.state = "roam"; q.t = roll(`${e.id}:chompgap:${q.orbit.toFixed(2)}`, C.gap); q.at = null; }
+  }
+  e.stalkChompers = e.stalkChompers.filter((q) => q.life > 0);
+}
+// The fog and the veil: it fogs the section and fights on all but unseen. `e.stalkFogPlan`: the hunt's open approach, fogging once
+// it is within range; then every `again` s in the fight. While veiled it cannot be auto-aimed (`hidden`) but a blow still lands.
+export function stalkerFog(e, w, dt) {
+  const G = STALKER.fog, p = w.player;
+  if (e.stalkVeil > 0) { e.stalkVeil = Math.max(0, e.stalkVeil - dt); e.hidden = e.stalkVeil > 0; if (!e.hidden) e.stalkFogClock = roll(`${e.id}:fogagain:${e.stalkCycle || 0}`, G.again); return; }
+  const veil = (time) => { e.stalkVeil = time; e.hidden = true; w.fogged?.(e, time); };
+  if (e.stalkFogPlan) { if (dist(e, p) <= G.range) { e.stalkFogPlan = false; veil(G.time); } return; }
+  if (e.stalkForm === "pool" || e.stalkForm === "mist") return;
+  e.stalkFogClock = (e.stalkFogClock ?? roll(`${e.id}:fogfirst`, G.again)) - dt;
+  if (e.stalkFogClock <= 0) veil(G.againTime);
+}
+// Lying in wait. Returns true while it still hides (the rest of the frame is skipped).
+export function stalkerLurk(e, w, dt) {
+  if (!e.stalkLurk) return false;
+  const L = STALKER.lurk, p = w.player, d = dist(e, p), l = e.stalkLurk, hurt = Number.isFinite(e.stalkLastHp) && e.hp < e.stalkLastHp;
+  l.t = (l.t || 0) + dt; e.hidden = true; e.untargetable = true; e.telegraph = 0; e.stalkHide = 1; e.facingX = p.x >= e.x ? 1 : -1;
+  e.stalkPerch = !!w.elev && (w.elev(e.x, e.y) || 0) - (w.elev(p.x, p.y) || 0) >= LOOK.perchRise;
+  if (d <= L.trigger || hurt || l.t >= L.max) {
+    // Out of the shadows: it fades in as it springs.
+    e.stalkLurk = null; e.hidden = false; e.untargetable = false; e.stalkHide = 0; e.stalkReveal = L.reveal; w.revealed?.(e);
+    if (e.stalkForm === "ape") setAct(e, "leapWarn", L.spring, { to: { x: p.x, y: p.y } }); else setAct(e, "pounceWarn", L.spring, { to: { x: p.x, y: p.y } });
+    e.stalkLastHp = e.hp; return false;
+  }
+  if (d > L.lose) step(e, w, p, L.creep, dt); // left behind: it follows, unseen
+  e.stalkAct = { kind: "lurk", t: 0, total: 0 }; e.stalkLastHp = e.hp; return true;
+}
+
 // The gorilla's arms. `e.stalkFists` (for drawing): where each launched fist is, and how high.
 export function apeMoveNext(e) { const P = STALKER.arms.pick; return P[((e.stalkApeSeq = (e.stalkApeSeq || 0) + 1) - 1) % P.length]; }
 const armRange = (move) => move === "leap" ? STALKER.forms.ape.range : STALKER.arms[move].range;
@@ -396,6 +465,18 @@ function tickEnergy(e, w, dt) {
   if (e.stalkEnergyClock <= 0 && e.stalkForm !== "pool" && e.stalkForm !== "mist") { e.stalkCharged = E.time; e.stalkAuraTick = 0; e.stalkEnergyClock = roll(`${e.id}:energy:${e.stalkCycle || 0}`, E.every) + E.time; }
 }
 
+// How it looks this frame (drawing only, stalker-render.ts): hiding in its own mist while it stalks at a distance (`stalkHide`
+// 0–1, eased), perched on ground higher than the Wayfarer's (`stalkPerch`), creeping low as it closes in (`stalkCreep`).
+export const LOOK = { hideFrom: 6, hideOver: 5, hideWait: .55, ease: 3, perchRise: 1 };
+export function stalkerLook(e, w, dt, kind) {
+  const p = w.player, d = dist(e, p), L = LOOK, elev = w.elev ? (w.elev(e.x, e.y) || 0) - (w.elev(p.x, p.y) || 0) : 0;
+  const target = kind === "wait" ? L.hideWait : kind === "prowl" && d > L.hideFrom ? Math.min(1, (d - L.hideFrom) / L.hideOver) : 0;
+  e.stalkHide = (e.stalkHide || 0) + (target - (e.stalkHide || 0)) * Math.min(1, dt * L.ease);
+  e.stalkPerch = (kind === "prowl" || kind === "wait") && elev >= L.perchRise;
+  e.stalkCreep = kind === "prowl" && d > (STALKER.forms[e.stalkForm]?.range || 5) * .75;
+  if (e.stalkPerch || kind === "wait") e.facingX = p.x >= e.x ? 1 : -1;
+}
+
 // One frame of the Stalker (or of one of its copies or decoys). `w` is the game's adapter: player, dt, now, open(x, y) (ground
 // it may stand on: never a building, shelter, town or lethal ground), move(e, dx, dy), fly(e, dx, dy) (the ape: over walls and
 // up trees), elev(x, y), hurt(e, amount), sheltered (the Wayfarer is inside a building, shelter or town), door (the last open
@@ -407,6 +488,9 @@ export function updateStalker(e, w) {
   e.hitStun = 0; e.recoil = 0; e.staggerImmune = true;
   e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt);
   if (e.stalkerKin || e.stalkerDecoy) { updateKin(e, w, dt); return; }
+  if (e.stalkReveal > 0) e.stalkReveal = Math.max(0, e.stalkReveal - dt);
+  if (stalkerLurk(e, w, dt)) return;
+  stalkerFog(e, w, dt);
   if (e.stalkGhosts?.length) { for (const g of e.stalkGhosts) g.t -= dt; e.stalkGhosts = e.stalkGhosts.filter((g) => g.t > 0); }
   if (e.stalkCharges == null) e.stalkCharges = S.afterimage.charges;
   e.stalkDodgeGap = Math.max(0, (e.stalkDodgeGap || 0) - dt);
@@ -421,26 +505,31 @@ export function updateStalker(e, w) {
   if (!e.stalkAct) beginForm(e, w, e.stalkForm || "cat");
   // The Wayfarer is inside: wait by the door, as a cat sitting still.
   if (w.sheltered) {
-    if (e.stalkForm === "pool" || e.stalkForm === "mist") { e.stalkForm = "cat"; e.untargetable = false; e.stalkBlades = null; }
+    if (e.stalkForm === "pool" || e.stalkForm === "mist") { e.stalkForm = "cat"; e.stalkBlades = null; }
+    e.untargetable = false; e.stalkWaves = null;
     e.stalkLift = 0; e.telegraph = 0; e.stalkAct = { kind: "wait", t: 0, total: 0 };
     if (w.door && dist(e, w.door) > 1.4) step(e, w, w.door, S.forms.cat.speed * .6, dt);
+    stalkerLook(e, w, dt, "wait");
     return;
   }
   if (e.stalkAct?.kind === "wait") beginForm(e, w, e.stalkForm);
-  tickEnergy(e, w, dt); tickTurret(e, w, dt); tickShots(e, w, dt); tickErupts(e, w, dt);
+  tickEnergy(e, w, dt); tickTurret(e, w, dt); tickShots(e, w, dt); tickErupts(e, w, dt); tickChompers(e, w, dt);
   if (e.stalkConeFlash) { e.stalkConeFlash.t -= dt; if (e.stalkConeFlash.t <= 0) e.stalkConeFlash = null; }
   e.stalkShieldAim = Math.atan2(p.y - e.y, p.x - e.x);
-  if ((e.stalkShield || 0) > 0 && e.stalkAct?.kind !== "guard" && e.stalkForm !== "pool" && e.stalkForm !== "mist" && !["leap", "hop", "climb", "pounce"].includes(e.stalkAct?.kind)) setAct(e, "guard", e.stalkShield);
+  if ((e.stalkShield || 0) > 0 && e.stalkAct?.kind !== "guard" && e.stalkForm !== "pool" && e.stalkForm !== "mist" && !["leap", "hop", "climb", "pounce", "flurry", "tide", "tideWarn"].includes(e.stalkAct?.kind)) setAct(e, "guard", e.stalkShield);
   const a = e.stalkAct, F = S.forms[e.stalkForm] || S.forms.cat, d = dist(e, p);
   a.t -= dt; e.telegraph = /Warn$/.test(a.kind) ? Math.max(0, a.t) : 0;
   if (e.stalkStrike) { e.stalkStrike.t -= dt; if (e.stalkStrike.t <= 0) e.stalkStrike = null; }
+  if (e.stalkSlash) { e.stalkSlash.t -= dt; if (e.stalkSlash.t <= 0) e.stalkSlash = null; }
+  stalkerLook(e, w, dt, a.kind);
   if (e.stalkForm === "ape" && tickApeAct(e, w, a, dt)) return;
   if (!["grab", "grabPull", "retract", "slamWarn", "slam", "sweep", "spin"].includes(a.kind)) e.stalkFists = null;
   switch (a.kind) {
     case "prowl": {
       // Close in to its range, circling once there; pounce or leap when the prowl is over.
       if (e.stalkForm === "ape" && !e.stalkApeNext) e.stalkApeNext = apeMoveNext(e);
-      const keep = e.stalkForm === "ape" ? Math.min(F.range, armRange(e.stalkApeNext)) * .7 : F.range * .7;
+      if (e.stalkForm === "cat" && !e.stalkCatNext) e.stalkCatNext = catMoveNext(e);
+      const keep = e.stalkForm === "ape" ? Math.min(F.range, armRange(e.stalkApeNext)) * .7 : Math.min(F.range, catRange(e.stalkCatNext)) * .7;
       if (d > keep) { step(e, w, p, F.speed, dt); const nd = dist(e, p), gain = (e.stalkPrevD ?? nd + 1) - nd; e.stalkStuck = gain > F.speed * dt * .25 ? 0 : (e.stalkStuck || 0) + dt; e.stalkPrevD = nd; }
       else { e.stalkPrevD = null; const ang = Math.atan2(e.y - p.y, e.x - p.x) + (hashSeed(`${e.id}:orbit`) % 2 ? 1 : -1) * .9 * dt; step(e, w, { x: p.x + Math.cos(ang) * keep, y: p.y + Math.sin(ang) * keep }, F.speed * .6, dt); }
       // Walled off (a cliff, a great tree, an enclosure): the cat hops a near ledge or climbs over to the Wayfarer.
@@ -448,11 +537,14 @@ export function updateStalker(e, w) {
         if (d <= S.climb.hop) setAct(e, "hop", S.climb.hopTime, { from: { x: e.x, y: e.y }, to: landing(w, p, e) });
         else setAct(e, "climb", S.climb.time);
         break; }
-      const reach = e.stalkForm === "ape" ? ((e.stalkStuck || 0) > 0 ? S.forms.ape.fly : armRange(e.stalkApeNext)) : F.range;
+      const reach = e.stalkForm === "ape" ? ((e.stalkStuck || 0) > 0 ? S.forms.ape.fly : armRange(e.stalkApeNext)) : catRange(e.stalkCatNext);
       if (a.t <= 0 && d <= reach) {
         const v = w.playerVelocity || { x: 0, y: 0 }, lead = e.stalkForm === "cat" ? F.pounce.warn * .5 : 0;
         const aim = { x: p.x + v.x * lead, y: p.y + v.y * lead };
-        if (e.stalkForm === "cat") setAct(e, "pounceWarn", F.pounce.warn, { to: aim });
+        if (e.stalkForm === "cat") { const move = e.stalkCatNext || "pounce"; e.stalkCatNext = null;
+          if (move === "flurry") setAct(e, "flurryWarn", S.cat.flurry.warn, { aim: Math.atan2(p.y - e.y, p.x - e.x) });
+          else if (move === "tide") setAct(e, "tideWarn", S.cat.tide.warn, { aim: Math.atan2(p.y - e.y, p.x - e.x) });
+          else setAct(e, "pounceWarn", F.pounce.warn, { to: aim }); }
         else { const move = (e.stalkStuck || 0) > 0 ? "leap" : e.stalkApeNext; e.stalkApeNext = null; startApeMove(e, w, move); }
       }
       break;
@@ -531,7 +623,35 @@ export function updateStalker(e, w) {
     case "slide": {
       // The pool: it cannot be hit, and slides round to another side.
       const moved = step(e, w, a.to, S.forms.pool.speed, dt);
-      if (a.t <= 0 || dist(e, a.to) < .2 || !moved) setAct(e, "rise", S.forms.pool.rise);
+      if (a.t <= 0 || dist(e, a.to) < .2 || !moved) { const n = (e.stalkPoolSeq = (e.stalkPoolSeq || 0) + 1); if (n % 2) setAct(e, "under", S.pool.under.time); else setAct(e, "split", S.pool.split.time); }
+      break;
+    }
+    case "under": {
+      // Under the Wayfarer, then the mouth rises round them.
+      const U = S.pool.under, v = unit(p.x - e.x, p.y - e.y), st = Math.min(d, U.speed * dt), nx = e.x + v.x * st, ny = e.y + v.y * st; if ((w.free || w.open)(nx, ny)) { e.x = nx; e.y = ny; }
+      if (d < .35 || a.t <= 0) setAct(e, "mouthWarn", U.warn, { at: { x: p.x, y: p.y } });
+      break;
+    }
+    case "mouthWarn": if (a.t <= 0) setAct(e, "mouth", S.pool.under.bite, { at: a.at }); break;
+    case "mouth": if (a.t <= 0) { if (dist(p, a.at) <= S.pool.under.radius) w.hurt(e, Math.max(1, Math.ceil((e.damage || 1) * S.pool.under.damage))); setAct(e, "rise", S.forms.pool.rise); } break;
+    case "split": if (a.t <= 0) { spawnChompers(e, w); setAct(e, "rise", S.forms.pool.rise); } break;
+    case "flurryWarn": a.aim = Math.atan2(p.y - e.y, p.x - e.x); if (a.t <= 0) setAct(e, "flurry", S.cat.flurry.strikes * S.cat.flurry.every, { aim: a.aim, n: 0, next: 0 }); break;
+    case "flurry": {
+      // Swipe after swipe, pressing forward.
+      const R = S.cat.flurry; a.next -= dt; e.facingX = p.x >= e.x ? 1 : -1;
+      if (a.next <= 0 && a.n < R.strikes) { a.n++; a.next = R.every; step(e, w, p, R.lunge / R.every * .5, R.every); hit(e, w, R.reach, R.damage); e.stalkSlash = { t: .14, n: a.n, aim: Math.atan2(p.y - e.y, p.x - e.x) }; }
+      if (a.t <= 0) setAct(e, "spring", F.spring.time, { from: { x: p.x, y: p.y } });
+      break;
+    }
+    case "tideWarn": if (a.t <= 0) { const T = S.cat.tide; e.untargetable = true; e.stalkWaves = T.widths.map((wd, i) => ({ ox: e.x, oy: e.y, aim: a.aim, d: 0, width: wd, delay: i * T.gap, hit: false, n: i })); setAct(e, "tide", T.length / T.speed + T.gap * (T.widths.length - 1) + .1, { aim: a.aim }); } break;
+    case "tide": {
+      // It is the first wave; the others follow it, each wider.
+      const T = S.cat.tide, w0 = e.stalkWaves?.[0];
+      for (const q of e.stalkWaves || []) { if (q.delay > 0) { q.delay -= dt; continue; } q.d = Math.min(T.length, q.d + T.speed * dt);
+        const cx = q.ox + Math.cos(q.aim) * q.d, cy = q.oy + Math.sin(q.aim) * q.d, along = (p.x - cx) * Math.cos(q.aim) + (p.y - cy) * Math.sin(q.aim), perp = -(p.x - cx) * Math.sin(q.aim) + (p.y - cy) * Math.cos(q.aim);
+        if (!q.hit && Math.abs(along) <= T.depth && Math.abs(perp) <= q.width / 2 && w.hurt(e, Math.max(1, Math.ceil((e.damage || 1) * T.damage[q.n])))) q.hit = true; }
+      if (w0) { const tx = w0.ox + Math.cos(w0.aim) * w0.d, ty = w0.oy + Math.sin(w0.aim) * w0.d; if ((w.free || w.open)(tx, ty)) { e.x = tx; e.y = ty; } }
+      if (a.t <= 0) { e.stalkWaves = null; e.untargetable = false; const q = landing(w, e, null) || landing(w, p, null); if (q) { e.x = q.x; e.y = q.y; } setAct(e, "spring", F.spring.time, { from: { x: p.x, y: p.y } }); }
       break;
     }
     case "rise": if (a.t <= 0) { const f = hashSeed(`${e.id}:rise:${e.stalkCycle}`) % 2 ? "cat" : "ape"; e.stalkForm = f; beginForm(e, w, f); } break;

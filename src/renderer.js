@@ -1,28 +1,28 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r688-8d2e46ab31ec";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r688-8d2e46ab31ec";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r688-8d2e46ab31ec";
-import { enemyMeleeGeometry } from "./combat.js?v=r688-8d2e46ab31ec";
-import { ruleRows } from "./elders.js?v=r688-8d2e46ab31ec";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r688-8d2e46ab31ec";
-import { BOAT } from "./boats.js?v=r688-8d2e46ab31ec";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r688-8d2e46ab31ec";
-import { isMarineTile } from "./world-beasts.js?v=r688-8d2e46ab31ec";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r688-8d2e46ab31ec"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r688-8d2e46ab31ec";
-import { setTreeSeason } from "./landscape-render.js?v=r688-8d2e46ab31ec";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r688-8d2e46ab31ec";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r688-8d2e46ab31ec";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r688-8d2e46ab31ec";
-import { TREES } from "./trees.js?v=r688-8d2e46ab31ec";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r688-8d2e46ab31ec";
-import { KIT_MOVES } from "./boss-kit.js?v=r688-8d2e46ab31ec";
-import { SKY_DISCS } from "./skylands.js?v=r688-8d2e46ab31ec"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r688-8d2e46ab31ec";
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r688-8d2e46ab31ec"; // release 678
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r688-8d2e46ab31ec";
-import { drawRelayNode } from "./relay-network.js?v=r688-8d2e46ab31ec";
-import { structureOccupancy } from "./world.js?v=r688-8d2e46ab31ec";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r688-8d2e46ab31ec";
+import { astralBeamAnchors } from "./astral-worm.js?v=r694-3e3a13d70a9b";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r694-3e3a13d70a9b";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r694-3e3a13d70a9b";
+import { enemyMeleeGeometry } from "./combat.js?v=r694-3e3a13d70a9b";
+import { ruleRows } from "./elders.js?v=r694-3e3a13d70a9b";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r694-3e3a13d70a9b";
+import { BOAT } from "./boats.js?v=r694-3e3a13d70a9b";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r694-3e3a13d70a9b";
+import { isMarineTile } from "./world-beasts.js?v=r694-3e3a13d70a9b";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r694-3e3a13d70a9b"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r694-3e3a13d70a9b";
+import { setTreeSeason } from "./landscape-render.js?v=r694-3e3a13d70a9b";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r694-3e3a13d70a9b";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r694-3e3a13d70a9b";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r694-3e3a13d70a9b";
+import { TREES } from "./trees.js?v=r694-3e3a13d70a9b";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r694-3e3a13d70a9b";
+import { KIT_MOVES } from "./boss-kit.js?v=r694-3e3a13d70a9b";
+import { SKY_DISCS } from "./skylands.js?v=r694-3e3a13d70a9b"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r694-3e3a13d70a9b";
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r694-3e3a13d70a9b"; // release 678
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r694-3e3a13d70a9b";
+import { drawRelayNode } from "./relay-network.js?v=r694-3e3a13d70a9b";
+import { structureOccupancy } from "./world.js?v=r694-3e3a13d70a9b";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r694-3e3a13d70a9b";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1719,7 +1719,7 @@ export function render(ctx, g, w, h, now) {
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),g.presentation);
   drawMorphEffects(ctx,g.enemies,s,now); // release 385: the Morphling's cables, jaw, lunge and rising
   drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) });
-  for (const h of g.affixHazards || []) { const A = AFFIXES[h.kind] || KIT_MOVES[h.kind] /* release 668 */, x = h.x * s, y = h.y * s, R = h.radius * s, arming = now < h.armAt, k = arming ? 1 - (h.armAt - now) / ((A?.arm || .5) * 1000) : 1; if (!A) continue; ctx.save(); // release 657: affix telegraphs and strikes
+  for (const h of g.affixHazards || []) { const A = AFFIXES[h.kind] || KIT_MOVES[h.kind] /* release 668 */, x = h.x * s, y = h.y * s, R = h.radius * s, arming = now < h.armAt, k = arming ? Math.max(0, Math.min(1, 1 - (h.armAt - now) / ((A?.arm || .5) * 1000))) : 1; /* release 694: rounding put k a hair below 0 the frame a mark was laid, and a negative radius threw */ if (!A) continue; ctx.save(); // release 657: affix telegraphs and strikes
     if (arming) { ctx.strokeStyle = A.color; ctx.globalAlpha = .45 + .45 * k; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.stroke(); ctx.fillStyle = A.color + "40"; ctx.beginPath(); ctx.ellipse(x, y, R * k, R * .6 * k, 0, 0, 7); ctx.fill(); }
     else if (h.kind === "volcanic" || h.kind === "venomous") { ctx.globalAlpha = Math.min(1, (h.until - now) / 600) * .75; const gr = ctx.createRadialGradient(x, y, 0, x, y, R); gr.addColorStop(0, h.kind === "volcanic" ? "#ffd27a" : "#d8ff9a"); gr.addColorStop(.5, A.color); gr.addColorStop(1, A.color + "00"); ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.fill(); }
     else { const f = Math.max(0, (h.until - now) / 250); ctx.globalAlpha = f; if (h.kind === "skyAssault") { ctx.fillStyle = "#e9f8ff"; ctx.fillRect(x - R * .35, y - s * 6, R * .7, s * 6); } ctx.fillStyle = A.color; if (h.kind === "spiked") { ctx.beginPath(); for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * .35; ctx.moveTo(x + (i - 2) * R * .3, y); ctx.lineTo(x + Math.cos(a) * R * .2 + (i - 2) * R * .3, y - R * (1.1 - Math.abs(i - 2) * .25)); ctx.lineTo(x + (i - 2) * R * .3 + R * .12, y); } ctx.fill(); } else { ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.fill(); } }
@@ -1893,7 +1893,7 @@ export function render(ctx, g, w, h, now) {
           if (e.seaKind) { drawSeaCreature(ctx, e, s, now, SEA_CREATURES[e.seaKind].colors, g); return; }
           if (e.fracRank) { const rare = e.fracRank === "rare", pulse = .55 + .45 * Math.sin(now / 260), R = s * (.42 + (e.bodyRadius || .4) * .6); ctx.save(); ctx.strokeStyle = rare ? `rgba(255,196,70,${.5 + .4 * pulse})` : `rgba(110,170,255,${.45 + .35 * pulse})`; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.ellipse((e.x + .5) * s, (e.y + .82) * s, R, R * .42, 0, 0, Math.PI * 2); ctx.stroke(); if (rare && e.packName) { ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffd77a"; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = (e.y - (e.scale || 1) * .55) * s; ctx.strokeText(e.packName, (e.x + .5) * s, ty); ctx.fillText(e.packName, (e.x + .5) * s, ty); } ctx.restore(); } // release 651: Fractured mode's champions (blue) and rares (gold, named)
           if (e.fracWarden) { const cx = (e.x + .5) * s, cy = (e.y + .82) * s, R = s * (.5 + (e.bodyRadius || .5) * .7), tt = now / 1000; ctx.save(); ctx.strokeStyle = `rgba(255,70,120,${.55 + .35 * Math.sin(now / 200)})`; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); for (let i = 0; i <= 14; i++) { const a = i / 14 * Math.PI * 2 + tt * .4, rr = R * (i % 2 ? .82 : 1.08); ctx[i ? "lineTo" : "moveTo"](cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * .42); } ctx.stroke(); ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ff8fb0"; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = (e.y - (e.scale || 1) * .6) * s; ctx.strokeText("Fracture Warden", cx, ty); ctx.fillText("Fracture Warden", cx, ty); ctx.restore(); } // release 666: a jagged crimson ring and its name
-          if (e.affixes?.length || e.warded || e.fracShaman) { ctx.save(); const cx = (e.x + .5) * s, cy = (e.y + .45) * s, tt = now / 1000; // release 657: affixes, wards, shamans
+          if ((e.affixes?.length || e.warded || e.fracShaman) && !e.stalkLurk) { ctx.save(); const cx = (e.x + .5) * s, cy = (e.y + .45) * s, tt = now / 1000; // release 657: affixes, wards, shamans; 691: a lurking Stalker gives nothing away; 694: the comment had swallowed the save and cx/cy/tt
             if (e.affixes?.includes("droneSwarm")) for (let i = 0; i < AFFIXES.droneSwarm.count; i++) { const d = dronePos(e, i, tt), dx = d.x * s, dy = d.y * s; ctx.fillStyle = "#2b3a1e"; ctx.strokeStyle = AFFIXES.droneSwarm.color; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(dx, dy - s * .12); ctx.lineTo(dx + s * .12, dy); ctx.lineTo(dx, dy + s * .12); ctx.lineTo(dx - s * .12, dy); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#e9ffb0"; ctx.fillRect(dx - 1.5, dy - 1.5, 3, 3); }
             if (e.warded) { ctx.strokeStyle = `rgba(180,140,255,${.5 + .3 * Math.sin(now / 180)})`; ctx.lineWidth = Math.max(2, s * .05); ctx.beginPath(); ctx.arc(cx, cy, s * (.55 + (e.bodyRadius || .4) * .5), 0, 7); ctx.stroke(); }
             if (e.fracShaman) { ctx.strokeStyle = `rgba(190,120,255,${.55 + .35 * Math.sin(now / 140)})`; ctx.lineWidth = Math.max(2, s * .07); for (const k of [0, 1]) { const rr = s * (.8 + ((tt * .8 + k * .5) % 1) * .9); ctx.globalAlpha = 1 - ((tt * .8 + k * .5) % 1); ctx.beginPath(); ctx.ellipse(cx, (e.y + .82) * s, rr, rr * .45, 0, 0, 7); ctx.stroke(); } ctx.globalAlpha = .35; for (const m of g.enemies) if (!m.dead && m.wardBy === e.id && m.warded) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo((m.x + .5) * s, (m.y + .45) * s); ctx.stroke(); } ctx.globalAlpha = 1; }
@@ -2072,12 +2072,13 @@ export function render(ctx, g, w, h, now) {
     for (let i = 0; i < 4; i++) { const x0 = (l + ((i * 7 + now / 900) % (r - l + 6)) - 3) * s; ctx.fillStyle = "rgba(200,240,255,.06)"; ctx.beginPath(); ctx.moveTo(x0, t * s); ctx.lineTo(x0 + s * 1.5, t * s); ctx.lineTo(x0 + s * 4, b * s); ctx.lineTo(x0 + s * 2, b * s); ctx.fill(); }
   }
   // Stormkraken ink (W4): the sea goes dark beyond a small circle around the Wayfarer.
-  if (g.area === "overworld" && (g.seaHazards?.fog?.length || g.novaFog)) {
+  if (g.area === "overworld" && (g.seaHazards?.fog?.length || g.novaFog || g.stalkFog)) { // release 692: the Stalker's fog is the sea's
     // Fog banks (release 156; release 158 smooths them): each bank is a cluster of soft puffs turning slowly about its
     // centre. Inside a bank the mist closes in around the Wayfarer gradually (fogLevel is eased in open-sea.ts).
     // Release 257: a Supernova's fog (g.novaFog) draws the same way, faded in and out by its alpha.
     const level = g.seaHazards?.fogLevel || 0, time = now / 1000; // release 407 (Tim: "the Supernova... covers the entire world, so I can't see him... the Supernova shouldn't cover the Void Walker or other creatures"): its fog no longer closes in around the Wayfarer, and its mist is thin
-    for (const [f, fade] of [...(g.seaHazards?.fog || []).map((f) => [f, 1]), ...(g.novaFog?.fog || []).map((f) => [{ ...f, nova: true }, g.novaFog.alpha ?? 1])]) {
+    const closeIn = Math.max(level, (g.stalkFog?.level || 0) * .85); // release 692: the Stalker's fog closes in as the sea's does (the Supernova's still never does)
+    for (const [f, fade] of [...(g.seaHazards?.fog || []).map((f) => [f, 1]), ...(g.novaFog?.fog || []).map((f) => [{ ...f, nova: true }, g.novaFog.alpha ?? 1]), ...(g.stalkFog?.fog || []).map((f) => [f, g.stalkFog.level])]) {
       if (fade <= 0) continue;
       for (let i = 0; i < 7; i++) {
         const a = (f.swirl || 0) + i * 2.399 + Math.sin(time * .2 + i) * .15, d = f.radius * (.15 + .55 * ((i * 37) % 10) / 10), pr = f.radius * (.45 + .1 * Math.sin(time * .3 + i * 1.7));
@@ -2086,9 +2087,9 @@ export function render(ctx, g, w, h, now) {
         ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, pr * s, 0, 7); ctx.fill();
       }
     }
-    if (level > .01) {
-      const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - level) * 3), px, py, s * (3.6 + (1 - level) * 7));
-      gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.92 * level})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
+    if (closeIn > .01) {
+      const px = (p.x + .5) * s, py = (p.y + .6) * s, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - closeIn) * 3), px, py, s * (3.6 + (1 - closeIn) * 7));
+      gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.92 * closeIn})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2);
     }
     // Release 269 (Tim: "in fog it should cast a... violet glow"): the longboat's lantern lights the mist around it,
     // more strongly the deeper the fog.

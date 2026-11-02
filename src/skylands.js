@@ -21,7 +21,7 @@
 // the section. The first stands one level up, so a jump reaches it; from a platform a jump keeps its height over the gap
 // (game.ts, skyAir) and lands on the next. Creatures walk the ground beneath and cannot climb. A jump that ends over a gap
 // falls (from four levels, fatally). The skyway door stands on the top platform and opens only from there.
-import { hashSeed } from "./random.js?v=r688-8d2e46ab31ec";
+import { hashSeed } from "./random.js?v=r694-3e3a13d70a9b";
 
 export const SKYLANDS = {
   version: 3, /* release 585: 2 = the stone skyway ascent; 587: 3 = floating discs */ macro: 8, chance: .65, minDepth: 14, maxTier: 20, hpPerTier: .6, damagePerTier: .25,
@@ -258,6 +258,26 @@ export function beginSkyland(save, at, tier, forceMode = null) { // release 631:
   const what = mode === "cloud" ? "Wings stir in the clouds." : echoes.length ? "Echoes of the beasts you have felled wait above." : "No beast you have felled answers yet; the keepers of the islands stand in for them.";
   return { ok: true, id, tier: t, mode, message: `${name}${t ? `, Ascension ${t}: everything here is stronger` : ""}. ${what}` };
 }
+// Release 688 (Tim, 2026-11-01: "the base level skyland should be a lower level... they should all be pretty basic... scales based
+// on your character... starting [at] the level that your character is... every addition or modification increases the difficulty...
+// over and above your character's current level"): every Skyland foe's health and damage are set from the Wayfarer's level and gear
+// as they really stand (level, weapon, health, armour; no world-beast floors or Stage 1 hold) by its role, before anything else: the winged
+// things of a cloud hold are light, the keepers sturdier, each echo a modest share of its beast (shared out further when several
+// stand in one round, SKY_MODES.echoShare). The Ascension tier (skylandScale), the Divine Viscera pact's might and the annex's
+// islands then multiply from there. No regional threat applies in the sky, so every round, the first included, is set the same way.
+export const SKY_BASE = { // health: hits of the Wayfarer's weapon (+ per level); damage: a share of the Wayfarer's health, through armour
+  winged: { hitsToKill: 4, hpPerLevel: 2, damageShare: .08 },
+  keeper: { hitsToKill: 10, hpPerLevel: 5, damageShare: .12 },
+  echo: { hitsToKill: 18, hpPerLevel: 8, damageShare: .15 },
+};
+// A Skyland foe's base health and damage for `role`, from the Wayfarer (`stats` is game.ts characterStats).
+export function skyVitals(role, save, stats = {}) {
+  const B = SKY_BASE[role]; if (!B) return null;
+  const level = Math.max(1, Number(save?.level) || 1), w = save?.equipment?.[save?.activeWeaponSlot], perHit = Math.max(4, (Number(w?.power) || 6) + (Number(stats.meleeBonus) || 0));
+  const maxHp = Math.max(30, Number(save?.maxHp) || 60), guard = Math.min(.75, Math.max(0, Number(stats.damageReduction) || 0));
+  return { hp: Math.round(perHit * B.hitsToKill + B.hpPerLevel * level), damage: Math.max(2, Math.round(maxHp * B.damageShare / (1 - guard))) };
+}
+export const skyRoleOf = (spawn) => spawn?.skyEcho ? "echo" : spawn?.boss ? "keeper" : "winged";
 export function skylandScale(tier) { return { hp: 1 + SKYLANDS.hpPerTier * tier, damage: 1 + SKYLANDS.damagePerTier * tier }; }
 // The spawns of wave `wave` (0-based) of run `id`, around `centre` on `open` tiles; the last wave is `bossKind`.
 // Release 589: from a plan (skylandPlan); `plan` left out is a 571 run's waves. Echoes stand apart from one another.

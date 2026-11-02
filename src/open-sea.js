@@ -6,8 +6,8 @@
 //              unless the Wayfarer drives through it with an oar burst (dodge).
 //   iceberg    Drifting ice (cold seas): slow floes that bounce off land and each other; ramming one cracks the hull.
 // Data and pure rules; game.ts supplies the world (water test, hurt, hull) and draws through renderer.ts.
-import { hashSeed, rng } from "./random.js?v=r688-8d2e46ab31ec";
-import { coldSea } from "./landscape.js?v=r688-8d2e46ab31ec";
+import { hashSeed, rng } from "./random.js?v=r694-3e3a13d70a9b";
+import { coldSea } from "./landscape.js?v=r694-3e3a13d70a9b";
 export { coldSea };
 
 // Version 2 (release 156): sea features (landscape.ts addSeaFeatures) in sections first seen from then on.
