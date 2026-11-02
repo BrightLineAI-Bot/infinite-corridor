@@ -1,28 +1,28 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r695-bbf3bb21143d";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r695-bbf3bb21143d";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r695-bbf3bb21143d";
-import { enemyMeleeGeometry } from "./combat.js?v=r695-bbf3bb21143d";
-import { ruleRows } from "./elders.js?v=r695-bbf3bb21143d";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r695-bbf3bb21143d";
-import { BOAT } from "./boats.js?v=r695-bbf3bb21143d";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r695-bbf3bb21143d";
-import { isMarineTile } from "./world-beasts.js?v=r695-bbf3bb21143d";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r695-bbf3bb21143d"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r695-bbf3bb21143d";
-import { setTreeSeason } from "./landscape-render.js?v=r695-bbf3bb21143d";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r695-bbf3bb21143d";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r695-bbf3bb21143d";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r695-bbf3bb21143d";
-import { TREES } from "./trees.js?v=r695-bbf3bb21143d";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r695-bbf3bb21143d";
-import { KIT_MOVES } from "./boss-kit.js?v=r695-bbf3bb21143d";
-import { SKY_DISCS } from "./skylands.js?v=r695-bbf3bb21143d"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r695-bbf3bb21143d";
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r695-bbf3bb21143d"; // release 678
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r695-bbf3bb21143d";
-import { drawRelayNode } from "./relay-network.js?v=r695-bbf3bb21143d";
-import { structureOccupancy } from "./world.js?v=r695-bbf3bb21143d";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r695-bbf3bb21143d";
+import { astralBeamAnchors } from "./astral-worm.js?v=r696-e26c69802a93";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r696-e26c69802a93";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r696-e26c69802a93";
+import { enemyMeleeGeometry } from "./combat.js?v=r696-e26c69802a93";
+import { ruleRows } from "./elders.js?v=r696-e26c69802a93";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r696-e26c69802a93";
+import { BOAT } from "./boats.js?v=r696-e26c69802a93";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r696-e26c69802a93";
+import { isMarineTile } from "./world-beasts.js?v=r696-e26c69802a93";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r696-e26c69802a93"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r696-e26c69802a93";
+import { setTreeSeason } from "./landscape-render.js?v=r696-e26c69802a93";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r696-e26c69802a93";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r696-e26c69802a93";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r696-e26c69802a93";
+import { TREES } from "./trees.js?v=r696-e26c69802a93";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r696-e26c69802a93";
+import { KIT_MOVES } from "./boss-kit.js?v=r696-e26c69802a93";
+import { SKY_DISCS } from "./skylands.js?v=r696-e26c69802a93"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r696-e26c69802a93";
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r696-e26c69802a93"; // release 678
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r696-e26c69802a93";
+import { drawRelayNode } from "./relay-network.js?v=r696-e26c69802a93";
+import { structureOccupancy } from "./world.js?v=r696-e26c69802a93";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r696-e26c69802a93";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1715,7 +1715,7 @@ export function render(ctx, g, w, h, now) {
     ctx.save(); ctx.strokeStyle = `rgba(20,12,6,${.4 + .5 * k})`; ctx.lineWidth = Math.max(1, s * .06); ctx.beginPath(); for (let i = 0; i < 2 + Math.floor(k * 5); i++) { const a = i * 2.1 + d.x, r = s * (.15 + .35 * k); ctx.moveTo(x + s / 2, y + s / 2); ctx.lineTo(x + s / 2 + Math.cos(a) * r, y + s / 2 + Math.sin(a) * r); } ctx.stroke();
     if (d.strain > 0) { const f = Math.min(1, d.strain / 1); ctx.fillStyle = "#0008"; ctx.fillRect(x + s * .1, y - s * .22, s * .8, s * .12); ctx.fillStyle = f > .75 ? "#ff4a3a" : f > .45 ? "#ffd24a" : "#7ddf6a"; ctx.fillRect(x + s * .1, y - s * .22, s * .8 * f, s * .12); }
     ctx.fillStyle = `rgba(150,120,80,${.25 + .3 * Math.sin(now / 60)})`; for (let i = 0; i < 3; i++) ctx.fillRect(x + s * (.2 + ((now / 90 + i * 7) % 6) / 10), y + s * (.75 - i * .15), 2, 2); ctx.restore(); }
-  // Release r695-bbf3bb21143d (Tim: "make it low to the ground... the tops of buildings and trees are visible through it... every other creature
+  // Release 695 (Tim: "make it low to the ground... the tops of buildings and trees are visible through it... every other creature
   // is pretty visible"): the Stalker's fog is the sea fog's banks and closing-in wash, painted over the ground only, before the
   // marks, the objects and the creatures, so treetops, roofs and other creatures stand out of it (and the marks still show).
   if (g.area === "overworld" && g.stalkFog?.fog) { const F = g.stalkFog, fade = F.level || 0, time = now / 1000;
@@ -1725,6 +1725,20 @@ export function render(ctx, g, w, h, now) {
         gr.addColorStop(0, `rgba(222,231,236,${.3 * fade})`); gr.addColorStop(1, "rgba(222,231,236,0)"); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, pr * s, 0, 7); ctx.fill(); }
       const px = (p.x + .5) * s, py = (p.y + .6) * s, lv = fade * .9, gr = ctx.createRadialGradient(px, py, s * (1.4 + (1 - lv) * 3), px, py, s * (3.6 + (1 - lv) * 7));
       gr.addColorStop(0, "rgba(207,217,223,0)"); gr.addColorStop(1, `rgba(207,217,223,${.9 * lv})`); ctx.fillStyle = gr; ctx.fillRect(px - w, py - h, w * 2, h * 2); } }
+  // Release r696-e26c69802a93: the Enclosure, a 2x2 pen of planks on a stone footing banded with cinder iron, walled on three sides; holding the
+  // Stalker, iron bars close its open side.
+  if (g.area === "overworld") for (const pen of g.builds || []) if (pen.kind === "enclosure" && visibleInCamera({ x: pen.x + 1, y: pen.y + 1 }, l, t, r, b, 3)) {
+    const X = pen.x * s, Y = pen.y * s, S2 = 2 * s, wallH = .55 * s, th = .16 * s;
+    ctx.save(); ctx.fillStyle = "rgba(120,112,100,.55)"; ctx.fillRect(X, Y, S2, S2); ctx.strokeStyle = "rgba(70,64,58,.5)"; ctx.lineWidth = 1; for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(X + i * S2 / 4, Y); ctx.lineTo(X + i * S2 / 4, Y + S2); ctx.stroke(); } // flagstones
+    const wall = (x1, y1, x2, y2) => { const horiz = y1 === y2; ctx.fillStyle = "#6d6a66"; if (horiz) ctx.fillRect(x1, y1 - th / 2, x2 - x1, th); else ctx.fillRect(x1 - th / 2, y1, th, y2 - y1); // the stone footing
+      ctx.fillStyle = "#8a6440"; ctx.strokeStyle = "#4a321e"; ctx.lineWidth = 1; if (horiz) { ctx.fillRect(x1, y1 - wallH, x2 - x1, wallH - th / 2); ctx.strokeRect(x1, y1 - wallH, x2 - x1, wallH - th / 2); for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x1 + (x2 - x1) * k / 4, y1 - wallH); ctx.lineTo(x1 + (x2 - x1) * k / 4, y1 - th / 2); ctx.stroke(); } }
+      else { ctx.fillRect(x1 - th, y1 - wallH * .6, th * 2, y2 - y1); ctx.strokeRect(x1 - th, y1 - wallH * .6, th * 2, y2 - y1); }
+      ctx.fillStyle = "#3c4048"; if (horiz) { ctx.fillRect(x1, y1 - wallH * .72, x2 - x1, s * .05); ctx.fillRect(x1, y1 - wallH * .3, x2 - x1, s * .05); } else { ctx.fillRect(x1 - th, y1 + (y2 - y1) * .3, th * 2, s * .05); ctx.fillRect(x1 - th, y1 + (y2 - y1) * .7, th * 2, s * .05); } }; // cinder-iron bands
+    const sides = { north: [X, Y, X + S2, Y], south: [X, Y + S2, X + S2, Y + S2], west: [X, Y, X, Y + S2], east: [X + S2, Y, X + S2, Y + S2] };
+    for (const [side, seg] of Object.entries(sides)) if (side !== pen.open) wall(...seg);
+    if (pen.trapped) { const [x1, y1, x2, y2] = sides[pen.open]; ctx.strokeStyle = "#2f333a"; ctx.lineWidth = Math.max(2, s * .07); for (let k = 0; k <= 6; k++) { const px = x1 + (x2 - x1) * k / 6, py = y1 + (y2 - y1) * k / 6; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - wallH); ctx.stroke(); } } // the bars, shut
+    for (const [cx, cy] of [[X, Y], [X + S2, Y], [X, Y + S2], [X + S2, Y + S2]]) { ctx.fillStyle = "#5b3d22"; ctx.fillRect(cx - th * .7, cy - wallH - 2, th * 1.4, wallH + th / 2); } // corner posts
+    ctx.restore(); }
   // Active combat effects, including Supernova, intentionally paint over fog. They never reveal tiles or actors.
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),g.presentation);
   drawMorphEffects(ctx,g.enemies,s,now); // release 385: the Morphling's cables, jaw, lunge and rising
